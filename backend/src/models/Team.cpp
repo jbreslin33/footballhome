@@ -178,6 +178,8 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             json << "{";
             json << "\"id\":\"" << row["player_id"].as<std::string>() << "\",";
             json << "\"name\":\"" << full_name << "\",";
+            json << "\"firstName\":\"" << escapeJSON(first_name) << "\",";
+            json << "\"lastName\":\"" << escapeJSON(last_name) << "\",";
             json << "\"email\":\"" << email << "\",";
             json << "\"photoUrl\":\"" << avatar_url << "\",";
             json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : "\"" + row["jersey_number"].as<std::string>() + "\"") << ",";

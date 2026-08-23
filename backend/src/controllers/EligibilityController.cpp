@@ -42,7 +42,16 @@ void EligibilityController::registerRoutes(Router& router, const std::string& pr
     router.put(prefix + "/lineup-meta/:matchId", [this](const Request& request) {
         return this->handleSaveLineupMetadata(request);
     });
-    
+
+    // GET /api/eligibility/positions - Reference list for the Starting XI
+    // position picker (2026-08-22) — id/name/abbreviation/sortOrder from
+    // the `positions` lookup table. sortOrder 1-11 (Goalkeeper..Right
+    // Midfielder) is what the Player Lineup View sorts the Starting XI
+    // by and shows as the "1 is keeper, 2 is right back" slot number.
+    router.get(prefix + "/positions", [this](const Request& request) {
+        return this->handleGetPositions(request);
+    });
+
 }
 
 // ============================================================================
@@ -437,47 +446,39 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
         
         int insertedCount = 0;
         
-        // Parse starters: extract playerId and slotNumber from each object
+        // Parse starters: extract playerId, slotNumber, and positionId from
+        // each object. positionId (2026-08-22) drives the Player Lineup
+        // View's "1 is keeper, 2 is right back" Starting XI ordering — see
+        // handleGetPositions and positions.sort_order.
         std::regex starterObjPattern(R"(\{[^}]*"playerId"\s*:\s*(\d+)[^}]*\})");
         std::regex slotPattern(R"("slotNumber"\s*:\s*(\d+))");
-        
+        std::regex positionPattern(R"("positionId"\s*:\s*(\d+))");
+
         size_t startersStart = body.find("\"starters\"");
         size_t startersArrayStart = (startersStart != std::string::npos) ? body.find("[", startersStart) : std::string::npos;
         size_t startersArrayEnd = (startersArrayStart != std::string::npos) ? body.find("]", startersArrayStart) : std::string::npos;
-        
+
         if (startersStart != std::string::npos && startersArrayStart != std::string::npos) {
             std::string startersSection = body.substr(startersArrayStart, startersArrayEnd - startersArrayStart + 1);
-            
+
             auto begin = std::sregex_iterator(startersSection.begin(), startersSection.end(), starterObjPattern);
             auto end = std::sregex_iterator();
-            
+
             for (auto it = begin; it != end; ++it) {
                 std::string objStr = (*it)[0].str();
                 std::string playerId = (*it)[1].str();
-                
-                // Extract slot number from the object
-                std::smatch slotMatch;
-                std::string slotStr = "NULL";
-                if (std::regex_search(objStr, slotMatch, slotPattern)) {
-                    slotStr = slotMatch[1].str();
-                }
-                
-                std::string insertQuery;
-                if (slotStr != "NULL") {
-                    insertQuery = 
-                        "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, slot_number, zone) "
-                        "VALUES ($1, $2, $3, true, $4, 'starter') "
-                        "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = true, "
-                        "slot_number = EXCLUDED.slot_number, zone = 'starter'";
-                    db_->query(insertQuery, {matchId, playerId, teamId, slotStr});
-                } else {
-                    insertQuery = 
-                        "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, slot_number, zone) "
-                        "VALUES ($1, $2, $3, true, NULL, 'starter') "
-                        "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = true, "
-                        "slot_number = NULL, zone = 'starter'";
-                    db_->query(insertQuery, {matchId, playerId, teamId});
-                }
+
+                std::smatch slotMatch, posMatch;
+                std::string slotStr = std::regex_search(objStr, slotMatch, slotPattern) ? slotMatch[1].str() : "";
+                std::string posStr  = std::regex_search(objStr, posMatch, positionPattern) ? posMatch[1].str() : "";
+
+                db_->query(
+                    "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, slot_number, position_id, zone) "
+                    "VALUES ($1, $2, $3, true, NULLIF($4,'')::int, NULLIF($5,'')::int, 'starter') "
+                    "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = true, "
+                    "slot_number = EXCLUDED.slot_number, position_id = EXCLUDED.position_id, zone = 'starter'",
+                    {matchId, playerId, teamId, slotStr, posStr}
+                );
                 insertedCount++;
             }
         }
@@ -489,19 +490,30 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
         
         if (benchStart != std::string::npos && benchArrayStart != std::string::npos) {
             std::string benchSection = body.substr(benchArrayStart, benchArrayEnd - benchArrayStart + 1);
-            
-            std::regex playerIdPattern(R"("playerId"\s*:\s*(\d+))");
-            auto begin = std::sregex_iterator(benchSection.begin(), benchSection.end(), playerIdPattern);
+
+            // Object-scoped (not a bare playerId scan) so each bench
+            // entry's own slotNumber — the bench order picker
+            // (2026-08-22, owner directive) — is read from the right
+            // object, not whichever slotNumber happens to appear first
+            // in the array.
+            std::regex benchObjPattern(R"(\{[^}]*"playerId"\s*:\s*(\d+)[^}]*\})");
+            std::regex slotPattern(R"("slotNumber"\s*:\s*(\d+))");
+            auto begin = std::sregex_iterator(benchSection.begin(), benchSection.end(), benchObjPattern);
             auto end = std::sregex_iterator();
-            
+
             for (auto it = begin; it != end; ++it) {
+                std::string objStr = (*it)[0].str();
                 std::string playerId = (*it)[1].str();
-                
+
+                std::smatch slotMatch;
+                std::string slotStr = std::regex_search(objStr, slotMatch, slotPattern) ? slotMatch[1].str() : "";
+
                 db_->query(
-                    "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, zone) "
-                    "VALUES ($1, $2, $3, false, 'bench') "
-                    "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = false, zone = 'bench'",
-                    {matchId, playerId, teamId}
+                    "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, slot_number, zone) "
+                    "VALUES ($1, $2, $3, false, NULLIF($4,'')::int, 'bench') "
+                    "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = false, "
+                    "slot_number = EXCLUDED.slot_number, zone = 'bench'",
+                    {matchId, playerId, teamId, slotStr}
                 );
                 insertedCount++;
             }
@@ -539,6 +551,37 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
         std::cerr << "❌ Error saving lineup: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJsonResponse(false, "Failed to save lineup"));
+    }
+}
+
+// ============================================================================
+// GET /api/eligibility/positions
+// Reference list for the Starting XI position picker (2026-08-22).
+// ============================================================================
+Response EligibilityController::handleGetPositions(const Request& request) {
+    try {
+        pqxx::result result = db_->query(
+            "SELECT id, name, abbreviation, sort_order FROM positions ORDER BY sort_order", {});
+
+        std::ostringstream json;
+        json << "[";
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            first = false;
+            json << "{";
+            json << "\"id\":" << row["id"].c_str() << ",";
+            json << "\"name\":\"" << escapeJson(row["name"].c_str()) << "\",";
+            json << "\"abbreviation\":\"" << escapeJson(row["abbreviation"].c_str()) << "\",";
+            json << "\"sortOrder\":" << row["sort_order"].c_str();
+            json << "}";
+        }
+        json << "]";
+
+        return Response(HttpStatus::OK, createJsonResponse(true, "Positions retrieved", json.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting positions: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJsonResponse(false, "Failed to get positions"));
     }
 }
 

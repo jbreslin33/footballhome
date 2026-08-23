@@ -207,6 +207,7 @@ class MyScreen extends Screen {
             matchId,
             title: lineupBtn.getAttribute('data-lineup-title') || '',
             when: lineupBtn.getAttribute('data-lineup-when') || '',
+            mode: lineupBtn.getAttribute('data-lineup-mode') || undefined,
           });
         }
         return;
@@ -1095,6 +1096,13 @@ class MyScreen extends Screen {
               ${this.escapeHtml(viewLabel)}
             </button>
             ${kind === 'match' && ev.match_id ? `
+              <button type="button" data-lineup-match-id="${ev.match_id}"
+                      data-lineup-title="${this.escapeHtml(title)}"
+                      data-lineup-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"
+                      data-lineup-mode="gameday"
+                      style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
+                📋 Game Day Roster
+              </button>
               <button type="button" data-lineup-match-id="${ev.match_id}"
                       data-lineup-title="${this.escapeHtml(title)}"
                       data-lineup-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"

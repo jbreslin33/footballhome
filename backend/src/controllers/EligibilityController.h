@@ -19,6 +19,7 @@ private:
     Response handleSaveMatchLineup(const Request& request);
     Response handleGetLineupMetadata(const Request& request);
     Response handleSaveLineupMetadata(const Request& request);
+    Response handleGetPositions(const Request& request);
 
     // Path/JSON helpers
     std::string extractIdFromPath(const std::string& path, const std::string& pattern);

@@ -1,26 +1,49 @@
 // GameLineupScreen — single-match lineup editor (coach) / viewer (player).
 //
 // v1 scope (2026-08-13): tap-to-assign zones only, no pitch/drag — see
-// scoping note in the implementation plan. A coach taps a player card's
-// Starter/Bench/Alt button to assign them (tap the active one again to
-// clear back to unassigned). Reuses the exact debounce/save pattern from
-// lineups.js's _scheduleSave/_saveLineup, just scoped to one match/team
-// instead of a multi-team map.
+// scoping note in the implementation plan. Reuses the exact debounce/
+// save pattern from lineups.js's _scheduleSave/_saveLineup, just scoped
+// to one match/team instead of a multi-team map.
 //
-// Player view (2026-08-22, owner directive): players get a plain
-// read-only "team sheet" (_renderPlayerView) — numbered by jersey,
-// Starting XI / Bench / Alternates, none of the coach's stats/RSVP/
+// Coach editing (2026-08-22, owner directive — "I would always put them
+// in positions and bench and that would feed the views"):
+//   • Starting XI: 1-11 position pills per player (_setPosition), one
+//     pill per `positions` row (id/sortOrder 1=GK, 2=RB, ... 11=RM —
+//     see GET /api/eligibility/positions). Picking a pill IS how a
+//     player becomes a starter — there's no separate "Start" button.
+//     A slot already held by someone else renders greyed out but is
+//     still clickable: clicking it REPLACES them (they're bumped back
+//     to unassigned/their RSVP group) rather than blocking the click.
+//     Clicking your own active pill removes you instead.
+//   • Bench/Alt: plain toggle buttons (_toggleZone), unchanged.
+//   • Bench order: a #1/#2/... dropdown per bench player
+//     (_setBenchOrder), move-to-slot-N same as mens-roster.js's
+//     roster-position-select. Coach reference only.
+//
+// Player view: players get a plain read-only "team sheet"
+// (_renderPlayerView) — Starting XI ordered 1-11 by position slot
+// (with the position abbreviation shown), Bench/Alternates ALWAYS
+// alphabetical by last name regardless of the coach's bench order
+// ("so no one gets mad" — owner directive). No stats/RSVP/coach
 // controls. A coach reaches the identical view via the "👀 Player
 // Lineup View" toggle on this same screen (this.viewMode) rather than a
 // separate route, so there's only ever one "Lineup" entry point.
 //
 // Backend surface:
+//   GET /api/eligibility/positions → { success, data: [{id, name,
+//     abbreviation, sortOrder}, ...] } — the 1-11 pill reference list
+//     (positions.sort_order 12-15 exist in the table but aren't offered
+//     here; only the first 11 fill a Starting XI).
 //   GET /api/eligibility/lineup/:matchId → { success, data: {
 //     matchId, teamId, rosterTeamIds, isCoach, rosterStats: [{playerId,
 //     practicesAttended, practicesRecentTotal, practicesProjected,
 //     practicesUpcomingTotal, gameRsvp, practices: [{date, future,
-//     attended}, ...]}], lineup: [{playerId, zone, firstName, lastName,
-//     ...}] } } — practices is the team's Tue-Sat practice window before
+//     attended}, ...]}], lineup: [{playerId, zone, positionId,
+//     slotNumber, firstName, lastName, ...}] } } — positionId is the
+//     Starting XI slot (only meaningful when zone==='starter');
+//     slotNumber mirrors it there and separately carries the bench
+//     order when zone==='bench'. practices is the team's Tue-Sat
+//     practice window before
 //     this match (≤5), oldest first. future=false entries use real
 //     attendance; future=true entries (days that haven't happened yet)
 //     use RSVP/standing projection instead — attended there means
@@ -35,7 +58,11 @@
 //     missing from Unassigned.
 //   GET /api/teams/:teamId/roster        → { success, data: [{id, name,
 //     roleType, lineupRole}, ...] }
-//   PUT /api/eligibility/lineup/:matchId → same shape lineups.js already writes
+//   PUT /api/eligibility/lineup/:matchId → body { starters: [{playerId,
+//     positionId?, slotNumber?}], bench: [{playerId, slotNumber?}],
+//     alternates: [{playerId}], formationId, rosterSize } — same
+//     endpoint lineups.js already writes to, extended 2026-08-22 with
+//     positionId (Starting XI slot) and slotNumber (bench order)
 //
 // lineupRole ('starter'|'bench'|'reserve'|null, migration 279/283/293) is a
 // coach-set Roster Role designation shown here read-only (see roleButtons
@@ -68,6 +95,27 @@ class GameLineupScreen extends Screen {
     this.viewMode  = 'coach'; // 'coach' | 'player'
     this.roster    = [];   // [{id:Number, name, lineupRole, jerseyNumber}] — PLAYER rows only
     this.zones     = new Map(); // playerId:Number -> 'starter'|'bench'|'alternate'
+    // Starting XI position (2026-08-22, owner directive: "I would always
+    // put them in positions and bench and that would feed the views" —
+    // picking a position IS how a player becomes a starter here; there's
+    // no separate "Start" button. playerId:Number -> positionId:Number.
+    // Bench/Alt stay plain zone toggles (no position).
+    this.positions     = new Map();
+    this.positionList  = []; // [{id, name, abbreviation, sortOrder}, ...] from GET /api/eligibility/positions
+    // Bench substitution order (2026-08-22, owner directive: "allow me to
+    // edit bench order like in the teams page with dropdown") — a slot
+    // picker (#1, #2, ...) exactly like mens-roster.js's coach_sort_order
+    // control, reusing match_lineups.slot_number for zone='bench' rows
+    // the same column starters use for their position slot, just a
+    // different meaning per zone. Coach reference only — the Player
+    // Lineup View's Bench section always shows alphabetical regardless
+    // (see _renderPlayerView), so this never becomes a fairness dispute.
+    this.benchOrder    = new Map(); // playerId:Number -> order:Number (1-based)
+    // Availability/RSVP pills in the Current Lineup card are opt-in
+    // (2026-08-22, owner directive: "toggle off 'stats' like
+    // availability and attendance... at top for current lineup and
+    // bench") — off by default to keep the summary compact.
+    this.showLineupStats = false;
     this.stats     = new Map(); // playerId:Number -> {practicesAttended, practicesRecentTotal, practicesProjected, practicesUpcomingTotal, gameRsvp}
     this.loaded    = false;
     this.error     = null;
@@ -94,6 +142,13 @@ class GameLineupScreen extends Screen {
     this.matchId = params.matchId != null ? Number(params.matchId) : null;
     this.title   = params.title || '';
     this.when    = params.when || '';
+    // Game Day Roster (2026-08-22, owner directive) — a separate entry
+    // point (my.js's "Game Day Roster" button) into the SAME screen/data
+    // load, just a different render mode: the standing "1st Team
+    // Starter/Bench" Roster Role list (lineupRole, set on the Teams
+    // page), alpha by last name — not this match's per-match zones at
+    // all. Coach-only edit stays the default when reached via "Lineup".
+    this.viewMode = params.mode === 'gameday' ? 'gameday' : 'coach';
     this._wire();
     this._bootstrap();
   }
@@ -112,7 +167,10 @@ class GameLineupScreen extends Screen {
       }
       const viewToggle = e.target.closest('#gl-view-toggle');
       if (viewToggle && this.isCoach) {
-        this.viewMode = this.viewMode === 'player' ? 'coach' : 'player';
+        // From 'coach' → preview the player view; from 'player' OR
+        // 'gameday' (reached directly via my.js's own button) → back to
+        // the editable coach view.
+        this.viewMode = this.viewMode === 'coach' ? 'player' : 'coach';
         this._render();
         return;
       }
@@ -122,6 +180,51 @@ class GameLineupScreen extends Screen {
         const zone = zoneBtn.getAttribute('data-lineup-zone-btn');
         this._toggleZone(playerId, zone);
         return;
+      }
+      const statsToggle = e.target.closest('#gl-stats-toggle');
+      if (statsToggle && this.isCoach) {
+        this.showLineupStats = !this.showLineupStats;
+        this._render();
+        return;
+      }
+      // Current Lineup card (2026-08-22, owner directive) — Starting XI
+      // and Bench no longer have their own sections below, so removing
+      // someone happens right from the summary graphic: click their
+      // filled slot/bench row to unassign them, same effect as tapping
+      // their own active pill/Bench button would have had.
+      const removeStarter = e.target.closest('[data-lineup-remove-starter]');
+      if (removeStarter && this.isCoach) {
+        const playerId = Number(removeStarter.getAttribute('data-lineup-remove-starter'));
+        this._setPosition(playerId, null);
+        return;
+      }
+      const removeBench = e.target.closest('[data-lineup-remove-bench]');
+      if (removeBench && this.isCoach) {
+        const playerId = Number(removeBench.getAttribute('data-lineup-remove-bench'));
+        this._toggleZone(playerId, 'bench');
+        return;
+      }
+      // 1-11 position pills (2026-08-22, owner directive) — a slot
+      // already taken by someone else just renders greyed out (see
+      // positionPills below), it's not disabled: clicking it replaces
+      // whoever's there (_setPosition bumps them back to unassigned).
+      // Clicking your OWN active pill removes you instead of replacing
+      // yourself.
+      const posBtn = e.target.closest('[data-lineup-position-btn]');
+      if (posBtn && this.isCoach) {
+        const playerId = Number(posBtn.getAttribute('data-player-id'));
+        const positionId = Number(posBtn.getAttribute('data-lineup-position-btn'));
+        const isMine = this.positions.get(playerId) === positionId;
+        this._setPosition(playerId, isMine ? null : positionId);
+        return;
+      }
+    });
+    this.element.addEventListener('change', (e) => {
+      const benchSelect = e.target.closest('[data-lineup-bench-order-select]');
+      if (benchSelect && this.isCoach) {
+        const playerId = Number(benchSelect.getAttribute('data-player-id'));
+        const order = Number(benchSelect.value);
+        this._setBenchOrder(playerId, order);
       }
     });
   }
@@ -137,17 +240,32 @@ class GameLineupScreen extends Screen {
     if (sub) sub.textContent = [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
 
     try {
-      const lineupRes = await this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`);
+      const [lineupRes, positionsRes] = await Promise.all([
+        this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`),
+        this.auth.fetch('/api/eligibility/positions'),
+      ]);
       const lineupData = await lineupRes.json();
       if (!lineupData.success) throw new Error(lineupData.message || 'Failed to load lineup');
+      const positionsData = await positionsRes.json().catch(() => null);
+      this.positionList = (positionsData && positionsData.success && Array.isArray(positionsData.data))
+        ? positionsData.data
+        : [];
 
       this.teamId  = lineupData.data.teamId || null;
       this.matchStartsAt = lineupData.data.matchStartsAt || null;
       this.isCoach = !!lineupData.data.isCoach;
       this.zones = new Map();
+      this.positions = new Map();
+      this.benchOrder = new Map();
       for (const row of (lineupData.data.lineup || [])) {
         if (row.zone && row.zone !== 'not_selected') {
           this.zones.set(Number(row.playerId), row.zone);
+        }
+        if (row.zone === 'starter' && row.positionId != null) {
+          this.positions.set(Number(row.playerId), Number(row.positionId));
+        }
+        if (row.zone === 'bench' && row.slotNumber != null) {
+          this.benchOrder.set(Number(row.playerId), Number(row.slotNumber));
         }
       }
       this.stats = new Map();
@@ -174,7 +292,7 @@ class GameLineupScreen extends Screen {
           if (p.roleType !== 'PLAYER') continue;
           const pid = Number(p.id);
           if (byId.has(pid)) continue; // already merged from an earlier team
-          byId.set(pid, { id: pid, name: p.name || '(unnamed)', lineupRole: p.lineupRole || null, teamId: fromTeamId, jerseyNumber: p.jerseyNumber || null });
+          byId.set(pid, { id: pid, name: p.name || '(unnamed)', lastName: p.lastName || '', lineupRole: p.lineupRole || null, teamId: fromTeamId, jerseyNumber: p.jerseyNumber || null });
         }
       }
       this.roster = [...byId.values()];
@@ -188,6 +306,11 @@ class GameLineupScreen extends Screen {
     }
   }
 
+  // Bench/Alt only — Starting XI assignment goes through _setPosition
+  // instead (owner directive: picking a position IS how a player becomes
+  // a starter, no separate "Start" button). Either way, a player only
+  // ever holds a position while zone === 'starter', so leaving that zone
+  // always clears it.
   _toggleZone(playerId, zone) {
     const current = this.zones.get(playerId);
     if (current === zone) {
@@ -197,12 +320,74 @@ class GameLineupScreen extends Screen {
       if (cap != null) {
         const countInZone = [...this.zones.values()].filter(z => z === zone).length;
         if (countInZone >= cap) {
-          this._toast(`${zone === 'starter' ? 'Starting XI' : 'Bench'} is full (${cap} max)`);
+          this._toast(`Bench is full (${cap} max)`);
           return;
         }
       }
       this.zones.set(playerId, zone);
     }
+    this.positions.delete(playerId);
+    // Bench order (owner directive): joining bench appends to the end;
+    // leaving bench (to Alt, Starter, or unassigned) drops the order —
+    // it's meaningless once they're not on the bench.
+    if (this.zones.get(playerId) === 'bench') {
+      if (!this.benchOrder.has(playerId)) {
+        const benchCount = [...this.zones.values()].filter(z => z === 'bench').length;
+        this.benchOrder.set(playerId, benchCount); // just-added player counts itself → lands last
+      }
+    } else {
+      this.benchOrder.delete(playerId);
+    }
+    this._render();
+    this._scheduleSave();
+  }
+
+  // Bench order dropdown (2026-08-22, owner directive: "allow me to edit
+  // bench order like in the teams page with dropdown") — move-to-slot-N,
+  // everyone else shifts, same pattern as mens-roster.js's
+  // roster-position-select. Coach reference only — never shown to
+  // players (Bench is always alphabetical in _renderPlayerView).
+  _setBenchOrder(playerId, newOrder) {
+    const benchIds = [...this.zones.entries()].filter(([, z]) => z === 'bench').map(([id]) => id);
+    const sorted = benchIds.slice().sort((a, b) =>
+      (this.benchOrder.get(a) ?? Infinity) - (this.benchOrder.get(b) ?? Infinity)
+    );
+    const fromIdx = sorted.indexOf(playerId);
+    if (fromIdx === -1) return;
+    sorted.splice(fromIdx, 1);
+    const toIdx = Math.max(0, Math.min(newOrder - 1, sorted.length));
+    sorted.splice(toIdx, 0, playerId);
+    sorted.forEach((id, i) => this.benchOrder.set(id, i + 1));
+    this._render();
+    this._scheduleSave();
+  }
+
+  // Starting XI assignment (2026-08-22, owner directive) — picking a
+  // position sets zone='starter' with that position_id/slot in one move;
+  // picking "—" while already a starter sends them back to their RSVP
+  // group, same as tapping an active Bench/Alt pill again. Clicking a
+  // slot someone ELSE already holds replaces them — they're bumped back
+  // to unassigned (their RSVP group, e.g. "Going") rather than blocking
+  // the click; the pill's greyed-out style is just occupancy at a
+  // glance, not a lock. Never exceeds 11 starters: replacing frees a
+  // slot in the same stroke as filling it, and there are only 11 pills.
+  _setPosition(playerId, positionId) {
+    if (positionId == null) {
+      this.zones.delete(playerId);
+      this.positions.delete(playerId);
+      this._render();
+      this._scheduleSave();
+      return;
+    }
+    for (const [otherId, otherPos] of this.positions.entries()) {
+      if (otherPos === positionId && otherId !== playerId) {
+        this.zones.delete(otherId);
+        this.positions.delete(otherId);
+        break;
+      }
+    }
+    this.zones.set(playerId, 'starter');
+    this.positions.set(playerId, positionId);
     this._render();
     this._scheduleSave();
   }
@@ -240,8 +425,17 @@ class GameLineupScreen extends Screen {
     const bench = [];
     const alternates = [];
     for (const [playerId, zone] of this.zones.entries()) {
-      if (zone === 'starter') starters.push({ playerId });
-      else if (zone === 'bench') bench.push({ playerId });
+      if (zone === 'starter') {
+        const positionId = this.positions.get(playerId) ?? null;
+        // slotNumber mirrors positionId 1:1 for the 1-11 picker (see
+        // positionPills) — both land in match_lineups so lineups built
+        // before this feature (positionId always null) still sort sanely.
+        starters.push({ playerId, ...(positionId != null ? { positionId, slotNumber: positionId } : {}) });
+      }
+      else if (zone === 'bench') {
+        const order = this.benchOrder.get(playerId) ?? null;
+        bench.push({ playerId, ...(order != null ? { slotNumber: order } : {}) });
+      }
       else if (zone === 'alternate') alternates.push({ playerId });
     }
     try {
@@ -297,34 +491,161 @@ class GameLineupScreen extends Screen {
     unassignedNotGoing.sort(byStarterRank);
     unassignedNoResponse.sort(byStarterRank);
 
-    // Coach ↔ Player view toggle (2026-08-22, owner directive: "only need
-    // 1 Lineup button on screen" — coach previews the exact same read-only
-    // team-sheet a player would see, via a link on this same page, instead
-    // of a separate screen/route). Players always get the player view.
+    // Coach ↔ Player ↔ Game Day Roster view toggle (2026-08-22, owner
+    // directive: "only need 1 Lineup button on screen" — coach previews
+    // exactly what players see via a link on this same page instead of a
+    // separate screen/route). Players always get the player view; Game
+    // Day Roster is reached directly (my.js's own button, params.mode)
+    // but shares the same "✏️ Coach View" way back.
     const effectiveIsPlayerView = !this.isCoach || this.viewMode === 'player';
     const viewToggleHtml = this.isCoach
       ? `<div style="text-align:right; margin-bottom:8px;">
            <button id="gl-view-toggle" type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:4px 10px;">
-             ${effectiveIsPlayerView ? '✏️ Coach View' : '👀 Player Lineup View'}
+             ${this.viewMode === 'coach' ? '👀 Player Lineup View' : '✏️ Coach View'}
            </button>
          </div>`
       : '';
+
+    if (this.viewMode === 'gameday') {
+      box.innerHTML = viewToggleHtml + this._renderGameDayRoster();
+      return;
+    }
 
     if (effectiveIsPlayerView) {
       box.innerHTML = viewToggleHtml + this._renderPlayerView(byZone);
       return;
     }
 
+    // Coach's own Bench section reflects the bench order they set
+    // (owner directive) — unlike the Player Lineup View, which always
+    // shows Bench alphabetically regardless.
+    byZone.bench.sort((a, b) => (this.benchOrder.get(a.id) ?? Infinity) - (this.benchOrder.get(b.id) ?? Infinity));
+
+    // rosterById/slotToPlayerId computed once per render (not per row) —
+    // shared by both the top summary graphic and the position pills
+    // below it, so every row/cell reflects current global occupancy.
+    const rosterById = new Map(this.roster.map(r => [r.id, r]));
+    const slotToPlayerId = new Map();
+    for (const [pid, posId] of this.positions.entries()) slotToPlayerId.set(posId, pid);
+    const startingPositions = this.positionList.filter(pos => pos.sortOrder <= 11);
+
+    const RSVP_PILL = {
+      yes:   { label: 'Going',     bg: '#166534', fg: '#bbf7d0' },
+      no:    { label: 'Not Going', bg: '#7f1d1d', fg: '#fecaca' },
+      maybe: { label: 'Maybe',     bg: '#78350f', fg: '#fde68a' },
+    };
+    const rsvpStatusPill = (playerId) => {
+      const rsvp = this.stats.get(playerId)?.gameRsvp;
+      const v = RSVP_PILL[rsvp] || { label: 'No RSVP', bg: '#374151', fg: '#d1d5db' };
+      return `<span title="RSVP for this game" style="font-size:0.6rem; font-weight:700; padding:1px 6px; border-radius:999px; background:${v.bg}; color:${v.fg}; white-space:nowrap;">${v.label}</span>`;
+    };
+
+    // Top summary graphic (2026-08-22, owner directive: "show at top the
+    // lineup and totals in a graphic form like on tv" / "we don't need
+    // 'Starting' section and bench section as it should be in the
+    // Current Lineup"). Starting XI + Bench both live here now instead
+    // of their own separate card-grid sections below — Alternates keeps
+    // its own section since that wasn't part of the directive. Every
+    // filled slot/bench row is a button: click it to unassign that
+    // player (same as tapping their own active pill would have). RSVP
+    // pills are opt-in (this.showLineupStats) via the toggle button.
+    const summaryHtml = `
+      <div style="background:var(--bg-secondary, #111827); border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; flex-wrap:wrap; gap:4px;">
+          <strong style="font-size:0.85rem;">⚽ Current Lineup</strong>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.72rem; opacity:0.75;">Starting ${byZone.starter.length}/11 · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}</span>
+            <button type="button" id="gl-stats-toggle" class="btn btn-secondary" style="font-size:0.68rem; padding:2px 8px;">
+              ${this.showLineupStats ? 'Hide' : 'Show'} Availability
+            </button>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:4px;">
+          ${startingPositions.map(pos => {
+            const occupantId = slotToPlayerId.get(pos.id);
+            const occupant = occupantId != null ? rosterById.get(occupantId) : null;
+            const inner = `
+              <span style="font-weight:800; opacity:0.75; white-space:nowrap;">${pos.sortOrder} ${pos.abbreviation}</span>
+              <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; ${occupant ? '' : 'opacity:0.4;'}">${occupant ? this.escapeHtml(occupant.name) : '—'}</span>
+              ${occupant && this.showLineupStats ? rsvpStatusPill(occupant.id) : ''}`;
+            const cellStyle = 'display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:4px; font-size:0.72rem; width:100%; border:none;' +
+              `background:${occupant ? 'rgba(34,197,94,0.14)' : 'rgba(255,255,255,0.04)'};`;
+            return occupant
+              ? `<button type="button" data-lineup-remove-starter="${occupant.id}" title="Remove ${this.escapeHtml(occupant.name)} from ${pos.name}" style="${cellStyle} cursor:pointer; color:inherit; font:inherit;">${inner}</button>`
+              : `<div style="${cellStyle}">${inner}</div>`;
+          }).join('')}
+        </div>
+        ${byZone.bench.length ? `
+          <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border-color);">
+            <div style="font-size:0.72rem; font-weight:700; opacity:0.75; margin-bottom:4px;">BENCH</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:4px;">
+              ${byZone.bench.map((p, i) => `
+                <button type="button" data-lineup-remove-bench="${p.id}" title="Remove ${this.escapeHtml(p.name)} from Bench"
+                        style="display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:4px; font-size:0.72rem; width:100%; border:none; background:rgba(255,255,255,0.04); cursor:pointer; color:inherit; font:inherit;">
+                  <span style="font-weight:800; opacity:0.75; white-space:nowrap;">#${this.benchOrder.get(p.id) || (i + 1)}</span>
+                  <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left;">${this.escapeHtml(p.name)}</span>
+                  ${this.showLineupStats ? rsvpStatusPill(p.id) : ''}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>`;
+
+    // Bench/Alt only now — Starting XI goes through the 1-11 position
+    // pills below instead of a "Start" button (owner directive).
     const zoneButtons = (playerId) => `
       <div style="display:flex; gap:4px;">
-        ${['starter', 'bench', 'alternate'].map(z => {
+        ${['bench', 'alternate'].map(z => {
           const active = this.zones.get(playerId) === z;
-          const label = z === 'starter' ? 'Start' : z === 'bench' ? 'Bench' : 'Alt';
+          const label = z === 'bench' ? 'Bench' : 'Alt';
           return `<button type="button" data-lineup-zone-btn="${z}" data-player-id="${playerId}"
             class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}"
             style="padding:2px 8px; font-size:0.75rem;">${label}</button>`;
         }).join('')}
       </div>`;
+
+    const positionPills = (p) => {
+      if (!startingPositions.length) return '';
+      return `<div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:4px;">
+        ${startingPositions.map(pos => {
+          const occupantId = slotToPlayerId.get(pos.id);
+          const isMine = occupantId === p.id;
+          const takenByOther = occupantId != null && !isMine;
+          const style = isMine
+            ? 'background:#22c55e; color:#052e16; border:1px solid #22c55e; cursor:pointer;'
+            : takenByOther
+              ? 'background:#1e293b; color:#64748b; border:1px solid #334155; cursor:pointer;'
+              : 'background:#334155; color:#fff; border:1px solid #475569; cursor:pointer;';
+          const title = takenByOther
+            ? `${pos.name} — currently ${rosterById.get(occupantId)?.name || 'taken'}, click to replace`
+            : pos.name;
+          return `<button type="button" data-lineup-position-btn="${pos.id}" data-player-id="${p.id}"
+            title="${this.escapeHtml(title)}"
+            style="padding:1px 7px; font-size:0.68rem; font-weight:800; border-radius:3px; line-height:1.4; min-width:20px; text-align:center; ${style}">
+            ${pos.sortOrder}
+          </button>`;
+        }).join('')}
+      </div>`;
+    };
+
+    // Bench order dropdown (2026-08-22, owner directive) — move-to-slot-N
+    // picker, same UX as mens-roster.js's roster-position-select. Only
+    // shown once there's more than one bench player to order (matches
+    // that screen's "only worth showing with something to reorder
+    // against" convention). See _setBenchOrder.
+    const benchTotal = byZone.bench.length;
+    const benchOrderControl = (p) => {
+      if (benchTotal <= 1) return '';
+      const current = this.benchOrder.get(p.id) || benchTotal;
+      return `<select data-lineup-bench-order-select data-player-id="${p.id}"
+                 title="Bench order — coach reference only, players always see Bench alphabetically"
+                 style="font-size:0.68rem; font-weight:700; padding:0 2px; line-height:1.3; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff;">
+           ${Array.from({ length: benchTotal }, (_, i) => i + 1)
+             .map(n => `<option value="${n}" ${n === current ? 'selected' : ''}>#${n}</option>`)
+             .join('')}
+         </select>`;
+    };
 
     // Read-only Roster Role chip (2026-08-22) — this designation is now
     // set from the Teams roster board (mens-roster.js's Roster Role
@@ -385,9 +706,16 @@ class GameLineupScreen extends Screen {
     const playerRow = (p) => `
       <div style="padding:6px var(--space-3); border-bottom:1px solid var(--border-color);">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-          <span style="font-size:0.9em;">${this.escapeHtml(p.name)}</span>
-          ${this.isCoach ? zoneButtons(p.id) : ''}
+          <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0;">
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this.escapeHtml(p.name)}</span>
+            ${this.isCoach ? rsvpStatusPill(p.id) : ''}
+          </span>
+          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+            ${this.isCoach && this.zones.get(p.id) === 'bench' ? benchOrderControl(p) : ''}
+            ${this.isCoach ? zoneButtons(p.id) : ''}
+          </div>
         </div>
+        ${this.isCoach ? positionPills(p) : ''}
         ${this.isCoach ? `
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:3px;">
             ${statsLine(p.id)}
@@ -396,30 +724,54 @@ class GameLineupScreen extends Screen {
         ` : ''}
       </div>`;
 
-    const section = (label, players) => `
+    // Multiple player cards per line instead of one full-width row each
+    // (owner directive: "like on teams screen, so there is less blank
+    // space on desktop") — every coach-view section (Starting/Bench/
+    // Alternates/Going/collapsed Not-Going/No-Response) uses this same
+    // auto-fill grid, each card wrapping playerRow's content in its own
+    // bordered tile instead of a shared list divider.
+    const cardGrid = (players) => players.length
+      ? `<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:6px;">
+          ${players.map(p => `<div style="border:1px solid var(--border-color); border-radius:6px; overflow:hidden;">${playerRow(p)}</div>`).join('')}
+        </div>`
+      : `<div style="padding:6px var(--space-3); opacity:0.6; font-size:0.85em;">None yet</div>`;
+
+    const gridSection = (label, players) => `
       <h2 style="margin: var(--space-3) 0 4px; font-size:0.85rem;">${label} (${players.length})</h2>
-      ${players.length
-        ? players.map(playerRow).join('')
-        : `<div style="padding:6px var(--space-3); opacity:0.6; font-size:0.85em;">None yet</div>`}
+      ${cardGrid(players)}
     `;
 
-    box.innerHTML = viewToggleHtml + [
-      section('Starting', byZone.starter),
-      section('Bench', byZone.bench),
-      section('Alternates', byZone.alternate),
-      this.isCoach ? section('✓ Going', unassignedGoing) : '',
-      this.isCoach ? section('✗ Not Going', unassignedNotGoing) : '',
-      this.isCoach ? section('– No Response', unassignedNoResponse) : '',
+    // Not Going / No Response rolled up out of the way by default (owner
+    // directive: "...have them rolled up so they are not in way") — a
+    // coach almost never needs these, unlike Going.
+    const collapsedSection = (label, players) => `
+      <details style="margin: var(--space-3) 0;">
+        <summary style="cursor:pointer; font-size:0.85rem; font-weight:700; padding:4px 0;">${label} (${players.length})</summary>
+        ${cardGrid(players)}
+      </details>
+    `;
+
+    box.innerHTML = viewToggleHtml + summaryHtml + [
+      gridSection('Alternates', byZone.alternate),
+      this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
+      this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
+      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse) : '',
     ].join('');
   }
 
   // Read-only "traditional team sheet" (2026-08-22, owner directive) —
   // what players actually see, and what a coach sees via the "👀 Player
-  // Lineup View" toggle above. Deliberately plain: numbered by jersey
-  // (falls back to "–" when unset, e.g. FH-only squad adds with no LA
-  // registration), no stats/RSVP/coach controls. Same "not published
-  // yet" gate the old player-only branch used (byZone.starter.length===0
-  // is the only signal we have — there's no explicit publish flag).
+  // Lineup View" toggle above. No stats/RSVP/coach controls. Same "not
+  // published yet" gate the old player-only branch used
+  // (byZone.starter.length===0 is the only signal we have — there's no
+  // explicit publish flag).
+  //
+  // Starting XI is ordered 1-11 by position slot ("1 is keeper, 2 is
+  // right back" — owner directive) using the same position picked via
+  // the coach's pills (this.positions/positionList). Bench and
+  // Alternates are always strict alphabetical by last name — "so no one
+  // gets mad" (owner directive) — deliberately NOT position/jersey
+  // ordered, since there's no fairness case for ranking the bench.
   _renderPlayerView(byZone) {
     if (byZone.starter.length === 0) {
       return `
@@ -428,31 +780,75 @@ class GameLineupScreen extends Screen {
         </div>`;
     }
 
-    const byJerseyThenName = (list) => [...list].sort((a, b) => {
-      const an = a.jerseyNumber != null ? Number(a.jerseyNumber) : Infinity;
-      const bn = b.jerseyNumber != null ? Number(b.jerseyNumber) : Infinity;
-      if (an !== bn) return an - bn;
-      return (a.name || '').localeCompare(b.name || '');
+    const positionById = new Map(this.positionList.map(pos => [pos.id, pos]));
+    const byLastName = (list) => [...list].sort((a, b) =>
+      (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase())
+    );
+    const byPositionSlot = (list) => [...list].sort((a, b) => {
+      const ap = positionById.get(this.positions.get(a.id))?.sortOrder ?? 999;
+      const bp = positionById.get(this.positions.get(b.id))?.sortOrder ?? 999;
+      return ap - bp;
     });
 
-    const row = (p) => `
+    const starterRow = (p) => {
+      const pos = positionById.get(this.positions.get(p.id));
+      return `
       <div style="display:flex; align-items:center; gap:12px; padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
-        <span style="min-width:26px; text-align:right; font-weight:700; opacity:0.7; font-variant-numeric:tabular-nums;">${p.jerseyNumber != null ? p.jerseyNumber : '–'}</span>
+        <span style="min-width:40px; text-align:right; font-weight:700; opacity:0.85; font-variant-numeric:tabular-nums;">${pos ? `${pos.sortOrder} ${pos.abbreviation}` : '–'}</span>
+        <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
+      </div>`;
+    };
+    const plainRow = (p) => `
+      <div style="padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
         <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
       </div>`;
 
-    const section = (label, list) => list.length ? `
+    const section = (label, list, rowFn, sortFn) => list.length ? `
       <h2 style="margin: var(--space-4) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${label}</h2>
       <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
-        ${byJerseyThenName(list).map(row).join('')}
+        ${sortFn(list).map(rowFn).join('')}
       </div>
     ` : '';
 
     return `
       <div style="max-width:440px; margin:0 auto;">
-        ${section('⚽ Starting XI', byZone.starter)}
-        ${section('Bench', byZone.bench)}
-        ${section('Alternates', byZone.alternate)}
+        ${section('⚽ Starting XI', byZone.starter, starterRow, byPositionSlot)}
+        ${section('Bench', byZone.bench, plainRow, byLastName)}
+        ${section('Alternates', byZone.alternate, plainRow, byLastName)}
+      </div>`;
+  }
+
+  // Game Day Roster (2026-08-22, owner directive) — reached directly via
+  // my.js's own "Game Day Roster" button (params.mode='gameday'), NOT
+  // through the coach/player toggle. Plain list of everyone with a
+  // standing Roster Role of "1st Team Starter" or "1st Team Bench"
+  // (lineupRole, set on the Teams page — mens-roster.js's Roster Role
+  // dropdown), alpha by last name. Deliberately per-match-zone-agnostic:
+  // this is "who's in the 1st team pool", not "who's starting THIS game"
+  // — that's the Lineup button/_renderPlayerView above.
+  _renderGameDayRoster() {
+    const list = this.roster.filter(p => p.lineupRole === 'starter' || p.lineupRole === 'bench');
+    if (list.length === 0) {
+      return `
+        <div class="public-card" style="text-align:center; opacity:0.85; padding: var(--space-4);">
+          No 1st Team Starter/Bench set yet — set Roster Role on the Teams page.
+        </div>`;
+    }
+    list.sort((a, b) =>
+      (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase())
+    );
+    const ROLE_LABEL = { starter: '1st Team Starter', bench: '1st Team Bench' };
+    const row = (p) => `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
+        <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
+        <span style="font-size:0.62rem; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; opacity:0.65; white-space:nowrap;">${ROLE_LABEL[p.lineupRole]}</span>
+      </div>`;
+    return `
+      <div style="max-width:440px; margin:0 auto;">
+        <h2 style="margin: var(--space-3) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">📋 Game Day Roster (${list.length})</h2>
+        <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
+          ${list.map(row).join('')}
+        </div>
       </div>`;
   }
 }
