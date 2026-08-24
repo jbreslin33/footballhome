@@ -702,23 +702,23 @@ class SocialPostCard {
       case 'game_day':
         headerText = this.getGameDayLabel(rawDate);
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
-        leagueBadgeHtml = this.buildLeagueBadge(league, isCasa, false);
+        leagueBadgeHtml = this.buildLeagueBadge(league, false);
         break;
       case 'lineup':
         headerText = 'MATCH DAY SQUAD';
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
-        leagueBadgeHtml = this.buildLeagueBadge(league, isCasa, true);
+        leagueBadgeHtml = this.buildLeagueBadge(league, true);
         rosterHtml = this.buildImageRoster();
         break;
       case 'pre_match_announcement':
         headerText = 'STARTERS & BENCH';
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
-        leagueBadgeHtml = this.buildLeagueBadge(league, isCasa, true);
+        leagueBadgeHtml = this.buildLeagueBadge(league, true);
         break;
       case 'post_game':
         headerText = 'FULL TIME';
         middleHtml = this.buildImageScore(homeName, awayName, m, homeLogo, awayLogo);
-        leagueBadgeHtml = this.buildLeagueBadge(league, isCasa, false);
+        leagueBadgeHtml = this.buildLeagueBadge(league, false);
         break;
       default:
         headerText = 'MATCH DAY';
@@ -1020,16 +1020,29 @@ class SocialPostCard {
     `;
   }
 
-  buildLeagueBadge(league, isCasa, compact) {
+  // League badge on the post graphic. `league` is already the resolved
+  // display wording (ops' own `League:` gcal tag when the match has one,
+  // the legacy CASA/Delaware-River derivation when it doesn't) — the
+  // crest image is picked from that same string via LeagueCrest.resolve
+  // (2026-08-24, owner: "in gcal we have a league: var so we should use
+  // that to inform what league graphic to show"), which is what lets a
+  // match tagged ICSL/TCWSL/EPYSA/Open Cup carry its own crest. Before
+  // this it was a hard CASA-or-APSL coin flip, so every one of those
+  // went out branded APSL — the exact wrong-league failure migration
+  // 297's tag exists to end.
+  //
+  // A league we hold no crest for renders text-only rather than
+  // substituting a default image: an unbranded badge is a cosmetic gap,
+  // a wrong league crest on a published Instagram post is not.
+  buildLeagueBadge(league, compact) {
     if (!league) return '';
-    const logoSrc = isCasa ? '/images/leagues/casa.png' : '/images/leagues/apsl.png';
+    const crest = window.LeagueCrest ? window.LeagueCrest.resolve(league) : null;
+    const logoSrc = crest && crest.src;
     if (compact) {
       // Small inline badge for lineup / starters & bench
-      const bgColor = isCasa ? '#8b0000' : '#0033a0';
-      const borderColor = isCasa ? '#cc3333' : '#4488dd';
       return `
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
-          <img src="${logoSrc}" style="width:22px;height:22px;object-fit:contain;" />
+          ${logoSrc ? `<img src="${logoSrc}" style="width:22px;height:22px;object-fit:contain;" />` : ''}
           <span style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#ffffff;">${this.escapeHtml(league)}</span>
         </div>
       `;
@@ -1037,9 +1050,9 @@ class SocialPostCard {
     // Full-size standalone logo + conference text for game_day / post_game
     return `
       <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:8px;gap:4px;">
-        <div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:#ffffff;border-radius:10px;border:1px solid rgba(255,255,255,0.18);">
+        ${logoSrc ? `<div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:#ffffff;border-radius:10px;border:1px solid rgba(255,255,255,0.18);">
           <img src="${logoSrc}" style="max-width:42px;max-height:46px;object-fit:contain;" />
-        </div>
+        </div>` : ''}
         <span style="font-size:11px;font-weight:700;letter-spacing:2px;color:#ffffff;text-transform:uppercase;">${this.escapeHtml(league)}</span>
       </div>
     `;

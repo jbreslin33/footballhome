@@ -96,6 +96,12 @@ const FORMATIONS = {
   '4-2-3-1': { counts: [1, 4, 2, 3, 1] },
 };
 
+// Sentinel row spliced into the formation's rows to mark where the
+// halfway line (and the league crest in its center circle) belongs —
+// see _renderFormationPitch. Identity comparison only; never rendered
+// as positions.
+const HALFWAY_ROW = Object.freeze([]);
+
 class GameLineupScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -1064,6 +1070,26 @@ class GameLineupScreen extends Screen {
       }
     }
     rows.reverse(); // attack at top, keeper at bottom
+    // Halfway marker as a REAL flex row rather than the absolutely
+    // positioned line + circle it replaces (2026-08-24, owner: "we could
+    // put it on the field... are in the center circle like in place of
+    // center circle and jusst don't have chips or namess over lap it",
+    // then "center circle might be very cool"). A flex row is what makes
+    // the no-overlap half of that a guarantee instead of a per-formation
+    // gamble: an absolute circle pinned at top:50% lands wherever the
+    // rows happen to leave room, which differs for every entry in
+    // FORMATIONS (4 rows for 4-4-2, 5 for 4-2-3-1) and would have run
+    // straight through the midfield tokens on some of them. As a row it
+    // simply takes its own space and the rest lay out around it.
+    //
+    // Inserted at floor(rows.length / 2) — the geometric middle of the
+    // row stack, which is the whole point: the line lands mid-pitch
+    // whatever the shape. For the 4-row formations (4-4-2, 4-3-3,
+    // 3-5-2) that is the midfield/defence gap; for the 5-row 4-2-3-1 it
+    // is the gap between the two midfield bands, which is where a
+    // halfway line belongs in that shape anyway. Both verified on the
+    // real pitch graphic 2026-08-24.
+    rows.splice(Math.floor(rows.length / 2), 0, HALFWAY_ROW);
     const token = (pos) => {
       const occupantId = slotToPlayerId.get(pos.id);
       const occupant = occupantId != null ? rosterById.get(occupantId) : null;
@@ -1087,13 +1113,38 @@ class GameLineupScreen extends Screen {
     // as an actual pitch, not a plain green rectangle. Portrait,
     // compact (owner: "smaller pitch and closer together").
     return `
-      <div style="position:relative; background:linear-gradient(180deg, #16a34a, #14532d); border-radius:10px; padding:14px 8px; max-width:420px; margin:0 auto; min-height:440px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
+      <div style="position:relative; background:linear-gradient(180deg, #16a34a, #14532d); border-radius:10px; padding:14px 8px; max-width:420px; margin:0 auto; min-height:470px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
         <div style="position:absolute; inset:6px; border:2px solid rgba(255,255,255,0.35); border-radius:4px;"></div>
-        <div style="position:absolute; left:6px; right:6px; top:50%; border-top:2px solid rgba(255,255,255,0.35);"></div>
-        <div style="position:absolute; left:50%; top:50%; width:64px; height:64px; margin-left:-32px; margin-top:-32px; border:2px solid rgba(255,255,255,0.35); border-radius:50%;"></div>
         <div style="position:absolute; left:50%; bottom:6px; width:100px; height:32px; margin-left:-50px; border:2px solid rgba(255,255,255,0.35); border-bottom:none;"></div>
-        ${rows.map(row => `<div style="display:flex; justify-content:center; align-items:flex-start; gap:10px; position:relative; z-index:1;">${row.map(token).join('')}</div>`).join('')}
+        ${rows.map(row => row === HALFWAY_ROW
+          ? this._halfwayRowHtml()
+          : `<div style="display:flex; justify-content:center; align-items:flex-start; gap:10px; position:relative; z-index:1;">${row.map(token).join('')}</div>`).join('')}
       </div>`;
+  }
+
+  // Halfway line with the league crest sitting in the center circle.
+  // The crest comes from the gcal `League:` tag by way of
+  // LeagueCrest.resolve (see that module for the full path the tag
+  // travels) — never inferred from the opponent or the source system,
+  // which is the guessing migration 297 exists to end. A match with no
+  // tag, or one naming a league we hold no image for, falls back to the
+  // plain empty ring the pitch drew before, so nothing regresses and no
+  // match ever gets branded with the wrong league.
+  _halfwayRowHtml() {
+    const crest = window.LeagueCrest
+      ? window.LeagueCrest.resolve(this.matchDetails && this.matchDetails.league_tag)
+      : null;
+    const line = `<div style="flex:1; border-top:2px solid rgba(255,255,255,0.35);"></div>`;
+    const circle = crest && crest.src
+      ? `<div title="${this.escapeHtml(crest.label)}"
+              style="width:64px; height:64px; border-radius:50%; border:2px solid rgba(255,255,255,0.5);
+                     background:rgba(255,255,255,0.94); display:flex; align-items:center; justify-content:center;
+                     flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.3); overflow:hidden;">
+           <img src="${crest.src}" alt="${this.escapeHtml(crest.label)}"
+                style="max-width:46px; max-height:46px; object-fit:contain;">
+         </div>`
+      : `<div style="width:64px; height:64px; border-radius:50%; border:2px solid rgba(255,255,255,0.35); flex-shrink:0;"></div>`;
+    return `<div style="display:flex; align-items:center; gap:8px; position:relative; z-index:1;">${line}${circle}${line}</div>`;
   }
 
   // Bench, attached under the pitch graphic (owner: "show bench in
