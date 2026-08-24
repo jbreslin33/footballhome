@@ -6,6 +6,12 @@ class GameDayRosterScreen extends Screen {
     this.players = [];
     this.matchDetails = null;
     this.selectedPlayerIds = new Set();
+    // playerId -> 'starter' | 'bench'. selectedPlayerIds deliberately
+    // stays a flat set (every consumer on this screen wants "is this
+    // player on the game-day roster at all"); this keeps the zone that
+    // set throws away, for the one consumer that needs it — the
+    // Starters & Bench post graphic. See loadData's lineup merge.
+    this.selectedZones = new Map();
     this._listenersAttached = false;
     this.overlayOpen = false;
     this.filterText = '';
@@ -299,6 +305,7 @@ class GameDayRosterScreen extends Screen {
       // whatever the coach actually set as starters/bench/alt, which is
       // exactly what showed up here as extra/wrong players on the post.
       this.selectedPlayerIds = new Set();
+      this.selectedZones = new Map();
       if (lineupData && lineupData.success) {
         // this.players (roster-players?teamId=X) is scoped to ONE of the
         // match's tagged teams — for a dual-tagged event ("Team: APSL,
@@ -314,6 +321,7 @@ class GameDayRosterScreen extends Screen {
           if (row.zone !== 'starter' && row.zone !== 'bench') continue;
           const pid = String(row.playerId);
           this.selectedPlayerIds.add(pid);
+          this.selectedZones.set(pid, row.zone);
           if (!byId.has(pid)) {
             const fallback = {
               playerId: pid,
@@ -837,7 +845,8 @@ class GameDayRosterScreen extends Screen {
     const card = new SocialPostCard(this.auth);
     const rosterData = {
       players: this.players,
-      selectedIds: this.selectedPlayerIds
+      selectedIds: this.selectedPlayerIds,
+      zones: this.selectedZones
     };
     card.init(container, matchId, team.id, postType, this.matchDetails, rosterData);
     this.activeSocialCard = card;

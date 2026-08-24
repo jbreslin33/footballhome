@@ -23,18 +23,35 @@
   // Patterns are deliberately loose on the surrounding wording: ops type
   // whatever reads naturally ("APSL", "APSL Delaware River",
   // "CASA Select Liga 1"), and only the league identity in it matters.
+  //
+  // Each league carries its spelled-out name as well as its acronym:
+  // the tag is whatever ops typed on the calendar, and "Tri County
+  // Women's Soccer League" is at least as likely as "TCWSL". Missing
+  // those spellings didn't fail loudly — it silently returned src:null
+  // and the badge just lost its crest.
   const CRESTS = [
     [/casa|liga\s*[12]/i, 'casa.png'],
-    [/\bapsl\b|delaware\s*river/i, 'apsl.png'],
-    [/\bicsl\b/i, 'icsl.png'],
-    [/\btcwsl\b/i, 'tcwsl.png'],
-    [/\bepysa\b/i, 'epysa.png'],
-    [/\bepsa\b/i, 'epsa.png'],
+    [/\bapsl\b|delaware\s*river|atlantic\s*premier/i, 'apsl.png'],
+    [/\bicsl\b|inter[\s-]*county/i, 'icsl.png'],
+    [/\btcwsl\b|tri[\s-]*county/i, 'tcwsl.png'],
+    // "Pennsylvania" is spelled penn-, not pa-, so both of these accept
+    // the abbreviation and the full word explicitly. Youth first: it is
+    // the more specific of the two and the adult pattern would otherwise
+    // claim "Eastern Pennsylvania Youth Soccer" for the wrong crest.
+    [/\bepysa\b|eastern\s*(pa\b|penn\w*)\s*youth/i, 'epysa.png'],
+    [/\bepsa\b|eastern\s*(pa\b|penn\w*)/i, 'epsa.png'],
     [/open\s*cup/i, 'us-open-cup.png'],
     [/\bconcacaf\b/i, 'concacaf.png'],
-    [/\busys\b/i, 'usys.png'],
+    [/\busys\b|us\s*youth\s*soccer/i, 'usys.png'],
     [/\bfifa\b/i, 'fifa.png'],
+    // Region 1 before the generic US Soccer / USSF pattern below, which
+    // would otherwise swallow "USSF Region 1" and show the national crest.
+    [/region\s*1|\bussf[\s-]*r1\b/i, 'ussf-region1.jpg'],
     [/us\s*soccer|\bussf\b/i, 'ussoccer.png'],
+    // Philadelphia Parks & Recreation — the city rec league the youth
+    // sides play in. "PPR" is the mark on the crest itself, so ops may
+    // well type it.
+    [/parks\s*(&|and)?\s*rec|\bppr\b/i, 'phila-parks-rec.jpg'],
   ];
 
   function resolve(tag) {

@@ -714,6 +714,7 @@ class SocialPostCard {
         headerText = 'STARTERS & BENCH';
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
         leagueBadgeHtml = this.buildLeagueBadge(league, true);
+        rosterHtml = this.buildImageStartersBench();
         break;
       case 'post_game':
         headerText = 'FULL TIME';
@@ -1141,6 +1142,78 @@ class SocialPostCard {
     return false;
   }
 
+  // Starters & Bench post (2026-08-24, owner: "how come starters & Bench
+  // does not have players! like in the lineup view?") — this graphic
+  // built no roster block at ALL, so it published as a matchup card with
+  // an empty body while the 20-Man Squad post beside it listed everyone.
+  //
+  // The names were never missing from the data; the zone was. The screen
+  // reads `row.zone` off the eligibility lineup, keeps only
+  // starter-or-bench as a yes/no in a flat selectedIds Set, and drops
+  // which one it was — so the card had no way to split the two even
+  // though the whole point of this post type is the split. rosterData
+  // .zones (game-day-roster.js) carries it through now.
+  //
+  // Falls back to the flat SQUAD list when zones are absent, so an older
+  // caller that passes only {players, selectedIds} still renders names
+  // rather than the blank card this is fixing.
+  //
+  // Starters print like a team sheet: keeper first, then shirt numbers
+  // ascending, then anyone with no number alphabetically. The number is
+  // usually absent in practice — the pitch graphic's 1-11 are position
+  // ids, not jersey numbers, and players merged in from the eligibility
+  // endpoint carry no jersey at all — so the last-name tiebreak is the
+  // rule that actually does the work here, with the numbers taking over
+  // for squads that have them. Bench is straight alphabetical by last
+  // name, matching the player lineup view's "so no one gets mad" rule:
+  // there is no fairness case for ranking a bench, least of all on a
+  // public post.
+  buildImageStartersBench() {
+    if (!this.rosterData || !this.rosterData.players || !this.rosterData.selectedIds) return '';
+    const zones = this.rosterData.zones;
+    if (!zones || !zones.size) return this.buildImageRoster();
+
+    const selectedIds = this.rosterData.selectedIds;
+    const inZone = (z) => this.rosterData.players.filter(p =>
+      selectedIds.has(p.playerId) && zones.get(String(p.playerId)) === z);
+
+    const byLastName = (a, b) =>
+      String(a.lastName || '').toLowerCase().localeCompare(String(b.lastName || '').toLowerCase());
+    const teamSheetOrder = (a, b) => {
+      if (!!a.isKeeper !== !!b.isKeeper) return a.isKeeper ? -1 : 1;
+      const na = parseInt(a.jerseyNumber, 10), nb = parseInt(b.jerseyNumber, 10);
+      if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+      if (!isNaN(na) !== !isNaN(nb)) return isNaN(na) ? 1 : -1;
+      return byLastName(a, b);
+    };
+
+    const starters = inZone('starter').sort(teamSheetOrder);
+    const bench = inZone('bench').sort(byLastName);
+    if (starters.length === 0 && bench.length === 0) return '';
+
+    const section = (title, list) => list.length ? `
+      <div style="text-align:left;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:3px;color:#f5d442;margin-bottom:6px;font-weight:700;">${title}</div>
+        ${list.map(p => this.buildImagePlayerRow(p)).join('')}
+      </div>` : '';
+
+    return `
+      <div style="height:1px;min-height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:12px auto;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;width:100%;">
+        ${section(`STARTING XI`, starters)}
+        ${section(`BENCH`, bench)}
+      </div>
+    `;
+  }
+
+  // One "#7 Name GK" line, shared by both roster blocks so the two post
+  // types can never drift apart on jersey/keeper formatting.
+  buildImagePlayerRow(p) {
+    const jersey = p.jerseyNumber ? `<span style="color:#ffffff;font-weight:700;font-size:0.9em;min-width:24px;display:inline-block;">#${p.jerseyNumber}</span>` : '';
+    const gk = p.isKeeper ? ' <span style="font-size:0.7em;background:rgba(255,255,255,0.15);color:#ffffff;padding:0 4px;border-radius:3px;font-weight:700;">GK</span>' : '';
+    return `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:1px 0;color:rgba(255,255,255,0.9);">${jersey}<span>${this.escapeHtml(p.firstName)} ${this.escapeHtml(p.lastName)}</span>${gk}</div>`;
+  }
+
   buildImageRoster() {
     if (!this.rosterData || !this.rosterData.players || !this.rosterData.selectedIds) return '';
     const players = this.rosterData.players;
@@ -1148,11 +1221,7 @@ class SocialPostCard {
     const selected = players.filter(p => selectedIds.has(p.playerId));
     if (selected.length === 0) return '';
 
-    const rows = selected.map(p => {
-      const jersey = p.jerseyNumber ? `<span style="color:#ffffff;font-weight:700;font-size:0.9em;min-width:24px;display:inline-block;">#${p.jerseyNumber}</span>` : '';
-      const gk = p.isKeeper ? ' <span style="font-size:0.7em;background:rgba(255,255,255,0.15);color:#ffffff;padding:0 4px;border-radius:3px;font-weight:700;">GK</span>' : '';
-      return `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:1px 0;color:rgba(255,255,255,0.9);">${jersey}<span>${this.escapeHtml(p.firstName)} ${this.escapeHtml(p.lastName)}</span>${gk}</div>`;
-    }).join('');
+    const rows = selected.map(p => this.buildImagePlayerRow(p)).join('');
 
     return `
       <div style="height:1px;min-height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:12px auto;"></div>
