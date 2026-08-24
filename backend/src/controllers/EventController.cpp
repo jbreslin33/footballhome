@@ -10,6 +10,35 @@
 #include <curl/curl.h>
 #include <openssl/buffer.h>
 
+namespace {
+
+// The crest standing for a match's league, as a self-contained scalar
+// subquery correlated on m.id — usable in any query with `matches m` in
+// scope, without joining fh_events (a join risks fanning out the row set
+// if a match ever picks up a second calendar event).
+//
+// Path (migration 298, owner 2026-08-24: "no hardcode. get it in db"):
+// the hand-typed `League:` gcal tag on fh_events.league -> the
+// gcal_league_aliases spelling table -> the organization that owns the
+// league -> its logo_url. Nothing here infers a league from a team name.
+const char* LEAGUE_CREST_SQL =
+    "(SELECT o.logo_url FROM fh_events fe2 "
+    "   JOIN gcal_league_aliases gla "
+    "     ON LOWER(BTRIM(gla.alias)) = LOWER(BTRIM(fe2.league)) "
+    "   JOIN organizations o ON o.id = gla.organization_id "
+    "  WHERE fe2.match_id = m.id AND fe2.league IS NOT NULL LIMIT 1)";
+
+// Same crest, but only for a side with no `teams` row at all — the
+// informal calendar-synced opponents that have no crest of their own.
+// Guarded on the team id being NULL rather than on the logo being empty:
+// when we know who the opponent is and merely lack their badge, their
+// league's crest would misrepresent them as that league's own mark.
+std::string leagueCrestPlaceholder(const char* team_alias) {
+    return std::string("CASE WHEN ") + team_alias + ".id IS NULL THEN " + LEAGUE_CREST_SQL + " END";
+}
+
+}  // namespace
+
 EventController::EventController() {
     db_ = Database::getInstance();
 }
@@ -479,8 +508,11 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "CASE WHEN ms.name = 'completed' THEN true ";
         query << "WHEN (m.match_date + COALESCE(m.match_time, '00:00'::time)) < NOW() - INTERVAL '90 minutes' THEN true ";
         query << "ELSE false END AS has_ended, ";
-        query << "NULLIF(ht.logo_url, '') AS home_team_logo, ";
-        query << "NULLIF(awt.logo_url, '') AS away_team_logo, ";
+        // COALESCE onto the league crest for a side with no `teams` row,
+        // the same placeholder the single-match query uses. team-dashboard
+        // hardcoded tcwsl.png for this case; the crest is DB data now.
+        query << "COALESCE(NULLIF(ht.logo_url, ''), " << leagueCrestPlaceholder("ht") << ") AS home_team_logo, ";
+        query << "COALESCE(NULLIF(awt.logo_url, ''), " << leagueCrestPlaceholder("awt") << ") AS away_team_logo, ";
         query << "ht.id AS home_team_id, awt.id AS away_team_id, ";
         query << "ce.image_url AS calendar_image_url, ";
         query << "COALESCE(ss.name, '') AS source_name, ";
@@ -730,7 +762,13 @@ Response EventController::handleGetMatch(const Request& request) {
                  "(SELECT t.logo_url FROM teams t "
                  "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(t.name)) = LOWER(BTRIM(fe.opponent)) LIMIT 1), "
                  "(SELECT NULLIF(olc.logo_url,'') FROM opponent_logo_cache olc "
-                 "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(olc.opponent_text)) = LOWER(BTRIM(fe.opponent)) LIMIT 1)"
+                 "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(olc.opponent_text)) = LOWER(BTRIM(fe.opponent)) LIMIT 1), "
+                 // Last resort for an opponent with no `teams` row: the
+                 // crest of the league the match is played in. Replaces a
+                 // hardcoded tcwsl.png the frontend used to substitute
+                 // here, which branded every untagged informal match as a
+                 // women's league game.
+                 << leagueCrestPlaceholder("awt") <<
                  ") as away_team_logo, ";
         query << "COALESCE(ss.name, '') as source_name, ";
         query << "v.address as venue_address, v.city as venue_city, v.state as venue_state, '' as venue_zip, ";
@@ -776,13 +814,7 @@ Response EventController::handleGetMatch(const Request& request) {
         // the COALESCE are DB columns; an untagged match on a source
         // system with no logo simply has no crest, which the frontend
         // renders as the plain empty center circle.
-        query << "COALESCE("
-                 "(SELECT o.logo_url FROM gcal_league_aliases gla "
-                 "   JOIN organizations o ON o.id = gla.organization_id "
-                 "  WHERE fe.league IS NOT NULL "
-                 "    AND LOWER(BTRIM(gla.alias)) = LOWER(BTRIM(fe.league)) LIMIT 1), "
-                 "NULLIF(ss.logo_url,'')"
-                 ") as league_logo_url ";
+        query << "COALESCE(" << LEAGUE_CREST_SQL << ", NULLIF(ss.logo_url,'')) as league_logo_url ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN match_types mt ON mt.id = m.match_type_id ";

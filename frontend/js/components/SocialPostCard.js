@@ -624,8 +624,12 @@ class SocialPostCard {
     // on a fast connection but very plausible on-site at a game.
     const [homeLogo, awayLogo] = await Promise.all([
       this.resolveImageForCanvas(m.home_team_logo || ''),
-      // For calendar-synced matches (no source system, no linked away team): fall back to Tri County Women's league logo
-      this.resolveImageForCanvas(m.away_team_logo || (!m.source_name && !m.away_team_id ? '/images/leagues/tcwsl.png' : '')),
+      // away_team_logo already carries the fallback chain (opponent
+      // aliases, name match, logo cache, then the league's own crest for
+      // an opponent with no teams row) — EventController resolves all of
+      // it. This used to substitute a hardcoded tcwsl.png here, which
+      // branded every untagged informal match a women's league game.
+      this.resolveImageForCanvas(m.away_team_logo || ''),
     ]);
     const rawDate = m.event_date || m.date || m.match_date;
     let dateStr = '', timeStr = '';

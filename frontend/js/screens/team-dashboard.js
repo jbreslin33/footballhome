@@ -380,10 +380,12 @@ class TeamDashboardScreen extends Screen {
         
         const myTeamId = String(this.navigation.context.team?.id);
         const isHome = String(m.home_team_id) === myTeamId;
-        // For calendar-synced matches (no away_team linked), fall back to Tri County Women's league logo
-        const opponentLogo = isHome
-          ? (m.away_team_logo || (!m.away_team_id ? '/images/leagues/tcwsl.png' : null))
-          : (m.home_team_logo || (!m.home_team_id ? '/images/leagues/tcwsl.png' : null));
+        // A calendar-synced opponent with no `teams` row already comes
+        // back carrying its league's crest — EventController COALESCEs it
+        // onto the logo columns. This used to hardcode tcwsl.png, so an
+        // APSL or Parks & Rec match with an informal opponent showed the
+        // women's league badge.
+        const opponentLogo = isHome ? (m.away_team_logo || null) : (m.home_team_logo || null);
         const myLogo = isHome ? m.home_team_logo : m.away_team_logo;
 
         const homeLogo = this.buildTeamLogoMarkup(isHome ? myLogo : opponentLogo, { alt: 'Home', placeholder: 'H' });

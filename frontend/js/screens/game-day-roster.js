@@ -373,7 +373,12 @@ class GameDayRosterScreen extends Screen {
       placeholder: '🏠',
       placeholderClass: 'gdr-logo-placeholder'
     });
-    const awayLogoUrl = m.away_team_logo || (!m.source_name && !m.away_team_id ? '/images/leagues/tcwsl.png' : null);
+    // No client-side placeholder: away_team_logo already falls back
+    // through opponent aliases, name match, logo cache and finally the
+    // league's own crest (EventController). The hardcoded tcwsl.png that
+    // used to live here made every untagged informal match look like a
+    // women's league game.
+    const awayLogoUrl = m.away_team_logo || null;
     awayLogo.innerHTML = this.buildTeamLogoMarkup(awayLogoUrl, {
       className: '',
       alt: 'Away',
