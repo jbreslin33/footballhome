@@ -252,13 +252,13 @@ class GameLineupScreen extends Screen {
         // stretches the fade-out so far that the cone stops looking
         // like a beam and just tints the whole card yellow.
         beamLen: cardRect.width * 1.8,
-        // Matches the actual posted video's exact 5s recording length (see
-        // SocialPostCard.js's postNow()) for consistency across every view
-        // (owner, 2026-08-22: "time the beam so the post time shown
-        // matches the 360 arc of beam"). No fixed clip length applies to
-        // this live decorative canvas specifically, but one shared period
+        // Same sweep rate as the posted video (see LighthouseBeam and
+        // SocialPostCard.js's postNow()) for consistency across every
+        // view (owner, 2026-08-22: "time the beam so the post time shown
+        // matches the 360 arc of beam"). No clip length applies to this
+        // live decorative canvas specifically, but one shared period
         // everywhere beats guessing a different arbitrary speed per view.
-        rotPeriodSec: 5,
+        rotPeriodSec: window.LighthouseBeam.BEAM_ROTATION_SECONDS,
         beamSpread: 0.16,
       }).stop;
     };

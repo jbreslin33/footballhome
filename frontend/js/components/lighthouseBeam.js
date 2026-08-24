@@ -14,7 +14,7 @@
 // animate(canvas, opts) — starts a requestAnimationFrame loop that
 // clears the canvas each frame, draws a rotating light-beam cone
 // clipped to the canvas bounds, then draws the lighthouse on top.
-// Returns { stop() }. opts: { lhX, lhY, rotPeriodSec = 30,
+// Returns { stop() }. opts: { lhX, lhY, rotPeriodSec = BEAM_ROTATION_SECONDS,
 // beamSpread = 0.18, scale = 2, beamLen, drawLighthouse = true,
 // onFrame(ctx, w, h) } — onFrame, if given, runs BEFORE the
 // beam/lighthouse each frame (e.g. to draw a base card image first, as
@@ -281,7 +281,7 @@
     const lhY = opts.lhY != null ? opts.lhY : h - 340;
     const beamLen = opts.beamLen != null ? opts.beamLen : Math.max(w, h) * 1.2;
     const beamSpread = opts.beamSpread != null ? opts.beamSpread : 0.18;
-    const rotPeriod = opts.rotPeriodSec || 5;
+    const rotPeriod = opts.rotPeriodSec || BEAM_ROTATION_SECONDS;
     const rotSpeed = (2 * Math.PI) / rotPeriod;
     // Callers that re-mount the canvas across re-renders (e.g. a full
     // innerHTML rebuild) can pass their own persisted startTime so the
@@ -347,5 +347,20 @@
     return { stop: () => { if (frameId) cancelAnimationFrame(frameId); } };
   }
 
-  global.LighthouseBeam = { draw, animate };
+  // How long the posted Instagram clip runs (2026-08-24, owner: "can we
+  // set insta post to 30 seconds").
+  const POST_CLIP_SECONDS = 30;
+
+  // How long one full 360 degree sweep takes, everywhere — the posted
+  // clip, the preview it's recorded from, and the live decorative beams
+  // (2026-08-24, owner: "it seems slow lets try exactly 15 seconds to
+  // complete 360 so it does it 2x in 30 seconds").
+  //
+  // These two are separate numbers but NOT independent: POST_CLIP_SECONDS
+  // must stay a whole multiple of this one, or the recording stops
+  // part-way through a sweep and the clip jumps when Instagram loops it.
+  // 30 / 15 = 2 clean rotations. Change one, check the other.
+  const BEAM_ROTATION_SECONDS = 15;
+
+  global.LighthouseBeam = { draw, animate, POST_CLIP_SECONDS, BEAM_ROTATION_SECONDS };
 })(window);

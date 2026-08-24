@@ -177,6 +177,17 @@ class SocialPostCard {
     }
   }
 
+  // Length of the posted clip, and how long one beam sweep takes inside
+  // it — see LighthouseBeam for why the clip must stay a whole multiple
+  // of the rotation (today: 30s of clip, 2 x 15s sweeps).
+  postClipSeconds() {
+    return (window.LighthouseBeam && window.LighthouseBeam.POST_CLIP_SECONDS) || 30;
+  }
+
+  beamRotationSeconds() {
+    return (window.LighthouseBeam && window.LighthouseBeam.BEAM_ROTATION_SECONDS) || 15;
+  }
+
   buildLogoInnerHtml(url, fallback = '⚽') {
     const resolvedUrl = this.resolveAssetUrl(url);
     if (!resolvedUrl) {
@@ -890,16 +901,15 @@ class SocialPostCard {
     this._stopLighthouseAnim = window.LighthouseBeam.animate(cvs, {
       startTime: this.animStartTime,
       // owner, 2026-08-22: "you need to time the beam so the post time
-      // shown matches the 360 arc of beam to it matches" — the actual
-      // posted clip (see postNow() below) records exactly 5000ms via
-      // MediaRecorder, so the beam needs one full clean 360° sweep in
-      // that same 5s or the posted video either barely moves (period too
-      // long) or visibly resets mid-clip (period too short and not a
-      // clean divisor of the recording length). Slowing it down in
-      // isolation, like the previous 40s pass, made this worse, not
-      // better — the fix is matching the real recording duration, not
-      // picking an arbitrary speed.
-      rotPeriodSec: 5,
+      // shown matches the 360 arc of beam to it matches" — the posted
+      // clip (see postNow() below) is recorded off THIS canvas, so the
+      // rotation has to divide the recording length evenly or the video
+      // stops part-way through a sweep and jumps when Instagram loops it.
+      // A period that doesn't divide cleanly was the original bug; one
+      // that merely got slower (the earlier 40s pass) made it worse. Both
+      // numbers now come off LighthouseBeam, where the relationship
+      // between them is spelled out.
+      rotPeriodSec: this.beamRotationSeconds(),
       onFrame: (ctx, w, h) => {
         if (this.baseImage) ctx.drawImage(this.baseImage, 0, 0, w, h);
       },
@@ -928,8 +938,8 @@ class SocialPostCard {
         resolve();
       };
       recorder.start();
-      // Record exactly one full beam rotation (8s) for seamless Instagram loop
-      setTimeout(() => recorder.stop(), 8000);
+      // Whole number of beam rotations — seamless when Instagram loops it
+      setTimeout(() => recorder.stop(), this.postClipSeconds() * 1000);
     });
   }
 
@@ -1221,7 +1231,7 @@ class SocialPostCard {
       dlBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         dlBtn.disabled = true;
-        dlBtn.textContent = '⏳ Recording 5s...';
+        dlBtn.textContent = `⏳ Recording ${this.postClipSeconds()}s...`;
         await this.downloadVideo();
         dlBtn.textContent = '📹 Download Video';
         dlBtn.disabled = false;
@@ -1269,7 +1279,9 @@ class SocialPostCard {
     if (!confirm('Post this to Instagram now?')) return;
 
     const postBtn = this.container.querySelector('.spc-btn-post');
-    if (postBtn) { postBtn.disabled = true; postBtn.textContent = '⏳ Recording video...'; }
+    // Name the wait: recording is real-time, so at 30s a bare "Recording
+    // video..." looks like the button has hung.
+    if (postBtn) { postBtn.disabled = true; postBtn.textContent = `⏳ Recording ${this.postClipSeconds()}s video...`; }
 
     try {
       // Persist the visible caption before publish so the post text matches the preview.
@@ -1305,7 +1317,16 @@ class SocialPostCard {
           const stream = this.animCanvas.captureStream(24);
           const recorder = new MediaRecorder(stream, {
             mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm',
-            videoBitsPerSecond: 1200000
+            // Headroom for the 30s clip (2026-08-24). This whole blob is
+            // base64'd into a JSON body, which inflates it by 4/3, and
+            // nginx caps /api/ at 10m (frontend/nginx.conf) — at the old
+            // 1.2Mbps ceiling a full 30s would land around 6MB encoded,
+            // uncomfortably close to that wall. 900kbps keeps the worst
+            // case near 4MB. It costs nothing visually: the card is a
+            // near-static image with one soft moving gradient, VP9 spends
+            // far less than the ceiling on it, and the backend re-encodes
+            // to H.264 CRF 23 anyway (SocialController.cpp).
+            videoBitsPerSecond: 900000
           });
           const chunks = [];
           recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
@@ -1318,8 +1339,10 @@ class SocialPostCard {
           };
           recorder.onerror = () => reject(new Error('Recording failed'));
           recorder.start();
-          // Keep duration short to avoid 413 (base64 JSON body through nginx).
-          setTimeout(() => recorder.stop(), 5000);
+          // Whole number of beam rotations — see LighthouseBeam.
+          // Watch the bitrate above if this ever grows again: the payload
+          // is a base64 JSON body and nginx 413s past 10m.
+          setTimeout(() => recorder.stop(), this.postClipSeconds() * 1000);
         });
       } else if (this.baseImage) {
         // Fallback: static image
