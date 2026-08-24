@@ -758,7 +758,31 @@ Response EventController::handleGetMatch(const Request& request) {
         // league/division label for the Instagram post graphic, instead
         // of SocialPostCard.js guessing CASA vs APSL from the opponent's
         // scraped team name.
-        query << "fe.league as league_tag ";
+        query << "fe.league as league_tag, ";
+        // League crest (2026-08-24, migration 298, owner: "we already
+        // should have them in db"). organizations.logo_url has carried
+        // the APSL/CASA artwork since the schema was seeded; the crest
+        // was being re-derived from the league name by a regex table in
+        // leagueCrest.js, a second copy of a column we already had.
+        // gcal_league_aliases maps the hand-typed `League:` tag to the
+        // organization that owns the crest — same free-text-to-FK shape,
+        // and same LOWER(BTRIM(...)) match, as gcal_opponent_aliases
+        // above. No name column could do this job directly: ops types
+        // "Liga 1" while the league rows are named "CASA Select".
+        //
+        // Falls back to the match's source system logo so matches nobody
+        // has tagged yet keep the crest they already showed — scraped
+        // APSL/CASA games carry source_systems.logo_url. Both sides of
+        // the COALESCE are DB columns; an untagged match on a source
+        // system with no logo simply has no crest, which the frontend
+        // renders as the plain empty center circle.
+        query << "COALESCE("
+                 "(SELECT o.logo_url FROM gcal_league_aliases gla "
+                 "   JOIN organizations o ON o.id = gla.organization_id "
+                 "  WHERE fe.league IS NOT NULL "
+                 "    AND LOWER(BTRIM(gla.alias)) = LOWER(BTRIM(fe.league)) LIMIT 1), "
+                 "NULLIF(ss.logo_url,'')"
+                 ") as league_logo_url ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN match_types mt ON mt.id = m.match_type_id ";
@@ -870,6 +894,9 @@ Response EventController::handleGetMatch(const Request& request) {
         }
         if (result.columns() > 32 && !result[0][32].is_null() && result[0][32].c_str()[0] != '\0') {
             match_json << ",\"league_tag\":\"" << escapeJSON(result[0][32].c_str()) << "\"";
+        }
+        if (result.columns() > 33 && !result[0][33].is_null() && result[0][33].c_str()[0] != '\0') {
+            match_json << ",\"league_logo_url\":\"" << escapeJSON(result[0][33].c_str()) << "\"";
         }
 
         match_json << "}";

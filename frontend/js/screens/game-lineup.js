@@ -1123,17 +1123,14 @@ class GameLineupScreen extends Screen {
   }
 
   // Halfway line with the league crest sitting in the center circle.
-  // The crest comes from the gcal `League:` tag by way of
-  // LeagueCrest.resolve (see that module for the full path the tag
-  // travels) — never inferred from the opponent or the source system,
-  // which is the guessing migration 297 exists to end. A match with no
-  // tag, or one naming a league we hold no image for, falls back to the
-  // plain empty ring the pitch drew before, so nothing regresses and no
-  // match ever gets branded with the wrong league.
+  // The crest is whatever the DB resolved for this match's `League:` tag
+  // (see leagueCrest.js for the full path) — never inferred here from
+  // the opponent's name, which is the guessing migration 297 exists to
+  // end. A match the DB gives no crest for falls back to the plain empty
+  // ring the pitch drew before, so nothing regresses and no match ever
+  // gets branded with the wrong league.
   _halfwayRowHtml() {
-    const crest = window.LeagueCrest
-      ? window.LeagueCrest.resolve(this.matchDetails && this.matchDetails.league_tag)
-      : null;
+    const crest = window.LeagueCrest ? window.LeagueCrest.resolve(this.matchDetails) : null;
     const line = `<div style="flex:1; border-top:2px solid rgba(255,255,255,0.35);"></div>`;
     const circle = crest && crest.src
       ? `<div title="${this.escapeHtml(crest.label)}"

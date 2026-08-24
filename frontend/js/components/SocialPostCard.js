@@ -696,30 +696,37 @@ class SocialPostCard {
       league = 'Delaware River Conference';
     }
 
+    // Crest is a straight DB read off the match (migration 298); the
+    // display name above is derived separately, and the two are
+    // deliberately independent — an untagged match can still carry its
+    // source system's crest.
+    const crest = window.LeagueCrest ? window.LeagueCrest.resolve(m) : null;
+    const leagueLogoSrc = (crest && crest.src) || null;
+
     // Build post-type-specific content
     let headerText = '', middleHtml = '', rosterHtml = '', leagueBadgeHtml = '';
     switch (this.postTypeName) {
       case 'game_day':
         headerText = this.getGameDayLabel(rawDate);
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
-        leagueBadgeHtml = this.buildLeagueBadge(league, false);
+        leagueBadgeHtml = this.buildLeagueBadge(league, leagueLogoSrc, false);
         break;
       case 'lineup':
         headerText = 'MATCH DAY SQUAD';
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
-        leagueBadgeHtml = this.buildLeagueBadge(league, true);
+        leagueBadgeHtml = this.buildLeagueBadge(league, leagueLogoSrc, true);
         rosterHtml = this.buildImageRoster();
         break;
       case 'pre_match_announcement':
         headerText = 'STARTERS & BENCH';
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
-        leagueBadgeHtml = this.buildLeagueBadge(league, true);
+        leagueBadgeHtml = this.buildLeagueBadge(league, leagueLogoSrc, true);
         rosterHtml = this.buildImageStartersBench();
         break;
       case 'post_game':
         headerText = 'FULL TIME';
         middleHtml = this.buildImageScore(homeName, awayName, m, homeLogo, awayLogo);
-        leagueBadgeHtml = this.buildLeagueBadge(league, false);
+        leagueBadgeHtml = this.buildLeagueBadge(league, leagueLogoSrc, false);
         break;
       default:
         headerText = 'MATCH DAY';
@@ -1021,24 +1028,21 @@ class SocialPostCard {
     `;
   }
 
-  // League badge on the post graphic. `league` is already the resolved
-  // display wording (ops' own `League:` gcal tag when the match has one,
-  // the legacy CASA/Delaware-River derivation when it doesn't) — the
-  // crest image is picked from that same string via LeagueCrest.resolve
-  // (2026-08-24, owner: "in gcal we have a league: var so we should use
-  // that to inform what league graphic to show"), which is what lets a
-  // match tagged ICSL/TCWSL/EPYSA/Open Cup carry its own crest. Before
-  // this it was a hard CASA-or-APSL coin flip, so every one of those
-  // went out branded APSL — the exact wrong-league failure migration
-  // 297's tag exists to end.
+  // League badge on the post graphic. The two halves come from different
+  // places on purpose: `league` is the display wording (ops' own gcal
+  // tag when the match has one, the legacy CASA/Delaware-River
+  // derivation when it doesn't), while `logoSrc` is the crest the DB
+  // resolved for this match — organizations.logo_url by way of
+  // gcal_league_aliases, see leagueCrest.js. Before that it was a hard
+  // CASA-or-APSL coin flip in JavaScript, so a match in any other league
+  // published branded APSL (2026-08-24, owner: "we already should have
+  // them in db").
   //
-  // A league we hold no crest for renders text-only rather than
+  // A match the DB gives no crest for renders text-only rather than
   // substituting a default image: an unbranded badge is a cosmetic gap,
   // a wrong league crest on a published Instagram post is not.
-  buildLeagueBadge(league, compact) {
+  buildLeagueBadge(league, logoSrc, compact) {
     if (!league) return '';
-    const crest = window.LeagueCrest ? window.LeagueCrest.resolve(league) : null;
-    const logoSrc = crest && crest.src;
     if (compact) {
       // Small inline badge for lineup / starters & bench
       return `
