@@ -159,6 +159,7 @@ class GameLineupScreen extends Screen {
     this.matchDetails = null; // {home_team_name, home_team_logo, away_team_name, away_team_logo, ...} — see _renderMatchHeader
     this._stopLighthouseAnim = null; // stop fn from LighthouseBeam.animate() — see _mountLighthouseCanvas
     this._lighthouseStartTime = null; // persisted so the beam angle never jumps across re-renders
+    this._beamResizeObs = null; // ResizeObserver keeping the full-card beam canvas sized to the card
   }
 
   // Compact "MATCH DAY" header (2026-08-22, owner directive: "the player
@@ -179,6 +180,18 @@ class GameLineupScreen extends Screen {
     return `<canvas id="gl-lighthouse-canvas" style="position:absolute; right:-4px; top:-2px; width:70px; height:160px; pointer-events:none; z-index:0;"></canvas>`;
   }
 
+  // Beam layer (2026-08-24, owner: "the light beam should go in front of
+  // all other graphics") — a SECOND canvas stretched over the whole card
+  // at a z-index above the content, carrying only the rotating cone. The
+  // lighthouse canvas above it stays at z-index:0 on purpose: the tower
+  // sits right on top of the away crest and team name, so promoting the
+  // whole artwork would hide them. Splitting the two layers is what lets
+  // the beam sweep across the crests, date, and lineup below while the
+  // tower still reads as standing behind them.
+  _beamCanvasHtml() {
+    return `<canvas id="gl-beam-canvas" style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; z-index:5;"></canvas>`;
+  }
+
   // Scheduled via setTimeout(0) from _renderMatchHeader() so it runs
   // after the box.innerHTML assignment that actually mounts the canvas
   // (all three render() branches funnel through _renderMatchHeader, so
@@ -186,6 +199,7 @@ class GameLineupScreen extends Screen {
   // without touching each call site).
   _mountLighthouseCanvas() {
     if (this._stopLighthouseAnim) { this._stopLighthouseAnim(); this._stopLighthouseAnim = null; }
+    if (this._beamResizeObs) { this._beamResizeObs.disconnect(); this._beamResizeObs = null; }
     const canvas = this.element && this.element.querySelector('#gl-lighthouse-canvas');
     if (!canvas || typeof window.LighthouseBeam === 'undefined') return;
     const dpr = 2;
@@ -200,21 +214,70 @@ class GameLineupScreen extends Screen {
     // nothing (rocks, ocean, "1893" digits) gets clipped off-canvas like
     // the first pass did.
     const s = 1.1;
+    const lanternY = 75 * dpr;
+    // The tower itself never moves, so this layer is a one-shot draw
+    // rather than an animation — only the beam (on #gl-beam-canvas
+    // below) needs a frame loop now.
+    const lhCtx = canvas.getContext('2d');
+    lhCtx.clearRect(0, 0, canvas.width, canvas.height);
+    window.LighthouseBeam.draw(lhCtx, canvas.width / 2, lanternY, s);
+
+    const card = canvas.parentElement;
+    const beam = this.element.querySelector('#gl-beam-canvas');
+    if (!card || !beam) return;
     if (!this._lighthouseStartTime) this._lighthouseStartTime = performance.now();
-    this._stopLighthouseAnim = window.LighthouseBeam.animate(canvas, {
-      startTime: this._lighthouseStartTime,
-      scale: s,
-      lhX: canvas.width / 2,
-      lhY: 75 * dpr,
-      // Matches the actual posted video's exact 5s recording length (see
-      // SocialPostCard.js's postNow()) for consistency across every view
-      // (owner, 2026-08-22: "time the beam so the post time shown
-      // matches the 360 arc of beam"). No fixed clip length applies to
-      // this live decorative canvas specifically, but one shared period
-      // everywhere beats guessing a different arbitrary speed per view.
-      rotPeriodSec: 5,
-      beamSpread: 0.16,
-    }).stop;
+
+    const startBeam = () => {
+      if (this._stopLighthouseAnim) { this._stopLighthouseAnim(); this._stopLighthouseAnim = null; }
+      const cardRect = card.getBoundingClientRect();
+      if (!cardRect.width || !cardRect.height) return;
+      const lhRect = canvas.getBoundingClientRect();
+      // 1 device px per CSS px here (unlike the 2x lighthouse layer):
+      // the card runs the full height of the lineup, so a 2x backing
+      // store means clearing and re-filling millions of pixels every
+      // frame for a graphic that is nothing but soft gradients — there
+      // are no hard edges for the extra resolution to sharpen.
+      beam.width = Math.round(cardRect.width);
+      beam.height = Math.round(cardRect.height);
+      this._stopLighthouseAnim = window.LighthouseBeam.animate(beam, {
+        startTime: this._lighthouseStartTime,
+        drawLighthouse: false, // tower stays on the layer behind the content
+        // Lantern position, read off the live rects rather than
+        // recomputed from the inline `right`/`top` above, so the two
+        // layers cannot drift apart if those offsets ever change.
+        lhX: lhRect.left - cardRect.left + cssW / 2,
+        lhY: lhRect.top - cardRect.top + lanternY / dpr,
+        // Scale the reach off the card's WIDTH, not the default
+        // max(w, h): on a tall lineup card the height-derived default
+        // stretches the fade-out so far that the cone stops looking
+        // like a beam and just tints the whole card yellow.
+        beamLen: cardRect.width * 1.8,
+        // Matches the actual posted video's exact 5s recording length (see
+        // SocialPostCard.js's postNow()) for consistency across every view
+        // (owner, 2026-08-22: "time the beam so the post time shown
+        // matches the 360 arc of beam"). No fixed clip length applies to
+        // this live decorative canvas specifically, but one shared period
+        // everywhere beats guessing a different arbitrary speed per view.
+        rotPeriodSec: 5,
+        beamSpread: 0.16,
+      }).stop;
+    };
+    startBeam();
+
+    // The card grows and shrinks after mount — crests finish loading,
+    // the Lineup/Game Day toggle swaps the content, a player gets moved
+    // between rows — and animate() captures the canvas size once, so the
+    // beam layer has to be rebuilt whenever the card resizes or it ends
+    // up clipped to a stale height.
+    if (typeof ResizeObserver !== 'undefined') {
+      let queued = false;
+      this._beamResizeObs = new ResizeObserver(() => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; startBeam(); });
+      });
+      this._beamResizeObs.observe(card);
+    }
   }
 
   // Full-size unified frame (2026-08-22, owner: "when i click lineup from
@@ -255,6 +318,7 @@ class GameLineupScreen extends Screen {
         <div style="position:relative; z-index:1; margin-top:16px;">
           ${innerHtml}
         </div>
+        ${this._beamCanvasHtml()}
       </div>`;
   }
 
@@ -294,6 +358,11 @@ class GameLineupScreen extends Screen {
 
   onExit() {
     if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; }
+    // The beam's rAF loop and its ResizeObserver both hold the detached
+    // canvas alive otherwise — this screen instance is reused across
+    // navigations, so a leaked loop per visit would stack up.
+    if (this._stopLighthouseAnim) { this._stopLighthouseAnim(); this._stopLighthouseAnim = null; }
+    if (this._beamResizeObs) { this._beamResizeObs.disconnect(); this._beamResizeObs = null; }
   }
 
   // Same admin-only gate my.js uses for the "Post to Instagram" button on

@@ -15,9 +15,20 @@
 // clears the canvas each frame, draws a rotating light-beam cone
 // clipped to the canvas bounds, then draws the lighthouse on top.
 // Returns { stop() }. opts: { lhX, lhY, rotPeriodSec = 30,
-// beamSpread = 0.18, scale = 2, onFrame(ctx, w, h) } — onFrame, if
-// given, runs BEFORE the beam/lighthouse each frame (e.g. to draw a
-// base card image first, as SocialPostCard.js's own preview does).
+// beamSpread = 0.18, scale = 2, beamLen, drawLighthouse = true,
+// onFrame(ctx, w, h) } — onFrame, if given, runs BEFORE the
+// beam/lighthouse each frame (e.g. to draw a base card image first, as
+// SocialPostCard.js's own preview does).
+//
+// beamLen sets how far the cone reaches (and, with it, how far the
+// gradient takes to fade out); it defaults to max(w,h) * 1.2, which is
+// right for a canvas roughly as tall as it is wide but washes the beam
+// out on a very tall one — pass an explicit length there.
+//
+// drawLighthouse:false emits ONLY the beam, for callers that want the
+// beam painted on a separate layer stacked ABOVE their content while
+// the lighthouse artwork itself stays behind it (game-lineup.js does
+// this — the tower would otherwise cover the away crest and name).
 (function (global) {
   function draw(ctx, lhX, lhY, scale) {
     const s = scale || 2;
@@ -268,7 +279,7 @@
     const scale = opts.scale || 2;
     const lhX = opts.lhX != null ? opts.lhX : w - 100;
     const lhY = opts.lhY != null ? opts.lhY : h - 340;
-    const beamLen = Math.max(w, h) * 1.2;
+    const beamLen = opts.beamLen != null ? opts.beamLen : Math.max(w, h) * 1.2;
     const beamSpread = opts.beamSpread != null ? opts.beamSpread : 0.18;
     const rotPeriod = opts.rotPeriodSec || 5;
     const rotSpeed = (2 * Math.PI) / rotPeriod;
@@ -327,7 +338,7 @@
 
       ctx.restore();
 
-      draw(ctx, lhX, lhY, scale);
+      if (opts.drawLighthouse !== false) draw(ctx, lhX, lhY, scale);
 
       frameId = requestAnimationFrame(drawFrame);
     };

@@ -119,6 +119,64 @@ class SocialPostCard {
     return this.resolveAssetUrl(trimmed);
   }
 
+  // Sub-pixel gradient guard (2026-08-24, owner: "got this on post to
+  // instagram ... InvalidStateError: Failed to execute 'createPattern'
+  // ... width or height of 0") — the real mechanism, finally pinned by
+  // reading html2canvas 1.4.1's renderBackgroundImage(): it paints a CSS
+  // gradient by creating a scratch canvas sized to the element's
+  // background area, and its only guard is `width > 0 && height > 0`.
+  // But it assigns those FRACTIONAL CSS pixels straight to
+  // canvas.width/height, which truncate — so any size between 0 and 1
+  // sails past the guard and yields a 0x0 canvas, and createPattern()
+  // throws exactly that InvalidStateError.
+  //
+  // How the card gets there: the post card is a fixed-height flex
+  // column, so the moment its content overflows (a match with lots of
+  // goalscorers, a long venue, an extra accolade line) every flex item
+  // shrinks a little — and a 1px gradient divider only has to lose a
+  // hundredth of a pixel to become 0.99 and blow up the whole capture.
+  // That's why this error kept coming back on some matches and not
+  // others. The dividers now carry flex-shrink:0 so they can't get
+  // there; this pass is the backstop for any gradient added later.
+  //
+  // Nudging the element back up to a whole pixel is preferred over
+  // dropping its background — the divider stays visible. Only if it
+  // still measures sub-pixel does the background go, because an
+  // invisible hairline beats a failed post.
+  hardenGradientsForCapture(root) {
+    if (!root) return;
+    const patched = [];
+    for (const el of [root, ...root.querySelectorAll('*')]) {
+      const cs = window.getComputedStyle(el);
+      if (!cs.backgroundImage || cs.backgroundImage === 'none') continue;
+      if (cs.display === 'none') continue;
+      // Set unconditionally, and as an INLINE style, because that is the
+      // part that survives into html2canvas's clone. The measurements
+      // below happen in the live document; the clone lays out in its own
+      // iframe and can land on slightly different sizes, so a guard that
+      // only reacted to what we can measure here would miss a divider
+      // that goes sub-pixel over there. flex-shrink:0 removes the
+      // mechanism itself in both documents.
+      el.style.flexShrink = '0';
+      const before = el.getBoundingClientRect();
+      if (before.width >= 1 && before.height >= 1) continue;
+      if (before.width === 0 && before.height === 0) continue; // not laid out at all
+      if (before.height < 1) el.style.minHeight = '1px';
+      if (before.width < 1) el.style.minWidth = '1px';
+      const after = el.getBoundingClientRect();
+      let dropped = false;
+      if (after.width < 1 || after.height < 1) {
+        el.style.backgroundImage = 'none';
+        dropped = true;
+      }
+      patched.push(`<${el.tagName.toLowerCase()}> ${before.width.toFixed(2)}x${before.height.toFixed(2)}` +
+        ` -> ${after.width.toFixed(2)}x${after.height.toFixed(2)}${dropped ? ' (background dropped)' : ''}`);
+    }
+    if (patched.length) {
+      console.warn('[SocialPostCard] sub-pixel gradient element(s) html2canvas would have thrown on:', patched);
+    }
+  }
+
   buildLogoInnerHtml(url, fallback = '⚽') {
     const resolvedUrl = this.resolveAssetUrl(url);
     if (!resolvedUrl) {
@@ -759,6 +817,7 @@ class SocialPostCard {
     `;
 
     document.body.appendChild(wrapper);
+    this.hardenGradientsForCapture(wrapper.firstElementChild);
 
     // Hard timeout (2026-08-22, owner: "the generate image is frozen...
     // it needs to work!") — html2canvas awaits every <img> in the card
@@ -889,7 +948,7 @@ class SocialPostCard {
         </div>`
       ).join('');
       return `
-        <div style="margin-top:4px;padding:4px 8px;background:linear-gradient(135deg,rgba(245,212,66,0.15),rgba(255,215,0,0.08));border:1px solid rgba(245,212,66,0.3);border-radius:6px;max-width:160px;">
+        <div style="margin-top:4px;flex-shrink:0;padding:4px 8px;background:linear-gradient(135deg,rgba(245,212,66,0.15),rgba(255,215,0,0.08));border:1px solid rgba(245,212,66,0.3);border-radius:6px;max-width:160px;">
           <div style="font-size:9px;letter-spacing:0.5px;color:rgba(245,212,66,0.9);line-height:1.4;text-align:center;">
             ${items}
           </div>
@@ -918,7 +977,7 @@ class SocialPostCard {
           ${buildAccoladeHtml(awayAccolades)}
         </div>
       </div>
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:0 auto 10px;"></div>
+      <div style="height:1px;min-height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:0 auto 10px;"></div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:rgba(255,255,255,0.75);">
         <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;">
           ${dateStr ? `<span>📅 ${this.escapeHtml(dateStr)}</span>` : ''}
@@ -1073,7 +1132,7 @@ class SocialPostCard {
     }).join('');
 
     return `
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:12px auto;"></div>
+      <div style="height:1px;min-height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:12px auto;"></div>
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:3px;color:#ffffff;margin-bottom:8px;font-weight:700;">SQUAD</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;text-align:left;width:100%;">
         ${rows}
