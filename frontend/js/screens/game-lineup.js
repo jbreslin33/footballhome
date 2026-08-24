@@ -987,7 +987,29 @@ class GameLineupScreen extends Screen {
       </details>
     `;
 
+    // Bench section (2026-08-24, owner: "the bench needs to be selectable
+    // on the graphic to remove them like we do for the starters. or they
+    // need to be shown in the area under graphic") — of the two, under
+    // the graphic is the one that fits: the bench inside the post is a
+    // plain comma-separated name list by explicit directive ("you can put
+    // bench at bottom without chips but list names in full csv"), and
+    // controls belong outside the frame ("don't have options on the insta
+    // post like drop downs. that should be under it").
+    //
+    // Without this the bench was a dead end. A benched player is no
+    // longer unassigned, so they fell out of Going/Not Going/No Response,
+    // and there was no Bench grid to land in — the only place their name
+    // appeared was the non-interactive CSV in the graphic. Nothing could
+    // move them back off. Rendering them through the same cardGrid the
+    // other sections use fixes that with no new interaction to learn:
+    // tapping the already-active Bench button unassigns (_toggleZone),
+    // Alt moves them across, a position pill promotes them to the XI, and
+    // the bench-order dropdown is finally reachable on the players it
+    // actually applies to. Placed above Alternates — a coach touches the
+    // bench far more often. Sorted by the coach's bench order, applied to
+    // byZone.bench above.
     box.innerHTML = subViewToggleHtml + viewToggleHtml + this._renderMatchHeader(summaryHtml) + lineupControlsHtml + [
+      gridSection('Bench', byZone.bench),
       gridSection('Alternates', byZone.alternate),
       this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
