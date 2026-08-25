@@ -25,6 +25,94 @@ class RosterScreenBase extends Screen {
     return role === 'player';
   }
 
+  // ── Card view mode (2026-08-25) ─────────────────────────────────────
+  //
+  // Owner: "we need option to scroll across on teams page so that stuff
+  // don't get cut off in card like names or to make them fit by making
+  // the card taller. sould be a pill selectoin to change view on page."
+  //
+  // Two ways to stop a long name being clipped, and they trade off
+  // against each other, so the board offers both rather than picking:
+  //
+  //   'fit'    — every column stays on screen; a name that does not fit
+  //              wraps and the card grows taller. Nothing is hidden, the
+  //              board never scrolls sideways, rows get uneven.
+  //   'scroll' — columns keep a comfortable width and the board scrolls
+  //              across. Cards stay uniform, names stay on one line, but
+  //              you pan to reach the far columns.
+  //
+  // 'fit' is the default: it is the one where nothing is ever hidden.
+  // Truncation ('compact') stays available as the old behaviour for
+  // anyone who wants the densest possible board.
+  //
+  // Persisted per browser so the choice survives a reload — a view
+  // preference is exactly the kind of thing that is annoying to re-pick.
+  // Wrapped in try/catch: localStorage throws outright in some privacy
+  // modes, and a board that will not render is worse than a forgotten
+  // preference.
+  static VIEW_MODES = [
+    { id: 'fit',     label: 'Fit',     title: 'Keep every column on screen — long names wrap and cards grow taller' },
+    { id: 'scroll',  label: 'Scroll',  title: 'Keep cards uniform and names on one line — scroll across to reach every column' },
+    { id: 'compact', label: 'Compact', title: 'Densest board — long names are truncated with an ellipsis' },
+  ];
+
+  get viewMode() {
+    if (this._viewMode) return this._viewMode;
+    let stored = null;
+    try { stored = window.localStorage.getItem('fh.roster.viewMode'); } catch (_) { /* private mode */ }
+    const valid = RosterScreenBase.VIEW_MODES.some(m => m.id === stored);
+    this._viewMode = valid ? stored : 'fit';
+    return this._viewMode;
+  }
+
+  set viewMode(mode) {
+    if (!RosterScreenBase.VIEW_MODES.some(m => m.id === mode)) return;
+    this._viewMode = mode;
+    try { window.localStorage.setItem('fh.roster.viewMode', mode); } catch (_) { /* private mode */ }
+  }
+
+  // Pill group for the board's control bar. Click handling is delegated
+  // per screen (same pattern as the team-focus pills) via
+  // onViewModePillClick below.
+  renderViewModePills() {
+    return `
+      <span style="opacity:0.7; font-size:0.8rem; font-weight:600; margin-left:auto;">View:</span>
+      ${RosterScreenBase.VIEW_MODES.map((m) => {
+        const on = this.viewMode === m.id;
+        return `<button type="button" class="roster-view-pill" data-view-mode="${m.id}"
+                        title="${this.escape(m.title)}"
+                        style="font-size:0.8rem; font-weight:${on ? 700 : 400}; padding:2px 10px; border-radius:999px; cursor:pointer;
+                               border:1px solid ${on ? '#94a3b8' : 'var(--border-color)'};
+                               background:${on ? '#94a3b8' : 'transparent'};
+                               color:${on ? '#0f172a' : 'inherit'};">${m.label}</button>`;
+      }).join('')}`;
+  }
+
+  // Returns true when the click was a view pill and the board should
+  // re-render. Screens wire this into their existing delegated handler.
+  onViewModePillClick(btn) {
+    const mode = btn?.dataset?.viewMode;
+    if (!mode || mode === this.viewMode) return false;
+    this.viewMode = mode;
+    return true;
+  }
+
+  // Style for the grid wrapper: 'scroll' turns the board into a single
+  // panning row; the other two keep the wrapping auto-fit grid.
+  //
+  // overflow-x:auto forces overflow-y to auto as a CSS side effect, which
+  // clips the move-dropdown popover on a card near the bottom of a column
+  // (found 2026-08-21, see colMinWidth). padding-bottom gives that popover
+  // room to open inside the scroll box instead of being cut off.
+  gridStyleFor(colCount) {
+    if (this.viewMode === 'scroll') {
+      return 'display:grid; grid-auto-flow:column; grid-auto-columns:minmax(190px, max-content); '
+           + 'gap:var(--space-2); align-items:start; overflow-x:auto; padding-bottom:220px; margin-bottom:-200px;';
+    }
+    return `display:grid; grid-template-columns: repeat(auto-fit, minmax(${this.colMinWidth(colCount)}, max-content)); `
+         + 'gap:var(--space-2); align-items:start;';
+  }
+
   // Role → capability. Mirrors the role strings role-selection.js actually
   // sets on navigation.context.role ('coach', 'player', 'club-admin') with
   // a fallback to the account's DB-level role (auth.user.role — 'club',
@@ -263,13 +351,28 @@ class RosterScreenBase extends Screen {
   renderMoveDropdown(player, columns, currentTeamId = 0) {
     const assignedSet = new Set(player.teamIds || []);
 
+    // Full team name, not shortLabel (owner 2026-08-25: "in drop down
+    // write out full name of team"). The board columns can afford
+    // abbreviations because the colour and position carry meaning; a flat
+    // list of options cannot, and "U10 Intra" / "U12 Intra" / "U16 Intra"
+    // read as near-identical at a glance. `label` may carry a leading
+    // emoji (e.g. "⚽ U10 Intramural") — kept, it aids scanning.
+    //
+    // Sorted by name rather than board order, numeric-aware so U6/U8/U10
+    // fall in age order instead of the "U10, U12, U16, U19, U6" a plain
+    // string sort produces. Unassigned is pinned first: it is the removal
+    // action, not a team, and belongs where the eye lands.
+    const teamTargets = (columns || []).map(c => ({
+      id:    c.teamId,
+      label: c.label || c.shortLabel || `Team ${c.teamId}`,
+      color: c.color || '#334155',
+    }));
+    teamTargets.sort((a, b) =>
+      String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: 'base' }));
+
     const targets = [
       { id: 0, label: 'Unassigned', color: '#475569' },
-      ...(columns || []).map(c => ({
-        id:    c.teamId,
-        label: c.shortLabel || c.label || `Team ${c.teamId}`,
-        color: c.color || '#334155',
-      })),
+      ...teamTargets,
     ];
     // appearance:none/min-height:0 strip the native OS button-chrome
     // minimum height browsers give real <button> elements (the option
@@ -463,13 +566,21 @@ class RosterScreenBase extends Screen {
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
     const activeTeamsBadge = this.renderActiveTeamsBadge(player, col);
     const pickupBadge = this.renderPickupBadge(player);
+    // 'compact' clips with an ellipsis (the pre-2026-08-25 behaviour);
+    // 'fit' and 'scroll' both show the whole name — 'fit' by wrapping
+    // onto another line, 'scroll' by letting the wider column hold it.
+    const nameClipStyle = this.viewMode === 'compact'
+      ? 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;'
+      : this.viewMode === 'scroll'
+        ? 'white-space:nowrap;'
+        : 'white-space:normal; overflow-wrap:anywhere;';
 
     return `
       <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:row; align-items:stretch; gap:4px;">
         <div style="display:flex; flex-direction:column; gap:0; flex:1; min-width:0;">
           <div style="display:flex; align-items:center; gap:4px; min-width:0;">
             ${posControl}
-            <strong style="font-size:0.72rem; line-height:1.2; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${fullName}</strong>
+            <strong style="font-size:0.72rem; line-height:1.2; min-width:0; flex:1; ${nameClipStyle}">${fullName}</strong>
           </div>
           <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:1px;">
             ${dobMarkup}

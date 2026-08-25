@@ -74,6 +74,13 @@ class BoysRosterScreen extends RosterScreenBase {
       if (pill) return this.onPillClick(pill);
       const focusPill = e.target.closest('.br-team-focus-pill');
       if (focusPill) return this.onTeamFocusPillClick(focusPill);
+      const viewPill = e.target.closest('.roster-view-pill');
+      if (viewPill) {
+        // Card view mode (2026-08-25) — shared with every roster board via
+        // RosterScreenBase. Purely client-side, same as the focus pills.
+        if (this.onViewModePillClick(viewPill) && this._data) this.renderRoster(this._data);
+        return;
+      }
       const laBtn = e.target.closest('.br-la-open');
       if (laBtn) { window.open(laBtn.dataset.laUrl, '_blank', 'noopener'); return; }
       const pauseBtn = e.target.closest('.br-copy-pause');
@@ -291,10 +298,11 @@ class BoysRosterScreen extends RosterScreenBase {
               ${c.label} <span style="opacity:${active ? '0.85' : '0.55'};">${cap}</span>
             </button>`;
         }).join('')}
+        ${this.renderViewModePills()}
       </div>
 
       <div style="padding: 0 var(--space-2) var(--space-2);">
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(${this.colMinWidth(visibleCols.length)}, max-content)); gap:var(--space-2); align-items:start;">
+        <div style="${this.gridStyleFor(visibleCols.length)}">
           ${visibleCols.map(c => this.renderColumn(c, data)).join('')}
         </div>
       </div>

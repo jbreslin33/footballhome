@@ -86,6 +86,13 @@ class MensRosterScreen extends RosterScreenBase {
       if (pill) return this.onPillClick(pill);
       const focusPill = e.target.closest('.mr-team-focus-pill');
       if (focusPill) return this.onTeamFocusPillClick(focusPill);
+      const viewPill = e.target.closest('.roster-view-pill');
+      if (viewPill) {
+        // Card view mode (2026-08-25) — shared with every roster board via
+        // RosterScreenBase. Purely client-side, same as the focus pills.
+        if (this.onViewModePillClick(viewPill) && this._data) this.renderRoster(this._data);
+        return;
+      }
       const laBtn = e.target.closest('.mr-la-open');
       if (laBtn) { window.open(laBtn.dataset.laUrl, '_blank', 'noopener'); return; }
       const rsvpBtn = e.target.closest('.mr-rsvp-elig');
@@ -348,10 +355,11 @@ class MensRosterScreen extends RosterScreenBase {
               ${c.label} <span style="opacity:${active ? '0.85' : '0.55'};">${cap}</span>
             </button>`;
         }).join('')}
+        ${this.renderViewModePills()}
       </div>
 
       <div style="padding: 0 var(--space-2) var(--space-2);">
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(${this.colMinWidth(visibleCols.length)}, max-content)); gap:var(--space-2); align-items:start;">
+        <div style="${this.gridStyleFor(visibleCols.length)}">
           ${visibleCols.map(c => this.renderColumn(c, data)).join('')}
         </div>
       </div>
@@ -1270,7 +1278,6 @@ class MensRosterScreen extends RosterScreenBase {
   //   120 Liga 1
   //   121 Liga 2
   //   122 Adult
-  //   908 Practice
   //   909 Pickup
   // Server list must stay in sync — see
   // MensRosterController.cpp `kEligibilityTeams`.
@@ -1285,7 +1292,6 @@ class MensRosterScreen extends RosterScreenBase {
     const teams = [
       { id: 35,  label: 'APSL',     color: '#2563eb' },
       { id: 120, label: 'Liga 1',   color: '#0891b2' },
-      { id: 908, label: 'Practice', color: '#f59e0b' },
       { id: 909, label: 'Pickup',   color: '#10b981' },
       // Liga 2 (121), Adult (122) and APSL Reserves (924) were deleted
       // with the club's other retired teams on 2026-08-25 (migration
