@@ -338,24 +338,31 @@ Response MensRosterController::handleAssign(const Request& request) {
                 ? assignments_->addAssignmentForPerson(personId, teamId, mutexGroup)
                 : assignments_->addAssignment(userId, teamId, mutexGroup);
 
-            // Practice / Pickup auto-membership on APSL / Liga 1
+            // Practice auto-membership on APSL / Liga 1
             // assign (2026-07-04, extended 2026-07-07): immediate mirror
             // of the /api/mens-roster fetch-time backfill so admin sees
-            // Practice + Pickup populated the instant they select someone
-            // for a division roster.  Redundant with the fetch backfill
+            // Practice populated the instant they select someone for a
+            // division roster.  Redundant with the fetch backfill
             // but zero-cost (INSERT ON CONFLICT DO NOTHING).
             // Liga 2 (121) dropped from this list with migration 302,
             // which deleted the team outright.
+            //
+            // Pickup (909) dropped 2026-08-25: this write was the larger
+            // of the two things polluting it. Pickup is a paid LA
+            // registration, not a consequence of being picked for a
+            // squad, and mirroring one into the other put 56 players who
+            // never registered onto the pickup roster — see migration
+            // 304. LaPool owns 909 now, in both directions. Practice
+            // (908) keeps its auto-add: no LA program backs it, so it is
+            // a genuine internal group with no truth to contradict.
             constexpr int kApslTeamId     = 35;
             constexpr int kLiga1TeamId    = 120;
             constexpr int kPracticeTeamId = 908;
-            constexpr int kPickupTeamId   = 909;
             if (teamId == kApslTeamId || teamId == kLiga1TeamId) {
                 try {
                     assignments_->bulkEnsureActive({userId}, kPracticeTeamId);
-                    assignments_->bulkEnsureActive({userId}, kPickupTeamId);
                     // Refresh returned teamIds so the client sees Practice
-                    // + Pickup without a round-trip. Via personId when we
+                    // without a round-trip. Via personId when we
                     // have one — teamIdsForUser re-derives identity from
                     // the (possibly drifted) live userId and would wipe
                     // out a personId-path result with an empty list.
@@ -363,7 +370,7 @@ Response MensRosterController::handleAssign(const Request& request) {
                         ? assignments_->teamIdsForPerson(personId)
                         : assignments_->teamIdsForUser(userId);
                 } catch (const std::exception& e) {
-                    std::cerr << "[MensRoster] practice/pickup auto-add on APSL/Liga1/Liga2 failed: "
+                    std::cerr << "[MensRoster] practice auto-add on APSL/Liga1 failed: "
                               << e.what() << std::endl;
                 }
             }

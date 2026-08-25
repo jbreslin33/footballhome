@@ -303,6 +303,34 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
                     std::to_string(clubId),
                 };
                 db_->query(sql, params);
+
+                // The closing half, added 2026-08-25. The INSERT above is
+                // additive with ON CONFLICT DO NOTHING and had no
+                // counterpart, so nobody ever left team 909 — it held 82
+                // open rows against 44 real registrations (migration 304).
+                // Mirroring LaProgramSync::closeStaleMemberships: after a
+                // successful sync the team reflects exactly the LA pickup
+                // program, no more and no less.
+                //
+                // Guarded on a NON-EMPTY uid list by sitting inside the
+                // same `if`: a transient LA failure returns zero uids, and
+                // running this on an empty set would empty the roster.
+                const std::string closeSql =
+                    "UPDATE team_persons tp "
+                    "   SET removed_at     = NOW(), "
+                    "       removed_reason = 'la_pickup_membership_ended' "
+                    "  FROM teams t "
+                    " WHERE t.id = tp.team_id "
+                    "   AND t.club_id = $2 "
+                    "   AND t.is_pool = true "
+                    "   AND t.name = 'Pickup' "
+                    "   AND tp.removed_at IS NULL "
+                    "   AND NOT EXISTS ( "
+                    "         SELECT 1 FROM persons p "
+                    "          WHERE p.id = tp.person_id "
+                    "            AND p.la_user_id = ANY($1::text[]) "
+                    "       )";
+                db_->query(closeSql, params);
             }
         } catch (const std::exception& e) {
             std::cerr << "la-pool pickup-tier sync failed (programId="
