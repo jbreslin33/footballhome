@@ -477,15 +477,19 @@ class PersonScreen extends Screen {
       { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
-      { id: 931, short: 'U6',  label: 'U6',  color: '#ca8a04', category: 'boys' },
-      { id: 912, short: 'U8',  label: 'U8',  color: '#16a34a', category: 'boys' },
-      { id: 913, short: 'U10', label: 'U10', color: '#0891b2', category: 'boys' },
-      { id: 914, short: 'U12', label: 'U12', color: '#7c3aed', category: 'boys' },
-      { id: 933, short: 'U13', label: 'U13', color: '#ea580c', category: 'boys' },
-      { id: 934, short: 'U16', label: 'U16', color: '#4f46e5', category: 'boys' },
-      { id: 932, short: 'U19', label: 'U19', color: '#be123c', category: 'boys' },
+      { id: 912, short: 'U8 T',  label: 'U8 Travel',      color: '#16a34a', category: 'boys' },
+      { id: 913, short: 'U10 T', label: 'U10 Travel',     color: '#0891b2', category: 'boys' },
+      { id: 914, short: 'U12 T', label: 'U12 Travel',     color: '#7c3aed', category: 'boys' },
+      { id: 931, short: 'U6 I',  label: 'U6 Intramural',  color: '#ca8a04', category: 'boys' },
+      { id: 935, short: 'U8 I',  label: 'U8 Intramural',  color: '#65a30d', category: 'boys' },
+      { id: 936, short: 'U10 I', label: 'U10 Intramural', color: '#0e7490', category: 'boys' },
+      { id: 937, short: 'U12 I', label: 'U12 Intramural', color: '#a855f7', category: 'boys' },
+      { id: 934, short: 'U16 I', label: 'U16 Intramural', color: '#4f46e5', category: 'boys' },
+      { id: 932, short: 'U19 I', label: 'U19 Intramural', color: '#be123c', category: 'boys' },
       // Phantom pool ids 918-923 dropped with the group model
       // (migration 250) — see rsvp-eligibility.js note.
+      // 2026-08-25: boys split into Travel (the existing squads) and
+      // Intramural (everyone else), migration 306. U13 deleted there.
       // 2026-08-25: Liga 2 (121) deleted with the club's other retired
       // teams (migration 302); U13/U16 added (migration 301).
       // 2026-08-12: consolidated to the real teams (migration 275/276) —
