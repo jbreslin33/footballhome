@@ -474,7 +474,6 @@ class PersonScreen extends Screen {
     return [
       { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb', category: 'men' },
       { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2', category: 'men' },
-      { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
       { id: 912, short: 'U8 T',  label: 'U8 Travel',      color: '#16a34a', category: 'boys' },

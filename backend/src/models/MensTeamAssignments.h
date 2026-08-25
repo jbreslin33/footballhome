@@ -152,7 +152,7 @@ public:
     // ── Practice / Pickup auto-membership (2026-07-04) ───────────────
     //
     // Every LA member in good standing (delinquencyState != 'dues_owed')
-    // is automatically on the Practice (908) + Pickup (909) teams — the
+    // is automatically on the Pickup (909) team — the
     // Mens Roster Board doesn't render those as selection columns any
     // more; instead, `/api/mens-roster` calls `bulkEnsureActive()` after
     // the delinquency sweep so downstream consumers (lineups.js Practice

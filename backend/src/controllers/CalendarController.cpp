@@ -570,19 +570,23 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                              CASE
                                                                      -- "Pickup only" means this person's ONLY
                                                                      -- connection to THIS event's tagged teams is via
-                                                                     -- the generic Practice(908)/Pickup(909) pool —
+                                                                     -- the generic Pickup(909) pool —
                                                                      -- not via any specifically-named team tagged on
                                                                      -- the event (any live mens squad). Computed
                                                                      -- person-level (scoped to fe.id's own tagged
                                                                      -- teams) rather than per-row, so it's stable
                                                                      -- under DISTINCT ON regardless of which of a
                                                                      -- multi-team person's rows wins the tie. The
-                                                                     -- test is NOT IN (908,909) rather than a
+                                                                     -- test is NOT IN (909) rather than a
                                                                      -- whitelist of squad ids: an earlier hardcoded
                                                                      -- whitelist predated the trialist teams and
                                                                      -- wrongly hid trialists tagged on their own
                                                                      -- practice events. Naming the two pool teams
                                                                      -- instead means a new squad needs no edit here.
+                                                                     -- Practice (908) dropped from the test with
+                                                                     -- migration 309: a practice is a calendar
+                                                                     -- event with teams tagged on it, so there is
+                                                                     -- no practice pool to exclude any more.
                                                                      WHEN fe.category = 'mens' THEN NOT EXISTS (
                                                                              SELECT 1
                                                                                  FROM team_persons tp_sel
@@ -591,7 +595,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                                 WHERE tp_sel.person_id    = p.id
                                                                                     AND tp_sel.removed_at IS NULL
                                                                                     AND fet_sel.fh_event_id = fe.id
-                                                                                    AND tp_sel.team_id NOT IN (908, 909)
+                                                                                    AND tp_sel.team_id <> 909
                                                                      )
                                                                      ELSE false
                                                              END AS is_pickup_only,

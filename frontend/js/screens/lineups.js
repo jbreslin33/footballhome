@@ -1026,7 +1026,7 @@ class LineupsScreen extends Screen {
       // until they're married to a person, so suppress pills and show flag.
       // Layout: 3 rows grouped by team purpose so the eye can scan quickly.
       //   Row 1 — league teams:     APSL (35), Liga 1 (120)
-      //   Row 2 — pool teams:       Pickup (909), Practice (908)
+      //   Row 2 — pool team:        Pickup (909)   [Practice 908 deleted, migration 309]
       // Liga 2 (121) and the internal squads U23 (903) / Brazil (904) /
       // Puerto Rico (905) were deleted on 2026-08-25 (migration 302) and
       // their rows removed with them.
@@ -1034,7 +1034,7 @@ class LineupsScreen extends Screen {
       // "other" row so it still renders (no lost pills).
       const rowGroups = [
         [35, 120],
-        [909, 908],
+        [909],
       ];
       const groupedIds = new Set(rowGroups.flat());
       const otherIds = teams.map(t => t.id).filter(id => !groupedIds.has(id));

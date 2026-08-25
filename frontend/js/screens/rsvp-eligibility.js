@@ -28,7 +28,7 @@
 //
 // Team catalog (MUST stay in sync with MensRosterController.cpp
 // `kEligibilityTeams`):
-//   35 APSL · 120 Liga 1 · 121 Liga 2 · 122 Adult · 908 Practice · 909 Pickup
+//   35 APSL · 120 Liga 1 · 909 Pickup   (121/122 deleted 302, 908 deleted 309)
 class RsvpEligibilityScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -103,7 +103,6 @@ class RsvpEligibilityScreen extends Screen {
     return [
       { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb', category: 'men' },
       { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2', category: 'men' },
-      { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
       { id: 912, short: 'U8 T',  label: 'U8 Travel',      color: '#16a34a', category: 'boys' },

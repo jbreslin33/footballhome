@@ -921,7 +921,8 @@ MensRoster::Result MensRoster::run(bool includeAll,
 
     // ── Practice / Pickup membership (group model, migration 250) ─────
     //
-    // Practice (908) and Pickup (909) are plain internal groups now —
+    // Pickup (909) is a plain internal group now (Practice 908 was
+    // deleted by migration 309) —
     // the team_roster_sources/v_team_members union machinery is
     // retired.  Migration 250 snapshotted the union's effective
     // membership as direct team_persons rows, so existing members keep
@@ -1074,7 +1075,7 @@ MensRoster::Result MensRoster::run(bool includeAll,
         if (relevant.empty()) {
             // Previously (2026-07-08) we suppressed the row here when
             // the user was assigned to a non-column mens team (Practice
-            // 908 / Pickup 909 / a sunset selection team) so pickup-only
+            // Pickup 909 / a sunset selection team) so pickup-only
             // members wouldn't clutter the selection draft view.  That
             // suppression is now redundant: the universal pickup-uid
             // filter above already removes every active pickup holder

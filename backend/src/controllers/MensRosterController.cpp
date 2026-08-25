@@ -338,42 +338,16 @@ Response MensRosterController::handleAssign(const Request& request) {
                 ? assignments_->addAssignmentForPerson(personId, teamId, mutexGroup)
                 : assignments_->addAssignment(userId, teamId, mutexGroup);
 
-            // Practice auto-membership on APSL / Liga 1
-            // assign (2026-07-04, extended 2026-07-07): immediate mirror
-            // of the /api/mens-roster fetch-time backfill so admin sees
-            // Practice populated the instant they select someone for a
-            // division roster.  Redundant with the fetch backfill
-            // but zero-cost (INSERT ON CONFLICT DO NOTHING).
-            // Liga 2 (121) dropped from this list with migration 302,
-            // which deleted the team outright.
+            // Practice / Pickup auto-membership REMOVED (2026-08-25).
             //
-            // Pickup (909) dropped 2026-08-25: this write was the larger
-            // of the two things polluting it. Pickup is a paid LA
-            // registration, not a consequence of being picked for a
-            // squad, and mirroring one into the other put 56 players who
-            // never registered onto the pickup roster — see migration
-            // 304. LaPool owns 909 now, in both directions. Practice
-            // (908) keeps its auto-add: no LA program backs it, so it is
-            // a genuine internal group with no truth to contradict.
-            constexpr int kApslTeamId     = 35;
-            constexpr int kLiga1TeamId    = 120;
-            constexpr int kPracticeTeamId = 908;
-            if (teamId == kApslTeamId || teamId == kLiga1TeamId) {
-                try {
-                    assignments_->bulkEnsureActive({userId}, kPracticeTeamId);
-                    // Refresh returned teamIds so the client sees Practice
-                    // without a round-trip. Via personId when we
-                    // have one — teamIdsForUser re-derives identity from
-                    // the (possibly drifted) live userId and would wipe
-                    // out a personId-path result with an empty list.
-                    teamIds = personId > 0
-                        ? assignments_->teamIdsForPerson(personId)
-                        : assignments_->teamIdsForUser(userId);
-                } catch (const std::exception& e) {
-                    std::cerr << "[MensRoster] practice auto-add on APSL/Liga1 failed: "
-                              << e.what() << std::endl;
-                }
-            }
+            // This block used to mirror a squad pick onto the Practice and
+            // Pickup pool teams. Pickup went first — it is a paid LA
+            // registration, not a consequence of being picked (migration
+            // 304) — and Practice followed when the team itself was deleted
+            // (migration 309). A practice is a calendar event with teams
+            // tagged on it; there is no practice membership to mirror.
+            // Nothing replaces it: `teamIds` below is already whatever the
+            // assignment itself produced.
         }
 
         json out;
@@ -894,7 +868,7 @@ namespace {
 // (Phantom pool ids 918-923 from migration 232 never existed in prod
 // and were dropped from the catalog with migration 250.)
 const int kEligibilityTeams[] = {
-    35, 120, 908, 909,             // mens — Liga 2 (121) deleted, migration 302
+    35, 120, 909,                  // mens — Liga 2 deleted (302), Practice deleted (309)
     901,                           // women — Tri County
     912, 913, 914,                 // boys travel     — U8/U10/U12
     931, 935, 936, 937, 934, 932   // boys intramural — U6/U8/U10/U12/U16/U19

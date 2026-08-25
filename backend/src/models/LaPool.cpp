@@ -265,7 +265,8 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
 
     // 3b. Pool-team auto-assign RETIRED (2026-07-07, migration 107).
     //
-    // Practice (908) + Pickup (909) are now UNION teams — their
+    // Pickup (909) is now a UNION team (Practice 908 was deleted
+    // outright by migration 309) — its
     // membership is derived from APSL + Liga 1 + Liga 2 + Adult League
     // via team_roster_sources + the v_team_members view.  Writing rows
     // into roster_assignments here would create duplicates the view
