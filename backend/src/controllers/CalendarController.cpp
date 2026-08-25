@@ -572,17 +572,17 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                      -- connection to THIS event's tagged teams is via
                                                                      -- the generic Practice(908)/Pickup(909) pool —
                                                                      -- not via any specifically-named team tagged on
-                                                                     -- the event, official (35/120/121/122) or
-                                                                     -- trialist/reserve (924-929). Computed
+                                                                     -- the event (any live mens squad). Computed
                                                                      -- person-level (scoped to fe.id's own tagged
                                                                      -- teams) rather than per-row, so it's stable
                                                                      -- under DISTINCT ON regardless of which of a
-                                                                     -- multi-team person's rows wins the tie. A
-                                                                     -- hardcoded (35,120,121,122) whitelist predates
-                                                                     -- the trialist teams and wrongly hid trialists
-                                                                     -- tagged on their own practice events (they'd
-                                                                     -- never RSVP'd yet, so got filtered out below
-                                                                     -- entirely).
+                                                                     -- multi-team person's rows wins the tie. The
+                                                                     -- test is NOT IN (908,909) rather than a
+                                                                     -- whitelist of squad ids: an earlier hardcoded
+                                                                     -- whitelist predated the trialist teams and
+                                                                     -- wrongly hid trialists tagged on their own
+                                                                     -- practice events. Naming the two pool teams
+                                                                     -- instead means a new squad needs no edit here.
                                                                      WHEN fe.category = 'mens' THEN NOT EXISTS (
                                                                              SELECT 1
                                                                                  FROM team_persons tp_sel

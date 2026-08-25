@@ -411,7 +411,10 @@ class GameDayRosterScreen extends Screen {
       const comp = `${m.competition_name || ''} ${m.division_name || ''}`;
       const isCasa = m.source_name === 'casa' || /casa|liga\s*[12]/i.test(comp);
       if (isCasa) {
-        const isLiga2 = String(m.home_team_id) === '121' || String(m.away_team_id) === '121' || /liga\s*2/i.test(comp);
+        // Team 121 was deleted with the club's other retired teams
+        // (migration 302), so no match can carry that id any more —
+        // the division/competition text is the only signal left.
+        const isLiga2 = /liga\s*2/i.test(comp);
         const liga = isLiga2 ? '2' : '1';
         brandEl.textContent = `\u26bd Philadelphia CASA Select Liga ${liga}`;
       } else if (m.source_name) {

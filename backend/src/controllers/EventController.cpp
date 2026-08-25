@@ -3185,9 +3185,8 @@ Response EventController::handleSyncLeague(const Request& request) {
         if (teamIdInt == 120) {
             programId = "6827a0840b95c8019f7e2b38";
             divisionName = "Philadelphia Liga 1";
-        } else if (teamIdInt == 121) {
-            programId = "682f9676528c0e00bfc9d2f2";
-            divisionName = "Philadelphia Liga 2";
+        // Liga 2 (121, SE program 682f9676528c0e00bfc9d2f2) removed with
+        // migration 302 — the club no longer fields that side.
         } else {
             return Response(HttpStatus::OK,
                 "{\"success\":false,\"message\":\"Unknown CASA team — cannot determine program ID\"}");

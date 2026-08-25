@@ -327,18 +327,19 @@ Response MensRosterController::handleAssign(const Request& request) {
                 ? assignments_->addAssignmentForPerson(personId, teamId, mutexGroup)
                 : assignments_->addAssignment(userId, teamId, mutexGroup);
 
-            // Practice / Pickup auto-membership on APSL / Liga 1 / Liga 2
+            // Practice / Pickup auto-membership on APSL / Liga 1
             // assign (2026-07-04, extended 2026-07-07): immediate mirror
             // of the /api/mens-roster fetch-time backfill so admin sees
             // Practice + Pickup populated the instant they select someone
             // for a division roster.  Redundant with the fetch backfill
             // but zero-cost (INSERT ON CONFLICT DO NOTHING).
+            // Liga 2 (121) dropped from this list with migration 302,
+            // which deleted the team outright.
             constexpr int kApslTeamId     = 35;
             constexpr int kLiga1TeamId    = 120;
-            constexpr int kLiga2TeamId    = 121;
             constexpr int kPracticeTeamId = 908;
             constexpr int kPickupTeamId   = 909;
-            if (teamId == kApslTeamId || teamId == kLiga1TeamId || teamId == kLiga2TeamId) {
+            if (teamId == kApslTeamId || teamId == kLiga1TeamId) {
                 try {
                     assignments_->bulkEnsureActive({userId}, kPracticeTeamId);
                     assignments_->bulkEnsureActive({userId}, kPickupTeamId);
@@ -875,9 +876,10 @@ namespace {
 // (Phantom pool ids 918-923 from migration 232 never existed in prod
 // and were dropped from the catalog with migration 250.)
 const int kEligibilityTeams[] = {
-    35, 120, 121, 908, 909,        // mens
+    35, 120, 908, 909,             // mens — Liga 2 (121) deleted, migration 302
     901,                           // women — Tri County
-    931, 912, 913, 914, 932        // boys — U6/U8/U10/U12/U19 (migration 275/276)
+    931, 912, 913, 914,            // boys — U6/U8/U10/U12 (migration 275/276)
+    933, 934, 932                  // boys — U13/U16/U19    (migration 301)
 };
 
 bool isEligibilityTeamId(int teamId) {

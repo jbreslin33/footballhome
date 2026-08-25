@@ -703,7 +703,11 @@ MensRoster::Result MensRoster::run(bool includeAll,
     //     / personIdFor below) so profile links and message actions still
     //     work on these cards.
     {
-        static const std::vector<int> kFhOnlySquadTeamIds = {35, 120, 121, 122, 924, 925};
+        // 121/122/924/925 (Liga 2, Adult League, APSL Reserves, APSL
+        // Trialists) were deleted with the rest of the club's retired
+        // teams on 2026-08-25 — migration 302. Only the two live mens
+        // squads remain.
+        static const std::vector<int> kFhOnlySquadTeamIds = {35, 120};
         std::string idList;
         for (size_t i = 0; i < kFhOnlySquadTeamIds.size(); ++i) {
             if (i) idList += ",";

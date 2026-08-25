@@ -607,12 +607,17 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
         }
 
         if (relevant.empty()) {
-            // 2026-07-08: Suppress from Unassigned when the user is
-            // already on some boys/girls team, just not one with a
-            // visible roster_column (e.g. an archived / sunset team).
-            // Otherwise pickup-style members with only off-view team
-            // assignments clutter the selection-team draft view.
-            if (userCells && !userCells->empty()) continue;
+            // No suppression here, deliberately. Between 2026-07-08 and
+            // 2026-08-25 a player whose only assignments were to off-view
+            // teams (an archived / sunset team) was skipped entirely, to
+            // keep pickup-style members out of the selection draft view.
+            // The cost was invisibility: no column drew them and
+            // Unassigned dropped them, so six players sat on the
+            // deactivated U19 for twelve days with nowhere on the board
+            // showing them (migrations 300 and 302). MensRoster removed
+            // the same rule for the same reason. A member who is not on
+            // an active team belongs in Unassigned — that is the only
+            // place admin can pick them up from.
 
             json row       = p;
             row["teamIds"] = json::array();

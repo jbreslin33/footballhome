@@ -691,7 +691,10 @@ class SocialPostCard {
       league = m.league_tag.trim();
     } else if (isCasa) {
       const div = `${m.division_name || ''} ${m.competition_name || ''} ${m.home_team_name || ''} ${m.away_team_name || ''}`;
-      const isLiga2 = String(m.home_team_id) === '121' || String(m.away_team_id) === '121' || /liga\s*2/i.test(div);
+      // Team 121 was deleted with the club's other retired teams
+      // (migration 302), so no match can carry that id any more —
+      // the division/competition text is the only signal left.
+      const isLiga2 = /liga\s*2/i.test(div);
       if (isLiga2) league = 'Philadelphia CASA Select Liga 2';
       else league = 'Philadelphia CASA Select Liga 1';
     } else if (isCustomMatch) {

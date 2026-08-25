@@ -1285,14 +1285,14 @@ class MensRosterScreen extends RosterScreenBase {
     const teams = [
       { id: 35,  label: 'APSL',     color: '#2563eb' },
       { id: 120, label: 'Liga 1',   color: '#0891b2' },
-      { id: 121, label: 'Liga 2',   color: '#14b8a6' },
-      { id: 122, label: 'Adult',    color: '#a78bfa' },
       { id: 908, label: 'Practice', color: '#f59e0b' },
       { id: 909, label: 'Pickup',   color: '#10b981' },
-      { id: 924, label: 'APSL Reserves',   color: '#60a5fa' },
-      // Trialists (925/926) retired 2026-08-12 — teams deactivated,
-      // dropped from every other eligibility catalog; this modal was
-      // the one place still offering them as a grantable checkbox.
+      // Liga 2 (121), Adult (122) and APSL Reserves (924) were deleted
+      // with the club's other retired teams on 2026-08-25 (migration
+      // 302), following the trialists (925/926) retired 2026-08-12.
+      // Practice/Pickup stay: they are archived off the board but still
+      // the live mens pool, written by LaPool and named in
+      // CalendarController's pickup-only test.
       // Women / boys grants are editable on the RSVP Eligibility board
       // and person profile; mens roster modal stays mens-focused.
     ];

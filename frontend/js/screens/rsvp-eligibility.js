@@ -103,7 +103,6 @@ class RsvpEligibilityScreen extends Screen {
     return [
       { id: 35,  short: 'APSL',   label: 'APSL',     color: '#2563eb', category: 'men' },
       { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2', category: 'men' },
-      { id: 121, short: 'Liga 2', label: 'Liga 2',   color: '#14b8a6', category: 'men' },
       { id: 908, short: 'Pract.', label: 'Practice', color: '#f59e0b', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
@@ -111,11 +110,15 @@ class RsvpEligibilityScreen extends Screen {
       { id: 912, short: 'U8',  label: 'U8',  color: '#16a34a', category: 'boys' },
       { id: 913, short: 'U10', label: 'U10', color: '#0891b2', category: 'boys' },
       { id: 914, short: 'U12', label: 'U12', color: '#7c3aed', category: 'boys' },
+      { id: 933, short: 'U13', label: 'U13', color: '#ea580c', category: 'boys' },
+      { id: 934, short: 'U16', label: 'U16', color: '#4f46e5', category: 'boys' },
       { id: 932, short: 'U19', label: 'U19', color: '#be123c', category: 'boys' },
       // Phantom pool ids 918-923 (migration 232) never existed in prod;
       // dropped with the group model (migration 250).  Category-level
       // practice/pickup access now comes from tagging real teams on
       // the gcal event.
+      // 2026-08-25: Liga 2 (121) deleted with the club's other retired
+      // teams (migration 302); U13/U16 added (migration 301).
       // 2026-08-12: consolidated to the real teams (migration 275/276) —
       // Lighthouse Youth League/Trialists/Adult League/APSL Reserves &
       // Trialists retired, dropped from this list.

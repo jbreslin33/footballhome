@@ -272,7 +272,6 @@ class MensGameEligibilityScreen extends Screen {
     const defs = {
       35:  { label: 'APSL',   color: '#dc2626', target: 35, keepers: R.apsl.keepers  },
       120: { label: 'Liga 1', color: '#7c3aed', target: 35, keepers: R.liga1.keepers },
-      121: { label: 'Liga 2', color: '#94a3b8', target: 0,  keepers: 0 },
     };
     const d = defs[teamId] || { label: `Team ${teamId}`, color: '#2563eb', target: fallbackTarget, keepers: 0 };
     return { teamId, ...d };
@@ -494,7 +493,11 @@ class MensGameEligibilityScreen extends Screen {
     const R = MensGameEligibilityScreen.RULES;
     const apsl  = this._teamStats(35,  35);
     const liga1 = this._teamStats(120, 35);
-    const liga2 = this._teamStats(121, 0);
+    // Liga 2 has its own team row no more — deleted with the club's
+    // other retired teams (migration 302). The footnote below still
+    // says why it is absent, so the label is stated directly rather
+    // than looked up by an id nothing will return.
+    const liga2 = { label: 'Liga 2', color: '#94a3b8', target: 0, keepers: 0 };
 
     const sel = this._selectLineup(apsl, liga1, k);
 
