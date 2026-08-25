@@ -86,6 +86,14 @@ protected:
     // doesn't take down every LA-aware endpoint.
     static std::vector<int> allLaProgramIds();
 
+    // Just the pickup-variant programs (men 5070075, boys 5064618, girls
+    // 5064662, women 5064686 today). The roster boards sync these on top
+    // of their own Members program so the "also a pickup member" flag on
+    // a card is as fresh as the membership data beside it — the STRICT
+    // Membership Data Flow rule applies to the flag too. Same
+    // never-throws contract as allLaProgramIds().
+    static std::vector<int> laPickupProgramIds();
+
     // Utility methods for controllers
     Response jsonResponse(const std::string& json);
     Response jsonResponse(HttpStatus status, const std::string& json);

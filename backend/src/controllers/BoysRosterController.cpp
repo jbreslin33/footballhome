@@ -82,8 +82,19 @@ void BoysRosterController::registerRoutes(Router& router, const std::string& pre
     // handler.  laGet(static) syncs boys + girls programs in parallel,
     // hands the resulting recs to the handler, which forwards them to
     // the model.  Model no longer touches LA directly.
+    // Pickup programs ride along (2026-08-25): a card can now carry an
+    // "also a pickup member" flag, and the STRICT rule applies to it too —
+    // the flag must be as fresh as the membership beside it. The dynamic
+    // overload reads the pickup ids from the registry per request rather
+    // than pinning them at startup. All programs sync in parallel, so this
+    // costs no extra wall-clock.
     laGet(router, prefix,
-          {model_->boysProgramId(), model_->girlsProgramId()},
+          [this](const Request&) {
+              std::vector<int> programs{model_->boysProgramId(), model_->girlsProgramId()};
+              const auto pickup = Controller::laPickupProgramIds();
+              programs.insert(programs.end(), pickup.begin(), pickup.end());
+              return programs;
+          },
           [this](const Request& req, const LaSyncMap& sync) {
               return this->handleGet(req, sync);
           });

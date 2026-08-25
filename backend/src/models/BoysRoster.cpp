@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "ActiveTeamBadges.h"
+#include "PickupMembership.h"
 #include "MensTeamAssignments.h"
 #include "MensTeamColumns.h"
 #include "PersonPayments.h"
@@ -554,6 +555,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
     // resolves the same personIdByUserId lookup the per-row loop below
     // does anyway.
     std::unordered_map<long long, json> activeTeamsByPerson;
+    std::unordered_map<long long, json> pickupByPerson;
     {
         std::vector<long long> personIds;
         personIds.reserve(all.size());
@@ -562,6 +564,11 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
             if (pit != personIdByUserId.end() && pit->second > 0) personIds.push_back(pit->second);
         }
         activeTeamsByPerson = ActiveTeamBadges::loadForPersons(personIds);
+        // Same personIds, one more batch lookup: who also holds a
+        // current pickup-variant LA registration. Members and Pickup
+        // are independent sub-programs and nobody is meant to hold
+        // both, so the card flags it (owner 2026-08-25).
+        pickupByPerson = PickupMembership::loadForPersons(personIds);
     }
 
     for (auto& p : all) {
@@ -579,6 +586,11 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
         {
             auto ait = activeTeamsByPerson.find(resolvedPersonId);
             p["activeTeams"] = (ait != activeTeamsByPerson.end()) ? ait->second : json::array();
+        }
+        {
+            // Pickup flag (owner 2026-08-25: "if a member is also pickup member then put pickup flag on his card"). null when they hold no current pickup registration.
+            auto pit = pickupByPerson.find(resolvedPersonId);
+            p["pickupMembership"] = (pit != pickupByPerson.end()) ? pit->second : json(nullptr);
         }
 
         const std::vector<MensTeamAssignments::Cell>* userCells = nullptr;

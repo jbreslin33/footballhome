@@ -81,8 +81,19 @@ void WomensRosterController::registerRoutes(Router& router, const std::string& p
     // MUST run LaProgramSync on every feeding program BEFORE the
     // handler. laGet(static) syncs the women's program, hands the
     // resulting recs to the handler, which forwards them to the model.
+    // Pickup programs ride along (2026-08-25): a card can now carry an
+    // "also a pickup member" flag, and the STRICT rule applies to it too —
+    // the flag must be as fresh as the membership beside it. The dynamic
+    // overload reads the pickup ids from the registry per request rather
+    // than pinning them at startup. All programs sync in parallel, so this
+    // costs no extra wall-clock.
     laGet(router, prefix,
-          {model_->womensProgramId()},
+          [this](const Request&) {
+              std::vector<int> programs{model_->womensProgramId()};
+              const auto pickup = Controller::laPickupProgramIds();
+              programs.insert(programs.end(), pickup.begin(), pickup.end());
+              return programs;
+          },
           [this](const Request& req, const LaSyncMap& sync) {
               return this->handleGet(req, sync);
           });

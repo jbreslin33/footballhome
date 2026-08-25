@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "ActiveTeamBadges.h"
+#include "PickupMembership.h"
 #include "MensTeamAssignments.h"
 #include "MensTeamColumns.h"
 #include "PersonBilling.h"
@@ -950,6 +951,7 @@ MensRoster::Result MensRoster::run(bool includeAll,
     // (personIdFor → personIdByUid → personIdByUserId) the per-row loop
     // below does anyway, just to gather ids up front for one batch query.
     std::unordered_map<long long, json> activeTeamsByPerson;
+    std::unordered_map<long long, json> pickupByPerson;
     {
         std::vector<long long> personIds;
         personIds.reserve(all.size());
@@ -967,6 +969,11 @@ MensRoster::Result MensRoster::run(bool includeAll,
             if (pid > 0) personIds.push_back(pid);
         }
         activeTeamsByPerson = ActiveTeamBadges::loadForPersons(personIds);
+        // Same personIds, one more batch lookup: who also holds a
+        // current pickup-variant LA registration. Members and Pickup
+        // are independent sub-programs and nobody is meant to hold
+        // both, so the card flags it (owner 2026-08-25).
+        pickupByPerson = PickupMembership::loadForPersons(personIds);
     }
 
     for (auto& p : all) {
@@ -1105,6 +1112,9 @@ MensRoster::Result MensRoster::run(bool includeAll,
                 row["fhLastActivityAt"] = fhLastActivityFor(pid);
                 auto ait = activeTeamsByPerson.find(pid);
                 row["activeTeams"] = (ait != activeTeamsByPerson.end()) ? ait->second : json::array();
+                // Pickup flag (owner 2026-08-25: "if a member is also pickup member then put pickup flag on his card"). null when they hold no current pickup registration.
+                auto pkt = pickupByPerson.find(pid);
+                row["pickupMembership"] = (pkt != pickupByPerson.end()) ? pkt->second : json(nullptr);
             }
             unassigned.push_back(std::move(row));
         } else {
@@ -1153,6 +1163,9 @@ MensRoster::Result MensRoster::run(bool includeAll,
                     row["fhLastActivityAt"] = fhLastActivityFor(pid);
                     auto ait = activeTeamsByPerson.find(pid);
                     row["activeTeams"] = (ait != activeTeamsByPerson.end()) ? ait->second : json::array();
+                // Pickup flag (owner 2026-08-25: "if a member is also pickup member then put pickup flag on his card"). null when they hold no current pickup registration.
+                auto pkt = pickupByPerson.find(pid);
+                row["pickupMembership"] = (pkt != pickupByPerson.end()) ? pkt->second : json(nullptr);
                 }
                 buckets[std::to_string(tid)].push_back(std::move(row));
             }

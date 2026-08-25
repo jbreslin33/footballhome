@@ -358,6 +358,30 @@ class RosterScreenBase extends Screen {
     }).join('');
   }
 
+  // "Also a pickup member" chip. Members and Pickup are two independent
+  // LeagueApps sub-programs — a person can hold one, the other, both or
+  // neither — and holding both is not supposed to happen (owner
+  // 2026-08-25: "i try to only move and not copy from member to pickup
+  // member … nobody should be in both"). This card is by definition a
+  // Members card, so the chip appearing means a duplicate registration
+  // to clean up on the LA side.
+  //
+  // Amber, not the purple of the also-on-a-team chip: that one is
+  // information, this one is an exception worth acting on. Backed by
+  // PickupMembership (backend/src/models) via player.pickupMembership,
+  // which is null for the overwhelming majority of cards.
+  renderPickupBadge(player) {
+    const pu = player.pickupMembership || player.pickup_membership;
+    if (!pu) return '';
+    const since = pu.registeredAt || pu.registered_at || '';
+    const paid  = pu.paymentStatus || pu.payment_status || '';
+    const bits  = [since ? `registered ${since}` : '', paid ? `LA status ${paid}` : '']
+      .filter(Boolean).join(' · ');
+    const title = `Also holds a Pickup membership${bits ? ` (${bits})` : ''}`
+      + ' — Members and Pickup are separate registrations; nobody should hold both.';
+    return `<span title="${this.escape(title)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(245,158,11,0.22); color:#fbbf24; white-space:nowrap;">⚡ Pickup</span>`;
+  }
+
   // Two thin content rows (rank+name, then DOB/age/dues) on the left;
   // the roster-move dropdown and VIEW button sit side by side in a
   // strip on the right that spans the card's full height, using the
@@ -438,6 +462,7 @@ class RosterScreenBase extends Screen {
       : '';
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
     const activeTeamsBadge = this.renderActiveTeamsBadge(player, col);
+    const pickupBadge = this.renderPickupBadge(player);
 
     return `
       <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:row; align-items:stretch; gap:4px;">
@@ -451,6 +476,7 @@ class RosterScreenBase extends Screen {
             ${ageChip}
             ${duesLabel}
             ${activeTeamsBadge}
+            ${pickupBadge}
           </div>
         </div>
         <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px; flex-wrap:wrap; justify-content:flex-end; align-self:flex-start;">

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "ActiveTeamBadges.h"
+#include "PickupMembership.h"
 #include "MensTeamAssignments.h"
 #include "MensTeamColumns.h"
 #include "YouthAgeGroups.h"
@@ -379,6 +380,7 @@ WomensRoster::Result WomensRoster::run(bool includeAll,
     // — batch-loaded once so cards can badge multi-team players (see
     // ActiveTeamBadges.h), same as Mens/Boys.
     std::unordered_map<long long, json> activeTeamsByPerson;
+    std::unordered_map<long long, json> pickupByPerson;
     {
         std::vector<long long> personIds;
         personIds.reserve(all.size());
@@ -392,6 +394,11 @@ WomensRoster::Result WomensRoster::run(bool includeAll,
             if (pid > 0) personIds.push_back(pid);
         }
         activeTeamsByPerson = ActiveTeamBadges::loadForPersons(personIds);
+        // Same personIds, one more batch lookup: who also holds a
+        // current pickup-variant LA registration. Members and Pickup
+        // are independent sub-programs and nobody is meant to hold
+        // both, so the card flags it (owner 2026-08-25).
+        pickupByPerson = PickupMembership::loadForPersons(personIds);
     }
 
     for (auto& p : all) {
@@ -427,6 +434,11 @@ WomensRoster::Result WomensRoster::run(bool includeAll,
             auto sit = personIdByUserId.find(uid);
             if (sit != personIdByUserId.end()) pid = sit->second;
         }
+        // Pickup flag (owner 2026-08-25: "if a member is also pickup member then put pickup flag on his card"). null when they hold no current pickup registration.
+        const json pickupJson = [&]() -> json {
+            auto pit = pickupByPerson.find(pid);
+            return (pit != pickupByPerson.end()) ? pit->second : json(nullptr);
+        }();
         const json activeTeamsJson = [&]() -> json {
             auto ait = activeTeamsByPerson.find(pid);
             return (ait != activeTeamsByPerson.end()) ? ait->second : json::array();
@@ -441,6 +453,7 @@ WomensRoster::Result WomensRoster::run(bool includeAll,
             row["personId"]        = personIdJson;
             row["fhLastActivityAt"] = fhLastActivity;
             row["activeTeams"]     = activeTeamsJson;
+            row["pickupMembership"] = pickupJson;
             row["laRegisteredAt"]  = laRegisteredAt;
             unassigned.push_back(std::move(row));
         } else {
@@ -461,6 +474,7 @@ WomensRoster::Result WomensRoster::run(bool includeAll,
                 row["personId"]        = personIdJson;
                 row["fhLastActivityAt"] = fhLastActivity;
                 row["activeTeams"]      = activeTeamsJson;
+                row["pickupMembership"] = pickupJson;
                 row["laRegisteredAt"]   = laRegisteredAt;
                 buckets[std::to_string(tid)].push_back(std::move(row));
             }

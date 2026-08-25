@@ -360,6 +360,28 @@ std::vector<int> Controller::allLaProgramIds() {
     return out;
 }
 
+// Pickup-variant programs only.  Read from the registry rather than an
+// env var or a hardcoded id so a category the club adds later is picked
+// up without a code change (the same reason migration 298 moved league
+// crests into the DB).
+std::vector<int> Controller::laPickupProgramIds() {
+    std::vector<int> out;
+    try {
+        auto rows = Database::getInstance()->query(
+            "SELECT program_id FROM leagueapps_programs "
+            " WHERE variant = 'pickup' AND program_id IS NOT NULL "
+            " ORDER BY program_id");
+        out.reserve(rows.size());
+        for (const auto& r : rows) {
+            if (!r["program_id"].is_null()) out.push_back(r["program_id"].as<int>());
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[Controller::laPickupProgramIds] enumerate failed: "
+                  << e.what() << std::endl;
+    }
+    return out;
+}
+
 // Wrap a router.<verb>() registration with an automatic LA sync before
 // dispatch.  `programs` is captured by value so the handler always sees
 // the exact list its author declared, even if the caller's local mutates.
