@@ -4,9 +4,21 @@
 // attendance controls per event (scoped to teams they actually coach,
 // see CalendarController::isEventCoachOrAdmin). This screen also hosts
 // club-wide roster/reminders/game-model tools (moved off admin-club so
-// coach work is separate from club-admin work), plus a Teams entry
+// coach work is separate from club-admin work), plus a My Teams entry
 // point into the existing per-team flow (schedule, practices, matches,
 // lineups via context-selection → team-dashboard).
+//
+// Section order (2026-08-26): the Teams board (#teams) comes first —
+// owner: "for coach role the first thing at top should be #Teams …
+// reason is that is feature i use most for coach role". It was third,
+// under a "Roster" heading, and its tile read "Team Players" while the
+// route it opens is #teams; the tile now matches the route it lands on.
+//
+// The two are easy to confuse, so they are named for what you get:
+//   Teams    (#teams)             — the whole board, every player, every
+//                                   team, where you assign and move people.
+//   My Teams (#context-selection) — pick one team you coach and open its
+//                                   schedule / practices / matches / lineups.
 class CoachHomeScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -20,7 +32,13 @@ class CoachHomeScreen extends Screen {
       </div>
 
       <div style="padding: var(--space-4);">
-        <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">📋 My Week</h3>
+        <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">🎽 Teams</h3>
+        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
+          Every player and every team on one board — chip-switch between Mens (workbench) / Boys / Girls / All.
+        </p>
+        <div id="section-rosters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📋 My Week</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Every practice and match this week, across every team — set your own availability, or check in players.
         </p>
@@ -31,12 +49,6 @@ class CoachHomeScreen extends Screen {
           Schedule, practices, matches, attendance, and lineups for a team you coach.
         </p>
         <div id="section-teams" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🎽 Roster</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Assign players to teams — chip-switch between Mens (workbench) / Boys / Girls / All.
-        </p>
-        <div id="section-rosters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🧠 Game Model</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -73,13 +85,13 @@ class CoachHomeScreen extends Screen {
     renderInto('#section-week', weekTiles);
 
     const teamsTiles = [
-      { id: 'teams', target: 'context-selection', params: { role: 'coach' }, icon: '⚽', label: 'Teams', description: 'Pick a team you coach to open its schedule, practices, matches, and lineups' },
+      { id: 'teams', target: 'context-selection', params: { role: 'coach' }, icon: '⚽', label: 'My Teams', description: 'Pick a team you coach to open its schedule, practices, matches, and lineups' },
       { id: 'game-eligibility', target: 'mens-game-eligibility', params: { clubId: this.clubId, clubName: this.clubName }, icon: '🎯', label: 'Game-Day Analytics', description: 'Projected APSL & Liga 1 starting lineups + bench, based on attendance-tier probability' },
     ];
     renderInto('#section-teams', teamsTiles);
 
     const rosterTiles = [
-      { id: 'rosters', target: 'teams', params: {}, icon: '🎽', label: 'Team Players', description: 'Assign every FH member to a team — one screen, chip-switch between Mens (workbench) / Boys / Girls / All (side-by-side), with an Active/Inactive filter' },
+      { id: 'rosters', target: 'teams', params: {}, icon: '🎽', label: 'Teams', description: 'Assign every FH member to a team — one screen, chip-switch between Mens (workbench) / Boys / Girls / All (side-by-side), with an Active/Inactive filter' },
     ];
     renderInto('#section-rosters', rosterTiles);
 

@@ -182,7 +182,7 @@ class TeamDashboardScreen extends Screen {
       
       // Manage roster button — the actual roster-management tooling
       // (drag-and-drop moves, LA-sync status) lives on the Teams panel
-      // of the Team Players screen, not a per-team screen, so land on
+      // of the Teams screen (#teams), not a per-team screen, so land on
       // the pill matching this team's own gender_category (Womens now
       // has a real Teams-panel view too — see rosters.js
       // _mountWomensSection, wired up 2026-08-16).

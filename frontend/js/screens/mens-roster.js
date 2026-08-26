@@ -54,7 +54,7 @@ class MensRosterScreen extends RosterScreenBase {
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎽 Team Players Board</h1>
+        <h1>🎽 Mens Teams</h1>
         <p class="subtitle">Live from LeagueApps — dues-aware team selection with per-team overdue counts</p>
       </div>
 

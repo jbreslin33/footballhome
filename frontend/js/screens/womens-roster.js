@@ -39,7 +39,7 @@ class WomensRosterScreen extends RosterScreenBase {
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎽 Women's Team Players Board</h1>
+        <h1>🎽 Womens Teams</h1>
         <p class="subtitle">Live from LeagueApps — Lighthouse Women's Club</p>
       </div>
 

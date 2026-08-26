@@ -42,7 +42,7 @@ class BoysRosterScreen extends RosterScreenBase {
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎽 Boys Team Players Board</h1>
+        <h1>🎽 Boys Teams</h1>
         <p class="subtitle">Live from LeagueApps — Boys + Girls Club (girls surfaced too; girls play on boys teams for now)</p>
       </div>
 

@@ -25,7 +25,7 @@
 // /api/boys-roster, so that fix already covers it too — nothing
 // screen-specific was needed there. (A WomensRosterScreen briefly did
 // the same thing but was removed 2026-08-16 — it showed youth players
-// under the Team Players screen's Womens pill; see rosters.js.)
+// under the Teams screen's (#teams) Womens pill; see rosters.js.)
 class YouthRosterScreen extends Screen {
   render() {
     const div = document.createElement('div');

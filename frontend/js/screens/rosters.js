@@ -108,7 +108,7 @@ class RostersScreen extends Screen {
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎽 Team Players</h1>
+        <h1>🎽 Teams</h1>
         <p class="subtitle" id="rs-subtitle">Unassigned on the left, team rosters on the right — filter each side independently</p>
       </div>
       <div style="padding: var(--space-3) var(--space-2); display:flex; gap: var(--space-4); align-items:flex-start; flex-wrap:wrap;">

@@ -27,7 +27,7 @@ class AdminClubScreen extends Screen {
              Person is the hub. Everything below derives from persons:
                1. People       — who is this Lighthouse human? (users, roles, links)
                2. RSVP Elig.   — which team events can they RSVP for?
-             Roster (Team Players) moved to the Coach screen — it's coach
+             Roster (the Teams board, #teams) moved to the Coach screen — it's coach
              work, not club-admin work. Billing/Payments moved to the
              standalone Financial section on Role Selection (2026-08-10) —
              it's money data, not club structure, and coaches/marketing
