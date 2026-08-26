@@ -439,8 +439,30 @@ class LeadsScreen extends Screen {
       return leads;
     })();
 
+    // The registration links MUST be in hand before renderLeads() runs.
+    // Every card's Email/Text href is built during render by
+    // funnelContext(), which reads window.LighthouseProgramInfo
+    // .REGISTER_LINKS synchronously. onEnter only *starts* that fetch, so
+    // before 2026-08-26 this was a race: if the links lost it — or the
+    // request failed outright, which left REGISTER_LINKS {} forever — every
+    // lead on the board got the bare `https://lighthouse1893.leagueapps.com`
+    // fallback. That URL is the club's programme LIST: Membership and
+    // Pickup side by side, each with its own Register button. The lead
+    // picks, and half the time they pick wrong (see person 22546,
+    // registered Pickup on 2026-08-07 when the parent meant the club).
+    //
+    // The promise is cached inside loadRegisterLinks(), so awaiting it here
+    // costs one round-trip on first load and nothing on later refreshes.
+    // It is deliberately part of the same Promise.all as the Meta sync
+    // rather than sequenced after it — the two are independent, and the
+    // sync is much the slower of the two, so this adds no wall-clock in
+    // the normal case.
     try {
-      const [{ report }, leads] = await Promise.all([syncPromise, leadsPromise]);
+      const [{ report }, leads] = await Promise.all([
+        syncPromise,
+        leadsPromise,
+        window.LighthouseProgramInfo.loadRegisterLinks(),
+      ]);
       syncReport = report;
 
       this.find('#leads-loading').style.display = 'none';
@@ -1278,6 +1300,7 @@ class LeadsScreen extends Screen {
     //   Email  → touch-1 outreach (data-template="first-touch")
     //   Text   → touch-1 outreach (data-template="first-touch")
     //   Call   → dial + log a call touch (data-template="call")
+    //   Save   → vCard to the phone's contacts (data-channel="vcard")
     //   Edit   → open lifecycle modal
     //
     // Row 2 (follow-ups — chips for template × channel combinations):
@@ -1312,6 +1335,23 @@ class LeadsScreen extends Screen {
          data-lead-id="${lead.id}" data-channel="call" data-template="call"
          title="Dial ${formattedPhone} and log a call touch"
          style="${btnStyle} background:#eab308; color:#111;">Call</a>` : '';
+    // Save-to-contacts, on the card itself (owner 2026-08-26: "on leads
+    // page i need to be able to click a button and add player to
+    // contacts on my android phone but for others apple too"). It
+    // existed before, but only inside the Edit modal — two taps and a
+    // scroll away from the row you are actually looking at, which is not
+    // where you are when a lead is on the phone with you.
+    //
+    // Youth funnels save a pair (parent card + player placeholder), same
+    // /youth/ rule the modal uses — the backend's 'youth-pair' kind.
+    // Skipped when the lead has neither phone nor email: a vCard with
+    // just a name is not worth a row in anyone's address book.
+    const isYouthLead = /youth/i.test(label || '');
+    const saveBtn = (hasPhone || hasEmail) ? `
+      <a href="javascript:void(0)" class="contact-btn"
+         data-lead-id="${lead.id}" data-channel="vcard" data-kind="${isYouthLead ? 'youth-pair' : 'self'}"
+         title="Add ${(lead.name || 'this lead').replace(/"/g, '&quot;')} to your phone's contacts${isYouthLead ? ' (parent + player placeholder)' : ''}"
+         style="${btnStyle} background:#0d9488; color:#fff;">Save${isYouthLead ? ' (2)' : ''}</a>` : '';
     const editBtn = `
       <a href="javascript:void(0)" class="edit-btn"
          data-lead-id="${lead.id}"
@@ -1361,7 +1401,7 @@ class LeadsScreen extends Screen {
         ${memberBadge}
         ${lastContactBadge}
         ${touchesLine}
-        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${textBtn}${callBtn}${editBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${textBtn}${callBtn}${saveBtn}${editBtn}</div>
         <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">${closeMailBtn}${closeSmsBtn}${moreInfoMailBtn}${moreInfoSmsBtn}</div>
       </div>
     `;
@@ -1405,6 +1445,26 @@ class LeadsScreen extends Screen {
     const REGISTER_LINKS = window.LighthouseProgramInfo.REGISTER_LINKS;
     const URL_BOYS  = REGISTER_LINKS.boys  || '';
     const URL_GIRLS = REGISTER_LINKS.girls || '';
+
+    // A missing link is never silent. The old `|| bare club URL` fallback
+    // degraded into the programme-list page — Membership and Pickup side
+    // by side — which is indistinguishable from working right up until a
+    // lead registers for the wrong one. loadLeads() now awaits the links
+    // before rendering, so reaching this branch means the row is actually
+    // absent from leagueapps_programs (or the fetch failed), and that is
+    // worth shouting about in the console the coach can check.
+    const registerLink = (label) => {
+      const key = FUNNEL_CATEGORY[label];
+      const url = key ? REGISTER_LINKS[key] : '';
+      if (!url) {
+        console.error(
+          `[leads] No registration URL for funnel "${label}" (category "${key || 'unmapped'}"). ` +
+          'Falling back to the club programme list, which offers Pickup alongside Membership — ' +
+          'check leagueapps_programs.registration_url for that category.');
+        return 'https://lighthouse1893.leagueapps.com';
+      }
+      return url;
+    };
 
     // Funnel label -> program category. This mapping (which ad funnel sells
     // which club) is stable business logic, unlike the URLs themselves —
@@ -1669,7 +1729,7 @@ class LeadsScreen extends Screen {
       :                  'glad you want to play for Lighthouse';
     return {
       program:       PROGRAM_NAMES[baseLabel] || 'program',
-      link:          REGISTER_LINKS[FUNNEL_CATEGORY[baseLabel]] || 'https://lighthouse1893.leagueapps.com',
+      link:          registerLink(baseLabel),
       linkBoys:      URL_BOYS,
       linkGirls:     URL_GIRLS,
       handbookLink:  HANDBOOKS[baseLabel] || null,
@@ -2996,19 +3056,9 @@ class LeadsScreen extends Screen {
     overlay.querySelector('.modal-vcard-btn')?.addEventListener('click', async (e) => {
       const kind = e.currentTarget.getAttribute('data-kind') || 'self';
       try {
-        const res = await this.auth.fetch(`/api/leads/${leadId}/vcard?kind=${kind}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
-        const cd = res.headers.get('Content-Disposition') || '';
-        const m  = /filename="([^"]+)"/.exec(cd);
-        const filename = m ? m[1] : `lead-${leadId}.vcf`;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        await this.saveLeadContact(leadId, kind);
       } catch (err) {
-        alert(`Failed to download contact: ${err.message}`);
+        alert(`Failed to save contact: ${err.message}`);
       }
     });
 
@@ -3187,6 +3237,84 @@ class LeadsScreen extends Screen {
     }
   }
 
+  // ── Save a lead to the phone's contacts ──────────────────────────────
+  //
+  // Owner 2026-08-26: "on leads page i need to be able to click a button
+  // and add player to contacts on my android phone but for others apple
+  // too."
+  //
+  // The vCard itself is built server-side (GET /api/leads/:id/vcard,
+  // LeadsController::handleVcard) — parent/player pair logic, the note
+  // lines and the name mangling all live there, and duplicating that in
+  // JS would give us two formats to keep in step. This method is only
+  // about *delivery*, which is where the phones differ.
+  //
+  //   1. Web Share (navigator.share with a File) — the one path that
+  //      actually reaches the Contacts app. Android's sheet lists
+  //      Contacts as a target for a text/vcard file; iOS shows the
+  //      contact preview with "Add to Contacts". One tap, no file
+  //      manager. Supported by Chrome on Android and Safari 15+ on iOS.
+  //   2. <a download> blob — desktop, and any mobile browser without
+  //      file sharing. On a phone this only lands the .vcf in Downloads
+  //      and leaves the user to open it themselves, which is exactly the
+  //      "why is this a file" problem, so it is the fallback, not the
+  //      default.
+  //
+  // The blob is cached per (lead, kind). Not for speed: iOS Safari
+  // enforces transient activation on navigator.share, and awaiting the
+  // fetch first can burn it (NotAllowedError). When that happens we fall
+  // back to the download AND keep the blob, so the user's second tap
+  // shares with no await in between and goes straight to the sheet.
+  async saveLeadContact(leadId, kind = 'self') {
+    const cacheKey = `${leadId}:${kind}`;
+    this._vcardCache = this._vcardCache || new Map();
+
+    let entry = this._vcardCache.get(cacheKey);
+    if (!entry) {
+      const res = await this.auth.fetch(`/api/leads/${leadId}/vcard?kind=${kind}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const cd   = res.headers.get('Content-Disposition') || '';
+      const m    = /filename="([^"]+)"/.exec(cd);
+      entry = { blob, filename: m ? m[1] : `lead-${leadId}.vcf` };
+      this._vcardCache.set(cacheKey, entry);
+    }
+
+    // type on the File, not just the Blob: Android picks the share
+    // targets from the MIME type, and an octet-stream .vcf offers file
+    // managers instead of Contacts.
+    const file = (typeof File === 'function')
+      ? new File([entry.blob], entry.filename, { type: 'text/vcard' })
+      : null;
+
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        // Files only — no title/text. Adding either drops the share
+        // sheet into "share a message" mode on both platforms and the
+        // Contacts target disappears.
+        await navigator.share({ files: [file] });
+        return 'shared';
+      } catch (err) {
+        // Every failure falls through to the download, dismissal
+        // included. Whether the sheet even offers Contacts depends on
+        // the ROM and the OS version, so a dismissal is as likely to
+        // mean "it wasn't in there" as "never mind" — and the download
+        // is the path that always ends in the Contacts app: the .vcf in
+        // Downloads (Android) or Files (iOS) opens straight into the
+        // import screen. Worst case the user backs out on purpose and
+        // finds a stray .vcf; the alternative is a button that silently
+        // does nothing, which is how this reads as broken.
+      }
+    }
+
+    const url = URL.createObjectURL(entry.blob);
+    const a   = document.createElement('a');
+    a.href = url; a.download = entry.filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return 'downloaded';
+  }
+
   async onContactClick(e) {
     const btn      = e.currentTarget;
     const leadId   = btn.getAttribute('data-lead-id');
@@ -3196,20 +3324,9 @@ class LeadsScreen extends Screen {
       e.preventDefault();
       const kind = btn.getAttribute('data-kind') || 'self';
       try {
-        const res = await this.auth.fetch(`/api/leads/${leadId}/vcard?kind=${kind}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
-        // Extract filename from Content-Disposition or fall back
-        const cd = res.headers.get('Content-Disposition') || '';
-        const m  = /filename="([^"]+)"/.exec(cd);
-        const filename = m ? m[1] : `lead-${leadId}.vcf`;
-        const url = URL.createObjectURL(blob);
-        const a   = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        await this.saveLeadContact(leadId, kind);
       } catch (err) {
-        alert(`Failed to download contact: ${err.message}`);
+        alert(`Failed to save contact: ${err.message}`);
       }
       return;
     }

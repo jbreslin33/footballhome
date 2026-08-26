@@ -82,10 +82,32 @@
 #                     through la*(), this allowlist entry becomes a lie —
 #                     migrate that caller instead of trusting this comment.
 #
+#   PickupMembership
+#                   — loadForPersons() reads person_la_memberships to flag
+#                     a member who ALSO holds a pickup registration (the ⚡
+#                     chip, commit bed6db95). Audited 2026-08-26: its only
+#                     callers anywhere in the tree are
+#                       * MensRoster.cpp:977
+#                       * BoysRoster.cpp:571
+#                       * WomensRoster.cpp:401
+#                     — all three inside models already allowlisted above
+#                     for the same reason, and all three reached only from
+#                     their controllers' laGet(...) handlers, so the sync
+#                     has already run by the time this query fires. It is a
+#                     leaf helper of an allowlisted caller, not a new entry
+#                     point. Same caveat as the others: give it a caller
+#                     that is not itself pre-synced and this entry becomes
+#                     a lie — migrate the caller, don't widen the list.
+#
+#                     (Added because bed6db95 landed the file without an
+#                     entry, which made `make deploy` fail its check-la-sync
+#                     gate and left the backend undeployable — found while
+#                     shipping an unrelated PublicController change.)
+#
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead)|backend/src/core/Controller)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership)|backend/src/core/Controller)'
 
 set -euo pipefail
 

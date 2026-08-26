@@ -22,12 +22,27 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
 // with a non-null registration_url are returned — inactive-variant programs
 // intentionally have none (no "register again" CTA for members already
 // demoted to inactive).
+//
+// Members only (owner 2026-08-26: "only link to share to public is the real
+// member links", "we don't share pickup link yet"). The pickup rows stay in
+// leagueapps_programs — they are the truth for that programme and the
+// pickup flow will want them — but this endpoint is the public one, so what
+// it hands out is what can end up in a recruiting email, a flyer, or an ad.
+// Serving pickup alongside membership is how a lead registers for the free
+// drop-in tier believing they joined the club (person 22546, 2026-08-07),
+// and program-info.js was the only thing standing between the two: it
+// filters to variant='active' client-side, so a future caller that skipped
+// that filter would have been handed a pickup link with no warning. Filter
+// at the source instead; the client-side filter stays as belt and braces.
+//
+// Reversible in one line when pickup goes public.
 Response PublicController::handleGetRegistrationLinks(const Request& request) {
     try {
         pqxx::result result = db_->query(
             "SELECT category, variant, registration_url "
             "FROM leagueapps_programs "
             "WHERE registration_url IS NOT NULL "
+            "  AND variant = 'active' "
             "ORDER BY category, variant");
 
         std::ostringstream data;
