@@ -366,13 +366,13 @@ class BoysRosterScreen extends RosterScreenBase {
     // it's actionable for roster picks.
 
     return `
-      <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid ${col.color}; min-width:0;">
+      <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid ${col.color}; min-width:${this.colBoxMinWidth()};">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:6px;">
           <strong style="font-size:0.85rem;">${col.label}</strong>
           ${countHtml}
         </div>
         <div class="br-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
-             style="display:flex; flex-direction:column; gap:8px; min-height:8px; min-width:0;">
+             style="display:flex; flex-direction:column; gap:8px; min-height:8px; min-width:${this.colBoxMinWidth()};">
           ${body}
         </div>
       </div>

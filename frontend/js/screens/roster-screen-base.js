@@ -34,16 +34,23 @@ class RosterScreenBase extends Screen {
   // Two ways to stop a long name being clipped, and they trade off
   // against each other, so the board offers both rather than picking:
   //
-  //   'fit'    — every column stays on screen; a name that does not fit
-  //              wraps and the card grows taller. Nothing is hidden, the
-  //              board never scrolls sideways, rows get uneven.
-  //   'scroll' — columns keep a comfortable width and the board scrolls
-  //              across. Cards stay uniform, names stay on one line, but
-  //              you pan to reach the far columns.
+  //   'fit'    — every column stays on screen; the card stacks one item
+  //              per line (name, then chips, then the controls) so the
+  //              name owns the card's full width and wraps at spaces.
+  //              Nothing is hidden, the board never scrolls sideways,
+  //              cards get taller and rows get uneven.
+  //   'scroll' — cards stay thin: name and controls share one row and
+  //              the name never wraps, so a card is one line tall and a
+  //              column shows many players at once. The column widens to
+  //              whatever its longest name needs and the board pans.
   //
-  // 'fit' is the default: it is the one where nothing is ever hidden.
-  // Truncation ('compact') stays available as the old behaviour for
-  // anyone who wants the densest possible board.
+  // 'fit' is the default: it is the one where every column is reachable
+  // without panning.
+  //
+  // 'compact' (truncate with an ellipsis) was dropped 2026-08-26 — owner:
+  // "compact i would think is the same as fit so prob redundant?". It was
+  // the only mode that hid a name, which is the thing all three were
+  // added to stop. A stored 'compact' preference falls back to 'fit'.
   //
   // Persisted per browser so the choice survives a reload — a view
   // preference is exactly the kind of thing that is annoying to re-pick.
@@ -51,9 +58,8 @@ class RosterScreenBase extends Screen {
   // modes, and a board that will not render is worse than a forgotten
   // preference.
   static VIEW_MODES = [
-    { id: 'fit',     label: 'Fit',     title: 'Keep every column on screen — long names wrap and cards grow taller' },
-    { id: 'scroll',  label: 'Scroll',  title: 'Keep cards uniform and names on one line — scroll across to reach every column' },
-    { id: 'compact', label: 'Compact', title: 'Densest board — long names are truncated with an ellipsis' },
+    { id: 'fit',    label: 'Fit',    title: 'Keep every column on screen — each card stacks one item per line so the full name fits' },
+    { id: 'scroll', label: 'Scroll', title: 'Thin one-line cards with the full name — scroll across to reach every column' },
   ];
 
   get viewMode() {
@@ -98,7 +104,7 @@ class RosterScreenBase extends Screen {
   }
 
   // Style for the grid wrapper: 'scroll' turns the board into a single
-  // panning row; the other two keep the wrapping auto-fit grid.
+  // panning row; 'fit' keeps the wrapping auto-fit grid.
   //
   // overflow-x:auto forces overflow-y to auto as a CSS side effect, which
   // clips the move-dropdown popover on a card near the bottom of a column
@@ -106,11 +112,35 @@ class RosterScreenBase extends Screen {
   // room to open inside the scroll box instead of being cut off.
   gridStyleFor(colCount) {
     if (this.viewMode === 'scroll') {
-      return 'display:grid; grid-auto-flow:column; grid-auto-columns:minmax(190px, max-content); '
+      // fit-content(), not minmax(190px, max-content). A scroll column's
+      // job is to hold its longest name on one line, so it has to size
+      // to that name — but minmax() only grows a track when the grid has
+      // free space left over, and a board that overflows on purpose has
+      // none, so every column pinned itself to the 190px floor and cut
+      // exactly the names this mode exists to show (2026-08-26).
+      // fit-content(260px) sizes each column to min(content, 260px) and
+      // never below its min-content, which — with the card's name set
+      // nowrap and non-shrinking below — always includes the whole name.
+      // So: thin uniform columns, full names, wider only where a name
+      // genuinely demands it.
+      return 'display:grid; grid-auto-flow:column; grid-auto-columns:fit-content(260px); '
            + 'gap:var(--space-2); align-items:start; overflow-x:auto; padding-bottom:220px; margin-bottom:-200px;';
     }
     return `display:grid; grid-template-columns: repeat(auto-fit, minmax(${this.colMinWidth(colCount)}, max-content)); `
          + 'gap:var(--space-2); align-items:start;';
+  }
+
+  // min-width for a board column box (the column card and its drop zone).
+  //
+  // 'fit' wants 0: it lets a grid item shrink below its content so the
+  // columns always fit the viewport (the cards inside wrap instead).
+  // 'scroll' must NOT — min-width:0 also erases the box's min-content
+  // contribution, which is the number fit-content() sizes the track
+  // from, so the column collapsed narrower than its own widest card and
+  // the names it is supposed to show on one line ran out of it
+  // (2026-08-26). 'auto' restores the intrinsic floor.
+  colBoxMinWidth() {
+    return this.viewMode === 'scroll' ? 'auto' : '0';
   }
 
   // Role → capability. Mirrors the role strings role-selection.js actually
@@ -566,31 +596,98 @@ class RosterScreenBase extends Screen {
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
     const activeTeamsBadge = this.renderActiveTeamsBadge(player, col);
     const pickupBadge = this.renderPickupBadge(player);
-    // 'compact' clips with an ellipsis (the pre-2026-08-25 behaviour);
-    // 'fit' and 'scroll' both show the whole name — 'fit' by wrapping
-    // onto another line, 'scroll' by letting the wider column hold it.
-    const nameClipStyle = this.viewMode === 'compact'
-      ? 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;'
-      : this.viewMode === 'scroll'
-        ? 'white-space:nowrap;'
-        : 'white-space:normal; overflow-wrap:anywhere;';
+    // Both modes show the whole name; they differ in where it gets the
+    // room to do it.
+    //
+    // 'scroll' keeps it on one line and lets the column grow sideways
+    // (gridStyleFor). 'fit' wraps it — but only at spaces:
+    // overflow-wrap:break-word breaks *inside* a word solely when that
+    // one word cannot fit on a line of its own. The earlier
+    // overflow-wrap:anywhere was what produced the one-letter-per-line
+    // columns owner reported 2026-08-26 ("they are written like a letter
+    // per line"): 'anywhere' also volunteers every character as a soft
+    // break point when the browser measures the box's minimum width, so
+    // a name in a side-by-side row could be squeezed to a single glyph
+    // and still count as "fitting". break-word makes the longest word
+    // the floor instead.
+    //
+    // The flex sizing differs with it. 'fit' wants the name to shrink and
+    // wrap (min-width:0, flex:1). 'scroll' must NOT shrink it: min-width:0
+    // lets a flex item go below its own min-content, which is what let the
+    // name collapse to a sliver and overlap the buttons, and it also erases
+    // the card's min-content contribution — the very number fit-content()
+    // sizes the column from. flex:0 0 auto keeps the name at its natural
+    // width and makes the column widen to hold it.
+    const isScroll = this.viewMode === 'scroll';
+    const nameClipStyle = isScroll
+      ? 'flex:0 0 auto; white-space:nowrap;'
+      : 'min-width:0; flex:1; white-space:normal; overflow-wrap:break-word;';
 
-    return `
-      <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:0; display:flex; flex-direction:row; align-items:stretch; gap:4px;">
-        <div style="display:flex; flex-direction:column; gap:0; flex:1; min-width:0;">
-          <div style="display:flex; align-items:center; gap:4px; min-width:0;">
-            ${posControl}
-            <strong style="font-size:0.72rem; line-height:1.2; min-width:0; flex:1; ${nameClipStyle}">${fullName}</strong>
-          </div>
-          <div style="display:flex; align-items:center; gap:4px; min-width:0; flex-wrap:wrap; row-gap:1px;">
+    // Same min-width story as colBoxMinWidth(), one level down: every
+    // wrapper between the grid track and the name has to keep its
+    // intrinsic width in 'scroll', or the track is sized from a card
+    // that claims it can be arbitrarily narrow and the name is cut
+    // again. 'fit' keeps 0 — there, shrinking is the point.
+    const boxMin = isScroll ? 'auto' : '0';
+
+    // In 'fit' the slot picker moves down to the chip row. It is a real
+    // <select> and never gets narrower than its widest option, so sharing
+    // row 1 with the name left the name ~44px of a 110px card — six lines
+    // for one name, the letter-per-line report all over again. One item
+    // per line means the name gets the line to itself.
+    const nameRow = `
+          <div style="display:flex; align-items:center; gap:4px; min-width:${boxMin};">
+            ${isScroll ? posControl : ''}
+            <strong style="font-size:0.72rem; line-height:1.2; ${nameClipStyle}">${fullName}</strong>
+          </div>`;
+    const chipRow = `
+          <div style="display:flex; align-items:center; gap:4px; min-width:${boxMin}; flex-wrap:wrap; row-gap:1px;">
+            ${isScroll ? '' : posControl}
             ${dobMarkup}
             ${ageChip}
             ${duesLabel}
             ${activeTeamsBadge}
             ${pickupBadge}
-          </div>
+          </div>`;
+    const controls = `${rosterSelectHtml}${roleSelectHtml}${statusSelectHtml}${viewButtonHtml}`;
+
+    const cardBaseStyle = `background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:${boxMin};`;
+
+    // 'fit' stacks one item per line (owner 2026-08-26: "the fit pill
+    // would have to probably do 1 item per line"). In a Fit column —
+    // 110px once nine teams are on screen — a side-by-side row hands the
+    // name whatever the control strip leaves over, which is nothing. One
+    // per line gives the name the card's full width, and the card simply
+    // grows taller, which is the trade Fit already advertises.
+    if (!isScroll) {
+      const controlRow = controls.trim()
+        ? `
+        <div style="display:flex; flex-direction:row; align-items:center; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
+          ${controls}
+        </div>`
+        : '';
+      return `
+      <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="${cardBaseStyle} display:flex; flex-direction:column; gap:2px;">
+        ${nameRow}
+        ${chipRow}${controlRow}
+      </div>
+    `;
+    }
+
+    // 'scroll': name and controls share one row, so the card stays thin
+    // ("Scroll should be thin cards since it allows scroll right to
+    // left") and the column, not the card, is what stretches to hold the
+    // name. The control strip is nowrap here on purpose — wrapping would
+    // let the column size itself as if only one button had to fit, and
+    // the card holding the longest name would be the one that grew a
+    // second row of buttons. Uniform cards is the whole point of Scroll.
+    return `
+      <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="${cardBaseStyle} display:flex; flex-direction:row; align-items:stretch; gap:4px;">
+        <div style="display:flex; flex-direction:column; gap:0; flex:1; min-width:auto;">
+          ${nameRow}
+          ${chipRow}
         </div>
-        <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px; flex-wrap:wrap; justify-content:flex-end; align-self:flex-start;">
+        <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px; flex-wrap:nowrap; justify-content:flex-end; align-self:flex-start;">
           ${rosterSelectHtml}
           ${roleSelectHtml}
           ${statusSelectHtml}
