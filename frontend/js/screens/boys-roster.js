@@ -63,6 +63,7 @@ class BoysRosterScreen extends RosterScreenBase {
 
   onEnter() {
     RosterScreenBase.installMoveDropdownOutsideClose();
+    this.wireMessageButtons();
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
       if (e.target.closest('#br-refresh')) return this.load({ refreshLa: true });
@@ -230,6 +231,64 @@ class BoysRosterScreen extends RosterScreenBase {
     }
   }
 
+  // Boys/Girls contact the PARENT (owner: "for boys/girls its parents
+  // obviously"). Same precedence renderPlayer already uses for the
+  // per-card CONTACT button — parent fields are the truth, the player's
+  // own phone/email are a fallback for records that omit them.
+  // ── "Docs" reminder preset (owner 2026-08-27) ──────────────────────
+  //
+  // Only U8/U10/U12 Intramural get this button. The other intramural
+  // columns (U6/U16/U19) deliberately do not — the owner named these
+  // three. Matched on the column label because there is no
+  // "needs-documents" flag on `teams`; if this list grows, a boolean
+  // column there beats extending this regex.
+  static DOCS_TEAM_RE = /^U(8|10|12)\s+Intramural$/i;
+
+  static DOCS_PRESET = {
+    key:     'docs',
+    icon:    '📄',
+    label:   'Docs reminder',
+    subject: 'Lighthouse Soccer — travel team docs needed',
+    body: [
+      'To play for a Lighthouse Soccer League travel team, parents must upload a birth certificate & head shot of their child on this form.',
+      '',
+      'https://forms.gle/n2bj8aHiTRqLs6cg9',
+      '',
+      'Travel spots are limited so please do this immediately!',
+      '',
+      'Players can still practice with us even if they are not on a travel team.',
+    ].join('\n'),
+  };
+
+  // Second row under the column header — kept off the header line
+  // because Fit-mode columns are ~110px and the header already carries
+  // the team name plus the count (see the 2026-08-26 fix for names
+  // breaking one letter per line).
+  renderDocsRow(col, players) {
+    if (col.isUnassigned) return '';
+    const name = String(col.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    if (!BoysRosterScreen.DOCS_TEAM_RE.test(name)) return '';
+    const btns = this.renderMessageButtons(name, players, {
+      compact: true,
+      preset:  BoysRosterScreen.DOCS_PRESET,
+    });
+    if (!btns) return '';
+    return `
+      <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin:0 0 6px;">
+        <span style="font-size:0.65rem; font-weight:700; letter-spacing:0.03em; opacity:0.7;">DOCS</span>
+        ${btns}
+      </div>`;
+  }
+
+  boardScopeLabel() { return 'all boys'; }
+
+  contactFor(p) {
+    return {
+      phone: (p && (p.parentPhone || p.phone)) || null,
+      email: (p && (p.parentEmail || p.email)) || null,
+    };
+  }
+
   renderRoster(data) {
     const container = this.find('#br-list');
 
@@ -299,6 +358,7 @@ class BoysRosterScreen extends RosterScreenBase {
             </button>`;
         }).join('')}
         ${this.renderViewModePills()}
+        ${this.renderBoardMessageButtons(data, cols)}
       </div>
 
       <div style="padding: 0 var(--space-2) var(--space-2);">
@@ -369,8 +429,12 @@ class BoysRosterScreen extends RosterScreenBase {
       <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid ${col.color}; min-width:${this.colBoxMinWidth()};">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:6px;">
           <strong style="font-size:0.85rem;">${col.label}</strong>
-          ${countHtml}
+          <span style="display:inline-flex; align-items:center; gap:6px;">
+            ${col.isUnassigned ? '' : this.renderMessageButtons(col.label.replace(/^[^\p{L}\p{N}]+/u, ''), players, { compact: true })}
+            ${countHtml}
+          </span>
         </div>
+        ${this.renderDocsRow(col, players)}
         <div class="br-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:8px; min-height:8px; min-width:${this.colBoxMinWidth()};">
           ${body}

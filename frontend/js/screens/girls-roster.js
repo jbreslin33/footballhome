@@ -12,6 +12,8 @@
 // otherwise reuses the exact same DOM ids (#br-banner, #br-list,
 // #br-refresh, etc.) so every parent method binds identically.
 class GirlsRosterScreen extends BoysRosterScreen {
+  boardScopeLabel() { return 'all girls'; }
+
   render() {
     const el = super.render();
     const h1 = el.querySelector('.screen-header h1');

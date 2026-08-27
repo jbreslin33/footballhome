@@ -696,4 +696,282 @@ class RosterScreenBase extends Screen {
       </div>
     `;
   }
+
+  // ── Bulk messaging (owner 2026-08-27) ──────────────────────────────
+  //
+  // Who a message actually goes to. Boys/Girls override this to route
+  // at the parent; Mens/Womens take the default and reach the player.
+  // RosterMessaging never guesses — every board states its own rule.
+  contactFor(p) {
+    return {
+      phone: (p && p.phone) || null,
+      email: (p && p.email) || null,
+    };
+  }
+
+  // Button pair rendered into a team column header and into the board
+  // toolbar. `scope` is the human label used in the confirmation toast
+  // and the email subject ("U8 Travel", "all boys"). Players are
+  // stashed on the instance keyed by token, because a click handler
+  // can't carry an array through a data-attribute.
+  renderMessageButtons(scope, players, { compact = false, preset = null } = {}) {
+    if (!window.RosterMessaging) return '';
+    const list = (players || []).filter(Boolean);
+    if (!list.length) return '';
+
+    const info = RosterMessaging.collect(list, (p) => this.contactFor(p));
+    if (!info.phones.length && !info.emails.length) return '';
+
+    // Token is derived from the scope, not a counter: a re-render must
+    // OVERWRITE the previous entry for the same column, or the map grows
+    // without bound and a click can fire against a stale player list.
+    this._msgScopes = this._msgScopes || new Map();
+    const token = [String(scope).replace(/\W+/g, '_').toLowerCase() || 'scope',
+                   preset ? preset.key : ''].filter(Boolean).join('__');
+    this._msgScopes.set(token, { scope, players: list, preset });
+
+    // Local escape: `escape()` is defined on BoysRosterScreen, not here,
+    // and Womens extends this base directly.
+    const esc = (v) => String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const pad = compact ? '1px 6px' : '3px 10px';
+    const fs  = compact ? '0.7rem' : '0.78rem';
+    const icon = preset ? preset.icon : '';
+    const btn = (kind, label, count, title) => count === 0 ? '' : `
+      <button type="button" class="rb-msg-btn" data-msg-kind="${kind}" data-msg-token="${token}"
+              title="${esc(title)}"
+              style="font-size:${fs}; font-weight:700; padding:${pad}; border-radius:999px; cursor:pointer;
+                     border:1px solid var(--border-color); background:var(--bg-primary); color:inherit; white-space:nowrap;">
+        ${label} ${count}
+      </button>`;
+
+    return `
+      <span style="display:inline-flex; gap:4px; align-items:center;">
+        ${btn('sms',   `${icon}💬`, info.phones.length,
+              preset
+                ? `${preset.label}: text ${info.phones.length} for ${scope}`
+                : `Text ${info.phones.length} recipient${info.phones.length === 1 ? '' : 's'} for ${scope}`)}
+        ${btn('email', `${icon}✉`,  info.emails.length,
+              preset
+                ? `${preset.label}: email ${info.emails.length} for ${scope} (BCC)`
+                : `Email ${info.emails.length} recipient${info.emails.length === 1 ? '' : 's'} for ${scope} (BCC)`)}
+      </span>`;
+  }
+
+  // Custom-scheme navigation. An anchor click is honoured in places
+  // where assigning window.location.href is not (notably iOS Safari for
+  // sms:/tel:). Must be called synchronously from inside a click
+  // handler — see the ORDER IS LOAD-BEARING note in the sms branch.
+  static openExternal(url) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => a.remove(), 0);
+  }
+
+  // Human label for a whole-board send ("all boys"). Each board names
+  // itself; the base can't infer it.
+  boardScopeLabel() {
+    return 'this board';
+  }
+
+  // Board-wide pair: every player in this panel's columns, deduped by
+  // person (a player sitting in two team columns is one recipient, and
+  // siblings sharing a parent collapse to one number/address).
+  //
+  // Deliberately keyed off `cols` — the panel's full scope — not the
+  // team-focus subset. "ALL" means all; when a coach wants one team
+  // they have that team's own buttons in its column header.
+  renderBoardMessageButtons(data, cols) {
+    if (!window.RosterMessaging) return '';
+    const players = [];
+    for (const c of (cols || [])) {
+      if (c.isUnassigned) players.push(...(data.unassigned || []));
+      else players.push(...(((data.buckets || {})[String(c.teamId)]) || []));
+    }
+    const btns = this.renderMessageButtons(this.boardScopeLabel(), players);
+    if (!btns) return '';
+    return `
+      <span style="display:inline-flex; align-items:center; gap:6px; margin-left:auto;">
+        <span style="opacity:0.7; font-size:0.8rem; font-weight:600; text-transform:uppercase;">All ${this.boardScopeLabel().replace(/^all /, '')}:</span>
+        ${btns}
+      </span>`;
+  }
+
+  // One delegated listener per screen element. Call from onEnter.
+  wireMessageButtons(root) {
+    const el = root || this.element;
+    if (!el || el._rbMsgWired) return;
+    el._rbMsgWired = true;
+    el.addEventListener('click', (e) => {
+      const btn = e.target.closest('.rb-msg-btn');
+      if (!btn || !el.contains(btn)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this._handleMessageClick(btn);
+    });
+  }
+
+  async _handleMessageClick(btn) {
+    const entry = this._msgScopes && this._msgScopes.get(btn.dataset.msgToken);
+    if (!entry) return;
+    const kind = btn.dataset.msgKind;
+    const info = RosterMessaging.collect(entry.players, (p) => this.contactFor(p));
+    if (kind === 'email' ? !info.emails.length : !info.phones.length) return;
+    this._openMessageComposer({ btn, entry, kind, info });
+  }
+
+  // Compose in FH, then hand off (owner 2026-08-27: "unless we can make
+  // message on fh and that gets pasted too?").
+  //
+  // The two halves travel by different channels and don't collide:
+  //   body       → the sms: URL (`sms:?&body=...`, no recipients) or the
+  //                Gmail compose `body` param.
+  //   recipients → the clipboard, for the operator to paste into To:.
+  // The clipboard can only hold one thing, which is exactly why the body
+  // goes in the URL instead.
+  _openMessageComposer({ btn, entry, kind, info }) {
+    document.querySelectorAll('.rb-msg-overlay').forEach(n => n.remove());
+
+    const isEmail = kind === 'email';
+    const count   = isEmail ? info.emails.length : info.phones.length;
+    const missing = isEmail ? info.noEmail.length : info.noPhone.length;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'rb-msg-overlay';
+    overlay.style.cssText =
+      'position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.55);' +
+      'display:flex; align-items:center; justify-content:center; padding:16px;';
+
+    overlay.innerHTML = `
+      <div class="rb-msg-panel" style="background:var(--bg-primary,#0f172a); color:inherit; border:1px solid var(--border-color,#334155);
+                  border-radius:var(--radius-md,8px); width:min(520px,100%); max-height:90vh; overflow:auto; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:4px;">
+          <strong style="font-size:1rem;">${isEmail ? '✉ Email' : '💬 Text'} — ${entry.preset ? `${entry.preset.label}, ` : ''}${entry.scope}</strong>
+          <button type="button" data-msg-cancel style="background:none; border:none; color:inherit; font-size:1.2rem; cursor:pointer; opacity:0.7;">×</button>
+        </div>
+        <div style="font-size:0.8rem; opacity:0.75; margin-bottom:12px;">
+          ${count} recipient${count === 1 ? '' : 's'}${isEmail ? ' (BCC)' : ''}${missing ? ` · ${missing} with no ${isEmail ? 'email' : 'number'}` : ''}
+        </div>
+        ${isEmail ? `
+          <input type="text" data-msg-subject value="${(entry.preset && entry.preset.subject) || `Lighthouse 1893 — ${entry.scope}`}"
+                 style="width:100%; box-sizing:border-box; margin-bottom:8px; padding:8px; border-radius:6px;
+                        border:1px solid var(--border-color,#334155); background:var(--bg-secondary,#1e293b); color:inherit;">
+        ` : ''}
+        <textarea data-msg-body rows="6" placeholder="Type your message…"
+                  style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; resize:vertical;
+                         border:1px solid var(--border-color,#334155); background:var(--bg-secondary,#1e293b); color:inherit;"></textarea>
+        ${isEmail ? '' : `
+          <div data-msg-count style="font-size:0.72rem; opacity:0.6; margin-top:4px;">0 characters</div>`}
+        <div style="font-size:0.75rem; opacity:0.7; margin:12px 0; line-height:1.45;">
+          ${isEmail
+            ? 'Opens a Gmail draft with your message and the recipients in BCC. Nothing sends until you press Send in Gmail.'
+            : `Opens Messages with all ${count} recipient${count === 1 ? '' : 's'} and your text filled in — check the <strong>To:</strong> field looks right, then send. The numbers are also copied, so if the app drops any you can clear To: and paste the full list.`}
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button type="button" data-msg-cancel
+                  style="padding:8px 14px; border-radius:6px; cursor:pointer; border:1px solid var(--border-color,#334155); background:transparent; color:inherit;">Cancel</button>
+          <button type="button" data-msg-go
+                  style="padding:8px 14px; border-radius:6px; cursor:pointer; border:none; background:#10b981; color:#0f172a; font-weight:700;">
+            ${isEmail ? 'Open Gmail draft' : 'Open Messages'}
+          </button>
+        </div>
+      </div>`;
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.closest('[data-msg-cancel]')) { e.preventDefault(); close(); }
+    });
+    document.addEventListener('keydown', function esc(ev) {
+      if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
+
+    const bodyEl = overlay.querySelector('[data-msg-body]');
+    // A preset seeds the box; it stays fully editable so the operator can
+    // add a line before sending.
+    if (entry.preset && entry.preset.body) bodyEl.value = entry.preset.body;
+    const countEl = overlay.querySelector('[data-msg-count]');
+    if (countEl) {
+      const updateCount = () => {
+        const n = bodyEl.value.length;
+        // 160 GSM-7 chars per segment; past that carriers split the send.
+        const segs = n === 0 ? 0 : Math.ceil(n / 160);
+        countEl.textContent = `${n} character${n === 1 ? '' : 's'}${segs > 1 ? ` · ${segs} texts` : ''}`;
+      };
+      bodyEl.addEventListener('input', updateCount);
+      updateCount();
+    }
+
+    overlay.querySelector('[data-msg-go]').addEventListener('click', (e) => {
+      e.preventDefault();
+      const body = bodyEl.value;
+
+      // Both channels go through the canonical Screen helpers rather
+      // than a hand-rolled URL. screen-base.js:20 says why in as many
+      // words: these keep getting hand-rolled per screen and keep
+      // breaking. Concretely, a hand-rolled Gmail URL misses `tf=1`
+      // (without which Gmail silently DROPS bcc and you get a blank
+      // compose) and misses the Android mailto: branch (mail.google.com
+      // is an Android App Link, and the native app's parser drops bcc).
+      if (isEmail) {
+        const subject = (overlay.querySelector('[data-msg-subject]') || {}).value
+                     || `Lighthouse 1893 — ${entry.scope}`;
+        const href = this.buildGmailComposeHref({
+          bcc: info.emails.join(','),
+          subject,
+          body,
+        });
+        close();
+        this.openGmailCompose(href);
+        this._flashMsgBtn(btn, `✓ ${info.emails.length}`);
+        return;
+      }
+
+      const numbers = info.phones.join(RosterMessaging.PHONE_SEPARATOR);
+
+      // Recipients ride the URL — buildSmsComposeHref's comment notes
+      // both Google Messages and iOS Messages take a comma-separated
+      // list — so there's nothing to paste in the normal case.
+      //
+      // The clipboard copy stays as a fallback: a long list is where
+      // messaging apps quietly drop recipients, and if that happens the
+      // operator can clear To: and paste the full set instead of
+      // discovering later that half the parents never got it.
+      //
+      // ORDER IS LOAD-BEARING (owner 2026-08-27: "it says it copied ...
+      // but nothing shows on my phone"). Opening an external scheme
+      // needs a live user activation and `await` spends it, so the
+      // navigation must fire in this same tick — the same trap
+      // boys-roster.js:1133 documents for the PAY button.
+      const copyPromise = (navigator.clipboard && navigator.clipboard.writeText)
+        ? navigator.clipboard.writeText(numbers).catch(() => {})
+        : Promise.resolve();
+
+      RosterScreenBase.openExternal(this.buildSmsComposeHref({ to: numbers, body }));
+
+      close();
+      this._flashMsgBtn(btn, `✓ ${info.phones.length}`);
+      copyPromise.then(() => { /* clipboard is a fallback, not the path */ });
+    });
+
+    document.body.appendChild(overlay);
+    bodyEl.focus();
+  }
+
+  _flashMsgBtn(btn, text) {
+    const orig = btn.innerHTML;
+    const origW = btn.style.background;
+    btn.innerHTML = text;
+    btn.style.background = '#10b981';
+    btn.style.color = '#0f172a';
+    setTimeout(() => {
+      btn.innerHTML = orig;
+      btn.style.background = origW || 'var(--bg-primary)';
+      btn.style.color = 'inherit';
+    }, 2200);
+  }
 }

@@ -75,6 +75,7 @@ class MensRosterScreen extends RosterScreenBase {
 
   onEnter() {
     RosterScreenBase.installMoveDropdownOutsideClose();
+    this.wireMessageButtons();
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
       if (e.target.closest('#mr-refresh')) return this.load({ refreshLa: true });
@@ -256,6 +257,8 @@ class MensRosterScreen extends RosterScreenBase {
     return role === 'player';
   }
 
+  boardScopeLabel() { return 'all men'; }
+
   renderRoster(data) {
     const container = this.find('#mr-list');
 
@@ -356,6 +359,7 @@ class MensRosterScreen extends RosterScreenBase {
             </button>`;
         }).join('')}
         ${this.renderViewModePills()}
+        ${this.renderBoardMessageButtons(data, cols)}
       </div>
 
       <div style="padding: 0 var(--space-2) var(--space-2);">
@@ -433,7 +437,10 @@ class MensRosterScreen extends RosterScreenBase {
       <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:6px; border-top:3px solid ${col.color}; min-width:${this.colBoxMinWidth()};">
         <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; gap:6px;">
           <strong style="font-size:0.8rem;">${col.label}</strong>
-          ${countHtml}
+          <span style="display:inline-flex; align-items:center; gap:6px;">
+            ${col.isUnassigned ? '' : this.renderMessageButtons(col.label.replace(/^[^\p{L}\p{N}]+/u, ''), players, { compact: true })}
+            ${countHtml}
+          </span>
         </div>
         <div class="mr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:6px; min-height:8px; min-width:${this.colBoxMinWidth()};">
