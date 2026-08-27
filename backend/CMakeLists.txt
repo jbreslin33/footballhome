@@ -48,6 +48,7 @@ set(SOURCES
     src/models/MensTeamAssignments.cpp
     src/models/ActiveTeamBadges.cpp
     src/models/PickupMembership.cpp
+    src/models/PersonNameOverrides.cpp
     src/models/MensRoster.cpp
     src/models/BoysRoster.cpp
     src/models/WomensRoster.cpp

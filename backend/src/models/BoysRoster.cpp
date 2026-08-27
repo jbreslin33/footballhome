@@ -18,6 +18,7 @@
 #include "MensTeamColumns.h"
 #include "PersonPayments.h"
 #include "PayReminderLog.h"
+#include "PersonNameOverrides.h"
 #include "YouthAgeGroups.h"
 #include "../database/Database.h"
 
@@ -556,6 +557,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
     // does anyway.
     std::unordered_map<long long, json> activeTeamsByPerson;
     std::unordered_map<long long, json> pickupByPerson;
+    std::unordered_map<long long, PersonNameOverrides::Name> nameOverrides;
     {
         std::vector<long long> personIds;
         personIds.reserve(all.size());
@@ -569,6 +571,12 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
         // are independent sub-programs and nobody is meant to hold
         // both, so the card flags it (owner 2026-08-25).
         pickupByPerson = PickupMembership::loadForPersons(personIds);
+        // And admin-corrected names. shapePlayer took firstName/lastName
+        // off the live LA record; where an admin has set an override we
+        // let it win, because LA routinely carries a parent's name
+        // through onto the child's player record (see
+        // PersonNameOverrides.h). Almost always empty.
+        nameOverrides = PersonNameOverrides::loadForPersons(personIds);
     }
 
     for (auto& p : all) {
@@ -582,6 +590,27 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
             auto pit = personIdByUserId.find(uid);
             resolvedPersonId = (pit != personIdByUserId.end() && pit->second > 0) ? pit->second : 0;
             p["personId"] = resolvedPersonId > 0 ? json(resolvedPersonId) : json(nullptr);
+        }
+        {
+            // Admin name override beats the LA-supplied name. Applied to
+            // `p` before the row is copied into a bucket, so the alpha
+            // comparators below sort on the corrected name too. `laFirstName`
+            // / `laLastName` are carried alongside so the card can show what
+            // upstream still says.
+            auto nit = nameOverrides.find(resolvedPersonId);
+            if (nit != nameOverrides.end()) {
+                const std::string laFirst = p.value("firstName", std::string{});
+                const std::string laLast  = p.value("lastName",  std::string{});
+                const std::string first = nit->second.first.empty() ? laFirst : nit->second.first;
+                const std::string last  = nit->second.last.empty()  ? laLast  : nit->second.last;
+                if (first != laFirst || last != laLast) {
+                    p["firstName"]   = first;
+                    p["lastName"]    = last;
+                    p["fullName"]    = trim(first + " " + last);
+                    p["laFirstName"] = laFirst;
+                    p["laLastName"]  = laLast;
+                }
+            }
         }
         {
             auto ait = activeTeamsByPerson.find(resolvedPersonId);
