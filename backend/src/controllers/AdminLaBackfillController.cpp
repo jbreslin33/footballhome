@@ -882,12 +882,74 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
         // Roster / RSVP hang off persons.la_user_id.
         // Staff roles hang off users → admins / coaches.person_id.
         auto rows = db->query(
-            "WITH lighthouse AS ( "
+            // Split identity (2026-08-28) — the third kind of duplicate,
+            // and the one nothing here used to catch.  Someone signs in
+            // with Google before LeagueApps knows them, so OAuth mints a
+            // persons+users row keyed on the email; the LA sync later
+            // builds the REAL roster person.  One human, two rows: a
+            // login with no team, and a roster spot with no login.  They
+            // log in and their calendar is empty.
+            //
+            // These pairs share NEITHER a normalized email NOR name+DOB,
+            // so email_dupes and name_dupes both miss them and the
+            // workbench showed nothing.  PersonLinker auto-adopts the
+            // case where LA reports the same address; when the two rows
+            // carry different emails only a human can call it.  Surname
+            // is the only hard link left, so this is a SUGGESTION queue.
+            //
+            // The orphan side is deliberately narrow — the same guards as
+            // PersonLinker::adoptLoginOnlyDuplicate.  Anything holding an
+            // identity of its own (an LA id or membership, ANY roster
+            // history, a coach row, children, admin rights) is a real
+            // separate person and must never be offered for merging;
+            // youth guardians especially, since parent and child so often
+            // share a name.
+            //
+            // These CTEs must come BEFORE `lighthouse` and must NOT be
+            // scoped to it: this endpoint defines scope as "has an open
+            // person_la_memberships row", and a login-only orphan has
+            // none — that IS the bug.  Scoping them to lighthouse makes
+            // the set provably empty.  So they widen the scope instead.
+            "WITH split_orphans AS ( "
+            "  SELECT pe.id AS person_id, lower(btrim(pe.last_name)) AS surname_key "
+            "    FROM persons pe "
+            "    JOIN users u ON u.person_id = pe.id "
+            "   WHERE pe.la_user_id IS NULL "
+            "     AND btrim(COALESCE(pe.last_name, '')) <> '' "
+            "     AND NOT EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = pe.id) "
+            "     AND NOT EXISTS (SELECT 1 FROM person_la_memberships m WHERE m.person_id = pe.id) "
+            "     AND NOT EXISTS (SELECT 1 FROM coaches c WHERE c.person_id = pe.id) "
+            "     AND NOT EXISTS (SELECT 1 FROM persons k WHERE k.parent_person_id = pe.id) "
+            "     AND NOT EXISTS (SELECT 1 FROM admins a JOIN users u2 ON u2.id = a.user_id "
+            "                      WHERE u2.person_id = pe.id) "
+            "), split_rostered AS ( "
+            "  SELECT r.id AS person_id, lower(btrim(r.last_name)) AS surname_key "
+            "    FROM persons r "
+            "   WHERE btrim(COALESCE(r.last_name, '')) <> '' "
+            "     AND EXISTS (SELECT 1 FROM team_persons tp "
+            "                  WHERE tp.person_id = r.id AND tp.removed_at IS NULL) "
+            "), split_identity AS ( "
+            // Both halves are emitted so the pair renders side by side
+            // and the operator picks which row survives.
+            "  SELECT o.person_id, o.surname_key FROM split_orphans o "
+            "   WHERE EXISTS (SELECT 1 FROM split_rostered s "
+            "                  WHERE s.surname_key = o.surname_key AND s.person_id <> o.person_id) "
+            "  UNION "
+            "  SELECT s.person_id, s.surname_key FROM split_rostered s "
+            "   WHERE EXISTS (SELECT 1 FROM split_orphans o "
+            "                  WHERE o.surname_key = s.surname_key AND o.person_id <> s.person_id) "
+            "), lighthouse AS ( "
             "  SELECT DISTINCT plm.person_id "
             "    FROM person_la_memberships plm "
             "    JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
             "   WHERE plm.ended_at IS NULL "
             "     AND ($1 = '' OR lp.category = $1) "
+            "  UNION "
+            // Ignores the category filter on purpose: an orphan has no
+            // membership, so it has no category to be filtered by, and
+            // hiding it from a filtered tab would just recreate the
+            // invisibility this is meant to end.
+            "  SELECT si.person_id FROM split_identity si "
             "), primary_email AS ( "
             "  SELECT DISTINCT ON (pem.person_id) pem.person_id, pem.email "
             "    FROM person_emails pem "
@@ -997,7 +1059,8 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
             "       COALESCE(vs.rsvp_teams, '') AS rsvp_teams, "
             "       (ed.email_key IS NOT NULL) AS email_duplicate, "
             "       (nd.fn IS NOT NULL) AS name_dob_duplicate, "
-            "       (mt.person_id IS NOT NULL) AS has_merge_history "
+            "       (mt.person_id IS NOT NULL) AS has_merge_history, "
+            "       si.surname_key AS split_identity_key "
             "  FROM lighthouse lh "
             "  JOIN persons pe ON pe.id = lh.person_id "
             "  LEFT JOIN primary_email pem ON pem.person_id = pe.id "
@@ -1016,6 +1079,7 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
             "        AND nd.ln = lower(pe.last_name) "
             "        AND nd.dob IS NOT DISTINCT FROM pe.birth_date "
             "  LEFT JOIN merge_touch mt ON mt.person_id = pe.id "
+            "  LEFT JOIN split_identity si ON si.person_id = pe.id "
             " WHERE ($2 = '' OR "
             "        lower(pe.first_name) LIKE '%' || $2 || '%' OR "
             "        lower(pe.last_name)  LIKE '%' || $2 || '%' OR "
@@ -1126,6 +1190,10 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
                 << ",\"email_duplicate\":" << (emailDup ? "true" : "false")
                 << ",\"name_dob_duplicate\":" << (nameDup ? "true" : "false")
                 << ",\"has_merge_history\":" << (mergeHist ? "true" : "false")
+                << ",\"split_identity_key\":"
+                << (row["split_identity_key"].is_null()
+                        ? std::string("null")
+                        : jsonEscape(row["split_identity_key"].c_str()))
                 << ",\"issues\":[";
             for (std::size_t i = 0; i < issueList.size(); ++i) {
                 if (i) out << ",";

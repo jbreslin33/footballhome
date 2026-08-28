@@ -300,6 +300,19 @@ class PeopleWorkbenchScreen extends Screen {
         const dob = p.dob || '';
         add(`name:${fn}|${ln}|${dob}`, `Matching name + DOB · ${p.first_name || ''} ${p.last_name || ''} ${dob}`.trim(), p);
       }
+      // Split identity: one human as two rows — a Google login with no
+      // team, and the LeagueApps roster person with no login.  They share
+      // neither email nor name+DOB (the orphan usually has no first name
+      // at all, because Google sent no given_name), so the two groupings
+      // above cannot see them.  Surname plus "one side is a login-only
+      // orphan, the other is rostered" is the strongest link available,
+      // which is why this is a suggestion for a human rather than
+      // something the sync does by itself.
+      if (p.split_identity_key) {
+        add(`split:${p.split_identity_key}`,
+            `Possible split identity · ${p.last_name || ''} — a sign-in with no team, and a roster spot with no sign-in`.trim(),
+            p);
+      }
     }
 
     // Merge-history-only people (no live collision) still show as cards.
@@ -474,6 +487,9 @@ class PeopleWorkbenchScreen extends Screen {
     if (p.has_pickup) chips.push(this._chip('#1f2937', '#9ca3af', '#374151', 'Pickup'));
     if (p.email_duplicate || p.name_dob_duplicate) {
       chips.push(this._chip('#3a1515', '#fecaca', '#ef4444', 'Possible duplicate'));
+    }
+    if (p.split_identity_key) {
+      chips.push(this._chip('#3a1515', '#fecaca', '#ef4444', 'Split identity?'));
     }
     if (p.has_merge_history) {
       chips.push(this._chip('#3a2e05', '#fde68a', '#d97706', 'Merge history'));
