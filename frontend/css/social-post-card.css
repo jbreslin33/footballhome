@@ -189,6 +189,15 @@
 .spc-btn:hover { opacity: 0.85; }
 .spc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Regenerate had no background at all, so it fell through to the
+   browser's default button face -- computed rgb(239,239,239), a white
+   rectangle on the navy card, while every other button in the row set
+   its own (2026-08-27). Matches Download Video: both are secondary
+   actions next to Save/Schedule/Post. */
+.spc-btn-regen {
+  background: #374151;
+  color: #e0e0e0;
+}
 .spc-btn-save {
   background: var(--spc-accent, #3b82f6);
   color: white;

@@ -206,15 +206,29 @@
 .gdr-empty {
   text-align: center;
   padding: var(--space-4);
-  color: var(--gray-500);
+  color: var(--text-muted);
   font-style: italic;
 }
+/* Lineup cards sit on the navy page, so they take the theme's own
+   surface tokens rather than the gray ramp (2026-08-27, owner: "the
+   white recs ... they serve no purpose lol"). They were light-theme
+   leftovers: a #f3f4f6 card whose name/meta inherited --text-primary
+   (#e8f0ff), i.e. near-white text on a near-white card. All 19 players
+   on a lineup rendered as blank rectangles.
+
+   The meta line named --gray-500, which IS NOT DEFINED -- main.css
+   jumps from --gray-400 to --gray-600 -- so the declaration was
+   discarded and it inherited the same near-white. Don't "fix" that by
+   adding the token: .gdr-empty and .roster-position are on the dark
+   surface and look right precisely because they inherit near-white,
+   so a real --gray-500 would break them instead. Each site names the
+   color its own background needs. */
 .gdr-selected-card {
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  background: var(--gray-100);
-  border: 2px solid var(--gray-200);
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   gap: 10px;
 }
@@ -232,7 +246,7 @@
 }
 .gdr-selected-meta {
   font-size: 0.8em;
-  color: var(--gray-500);
+  color: var(--text-muted);
 }
 .gdr-badge {
   display: inline-block;
@@ -353,7 +367,7 @@
   font-size: 0.8em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--gray-500);
+  color: var(--gray-600);
   border-bottom: 2px solid var(--gray-200);
   white-space: nowrap;
   z-index: 2;
@@ -418,7 +432,7 @@
   text-align: center;
 }
 .gdr-cell-readonly {
-  color: var(--gray-500);
+  color: var(--gray-600);
   font-size: 0.85em;
   max-width: 120px;
   overflow: hidden;
