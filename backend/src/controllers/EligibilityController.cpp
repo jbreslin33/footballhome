@@ -2,6 +2,8 @@
 #include "../core/Crypto.h"
 #include <sstream>
 #include <regex>
+#include <algorithm>  // std::find — squad colour validation
+#include <vector>
 #include <iomanip>
 #include <iostream>
 #include <openssl/bio.h>
@@ -41,6 +43,18 @@ void EligibilityController::registerRoutes(Router& router, const std::string& pr
     // PUT /api/eligibility/lineup-meta/:matchId - Save lineup metadata
     router.put(prefix + "/lineup-meta/:matchId", [this](const Request& request) {
         return this->handleSaveLineupMetadata(request);
+    });
+
+    // GET /api/eligibility/event-squads/:fhEventId - Pickup sides /
+    // practice groups for one event (2026-08-28). Keyed on fh_events.id
+    // because pickups and practices have no matches row at all.
+    router.get(prefix + "/event-squads/:fhEventId", [this](const Request& request) {
+        return this->handleGetEventSquads(request);
+    });
+
+    // PUT /api/eligibility/event-squads/:fhEventId - Assign players to sides
+    router.put(prefix + "/event-squads/:fhEventId", [this](const Request& request) {
+        return this->handleSaveEventSquads(request);
     });
 
     // GET /api/eligibility/positions - Reference list for the Starting XI
@@ -558,6 +572,210 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
 // GET /api/eligibility/positions
 // Reference list for the Starting XI position picker (2026-08-22).
 // ============================================================================
+// ============================================================================
+// Event squads — pickup sides and practice groups
+// ============================================================================
+//
+// A "squad" here is just a colour a player is wearing for one event
+// (owner, 2026-08-28: "they are just pickup teams like blue, green etc").
+// Practice groups are the same thing under another name and share the
+// column, so this pair of handlers serves both kinds.
+//
+// Storage is match_lineups.squad_color on a row keyed by fh_event_id
+// (migration 316). match_id stays NULL for these — a pickup or practice
+// has no matches row, which is the whole reason the migration existed.
+//
+// Deliberately not folded into handleGet/SaveMatchLineup: that path
+// carries the Starting XI machinery (positions, zones, bench order, 11/9
+// caps) and none of it means anything for a kickabout.
+
+// Teams whose rosters make up the pool for this event, as a Postgres
+// array literal. Same fh_event_teams source the match lineup uses, minus
+// the matches hop it has to take first.
+static std::string eventRosterTeamIds(Database* db, const std::string& fhEventId) {
+    pqxx::result rows = db->query(
+        "SELECT array_agg(DISTINCT team_id) AS team_ids "
+        "FROM fh_event_teams WHERE fh_event_id = $1",
+        {fhEventId});
+    if (!rows.empty() && !rows[0]["team_ids"].is_null()) return rows[0]["team_ids"].c_str();
+    return "{}";
+}
+
+// Admin, or a coach of any team this event is tagged to. Mirrors the
+// match lineup's authorization, scoped to fh_event_teams rather than the
+// match's home/away pair.
+static bool isEventCoach(Database* db, const std::string& userId, const std::string& fhEventId) {
+    if (userId.empty()) return false;
+    pqxx::result rows = db->query(
+        "SELECT ("
+        "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.id = $1::int)"
+        "  OR EXISTS (SELECT 1 FROM team_coaches tc "
+        "             JOIN coaches co ON co.id = tc.coach_id "
+        "             JOIN users u ON u.person_id = co.person_id "
+        "             JOIN fh_event_teams fet ON fet.team_id = tc.team_id "
+        "             WHERE fet.fh_event_id = $2::bigint AND tc.ended_at IS NULL "
+        "             AND u.id = $1::int)"
+        ") AS is_coach",
+        {userId, fhEventId});
+    return !rows.empty() && rows[0]["is_coach"].as<bool>();
+}
+
+Response EligibilityController::handleGetEventSquads(const Request& request) {
+    std::string fhEventId = extractIdFromPath(request.getPath(), "/api/eligibility/event-squads/(\\d+)");
+    if (fhEventId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Event ID is required"));
+    }
+
+    try {
+        pqxx::result evRow = db_->query("SELECT kind FROM fh_events WHERE id = $1", {fhEventId});
+        if (evRow.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJsonResponse(false, "Event not found"));
+        }
+        std::string kind = evRow[0]["kind"].c_str();
+
+        // Readable by any player (no 401 on a missing token) — same as the
+        // match lineup, so a player can see which side they are on. The
+        // flag only drives whether the UI offers edit controls.
+        std::string userId = extractUserIdFromToken(request);
+        bool isCoach = isEventCoach(db_, userId, fhEventId);
+
+        std::string rosterTeamIds = eventRosterTeamIds(db_, fhEventId);
+
+        // The pool is every player on the tagged teams, LEFT JOINed to
+        // whatever side they have been given for this event. A player with
+        // no row yet is simply unassigned.
+        // Same team_persons -> persons -> players chain the match lineup's
+        // roster pool uses. DISTINCT ON collapses a player rostered on
+        // more than one of the event's teams (e.g. both APSL and Liga1)
+        // to a single row, exactly as that query's ORDER BY pl.id does.
+        pqxx::result rows = db_->query(
+            "SELECT DISTINCT ON (pl.id) "
+            "       pl.id AS player_id, "
+            "       pe.first_name, pe.last_name, "
+            "       tp.team_id, tp.jersey_number, "
+            "       ml.squad_color "
+            "FROM team_persons tp "
+            "JOIN persons pe ON pe.id = tp.person_id "
+            "JOIN players pl ON pl.person_id = pe.id "
+            "LEFT JOIN match_lineups ml "
+            "       ON ml.player_id = pl.id AND ml.fh_event_id = $1::bigint "
+            "WHERE tp.team_id = ANY($2::int[]) AND tp.removed_at IS NULL "
+            "ORDER BY pl.id, tp.team_id",
+            {fhEventId, rosterTeamIds});
+
+        std::ostringstream json;
+        json << "{\"fhEventId\":" << fhEventId
+             << ",\"kind\":\"" << escapeJson(kind) << "\""
+             << ",\"isCoach\":" << (isCoach ? "true" : "false")
+             << ",\"rosterTeamIds\":" << (rosterTeamIds == "{}" ? "[]" :
+                    ("[" + rosterTeamIds.substr(1, rosterTeamIds.size() - 2) + "]"))
+             << ",\"colors\":[\"white\",\"blue\",\"green\",\"orange\",\"red\",\"black\",\"yellow\",\"pink\"]"
+             << ",\"players\":[";
+        bool first = true;
+        for (const auto& row : rows) {
+            if (!first) json << ",";
+            first = false;
+            json << "{\"playerId\":" << row["player_id"].c_str()
+                 << ",\"firstName\":\"" << escapeJson(row["first_name"].is_null() ? "" : row["first_name"].c_str()) << "\""
+                 << ",\"lastName\":\"" << escapeJson(row["last_name"].is_null() ? "" : row["last_name"].c_str()) << "\""
+                 << ",\"teamId\":" << (row["team_id"].is_null() ? "null" : row["team_id"].c_str())
+                 << ",\"jerseyNumber\":\"" << escapeJson(row["jersey_number"].is_null() ? "" : row["jersey_number"].c_str()) << "\""
+                 << ",\"squadColor\":" << (row["squad_color"].is_null() ? "null"
+                        : ("\"" + escapeJson(row["squad_color"].c_str()) + "\""))
+                 << "}";
+        }
+        json << "]}";
+
+        return Response(HttpStatus::OK, createJsonResponse(true, "Event squads", json.str()));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response EligibilityController::handleSaveEventSquads(const Request& request) {
+    std::string fhEventId = extractIdFromPath(request.getPath(), "/api/eligibility/event-squads/(\\d+)");
+    if (fhEventId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Event ID is required"));
+    }
+    std::string userId = extractUserIdFromToken(request);
+    if (userId.empty()) {
+        return Response(HttpStatus::UNAUTHORIZED, createJsonResponse(false, "Authentication required"));
+    }
+    if (!isEventCoach(db_, userId, fhEventId)) {
+        return Response(HttpStatus::FORBIDDEN, createJsonResponse(false, "Not authorized to edit this event's squads"));
+    }
+
+    try {
+        pqxx::result evRow = db_->query("SELECT id FROM fh_events WHERE id = $1", {fhEventId});
+        if (evRow.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJsonResponse(false, "Event not found"));
+        }
+
+        // Body: {"assignments":[{"playerId":1,"squadColor":"green"},
+        //                       {"playerId":2,"squadColor":null}, ...]}
+        // A null colour means "take them off a side", which deletes the
+        // row rather than storing a null — an unassigned player and a
+        // player with no row are the same state, and keeping only one
+        // representation means the GET above never has to distinguish.
+        const std::string body = request.getBody();
+        // Custom RX delimiters, not the bare R"(...)": the colour pattern
+        // contains ([a-z]+)" and a bare raw string would end at that )"
+        // sequence, silently truncating the regex mid-expression.
+        std::regex entry(R"RX(\{[^{}]*?"playerId"\s*:\s*(\d+)[^{}]*?\})RX");
+        std::regex colorPat(R"RX("squadColor"\s*:\s*(?:"([a-z]+)"|null))RX");
+
+        // Colours are re-checked here, not just by the CHECK constraint, so
+        // a bad value is a 400 naming the colour instead of a 500 from a
+        // constraint violation halfway through a batch.
+        static const std::vector<std::string> kColors =
+            {"white","blue","green","orange","red","black","yellow","pink"};
+
+        int applied = 0, cleared = 0;
+        for (std::sregex_iterator it(body.begin(), body.end(), entry), end; it != end; ++it) {
+            const std::string chunk = (*it)[0].str();
+            const std::string playerId = (*it)[1].str();
+
+            std::smatch cm;
+            std::string color;
+            if (std::regex_search(chunk, cm, colorPat)) color = cm[1].matched ? cm[1].str() : "";
+
+            if (color.empty()) {
+                db_->query("DELETE FROM match_lineups WHERE fh_event_id = $1::bigint AND player_id = $2::int",
+                           {fhEventId, playerId});
+                cleared++;
+                continue;
+            }
+            if (std::find(kColors.begin(), kColors.end(), color) == kColors.end()) {
+                return Response(HttpStatus::BAD_REQUEST,
+                    createJsonResponse(false, "Unknown squad colour: " + color));
+            }
+
+            // team_id is NOT NULL on match_lineups, so carry the player's
+            // own roster team for this event rather than inventing one.
+            db_->query(
+                "INSERT INTO match_lineups (fh_event_id, player_id, team_id, is_starter, zone, squad_color) "
+                "SELECT $1::bigint, pl.id, tp.team_id, false, 'not_selected', $3 "
+                "  FROM players pl "
+                "  JOIN team_persons tp ON tp.person_id = pl.person_id AND tp.removed_at IS NULL "
+                "  JOIN fh_event_teams fet ON fet.team_id = tp.team_id AND fet.fh_event_id = $1::bigint "
+                " WHERE pl.id = $2::int "
+                " LIMIT 1 "
+                "ON CONFLICT (fh_event_id, player_id) WHERE fh_event_id IS NOT NULL "
+                "DO UPDATE SET squad_color = EXCLUDED.squad_color",
+                {fhEventId, playerId, color});
+            applied++;
+        }
+
+        std::ostringstream out;
+        out << "{\"assigned\":" << applied << ",\"cleared\":" << cleared << "}";
+        return Response(HttpStatus::OK, createJsonResponse(true, "Squads saved", out.str()));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
 Response EligibilityController::handleGetPositions(const Request& request) {
     try {
         pqxx::result result = db_->query(
