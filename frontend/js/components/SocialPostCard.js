@@ -529,8 +529,8 @@ class SocialPostCard {
             <textarea class="spc-scorers" rows="3" placeholder="e.g. 23' John Smith&#10;67' John Smith&#10;45' Bob Jones yellow">${this.escapeHtml(this.scorersText || '')}</textarea>
           </div>
           <div class="spc-scorers-row">
-            <label class="spc-scorers-label">👥 Players who played (one per line → graphic)</label>
-            <textarea class="spc-players-played" rows="5" placeholder="e.g. John Smith&#10;Jane Doe&#10;Bob Jones">${this.escapeHtml(this.playersPlayedText || '')}</textarea>
+            <label class="spc-scorers-label">👥 Lineup — a "---" line splits starters from bench (→ graphic)</label>
+            <textarea class="spc-players-played" rows="6" placeholder="e.g. John Smith&#10;Jane Doe&#10;--- Subs ---&#10;Bob Jones">${this.escapeHtml(this.playersPlayedText || '')}</textarea>
           </div>` : ''}
           <textarea class="spc-caption" rows="6" ${isPosted ? 'disabled' : ''}>${this.escapeHtml(caption)}</textarea>
           <div class="spc-char-count"><span class="spc-char-num">${caption.length}</span> / 2,200</div>
@@ -773,30 +773,24 @@ class SocialPostCard {
       }
     }
 
-    // Build players-played block for post_game graphic (2-column grid)
-    let playersPlayedHtml = '';
-    if (this.postTypeName === 'post_game' && this.playersPlayedText && this.playersPlayedText.trim()) {
-      const players = this.playersPlayedText.trim().split('\n').map(s => s.trim()).filter(Boolean);
-      const mid = Math.ceil(players.length / 2);
-      const left = players.slice(0, mid);
-      const right = players.slice(mid);
-      const rowsHtml = left.map((p, i) =>
-        `<div style="font-size:11px;color:rgba(255,255,255,0.88);line-height:1.6;">${this.escapeHtml(p)}</div>` +
-        `<div style="font-size:11px;color:rgba(255,255,255,0.88);line-height:1.6;">${right[i] ? this.escapeHtml(right[i]) : ''}</div>`
-      ).join('');
-      playersPlayedHtml = `
-        <div style="width:100%;text-align:left;margin-bottom:12px;">
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">👥 Squad</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 12px;width:100%;">${rowsHtml}</div>
-        </div>
-      `;
-    }
+    // Lineup block for the post_game graphic — starters and bench split.
+    const lineupBlock = this.postTypeName === 'post_game'
+      ? this.buildImagePostGameLineup()
+      : { html: '', rows: 0 };
+    const playersPlayedHtml = lineupBlock.html;
 
-    // Adjust size: taller for lineup with roster, or post_game with players/scorers
+    // Adjust size: taller for lineup with roster, or post_game with players/scorers.
+    // The lineup case grows with the squad instead of sitting at a fixed
+    // 640: a starting XI is taller than the halved flat list that height
+    // was chosen for, and the graphic clips silently rather than
+    // scrolling, so an unusually long bench would lose its last names
+    // with nothing on the card to say so. Never shrinks below 640.
     const hasRoster = rosterHtml.length > 0;
     const hasPlayersPlayed = playersPlayedHtml.length > 0;
     const hasGoalScorers = goalScorerHtml.length > 0;
-    const cardHeight = hasRoster ? 700 : (hasPlayersPlayed ? 640 : hasGoalScorers ? 580 : 540);
+    const cardHeight = hasRoster ? 700
+      : hasPlayersPlayed ? Math.max(640, 500 + lineupBlock.rows * 18)
+      : hasGoalScorers ? 580 : 540;
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;';
@@ -1179,10 +1173,15 @@ class SocialPostCard {
   // name, matching the player lineup view's "so no one gets mad" rule:
   // there is no fairness case for ranking a bench, least of all on a
   // public post.
-  buildImageStartersBench() {
-    if (!this.rosterData || !this.rosterData.players || !this.rosterData.selectedIds) return '';
+  // The zone split and its ordering, lifted out of buildImageStartersBench
+  // so the result graphic prints the same lineup the pre-match post does
+  // rather than a second, subtly different sort. Returns null when the
+  // screen passed no zones — an older caller, or a match whose lineup was
+  // never set — which each caller reads as its own kind of "fall back".
+  getZoneLineup() {
+    if (!this.rosterData || !this.rosterData.players || !this.rosterData.selectedIds) return null;
     const zones = this.rosterData.zones;
-    if (!zones || !zones.size) return this.buildImageRoster();
+    if (!zones || !zones.size) return null;
 
     const selectedIds = this.rosterData.selectedIds;
     const inZone = (z) => this.rosterData.players.filter(p =>
@@ -1198,8 +1197,19 @@ class SocialPostCard {
       return byLastName(a, b);
     };
 
-    const starters = inZone('starter').sort(teamSheetOrder);
-    const bench = inZone('bench').sort(byLastName);
+    return {
+      starters: inZone('starter').sort(teamSheetOrder),
+      bench: inZone('bench').sort(byLastName),
+    };
+  }
+
+  buildImageStartersBench() {
+    const lineup = this.getZoneLineup();
+    if (!lineup) {
+      if (!this.rosterData || !this.rosterData.players || !this.rosterData.selectedIds) return '';
+      return this.buildImageRoster();
+    }
+    const { starters, bench } = lineup;
     if (starters.length === 0 && bench.length === 0) return '';
 
     const section = (title, list) => list.length ? `
@@ -1215,6 +1225,87 @@ class SocialPostCard {
         ${section(`BENCH`, bench)}
       </div>
     `;
+  }
+
+  // Splits the "players who played" box into starters and bench. The
+  // auto-fill in load() writes recorded starter/sub_listed events with
+  // "--- Subs ---" between the groups; a bare "---" or "--- Bench ---"
+  // typed by hand reads the same.
+  static LINEUP_SPLIT_RE = /^-{2,}\s*(?:subs?|bench)?\s*-*$/i;
+
+  // Lineup block on the result graphic (2026-08-27, owner: "i would like
+  // to be able to put a lineup on the match result page. to show who
+  // actually started and was available on bench").
+  //
+  // Three sources, most match-accurate first:
+  //   1. The box WITH a separator — recorded starter/sub_listed events for
+  //      this match, which the owner can correct by hand before posting.
+  //      What was recorded against the match beats what the Game Day
+  //      screen happens to have selected now, which is why this wins.
+  //   2. The box with NO separator — a flat hand-typed list. Printed as
+  //      SQUAD exactly as it was before this change; there is no split to
+  //      show and inventing one would be a guess.
+  //   3. rosterData.zones — the same lineup the Starters & Bench post
+  //      publishes, so the pre-match and result posts agree whenever
+  //      nothing was recorded against the match.
+  //
+  // Returns {html, rows}. `rows` is the taller column, which the caller
+  // needs to size the card: a flat 20-name list is 10 rows but a starting
+  // XI is 11 plus a heading, and the old fixed 640px clipped the bottom.
+  buildImagePostGameLineup() {
+    const empty = { html: '', rows: 0 };
+
+    const nameRow = (n) => `<div style="font-size:11px;color:rgba(255,255,255,0.9);line-height:1.6;">${this.escapeHtml(n)}</div>`;
+    const section = (title, rowsHtml, n) => n ? `
+      <div style="text-align:left;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">${title}</div>
+        ${rowsHtml}
+      </div>` : '';
+    const split = (startersHtml, nStarters, benchHtml, nBench) => ({
+      html: `
+        <div style="width:100%;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px;width:100%;">
+            ${section('Starting XI', startersHtml, nStarters)}
+            ${section('Bench', benchHtml, nBench)}
+          </div>
+        </div>`,
+      rows: Math.max(nStarters, nBench) + 1,
+    });
+
+    const text = (this.playersPlayedText || '').trim();
+    if (text) {
+      const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+      const sep = lines.findIndex(l => SocialPostCard.LINEUP_SPLIT_RE.test(l));
+      if (sep >= 0) {
+        const starters = lines.slice(0, sep);
+        const bench = lines.slice(sep + 1);
+        if (!starters.length && !bench.length) return empty;
+        return split(starters.map(nameRow).join(''), starters.length,
+                     bench.map(nameRow).join(''), bench.length);
+      }
+      // Flat list — two columns down the middle, as before.
+      const mid = Math.ceil(lines.length / 2);
+      const left = lines.slice(0, mid);
+      const right = lines.slice(mid);
+      const rowsHtml = left.map((n, i) => nameRow(n) + (right[i] ? nameRow(right[i]) : '<div></div>')).join('');
+      return {
+        html: `
+        <div style="width:100%;text-align:left;margin-bottom:12px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">👥 Squad</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 12px;width:100%;">${rowsHtml}</div>
+        </div>`,
+        rows: mid + 1,
+      };
+    }
+
+    const lineup = this.getZoneLineup();
+    if (!lineup) return empty;
+    const { starters, bench } = lineup;
+    if (!starters.length && !bench.length) return empty;
+    // buildImagePlayerRow here, not nameRow: the zone path has the real
+    // player objects, so it keeps shirt numbers and the GK tag.
+    return split(starters.map(p => this.buildImagePlayerRow(p)).join(''), starters.length,
+                 bench.map(p => this.buildImagePlayerRow(p)).join(''), bench.length);
   }
 
   // One "#7 Name GK" line, shared by both roster blocks so the two post
