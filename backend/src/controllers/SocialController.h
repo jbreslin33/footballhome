@@ -36,6 +36,16 @@ private:
     Response handlePostToInstagram(const Request& request);
     Response handleUploadMedia(const Request& request);
 
+    // Raw-binary upload path (2026-08-28). handleUploadMedia takes the
+    // media as base64 inside a JSON body, which is fine for the ~1MB
+    // generated card but fails outright for a phone video: base64 adds
+    // 33%, and building that string plus the JSON wrapper needs several
+    // multiples of the file in memory at once. On mobile Chrome that
+    // dies before the request is ever sent ("Failed to fetch", nothing
+    // in nginx's log). These two take the bytes as-is instead.
+    Response handleUploadMediaRaw(const Request& request);
+    Response handleUploadOverlay(const Request& request);
+
     // Schedule templates
     Response handleGetScheduleTemplates(const Request& request);
     Response handleSaveScheduleTemplates(const Request& request);

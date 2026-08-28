@@ -227,3 +227,27 @@
   background: #374151;
   color: #e0e0e0;
 }
+
+/* Optional photo/video attach row (2026-08-28). `.spc-btn` deliberately
+   sets no background of its own -- see the .spc-btn-regen note above --
+   so these two both declare one. The picker is a <label> wrapping a
+   hidden file input rather than a <button>, which is the only way to
+   open a file dialog without scripting the click, and a label gets none
+   of a button's default chrome: without this it renders as bare text. */
+.spc-media-pick,
+.spc-btn-clear-media {
+  background: #374151;
+  color: #e0e0e0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+}
+.spc-media-pick { cursor: pointer; }
+.spc-media-name {
+  font-size: 0.78em;
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.spc-media-hint { font-size: 0.78em; opacity: 0.6; }

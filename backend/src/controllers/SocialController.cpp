@@ -7,9 +7,11 @@
 #include <fstream>
 #include <vector>
 #include <cstdlib>
+#include <cstdio>   // popen/pclose/sscanf — ffprobe for the video overlay's size
 #include <thread>
 #include <chrono>
 #include <sys/stat.h>
+#include <unistd.h>   // access() — is an overlay already stored for this post?
 
 static std::string base64Decode(const std::string& encoded) {
     static const std::string chars =
@@ -273,6 +275,20 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
     // POST /api/social/posts/:postId/media - Upload media (base64 video/image)
     router.post(prefix + "/posts/:postId/media", [this](const Request& request) {
         return this->handleUploadMedia(request);
+    });
+
+    // POST /api/social/posts/:postId/media-overlay - Store the club's
+    // text/crest layer for a post (small base64 PNG, JSON body). Sent
+    // before media-raw so the composite has something to burn on.
+    router.post(prefix + "/posts/:postId/media-overlay", [this](const Request& request) {
+        return this->handleUploadOverlay(request);
+    });
+
+    // POST /api/social/posts/:postId/media-raw - Upload media as raw
+    // bytes, no base64 and no JSON wrapper. Content-Type carries the
+    // media type. See the note in SocialController.h for why.
+    router.post(prefix + "/posts/:postId/media-raw", [this](const Request& request) {
+        return this->handleUploadMediaRaw(request);
     });
 
     // GET /api/social/schedule/team/:teamId - Get schedule templates for a team
@@ -677,6 +693,179 @@ Response SocialController::handleDeletePost(const Request& request) {
     }
 }
 
+// Shared by the two raw-upload handlers below: the media directory and
+// this post's overlay path. Overlay lives beside the post's other files
+// so a failed composite leaves something inspectable on disk.
+static std::string postsMediaDir() { return "/app/images/posts"; }
+static std::string overlayPathFor(const std::string& postId) {
+    return postsMediaDir() + "/post_" + postId + "_overlay.png";
+}
+
+Response SocialController::handleUploadOverlay(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
+    std::string postId = extractPostIdFromPath(request.getPath());
+    if (postId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing post ID"));
+    }
+    try {
+        const std::string body = request.getBody();
+        size_t keyPos = body.find("\"data\"");
+        if (keyPos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing 'data' field"));
+        }
+        size_t colonPos = body.find(':', keyPos + 6);
+        size_t quoteStart = body.find('"', colonPos + 1);
+        size_t quoteEnd = body.find('"', quoteStart + 1);
+        if (quoteStart == std::string::npos || quoteEnd == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid data format"));
+        }
+        std::string b64 = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+        size_t comma = b64.find(',');
+        if (comma != std::string::npos) b64 = b64.substr(comma + 1);
+
+        std::string bytes = base64Decode(b64);
+        if (bytes.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Failed to decode overlay"));
+        }
+        mkdir(postsMediaDir().c_str(), 0755);
+        std::ofstream out(overlayPathFor(postId), std::ios::binary);
+        if (!out.is_open()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to write overlay"));
+        }
+        out.write(bytes.data(), bytes.size());
+        out.close();
+        std::cout << "🖼️  Overlay stored for post " << postId << " (" << bytes.size() << " bytes)" << std::endl;
+        return Response(HttpStatus::OK, createJSONResponse(true, "Overlay stored"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response SocialController::handleUploadMediaRaw(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
+    std::string postId = extractPostIdFromPath(request.getPath());
+    if (postId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing post ID"));
+    }
+    try {
+        // The body IS the file. No base64, no JSON, no copies.
+        const std::string& mediaBytes = request.getBody();
+        if (mediaBytes.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Empty body"));
+        }
+
+        std::string contentType = request.getHeader("Content-Type");
+        bool isVideo = contentType.rfind("video/", 0) == 0;
+
+        const std::string mediaDir = postsMediaDir();
+        mkdir(mediaDir.c_str(), 0755);
+
+        const std::string overlayFile = overlayPathFor(postId);
+        bool hasOverlay = (access(overlayFile.c_str(), R_OK) == 0);
+
+        if (!isVideo) {
+            // A photo is already composited into the card by the browser,
+            // so it lands as the post image unchanged.
+            std::string filename = "post_" + postId + ".jpg";
+            std::string filepath = mediaDir + "/" + filename;
+            std::ofstream out(filepath, std::ios::binary);
+            if (!out.is_open()) {
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to write image"));
+            }
+            out.write(mediaBytes.data(), mediaBytes.size());
+            out.close();
+            if (hasOverlay) std::remove(overlayFile.c_str());
+            std::string publicUrl = "https://footballhome.org/images/posts/" + filename;
+            db_->query("UPDATE social_posts SET image_path = '" + escapeSql(filename) +
+                       "', image_url = '" + escapeSql(publicUrl) +
+                       "', media_type = 'image', video_path = NULL, updated_at = NOW() WHERE id = " + postId);
+            return Response(HttpStatus::OK, createJSONResponse(true, "Media uploaded",
+                "{\"image_url\":\"" + escapeJson(publicUrl) + "\",\"media_type\":\"image\"}"));
+        }
+
+        // Honest extension for the temp file; ffmpeg sniffs content anyway.
+        std::string srcExt = "mp4";
+        if (contentType.find("webm") != std::string::npos)      srcExt = "webm";
+        else if (contentType.find("quicktime") != std::string::npos) srcExt = "mov";
+        else if (contentType.find("x-matroska") != std::string::npos) srcExt = "mkv";
+
+        std::string srcFile = mediaDir + "/post_" + postId + "_src." + srcExt;
+        std::string mp4File = mediaDir + "/post_" + postId + ".mp4";
+        {
+            std::ofstream out(srcFile, std::ios::binary);
+            if (!out.is_open()) {
+                return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to write video"));
+            }
+            out.write(mediaBytes.data(), mediaBytes.size());
+            out.close();
+        }
+
+        // Same composite as the JSON path — see handleUploadMedia for why
+        // the overlay's own dimensions drive the fit rather than a fixed
+        // square (the card is 540x700 for the roster post types).
+        int ovW = 1080, ovH = 1080;
+        if (hasOverlay) {
+            std::string probeCmd = "ffprobe -v error -select_streams v:0 "
+                "-show_entries stream=width,height -of csv=p=0:s=x " + overlayFile + " 2>/dev/null";
+            FILE* pipe = popen(probeCmd.c_str(), "r");
+            if (pipe) {
+                char buf[64] = {0};
+                if (fgets(buf, sizeof(buf), pipe)) {
+                    int w = 0, h = 0;
+                    if (sscanf(buf, "%dx%d", &w, &h) == 2 && w > 0 && h > 0) { ovW = w; ovH = h; }
+                }
+                pclose(pipe);
+            }
+            if (ovW % 2) ovW--;
+            if (ovH % 2) ovH--;
+        }
+
+        std::string ffmpegCmd;
+        if (hasOverlay) {
+            const std::string dims = std::to_string(ovW) + ":" + std::to_string(ovH);
+            ffmpegCmd = "ffmpeg -y -i " + srcFile + " -i " + overlayFile +
+                " -filter_complex \"[0:v]scale=" + dims + ":force_original_aspect_ratio=increase,"
+                "crop=" + dims + ",setsar=1[bg];[bg][1:v]overlay=0:0:format=auto\""
+                " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                " -movflags +faststart -c:a aac -b:a 128k " + mp4File + " 2>&1";
+        } else {
+            ffmpegCmd = "ffmpeg -y -i " + srcFile +
+                " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                " -movflags +faststart -c:a aac -b:a 128k " + mp4File + " 2>&1";
+        }
+        std::cout << "🎬 Converting raw upload (" << mediaBytes.size() << " bytes, overlay="
+                  << (hasOverlay ? "yes" : "no") << "): " << ffmpegCmd << std::endl;
+        int ffResult = system(ffmpegCmd.c_str());
+        std::remove(srcFile.c_str());
+        if (hasOverlay) std::remove(overlayFile.c_str());
+        if (ffResult != 0) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "FFmpeg conversion failed"));
+        }
+
+        std::string videoFilename = "post_" + postId + ".mp4";
+        std::string videoPublicUrl = "https://footballhome.org/images/posts/" + videoFilename;
+        std::string posterFile = mediaDir + "/post_" + postId + ".jpg";
+        system(("ffmpeg -y -i " + mp4File + " -vframes 1 -q:v 2 " + posterFile + " 2>&1").c_str());
+        std::string imageFilename = "post_" + postId + ".jpg";
+        std::string imagePublicUrl = "https://footballhome.org/images/posts/" + imageFilename;
+
+        db_->query("UPDATE social_posts SET video_path = '" + escapeSql(videoFilename) +
+                   "', image_path = '" + escapeSql(imageFilename) +
+                   "', image_url = '" + escapeSql(imagePublicUrl) +
+                   "', media_type = 'video', updated_at = NOW() WHERE id = " + postId);
+
+        return Response(HttpStatus::OK, createJSONResponse(true, "Video uploaded and converted",
+            "{\"video_url\":\"" + escapeJson(videoPublicUrl) +
+            "\",\"image_url\":\"" + escapeJson(imagePublicUrl) + "\",\"media_type\":\"video\"}"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
 Response SocialController::handleUploadMedia(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
         return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
@@ -705,6 +894,29 @@ Response SocialController::handleUploadMedia(const Request& request) {
         }
         std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
 
+        // Optional "overlay": a transparent PNG of the club's text and
+        // crests, sent alongside an uploaded video so ffmpeg can burn it
+        // on below (2026-08-28, owner: "we need all posts to allow easy
+        // upload of photo or video and you provide the other text
+        // graphics etc"). Absent for a generated clip, whose graphics
+        // are already part of every recorded frame, and absent for a
+        // photo, which the browser composites into the card before
+        // upload. Parsed the same manual way as "data" — these are
+        // multi-megabyte base64 strings and a real JSON parse over them
+        // is not worth the copies.
+        std::string overlayValue;
+        {
+            size_t oKey = body.find("\"overlay\"");
+            if (oKey != std::string::npos) {
+                size_t oColon = body.find(':', oKey + 9);
+                size_t oStart = (oColon == std::string::npos) ? std::string::npos : body.find('"', oColon + 1);
+                size_t oEnd = (oStart == std::string::npos) ? std::string::npos : body.find('"', oStart + 1);
+                if (oStart != std::string::npos && oEnd != std::string::npos) {
+                    overlayValue = body.substr(oStart + 1, oEnd - oStart - 1);
+                }
+            }
+        }
+
         // Detect media type from data URL prefix
         bool isVideo = (dataValue.find("data:video/") == 0);
         std::string mediaType = isVideo ? "video" : "image";
@@ -728,11 +940,27 @@ Response SocialController::handleUploadMedia(const Request& request) {
         mkdir(mediaDir.c_str(), 0755);
 
         if (isVideo) {
-            // Save WebM to temp file
-            std::string webmFile = mediaDir + "/post_" + postId + ".webm";
+            // Container hint from the data URL. The generated beam clip
+            // is webm; a phone upload is mp4 or quicktime/mov. ffmpeg
+            // sniffs content anyway, but an honest extension keeps the
+            // temp files readable when something needs debugging.
+            std::string srcExt = "webm";
+            {
+                size_t semi = dataValue.find(';');
+                if (semi != std::string::npos && semi > 11) {
+                    std::string sub = dataValue.substr(11, semi - 11);  // after "data:video/"
+                    if (sub == "quicktime") srcExt = "mov";
+                    else if (!sub.empty() && sub.find_first_not_of(
+                                 "abcdefghijklmnopqrstuvwxyz0123456789-") == std::string::npos) {
+                        srcExt = sub;
+                    }
+                }
+            }
+            std::string srcFile = mediaDir + "/post_" + postId + "_src." + srcExt;
+            std::string overlayFile = mediaDir + "/post_" + postId + "_overlay.png";
             std::string mp4File = mediaDir + "/post_" + postId + ".mp4";
             {
-                std::ofstream outFile(webmFile, std::ios::binary);
+                std::ofstream outFile(srcFile, std::ios::binary);
                 if (!outFile.is_open()) {
                     return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                         createJSONResponse(false, "Failed to write video file"));
@@ -741,14 +969,79 @@ Response SocialController::handleUploadMedia(const Request& request) {
                 outFile.close();
             }
 
-            // Convert WebM to MP4 with ffmpeg (Instagram-compatible)
-            std::string ffmpegCmd = "ffmpeg -y -i " + webmFile +
-                " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
-                " -movflags +faststart -an " + mp4File + " 2>&1";
+            // Write the club's text/crest layer, if the client sent one.
+            bool hasOverlay = false;
+            if (!overlayValue.empty()) {
+                std::string ob64 = overlayValue;
+                size_t oComma = ob64.find(',');
+                if (oComma != std::string::npos) ob64 = ob64.substr(oComma + 1);
+                std::string overlayBytes = base64Decode(ob64);
+                if (!overlayBytes.empty()) {
+                    std::ofstream ov(overlayFile, std::ios::binary);
+                    if (ov.is_open()) {
+                        ov.write(overlayBytes.data(), overlayBytes.size());
+                        ov.close();
+                        hasOverlay = true;
+                    }
+                }
+            }
+
+            // The overlay is NOT always square — the card grows to
+            // 700px tall for the roster-bearing post types — so the
+            // video has to be fitted to whatever the browser actually
+            // produced. Hardcoding 1080x1080 here would squash a tall
+            // card. Ask ffprobe rather than guessing, and fall back to
+            // a square only if it can't tell us.
+            int ovW = 1080, ovH = 1080;
+            if (hasOverlay) {
+                std::string probeCmd = "ffprobe -v error -select_streams v:0 "
+                    "-show_entries stream=width,height -of csv=p=0:s=x " + overlayFile + " 2>/dev/null";
+                FILE* pipe = popen(probeCmd.c_str(), "r");
+                if (pipe) {
+                    char buf[64] = {0};
+                    if (fgets(buf, sizeof(buf), pipe)) {
+                        int w = 0, h = 0;
+                        if (sscanf(buf, "%dx%d", &w, &h) == 2 && w > 0 && h > 0) {
+                            ovW = w;
+                            ovH = h;
+                        }
+                    }
+                    pclose(pipe);
+                }
+                // H.264 with yuv420p needs even dimensions.
+                if (ovW % 2) ovW--;
+                if (ovH % 2) ovH--;
+            }
+
+            // Convert to MP4 with ffmpeg (Instagram-compatible).
+            std::string ffmpegCmd;
+            if (hasOverlay) {
+                // The coach's own footage with the club layer burned on.
+                // Cover-fit to a 1080 square first so the overlay (which
+                // the browser builds at that ratio) lines up whether the
+                // clip came in portrait or landscape. overlay's default
+                // eof_action=repeat holds the single still frame for the
+                // whole clip, so the PNG needs no -loop. Audio is kept
+                // here: it is the coach's own video and the sound is
+                // usually the point.
+                const std::string dims = std::to_string(ovW) + ":" + std::to_string(ovH);
+                ffmpegCmd = "ffmpeg -y -i " + srcFile + " -i " + overlayFile +
+                    " -filter_complex \"[0:v]scale=" + dims + ":force_original_aspect_ratio=increase,"
+                    "crop=" + dims + ",setsar=1[bg];[bg][1:v]overlay=0:0:format=auto\""
+                    " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                    " -movflags +faststart -c:a aac -b:a 128k " + mp4File + " 2>&1";
+            } else {
+                // The generated clip: its graphics are already burned
+                // into every recorded frame, and it carries no audio.
+                ffmpegCmd = "ffmpeg -y -i " + srcFile +
+                    " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                    " -movflags +faststart -an " + mp4File + " 2>&1";
+            }
             std::cout << "🎬 Converting video: " << ffmpegCmd << std::endl;
             int ffResult = system(ffmpegCmd.c_str());
-            // Remove temp WebM
-            std::remove(webmFile.c_str());
+            // Remove temps
+            std::remove(srcFile.c_str());
+            if (hasOverlay) std::remove(overlayFile.c_str());
 
             if (ffResult != 0) {
                 return Response(HttpStatus::INTERNAL_SERVER_ERROR,

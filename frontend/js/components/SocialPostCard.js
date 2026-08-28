@@ -23,6 +23,35 @@ class SocialPostCard {
     this.imageErrorMessage = null; // actual err.message shown on screen when generation fails
     this.cardWidth = 540;
     this.cardHeight = 540;
+    // Optional photo or video the user supplies (2026-08-28, owner: "we
+    // need all posts to allow easy upload of photo or video and you
+    // provide the other text graphics etc" / "we need to be able to post
+    // with or without a video or photo upload").
+    //
+    //   null                        → the generated graphic alone, exactly
+    //                                 as every post worked before this.
+    //   { kind:'image', dataUrl }   → the photo becomes the card's
+    //                                 background layer, under a scrim,
+    //                                 with all the usual crests/text on
+    //                                 top. Capture is unchanged from
+    //                                 there: html2canvas renders the
+    //                                 whole composed card.
+    //   { kind:'video', dataUrl,    → the poster frame stands in for the
+    //     posterDataUrl }             video in the on-screen preview so
+    //                                 the coach can judge composition,
+    //                                 and the real compositing happens
+    //                                 server-side — see postNow, which
+    //                                 uploads the raw video plus a
+    //                                 transparent overlay PNG for ffmpeg.
+    this.userMedia = null;
+    // Set the moment the coach attaches or removes media: from then on
+    // the locally composed card outranks any image_url already stored
+    // against this post. See render()'s showStored.
+    this._localPreviewWins = false;
+    // Set only when an overlay render fails during a preview build, so
+    // the result can say the clip is missing its club layer rather than
+    // leaving that looking like the intended output.
+    this._overlayFailed = null;
   }
 
   resolveAssetUrl(url) {
@@ -484,12 +513,31 @@ class SocialPostCard {
     }
 
     // Image area
+    // Once the coach has attached or removed media in this session, the
+    // card we're composing locally is the truth — the stored image_url is
+    // a previous version of this same post and showing it would look like
+    // the attach did nothing. Before they touch it, the stored image
+    // still wins, so an already-published post keeps showing what
+    // actually went out.
+    const showStored = hasContent && p.image_url && !this._localPreviewWins;
     let imageHtml = '';
-    if (hasContent && p.image_url) {
+    if (showStored) {
       imageHtml = `<div class="spc-image"><img src="${this.escapeHtml(p.image_url)}" alt="Post image"></div>`;
     } else if (this.baseImage) {
-      // Animated canvas will be inserted here
-      imageHtml = `<div class="spc-image" id="spc-image-area"></div>`;
+      // Animated canvas will be inserted here.
+      // With a video attached, that canvas is showing the clip's POSTER
+      // FRAME — the card composed against one still, because html2canvas
+      // cannot render playing video (the real burn-in happens in ffmpeg
+      // server-side). Unlabelled, that is indistinguishable from a photo
+      // post, which is exactly how it was read: "video uploaded but it
+      // looks like pic not video" (owner, 2026-08-28). Say so on the
+      // image itself, where the confusion actually happens.
+      imageHtml = `<div class="spc-image" id="spc-image-area" style="position:relative;">${this.userMedia && this.userMedia.kind === 'video' ? `
+        <div style="position:absolute; left:8px; top:8px; z-index:3; display:flex; align-items:center; gap:6px;
+                    background:rgba(0,0,0,0.72); color:#fff; border-radius:999px; padding:4px 10px;
+                    font-size:0.7rem; font-weight:700; pointer-events:none;">
+          🎬 VIDEO · still frame
+        </div>` : ''}</div>`;
     } else if (this.imageError) {
       imageHtml = `
         <div class="spc-image spc-image-placeholder" id="spc-image-area">
@@ -523,6 +571,26 @@ class SocialPostCard {
         </div>
         ${imageHtml}
         <div class="spc-body">
+          ${!isPosted ? `
+          <div class="spc-media-row" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+            <label class="spc-btn spc-media-pick" style="margin:0;">
+              ${this.userMedia ? '🔁 Replace photo/video' : '🖼️ Add photo or video'}
+              <input type="file" class="spc-media-input" accept="image/*,video/*" style="display:none;">
+            </label>
+            ${this.userMedia ? `
+              <span class="spc-media-name">
+                ${this.userMedia.kind === 'video' ? '🎬' : '🖼️'} ${this.escapeHtml(this.userMedia.fileName || 'selected')}
+              </span>
+              <button type="button" class="spc-btn spc-btn-clear-media">✕ Remove</button>
+              ${this.userMedia.kind === 'video' ? `
+                <div class="spc-media-hint" style="flex-basis:100%;">
+                  The card above shows one still from your clip. The video itself is composited
+                  server-side — hit <strong>🎬 Build preview</strong> below to watch the real thing.
+                </div>` : ''}
+            ` : `
+              <span class="spc-media-hint">Optional — without one you get the club graphic.</span>
+            `}
+          </div>` : ''}
           ${this.postTypeName === 'post_game' && !isPosted ? `
           <div class="spc-scorers-row">
             <label class="spc-scorers-label">⚽ Scorers &amp; cards (one per line → caption)</label>
@@ -539,6 +607,7 @@ class SocialPostCard {
           ${!isPosted ? `
             <button class="spc-btn spc-btn-regen">🔄 Regenerate</button>
             <button class="spc-btn spc-btn-download-video">📹 Download Video</button>
+            ${this.userMedia ? `<button class="spc-btn spc-btn-preview-media">🎬 Build preview</button>` : ''}
             <button class="spc-btn spc-btn-save" ${this.saving ? 'disabled' : ''}>💾 Save</button>
             <div class="spc-schedule-row">
               <input type="datetime-local" class="spc-schedule-input" value="${isScheduled && p.scheduled_at ? this.toLocalISOString(p.scheduled_at) : ''}" />
@@ -567,12 +636,12 @@ class SocialPostCard {
     // remount whenever we're showing the generated-but-not-yet-uploaded
     // image (this.baseImage set, and NOT already displaying a real
     // uploaded p.image_url).
-    if (this.baseImage && !(hasContent && p.image_url)) {
+    if (this.baseImage && !showStored) {
       this.startAnimatedPreview();
     }
 
     // Auto-generate image if none exists
-    if (!(hasContent && p.image_url) && !this.baseImage) {
+    if (!showStored && !this.baseImage) {
       this.generateImage();
     }
   }
@@ -604,7 +673,11 @@ class SocialPostCard {
     }
   }
 
-  async _generateImageOnce() {
+  // `overlayOnly` builds the SAME card with no background of its own —
+  // no gradient, no photo — so html2canvas returns a transparent PNG of
+  // just the scrim and the text/crests. That's the layer ffmpeg burns
+  // onto an uploaded video server-side (see _buildOverlayPng / postNow).
+  async _generateImageOnce({ overlayOnly = false } = {}) {
     if (typeof html2canvas === 'undefined') return;
 
     const m = this.matchContext;
@@ -792,13 +865,37 @@ class SocialPostCard {
       : hasPlayersPlayed ? Math.max(640, 500 + lineupBlock.rows * 18)
       : hasGoalScorers ? 580 : 540;
 
+    // Background layer. Three cases, in priority order:
+    //   overlayOnly → nothing (transparent, for the ffmpeg video burn)
+    //   user media  → their photo, or a video's poster frame, cover-fit
+    //   neither     → the club gradient, i.e. every post before this
+    // The layers are absolutely positioned against the card, whose
+    // containing block is its padding box — so they fill the card right
+    // up to the inside of the gold border, which is what we want.
+    const backdropSrc = this.userMedia
+      ? (this.userMedia.kind === 'video' ? this.userMedia.posterDataUrl : this.userMedia.dataUrl)
+      : null;
+    const cardBackground = (overlayOnly || backdropSrc)
+      ? 'background:transparent;'
+      : 'background:linear-gradient(160deg, #0033a0 0%, #003fbf 30%, #0044cc 55%, #002080 100%);';
+    const backdropHtml = (!overlayOnly && backdropSrc)
+      ? `<img src="${backdropSrc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;" />`
+      : '';
+    // A scrim only exists to keep white text readable over photography,
+    // so it appears exactly when there IS something underneath: real
+    // media now, or the video this overlay is destined for. Darkest at
+    // top and bottom, where the header and the sponsor footer sit.
+    const scrimHtml = (overlayOnly || backdropSrc)
+      ? `<div style="position:absolute;inset:0;z-index:1;background:linear-gradient(180deg, rgba(0,20,60,0.82) 0%, rgba(0,20,60,0.38) 38%, rgba(0,20,60,0.55) 62%, rgba(0,20,60,0.88) 100%);"></div>`
+      : '';
+
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;';
 
     wrapper.innerHTML = `
       <div style="
         width:540px; height:${cardHeight}px;
-        background:linear-gradient(160deg, #0033a0 0%, #003fbf 30%, #0044cc 55%, #002080 100%);
+        ${cardBackground}
         color:#fff; text-align:center; position:relative; overflow:hidden;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
         display:flex; flex-direction:column; justify-content:flex-start; align-items:center;
@@ -806,6 +903,13 @@ class SocialPostCard {
         box-sizing:border-box;
         border:4px solid #f5d442;
       ">
+        ${backdropHtml}
+        ${scrimHtml}
+
+        <!-- Everything below the backdrop sits in one z-index:2 column so
+             the footer's margin-top:auto still pushes against the card's
+             full height. flex:1 gives it that height. -->
+        <div style="position:relative; z-index:2; flex:1; width:100%; display:flex; flex-direction:column; align-items:center;">
 
         <!-- Header -->
         <div style="font-size:12px;text-transform:uppercase;letter-spacing:5px;color:#ffffff;margin-bottom:${hasRoster ? '8px' : leagueBadgeHtml ? '8px' : '12px'};font-weight:700;">
@@ -833,6 +937,8 @@ class SocialPostCard {
             ${this.teamTagline ? `<span style="font-size:8px;font-style:italic;letter-spacing:0.5px;color:rgba(255,255,255,0.7);">"${this.escapeHtml(this.teamTagline)}"</span>` : ''}
           </div>
         </div>
+
+        </div>
       </div>
     `;
 
@@ -858,6 +964,9 @@ class SocialPostCard {
         html2canvas(wrapper.firstElementChild, { backgroundColor: null, scale: 2, useCORS: true }),
         15000
       );
+      // The overlay build is a pure product — it must not disturb the
+      // preview's own base image or restart the beam animation.
+      if (overlayOnly) return canvas.toDataURL('image/png');
       // Store base image (card without beam)
       this.cardWidth = 540;
       this.cardHeight = cardHeight;
@@ -877,6 +986,335 @@ class SocialPostCard {
     } finally {
       document.body.removeChild(wrapper);
     }
+  }
+
+  // ---- Optional photo / video the user supplies ----
+
+  // Anything the browser will decode is fair game; the size ceiling is
+  // the real constraint, since the payload is base64'd into a JSON body
+  // and nginx caps /api/ (frontend/nginx.conf). Checked here so a coach
+  // gets a plain sentence instead of an opaque 413 after a long upload.
+  static get MAX_MEDIA_BYTES() { return 45 * 1024 * 1024; }
+
+  _fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Could not read that file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // First real frame of an uploaded video, as a PNG data URL. Seeks a
+  // little way in rather than to 0 — the very first frame of a phone
+  // clip is often black while exposure settles, which would make the
+  // preview look broken when the video itself is fine.
+  _videoPosterFrame(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      const fail = () => reject(new Error('Could not read that video'));
+      const timer = setTimeout(fail, 15000);
+      video.onerror = () => { clearTimeout(timer); fail(); };
+      video.onloadeddata = () => {
+        // Guard against a duration of 0/NaN on a stream-ish file.
+        const target = (isFinite(video.duration) && video.duration > 0.4) ? 0.3 : 0;
+        video.currentTime = target;
+      };
+      video.onseeked = () => {
+        clearTimeout(timer);
+        try {
+          const cvs = document.createElement('canvas');
+          cvs.width = video.videoWidth;
+          cvs.height = video.videoHeight;
+          cvs.getContext('2d').drawImage(video, 0, 0);
+          resolve(cvs.toDataURL('image/png'));
+        } catch (err) {
+          reject(err);
+        }
+      };
+      video.src = dataUrl;
+    });
+  }
+
+  async _onMediaPicked(file) {
+    if (!file) return;
+    if (file.size > SocialPostCard.MAX_MEDIA_BYTES) {
+      alert(`That file is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is ${SocialPostCard.MAX_MEDIA_BYTES / 1024 / 1024}MB. Try a shorter clip or a smaller photo.`);
+      return;
+    }
+    const isVideo = (file.type || '').startsWith('video/');
+    const isImage = (file.type || '').startsWith('image/');
+    if (!isVideo && !isImage) {
+      alert('Pick a photo or a video.');
+      return;
+    }
+    try {
+      const dataUrl = await this._fileToDataUrl(file);
+      const posterDataUrl = isVideo ? await this._videoPosterFrame(dataUrl) : null;
+      // `file` is kept alongside the data URL on purpose. The data URL is
+      // for the on-card preview only; uploads send this File as raw
+      // bytes, because base64'ing a phone clip into a JSON body needs
+      // several multiples of it in memory and mobile Chrome dies before
+      // the request leaves the browser (2026-08-28: "Failed to fetch",
+      // with nothing at all in nginx's access log).
+      this.userMedia = { kind: isVideo ? 'video' : 'image', dataUrl, posterDataUrl, file, fileName: file.name || '', mimeType: file.type || '' };
+    } catch (err) {
+      alert(err.message || 'Could not read that file');
+      return;
+    }
+    this._resetPreviewForMediaChange();
+  }
+
+  _clearMedia() {
+    this.userMedia = null;
+    this._resetPreviewForMediaChange();
+  }
+
+  // Adding or removing media changes what the card looks like, so the
+  // existing preview is stale the moment it happens — drop it, re-render
+  // so the placeholder shows, and rebuild.
+  _resetPreviewForMediaChange() {
+    this._localPreviewWins = true;
+    if (this._stopLighthouseAnim) { this._stopLighthouseAnim(); this._stopLighthouseAnim = null; }
+    this.animCanvas = null;
+    this.baseImage = null;
+    this.generatedImageUrl = null;
+    this.imageError = false;
+    this.imageErrorMessage = null;
+    this.render();
+    this.generateImage();
+  }
+
+  // Run the upload half of publishing and STOP there (2026-08-28) —
+  // ffmpeg composites the overlay onto the video and hands back a URL,
+  // with no Instagram call. Before this existed the only way to see what
+  // the burned-in video actually looked like was to publish it, so
+  // "testing" the video path meant putting a test post in front of the
+  // club's followers and deleting it afterwards.
+  //
+  // Deliberately reuses the exact upload the publish flow uses rather
+  // than a parallel preview path, so what you approve here is byte-for-
+  // byte what would go out.
+  async buildMediaPreview(btn) {
+    if (!this.userMedia) {
+      alert('Attach a photo or video first.');
+      return;
+    }
+    const setLabel = (t) => { if (btn) btn.textContent = t; };
+    try {
+      // The upload is addressed by post id, so a draft row has to exist.
+      // Same create-or-update call Save makes.
+      const ptId = this.post?.post_type_id || this.postTypeId;
+      if (!ptId) { alert('Post type not loaded yet — try again in a moment.'); return; }
+      if (!this.post || !this.post.post_id) {
+        setLabel('⏳ Creating draft...');
+        const textarea = this.container.querySelector('.spc-caption');
+        await this.auth.fetch('/api/social/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            match_id: this.matchId,
+            team_id: this.teamId,
+            post_type_id: ptId,
+            caption: textarea ? textarea.value.trim() : '',
+            status: 'draft',
+          }),
+        });
+        // Re-read so this.post.post_id is populated for the upload below.
+        const res = await this.auth.fetch(`/api/social/match/${this.matchId}/team/${this.teamId}`);
+        const data = await res.json();
+        if (data.success) {
+          this.post = (data.data || []).find(p => p.post_type === this.postTypeName) || this.post;
+        }
+      }
+      if (!this.post || !this.post.post_id) {
+        alert('Could not create a draft to attach the media to.');
+        return;
+      }
+
+      let mediaData = null;      // base64 path (generated card only)
+      let overlayData = null;
+      let rawBlob = null;        // raw-bytes path (anything the user picked)
+      let rawMime = '';
+      if (this.userMedia.kind === 'video') {
+        setLabel('⏳ Building overlay...');
+        // Degrade the same way postNow does. The overlay render depends
+        // on html2canvas plus crest fetches over the network, each with
+        // its own timeout — and if that's the leg that fails, aborting
+        // here would hide whether the upload and ffmpeg composite work
+        // at all. Better to build the video without the club layer and
+        // say so than to report nothing.
+        try {
+          overlayData = await this._buildOverlayPng();
+        } catch (err) {
+          console.warn('[SocialPostCard] overlay build failed; previewing the bare clip:', err);
+          this._overlayFailed = err && err.message ? err.message : 'overlay render failed';
+        }
+        rawBlob = this.userMedia.file;
+        rawMime = this.userMedia.mimeType || 'video/mp4';
+      } else {
+        // A photo is already composited into the card, so what gets
+        // uploaded is the rendered card — not the bare photo.
+        if (!this.baseImage) {
+          setLabel('⏳ Rendering card...');
+          await this.generateImage();
+          await this.waitForMediaReady(5000);
+        }
+        if (!this.baseImage) { alert('Card image not ready yet — try again in a moment.'); return; }
+        const cvs = document.createElement('canvas');
+        cvs.width = this.baseImage.width;
+        cvs.height = this.baseImage.height;
+        cvs.getContext('2d').drawImage(this.baseImage, 0, 0);
+        // The composed card, as bytes rather than a data URL — same
+        // reasoning as the video, and it keeps one upload path.
+        rawBlob = await new Promise(r => cvs.toBlob(r, 'image/jpeg', 0.92));
+        rawMime = 'image/jpeg';
+      }
+
+      // The overlay goes first and separately: it's a small PNG, so JSON
+      // is fine for it, and the server needs it on disk before the raw
+      // upload triggers the composite.
+      if (overlayData) {
+        setLabel('⏳ Sending overlay...');
+        const ovRes = await this._uploadMediaWithProgress(
+          this.post.post_id, JSON.stringify({ data: overlayData }), null, '/media-overlay');
+        if (!ovRes.ok) {
+          console.warn('[SocialPostCard] overlay upload rejected:', ovRes.status, ovRes.text);
+          this._overlayFailed = `server rejected the overlay (HTTP ${ovRes.status})`;
+        }
+      }
+
+      const mb = (rawBlob.size / 1024 / 1024).toFixed(1);
+      setLabel(`⏳ Uploading 0% of ${mb}MB`);
+      const res = await this._uploadRawWithProgress(
+        this.post.post_id,
+        rawBlob,
+        rawMime,
+        (pct) => setLabel(pct >= 100 ? '⏳ Converting on server...' : `⏳ Uploading ${pct}% of ${mb}MB`)
+      );
+      const text = res.text;
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+      if (!res.ok || !data || !data.success) {
+        const msg = (data && data.message) ? data.message : `HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ''}`;
+        alert('Preview build failed: ' + msg);
+        return;
+      }
+      console.log('[SocialPostCard] preview built from a', mb, 'MB payload');
+      const out = data.data || {};
+      // Cache-bust: the file is written to the same path on every build,
+      // so a rebuilt preview would otherwise show the previous attempt.
+      const bust = `?t=${Date.now()}`;
+      const url = out.video_url ? out.video_url + bust : (out.image_url ? out.image_url + bust : '');
+      if (!url) {
+        alert('Built, but the server returned no URL.');
+        return;
+      }
+      // Rendered inline rather than window.open'd: this runs in an async
+      // callback, long after the click, so a popup blocker would eat it
+      // and the button would look broken. The link below IS a direct
+      // gesture, so opening full size from there always works.
+      this._showPreviewResult(url, !!out.video_url, this._overlayFailed);
+      this._overlayFailed = null;
+      setLabel('✅ Built');
+    } catch (err) {
+      alert('Preview build failed: ' + (err.message || err));
+    }
+  }
+
+  // Media upload with real progress, over XHR rather than fetch.
+  //
+  // fetch() gives no upload progress at all, and a phone clip base64s
+  // into a body of tens of megabytes — so "Uploading..." sits there
+  // unchanged for minutes and looks identical to a hang (owner,
+  // 2026-08-28: "running build preview but its running for awhile").
+  // XHR's upload.onprogress is the only way to tell those two apart.
+  //
+  // Auth/cache headers mirror auth.js's fetch() rather than routing
+  // through it, since that wrapper cannot surface progress. The 401
+  // logout side-effect it performs is deliberately NOT copied: a failed
+  // media upload should report itself, not sign the coach out mid-post.
+  // Raw bytes to /media-raw. `payload` is a File/Blob — XHR streams it
+  // straight from disk, so nothing proportional to the video is ever
+  // held as a JavaScript string.
+  _uploadRawWithProgress(postId, blob, mimeType, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', (this.auth.apiBase || '') + `/api/social/posts/${postId}/media-raw`);
+      xhr.setRequestHeader('Content-Type', mimeType || 'application/octet-stream');
+      if (this.auth.token) xhr.setRequestHeader('Authorization', `Bearer ${this.auth.token}`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.upload.onload = () => { if (onProgress) onProgress(100); };
+      xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, text: xhr.responseText });
+      xhr.onerror = () => reject(new Error('Upload failed — connection lost or blocked'));
+      xhr.send(blob);
+    });
+  }
+
+  _uploadMediaWithProgress(postId, payload, onProgress, suffix = '/media') {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', (this.auth.apiBase || '') + `/api/social/posts/${postId}${suffix}`);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      if (this.auth.token) xhr.setRequestHeader('Authorization', `Bearer ${this.auth.token}`);
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable || !onProgress) return;
+        onProgress(Math.round((e.loaded / e.total) * 100), e.total);
+      };
+      // Sent in full; the server is now converting. Without this the
+      // percentage sticks at 100 through what can be the longest part.
+      xhr.upload.onload = () => { if (onProgress) onProgress(100, 0); };
+      xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, text: xhr.responseText });
+      xhr.onerror = () => reject(new Error('Upload failed — connection lost or blocked'));
+      xhr.ontimeout = () => reject(new Error('Upload timed out'));
+      xhr.send(payload);
+    });
+  }
+
+  // Drops the built media in under the action row, replacing whatever a
+  // previous build left there. Owned entirely here — render() knows
+  // nothing about it, so a re-render simply clears it, which is correct:
+  // the result belongs to the media that was attached at the time.
+  _showPreviewResult(url, isVideo, overlayError) {
+    if (!this.container) return;
+    const id = 'spc-preview-result';
+    let box = this.container.querySelector('#' + id);
+    if (!box) {
+      box = document.createElement('div');
+      box.id = id;
+      box.style.cssText = 'padding:10px 12px; border-top:1px solid rgba(255,255,255,0.12);';
+      const actions = this.container.querySelector('.spc-actions');
+      if (actions && actions.parentNode) actions.parentNode.insertBefore(box, actions.nextSibling);
+      else this.container.appendChild(box);
+    }
+    const media = isVideo
+      ? `<video src="${this.escapeHtml(url)}" controls playsinline style="width:100%; max-width:320px; border-radius:8px; display:block;"></video>`
+      : `<img src="${this.escapeHtml(url)}" alt="Built preview" style="width:100%; max-width:320px; border-radius:8px; display:block;">`;
+    box.innerHTML = `
+      <div style="font-size:0.78em; opacity:0.8; margin-bottom:6px;">
+        Built ${isVideo ? 'video' : 'image'} — exactly what Post Now would publish. Nothing has been posted.
+      </div>
+      ${overlayError ? `
+        <div style="font-size:0.78em; color:#fca5a5; margin-bottom:6px;">
+          ⚠️ The club text/crest layer failed to render, so this clip has no overlay on it.
+          The upload and video conversion worked. Reason: ${this.escapeHtml(overlayError)}
+        </div>` : ''}
+      ${media}
+      <a href="${this.escapeHtml(url)}" target="_blank" rel="noopener"
+         style="display:inline-block; margin-top:6px; font-size:0.78em; color:#93c5fd;">Open full size ↗</a>`;
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // The transparent text/crest layer ffmpeg burns onto an uploaded
+  // video. Same card, same content, no background of its own.
+  async _buildOverlayPng() {
+    return this._generateImageOnce({ overlayOnly: true });
   }
 
   startAnimatedPreview() {
@@ -1335,6 +1773,20 @@ class SocialPostCard {
   }
 
   attachListeners() {
+    const mediaInput = this.container.querySelector('.spc-media-input');
+    if (mediaInput) {
+      mediaInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        // Clear the input first: picking the same file twice in a row
+        // fires no change event otherwise, which reads as the button
+        // being broken after a coach removes and re-adds the same photo.
+        e.target.value = '';
+        this._onMediaPicked(file);
+      });
+    }
+    const clearMediaBtn = this.container.querySelector('.spc-btn-clear-media');
+    if (clearMediaBtn) clearMediaBtn.addEventListener('click', () => this._clearMedia());
+
     const textarea = this.container.querySelector('.spc-caption');
     const charCount = this.container.querySelector('.spc-char-num');
     if (textarea && charCount) {
@@ -1410,6 +1862,17 @@ class SocialPostCard {
       });
     }
 
+    const previewMediaBtn = this.container.querySelector('.spc-btn-preview-media');
+    if (previewMediaBtn) {
+      previewMediaBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        previewMediaBtn.disabled = true;
+        await this.buildMediaPreview(previewMediaBtn);
+        previewMediaBtn.disabled = false;
+        previewMediaBtn.textContent = '🎬 Build preview';
+      });
+    }
+
     const dlBtn = this.container.querySelector('.spc-btn-download-video');
     if (dlBtn) {
       dlBtn.addEventListener('click', async (e) => {
@@ -1465,7 +1928,15 @@ class SocialPostCard {
     const postBtn = this.container.querySelector('.spc-btn-post');
     // Name the wait: recording is real-time, so at 30s a bare "Recording
     // video..." looks like the button has hung.
-    if (postBtn) { postBtn.disabled = true; postBtn.textContent = `⏳ Recording ${this.postClipSeconds()}s video...`; }
+    // Name the wait accurately: an uploaded video skips the recorder
+    // entirely, so promising a 30s recording there is just a lie the
+    // coach sits through wondering what's happening.
+    if (postBtn) {
+      postBtn.disabled = true;
+      postBtn.textContent = (this.userMedia && this.userMedia.kind === 'video')
+        ? '⏳ Preparing your video...'
+        : `⏳ Recording ${this.postClipSeconds()}s video...`;
+    }
 
     try {
       // Persist the visible caption before publish so the post text matches the preview.
@@ -1487,15 +1958,34 @@ class SocialPostCard {
       }
 
       let mediaData;
+      let overlayData = null;
+
+      // An uploaded VIDEO never goes through the beam recorder below —
+      // there'd be nothing to record, since the card preview is only
+      // showing its poster frame. Send the raw video plus a transparent
+      // overlay PNG and let ffmpeg burn one onto the other server-side
+      // (SocialController::handleUploadMedia), which is also the only
+      // way the coach's actual footage survives at full quality.
+      if (this.userMedia && this.userMedia.kind === 'video') {
+        if (postBtn) postBtn.textContent = '⏳ Building overlay...';
+        try {
+          overlayData = await this._buildOverlayPng();
+        } catch (err) {
+          console.warn('[SocialPostCard] overlay build failed, posting the video bare:', err);
+        }
+        mediaData = this.userMedia.dataUrl;
+      }
 
       // If preview media is not ready yet, try generating it now.
-      if (!this.animCanvas && !this.baseImage) {
+      if (!mediaData && !this.animCanvas && !this.baseImage) {
         if (postBtn) postBtn.textContent = '⏳ Generating preview...';
         await this.generateImage();
         await this.waitForMediaReady(5000);
       }
 
-      if (this.animCanvas) {
+      if (mediaData) {
+        // Already have it — an uploaded video, handled above.
+      } else if (this.animCanvas) {
         // Record a compact WebM clip to keep upload payload under proxy limits.
         mediaData = await new Promise((resolve, reject) => {
           const stream = this.animCanvas.captureStream(24);
@@ -1550,7 +2040,7 @@ class SocialPostCard {
         const uploadRes = await this.auth.fetch(`/api/social/posts/${this.post.post_id}/media`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: mediaData })
+          body: JSON.stringify(overlayData ? { data: mediaData, overlay: overlayData } : { data: mediaData })
         });
         const uploadText = await uploadRes.text();
         let uploadData = null;
