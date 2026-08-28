@@ -23,6 +23,15 @@ namespace {
 // schema and (b) have a `person_id` column referencing `persons(id)`.  When
 // migrations add or drop a person-owning table, this list MUST be updated
 // or the merge transaction will fail on the snapshot subquery.
+//
+// One person-owning reference cannot live here: persons.parent_person_id,
+// which names a `persons` row rather than carrying a person_id column.  It
+// is declared ON DELETE NO ACTION, so merging someone who is a parent of a
+// youth player fails loudly on step 4's DELETE with an FK violation and the
+// whole transaction rolls back.  That is a safe outcome — nothing is lost —
+// but it does mean parents cannot currently be merged at all.  Reparenting
+// their children onto the kept person is a real semantic decision (are the
+// kids now the kept person's kids?) and deliberately not made here.
 // ────────────────────────────────────────────────────────────────────────────
 const std::vector<PersonMerge::ChildTable>& PersonMerge::childTables() {
     static const std::vector<ChildTable> kTables = {
@@ -35,6 +44,37 @@ const std::vector<PersonMerge::ChildTable>& PersonMerge::childTables() {
         { "chat_event_rsvps",        Conflict::UniquePersonPlusCols, {"chat_event_id"},  {"id"} },
         { "event_rsvps",             Conflict::UniquePersonPlusCols, {"chat_event_id"},  {"id"} },
         { "person_field_overrides",  Conflict::UniquePersonPlusCols, {"field_name"},     {"id"} },
+        // Added 2026-08-28.  Every one of these has a person_id FK declared
+        // ON DELETE CASCADE, so while they were missing from this catalogue
+        // a merge did not "leave them alone" — step 4's DELETE FROM persons
+        // destroyed them outright, with no snapshot and therefore no undo.
+        // team_persons and fh_event_rsvps are the sharp ones: merging two
+        // identities silently wiped the dropped person's entire roster
+        // history and every RSVP they had ever given.
+        //
+        // Membership of THIS list is what makes a table survive a merge, so
+        // when a migration adds a person-owning table, add it here too.  To
+        // find stragglers:
+        //   SELECT c.conrelid::regclass FROM pg_constraint c
+        //    WHERE c.contype='f' AND c.confrelid='persons'::regclass;
+        { "team_persons",            Conflict::UniquePersonPlusCols, {"team_id"},        {"id"} },
+        { "fh_event_rsvps",          Conflict::UniquePersonPlusCols, {"fh_event_id"},    {"id"} },
+        { "fh_event_attendance",     Conflict::UniquePersonPlusCols, {"fh_event_id"},    {"id"} },
+        { "person_la_memberships",   Conflict::UniquePersonPlusCols, {"la_program_id"},  {"id"} },
+        { "player_event_reminders",  Conflict::NoPersonUnique,       {},                 {"id"} },
+        { "push_subscriptions",      Conflict::NoPersonUnique,       {},                 {"id"} },
+        { "trail_test_attempts",     Conflict::NoPersonUnique,       {},                 {"id"} },
+        { "trail_test_results",      Conflict::NoPersonUnique,       {},                 {"id"} },
+        // These two carry person_id INSIDE their primary key, which the
+        // unmerge PK-match in reverse() cannot express: it looks for the
+        // snapshot row under the KEPT person, but a PK containing person_id
+        // can never match there, so reverse() restores the row under the
+        // dropped person while the reparented copy stays under the kept one
+        // — a duplicate rather than a clean split.  Listing them anyway is
+        // still strictly better than the alternative, which was outright
+        // deletion with nothing recorded to argue about.
+        { "rsvp_suspensions",        Conflict::UniquePersonPlusCols, {"starts_at"},      {"person_id", "starts_at"} },
+        { "sim_player_profile",      Conflict::UniquePerson,         {},                 {"person_id"} },
         // Auth state: many rows per person, no per-person uniqueness.  We
         // reparent (rather than delete) so the kept identity inherits the
         // dropped identity's active sessions / unconsumed magic links —

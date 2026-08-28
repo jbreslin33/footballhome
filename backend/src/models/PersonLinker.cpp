@@ -1,4 +1,5 @@
 #include "PersonLinker.h"
+#include "PersonMerge.h"
 #include "../database/Database.h"
 #include <algorithm>
 #include <cctype>
@@ -81,6 +82,83 @@ std::string trimAscii(const std::string& s) {
 
 } // namespace
 
+void PersonLinker::adoptLoginOnlyDuplicate(int keepPersonId, const std::string& email) {
+    int otherId = 0;
+    try {
+        auto owner = db_->query(
+            "SELECT person_id FROM person_emails WHERE email = $1 LIMIT 1",
+            {email});
+        if (owner.empty()) return;
+        otherId = owner[0]["person_id"].as<int>();
+    } catch (const std::exception& e) {
+        std::cerr << "[PersonLinker::adoptLoginOnlyDuplicate] owner lookup failed: "
+                  << e.what() << " email=" << email << std::endl;
+        return;
+    }
+    // We lost the race to (person_id, email), not to (email) — already ours.
+    if (otherId == keepPersonId) return;
+
+    // Adopt ONLY a login-only orphan: a persons row that exists for no
+    // reason except that somebody signed in with this address.  Every
+    // clause below is a way of holding an identity of your own, and any
+    // one of them means these are two people, not one row split in two:
+    //   la_user_id / person_la_memberships → LeagueApps knows them separately
+    //   team_persons (incl. removed rows)  → they have club history, and
+    //                                        team_persons is NOT in
+    //                                        PersonMerge::childTables(), so
+    //                                        the merge's DELETE would CASCADE
+    //                                        those rows away silently
+    //   coaches / parent_person_id         → they hold a role over others
+    //   admins                             → merging would move admin rights
+    //                                        onto the kept person
+    // The users row is required, not optional: no login means this isn't
+    // the OAuth-orphan shape and there's nothing to rescue.
+    try {
+        auto safe = db_->query(
+            "SELECT 1 FROM persons p "
+            " WHERE p.id = $1::int "
+            "   AND p.la_user_id IS NULL "
+            "   AND EXISTS     (SELECT 1 FROM users u  WHERE u.person_id = p.id) "
+            "   AND NOT EXISTS (SELECT 1 FROM person_la_memberships m WHERE m.person_id = p.id) "
+            "   AND NOT EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = p.id) "
+            "   AND NOT EXISTS (SELECT 1 FROM coaches c WHERE c.person_id = p.id) "
+            "   AND NOT EXISTS (SELECT 1 FROM persons k WHERE k.parent_person_id = p.id) "
+            "   AND NOT EXISTS (SELECT 1 FROM admins a JOIN users u2 ON u2.id = a.user_id "
+            "                    WHERE u2.person_id = p.id) "
+            " LIMIT 1",
+            {std::to_string(otherId)});
+        if (safe.empty()) {
+            std::cerr << "[PersonLinker::adoptLoginOnlyDuplicate] email " << email
+                      << " belongs to person " << otherId
+                      << ", which carries an identity of its own — left alone for"
+                         " manual review (would-keep=" << keepPersonId << ")"
+                      << std::endl;
+            return;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[PersonLinker::adoptLoginOnlyDuplicate] guard query failed: "
+                  << e.what() << " person=" << otherId << std::endl;
+        return;
+    }
+
+    // PersonMerge opens its own transaction; upsertContact is not inside
+    // one, so this nests safely.  merge(keep, drop) reparents users,
+    // sessions, magic_link_tokens and person_emails onto the roster person
+    // and writes a reversible person_merges audit row.
+    try {
+        PersonMerge merger;
+        const auto r = merger.merge(keepPersonId, otherId, std::nullopt);
+        std::cout << "[PersonLinker::adoptLoginOnlyDuplicate] adopted login-only"
+                  << " person " << otherId << " into roster person " << keepPersonId
+                  << " via " << email << " — merge id " << r.mergeId
+                  << " (undo: POST /api/persons/unmerge/" << r.mergeId << ")"
+                  << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[PersonLinker::adoptLoginOnlyDuplicate] merge " << otherId
+                  << " -> " << keepPersonId << " failed: " << e.what() << std::endl;
+    }
+}
+
 void PersonLinker::upsertContact(int personId, const std::string& email, const std::string& phone) {
     const std::string cleanEmail = trimAscii(email);
     const std::string cleanPhone = trimAscii(phone);
@@ -89,13 +167,19 @@ void PersonLinker::upsertContact(int personId, const std::string& email, const s
     if (!cleanEmail.empty()) {
         try {
             // person_emails has BOTH a global UNIQUE(email) and UNIQUE(person_id, email).
-            // We DO NOT steal an email from another person — if the same email is
-            // already attached elsewhere, log and skip (indicates a merge candidate).
-            db_->query(
+            // We DO NOT steal an email from another person.  Until 2026-08-28 a
+            // collision was logged and dropped as "a merge candidate", but nothing
+            // ever consumed that queue, so the split identity it left behind was
+            // permanent and invisible.  Hand it to adoptLoginOnlyDuplicate instead.
+            auto ins = db_->query(
                 "INSERT INTO person_emails (person_id, email) "
                 "VALUES ($1::int, $2) "
-                "ON CONFLICT (email) DO NOTHING",
+                "ON CONFLICT (email) DO NOTHING "
+                "RETURNING id",
                 {std::to_string(personId), cleanEmail});
+            if (ins.empty()) {
+                adoptLoginOnlyDuplicate(personId, cleanEmail);
+            }
         } catch (const std::exception& e) {
             std::cerr << "[PersonLinker::upsertContact email] " << e.what()
                       << " personId=" << personId << " email=" << cleanEmail << std::endl;

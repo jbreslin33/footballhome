@@ -110,6 +110,25 @@ private:
     // Upsert `email` and/or `phone` onto `personId`.  No-op for empty strings.
     void upsertContact(int personId, const std::string& email, const std::string& phone);
 
+    // Called when upsertContact's email INSERT loses the UNIQUE(email) race
+    // because some OTHER persons row already holds `email`.
+    //
+    // That collision has exactly one benign cause and one dangerous one.
+    // The benign one (2026-08-28): the player signed in with Google BEFORE
+    // LeagueApps told us they existed, so OAuthController::findOrCreateUser
+    // minted a persons + users row keyed on nothing but the email.  When
+    // the LA registration then arrives it builds the REAL roster person,
+    // this INSERT silently loses, and one human is now two rows — a login
+    // that owns the email but no team, and a roster spot nobody can log in
+    // to.  The player logs in, CalendarController's `eligible` predicate
+    // finds no team_persons row, and every event vanishes from their page.
+    // We adopt that orphan into `keepPersonId` so both doors lead to one
+    // identity.  The dangerous cause is two genuinely different people
+    // sharing a mailbox (a parent's address on two kids' registrations) —
+    // the guards below refuse anything that carries an identity of its
+    // own, and we log and leave it for manual review instead.
+    void adoptLoginOnlyDuplicate(int keepPersonId, const std::string& email);
+
     // For CHILD records, resolve-or-create the parent person from
     // parentUserId + parentFirstName/parentLastName, upsert parentEmail/
     // parentPhone on the parent, and set persons.parent_person_id on the

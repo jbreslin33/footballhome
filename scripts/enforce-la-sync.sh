@@ -104,10 +104,27 @@
 #                     gate and left the backend undeployable — found while
 #                     shipping an unrelated PublicController change.)
 #
+#   PersonMerge     — names person_la_memberships only in its child-table
+#                     catalogue (added 2026-08-28), where the table is
+#                     REPARENTED during a merge, never read to render or
+#                     decide anything.  Membership freshness is irrelevant
+#                     to moving a row from one person_id to another: a
+#                     stale row and a fresh row both move.  Its two callers
+#                     pre-sync anyway —
+#                       * PersonMergeController's laPost(allLaProgramIds)
+#                         routes (merge / unmerge / link-scraped)
+#                       * PersonLinker::adoptLoginOnlyDuplicate, which runs
+#                         inside LaProgramSync itself
+#                     — so the STRICT rule is satisfied twice over.  Note
+#                     the caveat differs from the other entries here: if
+#                     PersonMerge ever grows a query that READS membership
+#                     state to make a decision, this entry becomes a lie
+#                     and the file must route through la*() properly.
+#
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership)|backend/src/core/Controller)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge)|backend/src/core/Controller)'
 
 set -euo pipefail
 
