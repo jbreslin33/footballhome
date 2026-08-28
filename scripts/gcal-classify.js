@@ -315,9 +315,16 @@ function parseDsl(description) {
         break;
       case 'type':
       case 'kind': {
-        const n = jsNormAlias(val);
+        let n = jsNormAlias(val);
+        // "Intra Squad", "Intra-Squad" and "IntraSquad" all normalize to
+        // either "intra squad" or "intrasquad" depending on how ops typed
+        // it; only the one-word form is a legal kind (migration 317), so
+        // fold the spaced spelling onto it rather than silently dropping
+        // the tag and inferring 'match' — which is exactly the fallback
+        // that made two intra-squad games look like two real fixtures.
+        if (n === 'intra squad') n = 'intrasquad';
         // Accept only values the CHECK constraint allows.
-        if (['practice','pickup','match','meeting','camp','other','barn night'].includes(n)) {
+        if (['practice','pickup','match','meeting','camp','other','barn night','intrasquad'].includes(n)) {
           out.kind = n;
         }
         break;
@@ -562,6 +569,39 @@ async function classifyDsl(pg) {
         [fhEventId, teamIds],
       );
       stats.linksAdded += added;
+
+      // Same reconcile for leagues (fh_event_leagues, migration 318).
+      // Resolved from the raw `League:` tag through gcal_league_aliases
+      // inside SQL rather than in JS, so the alias table stays the one
+      // place a league name is recognised. Split on commas because one
+      // event can belong to two leagues — intra-squad APSL vs Liga 1,
+      // cross-league friendlies, cup ties.
+      //
+      // Rebuilt every pass, exactly like fh_event_teams: retagging an
+      // event in Google has to be able to REMOVE a league, not just add
+      // one, or a corrected tag leaves the old crest behind forever.
+      await client.query(
+        `DELETE FROM fh_event_leagues fel
+          WHERE fel.fh_event_id = $1::bigint
+            AND fel.organization_id <> ALL(
+                  COALESCE((
+                    SELECT array_agg(DISTINCT gla.organization_id)
+                      FROM regexp_split_to_table(COALESCE($2::text,''), '[[:space:]]*,[[:space:]]*') AS tok
+                      JOIN gcal_league_aliases gla
+                        ON LOWER(BTRIM(gla.alias)) = LOWER(BTRIM(tok))
+                  ), '{}'::int[]))`,
+        [fhEventId, dsl.league],
+      );
+      const { rowCount: leaguesAdded } = await client.query(
+        `INSERT INTO fh_event_leagues (fh_event_id, organization_id)
+         SELECT DISTINCT $1::bigint, gla.organization_id
+           FROM regexp_split_to_table(COALESCE($2::text,''), '[[:space:]]*,[[:space:]]*') AS tok
+           JOIN gcal_league_aliases gla
+             ON LOWER(BTRIM(gla.alias)) = LOWER(BTRIM(tok))
+         ON CONFLICT DO NOTHING`,
+        [fhEventId, dsl.league],
+      );
+      stats.leagueLinksAdded = (stats.leagueLinksAdded || 0) + leaguesAdded;
 
       await client.query('COMMIT');
     } catch (err) {

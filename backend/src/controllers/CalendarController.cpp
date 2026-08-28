@@ -561,6 +561,32 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                        AND LOWER(BTRIM(olc.opponent_text)) = LOWER(BTRIM(fe.opponent))
                 ) AS opponent_logo_checked,
                 fe.fh_notes,
+                fe.league,
+                -- The league's own crest, whenever the gcal `League:` tag
+                -- is set (owner, 2026-08-28: "we should always have league
+                -- logo if league var is set"). Same
+                -- fh_events.league -> gcal_league_aliases -> organizations
+                -- chain EventController's LEAGUE_CREST_SQL uses, but keyed
+                -- straight off fh_events rather than through matches, so a
+                -- practice or pickup carrying a League: tag gets one too.
+                --
+                -- This is what tells two intra-squad games apart on the
+                -- RSVP card: "Lighthouse APSL vs Lighthouse Liga 1" has
+                -- Lighthouse on both sides, so opponent_logo_url resolves
+                -- to the same crest for both and a player cannot see which
+                -- game is which.
+                -- From fh_event_leagues (migration 318), not by splitting
+                -- fh_events.league here: one event can belong to two
+                -- leagues (intra-squad APSL vs Liga 1, cross-league
+                -- friendlies, cup ties), and that is a many-to-many
+                -- relationship rather than a string to be parsed at each
+                -- call site. Comma-separated on the way out only because
+                -- the JSON field is one string; the frontend splits it to
+                -- render one badge per league.
+                (SELECT string_agg(DISTINCT o.logo_url, ',')
+                   FROM fh_event_leagues fel
+                   JOIN organizations o ON o.id = fel.organization_id
+                  WHERE fel.fh_event_id = fe.id) AS league_logo_url,
                 CASE
                     WHEN fe.rsvps_open_at IS NULL THEN NULL
                     ELSE to_char(fe.rsvps_open_at AT TIME ZONE 'UTC',
@@ -927,6 +953,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["match_id"]          = longLongOrNull(row, "match_id");
             ev["opponent"]          = textOrNull(row, "opponent");
             ev["opponent_logo_url"] = textOrNull(row, "opponent_logo_url");
+            ev["league"]            = textOrNull(row, "league");
+            ev["league_logo_url"]   = textOrNull(row, "league_logo_url");
             // No DB match (hand-seeded alias / exact teams.name / prior
             // cache) — try a live lookup exactly once per distinct
             // opponent text, then cache whatever we found (or didn't).

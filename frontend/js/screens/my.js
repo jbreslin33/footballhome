@@ -403,7 +403,7 @@ class MyScreen extends Screen {
     if (category === 'staff' || summary.includes('all staff meeting')) return false;
     if (kind === 'meeting') return false;
 
-    return ['pickup', 'practice', 'match', 'barn night'].includes(kind);
+    return ['pickup', 'practice', 'match', 'barn night', 'intrasquad'].includes(kind);
   }
 
   _renderMensLink() {
@@ -621,7 +621,8 @@ class MyScreen extends Screen {
     const tags = this._parseDescTags(ev.description);
 
     const kindLabels = { pickup: 'Pickup', practice: 'Practice', match: 'Game',
-                         meeting: 'Meeting', camp: 'Camp', 'barn night': 'Barn Night' };
+                         meeting: 'Meeting', camp: 'Camp', 'barn night': 'Barn Night',
+                         intrasquad: 'Intra Squad' };
     const catLabels  = { mens: 'Mens', womens: 'Womens', boys: 'Boys', girls: 'Girls', staff: 'Staff' };
     // Prefer the raw tag value straight off the calendar description
     // (handles multi-club tags like "Boys, Girls" and the real Kind:
@@ -1074,17 +1075,52 @@ class MyScreen extends Screen {
     // isn't in gcal_opponent_aliases yet — every card gets a crest,
     // never blank. Practice/pickup always show Lighthouse's own.
     const LIGHTHOUSE_CREST = '/images/teams/logos/lighthouse-1893.png';
+    // Intra-squad deliberately does NOT consult opponent_logo_url: both
+    // sides are Lighthouse, so any "opponent" crest there is either our
+    // own or a mis-resolution of our own team name. It gets the club
+    // crest like practice and pickup do.
     const crestUrl = kind === 'match'
       ? (ev.opponent_logo_url || LIGHTHOUSE_CREST)
-      : ((kind === 'practice' || kind === 'pickup') ? LIGHTHOUSE_CREST : null);
+      : ((kind === 'practice' || kind === 'pickup' || kind === 'intrasquad') ? LIGHTHOUSE_CREST : null);
+    // League crest, shown whenever the gcal `League:` tag is set (owner,
+    // 2026-08-28: "we should always have league logo if league var is
+    // set"). It rides on the corner of the main crest rather than
+    // replacing it, so a normal away game still leads with the opponent.
+    //
+    // The case that forced this: two intra-squad games on the same day,
+    // "Lighthouse APSL vs Lighthouse Liga 1" and its mirror. Lighthouse
+    // is on both sides of both, so opponent_logo_url is identical and
+    // the cards were indistinguishable — a player could not tell which
+    // RSVP was for which squad. The league badge is the only thing that
+    // separates them. Label goes in the meta line below too, since a
+    // 16px badge alone is not readable as "APSL" vs "CASA".
+    // One event can carry two leagues ("League: APSL, Liga 1"), so this
+    // arrives comma-separated and every crest gets a badge — an
+    // intra-squad or cross-league fixture then reads as "APSL vs CASA"
+    // at a glance. Capped at two so the corner of a 32px crest stays
+    // legible; the full list is always in the label below regardless.
+    const leagueLogos = String(ev.league_logo_url || '')
+      .split(',').map(u => u.trim()).filter(Boolean).slice(0, 2);
+    const leagueBadgeHtml = leagueLogos.map((logo, i) => `
+      <img src="${this.escapeHtml(logo)}" alt="${this.escapeHtml(ev.league || 'League')}"
+           title="${this.escapeHtml(ev.league || '')}"
+           style="position:absolute; right:${i * 13 - 3}px; bottom:-3px; width:17px; height:17px;
+                  border-radius:50%; object-fit:contain; background:#fff;
+                  box-shadow:0 0 0 1.5px rgba(10,20,40,0.9); z-index:${2 - i};"
+           onerror="this.onerror=null; this.style.display='none';">
+    `).join('');
     const crestHtml = crestUrl ? `
-      <img src="${this.escapeHtml(crestUrl)}" alt=""
-           style="width:32px; height:32px; border-radius:50%; object-fit:contain;
-                  background:#fff; flex-shrink:0;"
-           onerror="this.onerror=null; this.src='${LIGHTHOUSE_CREST}';">
+      <span style="position:relative; display:inline-block; flex-shrink:0; line-height:0;">
+        <img src="${this.escapeHtml(crestUrl)}" alt=""
+             style="width:32px; height:32px; border-radius:50%; object-fit:contain;
+                    background:#fff; display:block;"
+             onerror="this.onerror=null; this.src='${LIGHTHOUSE_CREST}';">
+        ${leagueBadgeHtml}
+      </span>
     ` : '';
 
-    const compactMeta = `${playersGoingCount} players, ${coachesGoingCount} coaches going · ${notGoingCount} not going`;
+    const leagueLabel = (ev.league || '').trim();
+    const compactMeta = `${leagueLabel ? leagueLabel + ' · ' : ''}${playersGoingCount} players, ${coachesGoingCount} coaches going · ${notGoingCount} not going`;
     const arrivalKickoffLine = (arrival || warmup || kickoff)
       ? [arrival ? `Arrival ${arrival}` : '', warmup ? `Warmup ${warmup}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')
       : '';
