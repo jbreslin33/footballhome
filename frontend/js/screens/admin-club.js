@@ -174,7 +174,7 @@ class AdminClubScreen extends Screen {
       {
         label: 'Cleanup',
         tiles: [
-          { id: 'person-duplicates', icon: '🔎', label: 'Duplicates / Merges', description: 'Shared emails, matching name+DOB, and merge history' },
+          { id: 'person-duplicates', icon: '🔎', label: 'Duplicates / Merges', description: 'Shared emails, matching name+DOB, split identities, and merge history' },
           { id: 'person-data-issues', icon: '⚠️', label: 'Data Issues', description: 'Missing contact, account, LA alias, roster, or RSVP links' },
         ],
       },
@@ -639,7 +639,7 @@ class AdminClubScreen extends Screen {
         'person-duplicates': {
           title: 'Duplicates / Merges',
           subtitle: 'Duplicate signals and merge history',
-          description: 'Shared emails, matching name+DOB, and people touched by merges.',
+          description: 'Shared emails, matching name+DOB, split identities (a sign-in with no team beside a roster spot with no sign-in), and people touched by merges.',
           action: 'duplicates',
         },
         'person-data-issues': {

@@ -1108,7 +1108,11 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
             const bool emailDup   = !row["email_duplicate"].is_null() && row["email_duplicate"].as<bool>();
             const bool nameDup    = !row["name_dob_duplicate"].is_null() && row["name_dob_duplicate"].as<bool>();
             const bool mergeHist  = !row["has_merge_history"].is_null() && row["has_merge_history"].as<bool>();
-            const bool isDup      = emailDup || nameDup || mergeHist;
+            // split_identity_key must be part of isDup or the Duplicates
+            // tab filters these rows out before the grouping ever sees
+            // them — the view is server-filtered, not client-filtered.
+            const bool splitId    = !row["split_identity_key"].is_null();
+            const bool isDup      = emailDup || nameDup || mergeHist || splitId;
 
             const std::string email = row["email"].c_str();
             const std::string phone = row["phone"].c_str();
