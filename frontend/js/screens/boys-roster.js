@@ -244,19 +244,23 @@ class BoysRosterScreen extends RosterScreenBase {
   // column there beats extending this regex.
   static DOCS_TEAM_RE = /^U(8|10|12)\s+Intramural$/i;
 
+  // Same gate for the column DOCS row and the per-card 📄 DOCS button,
+  // so a team never gets one without the other.
+  static columnNeedsDocs(col) {
+    if (!col || col.isUnassigned) return false;
+    const name = String(col.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    return BoysRosterScreen.DOCS_TEAM_RE.test(name);
+  }
+
   static DOCS_PRESET = {
     key:     'docs',
     icon:    '📄',
     label:   'Docs reminder',
     subject: 'Lighthouse Soccer — travel team docs needed',
     body: [
-      'To play for a Lighthouse Soccer League travel team, parents must upload a birth certificate & head shot of their child on this form.',
+      'Dear Lighthouse Soccer Parents, in order to play in the Philadelphia Parks & Rec Soccer League (All games in Philadelphia) you must please right away fill out this form that has you simply upload picture of birth certificate and head shot of child. We have a limited number of spots on travel so we are filling the spots as parents fill out form.',
       '',
       'https://forms.gle/n2bj8aHiTRqLs6cg9',
-      '',
-      'Travel spots are limited so please do this immediately!',
-      '',
-      'Players can still practice with us even if they are not on a travel team.',
     ].join('\n'),
   };
 
@@ -264,13 +268,19 @@ class BoysRosterScreen extends RosterScreenBase {
   // because Fit-mode columns are ~110px and the header already carries
   // the team name plus the count (see the 2026-08-26 fix for names
   // breaking one letter per line).
+  // Email only (owner 2026-08-27: "the bcc bulk email works. but the
+  // text ... just put a docs text reminder on the player cards until we
+  // get the bulk text working"). BCC through Gmail reaches the whole
+  // column reliably; a single sms: URL carrying every parent's number
+  // does not, so texting is done one card at a time via the 📄 DOCS
+  // button renderPlayer puts on each card in these columns.
   renderDocsRow(col, players) {
-    if (col.isUnassigned) return '';
+    if (!BoysRosterScreen.columnNeedsDocs(col)) return '';
     const name = String(col.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
-    if (!BoysRosterScreen.DOCS_TEAM_RE.test(name)) return '';
     const btns = this.renderMessageButtons(name, players, {
-      compact: true,
-      preset:  BoysRosterScreen.DOCS_PRESET,
+      compact:  true,
+      preset:   BoysRosterScreen.DOCS_PRESET,
+      channels: ['email'],
     });
     if (!btns) return '';
     return `
@@ -564,6 +574,22 @@ class BoysRosterScreen extends RosterScreenBase {
       // chrome, so it didn't need this — this button did).
       btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0; display:flex; align-items:center; justify-content:center;',
     });
+    // 📄 DOCS (2026-08-27) — texts ONE parent the same travel-documents
+    // reminder the column's DOCS email sends, on the cards of the teams
+    // that need it (columnNeedsDocs). Stands in for the bulk text that
+    // was pulled from the DOCS row; a one-recipient sms: URL is the part
+    // every Messages client gets right.
+    const docsSmsHref = (contactPhone && BoysRosterScreen.columnNeedsDocs(col))
+      ? `sms:${contactPhone}?&body=${encodeURIComponent(BoysRosterScreen.DOCS_PRESET.body)}`
+      : null;
+    const docsBtn = docsSmsHref
+      ? `<a href="${docsSmsHref}"
+            title="Text ${this.escape(this.formatPhone(contactPhone))} the travel documents reminder${p.firstName ? ` for ${this.escape(p.firstName)}` : ''}"
+            style="${btnBase} border:none; cursor:pointer; background:#b45309; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center;">
+           📄 DOCS
+         </a>`
+      : '';
+
     let delinqBtns = '';
     // Prorate context (2026-07-09) — mirror mens-roster: if the youth
     // player is a mid-cycle signup who hasn't paid the full $35 yet,
@@ -780,7 +806,7 @@ class BoysRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn,
+      viewButtonHtml: `${docsBtn}${profileBtn}`,
       borderColor: cardBorder,
       canMove,
     });

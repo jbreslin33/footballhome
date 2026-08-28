@@ -714,7 +714,7 @@ class RosterScreenBase extends Screen {
   // and the email subject ("U8 Travel", "all boys"). Players are
   // stashed on the instance keyed by token, because a click handler
   // can't carry an array through a data-attribute.
-  renderMessageButtons(scope, players, { compact = false, preset = null } = {}) {
+  renderMessageButtons(scope, players, { compact = false, preset = null, channels = null } = {}) {
     if (!window.RosterMessaging) return '';
     const list = (players || []).filter(Boolean);
     if (!list.length) return '';
@@ -739,7 +739,14 @@ class RosterScreenBase extends Screen {
     const pad = compact ? '1px 6px' : '3px 10px';
     const fs  = compact ? '0.7rem' : '0.78rem';
     const icon = preset ? preset.icon : '';
-    const btn = (kind, label, count, title) => count === 0 ? '' : `
+    // `channels` narrows the pair to one button. Used by the boys/girls
+    // DOCS row, which is email-only until multi-recipient SMS works:
+    // an sms: URL with N numbers is honoured by some Messages clients
+    // and silently truncated by others, so bulk text is off and the
+    // per-card 📄 DOCS button (boys-roster renderPlayer) covers texting
+    // one parent at a time.
+    const wants = (kind) => !channels || channels.includes(kind);
+    const btn = (kind, label, count, title) => (count === 0 || !wants(kind)) ? '' : `
       <button type="button" class="rb-msg-btn" data-msg-kind="${kind}" data-msg-token="${token}"
               title="${esc(title)}"
               style="font-size:${fs}; font-weight:700; padding:${pad}; border-radius:999px; cursor:pointer;
@@ -747,16 +754,23 @@ class RosterScreenBase extends Screen {
         ${label} ${count}
       </button>`;
 
+    const smsBtn = btn('sms', `${icon}💬`, info.phones.length,
+          preset
+            ? `${preset.label}: text ${info.phones.length} for ${scope}`
+            : `Text ${info.phones.length} recipient${info.phones.length === 1 ? '' : 's'} for ${scope}`);
+    const emailBtn = btn('email', `${icon}✉`, info.emails.length,
+          preset
+            ? `${preset.label}: email ${info.emails.length} for ${scope} (BCC)`
+            : `Email ${info.emails.length} recipient${info.emails.length === 1 ? '' : 's'} for ${scope} (BCC)`);
+    // Nothing survived the channel filter (e.g. an email-only DOCS row
+    // for a column where no parent has an address) — return '' so the
+    // caller drops its label row instead of drawing an empty one.
+    if (!smsBtn && !emailBtn) return '';
+
     return `
       <span style="display:inline-flex; gap:4px; align-items:center;">
-        ${btn('sms',   `${icon}💬`, info.phones.length,
-              preset
-                ? `${preset.label}: text ${info.phones.length} for ${scope}`
-                : `Text ${info.phones.length} recipient${info.phones.length === 1 ? '' : 's'} for ${scope}`)}
-        ${btn('email', `${icon}✉`,  info.emails.length,
-              preset
-                ? `${preset.label}: email ${info.emails.length} for ${scope} (BCC)`
-                : `Email ${info.emails.length} recipient${info.emails.length === 1 ? '' : 's'} for ${scope} (BCC)`)}
+        ${smsBtn}
+        ${emailBtn}
       </span>`;
   }
 
