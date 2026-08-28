@@ -612,6 +612,34 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                           )
                     )
                 ) AS eligible,
+                -- Guardian visibility (2026-08-28).  A parent of a
+                -- rostered child holds no team_persons row of their own,
+                -- so `eligible` is false for them and every one of their
+                -- kid's practices was filtered out of their calendar.
+                --
+                -- Deliberately a SEPARATE column rather than another OR
+                -- inside `eligible`: that flag also gates
+                -- POST /api/calendar/rsvp, and fh_event_rsvps is keyed on
+                -- the CALLER's person_id.  A guardian answering there
+                -- would file an RSVP for themselves and show up on the
+                -- who's-going list as a player.  Parents get read access
+                -- here; RSVP stays with the player, coach, and admin.
+                -- Which of the caller's children are on this event's
+                -- roster.  NULL (string_agg over no rows) means none,
+                -- which is exactly the is_guardian test — so this one
+                -- subquery answers both questions and the outer SELECT
+                -- derives the boolean from it.  Naming the children is
+                -- not decoration: a parent with two players cannot
+                -- otherwise tell whose practice a card refers to.
+                (
+                    SELECT string_agg(DISTINCT child.first_name || ' ' || child.last_name, ', ')
+                    FROM fh_event_teams fet
+                    JOIN team_persons tp ON tp.team_id = fet.team_id
+                                        AND tp.removed_at IS NULL
+                    JOIN persons child ON child.id = tp.person_id
+                    WHERE fet.fh_event_id = fe.id
+                      AND child.parent_person_id = $1::int
+                ) AS guardian_children,
                 COALESCE((
                     SELECT jsonb_agg(
                         jsonb_build_object(
@@ -839,8 +867,10 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             -- `eligible` already ORs in "caller is admin" so admins keep
             -- seeing every event for free. Anonymous callers ($1=0) are
             -- left unfiltered (unchanged public-calendar behavior).
-            SELECT * FROM base
+            SELECT base.*, (base.guardian_children IS NOT NULL) AS is_guardian
+            FROM base
             WHERE $1::int = 0 OR base.eligible
+               OR base.guardian_children IS NOT NULL
             ORDER BY base.raw_starts_at ASC, base.raw_gcal_id ASC
             LIMIT 500
         )SQL";
@@ -927,13 +957,27 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["my_rsvp"]           = textOrNull(row, "my_rsvp");
             ev["my_rsvp_created_via"]= textOrNull(row, "my_rsvp_created_via");
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
+            ev["is_guardian"]       = row["is_guardian"].as<bool>();
+            ev["guardian_children"] = textOrNull(row, "guardian_children");
             {
                 const bool eligible = row["eligible"].as<bool>();
+                const bool guardian = row["is_guardian"].as<bool>();
                 const int teamCount = row["team_count"].as<int>();
                 if (row["my_rsvp_eligible"].is_null()) {
                     ev["my_rsvp_eligibility_reason"] = nullptr;
                 } else if (!eligible) {
-                    if (teamCount == 0) {
+                    if (guardian) {
+                        // Explain the event's presence rather than the
+                        // absence of a button — a parent seeing "you are
+                        // not on the roster" on their own child's
+                        // practice reads as an error, not an answer.
+                        const std::string kids = row["guardian_children"].is_null()
+                            ? std::string("your player")
+                            : row["guardian_children"].as<std::string>();
+                        ev["my_rsvp_eligibility_reason"] =
+                            "You can see this because " + kids +
+                            " is on the roster. Players answer their own RSVP.";
+                    } else if (teamCount == 0) {
                         ev["my_rsvp_eligibility_reason"] = "This event has no roster attached yet — ops needs to add Team:/Club: tags to the Google Calendar description.";
                     } else {
                         ev["my_rsvp_eligibility_reason"] = "You are not on the roster for this event.";

@@ -1034,6 +1034,20 @@ class MyScreen extends Screen {
     );
     const disabledMsg = isPast ? 'Event has passed' : (eligibilityMsg || openMsg);
 
+    // Guardian line.  A parent of a rostered child now sees their kid's
+    // events (CalendarController's is_guardian), but cannot RSVP — the
+    // RSVP is keyed on the caller, so a parent answering would file it
+    // against themselves.  Without this line the card is just two greyed
+    // buttons: the reason lives in the button tooltip, which no phone
+    // ever shows.  Say whose event it is, on the card, in plain sight.
+    const guardianLine = (ev.is_guardian && !eligibilityOk)
+      ? `<div style="font-size:0.6rem; line-height:1.2; color:#fcd34d;
+                     white-space:normal; overflow-wrap:break-word;">
+           👤 ${this.escapeHtml(ev.guardian_children || 'Your player')} —
+           players answer their own RSVP
+         </div>`
+      : '';
+
     const evYesKey  = `${ev.fh_event_id}:yes`;
     const evNoKey   = `${ev.fh_event_id}:no`;
     const evYesSaving = this.eventSaving.has(evYesKey);
@@ -1090,6 +1104,7 @@ class MyScreen extends Screen {
             ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
             ${venue ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📍 ${this.escapeHtml(venue)}</div>` : ''}
             ${notes ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📝 ${this.escapeHtml(notes)}</div>` : ''}
+            ${guardianLine}
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:normal; overflow-wrap:break-word;">${compactMeta}</div>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-wrap:wrap; justify-content:flex-end; flex-shrink:0;">

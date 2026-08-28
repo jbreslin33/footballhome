@@ -32,6 +32,19 @@
 //        response for that fh_event.  Anonymous callers always see
 //        `my_rsvp: null`.
 //
+//        Signed-in callers are filtered to events they can SEE:
+//        `eligible` (on a roster / coaching a team / admin) OR
+//        `is_guardian` — a parent of a rostered child, via
+//        persons.parent_person_id.  Those two are deliberately kept
+//        apart.  `eligible` alone governs RSVP rights, because
+//        fh_event_rsvps is keyed on the CALLER's person_id: fold
+//        guardians into it and a parent's answer files an RSVP for the
+//        PARENT, putting them on the who's-going list as a player.
+//        Parents read; players answer.  Each event carries
+//        `is_guardian:bool` and `guardian_children:string|null` (the
+//        children of the caller who are on this event's roster) so the
+//        UI can say whose event it is.
+//
 //   POST /api/calendar/rsvp    (Slice 6)
 //        Body: { fh_event_id:int, response:'yes'|'no'|'maybe',
 //                note?:string }
