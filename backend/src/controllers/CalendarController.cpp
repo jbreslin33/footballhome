@@ -13,6 +13,9 @@
 #include <optional>
 #include <regex>
 #include <string>
+#include <set>
+#include <sstream>
+#include <vector>
 
 using nlohmann::json;
 
@@ -50,6 +53,120 @@ json longLongOrNull(const pqxx::row& row, const char* col) {
     const auto& f = row[col];
     if (f.is_null()) return nullptr;
     return f.as<long long>();
+}
+
+// ── Tag audit (2026-08-28) ──────────────────────────────────────────
+// gcal-classify.js is forgiving by design: a description missing its
+// Type: line still classifies, because the classifier infers kind from
+// the resolved team aliases ("any team is pickup → kind=pickup").  That
+// guess is invisible and occasionally wrong — tag a PRACTICE with
+// `Team: …, Pickup` and it silently becomes a pickup event.  Rather
+// than let ops find out from a confused player, we re-read the tag DSL
+// here and hand the admin calendar a list of what a description is
+// missing, naming the variable to add.  Read-only: this changes nothing
+// about how the event classified, it only reports.
+//
+// Deliberately NOT enforcement.  Refusing to classify an under-tagged
+// event would blank it out of everyone's calendar to punish a typo.
+// Flag it, name the missing var, let a human fix the description.
+
+// Mirror of jsNormAlias() in scripts/gcal-classify.js and migration
+// 121's gcal_norm_alias() — lowercase, non-alphanumerics to spaces,
+// collapse runs, trim.  All three must agree or the audit will report
+// pairs that actually resolve fine.
+std::string normAlias(const std::string& in) {
+    std::string out;
+    out.reserve(in.size());
+    bool prevSpace = true;              // leading spaces collapse away
+    for (unsigned char c : in) {
+        const char lc = static_cast<char>(std::tolower(c));
+        const bool alnum = (lc >= 'a' && lc <= 'z') || (lc >= '0' && lc <= '9');
+        if (alnum) { out.push_back(lc); prevSpace = false; }
+        else if (!prevSpace) { out.push_back(' '); prevSpace = true; }
+    }
+    while (!out.empty() && out.back() == ' ') out.pop_back();
+    return out;
+}
+
+// Collect the values of one `Tag:` line out of a gcal description.
+// Values are comma-separated on a line and the tag may repeat across
+// lines; both forms accumulate, matching the classifier.
+std::vector<std::string> tagValues(const std::string& desc, const std::string& tag) {
+    std::vector<std::string> out;
+    const std::string needle = normAlias(tag);
+    std::istringstream lines(desc);
+    std::string line;
+    while (std::getline(lines, line)) {
+        const auto colon = line.find(':');
+        if (colon == std::string::npos) continue;
+        if (normAlias(line.substr(0, colon)) != needle) continue;
+        std::string rest = line.substr(colon + 1);
+        std::string cur;
+        std::istringstream vals(rest);
+        while (std::getline(vals, cur, ',')) {
+            const std::string v = normAlias(cur);
+            if (!v.empty()) out.push_back(v);
+        }
+    }
+    return out;
+}
+
+// What is this description missing?  Empty vector == fully tagged.
+// `aliases` is the gcal_team_aliases set as "club|team" keys.
+std::vector<std::string> auditTags(const std::string& desc,
+                                   const std::set<std::string>& aliases,
+                                   bool checkPairs) {
+    std::vector<std::string> issues;
+    if (desc.empty()) return issues;
+
+    const auto teams = tagValues(desc, "team");
+    const auto clubs = tagValues(desc, "club");
+    auto kinds       = tagValues(desc, "type");
+    if (kinds.empty()) kinds = tagValues(desc, "kind");
+
+    // An event with no Team: at all is the pre-existing "unclassified"
+    // case the admin calendar already surfaces on its own — don't
+    // double-report it here as four separate missing variables.
+    if (teams.empty() && clubs.empty()) return issues;
+
+    if (teams.empty()) {
+        issues.push_back("Missing `Team:` — Club: alone attaches no roster, "
+                         "so nobody is RSVP-eligible for this event.");
+    }
+    if (clubs.empty()) {
+        issues.push_back("Missing `Club:` — Team: values only resolve as a "
+                         "(Club, Team) pair, so none of them attach.");
+    }
+    if (kinds.empty()) {
+        issues.push_back("Missing `Type:` — kind is being GUESSED from the "
+                         "team names. Add `Type: Practice` (or Pickup / Match / "
+                         "Meeting / Camp / Other / Barn Night) to make it explicit.");
+    }
+    // Cross-product every (club, team) exactly as the classifier does,
+    // and name any pair that has no gcal_team_aliases row — those
+    // silently attach no team instead of erroring.
+    // Report a `Team:` value only when NO club on this event resolves
+    // it — i.e. it genuinely attaches no roster.  Checking pair-by-pair
+    // instead looks correct and is useless in practice: the youth
+    // practices are tagged `Club: Boys, Girls`, there is no `girls`
+    // alias, and the girls are rostered on the boys-named teams anyway,
+    // so every one of those events would carry a warning about a
+    // redundant tag that breaks nothing.  Half the calendar lighting up
+    // for a non-problem is how a warning gets trained into wallpaper.
+    if (checkPairs) {
+        for (const auto& t : teams) {
+            bool resolvedByAnyClub = false;
+            for (const auto& c : clubs) {
+                if (aliases.count(c + "|" + t)) { resolvedByAnyClub = true; break; }
+            }
+            if (resolvedByAnyClub) continue;
+            issues.push_back("`Team: " + t + "` matches no team for any Club: on "
+                             "this event — no roster attaches for it, so nobody "
+                             "becomes RSVP-eligible through it. Fix the spelling "
+                             "or add the alias.");
+        }
+    }
+    return issues;
 }
 
 std::string urlDecode(const std::string& s) {
@@ -735,6 +852,25 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             startParam,
         });
 
+        // Whole alias table, once per request — it is a handful of rows
+        // and the audit needs it for every event's (club, team) pairs.
+        std::set<std::string> aliasKeys;
+        try {
+            auto ar = db->query("SELECT club_alias, team_alias FROM gcal_team_aliases");
+            for (const auto& r : ar) {
+                aliasKeys.insert(std::string(r["club_alias"].c_str()) + "|"
+                               + std::string(r["team_alias"].c_str()));
+            }
+        } catch (const std::exception& e) {
+            // Audit is advisory; a failure here must not cost the caller
+            // their calendar.  Empty set == every pair reads as unknown,
+            // so bail to "no audit" instead by leaving it empty and
+            // skipping the pair check below.
+            std::cerr << "[CalendarController] tag audit alias load failed: "
+                      << e.what() << std::endl;
+        }
+        const bool auditPairs = !aliasKeys.empty();
+
         json events = json::array();
         events.get_ref<json::array_t&>().reserve(rows.size());
 
@@ -772,6 +908,20 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 if (found) ev["opponent_logo_url"] = *found;
             }
             ev["fh_notes"]          = textOrNull(row, "fh_notes");
+            // What this event's description is missing, in plain words,
+            // naming the variable to add.  Empty array == fully tagged.
+            // The admin Soccer Calendar (#calendar) badges any event
+            // with a non-empty list; player-facing screens ignore it.
+            {
+                json issues = json::array();
+                if (!row["description"].is_null()) {
+                    for (const auto& s : auditTags(row["description"].as<std::string>(),
+                                                   aliasKeys, auditPairs)) {
+                        issues.push_back(s);
+                    }
+                }
+                ev["tag_issues"] = std::move(issues);
+            }
             ev["rsvps_open_at"]     = textOrNull(row, "rsvps_open_at");
             ev["rsvps_open_now"]    = row["rsvps_open_now"].as<bool>();
             ev["my_rsvp"]           = textOrNull(row, "my_rsvp");

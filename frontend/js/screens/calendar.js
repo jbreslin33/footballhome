@@ -20,7 +20,15 @@
 //         rsvps_open_now:   bool,
 //         my_rsvp:          'yes'|'no'|'maybe'|null,
 //         my_rsvp_eligible: bool | null   // null when anonymous; §6.1.5
+//         tag_issues:       [string, ...] // [] when fully tagged
 //       }, ...] }
+//
+// tag_issues is the tag audit: gcal-classify.js accepts an under-tagged
+// description (missing `Type:` → kind is inferred from the team names;
+// a misspelled (Club, Team) pair → attaches no roster) without any
+// visible complaint, so this screen is where ops finds out.  Each
+// string names the variable to add.  Agenda cards render the full list;
+// the week/month grids show a ⚠ with the text in a tooltip.
 //
 // This is an admin/ops read-only calendar.  Player RSVP workflows live
 // on My Schedule; this screen deliberately shows soccer events beyond
@@ -577,7 +585,7 @@ class CalendarScreen extends Screen {
            style="border-left:3px solid ${meta.color.bg};background:${meta.color.bg}1f;
                   border-radius:4px;padding:4px 5px;line-height:1.2;cursor:pointer;">
         <div style="font-size:0.67rem;color:${meta.color.fg};font-weight:700;">${this._escape(timeLbl)} · ${this._escape(meta.kindText)}</div>
-        <div style="font-size:0.72rem;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._escape(meta.title)}</div>
+        <div style="font-size:0.72rem;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${this._tagIssuesMark(ev)}${this._escape(meta.title)}</div>
       </div>
     `;
   }
@@ -723,6 +731,7 @@ class CalendarScreen extends Screen {
     }
 
     // fh_notes (from `Notes:` DSL tag) rendered as a plain-text block.
+    // (see _tagIssuesBlock below for the tag-audit panel)
     // Preserves user newlines via CSS white-space so multi-line notes
     // like "Bring water\nNo cleats" render on separate visual lines.
     const notesBlock = ev.fh_notes ? `
@@ -731,6 +740,16 @@ class CalendarScreen extends Screen {
                   border-radius:4px; white-space:pre-wrap;">
         📝 ${this._escape(ev.fh_notes)}
       </div>` : '';
+
+    // Tag audit (tag_issues from /api/calendar/upcoming).  The
+    // classifier is forgiving — a description missing `Type:` still
+    // classifies, because kind gets inferred from the team names, and
+    // a misspelled (Club, Team) pair attaches no roster rather than
+    // erroring.  Both failures are silent in Google Calendar, so this
+    // panel is the only place ops finds out.  Each line names the
+    // variable to add, so the fix is a copy-paste back into the gcal
+    // description.
+    const tagBlock = this._tagIssuesBlock(ev);
 
     // Google Meet button when the underlying gcal event has a Meet
     // attached.
@@ -775,6 +794,7 @@ class CalendarScreen extends Screen {
           ${meta.opponent ? `<div style="opacity:0.82;">Opponent: <strong>${this._escape(meta.opponent)}</strong></div>` : ''}
         </div>
         ${teamStrip}
+        ${tagBlock}
         <div style="opacity:0.8; font-size:0.9rem;">
           🕒 ${this._escape(timeLbl)}
         </div>
@@ -809,7 +829,7 @@ class CalendarScreen extends Screen {
         <div style="font-size:0.72rem;font-weight:700;color:${meta.color.fg};text-transform:uppercase;letter-spacing:0.04em;">
           ${this._escape(timeLbl)} · ${this._escape(meta.kindText)}
         </div>
-        <div style="font-weight:700;font-size:0.86rem;line-height:1.25;">${this._escape(meta.title)}</div>
+        <div style="font-weight:700;font-size:0.86rem;line-height:1.25;">${this._tagIssuesMark(ev)}${this._escape(meta.title)}</div>
         <div style="font-size:0.75rem;opacity:0.75;line-height:1.25;">${this._escape(meta.scopeText)}</div>
         ${meta.opponent ? `<div style="font-size:0.75rem;opacity:0.75;line-height:1.25;">vs ${this._escape(meta.opponent)}</div>` : ''}
       </div>
@@ -938,6 +958,43 @@ class CalendarScreen extends Screen {
 
   _startOfDay(d) {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  // ---------- tag audit ----------
+
+  // True when the backend flagged this event's Google description as
+  // under-tagged.  Drives both the ⚠ marker on the compact week/month
+  // chips and the full panel on the agenda card.
+  _hasTagIssues(ev) {
+    return Array.isArray(ev.tag_issues) && ev.tag_issues.length > 0;
+  }
+
+  // Amber panel listing exactly which variables the description is
+  // missing.  Rendered only on the agenda card, where there is room for
+  // the wording — the grid views get the ⚠ marker and a tooltip.
+  _tagIssuesBlock(ev) {
+    if (!this._hasTagIssues(ev)) return '';
+    return `
+      <div style="font-size:0.82rem; padding:6px 10px; border-radius:4px;
+                  border-left:3px solid #f59e0b; background:#1c1917;
+                  color:#fde68a;">
+        <div style="font-weight:600; margin-bottom:2px;">
+          ⚠ Google description is missing tags
+        </div>
+        <ul style="margin:0; padding-left:18px; display:flex;
+                   flex-direction:column; gap:2px;">
+          ${ev.tag_issues.map(i => `<li>${this._escape(i)}</li>`).join('')}
+        </ul>
+      </div>`;
+  }
+
+  // Compact marker for the week/month grids, where a full panel would
+  // not fit.  title= carries the same text so hovering explains it
+  // without opening the event.
+  _tagIssuesMark(ev) {
+    if (!this._hasTagIssues(ev)) return '';
+    return `<span title="${this._escape(ev.tag_issues.join(' | '))}"
+                  style="color:#fbbf24; font-weight:700;">⚠</span> `;
   }
 
   // ---------- utils ----------
