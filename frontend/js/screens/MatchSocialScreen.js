@@ -65,8 +65,9 @@ class MatchSocialScreen extends Screen {
         this.navigation.context.match = match;
         this.navigation.context.lineupTeamId = this.team?.id || '';
 
-        if (screen === 'game-day-roster' || screen === 'game-lineup') {
-          this.navigation.goTo(screen, { matchId });
+        if (screen === 'game-center') {
+          // data-post-type carries which pill this row is for.
+          this.navigation.goTo(screen, { matchId, postType: link.dataset.postType || undefined });
         } else if (screen === 'match-form') {
           this.navigation.goTo(screen, { mode: 'edit', matchId });
         } else if (screen === 'match-list') {
@@ -165,11 +166,15 @@ class MatchSocialScreen extends Screen {
       // Post rows
       let postsHtml = '<div style="padding: var(--space-3) var(--space-4);">';
 
+      // Every post type is a pill on Game Center now, so all four links
+      // go to the same screen and differ only in which pill they open.
+      // They used to scatter across match-list / game-day-roster /
+      // game-lineup / match-form, which is the split Game Center closed.
       const typeConfig = {
-        pre_match_announcement: { icon: '📢', color: '#3b82f6', nav: 'match-list', label: 'Match List' },
-        game_day:               { icon: '⚽', color: '#f59e0b', nav: 'game-day-roster', label: 'Game Day Roster' },
-        lineup:                 { icon: '📋', color: '#8b5cf6', nav: 'game-lineup', label: 'Lineup Page' },
-        post_game:              { icon: '🏆', color: '#22c55e', nav: 'match-form', label: 'Match Form' }
+        pre_match_announcement: { icon: '⚔️', color: '#3b82f6', nav: 'game-center', label: 'Starters & Bench' },
+        game_day:               { icon: '⚽', color: '#f59e0b', nav: 'game-center', label: 'Game Announcement' },
+        lineup:                 { icon: '📋', color: '#8b5cf6', nav: 'game-center', label: '20-Man Squad' },
+        post_game:              { icon: '🏆', color: '#22c55e', nav: 'game-center', label: 'Match Result' }
       };
 
       posts.forEach(post => {
@@ -192,7 +197,7 @@ class MatchSocialScreen extends Screen {
         }
 
         const navLink = cfg.nav
-          ? `<a href="#" data-nav="${cfg.nav}" data-match-id="${matchId}" style="color: ${cfg.color}; text-decoration: none; font-size: 0.8em; white-space: nowrap;">→ ${cfg.label}</a>`
+          ? `<a href="#" data-nav="${cfg.nav}" data-match-id="${matchId}" data-post-type="${post.post_type}" style="color: ${cfg.color}; text-decoration: none; font-size: 0.8em; white-space: nowrap;">→ ${cfg.label}</a>`
           : '';
 
         postsHtml += `

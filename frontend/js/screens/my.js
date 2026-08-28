@@ -198,43 +198,22 @@ class MyScreen extends Screen {
         if (targetScreen) this.navigation.goTo(targetScreen);
         return;
       }
-      const lineupBtn = target.closest('[data-lineup-match-id]');
-      if (lineupBtn) {
+      // One link per game (2026-08-28, owner: "i would want just the one
+      // link on the game in my page that takes us to game center") —
+      // replaces the old ⚽ Lineup + 📸 Post to Instagram pair, which
+      // were two doors onto what is now one page. Game Center opens on
+      // its Starters & Bench pill; the post pills are on that same page,
+      // so marketing no longer needs its own entry point from here.
+      const gameCenterBtn = target.closest('[data-game-center-match-id]');
+      if (gameCenterBtn) {
         e.stopPropagation();
-        const matchId = parseInt(lineupBtn.getAttribute('data-lineup-match-id'), 10);
+        const matchId = parseInt(gameCenterBtn.getAttribute('data-game-center-match-id'), 10);
         if (matchId) {
-          this.navigation.goTo('game-lineup', {
+          this.navigation.goTo('game-center', {
             matchId,
-            title: lineupBtn.getAttribute('data-lineup-title') || '',
-            when: lineupBtn.getAttribute('data-lineup-when') || '',
-            mode: lineupBtn.getAttribute('data-lineup-mode') || undefined,
+            title: gameCenterBtn.getAttribute('data-game-center-title') || '',
+            when: gameCenterBtn.getAttribute('data-game-center-when') || '',
           });
-        }
-        return;
-      }
-      // "📸 Post to Instagram" (2026-08-22, owner directive: "we already
-      // have that ability i just want it from my screen for schedule").
-      // Reuses game-day-roster.js's existing social-post flow as-is —
-      // that screen already has the game_day/lineup/pre_match_
-      // announcement/post_game preview+publish buttons (SocialPostCard).
-      // It reads the match from navigation.context.match (team-
-      // dashboard.js's own entry point does the same, see its
-      // "📋 Game Day" button) rather than nav params, and falls back to
-      // the match's home team if navigation.context.team isn't set —
-      // see game-day-roster.js's resolveActiveTeamId().
-      const socialBtn = target.closest('[data-social-match-id]');
-      if (socialBtn) {
-        e.stopPropagation();
-        const matchId = socialBtn.getAttribute('data-social-match-id');
-        if (matchId) {
-          this.navigation.context.match = { id: matchId, title: socialBtn.getAttribute('data-social-title') || '' };
-          // Owner directive (2026-08-22): "post to insta functionality
-          // should take us to that particular place we clicked it from"
-          // — clicked from the main schedule (games/practices/pickups),
-          // so default to the Game Announcement tab; all 4 post-type
-          // pills (game day/lineup/starters/result) stay available to
-          // switch to from there, same as game-lineup.js's own button.
-          this.navigation.goTo('game-day-roster', { postType: 'game_day' });
         }
         return;
       }
@@ -1122,19 +1101,12 @@ class MyScreen extends Screen {
               ${this.escapeHtml(viewLabel)}
             </button>
             ${kind === 'match' && ev.match_id ? `
-              <button type="button" data-lineup-match-id="${ev.match_id}"
-                      data-lineup-title="${this.escapeHtml(title)}"
-                      data-lineup-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"
+              <button type="button" data-game-center-match-id="${ev.match_id}"
+                      data-game-center-title="${this.escapeHtml(title)}"
+                      data-game-center-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"
                       style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
-                ⚽ Lineup
+                🏟️ Game Center
               </button>
-              ${this._canPostSocial() ? `
-                <button type="button" data-social-match-id="${ev.match_id}"
-                        data-social-title="${this.escapeHtml(title)}"
-                        style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
-                  📸 Post to Instagram
-                </button>
-              ` : ''}
             ` : ''}
           </div>
         </div>
@@ -1146,29 +1118,6 @@ class MyScreen extends Screen {
         ` : ''}
       </div>
     `;
-  }
-
-  // "📸 Post to Instagram" button gate (2026-08-22, owner directive:
-  // "only allow admin to do it" / "use existing plumbing") — client-side
-  // convenience mirroring the REAL authorization rule exactly
-  // (SocialController's publish/create endpoints all gate on
-  // requireAdminLevel(request, {"club","super","marketing"}) — see e.g.
-  // SocialController.cpp:843), not a broader/different admin list, so
-  // this never shows the button to someone the backend would 403.
-  // NOT navigation.context.role — this screen is reached exclusively
-  // through the Player-role path (role-selection.js forces
-  // context.role = 'player' every time before landing on 'my', even for
-  // an account that's also a club admin), so that field is always
-  // 'player' here regardless of who's actually logged in. The real
-  // account-level role lives on context.user instead (see
-  // role-selection.js's own _maybeAutoSkipToMy isAdmin check).
-  _canPostSocial() {
-    // Suppress while an admin is using "view as <player>" — that mode is
-    // meant to preview exactly what the impersonated player sees, so an
-    // admin-only action button showing up there is a leak, not a feature.
-    if (this.auth && this.auth.viewAsPersonId) return false;
-    const role = (this.navigation?.context?.user?.role || '').toString().toLowerCase();
-    return ['club', 'super', 'marketing'].includes(role);
   }
 
   // Button renderer.  `semantic` is 'yes' | 'no' — drives colour.

@@ -166,7 +166,13 @@ class TeamDashboardScreen extends Screen {
       if (rosterBtn) {
         this.navigation.context.match = { id: rosterBtn.getAttribute('data-id'), title: rosterBtn.getAttribute('data-title') };
         this.navigation.context.lineupTeamId = this.navigation.context.team?.id;
-        this.navigation.goTo('game-day-roster');
+        // "Game Day" is the 20-Man Squad pill on Game Center now — same
+        // squad view, and the RSVP & Player Details overlay came with it.
+        this.navigation.goTo('game-center', {
+          matchId: rosterBtn.getAttribute('data-id'),
+          title: rosterBtn.getAttribute('data-title') || '',
+          postType: 'lineup',
+        });
         return;
       }
 
@@ -174,7 +180,7 @@ class TeamDashboardScreen extends Screen {
       const lineupBtn = e.target.closest('[data-action="lineup"]');
       if (lineupBtn) {
         const matchId = lineupBtn.getAttribute('data-id');
-        if (matchId) this.navigation.goTo('game-lineup', { matchId, title: lineupBtn.getAttribute('data-title') || '' });
+        if (matchId) this.navigation.goTo('game-center', { matchId, title: lineupBtn.getAttribute('data-title') || '' });
         return;
       }
 
@@ -226,7 +232,7 @@ class TeamDashboardScreen extends Screen {
           .filter(m => m.event_date && new Date(m.event_date).getTime() >= now)
           .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
         if (upcoming[0]) {
-          this.navigation.goTo('game-lineup', { matchId: upcoming[0].id, title: upcoming[0].title || '' });
+          this.navigation.goTo('game-center', { matchId: upcoming[0].id, title: upcoming[0].title || '' });
         } else {
           alert('No upcoming match found for this team.');
         }

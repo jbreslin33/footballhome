@@ -1,4 +1,28 @@
-// GameLineupScreen — single-match lineup editor (coach) / viewer (player).
+// GameCenterScreen — the one page for a single game (#game-center).
+//
+// Game Center (2026-08-28, owner: "what i really need for games is a
+// fully functional way for game announcements, 20 man announcement,
+// starters/bench announcement, result... are they related enough to be
+// all one page with pills?"). They are: they're four views of the SAME
+// match record at four points in time, so this screen is a pill strip
+// over one data load — set the lineup and publish the post without
+// leaving the page. Named by the owner; a practice center and a pickup
+// center may follow the same shape later.
+//
+// This screen absorbed the old two-screen ping-pong: it used to render
+// a "📸 Post to Instagram" button that navigated to #game-day-roster,
+// which rendered an "✏️ Edit Lineup" button that navigated straight
+// back here — both screens separately fetching
+// /api/eligibility/lineup/:matchId and /api/matches/:matchId to do it.
+// Now the post pills and the lineup editor share one load and one
+// in-memory lineup (see _mountSocial), and #game-day-roster is gone:
+// its RSVP/jersey/practice overlay lives under the 20-Man Squad pill
+// here (see _openDetails). The one piece still elsewhere is score
+// entry, on #match-form.
+//
+// Routes: #game-center is canonical; #game-lineup and #game-day-roster
+// stay registered as backward-compat aliases (app.js) for existing
+// links and bookmarks.
 //
 // v1 scope (2026-08-13): tap-to-assign zones only, no pitch/drag — see
 // scoping note in the implementation plan. Reuses the exact debounce/
@@ -69,9 +93,14 @@
 // below). It's edited from the Teams roster board (mens-roster.js), not
 // from this per-match screen — moved there 2026-08-22 per owner directive.
 //
-// Reached via navigation.goTo('game-lineup', { matchId, title, when }) —
-// title/when are optional, already-sanitized display strings (never pass a
-// raw gcal event title here — see [[feedback_gcal_title_admin_only]]).
+// Reached via navigation.goTo('game-center', { matchId, title, when,
+// postType }) — title/when are optional, already-sanitized display
+// strings (never pass a raw gcal event title here — see
+// [[feedback_gcal_title_admin_only]]). postType deep-links straight to
+// one pill; params.mode==='gameday' is the older "Game Day Roster"
+// entry point, which is the 20-Man Squad pill under its new name.
+// matchId also falls back to navigation.context.match.id, which is how
+// #game-day-roster's own callers have always passed it.
 //
 // Zone caps: starter max 11 (a full XI), bench max 9. Alternate and the
 // starter/bench-eligible flags (lineupRole, separate from zone) are
@@ -102,7 +131,35 @@ const FORMATIONS = {
 // as positions.
 const HALFWAY_ROW = Object.freeze([]);
 
-class GameLineupScreen extends Screen {
+// The four moments of a game, in the order they happen — the pill strip
+// across the top of Game Center. `key` is the social_post_types.name the
+// post publishes under, so the pill a coach is looking at IS the post
+// they publish; there's no separate "which post type did I mean" step.
+//
+// `social` is whether the Instagram section under that pill starts open.
+// The two pills that already render a live graphic of their own (the
+// squad chips, the formation pitch) start CLOSED so there's only one
+// image on screen at a time — owner, 2026-08-22: "one image should
+// change at top depending on pill selection... don't need multiple
+// images on that screen its confusing". The two that have no live
+// graphic start open, since otherwise the pill looks empty.
+//
+// NOTE: 'pre_match_announcement' is the DB name for what the club calls
+// Starters & Bench (social_post_types row 1, renamed in a later slice).
+// Keep that wire value in this table only, never inline it, so the
+// rename stays a one-line change here.
+const POST_PILLS = [
+  { key: 'game_day',               title: 'Game Announcement', label: '⚽ Game<br>Announcement', accent: '#f59e0b', social: 'open'   },
+  { key: 'lineup',                 title: '20-Man Squad',      label: '📋 20-Man<br>Squad',      accent: '#8b5cf6', social: 'closed' },
+  { key: 'pre_match_announcement', title: 'Starters & Bench',  label: '⚔️ Starters<br>& Bench',  accent: '#3b82f6', social: 'closed' },
+  { key: 'post_game',              title: 'Match Result',      label: '🏆 Match<br>Result',      accent: '#22c55e', social: 'open'   },
+];
+
+// Starters & Bench is the landing pill: it's the one a coach actually
+// works in, and it's the team sheet a player opens the page to read.
+const DEFAULT_PILL = 'pre_match_announcement';
+
+class GameCenterScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.matchId   = null;
@@ -149,14 +206,37 @@ class GameLineupScreen extends Screen {
     // row first) so the graphic reads as a real formation shape on a
     // pitch, purely for the TV-style visual.
     this.formation = '4-4-2';
-    // Lineup / Game Day toggle (2026-08-22, owner directive: "too
-    // confusing... just lineup is fine, then toggle inside that") —
-    // replaces the old separate "Game Day Roster" button+entry point on
-    // my.js. Visible to everyone (coach and player), independent of the
-    // coach-only viewMode toggle above. Default 'lineup' = the normal
-    // starters/bench/alt team-sheet; 'gameday' = the standing Roster Role
-    // pool (_renderGameDayRoster).
-    this.subView = 'lineup'; // 'lineup' | 'gameday'
+    // Which of the four game moments is on screen (POST_PILLS above).
+    // Supersedes the old two-way subView toggle ('lineup' | 'gameday'),
+    // which was itself already collapsing two screens into one — those
+    // two views are now the 'pre_match_announcement' and 'lineup' pills.
+    // Visible to everyone (coach and player), independent of the
+    // coach-only viewMode toggle above.
+    this.pill = DEFAULT_PILL;
+    // SocialPostCard for the active pill, mounted lazily — it costs four
+    // API calls, so it's only built once its section is actually open.
+    // Dropped on every re-render so a stale card never sits on a
+    // detached node (this screen re-renders on every zone change).
+    this.socialCard = null;
+    // `${pill}:${open|closed}` of whatever the Instagram section is
+    // currently showing — see _renderSocial for why it matters.
+    this._socialMountedFor = null;
+    // Which pills have their Instagram section expanded. Seeded from the
+    // POST_PILLS table, then it's per-visit coach state.
+    this._socialOpen = new Set(POST_PILLS.filter(p => p.social === 'open').map(p => p.key));
+    // Enriched per-player admin data behind the 20-Man Squad pill's
+    // "RSVP & Player Details" overlay — jersey numbers, match RSVP,
+    // practice attendance, roster memberships. Coach-only, and a
+    // separate fetch from the roster this.roster holds, because it
+    // comes from a different endpoint with a different shape
+    // (GET /api/matches/:matchId/roster-players — see _bootstrap).
+    this.players = [];        // [{playerId, personId, firstName, lastName, isKeeper, jerseyNumber, rsvpStatus, rsvpSource, practice: [...], onRoster*}]
+    this.trainingEvents = []; // [{id, date, title}] — the practice columns
+    this.overlayOpen = false;
+    this.filterText = '';
+    this.filterRsvp = 'all';
+    this.listFilter = 'all';
+    this._jerseyDebounce = null;
     this.stats     = new Map(); // playerId:Number -> {practicesAttended, practicesRecentTotal, practicesProjected, practicesUpcomingTotal, gameRsvp}
     this.loaded    = false;
     this.error     = null;
@@ -330,14 +410,57 @@ class GameLineupScreen extends Screen {
 
   render() {
     const el = document.createElement('div');
-    el.className = 'screen screen-game-lineup';
+    // screen-game-lineup class kept — css/ still targets it, and the
+    // stylesheet rename is not worth coupling to this change.
+    el.className = 'screen screen-game-lineup screen-game-center';
     el.innerHTML = `
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>⚽ Lineup</h1>
+        <h1>🏟️ Game Center</h1>
         <p class="subtitle" id="gl-subtitle">Loading…</p>
       </div>
-      <div id="gl-body" style="padding: var(--space-3) var(--space-4) var(--space-6);"></div>
+      <div id="gl-body" style="padding: var(--space-3) var(--space-4) 0;"></div>
+      <!-- The Instagram section lives OUTSIDE #gl-body on purpose.
+           _render() rewrites #gl-body wholesale on every zone toggle,
+           and the SocialPostCard mounted in here holds live state a
+           coach has invested in — a typed caption, a generated image,
+           a chosen schedule time. Re-creating it on each tap would
+           throw that away and re-fire its four API calls. _renderSocial
+           owns this node instead and only rebuilds it when the pill or
+           its open/closed state actually changes. -->
+      <div id="gc-social" style="padding: 0 var(--space-4) var(--space-6);"></div>
+
+      <!-- RSVP & Player Details, moved here from #game-day-roster.
+           Also outside #gl-body: it's a modal, and _render() must not
+           tear it down (or reset its search box) while a coach has it
+           open and is working through the squad. Keeps the gdr-* class
+           names so css/game-day-roster.css carries over untouched. -->
+      <div id="gc-details-overlay" class="gdr-overlay" style="display:none;">
+        <div class="gdr-overlay-content">
+          <div class="gdr-overlay-header">
+            <h2>RSVP &amp; Player Details</h2>
+            <button id="gc-details-close" class="btn btn-secondary btn-sm">✕ Close</button>
+          </div>
+          <div class="gdr-overlay-filters">
+            <input type="text" id="gc-player-search" class="gdr-search-input" placeholder="Search players...">
+            <select id="gc-rsvp-filter" class="gdr-filter-select">
+              <option value="all">All RSVP</option>
+              <option value="yes">Attending</option>
+              <option value="none">No Response</option>
+              <option value="no">Not Attending</option>
+            </select>
+            <select id="gc-list-filter" class="gdr-filter-select">
+              <option value="all">All Players</option>
+              <optgroup label="Official Rosters">
+                <option value="roster_lighthouse">APSL Lighthouse 1893</option>
+                <option value="roster_casa">Lighthouse Boys Club</option>
+                <option value="roster_u23">Lighthouse Boys Club U23</option>
+              </optgroup>
+            </select>
+          </div>
+          <div id="gc-details-list" class="gdr-overlay-list"></div>
+        </div>
+      </div>
     `;
     this.element = el;
     // Screen instances are reused across navigations (e.g. my.js's
@@ -349,17 +472,60 @@ class GameLineupScreen extends Screen {
     // (including Back) responds to clicks. Reset here so _wire() (called
     // from onEnter right after render()) re-attaches to the current one.
     this._wired = false;
+    // Same reasoning as _wired: this element is brand new, so whatever
+    // the Instagram section was showing on the previous visit is gone
+    // with the old DOM. Clearing the marker makes _renderSocial rebuild
+    // into the fresh #gc-social instead of short-circuiting on a key
+    // that describes a node no longer on the page.
+    this._socialMountedFor = null;
+    this.socialCard = null;
     return el;
   }
 
   onEnter(params = {}) {
-    this.matchId = params.matchId != null ? Number(params.matchId) : null;
-    this.title   = params.title || '';
+    // navigation.context.match is the fallback because that's how
+    // #game-day-roster's callers (my.js's schedule card,
+    // team-dashboard.js's "Game Day" button) have always passed the
+    // match — Game Center answers to those entry points too, and they
+    // keep working unchanged.
+    const ctxMatch = this.navigation?.context?.match || null;
+    const rawMatchId = params.matchId != null ? params.matchId : ctxMatch?.id;
+    this.matchId = rawMatchId != null ? Number(rawMatchId) : null;
+    this.title   = params.title || ctxMatch?.title || '';
     this.when    = params.when || '';
     this.viewMode = 'coach';
-    this.subView  = 'lineup';
+    this.pill    = this._resolvePill(params);
     this._wire();
     this._bootstrap();
+  }
+
+  // postType is the deep link ("open Game Center on the Match Result
+  // pill"); mode==='gameday' is the older my.js / team-dashboard
+  // "Game Day Roster" entry point, which is the 20-Man Squad pill under
+  // its new name. Anything unrecognized lands on the default rather
+  // than rendering a blank body.
+  _resolvePill(params) {
+    if (params.postType && POST_PILLS.some(p => p.key === params.postType)) return params.postType;
+    if (params.mode === 'gameday') return 'lineup';
+    return DEFAULT_PILL;
+  }
+
+  // Switching pills is a sub-view change, not a navigation, so this is
+  // replaceState rather than a goTo: the URL stays honest
+  // (#game-center/<matchId>/<pill>) without stacking one history entry
+  // per pill tap, which would turn Back into "undo my last four taps"
+  // instead of "leave this game". Deliberately does NOT go through
+  // navigation.js — that router only knows #state and #state/<entity>,
+  // and this is cosmetic anyway (app.js:start always resumes an
+  // authenticated session at role-selection, so no hash is deep-linked
+  // on reload).
+  _syncHash() {
+    if (!this.matchId) return;
+    try {
+      window.history.replaceState(window.history.state, '', `#game-center/${this.matchId}/${this.pill}`);
+    } catch (err) {
+      console.warn('[game-center] hash sync failed (non-fatal):', err);
+    }
   }
 
   onExit() {
@@ -369,6 +535,10 @@ class GameLineupScreen extends Screen {
     // navigations, so a leaked loop per visit would stack up.
     if (this._stopLighthouseAnim) { this._stopLighthouseAnim(); this._stopLighthouseAnim = null; }
     if (this._beamResizeObs) { this._beamResizeObs.disconnect(); this._beamResizeObs = null; }
+    this.socialCard = null;
+    this._socialMountedFor = null;
+    if (this._jerseyDebounce) { clearTimeout(this._jerseyDebounce); this._jerseyDebounce = null; }
+    this.overlayOpen = false;
   }
 
   // Same admin-only gate my.js uses for the "Post to Instagram" button on
@@ -397,24 +567,58 @@ class GameLineupScreen extends Screen {
         this._render();
         return;
       }
-      const subViewBtn = e.target.closest('[data-lineup-subview]');
-      if (subViewBtn) {
-        this.subView = subViewBtn.getAttribute('data-lineup-subview') === 'gameday' ? 'gameday' : 'lineup';
+      const pillBtn = e.target.closest('[data-game-pill]');
+      if (pillBtn) {
+        const next = pillBtn.getAttribute('data-game-pill');
+        if (next !== this.pill && POST_PILLS.some(p => p.key === next)) {
+          this.pill = next;
+          this._syncHash();
+          this._render();
+        }
+        return;
+      }
+      // The Instagram section for the active pill. Collapsed sections
+      // never mount their SocialPostCard, so this is also what defers
+      // that component's four API calls until they're wanted.
+      const socialToggle = e.target.closest('#gc-social-toggle');
+      if (socialToggle) {
+        if (this._socialOpen.has(this.pill)) this._socialOpen.delete(this.pill);
+        else this._socialOpen.add(this.pill);
         this._render();
         return;
       }
-      const postInstaBtn = e.target.closest('#gl-post-instagram');
-      if (postInstaBtn) {
-        // Deep-links into game-day-roster.js's existing SocialPostCard
-        // flow, pre-selecting the tab matching whichever sub-view is
-        // active here — reuses that screen's image-generation/preview/
-        // publish machinery as-is instead of duplicating it.
-        if (this.matchId) {
-          this.navigation.context.match = { id: this.matchId, title: this.title };
-          this.navigation.goTo('game-day-roster', {
-            postType: this.subView === 'gameday' ? 'lineup' : 'pre_match_announcement',
-          });
+      if (e.target.closest('#gc-details-open')) { this._openDetails(); return; }
+      if (e.target.closest('#gc-details-close')) { this._closeDetails(); return; }
+
+      // Coach RSVP override, tri-state. Re-renders only the overlay
+      // table — the body underneath catches up on close (_closeDetails),
+      // so a coach working down the list isn't watching the page reflow
+      // behind the modal on every tap.
+      const rsvpBtn = e.target.closest('.gdr-rsvp-btn');
+      if (rsvpBtn && this.isCoach) {
+        this._setPlayerRSVP(rsvpBtn.dataset.playerId, rsvpBtn.dataset.rsvp);
+        this._renderDetailsList();
+        return;
+      }
+
+      // Practice attendance cell. An override cycles yes → no → release
+      // (back to whatever the sync says); a synced cell cycles
+      // empty → yes → no → yes, each tap setting an override.
+      const pracCell = e.target.closest('.gdr-prac-cell');
+      if (pracCell && this.isCoach) {
+        e.stopPropagation();
+        const personId = pracCell.dataset.personId;
+        const eventId = pracCell.dataset.eventId;
+        const eventIdx = parseInt(pracCell.dataset.eventIdx, 10);
+        const current = pracCell.dataset.current;
+        if (pracCell.classList.contains('gdr-prac-override')) {
+          const next = current === 'yes' ? 'no' : current === 'no' ? null : 'no';
+          if (next === null) this._releasePracticeRSVP(personId, eventId, eventIdx);
+          else this._setPracticeRSVP(personId, eventId, eventIdx, next);
+        } else {
+          this._setPracticeRSVP(personId, eventId, eventIdx, current === 'yes' ? 'no' : 'yes');
         }
+        this._renderDetailsList();
         return;
       }
       const zoneBtn = e.target.closest('[data-lineup-zone-btn]');
@@ -474,6 +678,34 @@ class GameLineupScreen extends Screen {
       if (formationSelect && this.isCoach) {
         this.formation = formationSelect.value;
         this._render();
+        return;
+      }
+      if (e.target.id === 'gc-rsvp-filter') {
+        this.filterRsvp = e.target.value;
+        this._renderDetailsList();
+        return;
+      }
+      if (e.target.id === 'gc-list-filter') {
+        this.listFilter = e.target.value;
+        this._renderDetailsList();
+      }
+    });
+
+    this.element.addEventListener('input', (e) => {
+      if (e.target.id === 'gc-player-search') {
+        this.filterText = e.target.value.toLowerCase();
+        this._renderDetailsList();
+        return;
+      }
+      // Jersey number, debounced — the PUT is per-keystroke otherwise,
+      // and a two-digit number is two writes.
+      if (e.target.classList.contains('gdr-jersey-input')) {
+        const playerId = e.target.dataset.playerId;
+        const val = e.target.value;
+        const player = this.players.find(p => String(p.playerId) === String(playerId));
+        if (player) player.jerseyNumber = val;
+        clearTimeout(this._jerseyDebounce);
+        this._jerseyDebounce = setTimeout(() => this._saveJerseyNumber(playerId, val), 600);
       }
     });
   }
@@ -547,9 +779,26 @@ class GameLineupScreen extends Screen {
         ? lineupData.data.rosterTeamIds
         : (this.teamId ? [this.teamId] : []);
 
-      const rosterResults = await Promise.all(
-        rosterTeamIds.map(id => this.auth.fetch(`/api/teams/${id}/roster`).then(r => r.json()).then(d => ({ id, d })))
-      );
+      // Enriched admin data for the 20-Man Squad pill's details overlay.
+      // Coach-only (the endpoint gates on it too), and deliberately
+      // non-fatal: a failure here costs the overlay, not the lineup
+      // editor, so it must never reject the whole bootstrap.
+      const detailsPromise = this.isCoach && this.teamId
+        ? this.auth.fetch(`/api/matches/${this.matchId}/roster-players?teamId=${this.teamId}`)
+            .then(r => r.json())
+            .catch(err => { console.warn('[game-center] player details unavailable:', err); return null; })
+        : Promise.resolve(null);
+
+      const [rosterResults, detailsData] = await Promise.all([
+        Promise.all(rosterTeamIds.map(id =>
+          this.auth.fetch(`/api/teams/${id}/roster`).then(r => r.json()).then(d => ({ id, d })))),
+        detailsPromise,
+      ]);
+
+      if (detailsData && detailsData.success) {
+        this.players = detailsData.data || [];
+        this.trainingEvents = detailsData.trainingEvents || [];
+      }
       const byId = new Map();
       for (const { id: fromTeamId, d: rosterData } of rosterResults) {
         const arr = Array.isArray(rosterData?.data) ? rosterData.data : [];
@@ -563,6 +812,7 @@ class GameLineupScreen extends Screen {
       this.roster = [...byId.values()];
 
       this.loaded = true;
+      this._syncHash();
       this._render();
     } catch (err) {
       console.error('[game-lineup] load failed:', err);
@@ -769,26 +1019,62 @@ class GameLineupScreen extends Screen {
          </div>`
       : '';
 
-    // Lineup ↔ Game Day toggle — visible to everyone, replaces the old
-    // separate "Game Day Roster" button on my.js (owner: "too confusing
-    // to see game day roster and lineup buttons... just lineup is fine,
-    // then toggle inside that"). Default is 'lineup'.
-    const subViewToggleHtml = `
-      <div style="display:flex; gap:6px; margin-bottom:10px;">
-        <button type="button" data-lineup-subview="lineup" class="btn ${this.subView === 'lineup' ? 'btn-primary' : 'btn-secondary'}" style="flex:1; font-size:0.8rem; padding:6px 10px;">⚽ Lineup</button>
-        <button type="button" data-lineup-subview="gameday" class="btn ${this.subView === 'gameday' ? 'btn-primary' : 'btn-secondary'}" style="flex:1; font-size:0.8rem; padding:6px 10px;">📋 Game Day</button>
-        ${this._canPostSocial() ? `
-          <button type="button" id="gl-post-instagram" class="btn btn-secondary" style="font-size:0.8rem; padding:6px 10px; white-space:nowrap;">📸 Post to Instagram</button>
-        ` : ''}
+    // The four-moment pill strip — the spine of this screen. Scrolls
+    // horizontally rather than wrapping, so the row reads as one strip
+    // on a phone instead of a 2x2 block.
+    const pillStripHtml = `
+      <div style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">
+        ${POST_PILLS.map(p => {
+          const active = p.key === this.pill;
+          return `<button type="button" data-game-pill="${p.key}"
+            class="btn ${active ? 'btn-primary' : 'btn-secondary'}"
+            style="flex:1 1 0; min-width:104px; font-size:0.72rem; line-height:1.25; padding:6px 8px; white-space:nowrap;
+                   ${active ? `border-bottom:3px solid ${p.accent};` : ''}">${p.label}</button>`;
+        }).join('')}
       </div>`;
 
-    if (this.subView === 'gameday') {
-      box.innerHTML = subViewToggleHtml + viewToggleHtml + this._renderMatchHeader(this._renderGameDayRoster(byZone));
+    // Coach ↔ Player preview only means something on the two pills that
+    // render a team sheet; on Game Announcement and Match Result there's
+    // no coach-only content for it to hide.
+    const toggleHtml = (this.pill === 'lineup' || this.pill === 'pre_match_announcement') ? viewToggleHtml : '';
+
+    // One assignment point for every pill (below), so the Instagram
+    // section and the card mount are wired in exactly one place instead
+    // of being repeated down each branch.
+    const paint = (bodyHtml) => {
+      box.innerHTML = pillStripHtml + toggleHtml + bodyHtml;
+      this._renderSocial(byZone);
+    };
+
+    if (this.pill === 'game_day') {
+      // The match header IS the game announcement — crests, date, venue.
+      paint(this._renderMatchHeader(''));
+      return;
+    }
+
+    if (this.pill === 'post_game') {
+      paint(this._renderMatchHeader(this._renderResultSummary()));
+      return;
+    }
+
+    if (this.pill === 'lineup') {
+      // Controls sit OUTSIDE the graphic frame (owner, 2026-08-22:
+      // "don't have options on the insta post like drop downs. that
+      // should be under it"), same placement as the Starters & Bench
+      // pill's formation/availability toolbar.
+      const squadCount = byZone.starter.length + byZone.bench.length;
+      const detailsHtml = this.isCoach ? `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
+          <span style="font-size:0.72rem; opacity:0.75;">${squadCount} on the game-day roster</span>
+          <button type="button" id="gc-details-open" class="btn btn-primary"
+                  style="font-size:0.75rem; padding:4px 10px;">👥 RSVP &amp; Player Details</button>
+        </div>` : '';
+      paint(this._renderMatchHeader(this._renderGameDayRoster(byZone)) + detailsHtml);
       return;
     }
 
     if (effectiveIsPlayerView) {
-      box.innerHTML = subViewToggleHtml + viewToggleHtml + this._renderMatchHeader(this._renderPlayerView(byZone));
+      paint(this._renderMatchHeader(this._renderPlayerView(byZone)));
       return;
     }
 
@@ -1014,13 +1300,378 @@ class GameLineupScreen extends Screen {
     // actually applies to. Placed above Alternates — a coach touches the
     // bench far more often. Sorted by the coach's bench order, applied to
     // byZone.bench above.
-    box.innerHTML = subViewToggleHtml + viewToggleHtml + this._renderMatchHeader(summaryHtml) + lineupControlsHtml + [
+    paint(this._renderMatchHeader(summaryHtml) + lineupControlsHtml + [
       gridSection('Bench', byZone.bench),
       gridSection('Alternates', byZone.alternate),
       this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse) : '',
-    ].join('');
+    ].join(''));
+  }
+
+  // ---- RSVP & Player Details overlay (moved from #game-day-roster) ----
+  //
+  // The one thing that screen owned outright: per-player jersey numbers,
+  // a match RSVP the coach can override, tri-state practice attendance,
+  // and which official rosters each player sits on. It hangs off the
+  // 20-Man Squad pill because that's the question it answers — who is
+  // actually available for this game.
+  //
+  // "On lineup" here stays READ-ONLY (a ✓, not a checkbox). Who's on the
+  // game-day roster is decided by the starter/bench zones on the
+  // Starters & Bench pill — owner, 2026-08-22: "it does not need set
+  // lineup for 20 man and starters and bench. just one unified set
+  // lineup then you glean the post from that... the 20 man is a view."
+  // The old screen's own zone-less checkbox is exactly what used to put
+  // stray players on the post.
+
+  _openDetails() {
+    this.overlayOpen = true;
+    const overlay = this.find('#gc-details-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    this._renderDetailsList();
+    setTimeout(() => this.find('#gc-player-search')?.focus(), 100);
+  }
+
+  _closeDetails() {
+    this.overlayOpen = false;
+    const overlay = this.find('#gc-details-overlay');
+    if (overlay) overlay.style.display = 'none';
+    // An RSVP flipped in here changes who's in Going / Not Going /
+    // No Response upstairs, so the body has to catch up on close.
+    this._render();
+  }
+
+  // Which player ids are on the game-day roster, from THIS screen's
+  // zones rather than the old screen's separate onGameRoster flag.
+  _lineupPlayerIds() {
+    const ids = new Set();
+    for (const [playerId, zone] of this.zones.entries()) {
+      if (zone === 'starter' || zone === 'bench') ids.add(String(playerId));
+    }
+    return ids;
+  }
+
+  _getFilteredPlayers() {
+    return this.players.filter(p => {
+      if (this.filterText) {
+        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
+        if (!name.includes(this.filterText)) return false;
+      }
+      if (this.filterRsvp !== 'all') {
+        if (this.filterRsvp === 'none') {
+          if (p.rsvpStatus) return false;
+        } else if (p.rsvpStatus !== this.filterRsvp) {
+          return false;
+        }
+      }
+      if (this.listFilter !== 'all') {
+        // These three roster flags are named columns on the
+        // roster-players response (EventController.cpp), not something
+        // derivable from rosterTeamIds — generalising them is a backend
+        // change, so the filter stays keyed to them for now.
+        const map = { roster_lighthouse: 'onRosterLighthouse', roster_casa: 'onRosterCasa', roster_u23: 'onRosterU23' };
+        const key = map[this.listFilter];
+        if (key && !p[key]) return false;
+      }
+      return true;
+    });
+  }
+
+  _renderDetailsList() {
+    const container = this.find('#gc-details-list');
+    if (!container) return;
+
+    if (!this.players.length) {
+      container.innerHTML = '<div class="gdr-empty">No player details available for this match.</div>';
+      return;
+    }
+
+    const filtered = this._getFilteredPlayers();
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="gdr-empty">No players match filters</div>';
+      return;
+    }
+
+    const practiceHeaders = (this.trainingEvents || []).map(te => {
+      const d = new Date(te.date + 'T12:00:00');
+      const day = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dateStr = d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+      return `<th class="gdr-th-practice" title="${this.escapeHtml(te.title || '')} - ${day} ${dateStr}">${day}<br><span class="gdr-th-date">${dateStr}</span></th>`;
+    }).join('');
+
+    const lineupIds = this._lineupPlayerIds();
+    container.innerHTML = `
+      <table class="gdr-overlay-table">
+        <thead>
+          <tr>
+            <th class="gdr-th-cb" title="On the game-day roster (starter or bench) — set on the Starters &amp; Bench pill">Lineup</th>
+            <th>Player</th>
+            <th>#</th>
+            <th>Pos</th>
+            <th>RSVP</th>
+            <th>GK</th>
+            <th>Fam</th>
+            <th class="gdr-section-divider" colspan="${(this.trainingEvents || []).length || 1}">Practice</th>
+            <th class="gdr-section-divider" colspan="3">Roster</th>
+          </tr>
+          <tr class="gdr-subheader">
+            <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+            ${practiceHeaders}
+            <th class="gdr-th-roster" title="APSL Lighthouse 1893 SC">APSL</th>
+            <th class="gdr-th-roster" title="Lighthouse Boys Club">Casa</th>
+            <th class="gdr-th-roster" title="Lighthouse Boys Club U23">U23</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(p => this._renderDetailsRow(p, lineupIds)).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  _renderDetailsRow(p, lineupIds) {
+    const selected = lineupIds.has(String(p.playerId));
+    const rsvpValue = p.rsvpStatus || '';
+    const practice = p.practice || [];
+
+    const practiceCells = (this.trainingEvents || []).map((te, i) => {
+      const entry = practice[i];
+      const v = entry ? (typeof entry === 'object' ? entry.v : entry) : null;
+      const isOverride = entry && typeof entry === 'object' ? entry.o : false;
+      const cls = v === 'yes' ? 'gdr-prac-yes' : v === 'no' ? 'gdr-prac-no' : 'gdr-prac-none';
+      const sym = v === 'yes' ? '&check;' : v === 'no' ? '&cross;' : '&mdash;';
+      return `<td class="gdr-cell-center gdr-prac-cell ${cls}${isOverride ? ' gdr-prac-override' : ''}"
+                  data-person-id="${p.personId}" data-event-id="${te.id}" data-event-idx="${i}"
+                  data-current="${v || ''}" title="${isOverride ? 'Admin override' : 'Synced'}">${sym}</td>`;
+    }).join('');
+
+    const rosterCell = (val) => val ? '<td class="gdr-cell-center gdr-in">&check;</td>' : '<td class="gdr-cell-center gdr-out"></td>';
+
+    return `
+      <tr class="gdr-overlay-row ${selected ? 'gdr-row-selected' : ''}" data-player-id="${p.playerId}">
+        <td class="gdr-cell-center" title="Set on the Starters &amp; Bench pill">${selected ? '&check;' : ''}</td>
+        <td class="gdr-cell-name"><strong>${this.escapeHtml(p.firstName)} ${this.escapeHtml(p.lastName)}</strong></td>
+        <td class="gdr-cell-jersey">
+          <input type="text" class="gdr-jersey-input" data-player-id="${p.playerId}" value="${this.escapeHtml(String(p.jerseyNumber || ''))}" maxlength="4" placeholder="#">
+        </td>
+        <td>${this.escapeHtml(p.position || '—')}</td>
+        <td class="gdr-rsvp-cell">
+          <div class="gdr-rsvp-group">
+            <button class="gdr-rsvp-btn ${rsvpValue === 'yes' ? 'gdr-rsvp-active-yes' : ''}" data-player-id="${p.playerId}" data-rsvp="yes" title="Going">Y</button>
+            <button class="gdr-rsvp-btn ${rsvpValue === 'no' ? 'gdr-rsvp-active-no' : ''}" data-player-id="${p.playerId}" data-rsvp="no" title="Not going">N</button>
+          </div>
+          ${p.rsvpSource === 'admin' ? '<span class="gdr-rsvp-src gdr-src-admin" title="Admin override">✎</span>' : ''}
+        </td>
+        <td class="gdr-cell-center">${p.isKeeper ? '🧤' : ''}</td>
+        <td class="gdr-cell-center">${p.hasFamilyDiscount ? '👪' : ''}</td>
+        ${practiceCells}
+        ${rosterCell(p.onRosterLighthouse)}
+        ${rosterCell(p.onRosterCasa)}
+        ${rosterCell(p.onRosterU23)}
+      </tr>`;
+  }
+
+  // A match RSVP the coach sets on a player's behalf. Also written into
+  // this.stats so the Going / Not Going / No Response buckets and the
+  // RSVP pills on the Starters & Bench pill agree with the overlay
+  // without waiting for a reload — those read this.stats, the overlay
+  // reads this.players, and both describe the same fact.
+  async _setPlayerRSVP(playerId, newStatus) {
+    if (!this.matchId) return;
+    const player = this.players.find(p => String(p.playerId) === String(playerId));
+    let effective = newStatus;
+    if (player) {
+      // Tapping the active button again clears the override.
+      if (player.rsvpStatus === newStatus) effective = null;
+      player.rsvpStatus = effective;
+      player.rsvpSource = effective ? 'admin' : null;
+    }
+    const stat = this.stats.get(Number(playerId));
+    if (stat) stat.gameRsvp = effective;
+
+    try {
+      await this.auth.fetch(`/api/matches/${this.matchId}/player-rsvp`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: String(playerId), rsvp_status: effective }),
+      });
+    } catch (err) {
+      console.error('[game-center] failed to save RSVP:', err);
+    }
+  }
+
+  async _setPracticeRSVP(personId, chatEventId, eventIdx, newStatus) {
+    const player = this.players.find(p => String(p.personId) === String(personId));
+    if (player && player.practice) {
+      player.practice[eventIdx] = newStatus ? { v: newStatus, o: true } : null;
+    }
+    try {
+      const body = newStatus
+        ? { person_id: String(personId), rsvp_status: newStatus }
+        : { person_id: String(personId), clear: 'true' };
+      await this.auth.fetch(`/api/events/chat-events/${chatEventId}/person-rsvp`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      console.error('[game-center] failed to save practice RSVP:', err);
+    }
+  }
+
+  // Dropping an admin override reveals whatever the synced value under
+  // it was, which only the server knows — hence the re-render off the
+  // response rather than an optimistic guess.
+  async _releasePracticeRSVP(personId, chatEventId, eventIdx) {
+    const player = this.players.find(p => String(p.personId) === String(personId));
+    if (player && player.practice) player.practice[eventIdx] = null;
+    try {
+      const resp = await this.auth.fetch(`/api/events/chat-events/${chatEventId}/person-rsvp`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: String(personId), clear: 'true' }),
+      });
+      const data = await resp.json();
+      if (player && player.practice && data.rsvpStatus) {
+        player.practice[eventIdx] = { v: data.rsvpStatus, o: false };
+      }
+      this._renderDetailsList();
+    } catch (err) {
+      console.error('[game-center] failed to release practice RSVP:', err);
+    }
+  }
+
+  async _saveJerseyNumber(playerId, number) {
+    const player = this.players.find(p => String(p.playerId) === String(playerId));
+    // this.roster is what the post's player rows are built from
+    // (_buildRosterData), so a jersey edited here has to land there too
+    // or the graphic keeps printing the old number until a reload.
+    const rosterRow = this.roster.find(r => String(r.id) === String(playerId));
+    if (rosterRow) rosterRow.jerseyNumber = number || null;
+    if (!player || !player.rosterTeamId) return;
+    try {
+      await this.auth.fetch(`/api/teams/${player.rosterTeamId}/roster/${playerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jerseyNumber: number ? parseInt(number, 10) : null }),
+      });
+    } catch (err) {
+      console.error('[game-center] failed to save jersey number:', err);
+    }
+  }
+
+  // Score readout for the Match Result pill. Entering the score still
+  // happens on #match-form until that moves here in a later slice —
+  // this just surfaces what's recorded so the pill isn't a bare frame,
+  // and so a coach can see at a glance whether the result post has a
+  // scoreline to publish yet.
+  _renderResultSummary() {
+    const m = this.matchDetails;
+    const hs = m ? (m.home_team_score ?? m.home_score) : null;
+    const as = m ? (m.away_team_score ?? m.away_score) : null;
+    if (hs == null || as == null) {
+      return `
+        <div style="border-top:1px solid rgba(255,255,255,0.15); padding-top:12px; text-align:center;">
+          <div style="font-size:0.7rem; color:#dbeafe; opacity:0.85;">No score recorded yet</div>
+        </div>`;
+    }
+    return `
+      <div style="border-top:1px solid rgba(255,255,255,0.15); padding-top:12px; text-align:center;">
+        <div style="font-size:2rem; font-weight:800; color:#facc15; line-height:1;">${this.escapeHtml(String(hs))} – ${this.escapeHtml(String(as))}</div>
+        <div style="font-size:0.62rem; color:#dbeafe; opacity:0.8; margin-top:4px; letter-spacing:0.08em;">FINAL</div>
+      </div>`;
+  }
+
+  // Owns #gc-social — the collapsible Instagram section for whichever
+  // pill is active. Only the roles that may actually publish get it
+  // (same gate the old deep-link button used).
+  //
+  // The `_socialMountedFor` guard is what makes this safe to call from
+  // every _render(): a coach toggling players upstairs must not lose the
+  // caption they're drafting down here. When the section is unchanged we
+  // keep the live card and just hand it fresh rosterData, so the next
+  // Regenerate draws the lineup as it stands now — the card is rebuilt
+  // only when the pill or its open/closed state genuinely changes.
+  _renderSocial(byZone) {
+    const host = this.find('#gc-social');
+    if (!host) return;
+
+    if (!this._canPostSocial()) {
+      host.innerHTML = '';
+      this.socialCard = null;
+      this._socialMountedFor = null;
+      return;
+    }
+
+    const open = this._socialOpen.has(this.pill);
+    const key = `${this.pill}:${open ? 'open' : 'closed'}`;
+    if (key === this._socialMountedFor) {
+      if (this.socialCard) this.socialCard.rosterData = this._buildRosterData(byZone);
+      return;
+    }
+    this._socialMountedFor = key;
+
+    const meta = POST_PILLS.find(p => p.key === this.pill);
+    host.innerHTML = `
+      <div style="margin-top: var(--space-4); border-top:1px solid var(--border-color); padding-top:10px;">
+        <button type="button" id="gc-social-toggle" class="btn btn-secondary"
+                style="width:100%; text-align:left; font-size:0.78rem; padding:6px 10px;">
+          ${open ? '▾' : '▸'} 📸 Instagram — ${this.escapeHtml(meta ? meta.title : this.pill)}
+        </button>
+        <div id="gc-social-mount" style="margin-top:10px;"></div>
+      </div>`;
+
+    this.socialCard = null;
+    if (!open || !this.matchId || !this.teamId) return;
+
+    const mount = this.find('#gc-social-mount');
+    if (!mount) return;
+    const card = new SocialPostCard(this.auth);
+    card.init(mount, this.matchId, this.teamId, this.pill, this.matchDetails || {}, this._buildRosterData(byZone));
+    this.socialCard = card;
+  }
+
+  // The lineup the post draws from — built from THIS screen's live zones
+  // rather than a second /api/eligibility/lineup round trip. That shared
+  // source is the whole point of Game Center: what the coach just
+  // assigned above is what the post publishes, with no
+  // save-navigate-reload gap in between where the two could drift.
+  //
+  // Shape matches what game-day-roster.js passes (see
+  // SocialPostCard.getZoneLineup / buildImageRoster): playerId as a
+  // STRING, plus the firstName/lastName/jerseyNumber/isKeeper its player
+  // rows print. this.roster carries a single display `name`, so first
+  // name is whatever precedes the roster's own lastName — not a re-split
+  // of the full string, which would mangle a two-word surname.
+  _buildRosterData(byZone) {
+    const gkPositionIds = new Set(
+      this.positionList
+        .filter(pos => (pos.abbreviation || '').toUpperCase() === 'GK')
+        .map(pos => pos.id)
+    );
+    const players = [];
+    const selectedIds = new Set();
+    const zones = new Map();
+    for (const zone of ['starter', 'bench']) {
+      for (const p of byZone[zone]) {
+        const pid = String(p.id);
+        selectedIds.add(pid);
+        zones.set(pid, zone);
+        const lastName = p.lastName || '';
+        const firstName = (lastName && p.name.endsWith(lastName))
+          ? p.name.slice(0, p.name.length - lastName.length).trim()
+          : p.name.split(' ').slice(0, -1).join(' ');
+        players.push({
+          playerId: pid,
+          firstName: firstName || p.name,
+          lastName,
+          jerseyNumber: p.jerseyNumber || '',
+          isKeeper: gkPositionIds.has(this.positions.get(p.id)),
+        });
+      }
+    }
+    return { players, selectedIds, zones };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from

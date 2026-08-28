@@ -202,7 +202,7 @@ class CalendarScreen extends Screen {
           alert('This match hasn\'t been linked to a lineup yet — it may be missing a team tag in the calendar sync.');
           return;
         }
-        this.navigation.goTo('game-lineup', {
+        this.navigation.goTo('game-center', {
           matchId: ev.match_id,
           title: s.title,
           when: [s.dateStr, s.timeStr].filter(Boolean).join(' · '),

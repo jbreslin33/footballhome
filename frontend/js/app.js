@@ -34,7 +34,6 @@ class App {
       matchForm: new MatchFormScreen(this.navigation, this.auth),
       matchList: new MatchListScreen(this.navigation, this.auth),
       matchDetail: new MatchDetailScreen(this.navigation, this.auth),
-      gameDayRoster: new GameDayRosterScreen(this.navigation, this.auth),
       matchShare: new MatchShareScreen(this.navigation, this.auth),
       adminLevelSelection: new AdminLevelSelectionScreen(this.navigation, this.auth),
       adminEntityList: new AdminEntityListScreen(this.navigation, this.auth),
@@ -47,7 +46,7 @@ class App {
       tacticalBoard: new TacticalBoardScreen(this.navigation, this.auth),
       clubDirectory: new ClubDirectoryScreen(this.navigation, this.auth),
       clubDetail: new ClubDetailScreen(this.navigation, this.auth),
-      gameLineup: new GameLineupScreen(this.navigation, this.auth),
+      gameCenter: new GameCenterScreen(this.navigation, this.auth),
       teamHub: new TeamHubScreen(this.navigation, this.auth),
       matchSocial: new MatchSocialScreen(this.navigation, this.auth),
       socialSchedule: new SocialScheduleScreen(this.navigation, this.auth),
@@ -99,7 +98,6 @@ class App {
     this.screenManager.register('match-form', this.screens.matchForm);
     this.screenManager.register('match-list', this.screens.matchList);
     this.screenManager.register('match-detail', this.screens.matchDetail);
-    this.screenManager.register('game-day-roster', this.screens.gameDayRoster);
     this.screenManager.register('match-share', this.screens.matchShare);
     this.screenManager.register('admin-level-selection', this.screens.adminLevelSelection);
     this.screenManager.register('admin-entity-list', this.screens.adminEntityList);
@@ -112,7 +110,14 @@ class App {
     this.screenManager.register('tactical-board', this.screens.tacticalBoard);
     this.screenManager.register('club-directory', this.screens.clubDirectory);
     this.screenManager.register('club-detail', this.screens.clubDetail);
-    this.screenManager.register('game-lineup', this.screens.gameLineup);
+    // Game Center (#game-center) — the one page for a single game:
+    // pills for Game Announcement / 20-Man Squad / Starters & Bench /
+    // Match Result over one match load. 'game-lineup' stays registered
+    // as a backward-compat alias for existing links and bookmarks,
+    // same pattern as 'teams'/'rosters' above.
+    this.screenManager.register('game-center', this.screens.gameCenter);
+    this.screenManager.register('game-lineup', this.screens.gameCenter);
+    this.screenManager.register('game-day-roster', this.screens.gameCenter);
     this.screenManager.register('team-hub', this.screens.teamHub);
     this.screenManager.register('match-social', this.screens.matchSocial);
     this.screenManager.register('social-schedule', this.screens.socialSchedule);
