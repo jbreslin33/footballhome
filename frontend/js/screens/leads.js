@@ -1115,6 +1115,19 @@ class LeadsScreen extends Screen {
     }
   }
 
+  // Parent-fronted funnels: the person who filled the form is the kid's
+  // parent, so the contact saves as "… Lighthouse Parent" and no birth
+  // year is available (the youth lead forms never ask for one).
+  //
+  // Matched on the leading word, not a bare /youth/, because the funnel
+  // labels that matter are "Boys Club (K-12)" and "Girls Club (U11/U12)"
+  // — plain /youth/i caught only the "Youth (Grades 1–6)" column and
+  // silently handed every Boys/Girls Club lead the adult treatment.
+  // Anchoring also keeps "Men's Club" / "Women's Club" out.
+  isParentFunnel(label) {
+    return /^(youth|boys club|girls club)\b/i.test(label || '');
+  }
+
   renderLead(lead, columnLabel = null) {
     // Funnel + capability flags.  Funnel label drives the SMS / email
     // body templates; isYouth controls vCard-pair generation.
@@ -1343,10 +1356,10 @@ class LeadsScreen extends Screen {
     // where you are when a lead is on the phone with you.
     //
     // Youth funnels save a pair (parent card + player placeholder), same
-    // /youth/ rule the modal uses — the backend's 'youth-pair' kind.
+    // isParentFunnel rule the modal uses — the backend's 'youth-pair' kind.
     // Skipped when the lead has neither phone nor email: a vCard with
     // just a name is not worth a row in anyone's address book.
-    const isYouthLead = /youth/i.test(label || '');
+    const isYouthLead = this.isParentFunnel(label);
     const saveBtn = (hasPhone || hasEmail) ? `
       <a href="javascript:void(0)" class="contact-btn"
          data-lead-id="${lead.id}" data-channel="vcard" data-kind="${isYouthLead ? 'youth-pair' : 'self'}"
@@ -2973,7 +2986,7 @@ class LeadsScreen extends Screen {
       ? `Texted ${ago(lead.last_text_at)} (×${textCount})`
       : 'Never texted';
 
-    const isYouth   = /youth/i.test(label);
+    const isYouth   = this.isParentFunnel(label);
     const saveKind  = isYouth ? 'youth-pair' : 'self';
     const saveLabel = isYouth ? '📇 Save contact (2)' : '📇 Save contact';
 

@@ -190,6 +190,40 @@ std::string slashWsToUnderscore(const std::string& s) {
     return out;
 }
 
+// Pull one answer out of Meta's `field_data` array — the shape
+// `leads.raw_fields` stores verbatim: [{"name":…,"values":[…]}, …].
+// Returns "" when the field is absent or empty, which every caller
+// treats as "not captured".
+std::string rawFieldValue(const nlohmann::json& rawFields, const std::string& name) {
+    if (!rawFields.is_array()) return {};
+    for (const auto& f : rawFields) {
+        if (!f.is_object() || !f.contains("name") || !f["name"].is_string()) continue;
+        if (f["name"].get<std::string>() != name) continue;
+        if (!f.contains("values") || !f["values"].is_array() || f["values"].empty()) return {};
+        const auto& v = f["values"][0];
+        return v.is_string() ? v.get<std::string>() : std::string{};
+    }
+    return {};
+}
+
+// Birth year out of a Meta `date_of_birth` answer.  Meta hands us exactly
+// two formats and no others — as of 2026-08-29, 324 rows YYYY-MM-DD and
+// 181 rows MM/DD/YYYY — so grab the four-digit year off whichever end
+// carries it rather than parsing a calendar date we never use.  Anything
+// else returns "" and the contact falls back to the manual-entry name.
+std::string birthYearFromDob(const std::string& dob) {
+    auto fourDigits = [&](size_t at) {
+        for (size_t i = at; i < at + 4; ++i) {
+            if (!std::isdigit(static_cast<unsigned char>(dob[i]))) return false;
+        }
+        return true;
+    };
+    if (dob.size() < 4) return {};
+    if (fourDigits(0))                return dob.substr(0, 4);
+    if (fourDigits(dob.size() - 4))   return dob.substr(dob.size() - 4);
+    return {};
+}
+
 // ── JWT bearer payload decoder (no signature verify) ──────────────────────
 // Mirrors the Node `requireAuth` middleware which base64url-decodes the
 // payload segment and reads `userId`.  Returns std::nullopt on any parse
@@ -1694,6 +1728,24 @@ Response LeadsController::handleVcard(const Request& request) {
         const std::string fullName = trimStr(lead->name.value_or(std::string{}));
         const auto [firstName, lastName] = splitName(fullName);
 
+        // Owner 2026-08-29: "for men and women leads save to phone put
+        // birth year but for parents put Lighthouse Parent."
+        //
+        // date_of_birth is asked only by adult forms, and there the lead
+        // IS the player, so the year is the player's.  No youth form has
+        // ever carried one (0 of 525 youth leads as of 2026-08-29) — the
+        // slim name/email/phone forms capture nothing about the kid — so
+        // this is always empty on the "Parent" path below and needs no
+        // funnel check of its own.
+        //
+        // The converse does NOT hold: several adult forms skip the DOB
+        // question too (APSL / LIGA 1 Trials, and Women's Club since its
+        // 2026-08-13 relaunch), so an empty year here is not evidence of
+        // a youth lead.  Parent vs adult is decided by the caller's
+        // ?kind=, from LeadsScreen.isParentFunnel.
+        const std::string birthYear =
+            birthYearFromDob(rawFieldValue(lead->rawFields, "date_of_birth"));
+
         // dateStr = lead.created_at.toISOString().slice(0, 10) — first 10 chars.
         const std::string dateStr = lead->createdAtIso.size() >= 10
             ? lead->createdAtIso.substr(0, 10)
@@ -1711,7 +1763,7 @@ Response LeadsController::handleVcard(const Request& request) {
         std::vector<std::string> cards;
         std::string downloadName;
 
-        const std::string parentDisplay  = fullName + " Lighthouse Parent ";
+        const std::string parentDisplay  = fullName + " Lighthouse Parent";
         const std::string playerLast     = lastName.empty() ? fullName : lastName;
         const std::string playerDisplay  = playerLast + " Player Lighthouse ";
 
@@ -1719,7 +1771,7 @@ Response LeadsController::handleVcard(const Request& request) {
         // optional phone literal that comes from `lead.phone || ''`.
         auto parentNote = [&]() {
             return std::string{"Youth lead signup "} + dateStr
-                 + std::string{". Edit name + add birth year after contact."};
+                 + std::string{". Parent contact — Meta captures nothing about the player."};
         };
         auto playerNote = [&]() {
             return std::string{"Youth player placeholder. Parent: "} + fullName
@@ -1742,10 +1794,15 @@ Response LeadsController::handleVcard(const Request& request) {
                 { std::nullopt, std::nullopt, playerNote() }));
             downloadName = slashWsToUnderscore(fullName) + "_Youth.vcf";
         } else {
-            // self — adult funnels.
+            // self — adult funnels.  "James Smith Lighthouse 1998" when the
+            // form captured a DOB.  When it didn't, the name keeps its
+            // trailing space: the cursor lands past it in the contacts
+            // editor, so the year is one tap and four digits away.
             std::string note = std::string{"Lead signup "} + dateStr
-                             + std::string{". Add birth year after confirming."};
-            cards.push_back(buildVCard(fullName + " Lighthouse ",
+                             + (birthYear.empty()
+                                ? std::string{". Add birth year after confirming."}
+                                : std::string{"."});
+            cards.push_back(buildVCard(fullName + " Lighthouse " + birthYear,
                 firstName, lastName, { phoneOpt, emailOpt, note }));
             downloadName = slashWsToUnderscore(fullName) + "_Lighthouse.vcf";
         }
