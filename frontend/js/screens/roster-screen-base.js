@@ -207,8 +207,12 @@ class RosterScreenBase extends Screen {
   //     (migration 279/283/293), originally the game-lineup screen's
   //     "Elig: Start/Bench" toggle before it moved to the Teams page.
   //   • roster_status_id — official league roster submission status
-  //     (migration 294/295): Not on Roster / Awaiting Approval /
-  //     On Roster / Suspended.
+  //     (migration 294/295/319): Not on Roster / Needs ITC /
+  //     Submitted ITC / Needs Transfer / Awaiting Transfer /
+  //     Awaiting Approval / On Roster / Suspended. The four middle
+  //     codes are the pre-submission clearance chase — ITC for a player
+  //     coming from a foreign federation, transfer for one still
+  //     registered to another US club — all still RSVP-eligible.
   // Keyed by personId (not leagueAppsUserId) — same LA-userId-drift
   // immunity as the reorder/move endpoints; see
   // TeamController::handleSetLineupRoleForPerson /
@@ -232,6 +236,10 @@ class RosterScreenBase extends Screen {
                style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; max-width:92px;">
          <option value=""                  ${!player.rosterStatus ? 'selected' : ''}>Status: —</option>
          <option value="not_on_roster"     ${player.rosterStatus === 'not_on_roster'     ? 'selected' : ''}>Not on Roster</option>
+         <option value="needs_itc"         ${player.rosterStatus === 'needs_itc'         ? 'selected' : ''}>Needs ITC</option>
+         <option value="submitted_itc"     ${player.rosterStatus === 'submitted_itc'     ? 'selected' : ''}>Submitted ITC</option>
+         <option value="needs_transfer"    ${player.rosterStatus === 'needs_transfer'    ? 'selected' : ''}>Needs Transfer</option>
+         <option value="awaiting_transfer" ${player.rosterStatus === 'awaiting_transfer' ? 'selected' : ''}>Awaiting Transfer</option>
          <option value="awaiting_approval" ${player.rosterStatus === 'awaiting_approval' ? 'selected' : ''}>Awaiting Approval</option>
          <option value="on_roster"         ${player.rosterStatus === 'on_roster'         ? 'selected' : ''}>On Roster</option>
          <option value="suspended"         ${player.rosterStatus === 'suspended'         ? 'selected' : ''}>Suspended</option>
