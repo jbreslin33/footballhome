@@ -2745,25 +2745,17 @@ class LeadsScreen extends Screen {
     const t = this.messageTemplate(label);
     const subject = this.fillTemplate(t.subject, lead);
     const body    = this.fillTemplate(t.email,   lead);
-    // Open Gmail's web compose directly in the soccer@lighthouse1893.org
-    // account (not the user's personal Gmail / default mail client).  The
-    // `authuser` query param tells Gmail which signed-in Google account to
-    // use, so as long as soccer@lighthouse1893.org is one of the accounts
-    // signed into this browser, compose opens in that mailbox with To /
-    // Subject / Body all pre-filled.  Coach just hits Send.
-    //   Wins: no mailto handler weirdness, no Outlook/Mail.app surprises,
-    //   no OAuth/SMTP infra, real From: address is the club mailbox so
-    //   replies route to soccer@lighthouse1893.org naturally.
-    const FROM_ACCOUNT = 'soccer@lighthouse1893.org';
-    const params = new URLSearchParams({
-      view:     'cm',
-      fs:       '1',
-      authuser: FROM_ACCOUNT,
-      to:       lead.email,
-      su:       subject,
-      body:     body,
-    });
-    return `https://mail.google.com/mail/?${params.toString()}`;
+    // Delegate to Screen.buildGmailComposeHref (screen-base.js) instead
+    // of hand-building the mail.google.com?view=cm URL here — on
+    // Android, tapping that URL gets intercepted by the installed Gmail
+    // app, whose own deep-link parser drops the view=cm compose trigger
+    // and lands on the plain inbox instead of a pre-filled compose
+    // (reported 2026-08-31: "on mobile it still goes to just gmail").
+    // The shared helper already solves this by returning a mailto: URI
+    // on Android, which Android routes straight to Gmail's compose
+    // (ACTION_SENDTO) intent — same fix every other Gmail-compose button
+    // in the app (mens-roster INVITE/WELCOME) already relies on.
+    return this.buildGmailComposeHref({ to: lead.email, subject, body, authuser: 'soccer@lighthouse1893.org' });
   }
 
   // Touch-2 (or any snippet) variant of buildMailHref — pre-fills Gmail
@@ -2787,16 +2779,8 @@ class LeadsScreen extends Screen {
     const subjectRaw = snip.subject
       || ('Re: ' + (this.messageTemplate(label).subject || ''));
     const subject = this.fillTemplate(subjectRaw, lead);
-    const FROM_ACCOUNT = 'soccer@lighthouse1893.org';
-    const params = new URLSearchParams({
-      view:     'cm',
-      fs:       '1',
-      authuser: FROM_ACCOUNT,
-      to:       lead.email,
-      su:       subject,
-      body:     body,
-    });
-    return `https://mail.google.com/mail/?${params.toString()}`;
+    // See buildMailHref above — same Android Gmail-app compose fix.
+    return this.buildGmailComposeHref({ to: lead.email, subject, body, authuser: 'soccer@lighthouse1893.org' });
   }
 
   // Mark-signed-up / undo handler.  POSTs (or DELETEs) to
@@ -3450,13 +3434,17 @@ class LeadsScreen extends Screen {
           }
         } catch { /* clipboard blocked — fall through; Gmail still opens */ }
 
-        // Open Gmail in a new tab now, still inside the click's
-        // synchronous handler.  We use the precomputed href (already on
-        // the <a>) so To/Subject/Body all pre-fill.  The plain-text body
-        // is the failsafe: if the coach forgets to paste, Gmail still
-        // linkifies recognizable URLs on send.
+        // Open Gmail now, still inside the click's synchronous handler.
+        // We use the precomputed href (already on the <a>) so
+        // To/Subject/Body all pre-fill.  The plain-text body is the
+        // failsafe: if the coach forgets to paste, Gmail still linkifies
+        // recognizable URLs on send.  Route through Screen's
+        // openGmailCompose rather than a bare window.open() — on
+        // Android the href is a mailto: URI (see buildMailHref), which
+        // needs window.location.href to hand off to the Gmail app; only
+        // the desktop mail.google.com URL wants window.open().
         const href = btn.getAttribute('href');
-        if (href) window.open(href, '_blank', 'noopener,noreferrer');
+        if (href) this.openGmailCompose(href);
 
         // Show a sticky banner explaining the paste step once we know
         // whether the copy actually succeeded.  Lives near the top of
