@@ -1163,6 +1163,29 @@ class LeadsScreen extends Screen {
       : (lead.member_status === 'inactive'
         ? `<div style="margin-top:6px; font-size:0.73rem; font-weight:700; color:#92400e; background:rgba(245,158,11,0.16); border:1px solid rgba(245,158,11,0.24); border-radius:999px; padding:3px 8px; display:inline-flex; align-items:center; gap:5px;">● Former member</div>`
         : '');
+    // Program badge (2026-08-31) — the club-wide ad (see formLabel's
+    // '1813864682814937' entry) pools all four programs into one lead
+    // form, so which program a lead actually wants only lives in the
+    // 'program_interest' CUSTOM-question answer inside raw_fields
+    // (scripts/ads/create-ad.js club-wide), not in a dedicated column.
+    // Program-specific ads never answer this question, so the badge is
+    // simply absent there — no need to gate on form_id here.  Matched
+    // by keyword rather than an exact key/value lookup because Meta may
+    // hand back either the option's key ("boys_girls") or its display
+    // value ("Boys & Girls (more than one child)") depending on
+    // question type, and this reads correctly either way.
+    const programBadge = (() => {
+      const raw = this.extractFieldMap(lead.raw_fields).program_interest;
+      if (!raw) return '';
+      const v = raw.toLowerCase();
+      const display = (v.includes('boys') && v.includes('girls')) ? '👦👧 Boys &amp; Girls'
+        : v.includes('boys')  ? '👦 Boys'
+        : v.includes('girls') ? '👧 Girls'
+        : v.includes('women') ? '👩 Women'
+        : v.includes('men')   ? '👨 Men'
+        : raw;
+      return `<div style="margin-top:6px; font-size:0.73rem; font-weight:700; color:#4338ca; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.25); border-radius:999px; padding:3px 8px; display:inline-flex; align-items:center; gap:5px;">${display}</div>`;
+    })();
 
     // Visual status (5 buckets) — combines lifecycle (4-state, migration
     // 074) + manual override (migration 075, COALESCEd server-side) +
@@ -1418,6 +1441,7 @@ class LeadsScreen extends Screen {
         ${hasPhone ? `<div style="font-size:0.95rem; opacity:0.92; letter-spacing:0.01em;">${formattedPhone}</div>` : ''}
         ${hasEmail ? `<div style="font-size:0.85rem; opacity:0.85; word-break:break-all;">${lead.email}</div>` : ''}
         ${memberBadge}
+        ${programBadge}
         ${lastContactBadge}
         ${touchesLine}
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${textBtn}${callBtn}${saveBtn}${editBtn}</div>
@@ -3399,36 +3423,47 @@ class LeadsScreen extends Screen {
           ? this.fillTemplate(tmpl.sms,   lead || {})
           : this.fillTemplate(tmpl.email, lead || {});
       }
-      // Email: copy rich HTML to clipboard BEFORE navigating so the
-      // clipboard write completes while this tab still has focus.
+      // Email: copy rich HTML to clipboard AND open Gmail compose, both
+      // fired in this same synchronous tick (before any `await` below
+      // suspends the handler).  Previously the clipboard write was
+      // `await`ed first and window.open() only ran once it resolved —
+      // that pushed the navigation outside the click's user-activation
+      // window, so browsers stopped honoring the compose URL and just
+      // surfaced Gmail's already-open tab at its last (inbox) location
+      // instead of the pre-filled compose view.  clipboard.write() only
+      // needs to be *called* while this tab still has focus to succeed
+      // (it validates focus at call time, not at resolution), so kicking
+      // it off without awaiting first — right before window.open() —
+      // keeps both the paste-ready clipboard and the compose window.
       if (channel === 'email' && body) {
         const html = this.toLinkifiedHtml(body);
-        let copied = false;
+        let clipboardPromise = Promise.resolve(false);
         try {
           if (navigator.clipboard && window.ClipboardItem && navigator.clipboard.write) {
             const item = new ClipboardItem({
               'text/plain': new Blob([body], { type: 'text/plain' }),
               'text/html':  new Blob([html], { type: 'text/html' }),
             });
-            await navigator.clipboard.write([item]);
-            copied = true;
+            clipboardPromise = navigator.clipboard.write([item]).then(() => true).catch(() => false);
           } else if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(body);
-            copied = true;
+            clipboardPromise = navigator.clipboard.writeText(body).then(() => true).catch(() => false);
           }
         } catch { /* clipboard blocked — fall through; Gmail still opens */ }
 
-        // Show a sticky banner explaining the paste step.  Lives near
-        // the top of the screen so it's visible when the coach Alt-Tabs
-        // back from Gmail.
-        this._showEmailPasteBanner(copied, lead?.email || '');
-
-        // Now open Gmail in a new tab.  We use the precomputed href
-        // (already on the <a>) so To/Subject/Body all pre-fill.  The
-        // plain-text body is the failsafe: if the coach forgets to
-        // paste, Gmail still linkifies recognizable URLs on send.
+        // Open Gmail in a new tab now, still inside the click's
+        // synchronous handler.  We use the precomputed href (already on
+        // the <a>) so To/Subject/Body all pre-fill.  The plain-text body
+        // is the failsafe: if the coach forgets to paste, Gmail still
+        // linkifies recognizable URLs on send.
         const href = btn.getAttribute('href');
         if (href) window.open(href, '_blank', 'noopener,noreferrer');
+
+        // Show a sticky banner explaining the paste step once we know
+        // whether the copy actually succeeded.  Lives near the top of
+        // the screen so it's visible when the coach Alt-Tabs back from
+        // Gmail.
+        const copied = await clipboardPromise;
+        this._showEmailPasteBanner(copied, lead?.email || '');
       }
       const res = await this.auth.fetch(`/api/leads/${leadId}/contact`, {
         method:  'POST',
