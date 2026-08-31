@@ -696,6 +696,12 @@ class LeadsScreen extends Screen {
       '2471488896628970': 'Boys Club (Grades 1–6)',
       '1277787647463515': 'Youth (Grades 1–6)',
       '1008195014960429': 'Girls Club (Grades 1–6)',
+      // Club-wide player ad created 2026-08-30 via
+      // scripts/ads/create-ad.js club-wide.  One pooled audience across all
+      // four programs; the segment arrives as the 'program_interest' answer
+      // in raw_fields rather than as separate funnels, so every lead from
+      // this ad shares one label here.
+      '1813864682814937': 'Club-Wide (All Programs)',
       // K-12 lead forms created 2026-06-15 via
       // scripts/convert-k12-to-form.js — converted the previously
       // direct-CTA → LeagueApps ads into proper lead-form ads so we

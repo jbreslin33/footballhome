@@ -170,6 +170,121 @@ const ADS = {
       instagram_positions: ['stream', 'explore'],
     },
   },
+  // Club-wide player ad — one pooled audience covering all four programs.
+  //
+  // WHY ONE AD INSTEAD OF FOUR: splitting youth into separate Boys/Girls ads
+  // historically cost $6.16 and $6.37 per lead, while the pooled youth ad runs
+  // $3.72.  Four ad sets at $14/day each also never reach the ~50 conversions/
+  // week needed to exit Learning Phase, so they stay permanently learning-
+  // limited.  Pooling the audience and capturing the segment as a FORM ANSWER
+  // ('program_interest' below) gets the routing data without paying the
+  // fragmentation tax.
+  //
+  // WHY NO CHILD FIELDS: Meta Lead Ads policy prohibits collecting information
+  // about minors / third parties, and the API blocks both optional fields
+  // (is_optional -> "#3 Application does not have the capability") and
+  // conditional branching (silently dropped — the form comes back with the
+  // branch stripped).  Every instant-form question is REQUIRED.  So the form
+  // stays short and the coach collects player details on the follow-up email,
+  // which reaches ~100% of leads within a median of 4.8 hours.
+  'club-wide': {
+    name:    'Lighthouse 1893 — All Programs (Men · Women · Boys · Girls)',
+    imageUrl: 'https://footballhome.org/images/posts/club-wide-ad.png',
+    // Heritage-forward copy: this campaign recruits LONG-TERM members, not
+    // quick signups, so the lead line is the club's 133-year record rather
+    // than a season or a deadline.
+    caption: `⚽ LIGHTHOUSE 1893 — NOW ENROLLING\n\nJoin Philadelphia's oldest non-profit ⚽ club — and America's oldest active ⚽ club.\n\nOne club, four programs: Men's, Women's, Boys and Girls.\nA neighborhood club since 1893 — join the squad down the street.\n\nYear-round program · all ages · all skill levels welcome.\n\n📍 Lighthouse Sports Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer`,
+    // Facebook renders this link's DOMAIN on the feed card even though the
+    // CTA opens the native lead form, so it must be a domain a prospect
+    // recognises as registration.  footballhome.org is our internal ops
+    // tool and means nothing to a parent — LeagueApps is where registration
+    // actually lives, and is what 14 of the account's other ads link to.
+    // No ctaProgram here: club-wide spans all four categories, so there is
+    // no single per-category registration URL to resolve.
+    // Meta REQUIRES link_data.link even on a lead-form ad (verified: omitting
+    // it fails with "The link field is required"), but nobody ever visits it —
+    // the CTA opens the instant form in-app.  So this is the club's own site,
+    // and `caption` below controls the text actually shown beside the button.
+    ctaUrl:  'https://www.lighthouse1893.org/',
+    // Meta rejects non-URL captions ("Link data caption field must be an
+    // URL"), so this can only ever be a domain — not free text.
+    ctaCaption: 'lighthouse1893.org',
+    ctaType: 'LEARN_MORE',  // matches youth-signup — softer than SIGN_UP, lower CPL
+    // $5/day = $35/wk = ~$1,825/yr.  This is an ALWAYS-ON presence ad, not a
+    // burst campaign, so the budget is set at the practical floor for a
+    // lead-optimized ad set rather than to hit a volume target.  The 5-mile
+    // audience is ~1.3M people, so there is no creative-fatigue ceiling —
+    // it can run year-round without burning the pool.  Do not drop much
+    // below this: under ~$5/day Meta is buying less than one conversion per
+    // day and delivery turns intermittent, which raises CPL.
+    defaultBudget: 5,
+    // no defaultDays — runs until manually cancelled
+    leadForm: {
+      questions: [
+        { type: 'FULL_NAME' },
+        { type: 'EMAIL' },
+        { type: 'PHONE' },
+        {
+          // The one thing that cannot be recovered later: which program to
+          // route them to.  leagueapps_programs.registration_url is keyed by
+          // these same categories (men / women / boys / girls), so these
+          // option keys are deliberately the category slugs.
+          type:  'CUSTOM',
+          key:   'program_interest',
+          label: 'Which program are you interested in?',
+          options: [
+            { key: 'men',        value: "Men's team (18+)" },
+            { key: 'women',      value: "Women's team (18+)" },
+            { key: 'boys',       value: 'Boys (grades 1–6)' },
+            { key: 'girls',      value: 'Girls (grades 1–6)' },
+            { key: 'boys_girls', value: 'Boys & Girls (more than one child)' },
+          ],
+        },
+      ],
+      context_card: {
+        style: 'LIST_STYLE',
+        title: 'Lighthouse 1893 — Men, Women, Boys & Girls',
+        content: [
+          'Local community-based club — Philadelphia',
+          '199 East Erie Avenue · since 1893',
+          'A coach will follow up with season dates, fees, and next steps.',
+        ],
+        button_text: 'Continue',
+      },
+      thank_you_page: {
+        title: 'Thanks — talk soon!',
+        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
+        button_type: 'VIEW_WEBSITE',
+        button_text: 'Follow @lighthouse1893soccerclub',
+        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+      },
+    },
+    targeting: {
+      // 5-mile radius around 199 East Erie Avenue — same geo as youth-signup.
+      geo_locations: {
+        custom_locations: [{
+          latitude:  40.0071,
+          longitude: -75.1306,
+          radius:    5,
+          distance_unit: 'mile',
+          address_string: '199 East Erie Avenue, Philadelphia, PA 19140',
+        }],
+        // HOME ONLY — deliberately narrower than youth-signup's
+        // ['home','recent'].  The club wants long-term members, not quick
+        // signups, so people who merely passed through the area recently
+        // (commuters, visitors) are the wrong audience.  This targets people
+        // whose HOME is within 5 miles of the complex.
+        location_types: ['home'],
+      },
+      age_min: 18,    // adult players themselves, through to parents
+      age_max: 55,
+      // No gender filter — the ad covers men's, women's, boys and girls.
+      locales: [6, 24],
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
   'trial-pathway': {
     name:    'APSL & CASA Select — Summer Trial Pathway',
     imageUrl: 'https://footballhome.org/images/posts/trial-pathway-ad.png',
@@ -907,6 +1022,10 @@ async function run() {
         image_hash: imageHash,
         link: ad.ctaUrl,
         message: ad.caption,
+        // Facebook prints the link's raw domain beside the CTA unless caption
+        // overrides it.  On a lead-form ad the link is never visited, so this
+        // is purely what the reader sees — keep it the club, not a vendor.
+        ...(ad.ctaCaption ? { caption: ad.ctaCaption } : {}),
         call_to_action: ad.mode === 'direct'
           ? { type: ad.ctaType || 'SIGN_UP', value: { link: ad.ctaUrl } }
           : { type: 'SIGN_UP', value: { lead_gen_form_id: leadForm.id } },
