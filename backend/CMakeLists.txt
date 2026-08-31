@@ -60,6 +60,7 @@ set(SOURCES
     src/services/IdentityService.cpp
     src/services/LeagueAppsService.cpp
     src/services/LaProgramSync.cpp
+    src/services/LaSyncScheduler.cpp
     src/services/SessionService.cpp
     src/services/MetaLeadsService.cpp
     src/services/MetaAdsService.cpp

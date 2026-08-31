@@ -63,6 +63,7 @@
 #include "core/HttpClient.h"
 #include "services/MetaLeadsService.h"
 #include "services/LineupNotificationHub.h"
+#include "services/LaSyncScheduler.h"
 
 class HttpServer {
 private:
@@ -206,6 +207,14 @@ public:
         
         // Start background schedulers
         social_controller_->startScheduler();
+
+        // LA membership sync (2026-08-30) — previously ran ONLY when an
+        // admin opened a roster screen or clicked "Sync Memberships,"
+        // which meant a program nobody happened to view could sit stale
+        // indefinitely even though LA is the club's source of truth for
+        // membership. Runs every 5 minutes regardless of screen traffic;
+        // see LaSyncScheduler.h.
+        LaSyncScheduler::getInstance().start();
 
         // Phase 13 — start the LISTEN fh_lineups pump.  Spawns one thread
         // that owns a dedicated pqxx::connection and fans NOTIFY payloads
