@@ -717,6 +717,43 @@ class RosterScreenBase extends Screen {
     };
   }
 
+  // ── Per-card registration-link buttons (owner 2026-08-31) ──────────
+  //
+  // "Fill out this league form right away" nudges — one SMS button +
+  // one EMAIL button per preset in `presets` (owner 2026-08-31: "we
+  // need email and text buttons for both" — flat, one tap each, not
+  // tucked behind a popover), pre-filled with that preset's body/link,
+  // addressed to contactFor(p) (or an explicit {phone,email} override,
+  // since callers already have contactPhone/contactEmail computed).
+  // Mirrors BoysRosterScreen.DOCS_PRESET: each program subclass owns
+  // its own preset list (its league forms differ) and just calls this
+  // method from renderPlayer — Mens goes first with
+  // REGISTRATION_PRESETS; Boys/Girls/Womens can opt in later by adding
+  // their own list and one call site, no changes here.
+  renderRegistrationButtons(p, presets, { phone = null, email = null } = {}) {
+    const list = (presets || []).filter(Boolean);
+    if (!list.length) return '';
+    const contact = (phone || email) ? { phone, email } : this.contactFor(p);
+    const contactPhone = contact.phone || null;
+    const contactEmail = contact.email || null;
+    if (!contactPhone && !contactEmail) return '';
+
+    const btnBase = 'padding:0 4px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap; border:none; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
+
+    return list.map(preset => {
+      const label     = this.escape(preset.label);
+      const smsHref   = contactPhone ? this.buildSmsComposeHref({ to: contactPhone, body: preset.body }) : null;
+      const emailHref = contactEmail ? this.buildGmailComposeHref({ to: contactEmail, subject: preset.subject, body: preset.body }) : null;
+      const smsBtn = smsHref
+        ? `<a href="${smsHref}" title="Text ${this.escape(this.formatPhone(contactPhone))} — ${label}" style="${btnBase} background:#10b981; color:#fff;">💬 ${label}</a>`
+        : '';
+      const emailBtn = emailHref
+        ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(contactEmail)} — ${label}" style="${btnBase} background:#3b82f6; color:#fff;">✉ ${label}</a>`
+        : '';
+      return smsBtn + emailBtn;
+    }).join('');
+  }
+
   // Button pair rendered into a team column header and into the board
   // toolbar. `scope` is the human label used in the confirmation toast
   // and the email subject ("U8 Travel", "all boys"). Players are

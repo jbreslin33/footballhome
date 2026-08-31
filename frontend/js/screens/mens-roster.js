@@ -26,6 +26,37 @@
 //     that gate was REMOVED 2026-07-04 pm per user directive.  Admin
 //     now decides roster + Dues Owed column placement manually.
 class MensRosterScreen extends RosterScreenBase {
+  // ── League registration-form presets (owner 2026-08-31) ────────────
+  //
+  // One entry per external league registration form a Mens player may
+  // still need to fill out. Rendered as an SMS+EMAIL popover on every
+  // card by renderPlayer via RosterScreenBase.renderRegistrationButtons
+  // (mirrors BoysRosterScreen.DOCS_PRESET).
+  static REGISTRATION_PRESETS = [
+    {
+      key:     'casa-liga1',
+      icon:    '📋',
+      label:   'Liga1/APSL Reg',
+      subject: 'Liga 1 & APSL Registration — required',
+      body: [
+        'To be eligible for Liga 1 & APSL games this needs to be filled out right away — it captures the information needed for the APSL roster too.',
+        'Make sure head shot is just head and no hat or sunglasses and facing forward:',
+        'https://casasoccerleagues.sportngin.com/register/form/229198682',
+      ].join(' '),
+    },
+    {
+      key:     'apsl',
+      icon:    '📋',
+      label:   'APSL Reg',
+      subject: 'APSL Registration — required',
+      body: [
+        'To be eligible for APSL games this needs to be filled out right away.',
+        'Make sure head shot is just head and no hat or sunglasses and facing forward:',
+        'https://forms.gle/fki5wPqJk1x2fT9D7',
+      ].join(' '),
+    },
+  ];
+
   render() {
     const div = document.createElement('div');
     div.className = 'screen';
@@ -579,6 +610,13 @@ class MensRosterScreen extends RosterScreenBase {
       // chrome, so it didn't need this — this button did).
       btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0; display:flex; align-items:center; justify-content:center;',
     });
+    // 📋 Registration-link buttons (owner 2026-08-31) — one SMS+EMAIL
+    // popover per MensRosterScreen.REGISTRATION_PRESETS entry, so every
+    // card can nudge the player to fill out a given league's form.
+    const regBtns = this.renderRegistrationButtons(p, MensRosterScreen.REGISTRATION_PRESETS, {
+      phone: contactPhone,
+      email: contactEmail,
+    });
     let delinqBtns = '';
     // Prorate context (2026-07-09) — if the player is a mid-cycle
     // signup who hasn't yet paid the full $35 for the partial cycle,
@@ -863,7 +901,7 @@ class MensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn,
+      viewButtonHtml: profileBtn + regBtns,
       borderColor: cardBorder,
       canMove,
     });
