@@ -354,14 +354,53 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
         if (!existingPerson.empty()) {
             personId = existingPerson[0]["person_id"].as<std::string>();
             std::cout << "Found existing person (no user row yet), attaching users row: person=" << personId << std::endl;
-        } else {
+        } else if (!firstName.empty() && !lastName.empty()) {
+            // Name-match path (2026-08-30) — before minting a blank orphan,
+            // look for a real LeagueApps-linked person with this exact
+            // first+last name who has never logged in.  This is the common
+            // real-world case: LA has the person's registration email on
+            // file, but they sign in with a DIFFERENT Google account, so the
+            // fast email-match path above misses them and they'd otherwise
+            // get a brand-new person with zero roster/team ties forever (see
+            // audit 2026-08-30 — 44 of 133 logins were exactly this).
+            //
+            // Deliberately conservative: only auto-links when the name
+            // match is UNAMBIGUOUS (exactly one candidate) and that
+            // candidate has never claimed a login — a collision on a common
+            // name (two different "Anthony Martinez"es) must NOT risk
+            // attaching one family's Google account to another family's
+            // roster/RSVP data.  Zero or multiple matches fall through to
+            // creating a new person, same as before.
+            std::string matchSql =
+                "SELECT p.id FROM persons p "
+                " WHERE p.la_user_id IS NOT NULL "
+                "   AND LOWER(TRIM(p.first_name)) = LOWER(TRIM(" + db->escape(firstName) + ")) "
+                "   AND LOWER(TRIM(p.last_name))  = LOWER(TRIM(" + db->escape(lastName) + ")) "
+                "   AND NOT EXISTS (SELECT 1 FROM users u WHERE u.person_id = p.id) "
+                " LIMIT 2";
+            pqxx::result matches = db->query(matchSql);
+
+            if (matches.size() == 1) {
+                personId = matches[0]["id"].as<std::string>();
+                std::string insertEmailSql =
+                    "INSERT INTO person_emails (person_id, email, email_type_id, is_primary, is_verified) "
+                    "VALUES (" + db->escape(personId) + ", " + db->escape(email) + ", 1, false, true) "
+                    "ON CONFLICT (person_id, email) DO NOTHING";
+                db->query(insertEmailSql);
+                std::cout << "Linked Google login to existing LA-matched person via name: person="
+                          << personId << " name=" << firstName << " " << lastName
+                          << " email=" << email << std::endl;
+            }
+        }
+
+        if (personId.empty()) {
             // Brand-new person — create person + person_emails row.
             std::string insertPersonSql = "INSERT INTO persons (first_name, last_name) "
                                          "VALUES (" + db->escape(firstName) + ", " + db->escape(lastName) + ") "
                                          "RETURNING id";
             pqxx::result newPerson = db->query(insertPersonSql);
             personId = newPerson[0]["id"].as<std::string>();
-            
+
             std::string insertEmailSql = "INSERT INTO person_emails (person_id, email, email_type_id, is_primary, is_verified) "
                                         "VALUES (" + db->escape(personId) + ", " + db->escape(email) + ", 1, true, true)";
             db->query(insertEmailSql);
