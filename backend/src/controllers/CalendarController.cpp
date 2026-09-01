@@ -876,7 +876,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             WHERE ge.deleted_at IS NULL
                             AND COALESCE(ge.status, '') <> 'cancelled'
               AND ge.starts_at >= CASE
-                  WHEN $4 = '' THEN now() - INTERVAL '1 hour'
+                  WHEN $4 = '' THEN ((now() AT TIME ZONE 'America/New_York')::date) AT TIME ZONE 'America/New_York'
                   ELSE $4::timestamptz
                 END
               AND ge.starts_at < CASE
@@ -1032,36 +1032,10 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             events.push_back(std::move(ev));
         }
 
-        // Caller's own mens-team membership — as a player OR a coach —
-        // cheap enough to check on every /upcoming call, and lets #my
-        // show mens-only content (e.g. the club WhatsApp link) without
-        // a separate round trip.
-        bool viewerIsMens = false;
-        if (personId > 0) {
-            pqxx::result mensRows = db->query(
-                "SELECT EXISTS ("
-                "  SELECT 1 FROM team_persons tp "
-                "  JOIN teams t ON t.id = tp.team_id "
-                "  WHERE tp.person_id = $1 AND tp.removed_at IS NULL "
-                "    AND t.gender_category = 'mens'"
-                "  UNION ALL "
-                "  SELECT 1 FROM team_coaches tc "
-                "  JOIN coaches c ON c.id = tc.coach_id "
-                "  JOIN teams t ON t.id = tc.team_id "
-                "  WHERE c.person_id = $1 AND tc.ended_at IS NULL "
-                "    AND t.gender_category = 'mens'"
-                ") AS is_mens",
-                {std::to_string(personId)});
-            if (!mensRows.empty()) {
-                viewerIsMens = mensRows[0]["is_mens"].as<bool>();
-            }
-        }
-
         json body = {
             {"days",   days},
             {"count",  events.size()},
             {"events", std::move(events)},
-            {"viewer_is_mens", viewerIsMens},
         };
         if (!startParam.empty()) {
             body["start"] = startParam;

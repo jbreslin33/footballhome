@@ -121,10 +121,36 @@
 #                     state to make a decision, this entry becomes a lie
 #                     and the file must route through la*() properly.
 #
+#   MyController    — the /api/my/chat/* club-chat gate (mens/womens/
+#                     youth) reads person_la_memberships directly,
+#                     deliberately NOT through laGet(). The chat's
+#                     message list polls the backend every 15 seconds
+#                     while the screen is open; forcing a live
+#                     LaProgramSync::run() on every poll would hammer
+#                     the LA API continuously for every open chat tab —
+#                     exactly the per-view sync cost LaSyncScheduler
+#                     (backend/src/services/LaSyncScheduler.cpp) was
+#                     added to eliminate. Instead the chat gate trusts
+#                     the scheduler's 5-minute background cadence:
+#                     access can lag a just-joined/just-left member by
+#                     up to ~5 minutes, same staleness bound as every
+#                     other scheduler-covered read. This is a
+#                     deliberately weaker bar than the rest of the
+#                     STRICT rule (payments/rosters force real-time-
+#                     fresh on every view because those ARE the
+#                     compliance record) — acceptable here because a
+#                     chat box being briefly over/under-visible is not
+#                     a correctness or compliance issue the way roster
+#                     or payment state is. If MyController ever renders
+#                     something payment- or eligibility-sensitive off
+#                     person_la_memberships, migrate that read through
+#                     laGet() — this allowlist entry only covers the
+#                     chat gate.
+#
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge)|backend/src/core/Controller)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge)|backend/src/core/Controller|backend/src/controllers/MyController)'
 
 set -euo pipefail
 

@@ -32,7 +32,6 @@ class MyScreen extends Screen {
     super(navigation, auth);
     // Event state (this-week section).
     this.events         = null;          // Array<event> from /api/calendar/upcoming
-    this.viewerIsMens   = false;         // viewer_is_mens from /api/calendar/upcoming
     this.eventSaving    = new Set();     // "fh_event_id:response" tokens in-flight
     this.dataError      = null;
     this.expandedEventId = null;         // toggled by the compact View button
@@ -96,7 +95,6 @@ class MyScreen extends Screen {
       </div>
       <div style="padding: 0 8px;">
         <section id="my-chat" style="margin-bottom: 6px;"></section>
-        <section id="my-mens-link"></section>
         <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
         </section>
@@ -121,8 +119,6 @@ class MyScreen extends Screen {
     try {
       const upRes = await this._fetch('/api/calendar/upcoming?days=7');
       this.events       = upRes.events    || [];
-      this.viewerIsMens = !!upRes.viewer_is_mens;
-      this._renderMensLink();
       this._renderEvents();
       this._renderChatShell();
       await this._loadChat(/*initial*/ true);
@@ -404,25 +400,6 @@ class MyScreen extends Screen {
     if (kind === 'meeting') return false;
 
     return ['pickup', 'practice', 'match', 'barn night', 'intrasquad'].includes(kind);
-  }
-
-  _renderMensLink() {
-    const box = this.find('#my-mens-link');
-    if (!box) return;
-    // Temporarily disabled — WhatsApp link hidden for now.
-    box.innerHTML = '';
-    return;
-    if (!this.viewerIsMens) { box.innerHTML = ''; return; }
-    box.innerHTML = `
-      <a href="https://chat.whatsapp.com/EtacJfoY7kXIvC5Lxn0x7e" target="_blank" rel="noopener"
-         class="btn btn-secondary"
-         style="display:inline-flex; align-items:center; gap: 6px; font-size: 0.78rem; padding: 5px 9px; margin-bottom: 6px;">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="#25D366" style="flex-shrink:0;">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12.001 2C6.478 2 2 6.478 2 12c0 1.876.51 3.632 1.396 5.145L2 22l4.976-1.304A9.94 9.94 0 0 0 12.001 22C17.523 22 22 17.523 22 12S17.523 2 12.001 2zm5.786 15.786A8.28 8.28 0 0 1 12 20.5a8.27 8.27 0 0 1-4.196-1.14l-.301-.178-3.11.816.827-3.03-.196-.313A8.276 8.276 0 0 1 3.5 12c0-4.687 3.814-8.5 8.5-8.5S20.5 7.313 20.5 12a8.469 8.469 0 0 1-2.713 5.786z"/>
-        </svg>
-        Join Mens WhatsApp Club Chat
-      </a>
-    `;
   }
 
   _renderEvents() {

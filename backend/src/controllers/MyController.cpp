@@ -8,6 +8,7 @@
 
 #include <exception>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <string>
 #include <thread>
@@ -148,66 +149,166 @@ std::optional<Response> applyImpersonation(const Request& request,
     return std::nullopt;
 }
 
-// ─── Men's chat helpers ──────────────────────────────────────────────
-long long mensChatId() {
-    static long long cached = 0;
-    if (cached > 0) return cached;
-    try {
-        auto* db = Database::getInstance();
-        auto r = db->query("SELECT id FROM chats WHERE slug = 'mens' LIMIT 1", {});
-        if (!r.empty() && !r[0]["id"].is_null()) {
-            cached = r[0]["id"].as<long long>();
-        }
-    } catch (...) {}
-    return cached;
+// ─── Club chat helpers ───────────────────────────────────────────────
+//
+// Three club-wide chats: mens, womens, and youth (boys + girls
+// combined — teams.gender_category has no 'girls' value, and LA
+// tracks Boys/Girls Club as separate but sibling memberships).
+//
+// Membership is driven by active LA registration (person_la_memberships
+// joined to leagueapps_programs), not FH's own team_persons roster —
+// LA is the source of truth, and this is exactly the kind of
+// membership-gated feature that must never run on stale FH-side data.
+// Checked in order below; the first slug a caller matches is "their"
+// chat, so priority only matters for the (rare) person who'd otherwise
+// match more than one.
+// Database::query() only takes string params, so the pattern list
+// travels as a single Postgres array literal — {"a","b"} — cast to
+// text[] at the call site.
+std::string pgTextArrayLiteral(const std::vector<std::string>& items) {
+    std::string out = "{";
+    for (size_t i = 0; i < items.size(); ++i) {
+        if (i > 0) out += ',';
+        out += '"';
+        out += items[i];
+        out += '"';
+    }
+    out += '}';
+    return out;
 }
 
-// Return true if the caller is allowed to read/post in the men's chat.
-// Rule: any un-removed men's roster row, OR any admins row.
-bool isMensChatMember(long long personId) {
-    if (personId <= 0) return false;
+struct ChatRule {
+    const char* slug;
+    const char* pushLabel;
+    std::vector<std::string> laProgramPatterns;  // ILIKE ANY patterns
+    bool includesChildren;   // also match via persons.parent_person_id
+    bool adminFallback;      // admins with no matching membership land here
+};
+
+const std::vector<ChatRule>& chatRules() {
+    static const std::vector<ChatRule> rules = {
+        {"mens",   "Men's Chat",   {"Lighthouse Men%Club%"},                          false, true},
+        {"womens", "Women's Chat", {"Lighthouse Women%Club%"},                        false, false},
+        {"youth",  "Youth Chat",   {"Lighthouse Boys%Club%", "Lighthouse Girl%Club%"}, true,  false},
+    };
+    return rules;
+}
+
+const ChatRule* chatRuleForSlug(const std::string& slug) {
+    for (const auto& rule : chatRules()) {
+        if (slug == rule.slug) return &rule;
+    }
+    return nullptr;
+}
+
+long long chatIdForSlug(const std::string& slug) {
+    static std::map<std::string, long long> cache;
+    auto it = cache.find(slug);
+    if (it != cache.end()) return it->second;
+    long long id = 0;
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query("SELECT id FROM chats WHERE slug = $1 LIMIT 1", {slug});
+        if (!r.empty() && !r[0]["id"].is_null()) {
+            id = r[0]["id"].as<long long>();
+        }
+    } catch (...) {}
+    cache[slug] = id;
+    return id;
+}
+
+bool isAdmin(long long personId) {
     try {
         auto* db = Database::getInstance();
         auto r = db->query(
-            "SELECT 1 FROM team_persons tp "
-            "  JOIN teams t ON t.id = tp.team_id "
-            " WHERE t.gender_category = 'mens' "
-            "   AND tp.removed_at IS NULL "
-            "   AND tp.person_id = $1::int "
-            " UNION ALL "
-            "SELECT 1 FROM admins a "
-            "  JOIN users u ON u.id = a.user_id "
-            " WHERE u.person_id = $1::int "
-            " LIMIT 1",
+            "SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
+            " WHERE u.person_id = $1::int LIMIT 1",
             {std::to_string(personId)});
         return !r.empty();
-    } catch (const std::exception& e) {
-        std::cerr << "[isMensChatMember] " << e.what() << std::endl;
+    } catch (...) {
         return false;
     }
 }
 
-// Every person currently eligible for the men's chat (same rule as
-// isMensChatMember, just enumerated instead of a membership check),
-// minus the sender — the push fan-out list for a new chat message.
-std::vector<long long> mensChatMemberPersonIds(long long excludePersonId) {
+// Return true if the caller is allowed to read/post in the given chat.
+bool isChatMember(long long personId, const std::string& slug) {
+    if (personId <= 0) return false;
+    const ChatRule* rule = chatRuleForSlug(slug);
+    if (!rule) return false;
+    if (rule->adminFallback && isAdmin(personId)) return true;
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query(
+            "SELECT EXISTS ("
+            "  SELECT 1 FROM person_la_memberships plm "
+            "    JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
+            "   WHERE plm.person_id = $1::int AND plm.ended_at IS NULL "
+            "     AND lp.program_name ILIKE ANY($2::text[]) "
+            "     AND lp.program_name NOT ILIKE '%Inactive%' "
+            "  UNION ALL "
+            "  SELECT 1 FROM person_la_memberships plm "
+            "    JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
+            "    JOIN persons child ON child.id = plm.person_id "
+            "   WHERE $3::bool AND child.parent_person_id = $1::int "
+            "     AND plm.ended_at IS NULL "
+            "     AND lp.program_name ILIKE ANY($2::text[]) "
+            "     AND lp.program_name NOT ILIKE '%Inactive%'"
+            ") AS is_member",
+            {std::to_string(personId),
+             pgTextArrayLiteral(rule->laProgramPatterns),
+             rule->includesChildren ? "true" : "false"});
+        return !r.empty() && r[0]["is_member"].as<bool>();
+    } catch (const std::exception& e) {
+        std::cerr << "[isChatMember] " << e.what() << std::endl;
+        return false;
+    }
+}
+
+// Which chat should this viewer's single "My" chat box show? Empty
+// string means they're not eligible for any club chat.
+std::string chatSlugForPerson(long long personId) {
+    for (const auto& rule : chatRules()) {
+        if (isChatMember(personId, rule.slug)) return rule.slug;
+    }
+    return {};
+}
+
+// Everyone currently eligible for the given chat, minus the sender —
+// the push fan-out list for a new chat message.
+std::vector<long long> chatMemberPersonIds(const std::string& slug, long long excludePersonId) {
     std::vector<long long> out;
+    const ChatRule* rule = chatRuleForSlug(slug);
+    if (!rule) return out;
     try {
         auto* db = Database::getInstance();
         auto r = db->query(
             "SELECT DISTINCT person_id FROM ("
-            "  SELECT tp.person_id FROM team_persons tp "
-            "    JOIN teams t ON t.id = tp.team_id "
-            "   WHERE t.gender_category = 'mens' AND tp.removed_at IS NULL "
+            "  SELECT plm.person_id FROM person_la_memberships plm "
+            "    JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
+            "   WHERE plm.ended_at IS NULL AND lp.program_name ILIKE ANY($1::text[]) "
+            "     AND lp.program_name NOT ILIKE '%Inactive%' "
+            "  UNION "
+            "  SELECT child.parent_person_id FROM person_la_memberships plm "
+            "    JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id "
+            "    JOIN persons child ON child.id = plm.person_id "
+            "   WHERE $2::bool AND child.parent_person_id IS NOT NULL "
+            "     AND plm.ended_at IS NULL AND lp.program_name ILIKE ANY($1::text[]) "
+            "     AND lp.program_name NOT ILIKE '%Inactive%' "
             "  UNION "
             "  SELECT u.person_id FROM admins a JOIN users u ON u.id = a.user_id "
+            "   WHERE $3::bool "
             ") AS members "
-            "WHERE person_id != $1::int",
-            {std::to_string(excludePersonId)});
+            "WHERE person_id != $4::int",
+            {pgTextArrayLiteral(rule->laProgramPatterns),
+             rule->includesChildren ? "true" : "false",
+             rule->adminFallback ? "true" : "false",
+             std::to_string(excludePersonId)});
         out.reserve(r.size());
-        for (const auto& row : r) out.push_back(row["person_id"].as<long long>());
+        for (const auto& row : r) {
+            if (!row["person_id"].is_null()) out.push_back(row["person_id"].as<long long>());
+        }
     } catch (const std::exception& e) {
-        std::cerr << "[mensChatMemberPersonIds] " << e.what() << std::endl;
+        std::cerr << "[chatMemberPersonIds] " << e.what() << std::endl;
     }
     return out;
 }
@@ -255,13 +356,14 @@ Response MyController::handleGetChatMessages(const Request& request) {
     if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/true, &personId))
         return *err;
 
-    if (!isMensChatMember(personId)) {
-        return jsonError(HttpStatus::FORBIDDEN, "Not a member of the men's chat");
+    const std::string slug = chatSlugForPerson(personId);
+    if (slug.empty()) {
+        return jsonError(HttpStatus::FORBIDDEN, "Not a member of any club chat");
     }
 
-    const long long chatId = mensChatId();
+    const long long chatId = chatIdForSlug(slug);
     if (chatId <= 0) {
-        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "men's chat not configured");
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "chat not configured");
     }
 
     long long sinceId = 0;
@@ -322,13 +424,14 @@ Response MyController::handlePostChatMessage(const Request& request) {
     if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/false, &personId))
         return *err;
 
-    if (!isMensChatMember(personId)) {
-        return jsonError(HttpStatus::FORBIDDEN, "Not a member of the men's chat");
+    const std::string slug = chatSlugForPerson(personId);
+    if (slug.empty()) {
+        return jsonError(HttpStatus::FORBIDDEN, "Not a member of any club chat");
     }
 
-    const long long chatId = mensChatId();
+    const long long chatId = chatIdForSlug(slug);
     if (chatId <= 0) {
-        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "men's chat not configured");
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "chat not configured");
     }
 
     const std::string userIdStr = usersIdForPerson(personId);
@@ -403,13 +506,14 @@ Response MyController::handlePostChatMessage(const Request& request) {
 
         // Push fan-out — fire-and-forget on a detached thread so a slow
         // or unreachable push service never delays the chat POST
-        // response. Recipients: current men's-chat membership (same
-        // rule as isMensChatMember), minus the sender.
+        // response. Recipients: current membership of this chat (same
+        // rule as isChatMember), minus the sender.
         {
-            const std::string pushTitle = senderFirstName + " — Men's Chat";
+            const ChatRule* rule = chatRuleForSlug(slug);
+            const std::string pushTitle = senderFirstName + " — " + (rule ? rule->pushLabel : "Club Chat");
             std::string pushBody = trimmed;
             if (pushBody.size() > 160) pushBody = pushBody.substr(0, 157) + "...";
-            auto recipients = mensChatMemberPersonIds(personId);
+            auto recipients = chatMemberPersonIds(slug, personId);
             std::thread([recipients, pushTitle, pushBody]() {
                 for (long long recipientId : recipients) {
                     WebPushService::getInstance().sendToPerson(recipientId, pushTitle, pushBody, "/#my");
