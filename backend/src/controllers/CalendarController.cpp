@@ -929,12 +929,26 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                      ELSE false
                                                              END AS is_pickup_only,
                                                              false AS is_coach,
-                                                             (SELECT phone_number FROM person_phones
-                                                               WHERE person_id = p.id AND can_receive_sms = true
-                                                               ORDER BY is_primary DESC, id ASC LIMIT 1) AS phone,
-                                                             (SELECT email FROM person_emails
-                                                               WHERE person_id = p.id
-                                                               ORDER BY is_primary DESC, id ASC LIMIT 1) AS email
+                                                             -- Youth players usually have no contact rows of their
+                                                             -- own (signup collected the parent's) — fall back to
+                                                             -- the guardian's phone/email so reminders reach
+                                                             -- someone, same pattern as PersonPayments.cpp/LeadsController.cpp.
+                                                             COALESCE(
+                                                               (SELECT phone_number FROM person_phones
+                                                                 WHERE person_id = p.id AND can_receive_sms = true
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1),
+                                                               (SELECT phone_number FROM person_phones
+                                                                 WHERE person_id = p.parent_person_id AND can_receive_sms = true
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1)
+                                                             ) AS phone,
+                                                             COALESCE(
+                                                               (SELECT email FROM person_emails
+                                                                 WHERE person_id = p.id
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1),
+                                                               (SELECT email FROM person_emails
+                                                                 WHERE person_id = p.parent_person_id
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1)
+                                                             ) AS email
                                                         FROM fh_event_teams fet
                                                         JOIN team_persons tp
                                                             ON tp.team_id = fet.team_id
