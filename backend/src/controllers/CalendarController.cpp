@@ -392,6 +392,131 @@ bool isEventCoachOrAdmin(Database* db, long long personId, long long fhEventId) 
     return !rows.empty() && rows[0]["can_mark"].as<bool>();
 }
 
+// Shared by handlePostRsvp and handleDeleteRsvp: does the underlying
+// gcal event still exist/isn't cancelled, and is the RSVP window open?
+// Returns an error Response when the write should be rejected,
+// std::nullopt when it's fine to proceed.
+std::optional<Response> checkRsvpWindowOpen(Database* db, long long fhEventId) {
+    auto checkRows = db->query(
+        "SELECT fe.id, "
+        "       ge.deleted_at IS NOT NULL AS gcal_tombstoned, "
+        "       ge.status = 'cancelled'   AS gcal_cancelled, "
+        "       fe.rsvps_open_at, "
+        "       (fe.rsvps_open_at IS NULL "
+        "        OR fe.rsvps_open_at <= now()) AS rsvps_open_now, "
+        "       to_char(fe.rsvps_open_at AT TIME ZONE 'UTC', "
+        "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS rsvps_open_at_iso "
+        "  FROM fh_events   fe "
+        "  JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+        " WHERE fe.id = $1::bigint",
+        {std::to_string(fhEventId)});
+
+    if (checkRows.empty()) {
+        return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
+    }
+    const auto& c = checkRows[0];
+    if (c["gcal_tombstoned"].as<bool>() || c["gcal_cancelled"].as<bool>()) {
+        return jsonError(HttpStatus::NOT_FOUND,
+                         "event is cancelled or removed from Google Calendar");
+    }
+    if (!c["rsvps_open_now"].as<bool>()) {
+        json err = {
+            {"error",         "RSVP window not open yet"},
+            {"rsvps_open_at", c["rsvps_open_at_iso"].is_null()
+                                 ? json(nullptr)
+                                 : json(c["rsvps_open_at_iso"].as<std::string>())},
+        };
+        Response r(HttpStatus::CONFLICT, err.dump());
+        r.setHeader("Content-Type", "application/json; charset=utf-8");
+        return r;
+    }
+    return std::nullopt;
+}
+
+// Resolves which person_id an RSVP write (POST or DELETE) should
+// target, and whether callerPersonId may write it. Three ways in:
+//   - no target requested → caller writes for themselves, and must
+//     hold an active (non-suspended) roster/coach spot on one of the
+//     event's teams.
+//   - target requested and it IS the caller → same as above.
+//   - target requested and it is the caller's own child
+//     (persons.parent_person_id) → caller may write it on the child's
+//     behalf, keyed to the CHILD's person_id, provided the child holds
+//     that same active roster spot. A parent can never write for
+//     anyone who isn't their own child.
+// A club admin always passes, for any target, without a roster check.
+std::optional<Response> resolveRsvpTarget(Database* db,
+                                           long long callerPersonId,
+                                           std::optional<long long> requestedPersonId,
+                                           long long fhEventId,
+                                           long long* outTargetPersonId) {
+    const long long targetPersonId = requestedPersonId.value_or(callerPersonId);
+
+    auto rows = db->query(
+        "SELECT "
+        "  (SELECT COUNT(*)::int FROM fh_event_teams "
+        "     WHERE fh_event_id = $1::bigint) AS team_count, "
+        "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
+        "          WHERE u.person_id = $2::int) AS is_admin, "
+        "  ($2::int = $3::int OR EXISTS ("
+        "      SELECT 1 FROM persons "
+        "       WHERE id = $3::int AND parent_person_id = $2::int"
+        "  )) AS may_act_for_target, "
+        "  EXISTS ("
+        "    SELECT 1 FROM fh_event_teams fet "
+        "    WHERE fet.fh_event_id = $1::bigint "
+        "      AND ("
+        "        EXISTS ("
+        "          SELECT 1 FROM team_persons tp "
+        "          WHERE tp.team_id = fet.team_id "
+        "            AND tp.person_id = $3::int "
+        "            AND tp.removed_at IS NULL "
+        "            AND NOT EXISTS ("
+        "                SELECT 1 FROM rsvp_suspensions s "
+        "                WHERE s.person_id = tp.person_id "
+        "                  AND (s.team_id IS NULL OR s.team_id = tp.team_id) "
+        "                  AND s.starts_at <= now() "
+        "                  AND (s.ends_at IS NULL OR s.ends_at > now())"
+        "            )"
+        "        )"
+        "        OR EXISTS ("
+        "          SELECT 1 FROM team_coaches tc "
+        "          JOIN coaches co ON co.id = tc.coach_id "
+        "          WHERE tc.team_id = fet.team_id AND tc.ended_at IS NULL "
+        "            AND co.person_id = $3::int"
+        "        )"
+        "      )"
+        "  ) AS target_on_roster",
+        {std::to_string(fhEventId), std::to_string(callerPersonId), std::to_string(targetPersonId)});
+
+    if (rows.empty()) {
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
+                         "eligibility check returned no row");
+    }
+    const auto& row = rows[0];
+    const int teamCount = row["team_count"].as<int>();
+    if (teamCount == 0) {
+        return jsonError(HttpStatus::FORBIDDEN,
+                         "This event has no roster attached yet — "
+                         "ops needs to add Team:/Club: tags to the "
+                         "Google Calendar description.");
+    }
+    const bool isAdmin         = row["is_admin"].as<bool>();
+    const bool mayActForTarget = row["may_act_for_target"].as<bool>();
+    if (!isAdmin && !mayActForTarget) {
+        return jsonError(HttpStatus::FORBIDDEN,
+                         "You can only RSVP for yourself or your own child.");
+    }
+    if (!isAdmin && !row["target_on_roster"].as<bool>()) {
+        return jsonError(HttpStatus::FORBIDDEN,
+                         requestedPersonId.has_value()
+                             ? "That player is not on the roster for this event."
+                             : "You are not on the roster for this event.");
+    }
+    *outTargetPersonId = targetPersonId;
+    return std::nullopt;
+}
+
 }  // namespace
 
 CalendarController::CalendarController() = default;
@@ -404,6 +529,9 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     });
     router.post(prefix + "/calendar/rsvp", [this](const Request& req) {
         return this->handlePostRsvp(req);
+    });
+    router.del(prefix + "/calendar/rsvp", [this](const Request& req) {
+        return this->handleDeleteRsvp(req);
     });
     router.get(prefix + "/calendar/events/:fhEventId/attendance", [this](const Request& req) {
         return this->handleGetEventAttendance(req);
@@ -644,12 +772,15 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 -- kid's practices was filtered out of their calendar.
                 --
                 -- Deliberately a SEPARATE column rather than another OR
-                -- inside `eligible`: that flag also gates
-                -- POST /api/calendar/rsvp, and fh_event_rsvps is keyed on
-                -- the CALLER's person_id.  A guardian answering there
-                -- would file an RSVP for themselves and show up on the
-                -- who's-going list as a player.  Parents get read access
-                -- here; RSVP stays with the player, coach, and admin.
+                -- inside `eligible`: that flag also gates the caller's
+                -- OWN Go/No row, which is keyed on the caller's
+                -- person_id in fh_event_rsvps. A guardian's RSVP for
+                -- their kid is submitted as a distinct call naming the
+                -- child (see `guardian_targets` below and
+                -- CalendarController::resolveRsvpTarget), which writes
+                -- the row under the CHILD's person_id — never the
+                -- parent's — so the parent never shows up on the
+                -- who's-going list as a player themselves.
                 -- Which of the caller's children are on this event's
                 -- roster.  NULL (string_agg over no rows) means none,
                 -- which is exactly the is_guardian test — so this one
@@ -666,6 +797,33 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                     WHERE fet.fh_event_id = fe.id
                       AND child.parent_person_id = $1::int
                 ) AS guardian_children,
+                -- Structured sibling of guardian_children above, used to
+                -- actually drive the guardian's Go/No buttons (one row
+                -- per child). Excludes a suspended child the same way
+                -- `eligible` excludes a suspended caller — otherwise the
+                -- button would render enabled and then 403 on submit.
+                COALESCE((
+                    SELECT jsonb_agg(x ORDER BY x->>'name')
+                    FROM (
+                        SELECT DISTINCT jsonb_build_object(
+                                   'person_id', child.id,
+                                   'name', child.first_name || ' ' || child.last_name
+                               ) AS x
+                        FROM fh_event_teams fet
+                        JOIN team_persons tp ON tp.team_id = fet.team_id
+                                            AND tp.removed_at IS NULL
+                        JOIN persons child ON child.id = tp.person_id
+                        WHERE fet.fh_event_id = fe.id
+                          AND child.parent_person_id = $1::int
+                          AND NOT EXISTS (
+                              SELECT 1 FROM rsvp_suspensions s
+                              WHERE s.person_id = tp.person_id
+                                AND (s.team_id IS NULL OR s.team_id = tp.team_id)
+                                AND s.starts_at <= now()
+                                AND (s.ends_at IS NULL OR s.ends_at > now())
+                          )
+                    ) sub
+                ), '[]'::jsonb) AS guardian_targets,
                 COALESCE((
                     SELECT jsonb_agg(
                         jsonb_build_object(
@@ -987,6 +1145,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
             ev["guardian_children"] = textOrNull(row, "guardian_children");
+            ev["guardian_targets"]  = json::parse(row["guardian_targets"].c_str());
             {
                 const bool eligible = row["eligible"].as<bool>();
                 const bool guardian = row["is_guardian"].as<bool>();
@@ -995,16 +1154,17 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                     ev["my_rsvp_eligibility_reason"] = nullptr;
                 } else if (!eligible) {
                     if (guardian) {
-                        // Explain the event's presence rather than the
-                        // absence of a button — a parent seeing "you are
-                        // not on the roster" on their own child's
-                        // practice reads as an error, not an answer.
+                        // The caller has no RSVP row of their own here,
+                        // but the frontend renders a working Go/No row
+                        // per guardian_targets entry right on this card
+                        // — this reason string only explains why the
+                        // caller's OWN row is absent, not that RSVPing
+                        // is impossible.
                         const std::string kids = row["guardian_children"].is_null()
                             ? std::string("your player")
                             : row["guardian_children"].as<std::string>();
                         ev["my_rsvp_eligibility_reason"] =
-                            "You can see this because " + kids +
-                            " is on the roster. Players answer their own RSVP.";
+                            "You can see this because " + kids + " is on the roster.";
                     } else if (teamCount == 0) {
                         ev["my_rsvp_eligibility_reason"] = "This event has no roster attached yet — ops needs to add Team:/Club: tags to the Google Calendar description.";
                     } else {
@@ -1159,6 +1319,12 @@ Response CalendarController::handlePostRsvp(const Request& request) {
     std::string note = jsonStr(body, "note");
     if (note.size() > 1000) note.resize(1000);
 
+    // Optional: a guardian answering on behalf of their own rostered
+    // child rather than themselves (see resolveRsvpTarget). Omitted ->
+    // caller RSVPs for themselves, same as before this existed.
+    std::optional<long long> requestedPersonId;
+    if (auto p = jsonInt(body, "person_id"); p && *p > 0) requestedPersonId = *p;
+
     try {
         auto* db = Database::getInstance();
 
@@ -1168,110 +1334,16 @@ Response CalendarController::handlePostRsvp(const Request& request) {
         // (per §1.1's "no orphan FH data" corollary this is a bug
         // state, but we're defensive here in case the applier races
         // the sync worker).
-        auto checkRows = db->query(
-            "SELECT fe.id, "
-            "       ge.deleted_at IS NOT NULL AS gcal_tombstoned, "
-            "       ge.status = 'cancelled'   AS gcal_cancelled, "
-            "       fe.rsvps_open_at, "
-            "       (fe.rsvps_open_at IS NULL "
-            "        OR fe.rsvps_open_at <= now()) AS rsvps_open_now, "
-            "       to_char(fe.rsvps_open_at AT TIME ZONE 'UTC', "
-            "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS rsvps_open_at_iso "
-            "  FROM fh_events   fe "
-            "  JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
-            " WHERE fe.id = $1::bigint",
-            {std::to_string(fhEventId)});
-
-        if (checkRows.empty()) {
-            return jsonError(HttpStatus::NOT_FOUND,
-                             "fh_event not found");
-        }
-        const auto& c = checkRows[0];
-        if (c["gcal_tombstoned"].as<bool>() || c["gcal_cancelled"].as<bool>()) {
-            return jsonError(HttpStatus::NOT_FOUND,
-                             "event is cancelled or removed from Google Calendar");
-        }
-        if (!c["rsvps_open_now"].as<bool>()) {
-            json err = {
-                {"error",         "RSVP window not open yet"},
-                {"rsvps_open_at", c["rsvps_open_at_iso"].is_null()
-                                     ? json(nullptr)
-                                     : json(c["rsvps_open_at_iso"].as<std::string>())},
-            };
-            Response r(HttpStatus::CONFLICT, err.dump());
-            r.setHeader("Content-Type", "application/json; charset=utf-8");
-            return r;
-        }
+        if (auto err = checkRsvpWindowOpen(db, fhEventId)) return *err;
 
         // For this rollout, the My page is the source of truth for
         // whether the caller should be able to RSVP.  If the event is
         // present in the upcoming payload for that caller, the write
         // path accepts the manual RSVP instead of rejecting it on a
         // separate stale roster gate.
-        //
-        // We still keep the check lightweight: admins can always save,
-        // and non-admins must hold an active team_persons membership
-        // (not suspended) on one of the event's attached teams.  If
-        // that check fails, we return a clear 403 so the UI can
-        // surface a helpful error.
-        auto eligRows = db->query(
-            "SELECT "
-            "  (SELECT COUNT(*)::int FROM fh_event_teams "
-            "     WHERE fh_event_id = $1::bigint) AS team_count, "
-            "  ("
-            "    EXISTS ( "
-            "      SELECT 1 "
-            "      FROM admins a "
-            "      JOIN users u ON u.id = a.user_id "
-            "      WHERE u.person_id = $2::int "
-            "    ) "
-            "    OR EXISTS ( "
-            "      SELECT 1 "
-            "      FROM fh_event_teams fet "
-            "      WHERE fet.fh_event_id = $1::bigint "
-            "        AND ( "
-            "          EXISTS ( "
-            "            SELECT 1 "
-            "            FROM team_persons tp "
-            "            WHERE tp.team_id = fet.team_id "
-            "              AND tp.person_id = $2::int "
-            "              AND tp.removed_at IS NULL "
-            "              AND NOT EXISTS ( "
-            "                  SELECT 1 FROM rsvp_suspensions s "
-            "                  WHERE s.person_id = tp.person_id "
-            "                    AND (s.team_id IS NULL OR s.team_id = tp.team_id) "
-            "                    AND s.starts_at <= now() "
-            "                    AND (s.ends_at IS NULL OR s.ends_at > now()) "
-            "              ) "
-            "          ) "
-            "          OR EXISTS ( "
-            "            SELECT 1 "
-            "            FROM team_coaches tc "
-            "            JOIN coaches co ON co.id = tc.coach_id "
-            "            WHERE tc.team_id = fet.team_id "
-            "              AND tc.ended_at IS NULL "
-            "              AND co.person_id = $2::int "
-            "          ) "
-            "        ) "
-            "    )"
-            "  ) AS eligible",
-            {std::to_string(fhEventId), std::to_string(personId)});
-        if (eligRows.empty()) {
-            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
-                             "eligibility check returned no row");
-        }
-        const auto& e0 = eligRows[0];
-        const int  teamCount = e0["team_count"].as<int>();
-        const bool eligible  = e0["eligible"].as<bool>();
-        if (teamCount == 0) {
-            return jsonError(HttpStatus::FORBIDDEN,
-                             "This event has no roster attached yet — "
-                             "ops needs to add Team:/Club: tags to the "
-                             "Google Calendar description.");
-        }
-        if (!eligible) {
-            return jsonError(HttpStatus::FORBIDDEN,
-                             "You are not on the roster for this event.");
+        long long targetPersonId = 0;
+        if (auto err = resolveRsvpTarget(db, personId, requestedPersonId, fhEventId, &targetPersonId)) {
+            return *err;
         }
 
         // Upsert.  ON CONFLICT overwrites response, responded_at, and
@@ -1289,7 +1361,7 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             "          to_char(responded_at AT TIME ZONE 'UTC', "
             "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS responded_at",
             {std::to_string(fhEventId),
-             std::to_string(personId),
+             std::to_string(targetPersonId),
              response});
 
         if (row.empty()) {
@@ -1308,6 +1380,59 @@ Response CalendarController::handlePostRsvp(const Request& request) {
         return jsonOk({{"rsvp", rsvp}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handlePostRsvp: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+Response CalendarController::handleDeleteRsvp(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+
+    json body;
+    try {
+        body = request.getBody().empty()
+            ? json::object()
+            : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         std::string("Invalid JSON: ") + e.what());
+    }
+
+    auto fhEventIdOpt = jsonInt(body, "fh_event_id");
+    if (!fhEventIdOpt || *fhEventIdOpt <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         "fh_event_id (positive int) required");
+    }
+    const long long fhEventId = *fhEventIdOpt;
+
+    // Same optional guardian target as the POST — clearing your kid's
+    // RSVP goes through the same ownership check as setting one.
+    std::optional<long long> requestedPersonId;
+    if (auto p = jsonInt(body, "person_id"); p && *p > 0) requestedPersonId = *p;
+
+    try {
+        auto* db = Database::getInstance();
+        if (auto err = checkRsvpWindowOpen(db, fhEventId)) return *err;
+
+        long long targetPersonId = 0;
+        if (auto err = resolveRsvpTarget(db, personId, requestedPersonId, fhEventId, &targetPersonId)) {
+            return *err;
+        }
+
+        auto row = db->query(
+            "DELETE FROM fh_event_rsvps "
+            " WHERE fh_event_id = $1::bigint AND person_id = $2::int "
+            "RETURNING id",
+            {std::to_string(fhEventId), std::to_string(targetPersonId)});
+
+        if (row.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND, "no RSVP to clear");
+        }
+        return jsonOk({{"cleared", true}, {"person_id", targetPersonId}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handleDeleteRsvp: "
                   << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }

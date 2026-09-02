@@ -21,7 +21,13 @@
 //     The backend now enforces the one-week window in America/New_York,
 //     so the player screen only sees the current week until Sunday 20:00,
 //     then flips to the next week at the cutover.
-//   POST /api/calendar/rsvp              → { fh_event_id, response }
+//   POST   /api/calendar/rsvp            → { fh_event_id, response, person_id? }
+//   DELETE /api/calendar/rsvp            → { fh_event_id, person_id? } (clears back to no response)
+//     person_id is optional and only for a guardian answering on behalf
+//     of their own rostered child (see guardian_targets on each event
+//     and CalendarController::resolveRsvpTarget) — omit it to RSVP for
+//     yourself. The write is always keyed to whoever it's actually for,
+//     never the caller when they're proxying for a child.
 //   GET  /api/my/chat/messages           → { chat_id, viewer_user_id, messages }
 //   POST /api/my/chat/messages           → { message }
 //
@@ -273,14 +279,19 @@ class MyScreen extends Screen {
         this._renderEvents();
         return;
       }
-      // Per-event RSVP button (Going / Not Going).
+      // Per-event RSVP button (Going / Not Going). A bare data-ev-btn is
+      // the caller's own RSVP; data-ev-person-id present means a
+      // guardian answering for that child instead (see guardian rows
+      // in _renderEventCard).
       const evBtn = target.closest('[data-ev-btn]');
       if (evBtn) {
         e.stopPropagation();
         const response  = evBtn.getAttribute('data-ev-btn');           // 'yes' | 'no'
         const fhEventId = parseInt(evBtn.getAttribute('data-fh-event-id'), 10);
+        const personIdAttr = evBtn.getAttribute('data-ev-person-id');
+        const personId = personIdAttr ? parseInt(personIdAttr, 10) : null;
         if (fhEventId && (response === 'yes' || response === 'no')) {
-          this._sendEventRsvp(fhEventId, response);
+          this._sendEventRsvp(fhEventId, response, personId);
         }
         return;
       }
@@ -1012,24 +1023,39 @@ class MyScreen extends Screen {
     );
     const disabledMsg = isPast ? 'Event has passed' : (eligibilityMsg || openMsg);
 
-    // Guardian line.  A parent of a rostered child now sees their kid's
-    // events (CalendarController's is_guardian), but cannot RSVP — the
-    // RSVP is keyed on the caller, so a parent answering would file it
-    // against themselves.  Without this line the card is just two greyed
-    // buttons: the reason lives in the button tooltip, which no phone
-    // ever shows.  Say whose event it is, on the card, in plain sight.
-    const guardianLine = (ev.is_guardian && !eligibilityOk)
-      ? `<div style="font-size:0.6rem; line-height:1.2; color:#fcd34d;
-                     white-space:normal; overflow-wrap:break-word;">
-           👤 ${this.escapeHtml(ev.guardian_children || 'Your player')} —
-           players answer their own RSVP
-         </div>`
-      : '';
+    // Guardian rows.  A parent of a rostered child sees the child's
+    // events (CalendarController's is_guardian) AND can RSVP for them
+    // directly — one Go/No row per child in guardian_targets, written
+    // server-side under the CHILD's own person_id (never the parent's),
+    // so the parent never shows up on the who's-going list as a player.
+    const guardianTargets = Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [];
+    const rsvpRows = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const showOwnRsvpRow = eligibilityOk || guardianTargets.length === 0;
+    const guardianRowsHtml = guardianTargets.map(child => {
+      const childResponse = (rsvpRows.find(r => r && r.person_id === child.person_id) || {}).response || null;
+      const childDisabledMsg = isPast ? 'Event has passed' : openMsg;
+      const childClearing = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:clear`);
+      const childYesSaving = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:yes`) || childClearing;
+      const childNoSaving  = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:no`) || childClearing;
+      return `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:2px;">
+          <div style="font-size:0.62rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">
+            👤 ${this.escapeHtml(child.name || 'Your player')}
+          </div>
+          <div style="display:flex; gap:3px; flex-shrink:0;">
+            ${this._btn('Go', 'yes', childResponse === 'yes', 'solid', childYesSaving,
+                       `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
+            ${this._btn('No', 'no', childResponse === 'no', 'solid', childNoSaving,
+                       `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
+          </div>
+        </div>
+      `;
+    }).join('');
 
-    const evYesKey  = `${ev.fh_event_id}:yes`;
-    const evNoKey   = `${ev.fh_event_id}:no`;
-    const evYesSaving = this.eventSaving.has(evYesKey);
-    const evNoSaving  = this.eventSaving.has(evNoKey);
+    const evYesKey  = `${ev.fh_event_id}:me:yes`;
+    const evNoKey   = `${ev.fh_event_id}:me:no`;
+    const evYesSaving = this.eventSaving.has(evYesKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
+    const evNoSaving  = this.eventSaving.has(evNoKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
 
     const dateStr = this._eventDateStr(ev.starts_at);
     const timeStr = this._eventTimeStr(ev.starts_at);
@@ -1117,14 +1143,16 @@ class MyScreen extends Screen {
             ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
             ${venue ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📍 ${this.escapeHtml(venue)}</div>` : ''}
             ${notes ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📝 ${this.escapeHtml(notes)}</div>` : ''}
-            ${guardianLine}
+            ${guardianRowsHtml}
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:normal; overflow-wrap:break-word;">${compactMeta}</div>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-wrap:wrap; justify-content:flex-end; flex-shrink:0;">
-            ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
-                       `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
-            ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
-                       `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
+            ${showOwnRsvpRow ? `
+              ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
+                         `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
+              ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
+                         `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
+            ` : ''}
             <button type="button" data-view-event-id="${ev.fh_event_id}" style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
               ${this.escapeHtml(viewLabel)}
             </button>
@@ -1196,36 +1224,100 @@ class MyScreen extends Screen {
     return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   }
 
-  async _sendEventRsvp(fhEventId, response) {
-    const key = `${fhEventId}:${response}`;
+  // Current response for `personId` (null = the caller's own row) on
+  // `ev`, used to decide whether a click is a new answer or a deselect
+  // of the button already showing active.
+  _currentRsvpFor(ev, personId) {
+    if (!personId) return ev.my_rsvp || null;
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const row = rsvps.find(r => r && r.person_id === personId);
+    return (row && row.response) || null;
+  }
+
+  // Clicking an already-active Go/No re-clicks it off — same button,
+  // second tap clears the RSVP back to no response — rather than being
+  // stuck once answered.
+  async _sendEventRsvp(fhEventId, response, personId = null) {
+    const ev = (this.events || []).find(e => e.fh_event_id === fhEventId);
+    if (ev && this._currentRsvpFor(ev, personId) === response) {
+      return this._clearEventRsvp(fhEventId, personId);
+    }
+    const key = `${fhEventId}:${personId || 'me'}:${response}`;
     if (this.eventSaving.has(key)) return;
     this.eventSaving.add(key);
     this._renderEvents();
     try {
+      const payload = { fh_event_id: fhEventId, response };
+      if (personId) payload.person_id = personId;
       const body = await this._fetch('/api/calendar/rsvp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fh_event_id: fhEventId, response }),
+        body: JSON.stringify(payload),
       });
       // Optimistic local mutation so the UI updates instantly.
-      const ev = (this.events || []).find(e => e.fh_event_id === fhEventId);
       if (ev) {
-        ev.my_rsvp = (body && body.rsvp && body.rsvp.response) || response;
-        ev.my_rsvp_created_via = 'manual';
-        if (body && body.rsvp && body.rsvp.person_id) {
-          const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-          ev.rsvps = rsvps.filter(r => r.person_id !== body.rsvp.person_id);
-          ev.rsvps.push({
-            person_id: body.rsvp.person_id,
-            response: ev.my_rsvp,
-            created_via: 'manual',
-            name: 'You',
-          });
+        const rsvpPersonId  = (body && body.rsvp && body.rsvp.person_id) || personId;
+        const finalResponse = (body && body.rsvp && body.rsvp.response) || response;
+        if (!personId) {
+          ev.my_rsvp = finalResponse;
+          ev.my_rsvp_created_via = 'manual';
+        }
+        if (rsvpPersonId) {
+          const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : (ev.rsvps = []);
+          const row = rsvps.find(r => r && r.person_id === rsvpPersonId);
+          if (row) {
+            row.response = finalResponse;
+            row.created_via = 'manual';
+          } else {
+            rsvps.push({ person_id: rsvpPersonId, response: finalResponse, created_via: 'manual', name: personId ? undefined : 'You' });
+          }
         }
       }
     } catch (err) {
       console.error('[my] event RSVP failed:', err);
       alert(`Could not save RSVP: ${err.message}`);
+    } finally {
+      this.eventSaving.delete(key);
+      this._renderEvents();
+    }
+  }
+
+  async _clearEventRsvp(fhEventId, personId = null) {
+    const key = `${fhEventId}:${personId || 'me'}:clear`;
+    if (this.eventSaving.has(key)) return;
+    this.eventSaving.add(key);
+    this._renderEvents();
+    try {
+      const payload = { fh_event_id: fhEventId };
+      if (personId) payload.person_id = personId;
+      const body = await this._fetch('/api/calendar/rsvp', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const ev = (this.events || []).find(e => e.fh_event_id === fhEventId);
+      if (ev) {
+        if (!personId) {
+          ev.my_rsvp = null;
+          ev.my_rsvp_created_via = null;
+        }
+        const clearedPersonId = (body && body.person_id) || personId;
+        if (clearedPersonId) {
+          const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+          const row = rsvps.find(r => r && r.person_id === clearedPersonId);
+          // Leave the row in place with a cleared response rather than
+          // removing it — the roster query includes every rostered
+          // person regardless of response, so this person still needs
+          // to show up in the "no response" bucket.
+          if (row) {
+            row.response = null;
+            row.created_via = null;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[my] event RSVP clear failed:', err);
+      alert(`Could not clear RSVP: ${err.message}`);
     } finally {
       this.eventSaving.delete(key);
       this._renderEvents();

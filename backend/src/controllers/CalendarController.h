@@ -99,6 +99,7 @@ public:
 private:
     Response handleGetUpcoming         (const Request& request);
     Response handlePostRsvp            (const Request& request);
+    Response handleDeleteRsvp          (const Request& request);
     // Live-lookup fallback for opponent crests (migration 289): queries
     // TheSportsDb's public team search by name and caches the result
     // (found or not) into opponent_logo_cache so we only ever hit the
