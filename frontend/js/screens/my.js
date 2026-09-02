@@ -265,6 +265,15 @@ class MyScreen extends Screen {
         if (fhEventId) this._emailNoResponse(fhEventId);
         return;
       }
+      // Bulk "Email N Going" — BCC compose, blank body for a custom message
+      // to everyone who's already marked Going.
+      const emailGoingBtn = target.closest('[data-email-going]');
+      if (emailGoingBtn) {
+        e.stopPropagation();
+        const fhEventId = parseInt(emailGoingBtn.getAttribute('data-email-going'), 10);
+        if (fhEventId) this._emailGoing(fhEventId);
+        return;
+      }
       // "Not Going" list show/hide (collapsed by default — can be a long
       // list, no per-row action needed since they've already responded).
       const notGoingToggle = target.closest('[data-toggle-not-going]');
@@ -749,6 +758,12 @@ class MyScreen extends Screen {
       <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
                   border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);">
         ${this._bulkSmsAllBtnHtml(ev, isPast)}
+        ${going.length ? `
+          <div style="margin-bottom:8px;">
+            ${this._bulkSmsGoingBtnHtml(ev, going, isPast)}
+            ${this._bulkEmailGoingBtnHtml(ev, going, isPast)}
+          </div>
+        ` : ''}
         <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
           <div>${groupHtml('Players Going', playersGoing, 'going', rowsHtml(playersGoing))}</div>
           <div>${groupHtml('Coaches Going', coachesGoing, 'going', rowsHtml(coachesGoing))}</div>
@@ -906,6 +921,72 @@ class MyScreen extends Screen {
 
     // bcc (not to) so the group stays private from each other.
     const href = this.buildGmailComposeHref({ bcc: emails.join(','), subject, body });
+    this.openGmailCompose(href);
+  }
+
+  // Bulk "Text N Going" — everyone already marked Going, blank body so the
+  // coach writes their own message (field change, time change, etc.)
+  // instead of a canned reminder. Same carrier group-MMS chunking as
+  // _bulkSmsAllBtnHtml since this is still one shared group thread.
+  _bulkSmsGoingBtnHtml(ev, goingList, isPast) {
+    if (isPast) return '';
+    const CHUNK_SIZE = 10;
+    const phones = [...new Set(goingList.map(r => (r.phone || '').trim()).filter(Boolean))];
+    if (!phones.length) return '';
+
+    const chunks = [];
+    for (let i = 0; i < phones.length; i += CHUNK_SIZE) chunks.push(phones.slice(i, i + CHUNK_SIZE));
+
+    return chunks.map((chunk, i) => {
+      const href = this.buildSmsComposeHref({ to: chunk.join(',') });
+      const label = chunks.length > 1
+        ? `💬 Text Going — Part ${i + 1}/${chunks.length} (${chunk.length})`
+        : `💬 Text ${chunk.length} Going`;
+      return `<a href="${this.escapeHtml(href)}"
+                 title="Opens a blank group text to ${chunk.length} ${chunks.length > 1 ? `of ${phones.length} ` : ''}people going to this event — write your own message. Everyone in the group will see each other's number."
+                 style="padding:3px 8px; border-radius:999px; text-decoration:none; display:inline-block; margin:0 4px 4px 0;
+                        background:#22c55e; color:#0f172a; font-size:0.66rem; font-weight:700;">
+                ${label}
+              </a>`;
+    }).join('');
+  }
+
+  // Bulk "Email N Going" — BCC compose, blank body, same custom-message
+  // intent as the Text-All-Going button above.
+  _bulkEmailGoingBtnHtml(ev, goingList, isPast) {
+    if (isPast) return '';
+    const emails = [...new Set(goingList.map(r => (r.email || '').trim()).filter(Boolean))];
+    if (!emails.length) return '';
+    return `
+      <button type="button" data-email-going="${ev.fh_event_id}"
+              title="Open Gmail with all ${emails.length} Going player${emails.length !== 1 ? 's' : ''} BCC'd — write your own message"
+              style="padding:3px 8px; border-radius:999px; border:none; cursor:pointer;
+                     background:#16a34a; color:#fff; font-size:0.66rem; font-weight:700;">
+        📧 Email ${emails.length} Going
+      </button>`;
+  }
+
+  // BCC compose to everyone marked Going for one event — blank body, for a
+  // custom message rather than a canned reminder (they've already RSVP'd).
+  _emailGoing(fhEventId) {
+    const ev = (this.events || []).find(e => e.fh_event_id === fhEventId)
+            || (this.oldEvents || []).find(e => e.fh_event_id === fhEventId);
+    if (!ev) return;
+
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const going = rsvps.filter(r => r && r.response === 'yes');
+    const emails = [...new Set(going.map(r => (r.email || '').trim()).filter(Boolean))];
+    if (!emails.length) {
+      alert('No email addresses on file for the Going players.');
+      return;
+    }
+
+    const eventTitle = this._eventTitle(ev);
+    const eventWhen = [this._eventDateStr(ev.starts_at), this._eventTimeStr(ev.starts_at)].filter(Boolean).join(' ');
+    const subject = `${eventTitle}${eventWhen ? ' (' + eventWhen + ')' : ''}`;
+
+    // bcc (not to) so the group stays private from each other.
+    const href = this.buildGmailComposeHref({ bcc: emails.join(','), subject, body: '' });
     this.openGmailCompose(href);
   }
 
