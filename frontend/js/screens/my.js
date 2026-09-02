@@ -438,12 +438,24 @@ class MyScreen extends Screen {
     // the days the team actually uses for RSVPs: Tue through Sun.
     const weekEnd = this._weekWindowEnd();
     const allowedDays = new Set([2, 3, 4, 5, 6, 0]);
+    const now = Date.now();
+    const DROP_GRACE_MS = 30 * 60 * 1000;
+    // Fallback when ends_at is missing/unparseable — assume a 2hr event so a
+    // data gap doesn't drop something that's still in progress.
+    const FALLBACK_DURATION_MS = 2 * 60 * 60 * 1000;
     const list = (this.events || [])
       .filter(e => this._isPlayerScheduleEvent(e))
       .filter(e => {
         if (!e.starts_at) return false;
         const t = new Date(e.starts_at);
-        return !isNaN(t) && t <= weekEnd && allowedDays.has(t.getDay());
+        if (isNaN(t) || t > weekEnd || !allowedDays.has(t.getDay())) return false;
+
+        // Drop the event from the board 30 minutes after it ends, so
+        // yesterday's practice doesn't linger on "This Week" all week.
+        const endsAt = e.ends_at ? new Date(e.ends_at) : null;
+        const cutoff = (endsAt && !isNaN(endsAt) ? endsAt.getTime() : t.getTime() + FALLBACK_DURATION_MS)
+          + DROP_GRACE_MS;
+        return now < cutoff;
       });
 
     if (sub) {
