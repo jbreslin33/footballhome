@@ -602,7 +602,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             "WITH caller AS ( "
             "  SELECT person_id FROM users WHERE id = $1::int "
             "), roster AS ( "
-            "  SELECT t.id::text AS id, t.name, "
+            "  SELECT t.id::text AS id, t.name, t.slug, "
             "         t.club_id::text AS club_id, "
             "         d.name AS division_name, "
             "         1 AS priority "
@@ -613,7 +613,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             "    JOIN teams t ON t.id = tdp.team_id "
             "    LEFT JOIN divisions d ON d.id = t.division_id "
             "  UNION ALL "
-            "  SELECT t.id::text AS id, t.name, "
+            "  SELECT t.id::text AS id, t.name, t.slug, "
             "         t.club_id::text AS club_id, "
             "         NULL::varchar AS division_name, "
             "         2 AS priority "
@@ -623,7 +623,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             "     AND tp.removed_at IS NULL "
             "    JOIN teams t ON t.id = tp.team_id "
             ") "
-            "SELECT DISTINCT ON (id) id, name, club_id, division_name "
+            "SELECT DISTINCT ON (id) id, name, slug, club_id, division_name "
             "  FROM roster "
             " ORDER BY id, priority, division_name NULLS LAST";
 
@@ -641,9 +641,13 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             const std::string divName =
                 row["division_name"].is_null() ? "null"
                                                : "\"" + escapeJson(row["division_name"].as<std::string>()) + "\"";
+            const std::string slugStr =
+                row["slug"].is_null() ? "null"
+                                      : "\"" + escapeJson(row["slug"].as<std::string>()) + "\"";
             teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
                        << "\"display_name\":\"" << escapeJson(row["name"].as<std::string>()) << "\","
                        << "\"name\":\"" << escapeJson(row["name"].as<std::string>()) << "\","
+                       << "\"slug\":" << slugStr << ","
                        << "\"club_id\":" << clubIdStr << ","
                        << "\"division_name\":" << divName << "}";
         }

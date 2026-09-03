@@ -9,11 +9,61 @@ PublicController::PublicController() {
 
 void PublicController::registerRoutes(Router& router, const std::string& prefix) {
     // prefix == "/api/public"
+    router.get(prefix + "/teams",                [this](const Request& r) { return handleListTeams(r); });
     router.get(prefix + "/teams/:slug",          [this](const Request& r) { return handleGetTeam(r); });
     router.get(prefix + "/teams/:slug/gameday",  [this](const Request& r) { return handleGetGameday(r); });
     router.get(prefix + "/teams/:slug/lineup",   [this](const Request& r) { return handleGetLineup(r); });
     router.get(prefix + "/teams/:slug/schedule", [this](const Request& r) { return handleGetSchedule(r); });
     router.get(prefix + "/leagueapps-registration-links", [this](const Request& r) { return handleGetRegistrationLinks(r); });
+}
+
+// ─── GET /api/public/teams ───────────────────────────────────────────────────
+// Directory of teams for a public "find your team's schedule" index page.
+// Filtered the same way the rosters boards / /api/coach/teams decide a team
+// "operates" (board_sort_order IS NOT NULL AND is_active = true) so internal
+// buckets/pools/archived-legacy teams don't show up in a public list.
+Response PublicController::handleListTeams(const Request& request) {
+    try {
+        pqxx::result result = db_->query(
+            "SELECT t.slug, t.name, t.gender_category, "
+            "       COALESCE(t.logo_url,'') AS logo_url, "
+            "       d.name AS division_name "
+            "FROM teams t "
+            "LEFT JOIN divisions d ON d.id = t.division_id "
+            "WHERE t.is_active = true "
+            "  AND t.board_sort_order IS NOT NULL "
+            "  AND t.slug IS NOT NULL "
+            "ORDER BY t.gender_category NULLS LAST, t.board_sort_order");
+
+        std::ostringstream data;
+        data << "[";
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) data << ",";
+            first = false;
+            const std::string genderStr =
+                row["gender_category"].is_null() ? "null"
+                    : "\"" + escapeJson(row["gender_category"].as<std::string>()) + "\"";
+            const std::string divName =
+                row["division_name"].is_null() ? "null"
+                    : "\"" + escapeJson(row["division_name"].as<std::string>()) + "\"";
+            data << "{"
+                 << "\"slug\":\"" << escapeJson(row["slug"].as<std::string>()) << "\","
+                 << "\"name\":\"" << escapeJson(row["name"].as<std::string>()) << "\","
+                 << "\"logo_url\":\"" << escapeJson(row["logo_url"].as<std::string>()) << "\","
+                 << "\"gender_category\":" << genderStr << ","
+                 << "\"division_name\":" << divName
+                 << "}";
+        }
+        data << "]";
+
+        return Response(HttpStatus::OK,
+                        createJSONResponse(true, "Teams retrieved", data.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleListTeams: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                        createJSONResponse(false, "Database error"));
+    }
 }
 
 // ─── LeagueApps registration links ──────────────────────────────────────────

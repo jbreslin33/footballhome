@@ -70,6 +70,7 @@ class App {
       publicGameday: new PublicGamedayScreen(this.navigation, this.auth),
       publicLineup: new PublicLineupScreen(this.navigation, this.auth),
       publicSchedule: new PublicScheduleScreen(this.navigation, this.auth),
+      publicTeamsList: new PublicTeamsListScreen(this.navigation, this.auth),
       publicProgramInfo: new PublicProgramInfoScreen(this.navigation, this.auth),
       my: new MyScreen(this.navigation, this.auth),
       calendar: new CalendarScreen(this.navigation, this.auth),
@@ -153,6 +154,7 @@ class App {
     this.screenManager.register('public-lineup', this.screens.publicLineup);
     this.screenManager.register('public-schedule', this.screens.publicSchedule);
     this.screenManager.register('public-program-info', this.screens.publicProgramInfo);
+    this.screenManager.register('teams-directory', this.screens.publicTeamsList);
     this.screenManager.register('my', this.screens.my);
     // Google Calendar mirror view — CalendarScreen renders the
     // agenda list backed by GET /api/calendar/upcoming (Slice 4).
@@ -181,6 +183,13 @@ class App {
       const infoMatch = hash.match(/^#info\/(youth|adult)$/);
       if (infoMatch) {
         this.screenManager.show('public-program-info', { audience: infoMatch[1] });
+        return true;
+      }
+
+      // Public team directory: #teams — lists every active team with a
+      // link to its own #t/<slug>/schedule page (see public-teams-list.js).
+      if (hash === '#teams') {
+        this.screenManager.show('teams-directory', {});
         return true;
       }
 

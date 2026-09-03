@@ -260,7 +260,7 @@ class PublicScheduleScreen extends PublicScreenBase {
     // Group by month
     const groups = new Map();
     for (const m of matches) {
-      const d = m.match_date ? new Date(m.match_date) : null;
+      const d = m.date ? new Date(m.date) : null;
       const key = d ? d.toLocaleString('en-US', { month: 'long', year: 'numeric' }) : 'TBD';
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(m);
@@ -271,14 +271,14 @@ class PublicScheduleScreen extends PublicScreenBase {
     for (const [month, ms] of groups) {
       html += `<div class="schedule-month-header">${this.escapeHtml(month)}</div>`;
       for (const m of ms) {
-        const dm = this.fmtDate(m.match_date);
+        const dm = this.fmtDate(m.date);
         const opp = m.is_home
-          ? this.escapeHtml(m.away_team_name || 'TBD')
-          : this.escapeHtml(m.home_team_name || 'TBD');
-        const venue = m.venue_name ? this.escapeHtml(m.venue_name) : '';
+          ? this.escapeHtml((m.away && m.away.name) || 'TBD')
+          : this.escapeHtml((m.home && m.home.name) || 'TBD');
+        const venue = m.venue ? this.escapeHtml(m.venue) : '';
         const score = (m.home_score != null && m.away_score != null)
           ? `${m.home_score} - ${m.away_score}`
-          : (m.match_time ? this.escapeHtml(m.match_time) : '');
+          : (m.time ? this.escapeHtml(m.time) : '');
         const liveCls = m.is_live ? ' is-live' : '';
         const liveBadge = m.is_live ? `<span class="live-badge">📍 LIVE</span>` : '';
         const anchorId = m.is_live ? ` id="live-match"` : '';

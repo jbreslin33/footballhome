@@ -5,6 +5,9 @@
 // PublicController
 // -----------------------------------------------------------------------------
 // Unauthenticated read endpoints that power the per-team public share URLs:
+//   GET /api/public/teams                   -> directory of active teams (slug, name,
+//     gender_category, division_name), grouped/ordered for a public "find your
+//     team's schedule" index page
 //   GET /api/public/teams/:slug             -> team summary + live match pointer
 //   GET /api/public/teams/:slug/gameday     -> 18/20 man roster (or "hidden" placeholder)
 //   GET /api/public/teams/:slug/lineup      -> starters / bench / pitch (anonymized when hidden)
@@ -27,6 +30,7 @@ public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
+    Response handleListTeams(const Request& request);
     Response handleGetTeam(const Request& request);
     Response handleGetGameday(const Request& request);
     Response handleGetLineup(const Request& request);
