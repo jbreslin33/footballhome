@@ -227,7 +227,7 @@ class WomensRosterScreen extends RosterScreenBase {
           const active = this.teamFocusId === c.teamId;
           if (!showFocusPills) {
             return `
-              <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; padding:2px 8px; border-radius:4px; border-left:3px solid ${c.color};">
+              <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; padding:2px 8px; border-radius:4px; border-left:3px solid #64748b;">
                 ${c.label} <span style="opacity:0.55;">${cap}</span>
               </span>`;
           }
@@ -235,8 +235,8 @@ class WomensRosterScreen extends RosterScreenBase {
             <button type="button" class="wr-team-focus-pill" data-team-focus-id="${c.teamId}"
                     title="${active ? `Showing only ${c.label} — click All to see every team` : `Show only ${c.label}`}"
                     style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:${active ? 700 : 400}; padding:2px 8px; border-radius:999px; cursor:pointer;
-                           border:1px solid ${c.color}; border-left:3px solid ${c.color};
-                           background:${active ? c.color : 'transparent'}; color:${active ? '#fff' : 'inherit'};">
+                           border:1px solid #64748b; border-left:3px solid #64748b;
+                           background:${active ? '#94a3b8' : 'transparent'}; color:${active ? '#0f172a' : 'inherit'};">
               ${c.label} <span style="opacity:${active ? '0.85' : '0.55'};">${cap}</span>
             </button>`;
         }).join('')}
@@ -282,7 +282,9 @@ class WomensRosterScreen extends RosterScreenBase {
       const overFull = players.length >= col.maxRoster;
       const pct      = col.maxRoster ? players.length / col.maxRoster : 0;
       const nearFull = !overFull && pct >= 0.85;
-      const fc = overFull ? '#ef4444' : nearFull ? '#f59e0b' : '#10b981';
+      // Neutral (owner 2026-09-05): only gender, dues and roster status
+      // carry colour on this board; the ⚠ still flags an over-full column.
+      const fc = '#cbd5e1';
       const pctText  = `${Math.round(pct * 100)}%`;
       const left     = col.maxRoster - players.length;
       const detail   = overFull
@@ -300,11 +302,12 @@ class WomensRosterScreen extends RosterScreenBase {
       : renderList(players);
 
     return `
-      <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid ${col.color}; min-width:${this.colBoxMinWidth()};">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:6px;">
+      <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid #475569; min-width:${this.colBoxMinWidth()};">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; margin-bottom:6px; gap:6px;">
           <strong style="font-size:0.85rem;">${col.label}</strong>
-          <span style="display:inline-flex; align-items:center; gap:6px;">
+          <span style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
             ${col.isUnassigned ? '' : this.renderMessageButtons(col.label.replace(/^[^\p{L}\p{N}]+/u, ''), players, { compact: true })}
+            ${this.renderOnRosterTally(col, players)}
             ${countHtml}
           </span>
         </div>
@@ -343,9 +346,8 @@ class WomensRosterScreen extends RosterScreenBase {
     const duesLabel = this.renderDuesLabel(p);
     const cardId = `wr-card-${p.leagueAppsUserId}`;
 
-    // No delinquency concept for a free program — every card gets the
-    // same yellow border Mens/Boys use for their non-overdue state.
-    const cardBorder = '2px solid #facc15';
+    // Same neutral frame every board uses (owner 2026-09-05).
+    const cardBorder = RosterScreenBase.NEUTRAL_CARD_BORDER;
 
     return this.renderCompactCard({
       player: p,

@@ -229,11 +229,60 @@ class RosterScreenBase extends Screen {
        </select>`;
   }
 
+  // Roster-status colour (owner 2026-09-05): the Teams board is otherwise
+  // colour-neutral apart from gender and dues, so these three states are
+  // the only thing that pops — green = On Roster, yellow = the two
+  // "league is sitting on it" waits. Everything else stays neutral.
+  static get ROSTER_STATUS_COLORS() {
+    return {
+      on_roster:         { bg: '#16a34a', fg: '#ffffff', border: '#16a34a' },
+      awaiting_approval: { bg: '#eab308', fg: '#422006', border: '#eab308' },
+      awaiting_transfer: { bg: '#eab308', fg: '#422006', border: '#eab308' },
+    };
+  }
+
+  rosterStatusStyle(status) {
+    const c = RosterScreenBase.ROSTER_STATUS_COLORS[status]
+      || { bg: '#0f172a', fg: '#ffffff', border: '#475569' };
+    return `background:${c.bg}; color:${c.fg}; border:1px solid ${c.border};`;
+  }
+
+  // Re-paint a status <select> after its value changes (optimistic flip,
+  // rollback, or a successful save) so the colour never lags the value.
+  applyRosterStatusStyle(select) {
+    if (!select) return;
+    const c = RosterScreenBase.ROSTER_STATUS_COLORS[select.value]
+      || { bg: '#0f172a', fg: '#ffffff', border: '#475569' };
+    select.style.background  = c.bg;
+    select.style.color       = c.fg;
+    select.style.borderColor = c.border;
+  }
+
+  // "✓ N on roster" tally for a team column header, from the same
+  // roster_status the per-card dropdown edits. Unassigned has no
+  // team_persons rows, so no tally there. Carries data-on-roster-tally
+  // so refreshOnRosterTally() can update it live after a dropdown change.
+  renderOnRosterTally(col, players) {
+    if (!col || !col.teamId) return '';
+    const n = (players || []).filter(p => p && p.rosterStatus === 'on_roster').length;
+    return `<span data-on-roster-tally="${col.teamId}" title="Players whose league roster status is On Roster"
+                  style="font-size:0.8rem; font-weight:800; color:#22c55e; white-space:nowrap;">✓ ${n} on roster</span>`;
+  }
+
+  refreshOnRosterTally(teamId) {
+    if (!this.element || !teamId) return;
+    const tally = this.element.querySelector(`[data-on-roster-tally="${teamId}"]`);
+    if (!tally) return;
+    const selects = this.element.querySelectorAll(`.mr-status-select[data-team-id="${teamId}"]`);
+    const n = Array.from(selects).filter(s => s.value === 'on_roster').length;
+    tally.textContent = `✓ ${n} on roster`;
+  }
+
   renderStatusSelect(player, col, canMove) {
     if (!(canMove && col && col.teamId && player.personId)) return '';
     return `<select class="mr-status-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
                title="Official league roster status"
-               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; max-width:92px;">
+               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.rosterStatusStyle(player.rosterStatus)} max-width:92px;">
          <option value=""                  ${!player.rosterStatus ? 'selected' : ''}>Status: —</option>
          <option value="not_on_roster"     ${player.rosterStatus === 'not_on_roster'     ? 'selected' : ''}>Not on Roster</option>
          <option value="needs_itc"         ${player.rosterStatus === 'needs_itc'         ? 'selected' : ''}>Needs ITC</option>
@@ -284,6 +333,8 @@ class RosterScreenBase extends Screen {
 
     const prevValue = Array.from(select.options).find(o => o.defaultSelected)?.value ?? '';
     select.disabled = true;
+    this.applyRosterStatusStyle(select);
+    this.refreshOnRosterTally(teamId);
     try {
       const res = await this.auth.fetch(`/api/teams/${teamId}/roster/person/${personId}/roster-status`, {
         method: 'PUT',
@@ -297,6 +348,8 @@ class RosterScreenBase extends Screen {
       select.querySelectorAll('option').forEach(o => { o.defaultSelected = o.selected; });
     } catch (err) {
       select.value = prevValue;
+      this.applyRosterStatusStyle(select);
+      this.refreshOnRosterTally(teamId);
       alert(`Could not save Roster Status: ${err.message}`);
     } finally {
       select.disabled = false;
@@ -350,11 +403,14 @@ class RosterScreenBase extends Screen {
     return `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; line-height:1.2; padding:0 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
   }
 
-  getCompactCardBorder(days, fallback = '#facc15') {
-    if (days >= 4) {
-      return `2px solid ${this.daysOverdueColor(days)}`;
-    }
-    return `2px solid ${fallback}`;
+  // Card border is neutral on every board (owner 2026-09-05) — dues risk
+  // lives on the Dues pill, not the frame, so the only colour on a card
+  // is gender / dues / roster status. `days` kept in the signature so
+  // callers didn't have to change.
+  static get NEUTRAL_CARD_BORDER() { return '2px solid #475569'; }
+
+  getCompactCardBorder(days, fallback) {
+    return RosterScreenBase.NEUTRAL_CARD_BORDER;
   }
 
   renderPersonActions(person, { returnTo = '', showEdit = false, btnBaseStyle = '' } = {}) {
@@ -389,27 +445,33 @@ class RosterScreenBase extends Screen {
   renderMoveDropdown(player, columns, currentTeamId = 0) {
     const assignedSet = new Set(player.teamIds || []);
 
-    // Full team name, not shortLabel (owner 2026-08-25: "in drop down
-    // write out full name of team"). The board columns can afford
-    // abbreviations because the colour and position carry meaning; a flat
-    // list of options cannot, and "U10 Intra" / "U12 Intra" / "U16 Intra"
-    // read as near-identical at a glance. `label` may carry a leading
-    // emoji (e.g. "⚽ U10 Intramural") — kept, it aids scanning.
+    // Options in the open popover use the full team name (owner
+    // 2026-08-25: "in drop down write out full name of team") — a flat
+    // list of "U10 Intra" / "U12 Intra" / "U16 Intra" reads as
+    // near-identical. The closed trigger on the card is the opposite
+    // case (owner 2026-09-05: "U10 INTRAMURAL" was bleeding out of the
+    // cards): it shows teams.short_label ("U10 Intra") since the column
+    // already says which team this is. Leading emoji ("⚽ ", "🏆 ") is
+    // stripped from both — "it does not need a soccer ball icon".
     //
     // Sorted by name rather than board order, numeric-aware so U6/U8/U10
     // fall in age order instead of the "U10, U12, U16, U19, U6" a plain
     // string sort produces. Unassigned is pinned first: it is the removal
     // action, not a team, and belongs where the eye lands.
+    // Team colour deliberately ignored (owner 2026-09-05): which team a
+    // card is on is already obvious from its column, so the dropdown
+    // stays neutral and lets roster status be the thing that's coloured.
+    const stripIcon = (s) => String(s || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
     const teamTargets = (columns || []).map(c => ({
       id:    c.teamId,
-      label: c.label || c.shortLabel || `Team ${c.teamId}`,
-      color: c.color || '#334155',
+      label: stripIcon(c.label || c.shortLabel) || `Team ${c.teamId}`,
+      short: stripIcon(c.shortLabel || c.label) || `Team ${c.teamId}`,
     }));
     teamTargets.sort((a, b) =>
       String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: 'base' }));
 
     const targets = [
-      { id: 0, label: 'Unassigned', color: '#475569' },
+      { id: 0, label: 'Unassigned', short: 'Unassigned' },
       ...teamTargets,
     ];
     // appearance:none/min-height:0 strip the native OS button-chrome
@@ -434,15 +496,15 @@ class RosterScreenBase extends Screen {
       let prefix = '';
       let title;
       if (isCurrent) {
-        style  = `background:${t.color}; color:#fff; border:1px solid ${t.color}; cursor:pointer; opacity:0.85;`;
+        style  = `background:#334155; color:#fff; border:1px solid #475569; cursor:pointer;`;
         prefix = '✓ ';
         title  = t.id === 0 ? 'Currently unassigned here' : `Currently on ${t.label} (this card)`;
       } else if (alsoAssigned) {
-        style  = `background:transparent; color:${t.color}; border:1px solid ${t.color}; cursor:pointer; opacity:0.75;`;
+        style  = `background:transparent; color:#cbd5e1; border:1px solid #64748b; cursor:pointer;`;
         prefix = '• ';
         title  = `Already on ${t.label} (via another card)`;
       } else {
-        style  = `background:transparent; color:${t.color}; border:1px dashed ${t.color}88; cursor:pointer;`;
+        style  = `background:transparent; color:#cbd5e1; border:1px dashed #64748b; cursor:pointer;`;
         title  = t.id === 0 ? `Remove from ${activeTarget.label}` : `Add to ${t.label}`;
       }
       // The current option is NOT disabled — clicking it is a same-team
@@ -467,9 +529,9 @@ class RosterScreenBase extends Screen {
     // stretch through to its child on its own.
     return `
       <details class="roster-move-details" style="position:relative; display:flex; height:100%;">
-        <summary style="${btnBase} height:100%; display:flex; align-items:center; justify-content:center; background:${activeTarget.color}; color:#fff; border:1px solid ${activeTarget.color}; cursor:pointer; user-select:none;"
+        <summary style="${btnBase} height:100%; display:flex; align-items:center; justify-content:center; background:#0f172a; color:#fff; border:1px solid #475569; cursor:pointer; user-select:none;"
                  title="Add ${this.escape(player.firstName || 'player')} to another team, or remove from this one">
-          ${this.escape(activeTarget.label.toUpperCase())} ▾
+          ${this.escape(activeTarget.short.toUpperCase())} ▾
         </summary>
         <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155; min-width:100%;">
           ${optBtns}
@@ -495,7 +557,7 @@ class RosterScreenBase extends Screen {
     return others.map((t) => {
       const category = t.genderCategory || t.gender_category || '';
       const name = t.name || 'Team';
-      return `<span title="Also on ${this.escape(name)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(168,85,247,0.22); color:#c084fc; white-space:nowrap;">${icon[category] || '⚽'} ${this.escape(name)}</span>`;
+      return `<span title="Also on ${this.escape(name)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.18); color:#cbd5e1; white-space:nowrap;">${icon[category] || '⚽'} ${this.escape(name)}</span>`;
     }).join('');
   }
 
@@ -520,7 +582,7 @@ class RosterScreenBase extends Screen {
       .filter(Boolean).join(' · ');
     const title = `Also holds a Pickup membership${bits ? ` (${bits})` : ''}`
       + ' — Members and Pickup are separate registrations; nobody should hold both.';
-    return `<span title="${this.escape(title)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(245,158,11,0.22); color:#fbbf24; white-space:nowrap;">⚡ Pickup</span>`;
+    return `<span title="${this.escape(title)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.18); color:#cbd5e1; white-space:nowrap;">⚡ Pickup</span>`;
   }
 
   // Two thin content rows (rank+name, then DOB/age/dues) on the left;
@@ -541,7 +603,7 @@ class RosterScreenBase extends Screen {
     viewButtonHtml = '',
     duesLabel = '',
     dobShort = '',
-    borderColor = '2px solid #facc15',
+    borderColor = RosterScreenBase.NEUTRAL_CARD_BORDER,
     canMove = false,
   }) {
     const posChip = position
