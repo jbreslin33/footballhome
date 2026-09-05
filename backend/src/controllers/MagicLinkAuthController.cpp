@@ -309,7 +309,7 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
             if (hasWhen || hasLoc) bodyOss << ")";
             bodyOss << ":\n"
                     << verifyUrl << "\n\n"
-                    << "This link signs you in automatically and expires in 24 hours.\n\n"
+                    << "This link signs you in automatically and expires in 72 hours.\n\n"
                     << "\u2014 Lighthouse Soccer";
         } else {
             bodyOss << "Lighthouse 1893 is rolling out a lightweight scheduling page "
@@ -321,7 +321,7 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
                     << "  \u2022 RSVP YES / NO for this week's games, practices, scrimmages and pickups\n"
                     << "  \u2022 Set default availability by day of week + event type so the page auto-fills\n"
                     << "  \u2022 Bookmark to your home screen (it works like an app)\n\n"
-                    << "This link signs you in automatically and expires in 24 hours. "
+                    << "This link signs you in automatically and expires in 72 hours. "
                        "If you'd rather set a password for future visits, just tap "
                        "\"Forgot / set password\" on the sign-in screen.\n\n"
                     << "\u2014 Lighthouse Soccer";

@@ -19,9 +19,9 @@ public:
     // bumps expires_at = NOW() + this.
     static constexpr std::chrono::seconds kSessionTtl = std::chrono::seconds(365 * 24 * 60 * 60);
 
-    // 24h (matches Node).  Fixed from mint time — verify does NOT
+    // 72h.  Fixed from mint time — verify does NOT
     // extend.  Tokens stay valid (and re-openable) until expiry.
-    static constexpr std::chrono::seconds kMagicLinkTtl = std::chrono::seconds(24 * 60 * 60);
+    static constexpr std::chrono::seconds kMagicLinkTtl = std::chrono::seconds(72 * 60 * 60);
 
     // Cookie attribute name.  Must stay 'fh_sess' to match the Node
     // implementation; the system nginx and the SPA both assume it.
