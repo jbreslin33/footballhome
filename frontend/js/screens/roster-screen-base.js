@@ -278,11 +278,15 @@ class RosterScreenBase extends Screen {
             </span>`;
   }
 
+  // Subs can go negative (owner 2026-09-05: "11v11 with 11 on roster is
+  // 0 but 10 on roster is -1 subs") — a short roster is exactly what the
+  // coach needs to see, so it's shown in red rather than clamped.
   onRosterTallyHtml(n, fieldSize) {
-    const subs = fieldSize > 0 ? Math.max(0, n - fieldSize) : null;
+    const subs = fieldSize > 0 ? n - fieldSize : null;
+    const subsColor = subs < 0 ? '#ef4444' : '#cbd5e1';
     return `<span style="font-size:0.8rem; font-weight:800; color:#22c55e;">✓ ${n} on roster</span>`
       + (fieldSize > 0
-          ? `<span style="font-size:0.72rem; font-weight:700; color:#cbd5e1;">${fieldSize}v${fieldSize} · ${subs} sub${subs === 1 ? '' : 's'}</span>`
+          ? `<span style="font-size:0.72rem; font-weight:700; color:${subsColor};">${fieldSize}v${fieldSize} · ${subs} sub${Math.abs(subs) === 1 ? '' : 's'}</span>`
           : '');
   }
 
