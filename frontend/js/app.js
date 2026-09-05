@@ -186,9 +186,12 @@ class App {
         return true;
       }
 
-      // Public team directory: #teams — lists every active team with a
-      // link to its own #t/<slug>/schedule page (see public-teams-list.js).
-      if (hash === '#teams') {
+      // Public schedule directory: #schedules — lists every active team
+      // with a link to its own #t/<slug>/schedule page (see
+      // public-teams-list.js). NOT #teams: that hash is the logged-in
+      // rosters board (registered as 'teams' above), and matching it here
+      // hijacked the board for coaches/admins (2026-09-03 → 09-05).
+      if (hash === '#schedules') {
         this.screenManager.show('teams-directory', {});
         return true;
       }

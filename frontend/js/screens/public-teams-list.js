@@ -1,4 +1,4 @@
-// PublicTeamsListScreen — auth-less directory of active teams (#teams),
+// PublicTeamsListScreen — auth-less directory of active teams (#schedules),
 // grouped by gender category, each linking to that team's existing public
 // schedule page (#t/<slug>/schedule — see public-team.js). This is the
 // "footballhome page for the long-term schedule of each team" — it doesn't
