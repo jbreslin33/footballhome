@@ -102,6 +102,7 @@ class MyScreen extends Screen {
       </div>
       <div style="padding: 0 8px;">
         <section id="my-chat" style="margin-bottom: 6px;"></section>
+        <div id="my-push-banner"></div>
         <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
         </section>
@@ -131,6 +132,14 @@ class MyScreen extends Screen {
       await this._loadChat(/*initial*/ true);
       this._startPoll();
       this._initPushUI().catch((err) => console.warn('[my] push UI init failed:', err));
+      // Full-width opt-in banner above the week (owner 2026-09-05) —
+      // shared PushOptIn component; the pill in the chat header stays as
+      // the status readout and refreshes when the banner turns push on.
+      if (window.PushOptIn) {
+        window.PushOptIn.mount(this.find('#my-push-banner'), this.auth, {
+          onChange: () => this._initPushUI().catch(() => {}),
+        }).catch((err) => console.warn('[my] push banner failed:', err));
+      }
       this._loadSchedulePills().catch((err) => console.warn('[my] schedule pills failed:', err));
     } catch (err) {
       console.error('[my] bootstrap failed:', err);
@@ -1583,6 +1592,8 @@ class MyScreen extends Screen {
       if (btn) { btn.disabled = true; btn.textContent = '🔔 Notifications on'; }
       const testBtn = this.find('#push-test-btn');
       if (testBtn) testBtn.style.display = '';
+      const banner = this.find('#my-push-banner');
+      if (banner) banner.innerHTML = '';
     } catch (err) {
       console.error('[my] enable notifications failed:', err);
       if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable notifications'; }

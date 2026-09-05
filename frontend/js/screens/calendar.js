@@ -79,6 +79,8 @@ class CalendarScreen extends Screen {
           </div>
         </div>
 
+        <div id="cal-push-banner"></div>
+
         <div id="cal-loading" style="text-align:center; padding: var(--space-6); opacity:0.7;">
           Loading calendar…
         </div>
@@ -106,6 +108,14 @@ class CalendarScreen extends Screen {
     this.error = null;
     this._wire();
     this._load();
+    // Push opt-in banner (owner 2026-09-05). Magic-link verify lands
+    // people here, so this is the first screen a new parent sees; the
+    // shared PushOptIn component shows the banner only when this
+    // browser can subscribe and hasn't yet.
+    if (window.PushOptIn) {
+      window.PushOptIn.mount(this.find('#cal-push-banner'), this.auth)
+        .catch((err) => console.warn('[calendar] push banner failed:', err));
+    }
   }
 
   onExit() {
