@@ -590,7 +590,7 @@ class MensRosterScreen extends RosterScreenBase {
     const laBtn = p.leagueAppsUserId
       ? `<button class="mr-la-open" type="button" data-la-url="${this.laManagerUrl(p.leagueAppsUserId)}"
                  title="Open ${this.escape(p.firstName || 'player')} in LA Manager"
-                 style="${btnBase} border:none; cursor:pointer; background:#7c3aed; color:#fff;">
+                 style="${btnBase} border:none; cursor:pointer; background:#334155; color:#fff;">
            LA
          </button>`
       : '';
@@ -721,7 +721,7 @@ class MensRosterScreen extends RosterScreenBase {
               data-days-overdue="${daysAreExact ? days : ''}"
               data-tier="${daysAreExact ? (isDuesOwedState ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
               title="Text ${this.escape(this.formatPhone(p.phone))} a payment reminder with LA link"
-              style="${btnBase} border:none; cursor:pointer; background:#059669; color:#fff; text-decoration:none;">
+              style="${btnBase} border:none; cursor:pointer; background:#334155; color:#fff; text-decoration:none;">
              💸 PAY
            </a>`
         : '';
@@ -825,13 +825,13 @@ class MensRosterScreen extends RosterScreenBase {
       : null;
     const vcardFilename = ((contactName || `${p.firstName || 'player'}_${p.lastName || ''}`).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
     const contactItems = [
-      emailHref       ? `<a href="${emailHref}"       target="_blank" rel="noopener noreferrer" title="${this.escape(contactEmail)}"                                            style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
-      smsHref         ? `<a href="${smsHref}"                                                   title="Text ${this.escape(this.formatPhone(contactPhone))}"                    style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
-      telHref         ? `<a href="${telHref}"                                                   title="Call ${this.escape(this.formatPhone(contactPhone))}"                    style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
-      vcardHref       ? `<a href="${vcardHref}"       download="${this.escape(vcardFilename)}" title="Save ${this.escape(contactName)} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
-      inviteSmsHref   ? `<a href="${inviteSmsHref}"                                            title="Text ${this.escape(this.formatPhone(contactPhone))} an invite to footballhome.org" style="${contactBase} background:#0d9488; color:#fff;">💬 INVITE (SMS)</a>` : '',
-      inviteEmailHref ? `<a href="${inviteEmailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(contactEmail)} an invite to footballhome.org"      style="${contactBase} background:#14b8a6; color:#fff;">✉ INVITE (email)</a>` : '',
-      welcomeEmailHref ? `<a href="${welcomeEmailHref}" target="_blank" rel="noopener noreferrer" title="Welcome ${this.escape(contactName)} to the club" style="${contactBase} background:#8b5cf6; color:#fff;">👋 WELCOME</a>` : '',
+      emailHref       ? `<a href="${emailHref}"       target="_blank" rel="noopener noreferrer" title="${this.escape(contactEmail)}"                                            style="${contactBase} background:#334155; color:#fff;">✉ EMAIL</a>` : '',
+      smsHref         ? `<a href="${smsHref}"                                                   title="Text ${this.escape(this.formatPhone(contactPhone))}"                    style="${contactBase} background:#334155; color:#fff;">💬 SMS</a>` : '',
+      telHref         ? `<a href="${telHref}"                                                   title="Call ${this.escape(this.formatPhone(contactPhone))}"                    style="${contactBase} background:#334155; color:#fff;">📞 CALL</a>` : '',
+      vcardHref       ? `<a href="${vcardHref}"       download="${this.escape(vcardFilename)}" title="Save ${this.escape(contactName)} to your phone contacts" style="${contactBase} background:#334155; color:#fff;">👤 SAVE</a>` : '',
+      inviteSmsHref   ? `<a href="${inviteSmsHref}"                                            title="Text ${this.escape(this.formatPhone(contactPhone))} an invite to footballhome.org" style="${contactBase} background:#334155; color:#fff;">💬 INVITE (SMS)</a>` : '',
+      inviteEmailHref ? `<a href="${inviteEmailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(contactEmail)} an invite to footballhome.org"      style="${contactBase} background:#334155; color:#fff;">✉ INVITE (email)</a>` : '',
+      welcomeEmailHref ? `<a href="${welcomeEmailHref}" target="_blank" rel="noopener noreferrer" title="Welcome ${this.escape(contactName)} to the club" style="${contactBase} background:#334155; color:#fff;">👋 WELCOME</a>` : '',
     ].filter(Boolean);
     const contactBtns = contactItems.length > 0 ? `
       <details class="mr-contact" style="position:relative; display:inline-block;">
@@ -1465,7 +1465,7 @@ class MensRosterScreen extends RosterScreenBase {
       btn.style.background = '#10b981';
       setTimeout(() => {
         btn.innerHTML = orig;
-        btn.style.background = origBg || '#f97316';
+        btn.style.background = origBg || '#334155';
       }, 1400);
     } catch (_e) {
       alert('Could not copy to clipboard — you can retype the message from Payments → Copy Pause.');

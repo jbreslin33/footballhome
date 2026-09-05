@@ -558,7 +558,7 @@ class BoysRosterScreen extends RosterScreenBase {
     const laBtn = p.leagueAppsUserId
       ? `<button class="br-la-open" type="button" data-la-url="${this.laManagerUrl(p.leagueAppsUserId)}"
                  title="Open ${this.escape(p.firstName || 'player')} in LA Manager"
-                 style="${btnBase} border:none; cursor:pointer; background:#7c3aed; color:#fff;">
+                 style="${btnBase} border:none; cursor:pointer; background:#334155; color:#fff;">
            LA
          </button>`
       : '';
@@ -588,7 +588,7 @@ class BoysRosterScreen extends RosterScreenBase {
     const docsBtn = docsSmsHref
       ? `<a href="${docsSmsHref}"
             title="Text ${this.escape(this.formatPhone(contactPhone))} the travel documents reminder${p.firstName ? ` for ${this.escape(p.firstName)}` : ''}"
-            style="${btnBase} border:none; cursor:pointer; background:#b45309; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center;">
+            style="${btnBase} border:none; cursor:pointer; background:#334155; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center;">
            📄 DOCS
          </a>`
       : '';
@@ -710,7 +710,7 @@ class BoysRosterScreen extends RosterScreenBase {
               data-days-overdue="${daysAreExact ? days : ''}"
               data-tier="${daysAreExact ? (days >= 7 ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
               title="Text ${this.escape(this.formatPhone(contactPhone))} a polite dues reminder"
-              style="${btnBase} border:none; cursor:pointer; background:#059669; color:#fff; text-decoration:none;">
+              style="${btnBase} border:none; cursor:pointer; background:#334155; color:#fff; text-decoration:none;">
              💬 PAY
            </a>`
         : '';
@@ -723,7 +723,7 @@ class BoysRosterScreen extends RosterScreenBase {
               data-days-overdue="${daysAreExact ? days : ''}"
               data-tier="${daysAreExact ? (days >= 7 ? '7+' : (days >= 4 ? '4-6' : '1-3')) : ''}"
               title="Email ${this.escape(contactEmail)} a polite dues reminder"
-              style="${btnBase} border:none; cursor:pointer; background:#0284c7; color:#fff; text-decoration:none;">
+              style="${btnBase} border:none; cursor:pointer; background:#334155; color:#fff; text-decoration:none;">
              ✉ PAY
            </a>`
         : '';
@@ -759,10 +759,10 @@ class BoysRosterScreen extends RosterScreenBase {
       : null;
     const vcardFilename = ((contactName && contactName !== 'there' ? contactName : (p.fullName || `${p.firstName || 'player'}_${p.lastName || ''}`)).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
     const contactItems = [
-      emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(contactEmail)}" style="${contactBase} background:#3b82f6; color:#fff;">✉ EMAIL</a>` : '',
-      smsHref   ? `<a href="${smsHref}"   title="Text ${this.escape(this.formatPhone(contactPhone))}"       style="${contactBase} background:#10b981; color:#fff;">💬 SMS</a>` : '',
-      telHref   ? `<a href="${telHref}"   title="Call ${this.escape(this.formatPhone(contactPhone))}"       style="${contactBase} background:#6366f1; color:#fff;">📞 CALL</a>` : '',
-      vcardHref ? `<a href="${vcardHref}" download="${this.escape(vcardFilename)}" title="Save ${this.escape(contactFirst || p.firstName || 'contact')} to your phone contacts" style="${contactBase} background:#0ea5e9; color:#fff;">👤 SAVE</a>` : '',
+      emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(contactEmail)}" style="${contactBase} background:#334155; color:#fff;">✉ EMAIL</a>` : '',
+      smsHref   ? `<a href="${smsHref}"   title="Text ${this.escape(this.formatPhone(contactPhone))}"       style="${contactBase} background:#334155; color:#fff;">💬 SMS</a>` : '',
+      telHref   ? `<a href="${telHref}"   title="Call ${this.escape(this.formatPhone(contactPhone))}"       style="${contactBase} background:#334155; color:#fff;">📞 CALL</a>` : '',
+      vcardHref ? `<a href="${vcardHref}" download="${this.escape(vcardFilename)}" title="Save ${this.escape(contactFirst || p.firstName || 'contact')} to your phone contacts" style="${contactBase} background:#334155; color:#fff;">👤 SAVE</a>` : '',
     ].filter(Boolean);
     const contactBtns = contactItems.length > 0 ? `
       <details class="br-contact" style="position:relative; display:inline-block;">
@@ -1287,7 +1287,7 @@ class BoysRosterScreen extends RosterScreenBase {
       btn.style.background = '#10b981';
       setTimeout(() => {
         btn.innerHTML = orig;
-        btn.style.background = origBg || '#f97316';
+        btn.style.background = origBg || '#334155';
       }, 1400);
     } catch (_e) {
       alert('Could not copy to clipboard — you can retype the message from Payments → Copy Pause.');

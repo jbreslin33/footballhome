@@ -59,6 +59,11 @@ class PersonActions {
                  + 'letter-spacing:0.02em; border-radius:4px; line-height:1.4; '
                  + 'white-space:nowrap; border:none; cursor:pointer;';
     const base = (size === 'md' ? baseMd : baseSm) + (opts.btnBaseStyle || '');
+    // neutral: flat slate buttons for surfaces that reserve colour for
+    // meaning (the Teams board — owner 2026-09-05: "you have view button
+    // color coded"). Default keeps the teal/amber pair other screens use.
+    const viewStyle = opts.neutral ? 'background:#334155; color:#fff;' : 'background:#0891b2; color:#fff;';
+    const editStyle = opts.neutral ? 'background:#334155; color:#fff;' : 'background:#f59e0b; color:#111;';
 
     const keyAttrs = [
       laUid ? `data-la-user-id="${PersonActions.esc(laUid)}"` : '',
@@ -71,14 +76,14 @@ class PersonActions {
       parts.push(
         `<button type="button" class="person-action" data-action="profile" ${keyAttrs}`
         + ` title="View ${PersonActions.esc(name)}"`
-        + ` style="${base} background:#0891b2; color:#fff;">View</button>`
+        + ` style="${base} ${viewStyle}">View</button>`
       );
     }
     if (showEdit) {
       parts.push(
         `<button type="button" class="person-action" data-action="edit" ${keyAttrs}`
         + ` title="Edit ${PersonActions.esc(name)}"`
-        + ` style="${base} background:#f59e0b; color:#111;">Edit</button>`
+        + ` style="${base} ${editStyle}">Edit</button>`
       );
     }
     return parts.join('');

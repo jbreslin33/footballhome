@@ -419,6 +419,7 @@ class RosterScreenBase extends Screen {
       returnTo,
       btnBaseStyle,
       showEdit,
+      neutral: true, // Teams board: only gender/dues/roster status carry colour
     });
   }
 
@@ -628,13 +629,13 @@ class RosterScreenBase extends Screen {
     // US-Soccer age group (U10, U23, ...) — every roster (youth AND adult,
     // ahead of future U19/U23/Over-30 division work on the mens/womens
     // side).
-    // Age chip is colour-coded by gender (blue = boy, yellow = girl) so
+    // Age chip is colour-coded by gender (blue = boy, pink = girl) so
     // a mixed roster (girls play on boys teams) reads at a glance
     // without a separate chip.  Rendered here in the one shared card
     // component used by every pill (Boys/Girls/Womens/Mens).
     const isFemale = player.gender === 'Female';
     const ageChip = player.ageGroup
-      ? `<span style="font-size:0.68rem; line-height:1.2; font-weight:800; letter-spacing:0.02em; padding:0 6px; border-radius:8px; background:${isFemale ? '#eab308' : '#1e3a8a'}; color:${isFemale ? '#422006' : '#dbeafe'}; white-space:nowrap;">${this.escape(player.ageGroup)}</span>`
+      ? `<span style="font-size:0.68rem; line-height:1.2; font-weight:800; letter-spacing:0.02em; padding:0 6px; border-radius:8px; background:${isFemale ? '#db2777' : '#1e3a8a'}; color:${isFemale ? '#fce7f3' : '#dbeafe'}; white-space:nowrap;">${this.escape(player.ageGroup)}</span>`
       : '';
     // Move eligibility is decided by the TeamCard/CoachTeamCard/AdminTeamCard
     // hierarchy (components/TeamCard.js) via _teamCardCapabilities() —
@@ -807,10 +808,10 @@ class RosterScreenBase extends Screen {
       const smsHref   = contactPhone ? this.buildSmsComposeHref({ to: contactPhone, body: preset.body }) : null;
       const emailHref = contactEmail ? this.buildGmailComposeHref({ to: contactEmail, subject: preset.subject, body: preset.body }) : null;
       const smsBtn = smsHref
-        ? `<a href="${smsHref}" title="Text ${this.escape(this.formatPhone(contactPhone))} — ${label}" style="${btnBase} background:#10b981; color:#fff;">💬 ${label}</a>`
+        ? `<a href="${smsHref}" title="Text ${this.escape(this.formatPhone(contactPhone))} — ${label}" style="${btnBase} background:#334155; color:#fff;">💬 ${label}</a>`
         : '';
       const emailBtn = emailHref
-        ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(contactEmail)} — ${label}" style="${btnBase} background:#3b82f6; color:#fff;">✉ ${label}</a>`
+        ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(contactEmail)} — ${label}" style="${btnBase} background:#334155; color:#fff;">✉ ${label}</a>`
         : '';
       return smsBtn + emailBtn;
     }).join('');
@@ -857,7 +858,7 @@ class RosterScreenBase extends Screen {
       <button type="button" class="rb-msg-btn" data-msg-kind="${kind}" data-msg-token="${token}"
               title="${esc(title)}"
               style="font-size:${fs}; font-weight:700; padding:${pad}; border-radius:999px; cursor:pointer;
-                     border:1px solid var(--border-color); background:var(--bg-primary); color:inherit; white-space:nowrap;">
+                     border:none; background:#334155; color:#fff; white-space:nowrap;">
         ${label} ${count}
       </button>`;
 
