@@ -838,6 +838,97 @@ class RosterScreenBase extends Screen {
     }).join('');
   }
 
+  // ── Per-card magic sign-in link buttons (owner 2026-09-05) ─────────
+  //
+  // "Any time we send the footballhome link we should send an auth code
+  // in the url for that person" — and it has to be universal across
+  // men / women / boys / girls, so it lives here and every board's
+  // renderPlayer drops one call into its button strip.
+  //
+  // One 💬 LINK + one ✉ LINK button per card. Click → POST
+  // /api/auth/magic-link/mint for {person_id, channel, contact} (no
+  // event — the token is a person credential; verify lands on
+  // #calendar and sets the one-year sliding fh_sess cookie) → open the
+  // returned Gmail-compose / sms: href in the admin's own client.
+  //
+  // personId: who gets signed in. Youth boards pass the PARENT's
+  // persons.id (p.parentPersonId) because the parent is the one who
+  // RSVPs; adult boards pass the player's own. Contact defaults to
+  // contactFor(p), which the youth boards already route at the parent.
+  renderMagicLinkButtons(p, { personId = null, phone = null, email = null } = {}) {
+    const pid = Number(personId || (p && p.personId) || 0);
+    if (!pid) return '';
+    const contact = (phone || email) ? { phone, email } : this.contactFor(p);
+    const contactPhone = contact.phone || null;
+    const contactEmail = contact.email || null;
+    if (!contactPhone && !contactEmail) return '';
+
+    const who = (p && p.firstName) ? ` for ${this.escape(p.firstName)}` : '';
+    const btnBase = 'padding:0 4px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:3px; background:#0f766e; color:#fff; appearance:none; -webkit-appearance:none; min-height:0; margin:0;';
+    const btn = (channel, contact, icon, title) => `
+      <button type="button" class="rb-magic-link"
+              data-magic-link="${channel}"
+              data-person-id="${pid}"
+              data-contact="${this.escape(contact)}"
+              title="${title}"
+              style="${btnBase}">${icon} LINK</button>`;
+    const smsBtn = contactPhone
+      ? btn('sms', contactPhone, '💬',
+            `Text a sign-in link to ${this.escape(this.formatPhone(contactPhone))}${who} (no password; signs them in for a year)`)
+      : '';
+    const emailBtn = contactEmail
+      ? btn('email', contactEmail, '✉',
+            `Email a sign-in link to ${this.escape(contactEmail)}${who} (no password; signs them in for a year)`)
+      : '';
+    return smsBtn + emailBtn;
+  }
+
+  // Click handler for renderMagicLinkButtons. Wired by wireMessageButtons
+  // so every board that already calls that (all four do) gets it free.
+  // Mirrors LineupsScreen._onMintLinkClick minus the match/team scope.
+  async _onMagicLinkClick(btn) {
+    const channel  = String(btn.dataset.magicLink || '');
+    const personId = parseInt(btn.dataset.personId, 10);
+    const contact  = String(btn.dataset.contact || '').trim();
+    if (!channel || !personId || !contact) return;
+
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.innerHTML = '⏳';
+    try {
+      const res = await this.auth.fetch('/api/auth/magic-link/mint', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ person_id: personId, channel, contact }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt.slice(0, 200) || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      if (channel === 'email') {
+        const href = data.gmail_href || data.mailto_href;
+        if (!href) throw new Error('No email href returned');
+        window.open(href, '_blank', 'noopener');
+      } else {
+        const href = data.sms_href;
+        if (!href) throw new Error('No SMS href returned');
+        window.location.href = href;
+      }
+      btn.innerHTML = '✓';
+    } catch (err) {
+      console.error('magic link mint failed:', err);
+      alert(`Could not generate sign-in link: ${err.message}`);
+    } finally {
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.style.opacity = '';
+        btn.innerHTML = originalText;
+      }, 1500);
+    }
+  }
+
   // Button pair rendered into a team column header and into the board
   // toolbar. `scope` is the human label used in the confirmation toast
   // and the email subject ("U8 Travel", "all boys"). Players are
@@ -951,6 +1042,13 @@ class RosterScreenBase extends Screen {
     if (!el || el._rbMsgWired) return;
     el._rbMsgWired = true;
     el.addEventListener('click', (e) => {
+      const linkBtn = e.target.closest('.rb-magic-link');
+      if (linkBtn && el.contains(linkBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!linkBtn.disabled) this._onMagicLinkClick(linkBtn);
+        return;
+      }
       const btn = e.target.closest('.rb-msg-btn');
       if (!btn || !el.contains(btn)) return;
       e.preventDefault();
@@ -1103,6 +1201,26 @@ class RosterScreenBase extends Screen {
 
     document.body.appendChild(overlay);
     bodyEl.focus();
+  }
+
+  // Fallbacks so base helpers (renderMagicLinkButtons et al.) work on a
+  // board that hasn't defined its own. Mens/Boys override with the same
+  // bodies; Womens relied on there being none until 2026-09-05.
+  formatPhone(raw) {
+    if (!raw) return '';
+    const digits = String(raw).replace(/\D/g, '');
+    const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+    if (ten.length === 10) return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
+    return raw;
+  }
+
+  escape(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   _flashMsgBtn(btn, text) {

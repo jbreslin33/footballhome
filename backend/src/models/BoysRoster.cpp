@@ -558,6 +558,13 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
     std::unordered_map<long long, json> activeTeamsByPerson;
     std::unordered_map<long long, json> pickupByPerson;
     std::unordered_map<long long, PersonNameOverrides::Name> nameOverrides;
+    // Youth rows also carry the PARENT's persons.id (2026-09-05). The
+    // parent is who signs in and RSVPs for the child (CalendarController
+    // resolves children via persons.parent_person_id), so a magic
+    // sign-in link minted from a youth card must be for the parent, not
+    // the player. Resolved in the same batch as the other per-person
+    // lookups; null when the child row has no parent linked yet.
+    std::unordered_map<long long, long long> parentPersonIdByPerson;
     {
         std::vector<long long> personIds;
         personIds.reserve(all.size());
@@ -577,6 +584,27 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
         // through onto the child's player record (see
         // PersonNameOverrides.h). Almost always empty.
         nameOverrides = PersonNameOverrides::loadForPersons(personIds);
+        if (!personIds.empty()) {
+            std::unordered_set<long long> uniq(personIds.begin(), personIds.end());
+            std::ostringstream idList;
+            bool first = true;
+            for (long long pid : uniq) {
+                if (!first) idList << ",";
+                idList << pid;
+                first = false;
+            }
+            try {
+                auto rows = Database::getInstance()->query(
+                    "SELECT id, parent_person_id FROM persons "
+                    " WHERE id IN (" + idList.str() + ") AND parent_person_id IS NOT NULL");
+                for (const auto& r : rows) {
+                    parentPersonIdByPerson[r["id"].as<long long>()] =
+                        r["parent_person_id"].as<long long>();
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[BoysRoster] parent_person_id lookup failed: " << e.what() << std::endl;
+            }
+        }
     }
 
     for (auto& p : all) {
@@ -590,6 +618,9 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
             auto pit = personIdByUserId.find(uid);
             resolvedPersonId = (pit != personIdByUserId.end() && pit->second > 0) ? pit->second : 0;
             p["personId"] = resolvedPersonId > 0 ? json(resolvedPersonId) : json(nullptr);
+            auto parIt = parentPersonIdByPerson.find(resolvedPersonId);
+            p["parentPersonId"] = (parIt != parentPersonIdByPerson.end())
+                ? json(parIt->second) : json(nullptr);
         }
         {
             // Admin name override beats the LA-supplied name. Applied to

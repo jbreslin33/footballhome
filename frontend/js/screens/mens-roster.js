@@ -620,6 +620,14 @@ class MensRosterScreen extends RosterScreenBase {
       phone: contactPhone,
       email: contactEmail,
     });
+    // 🔗 Magic sign-in link buttons (owner 2026-09-05) — universal across
+    // all four boards via RosterScreenBase.renderMagicLinkButtons. Adult
+    // board: the player is the person who signs in.
+    const linkBtns = this.renderMagicLinkButtons(p, {
+      personId: p.personId,
+      phone: contactPhone,
+      email: contactEmail,
+    });
     let delinqBtns = '';
     // Prorate context (2026-07-09) — if the player is a mid-cycle
     // signup who hasn't yet paid the full $35 for the partial cycle,
@@ -905,7 +913,7 @@ class MensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn + regBtns,
+      viewButtonHtml: profileBtn + regBtns + linkBtns,
       borderColor: cardBorder,
       canMove,
     });

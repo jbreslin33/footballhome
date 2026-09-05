@@ -343,6 +343,12 @@ class WomensRosterScreen extends RosterScreenBase {
       btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0; display:flex; align-items:center; justify-content:center;',
     });
 
+    // 🔗 Magic sign-in link buttons (owner 2026-09-05) — universal across
+    // all four boards via RosterScreenBase.renderMagicLinkButtons. Adult
+    // board: the player is the person who signs in; contactFor(p) reaches
+    // the player directly.
+    const linkBtns = this.renderMagicLinkButtons(p, { personId: p.personId });
+
     const duesLabel = this.renderDuesLabel(p);
     const cardId = `wr-card-${p.leagueAppsUserId}`;
 
@@ -361,7 +367,7 @@ class WomensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn,
+      viewButtonHtml: profileBtn + linkBtns,
       borderColor: cardBorder,
       canMove,
     });

@@ -318,6 +318,12 @@ class PersonScreen extends Screen {
       if (linkBtn) {
         e.preventDefault();
         this._linkScraped(Number(linkBtn.getAttribute('data-link-scraped')), linkBtn);
+        return;
+      }
+      const magicBtn = e.target.closest('[data-magic-link]');
+      if (magicBtn && !magicBtn.disabled) {
+        e.preventDefault();
+        this._mintMagicLink(magicBtn);
       }
     });
 
@@ -577,6 +583,7 @@ class PersonScreen extends Screen {
             </span>
             <span class="ps-row-value">
               <a href="mailto:${encodeURIComponent(e.email)}">${this._escape(e.email)}</a>
+              ${this._magicLinkBtn('email', e.email)}
             </span>
           </div>`).join('')}</div>`;
 
@@ -590,11 +597,69 @@ class PersonScreen extends Screen {
             </span>
             <span class="ps-row-value">
               <a href="tel:${encodeURIComponent(ph.phone)}">${this._escape(ph.phone)}</a>
+              ${this._magicLinkBtn('sms', ph.phone)}
             </span>
           </div>`).join('')}</div>`;
 
     this.element.querySelector('#ps-emails-wrap').innerHTML = emailsHtml;
     this.element.querySelector('#ps-phones-wrap').innerHTML = phonesHtml;
+  }
+
+  // ── Magic sign-in link (owner 2026-09-05) ────────────────────────────
+  //
+  // One "LINK" button beside every email/phone on file. Mints a
+  // person-only magic link for THIS person (no event scope — verify lands
+  // on #calendar and sets the one-year sliding cookie) and opens the
+  // Gmail-compose / sms: href in the admin's own client. Same endpoint
+  // and flow as RosterScreenBase.renderMagicLinkButtons, which is what
+  // the four roster boards use; this is the one-off surface for people
+  // who aren't on a board (or whose board contact is stale).
+  _magicLinkBtn(channel, contact) {
+    if (!this._personId || !contact) return '';
+    const icon  = channel === 'email' ? '✉' : '💬';
+    const verb  = channel === 'email' ? 'Email' : 'Text';
+    return `<button type="button" class="btn btn-secondary btn-sm"
+              data-magic-link="${channel}"
+              data-contact="${this._escape(contact)}"
+              title="${verb} a sign-in link to ${this._escape(contact)} (no password; signs them in for a year)"
+              style="margin-left: var(--space-2); padding: 0 6px; font-size: 0.7rem; line-height: 1.4;">${icon} LINK</button>`;
+  }
+
+  async _mintMagicLink(btn) {
+    const channel  = String(btn.getAttribute('data-magic-link') || '');
+    const contact  = String(btn.getAttribute('data-contact') || '').trim();
+    const personId = Number(this._personId);
+    if (!channel || !contact || !personId) return;
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳';
+    try {
+      const res = await this.auth.fetch('/api/auth/magic-link/mint', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ person_id: personId, channel, contact }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt.slice(0, 200) || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      if (channel === 'email') {
+        const href = data.gmail_href || data.mailto_href;
+        if (!href) throw new Error('No email href returned');
+        window.open(href, '_blank', 'noopener');
+      } else {
+        const href = data.sms_href;
+        if (!href) throw new Error('No SMS href returned');
+        window.location.href = href;
+      }
+      btn.innerHTML = '✓';
+    } catch (err) {
+      console.error('magic link mint failed:', err);
+      alert(`Could not generate sign-in link: ${err.message}`);
+    } finally {
+      setTimeout(() => { btn.disabled = false; btn.innerHTML = orig; }, 1500);
+    }
   }
 
   _renderAccountCard(account) {

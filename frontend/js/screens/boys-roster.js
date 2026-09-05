@@ -592,6 +592,17 @@ class BoysRosterScreen extends RosterScreenBase {
            📄 DOCS
          </a>`
       : '';
+    // 🔗 Magic sign-in link buttons (owner 2026-09-05) — universal across
+    // all four boards via RosterScreenBase.renderMagicLinkButtons. Youth
+    // board: the PARENT is who signs in and RSVPs, so the token is minted
+    // for p.parentPersonId (carried by /api/boys-roster since 2026-09-05)
+    // and sent to the parent's contact. Falls back to the child's own
+    // persons.id only when no parent row is linked yet.
+    const linkBtns = this.renderMagicLinkButtons(p, {
+      personId: p.parentPersonId || p.personId,
+      phone: contactPhone,
+      email: contactEmail,
+    });
 
     let delinqBtns = '';
     // Prorate context (2026-07-09) — mirror mens-roster: if the youth
@@ -810,7 +821,7 @@ class BoysRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: `${docsBtn}${profileBtn}`,
+      viewButtonHtml: `${docsBtn}${profileBtn}${linkBtns}`,
       borderColor: cardBorder,
       canMove,
     });
