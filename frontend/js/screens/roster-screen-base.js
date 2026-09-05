@@ -262,11 +262,28 @@ class RosterScreenBase extends Screen {
   // roster_status the per-card dropdown edits. Unassigned has no
   // team_persons rows, so no tally there. Carries data-on-roster-tally
   // so refreshOnRosterTally() can update it live after a dropdown change.
+  //
+  // Second line (owner 2026-09-05): the team's game format and how many
+  // of those On-Roster players are subs — "7v7 · 3 subs". Format comes
+  // from teams.field_size (migration 322) via col.fieldSize; columns
+  // with no format on file just show the tally line.
   renderOnRosterTally(col, players) {
     if (!col || !col.teamId) return '';
     const n = (players || []).filter(p => p && p.rosterStatus === 'on_roster').length;
-    return `<span data-on-roster-tally="${col.teamId}" title="Players whose league roster status is On Roster"
-                  style="font-size:0.8rem; font-weight:800; color:#22c55e; white-space:nowrap;">✓ ${n} on roster</span>`;
+    const fieldSize = Number(col.fieldSize) || 0;
+    return `<span data-on-roster-tally="${col.teamId}" data-field-size="${fieldSize}"
+                  title="Players whose league roster status is On Roster"
+                  style="display:inline-flex; flex-direction:column; align-items:flex-start; line-height:1.2; white-space:nowrap;">
+              ${this.onRosterTallyHtml(n, fieldSize)}
+            </span>`;
+  }
+
+  onRosterTallyHtml(n, fieldSize) {
+    const subs = fieldSize > 0 ? Math.max(0, n - fieldSize) : null;
+    return `<span style="font-size:0.8rem; font-weight:800; color:#22c55e;">✓ ${n} on roster</span>`
+      + (fieldSize > 0
+          ? `<span style="font-size:0.72rem; font-weight:700; color:#cbd5e1;">${fieldSize}v${fieldSize} · ${subs} sub${subs === 1 ? '' : 's'}</span>`
+          : '');
   }
 
   refreshOnRosterTally(teamId) {
@@ -275,7 +292,7 @@ class RosterScreenBase extends Screen {
     if (!tally) return;
     const selects = this.element.querySelectorAll(`.mr-status-select[data-team-id="${teamId}"]`);
     const n = Array.from(selects).filter(s => s.value === 'on_roster').length;
-    tally.textContent = `✓ ${n} on roster`;
+    tally.innerHTML = this.onRosterTallyHtml(n, Number(tally.dataset.fieldSize) || 0);
   }
 
   renderStatusSelect(player, col, canMove) {

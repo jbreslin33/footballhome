@@ -128,6 +128,7 @@ Response BoysRosterController::handleColumns(const Request& request) {
             c["shortLabel"] = col.shortLabel;
             c["color"]      = col.color;
             c["mutexGroup"] = col.mutexGroup;
+            c["fieldSize"]  = col.hasFieldSize ? json(col.fieldSize) : json(nullptr);
             out.push_back(std::move(c));
         }
         return Response(HttpStatus::OK, out.dump());

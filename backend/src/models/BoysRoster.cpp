@@ -734,6 +734,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
         col["color"]         = c.color.empty() ? json(nullptr) : json(c.color);
         col["mutexGroup"]    = c.mutexGroup.empty() ? json(nullptr) : json(c.mutexGroup);
         col["maxRoster"]     = c.hasMaxRoster ? json(c.maxRoster) : json(nullptr);
+        col["fieldSize"]     = c.hasFieldSize ? json(c.fieldSize) : json(nullptr);
         col["sortOrder"]     = c.sortOrder;
         col["count"]         = static_cast<int>(list.size());
         col["onRosterCount"] = onRosterCount;

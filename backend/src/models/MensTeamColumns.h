@@ -31,6 +31,8 @@ public:
         std::string mutexGroup;   // "" = no mutex
         int         maxRoster    = 0;
         bool        hasMaxRoster = false;
+        int         fieldSize    = 0;      // players per side (7 = 7v7); see hasFieldSize
+        bool        hasFieldSize = false;  // teams.field_size NULL = unknown format
     };
 
     // domain param scopes every query.  Default 'mens' keeps existing

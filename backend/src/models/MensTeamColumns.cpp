@@ -17,6 +17,8 @@ MensTeamColumns::Column rowToColumn(const pqxx::row& row) {
     c.mutexGroup   = row["mutex_group"].is_null() ? std::string{} : row["mutex_group"].c_str();
     c.hasMaxRoster = !row["max_roster"].is_null();
     c.maxRoster    = c.hasMaxRoster ? row["max_roster"].as<int>() : 0;
+    c.hasFieldSize = !row["field_size"].is_null();
+    c.fieldSize    = c.hasFieldSize ? row["field_size"].as<int>() : 0;
     return c;
 }
 
@@ -39,7 +41,7 @@ std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll(bool includeInacti
     const std::string sql =
         "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
         "       t.short_label, t.board_sort_order AS sort_order, "
-        "       t.color, t.mutex_group, t.max_roster "
+        "       t.color, t.mutex_group, t.max_roster, t.field_size "
         "  FROM teams t "
         " WHERE t.gender_category = $1 "
         "   AND t.board_sort_order IS NOT NULL " +
@@ -55,7 +57,7 @@ std::optional<MensTeamColumns::Column> MensTeamColumns::findByTeamId(int teamId)
     const auto rows = db_->query(
         "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
         "       t.short_label, t.board_sort_order AS sort_order, "
-        "       t.color, t.mutex_group, t.max_roster "
+        "       t.color, t.mutex_group, t.max_roster, t.field_size "
         "  FROM teams t "
         " WHERE t.gender_category = $1 "
         "   AND t.id = $2 "
