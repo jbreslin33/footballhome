@@ -14,7 +14,7 @@
 //     see or change them from the UI).
 //
 // Backend surface (all already exist — no new endpoints needed):
-//   GET  /api/calendar/upcoming?days=7   → { events: [{fh_event_id, kind,
+//   GET  /api/calendar/upcoming?days=14  → { events: [{fh_event_id, kind,
 //                                                      category, my_rsvp,
 //                                                      my_rsvp_eligible,
 //                                                      starts_at, ...}] }
@@ -1797,7 +1797,10 @@ class MyScreen extends Screen {
   async _refreshEvents() {
     let upRes;
     try {
-      upRes = await this._fetch('/api/calendar/upcoming?days=7');
+      // Same 14-day reach as _bootstrap. With 7, the 15-second poll
+      // silently dropped an early-released next week (Sunday's games
+      // vanished on mobile until a hard refresh — owner 2026-09-05).
+      upRes = await this._fetch('/api/calendar/upcoming?days=14');
     } catch (err) {
       return;
     }
