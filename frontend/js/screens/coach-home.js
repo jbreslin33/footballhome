@@ -87,6 +87,7 @@ class CoachHomeScreen extends Screen {
     const teamsTiles = [
       { id: 'teams', target: 'context-selection', params: { role: 'coach' }, icon: '⚽', label: 'My Teams', description: 'Pick a team you coach to open its schedule, practices, matches, and lineups' },
       { id: 'game-eligibility', target: 'mens-game-eligibility', params: { clubId: this.clubId, clubName: this.clubName }, icon: '🎯', label: 'Game-Day Analytics', description: 'Projected APSL & Liga 1 starting lineups + bench, based on attendance-tier probability' },
+      { id: 'attendance-report', target: 'reports', params: {}, icon: '📊', label: 'Attendance Report', description: 'RSVP rate, attendance and reliability per player for the teams you coach — sort to find who has gone quiet' },
     ];
     renderInto('#section-teams', teamsTiles);
 

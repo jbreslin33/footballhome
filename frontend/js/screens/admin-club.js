@@ -188,6 +188,7 @@ class AdminClubScreen extends Screen {
     // Liga 1, Liga 2, Adult, Practice, Pickup) and toggle grants.
     const rsvpTiles = [
       { id: 'rsvp-eligibility', icon: '🗳️', label: 'Event Access', description: 'Men / Women / Boys / Girls — home teams plus Practice & Pickup pools' },
+      { id: 'attendance-report', icon: '📊', label: 'Attendance Report', description: 'RSVP %, attendance %, reliability and last activity per player — games and practices broken out, sortable by team and category' },
     ];
     renderInto('#section-rsvp', rsvpTiles);
 
@@ -699,6 +700,11 @@ class AdminClubScreen extends Screen {
         clubId: this.clubId,
         teamName: 'Club Wide' // Fallback for title
       });
+      return;
+    }
+
+    if (section === 'attendance-report') {
+      this.navigation.goTo('reports');
       return;
     }
 

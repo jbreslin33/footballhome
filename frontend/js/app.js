@@ -63,6 +63,7 @@ class App {
       person: new PersonScreen(this.navigation, this.auth),
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
       payments: new PaymentsScreen(this.navigation, this.auth),
+      reports: new ReportsScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
       lineups: new LineupsScreen(this.navigation, this.auth),
@@ -143,6 +144,9 @@ class App {
     this.screenManager.register('person', this.screens.person);
     this.screenManager.register('youth-roster', this.screens.youthRoster);
     this.screenManager.register('payments', this.screens.payments);
+    // Reports hub (#reports) — Attendance & RSVP report; Payments chip
+    // hands off to #payments. See screens/reports.js.
+    this.screenManager.register('reports', this.screens.reports);
     this.screenManager.register('messages', this.screens.messages);
     this.screenManager.register('rsvp-eligibility', this.screens.rsvpEligibility);
     // Mens is the default; womens is the same screen with a gender param.

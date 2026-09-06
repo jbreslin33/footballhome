@@ -210,11 +210,14 @@ bool ReportsController::resolveScope(const Request& request, Scope* scope, Respo
 
     pqxx::result teamRows;
     if (scope->isAdmin) {
-        // Every team with somebody on it — covers the real squads and
-        // the Pickup pool (909), skips the scraped opponent teams.
+        // Every club team with somebody on it.  A club section (Mens /
+        // Womens / Boys / Girls) or the pool flag marks the club's own
+        // teams; scraped opponent teams carry neither, and two of them
+        // (Philadelphia Heritage, Vidas United) do have a roster row.
         teamRows = db_->query(
             "SELECT t.id FROM teams t "
-            " WHERE EXISTS (SELECT 1 FROM team_persons tp "
+            " WHERE (t.club_section_id IS NOT NULL OR t.is_pool) "
+            "   AND EXISTS (SELECT 1 FROM team_persons tp "
             "                WHERE tp.team_id = t.id AND tp.removed_at IS NULL) "
             " ORDER BY t.id");
     } else {

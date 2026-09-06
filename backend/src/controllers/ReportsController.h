@@ -43,7 +43,8 @@
 // events a player with no mark counts as not there — coaches mark who
 // showed up, not who didn't.
 //
-// Scope: a club admin (any admins row) sees every team that has an
+// Scope: a club admin (any admins row) sees every club team (one with a
+// club section, or the pool) that has an
 // active roster; otherwise the caller must be an active coach
 // (team_coaches.ended_at IS NULL) and sees only those teams; anyone
 // else gets 403.  Session-gated like /api/calendar/* — fh_sess cookie
