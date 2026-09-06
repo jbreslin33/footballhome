@@ -401,10 +401,11 @@ std::optional<Response> checkRsvpWindowOpen(Database* db, long long fhEventId) {
         "SELECT fe.id, "
         "       ge.deleted_at IS NOT NULL AS gcal_tombstoned, "
         "       ge.status = 'cancelled'   AS gcal_cancelled, "
-        "       fe.rsvps_open_at, "
-        "       (fe.rsvps_open_at IS NULL "
-        "        OR fe.rsvps_open_at <= now()) AS rsvps_open_now, "
-        "       to_char(fe.rsvps_open_at AT TIME ZONE 'UTC', "
+        // Derived from the release rule (migration 335), not the stored column.
+        "       fh_event_rsvps_open_at(fe.id) AS rsvps_open_at, "
+        "       (fh_event_rsvps_open_at(fe.id) IS NULL "
+        "        OR fh_event_rsvps_open_at(fe.id) <= now()) AS rsvps_open_now, "
+        "       to_char(fh_event_rsvps_open_at(fe.id) AT TIME ZONE 'UTC', "
         "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS rsvps_open_at_iso "
         "  FROM fh_events   fe "
         "  JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
@@ -719,13 +720,15 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                    FROM fh_event_leagues fel
                    JOIN organizations o ON o.id = fel.organization_id
                   WHERE fel.fh_event_id = fe.id) AS league_logo_url,
+                -- Derived from the release rule (migration 335): opening a
+                -- week early opens its practice RSVPs too.
                 CASE
-                    WHEN fe.rsvps_open_at IS NULL THEN NULL
-                    ELSE to_char(fe.rsvps_open_at AT TIME ZONE 'UTC',
+                    WHEN fh_event_rsvps_open_at(fe.id) IS NULL THEN NULL
+                    ELSE to_char(fh_event_rsvps_open_at(fe.id) AT TIME ZONE 'UTC',
                                  'YYYY-MM-DD"T"HH24:MI:SS"Z"')
                 END AS rsvps_open_at,
-                (fe.rsvps_open_at IS NULL
-                 OR fe.rsvps_open_at <= now()) AS rsvps_open_now,
+                (fh_event_rsvps_open_at(fe.id) IS NULL
+                 OR fh_event_rsvps_open_at(fe.id) <= now()) AS rsvps_open_now,
                 mr.response    AS my_rsvp,
                 mr.created_via AS my_rsvp_created_via,
                 (
