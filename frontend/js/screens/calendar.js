@@ -1010,15 +1010,19 @@ class CalendarScreen extends Screen {
     const now = Date.now();
     const policyOpens = w.policy_opens_at ? new Date(w.policy_opens_at).getTime() : null;
     const earlyOpen = !!(w.release && !w.release.revoked_at && policyOpens && policyOpens > now);
-    // Nothing to say for a week that opened on its own schedule.
-    if (w.open_now && !earlyOpen && !this._policyEditing) return '';
+    const postedNormally = w.open_now && !earlyOpen;
 
     const base = 'display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 12px; margin-bottom: var(--space-3); border-radius:8px; font-size:0.85rem;';
     const btn  = 'padding:5px 12px; border-radius:999px; border:1px solid rgba(255,255,255,0.25); background:#2563eb; color:#fff; font-weight:700; font-size:0.8rem; cursor:pointer;';
     const link = 'background:none; border:none; color:#bfdbfe; text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:2px 4px;';
 
     let body;
-    if (earlyOpen) {
+    if (postedNormally) {
+      body = `
+        <span>✅ <strong>${this._escape(weekLabel)}</strong> is posted. It opened
+          ${this._escape(this._fmtWhen(w.opens_at))}${w.policy ? ` (rule: ${this._escape(w.policy.label)})` : ''}.
+          Use › to reach a week that hasn't posted yet.</span>`;
+    } else if (earlyOpen) {
       body = `
         <span>✅ <strong>${this._escape(weekLabel)}</strong> is posted early
           ${w.release.released_by ? `by ${this._escape(w.release.released_by)}` : ''}, ${this._escape(this._fmtWhen(w.release.released_at))}.
@@ -1053,7 +1057,7 @@ class CalendarScreen extends Screen {
     }
 
     return `
-      <div style="${base} background:${earlyOpen ? 'rgba(22,101,52,0.25)' : 'rgba(37,99,235,0.18)'}; border:1px solid ${earlyOpen ? 'rgba(74,222,128,0.45)' : 'rgba(96,165,250,0.45)'};">
+      <div style="${base} background:${(earlyOpen || postedNormally) ? 'rgba(22,101,52,0.25)' : 'rgba(37,99,235,0.18)'}; border:1px solid ${(earlyOpen || postedNormally) ? 'rgba(74,222,128,0.45)' : 'rgba(96,165,250,0.45)'};">
         ${body}${policyHtml}
       </div>`;
   }
