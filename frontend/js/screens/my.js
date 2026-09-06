@@ -693,7 +693,11 @@ class MyScreen extends Screen {
     const going          = rsvps.filter(r => r && r.response === 'yes');
     const notGoingAll    = rsvps.filter(r => r && r.response === 'no');
     const noResponseAll  = rsvps.filter(r => r && !r.response);
-    const playersGoing      = going.filter(r => !r.is_coach);
+    // Club pass call-ups (migration 329) are listed apart from the roster
+    // when they say yes ("available", the coach still picks), but ride
+    // along in Not Going / No Response so reminders reach them too.
+    const playersGoing      = going.filter(r => !r.is_coach && !r.is_callup);
+    const callupsAvailable  = going.filter(r => r.is_callup);
     const coachesGoing      = going.filter(r => r.is_coach);
     const notGoingPlayers   = notGoingAll.filter(r => !r.is_coach);
     const notGoingCoaches   = notGoingAll.filter(r => r.is_coach);
@@ -703,9 +707,14 @@ class MyScreen extends Screen {
     const att = this.attendanceByEvent.get(ev.fh_event_id) || null;
 
     const nameOf = (r) => (r && (r.name || r.first_name || r.last_name || 'Unknown')) || 'Unknown';
+    const callupChip = (r) => r && r.is_callup
+      ? `<span title="Age-eligible call-up${r.callup_from ? ' from ' + this.escapeHtml(r.callup_from) : ''}"
+               style="margin-left:5px; padding:0 5px; border-radius:999px; background:rgba(245,158,11,0.18);
+                      border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.56rem; font-weight:800;">⬆ CALL-UP</span>`
+      : '';
     const rowsHtml = (list) => list
       .map(r => `<div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}</span>
+          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}${callupChip(r)}</span>
           ${this._attendanceCellHtml(ev.fh_event_id, r.person_id, att)}
         </div>`)
       .join('');
@@ -761,7 +770,7 @@ class MyScreen extends Screen {
         actionsHtml = `<span style="display:flex; align-items:center; gap:4px;">${smsBtn}${emailBtn}</span>`;
       }
       return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}</span>
+          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}${callupChip(r)}</span>
           <span style="display:flex; align-items:center; gap:6px;">
             ${this._attendanceCellHtml(ev.fh_event_id, r.person_id, att)}
             ${actionsHtml}
@@ -811,6 +820,11 @@ class MyScreen extends Screen {
           <div>${groupHtml('Players Going', playersGoing, 'going', rowsHtml(playersGoing))}</div>
           <div>${groupHtml('Coaches Going', coachesGoing, 'going', rowsHtml(coachesGoing))}</div>
         </div>
+        ${callupsAvailable.length ? `
+          <div style="margin-top:8px;">
+            ${groupHtml('Call-ups Available', callupsAvailable, 'available', rowsHtml(callupsAvailable))}
+          </div>
+        ` : ''}
         ${notGoingTotal ? `
           <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
             <button type="button" data-toggle-not-going="${ev.fh_event_id}"
@@ -1161,10 +1175,23 @@ class MyScreen extends Screen {
       const childClearing = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:clear`);
       const childYesSaving = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:yes`) || childClearing;
       const childNoSaving  = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:no`) || childClearing;
+      // Club pass call-up (migration 329): this kid is NOT on the event's
+      // roster — they're age-eligible to play up. Say so, and word the ask
+      // as "are they available", not "are they going".
+      const first = String(child.name || 'Your player').split(' ')[0];
+      const callupHtml = child.callup ? `
+            <span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:999px;
+                         background:rgba(245,158,11,0.18); border:1px solid rgba(245,158,11,0.55);
+                         color:#fcd34d; font-size:0.56rem; font-weight:800; letter-spacing:0.03em;
+                         vertical-align:middle;">⬆ CALL-UP ELIGIBLE</span>
+            <div style="font-size:0.58rem; line-height:1.25; opacity:0.8; margin-top:2px;">
+              ${this.escapeHtml(first)} is age-eligible to play up for this game${child.callup_from ? ` (from ${this.escapeHtml(child.callup_from)})` : ''}.
+              Please RSVP so the coach knows who's available.
+            </div>` : '';
       return `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:2px;">
           <div style="font-size:0.62rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">
-            👤 ${this.escapeHtml(child.name || 'Your player')}
+            👤 ${this.escapeHtml(child.name || 'Your player')}${callupHtml}
           </div>
           <div style="display:flex; gap:3px; flex-shrink:0;">
             ${this._btn('Go', 'yes', childResponse === 'yes', 'solid', childYesSaving,
@@ -1191,8 +1218,10 @@ class MyScreen extends Screen {
     const kickoff  = descTags.kickoff || '';
     const notes    = descTags.notes || '';
     const rsvps   = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-    const playersGoingCount = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach).length;
+    const playersGoingCount = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach && !r.is_callup).length;
     const coachesGoingCount = rsvps.filter(r => r && r.response === 'yes' && r.is_coach).length;
+    // Club pass call-ups who said yes are AVAILABLE, not going (migration 329).
+    const callupsAvailCount = rsvps.filter(r => r && r.response === 'yes' && r.is_callup).length;
     const notGoingCount = rsvps.filter(r => r && r.response === 'no').length;
     const isExpanded = this.expandedEventId === ev.fh_event_id;
     const viewLabel = isExpanded ? 'Hide' : 'View';
@@ -1247,7 +1276,9 @@ class MyScreen extends Screen {
     ` : '';
 
     const leagueLabel = (ev.league || '').trim();
-    const compactMeta = `${leagueLabel ? leagueLabel + ' · ' : ''}${playersGoingCount} players, ${coachesGoingCount} coaches going · ${notGoingCount} not going`;
+    const compactMeta = `${leagueLabel ? leagueLabel + ' · ' : ''}${playersGoingCount} players, ${coachesGoingCount} coaches going`
+      + (callupsAvailCount ? ` · ${callupsAvailCount} call-up${callupsAvailCount === 1 ? '' : 's'} available` : '')
+      + ` · ${notGoingCount} not going`;
     const arrivalKickoffLine = (arrival || warmup || kickoff)
       ? [arrival ? `Arrival ${arrival}` : '', warmup ? `Warmup ${warmup}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')
       : '';

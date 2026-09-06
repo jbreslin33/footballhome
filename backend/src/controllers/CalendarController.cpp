@@ -462,7 +462,7 @@ std::optional<Response> resolveRsvpTarget(Database* db,
         "      SELECT 1 FROM persons "
         "       WHERE id = $3::int AND parent_person_id = $2::int"
         "  )) AS may_act_for_target, "
-        "  EXISTS ("
+        "  (EXISTS ("
         "    SELECT 1 FROM fh_event_teams fet "
         "    WHERE fet.fh_event_id = $1::bigint "
         "      AND ("
@@ -486,7 +486,11 @@ std::optional<Response> resolveRsvpTarget(Database* db,
         "            AND co.person_id = $3::int"
         "        )"
         "      )"
-        "  ) AS target_on_roster",
+        "  ) "
+        // Club pass (migration 329): an age-eligible call-up may RSVP
+        // (= mark themselves available) exactly like a rostered player.
+        "  OR EXISTS (SELECT 1 FROM fh_event_callups($1::bigint) cu "
+        "              WHERE cu.person_id = $3::int)) AS target_on_roster",
         {std::to_string(fhEventId), std::to_string(callerPersonId), std::to_string(targetPersonId)});
 
     if (rows.empty()) {
@@ -765,6 +769,9 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                               )
                           )
                     )
+                    -- Club pass (migration 329): a youth player age-eligible
+                    -- to be called up sees the event like a rostered one.
+                    OR EXISTS (SELECT 1 FROM fh_event_callups(fe.id) cu WHERE cu.person_id = $1::int)
                 ) AS eligible,
                 -- Guardian visibility (2026-08-28).  A parent of a
                 -- rostered child holds no team_persons row of their own,
@@ -789,14 +796,31 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                 -- not decoration: a parent with two players cannot
                 -- otherwise tell whose practice a card refers to.
                 (
-                    SELECT string_agg(DISTINCT child.first_name || ' ' || child.last_name, ', ')
-                    FROM fh_event_teams fet
-                    JOIN team_persons tp ON tp.team_id = fet.team_id
-                                        AND tp.removed_at IS NULL
-                    JOIN persons child ON child.id = tp.person_id
-                    WHERE fet.fh_event_id = fe.id
-                      AND child.parent_person_id = $1::int
+                    SELECT string_agg(DISTINCT kids.n, ', ') FROM (
+                        SELECT child.first_name || ' ' || child.last_name AS n
+                        FROM fh_event_teams fet
+                        JOIN team_persons tp ON tp.team_id = fet.team_id
+                                            AND tp.removed_at IS NULL
+                        JOIN persons child ON child.id = tp.person_id
+                        WHERE fet.fh_event_id = fe.id
+                          AND child.parent_person_id = $1::int
+                        UNION
+                        -- Club pass (migration 329): the caller's kids who
+                        -- are age-eligible call-ups count as guardian ties
+                        -- too, so the parent sees the card and gets a Go/No.
+                        SELECT child.first_name || ' ' || child.last_name
+                        FROM fh_event_callups(fe.id) cu
+                        JOIN persons child ON child.id = cu.person_id
+                        WHERE child.parent_person_id = $1::int
+                    ) kids
                 ) AS guardian_children,
+                -- Just the call-up subset, for the "why can I see this" line.
+                (
+                    SELECT string_agg(DISTINCT child.first_name || ' ' || child.last_name, ', ')
+                    FROM fh_event_callups(fe.id) cu
+                    JOIN persons child ON child.id = cu.person_id
+                    WHERE child.parent_person_id = $1::int
+                ) AS callup_children,
                 -- Structured sibling of guardian_children above, used to
                 -- actually drive the guardian's Go/No buttons (one row
                 -- per child). Excludes a suspended child the same way
@@ -807,7 +831,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                     FROM (
                         SELECT DISTINCT jsonb_build_object(
                                    'person_id', child.id,
-                                   'name', child.first_name || ' ' || child.last_name
+                                   'name', child.first_name || ' ' || child.last_name,
+                                   'callup', false
                                ) AS x
                         FROM fh_event_teams fet
                         JOIN team_persons tp ON tp.team_id = fet.team_id
@@ -822,6 +847,21 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                 AND s.starts_at <= now()
                                 AND (s.ends_at IS NULL OR s.ends_at > now())
                           )
+                        UNION
+                        -- Club pass call-ups (migration 329). Flagged so the
+                        -- card can say "eligible to be called up — please
+                        -- RSVP" instead of treating it as the kid's own game.
+                        -- fh_event_callups already excludes suspended kids.
+                        SELECT jsonb_build_object(
+                                   'person_id',   child.id,
+                                   'name',        child.first_name || ' ' || child.last_name,
+                                   'callup',      true,
+                                   'callup_from', cu.from_team_name,
+                                   'age',         cu.single_age
+                               )
+                        FROM fh_event_callups(fe.id) cu
+                        JOIN persons child ON child.id = cu.person_id
+                        WHERE child.parent_person_id = $1::int
                     ) sub
                 ), '[]'::jsonb) AS guardian_targets,
                 COALESCE((
@@ -850,6 +890,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                         'responded_at',   roster.responded_at,
                                                         'is_pickup_only', roster.is_pickup_only,
                                                         'is_coach',       roster.is_coach,
+                                                        'is_callup',      roster.is_callup,
+                                                        'callup_from',    roster.callup_from,
                                                         'phone',          roster.phone,
                                                         'email',          roster.email
                         )
@@ -881,6 +923,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                              combined.responded_at,
                                                              combined.is_pickup_only,
                                                              combined.is_coach,
+                                                             combined.is_callup,
+                                                             combined.callup_from,
                                                              combined.phone,
                                                              combined.email
                                                     FROM (
@@ -929,6 +973,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                      ELSE false
                                                              END AS is_pickup_only,
                                                              false AS is_coach,
+                                                             false AS is_callup,
+                                                             NULL::text AS callup_from,
                                                              -- Youth players usually have no contact rows of their
                                                              -- own (signup collected the parent's) — fall back to
                                                              -- the guardian's phone/email so reminders reach
@@ -975,6 +1021,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                              END,
                                                              false,
                                                              true,
+                                                             false,
+                                                             NULL::text,
                                                              (SELECT phone_number FROM person_phones
                                                                WHERE person_id = p.id AND can_receive_sms = true
                                                                ORDER BY is_primary DESC, id ASC LIMIT 1),
@@ -991,6 +1039,50 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                             ON er.fh_event_id = fe.id
                                                          AND er.person_id   = p.id
                                                      WHERE fet.fh_event_id = fe.id
+
+                                                        UNION ALL
+
+                                                        -- Club pass call-ups (migration 329): age-eligible
+                                                        -- youth players from other club teams. A 'yes'
+                                                        -- here means AVAILABLE to be called up, not going
+                                                        -- — the frontend words it that way.
+                                                        SELECT
+                                                             p.id,
+                                                             p.first_name,
+                                                             p.last_name,
+                                                             NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
+                                                             er.response,
+                                                             er.created_via,
+                                                             CASE
+                                                                     WHEN er.responded_at IS NULL THEN NULL
+                                                                     ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
+                                                                                                'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                                                             END,
+                                                             false,
+                                                             false,
+                                                             true,
+                                                             cu.from_team_name,
+                                                             COALESCE(
+                                                               (SELECT phone_number FROM person_phones
+                                                                 WHERE person_id = p.id AND can_receive_sms = true
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1),
+                                                               (SELECT phone_number FROM person_phones
+                                                                 WHERE person_id = p.parent_person_id AND can_receive_sms = true
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1)
+                                                             ),
+                                                             COALESCE(
+                                                               (SELECT email FROM person_emails
+                                                                 WHERE person_id = p.id
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1),
+                                                               (SELECT email FROM person_emails
+                                                                 WHERE person_id = p.parent_person_id
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1)
+                                                             )
+                                                        FROM fh_event_callups(fe.id) cu
+                                                        JOIN persons p ON p.id = cu.person_id
+                                                        LEFT JOIN fh_event_rsvps er
+                                                            ON er.fh_event_id = fe.id
+                                                         AND er.person_id   = p.id
                                                     ) combined
                                                  ORDER BY combined.person_id, combined.is_coach ASC
                                         ) roster
@@ -1035,6 +1127,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                   )
                               )
                         )
+                        OR EXISTS (SELECT 1 FROM fh_event_callups(fe.id) cu WHERE cu.person_id = $1::int)
                     )
                 END AS my_rsvp_eligible,
                 ge.starts_at            AS raw_starts_at,
@@ -1159,6 +1252,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
             ev["guardian_children"] = textOrNull(row, "guardian_children");
+            ev["callup_children"]   = textOrNull(row, "callup_children");
             ev["guardian_targets"]  = json::parse(row["guardian_targets"].c_str());
             {
                 const bool eligible = row["eligible"].as<bool>();
@@ -1177,8 +1271,11 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                         const std::string kids = row["guardian_children"].is_null()
                             ? std::string("your player")
                             : row["guardian_children"].as<std::string>();
-                        ev["my_rsvp_eligibility_reason"] =
-                            "You can see this because " + kids + " is on the roster.";
+                        const bool onlyCallups = !row["callup_children"].is_null()
+                            && row["callup_children"].as<std::string>() == kids;
+                        ev["my_rsvp_eligibility_reason"] = onlyCallups
+                            ? "You can see this because " + kids + " is eligible to be called up."
+                            : "You can see this because " + kids + " is on the roster.";
                     } else if (teamCount == 0) {
                         ev["my_rsvp_eligibility_reason"] = "This event has no roster attached yet — ops needs to add Team:/Club: tags to the Google Calendar description.";
                     } else {
@@ -1506,6 +1603,11 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
             "          JOIN coaches co ON co.id = tc.coach_id "
             "          JOIN persons p ON p.id = co.person_id "
             "         WHERE fet.fh_event_id = $1::bigint "
+            "        UNION ALL "
+            // Club pass call-ups (migration 329) show up for check-in too.
+            "        SELECT p.id, p.first_name, p.last_name, false "
+            "          FROM fh_event_callups($1::bigint) cu "
+            "          JOIN persons p ON p.id = cu.person_id "
             "      ) combined "
             "      LEFT JOIN fh_event_attendance fea "
             "             ON fea.fh_event_id = $1::bigint "
