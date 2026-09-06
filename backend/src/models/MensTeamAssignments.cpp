@@ -204,9 +204,18 @@ std::vector<int> MensTeamAssignments::addAssignmentForPerson(long long personId,
     );
 
     if (restored.empty()) {
+        // Docs status travels with the child (owner 2026-09-06, migration
+        // 340): a player marked Needs Docs / Has Docs on an intramural
+        // team keeps that status on the new row when moved up, so the
+        // coach is never asked to chase documents already in hand.  Any
+        // other status is team-specific and starts blank as before.
         tx->exec_params(
-            "INSERT INTO team_persons (team_id, person_id) "
-            "VALUES ($2, $1) "
+            "INSERT INTO team_persons (team_id, person_id, roster_status_id) "
+            "VALUES ($2, $1, "
+            "  (SELECT tp.roster_status_id FROM team_persons tp "
+            "     JOIN roster_statuses rs ON rs.id = tp.roster_status_id "
+            "    WHERE tp.person_id = $1 AND rs.code IN ('needs_docs', 'has_docs') "
+            "    ORDER BY (tp.removed_at IS NULL) DESC, tp.id DESC LIMIT 1)) "
             "ON CONFLICT (team_id, person_id) "
             "  WHERE removed_at IS NULL DO NOTHING",
             personId, teamId

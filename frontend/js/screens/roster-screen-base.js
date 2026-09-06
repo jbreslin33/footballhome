@@ -247,9 +247,14 @@ class RosterScreenBase extends Screen {
   // only thing that pops — green = On Roster, yellow = the two "league
   // is sitting on it" waits, orange = Possible Drop (on the roster, but
   // flagged; migration 337). Everything else stays neutral.
+  // Youth docs steps (migration 340): Has Docs is green like On Roster
+  // but emerald, so "ready to move up" reads differently from
+  // "already rostered" down a column; Needs Docs is rose — a to-do.
   static get ROSTER_STATUS_COLORS() {
     return {
       on_roster:         { bg: '#16a34a', fg: '#ffffff', border: '#16a34a' },
+      has_docs:          { bg: '#059669', fg: '#ffffff', border: '#34d399' },
+      needs_docs:        { bg: '#be123c', fg: '#ffffff', border: '#fb7185' },
       possible_drop:     { bg: '#f97316', fg: '#431407', border: '#f97316' },
       awaiting_approval: { bg: '#eab308', fg: '#422006', border: '#eab308' },
       awaiting_transfer: { bg: '#eab308', fg: '#422006', border: '#eab308' },
@@ -334,6 +339,8 @@ class RosterScreenBase extends Screen {
          <option value="submitted_itc"     ${player.rosterStatus === 'submitted_itc'     ? 'selected' : ''}>Submitted ITC</option>
          <option value="needs_transfer"    ${player.rosterStatus === 'needs_transfer'    ? 'selected' : ''}>Needs Transfer</option>
          <option value="awaiting_transfer" ${player.rosterStatus === 'awaiting_transfer' ? 'selected' : ''}>Awaiting Transfer</option>
+         <option value="needs_docs"        ${player.rosterStatus === 'needs_docs'        ? 'selected' : ''}>Needs Docs</option>
+         <option value="has_docs"          ${player.rosterStatus === 'has_docs'          ? 'selected' : ''}>Has Docs</option>
          <option value="awaiting_roster_spot" ${player.rosterStatus === 'awaiting_roster_spot' ? 'selected' : ''}>Awaiting Roster Spot</option>
          <option value="awaiting_approval" ${player.rosterStatus === 'awaiting_approval' ? 'selected' : ''}>Awaiting Approval</option>
          <option value="on_roster"         ${player.rosterStatus === 'on_roster'         ? 'selected' : ''}>On Roster</option>

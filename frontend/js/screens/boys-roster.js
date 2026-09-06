@@ -244,6 +244,21 @@ class BoysRosterScreen extends RosterScreenBase {
   // column there beats extending this regex.
   static DOCS_TEAM_RE = /^U(8|10|12)\s+Intramural$/i;
 
+  // Per-player docs rule (owner 2026-09-06, migration 340): the roster
+  // status dropdown now carries Needs Docs / Has Docs.
+  //   needs_docs            → ask (📄 DOCS button, welcome paragraph)
+  //   has_docs / on_roster… → never ask again
+  //   blank status          → fall back to the column rule below, so the
+  //                           families already being chased in the
+  //                           intramural columns keep their button
+  //                           until the coach marks them.
+  static playerNeedsDocs(p, col) {
+    const st = (p && p.rosterStatus) || '';
+    if (st === 'needs_docs') return true;
+    if (st) return false;
+    return BoysRosterScreen.columnNeedsDocs(col);
+  }
+
   // Same gate for the column DOCS row and the per-card 📄 DOCS button,
   // so a team never gets one without the other.
   static columnNeedsDocs(col) {
@@ -282,7 +297,11 @@ class BoysRosterScreen extends RosterScreenBase {
   renderDocsRow(col, players) {
     if (!BoysRosterScreen.columnNeedsDocs(col)) return '';
     const name = String(col.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
-    const btns = this.renderMessageButtons(name, players, {
+    // Skip families already marked Has Docs (or otherwise past the docs
+    // step) so the column email never asks twice.
+    const needing = (players || []).filter(p => BoysRosterScreen.playerNeedsDocs(p, col));
+    if (!needing.length) return '';
+    const btns = this.renderMessageButtons(name, needing, {
       compact:  true,
       preset:   BoysRosterScreen.DOCS_PRESET,
       channels: ['email'],
@@ -587,7 +606,7 @@ class BoysRosterScreen extends RosterScreenBase {
     // that need it (columnNeedsDocs). Stands in for the bulk text that
     // was pulled from the DOCS row; a one-recipient sms: URL is the part
     // every Messages client gets right.
-    const docsSmsHref = (contactPhone && BoysRosterScreen.columnNeedsDocs(col))
+    const docsSmsHref = (contactPhone && BoysRosterScreen.playerNeedsDocs(p, col))
       ? `sms:${contactPhone}?&body=${encodeURIComponent(BoysRosterScreen.DOCS_PRESET.body)}`
       : null;
     const docsBtn = docsSmsHref
@@ -621,7 +640,7 @@ class BoysRosterScreen extends RosterScreenBase {
       playerPersonId: p.parentPersonId ? p.personId : null,
       phone: contactPhone,
       email: contactEmail,
-      needsDocs: BoysRosterScreen.columnNeedsDocs(col),
+      needsDocs: BoysRosterScreen.playerNeedsDocs(p, col),
       docsFormUrl: BoysRosterScreen.DOCS_FORM_URL,
     });
 

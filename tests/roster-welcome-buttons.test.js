@@ -72,3 +72,28 @@ test('travel-column youth cards carry the docs ask; others do not', () => {
   assert.match(without, /data-needs-docs=""/);
   assert.match(without, /data-docs-form-url=""/);
 });
+
+// Docs rule (migration 340): status beats column.
+test('playerNeedsDocs: needs_docs asks, has_docs never asks, blank falls back to the column', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'js', 'screens', 'boys-roster.js'), 'utf8');
+  const ctx = { console, window: {}, document: {}, Screen: class {}, RosterScreenBase: class {}, RosterMessaging: {} };
+  vm.createContext(ctx);
+  vm.runInContext(src + '\nthis.BoysRosterScreen = BoysRosterScreen;', ctx);
+  const B = ctx.BoysRosterScreen;
+  const intra  = { label: 'U10 Intramural', teamId: 1 };
+  const travel = { label: 'U10 Travel', teamId: 2 };
+  assert.equal(B.playerNeedsDocs({ rosterStatus: 'needs_docs' }, travel), true);
+  assert.equal(B.playerNeedsDocs({ rosterStatus: 'has_docs' }, intra), false);
+  assert.equal(B.playerNeedsDocs({ rosterStatus: 'on_roster' }, intra), false);
+  assert.equal(B.playerNeedsDocs({ rosterStatus: null }, intra), true);
+  assert.equal(B.playerNeedsDocs({ rosterStatus: '' }, travel), false);
+});
+
+test('status dropdown offers Needs Docs and Has Docs, and Has Docs is green', () => {
+  const { screen, RosterScreenBase } = loadBase();
+  const html = screen.renderStatusSelect({ personId: 5, rosterStatus: 'has_docs' }, { teamId: 3 }, true);
+  assert.match(html, /<option value="needs_docs"/);
+  assert.match(html, /<option value="has_docs"\s+selected/);
+  assert.match(html, /background:#059669/);
+  assert.ok(RosterScreenBase.ROSTER_STATUS_COLORS.needs_docs);
+});
