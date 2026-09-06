@@ -134,6 +134,11 @@ protected:
     // the token — handlers that need claims still parse it themselves.
     static bool requireBearer(const Request& request);
 
+    // users.id from a verified bearer JWT ("userId" claim), or 0 when the
+    // header is missing/invalid.  For handlers that need to attribute a
+    // write (sent_by_user_id) after the requireBearer() gate has passed.
+    static long long bearerUserId(const Request& request);
+
     // Role gate: validates the bearer token (same JWT check as
     // requireBearer) AND requires the caller's admins.admin_level_id
     // (via admin_levels.name) to be one of `allowedLevels`. Levels are

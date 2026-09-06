@@ -2,6 +2,7 @@
 
 #include "../core/Crypto.h"
 #include "../database/Database.h"
+#include "../services/MagicLinkService.h"
 #include "../services/SessionService.h"
 #include "../third_party/json.hpp"
 
@@ -21,15 +22,7 @@ namespace {
 // Mirror of the Node PUBLIC_BASE_URL: env override, default to prod,
 // trailing slashes stripped.  Evaluated lazily and cached because the
 // env doesn't change at runtime.
-const std::string& publicBaseUrl() {
-    static const std::string value = [] {
-        const char* env = std::getenv("PUBLIC_BASE_URL");
-        std::string v = (env && *env) ? std::string(env) : std::string("https://footballhome.org");
-        while (!v.empty() && v.back() == '/') v.pop_back();
-        return v;
-    }();
-    return value;
-}
+const std::string& publicBaseUrl() { return MagicLinkService::publicBaseUrl(); }
 
 // JSON helpers — `j.value()` throws on type mismatch, so we wrap the
 // common int/string extractions with explicit handling that mirrors
@@ -258,33 +251,16 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
             eventWhen     = evRow[0]["when_str"].is_null() ? std::string{} : evRow[0]["when_str"].as<std::string>();
         }
 
-        // Mint the token + write the row.  expires_at is computed
-        // server-side from NOW() so the TTL is unaffected by clock
-        // skew between this process and Postgres.
-        const std::string token     = fh::crypto::randomTokenB64Url(32);
-        const std::string tokenHash = fh::crypto::sha256Hex(token);
-        const std::string ttlSecs   = std::to_string(SessionService::kMagicLinkTtl.count());
-
-        auto ins = db->query(
-            "INSERT INTO magic_link_tokens "
-            "  (token_hash, person_id, chat_event_id, channel, contact, "
-            "   minted_by_user_id, expires_at) "
-            "VALUES ($1, $2::int, NULLIF($3, '')::int, $4, $5, "
-            "        NULLIF($6, '')::int, "
-            "        NOW() + ($7 || ' seconds')::interval) "
-            "RETURNING to_char(expires_at AT TIME ZONE 'UTC', "
-            "                   'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS expires_iso",
-            {tokenHash,
-             std::to_string(personId),
-             chatEventIdOpt ? std::to_string(*chatEventIdOpt) : std::string{},
-             channel, contact,
-             adminUserParam,
-             ttlSecs});
-        const std::string expiresIso = ins[0]["expires_iso"].as<std::string>();
-
-        const std::string verifyUrl = publicBaseUrl()
-                                    + "/api/auth/magic-link/verify?token="
-                                    + fh::crypto::urlEncode(token);
+        // Mint the token + write the row — shared with the roster WELCOME
+        // button via MagicLinkService (2026-09-06), so every FH link a
+        // coach sends is minted the same way.
+        long long adminUserNum = 0;
+        try { if (!adminUserParam.empty()) adminUserNum = std::stoll(adminUserParam); } catch (...) {}
+        const auto minted = MagicLinkService::mint(
+            personId, channel, contact, adminUserNum,
+            chatEventIdOpt ? *chatEventIdOpt : 0);
+        const std::string expiresIso = minted.expiresIso;
+        const std::string verifyUrl  = minted.url;
 
         // Body / subject — identical templates to Node.  Built once
         // because both the mailto: URI and the gmail compose URL need

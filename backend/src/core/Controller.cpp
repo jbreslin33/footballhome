@@ -202,6 +202,19 @@ bool Controller::requireBearer(const Request& request) {
     return true;
 }
 
+long long Controller::bearerUserId(const Request& request) {
+    std::string h = request.getHeader("Authorization");
+    if (h.empty()) h = request.getHeader("authorization");
+    if (h.size() <= 7 || h.compare(0, 7, "Bearer ") != 0) return 0;
+    const std::string token = h.substr(7);
+    std::string payload;
+    if (!fh::crypto::verifyJwtHS256(token, &payload)) return 0;
+    static const std::regex uidRe("\"userId\"\\s*:\\s*\"([0-9]+)\"");
+    std::smatch m;
+    if (!std::regex_search(payload, m, uidRe) || m.size() < 2) return 0;
+    try { return std::stoll(m[1].str()); } catch (...) { return 0; }
+}
+
 bool Controller::requireAdminLevel(const Request& request,
                                     const std::vector<std::string>& allowedLevels) {
     std::string h = request.getHeader("Authorization");

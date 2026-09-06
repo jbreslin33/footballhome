@@ -348,6 +348,9 @@ class WomensRosterScreen extends RosterScreenBase {
     // board: the player is the person who signs in; contactFor(p) reaches
     // the player directly.
     const linkBtns = this.renderMagicLinkButtons(p, { personId: p.personId });
+    // 👋 WELCOME buttons (owner 2026-09-06) — universal via
+    // RosterScreenBase.renderWelcomeButtons.  Amber while owed.
+    const welcomeBtns = this.renderWelcomeButtons(p, { personId: p.personId });
 
     const duesLabel = this.renderDuesLabel(p);
     const cardId = `wr-card-${p.leagueAppsUserId}`;
@@ -367,7 +370,7 @@ class WomensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn + linkBtns,
+      viewButtonHtml: profileBtn + linkBtns + welcomeBtns,
       borderColor: cardBorder,
       canMove,
     });

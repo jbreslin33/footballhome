@@ -40,6 +40,7 @@ set(SOURCES
     src/models/LaPool.cpp
     src/models/PersonBilling.cpp
     src/models/PayReminderLog.cpp
+    src/models/WelcomeLog.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp
     src/models/YouthAgeGroups.cpp
@@ -62,6 +63,7 @@ set(SOURCES
     src/services/LaProgramSync.cpp
     src/services/LaSyncScheduler.cpp
     src/services/SessionService.cpp
+    src/services/MagicLinkService.cpp
     src/services/MetaLeadsService.cpp
     src/services/MetaAdsService.cpp
     src/services/VisionOcrService.cpp
@@ -93,6 +95,7 @@ set(SOURCES
     src/controllers/WomensRosterController.cpp
     src/controllers/PersonBillingController.cpp
     src/controllers/PayReminderLogController.cpp
+    src/controllers/WelcomeController.cpp
     src/controllers/PaymentsController.cpp
     src/controllers/ChargeFlagsController.cpp
     src/controllers/AdminLaBackfillController.cpp

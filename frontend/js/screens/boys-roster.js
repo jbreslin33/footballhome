@@ -603,6 +603,16 @@ class BoysRosterScreen extends RosterScreenBase {
       phone: contactPhone,
       email: contactEmail,
     });
+    // 👋 WELCOME buttons (owner 2026-09-06) — universal via
+    // RosterScreenBase.renderWelcomeButtons.  Recipient is the PARENT
+    // (same person the sign-in link is minted for); the child is named
+    // in the copy.  Amber while a welcome is owed (p.welcome.due).
+    const welcomeBtns = this.renderWelcomeButtons(p, {
+      personId: p.parentPersonId || p.personId,
+      playerPersonId: p.parentPersonId ? p.personId : null,
+      phone: contactPhone,
+      email: contactEmail,
+    });
 
     let delinqBtns = '';
     // Prorate context (2026-07-09) — mirror mens-roster: if the youth
@@ -821,7 +831,7 @@ class BoysRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: `${docsBtn}${profileBtn}${linkBtns}`,
+      viewButtonHtml: `${docsBtn}${profileBtn}${linkBtns}${welcomeBtns}`,
       borderColor: cardBorder,
       canMove,
     });

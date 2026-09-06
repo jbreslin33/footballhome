@@ -628,6 +628,15 @@ class MensRosterScreen extends RosterScreenBase {
       phone: contactPhone,
       email: contactEmail,
     });
+    // 👋 WELCOME buttons (owner 2026-09-06) — universal via
+    // RosterScreenBase.renderWelcomeButtons; replaces the old untracked
+    // 👋 WELCOME link that lived in the CONTACT popover.  Adult board:
+    // the player receives it.  Amber while a welcome is owed.
+    const welcomeBtns = this.renderWelcomeButtons(p, {
+      personId: p.personId,
+      phone: contactPhone,
+      email: contactEmail,
+    });
     let delinqBtns = '';
     // Prorate context (2026-07-09) — if the player is a mid-cycle
     // signup who hasn't yet paid the full $35 for the partial cycle,
@@ -787,33 +796,11 @@ class MensRosterScreen extends RosterScreenBase {
           body:     inviteEmailBody,
         }).toString()}`
       : null;
-    const welcomeEmailSubject = 'Welcome to the club — set your availability on FootballHome';
-    const welcomeEmailBody = [
-      `Hi ${contactFirst || 'there'},`,
-      '',
-      'Welcome to the club! This is where practices, pickups, and games are listed on FootballHome.',
-      '',
-      'Please log in at https://footballhome.org and set your availability for the week.',
-      'You do not need to attend every event, but you are expected to set your availability for every event so the club knows where you can help.',
-      '',
-      'Thanks,',
-      'James Breslin',
-      'Soccer Director at Lighthouse',
-    ].join('\n');
-    const welcomeEmailHref = contactEmail
-      ? `https://mail.google.com/mail/?${new URLSearchParams({
-          view:     'cm',
-          fs:       '1',
-          authuser: 'soccer@lighthouse1893.org',
-          to:       contactEmail,
-          su:       welcomeEmailSubject,
-          body:     welcomeEmailBody,
-        }).toString()}`
-      : null;
 
     // ---- Contact popover -----------------------------------------------
     // One CONTACT button collapses EMAIL / SMS / CALL / SAVE and the
-    // two INVITE actions into a native <details> popover.  Only the
+    // two INVITE actions into a native <details> popover.  (WELCOME moved
+    // out to the card's button strip 2026-09-06 — see renderWelcomeButtons.)  Only the
     // methods the player actually has contact data for are rendered
     // inside.  Uses <details>/<summary> so there's no JS listener
     // wiring, no click-outside tracking.
@@ -839,7 +826,6 @@ class MensRosterScreen extends RosterScreenBase {
       vcardHref       ? `<a href="${vcardHref}"       download="${this.escape(vcardFilename)}" title="Save ${this.escape(contactName)} to your phone contacts" style="${contactBase} background:#334155; color:#fff;">👤 SAVE</a>` : '',
       inviteSmsHref   ? `<a href="${inviteSmsHref}"                                            title="Text ${this.escape(this.formatPhone(contactPhone))} an invite to footballhome.org" style="${contactBase} background:#334155; color:#fff;">💬 INVITE (SMS)</a>` : '',
       inviteEmailHref ? `<a href="${inviteEmailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(contactEmail)} an invite to footballhome.org"      style="${contactBase} background:#334155; color:#fff;">✉ INVITE (email)</a>` : '',
-      welcomeEmailHref ? `<a href="${welcomeEmailHref}" target="_blank" rel="noopener noreferrer" title="Welcome ${this.escape(contactName)} to the club" style="${contactBase} background:#334155; color:#fff;">👋 WELCOME</a>` : '',
     ].filter(Boolean);
     const contactBtns = contactItems.length > 0 ? `
       <details class="mr-contact" style="position:relative; display:inline-block;">
@@ -913,7 +899,7 @@ class MensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn + regBtns + linkBtns,
+      viewButtonHtml: profileBtn + regBtns + linkBtns + welcomeBtns,
       borderColor: cardBorder,
       canMove,
     });

@@ -21,6 +21,7 @@
 #include "PersonBilling.h"
 #include "PersonPayments.h"
 #include "PayReminderLog.h"
+#include "WelcomeLog.h"
 #include "YouthAgeGroups.h"
 #include "../database/Database.h"
 
@@ -1247,6 +1248,13 @@ MensRoster::Result MensRoster::run(bool includeAll,
     }
 
     out.body["fetchedAt"]       = nowIsoMs();
+    // Welcome-outreach state per card (owner 2026-09-06, migration 339):
+    // row["welcome"] = {due, lastSentAt, lastChannel, lastContact}.
+    // Consistent across all four boards — WelcomeLog owns the rule.
+    {
+        WelcomeLog welcomes;
+        welcomes.attachToRoster(unassigned, bucketsJson, /*youth=*/false);
+    }
     out.body["columns"]         = std::move(columnsArr);
     out.body["buckets"]         = std::move(bucketsJson);
     out.body["unassigned"]      = std::move(unassigned);

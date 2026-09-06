@@ -909,6 +909,144 @@ class RosterScreenBase extends Screen {
     return smsBtn + emailBtn;
   }
 
+  // ── Per-card WELCOME buttons (owner 2026-09-06) ─────────────────────
+  //
+  // "We need a welcome to Lighthouse email after they sign up … a button
+  // for it … only from this date forward for new players … consistent
+  // for all clubs … allow to send always even if already sent but show
+  // last send and method."
+  //
+  // One ✉ WELCOME + one 💬 WELCOME button per card, always rendered
+  // when the card has a contact.  The backend decides whether a welcome
+  // is OWED (p.welcome.due — registered on/after the policy cutoff and
+  // never welcomed) and the buttons go amber so the card reads as a
+  // to-do; once sent they drop back to slate and a "👋 ✉ Sep 6" pill
+  // shows the last send + channel.  Sends are recorded per RECIPIENT
+  // (person_welcomes) so welcoming a family through one child covers
+  // the siblings.
+  //
+  // personId: who RECEIVES the welcome and gets signed in by the magic
+  // link inside it — the parent on youth boards, the player on adult
+  // boards.  playerPersonId: the child the youth copy names.
+  renderWelcomeButtons(p, { personId = null, playerPersonId = null, phone = null, email = null } = {}) {
+    const pid = Number(personId || (p && p.personId) || 0);
+    if (!pid) return '';
+    const contact = (phone || email) ? { phone, email } : this.contactFor(p);
+    const contactPhone = contact.phone || null;
+    const contactEmail = contact.email || null;
+    if (!contactPhone && !contactEmail) return '';
+
+    const w    = (p && p.welcome) || {};
+    const due  = !!w.due;
+    const who  = (p && p.firstName) ? ` for ${this.escape(p.firstName)}` : '';
+    const bg   = due ? '#b45309' : '#334155';
+    const btnBase = `padding:0 4px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:3px; background:${bg}; color:#fff; appearance:none; -webkit-appearance:none; min-height:0; margin:0;`;
+    const btn = (channel, to, icon, title) => `
+      <button type="button" class="rb-welcome"
+              data-welcome="${channel}"
+              data-person-id="${pid}"
+              data-player-person-id="${Number(playerPersonId || 0) || ''}"
+              data-contact="${this.escape(to)}"
+              title="${title}"
+              style="${btnBase}">${icon} WELCOME</button>`;
+    const dueNote = due ? ' — welcome not sent yet' : '';
+    const smsBtn = contactPhone
+      ? btn('sms', contactPhone, '💬',
+            `Text the Lighthouse welcome (with sign-in link) to ${this.escape(this.formatPhone(contactPhone))}${who}${dueNote}`)
+      : '';
+    const emailBtn = contactEmail
+      ? btn('email', contactEmail, '✉',
+            `Email the Lighthouse welcome (with sign-in link) to ${this.escape(contactEmail)}${who}${dueNote}`)
+      : '';
+    return `<span class="rb-welcome-wrap" style="display:inline-flex; align-items:center; gap:3px;">`
+         + `<span class="rb-welcome-last">${RosterScreenBase.renderWelcomeLastPill(w)}</span>`
+         + smsBtn + emailBtn
+         + `</span>`;
+  }
+
+  // "👋 ✉ Sep 6" — last welcome send + channel.  Empty when never sent.
+  static renderWelcomeLastPill(w) {
+    if (!w || !w.lastSentAt) return '';
+    const icon = w.lastChannel === 'sms' ? '💬' : '✉';
+    const chan = w.lastChannel === 'sms' ? 'texted' : 'emailed';
+    let abs = String(w.lastSentAt);
+    let short = abs;
+    try {
+      const d = new Date(w.lastSentAt);
+      if (!isNaN(d.getTime())) {
+        abs   = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d);
+        short = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric' }).format(d);
+      }
+    } catch { /* keep raw iso */ }
+    const to  = w.lastContact ? ` to ${w.lastContact}` : '';
+    const tip = `Welcome ${chan} ${abs}${to}`;
+    return `<span title="${tip.replace(/"/g, '&quot;')}"
+                  style="display:inline-flex; align-items:center; gap:3px; padding:0 5px; border:1px solid #334155; background:#0f172a; color:#94a3b8; border-radius:3px; font-size:0.6rem; font-weight:700; letter-spacing:0.02em; white-space:nowrap; line-height:1.2; font-variant-numeric:tabular-nums;">👋 ${icon} ${short}</span>`;
+  }
+
+  // Click handler for renderWelcomeButtons.  POST /api/welcomes mints
+  // the magic link, records the send, and hands back the compose href;
+  // the card repaints in place (pill + slate buttons) so the to-do
+  // clears without a roster reload.
+  async _onWelcomeClick(btn) {
+    const channel        = String(btn.dataset.welcome || '');
+    const personId       = parseInt(btn.dataset.personId, 10);
+    const playerPersonId = parseInt(btn.dataset.playerPersonId, 10) || 0;
+    const contact        = String(btn.dataset.contact || '').trim();
+    if (!channel || !personId || !contact) return;
+
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.innerHTML = '⏳';
+    try {
+      const res = await this.auth.fetch('/api/welcomes', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          person_id: personId,
+          player_person_id: playerPersonId || null,
+          channel,
+          contact,
+        }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt.slice(0, 200) || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      if (channel === 'email') {
+        const href = data.gmail_href || data.mailto_href;
+        if (!href) throw new Error('No email href returned');
+        window.open(href, '_blank', 'noopener');
+      } else {
+        const href = data.sms_href;
+        if (!href) throw new Error('No SMS href returned');
+        window.location.href = href;
+      }
+      btn.innerHTML = '✓';
+      // Repaint this card's welcome cluster: pill + no-longer-due colour.
+      const wrap = btn.closest('.rb-welcome-wrap');
+      if (wrap) {
+        const slot = wrap.querySelector('.rb-welcome-last');
+        if (slot) slot.innerHTML = RosterScreenBase.renderWelcomeLastPill(data.welcome || {});
+        wrap.querySelectorAll('.rb-welcome').forEach(b => {
+          b.style.background = '#334155';
+          b.title = b.title.replace(/ — welcome not sent yet$/, '');
+        });
+      }
+    } catch (err) {
+      console.error('welcome send failed:', err);
+      alert(`Could not send welcome: ${err.message}`);
+    } finally {
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.style.opacity = '';
+        btn.innerHTML = originalText;
+      }, 1500);
+    }
+  }
+
   // Click handler for renderMagicLinkButtons. Wired by wireMessageButtons
   // so every board that already calls that (all four do) gets it free.
   // Mirrors LineupsScreen._onMintLinkClick minus the match/team scope.
@@ -1073,6 +1211,13 @@ class RosterScreenBase extends Screen {
         e.preventDefault();
         e.stopPropagation();
         if (!linkBtn.disabled) this._onMagicLinkClick(linkBtn);
+        return;
+      }
+      const welcomeBtn = e.target.closest('.rb-welcome');
+      if (welcomeBtn && el.contains(welcomeBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!welcomeBtn.disabled) this._onWelcomeClick(welcomeBtn);
         return;
       }
       const btn = e.target.closest('.rb-msg-btn');
