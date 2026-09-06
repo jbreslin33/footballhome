@@ -55,9 +55,10 @@ void TeamController::registerRoutes(Router& router, const std::string& prefix) {
         return this->handleSetLineupRoleForPerson(request);
     });
 
-    // Official league roster submission status (migration 294/295/319) —
+    // Official league roster submission status (migration 294/295/319/336) —
     // Not on Roster / Needs ITC / Submitted ITC / Needs Transfer /
-    // Awaiting Transfer / Awaiting Approval / On Roster / Suspended.
+    // Awaiting Transfer / Awaiting Roster Spot / Awaiting Approval /
+    // On Roster / Suspended.
     // Keyed by person_id, same rationale as the lineup-role route above.
     // The code is validated by joining against roster_statuses.code in
     // the UPDATE itself (see handler) rather than a hardcoded regex, so
@@ -65,7 +66,8 @@ void TeamController::registerRoutes(Router& router, const std::string& prefix) {
     // four ITC/transfer codes went live with no rebuild.
     //   body: { "rosterStatus": "not_on_roster" | "needs_itc" | "submitted_itc"
     //                         | "needs_transfer" | "awaiting_transfer"
-    //                         | "awaiting_approval" | "on_roster" | "suspended" | null }
+    //                         | "awaiting_roster_spot" | "awaiting_approval"
+    //                         | "on_roster" | "suspended" | null }
     router.put(prefix + "/:teamId/roster/person/:personId/roster-status", [this](const Request& request) {
         return this->handleSetRosterStatusForPerson(request);
     });

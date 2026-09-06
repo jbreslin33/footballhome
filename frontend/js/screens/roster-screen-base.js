@@ -207,21 +207,34 @@ class RosterScreenBase extends Screen {
   //     (migration 279/283/293), originally the game-lineup screen's
   //     "Elig: Start/Bench" toggle before it moved to the Teams page.
   //   • roster_status_id — official league roster submission status
-  //     (migration 294/295/319): Not on Roster / Needs ITC /
+  //     (migration 294/295/319/336): Not on Roster / Needs ITC /
   //     Submitted ITC / Needs Transfer / Awaiting Transfer /
-  //     Awaiting Approval / On Roster / Suspended. The four middle
-  //     codes are the pre-submission clearance chase — ITC for a player
-  //     coming from a foreign federation, transfer for one still
-  //     registered to another US club — all still RSVP-eligible.
+  //     Awaiting Roster Spot / Awaiting Approval / On Roster /
+  //     Suspended. The middle codes are the pre-submission wait — ITC
+  //     for a player coming from a foreign federation, transfer for one
+  //     still registered to another US club, roster spot when the
+  //     official roster is full — all still RSVP-eligible.
   // Keyed by personId (not leagueAppsUserId) — same LA-userId-drift
   // immunity as the reorder/move endpoints; see
   // TeamController::handleSetLineupRoleForPerson /
   // handleSetRosterStatusForPerson.
+  //
+  // Width (owner 2026-09-06): both dropdowns size to their longest
+  // option — "1st Team Starter", "Awaiting Roster Spot" — and stretch
+  // to the card's control strip but no further. A native <select> is
+  // intrinsically as wide as its widest option, so width:auto does the
+  // sizing; max-width:100% is the cap, and min-width:0 lets the flex
+  // item actually honour that cap instead of overflowing the card.
+  // Replaces the old max-width:92px, which clipped every long label.
+  static get SELECT_WIDTH_STYLE() {
+    return 'width:auto; max-width:100%; min-width:0; box-sizing:border-box;';
+  }
+
   renderRoleSelect(player, col, canMove) {
     if (!(canMove && col && col.teamId && player.personId)) return '';
     return `<select class="mr-role-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
                title="Roster Role — 1st Team Starter/Bench, or 1st Team Reserve for a call-up"
-               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; max-width:92px;">
+               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; ${RosterScreenBase.SELECT_WIDTH_STYLE}">
          <option value=""        ${!player.lineupRole ? 'selected' : ''}>Role: —</option>
          <option value="starter" ${player.lineupRole === 'starter' ? 'selected' : ''}>1st Team Starter</option>
          <option value="bench"   ${player.lineupRole === 'bench'   ? 'selected' : ''}>1st Team Bench</option>
@@ -303,13 +316,14 @@ class RosterScreenBase extends Screen {
     if (!(canMove && col && col.teamId && player.personId)) return '';
     return `<select class="mr-status-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
                title="Official league roster status"
-               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.rosterStatusStyle(player.rosterStatus)} max-width:92px;">
+               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.rosterStatusStyle(player.rosterStatus)} ${RosterScreenBase.SELECT_WIDTH_STYLE}">
          <option value=""                  ${!player.rosterStatus ? 'selected' : ''}>Status: —</option>
          <option value="not_on_roster"     ${player.rosterStatus === 'not_on_roster'     ? 'selected' : ''}>Not on Roster</option>
          <option value="needs_itc"         ${player.rosterStatus === 'needs_itc'         ? 'selected' : ''}>Needs ITC</option>
          <option value="submitted_itc"     ${player.rosterStatus === 'submitted_itc'     ? 'selected' : ''}>Submitted ITC</option>
          <option value="needs_transfer"    ${player.rosterStatus === 'needs_transfer'    ? 'selected' : ''}>Needs Transfer</option>
          <option value="awaiting_transfer" ${player.rosterStatus === 'awaiting_transfer' ? 'selected' : ''}>Awaiting Transfer</option>
+         <option value="awaiting_roster_spot" ${player.rosterStatus === 'awaiting_roster_spot' ? 'selected' : ''}>Awaiting Roster Spot</option>
          <option value="awaiting_approval" ${player.rosterStatus === 'awaiting_approval' ? 'selected' : ''}>Awaiting Approval</option>
          <option value="on_roster"         ${player.rosterStatus === 'on_roster'         ? 'selected' : ''}>On Roster</option>
          <option value="suspended"         ${player.rosterStatus === 'suspended'         ? 'selected' : ''}>Suspended</option>
