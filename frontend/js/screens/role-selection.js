@@ -41,6 +41,14 @@ class RoleSelectionScreen extends Screen {
             <div style="font-size: 0.85rem; opacity: 0.8;">View your info & availability</div>
           </div>
         </button>
+
+        <button class="btn btn-lg btn-secondary" data-role="calendar" style="display: flex; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🗓️</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Calendar</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Every game and practice, week by week</div>
+          </div>
+        </button>
         
         <button class="btn btn-lg btn-primary" data-role="admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">👨‍💼</span>
@@ -289,6 +297,9 @@ class RoleSelectionScreen extends Screen {
       // (Team-picking is intentionally skipped; MyController resolves
       //  eligible events via mens_team_assignments internally.)
       this.navigation.goTo('my');
+    } else if (role === 'calendar') {
+      // Not a role — the shared Soccer Calendar (owner 2026-09-05: top level).
+      this.navigation.goTo('calendar');
     } else if (role === 'coach') {
       this.loadCoachHome();
     } else if (role === 'marketing') {

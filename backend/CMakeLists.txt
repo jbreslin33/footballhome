@@ -110,6 +110,7 @@ set(SOURCES
     src/controllers/SimLobbyController.cpp
     src/controllers/SimDebugController.cpp
     src/controllers/TrailTestController.cpp
+    src/controllers/ScheduleReleaseController.cpp
     src/orchestration/SimOrchestrator.cpp
     src/orchestration/SimPool.cpp
     src/orchestration/SimReaper.cpp)

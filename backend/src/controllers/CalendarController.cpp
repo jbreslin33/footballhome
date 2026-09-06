@@ -1130,6 +1130,17 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                         OR EXISTS (SELECT 1 FROM fh_event_callups(fe.id) cu WHERE cu.person_id = $1::int)
                     )
                 END AS my_rsvp_eligible,
+                -- Schedule release window (migration 334): when the
+                -- shown week ends for this event's club/section, derived
+                -- server-side from the standing policy + early releases.
+                -- My Schedule hides events past it. NULL when untagged.
+                (
+                    SELECT to_char(fh_schedule_window_end(t.club_id, t.club_section_id, now()) AT TIME ZONE 'UTC',
+                                   'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+                    FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id
+                    WHERE fet.fh_event_id = fe.id
+                    ORDER BY fet.team_id LIMIT 1
+                ) AS schedule_window_end,
                 ge.starts_at            AS raw_starts_at,
                 ge.id                   AS raw_gcal_id
                         FROM gcal_events ge
@@ -1253,6 +1264,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
             ev["guardian_children"] = textOrNull(row, "guardian_children");
             ev["callup_children"]   = textOrNull(row, "callup_children");
+            ev["schedule_window_end"] = textOrNull(row, "schedule_window_end");
             ev["guardian_targets"]  = json::parse(row["guardian_targets"].c_str());
             {
                 const bool eligible = row["eligible"].as<bool>();

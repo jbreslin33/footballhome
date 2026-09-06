@@ -80,6 +80,7 @@ class CalendarScreen extends Screen {
         </div>
 
         <div id="cal-push-banner"></div>
+        <div id="cal-release-strip"></div>
 
         <div id="cal-loading" style="text-align:center; padding: var(--space-6); opacity:0.7;">
           Loading calendar…
@@ -107,6 +108,7 @@ class CalendarScreen extends Screen {
   onEnter(_params) {
     this.error = null;
     this._wire();
+    this._wireReleaseStrip();
     this._load();
     // Push opt-in banner (owner 2026-09-05). Magic-link verify lands
     // people here, so this is the first screen a new parent sees; the
@@ -164,6 +166,9 @@ class CalendarScreen extends Screen {
   // Small "what do you want to do with this event" menu — same options
   // regardless of which view (week/month/agenda) the event was clicked in.
   _openEventActions(gcalEventId) {
+    // Admin-only menu (Game Day posts, flyers, results). The screen is
+    // reachable by every role now; players/parents RSVP on #my.
+    if (!this._isAdmin()) return;
     const ev = this.events.find(e => String(e.gcal_event_id) === String(gcalEventId));
     if (!ev) return;
     const s = this._publicEventSummary(ev);
@@ -445,6 +450,7 @@ class CalendarScreen extends Screen {
       this.fetchedAt = new Date();
       this.error     = null;
       this._renderGroups();
+      this._loadReleaseStrip().catch((err) => console.warn('[calendar] release strip failed:', err));
     } catch (err) {
       console.error('[calendar] load failed:', err);
       this.error = err.message || 'Failed to load calendar.';
@@ -814,7 +820,7 @@ class CalendarScreen extends Screen {
           </div>` : ''}
         ${notesBlock}
         ${meetBlock}
-        ${ev.description ? `
+        ${(ev.description && this._isAdmin()) ? `
           <details style="margin-top:2px;opacity:0.82;font-size:0.82rem;">
             <summary style="cursor:pointer;color:#93c5fd;">Raw Google description</summary>
             <div style="white-space:pre-wrap;margin-top:4px;color:var(--text-muted);">${this._escape(ev.description)}</div>
@@ -938,6 +944,145 @@ class CalendarScreen extends Screen {
     }
     this.anchorDate = this._startOfDay(next);
     this._load();
+  }
+
+  // ---------- schedule release strip (migration 334) ----------
+
+  _isAdmin() {
+    const role = this.auth && this.auth.user && this.auth.user.role;
+    return role === 'club' || role === 'super' || role === 'system';
+  }
+
+  // Monday inside the displayed Sun..Sat week — the release model keys
+  // weeks on Monday (Mon..Sun, same as My Schedule).
+  _displayedWeekStartKey() {
+    const days = this._visibleWeekDays();
+    return this._dateKey(days[1]);
+  }
+
+  async _loadReleaseStrip() {
+    const el = this.find('#cal-release-strip');
+    if (!el) return;
+    if (this.view !== 'week') { el.innerHTML = ''; return; }
+    const ws = this._displayedWeekStartKey();
+    const res = await this.auth.fetch(`/api/schedule/window?week_start=${ws}`);
+    if (!res.ok) { el.innerHTML = ''; return; }
+    const w = await res.json();
+    this._releaseWindow = w;
+    el.innerHTML = this._renderReleaseStrip(w);
+  }
+
+  _fmtWhen(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return `${d.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })} ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+  }
+
+  _renderReleaseStrip(w) {
+    const admin = this._isAdmin();
+    const mon = new Date(w.week_start + 'T00:00:00');
+    const weekLabel = `Week of ${mon.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+    const now = Date.now();
+    const policyOpens = w.policy_opens_at ? new Date(w.policy_opens_at).getTime() : null;
+    const earlyOpen = !!(w.release && !w.release.revoked_at && policyOpens && policyOpens > now);
+    // Nothing to say for a week that opened on its own schedule.
+    if (w.open_now && !earlyOpen && !this._policyEditing) return '';
+
+    const base = 'display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 12px; margin-bottom: var(--space-3); border-radius:8px; font-size:0.85rem;';
+    const btn  = 'padding:5px 12px; border-radius:999px; border:1px solid rgba(255,255,255,0.25); background:#2563eb; color:#fff; font-weight:700; font-size:0.8rem; cursor:pointer;';
+    const link = 'background:none; border:none; color:#bfdbfe; text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:2px 4px;';
+
+    let body;
+    if (earlyOpen) {
+      body = `
+        <span>✅ <strong>${this._escape(weekLabel)}</strong> is posted early
+          ${w.release.released_by ? `by ${this._escape(w.release.released_by)}` : ''}, ${this._escape(this._fmtWhen(w.release.released_at))}.
+          Normal post time was ${this._escape(this._fmtWhen(w.policy_opens_at))}.</span>
+        ${admin ? `<button type="button" data-release-close="${w.release.id}" style="${btn} background:#7f1d1d;">Close it again</button>` : ''}`;
+    } else {
+      body = `
+        <span>🕗 <strong>${this._escape(weekLabel)}</strong> posts to players and parents
+          <strong>${this._escape(this._fmtWhen(w.opens_at))}</strong>${w.policy ? ` (rule: ${this._escape(w.policy.label)})` : ''}.</span>
+        ${admin ? `<button type="button" data-release-open="${this._escape(w.week_start)}" style="${btn}">Open now</button>` : ''}`;
+    }
+
+    let policyHtml = '';
+    if (admin) {
+      if (this._policyEditing) {
+        const wd = w.policy ? w.policy.weekday : 0;
+        const tm = w.policy ? w.policy.time : '20:00';
+        const names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        policyHtml = `
+          <span style="display:inline-flex; align-items:center; gap:6px; margin-left:auto;">
+            <span style="opacity:0.8;">Standing rule:</span>
+            <select data-policy-weekday style="font-size:0.8rem; padding:3px 6px;">
+              ${names.map((n, i) => `<option value="${i}" ${i === wd ? 'selected' : ''}>${n}</option>`).join('')}
+            </select>
+            <input type="time" data-policy-time value="${this._escape(tm)}" style="font-size:0.8rem; padding:3px 6px;">
+            <button type="button" data-policy-save style="${btn}">Save</button>
+            <button type="button" data-policy-cancel style="${link}">Cancel</button>
+          </span>`;
+      } else {
+        policyHtml = `<button type="button" data-policy-edit style="${link} margin-left:auto;">Change the rule</button>`;
+      }
+    }
+
+    return `
+      <div style="${base} background:${earlyOpen ? 'rgba(22,101,52,0.25)' : 'rgba(37,99,235,0.18)'}; border:1px solid ${earlyOpen ? 'rgba(74,222,128,0.45)' : 'rgba(96,165,250,0.45)'};">
+        ${body}${policyHtml}
+      </div>`;
+  }
+
+  _wireReleaseStrip() {
+    if (this._releaseWired) return;
+    this._releaseWired = true;
+    this.element.addEventListener('click', async (e) => {
+      const openBtn  = e.target.closest('[data-release-open]');
+      const closeBtn = e.target.closest('[data-release-close]');
+      const editBtn  = e.target.closest('[data-policy-edit]');
+      const saveBtn  = e.target.closest('[data-policy-save]');
+      const cancelBtn= e.target.closest('[data-policy-cancel]');
+      if (!openBtn && !closeBtn && !editBtn && !saveBtn && !cancelBtn) return;
+      e.preventDefault(); e.stopPropagation();
+      try {
+        if (openBtn) {
+          const ws = openBtn.dataset.releaseOpen;
+          const mon = new Date(ws + 'T00:00:00');
+          if (!confirm(`Post the week of ${mon.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} to players and parents now?`)) return;
+          openBtn.disabled = true; openBtn.textContent = 'Opening…';
+          const res = await this.auth.fetch('/api/schedule/releases', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ week_start: ws }),
+          });
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+        } else if (closeBtn) {
+          if (!confirm('Close this week again? Players and parents will stop seeing it until the normal post time.')) return;
+          closeBtn.disabled = true; closeBtn.textContent = 'Closing…';
+          const res = await this.auth.fetch(`/api/schedule/releases/${closeBtn.dataset.releaseClose}/revoke`, { method: 'POST' });
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+        } else if (editBtn) {
+          this._policyEditing = true;
+        } else if (cancelBtn) {
+          this._policyEditing = false;
+        } else if (saveBtn) {
+          const wd = this.find('[data-policy-weekday]').value;
+          const tm = this.find('[data-policy-time]').value;
+          saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+          const res = await this.auth.fetch('/api/schedule/policy', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cutover_weekday: String(wd), cutover_time: tm }),
+          });
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+          this._policyEditing = false;
+        }
+        await this._loadReleaseStrip();
+      } catch (err) {
+        console.error('[calendar] release action failed:', err);
+        alert(`Could not update the schedule window: ${err.message}`);
+        await this._loadReleaseStrip().catch(() => {});
+      }
+    });
   }
 
   _queryRange() {

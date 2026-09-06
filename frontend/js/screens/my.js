@@ -95,7 +95,7 @@ class MyScreen extends Screen {
           </a>
           <a href="#player-calendar" data-player-nav-target="player-calendar" title="View only"
              style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1; text-decoration:none; display:inline-flex; align-items:center;">
-            Calendar
+            Players
           </a>
           <span id="my-schedule-pills"></span>
         </div>
@@ -125,8 +125,11 @@ class MyScreen extends Screen {
 
   async _bootstrap() {
     try {
-      const upRes = await this._fetch('/api/calendar/upcoming?days=7');
+      // 14 days so a week opened early (migration 334) is in hand; the
+      // per-event schedule_window_end from the server decides what shows.
+      const upRes = await this._fetch('/api/calendar/upcoming?days=14');
       this.events       = upRes.events    || [];
+      await this._loadNextWeekOpens();
       this._renderEvents();
       this._renderChatShell();
       await this._loadChat(/*initial*/ true);
@@ -442,6 +445,28 @@ class MyScreen extends Screen {
     return shownSun;
   }
 
+  // "Next week posts <when>" for the empty state — asked of the server so
+  // it reflects the club's standing rule and any early release, not a
+  // date baked into this file. Silent on failure (keeps the old text).
+  async _loadNextWeekOpens() {
+    try {
+      const now = new Date();
+      const dow = now.getDay();                       // 0=Sun
+      const daysToNextMon = ((8 - dow) % 7) || 7;     // next Monday, never today
+      const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToNextMon);
+      const ws = `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, '0')}-${String(mon.getDate()).padStart(2, '0')}`;
+      const w = await this._fetch(`/api/schedule/window?week_start=${ws}`);
+      if (w && w.open_now) {
+        this.nextWeekOpensText = 'Next week is posted.';
+      } else if (w && w.opens_at) {
+        const d = new Date(w.opens_at);
+        this.nextWeekOpensText = `Next week's schedule posts ${d.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })} at ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}.`;
+      }
+    } catch (err) {
+      console.warn('[my] schedule window lookup failed:', err);
+    }
+  }
+
   _isPlayerScheduleEvent(ev) {
     const kind = (ev.kind || '').toLowerCase();
     const category = (ev.category || '').toLowerCase();
@@ -479,7 +504,11 @@ class MyScreen extends Screen {
       .filter(e => {
         if (!e.starts_at) return false;
         const t = new Date(e.starts_at);
-        if (isNaN(t) || t > weekEnd || !allowedDays.has(t.getDay())) return false;
+        // Server-derived window (schedule_release_policies + early
+        // releases) wins; the local Sunday-8pm rule is only a fallback
+        // for an event that somehow arrived without one.
+        const winEnd = e.schedule_window_end ? new Date(e.schedule_window_end) : weekEnd;
+        if (isNaN(t) || t > winEnd || !allowedDays.has(t.getDay())) return false;
 
         // Drop the event from the board 30 minutes after it ends, so
         // yesterday's practice doesn't linger on "This Week" all week.
@@ -501,7 +530,7 @@ class MyScreen extends Screen {
           <div style="font-size:2rem; margin-bottom:8px;">📅</div>
           <div>Nothing on your calendar this week.</div>
           <div style="font-size:0.85rem; margin-top:6px; opacity:0.7;">
-            Next week's schedule shows up Sunday at 8pm.
+            ${this.escapeHtml(this.nextWeekOpensText || "Next week's schedule shows up Sunday at 8pm.")}
           </div>
         </div>`;
       return;

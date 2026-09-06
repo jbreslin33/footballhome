@@ -39,6 +39,7 @@
 #include "controllers/WomensRosterController.h"
 #include "controllers/PersonBillingController.h"
 #include "controllers/PayReminderLogController.h"
+#include "controllers/ScheduleReleaseController.h"
 #include "controllers/PaymentsController.h"
 #include "controllers/ChargeFlagsController.h"
 #include "controllers/AdminLaBackfillController.h"
@@ -98,6 +99,7 @@ private:
     std::shared_ptr<WomensRosterController> womens_roster_controller_;
     std::shared_ptr<PersonBillingController> person_billing_controller_;
     std::shared_ptr<PayReminderLogController> pay_reminder_log_controller_;
+    std::shared_ptr<ScheduleReleaseController> schedule_release_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
     std::shared_ptr<ChargeFlagsController> charge_flags_controller_;
     std::shared_ptr<AdminLaBackfillController> admin_la_backfill_controller_;
@@ -170,6 +172,7 @@ public:
         womens_roster_controller_ = std::make_shared<WomensRosterController>();
         person_billing_controller_ = std::make_shared<PersonBillingController>();
         pay_reminder_log_controller_ = std::make_shared<PayReminderLogController>();
+        schedule_release_controller_ = std::make_shared<ScheduleReleaseController>();
         payments_controller_ = std::make_shared<PaymentsController>();
         charge_flags_controller_ = std::make_shared<ChargeFlagsController>();
         admin_la_backfill_controller_ = std::make_shared<AdminLaBackfillController>();
@@ -447,6 +450,9 @@ private:
         // clicks fired from the Mens/Boys roster PAY buttons so the coach
         // can see "last contact + method" on the card).
         router_.useController("/api/pay-reminder-log", pay_reminder_log_controller_);
+        // Schedule release window (migration 334): when next week posts,
+        // early opens, standing rule. See ScheduleReleaseController.h.
+        router_.useController("/api/schedule", schedule_release_controller_);
         // Payments audit surface (Mens / Boys / Girls tabs on the
         // dedicated payments screen).
         router_.useController("/api/payments", payments_controller_);
