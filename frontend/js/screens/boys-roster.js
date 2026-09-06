@@ -252,6 +252,11 @@ class BoysRosterScreen extends RosterScreenBase {
     return BoysRosterScreen.DOCS_TEAM_RE.test(name);
   }
 
+  // Travel-docs upload form (birth certificate + headshot).  Single
+  // source of truth: the DOCS reminder below AND the conditional docs
+  // paragraph in the WELCOME email (owner 2026-09-06) both use it.
+  static DOCS_FORM_URL = 'https://forms.gle/n2bj8aHiTRqLs6cg9';
+
   static DOCS_PRESET = {
     key:     'docs',
     icon:    '📄',
@@ -607,11 +612,17 @@ class BoysRosterScreen extends RosterScreenBase {
     // RosterScreenBase.renderWelcomeButtons.  Recipient is the PARENT
     // (same person the sign-in link is minted for); the child is named
     // in the copy.  Amber while a welcome is owed (p.welcome.due).
+    // needsDocs: a player already sitting in a travel column gets one
+    // extra paragraph in the welcome asking for the birth certificate +
+    // headshot upload (owner 2026-09-06) — same rule as the 📄 DOCS
+    // button, so rec / in-house / Unassigned families never see it.
     const welcomeBtns = this.renderWelcomeButtons(p, {
       personId: p.parentPersonId || p.personId,
       playerPersonId: p.parentPersonId ? p.personId : null,
       phone: contactPhone,
       email: contactEmail,
+      needsDocs: BoysRosterScreen.columnNeedsDocs(col),
+      docsFormUrl: BoysRosterScreen.DOCS_FORM_URL,
     });
 
     let delinqBtns = '';

@@ -82,6 +82,14 @@ Response WelcomeController::handleCreate(const Request& request) {
     const long long playerPersonId = readInt(body, "player_person_id");
     const std::string channel      = lower(readStr(body, "channel"));
     const std::string contact      = readStr(body, "contact");
+    // Youth travel columns only (frontend decides via columnNeedsDocs):
+    // append the travel-documents ask so the coach can skip the separate
+    // DOCS reminder when the placement is already known.  The form URL
+    // travels with the request so the frontend's DOCS_FORM_URL stays the
+    // single source of truth.
+    const bool needsDocs = body.contains("needs_docs") && body["needs_docs"].is_boolean()
+                           && body["needs_docs"].get<bool>();
+    const std::string docsFormUrl = readStr(body, "docs_form_url");
     if (personId <= 0)                           return jsonError(HttpStatus::BAD_REQUEST, "person_id required");
     if (channel != "email" && channel != "sms") return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'email' or 'sms'");
     if (contact.empty())                         return jsonError(HttpStatus::BAD_REQUEST, "contact required");
@@ -139,15 +147,26 @@ Response WelcomeController::handleCreate(const Request& request) {
           << "  • Set default availability by day so the page fills itself in\n"
           << "  • Add it to your home screen — it works like an app\n\n"
           << "The link signs you in automatically and expires in 72 hours. "
-          << "If it has expired by the time you open it, just reply and I'll send a fresh one.\n\n"
-          << "Reply anytime with questions.\n\n"
+          << "If it has expired by the time you open it, just reply and I'll send a fresh one.\n\n";
+        const bool docsAsk = youth && needsDocs && !docsFormUrl.empty();
+        if (docsAsk) {
+            b << "One more thing: since " << childName << " is on a travel team, the Philadelphia "
+              << "Parks & Rec league needs a copy of " << childName << "'s birth certificate and a "
+              << "headshot. Please upload both here when you get a chance — travel spots are "
+              << "confirmed as forms come in:\n"
+              << docsFormUrl << "\n\n";
+        }
+        b << "Reply anytime with questions.\n\n"
           << signOff;
         const std::string bodyText = b.str();
 
-        const std::string smsBody =
+        std::string smsBody =
             "Hi " + firstName + " — welcome to Lighthouse 1893! Practices, games and pickups are "
             "posted at footballhome.org. Tap to see " + whose + " schedule and set availability "
             "(no password needed): " + minted.url;
+        if (docsAsk) {
+            smsBody += " Also, for " + childName + "'s travel spot please upload a birth certificate + headshot: " + docsFormUrl;
+        }
 
         model_->record(personId, youth ? playerPersonId : 0, channel, contact, adminUserId);
 

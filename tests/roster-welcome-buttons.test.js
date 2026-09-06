@@ -61,3 +61,14 @@ test('last-send pill: sms channel and never-sent', () => {
   assert.equal(RosterScreenBase.renderWelcomeLastPill({ due: true }), '');
   assert.match(RosterScreenBase.renderWelcomeLastPill({ lastSentAt: '2026-09-06T18:30:00.000Z', lastChannel: 'sms' }), /👋 💬 Sep 6/);
 });
+
+test('travel-column youth cards carry the docs ask; others do not', () => {
+  const { screen } = loadBase();
+  const p = { personId: 9, firstName: 'Jaquil', welcome: { due: true } };
+  const withDocs = screen.renderWelcomeButtons(p, { personId: 7, playerPersonId: 9, email: 'a@b.c', needsDocs: true, docsFormUrl: 'https://forms.gle/x' });
+  assert.match(withDocs, /data-needs-docs="1"/);
+  assert.match(withDocs, /data-docs-form-url="https:\/\/forms\.gle\/x"/);
+  const without = screen.renderWelcomeButtons(p, { personId: 7, playerPersonId: 9, email: 'a@b.c' });
+  assert.match(without, /data-needs-docs=""/);
+  assert.match(without, /data-docs-form-url=""/);
+});
