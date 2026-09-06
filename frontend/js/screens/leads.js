@@ -90,6 +90,14 @@ class LeadsBoardModel {
 
 // LeadsScreen — View Meta lead gen form submissions under Club Admin
 class LeadsScreen extends Screen {
+  // Column label of the club-wide lead form (see formLabel / leadFunnelLabel).
+  static CLUB_WIDE_LABEL = 'Club-Wide (All Programs)';
+  // What a register link renders as when NO membership URL can be
+  // resolved for a funnel.  Deliberately not a URL: the old fallback,
+  // the bare LeagueApps programme list, looked like a working link and
+  // sent parents to the Pickup checkout.
+  static MISSING_REGISTRATION_LINK = '⚠️ NO REGISTRATION LINK — set this lead\'s program before sending';
+
   render() {
     const div = document.createElement('div');
     div.className = 'screen';
@@ -781,6 +789,55 @@ class LeadsScreen extends Screen {
     return null;
   }
 
+  // Funnel label for ONE lead — the label every message template and
+  // snippet must be built from.  For program-specific ads it is simply
+  // the form's label.  The club-wide ad (formLabel '1813864682814937',
+  // created 2026-08-30) pools Men / Women / Boys / Girls into ONE form,
+  // so its column label 'Club-Wide (All Programs)' says nothing about
+  // which club the lead wants; that lives in the lead's
+  // 'program_interest' answer.  Building templates from the column
+  // label instead of this was the 2026-09-06 bug: funnelContext() had
+  // no category for 'Club-Wide', fell back to the bare LeagueApps
+  // programme list, and parents registered for Pickup instead of
+  // Membership.
+  //
+  // "Boys & Girls (more than one child)" maps to the legacy combined
+  // youth label, whose close/register snippets already carry BOTH the
+  // boys and girls membership links.
+  leadFunnelLabel(lead, columnLabel = null) {
+    const label = columnLabel || this.formLabel(lead && lead.form_id) || '';
+    if (label !== LeadsScreen.CLUB_WIDE_LABEL) return label;
+    return this.programInterestLabel(lead) || label;
+  }
+
+  programInterestLabel(lead) {
+    const raw = this.extractFieldMap(lead && lead.raw_fields).program_interest;
+    if (!raw) return null;
+    // Meta may return the option key ('boys_girls') or its display value
+    // ('Boys & Girls (more than one child)') — keyword match reads both.
+    const v = raw.toLowerCase();
+    if (v.includes('boys') && v.includes('girls')) return 'Youth (Grades 1–6)';
+    if (v.includes('boys'))  return 'Boys Club (Grades 1–6)';
+    if (v.includes('girls')) return 'Girls Club (Grades 1–6)';
+    if (v.includes('women')) return "Women's Club";
+    if (v.includes('men'))   return "Men's Club";
+    return null;
+  }
+
+  // Registration-link category ('mens'/'womens'/'boys'/'girls') inferred
+  // from any funnel label by keyword.  Safety net under funnelContext's
+  // exact FUNNEL_CATEGORY map so a newly added funnel ("Tri County
+  // Women", "U23 Men + PR", …) resolves to the right membership page
+  // instead of no page at all.  Order matters: "Women" contains "men".
+  static categoryFromLabel(label) {
+    const v = String(label || '').toLowerCase();
+    if (/women/.test(v))          return 'womens';
+    if (/\bmen\b|mens|men's/.test(v)) return 'mens';
+    if (/girls/.test(v))          return 'girls';
+    if (/boys|youth/.test(v))     return 'boys';
+    return null;
+  }
+
   // ── Per-column ad details ───────────────────────────────────────────
   // All ad-specific info — targeting (status/geo/audience/regions),
   // Meta preview buttons, per-funnel message templates, and any
@@ -1137,7 +1194,7 @@ class LeadsScreen extends Screen {
   renderLead(lead, columnLabel = null) {
     // Funnel + capability flags.  Funnel label drives the SMS / email
     // body templates; isYouth controls vCard-pair generation.
-    const label    = columnLabel || this.formLabel(lead.form_id) || '';
+    const label    = this.leadFunnelLabel(lead, columnLabel);
     const hasEmail = !!lead.email;
     const hasPhone = !!lead.phone;
     const mailHref         = hasEmail ? this.buildMailHref(lead, label) : null;
@@ -1496,15 +1553,28 @@ class LeadsScreen extends Screen {
     // before rendering, so reaching this branch means the row is actually
     // absent from leagueapps_programs (or the fetch failed), and that is
     // worth shouting about in the console the coach can check.
+    //
+    // 2026-09-06: the bare programme-list URL is GONE as a fallback. It
+    // was still reachable for any funnel label outside FUNNEL_CATEGORY
+    // — the club-wide ad's 'Club-Wide (All Programs)' column (form
+    // created 2026-08-30) and the 'Other' bucket — and parents who got
+    // it registered for Pickup instead of Membership. A label the exact
+    // map doesn't know is now classified by keyword (Women / Men / Girls
+    // / Boys) via categoryFromLabel(); if even that fails, the "link"
+    // is a visible placeholder the coach cannot mistake for a working
+    // URL. Per-lead resolution for the club-wide form happens upstream
+    // in leadFunnelLabel(), which turns the lead's program_interest
+    // answer into a real funnel label before it ever reaches here.
     const registerLink = (label) => {
-      const key = FUNNEL_CATEGORY[label];
+      const key = FUNNEL_CATEGORY[label] || LeadsScreen.categoryFromLabel(label);
       const url = key ? REGISTER_LINKS[key] : '';
       if (!url) {
         console.error(
           `[leads] No registration URL for funnel "${label}" (category "${key || 'unmapped'}"). ` +
-          'Falling back to the club programme list, which offers Pickup alongside Membership — ' +
-          'check leagueapps_programs.registration_url for that category.');
-        return 'https://lighthouse1893.leagueapps.com';
+          'Refusing to fall back to the club programme list (it offers Pickup alongside ' +
+          'Membership) — check leagueapps_programs.registration_url for that category, ' +
+          'or set the program on this lead.');
+        return LeadsScreen.MISSING_REGISTRATION_LINK;
       }
       return url;
     };
@@ -2922,7 +2992,7 @@ class LeadsScreen extends Screen {
   }
 
   renderEditModalBody(lead) {
-    const label       = this.formLabel(lead.form_id) || '';
+    const label       = this.leadFunnelLabel(lead);
     const override    = lead.status_override || null;
     const convertedAt = lead.converted_at || null;
     const deadAt      = lead.dead_at || null;
@@ -3383,7 +3453,7 @@ class LeadsScreen extends Screen {
     const template = btn.getAttribute('data-template') || 'first-touch';
     try {
       const lead       = (this._leads || []).find(l => String(l.id) === String(leadId));
-      const label      = lead ? this.formLabel(lead.form_id) : '';
+      const label      = lead ? this.leadFunnelLabel(lead) : '';
       const snippetId  = btn.getAttribute('data-snippet');
       let   body;
       if (channel === 'call') {

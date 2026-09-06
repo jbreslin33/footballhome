@@ -308,12 +308,80 @@ test('no funnel message ever sends a lead to the programme list', async () => {
   }
 });
 
-test('an unmapped funnel is loud about it rather than quietly degrading', async () => {
+test('an unmapped funnel is loud about it and never yields the programme list', async () => {
   const { screen, errors } = await linkScreen();
 
   const { link } = screen.funnelContext('Some Funnel We Never Mapped');
 
-  assert.equal(link, 'https://lighthouse1893.leagueapps.com');
+  // 2026-09-06: the bare club URL is no longer a fallback at all — it
+  // sent club-wide-ad parents to the Pickup checkout. The "link" is a
+  // placeholder no coach can mistake for a working URL.
+  assert.equal(link, screen.constructor.MISSING_REGISTRATION_LINK);
+  assert.doesNotMatch(link, /leagueapps\.com/);
   assert.ok(errors.some(e => /No registration URL for funnel/.test(e)),
     'expected a console.error naming the unmapped funnel');
+});
+
+test('a funnel outside the exact map still resolves by keyword', async () => {
+  const { screen } = await linkScreen();
+  assert.equal(screen.funnelContext('U23 Men + PR').link,        CATEGORY_URLS.mens);
+  assert.equal(screen.funnelContext('Tri County Women 2027').link, CATEGORY_URLS.womens);
+  assert.equal(screen.funnelContext('Girls Club (U9/U10)').link,  CATEGORY_URLS.girls);
+  assert.equal(screen.funnelContext('Boys Club (K-12) fall').link, CATEGORY_URLS.boys);
+});
+
+// The club-wide ad (form 1813864682814937, 2026-08-30) pools all four
+// programs into one form; the program lives in the lead's
+// program_interest answer. Every template for such a lead must be built
+// from THAT, not from the 'Club-Wide (All Programs)' column label — the
+// column label carried no category, fell through to the programme list,
+// and parents registered for Pickup instead of Membership (2026-09-06).
+test('club-wide leads take their funnel from program_interest', async () => {
+  const { screen } = await linkScreen();
+  const CLUB_WIDE = screen.constructor.CLUB_WIDE_LABEL;
+  const lead = (answer) => ({
+    id: 1, form_id: '1813864682814937', email: 'p@example.com',
+    raw_fields: [{ name: 'program_interest', values: [answer] }],
+  });
+
+  const CASES = [
+    ['boys',                               'Boys Club (Grades 1–6)'],
+    ['Boys (grades 1–6)',                  'Boys Club (Grades 1–6)'],
+    ['girls',                              'Girls Club (Grades 1–6)'],
+    ['men',                                "Men's Club"],
+    ["Men's team (18+)",                   "Men's Club"],
+    ['women',                              "Women's Club"],
+    ["Women's team (18+)",                 "Women's Club"],
+    ['boys_girls',                         'Youth (Grades 1–6)'],
+    ['Boys & Girls (more than one child)', 'Youth (Grades 1–6)'],
+  ];
+  for (const [answer, expected] of CASES) {
+    assert.equal(screen.leadFunnelLabel(lead(answer)),            expected, `answer ${answer}`);
+    assert.equal(screen.leadFunnelLabel(lead(answer), CLUB_WIDE), expected, `answer ${answer} (column)`);
+  }
+  // Program-specific forms ignore program_interest entirely.
+  assert.equal(screen.leadFunnelLabel({ form_id: '821845431008120', raw_fields: [] }), "Men's Club");
+  // Club-wide lead with no answer keeps the column label (and the
+  // placeholder link) rather than guessing a club.
+  assert.equal(screen.leadFunnelLabel(lead(''), CLUB_WIDE), CLUB_WIDE);
+});
+
+test('a club-wide parent close email carries the boys membership link, not the programme list', async () => {
+  const { screen } = await linkScreen();
+  const lead = {
+    id: 7, form_id: '1813864682814937', email: 'p@example.com', first_name: 'Ana',
+    raw_fields: [{ name: 'program_interest', values: ['Boys (grades 1–6)'] }],
+  };
+  const label = screen.leadFunnelLabel(lead, screen.constructor.CLUB_WIDE_LABEL);
+  const close = screen.messageSnippets(label).find(s => s.id === 'close');
+  assert.ok(close);
+  assert.match(close.body, new RegExp(CATEGORY_URLS.boys.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(close.body, /leagueapps\.com(\s|$)/);
+  assert.doesNotMatch(close.body, /pickup/i);
+  assert.match(close.body, /your son/);
+
+  // And the column-level preview for the pooled form must not hand out
+  // the programme list either.
+  const pooled = screen.funnelContext(screen.constructor.CLUB_WIDE_LABEL).link;
+  assert.doesNotMatch(pooled, /leagueapps\.com/);
 });
