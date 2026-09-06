@@ -280,7 +280,8 @@ class RoleSelectionScreen extends Screen {
   
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
-    this.navigation.context.role = role;
+    // Calendar is a screen, not a role — don't let it show as one in the header.
+    if (role !== 'calendar') this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection

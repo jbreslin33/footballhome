@@ -884,14 +884,36 @@ class CalendarScreen extends Screen {
     };
   }
 
+  // Card title. The raw Google title is admin-only text (it is whatever
+  // ops typed — "Soccer Games APSL"); now that every role can open this
+  // screen, a classified event is titled from its tags: team + opponent
+  // for a match, "<Category> <Kind>" otherwise. The raw title survives
+  // only for unclassified events, which only admins can see anyway.
   _soccerTitle(ev) {
-    const raw = (ev.summary || '').trim();
-    if (!raw) return '(untitled soccer event)';
+    const raw   = (ev.summary || '').trim();
     const teams = Array.isArray(ev.teams) ? ev.teams : [];
-    if (ev.kind === 'match' && teams.length === 1) {
+    const kind  = ev.kind || 'other';
+    const cat   = this._titleCase((ev.category || '').replaceAll('_', ' '));
+    if (kind === 'match') {
       const opponent = ev.opponent || this._inferOpponent(ev);
-      if (opponent) return `${teams[0].name} vs ${opponent}`;
+      if (opponent) {
+        if (teams.length === 1) return `${teams[0].name} vs ${opponent}`;
+        // Several squads share the game (APSL + Liga 1). Lead with the
+        // league only when one of the tagged teams is named for it
+        // ("APSL vs Feels Good FC"); otherwise the category ("Mens vs
+        // Sierra Stars") — a league name alone reads as the opponent's.
+        const lg = (ev.league || '').trim();
+        const leagueIsTeam = lg && teams.some(t => (t.name || '').toLowerCase().includes(lg.toLowerCase()));
+        const lead = (leagueIsTeam ? lg : '') || cat || lg || (teams[0] && teams[0].name) || 'Match';
+        return `${lead} vs ${opponent}`;
+      }
+      if (teams.length) return `${teams.map(t => t.name).join(' + ')} match`;
     }
+    if (kind !== 'other' && (teams.length || cat)) {
+      const label = `${cat ? cat + ' ' : ''}${this._titleCase(kind)}`;
+      return teams.length === 1 ? `${label} · ${teams[0].name}` : label;
+    }
+    if (!raw) return '(untitled soccer event)';
     return raw;
   }
 
@@ -914,7 +936,9 @@ class CalendarScreen extends Screen {
   _visibleWeekDays() {
     const anchor = this.anchorDate;
     const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-    start.setDate(start.getDate() - start.getDay());
+    // Monday-based week (owner 2026-09-05): matches My Schedule and the
+    // release model, so Sunday's games sit in the week that posts them.
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
     return Array.from({ length: 7 }, (_, i) => {
       const day = new Date(start);
       day.setDate(start.getDate() + i);
@@ -953,11 +977,11 @@ class CalendarScreen extends Screen {
     return role === 'club' || role === 'super' || role === 'system';
   }
 
-  // Monday inside the displayed Sun..Sat week — the release model keys
-  // weeks on Monday (Mon..Sun, same as My Schedule).
+  // First day of the displayed Mon..Sun week — the release model keys
+  // weeks on Monday, same as My Schedule.
   _displayedWeekStartKey() {
     const days = this._visibleWeekDays();
-    return this._dateKey(days[1]);
+    return this._dateKey(days[0]);
   }
 
   async _loadReleaseStrip() {
