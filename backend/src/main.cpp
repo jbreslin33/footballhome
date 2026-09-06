@@ -55,6 +55,7 @@
 #include "controllers/PushController.h"
 #include "controllers/MessageTemplateController.h"
 #include "controllers/CalendarController.h"
+#include "controllers/ReportsController.h"
 #include "controllers/SimLobbyController.h"
 #include "controllers/SimDebugController.h"
 #include "controllers/TrailTestController.h"
@@ -115,6 +116,7 @@ private:
     std::shared_ptr<PushController> push_controller_;
     std::shared_ptr<MessageTemplateController> message_template_controller_;
     std::shared_ptr<CalendarController> calendar_controller_;
+    std::shared_ptr<ReportsController> reports_controller_;
     std::shared_ptr<SimLobbyController> sim_lobby_controller_;
     std::shared_ptr<SimDebugController> sim_debug_controller_;
     std::shared_ptr<TrailTestController> trail_test_controller_;
@@ -188,6 +190,7 @@ public:
         push_controller_ = std::make_shared<PushController>();
         message_template_controller_ = std::make_shared<MessageTemplateController>();
         calendar_controller_ = std::make_shared<CalendarController>();
+        reports_controller_ = std::make_shared<ReportsController>();
         sim_lobby_controller_ = std::make_shared<SimLobbyController>();
         sim_debug_controller_ = std::make_shared<SimDebugController>();
         trail_test_controller_ = std::make_shared<TrailTestController>();
@@ -496,6 +499,8 @@ private:
         // scripts/gcal-classify.js on the 5-min systemd timer.
         //   GET /api/calendar/upcoming?days=<int>
         router_.useController("/api", calendar_controller_);
+        // Attendance / RSVP report (#reports) — see ReportsController.h.
+        router_.useController("/api/reports", reports_controller_);
 
         // Slice 12 — fh-sim lobby + JWT bridge.
         //   GET  /api/sim/matches

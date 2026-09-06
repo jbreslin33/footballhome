@@ -84,6 +84,7 @@ set(SOURCES
     src/controllers/SystemAdminController.cpp
     src/controllers/TacticalBoardController.cpp
     src/controllers/StatsController.cpp
+    src/controllers/ReportsController.cpp
     src/controllers/ClubController.cpp
     src/controllers/ClubLaPoolController.cpp
     src/controllers/YouthRosterController.cpp

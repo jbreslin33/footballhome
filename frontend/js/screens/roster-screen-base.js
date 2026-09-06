@@ -207,10 +207,10 @@ class RosterScreenBase extends Screen {
   //     (migration 279/283/293), originally the game-lineup screen's
   //     "Elig: Start/Bench" toggle before it moved to the Teams page.
   //   • roster_status_id — official league roster submission status
-  //     (migration 294/295/319/336): Not on Roster / Needs ITC /
+  //     (migration 294/295/319/336/337): Not on Roster / Needs ITC /
   //     Submitted ITC / Needs Transfer / Awaiting Transfer /
   //     Awaiting Roster Spot / Awaiting Approval / On Roster /
-  //     Suspended. The middle codes are the pre-submission wait — ITC
+  //     Possible Drop / Suspended. The middle codes are the pre-submission wait — ITC
   //     for a player coming from a foreign federation, transfer for one
   //     still registered to another US club, roster spot when the
   //     official roster is full — all still RSVP-eligible.
@@ -243,12 +243,14 @@ class RosterScreenBase extends Screen {
   }
 
   // Roster-status colour (owner 2026-09-05): the Teams board is otherwise
-  // colour-neutral apart from gender and dues, so these three states are
-  // the only thing that pops — green = On Roster, yellow = the two
-  // "league is sitting on it" waits. Everything else stays neutral.
+  // colour-neutral apart from gender and dues, so these states are the
+  // only thing that pops — green = On Roster, yellow = the two "league
+  // is sitting on it" waits, orange = Possible Drop (on the roster, but
+  // flagged; migration 337). Everything else stays neutral.
   static get ROSTER_STATUS_COLORS() {
     return {
       on_roster:         { bg: '#16a34a', fg: '#ffffff', border: '#16a34a' },
+      possible_drop:     { bg: '#f97316', fg: '#431407', border: '#f97316' },
       awaiting_approval: { bg: '#eab308', fg: '#422006', border: '#eab308' },
       awaiting_transfer: { bg: '#eab308', fg: '#422006', border: '#eab308' },
     };
@@ -271,6 +273,15 @@ class RosterScreenBase extends Screen {
     select.style.borderColor = c.border;
   }
 
+  // Which status codes count toward the "✓ N on roster" tally. Possible
+  // Drop (migration 337) is still on the official roster — the club is
+  // only thinking about dropping him — so he counts until he's actually
+  // moved off. Mirrors roster_statuses.show_in_official_roster minus
+  // Suspended, which is on the roster but not playing.
+  static countsAsOnRoster(status) {
+    return status === 'on_roster' || status === 'possible_drop';
+  }
+
   // "✓ N on roster" tally for a team column header, from the same
   // roster_status the per-card dropdown edits. Unassigned has no
   // team_persons rows, so no tally there. Carries data-on-roster-tally
@@ -282,7 +293,7 @@ class RosterScreenBase extends Screen {
   // with no format on file just show the tally line.
   renderOnRosterTally(col, players) {
     if (!col || !col.teamId) return '';
-    const n = (players || []).filter(p => p && p.rosterStatus === 'on_roster').length;
+    const n = (players || []).filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)).length;
     const fieldSize = Number(col.fieldSize) || 0;
     return `<span data-on-roster-tally="${col.teamId}" data-field-size="${fieldSize}"
                   title="Players whose league roster status is On Roster"
@@ -308,7 +319,7 @@ class RosterScreenBase extends Screen {
     const tally = this.element.querySelector(`[data-on-roster-tally="${teamId}"]`);
     if (!tally) return;
     const selects = this.element.querySelectorAll(`.mr-status-select[data-team-id="${teamId}"]`);
-    const n = Array.from(selects).filter(s => s.value === 'on_roster').length;
+    const n = Array.from(selects).filter(s => RosterScreenBase.countsAsOnRoster(s.value)).length;
     tally.innerHTML = this.onRosterTallyHtml(n, Number(tally.dataset.fieldSize) || 0);
   }
 
@@ -326,6 +337,7 @@ class RosterScreenBase extends Screen {
          <option value="awaiting_roster_spot" ${player.rosterStatus === 'awaiting_roster_spot' ? 'selected' : ''}>Awaiting Roster Spot</option>
          <option value="awaiting_approval" ${player.rosterStatus === 'awaiting_approval' ? 'selected' : ''}>Awaiting Approval</option>
          <option value="on_roster"         ${player.rosterStatus === 'on_roster'         ? 'selected' : ''}>On Roster</option>
+         <option value="possible_drop"     ${player.rosterStatus === 'possible_drop'     ? 'selected' : ''}>Possible Drop</option>
          <option value="suspended"         ${player.rosterStatus === 'suspended'         ? 'selected' : ''}>Suspended</option>
        </select>`;
   }
