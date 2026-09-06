@@ -919,7 +919,7 @@ class RosterScreenBase extends Screen {
   // One ✉ WELCOME + one 💬 WELCOME button per card, always rendered
   // when the card has a contact.  The backend decides whether a welcome
   // is OWED (p.welcome.due — registered on/after the policy cutoff and
-  // never welcomed) and the buttons go amber so the card reads as a
+  // never welcomed) and the buttons go fuchsia (owner 2026-09-06: "so it stands out") so the card reads as a
   // to-do; once sent they drop back to slate and a "👋 ✉ Sep 6" pill
   // shows the last send + channel.  Sends are recorded per RECIPIENT
   // (person_welcomes) so welcoming a family through one child covers
@@ -939,7 +939,7 @@ class RosterScreenBase extends Screen {
     const w    = (p && p.welcome) || {};
     const due  = !!w.due;
     const who  = (p && p.firstName) ? ` for ${this.escape(p.firstName)}` : '';
-    const bg   = due ? '#b45309' : '#334155';
+    const bg   = due ? '#c026d3' : '#334155';
     const btnBase = `padding:0 4px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:3px; background:${bg}; color:#fff; appearance:none; -webkit-appearance:none; min-height:0; margin:0;`;
     const btn = (channel, to, icon, title) => `
       <button type="button" class="rb-welcome"

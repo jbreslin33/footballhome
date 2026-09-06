@@ -24,7 +24,7 @@ function loadBase() {
   return { RosterScreenBase: ctx.RosterScreenBase, screen };
 }
 
-test('a welcome that is owed renders amber buttons and no pill', () => {
+test('a welcome that is owed renders fuchsia buttons and no pill', () => {
   const { screen } = loadBase();
   const p = { personId: 7, firstName: 'Ana', welcome: { due: true, lastSentAt: null } };
   const html = screen.renderWelcomeButtons(p, { personId: 7, playerPersonId: 9, phone: '+12155550100', email: 'ana@example.com' });
@@ -32,7 +32,7 @@ test('a welcome that is owed renders amber buttons and no pill', () => {
   assert.match(html, /data-welcome="email"/);
   assert.match(html, /data-person-id="7"/);
   assert.match(html, /data-player-person-id="9"/);
-  assert.match(html, /background:#b45309/, 'owed welcome is amber');
+  assert.match(html, /background:#c026d3/, 'owed welcome is fuchsia');
   assert.match(html, /welcome not sent yet/);
   assert.doesNotMatch(html, /👋 /, 'no last-sent pill before a send');
 });
@@ -44,7 +44,7 @@ test('a sent welcome renders slate buttons plus the last-send pill, and stays cl
   assert.match(html, /data-welcome="email"/, 'button still offered after a send');
   assert.doesNotMatch(html, /data-welcome="sms"/, 'no phone → no SMS button');
   assert.match(html, /background:#334155/);
-  assert.doesNotMatch(html, /#b45309/);
+  assert.doesNotMatch(html, /#c026d3/);
   assert.match(html, /👋 ✉ Sep 6/);
   assert.match(html, /Welcome emailed .* to ana@example\.com/);
 });
