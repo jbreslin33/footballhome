@@ -144,20 +144,23 @@ const HALFWAY_ROW = Object.freeze([]);
 // images on that screen its confusing". The two that have no live
 // graphic start open, since otherwise the pill looks empty.
 //
-// NOTE: 'pre_match_announcement' is the DB name for what the club calls
-// Starters & Bench (social_post_types row 1, renamed in a later slice).
-// Keep that wire value in this table only, never inline it, so the
-// rename stays a one-line change here.
+// NOTE: 'starters_bench' is social_post_types row 1 (seeded in 010 as
+// pre_match_announcement, renamed in migration 343). Keep the wire
+// value in this table only, never inline it.
+// Wording comes from social_post_types.display_name via
+// GET /api/social/post-types (slice E, 2026-09-07); `title` here is only
+// the fallback when that fetch fails. Icon, accent and the Instagram
+// section's default open/closed state are presentation and stay here.
 const POST_PILLS = [
-  { key: 'game_day',               title: 'Game Announcement', label: '⚽ Game<br>Announcement', accent: '#f59e0b', social: 'open'   },
-  { key: 'lineup',                 title: '20-Man Squad',      label: '📋 20-Man<br>Squad',      accent: '#8b5cf6', social: 'closed' },
-  { key: 'pre_match_announcement', title: 'Starters & Bench',  label: '⚔️ Starters<br>& Bench',  accent: '#3b82f6', social: 'closed' },
-  { key: 'post_game',              title: 'Match Result',      label: '🏆 Match<br>Result',      accent: '#22c55e', social: 'open'   },
+  { key: 'game_day',       icon: '⚽', title: 'Game Announcement', accent: '#f59e0b', social: 'open'   },
+  { key: 'lineup',         icon: '📋', title: '20-Man Squad',      accent: '#8b5cf6', social: 'closed' },
+  { key: 'starters_bench', icon: '⚔️', title: 'Starters & Bench',  accent: '#3b82f6', social: 'closed' },
+  { key: 'post_game',      icon: '🏆', title: 'Match Result',      accent: '#22c55e', social: 'open'   },
 ];
 
 // Starters & Bench is the landing pill: it's the one a coach actually
 // works in, and it's the team sheet a player opens the page to read.
-const DEFAULT_PILL = 'pre_match_announcement';
+const DEFAULT_PILL = 'starters_bench';
 
 class GameCenterScreen extends Screen {
   constructor(navigation, auth) {
@@ -209,7 +212,7 @@ class GameCenterScreen extends Screen {
     // Which of the four game moments is on screen (POST_PILLS above).
     // Supersedes the old two-way subView toggle ('lineup' | 'gameday'),
     // which was itself already collapsing two screens into one — those
-    // two views are now the 'pre_match_announcement' and 'lineup' pills.
+    // two views are now the 'starters_bench' and 'lineup' pills.
     // Visible to everyone (coach and player), independent of the
     // coach-only viewMode toggle above.
     this.pill = DEFAULT_PILL;
@@ -218,6 +221,8 @@ class GameCenterScreen extends Screen {
     // Dropped on every re-render so a stale card never sits on a
     // detached node (this screen re-renders on every zone change).
     this.socialCard = null;
+    // { post type name → display_name } from /api/social/post-types.
+    this.postTypeNames = {};
     // `${pill}:${open|closed}` of whatever the Instagram section is
     // currently showing — see _renderSocial for why it matters.
     this._socialMountedFor = null;
@@ -710,6 +715,19 @@ class GameCenterScreen extends Screen {
     });
   }
 
+  // Pill wording: social_post_types.display_name when loaded, else the
+  // JS fallback title, else the raw key.
+  _pillTitle(key) {
+    const meta = POST_PILLS.find(p => p.key === key);
+    return (this.postTypeNames && this.postTypeNames[key]) || (meta && meta.title) || key;
+  }
+
+  // Two-line pill button: icon, then the title broken at its first
+  // space ("Game<br>Announcement") so the strip reads as one row.
+  _pillLabel(p) {
+    return `${p.icon} ${this.escapeHtml(this._pillTitle(p.key)).replace(' ', '<br>')}`;
+  }
+
   async _bootstrap() {
     const sub = this.find('#gl-subtitle');
     if (!this.matchId) {
@@ -721,11 +739,17 @@ class GameCenterScreen extends Screen {
     if (sub) sub.textContent = [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
 
     try {
-      const [lineupRes, positionsRes, matchRes] = await Promise.all([
+      const [lineupRes, positionsRes, matchRes, postTypesRes] = await Promise.all([
         this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`),
         this.auth.fetch('/api/eligibility/positions'),
         this.auth.fetch(`/api/matches/${this.matchId}`),
+        this.auth.fetch('/api/social/post-types').catch(() => null),
       ]);
+      const postTypesData = postTypesRes ? await postTypesRes.json().catch(() => null) : null;
+      this.postTypeNames = {};
+      for (const t of ((postTypesData && postTypesData.success && postTypesData.data) || [])) {
+        if (t && t.name) this.postTypeNames[t.name] = t.display_name || '';
+      }
       const lineupData = await lineupRes.json();
       if (!lineupData.success) throw new Error(lineupData.message || 'Failed to load lineup');
       const positionsData = await positionsRes.json().catch(() => null);
@@ -1029,14 +1053,14 @@ class GameCenterScreen extends Screen {
           return `<button type="button" data-game-pill="${p.key}"
             class="btn ${active ? 'btn-primary' : 'btn-secondary'}"
             style="flex:1 1 0; min-width:104px; font-size:0.72rem; line-height:1.25; padding:6px 8px; white-space:nowrap;
-                   ${active ? `border-bottom:3px solid ${p.accent};` : ''}">${p.label}</button>`;
+                   ${active ? `border-bottom:3px solid ${p.accent};` : ''}">${this._pillLabel(p)}</button>`;
         }).join('')}
       </div>`;
 
     // Coach ↔ Player preview only means something on the two pills that
     // render a team sheet; on Game Announcement and Match Result there's
     // no coach-only content for it to hide.
-    const toggleHtml = (this.pill === 'lineup' || this.pill === 'pre_match_announcement') ? viewToggleHtml : '';
+    const toggleHtml = (this.pill === 'lineup' || this.pill === 'starters_bench') ? viewToggleHtml : '';
 
     // One assignment point for every pill (below), so the Instagram
     // section and the card mount are wired in exactly one place instead
@@ -1612,12 +1636,11 @@ class GameCenterScreen extends Screen {
     }
     this._socialMountedFor = key;
 
-    const meta = POST_PILLS.find(p => p.key === this.pill);
     host.innerHTML = `
       <div style="margin-top: var(--space-4); border-top:1px solid var(--border-color); padding-top:10px;">
         <button type="button" id="gc-social-toggle" class="btn btn-secondary"
                 style="width:100%; text-align:left; font-size:0.78rem; padding:6px 10px;">
-          ${open ? '▾' : '▸'} 📸 Instagram — ${this.escapeHtml(meta ? meta.title : this.pill)}
+          ${open ? '▾' : '▸'} 📸 Instagram — ${this.escapeHtml(this._pillTitle(this.pill))}
         </button>
         <div id="gc-social-mount" style="margin-top:10px;"></div>
       </div>`;

@@ -171,7 +171,7 @@ class MatchSocialScreen extends Screen {
       // They used to scatter across match-list / game-day-roster /
       // game-lineup / match-form, which is the split Game Center closed.
       const typeConfig = {
-        pre_match_announcement: { icon: '⚔️', color: '#3b82f6', nav: 'game-center', label: 'Starters & Bench' },
+        starters_bench: { icon: '⚔️', color: '#3b82f6', nav: 'game-center', label: 'Starters & Bench' },
         game_day:               { icon: '⚽', color: '#f59e0b', nav: 'game-center', label: 'Game Announcement' },
         lineup:                 { icon: '📋', color: '#8b5cf6', nav: 'game-center', label: '20-Man Squad' },
         post_game:              { icon: '🏆', color: '#22c55e', nav: 'game-center', label: 'Match Result' }

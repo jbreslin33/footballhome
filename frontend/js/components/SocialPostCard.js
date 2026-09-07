@@ -260,7 +260,10 @@ class SocialPostCard {
       }
       if (typesData.success) {
         const pt = (typesData.data || []).find(t => t.name === this.postTypeName);
-        if (pt) this.postTypeId = pt.id;
+        if (pt) {
+          this.postTypeId    = pt.id;
+          this.postTypeLabel = pt.display_name || '';
+        }
       }
       this.matchStats = (statsData && statsData.success) ? (statsData.data || []) : [];
 
@@ -419,7 +422,7 @@ class SocialPostCard {
     const leagueLine = league ? `\n${league} ⚽` : '';
 
     switch (this.postTypeName) {
-      case 'pre_match_announcement':
+      case 'starters_bench':
         return `⚔️ STARTERS & BENCH\n\n${homeName} vs ${awayName}${leagueLine}\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893${leagueTag ? ' ' + leagueTag : ''} #PhillySoccer #StartingXI`;
       case 'game_day': {
         const gameDayLabel = this.getGameDayLabel(rawDate);
@@ -483,19 +486,21 @@ class SocialPostCard {
     const isPosted = p && p.status === 'posted';
     const isScheduled = p && p.status === 'scheduled';
 
-    const labels = {
-      pre_match_announcement: '⚔️ Starters & Bench',
-      game_day: '⚽ Game Announcement',
-      lineup: '📋 20-Man Squad',
-      post_game: '🏆 Match Result'
+    // Icon and accent are presentation and stay here; the wording is
+    // social_post_types.display_name, fetched alongside the post in init().
+    const icons = {
+      starters_bench: '⚔️',
+      game_day: '⚽',
+      lineup: '📋',
+      post_game: '🏆'
     };
     const accentColors = {
-      pre_match_announcement: '#3b82f6',
+      starters_bench: '#3b82f6',
       game_day: '#f59e0b',
       lineup: '#8b5cf6',
       post_game: '#22c55e'
     };
-    const label = labels[this.postTypeName] || this.postTypeName;
+    const label = `${icons[this.postTypeName] || '📱'} ${this.postTypeLabel || this.postTypeName}`;
     const accent = accentColors[this.postTypeName] || '#6b7280';
 
     // Caption for textarea
@@ -797,7 +802,7 @@ class SocialPostCard {
         leagueBadgeHtml = this.buildLeagueBadge(league, leagueLogoSrc, true);
         rosterHtml = this.buildImageRoster();
         break;
-      case 'pre_match_announcement':
+      case 'starters_bench':
         headerText = 'STARTERS & BENCH';
         middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
         leagueBadgeHtml = this.buildLeagueBadge(league, leagueLogoSrc, true);

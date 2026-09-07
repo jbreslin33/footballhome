@@ -145,7 +145,7 @@ function mountScreen({ isCoach, role }) {
   return { screen, sandbox, calls };
 }
 
-const PILLS = ['game_day', 'lineup', 'pre_match_announcement', 'post_game'];
+const PILLS = ['game_day', 'lineup', 'starters_bench', 'post_game'];
 // The two pills with no live in-page graphic of their own open their
 // Instagram section by default; the two that already draw one keep it
 // closed so only one image is on screen at a time.
@@ -183,8 +183,8 @@ test('each pill publishes as its own post type, for this match and team', () => 
 
 test('the post card is fed from the screen\'s own live zones', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
-  screen.pill = 'pre_match_announcement';
-  screen._socialOpen.add('pre_match_announcement');
+  screen.pill = 'starters_bench';
+  screen._socialOpen.add('starters_bench');
   screen._render();
 
   const { players, selectedIds, zones } = sandbox.SOCIAL_INITS[0].rosterData;
@@ -204,8 +204,8 @@ test('the post card is fed from the screen\'s own live zones', () => {
 test('a multi-word surname keeps its first name intact', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
   screen.zones.set(3, 'starter'); // Juan de la Cruz
-  screen.pill = 'pre_match_announcement';
-  screen._socialOpen.add('pre_match_announcement');
+  screen.pill = 'starters_bench';
+  screen._socialOpen.add('starters_bench');
   screen._render();
   const juan = sandbox.SOCIAL_INITS[0].rosterData.players.find(p => p.lastName === 'de la Cruz');
   assert.equal(juan.firstName, 'Juan');
@@ -213,8 +213,8 @@ test('a multi-word surname keeps its first name intact', () => {
 
 test('re-rendering keeps the live card but refreshes its lineup', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
-  screen.pill = 'pre_match_announcement';
-  screen._socialOpen.add('pre_match_announcement');
+  screen.pill = 'starters_bench';
+  screen._socialOpen.add('starters_bench');
   screen._render();
   const card = screen.socialCard;
   assert.equal(card.rosterData.players.length, 3);
@@ -231,8 +231,8 @@ test('re-rendering keeps the live card but refreshes its lineup', () => {
 
 test('switching pills does rebuild the card', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
-  screen.pill = 'pre_match_announcement';
-  screen._socialOpen.add('pre_match_announcement');
+  screen.pill = 'starters_bench';
+  screen._socialOpen.add('starters_bench');
   screen._render();
   sandbox.SOCIAL_INITS.length = 0;
 
@@ -270,7 +270,7 @@ test('a player gets no publish controls and no editor on any pill', () => {
 test('an admin using "view as <player>" is treated as a player', () => {
   const { screen } = mountScreen({ isCoach: true, role: 'club' });
   screen.auth.viewAsPersonId = 42;
-  screen.pill = 'pre_match_announcement';
+  screen.pill = 'starters_bench';
   screen._render();
   assert.ok(!screen.element.innerHTML.includes('gc-social-toggle'));
 });
@@ -280,8 +280,8 @@ test('deep links resolve to the right pill', () => {
   assert.equal(screen._resolvePill({ postType: 'post_game' }), 'post_game');
   // The older "Game Day Roster" entry point, under its new name.
   assert.equal(screen._resolvePill({ mode: 'gameday' }), 'lineup');
-  assert.equal(screen._resolvePill({ postType: 'not-a-post-type' }), 'pre_match_announcement');
-  assert.equal(screen._resolvePill({}), 'pre_match_announcement');
+  assert.equal(screen._resolvePill({ postType: 'not-a-post-type' }), 'starters_bench');
+  assert.equal(screen._resolvePill({}), 'starters_bench');
 });
 
 test('matchId falls back to navigation.context.match', () => {
@@ -428,7 +428,7 @@ test('the overlay survives a body re-render', () => {
 
   // A zone toggle rewrites #gl-body. The modal lives outside it, so a
   // coach mid-way through the squad keeps their place.
-  screen.pill = 'pre_match_announcement';
+  screen.pill = 'starters_bench';
   screen._render();
   assert.equal(screen.find('#gc-details-overlay').style.display, 'flex');
   assert.equal(screen.find('#gc-player-search').value, 'dabb');

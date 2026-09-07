@@ -186,7 +186,7 @@ void SocialController::ensureSocialSchema() {
 
     db_->query(
         "INSERT INTO social_post_types (name, display_name, description, sort_order) VALUES "
-        "('pre_match_announcement', 'Pre-Match Announcement', 'General pre-match announcement post', 1),"
+        "('starters_bench', 'Starters & Bench', 'Starting XI and bench reveal — the team sheet post', 1),"
         "('game_day', 'Game Announcement', 'Game day promo post', 2),"
         "('lineup', '20-Man Squad', 'Lineup or squad reveal post', 3),"
         "('post_game', 'Match Result', 'Post-game result post', 4) "

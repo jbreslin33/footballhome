@@ -34,7 +34,6 @@ class App {
       matchForm: new MatchFormScreen(this.navigation, this.auth),
       matchList: new MatchListScreen(this.navigation, this.auth),
       matchDetail: new MatchDetailScreen(this.navigation, this.auth),
-      matchShare: new MatchShareScreen(this.navigation, this.auth),
       adminLevelSelection: new AdminLevelSelectionScreen(this.navigation, this.auth),
       adminEntityList: new AdminEntityListScreen(this.navigation, this.auth),
       adminSystem: new AdminSystemScreen(this.navigation, this.auth),
@@ -100,7 +99,6 @@ class App {
     this.screenManager.register('match-form', this.screens.matchForm);
     this.screenManager.register('match-list', this.screens.matchList);
     this.screenManager.register('match-detail', this.screens.matchDetail);
-    this.screenManager.register('match-share', this.screens.matchShare);
     this.screenManager.register('admin-level-selection', this.screens.adminLevelSelection);
     this.screenManager.register('admin-entity-list', this.screens.adminEntityList);
     this.screenManager.register('admin-system', this.screens.adminSystem);

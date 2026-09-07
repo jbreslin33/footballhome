@@ -67,14 +67,14 @@ class SocialScheduleScreen extends Screen {
     container.innerHTML = '';
 
     const icons = {
-      'pre_match_announcement': '📢',
+      'starters_bench': '📢',
       'game_day': '⚽',
       'lineup': '📋',
       'post_game': '🏆'
     };
 
     const defaults = {
-      'pre_match_announcement': { days: 4, time: '10:00' },
+      'starters_bench': { days: 4, time: '10:00' },
       'game_day': { days: 0, time: '09:00' },
       'lineup': { days: 0, time: '-2' },
       'post_game': { days: 0, time: '18:00' }

@@ -95,7 +95,6 @@ class MatchFormScreen extends Screen {
           </div>
           
           <!-- Social post card (shown in edit mode for completed matches) -->
-          <div id="social-post-container" style="display: none; margin-top: var(--space-4);"></div>
           
           <div style="display: flex; gap: var(--space-3); margin-top: var(--space-6);">
             <button type="button" id="cancel-btn" class="btn btn-secondary" style="flex: 1;">Cancel</button>
@@ -257,15 +256,8 @@ class MatchFormScreen extends Screen {
         this.find('#score-fields').style.display = 'block';
         this.find('#home_team_score').value = match.home_team_score || '';
         this.find('#away_team_score').value = match.away_team_score || '';
-        
-        // Show post-game social card
-        const socialContainer = this.find('#social-post-container');
-        socialContainer.style.display = 'block';
-        const teamId = this.navigation.context.team?.id;
-        if (teamId) {
-          this.socialCard = new SocialPostCard(this.auth);
-          this.socialCard.init(socialContainer, this.matchId, teamId, 'post_game', match);
-        }
+        // The post-game Instagram card lives on Game Center's Match
+        // Result pill (#game-center) — no duplicate here.
       }
       
       this.find('#notes').value = match.notes || '';

@@ -978,7 +978,7 @@ async function generateCard(type, data = {}) {
   let html;
   if (type === 'match-result' || type === 'post_game') {
     html = matchResultHTML(data);
-  } else if (type === 'match-announcement' || type === 'pre_match_announcement') {
+  } else if (type === 'match-announcement' || type === 'starters_bench' || type === 'pre_match_announcement') {
     html = matchAnnouncementHTML(data);
   } else if (type === 'game_day') {
     html = gameDayHTML(data);
