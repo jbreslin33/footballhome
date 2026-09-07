@@ -207,13 +207,13 @@ class RosterScreenBase extends Screen {
   //     (migration 279/283/293), originally the game-lineup screen's
   //     "Elig: Start/Bench" toggle before it moved to the Teams page.
   //   • roster_status_id — official league roster submission status
-  //     (migration 294/295/319/336/337): Not on Roster / Needs ITC /
-  //     Submitted ITC / Needs Transfer / Awaiting Transfer /
-  //     Awaiting Roster Spot / Awaiting Approval / On Roster /
-  //     Possible Drop / Suspended. The middle codes are the pre-submission wait — ITC
-  //     for a player coming from a foreign federation, transfer for one
-  //     still registered to another US club, roster spot when the
-  //     official roster is full — all still RSVP-eligible.
+  //     (migration 294/295/319/336/337/340/342). The list is NOT
+  //     hardcoded here: roster_statuses is fetched once per page load
+  //     (loadRosterStatuses below) and each column shows the statuses
+  //     its team's league uses (league_roster_statuses, migration 342 —
+  //     owner 2026-09-07 "lets do per league"). Adult leagues carry the
+  //     ITC / transfer wait, Parks & Rec carries the birth-certificate
+  //     docs steps, intramural carries only the docs steps.
   // Keyed by personId (not leagueAppsUserId) — same LA-userId-drift
   // immunity as the reorder/move endpoints; see
   // TeamController::handleSetLineupRoleForPerson /
@@ -242,28 +242,71 @@ class RosterScreenBase extends Screen {
        </select>`;
   }
 
-  // Roster-status colour (owner 2026-09-05): the Teams board is otherwise
-  // colour-neutral apart from gender and dues, so these states are the
-  // only thing that pops — green = On Roster, yellow = the two "league
-  // is sitting on it" waits, orange = Possible Drop (on the roster, but
-  // flagged; migration 337). Everything else stays neutral.
-  // Youth docs steps (migration 340): Has Docs is green like On Roster
-  // but emerald, so "ready to move up" reads differently from
-  // "already rostered" down a column; Needs Docs is rose — a to-do.
-  static get ROSTER_STATUS_COLORS() {
-    return {
-      on_roster:         { bg: '#16a34a', fg: '#ffffff', border: '#16a34a' },
-      has_docs:          { bg: '#059669', fg: '#ffffff', border: '#34d399' },
-      needs_docs:        { bg: '#be123c', fg: '#ffffff', border: '#fb7185' },
-      possible_drop:     { bg: '#f97316', fg: '#431407', border: '#f97316' },
-      awaiting_approval: { bg: '#eab308', fg: '#422006', border: '#eab308' },
-      awaiting_transfer: { bg: '#eab308', fg: '#422006', border: '#eab308' },
-    };
+  // ── Roster statuses come from the DB (migration 342) ─────────────────
+  //
+  // GET /api/teams/roster-statuses is fetched once per page load and
+  // cached on the class, shared by every board. Each status carries the
+  // leagues whose pipeline includes it (leagueIds), its card colours
+  // (colorBg/Fg/Border — the 2026-09-05 palette: green On Roster, yellow
+  // "league is sitting on it" waits, orange Possible Drop, emerald Has
+  // Docs, rose Needs Docs, everything else neutral) and whether it counts
+  // toward the "✓ N on roster" tally (countsAsOnRoster — On Roster and
+  // Possible Drop; Suspended is rostered but not playing). Nothing in
+  // this file is keyed on a status code any more.
+  //
+  // A column's dropdown lists the statuses of its team's league
+  // (col.leagueId / col.leagueName from teams.division_id → seasons →
+  // leagues). A column with no league gets the full list.
+  static ROSTER_STATUSES = [];
+  static _rosterStatusesPromise = null;
+  static NEUTRAL_STATUS_COLORS = { bg: '#0f172a', fg: '#ffffff', border: '#475569' };
+
+  static loadRosterStatuses(auth) {
+    if (!RosterScreenBase._rosterStatusesPromise) {
+      RosterScreenBase._rosterStatusesPromise = (async () => {
+        try {
+          const res = await auth.fetch('/api/teams/roster-statuses');
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const body = await res.json();
+          RosterScreenBase.ROSTER_STATUSES = Array.isArray(body && body.data) ? body.data : [];
+        } catch (err) {
+          // Dropdowns fall back to "blank + whatever the player already
+          // has"; the next load() retries.
+          console.warn('roster statuses unavailable:', err);
+          RosterScreenBase._rosterStatusesPromise = null;
+        }
+        return RosterScreenBase.ROSTER_STATUSES;
+      })();
+    }
+    return RosterScreenBase._rosterStatusesPromise;
+  }
+
+  // Screens call this alongside their roster fetch and await it before
+  // the first render, so renderStatusSelect can stay synchronous.
+  ensureRosterStatuses() {
+    return RosterScreenBase.loadRosterStatuses(this.auth);
+  }
+
+  static rosterStatusByCode(code) {
+    if (!code) return null;
+    return RosterScreenBase.ROSTER_STATUSES.find(s => s && s.code === code) || null;
+  }
+
+  static rosterStatusesForColumn(col) {
+    const leagueId = Number(col && col.leagueId) || 0;
+    const all = RosterScreenBase.ROSTER_STATUSES;
+    if (!leagueId) return all.slice();
+    return all.filter(s => Array.isArray(s.leagueIds) && s.leagueIds.includes(leagueId));
+  }
+
+  static rosterStatusColors(code) {
+    const s = RosterScreenBase.rosterStatusByCode(code);
+    if (!s || !s.colorBg) return RosterScreenBase.NEUTRAL_STATUS_COLORS;
+    return { bg: s.colorBg, fg: s.colorFg || '#ffffff', border: s.colorBorder || s.colorBg };
   }
 
   rosterStatusStyle(status) {
-    const c = RosterScreenBase.ROSTER_STATUS_COLORS[status]
-      || { bg: '#0f172a', fg: '#ffffff', border: '#475569' };
+    const c = RosterScreenBase.rosterStatusColors(status);
     return `background:${c.bg}; color:${c.fg}; border:1px solid ${c.border};`;
   }
 
@@ -271,20 +314,23 @@ class RosterScreenBase extends Screen {
   // rollback, or a successful save) so the colour never lags the value.
   applyRosterStatusStyle(select) {
     if (!select) return;
-    const c = RosterScreenBase.ROSTER_STATUS_COLORS[select.value]
-      || { bg: '#0f172a', fg: '#ffffff', border: '#475569' };
+    const c = RosterScreenBase.rosterStatusColors(select.value);
     select.style.background  = c.bg;
     select.style.color       = c.fg;
     select.style.borderColor = c.border;
   }
 
-  // Which status codes count toward the "✓ N on roster" tally. Possible
-  // Drop (migration 337) is still on the official roster — the club is
-  // only thinking about dropping him — so he counts until he's actually
-  // moved off. Mirrors roster_statuses.show_in_official_roster minus
-  // Suspended, which is on the roster but not playing.
   static countsAsOnRoster(status) {
-    return status === 'on_roster' || status === 'possible_drop';
+    const s = RosterScreenBase.rosterStatusByCode(status);
+    return !!(s && s.countsAsOnRoster);
+  }
+
+  // Attribute/text escaper local to the base so the mens board (which has
+  // no escape() of its own) renders the same dropdown as boys/womens.
+  static escapeHtml(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   // "✓ N on roster" tally for a team column header, from the same
@@ -330,22 +376,28 @@ class RosterScreenBase extends Screen {
 
   renderStatusSelect(player, col, canMove) {
     if (!(canMove && col && col.teamId && player.personId)) return '';
+    const esc     = RosterScreenBase.escapeHtml;
+    const current = player.rosterStatus || '';
+    const options = RosterScreenBase.rosterStatusesForColumn(col);
+    // A status the player already carries that this league does not list
+    // (set before the league scoping, or the team changed leagues) stays
+    // in the dropdown so nothing vanishes silently — the coach sees it
+    // and can move him off it.
+    if (current && !options.some(s => s.code === current)) {
+      options.push(RosterScreenBase.rosterStatusByCode(current)
+        || { code: current, displayName: current, description: '' });
+    }
+    const title = col.leagueName
+      ? `Official league roster status — ${col.leagueName} pipeline`
+      : 'Official league roster status';
+    const opts = options.map(s =>
+      `<option value="${esc(s.code)}" title="${esc(s.description || '')}" ${current === s.code ? 'selected' : ''}>${esc(s.displayName || s.code)}</option>`
+    ).join('\n         ');
     return `<select class="mr-status-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
-               title="Official league roster status"
-               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.rosterStatusStyle(player.rosterStatus)} ${RosterScreenBase.SELECT_WIDTH_STYLE}">
-         <option value=""                  ${!player.rosterStatus ? 'selected' : ''}>Status: —</option>
-         <option value="not_on_roster"     ${player.rosterStatus === 'not_on_roster'     ? 'selected' : ''}>Not on Roster</option>
-         <option value="needs_itc"         ${player.rosterStatus === 'needs_itc'         ? 'selected' : ''}>Needs ITC</option>
-         <option value="submitted_itc"     ${player.rosterStatus === 'submitted_itc'     ? 'selected' : ''}>Submitted ITC</option>
-         <option value="needs_transfer"    ${player.rosterStatus === 'needs_transfer'    ? 'selected' : ''}>Needs Transfer</option>
-         <option value="awaiting_transfer" ${player.rosterStatus === 'awaiting_transfer' ? 'selected' : ''}>Awaiting Transfer</option>
-         <option value="needs_docs"        ${player.rosterStatus === 'needs_docs'        ? 'selected' : ''}>Needs Docs</option>
-         <option value="has_docs"          ${player.rosterStatus === 'has_docs'          ? 'selected' : ''}>Has Docs</option>
-         <option value="awaiting_roster_spot" ${player.rosterStatus === 'awaiting_roster_spot' ? 'selected' : ''}>Awaiting Roster Spot</option>
-         <option value="awaiting_approval" ${player.rosterStatus === 'awaiting_approval' ? 'selected' : ''}>Awaiting Approval</option>
-         <option value="on_roster"         ${player.rosterStatus === 'on_roster'         ? 'selected' : ''}>On Roster</option>
-         <option value="possible_drop"     ${player.rosterStatus === 'possible_drop'     ? 'selected' : ''}>Possible Drop</option>
-         <option value="suspended"         ${player.rosterStatus === 'suspended'         ? 'selected' : ''}>Suspended</option>
+               title="${esc(title)}"
+               style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.rosterStatusStyle(current)} ${RosterScreenBase.SELECT_WIDTH_STYLE}">
+         <option value="" ${!current ? 'selected' : ''}>Status: —</option>
+         ${opts}
        </select>`;
   }
 

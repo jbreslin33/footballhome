@@ -436,17 +436,35 @@ Response TeamController::handleSetRosterStatusForPerson(const Request& request) 
         bool hasCode = std::regex_search(body, m, codeRegex);
         if (hasCode) code = m[1].str();
         // Absence of a matched value (including explicit null) clears the status.
-        // The subquery below only matches an active roster_statuses.code, so an
-        // unrecognized string silently clears rather than storing garbage.
+        // A code is accepted only if the team's league lists it
+        // (league_roster_statuses, migration 342) — the dropdown is built
+        // from the same list, so a miss here is a stale page or a client
+        // poking the API, and it gets a 400 rather than a silent clear.
+        std::string statusId;
+        if (hasCode && !code.empty()) {
+            pqxx::result allowed = db_->query(
+                "SELECT rs.id "
+                "  FROM roster_statuses rs "
+                "  JOIN league_roster_statuses lrs ON lrs.roster_status_id = rs.id "
+                "  JOIN teams t     ON t.id = $2::int "
+                "  JOIN divisions d ON d.id = t.division_id "
+                "  JOIN seasons s   ON s.id = d.season_id AND s.league_id = lrs.league_id "
+                " WHERE rs.code = $1 AND rs.is_active",
+                {code, team_id});
+            if (allowed.empty()) {
+                return Response(HttpStatus::BAD_REQUEST,
+                    createJSONResponse(false, "Status '" + code + "' is not part of this team's league pipeline"));
+            }
+            statusId = allowed[0]["id"].as<std::string>();
+        }
 
         pqxx::result result = db_->query(
-            "UPDATE team_persons SET roster_status_id = "
-            "  (SELECT id FROM roster_statuses WHERE code = NULLIF($1, '') AND is_active) "
+            "UPDATE team_persons SET roster_status_id = NULLIF($1, '')::int "
             "WHERE team_id = $2::int "
             "  AND person_id = $3::int "
             "  AND removed_at IS NULL "
             "RETURNING id",
-            {hasCode ? code : std::string(), team_id, person_id}
+            {statusId, team_id, person_id}
         );
         if (result.empty()) {
             return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Roster entry not found"));

@@ -209,12 +209,20 @@ std::vector<int> MensTeamAssignments::addAssignmentForPerson(long long personId,
         // team keeps that status on the new row when moved up, so the
         // coach is never asked to chase documents already in hand.  Any
         // other status is team-specific and starts blank as before.
+        // Since migration 342 it only follows into a league that uses
+        // that status — a move to an adult team starts blank.
         tx->exec_params(
             "INSERT INTO team_persons (team_id, person_id, roster_status_id) "
             "VALUES ($2, $1, "
             "  (SELECT tp.roster_status_id FROM team_persons tp "
             "     JOIN roster_statuses rs ON rs.id = tp.roster_status_id "
             "    WHERE tp.person_id = $1 AND rs.code IN ('needs_docs', 'has_docs') "
+            "      AND EXISTS (SELECT 1 FROM league_roster_statuses lrs "
+            "                    JOIN teams dt     ON dt.id = $2 "
+            "                    JOIN divisions dd ON dd.id = dt.division_id "
+            "                    JOIN seasons ds   ON ds.id = dd.season_id "
+            "                   WHERE lrs.league_id = ds.league_id "
+            "                     AND lrs.roster_status_id = tp.roster_status_id) "
             "    ORDER BY (tp.removed_at IS NULL) DESC, tp.id DESC LIMIT 1)) "
             "ON CONFLICT (team_id, person_id) "
             "  WHERE removed_at IS NULL DO NOTHING",

@@ -128,6 +128,8 @@ Response WomensRosterController::handleColumns(const Request& request) {
             c["color"]      = col.color;
             c["mutexGroup"] = col.mutexGroup;
             c["fieldSize"]  = col.hasFieldSize ? json(col.fieldSize) : json(nullptr);
+            c["leagueId"]   = col.leagueId ? json(col.leagueId) : json(nullptr);
+            c["leagueName"] = col.leagueName.empty() ? json(nullptr) : json(col.leagueName);
             out.push_back(std::move(c));
         }
         return Response(HttpStatus::OK, out.dump());

@@ -19,6 +19,8 @@ MensTeamColumns::Column rowToColumn(const pqxx::row& row) {
     c.maxRoster    = c.hasMaxRoster ? row["max_roster"].as<int>() : 0;
     c.hasFieldSize = !row["field_size"].is_null();
     c.fieldSize    = c.hasFieldSize ? row["field_size"].as<int>() : 0;
+    c.leagueId     = row["league_id"].is_null()   ? 0 : row["league_id"].as<int>();
+    c.leagueName   = row["league_name"].is_null() ? std::string{} : row["league_name"].c_str();
     return c;
 }
 
@@ -41,8 +43,12 @@ std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll(bool includeInacti
     const std::string sql =
         "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
         "       t.short_label, t.board_sort_order AS sort_order, "
-        "       t.color, t.mutex_group, t.max_roster, t.field_size "
+        "       t.color, t.mutex_group, t.max_roster, t.field_size, "
+        "       l.id AS league_id, l.name AS league_name "
         "  FROM teams t "
+        "  LEFT JOIN divisions d ON d.id = t.division_id "
+        "  LEFT JOIN seasons   s ON s.id = d.season_id "
+        "  LEFT JOIN leagues   l ON l.id = s.league_id "
         " WHERE t.gender_category = $1 "
         "   AND t.board_sort_order IS NOT NULL " +
         std::string(includeInactive ? "" : "   AND t.is_active = true ") +
@@ -57,8 +63,12 @@ std::optional<MensTeamColumns::Column> MensTeamColumns::findByTeamId(int teamId)
     const auto rows = db_->query(
         "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
         "       t.short_label, t.board_sort_order AS sort_order, "
-        "       t.color, t.mutex_group, t.max_roster, t.field_size "
+        "       t.color, t.mutex_group, t.max_roster, t.field_size, "
+        "       l.id AS league_id, l.name AS league_name "
         "  FROM teams t "
+        "  LEFT JOIN divisions d ON d.id = t.division_id "
+        "  LEFT JOIN seasons   s ON s.id = d.season_id "
+        "  LEFT JOIN leagues   l ON l.id = s.league_id "
         " WHERE t.gender_category = $1 "
         "   AND t.id = $2 "
         "   AND t.board_sort_order IS NOT NULL "

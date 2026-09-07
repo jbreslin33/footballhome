@@ -33,6 +33,11 @@ public:
         bool        hasMaxRoster = false;
         int         fieldSize    = 0;      // players per side (7 = 7v7); see hasFieldSize
         bool        hasFieldSize = false;  // teams.field_size NULL = unknown format
+        // League the team is registered in (division → season → league,
+        // migration 342). 0 / "" when the team has no division. Drives
+        // which roster statuses the column's dropdown offers.
+        int         leagueId     = 0;
+        std::string leagueName;
     };
 
     // domain param scopes every query.  Default 'mens' keeps existing

@@ -91,9 +91,14 @@ test('playerNeedsDocs: needs_docs asks, has_docs never asks, blank falls back to
 
 test('status dropdown offers Needs Docs and Has Docs, and Has Docs is green', () => {
   const { screen, RosterScreenBase } = loadBase();
-  const html = screen.renderStatusSelect({ personId: 5, rosterStatus: 'has_docs' }, { teamId: 3 }, true);
+  // Since migration 342 the list and the colours come from
+  // /api/teams/roster-statuses; seed what that returns for a youth league.
+  RosterScreenBase.ROSTER_STATUSES = [
+    { code: 'needs_docs', displayName: 'Needs Docs', leagueIds: [8], colorBg: '#be123c', colorFg: '#ffffff', colorBorder: '#fb7185' },
+    { code: 'has_docs',   displayName: 'Has Docs',   leagueIds: [8], colorBg: '#059669', colorFg: '#ffffff', colorBorder: '#34d399' },
+  ];
+  const html = screen.renderStatusSelect({ personId: 5, rosterStatus: 'has_docs' }, { teamId: 3, leagueId: 8 }, true);
   assert.match(html, /<option value="needs_docs"/);
-  assert.match(html, /<option value="has_docs"\s+selected/);
+  assert.match(html, /<option value="has_docs"[^>]*\sselected/);
   assert.match(html, /background:#059669/);
-  assert.ok(RosterScreenBase.ROSTER_STATUS_COLORS.needs_docs);
 });

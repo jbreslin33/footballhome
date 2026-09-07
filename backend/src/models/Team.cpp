@@ -346,12 +346,21 @@ std::string Team::getRosterStatuses() {
     json << "[";
     
     try {
-        std::string sql = 
-            "SELECT id, code, display_name, description, "
-            "       show_in_rsvp, show_in_official_roster, sort_order, is_active "
-            "FROM roster_statuses "
-            "WHERE is_active = true "
-            "ORDER BY sort_order";
+        // Per-league scope + presentation come from the DB (migration
+        // 342): leagueIds is the set of leagues whose pipeline includes
+        // this status; the frontend filters a column's dropdown by its
+        // team's league and paints from color_*.
+        std::string sql =
+            "SELECT rs.id, rs.code, rs.display_name, rs.description, "
+            "       rs.show_in_rsvp, rs.show_in_official_roster, rs.sort_order, rs.is_active, "
+            "       rs.color_bg, rs.color_fg, rs.color_border, rs.counts_as_on_roster, "
+            "       COALESCE(json_agg(lrs.league_id ORDER BY lrs.league_id) "
+            "                FILTER (WHERE lrs.league_id IS NOT NULL), '[]')::text AS league_ids "
+            "  FROM roster_statuses rs "
+            "  LEFT JOIN league_roster_statuses lrs ON lrs.roster_status_id = rs.id "
+            " WHERE rs.is_active = true "
+            " GROUP BY rs.id "
+            " ORDER BY rs.sort_order";
         
         pqxx::result result = executeQuery(sql, {});
         
@@ -368,6 +377,15 @@ std::string Team::getRosterStatuses() {
             json << "\"description\":\"" << description << "\",";
             json << "\"showInRsvp\":" << (row["show_in_rsvp"].as<bool>() ? "true" : "false") << ",";
             json << "\"showInOfficialRoster\":" << (row["show_in_official_roster"].as<bool>() ? "true" : "false") << ",";
+            json << "\"countsAsOnRoster\":" << (row["counts_as_on_roster"].as<bool>() ? "true" : "false") << ",";
+            auto colorField = [&](const char* col) -> std::string {
+                return row[col].is_null() ? std::string("null")
+                                          : "\"" + escapeJSON(row[col].as<std::string>()) + "\"";
+            };
+            json << "\"colorBg\":"     << colorField("color_bg")     << ",";
+            json << "\"colorFg\":"     << colorField("color_fg")     << ",";
+            json << "\"colorBorder\":" << colorField("color_border") << ",";
+            json << "\"leagueIds\":"   << row["league_ids"].as<std::string>() << ",";
             json << "\"sortOrder\":" << row["sort_order"].as<int>();
             json << "}";
             

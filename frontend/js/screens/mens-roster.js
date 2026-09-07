@@ -240,6 +240,7 @@ class MensRosterScreen extends RosterScreenBase {
       if (this.includeInactive) params.set('includeInactive', '1');
       const qs = params.toString();
       const url = qs ? `/api/mens-roster?${qs}` : '/api/mens-roster';
+      const statusesReady = this.ensureRosterStatuses(); // roster_statuses lookup (migration 342), in parallel
       const res = await this.auth.fetch(url);
       if (!res.ok) {
         const body = await res.text();
@@ -268,6 +269,7 @@ class MensRosterScreen extends RosterScreenBase {
         text: `${data.total} player${data.total === 1 ? '' : 's'} loaded in ${elapsed}s · ${data.unassignedCount} unassigned`,
         showRefresh: true,
       });
+      await statusesReady;
       this.renderRoster(data);
     } catch (err) {
       if (loading) loading.style.display = 'none';
