@@ -3,6 +3,8 @@
 #include "../database/SqlBuilder.h"
 #include <sstream>
 #include <regex>
+#include <algorithm>
+#include <cctype>
 #include <ctime>
 #include <iomanip>
 #include <openssl/bio.h>
@@ -814,7 +816,16 @@ Response EventController::handleGetMatch(const Request& request) {
         // the COALESCE are DB columns; an untagged match on a source
         // system with no logo simply has no crest, which the frontend
         // renders as the plain empty center circle.
-        query << "COALESCE(" << LEAGUE_CREST_SQL << ", NULLIF(ss.logo_url,'')) as league_logo_url ";
+        query << "COALESCE(" << LEAGUE_CREST_SQL << ", NULLIF(ss.logo_url,'')) as league_logo_url, ";
+        // Ownership flag for Game Center's Game Announcement pill (slice C,
+        // 2026-09-07). When a match is bridged to a Google Calendar event,
+        // its date/time, location and Opponent:/League: tags are owned by
+        // the calendar and mirrored here — the frontend shows them read-only
+        // with a pointer to gcal instead of offering an edit that players
+        // would never see (the My page reads the gcal side). Only unlinked
+        // matches (ad-hoc lineup games, scrimmages) are edited through
+        // PUT /api/matches/:matchId.
+        query << "(fe.gcal_event_id IS NOT NULL) AS gcal_linked ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN match_types mt ON mt.id = m.match_type_id ";
@@ -930,6 +941,9 @@ Response EventController::handleGetMatch(const Request& request) {
         if (result.columns() > 33 && !result[0][33].is_null() && result[0][33].c_str()[0] != '\0') {
             match_json << ",\"league_logo_url\":\"" << escapeJSON(result[0][33].c_str()) << "\"";
         }
+        if (result.columns() > 34 && !result[0][34].is_null()) {
+            match_json << ",\"gcal_linked\":" << (result[0][34].as<bool>() ? "true" : "false");
+        }
 
         match_json << "}";
         
@@ -949,6 +963,42 @@ Response EventController::handleUpdateMatch(const Request& request) {
         if (match_id.empty()) {
             std::string json = createJSONResponse(false, "Invalid match ID in path");
             return Response(HttpStatus::BAD_REQUEST, json);
+        }
+
+        // Write gate (2026-09-07, Game Center slice C). This endpoint had no
+        // auth at all — any anonymous caller could rewrite any match's
+        // score, date or teams. Same rule EligibilityController uses to
+        // decide isCoach for the lineup editor: a verified bearer token
+        // belonging to a club admin (any admins row) or to a current coach
+        // of one of this match's teams — fh_event_teams for a gcal-bridged
+        // game (a "Team: APSL, Liga1" game has two), else home/away ids.
+        // bearerUserId verifies the JWT signature; extractUserIdFromToken
+        // only base64-decodes, so it is not used for authorization.
+        const long long callerUserId = bearerUserId(request);
+        if (callerUserId <= 0) {
+            return Response(HttpStatus::UNAUTHORIZED,
+                            createJSONResponse(false, "Authentication required"));
+        }
+        {
+            pqxx::result gate = db_->query(
+                "SELECT ("
+                "  EXISTS (SELECT 1 FROM admins a WHERE a.user_id = $1::int)"
+                "  OR EXISTS (SELECT 1 FROM team_coaches tc "
+                "             JOIN coaches co ON co.id = tc.coach_id "
+                "             JOIN users u ON u.person_id = co.person_id "
+                "             WHERE u.id = $1::int AND tc.ended_at IS NULL "
+                "             AND tc.team_id IN ("
+                "               SELECT fet.team_id FROM fh_events fe "
+                "               JOIN fh_event_teams fet ON fet.fh_event_id = fe.id "
+                "               WHERE fe.match_id = $2::int "
+                "               UNION SELECT home_team_id FROM matches WHERE id = $2::int AND home_team_id IS NOT NULL "
+                "               UNION SELECT away_team_id FROM matches WHERE id = $2::int AND away_team_id IS NOT NULL))"
+                ") AS may_edit",
+                std::vector<std::string>{ std::to_string(callerUserId), match_id });
+            if (gate.empty() || !gate[0]["may_edit"].as<bool>()) {
+                return Response(HttpStatus::FORBIDDEN,
+                                createJSONResponse(false, "Only a coach of this match's team or a club admin can edit it"));
+            }
         }
 
         std::string body = request.getBody();
@@ -972,6 +1022,25 @@ Response EventController::handleUpdateMatch(const Request& request) {
         const std::string match_status    = parseJSON(body, "match_status");
         const std::string home_team_score = parseJSON(body, "home_team_score");
         const std::string away_team_score = parseJSON(body, "away_team_score");
+
+        // parseJSON returns "" for both "absent" and "null", so an explicit
+        // null is detected separately: {"home_team_score":null} clears the
+        // score (Game Center's Clear button); an absent key leaves it alone.
+        auto keyIsNull = [&](const std::string& key) {
+            std::regex re("\"" + key + "\"\\s*:\\s*null");
+            return std::regex_search(body, re);
+        };
+        const bool clear_home_score = keyIsNull("home_team_score");
+        const bool clear_away_score = keyIsNull("away_team_score");
+        auto isWholeNumber = [](const std::string& v) {
+            return !v.empty() && v.size() <= 3 &&
+                   std::all_of(v.begin(), v.end(), [](unsigned char c) { return std::isdigit(c); });
+        };
+        if ((!home_team_score.empty() && !isWholeNumber(home_team_score)) ||
+            (!away_team_score.empty() && !isWholeNumber(away_team_score))) {
+            return Response(HttpStatus::BAD_REQUEST,
+                            createJSONResponse(false, "Scores must be whole numbers"));
+        }
 
         std::ostringstream sql;
         sql << "UPDATE matches SET manual_override = TRUE";
@@ -1005,14 +1074,19 @@ Response EventController::handleUpdateMatch(const Request& request) {
             params.push_back(away_team_id);
             sql << ", away_team_id = $" << params.size() << "::int";
         }
-        // Score: allow "" to mean "clear" — use NULLIF cast trick.
+        // Score: a number sets it, an explicit JSON null clears it, an
+        // absent key leaves it alone.
         if (!home_team_score.empty()) {
             params.push_back(home_team_score);
             sql << ", home_score = $" << params.size() << "::int";
+        } else if (clear_home_score) {
+            sql << ", home_score = NULL";
         }
         if (!away_team_score.empty()) {
             params.push_back(away_team_score);
             sql << ", away_score = $" << params.size() << "::int";
+        } else if (clear_away_score) {
+            sql << ", away_score = NULL";
         }
         // match_status name → resolve to id via subquery.
         if (!match_status.empty()) {

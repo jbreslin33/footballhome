@@ -74,27 +74,15 @@ class MatchFormScreen extends Screen {
             </select>
           </div>
           
-          <div id="score-fields" style="display: none;">
-            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
-              <div class="form-group">
-                <label for="home_team_score" class="form-label">Home Score</label>
-                <input type="number" id="home_team_score" name="home_team_score" class="form-input" min="0">
-              </div>
-              
-              <div class="form-group">
-                <label for="away_team_score" class="form-label">Away Score</label>
-                <input type="number" id="away_team_score" name="away_team_score" class="form-input" min="0">
-              </div>
-            </div>
-          </div>
-          
+          <!-- Score entry moved to Game Center's Match Result pill
+               (#game-center, slice C 2026-09-07) — the coach records the
+               result where the result post is published. -->
+
           <div class="form-group">
             <label for="notes" class="form-label">Notes</label>
             <textarea id="notes" name="notes" class="form-input" rows="3"
                       placeholder="Any additional details about this match..."></textarea>
           </div>
-          
-          <!-- Social post card (shown in edit mode for completed matches) -->
           
           <div style="display: flex; gap: var(--space-3); margin-top: var(--space-6);">
             <button type="button" id="cancel-btn" class="btn btn-secondary" style="flex: 1;">Cancel</button>
@@ -110,13 +98,6 @@ class MatchFormScreen extends Screen {
   onEnter(params) {
     this.mode = params.mode || 'create';
     this.matchId = params.matchId || null;
-    
-    // Show/hide score fields based on status
-    const statusSelect = this.find('#match_status');
-    const scoreFields = this.find('#score-fields');
-    statusSelect.addEventListener('change', () => {
-      scoreFields.style.display = statusSelect.value === 'completed' ? 'block' : 'none';
-    });
     
     // Update UI based on mode
     if (this.mode === 'edit') {
@@ -159,8 +140,6 @@ class MatchFormScreen extends Screen {
         venue_id: formData.get('venue_id') || null,
         competition_name: formData.get('competition_name') || null,
         match_status: formData.get('match_status'),
-        home_team_score: formData.get('home_team_score') || null,
-        away_team_score: formData.get('away_team_score') || null,
         notes: formData.get('notes') || null
       };
       
@@ -250,15 +229,8 @@ class MatchFormScreen extends Screen {
       this.find('#venue_id').value = match.venue_id || '';
       this.find('#competition_name').value = match.competition_name || '';
       this.find('#match_status').value = match.match_status || 'scheduled';
-      
-      // Show scores if completed
-      if (match.match_status === 'completed') {
-        this.find('#score-fields').style.display = 'block';
-        this.find('#home_team_score').value = match.home_team_score || '';
-        this.find('#away_team_score').value = match.away_team_score || '';
-        // The post-game Instagram card lives on Game Center's Match
-        // Result pill (#game-center) — no duplicate here.
-      }
+      // Scores and the post-game Instagram card live on Game Center's
+      // Match Result pill (#game-center) — nothing to populate here.
       
       this.find('#notes').value = match.notes || '';
     });
