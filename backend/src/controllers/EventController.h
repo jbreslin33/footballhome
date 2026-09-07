@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include "../core/Controller.h"
 #include "../database/Database.h"
 #include <memory>
@@ -69,6 +70,17 @@ private:
     std::string extractTeamIdFromPath(const std::string& path);
     std::string extractEventIdFromPath(const std::string& path);
     std::string extractMatchIdFromPath(const std::string& path);
+
+    // Write gates for the match endpoints (2026-09-07). A verified bearer
+    // token belonging to a club admin (any admins row) or to a current
+    // coach of one of the teams in question. `teamIdsSql` is a SELECT
+    // yielding team ids and may reference $2.. via `teamParams`; $1 is
+    // always the caller's users.id.
+    bool callerMayManageTeams(long long userId, const std::string& teamIdsSql,
+                              const std::vector<std::string>& teamParams);
+    // PUT/DELETE /api/matches/:id — nullopt when the caller may proceed,
+    // otherwise the 401/403 to return.
+    std::optional<Response> matchWriteGate(const Request& request, const std::string& match_id);
     std::string extractAttendanceIdFromPath(const std::string& path);
     std::string parseJSON(const std::string& body, const std::string& key);
     std::string getCurrentTimestamp();

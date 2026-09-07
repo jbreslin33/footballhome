@@ -609,124 +609,82 @@ Response EventController::handleGetMatches(const Request& request) {
     }
 }
 
+// POST /api/matches — create an ad-hoc (non-gcal) match. Rewritten
+// 2026-09-07: the previous body inserted into a legacy `events` table and
+// `matches` columns (competition_name, match_status, home_away_status_id)
+// that no longer exist, so every call had been a 500 for as long as the
+// current schema has been in place. It also had no auth. Body:
+//   home_team_id, away_team_id, title, date (YYYY-MM-DD), start_time
+//   (HH:MM) — required; venue_id, notes, match_status (name),
+//   match_type (name, default 'custom') — optional. competition_name is
+//   accepted and ignored: GET derives it from the source system.
 Response EventController::handleCreateMatch(const Request& request) {
     try {
+        const long long callerUserId = bearerUserId(request);
+        if (callerUserId <= 0) {
+            return Response(HttpStatus::UNAUTHORIZED,
+                            createJSONResponse(false, "Authentication required"));
+        }
+
         std::string body = request.getBody();
         std::cout << "📝 Creating match with body: " << body << std::endl;
-        
-        // Parse JSON body
-        std::string home_team_id = parseJSON(body, "home_team_id");
-        std::string away_team_id = parseJSON(body, "away_team_id");
-        std::string title = parseJSON(body, "title");
-        std::string date = parseJSON(body, "date");
-        std::string start_time = parseJSON(body, "start_time");
-        std::string venue_id = parseJSON(body, "venue_id");
-        std::string competition_name = parseJSON(body, "competition_name");
-        std::string match_status = parseJSON(body, "match_status");
-        std::string notes = parseJSON(body, "notes");
-        
-        // Validate required fields
+
+        const std::string home_team_id = parseJSON(body, "home_team_id");
+        const std::string away_team_id = parseJSON(body, "away_team_id");
+        const std::string title        = parseJSON(body, "title");
+        const std::string date         = parseJSON(body, "date");
+        const std::string start_time   = parseJSON(body, "start_time");
+        const std::string venue_id     = parseJSON(body, "venue_id");
+        const std::string match_status = parseJSON(body, "match_status");
+        const std::string match_type   = parseJSON(body, "match_type");
+        const std::string notes        = parseJSON(body, "notes");
+
         if (home_team_id.empty() || away_team_id.empty() || title.empty() || date.empty() || start_time.empty()) {
-            std::string json = createJSONResponse(false, "Missing required fields: home_team_id, away_team_id, title, date, start_time");
-            return Response(HttpStatus::BAD_REQUEST, json);
+            return Response(HttpStatus::BAD_REQUEST,
+                createJSONResponse(false, "Missing required fields: home_team_id, away_team_id, title, date, start_time"));
         }
-        
-        // Get event_type_id for 'match'
-        std::string event_type_query = "SELECT id FROM event_types WHERE name = 'match' LIMIT 1";
-        pqxx::result type_result = db_->query(event_type_query);
-        if (type_result.empty()) {
-            std::string json = createJSONResponse(false, "Event type 'match' not found");
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
-        }
-        std::string event_type_id = type_result[0][0].c_str();
-        
-        // Get created_by user (for now, use the system admin user)
-        std::string created_by = "77d77471-1250-47e0-81ab-d4626595d63c";
-        
-        // Create timestamp from date and start_time
-        std::string event_datetime = date + " " + start_time + ":00";
-        
-        // Get home_away_status_id (home)
-        std::string home_status_query = "SELECT id FROM home_away_statuses WHERE name = 'home' LIMIT 1";
-        pqxx::result home_status_result = db_->query(home_status_query);
-        std::string home_away_status_id = home_status_result.empty() ? "550e8400-e29b-41d4-a716-446655440801" : home_status_result[0][0].c_str();
-        
-        // Build INSERT query for events table
-        std::string event_query = 
-            "INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, created_at, updated_at) "
-            "VALUES (uuid_generate_v4(), $1, $2, $3, NULLIF($4, ''), $5, NULLIF($6, '')::uuid, 120, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) "
-            "RETURNING id";
-        
-        std::vector<std::string> event_params = {
-            created_by,
-            event_type_id,
-            title,
-            notes,
-            event_datetime,
-            venue_id
+        auto isInt = [](const std::string& v) {
+            return !v.empty() && v.size() <= 9 &&
+                   std::all_of(v.begin(), v.end(), [](unsigned char c) { return std::isdigit(c); });
         };
-        
-        std::cout << "📊 Event query: " << event_query << std::endl;
-        
-        pqxx::result event_result = db_->query(event_query, event_params);
-        if (event_result.empty()) {
-            std::cerr << "❌ Failed to create event" << std::endl;
-            std::string json = createJSONResponse(false, "Failed to create event");
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+        if (!isInt(home_team_id) || !isInt(away_team_id) || (!venue_id.empty() && !isInt(venue_id))) {
+            return Response(HttpStatus::BAD_REQUEST,
+                            createJSONResponse(false, "home_team_id, away_team_id and venue_id must be integer ids"));
         }
-        
-        std::string inserted_event_id = event_result[0][0].c_str();
-        
-        // Log event to ##u/##p file
-        std::map<std::string, std::string> event_columns;
-        event_columns["created_by"] = created_by;
-        event_columns["event_type_id"] = event_type_id;
-        event_columns["title"] = title;
-        if (!notes.empty()) event_columns["description"] = notes;
-        event_columns["event_date"] = event_datetime;
-        if (!venue_id.empty()) event_columns["venue_id"] = venue_id;
-        event_columns["duration_minutes"] = "120";
-        std::string event_upsert = SqlBuilder::buildUpsert("events", inserted_event_id, event_columns, "id");
-        SqlFileLogger::log("events", event_upsert);
-        
-        // Insert into matches table (extends events)
-        std::string match_query = 
-            "INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status) "
-            "VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6)";
-        
-        std::vector<std::string> match_params = {
-            inserted_event_id,
-            home_team_id,
-            away_team_id,
-            home_away_status_id,
-            competition_name,
-            match_status.empty() ? "scheduled" : match_status
-        };
-        
-        std::cout << "📊 Match query: " << match_query << std::endl;
-        
-        db_->query(match_query, match_params);
-        
-        // Log match to ##u/##p file
-        std::map<std::string, std::string> match_columns;
-        match_columns["home_team_id"] = home_team_id;
-        match_columns["away_team_id"] = away_team_id;
-        match_columns["home_away_status_id"] = home_away_status_id;
-        if (!competition_name.empty()) match_columns["competition_name"] = competition_name;
-        match_columns["match_status"] = match_status.empty() ? "scheduled" : match_status;
-        std::string match_upsert = SqlBuilder::buildUpsert("matches", inserted_event_id, match_columns, "id");
-        SqlFileLogger::log("matches", match_upsert);
-        
+
+        // The caller must be an admin or a current coach of either team.
+        if (!callerMayManageTeams(callerUserId, "SELECT $2::int UNION SELECT $3::int",
+                                  { home_team_id, away_team_id })) {
+            return Response(HttpStatus::FORBIDDEN,
+                            createJSONResponse(false, "Only a coach of one of these teams or a club admin can create a match for them"));
+        }
+
+        pqxx::result rows = db_->query(
+            "INSERT INTO matches "
+            "  (match_type_id, match_status_id, home_team_id, away_team_id, title, description, "
+            "   match_date, match_time, venue_id, created_by_user_id, manual_override) "
+            "VALUES ("
+            "  COALESCE((SELECT id FROM match_types WHERE name = NULLIF($1, '') LIMIT 1), "
+            "           (SELECT id FROM match_types WHERE name = 'custom' LIMIT 1)), "
+            "  COALESCE((SELECT id FROM match_statuses WHERE name = NULLIF($2, '') LIMIT 1), "
+            "           (SELECT id FROM match_statuses WHERE name = 'scheduled' LIMIT 1)), "
+            "  $3::int, $4::int, $5, NULLIF($6, ''), $7::date, $8::time, NULLIF($9, '')::int, $10::int, TRUE) "
+            "RETURNING id",
+            std::vector<std::string>{ match_type, match_status, home_team_id, away_team_id, title, notes,
+                                      date, start_time, venue_id, std::to_string(callerUserId) });
+        if (rows.empty()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                            createJSONResponse(false, "Failed to create match"));
+        }
+
         std::ostringstream result_json;
-        result_json << "{\"id\":\"" << inserted_event_id << "\"}";
-        
-        std::string json = createJSONResponse(true, "Match created successfully", result_json.str());
-        return Response(HttpStatus::CREATED, json);
-        
+        result_json << "{\"id\":" << rows[0][0].c_str() << "}";
+        return Response(HttpStatus::CREATED,
+                        createJSONResponse(true, "Match created successfully", result_json.str()));
+
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleCreateMatch error: " << e.what() << std::endl;
-        std::string json = createJSONResponse(false, "Failed to create match");
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to create match"));
     }
 }
 
@@ -957,6 +915,54 @@ Response EventController::handleGetMatch(const Request& request) {
     }
 }
 
+// Shared write gate for the match endpoints (2026-09-07). PUT got this
+// in Game Center slice C; POST and DELETE had no auth at all — any
+// anonymous caller could create or delete any match. Same rule
+// EligibilityController uses to decide isCoach for the lineup editor: a
+// verified bearer token belonging to a club admin (any admins row) or to
+// a current coach of one of the teams in question. bearerUserId verifies
+// the JWT signature; extractUserIdFromToken only base64-decodes, so it
+// is not used for authorization.
+bool EventController::callerMayManageTeams(long long userId, const std::string& teamIdsSql,
+                                           const std::vector<std::string>& teamParams) {
+    std::vector<std::string> params{ std::to_string(userId) };
+    params.insert(params.end(), teamParams.begin(), teamParams.end());
+    pqxx::result gate = db_->query(
+        "SELECT ("
+        "  EXISTS (SELECT 1 FROM admins a WHERE a.user_id = $1::int)"
+        "  OR EXISTS (SELECT 1 FROM team_coaches tc "
+        "             JOIN coaches co ON co.id = tc.coach_id "
+        "             JOIN users u ON u.person_id = co.person_id "
+        "             WHERE u.id = $1::int AND tc.ended_at IS NULL "
+        "             AND tc.team_id IN (" + teamIdsSql + "))"
+        ") AS may_edit",
+        params);
+    return !gate.empty() && gate[0]["may_edit"].as<bool>();
+}
+
+// The teams of an existing match: fh_event_teams for a gcal-bridged game
+// (a "Team: APSL, Liga1" game has two), else home/away ids.
+std::optional<Response> EventController::matchWriteGate(const Request& request,
+                                                        const std::string& match_id) {
+    const long long callerUserId = bearerUserId(request);
+    if (callerUserId <= 0) {
+        return Response(HttpStatus::UNAUTHORIZED,
+                        createJSONResponse(false, "Authentication required"));
+    }
+    const bool ok = callerMayManageTeams(callerUserId,
+        "SELECT fet.team_id FROM fh_events fe "
+        "JOIN fh_event_teams fet ON fet.fh_event_id = fe.id "
+        "WHERE fe.match_id = $2::int "
+        "UNION SELECT home_team_id FROM matches WHERE id = $2::int AND home_team_id IS NOT NULL "
+        "UNION SELECT away_team_id FROM matches WHERE id = $2::int AND away_team_id IS NOT NULL",
+        { match_id });
+    if (!ok) {
+        return Response(HttpStatus::FORBIDDEN,
+                        createJSONResponse(false, "Only a coach of this match's team or a club admin can edit it"));
+    }
+    return std::nullopt;
+}
+
 Response EventController::handleUpdateMatch(const Request& request) {
     try {
         std::string match_id = extractMatchIdFromPath(request.getPath());
@@ -965,41 +971,9 @@ Response EventController::handleUpdateMatch(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, json);
         }
 
-        // Write gate (2026-09-07, Game Center slice C). This endpoint had no
-        // auth at all — any anonymous caller could rewrite any match's
-        // score, date or teams. Same rule EligibilityController uses to
-        // decide isCoach for the lineup editor: a verified bearer token
-        // belonging to a club admin (any admins row) or to a current coach
-        // of one of this match's teams — fh_event_teams for a gcal-bridged
-        // game (a "Team: APSL, Liga1" game has two), else home/away ids.
-        // bearerUserId verifies the JWT signature; extractUserIdFromToken
-        // only base64-decodes, so it is not used for authorization.
-        const long long callerUserId = bearerUserId(request);
-        if (callerUserId <= 0) {
-            return Response(HttpStatus::UNAUTHORIZED,
-                            createJSONResponse(false, "Authentication required"));
-        }
-        {
-            pqxx::result gate = db_->query(
-                "SELECT ("
-                "  EXISTS (SELECT 1 FROM admins a WHERE a.user_id = $1::int)"
-                "  OR EXISTS (SELECT 1 FROM team_coaches tc "
-                "             JOIN coaches co ON co.id = tc.coach_id "
-                "             JOIN users u ON u.person_id = co.person_id "
-                "             WHERE u.id = $1::int AND tc.ended_at IS NULL "
-                "             AND tc.team_id IN ("
-                "               SELECT fet.team_id FROM fh_events fe "
-                "               JOIN fh_event_teams fet ON fet.fh_event_id = fe.id "
-                "               WHERE fe.match_id = $2::int "
-                "               UNION SELECT home_team_id FROM matches WHERE id = $2::int AND home_team_id IS NOT NULL "
-                "               UNION SELECT away_team_id FROM matches WHERE id = $2::int AND away_team_id IS NOT NULL))"
-                ") AS may_edit",
-                std::vector<std::string>{ std::to_string(callerUserId), match_id });
-            if (gate.empty() || !gate[0]["may_edit"].as<bool>()) {
-                return Response(HttpStatus::FORBIDDEN,
-                                createJSONResponse(false, "Only a coach of this match's team or a club admin can edit it"));
-            }
-        }
+        // Write gate (2026-09-07, Game Center slice C): admin or coach of
+        // one of this match's teams. Shared with DELETE — see matchWriteGate.
+        if (auto denied = matchWriteGate(request, match_id)) return *denied;
 
         std::string body = request.getBody();
         std::cout << "📝 Updating match " << match_id << " with body: " << body << std::endl;
@@ -1117,6 +1091,11 @@ Response EventController::handleDeleteMatch(const Request& request) {
             std::string json = createJSONResponse(false, "Invalid match ID in path");
             return Response(HttpStatus::BAD_REQUEST, json);
         }
+
+        // Write gate (2026-09-07): same admin-or-coach rule as PUT. Until
+        // now any anonymous caller could delete any match (and, via the
+        // cascades below, its RSVPs, lineups and posts).
+        if (auto denied = matchWriteGate(request, match_id)) return *denied;
 
         // Series-aware scope.  Callers hitting a match that belongs
         // to a recurring series must state their intent:
