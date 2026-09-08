@@ -328,9 +328,14 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
         
         // Fast path — email is already in person_emails AND a users row
         // exists for that person.  Return the user id straight away.
+        // Case-insensitive: person_emails stores the address as typed at
+        // registration, and Google may report it with different casing
+        // (Jamie Arevalo, 2026-09-08: "Arevalojamie@" vs "arevalojamie@"
+        // minted a blank orphan person — see migration 346).
         std::string checkEmailSql = "SELECT u.id AS user_id FROM person_emails pe "
                                    "JOIN users u ON u.person_id = pe.person_id "
-                                   "WHERE pe.email = " + db->escape(email);
+                                   "WHERE LOWER(pe.email) = LOWER(" + db->escape(email) + ") "
+                                   "ORDER BY pe.is_primary DESC, u.id ASC LIMIT 1";
         pqxx::result existingEmail = db->query(checkEmailSql);
         
         if (!existingEmail.empty()) {
@@ -347,7 +352,7 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
         // every other never-logged-in roster player will hit their
         // FIRST successful Google-OAuth login.
         std::string checkPersonSql = "SELECT person_id FROM person_emails "
-                                     "WHERE email = " + db->escape(email) + " LIMIT 1";
+                                     "WHERE LOWER(email) = LOWER(" + db->escape(email) + ") LIMIT 1";
         pqxx::result existingPerson = db->query(checkPersonSql);
         
         std::string personId;
