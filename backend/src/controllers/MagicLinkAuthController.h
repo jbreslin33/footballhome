@@ -27,12 +27,6 @@ private:
     Response handleMe(const Request& request);
     Response handleLogout(const Request& request);
 
-    // Bearer-presence gate that matches the Node `requireAuth` middleware:
-    // payload must decode and contain a `userId` field.  Populates
-    // outUserId with the extracted value when present.  No signature
-    // verification — same pre-existing gap as every other admin route.
-    bool extractBearerUserId(const Request& request, std::string& outUserId);
-
     // Resolves whether Set-Cookie should include the Secure attribute.
     // Pulled from PUBLIC_BASE_URL — true for https://, false for plain
     // http (local dev would otherwise silently drop the cookie).

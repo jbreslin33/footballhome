@@ -896,7 +896,12 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                         'is_callup',      roster.is_callup,
                                                         'callup_from',    roster.callup_from,
                                                         'phone',          roster.phone,
-                                                        'email',          roster.email
+                                                        'email',          roster.email,
+                                                        -- Youth: the guardian who signs in and RSVPs
+                                                        -- (persons.parent_person_id). NULL for adults.
+                                                        -- #my per-row reminders mint the magic link
+                                                        -- for this id when present (auth model 2026-09-05).
+                                                        'parent_person_id', roster.parent_person_id
                         )
                                                 ORDER BY CASE roster.response
                                    WHEN 'yes' THEN 1
@@ -929,7 +934,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                              combined.is_callup,
                                                              combined.callup_from,
                                                              combined.phone,
-                                                             combined.email
+                                                             combined.email,
+                                                             combined.parent_person_id
                                                     FROM (
                                                         SELECT
                                                              p.id AS person_id,
@@ -997,7 +1003,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                (SELECT email FROM person_emails
                                                                  WHERE person_id = p.parent_person_id
                                                                  ORDER BY is_primary DESC, id ASC LIMIT 1)
-                                                             ) AS email
+                                                             ) AS email,
+                                                             p.parent_person_id
                                                         FROM fh_event_teams fet
                                                         JOIN team_persons tp
                                                             ON tp.team_id = fet.team_id
@@ -1031,7 +1038,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                ORDER BY is_primary DESC, id ASC LIMIT 1),
                                                              (SELECT email FROM person_emails
                                                                WHERE person_id = p.id
-                                                               ORDER BY is_primary DESC, id ASC LIMIT 1)
+                                                               ORDER BY is_primary DESC, id ASC LIMIT 1),
+                                                             p.parent_person_id
                                                         FROM fh_event_teams fet
                                                         JOIN team_coaches tc
                                                             ON tc.team_id = fet.team_id
@@ -1080,7 +1088,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                                (SELECT email FROM person_emails
                                                                  WHERE person_id = p.parent_person_id
                                                                  ORDER BY is_primary DESC, id ASC LIMIT 1)
-                                                             )
+                                                             ),
+                                                             p.parent_person_id
                                                         FROM fh_event_callups(fe.id) cu
                                                         JOIN persons p ON p.id = cu.person_id
                                                         LEFT JOIN fh_event_rsvps er

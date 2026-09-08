@@ -60,6 +60,31 @@ std::string toLower(std::string s) {
 
 // Pull just the first IP out of an X-Forwarded-For chain (may be
 // "client, proxy1, proxy2").  Matches the Node `.split(',')[0].trim()`.
+// Club/super admin, or the person behind this user is an active coach
+// (team_coaches.ended_at IS NULL) of at least one team. Same "who may
+// act for others" line canManageTeam draws, minus the per-team scope:
+// a coach reminding from #my may be looking at any event's roster.
+bool callerMayMint(long long userId) {
+    try {
+        auto* db = Database::getInstance();
+        auto rows = db->query(
+            "SELECT EXISTS ("
+            "         SELECT 1 FROM admins a "
+            "         JOIN admin_levels al ON al.id = a.admin_level_id "
+            "        WHERE a.user_id = $1::int AND al.name IN ('club','super')) "
+            "    OR EXISTS ("
+            "         SELECT 1 FROM users u "
+            "         JOIN coaches co ON co.person_id = u.person_id "
+            "         JOIN team_coaches tc ON tc.coach_id = co.id AND tc.ended_at IS NULL "
+            "        WHERE u.id = $1::int) AS ok",
+            {std::to_string(userId)});
+        return !rows.empty() && rows[0]["ok"].as<bool>();
+    } catch (const std::exception& e) {
+        std::cerr << "[callerMayMint] " << e.what() << std::endl;
+        return false;
+    }
+}
+
 std::string firstForwardedIp(const std::string& xff) {
     const std::size_t comma = xff.find(',');
     return trim(xff.substr(0, comma == std::string::npos ? xff.size() : comma));
@@ -99,70 +124,27 @@ bool MagicLinkAuthController::useSecureCookies() const {
     return scheme != "http://";
 }
 
-bool MagicLinkAuthController::extractBearerUserId(const Request& request,
-                                                  std::string& outUserId) {
-    const std::string h = request.getHeader("Authorization");
-    if (h.size() < 8 || h.compare(0, 7, "Bearer ") != 0) return false;
-
-    const std::string token = h.substr(7);
-    const std::size_t dot1 = token.find('.');
-    if (dot1 == std::string::npos) return false;
-    const std::size_t dot2 = token.find('.', dot1 + 1);
-    if (dot2 == std::string::npos) return false;
-
-    std::string payload = token.substr(dot1 + 1, dot2 - dot1 - 1);
-    // base64url → base64
-    for (auto& c : payload) {
-        if (c == '-') c = '+';
-        else if (c == '_') c = '/';
-    }
-    while (payload.size() % 4) payload.push_back('=');
-
-    auto b64decode = [](const std::string& in) -> std::string {
-        static int t[256];
-        static bool initted = false;
-        if (!initted) {
-            for (int i = 0; i < 256; ++i) t[i] = -1;
-            const char* a = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-            for (int i = 0; i < 64; ++i) t[static_cast<unsigned char>(a[i])] = i;
-            initted = true;
-        }
-        std::string out;
-        int  val   = 0;
-        int  valb  = -8;
-        for (unsigned char c : in) {
-            if (c == '=') break;
-            int v = t[c];
-            if (v < 0) continue;
-            val   = (val << 6) | v;
-            valb += 6;
-            if (valb >= 0) {
-                out.push_back(static_cast<char>((val >> valb) & 0xFF));
-                valb -= 8;
-            }
-        }
-        return out;
-    };
-
-    const std::string decoded = b64decode(payload);
-    try {
-        const json j = json::parse(decoded);
-        if (!j.contains("userId")) return false;
-        const auto& u = j["userId"];
-        if (u.is_string())  outUserId = u.get<std::string>();
-        else if (u.is_number_integer()) outUserId = std::to_string(u.get<long long>());
-        else if (u.is_number_unsigned()) outUserId = std::to_string(u.get<unsigned long long>());
-        else return false;
-        return !outUserId.empty();
-    } catch (...) {
-        return false;
-    }
-}
-
 Response MagicLinkAuthController::handleMint(const Request& request) {
-    std::string adminUserIdStr;
-    if (!extractBearerUserId(request, adminUserIdStr)) {
+    // Signature-verified bearer via Controller::requireBearer. The
+    // pre-2026-09-07 gate only base64-decoded the JWT payload, so a
+    // hand-written {"userId":"1"} header was enough to mint a sign-in
+    // link for ANY person_id.
+    if (!requireBearer(request)) {
         return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    const long long callerUserId = bearerUserId(request);
+    if (callerUserId <= 0) {
+        return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    const std::string adminUserIdStr = std::to_string(callerUserId);
+
+    // A minted token IS a credential for person_id, so only club/super
+    // admins and active coaches may create one. The #my per-row RSVP
+    // reminder falls back to a plain footballhome.org link on 403, so a
+    // player nudging a teammate never ends up holding their sign-in.
+    if (!callerMayMint(callerUserId)) {
+        return jsonError(HttpStatus::FORBIDDEN,
+                         "Only club admins and coaches can send sign-in links");
     }
 
     json body;

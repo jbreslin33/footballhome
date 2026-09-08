@@ -273,20 +273,14 @@ class MyScreen extends Screen {
         }
         return;
       }
-      // Peer "Remind" nudge — sms: link already does the work (opens the
-      // clicker's own Messages app, pre-filled, they hit send); we just
-      // flip it to a disabled "Reminded" state after one tap so a single
-      // viewer can't re-blast the same teammate all afternoon. No
-      // preventDefault — the sms: navigation still needs to fire.
-      const remindLink = target.closest('[data-remind-key]');
-      if (remindLink) {
+      // Per-person "Remind" nudge — mints the recipient's magic link,
+      // then opens the clicker's own Messages/Gmail pre-filled (they
+      // still hit send). See _sendReminder.
+      const remindBtn = target.closest('[data-remind-key]');
+      if (remindBtn) {
+        e.preventDefault();
         e.stopPropagation();
-        const key = remindLink.getAttribute('data-remind-key');
-        if (key) this.remindedKeys.add(key);
-        const icon = remindLink.getAttribute('data-remind-icon');
-        remindLink.textContent = icon ? `${icon} ✓` : 'Reminded ✓';
-        remindLink.style.opacity = '0.55';
-        remindLink.style.pointerEvents = 'none';
+        if (!remindBtn.disabled) this._sendReminder(remindBtn);
         return;
       }
       // Bulk "Email N No Response" — BCC compose to everyone still
@@ -760,11 +754,17 @@ class MyScreen extends Screen {
       return entry && (entry.status === 'present' || entry.status === 'late');
     }).length;
 
-    // Plain sms:/mailto: links — no server round-trip. Opens the
-    // clicker's own Messages/Mail app pre-filled; they still have to hit
-    // send themselves. Each channel tracks its own "already reminded"
-    // key so texting someone doesn't hide the option to also email them.
-    // Shared by both the Players and Coaches No Response groups.
+    // Per-person reminder buttons → _sendReminder. Each channel tracks
+    // its own "already reminded" key so texting someone doesn't hide the
+    // option to also email them. Shared by both the Players and Coaches
+    // No Response groups.
+    //
+    // These are ONE-person sends, so under the auth model (owner
+    // 2026-09-05: every individual FH link is a magic link) the body
+    // carries a token minted for the recipient — not the bare
+    // footballhome.org/#my the old sms:/mailto: anchors here shipped.
+    // Youth rows carry parent_person_id; the token is minted for the
+    // parent, who is the one that RSVPs.
     const eventTitle = this._eventTitle(ev);
     const remindRowsHtml = (list) => list.map(r => {
       const name = nameOf(r);
@@ -774,26 +774,29 @@ class MyScreen extends Screen {
       } else {
         const smsKey   = `${ev.fh_event_id}:${r.person_id}:sms`;
         const emailKey = `${ev.fh_event_id}:${r.person_id}:email`;
-        const remindBody = `Hey ${r.first_name || ''}, don't forget to RSVP for ${eventTitle}! https://footballhome.org/#my`.trim();
+        const mintPersonId = r.parent_person_id || r.person_id || '';
+        const remindBtn = (channel, contact, key, icon, bg, verb) => `
+              <button type="button"
+                     data-remind-key="${this.escapeHtml(key)}" data-remind-icon="${icon}"
+                     data-remind-channel="${channel}"
+                     data-contact="${this.escapeHtml(contact)}"
+                     data-person-id="${this.escapeHtml(mintPersonId)}"
+                     data-first-name="${this.escapeHtml(r.first_name || '')}"
+                     data-event-title="${this.escapeHtml(eventTitle)}"
+                     title="${verb} ${this.escapeHtml(name)} a reminder with their sign-in link"
+                     style="font-size:0.68rem; font-weight:700; color:#0f172a; background:${bg};
+                            padding:3px 7px; border-radius:999px; border:none; cursor:pointer; line-height:1.4;">${icon}</button>`;
 
         const smsBtn = this.remindedKeys.has(smsKey)
           ? `<span style="font-size:0.62rem; opacity:0.55;">💬 ✓</span>`
           : (r.phone
-              ? `<a href="sms:${this.escapeHtml(r.phone)}?body=${encodeURIComponent(remindBody)}"
-                     data-remind-key="${this.escapeHtml(smsKey)}" data-remind-icon="💬"
-                     title="Text ${this.escapeHtml(name)} a reminder"
-                     style="font-size:0.68rem; font-weight:700; color:#0f172a; background:#38bdf8;
-                            padding:3px 7px; border-radius:999px; text-decoration:none; line-height:1.4;">💬</a>`
+              ? remindBtn('sms', r.phone, smsKey, '💬', '#38bdf8', 'Text')
               : `<span style="font-size:0.6rem; opacity:0.35;" title="No SMS on file">💬</span>`);
 
         const emailBtn = this.remindedKeys.has(emailKey)
           ? `<span style="font-size:0.62rem; opacity:0.55;">📧 ✓</span>`
           : (r.email
-              ? `<a href="mailto:${this.escapeHtml(r.email)}?subject=${encodeURIComponent('RSVP needed for ' + eventTitle)}&body=${encodeURIComponent(remindBody)}"
-                     data-remind-key="${this.escapeHtml(emailKey)}" data-remind-icon="📧"
-                     title="Email ${this.escapeHtml(name)} a reminder"
-                     style="font-size:0.68rem; font-weight:700; color:#0f172a; background:#a78bfa;
-                            padding:3px 7px; border-radius:999px; text-decoration:none; line-height:1.4;">📧</a>`
+              ? remindBtn('email', r.email, emailKey, '📧', '#a78bfa', 'Email')
               : `<span style="font-size:0.6rem; opacity:0.35;" title="No email on file">📧</span>`);
 
         actionsHtml = `<span style="display:flex; align-items:center; gap:4px;">${smsBtn}${emailBtn}</span>`;
@@ -933,6 +936,78 @@ class MyScreen extends Screen {
             Split into ${chunks.length} group texts of ${CHUNK_SIZE} — carriers commonly cap group MMS around 10 people.
           </div>` : ''}
       </div>`;
+  }
+
+  // One-person RSVP reminder (💬 / 📧 on a No Response row).
+  //
+  // Auth model (owner 2026-09-05): a footballhome.org link sent to ONE
+  // person carries that person's magic-link token. So this mints via
+  // POST /api/auth/magic-link/mint and puts the verify URL in the body —
+  // one tap signs the player in (72h link, one-year sliding cookie) and
+  // lands on #calendar. The mint is person-only; the event is named in
+  // the text, not scoped on the token.
+  //
+  // The mint is admin/coach-only (403 otherwise). Any teammate can see
+  // these buttons, and a peer must never end up holding someone else's
+  // sign-in credential, so on 401/403 the body falls back to the plain
+  // https://footballhome.org/#my nudge — same message as before, minus
+  // the token.
+  //
+  // Youth: data-person-id is the PARENT's persons.id when the row has
+  // one (calendar rsvps carry parent_person_id), sent to the contact the
+  // row already resolved (parent's phone/email when the child has none).
+  //
+  // Navigation happens after an await; the LINK buttons on the roster
+  // boards (RosterScreenBase._onMagicLinkClick) already do this and it
+  // works in practice for sms: and for window.open on Gmail compose.
+  async _sendReminder(btn) {
+    const key      = btn.getAttribute('data-remind-key') || '';
+    const channel  = btn.getAttribute('data-remind-channel') === 'email' ? 'email' : 'sms';
+    const contact  = (btn.getAttribute('data-contact') || '').trim();
+    const personId = parseInt(btn.getAttribute('data-person-id'), 10) || 0;
+    const first    = btn.getAttribute('data-first-name') || '';
+    const title    = btn.getAttribute('data-event-title') || 'the game';
+    const icon     = btn.getAttribute('data-remind-icon') || '';
+    if (!contact) return;
+
+    btn.disabled = true;
+    btn.textContent = '⏳';
+
+    let url   = 'https://footballhome.org/#my';
+    let magic = false;
+    if (personId) {
+      try {
+        const data = await this._fetch('/api/auth/magic-link/mint', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ person_id: personId, channel, contact }),
+        });
+        if (data && data.url) { url = data.url; magic = true; }
+      } catch (err) {
+        // Not admin/coach (403), or mint down — plain link is the right
+        // body for a peer either way.
+        console.warn('[my] magic-link mint unavailable, sending plain link:', err.message);
+      }
+    }
+
+    const hey  = `Hey${first ? ' ' + first : ''}, don't forget to RSVP for ${title}!`;
+    const body = magic
+      ? `${hey} Tap to sign in and RSVP — no password needed, link works for 72 hours:\n${url}`
+      : `${hey} ${url}`;
+
+    if (channel === 'email') {
+      this.openGmailCompose(this.buildGmailComposeHref({
+        to: contact, subject: `RSVP needed for ${title}`, body,
+      }));
+    } else {
+      window.location.href = this.buildSmsComposeHref({ to: contact, body });
+    }
+
+    // Flip to "reminded" after one tap so a single viewer can't re-blast
+    // the same teammate all afternoon (session-local, per channel).
+    if (key) this.remindedKeys.add(key);
+    btn.textContent = icon ? `${icon} ✓` : 'Reminded ✓';
+    btn.style.opacity = '0.55';
   }
 
   // Bulk "Text N No Response" — one group sms: thread with everyone still
