@@ -321,6 +321,64 @@ class WomensRosterScreen extends RosterScreenBase {
     `;
   }
 
+  // ── TeamSnap league registration + dues (owner 2026-09-07) ─────────
+  //
+  // The women's club registers for the league and pays dues on TeamSnap,
+  // not through FH or LeagueApps, so the ask on a women's card is "go
+  // register + pay" rather than the youth boards' "upload docs". One
+  // 💬 / ✉ REGISTER pair per card sends ONE player the form link, pre-
+  // filled in the admin's own Messages / Gmail (nothing sends until she
+  // hits send).
+  //
+  // Gone once her official roster status counts as on roster
+  // (roster_statuses.counts_as_on_roster — on_roster / possible_drop,
+  // migration 342): the ask is done. Not a footballhome.org link, so no
+  // magic token — the 🔗 LINK buttons beside it cover sign-in.
+  static TEAMSNAP_REG_URL = 'https://registration.teamsnap.com/form/71486';
+  static REG_SUBJECT      = "Lighthouse 1893 Women's — register for the league and pay dues";
+
+  static regBody(firstName) {
+    const hi = firstName ? `Hi ${firstName} —` : 'Hi —';
+    return [
+      `${hi} to get on the Lighthouse 1893 women's roster this season, please register for the league and pay dues on TeamSnap here:`,
+      '',
+      WomensRosterScreen.TEAMSNAP_REG_URL,
+      '',
+      "Once that's done we'll put you on the official roster. Thanks!",
+      '',
+      '— Lighthouse Soccer',
+    ].join('\n');
+  }
+
+  renderRegisterButtons(p) {
+    if (!p || RosterScreenBase.countsAsOnRoster(p.rosterStatus)) return '';
+    const { phone = null, email = null } = this.contactFor(p) || {};
+    if (!phone && !email) return '';
+
+    const body = WomensRosterScreen.regBody(p.firstName);
+    const who  = p.firstName ? ` ${this.escape(p.firstName)}` : '';
+    // Same footprint as the 🔗 LINK / 👋 WELCOME buttons it sits beside.
+    const btnBase = 'padding:0 4px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:3px; background:#7c3aed; color:#fff; text-decoration:none; appearance:none; -webkit-appearance:none; min-height:0; margin:0;';
+
+    const smsBtn = phone
+      ? `<a href="${this.escape(this.buildSmsComposeHref({ to: phone, body }))}"
+            title="Text${who} the TeamSnap registration + dues link"
+            style="${btnBase}">💬 REGISTER</a>`
+      : '';
+    // buildGmailComposeHref returns mailto: on Android (Gmail App Link
+    // parser quirk) and a mail.google.com compose URL elsewhere; only the
+    // latter wants a new tab.
+    const emailHref = email
+      ? this.buildGmailComposeHref({ to: email, subject: WomensRosterScreen.REG_SUBJECT, body })
+      : null;
+    const emailBtn = emailHref
+      ? `<a href="${this.escape(emailHref)}"${emailHref.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener noreferrer"'}
+            title="Email${who} the TeamSnap registration + dues link"
+            style="${btnBase}">✉ REGISTER</a>`
+      : '';
+    return smsBtn + emailBtn;
+  }
+
   renderPlayer(p, columns, col, position, totalInColumn = 0) {
     // Full DOB (e.g. "3/10/2008").
     const dobShort = this.formatDobShort(p.birthDate);
@@ -353,6 +411,9 @@ class WomensRosterScreen extends RosterScreenBase {
     // 👋 WELCOME buttons (owner 2026-09-06) — universal via
     // RosterScreenBase.renderWelcomeButtons.  Amber while owed.
     const welcomeBtns = this.renderWelcomeButtons(p, { personId: p.personId });
+    // 📝 REGISTER buttons (owner 2026-09-07) — TeamSnap league
+    // registration + dues; gone once she counts as on roster.
+    const regBtns = this.renderRegisterButtons(p);
 
     const duesLabel = this.renderDuesLabel(p);
     const cardId = `wr-card-${p.leagueAppsUserId}`;
@@ -372,7 +433,7 @@ class WomensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn + linkBtns + welcomeBtns,
+      viewButtonHtml: profileBtn + linkBtns + welcomeBtns + regBtns,
       borderColor: cardBorder,
       canMove,
     });
