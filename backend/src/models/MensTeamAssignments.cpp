@@ -209,8 +209,10 @@ std::vector<int> MensTeamAssignments::addAssignmentForPerson(long long personId,
         // team keeps that status on the new row when moved up, so the
         // coach is never asked to chase documents already in hand.  Any
         // other status is team-specific and starts blank as before.
-        // Since migration 342 it only follows into a league that uses
-        // that status — a move to an adult team starts blank.
+        // Since migration 342 it only follows into a league that lists
+        // that status; since migration 348 every league does (owner
+        // 2026-09-08: docs are standard for every league), so the
+        // league check is now a guard, not a filter.
         tx->exec_params(
             "INSERT INTO team_persons (team_id, person_id, roster_status_id) "
             "VALUES ($2, $1, "
