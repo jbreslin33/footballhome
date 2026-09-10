@@ -313,6 +313,7 @@ class WomensRosterScreen extends RosterScreenBase {
             ${countHtml}
           </span>
         </div>
+        ${this.renderRosterStatusTallies(col, players)}
         <div class="wr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:8px; min-height:8px; min-width:${this.colBoxMinWidth()};">
           ${body}

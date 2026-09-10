@@ -478,6 +478,7 @@ class MensRosterScreen extends RosterScreenBase {
             ${countHtml}
           </span>
         </div>
+        ${this.renderRosterStatusTallies(col, players)}
         <div class="mr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:6px; min-height:8px; min-width:${this.colBoxMinWidth()};">
           ${body}

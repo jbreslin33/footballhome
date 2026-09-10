@@ -374,6 +374,64 @@ class RosterScreenBase extends Screen {
     tally.innerHTML = this.onRosterTallyHtml(n, Number(tally.dataset.fieldSize) || 0);
   }
 
+  // ── Per-status tallies (owner 2026-09-10: "show above each team the
+  // tallies of the diff roster statuses") ──────────────────────────────
+  //
+  // One chip per roster status the column's players actually carry,
+  // painted in that status's own colours (same palette as the card
+  // dropdown) and ordered by the league's pipeline (sort_order), plus a
+  // neutral "N No status" chip for players with no status yet. Zero
+  // counts are not shown — the strip is a snapshot of where the roster
+  // sits, not the full pipeline (the dropdown already lists that).
+  // Unassigned has no team_persons rows, so no strip there. Carries
+  // data-status-tallies (+ data-league-id for ordering) so
+  // refreshRosterStatusTallies() can repaint it live after a dropdown
+  // change, exactly like the "✓ N on roster" tally.
+  renderRosterStatusTallies(col, players) {
+    if (!col || !col.teamId) return '';
+    const codes = (players || []).map(p => (p && p.rosterStatus) || '');
+    if (!codes.length) return '';
+    return `<div data-status-tallies="${col.teamId}" data-league-id="${Number(col.leagueId) || 0}"
+                 style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin:0 0 6px;">
+              ${this.rosterStatusTalliesHtml(col, codes)}
+            </div>`;
+  }
+
+  rosterStatusTalliesHtml(col, codes) {
+    const esc = RosterScreenBase.escapeHtml;
+    const counts = new Map();
+    for (const c of codes) counts.set(c, (counts.get(c) || 0) + 1);
+    if (!counts.size) return '';
+    // League order first, then anything a player carries that this
+    // league doesn't list (same "nothing vanishes" rule as the dropdown),
+    // blank last.
+    const ordered = RosterScreenBase.rosterStatusesForColumn(col).map(s => s.code);
+    for (const c of counts.keys()) if (c && !ordered.includes(c)) ordered.push(c);
+    ordered.push('');
+    const chips = ordered.map(code => {
+      const n = counts.get(code) || 0;
+      if (!n) return '';
+      const s = RosterScreenBase.rosterStatusByCode(code);
+      const label = code ? ((s && s.displayName) || code) : 'No status';
+      const c = RosterScreenBase.rosterStatusColors(code);
+      const tip = `${n} ${label}${s && s.description ? ' — ' + s.description : ''}`;
+      return `<span title="${esc(tip)}"
+                    style="display:inline-flex; align-items:center; gap:3px; font-size:0.62rem; font-weight:800; letter-spacing:0.01em; padding:0 5px; line-height:1.5; border-radius:3px; white-space:nowrap; background:${c.bg}; color:${c.fg}; border:1px solid ${c.border};">
+                <span style="font-size:0.72rem;">${n}</span>${esc(label)}
+              </span>`;
+    }).join('');
+    return `<span style="font-size:0.62rem; font-weight:700; letter-spacing:0.03em; opacity:0.7;">STATUS</span>${chips}`;
+  }
+
+  refreshRosterStatusTallies(teamId) {
+    if (!this.element || !teamId) return;
+    const strip = this.element.querySelector(`[data-status-tallies="${teamId}"]`);
+    if (!strip) return;
+    const selects = this.element.querySelectorAll(`.mr-status-select[data-team-id="${teamId}"]`);
+    const codes = Array.from(selects).map(s => s.value || '');
+    strip.innerHTML = this.rosterStatusTalliesHtml({ teamId, leagueId: Number(strip.dataset.leagueId) || 0 }, codes);
+  }
+
   renderStatusSelect(player, col, canMove) {
     if (!(canMove && col && col.teamId && player.personId)) return '';
     const esc     = RosterScreenBase.escapeHtml;
@@ -441,6 +499,7 @@ class RosterScreenBase extends Screen {
     select.disabled = true;
     this.applyRosterStatusStyle(select);
     this.refreshOnRosterTally(teamId);
+    this.refreshRosterStatusTallies(teamId);
     try {
       const res = await this.auth.fetch(`/api/teams/${teamId}/roster/person/${personId}/roster-status`, {
         method: 'PUT',
@@ -456,6 +515,7 @@ class RosterScreenBase extends Screen {
       select.value = prevValue;
       this.applyRosterStatusStyle(select);
       this.refreshOnRosterTally(teamId);
+      this.refreshRosterStatusTallies(teamId);
       alert(`Could not save Roster Status: ${err.message}`);
     } finally {
       select.disabled = false;
