@@ -37,8 +37,9 @@ class MensRosterScreen extends RosterScreenBase {
       key:     'casa-liga1',
       icon:    '📋',
       label:   'Liga1/APSL Reg',
-      subject: 'Liga 1 & APSL Registration — required',
+      subject: 'IMPORTANT!!! Liga 1 & APSL Registration — deadline 2:45 PM TODAY to play Sunday',
       body: [
+        'IMPORTANT!!! The deadline to register is 2:45 PM TODAY — if you are not registered by 2:45 PM today you cannot play this Sunday and will have to wait until next week.',
         'To be eligible for Liga 1 & APSL games this needs to be filled out right away — it captures the information needed for the APSL roster too.',
         'Make sure head shot is just head and no hat or sunglasses and facing forward:',
         'https://casasoccerleagues.sportngin.com/register/form/229198682',
