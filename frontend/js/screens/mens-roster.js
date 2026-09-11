@@ -49,8 +49,9 @@ class MensRosterScreen extends RosterScreenBase {
       key:     'apsl',
       icon:    '📋',
       label:   'APSL Reg',
-      subject: 'APSL Registration — required',
+      subject: 'IMPORTANT!!! APSL Registration — deadline 4:30 PM TODAY to play Sunday',
       body: [
+        'IMPORTANT!!! The deadline to register is 4:30 PM TODAY — if you are not registered by 4:30 PM today you cannot play this Sunday and will have to wait until next week.',
         'To be eligible for APSL games this needs to be filled out right away.',
         'Make sure head shot is just head and no hat or sunglasses and facing forward:',
         'https://forms.gle/fki5wPqJk1x2fT9D7',
