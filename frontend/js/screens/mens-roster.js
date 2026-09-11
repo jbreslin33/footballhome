@@ -39,7 +39,7 @@ class MensRosterScreen extends RosterScreenBase {
       label:   'Liga1/APSL Reg',
       subject: 'IMPORTANT!!! Liga 1 & APSL Registration — deadline 2:45 PM TODAY to play Sunday',
       body: [
-        'IMPORTANT!!! The deadline to register is 2:45 PM TODAY — if you are not registered by 2:45 PM today you cannot play this Sunday and will have to wait until next week.',
+        'IMPORTANT!!! The deadline to register is 2:45 PM TODAY — if you are not registered by 2:45 PM today you CANNOT play this Sunday. You will then have to wait until next week to play.',
         'To be eligible for Liga 1 & APSL games this needs to be filled out right away — it captures the information needed for the APSL roster too.',
         'Make sure head shot is just head and no hat or sunglasses and facing forward:',
         'https://casasoccerleagues.sportngin.com/register/form/229198682',
@@ -51,7 +51,7 @@ class MensRosterScreen extends RosterScreenBase {
       label:   'APSL Reg',
       subject: 'IMPORTANT!!! APSL Registration — deadline 4:30 PM TODAY to play Sunday',
       body: [
-        'IMPORTANT!!! The deadline to register is 4:30 PM TODAY — if you are not registered by 4:30 PM today you cannot play this Sunday and will have to wait until next week.',
+        'IMPORTANT!!! The deadline to register is 4:30 PM TODAY — if you are not registered by 4:30 PM today you CANNOT play this Sunday. You will then have to wait until next week to play.',
         'To be eligible for APSL games this needs to be filled out right away.',
         'Make sure head shot is just head and no hat or sunglasses and facing forward:',
         'https://forms.gle/fki5wPqJk1x2fT9D7',
