@@ -1646,6 +1646,15 @@ class SocialPostCard {
     };
   }
 
+  // "STARTING XI" only when the format IS eleven a side — a 7v7 or 9v9
+  // youth sheet says "STARTING 7" / "STARTING 9" (rosterData.fieldSize,
+  // from teams.field_size via game-center.js; absent = XI).
+  startersLabel(upper = true) {
+    const n = Number(this.rosterData && this.rosterData.fieldSize) || 11;
+    const label = n === 11 ? 'Starting XI' : `Starting ${n}`;
+    return upper ? label.toUpperCase() : label;
+  }
+
   buildImageStartersBench() {
     const lineup = this.getZoneLineup();
     if (!lineup) {
@@ -1664,7 +1673,7 @@ class SocialPostCard {
     return `
       <div style="height:1px;min-height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:12px auto;"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;width:100%;">
-        ${section(`STARTING XI`, starters)}
+        ${section(this.startersLabel(), starters)}
         ${section(`BENCH`, bench)}
       </div>
     `;
@@ -1708,7 +1717,7 @@ class SocialPostCard {
       html: `
         <div style="width:100%;margin-bottom:12px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px;width:100%;">
-            ${section('Starting XI', startersHtml, nStarters)}
+            ${section(this.startersLabel(false), startersHtml, nStarters)}
             ${section('Bench', benchHtml, nBench)}
           </div>
         </div>`,

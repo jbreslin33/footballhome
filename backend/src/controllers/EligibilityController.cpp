@@ -83,7 +83,9 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         // player (no 401 on a missing/absent token), but the game-lineup
         // screen needs to know whether to render edit vs. read-only.
         pqxx::result teamRow = db_->query(
-            "SELECT home_team_id, away_team_id FROM matches WHERE id = $1", {matchId}
+            "SELECT m.home_team_id, m.away_team_id, t.field_size AS home_field_size "
+            "FROM matches m LEFT JOIN teams t ON t.id = m.home_team_id "
+            "WHERE m.id = $1", {matchId}
         );
         std::string teamIdForResponse = (!teamRow.empty() && !teamRow[0]["home_team_id"].is_null())
             ? teamRow[0]["home_team_id"].c_str() : "";
@@ -119,6 +121,30 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
             }
             fallback << "}";
             rosterTeamIdsArray = fallback.str();
+        }
+
+        // Game format (teams.field_size, migration 322): 7 for U8/U10 7v7,
+        // 9 for U12 9v9, 11 for the adults. Game Center sizes its starting
+        // slots and picks the default formation from it (2026-09-11,
+        // owner: "u8 and u10 are 7v7 starters and u12 is 9v9"). Read off
+        // the TAGGED teams, not home_team_id: the gcal `Team:` tag is what
+        // says whose game it is (a "Soccer Game u12" tagged U12 Travel
+        // carried home_team_id = U10 Travel on 9/6), and a shared-squad
+        // game's teams all play the same format anyway — max() just
+        // settles ties. Home team is only the fallback for an unbridged
+        // match. NULL = unknown, and the screen falls back to a full XI.
+        std::string fieldSizeForResponse;
+        if (!rosterTeamIdsArray.empty() && rosterTeamIdsArray != "{}") {
+            pqxx::result fsRow = db_->query(
+                "SELECT max(field_size) AS field_size FROM teams WHERE id = ANY($1::int[])",
+                {rosterTeamIdsArray}
+            );
+            if (!fsRow.empty() && !fsRow[0]["field_size"].is_null()) {
+                fieldSizeForResponse = fsRow[0]["field_size"].c_str();
+            }
+        }
+        if (fieldSizeForResponse.empty() && !teamRow.empty() && !teamRow[0]["home_field_size"].is_null()) {
+            fieldSizeForResponse = teamRow[0]["home_field_size"].c_str();
         }
 
         // Same naive-UTC-string convention as the practice pills below (no
@@ -294,6 +320,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         json << "{\"success\":true,\"data\":{\"matchId\":" << matchId << ",";
         json << "\"matchStartsAt\":" << (matchStartsAt.empty() ? "null" : "\"" + matchStartsAt + "\"") << ",";
         json << "\"teamId\":" << (teamIdForResponse.empty() ? "null" : teamIdForResponse) << ",";
+        json << "\"fieldSize\":" << (fieldSizeForResponse.empty() ? "null" : fieldSizeForResponse) << ",";
         {
             // "{35,120}" -> "[35,120]" — rosterTeamIdsArray is a Postgres
             // array literal of plain ints, safe to reuse verbatim as JSON.

@@ -107,28 +107,64 @@
 // matchId also falls back to navigation.context.match.id, which is how
 // #game-day-roster's own callers have always passed it.
 //
-// Zone caps: starter max 11 (a full XI), bench max 9. Alternate and the
-// starter/bench-eligible flags (lineupRole, separate from zone) are
-// unlimited.
-const ZONE_CAPS = { starter: 11, bench: 9 };
+// Zone caps: bench max 9. Starters are capped by the position pills
+// themselves — there are exactly `fieldSize` of them (see FIELD_SIZES),
+// so a starter slot is freed in the same stroke as it's filled.
+// Alternate and the starter/bench-eligible flags (lineupRole, separate
+// from zone) are unlimited.
+const ZONE_CAPS = { bench: 9 };
 
-// Formation pitch graphic row templates (2026-08-22, owner directive) —
-// GK row first (bottom of the pitch; _renderFormationPitch reverses the
-// array so attack ends up on top). Purely a visual layout — it doesn't
-// change what role position id N actually is (see migration 296's
-// 4-4-2 shirt-number scheme), just how the 11 dots are arranged and, for
-// `rows`, their exact left-to-right order within each row.
+// Game formats, keyed by teams.field_size (players per side, migration
+// 322 — U8/U10 7v7, U12 9v9, adults 11v11). Each carries its formation
+// pitch templates and the default one (2026-09-11, owner: "u8 and u10
+// are 7v7 starters and u12 is 9v9... For 7v7 set to a 222 formation and
+// for 9v9 set to a 332 formation").
+//
+// Formation templates (2026-08-22, owner directive) — GK row first
+// (bottom of the pitch; _renderFormationPitch reverses the array so
+// attack ends up on top). Purely a visual layout — it doesn't change
+// what role position id N actually is (see migration 296's 4-4-2
+// shirt-number scheme), just how the dots are arranged and, for `rows`,
+// their exact left-to-right order within each row.
 //
 // `rows`: explicit position-id order per row (owner directive: "front
 // row: 10,9. midfield: 11,8,6,7. backline: 3,5,4,2. keeper at bottom").
 // `counts`: no owner-specified order for these yet, so slots just fill
 // left-to-right in id order, `count` at a time.
-const FORMATIONS = {
-  '4-4-2':   { rows: [[1], [3, 5, 4, 2], [11, 8, 6, 7], [10, 9]] },
-  '4-3-3':   { counts: [1, 4, 3, 3] },
-  '3-5-2':   { counts: [1, 3, 5, 2] },
-  '4-2-3-1': { counts: [1, 4, 2, 3, 1] },
+//
+// The small-sided shapes are the 11v11 spine with players removed, so
+// a chip keeps the same number/role whatever the format: 9v9 3-3-2
+// drops the second CB (5) and second CDM (8); 7v7 2-2-2 drops the four
+// wide players (2, 3, 7, 11). The format's starting slots are exactly
+// the ids in its default formation — that's what the position pills
+// offer and what the pitch draws.
+const FIELD_SIZES = {
+  11: {
+    defaultFormation: '4-4-2',
+    formations: {
+      '4-4-2':   { rows: [[1], [3, 5, 4, 2], [11, 8, 6, 7], [10, 9]] },
+      '4-3-3':   { counts: [1, 4, 3, 3] },
+      '3-5-2':   { counts: [1, 3, 5, 2] },
+      '4-2-3-1': { counts: [1, 4, 2, 3, 1] },
+    },
+  },
+  9: {
+    defaultFormation: '3-3-2',
+    formations: {
+      '3-3-2': { rows: [[1], [3, 4, 2], [11, 6, 7], [10, 9]] },
+    },
+  },
+  7: {
+    defaultFormation: '2-2-2',
+    formations: {
+      '2-2-2': { rows: [[1], [5, 4], [8, 6], [10, 9]] },
+    },
+  },
 };
+for (const spec of Object.values(FIELD_SIZES)) {
+  spec.slotIds = new Set(spec.formations[spec.defaultFormation].rows.flat());
+}
+const DEFAULT_FIELD_SIZE = 11;
 
 // Sentinel row spliced into the formation's rows to mark where the
 // halfway line (and the league crest in its center circle) belongs —
@@ -174,6 +210,11 @@ class GameCenterScreen extends Screen {
     this.title     = '';
     this.when      = '';
     this.teamId    = null;
+    // Players per side for this match's team (teams.field_size via the
+    // lineup endpoint) — picks the FIELD_SIZES entry: how many starting
+    // slots there are and which formations are on offer. Unknown/odd
+    // sizes fall back to a full XI.
+    this.fieldSize = DEFAULT_FIELD_SIZE;
     this.matchStartsAt = null; // naive UTC-string date of this match, for the trailing "game" pill
     this.isCoach   = false;
     // Coach-only toggle (2026-08-22, owner directive: "only need 1 Lineup
@@ -209,11 +250,12 @@ class GameCenterScreen extends Screen {
     // in graphic form as diff formations. default to 442" — "1442
     // counting keeper lol"). This is a pure VISUAL row-count template —
     // it does NOT reassign anyone's actual position/slot (those stay the
-    // 11 fixed named roles the pills use). It just chunks the same 11
-    // slots (in sortOrder) into rows sized by the template counts (GK
-    // row first) so the graphic reads as a real formation shape on a
-    // pitch, purely for the TV-style visual.
-    this.formation = '4-4-2';
+    // fixed named roles the pills use). It just chunks the format's
+    // starting slots (in sortOrder) into rows sized by the template
+    // counts (GK row first) so the graphic reads as a real formation
+    // shape on a pitch, purely for the TV-style visual. Reset to the
+    // format's default once fieldSize is known (_bootstrap).
+    this.formation = FIELD_SIZES[DEFAULT_FIELD_SIZE].defaultFormation;
     // Which of the four game moments is on screen (POST_PILLS above).
     // Supersedes the old two-way subView toggle ('lineup' | 'gameday'),
     // which was itself already collapsing two screens into one — those
@@ -794,6 +836,8 @@ class GameCenterScreen extends Screen {
       this.matchDetails = (matchData && matchData.success) ? matchData.data : null;
 
       this.teamId  = lineupData.data.teamId || null;
+      this.fieldSize = FIELD_SIZES[lineupData.data.fieldSize] ? Number(lineupData.data.fieldSize) : DEFAULT_FIELD_SIZE;
+      this.formation = this._fieldSpec().defaultFormation;
       this.matchStartsAt = lineupData.data.matchStartsAt || null;
       // isCoach comes from EligibilityController checking the REAL logged-in
       // account's admin/coach status — it never looks at the "view as
@@ -937,8 +981,9 @@ class GameCenterScreen extends Screen {
   // slot someone ELSE already holds replaces them — they're bumped back
   // to unassigned (their RSVP group, e.g. "Going") rather than blocking
   // the click; the pill's greyed-out style is just occupancy at a
-  // glance, not a lock. Never exceeds 11 starters: replacing frees a
-  // slot in the same stroke as filling it, and there are only 11 pills.
+  // glance, not a lock. Never exceeds the format's starters (7/9/11):
+  // replacing frees a slot in the same stroke as filling it, and there
+  // are only fieldSize pills.
   _setPosition(playerId, positionId) {
     if (positionId == null) {
       this.zones.delete(playerId);
@@ -1159,11 +1204,11 @@ class GameCenterScreen extends Screen {
     // frame; lineupControlsHtml renders as a normal toolbar below it.
     const lineupControlsHtml = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 12px; flex-wrap:wrap; gap:8px;">
-        <span style="font-size:0.72rem; opacity:0.75;">Starting ${byZone.starter.length}/11 · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}</span>
+        <span style="font-size:0.72rem; opacity:0.75;">Starting ${byZone.starter.length}/${this.fieldSize} · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}</span>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <select data-lineup-formation-select title="Formation (visual layout only)"
                   style="font-size:0.72rem; font-weight:700; padding:4px 6px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
-            ${Object.keys(FORMATIONS).map(f => `<option value="${f}" ${f === this.formation ? 'selected' : ''}>${f}</option>`).join('')}
+            ${Object.keys(this._fieldSpec().formations).map(f => `<option value="${f}" ${f === this.formation ? 'selected' : ''}>${f}</option>`).join('')}
           </select>
           <button type="button" id="gl-stats-toggle" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 10px;">
             ${this.showLineupStats ? 'Hide' : 'Show'} Availability
@@ -2003,7 +2048,7 @@ class GameCenterScreen extends Screen {
         });
       }
     }
-    return { players, selectedIds, zones };
+    return { players, selectedIds, zones, fieldSize: this.fieldSize };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from
@@ -2013,8 +2058,14 @@ class GameCenterScreen extends Screen {
     const rosterById = new Map(this.roster.map(r => [r.id, r]));
     const slotToPlayerId = new Map();
     for (const [pid, posId] of this.positions.entries()) slotToPlayerId.set(posId, pid);
-    const startingPositions = this.positionList.filter(pos => pos.sortOrder <= 11);
+    const slotIds = this._fieldSpec().slotIds;
+    const startingPositions = this.positionList.filter(pos => slotIds.has(pos.id));
     return { rosterById, slotToPlayerId, startingPositions };
+  }
+
+  // The FIELD_SIZES entry for this match's format (see fieldSize).
+  _fieldSpec() {
+    return FIELD_SIZES[this.fieldSize] || FIELD_SIZES[DEFAULT_FIELD_SIZE];
   }
 
   _rsvpStatusPill(playerId) {
@@ -2038,11 +2089,12 @@ class GameCenterScreen extends Screen {
   // "don't hide names with ...").
   _renderFormationPitch(byZone, { readOnly = false } = {}) {
     const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
-    const template = FORMATIONS[this.formation] || FORMATIONS['4-4-2'];
+    const spec = this._fieldSpec();
+    const template = spec.formations[this.formation] || spec.formations[spec.defaultFormation];
     const positionById = new Map(startingPositions.map(pos => [pos.id, pos]));
     let rows;
     if (template.rows) {
-      // Explicit left-to-right id order per row (see FORMATIONS doc).
+      // Explicit left-to-right id order per row (see FIELD_SIZES doc).
       rows = template.rows.map(idRow => idRow.map(id => positionById.get(id)).filter(Boolean));
     } else {
       rows = [];
@@ -2061,7 +2113,7 @@ class GameCenterScreen extends Screen {
     // the no-overlap half of that a guarantee instead of a per-formation
     // gamble: an absolute circle pinned at top:50% lands wherever the
     // rows happen to leave room, which differs for every entry in
-    // FORMATIONS (4 rows for 4-4-2, 5 for 4-2-3-1) and would have run
+    // FIELD_SIZES (4 rows for 4-4-2, 5 for 4-2-3-1) and would have run
     // straight through the midfield tokens on some of them. As a row it
     // simply takes its own space and the rest lay out around it.
     //
