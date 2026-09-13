@@ -772,9 +772,13 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                               )
                           )
                     )
-                    -- Club pass (migration 329): a youth player age-eligible
-                    -- to be called up sees the event like a rostered one.
-                    OR EXISTS (SELECT 1 FROM fh_event_callups(fe.id) cu WHERE cu.person_id = $1::int)
+                    -- Club pass call-ups (migration 329) deliberately do NOT
+                    -- grant visibility here (owner, 2026-09-12): a parent
+                    -- seeing the older team's game on their kid's page
+                    -- could not tell it from the kid's own game. fh_event_
+                    -- callups still drives the coach-side eligibility and
+                    -- the RSVP endpoint, so a future "invite up" link can
+                    -- let a specific call-up in without reopening this.
                 ) AS eligible,
                 -- Guardian visibility (2026-08-28).  A parent of a
                 -- rostered child holds no team_persons row of their own,
@@ -807,23 +811,12 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                         JOIN persons child ON child.id = tp.person_id
                         WHERE fet.fh_event_id = fe.id
                           AND child.parent_person_id = $1::int
-                        UNION
-                        -- Club pass (migration 329): the caller's kids who
-                        -- are age-eligible call-ups count as guardian ties
-                        -- too, so the parent sees the card and gets a Go/No.
-                        SELECT child.first_name || ' ' || child.last_name
-                        FROM fh_event_callups(fe.id) cu
-                        JOIN persons child ON child.id = cu.person_id
-                        WHERE child.parent_person_id = $1::int
+                        -- Rostered kids only. Call-up-eligible kids used
+                        -- to UNION in here (migration 329) so the parent
+                        -- saw the older team's game; withdrawn 2026-09-12,
+                        -- see `eligible`.
                     ) kids
                 ) AS guardian_children,
-                -- Just the call-up subset, for the "why can I see this" line.
-                (
-                    SELECT string_agg(DISTINCT child.first_name || ' ' || child.last_name, ', ')
-                    FROM fh_event_callups(fe.id) cu
-                    JOIN persons child ON child.id = cu.person_id
-                    WHERE child.parent_person_id = $1::int
-                ) AS callup_children,
                 -- Structured sibling of guardian_children above, used to
                 -- actually drive the guardian's Go/No buttons (one row
                 -- per child). Excludes a suspended child the same way
@@ -850,21 +843,10 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                 AND s.starts_at <= now()
                                 AND (s.ends_at IS NULL OR s.ends_at > now())
                           )
-                        UNION
-                        -- Club pass call-ups (migration 329). Flagged so the
-                        -- card can say "eligible to be called up — please
-                        -- RSVP" instead of treating it as the kid's own game.
-                        -- fh_event_callups already excludes suspended kids.
-                        SELECT jsonb_build_object(
-                                   'person_id',   child.id,
-                                   'name',        child.first_name || ' ' || child.last_name,
-                                   'callup',      true,
-                                   'callup_from', cu.from_team_name,
-                                   'age',         cu.single_age
-                               )
-                        FROM fh_event_callups(fe.id) cu
-                        JOIN persons child ON child.id = cu.person_id
-                        WHERE child.parent_person_id = $1::int
+                        -- `callup` stays in the shape for the frontend, but
+                        -- no call-up rows are produced any more (2026-09-12,
+                        -- see `eligible`). A future invite-up flow can add
+                        -- them back for an invited kid only.
                     ) sub
                 ), '[]'::jsonb) AS guardian_targets,
                 COALESCE((
@@ -1077,50 +1059,16 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                          AND er.person_id   = p.id
                                                      WHERE fet.fh_event_id = fe.id
 
-                                                        UNION ALL
-
-                                                        -- Club pass call-ups (migration 329): age-eligible
-                                                        -- youth players from other club teams. A 'yes'
-                                                        -- here means AVAILABLE to be called up, not going
-                                                        -- — the frontend words it that way.
-                                                        SELECT
-                                                             p.id,
-                                                             p.first_name,
-                                                             p.last_name,
-                                                             NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
-                                                             er.response,
-                                                             er.created_via,
-                                                             CASE
-                                                                     WHEN er.responded_at IS NULL THEN NULL
-                                                                     ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
-                                                                                                'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-                                                             END,
-                                                             false,
-                                                             false,
-                                                             true,
-                                                             cu.from_team_name,
-                                                             COALESCE(
-                                                               (SELECT phone_number FROM person_phones
-                                                                 WHERE person_id = p.id AND can_receive_sms = true
-                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1),
-                                                               (SELECT phone_number FROM person_phones
-                                                                 WHERE person_id = p.parent_person_id AND can_receive_sms = true
-                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1)
-                                                             ),
-                                                             COALESCE(
-                                                               (SELECT email FROM person_emails
-                                                                 WHERE person_id = p.id
-                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1),
-                                                               (SELECT email FROM person_emails
-                                                                 WHERE person_id = p.parent_person_id
-                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1)
-                                                             ),
-                                                             p.parent_person_id
-                                                        FROM fh_event_callups(fe.id) cu
-                                                        JOIN persons p ON p.id = cu.person_id
-                                                        LEFT JOIN fh_event_rsvps er
-                                                            ON er.fh_event_id = fe.id
-                                                         AND er.person_id   = p.id
+                                                        -- Club pass call-ups (fh_event_callups,
+                                                        -- migration 329) used to UNION ALL in
+                                                        -- here as is_callup rows. Removed
+                                                        -- 2026-09-12 (owner): call-ups are not
+                                                        -- shown the game and are not listed on
+                                                        -- it — not even one who had already
+                                                        -- set availability — until a future
+                                                        -- "invite up" flow explicitly invites a
+                                                        -- specific player. is_callup/callup_from
+                                                        -- stay in the row shape for that.
                                                     ) combined
                                                  ORDER BY combined.person_id, combined.is_coach ASC
                                         ) roster
@@ -1165,7 +1113,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                   )
                               )
                         )
-                        OR EXISTS (SELECT 1 FROM fh_event_callups(fe.id) cu WHERE cu.person_id = $1::int)
+                        -- No call-up clause: see `eligible`.
                     )
                 END AS my_rsvp_eligible,
                 -- Schedule release window (migration 334): when the
@@ -1301,7 +1249,6 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
             ev["guardian_children"] = textOrNull(row, "guardian_children");
-            ev["callup_children"]   = textOrNull(row, "callup_children");
             ev["schedule_window_end"] = textOrNull(row, "schedule_window_end");
             ev["guardian_targets"]  = json::parse(row["guardian_targets"].c_str());
             {
@@ -1321,11 +1268,8 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                         const std::string kids = row["guardian_children"].is_null()
                             ? std::string("your player")
                             : row["guardian_children"].as<std::string>();
-                        const bool onlyCallups = !row["callup_children"].is_null()
-                            && row["callup_children"].as<std::string>() == kids;
-                        ev["my_rsvp_eligibility_reason"] = onlyCallups
-                            ? "You can see this because " + kids + " is eligible to be called up."
-                            : "You can see this because " + kids + " is on the roster.";
+                        ev["my_rsvp_eligibility_reason"] =
+                            "You can see this because " + kids + " is on the roster.";
                     } else if (teamCount == 0) {
                         ev["my_rsvp_eligibility_reason"] = "This event has no roster attached yet — ops needs to add Team:/Club: tags to the Google Calendar description.";
                     } else {
