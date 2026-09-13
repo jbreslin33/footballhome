@@ -49,6 +49,7 @@ std::string TeamLabel::shortLabel(const std::string& name) {
     };
 
     // Order matters — most specific first.  Patterns mirror the JS list.
+    static const std::regex re_apslres    (R"(apsl\s*res)");
     static const std::regex re_apsl       (R"(apsl)");
     static const std::regex re_liga1      (R"(liga\s*1)");
     static const std::regex re_liga2      (R"(liga\s*2)");
@@ -62,6 +63,7 @@ std::string TeamLabel::shortLabel(const std::string& name) {
     static const std::regex re_pickup     (R"(pickup)");
     static const std::regex re_training   (R"(training)");
 
+    if (contains(re_apslres))  return "APSL Res";
     if (contains(re_apsl))     return "APSL";
     if (contains(re_liga1))    return "Liga 1";
     if (contains(re_liga2))    return "Liga 2";
