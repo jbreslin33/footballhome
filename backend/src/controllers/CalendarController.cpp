@@ -872,8 +872,34 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                         jsonb_build_object(
                             'id',              t.id,
                             'name',            t.name,
+                            'label',           t.label,
+                            'short_label',     t.short_label,
                             'gender_category', t.gender_category,
-                            'logo_url',        t.logo_url
+                            'logo_url',        t.logo_url,
+                            -- The squad this fixture is actually FOR.
+                            -- Every mens game is tagged with both APSL
+                            -- and Liga 1 (the other squad is RSVP-
+                            -- eligible), so the tag list alone cannot
+                            -- say which league game it is. A team is
+                            -- primary when its own league's organization
+                            -- is one of the event's leagues
+                            -- (fh_event_leagues, migration 318):
+                            -- teams -> divisions -> seasons -> leagues
+                            -- -> organizations. Youth games are tagged
+                            -- with exactly one team, which is primary
+                            -- the same way (PPR). Practices carry no
+                            -- league row, so nothing is primary there
+                            -- and the card shows every tagged team.
+                            'is_primary',      EXISTS (
+                                SELECT 1
+                                  FROM divisions     d
+                                  JOIN seasons       s   ON s.id  = d.season_id
+                                  JOIN leagues       l   ON l.id  = s.league_id
+                                  JOIN fh_event_leagues fel
+                                       ON fel.organization_id = l.organization_id
+                                      AND fel.fh_event_id     = fe.id
+                                 WHERE d.id = t.division_id
+                            )
                         )
                         ORDER BY t.id
                     )

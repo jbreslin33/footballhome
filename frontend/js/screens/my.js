@@ -1316,6 +1316,21 @@ class MyScreen extends Screen {
     const timeStr = this._eventTimeStr(ev.starts_at);
     const title   = this._eventTitle(ev);
     const venue   = ev.location || '';
+    // Which squad this is FOR — "U10 Travel", "APSL", "Liga 1" — as a
+    // loud pill at the top of the card (owner, 2026-09-12: parents and
+    // players could not tell the main game from the card front; lower
+    // teams being RSVP-eligible made it worse). Primary teams come
+    // from the backend (is_primary: the team's league is one of the
+    // event's leagues), which is what separates the APSL game from the
+    // Liga 1 game when both squads are tagged. Practices have no
+    // league, so nothing is primary and every tagged team shows.
+    const mainTeamLabels = this._mainTeamLabels(ev);
+    const mainTeamHtml = mainTeamLabels.length ? `
+            <div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:2px;">
+              ${mainTeamLabels.map(l => `<span style="display:inline-block; padding:1px 7px; border-radius:4px;
+                            background:#1d4ed8; color:#fff; font-size:0.66rem; font-weight:800;
+                            letter-spacing:0.04em; text-transform:uppercase; line-height:1.4;">${this.escapeHtml(l)}</span>`).join('')}
+            </div>` : '';
     const descTags = this._parseDescTags(ev.description);
     const arrival  = descTags.arrival || '';
     const warmup   = descTags.warmup || '';
@@ -1397,6 +1412,7 @@ class MyScreen extends Screen {
         <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; flex-wrap:wrap;">
           ${crestHtml}
           <div style="min-width:160px; flex:1 1 160px;">
+            ${mainTeamHtml}
             <div style="font-weight:700; font-size:0.7rem; line-height:1.2;">${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)}</div>
             <div style="font-size:0.66rem; font-weight:600; line-height:1.25; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(title)}</div>
             ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
@@ -1433,6 +1449,21 @@ class MyScreen extends Screen {
         ` : ''}
       </div>
     `;
+  }
+
+  // Player-facing names of the squad(s) an event is for. Primary teams
+  // (backend is_primary — team's league ∈ event's leagues) win; when
+  // none is primary (practice, pickup, untagged league) fall back to
+  // every tagged team. Uses teams.label with its leading icon stripped
+  // ("⚽ U10 Travel" → "U10 Travel", "🏆 APSL" → "APSL"), never the gcal
+  // title, and never the raw teams.name ("Lighthouse Boys Club Liga 1").
+  _mainTeamLabels(ev) {
+    const teams = Array.isArray(ev.teams) ? ev.teams : [];
+    const stripIcon = (s) => String(s || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    const nameOf = (t) => stripIcon(t.label) || stripIcon(t.short_label) || '';
+    const primary = teams.filter(t => t && t.is_primary);
+    const pool = primary.length ? primary : teams;
+    return [...new Set(pool.map(nameOf).filter(Boolean))];
   }
 
   // Button renderer.  `semantic` is 'yes' | 'no' — drives colour.
