@@ -43,6 +43,11 @@ class MyScreen extends Screen {
     this.expandedEventId = null;         // toggled by the compact View button
     this.remindedKeys   = new Set();     // "fh_event_id:person_id" already nudged this session
     this.notGoingExpandedEvents = new Set(); // fh_event_ids with "Not Going" list open
+    // Invites (fh_event_invites, migration 355): coach-side picker state.
+    this.invitePanelEvents = new Set();      // fh_event_ids with the invite panel open
+    this.invitesByEvent    = new Map();      // fh_event_id → {invites:[], candidates:[]} | null while loading
+    this.inviteSaving      = new Set();      // "fh_event_id:person_id" in flight
+    this.inviteCopiedKeys  = new Set();      // "fh_event_id:person_id" whose link was copied this session
 
     // Old-events range picker. 'current' (default) reuses the existing
     // this-week `this.events` array untouched; any other value swaps the
@@ -300,6 +305,35 @@ class MyScreen extends Screen {
         e.stopPropagation();
         const fhEventId = parseInt(emailGoingBtn.getAttribute('data-email-going'), 10);
         if (fhEventId) this._emailGoing(fhEventId);
+        return;
+      }
+      // Invite panel (coach/admin): open/close, send, revoke.
+      const inviteToggle = target.closest('[data-invite-toggle]');
+      if (inviteToggle) {
+        e.stopPropagation();
+        const fhEventId = parseInt(inviteToggle.getAttribute('data-invite-toggle'), 10);
+        if (this.invitePanelEvents.has(fhEventId)) {
+          this.invitePanelEvents.delete(fhEventId);
+        } else {
+          this.invitePanelEvents.add(fhEventId);
+          this.invitesByEvent.delete(fhEventId);
+          this._loadInvites(fhEventId);
+        }
+        this._renderEvents();
+        return;
+      }
+      const inviteSend = target.closest('[data-invite-send]');
+      if (inviteSend) {
+        e.stopPropagation();
+        this._sendInvite(inviteSend);
+        return;
+      }
+      const inviteRevoke = target.closest('[data-invite-revoke]');
+      if (inviteRevoke) {
+        e.stopPropagation();
+        const fhEventId = parseInt(inviteRevoke.getAttribute('data-fh-event-id'), 10);
+        const personId  = parseInt(inviteRevoke.getAttribute('data-invite-revoke'), 10);
+        if (fhEventId && personId) this._revokeInvite(fhEventId, personId);
         return;
       }
       // "Not Going" list show/hide (collapsed by default — can be a long
@@ -717,9 +751,10 @@ class MyScreen extends Screen {
     const going          = rsvps.filter(r => r && r.response === 'yes');
     const notGoingAll    = rsvps.filter(r => r && r.response === 'no');
     const noResponseAll  = rsvps.filter(r => r && !r.response);
-    // Club pass call-ups (migration 329) are listed apart from the roster
-    // when they say yes ("available", the coach still picks), but ride
-    // along in Not Going / No Response so reminders reach them too.
+    // Invited players (fh_event_invites, migration 355 — youth call-ups
+    // and men's play-downs) are listed apart from the roster when they
+    // say yes ("available", the coach still picks), but ride along in
+    // Not Going / No Response so reminders reach them too.
     const playersGoing      = going.filter(r => !r.is_coach && !r.is_callup);
     const callupsAvailable  = going.filter(r => r.is_callup);
     const coachesGoing      = going.filter(r => r.is_coach);
@@ -732,9 +767,9 @@ class MyScreen extends Screen {
 
     const nameOf = (r) => (r && (r.name || r.first_name || r.last_name || 'Unknown')) || 'Unknown';
     const callupChip = (r) => r && r.is_callup
-      ? `<span title="Age-eligible call-up${r.callup_from ? ' from ' + this.escapeHtml(r.callup_from) : ''}"
+      ? `<span title="Invited${r.callup_from ? ' from ' + this.escapeHtml(r.callup_from) : ''}"
                style="margin-left:5px; padding:0 5px; border-radius:999px; background:rgba(245,158,11,0.18);
-                      border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.56rem; font-weight:800;">⬆ CALL-UP</span>`
+                      border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.56rem; font-weight:800;">🎟 INVITED</span>`
       : '';
     const rowsHtml = (list) => list
       .map(r => `<div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
@@ -855,7 +890,7 @@ class MyScreen extends Screen {
         </div>
         ${callupsAvailable.length ? `
           <div style="margin-top:8px;">
-            ${groupHtml('Call-ups Available', callupsAvailable, 'available', rowsHtml(callupsAvailable))}
+            ${groupHtml('Invited · Available', callupsAvailable, 'available', rowsHtml(callupsAvailable))}
           </div>
         ` : ''}
         ${notGoingTotal ? `
@@ -893,7 +928,193 @@ class MyScreen extends Screen {
             </div>
           </div>
         ` : ''}
+        ${this._invitePanelHtml(ev, isPast, att)}
       </div>`;
+  }
+
+  // Coach/admin-only "Invite a player" panel (fh_event_invites, migration
+  // 355). Lists the game's open invites with their answer and a revoke,
+  // then everyone who COULD be invited — youth club-pass call-ups, or for
+  // men's/women's games the other squads in the section — each with
+  // 💬 / 📧 / 🔗 buttons. Sending mints a magic link for the recipient
+  // (the parent for youth) via POST .../invites; the invite row is what
+  // makes the game show up for them.
+  _invitePanelHtml(ev, isPast, att) {
+    if (isPast || !att || !att.canMark) return '';
+    const open = this.invitePanelEvents.has(ev.fh_event_id);
+    const header = `
+      <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
+        <button type="button" data-invite-toggle="${ev.fh_event_id}"
+                style="display:flex; align-items:center; justify-content:space-between; width:100%;
+                       background:transparent; border:none; padding:0; cursor:pointer; color:inherit;">
+          <span style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                       color:#fcd34d;">🎟 Invite a player</span>
+          <span style="font-size:0.62rem; opacity:0.6;">${open ? '▲ Hide' : '▼ Show'}</span>
+        </button>`;
+    if (!open) return header + '</div>';
+
+    const data = this.invitesByEvent.get(ev.fh_event_id);
+    if (!data) {
+      return header + `<div style="font-size:0.66rem; opacity:0.6; margin-top:6px;">Loading…</div></div>`;
+    }
+    if (data.error) {
+      return header + `<div style="font-size:0.66rem; color:#fca5a5; margin-top:6px;">${this.escapeHtml(data.error)}</div></div>`;
+    }
+    const invites    = Array.isArray(data.invites) ? data.invites : [];
+    const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+    const nm = (r) => `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Unknown';
+    const answerChip = (resp) => {
+      const map = { yes: ['Available', '#22c55e'], no: ['Not available', '#f87171'], maybe: ['Maybe', '#fbbf24'] };
+      const [label, color] = map[resp] || ['No response', 'rgba(226,232,240,0.5)'];
+      return `<span style="font-size:0.6rem; font-weight:700; color:${color};">${label}</span>`;
+    };
+    const busy = (pid) => this.inviteSaving.has(`${ev.fh_event_id}:${pid}`);
+
+    const invitedRows = invites.map(r => `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">
+            ${this.escapeHtml(nm(r))}
+            ${r.from_team ? `<span style="font-size:0.6rem; opacity:0.6;"> · ${this.escapeHtml(r.from_team)}</span>` : ''}
+          </span>
+          <span style="display:flex; align-items:center; gap:6px;">
+            ${answerChip(r.response)}
+            ${this._inviteSendBtns(ev, r, busy(r.person_id), /*resend*/ true)}
+            <button type="button" data-invite-revoke="${r.person_id}" data-fh-event-id="${ev.fh_event_id}"
+                    ${busy(r.person_id) ? 'disabled' : ''}
+                    title="Withdraw this invite — the game disappears for them again"
+                    style="font-size:0.62rem; font-weight:700; color:#fca5a5; background:transparent;
+                           border:1px solid rgba(248,113,113,0.5); padding:2px 6px; border-radius:999px; cursor:pointer;">✕</button>
+          </span>
+        </div>`).join('');
+
+    // Candidates grouped by the squad they come from.
+    const byTeam = new Map();
+    for (const c of candidates) {
+      const k = c.from_team || 'Other';
+      if (!byTeam.has(k)) byTeam.set(k, []);
+      byTeam.get(k).push(c);
+    }
+    const candidateGroups = [...byTeam.entries()].map(([team, list]) => `
+        <div style="margin-top:6px;">
+          <div style="font-size:0.6rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                      color:rgba(226,232,240,0.5);">${this.escapeHtml(team)} (${list.length})</div>
+          <div style="display:grid; gap:3px; margin-top:3px;">
+            ${list.map(c => `
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">
+                  ${this.escapeHtml(nm(c))}${c.single_age ? `<span style="font-size:0.6rem; opacity:0.6;"> · U${this.escapeHtml(String(c.single_age))}</span>` : ''}
+                </span>
+                ${this._inviteSendBtns(ev, c, busy(c.person_id), false)}
+              </div>`).join('')}
+          </div>
+        </div>`).join('');
+
+    return header + `
+        <div style="font-size:0.62rem; line-height:1.3; opacity:0.75; margin-top:6px;">
+          An invited player (or their parent) sees this game on their page, gets a Go/No, and shows up
+          on this list. Nobody else outside the squad can see it.
+        </div>
+        <div style="margin-top:8px;">
+          <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                      color:rgba(226,232,240,0.75);">Invited (${invites.length})</div>
+          ${invites.length
+            ? `<div style="display:grid; gap:3px; margin-top:4px;">${invitedRows}</div>`
+            : `<div style="font-size:0.7rem; opacity:0.55; margin-top:2px;">Nobody yet.</div>`}
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                      color:rgba(226,232,240,0.75);">Can be invited (${candidates.length})</div>
+          ${candidates.length ? candidateGroups
+            : `<div style="font-size:0.7rem; opacity:0.55; margin-top:2px;">Nobody eligible — everyone age-eligible in the program is rostered or already invited.</div>`}
+        </div>
+      </div>`;
+  }
+
+  // 💬 / 📧 / 🔗 for one invite candidate (or a re-send on an open invite).
+  _inviteSendBtns(ev, r, saving, resend) {
+    const btn = (channel, contact, icon, bg, title) => `
+      <button type="button" data-invite-send="${channel}" data-fh-event-id="${ev.fh_event_id}"
+              data-person-id="${r.person_id}" data-contact="${this.escapeHtml(contact || '')}"
+              ${saving ? 'disabled' : ''} title="${this.escapeHtml(title)}"
+              style="font-size:0.68rem; font-weight:700; color:#0f172a; background:${bg};
+                     padding:3px 7px; border-radius:999px; border:none; cursor:pointer; line-height:1.4;
+                     ${saving ? 'opacity:0.5;' : ''}">${icon}</button>`;
+    const dim = (icon, why) => `<span style="font-size:0.6rem; opacity:0.35;" title="${this.escapeHtml(why)}">${icon}</span>`;
+    const verb = resend ? 'Re-send' : 'Invite by';
+    return `<span style="display:flex; align-items:center; gap:4px;">
+      ${r.phone ? btn('sms', r.phone, '💬', '#38bdf8', `${verb} text (${r.phone})`) : dim('💬', 'No SMS on file')}
+      ${r.email ? btn('email', r.email, '📧', '#a78bfa', `${verb} email (${r.email})`) : dim('📧', 'No email on file')}
+      ${btn('copy', '', '🔗', '#fcd34d', resend ? 'Copy a fresh sign-in link' : 'Invite and copy the sign-in link')}
+      ${this.inviteCopiedKeys.has(`${ev.fh_event_id}:${r.person_id}`)
+        ? `<span style="font-size:0.6rem; color:#fcd34d; opacity:0.85;">✓ copied</span>` : ''}
+    </span>`;
+  }
+
+  async _loadInvites(fhEventId) {
+    try {
+      const body = await this._fetch(`/api/calendar/events/${fhEventId}/invites`);
+      this.invitesByEvent.set(fhEventId, { invites: body.invites || [], candidates: body.candidates || [] });
+    } catch (err) {
+      console.error('[my] invites load failed:', err);
+      this.invitesByEvent.set(fhEventId, { error: err.message || 'Could not load invites' });
+    }
+    this._renderEvents();
+  }
+
+  // POST the invite, then hand the coach the compose (sms:/Gmail) or put
+  // the link on the clipboard. Refreshes the event list so the new
+  // 🎟 INVITED row appears immediately.
+  async _sendInvite(btn) {
+    const channel   = btn.getAttribute('data-invite-send') || 'copy';
+    const fhEventId = parseInt(btn.getAttribute('data-fh-event-id'), 10);
+    const personId  = parseInt(btn.getAttribute('data-person-id'), 10);
+    const contact   = (btn.getAttribute('data-contact') || '').trim();
+    if (!fhEventId || !personId) return;
+    const key = `${fhEventId}:${personId}`;
+    if (this.inviteSaving.has(key)) return;
+    this.inviteSaving.add(key);
+    this._renderEvents();
+    try {
+      const data = await this._fetch(`/api/calendar/events/${fhEventId}/invites`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ person_id: personId, channel, contact }),
+      });
+      if (channel === 'email' && data.gmail_href) {
+        this.openGmailCompose(data.gmail_href);
+      } else if (channel === 'sms' && data.sms_href) {
+        window.location.href = data.sms_href;
+      } else if (data.url) {
+        try {
+          await navigator.clipboard.writeText(data.sms_body || data.url);
+          this.inviteCopiedKeys.add(key);
+        } catch {
+          window.prompt('Copy this invite message:', data.sms_body || data.url);
+        }
+      }
+    } catch (err) {
+      console.error('[my] invite failed:', err);
+      window.alert(`Invite failed: ${err.message}`);
+    } finally {
+      this.inviteSaving.delete(key);
+    }
+    await Promise.all([this._loadInvites(fhEventId), this._refreshEvents().catch(() => {})]);
+  }
+
+  async _revokeInvite(fhEventId, personId) {
+    const key = `${fhEventId}:${personId}`;
+    if (this.inviteSaving.has(key)) return;
+    this.inviteSaving.add(key);
+    this._renderEvents();
+    try {
+      await this._fetch(`/api/calendar/events/${fhEventId}/invites/${personId}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('[my] revoke invite failed:', err);
+      window.alert(`Could not withdraw invite: ${err.message}`);
+    } finally {
+      this.inviteSaving.delete(key);
+    }
+    await Promise.all([this._loadInvites(fhEventId), this._refreshEvents().catch(() => {})]);
   }
 
   // Event-level "Text All" — everyone who can RSVP to this event (players
@@ -1280,18 +1501,18 @@ class MyScreen extends Screen {
       const childClearing = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:clear`);
       const childYesSaving = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:yes`) || childClearing;
       const childNoSaving  = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:no`) || childClearing;
-      // Club pass call-up (migration 329): this kid is NOT on the event's
-      // roster — they're age-eligible to play up. Say so, and word the ask
-      // as "are they available", not "are they going".
+      // Invited (fh_event_invites, migration 355): this kid is NOT on the
+      // event's roster — the coach invited them to play up. Say so, and
+      // word the ask as "are they available", not "are they going".
       const first = String(child.name || 'Your player').split(' ')[0];
       const callupHtml = child.callup ? `
             <span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:999px;
                          background:rgba(245,158,11,0.18); border:1px solid rgba(245,158,11,0.55);
                          color:#fcd34d; font-size:0.56rem; font-weight:800; letter-spacing:0.03em;
-                         vertical-align:middle;">⬆ CALL-UP ELIGIBLE</span>
+                         vertical-align:middle;">🎟 INVITED</span>
             <div style="font-size:0.58rem; line-height:1.25; opacity:0.8; margin-top:2px;">
-              ${this.escapeHtml(first)} is age-eligible to play up for this game${child.callup_from ? ` (from ${this.escapeHtml(child.callup_from)})` : ''}.
-              Please RSVP so the coach knows who's available.
+              The coach invited ${this.escapeHtml(first)} to play up in this game${child.callup_from ? ` (from ${this.escapeHtml(child.callup_from)})` : ''}.
+              Please answer so the coach knows if ${this.escapeHtml(first)} is available.
             </div>` : '';
       return `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:2px;">
@@ -1340,7 +1561,7 @@ class MyScreen extends Screen {
     const rsvps   = Array.isArray(ev.rsvps) ? ev.rsvps : [];
     const playersGoingCount = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach && !r.is_callup).length;
     const coachesGoingCount = rsvps.filter(r => r && r.response === 'yes' && r.is_coach).length;
-    // Club pass call-ups who said yes are AVAILABLE, not going (migration 329).
+    // Invited players who said yes are AVAILABLE, not going (migration 355).
     const callupsAvailCount = rsvps.filter(r => r && r.response === 'yes' && r.is_callup).length;
     const notGoingCount = rsvps.filter(r => r && r.response === 'no').length;
     const isExpanded = this.expandedEventId === ev.fh_event_id;
@@ -1397,7 +1618,7 @@ class MyScreen extends Screen {
 
     const leagueLabel = (ev.league || '').trim();
     const compactMeta = `${leagueLabel ? leagueLabel + ' · ' : ''}${playersGoingCount} players, ${coachesGoingCount} coaches going`
-      + (callupsAvailCount ? ` · ${callupsAvailCount} call-up${callupsAvailCount === 1 ? '' : 's'} available` : '')
+      + (callupsAvailCount ? ` · ${callupsAvailCount} invited available` : '')
       + ` · ${notGoingCount} not going`;
     const arrivalKickoffLine = (arrival || warmup || kickoff)
       ? [arrival ? `Arrival ${arrival}` : '', warmup ? `Warmup ${warmup}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')

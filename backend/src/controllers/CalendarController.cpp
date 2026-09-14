@@ -3,6 +3,7 @@
 #include "../core/Crypto.h"
 #include "../core/HttpClient.h"
 #include "../database/Database.h"
+#include "../services/MagicLinkService.h"
 #include "../services/SessionService.h"
 #include "../third_party/json.hpp"
 
@@ -488,10 +489,11 @@ std::optional<Response> resolveRsvpTarget(Database* db,
         "        )"
         "      )"
         "  ) "
-        // Club pass (migration 329): an age-eligible call-up may RSVP
-        // (= mark themselves available) exactly like a rostered player.
-        "  OR EXISTS (SELECT 1 FROM fh_event_callups($1::bigint) cu "
-        "              WHERE cu.person_id = $3::int)) AS target_on_roster",
+        // Invited (fh_event_invites, migration 355): a call-up or
+        // play-down the coach explicitly invited may RSVP like a
+        // rostered player. Age-eligibility alone (fh_event_callups)
+        // no longer opens the door — owner, 2026-09-12/13.
+        "  OR fh_event_invited($1::bigint, $3::int)) AS target_on_roster",
         {std::to_string(fhEventId), std::to_string(callerPersonId), std::to_string(targetPersonId)});
 
     if (rows.empty()) {
@@ -546,6 +548,15 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     });
     router.del(prefix + "/calendar/events/:fhEventId/attendance", [this](const Request& req) {
         return this->handleDeleteEventAttendance(req);
+    });
+    router.get(prefix + "/calendar/events/:fhEventId/invites", [this](const Request& req) {
+        return this->handleGetEventInvites(req);
+    });
+    router.post(prefix + "/calendar/events/:fhEventId/invites", [this](const Request& req) {
+        return this->handlePostEventInvite(req);
+    });
+    router.del(prefix + "/calendar/events/:fhEventId/invites/:personId", [this](const Request& req) {
+        return this->handleDeleteEventInvite(req);
     });
 }
 
@@ -775,10 +786,10 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                     -- Club pass call-ups (migration 329) deliberately do NOT
                     -- grant visibility here (owner, 2026-09-12): a parent
                     -- seeing the older team's game on their kid's page
-                    -- could not tell it from the kid's own game. fh_event_
-                    -- callups still drives the coach-side eligibility and
-                    -- the RSVP endpoint, so a future "invite up" link can
-                    -- let a specific call-up in without reopening this.
+                    -- could not tell it from the kid's own game. An
+                    -- explicit invite (fh_event_invites, migration 355)
+                    -- is the only way in for a call-up or play-down.
+                    OR fh_event_invited(fe.id, $1::int)
                 ) AS eligible,
                 -- Guardian visibility (2026-08-28).  A parent of a
                 -- rostered child holds no team_persons row of their own,
@@ -811,12 +822,25 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                         JOIN persons child ON child.id = tp.person_id
                         WHERE fet.fh_event_id = fe.id
                           AND child.parent_person_id = $1::int
-                        -- Rostered kids only. Call-up-eligible kids used
-                        -- to UNION in here (migration 329) so the parent
-                        -- saw the older team's game; withdrawn 2026-09-12,
-                        -- see `eligible`.
+                        UNION
+                        -- Invited kids (fh_event_invites, migration 355):
+                        -- a call-up the coach explicitly invited. Age-
+                        -- eligibility alone stopped counting 2026-09-12.
+                        SELECT child.first_name || ' ' || child.last_name
+                        FROM fh_event_invites i
+                        JOIN persons child ON child.id = i.person_id
+                        WHERE i.fh_event_id = fe.id AND i.revoked_at IS NULL
+                          AND child.parent_person_id = $1::int
                     ) kids
                 ) AS guardian_children,
+                -- Just the invited subset, for the "why can I see this" line.
+                (
+                    SELECT string_agg(DISTINCT child.first_name || ' ' || child.last_name, ', ')
+                    FROM fh_event_invites i
+                    JOIN persons child ON child.id = i.person_id
+                    WHERE i.fh_event_id = fe.id AND i.revoked_at IS NULL
+                      AND child.parent_person_id = $1::int
+                ) AS invited_children,
                 -- Structured sibling of guardian_children above, used to
                 -- actually drive the guardian's Go/No buttons (one row
                 -- per child). Excludes a suspended child the same way
@@ -843,10 +867,21 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                 AND s.starts_at <= now()
                                 AND (s.ends_at IS NULL OR s.ends_at > now())
                           )
-                        -- `callup` stays in the shape for the frontend, but
-                        -- no call-up rows are produced any more (2026-09-12,
-                        -- see `eligible`). A future invite-up flow can add
-                        -- them back for an invited kid only.
+                        UNION
+                        -- Invited kids (migration 355). Flagged so the card
+                        -- says "invited to play up" instead of treating it
+                        -- as the kid's own game.
+                        SELECT jsonb_build_object(
+                                   'person_id',   child.id,
+                                   'name',        child.first_name || ' ' || child.last_name,
+                                   'callup',      true,
+                                   'callup_from', ft.name
+                               )
+                        FROM fh_event_invites i
+                        JOIN persons child ON child.id = i.person_id
+                        LEFT JOIN teams ft ON ft.id = i.from_team_id
+                        WHERE i.fh_event_id = fe.id AND i.revoked_at IS NULL
+                          AND child.parent_person_id = $1::int
                     ) sub
                 ), '[]'::jsonb) AS guardian_targets,
                 COALESCE((
@@ -1059,16 +1094,56 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                                          AND er.person_id   = p.id
                                                      WHERE fet.fh_event_id = fe.id
 
-                                                        -- Club pass call-ups (fh_event_callups,
-                                                        -- migration 329) used to UNION ALL in
-                                                        -- here as is_callup rows. Removed
-                                                        -- 2026-09-12 (owner): call-ups are not
-                                                        -- shown the game and are not listed on
-                                                        -- it — not even one who had already
-                                                        -- set availability — until a future
-                                                        -- "invite up" flow explicitly invites a
-                                                        -- specific player. is_callup/callup_from
-                                                        -- stay in the row shape for that.
+                                                        UNION ALL
+
+                                                        -- Invited players (fh_event_invites,
+                                                        -- migration 355): a youth call-up or a
+                                                        -- men's play-down the coach explicitly
+                                                        -- invited. Age-eligible call-ups alone
+                                                        -- were dropped from this list 2026-09-12.
+                                                        -- A 'yes' here means AVAILABLE, not
+                                                        -- selected — the frontend words it so.
+                                                        SELECT
+                                                             p.id,
+                                                             p.first_name,
+                                                             p.last_name,
+                                                             NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
+                                                             er.response,
+                                                             er.created_via,
+                                                             CASE
+                                                                     WHEN er.responded_at IS NULL THEN NULL
+                                                                     ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
+                                                                                                'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                                                             END,
+                                                             false,
+                                                             false,
+                                                             true,
+                                                             ft.name::text,
+                                                             COALESCE(
+                                                               (SELECT phone_number FROM person_phones
+                                                                 WHERE person_id = p.id AND can_receive_sms = true
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1),
+                                                               (SELECT phone_number FROM person_phones
+                                                                 WHERE person_id = p.parent_person_id AND can_receive_sms = true
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1)
+                                                             ),
+                                                             COALESCE(
+                                                               (SELECT email FROM person_emails
+                                                                 WHERE person_id = p.id
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1),
+                                                               (SELECT email FROM person_emails
+                                                                 WHERE person_id = p.parent_person_id
+                                                                 ORDER BY is_primary DESC, id ASC LIMIT 1)
+                                                             ),
+                                                             p.parent_person_id
+                                                        FROM fh_event_invites i
+                                                        JOIN persons p ON p.id = i.person_id
+                                                        LEFT JOIN teams ft ON ft.id = i.from_team_id
+                                                        LEFT JOIN fh_event_rsvps er
+                                                            ON er.fh_event_id = fe.id
+                                                         AND er.person_id   = p.id
+                                                       WHERE i.fh_event_id = fe.id
+                                                         AND i.revoked_at IS NULL
                                                     ) combined
                                                  ORDER BY combined.person_id, combined.is_coach ASC
                                         ) roster
@@ -1113,7 +1188,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                                   )
                               )
                         )
-                        -- No call-up clause: see `eligible`.
+                        OR fh_event_invited(fe.id, $1::int)
                     )
                 END AS my_rsvp_eligible,
                 -- Schedule release window (migration 334): when the
@@ -1268,8 +1343,11 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                         const std::string kids = row["guardian_children"].is_null()
                             ? std::string("your player")
                             : row["guardian_children"].as<std::string>();
-                        ev["my_rsvp_eligibility_reason"] =
-                            "You can see this because " + kids + " is on the roster.";
+                        const bool onlyInvited = !row["invited_children"].is_null()
+                            && row["invited_children"].as<std::string>() == kids;
+                        ev["my_rsvp_eligibility_reason"] = onlyInvited
+                            ? "You can see this because " + kids + " was invited to play in this game."
+                            : "You can see this because " + kids + " is on the roster.";
                     } else if (teamCount == 0) {
                         ev["my_rsvp_eligibility_reason"] = "This event has no roster attached yet — ops needs to add Team:/Club: tags to the Google Calendar description.";
                     } else {
@@ -1598,10 +1676,11 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
             "          JOIN persons p ON p.id = co.person_id "
             "         WHERE fet.fh_event_id = $1::bigint "
             "        UNION ALL "
-            // Club pass call-ups (migration 329) show up for check-in too.
+            // Invited call-ups / play-downs (migration 355) show up for check-in too.
             "        SELECT p.id, p.first_name, p.last_name, false "
-            "          FROM fh_event_callups($1::bigint) cu "
-            "          JOIN persons p ON p.id = cu.person_id "
+            "          FROM fh_event_invites i "
+            "          JOIN persons p ON p.id = i.person_id "
+            "         WHERE i.fh_event_id = $1::bigint AND i.revoked_at IS NULL "
             "      ) combined "
             "      LEFT JOIN fh_event_attendance fea "
             "             ON fea.fh_event_id = $1::bigint "
@@ -1693,6 +1772,8 @@ Response CalendarController::handlePostEventAttendance(const Request& request) {
             "                      AND tc.ended_at IS NULL "
             "  JOIN coaches co ON co.id = tc.coach_id "
             "  WHERE fet.fh_event_id = $1::bigint AND co.person_id = $2::int "
+            "  UNION ALL "
+            "  SELECT 1 WHERE fh_event_invited($1::bigint, $2::int) "
             ") AS on_roster",
             {std::to_string(fhEventId), std::to_string(targetPersonId)});
         if (rosterCheck.empty() || !rosterCheck[0]["on_roster"].as<bool>()) {
@@ -1790,6 +1871,320 @@ Response CalendarController::handleDeleteEventAttendance(const Request& request)
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handleDeleteEventAttendance: "
                   << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// ── Invites (fh_event_invites, migration 355) ────────────────────────
+//
+// A game is tagged with its own squad only. Anyone else who might play
+// — a youth club-pass call-up (fh_event_callups) or a men's player from
+// another squad in the section (APSL ⇄ Liga 1 ⇄ Reserves) — is let in
+// one at a time by a coach or admin. The invite row is what grants
+// visibility, the guardian Go/No row, the coach-list row, and the RSVP
+// / attendance eligibility; the magic link is how the player hears.
+
+namespace {
+
+long long extractPersonIdFromInvitePath(const std::string& path) {
+    const std::string marker = "/invites/";
+    auto pos = path.find(marker);
+    if (pos == std::string::npos) return 0;
+    auto start = pos + marker.size();
+    auto end = path.find_first_of("/?", start);
+    const std::string seg = end == std::string::npos ? path.substr(start) : path.substr(start, end - start);
+    try { return std::stoll(seg); } catch (...) { return 0; }
+}
+
+// Player-facing description of the game for the invite text: squad
+// label + opponent + local time. Never the raw gcal title.
+struct InviteEventInfo {
+    std::string teamLabel;   // "U10 Travel" / "Liga 1"
+    std::string opponent;
+    std::string whenEt;      // "Sat Sep 19, 10:00 AM"
+    std::string kind;
+    std::string category;    // 'boys' | 'mens' | ...
+};
+
+std::optional<InviteEventInfo> loadInviteEventInfo(Database* db, long long fhEventId) {
+    auto rows = db->query(
+        "SELECT COALESCE(fe.opponent, '') AS opponent, fe.kind, COALESCE(fe.category, '') AS category, "
+        "       to_char(COALESCE(fe.start_at, ge.starts_at) AT TIME ZONE 'America/New_York', "
+        "               'Dy Mon FMDD, FMHH12:MI AM') AS when_et, "
+        "       COALESCE((SELECT string_agg("
+        "                   COALESCE(NULLIF(btrim(regexp_replace(t.label, '^[^[:alnum:]]+', '')), ''), t.name::text), "
+        "                   ' / ' ORDER BY t.id) "
+        "                   FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id "
+        "                  WHERE fet.fh_event_id = fe.id), '') AS team_label "
+        "  FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+        " WHERE fe.id = $1::bigint",
+        {std::to_string(fhEventId)});
+    if (rows.empty()) return std::nullopt;
+    InviteEventInfo info;
+    info.opponent  = rows[0]["opponent"].c_str();
+    info.kind      = rows[0]["kind"].c_str();
+    info.category  = rows[0]["category"].c_str();
+    info.whenEt    = rows[0]["when_et"].c_str();
+    info.teamLabel = rows[0]["team_label"].c_str();
+    return info;
+}
+
+} // namespace
+
+Response CalendarController::handleGetEventInvites(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId  = gate.personId;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+
+    try {
+        auto* db = Database::getInstance();
+        const bool canInvite = isEventCoachOrAdmin(db, personId, fhEventId);
+        if (!canInvite) {
+            return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can invite players");
+        }
+
+        json invites = json::array();
+        for (const auto& row : db->query(
+                "SELECT i.person_id, p.first_name, p.last_name, ft.name AS from_team, "
+                "       i.channel, i.contact, er.response, p.parent_person_id, "
+                "       to_char(i.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at "
+                "  FROM fh_event_invites i "
+                "  JOIN persons p ON p.id = i.person_id "
+                "  LEFT JOIN teams ft ON ft.id = i.from_team_id "
+                "  LEFT JOIN fh_event_rsvps er ON er.fh_event_id = i.fh_event_id AND er.person_id = i.person_id "
+                " WHERE i.fh_event_id = $1::bigint AND i.revoked_at IS NULL "
+                " ORDER BY p.last_name, p.first_name, p.id",
+                {std::to_string(fhEventId)})) {
+            invites.push_back({
+                {"person_id",        row["person_id"].as<long long>()},
+                {"first_name",       textOrNull(row, "first_name")},
+                {"last_name",        textOrNull(row, "last_name")},
+                {"from_team",        textOrNull(row, "from_team")},
+                {"channel",          textOrNull(row, "channel")},
+                {"contact",          textOrNull(row, "contact")},
+                {"response",         textOrNull(row, "response")},
+                {"parent_person_id", row["parent_person_id"].is_null() ? json(nullptr) : json(row["parent_person_id"].as<long long>())},
+                {"created_at",       textOrNull(row, "created_at")},
+            });
+        }
+
+        json candidates = json::array();
+        for (const auto& row : db->query(
+                "SELECT c.person_id, p.first_name, p.last_name, c.from_team_id, c.from_team_name, "
+                "       c.single_age, c.basis, p.parent_person_id, "
+                "       COALESCE((SELECT phone_number FROM person_phones "
+                "                  WHERE person_id = p.id AND can_receive_sms = true "
+                "                  ORDER BY is_primary DESC, id ASC LIMIT 1), "
+                "                (SELECT phone_number FROM person_phones "
+                "                  WHERE person_id = p.parent_person_id AND can_receive_sms = true "
+                "                  ORDER BY is_primary DESC, id ASC LIMIT 1)) AS phone, "
+                "       COALESCE((SELECT email FROM person_emails WHERE person_id = p.id "
+                "                  ORDER BY is_primary DESC, id ASC LIMIT 1), "
+                "                (SELECT email FROM person_emails WHERE person_id = p.parent_person_id "
+                "                  ORDER BY is_primary DESC, id ASC LIMIT 1)) AS email "
+                "  FROM fh_event_invite_candidates($1::bigint) c "
+                "  JOIN persons p ON p.id = c.person_id "
+                " ORDER BY c.from_team_name, p.last_name, p.first_name, p.id",
+                {std::to_string(fhEventId)})) {
+            candidates.push_back({
+                {"person_id",        row["person_id"].as<long long>()},
+                {"first_name",       textOrNull(row, "first_name")},
+                {"last_name",        textOrNull(row, "last_name")},
+                {"from_team_id",     row["from_team_id"].is_null() ? json(nullptr) : json(row["from_team_id"].as<long long>())},
+                {"from_team",        textOrNull(row, "from_team_name")},
+                {"single_age",       row["single_age"].is_null() ? json(nullptr) : json(row["single_age"].as<int>())},
+                {"basis",            textOrNull(row, "basis")},
+                {"parent_person_id", row["parent_person_id"].is_null() ? json(nullptr) : json(row["parent_person_id"].as<long long>())},
+                {"phone",            textOrNull(row, "phone")},
+                {"email",            textOrNull(row, "email")},
+            });
+        }
+
+        return jsonOk({{"fh_event_id", fhEventId}, {"can_invite", true},
+                       {"invites", invites}, {"candidates", candidates}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handleGetEventInvites: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+Response CalendarController::handlePostEventInvite(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId  = gate.personId;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON body"); }
+    const auto targetOpt = jsonInt(body, "person_id");
+    if (!targetOpt || *targetOpt <= 0) return jsonError(HttpStatus::BAD_REQUEST, "person_id required");
+    const long long targetPersonId = *targetOpt;
+    std::string channel = body.value("channel", std::string("copy"));
+    if (channel != "sms" && channel != "email" && channel != "copy") {
+        return jsonError(HttpStatus::BAD_REQUEST, "channel must be sms, email or copy");
+    }
+    std::string contact = body.value("contact", std::string(""));
+    if (channel != "copy" && contact.empty()) {
+        return jsonError(HttpStatus::BAD_REQUEST, "contact required for sms/email");
+    }
+
+    try {
+        auto* db = Database::getInstance();
+        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+            return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can invite players");
+        }
+
+        // Who is this, and may they be invited here? Either a fresh
+        // candidate (derived) or an existing open invite (re-send).
+        auto who = db->query(
+            "SELECT p.first_name, p.last_name, p.parent_person_id, "
+            "       c.from_team_id, c.from_team_name, "
+            "       i.from_team_id AS inv_from_team_id, ft.name AS inv_from_team_name, "
+            "       (c.person_id IS NOT NULL) AS is_candidate, (i.id IS NOT NULL) AS already "
+            "  FROM persons p "
+            "  LEFT JOIN fh_event_invite_candidates($1::bigint) c ON c.person_id = p.id "
+            "  LEFT JOIN fh_event_invites i ON i.fh_event_id = $1::bigint AND i.person_id = p.id AND i.revoked_at IS NULL "
+            "  LEFT JOIN teams ft ON ft.id = i.from_team_id "
+            " WHERE p.id = $2::int",
+            {std::to_string(fhEventId), std::to_string(targetPersonId)});
+        if (who.empty()) return jsonError(HttpStatus::NOT_FOUND, "Person not found");
+        const auto& w = who[0];
+        const bool isCandidate = w["is_candidate"].as<bool>();
+        const bool already     = w["already"].as<bool>();
+        if (!isCandidate && !already) {
+            return jsonError(HttpStatus::FORBIDDEN,
+                             "That player is not eligible to be invited to this game "
+                             "(rostered already, wrong age or program, or another section).");
+        }
+        const std::string firstName = w["first_name"].is_null() ? "" : w["first_name"].c_str();
+        const bool youth = !w["parent_person_id"].is_null();
+        const long long recipientPersonId = youth ? w["parent_person_id"].as<long long>() : targetPersonId;
+        const std::string fromTeamId = !w["from_team_id"].is_null() ? std::string(w["from_team_id"].c_str())
+                                     : !w["inv_from_team_id"].is_null() ? std::string(w["inv_from_team_id"].c_str()) : "";
+        const std::string fromTeamName = !w["from_team_name"].is_null() ? std::string(w["from_team_name"].c_str())
+                                       : !w["inv_from_team_name"].is_null() ? std::string(w["inv_from_team_name"].c_str()) : "";
+
+        const auto info = loadInviteEventInfo(db, fhEventId);
+        if (!info) return jsonError(HttpStatus::NOT_FOUND, "Event not found");
+
+        const std::string adminUserIdStr = resolveUserId(db, personId);
+        const long long adminUserId = adminUserIdStr.empty() ? 0 : std::stoll(adminUserIdStr);
+
+        // Magic link for the RECIPIENT (parent for youth). magic_link_tokens
+        // only knows sms/email; a copied link is minted as sms.
+        const auto minted = MagicLinkService::mint(recipientPersonId,
+                                                   channel == "email" ? "email" : "sms",
+                                                   contact, adminUserId);
+
+        auto ins = db->query(
+            "INSERT INTO fh_event_invites "
+            "    (fh_event_id, person_id, from_team_id, recipient_person_id, invited_by_user_id, channel, contact) "
+            "VALUES ($1::bigint, $2::int, NULLIF($3, '')::int, $4::int, NULLIF($5, '')::int, $6, NULLIF($7, '')) "
+            "ON CONFLICT (fh_event_id, person_id) WHERE revoked_at IS NULL DO UPDATE "
+            "   SET channel = EXCLUDED.channel, contact = COALESCE(EXCLUDED.contact, fh_event_invites.contact), "
+            "       invited_by_user_id = EXCLUDED.invited_by_user_id "
+            "RETURNING id, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at",
+            {std::to_string(fhEventId), std::to_string(targetPersonId), fromTeamId,
+             std::to_string(recipientPersonId), adminUserIdStr, channel, contact});
+
+        // Recipient's first name for the greeting (parent for youth).
+        std::string recipientFirst = firstName;
+        if (youth) {
+            auto r = db->query("SELECT COALESCE(first_name, '') AS fn FROM persons WHERE id = $1::int",
+                               {std::to_string(recipientPersonId)});
+            if (!r.empty()) recipientFirst = r[0]["fn"].c_str();
+        }
+        if (recipientFirst.empty()) recipientFirst = "there";
+
+        // ── Copy ── player-facing: squad + opponent + time, never the gcal title.
+        const bool isMatch = info->kind == "match";
+        std::string what = info->teamLabel.empty() ? std::string("the team") : info->teamLabel;
+        std::string game = (isMatch ? what + (info->opponent.empty() ? " game" : " vs " + info->opponent)
+                                    : what + " " + (info->kind.empty() ? "session" : info->kind))
+                         + (info->whenEt.empty() ? "" : " on " + info->whenEt);
+        const std::string whoPlays = youth ? firstName : std::string("you");
+        const std::string theyAre  = youth ? firstName + " is" : std::string("you're");
+        const std::string subject  = "Invite: " + game;
+        std::ostringstream b;
+        b << "Hi " << recipientFirst << ",\n\n"
+          << "We'd like to invite " << whoPlays << " to play with " << what
+          << (fromTeamName.empty() ? "" : " (up from " + fromTeamName + ")")
+          << " — " << game << ".\n\n"
+          << "Tap the link below on your phone to sign in — no password needed — and mark whether "
+          << theyAre << " available:\n" << minted.url << "\n\n"
+          << "The link works for 72 hours. Reply anytime with questions.\n";
+        const std::string bodyText = b.str();
+        const std::string smsBody =
+            "Hi " + recipientFirst + " — " + whoPlays + (youth ? " is" : " are") + " invited to play with " + what
+            + ": " + game + ". Tap to sign in and mark availability (no password needed): " + minted.url;
+
+        json invite = {
+            {"person_id",  targetPersonId},
+            {"first_name", firstName},
+            {"last_name",  w["last_name"].is_null() ? "" : w["last_name"].c_str()},
+            {"from_team",  fromTeamName.empty() ? json(nullptr) : json(fromTeamName)},
+            {"channel",    channel},
+            {"contact",    contact.empty() ? json(nullptr) : json(contact)},
+            {"response",   nullptr},
+            {"created_at", ins.empty() ? json(nullptr) : json(std::string(ins[0]["created_at"].c_str()))},
+        };
+        json out = {
+            {"url",        minted.url},
+            {"expires_at", minted.expiresIso},
+            {"invite",     invite},
+            {"sms_body",   smsBody},
+        };
+        if (channel == "email") {
+            out["mailto_href"] = "mailto:" + fh::crypto::urlEncode(contact)
+                               + "?subject=" + fh::crypto::urlEncode(subject)
+                               + "&body="    + fh::crypto::urlEncode(bodyText);
+            out["gmail_href"]  = std::string("https://mail.google.com/mail/?")
+                               + "view=cm&fs=1"
+                               + "&authuser=" + fh::crypto::urlEncode("soccer@lighthouse1893.org")
+                               + "&to="       + fh::crypto::urlEncode(contact)
+                               + "&su="       + fh::crypto::urlEncode(subject)
+                               + "&body="     + fh::crypto::urlEncode(bodyText);
+        } else if (channel == "sms") {
+            out["sms_href"] = "sms:" + fh::crypto::urlEncode(contact)
+                            + "?body=" + fh::crypto::urlEncode(smsBody);
+        }
+        Response r(HttpStatus::CREATED, out.dump());
+        r.setHeader("Content-Type", "application/json; charset=utf-8");
+        return r;
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handlePostEventInvite: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+Response CalendarController::handleDeleteEventInvite(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId  = gate.personId;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    const long long targetPersonId = extractPersonIdFromInvitePath(request.getPath());
+    if (fhEventId <= 0 || targetPersonId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id and person_id required");
+    }
+    try {
+        auto* db = Database::getInstance();
+        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+            return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can revoke invites");
+        }
+        const std::string userId = resolveUserId(db, personId);
+        auto rows = db->query(
+            "UPDATE fh_event_invites SET revoked_at = now(), revoked_by_user_id = NULLIF($3, '')::int "
+            " WHERE fh_event_id = $1::bigint AND person_id = $2::int AND revoked_at IS NULL "
+            "RETURNING id",
+            {std::to_string(fhEventId), std::to_string(targetPersonId), userId});
+        return jsonOk({{"fh_event_id", fhEventId}, {"person_id", targetPersonId},
+                       {"revoked", !rows.empty()}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handleDeleteEventInvite: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

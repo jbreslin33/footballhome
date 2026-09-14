@@ -109,4 +109,13 @@ private:
     Response handleGetEventAttendance  (const Request& request);
     Response handlePostEventAttendance (const Request& request);
     Response handleDeleteEventAttendance(const Request& request);
+    // Invites (fh_event_invites, migration 355): a coach or admin lets ONE
+    // named non-rostered player into ONE game — a youth club-pass call-up
+    // or a men's play-down/up — and sends them a per-person magic link.
+    //   GET    /api/calendar/events/:fhEventId/invites            open invites + who could be invited
+    //   POST   /api/calendar/events/:fhEventId/invites            {person_id, channel, contact?} → link + hrefs
+    //   DELETE /api/calendar/events/:fhEventId/invites/:personId  revoke (row kept)
+    Response handleGetEventInvites     (const Request& request);
+    Response handlePostEventInvite     (const Request& request);
+    Response handleDeleteEventInvite   (const Request& request);
 };
