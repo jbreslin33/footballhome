@@ -484,10 +484,11 @@ class MyScreen extends Screen {
       return;
     }
 
-    // Keep the player-facing schedule focused on the current week and on
-    // the days the team actually uses for RSVPs: Tue through Sun.
+    // Keep the player-facing schedule focused on the released window.
+    // (Until 2026-09-13 this also dropped Mondays — a leftover from when
+    // My was men's-only and the men never trained on Monday.  Youth K-2
+    // and Grades 3-10 practice on Monday, so every weekday is fair game.)
     const weekEnd = this._weekWindowEnd();
-    const allowedDays = new Set([2, 3, 4, 5, 6, 0]);
     const now = Date.now();
     const DROP_GRACE_MS = 30 * 60 * 1000;
     // Fallback when ends_at is missing/unparseable — assume a 2hr event so a
@@ -502,7 +503,7 @@ class MyScreen extends Screen {
         // releases) wins; the local Sunday-8pm rule is only a fallback
         // for an event that somehow arrived without one.
         const winEnd = e.schedule_window_end ? new Date(e.schedule_window_end) : weekEnd;
-        if (isNaN(t) || t > winEnd || !allowedDays.has(t.getDay())) return false;
+        if (isNaN(t) || t > winEnd) return false;
 
         // Drop the event from the board 30 minutes after it ends, so
         // yesterday's practice doesn't linger on "This Week" all week.
