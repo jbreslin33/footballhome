@@ -12,6 +12,8 @@
 //     SMTP_PASS       app password (Gmail: myaccount.google.com/apppasswords)
 //     MAIL_FROM       envelope + header From address (falls back to SMTP_USER)
 //     MAIL_FROM_NAME  optional display name, e.g. "Football Home"
+//     MAIL_REPLY_TO   optional default Reply-To, e.g. jbreslin@footballhome.org
+//                     (Options::replyTo overrides it per call)
 //
 // When SMTP_HOST or SMTP_USER is unset send() returns false without ever
 // touching the network — callers can treat this as "email not configured"
@@ -20,9 +22,9 @@
 namespace fh::mail {
 
 struct Options {
-    // Optional per-call override for the reply-to header.  Rarely used;
-    // most transactional mail leaves this empty and lets recipients reply
-    // to MAIL_FROM.  When set, adds `Reply-To: <value>` to the message.
+    // Optional per-call override for the reply-to header.  When empty the
+    // MAIL_REPLY_TO env default applies; when that is empty too, recipients
+    // reply to MAIL_FROM.  When set, adds `Reply-To: <value>` to the message.
     std::string replyTo;
 };
 

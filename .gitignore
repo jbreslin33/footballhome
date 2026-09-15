@@ -93,3 +93,4 @@ scripts/__pycache__/
 
 env.bak-*
 *.bak-20*
+.postmark_token

@@ -209,8 +209,14 @@ bool send(const std::string& toEmail,
         if (c != '\r' && c != '\n') safeSubject.push_back(c);
     }
 
+    // Reply-To: per-call override wins; otherwise MAIL_REPLY_TO from the
+    // environment (so a no-reply style sender like reminders@ still routes
+    // human replies to a real mailbox); otherwise none.
+    const std::string replyTo = !opts.replyTo.empty() ? bareAddress(opts.replyTo)
+                                                      : bareAddress(env("MAIL_REPLY_TO"));
+
     const std::string payload = buildMessage(mailFrom, fromName, toAddr,
-                                             safeSubject, body, opts.replyTo);
+                                             safeSubject, body, replyTo);
 
     CURL* curl = curl_easy_init();
     if (!curl) {
