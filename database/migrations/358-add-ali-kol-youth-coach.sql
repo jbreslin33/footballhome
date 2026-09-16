@@ -9,9 +9,9 @@
 -- Ali, or his LA membership and roster spot would sit on one person id
 -- and his coach rights on another (see 314/341/350).
 --
--- Not touched: person 550 "Muhammed Ali Kol", a scraped CASA record
--- (Oaklyn United, removed 2026-06-25) that may be the same human from a
--- past season. Merging is a separate decision; nothing here depends on it.
+-- Not touched, and NOT the same human: person 550 "Muhammed Ali Kol"
+-- (Oaklyn United, scraped CASA record) is Ali's BROTHER (owner
+-- 2026-09-16). Never merge 550 into 22688.
 --
 -- "All youth teams" = every active boys/girls team (U6–U19 Intramural,
 -- U8/U10/U12 Travel), coach_role_id NULL like the rest of the youth
