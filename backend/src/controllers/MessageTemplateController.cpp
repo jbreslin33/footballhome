@@ -65,7 +65,7 @@ Response MessageTemplateController::handleList(const Request& request) {
     }
     try {
         std::string query = R"(
-            SELECT id, category, label, kind, tier, subject, body, html_body, is_active, sort_order
+            SELECT id, category, label, kind, tier, icon, subject, body, html_body, is_active, sort_order
             FROM message_templates
             WHERE is_active = true
         )";
@@ -100,6 +100,7 @@ Response MessageTemplateController::handleList(const Request& request) {
             json << "\"label\":" << quoteJson(row["label"].as<std::string>()) << ",";
             json << "\"kind\":" << quoteJson(row["kind"].as<std::string>()) << ",";
             json << "\"tier\":" << quoteJson(row["tier"].as<std::string>()) << ",";
+            json << "\"icon\":" << (row["icon"].is_null() ? "null" : quoteJson(row["icon"].as<std::string>())) << ",";
             json << "\"subject\":" << (row["subject"].is_null() ? "null" : quoteJson(row["subject"].as<std::string>())) << ",";
             json << "\"body\":" << (row["body"].is_null() ? "null" : quoteJson(row["body"].as<std::string>())) << ",";
             json << "\"html_body\":" << (row["html_body"].is_null() ? "null" : quoteJson(row["html_body"].as<std::string>())) << ",";

@@ -281,6 +281,50 @@ class RosterScreenBase extends Screen {
     return RosterScreenBase._rosterStatusesPromise;
   }
 
+  // ── Per-card "fill out this form" nudges (migrations 356/357) ──────
+  //
+  // message_templates rows with kind='registration', one category per
+  // board: "Men's Club" → 📋 Liga1/APSL Reg + APSL Reg, "Youth Travel"
+  // → 📄 Docs reminder (boys + girls).  label = button text, icon =
+  // what renderMessageButtons draws, subject/body = compose pre-fill,
+  // sort_order = button order.  Loaded once per page life per category
+  // in parallel with the roster (screens await it before first render
+  // so renderPlayer stays synchronous); a failed fetch yields no
+  // buttons and the next load() retries.
+  static _cardTemplates = new Map();          // category → presets[]
+  static _cardTemplatePromises = new Map();   // category → Promise
+
+  static loadCardTemplates(auth, category) {
+    if (!RosterScreenBase._cardTemplatePromises.has(category)) {
+      RosterScreenBase._cardTemplatePromises.set(category, (async () => {
+        try {
+          const qs = new URLSearchParams({ category, kind: 'registration' });
+          const res = await auth.fetch(`/api/messages/templates?${qs}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const body = await res.json();
+          const rows = Array.isArray(body && body.data) ? body.data : [];
+          RosterScreenBase._cardTemplates.set(category, rows.map(t => ({
+            key:     String(t.id),
+            icon:    t.icon || '',
+            label:   t.label,
+            subject: t.subject || '',
+            body:    t.body || '',
+          })));
+        } catch (err) {
+          console.warn(`card templates unavailable for ${category}:`, err);
+          RosterScreenBase._cardTemplates.set(category, []);
+          RosterScreenBase._cardTemplatePromises.delete(category);
+        }
+        return RosterScreenBase.cardTemplates(category);
+      })());
+    }
+    return RosterScreenBase._cardTemplatePromises.get(category);
+  }
+
+  static cardTemplates(category) {
+    return RosterScreenBase._cardTemplates.get(category) || [];
+  }
+
   // Screens call this alongside their roster fetch and await it before
   // the first render, so renderStatusSelect can stay synchronous.
   ensureRosterStatuses() {
@@ -954,7 +998,7 @@ class RosterScreenBase extends Screen {
   // tucked behind a popover), pre-filled with that preset's body/link,
   // addressed to contactFor(p) (or an explicit {phone,email} override,
   // since callers already have contactPhone/contactEmail computed).
-  // Mirrors BoysRosterScreen.DOCS_PRESET: each program subclass owns
+  // Mirrors the boys docsPreset: each program subclass owns
   // its own preset list (its league forms differ) and just calls this
   // method from renderPlayer — Mens goes first with
   // message_templates kind=registration rows (migration 356); Boys/Girls/

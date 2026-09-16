@@ -28,52 +28,14 @@
 class MensRosterScreen extends RosterScreenBase {
   // ── League registration-form presets (owner 2026-08-31) ────────────
   //
-  // One entry per external league registration form a Mens player may
-  // still need to fill out. Rendered as SMS+EMAIL buttons on every card
-  // by renderPlayer via RosterScreenBase.renderRegistrationButtons.
-  //
+  // 📋 Liga1/APSL Reg + 📋 APSL Reg SMS/EMAIL buttons on every card.
   // DB-driven since 2026-09-16 (owner: "this should be in db not hard
-  // coded"): the rows are message_templates with kind='registration'
-  // and category "Men's Club" (migration 356) — label is the button
-  // text, subject/body pre-fill the compose link, sort_order is button
-  // order.  Changing a deadline is now a migration, not a JS deploy.
-  // Fetched once per page life in parallel with the roster; a failed
-  // fetch renders no buttons and the next load() retries.
+  // coded"): message_templates kind='registration' under this category
+  // (migration 356), loaded via RosterScreenBase.loadCardTemplates.
   static REGISTRATION_TEMPLATE_CATEGORY = "Men's Club";
-  static _registrationPresets = null;
-  static _registrationPresetsPromise = null;
-
-  static loadRegistrationPresets(auth) {
-    if (!MensRosterScreen._registrationPresetsPromise) {
-      MensRosterScreen._registrationPresetsPromise = (async () => {
-        try {
-          const qs = new URLSearchParams({
-            category: MensRosterScreen.REGISTRATION_TEMPLATE_CATEGORY,
-            kind:     'registration',
-          });
-          const res = await auth.fetch(`/api/messages/templates?${qs}`);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const body = await res.json();
-          const rows = Array.isArray(body && body.data) ? body.data : [];
-          MensRosterScreen._registrationPresets = rows.map(t => ({
-            key:     String(t.id),
-            label:   t.label,
-            subject: t.subject || '',
-            body:    t.body || '',
-          }));
-        } catch (err) {
-          console.warn('registration templates unavailable:', err);
-          MensRosterScreen._registrationPresets = [];
-          MensRosterScreen._registrationPresetsPromise = null;
-        }
-        return MensRosterScreen._registrationPresets;
-      })();
-    }
-    return MensRosterScreen._registrationPresetsPromise;
-  }
 
   get registrationPresets() {
-    return MensRosterScreen._registrationPresets || [];
+    return RosterScreenBase.cardTemplates(MensRosterScreen.REGISTRATION_TEMPLATE_CATEGORY);
   }
 
   render() {
@@ -260,7 +222,7 @@ class MensRosterScreen extends RosterScreenBase {
       const qs = params.toString();
       const url = qs ? `/api/mens-roster?${qs}` : '/api/mens-roster';
       const statusesReady = this.ensureRosterStatuses(); // roster_statuses lookup (migration 342), in parallel
-      const presetsReady  = MensRosterScreen.loadRegistrationPresets(this.auth); // message_templates kind=registration (migration 356), in parallel
+      const presetsReady  = RosterScreenBase.loadCardTemplates(this.auth, MensRosterScreen.REGISTRATION_TEMPLATE_CATEGORY); // message_templates kind=registration (migration 356), in parallel
       const res = await this.auth.fetch(url);
       if (!res.ok) {
         const body = await res.text();

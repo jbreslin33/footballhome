@@ -188,6 +188,7 @@ class BoysRosterScreen extends RosterScreenBase {
       const qs = params.toString();
       const url = qs ? `/api/boys-roster?${qs}` : '/api/boys-roster';
       const statusesReady = this.ensureRosterStatuses(); // roster_statuses lookup (migration 342), in parallel
+      const presetsReady  = RosterScreenBase.loadCardTemplates(this.auth, BoysRosterScreen.DOCS_TEMPLATE_CATEGORY); // docs reminder copy (migration 357), in parallel
       const res = await this.auth.fetch(url);
       if (!res.ok) {
         const body = await res.text();
@@ -218,6 +219,7 @@ class BoysRosterScreen extends RosterScreenBase {
         showRefresh: true,
       });
       await statusesReady;
+      await presetsReady;
       this.renderRoster(data);
     } catch (err) {
       if (loading) loading.style.display = 'none';
@@ -274,17 +276,17 @@ class BoysRosterScreen extends RosterScreenBase {
   // paragraph in the WELCOME email (owner 2026-09-06) both use it.
   static DOCS_FORM_URL = 'https://forms.gle/n2bj8aHiTRqLs6cg9';
 
-  static DOCS_PRESET = {
-    key:     'docs',
-    icon:    '📄',
-    label:   'Docs reminder',
-    subject: 'Lighthouse Soccer — travel team docs needed',
-    body: [
-      'Dear Lighthouse Soccer Parents, in order to play in the Philadelphia Parks & Rec Soccer League (All games in Philadelphia) you must please right away fill out this form that has you simply upload picture of birth certificate and head shot of child. We have a limited number of spots on travel so we are filling the spots as parents fill out form.',
-      '',
-      'https://forms.gle/n2bj8aHiTRqLs6cg9',
-    ].join('\n'),
-  };
+  // 📄 Docs reminder — the column DOCS email and the per-card DOCS
+  // text share one preset.  DB-driven since 2026-09-16 (owner: "move
+  // the boys docs reminder to db too"): the message_templates row with
+  // kind='registration' under this category (migration 357), loaded via
+  // RosterScreenBase.loadCardTemplates.  Girls inherits it.  Null until
+  // loaded (or if the fetch failed) → no DOCS row and no DOCS button.
+  static DOCS_TEMPLATE_CATEGORY = 'Youth Travel';
+
+  get docsPreset() {
+    return RosterScreenBase.cardTemplates(BoysRosterScreen.DOCS_TEMPLATE_CATEGORY)[0] || null;
+  }
 
   // Second row under the column header — kept off the header line
   // because Fit-mode columns are ~110px and the header already carries
@@ -297,7 +299,7 @@ class BoysRosterScreen extends RosterScreenBase {
   // does not, so texting is done one card at a time via the 📄 DOCS
   // button renderPlayer puts on each card in these columns.
   renderDocsRow(col, players) {
-    if (!BoysRosterScreen.columnNeedsDocs(col)) return '';
+    if (!BoysRosterScreen.columnNeedsDocs(col) || !this.docsPreset) return '';
     const name = String(col.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
     // Skip families already marked Has Docs (or otherwise past the docs
     // step) so the column email never asks twice.
@@ -305,7 +307,7 @@ class BoysRosterScreen extends RosterScreenBase {
     if (!needing.length) return '';
     const btns = this.renderMessageButtons(name, needing, {
       compact:  true,
-      preset:   BoysRosterScreen.DOCS_PRESET,
+      preset:   this.docsPreset,
       channels: ['email'],
     });
     if (!btns) return '';
@@ -609,8 +611,8 @@ class BoysRosterScreen extends RosterScreenBase {
     // that need it (columnNeedsDocs). Stands in for the bulk text that
     // was pulled from the DOCS row; a one-recipient sms: URL is the part
     // every Messages client gets right.
-    const docsSmsHref = (contactPhone && BoysRosterScreen.playerNeedsDocs(p, col))
-      ? `sms:${contactPhone}?&body=${encodeURIComponent(BoysRosterScreen.DOCS_PRESET.body)}`
+    const docsSmsHref = (contactPhone && this.docsPreset && BoysRosterScreen.playerNeedsDocs(p, col))
+      ? `sms:${contactPhone}?&body=${encodeURIComponent(this.docsPreset.body)}`
       : null;
     const docsBtn = docsSmsHref
       ? `<a href="${docsSmsHref}"
