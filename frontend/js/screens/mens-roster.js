@@ -29,35 +29,52 @@ class MensRosterScreen extends RosterScreenBase {
   // ── League registration-form presets (owner 2026-08-31) ────────────
   //
   // One entry per external league registration form a Mens player may
-  // still need to fill out. Rendered as an SMS+EMAIL popover on every
-  // card by renderPlayer via RosterScreenBase.renderRegistrationButtons
-  // (mirrors BoysRosterScreen.DOCS_PRESET).
-  static REGISTRATION_PRESETS = [
-    {
-      key:     'casa-liga1',
-      icon:    '📋',
-      label:   'Liga1/APSL Reg',
-      subject: 'IMPORTANT!!! Liga 1 & APSL Registration — deadline 2:45 PM TODAY to play Sunday',
-      body: [
-        'IMPORTANT!!! The deadline to register is 2:45 PM TODAY — if you are not registered by 2:45 PM today you CANNOT play this Sunday. You will then have to wait until next week to play.',
-        'To be eligible for Liga 1 & APSL games this needs to be filled out right away — it captures the information needed for the APSL roster too.',
-        'Make sure head shot is just head and no hat or sunglasses and facing forward:',
-        'https://casasoccerleagues.sportngin.com/register/form/229198682',
-      ].join(' '),
-    },
-    {
-      key:     'apsl',
-      icon:    '📋',
-      label:   'APSL Reg',
-      subject: 'IMPORTANT!!! APSL Registration — deadline 4:30 PM TODAY to play Sunday',
-      body: [
-        'IMPORTANT!!! The deadline to register is 4:30 PM TODAY — if you are not registered by 4:30 PM today you CANNOT play this Sunday. You will then have to wait until next week to play.',
-        'To be eligible for APSL games this needs to be filled out right away.',
-        'Make sure head shot is just head and no hat or sunglasses and facing forward:',
-        'https://forms.gle/fki5wPqJk1x2fT9D7',
-      ].join(' '),
-    },
-  ];
+  // still need to fill out. Rendered as SMS+EMAIL buttons on every card
+  // by renderPlayer via RosterScreenBase.renderRegistrationButtons.
+  //
+  // DB-driven since 2026-09-16 (owner: "this should be in db not hard
+  // coded"): the rows are message_templates with kind='registration'
+  // and category "Men's Club" (migration 356) — label is the button
+  // text, subject/body pre-fill the compose link, sort_order is button
+  // order.  Changing a deadline is now a migration, not a JS deploy.
+  // Fetched once per page life in parallel with the roster; a failed
+  // fetch renders no buttons and the next load() retries.
+  static REGISTRATION_TEMPLATE_CATEGORY = "Men's Club";
+  static _registrationPresets = null;
+  static _registrationPresetsPromise = null;
+
+  static loadRegistrationPresets(auth) {
+    if (!MensRosterScreen._registrationPresetsPromise) {
+      MensRosterScreen._registrationPresetsPromise = (async () => {
+        try {
+          const qs = new URLSearchParams({
+            category: MensRosterScreen.REGISTRATION_TEMPLATE_CATEGORY,
+            kind:     'registration',
+          });
+          const res = await auth.fetch(`/api/messages/templates?${qs}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const body = await res.json();
+          const rows = Array.isArray(body && body.data) ? body.data : [];
+          MensRosterScreen._registrationPresets = rows.map(t => ({
+            key:     String(t.id),
+            label:   t.label,
+            subject: t.subject || '',
+            body:    t.body || '',
+          }));
+        } catch (err) {
+          console.warn('registration templates unavailable:', err);
+          MensRosterScreen._registrationPresets = [];
+          MensRosterScreen._registrationPresetsPromise = null;
+        }
+        return MensRosterScreen._registrationPresets;
+      })();
+    }
+    return MensRosterScreen._registrationPresetsPromise;
+  }
+
+  get registrationPresets() {
+    return MensRosterScreen._registrationPresets || [];
+  }
 
   render() {
     const div = document.createElement('div');
@@ -243,6 +260,7 @@ class MensRosterScreen extends RosterScreenBase {
       const qs = params.toString();
       const url = qs ? `/api/mens-roster?${qs}` : '/api/mens-roster';
       const statusesReady = this.ensureRosterStatuses(); // roster_statuses lookup (migration 342), in parallel
+      const presetsReady  = MensRosterScreen.loadRegistrationPresets(this.auth); // message_templates kind=registration (migration 356), in parallel
       const res = await this.auth.fetch(url);
       if (!res.ok) {
         const body = await res.text();
@@ -272,6 +290,7 @@ class MensRosterScreen extends RosterScreenBase {
         showRefresh: true,
       });
       await statusesReady;
+      await presetsReady;
       this.renderRoster(data);
     } catch (err) {
       if (loading) loading.style.display = 'none';
@@ -619,9 +638,9 @@ class MensRosterScreen extends RosterScreenBase {
       btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0; display:flex; align-items:center; justify-content:center;',
     });
     // 📋 Registration-link buttons (owner 2026-08-31) — one SMS+EMAIL
-    // popover per MensRosterScreen.REGISTRATION_PRESETS entry, so every
-    // card can nudge the player to fill out a given league's form.
-    const regBtns = this.renderRegistrationButtons(p, MensRosterScreen.REGISTRATION_PRESETS, {
+    // pair per message_templates kind='registration' row (migration
+    // 356), so every card can nudge the player to fill out a league form.
+    const regBtns = this.renderRegistrationButtons(p, this.registrationPresets, {
       phone: contactPhone,
       email: contactEmail,
     });

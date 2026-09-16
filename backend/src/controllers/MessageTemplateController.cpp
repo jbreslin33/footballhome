@@ -53,7 +53,14 @@ void MessageTemplateController::registerRoutes(Router& router, const std::string
 }
 
 Response MessageTemplateController::handleList(const Request& request) {
-    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+    // kind=registration rows are the per-card league-form nudges on the
+    // roster boards (migration 356), which coaches open too — a signed-in
+    // user is enough for those.  Everything else stays admin-only.
+    const std::string kind = request.getQueryParam("kind");
+    const bool signedIn = (kind == "registration")
+        ? requireBearer(request)
+        : requireAdminLevel(request, {"club", "super", "marketing"});
+    if (!signedIn) {
         return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
     }
     try {
@@ -65,8 +72,16 @@ Response MessageTemplateController::handleList(const Request& request) {
         std::vector<std::string> params;
         const std::string category = request.getQueryParam("category");
         if (!category.empty()) {
-            query += " AND lower(regexp_replace(category, '[^[:alnum:]]+', '', 'g')) = $1::text";
-            params = {normalizeCategory(category)};
+            params.push_back(normalizeCategory(category));
+            query += " AND lower(regexp_replace(category, '[^[:alnum:]]+', '', 'g')) = $"
+                   + std::to_string(params.size()) + "::text";
+        }
+        // kind=registration → the per-card league-form nudges the roster
+        // boards render as 💬/✉ buttons (migration 356).  Omitted → every
+        // active template, which is what the Messages screen wants.
+        if (!kind.empty()) {
+            params.push_back(kind);
+            query += " AND kind = $" + std::to_string(params.size()) + "::text";
         }
         query += " ORDER BY sort_order, id";
 

@@ -957,7 +957,8 @@ class RosterScreenBase extends Screen {
   // Mirrors BoysRosterScreen.DOCS_PRESET: each program subclass owns
   // its own preset list (its league forms differ) and just calls this
   // method from renderPlayer — Mens goes first with
-  // REGISTRATION_PRESETS; Boys/Girls/Womens can opt in later by adding
+  // message_templates kind=registration rows (migration 356); Boys/Girls/
+  // Womens can opt in later by adding
   // their own list and one call site, no changes here.
   renderRegistrationButtons(p, presets, { phone = null, email = null } = {}) {
     const list = (presets || []).filter(Boolean);
