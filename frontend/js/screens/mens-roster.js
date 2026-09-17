@@ -442,7 +442,8 @@ class MensRosterScreen extends RosterScreenBase {
       countHtml = `<span style="opacity:0.6; font-size:0.85rem;">${players.length}</span>`;
     }
 
-    const renderList = (list) => list.map((p, i) => this.renderPlayer(p, data.columns, col, i + 1, list.length)).join('');
+    const renderList = (list) => this.orderColumnPlayers(list)
+      .map(({ player, rank }) => this.renderPlayer(player, data.columns, col, rank, list.length)).join('');
 
     const body = players.length === 0
       ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'

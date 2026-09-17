@@ -796,6 +796,36 @@ class RosterScreenBase extends Screen {
     return `<span title="${this.escape(title)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.18); color:#cbd5e1; white-space:nowrap;">⚡ Pickup</span>`;
   }
 
+  // ── Card order within a column (owner 2026-09-17: "pills on #teams to
+  // sort alpha by last name or by rank… default to alpha by last name").
+  // 'alpha' — last name, then first.  'rank' — the coach's order, which is
+  // how the server sends each column.  The #N on a card is ALWAYS the
+  // coach rank, whichever way the column is sorted.  Drag-reorder and the
+  // #N slot picker rebuild the rank from the on-screen card order, so
+  // they are only live in rank mode; in alpha mode #N is a plain chip.
+  get sortOrder() { return this._sortOrder || 'alpha'; }
+
+  setSortOrder(value) {
+    const next = value === 'rank' ? 'rank' : 'alpha';
+    if (next === this.sortOrder) return Promise.resolve();
+    this._sortOrder = next;
+    return typeof this.load === 'function' ? this.load({ quiet: true }) : Promise.resolve();
+  }
+
+  // → [{ player, rank }] in display order; rank is the 1-based coach slot.
+  orderColumnPlayers(players) {
+    const ranked = (players || []).map((player, i) => ({ player, rank: i + 1 }));
+    if (this.sortOrder === 'rank') return ranked;
+    const key = (pl) => {
+      const last  = (pl.lastName || '').trim();
+      const first = (pl.firstName || '').trim();
+      // No split name on file → the last word of the full name.
+      const fallback = (pl.fullName || '').trim().split(/\s+/).pop() || '';
+      return `${last || fallback}\u0000${first}`.toLowerCase();
+    };
+    return ranked.sort((a, b) => key(a.player).localeCompare(key(b.player)) || a.rank - b.rank);
+  }
+
   // Two thin content rows (rank+name, then DOB/age/dues) on the left;
   // the roster-move dropdown and VIEW button sit side by side in a
   // strip on the right that spans the card's full height, using the
@@ -827,7 +857,8 @@ class RosterScreenBase extends Screen {
     // coached columns only — same gate as drag (canMove + col.teamId) —
     // and only worth showing once there's more than one card to reorder
     // against.
-    const posControl = (canMove && col && col.teamId && position && totalInColumn > 1)
+    const rankEditable = this.sortOrder === 'rank';
+    const posControl = (rankEditable && canMove && col && col.teamId && position && totalInColumn > 1)
       ? `<select class="roster-position-select" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}"
                  title="Move ${this.escape(player.firstName || 'player')} to a specific slot — everyone else shifts to make room"
                  style="font-size:0.68rem; font-weight:800; letter-spacing:0.02em; padding:0 1px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff;">
@@ -859,7 +890,7 @@ class RosterScreenBase extends Screen {
     // MensTeamAssignments::reorderTeamForPersons) instead of the plain
     // LA userId, which can silently drift out from under a specific
     // player and make their card look stuck / revert on drop.
-    const dragAttrs = (col && col.teamId && canMove)
+    const dragAttrs = (rankEditable && col && col.teamId && canMove)
       ? `draggable="true" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}"`
       : '';
     // canMove only gates drag-and-drop reordering within a coached column

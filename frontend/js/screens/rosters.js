@@ -262,6 +262,26 @@ class RostersScreen extends Screen {
           }
         },
       },
+      {
+        // Card order inside every team column (owner 2026-09-17).  Last
+        // name is the default; Rank is the coach's order and the only
+        // mode where cards can be dragged / re-slotted.
+        name:     'teams-sort',
+        chips: [
+          { id: 'alpha', label: 'A–Z last name' },
+          { id: 'rank',  label: 'Rank' },
+        ],
+        selected: this.teamsSort || 'alpha',
+        onSelect: (id) => {
+          if (id == null) return;
+          this.teamsSort = id;
+          for (const child of this._mountedChildren) {
+            if (child && child.columnScope === 'teams' && typeof child.setSortOrder === 'function') {
+              child.setSortOrder(id);
+            }
+          }
+        },
+      },
     ]);
   }
 
@@ -345,6 +365,7 @@ class RostersScreen extends Screen {
     if (typeof child.setIncludeInactive === 'function') {
       child.includeInactive = this.teamsIncludeInactive;
     }
+    child._sortOrder = this.teamsSort || 'alpha';   // the A–Z / Rank pill
     // Mens/Boys/Girls/Womens each compute an LA-driven Unassigned count
     // server-side (data.unassignedCount) — mirror it here so the Teams
     // panel shows a "not yet on a team" note without reaching into the
