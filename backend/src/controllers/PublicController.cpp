@@ -23,17 +23,34 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
 // "operates" (board_sort_order IS NOT NULL AND is_active = true) so internal
 // buckets/pools/archived-legacy teams don't show up in a public list.
 Response PublicController::handleListTeams(const Request& request) {
+    // One row per (section, team).  A team is listed when it has an FH
+    // schedule page (slug) or at least one league schedule link
+    // (team_schedule_links, mig 361).  A section with
+    // club_sections.schedule_section_id set lists that section's teams
+    // instead of its own — Girls play on the Boys teams.
     try {
         pqxx::result result = db_->query(
-            "SELECT t.slug, t.name, t.gender_category, "
+            "SELECT cs.name AS section_name, "
+            "       t.slug, t.name, t.label, t.gender_category, "
             "       COALESCE(t.logo_url,'') AS logo_url, "
-            "       d.name AS division_name "
-            "FROM teams t "
+            "       d.name AS division_name, "
+            "       COALESCE((SELECT json_agg(json_build_object('label', l.label, 'url', l.url) "
+            "                                 ORDER BY l.sort_order, l.id) "
+            "                   FROM team_schedule_links l WHERE l.team_id = t.id), "
+            "                '[]'::json)::text AS links "
+            "FROM club_sections cs "
+            "JOIN teams t ON t.club_section_id = COALESCE(cs.schedule_section_id, cs.id) "
             "LEFT JOIN divisions d ON d.id = t.division_id "
             "WHERE t.is_active = true "
             "  AND t.board_sort_order IS NOT NULL "
-            "  AND t.slug IS NOT NULL "
-            "ORDER BY t.gender_category NULLS LAST, t.board_sort_order");
+            "  AND (t.slug IS NOT NULL "
+            "       OR EXISTS (SELECT 1 FROM team_schedule_links l WHERE l.team_id = t.id)) "
+            "ORDER BY cs.sort_order, t.board_sort_order");
+
+        auto strOrNull = [](const pqxx::row& row, const char* col) {
+            return row[col].is_null() ? std::string("null")
+                : "\"" + escapeJson(row[col].as<std::string>()) + "\"";
+        };
 
         std::ostringstream data;
         data << "[";
@@ -41,18 +58,15 @@ Response PublicController::handleListTeams(const Request& request) {
         for (const auto& row : result) {
             if (!first) data << ",";
             first = false;
-            const std::string genderStr =
-                row["gender_category"].is_null() ? "null"
-                    : "\"" + escapeJson(row["gender_category"].as<std::string>()) + "\"";
-            const std::string divName =
-                row["division_name"].is_null() ? "null"
-                    : "\"" + escapeJson(row["division_name"].as<std::string>()) + "\"";
             data << "{"
-                 << "\"slug\":\"" << escapeJson(row["slug"].as<std::string>()) << "\","
+                 << "\"section\":\"" << escapeJson(row["section_name"].as<std::string>()) << "\","
+                 << "\"slug\":" << strOrNull(row, "slug") << ","
                  << "\"name\":\"" << escapeJson(row["name"].as<std::string>()) << "\","
+                 << "\"label\":" << strOrNull(row, "label") << ","
                  << "\"logo_url\":\"" << escapeJson(row["logo_url"].as<std::string>()) << "\","
-                 << "\"gender_category\":" << genderStr << ","
-                 << "\"division_name\":" << divName
+                 << "\"gender_category\":" << strOrNull(row, "gender_category") << ","
+                 << "\"division_name\":" << strOrNull(row, "division_name") << ","
+                 << "\"links\":" << row["links"].as<std::string>()
                  << "}";
         }
         data << "]";

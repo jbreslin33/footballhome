@@ -1,9 +1,9 @@
 // PublicTeamsListScreen — auth-less directory of active teams (#schedules),
-// grouped by gender category, each linking to that team's existing public
-// schedule page (#t/<slug>/schedule — see public-team.js). This is the
-// "footballhome page for the long-term schedule of each team" — it doesn't
-// hold schedule data itself, it just fans a visitor out to the per-team
-// page that already does.
+// grouped by club section, each linking to the league's own season schedule
+// (team_schedule_links, mig 361) and/or that team's public FH schedule page
+// (#t/<slug>/schedule — see public-team.js). This is the "see ahead of this
+// week without RSVP" page — it holds no schedule data itself, it just fans
+// a visitor out to the pages that do. Linked from the Schedules pill on #my.
 class PublicTeamsListScreen extends Screen {
   onEnter() {
     const root = this.find('#ptl-root');
@@ -22,10 +22,6 @@ class PublicTeamsListScreen extends Screen {
     return el;
   }
 
-  static get CATEGORY_LABELS() {
-    return { mens: "Men's", womens: "Women's", boys: 'Boys', girls: 'Girls' };
-  }
-
   renderError(msg) {
     const root = this.find('#ptl-root');
     if (root) root.innerHTML = this.pageShell(`<div style="text-align:center; padding:40px 20px; color:#f5a3a3;">⚠️ ${this.escapeHtml(msg)}</div>`);
@@ -40,23 +36,20 @@ class PublicTeamsListScreen extends Screen {
       return;
     }
 
+    // Sections arrive in club_sections.sort_order (Men, Women, Boys,
+    // Girls); Girls repeats the Boys teams because girls play on them.
     const groups = new Map();
     for (const t of teams) {
-      const key = t.gender_category || 'other';
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(t);
+      if (!groups.has(t.section)) groups.set(t.section, []);
+      groups.get(t.section).push(t);
     }
 
-    const order = ['mens', 'womens', 'boys', 'girls', 'other'];
-    const labels = PublicTeamsListScreen.CATEGORY_LABELS;
     let body = '';
-    for (const key of order) {
-      const teamsInGroup = groups.get(key);
-      if (!teamsInGroup || teamsInGroup.length === 0) continue;
+    for (const [section, teamsInGroup] of groups) {
       body += `
         <div style="margin-bottom:28px;">
           <div style="font-size:13px; letter-spacing:2px; text-transform:uppercase; opacity:0.6; margin-bottom:10px;">
-            ${this.escapeHtml(labels[key] || 'Other')}
+            ${this.escapeHtml(section)}
           </div>
           <div style="display:flex; flex-direction:column; gap:8px;">
             ${teamsInGroup.map(t => this.renderTeamRow(t)).join('')}
@@ -68,18 +61,28 @@ class PublicTeamsListScreen extends Screen {
     root.innerHTML = this.pageShell(body);
   }
 
+  // A team row carries up to two kinds of link: the league's own season
+  // schedule (team_schedule_links, mig 361 — opens the league site) and
+  // the FH schedule page (#t/<slug>/schedule) when the team has a slug.
+  // Both are read-only; RSVPs stay on #my for the released week.
   renderTeamRow(t) {
-    const slug = encodeURIComponent(t.slug);
     const sub = t.division_name ? this.escapeHtml(t.division_name) : '';
+    const linkStyle = 'font-size:13px; font-weight:600; color:#f5d442; text-decoration:none; white-space:nowrap;';
+    const links = (t.links || []).map(l => `
+      <a href="${this.escapeHtml(l.url)}" target="_blank" rel="noopener" style="${linkStyle}">${this.escapeHtml(l.label)} ↗</a>`);
+    if (t.slug) {
+      links.push(`
+      <a href="#t/${encodeURIComponent(t.slug)}/schedule" style="${linkStyle}">Schedule →</a>`);
+    }
     return `
-      <a href="#t/${slug}/schedule" style="display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; text-decoration:none; color:#fff;">
+      <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; background:rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:#fff;">
         ${this.buildTeamLogoMarkup(t.logo_url, { className: 'team-logo', placeholder: '⚽' })}
-        <div style="flex:1; min-width:0;">
+        <div style="flex:1; min-width:140px;">
           <div style="font-weight:700;">${this.escapeHtml(t.name)}</div>
           ${sub ? `<div style="font-size:12px; opacity:0.65;">${sub}</div>` : ''}
         </div>
-        <div style="font-size:13px; font-weight:600; color:#f5d442;">Schedule →</div>
-      </a>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">${links.join('')}</div>
+      </div>
     `;
   }
 
@@ -91,6 +94,8 @@ class PublicTeamsListScreen extends Screen {
       </style>
       <div style="min-height:100vh; background:linear-gradient(160deg,#0D2A52 0%,#0a1628 55%,#0D2A52 100%); color:#fff; font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;">
         <div class="narrow" style="max-width:720px; margin:0 auto; padding:32px 20px 60px; box-sizing:border-box;">
+          <!-- The installed PWA has no browser back button, and #my links here. -->
+          <a href="#my" style="font-size:13px; font-weight:600; color:#dbeafe; text-decoration:none;">← My page</a>
           <div style="display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; margin-bottom:28px;">
             <img src="/images/lighthouse-1893-crest.png" alt="Lighthouse 1893 crest" style="width:88px; height:88px; object-fit:contain;">
             <div style="font-size:13px; letter-spacing:2px; text-transform:uppercase; opacity:0.6;">footballhome.org &middot; Lighthouse 1893</div>

@@ -25,8 +25,10 @@ class PublicScreenBase extends Screen {
         if (!r.ok) throw new Error(r.status === 404 ? 'Team not found' : `HTTP ${r.status}`);
         return r.json();
       })
-      .then(data => {
+      .then(body => {
         if (!this.isMounted) return;
+        // Responses arrive in the {success, message, data} envelope.
+        const data = body.data || body;
         this.teamData = data.team || data;
         this.renderHeader();
         this.loadContent();
@@ -109,7 +111,7 @@ class PublicGamedayScreen extends PublicScreenBase {
   loadContent() {
     fetch(`/api/public/teams/${encodeURIComponent(this.slug)}/gameday`)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(data => { if (this.isMounted) this.renderGameday(data); })
+      .then(body => { if (this.isMounted) this.renderGameday(body.data || body); })
       .catch(err => { if (this.isMounted) this.showError(err.message); });
   }
 
@@ -174,7 +176,7 @@ class PublicLineupScreen extends PublicScreenBase {
   loadContent() {
     fetch(`/api/public/teams/${encodeURIComponent(this.slug)}/lineup`)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(data => { if (this.isMounted) this.renderLineup(data); })
+      .then(body => { if (this.isMounted) this.renderLineup(body.data || body); })
       .catch(err => { if (this.isMounted) this.showError(err.message); });
   }
 
@@ -246,7 +248,7 @@ class PublicScheduleScreen extends PublicScreenBase {
   loadContent() {
     fetch(`/api/public/teams/${encodeURIComponent(this.slug)}/schedule`)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(data => { if (this.isMounted) this.renderSchedule(data); })
+      .then(body => { if (this.isMounted) this.renderSchedule(body.data || body); })
       .catch(err => { if (this.isMounted) this.showError(err.message); });
   }
 

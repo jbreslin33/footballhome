@@ -102,7 +102,10 @@ class MyScreen extends Screen {
              style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1; text-decoration:none; display:inline-flex; align-items:center;">
             Players
           </a>
-          <span id="my-schedule-pills"></span>
+          <a href="#schedules" title="Full-season league schedules for every team (view only)"
+             style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1; text-decoration:none; display:inline-flex; align-items:center;">
+            Schedules
+          </a>
         </div>
       </div>
       <div style="padding: 0 8px;">
@@ -148,32 +151,11 @@ class MyScreen extends Screen {
           onChange: () => this._initPushUI().catch(() => {}),
         }).catch((err) => console.warn('[my] push banner failed:', err));
       }
-      this._loadSchedulePills().catch((err) => console.warn('[my] schedule pills failed:', err));
     } catch (err) {
       console.error('[my] bootstrap failed:', err);
       this.dataError = err.message || 'Failed to load.';
       this._renderError();
     }
-  }
-
-  // One "Schedule" pill per team the caller rosters on, linking straight to
-  // that team's public long-term schedule page (#t/<slug>/schedule — same
-  // page/endpoint the public team share links use). Teams with no slug
-  // (shouldn't happen post-migration-045, but the column isn't NOT NULL)
-  // are silently skipped rather than linking to a broken page.
-  async _loadSchedulePills() {
-    const slot = this.find('#my-schedule-pills');
-    if (!slot) return;
-    const res = await this._fetch('/api/auth/player/teams');
-    const teams = (res.data || []).filter(t => t.slug);
-    if (teams.length === 0) return;
-    const pillStyle = 'padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1; text-decoration:none; display:inline-flex; align-items:center;';
-    slot.innerHTML = teams.map(t => `
-      <a href="#t/${encodeURIComponent(t.slug)}/schedule" title="${this.escapeHtml(t.display_name || t.name)} schedule"
-         style="${pillStyle} margin-left:4px;">
-        ${teams.length > 1 ? `Schedule: ${this.escapeHtml(t.display_name || t.name)}` : 'Schedule'}
-      </a>
-    `).join('');
   }
 
   // Thin fetch wrapper.  READs go through auth.fetch so the impersonation
