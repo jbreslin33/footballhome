@@ -1,6 +1,7 @@
 #include "AuthController.h"
 #include "../core/Crypto.h"
 #include "../core/Mail.h"
+#include "../models/MessageCopy.h"
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -918,28 +919,18 @@ Response AuthController::handleForgotPassword(const Request& request) {
         const std::string resetUrl =
             baseUrl + "/reset-password?token=" + fh::crypto::urlEncode(raw);
 
-        // Compose message.  Plaintext only — HTML MIME would need more
-        // scaffolding and offers no functional win for a link this
-        // short.
-        std::ostringstream body;
-        body << "Hi";
-        if (!firstName.empty()) body << " " << firstName;
-        body << ",\n\n"
-             << "Someone (hopefully you) requested a password reset for your "
-                "Football Home account.  Tap the link below to set a new "
-                "password.  This link expires in 60 minutes and can only be "
-                "used once.\n\n"
-             << resetUrl << "\n\n"
-             << "If you didn't request this, you can safely ignore the email "
-                "— your existing password stays as-is.\n\n"
-             << "— Football Home\n";
-
-        const std::string subject = "Football Home — reset your password";
+        // Compose message — message_templates kind 'password_reset'
+        // (migration 366).  Plaintext only — HTML MIME would need more
+        // scaffolding and offers no functional win for a link this short.
+        const auto mail = MessageCopy().render("password_reset", "all",
+                                               {{"name", firstName}, {"link", resetUrl}});
+        if (!mail.ok()) std::cerr << "[forgot-password] password_reset template missing (migration 366)" << std::endl;
+        const std::string subject = mail.subject;
 
         // Fire-and-forget.  fh::mail::send() logs errors internally.
         // We still respond 200 either way; a delivery failure will show
         // up in the container logs.
-        bool sent = fh::mail::send(realEmail, subject, body.str());
+        bool sent = mail.ok() && fh::mail::send(realEmail, subject, mail.body);
 
         // Extra observability line for the log — includes the raw URL
         // so operator can hand-deliver during outages / pre-SMTP builds.

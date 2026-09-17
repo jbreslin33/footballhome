@@ -65,12 +65,12 @@ test('last-send pill: sms channel and never-sent', () => {
 test('travel-column youth cards carry the docs ask; others do not', () => {
   const { screen } = loadBase();
   const p = { personId: 9, firstName: 'Jaquil', welcome: { due: true } };
-  const withDocs = screen.renderWelcomeButtons(p, { personId: 7, playerPersonId: 9, email: 'a@b.c', needsDocs: true, docsFormUrl: 'https://forms.gle/x' });
+  const withDocs = screen.renderWelcomeButtons(p, { personId: 7, playerPersonId: 9, email: 'a@b.c', needsDocs: true });
   assert.match(withDocs, /data-needs-docs="1"/);
-  assert.match(withDocs, /data-docs-form-url="https:\/\/forms\.gle\/x"/);
+  // The form link is a club_forms row the server resolves (migration 365).
+  assert.doesNotMatch(withDocs, /forms\.gle|data-docs-form-url/);
   const without = screen.renderWelcomeButtons(p, { personId: 7, playerPersonId: 9, email: 'a@b.c' });
   assert.match(without, /data-needs-docs=""/);
-  assert.match(without, /data-docs-form-url=""/);
 });
 
 // Docs rule (migration 340): status beats column.

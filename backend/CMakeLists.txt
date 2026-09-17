@@ -41,6 +41,8 @@ set(SOURCES
     src/models/PersonBilling.cpp
     src/models/PayReminderLog.cpp
     src/models/WelcomeLog.cpp
+    src/models/WelcomeMessage.cpp
+    src/models/MessageCopy.cpp
     src/models/RsvpBoard.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp

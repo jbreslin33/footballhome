@@ -49,9 +49,8 @@ public:
     };
     ReminderContext reminderContext(long long personId);
 
-    // message_templates kind='rsvp_reminder', tier 'adult' | 'parent'.
-    struct Template { std::string subject, body; };
-    Template reminderTemplate(bool youth);
+    // The copy itself is message_templates kind='rsvp_reminder', tier
+    // 'adult' | 'parent', rendered by MessageCopy.
 
     // Writes rsvp_reminders + rsvp_reminder_events; returns the card's
     // fresh last_reminder object.

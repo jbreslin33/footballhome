@@ -1092,9 +1092,10 @@ class RosterScreenBase extends Screen {
   // personId: who RECEIVES the welcome and gets signed in by the magic
   // link inside it — the parent on youth boards, the player on adult
   // boards.  playerPersonId: the child the youth copy names.
-  // needsDocs + docsFormUrl (youth travel columns only): the welcome
-  // gains a paragraph asking for the travel documents upload.
-  renderWelcomeButtons(p, { personId = null, playerPersonId = null, phone = null, email = null, needsDocs = false, docsFormUrl = null } = {}) {
+  // needsDocs (youth travel columns only): the welcome gains a paragraph
+  // asking for the travel documents upload.  The form link is the
+  // server's business — a club_forms row (migration 365).
+  renderWelcomeButtons(p, { personId = null, playerPersonId = null, phone = null, email = null, needsDocs = false } = {}) {
     const pid = Number(personId || (p && p.personId) || 0);
     if (!pid) return '';
     const contact = (phone || email) ? { phone, email } : this.contactFor(p);
@@ -1113,8 +1114,7 @@ class RosterScreenBase extends Screen {
               data-person-id="${pid}"
               data-player-person-id="${Number(playerPersonId || 0) || ''}"
               data-contact="${this.escape(to)}"
-              data-needs-docs="${needsDocs && docsFormUrl ? '1' : ''}"
-              data-docs-form-url="${needsDocs && docsFormUrl ? this.escape(docsFormUrl) : ''}"
+              data-needs-docs="${needsDocs ? '1' : ''}"
               title="${title}"
               style="${btnBase}">${icon} WELCOME</button>`;
     const dueNote = due ? ' — welcome not sent yet' : '';
@@ -1162,7 +1162,6 @@ class RosterScreenBase extends Screen {
     const playerPersonId = parseInt(btn.dataset.playerPersonId, 10) || 0;
     const contact        = String(btn.dataset.contact || '').trim();
     const needsDocs      = btn.dataset.needsDocs === '1';
-    const docsFormUrl    = String(btn.dataset.docsFormUrl || '').trim();
     if (!channel || !personId || !contact) return;
 
     const originalText = btn.innerHTML;
@@ -1179,7 +1178,6 @@ class RosterScreenBase extends Screen {
           channel,
           contact,
           needs_docs: needsDocs,
-          docs_form_url: needsDocs ? docsFormUrl : null,
         }),
       });
       if (!res.ok) {

@@ -329,16 +329,6 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
     return ctx;
 }
 
-RsvpBoard::Template RsvpBoard::reminderTemplate(bool youth) {
-    auto rows = Database::getInstance()->query(
-        "SELECT COALESCE(subject,'') AS subject, body FROM message_templates "
-        " WHERE kind = 'rsvp_reminder' AND tier = $1 AND is_active "
-        " ORDER BY sort_order, id LIMIT 1",
-        {youth ? "parent" : "adult"});
-    if (rows.empty()) return {};
-    return {rows[0]["subject"].c_str(), rows[0]["body"].c_str()};
-}
-
 json RsvpBoard::logReminder(long long personId, long long recipientPersonId,
                             const std::string& channel, const std::string& contact,
                             long long sentByUserId,

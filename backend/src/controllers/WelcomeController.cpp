@@ -2,11 +2,12 @@
 
 #include <cctype>
 #include <iostream>
-#include <sstream>
 
 #include "../core/Crypto.h"
 #include "../database/Database.h"
 #include "../models/WelcomeLog.h"
+#include "../models/WelcomeMessage.h"
+#include "../models/MessageCopy.h"
 #include "../services/MagicLinkService.h"
 #include "../third_party/json.hpp"
 
@@ -59,7 +60,8 @@ std::string firstNameOf(Database* db, long long personId) {
 } // namespace
 
 WelcomeController::WelcomeController()
-    : model_(std::make_unique<WelcomeLog>()) {}
+    : model_(std::make_unique<WelcomeLog>()),
+      message_(std::make_unique<WelcomeMessage>()) {}
 WelcomeController::~WelcomeController() = default;
 
 void WelcomeController::registerRoutes(Router& router, const std::string& prefix) {
@@ -84,12 +86,10 @@ Response WelcomeController::handleCreate(const Request& request) {
     const std::string contact      = readStr(body, "contact");
     // Youth travel columns only (frontend decides via columnNeedsDocs):
     // append the travel-documents ask so the coach can skip the separate
-    // DOCS reminder when the placement is already known.  The form URL
-    // travels with the request so the frontend's DOCS_FORM_URL stays the
-    // single source of truth.
+    // DOCS reminder when the placement is already known.  The form link
+    // itself is a club_forms row the copy names (migration 365).
     const bool needsDocs = body.contains("needs_docs") && body["needs_docs"].is_boolean()
                            && body["needs_docs"].get<bool>();
-    const std::string docsFormUrl = readStr(body, "docs_form_url");
     if (personId <= 0)                           return jsonError(HttpStatus::BAD_REQUEST, "person_id required");
     if (channel != "email" && channel != "sms") return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'email' or 'sms'");
     if (contact.empty())                         return jsonError(HttpStatus::BAD_REQUEST, "contact required");
@@ -101,7 +101,6 @@ Response WelcomeController::handleCreate(const Request& request) {
             {std::to_string(personId)});
         if (personRow.empty()) return jsonError(HttpStatus::NOT_FOUND, "Person not found");
         std::string firstName = personRow[0]["fn"].c_str();
-        if (firstName.empty()) firstName = "there";
 
         // Youth: the child the message is about.  A player_person_id that
         // equals the recipient is an adult welcoming themselves — no child.
@@ -109,8 +108,8 @@ Response WelcomeController::handleCreate(const Request& request) {
             ? firstNameOf(db, playerPersonId) : std::string{};
         const bool youth = !childName.empty();
 
-        // Sign-off: the sending admin's own name (users → persons), falling
-        // back to the club signature the LINK buttons already use.
+        // Sign-off: the sending admin's own name (users → persons), else
+        // the club's.
         std::string senderName;
         if (adminUserId > 0) {
             try {
@@ -121,54 +120,32 @@ Response WelcomeController::handleCreate(const Request& request) {
                 if (!s.empty() && !s[0]["nm"].is_null()) senderName = s[0]["nm"].c_str();
             } catch (...) {}
         }
-        const std::string signOff = senderName.empty()
-            ? std::string("— Lighthouse Soccer")
-            : "— " + senderName + "\nSoccer Director\nLighthouse 1893 SC";
+        if (senderName.empty()) {
+            auto c = db->query("SELECT COALESCE(name,'') AS nm FROM clubs WHERE id = $1::int",
+                               {std::to_string(WelcomeLog::kLighthouseClubId)});
+            if (!c.empty()) senderName = c[0]["nm"].c_str();
+        }
+
+        // ── Copy ───────────────────────────────────────────────────
+        // Every sentence is a message_templates row and every fact comes
+        // from the player's schedule (WelcomeMessage, migration 364).
+        const auto facts = message_->factsFor(youth ? playerPersonId : personId,
+                                              WelcomeLog::kLighthouseClubId);
 
         const auto minted = MagicLinkService::mint(personId, channel, contact, adminUserId);
 
-        // ── Copy ───────────────────────────────────────────────────
-        // Parent copy names the child; adult copy is first-person.  Same
-        // structure as the LINK invite so the two read as one voice.
-        const std::string whose    = youth ? childName + "'s" : "your";
-        const std::string subject  = "Welcome to Lighthouse 1893 SC!";
-
-        std::ostringstream b;
-        b << "Hi " << firstName << ",\n\n"
-          << "Welcome to Lighthouse 1893 — we're glad "
-          << (youth ? childName + " is" : "you're") << " playing with us.\n\n"
-          << "footballhome.org is where each week's practices, games and pickups are posted, "
-          << "and where you set " << whose << " availability so the coaches know who's coming. "
-          << "Tap the link below on your phone — no password needed — and you'll land on "
-          << whose << " schedule:\n"
-          << minted.url << "\n\n"
-          << "On the page you can:\n"
-          << "  • RSVP YES / NO for each practice and game\n"
-          << "  • Set default availability by day so the page fills itself in\n"
-          << "  • Add it to your home screen — it works like an app\n\n"
-          << "The link signs you in automatically and expires in 72 hours. "
-          << "If it has expired by the time you open it, just reply and I'll send a fresh one.\n\n";
-        const bool docsAsk = youth && needsDocs && !docsFormUrl.empty();
-        if (docsAsk) {
-            b << "One more thing: since " << childName << " is on a travel team, the Philadelphia "
-              << "Parks & Rec league needs a copy of " << childName << "'s birth certificate and a "
-              << "headshot. Please upload both here when you get a chance — travel spots are "
-              << "confirmed as forms come in:\n"
-              << docsFormUrl << "\n\n";
-        }
-        b << "Reply anytime with questions.\n\n"
-          << signOff;
-        const std::string bodyText = b.str();
-
-        std::string smsBody =
-            "Hi " + firstName + " — welcome to Lighthouse 1893! Practices, games and pickups are "
-            "posted at footballhome.org. Tap to see " + whose + " schedule and set availability "
-            "(no password needed): " + minted.url;
-        if (docsAsk) {
-            smsBody += " Also, for " + childName + "'s travel spot please upload a birth certificate + headshot: " + docsFormUrl;
-        }
-
-        smsBody = MagicLinkService::withSmsLinkHint(smsBody);
+        MessageCopy copy;
+        WelcomeMessage::Tokens tokens;
+        tokens.first    = firstName.empty() ? copy.render("fallback", "first", {}).body : firstName;
+        tokens.child    = childName;
+        tokens.link     = minted.url;
+        tokens.sender   = senderName;
+        tokens.docsAsk  = youth && needsDocs;
+        const auto msg = message_->render(channel, youth, WelcomeLog::kLighthouseClubId, facts, tokens);
+        if (!msg.ok())
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "welcome template missing (migration 364)");
+        const std::string subject  = msg.subject;
+        const std::string bodyText = msg.body;
 
         model_->record(personId, youth ? playerPersonId : 0, channel, contact, adminUserId);
 
@@ -188,20 +165,7 @@ Response WelcomeController::handleCreate(const Request& request) {
             {"expires_at", minted.expiresIso},
             {"welcome",    welcome},
         };
-        if (channel == "email") {
-            out["mailto_href"] = "mailto:" + fh::crypto::urlEncode(contact)
-                               + "?subject=" + fh::crypto::urlEncode(subject)
-                               + "&body="    + fh::crypto::urlEncode(bodyText);
-            out["gmail_href"]  = std::string("https://mail.google.com/mail/?")
-                               + "view=cm&fs=1"
-                               + "&authuser=" + fh::crypto::urlEncode("soccer@lighthouse1893.org")
-                               + "&to="       + fh::crypto::urlEncode(contact)
-                               + "&su="       + fh::crypto::urlEncode(subject)
-                               + "&body="     + fh::crypto::urlEncode(bodyText);
-        } else {
-            out["sms_href"] = "sms:" + fh::crypto::urlEncode(contact)
-                            + "?body=" + fh::crypto::urlEncode(smsBody);
-        }
+        copy.addComposeHrefs(out, channel, contact, subject, bodyText, bodyText);
         Response r(HttpStatus::CREATED, out.dump());
         r.setHeader("Content-Type", "application/json; charset=utf-8");
         return r;

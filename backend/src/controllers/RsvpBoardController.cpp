@@ -8,6 +8,7 @@
 #include "../core/Crypto.h"
 #include "../database/Database.h"
 #include "../models/RsvpBoard.h"
+#include "../models/MessageCopy.h"
 #include "../services/MagicLinkService.h"
 #include "../third_party/json.hpp"
 
@@ -41,11 +42,6 @@ const std::vector<SectionDef>& sections() {
 const SectionDef* findSection(const std::string& key) {
     for (const auto& d : sections()) if (key == d.key) return &d;
     return nullptr;
-}
-
-void replaceAll(std::string& s, const std::string& from, const std::string& to) {
-    for (size_t pos = 0; (pos = s.find(from, pos)) != std::string::npos; pos += to.size())
-        s.replace(pos, from.size(), to);
 }
 
 }  // namespace
@@ -225,10 +221,6 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         if (ctx.openEvents.empty())
             return jsonError(HttpStatus::CONFLICT, "Nothing to remind — every released event is answered.");
 
-        const auto tpl = model_->reminderTemplate(ctx.youth);
-        if (tpl.body.empty())
-            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363)");
-
         std::string senderName;
         {
             auto s = Database::getInstance()->query(
@@ -236,24 +228,20 @@ Response RsvpBoardController::handleRemind(const Request& request) {
                 {std::to_string(scope.personId)});
             if (!s.empty()) senderName = s[0]["fn"].c_str();
         }
-        if (senderName.empty()) senderName = "Coach";
-
         const auto minted = MagicLinkService::mint(ctx.recipientPersonId, channel, contact, scope.userId);
 
         std::string events;
         for (const auto& ev : ctx.openEvents) events += "• " + ev.line + "\n";
         if (!events.empty()) events.pop_back();
 
-        auto fill = [&](std::string text) {
-            replaceAll(text, "{first}",  ctx.recipientFirstName.empty() ? "there" : ctx.recipientFirstName);
-            replaceAll(text, "{child}",  ctx.playerFirstName.empty() ? "your player" : ctx.playerFirstName);
-            replaceAll(text, "{events}", events);
-            replaceAll(text, "{link}",   minted.url);
-            replaceAll(text, "{sender}", senderName);
-            return text;
-        };
-        const std::string subject  = fill(tpl.subject);
-        const std::string bodyText = fill(tpl.body);
+        // kind 'rsvp_reminder' (migration 363); empty names fall back to
+        // the kind='fallback' words (migration 366).
+        MessageCopy copy;
+        const auto msg = copy.render("rsvp_reminder", ctx.youth ? "parent" : "adult", {
+            {"first", ctx.recipientFirstName}, {"child", ctx.playerFirstName},
+            {"events", events}, {"link", minted.url}, {"sender", senderName}});
+        if (!msg.ok())
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363)");
 
         json lastReminder = model_->logReminder(personId, ctx.recipientPersonId, channel, contact,
                                                 scope.userId, ctx.openEvents);
@@ -264,17 +252,7 @@ Response RsvpBoardController::handleRemind(const Request& request) {
             {"event_count",   ctx.openEvents.size()},
             {"last_reminder", lastReminder},
         };
-        if (channel == "email") {
-            out["gmail_href"] = std::string("https://mail.google.com/mail/?")
-                              + "view=cm&fs=1"
-                              + "&authuser=" + fh::crypto::urlEncode("soccer@lighthouse1893.org")
-                              + "&to="       + fh::crypto::urlEncode(contact)
-                              + "&su="       + fh::crypto::urlEncode(subject)
-                              + "&body="     + fh::crypto::urlEncode(bodyText);
-        } else {
-            out["sms_href"] = "sms:" + fh::crypto::urlEncode(contact)
-                            + "?body=" + fh::crypto::urlEncode(MagicLinkService::withSmsLinkHint(bodyText));
-        }
+        copy.addComposeHrefs(out, channel, contact, msg.subject, msg.body, msg.body);
         return jsonOut(HttpStatus::CREATED, out);
     } catch (const std::exception& e) {
         std::cerr << "RsvpBoardController::handleRemind: " << e.what() << std::endl;

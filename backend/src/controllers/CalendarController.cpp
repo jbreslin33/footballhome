@@ -3,6 +3,7 @@
 #include "../core/Crypto.h"
 #include "../core/HttpClient.h"
 #include "../database/Database.h"
+#include "../models/MessageCopy.h"
 #include "../services/MagicLinkService.h"
 #include "../services/SessionService.h"
 #include "../third_party/json.hpp"
@@ -2161,29 +2162,28 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
                                {std::to_string(recipientPersonId)});
             if (!r.empty()) recipientFirst = r[0]["fn"].c_str();
         }
-        if (recipientFirst.empty()) recipientFirst = "there";
 
-        // ── Copy ── player-facing: squad + opponent + time, never the gcal title.
-        const bool isMatch = info->kind == "match";
-        std::string what = info->teamLabel.empty() ? std::string("the team") : info->teamLabel;
-        std::string game = (isMatch ? what + (info->opponent.empty() ? " game" : " vs " + info->opponent)
-                                    : what + " " + (info->kind.empty() ? "session" : info->kind))
-                         + (info->whenEt.empty() ? "" : " on " + info->whenEt);
-        const std::string whoPlays = youth ? firstName : std::string("you");
-        const std::string theyAre  = youth ? firstName + " is" : std::string("you're");
-        const std::string subject  = "Invite: " + game;
-        std::ostringstream b;
-        b << "Hi " << recipientFirst << ",\n\n"
-          << "We'd like to invite " << whoPlays << " to play with " << what
-          << (fromTeamName.empty() ? "" : " (up from " + fromTeamName + ")")
-          << " — " << game << ".\n\n"
-          << "Tap the link below on your phone to sign in — no password needed — and mark whether "
-          << theyAre << " available:\n" << minted.url << "\n\n"
-          << "The link works for 72 hours. Reply anytime with questions.\n";
-        const std::string bodyText = b.str();
-        const std::string smsBody = MagicLinkService::withSmsLinkHint(
-            "Hi " + recipientFirst + " — " + whoPlays + (youth ? " is" : " are") + " invited to play with " + what
-            + ": " + game + ". Tap to sign in and mark availability (no password needed): " + minted.url);
+        // ── Copy ── message_templates kind 'event_invite' / 'event_invite_sms',
+        // tier adult|parent (migration 366).  Player-facing: squad + kind
+        // label + opponent + time, never the gcal title.
+        std::string kindLabel;
+        {
+            auto k = db->query("SELECT player_label FROM fh_event_kind_labels WHERE kind = $1", {info->kind});
+            if (!k.empty()) kindLabel = k[0]["player_label"].c_str();
+        }
+        MessageCopy copy;
+        const MessageCopy::Tokens tokens = {
+            {"first", recipientFirst}, {"child", youth ? firstName : std::string{}},
+            {"team", info->teamLabel}, {"from_team", fromTeamName}, {"kind", kindLabel},
+            {"opponent", info->kind == "match" ? info->opponent : std::string{}},
+            {"when", info->whenEt}, {"link", minted.url},
+        };
+        const std::string tier = youth ? "parent" : "adult";
+        const auto email = copy.render("event_invite", tier, tokens);
+        const auto sms   = copy.render("event_invite_sms", tier, tokens);
+        if (!email.ok() || !sms.ok())
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "event_invite template missing (migration 366)");
+        const std::string smsBody = copy.withSmsLinkHint(sms.body);
 
         json invite = {
             {"person_id",  targetPersonId},
@@ -2201,20 +2201,7 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
             {"invite",     invite},
             {"sms_body",   smsBody},
         };
-        if (channel == "email") {
-            out["mailto_href"] = "mailto:" + fh::crypto::urlEncode(contact)
-                               + "?subject=" + fh::crypto::urlEncode(subject)
-                               + "&body="    + fh::crypto::urlEncode(bodyText);
-            out["gmail_href"]  = std::string("https://mail.google.com/mail/?")
-                               + "view=cm&fs=1"
-                               + "&authuser=" + fh::crypto::urlEncode("soccer@lighthouse1893.org")
-                               + "&to="       + fh::crypto::urlEncode(contact)
-                               + "&su="       + fh::crypto::urlEncode(subject)
-                               + "&body="     + fh::crypto::urlEncode(bodyText);
-        } else if (channel == "sms") {
-            out["sms_href"] = "sms:" + fh::crypto::urlEncode(contact)
-                            + "?body=" + fh::crypto::urlEncode(smsBody);
-        }
+        copy.addComposeHrefs(out, channel, contact, email.subject, email.body, sms.body);
         Response r(HttpStatus::CREATED, out.dump());
         r.setHeader("Content-Type", "application/json; charset=utf-8");
         return r;

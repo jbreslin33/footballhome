@@ -271,11 +271,6 @@ class BoysRosterScreen extends RosterScreenBase {
     return BoysRosterScreen.DOCS_TEAM_RE.test(name);
   }
 
-  // Travel-docs upload form (birth certificate + headshot).  Single
-  // source of truth: the DOCS reminder below AND the conditional docs
-  // paragraph in the WELCOME email (owner 2026-09-06) both use it.
-  static DOCS_FORM_URL = 'https://forms.gle/n2bj8aHiTRqLs6cg9';
-
   // 📄 Docs reminder — the column DOCS email and the per-card DOCS
   // text share one preset.  DB-driven since 2026-09-16 (owner: "move
   // the boys docs reminder to db too"): the message_templates row with
@@ -646,7 +641,6 @@ class BoysRosterScreen extends RosterScreenBase {
       phone: contactPhone,
       email: contactEmail,
       needsDocs: BoysRosterScreen.playerNeedsDocs(p, col),
-      docsFormUrl: BoysRosterScreen.DOCS_FORM_URL,
     });
 
     let delinqBtns = '';

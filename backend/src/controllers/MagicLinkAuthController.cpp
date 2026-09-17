@@ -2,6 +2,7 @@
 
 #include "../core/Crypto.h"
 #include "../database/Database.h"
+#include "../models/MessageCopy.h"
 #include "../services/MagicLinkService.h"
 #include "../services/SessionService.h"
 #include "../third_party/json.hpp"
@@ -244,84 +245,31 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
         const std::string expiresIso = minted.expiresIso;
         const std::string verifyUrl  = minted.url;
 
-        // Body / subject — identical templates to Node.  Built once
-        // because both the mailto: URI and the gmail compose URL need
-        // the exact same encoded form.
-        //
-        // 2026-07-06: no-event branch reworked from a terse
-        // "Tap to sign in" into a proper personal invite for roster
-        // onboarding — coach clicks JOIN on a card and this becomes
-        // the SMS / email body they see pre-filled.
-        const std::string subject = hasEvent && !eventTitle.empty()
-            ? "Football Home \u2014 RSVP for " + eventTitle
-            : "Football Home \u2014 you're invited";
-
-        std::ostringstream bodyOss;
-        bodyOss << "Hi " << firstName << ",\n\n";
-        if (hasEvent && !eventTitle.empty()) {
-            bodyOss << "Tap to RSVP for " << eventTitle;
-            const bool hasWhen = !eventWhen.empty();
-            const bool hasLoc  = !eventLocation.empty();
-            if (hasWhen) bodyOss << " (" << eventWhen;
-            if (hasLoc)  bodyOss << (hasWhen ? ", " : " (") << eventLocation;
-            if (hasWhen || hasLoc) bodyOss << ")";
-            bodyOss << ":\n"
-                    << verifyUrl << "\n\n"
-                    << "This link signs you in automatically and expires in 72 hours.\n\n"
-                    << "\u2014 Lighthouse Soccer";
-        } else {
-            bodyOss << "Lighthouse 1893 is rolling out a lightweight scheduling page "
-                       "at footballhome.org so we have a clearer picture of who's coming each week.\n\n"
-                    << "Tap the link below on your phone \u2014 no password needed \u2014 and "
-                       "you'll land on your weekly schedule:\n"
-                    << verifyUrl << "\n\n"
-                    << "On the page you can:\n"
-                    << "  \u2022 RSVP YES / NO for this week's games, practices, scrimmages and pickups\n"
-                    << "  \u2022 Set default availability by day of week + event type so the page auto-fills\n"
-                    << "  \u2022 Bookmark to your home screen (it works like an app)\n\n"
-                    << "This link signs you in automatically and expires in 72 hours. "
-                       "If you'd rather set a password for future visits, just tap "
-                       "\"Forgot / set password\" on the sign-in screen.\n\n"
-                    << "\u2014 Lighthouse Soccer";
-        }
-        const std::string bodyText = bodyOss.str();
-
-        const std::string smsBody = MagicLinkService::withSmsLinkHint((hasEvent && !eventTitle.empty())
-            ? std::string("Lighthouse RSVP")
-                + (eventWhen.empty()  ? std::string{} : (" " + eventWhen))
-                + (eventTitle.empty() ? std::string{} : (" \u2014 " + eventTitle))
-                + ": " + verifyUrl
-            : std::string("Hey ") + firstName
-                + " \u2014 Lighthouse 1893 is trying out a simple weekly RSVP page. "
-                  "Tap here to see this week's games and let us know if you're in "
-                  "(no password needed): " + verifyUrl);
+        // ── Copy ── message_templates kind 'magic_link' / 'magic_link_sms',
+        // tier 'event' (RSVP for one event) or 'invite' (the schedule
+        // page) — migration 366.  Nothing is worded here.
+        const bool forEvent = hasEvent && !eventTitle.empty();
+        std::string whenWhere = eventWhen;
+        if (!eventLocation.empty()) whenWhere += (whenWhere.empty() ? "" : ", ") + eventLocation;
+        MessageCopy copy;
+        const MessageCopy::Tokens tokens = {
+            {"first", firstName}, {"event", eventTitle}, {"when", eventWhen},
+            {"where", eventLocation}, {"when_where", whenWhere}, {"link", verifyUrl},
+        };
+        const std::string tier = forEvent ? "event" : "invite";
+        const auto email = copy.render("magic_link", tier, tokens);
+        const auto sms   = copy.render("magic_link_sms", tier, tokens);
+        if (!email.ok() || !sms.ok())
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "magic_link template missing (migration 366)");
 
         json out = {
             {"url",               verifyUrl},
             {"expires_at",        expiresIso},
             {"person_first_name", firstName},
-            {"event_title",       hasEvent && !eventTitle.empty() ? json(eventTitle) : json(nullptr)},
+            {"event_title",       forEvent ? json(eventTitle) : json(nullptr)},
             {"event_when",        hasEvent && !eventWhen.empty()  ? json(eventWhen)  : json(nullptr)},
         };
-
-        if (channel == "email") {
-            out["mailto_href"] = "mailto:" + fh::crypto::urlEncode(contact)
-                               + "?subject=" + fh::crypto::urlEncode(subject)
-                               + "&body="    + fh::crypto::urlEncode(bodyText);
-            // Gmail web-compose form — same key order as Node's URLSearchParams
-            // (view, fs, authuser, to, su, body) so the resulting URLs match
-            // byte-for-byte in shape.
-            out["gmail_href"]  = std::string("https://mail.google.com/mail/?")
-                               + "view=cm"
-                               + "&fs=1"
-                               + "&authuser=" + fh::crypto::urlEncode("soccer@lighthouse1893.org")
-                               + "&to="       + fh::crypto::urlEncode(contact)
-                               + "&su="       + fh::crypto::urlEncode(subject)
-                               + "&body="     + fh::crypto::urlEncode(bodyText);
-        } else {
-            out["sms_href"]    = "sms:" + fh::crypto::urlEncode(contact)
-                               + "?body=" + fh::crypto::urlEncode(smsBody);
-        }
+        copy.addComposeHrefs(out, channel, contact, email.subject, email.body, sms.body);
 
         Response r(HttpStatus::OK, out.dump());
         r.setHeader("Content-Type", "application/json; charset=utf-8");

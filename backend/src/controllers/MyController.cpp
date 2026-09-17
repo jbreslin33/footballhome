@@ -2,6 +2,7 @@
 
 #include "../core/Crypto.h"
 #include "../database/Database.h"
+#include "../models/MessageCopy.h"
 #include "../services/SessionService.h"
 #include "../services/WebPushService.h"
 #include "../third_party/json.hpp"
@@ -179,7 +180,6 @@ std::string pgTextArrayLiteral(const std::vector<std::string>& items) {
 
 struct ChatRule {
     const char* slug;
-    const char* pushLabel;
     std::vector<std::string> laProgramPatterns;  // ILIKE ANY patterns
     bool includesChildren;   // also match via persons.parent_person_id
     bool adminFallback;      // admins with no matching membership land here
@@ -187,9 +187,9 @@ struct ChatRule {
 
 const std::vector<ChatRule>& chatRules() {
     static const std::vector<ChatRule> rules = {
-        {"mens",   "Men's Chat",   {"Lighthouse Men%Club%"},                          false, true},
-        {"womens", "Women's Chat", {"Lighthouse Women%Club%"},                        false, false},
-        {"youth",  "Youth Chat",   {"Lighthouse Boys%Club%", "Lighthouse Girl%Club%"}, true,  false},
+        {"mens",   {"Lighthouse Men%Club%"},                          false, true},
+        {"womens", {"Lighthouse Women%Club%"},                        false, false},
+        {"youth",  {"Lighthouse Boys%Club%", "Lighthouse Girl%Club%"}, true,  false},
     };
     return rules;
 }
@@ -496,7 +496,7 @@ Response MyController::handlePostChatMessage(const Request& request) {
             {"message",    trimmed},
             {"created_at", ins[0]["created_at"].as<std::string>()},
         };
-        std::string senderFirstName = "Someone";
+        std::string senderFirstName;
         if (!meta.empty()) {
             out["author_first_name"] = meta[0]["first_name"].is_null() ? std::string{} : meta[0]["first_name"].as<std::string>();
             out["author_last_name"]  = meta[0]["last_name"].is_null()  ? std::string{} : meta[0]["last_name"].as<std::string>();
@@ -509,10 +509,19 @@ Response MyController::handlePostChatMessage(const Request& request) {
         // response. Recipients: current membership of this chat (same
         // rule as isChatMember), minus the sender.
         {
-            const ChatRule* rule = chatRuleForSlug(slug);
-            const std::string pushTitle = senderFirstName + " — " + (rule ? rule->pushLabel : "Club Chat");
-            std::string pushBody = trimmed;
-            if (pushBody.size() > 160) pushBody = pushBody.substr(0, 157) + "...";
+            // Title/body shape: message_templates kind 'push' tier 'chat';
+            // the chat's name in it is chats.push_label (migration 366).
+            std::string chatLabel;
+            {
+                auto lbl = db->query("SELECT COALESCE(push_label,'') AS l FROM chats WHERE slug = $1 LIMIT 1", {slug});
+                if (!lbl.empty()) chatLabel = lbl[0]["l"].c_str();
+            }
+            std::string preview = trimmed;
+            if (preview.size() > 160) preview = preview.substr(0, 157) + "...";
+            const auto push = MessageCopy().render("push", "chat", {
+                {"chat_sender", senderFirstName}, {"chat", chatLabel}, {"message", preview}});
+            const std::string pushTitle = push.subject;
+            const std::string pushBody  = push.body;
             auto recipients = chatMemberPersonIds(slug, personId);
             std::thread([recipients, pushTitle, pushBody]() {
                 for (long long recipientId : recipients) {
@@ -577,8 +586,13 @@ Response MyController::handlePushRemind(const Request& request) {
         // can't re-ping someone who already answered, and this can't be
         // used to push arbitrary people who aren't even on the event.
         auto targetRows = db->query(
-            "SELECT ge.summary, fe.kind "
+            // Player-facing label: kind name + opponent + time, never the
+            // gcal title (that is admin-only).
+            "SELECT COALESCE(k.player_label, '') "
+            "       || COALESCE(' vs ' || NULLIF(BTRIM(fe.opponent), ''), '') "
+            "       || ' (' || to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') || ')' AS label "
             "  FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+            "  LEFT JOIN fh_event_kind_labels k ON k.kind = fe.kind "
             " WHERE fe.id = $1::bigint "
             "   AND EXISTS ("
             "     SELECT 1 FROM fh_event_teams fet "
@@ -598,16 +612,14 @@ Response MyController::handlePushRemind(const Request& request) {
                              "That person already responded, or isn't on this event's roster");
         }
 
-        std::string eventLabel = targetRows[0]["summary"].is_null()
-            ? std::string() : targetRows[0]["summary"].as<std::string>();
-        if (eventLabel.empty()) {
-            eventLabel = targetRows[0]["kind"].is_null()
-                ? std::string("an upcoming event") : targetRows[0]["kind"].as<std::string>();
-        }
-        const std::string pushBody = "Don't forget to RSVP for " + eventLabel + "!";
+        const std::string eventLabel = targetRows[0]["label"].c_str();
+        // message_templates kind 'push' tier 'rsvp_remind' (migration 366).
+        const auto push = MessageCopy().render("push", "rsvp_remind", {{"event", eventLabel}});
+        if (!push.ok())
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "push template missing (migration 366)");
 
         const int sent = WebPushService::getInstance()
-            .sendToPerson(targetPersonId, "RSVP needed", pushBody, "/#my");
+            .sendToPerson(targetPersonId, push.subject, push.body, "/#my");
         return jsonOk({{"sent", sent}});
     } catch (const std::exception& e) {
         std::cerr << "[POST /api/my/events/push-remind] " << e.what() << std::endl;
@@ -625,9 +637,11 @@ Response MyController::handlePushTest(const Request& request) {
     const long long personId = gate.session->personId;
 
     try {
+        const auto push = MessageCopy().render("push", "test", {});
+        if (!push.ok())
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "push template missing (migration 366)");
         const int sent = WebPushService::getInstance().sendToPerson(
-            personId, "Test notification",
-            "Push notifications are working! 🎉", "/#my");
+            personId, push.subject, push.body, "/#my");
         return jsonOk({{"sent", sent}});
     } catch (const std::exception& e) {
         std::cerr << "[POST /api/my/push-test] " << e.what() << std::endl;

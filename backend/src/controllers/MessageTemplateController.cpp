@@ -1,6 +1,7 @@
 #include "MessageTemplateController.h"
 
 #include "../core/Controller.h"
+#include "../models/WelcomeLog.h"
 #include "../third_party/json.hpp"
 
 #include <cctype>
@@ -65,11 +66,16 @@ Response MessageTemplateController::handleList(const Request& request) {
     }
     try {
         std::string query = R"(
-            SELECT id, category, label, kind, tier, icon, subject, body, html_body, is_active, sort_order
+            SELECT id, category, label, kind, tier, icon, subject,
+                   fh_fill_form_links(body, $1::int)      AS body,
+                   fh_fill_form_links(html_body, $1::int) AS html_body,
+                   is_active, sort_order
             FROM message_templates
             WHERE is_active = true
         )";
-        std::vector<std::string> params;
+        // $1 = club whose club_forms rows resolve {form:<code>} links in
+        // the copy (migration 365).
+        std::vector<std::string> params{std::to_string(WelcomeLog::kLighthouseClubId)};
         const std::string category = request.getQueryParam("category");
         if (!category.empty()) {
             params.push_back(normalizeCategory(category));
@@ -85,7 +91,7 @@ Response MessageTemplateController::handleList(const Request& request) {
         }
         query += " ORDER BY sort_order, id";
 
-        pqxx::result result = params.empty() ? db_->query(query) : db_->query(query, params);
+        pqxx::result result = db_->query(query, params);
 
         std::ostringstream json;
         json << "[";
