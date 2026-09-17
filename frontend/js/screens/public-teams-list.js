@@ -1,9 +1,8 @@
 // PublicTeamsListScreen — auth-less directory of active teams (#schedules),
 // grouped by club section, each linking to the league's own season schedule
-// (team_schedule_links, mig 361) and/or that team's public FH schedule page
-// (#t/<slug>/schedule — see public-team.js). This is the "see ahead of this
-// week without RSVP" page — it holds no schedule data itself, it just fans
-// a visitor out to the pages that do. Linked from the Schedules pill on #my.
+// (team_schedule_links, mig 361), plus a view-only "My schedule ahead" list
+// for signed-in members. This is the "see ahead of this week without RSVP"
+// page. Linked from the Schedules pill on #my.
 class PublicTeamsListScreen extends Screen {
   onEnter() {
     const root = this.find('#ptl-root');
@@ -217,19 +216,16 @@ class PublicTeamsListScreen extends Screen {
     root.innerHTML = this.pageShell(body);
   }
 
-  // A team row carries up to two kinds of link: the league's own season
-  // schedule (team_schedule_links, mig 361 — opens the league site) and
-  // the FH schedule page (#t/<slug>/schedule) when the team has a slug.
-  // Both are read-only; RSVPs stay on #my for the released week.
+  // A team row links to the league's own season schedule
+  // (team_schedule_links, mig 361 — opens the league site).  The old
+  // #t/<slug>/schedule link was dropped 2026-09-17: "My schedule ahead"
+  // above replaces it for members and that page reads the matches
+  // table, which has no opponents for gcal-sourced games.
   renderTeamRow(t) {
     const sub = t.division_name ? this.escapeHtml(t.division_name) : '';
     const linkStyle = 'font-size:13px; font-weight:600; color:#f5d442; text-decoration:none; white-space:nowrap;';
     const links = (t.links || []).map(l => `
       <a href="${this.escapeHtml(l.url)}" target="_blank" rel="noopener" style="${linkStyle}">${this.escapeHtml(l.label)} ↗</a>`);
-    if (t.slug) {
-      links.push(`
-      <a href="#t/${encodeURIComponent(t.slug)}/schedule" style="${linkStyle}">Schedule →</a>`);
-    }
     return `
       <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; background:rgba(255,255,255,0.06); border-radius:12px; padding:12px 16px; color:#fff;">
         ${this.buildTeamLogoMarkup(t.logo_url, { className: 'team-logo', placeholder: '⚽' })}

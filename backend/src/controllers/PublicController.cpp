@@ -23,9 +23,8 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
 // "operates" (board_sort_order IS NOT NULL AND is_active = true) so internal
 // buckets/pools/archived-legacy teams don't show up in a public list.
 Response PublicController::handleListTeams(const Request& request) {
-    // One row per (section, team).  A team is listed when it has an FH
-    // schedule page (slug) or at least one league schedule link
-    // (team_schedule_links, mig 361).  A section with
+    // One row per (section, team).  A team is listed when it has at least
+    // one league schedule link (team_schedule_links, mig 361).  A section with
     // club_sections.schedule_section_id set lists that section's teams
     // instead of its own — Girls play on the Boys teams.
     try {
@@ -43,8 +42,7 @@ Response PublicController::handleListTeams(const Request& request) {
             "LEFT JOIN divisions d ON d.id = t.division_id "
             "WHERE t.is_active = true "
             "  AND t.board_sort_order IS NOT NULL "
-            "  AND (t.slug IS NOT NULL "
-            "       OR EXISTS (SELECT 1 FROM team_schedule_links l WHERE l.team_id = t.id)) "
+            "  AND EXISTS (SELECT 1 FROM team_schedule_links l WHERE l.team_id = t.id) "
             "ORDER BY cs.sort_order, t.board_sort_order");
 
         auto strOrNull = [](const pqxx::row& row, const char* col) {
