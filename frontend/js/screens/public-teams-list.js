@@ -41,13 +41,23 @@ class PublicTeamsListScreen extends Screen {
         if (!this.isMounted) return;
         if (!body || !body.signed_in) { const slot = this.find('#ptl-ahead'); if (slot) slot.innerHTML = ''; return; }
         const now = Date.now();
-        this.ahead = (body.events || []).filter(e => {
+        // FH-only season fixtures (team_schedule_fixtures, mig 362) —
+        // already de-duplicated against calendar games server-side.
+        // Shaped like a match event so one row renderer serves both.
+        const fixtures = (body.fixtures || []).map(f => ({
+          kind: 'match', category: '', fixture: true,
+          starts_at: f.starts_at, ends_at: f.ends_at,
+          opponent: f.opponent, is_home: f.is_home, location: f.location,
+          teams: f.team ? [f.team] : [],
+        }));
+        this.ahead = (body.events || []).concat(fixtures).filter(e => {
           const kind = (e.kind || '').toLowerCase();
           if ((e.category || '').toLowerCase() === 'staff') return false;
           if (!['pickup', 'practice', 'match', 'barn night', 'intrasquad'].includes(kind)) return false;
           const end = new Date(e.ends_at || e.starts_at);
           return !isNaN(end) && end.getTime() > now;
         });
+        this.ahead.sort((x, y) => new Date(x.starts_at) - new Date(y.starts_at));
         this.renderAhead();
       })
       .catch(err => console.warn('[schedules] ahead failed:', err));
@@ -137,7 +147,8 @@ class PublicTeamsListScreen extends Screen {
     // Same player-facing title #my uses (kind label + opponent, never
     // the raw gcal summary — that one is admin-only).
     const my = window.app && window.app.screens && window.app.screens.my;
-    const title = (my && typeof my._eventTitle === 'function')
+    const title = e.fixture ? `Game vs ${e.opponent}`
+      : (my && typeof my._eventTitle === 'function')
       ? my._eventTitle(e)
       : ((e.kind || '').toLowerCase() === 'match' ? `Game${e.opponent ? ` vs ${e.opponent}` : ''}` : 'Practice');
     const isGame = (e.kind || '').toLowerCase() === 'match';

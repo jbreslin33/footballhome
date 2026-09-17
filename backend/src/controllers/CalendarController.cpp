@@ -1375,6 +1375,65 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             events.push_back(std::move(ev));
         }
 
+        // FH-only season fixtures (team_schedule_fixtures, mig 362) for the
+        // view-only "My schedule ahead" list on #schedules.  Members only,
+        // scoped like events: own team, a child's team, a coached team, or
+        // admin.  A fixture drops out once that team has a calendar game
+        // on the same local day — gcal stays the truth for anything with
+        // an RSVP, this is just the look-ahead.  #my ignores the field.
+        json fixtures = json::array();
+        if (personId > 0) {
+            pqxx::result fx = db->query(R"SQL(
+                SELECT f.id, f.team_id, t.name AS team_name, t.label AS team_label,
+                       to_char(f.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS starts_at,
+                       to_char(f.ends_at   AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS ends_at,
+                       f.opponent, f.is_home, f.location
+                  FROM team_schedule_fixtures f
+                  JOIN teams t ON t.id = f.team_id
+                 WHERE COALESCE(f.ends_at, f.starts_at) > now()
+                   AND f.starts_at < now() + ($2::int * INTERVAL '1 day')
+                   AND (
+                        EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id
+                                 WHERE u.person_id = $1::int)
+                     OR EXISTS (SELECT 1 FROM team_persons tp
+                                  LEFT JOIN persons child ON child.id = tp.person_id
+                                 WHERE tp.team_id = f.team_id AND tp.removed_at IS NULL
+                                   AND (tp.person_id = $1::int OR child.parent_person_id = $1::int))
+                     OR EXISTS (SELECT 1 FROM team_coaches tc JOIN coaches co ON co.id = tc.coach_id
+                                 WHERE tc.team_id = f.team_id AND tc.ended_at IS NULL
+                                   AND co.person_id = $1::int)
+                   )
+                   AND NOT EXISTS (
+                        SELECT 1 FROM fh_events fe
+                          JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                          JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
+                         WHERE fet.team_id = f.team_id
+                           AND fe.kind = 'match'
+                           AND ge.deleted_at IS NULL
+                           AND COALESCE(ge.status, '') <> 'cancelled'
+                           AND (ge.starts_at AT TIME ZONE 'America/New_York')::date
+                             = (f.starts_at  AT TIME ZONE 'America/New_York')::date
+                   )
+                 ORDER BY f.starts_at
+            )SQL", { std::to_string(personId), std::to_string(days) });
+            for (const auto& r : fx) {
+                json f = {
+                    {"id",        r["id"].as<int>()},
+                    {"starts_at", r["starts_at"].c_str()},
+                    {"ends_at",   r["ends_at"].is_null() ? json(nullptr) : json(r["ends_at"].c_str())},
+                    {"opponent",  r["opponent"].c_str()},
+                    {"is_home",   r["is_home"].is_null() ? json(nullptr) : json(r["is_home"].as<bool>())},
+                    {"location",  r["location"].is_null() ? json(nullptr) : json(r["location"].c_str())},
+                    {"team", {
+                        {"id",    r["team_id"].as<int>()},
+                        {"name",  r["team_name"].c_str()},
+                        {"label", r["team_label"].is_null() ? json(nullptr) : json(r["team_label"].c_str())},
+                    }},
+                };
+                fixtures.push_back(std::move(f));
+            }
+        }
+
         json body = {
             {"days",   days},
             {"count",  events.size()},
@@ -1382,6 +1441,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             // Lets a screen that works signed-out too (#schedules) tell a
             // member's team-scoped list from the anonymous unfiltered one.
             {"signed_in", personId > 0},
+            {"fixtures", std::move(fixtures)},
         };
         if (!startParam.empty()) {
             body["start"] = startParam;
