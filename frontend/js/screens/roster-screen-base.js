@@ -683,8 +683,8 @@ class RosterScreenBase extends Screen {
     const stripIcon = (s) => String(s || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
     const teamTargets = (columns || []).map(c => ({
       id:    c.teamId,
-      label: stripIcon(c.label || c.shortLabel) || `Team ${c.teamId}`,
-      short: stripIcon(c.shortLabel || c.label) || `Team ${c.teamId}`,
+      label: RosterScreenBase.dropClubName(stripIcon(c.label || c.shortLabel)) || `Team ${c.teamId}`,
+      short: RosterScreenBase.dropClubName(stripIcon(c.shortLabel || c.label)) || `Team ${c.teamId}`,
     }));
     teamTargets.sort((a, b) =>
       String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: 'base' }));
@@ -758,6 +758,13 @@ class RosterScreenBase extends Screen {
       </details>`;
   }
 
+  // "Lighthouse Mens Club APSL" → "Mens Club APSL".  Everything on these
+  // boards is Lighthouse; on a card the club name only costs width.
+  static dropClubName(name) {
+    const full = String(name || '');
+    return full.replace(/^\s*Lighthouse\s+(?:1893\s+)?/i, '') || full;
+  }
+
   // Multi-team badge — flags a player who holds more than one active
   // roster spot (e.g. a boy called up to a mens team, or someone on two
   // mens squads) so it's visually obvious without cross-referencing
@@ -776,7 +783,10 @@ class RosterScreenBase extends Screen {
     return others.map((t) => {
       const category = t.genderCategory || t.gender_category || '';
       const name = t.name || 'Team';
-      return `<span title="Also on ${this.escape(name)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.18); color:#cbd5e1; white-space:nowrap;">${icon[category] || '⚽'} ${this.escape(name)}</span>`;
+      // The club's own name is noise on its own board (owner 2026-09-17:
+      // "we know we are lh") — the chip drops it, the tooltip keeps it.
+      const shortName = RosterScreenBase.dropClubName(name);
+      return `<span title="Also on ${this.escape(name)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.18); color:#cbd5e1; white-space:nowrap;">${icon[category] || '⚽'} ${this.escape(shortName)}</span>`;
     }).join('');
   }
 
