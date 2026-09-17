@@ -626,7 +626,9 @@ class PaymentsScreen extends Screen {
     this.membersLoadingByTab[key] = true;
     this.membersErrorByTab[key] = null;
     try {
+      const copyReady = MessageCopy.load(this.auth); // payment notice wording (migration 367), in parallel
       const res = await this.auth.fetch(`/api/payments/${key}/members`);
+      await copyReady;
       if (!res.ok) {
         const body = await res.text();
         throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
@@ -887,10 +889,6 @@ class PaymentsScreen extends Screen {
       + statusOrder.filter((st) => st !== 'overdue').map(groupHtml).join('') + otherHtml;
   }
 
-  _buildPaymentReminderLink(m) {
-    return 'https://lighthouse1893.leagueapps.com/dashboard';
-  }
-
   // Parses a "YYYY-MM-DD..." prefix into a LOCAL calendar date, ignoring
   // any time/timezone suffix — next_due_at / upcoming_due_at are always
   // calendar-date anchors (first-Friday-of-month), so treating them via
@@ -935,69 +933,21 @@ class PaymentsScreen extends Screen {
     };
   }
 
-  _buildPaymentReminderEmailBody(m, link, variant = 'reminder') {
-    const first = (m && m.firstName || '').trim() || 'there';
-    if (variant === 'firm') {
-      const fd = this._finalNoticeDetails(m);
-      if (fd) {
-        return [
-          `Hi ${first},`,
-          '',
-          `You still owe dues for ${fd.owedPhrase}. Starting ${fd.upcomingLabel}, ${fd.nextMonthName} will also come due — `
-            + `at that point you'll be ${fd.monthsBehindAtRollover} months behind, and per club policy your membership will be paused until dues are paid in full.`,
-          '',
-          `Please make your payment before ${fd.upcomingLabel} using this link: ${link}`,
-          '',
-          'Thanks,',
-          'Treasurer, Lighthouse 1893',
-        ].join('\n');
-      }
-      return [
-        `Hi ${first},`,
-        '',
-        `Your membership payment is still outstanding. Please make your payment by the end of today using this link: ${link}`,
-        '',
-        'If payment is not received soon, your membership may be paused and your spot may be released.',
-        '',
-        'Thanks,',
-        'Treasurer, Lighthouse 1893',
-      ].join('\n');
-    }
-    if (variant === 'final') {
-      return [
-        `Hi ${first},`,
-        '',
-        `Your membership has been paused due to unpaid dues. Your spot is on hold until payment is received in full.`,
-        '',
-        `To reactivate, please make your payment using this link: ${link}`,
-        '',
-        'Thanks,',
-        'Treasurer, Lighthouse 1893',
-      ].join('\n');
-    }
-    return [
-      `Hi ${first},`,
-      '',
-      `Please make your payment as soon as possible. You can pay here: ${link}`,
-      '',
-      'Thanks,',
-      'Treasurer, Lighthouse 1893',
-    ].join('\n');
-  }
-
-  _buildPaymentReminderText(m, link, variant = 'reminder') {
-    const first = (m && m.firstName || '').trim() || 'there';
-    if (variant === 'firm') {
-      const fd = this._finalNoticeDetails(m);
-      if (fd) {
-        return `Hi ${first}, you owe dues for ${fd.owedPhrase}. Starting ${fd.upcomingLabel} you'll be ${fd.monthsBehindAtRollover} months behind and your membership will be paused per club policy. Please pay before then: ${link}`;
-      }
-      return `Hi ${first}, your membership payment is still outstanding. Please make your payment by the end of today here: ${link}`;
-    }
-    if (variant === 'final') {
-      return `Hi ${first}, your membership has been paused due to unpaid dues. To reactivate, please pay in full here: ${link}`;
-    }
-    return `Hi ${first}, please make your payment as soon as possible. You can pay here: ${link}`;
+  // Wording: message_templates kind 'payment_notice_email' /
+  // 'payment_notice_sms', tier 'reminder' | 'firm' | 'firm_dated' | 'final'
+  // (migration 367).  'firm_dated' is used when the dates are known.
+  // → {subject, body} or null.
+  _paymentNotice(m, variant, channel) {
+    const fd = variant === 'firm' ? this._finalNoticeDetails(m) : null;
+    return MessageCopy.render(channel === 'sms' ? 'payment_notice_sms' : 'payment_notice_email',
+      fd ? 'firm_dated' : variant, {
+        first: (m && m.firstName || '').trim(),
+        club:  (m && m.programName) || '',
+        owed:          fd ? fd.owedPhrase : '',
+        deadline:      fd ? fd.upcomingLabel : '',
+        next_month:    fd ? fd.nextMonthName : '',
+        months_behind: fd ? fd.monthsBehindAtRollover : '',
+      });
   }
 
   renderMemberCard(m) {
@@ -1047,21 +997,20 @@ class PaymentsScreen extends Screen {
     // Email opens Gmail's compose URL (not mailto:) so the operator's
     // Gmail tab handles it — matches the Members screen pattern.
     const contactBtns = [];
-    const paymentLink = this._buildPaymentReminderLink(m);
     if (m.email) {
-      // Subject uses the real LA club name (e.g. "Lighthouse Men's Club 1893
-      // Soccer Membership"), not "Football Home" — members don't pay FH
-      // anything, they pay Lighthouse dues, so an FH-branded subject reads
-      // as unrecognized/spam and gets ignored.
-      const clubName = m.programName || 'Lighthouse 1893';
+      // Subject + body: message_templates kind 'payment_notice_email'
+      // (migration 367).  The subject leads with the real LA club name
+      // ({club}), not "Football Home" — members pay Lighthouse dues, so
+      // an FH-branded subject reads as spam and gets ignored.
       const emailVariants = [
-        { variant: 'reminder', label: '✉️ Reminder', subject: `${clubName} — payment reminder` },
-        { variant: 'firm', label: m.finalNotice ? '✉️ Firm ⚠️' : '✉️ Firm', subject: `${clubName} — overdue payment` },
-        { variant: 'final', label: '✉️ Final', subject: `${clubName} — membership paused` },
+        { variant: 'reminder', label: '✉️ Reminder' },
+        { variant: 'firm', label: m.finalNotice ? '✉️ Firm ⚠️' : '✉️ Firm' },
+        { variant: 'final', label: '✉️ Final' },
       ];
       for (const item of emailVariants) {
-        const body = this._buildPaymentReminderEmailBody(m, paymentLink, item.variant);
-        const gmailUrl = this.buildGmailComposeHref({ to: m.email, subject: item.subject, body });
+        const copy = this._paymentNotice(m, item.variant, 'email');
+        if (!copy) continue;
+        const gmailUrl = this.buildGmailComposeHref({ to: m.email, subject: copy.subject, body: copy.body });
         contactBtns.push(
           `<a href="${gmailUrl}" target="_blank" rel="noopener"
                style="padding:6px 10px; border-radius:4px; text-decoration:none;
@@ -1078,7 +1027,9 @@ class PaymentsScreen extends Screen {
         { variant: 'final', label: '💬 Final' },
       ];
       for (const item of textVariants) {
-        const textBody = this._buildPaymentReminderText(m, paymentLink, item.variant);
+        const textCopy = this._paymentNotice(m, item.variant, 'sms');
+        if (!textCopy) continue;
+        const textBody = textCopy.body;
         contactBtns.push(
           `<a href="sms:${phoneDigits}?body=${encodeURIComponent(Screen.withSmsLinkHint(textBody))}"
                style="padding:6px 10px; border-radius:4px; text-decoration:none;

@@ -188,6 +188,7 @@ class BoysRosterScreen extends RosterScreenBase {
       const qs = params.toString();
       const url = qs ? `/api/boys-roster?${qs}` : '/api/boys-roster';
       const statusesReady = this.ensureRosterStatuses(); // roster_statuses lookup (migration 342), in parallel
+      const copyReady     = MessageCopy.load(this.auth); // every drafted message's wording (migration 367), in parallel
       const presetsReady  = RosterScreenBase.loadCardTemplates(this.auth, BoysRosterScreen.DOCS_TEMPLATE_CATEGORY); // docs reminder copy (migration 357), in parallel
       const res = await this.auth.fetch(url);
       if (!res.ok) {
@@ -220,6 +221,7 @@ class BoysRosterScreen extends RosterScreenBase {
       });
       await statusesReady;
       await presetsReady;
+      await copyReady;
       this.renderRoster(data);
     } catch (err) {
       if (loading) loading.style.display = 'none';
@@ -499,18 +501,19 @@ class BoysRosterScreen extends RosterScreenBase {
     const contactPhone = p.parentPhone || p.phone || null;
     const contactEmail = p.parentEmail || p.email || null;
 
-    // Polite parent-facing bodies for the generic CONTACT popover.
-    // The PAY button below builds its own tier-scaled body.
-    const kidRef       = p.firstName ? ` regarding ${p.firstName}` : '';
-    const emailSubject = `Lighthouse 1893${p.firstName ? ` — ${p.firstName}` : ''}`;
-    const emailBody    = `Hi ${contactFirst || 'there'},\n\nThis is Lighthouse 1893${kidRef}.\n\n`;
-    const smsBody      = `Hi${contactFirst ? ' ' + contactFirst : ''}, this is Lighthouse 1893${kidRef}.`;
+    // Openers for the generic CONTACT popover — message_templates
+    // kind 'contact_email' / 'contact_sms', tier 'parent' (migration 367).
+    const contactTokens = { first: contactFirst, child: p.firstName || '' };
+    const contactEmailCopy = MessageCopy.render('contact_email', 'parent', contactTokens) || { subject: '', body: '' };
+    const emailSubject = contactEmailCopy.subject;
+    const emailBody    = contactEmailCopy.body;
+    const smsBody      = MessageCopy.block('contact_sms', 'parent', contactTokens);
 
     const emailHref = contactEmail
       ? `https://mail.google.com/mail/?${new URLSearchParams({
           view:     'cm',
           fs:       '1',
-          authuser: 'soccer@lighthouse1893.org',
+          authuser: MessageCopy.outreachEmail,
           to:       contactEmail,
           su:       emailSubject,
           body:     emailBody,
@@ -674,80 +677,39 @@ class BoysRosterScreen extends RosterScreenBase {
       const daysStr   = daysAreExact
         ? `${days} day${days === 1 ? '' : 's'}`
         : 'a few days';
-      const payUrl    = 'https://lighthouse1893.leagueapps.com/dashboard';
-
       // ── Parent-facing PAY reminder ──────────────────────────────
-      //
-      // Youth board voice: light, one gentle template for all tiers.
-      // 2026-07-09 revision — user asked to drop the sliding-scale
-      // apology copy in favor of a single "Gentle reminder" opener
-      // that just explains we really need a valid card on file so
-      // LeagueApps can auto-charge each month (cuts down admin work).
-      // No more "hardship / work something out" escape hatches, no
-      // more three-tier voice.
-      const parentFirstStr = contactFirst ? ` ${contactFirst}` : '';
-      const kidStr         = p.firstName ? ` ${p.firstName}'s` : ' your child\'s';
-
-      // Copy rewritten 2026-07-09 per user directive: "right now i
-      // need them to pay July and i don't want to run their cards and
-      // surprise them. so gentle reminders."  Plus: "You can change
-      // the emails by reading Balance Due from la which i am manually
-      // editing before each email so you should read to construct
-      // message on the fly".
-      //
-      // → Auto-charge language dropped (Aug 7 heads-up is separate).
-      //   LA outstandingBalance is the authoritative amount (owner
-      //   manually edits per player), so we render `amountStr` in the
-      //   ask instead of computing on-the-fly $ math that could
-      //   contradict LA.  Two variants:
-      //     (a) prorate — mid-current-cycle signup, explains the
-      //         partial-cycle context and points to the LA balance.
-      //     (b) normal  — July dues outstanding, please pay.
-      let payBody, payEmailBody;
-      const greetingLine = `Hi${parentFirstStr},`;
-      const signature    = `Thanks so much,\nLighthouse 1893`;
-      // Aug 7 auto-charge heads-up (owner directive 2026-07-09):
-      // "starting Aug 7 League Apps will auto charge $35 monthly dues.
-      // But right now as a courtesy we are asking parents to pay
-      // manually so the payment does not come as a surprise."  Goes
-      // on ALL youth PAY messages (prorate + normal, SMS + email).
-      const autoChargeNote = `Heads-up: starting Aug 7 LeagueApps will auto-charge the $35 monthly dues to the card on file. Right now as a courtesy we're asking parents to pay manually so the charge doesn't come as a surprise.`;
-      if (prorateOwed) {
-        const regShort = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        payBody = `Hi${parentFirstStr}, welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Gentle reminder to log in and pay ${amountStr} on LeagueApps when you get a moment: ${payUrl}. ${autoChargeNote} Thanks so much!`;
-        payEmailBody = [
-          greetingLine,
-          `Welcome to Lighthouse 1893! Since${kidStr} registration came in on ${regShort} (mid-cycle), July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining in the cycle.`,
-          `Balance for July:  ${amountStr}.`,
-          `Gentle reminder to log in and pay ${amountStr} on LeagueApps when you get a moment:\n${payUrl}`,
-          autoChargeNote,
-          signature,
-        ].join('\n\n');
-      } else {
-        payBody = `Hi${parentFirstStr}, gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps. When you get a moment please log in and pay, and while you're in there please make sure a valid card is saved on file: ${payUrl}. ${autoChargeNote} Thanks so much!`;
-        payEmailBody = [
-          greetingLine,
-          `Gentle reminder from Lighthouse 1893 —${kidStr} July dues (${amountStr}) are still outstanding on LeagueApps.`,
-          `When you get a moment please log in and pay, and while you're in there please make sure a valid card is saved on file:\n${payUrl}`,
-          autoChargeNote,
-          signature,
-        ].join('\n\n');
-      }
+      // Wording: message_templates kind 'dues_sms' / 'dues_email', tier
+      // 'parent' or 'parent_prorate' (migration 367).  LA
+      // outstandingBalance is the authoritative amount (the owner edits
+      // it per player), so {amount} is what LA shows — never on-the-fly
+      // math that could contradict it.
+      const duesTier   = prorateOwed ? 'parent_prorate' : 'parent';
+      const duesTokens = {
+        first:  contactFirst,
+        child:  p.firstName || '',
+        amount: amountStr,
+        month:  new Date().toLocaleDateString('en-US', { month: 'long' }),
+        reg_date:    prorateOwed ? pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+        days_remain: prorateOwed ? pr.daysRemain : '',
+        cycle_days:  prorateOwed ? pr.cycleDays : '',
+      };
+      const payBody      = MessageCopy.block('dues_sms', duesTier, duesTokens);
+      const payEmailCopy = MessageCopy.render('dues_email', duesTier, duesTokens);
 
       // Two buttons: 💬 PAY (SMS to parent) and ✉ PAY (email to parent).
       // Whichever channel the parent uses, one tap gets there.  If we
       // only have one of the two, only that button renders.
-      const paySmsHref = contactPhone
+      const paySmsHref = contactPhone && payBody
         ? `sms:${contactPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(payBody))}`
         : null;
-      const payEmailHref = contactEmail
+      const payEmailHref = contactEmail && payEmailCopy
         ? `https://mail.google.com/mail/?${new URLSearchParams({
             view:     'cm',
             fs:       '1',
-            authuser: 'soccer@lighthouse1893.org',
+            authuser: MessageCopy.outreachEmail,
             to:       contactEmail,
-            su:       `Lighthouse 1893 — quick note about ${p.firstName || 'your child'}'s dues`,
-            body:     payEmailBody,
+            su:       payEmailCopy.subject,
+            body:     payEmailCopy.body,
           }).toString()}`
         : null;
 

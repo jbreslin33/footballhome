@@ -92,7 +92,9 @@ class YouthRosterScreen extends Screen {
 
     try {
       const t0  = performance.now();
+      const copyReady = MessageCopy.load(this.auth); // drafted-message wording (migration 367), in parallel
       const res = await this.auth.fetch('/api/youth-roster');
+      await copyReady;
       if (!res.ok) {
         const body = await res.text();
         throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
@@ -221,17 +223,19 @@ class YouthRosterScreen extends Screen {
   renderPlayer(p) {
     const btn = 'padding:0 5px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap; border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
 
-    const subject = `Lighthouse 1893 — about ${p.firstName || 'your player'}`;
-    const greeting = p.parentFirstName ? `Hi ${p.parentFirstName},` : 'Hi,';
-    const playerRef = p.firstName || 'your player';
-    const emailBody = `${greeting}\n\nThis is your Lighthouse 1893 coach reaching out about ${playerRef}.\n\n`;
-    const smsBody   = `Hi${p.parentFirstName ? ' ' + p.parentFirstName : ''}, this is Lighthouse 1893 coach about ${playerRef}.`;
+    // CONTACT openers — message_templates kind 'contact_email' /
+    // 'contact_sms', tier 'parent_coach' (migration 367).
+    const contactTokens = { first: p.parentFirstName || '', child: p.firstName || '' };
+    const contactCopy = MessageCopy.render('contact_email', 'parent_coach', contactTokens) || { subject: '', body: '' };
+    const subject   = contactCopy.subject;
+    const emailBody = contactCopy.body;
+    const smsBody   = MessageCopy.block('contact_sms', 'parent_coach', contactTokens);
 
     const emailHref = p.parentEmail
       ? `https://mail.google.com/mail/?${new URLSearchParams({
           view:     'cm',
           fs:       '1',
-          authuser: 'soccer@lighthouse1893.org',
+          authuser: MessageCopy.outreachEmail,
           to:       p.parentEmail,
           su:       subject,
           body:     emailBody,
@@ -308,15 +312,18 @@ class YouthRosterScreen extends Screen {
     const isOverdue = (p.outstandingBalance != null && p.outstandingBalance > 0)
       || (p.paymentStatus && p.paymentStatus !== 'PAID');
     let payBtn = '';
-    if (isOverdue && p.parentPhone) {
+    if (isOverdue && p.parentPhone && MessageCopy.has('dues_sms', 'parent_past_due')) {
       const amountNum = (p.outstandingBalance > 0)
         ? p.outstandingBalance
         : (p.nextBillAmount > 0 ? p.nextBillAmount : null);
-      const amountStr = amountNum != null ? `$${amountNum}` : 'monthly dues';
-      const payUrl    = 'https://lighthouse1893.leagueapps.com/dashboard';
-      const kidRef    = p.firstName || 'your player';
-      const parentRef = p.parentFirstName ? ` ${p.parentFirstName}` : '';
-      const payBody = `Hi${parentRef}, gentle reminder — ${kidRef}'s dues (${amountStr}) are showing as past due on LeagueApps.  To cut down on admin work it really helps if there's a valid card on file so LeagueApps can auto-charge each month.  LeagueApps has emailed you a pay link, or log in and pay / update your card here: ${payUrl}  Thanks so much!`;
+      // Wording: message_templates kind 'dues_sms', tier
+      // 'parent_past_due' (migration 367); an unknown amount falls
+      // back to the kind='fallback' word for {amount}.
+      const payBody = MessageCopy.block('dues_sms', 'parent_past_due', {
+        first:  p.parentFirstName || '',
+        child:  p.firstName || '',
+        amount: amountNum != null ? `$${amountNum}` : '',
+      });
       const payHref = `sms:${p.parentPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(payBody))}`;
       payBtn = `
       <a href="${payHref}"

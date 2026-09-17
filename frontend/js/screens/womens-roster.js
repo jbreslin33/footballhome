@@ -147,6 +147,7 @@ class WomensRosterScreen extends RosterScreenBase {
       if (this.includeInactive) params.set('includeInactive', '1');
       const qs = params.toString();
       const url = qs ? `/api/womens-roster?${qs}` : '/api/womens-roster';
+      const copyReady     = MessageCopy.load(this.auth); // drafted-message wording (migration 367), in parallel
       const statusesReady = this.ensureRosterStatuses(); // roster_statuses lookup (migration 342), in parallel
       const res = await this.auth.fetch(url);
       if (!res.ok) {
@@ -170,6 +171,7 @@ class WomensRosterScreen extends RosterScreenBase {
         showRefresh: true,
       });
       await statusesReady;
+      await copyReady;
       this.renderRoster(data);
     } catch (err) {
       if (loading) loading.style.display = 'none';
@@ -335,28 +337,17 @@ class WomensRosterScreen extends RosterScreenBase {
   // (roster_statuses.counts_as_on_roster — on_roster / possible_drop,
   // migration 342): the ask is done. Not a footballhome.org link, so no
   // magic token — the 🔗 LINK buttons beside it cover sign-in.
-  static TEAMSNAP_REG_URL = 'https://registration.teamsnap.com/form/71486';
-  static REG_SUBJECT      = "Lighthouse 1893 Women's — register for the league and pay dues";
-
-  static regBody(firstName) {
-    const hi = firstName ? `Hi ${firstName} —` : 'Hi —';
-    return [
-      `${hi} to get on the Lighthouse 1893 women's roster this season, please register for the league and pay dues on TeamSnap here:`,
-      '',
-      WomensRosterScreen.TEAMSNAP_REG_URL,
-      '',
-      "Once that's done we'll put you on the official roster. Thanks!",
-      '',
-      '— Lighthouse Soccer',
-    ].join('\n');
-  }
-
+  // Wording + the TeamSnap link: message_templates kind
+  // 'womens_register' and club_forms 'womens_league_registration'
+  // (migration 367).
   renderRegisterButtons(p) {
     if (!p || RosterScreenBase.countsAsOnRoster(p.rosterStatus)) return '';
     const { phone = null, email = null } = this.contactFor(p) || {};
     if (!phone && !email) return '';
 
-    const body = WomensRosterScreen.regBody(p.firstName);
+    const copy = MessageCopy.render('womens_register', 'adult', { first: p.firstName || '' });
+    if (!copy) return '';
+    const body = copy.body;
     const who  = p.firstName ? ` ${this.escape(p.firstName)}` : '';
     // Same footprint as the 🔗 LINK / 👋 WELCOME buttons it sits beside.
     const btnBase = 'padding:0 4px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:3px; background:#7c3aed; color:#fff; text-decoration:none; appearance:none; -webkit-appearance:none; min-height:0; margin:0;';
@@ -370,7 +361,7 @@ class WomensRosterScreen extends RosterScreenBase {
     // parser quirk) and a mail.google.com compose URL elsewhere; only the
     // latter wants a new tab.
     const emailHref = email
-      ? this.buildGmailComposeHref({ to: email, subject: WomensRosterScreen.REG_SUBJECT, body })
+      ? this.buildGmailComposeHref({ to: email, subject: copy.subject, body })
       : null;
     const emailBtn = emailHref
       ? `<a href="${this.escape(emailHref)}"${emailHref.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener noreferrer"'}

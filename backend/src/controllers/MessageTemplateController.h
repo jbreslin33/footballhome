@@ -17,6 +17,7 @@ private:
     Database* db_;
 
     Response handleList(const Request& request);
+    Response handleClientCopy(const Request& request);
 };
 
 #endif

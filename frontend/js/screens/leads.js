@@ -2825,7 +2825,7 @@ class LeadsScreen extends Screen {
     // on Android, which Android routes straight to Gmail's compose
     // (ACTION_SENDTO) intent — same fix every other Gmail-compose button
     // in the app (mens-roster INVITE/WELCOME) already relies on.
-    return this.buildGmailComposeHref({ to: lead.email, subject, body, authuser: 'soccer@lighthouse1893.org' });
+    return this.buildGmailComposeHref({ to: lead.email, subject, body });
   }
 
   // Touch-2 (or any snippet) variant of buildMailHref — pre-fills Gmail
@@ -2850,7 +2850,7 @@ class LeadsScreen extends Screen {
       || ('Re: ' + (this.messageTemplate(label).subject || ''));
     const subject = this.fillTemplate(subjectRaw, lead);
     // See buildMailHref above — same Android Gmail-app compose fix.
-    return this.buildGmailComposeHref({ to: lead.email, subject, body, authuser: 'soccer@lighthouse1893.org' });
+    return this.buildGmailComposeHref({ to: lead.email, subject, body });
   }
 
   // Mark-signed-up / undo handler.  POSTs (or DELETEs) to

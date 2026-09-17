@@ -40,7 +40,7 @@ class Screen {
   // mailto: can't do is pin the sending account — there's no mailto:
   // equivalent of authuser — so on Android the coach may need to tap
   // Gmail's own "From" field to switch to soccer@lighthouse1893.org.
-  buildGmailComposeHref({ to, cc, bcc, subject = '', body = '', authuser = 'soccer@lighthouse1893.org' } = {}) {
+  buildGmailComposeHref({ to, cc, bcc, subject = '', body = '', authuser = MessageCopy.outreachEmail } = {}) {
     if (!to && !cc && !bcc) return null;
 
     if (/Android/i.test(navigator.userAgent || '')) {
@@ -92,15 +92,17 @@ class Screen {
   // until the recipient replies (owner 2026-09-17: "people cant click
   // them"). Every outbound text that carries a link gets this line so
   // the recipient knows how to wake it up. Email addresses don't count
-  // as links. Keep the wording in lock-step with MagicLinkService::withSmsLinkHint
-  // (backend/src/services/MagicLinkService.h).
-  static SMS_LINK_HINT = 'Link not tappable? Reply YES, then reopen this text.';
+  // as links. The sentence itself is a message_templates row
+  // (kind 'sms_link_hint', migration 366) shared with the backend's
+  // MessageCopy model; '' until MessageCopy.load() has resolved.
+  static get SMS_LINK_HINT() { return MessageCopy.smsLinkHint; }
   static withSmsLinkHint(body) {
     const text = String(body || '');
-    if (!text || text.includes(Screen.SMS_LINK_HINT)) return text;
+    const hint = Screen.SMS_LINK_HINT;
+    if (!text || !hint || text.includes(hint)) return text;
     const hasLink = /https?:\/\/|\b[a-z0-9-]+\.(?:org|com|net)\b/i
       .test(text.replace(/\S+@\S+/g, ''));
-    return hasLink ? `${text}\n\n${Screen.SMS_LINK_HINT}` : text;
+    return hasLink ? `${text}\n\n${hint}` : text;
   }
 
   resolveAssetUrl(url) {

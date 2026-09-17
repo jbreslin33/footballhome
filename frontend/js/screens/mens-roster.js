@@ -222,6 +222,7 @@ class MensRosterScreen extends RosterScreenBase {
       const qs = params.toString();
       const url = qs ? `/api/mens-roster?${qs}` : '/api/mens-roster';
       const statusesReady = this.ensureRosterStatuses(); // roster_statuses lookup (migration 342), in parallel
+      const copyReady     = MessageCopy.load(this.auth); // every drafted message's wording (migration 367), in parallel
       const presetsReady  = RosterScreenBase.loadCardTemplates(this.auth, MensRosterScreen.REGISTRATION_TEMPLATE_CATEGORY); // message_templates kind=registration (migration 356), in parallel
       const res = await this.auth.fetch(url);
       if (!res.ok) {
@@ -253,6 +254,7 @@ class MensRosterScreen extends RosterScreenBase {
       });
       await statusesReady;
       await presetsReady;
+      await copyReady;
       this.renderRoster(data);
     } catch (err) {
       if (loading) loading.style.display = 'none';
@@ -486,16 +488,18 @@ class MensRosterScreen extends RosterScreenBase {
     const contactPhone = p.phone || p.parentPhone || null;
     const contactEmail = p.email || p.parentEmail || null;
 
-    const greeting = p.firstName ? `Hi ${p.firstName},` : 'Hi,';
-    const subject  = `Lighthouse 1893 Men's`;
-    const emailBody = `${greeting}\n\nThis is your Lighthouse 1893 coach.\n\n`;
-    const smsBody   = `Hi${p.firstName ? ' ' + p.firstName : ''}, this is Lighthouse 1893 coach.`;
+    // CONTACT openers — message_templates kind 'contact_email' /
+    // 'contact_sms', tier 'adult' (migration 367).
+    const contactCopy = MessageCopy.render('contact_email', 'adult', { first: p.firstName || '' }) || { subject: '', body: '' };
+    const subject   = contactCopy.subject;
+    const emailBody = contactCopy.body;
+    const smsBody   = MessageCopy.block('contact_sms', 'adult', { first: p.firstName || '' });
 
     const emailHref = contactEmail
       ? `https://mail.google.com/mail/?${new URLSearchParams({
           view:     'cm',
           fs:       '1',
-          authuser: 'soccer@lighthouse1893.org',
+          authuser: MessageCopy.outreachEmail,
           to:       contactEmail,
           su:       subject,
           body:     emailBody,
@@ -654,7 +658,6 @@ class MensRosterScreen extends RosterScreenBase {
       const daysStr   = daysAreExact
         ? `${days} day${days === 1 ? '' : 's'} past due`
         : 'past due';
-      const payUrl    = 'https://lighthouse1893.leagueapps.com/dashboard';
       // Three-tier body scaled to delinquency severity (2026-07-05):
       //   1–3 days  → gentle nudge; assume card-on-file issue
       //   4–6 days  → firmer, team-aware: mention *temporary* demotion
@@ -707,14 +710,17 @@ class MensRosterScreen extends RosterScreenBase {
       //     (b) normal  — July $35 didn't clear on card, please pay
       //         / update card.
       //   Both point to the LA dashboard.
-      let payBody;
-      if (prorateOwed) {
-        const regShort = pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        payBody = `Hi${firstNameStr}, welcome to Lighthouse 1893! Since you registered on ${regShort} (mid-cycle), your July dues are prorated for the ${pr.daysRemain} of ${pr.cycleDays} days remaining — ${amountStr} for July. Looks like the card on file didn't clear — usually just an expired or declined card. Gentle reminder to log in and pay ${amountStr} or update your card on file when you get a moment: ${payUrl}. Thanks!`;
-      } else {
-        payBody = `Hi${firstNameStr}, gentle reminder from Lighthouse 1893 — your July dues (${amountStr}) didn't clear on the card on file. Usually just an expired or declined card. When you get a moment, please log in and pay or update your card: ${payUrl}. Thanks!`;
-      }
-      const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(payBody))}` : null;
+      // Wording: message_templates kind 'dues_sms', tier 'adult' /
+      // 'adult_prorate' (migration 367).
+      const payBody = MessageCopy.block('dues_sms', prorateOwed ? 'adult_prorate' : 'adult', {
+        first:  p.firstName || '',
+        amount: amountStr,
+        month:  new Date().toLocaleDateString('en-US', { month: 'long' }),
+        reg_date:    prorateOwed ? pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+        days_remain: prorateOwed ? pr.daysRemain : '',
+        cycle_days:  prorateOwed ? pr.cycleDays : '',
+      });
+      const payHref   = (p.phone && payBody) ? `sms:${p.phone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(payBody))}` : null;
       const payBtn    = payHref
         ? `<a href="${payHref}"
               class="mr-pay-log"
@@ -749,22 +755,13 @@ class MensRosterScreen extends RosterScreenBase {
     // (useful for re-nudging lapsed users).  The outer JOIN cluster
     // next to the FH pill stays gated on "never signed in" so the
     // roster still visually flags who hasn't onboarded.
-    const firstNameForJoin = p.firstName || 'there';
-    const inviteUrl = 'https://footballhome.org';
-    const inviteSmsBody = `Hey ${firstNameForJoin} — Lighthouse 1893 is using ${inviteUrl} for weekly RSVPs. Log in with the Google account you use for LeagueApps (or set a password) to see this week's practices, games and pickups and RSVP YES / NO to all of them. Thanks!`;
-    const inviteEmailSubject = 'Football Home — Lighthouse 1893 weekly RSVPs';
-    const inviteEmailBody = [
-      `Hi ${firstNameForJoin},`,
-      '',
-      `Lighthouse 1893 is rolling out ${inviteUrl} so we have a clearer picture of who's coming each week.`,
-      '',
-      `Head to ${inviteUrl} and sign in with the same Google account you use for LeagueApps (or set a password on the sign-in page). From your home screen you'll see this week's practices, games and pickups and can RSVP YES / NO to all of them in one tap.`,
-      '',
-      'You can also set default availability by day-of-week + event type so the page auto-fills going forward.',
-      '',
-      '— Lighthouse Soccer',
-    ].join('\n');
-    const inviteSmsHref = p.phone
+    // Wording: message_templates kind 'fh_invite_email' /
+    // 'fh_invite_sms', tier 'adult' (migration 367).
+    const inviteCopy = MessageCopy.render('fh_invite_email', 'adult', { first: p.firstName || '' });
+    const inviteSmsBody      = MessageCopy.block('fh_invite_sms', 'adult', { first: p.firstName || '' });
+    const inviteEmailSubject = inviteCopy ? inviteCopy.subject : '';
+    const inviteEmailBody    = inviteCopy ? inviteCopy.body : '';
+    const inviteSmsHref = p.phone && inviteSmsBody
       ? `sms:${this.escape(p.phone)}?&body=${encodeURIComponent(Screen.withSmsLinkHint(inviteSmsBody))}`
       : null;
     // INVITE email uses Gmail compose (same authuser pattern as the
@@ -772,11 +769,11 @@ class MensRosterScreen extends RosterScreenBase {
     // mail.google.com pre-filled from soccer@lighthouse1893.org rather
     // than firing an OS mailto: handler (which on desktop typically
     // does nothing useful).  Matches the leads page.
-    const inviteEmailHref = p.email
+    const inviteEmailHref = p.email && inviteCopy
       ? `https://mail.google.com/mail/?${new URLSearchParams({
           view:     'cm',
           fs:       '1',
-          authuser: 'soccer@lighthouse1893.org',
+          authuser: MessageCopy.outreachEmail,
           to:       p.email,
           su:       inviteEmailSubject,
           body:     inviteEmailBody,

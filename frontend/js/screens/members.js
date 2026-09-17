@@ -411,7 +411,9 @@ class MembersScreen extends Screen {
 
     // ── Step 3: load members from DB (fresh) ────────────────────────
     try {
+      const copyReady = MessageCopy.load(this.auth); // onboarding wording (migration 367), in parallel
       const res = await this.auth.fetch(`/api/admin/members?${fetchQs}`);
+      await copyReady;
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
       if (!body?.success) throw new Error(body?.error || 'Load failed');
@@ -1226,7 +1228,6 @@ class MembersScreen extends Screen {
   // taps the button, native mail/messages app opens with the body
   // pre-filled, admin can edit before send.
   _onboardingSection(m) {
-    const first  = (m.first_name || '').trim() || 'there';
     const email  = (m.email || '').trim();
     const phoneD = this._phoneDigits(m.phone || '');
     const canEmail = !!email;
@@ -1242,32 +1243,13 @@ class MembersScreen extends Screen {
               </div>`;
     }
 
-    // Pick copy by state.
-    let step, subject, body;
-    if (!m.has_fh_account) {
-      step    = 'Sign in with Google';
-      subject = 'Welcome to the club — join us on FootballHome';
-      body    = `Hey ${first},\n\n` +
-                `Welcome to the club! This is where practices, pickups, and ` +
-                `games are listed: FootballHome.\n\n` +
-                `Please go to https://footballhome.org and tap "Sign in with Google" ` +
-                `(5 seconds, uses your Gmail), then set your availability accurately ` +
-                `for the week.\n\n` +
-                `Please reply and let me know you got this so I know I have the ` +
-                `right contact info for you.\n\n` +
-                `--James Breslin Soccer Director at Lighthouse`;
-    } else {
-      step    = 'First visit — set your availability';
-      subject = 'Welcome to the club — set your availability on FootballHome';
-      body    = `Hey ${first},\n\n` +
-                `Welcome to the club! This is where practices, pickups, and ` +
-                `games are listed: FootballHome.\n\n` +
-                `You're already set up — please log in at https://footballhome.org ` +
-                `and set your availability accurately for the week.\n\n` +
-                `Please reply and let me know you got this so I know I have the ` +
-                `right contact info for you.\n\n` +
-                `--James Breslin Soccer Director at Lighthouse`;
-    }
+    // Pick copy by state — message_templates kind 'onboarding', tier
+    // 'no_account' | 'has_account' (migration 367).
+    const step = !m.has_fh_account ? 'Sign in with Google' : 'First visit — set your availability';
+    const copy = MessageCopy.render('onboarding', m.has_fh_account ? 'has_account' : 'no_account',
+                                    { first: (m.first_name || '').trim() });
+    if (!copy) return '';
+    const { subject, body } = copy;
 
     // Gmail compose — not mailto: — so the operator's Gmail tab
     // handles it instead of Apple Mail.

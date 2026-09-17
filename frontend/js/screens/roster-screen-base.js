@@ -1440,7 +1440,7 @@ class RosterScreenBase extends Screen {
           ${count} recipient${count === 1 ? '' : 's'}${isEmail ? ' (BCC)' : ''}${missing ? ` · ${missing} with no ${isEmail ? 'email' : 'number'}` : ''}
         </div>
         ${isEmail ? `
-          <input type="text" data-msg-subject value="${(entry.preset && entry.preset.subject) || `Lighthouse 1893 — ${entry.scope}`}"
+          <input type="text" data-msg-subject value="${(entry.preset && entry.preset.subject) || ((MessageCopy.render('bulk_subject', 'default', { scope: entry.scope }) || {}).subject || '')}"
                  style="width:100%; box-sizing:border-box; margin-bottom:8px; padding:8px; border-radius:6px;
                         border:1px solid var(--border-color,#334155); background:var(--bg-secondary,#1e293b); color:inherit;">
         ` : ''}
@@ -1501,7 +1501,7 @@ class RosterScreenBase extends Screen {
       // is an Android App Link, and the native app's parser drops bcc).
       if (isEmail) {
         const subject = (overlay.querySelector('[data-msg-subject]') || {}).value
-                     || `Lighthouse 1893 — ${entry.scope}`;
+                     || ((MessageCopy.render('bulk_subject', 'default', { scope: entry.scope }) || {}).subject || '');
         const href = this.buildGmailComposeHref({
           bcc: info.emails.join(','),
           subject,

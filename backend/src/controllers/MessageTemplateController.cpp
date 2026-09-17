@@ -51,6 +51,46 @@ void MessageTemplateController::registerRoutes(Router& router, const std::string
     router.get(prefix, [this](const Request& request) {
         return this->handleList(request);
     });
+    router.get(prefix + "/copy", [this](const Request& request) {
+        return this->handleClientCopy(request);
+    });
+}
+
+// GET /api/messages/templates/copy — everything the browser needs to draft
+// a message without holding any wording itself (migration 367): the
+// client_side templates (form links already resolved), and the mailbox
+// compose links open as.  Rendered by frontend/js/lib/message-copy.js.
+// Any signed-in user: coaches use the roster boards too, and nothing
+// here is secret — it is the text they are about to send.
+Response MessageTemplateController::handleClientCopy(const Request& request) {
+    if (!requireBearer(request)) {
+        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        const std::string clubId = std::to_string(WelcomeLog::kLighthouseClubId);
+        pqxx::result rows = db_->query(R"(
+            SELECT kind, tier, COALESCE(fh_fill_form_links(subject, $1::int), '') AS subject,
+                   fh_fill_form_links(body, $1::int) AS body
+              FROM message_templates
+             WHERE is_active AND client_side
+             ORDER BY sort_order, id
+        )", {clubId});
+        nlohmann::json templates = nlohmann::json::array();
+        for (const auto& row : rows) {
+            templates.push_back({{"kind", row["kind"].c_str()}, {"tier", row["tier"].c_str()},
+                                 {"subject", row["subject"].c_str()}, {"body", row["body"].c_str()}});
+        }
+        pqxx::result club = db_->query(
+            "SELECT COALESCE(outreach_email, '') AS em FROM clubs WHERE id = $1::int", {clubId});
+        nlohmann::json out = {
+            {"templates", templates},
+            {"outreach_email", club.empty() ? "" : club[0]["em"].c_str()},
+        };
+        return Response(HttpStatus::OK, createJSONResponse(true, "Message copy", out.dump()));
+    } catch (const std::exception& e) {
+        std::cerr << "Error in MessageTemplateController::handleClientCopy: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
+    }
 }
 
 Response MessageTemplateController::handleList(const Request& request) {
