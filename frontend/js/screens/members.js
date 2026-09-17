@@ -1269,7 +1269,6 @@ class MembersScreen extends Screen {
                 `--James Breslin Soccer Director at Lighthouse`;
     }
 
-    const encBody = encodeURIComponent(body);
     // Gmail compose — not mailto: — so the operator's Gmail tab
     // handles it instead of Apple Mail.
     const gmailUrl = this.buildGmailComposeHref({ to: email, subject, body });
@@ -1286,7 +1285,7 @@ class MembersScreen extends Screen {
     }
     if (canText) {
       buttons.push(
-        `<a href="sms:${phoneD}?body=${encBody}"
+        `<a href="sms:${phoneD}?body=${encodeURIComponent(Screen.withSmsLinkHint(body))}"
             style="padding:4px 10px; border-radius:4px; text-decoration:none;
                    background:#3a2e05; color:#fde68a; border:1px solid #d97706;
                    font-size:0.7rem; font-weight:700;">💬 Text</a>`

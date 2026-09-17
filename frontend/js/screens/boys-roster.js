@@ -521,7 +521,7 @@ class BoysRosterScreen extends RosterScreenBase {
           body:     emailBody,
         }).toString()}`
       : null;
-    const smsHref = contactPhone ? `sms:${contactPhone}?&body=${encodeURIComponent(smsBody)}` : null;
+    const smsHref = contactPhone ? `sms:${contactPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(smsBody))}` : null;
     const telHref = contactPhone ? `tel:${contactPhone}` : null;
 
     // Full DOB (e.g. "3/10/2008").
@@ -612,7 +612,7 @@ class BoysRosterScreen extends RosterScreenBase {
     // was pulled from the DOCS row; a one-recipient sms: URL is the part
     // every Messages client gets right.
     const docsSmsHref = (contactPhone && this.docsPreset && BoysRosterScreen.playerNeedsDocs(p, col))
-      ? `sms:${contactPhone}?&body=${encodeURIComponent(this.docsPreset.body)}`
+      ? `sms:${contactPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(this.docsPreset.body))}`
       : null;
     const docsBtn = docsSmsHref
       ? `<a href="${docsSmsHref}"
@@ -744,7 +744,7 @@ class BoysRosterScreen extends RosterScreenBase {
       // Whichever channel the parent uses, one tap gets there.  If we
       // only have one of the two, only that button renders.
       const paySmsHref = contactPhone
-        ? `sms:${contactPhone}?&body=${encodeURIComponent(payBody)}`
+        ? `sms:${contactPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(payBody))}`
         : null;
       const payEmailHref = contactEmail
         ? `https://mail.google.com/mail/?${new URLSearchParams({

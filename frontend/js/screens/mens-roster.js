@@ -501,7 +501,7 @@ class MensRosterScreen extends RosterScreenBase {
           body:     emailBody,
         }).toString()}`
       : null;
-    const smsHref = contactPhone ? `sms:${contactPhone}?&body=${encodeURIComponent(smsBody)}` : null;
+    const smsHref = contactPhone ? `sms:${contactPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(smsBody))}` : null;
     const telHref = contactPhone ? `tel:${contactPhone}` : null;
 
     // Full DOB (e.g. "3/10/2008").
@@ -714,7 +714,7 @@ class MensRosterScreen extends RosterScreenBase {
       } else {
         payBody = `Hi${firstNameStr}, gentle reminder from Lighthouse 1893 — your July dues (${amountStr}) didn't clear on the card on file. Usually just an expired or declined card. When you get a moment, please log in and pay or update your card: ${payUrl}. Thanks!`;
       }
-      const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(payBody)}` : null;
+      const payHref   = p.phone ? `sms:${p.phone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(payBody))}` : null;
       const payBtn    = payHref
         ? `<a href="${payHref}"
               class="mr-pay-log"
@@ -765,7 +765,7 @@ class MensRosterScreen extends RosterScreenBase {
       '— Lighthouse Soccer',
     ].join('\n');
     const inviteSmsHref = p.phone
-      ? `sms:${this.escape(p.phone)}?&body=${encodeURIComponent(inviteSmsBody)}`
+      ? `sms:${this.escape(p.phone)}?&body=${encodeURIComponent(Screen.withSmsLinkHint(inviteSmsBody))}`
       : null;
     // INVITE email uses Gmail compose (same authuser pattern as the
     // regular EMAIL button above) so clicking it lands on

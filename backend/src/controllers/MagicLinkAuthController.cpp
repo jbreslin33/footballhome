@@ -286,7 +286,7 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
         }
         const std::string bodyText = bodyOss.str();
 
-        const std::string smsBody = (hasEvent && !eventTitle.empty())
+        const std::string smsBody = MagicLinkService::withSmsLinkHint((hasEvent && !eventTitle.empty())
             ? std::string("Lighthouse RSVP")
                 + (eventWhen.empty()  ? std::string{} : (" " + eventWhen))
                 + (eventTitle.empty() ? std::string{} : (" \u2014 " + eventTitle))
@@ -294,7 +294,7 @@ Response MagicLinkAuthController::handleMint(const Request& request) {
             : std::string("Hey ") + firstName
                 + " \u2014 Lighthouse 1893 is trying out a simple weekly RSVP page. "
                   "Tap here to see this week's games and let us know if you're in "
-                  "(no password needed): " + verifyUrl;
+                  "(no password needed): " + verifyUrl);
 
         json out = {
             {"url",               verifyUrl},

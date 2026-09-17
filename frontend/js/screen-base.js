@@ -83,7 +83,24 @@ class Screen {
   // so this can be used as a plain <a href> with no JS/user-agent branch.
   buildSmsComposeHref({ to, body = '' } = {}) {
     if (!to) return null;
+    body = Screen.withSmsLinkHint(body);
     return `sms:${to}${body ? `?body=${encodeURIComponent(body)}` : ''}`;
+  }
+
+  // iOS Messages (and Google Messages spam protection) render links from
+  // a sender who isn't in the recipient's contacts as dead plain text
+  // until the recipient replies (owner 2026-09-17: "people cant click
+  // them"). Every outbound text that carries a link gets this line so
+  // the recipient knows how to wake it up. Email addresses don't count
+  // as links. Keep the wording in lock-step with MagicLinkService::withSmsLinkHint
+  // (backend/src/services/MagicLinkService.h).
+  static SMS_LINK_HINT = 'Link not tappable? Reply YES, then reopen this text.';
+  static withSmsLinkHint(body) {
+    const text = String(body || '');
+    if (!text || text.includes(Screen.SMS_LINK_HINT)) return text;
+    const hasLink = /https?:\/\/|\b[a-z0-9-]+\.(?:org|com|net)\b/i
+      .test(text.replace(/\S+@\S+/g, ''));
+    return hasLink ? `${text}\n\n${Screen.SMS_LINK_HINT}` : text;
   }
 
   resolveAssetUrl(url) {

@@ -21,6 +21,15 @@ public:
     // else https://footballhome.org, never with a trailing slash.
     static const std::string& publicBaseUrl();
 
+    // Appended to every SMS body that carries the verify URL.  iOS
+    // Messages / Google Messages render links from a sender who isn't in
+    // the recipient's contacts as dead plain text until the recipient
+    // replies (owner 2026-09-17: "people cant click them").  Wording is
+    // kept in lock-step with Screen.SMS_LINK_HINT (frontend/js/screen-base.js).
+    static std::string withSmsLinkHint(const std::string& smsBody) {
+        return smsBody + "\n\nLink not tappable? Reply YES, then reopen this text.";
+    }
+
     // Inserts the token row and returns the URL.  chatEventId <= 0 and
     // adminUserId <= 0 store NULL.  Throws on DB failure.
     static Minted mint(long long          personId,

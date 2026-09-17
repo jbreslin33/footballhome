@@ -168,6 +168,8 @@ Response WelcomeController::handleCreate(const Request& request) {
             smsBody += " Also, for " + childName + "'s travel spot please upload a birth certificate + headshot: " + docsFormUrl;
         }
 
+        smsBody = MagicLinkService::withSmsLinkHint(smsBody);
+
         model_->record(personId, youth ? playerPersonId : 0, channel, contact, adminUserId);
 
         // Fresh "last sent" for the card so the button can repaint without

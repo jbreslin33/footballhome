@@ -1080,7 +1080,7 @@ class PaymentsScreen extends Screen {
       for (const item of textVariants) {
         const textBody = this._buildPaymentReminderText(m, paymentLink, item.variant);
         contactBtns.push(
-          `<a href="sms:${phoneDigits}?body=${encodeURIComponent(textBody)}"
+          `<a href="sms:${phoneDigits}?body=${encodeURIComponent(Screen.withSmsLinkHint(textBody))}"
                style="padding:6px 10px; border-radius:4px; text-decoration:none;
                       background:#3a2e05; color:#fde68a; border:1px solid #d97706;
                       font-size:0.75rem; font-weight:700;">${item.label}</a>`

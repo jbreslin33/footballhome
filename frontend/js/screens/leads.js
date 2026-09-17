@@ -2781,7 +2781,7 @@ class LeadsScreen extends Screen {
     const body = this.fillTemplate(t.sms, lead);
     // sms: URI with both ?body= and &body= — iOS uses &, Android uses ?
     const phone = (lead.phone || '').replace(/[^\d+]/g, '');
-    return `sms:${phone}?&body=${encodeURIComponent(body)}`;
+    return `sms:${phone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(body))}`;
   }
 
   // SMS variant of buildMailHrefForSnippet — pre-fills the phone's
@@ -2795,7 +2795,7 @@ class LeadsScreen extends Screen {
     const raw = snip.smsBody || snip.body || '';
     const body = this.fillTemplate(raw, lead);
     const phone = (lead.phone || '').replace(/[^\d+]/g, '');
-    return `sms:${phone}?&body=${encodeURIComponent(body)}`;
+    return `sms:${phone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(body))}`;
   }
 
   // wa.me URL — opens WhatsApp web/app with the chat pre-filled.

@@ -239,7 +239,7 @@ class YouthRosterScreen extends Screen {
       : null;
     // sms: URI with both ?body= and &body= — iOS uses &, Android uses ?
     const smsHref = p.parentPhone
-      ? `sms:${p.parentPhone}?&body=${encodeURIComponent(smsBody)}`
+      ? `sms:${p.parentPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(smsBody))}`
       : null;
     const telHref = p.parentPhone ? `tel:${p.parentPhone}` : null;
 
@@ -317,7 +317,7 @@ class YouthRosterScreen extends Screen {
       const kidRef    = p.firstName || 'your player';
       const parentRef = p.parentFirstName ? ` ${p.parentFirstName}` : '';
       const payBody = `Hi${parentRef}, gentle reminder — ${kidRef}'s dues (${amountStr}) are showing as past due on LeagueApps.  To cut down on admin work it really helps if there's a valid card on file so LeagueApps can auto-charge each month.  LeagueApps has emailed you a pay link, or log in and pay / update your card here: ${payUrl}  Thanks so much!`;
-      const payHref = `sms:${p.parentPhone}?&body=${encodeURIComponent(payBody)}`;
+      const payHref = `sms:${p.parentPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(payBody))}`;
       payBtn = `
       <a href="${payHref}"
          title="Text ${this.escape(formattedPhone)} a payment reminder with LeagueApps link"

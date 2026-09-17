@@ -2118,9 +2118,9 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
           << theyAre << " available:\n" << minted.url << "\n\n"
           << "The link works for 72 hours. Reply anytime with questions.\n";
         const std::string bodyText = b.str();
-        const std::string smsBody =
+        const std::string smsBody = MagicLinkService::withSmsLinkHint(
             "Hi " + recipientFirst + " — " + whoPlays + (youth ? " is" : " are") + " invited to play with " + what
-            + ": " + game + ". Tap to sign in and mark availability (no password needed): " + minted.url;
+            + ": " + game + ". Tap to sign in and mark availability (no password needed): " + minted.url);
 
         json invite = {
             {"person_id",  targetPersonId},
