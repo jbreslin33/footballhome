@@ -144,6 +144,11 @@ Response RsvpBoardController::handleList(const Request& request) {
     else if (window == "all")   startExpr = "";
     else return jsonError(HttpStatus::BAD_REQUEST, "window must be week, 2w, month or all");
 
+    std::string kind = request.getQueryParam("kind");
+    if (kind.empty()) kind = "all";
+    if (kind != "all" && kind != "games" && kind != "practices")
+        return jsonError(HttpStatus::BAD_REQUEST, "kind must be all, games or practices");
+
     try {
         std::string windowStart;
         if (!startExpr.empty()) {
@@ -152,7 +157,7 @@ Response RsvpBoardController::handleList(const Request& request) {
             windowStart = row[0]["t"].c_str();
         }
 
-        json people = model_->list(def->code, windowStart, scope.coachTeamIds);
+        json people = model_->list(def->code, windowStart, kind, scope.coachTeamIds);
         if (!scope.isAdmin) {
             // Coaches get the dues pill the roster boards already show
             // them, but not what was paid or when.
@@ -164,8 +169,10 @@ Response RsvpBoardController::handleList(const Request& request) {
         return jsonOut(HttpStatus::OK, {
             {"section",      def->key},
             {"window",       window},
+            {"kind",         kind},
             {"window_start", windowStart.empty() ? json(nullptr) : json(windowStart)},
             {"is_admin",     scope.isAdmin},
+            {"next_games",   model_->nextGames(def->code, scope.coachTeamIds)},
             {"people",       std::move(people)},
         });
     } catch (const std::exception& e) {

@@ -9,6 +9,7 @@ class RsvpBoard;
 // RsvpBoardController — #rsvps (owner 2026-09-17).
 //
 //   GET  /api/rsvp-board?section=mens|womens|boys|girls&window=week|2w|month|all
+//                       &kind=all|games|practices
 //        One card per rostered player: RSVP % for the window, what is still
 //        unanswered in the released week, last RSVP, dues, last payment,
 //        last reminder.  Club admins only for now; the coach scoping (own

@@ -22,7 +22,8 @@ json textOrNull(const pqxx::row& row, const char* col) {
 
 // Shared CTEs.  $1 = section code ('' = any section), $2 = window start
 // ('' = all time), $3 = int[] team scope ('{}' = every team), $4 = person
-// filter (0 = everyone).
+// filter (0 = everyone), $5 = kind bucket ('all' | 'games' | 'practices';
+// intrasquads count as games, same as #reports).
 //
 //   tm       active board teams in the section, each with its release
 //            window end (one function call per team, not per event).
@@ -70,6 +71,7 @@ const char* kBaseCtes = R"SQL(
         JOIN fh_event_teams fet ON fet.team_id = r.team_id
         JOIN fh_events fe ON fe.id = fet.fh_event_id
                          AND fe.kind IN ('practice','match','intrasquad')
+                         AND ($5 = 'all' OR ($5 = 'games') = (fe.kind IN ('match','intrasquad')))
         JOIN gcal_events ge ON ge.id = fe.gcal_event_id
         CROSS JOIN epoch
        WHERE ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
@@ -101,6 +103,7 @@ const char* kBaseCtes = R"SQL(
 
 json RsvpBoard::list(const std::string& sectionCode,
                      const std::string& windowStart,
+                     const std::string& kind,
                      const std::vector<long long>& scopeTeamIds) {
     auto* db = Database::getInstance();
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
@@ -177,7 +180,7 @@ json RsvpBoard::list(const std::string& sectionCode,
      ORDER BY p.last_name, p.first_name
     )SQL";
 
-    auto rows = db->query(sql, {sectionCode, windowStart, pgIntArray(scopeTeamIds), "0"});
+    auto rows = db->query(sql, {sectionCode, windowStart, pgIntArray(scopeTeamIds), "0", kind});
 
     auto iso = [](const pqxx::row& row, const char* col) -> json {
         return row[col].is_null() ? json(nullptr) : json(std::string(row[col].c_str()));
@@ -222,6 +225,66 @@ json RsvpBoard::list(const std::string& sectionCode,
     return people;
 }
 
+json RsvpBoard::nextGames(const std::string& sectionCode,
+                          const std::vector<long long>& scopeTeamIds) {
+    auto* db = Database::getInstance();
+    // $2 (window start) is '' here: an upcoming game is inside every window.
+    const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
+    , ng AS (
+      SELECT DISTINCT ON (tm.id)
+             tm.id AS team_id, COALESCE(tm.label, tm.name) AS team_label, tm.board_sort_order,
+             fe.id AS fh_event_id, fe.opponent, fe.is_home, ge.starts_at,
+             (ge.starts_at < tm.window_end) AS released
+        FROM tm
+        JOIN fh_event_teams fet ON fet.team_id = tm.id
+        JOIN fh_events fe ON fe.id = fet.fh_event_id AND fe.kind = 'match'
+        JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+       WHERE ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+         AND ge.ends_at > now()
+       ORDER BY tm.id, ge.starts_at
+    )
+    SELECT ng.team_id, ng.team_label, ng.fh_event_id, ng.is_home, ng.released,
+           COALESCE(NULLIF(BTRIM(ng.opponent), ''), 'TBD') AS opponent,
+           to_char(ng.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS starts_at,
+           to_char(ng.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') AS when_text,
+           c.expected, c.yes, c.no
+      FROM ng
+      CROSS JOIN LATERAL (
+            SELECT count(*) AS expected,
+                   count(*) FILTER (WHERE rv.response = 'yes') AS yes,
+                   count(*) FILTER (WHERE rv.response = 'no')  AS no
+              FROM roster r
+              JOIN expected e ON e.person_id = r.person_id AND e.fh_event_id = ng.fh_event_id
+              LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
+             WHERE r.team_id = ng.team_id) c
+     WHERE EXISTS (SELECT 1 FROM roster r WHERE r.team_id = ng.team_id)
+     ORDER BY ng.starts_at, ng.board_sort_order
+    )SQL";
+    auto rows = db->query(sql, {sectionCode, "", pgIntArray(scopeTeamIds), "0", "all"});
+
+    json games = json::array();
+    for (const auto& row : rows) {
+        const long long expected = row["expected"].as<long long>();
+        const long long yes = row["yes"].as<long long>();
+        const long long no  = row["no"].as<long long>();
+        games.push_back({
+            {"team_id",     row["team_id"].as<long long>()},
+            {"team_label",  row["team_label"].c_str()},
+            {"fh_event_id", row["fh_event_id"].as<long long>()},
+            {"opponent",    row["opponent"].c_str()},
+            {"is_home",     row["is_home"].is_null() ? json(nullptr) : json(row["is_home"].as<bool>())},
+            {"starts_at",   row["starts_at"].c_str()},
+            {"when_text",   row["when_text"].c_str()},
+            {"released",    row["released"].as<bool>()},
+            {"expected",    expected},
+            {"yes",         yes},
+            {"no",          no},
+            {"unanswered",  expected - yes - no},
+        });
+    }
+    return games;
+}
+
 RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
     auto* db = Database::getInstance();
     ReminderContext ctx;
@@ -255,7 +318,7 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
         UNION ALL
         SELECT 'event', o.fh_event_id, o.line, o.starts_at FROM open_events o
          ORDER BY what, starts_at)SQL";
-    auto rows = db->query(sql, {"", "", "{}", std::to_string(personId)});
+    auto rows = db->query(sql, {"", "", "{}", std::to_string(personId), "all"});
     for (const auto& row : rows) {
         if (std::string(row["what"].c_str()) == "team") {
             ctx.teamIds.push_back(row["id"].as<long long>());

@@ -21,6 +21,7 @@ class RsvpBoardScreen extends Screen {
     super(navigation, auth);
     this.section = 'mens';     // mens | womens | boys | girls
     this.window  = 'week';     // week | 2w | month | all
+    this.kind    = 'all';      // all | games | practices
     this.sort    = 'worst';    // worst | open | quiet | name
     this.teamId  = null;
     this.eventId = null;       // "unanswered for this event" filter
@@ -34,6 +35,7 @@ class RsvpBoardScreen extends Screen {
 
   static get SECTIONS() { return { mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls' }; }
   static get WINDOWS()  { return { week: 'This week', '2w': 'Last 2 weeks', month: 'Last month', all: 'All time' }; }
+  static get KINDS()    { return { all: 'All events', games: 'Games only', practices: 'Practices only' }; }
   static get SORTS() {
     return { worst: 'Worst RSVP %', open: 'Most unanswered now', quiet: 'Longest since last RSVP', name: 'Name' };
   }
@@ -57,6 +59,10 @@ class RsvpBoardScreen extends Screen {
         .rb-open { font-size:0.78rem; margin:0; padding-left:16px; }
         .rb-btn { padding:4px 10px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.72rem; color:#fff; }
         .rb-btn[disabled] { opacity:0.35; cursor:not-allowed; }
+        .rb-game { flex:1 1 230px; max-width:340px; text-align:left; cursor:pointer; padding:10px 12px; border-radius:10px;
+                   border:1px solid var(--border-color); border-left:4px solid #f5d442;
+                   background:var(--bg-secondary); color:var(--text-primary); }
+        .rb-game.on { outline:2px solid #f5d442; }
         .rb-pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:0.7rem; font-weight:700; }
       </style>
       <div class="screen-header">
@@ -66,7 +72,11 @@ class RsvpBoardScreen extends Screen {
       </div>
       <div style="padding: var(--space-4); max-width: 1500px; margin: 0 auto;">
         <div id="rb-sections" style="display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
-        <div id="rb-windows"  style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
+        <div style="display:flex; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-2);">
+          <div id="rb-windows" style="display:flex; gap:var(--space-1); flex-wrap:wrap;"></div>
+          <div id="rb-kinds"   style="display:flex; gap:var(--space-1); flex-wrap:wrap;"></div>
+        </div>
+        <div id="rb-next" style="margin-bottom:var(--space-3);"></div>
         <div id="rb-teams"    style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
         <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-3);">
           <label style="font-size:0.8rem; opacity:0.75;">Sort
@@ -104,6 +114,21 @@ class RsvpBoardScreen extends Screen {
       if (sec) { this.section = sec.dataset.section; this.teamId = null; this.eventId = null; this._renderChips(); this.load(); return; }
       const win = e.target.closest('[data-window]');
       if (win) { this.window = win.dataset.window; this._renderChips(); this.load(); return; }
+      const kind = e.target.closest('[data-kind]');
+      if (kind) { this.kind = kind.dataset.kind; this.eventId = null; this._renderChips(); this.load(); return; }
+      // Next-game tile: focus the cards on that team's players who have
+      // not answered that game; tap again to clear.
+      const game = e.target.closest('[data-game]');
+      if (game) {
+        const id = Number(game.dataset.game), team = Number(game.dataset.gameTeam);
+        const on = this.eventId === id && this.teamId === team;
+        this.eventId = on ? null : id;
+        this.teamId  = on ? null : team;
+        if (!on) this.sort = 'open';
+        this._renderChips();
+        this._renderBody();
+        return;
+      }
       const team = e.target.closest('[data-team]');
       if (team) { this.teamId = team.dataset.team ? Number(team.dataset.team) : null; this._renderBody(); return; }
       if (e.target.closest('#rb-refresh')) { this.load(); return; }
@@ -127,6 +152,8 @@ class RsvpBoardScreen extends Screen {
       .map(([k, l]) => chip('section', k, l, k === this.section)).join('');
     this.find('#rb-windows').innerHTML = Object.entries(RsvpBoardScreen.WINDOWS)
       .map(([k, l]) => chip('window', k, l, k === this.window)).join('');
+    this.find('#rb-kinds').innerHTML = Object.entries(RsvpBoardScreen.KINDS)
+      .map(([k, l]) => chip('kind', k, l, k === this.kind)).join('');
     this.find('#rb-sort').innerHTML = Object.entries(RsvpBoardScreen.SORTS)
       .map(([k, l]) => `<option value="${k}"${k === this.sort ? ' selected' : ''}>${this.escapeHtml(l)}</option>`).join('');
   }
@@ -136,7 +163,7 @@ class RsvpBoardScreen extends Screen {
     this.loading = true; this.error = null;
     this._renderBody();
     try {
-      const res = await this.auth.fetch(`/api/rsvp-board?section=${encodeURIComponent(this.section)}&window=${encodeURIComponent(this.window)}`);
+      const res = await this.auth.fetch(`/api/rsvp-board?section=${encodeURIComponent(this.section)}&window=${encodeURIComponent(this.window)}&kind=${encodeURIComponent(this.kind)}`);
       const body = await res.json().catch(() => ({}));
       if (seq !== this._loadSeq) return;           // a newer load superseded this one
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
@@ -155,6 +182,9 @@ class RsvpBoardScreen extends Screen {
     const bodyEl = this.find('#rb-body');
     if (!bodyEl) return;
     if (this.loading) {
+      // Don't leave the previous section's games above a loading list.
+      const next = this.find('#rb-next');
+      if (next) next.innerHTML = '';
       // The list waits on a LeagueApps sync so dues are fresh.
       bodyEl.innerHTML = `<div style="opacity:0.7; padding:var(--space-4);">Loading — syncing LeagueApps so dues are current…</div>`;
       return;
@@ -164,6 +194,8 @@ class RsvpBoardScreen extends Screen {
       return;
     }
     const people = (this.data && this.data.people) || [];
+
+    this._renderNextGames();
 
     // Team chips + event filter come from the loaded rows.
     const teams = new Map();
@@ -204,11 +236,43 @@ class RsvpBoardScreen extends Screen {
     const owing = list.filter(p => p.open_events.length > 0).length;
     this.find('#rb-summary').textContent =
       `${list.length} player${list.length === 1 ? '' : 's'} · ${owing} with unanswered events right now · ` +
-      `RSVP % covers ${RsvpBoardScreen.WINDOWS[this.window].toLowerCase()} (practices & games, from the day they joined the team)`;
+      `RSVP % covers ${RsvpBoardScreen.WINDOWS[this.window].toLowerCase()}, ` +
+      `${{ all: 'practices & games', games: 'games only', practices: 'practices only' }[this.kind]} (from the day they joined the team)`;
 
     bodyEl.innerHTML = list.length
       ? `<div class="rb-grid">${list.map(p => this._renderCard(p)).join('')}</div>`
       : `<div style="opacity:0.7; padding:var(--space-4);">Nobody matches these filters.</div>`;
+  }
+
+  // One tile per team: its next game and how the roster has answered.
+  // Games matter most (owner 2026-09-17), so this sits above the cards.
+  _renderNextGames() {
+    const slot = this.find('#rb-next');
+    if (!slot) return;
+    const games = (this.data && this.data.next_games) || [];
+    if (!games.length || this.kind === 'practices') { slot.innerHTML = ''; return; }
+    slot.innerHTML = `
+      <div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.6; margin-bottom:6px;">
+        Next game — tap to see who hasn't answered
+      </div>
+      <div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
+        ${games.map(g => {
+          const on = this.eventId === g.fh_event_id && this.teamId === g.team_id;
+          const ha = g.is_home == null ? 'vs' : (g.is_home ? 'vs' : '@');
+          const counts = g.released
+            ? `<span class="rb-good">${g.yes} going</span> · <span>${g.no} not</span> ·
+               <span class="${g.unanswered ? 'rb-bad' : 'rb-good'}" style="font-weight:800;">${g.unanswered} unanswered</span>
+               <span style="opacity:0.6;"> of ${g.expected}</span>`
+            : `<span style="opacity:0.7;">Not released to players yet — nobody can answer</span>`;
+          return `
+            <button type="button" class="rb-game${on ? ' on' : ''}" data-game="${g.fh_event_id}" data-game-team="${g.team_id}">
+              <div style="font-size:0.72rem; opacity:0.7;">${this.escapeHtml(g.team_label)}</div>
+              <div style="font-weight:800;">${ha} ${this.escapeHtml(g.opponent)}</div>
+              <div style="font-size:0.78rem; opacity:0.8;">${this.escapeHtml(g.when_text)}</div>
+              <div style="font-size:0.78rem; margin-top:4px;">${counts}</div>
+            </button>`;
+        }).join('')}
+      </div>`;
   }
 
   _fmtDate(iso) {

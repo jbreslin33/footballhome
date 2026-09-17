@@ -24,7 +24,15 @@ public:
     // scopeTeamIds: teams the caller may see; empty = every team (admin).
     nlohmann::json list(const std::string& sectionCode,
                         const std::string& windowStart,
+                        const std::string& kind,          // all | games | practices
                         const std::vector<long long>& scopeTeamIds);
+
+    // Each team's next game (owner 2026-09-17: "focus on game as its most
+    // important") with how its roster has answered.  `released` is false
+    // when the game is still beyond the schedule release window — players
+    // cannot answer it yet, so nobody is counted as unanswered.
+    nlohmann::json nextGames(const std::string& sectionCode,
+                             const std::vector<long long>& scopeTeamIds);
 
     // Everything a reminder for one player needs.
     struct OpenEvent { long long fhEventId; std::string line; };
