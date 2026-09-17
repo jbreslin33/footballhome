@@ -1379,6 +1379,9 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             {"days",   days},
             {"count",  events.size()},
             {"events", std::move(events)},
+            // Lets a screen that works signed-out too (#schedules) tell a
+            // member's team-scoped list from the anonymous unfiltered one.
+            {"signed_in", personId > 0},
         };
         if (!startParam.empty()) {
             body["start"] = startParam;
