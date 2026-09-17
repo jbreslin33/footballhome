@@ -792,6 +792,44 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                     -- is the only way in for a call-up or play-down.
                     OR fh_event_invited(fe.id, $1::int)
                 ) AS eligible,
+                -- `eligible` without the admin pass: the caller is on this
+                -- event themselves (rostered player, its coach, or invited).
+                -- #my shows only these (+ guardian events) so an admin's My
+                -- page is their own week, not the whole club's (owner
+                -- 2026-09-17: "my page for coaches and admin should be for
+                -- them and not an admin type view").
+                (
+                    EXISTS (
+                        SELECT 1
+                        FROM fh_event_teams fet
+                        WHERE fet.fh_event_id = fe.id
+                          AND (
+                              EXISTS (
+                                  SELECT 1
+                                  FROM team_persons tp
+                                  WHERE tp.team_id = fet.team_id
+                                    AND tp.person_id = $1::int
+                                    AND tp.removed_at IS NULL
+                                    AND NOT EXISTS (
+                                        SELECT 1 FROM rsvp_suspensions s
+                                        WHERE s.person_id = tp.person_id
+                                          AND (s.team_id IS NULL OR s.team_id = tp.team_id)
+                                          AND s.starts_at <= now()
+                                          AND (s.ends_at IS NULL OR s.ends_at > now())
+                                    )
+                              )
+                              OR EXISTS (
+                                  SELECT 1
+                                  FROM team_coaches tc
+                                  JOIN coaches co ON co.id = tc.coach_id
+                                  WHERE tc.team_id = fet.team_id
+                                    AND tc.ended_at IS NULL
+                                    AND co.person_id = $1::int
+                              )
+                          )
+                    )
+                    OR fh_event_invited(fe.id, $1::int)
+                ) AS is_mine,
                 -- Guardian visibility (2026-08-28).  A parent of a
                 -- rostered child holds no team_persons row of their own,
                 -- so `eligible` is false for them and every one of their
@@ -1323,6 +1361,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             ev["my_rsvp"]           = textOrNull(row, "my_rsvp");
             ev["my_rsvp_created_via"]= textOrNull(row, "my_rsvp_created_via");
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
+            ev["is_mine"]           = row["is_mine"].as<bool>();
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
             ev["guardian_children"] = textOrNull(row, "guardian_children");
             ev["schedule_window_end"] = textOrNull(row, "schedule_window_end");

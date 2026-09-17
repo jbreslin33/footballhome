@@ -464,6 +464,13 @@ class MyScreen extends Screen {
     const category = (ev.category || '').toLowerCase();
     const summary = `${ev.summary || ''} ${ev.title || ''}`.toLowerCase();
 
+    // My is the viewer's OWN week, staff included (owner 2026-09-17: "my
+    // page for coaches and admin should be for them and not an admin type
+    // view").  The feed hands admins every club event; is_mine is the
+    // same test without the admin pass — on the roster, coaching it, or
+    // invited.  A parent's events arrive as is_guardian.
+    if (ev.is_mine === false && !ev.is_guardian) return false;
+
     if (category === 'staff' || summary.includes('all staff meeting')) return false;
     if (kind === 'meeting') return false;
 
