@@ -74,6 +74,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="rsvps" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">✅</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">RSVPs</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Who owes an answer — remind by text or email with their events + sign-in link</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="reports" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">📊</span>
           <div style="flex: 1; text-align: left;">
@@ -289,7 +297,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (role !== 'calendar' && role !== 'reports') this.navigation.context.role = role;
+    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps') this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -301,6 +309,9 @@ class RoleSelectionScreen extends Screen {
       // Financial — straight to Payments (the only tile this section
       // has today; formerly buried under Club Admin's Billing group).
       this.navigation.goTo('payments');
+    } else if (role === 'rsvps') {
+      // Not a role — the RSVP follow-up board (owner 2026-09-17: top level).
+      this.navigation.goTo('rsvps');
     } else if (role === 'reports') {
       // Not a role — the Reports hub (attendance & RSVP; Payments linked).
       this.navigation.goTo('reports');

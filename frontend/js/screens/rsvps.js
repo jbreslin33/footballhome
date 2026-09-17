@@ -1,0 +1,335 @@
+// RsvpBoardScreen — #rsvps — the RSVP follow-up board (owner 2026-09-17).
+//
+// "pills for men, boys etc … send text or email reminder for rsvp … the
+// message crafted by db query to see what events they didn't rsvp to and
+// list them and give magic link … sort by worst rsvp percent for this week
+// or all time or last 2 weeks or month … their card should show last rsvp
+// they set … and dues … and last payment date … and how much."
+//
+// Backed by GET /api/rsvp-board and POST /api/rsvp-board/remind
+// (backend/src/controllers/RsvpBoardController.cpp).  #reports is the
+// analysis table (attendance, reliability, streaks); this is the work
+// queue: who owes an answer right now, and one tap to chase them.  It is
+// meant to take over from the per-event Remind buttons on #my, which only
+// remember "reminded ✓" until the page reloads — sends here are logged
+// (rsvp_reminders, mig 363) and shown on the card for every coach.
+//
+// Scope comes from the backend: club admins see every team, a coach sees
+// the teams they coach (and no payment amounts).
+class RsvpBoardScreen extends Screen {
+  constructor(navigation, auth) {
+    super(navigation, auth);
+    this.section = 'mens';     // mens | womens | boys | girls
+    this.window  = 'week';     // week | 2w | month | all
+    this.sort    = 'worst';    // worst | open | quiet | name
+    this.teamId  = null;
+    this.eventId = null;       // "unanswered for this event" filter
+    this.openOnly = false;
+    this.search  = '';
+    this.data    = null;
+    this.loading = false;
+    this.error   = null;
+    this._loadSeq = 0;
+  }
+
+  static get SECTIONS() { return { mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls' }; }
+  static get WINDOWS()  { return { week: 'This week', '2w': 'Last 2 weeks', month: 'Last month', all: 'All time' }; }
+  static get SORTS() {
+    return { worst: 'Worst RSVP %', open: 'Most unanswered now', quiet: 'Longest since last RSVP', name: 'Name' };
+  }
+
+  render() {
+    const div = document.createElement('div');
+    div.className = 'screen';
+    div.innerHTML = `
+      <style>
+        .rb-chip { padding:5px 12px; border-radius:999px; cursor:pointer; font-weight:600; font-size:0.8rem;
+                   border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); }
+        .rb-chip.on { background:var(--primary-color); color:#fff; border-color:transparent; }
+        .rb-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:var(--space-2); }
+        .rb-card { border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary);
+                   padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+        .rb-pct { font-size:1.5rem; font-weight:800; line-height:1; }
+        .rb-good { color:#4ade80; } .rb-mid { color:#facc15; } .rb-bad { color:#f87171; } .rb-none { opacity:0.4; }
+        .rb-row { display:flex; justify-content:space-between; gap:8px; font-size:0.78rem; }
+        .rb-row .k { opacity:0.6; white-space:nowrap; }
+        .rb-row .v { text-align:right; }
+        .rb-open { font-size:0.78rem; margin:0; padding-left:16px; }
+        .rb-btn { padding:4px 10px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.72rem; color:#fff; }
+        .rb-btn[disabled] { opacity:0.35; cursor:not-allowed; }
+        .rb-pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:0.7rem; font-weight:700; }
+      </style>
+      <div class="screen-header">
+        <button class="btn btn-secondary back-btn">← Back</button>
+        <h1>✅ RSVPs</h1>
+        <p class="subtitle">Who owes an answer — remind them with their unanswered events and a sign-in link</p>
+      </div>
+      <div style="padding: var(--space-4); max-width: 1500px; margin: 0 auto;">
+        <div id="rb-sections" style="display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
+        <div id="rb-windows"  style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
+        <div id="rb-teams"    style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
+        <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-3);">
+          <label style="font-size:0.8rem; opacity:0.75;">Sort
+            <select id="rb-sort" style="margin-left:4px; padding:5px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);"></select>
+          </label>
+          <select id="rb-event" title="Show only players who have not answered this event"
+                  style="padding:5px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); max-width:100%;"></select>
+          <label style="font-size:0.8rem; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="checkbox" id="rb-open-only"> Unanswered now only
+          </label>
+          <input id="rb-search" type="search" placeholder="Search player…"
+                 style="padding:6px 10px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); min-width:160px;">
+          <span style="flex:1;"></span>
+          <button id="rb-refresh" class="btn btn-secondary" style="padding:4px 12px; font-size:0.85rem;">🔄 Refresh</button>
+        </div>
+        <div id="rb-summary" style="font-size:0.8rem; opacity:0.75; margin-bottom:var(--space-2);"></div>
+        <div id="rb-body"></div>
+      </div>
+    `;
+    this.element = div;
+    this._wireEvents();
+    return div;
+  }
+
+  onEnter(params) {
+    if (params && params.section && RsvpBoardScreen.SECTIONS[params.section]) this.section = params.section;
+    this._renderChips();
+    this.load();
+  }
+
+  _wireEvents() {
+    this.element.addEventListener('click', (e) => {
+      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
+      const sec = e.target.closest('[data-section]');
+      if (sec) { this.section = sec.dataset.section; this.teamId = null; this.eventId = null; this._renderChips(); this.load(); return; }
+      const win = e.target.closest('[data-window]');
+      if (win) { this.window = win.dataset.window; this._renderChips(); this.load(); return; }
+      const team = e.target.closest('[data-team]');
+      if (team) { this.teamId = team.dataset.team ? Number(team.dataset.team) : null; this._renderBody(); return; }
+      if (e.target.closest('#rb-refresh')) { this.load(); return; }
+      const remind = e.target.closest('[data-remind]');
+      if (remind && !remind.disabled) { this._remind(remind); return; }
+    });
+    this.element.addEventListener('change', (e) => {
+      if (e.target.id === 'rb-sort')      { this.sort = e.target.value; this._renderBody(); }
+      if (e.target.id === 'rb-event')     { this.eventId = e.target.value ? Number(e.target.value) : null; this._renderBody(); }
+      if (e.target.id === 'rb-open-only') { this.openOnly = e.target.checked; this._renderBody(); }
+    });
+    this.element.addEventListener('input', (e) => {
+      if (e.target.id === 'rb-search') { this.search = e.target.value.trim().toLowerCase(); this._renderBody(); }
+    });
+  }
+
+  _renderChips() {
+    const chip = (attr, key, label, on) =>
+      `<button class="rb-chip${on ? ' on' : ''}" data-${attr}="${key}">${this.escapeHtml(label)}</button>`;
+    this.find('#rb-sections').innerHTML = Object.entries(RsvpBoardScreen.SECTIONS)
+      .map(([k, l]) => chip('section', k, l, k === this.section)).join('');
+    this.find('#rb-windows').innerHTML = Object.entries(RsvpBoardScreen.WINDOWS)
+      .map(([k, l]) => chip('window', k, l, k === this.window)).join('');
+    this.find('#rb-sort').innerHTML = Object.entries(RsvpBoardScreen.SORTS)
+      .map(([k, l]) => `<option value="${k}"${k === this.sort ? ' selected' : ''}>${this.escapeHtml(l)}</option>`).join('');
+  }
+
+  async load() {
+    const seq = ++this._loadSeq;
+    this.loading = true; this.error = null;
+    this._renderBody();
+    try {
+      const res = await this.auth.fetch(`/api/rsvp-board?section=${encodeURIComponent(this.section)}&window=${encodeURIComponent(this.window)}`);
+      const body = await res.json().catch(() => ({}));
+      if (seq !== this._loadSeq) return;           // a newer load superseded this one
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      this.data = body;
+    } catch (err) {
+      if (seq !== this._loadSeq) return;
+      this.data = null;
+      this.error = err.message || 'Failed to load.';
+    }
+    this.loading = false;
+    if (this.isMounted) this._renderBody();
+  }
+
+  // ── Body ────────────────────────────────────────────────────────
+  _renderBody() {
+    const bodyEl = this.find('#rb-body');
+    if (!bodyEl) return;
+    if (this.loading) {
+      // The list waits on a LeagueApps sync so dues are fresh.
+      bodyEl.innerHTML = `<div style="opacity:0.7; padding:var(--space-4);">Loading — syncing LeagueApps so dues are current…</div>`;
+      return;
+    }
+    if (this.error) {
+      bodyEl.innerHTML = `<div style="color:#f87171; padding:var(--space-4);">⚠️ ${this.escapeHtml(this.error)}</div>`;
+      return;
+    }
+    const people = (this.data && this.data.people) || [];
+
+    // Team chips + event filter come from the loaded rows.
+    const teams = new Map();
+    const events = new Map();
+    for (const p of people) {
+      for (const t of (p.teams || [])) teams.set(t.id, t.label);
+      for (const ev of (p.open_events || [])) events.set(ev.fh_event_id, ev.line);
+    }
+    this.find('#rb-teams').innerHTML = teams.size > 1
+      ? [`<button class="rb-chip${this.teamId == null ? ' on' : ''}" data-team="">All teams</button>`]
+          .concat([...teams].map(([id, label]) =>
+            `<button class="rb-chip${this.teamId === id ? ' on' : ''}" data-team="${id}">${this.escapeHtml(label)}</button>`))
+          .join('')
+      : '';
+    if (this.eventId != null && !events.has(this.eventId)) this.eventId = null;
+    this.find('#rb-event').innerHTML = `<option value="">Unanswered for: any event</option>` +
+      [...events].map(([id, line]) =>
+        `<option value="${id}"${id === this.eventId ? ' selected' : ''}>Unanswered for: ${this.escapeHtml(line)}</option>`).join('');
+
+    const list = people.filter(p =>
+      (this.teamId == null || (p.teams || []).some(t => t.id === this.teamId)) &&
+      (this.eventId == null || (p.open_events || []).some(ev => ev.fh_event_id === this.eventId)) &&
+      (!this.openOnly || (p.open_events || []).length > 0) &&
+      (!this.search || `${p.first_name} ${p.last_name}`.toLowerCase().includes(this.search)));
+
+    const ts = (iso) => iso ? new Date(iso).getTime() : 0;
+    const byName = (a, b) => `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`);
+    const sorters = {
+      // Nobody-expected players (null %) sink to the bottom of the % sort.
+      worst: (a, b) => (a.rsvp_pct == null) - (b.rsvp_pct == null) || (a.rsvp_pct - b.rsvp_pct)
+                       || (b.open_events.length - a.open_events.length) || byName(a, b),
+      open:  (a, b) => (b.open_events.length - a.open_events.length) || (a.rsvp_pct ?? 101) - (b.rsvp_pct ?? 101) || byName(a, b),
+      quiet: (a, b) => ts(a.last_rsvp_at) - ts(b.last_rsvp_at) || byName(a, b),
+      name:  byName,
+    };
+    list.sort(sorters[this.sort] || sorters.worst);
+
+    const owing = list.filter(p => p.open_events.length > 0).length;
+    this.find('#rb-summary').textContent =
+      `${list.length} player${list.length === 1 ? '' : 's'} · ${owing} with unanswered events right now · ` +
+      `RSVP % covers ${RsvpBoardScreen.WINDOWS[this.window].toLowerCase()} (practices & games, from the day they joined the team)`;
+
+    bodyEl.innerHTML = list.length
+      ? `<div class="rb-grid">${list.map(p => this._renderCard(p)).join('')}</div>`
+      : `<div style="opacity:0.7; padding:var(--space-4);">Nobody matches these filters.</div>`;
+  }
+
+  _fmtDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+    const when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return days <= 0 ? `${when} (today)` : `${when} (${days}d ago)`;
+  }
+
+  _renderCard(p) {
+    const pct = p.rsvp_pct;
+    const pctCls = pct == null ? 'rb-none' : pct >= 80 ? 'rb-good' : pct >= 50 ? 'rb-mid' : 'rb-bad';
+    const teams = (p.teams || []).map(t => this.escapeHtml(t.label)).join(' · ');
+    const open = p.open_events || [];
+
+    const lastRsvp = p.last_rsvp_at
+      ? `${this._fmtDate(p.last_rsvp_at)}${p.last_rsvp_via === 'standing' ? ' · standing default' : ''}`
+      : '<span class="rb-bad">never</span>';
+    // A standing default can be newer than anything the player did
+    // themselves — show their last own tap when it differs.
+    const lastManual = (p.last_manual_rsvp_at && p.last_manual_rsvp_at !== p.last_rsvp_at)
+      ? `<div class="rb-row"><span class="k">Last own tap</span><span class="v">${this._fmtDate(p.last_manual_rsvp_at)}</span></div>` : '';
+
+    let dues;
+    if (p.months_overdue == null) dues = `<span class="rb-pill" style="background:rgba(148,163,184,0.2);">No membership</span>`;
+    else if (p.months_overdue === 0) dues = `<span class="rb-pill" style="background:rgba(34,197,94,0.18); color:#4ade80;">Dues current</span>`;
+    else dues = `<span class="rb-pill" style="background:rgba(239,68,68,0.18); color:#f87171;">Dues ${p.months_overdue} mo behind</span>`;
+    if (p.dues_variant === 'inactive') dues += ` <span class="rb-pill" style="background:rgba(148,163,184,0.2);">Inactive tier</span>`;
+
+    // Payment rows are admin-only; the backend omits the fields for coaches.
+    const payment = ('last_payment_at' in p)
+      ? `<div class="rb-row"><span class="k">Last payment</span><span class="v">${p.last_payment_at
+          ? `$${Number(p.last_payment_amount).toFixed(2)} · ${this._fmtDate(p.last_payment_at)}`
+          : '<span class="rb-bad">none on record</span>'}</span></div>` : '';
+
+    const rem = p.last_reminder;
+    const reminded = rem
+      ? `${rem.channel === 'sms' ? '💬' : '✉'} ${this._fmtDate(rem.sent_at)}${rem.by ? ` · ${this.escapeHtml(rem.by)}` : ''}`
+      : '—';
+
+    const to = p.youth ? ` (to parent${p.parent_first_name ? ' ' + this.escapeHtml(p.parent_first_name) : ''})` : '';
+    const btn = (channel, icon, has, bg) => {
+      const why = !open.length ? 'Nothing unanswered in the released week' : !has
+        ? (channel === 'sms' ? 'No mobile number on file' : 'No email on file')
+        : `${channel === 'sms' ? 'Text' : 'Email'} the ${open.length} unanswered event${open.length === 1 ? '' : 's'} + sign-in link${to}`;
+      return `<button class="rb-btn" data-remind="${channel}" data-person-id="${p.person_id}"
+                      style="background:${bg};" title="${this.escapeHtml(why)}"${(!open.length || !has) ? ' disabled' : ''}>${icon} REMIND</button>`;
+    };
+
+    return `
+      <div class="rb-card" data-card="${p.person_id}">
+        <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+          <div style="min-width:0;">
+            <div style="font-weight:800;">${this.escapeHtml(p.first_name)} ${this.escapeHtml(p.last_name)}</div>
+            <div style="font-size:0.72rem; opacity:0.65;">${teams}${p.youth ? ' · youth' : ''}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="rb-pct ${pctCls}">${pct == null ? '—' : pct + '%'}</div>
+            <div style="font-size:0.68rem; opacity:0.6;">${p.expected ? `answered ${p.answered} of ${p.expected}` : 'no events in window'}</div>
+          </div>
+        </div>
+        ${open.length
+          ? `<div style="font-size:0.78rem; font-weight:700;" class="rb-bad">Unanswered now (${open.length})</div>
+             <ul class="rb-open">${open.map(ev => `<li>${this.escapeHtml(ev.line)}</li>`).join('')}</ul>`
+          : `<div style="font-size:0.78rem;" class="rb-good">✓ Nothing unanswered in the released week</div>`}
+        <div class="rb-row"><span class="k">Last RSVP</span><span class="v">${lastRsvp}</span></div>
+        ${lastManual}
+        <div class="rb-row"><span class="k">Dues</span><span class="v">${dues}</span></div>
+        ${payment}
+        <div class="rb-row"><span class="k">Last reminded</span><span class="v" data-reminded>${reminded}</span></div>
+        <div style="display:flex; gap:6px; margin-top:2px;">
+          ${btn('sms', '💬', p.has_phone, '#0284c7')}
+          ${btn('email', '✉', p.has_email, '#7c3aed')}
+        </div>
+      </div>`;
+  }
+
+  // POST builds the message server-side (unanswered events + the
+  // recipient's magic link), logs it, and hands back the compose href for
+  // THIS device's Messages / Gmail.  Nothing is sent until the operator
+  // presses send there.  Opening after an await works in practice for
+  // sms: and Gmail compose — same as the LINK / WELCOME buttons.
+  async _remind(btn) {
+    const channel  = btn.dataset.remind === 'email' ? 'email' : 'sms';
+    const personId = Number(btn.dataset.personId);
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (this.auth && this.auth.token) headers['Authorization'] = `Bearer ${this.auth.token}`;
+      const res = await fetch('/api/rsvp-board/remind', {
+        method: 'POST', headers, credentials: 'same-origin',
+        body: JSON.stringify({ person_id: personId, channel }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+      const person = ((this.data && this.data.people) || []).find(p => p.person_id === personId);
+      if (person) person.last_reminder = data.last_reminder;
+      if (channel === 'email') this.openGmailCompose(data.gmail_href);
+      else window.location.href = data.sms_href;
+
+      btn.textContent = `${channel === 'sms' ? '💬' : '✉'} ✓`;
+      btn.disabled = false;
+      const card = btn.closest('[data-card]');
+      const slot = card && card.querySelector('[data-reminded]');
+      if (slot && data.last_reminder) {
+        slot.textContent = `${channel === 'sms' ? '💬' : '✉'} ${this._fmtDate(data.last_reminder.sent_at)}` +
+          (data.last_reminder.by ? ` · ${data.last_reminder.by}` : '');
+      }
+    } catch (err) {
+      btn.textContent = original;
+      btn.disabled = false;
+      btn.title = err.message;
+      console.warn('[rsvps] remind failed:', err);
+      const card = btn.closest('[data-card]');
+      const slot = card && card.querySelector('[data-reminded]');
+      if (slot) slot.innerHTML = `<span class="rb-bad">${this.escapeHtml(err.message)}</span>`;
+    }
+  }
+}

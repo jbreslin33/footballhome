@@ -63,6 +63,7 @@ class App {
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
       payments: new PaymentsScreen(this.navigation, this.auth),
       reports: new ReportsScreen(this.navigation, this.auth),
+      rsvps: new RsvpBoardScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
       lineups: new LineupsScreen(this.navigation, this.auth),
@@ -145,6 +146,9 @@ class App {
     // Reports hub (#reports) — Attendance & RSVP report; Payments chip
     // hands off to #payments. See screens/reports.js.
     this.screenManager.register('reports', this.screens.reports);
+    // RSVP follow-up board (#rsvps) — who owes an answer + tracked reminders.
+    // See screens/rsvps.js.
+    this.screenManager.register('rsvps', this.screens.rsvps);
     this.screenManager.register('messages', this.screens.messages);
     this.screenManager.register('rsvp-eligibility', this.screens.rsvpEligibility);
     // Mens is the default; womens is the same screen with a gender param.

@@ -147,10 +147,16 @@
 #                     laGet() — this allowlist entry only covers the
 #                     chat gate.
 #
+#   RsvpBoard       — reads dues + the boys/girls split for #rsvps.  Only
+#                     caller is RsvpBoardController, whose list route is
+#                     registered through laGet() (section's programmes);
+#                     reminderContext() passes section '' so the girl CTE
+#                     is never consulted there.
+#
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge)|backend/src/core/Controller|backend/src/controllers/MyController)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard)|backend/src/core/Controller|backend/src/controllers/MyController)'
 
 set -euo pipefail
 
