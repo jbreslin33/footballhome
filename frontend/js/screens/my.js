@@ -41,7 +41,6 @@ class MyScreen extends Screen {
     this.eventSaving    = new Set();     // "fh_event_id:response" tokens in-flight
     this.dataError      = null;
     this.expandedEventId = null;         // toggled by the compact View button
-    this.remindedKeys   = new Set();     // "fh_event_id:person_id" already nudged this session
     this.notGoingExpandedEvents = new Set(); // fh_event_ids with "Not Going" list open
     // Invites (fh_event_invites, migration 355): coach-side picker state.
     this.invitePanelEvents = new Set();      // fh_event_ids with the invite panel open
@@ -258,26 +257,6 @@ class MyScreen extends Screen {
             this._setAttendance(fhEventId, personId, status);
           }
         }
-        return;
-      }
-      // Per-person "Remind" nudge — mints the recipient's magic link,
-      // then opens the clicker's own Messages/Gmail pre-filled (they
-      // still hit send). See _sendReminder.
-      const remindBtn = target.closest('[data-remind-key]');
-      if (remindBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!remindBtn.disabled) this._sendReminder(remindBtn);
-        return;
-      }
-      // Bulk "Email N No Response" — BCC compose to everyone still
-      // showing no response for one event, same pattern as the old
-      // coach reminders board's per-column bulk button.
-      const emailNoResponseBtn = target.closest('[data-email-noresponse]');
-      if (emailNoResponseBtn) {
-        e.stopPropagation();
-        const fhEventId = parseInt(emailNoResponseBtn.getAttribute('data-email-noresponse'), 10);
-        if (fhEventId) this._emailNoResponse(fhEventId);
         return;
       }
       // Bulk "Email N Going" — BCC compose, blank body for a custom message
@@ -772,67 +751,11 @@ class MyScreen extends Screen {
       return entry && (entry.status === 'present' || entry.status === 'late');
     }).length;
 
-    // Per-person reminder buttons → _sendReminder. Each channel tracks
-    // its own "already reminded" key so texting someone doesn't hide the
-    // option to also email them. Shared by both the Players and Coaches
-    // No Response groups.
-    //
-    // These are ONE-person sends, so under the auth model (owner
-    // 2026-09-05: every individual FH link is a magic link) the body
-    // carries a token minted for the recipient — not the bare
-    // footballhome.org/#my the old sms:/mailto: anchors here shipped.
-    // Youth rows carry parent_person_id; the token is minted for the
-    // parent, who is the one that RSVPs.
-    const eventTitle = this._eventTitle(ev);
-    const remindRowsHtml = (list) => list.map(r => {
-      const name = nameOf(r);
-      let actionsHtml;
-      if (isPast) {
-        actionsHtml = `<span style="font-size:0.66rem; opacity:0.5;">—</span>`;
-      } else {
-        const smsKey   = `${ev.fh_event_id}:${r.person_id}:sms`;
-        const emailKey = `${ev.fh_event_id}:${r.person_id}:email`;
-        const mintPersonId = r.parent_person_id || r.person_id || '';
-        const remindBtn = (channel, contact, key, icon, bg, verb) => `
-              <button type="button"
-                     data-remind-key="${this.escapeHtml(key)}" data-remind-icon="${icon}"
-                     data-remind-channel="${channel}"
-                     data-contact="${this.escapeHtml(contact)}"
-                     data-person-id="${this.escapeHtml(mintPersonId)}"
-                     data-first-name="${this.escapeHtml(r.first_name || '')}"
-                     data-event-title="${this.escapeHtml(eventTitle)}"
-                     title="${verb} ${this.escapeHtml(name)} a reminder with their sign-in link"
-                     style="font-size:0.68rem; font-weight:700; color:#0f172a; background:${bg};
-                            padding:3px 7px; border-radius:999px; border:none; cursor:pointer; line-height:1.4;">${icon}</button>`;
-
-        const smsBtn = this.remindedKeys.has(smsKey)
-          ? `<span style="font-size:0.62rem; opacity:0.55;">💬 ✓</span>`
-          : (r.phone
-              ? remindBtn('sms', r.phone, smsKey, '💬', '#38bdf8', 'Text')
-              : `<span style="font-size:0.6rem; opacity:0.35;" title="No SMS on file">💬</span>`);
-
-        const emailBtn = this.remindedKeys.has(emailKey)
-          ? `<span style="font-size:0.62rem; opacity:0.55;">📧 ✓</span>`
-          : (r.email
-              ? remindBtn('email', r.email, emailKey, '📧', '#a78bfa', 'Email')
-              : `<span style="font-size:0.6rem; opacity:0.35;" title="No email on file">📧</span>`);
-
-        actionsHtml = `<span style="display:flex; align-items:center; gap:4px;">${smsBtn}${emailBtn}</span>`;
-      }
-      return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(name)}${callupChip(r)}</span>
-          <span style="display:flex; align-items:center; gap:6px;">
-            ${this._attendanceCellHtml(ev.fh_event_id, r.person_id, att)}
-            ${actionsHtml}
-          </span>
-        </div>`;
-    }).join('');
-
     // Same label+count(+Present) shape for every RSVP status and for
     // both players and coaches — Going/Not Going/No Response all get
     // identical treatment instead of coaches only showing up under
     // Going. `rows` is pre-rendered so each status can supply its own
-    // row style (plain name+attendance vs. remind-action rows).
+    // rows.
     const groupHtml = (label, list, countWord, rows) => `
       <div style="display:flex; align-items:flex-start; gap:14px; margin-bottom:4px;">
         <div>
@@ -896,17 +819,13 @@ class MyScreen extends Screen {
         ` : ''}
         ${noResponseTotal ? `
           <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
-              <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
-                          color:rgba(226,232,240,0.75);">
-                No Response (${noResponseTotal})
-              </div>
-              ${this._bulkSmsNoResponseBtnHtml(ev, noResponsePlayers.concat(noResponseCoaches), isPast)}
-              ${this._bulkEmailNoResponseBtnHtml(ev, noResponsePlayers.concat(noResponseCoaches), isPast)}
+            <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+                        color:rgba(226,232,240,0.75); margin-bottom:6px;">
+              No Response (${noResponseTotal})
             </div>
             <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
-              <div>${groupHtml('Players No Response', noResponsePlayers, 'no response', remindRowsHtml(noResponsePlayers))}</div>
-              <div>${groupHtml('Coaches No Response', noResponseCoaches, 'no response', remindRowsHtml(noResponseCoaches))}</div>
+              <div>${groupHtml('Players No Response', noResponsePlayers, 'no response', rowsHtml(noResponsePlayers))}</div>
+              <div>${groupHtml('Coaches No Response', noResponseCoaches, 'no response', rowsHtml(noResponseCoaches))}</div>
             </div>
           </div>
         ` : ''}
@@ -1140,153 +1059,6 @@ class MyScreen extends Screen {
             Split into ${chunks.length} group texts of ${CHUNK_SIZE} — carriers commonly cap group MMS around 10 people.
           </div>` : ''}
       </div>`;
-  }
-
-  // One-person RSVP reminder (💬 / 📧 on a No Response row).
-  //
-  // Auth model (owner 2026-09-05): a footballhome.org link sent to ONE
-  // person carries that person's magic-link token. So this mints via
-  // POST /api/auth/magic-link/mint and puts the verify URL in the body —
-  // one tap signs the player in (72h link, one-year sliding cookie) and
-  // lands on #calendar. The mint is person-only; the event is named in
-  // the text, not scoped on the token.
-  //
-  // The mint is admin/coach-only (403 otherwise). Any teammate can see
-  // these buttons, and a peer must never end up holding someone else's
-  // sign-in credential, so on 401/403 the body falls back to the plain
-  // https://footballhome.org/#my nudge — same message as before, minus
-  // the token.
-  //
-  // Youth: data-person-id is the PARENT's persons.id when the row has
-  // one (calendar rsvps carry parent_person_id), sent to the contact the
-  // row already resolved (parent's phone/email when the child has none).
-  //
-  // Navigation happens after an await; the LINK buttons on the roster
-  // boards (RosterScreenBase._onMagicLinkClick) already do this and it
-  // works in practice for sms: and for window.open on Gmail compose.
-  async _sendReminder(btn) {
-    const key      = btn.getAttribute('data-remind-key') || '';
-    const channel  = btn.getAttribute('data-remind-channel') === 'email' ? 'email' : 'sms';
-    const contact  = (btn.getAttribute('data-contact') || '').trim();
-    const personId = parseInt(btn.getAttribute('data-person-id'), 10) || 0;
-    const first    = btn.getAttribute('data-first-name') || '';
-    const title    = btn.getAttribute('data-event-title') || 'the game';
-    const icon     = btn.getAttribute('data-remind-icon') || '';
-    if (!contact) return;
-
-    btn.disabled = true;
-    btn.textContent = '⏳';
-
-    let url   = 'https://footballhome.org/#my';
-    let magic = false;
-    if (personId) {
-      try {
-        const data = await this._fetch('/api/auth/magic-link/mint', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ person_id: personId, channel, contact }),
-        });
-        if (data && data.url) { url = data.url; magic = true; }
-      } catch (err) {
-        // Not admin/coach (403), or mint down — plain link is the right
-        // body for a peer either way.
-        console.warn('[my] magic-link mint unavailable, sending plain link:', err.message);
-      }
-    }
-
-    const hey  = `Hey${first ? ' ' + first : ''}, don't forget to RSVP for ${title}!`;
-    const body = magic
-      ? `${hey} Tap to sign in and RSVP — no password needed, link works for 72 hours:\n${url}`
-      : `${hey} ${url}`;
-
-    if (channel === 'email') {
-      this.openGmailCompose(this.buildGmailComposeHref({
-        to: contact, subject: `RSVP needed for ${title}`, body,
-      }));
-    } else {
-      window.location.href = this.buildSmsComposeHref({ to: contact, body });
-    }
-
-    // Flip to "reminded" after one tap so a single viewer can't re-blast
-    // the same teammate all afternoon (session-local, per channel).
-    if (key) this.remindedKeys.add(key);
-    btn.textContent = icon ? `${icon} ✓` : 'Reminded ✓';
-    btn.style.opacity = '0.55';
-  }
-
-  // Bulk "Text N No Response" — one group sms: thread with everyone still
-  // showing no response for one event. Unlike the email bulk button (bcc,
-  // stays private) an sms: link with multiple recipients opens ONE group
-  // thread where everyone sees each other's number and replies — plain
-  // <a href>, no click handler needed (same as the individual per-row
-  // 💬 reminder links).
-  _bulkSmsNoResponseBtnHtml(ev, noResponseList, isPast) {
-    if (isPast) return '';
-    const phones = [...new Set(noResponseList.map(r => (r.phone || '').trim()).filter(Boolean))];
-    if (!phones.length) return '';
-    const eventTitle = this._eventTitle(ev);
-    const eventWhen = [this._eventDateStr(ev.starts_at), this._eventTimeStr(ev.starts_at)].filter(Boolean).join(' ');
-    const body = `Hi — you're currently showing as No Response for ${eventTitle}${eventWhen ? ' (' + eventWhen + ')' : ''}. Please RSVP here: https://footballhome.org/#my`;
-    const href = this.buildSmsComposeHref({ to: phones.join(','), body });
-    return `
-      <a href="${this.escapeHtml(href)}"
-         title="Open a group text with all ${phones.length} No Response player${phones.length !== 1 ? 's' : ''} — everyone in the group will see each other's number"
-         style="padding:3px 8px; border-radius:999px; text-decoration:none; display:inline-block;
-                background:#0ea5e9; color:#fff; font-size:0.66rem; font-weight:700;">
-        💬 Text ${phones.length} No Response
-      </a>`;
-  }
-
-  _bulkEmailNoResponseBtnHtml(ev, noResponseList, isPast) {
-    if (isPast) return '';
-    const emails = [...new Set(noResponseList.map(r => (r.email || '').trim()).filter(Boolean))];
-    if (!emails.length) return '';
-    return `
-      <button type="button" data-email-noresponse="${ev.fh_event_id}"
-              title="Open Gmail with all ${emails.length} No Response player${emails.length !== 1 ? 's' : ''} BCC'd"
-              style="padding:3px 8px; border-radius:999px; border:none; cursor:pointer;
-                     background:#ef4444; color:#fff; font-size:0.66rem; font-weight:700;">
-        📧 Email ${emails.length} No Response
-      </button>`;
-  }
-
-  // BCC compose to everyone still showing "no response" for one event —
-  // ported from the retired coach reminders board (mens-events-reminders.js).
-  _emailNoResponse(fhEventId) {
-    const ev = (this.events || []).find(e => e.fh_event_id === fhEventId)
-            || (this.oldEvents || []).find(e => e.fh_event_id === fhEventId);
-    if (!ev) return;
-
-    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-    const noResponse = rsvps.filter(r => r && !r.response);
-    const emails = [...new Set(noResponse.map(r => (r.email || '').trim()).filter(Boolean))];
-    if (!emails.length) {
-      alert('No email addresses on file for the No Response players.');
-      return;
-    }
-
-    const eventTitle = this._eventTitle(ev);
-    const eventWhen = [this._eventDateStr(ev.starts_at), this._eventTimeStr(ev.starts_at)].filter(Boolean).join(' ');
-    const venue = ev.location || '';
-
-    const lines = [
-      `Hi — you're currently showing as No Response for ${eventTitle}${eventWhen ? ' (' + eventWhen + ')' : ''}.`,
-      '',
-    ];
-    if (venue) lines.push(`Location: ${venue}`, '');
-    lines.push(
-      `Please RSVP here: https://footballhome.org/#my`,
-      '',
-      `While you're there, please also set your availability for the rest of this week — that way we don't have to message everyone again this week.`,
-      '',
-      `Thanks!`,
-    );
-    const body = lines.join('\n');
-    const subject = `RSVP needed for ${eventTitle}${eventWhen ? ' (' + eventWhen + ')' : ''}`;
-
-    // bcc (not to) so the group stays private from each other.
-    const href = this.buildGmailComposeHref({ bcc: emails.join(','), subject, body });
-    this.openGmailCompose(href);
   }
 
   // Bulk "Text N Going" — everyone already marked Going, blank body so the
