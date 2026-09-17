@@ -74,6 +74,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="game-center" id="rs-game-center" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🏟️</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Game Center</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Pick a game — set the squad, starters &amp; bench, and the result</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="rsvps" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">✅</span>
           <div style="flex: 1; text-align: left;">
@@ -297,7 +305,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps') this.navigation.context.role = role;
+    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'game-center') this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -309,6 +317,10 @@ class RoleSelectionScreen extends Screen {
       // Financial — straight to Payments (the only tile this section
       // has today; formerly buried under Club Admin's Billing group).
       this.navigation.goTo('payments');
+    } else if (role === 'game-center') {
+      // Not a role — the game picker (owner 2026-09-17: top level, for
+      // admins and coaches, to set lineups).
+      this.navigation.goTo('game-center', { pick: true });
     } else if (role === 'rsvps') {
       // Not a role — the RSVP follow-up board (owner 2026-09-17: top level).
       this.navigation.goTo('rsvps');
@@ -409,7 +421,12 @@ class RoleSelectionScreen extends Screen {
       if (!hasCoach && !hasAdmin) {
         this.navigation.context.role = 'player';
         this.navigation.goTo('my');
+        return;
       }
+      // A coach without an admin role still sets lineups — show them the
+      // 🏟️ Game Center tile the admin levels get by default.
+      const gc = this.element && this.element.querySelector('#rs-game-center');
+      if (gc) gc.style.display = 'flex';
     } catch (_e) {
       // Non-fatal — fall back to the manual picker.
     }

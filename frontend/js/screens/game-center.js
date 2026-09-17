@@ -548,10 +548,23 @@ class GameCenterScreen extends Screen {
     // match — Game Center answers to those entry points too, and they
     // keep working unchanged.
     const ctxMatch = this.navigation?.context?.match || null;
-    const rawMatchId = params.matchId != null ? params.matchId : ctxMatch?.id;
+    // params.pick — the top-level 🏟️ Game Center tile (owner 2026-09-17:
+    // "a game center at top level for admin/coaches. so i can set
+    // lineups"): no game yet, so show the picker and ignore whatever
+    // match an earlier screen left in the navigation context.
+    const rawMatchId = params.pick ? null
+      : (params.matchId != null ? params.matchId : ctxMatch?.id);
     this.matchId = rawMatchId != null ? Number(rawMatchId) : null;
-    this.title   = params.title || ctxMatch?.title || '';
+    this.title   = params.pick ? '' : (params.title || ctxMatch?.title || '');
     this.when    = params.when || '';
+    // params.view === 'player' — the #my door.  Owner 2026-09-17: "the my
+    // page should be player view for admin and coaches too. so its not
+    // confusing."  My is where you look at the lineup; the top-level
+    // Game Center is where staff set it.
+    this.playerOnly = params.view === 'player';
+    this.games = null;
+    this.error = null;
+    this.loaded = false;
     this.viewMode = 'coach';
     this.pill    = this._resolvePill(params);
     this.announceEditing = false;
@@ -611,6 +624,7 @@ class GameCenterScreen extends Screen {
   // never navigation.context.user.role.
   _canPostSocial() {
     if (this.auth && this.auth.viewAsPersonId) return false;
+    if (this.playerOnly) return false;   // the #my door is look-only
     const role = (this.navigation?.context?.user?.role || '').toString().toLowerCase();
     return ['club', 'super', 'marketing'].includes(role);
   }
@@ -621,6 +635,16 @@ class GameCenterScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
         this.navigation.goBack();
+        return;
+      }
+      const pick = e.target.closest('[data-pick-game]');
+      if (pick && this.games) {
+        const ev = this.games[Number(pick.getAttribute('data-pick-game'))];
+        if (ev && ev.match_id != null) {
+          this.navigation.goTo('game-center', {
+            matchId: ev.match_id, title: this._gameLabel(ev), when: this._gameWhen(ev),
+          });
+        }
         return;
       }
       const viewToggle = e.target.closest('#gl-view-toggle');
@@ -802,9 +826,11 @@ class GameCenterScreen extends Screen {
   async _bootstrap() {
     const sub = this.find('#gl-subtitle');
     if (!this.matchId) {
-      this.error = 'No match specified.';
-      if (sub) sub.textContent = this.error;
+      if (sub) sub.textContent = 'Pick a game';
+      const social = this.find('#gc-social');
+      if (social) social.innerHTML = '';
       this._render();
+      await this._loadGames();
       return;
     }
     if (sub) sub.textContent = [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
@@ -847,7 +873,8 @@ class GameCenterScreen extends Screen {
       // "players dont need player lineup view lol... there view is default
       // player") so view-as always renders exactly what the impersonated
       // player would see — no coach toggle, no edit tools, default view.
-      this.isCoach = !!lineupData.data.isCoach && !(this.auth && this.auth.viewAsPersonId);
+      this.isCoach = !!lineupData.data.isCoach && !(this.auth && this.auth.viewAsPersonId)
+        && !this.playerOnly;
       this.zones = new Map();
       this.positions = new Map();
       this.benchOrder = new Map();
@@ -1064,12 +1091,71 @@ class GameCenterScreen extends Screen {
     }
   }
 
+  // ── Game picker (no match yet) ──────────────────────────────────────
+  // The top-level entry: every upcoming game on the club calendar, soonest
+  // first.  Same feed as #calendar (GET /api/calendar/upcoming), so a game
+  // shows here exactly when it shows there.  Opening one is a goTo, so
+  // Back returns to this list.  Who may EDIT a game is still decided per
+  // game by the backend (isCoach on the lineup load).
+  async _loadGames() {
+    try {
+      const d = new Date();
+      const start = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const res = await this.auth.fetch(`/api/calendar/upcoming?start=${start}&days=28`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      const events = Array.isArray(body.events) ? body.events : [];
+      this.games = events
+        .filter(ev => ev.kind === 'match')
+        .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
+    } catch (err) {
+      console.error('[game-center] games load failed:', err);
+      this.error = 'Could not load the upcoming games.';
+    }
+    if (!this.matchId) this._render();
+  }
+
+  _gameLabel(ev) {
+    const teams = (Array.isArray(ev.teams) ? ev.teams : []).map(t => t.name).filter(Boolean).join(' + ');
+    const vs = ev.opponent ? `${ev.is_home === false ? '@' : 'vs'} ${ev.opponent}` : '';
+    return [teams, vs].filter(Boolean).join(' ') || 'Game';
+  }
+
+  _gameWhen(ev) {
+    const d = new Date(ev.starts_at);
+    if (isNaN(d.getTime())) return '';
+    const day  = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `${day} · ${time}`;
+  }
+
+  _renderGamePicker() {
+    if (!this.games.length) {
+      return `<div class="empty-state" style="padding: var(--space-4); text-align:center; opacity:0.8;">No games on the calendar in the next four weeks.</div>`;
+    }
+    return `<div style="display:flex; flex-direction:column; gap:8px; max-width:640px; margin:0 auto; padding-bottom: var(--space-6);">
+      ${this.games.map((ev, i) => {
+        const linked = ev.match_id != null;
+        return `<button type="button" class="btn btn-secondary" data-pick-game="${i}" ${linked ? '' : 'disabled'}
+                        style="display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; padding:10px 12px;">
+          <span style="font-weight:700;">${this.escapeHtml(this._gameLabel(ev))}</span>
+          <span style="font-size:0.8rem; opacity:0.8;">${this.escapeHtml([this._gameWhen(ev), ev.location].filter(Boolean).join(' · '))}</span>
+          ${linked ? '' : '<span style="font-size:0.72rem; color:#f59e0b;">Not linked to a team yet — tag a team on the calendar event</span>'}
+        </button>`;
+      }).join('')}
+    </div>`;
+  }
+
   _render() {
     const box = this.find('#gl-body');
     if (!box) return;
 
     if (this.error) {
       box.innerHTML = `<div class="empty-state" style="padding: var(--space-4); text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`;
+      return;
+    }
+    if (!this.matchId && this.games) {
+      box.innerHTML = this._renderGamePicker();
       return;
     }
     if (!this.loaded) {

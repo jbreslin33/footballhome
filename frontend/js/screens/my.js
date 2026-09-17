@@ -235,6 +235,9 @@ class MyScreen extends Screen {
             matchId,
             title: gameCenterBtn.getAttribute('data-game-center-title') || '',
             when: gameCenterBtn.getAttribute('data-game-center-when') || '',
+            // My is for looking, for everyone — staff set lineups from the
+            // top-level Game Center tile (owner 2026-09-17).
+            view: 'player',
           });
         }
         return;
@@ -1412,7 +1415,7 @@ class MyScreen extends Screen {
                       data-game-center-title="${this.escapeHtml(title)}"
                       data-game-center-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"
                       style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
-                🏟️ Game Center
+                📋 Lineup
               </button>
             ` : ''}
           </div>
