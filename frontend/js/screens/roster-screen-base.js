@@ -939,10 +939,6 @@ class RosterScreenBase extends Screen {
     // sizes the column from. flex:0 0 auto keeps the name at its natural
     // width and makes the column widen to hold it.
     const isScroll = this.viewMode === 'scroll';
-    const nameClipStyle = isScroll
-      ? 'flex:0 0 auto; white-space:nowrap;'
-      : 'min-width:0; flex:1; white-space:normal; overflow-wrap:break-word;';
-
     // Same min-width story as colBoxMinWidth(), one level down: every
     // wrapper between the grid track and the name has to keep its
     // intrinsic width in 'scroll', or the track is sized from a card
@@ -950,32 +946,12 @@ class RosterScreenBase extends Screen {
     // again. 'fit' keeps 0 — there, shrinking is the point.
     const boxMin = isScroll ? 'auto' : '0';
 
-    // In 'fit' the slot picker moves down to the chip row. It is a real
-    // <select> and never gets narrower than its widest option, so sharing
-    // row 1 with the name left the name ~44px of a 110px card — six lines
-    // for one name, the letter-per-line report all over again. One item
-    // per line means the name gets the line to itself.
-    const nameRow = `
-          <div style="display:flex; align-items:center; gap:4px; min-width:${boxMin};">
-            ${isScroll ? posControl : ''}
-            <strong style="font-size:0.72rem; line-height:1.2; ${nameClipStyle}">${fullName}</strong>
-          </div>`;
     const statusNow = statusSelectHtml ? (player.rosterStatus || '') : '';
     const statusMeta = statusNow ? RosterScreenBase.rosterStatusByCode(statusNow) : null;
     const statusChip = statusSelectHtml
       ? `<span data-roster-status-chip ${statusNow ? '' : 'hidden'}
                style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap; ${this.rosterStatusStyle(statusNow)}">${this.escape((statusMeta && statusMeta.displayName) || statusNow)}</span>`
       : '';
-    const chipRow = `
-          <div style="display:flex; align-items:center; gap:4px; min-width:${boxMin}; flex-wrap:wrap; row-gap:1px;">
-            ${isScroll ? '' : posControl}
-            ${dobMarkup}
-            ${ageChip}
-            ${duesLabel}
-            ${statusChip}
-            ${activeTeamsBadge}
-            ${pickupBadge}
-          </div>`;
     // ⋯ actions menu (owner 2026-09-17: "can we make the buttons on player
     // card on teams in a drop down to save space? so many buttons lol…
     // cards with less height so its easier to see more of roster going
@@ -1003,42 +979,32 @@ class RosterScreenBase extends Screen {
 
     const cardBaseStyle = `background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:${boxMin};`;
 
-    // 'fit' stacks one item per line (owner 2026-08-26: "the fit pill
-    // would have to probably do 1 item per line"). In a Fit column —
-    // 110px once nine teams are on screen — a side-by-side row hands the
-    // name whatever the control strip leaves over, which is nothing. One
-    // per line gives the name the card's full width, and the card simply
-    // grows taller, which is the trade Fit already advertises.
-    if (!isScroll) {
-      // Controls ride at the end of the chip row now that there are at
-      // most three of them — no third row, so the card stays short.
-      return `
-      <div id="${cardId}" class="${cardClass}" data-roster-card ${dragAttrs} ${laUidAttr} style="${cardBaseStyle} display:flex; flex-direction:column; gap:1px;">
-        ${nameRow}
-        <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; row-gap:1px; min-width:0;">
-          ${chipRow}
-          <span style="display:inline-flex; align-items:stretch; gap:4px; margin-left:auto;">${controls}</span>
-        </div>
-      </div>
-    `;
-    }
-
-    // 'scroll': name and controls share one row, so the card stays thin
-    // ("Scroll should be thin cards since it allows scroll right to
-    // left") and the column, not the card, is what stretches to hold the
-    // name. The control strip is nowrap here on purpose — wrapping would
-    // let the column size itself as if only one button had to fit, and
-    // the card holding the longest name would be the one that grew a
-    // second row of buttons. Uniform cards is the whole point of Scroll.
+    // ONE row (owner 2026-09-17: "when there is enough space across we
+    // should only need 1 row on card as name can go in line"): rank, name,
+    // chips, then ⋯ pushed to the right edge.
+    //   'scroll' — never wraps; the column widens to hold the row, so
+    //              every card is exactly one line tall.
+    //   'fit'    — the same row, allowed to wrap: one line when the column
+    //              is wide enough, and the chips drop under the name only
+    //              when it is not.  The name keeps a floor (its longest
+    //              word, via overflow-wrap:break-word) so a narrow column
+    //              wraps the chips away rather than crushing the name to a
+    //              letter per line.
+    const nameStyle = isScroll
+      ? 'flex:0 0 auto; white-space:nowrap;'
+      : 'flex:1 1 auto; min-width:min-content; white-space:normal; overflow-wrap:break-word;';
     return `
-      <div id="${cardId}" class="${cardClass}" data-roster-card ${dragAttrs} ${laUidAttr} style="${cardBaseStyle} display:flex; flex-direction:row; align-items:stretch; gap:4px;">
-        <div style="display:flex; flex-direction:column; gap:0; flex:1; min-width:auto;">
-          ${nameRow}
-          ${chipRow}
-        </div>
-        <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px; flex-wrap:nowrap; justify-content:flex-end; align-self:flex-start;">
-          ${controls}
-        </div>
+      <div id="${cardId}" class="${cardClass}" data-roster-card ${dragAttrs} ${laUidAttr}
+           style="${cardBaseStyle} display:flex; flex-direction:row; align-items:center; gap:4px; flex-wrap:${isScroll ? 'nowrap' : 'wrap'}; row-gap:1px;">
+        ${posControl}
+        <strong style="font-size:0.72rem; line-height:1.2; ${nameStyle}">${fullName}</strong>
+        ${dobMarkup}
+        ${ageChip}
+        ${duesLabel}
+        ${statusChip}
+        ${activeTeamsBadge}
+        ${pickupBadge}
+        <span style="display:inline-flex; align-items:stretch; margin-left:auto;">${controls}</span>
       </div>
     `;
   }
