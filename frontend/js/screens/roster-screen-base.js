@@ -362,6 +362,14 @@ class RosterScreenBase extends Screen {
     select.style.background  = c.bg;
     select.style.color       = c.fg;
     select.style.borderColor = c.border;
+    // The card's read-only status chip mirrors the select in its ⋯ menu.
+    const card = select.closest('[data-roster-card]');
+    const chip = card && card.querySelector('[data-roster-status-chip]');
+    if (chip) {
+      chip.hidden = !select.value;
+      chip.textContent = select.value ? (select.selectedOptions[0]?.textContent || select.value) : '';
+      chip.style.background = c.bg; chip.style.color = c.fg; chip.style.border = `1px solid ${c.border}`;
+    }
   }
 
   static countsAsOnRoster(status) {
@@ -952,16 +960,46 @@ class RosterScreenBase extends Screen {
             ${isScroll ? posControl : ''}
             <strong style="font-size:0.72rem; line-height:1.2; ${nameClipStyle}">${fullName}</strong>
           </div>`;
+    const statusNow = statusSelectHtml ? (player.rosterStatus || '') : '';
+    const statusMeta = statusNow ? RosterScreenBase.rosterStatusByCode(statusNow) : null;
+    const statusChip = statusSelectHtml
+      ? `<span data-roster-status-chip ${statusNow ? '' : 'hidden'}
+               style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap; ${this.rosterStatusStyle(statusNow)}">${this.escape((statusMeta && statusMeta.displayName) || statusNow)}</span>`
+      : '';
     const chipRow = `
           <div style="display:flex; align-items:center; gap:4px; min-width:${boxMin}; flex-wrap:wrap; row-gap:1px;">
             ${isScroll ? '' : posControl}
             ${dobMarkup}
             ${ageChip}
             ${duesLabel}
+            ${statusChip}
             ${activeTeamsBadge}
             ${pickupBadge}
           </div>`;
-    const controls = `${rosterSelectHtml}${roleSelectHtml}${statusSelectHtml}${viewButtonHtml}`;
+    // ⋯ actions menu (owner 2026-09-17: "can we make the buttons on player
+    // card on teams in a drop down to save space? so many buttons lol…
+    // cards with less height so its easier to see more of roster going
+    // down a col").  Everything a coach TAPS — role, profile, contact,
+    // link, welcome, registration/docs nudges, and the team / status /
+    // role pickers — folds into one popover ("pretty much all the buttons
+    // can just go in 1 drop down").  What a coach READS stays on the
+    // card: the roster status, as a read-only colour chip (statusChip).
+    // The status <select> stays in the DOM inside the closed popover, so
+    // the column tallies that count those selects are unaffected.
+    // Same <details> popover as the move control, so the shared
+    // outside-click closer (installMoveDropdownOutsideClose) shuts it.
+    const menuItems = `${rosterSelectHtml}${statusSelectHtml}${roleSelectHtml}${viewButtonHtml}`.trim();
+    const actionsMenu = menuItems
+      ? `
+      <details class="roster-move-details roster-actions-menu" style="position:relative; display:flex;">
+        <summary title="Actions for ${this.escape(player.firstName || 'this player')}"
+                 style="list-style:none; display:flex; align-items:center; justify-content:center; padding:0 7px; font-size:0.8rem; font-weight:800; line-height:1.2; border-radius:3px; background:#0f172a; color:#fff; border:1px solid #475569; cursor:pointer; user-select:none;">⋯</summary>
+        <div style="position:absolute; top:100%; right:0; z-index:30; margin-top:2px; display:flex; flex-direction:column; align-items:stretch; gap:4px; background:#0f172a; padding:5px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155; min-width:120px;">
+          ${menuItems}
+        </div>
+      </details>`
+      : '';
+    const controls = actionsMenu;
 
     const cardBaseStyle = `background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:${boxMin};`;
 
@@ -972,16 +1010,15 @@ class RosterScreenBase extends Screen {
     // per line gives the name the card's full width, and the card simply
     // grows taller, which is the trade Fit already advertises.
     if (!isScroll) {
-      const controlRow = controls.trim()
-        ? `
-        <div style="display:flex; flex-direction:row; align-items:center; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
-          ${controls}
-        </div>`
-        : '';
+      // Controls ride at the end of the chip row now that there are at
+      // most three of them — no third row, so the card stays short.
       return `
-      <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="${cardBaseStyle} display:flex; flex-direction:column; gap:2px;">
+      <div id="${cardId}" class="${cardClass}" data-roster-card ${dragAttrs} ${laUidAttr} style="${cardBaseStyle} display:flex; flex-direction:column; gap:1px;">
         ${nameRow}
-        ${chipRow}${controlRow}
+        <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; row-gap:1px; min-width:0;">
+          ${chipRow}
+          <span style="display:inline-flex; align-items:stretch; gap:4px; margin-left:auto;">${controls}</span>
+        </div>
       </div>
     `;
     }
@@ -994,16 +1031,13 @@ class RosterScreenBase extends Screen {
     // the card holding the longest name would be the one that grew a
     // second row of buttons. Uniform cards is the whole point of Scroll.
     return `
-      <div id="${cardId}" class="${cardClass}" ${dragAttrs} ${laUidAttr} style="${cardBaseStyle} display:flex; flex-direction:row; align-items:stretch; gap:4px;">
+      <div id="${cardId}" class="${cardClass}" data-roster-card ${dragAttrs} ${laUidAttr} style="${cardBaseStyle} display:flex; flex-direction:row; align-items:stretch; gap:4px;">
         <div style="display:flex; flex-direction:column; gap:0; flex:1; min-width:auto;">
           ${nameRow}
           ${chipRow}
         </div>
         <div style="display:flex; flex-direction:row; align-items:stretch; gap:4px; flex-wrap:nowrap; justify-content:flex-end; align-self:flex-start;">
-          ${rosterSelectHtml}
-          ${roleSelectHtml}
-          ${statusSelectHtml}
-          ${viewButtonHtml}
+          ${controls}
         </div>
       </div>
     `;
