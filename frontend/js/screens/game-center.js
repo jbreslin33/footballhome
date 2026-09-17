@@ -1486,7 +1486,19 @@ class GameCenterScreen extends Screen {
     // actually applies to. Placed above Alternates — a coach touches the
     // bench far more often. Sorted by the coach's bench order, applied to
     // byZone.bench above.
+    // Starters get a card section too (owner 2026-09-17: "we need to still
+    // show players we put in lineup in card form so we can still see their
+    // practice tallies... no one should" disappear).  Before this a player
+    // given a position left the card area for the pitch graphic, taking
+    // their practice tally and RSVP pill with them — exactly the numbers a
+    // coach weighs when deciding who starts.  Every rostered player is now
+    // in exactly one card section, whatever their zone.
     paint(this._renderMatchHeader(summaryHtml) + lineupControlsHtml + [
+      this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
+        // In formation order (1 = keeper …), same numbers as the pills.
+        const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
+        return order(a) - order(b);
+      })) : '',
       gridSection('Bench', byZone.bench),
       gridSection('Alternates', byZone.alternate),
       this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
