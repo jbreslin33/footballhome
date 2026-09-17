@@ -910,9 +910,8 @@ class RosterScreenBase extends Screen {
     const laUidAttr = player.leagueAppsUserId
       ? `data-la-user-id="${player.leagueAppsUserId}"`
       : '';
-    const dobMarkup = dobShort
-      ? `<span style="font-size:0.66rem; line-height:1.2; color:#fff; white-space:nowrap; opacity:0.8;">${this.escape(dobShort)}</span>`
-      : '';
+    // DOB is not drawn (owner 2026-09-17: "drop dob from the card, age chip is
+    // enough"); callers may still pass dobShort — it is ignored here.
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
     const activeTeamsBadge = this.renderActiveTeamsBadge(player, col);
     const pickupBadge = this.renderPickupBadge(player);
@@ -998,7 +997,6 @@ class RosterScreenBase extends Screen {
            style="${cardBaseStyle} display:flex; flex-direction:row; align-items:center; gap:4px; flex-wrap:${isScroll ? 'nowrap' : 'wrap'}; row-gap:1px;">
         ${posControl}
         <strong style="font-size:0.72rem; line-height:1.2; ${nameStyle}">${fullName}</strong>
-        ${dobMarkup}
         ${ageChip}
         ${duesLabel}
         ${statusChip}
