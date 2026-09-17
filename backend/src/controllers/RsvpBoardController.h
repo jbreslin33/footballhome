@@ -11,8 +11,9 @@ class RsvpBoard;
 //   GET  /api/rsvp-board?section=mens|womens|boys|girls&window=week|2w|month|all
 //        One card per rostered player: RSVP % for the window, what is still
 //        unanswered in the released week, last RSVP, dues, last payment,
-//        last reminder.  Club admins see every team; a coach sees the teams
-//        they coach (and no payment amounts).
+//        last reminder.  Club admins only for now; the coach scoping (own
+//        teams, no payment amounts) is written but switched off in
+//        resolveScope.
 //
 //   POST /api/rsvp-board/remind   { person_id, channel: 'sms' | 'email' }
 //        Builds the reminder from the DB — the player's unanswered events

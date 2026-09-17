@@ -14,8 +14,8 @@
 // remember "reminded ✓" until the page reloads — sends here are logged
 // (rsvp_reminders, mig 363) and shown on the card for every coach.
 //
-// Scope comes from the backend: club admins see every team, a coach sees
-// the teams they coach (and no payment amounts).
+// Club admins only for now (owner 2026-09-17); the backend's coach scoping
+// (own teams, no payment amounts) is written but switched off.
 class RsvpBoardScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);

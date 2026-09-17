@@ -101,6 +101,13 @@ bool RsvpBoardController::resolveScope(const Request& request, Scope* scope, Res
     scope->personId = me[0]["person_id"].as<long long>();
     scope->isAdmin = !db->query("SELECT 1 FROM admins WHERE user_id = $1::int LIMIT 1",
                                 {std::to_string(scope->userId)}).empty();
+    // Admins only for now (owner 2026-09-17: "coaches don't need this yet
+    // just me").  The coach scoping below is ready for when that changes —
+    // delete this block to let a coach see the teams they coach.
+    if (!scope->isAdmin) {
+        *error = jsonError(HttpStatus::FORBIDDEN, "The RSVP board is for club admins.");
+        return false;
+    }
     if (!scope->isAdmin) {
         auto teams = db->query(
             "SELECT DISTINCT tc.team_id FROM team_coaches tc "
