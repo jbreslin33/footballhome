@@ -39,11 +39,8 @@ class MessagesScreen extends Screen {
     // bare prototype shell — gives us funnelContext/messageTemplate/
     // messageSnippets/formLabel/fillTemplate without instantiating a
     // real LeadsScreen (which would try to render and fetch leads).
-    // _nextPickup is read by the Pickup snippet body; null is fine —
-    // it just falls through to the generic invite wording.
     this._helper = Object.create(LeadsScreen.prototype);
     this._helper.auth = auth;
-    this._helper._nextPickup = null;
 
     // Canonical funnel label order — same list rendered as columns on
     // the Leads page.  Funnels at the top are the ones we actively
@@ -169,7 +166,14 @@ class MessagesScreen extends Screen {
     });
 
     this.renderTeamList();
-    await this._loadTemplates();
+    // The helper's copy is message_templates rows (migration 369) and its
+    // links are leagueapps_programs rows — both must be in hand before
+    // the first render, or the page draws empty chips.
+    await Promise.all([
+      this._loadTemplates(),
+      MessageCopy.load(this.auth),
+      window.LighthouseProgramInfo.loadRegisterLinks(),
+    ]);
     this.renderBody();
   }
 
@@ -235,13 +239,10 @@ class MessagesScreen extends Screen {
   // Replace {first}/{coach} so the coach can paste raw — no leftover
   // template tokens to confuse leads if they forget to edit.
   _personalize(text) {
-    const me    = (this.auth && this.auth.getUser && this.auth.getUser()) || {};
-    const coach = me.first_name ? `Coach ${me.first_name}` : 'Coach';
-    return String(text || '')
-      .replace(/\{first\}/g, '[first name]')
-      .replace(/\{full\}/g,  '[full name]')
-      .replace(/\{phone\}/g, '[phone]')
-      .replace(/\{coach\}/g, coach);
+    // The sender tokens come from the same filler #leads uses; the lead
+    // isn't known on this page, so its tokens become visible blanks.
+    return this._helper.fillTemplate(String(text || ''), {},
+      { first: '[first name]', full: '[full name]', phone: '[phone]' });
   }
 
   // Copy helper — writes text to the clipboard and flashes the button.
@@ -348,7 +349,7 @@ class MessagesScreen extends Screen {
     // Only show links that actually exist for this funnel — TODO_/null
     // entries get skipped so the strip never carries a dead link.
     const links = [];
-    if (ctx.link)          links.push({ label: 'LeagueApps register ($35)', url: ctx.link, icon: '💳' });
+    if (ctx.link)          links.push({ label: 'LeagueApps register', url: ctx.link, icon: '💳' });
     if (ctx.handbookLink)  links.push({ label: 'Handbook',                 url: ctx.handbookLink, icon: '📖' });
     if (ctx.rosterLink)    links.push({ label: 'League roster form',       url: ctx.rosterLink, icon: '📝' });
     if (ctx.gameChat)      links.push({ label: 'Game chat',                url: ctx.gameChat, icon: '🗓' });

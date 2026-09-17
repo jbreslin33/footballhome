@@ -48,6 +48,20 @@ function loadLeadsSandbox() {
     fs.readFileSync(path.join(__dirname, '..', 'frontend', 'js', 'lib', 'program-info.js'), 'utf8'),
     context);
 
+  // Every chip's wording is a message_templates row since migration 369.
+  // The fixture is GET /api/messages/templates/copy as the DB served it
+  // (form links resolved); seeding it is what MessageCopy.load() does.
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, '..', 'frontend', 'js', 'lib', 'message-copy.js'), 'utf8'),
+    context);
+  context.__copy = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'message-copy.json'), 'utf8'));
+  vm.runInContext(`
+    for (const t of __copy.templates) {
+      const key = t.kind + '|' + t.tier;
+      if (!MessageCopy._templates.has(key)) MessageCopy._templates.set(key, { subject: t.subject, body: t.body });
+    }
+    MessageCopy.outreachEmail = __copy.outreach_email;`, context);
+
   vm.runInContext(source + '\nthis.LeadsScreen = LeadsScreen;', context);
   return context;
 }
@@ -384,4 +398,47 @@ test('a club-wide parent close email carries the boys membership link, not the p
   // the programme list either.
   const pooled = screen.funnelContext(screen.constructor.CLUB_WIDE_LABEL).link;
   assert.doesNotMatch(pooled, /leagueapps\.com/);
+});
+
+
+// ── All lead copy lives in the DB (migration 369) ───────────────────────
+//
+// Owner 2026-09-17: "we need all messages in db no hard code not even for
+// nudges."  The proof that leads.js holds no wording is that it has
+// nothing to say when the rows are missing.
+
+test('without the DB copy a lead card offers no touch-1 message and no reply chips', () => {
+  const ctx = loadLeadsSandbox();
+  vm.runInContext('MessageCopy._templates = new Map();', ctx);
+  const screen = new ctx.LeadsScreen();
+  screen.auth = { getUser: () => ({ first_name: 'Mike' }) };
+  screen._proBold = (s) => String(s);
+  screen._nextPractice = () => ({ label: 'Thu, Jul 23' });
+  screen.buildGmailComposeHref = () => 'gmail:compose';
+
+  const lead = { name: 'Ana Lopez', phone: '2155550100', email: 'a@example.com' };
+  assert.equal(screen.buildSmsHref(lead, 'PR Men'), null);
+  assert.equal(screen.buildMailHref(lead, 'PR Men'), null);
+  assert.equal(screen.buildWhatsAppHref(lead, 'PR Men'), null);
+  const ids = screen.messageSnippets('PR Men').map(s => s.id);
+  assert.equal(ids.join(), 'la-program-description');
+});
+
+test('a funnel row beats its audience row, which beats the default', () => {
+  const LeadsScreen = loadLeadsScreenClass();
+  const screen = new LeadsScreen();
+  screen.auth = { getUser: () => ({}) };
+  // U23 Men has its own schedule link; the other men's funnels share one.
+  const u23 = screen.funnelContext('U23 Men + PR');
+  const pr  = screen.funnelContext('PR Men');
+  assert.match(u23.schedule.url, /docs\.google\.com\/spreadsheets/);
+  assert.match(pr.schedule.url, /casasoccerleagues\.com/);
+  // The combined funnel keeps U23's Squadi note AND gains the CASA form.
+  const welcome = screen.messageSnippets('U23 Men + PR').find(s => s.id === 'welcome').body;
+  assert.match(welcome, /1\. 📝[\s\S]*Puerto Rico[\s\S]*2\. 📬[\s\S]*Squadi/);
+  // A funnel with no game day has no 📅 chips rather than a TODO.
+  const wc = screen.messageSnippets("Women's Club").map(s => s.id);
+  assert.ok(!wc.includes('schedule') && !wc.includes('games'));
+  // No sender name → the DB's fallback word, not one typed in leads.js.
+  assert.match(screen.fillTemplate('— {coachFirst}', {}), /— Coach$/);
 });

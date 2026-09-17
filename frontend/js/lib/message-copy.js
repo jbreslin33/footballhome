@@ -68,6 +68,11 @@ class MessageCopy {
     return { subject: MessageCopy._fill(t.subject, tokens), body: MessageCopy._fill(t.body, tokens) };
   }
 
+  // Fill free-standing text with the same syntax — for copy that was
+  // rendered once with some tokens left in place (the #leads chips keep
+  // {first} until a lead is known).
+  static fill(text, tokens = {}) { return MessageCopy._fill(text, tokens); }
+
   static _fill(text, tokens) {
     const val = (name) => {
       const v = tokens[name];

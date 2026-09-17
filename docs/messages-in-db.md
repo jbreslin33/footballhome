@@ -6,8 +6,9 @@ mailbox address lives in C++ or JS. Code names a template and hands over
 facts; the DB holds the sentences.
 
 An inventory that day found 46 hardcoded sites in 18 files. Passes 1 and 2
-are done and live. **Pass 3 and 4 are not started** — this file is the
-hand-off.
+are done and live, and so is most of pass 3 (3a, below). **What is left:
+the three season one-offs in leads.js, `lib/program-info.js`, and pass 4** —
+this file is the hand-off.
 
 ## How it works (use this for everything that follows)
 
@@ -50,7 +51,36 @@ subject; `la_dashboard` + `womens_league_registration` forms.
 **Removed rather than converted:** the `#my` Remind + "Text/Email N No
 Response" buttons (reminders live on `#rsvps` now).
 
-## Pass 3 — `#leads` / `#messages` chips (NOT STARTED — the big one)
+**Pass 3a — `#leads` / `#messages` chips (mig 369):** touch-1 intro,
+Register, Welcome, Pickup, Close, More info (wrapper), Field, Practice /
+Games / Schedule, Cost, Fall Format, the men's "set availability"
+broadcast — table rows 1, 5–14 below. How it works:
+
+- Kinds are `lead_<fact>` (programme name, fee, practice days, venue,
+  schedule link… rendered first, handed on as a token of the same name) and
+  `lead_<message>`.
+- `tier` is looked up most-specific first: funnel label → base funnel
+  (`U23 Men` for `U23 Men + PR`) → audience (`boys|girls|youth|men|women`) →
+  `parent` (any youth funnel) → `all`. One row covers every funnel until a
+  funnel needs its own wording; add that funnel's row by migration.
+- `LeadsScreen.funnelContext()` builds `{tiers, tokens}`;
+  `LeadsScreen.leadCopy(kind, tiers, tokens)` renders; a chip exists only
+  when its row does. Lead tokens (`{first}`, `{coachFirst}`…) pass through
+  and are filled per lead by `fillTemplate()` → `MessageCopy.fill()`, so the
+  fallback words are the DB's.
+- New `club_forms`: `mens_handbook`, `casa_grassroots_roster`,
+  `casa_grassroots_schedule`, `u23_mens_schedule`, `maps_outdoor`,
+  `maps_indoor`, `footballhome`.
+- Tests seed the sandbox from `tests/fixtures/message-copy.json` — the copy
+  endpoint's payload dumped from the DB. Re-dump it after a copy migration
+  if a test asserts on the new wording.
+- Wording changed on purpose (see the migration header): men's practice is
+  now the real Tue–Fri + Sat calendar (no "pickups count as practice"),
+  youth 3rd-grade-and-up includes Fridays, women no longer see "$1 locks
+  your spot", the dead "next pickup" branch and the TODO schedule chip are
+  gone.
+
+## Pass 3 — what is left (rows 2, 3, 4, 15)
 
 Everything below is in `frontend/js/screens/leads.js` unless noted.
 `LeadsScreen.messageTemplate()` / `messageSnippets()` are **also consumed by
@@ -109,6 +139,16 @@ export. Meta forms can't be edited in place — archive and recreate (see the
 lead-form notes in project memory).
 
 ## Open questions for the owner
+
+- Season one-offs still typed in `leads.js`: `spring-renewal*` and
+  `practice-schedule*` ("Summer/Fall 2026"), `alumni-return-*` ("rest of
+  July", "Fri Aug 7", signed James). All stale by September. Delete, or
+  rewrite as evergreen rows?
+- Practice days are typed into `lead_practice` rows. `WelcomeMessage`
+  derives them from the calendar; doing the same for leads needs a backend
+  endpoint.
+- ⚽ Pickup chip still offers men "the next pickup" though men's sessions
+  are all practice now. Keep for women only?
 
 - `frontend/js/screens/rosters.js` — the player-view "Welcome" card drafts an
   email **to** the club mailbox. Looks vestigial; delete?

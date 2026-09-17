@@ -470,6 +470,7 @@ class LeadsScreen extends Screen {
         syncPromise,
         leadsPromise,
         window.LighthouseProgramInfo.loadRegisterLinks(),
+        MessageCopy.load(this.auth),   // every chip's wording (migration 369)
       ]);
       syncReport = report;
 
@@ -1414,12 +1415,12 @@ class LeadsScreen extends Screen {
     // the next render.
     const btnStyle = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; min-width:76px;';
 
-    const emailBtn = hasEmail ? `
+    const emailBtn = hasEmail && mailHref ? `
       <a href="${mailHref}" class="contact-btn"
          target="_blank" rel="noopener noreferrer"
          data-lead-id="${lead.id}" data-channel="email" data-template="first-touch"
          style="${btnStyle} background:#3b82f6; color:#fff;">Email</a>` : '';
-    const textBtn = hasPhone ? `
+    const textBtn = hasPhone && smsHref ? `
       <a href="${smsHref}" class="contact-btn"
          data-lead-id="${lead.id}" data-channel="text" data-template="first-touch"
          style="${btnStyle} background:#16a34a; color:#fff;">Text</a>` : '';
@@ -1602,270 +1603,77 @@ class LeadsScreen extends Screen {
       'Girls Club (U11/U12)':      'girls',
       'Youth (Grades 1–6)':        'boys',   // legacy combined form
     };
-    const PROGRAM_NAMES = {
-      'Youth (Grades 1–6)':        'youth soccer program (grades 1–6)',
-      'Boys Club (Grades 1–6)':    'Boys Club soccer program (grades 1–6)',
-      'Boys Club (K-12)':          'Boys Club soccer program',
-      'Boys Club (U11/U12)':       'Boys U11/U12 travel team',
-      'Girls Club (Grades 1–6)':   'Girls Club soccer program (grades 1–6)',
-      'Girls Club (K-12)':         'Girls Club soccer program',
-      'Girls Club (U11/U12)':      'Girls U11/U12 travel team (co-ed for fall 2026 — plays in the boys division)',
-      'Brazil Men':                "Brazilian Men's team",
-      'PR Men':                    "Puerto Rican Men's team",
-      'U23 Men':                   "U23 Men's team",
-      "Men's Club":                "Men's Club soccer team",
-      'U23 Women':                 "U23 Women's team",
-      'Tri County Women':          "Tri County Women's team",
-      "Women's Club":              "Women's Club soccer team",
-      'APSL / Liga 1':             'APSL / Liga 1 team',
-      'APSL Trials':               'APSL / Liga 1 team',
-      'LIGA 1 Trials':             'APSL / Liga 1 team',
-    };
-    // Qualifying question asked in the FIRST message.  Goal: one short answer
-    // that lets the coach pick the right follow-up snippet.
-    // Per-funnel qualifying question used in the YOUTH initial template.
-    // Adult templates don't reference c.question (they ask a single fixed
-    // "want to play for our X this season?" — see messageTemplate).
-    const QUESTIONS = {
-      'Boys Club (Grades 1–6)':    "what's your son's name?",
-      'Boys Club (K-12)':          "what's your son's name?",
-      'Boys Club (U11/U12)':       "what's your son's name?",
-      'Girls Club (Grades 1–6)':   "what's your daughter's name?",
-      'Girls Club (K-12)':         "what's your daughter's name?",
-      'Girls Club (U11/U12)':      "what's your daughter's name?",
-      'Youth (Grades 1–6)':        'is it for a boy or girl?',
-    };
-
-    // Per-funnel public schedule URLs.  Used by the Schedule snippet to give
-    // leads a concrete answer ("Sundays, full schedule here") instead of a
-    // vague "we'll let you know."  Funnels without an entry fall back to the
-    // TODO placeholder so the coach knows to fill it in.
-    //   day          — short day-of-week phrase ("Sundays", "Sat/Sun")
-    //   url          — public schedule page (optional; omit if no public URL)
-    //   sourceOf     — label used inline so the lead knows what they're clicking
-    //                  ("CASA league page", "season Google Sheet", etc.)
-    //   practice     — concrete practice day/time ("Wednesday, Thursday & Friday 7–8:30pm"), optional
-    //   practiceNote — extra free-form line printed under Practice: (used for
-    //                  Men funnels so the lead knows pickups count as a
-    //                  practice if Wed/Thu/Fri don't fit), optional
-    const SCHEDULES = {
-      'Brazil Men': {
-        day:          'Sundays',
-        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
-        sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice. We do this so it's as easy as possible to make a practice during the week.",
-      },
-      'PR Men': {
-        day:          'Sundays',
-        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
-        sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
-      },
-      'U23 Men': {
-        day:          'Sundays',
-        url:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vRFh_2Do_e8aOsItIW3yohRF70hoxsNJDSnuin99F_9TPBYBsqddMNhNg8GESaSng/pubhtml',
-        sourceOf:     'season Google Sheet',
-        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
-      },
-      'APSL / Liga 1': {
-        day:          'Sundays',
-        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
-        sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
-      },
-      // APSL Trials / LIGA 1 Trials — separate ad funnels (form ids added
-      // 2026-07-04) into the same APSL / Liga 1 team; mirror its config.
-      'APSL Trials': {
-        day:          'Sundays',
-        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
-        sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
-      },
-      'LIGA 1 Trials': {
-        day:          'Sundays',
-        url:          'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9345724',
-        sourceOf:     'CASA Philly Grassroots Cup',
-        practice:     'Wednesday, Thursday & Friday 7–8:30pm',
-        practiceNote: "If those days don't work, you can hit one of our pickups instead — Tuesday 7–8:30pm or Saturday 11am–12:30pm — and it counts as a practice.",
-      },
-      // Youth / Boys / Girls — no public schedule page yet; verbal summary
-      // only.  Games on Sunday mornings to early afternoon + practice Mon/Wed.
-      'Boys Club (Grades 1–6)': {
-        day:      'Sunday mornings to early afternoon',
-        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
-      },
-      'Boys Club (K-12)': {
-        day:      'Sunday mornings to early afternoon',
-        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
-      },
-      'Girls Club (Grades 1–6)': {
-        day:      'Sunday mornings to early afternoon',
-        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
-      },
-      'Girls Club (K-12)': {
-        day:      'Sunday mornings to early afternoon',
-        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
-      },
-      'Boys Club (U11/U12)': {
-        day:      'Sunday mornings to early afternoon',
-        practice: 'Mondays & Wednesdays 5:30–7pm (5th & 6th graders).',
-      },
-      'Girls Club (U11/U12)': {
-        day:      'Sunday mornings to early afternoon',
-        practice: 'Mondays & Wednesdays 5:30–7pm (5th & 6th graders).',
-      },
-      'Youth (Grades 1–6)': {
-        day:      'Sunday mornings to early afternoon',
-        practice: 'Mondays & Wednesdays — by grade in the upcoming school year: 2nd grade and younger 4:30–5:30pm, 3rd grade and older 5:30–7pm.',
-      },
-      'Tri County Women': {
-        day: 'Sundays, late morning to early afternoon',
-      },
-      // U23 Women — funnel not live yet (no ads running). When launched
-      // it'll mirror U23 Men (Sundays + CASA-equivalent women's league).
-      // Until then, Schedule chip stays as TODO so the ⚠ reminds the coach to
-      // wire it before the first real lead lands.
-    };
-
-    // Per-funnel public handbook URLs.  Currently only the Men's
-    // handbook exists (covers all adult Men funnels — Brazil, PR, U23,
-    // APSL, Men's Club).  Surfaced in the adult Welcome + More info
-    // snippets so new members can dig in on logistics without pinging
-    // the coach.  Add 'Women's Club' / etc. here when those handbooks
-    // are ready.
-    const MENS_HANDBOOK = 'https://docs.google.com/document/d/1xjekFzKZeYGnFL-QIy9YzII8trd50Nrz-tn1D-HQH_c/edit?usp=sharing';
-    const HANDBOOKS = {
-      'Brazil Men':    MENS_HANDBOOK,
-      'PR Men':        MENS_HANDBOOK,
-      'U23 Men':       MENS_HANDBOOK,
-      'APSL / Liga 1': MENS_HANDBOOK,
-      'APSL Trials':   MENS_HANDBOOK,
-      'LIGA 1 Trials': MENS_HANDBOOK,
-      "Men's Club":    MENS_HANDBOOK,
-    };
-
-    // External team-roster registration URLs.  Separate from LINKS
-    // (LeagueApps club membership) — these are league-side roster
-    // forms required to play sanctioned games.  Currently CASA Philly
-    // Grassroots Cup uses one SportsEngine form for all its teams.
-    // PR Men + Brazil Men share that form; if APSL / Liga 1 or U23 Men
-    // need it later, add them here.  Surfaced in the adult Welcome
-    // blurb so new members register once they're locked into the team.
-    const CASA_ROSTER_URL = 'https://casasoccerleagues.sportngin.com/register/form/824938975';
-    const ROSTER_LINKS = {
-      'PR Men':     CASA_ROSTER_URL,
-      'Brazil Men': CASA_ROSTER_URL,
-    };
-    // The CASA / Grassroots Cup form asks the player to pick their
-    // country (Puerto Rico vs Brazil) — that's how it routes to the
-    // right team.  Spell out the answer per funnel so the player
-    // doesn't pick the wrong one.
-    const ROSTER_TEAM_NAME = {
-      'PR Men':     'Puerto Rico',
-      'Brazil Men': 'Brazil',
-    };
-
-    // Some leagues don't give us a sharable registration URL — instead
-    // they email each player directly with a player-specific link
-    // (Squadi for U23 Men's USASA league is the canonical case).  For
-    // those funnels we surface the *instruction* ("watch your inbox")
-    // as a numbered Welcome step instead of a link.  rosterNote and
-    // rosterLink are mutually exclusive at the funnel level — the
-    // Welcome builder picks whichever exists.
-    const ROSTER_NOTES = {
-      'U23 Men': 'Watch your inbox for an email from Squadi — that\'s our league\'s registration platform. Open it and complete the player registration so you\'re eligible for league games.',
-    };
-
+    const isCombinedU23PR = funnelLabel === 'U23 Men + PR';
+    const baseLabel = isCombinedU23PR ? 'U23 Men' : funnelLabel;
+    const category  = FUNNEL_CATEGORY[baseLabel] || LeadsScreen.categoryFromLabel(baseLabel);
     const isYouth = /youth|grades?\s*1[–-]6|boys\s*club|girls\s*club/i.test(funnelLabel || '');
     const isWomensClub = /women/i.test(funnelLabel || '');
     // Legacy combined youth funnel — the only funnel where the form
-    // doesn't pre-identify gender, so the close branches on the lead's
-    // boy/girl answer (see Register chip split in messageSnippets).
+    // doesn't pre-identify gender, so its messages carry BOTH links.
     const isLegacyYouth = funnelLabel === 'Youth (Grades 1–6)';
-    // 'U23 Men + PR' is a combined funnel for players who are on both
-    // U23 Men's (USASA / Squadi) AND PR Men (CASA / SportsEngine).
-    // Reuse U23 Men's base lookups (chats, schedule, handbook, etc.)
-    // but layer on the CASA roster link with PR as the country pick so
-    // the Welcome lists BOTH registrations.
-    const isCombinedU23PR = funnelLabel === 'U23 Men + PR';
-    const baseLabel = isCombinedU23PR ? 'U23 Men' : funnelLabel;
-    // Branded club name keyed off the lead's source funnel — single
-    // source of truth used as the touch-1 email subject AND inside the
-    // Touch-2 "That's great that you want to play for ${clubTitle}!"
-    // opener. So a Boys Club lead sees "Lighthouse Boys Soccer Club
-    // 1893", a Women's lead sees "Lighthouse Women's Soccer Club
-    // 1893", the legacy combined youth funnel (no pre-identified
-    // gender) sees "Lighthouse Boys & Girls Soccer Club 1893", and
-    // adult-men funnels (PR / Brazil / U23) see "Lighthouse Men's
-    // Soccer Club 1893". Checks ordered most-specific → most-general.
-    const fl = funnelLabel || '';
-    const clubTitle =
-        isLegacyYouth         ? 'Lighthouse Boys & Girls Soccer Club 1893'
-      : isWomensClub          ? "Lighthouse Women's Soccer Club 1893"
-      : /girls/i.test(fl)     ? 'Lighthouse Girls Soccer Club 1893'
-      : /boys/i.test(fl)      ? 'Lighthouse Boys Soccer Club 1893'
-      : /\bmen\b/i.test(fl)   ? "Lighthouse Men's Soccer Club 1893"
-      : isYouth               ? 'Lighthouse Boys & Girls Soccer Club 1893'
-      :                         'Lighthouse Soccer Club 1893';
-    // Touch-2 opener phrasing.  Youth flips subject to parent-of ("your
-    // son / daughter / child wants to play soccer for …") AND swaps the
-    // per-gender club name for the combined "Boys & Girls" branding, so
-    // a parent who picked the Boys funnel still sees the club as one
-    // co-ed program.  Adults keep the first-person "you want to play
-    // soccer for {gendered clubTitle}" (Men's / Women's / fallback).
-    const isBoysYouth  = isYouth && !isLegacyYouth && /boys/i.test(fl);
-    const isGirlsYouth = isYouth && !isLegacyYouth && /girls/i.test(fl);
-    const openerLine =
-        isBoysYouth    ? 'your son wants to play soccer for Lighthouse Boys & Girls Soccer Club 1893'
-      : isGirlsYouth   ? 'your daughter wants to play soccer for Lighthouse Boys & Girls Soccer Club 1893'
-      : isLegacyYouth  ? 'your child wants to play soccer for Lighthouse Boys & Girls Soccer Club 1893'
-      :                  `you want to play soccer for ${clubTitle}`;
-    // Close-context opener — tighter than openerLine, used by the
-    // `close` snippet (response to a YES reply on touch-1's "want to
-    // play?" question).  Deliberately drops the full club title and
-    // stays under ~10 words so the SMS variant fits in a single
-    // segment, and the email variant reads as a one-line congratulation
-    // + register CTA rather than an info dump.  Women's Club gets "with"
-    // instead of "for" — it's a co-ed-friendly community team, not a
-    // competitive travel squad, and the "with" phrasing matches how
-    // the coach speaks about it verbally.
-    const closerLine =
-        isBoysYouth    ? 'glad your son wants to play for Lighthouse'
-      : isGirlsYouth   ? 'glad your daughter wants to play for Lighthouse'
-      : isLegacyYouth  ? 'glad your player wants to play for Lighthouse'
-      : isWomensClub   ? 'glad you want to play with Lighthouse'
-      :                  'glad you want to play for Lighthouse';
+
+    // Every word a lead reads is a message_templates row (migration 369);
+    // nothing below is copy.  A row is looked up by kind under the most
+    // specific tier that has one: this funnel, its base funnel, the
+    // audience, 'parent' (any youth funnel), then 'all'.
+    const audience = isLegacyYouth ? 'youth'
+      : ({ mens: 'men', womens: 'women', boys: 'boys', girls: 'girls' }[category] || (isYouth ? 'youth' : 'all'));
+    const tiers = [...new Set([funnelLabel, baseLabel, audience, isYouth ? 'parent' : null, 'all'].filter(Boolean))];
+    const fact = (kind, tokens = {}) => {
+      const row = LeadsScreen.leadCopy(kind, tiers, tokens);
+      return row ? row.body : '';
+    };
+
+    const link = registerLink(baseLabel);
+    // Lead tokens pass through untouched — fillTemplate() fills them per
+    // lead, after the funnel's facts are in.
+    const tokens = {
+      first: '{first}', full: '{full}', phone: '{phone}', coach: '{coach}', coachFirst: '{coachFirst}',
+      link, link_boys: URL_BOYS, link_girls: URL_GIRLS,
+      outreach_email: window.MessageCopy ? MessageCopy.outreachEmail : '',
+    };
+    for (const name of ['program', 'club_title', 'closer', 'whose', 'member', 'child', 'fee', 'pricing',
+                        'practice', 'practice_note', 'games_day', 'schedule_url', 'schedule_source',
+                        'handbook_url', 'roster_url', 'roster_team', 'roster_note']) {
+      tokens[name] = fact(`lead_${name}`);
+    }
+    tokens.roster_note_n = tokens.roster_url ? '2' : '1';
+    tokens.venue_outdoor         = LeadsScreen.leadCopy('lead_venue', ['outdoor'])?.body || '';
+    tokens.venue_outdoor_address = LeadsScreen.leadCopy('lead_venue', ['outdoor_address'])?.body || '';
+    tokens.venue_indoor          = LeadsScreen.leadCopy('lead_venue', ['indoor'])?.body || '';
+    // Built from the facts above, so they come after them.
+    for (const name of ['links', 'links_inline', 'links_block', 'lock']) {
+      tokens[name] = fact(`lead_${name}`, tokens);
+    }
+    tokens.practice_lines = tokens.practice ? fact('lead_practice_lines', tokens) : '';
+    tokens.games_lines = !tokens.games_day ? ''
+      : fact(tokens.schedule_url ? 'lead_games_lines' : 'lead_games_lines_no_url', tokens);
+
     return {
-      program:       PROGRAM_NAMES[baseLabel] || 'program',
-      link:          registerLink(baseLabel),
+      program:       tokens.program,
+      link,
       linkBoys:      URL_BOYS,
       linkGirls:     URL_GIRLS,
-      handbookLink:  HANDBOOKS[baseLabel] || null,
-      rosterLink:    isCombinedU23PR ? CASA_ROSTER_URL : (ROSTER_LINKS[baseLabel] || null),
-      rosterNote:    ROSTER_NOTES[baseLabel] || null,
-      rosterTeam:    isCombinedU23PR ? 'Puerto Rico' : (ROSTER_TEAM_NAME[baseLabel] || null),
-      question:      QUESTIONS[baseLabel] || 'tell me a bit about your soccer background?',
-      schedule:      SCHEDULES[baseLabel] || null,
-      whose:         isYouth ? "your player's" : 'your',
-      whoseCap:      isYouth ? "Your player's" : 'Your',
-      // Women's Club: LA registration itself is free; cost comes from
-      // per-game ref fees plus a separate league registration — no card-
-      // on-file / auto-charge model applies (see program-info.js).
-      initialFee:    isWomensClub ? 'Free' : '$1',
-      pricing:       isWomensClub ? 'a few $/game for refs; $35 separately on the league site' : '$35/month',
+      handbookLink:  tokens.handbook_url || null,
+      rosterLink:    tokens.roster_url || null,
+      schedule:      tokens.games_day ? { url: tokens.schedule_url || null, sourceOf: tokens.schedule_source } : null,
       isYouth,
       isLegacyYouth,
       isWomensClub,
-      clubTitle,
-      openerLine,
-      closerLine,
+      clubTitle:     tokens.club_title,
+      tiers,
+      tokens,
     };
   }
+
+  // The first row of `kind` among `tiers`, rendered — null when there is
+  // none (or the copy hasn't loaded), and then the caller draws nothing.
+  static leadCopy(kind, tiers, tokens = {}) {
+    if (!window.MessageCopy) return null;
+    const tier = tiers.find(t => MessageCopy.has(kind, t));
+    return tier ? MessageCopy.render(kind, tier, tokens) : null;
+  }
+
 
   // ── Practice date helpers ─────────────────────────────────────────
   // Shared by every lead-facing surface that needs to surface a fresh
@@ -2047,26 +1855,16 @@ class LeadsScreen extends Screen {
     //   Games / Cost / Season / Next:).  The touch-1 intro has none of
     //   those, so the wrapper would be a no-op.  Skipping it also
     //   signals to future maintainers that this is a plain-prose body.
-    // Club-title shown in the touch-1 subject line.  Branded by audience
-    // Club name comes from funnelContext (single source of truth shared
-    // with messageSnippets so the Touch-2 "That's great that you want
-    // to play for ${clubTitle}!" opener stays in lock-step with the
-    // touch-1 subject line). See funnelContext.clubTitle for the per-
-    // funnel mapping (Boys / Girls / Women's / Men's / Legacy Youth).
-    const clubTitle = c.clubTitle;
-
+    // The wording is message_templates kind lead_first_sms /
+    // lead_first_email (migration 369); the subject is the funnel's
+    // branded club title (lead_club_title).  Empty strings until the
+    // copy has loaded — the href builders then draw no button.
+    const sms   = LeadsScreen.leadCopy('lead_first_sms',   c.tiers, c.tokens);
+    const email = LeadsScreen.leadCopy('lead_first_email', c.tiers, c.tokens);
     return {
-      sms:
-        `Hi {first}, {coachFirst} here — Soccer Director at ` +
-        `Lighthouse 1893. Are you looking to join our ${c.program} ` +
-        `this season?`,
-      subject: clubTitle,
-      email:
-        `Hi {first},\n\n` +
-        `{coachFirst} here, Soccer Director at Lighthouse 1893.\n\n` +
-        `Are you looking to join our ${c.program} this season?\n\n` +
-        `Thanks,\n{coachFirst}\nSoccer Director\nLighthouse 1893 SC\n` +
-        `soccer@lighthouse1893.org`,
+      sms:     sms   ? sms.body      : '',
+      subject: email ? email.subject : '',
+      email:   email ? email.body    : '',
     };
   }
 
@@ -2091,22 +1889,6 @@ class LeadsScreen extends Screen {
   messageSnippets(funnelLabel) {
     const c = this.funnelContext(funnelLabel);
 
-    // closeLink — trailing CTA appended to info chips (Cost / Schedule /
-    // Field).  For known-gender funnels this is one link; for the legacy
-    // combined Youth funnel we list BOTH Boys and Girls URLs since the
-    // coach can't safely pick one until the lead answers the boy/girl
-    // question (asked in the initial template).
-    const closeLink = (prefix) => {
-      if (c.isLegacyYouth) {
-        return `${prefix}\n• Boys: ${c.linkBoys}\n• Girls: ${c.linkGirls}`;
-      }
-      return `${prefix} ${c.link}`;
-    };
-
-    // Register — primary close.  For the legacy Youth funnel (where
-    // gender wasn't pre-selected by the form), split into TWO dedicated
-    // chips so the coach taps the right one after the lead answers the
-    // grade + boy/girl question.  All other funnels get one Register chip.
     const snippets = [];
 
     // ── LeagueApps Program Description ────────────────────────────────
@@ -2281,503 +2063,108 @@ class LeadsScreen extends Screen {
       });
     }
 
-    // ── Broadcast: Men's Club — "set your availability at footballhome.org"
-    // Audience: CURRENT mens registrations (active + behind-on-payment).
-    // Do NOT mention dues, pause tier, or the free pickup registration —
-    // pickup-only members get a separate message via the pickup chat.
-    // "Set availability" wording is deliberate: some guys don't know
-    // "RSVP" as a verb, and "set availability" reads unambiguously on a
-    // phone.  Surfaces on the Men's Club and APSL / Liga 1 funnels so
-    // the coach can paste it into LA Messages once per program.
-    const MENS_BROADCAST_FUNNELS = new Set(["Men's Club", 'APSL / Liga 1']);
-    if (MENS_BROADCAST_FUNNELS.has(funnelLabel)) {
-      const availabilityBody =
-        `Hi guys,\n\n` +
-        `We track availability for games, practice and pickup on footballhome.org — which works on your phone or computer, and also installs as an app on your phone.\n\n` +
-        `How to get in:\n` +
-        `1. Open https://footballhome.org on your phone or computer\n` +
-        `2. On your phone? Tap Share → Add to Home Screen (iOS) or Install app (Android) so it lives on your home screen like a real app.\n` +
-        `3. Tap Sign In\n` +
-        `4. Tap "Continue with Google" — use the same email you're registered with on LeagueApps\n\n` +
-        `No Google account? No problem:\n` +
-        `• Tap "Sign in with email & password"\n` +
-        `• Tap "Forgot / set password"\n` +
-        `• Enter your LeagueApps email — we'll send you a link to set a password. Set it, then sign in.\n\n` +
-        `Once you're in, you'll see your week under My Schedule. For every game / practice / pickup, just tap:\n` +
-        `• Going\n` +
-        `• Can't go\n\n` +
-        `You must set availability for EVERY event on your weekly schedule. Not sure? Tap Can't go — you can always change it later if plans free up.\n\n` +
-        `Please sign in and set your availability for this week. There's also a button to set your **recurring** availability — everyone should commit to 2 recurring practice/pickups if you can. Then you only need to change it the week of if you CANNOT make it.\n\n` +
-        `Only use recurring if your schedule actually allows it — we don't want no-shows. If your week is unpredictable, just set availability week-by-week.\n\n` +
-        `Going forward we'll be fining no-shows AND anyone who shows up without setting their availability — it hurts the teams and the club when we can't plan.\n\n` +
-        `Any questions, DM me — let's keep the chat clear so everyone can see this message.\n\n` +
-        `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`;
+    // ── Everything below is message_templates copy (migration 369) ────
+    // A chip exists when its row does: chip(id, label, tier, kind) looks
+    // the kind up under this funnel's tiers (see funnelContext) and adds
+    // nothing when there is no row — no copy, no button.
+    const row  = (kind, tokens = c.tokens) => LeadsScreen.leadCopy(kind, c.tiers, tokens);
+    const chip = (id, label, tier, kind, extra = {}) => {
+      const r = row(kind, extra.tokens || c.tokens);
+      if (!r || !r.body) return;
+      const smsRow = extra.smsKind ? row(extra.smsKind, extra.tokens || c.tokens) : null;
       snippets.push({
-        id: 'fh-set-availability',
-        label: "📣 Set availability at footballhome.org (Men's Club)",
-        tier: 'broadcast',
-        subject: 'Lighthouse 1893 — set your availability at footballhome.org',
-        body: this._proBold(availabilityBody),
+        id, label, tier,
+        ...(r.subject ? { subject: r.subject } : {}),
+        body: extra.bold ? this._proBold(r.body) : r.body,
+        ...(smsRow ? { smsBody: smsRow.body } : {}),
       });
-    }
+    };
 
+    // 📣 "Set your availability at footballhome.org" — pasted into LA
+    // Messages for CURRENT men's registrations.  Shown on the funnels
+    // that have a lead_set_availability row.
+    chip('fh-set-availability', '📣 Set availability at footballhome.org', 'broadcast',
+         'lead_set_availability', { bold: true });
+
+    // 💳 Register — the primary close.  The legacy Youth form doesn't say
+    // boy or girl, so it gets one chip per club, each with its own link.
     if (c.isLegacyYouth) {
-      snippets.push({
-        id: 'register-boys',
-        label: '💳 Register Boys ($1)',
-        tier: 'close',
-        body: `Great. To register your son as a member of the soccer club, register here: ${c.linkBoys}`,
-      });
-      snippets.push({
-        id: 'register-girls',
-        label: '💳 Register Girls ($1)',
-        tier: 'close',
-        body: `Great. To register your daughter as a member of the soccer club, register here: ${c.linkGirls}`,
-      });
-    } else if (c.isYouth) {
-      // Gender-specific youth funnel (Boys Club / Girls Club) — gender
-      // known from the form, so we can say son/daughter directly.
-      const child = /girls/i.test(funnelLabel) ? 'daughter' : 'son';
-      snippets.push({
-        id: 'register',
-        label: '💳 Register ($1)',
-        tier: 'close',
-        body: `Great. To register your ${child} as a member of the soccer club, register here: ${c.link}`,
-      });
+      for (const [id, label, tier, link] of [
+        ['register-boys',  '💳 Register Boys',  'boys',  c.linkBoys],
+        ['register-girls', '💳 Register Girls', 'girls', c.linkGirls],
+      ]) {
+        const child = LeadsScreen.leadCopy('lead_child', [tier])?.body || '';
+        const r = LeadsScreen.leadCopy('lead_register', [tier], { ...c.tokens, link, child });
+        if (r) snippets.push({ id, label, tier: 'close', body: r.body });
+      }
     } else {
-      snippets.push({
-        id: 'register',
-        label: `💳 Register (${c.initialFee})`,
-        tier: 'close',
-        body: c.isWomensClub
-          ? (
-            `Great. Registering with Lighthouse is free — register here: ${c.link}\n` +
-            `Once you're in you can start coming to trainings and games. Games run a few $ per player for refs, and you'll separately register with the Women's Tri County Soccer League for $35.`
-          )
-          : (
-            `Great. To become a member of the club it's ${c.initialFee} registration on this link: ${c.link}\n` +
-            `Once you're in you can start coming to trainings and games.`
-          ),
-      });
+      chip('register', '💳 Register', 'close', 'lead_register');
     }
 
-    // Welcome — sent AFTER the lead registers.  Two flavors:
-    //
-    //   • Adult funnels  → short "you're in, reply anytime" note plus
-    //                      any league-team roster registration steps
-    //                      (CASA for PR/Brazil Men, etc.).  We DO NOT
-    //                      hand out chat/join links — practice, pickup,
-    //                      and game details flow through the coach's
-    //                      own text/email replies, and match RSVPs go
-    //                      through the FH magic-link the coach sends.
-    //
-    //   • Youth funnels  → there's no parent/player chat yet, so the
-    //                      blurb sets expectations: practice & game
-    //                      schedule will arrive by email, field address,
-    //                      reply with any questions.
-    if (c.isYouth) {
-      const practiceLine = c.schedule?.practice
-        ? `Practice is ${c.schedule.practice}.`
-        : `We'll confirm practice days as soon as the schedule's locked in.`;
-      // Games for youth: Sunday mornings to early afternoon.  Do NOT pull
-      // from c.schedule.day; that field is set per-funnel in SCHEDULES and
-      // historically said "Saturdays", which over-promised the wrong day.
-      const gameLine = `Games are on Sunday mornings to early afternoon.`;
-      // Numbered steps so the parent can refer back ("did you read step
-      // 3?") and so it visually mirrors the adult Welcome layout.
-      const lines = [
-        `🎉 ${c.whoseCap} officially a member of the club. Next steps to play in games and attend practices:`,
-        ``,
-        `1. 📬 Practice & game schedule emails will go out before the season starts — keep an eye on this inbox.`,
-        `2. 🏃 ${practiceLine}`,
-        `3. ⚽ ${gameLine}`,
-        `4. 📍 Field address (practices and games):`,
-        `   Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140`,
-        `   https://maps.google.com/?q=Lighthouse+Sport+Complex+Field`,
-        ``,
-        `Reply to this email with any questions — happy to help.`,
-      ];
-      snippets.push({
-        id: 'welcome',
-        label: '🎉 Welcome (Youth)',
-        tier: 'close',
-        subject: 'Welcome to Lighthouse 1893 SC! Next steps',
-        body: lines.join('\n'),
-      });
-    } else {
-      // Adult: short welcome + league roster steps only.  No chat links —
-      // practice/pickup/game logistics come from the coach's own texts and
-      // emails; match RSVPs go through the FH magic-link the coach sends.
-      const stepLines = [];
-      let n = 1;
-      if (c.rosterLink) {
-        stepLines.push(`${n++}. 📝 League team roster — required to play sanctioned games:`);
-        stepLines.push(`   ${c.rosterLink}`);
-        if (c.rosterTeam) {
-          stepLines.push(`   ⚠️ When the form asks for your country, choose **${c.rosterTeam}**.`);
-          stepLines.push(`   (You're not locked into just ${c.rosterTeam} games — we run friendlies every weekend, and you're welcome in any of them.)`);
-        }
-      }
-      if (c.rosterNote) {
-        stepLines.push(`${n++}. 📬 League registration — ${c.rosterNote}`);
-      }
+    // 🎉 Welcome — sent AFTER the lead registers.  Adults get the league
+    // roster steps their funnel has rows for (lead_roster_url / _team /
+    // _note); parents get practice, games and the field.
+    chip('welcome', c.isYouth ? '🎉 Welcome (Youth)' : '🎉 Welcome', 'close', 'lead_welcome');
 
-      const lines = [`🎉 You're officially a member of the club.`, ``];
-      if (stepLines.length) {
-        lines.push(...stepLines, ``);
-      }
-      lines.push(`Reply anytime and I'll send you the next practice, pickup, and match details — including the RSVP link for each match.`, ``, `See you on the field. 🤝`);
+    // ⚽ Pickup — soft fallback for a hesitant adult lead.
+    if (!c.isYouth) chip('pickup', '⚽ Pickup', 'soft', 'lead_pickup');
 
-      snippets.push({
-        id: 'welcome',
-        label: '🎉 Welcome',
-        tier: 'close',
-        subject: 'Welcome to Lighthouse 1893 SC! Next steps',
-        body: lines.join('\n'),
-      });
+    // 📨 Close — the reply to a YES on touch 1.  The subject inherits
+    // 'Re: ' + the touch-1 subject (buildMailHrefForSnippet) so the reply
+    // reads as a continuation of the first email.
+    chip('close', '📨 Close', 'followup', 'lead_close_email', { smsKind: 'lead_close_sms' });
+
+    // ℹ️ More info — the programme description (still built by
+    // lib/program-info.js) inside the DB's wrapper, with a fresh "next
+    // practice" line under SCHEDULE:.  Cadence = the days every player of
+    // that audience trains; women have no practice yet.
+    {
+      let description = laDescText;
+      const nextLabel = row('lead_next_practice_label');
+      if (nextLabel && !c.isWomensClub) {
+        const np = c.isYouth ? this._nextPractice([1, 3], 19) : this._nextPractice([2, 3, 4, 5, 6], 21);
+        description = laDescText.replace(/SCHEDULE:\n/,
+          `SCHEDULE:\n  • ${this._boldText(nextLabel.body)} ${np.label}\n`);
+      }
+      chip('more-info', 'ℹ️ More info', 'followup', 'lead_more_info_email',
+           { smsKind: 'lead_more_info_sms', tokens: { ...c.tokens, description } });
     }
 
-    // Adult funnels: soft fallback chip for hesitant leads (pickup invite).
-    // No qualifying chips — one icebreaker Q in the initial template is enough;
-    // anything more creates friction before the close.
-    if (!c.isYouth) {
-      // Soft fallback for hesitant leads: practice is gated behind the $1
-      // register, but pickup is open — they can come play, meet the squad,
-      // see if it's a fit, then decide. Doesn't compete with the close.
-      // Dynamic body: lead with the NEXT scheduled pickup (date/time/field)
-      // if the calendar has one, otherwise fall back to a generic invite.
-      // this._nextPickup is loaded by loadLeads().  No join URL — the coach
-      // texts/emails logistics directly; if the lead replies "in" we know
-      // to expect them.
-      const next = this._nextPickup;
-      let pickupBody;
-      if (next && next.start_at) {
-        const when  = this.formatPickupDate(next.start_at);
-        const loc   = (next.location || next.location_address || '').trim();
-        const title = (next.title || '').trim();
-        const where = loc ? ` @ ${loc}` : '';
-        const titleClause = title ? `"${title}" — ` : '';
-        pickupBody =
-          `Our next pickup: ${titleClause}${when}${where}.\n` +
-          `Reply "in" if you can make it and I'll expect you.\n` +
-          `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
-      } else {
-        pickupBody =
-          `No pressure to commit yet — reply and I'll let you know when the next pickup is scheduled.\n` +
-          `Come play, meet the squad, see if it's your scene. If it is, $1 to lock in your team spot.`;
-      }
-      snippets.push({
-        id: 'pickup',
-        label: '⚽ Pickup',
-        tier: 'soft',
-        body: pickupBody,
-      });
+    // Info chips.  Each ends in the funnel's soft close (lead_lock).
+    chip('field', '📍 Field', 'info', 'lead_field');
+    if (c.tokens.practice_lines) chip('practice', '📅 Practice', 'info', 'lead_practice_chip');
+    if (c.tokens.games_lines) {
+      chip('games',    '📅 Games',    'info', 'lead_games_chip');
+      chip('schedule', '📅 Schedule', 'info', 'lead_schedule_chip');
     }
-
-    snippets.push(
-      // Close — response to a YES reply on touch-1's "want to play?"
-      // question.  Ultra-minimum: one-line congratulation + register
-      // link + sign-off.  NO info dump.  A lead who said "yes I want
-      // to play" already has intent; adding cost/schedule/field details
-      // here just gives them more surface to reconsider on.  Info-
-      // hungry leads (who reply with "can you tell me more about…")
-      // get the More Info snippet instead.
-      //
-      // Subject deliberately inherits 'Re: ' + touch-1 subject (via
-      // buildMailHrefForSnippet fallback) so Gmail visually threads the
-      // reply into the original outreach — coach clicks Send and it
-      // looks like a natural continuation of the conversation.
-      //
-      // smsBody: same message compressed to one segment so the coach
-      // can close via SMS on leads that came in phone-preferred.
-      (() => {
-        const linkBlock = c.isLegacyYouth
-          ? `Register here (full program details on the page):\n` +
-            `• Boys: ${c.linkBoys}\n` +
-            `• Girls: ${c.linkGirls}`
-          : `Register here (full program details on the page):\n${c.link}`;
-        const smsLinkBit = c.isLegacyYouth
-          ? `Boys: ${c.linkBoys} · Girls: ${c.linkGirls}`
-          : c.link;
-        return {
-          id: 'close',
-          label: '📨 Close',
-          tier: 'followup',
-          body:
-            `Hi {first},\n` +
-            `\n` +
-            `Great — ${c.closerLine}.\n` +
-            `\n` +
-            `${linkBlock}\n` +
-            `\n` +
-            `Once you're registered, I'll send you a link to set your availability for practices and games.\n` +
-            `\n` +
-            `Let me know if you have any questions!\n` +
-            `\n` +
-            `— {coachFirst}\n` +
-            `Soccer Director\n` +
-            `Lighthouse 1893 SC`,
-          smsBody:
-            `Great — ${c.closerLine}. Register: ${smsLinkBit}\n` +
-            `Once registered, I'll send a link to set your availability for practices & games.\n` +
-            `Let me know if you have any questions!\n` +
-            `— {coachFirst}`,
-        };
-      })(),
-      // More info — catch-all reply for the "tell me more" /
-      // "send me more info" follow-up.  The email body is a coach-
-      // wrapped clone of the LA program description text (single
-      // source of truth: any edit to laDescText updates both the LA
-      // program page copy AND this reply).  SMS body stays compressed
-      // — SMS can't carry a policy dump without ballooning to a
-      // 6-segment monster, and the three questions leads actually ask
-      // via text are field / cost / register link.
-      //
-      // Next-practice injection: the SCHEDULE section gets a fresh
-      // "Next practice: <weekday, mon day>" line prepended (Unicode-
-      // bold so it survives Gmail's plain-text pipeline).  Lives ONLY
-      // in the more-info email — the LA program page is static content
-      // and cannot carry a time-sensitive date.  Women's Club skips
-      // this (no practice yet, kickoff is Sundays starting Sept).
-      (() => {
-        // Cadence used to compute "next practice" per audience:
-        //   • youth   → Mon/Wed — the days shared by BOTH grade tiers
-        //               (2nd-and-under practice Mon/Wed; 3rd-and-older
-        //               practice Mon/Wed/Fri).  Using the shared pair
-        //               avoids surfacing a Friday date that only applies
-        //               to half the roster.
-        //   • adult M → Tue/Wed/Thu/Fri/Sat — all five weekly sessions
-        //               (practice Wed/Thu/Fri + pickup Tue/Sat);
-        //               8:30pm end hour + buffer means 21.
-        //   • women's → skipped (no practice yet).
-        let nextPracticeLine = '';
-        if (c.isYouth) {
-          const np = this._nextPractice([1, 3], 19);
-          nextPracticeLine = `  • ${this._boldText('Next practice:')} ${np.label}\n`;
-        } else if (!c.isWomensClub) {
-          const np = this._nextPractice([2, 3, 4, 5, 6], 21);
-          nextPracticeLine = `  • ${this._boldText('Next practice:')} ${np.label}\n`;
-        }
-        // Inject the next-practice line right under the SCHEDULE:
-        // header so it sits at the top of the schedule bullets.  The
-        // laDescText variable itself is untouched — this is a per-
-        // render string transform.
-        const moreInfoDescText = nextPracticeLine
-          ? laDescText.replace(/SCHEDULE:\n/, `SCHEDULE:\n${nextPracticeLine}`)
-          : laDescText;
-        const registerLine = c.isLegacyYouth
-          ? `To register, head here:\n` +
-            `• Boys: ${c.linkBoys}\n` +
-            `• Girls: ${c.linkGirls}\n`
-          : `To register, head here: ${c.link}\n`;
-        const moreInfoBody = c.isYouth
-          ? (
-            `Hi {first},\n` +
-            `\n` +
-            `Let me know any questions!\n` +
-            `\n` +
-            registerLine +
-            `\n` +
-            `Here's the full program description:\n` +
-            `\n` +
-            moreInfoDescText
-          )
-          : (
-            `Hi {first},\n` +
-            `\n` +
-            `That's great that you want to play soccer for Lighthouse ${c.isWomensClub ? "Women's" : "Men's"} Soccer Club 1893!\n` +
-            `\n` +
-            `To register, head here: ${c.link}\n` +
-            `\n` +
-            (c.isWomensClub ? '' : `Once registered you can join in practices and games to find your appropriate place at the club.\n\n`) +
-            `Here's the full program description:\n` +
-            `\n` +
-            moreInfoDescText
-          );
-        return {
-          id: 'more-info',
-          label: 'ℹ️ More info',
-          tier: 'followup',
-          body: moreInfoBody,
-          // SMS variant — compressed to a couple of segments.  Ditches
-          // the full description; keeps field address, cost, card-on-
-          // file requirement, and register link (the four questions
-          // leads actually ask via text — and the one policy line that
-          // sets billing expectation before checkout). Women's Club has
-          // no card-on-file model (LA registration is free), so that
-          // line is skipped for it.
-          smsBody:
-            `Hi {first} — quick details on ${c.program}:\n` +
-            `• Field: 199 E Erie Ave, Philadelphia PA\n` +
-            `• Cost: ${c.initialFee} to register, then ${c.pricing}\n` +
-            (c.isWomensClub ? '' : `• Card on file with sufficient funds required (auto-charged monthly)\n`) +
-            `Register: ${c.isLegacyYouth ? (c.linkBoys + ' (boys) · ' + c.linkGirls + ' (girls)') : c.link}\n` +
-            `Reply w/ any Qs — {coachFirst}`,
-        };
-      })(),
-      // Field — answers "where do you play?" with both Lighthouse venues +
-      // the $1 close. Same two addresses for every Lighthouse team, so this
-      // chip lives in the shared snippet code (no per-funnel branch).
-      // No flex copy — the "Lighthouse" in both venue names is the flex.
-      {
-        id: 'field',
-        label: '📍 Field',
-        tier: 'info',
-        body:
-          `📍 Lighthouse Sports Complex — 199 E Erie Ave (outdoor)\n` +
-          `   https://maps.google.com/?q=Lighthouse+Sport+Complex+Field\n` +
-          `📍 Lighthouse Community Center — 141 W Somerset St (indoor)\n` +
-          `   https://maps.google.com/?q=141+W+Somerset+St+Philadelphia+PA+19140\n` +
-          `\n` +
-          closeLink(`$1 locks ${c.whose} spot:`),
-      },
-      // Schedule chips — three chips off the same data:
-      //   📅 Practice  — just practice line(s) (+ pickup-counts-as-practice note)
-      //   📅 Games     — just games line(s) + public URL when available
-      //   📅 Schedule  — both combined, for the generic "what's the schedule?" Q
-      // Each doubles as a soft-close — leads asking logistics are in a
-      // "does this fit my life?" frame, so every chip ends with the $1
-      // register CTA right there.
-      ...(c.schedule
-        ? (() => {
-            // Shared line builders so all three chips stay in sync.
-            const practiceLines = () => {
-              const out = [];
-              if (c.schedule.practice) {
-                out.push(`Practice: ${c.schedule.practice}`);
-                out.push(`Lighthouse Sports Complex, 199 East Erie Avenue, Philadelphia PA 19140`);
-              }
-              // For Men funnels practiceNote tells the lead our pickups also
-              // count as a practice if Wed/Fri don't fit — lowers the
-              // friction of "I can't make those exact days" objections.
-              if (c.schedule.practiceNote) out.push(c.schedule.practiceNote);
-              return out;
-            };
-            const gamesLines = () => {
-              const out = [];
-              if (c.schedule.url) {
-                out.push(`Games are mostly on ${c.schedule.day} — full schedule (${c.schedule.sourceOf}):`);
-                out.push(c.schedule.url);
-              } else {
-                out.push(`Games are mostly on ${c.schedule.day}.`);
-                out.push(`Specific times/fields confirm after rosters close.`);
-              }
-              return out;
-            };
-            const close = closeLink(`If it works, $1 locks ${c.whose} spot:`);
-
-            const chips = [];
-            // Practice chip — only shown when the funnel actually has
-            // a practice schedule defined (Tri County Women has none).
-            if (c.schedule.practice) {
-              chips.push({
-                id: 'practice',
-                label: '📅 Practice',
-                tier: 'info',
-                body: [...practiceLines(), '', close].join('\n'),
-              });
-            }
-            chips.push({
-              id: 'games',
-              label: '📅 Games',
-              tier: 'info',
-              body: [...gamesLines(), '', close].join('\n'),
-            });
-            // Combined Schedule chip — catches the generic "what's the
-            // schedule?" question that doesn't specify practice vs games.
-            chips.push({
-              id: 'schedule',
-              label: '📅 Schedule',
-              tier: 'info',
-              body: [...practiceLines(), ...gamesLines(), '', close].join('\n'),
-            });
-            return chips;
-          })()
-        : [{
-            id: 'schedule',
-            label: '📅 Schedule',
-            tier: 'info',
-            todo: true,
-            body:
-              `Practice schedule for our ${c.program}:\n` +
-              `(TODO — fill this in once confirmed for the season.)`,
-          }]),
-      {
-        id: 'cost',
-        label: '💵 Cost',
-        tier: 'info',
-        body:
-          (c.isWomensClub
-            ? `Registering with Lighthouse is free. After that it's ${c.pricing}.\n`
-            : `${c.initialFee} today to lock ${c.whose} spot. After that it's ${c.pricing}.\n`) +
-          `\n` +
-          closeLink('Register here:'),
-      },
-      // 📚 Fall Format — explains the 3-band Fall 2026 structure for
-      // youth funnels (PreK–1st in-house, 2nd–6th select/travel +
-      // alternative program, 7th+ tournament format).  Only relevant
-      // to youth funnels; adult chips don't render this.
-      ...(c.isYouth ? [{
-        id: 'fall-format',
-        label: '📚 Fall Format',
-        tier: 'info',
-        body:
-          `Fall 2026 season format at Lighthouse 1893 SC:\n` +
-          `• PreK–1st grade: In-House league\n` +
-          `• 2nd–6th grade: Select/Travel teams — players not selected take part in the Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
-          `• 7th–12th grade: Lighthouse In-House League, tournaments, friendly games, festivals, practices & pickup sessions\n` +
-          `\n` +
-          closeLink('Register here:'),
-      }] : []),
-      // Add more snippets here as common questions come up:
-      //
-      //   { id: 'location',  label: '📍 Field',       body: '...' },
-      //   { id: 'gear',      label: '👕 What to wear', body: '...' },
-      //
-      // Use {first} or {coach} tokens in body if you want personalization.
-    );
+    chip('cost', '💵 Cost', 'info', 'lead_cost');
+    chip('fall-format', '📚 Fall Format', 'info', 'lead_fall_format');
     return snippets;
   }
 
-  // Friendly format for an ISO timestamp from chat_events.start_at.
-  //   2026-06-11T23:00:00Z → "Wed Jun 11, 7pm" (in user's local tz)
-  formatPickupDate(iso) {
-    try {
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return '';
-      const dow = d.toLocaleDateString('en-US', { weekday: 'short' });
-      const md  = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      let tm = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      tm = tm.toLowerCase().replace(/\s+/g, '').replace(/:00(am|pm)/, '$1'); // 7:00pm → 7pm
-      return `${dow} ${md}, ${tm}`;
-    } catch { return ''; }
+  // Lead tokens: {first} {full} {phone} {coach} {coachFirst}.  Filled by
+  // MessageCopy, so an empty value gets the DB's fallback word ("there",
+  // "Coach") rather than one typed here.
+  //   {coachFirst} — the signed-in sender's full name, no "Coach " prefix:
+  //                  touch-1 signs off with a job title instead.
+  //   {coach}      — the lead_coach_title row ("Coach Mike").
+  fillTemplate(tmpl, lead, overrides = {}) {
+    const full  = (lead.name || '').trim();
+    const me    = (this.auth && this.auth.getUser && this.auth.getUser()) || {};
+    const coachFirst = [me.first_name, me.first_name && me.last_name].filter(Boolean).join(' ');
+    const coach = me.first_name
+      ? (LeadsScreen.leadCopy('lead_coach_title', ['all'], { sender_first: me.first_name })?.body || '')
+      : '';
+    return MessageCopy.fill(tmpl, {
+      first: full.split(/\s+/)[0] || '', full, phone: lead.phone || '', coachFirst, coach,
+      ...overrides,
+    });
   }
 
-  fillTemplate(tmpl, lead) {
-    const full  = (lead.name || '').trim();
-    const first = full.split(/\s+/)[0] || 'there';
-    // Auto-detect logged-in user's name for signoff. Falls back to plain "Coach".
-    const me    = (this.auth && this.auth.getUser && this.auth.getUser()) || {};
-    const coach = me.first_name ? `Coach ${me.first_name}` : 'Coach';
-    // `{coachFirst}` is the bare name (no "Coach " prefix) — used in
-    // touch-1 intros that sign off with a job title ("Soccer Director")
-    // instead of the "Coach " prefix, to avoid "Coach Mike, Soccer
-    // Director" redundancy.  Resolves to "{first_name} {last_name}"
-    // when both are on the auth profile so the signoff carries the full
-    // name (token name kept for backwards compat with existing
-    // templates).  Falls back to "Coach" when no logged-in user.
-    const coachFirst = me.first_name
-      ? (me.last_name ? `${me.first_name} ${me.last_name}` : me.first_name)
-      : 'Coach';
-    return tmpl.replace(/\{first\}/g, first)
-               .replace(/\{full\}/g,  full)
-               .replace(/\{phone\}/g, lead.phone || '')
-               .replace(/\{coachFirst\}/g, coachFirst)
-               .replace(/\{coach\}/g, coach);
-  }
 
   buildSmsHref(lead, label) {
     const t = this.messageTemplate(label);
+    if (!t.sms) return null;   // no copy, no button
     const body = this.fillTemplate(t.sms, lead);
     // sms: URI with both ?body= and &body= — iOS uses &, Android uses ?
     const phone = (lead.phone || '').replace(/[^\d+]/g, '');
@@ -2805,6 +2192,7 @@ class LeadsScreen extends Screen {
   // typically already carry the country code from Meta.
   buildWhatsAppHref(lead, label) {
     const t    = this.messageTemplate(label);
+    if (!t.sms) return null;   // no copy, no button
     const body = this.fillTemplate(t.sms, lead);  // SMS template reads fine in WA too
     let digits = (lead.phone || '').replace(/\D/g, '');
     if (digits.length === 10) digits = '1' + digits;  // assume US if bare
@@ -2813,6 +2201,7 @@ class LeadsScreen extends Screen {
 
   buildMailHref(lead, label) {
     const t = this.messageTemplate(label);
+    if (!t.email) return null;   // no copy, no button
     const subject = this.fillTemplate(t.subject, lead);
     const body    = this.fillTemplate(t.email,   lead);
     // Delegate to Screen.buildGmailComposeHref (screen-base.js) instead
