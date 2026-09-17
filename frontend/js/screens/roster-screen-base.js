@@ -762,7 +762,11 @@ class RosterScreenBase extends Screen {
   // boards is Lighthouse; on a card the club name only costs width.
   static dropClubName(name) {
     const full = String(name || '');
-    return full.replace(/^\s*Lighthouse\s+(?:1893\s+)?/i, '') || full;
+    // …and the section too when a team name follows it ("Mens Club APSL"
+    // → "APSL"; plain "Boys Club" stays) — owner: "we are in mens club
+    // don't need to say mens club for team".
+    return full.replace(/^\s*Lighthouse\s+(?:1893\s+)?/i, '')
+               .replace(/^(?:Men'?s|Women'?s|Boys|Girls)\s+Club\s+(?=\S)/i, '') || full;
   }
 
   // Multi-team badge — flags a player who holds more than one active
@@ -785,7 +789,12 @@ class RosterScreenBase extends Screen {
       const name = t.name || 'Team';
       // The club's own name is noise on its own board (owner 2026-09-17:
       // "we know we are lh") — the chip drops it, the tooltip keeps it.
-      const shortName = RosterScreenBase.dropClubName(name);
+      // Card chips use the team's board label from the DB (teams.label,
+      // "APSL Reserves") minus its icon; a team with no label falls back
+      // to its name without the club.  The full name stays in the tooltip
+      // — and everywhere that isn't a card.
+      const boardLabel = String(t.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
+      const shortName = boardLabel || RosterScreenBase.dropClubName(name);
       return `<span title="Also on ${this.escape(name)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.18); color:#cbd5e1; white-space:nowrap;">${icon[category] || '⚽'} ${this.escape(shortName)}</span>`;
     }).join('');
   }

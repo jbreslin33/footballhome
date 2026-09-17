@@ -31,7 +31,7 @@ std::unordered_map<long long, json> loadForPersons(const std::vector<long long>&
     try {
         auto* db = Database::getInstance();
         pqxx::result rows = db->query(
-            "SELECT tp.person_id, t.id AS team_id, t.name, t.gender_category "
+            "SELECT tp.person_id, t.id AS team_id, t.name, t.label, t.gender_category "
             "  FROM team_persons tp "
             "  JOIN teams t ON t.id = tp.team_id "
             " WHERE tp.person_id IN (" + idList.str() + ") "
@@ -45,6 +45,9 @@ std::unordered_map<long long, json> loadForPersons(const std::vector<long long>&
             json team = json::object();
             team["teamId"] = row["team_id"].as<int>();
             team["name"]   = row["name"].is_null() ? std::string("") : std::string(row["name"].c_str());
+            // teams.label is the board's own short name ("🏆 APSL Reserves");
+            // the roster card chip shows it instead of the full club name.
+            team["label"]  = row["label"].is_null() ? std::string("") : std::string(row["label"].c_str());
             team["genderCategory"] = row["gender_category"].is_null()
                 ? json(nullptr)
                 : json(std::string(row["gender_category"].c_str()));
