@@ -555,6 +555,12 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.del(prefix + "/calendar/events/:fhEventId/attendance", [this](const Request& req) {
         return this->handleDeleteEventAttendance(req);
     });
+    router.get(prefix + "/calendar/events/:fhEventId/sides", [this](const Request& req) {
+        return handleGetEventSides(req);
+    });
+    router.post(prefix + "/calendar/events/:fhEventId/sides", [this](const Request& req) {
+        return handlePostEventSide(req);
+    });
     router.get(prefix + "/calendar/events/:fhEventId/invites", [this](const Request& req) {
         return this->handleGetEventInvites(req);
     });
@@ -2075,6 +2081,216 @@ std::optional<InviteEventInfo> loadInviteEventInfo(Database* db, long long fhEve
 }
 
 } // namespace
+
+// GET /calendar/events/:fhEventId/sides — who is on which bib colour for a
+// pickup (sides) or a practice (groups).  Rows live in match_lineups keyed
+// on fh_event_id (migration 316); the colours are squad_colors rows
+// (migration 372).  Same people as the attendance roster — players, coaches
+// (they play pickup too) and invited call-ups — each with their RSVP so the
+// screen can lead with who is actually coming.
+Response CalendarController::handleGetEventSides(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    }
+
+    auto* db = Database::getInstance();
+    try {
+        auto evRows = db->query(
+            "SELECT 1 FROM fh_events WHERE id = $1::bigint",
+            {std::to_string(fhEventId)});
+        if (evRows.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
+        }
+
+        const bool canEdit = isEventCoachOrAdmin(db, personId, fhEventId);
+
+        json colors = json::array();
+        for (const auto& row : db->query(
+                 "SELECT code, label, hex FROM squad_colors "
+                 " WHERE is_active ORDER BY sort_order, code")) {
+            colors.push_back({
+                {"code",  row["code"].c_str()},
+                {"label", row["label"].c_str()},
+                {"hex",   row["hex"].c_str()},
+            });
+        }
+
+        auto rows = db->query(R"SQL(
+            SELECT roster.person_id, roster.first_name, roster.last_name,
+                   rv.response AS rsvp, ml.squad_color
+              FROM (
+                SELECT DISTINCT ON (combined.person_id) combined.*
+                  FROM (
+                    SELECT p.id AS person_id, p.first_name, p.last_name
+                      FROM fh_event_teams fet
+                      JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
+                      JOIN persons p ON p.id = tp.person_id
+                     WHERE fet.fh_event_id = $1::bigint
+                    UNION ALL
+                    SELECT p.id, p.first_name, p.last_name
+                      FROM fh_event_teams fet
+                      JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
+                      JOIN coaches co ON co.id = tc.coach_id
+                      JOIN persons p ON p.id = co.person_id
+                     WHERE fet.fh_event_id = $1::bigint
+                    UNION ALL
+                    SELECT p.id, p.first_name, p.last_name
+                      FROM fh_event_invites i
+                      JOIN persons p ON p.id = i.person_id
+                     WHERE i.fh_event_id = $1::bigint AND i.revoked_at IS NULL
+                  ) combined
+                 ORDER BY combined.person_id
+              ) roster
+              LEFT JOIN fh_event_rsvps rv
+                     ON rv.fh_event_id = $1::bigint AND rv.person_id = roster.person_id
+              LEFT JOIN players pl ON pl.person_id = roster.person_id
+              LEFT JOIN match_lineups ml
+                     ON ml.fh_event_id = $1::bigint AND ml.player_id = pl.id
+             ORDER BY roster.last_name, roster.first_name, roster.person_id)SQL",
+            {std::to_string(fhEventId)});
+
+        json players = json::array();
+        for (const auto& row : rows) {
+            players.push_back({
+                {"person_id",   row["person_id"].as<long long>()},
+                {"first_name",  textOrNull(row, "first_name")},
+                {"last_name",   textOrNull(row, "last_name")},
+                {"rsvp",        textOrNull(row, "rsvp")},
+                {"squad_color", textOrNull(row, "squad_color")},
+            });
+        }
+        return jsonOk({{"fh_event_id", fhEventId}, {"can_edit", canEdit},
+                       {"colors", colors}, {"players", players}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handleGetEventSides: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /calendar/events/:fhEventId/sides  { person_id, squad_color | null }
+// Puts one person on a colour, or takes them off (null).  Coach of the
+// event's team(s) or admin only.
+Response CalendarController::handlePostEventSide(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    }
+
+    json body;
+    try {
+        body = request.getBody().empty()
+            ? json::object()
+            : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST,
+                         std::string("Invalid JSON: ") + e.what());
+    }
+
+    auto targetPersonIdOpt = jsonInt(body, "person_id");
+    if (!targetPersonIdOpt || *targetPersonIdOpt <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "person_id (positive int) required");
+    }
+    const long long targetPersonId = *targetPersonIdOpt;
+    const std::string color = toLower(jsonStr(body, "squad_color"));
+
+    auto* db = Database::getInstance();
+    try {
+        auto evRows = db->query(
+            "SELECT 1 FROM fh_events WHERE id = $1::bigint",
+            {std::to_string(fhEventId)});
+        if (evRows.empty()) {
+            return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
+        }
+        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+            return jsonError(HttpStatus::FORBIDDEN,
+                             "Only a coach of this event's team(s) or a club admin "
+                             "can set sides.");
+        }
+
+        if (color.empty()) {
+            // Off every side.  A game's lineup row (match_id set) keeps its
+            // squad/starter meaning and only loses the colour; an
+            // event-only row has no other meaning and goes.
+            db->query(
+                "UPDATE match_lineups ml SET squad_color = NULL "
+                "  FROM players pl "
+                " WHERE pl.person_id = $2::int AND ml.player_id = pl.id "
+                "   AND ml.fh_event_id = $1::bigint",
+                {std::to_string(fhEventId), std::to_string(targetPersonId)});
+            db->query(
+                "DELETE FROM match_lineups ml USING players pl "
+                " WHERE pl.person_id = $2::int AND ml.player_id = pl.id "
+                "   AND ml.fh_event_id = $1::bigint "
+                "   AND ml.match_id IS NULL AND ml.squad_color IS NULL",
+                {std::to_string(fhEventId), std::to_string(targetPersonId)});
+            return jsonOk({{"fh_event_id", fhEventId}, {"person_id", targetPersonId},
+                           {"squad_color", nullptr}});
+        }
+
+        auto colorRows = db->query(
+            "SELECT 1 FROM squad_colors WHERE code = $1 AND is_active", {color});
+        if (colorRows.empty()) {
+            return jsonError(HttpStatus::BAD_REQUEST, "unknown squad_color");
+        }
+
+        // Same roster rule as attendance; the team the row hangs off is the
+        // person's own among the event's teams, else the event's first.
+        auto teamRows = db->query(R"SQL(
+            SELECT COALESCE(
+                     (SELECT fet.team_id FROM fh_event_teams fet
+                        JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
+                       WHERE fet.fh_event_id = $1::bigint AND tp.person_id = $2::int
+                       ORDER BY fet.team_id LIMIT 1),
+                     (SELECT fet.team_id FROM fh_event_teams fet
+                       WHERE fet.fh_event_id = $1::bigint
+                         AND ( EXISTS (SELECT 1 FROM team_coaches tc
+                                         JOIN coaches co ON co.id = tc.coach_id
+                                        WHERE tc.team_id = fet.team_id AND tc.ended_at IS NULL
+                                          AND co.person_id = $2::int)
+                               OR fh_event_invited($1::bigint, $2::int) )
+                       ORDER BY fet.team_id LIMIT 1)
+                   ) AS team_id)SQL",
+            {std::to_string(fhEventId), std::to_string(targetPersonId)});
+        if (teamRows.empty() || teamRows[0]["team_id"].is_null()) {
+            return jsonError(HttpStatus::BAD_REQUEST,
+                             "person is not on the roster/staff for this event");
+        }
+        const std::string teamId = std::to_string(teamRows[0]["team_id"].as<long long>());
+
+        // match_lineups hangs off players; a coach or a new call-up may not
+        // have that row yet.
+        db->query(
+            "INSERT INTO players (person_id) VALUES ($1::int) "
+            "ON CONFLICT (person_id) DO NOTHING",
+            {std::to_string(targetPersonId)});
+
+        db->query(R"SQL(
+            INSERT INTO match_lineups (fh_event_id, match_id, player_id, team_id, is_starter, squad_color)
+            SELECT $1::bigint, fe.match_id, pl.id, $3::int, false, $4
+              FROM fh_events fe, players pl
+             WHERE fe.id = $1::bigint AND pl.person_id = $2::int
+            ON CONFLICT (fh_event_id, player_id) WHERE fh_event_id IS NOT NULL
+            DO UPDATE SET squad_color = EXCLUDED.squad_color)SQL",
+            {std::to_string(fhEventId), std::to_string(targetPersonId), teamId, color});
+
+        return jsonOk({{"fh_event_id", fhEventId}, {"person_id", targetPersonId},
+                       {"squad_color", color}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handlePostEventSide: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
 
 Response CalendarController::handleGetEventInvites(const Request& request) {
     auto gate = requireSession(request);

@@ -109,6 +109,8 @@ private:
     // URL on success, nullopt on no-match or any failure.
     std::optional<std::string> fetchAndCacheOpponentLogo(const std::string& opponentText);
     Response handleGetEventAttendance  (const Request& request);
+    Response handleGetEventSides       (const Request& request);
+    Response handlePostEventSide       (const Request& request);
     Response handlePostEventAttendance (const Request& request);
     Response handleDeleteEventAttendance(const Request& request);
     // Invites (fh_event_invites, migration 355): a coach or admin lets ONE

@@ -21,6 +21,9 @@
 // GET /api/calendar/events/:id (same shape).  The tools are the existing
 //   GET|POST|DELETE /api/calendar/events/:id/attendance
 //   GET|POST        /api/calendar/events/:id/invites   DELETE …/invites/:personId
+//   GET|POST        /api/calendar/events/:id/sides     pickup sides / practice
+//                   groups by bib colour (match_lineups.squad_color; the
+//                   colours are squad_colors rows, migration 372)
 // Who may mark or invite is decided per event by the backend (can_mark —
 // CalendarController::isEventCoachOrAdmin); without it the page is
 // read-only.  Invite messages are built server-side from message_templates.
@@ -46,7 +49,7 @@ class EventCenterScreen extends Screen {
     this.ev       = null;      // the open event
     this.kind     = 'all';
     this.category = 'all';
-    this.pill     = 'coming';  // coming | invites
+    this.pill     = 'coming';  // coming | sides | invites
     this.att      = null;      // {canMark, roster: Map(person_id -> {status})}
     this.invites  = null;      // {invites, candidates} | {error}
     this.saving   = new Set(); // "att:<pid>" / "inv:<pid>" in flight
@@ -92,6 +95,8 @@ class EventCenterScreen extends Screen {
     this.pill = 'coming';
     this.att = null;
     this.invites = null;
+    this.sides = null;        // { canEdit, colors, players }
+    this.sideColors = null;   // Set of colour codes in play on this event
     this.error = null;
     this.saving.clear();
     this.copied.clear();
@@ -161,6 +166,52 @@ class EventCenterScreen extends Screen {
     } catch (err) {
       console.error('[event-center] attendance load failed:', err);
       this.att = { canMark: false, roster: new Map() };
+    }
+    this._render();
+  }
+
+  async _loadSides() {
+    const id = this.ev.fh_event_id;
+    try {
+      const body = await this._json(`/api/calendar/events/${id}/sides`);
+      if (!this.ev || this.ev.fh_event_id !== id) return;
+      this.sides = { canEdit: !!body.can_edit, colors: body.colors || [], players: body.players || [] };
+      // In play: whatever is already used; a fresh event starts with the
+      // first two colours.
+      const used = new Set(this.sides.players.map(p => p.squad_color).filter(Boolean));
+      if (!this.sideColors) {
+        this.sideColors = used.size ? used : new Set(this.sides.colors.slice(0, 2).map(c => c.code));
+      } else {
+        used.forEach(c => this.sideColors.add(c));
+      }
+    } catch (err) {
+      console.error('[event-center] sides load failed:', err);
+      this.sides = { canEdit: false, colors: [], players: [], failed: true };
+    }
+    this._render();
+  }
+
+  // Tap a colour to put the player on it; tap their current colour to take
+  // them off.
+  async _setSide(personId, color) {
+    const key = `side:${personId}`;
+    if (this.saving.has(key)) return;
+    const player = this.sides.players.find(p => p.person_id === personId);
+    if (!player) return;
+    const next = player.squad_color === color ? null : color;
+    this.saving.add(key);
+    this._render();
+    try {
+      await this._json(`/api/calendar/events/${this.ev.fh_event_id}/sides`, {
+        method: 'POST',
+        body: JSON.stringify({ person_id: personId, squad_color: next }),
+      });
+      player.squad_color = next;
+    } catch (err) {
+      console.error('[event-center] side save failed:', err);
+      alert(`Could not save: ${err.message}`);
+    } finally {
+      this.saving.delete(key);
     }
     this._render();
   }
@@ -269,6 +320,7 @@ class EventCenterScreen extends Screen {
       if ((el = t('[data-ec-pill]'))) {
         this.pill = el.dataset.ecPill;
         if (this.pill === 'invites' && !this.invites) this._loadInvites();
+        if (this.pill === 'sides' && !this.sides) this._loadSides();
         this._render();
         return;
       }
@@ -282,6 +334,13 @@ class EventCenterScreen extends Screen {
       }
       if ((el = t('[data-ec-att]'))) {
         this._markAttendance(Number(el.dataset.personId), el.dataset.ecAtt, el.dataset.active === '1');
+        return;
+      }
+      if ((el = t('[data-ec-side]'))) { this._setSide(Number(el.dataset.personId), el.dataset.ecSide); return; }
+      if ((el = t('[data-ec-side-color]'))) {
+        const code = el.dataset.ecSideColor;
+        if (this.sideColors.has(code)) this.sideColors.delete(code); else this.sideColors.add(code);
+        this._render();
         return;
       }
       if ((el = t('[data-ec-invite]'))) {
@@ -366,6 +425,10 @@ class EventCenterScreen extends Screen {
     const ev = this.ev;
     const canMark = !!(this.att && this.att.canMark);
     const pills = [['coming', "Who's Coming & Attendance"]];
+    // Sides for a pickup, groups for a practice — a game's squad and
+    // starters are Game Center's.
+    if (ev.kind === 'pickup')   pills.push(['sides', '🎽 Teams']);
+    if (ev.kind === 'practice') pills.push(['sides', '🎽 Groups']);
     // Invites are for an event still to come, by whoever may mark it.
     if (canMark && !this._isPast(ev)) pills.push(['invites', '🎟 Invites']);
     if (!pills.some(([k]) => k === this.pill)) this.pill = 'coming';
@@ -380,7 +443,59 @@ class EventCenterScreen extends Screen {
       </div>
       ${this.att && !canMark ? `<div style="font-size:0.8rem; opacity:0.7; margin-bottom:var(--space-2);">
         Read-only — attendance and invites are for this event's coaches and club admins.</div>` : ''}
-      ${this.pill === 'invites' ? this._invitesHtml() : this._comingHtml()}`;
+      ${this.pill === 'invites' ? this._invitesHtml()
+        : this.pill === 'sides' ? this._sidesHtml() : this._comingHtml()}`;
+  }
+
+  // Pickup sides / practice groups by bib colour.  Top: each colour and who
+  // is on it.  Below, for whoever may edit: the roster, people who are
+  // coming first, with one swatch per colour in play.
+  _sidesHtml() {
+    if (!this.sides) return `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`;
+    if (this.sides.failed) return `<div class="ec-box" style="opacity:0.7;">Could not load.</div>`;
+    const { canEdit, colors, players } = this.sides;
+    const word = this.ev.kind === 'pickup' ? 'team' : 'group';
+    const nameOf = (p) => [p.first_name, p.last_name].filter(Boolean).join(' ') || 'Unknown';
+    const swatch = (c, size = 14) => `<span style="display:inline-block; width:${size}px; height:${size}px; border-radius:50%;
+      background:${c.hex}; border:1px solid var(--border-color); vertical-align:middle;"></span>`;
+
+    const onSide = colors
+      .map(c => [c, players.filter(p => p.squad_color === c.code)])
+      .filter(([, list]) => list.length);
+    const summary = onSide.length
+      ? onSide.map(([c, list]) => `<div class="ec-box">
+          <div class="ec-h">${swatch(c)} ${this.escapeHtml(c.label)} (${list.length})</div>
+          <div style="font-size:0.9rem; margin-top:4px;">${list.map(p => this.escapeHtml(nameOf(p))).join(' · ')}</div>
+        </div>`).join('')
+      : `<div class="ec-box" style="opacity:0.7;">Nobody is on a ${word} yet.</div>`;
+    if (!canEdit) return summary;
+
+    const inPlay = colors.filter(c => this.sideColors.has(c.code));
+    const row = (p) => {
+      const saving = this.saving.has(`side:${p.person_id}`);
+      return `<div class="ec-row">
+        <span>${this.escapeHtml(nameOf(p))}</span>
+        <span style="display:inline-flex; gap:6px;">${inPlay.map(c => {
+          const active = p.squad_color === c.code;
+          return `<button type="button" class="ec-att" data-ec-side="${c.code}" data-person-id="${p.person_id}"
+                    ${saving ? 'disabled' : ''} title="${this.escapeHtml(c.label)}${active ? ' — tap to clear' : ''}"
+                    style="background:${c.hex}; border:${active ? '3px solid var(--primary-color)' : '1px solid var(--border-color)'};
+                           opacity:${active || !p.squad_color ? 1 : 0.35};"></button>`;
+        }).join('')}</span>
+      </div>`;
+    };
+    const group = (label, list) => list.length
+      ? `<div class="ec-box"><div class="ec-h">${label} (${list.length})</div>${list.map(row).join('')}</div>` : '';
+    return `
+      ${summary}
+      <div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin:var(--space-3) 0 var(--space-2);">
+        <span class="ec-h">Colours in play</span>
+        ${colors.map(c => `<button type="button" class="ec-chip ${this.sideColors.has(c.code) ? 'on' : ''}"
+            data-ec-side-color="${c.code}">${swatch(c, 10)} ${this.escapeHtml(c.label)}</button>`).join('')}
+      </div>
+      ${group('Going', players.filter(p => p.rsvp === 'yes'))}
+      ${group('No response', players.filter(p => p.rsvp !== 'yes' && p.rsvp !== 'no'))}
+      ${group('Not going', players.filter(p => p.rsvp === 'no'))}`;
   }
 
   _attendanceCell(personId) {
