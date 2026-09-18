@@ -44,6 +44,7 @@ set(SOURCES
     src/models/WelcomeMessage.cpp
     src/models/MessageCopy.cpp
     src/models/RsvpBoard.cpp
+    src/models/KitBoard.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp
     src/models/YouthAgeGroups.cpp
@@ -100,6 +101,7 @@ set(SOURCES
     src/controllers/PayReminderLogController.cpp
     src/controllers/WelcomeController.cpp
     src/controllers/RsvpBoardController.cpp
+    src/controllers/KitBoardController.cpp
     src/controllers/PaymentsController.cpp
     src/controllers/ChargeFlagsController.cpp
     src/controllers/AdminLaBackfillController.cpp

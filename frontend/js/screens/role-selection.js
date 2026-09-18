@@ -90,6 +90,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="kit" id="rs-kit" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">👕</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Uniforms &amp; Kit</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Assign uniform numbers — tick off training shirts and pinnies handed out</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="rsvps" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">✅</span>
           <div style="flex: 1; text-align: left;">
@@ -313,7 +321,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'game-center' && role !== 'event-center') this.navigation.context.role = role;
+    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'game-center' && role !== 'event-center' && role !== 'kit') this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -333,6 +341,8 @@ class RoleSelectionScreen extends Screen {
       // Not a role — the event picker: attendance + invites for any event
       // (moved off #my, owner 2026-09-17: staff tools get dedicated pages).
       this.navigation.goTo('event-center', { pick: true });
+    } else if (role === 'kit') {
+      this.navigation.goTo('kit');
     } else if (role === 'rsvps') {
       // Not a role — the RSVP follow-up board (owner 2026-09-17: top level).
       this.navigation.goTo('rsvps');
@@ -436,9 +446,9 @@ class RoleSelectionScreen extends Screen {
         return;
       }
       // A coach without an admin role still sets lineups and takes
-      // attendance — show them the 🏟️ Game Center and 📋 Event Center tiles
+      // attendance — show them the 🏟️ Game Center, 📋 Event Center and 👕 Uniforms & Kit tiles
       // the admin levels get by default.
-      for (const id of ['#rs-game-center', '#rs-event-center']) {
+      for (const id of ['#rs-game-center', '#rs-event-center', '#rs-kit']) {
         const tile = this.element && this.element.querySelector(id);
         if (tile) tile.style.display = 'flex';
       }

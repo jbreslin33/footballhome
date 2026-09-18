@@ -61,6 +61,7 @@ const std::vector<PersonMerge::ChildTable>& PersonMerge::childTables() {
         { "fh_event_rsvps",          Conflict::UniquePersonPlusCols, {"fh_event_id"},    {"id"} },
         { "fh_event_attendance",     Conflict::UniquePersonPlusCols, {"fh_event_id"},    {"id"} },
         { "person_la_memberships",   Conflict::UniquePersonPlusCols, {"la_program_id"},  {"id"} },
+        { "person_kit_issues",       Conflict::UniquePersonPlusCols, {"kit_item_id"},    {"id"} },
         { "player_event_reminders",  Conflict::NoPersonUnique,       {},                 {"id"} },
         { "push_subscriptions",      Conflict::NoPersonUnique,       {},                 {"id"} },
         { "trail_test_attempts",     Conflict::NoPersonUnique,       {},                 {"id"} },

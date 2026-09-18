@@ -41,6 +41,7 @@
 #include "controllers/PayReminderLogController.h"
 #include "controllers/WelcomeController.h"
 #include "controllers/RsvpBoardController.h"
+#include "controllers/KitBoardController.h"
 #include "controllers/ScheduleReleaseController.h"
 #include "controllers/PaymentsController.h"
 #include "controllers/ChargeFlagsController.h"
@@ -104,6 +105,7 @@ private:
     std::shared_ptr<PayReminderLogController> pay_reminder_log_controller_;
     std::shared_ptr<WelcomeController> welcome_controller_;
     std::shared_ptr<RsvpBoardController> rsvp_board_controller_;
+    std::shared_ptr<KitBoardController> kit_board_controller_;
     std::shared_ptr<ScheduleReleaseController> schedule_release_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
     std::shared_ptr<ChargeFlagsController> charge_flags_controller_;
@@ -180,6 +182,7 @@ public:
         pay_reminder_log_controller_ = std::make_shared<PayReminderLogController>();
         welcome_controller_ = std::make_shared<WelcomeController>();
         rsvp_board_controller_ = std::make_shared<RsvpBoardController>();
+        kit_board_controller_ = std::make_shared<KitBoardController>();
         schedule_release_controller_ = std::make_shared<ScheduleReleaseController>();
         payments_controller_ = std::make_shared<PaymentsController>();
         charge_flags_controller_ = std::make_shared<ChargeFlagsController>();
@@ -463,6 +466,8 @@ private:
         router_.useController("/api/welcomes", welcome_controller_);
         // #rsvps board (owner 2026-09-17): RSVP standing per player + tracked reminders.
         router_.useController("/api/rsvp-board", rsvp_board_controller_);
+        // #kit board (owner 2026-09-18): uniform numbers + kit handed out (mig 373).
+        router_.useController("/api/kit-board", kit_board_controller_);
         // Schedule release window (migration 334): when next week posts,
         // early opens, standing rule. See ScheduleReleaseController.h.
         router_.useController("/api/schedule", schedule_release_controller_);
