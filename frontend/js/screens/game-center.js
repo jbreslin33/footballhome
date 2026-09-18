@@ -476,14 +476,16 @@ class GameCenterScreen extends Screen {
     // stylesheet rename is not worth coupling to this change.
     el.className = 'screen screen-game-lineup screen-game-center';
     el.innerHTML = `
-      <div class="screen-header">
+      <div class="screen-header" style="flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🏟️ Game Center</h1>
         <p class="subtitle" id="gl-subtitle">Loading…</p>
         <!-- Flip to another game without going back to the list — past
-             weeks and coming ones, grouped by week (_renderGameSwitch). -->
+             weeks and coming ones, grouped by week (_renderGameSwitch).
+             Its own full-width row: the header is a flex row, and a fourth
+             item on it ran off the right edge of a phone. -->
         <select id="gc-game-switch" aria-label="Switch game" hidden
-                style="margin-top:6px; max-width:100%; padding:6px 8px; border-radius:8px; font-size:0.9rem;
+                style="flex:1 0 100%; min-width:0; max-width:100%; padding:6px 8px; border-radius:8px; font-size:0.9rem;
                        border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);"></select>
       </div>
       <div id="gl-body" style="padding: var(--space-3) var(--space-4) 0;"></div>
