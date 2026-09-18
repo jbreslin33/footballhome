@@ -204,6 +204,9 @@ const POST_PILLS = [
 const DEFAULT_PILL = 'starters_bench';
 
 class GameCenterScreen extends Screen {
+  // How far back the header's game switcher reaches.
+  static get SWITCH_PAST_DAYS() { return 56; }
+
   constructor(navigation, auth) {
     super(navigation, auth);
     this.matchId   = null;
@@ -477,6 +480,11 @@ class GameCenterScreen extends Screen {
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🏟️ Game Center</h1>
         <p class="subtitle" id="gl-subtitle">Loading…</p>
+        <!-- Flip to another game without going back to the list — past
+             weeks and coming ones, grouped by week (_renderGameSwitch). -->
+        <select id="gc-game-switch" aria-label="Switch game" hidden
+                style="margin-top:6px; max-width:100%; padding:6px 8px; border-radius:8px; font-size:0.9rem;
+                       border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);"></select>
       </div>
       <div id="gl-body" style="padding: var(--space-3) var(--space-4) 0;"></div>
       <!-- The Instagram section lives OUTSIDE #gl-body on purpose.
@@ -562,6 +570,7 @@ class GameCenterScreen extends Screen {
     // confusing."  My is where you look at the lineup; the top-level
     // Game Center is where staff set it.
     this.playerOnly = params.view === 'player';
+    this.view = params.view || null;
     this.games = null;
     this.error = null;
     this.loaded = false;
@@ -632,14 +641,17 @@ class GameCenterScreen extends Screen {
   _wire() {
     if (this._wired) return;
     this._wired = true;
+    this.element.addEventListener('change', (e) => {
+      if (e.target.id === 'gc-game-switch' && e.target.value) this._switchGame(Number(e.target.value));
+    });
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
         this.navigation.goBack();
         return;
       }
       const pick = e.target.closest('[data-pick-game]');
-      if (pick && this.games) {
-        const ev = this.games[Number(pick.getAttribute('data-pick-game'))];
+      if (pick && this.pickerGames) {
+        const ev = this.pickerGames[Number(pick.getAttribute('data-pick-game'))];
         if (ev && ev.match_id != null) {
           this.navigation.goTo('game-center', {
             matchId: ev.match_id, title: this._gameLabel(ev), when: this._gameWhen(ev),
@@ -834,6 +846,8 @@ class GameCenterScreen extends Screen {
       return;
     }
     if (sub) sub.textContent = [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
+    // The switcher's list loads alongside the game; nothing waits on it.
+    this._loadGames();
 
     try {
       const [lineupRes, positionsRes, matchRes, postTypesRes] = await Promise.all([
@@ -1099,20 +1113,79 @@ class GameCenterScreen extends Screen {
   // game by the backend (isCoach on the lineup load).
   async _loadGames() {
     try {
+      // Eight weeks back for the switcher, the rest of the feed's 90-day cap
+      // ahead; the picker itself only lists what is still to come.
       const d = new Date();
+      d.setDate(d.getDate() - GameCenterScreen.SWITCH_PAST_DAYS);
       const start = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const res = await this.auth.fetch(`/api/calendar/upcoming?start=${start}&days=28`);
+      const res = await this.auth.fetch(`/api/calendar/upcoming?start=${start}&days=90`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
       const events = Array.isArray(body.events) ? body.events : [];
       this.games = events
         .filter(ev => ev.kind === 'match')
+        // #my's read-only door lists the viewer's own games, not the club's.
+        .filter(ev => !this.playerOnly || ev.is_mine || ev.is_guardian)
         .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      this.pickerGames = this.games.filter(ev => new Date(ev.starts_at) >= today);
     } catch (err) {
       console.error('[game-center] games load failed:', err);
       this.error = 'Could not load the upcoming games.';
     }
     if (!this.matchId) this._render();
+    this._renderGameSwitch();
+  }
+
+  // The header dropdown: every linked game in the window, grouped by week
+  // (Monday start), this game selected.  Hidden on the picker and when
+  // there is nothing else to flip to.
+  _renderGameSwitch() {
+    const sel = this.find('#gc-game-switch');
+    if (!sel) return;
+    const games = (this.games || []).filter(ev => ev.match_id != null);
+    if (!this.matchId || !games.some(ev => ev.match_id !== this.matchId)) {
+      sel.hidden = true;
+      return;
+    }
+    const weekOf = (iso) => {
+      const d = new Date(iso); d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      return d;
+    };
+    const thisWeek = weekOf(new Date().toISOString()).getTime();
+    const groups = new Map();
+    for (const ev of games) {
+      const w = weekOf(ev.starts_at).getTime();
+      if (!groups.has(w)) groups.set(w, []);
+      groups.get(w).push(ev);
+    }
+    const weekLabel = (w) => w === thisWeek ? 'This week'
+      : `Week of ${new Date(w).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    const known = games.some(ev => ev.match_id === this.matchId);
+    sel.innerHTML =
+      (known ? '' : `<option value="" selected>${this.escapeHtml([this.title, this.when].filter(Boolean).join(' · ') || 'This game')}</option>`) +
+      [...groups].map(([w, list]) => `<optgroup label="${this.escapeHtml(weekLabel(w))}">
+        ${list.map(ev => `<option value="${ev.match_id}" ${ev.match_id === this.matchId ? 'selected' : ''}>${
+          this.escapeHtml(`${this._gameWhen(ev)} — ${this._gameLabel(ev)}`)}</option>`).join('')}
+      </optgroup>`).join('');
+    sel.hidden = false;
+  }
+
+  // Same page, another game: keep the pill and the door we came in by, and
+  // no history entry — Back still leaves Game Center in one step.
+  _switchGame(matchId) {
+    const ev = (this.games || []).find(g => g.match_id === matchId);
+    if (!ev || matchId === this.matchId) return;
+    const games = this.games, pickerGames = this.pickerGames;
+    this.onExit();   // timers, beam animation, social card — as if we had left
+    const social = this.find('#gc-social');
+    if (social) social.innerHTML = '';
+    this.onEnter({ matchId, title: this._gameLabel(ev), when: this._gameWhen(ev),
+                   view: this.view || undefined, postType: this.pill });
+    // Keep the list on screen while the fresh one loads.
+    this.games = games; this.pickerGames = pickerGames;
+    this._renderGameSwitch();
   }
 
   _gameLabel(ev) {
@@ -1130,11 +1203,11 @@ class GameCenterScreen extends Screen {
   }
 
   _renderGamePicker() {
-    if (!this.games.length) {
-      return `<div class="empty-state" style="padding: var(--space-4); text-align:center; opacity:0.8;">No games on the calendar in the next four weeks.</div>`;
+    if (!this.pickerGames.length) {
+      return `<div class="empty-state" style="padding: var(--space-4); text-align:center; opacity:0.8;">No games on the calendar yet.</div>`;
     }
     return `<div style="display:flex; flex-direction:column; gap:8px; max-width:640px; margin:0 auto; padding-bottom: var(--space-6);">
-      ${this.games.map((ev, i) => {
+      ${this.pickerGames.map((ev, i) => {
         const linked = ev.match_id != null;
         return `<button type="button" class="btn btn-secondary" data-pick-game="${i}" ${linked ? '' : 'disabled'}
                         style="display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; padding:10px 12px;">
