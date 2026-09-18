@@ -1167,7 +1167,7 @@ class GameCenterScreen extends Screen {
       (known ? '' : `<option value="" selected>${this.escapeHtml([this.title, this.when].filter(Boolean).join(' · ') || 'This game')}</option>`) +
       [...groups].map(([w, list]) => `<optgroup label="${this.escapeHtml(weekLabel(w))}">
         ${list.map(ev => `<option value="${ev.match_id}" ${ev.match_id === this.matchId ? 'selected' : ''}>${
-          this.escapeHtml(`${this._gameWhen(ev)} — ${this._gameLabel(ev)}`)}</option>`).join('')}
+          this.escapeHtml(`${this._gameWhen(ev)} — ${this._gameLabel(ev, true)}`)}</option>`).join('')}
       </optgroup>`).join('');
     sel.hidden = false;
   }
@@ -1188,8 +1188,11 @@ class GameCenterScreen extends Screen {
     this._renderGameSwitch();
   }
 
-  _gameLabel(ev) {
-    const teams = (Array.isArray(ev.teams) ? ev.teams : []).map(t => t.name).filter(Boolean).join(' + ');
+  // short: board labels ("🏆 APSL") instead of full team names — the
+  // switcher's options have to fit a phone.
+  _gameLabel(ev, short = false) {
+    const teams = (Array.isArray(ev.teams) ? ev.teams : [])
+      .map(t => (short && t.label) || t.name).filter(Boolean).join(' + ');
     const vs = ev.opponent ? `${ev.is_home === false ? '@' : 'vs'} ${ev.opponent}` : '';
     return [teams, vs].filter(Boolean).join(' ') || 'Game';
   }
