@@ -110,6 +110,7 @@ private:
     std::optional<std::string> fetchAndCacheOpponentLogo(const std::string& opponentText);
     Response handleGetEventAttendance  (const Request& request);
     Response handleGetEventSides       (const Request& request);
+    Response handleGetEventSessionPlan (const Request& request);
     Response handlePostEventSide       (const Request& request);
     Response handlePostEventAttendance (const Request& request);
     Response handleDeleteEventAttendance(const Request& request);

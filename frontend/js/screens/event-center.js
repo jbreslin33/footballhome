@@ -21,6 +21,8 @@
 // GET /api/calendar/events/:id (same shape).  The tools are the existing
 //   GET|POST|DELETE /api/calendar/events/:id/attendance
 //   GET|POST        /api/calendar/events/:id/invites   DELETE …/invites/:personId
+//   GET             /api/calendar/events/:id/session-plan   the practice plan
+//                   attached to the event (edited on #practice-plan)
 //   GET|POST        /api/calendar/events/:id/sides     pickup sides / practice
 //                   groups by bib colour (match_lineups.squad_color; the
 //                   colours are squad_colors rows, migration 372)
@@ -49,7 +51,7 @@ class EventCenterScreen extends Screen {
     this.ev       = null;      // the open event
     this.kind     = 'all';
     this.category = 'all';
-    this.pill     = 'coming';  // coming | sides | invites
+    this.pill     = 'coming';  // coming | sides | plan | invites
     this.att      = null;      // {canMark, roster: Map(person_id -> {status})}
     this.invites  = null;      // {invites, candidates} | {error}
     this.saving   = new Set(); // "att:<pid>" / "inv:<pid>" in flight
@@ -96,6 +98,7 @@ class EventCenterScreen extends Screen {
     this.att = null;
     this.invites = null;
     this.sides = null;        // { canEdit, colors, players }
+    this.plan = undefined;    // undefined = not loaded; null = no plan
     this.sideColors = null;   // Set of colour codes in play on this event
     this.error = null;
     this.saving.clear();
@@ -166,6 +169,19 @@ class EventCenterScreen extends Screen {
     } catch (err) {
       console.error('[event-center] attendance load failed:', err);
       this.att = { canMark: false, roster: new Map() };
+    }
+    this._render();
+  }
+
+  async _loadPlan() {
+    const id = this.ev.fh_event_id;
+    try {
+      const body = await this._json(`/api/calendar/events/${id}/session-plan`);
+      if (!this.ev || this.ev.fh_event_id !== id) return;
+      this.plan = body.practice || null;
+    } catch (err) {
+      console.error('[event-center] session plan load failed:', err);
+      this.plan = null;
     }
     this._render();
   }
@@ -321,6 +337,7 @@ class EventCenterScreen extends Screen {
         this.pill = el.dataset.ecPill;
         if (this.pill === 'invites' && !this.invites) this._loadInvites();
         if (this.pill === 'sides' && !this.sides) this._loadSides();
+        if (this.pill === 'plan' && this.plan === undefined) this._loadPlan();
         this._render();
         return;
       }
@@ -336,6 +353,7 @@ class EventCenterScreen extends Screen {
         this._markAttendance(Number(el.dataset.personId), el.dataset.ecAtt, el.dataset.active === '1');
         return;
       }
+      if ((el = t('[data-ec-practice-plan]'))) { this.navigation.goTo('practice-plan', {}); return; }
       if ((el = t('[data-ec-side]'))) { this._setSide(Number(el.dataset.personId), el.dataset.ecSide); return; }
       if ((el = t('[data-ec-side-color]'))) {
         const code = el.dataset.ecSideColor;
@@ -429,6 +447,7 @@ class EventCenterScreen extends Screen {
     // starters are Game Center's.
     if (ev.kind === 'pickup')   pills.push(['sides', '🎽 Teams']);
     if (ev.kind === 'practice') pills.push(['sides', '🎽 Groups']);
+    if (ev.kind === 'practice' || ev.kind === 'pickup') pills.push(['plan', '📝 Session Plan']);
     // Invites are for an event still to come, by whoever may mark it.
     if (canMark && !this._isPast(ev)) pills.push(['invites', '🎟 Invites']);
     if (!pills.some(([k]) => k === this.pill)) this.pill = 'coming';
@@ -444,7 +463,39 @@ class EventCenterScreen extends Screen {
       ${this.att && !canMark ? `<div style="font-size:0.8rem; opacity:0.7; margin-bottom:var(--space-2);">
         Read-only — attendance and invites are for this event's coaches and club admins.</div>` : ''}
       ${this.pill === 'invites' ? this._invitesHtml()
-        : this.pill === 'sides' ? this._sidesHtml() : this._comingHtml()}`;
+        : this.pill === 'sides' ? this._sidesHtml()
+        : this.pill === 'plan' ? this._planHtml() : this._comingHtml()}`;
+  }
+
+  // The practice plan attached to this event, read-only — sessions in order,
+  // each with its exercises.  Editing stays on #practice-plan.
+  _planHtml() {
+    if (this.plan === undefined) return `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`;
+    const canMark = !!(this.att && this.att.canMark);
+    const editBtn = canMark
+      ? `<button type="button" class="btn btn-secondary" data-ec-practice-plan style="padding:4px 12px; font-size:0.85rem;">📋 Practice Plans</button>` : '';
+    if (!this.plan) {
+      return `<div class="ec-box" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span style="opacity:0.7;">No session plan is attached to this event.</span>${editBtn}</div>`;
+    }
+    const para = (label, text) => text
+      ? `<div style="font-size:0.82rem; margin-top:4px; white-space:pre-wrap;"><b>${label}:</b> ${this.escapeHtml(text)}</div>` : '';
+    const sessions = this.plan.sessions || [];
+    return `
+      ${this.plan.notes ? `<div class="ec-box" style="white-space:pre-wrap;">${this.escapeHtml(this.plan.notes)}</div>` : ''}
+      ${sessions.map(s => `<div class="ec-box">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
+          <span class="ec-h">${this.escapeHtml(s.title || 'Session')}</span>
+          <span style="font-size:0.78rem; opacity:0.7;">${this.escapeHtml(s.start_time)} – ${this.escapeHtml(s.end_time)}</span>
+        </div>
+        ${s.notes ? `<div style="font-size:0.85rem; opacity:0.85; white-space:pre-wrap;">${this.escapeHtml(s.notes)}</div>` : ''}
+        ${(s.exercises || []).map(x => `<div style="padding:6px 0; border-top:1px solid var(--border-color); margin-top:6px;">
+            <div style="font-weight:700; font-size:0.92rem;">${this.escapeHtml(x.title)}${x.player_count ? ` <span style="font-weight:400; opacity:0.6; font-size:0.78rem;">· ${x.player_count} players</span>` : ''}</div>
+            ${x.description ? `<div style="font-size:0.82rem; opacity:0.85; white-space:pre-wrap;">${this.escapeHtml(x.description)}</div>` : ''}
+            ${para('Setup', x.setup)}${para('Coaching points', x.coaching_points)}${para('Notes', x.notes)}
+          </div>`).join('') || `<div style="font-size:0.82rem; opacity:0.55;">No exercises yet.</div>`}
+      </div>`).join('')}
+      ${editBtn ? `<div style="text-align:right;">${editBtn}</div>` : ''}`;
   }
 
   // Pickup sides / practice groups by bib colour.  Top: each colour and who

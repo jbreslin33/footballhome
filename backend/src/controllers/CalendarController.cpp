@@ -555,6 +555,9 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.del(prefix + "/calendar/events/:fhEventId/attendance", [this](const Request& req) {
         return this->handleDeleteEventAttendance(req);
     });
+    router.get(prefix + "/calendar/events/:fhEventId/session-plan", [this](const Request& req) {
+        return handleGetEventSessionPlan(req);
+    });
     router.get(prefix + "/calendar/events/:fhEventId/sides", [this](const Request& req) {
         return handleGetEventSides(req);
     });
@@ -2303,6 +2306,61 @@ Response CalendarController::handlePostEventSide(const Request& request) {
                        {"squad_color", color}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handlePostEventSide: "
+                  << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /calendar/events/:fhEventId/session-plan — the practice plan attached
+// to this event (club_game_model_practices.fh_event_id → sessions →
+// session_exercises → exercises), read-only.  It is edited on
+// #practice-plan; `practice` is null when the event has no plan.
+Response CalendarController::handleGetEventSessionPlan(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    }
+
+    auto* db = Database::getInstance();
+    try {
+        auto rows = db->query(R"SQL(
+            SELECT jsonb_build_object(
+                     'id', pr.id,
+                     'notes', pr.notes,
+                     'sessions', COALESCE((
+                        SELECT jsonb_agg(jsonb_build_object(
+                                 'id', s.id, 'title', s.title, 'notes', s.notes,
+                                 'start_time', to_char(s.start_time, 'FMHH12:MI AM'),
+                                 'end_time',   to_char(s.end_time,   'FMHH12:MI AM'),
+                                 'exercises', COALESCE((
+                                    SELECT jsonb_agg(jsonb_build_object(
+                                             'title', ex.title,
+                                             'description', ex.description,
+                                             'setup', ex.setup,
+                                             'coaching_points', ex.coaching_points,
+                                             'player_count', se.player_count,
+                                             'notes', se.notes)
+                                           ORDER BY se.sequence_order, se.id)
+                                      FROM club_game_model_session_exercises se
+                                      JOIN club_game_model_exercises ex ON ex.id = se.exercise_id
+                                     WHERE se.session_id = s.id), '[]'::jsonb))
+                               ORDER BY s.sort_order, s.start_time, s.id)
+                          FROM club_game_model_sessions s
+                         WHERE s.practice_id = pr.id), '[]'::jsonb)
+                   )::text AS practice
+              FROM club_game_model_practices pr
+             WHERE pr.fh_event_id = $1::bigint
+             ORDER BY pr.id DESC LIMIT 1)SQL",
+            {std::to_string(fhEventId)});
+
+        json practice = nullptr;
+        if (!rows.empty()) practice = json::parse(rows[0]["practice"].c_str());
+        return jsonOk({{"fh_event_id", fhEventId}, {"practice", practice}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handleGetEventSessionPlan: "
                   << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
