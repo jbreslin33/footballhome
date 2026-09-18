@@ -5,8 +5,8 @@
 #include "../third_party/json.hpp"
 
 // KitBoard — the #kit board: uniform numbers (person_uniform_numbers — one per
-// person per uniform_set, shared by every team wearing that set, migration
-// 374) and kit handed out (person_kit_issues, per person;
+// person per uniform_set; a team wears its section's set — men / women /
+// youth — via team_uniform_set_id(), migrations 374–375) and kit handed out (person_kit_issues, per person;
 // what can be handed out is kit_items — migration 373).
 class KitBoard {
 public:

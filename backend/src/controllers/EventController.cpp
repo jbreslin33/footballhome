@@ -39,6 +39,16 @@ std::string leagueCrestPlaceholder(const char* team_alias) {
     return std::string("CASE WHEN ") + team_alias + ".id IS NULL THEN " + LEAGUE_CREST_SQL + " END";
 }
 
+// A team's own crest, else the crest of the club it belongs to — our
+// youth / intramural / women's sides have no badge of their own and wear
+// the club's (clubs.logo_url, migration 376, owner 2026-09-18: "for game
+// center we need lighthouse logo for our teams").
+std::string teamCrest(const char* team_alias) {
+    const std::string a(team_alias);
+    return "COALESCE(NULLIF(" + a + ".logo_url, ''), "
+           "(SELECT NULLIF(cl.logo_url, '') FROM clubs cl WHERE cl.id = " + a + ".club_id))";
+}
+
 }  // namespace
 
 EventController::EventController() {
@@ -513,8 +523,8 @@ Response EventController::handleGetMatches(const Request& request) {
         // COALESCE onto the league crest for a side with no `teams` row,
         // the same placeholder the single-match query uses. team-dashboard
         // hardcoded tcwsl.png for this case; the crest is DB data now.
-        query << "COALESCE(NULLIF(ht.logo_url, ''), " << leagueCrestPlaceholder("ht") << ") AS home_team_logo, ";
-        query << "COALESCE(NULLIF(awt.logo_url, ''), " << leagueCrestPlaceholder("awt") << ") AS away_team_logo, ";
+        query << "COALESCE(" << teamCrest("ht") << ", " << leagueCrestPlaceholder("ht") << ") AS home_team_logo, ";
+        query << "COALESCE(" << teamCrest("awt") << ", " << leagueCrestPlaceholder("awt") << ") AS away_team_logo, ";
         query << "ht.id AS home_team_id, awt.id AS away_team_id, ";
         query << "ce.image_url AS calendar_image_url, ";
         query << "COALESCE(ss.name, '') AS source_name, ";
@@ -710,13 +720,13 @@ Response EventController::handleGetMatch(const Request& request) {
         query << "m.description as notes, ";
         query << "v.name as venue_name, ";
         query << "ht.name as home_team_name, COALESCE(awt.name, fe.opponent) as away_team_name, ";
-        query << "ht.logo_url as home_team_logo, ";
+        query << teamCrest("ht") << " as home_team_logo, ";
         // Away crest for opponents without a formal `teams` row (scraped/
         // informal league matches): same 3-tier fallback CalendarController
         // already uses for the My page — gcal_opponent_aliases hand-seeded
         // mapping, then exact teams.name match, then opponent_logo_cache
         // (migration 289) — keyed off fh_events.opponent free-text tag.
-        query << "COALESCE(awt.logo_url, "
+        query << "COALESCE(" << teamCrest("awt") << ", "
                  "(SELECT t.logo_url FROM gcal_opponent_aliases goa JOIN teams t ON t.id = goa.team_id "
                  "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(goa.alias)) = LOWER(BTRIM(fe.opponent)) LIMIT 1), "
                  "(SELECT t.logo_url FROM teams t "

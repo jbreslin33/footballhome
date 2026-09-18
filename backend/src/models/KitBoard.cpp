@@ -66,7 +66,7 @@ json KitBoard::roster(long long teamId) {
           JOIN persons p ON p.id = tp.person_id
           JOIN teams t ON t.id = tp.team_id
           LEFT JOIN person_uniform_numbers n
-                 ON n.uniform_set_id = t.uniform_set_id AND n.person_id = p.id
+                 ON n.uniform_set_id = team_uniform_set_id(t.id) AND n.person_id = p.id
           LEFT JOIN roster_statuses rs ON rs.id = tp.roster_status_id
          WHERE tp.team_id = $1::int AND tp.removed_at IS NULL
          ORDER BY p.last_name, p.first_name, p.id)SQL", {std::to_string(teamId)});
@@ -93,7 +93,7 @@ bool KitBoard::onTeam(long long teamId, long long personId) {
 json KitBoard::sharedWith(long long teamId) {
     auto rows = Database::getInstance()->query(R"SQL(
         SELECT COALESCE(o.label, o.name) AS label
-          FROM teams t JOIN teams o ON o.uniform_set_id = t.uniform_set_id AND o.id <> t.id
+          FROM teams t JOIN teams o ON team_uniform_set_id(o.id) = team_uniform_set_id(t.id) AND o.id <> t.id
          WHERE t.id = $1::int AND o.is_active AND o.board_sort_order IS NOT NULL
          ORDER BY o.board_sort_order, o.name)SQL", {std::to_string(teamId)});
     json out = json::array();
@@ -108,9 +108,9 @@ std::string KitBoard::numberHolder(long long teamId, long long personId, const s
         SELECT BTRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,''))
                || ' (' || string_agg(COALESCE(ot.label, ot.name), ', ' ORDER BY ot.board_sort_order) || ')' AS name
           FROM teams t
-          JOIN person_uniform_numbers n ON n.uniform_set_id = t.uniform_set_id
+          JOIN person_uniform_numbers n ON n.uniform_set_id = team_uniform_set_id(t.id)
           JOIN persons p ON p.id = n.person_id
-          JOIN teams ot ON ot.uniform_set_id = t.uniform_set_id
+          JOIN teams ot ON team_uniform_set_id(ot.id) = n.uniform_set_id
           JOIN team_persons tp ON tp.team_id = ot.id AND tp.person_id = p.id AND tp.removed_at IS NULL
          WHERE t.id = $1::int AND n.jersey_number = $3 AND n.person_id <> $2::int
          GROUP BY p.id, p.first_name, p.last_name
@@ -121,7 +121,7 @@ std::string KitBoard::numberHolder(long long teamId, long long personId, const s
 bool KitBoard::setNumber(long long teamId, long long personId, const std::string& number,
                          long long byUserId) {
     auto* db = Database::getInstance();
-    auto set = db->query("SELECT uniform_set_id FROM teams WHERE id = $1::int", {std::to_string(teamId)});
+    auto set = db->query("SELECT team_uniform_set_id($1::int) AS uniform_set_id", {std::to_string(teamId)});
     if (set.empty() || set[0]["uniform_set_id"].is_null()) return false;
     const std::string setId = std::to_string(set[0]["uniform_set_id"].as<long long>());
 
