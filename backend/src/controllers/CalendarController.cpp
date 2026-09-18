@@ -1407,10 +1407,15 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             } catch (...) {
                 ev["teams"] = json::array();
             }
-            try {
-                ev["rsvps"] = json::parse(row["rsvps_json"].c_str());
-            } catch (...) {
-                ev["rsvps"] = json::array();
+            // The who's-coming list carries names, phones and emails — it is
+            // for signed-in members only.  This endpoint also answers with
+            // no login (the public schedule pages), and until 2026-09-18 it
+            // handed the full list to anyone who asked.
+            ev["rsvps"] = json::array();
+            if (personId > 0) {
+                try {
+                    ev["rsvps"] = json::parse(row["rsvps_json"].c_str());
+                } catch (...) {}
             }
             events.push_back(std::move(ev));
         }
