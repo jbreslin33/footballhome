@@ -110,6 +110,7 @@ Response KitBoardController::handleRoster(const Request& request) {
     if (!scope.covers(teamId)) return jsonError(HttpStatus::FORBIDDEN, "Not one of your teams.");
     try {
         return jsonOut(HttpStatus::OK, {{"team_id", teamId},
+                                        {"shared_with", model_->sharedWith(teamId)},
                                         {"items",   model_->items()},
                                         {"players", model_->roster(teamId)}});
     } catch (const std::exception& e) {
@@ -158,7 +159,9 @@ Response KitBoardController::handleSetNumber(const Request& request) {
                                 {"holder", holder}});
             }
         }
-        model_->setNumber(teamId, personId, number);
+        if (!model_->setNumber(teamId, personId, number, scope.userId)) {
+            return jsonError(HttpStatus::BAD_REQUEST, "This team has no uniform set yet.");
+        }
         return jsonOut(HttpStatus::OK, {{"team_id", teamId}, {"person_id", personId},
                                         {"jersey_number", number.empty() ? json(nullptr) : json(number)}});
     } catch (const std::exception& e) {

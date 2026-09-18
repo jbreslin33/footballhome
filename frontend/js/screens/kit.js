@@ -6,9 +6,12 @@
 // Enter; a number already worn on the team is refused with the wearer's
 // name) and tick each kit item they have received.
 //
-// Numbers are per team membership (team_persons.jersey_number); kit is per
-// person (person_kit_issues), so a tick made on one team shows on every team
-// the player is on.  The kit columns are kit_items rows (migration 373) —
+// A number belongs to the uniform, not the team: teams wearing the same
+// shirts (APSL / Reserves / Liga 1) share one pool, so a player has one
+// number across them and nobody else in the pool can take it
+// (person_uniform_numbers, migration 374).  Kit is per person
+// (person_kit_issues), so a tick made on one team shows on every team the
+// player is on.  The kit columns are kit_items rows (migration 373) —
 // new equipment is a new row, not a change here.
 //
 //   GET /api/kit-board/teams
@@ -101,6 +104,7 @@ class KitBoardScreen extends Screen {
       const body = await this._json(`/api/kit-board/roster?team_id=${teamId}`);
       if (this.teamId !== teamId) return;
       this.items = body.items || [];
+      this.sharedWith = body.shared_with || [];
       this.players = body.players || [];
       this.error = null;
     } catch (err) {
@@ -223,6 +227,8 @@ class KitBoardScreen extends Screen {
         ${filters.map(([k, label]) =>
           `<button type="button" class="kit-chip ${this.filter === k ? 'on' : ''}" data-kit-filter="${k}">${label}</button>`).join('')}
       </div>
+ ${(this.sharedWith || []).length ? `<div style="font-size:0.8rem; opacity:0.75; margin-bottom:var(--space-1);">
+        Same uniform as ${this.sharedWith.map(l => this.escapeHtml(l)).join(', ')} — numbers and kit carry across.</div>` : ''}
       <div id="kit-summary" style="font-size:0.8rem; opacity:0.75; margin-bottom:var(--space-2);">${this._summaryHtml()}</div>
       <div style="overflow-x:auto;">
         <table class="kit-table">
