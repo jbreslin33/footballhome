@@ -65,7 +65,7 @@ const char* kBaseCtes = R"SQL(
               OR ($1 = 'G') = EXISTS (SELECT 1 FROM girl g WHERE g.person_id = tp.person_id))
     ), expected AS (
       SELECT DISTINCT r.person_id, fe.id AS fh_event_id, fe.kind, fe.opponent,
-             ge.starts_at, ge.ends_at
+             fe.fh_notes, ge.starts_at, ge.ends_at
         FROM roster r
         JOIN tm ON tm.id = r.team_id
         JOIN fh_event_teams fet ON fet.team_id = r.team_id
@@ -85,13 +85,19 @@ const char* kBaseCtes = R"SQL(
                             AND (s.ends_at IS NULL OR s.ends_at > ge.starts_at))
     ), open_events AS (
       -- Still answerable: released, not over, no RSVP row.  The line is
-      -- player-facing: kind label + opponent, never the gcal title.
+      -- player-facing: kind label + opponent, never the gcal title.  A
+      -- practice that carries notes is an unusual one (Barn Night counts
+      -- as a practice — owner 2026-09-18), so its notes ride along in the
+      -- reminder message (message_notes; the board keeps the short line).
+      -- Game notes are kit lists and stay off the reminder.
       SELECT e.person_id, e.fh_event_id, e.starts_at,
              to_char(e.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM')
                || ' — '
                || CASE e.kind WHEN 'match'      THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
                               WHEN 'intrasquad' THEN 'Intra Squad'
-                              ELSE 'Practice' END AS line
+                              ELSE 'Practice' END AS line,
+             CASE WHEN e.kind NOT IN ('match','intrasquad')
+                  THEN NULLIF(BTRIM(e.fh_notes), '') END AS message_notes
         FROM expected e
        WHERE e.ends_at > now()
          AND NOT EXISTS (SELECT 1 FROM fh_event_rsvps rv
@@ -316,7 +322,8 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
         SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at
           FROM roster r
         UNION ALL
-        SELECT 'event', o.fh_event_id, o.line, o.starts_at FROM open_events o
+        SELECT 'event', o.fh_event_id,
+               o.line || COALESCE(E'\n  ' || o.message_notes, ''), o.starts_at FROM open_events o
          ORDER BY what, starts_at)SQL";
     auto rows = db->query(sql, {"", "", "{}", std::to_string(personId), "all"});
     for (const auto& row : rows) {
