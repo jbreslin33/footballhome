@@ -8,14 +8,17 @@
 // read-only lists.  Game Center (#game-center) stays the page for a game's
 // squad / starters / result — a game opened here links across to it.
 //
-// Two doors:
+// Three doors:
 //   { pick: true }   the top-level 📋 Event Center tile — pick an event from
 //                    the last week or the next two.
 //   { event: ev }    an event object from GET /api/calendar/upcoming (what
 //                    #my hands over from its "Event Center" link).
+//   { fhEventId: n } just the id — the event is read from
+//                    GET /api/calendar/events/:id, any date.
 //
-// No new backend: the feed is GET /api/calendar/upcoming (admins get every
-// club event, coaches their teams'), and the tools are the existing
+// The feed is GET /api/calendar/upcoming (admins get every club event,
+// coaches their teams'); one open event is re-read from
+// GET /api/calendar/events/:id (same shape).  The tools are the existing
 //   GET|POST|DELETE /api/calendar/events/:id/attendance
 //   GET|POST        /api/calendar/events/:id/invites   DELETE …/invites/:personId
 // Who may mark or invite is decided per event by the backend (can_mark —
@@ -85,6 +88,7 @@ class EventCenterScreen extends Screen {
 
   onEnter(params = {}) {
     this.ev = params.pick ? null : (params.event || null);
+    this.loadingId = (!this.ev && !params.pick && params.fhEventId) ? Number(params.fhEventId) : null;
     this.pill = 'coming';
     this.att = null;
     this.invites = null;
@@ -93,6 +97,7 @@ class EventCenterScreen extends Screen {
     this.copied.clear();
     this._render();
     if (this.ev) this._loadAttendance();
+    else if (this.loadingId) this._loadEvent(this.loadingId).then(() => { if (this.ev) this._loadAttendance(); });
     else this._loadEvents();
   }
 
@@ -130,6 +135,20 @@ class EventCenterScreen extends Screen {
       console.error('[event-center] events load failed:', err);
       if (!this.ev) this.error = 'Could not load the calendar.';
     }
+    this._render();
+  }
+
+  // One event by id — the door for { fhEventId }, and the refresh after an
+  // invite moves the RSVP list (the picker feed only spans three weeks).
+  async _loadEvent(id) {
+    try {
+      const body = await this._json(`/api/calendar/events/${id}`);
+      if (this.ev ? this.ev.fh_event_id === id : this.loadingId === id) this.ev = body.event;
+    } catch (err) {
+      console.error('[event-center] event load failed:', err);
+      if (!this.ev) this.error = 'Could not load that event.';
+    }
+    this.loadingId = null;
     this._render();
   }
 
@@ -214,7 +233,7 @@ class EventCenterScreen extends Screen {
     } finally {
       this.saving.delete(key);
     }
-    await Promise.all([this._loadInvites(), this._loadEvents()]);
+    await Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]);
   }
 
   async _revokeInvite(personId) {
@@ -230,7 +249,7 @@ class EventCenterScreen extends Screen {
     } finally {
       this.saving.delete(key);
     }
-    await Promise.all([this._loadInvites(), this._loadEvents()]);
+    await Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]);
   }
 
   // ── events ──────────────────────────────────────────────────────────
@@ -297,7 +316,7 @@ class EventCenterScreen extends Screen {
     title.textContent = '📋 Event Center';
     sub.textContent = 'Pick a practice, pickup or game — take attendance, invite a player';
     if (this.error)   { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
-    if (!this.events) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
+    if (!this.events || this.loadingId) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     body.innerHTML = this._pickerHtml();
   }
 

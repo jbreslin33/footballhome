@@ -355,8 +355,10 @@ long long extractEventIdFromAttendancePath(const std::string& path) {
     auto pos = path.find(marker);
     if (pos == std::string::npos) return 0;
     auto start = pos + marker.size();
+    // No trailing segment is the single-event route itself
+    // (GET /calendar/events/:fhEventId).
     auto end = path.find('/', start);
-    if (end == std::string::npos) return 0;
+    if (end == std::string::npos) end = path.size();
     try { return std::stoll(path.substr(start, end - start)); }
     catch (...) { return 0; }
 }
@@ -541,6 +543,9 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.del(prefix + "/calendar/rsvp", [this](const Request& req) {
         return this->handleDeleteRsvp(req);
     });
+    router.get(prefix + "/calendar/events/:fhEventId", [this](const Request& req) {
+        return handleGetEvent(req);
+    });
     router.get(prefix + "/calendar/events/:fhEventId/attendance", [this](const Request& req) {
         return this->handleGetEventAttendance(req);
     });
@@ -562,6 +567,27 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
 }
 
 Response CalendarController::handleGetUpcoming(const Request& request) {
+    return upcomingResponse(request, 0);
+}
+
+// GET /calendar/events/:fhEventId — one event, in exactly the shape the
+// upcoming feed gives it (same query, same visibility rule), whatever its
+// date.  Lets a screen open an event from a link instead of needing the
+// feed object handed to it.  Members only: 404 covers both "no such event"
+// and "not yours to see".
+Response CalendarController::handleGetEvent(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    }
+    return upcomingResponse(request, fhEventId);
+}
+
+// onlyFhEventId > 0 swaps the date window for that one event and answers
+// { event } (404 when the caller can't see it); 0 is the feed.
+Response CalendarController::upcomingResponse(const Request& request, long long onlyFhEventId) {
     // Parse ?days= with defensible bounds.  A stray days=1000 would drag
     // the response into "next year's practices" territory and blow past
     // the LIMIT — cap at 90 days which covers the longest reasonable
@@ -1251,11 +1277,14 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
                   AND mr.person_id   = $1::int
             WHERE ge.deleted_at IS NULL
                             AND COALESCE(ge.status, '') <> 'cancelled'
+              AND ($5::bigint = 0 OR fe.id = $5::bigint)
               AND ge.starts_at >= CASE
+                  WHEN $5::bigint > 0 THEN '-infinity'::timestamptz
                   WHEN $4 = '' THEN ((now() AT TIME ZONE 'America/New_York')::date) AT TIME ZONE 'America/New_York'
                   ELSE $4::timestamptz
                 END
               AND ge.starts_at < CASE
+                  WHEN $5::bigint > 0 THEN 'infinity'::timestamptz
                   WHEN $4 = '' THEN now() + ($2::int * INTERVAL '1 day')
                   ELSE $4::timestamptz + ($2::int * INTERVAL '1 day')
                 END
@@ -1282,6 +1311,7 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
             std::to_string(days),
                         includeUnclassified ? "true" : "false",
             startParam,
+            std::to_string(onlyFhEventId),
         });
 
         // Whole alias table, once per request — it is a handful of rows
@@ -1426,6 +1456,13 @@ Response CalendarController::handleGetUpcoming(const Request& request) {
         // admin.  A fixture drops out once that team has a calendar game
         // on the same local day — gcal stays the truth for anything with
         // an RSVP, this is just the look-ahead.  #my ignores the field.
+        if (onlyFhEventId > 0) {
+            if (events.empty()) {
+                return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
+            }
+            return jsonOk(json{{"event", events[0]}});
+        }
+
         json fixtures = json::array();
         if (personId > 0) {
             pqxx::result fx = db->query(R"SQL(

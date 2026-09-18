@@ -98,6 +98,8 @@ public:
 
 private:
     Response handleGetUpcoming         (const Request& request);
+    Response handleGetEvent            (const Request& request);
+    Response upcomingResponse          (const Request& request, long long onlyFhEventId);
     Response handlePostRsvp            (const Request& request);
     Response handleDeleteRsvp          (const Request& request);
     // Live-lookup fallback for opponent crests (migration 289): queries
