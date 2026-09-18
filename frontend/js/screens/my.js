@@ -42,11 +42,6 @@ class MyScreen extends Screen {
     this.dataError      = null;
     this.expandedEventId = null;         // toggled by the compact View button
     this.notGoingExpandedEvents = new Set(); // fh_event_ids with "Not Going" list open
-    // Invites (fh_event_invites, migration 355): coach-side picker state.
-    this.invitePanelEvents = new Set();      // fh_event_ids with the invite panel open
-    this.invitesByEvent    = new Map();      // fh_event_id → {invites:[], candidates:[]} | null while loading
-    this.inviteSaving      = new Set();      // "fh_event_id:person_id" in flight
-    this.inviteCopiedKeys  = new Set();      // "fh_event_id:person_id" whose link was copied this session
 
     // Old-events range picker. 'current' (default) reuses the existing
     // this-week `this.events` array untouched; any other value swaps the
@@ -56,11 +51,12 @@ class MyScreen extends Screen {
     this.oldEventsLoading = false;
     this.oldEventsError  = null;
 
-    // Attendance-taking (coach/admin only, but fetched lazily for anyone
-    // who expands a card so the read-only status badges show for players
-    // too). Keyed by fh_event_id -> {canMark, roster: Map(person_id -> {status, marked_at})}.
+    // Attendance, read-only: fetched lazily when a card is expanded so the
+    // status badges show.  Marking it — and inviting a player — is staff
+    // work and lives on #event-center (owner 2026-09-17: staff tools get
+    // dedicated pages; #my is each person's own page).
+    // Keyed by fh_event_id -> {canMark, roster: Map(person_id -> {status, marked_at})}.
     this.attendanceByEvent = new Map();
-    this.attendanceSaving  = new Set(); // "fh_event_id:person_id" tokens in-flight
 
     // Chat state (compressed: latest message on top, expandable).
     this.chatMessages   = [];            // full history, stored oldest-first
@@ -242,26 +238,6 @@ class MyScreen extends Screen {
         }
         return;
       }
-      // Attendance status button (coach/admin only — server re-checks).
-      // Tapping the already-active status clears the mark instead of
-      // re-sending the same status — that's the only way to undo a
-      // mis-tap back to "not yet marked".
-      const attBtn = target.closest('[data-att-btn]');
-      if (attBtn) {
-        e.stopPropagation();
-        const status = attBtn.getAttribute('data-att-btn');
-        const personId = parseInt(attBtn.getAttribute('data-person-id'), 10);
-        const fhEventId = parseInt(attBtn.getAttribute('data-fh-event-id'), 10);
-        const isActive = attBtn.getAttribute('data-active') === '1';
-        if (fhEventId && personId && status) {
-          if (isActive) {
-            this._clearAttendance(fhEventId, personId);
-          } else {
-            this._setAttendance(fhEventId, personId, status);
-          }
-        }
-        return;
-      }
       // Bulk "Email N Going" — BCC compose, blank body for a custom message
       // to everyone who's already marked Going.
       const emailGoingBtn = target.closest('[data-email-going]');
@@ -271,33 +247,14 @@ class MyScreen extends Screen {
         if (fhEventId) this._emailGoing(fhEventId);
         return;
       }
-      // Invite panel (coach/admin): open/close, send, revoke.
-      const inviteToggle = target.closest('[data-invite-toggle]');
-      if (inviteToggle) {
+      // Staff door to #event-center (attendance marking + 🎟 invites).
+      const eventCenterBtn = target.closest('[data-event-center]');
+      if (eventCenterBtn) {
         e.stopPropagation();
-        const fhEventId = parseInt(inviteToggle.getAttribute('data-invite-toggle'), 10);
-        if (this.invitePanelEvents.has(fhEventId)) {
-          this.invitePanelEvents.delete(fhEventId);
-        } else {
-          this.invitePanelEvents.add(fhEventId);
-          this.invitesByEvent.delete(fhEventId);
-          this._loadInvites(fhEventId);
-        }
-        this._renderEvents();
-        return;
-      }
-      const inviteSend = target.closest('[data-invite-send]');
-      if (inviteSend) {
-        e.stopPropagation();
-        this._sendInvite(inviteSend);
-        return;
-      }
-      const inviteRevoke = target.closest('[data-invite-revoke]');
-      if (inviteRevoke) {
-        e.stopPropagation();
-        const fhEventId = parseInt(inviteRevoke.getAttribute('data-fh-event-id'), 10);
-        const personId  = parseInt(inviteRevoke.getAttribute('data-invite-revoke'), 10);
-        if (fhEventId && personId) this._revokeInvite(fhEventId, personId);
+        const fhEventId = parseInt(eventCenterBtn.getAttribute('data-event-center'), 10);
+        const ev = (this.events || []).find(x => x.fh_event_id === fhEventId)
+                || (this.oldEvents || []).find(x => x.fh_event_id === fhEventId);
+        if (ev) this.navigation.goTo('event-center', { event: ev });
         return;
       }
       // "Not Going" list show/hide (collapsed by default — can be a long
@@ -674,48 +631,10 @@ class MyScreen extends Screen {
   // instead of those columns since no backend controller selects them
   // yet (see my.js's ev.description already being on the wire either
   // way for the other tags).
-  _parseDescTags(description) {
-    const tags = {};
-    if (!description) return tags;
-    for (const line of description.split(/\r?\n/)) {
-      const m = line.match(/^\s*(Club|Team|Kind|Type|Opponent|Arrival|Warmup|Kickoff|Notes)\s*:\s*(.+?)\s*$/i);
-      if (m) tags[m[1].toLowerCase()] = m[2];
-    }
-    return tags;
-  }
+  _parseDescTags(description) { return EventLabels.parseDescTags(description); }
 
-  _eventTitle(ev) {
-    const kind = ev.kind || '';
-    const category = ev.category || '';
-    const tags = this._parseDescTags(ev.description);
-
-    const kindLabels = { pickup: 'Pickup', practice: 'Practice', match: 'Game',
-                         meeting: 'Meeting', camp: 'Camp', 'barn night': 'Barn Night',
-                         intrasquad: 'Intra Squad' };
-    const catLabels  = { mens: 'Mens', womens: 'Womens', boys: 'Boys', girls: 'Girls', staff: 'Staff' };
-    // Prefer the raw tag value straight off the calendar description
-    // (handles multi-club tags like "Boys, Girls" and the real Kind:
-    // value like "Match" instead of our friendlier "Game" synonym);
-    // fall back to the backend's classified kind/category if untagged.
-    const kindLabel  = tags.kind || tags.type || kindLabels[kind] || (kind ? kind[0].toUpperCase() + kind.slice(1) : '');
-    const catLabel   = tags.club || catLabels[category] || category || '';
-    const opponent   = ev.opponent || tags.opponent || '';
-
-    const base = (kindLabel && catLabel) ? `${catLabel} ${kindLabel}` : (kindLabel || catLabel);
-    if (kind === 'match' && opponent) {
-      return base ? `${base} vs ${opponent}` : `vs ${opponent}`;
-    }
-    if (base) return base;
-
-    // Fall back to the tagged team names if classification is missing.
-    const teams = Array.isArray(ev.teams) ? ev.teams : [];
-    const teamNames = teams
-      .map(t => (t && (t.name || t.display_name)) || '')
-      .filter(Boolean);
-    if (teamNames.length) return teamNames.join(' · ');
-
-    return 'Event';
-  }
+  // Shared with #event-center — see lib/event-labels.js.
+  _eventTitle(ev) { return EventLabels.title(ev); }
 
   _eventRsvpHtml(ev, isPast = false) {
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
@@ -839,193 +758,23 @@ class MyScreen extends Screen {
             </div>
           </div>
         ` : ''}
-        ${this._invitePanelHtml(ev, isPast, att)}
+        ${this._eventCenterLinkHtml(ev, att)}
       </div>`;
   }
 
-  // Coach/admin-only "Invite a player" panel (fh_event_invites, migration
-  // 355). Lists the game's open invites with their answer and a revoke,
-  // then everyone who COULD be invited — youth club-pass call-ups, or for
-  // men's/women's games the other squads in the section — each with
-  // 💬 / 📧 / 🔗 buttons. Sending mints a magic link for the recipient
-  // (the parent for youth) via POST .../invites; the invite row is what
-  // makes the game show up for them.
-  _invitePanelHtml(ev, isPast, att) {
-    if (isPast || !att || !att.canMark) return '';
-    const open = this.invitePanelEvents.has(ev.fh_event_id);
-    const header = `
+  // The one staff control left on a #my event: a door to #event-center,
+  // where this event's coaches and club admins mark attendance and send
+  // 🎟 invites.  Shown once attendance has loaded and says they may.
+  _eventCenterLinkHtml(ev, att) {
+    if (!att || !att.canMark) return '';
+    return `
       <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
-        <button type="button" data-invite-toggle="${ev.fh_event_id}"
-                style="display:flex; align-items:center; justify-content:space-between; width:100%;
-                       background:transparent; border:none; padding:0; cursor:pointer; color:inherit;">
-          <span style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
-                       color:#fcd34d;">🎟 Invite a player</span>
-          <span style="font-size:0.62rem; opacity:0.6;">${open ? '▲ Hide' : '▼ Show'}</span>
-        </button>`;
-    if (!open) return header + '</div>';
-
-    const data = this.invitesByEvent.get(ev.fh_event_id);
-    if (!data) {
-      return header + `<div style="font-size:0.66rem; opacity:0.6; margin-top:6px;">Loading…</div></div>`;
-    }
-    if (data.error) {
-      return header + `<div style="font-size:0.66rem; color:#fca5a5; margin-top:6px;">${this.escapeHtml(data.error)}</div></div>`;
-    }
-    const invites    = Array.isArray(data.invites) ? data.invites : [];
-    const candidates = Array.isArray(data.candidates) ? data.candidates : [];
-    const nm = (r) => `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Unknown';
-    const answerChip = (resp) => {
-      const map = { yes: ['Available', '#22c55e'], no: ['Not available', '#f87171'], maybe: ['Maybe', '#fbbf24'] };
-      const [label, color] = map[resp] || ['No response', 'rgba(226,232,240,0.5)'];
-      return `<span style="font-size:0.6rem; font-weight:700; color:${color};">${label}</span>`;
-    };
-    const busy = (pid) => this.inviteSaving.has(`${ev.fh_event_id}:${pid}`);
-
-    const invitedRows = invites.map(r => `
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">
-            ${this.escapeHtml(nm(r))}
-            ${r.from_team ? `<span style="font-size:0.6rem; opacity:0.6;"> · ${this.escapeHtml(r.from_team)}</span>` : ''}
-          </span>
-          <span style="display:flex; align-items:center; gap:6px;">
-            ${answerChip(r.response)}
-            ${this._inviteSendBtns(ev, r, busy(r.person_id), /*resend*/ true)}
-            <button type="button" data-invite-revoke="${r.person_id}" data-fh-event-id="${ev.fh_event_id}"
-                    ${busy(r.person_id) ? 'disabled' : ''}
-                    title="Withdraw this invite — the game disappears for them again"
-                    style="font-size:0.62rem; font-weight:700; color:#fca5a5; background:transparent;
-                           border:1px solid rgba(248,113,113,0.5); padding:2px 6px; border-radius:999px; cursor:pointer;">✕</button>
-          </span>
-        </div>`).join('');
-
-    // Candidates grouped by the squad they come from.
-    const byTeam = new Map();
-    for (const c of candidates) {
-      const k = c.from_team || 'Other';
-      if (!byTeam.has(k)) byTeam.set(k, []);
-      byTeam.get(k).push(c);
-    }
-    const candidateGroups = [...byTeam.entries()].map(([team, list]) => `
-        <div style="margin-top:6px;">
-          <div style="font-size:0.6rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
-                      color:rgba(226,232,240,0.5);">${this.escapeHtml(team)} (${list.length})</div>
-          <div style="display:grid; gap:3px; margin-top:3px;">
-            ${list.map(c => `
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">
-                  ${this.escapeHtml(nm(c))}${c.single_age ? `<span style="font-size:0.6rem; opacity:0.6;"> · U${this.escapeHtml(String(c.single_age))}</span>` : ''}
-                </span>
-                ${this._inviteSendBtns(ev, c, busy(c.person_id), false)}
-              </div>`).join('')}
-          </div>
-        </div>`).join('');
-
-    return header + `
-        <div style="font-size:0.62rem; line-height:1.3; opacity:0.75; margin-top:6px;">
-          An invited player (or their parent) sees this game on their page, gets a Go/No, and shows up
-          on this list. Nobody else outside the squad can see it.
-        </div>
-        <div style="margin-top:8px;">
-          <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
-                      color:rgba(226,232,240,0.75);">Invited (${invites.length})</div>
-          ${invites.length
-            ? `<div style="display:grid; gap:3px; margin-top:4px;">${invitedRows}</div>`
-            : `<div style="font-size:0.7rem; opacity:0.55; margin-top:2px;">Nobody yet.</div>`}
-        </div>
-        <div style="margin-top:10px;">
-          <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
-                      color:rgba(226,232,240,0.75);">Can be invited (${candidates.length})</div>
-          ${candidates.length ? candidateGroups
-            : `<div style="font-size:0.7rem; opacity:0.55; margin-top:2px;">Nobody eligible — everyone age-eligible in the program is rostered or already invited.</div>`}
-        </div>
+        <button type="button" data-event-center="${ev.fh_event_id}"
+                style="font-size:0.72rem; font-weight:800; color:#fcd34d; background:transparent;
+                       border:1px solid rgba(245,158,11,0.55); padding:4px 10px; border-radius:999px; cursor:pointer;">
+          📋 Event Center — attendance &amp; invites
+        </button>
       </div>`;
-  }
-
-  // 💬 / 📧 / 🔗 for one invite candidate (or a re-send on an open invite).
-  _inviteSendBtns(ev, r, saving, resend) {
-    const btn = (channel, contact, icon, bg, title) => `
-      <button type="button" data-invite-send="${channel}" data-fh-event-id="${ev.fh_event_id}"
-              data-person-id="${r.person_id}" data-contact="${this.escapeHtml(contact || '')}"
-              ${saving ? 'disabled' : ''} title="${this.escapeHtml(title)}"
-              style="font-size:0.68rem; font-weight:700; color:#0f172a; background:${bg};
-                     padding:3px 7px; border-radius:999px; border:none; cursor:pointer; line-height:1.4;
-                     ${saving ? 'opacity:0.5;' : ''}">${icon}</button>`;
-    const dim = (icon, why) => `<span style="font-size:0.6rem; opacity:0.35;" title="${this.escapeHtml(why)}">${icon}</span>`;
-    const verb = resend ? 'Re-send' : 'Invite by';
-    return `<span style="display:flex; align-items:center; gap:4px;">
-      ${r.phone ? btn('sms', r.phone, '💬', '#38bdf8', `${verb} text (${r.phone})`) : dim('💬', 'No SMS on file')}
-      ${r.email ? btn('email', r.email, '📧', '#a78bfa', `${verb} email (${r.email})`) : dim('📧', 'No email on file')}
-      ${btn('copy', '', '🔗', '#fcd34d', resend ? 'Copy a fresh sign-in link' : 'Invite and copy the sign-in link')}
-      ${this.inviteCopiedKeys.has(`${ev.fh_event_id}:${r.person_id}`)
-        ? `<span style="font-size:0.6rem; color:#fcd34d; opacity:0.85;">✓ copied</span>` : ''}
-    </span>`;
-  }
-
-  async _loadInvites(fhEventId) {
-    try {
-      const body = await this._fetch(`/api/calendar/events/${fhEventId}/invites`);
-      this.invitesByEvent.set(fhEventId, { invites: body.invites || [], candidates: body.candidates || [] });
-    } catch (err) {
-      console.error('[my] invites load failed:', err);
-      this.invitesByEvent.set(fhEventId, { error: err.message || 'Could not load invites' });
-    }
-    this._renderEvents();
-  }
-
-  // POST the invite, then hand the coach the compose (sms:/Gmail) or put
-  // the link on the clipboard. Refreshes the event list so the new
-  // 🎟 INVITED row appears immediately.
-  async _sendInvite(btn) {
-    const channel   = btn.getAttribute('data-invite-send') || 'copy';
-    const fhEventId = parseInt(btn.getAttribute('data-fh-event-id'), 10);
-    const personId  = parseInt(btn.getAttribute('data-person-id'), 10);
-    const contact   = (btn.getAttribute('data-contact') || '').trim();
-    if (!fhEventId || !personId) return;
-    const key = `${fhEventId}:${personId}`;
-    if (this.inviteSaving.has(key)) return;
-    this.inviteSaving.add(key);
-    this._renderEvents();
-    try {
-      const data = await this._fetch(`/api/calendar/events/${fhEventId}/invites`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ person_id: personId, channel, contact }),
-      });
-      if (channel === 'email' && data.gmail_href) {
-        this.openGmailCompose(data.gmail_href);
-      } else if (channel === 'sms' && data.sms_href) {
-        window.location.href = data.sms_href;
-      } else if (data.url) {
-        try {
-          await navigator.clipboard.writeText(data.sms_body || data.url);
-          this.inviteCopiedKeys.add(key);
-        } catch {
-          window.prompt('Copy this invite message:', data.sms_body || data.url);
-        }
-      }
-    } catch (err) {
-      console.error('[my] invite failed:', err);
-      window.alert(`Invite failed: ${err.message}`);
-    } finally {
-      this.inviteSaving.delete(key);
-    }
-    await Promise.all([this._loadInvites(fhEventId), this._refreshEvents().catch(() => {})]);
-  }
-
-  async _revokeInvite(fhEventId, personId) {
-    const key = `${fhEventId}:${personId}`;
-    if (this.inviteSaving.has(key)) return;
-    this.inviteSaving.add(key);
-    this._renderEvents();
-    try {
-      await this._fetch(`/api/calendar/events/${fhEventId}/invites/${personId}`, { method: 'DELETE' });
-    } catch (err) {
-      console.error('[my] revoke invite failed:', err);
-      window.alert(`Could not withdraw invite: ${err.message}`);
-    } finally {
-      this.inviteSaving.delete(key);
-    }
-    await Promise.all([this._loadInvites(fhEventId), this._refreshEvents().catch(() => {})]);
   }
 
   // Event-level "Text All" — everyone who can RSVP to this event (players
@@ -1137,10 +886,8 @@ class MyScreen extends Screen {
     this.openGmailCompose(href);
   }
 
-  // Read-only status badge for everyone; P/A/L/E mark buttons appended
-  // only when `att.canMark` is true (server-scoped to coach/admin of one
-  // of this event's teams — see CalendarController::isEventCoachOrAdmin).
-  // `att` is null until the card's first expand triggers `_loadAttendance`.
+  // Read-only attendance badge.  `att` is null until the card's first
+  // expand triggers `_loadAttendance`.  Marking happens on #event-center.
   _attendanceCellHtml(fhEventId, personId, att) {
     const STATUS_META = [
       { id: 'present', letter: 'P', label: 'Present', color: '#22c55e' },
@@ -1152,28 +899,12 @@ class MyScreen extends Screen {
       return '<span style="font-size:0.6rem; opacity:0.35;">…</span>';
     }
     const entry = att.roster.get(personId);
-    const status = entry && entry.status;
-    const meta = STATUS_META.find(s => s.id === status);
-    const badge = meta
+    const meta = STATUS_META.find(s => s.id === (entry && entry.status));
+    return meta
       ? `<span style="display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px;
                       border-radius:50%; background:${meta.color}; color:#fff; font-size:0.55rem; font-weight:800;"
                title="${meta.label}">${meta.letter}</span>`
       : `<span style="font-size:0.62rem; opacity:0.4;" title="Not marked">—</span>`;
-
-    if (!att.canMark) return badge;
-
-    const saving = this.attendanceSaving.has(`${fhEventId}:${personId}`);
-    const buttonsHtml = STATUS_META.map(s => {
-      const active = status === s.id;
-      return `<button type="button" data-att-btn="${s.id}" data-person-id="${personId}" data-fh-event-id="${fhEventId}"
-                data-active="${active ? '1' : '0'}"
-                title="${active ? `${s.label} — tap to clear` : s.label}" ${saving ? 'disabled' : ''}
-                style="width:15px; height:15px; padding:0; border-radius:50%; line-height:1;
-                       border:1px solid ${s.color}; background:${active ? s.color : 'transparent'};
-                       color:${active ? '#fff' : s.color}; font-size:0.55rem; font-weight:800;
-                       cursor:${saving ? 'wait' : 'pointer'}; opacity:${saving ? '0.5' : '1'};">${s.letter}</button>`;
-    }).join('');
-    return `<span style="display:inline-flex; align-items:center; gap:2px;">${badge}${buttonsHtml}</span>`;
   }
 
   async _loadAttendance(fhEventId) {
@@ -1186,58 +917,6 @@ class MyScreen extends Screen {
       this.attendanceByEvent.set(fhEventId, { canMark: false, roster: new Map() });
     }
     this._renderEvents();
-  }
-
-  async _setAttendance(fhEventId, personId, status) {
-    const key = `${fhEventId}:${personId}`;
-    if (this.attendanceSaving.has(key)) return;
-    const att = this.attendanceByEvent.get(fhEventId);
-    if (!att) return;
-    const prevEntry = att.roster.get(personId) || null;
-
-    this.attendanceSaving.add(key);
-    att.roster.set(personId, { person_id: personId, status, marked_at: new Date().toISOString() });
-    this._renderEvents();
-    try {
-      await this._fetch(`/api/calendar/events/${fhEventId}/attendance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person_id: personId, status }),
-      });
-    } catch (err) {
-      console.error('[my] attendance update failed:', err);
-      if (prevEntry) att.roster.set(personId, prevEntry); else att.roster.delete(personId);
-      alert(`Could not save attendance: ${err.message}`);
-    } finally {
-      this.attendanceSaving.delete(key);
-      this._renderEvents();
-    }
-  }
-
-  async _clearAttendance(fhEventId, personId) {
-    const key = `${fhEventId}:${personId}`;
-    if (this.attendanceSaving.has(key)) return;
-    const att = this.attendanceByEvent.get(fhEventId);
-    if (!att) return;
-    const prevEntry = att.roster.get(personId) || null;
-
-    this.attendanceSaving.add(key);
-    att.roster.delete(personId);
-    this._renderEvents();
-    try {
-      await this._fetch(`/api/calendar/events/${fhEventId}/attendance`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person_id: personId }),
-      });
-    } catch (err) {
-      console.error('[my] attendance clear failed:', err);
-      if (prevEntry) att.roster.set(personId, prevEntry);
-      alert(`Could not clear attendance: ${err.message}`);
-    } finally {
-      this.attendanceSaving.delete(key);
-      this._renderEvents();
-    }
   }
 
   _renderEventCard(ev, isPast = false) {
@@ -1486,19 +1165,9 @@ class MyScreen extends Screen {
     `;
   }
 
-  _eventDateStr(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-  }
+  _eventDateStr(iso) { return EventLabels.dateStr(iso); }
 
-  _eventTimeStr(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  }
+  _eventTimeStr(iso) { return EventLabels.timeStr(iso); }
 
   // Current response for `personId` (null = the caller's own row) on
   // `ev`, used to decide whether a click is a new answer or a deselect

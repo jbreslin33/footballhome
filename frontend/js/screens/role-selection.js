@@ -82,6 +82,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="event-center" id="rs-event-center" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📋</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Event Center</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Pick a practice, pickup or game — take attendance, invite a player</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="rsvps" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">✅</span>
           <div style="flex: 1; text-align: left;">
@@ -305,7 +313,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'game-center') this.navigation.context.role = role;
+    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'game-center' && role !== 'event-center') this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -321,6 +329,10 @@ class RoleSelectionScreen extends Screen {
       // Not a role — the game picker (owner 2026-09-17: top level, for
       // admins and coaches, to set lineups).
       this.navigation.goTo('game-center', { pick: true });
+    } else if (role === 'event-center') {
+      // Not a role — the event picker: attendance + invites for any event
+      // (moved off #my, owner 2026-09-17: staff tools get dedicated pages).
+      this.navigation.goTo('event-center', { pick: true });
     } else if (role === 'rsvps') {
       // Not a role — the RSVP follow-up board (owner 2026-09-17: top level).
       this.navigation.goTo('rsvps');
@@ -423,10 +435,13 @@ class RoleSelectionScreen extends Screen {
         this.navigation.goTo('my');
         return;
       }
-      // A coach without an admin role still sets lineups — show them the
-      // 🏟️ Game Center tile the admin levels get by default.
-      const gc = this.element && this.element.querySelector('#rs-game-center');
-      if (gc) gc.style.display = 'flex';
+      // A coach without an admin role still sets lineups and takes
+      // attendance — show them the 🏟️ Game Center and 📋 Event Center tiles
+      // the admin levels get by default.
+      for (const id of ['#rs-game-center', '#rs-event-center']) {
+        const tile = this.element && this.element.querySelector(id);
+        if (tile) tile.style.display = 'flex';
+      }
     } catch (_e) {
       // Non-fatal — fall back to the manual picker.
     }
