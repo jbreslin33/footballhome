@@ -938,6 +938,18 @@ class MyScreen extends Screen {
     const guardianTargets = Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [];
     const rsvpRows = Array.isArray(ev.rsvps) ? ev.rsvps : [];
     const showOwnRsvpRow = eligibilityOk || guardianTargets.length === 0;
+    // Pickup side / practice group the coach put this person on
+    // (#event-center's Teams / Groups pill) — colour from the feed's my_sides.
+    const sides = Array.isArray(ev.my_sides) ? ev.my_sides : [];
+    const sideWord = kind === 'pickup' ? 'team' : 'group';
+    const sideHtml = (personId, who) => {
+      const side = sides.find(x => x.person_id === personId);
+      if (!side) return '';
+      return `<div style="font-size:0.66rem; font-weight:700; margin-top:2px;">
+        <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${this.escapeHtml(side.hex)};
+                     border:1px solid rgba(255,255,255,0.5); vertical-align:middle;"></span>
+        ${this.escapeHtml(who)} on the ${this.escapeHtml(side.label)} ${sideWord}</div>`;
+    };
     const guardianRowsHtml = guardianTargets.map(child => {
       const childResponse = (rsvpRows.find(r => r && r.person_id === child.person_id) || {}).response || null;
       const childDisabledMsg = isPast ? 'Event has passed' : openMsg;
@@ -961,6 +973,7 @@ class MyScreen extends Screen {
         <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:2px;">
           <div style="font-size:0.62rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">
             👤 ${this.escapeHtml(child.name || 'Your player')}${callupHtml}
+            ${sideHtml(child.person_id, `${first} is`)}
           </div>
           <div style="display:flex; gap:3px; flex-shrink:0;">
             ${this._btn('Go', 'yes', childResponse === 'yes', 'solid', childYesSaving,
@@ -971,6 +984,10 @@ class MyScreen extends Screen {
         </div>
       `;
     }).join('');
+
+    // The caller's own side: the my_sides entry that is not one of their kids.
+    const ownSide = sides.find(x => !guardianTargets.some(c => c.person_id === x.person_id));
+    const ownSideHtml = ownSide ? sideHtml(ownSide.person_id, "You're") : '';
 
     const evYesKey  = `${ev.fh_event_id}:me:yes`;
     const evNoKey   = `${ev.fh_event_id}:me:no`;
@@ -1083,6 +1100,7 @@ class MyScreen extends Screen {
             ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
             ${venue ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📍 ${this.escapeHtml(venue)}</div>` : ''}
             ${notes ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📝 ${this.escapeHtml(notes)}</div>` : ''}
+            ${ownSideHtml}
             ${guardianRowsHtml}
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:normal; overflow-wrap:break-word;">${compactMeta}</div>
           </div>

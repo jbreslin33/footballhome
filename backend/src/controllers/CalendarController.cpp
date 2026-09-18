@@ -955,6 +955,21 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                           AND child.parent_person_id = $1::int
                     ) sub
                 ), '[]'::jsonb) AS guardian_targets,
+                -- Pickup side / practice group (match_lineups.squad_color,
+                -- set on #event-center) for the caller and their children
+                -- — "which team am I on?".  Colour label + hex from
+                -- squad_colors (migration 372).
+                COALESCE((
+                    SELECT jsonb_agg(jsonb_build_object(
+                               'person_id', sp.id, 'code', sc.code,
+                               'label', sc.label, 'hex', sc.hex))
+                    FROM match_lineups ml
+                    JOIN players spl     ON spl.id = ml.player_id
+                    JOIN persons sp      ON sp.id = spl.person_id
+                    JOIN squad_colors sc ON sc.code = ml.squad_color
+                    WHERE ml.fh_event_id = fe.id
+                      AND (sp.id = $1::int OR sp.parent_person_id = $1::int)
+                ), '[]'::jsonb) AS my_sides,
                 COALESCE((
                     SELECT jsonb_agg(
                         jsonb_build_object(
@@ -1402,6 +1417,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["guardian_children"] = textOrNull(row, "guardian_children");
             ev["schedule_window_end"] = textOrNull(row, "schedule_window_end");
             ev["guardian_targets"]  = json::parse(row["guardian_targets"].c_str());
+            ev["my_sides"]          = json::parse(row["my_sides"].c_str());
             {
                 const bool eligible = row["eligible"].as<bool>();
                 const bool guardian = row["is_guardian"].as<bool>();
