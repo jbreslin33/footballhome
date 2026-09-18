@@ -44,6 +44,16 @@ function loadLeadsSandbox() {
   // start empty exactly as they do in the browser before
   // loadRegisterLinks() resolves; the templates fall back to the bare
   // LeagueApps URL, which is all these tests need.
+  //
+  // Its wording is message_templates rows too (migration 370), fetched
+  // from GET /api/public/program-copy.  tests/fixtures/program-copy.json is
+  // that endpoint's data as the DB served it; a test that reads the
+  // description awaits loadRegisterLinks() first, as the screens do.
+  const programCopy = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'program-copy.json'), 'utf8'));
+  context.fetch = async (url) => ({
+    ok: true,
+    json: async () => ({ data: String(url).includes('/program-copy') ? programCopy : [] }),
+  });
   vm.runInContext(
     fs.readFileSync(path.join(__dirname, '..', 'frontend', 'js', 'lib', 'program-info.js'), 'utf8'),
     context);
@@ -73,9 +83,10 @@ function loadLeadsScreenClass() {
   return loadLeadsSandbox().LeadsScreen;
 }
 
-test('youth lead snippets use youth-specific more-info copy', () => {
-  const LeadsScreen = loadLeadsScreenClass();
-  const screen = new LeadsScreen();
+test('youth lead snippets use youth-specific more-info copy', async () => {
+  const ctx = loadLeadsSandbox();
+  await ctx.window.LighthouseProgramInfo.loadRegisterLinks();
+  const screen = new ctx.LeadsScreen();
   screen.auth = { getUser: () => ({ first_name: 'Mike', last_name: 'Breslin' }) };
   screen.escapeHtml = (s) => String(s);
   screen._proBold = (s) => String(s);

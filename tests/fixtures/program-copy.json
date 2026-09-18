@@ -1,0 +1,150 @@
+{
+ "templates": [
+  {
+   "kind": "lead_fee",
+   "tier": "all",
+   "body": "$1"
+  },
+  {
+   "kind": "lead_fee",
+   "tier": "women",
+   "body": "Free"
+  },
+  {
+   "kind": "lead_pricing",
+   "tier": "all",
+   "body": "$35/month"
+  },
+  {
+   "kind": "lead_venue",
+   "tier": "outdoor",
+   "body": "Lighthouse Sports Complex — 199 E Erie Ave, Philadelphia PA 19140"
+  },
+  {
+   "kind": "lead_venue",
+   "tier": "indoor",
+   "body": "Lighthouse Community Center — 141 W Somerset St, Philadelphia PA 19133"
+  },
+  {
+   "kind": "program_description",
+   "tier": "all",
+   "body": "{program_intro}\n\n{program_membership}\n\n[[{program_teams}\n\n]]### Schedule\n[[{program_schedule}\n]]- **Games:** {program_games}\n- **Home Outdoor Facility:** {venue_outdoor}\n- **Home Indoor Facility:** {venue_indoor}\n\n{program_billing}\n\n### Changes & questions\n{program_changes}"
+  },
+  {
+   "kind": "program_member",
+   "tier": "all",
+   "body": "Your membership"
+  },
+  {
+   "kind": "program_member",
+   "tier": "youth",
+   "body": "Your player's membership"
+  },
+  {
+   "kind": "program_kit",
+   "tier": "all",
+   "body": "your uniform"
+  },
+  {
+   "kind": "program_kit",
+   "tier": "youth",
+   "body": "their uniform"
+  },
+  {
+   "kind": "program_fee_short",
+   "tier": "all",
+   "body": "$35/mo"
+  },
+  {
+   "kind": "program_fee_short",
+   "tier": "women",
+   "body": "Free"
+  },
+  {
+   "kind": "program_fee_label",
+   "tier": "all",
+   "body": "{fee} to register, then {program_fee_short}"
+  },
+  {
+   "kind": "program_fee_label",
+   "tier": "women",
+   "body": "Free to register — $35 league fee + refs per game"
+  },
+  {
+   "kind": "program_games",
+   "tier": "all",
+   "body": "Sundays"
+  },
+  {
+   "kind": "program_games",
+   "tier": "youth",
+   "body": "Sunday mornings to early afternoon"
+  },
+  {
+   "kind": "program_games",
+   "tier": "women",
+   "body": "Sundays, late morning to early afternoon — September through November, winter break, then resuming late March through June"
+  },
+  {
+   "kind": "program_intro",
+   "tier": "all",
+   "body": "**Lighthouse 1893** is the oldest nonprofit community organization in Philadelphia, serving the neighborhood for over 133 years. Our mission with soccer is to keep the game **affordable, accessible, local, and high-quality** for every family in our community.\n\nOur history speaks to that quality. Lighthouse teams have won **5 U-19 national championships** and sent **7 players to the U.S. Soccer Hall of Fame, 2 to the FIFA World Cup, and 4 to the U.S. Olympics** — and, more importantly, through its **Boys Club, Girls Club, Men's Club, and Women's Club**, Lighthouse has spent 133 years developing generations of neighbors into people of the highest character who go on to serve their families, careers, and communities. **It's a club for life in the neighborhood.** Today, we bring modern coaching and player-development methodology honed over 133 years to every player, from first-time beginners to advanced competitors."
+  },
+  {
+   "kind": "program_membership",
+   "tier": "all",
+   "body": "### Membership\nFor 133 years, Lighthouse has operated on a membership model to build community and belonging — because a community is stronger when it's organized together. {program_member} runs year-round and covers all four seasons (Winter, Spring, Summer, Fall), training, matches, tournaments, and {program_kit}. There are no per-season, per-tournament, indoor, or uniform fees."
+  },
+  {
+   "kind": "program_membership",
+   "tier": "women",
+   "body": "### Membership\nRegistration with Lighthouse is **free** — there's no LeagueApps membership fee, and {program_kit} is supplied at no cost by the club."
+  },
+  {
+   "kind": "program_teams",
+   "tier": "youth",
+   "body": "### Teams\n**Lighthouse League** is our in-house program — games played primarily at the Lighthouse fields, with occasional events elsewhere. It's for players and families looking for a **local, low-to-no-travel soccer experience**, and it's open to every member regardless of skill level, age, or experience.\n\nFor players who want to travel to games as part of their season, we also field select travel squads (Fall 2026):\n- **U8, U10, U12** — competing in a boys-division travel league. We encourage and have girls playing on these squads while we grow the girls program.\n\nWe add travel teams for additional age bands as interest and readiness grow."
+  },
+  {
+   "kind": "program_teams",
+   "tier": "men",
+   "body": "### Teams\n**Trials have begun** for the **U.S. Open Cup**, **APSL 1st Team**, and **U.S. National Amateur Cup**. Join the Men's Club to be considered.\n- **U.S. Open Cup** — the oldest and most prestigious soccer competition in the U.S. (est. 1914). Open, single-elimination — MLS, USL Championship, USL League One, MLS Next Pro, and qualifying amateur clubs compete for the Lamar Hunt U.S. Open Cup.\n- **U.S. National Amateur Cup** — U.S. Soccer's national championship for amateur clubs (est. 1923). Regional qualifiers feed a national bracket to crown the top amateur side in the country.\n- **APSL (American Premier Soccer League)** — a national semi-pro league operating below the professional divisions of the U.S. Soccer pyramid (MLS, USL Championship, USL League One). The APSL 1st Team is Lighthouse's pathway into U.S. Open Cup and U.S. National Amateur Cup rosters.\n\nOur competitive squads (Fall 2026):\n- **APSL**\n- **Liga 1**\n- **Liga 2**\n\n**Lighthouse League** is our in-house program at the Lighthouse fields — for members who want a **local, low-to-no-travel soccer experience**, and for anyone not selected to a competitive squad. **We don't cut members.**"
+  },
+  {
+   "kind": "program_teams",
+   "tier": "women",
+   "body": "### Teams\nOur competitive squad (Fall 2026):\n- **Tri County Women** (Women's Tri County Soccer League, Division 2)"
+  },
+  {
+   "kind": "program_schedule",
+   "tier": "youth",
+   "body": "- **Practice:**\n  - 2nd grade and younger — Mondays & Wednesdays, 4:30–5:30pm\n  - 3rd grade and older — Mondays, Wednesdays & Fridays, 5:30–7pm\n- **Why multiple days:** We know families are busy, so we offer practice several days a week — the goal is that every player can make at least one. There's no requirement to attend all of them; come to as many as work for your schedule."
+  },
+  {
+   "kind": "program_schedule",
+   "tier": "adult",
+   "body": "- **Practice:** Tuesday–Friday, 7:00–8:30pm; Saturday, 11:00am–12:30pm\n- **Purpose of 5 weekly sessions:** Five sessions a week fit real work schedules — aim for any 2 of the 5 and you're a regular — and cover all the fitness a player needs. Sessions pair tactical concepts with game play that applies them, so players work their technical actions in real game environments — not around a cone that can't defend. Together they cover the four pillars of player development: **technical, tactical, physical, and psychological.**"
+  },
+  {
+   "kind": "program_billing",
+   "tier": "all",
+   "body": "### Billing\nRegistration is {fee} at signup. After registration, we send a single prorated invoice covering the rest of the current month.\n\nFrom then on, the normal {pricing} membership is invoiced on the **first Friday of each month**.\n\n**Membership requires a valid card on file with sufficient funds** so we can auto-charge monthly dues. Cards saved at registration are charged automatically through LeagueApps and a receipt is emailed for each charge. Members can pause or cancel anytime."
+  },
+  {
+   "kind": "program_billing",
+   "tier": "women",
+   "body": "### Billing\nGames cost a few dollars per player to cover referee fees, paid at the field.\n\nSeparately, players register directly with the **Women's Tri County Soccer League** on their site for **$35**."
+  },
+  {
+   "kind": "program_changes",
+   "tier": "all",
+   "body": "To pause or cancel a membership, or ask a question, email {outreach_email}."
+  },
+  {
+   "kind": "program_changes",
+   "tier": "women",
+   "body": "Questions? Email {outreach_email}."
+  }
+ ],
+ "outreach_email": "soccer@lighthouse1893.org"
+}

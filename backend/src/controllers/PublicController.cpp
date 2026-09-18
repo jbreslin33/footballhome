@@ -1,4 +1,5 @@
 #include "PublicController.h"
+#include "../models/WelcomeLog.h"
 #include <sstream>
 #include <regex>
 #include <iostream>
@@ -15,6 +16,7 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
     router.get(prefix + "/teams/:slug/lineup",   [this](const Request& r) { return handleGetLineup(r); });
     router.get(prefix + "/teams/:slug/schedule", [this](const Request& r) { return handleGetSchedule(r); });
     router.get(prefix + "/leagueapps-registration-links", [this](const Request& r) { return handleGetRegistrationLinks(r); });
+    router.get(prefix + "/program-copy",         [this](const Request& r) { return handleGetProgramCopy(r); });
 }
 
 // ─── GET /api/public/teams ───────────────────────────────────────────────────
@@ -597,4 +599,33 @@ std::string PublicController::extractSlugFromPath(const std::string& path) {
     return "";
 }
 
-
+// ─── GET /api/public/program-copy ────────────────────────────────────────────
+// The programme description the flyer QR pages, #flyers and the #leads
+// "LA Program Description" chip all quote (migration 370).  No login: the
+// public pages are read by families who have no account.  Only
+// message_templates rows flagged is_public are served — form links already
+// resolved — plus the club mailbox the copy signs off with.  Rendered by
+// frontend/js/lib/program-info.js.
+Response PublicController::handleGetProgramCopy(const Request& request) {
+    try {
+        const std::string clubId = std::to_string(WelcomeLog::kLighthouseClubId);
+        pqxx::result result = db_->query(R"(
+            SELECT COALESCE((SELECT json_agg(json_build_object(
+                                 'kind', kind, 'tier', tier,
+                                 'body', fh_fill_form_links(body, $1::int))
+                               ORDER BY sort_order, id)
+                        FROM message_templates
+                       WHERE is_active AND is_public), '[]'::json)::text AS templates,
+                   to_json(COALESCE((SELECT outreach_email FROM clubs WHERE id = $1::int), ''))::text AS em
+        )", {clubId});
+        std::ostringstream data;
+        data << "{\"templates\":" << result[0]["templates"].as<std::string>()
+             << ",\"outreach_email\":" << result[0]["em"].as<std::string>() << "}";
+        return Response(HttpStatus::OK,
+                        createJSONResponse(true, "Program copy", data.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleGetProgramCopy: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                        createJSONResponse(false, "Database error"));
+    }
+}

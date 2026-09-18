@@ -22,12 +22,15 @@ const PAGE_ID       = process.env.META_PAGE_ID;
 const ACCESS_TOKEN  = process.env.META_ADS_TOKEN;
 const API           = 'https://graph.facebook.com/v21.0';
 
-// ── Ad definitions (image + caption + CTA URL per post type) ──────────
+// ── Ad definitions (image + CTA + targeting + form fields per ad) ─────
+// No wording here (owner 2026-09-17: "all messages in db"): each ad's
+// caption, its lead form's intro card and thank-you page are
+// message_templates rows keyed by the ad key (migration 371) — see
+// loadAdCopy() below.  Change the wording by migration.
 const ADS = {
   'u23-mens': {
     name:       'U23 Mens Interest Form',
     imageUrl:   'https://footballhome.org/images/posts/u23-ad-mens.png',
-    caption:    `Now forming Lighthouse Boys Club U23 team in CASA Men's U23 Premier League.\n\n📅 First Match: May 30, 2026\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer`,
 
     // CTA points to the in-house /pickup guest funnel (Todo #13).
     // The `?ad=` param is preserved as leads.ad_id so we can attribute
@@ -53,7 +56,6 @@ const ADS = {
   'u23-womens': {
     name:    'U23 Womens Interest Form',
     imageUrl: 'https://footballhome.org/images/posts/u23-ad-womens.png',
-    caption:  `⚽ NOW FORMING: LIGHTHOUSE WOMEN'S CLUB U23!\n\nLighthouse Women's Club U23 is forming a team in partnership with CASA Soccer!\n\n📅 First Match: TBD\n🏆 League: CASA Soccer · Philadelphia\n📍 Philadelphia, PA\n🎯 Open to ALL players · Ages 16–25 eligible\n\n#Lighthouse1893 #U23 #PhillySoccer #CASASoccer #U23Soccer #Lighthouse1893SC #PhillyFootball #WomensSoccer`,
     ctaUrl:   'https://footballhome.org/pickup?ad=u23-womens',
     ctaType:  'SIGN_UP',
     targeting: {
@@ -68,7 +70,6 @@ const ADS = {
   'grassroots-brazil': {
     name:    'Philly Grassroots Cup — Brazil',
     imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-brazil.png',
-    caption:  `🇧🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — BRAZIL TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Brazil team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Brazilian!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #Brazil #Lighthouse1893 #PhillySoccer #CASASoccer`,
     ctaUrl:   'https://footballhome.org/pickup?ad=grassroots-brazil',
     ctaType:  'LEARN_MORE',
     targeting: {
@@ -83,7 +84,6 @@ const ADS = {
   'grassroots-puertorico': {
     name:    'Philly Grassroots Cup — Puerto Rico',
     imageUrl: 'https://footballhome.org/images/posts/grassroots-cup-ad-puertorico.png',
-    caption:  `🇵🇷 WE'RE GOING TO THE PHILLY GRASSROOTS CUP — PUERTO RICO TEAM!\n\nLighthouse 1893 SC is proud to sponsor the Puerto Rico team in the 2026 Philly Grassroots Cup!\n\n🏆 3-game group stage + knockouts · 12 Nations\n📅 First match: June 7, 2026\n📍 Philadelphia, PA\n\n🌎 Open to ALL players — You do not have to be Puerto Rican!\n⚠️ Spots are limited and filling fast!\n\n#PhillyGrassrootsCup #PuertoRico #Lighthouse1893 #PhillySoccer #CASASoccer`,
     ctaUrl:   'https://footballhome.org/pickup?ad=grassroots-puertorico',
     ctaType:  'LEARN_MORE',
     targeting: {
@@ -98,7 +98,6 @@ const ADS = {
   'youth-signup': {
     name:    'Lighthouse Youth Soccer — Now Enrolling (Grades 1–6)',
     imageUrl: 'https://footballhome.org/images/posts/youth-signup-ad.png',
-    caption: `⚽ LIGHTHOUSE YOUTH SOCCER — NOW ENROLLING\n\nBoys & girls, grades 1–6.\nTravel & In-House Leagues.\n\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer`,
     // Meta will typically show the attached native leadForm below on
     // click, but if the ad ever runs without one the CTA should still
     // land on our own guest funnel (Todo #13) rather than a link tree.
@@ -128,20 +127,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse Youth Soccer — Travel & In-House',
-        content: [
-          'Local community-based club — Philadelphia',
-          '199 East Erie Avenue · since 1893',
-          'A coach will follow up with season dates, fees, and next steps.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     // 14-day learning test (defaultDays:14 above)
@@ -193,7 +181,6 @@ const ADS = {
     // Heritage-forward copy: this campaign recruits LONG-TERM members, not
     // quick signups, so the lead line is the club's 133-year record rather
     // than a season or a deadline.
-    caption: `⚽ LIGHTHOUSE 1893 — NOW ENROLLING\n\nJoin Philadelphia's oldest non-profit ⚽ club — and America's oldest active ⚽ club.\n\nOne club, four programs: Men's, Women's, Boys and Girls.\nA neighborhood club since 1893 — join the squad down the street.\n\nYear-round program · all ages · all skill levels welcome.\n\n📍 Lighthouse Sports Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n#Lighthouse1893 #PhillySoccer`,
     // Facebook renders this link's DOMAIN on the feed card even though the
     // CTA opens the native lead form, so it must be a domain a prospect
     // recognises as registration.  footballhome.org is our internal ops
@@ -243,20 +230,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse 1893 — Men, Women, Boys & Girls',
-        content: [
-          'Local community-based club — Philadelphia',
-          '199 East Erie Avenue · since 1893',
-          'A coach will follow up with season dates, fees, and next steps.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     targeting: {
@@ -288,7 +264,6 @@ const ADS = {
   'trial-pathway': {
     name:    'APSL & CASA Select — Summer Trial Pathway',
     imageUrl: 'https://footballhome.org/images/posts/trial-pathway-ad.png',
-    caption:  `Join now and compete in meaningful competitions and train with the teams during summer to prepare for APSL season.`,
     ctaUrl:   'https://footballhome.org/pickup?ad=trial-pathway',
     ctaType:  'SIGN_UP',
     targeting: {
@@ -305,7 +280,6 @@ const ADS = {
     // PAUSED 2026-06-20 — was a broken hybrid (OUTCOME_TRAFFIC w/ form attached).
     // Spec kept as a template; if relaunched it will build as a TRUE lead-form ad.
     imageUrl: 'https://footballhome.org/images/posts/mens-club-ad.png',
-    caption: `⚽ JOIN LIGHTHOUSE MENS CLUB — APSL / LIGA 1\n\nOpen-tryout adult men's team competing in APSL / Liga 1.\nAll skill levels welcome. Train with the squad, compete on weekends.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #APSL #Liga1 #PhillySoccer #MensSoccer`,
     ctaProgram: { category: 'men', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=mens-club' },
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
@@ -329,20 +303,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse Mens Club — APSL / Liga 1',
-        content: [
-          'Adult open-tryout team — Philadelphia',
-          '199 East Erie Avenue · since 1893',
-          'A coach will follow up with tryout dates, fees, and next steps.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with tryout details and next steps.',
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     targeting: {
@@ -373,7 +336,6 @@ const ADS = {
   'apsl-trials': {
     name:    'Lighthouse APSL Trials — Fall 2026',
     imageUrl: 'https://footballhome.org/images/posts/apsl-trials-ad.png',
-    caption: `⚽ APSL TRYOUTS — FALL 2026 SEASON\n\nLighthouse 1893 is finalizing its roster for the fall APSL season.\nSemi-pro level, committed players only — regular training, real competition. Come earn one of the remaining spots.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #APSL #Tryouts #PhillySoccer #MensSoccer`,
     ctaProgram: { category: 'men', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=apsl-trials' },
     ctaType: 'SIGN_UP',
     defaultBudget: 14, // raised from 5 → 14 on 2026-08-13 to match mens-club-LEADS/youth-signup
@@ -397,21 +359,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse APSL Trials — Fall 2026',
-        content: [
-          'Semi-pro APSL — committed players only',
-          'Regular training, not a rec team',
-          '199 East Erie Avenue · since 1893',
-          'A coach will follow up with tryout dates and next steps.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: "A Lighthouse 1893 coach will reach out within 24–48 hours with tryout dates and next steps.",
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     targeting: {
@@ -429,7 +379,6 @@ const ADS = {
   'liga1-trials': {
     name:    'Lighthouse CASA Select Liga 1 Trials — Fall 2026',
     imageUrl: 'https://footballhome.org/images/posts/liga1-trials-ad.png',
-    caption: `⚽ CASA SELECT LIGA 1 TRIALS — FALL 2026\n\nOpen tryouts this summer for Lighthouse 1893's Liga 1 select squad.\nTrain with the group, compete on weekends, earn a fall roster spot.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #Liga1 #Trials #PhillySoccer #MensSoccer`,
     ctaProgram: { category: 'men', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=liga1-trials' },
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
@@ -453,20 +402,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse CASA Select Liga 1 Trials — Fall 2026',
-        content: [
-          'Competitive adult men — Philadelphia',
-          '199 East Erie Avenue · since 1893',
-          'Trial this summer, earn your spot for the Liga 1 fall season.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: "A Lighthouse 1893 coach will reach out within 24–48 hours with trial dates and next steps.",
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     targeting: {
@@ -494,7 +432,6 @@ const ADS = {
     // conversation). Gender targeting stays locked to female below —
     // only the tone changed, not the audience.
     imageUrl: 'https://footballhome.org/images/posts/womens-club-ad.png',
-    caption: `⚽ JOIN LIGHTHOUSE WOMEN'S CLUB 1895\n\nAdult women's 11v11 soccer, open to everyone — all skill levels, all backgrounds, no experience required.\nTrain with the squad, play in the Tri County Womens League this season.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #TriCountyWomensLeague #PhillySoccer #WomensSoccer`,
     ctaProgram: { category: 'women', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=club_leads_2026&utm_content=womens-club' },
     ctaType: 'SIGN_UP',
     defaultBudget: 14,
@@ -518,20 +455,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: "Lighthouse Women's Club 1895 — Tri County Womens League",
-        content: [
-          "Adult women's 11v11 soccer — open to everyone, all skill levels",
-          '199 East Erie Avenue · since 1895',
-          'A coach will follow up with season details and next steps.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     targeting: {
@@ -551,7 +477,6 @@ const ADS = {
     // PAUSED 2026-06-20 — was a broken hybrid (see mens-club). Spec kept as template.
     // Boys (Grades 1–6) + Boys U11/U12 + U23 Mens cover the active age bands.
     imageUrl: 'https://footballhome.org/images/posts/boys-club-k12-ad.png',
-    caption: `⚽ LIGHTHOUSE BOYS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub`,
     ctaProgram: { category: 'boys', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=boys-club' },
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
@@ -575,20 +500,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse Boys Club — Travel & In-House',
-        content: [
-          'Local community-based club — Philadelphia',
-          '199 East Erie Avenue · since 1893',
-          'A coach will follow up with season dates, fees, and next steps.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     targeting: {
@@ -617,7 +531,6 @@ const ADS = {
     // PAUSED 2026-06-20 — was a broken hybrid (see mens-club). Spec kept as template.
     // Girls (Grades 1–6) + Girls U11/U12 cover the active age bands.
     imageUrl: 'https://footballhome.org/images/posts/girls-club-k12-ad.png',
-    caption: `⚽ LIGHTHOUSE GIRLS CLUB — NOW ENROLLING\n\nKindergarten through 12th grade · Travel & In-House Leagues.\nSummer training + fall season · all skill levels welcome.\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub`,
     ctaProgram: { category: 'girls', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=girls-club' },
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
@@ -641,20 +554,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse Girls Club — Travel & In-House',
-        content: [
-          'Local community-based club — Philadelphia',
-          '199 East Erie Avenue · since 1893',
-          'A coach will follow up with season dates, fees, and next steps.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with season details and next steps.',
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     targeting: {
@@ -682,7 +584,6 @@ const ADS = {
     // Lead-form ad (same pattern as boys-club / girls-club form ads).
     // Parents submit name/email/phone + child grade in-app; a coach follows up.
     imageUrl: 'https://footballhome.org/images/posts/boys-u11u12-travel-ad.png',
-    caption: `⚽ LIGHTHOUSE BOYS U11/U12 — TRAVEL TEAM\n\nMaking the jump from rec to travel?\nWe're forming our U11 and U12 boys travel squads for the 2026-27 season.\n\n🏆 Philadelphia League — Boys (USSF-affiliated city pyramid)\n📅 Summer training begins June · Fall placement\n🎯 All skill levels welcome — current club & first-time travel players\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #BoysClub #U11 #U12 #TravelSoccer`,
     ctaProgram: { category: 'boys', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=boys-u11u12-travel' },
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
@@ -695,20 +596,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse Boys U11/U12 — Travel Team',
-        content: [
-          'Philadelphia League — Boys · USSF-affiliated city pyramid',
-          'Summer training begins June · Fall placement',
-          'A coach will follow up with tryout dates, fees, and next steps.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with U11/U12 travel-team details.',
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     targeting: {
@@ -739,7 +629,6 @@ const ADS = {
     // Lead-form ad (same pattern as boys-club / girls-club form ads).
     // Parents submit name/email/phone + child grade in-app; a coach follows up.
     imageUrl: 'https://footballhome.org/images/posts/girls-u11u12-travel-ad.png',
-    caption: `⚽ LIGHTHOUSE GIRLS U11/U12 — TRAVEL TEAM\n\nMaking the jump from rec to travel?\nWe're forming our U11 and U12 girls travel squads for the 2026-27 season.\n\nℹ️ Heads up: for Fall 2026 the U11/U12 girls will play on a co-ed travel team alongside the boys in the boys division. Girls-only roster planned as numbers grow.\n\n🏆 Philadelphia League · USSF-affiliated city pyramid\n📅 Summer training begins June · Fall placement\n🎯 All skill levels welcome — current club & first-time travel players\n\n📍 Lighthouse Sports & Entertainment Complex\n199 East Erie Avenue, Philadelphia, PA 19140\n\n📧 Questions? soccer@lighthouse1893.org\n\n#Lighthouse1893 #PhillySoccer #YouthSoccer #GirlsClub #U11 #U12 #TravelSoccer`,
     ctaProgram: { category: 'girls', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=club_direct_2026&utm_content=girls-u11u12-travel' },
     ctaType: 'SIGN_UP',
     defaultBudget: 5,
@@ -751,22 +640,9 @@ const ADS = {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Lighthouse Girls U11/U12 — Travel Team',
-        content: [
-          'Fall 2026: co-ed team \u2014 girls play in the boys division.',
-          'Girls-only roster planned as numbers grow.',
-          'Philadelphia League \u00b7 USSF-affiliated city pyramid',
-          'Summer training begins June \u00b7 Fall placement',
-          'A coach will follow up with tryout dates and next steps.',
-        ],
-        button_text: 'Continue',
       },
       thank_you_page: {
-        title: 'Thanks — talk soon!',
-        body: 'A Lighthouse 1893 coach will reach out within 24–48 hours with U11/U12 travel-team details.',
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
       },
     },
     targeting: {
@@ -890,10 +766,59 @@ async function resolveCtaUrl(spec) {
   return utm ? `${row.registrationUrl}?${utm}` : row.registrationUrl;
 }
 
+// The ad's wording — message_templates rows keyed by the ad key (migration
+// 371); tier 'all' is the lead form of an ad that has none of its own.
+// A missing caption stops the build: an ad is never created without copy.
+const LIGHTHOUSE_CLUB_ID = 134;
+async function loadAdCopy(key) {
+  const { Client } = require('pg');
+  const db = new Client({
+    host: process.env.PGHOST || 'localhost',
+    port: process.env.PGPORT || 5432,
+    user: process.env.PGUSER || 'footballhome_user',
+    password: process.env.PGPASSWORD || 'footballhome_pass',
+    database: process.env.PGDATABASE || 'footballhome',
+  });
+  await db.connect();
+  try {
+    const { rows } = await db.query(
+      `SELECT kind, tier, COALESCE(subject, '') AS subject, body
+         FROM message_templates
+        WHERE is_active AND kind LIKE 'meta\\_%' AND tier IN ($1, 'all', 'continue', 'follow')`, [key]);
+    const pick = (kind, ...tiers) => {
+      for (const t of tiers) {
+        const r = rows.find(x => x.kind === kind && x.tier === t);
+        if (r) return r;
+      }
+      return null;
+    };
+    const need = (r, what) => {
+      if (!r) throw new Error(`No message_templates row for ${what} — refusing to build an ad without its copy.`);
+      return r;
+    };
+    const caption = need(pick('meta_ad_caption', key), `meta_ad_caption/${key}`);
+    const card    = need(pick('meta_context_card', key, 'all'), `meta_context_card/${key}`);
+    const thanks  = need(pick('meta_thank_you', key, 'all'), `meta_thank_you/${key}`);
+    const ig = await db.query(`SELECT url FROM club_forms WHERE club_id = $1 AND code = 'instagram'`, [LIGHTHOUSE_CLUB_ID]);
+    if (!ig.rows.length) throw new Error("No club_forms row 'instagram'.");
+    return {
+      caption: caption.body,
+      contextCard: { title: card.subject, content: card.body.split('\n').filter(Boolean) },
+      thankYou: { title: thanks.subject, body: thanks.body },
+      continueButton: need(pick('meta_button', 'continue'), 'meta_button/continue').body,
+      followButton:   need(pick('meta_button', 'follow'), 'meta_button/follow').body,
+      instagramUrl: ig.rows[0].url,
+    };
+  } finally {
+    await db.end();
+  }
+}
+
 async function run() {
-  // Resolve before anything is created — a missing link should stop the
-  // build, not surface after the ad exists.
+  // Resolve before anything is created — a missing link or missing copy
+  // should stop the build, not surface after the ad exists.
   ad.ctaUrl = await resolveCtaUrl(ad);
+  const copy = await loadAdCopy(adKey);
 
   console.log(`\n📣 Creating Instagram Ad: ${ad.name}`);
   console.log(`   Budget: $${dailyBudgetUSD}/day${days ? ` for ${days} days ($${dailyBudgetUSD * days} total)` : ' (runs until cancelled)'}`);
@@ -912,6 +837,8 @@ async function run() {
   console.log(`   Mode: ${ad.mode === 'direct' ? 'DIRECT (→ landing page)' : 'LEAD FORM (→ IG form → thank-you)'}`);
   console.log(`   CTA: ${ad.ctaType} → ${ad.ctaUrl}`);
   console.log(`   Image: ${ad.imageUrl}`);
+  console.log(`   Caption: ${copy.caption.split('\n')[0]}…`);
+  console.log(`   Form: "${copy.contextCard.title}" → "${copy.thankYou.title}"`);
 
   if (dryRun) {
     console.log('\n[dry-run] No API calls made.\n');
@@ -958,10 +885,10 @@ async function run() {
     leadForm = { id: formIdArg };
   } else {
     console.log('3️⃣  Creating lead form...');
-    // Per-ad lead form definition (questions, context, thank you) — falls back
-    // to the player-focused default if the ad doesn't define its own.
-    const lf = ad.leadForm || {
-      questions: [
+    // Per-ad questions — falls back to the player-focused default if the
+    // ad doesn't define its own.  The cards' wording is loadAdCopy()'s.
+    const lf = {
+      questions: (ad.leadForm && ad.leadForm.questions) || [
         { type: 'FULL_NAME' },
         { type: 'EMAIL' },
         { type: 'PHONE' },
@@ -970,16 +897,18 @@ async function run() {
       ],
       context_card: {
         style: 'LIST_STYLE',
-        title: 'Join Lighthouse 1893 Soccer Club',
-        content: ['Express your interest in joining. We will be in touch with next steps.'],
-        button_text: 'Continue',
+        ...((ad.leadForm && ad.leadForm.context_card) || {}),
+        title: copy.contextCard.title,
+        content: copy.contextCard.content,
+        button_text: copy.continueButton,
       },
       thank_you_page: {
-        title: 'Thanks for your interest!',
-        body: 'A Lighthouse 1893 coach will reach out to you soon. Follow us on Instagram for updates.',
         button_type: 'VIEW_WEBSITE',
-        button_text: 'Follow @lighthouse1893soccerclub',
-        website_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+        ...((ad.leadForm && ad.leadForm.thank_you_page) || {}),
+        title: copy.thankYou.title,
+        body: copy.thankYou.body,
+        button_text: copy.followButton,
+        website_url: copy.instagramUrl,
       },
     };
   leadForm = await apiPost(`${PAGE_ID}/leadgen_forms`, {
@@ -992,7 +921,7 @@ async function run() {
     context_card: JSON.stringify(lf.context_card),
     thank_you_page: JSON.stringify(lf.thank_you_page),
     locale: 'EN_US',
-    follow_up_action_url: 'https://www.instagram.com/lighthouse1893soccerclub/',
+    follow_up_action_url: copy.instagramUrl,
   });
     if (leadForm.error) { console.error('Lead form error:', JSON.stringify(leadForm.error, null, 2)); process.exit(1); }
     console.log(`   Lead Form ID: ${leadForm.id}`);
@@ -1021,7 +950,7 @@ async function run() {
       link_data: {
         image_hash: imageHash,
         link: ad.ctaUrl,
-        message: ad.caption,
+        message: copy.caption,
         // Facebook prints the link's raw domain beside the CTA unless caption
         // overrides it.  On a lead-form ad the link is never visited, so this
         // is purely what the reader sees — keep it the club, not a vendor.

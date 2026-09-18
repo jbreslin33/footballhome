@@ -444,10 +444,9 @@ class MessagesScreen extends Screen {
       (groups[t] ||= []).push(s);
     }
 
-    const TIER_ORDER = ['program', 'alumni', 'followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
+    const TIER_ORDER = ['program', 'followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
     const TIER_TITLES = {
       program: '📋 LeagueApps Program Description',
-      alumni: '🎯 Alumni return (SMS + "in" reply follow-up)',
       followup: '📨 Follow-up (touch 2 — after they say yes)',
       broadcast: '📣 Broadcasts (LA Messages — entire roster)',
       close: '🎯 Close (the ask)',
@@ -494,10 +493,9 @@ class MessagesScreen extends Screen {
     // Leads page.  'program' is the canonical LA program-page copy —
     // pinned at the top so admins can grab-and-paste when editing a
     // LeagueApps program listing.
-    const TIER_ORDER = ['program', 'alumni', 'followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
+    const TIER_ORDER = ['program', 'followup', 'broadcast', 'close', 'soft', 'info', 'qualify'];
     const TIER_TITLES = {
       program:  '📋 LeagueApps Program Description',
-      alumni:   '🎯 Alumni return (SMS + "in" reply follow-up)',
       followup: '📨 Follow-up (touch 2 — after they say yes)',
       broadcast: '📣 Broadcasts (LA Messages — entire roster)',
       close:   '🎯 Close (the ask)',

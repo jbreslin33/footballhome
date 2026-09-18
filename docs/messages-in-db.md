@@ -80,70 +80,39 @@ broadcast — table rows 1, 5–14 below. How it works:
   your spot", the dead "next pickup" branch and the TODO schedule chip are
   gone.
 
-## Pass 3 — what is left (rows 2, 3, 4, 15)
+**Pass 3b — programme description (mig 370):** `lib/program-info.js` holds
+no wording. The description is `program_*` rows in a small markup
+(`### Heading`, `- bullet`, `  - sub-bullet`, `**bold**`) that the file
+turns into both HTML and plain text; `program_description` is the skeleton
+whose `{program_*}` tokens are the rows of that kind. Tier lookup: `youth →
+all`, `men → adult → all`, `women → all`, `adult → all`. Fees and venues are
+the `lead_fee` / `lead_pricing` / `lead_venue` rows — one place for a price
+or an address. Rows a signed-out visitor may read are flagged
+`message_templates.is_public` and served by `GET /api/public/program-copy`
+(the flyer-QR pages have no login). Tests seed from
+`tests/fixtures/program-copy.json` (that endpoint's `data`, dumped from the
+DB). Wording changed on purpose: the adult schedule is the real calendar
+(Tue–Fri + Sat, all practice — no "pickup").
 
-Everything below is in `frontend/js/screens/leads.js` unless noted.
-`LeadsScreen.messageTemplate()` / `messageSnippets()` are **also consumed by
-`#messages`** (`frontend/js/screens/messages.js` ~316–323), so each snippet
-renders on two screens — convert the source, check both.
+**Deleted rather than converted (stale):** `spring-renewal*`,
+`practice-schedule*` ("Summer/Fall 2026"), `alumni-return-*` ("rest of
+July", "Fri Aug 7") in `leads.js`; `scripts/setup-lead-forms.py` (May 2026
+one-off).
 
-Line numbers are from 2026-09-17 and will drift; grep the quoted text.
-
-| # | Function / snippet id | What it says | Notes |
-|---|---|---|---|
-| 1 | `messageTemplate()` | Touch-1 first contact: "Hi {first}, {coachFirst} here — Soccer Director at Lighthouse 1893. Are you looking to join our {program}…" + signature | sms + email; subject = clubTitle |
-| 2 | `springRenewalBody()` → `spring-renewal*` | "the Summer/Fall 2026 season is a NEW registration…" | hardcoded practice days, **address 199 East Erie Avenue**, "$1 then $35/month" |
-| 3 | `alumni-return-sms`, `alumni-return-followup` | "Hey {first} — James at Lighthouse 1893. Pre-season is on…" | hardcoded human name + pricing |
-| 4 | `practiceScheduleBody()` → `practice-schedule*` | "Thanks for registering for the Summer/Fall 2026 season!…" | derive the schedule like `WelcomeMessage` does instead of typing it |
-| 5 | `fh-set-availability` | "Hi guys, We track availability for games, practice and pickup…" + 4-step walkthrough + fining line | mentions pickup — men are all practice now |
-| 6 | `register`, `register-boys`, `register-girls` | "Great. To register your {son/daughter}… register here: {link}" | link already DB-driven (`leagueapps_programs.registration_url`) |
-| 7 | `welcome` (Youth + Adult) | "🎉 … officially a member of the club. Next steps…" | address + Google Maps URL |
-| 8 | `pickup` | "Our next pickup: {title} — {when} @ {loc}…" | pulls next pickup from the calendar |
-| 9 | `close` (`body` + `smsBody`) | "Great — {closerLine}… Once you're registered, I'll send you a link…" | |
-| 10 | `more-info` (`body` + `smsBody`) | wraps the program description (#15) | |
-| 11 | `field` | two venues + two Google Maps URLs | venues belong in a table (check `facilities`) |
-| 12 | `practice`, `games`, `schedule` | "Practice: {schedule}", "Games are mostly on {day}…", a literal `(TODO — fill this in…)` body | |
-| 13 | `cost`, `fall-format` | "{fee} today to lock {whose} spot…", "Fall 2026 season format…" | |
-| 14 | constants ~1654–1762 | `MENS_HANDBOOK` (Google Doc), `CASA_ROSTER_URL`, CSL schedule Sheet, CASA schedule pages, `ROSTER_NOTES['U23 Men']`, `fillTemplate()` fallbacks `'there'` / `'Coach'` | URLs → `club_forms`; fallbacks already exist as `fallback` rows |
-| 15 | `frontend/js/lib/program-info.js` (whole file) | self-described "single source of truth" for membership/teams/schedule/billing copy; feeds `more-info`, `la-program-description`, `#public-program-info`, `#flyers` | fees (`$35`, `$1 then $35/mo`) and `mailto:soccer@…` are literals |
-
-Suggested approach:
-
-1. Give lead snippets their own kinds (`lead_first_contact`, `lead_close`, …)
-   with `tier` = programme/voice, all `client_side = true`. `#messages`
-   already lists `message_templates` rows, so most chips become plain rows and
-   `messageSnippets()` shrinks to "load + fill".
-2. Lead tokens today: `{first}`, `{full}`, `{phone}`, `{coach}`,
-   `{coachFirst}` via `fillTemplate()` (leads.js ~2793) and `_personalize()`
-   (messages.js ~237). Replace both with `MessageCopy.render` — one filler.
-3. Move every URL in #14 and the Maps links into `club_forms`; move venue
-   names/addresses to the facilities table if it fits, else a small
-   `club_venues` table. Fees belong with the LA programme rows, not in copy.
-4. `program-info.js` is also used by public pages (no login). The copy
-   endpoint needs a public variant (or a `public` flag on rows) before that
-   file can go.
-5. Season-specific broadcasts (#2, #4: "Summer/Fall 2026") are one-offs —
-   ask the owner whether to convert or delete them.
-
-## Pass 4 — Meta ad scripts (NOT STARTED)
-
-- `scripts/ads/create-ad.js` — `thank_you_page` title/body for 10 lead forms
-  ("Thanks — talk soon!", "A Lighthouse 1893 coach will reach out within
-  24–48 hours…").
-- `scripts/setup-lead-forms.py` — `context_card`, `thank_you_page`, four ad
-  message bodies, `website_url`.
-
-These run by hand against the Meta API, not in the app. Have them read rows
-(kind `meta_thank_you`, `meta_ad`) over a DB connection or a small JSON
-export. Meta forms can't be edited in place — archive and recreate (see the
-lead-form notes in project memory).
+**Pass 4 — Meta ad copy (mig 371):** `scripts/ads/create-ad.js` reads each
+ad's caption (`meta_ad_caption`), lead-form intro card (`meta_context_card`:
+subject = title, body = one bullet per line) and thank-you page
+(`meta_thank_you`) by ad key over its DB connection (`PG*` env, same
+defaults as `publish-promo.js`); tier `all` is the default form;
+`meta_button` holds the two button labels; the Instagram URL is
+`club_forms.instagram`. A missing caption row stops the build. Still in the
+script: lead-form questions, targeting, image URLs, budgets — config, not
+wording. Meta forms can't be edited in place: a changed row affects the
+NEXT form created. `node scripts/ads/create-ad.js <key> --dry-run` prints
+the caption and card titles it would use.
 
 ## Open questions for the owner
 
-- Season one-offs still typed in `leads.js`: `spring-renewal*` and
-  `practice-schedule*` ("Summer/Fall 2026"), `alumni-return-*` ("rest of
-  July", "Fri Aug 7", signed James). All stale by September. Delete, or
-  rewrite as evergreen rows?
 - Practice days are typed into `lead_practice` rows. `WelcomeMessage`
   derives them from the calendar; doing the same for leads needs a backend
   endpoint.

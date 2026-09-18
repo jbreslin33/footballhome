@@ -999,8 +999,8 @@ class LeadsScreen extends Screen {
     const email    = this.fillTemplate(t.email,   previewLead);
     const snippets = this.messageSnippets(funnelLabel);
 
-    const TIER_ORDER = ['alumni', 'broadcast', 'followup', 'qualify', 'close', 'soft', 'info'];
-    const TIER_LABEL = { alumni: 'Alumni return', broadcast: 'Broadcast (paste to LA Messages)', followup: 'Follow-up (touch 2)', qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
+    const TIER_ORDER = ['broadcast', 'followup', 'qualify', 'close', 'soft', 'info'];
+    const TIER_LABEL = { broadcast: 'Broadcast (paste to LA Messages)', followup: 'Follow-up (touch 2)', qualify: 'Qualify', close: 'Ask (close)', soft: 'Fallback', info: 'Info' };
     const byTier = {};
     for (const s of snippets) {
       const tt = s.tier || 'info';
@@ -1893,10 +1893,10 @@ class LeadsScreen extends Screen {
 
     // ── LeagueApps Program Description ────────────────────────────────
     // Canonical copy for the LA program-listing "Description" field, built
-    // by window.LighthouseProgramInfo.buildProgramDescription() (see
-    // frontend/js/lib/program-info.js) — the single source of truth for
-    // this copy, also used by the public program-info pages linked from
-    // flyer QR codes.  Edit the copy there, not here.
+    // by window.LighthouseProgramInfo.buildProgramDescription() from the
+    // program_* message_templates rows (migration 370) — also what the
+    // public program-info pages linked from flyer QR codes show.  Change
+    // the wording by migration.
     //
     // Hoisted to the outer function scope (via `let laDescText`) so the
     // ℹ️ More info follow-up snippet below can reuse the exact same
@@ -1918,148 +1918,6 @@ class LeadsScreen extends Screen {
         subject: 'Program Description',
         html: laDescHtml,
         body: laDescText,
-      });
-    }
-
-    // ── Broadcasts (LA Messages — paste into LeagueApps Messages to
-    // blast the entire roster).  Currently: Spring → Summer/Fall
-    // re-registration heads-up for Boys / Girls Club families.  Lives
-    // here so the Messages page surfaces it on the youth funnels.
-    // U11/U12 funnels are brand-new — no Spring roster to re-register
-    // — so they're skipped.
-    const isU1112 = /u11\s*\/?\s*u12/i.test(funnelLabel);
-    const springRenewalBody = (clubName, childRel, link) => this._proBold(
-      `Hi Lighthouse 1893 ${clubName} families,\n\n` +
-      `Quick heads-up: the Summer/Fall 2026 season is a NEW registration — it does NOT auto-renew from the Spring season. To hold your ${childRel}'s spot on the roster, please register again:\n` +
-      `${link}\n\n` +
-      `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
-      `Where — Lighthouse Sports Complex\n` +
-      `199 East Erie Avenue, Philadelphia PA 19140\n` +
-      `• 2nd grade and younger: 4:30pm–5:30pm\n` +
-      `• 3rd grade and older: 5:30pm–7pm\n\n` +
-      `Games — Sunday mornings to early afternoon\n\n` +
-      `Cost — $1 to register, then $35/month\n` +
-      `Uniforms, tournaments, and gear all included — no hidden fees.\n\n` +
-      `Hit reply with any questions — happy to help.\n\n` +
-      `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-    );
-    if (c.isLegacyYouth) {
-      snippets.push({
-        id: 'spring-renewal-boys',
-        label: '📣 Spring → re-register (Boys)',
-        tier: 'broadcast',
-        subject: 'Lighthouse 1893 Boys Club — re-register for Summer/Fall (new registration)',
-        body: springRenewalBody('Boys Club', 'son', c.linkBoys),
-      });
-      snippets.push({
-        id: 'spring-renewal-girls',
-        label: '📣 Spring → re-register (Girls)',
-        tier: 'broadcast',
-        subject: 'Lighthouse 1893 Girls Club — re-register for Summer/Fall (new registration)',
-        body: springRenewalBody('Girls Club', 'daughter', c.linkGirls),
-      });
-    } else if (c.isYouth && !isU1112) {
-      const isGirls   = /girls/i.test(funnelLabel);
-      const clubName  = isGirls ? 'Girls Club' : 'Boys Club';
-      const childRel  = isGirls ? 'daughter'   : 'son';
-      snippets.push({
-        id: 'spring-renewal',
-        label: `📣 Spring → re-register (${clubName})`,
-        tier: 'broadcast',
-        subject: `Lighthouse 1893 ${clubName} — re-register for Summer/Fall (new registration)`,
-        body: springRenewalBody(clubName, childRel, c.link),
-      });
-    }
-
-    // ── Broadcast: Alumni return (Men's Club only) — short SMS-length
-    // outreach to last-season players who haven't re-registered.
-    // Paired with `alumni-return-followup` below, which the coach
-    // sends after an "in" reply (includes the LeagueApps link + the
-    // U.S. Soccer / FIFA name-and-DOB ask needed to file clearance).
-    //
-    // Copy is DELIBERATELY plain-text (no _proBold / _boldText) —
-    // this snippet is designed for SMS/WhatsApp/iMessage where
-    // Unicode-math bold renders as boxed characters on old Android
-    // and where screen readers spell math-bold char-by-char (see
-    // accessibility caveat on _boldText).  Emphasis is carried by
-    // quoted keywords ("in" / "out" / "explanation") and by the
-    // three-beat expectation list.
-    //
-    // Response frame is intentionally three-way (yes / no /
-    // explanation) rather than binary — captures the guys who'd
-    // default to "out" only because their situation (injury, work
-    // travel, moving, kit fee friction) doesn't fit a clean yes.
-    // "We want you back" as the reason for the flexibility flips
-    // the third option from concession to invitation.
-    if (funnelLabel === "Men's Club") {
-      snippets.push({
-        id: 'alumni-return-sms',
-        label: '📣 Alumni',
-        tier: 'alumni',
-        body:
-          `Hey {first} — James at Lighthouse 1893. ` +
-          `Pre-season is on and I want you back for APSL, U.S. Open Cup, and Amateur Cup. ` +
-          `The expectation is simple: this week, 1st team players are signed, preparing for the season, and at practice. ` +
-          `Reply "in" for the link. ` +
-          `Reply "out" if this year isn't yours. ` +
-          `Or reply with an explanation if it's complicated (injury, work, life) — we'll figure it out because we want you back. ` +
-          `I need a response either way. ` +
-          `Yes, no, or explanation?`,
-      });
-      snippets.push({
-        id: 'alumni-return-followup',
-        label: '✅ Alumni — send link',
-        tier: 'alumni',
-        body:
-          `Hey {first} — welcome back. Here's the registration:\n\n` +
-          `→ ${c.link}\n\n` +
-          `$1 today. LeagueApps will send a single prorated invoice for the rest of July (~$1.13/day). Regular $35/month starts Fri Aug 7 — no per-season/per-tournament/kit/indoor fees. Pause or cancel anytime.\n\n` +
-          `Once you're registered, reply with your full legal name (as on passport / ID) and your date of birth — I need those to file your U.S. Soccer / FIFA clearance. If you've ever been registered with a soccer federation outside the U.S., also tell me which country and which club so I can add the FIFA international clearance (ITC) to the filing.\n\n` +
-          `— James Breslin\nSoccer Director, Lighthouse 1893 SC`,
-      });
-    }
-
-    // ── Broadcast: Practice schedule — sent to CURRENTLY REGISTERED
-    // players (no registration ask, just logistics).  Explains the
-    // grade-based practice slots and first-practice date.  Surfaces on
-    // every youth funnel so the coach can paste into LA Messages once
-    // per club.
-    const practiceScheduleBody = (clubName) => this._proBold(
-      `Hi Lighthouse 1893 ${clubName} families,\n\n` +
-      `Thanks for registering for the Summer/Fall 2026 season! Quick heads-up on the practice schedule so you can plan your week.\n\n` +
-      `Practice — Mondays & Wednesdays (next: ${this._nextPractice([1, 3], 19).label})\n` +
-      `Where — Lighthouse Sports Complex\n` +
-      `199 East Erie Avenue, Philadelphia PA 19140\n` +
-      `• 2nd grade and younger: 4:30pm–5:30pm\n` +
-      `• 3rd grade and older: 5:30pm–7pm\n\n` +
-      `Games — Sunday mornings to early afternoon\n\n` +
-      `Bring water and shin guards. Uniforms will be handed out at the field.\n\n` +
-      `Hit reply with any questions — see you on the field!\n\n` +
-      `Thanks,\nLighthouse 1893 SC\nsoccer@lighthouse1893.org`
-    );
-    if (c.isLegacyYouth) {
-      snippets.push({
-        id: 'practice-schedule-boys',
-        label: '📣 Practice schedule (Boys — registered)',
-        tier: 'broadcast',
-        subject: 'Lighthouse 1893 Boys Club — Summer/Fall practice schedule',
-        body: practiceScheduleBody('Boys Club'),
-      });
-      snippets.push({
-        id: 'practice-schedule-girls',
-        label: '📣 Practice schedule (Girls — registered)',
-        tier: 'broadcast',
-        subject: 'Lighthouse 1893 Girls Club — Summer/Fall practice schedule',
-        body: practiceScheduleBody('Girls Club'),
-      });
-    } else if (c.isYouth && !isU1112) {
-      const clubName2 = /girls/i.test(funnelLabel) ? 'Girls Club' : 'Boys Club';
-      snippets.push({
-        id: 'practice-schedule',
-        label: `📣 Practice schedule (${clubName2} — registered)`,
-        tier: 'broadcast',
-        subject: `Lighthouse 1893 ${clubName2} — Summer/Fall practice schedule`,
-        body: practiceScheduleBody(clubName2),
       });
     }
 
