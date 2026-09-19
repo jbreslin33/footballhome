@@ -1721,6 +1721,23 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
                              "RSVP write returned no row");
         }
+        // Standby is opt-out (mig 385 tells the alternate so): Not Going
+        // takes the player off the game's alternates.  Starters and bench
+        // stay — a coach has to fill that spot, so they see it first.
+        // Going again later does not put them back; that is the coach's call.
+        bool droppedStandby = false;
+        if (response == "no") {
+            auto dropped = db->query(
+                "DELETE FROM match_lineups ml "
+                " USING fh_events fe, players pl "
+                " WHERE fe.id = $1::bigint AND ml.match_id = fe.match_id "
+                "   AND pl.id = ml.player_id AND pl.person_id = $2::int "
+                "   AND ml.zone = 'alternate' "
+                "RETURNING ml.id",
+                {std::to_string(fhEventId), std::to_string(targetPersonId)});
+            droppedStandby = !dropped.empty();
+        }
+
         const auto& r0 = row[0];
         json rsvp = {
             {"id",            r0["id"].as<long long>()},
@@ -1730,7 +1747,7 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             {"created_via",   r0["created_via"].as<std::string>()},
             {"responded_at",  r0["responded_at"].as<std::string>()},
         };
-        return jsonOk({{"rsvp", rsvp}});
+        return jsonOk({{"rsvp", rsvp}, {"dropped_standby", droppedStandby}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handlePostRsvp: "
                   << e.what() << std::endl;
