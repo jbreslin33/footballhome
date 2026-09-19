@@ -19,8 +19,8 @@
 //
 // A card splits the released week's unanswered events into "Unanswered
 // now" (still answerable) and "Missed this week" (already happened).
-// REMIND lights up for either — a player below 100% for the week can
-// always be chased (owner 2026-09-18); the message marks missed events.
+// REMIND only lists the still-answerable ones — a past event in the
+// message would just confuse the player (owner 2026-09-19).
 //
 // With one event picked ("Unanswered for:" or a next-game tile) a bar
 // offers ONE group text / BCC email to everybody who still owes that event
@@ -422,18 +422,15 @@ class RsvpBoardScreen extends Screen {
       : '—';
 
     const to = p.youth ? ` (to parent${p.parent_first_name ? ' ' + this.escapeHtml(p.parent_first_name) : ''})` : '';
-    // REMIND lights up whenever the week is below 100% — still-open
-    // events AND ones that already went by unanswered (owner 2026-09-18:
-    // "resend reminder if a player is not 100% availability set for
-    // week").  The message lists both; missed ones are marked as such.
-    const owed = open.length + missed.length;
+    // REMIND only lists what can still be answered — an event that
+    // already went by would just confuse the player (owner 2026-09-19).
+    // Missed ones stay on the card for the admin.
     const btn = (channel, icon, has, bg) => {
-      const why = !owed ? 'Every event this week is answered' : !has
+      const why = !open.length ? 'Nothing left to answer this week' : !has
         ? (channel === 'sms' ? 'No mobile number on file' : 'No email on file')
-        : `${channel === 'sms' ? 'Text' : 'Email'} the ${owed} unanswered event${owed === 1 ? '' : 's'} this week`
-          + (missed.length ? ` (${missed.length} already happened)` : '') + ` + sign-in link${to}`;
+        : `${channel === 'sms' ? 'Text' : 'Email'} the ${open.length} unanswered event${open.length === 1 ? '' : 's'} + sign-in link${to}`;
       return `<button class="rb-btn" data-remind="${channel}" data-person-id="${p.person_id}"
-                      style="background:${bg};" title="${this.escapeHtml(why)}"${(!owed || !has) ? ' disabled' : ''}>${icon} REMIND</button>`;
+                      style="background:${bg};" title="${this.escapeHtml(why)}"${(!open.length || !has) ? ' disabled' : ''}>${icon} REMIND</button>`;
     };
 
     return `

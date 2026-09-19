@@ -1,0 +1,11 @@
+-- 382 — RSVP reminders list only what can still be answered.
+--
+-- Owner 2026-09-19: "don't show what they didn't answer in the past on
+-- rsvp remind as i think it will confuse them."
+--
+-- Migration 379 put already-happened events in the reminder with an
+-- "(already happened — never answered)" suffix.  A player can do nothing
+-- about those, so the message goes back to still-open events only; the
+-- #rsvps card keeps its "Missed this week" list for the admin.  The
+-- suffix template is no longer read by anything.
+DELETE FROM message_templates WHERE kind = 'rsvp_reminder' AND tier = 'missed_line';

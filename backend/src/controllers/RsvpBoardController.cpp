@@ -219,8 +219,8 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         const std::string contact = channel == "sms" ? ctx.phone : ctx.email;
         if (contact.empty())
             return jsonError(HttpStatus::CONFLICT, channel == "sms" ? "No mobile number on file." : "No email on file.");
-        if (ctx.events.empty())
-            return jsonError(HttpStatus::CONFLICT, "Nothing to remind — every event this week is answered.");
+        if (ctx.openEvents.empty())
+            return jsonError(HttpStatus::CONFLICT, "Nothing to remind — nothing left to answer this week.");
 
         std::string senderName;
         {
@@ -231,24 +231,15 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         }
         const auto minted = MagicLinkService::mint(ctx.recipientPersonId, channel, contact, scope.userId);
 
-        // kind 'rsvp_reminder' (migration 363); empty names fall back to
-        // the kind='fallback' words (migration 366).  An event that
-        // already happened gets the tier='missed_line' suffix (mig 379).
-        MessageCopy copy;
+        // Only events that can still be answered — one that already went
+        // by would just confuse the player (owner 2026-09-19).
         std::string events;
-        size_t openCount = 0;
-        for (const auto& ev : ctx.events) {
-            std::string line = ev.line;
-            if (ev.missed) {
-                const auto m = copy.render("rsvp_reminder", "missed_line", {{"line", ev.line}});
-                if (m.ok()) line = m.body;
-            } else {
-                ++openCount;
-            }
-            events += "• " + line + "\n";
-        }
+        for (const auto& ev : ctx.openEvents) events += "• " + ev.line + "\n";
         if (!events.empty()) events.pop_back();
 
+        // kind 'rsvp_reminder' (migration 363); empty names fall back to
+        // the kind='fallback' words (migration 366).
+        MessageCopy copy;
         const auto msg = copy.render("rsvp_reminder", ctx.youth ? "parent" : "adult", {
             {"first", ctx.recipientFirstName}, {"child", ctx.playerFirstName},
             {"events", events}, {"link", minted.url}, {"sender", senderName}});
@@ -256,14 +247,12 @@ Response RsvpBoardController::handleRemind(const Request& request) {
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363)");
 
         json lastReminder = model_->logReminder(personId, ctx.recipientPersonId, channel, contact,
-                                                scope.userId, ctx.events);
+                                                scope.userId, ctx.openEvents);
 
         json out = {
             {"url",           minted.url},
             {"expires_at",    minted.expiresIso},
-            {"event_count",   ctx.events.size()},
-            {"open_count",    openCount},
-            {"missed_count",  ctx.events.size() - openCount},
+            {"event_count",   ctx.openEvents.size()},
             {"last_reminder", lastReminder},
         };
         copy.addComposeHrefs(out, channel, contact, msg.subject, msg.body, msg.body);
@@ -353,7 +342,7 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
         json contacts = json::array();
         json reminded = json::object();
         long long noContact = 0;
-        const std::vector<RsvpBoard::OpenEvent> events = {{fhEventId, ctx.line, false}};
+        const std::vector<RsvpBoard::OpenEvent> events = {{fhEventId, ctx.line}};
         for (const auto& r : ctx.recipients) {
             const std::string& contact = channel == "sms" ? r.phone : r.email;
             if (contact.empty()) { ++noContact; continue; }

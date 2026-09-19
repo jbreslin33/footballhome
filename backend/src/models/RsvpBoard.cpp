@@ -88,10 +88,10 @@ const char* kBaseCtes = R"SQL(
     ), week_unanswered AS (
       -- Every event of the released week (Monday → release window end)
       -- the player owes an answer to and has none for.  still_open: they
-      -- can still answer it; otherwise it already happened.  Both feed
-      -- the reminder — a player below 100% for the week can be reminded
-      -- even when nothing is left to answer (owner 2026-09-18: "resend
-      -- reminder if a player is not 100% availablity set for week").
+      -- can still answer it; otherwise it already happened.  The board
+      -- card shows both; the reminder only lists the still-open ones —
+      -- an event that already went by would just confuse the player
+      -- (owner 2026-09-19).
       -- The line is player-facing: kind label + opponent, never the gcal
       -- title.  A practice that carries notes is an unusual one (Barn
       -- Night counts as a practice — owner 2026-09-18), so its notes ride
@@ -337,21 +337,18 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
     if (!who[0]["email"].is_null()) ctx.email = who[0]["email"].c_str();
 
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
-        SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at,
-               NULL::boolean AS still_open
+        SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at
           FROM roster r
         UNION ALL
-        SELECT 'event', w.fh_event_id,
-               w.line || COALESCE(E'\n  ' || w.message_notes, ''), w.starts_at, w.still_open
-          FROM week_unanswered w
+        SELECT 'event', o.fh_event_id,
+               o.line || COALESCE(E'\n  ' || o.message_notes, ''), o.starts_at FROM open_events o
          ORDER BY what, starts_at)SQL";
     auto rows = db->query(sql, {"", "", "{}", std::to_string(personId), "all"});
     for (const auto& row : rows) {
         if (std::string(row["what"].c_str()) == "team") {
             ctx.teamIds.push_back(row["id"].as<long long>());
         } else {
-            ctx.events.push_back({row["id"].as<long long>(), row["line"].c_str(),
-                                  !row["still_open"].as<bool>()});
+            ctx.openEvents.push_back({row["id"].as<long long>(), row["line"].c_str()});
         }
     }
     return ctx;
@@ -395,7 +392,7 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
         if (!row["phone"].is_null()) r.phone = row["phone"].c_str();
         if (!row["email"].is_null()) r.email = row["email"].c_str();
         for (const auto& ev : json::parse(row["week_events"].c_str())) {
-            r.weekEvents.push_back({ev["id"].get<long long>(), ev["line"].get<std::string>(), false});
+            r.weekEvents.push_back({ev["id"].get<long long>(), ev["line"].get<std::string>()});
             const std::string at = ev["at"].get<std::string>();
             const bool seen = std::any_of(week.begin(), week.end(), [&](const auto& w) {
                 return w.second.fhEventId == r.weekEvents.back().fhEventId; });
