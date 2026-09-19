@@ -22,10 +22,13 @@ public:
     static const std::string& publicBaseUrl();
 
     // Inserts the token row and returns the URL.  chatEventId <= 0 and
-    // adminUserId <= 0 store NULL.  Throws on DB failure.
+    // adminUserId <= 0 store NULL.  matchId > 0 makes verify land on that
+    // game's Game Center instead of #calendar (mig 384).  Throws on DB
+    // failure.
     static Minted mint(long long          personId,
                        const std::string& channel,      // "email" | "sms"
                        const std::string& contact,
                        long long          adminUserId,
-                       long long          chatEventId = 0);
+                       long long          chatEventId = 0,
+                       long long          matchId = 0);
 };

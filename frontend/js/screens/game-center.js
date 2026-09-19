@@ -670,6 +670,8 @@ class GameCenterScreen extends Screen {
       if (remindOne && this.isCoach && !remindOne.disabled) { this._remindPlayer(remindOne); return; }
       const availBtn = e.target.closest('[data-gc-avail]');
       if (availBtn && !availBtn.disabled) { this._setMyAvailability(availBtn); return; }
+      const squadOne = e.target.closest('[data-gc-squad-one]');
+      if (squadOne && this.isCoach && !squadOne.disabled) { this._sendSquadNoticeOne(squadOne); return; }
       const squadBtn = e.target.closest('[data-gc-squad-notice]');
       if (squadBtn && this.isCoach && !squadBtn.disabled) { this._sendSquadNotice(squadBtn); return; }
       const remindAll = e.target.closest('[data-gc-remind-all]');
@@ -1591,9 +1593,9 @@ class GameCenterScreen extends Screen {
         </div>`
       : `<div style="padding:6px var(--space-3); opacity:0.6; font-size:0.85em;">None yet</div>`;
 
-    const gridSection = (label, players) => `
+    const gridSection = (label, players, extra = null) => `
       <h2 style="margin: var(--space-3) 0 4px; font-size:0.85rem;">${label} (${players.length})</h2>
-      ${cardGrid(players)}
+      ${cardGrid(players, extra)}
     `;
 
     // Not Going / No Response rolled up out of the way by default (owner
@@ -1649,14 +1651,43 @@ class GameCenterScreen extends Screen {
     // their role and can still change their availability.  Copy is the
     // DB's (kind=squad_notice, mig 383); admins only, like the reminders.
     const squadSize = byZone.starter.length + byZone.bench.length + byZone.alternate.length;
+    // told: some notice went out already.  Once it has, a second pair of
+    // buttons reaches only whoever was added or moved since (owner
+    // 2026-09-19: "send again to all or just the ones changed").
+    const told = !!(this.squadNotice && (this.squadNotice.sms || this.squadNotice.email));
+    const untold = (this.squadNotice && this.squadNotice.untold) || 0;
     const squadBar = squadSize ? `
-      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 12px; font-size:0.78rem;">
+      <div data-gc-squad-bar style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 12px; font-size:0.78rem;">
         <span style="opacity:0.75;">Game reminder to the squad (${squadSize}) — game, where, arrival + a link to this lineup:</span>
-        ${remindBtn('data-gc-squad-notice="sms"', '💬 GROUP TEXT', '#0284c7', 'One group text to Starting, Bench and Alternates (split into groups of 10) — everyone sees each other\'s number', this.squadNotice?.sms)}
-        ${remindBtn('data-gc-squad-notice="email"', '✉ EMAIL', '#7c3aed', 'One email to Starting, Bench and Alternates, everyone BCC\'d', this.squadNotice?.email)}
-        <span data-gc-squad-untold style="opacity:0.75;">${this.escapeHtml(this._squadUntoldNote())}</span>
+        ${remindBtn('data-gc-squad-notice="sms" data-scope="all"', '💬 GROUP TEXT', '#0284c7', 'One group text to Starting, Bench and Alternates (split into groups of 10) — no sign-in link, everyone sees each other\'s number', this.squadNotice?.sms)}
+        ${remindBtn('data-gc-squad-notice="email" data-scope="all"', '✉ EMAIL', '#7c3aed', 'One email to Starting, Bench and Alternates, everyone BCC\'d — no sign-in link', this.squadNotice?.email)}
+        ${told && untold ? `
+          <span style="opacity:0.75;">· ${untold} added or moved since:</span>
+          ${remindBtn('data-gc-squad-notice="sms" data-scope="changed"', `💬 TEXT THE ${untold}`, '#0284c7', 'Group text only the players who were never told, or whose role changed since')}
+          ${remindBtn('data-gc-squad-notice="email" data-scope="changed"', `✉ EMAIL THE ${untold}`, '#7c3aed', 'Email (BCC) only the players who were never told, or whose role changed since')}`
+          : `<span style="opacity:0.75;">${told ? 'everyone told ✓' : ''}</span>`}
         <span data-gc-squad-result style="flex-basis:100%;"></span>
       </div>` : '';
+    // Card buttons on Starting / Bench / Alternates — the player's own
+    // message: names their role, magic link lands on this game (mig 384).
+    // Dim once sent; amber "moved" when the role they were told is not
+    // the one they hold now.
+    const squadCard = (p) => {
+      const personId = this._personIdFor(p.id);
+      if (!personId) return '';
+      const sent = ((this.squadNotice && this.squadNotice.people) || {})[personId] || {};
+      const zone = this.zones.get(p.id);
+      const moved = sent.told_zone && sent.told_zone !== zone;
+      const live = moved ? {} : sent;   // a moved player's buttons light up again
+      return `
+        <div style="display:flex; gap:6px; align-items:center; margin-top:5px;">
+          ${remindBtn(`data-gc-squad-one="sms" data-person-id="${personId}"`, '💬 GAME LINK', '#0284c7', 'Text their role for this game + their sign-in link straight to this lineup (the parent, for youth)', live.sms)}
+          ${remindBtn(`data-gc-squad-one="email" data-person-id="${personId}"`, '✉ GAME LINK', '#7c3aed', 'Email their role for this game + their sign-in link straight to this lineup (the parent, for youth)', live.email)}
+          <span data-gc-squad-note style="font-size:0.66rem; opacity:0.75;">${moved
+            ? `<span style="color:#fbbf24;">moved since told (${this.escapeHtml(sent.told_zone)})</span>`
+            : this.escapeHtml(this._sentNote(sent))}</span>
+        </div>`;
+    };
 
     // Bench section (2026-08-24, owner: "the bench needs to be selectable
     // on the graphic to remove them like we do for the starters. or they
@@ -1691,9 +1722,9 @@ class GameCenterScreen extends Screen {
         // In formation order (1 = keeper …), same numbers as the pills.
         const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
         return order(a) - order(b);
-      })) : '',
-      gridSection('Bench', byZone.bench),
-      gridSection('Alternates', byZone.alternate),
+      }), squadCard) : '',
+      gridSection('Bench', byZone.bench, this.isCoach ? squadCard : null),
+      gridSection('Alternates', byZone.alternate, this.isCoach ? squadCard : null),
       this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, { top: remindBar, extra: remindCard }) : '',
@@ -1825,13 +1856,6 @@ class GameCenterScreen extends Screen {
     }
   }
 
-  // "3 not told yet" — added to the squad, or moved role, since the last send.
-  _squadUntoldNote() {
-    const st = this.squadNotice;
-    if (!st || !(st.sms || st.email)) return '';
-    return st.untold ? `${st.untold} added or moved since — not told yet` : 'everyone told ✓';
-  }
-
   _sentWhen(iso) {
     return new Date(iso).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
   }
@@ -1942,7 +1966,8 @@ class GameCenterScreen extends Screen {
     try {
       // A role changed seconds ago must be in the DB before the send reads it.
       if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
-      const data = await this._postReminder('/api/rsvp-board/squad-notice', { match_id: Number(this.matchId), channel });
+      const data = await this._postReminder('/api/rsvp-board/squad-notice',
+        { match_id: Number(this.matchId), channel, scope: btn.dataset.scope === 'changed' ? 'changed' : 'all' });
       const contacts = data.contacts || [];
       const skipped = data.no_contact
         ? ` · ${data.no_contact} skipped (no ${channel === 'sms' ? 'mobile' : 'email'} on file)` : '';
@@ -1961,17 +1986,40 @@ class GameCenterScreen extends Screen {
             hrefs.map((h, i) => `<a href="${this.escapeHtml(h)}" style="display:inline-block; padding:3px 9px; border-radius:6px; text-decoration:none; font-weight:800; font-size:0.68rem; color:#fff; background:#0284c7;">💬 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ') + skipped;
         if (chunks.length === 1) window.location.href = hrefs[0];
       }
-      if (slot) slot.innerHTML = html;
       this.squadNotice = data.status || this.squadNotice;
-      const mine = this.squadNotice && this.squadNotice[channel];
-      if (mine) { btn.style.opacity = '0.4'; btn.title = this._sentTitle(mine) + ' — click to send again'; }
-      const untold = btn.parentElement.querySelector('[data-gc-squad-untold]');
-      if (untold) untold.textContent = this._squadUntoldNote();
-      btn.textContent = mine && !original.endsWith('✓') ? original + ' ✓' : original;
+      // Re-render so every card and the bar dim together; the result
+      // line (the Part 1/2 links) goes back in afterwards.
+      this._render();
+      const fresh = this.element.querySelector('[data-gc-squad-result]');
+      if (fresh) fresh.innerHTML = html;
+      return;
     } catch (err) {
       if (slot) slot.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
-      btn.textContent = original;
     }
+    btn.textContent = original;
+    btn.disabled = false;
+  }
+
+  // Card button — one player's own game reminder.
+  async _sendSquadNoticeOne(btn) {
+    const channel = btn.dataset.gcSquadOne === 'email' ? 'email' : 'sms';
+    const note = btn.parentElement.querySelector('[data-gc-squad-note]');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    try {
+      if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
+      const data = await this._postReminder('/api/rsvp-board/squad-notice',
+        { match_id: Number(this.matchId), person_id: Number(btn.dataset.personId), channel });
+      if (channel === 'email') this.openGmailCompose(data.gmail_href);
+      else window.location.href = data.sms_href;
+      this.squadNotice = data.status || this.squadNotice;
+      this._render();
+      return;
+    } catch (err) {
+      if (note) note.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
+    }
+    btn.textContent = original;
     btn.disabled = false;
   }
 

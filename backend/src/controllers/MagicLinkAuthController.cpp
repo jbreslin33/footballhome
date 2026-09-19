@@ -289,7 +289,7 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
 
     try {
         auto row = db->query(
-            "SELECT id, person_id, chat_event_id, "
+            "SELECT id, person_id, chat_event_id, match_id, "
             "       (expires_at < NOW()) AS expired "
             "  FROM magic_link_tokens WHERE token_hash = $1",
             {hash});
@@ -325,7 +325,11 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
         // pre-rip that still carry a chat_event_id also land on
         // /#calendar (harmless \u2014 the recipient sees the event there
         // instead of a per-chat popup).
-        const std::string target = publicBaseUrl() + "/#calendar";
+        // A link sent about one game (the squad game reminder, mig 384)
+        // lands on that game's lineup instead.
+        const std::string target = publicBaseUrl() + (row[0]["match_id"].is_null()
+            ? std::string("/#calendar")
+            : "/#game-center/" + std::to_string(row[0]["match_id"].as<long long>()) + "/starters_bench");
         (void)hasEvent;
         (void)chatEventId;
 

@@ -395,11 +395,15 @@ Response RsvpBoardController::handleReminders(const Request& request) {
     }
 }
 
-// POST /squad-notice {match_id, channel} — the game reminder to everyone
-// in the squad (Starting, Bench, Alternates), Going or not: the RSVP
-// reminders never reach a player who already answered (owner 2026-09-19:
-// "i got guys who set going asking if there is a game").  One group
-// message, so a plain link to the game's Game Center — no magic link.
+// POST /squad-notice {match_id, channel, scope?, person_id?} — the game
+// reminder to the squad (Starting, Bench, Alternates), Going or not: the
+// RSVP reminders never reach a player who already answered (owner
+// 2026-09-19: "i got guys who set going asking if there is a game").
+//   no person_id  ONE group message — plain link to the game's Game
+//                 Center, no magic link.  scope 'changed' keeps it to
+//                 whoever was never told or has moved role since.
+//   person_id     that player's own message (mig 384): names their role,
+//                 and the magic link lands on the game.
 Response RsvpBoardController::handleSquadNotice(const Request& request) {
     Scope scope;
     Response error(HttpStatus::OK, "");
@@ -411,17 +415,21 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
     } catch (const std::exception& e) {
         return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
     }
-    long long matchId = 0;
-    std::string channel;
+    long long matchId = 0, personId = 0;
+    std::string channel, reach;
     try {
-        matchId = body.value("match_id", 0LL);
-        channel = body.value("channel", std::string{});
+        matchId  = body.value("match_id", 0LL);
+        personId = body.value("person_id", 0LL);
+        channel  = body.value("channel", std::string{});
+        reach    = body.value("scope", std::string("all"));
     } catch (const std::exception&) {
-        return jsonError(HttpStatus::BAD_REQUEST, "match_id must be a number and channel a string");
+        return jsonError(HttpStatus::BAD_REQUEST, "match_id and person_id must be numbers, channel and scope strings");
     }
     if (matchId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id required");
     if (channel != "sms" && channel != "email")
         return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
+    if (reach != "all" && reach != "changed")
+        return jsonError(HttpStatus::BAD_REQUEST, "scope must be 'all' or 'changed'");
 
     try {
         auto ctx = model_->squadNoticeContext(matchId);
@@ -436,12 +444,44 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
                 {std::to_string(scope.personId)});
             if (!s.empty()) senderName = s[0]["fn"].c_str();
         }
+        MessageCopy copy;
+
+        if (personId > 0) {
+            auto it = std::find_if(ctx.recipients.begin(), ctx.recipients.end(),
+                [&](const RsvpBoard::SquadRecipient& r) { return r.personId == personId; });
+            if (it == ctx.recipients.end())
+                return jsonError(HttpStatus::CONFLICT, "That player is not in the squad for this game.");
+            // Contact comes from the DB, never the request: the message
+            // carries the recipient's sign-in credential.
+            const std::string contact = channel == "sms" ? it->phone : it->email;
+            if (contact.empty())
+                return jsonError(HttpStatus::CONFLICT, channel == "sms" ? "No mobile number on file." : "No email on file.");
+            const bool parent = it->recipientPersonId != it->personId;
+            const auto minted = MagicLinkService::mint(it->recipientPersonId, channel, contact, scope.userId, 0, matchId);
+            const auto msg = copy.render("squad_notice", it->zone + (parent ? "_parent" : "_adult"), {
+                {"first", it->recipientFirstName}, {"child", it->playerFirstName},
+                {"event", ctx.line}, {"where", ctx.where}, {"arrival", ctx.arrival},
+                {"link", minted.url}, {"sender", senderName}});
+            if (!msg.ok())
+                return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 384)");
+            model_->logSquadNotice(matchId, *it, channel, contact, scope.userId);
+            json out = {{"expires_at", minted.expiresIso}, {"status", model_->squadNoticeStatus(matchId)}};
+            copy.addComposeHrefs(out, channel, contact, msg.subject, msg.body, msg.body);
+            return jsonOut(HttpStatus::CREATED, out);
+        }
+
+        if (reach == "changed") {
+            ctx.recipients.erase(std::remove_if(ctx.recipients.begin(), ctx.recipients.end(),
+                [](const RsvpBoard::SquadRecipient& r) { return r.toldZone == r.zone; }), ctx.recipients.end());
+            if (ctx.recipients.empty())
+                return jsonError(HttpStatus::CONFLICT, "Everyone in the squad has been told the role they have now.");
+        }
+
         // Parents are the recipients as soon as one player has one.
         const bool youth = std::any_of(ctx.recipients.begin(), ctx.recipients.end(),
             [](const RsvpBoard::SquadRecipient& r) { return r.recipientPersonId != r.personId; });
         const std::string link = MagicLinkService::publicBaseUrl() + "/#game-center/"
                                + std::to_string(matchId) + "/starters_bench";
-        MessageCopy copy;
         const auto msg = copy.render("squad_notice", youth ? "group_parent" : "group_adult",
             {{"event", ctx.line}, {"where", ctx.where}, {"arrival", ctx.arrival},
              {"link", link}, {"sender", senderName}});

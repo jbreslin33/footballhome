@@ -249,6 +249,16 @@ class App {
     if (this.auth.isLoggedIn()) {
       console.log('User already logged in:', this.auth.getUser());
       this.navigation.context.user = this.auth.getUser();
+      // A link to one game — the squad game reminder (mig 383/384) sends
+      // #game-center/<matchId>/<pill>, and a magic link lands on the same
+      // hash — opens that game in the player view, like the #my door.
+      // Everything else resumes at role selection.
+      const game = (window.location.hash || '').match(/^#game-center\/(\d+)(?:\/([a-z_]+))?$/);
+      if (game) {
+        this.navigation.context.role = this.navigation.context.role || 'player';
+        this.navigation.goTo('game-center', { matchId: Number(game[1]), postType: game[2] || null });
+        return;
+      }
       // Resume session - go to role selection
       this.navigation.goTo('role-selection');
     } else {

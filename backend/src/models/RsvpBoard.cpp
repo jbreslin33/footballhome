@@ -474,10 +474,18 @@ RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
 
     auto rows = db->query(R"SQL(
         SELECT p.id AS person_id, COALESCE(p.parent_person_id, p.id) AS recipient_person_id,
-               ml.zone, ph.phone_number AS phone, em.email AS email
+               ml.zone, COALESCE(last.zone, '') AS told_zone,
+               COALESCE(p.first_name, '') AS player_first,
+               COALESCE(rp.first_name, '') AS recipient_first,
+               ph.phone_number AS phone, em.email AS email
           FROM match_lineups ml
           JOIN players pl ON pl.id = ml.player_id
           JOIN persons p ON p.id = pl.person_id
+          JOIN persons rp ON rp.id = COALESCE(p.parent_person_id, p.id)
+          LEFT JOIN LATERAL (
+                SELECT sn.zone FROM squad_notices sn
+                 WHERE sn.match_id = ml.match_id AND sn.person_id = p.id
+                 ORDER BY sn.sent_at DESC LIMIT 1) last ON true
           LEFT JOIN LATERAL (
                 SELECT x.phone_number FROM person_phones x
                  WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
@@ -496,6 +504,9 @@ RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
         r.personId          = row["person_id"].as<long long>();
         r.recipientPersonId = row["recipient_person_id"].as<long long>();
         r.zone              = row["zone"].c_str();
+        r.toldZone           = row["told_zone"].c_str();
+        r.playerFirstName    = row["player_first"].c_str();
+        r.recipientFirstName = row["recipient_first"].c_str();
         if (!row["phone"].is_null()) r.phone = row["phone"].c_str();
         if (!row["email"].is_null()) r.email = row["email"].c_str();
         ctx.recipients.push_back(std::move(r));
@@ -533,5 +544,23 @@ json RsvpBoard::squadNoticeStatus(long long matchId) {
         "  FROM squad_notices WHERE match_id = $1::int GROUP BY channel",
         {std::to_string(matchId)});
     for (const auto& row : sent) out[row["channel"].c_str()] = {{"sent_at", row["sent_at"].c_str()}};
+
+    json people = json::object();
+    auto per = db->query(
+        "SELECT person_id, channel, count(*) AS n, "
+        "       to_char(max(sent_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at, "
+        "       (array_agg(zone ORDER BY sent_at DESC))[1] AS zone "
+        "  FROM squad_notices WHERE match_id = $1::int GROUP BY person_id, channel",
+        {std::to_string(matchId)});
+    for (const auto& row : per) {
+        people[row["person_id"].c_str()][row["channel"].c_str()] =
+            {{"sent_at", row["sent_at"].c_str()}, {"count", row["n"].as<int>()}};
+    }
+    auto told = db->query(
+        "SELECT DISTINCT ON (person_id) person_id, zone FROM squad_notices "
+        " WHERE match_id = $1::int ORDER BY person_id, sent_at DESC",
+        {std::to_string(matchId)});
+    for (const auto& row : told) people[row["person_id"].c_str()]["told_zone"] = row["zone"].c_str();
+    out["people"] = std::move(people);
     return out;
 }

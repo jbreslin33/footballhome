@@ -100,6 +100,9 @@ public:
         long long   personId = 0;
         long long   recipientPersonId = 0;
         std::string zone;                    // starter | bench | alternate
+        std::string toldZone;                // role in the last notice, "" = never told
+        std::string playerFirstName;
+        std::string recipientFirstName;
         std::string phone;                   // "" when none
         std::string email;
     };
@@ -115,7 +118,8 @@ public:
     void logSquadNotice(long long matchId, const SquadRecipient& r, const std::string& channel,
                         const std::string& contact, long long sentByUserId);
 
-    // { squad: N, untold: M, sms: {sent_at}, email: {sent_at} } — untold
-    // counts squad players never told, or told while in another role.
+    // { squad: N, untold: M, sms: {sent_at}, email: {sent_at},
+    //   people: { "<person_id>": { told_zone, sms: {sent_at, count}, email: … } } }
+    // untold counts squad players never told, or told while in another role.
     nlohmann::json squadNoticeStatus(long long matchId);
 };

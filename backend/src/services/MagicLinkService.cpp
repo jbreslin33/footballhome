@@ -20,7 +20,8 @@ MagicLinkService::Minted MagicLinkService::mint(long long          personId,
                                                 const std::string& channel,
                                                 const std::string& contact,
                                                 long long          adminUserId,
-                                                long long          chatEventId) {
+                                                long long          chatEventId,
+                                                long long          matchId) {
     // Token + hash; expires_at is computed server-side from NOW() so the
     // TTL is unaffected by clock skew between this process and Postgres.
     const std::string token     = fh::crypto::randomTokenB64Url(32);
@@ -30,10 +31,10 @@ MagicLinkService::Minted MagicLinkService::mint(long long          personId,
     auto ins = Database::getInstance()->query(
         "INSERT INTO magic_link_tokens "
         "  (token_hash, person_id, chat_event_id, channel, contact, "
-        "   minted_by_user_id, expires_at) "
+        "   minted_by_user_id, expires_at, match_id) "
         "VALUES ($1, $2::int, NULLIF($3, '')::int, $4, $5, "
         "        NULLIF($6, '')::int, "
-        "        NOW() + ($7 || ' seconds')::interval) "
+        "        NOW() + ($7 || ' seconds')::interval, NULLIF($8, '')::int) "
         "RETURNING to_char(expires_at AT TIME ZONE 'UTC', "
         "                   'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS expires_iso",
         {tokenHash,
@@ -41,7 +42,8 @@ MagicLinkService::Minted MagicLinkService::mint(long long          personId,
          chatEventId > 0 ? std::to_string(chatEventId) : std::string{},
          channel, contact,
          adminUserId > 0 ? std::to_string(adminUserId) : std::string{},
-         ttlSecs});
+         ttlSecs,
+         matchId > 0 ? std::to_string(matchId) : std::string{}});
 
     Minted out;
     out.expiresIso = ins[0]["expires_iso"].as<std::string>();
