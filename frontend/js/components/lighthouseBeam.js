@@ -5,9 +5,11 @@
 // good!"). One drawing routine, reused everywhere, instead of a second,
 // visually weaker CSS approximation living in game-lineup.js.
 //
-// draw(ctx, lhX, lhY, scale) — draws the lighthouse (tower with gold
-// "1893" bands, lantern room, dome, rocky cliff, ocean) onto a 2D canvas
-// context. lhX/lhY is the lantern's center position; scale defaults to 2
+// draw(ctx, lhX, lhY, scale, year) — draws the lighthouse (tower with
+// four gold year digits on its bands, lantern room, dome, rocky cliff,
+// ocean) onto a 2D canvas context. `year` is the four digits on the
+// tower — 1893, the club's, unless the caller passes its section's own
+// (the women's posts carry 1895). lhX/lhY is the lantern's center position; scale defaults to 2
 // (the "2x canvas for sharpness" convention SocialPostCard.js uses) but
 // can be set lower for a small decorative element.
 //
@@ -15,7 +17,7 @@
 // clears the canvas each frame, draws a rotating light-beam cone
 // clipped to the canvas bounds, then draws the lighthouse on top.
 // Returns { stop() }. opts: { lhX, lhY, rotPeriodSec = BEAM_ROTATION_SECONDS,
-// beamSpread = 0.18, scale = 2, beamLen, drawLighthouse = true,
+// beamSpread = 0.18, scale = 2, year = 1893, beamLen, drawLighthouse = true,
 // onFrame(ctx, w, h) } — onFrame, if given, runs BEFORE the
 // beam/lighthouse each frame (e.g. to draw a base card image first, as
 // SocialPostCard.js's own preview does).
@@ -30,7 +32,7 @@
 // the lighthouse artwork itself stays behind it (game-lineup.js does
 // this — the tower would otherwise cover the away crest and name).
 (function (global) {
-  function draw(ctx, lhX, lhY, scale) {
+  function draw(ctx, lhX, lhY, scale, year) {
     const s = scale || 2;
     ctx.save();
 
@@ -53,8 +55,8 @@
     ctx.fillStyle = '#ffffff';
     ctx.fill();
 
-    // 4 royal blue bands with gold "1893" digits
-    const digits = ['1', '8', '9', '3'];
+    // 4 royal blue bands with gold year digits
+    const digits = /^\d{4}$/.test(String(year)) ? String(year).split('') : ['1', '8', '9', '3'];
     const bandH = 18 * s;
     const bandZone = towerH * 0.82;
     const bandGap = (bandZone - bandH * 4) / 5;
@@ -338,7 +340,7 @@
 
       ctx.restore();
 
-      if (opts.drawLighthouse !== false) draw(ctx, lhX, lhY, scale);
+      if (opts.drawLighthouse !== false) draw(ctx, lhX, lhY, scale, opts.year);
 
       frameId = requestAnimationFrame(drawFrame);
     };

@@ -1409,9 +1409,12 @@ class SocialPostCard {
   // Game Center's live card asks the same question, so the page, the
   // preview and the posted clip all agree.
   beamOptions(w, h) {
-    if (!(this.postTypeName === 'starters_bench' && this.hasPitch())) return {};
+    // The tower's digits are the section's founding year, same as the
+    // footer line (club_sections.founded_year via the match).
+    const year = Number((this.matchContext || {}).section_founded_year) || 1893;
+    if (!(this.postTypeName === 'starters_bench' && this.hasPitch())) return { year };
     const scale = 1.3;
-    return { scale, lhX: w - 92, lhY: h - 40 - 150 * scale };
+    return { year, scale, lhX: w - 92, lhY: h - 40 - 150 * scale };
   }
 
   startAnimatedPreview() {
