@@ -793,7 +793,15 @@ Response EventController::handleGetMatch(const Request& request) {
         // would never see (the My page reads the gcal side). Only unlinked
         // matches (ad-hoc lineup games, scrimmages) are edited through
         // PUT /api/matches/:matchId.
-        query << "(fe.gcal_event_id IS NOT NULL) AS gcal_linked ";
+        query << "(fe.gcal_event_id IS NOT NULL) AS gcal_linked, ";
+        // Founding year of the club section playing this match (mens 1893,
+        // womens 1895, ... — club_sections.founded_year, migration 390),
+        // for the "LIGHTHOUSE <year>" line on the post graphics. Only the
+        // club's own teams carry a club_section_id, so whichever side is
+        // ours supplies it.
+        query << "(SELECT cs.founded_year FROM teams st JOIN club_sections cs ON cs.id = st.club_section_id "
+                 " WHERE st.id IN (m.home_team_id, m.away_team_id) AND cs.founded_year IS NOT NULL "
+                 " ORDER BY (st.id = m.home_team_id) DESC LIMIT 1) AS section_founded_year ";
         query << "FROM matches m ";
         query << "LEFT JOIN match_statuses ms ON ms.id = m.match_status_id ";
         query << "LEFT JOIN match_types mt ON mt.id = m.match_type_id ";
@@ -911,6 +919,9 @@ Response EventController::handleGetMatch(const Request& request) {
         }
         if (result.columns() > 34 && !result[0][34].is_null()) {
             match_json << ",\"gcal_linked\":" << (result[0][34].as<bool>() ? "true" : "false");
+        }
+        if (result.columns() > 35 && !result[0][35].is_null()) {
+            match_json << ",\"section_founded_year\":" << result[0][35].as<int>();
         }
 
         match_json << "}";

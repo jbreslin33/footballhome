@@ -921,6 +921,9 @@ class SocialPostCard {
     // scrolling, so an unusually long bench would lose its last names
     // with nothing on the card to say so. Never shrinks below 640.
     const hasRoster = rosterHtml.length > 0;
+    // The club section's own founding year (womens 1895, boys 1897, ...)
+    // from club_sections via the match; 1893 is the club's.
+    const foundedYear = Number(m.section_founded_year) || 1893;
     const pitchCard = this.postTypeName === 'starters_bench' && this.hasPitch();
     const announce = this.postTypeName === 'game_day';
     const hasPlayersPlayed = playersPlayedHtml.length > 0;
@@ -994,7 +997,7 @@ class SocialPostCard {
             <img src="/images/sponsors/welovejunk.png" style="height:44px;object-fit:contain;" />
             <span style="font-size:10px;letter-spacing:0.5px;color:rgba(255,255,255,0.95);text-transform:uppercase;font-weight:700;text-align:left;">Sponsored by<br/>We Love Junk</span>
           </div>
-          <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE 1893</span>
+          <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE ${foundedYear}</span>
         </div>` : `
         <div style="margin-top:auto;padding-top:0;display:flex;align-items:flex-end;justify-content:flex-start;width:100%;">
           <div style="display:flex;flex-direction:column;align-items:flex-start;gap:3px;">
@@ -1002,7 +1005,7 @@ class SocialPostCard {
               <img src="/images/sponsors/welovejunk.png" style="height:80px;object-fit:contain;" />
               <span style="font-size:11px;letter-spacing:0.5px;color:rgba(255,255,255,0.95);text-transform:uppercase;font-weight:700;">Sponsored by<br/>We Love Junk</span>
             </div>
-            <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE 1893</span>
+            <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE ${foundedYear}</span>
             ${this.teamTagline ? `<span style="font-size:8px;font-style:italic;letter-spacing:0.5px;color:rgba(255,255,255,0.7);">"${this.escapeHtml(this.teamTagline)}"</span>` : ''}
           </div>
         </div>`}
