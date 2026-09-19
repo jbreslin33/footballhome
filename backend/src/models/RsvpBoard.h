@@ -12,6 +12,8 @@
 // team the player is on, from the day they joined it, inside the schedule
 // release window (mig 334), while not suspended and while their roster
 // status shows in RSVP.  Pickup, meetings and cancelled events never count.
+// The card splits the released week's unanswered events into open (still
+// answerable) and missed (already happened); REMIND works off both.
 // "Answered" is any fh_event_rsvps row (yes or no; players are not offered
 // maybe), manual or standing.
 //
@@ -35,7 +37,10 @@ public:
                              const std::vector<long long>& scopeTeamIds);
 
     // Everything a reminder for one player needs.
-    struct OpenEvent { long long fhEventId; std::string line; };
+    // missed: already happened and never answered — listed in the
+    // reminder (with the kind='rsvp_reminder' tier='missed_line' suffix,
+    // mig 379) so a player below 100% for the week can still be nudged.
+    struct OpenEvent { long long fhEventId; std::string line; bool missed = false; };
     struct ReminderContext {
         bool        found = false;
         std::string playerFirstName;
@@ -45,7 +50,7 @@ public:
         std::string phone;                   // recipient's, "" when none
         std::string email;
         std::vector<long long> teamIds;      // player's active board teams
-        std::vector<OpenEvent> openEvents;   // unanswered, not yet ended, released
+        std::vector<OpenEvent> events;       // unanswered in the released week, by start; see missed
     };
     ReminderContext reminderContext(long long personId);
 

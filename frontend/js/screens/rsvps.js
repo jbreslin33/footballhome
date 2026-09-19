@@ -16,6 +16,11 @@
 //
 // Club admins only for now (owner 2026-09-17); the backend's coach scoping
 // (own teams, no payment amounts) is written but switched off.
+//
+// A card splits the released week's unanswered events into "Unanswered
+// now" (still answerable) and "Missed this week" (already happened).
+// REMIND lights up for either — a player below 100% for the week can
+// always be chased (owner 2026-09-18); the message marks missed events.
 class RsvpBoardScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -233,9 +238,10 @@ class RsvpBoardScreen extends Screen {
     };
     list.sort(sorters[this.sort] || sorters.worst);
 
-    const owing = list.filter(p => p.open_events.length > 0).length;
+    const owing  = list.filter(p => p.open_events.length > 0).length;
+    const behind = list.filter(p => p.open_events.length + (p.missed_events || []).length > 0).length;
     this.find('#rb-summary').textContent =
-      `${list.length} player${list.length === 1 ? '' : 's'} · ${owing} with unanswered events right now · ` +
+      `${list.length} player${list.length === 1 ? '' : 's'} · ${owing} with unanswered events right now · ${behind} below 100% this week · ` +
       `RSVP % covers ${RsvpBoardScreen.WINDOWS[this.window].toLowerCase()}, ` +
       `${{ all: 'practices & games', games: 'games only', practices: 'practices only' }[this.kind]} (from the day they joined the team)`;
 
@@ -288,7 +294,8 @@ class RsvpBoardScreen extends Screen {
     const pct = p.rsvp_pct;
     const pctCls = pct == null ? 'rb-none' : pct >= 80 ? 'rb-good' : pct >= 50 ? 'rb-mid' : 'rb-bad';
     const teams = (p.teams || []).map(t => this.escapeHtml(t.label)).join(' · ');
-    const open = p.open_events || [];
+    const open   = p.open_events || [];
+    const missed = p.missed_events || [];
 
     const lastRsvp = p.last_rsvp_at
       ? `${this._fmtDate(p.last_rsvp_at)}${p.last_rsvp_via === 'standing' ? ' · standing default' : ''}`
@@ -316,12 +323,18 @@ class RsvpBoardScreen extends Screen {
       : '—';
 
     const to = p.youth ? ` (to parent${p.parent_first_name ? ' ' + this.escapeHtml(p.parent_first_name) : ''})` : '';
+    // REMIND lights up whenever the week is below 100% — still-open
+    // events AND ones that already went by unanswered (owner 2026-09-18:
+    // "resend reminder if a player is not 100% availability set for
+    // week").  The message lists both; missed ones are marked as such.
+    const owed = open.length + missed.length;
     const btn = (channel, icon, has, bg) => {
-      const why = !open.length ? 'Nothing unanswered in the released week' : !has
+      const why = !owed ? 'Every event this week is answered' : !has
         ? (channel === 'sms' ? 'No mobile number on file' : 'No email on file')
-        : `${channel === 'sms' ? 'Text' : 'Email'} the ${open.length} unanswered event${open.length === 1 ? '' : 's'} + sign-in link${to}`;
+        : `${channel === 'sms' ? 'Text' : 'Email'} the ${owed} unanswered event${owed === 1 ? '' : 's'} this week`
+          + (missed.length ? ` (${missed.length} already happened)` : '') + ` + sign-in link${to}`;
       return `<button class="rb-btn" data-remind="${channel}" data-person-id="${p.person_id}"
-                      style="background:${bg};" title="${this.escapeHtml(why)}"${(!open.length || !has) ? ' disabled' : ''}>${icon} REMIND</button>`;
+                      style="background:${bg};" title="${this.escapeHtml(why)}"${(!owed || !has) ? ' disabled' : ''}>${icon} REMIND</button>`;
     };
 
     return `
@@ -339,7 +352,11 @@ class RsvpBoardScreen extends Screen {
         ${open.length
           ? `<div style="font-size:0.78rem; font-weight:700;" class="rb-bad">Unanswered now (${open.length})</div>
              <ul class="rb-open">${open.map(ev => `<li>${this.escapeHtml(ev.line)}</li>`).join('')}</ul>`
-          : `<div style="font-size:0.78rem;" class="rb-good">✓ Nothing unanswered in the released week</div>`}
+          : missed.length ? '' : `<div style="font-size:0.78rem;" class="rb-good">✓ Every event this week is answered</div>`}
+        ${missed.length
+          ? `<div style="font-size:0.78rem; font-weight:700;" class="rb-mid">Missed this week (${missed.length}) — never answered</div>
+             <ul class="rb-open" style="opacity:0.7;">${missed.map(ev => `<li>${this.escapeHtml(ev.line)}</li>`).join('')}</ul>`
+          : ''}
         <div class="rb-row"><span class="k">Last RSVP</span><span class="v">${lastRsvp}</span></div>
         ${lastManual}
         <div class="rb-row"><span class="k">Dues</span><span class="v">${dues}</span></div>

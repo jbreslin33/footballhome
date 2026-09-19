@@ -83,25 +83,36 @@ const char* kBaseCtes = R"SQL(
                             AND (s.team_id IS NULL OR s.team_id = r.team_id)
                             AND s.starts_at <= ge.starts_at
                             AND (s.ends_at IS NULL OR s.ends_at > ge.starts_at))
-    ), open_events AS (
-      -- Still answerable: released, not over, no RSVP row.  The line is
-      -- player-facing: kind label + opponent, never the gcal title.  A
-      -- practice that carries notes is an unusual one (Barn Night counts
-      -- as a practice — owner 2026-09-18), so its notes ride along in the
-      -- reminder message (message_notes; the board keeps the short line).
-      -- Game notes are kit lists and stay off the reminder.
+    ), week_unanswered AS (
+      -- Every event of the released week (Monday → release window end)
+      -- the player owes an answer to and has none for.  still_open: they
+      -- can still answer it; otherwise it already happened.  Both feed
+      -- the reminder — a player below 100% for the week can be reminded
+      -- even when nothing is left to answer (owner 2026-09-18: "resend
+      -- reminder if a player is not 100% availablity set for week").
+      -- The line is player-facing: kind label + opponent, never the gcal
+      -- title.  A practice that carries notes is an unusual one (Barn
+      -- Night counts as a practice — owner 2026-09-18), so its notes ride
+      -- along in the reminder message while it can still be answered
+      -- (message_notes; the board keeps the short line).  Game notes are
+      -- kit lists and stay off the reminder.
       SELECT e.person_id, e.fh_event_id, e.starts_at,
+             (e.ends_at > now()) AS still_open,
              to_char(e.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM')
                || ' — '
                || CASE e.kind WHEN 'match'      THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
                               WHEN 'intrasquad' THEN 'Intra Squad'
                               ELSE 'Practice' END AS line,
-             CASE WHEN e.kind NOT IN ('match','intrasquad')
+             CASE WHEN e.ends_at > now() AND e.kind NOT IN ('match','intrasquad')
                   THEN NULLIF(BTRIM(e.fh_notes), '') END AS message_notes
         FROM expected e
-       WHERE e.ends_at > now()
+       WHERE e.starts_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York'
          AND NOT EXISTS (SELECT 1 FROM fh_event_rsvps rv
                           WHERE rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id)
+    ), open_events AS (
+      SELECT * FROM week_unanswered WHERE still_open
+    ), missed_events AS (
+      SELECT * FROM week_unanswered WHERE NOT still_open
     )
 )SQL";
 
@@ -134,6 +145,9 @@ json RsvpBoard::list(const std::string& sectionCode,
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line)
                                       ORDER BY o.starts_at), '[]'::jsonb)
               FROM open_events o WHERE o.person_id = p.id)::text AS open_events,
+           (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line)
+                                      ORDER BY o.starts_at), '[]'::jsonb)
+              FROM missed_events o WHERE o.person_id = p.id)::text AS missed_events,
            to_char(lr.responded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_rsvp_at, lr.created_via AS last_rsvp_via, lr.response AS last_rsvp_response,
            (SELECT to_char(max(rv.responded_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM fh_event_rsvps rv
              WHERE rv.person_id = p.id AND rv.created_via = 'manual') AS last_manual_rsvp_at,
@@ -209,6 +223,7 @@ json RsvpBoard::list(const std::string& sectionCode,
             {"rsvp_pct",          expected > 0 ? json(static_cast<int>((answered * 100 + expected / 2) / expected))
                                                : json(nullptr)},
             {"open_events",       json::parse(row["open_events"].c_str())},
+            {"missed_events",     json::parse(row["missed_events"].c_str())},
             {"last_rsvp_at",        iso(row, "last_rsvp_at")},
             {"last_rsvp_via",       textOrNull(row, "last_rsvp_via")},
             {"last_rsvp_response",  textOrNull(row, "last_rsvp_response")},
@@ -319,18 +334,21 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
     if (!who[0]["email"].is_null()) ctx.email = who[0]["email"].c_str();
 
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
-        SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at
+        SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at,
+               NULL::boolean AS still_open
           FROM roster r
         UNION ALL
-        SELECT 'event', o.fh_event_id,
-               o.line || COALESCE(E'\n  ' || o.message_notes, ''), o.starts_at FROM open_events o
+        SELECT 'event', w.fh_event_id,
+               w.line || COALESCE(E'\n  ' || w.message_notes, ''), w.starts_at, w.still_open
+          FROM week_unanswered w
          ORDER BY what, starts_at)SQL";
     auto rows = db->query(sql, {"", "", "{}", std::to_string(personId), "all"});
     for (const auto& row : rows) {
         if (std::string(row["what"].c_str()) == "team") {
             ctx.teamIds.push_back(row["id"].as<long long>());
         } else {
-            ctx.openEvents.push_back({row["id"].as<long long>(), row["line"].c_str()});
+            ctx.events.push_back({row["id"].as<long long>(), row["line"].c_str(),
+                                  !row["still_open"].as<bool>()});
         }
     }
     return ctx;
