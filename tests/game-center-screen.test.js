@@ -146,23 +146,22 @@ function mountScreen({ isCoach, role }) {
 }
 
 const PILLS = ['game_day', 'lineup', 'starters_bench', 'post_game'];
-// The two pills with no live in-page graphic of their own open their
-// Instagram section by default; the two that already draw one keep it
-// closed so only one image is on screen at a time.
-const OPENS_BY_DEFAULT = new Set(['game_day', 'post_game']);
-
-test('every pill renders for a coach, with the strip intact', () => {
+test('every post renders for a coach from the pills under the lineup', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
+  screen._render();
+  // No pill strip up top any more: the top is always Starters & Bench.
+  assert.ok(!screen.element.innerHTML.includes('data-game-pill='));
+  assert.equal(sandbox.SOCIAL_INITS.length, 0, 'nothing mounts until a post is picked');
+
   for (const pill of PILLS) {
     sandbox.SOCIAL_INITS.length = 0;
     screen.pill = pill;
+    screen._bottomOpen = true;
     assert.doesNotThrow(() => screen._render(), `${pill} threw`);
-
     const html = screen.element.innerHTML;
-    assert.equal((html.match(/data-game-pill=/g) || []).length, 4, `${pill}: all four pills present`);
-    assert.match(html, new RegExp(`data-game-pill="${pill}"\\s+class="btn btn-primary`), `${pill}: active`);
-    assert.ok(html.includes('data-gc-social-pill='), `${pill}: coach gets the post section`);
-    assert.equal(sandbox.SOCIAL_INITS.length > 0, OPENS_BY_DEFAULT.has(pill), `${pill}: default open state`);
+    assert.equal((html.match(/data-gc-social-pill=/g) || []).length, 4, `${pill}: all four pills present`);
+    assert.match(html, new RegExp(`data-gc-social-pill="${pill}" role="tab" aria-selected="true"`), `${pill}: active`);
+    assert.equal(sandbox.SOCIAL_INITS.length, 1, `${pill}: its post card mounts`);
   }
 });
 
@@ -171,7 +170,7 @@ test('each pill publishes as its own post type, for this match and team', () => 
   for (const pill of PILLS) {
     sandbox.SOCIAL_INITS.length = 0;
     screen.pill = pill;
-    screen._socialPick = pill;
+    screen.pill = pill; screen._bottomOpen = true;
     screen._render();
     const init = sandbox.SOCIAL_INITS[0];
     assert.ok(init, `${pill}: mounted`);
@@ -183,8 +182,7 @@ test('each pill publishes as its own post type, for this match and team', () => 
 
 test('the post card is fed from the screen\'s own live zones', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
-  screen.pill = 'starters_bench';
-  screen._socialPick = 'starters_bench';
+  screen.pill = 'starters_bench'; screen._bottomOpen = true;
   screen._render();
 
   const { players, selectedIds, zones } = sandbox.SOCIAL_INITS[0].rosterData;
@@ -204,8 +202,7 @@ test('the post card is fed from the screen\'s own live zones', () => {
 test('a multi-word surname keeps its first name intact', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
   screen.zones.set(3, 'starter'); // Juan de la Cruz
-  screen.pill = 'starters_bench';
-  screen._socialPick = 'starters_bench';
+  screen.pill = 'starters_bench'; screen._bottomOpen = true;
   screen._render();
   const juan = sandbox.SOCIAL_INITS[0].rosterData.players.find(p => p.lastName === 'de la Cruz');
   assert.equal(juan.firstName, 'Juan');
@@ -213,8 +210,7 @@ test('a multi-word surname keeps its first name intact', () => {
 
 test('re-rendering keeps the live card but refreshes its lineup', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
-  screen.pill = 'starters_bench';
-  screen._socialPick = 'starters_bench';
+  screen.pill = 'starters_bench'; screen._bottomOpen = true;
   screen._render();
   const card = screen.socialCard;
   assert.equal(card.rosterData.players.length, 3);
@@ -231,30 +227,30 @@ test('re-rendering keeps the live card but refreshes its lineup', () => {
 
 test('switching pills does rebuild the card', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
-  screen.pill = 'starters_bench';
-  screen._socialPick = 'starters_bench';
+  screen.pill = 'starters_bench'; screen._bottomOpen = true;
   screen._render();
   sandbox.SOCIAL_INITS.length = 0;
 
-  // The Instagram section's own pill strip picks the post; the page's
-  // pill stays where it was.
-  screen._socialPick = 'post_game';
+  // Picking another post swaps the card under the lineup; the top of
+  // the page stays the Starters & Bench workspace.
+  screen.pill = 'post_game'; screen._bottomOpen = true;
   screen._render();
-  assert.equal(screen.pill, 'starters_bench');
+  assert.equal(screen._cardSlots.top.card.postTypeName, 'starters_bench');
   assert.equal(sandbox.SOCIAL_INITS.length, 1);
   assert.equal(sandbox.SOCIAL_INITS[0].postTypeName, 'post_game');
 });
 
-test('the graphic at the top of every pill is the post card itself', () => {
+test('the graphic at the top is always the Starters & Bench post card', () => {
   // One drawing: SocialPostCard builds it, the page shows it live, the
   // Instagram image is a capture of it. No second hand-built header.
   const { screen } = mountScreen({ isCoach: true, role: 'club' });
   for (const pill of PILLS) {
     screen.pill = pill;
+    screen._bottomOpen = true;
     screen._render();
-    assert.equal((screen.element.innerHTML.match(/data-gc-card-inner/g) || []).length, 1, `${pill}: one card host`);
-    assert.equal(screen._liveCard.postTypeName, pill, `${pill}: card draws this pill's post`);
-    assert.equal(screen._liveCard.matchId, 3533);
+    assert.equal((screen.element.innerHTML.match(/data-gc-card="top"/g) || []).length, 1, `${pill}: one top card`);
+    assert.equal(screen._cardSlots.top.card.postTypeName, 'starters_bench');
+    assert.equal(screen._cardSlots.top.card.matchId, 3533);
   }
 });
 
@@ -269,25 +265,31 @@ test('only the coach\'s live card carries tap-to-remove; the post never does', (
   assert.ok(tokens(screen._buildRosterData(byZone)).every(t => t.removeId == null && !t.badgeHtml));
 });
 
-test('a player gets no publish controls and no editor on any pill', () => {
+test('a player can read every post but gets no publish controls and no editor', () => {
   const { screen, sandbox } = mountScreen({ isCoach: false, role: 'player' });
   for (const pill of PILLS) {
     sandbox.SOCIAL_INITS.length = 0;
     screen.pill = pill;
+    screen._bottomOpen = true;
     assert.doesNotThrow(() => screen._render(), `${pill} threw`);
     const html = screen.element.innerHTML;
-    assert.ok(!html.includes('data-gc-social-pill='), `${pill}: no post section`);
+    assert.ok(html.includes('data-gc-card="view"'), `${pill}: shown as a live card`);
+    assert.equal(screen._cardSlots.view.card.postTypeName, pill);
+    assert.ok(!html.includes('gc-post-insta'), `${pill}: no post button`);
     assert.ok(!html.includes('data-lineup-position-btn'), `${pill}: no position pills`);
+    assert.ok(!html.includes('gc-score-') && !html.includes('gc-details-open'), `${pill}: no coach tools`);
     assert.equal(sandbox.SOCIAL_INITS.length, 0, `${pill}: no post card`);
   }
 });
 
 test('an admin using "view as <player>" is treated as a player', () => {
-  const { screen } = mountScreen({ isCoach: true, role: 'club' });
+  const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
   screen.auth.viewAsPersonId = 42;
   screen.pill = 'starters_bench';
+  screen._bottomOpen = true;
   screen._render();
-  assert.ok(!screen.element.innerHTML.includes('data-gc-social-pill='));
+  assert.ok(!screen.element.innerHTML.includes('gc-post-insta'));
+  assert.equal(sandbox.SOCIAL_INITS.length, 0);
 });
 
 test('deep links resolve to the right pill', () => {
@@ -320,6 +322,7 @@ test('matchId falls back to navigation.context.match', () => {
 test('the 20-Man Squad pill offers the details overlay to a coach only', () => {
   const { screen } = mountScreen({ isCoach: true, role: 'club' });
   screen.pill = 'lineup';
+  screen._bottomOpen = true;
   screen._render();
   assert.ok(screen.element.innerHTML.includes('gc-details-open'), 'coach gets the button');
   // 2 starters + 1 bench, alternates excluded.
@@ -327,6 +330,7 @@ test('the 20-Man Squad pill offers the details overlay to a coach only', () => {
 
   const player = mountScreen({ isCoach: false, role: 'player' }).screen;
   player.pill = 'lineup';
+  player._bottomOpen = true;
   player._render();
   assert.ok(!player.element.innerHTML.includes('gc-details-open'));
 });

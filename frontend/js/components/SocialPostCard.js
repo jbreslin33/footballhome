@@ -815,7 +815,7 @@ class SocialPostCard {
     switch (this.postTypeName) {
       case 'game_day':
         headerText = this.getGameDayLabel(rawDate);
-        middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
+        middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades, true);
         leagueBadgeHtml = this.buildLeagueBadge(league, leagueLogoSrc, false);
         break;
       case 'lineup':
@@ -891,11 +891,12 @@ class SocialPostCard {
     // with nothing on the card to say so. Never shrinks below 640.
     const hasRoster = rosterHtml.length > 0;
     const pitchCard = this.postTypeName === 'starters_bench' && this.hasPitch();
+    const announce = this.postTypeName === 'game_day';
     const hasPlayersPlayed = playersPlayedHtml.length > 0;
     const hasGoalScorers = goalScorerHtml.length > 0;
     const cardHeight = hasRoster ? 700
       : hasPlayersPlayed ? Math.max(640, 500 + lineupBlock.rows * 23)
-      : hasGoalScorers ? 580 : 540;
+      : hasGoalScorers ? 580 : announce ? 640 : 540;
 
     // Background layer. Three cases, in priority order:
     //   overlayOnly → nothing (transparent, for the ffmpeg video burn)
@@ -941,7 +942,7 @@ class SocialPostCard {
         <div style="position:relative; z-index:2; flex:1; width:100%; display:flex; flex-direction:column; align-items:center;">
 
         <!-- Header -->
-        <div style="font-size:12px;text-transform:uppercase;letter-spacing:5px;color:#ffffff;margin-bottom:${hasRoster ? '8px' : leagueBadgeHtml ? '8px' : '12px'};font-weight:700;">
+        <div style="font-size:${announce ? 20 : 12}px;text-transform:uppercase;letter-spacing:5px;color:#ffffff;margin-bottom:${hasRoster ? '8px' : leagueBadgeHtml ? '8px' : '12px'};font-weight:700;">
           ${this.escapeHtml(headerText)}
         </div>
 
@@ -1437,7 +1438,13 @@ class SocialPostCard {
     });
   }
 
-  buildImageMatchup(homeName, awayName, dateStr, timeStr, venue, homeLogo, awayLogo, homeAccolades, awayAccolades) {
+  // `large` is the Game Announcement card: no roster under it, so the
+  // crests, names and date take the room (owner, 2026-09-19: "make text
+  // bigger on game announcement").
+  buildImageMatchup(homeName, awayName, dateStr, timeStr, venue, homeLogo, awayLogo, homeAccolades, awayAccolades, large = false) {
+    const z = large
+      ? { logo: 112, name: 20, nameMax: 200, vs: 28, vsPad: 44, when: 19, venue: 16, acc: 12, accMax: 210 }
+      : { logo: 72, name: 13, nameMax: 140, vs: 18, vsPad: 30, when: 12, venue: 12, acc: 9, accMax: 160 };
     homeAccolades = homeAccolades || [];
     awayAccolades = awayAccolades || [];
     const homeLogoHtml = this.buildLogoInnerHtml(homeLogo);
@@ -1447,13 +1454,13 @@ class SocialPostCard {
       if (!accolades.length) return '';
       const items = accolades.map(a =>
         `<div style="display:flex;align-items:center;gap:3px;justify-content:center;">
-          <span style="font-size:9px;">🏆</span>
+          <span style="font-size:${z.acc}px;">🏆</span>
           <span>${this.escapeHtml(a.accolade)}</span>
         </div>`
       ).join('');
       return `
-        <div style="margin-top:4px;flex-shrink:0;padding:4px 8px;background:linear-gradient(135deg,rgba(245,212,66,0.15),rgba(255,215,0,0.08));border:1px solid rgba(245,212,66,0.3);border-radius:6px;max-width:160px;">
-          <div style="font-size:9px;letter-spacing:0.5px;color:rgba(245,212,66,0.9);line-height:1.4;text-align:center;">
+        <div style="margin-top:4px;flex-shrink:0;padding:4px 8px;background:linear-gradient(135deg,rgba(245,212,66,0.15),rgba(255,215,0,0.08));border:1px solid rgba(245,212,66,0.3);border-radius:6px;max-width:${z.accMax}px;">
+          <div style="font-size:${z.acc}px;letter-spacing:0.5px;color:rgba(245,212,66,0.9);line-height:1.4;text-align:center;">
             ${items}
           </div>
         </div>`;
@@ -1468,26 +1475,26 @@ class SocialPostCard {
     return `
       <div style="display:flex;align-items:flex-start;justify-content:center;gap:16px;margin-bottom:20px;width:100%;">
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:12px;border:1px solid rgba(255,255,255,0.18);padding:4px;box-sizing:border-box;">${homeLogoHtml}</div>
-          <div style="font-size:13px;font-weight:700;max-width:140px;line-height:1.2;text-transform:uppercase;letter-spacing:0.5px;">${this.escapeHtml(formatName(homeName))}</div>
+          <div style="width:${z.logo}px;height:${z.logo}px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:12px;border:1px solid rgba(255,255,255,0.18);padding:4px;box-sizing:border-box;">${homeLogoHtml}</div>
+          <div style="font-size:${z.name}px;font-weight:${large ? 800 : 700};max-width:${z.nameMax}px;line-height:1.2;text-transform:uppercase;letter-spacing:0.5px;">${this.escapeHtml(formatName(homeName))}</div>
           ${buildAccoladeHtml(homeAccolades)}
         </div>
-        <div style="flex-shrink:0;padding-top:30px;">
-          <div style="font-size:18px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:2px;">VS</div>
+        <div style="flex-shrink:0;padding-top:${z.vsPad}px;">
+          <div style="font-size:${z.vs}px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:2px;">VS</div>
         </div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:12px;border:1px solid rgba(255,255,255,0.18);padding:4px;box-sizing:border-box;">${awayLogoHtml}</div>
-          <div style="font-size:13px;font-weight:700;max-width:140px;line-height:1.2;text-transform:uppercase;letter-spacing:0.5px;">${this.escapeHtml(formatName(awayName))}</div>
+          <div style="width:${z.logo}px;height:${z.logo}px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:12px;border:1px solid rgba(255,255,255,0.18);padding:4px;box-sizing:border-box;">${awayLogoHtml}</div>
+          <div style="font-size:${z.name}px;font-weight:${large ? 800 : 700};max-width:${z.nameMax}px;line-height:1.2;text-transform:uppercase;letter-spacing:0.5px;">${this.escapeHtml(formatName(awayName))}</div>
           ${buildAccoladeHtml(awayAccolades)}
         </div>
       </div>
       <div style="height:1px;min-height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:0 auto 10px;"></div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:rgba(255,255,255,0.75);">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:${large ? 6 : 3}px;font-size:${z.when}px;${large ? "font-weight:700;color:#ffffff;" : "color:rgba(255,255,255,0.75);"}">
         <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;">
           ${dateStr ? `<span>📅 ${this.escapeHtml(dateStr)}</span>` : ''}
           ${timeStr ? `<span>⏰ ${this.escapeHtml(timeStr)}</span>` : ''}
         </div>
-        ${venue ? `<div style="text-align:center;line-height:1.3;max-width:90%;">📍 ${this.escapeHtml(venue)}</div>` : ''}
+        ${venue ? `<div style="text-align:center;line-height:1.3;max-width:90%;font-size:${z.venue}px;${large ? "font-weight:600;color:rgba(255,255,255,0.9);" : ""}">📍 ${this.escapeHtml(venue)}</div>` : ''}
       </div>
     `;
   }
@@ -1541,10 +1548,10 @@ class SocialPostCard {
     // Full-size standalone logo + conference text for game_day / post_game
     return `
       <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:8px;gap:4px;">
-        ${logoSrc ? `<div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:#ffffff;border-radius:10px;border:1px solid rgba(255,255,255,0.18);">
-          <img src="${logoSrc}" style="max-width:42px;max-height:46px;object-fit:contain;" />
+        ${logoSrc ? `<div style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:#ffffff;border-radius:10px;border:1px solid rgba(255,255,255,0.18);">
+          <img src="${logoSrc}" style="max-width:52px;max-height:56px;object-fit:contain;" />
         </div>` : ''}
-        <span style="font-size:11px;font-weight:700;letter-spacing:2px;color:#ffffff;text-transform:uppercase;">${this.escapeHtml(league)}</span>
+        <span style="font-size:15px;font-weight:700;letter-spacing:2px;color:#ffffff;text-transform:uppercase;">${this.escapeHtml(league)}</span>
       </div>
     `;
   }
