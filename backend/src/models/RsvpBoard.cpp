@@ -154,7 +154,7 @@ json RsvpBoard::list(const std::string& sectionCode,
            du.months_overdue, du.la_payment_status, du.variant AS dues_variant,
            pay.amount AS last_payment_amount, to_char(pay.paid_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_payment_at,
            to_char(rem.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_reminder_at, rem.channel AS last_reminder_channel,
-           rem.sender AS last_reminder_by,
+           rem.sender AS last_reminder_by, rem.is_group AS last_reminder_group,
            ph.phone_number AS phone, em.email AS email
       FROM (SELECT DISTINCT person_id FROM roster) m
       JOIN persons p ON p.id = m.person_id
@@ -180,7 +180,7 @@ json RsvpBoard::list(const std::string& sectionCode,
                AND pp.amount > 0
              ORDER BY pp.paid_at DESC LIMIT 1) pay ON true
       LEFT JOIN LATERAL (
-            SELECT rr.sent_at, rr.channel, COALESCE(sp.first_name, '') AS sender
+            SELECT rr.sent_at, rr.channel, rr.is_group, COALESCE(sp.first_name, '') AS sender
               FROM rsvp_reminders rr
               LEFT JOIN users su   ON su.id = rr.sent_by_user_id
               LEFT JOIN persons sp ON sp.id = su.person_id
@@ -237,7 +237,8 @@ json RsvpBoard::list(const std::string& sectionCode,
             {"last_reminder", row["last_reminder_at"].is_null() ? json(nullptr) : json{
                 {"sent_at", row["last_reminder_at"].c_str()},
                 {"channel", row["last_reminder_channel"].c_str()},
-                {"by",      row["last_reminder_by"].c_str()}}},
+                {"by",      row["last_reminder_by"].c_str()},
+                {"group",   row["last_reminder_group"].as<bool>()}}},
             {"has_phone",         !row["phone"].is_null()},
             {"has_email",         !row["email"].is_null()},
         };
@@ -354,17 +355,54 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
     return ctx;
 }
 
+RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
+        const std::string& sectionCode, long long fhEventId, const std::vector<long long>& teamIds) {
+    auto* db = Database::getInstance();
+    GroupReminderContext ctx;
+    const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
+        SELECT p.id AS person_id, COALESCE(p.parent_person_id, p.id) AS recipient_person_id,
+               o.line || COALESCE(E'\n  ' || o.message_notes, '') AS line,
+               ph.phone_number AS phone, em.email AS email
+          FROM open_events o
+          JOIN persons p ON p.id = o.person_id
+          LEFT JOIN LATERAL (
+                SELECT x.phone_number FROM person_phones x
+                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
+                   AND COALESCE(x.can_receive_sms, true)
+                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
+                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) ph ON true
+          LEFT JOIN LATERAL (
+                SELECT x.email FROM person_emails x
+                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
+                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
+                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
+         WHERE o.fh_event_id = $6::bigint
+         ORDER BY p.last_name, p.first_name)SQL";
+    auto rows = db->query(sql, {sectionCode, "", pgIntArray(teamIds), "0", "all", std::to_string(fhEventId)});
+    for (const auto& row : rows) {
+        if (ctx.line.empty()) ctx.line = row["line"].c_str();
+        GroupRecipient r;
+        r.personId          = row["person_id"].as<long long>();
+        r.recipientPersonId = row["recipient_person_id"].as<long long>();
+        if (!row["phone"].is_null()) r.phone = row["phone"].c_str();
+        if (!row["email"].is_null()) r.email = row["email"].c_str();
+        ctx.recipients.push_back(std::move(r));
+    }
+    return ctx;
+}
+
 json RsvpBoard::logReminder(long long personId, long long recipientPersonId,
                             const std::string& channel, const std::string& contact,
                             long long sentByUserId,
-                            const std::vector<OpenEvent>& events) {
+                            const std::vector<OpenEvent>& events,
+                            bool isGroup) {
     auto* db = Database::getInstance();
     auto ins = db->query(
-        "INSERT INTO rsvp_reminders (person_id, recipient_person_id, channel, contact, sent_by_user_id) "
-        "VALUES ($1::int, $2::int, $3, $4, NULLIF($5::int, 0)) "
+        "INSERT INTO rsvp_reminders (person_id, recipient_person_id, channel, contact, sent_by_user_id, is_group) "
+        "VALUES ($1::int, $2::int, $3, $4, NULLIF($5::int, 0), $6::boolean) "
         "RETURNING id, to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at",
         {std::to_string(personId), std::to_string(recipientPersonId), channel, contact,
-         std::to_string(sentByUserId)});
+         std::to_string(sentByUserId), isGroup ? "true" : "false"});
     const std::string reminderId = ins[0]["id"].c_str();
     for (const auto& ev : events) {
         db->query("INSERT INTO rsvp_reminder_events (rsvp_reminder_id, fh_event_id) "
@@ -378,5 +416,5 @@ json RsvpBoard::logReminder(long long personId, long long recipientPersonId,
                            {std::to_string(sentByUserId)});
         if (!s.empty()) by = s[0]["fn"].c_str();
     }
-    return {{"sent_at", ins[0]["sent_at"].c_str()}, {"channel", channel}, {"by", by}};
+    return {{"sent_at", ins[0]["sent_at"].c_str()}, {"channel", channel}, {"by", by}, {"group", isGroup}};
 }

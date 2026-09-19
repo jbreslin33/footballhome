@@ -21,6 +21,11 @@
 // now" (still answerable) and "Missed this week" (already happened).
 // REMIND lights up for either — a player below 100% for the week can
 // always be chased (owner 2026-09-18); the message marks missed events.
+//
+// With one event picked ("Unanswered for:" or a next-game tile) a bar
+// offers ONE group text / BCC email to everybody who still owes that event
+// an answer — POST /api/rsvp-board/remind-event.  No magic link in a group
+// message; the DB copy (mig 380) points at footballhome.org.
 class RsvpBoardScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -36,6 +41,7 @@ class RsvpBoardScreen extends Screen {
     this.loading = false;
     this.error   = null;
     this._loadSeq = 0;
+    this.bulk    = null;       // last group reminder: { key, channel, html }
   }
 
   static get SECTIONS() { return { mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls' }; }
@@ -68,6 +74,10 @@ class RsvpBoardScreen extends Screen {
                    border:1px solid var(--border-color); border-left:4px solid #f5d442;
                    background:var(--bg-secondary); color:var(--text-primary); }
         .rb-game.on { outline:2px solid #f5d442; }
+        .rb-bulk { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:8px 12px; margin-bottom:var(--space-2);
+                   border:1px solid var(--border-color); border-left:4px solid #f5d442; border-radius:10px;
+                   background:var(--bg-secondary); font-size:0.8rem; }
+        .rb-bulk a.rb-btn { text-decoration:none; display:inline-block; }
         .rb-pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:0.7rem; font-weight:700; }
       </style>
       <div class="screen-header">
@@ -98,6 +108,7 @@ class RsvpBoardScreen extends Screen {
           <button id="rb-refresh" class="btn btn-secondary" style="padding:4px 12px; font-size:0.85rem;">🔄 Refresh</button>
         </div>
         <div id="rb-summary" style="font-size:0.8rem; opacity:0.75; margin-bottom:var(--space-2);"></div>
+        <div id="rb-bulk"></div>
         <div id="rb-body"></div>
       </div>
     `;
@@ -139,6 +150,8 @@ class RsvpBoardScreen extends Screen {
       if (e.target.closest('#rb-refresh')) { this.load(); return; }
       const remind = e.target.closest('[data-remind]');
       if (remind && !remind.disabled) { this._remind(remind); return; }
+      const bulk = e.target.closest('[data-bulk]');
+      if (bulk && !bulk.disabled) { this._remindEvent(bulk); return; }
     });
     this.element.addEventListener('change', (e) => {
       if (e.target.id === 'rb-sort')      { this.sort = e.target.value; this._renderBody(); }
@@ -190,6 +203,8 @@ class RsvpBoardScreen extends Screen {
       // Don't leave the previous section's games above a loading list.
       const next = this.find('#rb-next');
       if (next) next.innerHTML = '';
+      const bulkEl = this.find('#rb-bulk');
+      if (bulkEl) bulkEl.innerHTML = '';
       // The list waits on a LeagueApps sync so dues are fresh.
       bodyEl.innerHTML = `<div style="opacity:0.7; padding:var(--space-4);">Loading — syncing LeagueApps so dues are current…</div>`;
       return;
@@ -226,6 +241,8 @@ class RsvpBoardScreen extends Screen {
       (!this.openOnly || (p.open_events || []).length > 0) &&
       (!this.search || `${p.first_name} ${p.last_name}`.toLowerCase().includes(this.search)));
 
+    this._renderBulk(people, events);
+
     const ts = (iso) => iso ? new Date(iso).getTime() : 0;
     const byName = (a, b) => `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`);
     const sorters = {
@@ -248,6 +265,88 @@ class RsvpBoardScreen extends Screen {
     bodyEl.innerHTML = list.length
       ? `<div class="rb-grid">${list.map(p => this._renderCard(p)).join('')}</div>`
       : `<div style="opacity:0.7; padding:var(--space-4);">Nobody matches these filters.</div>`;
+  }
+
+  // Group reminder bar — only with one event picked.  It goes to everyone
+  // in the section (and team, when one is picked) who has not answered
+  // that event; search / "unanswered now only" narrow the cards, not this.
+  _renderBulk(people, events) {
+    const slot = this.find('#rb-bulk');
+    if (!slot) return;
+    if (this.eventId == null) { slot.innerHTML = ''; this.bulk = null; return; }
+    const key = `${this.section}:${this.eventId}:${this.teamId ?? ''}`;
+    if (this.bulk && this.bulk.key !== key) this.bulk = null;
+
+    const owing = people.filter(p =>
+      (this.teamId == null || (p.teams || []).some(t => t.id === this.teamId)) &&
+      (p.open_events || []).some(ev => ev.fh_event_id === this.eventId));
+    const phones = owing.filter(p => p.has_phone).length;
+    const emails = owing.filter(p => p.has_email).length;
+    const btn = (channel, icon, n, bg, what) =>
+      `<button class="rb-btn" data-bulk="${channel}" style="background:${bg};"${n ? '' : ' disabled'}
+               title="${this.escapeHtml(n ? what : 'Nobody unanswered has one on file')}">${icon} ${channel === 'sms' ? 'GROUP TEXT' : 'EMAIL'} ${n}</button>`;
+    slot.innerHTML = `
+      <div class="rb-bulk">
+        <span><b>${owing.length}</b> ${owing.length === 1 ? 'has' : 'have'} not answered
+              <b>${this.escapeHtml(events.get(this.eventId) || '')}</b> — remind them all at once:</span>
+        ${btn('sms', '💬', phones, '#0284c7', 'One group text (split into groups of 10) — no sign-in link, everyone sees each other\'s number')}
+        ${btn('email', '✉', emails, '#7c3aed', 'One email, everyone BCC\'d — no sign-in link')}
+        <span data-bulk-result style="flex-basis:100%;${this.bulk ? '' : ' display:none;'}">${this.bulk ? this.bulk.html : ''}</span>
+      </div>`;
+  }
+
+  // POST renders the DB copy, logs every player as reminded, and hands
+  // back the contacts; the compose href is built here because
+  // screen-base.js carries the per-device quirks (Android BCC, sms hint).
+  // Carriers cap group MMS around 10 people (see my.js Text All), so a
+  // bigger group becomes several links — a tap can only open one thread.
+  async _remindEvent(btn) {
+    const channel = btn.dataset.bulk === 'email' ? 'email' : 'sms';
+    const key = `${this.section}:${this.eventId}:${this.teamId ?? ''}`;
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (this.auth && this.auth.token) headers['Authorization'] = `Bearer ${this.auth.token}`;
+      const res = await fetch('/api/rsvp-board/remind-event', {
+        method: 'POST', headers, credentials: 'same-origin',
+        body: JSON.stringify({ section: this.section, fh_event_id: this.eventId, team_id: this.teamId, channel }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+      for (const p of ((this.data && this.data.people) || [])) {
+        const rem = data.reminded && data.reminded[p.person_id];
+        if (rem) p.last_reminder = rem;
+      }
+      const contacts = data.contacts || [];
+      const skipped = data.no_contact
+        ? ` · ${data.no_contact} skipped (no ${channel === 'sms' ? 'mobile' : 'email'} on file)` : '';
+      let html;
+      if (channel === 'email') {
+        this.openGmailCompose(this.buildGmailComposeHref({ bcc: contacts.join(','), subject: data.subject, body: data.body }));
+        html = `✉ Email drafted to ${contacts.length} (BCC)${skipped}`;
+      } else {
+        const CHUNK_SIZE = 10;
+        const chunks = [];
+        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) chunks.push(contacts.slice(i, i + CHUNK_SIZE));
+        const hrefs = chunks.map(c => this.buildSmsComposeHref({ to: c.join(','), body: data.body }));
+        html = chunks.length === 1
+          ? `💬 Group text drafted to ${contacts.length}${skipped}`
+          : `Carriers cap a group text around ${CHUNK_SIZE} people — open each part: ` +
+            hrefs.map((h, i) => `<a class="rb-btn" style="background:#0284c7;" href="${this.escapeHtml(h)}">💬 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ') + skipped;
+        if (chunks.length === 1) window.location.href = hrefs[0];
+      }
+      this.bulk = { key, channel, html };
+      this._renderBody();
+    } catch (err) {
+      btn.textContent = original;
+      btn.disabled = false;
+      console.warn('[rsvps] group remind failed:', err);
+      const slot = this.find('[data-bulk-result]');
+      if (slot) { slot.style.display = ''; slot.innerHTML = `<span class="rb-bad">${this.escapeHtml(err.message)}</span>`; }
+    }
   }
 
   // One tile per team: its next game and how the roster has answered.
@@ -319,7 +418,7 @@ class RsvpBoardScreen extends Screen {
 
     const rem = p.last_reminder;
     const reminded = rem
-      ? `${rem.channel === 'sms' ? '💬' : '✉'} ${this._fmtDate(rem.sent_at)}${rem.by ? ` · ${this.escapeHtml(rem.by)}` : ''}`
+      ? `${rem.channel === 'sms' ? '💬' : '✉'}${rem.group ? ' 👥 group' : ''} ${this._fmtDate(rem.sent_at)}${rem.by ? ` · ${this.escapeHtml(rem.by)}` : ''}`
       : '—';
 
     const to = p.youth ? ` (to parent${p.parent_first_name ? ' ' + this.escapeHtml(p.parent_first_name) : ''})` : '';

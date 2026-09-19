@@ -22,6 +22,16 @@ class RsvpBoard;
 //        youth) — logs it, and returns the sms:/Gmail compose href for the
 //        sender's own client.  Same "send from the card, track it" shape as
 //        WelcomeController.
+//
+//   POST /api/rsvp-board/remind-event
+//        { section, fh_event_id, team_id?, channel: 'sms' | 'email' }
+//        ONE message to everybody in the section (or that team) who has
+//        not answered a still-open event: group text / BCC email.  No
+//        magic link — a group message never carries one — so the copy
+//        (kind='rsvp_reminder' tier='group_adult'|'group_parent', mig 380)
+//        points at footballhome.org.  Logged per player (is_group); the
+//        contacts go back so the browser can build the sms: / Gmail href
+//        with its own device quirks (screen-base.js).
 class RsvpBoardController : public Controller {
 public:
     RsvpBoardController();
@@ -42,4 +52,5 @@ private:
 
     Response handleList(const Request& request);
     Response handleRemind(const Request& request);
+    Response handleRemindEvent(const Request& request);
 };

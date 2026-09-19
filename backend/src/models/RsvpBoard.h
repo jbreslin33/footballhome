@@ -54,13 +54,31 @@ public:
     };
     ReminderContext reminderContext(long long personId);
 
+    // One still-open event, and everybody in the section (optionally one
+    // team) who has not answered it — for ONE group text / BCC email
+    // (mig 380).  Contacts are the parent's for youth, like the cards.
+    struct GroupRecipient {
+        long long   personId = 0;
+        long long   recipientPersonId = 0;
+        std::string phone;                   // "" when none
+        std::string email;
+    };
+    struct GroupReminderContext {
+        std::string line;                    // "" = nobody owes this event an answer
+        std::vector<GroupRecipient> recipients;
+    };
+    GroupReminderContext groupReminderContext(const std::string& sectionCode, long long fhEventId,
+                                              const std::vector<long long>& teamIds);
+
     // The copy itself is message_templates kind='rsvp_reminder', tier
-    // 'adult' | 'parent', rendered by MessageCopy.
+    // 'adult' | 'parent' (one player, magic link) or 'group_adult' |
+    // 'group_parent' (one event, no link), rendered by MessageCopy.
 
     // Writes rsvp_reminders + rsvp_reminder_events; returns the card's
     // fresh last_reminder object.
     nlohmann::json logReminder(long long personId, long long recipientPersonId,
                                const std::string& channel, const std::string& contact,
                                long long sentByUserId,
-                               const std::vector<OpenEvent>& events);
+                               const std::vector<OpenEvent>& events,
+                               bool isGroup = false);
 };

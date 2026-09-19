@@ -79,6 +79,7 @@ void RsvpBoardController::registerRoutes(Router& router, const std::string& pref
         [this](const Request& req, const LaSyncMap&) { return handleList(req); });
 
     router.post(prefix + "/remind", [this](const Request& r) { return handleRemind(r); });
+    router.post(prefix + "/remind-event", [this](const Request& r) { return handleRemindEvent(r); });
 }
 
 bool RsvpBoardController::resolveScope(const Request& request, Scope* scope, Response* error) {
@@ -269,6 +270,91 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         return jsonOut(HttpStatus::CREATED, out);
     } catch (const std::exception& e) {
         std::cerr << "RsvpBoardController::handleRemind: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not build the reminder");
+    }
+}
+
+Response RsvpBoardController::handleRemindEvent(const Request& request) {
+    Scope scope;
+    Response error(HttpStatus::OK, "");
+    if (!resolveScope(request, &scope, &error)) return error;
+
+    json body;
+    try {
+        body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
+    }
+    long long fhEventId = 0, teamId = 0;
+    std::string channel, sectionKey;
+    try {
+        fhEventId  = body.value("fh_event_id", 0LL);
+        teamId     = body.contains("team_id") && !body["team_id"].is_null() ? body["team_id"].get<long long>() : 0LL;
+        channel    = body.value("channel", std::string{});
+        sectionKey = body.value("section", std::string{});
+    } catch (const std::exception&) {
+        return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id and team_id must be numbers, channel and section strings");
+    }
+    const SectionDef* def = findSection(sectionKey);
+    if (!def) return jsonError(HttpStatus::BAD_REQUEST, "section must be mens, womens, boys or girls");
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    if (channel != "sms" && channel != "email")
+        return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
+
+    // One team when asked for, else whatever the caller may see.
+    std::vector<long long> teamIds = scope.coachTeamIds;
+    if (teamId > 0) {
+        if (!scope.isAdmin && std::find(teamIds.begin(), teamIds.end(), teamId) == teamIds.end())
+            return jsonError(HttpStatus::FORBIDDEN, "That is not a team you coach.");
+        teamIds = {teamId};
+    }
+
+    try {
+        auto ctx = model_->groupReminderContext(def->code, fhEventId, teamIds);
+        if (ctx.recipients.empty())
+            return jsonError(HttpStatus::CONFLICT, "Nothing to remind — everybody has answered that event.");
+
+        std::string senderName;
+        {
+            auto s = Database::getInstance()->query(
+                "SELECT COALESCE(first_name,'') AS fn FROM persons WHERE id = $1::int",
+                {std::to_string(scope.personId)});
+            if (!s.empty()) senderName = s[0]["fn"].c_str();
+        }
+        const bool youth = std::string(def->code) == "B" || std::string(def->code) == "G";
+        MessageCopy copy;
+        const auto msg = copy.render("rsvp_reminder", youth ? "group_parent" : "group_adult",
+                                     {{"event", ctx.line}, {"sender", senderName}});
+        if (!msg.ok())
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "group rsvp_reminder template missing (migration 380)");
+
+        // Siblings share a parent: one contact, every player logged.
+        json contacts = json::array();
+        json reminded = json::object();
+        long long noContact = 0;
+        const std::vector<RsvpBoard::OpenEvent> events = {{fhEventId, ctx.line, false}};
+        for (const auto& r : ctx.recipients) {
+            const std::string& contact = channel == "sms" ? r.phone : r.email;
+            if (contact.empty()) { ++noContact; continue; }
+            if (std::find(contacts.begin(), contacts.end(), json(contact)) == contacts.end())
+                contacts.push_back(contact);
+            reminded[std::to_string(r.personId)] =
+                model_->logReminder(r.personId, r.recipientPersonId, channel, contact, scope.userId, events, true);
+        }
+        if (contacts.empty())
+            return jsonError(HttpStatus::CONFLICT, channel == "sms"
+                ? "Nobody unanswered has a mobile number on file." : "Nobody unanswered has an email on file.");
+
+        return jsonOut(HttpStatus::CREATED, {
+            {"channel",    channel},
+            {"subject",    msg.subject},
+            {"body",       msg.body},
+            {"contacts",   contacts},
+            {"reminded",   reminded},      // person_id → the card's fresh last_reminder
+            {"no_contact", noContact},
+        });
+    } catch (const std::exception& e) {
+        std::cerr << "RsvpBoardController::handleRemindEvent: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not build the reminder");
     }
 }
