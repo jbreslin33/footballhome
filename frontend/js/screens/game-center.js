@@ -664,6 +664,10 @@ class GameCenterScreen extends Screen {
         this._render();
         return;
       }
+      const remindOne = e.target.closest('[data-gc-remind]');
+      if (remindOne && this.isCoach && !remindOne.disabled) { this._remindPlayer(remindOne); return; }
+      const remindAll = e.target.closest('[data-gc-remind-all]');
+      if (remindAll && this.isCoach && !remindAll.disabled) { this._remindNoResponse(remindAll); return; }
       const pillBtn = e.target.closest('[data-game-pill]');
       if (pillBtn) {
         const next = pillBtn.getAttribute('data-game-pill');
@@ -1540,7 +1544,7 @@ class GameCenterScreen extends Screen {
       </div>`;
     };
 
-    const playerRow = (p) => `
+    const playerRow = (p, extra = '') => `
       <div style="padding:6px var(--space-3); border-bottom:1px solid var(--border-color);">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
           <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
@@ -1559,6 +1563,7 @@ class GameCenterScreen extends Screen {
             ${roleButtons(p)}
           </div>
         ` : ''}
+        ${extra}
       </div>`;
 
     // Multiple player cards per line instead of one full-width row each
@@ -1567,9 +1572,9 @@ class GameCenterScreen extends Screen {
     // Alternates/Going/collapsed Not-Going/No-Response) uses this same
     // auto-fill grid, each card wrapping playerRow's content in its own
     // bordered tile instead of a shared list divider.
-    const cardGrid = (players) => players.length
+    const cardGrid = (players, extra = null) => players.length
       ? `<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:6px;">
-          ${players.map(p => `<div style="border:1px solid var(--border-color); border-radius:6px; overflow:hidden;">${playerRow(p)}</div>`).join('')}
+          ${players.map(p => `<div style="border:1px solid var(--border-color); border-radius:6px; overflow:hidden;">${playerRow(p, extra ? extra(p) : '')}</div>`).join('')}
         </div>`
       : `<div style="padding:6px var(--space-3); opacity:0.6; font-size:0.85em;">None yet</div>`;
 
@@ -1581,12 +1586,43 @@ class GameCenterScreen extends Screen {
     // Not Going / No Response rolled up out of the way by default (owner
     // directive: "...have them rolled up so they are not in way") — a
     // coach almost never needs these, unlike Going.
-    const collapsedSection = (label, players) => `
+    const collapsedSection = (label, players, { top = '', extra = null } = {}) => `
       <details style="margin: var(--space-3) 0;">
         <summary style="cursor:pointer; font-size:0.85rem; font-weight:700; padding:4px 0;">${label} (${players.length})</summary>
-        ${cardGrid(players)}
+        ${players.length ? top : ''}
+        ${cardGrid(players, extra)}
       </details>
     `;
+
+    // No Response gets reminders (owner 2026-09-19: "a group text/email
+    // and individual buttons on the player cards for reminders for 'all'
+    // rsvps so it catches the practice missing too").  Both go through
+    // the #rsvps endpoints, so the message is the DB copy and the send is
+    // logged on the player's #rsvps card: a card button is the personal
+    // reminder (every unanswered event of the week + their magic link);
+    // the bar is ONE group text / BCC email listing the week's open
+    // events, no link.  Club admins only, like #rsvps — the backend says
+    // so to anyone else.
+    const remindBtn = (attrs, label, bg, title) =>
+      `<button type="button" ${attrs} title="${this.escapeHtml(title)}"
+               style="padding:3px 9px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.68rem; color:#fff; background:${bg};">${label}</button>`;
+    const remindBar = `
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:4px 0 8px; font-size:0.78rem;">
+        <span style="opacity:0.75;">Remind everyone who hasn't answered this game — lists the week's open events, practices too:</span>
+        ${remindBtn('data-gc-remind-all="sms"', '💬 GROUP TEXT', '#0284c7', 'One group text (split into groups of 10) — no sign-in link, everyone sees each other\'s number')}
+        ${remindBtn('data-gc-remind-all="email"', '✉ EMAIL', '#7c3aed', 'One email, everyone BCC\'d — no sign-in link')}
+        <span data-gc-remind-result style="flex-basis:100%;"></span>
+      </div>`;
+    const remindCard = (p) => {
+      const personId = this._personIdFor(p.id);
+      if (!personId) return '';
+      return `
+        <div style="display:flex; gap:6px; align-items:center; margin-top:5px;">
+          ${remindBtn(`data-gc-remind="sms" data-person-id="${personId}"`, '💬 REMIND', '#0284c7', 'Text every unanswered event this week + their sign-in link (the parent, for youth)')}
+          ${remindBtn(`data-gc-remind="email" data-person-id="${personId}"`, '✉ REMIND', '#7c3aed', 'Email every unanswered event this week + their sign-in link (the parent, for youth)')}
+          <span data-gc-remind-note style="font-size:0.66rem; opacity:0.75;"></span>
+        </div>`;
+    };
 
     // Bench section (2026-08-24, owner: "the bench needs to be selectable
     // on the graphic to remove them like we do for the starters. or they
@@ -1626,8 +1662,81 @@ class GameCenterScreen extends Screen {
       gridSection('Alternates', byZone.alternate),
       this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
-      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse) : '',
+      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, { top: remindBar, extra: remindCard }) : '',
     ].join(''));
+  }
+
+  // The details roster (coach-only) is what knows a card's person.
+  _personIdFor(playerId) {
+    const row = (this.players || []).find(x => Number(x.playerId) === Number(playerId));
+    return row && row.personId ? Number(row.personId) : null;
+  }
+
+  async _postReminder(path, payload) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (this.auth && this.auth.token) headers['Authorization'] = `Bearer ${this.auth.token}`;
+    const res = await fetch(path, { method: 'POST', headers, credentials: 'same-origin', body: JSON.stringify(payload) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+
+  // Card button — the same personal reminder #rsvps sends.  The DOM is
+  // patched in place: a re-render would roll the No Response section up.
+  async _remindPlayer(btn) {
+    const channel = btn.dataset.gcRemind === 'email' ? 'email' : 'sms';
+    const note = btn.parentElement.querySelector('[data-gc-remind-note]');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    try {
+      const data = await this._postReminder('/api/rsvp-board/remind', { person_id: Number(btn.dataset.personId), channel });
+      if (channel === 'email') this.openGmailCompose(data.gmail_href);
+      else window.location.href = data.sms_href;
+      btn.textContent = `${channel === 'sms' ? '💬' : '✉'} ✓`;
+      if (note) note.textContent = `${data.event_count} event${data.event_count === 1 ? '' : 's'}`;
+    } catch (err) {
+      btn.textContent = original;
+      if (note) note.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
+    }
+    btn.disabled = false;
+  }
+
+  // Bar button — one group message.  Carriers cap group MMS around 10
+  // people (see my.js Text All), so a bigger group becomes several links.
+  async _remindNoResponse(btn) {
+    const channel = btn.dataset.gcRemindAll === 'email' ? 'email' : 'sms';
+    const slot = btn.parentElement.querySelector('[data-gc-remind-result]');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    try {
+      const data = await this._postReminder('/api/rsvp-board/remind-event',
+        { match_id: Number(this.matchId), scope: 'week', channel });
+      const contacts = data.contacts || [];
+      const skipped = data.no_contact
+        ? ` · ${data.no_contact} skipped (no ${channel === 'sms' ? 'mobile' : 'email'} on file)` : '';
+      let html;
+      if (channel === 'email') {
+        this.openGmailCompose(this.buildGmailComposeHref({ bcc: contacts.join(','), subject: data.subject, body: data.body }));
+        html = `✉ Email drafted to ${contacts.length} (BCC)${skipped}`;
+      } else {
+        const CHUNK_SIZE = 10;
+        const chunks = [];
+        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) chunks.push(contacts.slice(i, i + CHUNK_SIZE));
+        const hrefs = chunks.map(c => this.buildSmsComposeHref({ to: c.join(','), body: data.body }));
+        html = chunks.length === 1
+          ? `💬 Group text drafted to ${contacts.length}${skipped}`
+          : `Carriers cap a group text around ${CHUNK_SIZE} people — open each part: ` +
+            hrefs.map((h, i) => `<a href="${this.escapeHtml(h)}" style="display:inline-block; padding:3px 9px; border-radius:6px; text-decoration:none; font-weight:800; font-size:0.68rem; color:#fff; background:#0284c7;">💬 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ') + skipped;
+        if (chunks.length === 1) window.location.href = hrefs[0];
+      }
+      if (slot) slot.innerHTML = html;
+    } catch (err) {
+      if (slot) slot.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
+    }
+    btn.textContent = original;
+    btn.disabled = false;
   }
 
   // ---- RSVP & Player Details overlay (moved from #game-day-roster) ----

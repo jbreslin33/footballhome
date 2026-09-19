@@ -62,17 +62,23 @@ public:
         long long   recipientPersonId = 0;
         std::string phone;                   // "" when none
         std::string email;
+        std::vector<OpenEvent> weekEvents;   // everything still open this week (incl. the event)
     };
     struct GroupReminderContext {
         std::string line;                    // "" = nobody owes this event an answer
         std::vector<GroupRecipient> recipients;
+        // Every still-open event any recipient owes, by start — the
+        // "whole week" group message (Game Center, mig 381).
+        std::vector<OpenEvent> weekEvents;
     };
+    // sectionCode "" = any section (the caller scopes by event / team).
     GroupReminderContext groupReminderContext(const std::string& sectionCode, long long fhEventId,
                                               const std::vector<long long>& teamIds);
 
     // The copy itself is message_templates kind='rsvp_reminder', tier
     // 'adult' | 'parent' (one player, magic link) or 'group_adult' |
-    // 'group_parent' (one event, no link), rendered by MessageCopy.
+    // 'group_parent' (one event, no link) or 'group_week_adult' |
+    // 'group_week_parent' (the week, no link), rendered by MessageCopy.
 
     // Writes rsvp_reminders + rsvp_reminder_events; returns the card's
     // fresh last_reminder object.

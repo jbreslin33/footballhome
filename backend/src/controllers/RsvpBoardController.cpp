@@ -285,19 +285,32 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
     } catch (const std::exception& e) {
         return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
     }
-    long long fhEventId = 0, teamId = 0;
-    std::string channel, sectionKey;
+    long long fhEventId = 0, teamId = 0, matchId = 0;
+    std::string channel, sectionKey, reach;
     try {
         fhEventId  = body.value("fh_event_id", 0LL);
+        matchId    = body.value("match_id", 0LL);
+        reach      = body.value("scope", std::string("event"));
         teamId     = body.contains("team_id") && !body["team_id"].is_null() ? body["team_id"].get<long long>() : 0LL;
         channel    = body.value("channel", std::string{});
         sectionKey = body.value("section", std::string{});
     } catch (const std::exception&) {
         return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id and team_id must be numbers, channel and section strings");
     }
+    // #rsvps names a section; Game Center names the match and lets the
+    // event's own team tags decide who is expected.
     const SectionDef* def = findSection(sectionKey);
-    if (!def) return jsonError(HttpStatus::BAD_REQUEST, "section must be mens, womens, boys or girls");
-    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    if (!def && !sectionKey.empty())
+        return jsonError(HttpStatus::BAD_REQUEST, "section must be mens, womens, boys or girls");
+    if (reach != "event" && reach != "week")
+        return jsonError(HttpStatus::BAD_REQUEST, "scope must be 'event' or 'week'");
+    if (fhEventId <= 0 && matchId > 0) {
+        auto ev = Database::getInstance()->query(
+            "SELECT id FROM fh_events WHERE match_id = $1::int ORDER BY id LIMIT 1", {std::to_string(matchId)});
+        if (ev.empty()) return jsonError(HttpStatus::NOT_FOUND, "That game is not on the calendar, so nobody can RSVP to it yet.");
+        fhEventId = ev[0]["id"].as<long long>();
+    }
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id or match_id required");
     if (channel != "sms" && channel != "email")
         return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
 
@@ -310,9 +323,10 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
     }
 
     try {
-        auto ctx = model_->groupReminderContext(def->code, fhEventId, teamIds);
+        auto ctx = model_->groupReminderContext(def ? def->code : "", fhEventId, teamIds);
         if (ctx.recipients.empty())
-            return jsonError(HttpStatus::CONFLICT, "Nothing to remind — everybody has answered that event.");
+            return jsonError(HttpStatus::CONFLICT,
+                "Nothing to remind — nobody can still answer that event (all answered, not released yet, or already over).");
 
         std::string senderName;
         {
@@ -321,12 +335,19 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
                 {std::to_string(scope.personId)});
             if (!s.empty()) senderName = s[0]["fn"].c_str();
         }
-        const bool youth = std::string(def->code) == "B" || std::string(def->code) == "G";
+        // Parents are the recipients as soon as one player has one.
+        const bool youth = std::any_of(ctx.recipients.begin(), ctx.recipients.end(),
+            [](const RsvpBoard::GroupRecipient& r) { return r.recipientPersonId != r.personId; });
+        const bool week = reach == "week";
+        std::string eventLines;
+        for (const auto& ev : ctx.weekEvents) eventLines += "• " + ev.line + "\n";
+        if (!eventLines.empty()) eventLines.pop_back();
         MessageCopy copy;
-        const auto msg = copy.render("rsvp_reminder", youth ? "group_parent" : "group_adult",
-                                     {{"event", ctx.line}, {"sender", senderName}});
+        const auto msg = copy.render("rsvp_reminder",
+            std::string(week ? "group_week_" : "group_") + (youth ? "parent" : "adult"),
+            {{"event", ctx.line}, {"events", eventLines}, {"sender", senderName}});
         if (!msg.ok())
-            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "group rsvp_reminder template missing (migration 380)");
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "group rsvp_reminder template missing (migration 380 / 381)");
 
         // Siblings share a parent: one contact, every player logged.
         json contacts = json::array();
@@ -339,7 +360,8 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
             if (std::find(contacts.begin(), contacts.end(), json(contact)) == contacts.end())
                 contacts.push_back(contact);
             reminded[std::to_string(r.personId)] =
-                model_->logReminder(r.personId, r.recipientPersonId, channel, contact, scope.userId, events, true);
+                model_->logReminder(r.personId, r.recipientPersonId, channel, contact, scope.userId,
+                                    week ? r.weekEvents : events, true);
         }
         if (contacts.empty())
             return jsonError(HttpStatus::CONFLICT, channel == "sms"

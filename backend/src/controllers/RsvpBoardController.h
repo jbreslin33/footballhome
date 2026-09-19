@@ -24,12 +24,16 @@ class RsvpBoard;
 //        WelcomeController.
 //
 //   POST /api/rsvp-board/remind-event
-//        { section, fh_event_id, team_id?, channel: 'sms' | 'email' }
+//        { section?, fh_event_id | match_id, team_id?, scope?: 'event' | 'week',
+//          channel: 'sms' | 'email' }
 //        ONE message to everybody in the section (or that team) who has
 //        not answered a still-open event: group text / BCC email.  No
 //        magic link — a group message never carries one — so the copy
 //        (kind='rsvp_reminder' tier='group_adult'|'group_parent', mig 380)
-//        points at footballhome.org.  Logged per player (is_group); the
+//        points at footballhome.org.  scope 'week' (Game Center's No
+//        Response section, mig 381) lists every still-open event of the
+//        week those players owe, so a missing practice is caught too.
+//        Logged per player (is_group); the
 //        contacts go back so the browser can build the sms: / Gmail href
 //        with its own device quirks (screen-base.js).
 class RsvpBoardController : public Controller {

@@ -1,6 +1,8 @@
 #include "RsvpBoard.h"
 
+#include <algorithm>
 #include <sstream>
+#include <utility>
 
 #include "../database/Database.h"
 
@@ -362,7 +364,12 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
         SELECT p.id AS person_id, COALESCE(p.parent_person_id, p.id) AS recipient_person_id,
                o.line || COALESCE(E'\n  ' || o.message_notes, '') AS line,
-               ph.phone_number AS phone, em.email AS email
+               ph.phone_number AS phone, em.email AS email,
+               (SELECT jsonb_agg(jsonb_build_object(
+                         'id', w.fh_event_id, 'line', w.line,
+                         'at', to_char(w.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS'))
+                       ORDER BY w.starts_at)
+                  FROM open_events w WHERE w.person_id = p.id)::text AS week_events
           FROM open_events o
           JOIN persons p ON p.id = o.person_id
           LEFT JOIN LATERAL (
@@ -379,6 +386,7 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
          WHERE o.fh_event_id = $6::bigint
          ORDER BY p.last_name, p.first_name)SQL";
     auto rows = db->query(sql, {sectionCode, "", pgIntArray(teamIds), "0", "all", std::to_string(fhEventId)});
+    std::vector<std::pair<std::string, OpenEvent>> week;   // (start, event), deduped
     for (const auto& row : rows) {
         if (ctx.line.empty()) ctx.line = row["line"].c_str();
         GroupRecipient r;
@@ -386,8 +394,17 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
         r.recipientPersonId = row["recipient_person_id"].as<long long>();
         if (!row["phone"].is_null()) r.phone = row["phone"].c_str();
         if (!row["email"].is_null()) r.email = row["email"].c_str();
+        for (const auto& ev : json::parse(row["week_events"].c_str())) {
+            r.weekEvents.push_back({ev["id"].get<long long>(), ev["line"].get<std::string>(), false});
+            const std::string at = ev["at"].get<std::string>();
+            const bool seen = std::any_of(week.begin(), week.end(), [&](const auto& w) {
+                return w.second.fhEventId == r.weekEvents.back().fhEventId; });
+            if (!seen) week.emplace_back(at, r.weekEvents.back());
+        }
         ctx.recipients.push_back(std::move(r));
     }
+    std::sort(week.begin(), week.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    for (auto& w : week) ctx.weekEvents.push_back(std::move(w.second));
     return ctx;
 }
 
