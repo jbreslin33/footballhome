@@ -57,4 +57,5 @@ private:
     Response handleList(const Request& request);
     Response handleRemind(const Request& request);
     Response handleRemindEvent(const Request& request);
+    Response handleReminders(const Request& request);
 };

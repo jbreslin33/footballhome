@@ -432,3 +432,20 @@ json RsvpBoard::logReminder(long long personId, long long recipientPersonId,
     }
     return {{"sent_at", ins[0]["sent_at"].c_str()}, {"channel", channel}, {"by", by}, {"group", isGroup}};
 }
+
+json RsvpBoard::remindersForEvent(long long fhEventId) {
+    auto rows = Database::getInstance()->query(
+        "SELECT rr.person_id, rr.channel, count(*) AS n, "
+        "       to_char(max(rr.sent_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at "
+        "  FROM rsvp_reminders rr "
+        "  JOIN rsvp_reminder_events re ON re.rsvp_reminder_id = rr.id "
+        " WHERE re.fh_event_id = $1::bigint "
+        " GROUP BY rr.person_id, rr.channel",
+        {std::to_string(fhEventId)});
+    json out = json::object();
+    for (const auto& row : rows) {
+        out[row["person_id"].c_str()][row["channel"].c_str()] =
+            {{"sent_at", row["sent_at"].c_str()}, {"count", row["n"].as<int>()}};
+    }
+    return out;
+}

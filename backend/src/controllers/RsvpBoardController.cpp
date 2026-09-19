@@ -80,6 +80,7 @@ void RsvpBoardController::registerRoutes(Router& router, const std::string& pref
 
     router.post(prefix + "/remind", [this](const Request& r) { return handleRemind(r); });
     router.post(prefix + "/remind-event", [this](const Request& r) { return handleRemindEvent(r); });
+    router.get(prefix + "/reminders", [this](const Request& r) { return handleReminders(r); });
 }
 
 bool RsvpBoardController::resolveScope(const Request& request, Scope* scope, Response* error) {
@@ -367,5 +368,27 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "RsvpBoardController::handleRemindEvent: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not build the reminder");
+    }
+}
+
+// GET /reminders?match_id= — who has already been reminded about a game,
+// per channel.  Game Center's No Response cards dim a sent button with it.
+Response RsvpBoardController::handleReminders(const Request& request) {
+    Scope scope;
+    Response error(HttpStatus::OK, "");
+    if (!resolveScope(request, &scope, &error)) return error;
+
+    long long matchId = 0;
+    try { matchId = std::stoll(request.getQueryParam("match_id")); } catch (const std::exception&) {}
+    if (matchId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id required");
+    try {
+        auto ev = Database::getInstance()->query(
+            "SELECT id FROM fh_events WHERE match_id = $1::int ORDER BY id LIMIT 1", {std::to_string(matchId)});
+        json reminders = json::object();
+        if (!ev.empty()) reminders = model_->remindersForEvent(ev[0]["id"].as<long long>());
+        return jsonOut(HttpStatus::OK, {{"reminders", reminders}});
+    } catch (const std::exception& e) {
+        std::cerr << "RsvpBoardController::handleReminders: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load reminders");
     }
 }

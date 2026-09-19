@@ -284,6 +284,7 @@ class GameCenterScreen extends Screen {
     // (GET /api/matches/:matchId/roster-players — see _bootstrap).
     this.players = [];        // [{playerId, personId, firstName, lastName, isKeeper, jerseyNumber, rsvpStatus, rsvpSource, practice: [...], onRoster*}]
     this.trainingEvents = []; // [{id, date, title}] — the practice columns
+    this.reminders = {};      // person_id → {sms, email: {sent_at, count}} already sent about this game
     this.overlayOpen = false;
     this.filterText = '';
     this.filterRsvp = 'all';
@@ -933,10 +934,15 @@ class GameCenterScreen extends Screen {
             .catch(err => { console.warn('[game-center] player details unavailable:', err); return null; })
         : Promise.resolve(null);
 
+      // Reminders already sent about this game — dims a No Response
+      // card's button.  Admin-only endpoint; a 403 just means no dimming.
+      const remindersPromise = this.isCoach ? this._loadReminders() : Promise.resolve();
+
       const [rosterResults, detailsData] = await Promise.all([
         Promise.all(rosterTeamIds.map(id =>
           this.auth.fetch(`/api/teams/${id}/roster`).then(r => r.json()).then(d => ({ id, d })))),
         detailsPromise,
+        remindersPromise,
       ]);
 
       if (detailsData && detailsData.success) {
@@ -1603,9 +1609,12 @@ class GameCenterScreen extends Screen {
     // the bar is ONE group text / BCC email listing the week's open
     // events, no link.  Club admins only, like #rsvps — the backend says
     // so to anyone else.
-    const remindBtn = (attrs, label, bg, title) =>
-      `<button type="button" ${attrs} title="${this.escapeHtml(title)}"
-               style="padding:3px 9px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.68rem; color:#fff; background:${bg};">${label}</button>`;
+    // sent: a reminder about this game already went out on that channel.
+    // The button dims but stays clickable — some players need a second
+    // nudge, and the dim + tooltip says one went already (owner 2026-09-19).
+    const remindBtn = (attrs, label, bg, title, sent = null) =>
+      `<button type="button" ${attrs} title="${this.escapeHtml(sent ? this._sentTitle(sent) + ' — click to send again' : title)}"
+               style="padding:3px 9px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.68rem; color:#fff; background:${bg};${sent ? ' opacity:0.4;' : ''}">${label}${sent ? ' ✓' : ''}</button>`;
     const remindBar = `
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:4px 0 8px; font-size:0.78rem;">
         <span style="opacity:0.75;">Remind everyone who hasn't answered this game — lists the week's open events, practices too:</span>
@@ -1616,11 +1625,12 @@ class GameCenterScreen extends Screen {
     const remindCard = (p) => {
       const personId = this._personIdFor(p.id);
       if (!personId) return '';
+      const sent = (this.reminders || {})[personId] || {};
       return `
         <div style="display:flex; gap:6px; align-items:center; margin-top:5px;">
-          ${remindBtn(`data-gc-remind="sms" data-person-id="${personId}"`, '💬 REMIND', '#0284c7', 'Text every unanswered event this week + their sign-in link (the parent, for youth)')}
-          ${remindBtn(`data-gc-remind="email" data-person-id="${personId}"`, '✉ REMIND', '#7c3aed', 'Email every unanswered event this week + their sign-in link (the parent, for youth)')}
-          <span data-gc-remind-note style="font-size:0.66rem; opacity:0.75;"></span>
+          ${remindBtn(`data-gc-remind="sms" data-person-id="${personId}"`, '💬 REMIND', '#0284c7', 'Text every unanswered event this week + their sign-in link (the parent, for youth)', sent.sms)}
+          ${remindBtn(`data-gc-remind="email" data-person-id="${personId}"`, '✉ REMIND', '#7c3aed', 'Email every unanswered event this week + their sign-in link (the parent, for youth)', sent.email)}
+          <span data-gc-remind-note style="font-size:0.66rem; opacity:0.75;">${this.escapeHtml(this._sentNote(sent))}</span>
         </div>`;
     };
 
@@ -1672,6 +1682,46 @@ class GameCenterScreen extends Screen {
     return row && row.personId ? Number(row.personId) : null;
   }
 
+  // { person_id: { sms: {sent_at, count}, email: {…} } } for this game.
+  async _loadReminders() {
+    try {
+      const res = await this.auth.fetch(`/api/rsvp-board/reminders?match_id=${this.matchId}`);
+      const data = await res.json();
+      this.reminders = (res.ok && data.reminders) || {};
+    } catch (err) {
+      this.reminders = {};
+    }
+  }
+
+  _sentWhen(iso) {
+    return new Date(iso).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  }
+
+  _sentTitle(sent) {
+    return `Sent ${this._sentWhen(sent.sent_at)}` + (sent.count > 1 ? ` (${sent.count} times)` : '');
+  }
+
+  // "text Sat 10:07 AM ×2 · email Fri 6:30 PM"
+  _sentNote(sent) {
+    return ['sms', 'email'].filter(c => sent[c]).map(c =>
+      `${c === 'sms' ? 'text' : 'email'} ${this._sentWhen(sent[c].sent_at)}${sent[c].count > 1 ? ' ×' + sent[c].count : ''}`).join(' · ');
+  }
+
+  // Dim the buttons of whoever a fresh send reached, without a re-render
+  // (that would roll the No Response section up).
+  _paintSent() {
+    this.element.querySelectorAll('[data-gc-remind]').forEach(btn => {
+      const sent = (this.reminders || {})[btn.dataset.personId] || {};
+      const mine = sent[btn.dataset.gcRemind];
+      if (!mine) return;
+      btn.style.opacity = '0.4';
+      btn.title = this._sentTitle(mine) + ' — click to send again';
+      btn.textContent = `${btn.dataset.gcRemind === 'sms' ? '💬' : '✉'} REMIND ✓`;
+      const note = btn.parentElement.querySelector('[data-gc-remind-note]');
+      if (note) note.textContent = this._sentNote(sent);
+    });
+  }
+
   async _postReminder(path, payload) {
     const headers = { 'Content-Type': 'application/json' };
     if (this.auth && this.auth.token) headers['Authorization'] = `Bearer ${this.auth.token}`;
@@ -1693,8 +1743,9 @@ class GameCenterScreen extends Screen {
       const data = await this._postReminder('/api/rsvp-board/remind', { person_id: Number(btn.dataset.personId), channel });
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
       else window.location.href = data.sms_href;
-      btn.textContent = `${channel === 'sms' ? '💬' : '✉'} ✓`;
-      if (note) note.textContent = `${data.event_count} event${data.event_count === 1 ? '' : 's'}`;
+      btn.textContent = original;
+      await this._loadReminders();
+      this._paintSent();
     } catch (err) {
       btn.textContent = original;
       if (note) note.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
@@ -1732,6 +1783,8 @@ class GameCenterScreen extends Screen {
         if (chunks.length === 1) window.location.href = hrefs[0];
       }
       if (slot) slot.innerHTML = html;
+      await this._loadReminders();
+      this._paintSent();
     } catch (err) {
       if (slot) slot.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
     }

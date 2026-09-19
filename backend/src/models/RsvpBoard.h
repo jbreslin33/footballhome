@@ -84,4 +84,10 @@ public:
                                long long sentByUserId,
                                const std::vector<OpenEvent>& events,
                                bool isGroup = false);
+
+    // Reminders already sent that covered one event, per player and
+    // channel: { "<person_id>": { "sms": {sent_at, count}, "email": … } }.
+    // Game Center dims a No Response card's button with it — still
+    // clickable, some players need a second nudge (owner 2026-09-19).
+    nlohmann::json remindersForEvent(long long fhEventId);
 };
