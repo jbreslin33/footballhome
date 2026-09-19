@@ -81,6 +81,8 @@ void RsvpBoardController::registerRoutes(Router& router, const std::string& pref
     router.post(prefix + "/remind", [this](const Request& r) { return handleRemind(r); });
     router.post(prefix + "/remind-event", [this](const Request& r) { return handleRemindEvent(r); });
     router.get(prefix + "/reminders", [this](const Request& r) { return handleReminders(r); });
+    router.post(prefix + "/squad-notice", [this](const Request& r) { return handleSquadNotice(r); });
+    router.get(prefix + "/squad-notice", [this](const Request& r) { return handleSquadNoticeStatus(r); });
 }
 
 bool RsvpBoardController::resolveScope(const Request& request, Scope* scope, Response* error) {
@@ -390,5 +392,104 @@ Response RsvpBoardController::handleReminders(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "RsvpBoardController::handleReminders: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load reminders");
+    }
+}
+
+// POST /squad-notice {match_id, channel} — the game reminder to everyone
+// in the squad (Starting, Bench, Alternates), Going or not: the RSVP
+// reminders never reach a player who already answered (owner 2026-09-19:
+// "i got guys who set going asking if there is a game").  One group
+// message, so a plain link to the game's Game Center — no magic link.
+Response RsvpBoardController::handleSquadNotice(const Request& request) {
+    Scope scope;
+    Response error(HttpStatus::OK, "");
+    if (!resolveScope(request, &scope, &error)) return error;
+
+    json body;
+    try {
+        body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
+    }
+    long long matchId = 0;
+    std::string channel;
+    try {
+        matchId = body.value("match_id", 0LL);
+        channel = body.value("channel", std::string{});
+    } catch (const std::exception&) {
+        return jsonError(HttpStatus::BAD_REQUEST, "match_id must be a number and channel a string");
+    }
+    if (matchId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id required");
+    if (channel != "sms" && channel != "email")
+        return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
+
+    try {
+        auto ctx = model_->squadNoticeContext(matchId);
+        if (!ctx.found) return jsonError(HttpStatus::NOT_FOUND, "That game is not on the calendar.");
+        if (ctx.recipients.empty())
+            return jsonError(HttpStatus::CONFLICT, "Nobody is in the squad yet — set Starting, Bench or Alternates first.");
+
+        std::string senderName;
+        {
+            auto s = Database::getInstance()->query(
+                "SELECT COALESCE(first_name,'') AS fn FROM persons WHERE id = $1::int",
+                {std::to_string(scope.personId)});
+            if (!s.empty()) senderName = s[0]["fn"].c_str();
+        }
+        // Parents are the recipients as soon as one player has one.
+        const bool youth = std::any_of(ctx.recipients.begin(), ctx.recipients.end(),
+            [](const RsvpBoard::SquadRecipient& r) { return r.recipientPersonId != r.personId; });
+        const std::string link = MagicLinkService::publicBaseUrl() + "/#game-center/"
+                               + std::to_string(matchId) + "/starters_bench";
+        MessageCopy copy;
+        const auto msg = copy.render("squad_notice", youth ? "group_parent" : "group_adult",
+            {{"event", ctx.line}, {"where", ctx.where}, {"arrival", ctx.arrival},
+             {"link", link}, {"sender", senderName}});
+        if (!msg.ok())
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 383)");
+
+        // Siblings share a parent: one contact, every player logged.
+        json contacts = json::array();
+        long long noContact = 0;
+        for (const auto& r : ctx.recipients) {
+            const std::string& contact = channel == "sms" ? r.phone : r.email;
+            if (contact.empty()) { ++noContact; continue; }
+            if (std::find(contacts.begin(), contacts.end(), json(contact)) == contacts.end())
+                contacts.push_back(contact);
+            model_->logSquadNotice(matchId, r, channel, contact, scope.userId);
+        }
+        if (contacts.empty())
+            return jsonError(HttpStatus::CONFLICT, channel == "sms"
+                ? "Nobody in the squad has a mobile number on file." : "Nobody in the squad has an email on file.");
+
+        return jsonOut(HttpStatus::CREATED, {
+            {"channel",    channel},
+            {"subject",    msg.subject},
+            {"body",       channel == "sms" ? copy.withSmsLinkHint(msg.body) : msg.body},
+            {"contacts",   contacts},
+            {"no_contact", noContact},
+            {"status",     model_->squadNoticeStatus(matchId)},
+        });
+    } catch (const std::exception& e) {
+        std::cerr << "RsvpBoardController::handleSquadNotice: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not build the game reminder");
+    }
+}
+
+// GET /squad-notice?match_id= — has the squad been told, and how many
+// have not been told the role they hold now.
+Response RsvpBoardController::handleSquadNoticeStatus(const Request& request) {
+    Scope scope;
+    Response error(HttpStatus::OK, "");
+    if (!resolveScope(request, &scope, &error)) return error;
+
+    long long matchId = 0;
+    try { matchId = std::stoll(request.getQueryParam("match_id")); } catch (const std::exception&) {}
+    if (matchId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id required");
+    try {
+        return jsonOut(HttpStatus::OK, {{"status", model_->squadNoticeStatus(matchId)}});
+    } catch (const std::exception& e) {
+        std::cerr << "RsvpBoardController::handleSquadNoticeStatus: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the game reminder status");
     }
 }

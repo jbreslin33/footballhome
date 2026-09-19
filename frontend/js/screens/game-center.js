@@ -285,6 +285,7 @@ class GameCenterScreen extends Screen {
     this.players = [];        // [{playerId, personId, firstName, lastName, isKeeper, jerseyNumber, rsvpStatus, rsvpSource, practice: [...], onRoster*}]
     this.trainingEvents = []; // [{id, date, title}] — the practice columns
     this.reminders = {};      // person_id → {sms, email: {sent_at, count}} already sent about this game
+    this.squadNotice = null;  // {squad, untold, sms: {sent_at}, email: {sent_at}} — the squad game reminder
     this.overlayOpen = false;
     this.filterText = '';
     this.filterRsvp = 'all';
@@ -667,6 +668,10 @@ class GameCenterScreen extends Screen {
       }
       const remindOne = e.target.closest('[data-gc-remind]');
       if (remindOne && this.isCoach && !remindOne.disabled) { this._remindPlayer(remindOne); return; }
+      const availBtn = e.target.closest('[data-gc-avail]');
+      if (availBtn && !availBtn.disabled) { this._setMyAvailability(availBtn); return; }
+      const squadBtn = e.target.closest('[data-gc-squad-notice]');
+      if (squadBtn && this.isCoach && !squadBtn.disabled) { this._sendSquadNotice(squadBtn); return; }
       const remindAll = e.target.closest('[data-gc-remind-all]');
       if (remindAll && this.isCoach && !remindAll.disabled) { this._remindNoResponse(remindAll); return; }
       const pillBtn = e.target.closest('[data-game-pill]');
@@ -936,7 +941,8 @@ class GameCenterScreen extends Screen {
 
       // Reminders already sent about this game — dims a No Response
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
-      const remindersPromise = this.isCoach ? this._loadReminders() : Promise.resolve();
+      const remindersPromise = this.isCoach
+        ? Promise.all([this._loadReminders(), this._loadSquadNotice()]) : Promise.resolve();
 
       const [rosterResults, detailsData] = await Promise.all([
         Promise.all(rosterTeamIds.map(id =>
@@ -1149,6 +1155,7 @@ class GameCenterScreen extends Screen {
     }
     if (!this.matchId && this._enterNextGame()) return;
     if (!this.matchId) this._render();
+    this._paintMyAvailability();
     this._renderGameSwitch();
   }
 
@@ -1359,7 +1366,7 @@ class GameCenterScreen extends Screen {
     // section and the card mount are wired in exactly one place instead
     // of being repeated down each branch.
     const paint = (bodyHtml) => {
-      box.innerHTML = pillStripHtml + toggleHtml + bodyHtml;
+      box.innerHTML = pillStripHtml + toggleHtml + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>` + bodyHtml;
       this._renderSocial(byZone);
     };
 
@@ -1634,6 +1641,23 @@ class GameCenterScreen extends Screen {
         </div>`;
     };
 
+    // Game reminder to the whole squad — Starting, Bench and Alternates,
+    // Going or not (owner 2026-09-19: "i got guys who set going asking if
+    // there is a game").  The RSVP reminders above only reach No
+    // Response; this one tells everybody picked that the game is on and
+    // links straight to this page's Starters & Bench pill, where they see
+    // their role and can still change their availability.  Copy is the
+    // DB's (kind=squad_notice, mig 383); admins only, like the reminders.
+    const squadSize = byZone.starter.length + byZone.bench.length + byZone.alternate.length;
+    const squadBar = squadSize ? `
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 12px; font-size:0.78rem;">
+        <span style="opacity:0.75;">Game reminder to the squad (${squadSize}) — game, where, arrival + a link to this lineup:</span>
+        ${remindBtn('data-gc-squad-notice="sms"', '💬 GROUP TEXT', '#0284c7', 'One group text to Starting, Bench and Alternates (split into groups of 10) — everyone sees each other\'s number', this.squadNotice?.sms)}
+        ${remindBtn('data-gc-squad-notice="email"', '✉ EMAIL', '#7c3aed', 'One email to Starting, Bench and Alternates, everyone BCC\'d', this.squadNotice?.email)}
+        <span data-gc-squad-untold style="opacity:0.75;">${this.escapeHtml(this._squadUntoldNote())}</span>
+        <span data-gc-squad-result style="flex-basis:100%;"></span>
+      </div>` : '';
+
     // Bench section (2026-08-24, owner: "the bench needs to be selectable
     // on the graphic to remove them like we do for the starters. or they
     // need to be shown in the area under graphic") — of the two, under
@@ -1662,7 +1686,7 @@ class GameCenterScreen extends Screen {
     // their practice tally and RSVP pill with them — exactly the numbers a
     // coach weighs when deciding who starts.  Every rostered player is now
     // in exactly one card section, whatever their zone.
-    paint(this._renderMatchHeader(summaryHtml) + lineupControlsHtml + [
+    paint(this._renderMatchHeader(summaryHtml) + lineupControlsHtml + (this.isCoach ? squadBar : '') + [
       this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
         // In formation order (1 = keeper …), same numbers as the pills.
         const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
@@ -1674,6 +1698,103 @@ class GameCenterScreen extends Screen {
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, { top: remindBar, extra: remindCard }) : '',
     ].join(''));
+  }
+
+  // ---- Your availability ----
+  //
+  // The squad game reminder links here (owner 2026-09-19: "takes them
+  // straight there to set availability … shows a section at top for that
+  // player to set their availability again and shows their availability
+  // currently").  One row for the viewer when they are expected at this
+  // game, one per child for a guardian — the same feed fields and the
+  // same POST/DELETE /api/calendar/rsvp that #my answers with, so there
+  // is one RSVP, shown in two places.  Nothing renders for a viewer the
+  // game does not expect (a coach who does not play, an admin).
+  _myAvailabilityRows() {
+    const ev = (this.games || []).find(g => g.match_id === this.matchId);
+    if (!ev) return null;
+    const kids = Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [];
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const rows = [];
+    if (ev.my_rsvp_eligible !== false && (ev.my_rsvp_eligible === true || !kids.length))
+      rows.push({ personId: null, name: 'You', response: ev.my_rsvp || null });
+    for (const kid of kids)
+      rows.push({ personId: kid.person_id, name: kid.name || 'Your player',
+                  response: (rsvps.find(r => r && r.person_id === kid.person_id) || {}).response || null });
+    return { ev, rows };
+  }
+
+  _myAvailabilityHtml() {
+    const mine = this._myAvailabilityRows();
+    if (!mine || !mine.rows.length) return '';
+    const { ev, rows } = mine;
+    const end = new Date(ev.ends_at || ev.starts_at).getTime() + (ev.ends_at ? 0 : 2 * 60 * 60 * 1000);
+    const closed = end < Date.now() ? 'This game is over'
+      : (ev.rsvps_open_now === false ? 'Availability is not open for this game yet' : '');
+    const word = (r) => r === 'yes' ? '✅ Going' : r === 'no' ? '❌ Not Going' : r === 'maybe' ? '❔ Maybe' : '— Not answered yet';
+    const btn = (row, response, label, colour) => {
+      const active = row.response === response;
+      return `<button type="button" data-gc-avail="${response}" ${row.personId ? `data-person-id="${row.personId}"` : ''}
+                      ${closed ? `disabled title="${this.escapeHtml(closed)}"` : ''}
+                      style="padding:6px 12px; border-radius:8px; font-weight:800; font-size:0.78rem; cursor:${closed ? 'default' : 'pointer'};
+                             border:2px solid ${colour}; color:#fff; background:${active ? colour : 'transparent'}; opacity:${closed ? 0.45 : 1};">${label}</button>`;
+    };
+    return `
+      <div style="margin:0 0 12px; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:rgba(15,23,42,0.6);">
+        <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.7; margin-bottom:6px;">YOUR AVAILABILITY FOR THIS GAME</div>
+        ${rows.map(row => `
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:4px;">
+            <span style="font-size:0.85rem;"><strong>${this.escapeHtml(row.name)}</strong> · ${word(row.response)}</span>
+            <span style="display:flex; gap:6px;">
+              ${btn(row, 'yes', 'Going', '#16a34a')}
+              ${btn(row, 'no', 'Not Going', '#dc2626')}
+            </span>
+          </div>`).join('')}
+        <div data-gc-avail-msg style="font-size:0.7rem; margin-top:6px; opacity:0.75;">${this.escapeHtml(closed || 'Plans changed? Change it here any time — the coaches see it right away.')}</div>
+      </div>`;
+  }
+
+  _paintMyAvailability() {
+    const slot = this.element && this.element.querySelector('[data-gc-my-avail]');
+    if (slot) slot.innerHTML = this._myAvailabilityHtml();
+  }
+
+  // Tapping the answer you already gave clears it, like #my.
+  async _setMyAvailability(btn) {
+    const mine = this._myAvailabilityRows();
+    if (!mine) return;
+    const { ev } = mine;
+    const response = btn.dataset.gcAvail === 'no' ? 'no' : 'yes';
+    const personId = btn.dataset.personId ? Number(btn.dataset.personId) : null;
+    const row = mine.rows.find(r => r.personId === personId);
+    const clearing = row && row.response === response;
+    const payload = { fh_event_id: ev.fh_event_id };
+    if (!clearing) payload.response = response;
+    if (personId) payload.person_id = personId;
+    btn.disabled = true;
+    try {
+      const res = await this.auth.fetch('/api/calendar/rsvp', {
+        method: clearing ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      const final = clearing ? null : ((data.rsvp && data.rsvp.response) || response);
+      if (!personId) ev.my_rsvp = final;
+      const rsvpPersonId = personId || (data.rsvp && data.rsvp.person_id) || data.person_id;
+      if (rsvpPersonId) {
+        const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : (ev.rsvps = []);
+        const existing = rsvps.find(r => r && r.person_id === rsvpPersonId);
+        if (existing) existing.response = final;
+        else if (final) rsvps.push({ person_id: rsvpPersonId, response: final, created_via: 'manual' });
+      }
+      this._paintMyAvailability();
+    } catch (err) {
+      btn.disabled = false;
+      const msg = this.element.querySelector('[data-gc-avail-msg]');
+      if (msg) msg.innerHTML = `<span style="color:#f87171;">Could not save: ${this.escapeHtml(err.message)}</span>`;
+    }
   }
 
   // The details roster (coach-only) is what knows a card's person.
@@ -1691,6 +1812,24 @@ class GameCenterScreen extends Screen {
     } catch (err) {
       this.reminders = {};
     }
+  }
+
+  // { squad, untold, sms: {sent_at}, email: {sent_at} } for this game.
+  async _loadSquadNotice() {
+    try {
+      const res = await this.auth.fetch(`/api/rsvp-board/squad-notice?match_id=${this.matchId}`);
+      const data = await res.json();
+      this.squadNotice = (res.ok && data.status) || null;
+    } catch (err) {
+      this.squadNotice = null;
+    }
+  }
+
+  // "3 not told yet" — added to the squad, or moved role, since the last send.
+  _squadUntoldNote() {
+    const st = this.squadNotice;
+    if (!st || !(st.sms || st.email)) return '';
+    return st.untold ? `${st.untold} added or moved since — not told yet` : 'everyone told ✓';
   }
 
   _sentWhen(iso) {
@@ -1789,6 +1928,50 @@ class GameCenterScreen extends Screen {
       if (slot) slot.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
     }
     btn.textContent = original;
+    btn.disabled = false;
+  }
+
+  // Squad bar button — one group message, same drafting as
+  // _remindNoResponse (carriers cap a group text around 10 people).
+  async _sendSquadNotice(btn) {
+    const channel = btn.dataset.gcSquadNotice === 'email' ? 'email' : 'sms';
+    const slot = btn.parentElement.querySelector('[data-gc-squad-result]');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    try {
+      // A role changed seconds ago must be in the DB before the send reads it.
+      if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
+      const data = await this._postReminder('/api/rsvp-board/squad-notice', { match_id: Number(this.matchId), channel });
+      const contacts = data.contacts || [];
+      const skipped = data.no_contact
+        ? ` · ${data.no_contact} skipped (no ${channel === 'sms' ? 'mobile' : 'email'} on file)` : '';
+      let html;
+      if (channel === 'email') {
+        this.openGmailCompose(this.buildGmailComposeHref({ bcc: contacts.join(','), subject: data.subject, body: data.body }));
+        html = `✉ Email drafted to ${contacts.length} (BCC)${skipped}`;
+      } else {
+        const CHUNK_SIZE = 10;
+        const chunks = [];
+        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) chunks.push(contacts.slice(i, i + CHUNK_SIZE));
+        const hrefs = chunks.map(c => this.buildSmsComposeHref({ to: c.join(','), body: data.body }));
+        html = chunks.length === 1
+          ? `💬 Group text drafted to ${contacts.length}${skipped}`
+          : `Carriers cap a group text around ${CHUNK_SIZE} people — open each part: ` +
+            hrefs.map((h, i) => `<a href="${this.escapeHtml(h)}" style="display:inline-block; padding:3px 9px; border-radius:6px; text-decoration:none; font-weight:800; font-size:0.68rem; color:#fff; background:#0284c7;">💬 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ') + skipped;
+        if (chunks.length === 1) window.location.href = hrefs[0];
+      }
+      if (slot) slot.innerHTML = html;
+      this.squadNotice = data.status || this.squadNotice;
+      const mine = this.squadNotice && this.squadNotice[channel];
+      if (mine) { btn.style.opacity = '0.4'; btn.title = this._sentTitle(mine) + ' — click to send again'; }
+      const untold = btn.parentElement.querySelector('[data-gc-squad-untold]');
+      if (untold) untold.textContent = this._squadUntoldNote();
+      btn.textContent = mine && !original.endsWith('✓') ? original + ' ✓' : original;
+    } catch (err) {
+      if (slot) slot.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
+      btn.textContent = original;
+    }
     btn.disabled = false;
   }
 

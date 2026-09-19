@@ -58,4 +58,6 @@ private:
     Response handleRemind(const Request& request);
     Response handleRemindEvent(const Request& request);
     Response handleReminders(const Request& request);
+    Response handleSquadNotice(const Request& request);
+    Response handleSquadNoticeStatus(const Request& request);
 };

@@ -90,4 +90,32 @@ public:
     // Game Center dims a No Response card's button with it — still
     // clickable, some players need a second nudge (owner 2026-09-19).
     nlohmann::json remindersForEvent(long long fhEventId);
+
+    // Game reminder to a game's squad — every Starting, Bench and
+    // Alternate player, Going or not (mig 383).  ONE group text / BCC
+    // email, contacts the parent's for youth, no magic link.  Copy is
+    // message_templates kind='squad_notice', tier 'group_adult' |
+    // 'group_parent'.
+    struct SquadRecipient {
+        long long   personId = 0;
+        long long   recipientPersonId = 0;
+        std::string zone;                    // starter | bench | alternate
+        std::string phone;                   // "" when none
+        std::string email;
+    };
+    struct SquadNoticeContext {
+        bool        found = false;           // the game is on the calendar
+        std::string line;                    // "Sun Sep 20, 1:45 PM — Game vs Oaklyn United"
+        std::string where;                   // "" when the event has no location
+        std::string arrival;                 // "12:45 PM", "" when none
+        std::vector<SquadRecipient> recipients;
+    };
+    SquadNoticeContext squadNoticeContext(long long matchId);
+
+    void logSquadNotice(long long matchId, const SquadRecipient& r, const std::string& channel,
+                        const std::string& contact, long long sentByUserId);
+
+    // { squad: N, untold: M, sms: {sent_at}, email: {sent_at} } — untold
+    // counts squad players never told, or told while in another role.
+    nlohmann::json squadNoticeStatus(long long matchId);
 };

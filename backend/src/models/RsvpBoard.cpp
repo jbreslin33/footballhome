@@ -449,3 +449,89 @@ json RsvpBoard::remindersForEvent(long long fhEventId) {
     }
     return out;
 }
+
+RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
+    auto* db = Database::getInstance();
+    SquadNoticeContext ctx;
+    // Player-facing line, same shape as the reminders': kind label +
+    // opponent, never the gcal title.
+    auto ev = db->query(R"SQL(
+        SELECT to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM')
+                 || ' — '
+                 || CASE fe.kind WHEN 'intrasquad' THEN 'Intra Squad'
+                                 ELSE 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(fe.opponent), ''), '') END AS line,
+               COALESCE(NULLIF(BTRIM(ge.location), ''), '') AS location,
+               COALESCE(to_char(fe.arrival_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM'), '') AS arrival
+          FROM fh_events fe
+          JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+         WHERE fe.match_id = $1::int
+         ORDER BY fe.id LIMIT 1)SQL", {std::to_string(matchId)});
+    if (ev.empty()) return ctx;
+    ctx.found   = true;
+    ctx.line    = ev[0]["line"].c_str();
+    ctx.where   = ev[0]["location"].c_str();
+    ctx.arrival = ev[0]["arrival"].c_str();
+
+    auto rows = db->query(R"SQL(
+        SELECT p.id AS person_id, COALESCE(p.parent_person_id, p.id) AS recipient_person_id,
+               ml.zone, ph.phone_number AS phone, em.email AS email
+          FROM match_lineups ml
+          JOIN players pl ON pl.id = ml.player_id
+          JOIN persons p ON p.id = pl.person_id
+          LEFT JOIN LATERAL (
+                SELECT x.phone_number FROM person_phones x
+                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
+                   AND COALESCE(x.can_receive_sms, true)
+                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
+                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) ph ON true
+          LEFT JOIN LATERAL (
+                SELECT x.email FROM person_emails x
+                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
+                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
+                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
+         WHERE ml.match_id = $1::int AND ml.zone IN ('starter', 'bench', 'alternate')
+         ORDER BY p.last_name, p.first_name)SQL", {std::to_string(matchId)});
+    for (const auto& row : rows) {
+        SquadRecipient r;
+        r.personId          = row["person_id"].as<long long>();
+        r.recipientPersonId = row["recipient_person_id"].as<long long>();
+        r.zone              = row["zone"].c_str();
+        if (!row["phone"].is_null()) r.phone = row["phone"].c_str();
+        if (!row["email"].is_null()) r.email = row["email"].c_str();
+        ctx.recipients.push_back(std::move(r));
+    }
+    return ctx;
+}
+
+void RsvpBoard::logSquadNotice(long long matchId, const SquadRecipient& r, const std::string& channel,
+                               const std::string& contact, long long sentByUserId) {
+    Database::getInstance()->query(
+        "INSERT INTO squad_notices (match_id, person_id, recipient_person_id, zone, channel, contact, sent_by_user_id) "
+        "VALUES ($1::int, $2::int, $3::int, $4, $5, $6, NULLIF($7::int, 0))",
+        {std::to_string(matchId), std::to_string(r.personId), std::to_string(r.recipientPersonId),
+         r.zone, channel, contact, std::to_string(sentByUserId)});
+}
+
+json RsvpBoard::squadNoticeStatus(long long matchId) {
+    auto* db = Database::getInstance();
+    json out = json::object();
+    auto counts = db->query(R"SQL(
+        SELECT count(*) AS squad,
+               count(*) FILTER (WHERE last.zone IS DISTINCT FROM ml.zone) AS untold
+          FROM match_lineups ml
+          JOIN players pl ON pl.id = ml.player_id
+          LEFT JOIN LATERAL (
+                SELECT sn.zone FROM squad_notices sn
+                 WHERE sn.match_id = ml.match_id AND sn.person_id = pl.person_id
+                 ORDER BY sn.sent_at DESC LIMIT 1) last ON true
+         WHERE ml.match_id = $1::int AND ml.zone IN ('starter', 'bench', 'alternate'))SQL",
+        {std::to_string(matchId)});
+    out["squad"]  = counts[0]["squad"].as<int>();
+    out["untold"] = counts[0]["untold"].as<int>();
+    auto sent = db->query(
+        "SELECT channel, to_char(max(sent_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at "
+        "  FROM squad_notices WHERE match_id = $1::int GROUP BY channel",
+        {std::to_string(matchId)});
+    for (const auto& row : sent) out[row["channel"].c_str()] = {{"sent_at", row["sent_at"].c_str()}};
+    return out;
+}
