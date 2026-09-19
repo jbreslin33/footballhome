@@ -1820,7 +1820,17 @@ class GameCenterScreen extends Screen {
         if (existing) existing.response = final;
         else if (final) rsvps.push({ person_id: rsvpPersonId, response: final, created_via: 'manual' });
       }
-      this._paintMyAvailability();
+      // Not Going from standby took the player off the alternates (the
+      // save did it): drop the card here too and say so, in the DB's words.
+      const dropped = data.standby_dropped;
+      if (dropped && dropped.player_id) {
+        this.zones.delete(Number(dropped.player_id));
+        this._render();
+        const note = this.element.querySelector('[data-gc-avail-msg]');
+        if (note && dropped.message) note.textContent = dropped.message;
+      } else {
+        this._paintMyAvailability();
+      }
     } catch (err) {
       btn.disabled = false;
       const msg = this.element.querySelector('[data-gc-avail-msg]');

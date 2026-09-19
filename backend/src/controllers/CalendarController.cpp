@@ -1725,7 +1725,7 @@ Response CalendarController::handlePostRsvp(const Request& request) {
         // takes the player off the game's alternates.  Starters and bench
         // stay — a coach has to fill that spot, so they see it first.
         // Going again later does not put them back; that is the coach's call.
-        bool droppedStandby = false;
+        json standby = nullptr;
         if (response == "no") {
             auto dropped = db->query(
                 "DELETE FROM match_lineups ml "
@@ -1733,9 +1733,18 @@ Response CalendarController::handlePostRsvp(const Request& request) {
                 " WHERE fe.id = $1::bigint AND ml.match_id = fe.match_id "
                 "   AND pl.id = ml.player_id AND pl.person_id = $2::int "
                 "   AND ml.zone = 'alternate' "
-                "RETURNING ml.id",
+                "RETURNING ml.player_id, "
+                "          (SELECT COALESCE(p.first_name, '') FROM persons p WHERE p.id = pl.person_id) AS first_name",
                 {std::to_string(fhEventId), std::to_string(targetPersonId)});
-            droppedStandby = !dropped.empty();
+            if (!dropped.empty()) {
+                const bool parent = targetPersonId != personId;
+                MessageCopy copy;
+                const auto msg = copy.render("squad_notice",
+                    parent ? "standby_dropped_parent" : "standby_dropped_adult",
+                    {{"child", dropped[0]["first_name"].c_str()}});
+                standby = {{"player_id", dropped[0]["player_id"].as<long long>()},
+                           {"message", msg.body}};
+            }
         }
 
         const auto& r0 = row[0];
@@ -1747,7 +1756,7 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             {"created_via",   r0["created_via"].as<std::string>()},
             {"responded_at",  r0["responded_at"].as<std::string>()},
         };
-        return jsonOk({{"rsvp", rsvp}, {"dropped_standby", droppedStandby}});
+        return jsonOk({{"rsvp", rsvp}, {"standby_dropped", standby}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handlePostRsvp: "
                   << e.what() << std::endl;
