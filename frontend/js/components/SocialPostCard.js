@@ -553,7 +553,15 @@ class SocialPostCard {
     // the attach did nothing. Before they touch it, the stored image
     // still wins, so an already-published post keeps showing what
     // actually went out.
-    const showStored = hasContent && p.image_url && !this._localPreviewWins;
+    //
+    // Only a post that has gone out, or is queued to, shows its stored
+    // image. A draft's image_url is whatever the card looked like the last
+    // time someone saved it — after a redesign that is the OLD graphic
+    // (owner, 2026-09-19: "why still a diff? like a table instead of what
+    // insta would look like"), sitting under a live card that shows the
+    // new one. A draft always draws the current card instead, so the
+    // preview here and the card at the top of Game Center are one picture.
+    const showStored = hasContent && p.image_url && (isPosted || isScheduled) && !this._localPreviewWins;
     let imageHtml = '';
     if (showStored) {
       imageHtml = `<div class="spc-image"><img src="${this.escapeHtml(p.image_url)}" alt="Post image"></div>`;
@@ -981,7 +989,7 @@ class SocialPostCard {
 
         <!-- Footer -->
         ${pitchCard ? `
-        <div style="margin-top:auto;padding-top:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;">
+        <div style="margin-top:auto;padding-top:6px;padding-right:76px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;">
           <div style="display:flex;align-items:center;gap:8px;">
             <img src="/images/sponsors/welovejunk.png" style="height:44px;object-fit:contain;" />
             <span style="font-size:10px;letter-spacing:0.5px;color:rgba(255,255,255,0.95);text-transform:uppercase;font-weight:700;text-align:left;">Sponsored by<br/>We Love Junk</span>
@@ -1388,6 +1396,21 @@ class SocialPostCard {
     return this._generateImageOnce({ overlayOnly: true });
   }
 
+  // Where the lighthouse stands on this card, as LighthouseBeam.animate
+  // options for a 2x canvas of w × h. The default — full size, lower
+  // right — suits the cards whose lower right is empty. On the pitch
+  // card that corner is the right back (owner, 2026-09-19: "fix the
+  // lighthouse covering the right back's name"), so there it shrinks to
+  // stand in the bench/footer band under the pitch, which keeps its
+  // right-hand side clear for it (see buildImagePitch and the footer).
+  // Game Center's live card asks the same question, so the page, the
+  // preview and the posted clip all agree.
+  beamOptions(w, h) {
+    if (!(this.postTypeName === 'starters_bench' && this.hasPitch())) return {};
+    const scale = 1.3;
+    return { scale, lhX: w - 92, lhY: h - 40 - 150 * scale };
+  }
+
   startAnimatedPreview() {
     if (this._stopLighthouseAnim) this._stopLighthouseAnim();
     const imageArea = this.container.querySelector('#spc-image-area');
@@ -1428,6 +1451,7 @@ class SocialPostCard {
       // numbers now come off LighthouseBeam, where the relationship
       // between them is spelled out.
       rotPeriodSec: this.beamRotationSeconds(),
+      ...this.beamOptions(cvs.width, cvs.height),
       onFrame: (ctx, w, h) => {
         if (this.baseImage) ctx.drawImage(this.baseImage, 0, 0, w, h);
       },
@@ -1783,7 +1807,7 @@ class SocialPostCard {
         ${line}
       </div>`;
     const benchHtml = bench.length ? `
-      <div style="margin-top:8px;width:100%;">
+      <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
         <span style="font-size:13px;letter-spacing:3px;color:#f5d442;font-weight:700;">BENCH</span>
         <div style="font-size:16px;font-weight:700;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.escapeHtml(`${p.firstName} ${p.lastName}`.trim())).join(', ')}</div>
       </div>` : '';

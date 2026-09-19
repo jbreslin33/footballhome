@@ -381,6 +381,7 @@ class GameCenterScreen extends Screen {
     st.stopBeam = window.LighthouseBeam.animate(beam, {
       startTime: this._lighthouseStartTime,
       rotPeriodSec: window.LighthouseBeam.BEAM_ROTATION_SECONDS,
+      ...(st.card && st.card.beamOptions ? st.card.beamOptions(beam.width, beam.height) : {}),
     }).stop;
   }
 
@@ -1247,7 +1248,7 @@ class GameCenterScreen extends Screen {
                         style="display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; padding:10px 12px;">
           <span style="font-weight:700;">${this.escapeHtml(this._gameLabel(ev))}</span>
           <span style="font-size:0.8rem; opacity:0.8;">${this.escapeHtml([this._gameWhen(ev), ev.location].filter(Boolean).join(' · '))}</span>
-          ${linked ? '' : '<span style="font-size:0.72rem; color:#f59e0b;">Not linked to a team yet — tag a team on the calendar event</span>'}
+          ${linked ? '' : '<span style="font-size:0.72rem; color:#f59e0b;">Not linked to a team yet</span>'}
         </button>`;
       }).join('')}
     </div>`;
@@ -2293,9 +2294,7 @@ class GameCenterScreen extends Screen {
       return wrap(`
         ${listHtml}
         <div style="font-size:0.7rem; opacity:0.75; margin-top:8px; line-height:1.4;">
-          📅 Set in the club Google Calendar: the event's time and location, plus the
-          <code>Opponent:</code> and <code>League:</code> tags in its description.
-          Change them there and FootballHome follows on the next sync.
+          📅 These come from the club schedule — change them there.
         </div>`);
     }
 
@@ -2655,13 +2654,17 @@ class GameCenterScreen extends Screen {
     // every starter holds a slot — otherwise the image keeps its name
     // list rather than publishing a pitch with someone missing from it.
     //
-    // `live` is the on-page copy of the same card: a coach still building
-    // the lineup gets the empty pitch to fill, a filled chip carries the
-    // player id its tap-to-remove needs, and "Show Availability" hangs
-    // the RSVP pill under the name. None of that reaches the post.
+    // The rule is the same for the page and the post, empty pitch
+    // included — a lineup still being built used to show a pitch up top
+    // and a bare name list in the Instagram preview under it (owner,
+    // 2026-09-19: "why still a diff? like a table").
+    //
+    // `live` is the on-page copy of the same card: a filled chip carries
+    // the player id its tap-to-remove needs, and "Show Availability"
+    // hangs the RSVP pill under the name. Neither reaches the post.
     const editing = live && this.isCoach && this.viewMode !== 'player';
     let pitch = null;
-    if ((byZone.starter.length || editing) && byZone.starter.every(p => this.positions.has(p.id))) {
+    if (byZone.starter.every(p => this.positions.has(p.id))) {
       const { rosterById, slotToPlayerId } = this._slotMaps();
       pitch = this._pitchRows().map(row => row === HALFWAY_ROW ? null : row.map(pos => {
         const occupant = rosterById.get(slotToPlayerId.get(pos.id));
