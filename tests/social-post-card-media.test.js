@@ -143,6 +143,8 @@ test('the overlay build is transparent and leaves the preview alone', () => {
   const setsBase = gen.indexOf('this.baseImage = baseImg');
   assert.ok(earlyReturn > 0 && setsBase > 0);
   assert.ok(earlyReturn < setsBase, 'overlayOnly returns before touching preview state');
-  // And it must not paint a background of its own.
-  assert.match(gen, /const cardBackground = \(overlayOnly \|\| backdropSrc\)\s*\n?\s*\?\s*'background:transparent;'/);
+  // And it must not paint a background of its own (the markup itself
+  // is built in buildCardHtml, which _generateImageOnce captures).
+  const build = src.slice(src.indexOf('async buildCardHtml('));
+  assert.match(build, /const cardBackground = \(overlayOnly \|\| backdropSrc\)\s*\n?\s*\?\s*'background:transparent;'/);
 });

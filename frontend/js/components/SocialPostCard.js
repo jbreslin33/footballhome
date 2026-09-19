@@ -689,9 +689,17 @@ class SocialPostCard {
   // no gradient, no photo — so html2canvas returns a transparent PNG of
   // just the scrim and the text/crests. That's the layer ffmpeg burns
   // onto an uploaded video server-side (see _buildOverlayPng / postNow).
-  async _generateImageOnce({ overlayOnly = false } = {}) {
-    if (typeof html2canvas === 'undefined') return;
-
+  // THE card. One builder for both places it is seen: html2canvas
+  // captures it for Instagram (_generateImageOnce), and Game Center shows
+  // the very same markup live at the top of the page (`live`) — owner,
+  // 2026-09-19: "the graphic we see at top should be same one we see for
+  // insta... lets be consistent". Anything drawn here is drawn in both.
+  //
+  // `live` only changes how crests load: a plain <img> needs no CORS
+  // proxy (that is html2canvas's problem), so the page skips the
+  // authenticated blob round trip and a player with no admin token still
+  // gets logos.
+  async buildCardHtml({ overlayOnly = false, live = false } = {}) {
     const m = this.matchContext;
     const homeName = this.titleCase(m.home_team_name || m.homeTeam || 'Home');
     let awayName = this.titleCase(m.away_team_name || m.awayTeam || '');
@@ -707,14 +715,15 @@ class SocialPostCard {
     // before generateImage() either succeeds or times out — exactly the
     // kind of real-world mobile-network delay that's hard to reproduce
     // on a fast connection but very plausible on-site at a game.
+    const resolveLogo = (url) => live ? Promise.resolve(String(url || '').trim()) : this.resolveImageForCanvas(url);
     const [homeLogo, awayLogo] = await Promise.all([
-      this.resolveImageForCanvas(m.home_team_logo || ''),
+      resolveLogo(m.home_team_logo || ''),
       // away_team_logo already carries the fallback chain (opponent
       // aliases, name match, logo cache, then the league's own crest for
       // an opponent with no teams row) — EventController resolves all of
       // it. This used to substitute a hardcoded tcwsl.png here, which
       // branded every untagged informal match a women's league game.
-      this.resolveImageForCanvas(m.away_team_logo || ''),
+      resolveLogo(m.away_team_logo || ''),
     ]);
     const rawDate = m.event_date || m.date || m.match_date;
     let dateStr = '', timeStr = '';
@@ -753,11 +762,17 @@ class SocialPostCard {
     const awayTeamId = m.away_team_id || null;
     let homeAccolades = [], awayAccolades = [];
     try {
-      const fetches = [];
-      if (homeTeamId) fetches.push(this.auth.fetch(`/api/teams/${homeTeamId}/accolades`).then(r => r.json()));
-      else fetches.push(Promise.resolve({ data: [] }));
-      if (awayTeamId) fetches.push(this.auth.fetch(`/api/teams/${awayTeamId}/accolades`).then(r => r.json()));
-      else fetches.push(Promise.resolve({ data: [] }));
+      // Memoised per team: the live card rebuilds on every lineup tap.
+      this._accolades = this._accolades || new Map();
+      const accoladesFor = (id) => {
+        if (!id) return Promise.resolve({ data: [] });
+        if (!this._accolades.has(id)) {
+          this._accolades.set(id, this.auth.fetch(`/api/teams/${id}/accolades`).then(r => r.json())
+            .catch(err => { this._accolades.delete(id); throw err; }));
+        }
+        return this._accolades.get(id);
+      };
+      const fetches = [accoladesFor(homeTeamId), accoladesFor(awayTeamId)];
       const [homeRes, awayRes] = await withTimeoutMs(Promise.all(fetches), 8000);
       homeAccolades = (homeRes.data || []).filter(a => a.type === 'achievement');
       awayAccolades = (awayRes.data || []).filter(a => a.type === 'achievement');
@@ -906,10 +921,7 @@ class SocialPostCard {
       ? `<div style="position:absolute;inset:0;z-index:1;background:linear-gradient(180deg, rgba(0,20,60,0.82) 0%, rgba(0,20,60,0.38) 38%, rgba(0,20,60,0.55) 62%, rgba(0,20,60,0.88) 100%);"></div>`
       : '';
 
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;';
-
-    wrapper.innerHTML = `
+    const html = `
       <div style="
         width:540px; height:${cardHeight}px;
         ${cardBackground}
@@ -966,6 +978,16 @@ class SocialPostCard {
         </div>
       </div>
     `;
+    return { html, width: 540, height: cardHeight };
+  }
+
+  async _generateImageOnce({ overlayOnly = false } = {}) {
+    if (typeof html2canvas === 'undefined') return;
+
+    const { html, height: cardHeight } = await this.buildCardHtml({ overlayOnly });
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;';
+    wrapper.innerHTML = html;
 
     document.body.appendChild(wrapper);
     this.hardenGradientsForCapture(wrapper.firstElementChild);
@@ -1677,7 +1699,9 @@ class SocialPostCard {
 
   // rosterData.pitch (game-center.js _buildRosterData): the formation's
   // rows top-down, each an array of {number, name}, with null standing
-  // for the halfway line. Absent from older callers and from a lineup
+  // for the halfway line. Game Center's live copy of the card may add
+  // removeId / badgeHtml to a token (tap-to-remove, RSVP pill); the
+  // rosterData it hands the post never carries them. Absent from older callers and from a lineup
   // with an unplaced starter — both keep the name list.
   hasPitch() {
     const pitch = this.rosterData && this.rosterData.pitch;
@@ -1688,16 +1712,16 @@ class SocialPostCard {
   // then date/time/venue on a line of their own.
   buildImageMatchupCompact(homeName, awayName, dateStr, timeStr, venue, homeLogo, awayLogo) {
     const formatName = (name) => name.replace(/\bSc$/i, '⚽ Club');
-    const logo = (src) => `<div style="width:46px;height:46px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:9px;border:1px solid rgba(255,255,255,0.18);padding:3px;box-sizing:border-box;">${this.buildLogoInnerHtml(src)}</div>`;
-    const name = (n, align) => `<div style="flex:1;min-width:0;font-size:13px;font-weight:700;line-height:1.15;text-transform:uppercase;letter-spacing:0.5px;text-align:${align};">${this.escapeHtml(formatName(n))}</div>`;
+    const logo = (src) => `<div style="width:54px;height:54px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:9px;border:1px solid rgba(255,255,255,0.18);padding:3px;box-sizing:border-box;">${this.buildLogoInnerHtml(src)}</div>`;
+    const name = (n, align) => `<div style="flex:1;min-width:0;font-size:16px;font-weight:800;line-height:1.15;text-transform:uppercase;letter-spacing:0.5px;text-align:${align};">${this.escapeHtml(formatName(n))}</div>`;
     const when = [dateStr && `📅 ${this.escapeHtml(dateStr)}`, timeStr && `⏰ ${this.escapeHtml(timeStr)}`, venue && `📍 ${this.escapeHtml(venue)}`].filter(Boolean).join(' &nbsp; ');
     return `
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-bottom:6px;">
         ${logo(homeLogo)}${name(homeName, 'left')}
-        <div style="flex-shrink:0;font-size:15px;font-weight:800;color:#f5d442;letter-spacing:2px;">VS</div>
+        <div style="flex-shrink:0;font-size:17px;font-weight:800;color:#f5d442;letter-spacing:2px;">VS</div>
         ${name(awayName, 'right')}${logo(awayLogo)}
       </div>
-      ${when ? `<div style="font-size:12px;line-height:1.3;color:rgba(255,255,255,0.85);margin-bottom:8px;">${when}</div>` : ''}
+      ${when ? `<div style="font-size:15px;font-weight:600;line-height:1.3;color:rgba(255,255,255,0.95);margin-bottom:8px;">${when}</div>` : ''}
     `;
   }
 
@@ -1714,9 +1738,10 @@ class SocialPostCard {
     // Five across leaves ~100px a name; 16px breaks a long first name mid-word there.
     const nameSize = tall ? 14 : pitch.some(row => row && row.length >= 5) ? 15 : 16;
     const token = (t) => `
-      <div style="flex:1 1 0;min-width:0;max-width:128px;display:flex;flex-direction:column;align-items:center;gap:3px;">
+      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Remove ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:128px;display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
         <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
         <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;">${t.name ? this.escapeHtml(t.name) : '—'}</div>
+        ${t.badgeHtml || ''}
       </div>`;
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
     const halfway = `
@@ -1729,8 +1754,8 @@ class SocialPostCard {
       </div>`;
     const benchHtml = bench.length ? `
       <div style="margin-top:8px;width:100%;">
-        <span style="font-size:12px;letter-spacing:3px;color:#f5d442;font-weight:700;">BENCH</span>
-        <div style="font-size:14px;font-weight:600;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.escapeHtml(`${p.firstName} ${p.lastName}`.trim())).join(', ')}</div>
+        <span style="font-size:13px;letter-spacing:3px;color:#f5d442;font-weight:700;">BENCH</span>
+        <div style="font-size:16px;font-weight:700;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.escapeHtml(`${p.firstName} ${p.lastName}`.trim())).join(', ')}</div>
       </div>` : '';
     return `
       <div style="flex:1;min-height:0;align-self:stretch;margin:0 -28px;padding:10px 6px;box-sizing:border-box;background:#15803d;border-top:2px solid rgba(255,255,255,0.35);border-bottom:2px solid rgba(255,255,255,0.35);display:flex;flex-direction:column;justify-content:space-between;">

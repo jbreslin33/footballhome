@@ -245,16 +245,28 @@ test('switching pills does rebuild the card', () => {
   assert.equal(sandbox.SOCIAL_INITS[0].postTypeName, 'post_game');
 });
 
-test('the Match Result pill shows a recorded score', () => {
+test('the graphic at the top of every pill is the post card itself', () => {
+  // One drawing: SocialPostCard builds it, the page shows it live, the
+  // Instagram image is a capture of it. No second hand-built header.
   const { screen } = mountScreen({ isCoach: true, role: 'club' });
-  screen.pill = 'post_game';
-  screen._render();
-  assert.match(screen.element.innerHTML, /1 – 0/);
+  for (const pill of PILLS) {
+    screen.pill = pill;
+    screen._render();
+    assert.equal((screen.element.innerHTML.match(/data-gc-card-inner/g) || []).length, 1, `${pill}: one card host`);
+    assert.equal(screen._liveCard.postTypeName, pill, `${pill}: card draws this pill's post`);
+    assert.equal(screen._liveCard.matchId, 3533);
+  }
+});
 
-  screen.matchDetails.home_team_score = null;
-  screen.matchDetails.away_team_score = null;
+test('only the coach\'s live card carries tap-to-remove; the post never does', () => {
+  const { screen } = mountScreen({ isCoach: true, role: 'club' });
+  screen.pill = 'starters_bench';
   screen._render();
-  assert.match(screen.element.innerHTML, /No score recorded yet/);
+  const byZone = { starter: screen.roster.filter(r => screen.zones.get(r.id) === 'starter'),
+                   bench: screen.roster.filter(r => screen.zones.get(r.id) === 'bench'), alternate: [] };
+  const tokens = d => (d.pitch || []).filter(Boolean).flat();
+  assert.ok(tokens(screen._buildRosterData(byZone, { live: true })).some(t => t.removeId != null));
+  assert.ok(tokens(screen._buildRosterData(byZone)).every(t => t.removeId == null && !t.badgeHtml));
 });
 
 test('a player gets no publish controls and no editor on any pill', () => {

@@ -303,7 +303,7 @@ class GameCenterScreen extends Screen {
     this.error     = null;
     this._saveTimer = null;
     this._wired    = false;
-    this.matchDetails = null; // {home_team_name, home_team_logo, away_team_name, away_team_logo, ...} — see _renderMatchHeader
+    this.matchDetails = null; // {home_team_name, home_team_logo, away_team_name, away_team_logo, ...} — feeds the card, see _renderCard
     // Slice C panels under the Game Announcement / Match Result frames.
     this.announceEditing = false; // Game Announcement: read-only list vs edit form (unlinked matches only)
     this.venueList = null;        // [{id, name, city}] from GET /api/venues, fetched once when the edit form opens
@@ -311,170 +311,107 @@ class GameCenterScreen extends Screen {
     this._scoreMsg   = '';        // one-line status under the score inputs
     this._detailsMsg = '';        // one-line status under the game-details form
     this._matchSaving = false;
-    this._stopLighthouseAnim = null; // stop fn from LighthouseBeam.animate() — see _mountLighthouseCanvas
+    this._stopLighthouseAnim = null; // stop fn from LighthouseBeam.animate() — see _fitCard
     this._lighthouseStartTime = null; // persisted so the beam angle never jumps across re-renders
-    this._beamResizeObs = null; // ResizeObserver keeping the full-card beam canvas sized to the card
+    this._beamResizeObs = null; // ResizeObserver keeping the live card scaled to its column
+    // The live card (see _renderCard): the SocialPostCard that builds it,
+    // the last markup it produced, and a sequence guard for the async build.
+    this._liveCard = null;
+    this._cardBuilt = null; // { key, html, height }
+    this._cardSeq = 0;
   }
 
-  // Compact "MATCH DAY" header (2026-08-22, owner directive: "the player
-  // view for both needs to look like an insta post... with logos") — home
-  // vs away crest, same data source and buildTeamLogoMarkup helper (see
-  // screen-base.js) game-day-roster.js's own MATCH DAY card uses, so this
-  // screen and the Instagram preview it deep-links to read as one brand
-  // instead of a bare pitch diagram with no opponent identity. Shown above
-  // every sub-view (Lineup and Game Day, coach and player).
-  // Real lighthouse-with-rotating-beam artwork (2026-08-22, owner: "the
-  // lh with beam is weeak. use the one from the socials seciont of
-  // site. its better. its gotta be good!") — the same LighthouseBeam
-  // canvas drawing SocialPostCard.js uses for the actual Instagram post
-  // (gold "1893" bands, lantern, rocky cliff, ocean), not a flat CSS
-  // approximation. _mountLighthouseCanvas() below starts the animation
-  // once this canvas is actually in the live DOM.
-  _lighthouseCanvasHtml() {
-    return `<canvas id="gl-lighthouse-canvas" style="position:absolute; right:-4px; top:-2px; width:70px; height:160px; pointer-events:none; z-index:0;"></canvas>`;
-  }
-
-  // Beam layer (2026-08-24, owner: "the light beam should go in front of
-  // all other graphics") — a SECOND canvas stretched over the whole card
-  // at a z-index above the content, carrying only the rotating cone. The
-  // lighthouse canvas above it stays at z-index:0 on purpose: the tower
-  // sits right on top of the away crest and team name, so promoting the
-  // whole artwork would hide them. Splitting the two layers is what lets
-  // the beam sweep across the crests, date, and lineup below while the
-  // tower still reads as standing behind them.
-  _beamCanvasHtml() {
-    return `<canvas id="gl-beam-canvas" style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; z-index:5;"></canvas>`;
-  }
-
-  // Scheduled via setTimeout(0) from _renderMatchHeader() so it runs
-  // after the box.innerHTML assignment that actually mounts the canvas
-  // (all three render() branches funnel through _renderMatchHeader, so
-  // hooking here covers Lineup, Game Day, and the coach's own view alike
-  // without touching each call site).
-  _mountLighthouseCanvas() {
-    if (this._stopLighthouseAnim) { this._stopLighthouseAnim(); this._stopLighthouseAnim = null; }
-    if (this._beamResizeObs) { this._beamResizeObs.disconnect(); this._beamResizeObs = null; }
-    const canvas = this.element && this.element.querySelector('#gl-lighthouse-canvas');
-    if (!canvas || typeof window.LighthouseBeam === 'undefined') return;
-    const dpr = 2;
-    const cssW = 70, cssH = 160;
-    canvas.width = cssW * dpr;
-    canvas.height = cssH * dpr;
-    // Geometry math (from lighthouseBeam.js's draw()): topmost point is
-    // lhY - 49*s (finial spike), bottommost is lhY + 198*s (ocean base),
-    // total span 247*s. At s=1.1 that's ~272 canvas-px tall and ~121
-    // wide (rocks span 110*s each side of lhX) — sized to fit fully
-    // inside this canvas with margin, both top/bottom AND left/right, so
-    // nothing (rocks, ocean, "1893" digits) gets clipped off-canvas like
-    // the first pass did.
-    const s = 1.1;
-    const lanternY = 75 * dpr;
-    // The tower itself never moves, so this layer is a one-shot draw
-    // rather than an animation — only the beam (on #gl-beam-canvas
-    // below) needs a frame loop now.
-    const lhCtx = canvas.getContext('2d');
-    lhCtx.clearRect(0, 0, canvas.width, canvas.height);
-    window.LighthouseBeam.draw(lhCtx, canvas.width / 2, lanternY, s);
-
-    const card = canvas.parentElement;
-    const beam = this.element.querySelector('#gl-beam-canvas');
-    if (!card || !beam) return;
-    if (!this._lighthouseStartTime) this._lighthouseStartTime = performance.now();
-
-    const startBeam = () => {
-      if (this._stopLighthouseAnim) { this._stopLighthouseAnim(); this._stopLighthouseAnim = null; }
-      const cardRect = card.getBoundingClientRect();
-      if (!cardRect.width || !cardRect.height) return;
-      const lhRect = canvas.getBoundingClientRect();
-      // 1 device px per CSS px here (unlike the 2x lighthouse layer):
-      // the card runs the full height of the lineup, so a 2x backing
-      // store means clearing and re-filling millions of pixels every
-      // frame for a graphic that is nothing but soft gradients — there
-      // are no hard edges for the extra resolution to sharpen.
-      beam.width = Math.round(cardRect.width);
-      beam.height = Math.round(cardRect.height);
-      this._stopLighthouseAnim = window.LighthouseBeam.animate(beam, {
-        startTime: this._lighthouseStartTime,
-        drawLighthouse: false, // tower stays on the layer behind the content
-        // Lantern position, read off the live rects rather than
-        // recomputed from the inline `right`/`top` above, so the two
-        // layers cannot drift apart if those offsets ever change.
-        lhX: lhRect.left - cardRect.left + cssW / 2,
-        lhY: lhRect.top - cardRect.top + lanternY / dpr,
-        // Scale the reach off the card's WIDTH, not the default
-        // max(w, h): on a tall lineup card the height-derived default
-        // stretches the fade-out so far that the cone stops looking
-        // like a beam and just tints the whole card yellow.
-        beamLen: cardRect.width * 1.8,
-        // Same sweep rate as the posted video (see LighthouseBeam and
-        // SocialPostCard.js's postNow()) for consistency across every
-        // view (owner, 2026-08-22: "time the beam so the post time shown
-        // matches the 360 arc of beam"). No clip length applies to this
-        // live decorative canvas specifically, but one shared period
-        // everywhere beats guessing a different arbitrary speed per view.
-        rotPeriodSec: window.LighthouseBeam.BEAM_ROTATION_SECONDS,
-        beamSpread: 0.16,
-      }).stop;
-    };
-    startBeam();
-
-    // The card grows and shrinks after mount — crests finish loading,
-    // the Lineup/Game Day toggle swaps the content, a player gets moved
-    // between rows — and animate() captures the canvas size once, so the
-    // beam layer has to be rebuilt whenever the card resizes or it ends
-    // up clipped to a stale height.
-    if (typeof ResizeObserver !== 'undefined') {
-      let queued = false;
-      this._beamResizeObs = new ResizeObserver(() => {
-        if (queued) return;
-        queued = true;
-        requestAnimationFrame(() => { queued = false; startBeam(); });
-      });
-      this._beamResizeObs.observe(card);
-    }
-  }
-
-  // Full-size unified frame (2026-08-22, owner: "when i click lineup from
-  // main screen it should be full insta post view not tiny one. corect
-  // ratio and proper lighthouse with rotating ray light! for all") — one
-  // continuous card (crests/VS/date/venue + whatever content is passed
-  // in) at real Instagram-post proportions, always with the rotating
-  // lighthouse beam, instead of a small compact header strip sitting
-  // above a separately-styled content box below it.
-  _renderMatchHeader(innerHtml = '') {
-    const m = this.matchDetails;
-    if (!m) return innerHtml;
-    const homeLogo = this.buildTeamLogoMarkup(m.home_team_logo, { className: 'team-logo-lg', alt: 'Home', placeholder: '🏠' });
-    const awayLogo = this.buildTeamLogoMarkup(m.away_team_logo, { className: 'team-logo-lg', alt: 'Away', placeholder: '🏟️' });
-    // setTimeout(0) queues _mountLighthouseCanvas() to run right after
-    // this string gets assigned to box.innerHTML elsewhere in the same
-    // synchronous call — the canvas doesn't exist in the live DOM yet
-    // at this point in the function, so the animation can't start here.
-    setTimeout(() => this._mountLighthouseCanvas(), 0);
+  // The graphic at the top of every pill IS the Instagram post (owner,
+  // 2026-09-19: "the graphic we see at top should be same one we see for
+  // insta. they are clearly diff... lets be consistent"). It used to be a
+  // second, hand-built drawing of the same information — header, pitch,
+  // squad chips, score — which is exactly how the two drifted. Now
+  // SocialPostCard.buildCardHtml() is the only drawing: html2canvas
+  // captures it for the post, and this shows the same markup live, scaled
+  // to the column, under the same LighthouseBeam the posted clip carries.
+  //
+  // The build is async (accolades), so the last markup is kept and
+  // painted synchronously — _render() rewrites #gl-body on every lineup
+  // tap and the card must not blink out each time. _mountCard then
+  // rebuilds and swaps the markup only if it actually changed.
+  _renderCard() {
+    const built = this._cardBuilt && this._cardBuilt.key === this._cardKey() ? this._cardBuilt : null;
+    const h = built ? built.height : 700;
     return `
-      <div style="position:relative; overflow:hidden; max-width:480px; margin:0 auto 12px; background:linear-gradient(180deg,#1e3a8a,#1e40af); border:2px solid rgba(250,204,21,0.6); border-radius:16px; padding:18px 16px 20px; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
-        ${this._lighthouseCanvasHtml()}
-        <div style="position:relative; z-index:1; text-align:center;">
-          <div style="display:flex; align-items:flex-start; justify-content:center; gap:26px;">
-            <div style="display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; min-width:0; max-width:170px;">
-              ${homeLogo}
-              <div style="font-size:0.78rem; font-weight:700; color:#fff; text-transform:uppercase; overflow-wrap:break-word; line-height:1.2;">${this.escapeHtml(m.home_team_name || 'Home')}</div>
-            </div>
-            <div style="font-size:0.9rem; font-weight:700; color:#facc15; opacity:0.9; margin-top:26px;">VS</div>
-            <div style="display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; min-width:0; max-width:170px;">
-              ${awayLogo}
-              <div style="font-size:0.78rem; font-weight:700; color:#fff; text-transform:uppercase; overflow-wrap:break-word; line-height:1.2;">${this.escapeHtml(m.away_team_name || 'Away')}</div>
-            </div>
-          </div>
-          ${this._whenLabel() ? `<div style="margin-top:12px; font-size:0.74rem; color:#dbeafe; opacity:0.9;">📅 ${this.escapeHtml(this._whenLabel())}</div>` : ''}
-          ${m.venue_location ? `<div style="margin-top:2px; font-size:0.68rem; color:#dbeafe; opacity:0.75; overflow-wrap:break-word;">📍 ${this.escapeHtml(m.venue_location)}</div>` : ''}
-        </div>
-        <div style="position:relative; z-index:1; margin-top:16px;">
-          ${innerHtml}
-        </div>
-        ${this._beamCanvasHtml()}
+      <div data-gc-card style="position:relative; width:100%; max-width:540px; margin:0 auto 12px; aspect-ratio:540 / ${h}; overflow:hidden; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
+        <div data-gc-card-inner style="position:absolute; left:0; top:0; width:540px; transform-origin:0 0;">${built ? built.html : ''}</div>
+        <canvas data-gc-card-beam style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;"></canvas>
       </div>
       ${this._postButtonHtml()}`;
+  }
+
+  _cardKey() {
+    return `${this.matchId}:${this.pill}`;
+  }
+
+  // Scale the fixed 540px card to its column and (re)start the beam on
+  // the fresh canvas. Runs after every paint and on resize.
+  _fitCard() {
+    const host = this.element && this.element.querySelector('[data-gc-card]');
+    if (!host) return;
+    const inner = host.querySelector('[data-gc-card-inner]');
+    const fit = () => { if (inner && host.clientWidth) inner.style.transform = `scale(${host.clientWidth / 540})`; };
+    fit();
+    if (this._beamResizeObs) { this._beamResizeObs.disconnect(); this._beamResizeObs = null; }
+    if (typeof ResizeObserver !== 'undefined') {
+      this._beamResizeObs = new ResizeObserver(fit);
+      this._beamResizeObs.observe(host);
+    }
+
+    if (this._stopLighthouseAnim) { this._stopLighthouseAnim(); this._stopLighthouseAnim = null; }
+    const beam = host.querySelector('[data-gc-card-beam]');
+    if (!beam || !this._cardBuilt || typeof window.LighthouseBeam === 'undefined') return;
+    // Same canvas geometry and rotation period as SocialPostCard's
+    // startAnimatedPreview, so the beam sits where the posted clip has it.
+    beam.width = 540 * 2;
+    beam.height = this._cardBuilt.height * 2;
+    if (!this._lighthouseStartTime) this._lighthouseStartTime = performance.now();
+    this._stopLighthouseAnim = window.LighthouseBeam.animate(beam, {
+      startTime: this._lighthouseStartTime,
+      rotPeriodSec: window.LighthouseBeam.BEAM_ROTATION_SECONDS,
+    }).stop;
+  }
+
+  async _mountCard(byZone) {
+    this._fitCard();
+    if (typeof SocialPostCard === 'undefined' || !this.matchDetails) return;
+    const card = this._liveCard || (this._liveCard = new SocialPostCard(this.auth));
+    const key = this._cardKey();
+    card.matchId = this.matchId;
+    card.teamId = this.teamId;
+    card.postTypeName = this.pill;
+    card.matchContext = this.matchDetails;
+    card.rosterData = this._buildRosterData(byZone, { live: true });
+    const seq = ++this._cardSeq;
+    try {
+      // Goalscorers on the result card; players may not be allowed the
+      // read, in which case the card simply goes without them.
+      if (this.pill === 'post_game' && card._statsFor !== this.matchId) {
+        card._statsFor = this.matchId;
+        card.matchStats = [];
+        const res = await this.auth.fetch(`/api/social/match/${this.matchId}/stats`).catch(() => null);
+        const data = res ? await res.json().catch(() => null) : null;
+        if (data && data.success) card.matchStats = data.data || [];
+      }
+      const built = await card.buildCardHtml({ live: true });
+      if (seq !== this._cardSeq || key !== this._cardKey()) return;
+      const changed = !this._cardBuilt || this._cardBuilt.key !== key
+        || this._cardBuilt.html !== built.html || this._cardBuilt.height !== built.height;
+      this._cardBuilt = { key, html: built.html, height: built.height };
+      if (!changed) return;
+      const host = this.element && this.element.querySelector('[data-gc-card]');
+      if (!host) return;
+      host.style.aspectRatio = `540 / ${built.height}`;
+      host.querySelector('[data-gc-card-inner]').innerHTML = built.html;
+      this._fitCard();
+    } catch (err) {
+      console.warn('[game-center] card build failed:', err);
+    }
   }
 
   // "Post to Instagram", straight under the graphic it publishes (owner,
@@ -1408,18 +1345,19 @@ class GameCenterScreen extends Screen {
     const paint = (bodyHtml) => {
       box.innerHTML = pillStripHtml + toggleHtml + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>` + bodyHtml;
       this._renderSocial(byZone);
+      this._mountCard(byZone);
     };
 
     if (this.pill === 'game_day') {
       // The match header IS the game announcement — crests, date, venue.
       // The details panel sits under the frame, like every other pill's
       // controls (owner, 2026-08-22: no controls inside the post graphic).
-      paint(this._renderMatchHeader('') + this._renderGameDetailsPanel());
+      paint(this._renderCard() + this._renderGameDetailsPanel());
       return;
     }
 
     if (this.pill === 'post_game') {
-      paint(this._renderMatchHeader(this._renderResultSummary()) + this._renderScorePanel());
+      paint(this._renderCard() + this._renderScorePanel());
       return;
     }
 
@@ -1435,12 +1373,12 @@ class GameCenterScreen extends Screen {
           <button type="button" id="gc-details-open" class="btn btn-primary"
                   style="font-size:0.75rem; padding:4px 10px;">👥 RSVP &amp; Player Details</button>
         </div>` : '';
-      paint(this._renderMatchHeader(this._renderGameDayRoster(byZone)) + detailsHtml);
+      paint(this._renderCard() + detailsHtml);
       return;
     }
 
     if (effectiveIsPlayerView) {
-      paint(this._renderMatchHeader(this._renderPlayerView(byZone)));
+      paint(this._renderCard() + this._renderPlayerNotes(byZone));
       return;
     }
 
@@ -1482,9 +1420,6 @@ class GameCenterScreen extends Screen {
         </div>
       </div>`;
 
-    const summaryHtml = `
-      ${this._renderFormationPitch(byZone, { readOnly: false })}
-      ${this._renderBenchGraphic(byZone.bench)}`;
 
     // Bench/Alt only now — Starting XI goes through the 1-11 position
     // pills below instead of a "Start" button (owner directive).
@@ -1755,7 +1690,7 @@ class GameCenterScreen extends Screen {
     // their practice tally and RSVP pill with them — exactly the numbers a
     // coach weighs when deciding who starts.  Every rostered player is now
     // in exactly one card section, whatever their zone.
-    paint(this._renderMatchHeader(summaryHtml) + lineupControlsHtml + (this.isCoach ? squadBar : '') + [
+    paint(this._renderCard() + lineupControlsHtml + (this.isCoach ? squadBar : '') + [
       this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
         // In formation order (1 = keeper …), same numbers as the pills.
         const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
@@ -2603,26 +2538,6 @@ class GameCenterScreen extends Screen {
     return ok;
   }
 
-  // Score readout inside the Match Result frame — the scoreline as
-  // recorded, or "No score recorded yet". Entry lives in the coach-only
-  // panel under the frame (_renderScorePanel).
-  _renderResultSummary() {
-    const m = this.matchDetails;
-    const hs = m ? (m.home_team_score ?? m.home_score) : null;
-    const as = m ? (m.away_team_score ?? m.away_score) : null;
-    if (hs == null || as == null) {
-      return `
-        <div style="border-top:1px solid rgba(255,255,255,0.15); padding-top:12px; text-align:center;">
-          <div style="font-size:0.7rem; color:#dbeafe; opacity:0.85;">No score recorded yet</div>
-        </div>`;
-    }
-    return `
-      <div style="border-top:1px solid rgba(255,255,255,0.15); padding-top:12px; text-align:center;">
-        <div style="font-size:2rem; font-weight:800; color:#facc15; line-height:1;">${this.escapeHtml(String(hs))} – ${this.escapeHtml(String(as))}</div>
-        <div style="font-size:0.62rem; color:#dbeafe; opacity:0.8; margin-top:4px; letter-spacing:0.08em;">FINAL</div>
-      </div>`;
-  }
-
   // Which post the Instagram section is previewing, or null for none.
   // Until the coach picks one down there it opens on the page's pill
   // for the pills with no live graphic of their own (POST_PILLS.social).
@@ -2761,7 +2676,7 @@ class GameCenterScreen extends Screen {
   // rows print. this.roster carries a single display `name`, so first
   // name is whatever precedes the roster's own lastName — not a re-split
   // of the full string, which would mangle a two-word surname.
-  _buildRosterData(byZone) {
+  _buildRosterData(byZone, { live = false } = {}) {
     const gkPositionIds = new Set(
       this.positionList
         .filter(pos => (pos.abbreviation || '').toUpperCase() === 'GK')
@@ -2792,12 +2707,23 @@ class GameCenterScreen extends Screen {
     // on-screen graphic "should be what goes out to insta"). Only when
     // every starter holds a slot — otherwise the image keeps its name
     // list rather than publishing a pitch with someone missing from it.
+    //
+    // `live` is the on-page copy of the same card: a coach still building
+    // the lineup gets the empty pitch to fill, a filled chip carries the
+    // player id its tap-to-remove needs, and "Show Availability" hangs
+    // the RSVP pill under the name. None of that reaches the post.
+    const editing = live && this.isCoach && this.viewMode !== 'player' && this.pill === 'starters_bench';
     let pitch = null;
-    if (byZone.starter.length && byZone.starter.every(p => this.positions.has(p.id))) {
+    if ((byZone.starter.length || editing) && byZone.starter.every(p => this.positions.has(p.id))) {
       const { rosterById, slotToPlayerId } = this._slotMaps();
       pitch = this._pitchRows().map(row => row === HALFWAY_ROW ? null : row.map(pos => {
         const occupant = rosterById.get(slotToPlayerId.get(pos.id));
-        return { number: pos.sortOrder, name: occupant ? occupant.name : '' };
+        const token = { number: pos.sortOrder, name: occupant ? occupant.name : '' };
+        if (editing && occupant) {
+          token.removeId = occupant.id;
+          if (this.showLineupStats) token.badgeHtml = this._rsvpStatusPill(occupant.id);
+        }
+        return token;
       }));
     }
     return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch };
@@ -2829,6 +2755,33 @@ class GameCenterScreen extends Screen {
     const rsvp = this.stats.get(playerId)?.gameRsvp;
     const v = RSVP_PILL[rsvp] || { label: 'No RSVP', bg: '#374151', fg: '#d1d5db' };
     return `<span title="RSVP for this game" style="font-size:0.6rem; font-weight:700; padding:1px 6px; border-radius:999px; background:${v.bg}; color:${v.fg}; white-space:nowrap;">${v.label}</span>`;
+  }
+
+  // What a player reads under the Starters & Bench card: the "not
+  // published" notice while no starter is set (byZone.starter.length is
+  // the only signal — there is no publish flag), otherwise the
+  // alternates, who are not part of the post and so not on the card.
+  // Alphabetical by last name, "so no one gets mad" (owner directive).
+  _renderPlayerNotes(byZone) {
+    if (byZone.starter.length === 0) {
+      return `
+        <div class="public-card" style="text-align:center; opacity:0.85; padding: var(--space-4);">
+          🔒 Lineup not yet published
+        </div>`;
+    }
+    const alternates = [...byZone.alternate].sort((a, b) =>
+      (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase()));
+    if (!alternates.length) return '';
+    return `
+      <div style="max-width:540px; margin:0 auto;">
+        <h2 style="margin: var(--space-4) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">Alternates</h2>
+        <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
+          ${alternates.map(p => `
+            <div style="padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
+              <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
   }
 
   // The formation's rows, attack at top and keeper at bottom, with
@@ -2876,190 +2829,4 @@ class GameCenterScreen extends Screen {
     return rows;
   }
 
-  // Formation pitch graphic (2026-08-22) — shared by the coach's
-  // Current Lineup card (readOnly:false, click a filled slot to
-  // unassign) and the Player Lineup View (readOnly:true, "this all will
-  // be the player view for lineup" — owner directive). Lighthouse blue
-  // chip with a white outline and yellow number (owner: "make chips our
-  // lh colors blue and white" / "blue inside white outline" / "yellow
-  // number"). Names never truncate — wrap instead of ellipsis (owner:
-  // "don't hide names with ...").
-  _renderFormationPitch(byZone, { readOnly = false } = {}) {
-    const { rosterById, slotToPlayerId } = this._slotMaps();
-    const rows = this._pitchRows();
-    const token = (pos) => {
-      const occupantId = slotToPlayerId.get(pos.id);
-      const occupant = occupantId != null ? rosterById.get(occupantId) : null;
-      const clickable = !readOnly && occupant;
-      const title = occupant ? (readOnly ? occupant.name : `Remove ${occupant.name} from ${pos.name}`) : pos.name;
-      return `
-        <div style="display:flex; flex-direction:column; align-items:center; gap:3px; flex:1 1 0; min-width:0; max-width:96px; position:relative; z-index:1;">
-          <button type="button" ${clickable ? `data-lineup-remove-starter="${occupant.id}"` : ''}
-                  title="${this.escapeHtml(title)}"
-                  style="width:38px; height:38px; border-radius:50%; border:2px solid #fff; flex-shrink:0; padding:0;
-                         background:${occupant ? '#1d4ed8' : 'rgba(255,255,255,0.3)'}; color:${occupant ? '#facc15' : '#fff'};
-                         font-weight:800; font-size:1.05rem; cursor:${clickable ? 'pointer' : 'default'}; box-shadow:0 1px 3px rgba(0,0,0,0.3);">
-            ${pos.sortOrder}
-          </button>
-          <span style="font-size:0.8rem; font-weight:700; line-height:1.15; color:#fff; text-align:center; overflow-wrap:anywhere; white-space:normal; max-width:100%; text-shadow:0 1px 2px rgba(0,0,0,0.6); ${occupant ? '' : 'opacity:0.7;'}">${occupant ? this.escapeHtml(occupant.name) : '—'}</span>
-          ${occupant && this.showLineupStats ? this._rsvpStatusPill(occupant.id) : ''}
-        </div>`;
-    };
-    // Real pitch markings — outline, halfway line, center circle, goal
-    // box — layered behind the rows with position:absolute so it reads
-    // as an actual pitch, not a plain green rectangle. Portrait, and
-    // bled to the frame's side edges (negative margin over the match
-    // header's padding; its overflow:hidden trims the rest) — owner,
-    // 2026-09-19: "no reason for the xtra sideline on right and left",
-    // the width goes to bigger names and numbers instead.
-    return `
-      <div style="position:relative; background:linear-gradient(180deg, #16a34a, #14532d); padding:14px 6px; margin:0 -18px; min-height:560px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
-        <div style="position:absolute; inset:6px; border:2px solid rgba(255,255,255,0.35); border-radius:4px;"></div>
-        <div style="position:absolute; left:50%; bottom:6px; width:100px; height:32px; margin-left:-50px; border:2px solid rgba(255,255,255,0.35); border-bottom:none;"></div>
-        ${rows.map(row => row === HALFWAY_ROW
-          ? this._halfwayRowHtml()
-          : `<div style="display:flex; justify-content:center; align-items:flex-start; gap:6px; position:relative; z-index:1;">${row.map(token).join('')}</div>`).join('')}
-      </div>`;
-  }
-
-  // Halfway line with the league crest sitting in the center circle.
-  // The crest is whatever the DB resolved for this match's `League:` tag
-  // (see leagueCrest.js for the full path) — never inferred here from
-  // the opponent's name, which is the guessing migration 297 exists to
-  // end. A match the DB gives no crest for falls back to the plain empty
-  // ring the pitch drew before, so nothing regresses and no match ever
-  // gets branded with the wrong league.
-  _halfwayRowHtml() {
-    const crest = window.LeagueCrest ? window.LeagueCrest.resolve(this.matchDetails) : null;
-    const line = `<div style="flex:1; border-top:2px solid rgba(255,255,255,0.35);"></div>`;
-    const circle = crest && crest.src
-      ? `<div title="${this.escapeHtml(crest.label)}"
-              style="width:64px; height:64px; border-radius:50%; border:2px solid rgba(255,255,255,0.5);
-                     background:rgba(255,255,255,0.94); display:flex; align-items:center; justify-content:center;
-                     flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,0.3); overflow:hidden;">
-           <img src="${crest.src}" alt="${this.escapeHtml(crest.label)}"
-                style="max-width:46px; max-height:46px; object-fit:contain;">
-         </div>`
-      : `<div style="width:64px; height:64px; border-radius:50%; border:2px solid rgba(255,255,255,0.35); flex-shrink:0;"></div>`;
-    return `<div style="display:flex; align-items:center; gap:8px; position:relative; z-index:1;">${line}${circle}${line}</div>`;
-  }
-
-  // Bench, attached under the pitch graphic (owner: "show bench in
-  // graphic") — simplified to a plain comma-separated name list rather
-  // than individual chips (owner: "you can put bench at bottom without
-  // chips but list names in full csv"). `bench` is whatever order the
-  // caller wants shown (coach's benchOrder vs player's always-
-  // alphabetical — see _renderPlayerView).
-  _renderBenchGraphic(bench) {
-    return `
-      <div style="max-width:400px; margin:10px auto 0; text-align:center;">
-        <div style="font-size:0.8rem; font-weight:700; opacity:0.75; margin-bottom:4px;">BENCH${bench.length ? '' : ' (0)'}</div>
-        <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary, #fff); line-height:1.4;">${bench.length ? bench.map(p => this.escapeHtml(p.name)).join(', ') : 'None yet'}</div>
-      </div>`;
-  }
-
-  // Read-only formation graphic (2026-08-22, owner directive: "this all
-  // will be the player view for lineup") — what players actually see,
-  // and what a coach sees via the "👀 Player Lineup View" toggle above.
-  // Same pitch + bench graphic as the coach's Current Lineup card
-  // (_renderFormationPitch/_renderBenchGraphic), just readOnly:true (no
-  // remove-on-click) and no stats/formation toggles. Same "not
-  // published yet" gate the old text-list view used
-  // (byZone.starter.length===0 is the only signal we have — there's no
-  // explicit publish flag).
-  //
-  // Bench is always alphabetical by last name here — "so no one gets
-  // mad" (owner directive) — deliberately NOT the coach's bench order,
-  // since there's no fairness case for ranking the bench for players.
-  // Alternates stays a plain list below the graphic (not part of a
-  // real formation/bench concept).
-  _renderPlayerView(byZone) {
-    if (byZone.starter.length === 0) {
-      return `
-        <div class="public-card" style="text-align:center; opacity:0.85; padding: var(--space-4);">
-          🔒 Lineup not yet published
-        </div>`;
-    }
-
-    const byLastName = (list) => [...list].sort((a, b) =>
-      (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase())
-    );
-    const benchAlpha = byLastName(byZone.bench);
-    const alternatesAlpha = byLastName(byZone.alternate);
-
-    const plainRow = (p) => `
-      <div style="padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
-        <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
-      </div>`;
-    const altSection = alternatesAlpha.length ? `
-      <h2 style="margin: var(--space-4) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">Alternates</h2>
-      <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
-        ${alternatesAlpha.map(plainRow).join('')}
-      </div>
-    ` : '';
-
-    return `
-      <div style="max-width:440px; margin:0 auto;">
-        ${this._renderFormationPitch(byZone, { readOnly: true })}
-        ${this._renderBenchGraphic(benchAlpha)}
-        ${altSection}
-      </div>`;
-  }
-
-  // Game Day Roster (2026-08-22, owner directive) — reached directly via
-  // my.js's own "Game Day Roster" button (params.mode='gameday'), NOT
-  // through the coach/player toggle. Plain list of everyone with a
-  // standing Roster Role of "1st Team Starter" or "1st Team Bench"
-  // (lineupRole, set on the Teams page — mens-roster.js's Roster Role
-  // dropdown), alpha by last name. Deliberately per-match-zone-agnostic:
-  // this is "who's in the 1st team pool", not "who's starting THIS game"
-  // — that's the Lineup button/_renderPlayerView above.
-  // Redesigned (2026-08-22, owner: "game day view is still list view...
-  // make it insta grade everywhere") from a plain bordered text list into
-  // a chip card matching the same blue/gold card language as
-  // _renderMatchHeader/_renderFormationPitch, so Lineup and Game Day read
-  // as one consistent, graphic-first screen instead of a form-like list
-  // for one sub-view and a polished graphic for the other.
-  // Reads from THIS MATCH's own zones (owner, 2026-08-22: "game day
-  // roster has guys not even going. use source of truth for all. what i
-  // selected") — previously read the standing season-long Roster Role
-  // from the Teams page instead of the actual per-match starter/bench
-  // the coach set on the Lineup sub-view, so it could show people who
-  // aren't even part of this game (or miss people who are). byZone is
-  // the exact same object the pitch graphic renders from.
-  _renderGameDayRoster(byZone) {
-    const byLastName = (list) => [...list].sort((a, b) =>
-      (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase())
-    );
-    const starters = byLastName(byZone.starter);
-    const bench = byLastName(byZone.bench);
-    const list = [...starters, ...bench];
-    if (list.length === 0) {
-      return `
-        <div class="public-card" style="text-align:center; opacity:0.85; padding: var(--space-4);">
-          Lineup not set yet — set starters &amp; bench on the Lineup tab.
-        </div>`;
-    }
-    const chip = (p) => `
-      <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:999px; padding:5px 12px 5px 6px;">
-        <span style="width:8px; height:8px; border-radius:50%; background:#facc15; flex-shrink:0;"></span>
-        <span style="font-size:0.78rem; font-weight:600; color:#fff; overflow-wrap:break-word;">${this.escapeHtml(p.name)}</span>
-      </div>`;
-    const section = (title, players) => players.length ? `
-      <div style="margin-top:14px;">
-        <div style="font-size:0.66rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#facc15; margin-bottom:6px;">${title} (${players.length})</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px;">
-          ${players.map(chip).join('')}
-        </div>
-      </div>` : '';
-    // No card/lighthouse of its own — this renders INSIDE
-    // _renderMatchHeader()'s frame now, which already supplies both.
-    return `
-      <div style="border-top:1px solid rgba(255,255,255,0.15); padding-top:12px;">
-        <div style="font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#fff; text-align:center; margin-bottom:2px;">📋 Game Day Squad</div>
-        <div style="font-size:0.62rem; color:#dbeafe; opacity:0.8; text-align:center;">${list.length} on the roster for this match</div>
-        ${section('Starters', starters)}
-        ${section('Bench', bench)}
-      </div>`;
-  }
 }
