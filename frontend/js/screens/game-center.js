@@ -466,6 +466,23 @@ class GameCenterScreen extends Screen {
           ${innerHtml}
         </div>
         ${this._beamCanvasHtml()}
+      </div>
+      ${this._postButtonHtml()}`;
+  }
+
+  // "Post to Instagram", straight under the graphic it publishes (owner,
+  // 2026-09-19: "can we put insta post button on there"). The Instagram
+  // section itself sits at the foot of the page — below the whole roster
+  // on Starters & Bench — where its small toggle went unseen; this opens
+  // that section for the active pill and scrolls to it. Same gate as the
+  // section, so a player never sees it.
+  _postButtonHtml() {
+    if (!this._canPostSocial() || !this.matchId || !this.teamId) return '';
+    return `
+      <div style="max-width:480px; margin:0 auto 12px;">
+        <button type="button" id="gc-post-insta" class="btn btn-primary" style="width:100%; font-weight:700; padding:10px 12px;">
+          📸 Post to Instagram — ${this.escapeHtml(this._pillTitle(this.pill))}
+        </button>
       </div>`;
   }
 
@@ -689,6 +706,13 @@ class GameCenterScreen extends Screen {
       // The Instagram section for the active pill. Collapsed sections
       // never mount their SocialPostCard, so this is also what defers
       // that component's four API calls until they're wanted.
+      if (e.target.closest('#gc-post-insta')) {
+        this._socialOpen.add(this.pill);
+        this._render();
+        const section = this.find('#gc-social');
+        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
       const socialToggle = e.target.closest('#gc-social-toggle');
       if (socialToggle) {
         if (this._socialOpen.has(this.pill)) this._socialOpen.delete(this.pill);
@@ -2672,7 +2696,19 @@ class GameCenterScreen extends Screen {
         });
       }
     }
-    return { players, selectedIds, zones, fieldSize: this.fieldSize };
+    // The pitch the Starters & Bench image draws (owner, 2026-09-19: the
+    // on-screen graphic "should be what goes out to insta"). Only when
+    // every starter holds a slot — otherwise the image keeps its name
+    // list rather than publishing a pitch with someone missing from it.
+    let pitch = null;
+    if (byZone.starter.length && byZone.starter.every(p => this.positions.has(p.id))) {
+      const { rosterById, slotToPlayerId } = this._slotMaps();
+      pitch = this._pitchRows().map(row => row === HALFWAY_ROW ? null : row.map(pos => {
+        const occupant = rosterById.get(slotToPlayerId.get(pos.id));
+        return { number: pos.sortOrder, name: occupant ? occupant.name : '' };
+      }));
+    }
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from
@@ -2703,16 +2739,12 @@ class GameCenterScreen extends Screen {
     return `<span title="RSVP for this game" style="font-size:0.6rem; font-weight:700; padding:1px 6px; border-radius:999px; background:${v.bg}; color:${v.fg}; white-space:nowrap;">${v.label}</span>`;
   }
 
-  // Formation pitch graphic (2026-08-22) — shared by the coach's
-  // Current Lineup card (readOnly:false, click a filled slot to
-  // unassign) and the Player Lineup View (readOnly:true, "this all will
-  // be the player view for lineup" — owner directive). Lighthouse blue
-  // chip with a white outline and yellow number (owner: "make chips our
-  // lh colors blue and white" / "blue inside white outline" / "yellow
-  // number"). Names never truncate — wrap instead of ellipsis (owner:
-  // "don't hide names with ...").
-  _renderFormationPitch(byZone, { readOnly = false } = {}) {
-    const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
+  // The formation's rows, attack at top and keeper at bottom, with
+  // HALFWAY_ROW spliced in mid-stack. Shared by the live pitch below and
+  // the Instagram image (_buildRosterData), so the post can never draw a
+  // different shape than the screen.
+  _pitchRows() {
+    const { startingPositions } = this._slotMaps();
     const spec = this._fieldSpec();
     const template = spec.formations[this.formation] || spec.formations[spec.defaultFormation];
     const positionById = new Map(startingPositions.map(pos => [pos.id, pos]));
@@ -2749,35 +2781,52 @@ class GameCenterScreen extends Screen {
     // halfway line belongs in that shape anyway. Both verified on the
     // real pitch graphic 2026-08-24.
     rows.splice(Math.floor(rows.length / 2), 0, HALFWAY_ROW);
+    return rows;
+  }
+
+  // Formation pitch graphic (2026-08-22) — shared by the coach's
+  // Current Lineup card (readOnly:false, click a filled slot to
+  // unassign) and the Player Lineup View (readOnly:true, "this all will
+  // be the player view for lineup" — owner directive). Lighthouse blue
+  // chip with a white outline and yellow number (owner: "make chips our
+  // lh colors blue and white" / "blue inside white outline" / "yellow
+  // number"). Names never truncate — wrap instead of ellipsis (owner:
+  // "don't hide names with ...").
+  _renderFormationPitch(byZone, { readOnly = false } = {}) {
+    const { rosterById, slotToPlayerId } = this._slotMaps();
+    const rows = this._pitchRows();
     const token = (pos) => {
       const occupantId = slotToPlayerId.get(pos.id);
       const occupant = occupantId != null ? rosterById.get(occupantId) : null;
       const clickable = !readOnly && occupant;
       const title = occupant ? (readOnly ? occupant.name : `Remove ${occupant.name} from ${pos.name}`) : pos.name;
       return `
-        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; max-width:78px; position:relative; z-index:1;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px; flex:1 1 0; min-width:0; max-width:96px; position:relative; z-index:1;">
           <button type="button" ${clickable ? `data-lineup-remove-starter="${occupant.id}"` : ''}
                   title="${this.escapeHtml(title)}"
-                  style="width:30px; height:30px; border-radius:50%; border:2px solid #fff; flex-shrink:0;
+                  style="width:38px; height:38px; border-radius:50%; border:2px solid #fff; flex-shrink:0; padding:0;
                          background:${occupant ? '#1d4ed8' : 'rgba(255,255,255,0.3)'}; color:${occupant ? '#facc15' : '#fff'};
-                         font-weight:800; font-size:0.72rem; cursor:${clickable ? 'pointer' : 'default'}; box-shadow:0 1px 3px rgba(0,0,0,0.3);">
+                         font-weight:800; font-size:1.05rem; cursor:${clickable ? 'pointer' : 'default'}; box-shadow:0 1px 3px rgba(0,0,0,0.3);">
             ${pos.sortOrder}
           </button>
-          <span style="font-size:0.58rem; color:#fff; text-align:center; overflow-wrap:break-word; white-space:normal; max-width:78px; text-shadow:0 1px 2px rgba(0,0,0,0.6); ${occupant ? '' : 'opacity:0.7;'}">${occupant ? this.escapeHtml(occupant.name) : '—'}</span>
+          <span style="font-size:0.8rem; font-weight:700; line-height:1.15; color:#fff; text-align:center; overflow-wrap:anywhere; white-space:normal; max-width:100%; text-shadow:0 1px 2px rgba(0,0,0,0.6); ${occupant ? '' : 'opacity:0.7;'}">${occupant ? this.escapeHtml(occupant.name) : '—'}</span>
           ${occupant && this.showLineupStats ? this._rsvpStatusPill(occupant.id) : ''}
         </div>`;
     };
     // Real pitch markings — outline, halfway line, center circle, goal
     // box — layered behind the rows with position:absolute so it reads
-    // as an actual pitch, not a plain green rectangle. Portrait,
-    // compact (owner: "smaller pitch and closer together").
+    // as an actual pitch, not a plain green rectangle. Portrait, and
+    // bled to the frame's side edges (negative margin over the match
+    // header's padding; its overflow:hidden trims the rest) — owner,
+    // 2026-09-19: "no reason for the xtra sideline on right and left",
+    // the width goes to bigger names and numbers instead.
     return `
-      <div style="position:relative; background:linear-gradient(180deg, #16a34a, #14532d); border-radius:10px; padding:14px 8px; max-width:420px; margin:0 auto; min-height:470px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
+      <div style="position:relative; background:linear-gradient(180deg, #16a34a, #14532d); padding:14px 6px; margin:0 -18px; min-height:560px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
         <div style="position:absolute; inset:6px; border:2px solid rgba(255,255,255,0.35); border-radius:4px;"></div>
         <div style="position:absolute; left:50%; bottom:6px; width:100px; height:32px; margin-left:-50px; border:2px solid rgba(255,255,255,0.35); border-bottom:none;"></div>
         ${rows.map(row => row === HALFWAY_ROW
           ? this._halfwayRowHtml()
-          : `<div style="display:flex; justify-content:center; align-items:flex-start; gap:10px; position:relative; z-index:1;">${row.map(token).join('')}</div>`).join('')}
+          : `<div style="display:flex; justify-content:center; align-items:flex-start; gap:6px; position:relative; z-index:1;">${row.map(token).join('')}</div>`).join('')}
       </div>`;
   }
 
@@ -2811,9 +2860,9 @@ class GameCenterScreen extends Screen {
   // alphabetical — see _renderPlayerView).
   _renderBenchGraphic(bench) {
     return `
-      <div style="max-width:300px; margin:10px auto 0; text-align:center;">
-        <div style="font-size:0.72rem; font-weight:700; opacity:0.75; margin-bottom:4px;">BENCH${bench.length ? '' : ' (0)'}</div>
-        <div style="font-size:0.75rem; color:var(--text-primary, #fff); line-height:1.4;">${bench.length ? bench.map(p => this.escapeHtml(p.name)).join(', ') : 'None yet'}</div>
+      <div style="max-width:400px; margin:10px auto 0; text-align:center;">
+        <div style="font-size:0.8rem; font-weight:700; opacity:0.75; margin-bottom:4px;">BENCH${bench.length ? '' : ' (0)'}</div>
+        <div style="font-size:0.9rem; font-weight:600; color:var(--text-primary, #fff); line-height:1.4;">${bench.length ? bench.map(p => this.escapeHtml(p.name)).join(', ') : 'None yet'}</div>
       </div>`;
   }
 

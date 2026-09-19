@@ -804,9 +804,13 @@ class SocialPostCard {
         break;
       case 'starters_bench':
         headerText = 'STARTERS & BENCH';
-        middleHtml = this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
+        // With a pitch to draw, the matchup shrinks to one row so the
+        // height goes to names a phone can actually read.
+        middleHtml = this.hasPitch()
+          ? this.buildImageMatchupCompact(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo)
+          : this.buildImageMatchup(homeName, awayName, dateStr, timeStr, venueStr, homeLogo, awayLogo, homeAccolades, awayAccolades);
         leagueBadgeHtml = this.buildLeagueBadge(league, leagueLogoSrc, true);
-        rosterHtml = this.buildImageStartersBench();
+        rosterHtml = this.buildImageStartersBench(leagueLogoSrc);
         break;
       case 'post_game':
         headerText = 'FULL TIME';
@@ -864,10 +868,11 @@ class SocialPostCard {
     // scrolling, so an unusually long bench would lose its last names
     // with nothing on the card to say so. Never shrinks below 640.
     const hasRoster = rosterHtml.length > 0;
+    const pitchCard = this.postTypeName === 'starters_bench' && this.hasPitch();
     const hasPlayersPlayed = playersPlayedHtml.length > 0;
     const hasGoalScorers = goalScorerHtml.length > 0;
     const cardHeight = hasRoster ? 700
-      : hasPlayersPlayed ? Math.max(640, 500 + lineupBlock.rows * 18)
+      : hasPlayersPlayed ? Math.max(640, 500 + lineupBlock.rows * 23)
       : hasGoalScorers ? 580 : 540;
 
     // Background layer. Three cases, in priority order:
@@ -932,6 +937,14 @@ class SocialPostCard {
         ${rosterHtml}
 
         <!-- Footer -->
+        ${pitchCard ? `
+        <div style="margin-top:auto;padding-top:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <img src="/images/sponsors/welovejunk.png" style="height:44px;object-fit:contain;" />
+            <span style="font-size:10px;letter-spacing:0.5px;color:rgba(255,255,255,0.95);text-transform:uppercase;font-weight:700;text-align:left;">Sponsored by<br/>We Love Junk</span>
+          </div>
+          <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE 1893</span>
+        </div>` : `
         <div style="margin-top:auto;padding-top:0;display:flex;align-items:flex-end;justify-content:flex-start;width:100%;">
           <div style="display:flex;flex-direction:column;align-items:flex-start;gap:3px;">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -941,7 +954,7 @@ class SocialPostCard {
             <span style="font-size:11px;letter-spacing:2px;color:#f5d442;text-transform:uppercase;font-weight:700;">LIGHTHOUSE 1893</span>
             ${this.teamTagline ? `<span style="font-size:8px;font-style:italic;letter-spacing:0.5px;color:rgba(255,255,255,0.7);">"${this.escapeHtml(this.teamTagline)}"</span>` : ''}
           </div>
-        </div>
+        </div>`}
 
         </div>
       </div>
@@ -1655,7 +1668,76 @@ class SocialPostCard {
     return upper ? label.toUpperCase() : label;
   }
 
-  buildImageStartersBench() {
+  // rosterData.pitch (game-center.js _buildRosterData): the formation's
+  // rows top-down, each an array of {number, name}, with null standing
+  // for the halfway line. Absent from older callers and from a lineup
+  // with an unplaced starter — both keep the name list.
+  hasPitch() {
+    const pitch = this.rosterData && this.rosterData.pitch;
+    return Array.isArray(pitch) && pitch.some(row => row && row.length);
+  }
+
+  // One-row matchup for the pitch card: crest, name, VS, name, crest,
+  // then date/time/venue on a line of their own.
+  buildImageMatchupCompact(homeName, awayName, dateStr, timeStr, venue, homeLogo, awayLogo) {
+    const formatName = (name) => name.replace(/\bSc$/i, '⚽ Club');
+    const logo = (src) => `<div style="width:46px;height:46px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.12);border-radius:9px;border:1px solid rgba(255,255,255,0.18);padding:3px;box-sizing:border-box;">${this.buildLogoInnerHtml(src)}</div>`;
+    const name = (n, align) => `<div style="flex:1;min-width:0;font-size:13px;font-weight:700;line-height:1.15;text-transform:uppercase;letter-spacing:0.5px;text-align:${align};">${this.escapeHtml(formatName(n))}</div>`;
+    const when = [dateStr && `📅 ${this.escapeHtml(dateStr)}`, timeStr && `⏰ ${this.escapeHtml(timeStr)}`, venue && `📍 ${this.escapeHtml(venue)}`].filter(Boolean).join(' &nbsp; ');
+    return `
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-bottom:6px;">
+        ${logo(homeLogo)}${name(homeName, 'left')}
+        <div style="flex-shrink:0;font-size:15px;font-weight:800;color:#f5d442;letter-spacing:2px;">VS</div>
+        ${name(awayName, 'right')}${logo(awayLogo)}
+      </div>
+      ${when ? `<div style="font-size:12px;line-height:1.3;color:rgba(255,255,255,0.85);margin-bottom:8px;">${when}</div>` : ''}
+    `;
+  }
+
+  // The pitch itself, the same picture Game Center shows under the
+  // Starters & Bench pill (owner, 2026-09-19: that graphic "should be
+  // what goes out to insta... names too small to read. so are numbers of
+  // positions"). Bled to the card's side edges — negative margin over the
+  // card padding — so the full 540 goes to names; sized down one notch
+  // for the five-row shapes so the bench still fits under it.
+  buildImagePitch(bench, crestSrc) {
+    const pitch = this.rosterData.pitch;
+    const tall = pitch.filter(Boolean).length >= 5;
+    const chip = tall ? 34 : 44;
+    // Five across leaves ~100px a name; 16px breaks a long first name mid-word there.
+    const nameSize = tall ? 14 : pitch.some(row => row && row.length >= 5) ? 15 : 16;
+    const token = (t) => `
+      <div style="flex:1 1 0;min-width:0;max-width:128px;display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
+        <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;">${t.name ? this.escapeHtml(t.name) : '—'}</div>
+      </div>`;
+    const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
+    const halfway = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${line}
+        <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;box-sizing:border-box;border:2px solid rgba(255,255,255,0.5);${crestSrc ? 'background:#ffffff;' : ''}display:flex;align-items:center;justify-content:center;">
+          ${crestSrc ? `<img src="${crestSrc}" style="max-width:28px;max-height:28px;object-fit:contain;" />` : ''}
+        </div>
+        ${line}
+      </div>`;
+    const benchHtml = bench.length ? `
+      <div style="margin-top:8px;width:100%;">
+        <span style="font-size:12px;letter-spacing:3px;color:#f5d442;font-weight:700;">BENCH</span>
+        <div style="font-size:14px;font-weight:600;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.escapeHtml(`${p.firstName} ${p.lastName}`.trim())).join(', ')}</div>
+      </div>` : '';
+    return `
+      <div style="flex:1;min-height:0;align-self:stretch;margin:0 -28px;padding:10px 6px;box-sizing:border-box;background:#15803d;border-top:2px solid rgba(255,255,255,0.35);border-bottom:2px solid rgba(255,255,255,0.35);display:flex;flex-direction:column;justify-content:space-between;">
+        ${pitch.map(row => row ? `<div style="display:flex;justify-content:center;align-items:flex-start;gap:6px;">${row.map(token).join('')}</div>` : halfway).join('')}
+      </div>
+      ${benchHtml}
+    `;
+  }
+
+  buildImageStartersBench(crestSrc) {
+    if (this.hasPitch()) {
+      const lineup = this.getZoneLineup();
+      return this.buildImagePitch(lineup ? lineup.bench : [], crestSrc);
+    }
     const lineup = this.getZoneLineup();
     if (!lineup) {
       if (!this.rosterData || !this.rosterData.players || !this.rosterData.selectedIds) return '';
@@ -1666,7 +1748,7 @@ class SocialPostCard {
 
     const section = (title, list) => list.length ? `
       <div style="text-align:left;">
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:3px;color:#f5d442;margin-bottom:6px;font-weight:700;">${title}</div>
+        <div style="font-size:12px;text-transform:uppercase;letter-spacing:3px;color:#f5d442;margin-bottom:6px;font-weight:700;">${title}</div>
         ${list.map(p => this.buildImagePlayerRow(p)).join('')}
       </div>` : '';
 
@@ -1707,10 +1789,10 @@ class SocialPostCard {
   buildImagePostGameLineup() {
     const empty = { html: '', rows: 0 };
 
-    const nameRow = (n) => `<div style="font-size:11px;color:rgba(255,255,255,0.9);line-height:1.6;">${this.escapeHtml(n)}</div>`;
+    const nameRow = (n) => `<div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.95);line-height:1.6;">${this.escapeHtml(n)}</div>`;
     const section = (title, rowsHtml, n) => n ? `
       <div style="text-align:left;">
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">${title}</div>
+        <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">${title}</div>
         ${rowsHtml}
       </div>` : '';
     const split = (startersHtml, nStarters, benchHtml, nBench) => ({
@@ -1743,7 +1825,7 @@ class SocialPostCard {
       return {
         html: `
         <div style="width:100%;text-align:left;margin-bottom:12px;">
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">👥 Squad</div>
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#f5d442;font-weight:700;margin-bottom:5px;">👥 Squad</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px 12px;width:100%;">${rowsHtml}</div>
         </div>`,
         rows: mid + 1,
@@ -1765,7 +1847,7 @@ class SocialPostCard {
   buildImagePlayerRow(p) {
     const jersey = p.jerseyNumber ? `<span style="color:#ffffff;font-weight:700;font-size:0.9em;min-width:24px;display:inline-block;">#${p.jerseyNumber}</span>` : '';
     const gk = p.isKeeper ? ' <span style="font-size:0.7em;background:rgba(255,255,255,0.15);color:#ffffff;padding:0 4px;border-radius:3px;font-weight:700;">GK</span>' : '';
-    return `<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:1px 0;color:rgba(255,255,255,0.9);">${jersey}<span>${this.escapeHtml(p.firstName)} ${this.escapeHtml(p.lastName)}</span>${gk}</div>`;
+    return `<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;line-height:1.3;padding:1px 0;color:rgba(255,255,255,0.95);">${jersey}<span>${this.escapeHtml(p.firstName)} ${this.escapeHtml(p.lastName)}</span>${gk}</div>`;
   }
 
   buildImageRoster() {
@@ -1779,7 +1861,7 @@ class SocialPostCard {
 
     return `
       <div style="height:1px;min-height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:12px auto;"></div>
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:3px;color:#ffffff;margin-bottom:8px;font-weight:700;">SQUAD</div>
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:3px;color:#ffffff;margin-bottom:8px;font-weight:700;">SQUAD</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;text-align:left;width:100%;">
         ${rows}
       </div>
