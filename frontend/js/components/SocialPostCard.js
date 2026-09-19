@@ -480,6 +480,12 @@ class SocialPostCard {
     }
   }
 
+  // The publish button names the post it sends, so a coach flipping
+  // between post types in Game Center always reads what "live" means.
+  postButtonLabel() {
+    return `🚀 Post live — ${this.postTypeLabel || this.postTypeName}`;
+  }
+
   render() {
     const p = this.post;
     const hasContent = p && p.post_id !== null;
@@ -618,7 +624,7 @@ class SocialPostCard {
               <input type="datetime-local" class="spc-schedule-input" value="${isScheduled && p.scheduled_at ? this.toLocalISOString(p.scheduled_at) : ''}" />
               <button class="spc-btn spc-btn-schedule">📅 Schedule</button>
             </div>
-            <button class="spc-btn spc-btn-post">🚀 Post Now</button>
+            <button class="spc-btn spc-btn-post">${this.escapeHtml(this.postButtonLabel())}</button>
           ` : ''}
         </div>
       </div>
@@ -1316,7 +1322,7 @@ class SocialPostCard {
       : `<img src="${this.escapeHtml(url)}" alt="Built preview" style="width:100%; max-width:320px; border-radius:8px; display:block;">`;
     box.innerHTML = `
       <div style="font-size:0.78em; opacity:0.8; margin-bottom:6px;">
-        Built ${isVideo ? 'video' : 'image'} — exactly what Post Now would publish. Nothing has been posted.
+        Built ${isVideo ? 'video' : 'image'} — exactly what Post live would publish. Nothing has been posted.
       </div>
       ${overlayError ? `
         <div style="font-size:0.78em; color:#fca5a5; margin-bottom:6px;">
@@ -2126,7 +2132,7 @@ class SocialPostCard {
       const hasExistingMedia = !!(this.post && this.post.image_url);
       if (!mediaData && !hasExistingMedia) {
         alert('No media generated yet. Please wait a moment and try again.');
-        if (postBtn) { postBtn.disabled = false; postBtn.textContent = '📸 Post Now'; }
+        if (postBtn) { postBtn.disabled = false; postBtn.textContent = this.postButtonLabel(); }
         return;
       }
 
@@ -2180,7 +2186,7 @@ class SocialPostCard {
     } catch (err) {
       alert('Error: ' + err.message);
     } finally {
-      if (postBtn) { postBtn.disabled = false; postBtn.textContent = '📸 Post Now'; }
+      if (postBtn) { postBtn.disabled = false; postBtn.textContent = this.postButtonLabel(); }
     }
   }
 

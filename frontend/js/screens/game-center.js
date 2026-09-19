@@ -172,6 +172,9 @@ const DEFAULT_FIELD_SIZE = 11;
 // as positions.
 const HALFWAY_ROW = Object.freeze([]);
 
+// _socialPick once the coach has collapsed the Instagram section.
+const SOCIAL_CLOSED = 'closed';
+
 // The four moments of a game, in the order they happen — the pill strip
 // across the top of Game Center. `key` is the social_post_types.name the
 // post publishes under, so the pill a coach is looking at IS the post
@@ -270,12 +273,13 @@ class GameCenterScreen extends Screen {
     this.socialCard = null;
     // { post type name → display_name } from /api/social/post-types.
     this.postTypeNames = {};
-    // `${pill}:${open|closed}` of whatever the Instagram section is
+    // The post (or 'none') the Instagram section is
     // currently showing — see _renderSocial for why it matters.
     this._socialMountedFor = null;
-    // Which pills have their Instagram section expanded. Seeded from the
-    // POST_PILLS table, then it's per-visit coach state.
-    this._socialOpen = new Set(POST_PILLS.filter(p => p.social === 'open').map(p => p.key));
+    // The post the Instagram section's own pill strip has picked: a
+    // POST_PILLS key, SOCIAL_CLOSED once the coach collapsed it, or null
+    // while they haven't touched it — see _socialPill().
+    this._socialPick = null;
     // Enriched per-player admin data behind the 20-Man Squad pill's
     // "RSVP & Player Details" overlay — jersey numbers, match RSVP,
     // practice attendance, roster memberships. Coach-only, and a
@@ -698,26 +702,32 @@ class GameCenterScreen extends Screen {
         const next = pillBtn.getAttribute('data-game-pill');
         if (next !== this.pill && POST_PILLS.some(p => p.key === next)) {
           this.pill = next;
+          // An open Instagram section follows the page; a collapsed or
+          // untouched one stays as it is.
+          if (this._socialPick && this._socialPick !== SOCIAL_CLOSED) this._socialPick = next;
           this._syncHash();
           this._render();
         }
         return;
       }
-      // The Instagram section for the active pill. Collapsed sections
-      // never mount their SocialPostCard, so this is also what defers
-      // that component's four API calls until they're wanted.
+      // The Instagram section. Its pill strip flips between the posts
+      // without touching the page above; nothing picked means no
+      // SocialPostCard is mounted, which is also what defers that
+      // component's four API calls until they're wanted.
       if (e.target.closest('#gc-post-insta')) {
-        this._socialOpen.add(this.pill);
+        this._socialPick = this.pill;
         this._render();
         const section = this.find('#gc-social');
         if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
-      const socialToggle = e.target.closest('#gc-social-toggle');
-      if (socialToggle) {
-        if (this._socialOpen.has(this.pill)) this._socialOpen.delete(this.pill);
-        else this._socialOpen.add(this.pill);
-        this._render();
+      const socialPillBtn = e.target.closest('[data-gc-social-pill]');
+      if (socialPillBtn) {
+        const key = socialPillBtn.getAttribute('data-gc-social-pill');
+        if (POST_PILLS.some(p => p.key === key)) {
+          this._socialPick = key === this._socialPill() ? SOCIAL_CLOSED : key;
+          this._render();
+        }
         return;
       }
       if (e.target.closest('#gc-details-open')) { this._openDetails(); return; }
@@ -2609,16 +2619,34 @@ class GameCenterScreen extends Screen {
       </div>`;
   }
 
-  // Owns #gc-social — the collapsible Instagram section for whichever
-  // pill is active. Only the roles that may actually publish get it
-  // (same gate the old deep-link button used).
+  // Which post the Instagram section is previewing, or null for none.
+  // Until the coach picks one down there it opens on the page's pill
+  // for the pills with no live graphic of their own (POST_PILLS.social).
+  _socialPill() {
+    if (this._socialPick === SOCIAL_CLOSED) return null;
+    if (this._socialPick) return this._socialPick;
+    const top = POST_PILLS.find(p => p.key === this.pill);
+    return top && top.social === 'open' ? top.key : null;
+  }
+
+  // Owns #gc-social — the Instagram section. Only the roles that may
+  // actually publish get it (same gate the old deep-link button used).
+  //
+  // It carries its own pill strip (owner, 2026-09-19: "make the
+  // instagram section at bottom pill based. so we can flip through the
+  // diff kind of posts. then have a post live button whose context is
+  // the pill") — one pill per post type, the picked one's SocialPostCard
+  // mounted under it with its own "Post live — <post>" button. Picking
+  // here deliberately does NOT change the page's pill: that would
+  // rebuild everything above and yank the scroll position out from
+  // under a coach who is just flipping through previews.
   //
   // The `_socialMountedFor` guard is what makes this safe to call from
   // every _render(): a coach toggling players upstairs must not lose the
-  // caption they're drafting down here. When the section is unchanged we
+  // caption they're drafting down here. When the pick is unchanged we
   // keep the live card and just hand it fresh rosterData, so the next
   // Regenerate draws the lineup as it stands now — the card is rebuilt
-  // only when the pill or its open/closed state genuinely changes.
+  // only when the picked post genuinely changes.
   _renderSocial(byZone) {
     const host = this.find('#gc-social');
     if (!host) return;
@@ -2630,30 +2658,40 @@ class GameCenterScreen extends Screen {
       return;
     }
 
-    const open = this._socialOpen.has(this.pill);
-    const key = `${this.pill}:${open ? 'open' : 'closed'}`;
+    const picked = this._socialPill();
+    const key = picked || 'none';
     if (key === this._socialMountedFor) {
       if (this.socialCard) this.socialCard.rosterData = this._buildRosterData(byZone);
       return;
     }
     this._socialMountedFor = key;
 
+    const pillsHtml = POST_PILLS.map(p => {
+      const on = p.key === picked;
+      return `
+        <button type="button" data-gc-social-pill="${p.key}" role="tab" aria-selected="${on}"
+                style="flex:1 1 0; min-width:104px; font-size:0.72rem; font-weight:700; line-height:1.25; padding:6px 8px; white-space:nowrap;
+                       border-radius:8px; cursor:pointer; color:#fff; border:2px solid ${on ? p.accent : '#475569'};
+                       background:${on ? p.accent : '#0f172a'};">
+          ${p.icon} ${this.escapeHtml(this._pillTitle(p.key))}
+        </button>`;
+    }).join('');
+
     host.innerHTML = `
       <div style="margin-top: var(--space-4); border-top:1px solid var(--border-color); padding-top:10px;">
-        <button type="button" id="gc-social-toggle" class="btn btn-secondary"
-                style="width:100%; text-align:left; font-size:0.78rem; padding:6px 10px;">
-          ${open ? '▾' : '▸'} 📸 Instagram — ${this.escapeHtml(this._pillTitle(this.pill))}
-        </button>
+        <div style="font-size:0.8rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8; margin-bottom:6px;">📸 Instagram posts</div>
+        <div role="tablist" aria-label="Instagram post" style="display:flex; gap:6px; overflow-x:auto;">${pillsHtml}</div>
+        ${picked ? '' : '<div style="font-size:0.75rem; opacity:0.7; margin-top:8px;">Pick a post to preview it and post it live.</div>'}
         <div id="gc-social-mount" style="margin-top:10px;"></div>
       </div>`;
 
     this.socialCard = null;
-    if (!open || !this.matchId || !this.teamId) return;
+    if (!picked || !this.matchId || !this.teamId) return;
 
     const mount = this.find('#gc-social-mount');
     if (!mount) return;
     const card = new SocialPostCard(this.auth);
-    card.init(mount, this.matchId, this.teamId, this.pill, this.matchDetails || {}, this._buildRosterData(byZone));
+    card.init(mount, this.matchId, this.teamId, picked, this.matchDetails || {}, this._buildRosterData(byZone));
     this.socialCard = card;
   }
 

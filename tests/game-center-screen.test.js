@@ -161,7 +161,7 @@ test('every pill renders for a coach, with the strip intact', () => {
     const html = screen.element.innerHTML;
     assert.equal((html.match(/data-game-pill=/g) || []).length, 4, `${pill}: all four pills present`);
     assert.match(html, new RegExp(`data-game-pill="${pill}"\\s+class="btn btn-primary`), `${pill}: active`);
-    assert.ok(html.includes('gc-social-toggle'), `${pill}: coach gets the post section`);
+    assert.ok(html.includes('data-gc-social-pill='), `${pill}: coach gets the post section`);
     assert.equal(sandbox.SOCIAL_INITS.length > 0, OPENS_BY_DEFAULT.has(pill), `${pill}: default open state`);
   }
 });
@@ -171,7 +171,7 @@ test('each pill publishes as its own post type, for this match and team', () => 
   for (const pill of PILLS) {
     sandbox.SOCIAL_INITS.length = 0;
     screen.pill = pill;
-    screen._socialOpen.add(pill);
+    screen._socialPick = pill;
     screen._render();
     const init = sandbox.SOCIAL_INITS[0];
     assert.ok(init, `${pill}: mounted`);
@@ -184,7 +184,7 @@ test('each pill publishes as its own post type, for this match and team', () => 
 test('the post card is fed from the screen\'s own live zones', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
   screen.pill = 'starters_bench';
-  screen._socialOpen.add('starters_bench');
+  screen._socialPick = 'starters_bench';
   screen._render();
 
   const { players, selectedIds, zones } = sandbox.SOCIAL_INITS[0].rosterData;
@@ -205,7 +205,7 @@ test('a multi-word surname keeps its first name intact', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
   screen.zones.set(3, 'starter'); // Juan de la Cruz
   screen.pill = 'starters_bench';
-  screen._socialOpen.add('starters_bench');
+  screen._socialPick = 'starters_bench';
   screen._render();
   const juan = sandbox.SOCIAL_INITS[0].rosterData.players.find(p => p.lastName === 'de la Cruz');
   assert.equal(juan.firstName, 'Juan');
@@ -214,7 +214,7 @@ test('a multi-word surname keeps its first name intact', () => {
 test('re-rendering keeps the live card but refreshes its lineup', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
   screen.pill = 'starters_bench';
-  screen._socialOpen.add('starters_bench');
+  screen._socialPick = 'starters_bench';
   screen._render();
   const card = screen.socialCard;
   assert.equal(card.rosterData.players.length, 3);
@@ -232,12 +232,15 @@ test('re-rendering keeps the live card but refreshes its lineup', () => {
 test('switching pills does rebuild the card', () => {
   const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
   screen.pill = 'starters_bench';
-  screen._socialOpen.add('starters_bench');
+  screen._socialPick = 'starters_bench';
   screen._render();
   sandbox.SOCIAL_INITS.length = 0;
 
-  screen.pill = 'post_game';
+  // The Instagram section's own pill strip picks the post; the page's
+  // pill stays where it was.
+  screen._socialPick = 'post_game';
   screen._render();
+  assert.equal(screen.pill, 'starters_bench');
   assert.equal(sandbox.SOCIAL_INITS.length, 1);
   assert.equal(sandbox.SOCIAL_INITS[0].postTypeName, 'post_game');
 });
@@ -261,7 +264,7 @@ test('a player gets no publish controls and no editor on any pill', () => {
     screen.pill = pill;
     assert.doesNotThrow(() => screen._render(), `${pill} threw`);
     const html = screen.element.innerHTML;
-    assert.ok(!html.includes('gc-social-toggle'), `${pill}: no post section`);
+    assert.ok(!html.includes('data-gc-social-pill='), `${pill}: no post section`);
     assert.ok(!html.includes('data-lineup-position-btn'), `${pill}: no position pills`);
     assert.equal(sandbox.SOCIAL_INITS.length, 0, `${pill}: no post card`);
   }
@@ -272,7 +275,7 @@ test('an admin using "view as <player>" is treated as a player', () => {
   screen.auth.viewAsPersonId = 42;
   screen.pill = 'starters_bench';
   screen._render();
-  assert.ok(!screen.element.innerHTML.includes('gc-social-toggle'));
+  assert.ok(!screen.element.innerHTML.includes('data-gc-social-pill='));
 });
 
 test('deep links resolve to the right pill', () => {
