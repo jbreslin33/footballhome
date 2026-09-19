@@ -280,6 +280,9 @@ class GameCenterScreen extends Screen {
     // POST_PILLS key, SOCIAL_CLOSED once the coach collapsed it, or null
     // while they haven't touched it — see _socialPill().
     this._socialPick = null;
+    // { post type name → {status, scheduled_at} } for this match's posts,
+    // behind the ✅/📅 marks on the Instagram pills (_loadPostStates).
+    this.postStates = {};
     // Enriched per-player admin data behind the 20-Man Squad pill's
     // "RSVP & Player Details" overlay — jersey numbers, match RSVP,
     // practice attendance, roster memberships. Coach-only, and a
@@ -924,6 +927,7 @@ class GameCenterScreen extends Screen {
       this.matchDetails = (matchData && matchData.success) ? matchData.data : null;
 
       this.teamId  = lineupData.data.teamId || null;
+      this._loadPostStates();
       this.fieldSize = FIELD_SIZES[lineupData.data.fieldSize] ? Number(lineupData.data.fieldSize) : DEFAULT_FIELD_SIZE;
       this.formation = this._fieldSpec().defaultFormation;
       this.matchStartsAt = lineupData.data.matchStartsAt || null;
@@ -2666,21 +2670,10 @@ class GameCenterScreen extends Screen {
     }
     this._socialMountedFor = key;
 
-    const pillsHtml = POST_PILLS.map(p => {
-      const on = p.key === picked;
-      return `
-        <button type="button" data-gc-social-pill="${p.key}" role="tab" aria-selected="${on}"
-                style="flex:1 1 0; min-width:104px; font-size:0.72rem; font-weight:700; line-height:1.25; padding:6px 8px; white-space:nowrap;
-                       border-radius:8px; cursor:pointer; color:#fff; border:2px solid ${on ? p.accent : '#475569'};
-                       background:${on ? p.accent : '#0f172a'};">
-          ${p.icon} ${this.escapeHtml(this._pillTitle(p.key))}
-        </button>`;
-    }).join('');
-
     host.innerHTML = `
       <div style="margin-top: var(--space-4); border-top:1px solid var(--border-color); padding-top:10px;">
         <div style="font-size:0.8rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8; margin-bottom:6px;">📸 Instagram posts</div>
-        <div role="tablist" aria-label="Instagram post" style="display:flex; gap:6px; overflow-x:auto;">${pillsHtml}</div>
+        <div id="gc-social-pills" role="tablist" aria-label="Instagram post" style="display:flex; gap:6px; overflow-x:auto;">${this._socialPillsHtml()}</div>
         ${picked ? '' : '<div style="font-size:0.75rem; opacity:0.7; margin-top:8px;">Pick a post to preview it and post it live.</div>'}
         <div id="gc-social-mount" style="margin-top:10px;"></div>
       </div>`;
@@ -2691,8 +2684,69 @@ class GameCenterScreen extends Screen {
     const mount = this.find('#gc-social-mount');
     if (!mount) return;
     const card = new SocialPostCard(this.auth);
+    // The card re-renders after every save, schedule and publish, so its
+    // own post row is the freshest status there is for that pill.
+    card.onPostState = (type, post) => {
+      this.postStates[type] = post ? { status: post.status, scheduled_at: post.scheduled_at } : null;
+      this._paintSocialPills();
+    };
     card.init(mount, this.matchId, this.teamId, picked, this.matchDetails || {}, this._buildRosterData(byZone));
     this.socialCard = card;
+  }
+
+  // The Instagram section's pill strip. Each pill carries what has
+  // already gone out for this game — "✅ Posted" or "📅 <when>" — so a
+  // coach sees at a glance which posts are still owed. Drafts get no
+  // mark: opening a pill creates one, so it would say nothing.
+  _socialPillsHtml() {
+    const picked = this._socialPill();
+    return POST_PILLS.map(p => {
+      const on = p.key === picked;
+      const state = this.postStates[p.key];
+      let mark = '';
+      if (state && state.status === 'posted') mark = '✅ Posted';
+      else if (state && state.status === 'scheduled') {
+        const d = state.scheduled_at ? new Date(state.scheduled_at) : null;
+        mark = d && !isNaN(d)
+          ? `📅 ${d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+          : '📅 Scheduled';
+      }
+      return `
+        <button type="button" data-gc-social-pill="${p.key}" role="tab" aria-selected="${on}"
+                style="flex:1 1 0; min-width:104px; font-size:0.72rem; font-weight:700; line-height:1.25; padding:6px 8px; white-space:nowrap;
+                       border-radius:8px; cursor:pointer; color:#fff; border:2px solid ${on ? p.accent : '#475569'};
+                       background:${on ? p.accent : '#0f172a'};">
+          ${p.icon} ${this.escapeHtml(this._pillTitle(p.key))}
+          ${mark ? `<br><span data-gc-social-mark style="font-size:0.64rem; font-weight:600; opacity:0.95;">${this.escapeHtml(mark)}</span>` : ''}
+        </button>`;
+    }).join('');
+  }
+
+  // Just the strip — never the card under it, which holds a caption the
+  // coach may be typing.
+  _paintSocialPills() {
+    const strip = this.find('#gc-social-pills');
+    if (strip) strip.innerHTML = this._socialPillsHtml();
+  }
+
+  // One read of this match's posts for the marks above. Fire-and-forget:
+  // the strip paints without marks until it lands, and a failure just
+  // leaves them off.
+  async _loadPostStates() {
+    this.postStates = {};
+    if (!this._canPostSocial() || !this.matchId || !this.teamId) return;
+    const matchId = this.matchId;
+    try {
+      const res = await this.auth.fetch(`/api/social/match/${matchId}/team/${this.teamId}`);
+      const data = await res.json();
+      if (matchId !== this.matchId || !data || !data.success) return;
+      for (const post of (data.data || [])) {
+        if (post && post.post_type) this.postStates[post.post_type] = { status: post.status, scheduled_at: post.scheduled_at };
+      }
+      this._paintSocialPills();
+    } catch (err) {
+      console.warn('[game-center] post states failed:', err);
+    }
   }
 
   // The lineup the post draws from — built from THIS screen's live zones

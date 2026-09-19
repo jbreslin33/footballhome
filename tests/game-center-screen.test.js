@@ -443,3 +443,18 @@ test('a player never gets the overlay data fetched or rendered', () => {
   screen._render();
   assert.ok(!screen.element.innerHTML.includes('gc-details-open'));
 });
+
+test('Instagram pills mark what is already posted or scheduled', () => {
+  const { screen } = mountScreen({ isCoach: true, role: 'club' });
+  screen.postStates = {
+    game_day: { status: 'posted' },
+    lineup: { status: 'scheduled', scheduled_at: '2026-09-20T14:00:00' },
+    starters_bench: { status: 'draft' },
+  };
+  screen._render();
+  screen._paintSocialPills();
+  const html = screen.element.innerHTML;
+  assert.equal((html.match(/data-gc-social-mark/g) || []).length, 2, 'drafts carry no mark');
+  assert.ok(html.includes('✅ Posted'));
+  assert.ok(html.includes('📅 Sep 20'));
+});

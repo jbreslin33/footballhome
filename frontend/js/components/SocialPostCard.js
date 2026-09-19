@@ -488,6 +488,7 @@ class SocialPostCard {
 
   render() {
     const p = this.post;
+    if (this.onPostState) this.onPostState(this.postTypeName, p);
     const hasContent = p && p.post_id !== null;
     const isPosted = p && p.status === 'posted';
     const isScheduled = p && p.status === 'scheduled';
