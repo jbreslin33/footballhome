@@ -231,27 +231,34 @@ test('switching pills does rebuild the card', () => {
   screen._render();
   sandbox.SOCIAL_INITS.length = 0;
 
-  // Picking another post swaps the card under the lineup; the top of
-  // the page stays the Starters & Bench workspace.
+  // Picking another pill swaps both the card up top and, while the
+  // publish panel is open, the post it publishes.
   screen.pill = 'post_game'; screen._bottomOpen = true;
   screen._render();
-  assert.equal(screen._cardSlots.top.card.postTypeName, 'starters_bench');
+  assert.equal(screen._cardSlots.top.card.postTypeName, 'post_game');
   assert.equal(sandbox.SOCIAL_INITS.length, 1);
   assert.equal(sandbox.SOCIAL_INITS[0].postTypeName, 'post_game');
 });
 
-test('the graphic at the top is always the Starters & Bench post card', () => {
+test('the one graphic on the page is the active pill\'s post card', () => {
   // One drawing: SocialPostCard builds it, the page shows it live, the
   // Instagram image is a capture of it. No second hand-built header.
   const { screen } = mountScreen({ isCoach: true, role: 'club' });
   for (const pill of PILLS) {
     screen.pill = pill;
-    screen._bottomOpen = true;
     screen._render();
-    assert.equal((screen.element.innerHTML.match(/data-gc-card="top"/g) || []).length, 1, `${pill}: one top card`);
-    assert.equal(screen._cardSlots.top.card.postTypeName, 'starters_bench');
+    assert.equal((screen.element.innerHTML.match(/data-gc-card=/g) || []).length, 1, `${pill}: one card`);
+    assert.equal(screen._cardSlots.top.card.postTypeName, pill);
     assert.equal(screen._cardSlots.top.card.matchId, 3533);
   }
+});
+
+test('the lineup editor only sits under the two posts drawn from it', () => {
+  const { screen } = mountScreen({ isCoach: true, role: 'club' });
+  const hasEditor = pill => { screen.pill = pill; screen._render(); return screen.element.innerHTML.includes('data-lineup-position-btn'); };
+  assert.equal(hasEditor('starters_bench'), true);
+  assert.equal(hasEditor('game_day'), false);
+  assert.equal(hasEditor('post_game'), false);
 });
 
 test('only the coach\'s live card carries tap-to-remove; the post never does', () => {
@@ -273,8 +280,8 @@ test('a player can read every post but gets no publish controls and no editor', 
     screen._bottomOpen = true;
     assert.doesNotThrow(() => screen._render(), `${pill} threw`);
     const html = screen.element.innerHTML;
-    assert.ok(html.includes('data-gc-card="view"'), `${pill}: shown as a live card`);
-    assert.equal(screen._cardSlots.view.card.postTypeName, pill);
+    assert.equal((html.match(/data-gc-social-pill=/g) || []).length, 4, `${pill}: the pills are there`);
+    assert.equal(screen._cardSlots.top.card.postTypeName, pill, `${pill}: shown as the live card`);
     assert.ok(!html.includes('gc-post-insta'), `${pill}: no post button`);
     assert.ok(!html.includes('data-lineup-position-btn'), `${pill}: no position pills`);
     assert.ok(!html.includes('gc-score-') && !html.includes('gc-details-open'), `${pill}: no coach tools`);

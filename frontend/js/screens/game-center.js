@@ -204,13 +204,6 @@ const POST_PILLS = [
 // works in, and it's the team sheet a player opens the page to read.
 const DEFAULT_PILL = 'starters_bench';
 
-// The top of the page is always this post's card plus the lineup editor
-// (owner, 2026-09-19: "the top i think only needs to be starters and
-// bench... we can derive full up to 20 person from the starters/bench").
-// The other posts, and the tools that feed them, live under the pills
-// at the foot of the page.
-const TOP_PILL = 'starters_bench';
-
 class GameCenterScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -281,9 +274,7 @@ class GameCenterScreen extends Screen {
     // The post (or 'none') the Instagram section is
     // currently showing — see _renderSocial for why it matters.
     this._socialMountedFor = null;
-    // this.pill is the post picked in the section under the lineup
-    // (_renderSocial); this is whether that section is showing it. The top
-    // of the page is always the Starters & Bench workspace.
+    // Whether the publish panel (_renderSocial) is open under the card.
     this._bottomOpen = false;
     // { post type name → {status, scheduled_at} } for this match's posts,
     // behind the ✅/📅 marks on the Instagram pills (_loadPostStates).
@@ -345,10 +336,9 @@ class GameCenterScreen extends Screen {
       </div>`;
   }
 
-  // Two places show a live card: 'top' (always Starters & Bench) and
-  // 'view' (the post picked under the lineup, for someone who cannot
-  // publish and so gets no SocialPostCard there). Each keeps its own
-  // builder, last markup, build sequence, beam and resize observer.
+  // State behind a live card host — builder, last markup, build
+  // sequence, beam and resize observer. Only 'top' exists today; keyed
+  // so a second host never needs new plumbing.
   _cardSlot(slot) {
     this._cardSlots = this._cardSlots || {};
     return this._cardSlots[slot] || (this._cardSlots[slot] = { card: null, built: null, seq: 0, stopBeam: null, resizeObs: null });
@@ -432,18 +422,16 @@ class GameCenterScreen extends Screen {
     }
   }
 
-  // "Post to Instagram", straight under the graphic it publishes (owner,
-  // 2026-09-19: "can we put insta post button on there"). The Instagram
-  // section itself sits at the foot of the page — below the whole roster
-  // on Starters & Bench — where its small toggle went unseen; this opens
-  // that section for the active pill and scrolls to it. Same gate as the
-  // section, so a player never sees it.
+  // "Post to Instagram", straight under the card it publishes. Opens the
+  // publish panel (#gc-social) for the active pill right there — caption,
+  // photo/video, schedule, "Post live". Only the roles that may publish
+  // see it, so a player just gets the pills and the card.
   _postButtonHtml() {
     if (!this._canPostSocial() || !this.matchId || !this.teamId) return '';
     return `
-      <div style="max-width:480px; margin:0 auto 12px;">
-        <button type="button" id="gc-post-insta" class="btn btn-primary" style="width:100%; font-weight:700; padding:10px 12px;">
-          📸 Post to Instagram — ${this.escapeHtml(this._pillTitle(TOP_PILL))}
+      <div style="max-width:540px; margin:12px auto;">
+        <button type="button" id="gc-post-insta" class="btn ${this._bottomOpen ? 'btn-secondary' : 'btn-primary'}" style="width:100%; font-weight:700; padding:10px 12px;">
+          ${this._bottomOpen ? '▾ Hide' : '📸 Post to Instagram —'} ${this.escapeHtml(this._pillTitle(this.pill))}${this._bottomOpen ? ' post' : ''}
         </button>
       </div>`;
   }
@@ -464,16 +452,18 @@ class GameCenterScreen extends Screen {
         <div id="gc-game-switch" role="tablist" aria-label="Switch game" hidden
              style="flex:1 0 100%; min-width:0; display:flex; gap:6px; overflow-x:auto;"></div>
       </div>
-      <div id="gl-body" style="padding: var(--space-3) var(--space-4) 0;"></div>
-      <!-- The Instagram section lives OUTSIDE #gl-body on purpose.
-           _render() rewrites #gl-body wholesale on every zone toggle,
-           and the SocialPostCard mounted in here holds live state a
-           coach has invested in — a typed caption, a generated image,
-           a chosen schedule time. Re-creating it on each tap would
-           throw that away and re-fire its four API calls. _renderSocial
-           owns this node instead and only rebuilds it when the pill or
-           its open/closed state actually changes. -->
-      <div id="gc-social" style="padding: 0 var(--space-4) var(--space-6);"></div>
+      <!-- Three stacked regions. #gl-head (pills, the card, that post's
+           tools, the Post button) and #gl-body (lineup editor) are
+           rewritten wholesale by _render() on every zone toggle.
+           #gc-social between them is NOT: the SocialPostCard mounted in
+           it holds live state a coach has invested in — a typed caption,
+           a generated image, a chosen schedule time. Re-creating it on
+           each tap would throw that away and re-fire its four API calls.
+           _renderSocial owns that node and only rebuilds it when the
+           post or its open/closed state actually changes. -->
+      <div id="gl-head" style="padding: var(--space-3) var(--space-4) 0;"></div>
+      <div id="gc-social" style="padding: 0 var(--space-4);"></div>
+      <div id="gl-body" style="padding: 0 var(--space-4) var(--space-6);"></div>
 
       <!-- RSVP & Player Details, moved here from #game-day-roster.
            Also outside #gl-body: it's a modal, and _render() must not
@@ -557,12 +547,7 @@ class GameCenterScreen extends Screen {
     this.loaded = false;
     this.viewMode = 'coach';
     this.pill    = this._resolvePill(params);
-    // A link that names a post (…/post_game) opens on it; a bare one
-    // opens on the lineup alone.
-    this._bottomOpen = !!(params.postType && params.postType !== DEFAULT_PILL) || params.mode === 'gameday';
-    // …and that post is the reason for the visit, so the first paint
-    // brings it into view rather than leaving it under the whole roster.
-    this._scrollToPost = this._bottomOpen;
+    this._bottomOpen = false; // publish panel starts closed
     this.announceEditing = false;
     this._scoreMsg = '';
     this._detailsMsg = '';
@@ -665,22 +650,19 @@ class GameCenterScreen extends Screen {
       // SocialPostCard is mounted, which is also what defers that
       // component's four API calls until they're wanted.
       if (e.target.closest('#gc-post-insta')) {
-        this.pill = TOP_PILL;
-        this._bottomOpen = true;
-        this._syncHash();
+        this._bottomOpen = !this._bottomOpen;
         this._render();
-        const section = this.find('#gc-social');
-        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
       const socialPillBtn = e.target.closest('[data-gc-social-pill]');
       if (socialPillBtn) {
         const key = socialPillBtn.getAttribute('data-gc-social-pill');
         if (POST_PILLS.some(p => p.key === key)) {
-          this._bottomOpen = !(this._bottomOpen && key === this.pill);
-          this.pill = key;
-          this._syncHash();
-          this._render();
+          if (key !== this.pill) {
+            this.pill = key;
+            this._syncHash();
+            this._render();
+          }
         }
         return;
       }
@@ -1273,8 +1255,16 @@ class GameCenterScreen extends Screen {
 
   _render() {
     const box = this.find('#gl-body');
-    if (!box) return;
+    const head = this.find('#gl-head');
+    if (!box || !head) return;
 
+    if (this.error || (!this.matchId && this.games) || !this.loaded) {
+      head.innerHTML = '';
+      const social = this.find('#gc-social');
+      if (social) social.innerHTML = '';
+      this._socialMountedFor = null;
+      this.socialCard = null;
+    }
     if (this.error) {
       box.innerHTML = `<div class="empty-state" style="padding: var(--space-4); text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`;
       return;
@@ -1328,17 +1318,30 @@ class GameCenterScreen extends Screen {
          </div>`
       : '';
 
-    // One assignment point, so the section under the lineup and the
-    // card mounts are wired in exactly one place.
+    // One assignment point for every pill, so the card mount and the
+    // publish panel are wired in exactly one place. Everything is up top
+    // (owner, 2026-09-19: "is there any reason to have a separate
+    // instagram section? why cant we just have it all up top?"): pills
+    // flip the one card, that post's tools and Post button sit right
+    // under it, and the lineup editor follows.
     const paint = (bodyHtml) => {
-      box.innerHTML = viewToggleHtml + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
-        + this._renderCard('top', TOP_PILL) + this._postButtonHtml() + bodyHtml;
+      head.innerHTML = `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+        + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
+        + this._renderCard('top', this.pill) + this._pillToolsHtml(this.pill, byZone) + this._postButtonHtml();
+      box.innerHTML = bodyHtml;
       this._renderSocial(byZone);
-      this._mountCard('top', TOP_PILL, byZone);
+      this._mountCard('top', this.pill, byZone);
     };
 
+    // The lineup editor belongs to the two posts drawn from it; the
+    // announcement and the result have their own tools and nothing else.
+    if (this.pill !== 'starters_bench' && this.pill !== 'lineup') {
+      paint('');
+      return;
+    }
+
     if (effectiveIsPlayerView) {
-      paint(this._renderPlayerNotes(byZone));
+      paint(viewToggleHtml + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
       return;
     }
 
@@ -1650,7 +1653,7 @@ class GameCenterScreen extends Screen {
     // their practice tally and RSVP pill with them — exactly the numbers a
     // coach weighs when deciding who starts.  Every rostered player is now
     // in exactly one card section, whatever their zone.
-    paint(lineupControlsHtml + (this.isCoach ? squadBar : '') + [
+    paint(viewToggleHtml + lineupControlsHtml + (this.isCoach ? squadBar : '') + [
       this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
         // In formation order (1 = keeper …), same numbers as the pills.
         const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
@@ -2498,74 +2501,41 @@ class GameCenterScreen extends Screen {
     return ok;
   }
 
-  // Which post the section under the lineup is showing, or null.
-  _socialPill() {
-    return this._bottomOpen ? this.pill : null;
-  }
-
-  // Owns #gc-social — the section under the lineup, one pill per post
-  // (owner, 2026-09-19: "the bottom should be all instagram pills"). The
-  // picked pill shows, top to bottom:
-  //   * the tools that feed that post — game details under Game
-  //     Announcement, RSVP & Player Details under 20-Man Squad, score
-  //     entry under Match Result. Repainted on every _render(), like the
-  //     body they used to live in.
-  //   * the post itself: a SocialPostCard with its "Post live" button
-  //     for the roles that may publish, the same card shown live for
-  //     everyone else — a player still reads the announcement and the
-  //     result here, they just cannot post them.
-  //
-  // Picking a pill never touches the lineup above, so flipping through
-  // posts does not move the page under the coach's thumb.
+  // Owns #gc-social — the publish panel under the card: the active
+  // pill's SocialPostCard with its caption, media, schedule and "Post
+  // live — <post>" button. Only for the roles that may publish, and only
+  // while the Post button has it open, which is also what defers that
+  // component's four API calls until they're wanted.
   //
   // The `_socialMountedFor` guard is what makes this safe to call from
-  // every _render(): a coach toggling players upstairs must not lose the
-  // caption they're drafting down here. When the pick is unchanged we
-  // keep the live SocialPostCard and just hand it fresh rosterData, so
-  // the next Regenerate draws the lineup as it stands now.
+  // every _render(): a coach toggling players must not lose the caption
+  // they're drafting. While the post is unchanged we keep the live card
+  // and just hand it fresh rosterData, so the next Regenerate draws the
+  // lineup as it stands now.
   _renderSocial(byZone) {
     const host = this.find('#gc-social');
     if (!host) return;
 
-    const canPost = this._canPostSocial();
-    const picked = this._socialPill();
-    const key = `${picked || 'none'}:${canPost ? 'post' : 'view'}`;
-    if (key !== this._socialMountedFor) {
-      this._socialMountedFor = key;
-      this.socialCard = null;
-      host.innerHTML = `
-        <div style="margin-top: var(--space-4); border-top:1px solid var(--border-color); padding-top:10px;">
-          <div style="font-size:0.8rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8; margin-bottom:6px;">${canPost ? '📸 Instagram posts' : '🏟️ This game'}</div>
-          <div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; overflow-x:auto;">${this._socialPillsHtml()}</div>
-          ${picked || !canPost ? '' : '<div style="font-size:0.75rem; opacity:0.7; margin-top:8px;">Pick a post to preview it and post it live.</div>'}
-          <div id="gc-social-tools"></div>
-          <div id="gc-social-mount" style="margin-top:10px;"></div>
-        </div>`;
-      if (picked && canPost && this.matchId && this.teamId) {
-        const card = new SocialPostCard(this.auth);
-        // The card re-renders after every save, schedule and publish, so
-        // its own post row is the freshest status there is for that pill.
-        card.onPostState = (type, post) => {
-          this.postStates[type] = post ? { status: post.status, scheduled_at: post.scheduled_at } : null;
-          this._paintSocialPills();
-        };
-        card.init(this.find('#gc-social-mount'), this.matchId, this.teamId, picked, this.matchDetails || {}, this._buildRosterData(byZone));
-        this.socialCard = card;
-      } else if (picked && !canPost) {
-        this.find('#gc-social-mount').innerHTML = this._renderCard('view', picked);
-      }
-    } else if (this.socialCard) {
-      this.socialCard.rosterData = this._buildRosterData(byZone);
+    const open = this._bottomOpen && this._canPostSocial() && this.matchId && this.teamId;
+    const key = open ? this.pill : 'none';
+    if (key === this._socialMountedFor) {
+      if (this.socialCard) this.socialCard.rosterData = this._buildRosterData(byZone);
+      return;
     }
+    this._socialMountedFor = key;
+    this.socialCard = null;
+    host.innerHTML = open ? '<div id="gc-social-mount" style="max-width:540px; margin:0 auto 12px;"></div>' : '';
+    if (!open) return;
 
-    if (this._scrollToPost) {
-      this._scrollToPost = false;
-      if (host.scrollIntoView) host.scrollIntoView({ block: 'start' });
-    }
-
-    const tools = this.find('#gc-social-tools');
-    if (tools) tools.innerHTML = picked ? this._pillToolsHtml(picked, byZone) : '';
-    if (picked && !canPost) this._mountCard('view', picked, byZone);
+    const card = new SocialPostCard(this.auth);
+    // The card re-renders after every save, schedule and publish, so its
+    // own post row is the freshest status there is for that pill.
+    card.onPostState = (type, post) => {
+      this.postStates[type] = post ? { status: post.status, scheduled_at: post.scheduled_at } : null;
+      this._paintSocialPills();
+    };
+    card.init(this.find('#gc-social-mount'), this.matchId, this.teamId, this.pill, this.matchDetails || {}, this._buildRosterData(byZone));
+    this.socialCard = card;
   }
 
   // The coach tools behind each post. Each renderer gates itself on
@@ -2583,7 +2553,7 @@ class GameCenterScreen extends Screen {
                   style="font-size:0.75rem; padding:4px 10px;">👥 RSVP &amp; Player Details</button>
         </div>`;
     }
-    return html ? `<div style="margin-top:10px;">${html}</div>` : '';
+    return html ? `<div style="max-width:540px; margin:10px auto 0;">${html}</div>` : '';
   }
 
   // The Instagram section's pill strip. Each pill carries what has
@@ -2591,7 +2561,7 @@ class GameCenterScreen extends Screen {
   // coach sees at a glance which posts are still owed. Drafts get no
   // mark: opening a pill creates one, so it would say nothing.
   _socialPillsHtml() {
-    const picked = this._socialPill();
+    const picked = this.pill;
     return POST_PILLS.map(p => {
       const on = p.key === picked;
       const state = this.postStates[p.key];

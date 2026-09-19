@@ -217,14 +217,33 @@ class SocialPostCard {
     return (window.LighthouseBeam && window.LighthouseBeam.BEAM_ROTATION_SECONDS) || 15;
   }
 
+  // A team crest, or — for a team we hold no logo for, or one whose logo
+  // fails to load — the league's crest rather than a generic soccer ball
+  // (owner, 2026-09-19: "don't default teams with no logo to soccer ball
+  // lol use league logo for them"). The ball is only what is left when
+  // the match has no league crest either.
   buildLogoInnerHtml(url, fallback = '⚽') {
-    const resolvedUrl = this.resolveAssetUrl(url);
-    if (!resolvedUrl) {
-      return `<span style="font-size:2em;">${fallback}</span>`;
-    }
+    // The CORS proxy is html2canvas's problem and needs a Bearer token a
+    // plain <img> cannot send, so the live card (buildCardHtml live:true)
+    // points straight at the logo's own host. Routing it through the
+    // proxy is what showed a ball for Oaklyn on the page while the
+    // captured image had the crest.
+    const resolvedUrl = this._liveLogos ? String(url || '').trim() : this.resolveAssetUrl(url);
+    const crest = window.LeagueCrest ? window.LeagueCrest.resolve(this.matchContext || {}) : null;
+    const crestSrc = crest && crest.src ? this.escapeHtml(crest.src) : '';
+    const ballHtml = `<span style=&quot;font-size:2em;&quot;>${fallback}</span>`;
+    const crestStyle = 'max-width:100%;max-height:100%;object-fit:contain;background:#ffffff;border-radius:8px;padding:4px;box-sizing:border-box;';
+    const toBall = `this.onerror=null;this.outerHTML='${ballHtml}'`;
 
-    const fallbackHtml = `<span style=&quot;font-size:2em;&quot;>${fallback}</span>`;
-    return `<img src="${this.escapeHtml(resolvedUrl)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;" onerror="this.onerror=null;this.outerHTML='${fallbackHtml}'">`;
+    if (!resolvedUrl) {
+      return crestSrc
+        ? `<img src="${crestSrc}" alt="" style="${crestStyle}" onerror="${toBall}">`
+        : `<span style="font-size:2em;">${fallback}</span>`;
+    }
+    const onError = crestSrc
+      ? `if(!this.dataset.fellBack){this.dataset.fellBack=1;this.style.cssText='${crestStyle}';this.src='${crestSrc}';}else{${toBall}}`
+      : toBall;
+    return `<img src="${this.escapeHtml(resolvedUrl)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;" onerror="${onError}">`;
   }
 
   init(container, matchId, teamId, postTypeName, matchContext, rosterData) {
@@ -418,7 +437,10 @@ class SocialPostCard {
     // matches — no APSL/CASA default there.
     const league = (m.league_tag && m.league_tag.trim()) || m.competition_name || (m.source_name ? 'APSL' : '');
     const isCASA = /casa/i.test(league);
-    const leagueTag = league ? (isCASA ? '#CASA' : '#APSL') : '';
+    // Only a league we recognise gets its hashtag — this used to fall
+    // through to #APSL for anything that wasn't CASA, the women's Tri
+    // County games included.
+    const leagueTag = isCASA ? '#CASA' : /apsl/i.test(league) ? '#APSL' : '';
     const leagueLine = league ? `\n${league} ⚽` : '';
 
     switch (this.postTypeName) {
@@ -700,6 +722,7 @@ class SocialPostCard {
   // authenticated blob round trip and a player with no admin token still
   // gets logos.
   async buildCardHtml({ overlayOnly = false, live = false } = {}) {
+    this._liveLogos = live;
     const m = this.matchContext;
     const homeName = this.titleCase(m.home_team_name || m.homeTeam || 'Home');
     let awayName = this.titleCase(m.away_team_name || m.awayTeam || '');
