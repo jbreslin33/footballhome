@@ -48,7 +48,7 @@ class RsvpBoardScreen extends Screen {
   static get WINDOWS()  { return { week: 'This week', '2w': 'Last 2 weeks', month: 'Last month', all: 'All time' }; }
   static get KINDS()    { return { all: 'All events', games: 'Games only', practices: 'Practices only' }; }
   static get SORTS() {
-    return { worst: 'Worst RSVP %', open: 'Most unanswered now', quiet: 'Longest since last RSVP', name: 'Name' };
+    return { worst: 'Worst RSVP %', open: 'Most unanswered now', quiet: 'Longest since last RSVP', nagged: 'Most reminders needed', name: 'Name' };
   }
 
   render() {
@@ -251,6 +251,7 @@ class RsvpBoardScreen extends Screen {
                        || (b.open_events.length - a.open_events.length) || byName(a, b),
       open:  (a, b) => (b.open_events.length - a.open_events.length) || (a.rsvp_pct ?? 101) - (b.rsvp_pct ?? 101) || byName(a, b),
       quiet: (a, b) => ts(a.last_rsvp_at) - ts(b.last_rsvp_at) || byName(a, b),
+      nagged: (a, b) => ((b.reminders_total || 0) - (a.reminders_total || 0)) || byName(a, b),
       name:  byName,
     };
     list.sort(sorters[this.sort] || sorters.worst);
@@ -318,7 +319,7 @@ class RsvpBoardScreen extends Screen {
 
       for (const p of ((this.data && this.data.people) || [])) {
         const rem = data.reminded && data.reminded[p.person_id];
-        if (rem) p.last_reminder = rem;
+        if (rem) { p.last_reminder = rem; p.reminders_total = rem.total; p.reminders_week = rem.week; }
       }
       const contacts = data.contacts || [];
       const skipped = data.no_contact
@@ -430,7 +431,7 @@ class RsvpBoardScreen extends Screen {
         ? (channel === 'sms' ? 'No mobile number on file' : 'No email on file')
         : `${channel === 'sms' ? 'Text' : 'Email'} the ${open.length} unanswered event${open.length === 1 ? '' : 's'} + sign-in link${to}`;
       return `<button class="rb-btn" data-remind="${channel}" data-person-id="${p.person_id}"
-                      style="background:${bg};" title="${this.escapeHtml(why)}"${(!open.length || !has) ? ' disabled' : ''}>${icon} REMIND</button>`;
+                      style="background:${bg};${p.reminders_week ? ' opacity:0.45;' : ''}" title="${this.escapeHtml(why + (p.reminders_week ? ` — already reminded ${p.reminders_week}× this week` : ''))}"${(!open.length || !has) ? ' disabled' : ''}>${icon} REMIND${p.reminders_week ? ` ✓ ×${p.reminders_week}` : ''}</button>`;
     };
 
     return `
@@ -458,6 +459,7 @@ class RsvpBoardScreen extends Screen {
         <div class="rb-row"><span class="k">Dues</span><span class="v">${dues}</span></div>
         ${payment}
         <div class="rb-row"><span class="k">Last reminded</span><span class="v" data-reminded>${reminded}</span></div>
+        <div class="rb-row"><span class="k">Reminders</span><span class="v" data-reminder-tally>${p.reminders_total ? `${p.reminders_week || 0} this week · ${p.reminders_total} all-time` : '—'}</span></div>
         <div style="display:flex; gap:6px; margin-top:2px;">
           ${btn('sms', '💬', p.has_phone, '#0284c7')}
           ${btn('email', '✉', p.has_email, '#7c3aed')}
@@ -487,13 +489,24 @@ class RsvpBoardScreen extends Screen {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
       const person = ((this.data && this.data.people) || []).find(p => p.person_id === personId);
-      if (person) person.last_reminder = data.last_reminder;
+      if (person && data.last_reminder) {
+        person.last_reminder = data.last_reminder;
+        person.reminders_total = data.last_reminder.total;
+        person.reminders_week = data.last_reminder.week;
+      }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
       else window.location.href = data.sms_href;
 
-      btn.textContent = `${channel === 'sms' ? '💬' : '✉'} ✓`;
       btn.disabled = false;
       const card = btn.closest('[data-card]');
+      // One reminder covers the whole week, so both channels dim and tally.
+      const week = (data.last_reminder && data.last_reminder.week) || 1;
+      (card ? card.querySelectorAll('[data-remind]') : [btn]).forEach(b => {
+        b.textContent = `${b.dataset.remind === 'sms' ? '💬' : '✉'} REMIND ✓ ×${week}`;
+        b.style.opacity = '0.45';
+      });
+      const tally = card && card.querySelector('[data-reminder-tally]');
+      if (tally && data.last_reminder) tally.textContent = `${week} this week · ${data.last_reminder.total} all-time`;
       const slot = card && card.querySelector('[data-reminded]');
       if (slot && data.last_reminder) {
         slot.textContent = `${channel === 'sms' ? '💬' : '✉'} ${this._fmtDate(data.last_reminder.sent_at)}` +

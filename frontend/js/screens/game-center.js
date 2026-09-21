@@ -1560,7 +1560,7 @@ class GameCenterScreen extends Screen {
     // nudge, and the dim + tooltip says one went already (owner 2026-09-19).
     const remindBtn = (attrs, label, bg, title, sent = null) =>
       `<button type="button" ${attrs} title="${this.escapeHtml(sent ? this._sentTitle(sent) + ' — click to send again' : title)}"
-               style="padding:3px 9px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.68rem; color:#fff; background:${bg};${sent ? ' opacity:0.4;' : ''}">${label}${sent ? ' ✓' : ''}</button>`;
+               style="padding:3px 9px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.68rem; color:#fff; background:${bg};${sent ? ' opacity:0.4;' : ''}">${label}${sent ? ` ✓ ×${sent.count || 1}` : ''}</button>`;
     const remindBar = `
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:4px 0 8px; font-size:0.78rem;">
         <span style="opacity:0.75;">Remind everyone who hasn't answered this game — lists the week's open events, practices too:</span>
@@ -1574,8 +1574,8 @@ class GameCenterScreen extends Screen {
       const sent = (this.reminders || {})[personId] || {};
       return `
         <div style="display:flex; gap:6px; align-items:center; margin-top:5px;">
-          ${remindBtn(`data-gc-remind="sms" data-person-id="${personId}"`, '💬 REMIND', '#0284c7', 'Text every unanswered event this week + their sign-in link (the parent, for youth)', sent.sms)}
-          ${remindBtn(`data-gc-remind="email" data-person-id="${personId}"`, '✉ REMIND', '#7c3aed', 'Email every unanswered event this week + their sign-in link (the parent, for youth)', sent.email)}
+          ${remindBtn(`data-gc-remind="sms" data-person-id="${personId}"`, '💬 REMIND', '#0284c7', 'Text every unanswered event this week + their sign-in link (the parent, for youth)', this._weekSent(sent))}
+          ${remindBtn(`data-gc-remind="email" data-person-id="${personId}"`, '✉ REMIND', '#7c3aed', 'Email every unanswered event this week + their sign-in link (the parent, for youth)', this._weekSent(sent))}
           <span data-gc-remind-note style="font-size:0.66rem; opacity:0.75;">${this.escapeHtml(this._sentNote(sent))}</span>
         </div>`;
     };
@@ -1808,13 +1808,24 @@ class GameCenterScreen extends Screen {
   }
 
   _sentTitle(sent) {
-    return `Sent ${this._sentWhen(sent.sent_at)}` + (sent.count > 1 ? ` (${sent.count} times)` : '');
+    return `Reminded this week — last ${this._sentWhen(sent.sent_at)}` + (sent.count > 1 ? ` (${sent.count} times)` : '');
+  }
+
+  // A reminder lists the player's whole week, so either channel — from
+  // this game, another game or #rsvps — dims both buttons.  The tally is
+  // the week's sends on both channels.
+  _weekSent(sent) {
+    const each = ['sms', 'email'].map(c => sent[c]).filter(Boolean);
+    if (!each.length) return null;
+    return { count: each.reduce((n, x) => n + (x.count || 1), 0),
+             sent_at: each.map(x => x.sent_at).sort().pop() };
   }
 
   // "text Sat 10:07 AM ×2 · email Fri 6:30 PM"
   _sentNote(sent) {
     return ['sms', 'email'].filter(c => sent[c]).map(c =>
-      `${c === 'sms' ? 'text' : 'email'} ${this._sentWhen(sent[c].sent_at)}${sent[c].count > 1 ? ' ×' + sent[c].count : ''}`).join(' · ');
+      `${c === 'sms' ? 'text' : 'email'} ${this._sentWhen(sent[c].sent_at)}${sent[c].count > 1 ? ' ×' + sent[c].count : ''}`).join(' · ')
+      + (sent.total ? ` · ${sent.total} all-time` : '');
   }
 
   // Dim the buttons of whoever a fresh send reached, without a re-render
@@ -1822,11 +1833,11 @@ class GameCenterScreen extends Screen {
   _paintSent() {
     this.element.querySelectorAll('[data-gc-remind]').forEach(btn => {
       const sent = (this.reminders || {})[btn.dataset.personId] || {};
-      const mine = sent[btn.dataset.gcRemind];
+      const mine = this._weekSent(sent);
       if (!mine) return;
       btn.style.opacity = '0.4';
       btn.title = this._sentTitle(mine) + ' — click to send again';
-      btn.textContent = `${btn.dataset.gcRemind === 'sms' ? '💬' : '✉'} REMIND ✓`;
+      btn.textContent = `${btn.dataset.gcRemind === 'sms' ? '💬' : '✉'} REMIND ✓ ×${mine.count}`;
       const note = btn.parentElement.querySelector('[data-gc-remind-note]');
       if (note) note.textContent = this._sentNote(sent);
     });

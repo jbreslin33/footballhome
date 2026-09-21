@@ -157,6 +157,9 @@ json RsvpBoard::list(const std::string& sectionCode,
            pay.amount AS last_payment_amount, to_char(pay.paid_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_payment_at,
            to_char(rem.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_reminder_at, rem.channel AS last_reminder_channel,
            rem.sender AS last_reminder_by, rem.is_group AS last_reminder_group,
+           (SELECT count(*) FROM rsvp_reminders t WHERE t.person_id = p.id) AS reminders_total,
+           (SELECT count(*) FROM rsvp_reminders t WHERE t.person_id = p.id
+               AND t.sent_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York') AS reminders_week,
            ph.phone_number AS phone, em.email AS email
       FROM (SELECT DISTINCT person_id FROM roster) m
       JOIN persons p ON p.id = m.person_id
@@ -241,6 +244,8 @@ json RsvpBoard::list(const std::string& sectionCode,
                 {"channel", row["last_reminder_channel"].c_str()},
                 {"by",      row["last_reminder_by"].c_str()},
                 {"group",   row["last_reminder_group"].as<bool>()}}},
+            {"reminders_total",   row["reminders_total"].as<int>()},
+            {"reminders_week",    row["reminders_week"].as<int>()},
             {"has_phone",         !row["phone"].is_null()},
             {"has_email",         !row["email"].is_null()},
         };
@@ -430,22 +435,42 @@ json RsvpBoard::logReminder(long long personId, long long recipientPersonId,
                            {std::to_string(sentByUserId)});
         if (!s.empty()) by = s[0]["fn"].c_str();
     }
-    return {{"sent_at", ins[0]["sent_at"].c_str()}, {"channel", channel}, {"by", by}, {"group", isGroup}};
+    auto tally = db->query(
+        "SELECT count(*) AS total, count(*) FILTER (WHERE sent_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') "
+        "       AT TIME ZONE 'America/New_York') AS week FROM rsvp_reminders WHERE person_id = $1::int",
+        {std::to_string(personId)});
+    return {{"sent_at", ins[0]["sent_at"].c_str()}, {"channel", channel}, {"by", by}, {"group", isGroup},
+            {"total", tally[0]["total"].as<int>()}, {"week", tally[0]["week"].as<int>()}};
 }
 
 json RsvpBoard::remindersForEvent(long long fhEventId) {
-    auto rows = Database::getInstance()->query(
-        "SELECT rr.person_id, rr.channel, count(*) AS n, "
-        "       to_char(max(rr.sent_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at "
-        "  FROM rsvp_reminders rr "
-        "  JOIN rsvp_reminder_events re ON re.rsvp_reminder_id = rr.id "
-        " WHERE re.fh_event_id = $1::bigint "
-        " GROUP BY rr.person_id, rr.channel",
+    // A reminder lists the player's whole week, so it answers for every
+    // game of that week, not only the ones it named (owner 2026-09-21:
+    // "if we send remind for a person for apsl game it should grey out the
+    // button for liga 1 too").  count = sends that week on the channel;
+    // total = every reminder the player has ever needed.
+    auto rows = Database::getInstance()->query(R"SQL(
+        WITH wk AS (
+          SELECT date_trunc('week', ge.starts_at AT TIME ZONE 'America/New_York') AS week_start
+            FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+           WHERE fe.id = $1::bigint
+        )
+        SELECT rr.person_id, rr.channel, count(*) AS n,
+               to_char(max(rr.sent_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS sent_at,
+               (SELECT count(*) FROM rsvp_reminders t WHERE t.person_id = rr.person_id) AS total
+          FROM rsvp_reminders rr, wk
+         WHERE EXISTS (SELECT 1 FROM rsvp_reminder_events re
+                         JOIN fh_events fe2   ON fe2.id = re.fh_event_id
+                         JOIN gcal_events ge2 ON ge2.id = fe2.gcal_event_id
+                        WHERE re.rsvp_reminder_id = rr.id
+                          AND date_trunc('week', ge2.starts_at AT TIME ZONE 'America/New_York') = wk.week_start)
+         GROUP BY rr.person_id, rr.channel)SQL",
         {std::to_string(fhEventId)});
     json out = json::object();
     for (const auto& row : rows) {
         out[row["person_id"].c_str()][row["channel"].c_str()] =
             {{"sent_at", row["sent_at"].c_str()}, {"count", row["n"].as<int>()}};
+        out[row["person_id"].c_str()]["total"] = row["total"].as<int>();
     }
     return out;
 }
