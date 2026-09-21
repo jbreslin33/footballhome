@@ -1029,9 +1029,11 @@ class MyScreen extends Screen {
                             letter-spacing:0.04em; text-transform:uppercase; line-height:1.4;">${this.escapeHtml(l)}</span>`).join('')}
             </div>` : '';
     const descTags = this._parseDescTags(ev.description);
-    const arrival  = descTags.arrival || '';
-    const warmup   = descTags.warmup || '';
-    const kickoff  = descTags.kickoff || '';
+    // DB first: the tag when typed, else the league's default offsets
+    // from kickoff (migration 395).
+    const arrival  = ev.arrival_label || descTags.arrival || '';
+    const warmup   = ev.warmup_label  || descTags.warmup  || '';
+    const kickoff  = ev.kickoff_label || descTags.kickoff || '';
     const notes    = descTags.notes || '';
     const rsvps   = Array.isArray(ev.rsvps) ? ev.rsvps : [];
     const playersGoingCount = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach && !r.is_callup).length;

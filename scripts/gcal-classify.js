@@ -130,6 +130,9 @@ function scheduleTagSql(paramRef) {
   return `(date_trunc('day', ge.starts_at AT TIME ZONE 'America/New_York') + ${paramRef}::time) AT TIME ZONE 'America/New_York'`;
 }
 
+// Kickoff: the tag, else — for a game — the calendar event's own start.
+const KICKOFF_SQL = `COALESCE(${scheduleTagSql('$11')}, CASE WHEN $2::text IN ('match', 'intrasquad') THEN ge.starts_at END)`;
+
 // ─── Classify one pattern ─────────────────────────────────────────────
 // Returns { inserted, updated, unchanged } stats.
 async function classifyPattern(pg, p) {
@@ -500,9 +503,22 @@ async function classifyDsl(pg) {
             start_at, end_at, arrival_at, warmup_at, kickoff_at, game_end_at, league
           )
           SELECT $1, $2, $3, $4, $5, $6, ${RSVPS_OPEN_AT_SQL},
-                 ${scheduleTagSql('$7')}, ${scheduleTagSql('$8')}, ${scheduleTagSql('$9')},
-                 ${scheduleTagSql('$10')}, ${scheduleTagSql('$11')}, ${scheduleTagSql('$12')}, $13
+                 ${scheduleTagSql('$7')}, ${scheduleTagSql('$8')},
+                 COALESCE(${scheduleTagSql('$9')},  ${KICKOFF_SQL} - make_interval(mins => lmo.arrival_min)),
+                 COALESCE(${scheduleTagSql('$10')}, ${KICKOFF_SQL} - make_interval(mins => lmo.warmup_min)),
+                 ${KICKOFF_SQL}, ${scheduleTagSql('$12')}, $13
           FROM   gcal_events ge
+          -- League defaults (migration 395): minutes before kickoff, used
+          -- only where the Arrival:/Warmup: tag is absent.  Two leagues on
+          -- one event → the earlier time.  No league row → NULL, as before.
+          LEFT JOIN LATERAL (
+                 SELECT max(o.arrival_minutes_before) AS arrival_min,
+                        max(o.warmup_minutes_before)  AS warmup_min
+                   FROM regexp_split_to_table(COALESCE($13::text,''), '[[:space:]]*,[[:space:]]*') AS tok
+                   JOIN gcal_league_aliases gla ON LOWER(BTRIM(gla.alias)) = LOWER(BTRIM(tok))
+                   JOIN league_matchday_offsets o ON o.organization_id = gla.organization_id
+                  WHERE $2::text IN ('match', 'intrasquad')
+          ) lmo ON true
           WHERE  ge.id = $1
           ON CONFLICT (gcal_event_id) DO UPDATE SET
             kind          = EXCLUDED.kind,

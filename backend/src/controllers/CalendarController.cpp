@@ -741,6 +741,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                        AND LOWER(BTRIM(olc.opponent_text)) = LOWER(BTRIM(fe.opponent))
                 ) AS opponent_logo_checked,
                 fe.fh_notes,
+                -- Tag, else the league default the classifier filled in
+                -- (migration 395) — so the card never needs the raw tags.
+                to_char(fe.arrival_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS arrival_label,
+                to_char(fe.warmup_at  AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS warmup_label,
+                to_char(fe.kickoff_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS kickoff_label,
                 fe.league,
                 -- The league's own crest, whenever the gcal `League:` tag
                 -- is set (owner, 2026-08-28: "we should always have league
@@ -1384,6 +1389,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["opponent"]          = textOrNull(row, "opponent");
             ev["opponent_logo_url"] = textOrNull(row, "opponent_logo_url");
             ev["league"]            = textOrNull(row, "league");
+            ev["arrival_label"]     = textOrNull(row, "arrival_label");
+            ev["warmup_label"]      = textOrNull(row, "warmup_label");
+            ev["kickoff_label"]     = textOrNull(row, "kickoff_label");
             ev["league_logo_url"]   = textOrNull(row, "league_logo_url");
             // No DB match (hand-seeded alias / exact teams.name / prior
             // cache) — try a live lookup exactly once per distinct
