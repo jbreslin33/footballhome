@@ -66,6 +66,13 @@ class MyScreen extends Screen {
     this.chatError      = null;
     this.pollTimer      = null;
     this.chatExpanded   = false;         // true → show full history; false → latest only
+
+    // GroupMe feed (read-only; only sections whose chat has a GroupMe
+    // integration get one — chat_integrations, migration 392).
+    this.groupmeTitle    = '';
+    this.groupmeMessages = [];           // newest-first, as the API returns them
+    this.groupmeExpanded = false;
+    this.pollTick        = 0;
   }
 
   // ---------- lifecycle ----------
@@ -105,6 +112,7 @@ class MyScreen extends Screen {
       </div>
       <div style="padding: 0 8px;">
         <section id="my-chat" style="margin-bottom: 6px;"></section>
+        <section id="my-groupme" style="margin-bottom: 6px;" hidden></section>
         <div id="my-push-banner"></div>
         <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
@@ -136,6 +144,7 @@ class MyScreen extends Screen {
       this._renderEvents();
       this._renderChatShell();
       await this._loadChat(/*initial*/ true);
+      this._loadGroupMe().catch(() => {});
       this._startPoll();
       this._initPushUI().catch((err) => console.warn('[my] push UI init failed:', err));
       // Full-width opt-in banner above the week (owner 2026-09-05) —
@@ -318,6 +327,12 @@ class MyScreen extends Screen {
       if (target.closest('#push-test-btn')) {
         e.stopPropagation();
         this._onPushTestClick();
+        return;
+      }
+      if (target.closest('#groupme-expand-toggle')) {
+        e.preventDefault();
+        this.groupmeExpanded = !this.groupmeExpanded;
+        this._renderGroupMe();
         return;
       }
       // Compressed → expanded chat toggle.
@@ -1318,6 +1333,8 @@ class MyScreen extends Screen {
             </button>
           </div>
         </div>
+        <div id="chat-links" style="display:none; flex-wrap:wrap; gap:5px; padding:5px 7px;
+                    border-bottom:1px solid rgba(255,255,255,0.08);"></div>
         <div id="chat-list" style="padding: 5px 7px 6px;">
           <div class="loading-state"><div class="spinner"></div><p>Loading chat…</p></div>
         </div>
@@ -1470,6 +1487,22 @@ class MyScreen extends Screen {
     return out;
   }
 
+  // Section links (chat_links rows for the viewer's own club chat —
+  // e.g. the Men's GroupMe join link).  Label + url both come from the DB.
+  _renderChatLinks(links) {
+    const box = this.find('#chat-links');
+    if (!box) return;
+    const safe = links.filter(l => /^https:\/\//i.test(l.url || ''));
+    box.style.display = safe.length ? 'flex' : 'none';
+    box.innerHTML = safe.map(l => `
+      <a href="${this.escapeHtml(l.url)}" target="_blank" rel="noopener"
+         style="padding:4px 9px; border-radius:999px; border:1px solid rgba(96,165,250,0.35);
+                background:rgba(59,130,246,0.2); color:#dbeafe; font-size:0.66rem; font-weight:700;
+                line-height:1; text-decoration:none; display:inline-flex; align-items:center;">
+        ${this.escapeHtml(l.label)}
+      </a>`).join('');
+  }
+
   _renderChatMessages() {
     const box = this.find('#chat-list');
     if (!box) return;
@@ -1549,6 +1582,68 @@ class MyScreen extends Screen {
       </div>`;
   }
 
+  // ────── GroupMe feed (read-only) ──────────────────────────────────
+
+  async _loadGroupMe() {
+    const res = await this._fetch('/api/my/groupme/feed');
+    const incoming = (res && res.messages) || [];
+    const newestId = m => (m.length ? m[0].id : '');
+    const changed = newestId(incoming) !== newestId(this.groupmeMessages)
+      || incoming.length !== this.groupmeMessages.length;
+    this.groupmeTitle = (res && res.title) || '';
+    this.groupmeMessages = incoming;
+    if (changed) this._renderGroupMe();
+  }
+
+  _renderGroupMe() {
+    const box = this.find('#my-groupme');
+    if (!box) return;
+    const msgs = this.groupmeMessages;
+    box.hidden = !msgs.length;
+    if (!msgs.length) return;
+    const shown = this.groupmeExpanded ? msgs : msgs.slice(0, 1);
+    const older = msgs.length - 1;
+    const toggle = older > 0
+      ? `<button id="groupme-expand-toggle" type="button"
+                 style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16);
+                        background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;">
+           ${this.groupmeExpanded ? 'Latest only' : `Show ${older} older`}
+         </button>`
+      : '';
+    box.innerHTML = `
+      <div style="background: rgba(15,23,42,0.55); border-radius:7px;
+                  border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
+        <div style="display:flex; align-items:center; justify-content:space-between;
+                    padding:5px 7px; border-bottom:1px solid rgba(255,255,255,0.08);
+                    background: rgba(15,23,42,0.75);">
+          <div style="font-size:0.72rem; font-weight:700; opacity:0.9;">${this.escapeHtml(this.groupmeTitle)}</div>
+          ${toggle}
+        </div>
+        <div style="padding: 5px 7px 6px;">${shown.map(m => this._renderGroupMeRow(m)).join('')}</div>
+      </div>`;
+  }
+
+  _renderGroupMeRow(m) {
+    const when = this._chatWhen(m.created_at ? new Date(m.created_at * 1000).toISOString() : '');
+    const linkified = this.escapeHtml(m.text || '').replace(
+      /(https?:\/\/[^\s<]+)/g,
+      `<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#93c5fd; text-decoration:underline;">$1</a>`);
+    const image = /^https:\/\/i\.groupme\.com\//.test(m.image_url || '')
+      ? `<a href="${this.escapeHtml(m.image_url)}" target="_blank" rel="noopener noreferrer">
+           <img src="${this.escapeHtml(m.image_url)}.preview" alt="" loading="lazy"
+                style="max-height:90px; border-radius:5px; margin-top:3px; display:block;"></a>`
+      : '';
+    return `
+      <div style="padding: 4px 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; justify-content:space-between; gap:6px; margin-bottom:2px;">
+          <div style="font-size:0.7rem; color:#fbbf24; font-weight:600;">${this.escapeHtml(m.name || '')}</div>
+          <div style="font-size:0.62rem; opacity:0.55;">${this.escapeHtml(when)}</div>
+        </div>
+        <div style="font-size:0.68rem; line-height:1.25; white-space:pre-wrap; overflow-wrap:anywhere;">${linkified}</div>
+        ${image}
+      </div>`;
+  }
+
   _chatWhen(iso) {
     if (!iso) return '';
     const t = new Date(iso);
@@ -1599,6 +1694,8 @@ class MyScreen extends Screen {
       if (document.hidden) return;
       this._loadChat(/*initial*/ false).catch(() => {});
       this._refreshEvents().catch(() => {});
+      // The backend caches GroupMe for 60s, so every 4th tick is plenty.
+      if (++this.pollTick % 4 === 0) this._loadGroupMe().catch(() => {});
     }, 15000);
   }
 
@@ -1635,6 +1732,7 @@ class MyScreen extends Screen {
       this.chatViewerId = (res && res.viewer_user_id) || 0;
       this.chatLoaded = true;
       this.chatError = null;
+      this._renderChatLinks((res && res.links) || []);
     } else if (incoming.length > 0) {
       this.chatMessages = this.chatMessages.concat(incoming);
       if (res && res.viewer_user_id) this.chatViewerId = res.viewer_user_id;

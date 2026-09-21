@@ -71,6 +71,7 @@ set(SOURCES
     src/services/MetaLeadsService.cpp
     src/services/MetaAdsService.cpp
     src/services/VisionOcrService.cpp
+    src/services/GroupMeService.cpp
     src/services/LineupNotificationHub.cpp
     src/services/WebPushService.cpp
     src/controllers/AuthController.cpp

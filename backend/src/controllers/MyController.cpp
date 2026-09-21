@@ -3,6 +3,7 @@
 #include "../core/Crypto.h"
 #include "../database/Database.h"
 #include "../models/MessageCopy.h"
+#include "../services/GroupMeService.h"
 #include "../services/SessionService.h"
 #include "../services/WebPushService.h"
 #include "../third_party/json.hpp"
@@ -344,6 +345,7 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
     // prefix is "/api/my".
     router.get (prefix + "/chat/messages",  [this](const Request& r) { return handleGetChatMessages(r); });
     router.post(prefix + "/chat/messages",  [this](const Request& r) { return handlePostChatMessage(r); });
+    router.get (prefix + "/groupme/feed",   [this](const Request& r) { return handleGetGroupMeFeed(r); });
     router.post(prefix + "/events/push-remind", [this](const Request& r) { return handlePushRemind(r); });
     router.post(prefix + "/push-test", [this](const Request& r) { return handlePushTest(r); });
 }
@@ -405,14 +407,84 @@ Response MyController::handleGetChatMessages(const Request& request) {
         const std::string viewerIdStr = usersIdForPerson(personId);
         const long long   viewerId    = viewerIdStr.empty() ? 0 : std::stoll(viewerIdStr);
 
+        // Section links shown above the chat (chat_links, migration 391).
+        // Only on the initial load — polls (since_id > 0) don't need them.
+        json links = json::array();
+        if (sinceId == 0) {
+            auto lr = db->query(
+                "SELECT label, url FROM chat_links "
+                " WHERE chat_id = $1::int AND is_active "
+                " ORDER BY sort_order, id",
+                {std::to_string(chatId)});
+            for (const auto& row : lr) {
+                links.push_back({
+                    {"label", row["label"].as<std::string>()},
+                    {"url",   row["url"].as<std::string>()},
+                });
+            }
+        }
+
         return jsonOk({
             {"chat_id",        chatId},
             {"viewer_user_id", viewerId},
             {"messages",       messages},
+            {"links",          links},
         });
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/my/chat/messages] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /api/my/groupme/feed — read-only GroupMe messages for the viewer's
+// own club chat, when that chat has a GroupMe integration with
+// sync_messages on (migration 392).  Same membership gate as the chat
+// itself; a chat with no integration answers with an empty feed, not an
+// error, so the screen just shows nothing.
+Response MyController::handleGetGroupMeFeed(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/true, &personId))
+        return *err;
+
+    const std::string slug = chatSlugForPerson(personId);
+    if (slug.empty()) {
+        return jsonError(HttpStatus::FORBIDDEN, "Not a member of any club chat");
+    }
+
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query(
+            "SELECT ci.external_id, COALESCE(ci.external_name,'') AS external_name "
+            "  FROM chat_integrations ci "
+            "  JOIN chats c          ON c.id = ci.chat_id "
+            "  JOIN chat_providers p ON p.id = ci.provider_id "
+            " WHERE c.slug = $1 AND p.name = 'groupme' AND p.is_active "
+            "   AND ci.sync_messages "
+            " ORDER BY ci.is_primary DESC, ci.id LIMIT 1",
+            {slug});
+        if (r.empty()) {
+            return jsonOk({{"title", ""}, {"messages", json::array()}});
+        }
+        const std::string groupId = r[0]["external_id"].as<std::string>();
+        const std::string title   = r[0]["external_name"].as<std::string>();
+
+        json messages = json::array();
+        for (const auto& m : GroupMeService::getInstance().recentMessages(groupId, 20)) {
+            if (m.isSystem) continue;   // "X joined the group" noise
+            messages.push_back({
+                {"id",         m.id},
+                {"name",       m.name},
+                {"text",       m.text},
+                {"image_url",  m.imageUrl},
+                {"created_at", m.createdAt},
+            });
+        }
+        return jsonOk({{"title", title}, {"messages", messages}});
+    } catch (const std::exception& e) {
+        std::cerr << "[GET /api/my/groupme/feed] " << e.what() << std::endl;
+        return jsonError(HttpStatus::BAD_GATEWAY, "GroupMe feed unavailable");
     }
 }
 

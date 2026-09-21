@@ -54,6 +54,7 @@ public:
 private:
     Response handleGetChatMessages(const Request& request);
     Response handlePostChatMessage(const Request& request);
+    Response handleGetGroupMeFeed(const Request& request);
     Response handlePushRemind(const Request& request);
     Response handlePushTest(const Request& request);
 };
