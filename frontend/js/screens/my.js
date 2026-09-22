@@ -46,6 +46,15 @@ class MyScreen extends Screen {
     // Old-events range picker. 'current' (default) reuses the existing
     // this-week `this.events` array untouched; any other value swaps the
     // section over to a fetched-on-demand past-events list.
+    // My Schedule pills: 'week' (the released week, RSVP-able) or the
+    // read-ahead views 'all' | 'games' | 'practices'.  Remembered per device.
+    this.scheduleView    = 'week';
+    try {
+      const v = localStorage.getItem('my.scheduleView');
+      if (['week', 'all', 'games', 'practices'].includes(v)) this.scheduleView = v;
+    } catch (err) { /* private window */ }
+    this.futureEvents    = null;         // 90-day feed, loaded on first use
+    this.futureError     = null;
     this.eventsRange     = 'current';    // 'current' | 'yesterday' | 'last7' | 'last30' | 'all'
     this.oldEvents       = null;         // cached results for the active non-current range
     this.oldEventsLoading = false;
@@ -140,6 +149,8 @@ class MyScreen extends Screen {
       // per-event schedule_window_end from the server decides what shows.
       const upRes = await this._fetch('/api/calendar/upcoming?days=14');
       this.events       = upRes.events    || [];
+      // Pill labels are DB copy; the pills appear once it lands.
+      MessageCopy.load(this.auth).then(() => this._renderEvents());
       await this._loadNextWeekOpens();
       this._renderEvents();
       this._renderChatShell();
@@ -360,6 +371,14 @@ class MyScreen extends Screen {
       ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
       this._syncChatComposerState();
     });
+    this.element.addEventListener('click', (e) => {
+      const pill = e.target.closest('[data-schedule-view]');
+      if (!pill) return;
+      this.scheduleView = pill.dataset.scheduleView;
+      try { localStorage.setItem('my.scheduleView', this.scheduleView); } catch (err) { /* private window */ }
+      this.expandedEventId = null;
+      this._renderEvents();
+    });
     this.element.addEventListener('change', (e) => {
       const select = e.target.closest('#events-range-select');
       if (!select) return;
@@ -424,7 +443,10 @@ class MyScreen extends Screen {
         this.nextWeekOpensText = 'Next week is posted.';
       } else if (w && w.opens_at) {
         const d = new Date(w.opens_at);
-        this.nextWeekOpensText = `Next week's schedule posts ${d.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })} at ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}.`;
+        // Wording is DB copy (my_schedule / next_week_opens, migration 398).
+        await MessageCopy.load(this.auth);
+        const when = `${d.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })} at ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+        this.nextWeekOpensText = MessageCopy.block('my_schedule', 'next_week_opens', { when });
       }
     } catch (err) {
       console.warn('[my] schedule window lookup failed:', err);
@@ -458,6 +480,12 @@ class MyScreen extends Screen {
 
     if (this.eventsRange !== 'current') {
       this._renderOldEvents(box, rangeHtml, sub);
+      return;
+    }
+
+    const head = rangeHtml + this._schedulePillsHtml();
+    if (this.scheduleView !== 'week') {
+      this._renderFutureEvents(box, head, sub);
       return;
     }
 
@@ -497,21 +525,144 @@ class MyScreen extends Screen {
     }
 
     if (list.length === 0) {
-      box.innerHTML = rangeHtml + `
+      box.innerHTML = head + `
         <div class="empty-state" style="padding: var(--space-4); text-align:center; opacity: 0.7;">
           <div style="font-size:2rem; margin-bottom:8px;">📅</div>
           <div>Nothing on your calendar this week.</div>
           <div style="font-size:0.85rem; margin-top:6px; opacity:0.7;">
-            ${this.escapeHtml(this.nextWeekOpensText || "Next week's schedule shows up Sunday at 8pm.")}
+            ${this.escapeHtml(this.nextWeekOpensText || '')}
           </div>
         </div>`;
       return;
     }
 
-    box.innerHTML = rangeHtml + `
-      <h2 style="margin: 0 0 4px; font-size:0.8rem;">This Week</h2>
+    box.innerHTML = head + `
+      ${this._schedulePillsHtml() ? '' : '<h2 style="margin: 0 0 4px; font-size:0.8rem;">This Week</h2>'}
       ${list.map(e => this._renderEventCard(e)).join('')}
     `;
+  }
+
+  // ────── Schedule pills + the read-ahead list ──────────────────────
+  // Owner 2026-09-21: "instead of separate schedule button we can have
+  // pills on my page ... this week, all, games only, practice only."
+  // The week view is untouched.  The other three read 90 days ahead: an
+  // event inside the released week is the normal card; anything later is
+  // a read-only row — "they can only rsvp to events up to Sunday night",
+  // and the server refuses an RSVP outside the window (migration 396).
+
+  _schedulePillsHtml() {
+    const views = [['week', 'pill_week'], ['all', 'pill_all'], ['games', 'pill_games'], ['practices', 'pill_practices']];
+    if (!views.every(([, tier]) => MessageCopy.has('my_schedule', tier))) return '';
+    return `
+      <div style="display:flex; gap:5px; flex-wrap:wrap; margin:0 0 6px;">
+        ${views.map(([view, tier]) => {
+          const on = this.scheduleView === view;
+          return `<button type="button" data-schedule-view="${view}"
+                    style="padding:4px 11px; border-radius:999px; cursor:pointer; font-size:0.7rem; font-weight:700;
+                           border:1px solid ${on ? '#2563eb' : 'rgba(255,255,255,0.16)'};
+                           background:${on ? '#2563eb' : 'transparent'}; color:${on ? '#fff' : '#dbeafe'};">${this.escapeHtml(MessageCopy.block('my_schedule', tier))}</button>`;
+        }).join('')}
+      </div>`;
+  }
+
+  async _loadFutureEvents() {
+    if (this._futureLoading) return;
+    this._futureLoading = true;
+    try {
+      const res = await this._fetch('/api/calendar/upcoming?days=90');
+      this.futureEvents = res.events || [];
+      this.futureError = null;
+    } catch (err) {
+      console.warn('[my] future schedule failed:', err);
+      this.futureEvents = [];
+      this.futureError = err.message || 'Could not load';
+    }
+    this._futureLoading = false;
+    this._renderEvents();
+  }
+
+  _renderFutureEvents(box, head, sub) {
+    if (this.futureEvents === null) {
+      box.innerHTML = head + `<div style="padding:12px; opacity:0.7; font-size:0.8rem;">Loading…</div>`;
+      this._loadFutureEvents();
+      return;
+    }
+    const kinds = { games: ['match', 'intrasquad'], practices: ['practice', 'pickup'] }[this.scheduleView];
+    const now = Date.now();
+    // The 14-day feed is the live one (polled, carries RSVP state) — a
+    // released event is drawn from it so the card never goes stale.
+    const live = new Map((this.events || []).map(e => [e.fh_event_id, e]));
+    const list = this.futureEvents
+      .map(e => live.get(e.fh_event_id) || e)
+      .filter(e => this._isPlayerScheduleEvent(e))
+      .filter(e => !kinds || kinds.includes((e.kind || '').toLowerCase()))
+      .filter(e => {
+        const end = new Date(e.ends_at || e.starts_at).getTime();
+        return !isNaN(end) && end + 30 * 60 * 1000 > now;
+      })
+      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+
+    if (sub) sub.textContent = `${list.length} event${list.length !== 1 ? 's' : ''}`;
+    if (!list.length) {
+      box.innerHTML = head + `<div class="empty-state" style="padding: var(--space-4); text-align:center; opacity:0.7;">
+        ${this.escapeHtml(this.futureError || MessageCopy.block('my_schedule', 'future_empty'))}</div>`;
+      return;
+    }
+
+    const weekEnd = this._weekWindowEnd();
+    const released = (e) => new Date(e.starts_at) <= (e.schedule_window_end ? new Date(e.schedule_window_end) : weekEnd);
+    // Week dividers: "Sep 28 – Oct 4".
+    const weekKey = (iso) => {
+      const d = new Date(iso); d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      return d.getTime();
+    };
+    const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    let lastWeek = null;
+    const rows = list.map(e => {
+      let divider = '';
+      const wk = weekKey(e.starts_at);
+      if (wk !== lastWeek) {
+        lastWeek = wk;
+        const mon = new Date(wk), sun = new Date(wk); sun.setDate(sun.getDate() + 6);
+        divider = `<div style="margin:10px 0 4px; font-size:0.66rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; opacity:0.6;">${fmt(mon)} – ${fmt(sun)}</div>`;
+      }
+      return divider + (released(e) ? this._renderEventCard(e) : this._renderFutureRow(e));
+    }).join('');
+
+    const note = MessageCopy.block('my_schedule', 'future_note');
+    box.innerHTML = head
+      + (note ? `<div style="font-size:0.68rem; opacity:0.65; margin:0 0 2px;">${this.escapeHtml(note)}</div>` : '')
+      + rows;
+  }
+
+  // A week that has not opened yet: what, when, where — no RSVP buttons.
+  _renderFutureRow(ev) {
+    const descTags = this._parseDescTags(ev.description);
+    const times = [['Arrival', ev.arrival_label || descTags.arrival], ['Warmup', ev.warmup_label || descTags.warmup],
+                   ['Kickoff', ev.kickoff_label || descTags.kickoff]]
+      .filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(' · ');
+    const opens = ev.rsvps_open_at ? new Date(ev.rsvps_open_at) : null;
+    const opensText = opens && !isNaN(opens)
+      ? MessageCopy.block('my_schedule', 'rsvp_opens', { when: opens.toLocaleString(undefined,
+          { weekday: 'short', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) })
+      : '';
+    const isGame = ['match', 'intrasquad'].includes((ev.kind || '').toLowerCase());
+    return `
+      <div style="display:flex; gap:10px; align-items:flex-start; padding:7px 9px; margin-bottom:4px; border-radius:8px;
+                  border:1px solid rgba(255,255,255,0.08); border-left:3px solid ${isGame ? '#f59e0b' : '#334155'};
+                  background:rgba(15,23,42,0.45);">
+        <div style="flex:0 0 74px; font-size:0.7rem; font-weight:700; line-height:1.25;">
+          ${this.escapeHtml(EventLabels.dateStr(ev.starts_at))}<br>
+          <span style="opacity:0.7; font-weight:600;">${this.escapeHtml(EventLabels.timeStr(ev.starts_at))}</span>
+        </div>
+        <div style="min-width:0; flex:1; font-size:0.74rem; line-height:1.3;">
+          <div style="font-weight:800;">${this.escapeHtml(EventLabels.title(ev))}</div>
+          ${ev.location ? `<div style="opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(ev.location)}</div>` : ''}
+          ${times ? `<div style="opacity:0.7;">${this.escapeHtml(times)}</div>` : ''}
+          ${opensText ? `<div style="margin-top:2px; font-size:0.64rem; font-weight:700; color:#93c5fd;">${this.escapeHtml(opensText)}</div>` : ''}
+        </div>
+      </div>`;
   }
 
   // ────── Old events (range picker) ─────────────────────────────────
