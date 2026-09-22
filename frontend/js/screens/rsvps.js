@@ -121,6 +121,7 @@ class RsvpBoardScreen extends Screen {
         .rb-game.on { outline:2px solid #f5d442; }
         .rb-game.practice { border-left-color:#38bdf8; }
         .rb-game.practice.on { outline-color:#38bdf8; }
+        .rb-game.total { border-left-style:double; border-left-width:6px; }
         .rb-bulk { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:8px 12px; margin-bottom:var(--space-2);
                    border:1px solid var(--border-color); border-left:4px solid #f5d442; border-radius:10px;
                    background:var(--bg-secondary); font-size:0.8rem; }
@@ -191,7 +192,8 @@ class RsvpBoardScreen extends Screen {
       // not answered that event; tap again to clear.
       const game = e.target.closest('[data-game]');
       if (game) {
-        const id = Number(game.dataset.game), team = Number(game.dataset.gameTeam);
+        const id = Number(game.dataset.game);
+        const team = game.dataset.gameTeam === '' ? null : Number(game.dataset.gameTeam);   // '' = the All-teams total
         const on = this.eventId === id && this.teamId === team;
         this.eventId = on ? null : id;
         this.teamId  = on ? null : team;
@@ -459,6 +461,7 @@ class RsvpBoardScreen extends Screen {
     if (!slot) return;
     const events = this._snapshotEvents();
     if (!events.length) { slot.innerHTML = ''; return; }
+    const tiles = this._snapshotTiles(events);
     const dayOn = this.day !== 'week';
     const what = { all: 'Events', games: 'Games', practices: 'Practices' }[this.kind];
     slot.innerHTML = `
@@ -466,7 +469,7 @@ class RsvpBoardScreen extends Screen {
         ${this.escapeHtml(what)} ${dayOn ? this.escapeHtml(this._dayLabel().toLowerCase()) : 'this week'} — tap one to see who hasn't answered
       </div>
       <div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
-        ${events.map(g => {
+        ${tiles.map(g => {
           const on = this.eventId === g.fh_event_id && this.teamId === g.team_id;
           const ha = g.is_home == null ? 'vs' : (g.is_home ? 'vs' : '@');
           const title = g.kind === 'match' ? `${ha} ${this.escapeHtml(g.opponent)}`
@@ -476,8 +479,9 @@ class RsvpBoardScreen extends Screen {
                <span class="${g.unanswered ? 'rb-bad' : 'rb-good'}" style="font-weight:800;">${g.unanswered} unanswered</span>
                <span style="opacity:0.6;"> of ${g.expected}</span>`
             : `<span style="opacity:0.7;">Not released to players yet — nobody can answer</span>`;
+          const cls = ['rb-game', on ? 'on' : '', g.kind === 'practice' ? 'practice' : '', g.team_id == null ? 'total' : ''].filter(Boolean).join(' ');
           return `
-            <button type="button" class="rb-game${on ? ' on' : ''}${g.kind === 'practice' ? ' practice' : ''}" data-game="${g.fh_event_id}" data-game-team="${g.team_id}">
+            <button type="button" class="${cls}" data-game="${g.fh_event_id}" data-game-team="${g.team_id == null ? '' : g.team_id}">
               <div style="font-size:0.72rem; opacity:0.7;">${this.escapeHtml(g.team_label)}</div>
               <div style="font-weight:800;">${title}</div>
               <div style="font-size:0.78rem; opacity:0.8;">${this.escapeHtml(g.when_text)}</div>
@@ -485,6 +489,30 @@ class RsvpBoardScreen extends Screen {
             </button>`;
         }).join('')}
       </div>`;
+  }
+
+  // Per-team tiles, plus one "All teams" total ahead of any event shared
+  // by several teams (owner 2026-09-22: "apsl guys being also on liga 1 …
+  // show the total going/not going/unanswered to clear that up").  The
+  // total counts each person once; its tile has no team, so tapping it
+  // narrows the cards to everyone unanswered for the event.
+  _snapshotTiles(events) {
+    const byEvent = new Map();
+    for (const g of events) {
+      if (!byEvent.has(g.fh_event_id)) byEvent.set(g.fh_event_id, []);
+      byEvent.get(g.fh_event_id).push(g);
+    }
+    const tiles = [];
+    for (const g of events) {
+      const group = byEvent.get(g.fh_event_id);
+      if (group.length > 1 && group[0] === g) {
+        tiles.push({ ...g, team_id: null,
+          team_label: `All teams · ${group.map(x => x.team_label).join(' + ')}`,
+          expected: g.all_expected, yes: g.all_yes, no: g.all_no, unanswered: g.all_unanswered });
+      }
+      tiles.push(g);
+    }
+    return tiles;
   }
 
   _fmtDate(iso) {

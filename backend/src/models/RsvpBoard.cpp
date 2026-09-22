@@ -319,7 +319,8 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
            to_char(ev.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS starts_at,
            to_char(ev.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') AS when_text,
            to_char(ev.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day,
-           c.expected, c.yes, c.no
+           c.expected, c.yes, c.no,
+           t.expected AS all_expected, t.yes AS all_yes, t.no AS all_no
       FROM ev
       CROSS JOIN LATERAL (
             SELECT count(*) AS expected,
@@ -329,6 +330,17 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
               JOIN expected e ON e.person_id = r.person_id AND e.fh_event_id = ev.fh_event_id
               LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
              WHERE r.team_id = ev.team_id) c
+      -- Across every team on the event, each person once (owner
+      -- 2026-09-22: APSL players are also on Liga 1, so per-team tiles
+      -- double-count a shared practice; `expected` is already one row per
+      -- person per event).
+      CROSS JOIN LATERAL (
+            SELECT count(*) AS expected,
+                   count(*) FILTER (WHERE rv.response = 'yes') AS yes,
+                   count(*) FILTER (WHERE rv.response = 'no')  AS no
+              FROM expected e
+              LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
+             WHERE e.fh_event_id = ev.fh_event_id) t
      WHERE EXISTS (SELECT 1 FROM roster r WHERE r.team_id = ev.team_id)
      ORDER BY ev.starts_at, ev.board_sort_order
     )SQL";
@@ -339,6 +351,9 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
         const long long expected = row["expected"].as<long long>();
         const long long yes = row["yes"].as<long long>();
         const long long no  = row["no"].as<long long>();
+        const long long allExpected = row["all_expected"].as<long long>();
+        const long long allYes      = row["all_yes"].as<long long>();
+        const long long allNo       = row["all_no"].as<long long>();
         events.push_back({
             {"team_id",     row["team_id"].as<long long>()},
             {"team_label",  row["team_label"].c_str()},
@@ -354,6 +369,10 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
             {"yes",         yes},
             {"no",          no},
             {"unanswered",  expected - yes - no},
+            {"all_expected",   allExpected},
+            {"all_yes",        allYes},
+            {"all_no",         allNo},
+            {"all_unanswered", allExpected - allYes - allNo},
         });
     }
     return events;
