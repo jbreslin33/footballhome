@@ -630,6 +630,11 @@ MensRoster::Result MensRoster::run(bool includeAll,
         json j = json::object();
         j["method"] = it->second.method;
         j["sentAt"] = it->second.sentAtIso;
+        // Per-channel tally so the card can say "💬×2 ✉×1".
+        j["sms"]   = {{"count", it->second.smsCount},
+                      {"sentAt", it->second.smsAtIso.empty() ? json(nullptr) : json(it->second.smsAtIso)}};
+        j["email"] = {{"count", it->second.emailCount},
+                      {"sentAt", it->second.emailAtIso.empty() ? json(nullptr) : json(it->second.emailAtIso)}};
         return j;
     };
 

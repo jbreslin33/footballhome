@@ -319,7 +319,7 @@ class RsvpBoardScreen extends Screen {
 
       for (const p of ((this.data && this.data.people) || [])) {
         const rem = data.reminded && data.reminded[p.person_id];
-        if (rem) { p.last_reminder = rem; p.reminders_total = rem.total; p.reminders_week = rem.week; }
+        if (rem) this._applyTally(p, rem);
       }
       const contacts = data.contacts || [];
       const skipped = data.no_contact
@@ -426,12 +426,19 @@ class RsvpBoardScreen extends Screen {
     // REMIND only lists what can still be answered — an event that
     // already went by would just confuse the player (owner 2026-09-19).
     // Missed ones stay on the card for the admin.
+    // Each button tallies ITS channel (owner 2026-09-22: "I sent 2 emails
+    // and no response yet, let me try a text"); one reminder on either
+    // channel still greys both, because it covered the whole week.
     const btn = (channel, icon, has, bg) => {
+      const mine = channel === 'sms' ? (p.reminders_week_sms || 0) : (p.reminders_week_email || 0);
       const why = !open.length ? 'Nothing left to answer this week' : !has
         ? (channel === 'sms' ? 'No mobile number on file' : 'No email on file')
         : `${channel === 'sms' ? 'Text' : 'Email'} the ${open.length} unanswered event${open.length === 1 ? '' : 's'} + sign-in link${to}`;
+      const already = p.reminders_week
+        ? ` — this week: ${p.reminders_week_sms || 0} text${(p.reminders_week_sms || 0) === 1 ? '' : 's'}, ${p.reminders_week_email || 0} email${(p.reminders_week_email || 0) === 1 ? '' : 's'}`
+        : '';
       return `<button class="rb-btn" data-remind="${channel}" data-person-id="${p.person_id}"
-                      style="background:${bg};${p.reminders_week ? ' opacity:0.45;' : ''}" title="${this.escapeHtml(why + (p.reminders_week ? ` — already reminded ${p.reminders_week}× this week` : ''))}"${(!open.length || !has) ? ' disabled' : ''}>${icon} REMIND${p.reminders_week ? ` ✓ ×${p.reminders_week}` : ''}</button>`;
+                      style="background:${bg};${p.reminders_week ? ' opacity:0.45;' : ''}" title="${this.escapeHtml(why + already)}"${(!open.length || !has) ? ' disabled' : ''}>${icon} REMIND${mine ? ` ✓ ×${mine}` : (p.reminders_week ? ' ✓' : '')}</button>`;
     };
 
     return `
@@ -459,12 +466,29 @@ class RsvpBoardScreen extends Screen {
         <div class="rb-row"><span class="k">Dues</span><span class="v">${dues}</span></div>
         ${payment}
         <div class="rb-row"><span class="k">Last reminded</span><span class="v" data-reminded>${reminded}</span></div>
-        <div class="rb-row"><span class="k">Reminders</span><span class="v" data-reminder-tally>${p.reminders_total ? `${p.reminders_week || 0} this week · ${p.reminders_total} all-time` : '—'}</span></div>
+        <div class="rb-row"><span class="k">Reminders</span><span class="v" data-reminder-tally>${this._tallyText(p)}</span></div>
         <div style="display:flex; gap:6px; margin-top:2px;">
           ${btn('sms', '💬', p.has_phone, '#0284c7')}
           ${btn('email', '✉', p.has_email, '#7c3aed')}
         </div>
       </div>`;
+  }
+
+  // "this week 💬 1 · ✉ 2 — all-time 💬 3 · ✉ 4", per channel.
+  _tallyText(p) {
+    if (!p || !p.reminders_total) return '—';
+    const pair = (sms, email) => `💬 ${sms || 0} · ✉ ${email || 0}`;
+    return `this week ${pair(p.reminders_week_sms, p.reminders_week_email)} — all-time ${pair(p.reminders_total_sms, p.reminders_total_email)}`;
+  }
+
+  // Copy the fresh server tally onto a person row (both single and group
+  // reminders hand back the same shape).
+  _applyTally(person, rem) {
+    if (!person || !rem) return;
+    person.last_reminder = rem;
+    person.reminders_total = rem.total;  person.reminders_week = rem.week;
+    person.reminders_total_sms = rem.total_sms;     person.reminders_total_email = rem.total_email;
+    person.reminders_week_sms  = rem.week_sms;      person.reminders_week_email  = rem.week_email;
   }
 
   // POST builds the message server-side (unanswered events + the
@@ -489,24 +513,23 @@ class RsvpBoardScreen extends Screen {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
       const person = ((this.data && this.data.people) || []).find(p => p.person_id === personId);
-      if (person && data.last_reminder) {
-        person.last_reminder = data.last_reminder;
-        person.reminders_total = data.last_reminder.total;
-        person.reminders_week = data.last_reminder.week;
-      }
+      if (person && data.last_reminder) this._applyTally(person, data.last_reminder);
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
       else window.location.href = data.sms_href;
 
       btn.disabled = false;
       const card = btn.closest('[data-card]');
-      // One reminder covers the whole week, so both channels dim and tally.
-      const week = (data.last_reminder && data.last_reminder.week) || 1;
+      // One reminder covers the whole week, so both channels dim — but
+      // each button tallies only its own channel.
+      const lr = data.last_reminder || {};
       (card ? card.querySelectorAll('[data-remind]') : [btn]).forEach(b => {
-        b.textContent = `${b.dataset.remind === 'sms' ? '💬' : '✉'} REMIND ✓ ×${week}`;
+        const isSms = b.dataset.remind === 'sms';
+        const mine  = isSms ? (lr.week_sms || 0) : (lr.week_email || 0);
+        b.textContent = `${isSms ? '💬' : '✉'} REMIND ✓${mine ? ` ×${mine}` : ''}`;
         b.style.opacity = '0.45';
       });
       const tally = card && card.querySelector('[data-reminder-tally]');
-      if (tally && data.last_reminder) tally.textContent = `${week} this week · ${data.last_reminder.total} all-time`;
+      if (tally && person) tally.textContent = this._tallyText(person);
       const slot = card && card.querySelector('[data-reminded]');
       if (slot && data.last_reminder) {
         slot.textContent = `${channel === 'sms' ? '💬' : '✉'} ${this._fmtDate(data.last_reminder.sent_at)}` +

@@ -864,7 +864,11 @@ window.BillingBadge = (() => {
   function renderLastPayReminder(p) {
     const uid  = p && p.leagueAppsUserId ? p.leagueAppsUserId : '';
     const html = p && p.lastPayReminder ? renderLastPayReminderInline(p.lastPayReminder) : '';
-    return `<span class="bb-pay-reminder-slot" data-uid="${escapeAttr(String(uid))}">${html}</span>`;
+    // Counts ride on the slot so a click can repaint with count+1.
+    const last   = (p && p.lastPayReminder) || {};
+    const smsN   = last.sms   && last.sms.count   ? last.sms.count   : 0;
+    const emailN = last.email && last.email.count ? last.email.count : 0;
+    return `<span class="bb-pay-reminder-slot" data-uid="${escapeAttr(String(uid))}" data-sms="${smsN}" data-email="${emailN}">${html}</span>`;
   }
 
   function renderLastPayReminderInline(last) {
@@ -887,7 +891,12 @@ window.BillingBadge = (() => {
         }).format(d);
       }
     } catch { /* keep raw iso */ }
-    const tip = `Last ${method} reminder sent ${abs}`;
+    // Per-channel tally (pay_reminder_log): "💬×2 ✉×1" after the time.
+    const smsN   = last.sms   && last.sms.count   ? last.sms.count   : 0;
+    const emailN = last.email && last.email.count ? last.email.count : 0;
+    const counts = (smsN || emailN) ? ` · 💬×${smsN} ✉×${emailN}` : '';
+    const tip = `Last ${method} reminder sent ${abs}` +
+      ((smsN || emailN) ? ` — ${smsN} text${smsN === 1 ? '' : 's'}, ${emailN} email${emailN === 1 ? '' : 's'} all-time` : '');
     return `
       <span class="bb-pay-reminder" title="${escapeAttr(tip)}"
             style="display:inline-flex; align-items:center; gap:3px;
@@ -896,7 +905,7 @@ window.BillingBadge = (() => {
                    border-radius:3px; font-size:0.65rem; font-weight:700;
                    letter-spacing:0.02em; vertical-align:middle;
                    font-variant-numeric:tabular-nums; white-space:nowrap;">
-        ${icon} ${method} · ${escapeAttr(ago)}
+        ${icon} ${method} · ${escapeAttr(ago)}${counts}
       </span>
     `;
   }

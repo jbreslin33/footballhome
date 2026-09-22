@@ -160,6 +160,14 @@ json RsvpBoard::list(const std::string& sectionCode,
            (SELECT count(*) FROM rsvp_reminders t WHERE t.person_id = p.id) AS reminders_total,
            (SELECT count(*) FROM rsvp_reminders t WHERE t.person_id = p.id
                AND t.sent_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York') AS reminders_week,
+           -- Per channel (owner 2026-09-22): "I sent 2 emails and no
+           -- response yet, let me try a text".
+           (SELECT count(*) FROM rsvp_reminders t WHERE t.person_id = p.id AND t.channel = 'sms')   AS reminders_total_sms,
+           (SELECT count(*) FROM rsvp_reminders t WHERE t.person_id = p.id AND t.channel = 'email') AS reminders_total_email,
+           (SELECT count(*) FROM rsvp_reminders t WHERE t.person_id = p.id AND t.channel = 'sms'
+               AND t.sent_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York') AS reminders_week_sms,
+           (SELECT count(*) FROM rsvp_reminders t WHERE t.person_id = p.id AND t.channel = 'email'
+               AND t.sent_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York') AS reminders_week_email,
            ph.phone_number AS phone, em.email AS email
       FROM (SELECT DISTINCT person_id FROM roster) m
       JOIN persons p ON p.id = m.person_id
@@ -246,6 +254,10 @@ json RsvpBoard::list(const std::string& sectionCode,
                 {"group",   row["last_reminder_group"].as<bool>()}}},
             {"reminders_total",   row["reminders_total"].as<int>()},
             {"reminders_week",    row["reminders_week"].as<int>()},
+            {"reminders_total_sms",   row["reminders_total_sms"].as<int>()},
+            {"reminders_total_email", row["reminders_total_email"].as<int>()},
+            {"reminders_week_sms",    row["reminders_week_sms"].as<int>()},
+            {"reminders_week_email",  row["reminders_week_email"].as<int>()},
             {"has_phone",         !row["phone"].is_null()},
             {"has_email",         !row["email"].is_null()},
         };
@@ -436,11 +448,19 @@ json RsvpBoard::logReminder(long long personId, long long recipientPersonId,
         if (!s.empty()) by = s[0]["fn"].c_str();
     }
     auto tally = db->query(
-        "SELECT count(*) AS total, count(*) FILTER (WHERE sent_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') "
-        "       AT TIME ZONE 'America/New_York') AS week FROM rsvp_reminders WHERE person_id = $1::int",
+        "WITH wk AS (SELECT date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York' AS start) "
+        "SELECT count(*) AS total, count(*) FILTER (WHERE sent_at >= wk.start) AS week, "
+        "       count(*) FILTER (WHERE channel = 'sms')   AS total_sms, "
+        "       count(*) FILTER (WHERE channel = 'email') AS total_email, "
+        "       count(*) FILTER (WHERE channel = 'sms'   AND sent_at >= wk.start) AS week_sms, "
+        "       count(*) FILTER (WHERE channel = 'email' AND sent_at >= wk.start) AS week_email "
+        "  FROM rsvp_reminders, wk WHERE person_id = $1::int GROUP BY wk.start",
         {std::to_string(personId)});
+    const auto& t = tally[0];
     return {{"sent_at", ins[0]["sent_at"].c_str()}, {"channel", channel}, {"by", by}, {"group", isGroup},
-            {"total", tally[0]["total"].as<int>()}, {"week", tally[0]["week"].as<int>()}};
+            {"total", t["total"].as<int>()}, {"week", t["week"].as<int>()},
+            {"total_sms", t["total_sms"].as<int>()}, {"total_email", t["total_email"].as<int>()},
+            {"week_sms", t["week_sms"].as<int>()},   {"week_email", t["week_email"].as<int>()}};
 }
 
 json RsvpBoard::remindersForEvent(long long fhEventId) {

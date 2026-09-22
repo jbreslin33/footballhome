@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "../models/PersonPayments.h"
+#include "../models/PayReminderLog.h"
 #include "../services/LaProgramSync.h"
 #include "../third_party/json.hpp"
 
@@ -496,6 +497,39 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
     // membership that's paused, not the internal "Inactive" bucket.
     const std::string programName = payments_->programName(programId);
     for (auto& row : members) row["programName"] = programName;
+
+    // Dues-notice tally per channel (pay_reminder_log, written by the
+    // ✉️ / 💬 buttons on this screen and the roster PAY buttons).  Owner
+    // 2026-09-22: "tally them separately in db and on button so I can see
+    // I sent 2 emails and no response yet, let me try a text".  Non-fatal:
+    // the screen still renders without the counts.
+    try {
+        std::vector<long long> uids;
+        for (const auto& row : members) {
+            if (row.contains("laUserId") && row["laUserId"].is_number_integer()) {
+                const long long uid = row["laUserId"].get<long long>();
+                if (uid > 0) uids.push_back(uid);
+            }
+        }
+        PayReminderLog log;
+        const PayReminderLog::Map tally = log.latestFor(uids);
+        for (auto& row : members) {
+            json t = {{"sms",   {{"count", 0}, {"lastAt", nullptr}}},
+                      {"email", {{"count", 0}, {"lastAt", nullptr}}}};
+            if (row.contains("laUserId") && row["laUserId"].is_number_integer()) {
+                auto it = tally.find(std::to_string(row["laUserId"].get<long long>()));
+                if (it != tally.end()) {
+                    t["sms"]["count"]    = it->second.smsCount;
+                    t["sms"]["lastAt"]   = it->second.smsAtIso.empty()   ? json(nullptr) : json(it->second.smsAtIso);
+                    t["email"]["count"]  = it->second.emailCount;
+                    t["email"]["lastAt"] = it->second.emailAtIso.empty() ? json(nullptr) : json(it->second.emailAtIso);
+                }
+            }
+            row["payReminders"] = std::move(t);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[PaymentsController] pay_reminder_log tally failed: " << e.what() << std::endl;
+    }
 
     json out = json::object();
     out["program"]        = programKey;

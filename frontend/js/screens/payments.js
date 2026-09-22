@@ -172,6 +172,10 @@ class PaymentsScreen extends Screen {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
       const viewBtn = e.target.closest('.pay-view');
       if (viewBtn) return this.switchView(viewBtn.dataset.view);
+      // ✉️ / 💬 dues notice: let the href open, log the send to
+      // pay_reminder_log and bump this channel's tally on the row.
+      const notice = e.target.closest('.pay-notice-log');
+      if (notice) { this._logPayNotice(notice); return; }
       const openLa = e.target.closest('[data-open-la-user]');
       if (openLa) {
         const uid = openLa.getAttribute('data-open-la-user');
@@ -966,6 +970,7 @@ class PaymentsScreen extends Screen {
     if (months === null) return null;
     return {
       amount:      (owed !== null && owed > 0.005) ? this.fmtMoney(owed) : '',
+      amountNum:   (owed !== null && owed > 0.005) ? owed : null,
       months,
       monthsLabel: `${months} month${months === 1 ? '' : 's'}`,
     };
@@ -985,12 +990,17 @@ class PaymentsScreen extends Screen {
     if (!pauseAt) return null;   // policy not loaded: never guess the threshold
     const tier = `behind_${Math.min(pauseAt, standing.months)}`;
     const dates = this._duesDates(m, standing.months);
+    // Per-channel tally from pay_reminder_log (row.payReminders) — the
+    // button says "sent ×2" so the operator can see two emails went
+    // unanswered and try a text instead.
+    const tally = (m.payReminders && m.payReminders[channel]) || { count: 0, lastAt: null };
     const tokens = {
       first:        (m && m.firstName || '').trim(),
       club:         (m && m.programName) || '',
       amount:       standing.amount,
       months:       standing.months,
       months_label: standing.monthsLabel,
+      sent:         tally.count > 0 ? tally.count : '',
       deadline:     dates.deadline,     // next first-Friday due date
       pause_date:   dates.pauseDate,    // first Friday they reach the pause threshold
       pause_months: pauseAt,            // dues_policies.pause_after_months
@@ -1000,7 +1010,56 @@ class PaymentsScreen extends Screen {
     const label = MessageCopy.has('payment_notice_button', channel)
       ? MessageCopy.block('payment_notice_button', channel, tokens)
       : (channel === 'sms' ? '💬 Dues' : '✉️ Dues');
-    return { ...copy, standing, tier, label };
+    return { ...copy, standing, tier, label, tally };
+  }
+
+  // Fire-and-forget POST /api/pay-reminder-log on a dues-notice click
+  // (same endpoint the roster PAY buttons use).  Does NOT preventDefault
+  // — the compose window still opens; keepalive survives the tab switch.
+  // The member row's tally is bumped in memory and the card re-rendered
+  // so the button reads "sent ×N" at once.
+  _logPayNotice(anchor) {
+    const laUserId = parseInt(anchor.dataset.laUserId, 10);
+    const method   = anchor.dataset.method;
+    if (!laUserId || !method) return;
+    const body = {
+      leagueAppsUserId: laUserId,
+      method,
+      club: 'payments',
+      tier: anchor.dataset.tier || null,
+      amount: anchor.dataset.amount ? Number(anchor.dataset.amount) : null,
+      daysOverdue: anchor.dataset.daysOverdue !== '' ? parseInt(anchor.dataset.daysOverdue, 10) : null,
+    };
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (this.auth && this.auth.token) headers['Authorization'] = `Bearer ${this.auth.token}`;
+      fetch('/api/pay-reminder-log', { method: 'POST', headers, keepalive: true, body: JSON.stringify(body) })
+        .catch(() => { /* fire-and-forget */ });
+    } catch (_e) { /* ignore */ }
+
+    // The row may sit in any loaded tab (the all-programs view merges them).
+    let m = null;
+    for (const d of Object.values(this.membersByTab || {})) {
+      m = d && Array.isArray(d.members) ? d.members.find(x => String(x.laUserId) === String(laUserId)) : null;
+      if (m) break;
+    }
+    if (!m) return;
+    m.payReminders = m.payReminders || { sms: { count: 0, lastAt: null }, email: { count: 0, lastAt: null } };
+    m.payReminders[method] = { count: (m.payReminders[method]?.count || 0) + 1, lastAt: new Date().toISOString() };
+    const copy = this._paymentNotice(m, method);
+    if (copy) {
+      anchor.innerHTML = copy.label;
+      anchor.title = this._paymentNoticeTitle(copy, method);
+    }
+  }
+
+  // Tooltip for a dues button: tier + what this channel has already sent.
+  _paymentNoticeTitle(copy, channel) {
+    const what = channel === 'sms' ? 'text' : 'email';
+    const sent = copy.tally && copy.tally.count
+      ? `${copy.tally.count} ${what}${copy.tally.count === 1 ? '' : 's'} sent, last ${this.fmtDate(copy.tally.lastAt)}`
+      : `no ${what} sent yet`;
+    return `${copy.standing.monthsLabel} behind — ${copy.tier.replace('behind_', 'tier ')} · ${sent}`;
   }
 
   // Dates for the notice (migration 400).  Dues roll over on the first
@@ -1104,7 +1163,10 @@ class PaymentsScreen extends Screen {
         const gmailUrl = this.buildGmailComposeHref({ to: m.email, subject: copy.subject, body: copy.body });
         contactBtns.push(
           `<a href="${gmailUrl}" target="_blank" rel="noopener"
-               title="${this.escape(copy.standing.monthsLabel)} behind — ${copy.tier.replace('behind_', 'tier ')}"
+               class="pay-notice-log" data-la-user-id="${m.laUserId || ''}" data-method="email"
+               data-tier="${copy.tier}" data-amount="${this.escape(String(copy.standing.amountNum ?? ''))}"
+               data-days-overdue="${Number.isFinite(m.daysOverdue) ? m.daysOverdue : ''}"
+               title="${this.escape(this._paymentNoticeTitle(copy, 'email'))}"
                style="${this._paymentNoticeStyle(copy.tier)}">${copy.label}</a>`
         );
       }
@@ -1115,7 +1177,10 @@ class PaymentsScreen extends Screen {
       if (textCopy) {
         contactBtns.push(
           `<a href="sms:${phoneDigits}?body=${encodeURIComponent(Screen.withSmsLinkHint(textCopy.body))}"
-               title="${this.escape(textCopy.standing.monthsLabel)} behind — ${textCopy.tier.replace('behind_', 'tier ')}"
+               class="pay-notice-log" data-la-user-id="${m.laUserId || ''}" data-method="sms"
+               data-tier="${textCopy.tier}" data-amount="${this.escape(String(textCopy.standing.amountNum ?? ''))}"
+               data-days-overdue="${Number.isFinite(m.daysOverdue) ? m.daysOverdue : ''}"
+               title="${this.escape(this._paymentNoticeTitle(textCopy, 'sms'))}"
                style="${this._paymentNoticeStyle(textCopy.tier)}">${textCopy.label}</a>`
         );
       }

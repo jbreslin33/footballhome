@@ -86,8 +86,11 @@ Response PayReminderLogController::handleCreate(const Request& request) {
         return badRequest("method must be 'sms' or 'email'");
     }
 
+    // Where the click came from: a roster board ('mens' / 'boys') or the
+    // #payments screen ('payments').  Anything else is dropped, not
+    // rejected — the tally matters more than the label.
     std::string club = readStr(body, "club");
-    if (!club.empty() && club != "mens" && club != "boys") {
+    if (!club.empty() && club != "mens" && club != "boys" && club != "payments") {
         club.clear();
     }
     const std::string tier = readStr(body, "tier");

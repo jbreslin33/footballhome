@@ -29,6 +29,14 @@ public:
     struct Latest {
         std::string method;    // "sms" | "email"
         std::string sentAtIso; // "YYYY-MM-DDTHH:MM:SS.mmmZ" (UTC)
+        // Per-channel tally (owner 2026-09-22: "tally them separately …
+        // so I can see oh I sent 2 emails and no response yet, let me
+        // try a text").  Counts are all-time; *AtIso is that channel's
+        // newest send, empty when none.
+        int         smsCount   = 0;
+        int         emailCount = 0;
+        std::string smsAtIso;
+        std::string emailAtIso;
     };
 
     using Map = std::unordered_map<std::string, Latest>;
@@ -45,8 +53,9 @@ public:
                 double             amount,      // NaN or negative → NULL
                 int                daysOverdue);// negative → NULL
 
-    // Bulk newest-per-user.  Returns map keyed by stringified la_user_id;
-    // missing users are simply not present.
+    // Bulk per-user: newest send overall plus the per-channel counts and
+    // newest send per channel.  Keyed by stringified la_user_id; users
+    // with no rows are simply not present.
     Map latestFor(const std::vector<long long>& laUserIds);
 
 private:

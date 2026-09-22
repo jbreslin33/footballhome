@@ -50,10 +50,8 @@ PayReminderLog::Map PayReminderLog::latestFor(const std::vector<long long>& laUs
     Map out;
     if (laUserIds.empty()) return out;
 
-    // Build an inline IN (...) list of bigints.  Values come from our
-    // trusted upstream (LA export → int64) so string-injection is not a
-    // concern, but we still cast each explicitly to bigint via ::bigint
-    // and only allow digits + minus in the concatenation loop below.
+    // Inline IN (...) list of bigints.  Values come from our trusted
+    // upstream (LA export → int64); the loop only ever emits digits.
     std::ostringstream idList;
     bool first = true;
     for (long long uid : laUserIds) {
@@ -62,22 +60,27 @@ PayReminderLog::Map PayReminderLog::latestFor(const std::vector<long long>& laUs
         first = false;
     }
 
+    // One row per (user, channel): count + newest send.  The overall
+    // newest is derived in the loop below.
     std::ostringstream sql;
-    sql << "SELECT DISTINCT ON (la_user_id) "
-        << "  la_user_id, method, "
-        << "  TO_CHAR(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS sent_at_iso "
+    sql << "SELECT la_user_id, method, COUNT(*) AS n, "
+        << "  TO_CHAR(MAX(sent_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS sent_at_iso "
         << "FROM pay_reminder_log "
         << "WHERE la_user_id IN (" << idList.str() << ") "
-        << "ORDER BY la_user_id, sent_at DESC";
+        << "  AND method IN ('sms','email') "
+        << "GROUP BY la_user_id, method";
 
     const auto rows = db_->query(sql.str());
-    out.reserve(rows.size());
     for (const auto& r : rows) {
-        if (r["la_user_id"].is_null()) continue;
-        Latest v;
-        v.method    = r["method"].is_null() ? std::string{} : r["method"].c_str();
-        v.sentAtIso = r["sent_at_iso"].is_null() ? std::string{} : r["sent_at_iso"].c_str();
-        out.emplace(r["la_user_id"].c_str(), std::move(v));
+        if (r["la_user_id"].is_null() || r["method"].is_null()) continue;
+        Latest& v = out[r["la_user_id"].c_str()];
+        const std::string method = r["method"].c_str();
+        const std::string at     = r["sent_at_iso"].is_null() ? std::string{} : r["sent_at_iso"].c_str();
+        const int n              = r["n"].is_null() ? 0 : r["n"].as<int>();
+        if (method == "sms") { v.smsCount = n;   v.smsAtIso = at; }
+        else                 { v.emailCount = n; v.emailAtIso = at; }
+        // ISO-8601 UTC strings compare lexically.
+        if (at > v.sentAtIso) { v.sentAtIso = at; v.method = method; }
     }
     return out;
 }

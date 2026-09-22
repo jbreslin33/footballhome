@@ -1343,11 +1343,16 @@ class BoysRosterScreen extends RosterScreenBase {
     // one column) so the admin gets instant feedback.
     try {
       const nowIso = new Date().toISOString();
-      const fresh = window.BillingBadge && window.BillingBadge.renderLastPayReminderInline
-        ? window.BillingBadge.renderLastPayReminderInline({ method, sentAt: nowIso })
-        : '';
       const slots = this.element.querySelectorAll(`.bb-pay-reminder-slot[data-uid="${laUserId}"]`);
-      slots.forEach(s => { s.innerHTML = fresh; });
+      slots.forEach(s => {
+        // Keep the per-channel tally and bump the channel just used.
+        const sms   = (parseInt(s.dataset.sms   || '0', 10) || 0) + (method === 'sms'   ? 1 : 0);
+        const email = (parseInt(s.dataset.email || '0', 10) || 0) + (method === 'email' ? 1 : 0);
+        s.dataset.sms = String(sms); s.dataset.email = String(email);
+        s.innerHTML = window.BillingBadge && window.BillingBadge.renderLastPayReminderInline
+          ? window.BillingBadge.renderLastPayReminderInline({ method, sentAt: nowIso, sms: { count: sms }, email: { count: email } })
+          : '';
+      });
     } catch (_e) { /* non-fatal */ }
   }
 
