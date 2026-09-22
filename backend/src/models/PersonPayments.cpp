@@ -1,4 +1,5 @@
 #include "PersonPayments.h"
+#include "WelcomeLog.h"
 
 #include <iostream>
 #include <sstream>
@@ -237,7 +238,8 @@ int PersonPayments::syncFromLa() {
     //
     //    Rule (paraphrased user directive 2026-07-15):
     //      • Anchor = la_registered_at.
-    //      • cycles_paid  = ROUND(sum(qualifying $) / 35), min 0.
+    //      • cycles_paid  = ROUND(sum(qualifying $) / monthly dues), min 0
+    //                       (rate from dues_policies, migration 401).
     //      • next_due_at  = first_friday_of_month(anchor + (cycles_paid + 1) months).
     //    Any operator dropdown pick is preserved (source='operator_override').
     try {
@@ -261,7 +263,7 @@ int PersonPayments::syncFromLa() {
             "),"
             "computed AS ("
             "  SELECT mid, la_registered_at,"
-            "         GREATEST(0, ROUND(net_paid / 35.0)::int) AS cycles_paid"
+            "         GREATEST(0, ROUND(net_paid / fh_monthly_dues_usd($1::int))::int) AS cycles_paid"
             "    FROM sums"
             ")"
             "UPDATE person_la_memberships m"
@@ -276,7 +278,8 @@ int PersonPayments::syncFromLa() {
             "       next_due_updated_at = now()"
             "  FROM computed c"
             " WHERE c.mid = m.id"
-            "   AND m.next_due_source IS DISTINCT FROM 'operator_override'"
+            "   AND m.next_due_source IS DISTINCT FROM 'operator_override'",
+            {std::to_string(WelcomeLog::kLighthouseClubId)}
         );
     } catch (const std::exception& e) {
         // Non-fatal — the sync itself succeeded; leave next_due_at
@@ -589,9 +592,10 @@ PersonPayments::loadMembersForProgram(long long programId) {
         // per owner directive; the previous per-transaction check
         // required a single ≥ $35 payment and dropped valid prorate
         // signups to 'overdue').  For a cycle-sum of $A, the window
-        // covers cycles [C, C + N-1] where N = ROUND($A / $35), min 1.
-        // Threshold $28 excludes lone $1 reg fees while accepting the
-        // shortest realistic prorate (Feb 28-day cycles).
+        // covers cycles [C, C + N-1] where N = ROUND($A / monthly dues),
+        // min 1 — rate from dues_policies via fh_monthly_dues_usd($2).
+        // Threshold 80% of a month excludes lone $1 reg fees while
+        // accepting the shortest realistic prorate (Feb 28-day cycles).
         //   pay_cycle_start = 15th-of-month for the cycle the payment
         //                     falls in.  Derived as:
         //                       date_trunc('month', paid_at - 14d) + 14d
@@ -600,7 +604,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "payment_coverage AS ("
         "  SELECT la_registration_id, pay_cycle_start,"
         "         pay_cycle_start"
-        "           + (GREATEST(1, ROUND(cycle_paid / 35.0)::int) * interval '1 month') AS pay_cycle_end"
+        "           + (GREATEST(1, ROUND(cycle_paid / fh_monthly_dues_usd($2::int))::int) * interval '1 month') AS pay_cycle_end"
         "    FROM ("
         "      SELECT pp.la_registration_id,"
         "             (date_trunc('month', pp.paid_at - interval '14 days') + interval '14 days') AS pay_cycle_start,"
@@ -611,7 +615,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "       GROUP BY pp.la_registration_id,"
         "                (date_trunc('month', pp.paid_at - interval '14 days') + interval '14 days')"
         "    ) per_cycle"
-        "   WHERE cycle_paid >= 28"
+        "   WHERE cycle_paid >= 0.8 * fh_monthly_dues_usd($2::int)"
         "),"
         "covers_current AS ("
         "  SELECT DISTINCT pc.la_registration_id"
@@ -775,7 +779,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "   END,"
         "   agg.last_paid_at ASC NULLS FIRST,"
         "   p.last_name, p.first_name",
-        {std::to_string(programId)}
+        {std::to_string(programId), std::to_string(WelcomeLog::kLighthouseClubId)}
     );
 
     out.reserve(rows.size());

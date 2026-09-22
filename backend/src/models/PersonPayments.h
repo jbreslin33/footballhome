@@ -21,13 +21,9 @@ class Database;
 // ────────────────────────────────────────────────────────────────────────────
 class PersonPayments {
 public:
-    // Monthly dues rate in dollars. NOTE: PersonPayments.cpp's cycle-math
-    // SQL (coverage windows, cycles_paid) still has this baked in as a
-    // literal "35.0" in a few queries — this constant is the source of
-    // truth for code that references dues outside SQL (e.g. LaProgramSync's
-    // months_overdue snapshot). If the price ever changes, grep for 35.0
-    // in PersonPayments.cpp too.
-    static constexpr double kMonthlyDuesUsd = 35.0;
+    // The monthly dues rate lives in dues_policies (migration 401): C++
+    // reads DuesPolicy::current(), the SQL below calls
+    // fh_monthly_dues_usd(club).  No number is carried here.
 
     PersonPayments();
     ~PersonPayments();

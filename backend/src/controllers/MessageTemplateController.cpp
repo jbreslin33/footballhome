@@ -2,6 +2,7 @@
 
 #include "../core/Controller.h"
 #include "../models/WelcomeLog.h"
+#include "../models/DuesPolicy.h"
 #include "../third_party/json.hpp"
 
 #include <cctype>
@@ -82,9 +83,15 @@ Response MessageTemplateController::handleClientCopy(const Request& request) {
         }
         pqxx::result club = db_->query(
             "SELECT COALESCE(outreach_email, '') AS em FROM clubs WHERE id = $1::int", {clubId});
+        // Dues policy (migration 401) rides along: billing-badge.js and the
+        // roster / payments screens do prorate and months-behind math with
+        // it, and no screen may carry the number itself.
+        const DuesPolicy::Row dues = DuesPolicy::current();
         nlohmann::json out = {
             {"templates", templates},
             {"outreach_email", club.empty() ? "" : club[0]["em"].c_str()},
+            {"dues_policy", {{"monthly_dues_usd", dues.monthlyDuesUsd},
+                             {"pause_after_months", dues.pauseAfterMonths}}},
         };
         return Response(HttpStatus::OK, createJSONResponse(true, "Message copy", out.dump()));
     } catch (const std::exception& e) {

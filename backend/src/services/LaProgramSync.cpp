@@ -12,6 +12,7 @@
 #include "../database/Database.h"
 #include "../models/PersonLinker.h"
 #include "../models/PersonPayments.h"
+#include "../models/DuesPolicy.h"
 #include "LeagueAppsService.h"
 
 namespace {
@@ -248,7 +249,7 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                     // 2026-08-08). min 0 — a $0 or negative (credit)
                     // balance is not "overdue".
                     snap.monthsOverdue = lpSnap.outstanding > 0.0
-                        ? static_cast<int>(std::ceil(lpSnap.outstanding / PersonPayments::kMonthlyDuesUsd))
+                        ? static_cast<int>(std::ceil(lpSnap.outstanding / DuesPolicy::current().monthlyDuesUsd))
                         : 0;
                     pendingSnaps.push_back(std::move(snap));
                 }

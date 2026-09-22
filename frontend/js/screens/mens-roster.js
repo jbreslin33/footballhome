@@ -646,12 +646,12 @@ class MensRosterScreen extends RosterScreenBase {
       //   1. LA outstandingBalance   (authoritative when set)
       //   2. computed prorate amount (mid-cycle signup fallback)
       //   3. nextBillAmount          (monthly expectation)
-      //   4. EXPECTED_MONTHLY_AMOUNT (final fallback)
+      //   4. monthly dues rate (dues_policies, mig 401; final fallback)
       const proAmt   = prorateOwed && pr && pr.amount > 0 ? pr.amount : null;
       const nbAmt    = p.nextBillAmount > 0 ? p.nextBillAmount : null;
       const amountNum = (p.outstandingBalance > 0)
         ? p.outstandingBalance
-        : (proAmt != null ? proAmt : (nbAmt != null ? nbAmt : 35));
+        : (proAmt != null ? proAmt : (nbAmt != null ? nbAmt : MessageCopy.duesPolicy.monthlyDuesUsd));
       const amountStr = Number.isInteger(amountNum) ? `$${amountNum}` : `$${amountNum.toFixed(2)}`;
       // daysStr carries the whole "N days past due" phrase (or the
       // generic "past due") so we don't have to sprinkle "past due"

@@ -39,6 +39,7 @@ set(SOURCES
     src/models/PersonMerge.cpp
     src/models/LaPool.cpp
     src/models/PersonBilling.cpp
+    src/models/DuesPolicy.cpp
     src/models/PayReminderLog.cpp
     src/models/WelcomeLog.cpp
     src/models/WelcomeMessage.cpp

@@ -1,6 +1,7 @@
 #include "PersonBilling.h"
 
 #include "../database/Database.h"
+#include "DuesPolicy.h"
 
 PersonBilling::PersonBilling()
     : db_(Database::getInstance()) {}
@@ -30,7 +31,7 @@ PersonBilling::Row PersonBilling::resolve(const Map& map,
                                           const std::string& leagueAppsUserId) {
     auto it = map.find(leagueAppsUserId);
     if (it != map.end()) return it->second;
-    return Row{DEFAULT_DATE, DEFAULT_AMOUNT, true};
+    return Row{DEFAULT_DATE, DuesPolicy::current().monthlyDuesUsd, true};
 }
 
 PersonBilling::Row PersonBilling::upsert(long long leagueAppsUserId,
@@ -76,7 +77,7 @@ PersonBilling::Row PersonBilling::markBilled(long long leagueAppsUserId) {
         "          next_bill_amount",
         {std::to_string(leagueAppsUserId),
          std::string(DEFAULT_DATE),
-         std::to_string(DEFAULT_AMOUNT)}
+         std::to_string(DuesPolicy::current().monthlyDuesUsd)}
     );
     Row r{};
     r.isDefault = false;

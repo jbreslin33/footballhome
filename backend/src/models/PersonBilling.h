@@ -31,7 +31,7 @@ public:
     using Map = std::unordered_map<std::string, Row>;
 
     static constexpr const char* DEFAULT_DATE   = "2026-07-02";
-    static constexpr double      DEFAULT_AMOUNT = 35.00;
+    // Default amount = the club's monthly dues (dues_policies, migration 401).
 
     PersonBilling();
 
@@ -48,7 +48,7 @@ public:
     //   the admin typed in.  Always returns isDefault=false.
     //
     // markBilled(): bump next_bill_date forward one month.  If no row
-    //   exists yet, seed from DEFAULT_DATE + DEFAULT_AMOUNT and then
+    //   exists yet, seed from DEFAULT_DATE + the monthly dues rate and then
     //   bump — so the first call yields (default + 1 month).
     //
     // Both write `updated_by_user_id = NULL` because the C++ bearer-only

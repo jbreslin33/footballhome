@@ -667,13 +667,13 @@ class BoysRosterScreen extends RosterScreenBase {
       //   2. computed prorate amount (for mid-cycle signups where LA
       //      balance not yet edited)
       //   3. nextBillAmount          (backend monthly expectation)
-      //   4. EXPECTED_MONTHLY_AMOUNT (final fallback so message never
+      //   4. monthly dues rate (dues_policies, mig 401; final fallback so message never
       //      reads with an English phrase where a dollar figure belongs)
       const proAmt   = prorateOwed && pr && pr.amount > 0 ? pr.amount : null;
       const nbAmt    = p.nextBillAmount > 0 ? p.nextBillAmount : null;
       const amountNum = (p.outstandingBalance > 0)
         ? p.outstandingBalance
-        : (proAmt != null ? proAmt : (nbAmt != null ? nbAmt : 35));
+        : (proAmt != null ? proAmt : (nbAmt != null ? nbAmt : MessageCopy.duesPolicy.monthlyDuesUsd));
       const amountStr = Number.isInteger(amountNum) ? `$${amountNum}` : `$${amountNum.toFixed(2)}`;
       const daysStr   = daysAreExact
         ? `${days} day${days === 1 ? '' : 's'}`

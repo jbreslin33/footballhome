@@ -72,7 +72,15 @@ window.BillingBadge = (() => {
   // Layout: renders as a block that takes the full card width on its own
   // row (flex-basis:100%) so the numbers are legible at a glance.
 
-  const EXPECTED_MONTHLY_AMOUNT = 35;
+  // Monthly dues rate — dues_policies (migration 401), delivered with the
+  // message copy.  Screens await MessageCopy.load() before rendering, so
+  // this is set by the time any badge draws; NaN otherwise, which makes
+  // every comparison below false and every prorate empty rather than
+  // inventing a price.
+  const monthlyDues = () => {
+    const r = window.MessageCopy && MessageCopy.duesPolicy && MessageCopy.duesPolicy.monthlyDuesUsd;
+    return Number.isFinite(r) ? r : NaN;
+  };
   const REDUCED_FRIDAY_AMOUNTS  = [8.75, 9];
 
   const parseIsoUtc = (s) => {
@@ -153,7 +161,7 @@ window.BillingBadge = (() => {
       const d = parseIsoUtc(lp && lp.paidAt);
       if (!d) continue;
       const amt = Number(lp && lp.amount);
-      if (nearAmount(amt, EXPECTED_MONTHLY_AMOUNT)
+      if (nearAmount(amt, monthlyDues())
           && d >= start && d < end) {
         return true;
       }
@@ -373,7 +381,7 @@ window.BillingBadge = (() => {
     //   0 < effective < $35   → yellow
     //   effective >= $35      → green
     const cellFor = (b) => {
-      const paid    = b.effective >= EXPECTED_MONTHLY_AMOUNT - 0.01;
+      const paid    = b.effective >= monthlyDues() - 0.01;
       const partial = b.effective > 0 && !paid;
       if (paid)    return { bg:'#052e1a', fg:'#bbf7d0', border:'#166534', tag:'paid' };
       if (partial) return { bg:'#3a2f0f', fg:'#fde68a', border:'#a16207', tag:'partial' };
@@ -529,14 +537,14 @@ window.BillingBadge = (() => {
       if (!isFinite(amt) || amt <= 0) continue;
       paidSinceReg += amt;
     }
-    if (paidSinceReg >= EXPECTED_MONTHLY_AMOUNT - 0.01) return null;
+    if (paidSinceReg >= monthlyDues() - 0.01) return null;
 
     // Anything already paid since reg (typically the $1 card-capture
     // fee) counts toward this cycle's dues per owner directive
     // 2026-07-09 ("it should be counted as part of the $35").  Subtract
     // it from the raw prorate so the manual LA charge equals what the
     // player still owes for the partial cycle — not the full window.
-    const rawAmount = EXPECTED_MONTHLY_AMOUNT * daysRemain / cycleDays;
+    const rawAmount = monthlyDues() * daysRemain / cycleDays;
     const netAmount = Math.max(0, rawAmount - paidSinceReg);
     const amount    = Math.round(netAmount * 100) / 100;
 
@@ -585,12 +593,12 @@ window.BillingBadge = (() => {
             const amt = Number(lp.amount);
             return s + (isFinite(amt) && amt > 0 ? amt : 0);
           }, 0);
-          if (paidSinceReg >= EXPECTED_MONTHLY_AMOUNT - 0.01) {
-            reason = `full $${EXPECTED_MONTHLY_AMOUNT}+ already paid since reg (${fmtAmt(paidSinceReg)})`;
+          if (paidSinceReg >= monthlyDues() - 0.01) {
+            reason = `full $${monthlyDues()}+ already paid since reg (${fmtAmt(paidSinceReg)})`;
           } else {
             // Only other reason projectedProrate returns null: reg
             // date falls exactly on a 1st Friday.
-            reason = 'signed up on the 1st Friday — full $' + EXPECTED_MONTHLY_AMOUNT + ' cycle, no prorate';
+            reason = 'signed up on the 1st Friday — full $' + monthlyDues() + ' cycle, no prorate';
           }
         }
       }
@@ -628,9 +636,9 @@ window.BillingBadge = (() => {
     const tip =
       `Projected prorate: signed up ${regShort}, ` +
       `${pr.daysRemain}/${pr.cycleDays} days remaining until next 1st Friday (${nextFriShort}) · ` +
-      `$${EXPECTED_MONTHLY_AMOUNT} × ${pr.daysRemain}/${pr.cycleDays} = ${rawShown}${paidNote}. ` +
+      `$${monthlyDues()} × ${pr.daysRemain}/${pr.cycleDays} = ${rawShown}${paidNote}. ` +
       `Add this as a manual charge on the player's LA registration NOW; ` +
-      `their normal $${EXPECTED_MONTHLY_AMOUNT}/mo bills begin on ${nextFriShort}.`;
+      `their normal $${monthlyDues()}/mo bills begin on ${nextFriShort}.`;
 
     // Amber styling — matches the "partial" state used by the 3-month cells.
     const bg     = '#3a2f0f';
@@ -707,7 +715,7 @@ window.BillingBadge = (() => {
   //
   // Computation:
   //   For each of the same 3 (y, m) buckets shown in the calendar table:
-  //     shortfall = max(0, EXPECTED_MONTHLY_AMOUNT - sum)
+  //     shortfall = max(0, monthlyDues() - sum)
   //   Total = sum of shortfalls across those months.
   //
   // Note: the 3rd bucket is the CURRENT month.  Even if today is early
@@ -727,7 +735,7 @@ window.BillingBadge = (() => {
     let total = 0;
     const parts = [];
     for (const b of buckets) {
-      const shortfall = Math.max(0, EXPECTED_MONTHLY_AMOUNT - b.effective);
+      const shortfall = Math.max(0, monthlyDues() - b.effective);
       const label = monthLabel(b.y, b.m);
       if (shortfall > 0) {
         total += shortfall;

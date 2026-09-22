@@ -20,6 +20,7 @@
 #include "MensTeamColumns.h"
 #include "PersonBilling.h"
 #include "PersonPayments.h"
+#include "DuesPolicy.h"
 #include "PayReminderLog.h"
 #include "WelcomeLog.h"
 #include "YouthAgeGroups.h"
@@ -867,7 +868,7 @@ MensRoster::Result MensRoster::run(bool includeAll,
                         thisMonthSum += cp.amount;
                     }
                 }
-                const bool has35ThisMonth = (thisMonthSum >= 35.0 - 0.005);
+                const bool has35ThisMonth = (thisMonthSum >= DuesPolicy::current().monthlyDuesUsd - 0.005);
                 if (has99) {
                     d.daysOverdue = 0;
                     d.nextBillDate = "2026-08-07";  // 1st Friday of Aug 2026

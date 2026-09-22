@@ -936,9 +936,9 @@ class PaymentsScreen extends Screen {
   // How far behind on dues this member is — the one fact the reminder is
   // built from (owner 2026-09-22: "just say the amount and months").
   //   amount → live LA outstanding balance, else the last-sync snapshot
-  //   months → LA-authoritative bucket (ceil(balance / monthly dues),
-  //            migration 270), else the unpaid cycles between next_due_at
-  //            and the upcoming rollover, else 1 for anyone overdue.
+  //   months → ceil(amount / monthly dues rate) when both are known, else
+  //            the LA-sync bucket (migration 270), else the unpaid cycles
+  //            between next_due_at and the upcoming rollover, else 1.
   // → {amount: '$70.00'|'', months: 2, monthsLabel: '2 months'} or null
   // when nothing is owed.
   _duesStanding(m) {
@@ -947,7 +947,15 @@ class PaymentsScreen extends Screen {
     else if (Number.isFinite(m.laAmountOwedCents) && Number.isFinite(m.laAmountPaidCents)) {
       owed = (m.laAmountOwedCents - m.laAmountPaidCents) / 100;
     }
-    let months = Number.isFinite(m.monthsOverdue) && m.monthsOverdue >= 1 ? m.monthsOverdue : null;
+    // Live balance ÷ the club's monthly rate (dues_policies, mig 401)
+    // beats the last-sync snapshot: a payment since the sync shows at once.
+    const rate = MessageCopy.duesPolicy.monthlyDuesUsd;
+    let months = null;
+    if (owed !== null && owed > 0.005 && Number.isFinite(rate) && rate > 0) {
+      months = Math.ceil(owed / rate);
+    } else if (Number.isFinite(m.monthsOverdue) && m.monthsOverdue >= 1) {
+      months = m.monthsOverdue;
+    }
     if (months === null) {
       const fd = this._finalNoticeDetails(m);
       if (fd) months = fd.owedMonths.length;
@@ -966,12 +974,16 @@ class PaymentsScreen extends Screen {
   // Wording: message_templates kind 'payment_notice_email' /
   // 'payment_notice_sms', tier 'behind_1' | 'behind_2' | 'behind_3'
   // (migration 399) — gentle, firm, paused.  The tier is picked here
-  // from months behind; the operator never chooses it.
+  // from months behind, capped at the pause threshold
+  // (dues_policies.pause_after_months, migration 401); the operator
+  // never chooses it.
   // → {subject, body, standing, tier} or null.
   _paymentNotice(m, channel) {
     const standing = this._duesStanding(m);
     if (!standing) return null;
-    const tier = `behind_${Math.min(3, standing.months)}`;
+    const pauseAt = this._pauseAfterMonths();
+    if (!pauseAt) return null;   // policy not loaded: never guess the threshold
+    const tier = `behind_${Math.min(pauseAt, standing.months)}`;
     const dates = this._duesDates(m, standing.months);
     const tokens = {
       first:        (m && m.firstName || '').trim(),
@@ -980,7 +992,8 @@ class PaymentsScreen extends Screen {
       months:       standing.months,
       months_label: standing.monthsLabel,
       deadline:     dates.deadline,     // next first-Friday due date
-      pause_date:   dates.pauseDate,    // first Friday they reach 3 months
+      pause_date:   dates.pauseDate,    // first Friday they reach the pause threshold
+      pause_months: pauseAt,            // dues_policies.pause_after_months
     };
     const copy = MessageCopy.render(channel === 'sms' ? 'payment_notice_sms' : 'payment_notice_email', tier, tokens);
     if (!copy) return null;
@@ -995,8 +1008,8 @@ class PaymentsScreen extends Screen {
   // Friday a member reaches 3 months behind — the pause threshold.
   //   deadline  = upcoming rollover (server's upcoming_due, else the
   //               first Friday of next month)
-  //   pauseDate = that rollover plus (2 − months) further rollovers;
-  //               empty once they are already at 3+.
+  //   pauseDate = that rollover plus (pause_after_months − months − 1)
+  //               further rollovers; empty once they are already there.
   // → {deadline: 'Friday, October 2'|'', pauseDate: …|''}
   _duesDates(m, months) {
     let upcoming = this._parseIsoDateOnly(m.upcomingDueAt);
@@ -1006,7 +1019,7 @@ class PaymentsScreen extends Screen {
       upcoming  = new Date(ff.getUTCFullYear(), ff.getUTCMonth(), ff.getUTCDate());
     }
     const fmt = (d) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    const rolloversToPause = 3 - months - 1;
+    const rolloversToPause = this._pauseAfterMonths() - months - 1;
     let pauseDate = '';
     if (rolloversToPause >= 0) {
       const ff = this._firstFridayOfMonth(new Date(Date.UTC(upcoming.getFullYear(), upcoming.getMonth() + rolloversToPause, 1)));
@@ -1015,11 +1028,21 @@ class PaymentsScreen extends Screen {
     return { deadline: fmt(upcoming), pauseDate };
   }
 
-  // Button colours follow the tier: 1 month = calm, 2 = amber, 3+ = red.
+  // dues_policies.pause_after_months (migration 401), via the copy
+  // payload.  The screen awaits MessageCopy.load() before rendering.
+  _pauseAfterMonths() {
+    const n = MessageCopy.duesPolicy.pauseAfterMonths;
+    return (Number.isFinite(n) && n >= 1) ? n : null;   // null → no dues button
+  }
+
+  // Button colours follow the tier: 1 month = calm, the month before the
+  // pause = amber, at or past the pause threshold = red.
   _paymentNoticeStyle(tier) {
-    const c = tier === 'behind_3' ? { bg: '#3a1f1f', fg: '#fca5a5', border: '#b91c1c' }
-            : tier === 'behind_2' ? { bg: '#3a2e05', fg: '#fde68a', border: '#d97706' }
-            :                       { bg: '#0b3a2e', fg: '#a7f3d0', border: '#10b981' };
+    const n = Number(String(tier).replace('behind_', '')) || 1;
+    const pauseAt = this._pauseAfterMonths() || n;
+    const c = n >= pauseAt     ? { bg: '#3a1f1f', fg: '#fca5a5', border: '#b91c1c' }
+            : n >= pauseAt - 1 ? { bg: '#3a2e05', fg: '#fde68a', border: '#d97706' }
+            :                    { bg: '#0b3a2e', fg: '#a7f3d0', border: '#10b981' };
     return `padding:6px 10px; border-radius:4px; text-decoration:none; background:${c.bg}; color:${c.fg}; border:1px solid ${c.border}; font-size:0.75rem; font-weight:700;`;
   }
 
@@ -1880,8 +1903,8 @@ class PaymentsScreen extends Screen {
     // MVP: two native prompts.  Cheap, keyboard-friendly, no CSS needed.
     // (Can upgrade to <dialog> later without touching backend.)
     const amtStr = window.prompt(
-      `Flag ${name.trim() || 'this member'} for charge.\n\nAmount in dollars (e.g. 35 or 17.50):`,
-      '35'
+      `Flag ${name.trim() || 'this member'} for charge.\n\nAmount in dollars (e.g. ${MessageCopy.duesPolicy.monthlyDuesUsd ?? ''} or 17.50):`,
+      String(MessageCopy.duesPolicy.monthlyDuesUsd ?? '')
     );
     if (amtStr == null) return;                          // cancelled
     const amount = Number(String(amtStr).replace(/[^0-9.]/g, ''));

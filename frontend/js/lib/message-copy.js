@@ -20,6 +20,10 @@ class MessageCopy {
   static _templates = new Map();   // "kind|tier" -> {subject, body}
   static _promise   = null;
   static outreachEmail = '';       // clubs.outreach_email — Gmail authuser
+  // dues_policies (migration 401): the monthly rate and the months-behind
+  // pause threshold.  null until load() resolves — callers must not
+  // substitute a number of their own.
+  static duesPolicy = { monthlyDuesUsd: null, pauseAfterMonths: null };
 
   static load(auth) {
     if (!MessageCopy._promise) {
@@ -38,6 +42,11 @@ class MessageCopy {
             }
           }
           MessageCopy.outreachEmail = data.outreach_email || '';
+          const dp = data.dues_policy || {};
+          MessageCopy.duesPolicy = {
+            monthlyDuesUsd:   Number.isFinite(Number(dp.monthly_dues_usd))   ? Number(dp.monthly_dues_usd)   : null,
+            pauseAfterMonths: Number.isFinite(Number(dp.pause_after_months)) ? Number(dp.pause_after_months) : null,
+          };
         } catch (err) {
           console.warn('message copy unavailable:', err);
           MessageCopy._promise = null;   // retry on the next screen load
