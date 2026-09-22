@@ -72,7 +72,7 @@ class RsvpBoardScreen extends Screen {
     return pills;
   }
 
-  _dayLabel() { const pl = this._dayPills().find(x => x.key === this.day); return pl ? pl.label : 'This week'; }
+  _dayLabel() { const pl = this._dayPills().find(x => x.key === this.day); return pl ? pl.label : RsvpBoardScreen.DAYS.week; }
 
   // The card's events for the current day pill (open + missed both carry
   // `day` from the server).
@@ -80,7 +80,7 @@ class RsvpBoardScreen extends Screen {
   _missedFor(p) { const d = this._dayIso(); return (p.missed_events || []).filter(ev => !d || ev.day === d); }
 
   static get SECTIONS() { return { all: 'All', mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls' }; }
-  static get DAYS()     { return { week: 'This week', today: 'Today', tomorrow: 'Tomorrow' }; }
+  static get DAYS()     { return { week: 'Whole week', today: 'Today', tomorrow: 'Tomorrow' }; }
   static get WINDOWS()  { return { week: 'This week', '2w': 'Last 2 weeks', month: 'Last month', all: 'All time' }; }
   static get KINDS()    { return { all: 'All events', games: 'Games only', practices: 'Practices only' }; }
   static get SORTS() {
@@ -95,6 +95,9 @@ class RsvpBoardScreen extends Screen {
         .rb-chip { padding:5px 12px; border-radius:999px; cursor:pointer; font-weight:600; font-size:0.8rem;
                    border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); }
         .rb-chip.on { background:var(--primary-color); color:#fff; border-color:transparent; }
+        .rb-group { display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2); }
+        .rb-lbl { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; opacity:0.55; min-width:88px; }
+        .rb-chips { display:flex; gap:var(--space-1); flex-wrap:wrap; }
         .rb-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:var(--space-2); }
         .rb-card { border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary);
                    padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
@@ -128,14 +131,15 @@ class RsvpBoardScreen extends Screen {
         <p class="subtitle">Who owes an answer — remind them with their unanswered events and a sign-in link</p>
       </div>
       <div style="padding: var(--space-4); max-width: 1500px; margin: 0 auto;">
-        <div id="rb-days" style="display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
-        <div id="rb-sections" style="display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
-        <div style="display:flex; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-2);">
-          <div id="rb-windows" style="display:flex; gap:var(--space-1); flex-wrap:wrap;"></div>
-          <div id="rb-kinds"   style="display:flex; gap:var(--space-1); flex-wrap:wrap;"></div>
-        </div>
+        <!-- One labelled row per pill group (owner 2026-09-22: "all time
+             frames in own section and clubs Men, boys etc in own section
+             and types game, practice all in own section"). -->
+        <div class="rb-group"><span class="rb-lbl">Day</span><div id="rb-days" class="rb-chips"></div></div>
+        <div class="rb-group"><span class="rb-lbl">Section</span><div id="rb-sections" class="rb-chips"></div></div>
+        <div class="rb-group"><span class="rb-lbl">RSVP % over</span><div id="rb-windows" class="rb-chips"></div></div>
+        <div class="rb-group"><span class="rb-lbl">Events</span><div id="rb-kinds" class="rb-chips"></div></div>
+        <div class="rb-group" id="rb-teams-group"><span class="rb-lbl">Team</span><div id="rb-teams" class="rb-chips"></div></div>
         <div id="rb-next" style="margin-bottom:var(--space-3);"></div>
-        <div id="rb-teams"    style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
         <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-3);">
           <label style="font-size:0.8rem; opacity:0.75;">Sort
             <select id="rb-sort" style="margin-left:4px; padding:5px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);"></select>
@@ -301,6 +305,7 @@ class RsvpBoardScreen extends Screen {
       for (const t of (p.teams || [])) teams.set(t.id, t.label);
       for (const ev of this._openFor(p)) events.set(ev.fh_event_id, ev.line);
     }
+    this.find('#rb-teams-group').style.display = teams.size > 1 ? '' : 'none';
     this.find('#rb-teams').innerHTML = teams.size > 1
       ? [`<button class="rb-chip${this.teamId == null ? ' on' : ''}" data-team="">All teams</button>`]
           .concat([...teams].map(([id, label]) =>
