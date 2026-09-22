@@ -144,10 +144,12 @@ json RsvpBoard::list(const std::string& sectionCode,
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', tm.id, 'label', COALESCE(tm.label, tm.name))
                                       ORDER BY tm.board_sort_order), '[]'::jsonb)
               FROM roster r JOIN tm ON tm.id = r.team_id WHERE r.person_id = p.id)::text AS teams,
-           (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line)
+           (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line,
+                                                         'day', to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'))
                                       ORDER BY o.starts_at), '[]'::jsonb)
               FROM open_events o WHERE o.person_id = p.id)::text AS open_events,
-           (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line)
+           (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line,
+                                                         'day', to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'))
                                       ORDER BY o.starts_at), '[]'::jsonb)
               FROM missed_events o WHERE o.person_id = p.id)::text AS missed_events,
            to_char(lr.responded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_rsvp_at, lr.created_via AS last_rsvp_via, lr.response AS last_rsvp_response,
@@ -354,18 +356,21 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
     if (!who[0]["email"].is_null()) ctx.email = who[0]["email"].c_str();
 
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
-        SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at
+        SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at,
+               NULL::text AS day
           FROM roster r
         UNION ALL
         SELECT 'event', o.fh_event_id,
-               o.line || COALESCE(E'\n  ' || o.message_notes, ''), o.starts_at FROM open_events o
+               o.line || COALESCE(E'\n  ' || o.message_notes, ''), o.starts_at,
+               to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') FROM open_events o
          ORDER BY what, starts_at)SQL";
     auto rows = db->query(sql, {"", "", "{}", std::to_string(personId), "all"});
     for (const auto& row : rows) {
         if (std::string(row["what"].c_str()) == "team") {
             ctx.teamIds.push_back(row["id"].as<long long>());
         } else {
-            ctx.openEvents.push_back({row["id"].as<long long>(), row["line"].c_str()});
+            ctx.openEvents.push_back({row["id"].as<long long>(), row["line"].c_str(),
+                                      row["day"].is_null() ? std::string{} : row["day"].c_str()});
         }
     }
     return ctx;

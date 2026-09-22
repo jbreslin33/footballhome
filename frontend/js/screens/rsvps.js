@@ -42,9 +42,40 @@ class RsvpBoardScreen extends Screen {
     this.error   = null;
     this._loadSeq = 0;
     this.bulk    = null;       // last group reminder: { key, channel, html }
+    this.day     = 'week';     // 'week' or a club-local YYYY-MM-DD — owner 2026-09-22: pills for the
+                               // days left in the week, today as "Today", tomorrow as "Tomorrow"
   }
 
-  static get SECTIONS() { return { mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls' }; }
+  // Club-local YYYY-MM-DD for the day pill, or '' for the whole week.
+  _dayIso() { return /^\d{4}-\d{2}-\d{2}$/.test(this.day) ? this.day : ''; }
+
+  // Pills for the rest of the released week: today through Sunday (the
+  // board's week runs Monday–Sunday, club time).  Days already gone are
+  // not shown; today reads "Today", tomorrow "Tomorrow", the rest by name.
+  _dayPills() {
+    const tz = 'America/New_York';
+    const iso = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const dow = (d) => new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(d);
+    const pills = [{ key: 'week', label: RsvpBoardScreen.DAYS.week }];
+    const d = new Date();
+    for (let i = 0; i < 7; i++) {
+      const name = dow(d);
+      pills.push({ key: iso(d), label: i === 0 ? RsvpBoardScreen.DAYS.today : i === 1 ? RsvpBoardScreen.DAYS.tomorrow : name });
+      if (name === 'Sunday') break;
+      d.setDate(d.getDate() + 1);
+    }
+    return pills;
+  }
+
+  _dayLabel() { const pl = this._dayPills().find(x => x.key === this.day); return pl ? pl.label : 'This week'; }
+
+  // The card's events for the current day pill (open + missed both carry
+  // `day` from the server).
+  _openFor(p)   { const d = this._dayIso(); return (p.open_events   || []).filter(ev => !d || ev.day === d); }
+  _missedFor(p) { const d = this._dayIso(); return (p.missed_events || []).filter(ev => !d || ev.day === d); }
+
+  static get SECTIONS() { return { all: 'All', mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls' }; }
+  static get DAYS()     { return { week: 'This week', today: 'Today', tomorrow: 'Tomorrow' }; }
   static get WINDOWS()  { return { week: 'This week', '2w': 'Last 2 weeks', month: 'Last month', all: 'All time' }; }
   static get KINDS()    { return { all: 'All events', games: 'Games only', practices: 'Practices only' }; }
   static get SORTS() {
@@ -86,6 +117,7 @@ class RsvpBoardScreen extends Screen {
         <p class="subtitle">Who owes an answer — remind them with their unanswered events and a sign-in link</p>
       </div>
       <div style="padding: var(--space-4); max-width: 1500px; margin: 0 auto;">
+        <div id="rb-days" style="display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
         <div id="rb-sections" style="display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);"></div>
         <div style="display:flex; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-2);">
           <div id="rb-windows" style="display:flex; gap:var(--space-1); flex-wrap:wrap;"></div>
@@ -128,6 +160,12 @@ class RsvpBoardScreen extends Screen {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const sec = e.target.closest('[data-section]');
       if (sec) { this.section = sec.dataset.section; this.teamId = null; this.eventId = null; this._renderChips(); this.load(); return; }
+      const dayChip = e.target.closest('[data-day]');
+      if (dayChip) {
+        this.day = dayChip.dataset.day; this.eventId = null;
+        if (this.day !== 'week') { this.sort = 'open'; this.openOnly = true; }
+        this._renderChips(); this._renderBody(); return;
+      }
       const win = e.target.closest('[data-window]');
       if (win) { this.window = win.dataset.window; this._renderChips(); this.load(); return; }
       const kind = e.target.closest('[data-kind]');
@@ -166,6 +204,18 @@ class RsvpBoardScreen extends Screen {
   _renderChips() {
     const chip = (attr, key, label, on) =>
       `<button class="rb-chip${on ? ' on' : ''}" data-${attr}="${key}">${this.escapeHtml(label)}</button>`;
+    // Day pills carry how many players still owe an answer that day, and
+    // dim at zero; a stale pick (yesterday's date after midnight) resets.
+    const pills = this._dayPills();
+    if (!pills.some(pl => pl.key === this.day)) this.day = 'week';
+    const people = (this.data && this.data.people) || [];
+    this.find('#rb-days').innerHTML = pills.map(pl => {
+      if (pl.key === 'week') return chip('day', pl.key, pl.label, pl.key === this.day);
+      const n = people.filter(p => (p.open_events || []).some(ev => ev.day === pl.key)).length;
+      return `<button class="rb-chip${pl.key === this.day ? ' on' : ''}" data-day="${pl.key}"
+                      style="${n || pl.key === this.day ? '' : 'opacity:0.45;'}"
+                      title="${n} player${n === 1 ? '' : 's'} with something unanswered">${this.escapeHtml(pl.label)}${people.length ? ` <span style="opacity:0.7; font-weight:400;">${n}</span>` : ''}</button>`;
+    }).join('');
     this.find('#rb-sections').innerHTML = Object.entries(RsvpBoardScreen.SECTIONS)
       .map(([k, l]) => chip('section', k, l, k === this.section)).join('');
     this.find('#rb-windows').innerHTML = Object.entries(RsvpBoardScreen.WINDOWS)
@@ -174,6 +224,8 @@ class RsvpBoardScreen extends Screen {
       .map(([k, l]) => chip('kind', k, l, k === this.kind)).join('');
     this.find('#rb-sort').innerHTML = Object.entries(RsvpBoardScreen.SORTS)
       .map(([k, l]) => `<option value="${k}"${k === this.sort ? ' selected' : ''}>${this.escapeHtml(l)}</option>`).join('');
+    const openOnly = this.find('#rb-open-only');
+    if (openOnly) openOnly.checked = this.openOnly;
   }
 
   async load() {
@@ -181,18 +233,32 @@ class RsvpBoardScreen extends Screen {
     this.loading = true; this.error = null;
     this._renderBody();
     try {
-      const res = await this.auth.fetch(`/api/rsvp-board?section=${encodeURIComponent(this.section)}&window=${encodeURIComponent(this.window)}&kind=${encodeURIComponent(this.kind)}`);
-      const body = await res.json().catch(() => ({}));
+      // "All" (owner 2026-09-22) is the four sections fetched together and
+      // merged; every row remembers its section so reminders route right.
+      const keys = this.section === 'all'
+        ? Object.keys(RsvpBoardScreen.SECTIONS).filter(k => k !== 'all') : [this.section];
+      const bodies = await Promise.all(keys.map(async (key) => {
+        const res = await this.auth.fetch(`/api/rsvp-board?section=${encodeURIComponent(key)}&window=${encodeURIComponent(this.window)}&kind=${encodeURIComponent(this.kind)}`);
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+        for (const p of (body.people || [])) p.section = key;
+        for (const g of (body.next_games || [])) g.section = key;
+        return body;
+      }));
       if (seq !== this._loadSeq) return;           // a newer load superseded this one
-      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      this.data = body;
+      this.data = bodies.length === 1 ? bodies[0] : {
+        ...bodies[0],
+        section: 'all',
+        next_games: bodies.flatMap(b => b.next_games || []),
+        people: bodies.flatMap(b => b.people || []),
+      };
     } catch (err) {
       if (seq !== this._loadSeq) return;
       this.data = null;
       this.error = err.message || 'Failed to load.';
     }
     this.loading = false;
-    if (this.isMounted) this._renderBody();
+    if (this.isMounted) { this._renderChips(); this._renderBody(); }
   }
 
   // ── Body ────────────────────────────────────────────────────────
@@ -222,7 +288,7 @@ class RsvpBoardScreen extends Screen {
     const events = new Map();
     for (const p of people) {
       for (const t of (p.teams || [])) teams.set(t.id, t.label);
-      for (const ev of (p.open_events || [])) events.set(ev.fh_event_id, ev.line);
+      for (const ev of this._openFor(p)) events.set(ev.fh_event_id, ev.line);
     }
     this.find('#rb-teams').innerHTML = teams.size > 1
       ? [`<button class="rb-chip${this.teamId == null ? ' on' : ''}" data-team="">All teams</button>`]
@@ -235,10 +301,13 @@ class RsvpBoardScreen extends Screen {
       [...events].map(([id, line]) =>
         `<option value="${id}"${id === this.eventId ? ' selected' : ''}>Unanswered for: ${this.escapeHtml(line)}</option>`).join('');
 
+    const dayOn = this.day !== 'week';
     const list = people.filter(p =>
       (this.teamId == null || (p.teams || []).some(t => t.id === this.teamId)) &&
-      (this.eventId == null || (p.open_events || []).some(ev => ev.fh_event_id === this.eventId)) &&
-      (!this.openOnly || (p.open_events || []).length > 0) &&
+      (this.eventId == null || this._openFor(p).some(ev => ev.fh_event_id === this.eventId)) &&
+      // A day pill is a straggler list: only players with something still
+      // unanswered that day.
+      (!(this.openOnly || dayOn) || this._openFor(p).length > 0) &&
       (!this.search || `${p.first_name} ${p.last_name}`.toLowerCase().includes(this.search)));
 
     this._renderBulk(people, events);
@@ -249,17 +318,18 @@ class RsvpBoardScreen extends Screen {
       // Nobody-expected players (null %) sink to the bottom of the % sort.
       worst: (a, b) => (a.rsvp_pct == null) - (b.rsvp_pct == null) || (a.rsvp_pct - b.rsvp_pct)
                        || (b.open_events.length - a.open_events.length) || byName(a, b),
-      open:  (a, b) => (b.open_events.length - a.open_events.length) || (a.rsvp_pct ?? 101) - (b.rsvp_pct ?? 101) || byName(a, b),
+      open:  (a, b) => (this._openFor(b).length - this._openFor(a).length) || (a.rsvp_pct ?? 101) - (b.rsvp_pct ?? 101) || byName(a, b),
       quiet: (a, b) => ts(a.last_rsvp_at) - ts(b.last_rsvp_at) || byName(a, b),
       nagged: (a, b) => ((b.reminders_total || 0) - (a.reminders_total || 0)) || byName(a, b),
       name:  byName,
     };
     list.sort(sorters[this.sort] || sorters.worst);
 
-    const owing  = list.filter(p => p.open_events.length > 0).length;
-    const behind = list.filter(p => p.open_events.length + (p.missed_events || []).length > 0).length;
+    const owing  = list.filter(p => this._openFor(p).length > 0).length;
+    const behind = list.filter(p => this._openFor(p).length + this._missedFor(p).length > 0).length;
+    const dayLabel = dayOn ? `${this._dayLabel().toLowerCase()} (${this._dayIso()})` : 'this week';
     this.find('#rb-summary').textContent =
-      `${list.length} player${list.length === 1 ? '' : 's'} · ${owing} with unanswered events right now · ${behind} below 100% this week · ` +
+      `${list.length} player${list.length === 1 ? '' : 's'} · ${owing} with unanswered events ${dayOn ? dayLabel : 'right now'} · ${behind} below 100% ${dayLabel} · ` +
       `RSVP % covers ${RsvpBoardScreen.WINDOWS[this.window].toLowerCase()}, ` +
       `${{ all: 'practices & games', games: 'games only', practices: 'practices only' }[this.kind]} (from the day they joined the team)`;
 
@@ -280,7 +350,7 @@ class RsvpBoardScreen extends Screen {
 
     const owing = people.filter(p =>
       (this.teamId == null || (p.teams || []).some(t => t.id === this.teamId)) &&
-      (p.open_events || []).some(ev => ev.fh_event_id === this.eventId));
+      this._openFor(p).some(ev => ev.fh_event_id === this.eventId));
     const phones = owing.filter(p => p.has_phone).length;
     const emails = owing.filter(p => p.has_email).length;
     const btn = (channel, icon, n, bg, what) =>
@@ -310,9 +380,12 @@ class RsvpBoardScreen extends Screen {
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (this.auth && this.auth.token) headers['Authorization'] = `Bearer ${this.auth.token}`;
+      // Under "All" the event's section comes from a row that owes it.
+      const section = this.section !== 'all' ? this.section
+        : ((((this.data && this.data.people) || []).find(p => (p.open_events || []).some(ev => ev.fh_event_id === this.eventId)) || {}).section || 'mens');
       const res = await fetch('/api/rsvp-board/remind-event', {
         method: 'POST', headers, credentials: 'same-origin',
-        body: JSON.stringify({ section: this.section, fh_event_id: this.eventId, team_id: this.teamId, channel }),
+        body: JSON.stringify({ section, fh_event_id: this.eventId, team_id: this.teamId, channel }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -394,8 +467,10 @@ class RsvpBoardScreen extends Screen {
     const pct = p.rsvp_pct;
     const pctCls = pct == null ? 'rb-none' : pct >= 80 ? 'rb-good' : pct >= 50 ? 'rb-mid' : 'rb-bad';
     const teams = (p.teams || []).map(t => this.escapeHtml(t.label)).join(' · ');
-    const open   = p.open_events || [];
-    const missed = p.missed_events || [];
+    const open   = this._openFor(p);
+    const missed = this._missedFor(p);
+    const dayOn  = this.day !== 'week';
+    const dayWord = dayOn ? this._dayLabel().toLowerCase() : 'this week';
 
     const lastRsvp = p.last_rsvp_at
       ? `${this._fmtDate(p.last_rsvp_at)}${p.last_rsvp_via === 'standing' ? ' · standing default' : ''}`
@@ -431,7 +506,7 @@ class RsvpBoardScreen extends Screen {
     // channel still greys both, because it covered the whole week.
     const btn = (channel, icon, has, bg) => {
       const mine = channel === 'sms' ? (p.reminders_week_sms || 0) : (p.reminders_week_email || 0);
-      const why = !open.length ? 'Nothing left to answer this week' : !has
+      const why = !open.length ? `Nothing left to answer ${dayWord}` : !has
         ? (channel === 'sms' ? 'No mobile number on file' : 'No email on file')
         : `${channel === 'sms' ? 'Text' : 'Email'} the ${open.length} unanswered event${open.length === 1 ? '' : 's'} + sign-in link${to}`;
       const already = p.reminders_week
@@ -446,7 +521,7 @@ class RsvpBoardScreen extends Screen {
         <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
           <div style="min-width:0;">
             <div style="font-weight:800;">${this.escapeHtml(p.first_name)} ${this.escapeHtml(p.last_name)}</div>
-            <div style="font-size:0.72rem; opacity:0.65;">${teams}${p.youth ? ' · youth' : ''}</div>
+            <div style="font-size:0.72rem; opacity:0.65;">${this.section === 'all' && p.section ? this.escapeHtml(RsvpBoardScreen.SECTIONS[p.section] || p.section) + ' · ' : ''}${teams}${p.youth ? ' · youth' : ''}</div>
           </div>
           <div style="text-align:right;">
             <div class="rb-pct ${pctCls}">${pct == null ? '—' : pct + '%'}</div>
@@ -456,9 +531,9 @@ class RsvpBoardScreen extends Screen {
         ${open.length
           ? `<div style="font-size:0.78rem; font-weight:700;" class="rb-bad">Unanswered now (${open.length})</div>
              <ul class="rb-open">${open.map(ev => `<li>${this.escapeHtml(ev.line)}</li>`).join('')}</ul>`
-          : missed.length ? '' : `<div style="font-size:0.78rem;" class="rb-good">✓ Every event this week is answered</div>`}
+          : missed.length ? '' : `<div style="font-size:0.78rem;" class="rb-good">✓ Every event ${dayWord} is answered</div>`}
         ${missed.length
-          ? `<div style="font-size:0.78rem; font-weight:700;" class="rb-mid">Missed this week (${missed.length}) — never answered</div>
+          ? `<div style="font-size:0.78rem; font-weight:700;" class="rb-mid">Missed ${dayWord} (${missed.length}) — never answered</div>
              <ul class="rb-open" style="opacity:0.7;">${missed.map(ev => `<li>${this.escapeHtml(ev.line)}</li>`).join('')}</ul>`
           : ''}
         <div class="rb-row"><span class="k">Last RSVP</span><span class="v">${lastRsvp}</span></div>
@@ -505,9 +580,10 @@ class RsvpBoardScreen extends Screen {
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (this.auth && this.auth.token) headers['Authorization'] = `Bearer ${this.auth.token}`;
+      const day = this._dayIso();
       const res = await fetch('/api/rsvp-board/remind', {
         method: 'POST', headers, credentials: 'same-origin',
-        body: JSON.stringify({ person_id: personId, channel }),
+        body: JSON.stringify(day ? { person_id: personId, channel, day } : { person_id: personId, channel }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
