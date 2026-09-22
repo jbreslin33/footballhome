@@ -17,8 +17,10 @@
 // Club admins only for now (owner 2026-09-17); the backend's coach scoping
 // (own teams, no payment amounts) is written but switched off.
 //
-// A card splits the released week's unanswered events into "Unanswered
-// now" (still answerable) and "Missed this week" (already happened).
+// A card shows the released week as a table — every expected event with
+// the player's answer (owner 2026-09-22: "so i can see if missing all or
+// some and which ones"): going / not going / unanswered (still answerable)
+// / missed (already happened, never answered).
 // REMIND only lists the still-answerable ones — a past event in the
 // message would just confuse the player (owner 2026-09-19).  The day pills
 // (owner 2026-09-22) narrow the cards to one day's stragglers, but REMIND
@@ -102,6 +104,12 @@ class RsvpBoardScreen extends Screen {
         .rb-row .k { opacity:0.6; white-space:nowrap; }
         .rb-row .v { text-align:right; }
         .rb-open { font-size:0.78rem; margin:0; padding-left:16px; }
+        .rb-week { width:100%; border-collapse:collapse; font-size:0.75rem; }
+        .rb-week td { padding:2px 4px 2px 0; vertical-align:top; border-top:1px solid var(--border-color); }
+        .rb-week tr:first-child td { border-top:none; }
+        .rb-week td:last-child { text-align:right; white-space:nowrap; padding-right:0; font-weight:700; }
+        .rb-week tr.past { opacity:0.65; }
+        .rb-week tr.pick td { background:rgba(245,212,66,0.12); }
         .rb-btn { padding:4px 10px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.72rem; color:#fff; }
         .rb-btn[disabled] { opacity:0.35; cursor:not-allowed; }
         .rb-game { flex:1 1 230px; max-width:340px; text-align:left; cursor:pointer; padding:10px 12px; border-radius:10px;
@@ -470,10 +478,6 @@ class RsvpBoardScreen extends Screen {
     const pct = p.rsvp_pct;
     const pctCls = pct == null ? 'rb-none' : pct >= 80 ? 'rb-good' : pct >= 50 ? 'rb-mid' : 'rb-bad';
     const teams = (p.teams || []).map(t => this.escapeHtml(t.label)).join(' · ');
-    const open   = this._openFor(p);
-    const missed = this._missedFor(p);
-    const dayOn  = this.day !== 'week';
-    const dayWord = dayOn ? this._dayLabel().toLowerCase() : 'this week';
 
     const lastRsvp = p.last_rsvp_at
       ? `${this._fmtDate(p.last_rsvp_at)}${p.last_rsvp_via === 'standing' ? ' · standing default' : ''}`
@@ -534,14 +538,7 @@ class RsvpBoardScreen extends Screen {
             <div style="font-size:0.68rem; opacity:0.6;">${p.expected ? `answered ${p.answered} of ${p.expected}` : 'no events in window'}</div>
           </div>
         </div>
-        ${open.length
-          ? `<div style="font-size:0.78rem; font-weight:700;" class="rb-bad">Unanswered now (${open.length})</div>
-             <ul class="rb-open">${open.map(ev => `<li>${this.escapeHtml(ev.line)}</li>`).join('')}</ul>`
-          : missed.length ? '' : `<div style="font-size:0.78rem;" class="rb-good">✓ Every event ${dayWord} is answered</div>`}
-        ${missed.length
-          ? `<div style="font-size:0.78rem; font-weight:700;" class="rb-mid">Missed ${dayWord} (${missed.length}) — never answered</div>
-             <ul class="rb-open" style="opacity:0.7;">${missed.map(ev => `<li>${this.escapeHtml(ev.line)}</li>`).join('')}</ul>`
-          : ''}
+        ${this._weekTable(p)}
         <div class="rb-row"><span class="k">Last RSVP</span><span class="v">${lastRsvp}</span></div>
         ${lastManual}
         <div class="rb-row"><span class="k">Dues</span><span class="v">${dues}</span></div>
@@ -553,6 +550,40 @@ class RsvpBoardScreen extends Screen {
           ${btn('email', '✉', p.has_email, '#7c3aed')}
         </div>
       </div>`;
+  }
+
+  // The player's released week as a table — every expected event with
+  // their answer (owner 2026-09-22: "so i can see if missing all or some
+  // and which ones").  Whole week always, whatever day pill is on; the
+  // pill's day is highlighted.  Past events dim; a past unanswered one is
+  // "missed" (never answered), a future one "unanswered" (still owed —
+  // these are what REMIND lists).
+  _weekTable(p) {
+    const week = p.week_events || [];
+    if (!week.length) return `<div style="font-size:0.78rem;" class="rb-none">No events this week</div>`;
+    const answered = week.filter(ev => ev.response).length;
+    const open     = week.filter(ev => !ev.response && ev.still_open).length;
+    const missed   = week.length - answered - open;
+    const cls = answered === week.length ? 'rb-good' : answered === 0 ? 'rb-bad' : 'rb-mid';
+    const head = `${answered === week.length ? '✓ ' : ''}Answered ${answered} of ${week.length} this week` +
+      (open ? ` · <span class="rb-bad">${open} unanswered</span>` : '') +
+      (missed ? ` · <span class="rb-mid">${missed} missed</span>` : '');
+    const day = this._dayIso();
+    const rows = week.map(ev => {
+      const status = ev.response === 'yes'   ? `<span class="rb-good">✓ Going${ev.via === 'standing' ? ' <span style="font-weight:400; opacity:0.7;">(standing)</span>' : ''}</span>`
+                   : ev.response === 'no'    ? `<span style="opacity:0.75;">✗ Not going${ev.via === 'standing' ? ' <span style="font-weight:400; opacity:0.7;">(standing)</span>' : ''}</span>`
+                   : ev.response === 'maybe' ? `<span class="rb-mid">? Maybe</span>`
+                   : ev.still_open           ? `<span class="rb-bad">— unanswered</span>`
+                                             : `<span class="rb-mid">missed</span>`;
+      const trCls = [ev.still_open ? '' : 'past', day && ev.day === day ? 'pick' : ''].filter(Boolean).join(' ');
+      return `<tr${trCls ? ` class="${trCls}"` : ''}>
+                <td style="white-space:nowrap;">${this.escapeHtml(ev.when)}</td>
+                <td>${this.escapeHtml(ev.what)}</td>
+                <td>${status}</td>
+              </tr>`;
+    }).join('');
+    return `<div style="font-size:0.78rem; font-weight:700;" class="${cls}">${head}</div>
+            <table class="rb-week">${rows}</table>`;
   }
 
   // "this week 💬 1 · ✉ 2 — all-time 💬 3 · ✉ 4", per channel.

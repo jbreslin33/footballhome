@@ -12,8 +12,11 @@
 // team the player is on, from the day they joined it, inside the schedule
 // release window (mig 334), while not suspended and while their roster
 // status shows in RSVP.  Pickup, meetings and cancelled events never count.
-// The card splits the released week's unanswered events into open (still
-// answerable) and missed (already happened); REMIND only lists the open ones.
+// The card shows the released week as a table — every expected event with
+// the player's answer (week_events, owner 2026-09-22: "so i can see if
+// missing all or some and which ones") — and splits the unanswered ones
+// into open (still answerable) and missed (already happened); REMIND only
+// lists the open ones.
 // "Answered" is any fh_event_rsvps row (yes or no; players are not offered
 // maybe), manual or standing.
 //

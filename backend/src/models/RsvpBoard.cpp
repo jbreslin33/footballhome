@@ -85,13 +85,12 @@ const char* kBaseCtes = R"SQL(
                             AND (s.team_id IS NULL OR s.team_id = r.team_id)
                             AND s.starts_at <= ge.starts_at
                             AND (s.ends_at IS NULL OR s.ends_at > ge.starts_at))
-    ), week_unanswered AS (
+    ), week_events AS (
       -- Every event of the released week (Monday → release window end)
-      -- the player owes an answer to and has none for.  still_open: they
-      -- can still answer it; otherwise it already happened.  The board
-      -- card shows both; the reminder only lists the still-open ones —
-      -- an event that already went by would just confuse the player
-      -- (owner 2026-09-19).
+      -- the player owes an answer to, with their answer if any (owner
+      -- 2026-09-22: the card shows the whole week as a table "so i can see
+      -- if missing all or some and which ones").  still_open: they can
+      -- still answer it; otherwise it already happened.
       -- The line is player-facing: kind label + opponent, never the gcal
       -- title.  A practice that carries notes is an unusual one (Barn
       -- Night counts as a practice — owner 2026-09-18), so its notes ride
@@ -100,17 +99,26 @@ const char* kBaseCtes = R"SQL(
       -- kit lists and stay off the reminder.
       SELECT e.person_id, e.fh_event_id, e.starts_at,
              (e.ends_at > now()) AS still_open,
+             to_char(e.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') AS "when",
+             CASE e.kind WHEN 'match'      THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
+                         WHEN 'intrasquad' THEN 'Intra Squad'
+                         ELSE 'Practice' END AS what,
              to_char(e.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM')
                || ' — '
                || CASE e.kind WHEN 'match'      THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
                               WHEN 'intrasquad' THEN 'Intra Squad'
                               ELSE 'Practice' END AS line,
              CASE WHEN e.ends_at > now() AND e.kind NOT IN ('match','intrasquad')
-                  THEN NULLIF(BTRIM(e.fh_notes), '') END AS message_notes
+                  THEN NULLIF(BTRIM(e.fh_notes), '') END AS message_notes,
+             rv.response, rv.created_via, rv.responded_at
         FROM expected e
+        LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
        WHERE e.starts_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York'
-         AND NOT EXISTS (SELECT 1 FROM fh_event_rsvps rv
-                          WHERE rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id)
+    ), week_unanswered AS (
+      -- The week's events with no answer.  The board card lists both open
+      -- and missed; the reminder only lists the still-open ones — an event
+      -- that already went by would just confuse the player (owner 2026-09-19).
+      SELECT * FROM week_events WHERE response IS NULL
     ), open_events AS (
       SELECT * FROM week_unanswered WHERE still_open
     ), missed_events AS (
@@ -152,6 +160,11 @@ json RsvpBoard::list(const std::string& sectionCode,
                                                          'day', to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'))
                                       ORDER BY o.starts_at), '[]'::jsonb)
               FROM missed_events o WHERE o.person_id = p.id)::text AS missed_events,
+           (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', w.fh_event_id, 'when', w."when", 'what', w.what,
+                                                         'day', to_char(w.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'),
+                                                         'still_open', w.still_open, 'response', w.response, 'via', w.created_via)
+                                      ORDER BY w.starts_at), '[]'::jsonb)
+              FROM week_events w WHERE w.person_id = p.id)::text AS week_events,
            to_char(lr.responded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_rsvp_at, lr.created_via AS last_rsvp_via, lr.response AS last_rsvp_response,
            (SELECT to_char(max(rv.responded_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM fh_event_rsvps rv
              WHERE rv.person_id = p.id AND rv.created_via = 'manual') AS last_manual_rsvp_at,
@@ -239,6 +252,7 @@ json RsvpBoard::list(const std::string& sectionCode,
                                                : json(nullptr)},
             {"open_events",       json::parse(row["open_events"].c_str())},
             {"missed_events",     json::parse(row["missed_events"].c_str())},
+            {"week_events",       json::parse(row["week_events"].c_str())},
             {"last_rsvp_at",        iso(row, "last_rsvp_at")},
             {"last_rsvp_via",       textOrNull(row, "last_rsvp_via")},
             {"last_rsvp_response",  textOrNull(row, "last_rsvp_response")},
