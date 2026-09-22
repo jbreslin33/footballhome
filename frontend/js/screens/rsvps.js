@@ -20,7 +20,10 @@
 // A card splits the released week's unanswered events into "Unanswered
 // now" (still answerable) and "Missed this week" (already happened).
 // REMIND only lists the still-answerable ones — a past event in the
-// message would just confuse the player (owner 2026-09-19).
+// message would just confuse the player (owner 2026-09-19).  The day pills
+// (owner 2026-09-22) narrow the cards to one day's stragglers, but REMIND
+// still sends the whole week: "for the reminder on rsvp for today etc it
+// still should send message for all days".
 //
 // With one event picked ("Unanswered for:" or a next-game tile) a bar
 // offers ONE group text / BCC email to everybody who still owes that event
@@ -504,16 +507,19 @@ class RsvpBoardScreen extends Screen {
     // Each button tallies ITS channel (owner 2026-09-22: "I sent 2 emails
     // and no response yet, let me try a text"); one reminder on either
     // channel still greys both, because it covered the whole week.
+    // A day pill narrows the card, not the message: REMIND always lists
+    // every unanswered event of the week (owner 2026-09-22).
+    const weekOpen = (p.open_events || []).length;
     const btn = (channel, icon, has, bg) => {
       const mine = channel === 'sms' ? (p.reminders_week_sms || 0) : (p.reminders_week_email || 0);
-      const why = !open.length ? `Nothing left to answer ${dayWord}` : !has
+      const why = !weekOpen ? 'Nothing left to answer this week' : !has
         ? (channel === 'sms' ? 'No mobile number on file' : 'No email on file')
-        : `${channel === 'sms' ? 'Text' : 'Email'} the ${open.length} unanswered event${open.length === 1 ? '' : 's'} + sign-in link${to}`;
+        : `${channel === 'sms' ? 'Text' : 'Email'} the ${weekOpen} unanswered event${weekOpen === 1 ? '' : 's'} this week + sign-in link${to}`;
       const already = p.reminders_week
         ? ` — this week: ${p.reminders_week_sms || 0} text${(p.reminders_week_sms || 0) === 1 ? '' : 's'}, ${p.reminders_week_email || 0} email${(p.reminders_week_email || 0) === 1 ? '' : 's'}`
         : '';
       return `<button class="rb-btn" data-remind="${channel}" data-person-id="${p.person_id}"
-                      style="background:${bg};${p.reminders_week ? ' opacity:0.45;' : ''}" title="${this.escapeHtml(why + already)}"${(!open.length || !has) ? ' disabled' : ''}>${icon} REMIND${mine ? ` ✓ ×${mine}` : (p.reminders_week ? ' ✓' : '')}</button>`;
+                      style="background:${bg};${p.reminders_week ? ' opacity:0.45;' : ''}" title="${this.escapeHtml(why + already)}"${(!weekOpen || !has) ? ' disabled' : ''}>${icon} REMIND${mine ? ` ✓ ×${mine}` : (p.reminders_week ? ' ✓' : '')}</button>`;
     };
 
     return `
@@ -580,10 +586,11 @@ class RsvpBoardScreen extends Screen {
     try {
       const headers = { 'Content-Type': 'application/json' };
       if (this.auth && this.auth.token) headers['Authorization'] = `Bearer ${this.auth.token}`;
-      const day = this._dayIso();
+      // The day pill only narrows the board; the message always lists
+      // every unanswered event of the week (owner 2026-09-22).
       const res = await fetch('/api/rsvp-board/remind', {
         method: 'POST', headers, credentials: 'same-origin',
-        body: JSON.stringify(day ? { person_id: personId, channel, day } : { person_id: personId, channel }),
+        body: JSON.stringify({ person_id: personId, channel }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);

@@ -1,7 +1,6 @@
 #include "RsvpBoardController.h"
 
 #include <algorithm>
-#include <regex>
 #include <cctype>
 #include <iostream>
 #include <sstream>
@@ -194,16 +193,13 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
     }
     long long personId = 0;
-    std::string channel, day;
+    std::string channel;
     try {
         personId = body.value("person_id", 0LL);
         channel  = body.value("channel", std::string{});
-        day      = body.value("day", std::string{});     // optional club-local YYYY-MM-DD (owner 2026-09-22: Today / Tomorrow pills)
     } catch (const std::exception&) {
         return jsonError(HttpStatus::BAD_REQUEST, "person_id must be a number and channel a string");
     }
-    if (!day.empty() && !std::regex_match(day, std::regex("^\\d{4}-\\d{2}-\\d{2}$")))
-        return jsonError(HttpStatus::BAD_REQUEST, "day must be YYYY-MM-DD");
     std::transform(channel.begin(), channel.end(), channel.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (personId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "person_id required");
@@ -226,14 +222,9 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         const std::string contact = channel == "sms" ? ctx.phone : ctx.email;
         if (contact.empty())
             return jsonError(HttpStatus::CONFLICT, channel == "sms" ? "No mobile number on file." : "No email on file.");
-        // A day pill narrows the reminder to that day's events — "you
-        // haven't answered tonight's game", not the whole week.
-        if (!day.empty()) {
-            ctx.openEvents.erase(std::remove_if(ctx.openEvents.begin(), ctx.openEvents.end(),
-                [&](const RsvpBoard::OpenEvent& ev) { return ev.day != day; }), ctx.openEvents.end());
-            if (ctx.openEvents.empty())
-                return jsonError(HttpStatus::CONFLICT, "Nothing to remind — nothing left to answer that day.");
-        }
+        // The board's day pills narrow the cards, not the message: a
+        // reminder always lists every still-answerable event of the week
+        // (owner 2026-09-22).
         if (ctx.openEvents.empty())
             return jsonError(HttpStatus::CONFLICT, "Nothing to remind — nothing left to answer this week.");
 
