@@ -282,16 +282,18 @@ json RsvpBoard::list(const std::string& sectionCode,
     return people;
 }
 
-json RsvpBoard::nextGames(const std::string& sectionCode,
-                          const std::vector<long long>& scopeTeamIds) {
+json RsvpBoard::weekEvents(const std::string& sectionCode,
+                           const std::vector<long long>& scopeTeamIds) {
     auto* db = Database::getInstance();
-    // $2 (window start) is '' here: an upcoming game is inside every window.
+    // $2 (window start) is '' here: an upcoming event is inside every window.
+    // Every still-answerable event of the released week, per team, plus
+    // each team's next game when it lies beyond the release window (shown
+    // as "not released yet").  The board filters these tiles by its day
+    // and event pills (owner 2026-09-22: a snapshot of games AND practices;
+    // "if we have today selected and no games should we even show games?").
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
     , ng AS (
-      SELECT DISTINCT ON (tm.id)
-             tm.id AS team_id, COALESCE(tm.label, tm.name) AS team_label, tm.board_sort_order,
-             fe.id AS fh_event_id, fe.opponent, fe.is_home, ge.starts_at,
-             (ge.starts_at < tm.window_end) AS released
+      SELECT DISTINCT ON (tm.id) tm.id AS team_id, fe.id AS fh_event_id
         FROM tm
         JOIN fh_event_teams fet ON fet.team_id = tm.id
         JOIN fh_events fe ON fe.id = fet.fh_event_id AND fe.kind = 'match'
@@ -299,39 +301,54 @@ json RsvpBoard::nextGames(const std::string& sectionCode,
        WHERE ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
          AND ge.ends_at > now()
        ORDER BY tm.id, ge.starts_at
+    ), ev AS (
+      SELECT tm.id AS team_id, COALESCE(tm.label, tm.name) AS team_label, tm.board_sort_order,
+             fe.id AS fh_event_id, fe.kind, fe.opponent, fe.is_home, ge.starts_at,
+             (ge.starts_at < tm.window_end) AS released
+        FROM tm
+        JOIN fh_event_teams fet ON fet.team_id = tm.id
+        JOIN fh_events fe ON fe.id = fet.fh_event_id AND fe.kind IN ('practice','match','intrasquad')
+        JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+       WHERE ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+         AND ge.ends_at > now()
+         AND (ge.starts_at < tm.window_end
+              OR EXISTS (SELECT 1 FROM ng WHERE ng.team_id = tm.id AND ng.fh_event_id = fe.id))
     )
-    SELECT ng.team_id, ng.team_label, ng.fh_event_id, ng.is_home, ng.released,
-           COALESCE(NULLIF(BTRIM(ng.opponent), ''), 'TBD') AS opponent,
-           to_char(ng.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS starts_at,
-           to_char(ng.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') AS when_text,
+    SELECT ev.team_id, ev.team_label, ev.fh_event_id, ev.kind, ev.is_home, ev.released,
+           COALESCE(NULLIF(BTRIM(ev.opponent), ''), 'TBD') AS opponent,
+           to_char(ev.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS starts_at,
+           to_char(ev.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') AS when_text,
+           to_char(ev.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day,
            c.expected, c.yes, c.no
-      FROM ng
+      FROM ev
       CROSS JOIN LATERAL (
             SELECT count(*) AS expected,
                    count(*) FILTER (WHERE rv.response = 'yes') AS yes,
                    count(*) FILTER (WHERE rv.response = 'no')  AS no
               FROM roster r
-              JOIN expected e ON e.person_id = r.person_id AND e.fh_event_id = ng.fh_event_id
+              JOIN expected e ON e.person_id = r.person_id AND e.fh_event_id = ev.fh_event_id
               LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
-             WHERE r.team_id = ng.team_id) c
-     WHERE EXISTS (SELECT 1 FROM roster r WHERE r.team_id = ng.team_id)
-     ORDER BY ng.starts_at, ng.board_sort_order
+             WHERE r.team_id = ev.team_id) c
+     WHERE EXISTS (SELECT 1 FROM roster r WHERE r.team_id = ev.team_id)
+     ORDER BY ev.starts_at, ev.board_sort_order
     )SQL";
     auto rows = db->query(sql, {sectionCode, "", pgIntArray(scopeTeamIds), "0", "all"});
 
-    json games = json::array();
+    json events = json::array();
     for (const auto& row : rows) {
         const long long expected = row["expected"].as<long long>();
         const long long yes = row["yes"].as<long long>();
         const long long no  = row["no"].as<long long>();
-        games.push_back({
+        events.push_back({
             {"team_id",     row["team_id"].as<long long>()},
             {"team_label",  row["team_label"].c_str()},
             {"fh_event_id", row["fh_event_id"].as<long long>()},
+            {"kind",        row["kind"].c_str()},
             {"opponent",    row["opponent"].c_str()},
             {"is_home",     row["is_home"].is_null() ? json(nullptr) : json(row["is_home"].as<bool>())},
             {"starts_at",   row["starts_at"].c_str()},
             {"when_text",   row["when_text"].c_str()},
+            {"day",         row["day"].c_str()},
             {"released",    row["released"].as<bool>()},
             {"expected",    expected},
             {"yes",         yes},
@@ -339,7 +356,7 @@ json RsvpBoard::nextGames(const std::string& sectionCode,
             {"unanswered",  expected - yes - no},
         });
     }
-    return games;
+    return events;
 }
 
 RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {

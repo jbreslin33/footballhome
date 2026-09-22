@@ -32,12 +32,15 @@ public:
                         const std::string& kind,          // all | games | practices
                         const std::vector<long long>& scopeTeamIds);
 
-    // Each team's next game (owner 2026-09-17: "focus on game as its most
-    // important") with how its roster has answered.  `released` is false
-    // when the game is still beyond the schedule release window — players
-    // cannot answer it yet, so nobody is counted as unanswered.
-    nlohmann::json nextGames(const std::string& sectionCode,
-                             const std::vector<long long>& scopeTeamIds);
+    // The snapshot tiles: every still-answerable event of the released
+    // week per team (practices, games, intra squads) with how its roster
+    // has answered, plus each team's next game when it lies beyond the
+    // schedule release window — `released` false: players cannot answer it
+    // yet, so nobody is counted as unanswered.  Started as next-game-only
+    // (owner 2026-09-17: "focus on game as its most important"); widened
+    // to practices 2026-09-22 for "an overall snapshot".
+    nlohmann::json weekEvents(const std::string& sectionCode,
+                              const std::vector<long long>& scopeTeamIds);
 
     // Everything a reminder for one player needs.
     struct OpenEvent { long long fhEventId; std::string line; std::string day; };   // day: club-local YYYY-MM-DD

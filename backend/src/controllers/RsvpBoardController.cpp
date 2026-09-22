@@ -172,7 +172,7 @@ Response RsvpBoardController::handleList(const Request& request) {
             {"kind",         kind},
             {"window_start", windowStart.empty() ? json(nullptr) : json(windowStart)},
             {"is_admin",     scope.isAdmin},
-            {"next_games",   model_->nextGames(def->code, scope.coachTeamIds)},
+            {"events",       model_->weekEvents(def->code, scope.coachTeamIds)},
             {"people",       std::move(people)},
         });
     } catch (const std::exception& e) {

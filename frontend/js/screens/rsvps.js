@@ -27,7 +27,7 @@
 // still sends the whole week: "for the reminder on rsvp for today etc it
 // still should send message for all days".
 //
-// With one event picked ("Unanswered for:" or a next-game tile) a bar
+// With one event picked ("Unanswered for:" or a snapshot tile) a bar
 // offers ONE group text / BCC email to everybody who still owes that event
 // an answer — POST /api/rsvp-board/remind-event.  No magic link in a group
 // message; the DB copy (mig 380) points at footballhome.org.
@@ -119,6 +119,8 @@ class RsvpBoardScreen extends Screen {
                    border:1px solid var(--border-color); border-left:4px solid #f5d442;
                    background:var(--bg-secondary); color:var(--text-primary); }
         .rb-game.on { outline:2px solid #f5d442; }
+        .rb-game.practice { border-left-color:#38bdf8; }
+        .rb-game.practice.on { outline-color:#38bdf8; }
         .rb-bulk { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:8px 12px; margin-bottom:var(--space-2);
                    border:1px solid var(--border-color); border-left:4px solid #f5d442; border-radius:10px;
                    background:var(--bg-secondary); font-size:0.8rem; }
@@ -185,8 +187,8 @@ class RsvpBoardScreen extends Screen {
       if (win) { this.window = win.dataset.window; this._renderChips(); this.load(); return; }
       const kind = e.target.closest('[data-kind]');
       if (kind) { this.kind = kind.dataset.kind; this.eventId = null; this._renderChips(); this.load(); return; }
-      // Next-game tile: focus the cards on that team's players who have
-      // not answered that game; tap again to clear.
+      // Snapshot tile: focus the cards on that team's players who have
+      // not answered that event; tap again to clear.
       const game = e.target.closest('[data-game]');
       if (game) {
         const id = Number(game.dataset.game), team = Number(game.dataset.gameTeam);
@@ -257,14 +259,14 @@ class RsvpBoardScreen extends Screen {
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
         for (const p of (body.people || [])) p.section = key;
-        for (const g of (body.next_games || [])) g.section = key;
+        for (const g of (body.events || [])) g.section = key;
         return body;
       }));
       if (seq !== this._loadSeq) return;           // a newer load superseded this one
       this.data = bodies.length === 1 ? bodies[0] : {
         ...bodies[0],
         section: 'all',
-        next_games: bodies.flatMap(b => b.next_games || []),
+        events: bodies.flatMap(b => b.events || []),
         people: bodies.flatMap(b => b.people || []),
       };
     } catch (err) {
@@ -281,7 +283,7 @@ class RsvpBoardScreen extends Screen {
     const bodyEl = this.find('#rb-body');
     if (!bodyEl) return;
     if (this.loading) {
-      // Don't leave the previous section's games above a loading list.
+      // Don't leave the previous section's tiles above a loading list.
       const next = this.find('#rb-next');
       if (next) next.innerHTML = '';
       const bulkEl = this.find('#rb-bulk');
@@ -296,7 +298,7 @@ class RsvpBoardScreen extends Screen {
     }
     const people = (this.data && this.data.people) || [];
 
-    this._renderNextGames();
+    this._renderSnapshot();
 
     // Team chips + event filter come from the loaded rows.
     const teams = new Map();
@@ -439,30 +441,45 @@ class RsvpBoardScreen extends Screen {
     }
   }
 
-  // One tile per team: its next game and how the roster has answered.
-  // Games matter most (owner 2026-09-17), so this sits above the cards.
-  _renderNextGames() {
+  // Snapshot tiles — one per team event with going / not / unanswered
+  // counts (owner 2026-09-22: games AND practices, "so i can get an overall
+  // snapshot").  They obey the pills: the event pill keeps games or
+  // practices, the day pill keeps that day only — with Today picked and
+  // no game today, no game tile shows.  A team's next game beyond the
+  // release window rides along on the whole-week view as "not released".
+  _snapshotEvents() {
+    const day = this._dayIso();
+    return ((this.data && this.data.events) || []).filter(ev =>
+      (this.kind === 'all' || (this.kind === 'games') === (ev.kind !== 'practice')) &&
+      (!day || ev.day === day));
+  }
+
+  _renderSnapshot() {
     const slot = this.find('#rb-next');
     if (!slot) return;
-    const games = (this.data && this.data.next_games) || [];
-    if (!games.length || this.kind === 'practices') { slot.innerHTML = ''; return; }
+    const events = this._snapshotEvents();
+    if (!events.length) { slot.innerHTML = ''; return; }
+    const dayOn = this.day !== 'week';
+    const what = { all: 'Events', games: 'Games', practices: 'Practices' }[this.kind];
     slot.innerHTML = `
       <div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.6; margin-bottom:6px;">
-        Next game — tap to see who hasn't answered
+        ${this.escapeHtml(what)} ${dayOn ? this.escapeHtml(this._dayLabel().toLowerCase()) : 'this week'} — tap one to see who hasn't answered
       </div>
       <div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
-        ${games.map(g => {
+        ${events.map(g => {
           const on = this.eventId === g.fh_event_id && this.teamId === g.team_id;
           const ha = g.is_home == null ? 'vs' : (g.is_home ? 'vs' : '@');
+          const title = g.kind === 'match' ? `${ha} ${this.escapeHtml(g.opponent)}`
+                      : g.kind === 'intrasquad' ? 'Intra Squad' : 'Practice';
           const counts = g.released
             ? `<span class="rb-good">${g.yes} going</span> · <span>${g.no} not</span> ·
                <span class="${g.unanswered ? 'rb-bad' : 'rb-good'}" style="font-weight:800;">${g.unanswered} unanswered</span>
                <span style="opacity:0.6;"> of ${g.expected}</span>`
             : `<span style="opacity:0.7;">Not released to players yet — nobody can answer</span>`;
           return `
-            <button type="button" class="rb-game${on ? ' on' : ''}" data-game="${g.fh_event_id}" data-game-team="${g.team_id}">
+            <button type="button" class="rb-game${on ? ' on' : ''}${g.kind === 'practice' ? ' practice' : ''}" data-game="${g.fh_event_id}" data-game-team="${g.team_id}">
               <div style="font-size:0.72rem; opacity:0.7;">${this.escapeHtml(g.team_label)}</div>
-              <div style="font-weight:800;">${ha} ${this.escapeHtml(g.opponent)}</div>
+              <div style="font-weight:800;">${title}</div>
               <div style="font-size:0.78rem; opacity:0.8;">${this.escapeHtml(g.when_text)}</div>
               <div style="font-size:0.78rem; margin-top:4px;">${counts}</div>
             </button>`;
