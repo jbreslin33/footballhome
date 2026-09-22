@@ -75,10 +75,12 @@ class MyScreen extends Screen {
     this.chatError      = null;
     this.pollTimer      = null;
     this.chatExpanded   = false;         // true → show full history; false → latest only
+    this.chatMessaging  = true;          // chats.messaging_enabled (mig 406); false → links only
 
     // GroupMe feed (read-only; only sections whose chat has a GroupMe
     // integration get one — chat_integrations, migration 392).
     this.groupmeTitle    = '';
+    this.groupmeCanPost  = false;        // chat_integrations.post_messages (mig 407)
     this.groupmeMessages = [];           // newest-first, as the API returns them
     this.groupmeExpanded = false;
     this.pollTick        = 0;
@@ -1461,12 +1463,12 @@ class MyScreen extends Screen {
     const box = this.find('#my-chat');
     if (!box) return;
     box.innerHTML = `
-      <div style="background: rgba(15,23,42,0.55); border-radius:7px;
+      <div id="chat-box" style="background: rgba(15,23,42,0.55); border-radius:7px;
                   border:1px solid rgba(255,255,255,0.06); overflow:hidden;">
         <div style="display:flex; align-items:center; justify-content:space-between;
                     padding:5px 7px; border-bottom:1px solid rgba(255,255,255,0.08);
                     background: rgba(15,23,42,0.75);">
-          <div style="font-size:0.72rem; font-weight:700; opacity:0.9;">Chat</div>
+          <div id="chat-title" style="font-size:0.72rem; font-weight:700; opacity:0.9;">Chat</div>
           <div style="display:flex; align-items:center; gap:6px;">
             <button id="push-enable-btn" type="button" style="display:none; padding:2px 7px;
                     border-radius:999px; border:1px solid rgba(255,255,255,0.16);
@@ -1640,6 +1642,38 @@ class MyScreen extends Screen {
     return out;
   }
 
+  // Messaging is off for this section (chats.messaging_enabled = false,
+  // mig 406 — the Men's chat lives on GroupMe): the chat box becomes the
+  // GroupMe section.  Owner 2026-09-22: "show the last 5 gm messages and
+  // have the groupme join button in same section and mark it off with
+  // border".  Header (push buttons live there) + join link strip stay;
+  // the history slot shows the feed; the composer goes.
+  _renderLinksOnly() {
+    const box = this.find('#chat-box');
+    if (!box) return;
+    box.style.border = '1.5px solid rgba(0,175,240,0.6)';   // GroupMe blue
+    const view = this.find('#chat-view-btn');
+    if (view) view.hidden = true;
+    this._syncGroupMeComposer();
+    const title = this.find('#chat-title');
+    if (title && this.groupmeTitle) title.textContent = this.groupmeTitle;
+    const list = this.find('#chat-list');
+    if (list) list.innerHTML = this.groupmeMessages.length ? '' : `
+      <div style="opacity:0.7; font-size:0.68rem;">Loading GroupMe…</div>`;
+    const standalone = this.find('#my-groupme');
+    if (standalone) standalone.hidden = true;
+    if (this.groupmeMessages.length) this._renderGroupMe();
+  }
+
+  // In the merged GroupMe section the composer stays only when the
+  // integration allows posting (post_messages, mig 407) — the message is
+  // relayed into the group with the sender's name in the text.
+  _syncGroupMeComposer() {
+    const input = this.find('#chat-input');
+    if (!input || !input.parentElement) return;
+    input.parentElement.hidden = !this.groupmeCanPost;
+  }
+
   // Section links (chat_links rows for the viewer's own club chat —
   // e.g. the Men's GroupMe join link).  Label + url both come from the DB.
   _renderChatLinks(links) {
@@ -1744,14 +1778,47 @@ class MyScreen extends Screen {
     const changed = newestId(incoming) !== newestId(this.groupmeMessages)
       || incoming.length !== this.groupmeMessages.length;
     this.groupmeTitle = (res && res.title) || '';
+    const couldPost = this.groupmeCanPost;
+    this.groupmeCanPost = !!(res && res.can_post);
     this.groupmeMessages = incoming;
     if (changed) this._renderGroupMe();
+    if (!this.chatMessaging && couldPost !== this.groupmeCanPost) this._syncGroupMeComposer();
   }
 
   _renderGroupMe() {
+    const msgs = this.groupmeMessages;
+    if (!this.chatMessaging) {
+      // Merged section (see _renderLinksOnly): last 5 in the history slot,
+      // the rest behind a toggle; title from the integration row.
+      const title = this.find('#chat-title');
+      if (title && this.groupmeTitle) title.textContent = this.groupmeTitle;
+      const standalone = this.find('#my-groupme');
+      if (standalone) standalone.hidden = true;
+      const list = this.find('#chat-list');
+      if (!list) return;
+      // Oldest at the top, newest at the bottom — the way GroupMe reads
+      // (owner 2026-09-22: "flip the messages so they are latest at
+      // bottom like in gm").  The API hands them newest-first; the
+      // "older" toggle sits above, where the older messages would be.
+      const LATEST = 5;
+      const shown = (this.groupmeExpanded ? msgs : msgs.slice(0, LATEST)).slice().reverse();
+      const older = Math.max(0, msgs.length - LATEST);
+      const toggle = older > 0
+        ? `<div style="text-align:center; padding-bottom:4px;">
+             <button id="groupme-expand-toggle" type="button"
+                     style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16);
+                            background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;">
+               ${this.groupmeExpanded ? `Latest ${LATEST} only` : `Show ${older} older`}
+             </button>
+           </div>`
+        : '';
+      list.innerHTML = msgs.length
+        ? toggle + shown.map(m => this._renderGroupMeRow(m)).join('')
+        : `<div style="opacity:0.7; font-size:0.68rem;">No GroupMe messages yet.</div>`;
+      return;
+    }
     const box = this.find('#my-groupme');
     if (!box) return;
-    const msgs = this.groupmeMessages;
     box.hidden = !msgs.length;
     if (!msgs.length) return;
     const shown = this.groupmeExpanded ? msgs : msgs.slice(0, 1);
@@ -1885,7 +1952,11 @@ class MyScreen extends Screen {
       this.chatViewerId = (res && res.viewer_user_id) || 0;
       this.chatLoaded = true;
       this.chatError = null;
+      this.chatMessaging = !(res && res.messaging === false);
       this._renderChatLinks((res && res.links) || []);
+      if (!this.chatMessaging) { this._renderLinksOnly(); return; }
+    } else if (!this.chatMessaging) {
+      return;  // the section chats on GroupMe — nothing to poll
     } else if (incoming.length > 0) {
       this.chatMessages = this.chatMessages.concat(incoming);
       if (res && res.viewer_user_id) this.chatViewerId = res.viewer_user_id;
@@ -1907,6 +1978,18 @@ class MyScreen extends Screen {
     if (btn) btn.disabled = true;
 
     try {
+      if (!this.chatMessaging) {
+        // No in-app chat here: relay to the section's GroupMe (mig 407).
+        await this._fetch('/api/my/groupme/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+        ta.value = '';
+        ta.style.height = 'auto';
+        await this._loadGroupMe();   // server dropped its cache — the post shows now
+        return;
+      }
       const res = await this._fetch('/api/my/chat/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

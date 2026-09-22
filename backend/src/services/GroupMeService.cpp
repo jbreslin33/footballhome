@@ -2,6 +2,9 @@
 #include "../core/HttpClient.h"
 #include "../third_party/json.hpp"
 #include <cstdlib>
+#include <random>
+#include <sstream>
+#include <iomanip>
 #include <iostream>
 #include <stdexcept>
 
@@ -63,6 +66,41 @@ GroupMeService::recentMessages(const std::string& externalGroupId, int limit) {
         }
         throw;
     }
+}
+
+std::string GroupMeService::postMessage(const std::string& externalGroupId, const std::string& text) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    ensureConfigured();
+    if (accessToken_.empty()) throw std::runtime_error("GROUPME_ACCESS_TOKEN not configured");
+    if (externalGroupId.empty()) throw std::runtime_error("GroupMeService::postMessage: empty group id");
+    if (text.empty()) throw std::runtime_error("GroupMeService::postMessage: empty text");
+
+    // source_guid: GroupMe de-duplicates on it, so it must be fresh per post.
+    std::random_device rd;
+    std::ostringstream guid;
+    guid << std::hex << std::setfill('0');
+    for (int i = 0; i < 4; ++i) guid << std::setw(8) << rd();
+
+    const json body = {{"message", {{"source_guid", "fh-" + guid.str()}, {"text", text}}}};
+    const std::string url = std::string(kApiBase) + "/groups/"
+                          + HttpClient::urlEncode(externalGroupId)
+                          + "/messages?token=" + HttpClient::urlEncode(accessToken_);
+    const HttpClient::Response r = http_->postJson(url, body.dump());
+    if (!r.ok()) {
+        // Never log the URL — it carries the token.
+        throw std::runtime_error("GroupMe post failed (status=" + std::to_string(r.status)
+                                 + (r.error.empty() ? "" : ", " + r.error) + ")");
+    }
+    std::string id;
+    try {
+        const json j = json::parse(r.body);
+        if (j.contains("response") && j["response"].contains("message")
+            && j["response"]["message"].contains("id") && j["response"]["message"]["id"].is_string()) {
+            id = j["response"]["message"]["id"].get<std::string>();
+        }
+    } catch (...) { /* id stays empty — the post went through */ }
+    cache_.erase(externalGroupId);
+    return id;
 }
 
 std::vector<GroupMeService::Message>

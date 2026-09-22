@@ -39,6 +39,11 @@ public:
     // fails with nothing cached to fall back on.
     std::vector<Message> recentMessages(const std::string& externalGroupId, int limit = 20);
 
+    // Post `text` to the group as the token's owner.  Returns the new
+    // GroupMe message id; throws std::runtime_error on failure.  Drops the
+    // group's feed cache so the next recentMessages() shows the post.
+    std::string postMessage(const std::string& externalGroupId, const std::string& text);
+
 private:
     GroupMeService();
     ~GroupMeService();

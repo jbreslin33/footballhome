@@ -218,6 +218,22 @@ long long chatIdForSlug(const std::string& slug) {
     return id;
 }
 
+// chats.messaging_enabled (migration 406): false = the section chats
+// elsewhere (the Men's GroupMe) — no history, no posting; links and the
+// GroupMe feed still hang off the row.  Read per request, not cached, so
+// a migration flip takes effect at once.
+bool chatMessagingEnabled(long long chatId) {
+    try {
+        auto r = Database::getInstance()->query(
+            "SELECT messaging_enabled FROM chats WHERE id = $1::int",
+            {std::to_string(chatId)});
+        return !r.empty() && !r[0]["messaging_enabled"].is_null()
+            && r[0]["messaging_enabled"].as<bool>();
+    } catch (...) {
+        return true;
+    }
+}
+
 bool isAdmin(long long personId) {
     try {
         auto* db = Database::getInstance();
@@ -346,6 +362,7 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
     router.get (prefix + "/chat/messages",  [this](const Request& r) { return handleGetChatMessages(r); });
     router.post(prefix + "/chat/messages",  [this](const Request& r) { return handlePostChatMessage(r); });
     router.get (prefix + "/groupme/feed",   [this](const Request& r) { return handleGetGroupMeFeed(r); });
+    router.post(prefix + "/groupme/messages", [this](const Request& r) { return handlePostGroupMeMessage(r); });
     router.post(prefix + "/events/push-remind", [this](const Request& r) { return handlePushRemind(r); });
     router.post(prefix + "/push-test", [this](const Request& r) { return handlePushTest(r); });
 }
@@ -374,9 +391,12 @@ Response MyController::handleGetChatMessages(const Request& request) {
         try { sinceId = std::stoll(sinceStr); } catch (...) { sinceId = 0; }
     }
 
+    const bool messaging = chatMessagingEnabled(chatId);
+
     try {
         auto* db = Database::getInstance();
-        auto r = db->query(
+        // Messaging off (mig 406): no history, only the links.
+        auto r = messaging ? db->query(
             "SELECT cm.id, cm.user_id, u.person_id, "
             "       p.first_name, p.last_name, cm.message, "
             "       TO_CHAR(cm.created_at AT TIME ZONE 'UTC', "
@@ -388,7 +408,7 @@ Response MyController::handleGetChatMessages(const Request& request) {
             "   AND cm.id > $2::int "
             " ORDER BY cm.created_at DESC, cm.id DESC "
             " LIMIT 200",
-            {std::to_string(chatId), std::to_string(sinceId)});
+            {std::to_string(chatId), std::to_string(sinceId)}) : pqxx::result{};
 
         std::vector<json> messages;
         messages.reserve(r.size());
@@ -427,6 +447,7 @@ Response MyController::handleGetChatMessages(const Request& request) {
         return jsonOk({
             {"chat_id",        chatId},
             {"viewer_user_id", viewerId},
+            {"messaging",      messaging},
             {"messages",       messages},
             {"links",          links},
         });
@@ -456,7 +477,7 @@ Response MyController::handleGetGroupMeFeed(const Request& request) {
     try {
         auto* db = Database::getInstance();
         auto r = db->query(
-            "SELECT ci.external_id, COALESCE(ci.external_name,'') AS external_name "
+            "SELECT ci.external_id, COALESCE(ci.external_name,'') AS external_name, ci.post_messages "
             "  FROM chat_integrations ci "
             "  JOIN chats c          ON c.id = ci.chat_id "
             "  JOIN chat_providers p ON p.id = ci.provider_id "
@@ -465,10 +486,13 @@ Response MyController::handleGetGroupMeFeed(const Request& request) {
             " ORDER BY ci.is_primary DESC, ci.id LIMIT 1",
             {slug});
         if (r.empty()) {
-            return jsonOk({{"title", ""}, {"messages", json::array()}});
+            return jsonOk({{"title", ""}, {"messages", json::array()}, {"can_post", false}});
         }
         const std::string groupId = r[0]["external_id"].as<std::string>();
         const std::string title   = r[0]["external_name"].as<std::string>();
+        // post_messages (migration 407): the "Write a message" box relays
+        // to this group.
+        const bool canPost = !r[0]["post_messages"].is_null() && r[0]["post_messages"].as<bool>();
 
         json messages = json::array();
         for (const auto& m : GroupMeService::getInstance().recentMessages(groupId, 20)) {
@@ -481,10 +505,102 @@ Response MyController::handleGetGroupMeFeed(const Request& request) {
                 {"created_at", m.createdAt},
             });
         }
-        return jsonOk({{"title", title}, {"messages", messages}});
+        return jsonOk({{"title", title}, {"messages", messages}, {"can_post", canPost}});
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/my/groupme/feed] " << e.what() << std::endl;
         return jsonError(HttpStatus::BAD_GATEWAY, "GroupMe feed unavailable");
+    }
+}
+
+// POST /api/my/groupme/messages  {message}
+//
+// Relays a member's message into the section's GroupMe group (migration
+// 407).  The post goes through the club token, so GroupMe shows it from
+// the token's owner; the sender's Football Home name is written into the
+// text via message_templates kind='groupme' tier='relay' ("{name}: {text}").
+// Same membership gate as the feed; no impersonation (a post is an act).
+// Logged to chat_relay_log, which also backs the 3-per-10-seconds limit.
+Response MyController::handlePostGroupMeMessage(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/false, &personId))
+        return *err;
+
+    const std::string slug = chatSlugForPerson(personId);
+    if (slug.empty()) {
+        return jsonError(HttpStatus::FORBIDDEN, "Not a member of any club chat");
+    }
+
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON"); }
+    if (!body.contains("message") || !body["message"].is_string()) {
+        return jsonError(HttpStatus::BAD_REQUEST, "message string required");
+    }
+    std::string text = body["message"].get<std::string>();
+    const auto first = text.find_first_not_of(" \t\r\n");
+    const auto last  = text.find_last_not_of(" \t\r\n");
+    text = (first == std::string::npos) ? std::string{} : text.substr(first, last - first + 1);
+    if (text.empty()) return jsonError(HttpStatus::BAD_REQUEST, "message is empty");
+
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query(
+            "SELECT ci.id, ci.external_id "
+            "  FROM chat_integrations ci "
+            "  JOIN chats c          ON c.id = ci.chat_id "
+            "  JOIN chat_providers p ON p.id = ci.provider_id "
+            " WHERE c.slug = $1 AND p.name = 'groupme' AND p.is_active "
+            "   AND ci.post_messages "
+            " ORDER BY ci.is_primary DESC, ci.id LIMIT 1",
+            {slug});
+        if (r.empty()) {
+            return jsonError(HttpStatus::FORBIDDEN, "This section has no GroupMe to post to");
+        }
+        const std::string integrationId = r[0]["id"].c_str();
+        const std::string groupId       = r[0]["external_id"].as<std::string>();
+
+        auto rl = db->query(
+            "SELECT COUNT(*) AS n FROM chat_relay_log "
+            " WHERE person_id = $1::int AND created_at > now() - interval '10 seconds'",
+            {std::to_string(personId)});
+        if (!rl.empty() && rl[0]["n"].as<long long>() >= 3) {
+            return jsonError(HttpStatus::BAD_REQUEST, "slow down — 3 messages / 10 sec limit");
+        }
+
+        auto who = db->query(
+            "SELECT TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name "
+            "  FROM persons WHERE id = $1::int", {std::to_string(personId)});
+        const std::string name = who.empty() ? std::string{} : who[0]["name"].as<std::string>();
+
+        const auto relay = MessageCopy().render("groupme", "relay", {{"name", name}, {"text", text}});
+        if (!relay.ok()) {
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "groupme relay wording missing");
+        }
+        // GroupMe caps a message at 1000 characters.
+        if (relay.body.size() > 1000) {
+            return jsonError(HttpStatus::BAD_REQUEST, "message too long for GroupMe (1000 characters with your name)");
+        }
+
+        std::string externalId, error;
+        try {
+            externalId = GroupMeService::getInstance().postMessage(groupId, relay.body);
+        } catch (const std::exception& e) {
+            error = e.what();
+        }
+        db->query(
+            "INSERT INTO chat_relay_log (chat_integration_id, person_id, text, external_message_id, error) "
+            "VALUES ($1::int, $2::int, $3, NULLIF($4,''), NULLIF($5,''))",
+            {integrationId, std::to_string(personId), relay.body, externalId, error});
+        if (!error.empty()) {
+            std::cerr << "[POST /api/my/groupme/messages] " << error << std::endl;
+            return jsonError(HttpStatus::BAD_GATEWAY, "GroupMe did not accept the message");
+        }
+        return jsonOk({{"posted", relay.body}, {"external_id", externalId}});
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/my/groupme/messages] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
 
@@ -504,6 +620,10 @@ Response MyController::handlePostChatMessage(const Request& request) {
     const long long chatId = chatIdForSlug(slug);
     if (chatId <= 0) {
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "chat not configured");
+    }
+
+    if (!chatMessagingEnabled(chatId)) {
+        return jsonError(HttpStatus::FORBIDDEN, "This chat has moved — use the section's group chat link");
     }
 
     const std::string userIdStr = usersIdForPerson(personId);
