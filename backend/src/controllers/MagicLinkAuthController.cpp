@@ -11,6 +11,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <iostream>
 #include <regex>
 #include <sstream>
@@ -327,9 +328,55 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
         // instead of a per-chat popup).
         // A link sent about one game (the squad game reminder, mig 384)
         // lands on that game's lineup instead.
-        const std::string target = publicBaseUrl() + (row[0]["match_id"].is_null()
-            ? std::string("/#calendar")
-            : "/#game-center/" + std::to_string(row[0]["match_id"].as<long long>()) + "/starters_bench");
+        // Hand the SPA a JWT the way Google sign-in does (2026-09-23, a
+        // parent: "that link does not lead me anywhere").  The session
+        // cookie alone is invisible to app.js, which boots to the login
+        // screen unless localStorage holds a token — so on a fresh phone
+        // every magic link ended on the login page (the open item from the
+        // squad reminder, mig 384).  A users row is attached when the
+        // person has none (no password, like OAuth accounts, migration
+        // 095); the JWT payload is byte-for-byte the shape
+        // AuthController/OAuthController::generateJWT mint, and the landing
+        // is /oauth-success?token=… which stores it, loads /api/auth/me
+        // and continues to role-selection → #my (player-only auto-skip).
+        // The cookie still rides along for the endpoints that read it.
+        std::string userId;
+        try {
+            auto u = db->query("SELECT id FROM users WHERE person_id = $1::int ORDER BY id LIMIT 1",
+                               {std::to_string(personId)});
+            if (!u.empty()) userId = u[0]["id"].c_str();
+            else {
+                auto ins = db->query("INSERT INTO users (person_id, is_active) VALUES ($1::int, true) RETURNING id",
+                                     {std::to_string(personId)});
+                if (!ins.empty()) userId = ins[0]["id"].c_str();
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[magic-link] users row lookup failed for person " << personId << ": " << e.what() << std::endl;
+        }
+        // Every link lands on #my (owner 2026-09-23: "my page for all") —
+        // the game a squad reminder is about is one tap away there.
+        const std::string hashTarget = "#my";
+        std::string target = publicBaseUrl() + "/" + hashTarget;
+        if (!userId.empty()) {
+            std::string email;
+            try {
+                auto em = db->query("SELECT email FROM person_emails WHERE person_id = $1::int ORDER BY is_primary DESC, id LIMIT 1",
+                                    {std::to_string(personId)});
+                if (!em.empty() && !em[0]["email"].is_null()) email = em[0]["email"].c_str();
+            } catch (const std::exception&) {}
+            const std::time_t now = std::time(nullptr);
+            const std::time_t exp = now + (90LL * 24 * 60 * 60);  // 90 days, as the other two issuers
+            std::ostringstream payload;
+            payload << "{"
+                    << "\"userId\":\"" << userId << "\","
+                    << "\"email\":\""  << email  << "\","
+                    << "\"role\":\"\","
+                    << "\"iat\":" << now << ","
+                    << "\"exp\":" << exp
+                    << "}";
+            // A base64url JWT is URL-safe as-is; no encoding needed.
+            target = publicBaseUrl() + "/oauth-success?token=" + fh::crypto::signJwtHS256(payload.str()) + hashTarget;
+        }
         (void)hasEvent;
         (void)chatEventId;
 
