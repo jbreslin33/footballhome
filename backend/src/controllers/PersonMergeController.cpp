@@ -47,7 +47,7 @@ void PersonMergeController::registerRoutes(Router& router, const std::string& pr
 Response PersonMergeController::handleMerge(const Request& request, const LaSyncMap& sync) {
     (void)sync;
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
 
     int laPersonId = 0, gmPersonId = 0;
@@ -85,7 +85,7 @@ Response PersonMergeController::handleMerge(const Request& request, const LaSync
 Response PersonMergeController::handleUnmerge(const Request& request, const LaSyncMap& sync) {
     (void)sync;
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
 
     int mergeId = 0;
@@ -121,7 +121,7 @@ Response PersonMergeController::handleUnmerge(const Request& request, const LaSy
 Response PersonMergeController::handleListMerges(const Request& request, const LaSyncMap& sync) {
     (void)sync;
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
 
     int personId = 0;
@@ -158,7 +158,7 @@ Response PersonMergeController::handleListMerges(const Request& request, const L
 Response PersonMergeController::handleScrapedMatchCandidates(const Request& request, const LaSyncMap& sync) {
     (void)sync;
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
 
     int personId = 0;
@@ -246,7 +246,7 @@ Response PersonMergeController::handleScrapedMatchCandidates(const Request& requ
 Response PersonMergeController::handleLinkScraped(const Request& request, const LaSyncMap& sync) {
     (void)sync;
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
 
     int keepId = 0, scrapedId = 0;

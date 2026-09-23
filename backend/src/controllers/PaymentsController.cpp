@@ -69,22 +69,22 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
     // sync that laGet handles).
     laGet(router, prefix + "/mens", {mensProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleGetForProgram("mens", mensProgramId_, sync);
         });
     laGet(router, prefix + "/womens", {womensProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleGetForProgram("womens", womensProgramId_, sync);
         });
     laGet(router, prefix + "/boys", {boysProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleGetForProgram("boys", boysProgramId_, sync);
         });
     laGet(router, prefix + "/girls", {girlsProgramId_},
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleGetForProgram("girls", girlsProgramId_, sync);
         });
 
@@ -102,28 +102,28 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
     if (mensInactiveProgramId_ > 0) mensMembersPrograms.push_back(mensInactiveProgramId_);
     laGet(router, prefix + "/mens/members", mensMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleGetMembersForProgram("mens", mensProgramId_, mensInactiveProgramId_, sync);
         });
     std::vector<int> womensMembersPrograms = {womensProgramId_};
     if (womensInactiveProgramId_ > 0) womensMembersPrograms.push_back(womensInactiveProgramId_);
     laGet(router, prefix + "/womens/members", womensMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleGetMembersForProgram("womens", womensProgramId_, womensInactiveProgramId_, sync);
         });
     std::vector<int> boysMembersPrograms = {boysProgramId_};
     if (boysInactiveProgramId_ > 0) boysMembersPrograms.push_back(boysInactiveProgramId_);
     laGet(router, prefix + "/boys/members", boysMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleGetMembersForProgram("boys", boysProgramId_, boysInactiveProgramId_, sync);
         });
     std::vector<int> girlsMembersPrograms = {girlsProgramId_};
     if (girlsInactiveProgramId_ > 0) girlsMembersPrograms.push_back(girlsInactiveProgramId_);
     laGet(router, prefix + "/girls/members", girlsMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
-            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleGetMembersForProgram("girls", girlsProgramId_, girlsInactiveProgramId_, sync);
         });
 
@@ -133,7 +133,7 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
     // nextDueSource}) so this stays on router.post and is exempt from
     // the STRICT rule — see enforce-la-sync.sh whitelist.
     router.post(prefix + "/members/:regId/next-due", [this](const Request& req) {
-        if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
         return this->handleSetNextDue(req);
     });
 }

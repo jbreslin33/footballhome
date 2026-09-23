@@ -833,7 +833,12 @@ class GameCenterScreen extends Screen {
         this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`),
         this.auth.fetch('/api/eligibility/positions'),
         this.auth.fetch(`/api/matches/${this.matchId}`),
-        this.auth.fetch('/api/social/post-types').catch(() => null),
+        // Post-type titles only matter for the staff post pills; the
+        // endpoint is admin-gated, and a player asking for it was how the
+        // #my door logged players out (2026-09-23).
+        this.playerOnly
+          ? Promise.resolve(null)
+          : this.auth.fetch('/api/social/post-types').catch(() => null),
       ]);
       const postTypesData = postTypesRes ? await postTypesRes.json().catch(() => null) : null;
       this.postTypeNames = {};

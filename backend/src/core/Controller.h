@@ -150,6 +150,17 @@ protected:
     static bool requireAdminLevel(const Request& request,
                                    const std::vector<std::string>& allowedLevels);
 
+    // Status for a caller a gate just turned away: 403 when the bearer
+    // token verifies (signed in, just not allowed here), 401 only when
+    // there is no usable token.  The SPA treats every 401 as "session
+    // dead" and wipes localStorage (frontend/js/auth.js), so an
+    // admin-only endpoint answering a signed-in player with 401 silently
+    // logged them out — the "back from Lineup lands on login" report of
+    // 2026-09-23 (Game Center in player view fetching
+    // /api/social/post-types).  Every requireAdminLevel() call site
+    // answers with this instead of a bare UNAUTHORIZED.
+    static HttpStatus denialStatus(const Request& request);
+
     // Team-assignment ownership gate (Teams screen coach scoping).
     // Validates the bearer token (same JWT check as requireBearer) AND
     // requires EITHER:

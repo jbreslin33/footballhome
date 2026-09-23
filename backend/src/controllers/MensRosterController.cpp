@@ -886,7 +886,7 @@ bool isEligibilityTeamId(int teamId) {
 
 Response MensRosterController::handleGetRsvpEligibility(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
     long long userId = 0;
     const std::string q = request.getQueryParam("leagueAppsUserId");
@@ -928,7 +928,7 @@ Response MensRosterController::handleGetRsvpEligibility(const Request& request) 
 
 Response MensRosterController::handlePutRsvpEligibility(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
     json body;
     try { body = json::parse(request.getBody()); }

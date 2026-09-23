@@ -245,6 +245,10 @@ bool Controller::requireAdminLevel(const Request& request,
     }
 }
 
+HttpStatus Controller::denialStatus(const Request& request) {
+    return bearerUserId(request) ? HttpStatus::FORBIDDEN : HttpStatus::UNAUTHORIZED;
+}
+
 bool Controller::canManageTeam(const Request& request, int teamId) {
     std::string h = request.getHeader("Authorization");
     if (h.empty()) h = request.getHeader("authorization");

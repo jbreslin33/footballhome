@@ -421,7 +421,7 @@ std::string SocialController::escapeSql(const std::string& input) {
 
 Response SocialController::handleGetPostTypes(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         pqxx::result result = db_->query(
@@ -456,7 +456,7 @@ Response SocialController::handleGetPostTypes(const Request& request) {
 
 Response SocialController::handleGetMatchPosts(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string path = request.getPath();
@@ -528,7 +528,7 @@ Response SocialController::handleGetMatchPosts(const Request& request) {
 
 Response SocialController::handleGetTeamCalendar(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string teamId = extractTeamIdFromPath(request.getPath());
@@ -620,7 +620,7 @@ Response SocialController::handleGetTeamCalendar(const Request& request) {
 
 Response SocialController::handleCreateOrUpdatePost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string body = request.getBody();
@@ -681,7 +681,7 @@ Response SocialController::handleCreateOrUpdatePost(const Request& request) {
 
 Response SocialController::handleDeletePost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string postId = extractPostIdFromPath(request.getPath());
@@ -703,7 +703,7 @@ static std::string overlayPathFor(const std::string& postId) {
 
 Response SocialController::handleUploadOverlay(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     std::string postId = extractPostIdFromPath(request.getPath());
     if (postId.empty()) {
@@ -745,7 +745,7 @@ Response SocialController::handleUploadOverlay(const Request& request) {
 
 Response SocialController::handleUploadMediaRaw(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     std::string postId = extractPostIdFromPath(request.getPath());
     if (postId.empty()) {
@@ -868,7 +868,7 @@ Response SocialController::handleUploadMediaRaw(const Request& request) {
 
 Response SocialController::handleUploadMedia(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string postId = extractPostIdFromPath(request.getPath());
@@ -1134,7 +1134,7 @@ std::string SocialController::httpPost(const std::string& url, const std::string
 
 Response SocialController::handlePostToInstagram(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string postId = extractPostIdFromPath(request.getPath());
@@ -1347,7 +1347,7 @@ Response SocialController::handlePostToInstagram(const Request& request) {
 
 Response SocialController::handleGetScheduleTemplates(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string teamId = extractTeamIdFromPath(request.getPath());
@@ -1400,7 +1400,7 @@ Response SocialController::handleGetScheduleTemplates(const Request& request) {
 
 Response SocialController::handleSaveScheduleTemplates(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string teamId = extractTeamIdFromPath(request.getPath());
@@ -1447,7 +1447,7 @@ Response SocialController::handleSaveScheduleTemplates(const Request& request) {
 
 Response SocialController::handleApplySchedule(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string path = request.getPath();
@@ -1523,7 +1523,7 @@ std::string SocialController::extractHolidayIdFromPath(const std::string& path) 
 
 Response SocialController::handleGetHolidayPosts(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         pqxx::result result = db_->query(
@@ -1564,7 +1564,7 @@ Response SocialController::handleGetHolidayPosts(const Request& request) {
 
 Response SocialController::handleSaveHolidayPost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string body = request.getBody();
@@ -1614,7 +1614,7 @@ Response SocialController::handleSaveHolidayPost(const Request& request) {
 
 Response SocialController::handleUploadHolidayMedia(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string holidayId = extractHolidayIdFromPath(request.getPath());
@@ -1685,7 +1685,7 @@ Response SocialController::handleUploadHolidayMedia(const Request& request) {
 
 Response SocialController::handlePublishHolidayPost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string holidayId = extractHolidayIdFromPath(request.getPath());
@@ -1815,7 +1815,7 @@ std::string SocialController::extractPromoIdFromPath(const std::string& path) {
 
 Response SocialController::handleGetPromoPosts(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         ensurePromotionalPostsSchema();
@@ -1864,7 +1864,7 @@ Response SocialController::handleGetPromoPosts(const Request& request) {
 
 Response SocialController::handleSavePromoPost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         ensurePromotionalPostsSchema();
@@ -1937,7 +1937,7 @@ Response SocialController::handleSavePromoPost(const Request& request) {
 
 Response SocialController::handleUploadPromoMedia(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         ensurePromotionalPostsSchema();
@@ -2065,7 +2065,7 @@ Response SocialController::handleUploadPromoMedia(const Request& request) {
 
 Response SocialController::handlePublishPromoPost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         ensurePromotionalPostsSchema();
@@ -2207,7 +2207,7 @@ bool SocialController::publishPromoById(const std::string& promoId, std::string&
 
 Response SocialController::handleDeleteContentPost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string contentId = extractContentIdFromPath(request.getPath());
@@ -2244,7 +2244,7 @@ std::string SocialController::extractContentIdFromPath(const std::string& path) 
 
 Response SocialController::handleGetContentPosts(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         pqxx::result result = db_->query(
@@ -2290,7 +2290,7 @@ Response SocialController::handleGetContentPosts(const Request& request) {
 
 Response SocialController::handleSaveContentPost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string body = request.getBody();
@@ -2349,7 +2349,7 @@ Response SocialController::handleSaveContentPost(const Request& request) {
 
 Response SocialController::handleDeletePromoPost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         ensurePromotionalPostsSchema();
@@ -2375,7 +2375,7 @@ Response SocialController::handleDeletePromoPost(const Request& request) {
 
 Response SocialController::handleUploadContentMedia(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string contentId = extractContentIdFromPath(request.getPath());
@@ -2513,7 +2513,7 @@ Response SocialController::handleUploadContentMedia(const Request& request) {
 
 Response SocialController::handlePublishContentPost(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string contentId = extractContentIdFromPath(request.getPath());
@@ -2756,7 +2756,7 @@ std::string SocialController::refreshGoogleToken(const std::string& userId, cons
 
 Response SocialController::handleListDriveMedia(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string userId = extractUserIdFromJWT(request);
@@ -2805,7 +2805,7 @@ Response SocialController::handleListDriveMedia(const Request& request) {
 
 Response SocialController::handleDownloadDriveFile(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string userId = extractUserIdFromJWT(request);
@@ -2871,7 +2871,7 @@ Response SocialController::handleDownloadDriveFile(const Request& request) {
 
 Response SocialController::handleLogoProxy(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string url = request.getQueryParam("url");
@@ -2929,7 +2929,7 @@ Response SocialController::handleLogoProxy(const Request& request) {
 
 Response SocialController::handleGetMatchStats(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         // Extract matchId from /api/social/match/:matchId/stats

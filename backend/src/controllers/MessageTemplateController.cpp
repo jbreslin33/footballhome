@@ -109,7 +109,7 @@ Response MessageTemplateController::handleList(const Request& request) {
         ? requireBearer(request)
         : requireAdminLevel(request, {"club", "super", "marketing"});
     if (!signedIn) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
     }
     try {
         std::string query = R"(

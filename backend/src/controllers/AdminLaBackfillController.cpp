@@ -205,7 +205,7 @@ void AdminLaBackfillController::registerRoutes(Router& router,
 // production models.  Remove after we've discovered the right shape.
 Response AdminLaBackfillController::handleProbe(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
     std::string path = urlDecode(request.getQueryParam("path"));
     if (path.empty()) {
@@ -237,7 +237,7 @@ Response AdminLaBackfillController::handleProbe(const Request& request) {
 
 Response AdminLaBackfillController::handleBackfill(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
 
     const bool dryRun = (request.getQueryParam("dry") == "1");
@@ -786,7 +786,7 @@ static std::string resolveCategory(const Request& request) {
 Response AdminLaBackfillController::handleMembers(const Request& request, const LaSyncMap& sync) {
     (void)sync;  // LA fetch was executed by laGet(); handler reads DB only.
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
     return respondMembers(resolveVariant(request, "active"), resolveCategory(request));
 }
@@ -807,7 +807,7 @@ Response AdminLaBackfillController::handleMembers(const Request& request, const 
 // ────────────────────────────────────────────────────────────────────────────
 Response AdminLaBackfillController::handleStaff(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
     try {
         auto rows = Database::getInstance()->query(
@@ -858,7 +858,7 @@ Response AdminLaBackfillController::handleStaff(const Request& request) {
 // ────────────────────────────────────────────────────────────────────────────
 Response AdminLaBackfillController::handlePeople(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
 
     std::string view = request.getQueryParam("view");
@@ -1238,7 +1238,7 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
 // ────────────────────────────────────────────────────────────────────────────
 Response AdminLaBackfillController::handleSyncMemberships(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super"})) {
-        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        return errorResponse(denialStatus(request), "Unauthorized");
     }
 
     const std::string variant  = resolveVariant(request, "active");
