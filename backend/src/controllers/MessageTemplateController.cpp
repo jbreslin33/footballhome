@@ -91,7 +91,8 @@ Response MessageTemplateController::handleClientCopy(const Request& request) {
             {"templates", templates},
             {"outreach_email", club.empty() ? "" : club[0]["em"].c_str()},
             {"dues_policy", {{"monthly_dues_usd", dues.monthlyDuesUsd},
-                             {"pause_after_months", dues.pauseAfterMonths}}},
+                             {"pause_after_months", dues.pauseAfterMonths},
+                             {"partial_amounts_usd", dues.partialAmountsUsd}}},
         };
         return Response(HttpStatus::OK, createJSONResponse(true, "Message copy", out.dump()));
     } catch (const std::exception& e) {

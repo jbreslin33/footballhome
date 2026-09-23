@@ -1004,6 +1004,7 @@ class PaymentsScreen extends Screen {
       deadline:     dates.deadline,     // next first-Friday due date
       pause_date:   dates.pauseDate,    // first Friday they reach the pause threshold
       pause_months: pauseAt,            // dues_policies.pause_after_months
+      partial_amounts: MessageCopy.partialAmountsText, // dues_policies.partial_amounts_usd (mig 414)
     };
     const copy = MessageCopy.render(channel === 'sms' ? 'payment_notice_sms' : 'payment_notice_email', tier, tokens);
     if (!copy) return null;

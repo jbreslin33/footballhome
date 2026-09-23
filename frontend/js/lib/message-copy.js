@@ -23,7 +23,7 @@ class MessageCopy {
   // dues_policies (migration 401): the monthly rate and the months-behind
   // pause threshold.  null until load() resolves — callers must not
   // substitute a number of their own.
-  static duesPolicy = { monthlyDuesUsd: null, pauseAfterMonths: null };
+  static duesPolicy = { monthlyDuesUsd: null, pauseAfterMonths: null, partialAmountsUsd: [] };
 
   static load(auth) {
     if (!MessageCopy._promise) {
@@ -46,6 +46,10 @@ class MessageCopy {
           MessageCopy.duesPolicy = {
             monthlyDuesUsd:   Number.isFinite(Number(dp.monthly_dues_usd))   ? Number(dp.monthly_dues_usd)   : null,
             pauseAfterMonths: Number.isFinite(Number(dp.pause_after_months)) ? Number(dp.pause_after_months) : null,
+            // dues_policies.partial_amounts_usd (migration 414) — the
+            // {partial_amounts} token in the dues notices.
+            partialAmountsUsd: (Array.isArray(dp.partial_amounts_usd) ? dp.partial_amounts_usd : [])
+              .map(Number).filter((n) => Number.isFinite(n) && n > 0),
           };
         } catch (err) {
           console.warn('message copy unavailable:', err);
@@ -57,6 +61,15 @@ class MessageCopy {
   }
 
   static has(kind, tier) { return MessageCopy._templates.has(`${kind}|${tier}`); }
+
+  // "$5, $10, $15 or $20" from the dues policy's partial amounts; '' when
+  // the club names none (the [[ … ]] around the token then drops).
+  static get partialAmountsText() {
+    const usd = (n) => '$' + (Number.isInteger(n) ? String(n) : n.toFixed(2));
+    const parts = MessageCopy.duesPolicy.partialAmountsUsd.map(usd);
+    if (parts.length <= 1) return parts.join('');
+    return parts.slice(0, -1).join(', ') + ' or ' + parts[parts.length - 1];
+  }
 
   // The kind='sms_link_hint' sentence, '' until loaded.
   static get smsLinkHint() {

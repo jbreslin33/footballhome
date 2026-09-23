@@ -2,6 +2,7 @@
 #include <chrono>
 #include <mutex>
 #include <unordered_map>
+#include <vector>
 
 #include "WelcomeLog.h"
 
@@ -20,6 +21,9 @@ public:
     struct Row {
         double monthlyDuesUsd   = 0.0;
         int    pauseAfterMonths = 0;
+        // Partial payments the notices ask for when a member can't pay
+        // in full (migration 414), ascending; empty = notices name none.
+        std::vector<double> partialAmountsUsd;
     };
 
     // Policy in force today for the club.  Throws std::runtime_error when
