@@ -4,12 +4,14 @@
 #include "../core/HttpClient.h"
 #include "../database/Database.h"
 #include "../models/MessageCopy.h"
+#include "../models/WelcomeLog.h"
 #include "../services/MagicLinkService.h"
 #include "../services/SessionService.h"
 #include "../third_party/json.hpp"
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <exception>
 #include <iostream>
 #include <optional>
@@ -1549,10 +1551,44 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             }
         }
 
+        // Dues eligibility (migration 416) for the caller and each child
+        // on their page, keyed by person id: #my says who is not eligible
+        // for games and practices, the balance, the least payment that
+        // gets them back under the line, and where to pay.
+        json dues = json::object();
+        if (personId > 0) {
+            try {
+                pqxx::result dr = db->query(R"SQL(
+                    SELECT p.id, COALESCE(p.first_name, '') AS first_name,
+                           fh_dues_balance_usd(p.id)               AS balance,
+                           fh_dues_line_usd($2::int)               AS line,
+                           fh_dues_eligible(p.id, $2::int)         AS eligible,
+                           fh_dues_min_payment_usd(p.id, $2::int)  AS min_payment,
+                           fh_fill_form_links('{form:la_dashboard}', $2::int) AS pay_url
+                      FROM persons p
+                     WHERE p.id = $1::int OR p.parent_person_id = $1::int
+                )SQL", {std::to_string(personId), std::to_string(WelcomeLog::kLighthouseClubId)});
+                for (const auto& r : dr) {
+                    dues[std::string(r["id"].c_str())] = {
+                        {"is_self",     r["id"].as<long long>() == personId},
+                        {"first_name",  r["first_name"].c_str()},
+                        {"balance",     r["balance"].is_null()     ? 0.0 : r["balance"].as<double>()},
+                        {"line",        r["line"].is_null()        ? json(nullptr) : json(r["line"].as<double>())},
+                        {"eligible",    r["eligible"].is_null()    ? true : r["eligible"].as<bool>()},
+                        {"min_payment", r["min_payment"].is_null() ? 0.0 : r["min_payment"].as<double>()},
+                        {"pay_url",     r["pay_url"].is_null()     ? "" : r["pay_url"].c_str()},
+                    };
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[calendar/upcoming] dues lookup failed: " << e.what() << std::endl;
+            }
+        }
+
         json body = {
             {"days",   days},
             {"count",  events.size()},
             {"events", std::move(events)},
+            {"dues",   std::move(dues)},
             // Lets a screen that works signed-out too (#schedules) tell a
             // member's team-scoped list from the anonymous unfiltered one.
             {"signed_in", personId > 0},
@@ -1705,6 +1741,32 @@ Response CalendarController::handlePostRsvp(const Request& request) {
         long long targetPersonId = 0;
         if (auto err = resolveRsvpTarget(db, personId, requestedPersonId, fhEventId, &targetPersonId)) {
             return *err;
+        }
+
+        // Dues eligibility (migration 416): at or over the line a member
+        // is not eligible for games and practices, so a yes/maybe is
+        // refused with the least payment that gets them back under it
+        // (message_templates my_dues/rsvp_refused).  A no still goes
+        // through so the coach's count stays right.
+        if (response != "no") {
+            auto dq = db->query(
+                "SELECT fh_dues_eligible($2::int, $3::int)         AS ok, "
+                "       fh_dues_min_payment_usd($2::int, $3::int)  AS min_payment, "
+                "       (SELECT kind FROM fh_events WHERE id = $1::bigint) AS kind",
+                {std::to_string(fhEventId), std::to_string(targetPersonId),
+                 std::to_string(WelcomeLog::kLighthouseClubId)});
+            if (!dq.empty() && !dq[0]["ok"].is_null() && !dq[0]["ok"].as<bool>()) {
+                const std::string kind = dq[0]["kind"].is_null() ? "" : dq[0]["kind"].c_str();
+                if (kind == "match" || kind == "practice") {
+                    char amount[32];
+                    std::snprintf(amount, sizeof amount, "$%.2f",
+                                  dq[0]["min_payment"].is_null() ? 0.0 : dq[0]["min_payment"].as<double>());
+                    MessageCopy copy;
+                    const auto msg = copy.render("my_dues", "rsvp_refused", {{"min_payment", amount}});
+                    return jsonError(HttpStatus::FORBIDDEN,
+                                     msg.ok() ? msg.body : std::string("Not eligible for games and practices."));
+                }
+            }
         }
 
         // Upsert.  ON CONFLICT overwrites response, responded_at, and

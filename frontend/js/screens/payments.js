@@ -774,8 +774,8 @@ class PaymentsScreen extends Screen {
     }
 
     // Overdue is subdivided by the LA-authoritative months-behind bucket
-    // (monthsOverdue, migration 270 — $1-35 due = 1 month, $36-70 = 2
-    // months, etc.) instead of one flat OVERDUE pile, so ops can tell
+    // (monthsOverdue, migration 270; FULL months since 416 — $35-69 due
+    // = 1 month, $70+ = 2, the line) instead of one flat OVERDUE pile, so ops can tell
     // "probably still going to pay" from "further gone" at a glance
     // (owner directive 2026-08-08). Rows with no snapshot yet
     // (monthsOverdue null) fall back into a plain OVERDUE bucket rather
@@ -841,7 +841,7 @@ class PaymentsScreen extends Screen {
         const list = overdueByMonths[mo];
         const meta = {
           icon: '🔴',
-          label: `OVERDUE — ${mo} MONTH${mo === 1 ? '' : 'S'}`,
+          label: `OVERDUE — ${mo} FULL MONTH${mo === 1 ? '' : 'S'}`,
           fg: '#7f1d1d', bg: '#fee2e2', border: '#dc2626',
         };
         return `
@@ -940,11 +940,12 @@ class PaymentsScreen extends Screen {
   // How far behind on dues this member is — the one fact the reminder is
   // built from (owner 2026-09-22: "just say the amount and months").
   //   amount → live LA outstanding balance, else the last-sync snapshot
-  //   months → ceil(amount / monthly dues rate) when both are known, else
-  //            the LA-sync bucket (migration 270), else the unpaid cycles
-  //            between next_due_at and the upcoming rollover, else 1.
-  // → {amount: '$70.00'|'', months: 2, monthsLabel: '2 months'} or null
-  // when nothing is owed.
+  //   months → FULL months, floor(amount / monthly dues rate), when both
+  //            are known (migration 416), else the LA-sync bucket (also
+  //            full months), else the unpaid cycles between next_due_at
+  //            and the upcoming rollover, else 0 (owed, under a month).
+  // → {amount: '$70.00'|'', months: 2, monthsLabel: '2 full months'} or
+  // null when nothing is owed.
   _duesStanding(m) {
     let owed = null;
     if (Number.isFinite(m.laOutstandingBalance)) owed = Number(m.laOutstandingBalance);
@@ -956,8 +957,8 @@ class PaymentsScreen extends Screen {
     const rate = MessageCopy.duesPolicy.monthlyDuesUsd;
     let months = null;
     if (owed !== null && owed > 0.005 && Number.isFinite(rate) && rate > 0) {
-      months = Math.ceil(owed / rate);
-    } else if (Number.isFinite(m.monthsOverdue) && m.monthsOverdue >= 1) {
+      months = Math.floor(owed / rate);
+    } else if (Number.isFinite(m.monthsOverdue) && m.monthsOverdue >= 0 && (m.status === 'overdue' || m.status === 'never' || m.monthsOverdue >= 1)) {
       months = m.monthsOverdue;
     }
     if (months === null) {
@@ -965,30 +966,30 @@ class PaymentsScreen extends Screen {
       if (fd) months = fd.owedMonths.length;
     }
     if (months === null && (m.status === 'overdue' || m.status === 'never' || (owed !== null && owed > 0.005))) {
-      months = 1;
+      months = 0;
     }
     if (months === null) return null;
     return {
       amount:      (owed !== null && owed > 0.005) ? this.fmtMoney(owed) : '',
       amountNum:   (owed !== null && owed > 0.005) ? owed : null,
       months,
-      monthsLabel: `${months} month${months === 1 ? '' : 's'}`,
+      monthsLabel: months === 0 ? 'under a month' : `${months} full month${months === 1 ? '' : 's'}`,
     };
   }
 
   // Wording: message_templates kind 'payment_notice_email' /
   // 'payment_notice_sms', tier 'behind_1' | 'behind_2' | 'behind_3'
-  // (migration 399) — gentle, firm, paused.  The tier is picked here
-  // from months behind, capped at the pause threshold
-  // (dues_policies.pause_after_months, migration 401); the operator
-  // never chooses it.
+  // (migration 399/416) — under a month, 1 full month, at/over the line
+  // (not eligible for games and practices).  The tier is full months
+  // behind + 1, capped at the line (dues_policies.pause_after_months,
+  // full months); the operator never chooses it.
   // → {subject, body, standing, tier} or null.
   _paymentNotice(m, channel) {
     const standing = this._duesStanding(m);
     if (!standing) return null;
     const pauseAt = this._pauseAfterMonths();
     if (!pauseAt) return null;   // policy not loaded: never guess the threshold
-    const tier = `behind_${Math.min(pauseAt, standing.months)}`;
+    const tier = `behind_${Math.min(pauseAt, standing.months) + 1}`;
     const dates = this._duesDates(m, standing.months);
     // Per-channel tally from pay_reminder_log (row.payReminders) — the
     // button says "sent ×2" so the operator can see two emails went
@@ -1005,7 +1006,7 @@ class PaymentsScreen extends Screen {
       pause_date:   dates.pauseDate,    // first Friday they reach the pause threshold
       pause_months: pauseAt,            // dues_policies.pause_after_months
       partial_amounts: MessageCopy.partialAmountsText, // dues_policies.partial_amounts_usd (mig 414)
-      ...this._pauseLine(standing, pauseAt),            // {pause_amount} {keep_active_amount} (mig 415)
+      ...this._pauseLine(standing, pauseAt),            // {pause_amount} {keep_active_amount} {min_payment} (mig 415/416)
     };
     const copy = MessageCopy.render(channel === 'sms' ? 'payment_notice_sms' : 'payment_notice_email', tier, tokens);
     if (!copy) return null;
@@ -1089,28 +1090,29 @@ class PaymentsScreen extends Screen {
     return { deadline: fmt(upcoming), pauseDate };
   }
 
-  // The pause line in dollars, and the least a member must pay now to be
-  // on the right side of it when the next month posts (migration 415;
-  // owner 2026-09-23: "a threshold amount that makes a paused membership
-  // … bring this month to under $35 [so] when oct 2nd hits you will be
-  // safely under").  Months behind is ceil(owed / rate), and the pause is
-  // at pause_after_months, so:
-  //   pause_amount        = pause_after_months × rate            $105
-  //   safe balance now    = (pause_after_months − 2) × rate      $35 —
-  //                         the most they can carry into the rollover
-  //   keep_active_amount  = owed − safe balance, when positive   $70 → $35
-  // keep_active_amount is '' when nothing is needed (the rollover leaves
-  // them short of the line) or the balance is unknown, so the [[ … ]]
-  // around it drops.
+  // The eligibility line in dollars and the two asks around it
+  // (migrations 415/416; owner 2026-09-23: "2 full months behind is the
+  // pause threshold … if they can bring it under $70 then they are
+  // safe").  Full months is floor(owed / rate); the line is
+  // pause_after_months full months, i.e. pause_after_months × rate ($70).
+  //   pause_amount        the line                                  $70
+  //   keep_active_amount  least to pay now to still be under the line
+  //                       after the next posting adds a month:
+  //                       ceil(owed + rate − line + 0.01)   $40 → $6
+  //   min_payment         least to pay now to get under the line today:
+  //                       ceil(owed − line + 0.01)          $70 → $1
+  // Each is '' when it isn't needed or the balance is unknown, so the
+  // [[ … ]] around it drops.  Whole dollars, matching fh_dues_min_payment_usd.
   _pauseLine(standing, pauseAt) {
     const rate = MessageCopy.duesPolicy.monthlyDuesUsd;
-    if (!(Number.isFinite(rate) && rate > 0 && pauseAt >= 1)) return { pause_amount: '', keep_active_amount: '' };
-    const safe = Math.max(0, pauseAt - 2) * rate;
+    if (!(Number.isFinite(rate) && rate > 0 && pauseAt >= 1)) return { pause_amount: '', keep_active_amount: '', min_payment: '' };
+    const line = pauseAt * rate;
     const owed = standing.amountNum;
-    const need = (owed !== null && owed - safe > 0.005) ? owed - safe : 0;
+    const dollars = (x) => (x > 0.005 ? this.fmtMoney(Math.ceil(x)) : '');
     return {
-      pause_amount:       this.fmtMoney(pauseAt * rate),
-      keep_active_amount: need > 0 ? this.fmtMoney(need) : '',
+      pause_amount:       this.fmtMoney(line),
+      keep_active_amount: owed === null ? '' : dollars(owed + rate - line + 0.01),
+      min_payment:        owed === null ? '' : dollars(owed - line + 0.01),
     };
   }
 
@@ -1121,13 +1123,14 @@ class PaymentsScreen extends Screen {
     return (Number.isFinite(n) && n >= 1) ? n : null;   // null → no dues button
   }
 
-  // Button colours follow the tier: 1 month = calm, the month before the
-  // pause = amber, at or past the pause threshold = red.
+  // Button colours follow the tier (tier = full months + 1): under the
+  // month before the line = calm, the month before it = amber, at or
+  // over the line = red.
   _paymentNoticeStyle(tier) {
     const n = Number(String(tier).replace('behind_', '')) || 1;
-    const pauseAt = this._pauseAfterMonths() || n;
-    const c = n >= pauseAt     ? { bg: '#3a1f1f', fg: '#fca5a5', border: '#b91c1c' }
-            : n >= pauseAt - 1 ? { bg: '#3a2e05', fg: '#fde68a', border: '#d97706' }
+    const pauseAt = this._pauseAfterMonths() || (n - 1);
+    const c = n >= pauseAt + 1 ? { bg: '#3a1f1f', fg: '#fca5a5', border: '#b91c1c' }
+            : n >= pauseAt     ? { bg: '#3a2e05', fg: '#fde68a', border: '#d97706' }
             :                    { bg: '#0b3a2e', fg: '#a7f3d0', border: '#10b981' };
     return `padding:6px 10px; border-radius:4px; text-decoration:none; background:${c.bg}; color:${c.fg}; border:1px solid ${c.border}; font-size:0.75rem; font-weight:700;`;
   }
@@ -1465,7 +1468,7 @@ class PaymentsScreen extends Screen {
     const monthsBadge = (monthsOverdue !== null && monthsOverdue >= 1)
       ? `<span style="font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:3px;
                       background:#3a1f1f; color:#fca5a5; white-space:nowrap;">
-           ${monthsOverdue} month${monthsOverdue === 1 ? '' : 's'} behind
+           ${monthsOverdue} full month${monthsOverdue === 1 ? '' : 's'} behind
          </span>`
       : '';
 

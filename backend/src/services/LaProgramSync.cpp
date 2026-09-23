@@ -247,9 +247,11 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                     // a locally-derived amount, so active AND inactive-tier
                     // members get the same treatment (owner directive
                     // 2026-08-08). min 0 — a $0 or negative (credit)
-                    // balance is not "overdue".
+                    // balance is not "overdue".  FULL months since
+                    // migration 416 (floor, not ceil): $36 is 1 month, and
+                    // the eligibility line is pause_after_months full months.
                     snap.monthsOverdue = lpSnap.outstanding > 0.0
-                        ? static_cast<int>(std::ceil(lpSnap.outstanding / DuesPolicy::current().monthlyDuesUsd))
+                        ? static_cast<int>(std::floor(lpSnap.outstanding / DuesPolicy::current().monthlyDuesUsd))
                         : 0;
                     pendingSnaps.push_back(std::move(snap));
                 }

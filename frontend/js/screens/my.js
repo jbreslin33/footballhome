@@ -124,6 +124,7 @@ class MyScreen extends Screen {
       <div style="padding: 0 8px;">
         <section id="my-chat" style="margin-bottom: 6px;"></section>
         <section id="my-groupme" style="margin-bottom: 6px;" hidden></section>
+        <div id="my-dues-banner"></div>
         <div id="my-push-banner"></div>
         <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
@@ -151,6 +152,7 @@ class MyScreen extends Screen {
       // per-event schedule_window_end from the server decides what shows.
       const upRes = await this._fetch('/api/calendar/upcoming?days=14');
       this.events       = upRes.events    || [];
+      this.dues         = upRes.dues      || {};   // per person: eligible, min_payment, pay_url (mig 416)
       // Pill labels are DB copy; the pills appear once it lands.
       MessageCopy.load(this.auth).then(() => this._renderEvents());
       await this._loadNextWeekOpens();
@@ -485,6 +487,7 @@ class MyScreen extends Screen {
       return;
     }
 
+    this._renderDuesBanner();
     const head = rangeHtml + this._schedulePillsHtml();
     if (this.scheduleView !== 'week') {
       this._renderFutureEvents(box, head, sub);
@@ -1087,6 +1090,47 @@ class MyScreen extends Screen {
     this._renderEvents();
   }
 
+  // ── Dues eligibility (migration 416) ────────────────────────────────
+  // The feed's `dues` is keyed by person id: the viewer (is_self) and each
+  // child on their page.  At or over the line (eligible=false) the person
+  // is not eligible for games and practices: a banner up top, and on each
+  // game/practice the Go/No buttons give way to a pay link naming the
+  // least payment that gets them back under it.  Copy: message_templates
+  // kind my_dues (banner, banner_button, pill); nothing is worded here.
+  _duesFor(personId) {
+    const d = this.dues || {};
+    if (personId == null) return Object.values(d).find(x => x && x.is_self) || null;
+    return d[String(personId)] || null;
+  }
+  _duesMoney(n) { return '$' + (Number(n) || 0).toFixed(2); }
+  _duesTokens(d) {
+    return { amount: this._duesMoney(d.balance), min_payment: this._duesMoney(d.min_payment), pause_amount: this._duesMoney(d.line) };
+  }
+  _duesBlocksEvent(kind) { return kind === 'match' || kind === 'practice'; }
+  _duesPillHtml(d) {
+    if (!d || d.eligible !== false || !d.pay_url) return '';
+    const text = MessageCopy.block('my_dues', 'pill', this._duesTokens(d));
+    if (!text) return '';
+    return `<a href="${this.escapeHtml(d.pay_url)}" target="_blank" rel="noopener"
+              style="padding:3px 8px; border-radius:999px; border:1px solid #f59e0b; background:rgba(245,158,11,0.16); color:#fde68a; font-size:0.6rem; font-weight:700; line-height:1.2; text-decoration:none; white-space:normal; text-align:center;">
+              💸 ${this.escapeHtml(text)}</a>`;
+  }
+  _renderDuesBanner() {
+    const host = this.find('#my-dues-banner');
+    if (!host) return;
+    const rows = Object.values(this.dues || {}).filter(d => d && d.eligible === false);
+    if (!rows.length || !MessageCopy.has('my_dues', 'banner')) { host.innerHTML = ''; return; }
+    const button = MessageCopy.block('my_dues', 'banner_button') || 'Pay here';
+    host.innerHTML = rows.map(d => {
+      const who  = d.is_self ? '' : `${this.escapeHtml(d.first_name || 'Your player')}: `;
+      const text = MessageCopy.block('my_dues', 'banner', this._duesTokens(d));
+      return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:0 0 6px; padding:8px 10px; border-radius:8px; border:1px solid #f59e0b; background:rgba(245,158,11,0.14); color:#fde68a; font-size:0.72rem; font-weight:600; line-height:1.3;">
+        <span>💸 ${who}${this.escapeHtml(text)}</span>
+        ${d.pay_url ? `<a href="${this.escapeHtml(d.pay_url)}" target="_blank" rel="noopener" style="padding:4px 10px; border-radius:999px; background:#f59e0b; color:#1f1300; font-weight:800; text-decoration:none; white-space:nowrap;">${this.escapeHtml(button)}</a>` : ''}
+      </div>`;
+    }).join('');
+  }
+
   _renderEventCard(ev, isPast = false) {
     const kind      = ev.kind || '';
     const per       = ev.my_rsvp;              // 'yes' | 'no' | 'maybe' | null
@@ -1144,10 +1188,12 @@ class MyScreen extends Screen {
             ${sideHtml(child.person_id, `${first} is`)}
           </div>
           <div style="display:flex; gap:3px; flex-shrink:0;">
-            ${this._btn('Go', 'yes', childResponse === 'yes', 'solid', childYesSaving,
-                       `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
-            ${this._btn('No', 'no', childResponse === 'no', 'solid', childNoSaving,
-                       `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
+            ${(!isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(child.person_id))) || `
+              ${this._btn('Go', 'yes', childResponse === 'yes', 'solid', childYesSaving,
+                         `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
+              ${this._btn('No', 'no', childResponse === 'no', 'solid', childNoSaving,
+                         `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
+            `}
           </div>
         </div>
       `;
@@ -1275,12 +1321,13 @@ class MyScreen extends Screen {
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:normal; overflow-wrap:break-word;">${compactMeta}</div>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-wrap:wrap; justify-content:flex-end; flex-shrink:0;">
-            ${showOwnRsvpRow ? `
+            ${showOwnRsvpRow ? (
+              (!isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(null))) || `
               ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
                          `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
               ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
                          `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
-            ` : ''}
+            `) : ''}
             <button type="button" data-view-event-id="${ev.fh_event_id}" style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
               ${this.escapeHtml(viewLabel)}
             </button>
@@ -1899,6 +1946,7 @@ class MyScreen extends Screen {
       return;
     }
     this.events = upRes.events || [];
+    this.dues   = upRes.dues   || this.dues || {};
     if (this.eventsRange === 'current') {
       this._renderEvents();
     }

@@ -827,6 +827,8 @@ class GameCenterScreen extends Screen {
     // until the list lands; nothing waits on it.
     this._renderGameSwitch();
     this._loadGames();
+    // Copy rows (dues flag, migration 416) — cached across screens.
+    if (window.MessageCopy) MessageCopy.load(this.auth).catch(() => {});
 
     try {
       const [lineupRes, positionsRes, matchRes, postTypesRes] = await Promise.all([
@@ -935,7 +937,8 @@ class GameCenterScreen extends Screen {
           if (p.roleType !== 'PLAYER') continue;
           const pid = Number(p.id);
           if (byId.has(pid)) continue; // already merged from an earlier team
-          byId.set(pid, { id: pid, name: p.name || '(unnamed)', lastName: p.lastName || '', lineupRole: p.lineupRole || null, teamId: fromTeamId, jerseyNumber: p.jerseyNumber || null });
+          byId.set(pid, { id: pid, name: p.name || '(unnamed)', lastName: p.lastName || '', lineupRole: p.lineupRole || null, teamId: fromTeamId, jerseyNumber: p.jerseyNumber || null,
+                          duesEligible: p.duesEligible !== false });   // migration 416: under the dues line
         }
       }
       this.roster = [...byId.values()];
@@ -1507,6 +1510,7 @@ class GameCenterScreen extends Screen {
           <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
             <span style="overflow-wrap:break-word; white-space:normal;">${this.escapeHtml(p.name)}</span>
             ${this.isCoach ? this._rsvpStatusPill(p.id) : ''}
+            ${this._duesFlag(p)}
           </span>
           <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
             ${this.isCoach && this.zones.get(p.id) === 'bench' ? benchOrderControl(p) : ''}
@@ -2712,6 +2716,16 @@ class GameCenterScreen extends Screen {
     return FIELD_SIZES[this.fieldSize] || FIELD_SIZES[DEFAULT_FIELD_SIZE];
   }
 
+  // Not eligible on dues (migration 416): the roster row's duesEligible.
+  // Shown, not hidden, so the coach knows why a player is out.  Copy:
+  // message_templates my_dues/lineup_flag.
+  _duesFlag(p) {
+    if (!p || p.duesEligible !== false || !window.MessageCopy) return '';
+    const text = MessageCopy.block('my_dues', 'lineup_flag');
+    if (!text) return '';
+    return `<span style="font-size:0.62rem; font-weight:700; padding:1px 6px; border-radius:999px; border:1px solid #f59e0b; color:#fde68a; background:rgba(245,158,11,0.16); white-space:nowrap;">💸 ${this.escapeHtml(text)}</span>`;
+  }
+
   _rsvpStatusPill(playerId) {
     const RSVP_PILL = {
       yes:   { label: 'Going',     bg: '#166534', fg: '#bbf7d0' },
@@ -2744,7 +2758,7 @@ class GameCenterScreen extends Screen {
         <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
           ${alternates.map(p => `
             <div style="padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
-              <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span>
+              <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span> ${this._duesFlag(p)}
             </div>`).join('')}
         </div>
       </div>`;

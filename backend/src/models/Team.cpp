@@ -135,6 +135,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  pl.id as player_id, "
             "  fh_team_first_name(r.team_id, pe.id, pe.first_name) AS first_name, "  // per-team name, migration 413
             "  fh_team_last_name(r.team_id, pe.id, pe.last_name)   AS last_name, "
+            "  fh_dues_eligible(pe.id) AS dues_eligible, "  // migration 416: under the dues line
             "  pem.email, "
             "  pl.photo_url as avatar_url, "
             "  r.jersey_number, "
@@ -194,6 +195,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             json << "\"showInOfficialRoster\":true,";
             json << "\"joinedDate\":\"" << joined_date << "\",";
             json << "\"lineupRole\":" << (row["lineup_role"].is_null() ? "null" : "\"" + row["lineup_role"].as<std::string>() + "\"") << ",";
+            json << "\"duesEligible\":" << (row["dues_eligible"].is_null() || row["dues_eligible"].as<bool>() ? "true" : "false") << ",";
             json << "\"roleType\":\"PLAYER\"";
             json << "}";
             
