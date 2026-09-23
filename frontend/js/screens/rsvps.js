@@ -38,7 +38,10 @@ class RsvpBoardScreen extends Screen {
     this.window  = 'week';     // week | 2w | month | all
     this.kind    = 'all';      // all | games | practices
     this.sort    = 'worst';    // worst | open | quiet | name
-    this.teamId  = null;
+    // Team pills multi-select (owner 2026-09-23); empty = every team.
+    // Group pills (rsvp_team_groups, migration 419) toggle a set at once.
+    this.teamIds = new Set();
+    this.who     = null;       // 'going' | 'ineligible' | 'notgoing' — names open under the event bar
     this.eventId = null;       // "unanswered for this event" filter
     this.openOnly = false;
     this.search  = '';
@@ -177,7 +180,7 @@ class RsvpBoardScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const sec = e.target.closest('[data-section]');
-      if (sec) { this.section = sec.dataset.section; this.teamId = null; this.eventId = null; this._renderChips(); this.load(); return; }
+      if (sec) { this.section = sec.dataset.section; this.teamIds = new Set(); this.eventId = null; this.who = null; this._renderChips(); this.load(); return; }
       const dayChip = e.target.closest('[data-day]');
       if (dayChip) {
         this.day = dayChip.dataset.day; this.eventId = null;
@@ -194,16 +197,33 @@ class RsvpBoardScreen extends Screen {
       if (game) {
         const id = Number(game.dataset.game);
         const team = game.dataset.gameTeam === '' ? null : Number(game.dataset.gameTeam);   // '' = the All-teams total
-        const on = this.eventId === id && this.teamId === team;
+        const on = this._tileOn(id, team);
         this.eventId = on ? null : id;
-        this.teamId  = on ? null : team;
+        this.teamIds = (on || team == null) ? new Set() : new Set([team]);
+        this.who     = null;
         if (!on) this.sort = 'open';
         this._renderChips();
         this._renderBody();
         return;
       }
       const team = e.target.closest('[data-team]');
-      if (team) { this.teamId = team.dataset.team ? Number(team.dataset.team) : null; this._renderBody(); return; }
+      if (team) {
+        const id = team.dataset.team ? Number(team.dataset.team) : null;
+        if (id == null) this.teamIds = new Set();
+        else if (this.teamIds.has(id)) this.teamIds.delete(id);
+        else this.teamIds.add(id);
+        this._renderBody(); return;
+      }
+      // Group pill: all of its teams on → all off; otherwise all on.
+      const grp = e.target.closest('[data-team-group]');
+      if (grp) {
+        const ids = String(grp.dataset.teamGroup).split(',').map(Number).filter(Boolean);
+        const all = ids.every(i => this.teamIds.has(i));
+        for (const i of ids) { if (all) this.teamIds.delete(i); else this.teamIds.add(i); }
+        this._renderBody(); return;
+      }
+      const who = e.target.closest('[data-who]');
+      if (who) { this.who = this.who === who.dataset.who ? null : who.dataset.who; this._renderBody(); return; }
       if (e.target.closest('#rb-refresh')) { this.load(); return; }
       const remind = e.target.closest('[data-remind]');
       if (remind && !remind.disabled) { this._remind(remind); return; }
@@ -309,11 +329,20 @@ class RsvpBoardScreen extends Screen {
       for (const t of (p.teams || [])) teams.set(t.id, t.label);
       for (const ev of this._openFor(p)) events.set(ev.fh_event_id, ev.line);
     }
+    for (const id of [...this.teamIds]) if (!teams.has(id)) this.teamIds.delete(id);
+    // Group pills (rsvp_team_groups, migration 419): only groups with at
+    // least two of their teams on this board; lit when every one is picked.
+    const groups = ((this.data && this.data.team_groups) || [])
+      .map(g => ({ ...g, ids: (g.team_ids || []).filter(id => teams.has(id)) }))
+      .filter(g => g.ids.length > 1);
     this.find('#rb-teams-group').style.display = teams.size > 1 ? '' : 'none';
     this.find('#rb-teams').innerHTML = teams.size > 1
-      ? [`<button class="rb-chip${this.teamId == null ? ' on' : ''}" data-team="">All teams</button>`]
+      ? [`<button class="rb-chip${this.teamIds.size === 0 ? ' on' : ''}" data-team="">All teams</button>`]
+          .concat(groups.map(g =>
+            `<button class="rb-chip${g.ids.every(id => this.teamIds.has(id)) ? ' on' : ''}" data-team-group="${g.ids.join(',')}"
+                     title="Select these teams together" style="border-style:dashed;">${this.escapeHtml(g.label)}</button>`))
           .concat([...teams].map(([id, label]) =>
-            `<button class="rb-chip${this.teamId === id ? ' on' : ''}" data-team="${id}">${this.escapeHtml(label)}</button>`))
+            `<button class="rb-chip${this.teamIds.has(id) ? ' on' : ''}" data-team="${id}">${this.escapeHtml(label)}</button>`))
           .join('')
       : '';
     if (this.eventId != null && !events.has(this.eventId)) this.eventId = null;
@@ -323,7 +352,7 @@ class RsvpBoardScreen extends Screen {
 
     const dayOn = this.day !== 'week';
     const list = people.filter(p =>
-      (this.teamId == null || (p.teams || []).some(t => t.id === this.teamId)) &&
+      this._inTeams(p) &&
       (this.eventId == null || this._openFor(p).some(ev => ev.fh_event_id === this.eventId)) &&
       // A day pill is a straggler list: only players with something still
       // unanswered that day.
@@ -365,18 +394,18 @@ class RsvpBoardScreen extends Screen {
     const slot = this.find('#rb-bulk');
     if (!slot) return;
     if (this.eventId == null) { slot.innerHTML = ''; this.bulk = null; return; }
-    const key = `${this.section}:${this.eventId}:${this.teamId ?? ''}`;
+    const key = `${this.section}:${this.eventId}:${this._teamKey()}`;
     if (this.bulk && this.bulk.key !== key) this.bulk = null;
 
     const owing = people.filter(p =>
-      (this.teamId == null || (p.teams || []).some(t => t.id === this.teamId)) &&
+      this._inTeams(p) &&
       this._openFor(p).some(ev => ev.fh_event_id === this.eventId));
     const phones = owing.filter(p => p.has_phone).length;
     const emails = owing.filter(p => p.has_email).length;
     const btn = (channel, icon, n, bg, what) =>
       `<button class="rb-btn" data-bulk="${channel}" style="background:${bg};"${n ? '' : ' disabled'}
                title="${this.escapeHtml(n ? what : 'Nobody unanswered has one on file')}">${icon} ${channel === 'sms' ? 'GROUP TEXT' : 'EMAIL'} ${n}</button>`;
-    slot.innerHTML = `
+    slot.innerHTML = this._whoHtml(people, events) + `
       <div class="rb-bulk">
         <span><b>${owing.length}</b> ${owing.length === 1 ? 'has' : 'have'} not answered
               <b>${this.escapeHtml(events.get(this.eventId) || '')}</b> — remind them all at once:</span>
@@ -393,7 +422,7 @@ class RsvpBoardScreen extends Screen {
   // bigger group becomes several links — a tap can only open one thread.
   async _remindEvent(btn) {
     const channel = btn.dataset.bulk === 'email' ? 'email' : 'sms';
-    const key = `${this.section}:${this.eventId}:${this.teamId ?? ''}`;
+    const key = `${this.section}:${this.eventId}:${this._teamKey()}`;
     const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = '⏳';
@@ -405,7 +434,7 @@ class RsvpBoardScreen extends Screen {
         : ((((this.data && this.data.people) || []).find(p => (p.open_events || []).some(ev => ev.fh_event_id === this.eventId)) || {}).section || 'mens');
       const res = await fetch('/api/rsvp-board/remind-event', {
         method: 'POST', headers, credentials: 'same-origin',
-        body: JSON.stringify({ section, fh_event_id: this.eventId, team_id: this.teamId, channel }),
+        body: JSON.stringify({ section, fh_event_id: this.eventId, team_ids: [...this.teamIds], channel }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -456,6 +485,42 @@ class RsvpBoardScreen extends Screen {
       (!day || ev.day === day));
   }
 
+  _inTeams(p)  { return this.teamIds.size === 0 || (p.teams || []).some(t => this.teamIds.has(t.id)); }
+  _teamKey()   { return [...this.teamIds].sort((a, b) => a - b).join('+'); }
+  // A tile is lit when its event is picked and the team pills match it:
+  // the All-teams total ↔ no team picked, a team tile ↔ just that team.
+  _tileOn(fhEventId, teamId) {
+    if (this.eventId !== fhEventId) return false;
+    return teamId == null ? this.teamIds.size === 0 : (this.teamIds.size === 1 && this.teamIds.has(teamId));
+  }
+
+  // Who has answered the picked event (owner 2026-09-23: "show who is
+  // going with a pill"): Going / Ineligible / Not going pills with counts,
+  // names under whichever is open.  From each card's week_events, so it
+  // follows the team pills and needs no extra fetch.  A yes from over the
+  // dues line sits under Ineligible (migration 416).
+  _whoHtml(people, events) {
+    const ans = (p) => (p.week_events || []).find(w => w && w.fh_event_id === this.eventId);
+    const scoped = people.filter(p => this._inTeams(p) && ans(p));
+    const lists = {
+      going:      scoped.filter(p => ans(p).response === 'yes' && p.dues_eligible !== false),
+      ineligible: scoped.filter(p => ans(p).response === 'yes' && p.dues_eligible === false),
+      notgoing:   scoped.filter(p => ans(p).response === 'no'),
+    };
+    const pill = (key, label, cls) =>
+      `<button class="rb-chip${this.who === key ? ' on' : ''}" data-who="${key}"><span class="${cls}">${label}</span> ${lists[key].length}</button>`;
+    const names = (list) => list.map(p => `${p.first_name || ''} ${p.last_name || ''}`.trim())
+      .sort((a, b) => a.localeCompare(b)).map(n => this.escapeHtml(n)).join(', ') || 'Nobody yet.';
+    return `
+      <div class="rb-bulk" style="background:rgba(148,163,184,0.08);">
+        <span>Answered <b>${this.escapeHtml(events.get(this.eventId) || '')}</b>:</span>
+        ${pill('going', '✓ Going', 'rb-good')}
+        ${lists.ineligible.length ? pill('ineligible', '⛔ Ineligible', 'rb-bad') : ''}
+        ${pill('notgoing', '✗ Not going', '')}
+        ${this.who && lists[this.who] ? `<span style="flex-basis:100%; font-size:0.85rem; line-height:1.4;">${names(lists[this.who])}</span>` : ''}
+      </div>`;
+  }
+
   _renderSnapshot() {
     const slot = this.find('#rb-next');
     if (!slot) return;
@@ -470,7 +535,7 @@ class RsvpBoardScreen extends Screen {
       </div>
       <div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
         ${tiles.map(g => {
-          const on = this.eventId === g.fh_event_id && this.teamId === g.team_id;
+          const on = this._tileOn(g.fh_event_id, g.team_id);
           const ha = g.is_home == null ? 'vs' : (g.is_home ? 'vs' : '@');
           const title = g.kind === 'match' ? `${ha} ${this.escapeHtml(g.opponent)}`
                       : g.kind === 'intrasquad' ? 'Intra Squad' : 'Practice';

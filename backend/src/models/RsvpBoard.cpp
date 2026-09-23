@@ -152,6 +152,7 @@ json RsvpBoard::list(const std::string& sectionCode,
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', tm.id, 'label', COALESCE(tm.label, tm.name))
                                       ORDER BY tm.board_sort_order), '[]'::jsonb)
               FROM roster r JOIN tm ON tm.id = r.team_id WHERE r.person_id = p.id)::text AS teams,
+           fh_dues_eligible(p.id) AS dues_eligible,
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line,
                                                          'day', to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'))
                                       ORDER BY o.starts_at), '[]'::jsonb)
@@ -258,6 +259,7 @@ json RsvpBoard::list(const std::string& sectionCode,
             {"last_rsvp_response",  textOrNull(row, "last_rsvp_response")},
             {"last_manual_rsvp_at", iso(row, "last_manual_rsvp_at")},
             {"months_overdue",    row["months_overdue"].is_null() ? json(nullptr) : json(row["months_overdue"].as<int>())},
+            {"dues_eligible",     row["dues_eligible"].is_null() ? true : row["dues_eligible"].as<bool>()},   // migration 416
             {"payment_status",    textOrNull(row, "la_payment_status")},
             {"dues_variant",      textOrNull(row, "dues_variant")},
             {"last_payment_amount", row["last_payment_amount"].is_null() ? json(nullptr)
@@ -280,6 +282,26 @@ json RsvpBoard::list(const std::string& sectionCode,
         people.push_back(std::move(p));
     }
     return people;
+}
+
+json RsvpBoard::teamGroups() {
+    json out = json::array();
+    auto rows = Database::getInstance()->query(R"SQL(
+        SELECT g.id, g.label,
+               COALESCE((SELECT json_agg(gt.team_id ORDER BY gt.team_id)::text
+                           FROM rsvp_team_group_teams gt WHERE gt.group_id = g.id), '[]') AS team_ids
+          FROM rsvp_team_groups g
+         WHERE g.is_active
+         ORDER BY g.sort_order, g.id
+    )SQL");
+    for (const auto& r : rows) {
+        out.push_back({
+            {"id",       r["id"].as<long long>()},
+            {"label",    r["label"].c_str()},
+            {"team_ids", json::parse(r["team_ids"].c_str())},
+        });
+    }
+    return out;
 }
 
 json RsvpBoard::weekEvents(const std::string& sectionCode,

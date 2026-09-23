@@ -173,6 +173,7 @@ Response RsvpBoardController::handleList(const Request& request) {
             {"window_start", windowStart.empty() ? json(nullptr) : json(windowStart)},
             {"is_admin",     scope.isAdmin},
             {"events",       model_->weekEvents(def->code, scope.coachTeamIds)},
+            {"team_groups",  model_->teamGroups()},   // migration 419
             {"people",       std::move(people)},
         });
     } catch (const std::exception& e) {
@@ -309,12 +310,19 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
     if (channel != "sms" && channel != "email")
         return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
 
-    // One team when asked for, else whatever the caller may see.
+    // The teams asked for (team_ids, or the older single team_id), else
+    // whatever the caller may see.  #rsvps sends several since its team
+    // pills multi-select (migration 419).
+    std::vector<long long> picked;
+    if (body.contains("team_ids") && body["team_ids"].is_array())
+        for (const auto& v : body["team_ids"]) if (v.is_number()) picked.push_back(v.get<long long>());
+    if (picked.empty() && teamId > 0) picked = {teamId};
     std::vector<long long> teamIds = scope.coachTeamIds;
-    if (teamId > 0) {
-        if (!scope.isAdmin && std::find(teamIds.begin(), teamIds.end(), teamId) == teamIds.end())
-            return jsonError(HttpStatus::FORBIDDEN, "That is not a team you coach.");
-        teamIds = {teamId};
+    if (!picked.empty()) {
+        for (long long t : picked)
+            if (!scope.isAdmin && std::find(teamIds.begin(), teamIds.end(), t) == teamIds.end())
+                return jsonError(HttpStatus::FORBIDDEN, "That is not a team you coach.");
+        teamIds = picked;
     }
 
     try {

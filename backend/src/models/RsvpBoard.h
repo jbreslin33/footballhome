@@ -39,6 +39,10 @@ public:
     // yet, so nobody is counted as unanswered.  Started as next-game-only
     // (owner 2026-09-17: "focus on game as its most important"); widened
     // to practices 2026-09-22 for "an overall snapshot".
+    // One-tap team groups for the board's Team row (rsvp_team_groups,
+    // migration 419): [{id, label, team_ids}].
+    nlohmann::json teamGroups();
+
     nlohmann::json weekEvents(const std::string& sectionCode,
                               const std::vector<long long>& scopeTeamIds);
 
