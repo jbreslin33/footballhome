@@ -24,6 +24,10 @@ std::string tidy(std::string s) {
 //
 // tm        the player's live teams, each with its released-window end —
 //           the same visibility rule #my applies.
+// guess     none of those, but a youth birth date: the intramural team
+//           for the age band, so the welcome carries a real schedule
+//           (the admin adds the child to a team right after).
+// sq        tm, or guess when tm is empty — what ev/rel read from.
 // ev        every labelled event for those teams over the next four
 //           weeks; `released` = inside the window for at least one team.
 // upcoming  the released ones, one player-facing line each (kind label +
@@ -43,13 +47,43 @@ WITH tm AS (
                         AND (s.team_id IS NULL OR s.team_id = tp.team_id)
                         AND s.starts_at <= now()
                         AND (s.ends_at IS NULL OR s.ends_at > now()))
+), guess AS (
+  -- No live team, but a youth birth date: assume the club's intramural
+  -- side for the age band (smallest U-age that fits the single age, the
+  -- season year as YouthAgeGroups::defaultSeasonEndYear).  Same section
+  -- as the child's LA programme when it fields one, else any — girls
+  -- play on the boys squads while the girls programme grows.
+  SELECT t.id, t.club_id, t.club_section_id, t.name,
+         fh_schedule_window_end(t.club_id, t.club_section_id, now()) AS window_end
+    FROM persons p
+    CROSS JOIN LATERAL (
+      SELECT lp.category
+        FROM person_la_memberships m
+        JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
+       WHERE m.person_id = p.id AND m.ended_at IS NULL
+         AND lp.category IN ('boys', 'girls')
+       ORDER BY m.la_registered_at DESC NULLS LAST, m.id DESC LIMIT 1) la
+    JOIN teams t ON t.club_id = $2::int AND t.is_active
+                AND t.gender_category IN ('boys', 'girls')
+                AND t.name ~* 'intramural'
+   WHERE p.id = $1::int AND p.birth_date IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM tm)
+     AND fh_team_age(t.id) >= fh_youth_single_age(p.birth_date,
+           extract(year FROM now() AT TIME ZONE 'America/New_York')::int
+           + CASE WHEN extract(month FROM now() AT TIME ZONE 'America/New_York') >= 6 THEN 1 ELSE 0 END)
+   ORDER BY (t.gender_category = la.category) DESC, fh_team_age(t.id), t.id
+   LIMIT 1
+), sq AS (
+  SELECT id, club_id, club_section_id, window_end FROM tm
+  UNION ALL
+  SELECT id, club_id, club_section_id, window_end FROM guess
 ), ev AS (
   SELECT fe.id, k.player_label, k.weekly_pattern, fe.opponent, fe.is_home,
          ge.starts_at,
          (ge.starts_at AT TIME ZONE 'America/New_York') AS local_start,
-         bool_or(ge.starts_at <= tm.window_end) AS released
-    FROM tm
-    JOIN fh_event_teams fet ON fet.team_id = tm.id
+         bool_or(ge.starts_at <= sq.window_end) AS released
+    FROM sq
+    JOIN fh_event_teams fet ON fet.team_id = sq.id
     JOIN fh_events fe ON fe.id = fet.fh_event_id
     JOIN fh_event_kind_labels k ON k.kind = fe.kind
     JOIN gcal_events ge ON ge.id = fe.gcal_event_id
@@ -79,13 +113,14 @@ WITH tm AS (
 ), rel AS (
   SELECT fh_schedule_week_opens_at(x.club_id, x.club_section_id,
            ((x.window_end + interval '1 millisecond') AT TIME ZONE 'America/New_York')::date) AS opens
-    FROM (SELECT club_id, club_section_id, window_end FROM tm
+    FROM (SELECT club_id, club_section_id, window_end FROM sq
           UNION ALL
           SELECT $2::int, NULL::int, fh_schedule_window_end($2::int, NULL, now())
-           WHERE NOT EXISTS (SELECT 1 FROM tm)
+           WHERE NOT EXISTS (SELECT 1 FROM sq)
           ORDER BY window_end LIMIT 1) x
 )
 SELECT EXISTS (SELECT 1 FROM tm) AS on_team,
+       COALESCE((SELECT name FROM guess), '') AS assumed_team,
        COALESCE((SELECT txt FROM upcoming), '') AS events,
        COALESCE((SELECT string_agg(line, E'\n' ORDER BY late, d, t) FROM pat), '') AS schedule,
        COALESCE((SELECT to_char(opens AT TIME ZONE 'America/New_York', 'FMDay') FROM rel), '') AS release_day,
@@ -102,6 +137,7 @@ WelcomeMessage::Facts WelcomeMessage::factsFor(long long playerPersonId, int clu
     auto rows = db_->query(kFactsSql, {std::to_string(playerPersonId), std::to_string(clubId)});
     if (rows.empty()) return f;
     f.onTeam      = rows[0]["on_team"].as<bool>();
+    f.assumedTeam = rows[0]["assumed_team"].c_str();
     f.events      = rows[0]["events"].c_str();
     f.schedule    = rows[0]["schedule"].c_str();
     f.releaseDay  = rows[0]["release_day"].c_str();
@@ -141,10 +177,17 @@ WelcomeMessage::Rendered WelcomeMessage::render(const std::string& channel, bool
     const auto skeleton = tpls.find(channel == "email" ? "welcome" : "welcome_sms");
     if (skeleton == tpls.end()) return {};
 
-    const std::string eventsBlock = !facts.onTeam         ? bodyOf("welcome_no_team")
-                                  : !facts.events.empty() ? bodyOf("welcome_events")
-                                                          : bodyOf("welcome_no_events");
-    const std::string scheduleBlock = !facts.onTeam            ? std::string{}
+    // An assumed intramural team reads like a real one — its events and
+    // usual week fill the blocks — with welcome_assumed_team on top
+    // saying so.  Only a player on nothing, with nothing to assume, gets
+    // the bare "not on a team yet".
+    const bool assumed = !facts.onTeam && !facts.assumedTeam.empty();
+    const bool hasTeam = facts.onTeam || assumed;
+    std::string eventsBlock = !hasTeam              ? bodyOf("welcome_no_team")
+                            : !facts.events.empty() ? bodyOf("welcome_events")
+                                                    : bodyOf("welcome_no_events");
+    if (assumed) eventsBlock = bodyOf("welcome_assumed_team") + "\n\n" + eventsBlock;
+    const std::string scheduleBlock = !hasTeam                 ? std::string{}
                                     : !facts.schedule.empty()  ? bodyOf("welcome_schedule")
                                                                : bodyOf("welcome_no_schedule");
     // An unresolved {form:…} means the form row is gone — skip the ask.
@@ -160,6 +203,7 @@ WelcomeMessage::Rendered WelcomeMessage::render(const std::string& channel, bool
         replaceAll(text, "{schedule}",       facts.schedule);
         replaceAll(text, "{release_day}",    facts.releaseDay);
         replaceAll(text, "{release_time}",   facts.releaseTime);
+        replaceAll(text, "{team}",           facts.assumedTeam);
         replaceAll(text, "{first}",          tokens.first);
         replaceAll(text, "{child}",          tokens.child);
         replaceAll(text, "{sender}",         tokens.sender);
