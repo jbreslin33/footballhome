@@ -73,7 +73,7 @@ BEGIN
 
   -- person_emails / person_phones are UNIQUE(person_id, col): move unless
   -- kept already has the same value.  22726 owns only kvlaunica@aol.com,
-  -- so the handichen21 row moves and the parent row ends up with both.
+  -- so the kvlaunica37 row moves and the parent row ends up with both.
   UPDATE person_emails d SET person_id = kept
    WHERE d.person_id = drop_
      AND NOT EXISTS (SELECT 1 FROM person_emails k
@@ -114,5 +114,5 @@ BEGIN
   -- 4. Drop the orphan.  It has no la_user_id, so nothing to reconcile onto kept.
   DELETE FROM persons WHERE id = drop_;
 
-  RAISE NOTICE 'merged person % into % (users row 205 now on Fenny Veronica)', drop_, kept;
+  RAISE NOTICE 'merged person % into % (users row 220 now on Karen Valle)', drop_, kept;
 END $$;
