@@ -1301,12 +1301,16 @@ class GameCenterScreen extends Screen {
     const byStarterRank = (a, b) => starterEligibleRank(a) - starterEligibleRank(b);
 
     const byZone = { starter: [], bench: [], alternate: [] };
-    const unassignedGoing = [], unassignedNotGoing = [], unassignedNoResponse = [];
+    // A yes from a player over the dues line (duesEligible=false,
+    // migration 416) is kept but counted apart from Going (owner
+    // 2026-09-23: "sep total for ineligible").
+    const unassignedGoing = [], unassignedIneligible = [], unassignedNotGoing = [], unassignedNoResponse = [];
     for (const p of this.roster) {
       const z = this.zones.get(p.id);
       if (z && byZone[z]) { byZone[z].push(p); continue; }
       const group = rsvpGroup(p.id);
-      if (group === 'going') unassignedGoing.push(p);
+      if (group === 'going' && p.duesEligible === false) unassignedIneligible.push(p);
+      else if (group === 'going') unassignedGoing.push(p);
       else if (group === 'notGoing') unassignedNotGoing.push(p);
       else unassignedNoResponse.push(p);
     }
@@ -1672,6 +1676,7 @@ class GameCenterScreen extends Screen {
       gridSection('Bench', byZone.bench, this.isCoach ? squadCard : null),
       gridSection('Alternates', byZone.alternate, this.isCoach ? squadCard : null),
       this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
+      this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, { top: remindBar, extra: remindCard }) : '',
     ].join(''));

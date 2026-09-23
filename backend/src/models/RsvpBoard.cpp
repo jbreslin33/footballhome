@@ -319,12 +319,16 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
            to_char(ev.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS starts_at,
            to_char(ev.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') AS when_text,
            to_char(ev.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day,
-           c.expected, c.yes, c.no,
-           t.expected AS all_expected, t.yes AS all_yes, t.no AS all_no
+           c.expected, c.yes, c.yes_ineligible, c.no,
+           t.expected AS all_expected, t.yes AS all_yes, t.yes_ineligible AS all_yes_ineligible, t.no AS all_no
       FROM ev
+      -- A yes from someone over the dues line (migration 416) is kept but
+      -- counted apart (owner 2026-09-23): `yes` is eligible yeses only,
+      -- `yes_ineligible` the rest; unanswered = expected − both − no.
       CROSS JOIN LATERAL (
             SELECT count(*) AS expected,
-                   count(*) FILTER (WHERE rv.response = 'yes') AS yes,
+                   count(*) FILTER (WHERE rv.response = 'yes' AND     fh_dues_eligible(e.person_id)) AS yes,
+                   count(*) FILTER (WHERE rv.response = 'yes' AND NOT fh_dues_eligible(e.person_id)) AS yes_ineligible,
                    count(*) FILTER (WHERE rv.response = 'no')  AS no
               FROM roster r
               JOIN expected e ON e.person_id = r.person_id AND e.fh_event_id = ev.fh_event_id
@@ -336,7 +340,8 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
       -- person per event).
       CROSS JOIN LATERAL (
             SELECT count(*) AS expected,
-                   count(*) FILTER (WHERE rv.response = 'yes') AS yes,
+                   count(*) FILTER (WHERE rv.response = 'yes' AND     fh_dues_eligible(e.person_id)) AS yes,
+                   count(*) FILTER (WHERE rv.response = 'yes' AND NOT fh_dues_eligible(e.person_id)) AS yes_ineligible,
                    count(*) FILTER (WHERE rv.response = 'no')  AS no
               FROM expected e
               LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
@@ -350,9 +355,11 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
     for (const auto& row : rows) {
         const long long expected = row["expected"].as<long long>();
         const long long yes = row["yes"].as<long long>();
+        const long long yesIneligible = row["yes_ineligible"].as<long long>();
         const long long no  = row["no"].as<long long>();
         const long long allExpected = row["all_expected"].as<long long>();
         const long long allYes      = row["all_yes"].as<long long>();
+        const long long allYesIneligible = row["all_yes_ineligible"].as<long long>();
         const long long allNo       = row["all_no"].as<long long>();
         events.push_back({
             {"team_id",     row["team_id"].as<long long>()},
@@ -367,12 +374,14 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
             {"released",    row["released"].as<bool>()},
             {"expected",    expected},
             {"yes",         yes},
+            {"yes_ineligible", yesIneligible},
             {"no",          no},
-            {"unanswered",  expected - yes - no},
+            {"unanswered",  expected - yes - yesIneligible - no},
             {"all_expected",   allExpected},
             {"all_yes",        allYes},
+            {"all_yes_ineligible", allYesIneligible},
             {"all_no",         allNo},
-            {"all_unanswered", allExpected - allYes - allNo},
+            {"all_unanswered", allExpected - allYes - allYesIneligible - allNo},
         });
     }
     return events;

@@ -475,7 +475,7 @@ class RsvpBoardScreen extends Screen {
           const title = g.kind === 'match' ? `${ha} ${this.escapeHtml(g.opponent)}`
                       : g.kind === 'intrasquad' ? 'Intra Squad' : 'Practice';
           const counts = g.released
-            ? `<span class="rb-good">${g.yes} going</span> · <span>${g.no} not</span> ·
+            ? `<span class="rb-good">${g.yes} going</span>${g.yes_ineligible ? ` · <span class="rb-bad" title="Said going but over the dues line — not counted">⛔ ${g.yes_ineligible} ineligible</span>` : ''} · <span>${g.no} not</span> ·
                <span class="${g.unanswered ? 'rb-bad' : 'rb-good'}" style="font-weight:800;">${g.unanswered} unanswered</span>
                <span style="opacity:0.6;"> of ${g.expected}</span>`
             : `<span style="opacity:0.7;">Not released to players yet — nobody can answer</span>`;
@@ -508,7 +508,7 @@ class RsvpBoardScreen extends Screen {
       if (group.length > 1 && group[0] === g) {
         tiles.push({ ...g, team_id: null,
           team_label: `All teams · ${group.map(x => x.team_label).join(' + ')}`,
-          expected: g.all_expected, yes: g.all_yes, no: g.all_no, unanswered: g.all_unanswered });
+          expected: g.all_expected, yes: g.all_yes, yes_ineligible: g.all_yes_ineligible, no: g.all_no, unanswered: g.all_unanswered });
       }
       tiles.push(g);
     }

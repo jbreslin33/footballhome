@@ -413,12 +413,14 @@ class EventCenterScreen extends Screen {
 
     const row = (ev) => {
       const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-      const going = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach).length;
+      // Eligible yeses only — a yes from over the dues line is counted apart (migration 416).
+      const going = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach && r.dues_eligible !== false).length;
+      const ineligible = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach && r.dues_eligible === false).length;
       const teams = (Array.isArray(ev.teams) ? ev.teams : []).map(t => t && t.name).filter(Boolean).join(' + ');
       return `<button type="button" class="btn btn-secondary ec-pick" data-ec-open="${ev.fh_event_id}">
         <span style="font-weight:700;">${this.escapeHtml(EventLabels.title(ev))}</span>
         <span style="font-size:0.8rem; opacity:0.8;">${this.escapeHtml([this._when(ev), ev.location].filter(Boolean).join(' · '))}</span>
-        <span style="font-size:0.75rem; opacity:0.65;">${this.escapeHtml([teams, `${going} going`].filter(Boolean).join(' · '))}</span>
+        <span style="font-size:0.75rem; opacity:0.65;">${this.escapeHtml([teams, `${going} going`, ineligible ? `⛔ ${ineligible} ineligible` : ''].filter(Boolean).join(' · '))}</span>
       </button>`;
     };
     const list = (label, evs, empty) => `
@@ -598,10 +600,14 @@ class EventCenterScreen extends Screen {
     if (!rsvps.length) {
       return `<div class="ec-box" style="opacity:0.7;">Nobody is on this event's list — tag a team on the calendar event.</div>`;
     }
-    const going = rsvps.filter(r => r && r.response === 'yes');
+    // A yes from someone over the dues line (dues_eligible=false,
+    // migration 416) is kept but counted apart from Going.
+    const goingAll = rsvps.filter(r => r && r.response === 'yes');
+    const going    = goingAll.filter(r => r.dues_eligible !== false);
     return `
       ${group('Going', going.filter(r => !r.is_callup))}
       ${group('Invited · Available', going.filter(r => r.is_callup))}
+      ${group('⛔ Said going · Ineligible (dues)', goingAll.filter(r => r.dues_eligible === false))}
       ${group('Not going', rsvps.filter(r => r && r.response === 'no'))}
       ${group('No response', rsvps.filter(r => r && r.response !== 'yes' && r.response !== 'no'))}`;
   }

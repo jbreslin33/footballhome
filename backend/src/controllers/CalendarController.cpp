@@ -1040,7 +1040,12 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         -- (persons.parent_person_id). NULL for adults.
                                                         -- #my per-row reminders mint the magic link
                                                         -- for this id when present (auth model 2026-09-05).
-                                                        'parent_person_id', roster.parent_person_id
+                                                        'parent_person_id', roster.parent_person_id,
+                                                        -- Under the dues line (migration 416)?  A yes from
+                                                        -- someone over it is kept but counted apart
+                                                        -- (owner 2026-09-23: "keep but don't count in
+                                                        -- totals instead use sep total for ineligible").
+                                                        'dues_eligible', fh_dues_eligible(roster.person_id)
                         )
                                                 ORDER BY CASE roster.response
                                    WHEN 'yes' THEN 1

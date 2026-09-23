@@ -809,7 +809,14 @@ class MyScreen extends Screen {
 
   _eventRsvpHtml(ev, isPast = false) {
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-    const going          = rsvps.filter(r => r && r.response === 'yes');
+    // A yes from someone over the dues line (dues_eligible=false,
+    // migration 416) is kept but counted apart: it stays out of the
+    // Going lists and totals, and staff see it under its own heading
+    // (owner 2026-09-23). Other players never see the heading.
+    const goingAll       = rsvps.filter(r => r && r.response === 'yes');
+    const going          = goingAll.filter(r => r.dues_eligible !== false);
+    const goingIneligible= goingAll.filter(r => r.dues_eligible === false);
+    const viewerIsStaff  = String(this.navigation?.context?.role || this.auth?.user?.role || '').toLowerCase() !== 'player';
     const notGoingAll    = rsvps.filter(r => r && r.response === 'no');
     const noResponseAll  = rsvps.filter(r => r && !r.response);
     // Invited players (fh_event_invites, migration 355 — youth call-ups
@@ -896,6 +903,11 @@ class MyScreen extends Screen {
         ${callupsAvailable.length ? `
           <div style="margin-top:8px;">
             ${groupHtml('Invited · Available', callupsAvailable, 'available', rowsHtml(callupsAvailable))}
+          </div>
+        ` : ''}
+        ${viewerIsStaff && goingIneligible.length ? `
+          <div style="margin-top:8px; padding:6px 8px; border-radius:6px; border:1px solid rgba(239,68,68,0.55); background:rgba(239,68,68,0.10);">
+            ${groupHtml('⛔ Said Going · Ineligible (dues)', goingIneligible, 'not counted', rowsHtml(goingIneligible))}
           </div>
         ` : ''}
         ${notGoingTotal ? `
