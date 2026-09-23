@@ -562,18 +562,10 @@ class WomensRosterScreen extends RosterScreenBase {
     const targetPos = parseInt(select.value, 10);
     if (!teamId || !targetPos) return;
 
-    const card = select.closest('.wr-card[draggable="true"]');
-    const zone = card && card.closest('.wr-drop-zone[data-drop-team-id]');
-    if (!card || !zone) return;
-
-    const cardEls = Array.from(zone.querySelectorAll('.wr-card[draggable="true"]'));
-    const fromIdx = cardEls.indexOf(card);
-    const toIdx   = targetPos - 1;
-    if (fromIdx === -1 || toIdx === fromIdx) return;
-
-    cardEls.splice(fromIdx, 1);
-    cardEls.splice(Math.max(0, Math.min(toIdx, cardEls.length)), 0, card);
-    cardEls.forEach(el => zone.appendChild(el));
+    // Coach-rank order with this card in its new slot — works in A–Z
+    // mode too (RosterScreenBase.slotReorder).
+    const cardEls = this.slotReorder(select, 'wr-card', 'wr-drop-zone');
+    if (!cardEls) return;
 
     const orderedIds = cardEls.map(el => parseInt(el.dataset.userId, 10)).filter(n => Number.isFinite(n));
     if (orderedIds.length === 0) return;

@@ -827,9 +827,11 @@ class RosterScreenBase extends Screen {
   // sort alpha by last name or by rank… default to alpha by last name").
   // 'alpha' — last name, then first.  'rank' — the coach's order, which is
   // how the server sends each column.  The #N on a card is ALWAYS the
-  // coach rank, whichever way the column is sorted.  Drag-reorder and the
-  // #N slot picker rebuild the rank from the on-screen card order, so
-  // they are only live in rank mode; in alpha mode #N is a plain chip.
+  // coach rank, whichever way the column is sorted.  Drag-reorder rebuilds
+  // the rank from the on-screen card order, so it is only live in rank
+  // mode.  The #N slot picker works from the coach rank (slotReorder
+  // below), so it is live in both modes — owner 2026-09-23, on the A–Z
+  // default: "there is no way to change rank".
   get sortOrder() { return this._sortOrder || 'alpha'; }
 
   setSortOrder(value) {
@@ -851,6 +853,29 @@ class RosterScreenBase extends Screen {
       return `${last || fallback}\u0000${first}`.toLowerCase();
     };
     return ranked.sort((a, b) => key(a.player).localeCompare(key(b.player)) || a.rank - b.rank);
+  }
+
+  // The #N slot picker changed: the column's cards in coach-rank order
+  // (data-rank on each picker), with the chosen card moved to its new
+  // slot — the list the reorder POST wants.  Rank order, not DOM order,
+  // so the picker works in A–Z mode too (owner 2026-09-23: "there is no
+  // way to change rank").  In rank mode the DOM is re-sequenced on the
+  // spot; in A–Z the cards stay put and the reload repaints the #N chips.
+  // null when nothing moved or the card isn't in a coached column.
+  slotReorder(select, cardClass, zoneClass) {
+    const card = select.closest(`.${cardClass}[data-team-id]`);
+    const zone = card && card.closest(`.${zoneClass}[data-drop-team-id]`);
+    if (!card || !zone) return null;
+    const rankOf = (el) => parseInt(el.querySelector('.roster-position-select')?.dataset.rank, 10) || 0;
+    const cardEls = Array.from(zone.querySelectorAll(`.${cardClass}[data-team-id]`))
+      .sort((a, b) => rankOf(a) - rankOf(b));
+    const fromIdx = cardEls.indexOf(card);
+    const toIdx   = parseInt(select.value, 10) - 1;
+    if (fromIdx === -1 || !(toIdx >= 0) || toIdx === fromIdx) return null;
+    cardEls.splice(fromIdx, 1);
+    cardEls.splice(Math.min(toIdx, cardEls.length), 0, card);
+    if (this.sortOrder === 'rank') cardEls.forEach(el => zone.appendChild(el));
+    return cardEls;
   }
 
   // Two thin content rows (rank+name, then DOB/age/dues) on the left;
@@ -885,8 +910,8 @@ class RosterScreenBase extends Screen {
     // and only worth showing once there's more than one card to reorder
     // against.
     const rankEditable = this.sortOrder === 'rank';
-    const posControl = (rankEditable && canMove && col && col.teamId && position && totalInColumn > 1)
-      ? `<select class="roster-position-select" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}"
+    const posControl = (canMove && col && col.teamId && position && totalInColumn > 1)
+      ? `<select class="roster-position-select" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}" data-rank="${position}"
                  title="Move ${this.escape(player.firstName || 'player')} to a specific slot — everyone else shifts to make room"
                  style="font-size:0.68rem; font-weight:800; letter-spacing:0.02em; padding:0 1px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff;">
            ${Array.from({ length: totalInColumn }, (_, i) => i + 1)
@@ -917,8 +942,11 @@ class RosterScreenBase extends Screen {
     // MensTeamAssignments::reorderTeamForPersons) instead of the plain
     // LA userId, which can silently drift out from under a specific
     // player and make their card look stuck / revert on drop.
-    const dragAttrs = (rankEditable && col && col.teamId && canMove)
-      ? `draggable="true" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}"`
+    // The ids ride on every coached card so the slot picker can find its
+    // column-mates in A–Z mode too; draggable="true" — what every drag
+    // handler and the grab cursor key off — only in rank mode.
+    const dragAttrs = (col && col.teamId && canMove)
+      ? `${rankEditable ? 'draggable="true" ' : ''}data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}"`
       : '';
     // canMove only gates drag-and-drop reordering within a coached column
     // (dragAttrs above) — it's false for Unassigned cards since col.teamId
