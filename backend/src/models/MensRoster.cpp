@@ -985,6 +985,27 @@ MensRoster::Result MensRoster::run(bool includeAll,
         pickupByPerson = PickupMembership::loadForPersons(personIds);
     }
 
+    // Per-team display names (team_person_names, migration 413): the name
+    // a person goes by on one team's roster — e.g. Modesto-Anderson on
+    // Liga 1, Anderson everywhere else.  Keyed "teamId:personId"; applied
+    // to each column's copy of the card below.
+    std::unordered_map<std::string, std::pair<std::string, std::string>> teamNames;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT team_id, person_id, COALESCE(first_name, '') AS fn, COALESCE(last_name, '') AS ln "
+            "  FROM team_person_names WHERE team_id IN (" + [&] {
+                std::string ids;
+                for (const auto& c : cols) { if (!ids.empty()) ids += ","; ids += std::to_string(c.teamId); }
+                return ids.empty() ? std::string("0") : ids;
+            }() + ")");
+        for (const auto& r : rows)
+            teamNames[std::string(r["team_id"].c_str()) + ":" + r["person_id"].c_str()] =
+                {trim(r["fn"].c_str()), trim(r["ln"].c_str())};
+    } catch (const std::exception& e) {
+        std::cerr << "[MensRoster] team_person_names load failed: " << e.what() << std::endl;
+    }
+
     for (auto& p : all) {
         const std::string uid = userIdString(p.at("leagueAppsUserId"));
         const auto bill = PersonBilling::resolve(billingMap, uid);
@@ -1169,6 +1190,15 @@ MensRoster::Result MensRoster::run(bool includeAll,
                         if (sit != personIdByUserId.end()) pid = sit->second;
                     }
                     row["personId"] = pid > 0 ? json(pid) : json(nullptr);
+                    if (pid > 0) {
+                        auto nit = teamNames.find(std::to_string(tid) + ":" + std::to_string(pid));
+                        if (nit != teamNames.end()) {
+                            const auto& [fn, ln] = nit->second;
+                            if (!fn.empty()) row["firstName"] = fn;
+                            if (!ln.empty()) row["lastName"]  = ln;
+                            row["fullName"] = trim(row.value("firstName", std::string{}) + " " + row.value("lastName", std::string{}));
+                        }
+                    }
                     row["fhLastActivityAt"] = fhLastActivityFor(pid);
                     auto ait = activeTeamsByPerson.find(pid);
                     row["activeTeams"] = (ait != activeTeamsByPerson.end()) ? ait->second : json::array();

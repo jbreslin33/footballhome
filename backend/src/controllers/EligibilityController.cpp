@@ -298,14 +298,15 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         std::string query = R"(
             SELECT ml.player_id, ml.is_starter, ml.position_id,
                    ml.slot_number, ml.zone,
-                   pe.first_name, pe.last_name,
+                   fh_team_first_name(ml.team_id, pe.id, pe.first_name) AS first_name,
+                   fh_team_last_name(ml.team_id, pe.id, pe.last_name)   AS last_name,
                    pos.abbreviation as position
             FROM match_lineups ml
             JOIN players pl ON pl.id = ml.player_id
             JOIN persons pe ON pe.id = pl.person_id
             LEFT JOIN positions pos ON pos.id = ml.position_id
             WHERE ml.match_id = $1
-            ORDER BY ml.is_starter DESC, ml.slot_number NULLS LAST, pe.last_name, pe.first_name
+            ORDER BY ml.is_starter DESC, ml.slot_number NULLS LAST, last_name, first_name
         )";
         
         pqxx::result result = db_->query(query, {matchId});
@@ -678,7 +679,8 @@ Response EligibilityController::handleGetEventSquads(const Request& request) {
         pqxx::result rows = db_->query(
             "SELECT DISTINCT ON (pl.id) "
             "       pl.id AS player_id, "
-            "       pe.first_name, pe.last_name, "
+            "       fh_team_first_name(tp.team_id, pe.id, pe.first_name) AS first_name, "
+            "       fh_team_last_name(tp.team_id, pe.id, pe.last_name)   AS last_name, "
             "       tp.team_id, tp.jersey_number, "
             "       ml.squad_color "
             "FROM team_persons tp "

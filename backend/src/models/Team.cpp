@@ -133,8 +133,8 @@ std::string Team::getTeamRoster(const std::string& team_id) {
         std::string sql =
             "SELECT "
             "  pl.id as player_id, "
-            "  pe.first_name, "
-            "  pe.last_name, "
+            "  fh_team_first_name(r.team_id, pe.id, pe.first_name) AS first_name, "  // per-team name, migration 413
+            "  fh_team_last_name(r.team_id, pe.id, pe.last_name)   AS last_name, "
             "  pem.email, "
             "  pl.photo_url as avatar_url, "
             "  r.jersey_number, "
@@ -159,7 +159,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "      ) "
             "ORDER BY "
             "  r.jersey_number NULLS LAST, "
-            "  pe.last_name, pe.first_name";
+            "  last_name, first_name";
         
         pqxx::result result = executeQuery(sql, {team_id});
         
