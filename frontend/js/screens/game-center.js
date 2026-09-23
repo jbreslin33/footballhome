@@ -2723,7 +2723,7 @@ class GameCenterScreen extends Screen {
     if (!p || p.duesEligible !== false || !window.MessageCopy) return '';
     const text = MessageCopy.block('my_dues', 'lineup_flag');
     if (!text) return '';
-    return `<span style="font-size:0.62rem; font-weight:700; padding:1px 6px; border-radius:999px; border:1px solid #f59e0b; color:#fde68a; background:rgba(245,158,11,0.16); white-space:nowrap;">💸 ${this.escapeHtml(text)}</span>`;
+    return `<span style="font-size:0.62rem; font-weight:800; padding:1px 6px; border-radius:999px; border:1px solid #ef4444; color:#fca5a5; background:rgba(239,68,68,0.18); white-space:nowrap;">⛔ ${this.escapeHtml(text)}</span>`;
   }
 
   _rsvpStatusPill(playerId) {

@@ -1112,8 +1112,8 @@ class MyScreen extends Screen {
     const text = MessageCopy.block('my_dues', 'pill', this._duesTokens(d));
     if (!text) return '';
     return `<a href="${this.escapeHtml(d.pay_url)}" target="_blank" rel="noopener"
-              style="padding:3px 8px; border-radius:999px; border:1px solid #f59e0b; background:rgba(245,158,11,0.16); color:#fde68a; font-size:0.6rem; font-weight:700; line-height:1.2; text-decoration:none; white-space:normal; text-align:center;">
-              💸 ${this.escapeHtml(text)}</a>`;
+              style="padding:3px 8px; border-radius:999px; border:1px solid #ef4444; background:rgba(239,68,68,0.18); color:#fca5a5; font-size:0.6rem; font-weight:800; line-height:1.2; text-decoration:none; white-space:normal; text-align:center;">
+              ⛔ ${this.escapeHtml(text)}</a>`;
   }
   _renderDuesBanner() {
     const host = this.find('#my-dues-banner');
@@ -1124,9 +1124,9 @@ class MyScreen extends Screen {
     host.innerHTML = rows.map(d => {
       const who  = d.is_self ? '' : `${this.escapeHtml(d.first_name || 'Your player')}: `;
       const text = MessageCopy.block('my_dues', 'banner', this._duesTokens(d));
-      return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:0 0 6px; padding:8px 10px; border-radius:8px; border:1px solid #f59e0b; background:rgba(245,158,11,0.14); color:#fde68a; font-size:0.72rem; font-weight:600; line-height:1.3;">
-        <span>💸 ${who}${this.escapeHtml(text)}</span>
-        ${d.pay_url ? `<a href="${this.escapeHtml(d.pay_url)}" target="_blank" rel="noopener" style="padding:4px 10px; border-radius:999px; background:#f59e0b; color:#1f1300; font-weight:800; text-decoration:none; white-space:nowrap;">${this.escapeHtml(button)}</a>` : ''}
+      return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:0 0 6px; padding:8px 10px; border-radius:8px; border:1px solid #ef4444; background:rgba(239,68,68,0.16); color:#fca5a5; font-size:0.74rem; font-weight:700; line-height:1.3;">
+        <span>⛔ ${who}${this.escapeHtml(text)}</span>
+        ${d.pay_url ? `<a href="${this.escapeHtml(d.pay_url)}" target="_blank" rel="noopener" style="padding:4px 10px; border-radius:999px; background:#ef4444; color:#fff; font-weight:800; text-decoration:none; white-space:nowrap;">${this.escapeHtml(button)}</a>` : ''}
       </div>`;
     }).join('');
   }
