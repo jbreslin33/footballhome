@@ -1005,6 +1005,7 @@ class PaymentsScreen extends Screen {
       pause_date:   dates.pauseDate,    // first Friday they reach the pause threshold
       pause_months: pauseAt,            // dues_policies.pause_after_months
       partial_amounts: MessageCopy.partialAmountsText, // dues_policies.partial_amounts_usd (mig 414)
+      ...this._pauseLine(standing, pauseAt),            // {pause_amount} {keep_active_amount} (mig 415)
     };
     const copy = MessageCopy.render(channel === 'sms' ? 'payment_notice_sms' : 'payment_notice_email', tier, tokens);
     if (!copy) return null;
@@ -1086,6 +1087,31 @@ class PaymentsScreen extends Screen {
       pauseDate = fmt(new Date(ff.getUTCFullYear(), ff.getUTCMonth(), ff.getUTCDate()));
     }
     return { deadline: fmt(upcoming), pauseDate };
+  }
+
+  // The pause line in dollars, and the least a member must pay now to be
+  // on the right side of it when the next month posts (migration 415;
+  // owner 2026-09-23: "a threshold amount that makes a paused membership
+  // … bring this month to under $35 [so] when oct 2nd hits you will be
+  // safely under").  Months behind is ceil(owed / rate), and the pause is
+  // at pause_after_months, so:
+  //   pause_amount        = pause_after_months × rate            $105
+  //   safe balance now    = (pause_after_months − 2) × rate      $35 —
+  //                         the most they can carry into the rollover
+  //   keep_active_amount  = owed − safe balance, when positive   $70 → $35
+  // keep_active_amount is '' when nothing is needed (the rollover leaves
+  // them short of the line) or the balance is unknown, so the [[ … ]]
+  // around it drops.
+  _pauseLine(standing, pauseAt) {
+    const rate = MessageCopy.duesPolicy.monthlyDuesUsd;
+    if (!(Number.isFinite(rate) && rate > 0 && pauseAt >= 1)) return { pause_amount: '', keep_active_amount: '' };
+    const safe = Math.max(0, pauseAt - 2) * rate;
+    const owed = standing.amountNum;
+    const need = (owed !== null && owed - safe > 0.005) ? owed - safe : 0;
+    return {
+      pause_amount:       this.fmtMoney(pauseAt * rate),
+      keep_active_amount: need > 0 ? this.fmtMoney(need) : '',
+    };
   }
 
   // dues_policies.pause_after_months (migration 401), via the copy
