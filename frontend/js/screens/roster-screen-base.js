@@ -1373,8 +1373,8 @@ class RosterScreenBase extends Screen {
     // DOCS row, which is email-only until multi-recipient SMS works:
     // an sms: URL with N numbers is honoured by some Messages clients
     // and silently truncated by others, so bulk text is off and the
-    // per-card 📄 DOCS button (boys-roster renderPlayer) covers texting
-    // one parent at a time.
+    // per-card DOCS 💬/✉ pair (boys-roster renderPlayer, in the ⋯ menu)
+    // covers one parent at a time.
     const wants = (kind) => !channels || channels.includes(kind);
     const btn = (kind, label, count, title) => (count === 0 || !wants(kind)) ? '' : `
       <button type="button" class="rb-msg-btn" data-msg-kind="${kind}" data-msg-token="${token}"

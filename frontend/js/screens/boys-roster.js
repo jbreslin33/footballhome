@@ -293,8 +293,8 @@ class BoysRosterScreen extends RosterScreenBase {
   // text ... just put a docs text reminder on the player cards until we
   // get the bulk text working"). BCC through Gmail reaches the whole
   // column reliably; a single sms: URL carrying every parent's number
-  // does not, so texting is done one card at a time via the 📄 DOCS
-  // button renderPlayer puts on each card in these columns.
+  // does not, so texting is done one card at a time via the DOCS 💬/✉
+  // pair renderPlayer puts in the ⋯ menu of each card in these columns.
   renderDocsRow(col, players) {
     if (!BoysRosterScreen.columnNeedsDocs(col) || !this.docsPreset) return '';
     const name = String(col.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
@@ -605,20 +605,19 @@ class BoysRosterScreen extends RosterScreenBase {
       // chrome, so it didn't need this — this button did).
       btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0; display:flex; align-items:center; justify-content:center;',
     });
-    // 📄 DOCS (2026-08-27) — texts ONE parent the same travel-documents
-    // reminder the column's DOCS email sends, on the cards of the teams
-    // that need it (columnNeedsDocs). Stands in for the bulk text that
-    // was pulled from the DOCS row; a one-recipient sms: URL is the part
-    // every Messages client gets right.
-    const docsSmsHref = (contactPhone && this.docsPreset && BoysRosterScreen.playerNeedsDocs(p, col))
-      ? `sms:${contactPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(this.docsPreset.body))}`
-      : null;
-    const docsBtn = docsSmsHref
-      ? `<a href="${docsSmsHref}"
-            title="Text ${this.escape(this.formatPhone(contactPhone))} the travel documents reminder${p.firstName ? ` for ${this.escape(p.firstName)}` : ''}"
-            style="${btnBase} border:none; cursor:pointer; background:#334155; color:#fff; text-decoration:none; display:flex; align-items:center; justify-content:center;">
-           📄 DOCS
-         </a>`
+    // 📄 DOCS (2026-08-27) — reaches ONE parent with the same
+    // travel-documents reminder the column's DOCS email sends, on the
+    // cards of the teams that need it (columnNeedsDocs). Stands in for
+    // the bulk text that was pulled from the DOCS row; a one-recipient
+    // sms: URL is the part every Messages client gets right.
+    // Text + email pair since 2026-09-24 (owner: "we need an email link
+    // as well as text link for youth docs message ... on teams page in
+    // the drop down") via the shared renderRegistrationButtons, the same
+    // 💬/✉ pair the Men's Liga1/APSL Reg nudges draw — label and copy
+    // come from the message_templates row, so the ⋯ menu on #teams shows
+    // both channels whenever the parent has that contact detail.
+    const docsBtn = (this.docsPreset && BoysRosterScreen.playerNeedsDocs(p, col))
+      ? this.renderRegistrationButtons(p, [this.docsPreset], { phone: contactPhone, email: contactEmail })
       : '';
     // 🔗 Magic sign-in link buttons (owner 2026-09-05) — universal across
     // all four boards via RosterScreenBase.renderMagicLinkButtons. Youth
