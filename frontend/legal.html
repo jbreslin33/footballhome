@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Football Home — Lighthouse 1893 Soccer Club</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+
+  <!--
+    Public legal pages: nginx serves this file at /privacy and /terms
+    (standalone, NOT the SPA — no auth, no service worker).  No wording
+    lives here: the path picks a message_templates row (legal_privacy /
+    legal_terms, migration 420) served by GET /api/public/program-copy
+    and rendered by LighthouseProgramInfo.buildPublicPage().  Linked from
+    the Twilio A2P 10DLC campaign registration, which requires both.
+  -->
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0; background: #f4f6fa; color: #16213e;
+      font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    header {
+      background: #0b1c3d; color: #f6f8fc; padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    header img { width: 40px; height: 40px; }
+    header strong { font-size: 18px; }
+    header span { display: block; font-size: 13px; color: #b8c4dc; }
+    main { max-width: 720px; margin: 0 auto; padding: 8px 16px 48px; }
+    h3 { margin: 28px 0 8px; color: #0b1c3d; font-size: 20px; }
+    h3:first-child { margin-top: 20px; }
+    p { margin: 0 0 12px; }
+    ul { margin: 0 0 12px; padding-left: 22px; }
+    li { margin: 4px 0; }
+    a { color: #0b4fd6; }
+    footer { max-width: 720px; margin: 0 auto; padding: 0 16px 32px; font-size: 13px; color: #556; }
+    footer a { margin-right: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/images/lighthouse-1893-crest.png" alt="">
+    <div><strong>Football Home</strong><span>Lighthouse 1893 Soccer Club</span></div>
+  </header>
+  <main id="body"><p>Loading…</p></main>
+  <footer><a href="/privacy">Privacy policy</a><a href="/terms">Terms and conditions</a><a href="/">footballhome.org</a></footer>
+
+  <script src="/js/lib/program-info.js?v=20260924a"></script>
+  <script>
+    (function () {
+      const kind = location.pathname.replace(/\/+$/, '').endsWith('/terms') ? 'legal_terms' : 'legal_privacy';
+      const el = document.getElementById('body');
+      window.LighthouseProgramInfo.buildPublicPage(kind)
+        .then(({ html, text }) => {
+          el.innerHTML = html || '<p>Not available.</p>';
+          const first = (text || '').split('\n')[0].replace(/:$/, '');
+          if (first) document.title = first.charAt(0) + first.slice(1).toLowerCase() + ' — Football Home';
+        })
+        .catch(() => { el.innerHTML = '<p>Not available right now.</p>'; });
+    })();
+  </script>
+</body>
+</html>

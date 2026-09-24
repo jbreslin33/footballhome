@@ -203,9 +203,17 @@ window.LighthouseProgramInfo = (function () {
     };
   }
 
+  // One public page whose whole body is a single is_public row of `kind`
+  // (tier 'all') — the legal pages footballhome.org/privacy and /terms
+  // (migration 420, frontend/legal.html).  Resolves to { html, text }.
+  function buildPublicPage(kind) {
+    return loadCopy().then(() => renderMarkup(row(kind, ['all'], { outreach_email: outreachEmail })));
+  }
+
   return {
     get REGISTER_LINKS() { return REGISTER_LINKS; },
     loadRegisterLinks,
     buildProgramDescription,
+    buildPublicPage,
   };
 })();
