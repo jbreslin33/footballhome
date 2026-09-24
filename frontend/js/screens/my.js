@@ -271,14 +271,14 @@ class MyScreen extends Screen {
         if (fhEventId) this._emailGoing(fhEventId);
         return;
       }
-      // Staff door to #event-center (attendance marking + 🎟 invites).
+      // Staff door to #attendance (attendance marking + 🎟 invites).
       const eventCenterBtn = target.closest('[data-event-center]');
       if (eventCenterBtn) {
         e.stopPropagation();
         const fhEventId = parseInt(eventCenterBtn.getAttribute('data-event-center'), 10);
         const ev = (this.events || []).find(x => x.fh_event_id === fhEventId)
                 || (this.oldEvents || []).find(x => x.fh_event_id === fhEventId);
-        if (ev) this.navigation.goTo('event-center', { event: ev });
+        if (ev) this.navigation.goTo('attendance', { event: ev });
         return;
       }
       // "Not Going" list show/hide (collapsed by default — can be a long
@@ -945,7 +945,7 @@ class MyScreen extends Screen {
       </div>`;
   }
 
-  // The one staff control left on a #my event: a door to #event-center,
+  // The one staff control left on a #my event: a door to #attendance,
   // where this event's coaches and club admins mark attendance and send
   // 🎟 invites.  Shown once attendance has loaded and says they may.
   _eventCenterLinkHtml(ev, att) {
@@ -955,7 +955,7 @@ class MyScreen extends Screen {
         <button type="button" data-event-center="${ev.fh_event_id}"
                 style="font-size:0.72rem; font-weight:800; color:#fcd34d; background:transparent;
                        border:1px solid rgba(245,158,11,0.55); padding:4px 10px; border-radius:999px; cursor:pointer;">
-          📋 Event Center — attendance &amp; invites
+          📋 Attendance &amp; invites
         </button>
       </div>`;
   }

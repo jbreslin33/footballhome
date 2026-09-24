@@ -1,5 +1,7 @@
-// EventCenterScreen — #event-center — the staff page for ONE calendar event
-// of any kind (practice, pickup, game, meeting…).
+// EventCenterScreen — #attendance (alias #event-center) — the staff page for
+// ONE calendar event of any kind (practice, pickup, game, meeting…).
+// Renamed from "Event Center" 2026-09-24 (owner: "it should be called
+// attendance"); the class and file keep their names.
 //
 // Owner 2026-09-17: "my page for coaches and admin should be for them and
 // not an admin type view … its best to have dedicated pages."  Attendance
@@ -9,8 +11,8 @@
 // squad / starters / result — a game opened here links across to it.
 //
 // Three doors:
-//   { pick: true }   the top-level 📋 Event Center tile — pick an event from
-//                    the last week or the next two.
+//   { pick: true }   the top-level 📋 Attendance tile — pick a day (Today,
+//                    Yesterday, This week, Last week, or any date) then an event.
 //   { event: ev }    an event object from GET /api/calendar/upcoming (what
 //                    #my hands over from its "Event Center" link).
 //   { fhEventId: n } just the id — the event is read from
@@ -30,8 +32,10 @@
 // CalendarController::isEventCoachOrAdmin); without it the page is
 // read-only.  Invite messages are built server-side from message_templates.
 class EventCenterScreen extends Screen {
-  static get PAST_DAYS()   { return 7; }
-  static get AHEAD_DAYS()  { return 14; }
+  // Which days the picker lists; 'date' = the day in the date input.
+  static get WHEN_PILLS() {
+    return [['today', 'Today'], ['yesterday', 'Yesterday'], ['this-week', 'This week'], ['last-week', 'Last week']];
+  }
   static get KIND_PILLS() {
     return [['all', 'All'], ['match', 'Games'], ['practice', 'Practices'], ['pickup', 'Pickup'], ['other', 'Other']];
   }
@@ -51,6 +55,8 @@ class EventCenterScreen extends Screen {
     this.ev       = null;      // the open event
     this.kind     = 'all';
     this.category = 'all';
+    this.when     = 'today';   // today | yesterday | this-week | last-week | date
+    this.date     = null;      // 'YYYY-MM-DD' when `when` is 'date'
     this.pill     = 'coming';  // coming | sides | plan | invites
     this.att      = null;      // {canMark, roster: Map(person_id -> {status})}
     this.invites  = null;      // {invites, candidates} | {error}
@@ -121,12 +127,50 @@ class EventCenterScreen extends Screen {
     return body || {};
   }
 
+  // The picker's window as { start: local midnight, days }.  Weeks run
+  // Monday–Sunday (the schedule is released Sunday night for the week ahead).
+  _range() {
+    const day = (ymd) => {
+      const [y, m, d] = ymd.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    };
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const monday = (d) => { const m = new Date(d); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return m; };
+    const shift = (d, n) => { const s = new Date(d); s.setDate(s.getDate() + n); return s; };
+    switch (this.when) {
+      case 'yesterday': return { start: shift(today, -1), days: 1 };
+      case 'this-week': return { start: monday(today), days: 7 };
+      case 'last-week': return { start: shift(monday(today), -7), days: 7 };
+      case 'date':      return { start: this.date ? day(this.date) : today, days: 1 };
+      default:          return { start: today, days: 1 };
+    }
+  }
+
+  _rangeLabel() {
+    const { start, days } = this._range();
+    const fmt = (d) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (days === 1) return fmt(start);
+    const end = new Date(start); end.setDate(end.getDate() + days - 1);
+    return `${fmt(start)} – ${fmt(end)}`;
+  }
+
+  _ymd(d) {
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
   _feedUrl() {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - EventCenterScreen.PAST_DAYS);
-    const days = EventCenterScreen.PAST_DAYS + EventCenterScreen.AHEAD_DAYS;
+    const { start, days } = this._range();
     return `/api/calendar/upcoming?start=${encodeURIComponent(start.toISOString())}&days=${days}`;
+  }
+
+  // A new window: drop the old feed so the list shows Loading…, then fetch.
+  _setWhen(when, date) {
+    this.when = when;
+    if (date) this.date = date;
+    this.events = null;
+    this._render();
+    this._loadEvents();
   }
 
   async _loadEvents() {
@@ -321,16 +365,22 @@ class EventCenterScreen extends Screen {
 
   // ── events ──────────────────────────────────────────────────────────
   _wire() {
+    // The date input: pick any day directly.
+    this.element.addEventListener('change', (e) => {
+      const el = e.target.closest('[data-ec-date]');
+      if (el && el.value) this._setWhen('date', el.value);
+    });
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const t = (sel) => e.target.closest(sel);
       let el;
       if ((el = t('[data-ec-kind]')))     { this.kind = el.dataset.ecKind; this._render(); return; }
       if ((el = t('[data-ec-category]'))) { this.category = el.dataset.ecCategory; this._render(); return; }
+      if ((el = t('[data-ec-when]')))     { this._setWhen(el.dataset.ecWhen); return; }
       if ((el = t('[data-ec-open]'))) {
         const ev = (this.events || []).find(x => x.fh_event_id === Number(el.dataset.ecOpen));
         // A goTo, so Back returns to the list.
-        if (ev) this.navigation.goTo('event-center', { event: ev });
+        if (ev) this.navigation.goTo('attendance', { event: ev });
         return;
       }
       if ((el = t('[data-ec-pill]'))) {
@@ -390,8 +440,8 @@ class EventCenterScreen extends Screen {
       body.innerHTML = this._eventHtml();
       return;
     }
-    title.textContent = '📋 Event Center';
-    sub.textContent = 'Pick a practice, pickup or game — take attendance, invite a player';
+    title.textContent = '📋 Attendance';
+    sub.textContent = 'Pick a day, then the practice, pickup or game — take attendance, invite a player';
     if (this.error)   { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     if (!this.events || this.loadingId) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     body.innerHTML = this._pickerHtml();
@@ -408,8 +458,8 @@ class EventCenterScreen extends Screen {
       (this.kind === 'all' || kindOf(ev) === this.kind) &&
       (this.category === 'all' || ev.category === this.category));
     const byStart = (a, b) => String(a.starts_at).localeCompare(String(b.starts_at));
-    const upcoming = shown.filter(ev => !this._isPast(ev)).sort(byStart);
-    const past     = shown.filter(ev => this._isPast(ev)).sort((a, b) => byStart(b, a));
+    const listed = shown.sort(byStart);
+    const dateValue = this.when === 'date' && this.date ? this.date : this._ymd(this._range().start);
 
     const row = (ev) => {
       const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
@@ -434,11 +484,15 @@ class EventCenterScreen extends Screen {
         ${chip('data-ec-category', 'all', 'All', this.category === 'all')}
         ${cats.map(c => chip('data-ec-category', c, catLabel(c), this.category === c)).join('')}
       </div>` : ''}
+      <div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-2);">
+        ${EventCenterScreen.WHEN_PILLS.map(([k, label]) => chip('data-ec-when', k, label, this.when === k)).join('')}
+        <input type="date" class="ec-chip ${this.when === 'date' ? 'on' : ''}" data-ec-date value="${dateValue}"
+               aria-label="Go to a day" style="font-family:inherit;">
+      </div>
       <div style="display:flex; gap:var(--space-1); flex-wrap:wrap;">
         ${EventCenterScreen.KIND_PILLS.map(([k, label]) => chip('data-ec-kind', k, label, this.kind === k)).join('')}
       </div>
-      ${list('Today & coming up', upcoming, `Nothing in the next ${EventCenterScreen.AHEAD_DAYS} days.`)}
-      ${list(`Last ${EventCenterScreen.PAST_DAYS} days`, past, 'Nothing.')}`;
+      ${list(this._rangeLabel(), listed, 'Nothing on the calendar for these days.')}`;
   }
 
   _eventHtml() {

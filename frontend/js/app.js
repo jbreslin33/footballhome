@@ -156,9 +156,11 @@ class App {
     this.screenManager.register('kit', this.screens.kit);
     // Security (#security) — nightly gate photo check-in + alert log (mig 421/424). See screens/security.js.
     this.screenManager.register('security', this.screens.security);
-    // Event Center (#event-center) — the staff page for one calendar event
-    // of any kind: who's coming, attendance, 🎟 invites.  See
-    // screens/event-center.js.
+    // Attendance (#attendance) — the staff page for one calendar event of
+    // any kind: who's coming, attendance, 🎟 invites.  See
+    // screens/event-center.js.  Was #event-center until 2026-09-24; the old
+    // name stays registered so saved history / links still open it.
+    this.screenManager.register('attendance', this.screens.eventCenter);
     this.screenManager.register('event-center', this.screens.eventCenter);
     this.screenManager.register('messages', this.screens.messages);
     this.screenManager.register('rsvp-eligibility', this.screens.rsvpEligibility);

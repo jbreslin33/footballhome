@@ -85,8 +85,8 @@ class RoleSelectionScreen extends Screen {
         <button class="btn btn-lg btn-primary" data-role="event-center" id="rs-event-center" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">📋</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Event Center</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Pick a practice, pickup or game — take attendance, invite a player</div>
+            <div style="font-weight: bold;">Attendance</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Pick a day, then the practice, pickup or game — take attendance, invite a player</div>
           </div>
         </button>
 
@@ -346,9 +346,10 @@ class RoleSelectionScreen extends Screen {
       // admins and coaches, to set lineups).
       this.navigation.goTo('game-center', { pick: true });
     } else if (role === 'event-center') {
-      // Not a role — the event picker: attendance + invites for any event
-      // (moved off #my, owner 2026-09-17: staff tools get dedicated pages).
-      this.navigation.goTo('event-center', { pick: true });
+      // Not a role — the attendance picker: attendance + invites for any
+      // event (moved off #my, owner 2026-09-17: staff tools get dedicated
+      // pages; renamed from Event Center 2026-09-24).
+      this.navigation.goTo('attendance', { pick: true });
     } else if (role === 'kit') {
       this.navigation.goTo('kit');
     } else if (role === 'security') {
@@ -457,7 +458,7 @@ class RoleSelectionScreen extends Screen {
         return;
       }
       // A coach without an admin role still sets lineups and takes
-      // attendance — show them the 🏟️ Game Center, 📋 Event Center and 👕 Uniforms & Kit tiles
+      // attendance — show them the 🏟️ Game Center, 📋 Attendance and 👕 Uniforms & Kit tiles
       // the admin levels get by default.
       for (const id of ['#rs-game-center', '#rs-event-center', '#rs-kit']) {
         const tile = this.element && this.element.querySelector(id);
