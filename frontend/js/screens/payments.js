@@ -1157,6 +1157,13 @@ class PaymentsScreen extends Screen {
       ? `<div style="font-size:0.75rem; display:flex; flex-wrap:wrap; gap:8px;">${contactBits.join('')}</div>`
       : '';
 
+    // Activity line — last RSVP + last attended event + 30-day tallies
+    // (row.activity, PersonActivity roll-up).  Owner 2026-09-24: "show
+    // some attendance and rsvp data so we can see if the player is a
+    // ghost and over due and maybe just drop them ... like last rsvp and
+    // last attendent event".
+    const activityLine = this.renderActivityLine(m);
+
     const recent = m.recentTransactions || [];
     const recentHtml = recent.length
       ? recent.map((t) => `
@@ -1281,6 +1288,7 @@ class PaymentsScreen extends Screen {
         ${this.renderDueHero(m)}
         ${dobLine}
         ${contactLine}
+        ${activityLine}
         <div style="font-size:0.8rem; opacity:0.85;">${lastLine}</div>
         ${this.renderDueDateDropdown(m)}
         <div style="font-size:0.75rem; opacity:0.7;">
@@ -1298,6 +1306,62 @@ class PaymentsScreen extends Screen {
         <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtns.join('')}${pauseBtn}${flagBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: m.laUserId, firstName: m.firstName, fullName: `${m.firstName || ''} ${m.lastName || ''}`.trim() }, { returnTo: 'payments', size: 'md' }) : ''}</div>
       </div>
     `;
+  }
+
+  // RSVP + attendance trail for one card (row.activity from
+  // /api/payments/:program/members, PersonActivity roll-up).
+  //   🗓 Last RSVP: ✅ yes · practice 9/24   |   🏟 Last attended: match 9/20
+  //   30 days: 3 yes · 5 no · 2 attended · 1 absent
+  // 👻 GHOST is a judgement aid, not a rule: no present/late mark in the
+  // window AND no "yes" RSVP in the window.  A never-heard-from row (no
+  // RSVP, no mark, ever) says so instead — that can also mean their team
+  // isn't being tracked yet, so it's kept distinct from a ghost.
+  renderActivityLine(m) {
+    const a = m && m.activity;
+    if (!a) return '';
+    const days = a.windowDays || 30;
+    const when = (ref) => {
+      if (!ref) return '';
+      const kind = ref.eventKind ? this.escape(ref.eventKind) : 'event';
+      const opp  = ref.opponent ? ` v ${this.escape(ref.opponent)}` : '';
+      const date = this.fmtDate(ref.eventStartAt || ref.at);
+      return `${kind}${opp} ${date}`;
+    };
+    const rsvpIcon = { yes: '✅', no: '❌' };
+    const bits = [];
+    if (a.lastRsvp) {
+      bits.push(`<span title="Newest RSVP, answered ${this.fmtDate(a.lastRsvp.at)}">🗓 Last RSVP: ${rsvpIcon[a.lastRsvp.status] || ''} ${this.escape(a.lastRsvp.status)} · ${when(a.lastRsvp)}</span>`);
+    } else {
+      bits.push(`<span style="opacity:0.7;">🗓 No RSVP ever</span>`);
+    }
+    if (a.lastAttended) {
+      bits.push(`<span title="Newest event marked present or late">🏟 Last attended: ${when(a.lastAttended)}</span>`);
+    } else if (a.lastMarked) {
+      bits.push(`<span title="Has attendance marks but none present/late">🏟 Never marked present · last ${this.escape(a.lastMarked.status)} ${when(a.lastMarked)}</span>`);
+    } else {
+      bits.push(`<span style="opacity:0.7;">🏟 No attendance marks</span>`);
+    }
+    const tally = `${days} days: ${a.rsvpYes30 || 0} yes · ${a.rsvpNo30 || 0} no · ${a.attended30 || 0} attended · ${a.absent30 || 0} absent`;
+
+    const heardFrom = a.lastRsvp || a.lastMarked;
+    const ghost  = heardFrom && !(a.attended30 > 0) && !(a.rsvpYes30 > 0);
+    // Says yes, gets marked absent, never present in the window — not a
+    // ghost by the RSVP rule, but the same drop conversation.
+    const noShow = heardFrom && !ghost && !(a.attended30 > 0) && (a.absent30 > 0);
+    const pill = (text, title, bg, fg, border) =>
+      `<span title="${this.escape(title)}" style="padding:1px 6px; border-radius:999px; background:${bg}; color:${fg}; border:1px solid ${border}; font-weight:800;">${text}</span>`;
+    const flag = ghost
+      ? pill('👻 GHOST', `No present/late mark and no yes RSVP in the last ${days} days`, '#3a1f1f', '#fca5a5', '#b91c1c')
+      : noShow
+        ? pill('🙈 NO-SHOW', `RSVPs yes but only absent marks in the last ${days} days`, '#3a2e05', '#fbbf24', '#d97706')
+        : (!heardFrom
+            ? pill('no trail', 'No RSVP and no attendance mark on record — may be untracked rather than absent', '#1f2937', '#9ca3af', '#4b5563')
+            : '');
+
+    return `<div style="font-size:0.75rem; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+              ${flag}${bits.join('')}
+              <span style="opacity:0.65;">${tally}</span>
+            </div>`;
   }
 
   // Copy `text` to the clipboard and show a small toast with `successMsg`.

@@ -11,6 +11,7 @@
 
 #include "../models/PersonPayments.h"
 #include "../models/PayReminderLog.h"
+#include "../models/PersonActivity.h"
 #include "../services/LaProgramSync.h"
 #include "../third_party/json.hpp"
 
@@ -529,6 +530,59 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         }
     } catch (const std::exception& e) {
         std::cerr << "[PaymentsController] pay_reminder_log tally failed: " << e.what() << std::endl;
+    }
+
+    // RSVP + attendance trail per person (fh_event_rsvps /
+    // fh_event_attendance via PersonActivity).  Owner 2026-09-24: "show
+    // some attendance and rsvp data so we can see if the player is a
+    // ghost and over due and maybe just drop them ... like last rsvp and
+    // last attended event".  Non-fatal like the tally above: a failure
+    // leaves `activity` null and the card just omits the line.
+    try {
+        std::vector<int> pids;
+        for (const auto& row : members) {
+            if (row.contains("personId") && row["personId"].is_number_integer()) {
+                const int pid = row["personId"].get<int>();
+                if (pid > 0) pids.push_back(pid);
+            }
+        }
+        PersonActivity activity;
+        const int windowDays = 30;
+        const PersonActivity::Map trail = activity.latestFor(pids, windowDays);
+        auto refJson = [](const PersonActivity::EventRef& e) -> json {
+            if (!e.present()) return json(nullptr);
+            return json{{"status",       e.status},
+                        {"at",           e.atIso.empty()         ? json(nullptr) : json(e.atIso)},
+                        {"eventKind",    e.eventKind.empty()     ? json(nullptr) : json(e.eventKind)},
+                        {"eventStartAt", e.eventStartIso.empty() ? json(nullptr) : json(e.eventStartIso)},
+                        {"opponent",     e.opponent.empty()      ? json(nullptr) : json(e.opponent)}};
+        };
+        for (auto& row : members) {
+            json a = {{"windowDays",    windowDays},
+                      {"lastRsvp",      nullptr},
+                      {"lastAttended",  nullptr},
+                      {"lastMarked",    nullptr},
+                      {"rsvpYes30",     0}, {"rsvpNo30", 0}, {"rsvpTotal", 0},
+                      {"attended30",    0}, {"absent30", 0}, {"attendedTotal", 0}};
+            if (row.contains("personId") && row["personId"].is_number_integer()) {
+                auto it = trail.find(row["personId"].get<int>());
+                if (it != trail.end()) {
+                    const auto& s = it->second;
+                    a["lastRsvp"]      = refJson(s.lastRsvp);
+                    a["lastAttended"]  = refJson(s.lastAttended);
+                    a["lastMarked"]    = refJson(s.lastMarked);
+                    a["rsvpYes30"]     = s.rsvpYes30;
+                    a["rsvpNo30"]      = s.rsvpNo30;
+                    a["rsvpTotal"]     = s.rsvpTotal;
+                    a["attended30"]    = s.attended30;
+                    a["absent30"]      = s.absent30;
+                    a["attendedTotal"] = s.attendedTotal;
+                }
+            }
+            row["activity"] = std::move(a);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[PaymentsController] person activity roll-up failed: " << e.what() << std::endl;
     }
 
     json out = json::object();
