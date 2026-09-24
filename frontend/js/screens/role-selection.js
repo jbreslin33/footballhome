@@ -102,7 +102,7 @@ class RoleSelectionScreen extends Screen {
           <span style="font-size: 2rem;">🔐</span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Security</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Upload the photo of the locked gate after the last event — otherwise Football Home calls every 5 minutes</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Upload the photo of the locked gate after the last event — otherwise Football Home keeps calling until it is up</div>
           </div>
         </button>
 

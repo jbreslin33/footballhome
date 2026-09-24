@@ -25,7 +25,12 @@ public:
         std::string startsLabel, endsLabel, deadlineLabel, confirmedLabel;
         std::string dueAtIso, deadlineAtIso, promptedAtIso, confirmedAtIso, lastAlertAtIso, announcedAtIso;
         std::string confirmedBy, confirmedVia, note;
+        // maxAlerts = sum of the facility's alert steps; repeatMinutes = the
+        // wait after the NEXT alert (alert_count + 1); cadence = the steps in
+        // words ("every 10 min for the first 6 calls, then every hour (30 more)").
+        // All three come from facility_lockup_alert_steps via fh_lockup_* (mig 426).
         int         alertCount = 0, maxAlerts = 0, repeatMinutes = 0;
+        std::string cadence;
         bool        isDue = false, isOverdue = false;
         bool hasEvent()  const { return lastEventId > 0; }
         bool confirmed() const { return !confirmedAtIso.empty(); }

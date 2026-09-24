@@ -38,7 +38,9 @@ SELECT l.id, l.facility_id, f.name AS facility, f.short_name, f.timezone,
          WHERE fet.fh_event_id = fe.id) AS teams,
        (SELECT p.first_name || ' ' || p.last_name FROM persons p WHERE p.id = l.confirmed_by_person_id) AS confirmed_by,
        l.confirmed_via, l.note, l.alert_count,
-       f.lockup_max_alerts, f.lockup_repeat_minutes,
+       fh_lockup_max_alerts(f.id)                        AS max_alerts,
+       fh_lockup_wait_minutes(f.id, l.alert_count + 1)   AS repeat_minutes,
+       fh_lockup_cadence_text(f.id)                      AS cadence,
        (now() >= l.due_at)      AS is_due,
        (now() >= l.deadline_at) AS is_overdue
   FROM facility_lockups l
@@ -90,8 +92,9 @@ std::vector<FacilityLockup::Lockup> FacilityLockup::select(const std::string& wh
         l.confirmedVia  = str(r, "confirmed_via");
         l.note          = str(r, "note");
         l.alertCount    = r["alert_count"].as<int>();
-        l.maxAlerts     = r["lockup_max_alerts"].as<int>();
-        l.repeatMinutes = r["lockup_repeat_minutes"].as<int>();
+        l.maxAlerts     = r["max_alerts"].as<int>();
+        l.repeatMinutes = r["repeat_minutes"].as<int>();
+        l.cadence       = str(r, "cadence");
         l.isDue         = r["is_due"].as<bool>();
         l.isOverdue     = r["is_overdue"].as<bool>();
         if (l.hasEvent()) {
@@ -157,8 +160,10 @@ std::vector<FacilityLockup::Lockup> FacilityLockup::pendingPrompts() {
 
 std::vector<FacilityLockup::Lockup> FacilityLockup::pendingAlerts() {
     return select("l.confirmed_at IS NULL AND now() >= l.deadline_at "
-                  "AND l.alert_count < f.lockup_max_alerts "
-                  "AND (l.last_alert_at IS NULL OR l.last_alert_at + make_interval(mins => f.lockup_repeat_minutes) <= now()) "
+                  // Cadence = facility_lockup_alert_steps (mig 426): the gap after
+                  // alert #k is the repeat_minutes of the step #k belongs to.
+                  "AND l.alert_count < fh_lockup_max_alerts(f.id) "
+                  "AND (l.last_alert_at IS NULL OR l.last_alert_at + make_interval(mins => fh_lockup_wait_minutes(f.id, l.alert_count)) <= now()) "
                   "AND l.deadline_at > now() - interval '12 hours'", {});
 }
 
@@ -351,6 +356,7 @@ json FacilityLockup::toJson(const Lockup& l) {
         {"confirmed_at", l.confirmedAtIso}, {"confirmed_label", l.confirmedLabel},
         {"confirmed_by", l.confirmedBy}, {"confirmed_via", l.confirmedVia}, {"note", l.note},
         {"alert_count", l.alertCount}, {"max_alerts", l.maxAlerts}, {"repeat_minutes", l.repeatMinutes},
+        {"cadence", l.cadence},
         {"last_alert_at", l.lastAlertAtIso},
     };
     j["alerts"] = l.id > 0 ? alertsJson(l.id) : json::array();
@@ -395,7 +401,7 @@ json FacilityLockup::peopleJson() {
     auto rows = db_->query(
         "SELECT f.short_name AS facility, lp.role, array_to_string(lp.channels, ', ') AS channels, "
         "       p.first_name || ' ' || p.last_name AS name, f.lockup_prompt_last_event_coaches AS coaches_too, "
-        "       f.lockup_grace_minutes, f.lockup_repeat_minutes, f.lockup_max_alerts "
+        "       f.lockup_grace_minutes, fh_lockup_cadence_text(f.id) AS cadence, fh_lockup_max_alerts(f.id) AS max_alerts "
         "  FROM facility_lockup_people lp JOIN facilities f ON f.id = lp.facility_id "
         "  JOIN persons p ON p.id = lp.person_id "
         " WHERE lp.is_active AND f.is_active ORDER BY f.name, lp.role, name");
@@ -403,8 +409,8 @@ json FacilityLockup::peopleJson() {
         out.push_back({{"facility", str(r, "facility")}, {"role", str(r, "role")}, {"channels", str(r, "channels")},
                        {"name", str(r, "name")}, {"coaches_too", r["coaches_too"].as<bool>()},
                        {"grace_minutes", r["lockup_grace_minutes"].as<int>()},
-                       {"repeat_minutes", r["lockup_repeat_minutes"].as<int>()},
-                       {"max_alerts", r["lockup_max_alerts"].as<int>()}});
+                       {"cadence", str(r, "cadence")},
+                       {"max_alerts", r["max_alerts"].as<int>()}});
     }
     return out;
 }
@@ -416,6 +422,6 @@ FacilityLockup::Tokens FacilityLockup::tokens(const Lockup& l, const std::string
         {"last_event", l.lastEvent}, {"ends_at", l.endsLabel}, {"deadline", l.deadlineLabel},
         {"link", link}, {"alert_n", alertN > 0 ? std::to_string(alertN) : std::string()},
         {"confirmed_by", l.confirmedBy}, {"confirmed_at", l.confirmedLabel},
-        {"repeat_minutes", std::to_string(l.repeatMinutes)},
+        {"repeat_minutes", std::to_string(l.repeatMinutes)}, {"cadence", l.cadence},
     };
 }

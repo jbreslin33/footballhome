@@ -7,8 +7,9 @@
 // Backed by GET /api/security/board, POST /api/security/photo and
 // POST /api/security/test (backend/src/controllers/LockupController.cpp,
 // migrations 421 + 424).  The backend scheduler does the chasing: 45 min
-// after the night's last event at a facility, the phone rings every 5
-// minutes until a photo of the locked gate is up.  This page is where
+// after the night's last event at a facility, the phone rings on the
+// facility's cadence (every 10 min for an hour, then hourly — mig 426)
+// until a photo of the locked gate is up.  This page is where
 // staff see tonight's status, upload the photo, see the photos and what
 // was sent to whom, and (admins) fire a test to themselves.
 //
@@ -233,7 +234,7 @@ class SecurityScreen extends Screen {
     const people = Object.entries(byFac).map(([fac, { rows, p }]) => `
       <div class="lk-card lk-people" style="border-left-color:var(--border-color);">
         <strong>${this.escapeHtml(fac)}</strong> — photo due ${p.grace_minutes} min after the last event ends;
-        then the phone rings every ${p.repeat_minutes} min, at most ${p.max_alerts} times (email/text once, with the link).
+        then the phone rings ${this.escapeHtml(p.cadence)} — ${p.max_alerts} calls in all (email/text once, with the link).
         ${p.coaches_too ? 'The coaches of the last event are also asked to confirm.' : ''}
         <div style="margin-top:6px;">
           ${rows.map(r => `<div class="lk-row"><span class="k">${r.role === 'closer' ? 'Asked to confirm' : 'Alerted'}</span>

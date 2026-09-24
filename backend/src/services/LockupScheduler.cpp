@@ -64,8 +64,9 @@ void LockupScheduler::tick() {
         // Bump first so a slow Twilio call can never double-fire on the next tick.
         model.bumpAlert(l.id);
         // Email and text carry the upload link — with the first alert only;
-        // the phone rings on every alert until a photo is up (owner
-        // 2026-09-24: "keep calling my phone every 5 minutes").
+        // the phone rings on every alert until a photo is up, paced by
+        // facility_lockup_alert_steps (owner 2026-09-24: "every 10 minutes
+        // for 1st hour, then every 1 hour 30 times", mig 426).
         int sent = 0;
         for (const auto& to : model.recipients(l.id, "escalation")) {
             if (to.wantEmail && n == 1) sent += deliver(model, l, to, "alert", "email", n).ok;
