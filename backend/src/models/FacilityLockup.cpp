@@ -132,7 +132,8 @@ ON CONFLICT (facility_id, local_date) DO UPDATE
        due_at = EXCLUDED.due_at, deadline_at = EXCLUDED.deadline_at, updated_at = now()
  WHERE facility_lockups.confirmed_at IS NULL AND facility_lockups.alert_count = 0
    AND (facility_lockups.last_fh_event_id IS DISTINCT FROM EXCLUDED.last_fh_event_id
-        OR facility_lockups.due_at <> EXCLUDED.due_at)
+        OR facility_lockups.due_at <> EXCLUDED.due_at
+        OR facility_lockups.deadline_at <> EXCLUDED.deadline_at)
 )");
     // Every event tonight got cancelled and nobody was told yet → no check-in.
     db_->query(R"(
