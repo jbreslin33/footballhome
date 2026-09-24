@@ -210,7 +210,7 @@ class SecurityScreen extends Screen {
         ${canUpload ? `
           <label class="lk-btn ${this.busy ? 'busy' : ''}" style="display:inline-block; text-align:center; ${big ? '' : 'font-size:0.8rem; padding:6px 12px;'}">
             📷 ${l.status === 'locked' ? 'Add another photo' : 'Take / upload photo of the locked gate'}
-            <input type="file" accept="image/*" capture="environment" data-upload="${l.id}" hidden ${this.busy ? 'disabled' : ''}>
+            <input type="file" accept="image/*" data-upload="${l.id}" hidden ${this.busy ? 'disabled' : ''}>
           </label>` : ''}
         ${this._log(l.alerts)}
       </div>`;

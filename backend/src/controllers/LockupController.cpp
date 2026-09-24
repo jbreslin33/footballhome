@@ -238,7 +238,7 @@ Response LockupController::handleTap(const Request& request) {
     const auto fail = ui.render("lockup", "ui_upload_failed", {});
     std::ostringstream form;
     form << "<label class=\"cam\" id=\"cam\">" << esc(btn.ok() ? btn.body : "Upload photo")
-         << "<input type=\"file\" accept=\"image/*\" capture=\"environment\" id=\"file\"></label>"
+         << "<input type=\"file\" accept=\"image/*\" id=\"file\"></label>"
          << "<script src=\"/js/lib/photo-shrink.js?v=20260924a\"></script><script>"
          << "(function(){var f=document.getElementById('file'),cam=document.getElementById('cam'),msg=document.getElementById('msg');"
          << "f.addEventListener('change',async function(){if(!f.files||!f.files[0])return;cam.classList.add('busy');"
