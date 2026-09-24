@@ -262,7 +262,7 @@ class ReportsScreen extends Screen {
   _filteredRows() {
     if (!this.data) return [];
     return this.data.rows.filter(r => {
-      if (this.category && r.category !== this.category) return false;
+      if (!Screen.sectionIncludes(this.category, r.category)) return false;   // Boys ⊇ Girls (2026-09-24)
       if (this.teamId && r.team_id !== this.teamId) return false;
       if (this.search) {
         const name = `${r.first_name || ''} ${r.last_name || ''}`.toLowerCase();
@@ -452,7 +452,7 @@ class ReportsScreen extends Screen {
       disabled: !teams.some(t => t.category === c),
     })));
     const teamChips = teams
-      .filter(t => !this.category || t.category === this.category)
+      .filter(t => Screen.sectionIncludes(this.category, t.category))
       .map(t => ({
         id: String(t.id),
         label: `${t.name} · ${t.games}G/${t.practices}P${t.pickups ? '/' + t.pickups + 'PU' : ''}`,

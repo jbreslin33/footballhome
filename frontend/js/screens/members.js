@@ -586,7 +586,8 @@ class MembersScreen extends Screen {
       return this._groups.filter(g => Number(g.program_id) === this.programId);
     }
     if (this.categoryFilter) {
-      return this._groups.filter(g => String(g.category || '').toLowerCase() === this.categoryFilter);
+      // Boys includes the Girls programmes, Girls is girls-only (Screen.sectionIncludes, 2026-09-24).
+      return this._groups.filter(g => Screen.sectionIncludes(this.categoryFilter, g.category));
     }
     return this._groups;
   }

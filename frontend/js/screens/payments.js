@@ -407,16 +407,32 @@ class PaymentsScreen extends Screen {
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
-  // Counts used to label the status chips.  For 'all' we sum the four
-  // per-tab counts (background-loaded); for a specific tab we use its
-  // own counts.
+  // Which per-program shards a tab is made of.  Boys is the whole youth
+  // club — girls play on boys teams — so the Boys tab shows the Boys AND
+  // Girls programmes together and Girls stays girls-only (owner
+  // 2026-09-24: "when we click boys it should always show girls but
+  // girls should only show girls ... for all screens"; same rule as
+  // Screen.sectionIncludes).  'all' is every programme.
+  static get ALL_TABS() { return ['mens', 'womens', 'boys', 'girls']; }
+  _shardKeys(tab = this.tab) {
+    if (tab === 'all') return PaymentsScreen.ALL_TABS;
+    return PaymentsScreen.ALL_TABS.filter(k => Screen.sectionIncludes(tab, k));
+  }
+  _showsTab(key) { return this._shardKeys().includes(key); }
+  _shardLabel(keys) {
+    return keys.length === PaymentsScreen.ALL_TABS.length ? 'All Programs' : keys.map(k => this._titleCase(k)).join(' + ');
+  }
+  // The current tab's payload: a single programme's response as-is, or
+  // the shards merged into the same shape.
+  _currentMembers() { const k = this._shardKeys(); return k.length === 1 ? this.membersByTab[k[0]] : this._aggregatedMembers(k); }
+  _currentTxns()    { const k = this._shardKeys(); return k.length === 1 ? this.txnsByTab[k[0]]    : this._aggregatedTxns(k); }
+  _currentFlags()   { const k = this._shardKeys(); return k.length === 1 ? this.flagsByTab[k[0]]   : this._aggregatedFlags(k); }
+  _currentError(bag) { return this._firstError(bag, this._shardKeys()); }
+
+  // Counts used to label the status chips — summed over the tab's shards.
   _activeCounts() {
-    if (this.tab !== 'all') {
-      const d = this.membersByTab[this.tab];
-      return (d && d.counts) || {};
-    }
     const combined = { current: 0, behind: 0, overdue: 0, never: 0, finalNotice: 0 };
-    for (const k of ['mens','womens','boys','girls']) {
+    for (const k of this._shardKeys()) {
       const d = this.membersByTab[k];
       if (!d || !d.counts) continue;
       combined.current     += d.counts.current     || 0;
@@ -432,12 +448,8 @@ class PaymentsScreen extends Screen {
   // which is a payment-status total, not a headcount of everyone shown
   // on the screen.
   _activeTotal() {
-    if (this.tab !== 'all') {
-      const d = this.membersByTab[this.tab];
-      return d ? (d.total || 0) - (d.inactiveCount || 0) : 0;
-    }
     let n = 0;
-    for (const k of ['mens','womens','boys','girls']) {
+    for (const k of this._shardKeys()) {
       const d = this.membersByTab[k];
       if (d) n += (d.total || 0) - (d.inactiveCount || 0);
     }
@@ -451,13 +463,12 @@ class PaymentsScreen extends Screen {
   // landed yet, so the caller keeps showing the loader.  Concatenates
   // members/flags/payments lists and sums counts/totals.
 
-  _aggregatedMembers() {
-    const shards = ['mens','womens','boys','girls']
-      .map((k) => this.membersByTab[k]).filter(Boolean);
+  _aggregatedMembers(keys = PaymentsScreen.ALL_TABS) {
+    const shards = keys.map((k) => this.membersByTab[k]).filter(Boolean);
     if (!shards.length) return null;
     const out = {
       programId:   null,
-      programName: 'All Programs',
+      programName: this._shardLabel(keys),
       total:       0,
       inactiveCount: 0,
       counts:      { current: 0, behind: 0, overdue: 0, never: 0 },
@@ -484,12 +495,11 @@ class PaymentsScreen extends Screen {
     return out;
   }
 
-  _aggregatedTxns() {
-    const shards = ['mens','womens','boys','girls']
-      .map((k) => this.txnsByTab[k]).filter(Boolean);
+  _aggregatedTxns(keys = PaymentsScreen.ALL_TABS) {
+    const shards = keys.map((k) => this.txnsByTab[k]).filter(Boolean);
     if (!shards.length) return null;
     const out = {
-      programName:   'All Programs',
+      programName:   this._shardLabel(keys),
       total:         0,
       totalPositive: 0,
       totalRefunds:  0,
@@ -510,9 +520,8 @@ class PaymentsScreen extends Screen {
     return out;
   }
 
-  _aggregatedFlags() {
-    const shards = ['mens','womens','boys','girls']
-      .map((k) => this.flagsByTab[k]).filter(Boolean);
+  _aggregatedFlags(keys = PaymentsScreen.ALL_TABS) {
+    const shards = keys.map((k) => this.flagsByTab[k]).filter(Boolean);
     if (!shards.length) return null;
     const out = {
       counts:       { pending: 0, ran: 0, canceled: 0 },
@@ -530,8 +539,8 @@ class PaymentsScreen extends Screen {
   }
 
   // First non-null value from a { mens, womens, boys, girls } bag.
-  _firstError(bag) {
-    for (const k of ['mens','womens','boys','girls']) {
+  _firstError(bag, keys = PaymentsScreen.ALL_TABS) {
+    for (const k of keys) {
       if (bag[k]) return bag[k];
     }
     return null;
@@ -573,8 +582,9 @@ class PaymentsScreen extends Screen {
     // render whenever the last one lands.  Rendering is safe even
     // before every tab finishes: aggregate() just uses whatever is in
     // membersByTab / txnsByTab / flagsByTab at render time.
-    if (this.tab === 'all') {
-      for (const k of ['mens','womens','boys','girls']) {
+    const keys = this._shardKeys();
+    if (keys.length > 1) {
+      for (const k of keys) {
         if (this.view === 'members')      this.loadMembers(k);
         if (this.view === 'transactions') this.loadTransactions(k);
         if (this.view === 'queue')        this.loadFlags(k);
@@ -638,20 +648,23 @@ class PaymentsScreen extends Screen {
         throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
       }
       const data = await res.json();
+      // Remember which programme each row came from: merged tabs (Boys =
+      // Boys + Girls, All) need it to flag a charge on the right one.
+      for (const m of ((data && data.members) || [])) m._tab = key;
       this.membersByTab[key] = data;
       if (data && data.programId) {
         this.programIdByTab[key] = data.programId;
       }
       // Fetch current pending flags in parallel so we can badge cards.
       this.loadFlags(key, /*silent=*/true);
-      if ((this.tab === key || this.tab === 'all') && this.view === 'members') this.renderMembers();
+      if (this._showsTab(key) && this.view === 'members') this.renderMembers();
       // Always refresh the All-Programs roll-up bar — even for tabs
       // loaded in the background (see _loadAllProgramsInBackground) so
       // totals accumulate as each program's data lands.
       this._renderAllProgramsBar();
     } catch (err) {
       this.membersErrorByTab[key] = err.message;
-      if ((this.tab === key || this.tab === 'all') && this.view === 'members') this.showError(err.message);
+      if (this._showsTab(key) && this.view === 'members') this.showError(err.message);
     } finally {
       this.membersLoadingByTab[key] = false;
     }
@@ -660,13 +673,9 @@ class PaymentsScreen extends Screen {
   renderMembers() {
     // When 'all' is selected, aggregate the four background-loaded
     // tabs.  If none have landed yet, keep showing the loader.
-    const data = (this.tab === 'all')
-      ? this._aggregatedMembers()
-      : this.membersByTab[this.tab];
+    const data = this._currentMembers();
     if (!data) {
-      const err = (this.tab === 'all')
-        ? this._firstError(this.membersErrorByTab)
-        : this.membersErrorByTab[this.tab];
+      const err = this._currentError(this.membersErrorByTab);
       if (err) return this.showError(err);
       return this.showStatus('Loading members…');
     }
@@ -1233,7 +1242,7 @@ class PaymentsScreen extends Screen {
 
     // Flag-for-Charge button — disabled+badged if a pending flag already
     // exists for this LA user on this program.
-    const pendingMap = this.pendingByLaUserIdByTab[this.tab] || {};
+    const pendingMap = this.pendingByLaUserIdByTab[m._tab || this.tab] || {};   // row's own programme on merged tabs
     const pending    = m.laUserId ? pendingMap[String(m.laUserId)] : null;
     const flagBtn = m.laUserId
       ? (pending
@@ -1714,15 +1723,11 @@ class PaymentsScreen extends Screen {
       // operator will see fresh data when they switch tabs, and the
       // "All Programs" bar recomputes from membersByTab whenever any
       // tab lands.
-      const currentTab = ['mens','womens','boys','girls'].includes(this.tab)
-        ? this.tab
-        : null;
-      if (currentTab && this.membersByTab[currentTab] !== null) {
-        await this.loadMembers(currentTab);
-      }
+      const currentTabs = this.tab === 'all' ? [] : this._shardKeys().filter(k => this.membersByTab[k] !== null);
+      await Promise.all(currentTabs.map(k => this.loadMembers(k)));
       // Fire-and-forget the other tabs.
-      for (const k of ['mens','womens','boys','girls']) {
-        if (k === currentTab) continue;
+      for (const k of PaymentsScreen.ALL_TABS) {
+        if (currentTabs.includes(k)) continue;
         if (this.membersByTab[k] === null) continue;   // never loaded - leave for on-demand
         this.loadMembers(k).catch(() => {});
       }
@@ -1736,9 +1741,7 @@ class PaymentsScreen extends Screen {
 
   // ── Transactions view (raw ledger — pre-existing behaviour) ─────────
   async loadTransactions(key) {
-    const somethingToShow = (this.tab === 'all')
-      ? !!this._aggregatedTxns()
-      : !!this.txnsByTab[this.tab];
+    const somethingToShow = !!this._currentTxns();
     if (somethingToShow) {
       this.renderTransactions();
     } else {
@@ -1755,23 +1758,19 @@ class PaymentsScreen extends Screen {
       }
       const data = await res.json();
       this.txnsByTab[key] = data;
-      if ((this.tab === key || this.tab === 'all') && this.view === 'transactions') this.renderTransactions();
+      if (this._showsTab(key) && this.view === 'transactions') this.renderTransactions();
     } catch (err) {
       this.txnsErrorByTab[key] = err.message;
-      if ((this.tab === key || this.tab === 'all') && this.view === 'transactions') this.showError(err.message);
+      if (this._showsTab(key) && this.view === 'transactions') this.showError(err.message);
     } finally {
       this.txnsLoadingByTab[key] = false;
     }
   }
 
   renderTransactions() {
-    const data = (this.tab === 'all')
-      ? this._aggregatedTxns()
-      : this.txnsByTab[this.tab];
+    const data = this._currentTxns();
     if (!data) {
-      const err = (this.tab === 'all')
-        ? this._firstError(this.txnsErrorByTab)
-        : this.txnsErrorByTab[this.tab];
+      const err = this._currentError(this.txnsErrorByTab);
       if (err) return this.showError(err);
       return this.showStatus('Loading transactions…');
     }
@@ -1866,7 +1865,7 @@ class PaymentsScreen extends Screen {
       const pid = this.programIdByTab[key];
       if (!pid) {
         this.flagsErrorByTab[key] = 'Program id unknown — try Members tab first.';
-        if (!silent && this.tab === key && this.view === 'queue') {
+        if (!silent && this._showsTab(key) && this.view === 'queue') {
           this.showError(this.flagsErrorByTab[key]);
         }
         return;
@@ -1874,9 +1873,7 @@ class PaymentsScreen extends Screen {
     }
     const pid = this.programIdByTab[key];
     if (!silent) {
-      const somethingToShow = (this.tab === 'all')
-        ? !!this._aggregatedFlags()
-        : !!this.flagsByTab[this.tab];
+      const somethingToShow = !!this._currentFlags();
       if (!somethingToShow) this.showStatus('Loading charge queue…');
     }
     if (this.flagsLoadingByTab[key]) return;
@@ -1896,13 +1893,13 @@ class PaymentsScreen extends Screen {
         if (f.status === 'pending' && f.laUserId) map[String(f.laUserId)] = f;
       }
       this.pendingByLaUserIdByTab[key] = map;
-      if (this.tab === key || this.tab === 'all') {
+      if (this._showsTab(key)) {
         if (this.view === 'queue')   this.renderQueue();
         if (this.view === 'members') this.renderMembers();  // repaint badges
       }
     } catch (err) {
       this.flagsErrorByTab[key] = err.message;
-      if (!silent && (this.tab === key || this.tab === 'all') && this.view === 'queue') {
+      if (!silent && this._showsTab(key) && this.view === 'queue') {
         this.showError(err.message);
       }
     } finally {
@@ -1911,13 +1908,9 @@ class PaymentsScreen extends Screen {
   }
 
   renderQueue() {
-    const data = (this.tab === 'all')
-      ? this._aggregatedFlags()
-      : this.flagsByTab[this.tab];
+    const data = this._currentFlags();
     if (!data) {
-      const err = (this.tab === 'all')
-        ? this._firstError(this.flagsErrorByTab)
-        : this.flagsErrorByTab[this.tab];
+      const err = this._currentError(this.flagsErrorByTab);
       if (err) return this.showError(err);
       return this.showStatus('Loading charge queue…');
     }
@@ -2054,7 +2047,11 @@ class PaymentsScreen extends Screen {
 
   // ── Flag actions ────────────────────────────────────────────────────
   async openFlagModal(laUserId, name) {
-    const programId = this.programIdByTab[this.tab];
+    // Merged tabs (Boys = Boys + Girls, All) hold rows from several
+    // programmes — flag on the row's own, which loadMembers stamped.
+    const cur = this._currentMembers();
+    const owner = ((cur && cur.members) || []).find(m => String(m.laUserId) === String(laUserId));
+    const programId = this.programIdByTab[(owner && owner._tab) || this.tab];
     if (!programId) {
       alert('Program id not loaded — reload the Members view first.');
       return;

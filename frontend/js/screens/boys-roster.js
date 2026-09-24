@@ -195,7 +195,7 @@ class BoysRosterScreen extends RosterScreenBase {
         const body = await res.text();
         throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
       }
-      const data = await res.json();
+      const data = this.applyPlayerFilter(await res.json());
       const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
       this._data = data;
       // Optional hook — RostersScreen (rosters.js) sets this so the
@@ -263,6 +263,28 @@ class BoysRosterScreen extends RosterScreenBase {
     if (st === 'needs_docs') return true;
     if (st) return false;
     return BoysRosterScreen.columnNeedsDocs(col);
+  }
+
+  // Which players this board keeps (Screen.sectionIncludes rule, owner
+  // 2026-09-24: "when we click boys it should always show girls but
+  // girls should only show girls ... for all screens").  Boys keeps
+  // everyone — girls play on boys teams — and GirlsRosterScreen narrows
+  // to the Girls Club.  Applied to the payload once, right after the
+  // fetch, so every column, count and the banner agree.
+  keepPlayer(p) { return true; }
+
+  applyPlayerFilter(data) {
+    if (!data) return data;
+    const keep = (list) => (Array.isArray(list) ? list : []).filter(p => this.keepPlayer(p));
+    data.unassigned = keep(data.unassigned);
+    data.unassignedCount = data.unassigned.length;
+    let total = data.unassigned.length;
+    for (const k of Object.keys(data.buckets || {})) {
+      data.buckets[k] = keep(data.buckets[k]);
+      total += data.buckets[k].length;
+    }
+    if (typeof data.total === 'number') data.total = total;
+    return data;
   }
 
   // Same gate for the column DOCS row and the per-card 📄 DOCS button,

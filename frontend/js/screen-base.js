@@ -95,6 +95,25 @@ class Screen {
   // as links. The sentence itself is a message_templates row
   // (kind 'sms_link_hint', migration 366) shared with the backend's
   // MessageCopy model; '' until MessageCopy.load() has resolved.
+  // Section pills (Men / Women / Boys / Girls) on every board share one
+  // rule (owner 2026-09-24: "when we click boys it should always show
+  // girls but girls should only show girls ... for all screens"): girls
+  // play on boys teams, so Boys is the whole youth club and Girls is the
+  // girls-only lens.  `selected` is the pill, `actual` the row's own
+  // category; either may be mens/womens/boys/girls, men/women, or the
+  // club_sections code M/W/B/G.  No pill (null / 'all') matches all.
+  static sectionIncludes(selected, actual) {
+    const norm = (v) => {
+      const s = String(v || '').toLowerCase();
+      return ({ m: 'mens', men: 'mens', mens: 'mens', w: 'womens', women: 'womens', womens: 'womens',
+                b: 'boys', boys: 'boys', g: 'girls', girls: 'girls' })[s] || s;
+    };
+    const sel = norm(selected), act = norm(actual);
+    if (!sel || sel === 'all') return true;
+    if (sel === act) return true;
+    return sel === 'boys' && act === 'girls';
+  }
+
   static get SMS_LINK_HINT() { return MessageCopy.smsLinkHint; }
   static withSmsLinkHint(body) {
     const text = String(body || '');

@@ -132,7 +132,7 @@ class RsvpEligibilityScreen extends Screen {
     const cat = String(category || '').toLowerCase();
     const all = this._teams();
     if (!cat || cat === 'all') return all;
-    return all.filter((t) => t.category === cat);
+    return all.filter((t) => Screen.sectionIncludes(cat, t.category));
   }
 
   onEnter(params) {
@@ -528,8 +528,8 @@ class RsvpEligibilityScreen extends Screen {
     // Category filter applies at the group level so the "All Men"
     // chip hides Women/Boys/Girls groups entirely — mirrors Members.
     const groups = this._groups.filter(g => {
-      if (!this.categoryFilter) return true;
-      return String(g.category || '').toLowerCase() === this.categoryFilter;
+      // Boys includes the Girls groups, Girls is girls-only (Screen.sectionIncludes, 2026-09-24).
+      return Screen.sectionIncludes(this.categoryFilter, g.category);
     });
 
     let totalShown = 0;
@@ -736,8 +736,7 @@ class RsvpEligibilityScreen extends Screen {
     // category (like MembersScreen).
     const scope = [];
     for (const g of this._groups) {
-      if (this.categoryFilter
-          && String(g.category || '').toLowerCase() !== this.categoryFilter) continue;
+      if (!Screen.sectionIncludes(this.categoryFilter, g.category)) continue;
       for (const m of (g.members || [])) scope.push(m);
     }
     const noAccountCount = scope.filter(m => !m.has_fh_account).length;
