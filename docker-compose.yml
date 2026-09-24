@@ -98,6 +98,8 @@ services:
       # Shared image storage (backend writes, frontend serves via nginx)
       - ./frontend/images/posts:/app/images/posts
       - ./frontend/images/exercises:/app/images/exercises
+      # Lock-up gate photos (#security, mig 424) — served by nginx at /images/security/
+      - ./frontend/images/security:/app/images/security
       # LeagueApps API private key for JWT-bearer OAuth (RS256).  Used by
       # LeagueAppsService when fetching program registrations during team
       # reconciliation.  Read-only — same key file the Python sync scripts

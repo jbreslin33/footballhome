@@ -477,8 +477,8 @@ private:
         router_.useController("/api/rsvp-board", rsvp_board_controller_);
         // #kit board (owner 2026-09-18): uniform numbers + kit handed out (mig 373).
         router_.useController("/api/kit-board", kit_board_controller_);
-        // #lockups (owner 2026-09-24): nightly gate check-in + one-tap confirm link (mig 421).
-        router_.useController("/api/lockups", lockup_controller_);
+        // #security (owner 2026-09-24): nightly gate photo check-in + upload link (mig 421/424).
+        router_.useController("/api/security", lockup_controller_);
         // Schedule release window (migration 334): when next week posts,
         // early opens, standing rule. See ScheduleReleaseController.h.
         router_.useController("/api/schedule", schedule_release_controller_);

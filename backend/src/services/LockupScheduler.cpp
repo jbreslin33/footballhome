@@ -13,7 +13,7 @@ namespace {
 constexpr int kIntervalSeconds = 60;
 
 std::string tapLink(FacilityLockup& model, const FacilityLockup::Lockup& l, long long personId) {
-    return MagicLinkService::publicBaseUrl() + "/api/lockups/tap?t=" + model.issueToken(l.id, personId);
+    return MagicLinkService::publicBaseUrl() + "/api/security/tap?t=" + model.issueToken(l.id, personId);
 }
 }  // namespace
 
@@ -63,11 +63,14 @@ void LockupScheduler::tick() {
         const int n = l.alertCount + 1;
         // Bump first so a slow Twilio call can never double-fire on the next tick.
         model.bumpAlert(l.id);
+        // Email and text carry the upload link — with the first alert only;
+        // the phone rings on every alert until a photo is up (owner
+        // 2026-09-24: "keep calling my phone every 5 minutes").
         int sent = 0;
         for (const auto& to : model.recipients(l.id, "escalation")) {
-            if (to.wantEmail) sent += deliver(model, l, to, "alert", "email", n).ok;
-            if (to.wantSms)   sent += deliver(model, l, to, "alert", "sms", n).ok;
-            if (to.wantCall)  sent += deliver(model, l, to, "alert", "call", n).ok;
+            if (to.wantEmail && n == 1) sent += deliver(model, l, to, "alert", "email", n).ok;
+            if (to.wantSms   && n == 1) sent += deliver(model, l, to, "alert", "sms", n).ok;
+            if (to.wantCall)            sent += deliver(model, l, to, "alert", "call", n).ok;
         }
         std::cout << "[LockupScheduler] alert " << n << " for " << l.facility << " " << l.localDate
                   << " (" << sent << " sent)" << std::endl;

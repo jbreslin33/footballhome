@@ -61,9 +61,19 @@ public:
     // (facilities.lockup_prompt_last_event_coaches).  Channels merged per person.
     std::vector<Recipient> recipients(long long lockupId, const std::string& role);
 
-    std::string issueToken(long long lockupId, long long personId);   // raw token for the tap URL
-    TapOutcome  confirmByToken(const std::string& raw, Lockup* out, std::string* firstName);
+    struct TokenInfo {
+        bool        found = false, live = false, used = false;
+        long long   id = 0, lockupId = 0, personId = 0;
+        std::string firstName;
+    };
+    std::string issueToken(long long lockupId, long long personId);   // raw token for the upload link
+    TokenInfo   lookupToken(const std::string& raw);
+    void        markTokenUsed(long long tokenId);
     bool        confirm(long long lockupId, long long personId, const std::string& via, const std::string& note);
+    // The photo IS the confirmation (mig 424): records the file and marks
+    // the night locked (via 'photo') if it was not already.
+    long long   addPhoto(long long lockupId, long long personId, const std::string& urlPath,
+                         const std::string& mime, long long byteSize);
 
     void markPrompted(long long id);
     void bumpAlert(long long id);
@@ -79,6 +89,7 @@ public:
 
     nlohmann::json toJson(const Lockup& l);
     nlohmann::json alertsJson(long long lockupId);
+    nlohmann::json photosJson(long long lockupId);
     nlohmann::json peopleJson();
     Tokens tokens(const Lockup& l, const std::string& name, const std::string& link, int alertN);
 

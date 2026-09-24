@@ -65,7 +65,7 @@ class App {
       reports: new ReportsScreen(this.navigation, this.auth),
       rsvps: new RsvpBoardScreen(this.navigation, this.auth),
       kit: new KitBoardScreen(this.navigation, this.auth),
-      lockups: new LockupsScreen(this.navigation, this.auth),
+      security: new SecurityScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
@@ -154,8 +154,8 @@ class App {
     this.screenManager.register('rsvps', this.screens.rsvps);
     // Uniforms & Kit (#kit) — uniform numbers + kit handed out. See screens/kit.js.
     this.screenManager.register('kit', this.screens.kit);
-    // Lock-up (#lockups) — nightly gate check-in + alert log (mig 421). See screens/lockups.js.
-    this.screenManager.register('lockups', this.screens.lockups);
+    // Security (#security) — nightly gate photo check-in + alert log (mig 421/424). See screens/security.js.
+    this.screenManager.register('security', this.screens.security);
     // Event Center (#event-center) — the staff page for one calendar event
     // of any kind: who's coming, attendance, 🎟 invites.  See
     // screens/event-center.js.

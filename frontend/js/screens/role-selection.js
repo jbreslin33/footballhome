@@ -98,11 +98,11 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
-        <button class="btn btn-lg btn-primary" data-role="lockups" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🔒</span>
+        <button class="btn btn-lg btn-primary" data-role="security" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🔐</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Lock-up</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Did we lock the gate tonight? Confirm here — otherwise Football Home texts, emails and calls after the deadline</div>
+            <div style="font-weight: bold;">Security</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Upload the photo of the locked gate after the last event — otherwise Football Home calls every 5 minutes</div>
           </div>
         </button>
 
@@ -329,7 +329,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'lockups' && role !== 'game-center' && role !== 'event-center' && role !== 'kit') this.navigation.context.role = role;
+    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'security' && role !== 'game-center' && role !== 'event-center' && role !== 'kit') this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -351,9 +351,9 @@ class RoleSelectionScreen extends Screen {
       this.navigation.goTo('event-center', { pick: true });
     } else if (role === 'kit') {
       this.navigation.goTo('kit');
-    } else if (role === 'lockups') {
-      // Not a role — the nightly lock-up check-in board (mig 421).
-      this.navigation.goTo('lockups');
+    } else if (role === 'security') {
+      // Not a role — the nightly gate-photo board (mig 421/424).
+      this.navigation.goTo('security');
     } else if (role === 'rsvps') {
       // Not a role — the RSVP follow-up board (owner 2026-09-17: top level).
       this.navigation.goTo('rsvps');

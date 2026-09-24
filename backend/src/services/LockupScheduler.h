@@ -8,9 +8,10 @@
 //
 //   1. FacilityLockup::syncToday()  — tonight's last event per facility
 //   2. due_at reached, nobody asked  → prompt the closers (tap link)
-//   3. deadline passed, unconfirmed  → alert the escalation people
-//                                      (email / text / call), repeating on
-//                                      the facility's cadence up to its cap
+//   3. deadline passed, no photo     → alert the escalation people:
+//                                      email / text once (upload link),
+//                                      phone call on every repeat, on the
+//                                      facility's cadence up to its cap
 //   4. confirmed after alerts began  → all-clear to the same people
 //
 // Same lifetime convention as LaSyncScheduler (runs until process exit).

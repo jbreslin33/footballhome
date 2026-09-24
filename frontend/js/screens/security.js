@@ -1,25 +1,29 @@
-// LockupsScreen — #lockups — the nightly "was the gate locked?" board
-// (owner 2026-09-24: "so we didn't lock up Lighthouse after practice …
-// can we have a system where if we don't tell fh that lighthouse is
-// secure that it sends a text and email to me?").
+// SecurityScreen — #security — the nightly "was the gate locked?" board
+// (owner 2026-09-24: "it needs to call phone if no upload of picture of
+// locked gate is uploaded to footballhome within 45 minutes of end time
+// of event at a lighthouse site … a security button at top level of
+// admin … and an upload button to accept a pic").
 //
-// Backed by GET /api/lockups/board, POST /api/lockups/:id/confirm and
-// POST /api/lockups/test (backend/src/controllers/LockupController.cpp,
-// migration 421).  The backend scheduler does the chasing; this page is
-// where staff see tonight's status, press "I locked it" without a link,
-// read what was sent to whom, and (admins) fire a test to themselves.
+// Backed by GET /api/security/board, POST /api/security/photo and
+// POST /api/security/test (backend/src/controllers/LockupController.cpp,
+// migrations 421 + 424).  The backend scheduler does the chasing: 45 min
+// after the night's last event at a facility, the phone rings every 5
+// minutes until a photo of the locked gate is up.  This page is where
+// staff see tonight's status, upload the photo, see the photos and what
+// was sent to whom, and (admins) fire a test to themselves.
 //
 // Top-level page, not a panel on #my (owner 2026-09-17: staff tools get
 // dedicated pages).  Club admins, active coaches and anyone on the
 // facility's lock-up list can open it.
-class LockupsScreen extends Screen {
+class SecurityScreen extends Screen {
   static STATUS = {
-    none:    { label: 'No events tonight',        cls: 'lk-none' },
-    pending: { label: 'Not due yet',              cls: 'lk-pending' },
-    due:     { label: 'Waiting for confirmation', cls: 'lk-due' },
-    overdue: { label: 'NOT CONFIRMED — alerting', cls: 'lk-overdue' },
-    locked:  { label: 'Locked',                   cls: 'lk-locked' },
+    none:    { label: 'No events tonight',          cls: 'lk-none' },
+    pending: { label: 'Not due yet',                cls: 'lk-pending' },
+    due:     { label: 'Waiting for the photo',      cls: 'lk-due' },
+    overdue: { label: 'NO PHOTO — calling',         cls: 'lk-overdue' },
+    locked:  { label: 'Locked — photo up',          cls: 'lk-locked' },
   };
+  static VIA = { photo: 'photo', tap: 'tap link', board: 'button' };
   static CHANNEL = { email: '✉️ email', sms: '💬 text', call: '📞 call' };
   static STAGE   = { prompt: 'asked to confirm', alert: 'alert', confirmed: 'all clear', test: 'test' };
 
@@ -56,7 +60,7 @@ class LockupsScreen extends Screen {
         .lk-row .v { text-align:right; }
         .lk-btn { padding:10px 18px; border-radius:10px; border:none; cursor:pointer; font-weight:800; font-size:1rem;
                   color:#0b1c3d; background:#4ade80; margin-top:10px; }
-        .lk-btn[disabled] { opacity:0.4; cursor:not-allowed; }
+        .lk-btn[disabled], .lk-btn.busy { opacity:0.4; cursor:not-allowed; pointer-events:none; }
         .lk-btn.sm { padding:5px 10px; font-size:0.78rem; margin:0; background:var(--primary-color); color:#fff; }
         .lk-log { font-size:0.75rem; margin-top:8px; border-top:1px solid var(--border-color); padding-top:6px; }
         .lk-log div { display:flex; gap:8px; padding:2px 0; }
@@ -73,8 +77,8 @@ class LockupsScreen extends Screen {
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🔒 Lock-up</h1>
-        <p class="subtitle">Did we lock the gate? Confirm here or from the link in the text/email — otherwise Football Home chases the club after the deadline</p>
+        <h1>🔐 Security</h1>
+        <p class="subtitle">After the last event at a Lighthouse site, upload a photo of the locked gate — otherwise Football Home starts calling 45 minutes after it ends</p>
       </div>
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
         <div style="display:flex; justify-content:flex-end; margin-bottom:var(--space-2);">
@@ -91,11 +95,13 @@ class LockupsScreen extends Screen {
   onEnter() { this.load(); }
 
   _wireEvents() {
+    this.element.addEventListener('change', async (e) => {
+      const input = e.target.closest('input[data-upload]');
+      if (input && input.files && input.files[0]) await this.upload(Number(input.dataset.upload), input.files[0]);
+    });
     this.element.addEventListener('click', async (e) => {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       if (e.target.closest('#lk-refresh')) { this.load(); return; }
-      const confirmBtn = e.target.closest('[data-confirm]');
-      if (confirmBtn) { await this.confirm(Number(confirmBtn.dataset.confirm)); return; }
       const testBtn = e.target.closest('[data-test]');
       if (testBtn) { await this.test(testBtn.dataset.test); return; }
     });
@@ -105,7 +111,7 @@ class LockupsScreen extends Screen {
     this.loading = true; this.error = null;
     this._renderBody();
     try {
-      const res = await this.auth.fetch('/api/lockups/board');
+      const res = await this.auth.fetch('/api/security/board');
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       this.data = body;
@@ -117,20 +123,22 @@ class LockupsScreen extends Screen {
     this._renderBody();
   }
 
-  async confirm(id) {
+  async upload(id, file) {
     if (this.busy || !id) return;
     this.busy = true;
-    const noteEl = this.find(`#lk-note-${id}`);
+    this.flash = 'Uploading the photo…';
+    this._renderBody();
     try {
-      const res = await this.auth.fetch(`/api/lockups/${id}/confirm`, {
+      const image = await window.shrinkPhoto(file, 1600, 0.82);
+      const res = await this.auth.fetch('/api/security/photo', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note: noteEl ? noteEl.value.trim() : '' }),
+        body: JSON.stringify({ lockup_id: id, image }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      this.flash = body.already ? 'Already confirmed.' : 'Marked locked. Thanks!';
+      this.flash = 'Photo up. Marked locked.';
     } catch (err) {
-      this.flash = `✗ ${err.message || 'Could not confirm.'}`;
+      this.flash = `✗ ${err.message || 'Upload failed.'}`;
     }
     this.busy = false;
     await this.load();
@@ -139,17 +147,17 @@ class LockupsScreen extends Screen {
   async test(channel) {
     if (this.busy) return;
     this.busy = true;
-    this.flash = `Sending a test ${LockupsScreen.CHANNEL[channel] || channel}…`;
+    this.flash = `Sending a test ${SecurityScreen.CHANNEL[channel] || channel}…`;
     this._renderBody();
     try {
-      const res = await this.auth.fetch('/api/lockups/test', {
+      const res = await this.auth.fetch('/api/security/test', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channel }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      this.flash = body.ok ? `Test ${LockupsScreen.CHANNEL[channel]} sent to ${body.contact}.`
-                           : `✗ Test ${LockupsScreen.CHANNEL[channel]} failed: ${body.error || 'unknown error'}`;
+      this.flash = body.ok ? `Test ${SecurityScreen.CHANNEL[channel]} sent to ${body.contact}.`
+                           : `✗ Test ${SecurityScreen.CHANNEL[channel]} failed: ${body.error || 'unknown error'}`;
     } catch (err) {
       this.flash = `✗ ${err.message || 'Test failed.'}`;
     }
@@ -170,7 +178,7 @@ class LockupsScreen extends Screen {
     const rows = alerts.map(a => `
       <div>
         <span style="opacity:0.6; white-space:nowrap;">${this.escapeHtml(this._fmtWhen(a.sent_at))}</span>
-        <span>${this.escapeHtml(LockupsScreen.STAGE[a.stage] || a.stage)} · ${this.escapeHtml(LockupsScreen.CHANNEL[a.channel] || a.channel)}
+        <span>${this.escapeHtml(SecurityScreen.STAGE[a.stage] || a.stage)} · ${this.escapeHtml(SecurityScreen.CHANNEL[a.channel] || a.channel)}
               → ${this.escapeHtml(a.person || a.contact)}</span>
         <span class="${a.ok ? 'ok' : 'bad'}">${a.ok ? '✓' : '✗ ' + this.escapeHtml(a.error || 'failed')}</span>
       </div>`).join('');
@@ -178,16 +186,19 @@ class LockupsScreen extends Screen {
   }
 
   _card(l, { big }) {
-    const st = LockupsScreen.STATUS[l.status] || LockupsScreen.STATUS.none;
+    const st = SecurityScreen.STATUS[l.status] || SecurityScreen.STATUS.none;
     const rows = [];
     if (l.last_event) rows.push(['Last event', l.last_event]);
     if (l.status !== 'none') rows.push(['Confirm by', l.deadline_label]);
     if (l.status === 'locked') {
-      rows.push(['Locked by', `${l.confirmed_by || '—'} at ${l.confirmed_label}${l.confirmed_via === 'tap' ? ' (tap link)' : ''}`]);
-      if (l.note) rows.push(['Note', l.note]);
+      rows.push(['Locked by', `${l.confirmed_by || '—'} at ${l.confirmed_label} (${SecurityScreen.VIA[l.confirmed_via] || l.confirmed_via})`]);
     }
     if (l.alert_count > 0) rows.push(['Alerts sent', `${l.alert_count} of ${l.max_alerts}`]);
-    const canConfirm = big && l.id > 0 && l.status !== 'none' && l.status !== 'locked';
+    const canUpload = l.id > 0 && l.status !== 'none';
+    const photos = (l.photos || []).map(p => `
+      <a href="${this.escapeHtml(p.url)}" target="_blank" rel="noopener" title="${this.escapeHtml(p.person)} · ${this.escapeHtml(this._fmtWhen(p.created_at))}">
+        <img src="${this.escapeHtml(p.url)}" alt="" style="width:96px; height:96px; object-fit:cover; border-radius:8px; border:1px solid var(--border-color);">
+      </a>`).join('');
     return `
       <div class="lk-card ${st.cls}">
         <div class="lk-title">
@@ -195,9 +206,12 @@ class LockupsScreen extends Screen {
           <span class="lk-pill">${this.escapeHtml(st.label)}</span>
         </div>
         ${rows.map(([k, v]) => `<div class="lk-row"><span class="k">${this.escapeHtml(k)}</span><span class="v">${this.escapeHtml(v)}</span></div>`).join('')}
-        ${canConfirm ? `
-          <input id="lk-note-${l.id}" class="lk-note" type="text" maxlength="200" placeholder="Note (optional) — e.g. locked at 8:40, chain + padlock">
-          <button class="lk-btn" data-confirm="${l.id}" ${this.busy ? 'disabled' : ''}>🔒 I locked it</button>` : ''}
+        ${photos ? `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">${photos}</div>` : ''}
+        ${canUpload ? `
+          <label class="lk-btn ${this.busy ? 'busy' : ''}" style="display:inline-block; text-align:center; ${big ? '' : 'font-size:0.8rem; padding:6px 12px;'}">
+            📷 ${l.status === 'locked' ? 'Add another photo' : 'Take / upload photo of the locked gate'}
+            <input type="file" accept="image/*" capture="environment" data-upload="${l.id}" hidden ${this.busy ? 'disabled' : ''}>
+          </label>` : ''}
         ${this._log(l.alerts)}
       </div>`;
   }
@@ -210,7 +224,7 @@ class LockupsScreen extends Screen {
     const d = this.data || { today: [], history: [], people: [] };
     const flash = this.flash ? `<div class="lk-flash ${this.flash.startsWith('✗') ? 'bad' : ''}">${this.escapeHtml(this.flash)}</div>` : '';
     const today = d.today.length ? d.today.map(l => this._card(l, { big: true })).join('')
-                                 : '<p style="opacity:0.6;">No facility needs a lock-up check-in.</p>';
+                                 : '<p style="opacity:0.6;">No facility needs a gate photo.</p>';
     const hist = d.history.length
       ? `<div class="lk-hist">${d.history.map(l => this._card(l, { big: false })).join('')}</div>`
       : '<p style="opacity:0.6;">No earlier nights yet.</p>';
@@ -218,8 +232,8 @@ class LockupsScreen extends Screen {
     for (const p of d.people) (byFac[p.facility] ||= { rows: [], p }).rows.push(p);
     const people = Object.entries(byFac).map(([fac, { rows, p }]) => `
       <div class="lk-card lk-people" style="border-left-color:var(--border-color);">
-        <strong>${this.escapeHtml(fac)}</strong> — deadline ${p.grace_minutes} min after the last event ends;
-        then alerts every ${p.repeat_minutes} min, at most ${p.max_alerts}.
+        <strong>${this.escapeHtml(fac)}</strong> — photo due ${p.grace_minutes} min after the last event ends;
+        then the phone rings every ${p.repeat_minutes} min, at most ${p.max_alerts} times (email/text once, with the link).
         ${p.coaches_too ? 'The coaches of the last event are also asked to confirm.' : ''}
         <div style="margin-top:6px;">
           ${rows.map(r => `<div class="lk-row"><span class="k">${r.role === 'closer' ? 'Asked to confirm' : 'Alerted'}</span>
@@ -229,7 +243,7 @@ class LockupsScreen extends Screen {
     const tests = d.is_admin ? `
       <div class="lk-sec">Test the pipe (sends tonight's alert wording to you only)</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        ${['email', 'sms', 'call'].map(c => `<button class="lk-btn sm" data-test="${c}" ${this.busy ? 'disabled' : ''}>Test ${this.escapeHtml(LockupsScreen.CHANNEL[c])} to me</button>`).join('')}
+        ${['email', 'sms', 'call'].map(c => `<button class="lk-btn sm" data-test="${c}" ${this.busy ? 'disabled' : ''}>Test ${this.escapeHtml(SecurityScreen.CHANNEL[c])} to me</button>`).join('')}
       </div>` : '';
     el.innerHTML = `
       ${flash}

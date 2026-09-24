@@ -253,26 +253,38 @@ std::string FacilityLockup::issueToken(long long lockupId, long long personId) {
     return raw;
 }
 
-FacilityLockup::TapOutcome FacilityLockup::confirmByToken(const std::string& raw, Lockup* out, std::string* firstName) {
-    if (raw.empty()) return TapOutcome::Invalid;
+FacilityLockup::TokenInfo FacilityLockup::lookupToken(const std::string& raw) {
+    TokenInfo t;
+    if (raw.empty()) return t;
     auto rows = db_->query(
-        "SELECT t.id, t.lockup_id, t.person_id, (t.expires_at > now()) AS live, t.used_at, "
-        "       p.first_name "
+        "SELECT t.id, t.lockup_id, t.person_id, (t.expires_at > now()) AS live, "
+        "       (t.used_at IS NOT NULL) AS used, p.first_name "
         "  FROM facility_lockup_tokens t JOIN persons p ON p.id = t.person_id "
         " WHERE t.token_hash = $1", {fh::crypto::sha256Hex(raw)});
-    if (rows.empty()) return TapOutcome::Invalid;
+    if (rows.empty()) return t;
     const auto& r = rows[0];
-    const long long lockupId = r["lockup_id"].as<long long>();
-    const long long personId = r["person_id"].as<long long>();
-    *firstName = str(r, "first_name");
-    if (!get(lockupId, out)) return TapOutcome::Invalid;
-    if (out->confirmed()) return TapOutcome::Already;
-    if (!r["live"].as<bool>()) return TapOutcome::Invalid;
-    if (!confirm(lockupId, personId, "tap", "")) { get(lockupId, out); return TapOutcome::Already; }
-    db_->query("UPDATE facility_lockup_tokens SET used_at = now() WHERE id = $1::bigint",
-               {std::to_string(r["id"].as<long long>())});
-    get(lockupId, out);
-    return TapOutcome::Confirmed;
+    t.found     = true;
+    t.id        = r["id"].as<long long>();
+    t.lockupId  = r["lockup_id"].as<long long>();
+    t.personId  = r["person_id"].as<long long>();
+    t.live      = r["live"].as<bool>();
+    t.used      = r["used"].as<bool>();
+    t.firstName = str(r, "first_name");
+    return t;
+}
+
+void FacilityLockup::markTokenUsed(long long tokenId) {
+    db_->query("UPDATE facility_lockup_tokens SET used_at = now() WHERE id = $1::bigint", {std::to_string(tokenId)});
+}
+
+long long FacilityLockup::addPhoto(long long lockupId, long long personId, const std::string& urlPath,
+                                   const std::string& mime, long long byteSize) {
+    auto rows = db_->query(
+        "INSERT INTO facility_lockup_photos (lockup_id, person_id, file_path, mime, byte_size) "
+        "VALUES ($1::bigint, NULLIF($2, '0')::int, $3, $4, $5::int) RETURNING id",
+        {std::to_string(lockupId), std::to_string(personId), urlPath, mime, std::to_string(byteSize)});
+    confirm(lockupId, personId, "photo", "");
+    return rows.empty() ? 0 : rows[0]["id"].as<long long>();
 }
 
 bool FacilityLockup::confirm(long long lockupId, long long personId, const std::string& via, const std::string& note) {
@@ -340,8 +352,8 @@ json FacilityLockup::toJson(const Lockup& l) {
         {"alert_count", l.alertCount}, {"max_alerts", l.maxAlerts}, {"repeat_minutes", l.repeatMinutes},
         {"last_alert_at", l.lastAlertAtIso},
     };
-    if (l.id > 0) j["alerts"] = alertsJson(l.id);
-    else j["alerts"] = json::array();
+    j["alerts"] = l.id > 0 ? alertsJson(l.id) : json::array();
+    j["photos"] = l.id > 0 ? photosJson(l.id) : json::array();
     return j;
 }
 
@@ -358,6 +370,21 @@ json FacilityLockup::alertsJson(long long lockupId) {
         out.push_back({{"stage", str(r, "stage")}, {"channel", str(r, "channel")}, {"contact", str(r, "contact")},
                        {"ok", r["ok"].as<bool>()}, {"error", str(r, "error")}, {"sent_at", str(r, "sent_at")},
                        {"person", str(r, "person")}});
+    }
+    return out;
+}
+
+json FacilityLockup::photosJson(long long lockupId) {
+    json out = json::array();
+    auto rows = db_->query(
+        "SELECT ph.id, ph.file_path, to_char(ph.created_at, 'YYYY-MM-DD\"T\"HH24:MI:SSOF') AS created_at, "
+        "       COALESCE(p.first_name || ' ' || p.last_name, '') AS person "
+        "  FROM facility_lockup_photos ph LEFT JOIN persons p ON p.id = ph.person_id "
+        " WHERE ph.lockup_id = $1::bigint ORDER BY ph.created_at DESC, ph.id DESC",
+        {std::to_string(lockupId)});
+    for (const auto& r : rows) {
+        out.push_back({{"id", r["id"].as<long long>()}, {"url", str(r, "file_path")},
+                       {"created_at", str(r, "created_at")}, {"person", str(r, "person")}});
     }
     return out;
 }
@@ -388,5 +415,6 @@ FacilityLockup::Tokens FacilityLockup::tokens(const Lockup& l, const std::string
         {"last_event", l.lastEvent}, {"ends_at", l.endsLabel}, {"deadline", l.deadlineLabel},
         {"link", link}, {"alert_n", alertN > 0 ? std::to_string(alertN) : std::string()},
         {"confirmed_by", l.confirmedBy}, {"confirmed_at", l.confirmedLabel},
+        {"repeat_minutes", std::to_string(l.repeatMinutes)},
     };
 }
