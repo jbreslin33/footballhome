@@ -42,6 +42,7 @@
 #include "controllers/WelcomeController.h"
 #include "controllers/RsvpBoardController.h"
 #include "controllers/KitBoardController.h"
+#include "controllers/LockupController.h"
 #include "controllers/ScheduleReleaseController.h"
 #include "controllers/PaymentsController.h"
 #include "controllers/ChargeFlagsController.h"
@@ -69,6 +70,7 @@
 #include "services/MetaLeadsService.h"
 #include "services/LineupNotificationHub.h"
 #include "services/LaSyncScheduler.h"
+#include "services/LockupScheduler.h"
 
 class HttpServer {
 private:
@@ -106,6 +108,7 @@ private:
     std::shared_ptr<WelcomeController> welcome_controller_;
     std::shared_ptr<RsvpBoardController> rsvp_board_controller_;
     std::shared_ptr<KitBoardController> kit_board_controller_;
+    std::shared_ptr<LockupController> lockup_controller_;
     std::shared_ptr<ScheduleReleaseController> schedule_release_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
     std::shared_ptr<ChargeFlagsController> charge_flags_controller_;
@@ -183,6 +186,7 @@ public:
         welcome_controller_ = std::make_shared<WelcomeController>();
         rsvp_board_controller_ = std::make_shared<RsvpBoardController>();
         kit_board_controller_ = std::make_shared<KitBoardController>();
+        lockup_controller_ = std::make_shared<LockupController>();
         schedule_release_controller_ = std::make_shared<ScheduleReleaseController>();
         payments_controller_ = std::make_shared<PaymentsController>();
         charge_flags_controller_ = std::make_shared<ChargeFlagsController>();
@@ -230,6 +234,11 @@ public:
         // membership. Runs every 5 minutes regardless of screen traffic;
         // see LaSyncScheduler.h.
         LaSyncScheduler::getInstance().start();
+
+        // Facility lock-up check-in (migration 421, owner 2026-09-24): prompts
+        // the closers when the night's last event ends, chases the escalation
+        // people by email / text / call past the deadline.  See LockupScheduler.h.
+        LockupScheduler::getInstance().start();
 
         // Phase 13 — start the LISTEN fh_lineups pump.  Spawns one thread
         // that owns a dedicated pqxx::connection and fans NOTIFY payloads
@@ -468,6 +477,8 @@ private:
         router_.useController("/api/rsvp-board", rsvp_board_controller_);
         // #kit board (owner 2026-09-18): uniform numbers + kit handed out (mig 373).
         router_.useController("/api/kit-board", kit_board_controller_);
+        // #lockups (owner 2026-09-24): nightly gate check-in + one-tap confirm link (mig 421).
+        router_.useController("/api/lockups", lockup_controller_);
         // Schedule release window (migration 334): when next week posts,
         // early opens, standing rule. See ScheduleReleaseController.h.
         router_.useController("/api/schedule", schedule_release_controller_);

@@ -46,6 +46,7 @@ set(SOURCES
     src/models/MessageCopy.cpp
     src/models/RsvpBoard.cpp
     src/models/KitBoard.cpp
+    src/models/FacilityLockup.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp
     src/models/YouthAgeGroups.cpp
@@ -67,6 +68,8 @@ set(SOURCES
     src/services/LeagueAppsService.cpp
     src/services/LaProgramSync.cpp
     src/services/LaSyncScheduler.cpp
+    src/services/LockupScheduler.cpp
+    src/services/TwilioService.cpp
     src/services/SessionService.cpp
     src/services/MagicLinkService.cpp
     src/services/MetaLeadsService.cpp
@@ -104,6 +107,7 @@ set(SOURCES
     src/controllers/WelcomeController.cpp
     src/controllers/RsvpBoardController.cpp
     src/controllers/KitBoardController.cpp
+    src/controllers/LockupController.cpp
     src/controllers/PaymentsController.cpp
     src/controllers/ChargeFlagsController.cpp
     src/controllers/AdminLaBackfillController.cpp
