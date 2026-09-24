@@ -94,3 +94,7 @@ scripts/__pycache__/
 env.bak-*
 *.bak-20*
 .postmark_token
+
+# Lock-up gate photos (#security, mig 424) — uploaded at runtime, not source
+frontend/images/security/*
+!frontend/images/security/.gitkeep
