@@ -272,10 +272,13 @@ class RsvpBoardScreen extends Screen {
     this.loading = true; this.error = null;
     this._renderBody();
     try {
-      // "All" (owner 2026-09-22) is the four sections fetched together and
+      // "All" (owner 2026-09-22) is the sections fetched together and
       // merged; every row remembers its section so reminders route right.
+      // Girls is a lens on the boys teams (the Boys fetch already carries
+      // every girl on them since 2026-09-24), so it is skipped here or the
+      // same team tile would land twice with split counts.
       const keys = this.section === 'all'
-        ? Object.keys(RsvpBoardScreen.SECTIONS).filter(k => k !== 'all') : [this.section];
+        ? Object.keys(RsvpBoardScreen.SECTIONS).filter(k => k !== 'all' && k !== 'girls') : [this.section];
       const bodies = await Promise.all(keys.map(async (key) => {
         const res = await this.auth.fetch(`/api/rsvp-board?section=${encodeURIComponent(key)}&window=${encodeURIComponent(this.window)}&kind=${encodeURIComponent(this.kind)}`);
         const body = await res.json().catch(() => ({}));

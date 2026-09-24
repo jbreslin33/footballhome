@@ -63,8 +63,12 @@ const char* kBaseCtes = R"SQL(
        WHERE tp.removed_at IS NULL
          AND COALESCE(rs.show_in_rsvp, true)
          AND ($4::int = 0 OR tp.person_id = $4::int)
-         AND ($1 NOT IN ('B','G')
-              OR ($1 = 'G') = EXISTS (SELECT 1 FROM girl g WHERE g.person_id = tp.person_id))
+         -- Girls play on boys teams (club_sections.schedule_section_id), so
+         -- Boys is the whole team and Girls is a girls-only lens on it —
+         -- the same split the #teams boards use.  Boys used to drop the
+         -- girls, so a U8 Travel tile read 5/1/1 for an 11-player team
+         -- (owner 2026-09-24: "there should be 11 players on team right?").
+         AND ($1 <> 'G' OR EXISTS (SELECT 1 FROM girl g WHERE g.person_id = tp.person_id))
     ), expected AS (
       SELECT DISTINCT r.person_id, fe.id AS fh_event_id, fe.kind, fe.opponent,
              fe.fh_notes, ge.starts_at, ge.ends_at
