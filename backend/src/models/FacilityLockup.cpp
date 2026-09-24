@@ -164,7 +164,9 @@ std::vector<FacilityLockup::Lockup> FacilityLockup::pendingAlerts() {
                   // alert #k is the repeat_minutes of the step #k belongs to.
                   "AND l.alert_count < fh_lockup_max_alerts(f.id) "
                   "AND (l.last_alert_at IS NULL OR l.last_alert_at + make_interval(mins => fh_lockup_wait_minutes(f.id, l.alert_count)) <= now()) "
-                  "AND l.deadline_at > now() - interval '12 hours'", {});
+                  // The ladder can run ~17 h past the deadline (mig 427), so the
+                  // lookback must outlast it; 24 h still keeps old nights quiet.
+                  "AND l.deadline_at > now() - interval '24 hours'", {});
 }
 
 std::vector<FacilityLockup::Lockup> FacilityLockup::pendingAnnouncements() {

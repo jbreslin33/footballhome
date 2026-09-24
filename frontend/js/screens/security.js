@@ -1,14 +1,14 @@
 // SecurityScreen — #security — the nightly "was the gate locked?" board
 // (owner 2026-09-24: "it needs to call phone if no upload of picture of
-// locked gate is uploaded to footballhome within 45 minutes of end time
+// locked gate is uploaded to footballhome within [grace] minutes of end time
 // of event at a lighthouse site … a security button at top level of
 // admin … and an upload button to accept a pic").
 //
 // Backed by GET /api/security/board, POST /api/security/photo and
 // POST /api/security/test (backend/src/controllers/LockupController.cpp,
-// migrations 421 + 424).  The backend scheduler does the chasing: 45 min
-// after the night's last event at a facility, the phone rings on the
-// facility's cadence (every 10 min for an hour, then hourly — mig 426)
+// migrations 421 + 424).  The backend scheduler does the chasing: a grace
+// period after the night's last event at a facility, the phone rings on
+// the facility's cadence (facility_lockup_alert_steps, mig 426/427)
 // until a photo of the locked gate is up.  This page is where
 // staff see tonight's status, upload the photo, see the photos and what
 // was sent to whom, and (admins) fire a test to themselves.
@@ -79,7 +79,7 @@ class SecurityScreen extends Screen {
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🔐 Security</h1>
-        <p class="subtitle">After the last event at a Lighthouse site, upload a photo of the locked gate — otherwise Football Home starts calling 45 minutes after it ends</p>
+        <p class="subtitle">After the last event at a Lighthouse site, upload a photo of the locked gate — otherwise Football Home starts calling shortly after it ends</p>
       </div>
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
         <div style="display:flex; justify-content:flex-end; margin-bottom:var(--space-2);">
