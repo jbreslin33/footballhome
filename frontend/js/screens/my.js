@@ -225,6 +225,23 @@ class MyScreen extends Screen {
   // ---------- wiring ----------
 
   _wire() {
+    // Late / leaving early (migration 436): the two time fields under a
+
+    // Go answer.  A change posts just that time; "on time" clears it.
+
+    this.element.addEventListener('change', (e) => {
+
+      const input = e.target.closest('input[data-rsvp-time]');
+
+      if (!input) return;
+
+      const fhEventId = parseInt(input.getAttribute('data-fh-event-id'), 10);
+
+      const pid = input.getAttribute('data-ev-person-id');
+
+      this._setRsvpTime(fhEventId, pid ? parseInt(pid, 10) : null, input.getAttribute('data-rsvp-time'), input.value);
+
+    });
     this.element.addEventListener('click', (e) => {
       const target = e.target instanceof Element ? e.target : (e.target && e.target.parentElement);
       if (!target) return;
@@ -299,6 +316,14 @@ class MyScreen extends Screen {
       // the caller's own RSVP; data-ev-person-id present means a
       // guardian answering for that child instead (see guardian rows
       // in _renderEventCard).
+      const resetBtn = target.closest('[data-rsvp-time-reset]');
+      if (resetBtn) {
+        e.stopPropagation();
+        const fhEventId = parseInt(resetBtn.getAttribute('data-fh-event-id'), 10);
+        const pid = resetBtn.getAttribute('data-ev-person-id');
+        this._setRsvpTime(fhEventId, pid ? parseInt(pid, 10) : null, resetBtn.getAttribute('data-rsvp-time-reset'), '');
+        return;
+      }
       const evBtn = target.closest('[data-ev-btn]');
       if (evBtn) {
         e.stopPropagation();
@@ -843,7 +868,7 @@ class MyScreen extends Screen {
       : '';
     const rowsHtml = (list) => list
       .map(r => `<div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}${callupChip(r)}</span>
+          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}${callupChip(r)}${this._rsvpTimeChips(r)}</span>
           ${this._attendanceCellHtml(ev.fh_event_id, r.person_id, att)}
         </div>`)
       .join('');
@@ -1220,6 +1245,7 @@ class MyScreen extends Screen {
             `}
           </div>
         </div>
+        ${childResponse === 'yes' && !isPast ? this._rsvpTimesHtml(ev, child.person_id) : ''}
       `;
     }).join('');
 
@@ -1365,6 +1391,7 @@ class MyScreen extends Screen {
             ` : ''}
           </div>
         </div>
+        ${showOwnRsvpRow && per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
         ${isExpanded ? `
           <div style="margin-top: 6px; padding: 6px 7px; border-top: 1px solid rgba(255,255,255,0.08); display:grid; gap: 5px;">
             <div style="font-size:0.64rem; line-height:1.3; opacity:0.82;">${this.escapeHtml(detailLines.join(' • '))}</div>
@@ -1431,6 +1458,107 @@ class MyScreen extends Screen {
   // Current response for `personId` (null = the caller's own row) on
   // `ev`, used to decide whether a click is a new answer or a deselect
   // of the button already showing active.
+  // ── Late / leaving early (migration 436) ──────────────────────────
+  // The event owns the default times (arrival_at from the league offsets,
+  // ends_at from the calendar); the RSVP owns the exception.  A set time
+  // shows on a yellow background; "on time" puts it back.
+  static NY = 'America/New_York';
+
+  _nyHHMM(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: MyScreen.NY, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d);
+    const h = parts.find(p => p.type === 'hour')?.value ?? '00', m = parts.find(p => p.type === 'minute')?.value ?? '00';
+    return `${h === '24' ? '00' : h}:${m}`;
+  }
+
+  // The instant for New York wall time `hhmm` on the same New York day as
+  // `baseIso` — works from any browser timezone.
+  _nyWallToIso(baseIso, hhmm) {
+    const base = new Date(baseIso);
+    if (Number.isNaN(base.getTime()) || !/^\d{2}:\d{2}$/.test(hhmm)) return null;
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: MyScreen.NY, year: 'numeric', month: '2-digit', day: '2-digit',
+                                                 hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).formatToParts(base);
+    const g = (t) => Number(p.find(x => x.type === t)?.value);
+    const wallAsUtc = Date.UTC(g('year'), g('month') - 1, g('day'), g('hour') % 24, g('minute'), g('second'));
+    const offsetMs = wallAsUtc - base.getTime();          // NY offset at that instant
+    const [H, M] = hhmm.split(':').map(Number);
+    return new Date(Date.UTC(g('year'), g('month') - 1, g('day'), H, M, 0) - offsetMs).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  }
+
+  _rsvpTimesFor(ev, personId) {
+    if (!personId) return { arrive: ev.my_arrive_at || null, leave: ev.my_leave_at || null };
+    const row = (Array.isArray(ev.rsvps) ? ev.rsvps : []).find(r => r && r.person_id === personId);
+    return { arrive: (row && row.arrive_at) || null, leave: (row && row.leave_at) || null };
+  }
+
+  _rsvpTimesHtml(ev, personId) {
+    const mc = window.MessageCopy;
+    const t = (tier, fb) => (mc && mc.block && mc.block('rsvp_times', tier)) || fb;
+    const cur = this._rsvpTimesFor(ev, personId);
+    const defArrive = ev.arrival_at || ev.starts_at, defLeave = ev.ends_at;
+    const pidAttr = personId ? ` data-ev-person-id="${personId}"` : '';
+    const field = (which, value, isSet, label) => `
+      <label style="display:inline-flex; align-items:center; gap:4px; font-size:0.6rem; font-weight:700; opacity:0.95;">
+        ${this.escapeHtml(label)}
+        <input type="time" data-rsvp-time="${which}" data-fh-event-id="${ev.fh_event_id}"${pidAttr} value="${this._nyHHMM(value)}"
+               style="font-size:0.66rem; padding:1px 4px; border-radius:6px; border:1px solid ${isSet ? '#f59e0b' : 'rgba(255,255,255,0.18)'};
+                      background:${isSet ? '#fde68a' : 'rgba(255,255,255,0.06)'}; color:${isSet ? '#1f2937' : '#e2e8f0'}; font-weight:${isSet ? '800' : '600'};">
+        ${isSet ? `<button type="button" data-rsvp-time-reset="${which}" data-fh-event-id="${ev.fh_event_id}"${pidAttr}
+                     style="background:none; border:none; color:#fcd34d; font-size:0.58rem; text-decoration:underline; cursor:pointer; padding:0 2px;">${this.escapeHtml(t('reset', 'on time'))}</button>` : ''}
+      </label>`;
+    return `
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:4px; padding:0 2px;">
+        ${field('arrive', cur.arrive || defArrive, !!cur.arrive, t('arrive_label', 'Arrive'))}
+        ${field('leave',  cur.leave  || defLeave,  !!cur.leave,  t('leave_label', 'Leave'))}
+        ${!cur.arrive && !cur.leave ? `<span style="font-size:0.56rem; opacity:0.6;">${this.escapeHtml(t('hint', 'Late or leaving early? Change the time.'))}</span>` : ''}
+      </div>`;
+  }
+
+  _rsvpTimeChips(r) {
+    const mc = window.MessageCopy;
+    const t = (tier, tokens, fb) => (mc && mc.block && mc.block('rsvp_times', tier, tokens)) || fb;
+    const chip = (text) => `<span style="display:inline-block; margin-left:5px; padding:1px 6px; border-radius:999px;
+        background:#fde68a; color:#1f2937; font-size:0.56rem; font-weight:800; vertical-align:middle;">${this.escapeHtml(text)}</span>`;
+    let out = '';
+    if (r && r.arrive_label) out += chip(t('chip_arrive', { time: r.arrive_label }, `arrives ${r.arrive_label}`));
+    if (r && r.leave_label)  out += chip(t('chip_leave',  { time: r.leave_label },  `leaves ${r.leave_label}`));
+    return out;
+  }
+
+  // Posts one time (or clears it with '') for the caller or a child.  The
+  // answer stays Going; the server keeps the other time untouched.
+  async _setRsvpTime(fhEventId, personId, which, hhmm) {
+    const ev = (this.events || []).find(e => e.fh_event_id === fhEventId);
+    if (!ev || (which !== 'arrive' && which !== 'leave')) return;
+    const base = which === 'arrive' ? (ev.arrival_at || ev.starts_at) : ev.ends_at;
+    const iso = hhmm ? this._nyWallToIso(base || ev.starts_at, hhmm) : null;
+    if (hhmm && !iso) return;
+    const payload = { fh_event_id: fhEventId, response: 'yes', [which + '_at']: iso };
+    if (personId) payload.person_id = personId;
+    try {
+      const body = await this._fetch('/api/calendar/rsvp', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+      const r = body && body.rsvp;
+      if (r) {
+        if (!personId) {
+          ev.my_arrive_at = r.arrive_at || null;  ev.my_leave_at = r.leave_at || null;
+          ev.my_arrive_label = r.arrive_label || null; ev.my_leave_label = r.leave_label || null;
+        }
+        const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : (ev.rsvps = []);
+        const row = rsvps.find(x => x && x.person_id === r.person_id);
+        if (row) Object.assign(row, { arrive_at: r.arrive_at || null, leave_at: r.leave_at || null,
+                                      arrive_label: r.arrive_label || null, leave_label: r.leave_label || null });
+      }
+    } catch (err) {
+      console.error('[my] RSVP time failed:', err);
+      alert(`Could not save the time: ${err.message}`);
+    }
+    this._renderEvents();
+  }
+
   _currentRsvpFor(ev, personId) {
     if (!personId) return ev.my_rsvp || null;
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];

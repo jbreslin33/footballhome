@@ -772,6 +772,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 -- Tag, else the league default the classifier filled in
                 -- (migration 395) — so the card never needs the raw tags.
                 to_char(fe.arrival_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS arrival_label,
+                to_char(fe.arrival_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS arrival_at_iso,
                 to_char(fe.warmup_at  AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS warmup_label,
                 to_char(fe.kickoff_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS kickoff_label,
                 fe.league,
@@ -811,6 +812,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                  OR fh_event_rsvps_open_at(fe.id) <= now()) AS rsvps_open_now,
                 mr.response    AS my_rsvp,
                 mr.created_via AS my_rsvp_created_via,
+                -- Late / leaving early (migration 436): NULL = on time.
+                to_char(mr.arrive_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS my_arrive_at,
+                to_char(mr.leave_at  AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS my_leave_at,
+                to_char(mr.arrive_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS my_arrive_label,
+                to_char(mr.leave_at  AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS my_leave_label,
                 (
                     SELECT COUNT(*)::int
                     FROM fh_event_teams fet2
@@ -1060,6 +1066,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         'name',           roster.name,
                                                         'response',       roster.response,
                                                         'created_via',    roster.created_via,
+                                                        -- Late / leaving early (migration 436): NULL = on time.
+                                                        'arrive_at',      to_char(roster.arrive_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                                                        'leave_at',       to_char(roster.leave_at  AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                                                        'arrive_label',   to_char(roster.arrive_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM'),
+                                                        'leave_label',    to_char(roster.leave_at  AT TIME ZONE 'America/New_York', 'FMHH12:MI AM'),
                                                         'responded_at',   roster.responded_at,
                                                         'is_pickup_only', roster.is_pickup_only,
                                                         'is_coach',       roster.is_coach,
@@ -1103,6 +1114,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                              combined.name,
                                                              combined.response,
                                                              combined.created_via,
+                                                             combined.arrive_at,
+                                                             combined.leave_at,
                                                              combined.responded_at,
                                                              combined.is_pickup_only,
                                                              combined.is_coach,
@@ -1119,6 +1132,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                              NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), '') AS name,
                                                              er.response,
                                                              er.created_via,
+                                                             er.arrive_at,
+                                                             er.leave_at,
                                                              CASE
                                                                      WHEN er.responded_at IS NULL THEN NULL
                                                                      ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
@@ -1199,6 +1214,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                              NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
                                                              er.response,
                                                              er.created_via,
+                                                             er.arrive_at,
+                                                             er.leave_at,
                                                              CASE
                                                                      WHEN er.responded_at IS NULL THEN NULL
                                                                      ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
@@ -1242,6 +1259,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                              NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
                                                              er.response,
                                                              er.created_via,
+                                                             er.arrive_at,
+                                                             er.leave_at,
                                                              CASE
                                                                      WHEN er.responded_at IS NULL THEN NULL
                                                                      ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
@@ -1428,6 +1447,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["opponent_logo_url"] = textOrNull(row, "opponent_logo_url");
             ev["league"]            = textOrNull(row, "league");
             ev["arrival_label"]     = textOrNull(row, "arrival_label");
+            ev["arrival_at"]        = textOrNull(row, "arrival_at_iso");
             ev["warmup_label"]      = textOrNull(row, "warmup_label");
             ev["kickoff_label"]     = textOrNull(row, "kickoff_label");
             ev["league_logo_url"]   = textOrNull(row, "league_logo_url");
@@ -1460,6 +1480,10 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["rsvps_open_now"]    = row["rsvps_open_now"].as<bool>();
             ev["my_rsvp"]           = textOrNull(row, "my_rsvp");
             ev["my_rsvp_created_via"]= textOrNull(row, "my_rsvp_created_via");
+            ev["my_arrive_at"]      = textOrNull(row, "my_arrive_at");
+            ev["my_leave_at"]       = textOrNull(row, "my_leave_at");
+            ev["my_arrive_label"]   = textOrNull(row, "my_arrive_label");
+            ev["my_leave_label"]    = textOrNull(row, "my_leave_label");
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
             ev["is_mine"]           = row["is_mine"].as<bool>();
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
@@ -1827,20 +1851,41 @@ Response CalendarController::handlePostRsvp(const Request& request) {
         // Upsert.  ON CONFLICT overwrites response, responded_at, and
         // created_via — the manual click always beats an earlier
         // standing/admin insert.
+        // Late / leaving early (migration 436).  A key present in the
+        // body sets that time (ISO, or null/"" = back to on time); a key
+        // absent leaves it as it was, so a plain Go tap never wipes an
+        // edited time.  A No clears both — they do not apply.
+        auto isoOrEmpty = [&](const char* key) -> std::string {
+            if (!body.contains(key) || body[key].is_null()) return "";
+            return body[key].is_string() ? body[key].get<std::string>() : "";
+        };
+        const bool setArrive = response == "no" || body.contains("arrive_at");
+        const bool setLeave  = response == "no" || body.contains("leave_at");
+        const std::string arriveIso = response == "no" ? "" : isoOrEmpty("arrive_at");
+        const std::string leaveIso  = response == "no" ? "" : isoOrEmpty("leave_at");
         auto row = db->query(
             "INSERT INTO fh_event_rsvps "
-            "    (fh_event_id, person_id, response, responded_at, created_via) "
-            "VALUES ($1::bigint, $2::int, $3, now(), 'manual') "
+            "    (fh_event_id, person_id, response, responded_at, created_via, arrive_at, leave_at) "
+            "VALUES ($1::bigint, $2::int, $3, now(), 'manual', "
+            "        NULLIF($4, '')::timestamptz, NULLIF($5, '')::timestamptz) "
             "ON CONFLICT (fh_event_id, person_id) DO UPDATE "
             "   SET response     = EXCLUDED.response, "
             "       responded_at = EXCLUDED.responded_at, "
-            "       created_via  = EXCLUDED.created_via "
+            "       created_via  = EXCLUDED.created_via, "
+            "       arrive_at    = CASE WHEN $6::boolean THEN EXCLUDED.arrive_at ELSE fh_event_rsvps.arrive_at END, "
+            "       leave_at     = CASE WHEN $7::boolean THEN EXCLUDED.leave_at  ELSE fh_event_rsvps.leave_at  END "
             "RETURNING id, fh_event_id, person_id, response, created_via, "
             "          to_char(responded_at AT TIME ZONE 'UTC', "
-            "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS responded_at",
+            "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS responded_at, "
+            "          to_char(arrive_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS arrive_at, "
+            "          to_char(leave_at  AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS leave_at, "
+            "          to_char(arrive_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS arrive_label, "
+            "          to_char(leave_at  AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS leave_label",
             {std::to_string(fhEventId),
              std::to_string(targetPersonId),
-             response});
+             response,
+             arriveIso, leaveIso,
+             setArrive ? "true" : "false", setLeave ? "true" : "false"});
 
         if (row.empty()) {
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
@@ -1880,6 +1925,10 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             {"response",      r0["response"].as<std::string>()},
             {"created_via",   r0["created_via"].as<std::string>()},
             {"responded_at",  r0["responded_at"].as<std::string>()},
+            {"arrive_at",     textOrNull(r0, "arrive_at")},
+            {"leave_at",      textOrNull(r0, "leave_at")},
+            {"arrive_label",  textOrNull(r0, "arrive_label")},
+            {"leave_label",   textOrNull(r0, "leave_label")},
         };
         return jsonOk({{"rsvp", rsvp}, {"standby_dropped", standby}});
     } catch (const std::exception& e) {

@@ -1503,7 +1503,7 @@ class GameCenterScreen extends Screen {
       return `<div style="font-size:0.68rem; opacity:0.65; margin-top:2px;">
         Practices ${s.practicesAttended}/${s.practicesRecentTotal}
         ${s.practicesUpcomingTotal > 0 ? `· proj ${s.practicesProjected}/${s.practicesUpcomingTotal}` : ''}
-        · Game ${rsvpBadge(s.gameRsvp)}
+        · Game ${rsvpBadge(s.gameRsvp)}${this._rsvpTimeChips(playerId)}
         ${practicePills(s)}
       </div>`;
     };
@@ -1692,6 +1692,23 @@ class GameCenterScreen extends Screen {
   // same POST/DELETE /api/calendar/rsvp that #my answers with, so there
   // is one RSVP, shown in two places.  Nothing renders for a viewer the
   // game does not expect (a coach who does not play, an admin).
+  // Late / leaving early (migration 436): the yellow "arrives 7:20" /
+  // "leaves 8:30" chips a player set on #my, beside the game RSVP badge.
+  // Read from the same feed row #my writes (this.games → ev.rsvps).
+  _rsvpTimeChips(playerId) {
+    const ev = (this.games || []).find(g => g.match_id === this.matchId);
+    const personId = this._personIdFor(playerId);
+    if (!ev || !personId) return '';
+    const r = (Array.isArray(ev.rsvps) ? ev.rsvps : []).find(x => x && x.person_id === personId);
+    if (!r || (!r.arrive_label && !r.leave_label)) return '';
+    const mc = window.MessageCopy;
+    const t = (tier, tokens, fb) => (mc && mc.block && mc.block('rsvp_times', tier, tokens)) || fb;
+    const chip = (text) => `<span style="display:inline-block; margin-left:5px; padding:1px 6px; border-radius:999px;
+        background:#fde68a; color:#1f2937; font-size:0.62rem; font-weight:800; vertical-align:middle;">${this.escapeHtml(text)}</span>`;
+    return (r.arrive_label ? chip(t('chip_arrive', { time: r.arrive_label }, `arrives ${r.arrive_label}`)) : '')
+         + (r.leave_label  ? chip(t('chip_leave',  { time: r.leave_label },  `leaves ${r.leave_label}`))  : '');
+  }
+
   _myAvailabilityRows() {
     const ev = (this.games || []).find(g => g.match_id === this.matchId);
     if (!ev) return null;
