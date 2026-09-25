@@ -27,7 +27,16 @@ class RoleSelectionScreen extends Screen {
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
         <button class="btn btn-lg btn-primary" data-role="coach" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🏆</span>
+          <span style="font-size: 2rem; line-height: 1; display: inline-flex;" aria-hidden="true">
+            <!-- a coach's whistle — no emoji exists for one -->
+            <svg width="1em" height="1em" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+              <path d="M3 12h13v4.5" />
+              <path d="M16 12l7-4" />
+              <circle cx="19.5" cy="20" r="7.5" fill="currentColor" fill-opacity="0.18" />
+              <circle cx="19.5" cy="20" r="2.2" fill="currentColor" stroke="none" />
+              <path d="M3 12v4.5h13" />
+            </svg>
+          </span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Coach</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">Manage your teams</div>
