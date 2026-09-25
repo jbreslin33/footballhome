@@ -97,7 +97,7 @@ class CoachHomeScreen extends Screen {
     ];
     renderInto('#section-game-model', gameModelTiles);
 
-    this._dashTiles = [...weekTiles, ...teamsTiles, ...rosterTiles, ...gameModelTiles];
+    this._dashTiles = [...teamsTiles, ...rosterTiles, ...gameModelTiles];
 
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
