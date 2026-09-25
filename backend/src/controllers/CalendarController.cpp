@@ -909,6 +909,27 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     -- still deliberately NOT a pass here.
                     OR fh_event_staff(fe.id, $1::int)
                 ) AS is_mine,
+                -- Which hat the viewer wears on THIS event (migration 438,
+                -- owner 2026-09-25: dual-role people need "COACH" /
+                -- "PLAYER" on each card; staff see "STAFF" on teams they
+                -- neither coach nor play for).  Coaching a tagged team
+                -- beats playing on one; an invite beats staff.  NULL for a
+                -- guardian-only card — the child's row says who.
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1 FROM fh_event_teams fet
+                        JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
+                        JOIN coaches co ON co.id = tc.coach_id
+                        WHERE fet.fh_event_id = fe.id AND co.person_id = $1::int
+                    ) THEN 'coach'
+                    WHEN EXISTS (
+                        SELECT 1 FROM fh_event_teams fet
+                        JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
+                        WHERE fet.fh_event_id = fe.id AND tp.person_id = $1::int
+                    ) THEN 'player'
+                    WHEN fh_event_invited(fe.id, $1::int) THEN 'invited'
+                    WHEN fh_event_staff(fe.id, $1::int) THEN 'staff'
+                END AS my_role,
                 -- Guardian visibility (2026-08-28).  A parent of a
                 -- rostered child holds no team_persons row of their own,
                 -- so `eligible` is false for them and every one of their
@@ -1486,6 +1507,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["my_leave_label"]    = textOrNull(row, "my_leave_label");
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
             ev["is_mine"]           = row["is_mine"].as<bool>();
+            ev["my_role"]           = textOrNull(row, "my_role");
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
             ev["guardian_children"] = textOrNull(row, "guardian_children");
             ev["schedule_window_end"] = textOrNull(row, "schedule_window_end");

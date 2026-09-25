@@ -1365,6 +1365,8 @@ class MyScreen extends Screen {
       ? [arrival ? `Arrival ${arrival}` : '', warmup ? `Warmup ${warmup}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')
       : '';
     const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · ')].filter(Boolean);
+    // Role pill (migration 438): which hat the viewer wears on this event.
+    const rolePillHtml = this._rolePillHtml(ev.my_role);
 
     return `
       <div style="background: rgba(255,255,255,0.04);
@@ -1376,7 +1378,7 @@ class MyScreen extends Screen {
           ${crestHtml}
           <div style="min-width:160px; flex:1 1 160px;">
             ${mainTeamHtml}
-            <div style="font-weight:700; font-size:0.7rem; line-height:1.2;">${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)}</div>
+            <div style="font-weight:700; font-size:0.7rem; line-height:1.2;">${rolePillHtml}${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)}</div>
             <div style="font-size:0.66rem; font-weight:600; line-height:1.25; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(title)}</div>
             ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
             ${venue ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📍 ${this.escapeHtml(venue)}</div>` : ''}
@@ -1481,6 +1483,24 @@ class MyScreen extends Screen {
   // Current response for `personId` (null = the caller's own row) on
   // `ev`, used to decide whether a click is a new answer or a deselect
   // of the button already showing active.
+  // "COACH" / "PLAYER" / "STAFF" / "INVITED" at the head of a card, from
+  // the feed's my_role (migration 438); words are message_templates
+  // kind 'my_role'.  Nothing for a guardian-only card.
+  _rolePillHtml(role) {
+    if (!role) return '';
+    const mc = window.MessageCopy;
+    const word = (mc && mc.block && mc.block('my_role', role)) || String(role).toUpperCase();
+    const colors = {
+      coach:   ['rgba(245,158,11,0.22)', '#fcd34d', 'rgba(245,158,11,0.6)'],
+      player:  ['rgba(59,130,246,0.22)', '#bfdbfe', 'rgba(96,165,250,0.6)'],
+      staff:   ['rgba(168,85,247,0.22)', '#e9d5ff', 'rgba(192,132,252,0.6)'],
+      invited: ['rgba(245,158,11,0.18)', '#fcd34d', 'rgba(245,158,11,0.55)'],
+    };
+    const [bg, fg, border] = colors[role] || colors.player;
+    return `<span style="display:inline-block; margin-right:6px; padding:1px 6px; border-radius:999px; vertical-align:middle;
+                   background:${bg}; color:${fg}; border:1px solid ${border}; font-size:0.56rem; font-weight:800; letter-spacing:0.05em;">${this.escapeHtml(word)}</span>`;
+  }
+
   // ── Late / leaving early (migration 436) ──────────────────────────
   // The event owns the default times (arrival_at from the league offsets,
   // ends_at from the calendar); the RSVP owns the exception.  A set time
