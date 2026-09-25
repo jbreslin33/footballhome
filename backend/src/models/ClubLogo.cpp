@@ -212,7 +212,7 @@ json ClubLogo::board() {
     json unresolved = json::array();
     auto un = db_->query(R"SQL(
         SELECT fe.opponent, count(*) AS games,
-               to_char(max(ge.start_at) AT TIME ZONE 'America/New_York', 'Mon DD') AS last_label
+               to_char(max(ge.starts_at) AT TIME ZONE 'America/New_York', 'Mon DD') AS last_label
           FROM fh_events fe
           JOIN gcal_events ge ON ge.id = fe.gcal_event_id
          WHERE COALESCE(fe.opponent, '') <> ''
@@ -227,7 +227,7 @@ json ClubLogo::board() {
            AND NOT EXISTS (SELECT 1 FROM opponent_logo_cache olc
                             WHERE LOWER(BTRIM(olc.opponent_text)) = LOWER(BTRIM(fe.opponent)) AND olc.logo_url <> '')
          GROUP BY fe.opponent
-         ORDER BY max(ge.start_at) DESC)SQL");
+         ORDER BY max(ge.starts_at) DESC)SQL");
     for (const auto& r : un) {
         unresolved.push_back({
             {"opponent",   r["opponent"].c_str()},
