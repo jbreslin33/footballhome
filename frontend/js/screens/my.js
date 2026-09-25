@@ -1231,8 +1231,8 @@ class MyScreen extends Screen {
               Please answer so the coach knows if ${this.escapeHtml(first)} is available.
             </div>` : '';
       return `
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:2px;">
-          <div style="font-size:0.62rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:0.66rem; font-weight:700; line-height:1.2; opacity:0.95; white-space:normal; overflow-wrap:break-word;">
             👤 ${this.escapeHtml(child.name || 'Your player')}${callupHtml}
             ${sideHtml(child.person_id, `${first} is`)}
           </div>
@@ -1253,10 +1253,25 @@ class MyScreen extends Screen {
     const ownSide = sides.find(x => !guardianTargets.some(c => c.person_id === x.person_id));
     const ownSideHtml = ownSide ? sideHtml(ownSide.person_id, "You're") : '';
 
+    // A parent who also plays answers for two or more people on one card
+    // (owner 2026-09-25: "for me and grace Breslin it needs to be clearer
+    // who is who … event details at top then individual ones … stacking").
+    // So: details in the header, then one named row per person, each with
+    // its own Go / No and arrive-leave times.  A lone player keeps the
+    // compact layout with Go / No beside the details.
+    const stacked = guardianTargets.length > 0;
+    const viewerFirst = (this.viewer && this.viewer.first_name) ? String(this.viewer.first_name) : '';
+    const ownLabel = viewerFirst ? `${viewerFirst} (you)` : 'You';
+
     const evYesKey  = `${ev.fh_event_id}:me:yes`;
     const evNoKey   = `${ev.fh_event_id}:me:no`;
     const evYesSaving = this.eventSaving.has(evYesKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
     const evNoSaving  = this.eventSaving.has(evNoKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
+    const ownButtonsHtml = (!isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(null))) || `
+      ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
+                 `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
+      ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
+                 `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}`;
 
     const dateStr = this._eventDateStr(ev.starts_at);
     const timeStr = this._eventTimeStr(ev.starts_at);
@@ -1366,18 +1381,11 @@ class MyScreen extends Screen {
             ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
             ${venue ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📍 ${this.escapeHtml(venue)}</div>` : ''}
             ${notes ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📝 ${this.escapeHtml(notes)}</div>` : ''}
-            ${ownSideHtml}
-            ${guardianRowsHtml}
+            ${stacked ? '' : ownSideHtml}
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:normal; overflow-wrap:break-word;">${compactMeta}</div>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-wrap:wrap; justify-content:flex-end; flex-shrink:0;">
-            ${showOwnRsvpRow ? (
-              (!isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(null))) || `
-              ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
-                         `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
-              ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
-                         `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
-            `) : ''}
+            ${!stacked && showOwnRsvpRow ? ownButtonsHtml : ''}
             <button type="button" data-view-event-id="${ev.fh_event_id}" style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
               ${this.escapeHtml(viewLabel)}
             </button>
@@ -1391,7 +1399,22 @@ class MyScreen extends Screen {
             ` : ''}
           </div>
         </div>
-        ${showOwnRsvpRow && per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
+        ${!stacked && showOwnRsvpRow && per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
+        ${stacked ? `
+          <div style="margin-top:4px;">
+            ${showOwnRsvpRow ? `
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:0.66rem; font-weight:700; line-height:1.2; opacity:0.95;">
+                  👤 ${this.escapeHtml(ownLabel)}
+                  ${ownSideHtml}
+                </div>
+                <div style="display:flex; gap:3px; flex-shrink:0;">${ownButtonsHtml}</div>
+              </div>
+              ${per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
+            ` : ''}
+            ${guardianRowsHtml}
+          </div>
+        ` : ''}
         ${isExpanded ? `
           <div style="margin-top: 6px; padding: 6px 7px; border-top: 1px solid rgba(255,255,255,0.08); display:grid; gap: 5px;">
             <div style="font-size:0.64rem; line-height:1.3; opacity:0.82;">${this.escapeHtml(detailLines.join(' • '))}</div>
@@ -2029,6 +2052,7 @@ class MyScreen extends Screen {
       return;
     }
     this.events = upRes.events || [];
+    this.viewer = upRes.viewer || null;      // {person_id, first_name, last_name} after view-as
     this.dues   = upRes.dues   || this.dues || {};
     if (this.eventsRange === 'current') {
       this._renderEvents();

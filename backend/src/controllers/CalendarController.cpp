@@ -1652,6 +1652,15 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             }
         }
 
+        json viewer = nullptr;
+        if (personId > 0) {
+            auto vp = db->query("SELECT first_name, last_name FROM persons WHERE id = $1::int", {std::to_string(personId)});
+            if (!vp.empty()) {
+                viewer = {{"person_id", personId},
+                          {"first_name", textOrNull(vp[0], "first_name")},
+                          {"last_name",  textOrNull(vp[0], "last_name")}};
+            }
+        }
         json body = {
             {"days",   days},
             {"count",  events.size()},
@@ -1661,6 +1670,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             // member's team-scoped list from the anonymous unfiltered one.
             {"signed_in", personId > 0},
             {"fixtures", std::move(fixtures)},
+            // Who the page is for (after view-as), so a parent who also
+            // plays sees "James (you)" and "Grace" as separate rows.
+            {"viewer", viewer},
         };
         if (!startParam.empty()) {
             body["start"] = startParam;
