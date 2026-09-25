@@ -7,9 +7,11 @@
 // and a coach's own availability is their My tile on the role picker —
 // see CalendarController::isEventCoachOrAdmin). This screen also hosts
 // club-wide roster/reminders/game-model tools (moved off admin-club so
-// coach work is separate from club-admin work), plus a My Teams entry
-// point into the existing per-team flow (schedule, practices, matches,
-// lineups via context-selection → team-dashboard).
+// coach work is separate from club-admin work) and the attendance report.
+// The "My Teams" (#context-selection per-team flow) and "Game-Day
+// Analytics" (#mens-game-eligibility) tiles went 2026-09-25 (owner: "get
+// rid of button and code on coach-home for these") — lineups live in the
+// top-level Game Center, attendance in #attendance.
 //
 // Section order (2026-08-26): the Teams board (#teams) comes first —
 // owner: "for coach role the first thing at top should be #Teams …
@@ -17,11 +19,8 @@
 // under a "Roster" heading, and its tile read "Team Players" while the
 // route it opens is #teams; the tile now matches the route it lands on.
 //
-// The two are easy to confuse, so they are named for what you get:
-//   Teams    (#teams)             — the whole board, every player, every
-//                                   team, where you assign and move people.
-//   My Teams (#context-selection) — pick one team you coach and open its
-//                                   schedule / practices / matches / lineups.
+// Teams (#teams) is the whole board: every player, every team, where you
+// assign and move people.
 class CoachHomeScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -41,9 +40,9 @@ class CoachHomeScreen extends Screen {
         </p>
         <div id="section-rosters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚽ My Teams</h3>
+        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📊 Reports</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Schedule, practices, matches, attendance, and lineups for a team you coach.
+          How reliably each player answers and turns up, for the teams you coach.
         </p>
         <div id="section-teams" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
@@ -77,8 +76,6 @@ class CoachHomeScreen extends Screen {
     };
 
     const teamsTiles = [
-      { id: 'teams', target: 'context-selection', params: { role: 'coach' }, icon: '⚽', label: 'My Teams', description: 'Pick a team you coach to open its schedule, practices, matches, and lineups' },
-      { id: 'game-eligibility', target: 'mens-game-eligibility', params: { clubId: this.clubId, clubName: this.clubName }, icon: '🎯', label: 'Game-Day Analytics', description: 'Projected APSL & Liga 1 starting lineups + bench, based on attendance-tier probability' },
       { id: 'attendance-report', target: 'reports', params: {}, icon: '📊', label: 'Attendance Report', description: 'RSVP rate, attendance and reliability per player for the teams you coach — sort to find who has gone quiet' },
     ];
     renderInto('#section-teams', teamsTiles);
