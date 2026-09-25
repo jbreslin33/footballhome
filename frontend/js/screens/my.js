@@ -122,10 +122,10 @@ class MyScreen extends Screen {
         </div>
       </div>
       <div style="padding: 0 8px;">
+        <div id="my-push-banner"></div>
         <section id="my-chat" style="margin-bottom: 6px;"></section>
         <section id="my-groupme" style="margin-bottom: 6px;" hidden></section>
         <div id="my-dues-banner"></div>
-        <div id="my-push-banner"></div>
         <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
         </section>
@@ -332,11 +332,6 @@ class MyScreen extends Screen {
         e.stopPropagation();
         this.chatExpanded = !this.chatExpanded;
         this._renderChatMessages();
-        return;
-      }
-      if (target.closest('#push-enable-btn')) {
-        e.stopPropagation();
-        this._onEnablePushClick();
         return;
       }
       if (target.closest('#push-test-btn')) {
@@ -1542,11 +1537,6 @@ class MyScreen extends Screen {
                     background: rgba(15,23,42,0.75);">
           <div id="chat-title" style="font-size:0.72rem; font-weight:700; opacity:0.9;">Chat</div>
           <div style="display:flex; align-items:center; gap:6px;">
-            <button id="push-enable-btn" type="button" style="display:none; padding:2px 7px;
-                    border-radius:999px; border:1px solid rgba(255,255,255,0.16);
-                    background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;">
-              🔔 Enable notifications
-            </button>
             <button id="push-test-btn" type="button" style="display:none; padding:2px 7px;
                     border-radius:999px; border:1px solid rgba(255,255,255,0.16);
                     background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600;"
@@ -1596,96 +1586,23 @@ class MyScreen extends Screen {
   // state to match reality: already subscribed, blocked, unsupported
   // (bare Safari on iOS — Push API only exists there once "installed"
   // via Add to Home Screen), or ready to opt in.
+  // The on/off control is the PushOptIn toggle at the top of the page;
+  // this only decides whether the "send test" button shows (subscribed
+  // on this device).
   async _initPushUI() {
-    const btn = this.find('#push-enable-btn');
     const testBtn = this.find('#push-test-btn');
-    if (!btn) return;
-
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-        || window.navigator.standalone === true;
-      if (isIOS && !isStandalone) {
-        btn.style.display = '';
-        btn.disabled = true;
-        btn.textContent = '🔔 Add to Home Screen to enable';
-        btn.title = 'On iPhone/iPad: Share → Add to Home Screen, then open it from there to turn on notifications.';
-      }
-      // Any other unsupported browser: leave the button hidden — no
-      // clean self-serve fix to point them at.
-      return;
-    }
-
-    if (Notification.permission === 'denied') {
-      btn.style.display = '';
-      btn.disabled = true;
-      btn.textContent = '🔔 Notifications blocked';
-      btn.title = "You've blocked notifications for this site — re-enable them in your browser's site settings to change that.";
-      return;
-    }
-
+    if (!testBtn) return;
+    testBtn.style.display = 'none';
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      if (sub) {
-        btn.style.display = '';
-        btn.disabled = true;
-        btn.textContent = '🔔 Notifications on';
-        if (testBtn) testBtn.style.display = '';
-        return;
-      }
+      if (sub) testBtn.style.display = '';
     } catch (err) {
       console.warn('[my] push subscription check failed:', err);
     }
-
-    btn.style.display = '';
-    btn.disabled = false;
-    btn.textContent = '🔔 Enable notifications';
   }
 
-  // Tap handler: requests permission (must be a user gesture — this
-  // IS one), subscribes with the server's VAPID key, and saves the
-  // subscription. Every step is one deliberate user action; there is
-  // no path that sends a push without it.
-  async _onEnablePushClick() {
-    const btn = this.find('#push-enable-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Enabling…'; }
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        if (btn) { btn.disabled = true; btn.textContent = '🔔 Notifications blocked'; }
-        return;
-      }
-      const { key } = await this._fetch('/api/push/vapid-public-key');
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: this._urlBase64ToUint8Array(key),
-      });
-      const subJson = sub.toJSON();
-      await this._fetch('/api/my/push-subscriptions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          endpoint: subJson.endpoint,
-          keys: subJson.keys,
-          userAgent: navigator.userAgent,
-        }),
-      });
-      if (btn) { btn.disabled = true; btn.textContent = '🔔 Notifications on'; }
-      const testBtn = this.find('#push-test-btn');
-      if (testBtn) testBtn.style.display = '';
-      const banner = this.find('#my-push-banner');
-      if (banner) banner.innerHTML = '';
-    } catch (err) {
-      console.error('[my] enable notifications failed:', err);
-      if (btn) { btn.disabled = false; btn.textContent = '🔔 Enable notifications'; }
-    }
-  }
-
-  // Tap handler: POSTs to /api/my/push-test, which always targets the
-  // caller's own person_id — there is no way to point this at anyone
-  // else, so it's safe to expose with no confirmation dialog.
   async _onPushTestClick() {
     const btn = this.find('#push-test-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
