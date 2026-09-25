@@ -839,7 +839,7 @@ class MyScreen extends Screen {
     const goingAll       = rsvps.filter(r => r && r.response === 'yes');
     const going          = goingAll.filter(r => r.dues_eligible !== false);
     const goingIneligible= goingAll.filter(r => r.dues_eligible === false);
-    const viewerIsStaff  = !this.auth?.viewAsPersonId
+    const viewerIsStaff  = this._staffExtrasShown()
                         && String(this.navigation?.context?.role || this.auth?.user?.role || '').toLowerCase() !== 'player';
     // The bulk Text All / Text Going / Email Going buttons are for club
     // admins only (owner 2026-09-25: "they should not have option to email
@@ -978,7 +978,7 @@ class MyScreen extends Screen {
   // where this event's coaches and club admins mark attendance and send
   // 🎟 invites.  Shown once attendance has loaded and says they may.
   _eventCenterLinkHtml(ev, att) {
-    if (!att || !att.canMark || this.auth?.viewAsPersonId) return '';
+    if (!att || !att.canMark || !this._staffExtrasShown()) return '';
     return `
       <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
         <button type="button" data-event-center="${ev.fh_event_id}"
@@ -997,6 +997,14 @@ class MyScreen extends Screen {
   // it at top of page so it don't clutter my screen").
   static ADMIN_TOOLS_KEY = 'fh.my.adminTools';
 
+  // Staff extras show for a coach always, for an admin only with the
+  // toggle on, and never in view-as (owner: by default the page is a
+  // player's page).
+  _staffExtrasShown() {
+    if (this.auth?.viewAsPersonId) return false;
+    return !this._viewerIsAdmin() || this._adminToolsShown();
+  }
+
   _adminToolsShown() {
     try { return localStorage.getItem(MyScreen.ADMIN_TOOLS_KEY) === '1'; } catch (_) { return false; }
   }
@@ -1008,7 +1016,7 @@ class MyScreen extends Screen {
     const on = this._adminToolsShown();
     const mc = window.MessageCopy;
     const t = (tier, fb) => (mc && mc.block && mc.block('my_admin_tools', tier)) || fb;
-    const text = on ? t('on', 'Admin tools on — text & email everyone on an event') : t('off', 'Admin tools off');
+    const text = on ? t('on', 'Admin tools on — text & email everyone, attendance door, dues flags') : t('off', "Admin tools off — this page looks like a player's");
     host.innerHTML = `
       <div style="display:flex; align-items:center; gap:8px; padding:4px 2px 6px; margin:0 0 6px; font-size:0.74rem; line-height:1.2; color:#dbeafe;">
         <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
