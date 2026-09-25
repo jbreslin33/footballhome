@@ -35,7 +35,7 @@ class RoleSelectionScreen extends Screen {
         </button>
 
         <button class="btn btn-lg btn-primary" data-role="tactical" id="rs-tactical" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🧠</span>
+          <span style="font-size: 2rem;">♟️</span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Tactical</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">Game model, practice plans, days, exercises, and the tactical board</div>

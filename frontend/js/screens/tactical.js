@@ -26,7 +26,7 @@ class TacticalScreen extends Screen {
     div.innerHTML = `
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🧠 Tactical</h1>
+        <h1>♟️ Tactical</h1>
         <p class="subtitle">The game model, the weekly plan, the exercises, and the board</p>
       </div>
       <div style="padding: var(--space-4);">
