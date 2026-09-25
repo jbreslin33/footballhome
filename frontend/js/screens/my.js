@@ -812,7 +812,8 @@ class MyScreen extends Screen {
     const goingAll       = rsvps.filter(r => r && r.response === 'yes');
     const going          = goingAll.filter(r => r.dues_eligible !== false);
     const goingIneligible= goingAll.filter(r => r.dues_eligible === false);
-    const viewerIsStaff  = String(this.navigation?.context?.role || this.auth?.user?.role || '').toLowerCase() !== 'player';
+    const viewerIsStaff  = !this.auth?.viewAsPersonId
+                        && String(this.navigation?.context?.role || this.auth?.user?.role || '').toLowerCase() !== 'player';
     // The bulk Text All / Text Going / Email Going buttons are for club
     // admins only (owner 2026-09-25: "they should not have option to email
     // and text everyone … for now only i need that").  Coaches nudge from
