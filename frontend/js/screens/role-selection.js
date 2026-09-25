@@ -125,8 +125,8 @@ class RoleSelectionScreen extends Screen {
         <button class="btn btn-lg btn-primary" data-role="rsvps" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">✅</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">RSVPs</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Who owes an answer — remind by text or email with their events + sign-in link</div>
+            <div style="font-weight: bold;">RSVP Reminders</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Who owes an answer — players, coaches, staff — remind by text or email with their events + sign-in link</div>
           </div>
         </button>
 

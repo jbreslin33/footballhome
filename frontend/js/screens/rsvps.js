@@ -90,6 +90,19 @@ class RsvpBoardScreen extends Screen {
     return { worst: 'Worst RSVP %', open: 'Most unanswered now', quiet: 'Longest since last RSVP', nagged: 'Most reminders needed', name: 'Name' };
   }
 
+  // COACH / STAFF pill beside a name (players get none); "dual role" when
+  // the same person is on the board more than one way (owner 2026-09-25).
+  // Words are message_templates kind 'my_role' (mig 438).
+  _rolePill(p) {
+    if (!p || !p.role || (p.role === 'player' && !p.dual_role)) return '';
+    const mc = window.MessageCopy;
+    const word = (role) => (mc && mc.block && mc.block('my_role', role)) || String(role).toUpperCase();
+    const colors = { coach: ['rgba(245,158,11,0.22)', '#fcd34d'], staff: ['rgba(168,85,247,0.22)', '#e9d5ff'], player: ['rgba(59,130,246,0.22)', '#bfdbfe'] };
+    const [bg, fg] = colors[p.role] || colors.player;
+    return `<span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:999px; background:${bg}; color:${fg};
+                   font-size:0.6rem; font-weight:800; letter-spacing:0.05em; vertical-align:middle;">${this.escapeHtml(word(p.role))}${p.dual_role ? ' +' : ''}</span>`;
+  }
+
   render() {
     const div = document.createElement('div');
     div.className = 'screen';
@@ -133,8 +146,8 @@ class RsvpBoardScreen extends Screen {
       </style>
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>✅ RSVPs</h1>
-        <p class="subtitle">Who owes an answer — remind them with their unanswered events and a sign-in link</p>
+        <h1>✅ RSVP Reminders</h1>
+        <p class="subtitle">Who owes an answer — players, coaches and staff — remind them with their unanswered events and a sign-in link</p>
       </div>
       <div style="padding: var(--space-4); max-width: 1500px; margin: 0 auto;">
         <!-- One labelled row per pill group (owner 2026-09-22: "all time
@@ -648,7 +661,7 @@ class RsvpBoardScreen extends Screen {
       <div class="rb-card" data-card="${p.person_id}">
         <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
           <div style="min-width:0;">
-            <div style="font-weight:800;">${this.escapeHtml(p.first_name)} ${this.escapeHtml(p.last_name)}</div>
+            <div style="font-weight:800;">${this.escapeHtml(p.first_name)} ${this.escapeHtml(p.last_name)}${this._rolePill(p)}</div>
             <div style="font-size:0.72rem; opacity:0.65;">${this.section === 'all' && p.section ? this.escapeHtml(RsvpBoardScreen.SECTIONS[p.section] || p.section) + ' · ' : ''}${teams}${p.youth ? ' · youth' : ''}</div>
           </div>
           <div style="text-align:right;">
@@ -696,7 +709,7 @@ class RsvpBoardScreen extends Screen {
       const trCls = [ev.still_open ? '' : 'past', day && ev.day === day ? 'pick' : ''].filter(Boolean).join(' ');
       return `<tr${trCls ? ` class="${trCls}"` : ''}>
                 <td style="white-space:nowrap;">${this.escapeHtml(ev.when)}</td>
-                <td>${this.escapeHtml(ev.what)}</td>
+                <td>${this.escapeHtml(ev.what)}${ev.role_label ? ` <span style="font-size:0.6rem; font-weight:800; letter-spacing:0.04em; opacity:0.75;">· ${this.escapeHtml(ev.role_label)}</span>` : ''}</td>
                 <td>${status}</td>
               </tr>`;
     }).join('');

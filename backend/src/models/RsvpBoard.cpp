@@ -56,7 +56,13 @@ const char* kBaseCtes = R"SQL(
         JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id
        WHERE plm.ended_at IS NULL AND lp.category = 'girls'
     ), roster AS (
-      SELECT tp.person_id, tp.team_id, tp.joined_at
+      -- Everyone who owes an answer on a board team (owner 2026-09-25: "i
+      -- need to be able to remind coaches and staff. just like anyone
+      -- else"): rostered players (role rank 2), the team's live coaches
+      -- (rank 1), and club staff (mig 430, rank 3) for every board team of
+      -- their club.  role_rank picks the label on an event a dual-role
+      -- person reaches more than one way — coaching beats playing.
+      SELECT tp.person_id, tp.team_id, tp.joined_at, 2 AS role_rank
         FROM team_persons tp
         JOIN tm ON tm.id = tp.team_id
         LEFT JOIN roster_statuses rs ON rs.id = tp.roster_status_id
@@ -69,9 +75,23 @@ const char* kBaseCtes = R"SQL(
          -- girls, so a U8 Travel tile read 5/1/1 for an 11-player team
          -- (owner 2026-09-24: "there should be 11 players on team right?").
          AND ($1 <> 'G' OR EXISTS (SELECT 1 FROM girl g WHERE g.person_id = tp.person_id))
+      UNION ALL
+      SELECT c.person_id, tc.team_id, tc.started_at, 1
+        FROM team_coaches tc
+        JOIN coaches c ON c.id = tc.coach_id
+        JOIN tm ON tm.id = tc.team_id
+       WHERE tc.ended_at IS NULL
+         AND ($4::int = 0 OR c.person_id = $4::int)
+      UNION ALL
+      SELECT cs.person_id, tm.id, cs.started_at, 3
+        FROM club_staff cs
+        JOIN teams t ON t.club_id = cs.club_id
+        JOIN tm ON tm.id = t.id
+       WHERE cs.ended_at IS NULL
+         AND ($4::int = 0 OR cs.person_id = $4::int)
     ), expected AS (
-      SELECT DISTINCT r.person_id, fe.id AS fh_event_id, fe.kind, fe.opponent,
-             fe.fh_notes, ge.starts_at, ge.ends_at
+      SELECT r.person_id, fe.id AS fh_event_id, fe.kind, fe.opponent,
+             fe.fh_notes, ge.starts_at, ge.ends_at, MIN(r.role_rank) AS role_rank
         FROM roster r
         JOIN tm ON tm.id = r.team_id
         JOIN fh_event_teams fet ON fet.team_id = r.team_id
@@ -89,6 +109,18 @@ const char* kBaseCtes = R"SQL(
                             AND (s.team_id IS NULL OR s.team_id = r.team_id)
                             AND s.starts_at <= ge.starts_at
                             AND (s.ends_at IS NULL OR s.ends_at > ge.starts_at))
+       GROUP BY r.person_id, fe.id, fe.kind, fe.opponent, fe.fh_notes, ge.starts_at, ge.ends_at
+    ), expected_roles AS (
+      -- The role on each event, and whether this person wears more than
+      -- one hat across the window (then every line names the hat, in the
+      -- reminder too — owner 2026-09-25: "for dual role people … showing
+      -- what is missing and the role label for it in text/email").  The
+      -- words are message_templates kind 'my_role' (mig 438).
+      SELECT e.*,
+             CASE e.role_rank WHEN 1 THEN 'coach' WHEN 2 THEN 'player' ELSE 'staff' END AS role,
+             EXISTS (SELECT 1 FROM expected x
+                      WHERE x.person_id = e.person_id AND x.role_rank <> e.role_rank) AS dual_role
+        FROM expected e
     ), week_events AS (
       -- Every event of the released week (Monday → release window end)
       -- the player owes an answer to, with their answer if any (owner
@@ -107,15 +139,26 @@ const char* kBaseCtes = R"SQL(
              CASE e.kind WHEN 'match'      THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
                          WHEN 'intrasquad' THEN 'Intra Squad'
                          ELSE 'Practice' END AS what,
+             e.role, e.dual_role,
+             CASE WHEN e.dual_role
+                  THEN COALESCE((SELECT m.body FROM message_templates m
+                                  WHERE m.kind = 'my_role' AND m.tier = e.role AND m.is_active
+                                  ORDER BY m.sort_order LIMIT 1), upper(e.role))
+                  END AS role_label,
              to_char(e.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM')
                || ' — '
                || CASE e.kind WHEN 'match'      THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
                               WHEN 'intrasquad' THEN 'Intra Squad'
-                              ELSE 'Practice' END AS line,
+                              ELSE 'Practice' END
+               || CASE WHEN e.dual_role
+                       THEN ' · ' || COALESCE((SELECT m.body FROM message_templates m
+                                                WHERE m.kind = 'my_role' AND m.tier = e.role AND m.is_active
+                                                ORDER BY m.sort_order LIMIT 1), upper(e.role))
+                       ELSE '' END AS line,
              CASE WHEN e.ends_at > now() AND e.kind NOT IN ('match','intrasquad')
                   THEN NULLIF(BTRIM(e.fh_notes), '') END AS message_notes,
              rv.response, rv.created_via, rv.responded_at
-        FROM expected e
+        FROM expected_roles e
         LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
        WHERE e.starts_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York'
     ), week_unanswered AS (
@@ -155,7 +198,13 @@ json RsvpBoard::list(const std::string& sectionCode,
            COALESCE(s.standing, 0) AS standing,
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', tm.id, 'label', COALESCE(tm.label, tm.name))
                                       ORDER BY tm.board_sort_order), '[]'::jsonb)
-              FROM roster r JOIN tm ON tm.id = r.team_id WHERE r.person_id = p.id)::text AS teams,
+              FROM (SELECT DISTINCT team_id FROM roster WHERE person_id = p.id) r
+              JOIN tm ON tm.id = r.team_id)::text AS teams,
+           -- The hat this person mostly wears on the board (coach > player > staff)
+           -- and whether they wear more than one (owner 2026-09-25).
+           (SELECT CASE MIN(e.role_rank) WHEN 1 THEN 'coach' WHEN 2 THEN 'player' WHEN 3 THEN 'staff' END
+              FROM expected e WHERE e.person_id = p.id) AS role,
+           (SELECT count(DISTINCT e.role_rank) > 1 FROM expected e WHERE e.person_id = p.id) AS dual_role,
            fh_dues_eligible(p.id) AS dues_eligible,
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line,
                                                          'day', to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'))
@@ -167,7 +216,8 @@ json RsvpBoard::list(const std::string& sectionCode,
               FROM missed_events o WHERE o.person_id = p.id)::text AS missed_events,
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', w.fh_event_id, 'when', w."when", 'what', w.what,
                                                          'day', to_char(w.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'),
-                                                         'still_open', w.still_open, 'response', w.response, 'via', w.created_via)
+                                                         'still_open', w.still_open, 'response', w.response, 'via', w.created_via,
+                                                         'role', w.role, 'role_label', w.role_label)
                                       ORDER BY w.starts_at), '[]'::jsonb)
               FROM week_events w WHERE w.person_id = p.id)::text AS week_events,
            to_char(lr.responded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_rsvp_at, lr.created_via AS last_rsvp_via, lr.response AS last_rsvp_response,
@@ -250,6 +300,8 @@ json RsvpBoard::list(const std::string& sectionCode,
             {"youth",             !row["parent_person_id"].is_null()},
             {"parent_first_name", row["parent_first_name"].c_str()},
             {"teams",             json::parse(row["teams"].c_str())},
+            {"role",              textOrNull(row, "role")},
+            {"dual_role",         !row["dual_role"].is_null() && row["dual_role"].as<bool>()},
             {"expected",          expected},
             {"answered",          answered},
             {"standing",          row["standing"].as<long long>()},
