@@ -27,7 +27,10 @@ class RoleSelectionScreen extends Screen {
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
         <button class="btn btn-lg btn-primary" data-role="coach" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🧑‍🏫</span>
+          <span style="display: inline-flex; flex-direction: column; align-items: center; line-height: 1;">
+            <span style="font-size: 2rem;">🧑</span>
+            <span style="font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; margin-top: 2px;">Coach</span>
+          </span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Coach</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">Manage your teams</div>
