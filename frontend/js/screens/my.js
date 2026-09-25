@@ -898,9 +898,9 @@ class MyScreen extends Screen {
             ${this._bulkEmailGoingBtnHtml(ev, going, isPast)}
           </div>
         ` : ''}
-        <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
-          <div>${groupHtml('Players Going', playersGoing, 'going', rowsHtml(playersGoing))}</div>
+        <div style="display:grid; gap:10px;">
           <div>${groupHtml('Coaches Going', coachesGoing, 'going', rowsHtml(coachesGoing))}</div>
+          <div>${groupHtml('Players Going', playersGoing, 'going', rowsHtml(playersGoing))}</div>
         </div>
         ${callupsAvailable.length ? `
           <div style="margin-top:8px;">
@@ -924,9 +924,9 @@ class MyScreen extends Screen {
               <span style="font-size:0.62rem; opacity:0.6;">${notGoingExpanded ? '▲ Hide' : '▼ Show'}</span>
             </button>
             ${notGoingExpanded ? `
-              <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr; margin-top:6px;">
-                <div>${groupHtml('Players Not Going', notGoingPlayers, 'not going', rowsHtml(notGoingPlayers))}</div>
+              <div style="display:grid; gap:10px; margin-top:6px;">
                 <div>${groupHtml('Coaches Not Going', notGoingCoaches, 'not going', rowsHtml(notGoingCoaches))}</div>
+                <div>${groupHtml('Players Not Going', notGoingPlayers, 'not going', rowsHtml(notGoingPlayers))}</div>
               </div>
             ` : ''}
           </div>
@@ -937,9 +937,9 @@ class MyScreen extends Screen {
                         color:rgba(226,232,240,0.75); margin-bottom:6px;">
               No Response (${noResponseTotal})
             </div>
-            <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
-              <div>${groupHtml('Players No Response', noResponsePlayers, 'no response', rowsHtml(noResponsePlayers))}</div>
+            <div style="display:grid; gap:10px;">
               <div>${groupHtml('Coaches No Response', noResponseCoaches, 'no response', rowsHtml(noResponseCoaches))}</div>
+              <div>${groupHtml('Players No Response', noResponsePlayers, 'no response', rowsHtml(noResponsePlayers))}</div>
             </div>
           </div>
         ` : ''}
