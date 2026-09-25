@@ -964,6 +964,9 @@ class MyScreen extends Screen {
   // Club/super admin by the account's DB role — the same list
   // role-selection.js uses to show the Administration tile.
   _viewerIsAdmin() {
+    // View-as (auth.viewAsPersonId) means "show me exactly what they
+    // see" — an admin viewing as a player gets the player's page.
+    if (this.auth?.viewAsPersonId) return false;
     const role = String(this.auth?.user?.role || '').toLowerCase();
     return ['club', 'super', 'system', 'sport_division', 'team', 'league'].includes(role);
   }

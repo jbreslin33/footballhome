@@ -628,7 +628,10 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
 
     // Club/super admins see everyone's phone and email on the RSVP lists
     // (for the bulk text/email buttons on #my); nobody else does.
-    const bool viewerIsAdmin = requireAdminLevel(request, {"club", "super"});
+    // …and not while viewing as someone else (?asPersonId): view-as shows
+    // exactly what that person gets, contact details included.
+    const bool viewerIsAdmin = requireAdminLevel(request, {"club", "super"})
+                            && request.getQueryParam("asPersonId").empty();
 
     // Admin view-as: `?asPersonId=N` swaps the effective person for
     // read purposes so an admin sees exactly what N sees.  Ignored
