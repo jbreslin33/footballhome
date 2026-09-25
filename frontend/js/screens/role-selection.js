@@ -30,11 +30,10 @@ class RoleSelectionScreen extends Screen {
           <span style="font-size: 2rem; line-height: 1; display: inline-flex;" aria-hidden="true">
             <!-- a coach's whistle — no emoji exists for one -->
             <svg width="1em" height="1em" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
-              <path d="M3 12h13v4.5" />
-              <path d="M16 12l7-4" />
-              <circle cx="19.5" cy="20" r="7.5" fill="currentColor" fill-opacity="0.18" />
-              <circle cx="19.5" cy="20" r="2.2" fill="currentColor" stroke="none" />
-              <path d="M3 12v4.5h13" />
+              <circle cx="20" cy="19.5" r="7.5" fill="currentColor" fill-opacity="0.18" />
+              <path d="M13.5 15.5H3.5a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 1.5 1.5h9.5" />
+              <circle cx="20" cy="19.5" r="2.2" fill="currentColor" stroke="none" />
+              <circle cx="25" cy="9" r="2.3" />
             </svg>
           </span>
           <div style="flex: 1; text-align: left;">
