@@ -2,6 +2,9 @@
 // role: My Week now hands off to MyScreen (my.js) — the same weekly
 // schedule players use, where a coach/admin additionally gets P/A/L/E
 // attendance controls per event (scoped to teams they actually coach,
+// — the "My Week / Attendance & Availability" tile that used to open #my
+// for this went 2026-09-25: attendance is the top-level #attendance page
+// and a coach's own availability is their My tile on the role picker —
 // see CalendarController::isEventCoachOrAdmin). This screen also hosts
 // club-wide roster/reminders/game-model tools (moved off admin-club so
 // coach work is separate from club-admin work), plus a My Teams entry
@@ -38,12 +41,6 @@ class CoachHomeScreen extends Screen {
         </p>
         <div id="section-rosters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📋 My Week</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          Every practice and match this week, across every team — set your own availability, or check in players.
-        </p>
-        <div id="section-week" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚽ My Teams</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Schedule, practices, matches, attendance, and lineups for a team you coach.
@@ -78,11 +75,6 @@ class CoachHomeScreen extends Screen {
         </button>
       `).join('');
     };
-
-    const weekTiles = [
-      { id: 'attendance', target: 'my', params: {}, icon: '📋', label: 'Attendance & Availability', description: 'This week — set your own availability, check in players for teams you coach, and nudge no-response players' },
-    ];
-    renderInto('#section-week', weekTiles);
 
     const teamsTiles = [
       { id: 'teams', target: 'context-selection', params: { role: 'coach' }, icon: '⚽', label: 'My Teams', description: 'Pick a team you coach to open its schedule, practices, matches, and lineups' },
