@@ -20,7 +20,7 @@ class App {
       login: new LoginScreen(this.navigation, this.auth),
       oauthSuccess: new OAuthSuccessScreen(this.navigation, this.auth),
       roleSelection: new RoleSelectionScreen(this.navigation, this.auth),
-      coachHome: new CoachHomeScreen(this.navigation, this.auth),
+      tactical: new TacticalScreen(this.navigation, this.auth),
       marketingHome: new MarketingHomeScreen(this.navigation, this.auth),
       clubSelection: new ClubSelectionScreen(this.navigation, this.auth),
       teamDashboard: new TeamDashboardScreen(this.navigation, this.auth),
@@ -88,7 +88,8 @@ class App {
     this.screenManager.register('login', this.screens.login);
     this.screenManager.register('oauth-success', this.screens.oauthSuccess);
     this.screenManager.register('role-selection', this.screens.roleSelection);
-    this.screenManager.register('coach-home', this.screens.coachHome);
+    // Tactical (#tactical) — game model, practice plans, days, exercises, board. See screens/tactical.js.
+    this.screenManager.register('tactical', this.screens.tactical);
     this.screenManager.register('marketing-home', this.screens.marketingHome);
     this.screenManager.register('club-selection', this.screens.clubSelection);
     this.screenManager.register('team-dashboard', this.screens.teamDashboard);
@@ -135,7 +136,7 @@ class App {
     this.screenManager.register('rosters', this.screens.rosters);
     // 'teams' is the canonical name going forward (absorbs the old
     // #context-selection role=coach picker and #admin-club-teams — see
-    // coach-home.js/admin-club.js). 'rosters' kept as a backward-compat
+    // admin-club.js). 'rosters' kept as a backward-compat
     // alias for old bookmarks/links, same pattern as 'lineups' below.
     this.screenManager.register('teams', this.screens.rosters);
     // Universal person profile — reachable from any card that shows a

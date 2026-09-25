@@ -26,14 +26,19 @@ class RoleSelectionScreen extends Screen {
       </div>
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
-        <button class="btn btn-lg btn-primary" data-role="coach" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="display: inline-flex; flex-direction: column; align-items: center; line-height: 1;">
-            <span style="font-size: 2rem;">🧑</span>
-            <span style="font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; margin-top: 2px;">Coach</span>
-          </span>
+        <button class="btn btn-lg btn-primary" data-role="teams" id="rs-teams" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🎽</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Coach</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Manage your teams</div>
+            <div style="font-weight: bold;">Teams</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Every player and every team on one board — assign, move, message</div>
+          </div>
+        </button>
+
+        <button class="btn btn-lg btn-primary" data-role="tactical" id="rs-tactical" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🧠</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Tactical</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Game model, practice plans, days, exercises, and the tactical board</div>
           </div>
         </button>
 
@@ -340,7 +345,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'security' && role !== 'logos' && role !== 'game-center' && role !== 'event-center' && role !== 'kit') this.navigation.context.role = role;
+    if (!['calendar', 'reports', 'rsvps', 'security', 'logos', 'game-center', 'event-center', 'kit', 'teams', 'tactical'].includes(role)) this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -383,8 +388,13 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'calendar') {
       // Not a role — the shared Soccer Calendar (owner 2026-09-05: top level).
       this.navigation.goTo('calendar');
-    } else if (role === 'coach') {
-      this.loadCoachHome();
+    } else if (role === 'teams' || role === 'tactical') {
+      // Not roles — the top-level 🎽 Teams board and 🧠 Tactical page
+      // (2026-09-25: the Coach tile and its coach-home page went; these
+      // were all it held).  The board scopes its cards by
+      // navigation.context.role, so say which hat the viewer wears.
+      this.navigation.context.role = this._isAdminUser() ? 'club-admin' : 'coach';
+      this.navigation.goTo(role);
     } else if (role === 'marketing') {
       this.navigation.goTo('marketing-home');
     } else {
@@ -400,36 +410,11 @@ class RoleSelectionScreen extends Screen {
     });
   }
 
-  // Resolve which club(s) this coach actually belongs to (via their
-  // active teams — /api/auth/coach/clubs) and route accordingly: skip
-  // straight to coach-home when there's exactly one, otherwise show a
-  // club picker first. Everyone coaches at Lighthouse today, so this
-  // is a one-club result in practice, but stays correct once a second
-  // club has coaches of its own.
-  async loadCoachHome() {
-    try {
-      const response = await this.auth.fetch('/api/auth/coach/clubs');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = await response.json();
-      const clubs = payload?.data || [];
-
-      if (clubs.length === 1) {
-        this.navigation.goTo('coach-home', {
-          clubId: clubs[0].id,
-          clubName: clubs[0].name,
-        });
-      } else if (clubs.length > 1) {
-        this.navigation.goTo('club-selection', {
-          clubs,
-          target: 'coach-home',
-        });
-      } else {
-        this.navigation.goTo('coach-home');
-      }
-    } catch (e) {
-      console.error('[role-selection] failed to load coach clubs:', e);
-      this.navigation.goTo('coach-home');
-    }
+  _isAdminUser() {
+    const user = this.auth?.user;
+    return !!(user?.role && (user.role === 'club' || user.role === 'sport_division' || user.role === 'team' ||
+                             user.role === 'super' || user.role === 'system' || user.role === 'league' ||
+                             user.role === 'marketing'));
   }
   
   handleLogout() {
@@ -476,7 +461,7 @@ class RoleSelectionScreen extends Screen {
       // them the 🏟️ Game Center, 📋 Attendance, 👕 Uniforms & Kit and
       // 📊 Reports tiles the admin levels get by default (Reports is
       // scoped server-side to the teams they coach).
-      for (const id of ['#rs-game-center', '#rs-event-center', '#rs-kit', '#rs-reports']) {
+      for (const id of ['#rs-teams', '#rs-tactical', '#rs-game-center', '#rs-event-center', '#rs-kit', '#rs-reports']) {
         const tile = this.element && this.element.querySelector(id);
         if (tile) tile.style.display = 'flex';
       }
