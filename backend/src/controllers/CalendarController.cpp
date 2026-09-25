@@ -1,4 +1,5 @@
 #include "CalendarController.h"
+#include "../models/ClubLogoSearch.h"
 
 #include "../core/Crypto.h"
 #include "../core/HttpClient.h"
@@ -1691,6 +1692,17 @@ std::optional<std::string> CalendarController::fetchAndCacheOpponentLogo(const s
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::fetchAndCacheOpponentLogo: cache write failed: "
                   << e.what() << std::endl;
+    }
+
+    // Nothing anywhere for a brand-new opponent: queue the one-time web
+    // search (migration 432).  ClubLogoSearchScheduler does the rest and
+    // the crest appears on the next load once it is stored.
+    if (logoUrl.empty()) {
+        try { ClubLogoSearch().enqueue(opponentText, 0, false); }
+        catch (const std::exception& e) {
+            std::cerr << "CalendarController: could not queue logo search for " << opponentText
+                      << ": " << e.what() << std::endl;
+        }
     }
 
     return logoUrl.empty() ? std::nullopt : std::optional<std::string>(logoUrl);

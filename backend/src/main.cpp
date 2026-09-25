@@ -73,6 +73,7 @@
 #include "services/LaSyncScheduler.h"
 #include "services/LockupScheduler.h"
 #include "models/ClubLogo.h"
+#include "services/ClubLogoSearchScheduler.h"
 
 class HttpServer {
 private:
@@ -247,6 +248,8 @@ public:
         // club_logos once, then rewrite any cached file missing on disk.
         try { ClubLogo logos; logos.importLegacy(); logos.materialize(); }
         catch (const std::exception& e) { std::cerr << "ClubLogo startup: " << e.what() << std::endl; }
+        // Web search for crests of opponents nothing matches (mig 432).
+        ClubLogoSearchScheduler::getInstance().start();
 
         // Phase 13 — start the LISTEN fh_lineups pump.  Spawns one thread
         // that owns a dedicated pqxx::connection and fans NOTIFY payloads

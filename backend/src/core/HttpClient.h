@@ -39,6 +39,11 @@ public:
     HttpClient(const HttpClient&) = delete;
     HttpClient& operator=(const HttpClient&) = delete;
 
+    // Total per-request timeout for THIS client (seconds).  The default
+    // (30 s) suits API round-trips; ClubLogoFinder raises it because a
+    // Claude turn that runs web searches can take a couple of minutes.
+    void setTotalTimeoutSec(long seconds) { totalTimeoutSec_ = seconds; }
+
     // Plain GET.
     //
     // `unixSocketPath` (optional): when non-empty, libcurl routes the
@@ -82,6 +87,7 @@ public:
     static std::string urlEncode(const std::string& in);
 
 private:
+    long totalTimeoutSec_ = 0;   // 0 = kTotalTimeoutSec
     // Single performer used by all of the public methods.  `method` is
     // "GET" or "POST"; pass empty body+contentType for GET.
     // `unixSocketPath` empty ⇒ normal TCP+DNS; non-empty ⇒ CURLOPT_UNIX_SOCKET_PATH.

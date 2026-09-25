@@ -49,6 +49,7 @@ set(SOURCES
     src/models/KitBoard.cpp
     src/models/FacilityLockup.cpp
     src/models/ClubLogo.cpp
+    src/models/ClubLogoSearch.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp
     src/models/YouthAgeGroups.cpp
@@ -111,6 +112,8 @@ set(SOURCES
     src/controllers/KitBoardController.cpp
     src/controllers/LockupController.cpp
     src/controllers/ClubLogoController.cpp
+    src/services/ClubLogoFinder.cpp
+    src/services/ClubLogoSearchScheduler.cpp
     src/controllers/PaymentsController.cpp
     src/controllers/ChargeFlagsController.cpp
     src/controllers/AdminLaBackfillController.cpp

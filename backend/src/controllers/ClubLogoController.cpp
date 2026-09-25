@@ -7,6 +7,7 @@
 #include "../core/HttpClient.h"
 #include "../database/Database.h"
 #include "../models/ClubLogo.h"
+#include "../models/ClubLogoSearch.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -85,6 +86,8 @@ void ClubLogoController::registerRoutes(Router& router, const std::string& prefi
     router.post(prefix + "/from-url", [this](const Request& r) { return handleFromUrl(r); });
     router.post(prefix + "/alias",    [this](const Request& r) { return handleSetAlias(r); });
     router.del (prefix + "/alias",    [this](const Request& r) { return handleRemoveAlias(r); });
+    router.post(prefix + "/search",        [this](const Request& r) { return handleSearch(r); });
+    router.post(prefix + "/search/reject", [this](const Request& r) { return handleRejectSearch(r); });
 }
 
 bool ClubLogoController::gate(const Request& request, Response* error) {
@@ -124,7 +127,9 @@ Response ClubLogoController::handleBoard(const Request& request) {
     Response error(HttpStatus::OK, "");
     if (!gate(request, &error)) return error;
     try {
-        return jsonOut(HttpStatus::OK, model_->board());
+        json board = model_->board();
+        board["searches"] = ClubLogoSearch().recent(40);
+        return jsonOut(HttpStatus::OK, board);
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/club-logos/board] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
@@ -233,6 +238,40 @@ Response ClubLogoController::handleRemoveAlias(const Request& request) {
         return jsonOut(HttpStatus::OK, {{"removed", id}});
     } catch (const std::exception& e) {
         std::cerr << "[DELETE /api/club-logos/alias] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
+    }
+}
+
+Response ClubLogoController::handleSearch(const Request& request) {
+    Response error(HttpStatus::OK, "");
+    if (!gate(request, &error)) return error;
+    json body;
+    if (!parseBody(request, &body, &error)) return error;
+    const std::string opponent = trim(strField(body, "opponent"));
+    if (opponent.empty()) return jsonError(HttpStatus::BAD_REQUEST, "opponent required");
+    try {
+        const long long id = ClubLogoSearch().enqueue(opponent, callerPersonId(request), true);
+        return jsonOut(HttpStatus::OK, {{"search_id", id}, {"opponent", opponent}});
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/club-logos/search] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
+    }
+}
+
+Response ClubLogoController::handleRejectSearch(const Request& request) {
+    Response error(HttpStatus::OK, "");
+    if (!gate(request, &error)) return error;
+    json body;
+    if (!parseBody(request, &body, &error)) return error;
+    const long long id = intField(body, "id");
+    if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, "id required");
+    try {
+        if (!ClubLogoSearch().reject(id, callerPersonId(request))) {
+            return jsonError(HttpStatus::NOT_FOUND, "no found crest to reject");
+        }
+        return jsonOut(HttpStatus::OK, {{"rejected", id}});
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/club-logos/search/reject] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
     }
 }

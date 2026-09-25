@@ -22,6 +22,11 @@ class ClubLogo;
 //   POST   /api/club-logos/alias        { alias, club_id | club_name }
 //                                       → opponent text -> club.
 //   DELETE /api/club-logos/alias?id=…
+//   POST   /api/club-logos/search       { opponent }  queue a web search for
+//                                       the crest (mig 432); re-runs a miss.
+//   POST   /api/club-logos/search/reject { id }  throw out a crest the search
+//                                       stored; the club falls back to its
+//                                       previous one.
 //
 // Club/super admins only (403 for a signed-in non-admin, per Controller::denialStatus).
 class ClubLogoController : public Controller {
@@ -41,6 +46,8 @@ private:
     Response handleFromUrl(const Request& request);
     Response handleSetAlias(const Request& request);
     Response handleRemoveAlias(const Request& request);
+    Response handleSearch(const Request& request);
+    Response handleRejectSearch(const Request& request);
 
     std::unique_ptr<ClubLogo> model_;
 };

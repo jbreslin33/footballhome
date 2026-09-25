@@ -13,6 +13,10 @@
 //   2. Opponents with no crest — every Opponent: text on the calendar that
 //      nothing resolves yet; link it to a club (alias) or upload for it.
 //   3. Clubs with logos — what is stored, its aliases, replace / add alias.
+//   4. Found online — the automatic web search (mig 432): a new opponent
+//      text nothing matches gets searched once; what it finds is published
+//      straight away (owner 2026-09-25: "i am fine with publish we can
+//      always fix") and listed here with a Reject button.
 //
 // Top-level admin page (owner 2026-09-17: staff tools get dedicated pages).
 class ClubLogosScreen extends Screen {
@@ -110,6 +114,10 @@ class ClubLogosScreen extends Screen {
       if (e.target.closest('#cl-url-go')) { await this.captureUrl(); return; }
       const link = e.target.closest('[data-link-opp]');
       if (link) { await this.linkOpponent(link.dataset.linkOpp); return; }
+      const find = e.target.closest('[data-find-opp]');
+      if (find) { await this.findOnline(find.dataset.findOpp); return; }
+      const rej = e.target.closest('[data-reject-search]');
+      if (rej) { await this.rejectSearch(Number(rej.dataset.rejectSearch)); return; }
       const upFor = e.target.closest('[data-upload-for]');
       if (upFor) { this._openPickerFor(upFor.dataset.uploadFor); return; }
       const addAlias = e.target.closest('[data-add-alias]');
@@ -314,6 +322,26 @@ class ClubLogosScreen extends Screen {
     await this.load();
   }
 
+  async findOnline(opponent) {
+    try {
+      await this._post('/api/club-logos/search', { opponent });
+      this.flash = `Searching the web for "${opponent}" — takes a minute or two; refresh to see the result.`;
+    } catch (err) {
+      this.flash = `✗ ${err.message || 'Could not start the search.'}`;
+    }
+    await this.load();
+  }
+
+  async rejectSearch(id) {
+    try {
+      await this._post('/api/club-logos/search/reject', { id });
+      this.flash = 'Thrown out. The club is back to its previous crest, or none — upload the right one below.';
+    } catch (err) {
+      this.flash = `✗ ${err.message || 'Could not reject.'}`;
+    }
+    await this.load();
+  }
+
   async addAlias(clubId) {
     const input = this.find(`input[data-alias-for="${clubId}"]`);
     const alias = (input?.value || '').trim();
@@ -388,6 +416,25 @@ class ClubLogosScreen extends Screen {
       </div>`;
   }
 
+  _searchFor(opponent) {
+    const key = String(opponent).trim().toLowerCase();
+    return ((this.data && this.data.searches) || []).find(s => s.opponent.trim().toLowerCase() === key) || null;
+  }
+
+  _searchBadge(sr) {
+    if (!sr) return '';
+    const map = {
+      queued:   ['⏳ web search queued', 'opacity:0.7;'],
+      running:  ['🔎 searching the web…', 'opacity:0.7;'],
+      none:     [`🌐 searched — nothing usable${sr.judge_note ? ': ' + sr.judge_note : sr.reason ? ': ' + sr.reason : ''}`, 'color:#facc15;'],
+      failed:   [`⚠ search failed${sr.error ? ': ' + sr.error : ''}`, 'color:#f87171;'],
+      rejected: ['🚫 found crest was rejected', 'opacity:0.7;'],
+      found:    ['✓ found online', 'color:#4ade80;'],
+    };
+    const [label, style] = map[sr.status] || [sr.status, ''];
+    return `<div class="cl-meta" style="${style}">${this.escapeHtml(label)}</div>`;
+  }
+
   _unresolved() {
     const list = (this.data && this.data.unresolved) || [];
     if (!list.length) return '<p style="opacity:0.6;">Every opponent on the calendar has a crest.</p>';
@@ -397,20 +444,43 @@ class ClubLogosScreen extends Screen {
         <div style="min-width:0;">
           <div><strong>${this.escapeHtml(u.opponent)}</strong></div>
           <div class="cl-meta">${u.games} game${u.games === 1 ? '' : 's'} · last ${this.escapeHtml(u.last_label)}</div>
+          ${this._searchBadge(this._searchFor(u.opponent))}
           <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
             <select class="cl-in" data-opp-club="${this.escapeHtml(u.opponent)}" style="flex:1; min-width:180px;">${this._clubOptions(this._matchClub(u.opponent))}</select>
             <button class="cl-btn alt sm" data-link-opp="${this.escapeHtml(u.opponent)}">Link</button>
           </div>
         </div>
-        <button class="cl-btn sm" data-upload-for="${this.escapeHtml(u.opponent)}">⬆ Upload logo</button>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <button class="cl-btn sm" data-upload-for="${this.escapeHtml(u.opponent)}">⬆ Upload logo</button>
+          ${['queued', 'running'].includes((this._searchFor(u.opponent) || {}).status) ? '' : `<button class="cl-btn ghost sm" data-find-opp="${this.escapeHtml(u.opponent)}">🌐 Find online</button>`}
+        </div>
       </div>`).join('')}</div>`;
+  }
+
+  _foundOnline() {
+    const list = ((this.data && this.data.searches) || []).filter(s => s.status === 'found');
+    if (!list.length) return '';
+    return `
+      <div class="cl-sec">Found online — published, throw out any that are wrong</div>
+      <div class="cl-card">${list.map(sr => `
+        <div class="cl-row">
+          ${sr.logo_url && sr.is_current ? `<img class="cl-thumb" src="${this.escapeHtml(sr.logo_url)}" alt="">` : '<div class="cl-thumb empty">?</div>'}
+          <div style="min-width:0;">
+            <div><strong>${this.escapeHtml(sr.opponent)}</strong> → ${this.escapeHtml(sr.club_name || sr.club_name_found)}</div>
+            <div class="cl-meta">${this.escapeHtml(sr.reason || '')}${sr.judge_note ? ' · ' + this.escapeHtml(sr.judge_note) : ''}</div>
+            <div class="cl-meta">${sr.when_label ? this.escapeHtml(sr.when_label) + ' · ' : ''}${sr.automatic ? 'automatic' : 'asked for'} · confidence ${Math.round((sr.confidence || 0) * 100)}%
+              ${sr.page_url ? ` · <a href="${this.escapeHtml(sr.page_url)}" target="_blank" rel="noopener">source page</a>` : ''}
+              ${!sr.is_current ? ' · <span style="opacity:0.7;">since replaced</span>' : ''}</div>
+          </div>
+          <button class="cl-btn ghost sm" data-reject-search="${sr.id}">🚫 Reject</button>
+        </div>`).join('')}</div>`;
   }
 
   _clubCards() {
     const clubs = (this.data && this.data.clubs) || [];
     if (!clubs.length) return '<p style="opacity:0.6;">No logos stored yet.</p>';
     return `<div class="cl-grid">${clubs.map(c => {
-      const src = c.source === 'url' ? `captured from URL` : c.source === 'upload' ? `uploaded${c.original_filename ? ' · ' + c.original_filename : ''}` : c.source === 'legacy' ? 'imported' : 'not stored yet';
+      const src = c.source === 'url' ? `captured from URL` : c.source === 'upload' ? `uploaded${c.original_filename ? ' · ' + c.original_filename : ''}` : c.source === 'search' ? 'found online' : c.source === 'legacy' ? 'imported' : 'not stored yet';
       const aliases = (c.aliases || []).map(a => `<span class="cl-pill">${this.escapeHtml(a.alias)}<button data-del-alias="${a.id}" title="Remove">×</button></span>`).join('');
       return `
         <div class="cl-card">
@@ -457,6 +527,7 @@ class ClubLogosScreen extends Screen {
       </div>
       <div class="cl-sec">Opponents on the calendar with no crest</div>
       ${this._unresolved()}
+      ${this._foundOnline()}
       <div class="cl-sec">Clubs with logos</div>
       ${this._clubCards()}
     `;
