@@ -98,6 +98,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="logos" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🛡️</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Club Logos</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Upload a folder of opponent crests named after the club, or capture one from a URL</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="security" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">🔐</span>
           <div style="flex: 1; text-align: left;">
@@ -329,7 +337,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'security' && role !== 'game-center' && role !== 'event-center' && role !== 'kit') this.navigation.context.role = role;
+    if (role !== 'calendar' && role !== 'reports' && role !== 'rsvps' && role !== 'security' && role !== 'logos' && role !== 'game-center' && role !== 'event-center' && role !== 'kit') this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -355,6 +363,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'security') {
       // Not a role — the nightly gate-photo board (mig 421/424).
       this.navigation.goTo('security');
+    } else if (role === 'logos') {
+      // Not a role — club crests, ours and opponents' (mig 428).
+      this.navigation.goTo('logos');
     } else if (role === 'rsvps') {
       // Not a role — the RSVP follow-up board (owner 2026-09-17: top level).
       this.navigation.goTo('rsvps');

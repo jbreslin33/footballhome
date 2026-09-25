@@ -100,6 +100,11 @@ services:
       - ./frontend/images/exercises:/app/images/exercises
       # Lock-up gate photos (#security, mig 424) — served by nginx at /images/security/
       - ./frontend/images/security:/app/images/security
+      # Club crests (#logos, mig 428) — backend writes the cached copy of each
+      # club_logos row here; nginx serves it at /images/clubs/.  The read-only
+      # site mount is for the one-time import of the hand-placed crests.
+      - ./frontend/images/clubs:/app/images/clubs
+      - ./frontend/images:/app/images/site:ro
       # LeagueApps API private key for JWT-bearer OAuth (RS256).  Used by
       # LeagueAppsService when fetching program registrations during team
       # reconciliation.  Read-only — same key file the Python sync scripts

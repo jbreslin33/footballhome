@@ -66,6 +66,7 @@ class App {
       rsvps: new RsvpBoardScreen(this.navigation, this.auth),
       kit: new KitBoardScreen(this.navigation, this.auth),
       security: new SecurityScreen(this.navigation, this.auth),
+      clubLogos: new ClubLogosScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
@@ -156,6 +157,8 @@ class App {
     this.screenManager.register('kit', this.screens.kit);
     // Security (#security) — nightly gate photo check-in + alert log (mig 421/424). See screens/security.js.
     this.screenManager.register('security', this.screens.security);
+    // Club Logos (#logos) — crests stored per club + opponent text -> club (mig 428). See screens/club-logos.js.
+    this.screenManager.register('logos', this.screens.clubLogos);
     // Attendance (#attendance) — the staff page for one calendar event of
     // any kind: who's coming, attendance, 🎟 invites.  See
     // screens/event-center.js.  Was #event-center until 2026-09-24; the old

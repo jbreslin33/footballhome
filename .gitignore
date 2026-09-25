@@ -98,3 +98,7 @@ env.bak-*
 # Lock-up gate photos (#security, mig 424) — uploaded at runtime, not source
 frontend/images/security/*
 !frontend/images/security/.gitkeep
+
+# Club crests (#logos, mig 428) — bytes live in club_logos; the backend rewrites these files at startup, they are a cache
+frontend/images/clubs/*
+!frontend/images/clubs/.gitkeep

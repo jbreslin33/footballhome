@@ -48,6 +48,7 @@ set(SOURCES
     src/models/RsvpBoard.cpp
     src/models/KitBoard.cpp
     src/models/FacilityLockup.cpp
+    src/models/ClubLogo.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp
     src/models/YouthAgeGroups.cpp
@@ -109,6 +110,7 @@ set(SOURCES
     src/controllers/RsvpBoardController.cpp
     src/controllers/KitBoardController.cpp
     src/controllers/LockupController.cpp
+    src/controllers/ClubLogoController.cpp
     src/controllers/PaymentsController.cpp
     src/controllers/ChargeFlagsController.cpp
     src/controllers/AdminLaBackfillController.cpp

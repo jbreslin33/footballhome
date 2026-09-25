@@ -718,6 +718,20 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 -- nothing") sentinel back to real NULL. Still-NULL falls
                 -- through to the Lighthouse crest on the frontend.
                 COALESCE(
+                    -- club_aliases + clubs (migration 428): the curated
+                    -- opponent-text -> club mapping the #logos page
+                    -- maintains, and a club typed by its exact name.
+                    (SELECT NULLIF(c.logo_url, '')
+                       FROM club_aliases ca
+                       JOIN clubs c ON c.id = ca.club_id
+                      WHERE fe.opponent IS NOT NULL
+                        AND LOWER(BTRIM(ca.alias)) = LOWER(BTRIM(fe.opponent))
+                      LIMIT 1),
+                    (SELECT NULLIF(c.logo_url, '') FROM clubs c
+                      WHERE fe.opponent IS NOT NULL
+                        AND LOWER(BTRIM(c.name)) = LOWER(BTRIM(fe.opponent))
+                        AND c.logo_id IS NOT NULL
+                      LIMIT 1),
                     (SELECT t.logo_url
                        FROM gcal_opponent_aliases goa
                        JOIN teams t ON t.id = goa.team_id
@@ -737,11 +751,15 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 -- text, success or not? Gates the C++ fallback below so we
                 -- hit the external API once per distinct opponent, not on
                 -- every request.
-                EXISTS (
+                (EXISTS (
                     SELECT 1 FROM opponent_logo_cache olc
                      WHERE fe.opponent IS NOT NULL
                        AND LOWER(BTRIM(olc.opponent_text)) = LOWER(BTRIM(fe.opponent))
-                ) AS opponent_logo_checked,
+                ) OR EXISTS (
+                    SELECT 1 FROM club_aliases ca
+                     WHERE fe.opponent IS NOT NULL
+                       AND LOWER(BTRIM(ca.alias)) = LOWER(BTRIM(fe.opponent))
+                )) AS opponent_logo_checked,
                 fe.fh_notes,
                 -- Tag, else the league default the classifier filled in
                 -- (migration 395) — so the card never needs the raw tags.

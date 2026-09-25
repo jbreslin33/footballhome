@@ -727,6 +727,11 @@ Response EventController::handleGetMatch(const Request& request) {
         // mapping, then exact teams.name match, then opponent_logo_cache
         // (migration 289) — keyed off fh_events.opponent free-text tag.
         query << "COALESCE(" << teamCrest("awt") << ", "
+                 // club_aliases + clubs (migration 428) — the #logos page's curated mapping — first.
+                 "(SELECT NULLIF(c.logo_url,'') FROM club_aliases ca JOIN clubs c ON c.id = ca.club_id "
+                 "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(ca.alias)) = LOWER(BTRIM(fe.opponent)) LIMIT 1), "
+                 "(SELECT NULLIF(c.logo_url,'') FROM clubs c "
+                 "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(c.name)) = LOWER(BTRIM(fe.opponent)) AND c.logo_id IS NOT NULL LIMIT 1), "
                  "(SELECT t.logo_url FROM gcal_opponent_aliases goa JOIN teams t ON t.id = goa.team_id "
                  "  WHERE fe.opponent IS NOT NULL AND LOWER(BTRIM(goa.alias)) = LOWER(BTRIM(fe.opponent)) LIMIT 1), "
                  "(SELECT t.logo_url FROM teams t "
