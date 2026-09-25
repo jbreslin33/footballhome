@@ -22,7 +22,6 @@ class App {
       roleSelection: new RoleSelectionScreen(this.navigation, this.auth),
       coachHome: new CoachHomeScreen(this.navigation, this.auth),
       marketingHome: new MarketingHomeScreen(this.navigation, this.auth),
-      contextSelection: new ContextSelectionScreen(this.navigation, this.auth),
       clubSelection: new ClubSelectionScreen(this.navigation, this.auth),
       teamDashboard: new TeamDashboardScreen(this.navigation, this.auth),
       practiceOptions: new PracticeOptionsScreen(this.navigation, this.auth),
@@ -57,7 +56,6 @@ class App {
       leadsAnalytics: new LeadsAnalyticsScreen(this.navigation, this.auth),
       members: new MembersScreen(this.navigation, this.auth),
       peopleWorkbench: new PeopleWorkbenchScreen(this.navigation, this.auth),
-      mensGameEligibility: new MensGameEligibilityScreen(this.navigation, this.auth),
       rosters: new RostersScreen(this.navigation, this.auth),
       person: new PersonScreen(this.navigation, this.auth),
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
@@ -92,7 +90,6 @@ class App {
     this.screenManager.register('role-selection', this.screens.roleSelection);
     this.screenManager.register('coach-home', this.screens.coachHome);
     this.screenManager.register('marketing-home', this.screens.marketingHome);
-    this.screenManager.register('context-selection', this.screens.contextSelection);
     this.screenManager.register('club-selection', this.screens.clubSelection);
     this.screenManager.register('team-dashboard', this.screens.teamDashboard);
     this.screenManager.register('practice-options', this.screens.practiceOptions);
@@ -135,7 +132,6 @@ class App {
     // Unified Members board (URL: `#members`).
     this.screenManager.register('members', this.screens.members);
     this.screenManager.register('people-workbench', this.screens.peopleWorkbench);
-    this.screenManager.register('mens-game-eligibility', this.screens.mensGameEligibility);
     this.screenManager.register('rosters', this.screens.rosters);
     // 'teams' is the canonical name going forward (absorbs the old
     // #context-selection role=coach picker and #admin-club-teams — see
