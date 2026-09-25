@@ -123,6 +123,7 @@ class MyScreen extends Screen {
       </div>
       <div style="padding: 0 8px;">
         <div id="my-push-banner"></div>
+        <div id="my-admin-tools"></div>
         <section id="my-chat" style="margin-bottom: 6px;"></section>
         <section id="my-groupme" style="margin-bottom: 6px;" hidden></section>
         <div id="my-dues-banner"></div>
@@ -165,6 +166,7 @@ class MyScreen extends Screen {
       // Full-width opt-in banner above the week (owner 2026-09-05) —
       // shared PushOptIn component; the pill in the chat header stays as
       // the status readout and refreshes when the banner turns push on.
+      this._renderAdminToolsToggle();
       if (window.PushOptIn) {
         window.PushOptIn.mount(this.find('#my-push-banner'), this.auth, {
           onChange: () => this._initPushUI().catch(() => {}),
@@ -843,7 +845,7 @@ class MyScreen extends Screen {
     // admins only (owner 2026-09-25: "they should not have option to email
     // and text everyone … for now only i need that").  Coaches nudge from
     // #rsvps and Game Center; players never see them.
-    const viewerIsAdmin  = this._viewerIsAdmin();
+    const viewerIsAdmin  = this._viewerIsAdmin() && this._adminToolsShown();
     const notGoingAll    = rsvps.filter(r => r && r.response === 'no');
     const noResponseAll  = rsvps.filter(r => r && !r.response);
     // Invited players (fh_event_invites, migration 355 — youth call-ups
@@ -989,6 +991,45 @@ class MyScreen extends Screen {
 
   // Club/super admin by the account's DB role — the same list
   // role-selection.js uses to show the Administration tile.
+  // Admin extras (bulk Text All / Email Going) hide behind a thin toggle
+  // at the top of the page, off by default and remembered per device
+  // (owner 2026-09-25: "hide that by default and have a toggle to show
+  // it at top of page so it don't clutter my screen").
+  static ADMIN_TOOLS_KEY = 'fh.my.adminTools';
+
+  _adminToolsShown() {
+    try { return localStorage.getItem(MyScreen.ADMIN_TOOLS_KEY) === '1'; } catch (_) { return false; }
+  }
+
+  _renderAdminToolsToggle() {
+    const host = this.find('#my-admin-tools');
+    if (!host) return;
+    if (!this._viewerIsAdmin()) { host.innerHTML = ''; return; }
+    const on = this._adminToolsShown();
+    const mc = window.MessageCopy;
+    const t = (tier, fb) => (mc && mc.block && mc.block('my_admin_tools', tier)) || fb;
+    const text = on ? t('on', 'Admin tools on — text & email everyone on an event') : t('off', 'Admin tools off');
+    host.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px; padding:4px 2px 6px; margin:0 0 6px; font-size:0.74rem; line-height:1.2; color:#dbeafe;">
+        <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
+          <input type="checkbox" role="switch" id="my-admin-tools-switch" ${on ? 'checked' : ''}
+                 style="position:absolute; opacity:0; width:1px; height:1px; pointer-events:none;">
+          <span style="position:relative; width:30px; height:16px; border-radius:999px; flex:0 0 auto; transition:background .15s;
+                       background:${on ? '#a855f7' : 'rgba(148,163,184,0.35)'}; border:1px solid ${on ? '#a855f7' : 'rgba(148,163,184,0.5)'};">
+            <span style="position:absolute; top:1px; left:1px; width:12px; height:12px; border-radius:50%; background:#fff; transition:transform .15s;
+                         ${on ? 'transform:translateX(14px);' : ''}"></span>
+          </span>
+          <span style="font-weight:700;">${this.escapeHtml(text)}</span>
+        </label>
+      </div>`;
+    const input = host.querySelector('#my-admin-tools-switch');
+    if (input) input.addEventListener('change', () => {
+      try { localStorage.setItem(MyScreen.ADMIN_TOOLS_KEY, input.checked ? '1' : '0'); } catch (_) {}
+      this._renderAdminToolsToggle();
+      this._renderEvents();
+    });
+  }
+
   _viewerIsAdmin() {
     // View-as (auth.viewAsPersonId) means "show me exactly what they
     // see" — an admin viewing as a player gets the player's page.
