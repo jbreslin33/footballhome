@@ -868,12 +868,53 @@ class MyScreen extends Screen {
                style="margin-left:5px; padding:0 5px; border-radius:999px; background:rgba(245,158,11,0.18);
                       border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.56rem; font-weight:800;">🎟 INVITED</span>`
       : '';
-    const rowsHtml = (list) => list
-      .map(r => `<div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}${callupChip(r)}${this._rsvpTimeChips(r)}</span>
+    const rowHtml = (r, extraChip = '') => `<div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+          <span style="font-size:0.76rem; color:rgba(226,232,240,0.95);">${this.escapeHtml(nameOf(r))}${callupChip(r)}${extraChip}${this._rsvpTimeChips(r)}</span>
           ${this._attendanceCellHtml(ev.fh_event_id, r.person_id, att)}
-        </div>`)
-      .join('');
+        </div>`;
+    // Players grouped (migration 446, owner 2026-09-25): men's / women's
+    // events tagged with more than one team → one sub-heading per team
+    // (APSL, Liga 1 …), a player on two of them listed once with a chip
+    // for the other; youth → the club's age bands (U9, U10, U11, U12/13
+    // …) from each player's single age.  Coaches and single-team events
+    // stay a plain list.
+    const subHead = (label) => `<div style="font-size:0.62rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase;
+        color:rgba(148,163,184,0.9); margin:5px 0 2px;">${this.escapeHtml(label)}</div>`;
+    const smallChip = (text) => `<span style="display:inline-block; margin-left:5px; padding:0 5px; border-radius:999px;
+        border:1px solid rgba(148,163,184,0.5); color:rgba(226,232,240,0.8); font-size:0.54rem; font-weight:700; vertical-align:middle;">${this.escapeHtml(text)}</span>`;
+    const rowsHtml = (list, { grouped = false } = {}) => {
+      if (!grouped || !list.length) return list.map(r => rowHtml(r)).join('');
+      const category = String(ev.category || '').toLowerCase();
+      const teams = Array.isArray(ev.teams) ? ev.teams : [];
+      if ((category === 'mens' || category === 'womens') && teams.length > 1) {
+        const nameOfTeam = (t) => t.short_label || t.label || t.name || `Team ${t.id}`;
+        const buckets = teams.map(t => ({ label: nameOfTeam(t), id: t.id, rows: [] }));
+        const other = { label: 'Other', id: null, rows: [] };
+        for (const r of list) {
+          const ids = Array.isArray(r.team_ids) ? r.team_ids : [];
+          const first = teams.find(t => ids.includes(t.id));
+          if (!first) { other.rows.push(rowHtml(r)); continue; }
+          const rest = teams.filter(t => t.id !== first.id && ids.includes(t.id)).map(nameOfTeam);
+          buckets.find(b => b.id === first.id).rows.push(rowHtml(r, rest.length ? smallChip('also ' + rest.join(', ')) : ''));
+        }
+        return [...buckets, other].filter(b => b.rows.length)
+          .map(b => subHead(`${b.label} (${b.rows.length})`) + b.rows.join('')).join('');
+      }
+      if (category === 'boys' || category === 'girls') {
+        const bands = (this.ageBands || []).map(b => ({ ...b, rows: [] }));
+        const unknown = { label: 'Age not on file', rows: [] };
+        for (const r of list) {
+          const age = Number.isFinite(Number(r.single_age)) && r.single_age !== null ? Number(r.single_age) : null;
+          const band = age === null ? null : bands.find(b => age >= b.min_age && age <= b.max_age);
+          (band || unknown).rows.push(rowHtml(r));
+        }
+        const used = bands.filter(b => b.rows.length);
+        if (!used.length) return list.map(r => rowHtml(r)).join('');
+        return [...used, unknown].filter(b => b.rows.length)
+          .map(b => subHead(`${b.label} (${b.rows.length})`) + b.rows.join('')).join('');
+      }
+      return list.map(r => rowHtml(r)).join('');
+    };
 
     // "Present" sits right beside "Players/Coaches <status>" as a matched
     // label+total pair, for every status (not just Going) — late counts
@@ -927,7 +968,7 @@ class MyScreen extends Screen {
         ` : ''}
         <div style="display:grid; gap:10px;">
           <div>${groupHtml('Coaches Going', coachesGoing, 'going', rowsHtml(coachesGoing))}</div>
-          <div>${groupHtml('Players Going', playersGoing, 'going', rowsHtml(playersGoing))}</div>
+          <div>${groupHtml('Players Going', playersGoing, 'going', rowsHtml(playersGoing, { grouped: true }))}</div>
         </div>
         ${callupsAvailable.length ? `
           <div style="margin-top:8px;">
@@ -953,7 +994,7 @@ class MyScreen extends Screen {
             ${notGoingExpanded ? `
               <div style="display:grid; gap:10px; margin-top:6px;">
                 <div>${groupHtml('Coaches Not Going', notGoingCoaches, 'not going', rowsHtml(notGoingCoaches))}</div>
-                <div>${groupHtml('Players Not Going', notGoingPlayers, 'not going', rowsHtml(notGoingPlayers))}</div>
+                <div>${groupHtml('Players Not Going', notGoingPlayers, 'not going', rowsHtml(notGoingPlayers, { grouped: true }))}</div>
               </div>
             ` : ''}
           </div>
@@ -966,7 +1007,7 @@ class MyScreen extends Screen {
             </div>
             <div style="display:grid; gap:10px;">
               <div>${groupHtml('Coaches No Response', noResponseCoaches, 'no response', rowsHtml(noResponseCoaches))}</div>
-              <div>${groupHtml('Players No Response', noResponsePlayers, 'no response', rowsHtml(noResponsePlayers))}</div>
+              <div>${groupHtml('Players No Response', noResponsePlayers, 'no response', rowsHtml(noResponsePlayers, { grouped: true }))}</div>
             </div>
           </div>
         ` : ''}
@@ -2122,6 +2163,7 @@ class MyScreen extends Screen {
     }
     this.events = upRes.events || [];
     this.viewer = upRes.viewer || null;      // {person_id, first_name, last_name} after view-as
+    this.ageBands = Array.isArray(upRes.age_bands) ? upRes.age_bands : [];   // youth bands (mig 446)
     this.dues   = upRes.dues   || this.dues || {};
     if (this.eventsRange === 'current') {
       this._renderEvents();

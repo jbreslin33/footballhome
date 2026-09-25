@@ -1092,6 +1092,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         'leave_at',       to_char(roster.leave_at  AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
                                                         'arrive_label',   to_char(roster.arrive_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM'),
                                                         'leave_label',    to_char(roster.leave_at  AT TIME ZONE 'America/New_York', 'FMHH12:MI AM'),
+                                                        'single_age',     roster.single_age,
+                                                        'team_ids',       to_jsonb(roster.team_ids),
                                                         'responded_at',   roster.responded_at,
                                                         'is_pickup_only', roster.is_pickup_only,
                                                         'is_coach',       roster.is_coach,
@@ -1137,6 +1139,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                              combined.created_via,
                                                              combined.arrive_at,
                                                              combined.leave_at,
+                                                             combined.single_age,
+                                                             combined.team_ids,
                                                              combined.responded_at,
                                                              combined.is_pickup_only,
                                                              combined.is_coach,
@@ -1155,6 +1159,13 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                              er.created_via,
                                                              er.arrive_at,
                                                              er.leave_at,
+                                                             -- Grouping on #my (migration 446): single age for
+                                                             -- youth bands, tagged teams the person is on for men.
+                                                             fh_youth_single_age(p.birth_date, fh_season_end_year(ge.starts_at)) AS single_age,
+                                                             (SELECT array_agg(fet2.team_id ORDER BY fet2.team_id)
+                                                                FROM fh_event_teams fet2
+                                                                JOIN team_persons tp2 ON tp2.team_id = fet2.team_id AND tp2.removed_at IS NULL
+                                                               WHERE fet2.fh_event_id = fe.id AND tp2.person_id = p.id) AS team_ids,
                                                              CASE
                                                                      WHEN er.responded_at IS NULL THEN NULL
                                                                      ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
@@ -1237,6 +1248,13 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                              er.created_via,
                                                              er.arrive_at,
                                                              er.leave_at,
+                                                             -- Grouping on #my (migration 446): single age for
+                                                             -- youth bands, tagged teams the person is on for men.
+                                                             fh_youth_single_age(p.birth_date, fh_season_end_year(ge.starts_at)) AS single_age,
+                                                             (SELECT array_agg(fet2.team_id ORDER BY fet2.team_id)
+                                                                FROM fh_event_teams fet2
+                                                                JOIN team_persons tp2 ON tp2.team_id = fet2.team_id AND tp2.removed_at IS NULL
+                                                               WHERE fet2.fh_event_id = fe.id AND tp2.person_id = p.id) AS team_ids,
                                                              CASE
                                                                      WHEN er.responded_at IS NULL THEN NULL
                                                                      ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
@@ -1282,6 +1300,13 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                              er.created_via,
                                                              er.arrive_at,
                                                              er.leave_at,
+                                                             -- Grouping on #my (migration 446): single age for
+                                                             -- youth bands, tagged teams the person is on for men.
+                                                             fh_youth_single_age(p.birth_date, fh_season_end_year(ge.starts_at)) AS single_age,
+                                                             (SELECT array_agg(fet2.team_id ORDER BY fet2.team_id)
+                                                                FROM fh_event_teams fet2
+                                                                JOIN team_persons tp2 ON tp2.team_id = fet2.team_id AND tp2.removed_at IS NULL
+                                                               WHERE fet2.fh_event_id = fe.id AND tp2.person_id = p.id) AS team_ids,
                                                              CASE
                                                                      WHEN er.responded_at IS NULL THEN NULL
                                                                      ELSE to_char(er.responded_at AT TIME ZONE 'UTC',
@@ -1674,6 +1699,14 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             }
         }
 
+        json ageBands = json::array();
+        for (const auto& b : db->query(
+                 "SELECT label, min_age, max_age FROM rsvp_age_bands "
+                 " WHERE club_id = $1::int AND is_active ORDER BY sort_order, min_age",
+                 {std::to_string(WelcomeLog::kLighthouseClubId)})) {
+            ageBands.push_back({{"label", b["label"].c_str()}, {"min_age", b["min_age"].as<int>()},
+                                {"max_age", b["max_age"].as<int>()}});
+        }
         json viewer = nullptr;
         if (personId > 0) {
             auto vp = db->query("SELECT first_name, last_name FROM persons WHERE id = $1::int", {std::to_string(personId)});
@@ -1695,6 +1728,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             // Who the page is for (after view-as), so a parent who also
             // plays sees "James (you)" and "Grace" as separate rows.
             {"viewer", viewer},
+            // Youth age bands for the who's-going lists (migration 446).
+            {"age_bands", std::move(ageBands)},
         };
         if (!startParam.empty()) {
             body["start"] = startParam;
