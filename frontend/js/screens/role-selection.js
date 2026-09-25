@@ -43,7 +43,7 @@ class RoleSelectionScreen extends Screen {
         </button>
 
         <button class="btn btn-lg btn-primary" data-role="player" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">👤</span>
+          <span style="font-size: 2rem;">☑️</span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">RSVP</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">Your schedule this week — say yes or no to each practice and game</div>
