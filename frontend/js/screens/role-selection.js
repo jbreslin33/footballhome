@@ -28,12 +28,13 @@ class RoleSelectionScreen extends Screen {
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
         <button class="btn btn-lg btn-primary" data-role="coach" style="display: flex; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem; line-height: 1; display: inline-flex;" aria-hidden="true">
-            <!-- a coach's whistle — no emoji exists for one -->
+            <!-- a coach: head and shoulders, whistle on a lanyard — no emoji for one -->
             <svg width="1em" height="1em" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
-              <circle cx="20" cy="19.5" r="7.5" fill="currentColor" fill-opacity="0.18" />
-              <path d="M13.5 15.5H3.5a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 1.5 1.5h9.5" />
-              <circle cx="20" cy="19.5" r="2.2" fill="currentColor" stroke="none" />
-              <circle cx="25" cy="9" r="2.3" />
+              <circle cx="16" cy="8.5" r="5" />
+              <path d="M4 29c0-6.5 5.4-11 12-11s12 4.5 12 11" />
+              <path d="M12 18.5l3.5 6" stroke-width="1.6" />
+              <circle cx="17" cy="26.5" r="2.4" fill="currentColor" fill-opacity="0.18" />
+              <path d="M19.4 26.5h3" />
             </svg>
           </span>
           <div style="flex: 1; text-align: left;">
