@@ -24,6 +24,8 @@ class ClubLogo;
 //   DELETE /api/club-logos/alias?id=…
 //   POST   /api/club-logos/search       { opponent }  queue a web search for
 //                                       the crest (mig 432); re-runs a miss.
+//   POST   /api/club-logos/league/upload   { organization_id, image, filename }  (mig 434)
+//   POST   /api/club-logos/league/from-url { organization_id, url }
 //   POST   /api/club-logos/search/reject { id }  throw out a crest the search
 //                                       stored; the club falls back to its
 //                                       previous one.
@@ -48,6 +50,11 @@ private:
     Response handleRemoveAlias(const Request& request);
     Response handleSearch(const Request& request);
     Response handleRejectSearch(const Request& request);
+    Response handleLeagueUpload(const Request& request);
+    Response handleLeagueFromUrl(const Request& request);
+    // Shared by from-url handlers: fetches `url` (http/https, public host only)
+    // and returns the bytes; fills *error on refusal / failure.
+    bool fetchImage(const std::string& url, std::string* bytes, Response* error);
 
     std::unique_ptr<ClubLogo> model_;
 };

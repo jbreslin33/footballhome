@@ -102,3 +102,6 @@ frontend/images/security/*
 # Club crests (#logos, mig 428) — bytes live in club_logos; the backend rewrites these files at startup, they are a cache
 frontend/images/clubs/*
 !frontend/images/clubs/.gitkeep
+# League crest cache (mig 434) — the DB holds the bytes
+frontend/images/league-logos/*
+!frontend/images/league-logos/.gitkeep

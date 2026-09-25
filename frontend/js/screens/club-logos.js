@@ -13,6 +13,9 @@
 //   2. Opponents with no crest — every Opponent: text on the calendar that
 //      nothing resolves yet; link it to a club (alias) or upload for it.
 //   3. Clubs with logos — what is stored, its aliases, replace / add alias.
+//   5. Leagues — the same store for league crests (organizations, mig 434):
+//      replace by file or capture from a URL; league text → league is
+//      gcal_league_aliases, shown per card.
 //   4. Found online — the automatic web search (mig 432): a new opponent
 //      text nothing matches gets searched once; what it finds is published
 //      straight away (owner 2026-09-25: "i am fine with publish we can
@@ -20,7 +23,16 @@
 //
 // Top-level admin page (owner 2026-09-17: staff tools get dedicated pages).
 class ClubLogosScreen extends Screen {
-  static KEEP_UPPER = new Set(['FC', 'SC', 'AC', 'CF', 'AFC', 'SCM', 'SCR', 'KSC', 'NJ', 'NY', 'PA', 'CT', 'USA', 'II', 'III', 'IV']);
+  static KEEP_UPPER = new Set(['FC', 'SC', 'AC', 'CF', 'AFC', 'SCM', 'SCR', 'KSC', 'NJ', 'NY', 'PA', 'CT', 'USA', 'II', 'III', 'IV', 'CASA', 'PSC', 'VE', 'WC', 'PPR', 'APSL']);
+  static SUFFIXES = new Set(['fc', 'sc', 'ac', 'cf', 'afc', 'club', 'soccer', 'football', 'united']);
+
+  // Same loose key the backend uses (ClubLogo::nameKey): "Desert Hawks FC"
+  // and "Desert Hawks" are one club.
+  static nameKey(name) {
+    const toks = String(name || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    while (toks.length > 1 && ClubLogosScreen.SUFFIXES.has(toks[toks.length - 1])) toks.pop();
+    return toks.join('');
+  }
 
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -35,12 +47,13 @@ class ClubLogosScreen extends Screen {
   // "german-american_kickers.PNG" → "German American Kickers"
   static nameFromFilename(filename) {
     let base = String(filename || '').split('/').pop().replace(/\.[a-z0-9]{2,5}$/i, '');
-    base = base.replace(/[-_.+]+/g, ' ').replace(/\b(logo|crest|badge)\b/ig, '').replace(/\s+/g, ' ').trim();
+    base = base.replace(/\s*\(\d+\)\s*$/, '')                       // "CASA Select (2)" — a browser's duplicate-download suffix
+               .replace(/[-_.+]+/g, ' ').replace(/\b(logo|crest|badge)\b/ig, '').replace(/\s+/g, ' ').trim();
     if (!base) return '';
     return base.split(' ').map(w => {
       const up = w.toUpperCase();
       if (ClubLogosScreen.KEEP_UPPER.has(up)) return up;
-      if (w === up && w.length <= 3) return up;                  // an acronym typed as such
+      if (w === up && w.length <= 5) return up;                  // an acronym typed as such (CASA, PPR)
       return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
     }).join(' ');
   }
@@ -86,7 +99,7 @@ class ClubLogosScreen extends Screen {
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🛡️ Club Logos</h1>
-        <p class="subtitle">Upload a folder of opponent crests named after the club, or capture one from a URL — every logo is stored against its club and shows on #my and Game Center</p>
+        <p class="subtitle">Upload a folder of opponent crests named after the club, or capture one from a URL — every club and league logo is stored in the database and shows on #my and Game Center. A new upload replaces the current crest; the old one stays as history.</p>
       </div>
       <div style="padding: var(--space-4); max-width: 1000px; margin: 0 auto;">
         <div style="display:flex; justify-content:flex-end; margin-bottom:var(--space-2);">
@@ -120,6 +133,8 @@ class ClubLogosScreen extends Screen {
       if (rej) { await this.rejectSearch(Number(rej.dataset.rejectSearch)); return; }
       const upFor = e.target.closest('[data-upload-for]');
       if (upFor) { this._openPickerFor(upFor.dataset.uploadFor); return; }
+      const lgUrl = e.target.closest('[data-league-url-go]');
+      if (lgUrl) { await this.captureLeagueUrl(Number(lgUrl.dataset.leagueUrlGo)); return; }
       const addAlias = e.target.closest('[data-add-alias]');
       if (addAlias) { await this.addAlias(Number(addAlias.dataset.addAlias)); return; }
       const delAlias = e.target.closest('[data-del-alias]');
@@ -136,6 +151,11 @@ class ClubLogosScreen extends Screen {
       const replace = e.target.closest('input[type=file][data-replace]');
       if (replace && replace.files && replace.files[0]) {
         await this.replaceLogo(Number(replace.dataset.replace), replace.files[0]);
+        return;
+      }
+      const lg = e.target.closest('input[type=file][data-replace-league]');
+      if (lg && lg.files && lg.files[0]) {
+        await this.replaceLeagueLogo(Number(lg.dataset.replaceLeague), lg.files[0]);
         return;
       }
       const nameIn = e.target.closest('input[data-stage-name]');
@@ -188,9 +208,14 @@ class ClubLogosScreen extends Screen {
   }
 
   _matchClub(name) {
-    const key = String(name || '').trim().toLowerCase();
-    if (!key || !this.data) return 0;
-    const hits = (this.data.all_clubs || []).filter(c => c.name.trim().toLowerCase() === key);
+    const exact = String(name || '').trim().toLowerCase();
+    if (!exact || !this.data) return 0;
+    const all = this.data.all_clubs || [];
+    let hits = all.filter(c => c.name.trim().toLowerCase() === exact);
+    if (!hits.length) {
+      const key = ClubLogosScreen.nameKey(name);
+      hits = all.filter(c => ClubLogosScreen.nameKey(c.name) === key);
+    }
     if (!hits.length) return 0;
     return (hits.find(c => c.has_logo) || hits[0]).id;
   }
@@ -378,6 +403,54 @@ class ClubLogosScreen extends Screen {
     await this.load();
   }
 
+  async replaceLeagueLogo(orgId, file) {
+    this.flash = 'Storing the league crest…'; this._renderBody();
+    try {
+      const image = await this._fileToDataUrl(file);
+      await this._post('/api/club-logos/league/upload', { organization_id: orgId, image, filename: file.name });
+      this.flash = 'League crest replaced.';
+    } catch (err) {
+      this.flash = `✗ ${err.message || 'Upload failed.'}`;
+    }
+    await this.load();
+  }
+
+  async captureLeagueUrl(orgId) {
+    const input = this.find(`input[data-league-url="${orgId}"]`);
+    const url = (input?.value || '').trim();
+    if (!url) { this.flash = '✗ Paste the image URL first.'; this._renderBody(); return; }
+    this.flash = `Capturing ${url}…`; this._renderBody();
+    try {
+      await this._post('/api/club-logos/league/from-url', { organization_id: orgId, url });
+      this.flash = 'League crest stored.';
+    } catch (err) {
+      this.flash = `✗ ${err.message || 'Capture failed.'}`;
+    }
+    await this.load();
+  }
+
+  _leagueCards() {
+    const leagues = (this.data && this.data.leagues) || [];
+    if (!leagues.length) return '<p style="opacity:0.6;">No leagues found.</p>';
+    return `<div class="cl-grid">${leagues.map(l => {
+      const src = l.source === 'url' ? 'captured from URL' : l.source === 'upload' ? `uploaded${l.original_filename ? ' · ' + l.original_filename : ''}` : l.source === 'legacy' ? 'imported' : 'no crest yet';
+      return `
+        <div class="cl-card">
+          ${l.logo_url ? `<img class="cl-thumb" src="${this.escapeHtml(l.logo_url)}" alt="">` : '<div class="cl-thumb empty">?</div>'}
+          <div style="text-align:center;"><strong>${this.escapeHtml(l.short_name || l.name)}</strong>${l.short_name ? `<div class="cl-meta">${this.escapeHtml(l.name)}</div>` : ''}</div>
+          <div class="cl-meta" style="text-align:center;">${this.escapeHtml(src)}${l.uploaded_label ? ' · ' + this.escapeHtml(l.uploaded_label) : ''}${l.event_count ? ` · ${l.event_count} event${l.event_count === 1 ? '' : 's'}` : ''}</div>
+          ${l.aliases ? `<div class="cl-meta" title="League: tags that mean this league">tags: ${this.escapeHtml(l.aliases)}</div>` : ''}
+          <div style="display:flex; gap:6px;">
+            <input class="cl-in" data-league-url="${l.id}" placeholder="https://…/crest.png" inputmode="url" style="flex:1;">
+            <button class="cl-btn alt sm" data-league-url-go="${l.id}">⬇</button>
+          </div>
+          <label class="cl-btn ghost sm" style="text-align:center; cursor:pointer;">↻ ${l.has_logo ? 'Replace' : 'Upload'} crest
+            <input type="file" accept="image/*" data-replace-league="${l.id}" hidden>
+          </label>
+        </div>`;
+    }).join('')}</div>`;
+  }
+
   // ── render ────────────────────────────────────────────────────────────
 
   _clubOptions(selectedId, { allowNew } = {}) {
@@ -530,6 +603,8 @@ class ClubLogosScreen extends Screen {
       ${this._foundOnline()}
       <div class="cl-sec">Clubs with logos</div>
       ${this._clubCards()}
+      <div class="cl-sec">Leagues</div>
+      ${this._leagueCards()}
     `;
   }
 }

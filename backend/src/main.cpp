@@ -73,6 +73,7 @@
 #include "services/LaSyncScheduler.h"
 #include "services/LockupScheduler.h"
 #include "models/ClubLogo.h"
+#include "models/LeagueLogo.h"
 #include "services/ClubLogoSearchScheduler.h"
 
 class HttpServer {
@@ -248,6 +249,8 @@ public:
         // club_logos once, then rewrite any cached file missing on disk.
         try { ClubLogo logos; logos.importLegacy(); logos.materialize(); }
         catch (const std::exception& e) { std::cerr << "ClubLogo startup: " << e.what() << std::endl; }
+        try { LeagueLogo leagues; leagues.importLegacy(); leagues.materialize(); }
+        catch (const std::exception& e) { std::cerr << "LeagueLogo startup: " << e.what() << std::endl; }
         // Web search for crests of opponents nothing matches (mig 432).
         ClubLogoSearchScheduler::getInstance().start();
 

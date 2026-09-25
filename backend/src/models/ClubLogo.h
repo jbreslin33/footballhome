@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "../third_party/json.hpp"
+#include "LogoImage.h"
 
 class Database;
 
@@ -17,10 +18,8 @@ class Database;
 //
 // This class owns every SQL touch; ClubLogoController serves /api/club-logos.
 // ────────────────────────────────────────────────────────────────────────────
-class ClubLogo {
+class ClubLogo : public LogoImage {
 public:
-    struct Sniffed { std::string ext, mime; bool ok = false; };
-    struct Saved   { long long logoId = 0; std::string filePath, error; bool ok() const { return error.empty(); } };
 
     ClubLogo();
 
@@ -52,14 +51,11 @@ public:
     void importLegacy();
     void materialize();
 
-    static Sniffed sniff(const std::string& bytes);
-    static std::string slugify(const std::string& name);
-    static const char* dir()      { return "/app/images/clubs"; }
-    static const char* siteDir()  { return "/app/images/site"; }   // read-only mount of frontend/images
+    // Loose comparison key: lower-case alphanumerics, trailing FC/SC/AC/Club… dropped.
+    static std::string nameKey(const std::string& name);
+    static const char* dir()       { return "/app/images/clubs"; }
+    static const char* urlPrefix() { return "/images/clubs/"; }
 
 private:
-    bool writeFile(const std::string& filePath, const std::string& bytes);
-    static std::string hex(const std::string& bytes);
-    static std::string unhex(const std::string& hexText);
     Database* db_;
 };

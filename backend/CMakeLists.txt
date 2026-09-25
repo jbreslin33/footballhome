@@ -48,7 +48,9 @@ set(SOURCES
     src/models/RsvpBoard.cpp
     src/models/KitBoard.cpp
     src/models/FacilityLockup.cpp
+    src/models/LogoImage.cpp
     src/models/ClubLogo.cpp
+    src/models/LeagueLogo.cpp
     src/models/ClubLogoSearch.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp

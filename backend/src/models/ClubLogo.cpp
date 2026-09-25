@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iterator>
 #include <sstream>
+#include <vector>
 
 #include "../database/Database.h"
 
@@ -14,74 +15,28 @@ using nlohmann::json;
 
 ClubLogo::ClubLogo() : db_(Database::getInstance()) {}
 
-// ── helpers ──────────────────────────────────────────────────────────────
-
-std::string ClubLogo::hex(const std::string& bytes) {
-    static const char* d = "0123456789abcdef";
-    std::string out;
-    out.reserve(bytes.size() * 2);
-    for (unsigned char c : bytes) { out.push_back(d[c >> 4]); out.push_back(d[c & 15]); }
-    return out;
-}
-
-std::string ClubLogo::unhex(const std::string& h) {
-    // pqxx hands bytea back as "\x0a1b..." (hex output format).
-    std::string out;
-    size_t i = (h.size() >= 2 && h[0] == '\\' && h[1] == 'x') ? 2 : 0;
-    out.reserve((h.size() - i) / 2);
-    auto v = [](char c) -> int {
-        if (c >= '0' && c <= '9') return c - '0';
-        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-        return 0;
-    };
-    for (; i + 1 < h.size(); i += 2) out.push_back(static_cast<char>((v(h[i]) << 4) | v(h[i + 1])));
-    return out;
-}
-
-ClubLogo::Sniffed ClubLogo::sniff(const std::string& b) {
-    Sniffed s;
-    if (b.size() < 12) return s;
-    if (b.compare(0, 8, "\x89PNG\r\n\x1a\n") == 0)                          { s = {"png",  "image/png",     true}; }
-    else if (b.compare(0, 3, "\xFF\xD8\xFF") == 0)                          { s = {"jpg",  "image/jpeg",    true}; }
-    else if (b.compare(0, 4, "RIFF") == 0 && b.compare(8, 4, "WEBP") == 0)  { s = {"webp", "image/webp",    true}; }
-    else if (b.compare(0, 6, "GIF87a") == 0 || b.compare(0, 6, "GIF89a") == 0) { s = {"gif", "image/gif",   true}; }
-    else {
-        // SVG: text, "<svg" somewhere in the first KB (after an optional XML prolog / BOM / comments).
-        const std::string head = b.substr(0, std::min<size_t>(b.size(), 1024));
-        std::string lower = head;
-        std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
-        if (lower.find("<svg") != std::string::npos && lower.find("<script") == std::string::npos) {
-            s = {"svg", "image/svg+xml", true};
-        }
-    }
-    return s;
-}
-
-std::string ClubLogo::slugify(const std::string& name) {
-    std::string out;
-    bool dash = false;
-    for (unsigned char c : name) {
-        if (std::isalnum(c)) { out.push_back(static_cast<char>(std::tolower(c))); dash = false; }
-        else if (!dash && !out.empty()) { out.push_back('-'); dash = true; }
-    }
-    while (!out.empty() && out.back() == '-') out.pop_back();
-    return out.empty() ? "club" : out.substr(0, 60);
-}
-
-bool ClubLogo::writeFile(const std::string& filePath, const std::string& bytes) {
-    // filePath is the nginx path (/images/clubs/x.png); the file lives under dir().
-    const std::string prefix = "/images/clubs/";
-    if (filePath.rfind(prefix, 0) != 0) return false;
-    mkdir(dir(), 0755);
-    const std::string full = std::string(dir()) + "/" + filePath.substr(prefix.size());
-    std::ofstream f(full, std::ios::binary | std::ios::trunc);
-    if (!f.is_open()) { std::cerr << "ClubLogo: cannot write " << full << std::endl; return false; }
-    f.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
-    return f.good();
-}
-
 // ── clubs ────────────────────────────────────────────────────────────────
+
+// "Desert Hawks FC", "desert-hawks", "Desert Hawks S.C." all mean the same
+// club: lower-case, letters and digits only, and the usual club suffixes
+// dropped.  Exact name matches still win.
+std::string ClubLogo::nameKey(const std::string& name) {
+    std::string words, w;
+    std::vector<std::string> toks;
+    for (unsigned char c : name + " ") {
+        if (std::isalnum(c)) w.push_back(static_cast<char>(std::tolower(c)));
+        else if (!w.empty()) { toks.push_back(w); w.clear(); }
+    }
+    static const char* suffixes[] = {"fc", "sc", "ac", "cf", "afc", "club", "soccer", "football", "united"};
+    auto isSuffix = [&](const std::string& t) {
+        for (const char* x : suffixes) if (t == x) return true;
+        return false;
+    };
+    // Drop trailing suffix words, but never empty the name ("Fishtown AC" → "fishtown", "FC United" stays).
+    while (toks.size() > 1 && isSuffix(toks.back())) toks.pop_back();
+    for (const auto& t : toks) words += t;
+    return words;
+}
 
 long long ClubLogo::findClubByName(const std::string& name) {
     auto rows = db_->query(R"SQL(
@@ -91,7 +46,21 @@ long long ClubLogo::findClubByName(const std::string& name) {
                   EXISTS (SELECT 1 FROM club_aliases a WHERE a.club_id = c.id) DESC,
                   c.id
          LIMIT 1)SQL", {name});
-    return rows.empty() ? 0 : rows[0]["id"].as<long long>();
+    if (!rows.empty()) return rows[0]["id"].as<long long>();
+    // Loose match: same key.  Prefer a club that already carries a crest or
+    // alias (the one the admin curated) over a bare scraped row.
+    const std::string key = nameKey(name);
+    if (key.empty()) return 0;
+    auto loose = db_->query(R"SQL(
+        SELECT c.id, c.name FROM clubs c
+         WHERE c.logo_id IS NOT NULL OR c.organization_id IS NULL
+            OR EXISTS (SELECT 1 FROM club_aliases a WHERE a.club_id = c.id)
+            OR EXISTS (SELECT 1 FROM teams t WHERE t.club_id = c.id AND t.is_active)
+         ORDER BY (c.logo_id IS NOT NULL) DESC, c.id)SQL");
+    for (const auto& r : loose) {
+        if (nameKey(r["name"].c_str()) == key) return r["id"].as<long long>();
+    }
+    return 0;
 }
 
 long long ClubLogo::resolveClub(const std::string& text) {
@@ -142,7 +111,7 @@ ClubLogo::Saved ClubLogo::save(long long clubId, const std::string& bytes, const
                {std::to_string(out.logoId), out.filePath});
     db_->query("UPDATE clubs SET logo_id = $2::int, logo_url = $3, updated_at = now() WHERE id = $1::int",
                {std::to_string(clubId), std::to_string(out.logoId), out.filePath});
-    if (!writeFile(out.filePath, bytes)) {
+    if (!writeFile(dir(), urlPrefix(), out.filePath, bytes)) {
         // The row is the truth; a failed cache write is loud but not fatal —
         // materialize() retries at next start.
         std::cerr << "ClubLogo::save: cached file write failed for " << out.filePath << std::endl;
@@ -245,10 +214,8 @@ void ClubLogo::importLegacy() {
         "SELECT id, name, logo_url FROM clubs WHERE logo_id IS NULL AND logo_url LIKE '/images/%'");
     for (const auto& r : rows) {
         const std::string url = r["logo_url"].c_str();
-        const std::string full = std::string(siteDir()) + url.substr(std::string("/images").size());
-        std::ifstream f(full, std::ios::binary);
-        if (!f.is_open()) { std::cerr << "ClubLogo::importLegacy: missing " << full << std::endl; continue; }
-        std::string bytes((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        const std::string bytes = readSiteFile(url);
+        if (bytes.empty()) { std::cerr << "ClubLogo::importLegacy: missing " << url << std::endl; continue; }
         Saved s = save(r["id"].as<long long>(), bytes, "legacy", "", url, 0);
         if (!s.ok()) std::cerr << "ClubLogo::importLegacy(" << r["name"].c_str() << "): " << s.error << std::endl;
         else std::cout << "ClubLogo: imported " << r["name"].c_str() << " -> " << s.filePath << std::endl;
@@ -260,12 +227,10 @@ void ClubLogo::materialize() {
     auto rows = db_->query("SELECT id, file_path FROM club_logos WHERE file_path LIKE '/images/clubs/%'");
     for (const auto& r : rows) {
         const std::string path = r["file_path"].c_str();
-        const std::string full = std::string(dir()) + "/" + path.substr(std::string("/images/clubs/").size());
-        struct stat st{};
-        if (stat(full.c_str(), &st) == 0 && st.st_size > 0) continue;
+        if (!fileMissing(dir(), urlPrefix(), path)) continue;
         auto b = db_->query("SELECT encode(bytes, 'hex') AS h FROM club_logos WHERE id = $1::int",
                             {std::to_string(r["id"].as<long long>())});
         if (b.empty()) continue;
-        if (writeFile(path, unhex(b[0]["h"].c_str()))) std::cout << "ClubLogo: rewrote " << path << std::endl;
+        if (writeFile(dir(), urlPrefix(), path, unhex(b[0]["h"].c_str()))) std::cout << "ClubLogo: rewrote " << path << std::endl;
     }
 }

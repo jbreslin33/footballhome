@@ -8,6 +8,7 @@
 #include "../database/Database.h"
 #include "../models/ClubLogo.h"
 #include "../models/ClubLogoSearch.h"
+#include "../models/LeagueLogo.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -88,6 +89,8 @@ void ClubLogoController::registerRoutes(Router& router, const std::string& prefi
     router.del (prefix + "/alias",    [this](const Request& r) { return handleRemoveAlias(r); });
     router.post(prefix + "/search",        [this](const Request& r) { return handleSearch(r); });
     router.post(prefix + "/search/reject", [this](const Request& r) { return handleRejectSearch(r); });
+    router.post(prefix + "/league/upload",   [this](const Request& r) { return handleLeagueUpload(r); });
+    router.post(prefix + "/league/from-url", [this](const Request& r) { return handleLeagueFromUrl(r); });
 }
 
 bool ClubLogoController::gate(const Request& request, Response* error) {
@@ -129,6 +132,7 @@ Response ClubLogoController::handleBoard(const Request& request) {
     try {
         json board = model_->board();
         board["searches"] = ClubLogoSearch().recent(40);
+        board["leagues"]  = LeagueLogo().board();
         return jsonOut(HttpStatus::OK, board);
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/club-logos/board] " << e.what() << std::endl;
@@ -162,43 +166,52 @@ Response ClubLogoController::handleUpload(const Request& request) {
     }
 }
 
+bool ClubLogoController::fetchImage(const std::string& url, std::string* bytes, Response* error) {
+    if (url.rfind("https://", 0) != 0 && url.rfind("http://", 0) != 0) {
+        *error = jsonError(HttpStatus::BAD_REQUEST, "url must start with http:// or https://");
+        return false;
+    }
+    // Admin-only and one URL at a time, but still: no loopback / private hosts.
+    std::string host = url.substr(url.find("//") + 2);
+    host = host.substr(0, host.find_first_of("/:?#"));
+    std::transform(host.begin(), host.end(), host.begin(), [](unsigned char c) { return std::tolower(c); });
+    if (host.empty() || host == "localhost" || host.rfind("127.", 0) == 0 || host.rfind("10.", 0) == 0 ||
+        host.rfind("192.168.", 0) == 0 || host.rfind("172.", 0) == 0 || host.rfind("169.254.", 0) == 0 ||
+        host.find(".") == std::string::npos) {
+        *error = jsonError(HttpStatus::BAD_REQUEST, "that host is not allowed");
+        return false;
+    }
+    HttpClient http;
+    auto res = http.get(url, {{"Accept", "image/*,*/*;q=0.8"}});
+    if (!res.ok()) {
+        *error = jsonError(HttpStatus::BAD_GATEWAY,
+                           res.error.empty() ? "the site answered HTTP " + std::to_string(res.status)
+                                             : "could not fetch: " + res.error);
+        return false;
+    }
+    if (!LogoImage::sniff(res.body).ok) {
+        *error = jsonError(HttpStatus::BAD_REQUEST,
+                           "that URL is not an image (PNG, JPEG, WebP, GIF or SVG) — use the image's own address, not the page it sits on");
+        return false;
+    }
+    *bytes = res.body;
+    return true;
+}
+
 Response ClubLogoController::handleFromUrl(const Request& request) {
     Response error(HttpStatus::OK, "");
     if (!gate(request, &error)) return error;
     json body;
     if (!parseBody(request, &body, &error)) return error;
     const std::string url = trim(strField(body, "url"));
-    if (url.rfind("https://", 0) != 0 && url.rfind("http://", 0) != 0) {
-        return jsonError(HttpStatus::BAD_REQUEST, "url must start with http:// or https://");
-    }
-    // Admin-only and one URL at a time, but still: no loopback / private hosts.
-    {
-        std::string host = url.substr(url.find("//") + 2);
-        host = host.substr(0, host.find_first_of("/:?#"));
-        std::transform(host.begin(), host.end(), host.begin(), [](unsigned char c) { return std::tolower(c); });
-        if (host.empty() || host == "localhost" || host.rfind("127.", 0) == 0 || host.rfind("10.", 0) == 0 ||
-            host.rfind("192.168.", 0) == 0 || host.rfind("172.", 0) == 0 || host.rfind("169.254.", 0) == 0 ||
-            host.find(".") == std::string::npos) {
-            return jsonError(HttpStatus::BAD_REQUEST, "that host is not allowed");
-        }
-    }
     try {
         bool created = false;
         const long long clubId = clubFromBody(body, &created, &error);
         if (clubId <= 0) return error;
-        HttpClient http;
-        auto res = http.get(url, {{"Accept", "image/*,*/*;q=0.8"}});
-        if (!res.ok()) {
-            return jsonError(HttpStatus::BAD_GATEWAY,
-                             res.error.empty() ? "the site answered HTTP " + std::to_string(res.status)
-                                               : "could not fetch: " + res.error);
-        }
-        if (!ClubLogo::sniff(res.body).ok) {
-            return jsonError(HttpStatus::BAD_REQUEST,
-                             "that URL is not an image (PNG, JPEG, WebP, GIF or SVG) — use the image's own address, not the page it sits on");
-        }
+        std::string bytes;
+        if (!fetchImage(url, &bytes, &error)) return error;
         const std::string filename = url.substr(url.find_last_of('/') + 1).substr(0, 120);
-        const auto saved = model_->save(clubId, res.body, "url", url, filename, callerPersonId(request));
+        const auto saved = model_->save(clubId, bytes, "url", url, filename, callerPersonId(request));
         if (!saved.ok()) return jsonError(HttpStatus::BAD_REQUEST, saved.error);
         return jsonOut(HttpStatus::OK, {{"club_id", clubId}, {"created_club", created},
                                         {"logo_id", saved.logoId}, {"logo_url", saved.filePath}});
@@ -272,6 +285,54 @@ Response ClubLogoController::handleRejectSearch(const Request& request) {
         return jsonOut(HttpStatus::OK, {{"rejected", id}});
     } catch (const std::exception& e) {
         std::cerr << "[POST /api/club-logos/search/reject] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
+    }
+}
+
+Response ClubLogoController::handleLeagueUpload(const Request& request) {
+    Response error(HttpStatus::OK, "");
+    if (!gate(request, &error)) return error;
+    json body;
+    if (!parseBody(request, &body, &error)) return error;
+    const long long orgId = intField(body, "organization_id");
+    const std::string dataUrl = strField(body, "image");
+    const std::size_t comma = dataUrl.find(',');
+    if (orgId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "organization_id required");
+    if (dataUrl.rfind("data:image/", 0) != 0 || comma == std::string::npos) {
+        return jsonError(HttpStatus::BAD_REQUEST, "expected a data:image/… upload");
+    }
+    try {
+        LeagueLogo leagues;
+        if (!leagues.exists(orgId)) return jsonError(HttpStatus::NOT_FOUND, "no such league");
+        const auto saved = leagues.save(orgId, base64Decode(dataUrl.substr(comma + 1)), "upload", "",
+                                        strField(body, "filename"), callerPersonId(request));
+        if (!saved.ok()) return jsonError(HttpStatus::BAD_REQUEST, saved.error);
+        return jsonOut(HttpStatus::OK, {{"organization_id", orgId}, {"logo_id", saved.logoId}, {"logo_url", saved.filePath}});
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/club-logos/league/upload] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
+    }
+}
+
+Response ClubLogoController::handleLeagueFromUrl(const Request& request) {
+    Response error(HttpStatus::OK, "");
+    if (!gate(request, &error)) return error;
+    json body;
+    if (!parseBody(request, &body, &error)) return error;
+    const long long orgId = intField(body, "organization_id");
+    const std::string url = trim(strField(body, "url"));
+    if (orgId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "organization_id required");
+    try {
+        LeagueLogo leagues;
+        if (!leagues.exists(orgId)) return jsonError(HttpStatus::NOT_FOUND, "no such league");
+        std::string bytes;
+        if (!fetchImage(url, &bytes, &error)) return error;
+        const std::string filename = url.substr(url.find_last_of('/') + 1).substr(0, 120);
+        const auto saved = leagues.save(orgId, bytes, "url", url, filename, callerPersonId(request));
+        if (!saved.ok()) return jsonError(HttpStatus::BAD_REQUEST, saved.error);
+        return jsonOut(HttpStatus::OK, {{"organization_id", orgId}, {"logo_id", saved.logoId}, {"logo_url", saved.filePath}});
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/club-logos/league/from-url] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
     }
 }

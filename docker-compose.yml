@@ -104,6 +104,7 @@ services:
       # club_logos row here; nginx serves it at /images/clubs/.  The read-only
       # site mount is for the one-time import of the hand-placed crests.
       - ./frontend/images/clubs:/app/images/clubs
+      - ./frontend/images/league-logos:/app/images/league-logos
       - ./frontend/images:/app/images/site:ro
       # LeagueApps API private key for JWT-bearer OAuth (RS256).  Used by
       # LeagueAppsService when fetching program registrations during team
