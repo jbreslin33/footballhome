@@ -7,7 +7,8 @@
 // and a coach's own availability is their My tile on the role picker —
 // see CalendarController::isEventCoachOrAdmin). This screen also hosts
 // club-wide roster/reminders/game-model tools (moved off admin-club so
-// coach work is separate from club-admin work) and the attendance report.
+// coach work is separate from club-admin work).  The attendance report
+// is the top-level 📊 Reports tile (shown to coaches since 2026-09-25).
 // The "My Teams" (#context-selection per-team flow) and "Game-Day
 // Analytics" (#mens-game-eligibility) tiles went 2026-09-25 (owner: "get
 // rid of button and code on coach-home for these") — lineups live in the
@@ -40,12 +41,6 @@ class CoachHomeScreen extends Screen {
         </p>
         <div id="section-rosters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
 
-        <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📊 Reports</h3>
-        <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
-          How reliably each player answers and turns up, for the teams you coach.
-        </p>
-        <div id="section-teams" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
-
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🧠 Game Model</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           The club's game model, principles, and weekly session plan with player-count variations for each day.
@@ -75,11 +70,6 @@ class CoachHomeScreen extends Screen {
       `).join('');
     };
 
-    const teamsTiles = [
-      { id: 'attendance-report', target: 'reports', params: {}, icon: '📊', label: 'Attendance Report', description: 'RSVP rate, attendance and reliability per player for the teams you coach — sort to find who has gone quiet' },
-    ];
-    renderInto('#section-teams', teamsTiles);
-
     const rosterTiles = [
       { id: 'rosters', target: 'teams', params: {}, icon: '🎽', label: 'Teams', description: 'Assign every FH member to a team — one screen, chip-switch between Mens (workbench) / Boys / Girls / All (side-by-side), with an Active/Inactive filter' },
     ];
@@ -94,7 +84,7 @@ class CoachHomeScreen extends Screen {
     ];
     renderInto('#section-game-model', gameModelTiles);
 
-    this._dashTiles = [...teamsTiles, ...rosterTiles, ...gameModelTiles];
+    this._dashTiles = [...rosterTiles, ...gameModelTiles];
 
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {

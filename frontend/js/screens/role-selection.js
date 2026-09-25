@@ -125,7 +125,7 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
-        <button class="btn btn-lg btn-primary" data-role="reports" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+        <button class="btn btn-lg btn-primary" data-role="reports" id="rs-reports" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">📊</span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Reports</div>
@@ -471,10 +471,12 @@ class RoleSelectionScreen extends Screen {
         this.navigation.goTo('my');
         return;
       }
-      // A coach without an admin role still sets lineups and takes
-      // attendance — show them the 🏟️ Game Center, 📋 Attendance and 👕 Uniforms & Kit tiles
-      // the admin levels get by default.
-      for (const id of ['#rs-game-center', '#rs-event-center', '#rs-kit']) {
+      // A coach without an admin role still sets lineups, takes
+      // attendance and reads the attendance report for their teams — show
+      // them the 🏟️ Game Center, 📋 Attendance, 👕 Uniforms & Kit and
+      // 📊 Reports tiles the admin levels get by default (Reports is
+      // scoped server-side to the teams they coach).
+      for (const id of ['#rs-game-center', '#rs-event-center', '#rs-kit', '#rs-reports']) {
         const tile = this.element && this.element.querySelector(id);
         if (tile) tile.style.display = 'flex';
       }
