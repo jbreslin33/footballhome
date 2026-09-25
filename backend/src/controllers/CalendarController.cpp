@@ -871,6 +871,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                           )
                     )
                     OR fh_event_invited(fe.id, $1::int)
+                    -- Club staff (migration 430, owner 2026-09-25): full-
+                    -- time staff see every team's events on their own
+                    -- page without a coach row per team.  Admin level is
+                    -- still deliberately NOT a pass here.
+                    OR fh_event_staff(fe.id, $1::int)
                 ) AS is_mine,
                 -- Guardian visibility (2026-08-28).  A parent of a
                 -- rostered child holds no team_persons row of their own,

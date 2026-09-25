@@ -465,8 +465,9 @@ class MyScreen extends Screen {
     // My is the viewer's OWN week, staff included (owner 2026-09-17: "my
     // page for coaches and admin should be for them and not an admin type
     // view").  The feed hands admins every club event; is_mine is the
-    // same test without the admin pass — on the roster, coaching it, or
-    // invited.  A parent's events arrive as is_guardian.
+    // same test without the admin pass — on the roster, coaching it,
+    // invited, or club staff (club_staff, mig 430: full-time staff see
+    // every team).  A parent's events arrive as is_guardian.
     if (ev.is_mine === false && !ev.is_guardian) return false;
 
     if (category === 'staff' || summary.includes('all staff meeting')) return false;
