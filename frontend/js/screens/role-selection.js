@@ -27,14 +27,7 @@ class RoleSelectionScreen extends Screen {
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
         <button class="btn btn-lg btn-primary" data-role="coach" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem; line-height: 1; display: inline-flex;" aria-hidden="true">
-            <!-- a coach: a person in a shirt that says COACH -->
-            <svg width="1.15em" height="1.15em" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
-              <circle cx="16" cy="4.6" r="3.3" />
-              <path d="M11 10.5c1.1 1.5 2.8 2.3 5 2.3s3.9-.8 5-2.3l9.5 3-1.8 6.2-2.7-.9V30H5V18.8l-2.7.9L.5 13.5z" fill="currentColor" fill-opacity="0.16" />
-              <text x="16" y="26" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-weight="800" font-size="5" fill="currentColor" stroke="none">COACH</text>
-            </svg>
-          </span>
+          <span style="font-size: 2rem;">🧑‍🏫</span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Coach</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">Manage your teams</div>
