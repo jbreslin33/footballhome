@@ -626,6 +626,10 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
     // error is raised here (write endpoint enforces auth).
     long long personId = resolveOptionalPersonId(request);
 
+    // Club/super admins see everyone's phone and email on the RSVP lists
+    // (for the bulk text/email buttons on #my); nobody else does.
+    const bool viewerIsAdmin = requireAdminLevel(request, {"club", "super"});
+
     // Admin view-as: `?asPersonId=N` swaps the effective person for
     // read purposes so an admin sees exactly what N sees.  Ignored
     // for anonymous callers (personId == 0).
@@ -1509,6 +1513,14 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             if (personId > 0) {
                 try {
                     ev["rsvps"] = json::parse(row["rsvps_json"].c_str());
+                    // Other people's phone / email ride along for the
+                    // bulk Text All / Email Going buttons, which are for
+                    // club admins only (owner 2026-09-25: "they should
+                    // not have option to email and text everyone").
+                    // Everyone else gets names and answers, nothing to dial.
+                    if (!viewerIsAdmin && ev["rsvps"].is_array()) {
+                        for (auto& r : ev["rsvps"]) { r.erase("phone"); r.erase("email"); }
+                    }
                 } catch (...) {}
             }
             events.push_back(std::move(ev));

@@ -818,6 +818,11 @@ class MyScreen extends Screen {
     const going          = goingAll.filter(r => r.dues_eligible !== false);
     const goingIneligible= goingAll.filter(r => r.dues_eligible === false);
     const viewerIsStaff  = String(this.navigation?.context?.role || this.auth?.user?.role || '').toLowerCase() !== 'player';
+    // The bulk Text All / Text Going / Email Going buttons are for club
+    // admins only (owner 2026-09-25: "they should not have option to email
+    // and text everyone … for now only i need that").  Coaches nudge from
+    // #rsvps and Game Center; players never see them.
+    const viewerIsAdmin  = this._viewerIsAdmin();
     const notGoingAll    = rsvps.filter(r => r && r.response === 'no');
     const noResponseAll  = rsvps.filter(r => r && !r.response);
     // Invited players (fh_event_invites, migration 355 — youth call-ups
@@ -890,8 +895,8 @@ class MyScreen extends Screen {
     return `
       <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
                   border-radius:8px; padding:8px 10px; margin-bottom: var(--space-3);">
-        ${this._bulkSmsAllBtnHtml(ev, isPast)}
-        ${going.length ? `
+        ${viewerIsAdmin ? this._bulkSmsAllBtnHtml(ev, isPast) : ''}
+        ${viewerIsAdmin && going.length ? `
           <div style="margin-bottom:8px;">
             ${this._bulkSmsGoingBtnHtml(ev, going, isPast)}
             ${this._bulkEmailGoingBtnHtml(ev, going, isPast)}
@@ -959,6 +964,13 @@ class MyScreen extends Screen {
           📋 Attendance &amp; invites
         </button>
       </div>`;
+  }
+
+  // Club/super admin by the account's DB role — the same list
+  // role-selection.js uses to show the Administration tile.
+  _viewerIsAdmin() {
+    const role = String(this.auth?.user?.role || '').toLowerCase();
+    return ['club', 'super', 'system', 'sport_division', 'team', 'league'].includes(role);
   }
 
   // Event-level "Text All" — everyone who can RSVP to this event (players
