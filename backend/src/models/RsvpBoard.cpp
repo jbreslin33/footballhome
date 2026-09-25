@@ -36,6 +36,9 @@ json textOrNull(const pqxx::row& row, const char* col) {
 //   expected (player, event) pairs the player owed an answer to.  The
 //            floor is the first RSVP ever recorded, so "all time" does not
 //            count events from before FH RSVPs existed.
+// tm / roster / expected are MATERIALIZED: without it Postgres inlined
+// `tm` into the week-events join and re-ran its window-end function per
+// fh_events row — 31 s for the Men's board (2026-09-25).
 const char* kBaseCtes = R"SQL(
     sec AS (
       SELECT cs.code, COALESCE(cs.schedule_section_id, cs.id) AS team_section_id
@@ -43,7 +46,7 @@ const char* kBaseCtes = R"SQL(
        WHERE $1 = '' OR cs.code = $1
     ), epoch AS (
       SELECT COALESCE(min(responded_at), now()) AS t FROM fh_event_rsvps
-    ), tm AS (
+    ), tm AS MATERIALIZED (
       SELECT DISTINCT t.id, t.name, t.label, t.board_sort_order,
              fh_schedule_window_end(t.club_id, t.club_section_id, now()) AS window_end
         FROM teams t
@@ -55,7 +58,7 @@ const char* kBaseCtes = R"SQL(
         FROM person_la_memberships plm
         JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id
        WHERE plm.ended_at IS NULL AND lp.category = 'girls'
-    ), roster AS (
+    ), roster AS MATERIALIZED (
       -- Everyone who owes an answer on a board team (owner 2026-09-25: "i
       -- need to be able to remind coaches and staff. just like anyone
       -- else"): rostered players (role rank 2), the team's live coaches
@@ -89,7 +92,7 @@ const char* kBaseCtes = R"SQL(
         JOIN tm ON tm.id = t.id
        WHERE cs.ended_at IS NULL
          AND ($4::int = 0 OR cs.person_id = $4::int)
-    ), expected AS (
+    ), expected AS MATERIALIZED (
       SELECT r.person_id, fe.id AS fh_event_id, fe.kind, fe.opponent,
              fe.fh_notes, ge.starts_at, ge.ends_at, MIN(r.role_rank) AS role_rank
         FROM roster r
@@ -118,8 +121,10 @@ const char* kBaseCtes = R"SQL(
       -- words are message_templates kind 'my_role' (mig 438).
       SELECT e.*,
              CASE e.role_rank WHEN 1 THEN 'coach' WHEN 2 THEN 'player' ELSE 'staff' END AS role,
-             EXISTS (SELECT 1 FROM expected x
-                      WHERE x.person_id = e.person_id AND x.role_rank <> e.role_rank) AS dual_role
+             -- Window functions, not a correlated EXISTS: the latter re-ran
+             -- the whole `expected` set per row and took the board to 30 s+.
+             (min(e.role_rank) OVER (PARTITION BY e.person_id)
+              <> max(e.role_rank) OVER (PARTITION BY e.person_id)) AS dual_role
         FROM expected e
     ), week_events AS (
       -- Every event of the released week (Monday → release window end)
@@ -204,7 +209,7 @@ json RsvpBoard::list(const std::string& sectionCode,
            -- and whether they wear more than one (owner 2026-09-25).
            (SELECT CASE MIN(e.role_rank) WHEN 1 THEN 'coach' WHEN 2 THEN 'player' WHEN 3 THEN 'staff' END
               FROM expected e WHERE e.person_id = p.id) AS role,
-           (SELECT count(DISTINCT e.role_rank) > 1 FROM expected e WHERE e.person_id = p.id) AS dual_role,
+           (SELECT MIN(e.role_rank) <> MAX(e.role_rank) FROM expected e WHERE e.person_id = p.id) AS dual_role,
            fh_dues_eligible(p.id) AS dues_eligible,
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line,
                                                          'day', to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'))
@@ -370,26 +375,32 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
     // and event pills (owner 2026-09-22: a snapshot of games AND practices;
     // "if we have today selected and no games should we even show games?").
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
-    , ng AS (
+    -- Lead with the handful of future calendar rows (gcal_events_starts_at_idx)
+    -- rather than every fh_events row: after roster grew a row per role
+    -- (2026-09-25) the planner flipped to scanning all 10k events and
+    -- re-hashing tm per row — 31 s for one section, 0.2 s this way.
+    , fut AS MATERIALIZED (
+      SELECT ge.id AS gcal_event_id, ge.starts_at, ge.ends_at
+        FROM gcal_events ge
+       WHERE ge.starts_at > now() - interval '1 day'
+         AND ge.ends_at > now()
+         AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+    ), ng AS MATERIALIZED (
       SELECT DISTINCT ON (tm.id) tm.id AS team_id, fe.id AS fh_event_id
-        FROM tm
-        JOIN fh_event_teams fet ON fet.team_id = tm.id
-        JOIN fh_events fe ON fe.id = fet.fh_event_id AND fe.kind = 'match'
-        JOIN gcal_events ge ON ge.id = fe.gcal_event_id
-       WHERE ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
-         AND ge.ends_at > now()
-       ORDER BY tm.id, ge.starts_at
-    ), ev AS (
+        FROM fut
+        JOIN fh_events fe ON fe.gcal_event_id = fut.gcal_event_id AND fe.kind = 'match'
+        JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
+        JOIN tm ON tm.id = fet.team_id
+       ORDER BY tm.id, fut.starts_at
+    ), ev AS MATERIALIZED (
       SELECT tm.id AS team_id, COALESCE(tm.label, tm.name) AS team_label, tm.board_sort_order,
-             fe.id AS fh_event_id, fe.kind, fe.opponent, fe.is_home, ge.starts_at,
-             (ge.starts_at < tm.window_end) AS released
-        FROM tm
-        JOIN fh_event_teams fet ON fet.team_id = tm.id
-        JOIN fh_events fe ON fe.id = fet.fh_event_id AND fe.kind IN ('practice','match','intrasquad')
-        JOIN gcal_events ge ON ge.id = fe.gcal_event_id
-       WHERE ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
-         AND ge.ends_at > now()
-         AND (ge.starts_at < tm.window_end
+             fe.id AS fh_event_id, fe.kind, fe.opponent, fe.is_home, fut.starts_at,
+             (fut.starts_at < tm.window_end) AS released
+        FROM fut
+        JOIN fh_events fe ON fe.gcal_event_id = fut.gcal_event_id AND fe.kind IN ('practice','match','intrasquad')
+        JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
+        JOIN tm ON tm.id = fet.team_id
+       WHERE (fut.starts_at < tm.window_end
               OR EXISTS (SELECT 1 FROM ng WHERE ng.team_id = tm.id AND ng.fh_event_id = fe.id))
     )
     SELECT ev.team_id, ev.team_label, ev.fh_event_id, ev.kind, ev.is_home, ev.released,
@@ -408,7 +419,8 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
                    count(*) FILTER (WHERE rv.response = 'yes' AND     fh_dues_eligible(e.person_id)) AS yes,
                    count(*) FILTER (WHERE rv.response = 'yes' AND NOT fh_dues_eligible(e.person_id)) AS yes_ineligible,
                    count(*) FILTER (WHERE rv.response = 'no')  AS no
-              FROM roster r
+              -- One row per (person, team): roster carries a row per role now.
+              FROM (SELECT DISTINCT person_id, team_id FROM roster) r
               JOIN expected e ON e.person_id = r.person_id AND e.fh_event_id = ev.fh_event_id
               LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
              WHERE r.team_id = ev.team_id) c
