@@ -23,9 +23,9 @@ ExecStart=/usr/bin/node /srv/footballhome/scripts/gcal-classify.js
 # transient network hiccup self-heals on the next tick.
 StandardOutput=journal
 StandardError=journal
-# Kill if it ever runs longer than 3 min — full sync of 1000+ events
+# Kill if it ever runs longer than 10 min — full sync of 1000+ events
 # is ~50s + classifier <1s; incremental sync + classifier <2s total.
-TimeoutStartSec=180s
+TimeoutStartSec=600s
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=6

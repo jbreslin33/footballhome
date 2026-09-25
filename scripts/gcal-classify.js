@@ -389,6 +389,22 @@ function parseDsl(description) {
 // Load the entire alias table into an in-memory Map keyed by
 // `${club}|${team}`. Table is small (≤ ~50 rows), so per-event queries
 // aren't worth the round-trips.
+// Everything the DSL pass reads besides the event itself (migration 443):
+// change any of these tables and every row re-classifies on the next run.
+async function lookupFingerprint(pg) {
+  const { rows: [r] } = await pg.query(`
+    SELECT md5(
+             coalesce((SELECT string_agg(club_alias || '|' || team_alias || '|' || team_id || '|' || coalesce(t.gender_category,''), ',' ORDER BY club_alias, team_alias)
+                         FROM gcal_team_aliases gta JOIN teams t ON t.id = gta.team_id), '')
+          || '#' || coalesce((SELECT string_agg(alias || '|' || organization_id, ',' ORDER BY alias) FROM gcal_league_aliases), '')
+          || '#' || coalesce((SELECT string_agg(organization_id || '|' || coalesce(arrival_minutes_before::text,'') || '|' || coalesce(warmup_minutes_before::text,''), ',' ORDER BY organization_id)
+                         FROM league_matchday_offsets), '')
+          || '#' || coalesce((SELECT string_agg(alias || '|' || team_id, ',' ORDER BY alias) FROM gcal_opponent_aliases), '')
+         ) AS fp
+  `);
+  return r.fp;
+}
+
 async function loadAliases(pg) {
   const { rows } = await pg.query(`
     SELECT gta.club_alias,
@@ -422,17 +438,26 @@ async function classifyDsl(pg) {
   };
 
   const aliases = await loadAliases(pg);
+  const fp      = await lookupFingerprint(pg);
+  const full    = process.env.FH_CLASSIFY_FULL === '1' || process.argv.includes('--full');
+  stats.fingerprint = fp;
+  stats.full = full;
 
+  // Migration 443: skip rows already classified from this exact content
+  // (gcal_events.hash) with these exact lookup tables (fp) — that is
+  // almost all of them on a 5-minute tick.  --full re-walks everything.
   // Pull every candidate row with description body + summary for logs.
   // The description ~* '\mteam[[:space:]]*:' regex mirrors the
   // exclusion in classifyPattern so the two paths are truly disjoint.
   const { rows: events } = await pg.query(`
-    SELECT ge.id, ge.summary, ge.description
+    SELECT ge.id, ge.summary, ge.description, ge.hash
     FROM   gcal_events ge
+    LEFT JOIN fh_events fe ON fe.gcal_event_id = ge.id
     WHERE  ge.deleted_at IS NULL
       AND  ge.description ~* '\\mteam[[:space:]]*:'
+      AND  ($2::boolean OR fe.classified_hash IS DISTINCT FROM (ge.hash || ':' || $1))
     ORDER BY ge.id
-  `);
+  `, [fp, full]);
 
   for (const ev of events) {
     stats.scanned += 1;
@@ -619,6 +644,10 @@ async function classifyDsl(pg) {
       );
       stats.leagueLinksAdded = (stats.leagueLinksAdded || 0) + leaguesAdded;
 
+      await client.query(
+        'UPDATE fh_events SET classified_hash = $2 WHERE id = $1',
+        [fhEventId, `${ev.hash}:${fp}`],
+      );
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -740,7 +769,7 @@ async function unclassifiedReport(pg) {
     console.log(`gcal-classify: DSL pass (§6.1.5)`);
     const ds = await classifyDsl(pg);
     console.log(
-      `  scanned=${ds.scanned} resolved=${ds.resolved} upserted=${ds.upserted}` +
+      `  ${ds.full ? 'FULL re-walk' : 'changed rows only'}: scanned=${ds.scanned} resolved=${ds.resolved} upserted=${ds.upserted}` +
       ` links+=${ds.linksAdded} links-=${ds.linksRemoved}`
     );
     if (ds.missingClub.length) {
