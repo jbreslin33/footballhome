@@ -27,7 +27,7 @@ class RoleSelectionScreen extends Screen {
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
         <button class="btn btn-lg btn-primary" data-role="teams" id="rs-teams" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🎽</span>
+          <span style="font-size: 2rem;">👥</span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Teams</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">Every player and every team on one board — assign, move, message</div>
@@ -35,7 +35,58 @@ class RoleSelectionScreen extends Screen {
         </button>
 
         <button class="btn btn-lg btn-primary" data-role="tactical" id="rs-tactical" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">♟️</span>
+          <span style="font-size: 2rem; line-height: 1; display: inline-flex;" aria-hidden="true">
+            <!-- a classic chess board, king and pawn on it — no emoji for one -->
+            <svg width="1.1em" height="1.1em" viewBox="0 0 32 32" fill="currentColor">
+              <rect x="1" y="1" width="30" height="30" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" />
+              <g opacity="0.32">
+                <rect x="5.5" y="2" width="3.5" height="3.5" />
+                <rect x="12.5" y="2" width="3.5" height="3.5" />
+                <rect x="19.5" y="2" width="3.5" height="3.5" />
+                <rect x="26.5" y="2" width="3.5" height="3.5" />
+                <rect x="2" y="5.5" width="3.5" height="3.5" />
+                <rect x="9" y="5.5" width="3.5" height="3.5" />
+                <rect x="16" y="5.5" width="3.5" height="3.5" />
+                <rect x="23" y="5.5" width="3.5" height="3.5" />
+                <rect x="5.5" y="9" width="3.5" height="3.5" />
+                <rect x="12.5" y="9" width="3.5" height="3.5" />
+                <rect x="19.5" y="9" width="3.5" height="3.5" />
+                <rect x="26.5" y="9" width="3.5" height="3.5" />
+                <rect x="2" y="12.5" width="3.5" height="3.5" />
+                <rect x="9" y="12.5" width="3.5" height="3.5" />
+                <rect x="16" y="12.5" width="3.5" height="3.5" />
+                <rect x="23" y="12.5" width="3.5" height="3.5" />
+                <rect x="5.5" y="16" width="3.5" height="3.5" />
+                <rect x="12.5" y="16" width="3.5" height="3.5" />
+                <rect x="19.5" y="16" width="3.5" height="3.5" />
+                <rect x="26.5" y="16" width="3.5" height="3.5" />
+                <rect x="2" y="19.5" width="3.5" height="3.5" />
+                <rect x="9" y="19.5" width="3.5" height="3.5" />
+                <rect x="16" y="19.5" width="3.5" height="3.5" />
+                <rect x="23" y="19.5" width="3.5" height="3.5" />
+                <rect x="5.5" y="23" width="3.5" height="3.5" />
+                <rect x="12.5" y="23" width="3.5" height="3.5" />
+                <rect x="19.5" y="23" width="3.5" height="3.5" />
+                <rect x="26.5" y="23" width="3.5" height="3.5" />
+                <rect x="2" y="26.5" width="3.5" height="3.5" />
+                <rect x="9" y="26.5" width="3.5" height="3.5" />
+                <rect x="16" y="26.5" width="3.5" height="3.5" />
+                <rect x="23" y="26.5" width="3.5" height="3.5" />
+              </g>
+              <!-- pawn (dark, with a light outline so it reads on either square) -->
+              <g stroke="currentColor" stroke-width="1.2" stroke-linejoin="round">
+                <circle cx="9.5" cy="16.5" r="2.4" />
+                <path d="M7 24.5c0-2.6 1.1-4.4 2.5-5.4 1.4 1 2.5 2.8 2.5 5.4z" />
+                <path d="M6 25h7v2H6z" />
+              </g>
+              <!-- king -->
+              <g stroke="currentColor" stroke-width="1.2" stroke-linejoin="round">
+                <path d="M22 4.5h2v2h2v2h-2v2h-2v-2h-2v-2h2z" />
+                <path d="M19.5 22c0-4.2 1.5-7.2 3.5-8.6 2 1.4 3.5 4.4 3.5 8.6z" />
+                <path d="M18 23h10v2H18z" />
+              </g>
+            </svg>
+          </span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Tactical</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">Game model, practice plans, days, exercises, and the tactical board</div>
