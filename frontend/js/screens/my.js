@@ -1506,7 +1506,7 @@ class MyScreen extends Screen {
                style="font-size:0.66rem; padding:1px 4px; border-radius:6px; border:1px solid ${isSet ? '#f59e0b' : 'rgba(255,255,255,0.18)'};
                       background:${isSet ? '#fde68a' : 'rgba(255,255,255,0.06)'}; color:${isSet ? '#1f2937' : '#e2e8f0'}; font-weight:${isSet ? '800' : '600'};">
         ${isSet ? `<button type="button" data-rsvp-time-reset="${which}" data-fh-event-id="${ev.fh_event_id}"${pidAttr}
-                     style="background:none; border:none; color:#fcd34d; font-size:0.58rem; text-decoration:underline; cursor:pointer; padding:0 2px;">${this.escapeHtml(t('reset', 'on time'))}</button>` : ''}
+                     style="background:none; border:none; color:#fcd34d; font-size:0.58rem; text-decoration:underline; cursor:pointer; padding:0 2px;">${this.escapeHtml(t('reset', 'Switch back to on time'))}</button>` : ''}
       </label>`;
     return `
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:4px; padding:0 2px;">
