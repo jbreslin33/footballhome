@@ -1536,7 +1536,7 @@ class MyScreen extends Screen {
     const iso = hhmm ? this._nyWallToIso(base || ev.starts_at, hhmm) : null;
     if (hhmm && !iso) return;
     const payload = { fh_event_id: fhEventId, response: 'yes', [which + '_at']: iso };
-    if (personId) payload.person_id = personId;
+    if (this._writeTargetPersonId(personId)) payload.person_id = this._writeTargetPersonId(personId);
     try {
       const body = await this._fetch('/api/calendar/rsvp', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -1557,6 +1557,15 @@ class MyScreen extends Screen {
       alert(`Could not save the time: ${err.message}`);
     }
     this._renderEvents();
+  }
+
+  // Who a write is for: an explicit child, else the person an admin is
+  // viewing as (view-as reads as them, so a tap answers for them too —
+  // admins may RSVP for anyone, owner 2026-09-25: "i hit go and then a
+  // few seconds later the go goes back to blank"), else the caller.
+  _writeTargetPersonId(personId) {
+    if (personId) return personId;
+    return this.auth?.viewAsPersonId ? Number(this.auth.viewAsPersonId) : null;
   }
 
   _currentRsvpFor(ev, personId) {
@@ -1580,7 +1589,7 @@ class MyScreen extends Screen {
     this._renderEvents();
     try {
       const payload = { fh_event_id: fhEventId, response };
-      if (personId) payload.person_id = personId;
+      if (this._writeTargetPersonId(personId)) payload.person_id = this._writeTargetPersonId(personId);
       const body = await this._fetch('/api/calendar/rsvp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1621,7 +1630,7 @@ class MyScreen extends Screen {
     this._renderEvents();
     try {
       const payload = { fh_event_id: fhEventId };
-      if (personId) payload.person_id = personId;
+      if (this._writeTargetPersonId(personId)) payload.person_id = this._writeTargetPersonId(personId);
       const body = await this._fetch('/api/calendar/rsvp', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
