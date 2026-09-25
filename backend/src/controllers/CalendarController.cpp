@@ -1945,7 +1945,12 @@ Response CalendarController::handleDeleteRsvp(const Request& request) {
 Response CalendarController::handleGetEventAttendance(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
-    const long long personId = gate.personId;
+    // View-as (?asPersonId): can_mark and the roster answer for the person
+    // being viewed, so an admin looking at a player's #my sees the
+    // player's page — no staff door (owner 2026-09-25).  Reads only; the
+    // POST beside this never impersonates.
+    long long personId = gate.personId;
+    if (auto err = applyImpersonation(request, personId, &personId)) return *err;
 
     const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
     if (fhEventId <= 0) {

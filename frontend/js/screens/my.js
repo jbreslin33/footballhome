@@ -951,7 +951,7 @@ class MyScreen extends Screen {
   // where this event's coaches and club admins mark attendance and send
   // 🎟 invites.  Shown once attendance has loaded and says they may.
   _eventCenterLinkHtml(ev, att) {
-    if (!att || !att.canMark) return '';
+    if (!att || !att.canMark || this.auth?.viewAsPersonId) return '';
     return `
       <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
         <button type="button" data-event-center="${ev.fh_event_id}"
