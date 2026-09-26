@@ -207,6 +207,7 @@ async function classifyPattern(pg, p) {
 //                                                              (alias: Kind:)
 //   Home:    Yes    | No       | Neutral                          (matches only)
 //   Opponent: free-form opponent name                          (matches only)
+//             (absent → text after vs/at in the title; vs = home, at = away)
 //   Notes:   free-form text; stored in fh_events.fh_notes verbatim.
 //
 // Team + Club are lists-of-values: either comma-separated on one line
@@ -272,6 +273,30 @@ function parseTimeOfDay(raw) {
     return null;
   }
   return `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+}
+
+// Title fallback (owner 2026-09-26: "we don't need opponent as you're
+// supposed to glean from event title — opponent is always after vs or
+// at").  Used only for matches and only where the description has no
+// Opponent: / Home: tag — a typed tag always wins.
+//   "Soccer Game APSL vs Persepolis"        → opponent Persepolis, home
+//   "Soccer Game APSL at Persepolis"        → opponent Persepolis, away
+//   "Soccer Game U8 Away vs Torresdale BC"  → opponent Torresdale BC, away
+// An explicit Home / Away word anywhere in the title beats the vs/at rule.
+function gleanFromSummary(summary) {
+  const out = { opponent: null, isHome: null };
+  const s = String(summary || '').replace(/\s+/g, ' ').trim();
+  if (!s) return out;
+  const m = s.match(/(?:^|\s)(vs\.?|v\.|at|@)\s+(.+?)\s*$/i);
+  if (!m) return out;
+  const opponent = m[2].replace(/[\s\-–—:,.]+$/, '').trim();
+  if (!opponent) return out;
+  out.opponent = opponent;
+  const word = m[1].toLowerCase();
+  if      (/\baway\b/i.test(s)) out.isHome = false;
+  else if (/\bhome\b/i.test(s)) out.isHome = true;
+  else out.isHome = !(word === 'at' || word === '@');
+  return out;
 }
 
 function parseDsl(description) {
@@ -402,7 +427,10 @@ async function lookupFingerprint(pg) {
           || '#' || coalesce((SELECT string_agg(alias || '|' || team_id, ',' ORDER BY alias) FROM gcal_opponent_aliases), '')
          ) AS fp
   `);
-  return r.fp;
+  // Bump when the classifier's own rules change so every row re-walks
+  // once (migration 443 otherwise skips rows whose content + lookups match).
+  const CLASSIFIER_RULES_VERSION = 'title-glean-1';
+  return r.fp + ':' + CLASSIFIER_RULES_VERSION;
 }
 
 async function loadAliases(pg) {
@@ -506,6 +534,13 @@ async function classifyDsl(pg) {
       if      (someTeamAlias.has('pickup'))   kind = 'pickup';
       else if (someTeamAlias.has('practice')) kind = 'practice';
       else                                    kind = 'match';
+    }
+
+    // Matches with no Opponent: / Home: tag take them from the title.
+    if (kind === 'match' && (dsl.opponent == null || dsl.isHome == null)) {
+      const g = gleanFromSummary(ev.summary);
+      if (dsl.opponent == null && g.opponent != null) dsl.opponent = g.opponent;
+      if (dsl.isHome   == null && g.isHome   != null) dsl.isHome   = g.isHome;
     }
 
     // Derive category: unique category across resolved teams, else NULL.
