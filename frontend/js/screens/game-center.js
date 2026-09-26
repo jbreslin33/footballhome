@@ -41,8 +41,11 @@
 //     see GET /api/eligibility/positions). Picking a pill IS how a
 //     player becomes a starter — there's no separate "Start" button.
 //     A slot already held by someone else renders greyed out but is
-//     still clickable: clicking it REPLACES them (they're bumped back
-//     to unassigned/their RSVP group) rather than blocking the click.
+//     still clickable.  Until 2026-09-26 that REPLACED them (bumped
+//     back to unassigned, no warning); now it opens the swap sheet
+//     (_openPositionSheet): swap the two, or send the holder to Bench
+//     / Alternates.  Same sheet when the bench is full
+//     (_openBenchSheet).  An empty target is still one tap.
 //     Clicking your own active pill removes you instead.
 //   • Bench/Alt: plain toggle buttons (_toggleZone), unchanged.
 //   • Bench order: a #1/#2/... dropdown per bench player
@@ -595,6 +598,7 @@ class GameCenterScreen extends Screen {
     this._socialMountedFor = null;
     if (this._jerseyDebounce) { clearTimeout(this._jerseyDebounce); this._jerseyDebounce = null; }
     this.overlayOpen = false;
+    this._closeSwapSheet();
   }
 
   // Same admin-only gate my.js uses for the "Post to Instagram" button on
@@ -747,8 +751,8 @@ class GameCenterScreen extends Screen {
       }
       // 1-11 position pills (2026-08-22, owner directive) — a slot
       // already taken by someone else just renders greyed out (see
-      // positionPills below), it's not disabled: clicking it replaces
-      // whoever's there (_setPosition bumps them back to unassigned).
+      // positionPills below), it's not disabled: clicking it asks what
+      // to do with whoever's there (_openPositionSheet, 2026-09-26).
       // Clicking your OWN active pill removes you instead of replacing
       // yourself.
       const posBtn = e.target.closest('[data-lineup-position-btn]');
@@ -756,7 +760,10 @@ class GameCenterScreen extends Screen {
         const playerId = Number(posBtn.getAttribute('data-player-id'));
         const positionId = Number(posBtn.getAttribute('data-lineup-position-btn'));
         const isMine = this.positions.get(playerId) === positionId;
-        this._setPosition(playerId, isMine ? null : positionId);
+        if (isMine) { this._setPosition(playerId, null); return; }
+        const holderId = this._holderOf(positionId);
+        if (holderId != null && holderId !== playerId && this._openPositionSheet(playerId, positionId, holderId)) return;
+        this._setPosition(playerId, positionId);
         return;
       }
     });
@@ -967,6 +974,9 @@ class GameCenterScreen extends Screen {
       if (cap != null) {
         const countInZone = [...this.zones.values()].filter(z => z === zone).length;
         if (countInZone >= cap) {
+          // Full: pick who to swap with (2026-09-26).  The toast is the
+          // fallback while the copy rows have not landed.
+          if (zone === 'bench' && this._openBenchSheet(playerId)) return;
           this._toast(`Bench is full (${cap} max)`);
           return;
         }
@@ -1012,11 +1022,11 @@ class GameCenterScreen extends Screen {
   // Starting XI assignment (2026-08-22, owner directive) — picking a
   // position sets zone='starter' with that position_id/slot in one move;
   // picking "—" while already a starter sends them back to their RSVP
-  // group, same as tapping an active Bench/Alt pill again. Clicking a
-  // slot someone ELSE already holds replaces them — they're bumped back
-  // to unassigned (their RSVP group, e.g. "Going") rather than blocking
-  // the click; the pill's greyed-out style is just occupancy at a
-  // glance, not a lock. Never exceeds the format's starters (7/9/11):
+  // group, same as tapping an active Bench/Alt pill again. A slot
+  // someone ELSE already holds normally goes through the swap sheet
+  // first (2026-09-26); reaching here with it still taken (copy rows not
+  // loaded) keeps the original rule — they're bumped back to unassigned
+  // (their RSVP group, e.g. "Going"). Never exceeds the format's starters (7/9/11):
   // replacing frees a slot in the same stroke as filling it, and there
   // are only fieldSize pills.
   _setPosition(playerId, positionId) {
@@ -1038,6 +1048,198 @@ class GameCenterScreen extends Screen {
     this.positions.set(playerId, positionId);
     this._render();
     this._scheduleSave();
+  }
+
+  // ── Swap sheet (2026-09-26, owner: "when we click something that is
+  // filled … popup saying full and that we need to swap someone") ─────
+  //
+  // Two situations, one sheet:
+  //   • a position pill whose slot someone else holds  (_openPositionSheet)
+  //   • the Bench button while the bench is at ZONE_CAPS  (_openBenchSheet)
+  // An EMPTY target never prompts — the common case stays one tap.
+  //
+  // Every outcome is a swap of placements: a player's placement is
+  // {zone, positionId, benchOrder} (_placementOf), and giving player A
+  // player B's placement and B A's (_swapPlayers) covers Luke↔Caleb
+  // whether Luke was a starter, benched, an alternate, or unassigned —
+  // the last is the only case where the holder comes off the lineup,
+  // which is what the old silent bump did every time.  "to Bench" and
+  // "to Alternates" move the holder somewhere else instead, then the
+  // mover takes the slot.  All of it lands in ONE debounced save.
+  //
+  // Words come from message_templates kind='lineup_swap' (migration
+  // 453) through MessageCopy; with no rows loaded the openers return
+  // false and the callers fall back to the pre-sheet behaviour.
+
+  _holderOf(positionId) {
+    for (const [pid, pos] of this.positions.entries()) if (pos === positionId) return pid;
+    return null;
+  }
+
+  _placementOf(playerId) {
+    return {
+      zone: this.zones.get(playerId) ?? null,
+      positionId: this.positions.get(playerId) ?? null,
+      benchOrder: this.benchOrder.get(playerId) ?? null,
+    };
+  }
+
+  _applyPlacement(playerId, pl) {
+    this.zones.delete(playerId);
+    this.positions.delete(playerId);
+    this.benchOrder.delete(playerId);
+    if (!pl || !pl.zone) return;
+    this.zones.set(playerId, pl.zone);
+    if (pl.zone === 'starter' && pl.positionId != null) this.positions.set(playerId, pl.positionId);
+    if (pl.zone === 'bench' && pl.benchOrder != null) this.benchOrder.set(playerId, pl.benchOrder);
+  }
+
+  _swapPlayers(aId, bId) {
+    const a = this._placementOf(aId);
+    const b = this._placementOf(bId);
+    this._applyPlacement(aId, b);
+    this._applyPlacement(bId, a);
+  }
+
+  // Bench slot for a newcomer: after everyone already there.
+  _nextBenchOrder(excludeId) {
+    let n = 0;
+    for (const [pid, z] of this.zones.entries()) if (z === 'bench' && pid !== excludeId) n++;
+    return n + 1;
+  }
+
+  _swapCopy(tier, tokens) {
+    return window.MessageCopy ? MessageCopy.block('lineup_swap', tier, tokens) : '';
+  }
+
+  // "{spot}" for a placement: "6 · Centre Midfield", "Bench #3",
+  // "Alternates", "off the lineup".
+  _spotText(pl) {
+    if (pl.zone === 'starter') {
+      const pos = this.positionList.find(x => x.id === pl.positionId);
+      return this._swapCopy('spot_position', { number: pos?.sortOrder ?? '', position: pos?.name ?? '' });
+    }
+    if (pl.zone === 'bench') return this._swapCopy('spot_bench', { n: pl.benchOrder ?? this._nextBenchOrder() });
+    if (pl.zone === 'alternate') return this._swapCopy('spot_alt', {});
+    return this._swapCopy('spot_off', {});
+  }
+
+  // Luke (playerId) tapped Caleb's (holderId) position.
+  _openPositionSheet(playerId, positionId, holderId) {
+    const player = this.roster.find(p => p.id === playerId);
+    const other  = this.roster.find(p => p.id === holderId);
+    const pos    = this.positionList.find(x => x.id === positionId);
+    if (!player || !other || !pos) return false;
+    const tk = { player: player.name, other: other.name, position: pos.name, number: pos.sortOrder, cap: ZONE_CAPS.bench };
+    const title = this._swapCopy('position_title', tk);
+    if (!title) return false;   // copy not loaded → caller keeps the old path
+
+    const mine = this._placementOf(playerId);
+    const benchFull = mine.zone !== 'bench'
+      && [...this.zones.values()].filter(z => z === 'bench').length >= ZONE_CAPS.bench;
+    const rows = [];
+    rows.push({
+      label: mine.zone ? this._swapCopy('swap', { ...tk, spot: this._spotText(mine) }) : this._swapCopy('swap_off', tk),
+      run: () => this._swapPlayers(playerId, holderId),
+    });
+    // "to Bench" / "to Alternates" only where they differ from Swap.
+    if (mine.zone !== 'bench') {
+      rows.push({
+        label: this._swapCopy('to_bench', tk),
+        note: benchFull ? this._swapCopy('bench_full', tk) : '',
+        disabled: benchFull,
+        run: () => {
+          this._applyPlacement(holderId, { zone: 'bench', positionId: null, benchOrder: this._nextBenchOrder(playerId) });
+          this._applyPlacement(playerId, { zone: 'starter', positionId, benchOrder: null });
+        },
+      });
+    }
+    if (mine.zone !== 'alternate') {
+      rows.push({
+        label: this._swapCopy('to_alt', tk),
+        run: () => {
+          this._applyPlacement(holderId, { zone: 'alternate', positionId: null, benchOrder: null });
+          this._applyPlacement(playerId, { zone: 'starter', positionId, benchOrder: null });
+        },
+      });
+    }
+    this._openSwapSheet({ title, sub: this._swapCopy('position_sub', tk), rows });
+    return true;
+  }
+
+  // Luke (playerId) tapped Bench while it is full: pick who comes off.
+  _openBenchSheet(playerId) {
+    const player = this.roster.find(p => p.id === playerId);
+    if (!player) return false;
+    const tk = { player: player.name, cap: ZONE_CAPS.bench };
+    const title = this._swapCopy('bench_title', tk);
+    if (!title) return false;
+    const mine = this._placementOf(playerId);
+    const benchIds = [...this.zones.entries()].filter(([, z]) => z === 'bench').map(([id]) => id)
+      .sort((a, b) => (this.benchOrder.get(a) ?? Infinity) - (this.benchOrder.get(b) ?? Infinity));
+    const rows = benchIds.map((id, i) => {
+      const other = this.roster.find(p => p.id === id);
+      return {
+        label: other?.name || '(unnamed)',
+        note: this._swapCopy('bench_row', { ...tk, other: other?.name || '', n: this.benchOrder.get(id) ?? (i + 1), spot: this._spotText(mine) }),
+        run: () => this._swapPlayers(playerId, id),
+      };
+    });
+    this._openSwapSheet({ title, sub: this._swapCopy('bench_sub', tk), rows });
+    return true;
+  }
+
+  // The sheet itself: fixed to the bottom of the viewport, on
+  // document.body so _render()'s repaint of this.element cannot wipe it.
+  // A row runs its action, then the screen repaints and saves once.
+  _openSwapSheet({ title, sub, rows }) {
+    this._closeSwapSheet();
+    const esc = (t) => this.escapeHtml(t);
+    const overlay = document.createElement('div');
+    overlay.id = 'gc-swap-sheet';
+    overlay.style.cssText = `position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.55);
+      display:flex; align-items:flex-end; justify-content:center;`;
+    const rowStyle = (r) => `display:block; width:100%; text-align:left; padding:12px 16px; border:0;
+      border-top:1px solid var(--border-color); background:transparent; color:var(--text-primary);
+      font:inherit; font-weight:600; cursor:${r.disabled ? 'not-allowed' : 'pointer'}; opacity:${r.disabled ? '0.45' : '1'};`;
+    overlay.innerHTML = `
+      <div role="dialog" aria-modal="true" onclick="event.stopPropagation()"
+        style="background:var(--bg-surface); color:var(--text-primary); width:100%; max-width:480px;
+               border:1px solid var(--border-color); border-radius:14px 14px 0 0; max-height:85vh; overflow-y:auto;
+               box-shadow:0 -10px 40px rgba(0,0,0,0.45); padding-bottom:env(safe-area-inset-bottom);">
+        <div style="padding:14px 16px 10px;">
+          <div style="font-weight:800; font-size:1rem;">${esc(title)}</div>
+          ${sub ? `<div style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">${esc(sub)}</div>` : ''}
+        </div>
+        ${rows.map((r, i) => `
+          <button type="button" data-swap-row="${i}" ${r.disabled ? 'disabled' : ''} style="${rowStyle(r)}">
+            <div>${esc(r.label)}</div>
+            ${r.note ? `<div style="font-size:0.76rem; font-weight:500; color:var(--text-muted); margin-top:2px;">${esc(r.note)}</div>` : ''}
+          </button>`).join('')}
+        <button type="button" data-swap-cancel style="${rowStyle({})} text-align:center; color:var(--text-muted);">
+          ${esc(this._swapCopy('cancel', {}) || '×')}
+        </button>
+      </div>`;
+    overlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = e.target.closest('[data-swap-row]');
+      if (row && !row.disabled) {
+        const r = rows[Number(row.getAttribute('data-swap-row'))];
+        this._closeSwapSheet();
+        if (r) { r.run(); this._render(); this._scheduleSave(); }
+        return;
+      }
+      // Cancel row or the dimmed backdrop.
+      this._closeSwapSheet();
+    });
+    this._swapSheetKey = (e) => { if (e.key === 'Escape') this._closeSwapSheet(); };
+    document.addEventListener('keydown', this._swapSheetKey);
+    document.body.appendChild(overlay);
+  }
+
+  _closeSwapSheet() {
+    document.getElementById('gc-swap-sheet')?.remove();
+    if (this._swapSheetKey) { document.removeEventListener('keydown', this._swapSheetKey); this._swapSheetKey = null; }
   }
 
   _toast(msg) {
@@ -1423,7 +1625,7 @@ class GameCenterScreen extends Screen {
               ? 'background:#1e293b; color:#64748b; border:1px solid #334155; cursor:pointer;'
               : 'background:#334155; color:#fff; border:1px solid #475569; cursor:pointer;';
           const title = takenByOther
-            ? `${pos.name} — currently ${rosterById.get(occupantId)?.name || 'taken'}, click to replace`
+            ? `${pos.name} — currently ${rosterById.get(occupantId)?.name || 'taken'}, tap to swap or move them`
             : pos.name;
           return `<button type="button" data-lineup-position-btn="${pos.id}" data-player-id="${p.id}"
             title="${this.escapeHtml(title)}"
