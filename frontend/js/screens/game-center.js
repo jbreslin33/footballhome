@@ -3092,14 +3092,22 @@ class GameCenterScreen extends Screen {
       lookback: String(s.lookback != null ? s.lookback : (this.eligibilityPolicy && this.eligibilityPolicy.lookback) || 5),
       cutoff: s.cutoff ? (() => { const d = new Date(s.cutoff + 'T12:00:00'); return `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`; })() : '',
     };
-    let tier, bg, fg;
-    if (s.eligible)                              { tier = 'pill_eligible'; bg = '#166534'; fg = '#bbf7d0'; }
-    else if (attended + projected >= needed)     { tier = 'pill_on_track'; bg = '#1e3a8a'; fg = '#bfdbfe'; }
-    else if (future.length)                      { tier = 'pill_short';    bg = '#78350f'; fg = '#fde68a'; }
-    else                                         { tier = 'pill_missed';   bg = '#7f1d1d'; fg = '#fecaca'; }
+    // Practice Criteria pill (mig 457): green = met (exceeding when over the
+    // minimum, "projected to exceed" when met with more Going ahead),
+    // yellow = projected to meet from Going RSVPs, red = short.
+    const GREEN = ['#166534', '#bbf7d0'], YELLOW = ['#854d0e', '#fef08a'], RED = ['#7f1d1d', '#fecaca'];
+    let tier, colour;
+    if (attended > needed)                       { tier = 'pill_exceeding';           colour = GREEN; }
+    else if (attended === needed && projected)   { tier = 'pill_exceeding_projected'; colour = GREEN; }
+    else if (attended >= needed)                 { tier = 'pill_met';                 colour = GREEN; }
+    else if (attended + projected >= needed)     { tier = 'pill_projected';           colour = YELLOW; }
+    else if (future.length)                      { tier = 'pill_needs';               colour = RED; }
+    else                                         { tier = 'pill_not_met';             colour = RED; }
+    const [bg, fg] = colour;
     const pillText = this._eligCopy(tier, tokens);
     if (!pillText) return '';   // no copy row → nothing to say (never hard-code it)
     const rule = this._eligCopy(s.extended ? 'rule_extended' : 'rule', tokens);
+    const legend = this._eligCopy('legend');
 
     const chip = (p) => {
       const ok = !!p.attended;
@@ -3129,6 +3137,9 @@ class GameCenterScreen extends Screen {
       <div class="public-card" data-gc-eligibility style="max-width:540px; margin:0 auto var(--space-3); padding: var(--space-3);">
         <div style="display:inline-block; padding:4px 12px; border-radius:999px; background:${bg}; color:${fg}; font-size:0.8rem; font-weight:700;">${this.escapeHtml(pillText)}</div>
         ${rule ? `<div style="font-size:0.72rem; opacity:0.7; margin-top:6px;">${this.escapeHtml(rule)}</div>` : ''}
+        ${legend ? `<div style="font-size:0.68rem; opacity:0.6; margin-top:4px; display:flex; gap:6px; align-items:flex-start;">
+          <span style="flex:0 0 auto; display:inline-flex; gap:2px; margin-top:2px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span><span style="width:8px;height:8px;border-radius:50%;background:#eab308;display:inline-block;"></span><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span></span>
+          <span>${this.escapeHtml(legend)}</span></div>` : ''}
         <div style="font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin-top:10px;">${this.escapeHtml(this._eligCopy('window_heading'))}</div>
         <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">${s.practices.map(chip).join('')}</div>
         <div style="font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin-top:10px;">${this.escapeHtml(this._eligCopy('remedy_heading'))}</div>
