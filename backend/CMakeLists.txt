@@ -50,6 +50,7 @@ set(SOURCES
     src/models/FacilityLockup.cpp
     src/models/LogoImage.cpp
     src/models/ClubLogo.cpp
+    src/models/ClubFile.cpp
     src/models/LeagueLogo.cpp
     src/models/ClubLogoSearch.cpp
     src/models/PersonPayments.cpp
@@ -114,6 +115,7 @@ set(SOURCES
     src/controllers/KitBoardController.cpp
     src/controllers/LockupController.cpp
     src/controllers/ClubLogoController.cpp
+    src/controllers/ClubFileController.cpp
     src/services/ClubLogoFinder.cpp
     src/services/ClubLogoSearchScheduler.cpp
     src/controllers/PaymentsController.cpp

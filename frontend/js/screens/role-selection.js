@@ -106,6 +106,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="files" style="display: flex; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📁</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Files</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Files shared with you — admins upload, keep private, or publish by link</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="logos" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">🛡️</span>
           <div style="flex: 1; text-align: left;">
@@ -345,7 +353,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (!['calendar', 'reports', 'rsvps', 'security', 'logos', 'game-center', 'event-center', 'kit', 'teams', 'tactical'].includes(role)) this.navigation.context.role = role;
+    if (!['calendar', 'reports', 'rsvps', 'security', 'logos', 'files', 'game-center', 'event-center', 'kit', 'teams', 'tactical'].includes(role)) this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -371,6 +379,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'security') {
       // Not a role — the nightly gate-photo board (mig 421/424).
       this.navigation.goTo('security');
+    } else if (role === 'files') {
+      // Not a role — uploaded files, kept, shared or published (mig 455).
+      this.navigation.goTo('files');
     } else if (role === 'logos') {
       // Not a role — club crests, ours and opponents' (mig 428).
       this.navigation.goTo('logos');

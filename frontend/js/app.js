@@ -65,6 +65,7 @@ class App {
       kit: new KitBoardScreen(this.navigation, this.auth),
       security: new SecurityScreen(this.navigation, this.auth),
       clubLogos: new ClubLogosScreen(this.navigation, this.auth),
+      files: new FilesScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
@@ -156,6 +157,8 @@ class App {
     this.screenManager.register('security', this.screens.security);
     // Club Logos (#logos) — crests stored per club + opponent text -> club (mig 428). See screens/club-logos.js.
     this.screenManager.register('logos', this.screens.clubLogos);
+    // Files (#files) — uploads kept, shared with members or published by link (mig 455).
+    this.screenManager.register('files', this.screens.files);
     // Attendance (#attendance) — the staff page for one calendar event of
     // any kind: who's coming, attendance, 🎟 invites.  See
     // screens/event-center.js.  Was #event-center until 2026-09-24; the old
