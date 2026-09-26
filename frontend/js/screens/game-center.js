@@ -644,6 +644,8 @@ class GameCenterScreen extends Screen {
       if (remindOne && this.isCoach && !remindOne.disabled) { this._remindPlayer(remindOne); return; }
       const availBtn = e.target.closest('[data-gc-avail]');
       if (availBtn && !availBtn.disabled) { this._setMyAvailability(availBtn); return; }
+      const eligBtn = e.target.closest('[data-elig-rsvp]');
+      if (eligBtn && !eligBtn.disabled) { this._setEligibilityRsvp(eligBtn); return; }
       const squadOne = e.target.closest('[data-gc-squad-one]');
       if (squadOne && this.isCoach && !squadOne.disabled) { this._sendSquadNoticeOne(squadOne); return; }
       const squadBtn = e.target.closest('[data-gc-squad-notice]');
@@ -901,6 +903,9 @@ class GameCenterScreen extends Screen {
       for (const row of (lineupData.data.rosterStats || [])) {
         this.stats.set(Number(row.playerId), row);
       }
+      // Starter eligibility (mig 456): a player's own row + the policy.
+      this.myPlayerId = lineupData.data.myPlayerId != null ? Number(lineupData.data.myPlayerId) : null;
+      this.eligibilityPolicy = lineupData.data.eligibilityPolicy || null;
 
       // A game tagged "Team: APSL, Liga1" shares one roster pool across
       // both — fetch every team in rosterTeamIds and merge, not just the
@@ -1610,7 +1615,7 @@ class GameCenterScreen extends Screen {
     const viewToggleHtml = this.isCoach
       ? `<div style="text-align:right; margin-bottom:8px;">
            <button id="gl-view-toggle" type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:4px 10px;">
-             ${this.viewMode === 'coach' ? '👀 Player Lineup View' : '✏️ Coach View'}
+             ${this.viewMode === 'coach' ? '👀 Player View' : '✏️ Coach View'}
            </button>
          </div>`
       : '';
@@ -1638,7 +1643,7 @@ class GameCenterScreen extends Screen {
     }
 
     if (effectiveIsPlayerView) {
-      paint(viewToggleHtml + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
+      paint(viewToggleHtml + this._renderMyEligibility() + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
       return;
     }
 
@@ -1784,8 +1789,11 @@ class GameCenterScreen extends Screen {
     const statsLine = (playerId) => {
       const s = this.stats.get(playerId);
       if (!s) return '';
+      const needed = s.needed != null ? s.needed : 2;
+      const mark = s.eligible ? '✅' : ((s.practicesAttended + s.practicesProjected) >= needed ? '📅' : '⏳');
       return `<div style="font-size:0.68rem; opacity:0.65; margin-top:2px;">
-        Practices ${s.practicesAttended}/${s.practicesRecentTotal}
+        ${mark} Practices ${s.practicesAttended}/${needed}
+        <span title="${s.windowTotal != null ? s.windowTotal : s.practicesRecentTotal} practices count for this game${s.extended ? ' (weekday-game window)' : ''}">(of ${s.windowTotal != null ? s.windowTotal : s.practicesRecentTotal}${s.extended ? ' · wk' : ''})</span>
         ${s.practicesUpcomingTotal > 0 ? `· proj ${s.practicesProjected}/${s.practicesUpcomingTotal}` : ''}
         · Game ${rsvpBadge(s.gameRsvp)}${this._rsvpTimeChips(playerId)}
         ${practicePills(s)}
@@ -3048,11 +3056,126 @@ class GameCenterScreen extends Screen {
   // the only signal — there is no publish flag), otherwise the
   // alternates, who are not part of the post and so not on the card.
   // Alphabetical by last name, "so no one gets mad" (owner directive).
+  // ── Starter eligibility (migration 456) ───────────────────────────────
+  // What a player reads at the top of their Game Center: an eligible /
+  // not-yet pill, the practices that count for this game (the last N, or
+  // the weekday-game extended window), and the ones still ahead with Going
+  // / Out buttons so they can fix it right here (owner 2026-09-26: "show
+  // pill if player is eligible or not. and show available practices for
+  // them to get there … allow them to rsvp to the practice in game center
+  // to remedy it").  Every sentence is a message_templates row, kind
+  // 'eligibility'.
+  _eligCopy(tier, tokens = {}) {
+    return window.MessageCopy ? MessageCopy.block('eligibility', tier, tokens) : '';
+  }
+
+  _renderMyEligibility() {
+    if (this.myPlayerId == null) return '';
+    const s = this.stats.get(this.myPlayerId);
+    if (!s || !Array.isArray(s.practices)) return '';
+    const needed    = s.needed != null ? Number(s.needed) : 2;
+    const attended  = Number(s.practicesAttended || 0);
+    const projected = Number(s.practicesProjected || 0);
+    const remaining = Math.max(0, needed - attended);
+    const future    = s.practices.filter(p => p.future);
+    const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const when = (p) => {
+      const d = new Date(p.startsAt || p.date);
+      if (isNaN(d)) return '';
+      const h = d.getHours(), m = d.getMinutes();
+      const t = `${((h + 11) % 12) + 1}${m ? ':' + String(m).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`;
+      return `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()} ${t}`;
+    };
+    const tokens = {
+      attended: String(attended), needed: String(needed), remaining: String(remaining),
+      plural: remaining === 1 ? '' : 's', projected: String(projected),
+      lookback: String(s.lookback != null ? s.lookback : (this.eligibilityPolicy && this.eligibilityPolicy.lookback) || 5),
+      cutoff: s.cutoff ? (() => { const d = new Date(s.cutoff + 'T12:00:00'); return `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`; })() : '',
+    };
+    let tier, bg, fg;
+    if (s.eligible)                              { tier = 'pill_eligible'; bg = '#166534'; fg = '#bbf7d0'; }
+    else if (attended + projected >= needed)     { tier = 'pill_on_track'; bg = '#1e3a8a'; fg = '#bfdbfe'; }
+    else if (future.length)                      { tier = 'pill_short';    bg = '#78350f'; fg = '#fde68a'; }
+    else                                         { tier = 'pill_missed';   bg = '#7f1d1d'; fg = '#fecaca'; }
+    const pillText = this._eligCopy(tier, tokens);
+    if (!pillText) return '';   // no copy row → nothing to say (never hard-code it)
+    const rule = this._eligCopy(s.extended ? 'rule_extended' : 'rule', tokens);
+
+    const chip = (p) => {
+      const ok = !!p.attended;
+      const label = when(p).replace(/ \d+(:\d+)? [AP]M$/, '');
+      const status = p.future ? (ok ? 'Going' : (p.rsvp === 'no' ? 'Out' : 'No answer')) : (ok ? 'Present' : 'Absent');
+      return `<span title="${this.escapeHtml(status)}" style="display:inline-flex; flex-direction:column; align-items:center; gap:1px; min-width:52px; padding:4px 6px; border-radius:8px; font-size:0.62rem;
+        background:${ok ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.14)'}; border:1px solid ${ok ? '#22c55e' : '#ef4444'}; ${p.future ? 'opacity:0.8;' : ''}">
+        <span style="font-weight:700;">${this.escapeHtml(label)}</span><span>${p.future ? '📅 ' : ''}${this.escapeHtml(status)}</span></span>`;
+    };
+    const remedy = future.length
+      ? future.map(p => {
+          const going = p.rsvp === 'yes', out = p.rsvp === 'no';
+          const b = (resp, on, label, onBg) => `<button type="button" data-elig-rsvp="${resp}" data-fh-event-id="${p.fhEventId}"
+              style="padding:4px 10px; border-radius:999px; border:1px solid ${on ? onBg : 'var(--border-color)'}; background:${on ? onBg : 'transparent'};
+                     color:${on ? '#fff' : 'var(--text-primary)'}; font-size:0.72rem; font-weight:700; cursor:pointer;">${label}</button>`;
+          return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-top:1px solid var(--border-color);">
+            <div style="min-width:0;">
+              <div style="font-size:0.82rem; font-weight:600;">${this.escapeHtml(when(p))}</div>
+              ${p.location ? `<div style="font-size:0.68rem; opacity:0.65; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this.escapeHtml(p.location)}</div>` : ''}
+            </div>
+            <div style="display:flex; gap:6px; flex:0 0 auto;">${b('yes', going, 'Going', '#166534')}${b('no', out, 'Out', '#7f1d1d')}</div>
+          </div>`;
+        }).join('')
+      : `<div style="font-size:0.78rem; opacity:0.7; padding:4px 0;">${this.escapeHtml(this._eligCopy('remedy_none'))}</div>`;
+
+    return `
+      <div class="public-card" data-gc-eligibility style="max-width:540px; margin:0 auto var(--space-3); padding: var(--space-3);">
+        <div style="display:inline-block; padding:4px 12px; border-radius:999px; background:${bg}; color:${fg}; font-size:0.8rem; font-weight:700;">${this.escapeHtml(pillText)}</div>
+        ${rule ? `<div style="font-size:0.72rem; opacity:0.7; margin-top:6px;">${this.escapeHtml(rule)}</div>` : ''}
+        <div style="font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin-top:10px;">${this.escapeHtml(this._eligCopy('window_heading'))}</div>
+        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">${s.practices.map(chip).join('')}</div>
+        <div style="font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin-top:10px;">${this.escapeHtml(this._eligCopy('remedy_heading'))}</div>
+        <div data-gc-elig-msg style="font-size:0.72rem; min-height:0;"></div>
+        <div>${remedy}</div>
+      </div>`;
+  }
+
+  // Going / Out on a practice inside the eligibility card; tapping the
+  // answer already given clears it (like #my).  Re-reads the lineup
+  // payload afterwards so the pill and chips reflect the new projection.
+  async _setEligibilityRsvp(btn) {
+    const fhEventId = Number(btn.dataset.fhEventId);
+    const response = btn.dataset.eligRsvp === 'no' ? 'no' : 'yes';
+    const s = this.myPlayerId != null ? this.stats.get(this.myPlayerId) : null;
+    const p = s && Array.isArray(s.practices) ? s.practices.find(x => Number(x.fhEventId) === fhEventId) : null;
+    const clearing = !!(p && p.rsvp === response);
+    const payload = { fh_event_id: fhEventId };
+    if (!clearing) payload.response = response;
+    btn.disabled = true;
+    try {
+      const res = await this.auth.fetch('/api/calendar/rsvp', {
+        method: clearing ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      const again = await this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`);
+      const body = await again.json().catch(() => null);
+      if (body && body.success && body.data) {
+        this.stats = new Map();
+        for (const row of (body.data.rosterStats || [])) this.stats.set(Number(row.playerId), row);
+      }
+      this._render();
+    } catch (err) {
+      btn.disabled = false;
+      const msg = this.element.querySelector('[data-gc-elig-msg]');
+      if (msg) msg.innerHTML = `<span style="color:#f87171;">Could not save: ${this.escapeHtml(err.message)}</span>`;
+    }
+  }
+
   _renderPlayerNotes(byZone) {
     if (byZone.starter.length === 0) {
       return `
         <div class="public-card" style="text-align:center; opacity:0.85; padding: var(--space-4);">
-          🔒 Lineup not yet published
+          🔒 Game Center not published yet
         </div>`;
     }
     const alternates = [...byZone.alternate].sort((a, b) =>

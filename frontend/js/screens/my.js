@@ -1486,7 +1486,7 @@ class MyScreen extends Screen {
                       data-game-center-title="${this.escapeHtml(title)}"
                       data-game-center-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"
                       style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
-                📋 Lineup
+                🏟️ Game Center
               </button>
             ` : ''}
           </div>

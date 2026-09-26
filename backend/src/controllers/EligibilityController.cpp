@@ -176,14 +176,35 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
             isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
         }
 
-        // Roster stats (practice attendance/projection + this match's RSVP),
-        // computed against the CURRENT calendar system (fh_events/
-        // fh_event_attendance/fh_event_rsvps) — coach-only, internal info.
-        // Keyed by player_id so the frontend can merge it onto the roster
-        // fetched separately from /api/teams/:teamId/roster.
+        // Starter eligibility (migration 456): the sessions that count for
+        // this game come from fh_starter_window() — the last
+        // lookback_count before kickoff, or the weekday-game extended
+        // window — and eligibility_policies says how many are needed.
+        // Coaches get every rostered player; a player gets one row, their
+        // own (owner 2026-09-26: "show pill if player is eligible or not
+        // and show available practices for them to get there").
+        std::string callerPersonId;
+        if (!userId.empty()) {
+            pqxx::result pr = db_->query("SELECT person_id FROM users WHERE id = $1::int", {userId});
+            if (!pr.empty() && !pr[0]["person_id"].is_null()) callerPersonId = pr[0]["person_id"].c_str();
+        }
+        std::string myPlayerId;
+        if (!callerPersonId.empty()) {
+            pqxx::result pl = db_->query("SELECT id FROM players WHERE person_id = $1::int ORDER BY id LIMIT 1", {callerPersonId});
+            if (!pl.empty()) myPlayerId = pl[0]["id"].c_str();
+        }
         std::ostringstream statsJson;
         statsJson << "[";
-        if (isCoach && !rosterTeamIdsArray.empty() && rosterTeamIdsArray != "{}") {
+        std::string policyJson = "null";
+        if (!rosterTeamIdsArray.empty() && rosterTeamIdsArray != "{}" && (isCoach || !callerPersonId.empty())) {
+            pqxx::result polRow = db_->query(
+                "SELECT p.lookback_count, p.min_sessions_to_start, p.weekday_game_extends_window, p.week_cutoff_dow "
+                "FROM fh_starter_policy($1::int[], $2::int) p", {rosterTeamIdsArray, matchId});
+            if (!polRow.empty() && !polRow[0]["lookback_count"].is_null()) {
+                policyJson = std::string("{\"lookback\":") + polRow[0]["lookback_count"].c_str()
+                           + ",\"needed\":" + polRow[0]["min_sessions_to_start"].c_str() + "}";
+            }
+            // $3: '' → every rostered player (coach), else just that person.
             pqxx::result statsRows = db_->query(R"(
                 WITH match_event AS (
                     SELECT fe.id AS fh_event_id, ge.starts_at
@@ -191,69 +212,47 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                     WHERE fe.match_id = $1::int
                     LIMIT 1
                 ),
-                team_practice_events AS (
-                    -- ANY(team_ids), not a single team — a game tagged
-                    -- "Team: APSL, Liga1" shares one practice pool across
-                    -- both leagues (see fh_event_teams), so a Liga1-only
-                    -- player's practices are still found here.
-                    SELECT DISTINCT fe.id AS fh_event_id, fe.kind, fe.category, ge.starts_at
-                    FROM fh_events fe
+                pol AS (
+                    SELECT COALESCE(p.min_sessions_to_start, 2) AS needed, COALESCE(p.lookback_count, 5) AS lookback
+                    FROM fh_starter_policy($2::int[], $1::int) p
+                ),
+                win AS (
+                    SELECT w.fh_event_id, w.kind, w.starts_at, w.extended, w.cutoff,
+                           ge.location, fe.arrival_at
+                    FROM match_event me
+                    CROSS JOIN LATERAL fh_starter_window($2::int[], me.starts_at, $1::int) w
+                    JOIN fh_events fe ON fe.id = w.fh_event_id
                     JOIN gcal_events ge ON ge.id = fe.gcal_event_id
-                    JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
-                    WHERE fet.team_id = ANY($2::int[])
-                      AND fe.kind IN ('practice', 'pickup', 'barn night')
-                      AND ge.deleted_at IS NULL
-                ),
-                recent_practices AS (
-                    -- Bounded to the 6 days immediately before the match (Tue-Sat
-                    -- for a Sunday game) rather than a pure "last 5 occurred"
-                    -- lookback — an unbounded lookback reaches back into the PRIOR
-                    -- week to backfill its quota whenever a practice was cancelled,
-                    -- producing duplicate weekdays (e.g. two Thursdays). LIMIT 5
-                    -- is just a defensive cap; the date window is what matters.
-                    SELECT tpe.fh_event_id, tpe.starts_at
-                    FROM team_practice_events tpe, match_event me
-                    WHERE tpe.starts_at >= me.starts_at - interval '6 days'
-                      AND tpe.starts_at <  LEAST(me.starts_at, now())
-                    ORDER BY tpe.starts_at DESC
-                    LIMIT 5
-                ),
-                upcoming_practices AS (
-                    SELECT tpe.fh_event_id, tpe.kind, tpe.category
-                    FROM team_practice_events tpe, match_event me
-                    WHERE tpe.starts_at >= now() AND tpe.starts_at < me.starts_at
-                ),
-                -- Same Tue-Sat window as recent_practices, but NOT cut off at
-                -- now() — this is what the pill row renders, so it includes
-                -- practices that haven't happened yet (days 4-5 of a 5-day
-                -- week when "today" falls mid-week).
-                pill_window AS (
-                    SELECT tpe.fh_event_id, tpe.kind, tpe.category, tpe.starts_at
-                    FROM team_practice_events tpe, match_event me
-                    WHERE tpe.starts_at >= me.starts_at - interval '6 days'
-                      AND tpe.starts_at <  me.starts_at
-                    ORDER BY tpe.starts_at DESC
-                    LIMIT 5
                 )
                 SELECT DISTINCT ON (pl.id) pl.id AS player_id,
-                       (SELECT count(*) FROM recent_practices) AS recent_total,
+                       (SELECT needed FROM pol) AS needed,
+                       (SELECT lookback FROM pol) AS lookback,
+                       (SELECT count(*) FROM win) AS window_total,
+                       (SELECT count(*) FROM win WHERE win.starts_at < now()) AS recent_total,
                        (SELECT count(*) FROM fh_event_attendance fea
                           WHERE fea.person_id = pe.id
-                            AND fea.fh_event_id IN (SELECT fh_event_id FROM recent_practices)
+                            AND fea.fh_event_id IN (SELECT fh_event_id FROM win WHERE win.starts_at < now())
                             AND fea.status IN ('present', 'late')) AS practices_attended,
-                       (SELECT count(*) FROM upcoming_practices) AS upcoming_total,
-                       (SELECT count(*) FROM upcoming_practices up
-                          WHERE (SELECT r.response FROM fh_event_rsvps r
+                       (SELECT count(*) FROM win WHERE win.starts_at >= now()) AS upcoming_total,
+                       (SELECT count(*) FROM win up
+                          WHERE up.starts_at >= now()
+                            AND (SELECT r.response FROM fh_event_rsvps r
                                    WHERE r.fh_event_id = up.fh_event_id AND r.person_id = pe.id
                                 ) = 'yes') AS practices_projected,
+                       COALESCE((SELECT bool_or(extended) FROM win), false) AS extended,
+                       (SELECT to_char(min(cutoff) AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') FROM win) AS cutoff,
                        (SELECT r.response FROM fh_event_rsvps r, match_event me
                           WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp,
                        (SELECT json_agg(json_build_object(
+                                  'fhEventId', pw.fh_event_id,
+                                  'kind', pw.kind,
                                   'date', to_char(pw.starts_at, 'YYYY-MM-DD"T"HH24:MI:SS'),
+                                  'startsAt', to_char(pw.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                                  'location', pw.location,
                                   'future', pw.starts_at >= now(),
+                                  'rsvp', (SELECT r.response FROM fh_event_rsvps r
+                                             WHERE r.fh_event_id = pw.fh_event_id AND r.person_id = pe.id),
                                   'attended', CASE WHEN pw.starts_at >= now() THEN
-                                      -- Hasn't happened yet: green if projected to go
-                                      -- (explicit RSVP yes), red otherwise.
                                       COALESCE(
                                           (SELECT r.response FROM fh_event_rsvps r
                                              WHERE r.fh_event_id = pw.fh_event_id AND r.person_id = pe.id
@@ -267,27 +266,33 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                                             AND fea.status IN ('present', 'late'))
                                   END
                                 ) ORDER BY pw.starts_at)
-                          FROM pill_window pw) AS practice_pills
+                          FROM win pw) AS practice_pills
                 FROM team_persons tp
                 JOIN persons pe ON pe.id = tp.person_id
                 JOIN players pl ON pl.person_id = pe.id
                 WHERE tp.team_id = ANY($2::int[]) AND tp.removed_at IS NULL
-                -- A player rostered on more than one of the eligible teams
-                -- (e.g. both APSL and Liga1) would otherwise get one stats
-                -- row per team; collapse to one row per player.
+                  AND ($3 = '' OR pe.id = NULLIF($3, '')::int)
                 ORDER BY pl.id
-            )", {matchId, rosterTeamIdsArray});
+            )", {matchId, rosterTeamIdsArray, isCoach ? std::string("") : callerPersonId});
 
             bool firstStat = true;
             for (const auto& row : statsRows) {
                 if (!firstStat) statsJson << ",";
                 firstStat = false;
+                const long long attended = row["practices_attended"].as<long long>();
+                const long long needed   = row["needed"].as<long long>();
                 statsJson << "{";
                 statsJson << "\"playerId\":" << row["player_id"].c_str() << ",";
-                statsJson << "\"practicesAttended\":" << row["practices_attended"].c_str() << ",";
+                statsJson << "\"practicesAttended\":" << attended << ",";
                 statsJson << "\"practicesRecentTotal\":" << row["recent_total"].c_str() << ",";
                 statsJson << "\"practicesProjected\":" << row["practices_projected"].c_str() << ",";
                 statsJson << "\"practicesUpcomingTotal\":" << row["upcoming_total"].c_str() << ",";
+                statsJson << "\"windowTotal\":" << row["window_total"].c_str() << ",";
+                statsJson << "\"needed\":" << needed << ",";
+                statsJson << "\"lookback\":" << row["lookback"].c_str() << ",";
+                statsJson << "\"eligible\":" << (attended >= needed ? "true" : "false") << ",";
+                statsJson << "\"extended\":" << (row["extended"].as<bool>() ? "true" : "false") << ",";
+                statsJson << "\"cutoff\":" << (row["cutoff"].is_null() ? "null" : "\"" + std::string(row["cutoff"].c_str()) + "\"") << ",";
                 statsJson << "\"gameRsvp\":" << (row["game_rsvp"].is_null() ? "null" : "\"" + std::string(row["game_rsvp"].c_str()) + "\"") << ",";
                 statsJson << "\"practices\":" << (row["practice_pills"].is_null() ? "[]" : row["practice_pills"].c_str());
                 statsJson << "}";
@@ -336,6 +341,8 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         }
         json << "\"isCoach\":" << (isCoach ? "true" : "false") << ",";
         json << "\"rosterStats\":" << statsJson.str() << ",";
+        json << "\"myPlayerId\":" << (myPlayerId.empty() ? "null" : myPlayerId) << ",";
+        json << "\"eligibilityPolicy\":" << policyJson << ",";
 
         // Metadata
         if (!metaResult.empty()) {
