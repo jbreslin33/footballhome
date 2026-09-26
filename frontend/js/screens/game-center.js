@@ -1203,7 +1203,7 @@ class GameCenterScreen extends Screen {
       border-top:1px solid var(--border-color); background:transparent; color:var(--text-primary);
       font:inherit; font-weight:600; cursor:${r.disabled ? 'not-allowed' : 'pointer'}; opacity:${r.disabled ? '0.45' : '1'};`;
     overlay.innerHTML = `
-      <div role="dialog" aria-modal="true" onclick="event.stopPropagation()"
+      <div role="dialog" aria-modal="true" data-swap-dialog
         style="background:var(--bg-surface); color:var(--text-primary); width:100%; max-width:480px;
                border:1px solid var(--border-color); border-radius:14px 14px 0 0; max-height:85vh; overflow-y:auto;
                box-shadow:0 -10px 40px rgba(0,0,0,0.45); padding-bottom:env(safe-area-inset-bottom);">
@@ -1220,17 +1220,22 @@ class GameCenterScreen extends Screen {
           ${esc(this._swapCopy('cancel', {}) || '×')}
         </button>
       </div>`;
+    // One listener on the overlay; the dialog must NOT stop propagation
+    // or nothing in it is ever heard (the 2026-09-26 "cancel doesn't
+    // even work" bug).
     overlay.addEventListener('click', (e) => {
       e.stopPropagation();
       const row = e.target.closest('[data-swap-row]');
-      if (row && !row.disabled) {
+      if (row) {
+        if (row.disabled) return;
         const r = rows[Number(row.getAttribute('data-swap-row'))];
         this._closeSwapSheet();
         if (r) { r.run(); this._render(); this._scheduleSave(); }
         return;
       }
-      // Cancel row or the dimmed backdrop.
-      this._closeSwapSheet();
+      if (e.target.closest('[data-swap-cancel]') || !e.target.closest('[data-swap-dialog]')) {
+        this._closeSwapSheet();   // Cancel row, or the dimmed backdrop
+      }
     });
     this._swapSheetKey = (e) => { if (e.key === 'Escape') this._closeSwapSheet(); };
     document.addEventListener('keydown', this._swapSheetKey);
