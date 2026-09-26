@@ -1798,7 +1798,7 @@ class SocialPostCard {
     // Five across leaves ~100px a name; 16px breaks a long first name mid-word there.
     const nameSize = tall ? 14 : pitch.some(row => row && row.length >= 5) ? 15 : 16;
     const token = (t) => `
-      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Remove ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:128px;display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
+      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:128px;display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
         <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
         <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;">${t.name ? this.escapeHtml(t.name) : '—'}</div>
         ${t.badgeHtml || ''}
@@ -1815,7 +1815,7 @@ class SocialPostCard {
     const benchHtml = bench.length ? `
       <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
         <span style="font-size:13px;letter-spacing:3px;color:#f5d442;font-weight:700;">BENCH</span>
-        <div style="font-size:16px;font-weight:700;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.escapeHtml(`${p.firstName} ${p.lastName}`.trim())).join(', ')}</div>
+        <div style="font-size:16px;font-weight:700;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.benchName(p)).join(', ')}</div>
       </div>` : '';
     return `
       <div style="flex:1;min-height:0;align-self:stretch;margin:0 -28px;padding:10px 6px;box-sizing:border-box;background:#15803d;border-top:2px solid rgba(255,255,255,0.35);border-bottom:2px solid rgba(255,255,255,0.35);display:flex;flex-direction:column;justify-content:space-between;">
@@ -1823,6 +1823,15 @@ class SocialPostCard {
       </div>
       ${benchHtml}
     `;
+  }
+
+  // A bench name in the CSV.  On Game Center's live card
+  // (rosterData.editing, 2026-09-26) it is tappable — the move sheet —
+  // the same way a filled pitch chip is; the post never carries the hook.
+  benchName(p) {
+    const name = this.escapeHtml(`${p.firstName} ${p.lastName}`.trim());
+    if (!(this.rosterData && this.rosterData.editing)) return name;
+    return `<span data-lineup-remove-bench="${this.escapeHtml(String(p.playerId))}" title="Move ${name}" style="cursor:pointer;">${name}</span>`;
   }
 
   buildImageStartersBench(crestSrc) {

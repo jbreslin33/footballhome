@@ -732,21 +732,21 @@ class GameCenterScreen extends Screen {
         this._render();
         return;
       }
-      // Current Lineup card (2026-08-22, owner directive) — Starting XI
-      // and Bench no longer have their own sections below, so removing
-      // someone happens right from the summary graphic: click their
-      // filled slot/bench row to unassign them, same effect as tapping
-      // their own active pill/Bench button would have had.
-      const removeStarter = e.target.closest('[data-lineup-remove-starter]');
-      if (removeStarter && this.isCoach) {
-        const playerId = Number(removeStarter.getAttribute('data-lineup-remove-starter'));
-        this._setPosition(playerId, null);
+      // Current Lineup card — a filled pitch chip or a bench name opens
+      // the move sheet (2026-09-26, owner: "popup to move them. have pos
+      // grid show and bench and alt and unassign button").  Before that
+      // the tap unassigned them outright (2026-08-22); that is still the
+      // fallback while the copy rows have not loaded.
+      const moveStarter = e.target.closest('[data-lineup-remove-starter]');
+      if (moveStarter && this.isCoach) {
+        const playerId = Number(moveStarter.getAttribute('data-lineup-remove-starter'));
+        if (!this._openMoveSheet(playerId)) this._setPosition(playerId, null);
         return;
       }
-      const removeBench = e.target.closest('[data-lineup-remove-bench]');
-      if (removeBench && this.isCoach) {
-        const playerId = Number(removeBench.getAttribute('data-lineup-remove-bench'));
-        this._toggleZone(playerId, 'bench');
+      const moveBench = e.target.closest('[data-lineup-remove-bench]');
+      if (moveBench && this.isCoach) {
+        const playerId = Number(moveBench.getAttribute('data-lineup-remove-bench'));
+        if (!this._openMoveSheet(playerId)) this._toggleZone(playerId, 'bench');
         return;
       }
       // 1-11 position pills (2026-08-22, owner directive) — a slot
@@ -1046,6 +1046,7 @@ class GameCenterScreen extends Screen {
     }
     this.zones.set(playerId, 'starter');
     this.positions.set(playerId, positionId);
+    this.benchOrder.delete(playerId);   // a promoted bench player's slot number is meaningless now
     this._render();
     this._scheduleSave();
   }
@@ -1189,10 +1190,63 @@ class GameCenterScreen extends Screen {
     return true;
   }
 
+  // Tapped on the live graphic: where should {player} go?  The 1-N
+  // position grid (their own slot lit, a taken slot greyed and handing
+  // off to _openPositionSheet), then Bench (full → _openBenchSheet),
+  // Alternates, Unassign.  Copy: kind='lineup_move' (migration 454).
+  _openMoveSheet(playerId) {
+    const player = this.roster.find(p => p.id === playerId);
+    if (!player) return false;
+    const mine = this._placementOf(playerId);
+    const tk = { player: player.name, spot: this._spotText(mine) };
+    const copy = (tier, t = tk) => window.MessageCopy ? MessageCopy.block('lineup_move', tier, t) : '';
+    const title = copy('title');
+    if (!title) return false;
+
+    const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
+    const benchFull = mine.zone !== 'bench'
+      && [...this.zones.values()].filter(z => z === 'bench').length >= ZONE_CAPS.bench;
+
+    const grid = startingPositions.map(pos => {
+      const holderId = slotToPlayerId.get(pos.id);
+      const isMine = holderId === playerId;
+      const taken = holderId != null && !isMine;
+      return {
+        label: String(pos.sortOrder),
+        title: taken ? copy('taken', { ...tk, other: rosterById.get(holderId)?.name || '' }) : pos.name,
+        active: isMine, taken,
+        run: () => {
+          if (isMine) return;
+          if (taken) { if (!this._openPositionSheet(playerId, pos.id, holderId)) { this._setPosition(playerId, pos.id); } return; }
+          this._setPosition(playerId, pos.id);
+        },
+      };
+    });
+    const current = copy('current');
+    const rows = [
+      { label: copy('bench'), note: mine.zone === 'bench' ? current : '', disabled: mine.zone === 'bench',
+        run: () => {
+          if (benchFull) {   // hands off to the bench picker, which saves itself
+            if (!this._openBenchSheet(playerId)) this._toast(`Bench is full (${ZONE_CAPS.bench} max)`);
+            return false;
+          }
+          this._applyPlacement(playerId, { zone: 'bench', positionId: null, benchOrder: this._nextBenchOrder(playerId) });
+        } },
+      { label: copy('alt'), note: mine.zone === 'alternate' ? current : '', disabled: mine.zone === 'alternate',
+        run: () => { this._applyPlacement(playerId, { zone: 'alternate', positionId: null, benchOrder: null }); } },
+      { label: copy('unassign'), note: !mine.zone ? current : '', disabled: !mine.zone,
+        run: () => { this._applyPlacement(playerId, null); } },
+    ];
+    this._openSwapSheet({ title, sub: copy('sub'), gridLabel: copy('grid'), grid, rows });
+    return true;
+  }
+
   // The sheet itself: fixed to the bottom of the viewport, on
   // document.body so _render()'s repaint of this.element cannot wipe it.
-  // A row runs its action, then the screen repaints and saves once.
-  _openSwapSheet({ title, sub, rows }) {
+  // A row runs its action, then the screen repaints and saves once; a
+  // grid pill (the move sheet's positions) runs its own, which may open
+  // the next sheet, so it repaints and saves itself.
+  _openSwapSheet({ title, sub, gridLabel = '', grid = [], rows }) {
     this._closeSwapSheet();
     const esc = (t) => this.escapeHtml(t);
     const overlay = document.createElement('div');
@@ -1211,6 +1265,20 @@ class GameCenterScreen extends Screen {
           <div style="font-weight:800; font-size:1rem;">${esc(title)}</div>
           ${sub ? `<div style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">${esc(sub)}</div>` : ''}
         </div>
+        ${grid.length ? `
+          <div style="padding:0 16px 12px;">
+            ${gridLabel ? `<div style="font-size:0.7rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">${esc(gridLabel)}</div>` : ''}
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              ${grid.map((g, i) => `
+                <button type="button" data-swap-pill="${i}" title="${esc(g.title || '')}"
+                  style="min-width:44px; height:44px; padding:0 10px; border-radius:6px; font:inherit; font-weight:800; font-size:1rem; cursor:pointer;
+                         ${g.active ? 'background:#22c55e; color:#052e16; border:1px solid #22c55e;'
+                           : g.taken ? 'background:#1e293b; color:#64748b; border:1px solid #334155;'
+                           : 'background:#334155; color:#fff; border:1px solid #475569;'}">
+                  ${esc(g.label)}
+                </button>`).join('')}
+            </div>
+          </div>` : ''}
         ${rows.map((r, i) => `
           <button type="button" data-swap-row="${i}" ${r.disabled ? 'disabled' : ''} style="${rowStyle(r)}">
             <div>${esc(r.label)}</div>
@@ -1225,12 +1293,21 @@ class GameCenterScreen extends Screen {
     // even work" bug).
     overlay.addEventListener('click', (e) => {
       e.stopPropagation();
+      const pill = e.target.closest('[data-swap-pill]');
+      if (pill) {
+        const g = grid[Number(pill.getAttribute('data-swap-pill'))];
+        this._closeSwapSheet();
+        if (g) g.run();
+        return;
+      }
       const row = e.target.closest('[data-swap-row]');
       if (row) {
         if (row.disabled) return;
         const r = rows[Number(row.getAttribute('data-swap-row'))];
         this._closeSwapSheet();
-        if (r) { r.run(); this._render(); this._scheduleSave(); }
+        // A row that opened another sheet or already repainted returns
+        // false; the rest get one repaint + one debounced save here.
+        if (r && r.run() !== false) { this._render(); this._scheduleSave(); }
         return;
       }
       if (e.target.closest('[data-swap-cancel]') || !e.target.closest('[data-swap-dialog]')) {
@@ -2925,7 +3002,7 @@ class GameCenterScreen extends Screen {
         return token;
       }));
     }
-    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch };
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from
