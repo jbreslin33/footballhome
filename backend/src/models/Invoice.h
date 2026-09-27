@@ -48,6 +48,18 @@ public:
     long long createPlan(long long issuerId, long long invoiceId, const nlohmann::json& fields, std::string* error);
     bool removePlan(long long planId);
 
+    // Hours by day (mig 469): a stint on the invoice, { date, start, end,
+    // note }.  The labor line's quantity / amount follow the stints.
+    long long upsertShift(long long invoiceId, long long shiftId, const nlohmann::json& fields, std::string* error);
+    bool removeShift(long long shiftId);
+
+    // Weekly default (mig 470): { issuer_id, weekday 0-6, start, end, note }.
+    long long upsertDefaultShift(long long issuerId, long long id, const nlohmann::json& fields, std::string* error);
+    bool removeDefaultShift(long long id);
+    // Copy the issuer's usual week onto the invoice's period.  Only when the
+    // invoice has no days yet, unless force.  Returns days added.
+    int applyDefaults(long long invoiceId, bool force, std::string* error);
+
     bool updateIssuer(long long issuerId, const nlohmann::json& fields, std::string* error);
 
     long long issuerOf(long long invoiceId);
@@ -57,7 +69,11 @@ private:
     // holds it (James does all four in one sitting, so Luke's next is
     // James's current).
     int nextNumber(long long issuerId, int year);
+    // Labor line quantity = SUM(shift hours), amount = quantity × rate,
+    // whenever the invoice has any shifts.
+    void syncLabor(long long invoiceId);
     nlohmann::json openPlans(long long issuerId);
+    nlohmann::json defaultShifts(long long issuerId);
 
     Database* db_;
 };

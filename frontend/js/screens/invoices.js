@@ -72,6 +72,12 @@ class InvoicesScreen extends Screen {
         .iv-total { display:flex; justify-content:flex-end; gap:12px; font-weight:800; font-size:1.1rem; padding:10px 0; }
         .iv-acts { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
         .iv-hint { font-size:0.8rem; opacity:0.7; margin-top:6px; }
+        .iv-day { display:grid; grid-template-columns:150px 110px 110px 60px 1fr 40px; gap:8px; align-items:center; padding:6px 0;
+                  border-top:1px solid var(--border-color); font-size:0.9rem; }
+        .iv-day:first-child { border-top:none; }
+        .iv-day.head { font-size:0.72rem; opacity:0.65; text-transform:uppercase; letter-spacing:0.04em; }
+        .iv-day .hrs { text-align:right; font-weight:700; }
+        @media (max-width: 720px) { .iv-day { grid-template-columns:1fr 1fr 1fr 50px; } .iv-day .note { grid-column:1 / 4; } .iv-day.head { display:none; } }
         @media (max-width: 720px) {
           .iv-row { grid-template-columns:1fr 1fr; }
           .iv-row .desc { grid-column:1 / -1; }
@@ -204,6 +210,7 @@ class InvoicesScreen extends Screen {
       const res = await this.auth.fetch(`/api/invoices/${id}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      if (!this.inv || this.inv.id !== body.id) { this.nextShiftDate = null; this.nextShiftTimes = null; }
       this.inv = body;
       this.issuerId = body.issuer_id;
       this.showPlanForm = false;
@@ -311,6 +318,121 @@ class InvoicesScreen extends Screen {
     } catch (err) { this._say(err.message, true); }
   }
 
+  // ── hours by day (mig 469) ─────────────────────────────────────────────
+
+  _shiftPayload(row) {
+    const v = (sel) => { const el = row.querySelector(sel); return el ? el.value : ''; };
+    return { date: v('[data-sf="date"]'), start: v('[data-sf="start"]'), end: v('[data-sf="end"]'), note: v('[data-sf="note"]') };
+  }
+
+  async saveShift(shiftId) {
+    if (!this.inv) return;
+    const row = this.find(`[data-shift-row="${shiftId}"]`);
+    if (!row) return;
+    const payload = this._shiftPayload(row);
+    if (!payload.date || !payload.start || !payload.end) return;
+    try {
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/shift`, { id: shiftId, ...payload });
+      await this.load();
+    } catch (err) { this._say(err.message, true); }
+  }
+
+  async addShift() {
+    if (!this.inv) return;
+    const row = this.find('#iv-shift-new');
+    if (!row) return;
+    const payload = this._shiftPayload(row);
+    if (!payload.date) { this._say('Pick the day.', true); return; }
+    if (!payload.start || !payload.end) { this._say('Enter from and till.', true); return; }
+    try {
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/shift`, payload);
+      this.nextShiftDate = InvoicesScreen.addDays(payload.date, 1);
+      this.nextShiftTimes = { start: payload.start, end: payload.end };
+      await this.load();
+      const nd = this.find('#iv-shift-new [data-sf="date"]');
+      if (nd) nd.focus();
+    } catch (err) { this._say(err.message, true); }
+  }
+
+  async removeShift(shiftId) {
+    if (!this.inv) return;
+    try {
+      await this._delete(`/api/invoices/shift?id=${shiftId}`);
+      await this.openInvoice(this.inv.id);
+      await this.load();
+    } catch (err) { this._say(err.message, true); }
+  }
+
+  async fillFromDefault() {
+    if (!this.inv) return;
+    try {
+      const body = await this._post(`/api/invoices/${this.inv.id}/fill`, {});
+      this.inv = body;
+      await this.load();
+      if (!body.added) this._say('No days added — the usual week is empty for this period.', true);
+    } catch (err) { this._say(err.message, true); }
+  }
+
+  // ── the usual week (mig 470) ───────────────────────────────────────────
+
+  _defaultPayload(row) {
+    const v = (sel) => { const el = row.querySelector(sel); return el ? el.value : ''; };
+    return { weekday: Number(v('[data-df="weekday"]')), start: v('[data-df="start"]'), end: v('[data-df="end"]'), note: v('[data-df="note"]') };
+  }
+
+  async saveDefault(id) {
+    const issuer = this._issuer();
+    const row = this.find(`[data-default-row="${id}"]`);
+    if (!issuer || !row) return;
+    const payload = this._defaultPayload(row);
+    if (!payload.start || !payload.end) return;
+    try {
+      await this._post('/api/invoices/default', { id, issuer_id: issuer.id, ...payload });
+      await this.load();
+    } catch (err) { this._say(err.message, true); }
+  }
+
+  async addDefault() {
+    const issuer = this._issuer();
+    const row = this.find('#iv-default-new');
+    if (!issuer || !row) return;
+    const payload = this._defaultPayload(row);
+    if (!payload.start || !payload.end) { this._say('Enter from and till.', true); return; }
+    try {
+      await this._post('/api/invoices/default', { issuer_id: issuer.id, ...payload });
+      await this.load();
+    } catch (err) { this._say(err.message, true); }
+  }
+
+  async removeDefault(id) {
+    try {
+      await this._delete(`/api/invoices/default?id=${id}`);
+      await this.load();
+    } catch (err) { this._say(err.message, true); }
+  }
+
+  // ── email the deputy director (mig 471) ────────────────────────────────
+
+  emailDeputy() {
+    const inv = this.inv;
+    if (!inv) return;
+    const to = inv.bill_to?.email || '';
+    if (!to) { this._say('No email on the bill-to row.', true); return; }
+    const mine = Number(this.board?.viewer_person_id || 0) > 0 && Number(inv.issuer?.person_id) === Number(this.board.viewer_person_id);
+    const link = (inv.link_url || '').trim() || (this._copy('email_no_link') || 'attached');
+    const tokens = {
+      title: inv.title, number: inv.number, name: inv.issuer?.name || '', week1: inv.week1, week2: inv.week2,
+      total: InvoicesScreen.money(inv.total), file: inv.file_name, link,
+      to_name: inv.bill_to?.email_to_name || '',
+    };
+    const r = window.MessageCopy ? MessageCopy.render('invoices', mine ? 'email' : 'email_coach', tokens) : null;
+    const subject = r ? r.subject : inv.title;
+    const body = r ? r.body : `${inv.title}: ${link}`;
+    // A coach's invoice copies the coach ("he is included in this email").
+    const cc = !mine && inv.issuer?.email ? inv.issuer.email : undefined;
+    this.openGmailCompose(this.buildGmailComposeHref({ to, cc, subject, body }));
+  }
+
   async removeInvoice(id) {
     if (this.confirmDelete !== id) { this.confirmDelete = id; this._renderBody(); return; }
     this.confirmDelete = 0;
@@ -398,6 +520,14 @@ class InvoicesScreen extends Screen {
       if (rmLine) { await this.removeLine(Number(rmLine.dataset.deleteLine)); return; }
       const rmPlan = e.target.closest('[data-delete-plan]');
       if (rmPlan) { await this.removePlan(Number(rmPlan.dataset.deletePlan)); return; }
+      if (e.target.closest('#iv-shift-add')) { await this.addShift(); return; }
+      if (e.target.closest('#iv-fill')) { await this.fillFromDefault(); return; }
+      if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
+      if (e.target.closest('#iv-default-add')) { await this.addDefault(); return; }
+      const rmShift = e.target.closest('[data-delete-shift]');
+      if (rmShift) { await this.removeShift(Number(rmShift.dataset.deleteShift)); return; }
+      const rmDef = e.target.closest('[data-delete-default]');
+      if (rmDef) { await this.removeDefault(Number(rmDef.dataset.deleteDefault)); return; }
     });
     el.addEventListener('change', async (e) => {
       const f = e.target.closest('[data-f]');
@@ -413,9 +543,28 @@ class InvoicesScreen extends Screen {
       if (e.target.id === 'iv-number') { await this.updateInvoice({ number: Number(e.target.value) }); return; }
       if (e.target.id === 'iv-date') { await this.updateInvoice({ date: e.target.value }); return; }
       if (e.target.id === 'iv-final') { await this.updateInvoice({ is_final: !!e.target.checked }); return; }
+      if (e.target.id === 'iv-pstart') { await this.updateInvoice({ period_start: e.target.value }); return; }
+      if (e.target.id === 'iv-pend') { await this.updateInvoice({ period_end: e.target.value }); return; }
+      if (e.target.id === 'iv-link') { await this.updateInvoice({ link_url: e.target.value }); return; }
+      const sf = e.target.closest('[data-sf]');
+      if (sf) {
+        const row = sf.closest('[data-shift-row]');
+        if (row) { await this.saveShift(Number(row.dataset.shiftRow)); return; }
+        const nrow = sf.closest('#iv-shift-new');
+        if (nrow) { const h = nrow.querySelector('.hrs'); if (h) h.textContent = InvoicesScreen.plain(InvoicesScreen.hoursBetween(nrow.querySelector('[data-sf="start"]').value, nrow.querySelector('[data-sf="end"]').value)) + ' h'; }
+        return;
+      }
+      const df = e.target.closest('[data-df]');
+      if (df) {
+        const row = df.closest('[data-default-row]');
+        if (row) { await this.saveDefault(Number(row.dataset.defaultRow)); }
+        return;
+      }
     });
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.target.closest('#iv-new-desc, #iv-new-qty, #iv-new-rate')) { e.preventDefault(); this.addLine(); }
+      if (e.key === 'Enter' && e.target.closest('#iv-shift-new')) { e.preventDefault(); this.addShift(); }
+      if (e.key === 'Enter' && e.target.closest('#iv-default-new')) { e.preventDefault(); this.addDefault(); }
       if (e.key === 'Enter' && e.target.closest('[data-f]')) { e.preventDefault(); e.target.blur(); }
     });
   }
@@ -432,6 +581,19 @@ class InvoicesScreen extends Screen {
   static plain(n) {
     const v = Number(n) || 0;
     return Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100);
+  }
+  static addDays(iso, n) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    if (!m) return iso;
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + n));
+    return d.toISOString().slice(0, 10);
+  }
+  static WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  static hoursBetween(start, end) {
+    const t = (x) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(x || '')); return m ? (+m[1]) * 60 + (+m[2]) : NaN; };
+    const a = t(start), b = t(end);
+    if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return 0;
+    return Math.round((b - a) / 60 * 100) / 100;
   }
   static usDate(iso) {
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
@@ -455,6 +617,7 @@ class InvoicesScreen extends Screen {
 
     if (issuer) {
       parts.push(this._renderIssuerCard(issuer));
+      parts.push(this._renderUsualWeek(issuer));
       parts.push(this._renderInvoiceList(issuer));
     }
     if (this.inv) {
@@ -501,12 +664,46 @@ class InvoicesScreen extends Screen {
       </div>`;
   }
 
+  _weekdaySel(cur, attrs) {
+    return `<select class="iv-in" ${attrs}>${InvoicesScreen.WEEKDAYS.map((d, n) => `<option value="${n}" ${n === cur ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
+  }
+
+  _renderUsualWeek(i) {
+    const esc = (t) => this.escapeHtml(t);
+    const defs = i.default_shifts || [];
+    const total = defs.reduce((a, d) => a + (Number(d.hours) || 0), 0);
+    return `
+      <div class="iv-sec">Usual week</div>
+      <div class="iv-card">
+        <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('default_hint', { name: i.name }))}</div>
+        <div class="iv-day head"><div>Day</div><div>From</div><div>Till</div><div class="hrs">Hours</div><div class="note">Note</div><div></div></div>
+        ${defs.map(d => `
+          <div class="iv-day" data-default-row="${d.id}">
+            <div>${this._weekdaySel(d.weekday, 'data-df="weekday"')}</div>
+            <div><input class="iv-in" type="time" data-df="start" value="${esc(d.start)}"></div>
+            <div><input class="iv-in" type="time" data-df="end" value="${esc(d.end)}"></div>
+            <div class="hrs">${InvoicesScreen.plain(d.hours)} h</div>
+            <div class="note"><input class="iv-in" data-df="note" value="${esc(d.note || '')}" placeholder="note"></div>
+            <div><button class="iv-btn danger sm" data-delete-default="${d.id}" title="Remove">✕</button></div>
+          </div>`).join('')}
+        <div class="iv-day" id="iv-default-new" style="border-top:1px dashed var(--border-color);">
+          <div>${this._weekdaySel(1, 'data-df="weekday"')}</div>
+          <div><input class="iv-in" type="time" data-df="start" value="17:00"></div>
+          <div><input class="iv-in" type="time" data-df="end" value="19:00"></div>
+          <div class="hrs"></div>
+          <div class="note"><input class="iv-in" data-df="note" placeholder="note"></div>
+          <div><button id="iv-default-add" class="iv-btn sm">Add</button></div>
+        </div>
+        ${defs.length ? `<div class="iv-hint">${InvoicesScreen.plain(total)} h a week · ${InvoicesScreen.plain(total * 2)} h an invoice</div>` : ''}
+      </div>`;
+  }
+
   _renderInvoiceList(i) {
     const esc = (t) => this.escapeHtml(t);
     const rows = (i.invoices || []).map(v => `
       <div class="iv-list-row">
-        <div style="font-weight:800;">${v.year}.${v.number}</div>
-        <div>${esc(InvoicesScreen.usDate(v.date))} <span class="iv-tag ${v.is_final ? 'final' : 'draft'}">${v.is_final ? 'final' : 'draft'}</span></div>
+        <div style="font-weight:800;">#${v.number}</div>
+        <div>${esc(v.week1 || '')} &amp; ${esc(v.week2 || '')} <span style="opacity:0.65;">· due ${esc(InvoicesScreen.usDate(v.date))}</span> <span class="iv-tag ${v.is_final ? 'final' : 'draft'}">${v.is_final ? 'final' : 'draft'}</span></div>
         <div class="hrs" style="opacity:0.7;">${InvoicesScreen.plain(v.hours)} h</div>
         <div style="text-align:right; font-weight:700;">${InvoicesScreen.money(v.total)}</div>
         <div style="display:flex; gap:6px; justify-content:flex-end;">
@@ -550,7 +747,7 @@ class InvoicesScreen extends Screen {
           <div class="desc">${locked
             ? `<span>${esc(l.printed)}</span>`
             : `<input class="iv-in" data-f="description" value="${esc(l.description)}">`}</div>
-          <div><input class="iv-in num" data-f="quantity" type="number" step="0.25" min="0" value="${l.quantity}" title="${l.category === 'labor' ? 'Hours' : 'Units'}"></div>
+          <div><input class="iv-in num" data-f="quantity" type="number" step="0.25" min="0" value="${l.quantity}" ${l.category === 'labor' && (inv.shifts || []).length ? 'disabled title="Adds up the days above"' : `title="${l.category === 'labor' ? 'Hours' : 'Units'}"`}></div>
           <div><input class="iv-in num" data-f="rate" type="number" step="0.01" min="0" value="${l.rate == null ? '' : l.rate}" title="Rate"></div>
           <div style="display:flex; gap:4px; align-items:center;">
             <input class="iv-in num" data-f="amount" type="number" step="0.01" value="${l.amount}" title="Amount">
@@ -560,18 +757,50 @@ class InvoicesScreen extends Screen {
     }).join('');
     const expenses = !!inv.issuer?.bills_expenses;
     return `
-      <div class="iv-sec" id="iv-editor">Invoice ${inv.year}.${inv.number} — ${esc(inv.issuer?.name || '')}</div>
+      <div class="iv-sec" id="iv-editor">${esc(inv.title || `Invoice #${inv.number}`)}</div>
       <div class="iv-card">
-        <div class="iv-grid" style="grid-template-columns:120px 170px 1fr auto; align-items:end;">
+        <div class="iv-grid" style="grid-template-columns:100px 160px 160px 160px 1fr; align-items:end;">
           <div><div class="iv-lbl">Invoice #</div><input class="iv-in num" id="iv-number" type="number" min="1" value="${inv.number}"></div>
-          <div><div class="iv-lbl">Date</div><input class="iv-in" id="iv-date" type="date" value="${esc(inv.date)}"></div>
-          <div><label style="display:flex; gap:6px; align-items:center; font-size:0.9rem;"><input type="checkbox" id="iv-final" ${inv.is_final ? 'checked' : ''}> Final (sent)</label></div>
-          <div class="iv-acts" style="margin:0;">
-            <button id="iv-print" class="iv-btn">🖨 Print / Save PDF</button>
-            <button id="iv-close" class="iv-btn ghost">Close</button>
-          </div>
+          <div><div class="iv-lbl">Work from (Fri)</div><input class="iv-in" id="iv-pstart" type="date" value="${esc(inv.period_start || '')}"></div>
+          <div><div class="iv-lbl">Work till (Thu)</div><input class="iv-in" id="iv-pend" type="date" value="${esc(inv.period_end || '')}"></div>
+          <div><div class="iv-lbl">Due date (on sheet)</div><input class="iv-in" id="iv-date" type="date" value="${esc(inv.date)}"></div>
+          <div><label style="display:flex; gap:6px; align-items:center; font-size:0.9rem; height:36px;"><input type="checkbox" id="iv-final" ${inv.is_final ? 'checked' : ''}> Final (sent)</label></div>
+        </div>
+        <div class="iv-acts">
+          <button id="iv-print" class="iv-btn">🖨 Print / Save PDF</button>
+          <button id="iv-email" class="iv-btn alt">✉️ Email ${esc(inv.bill_to?.email_label || 'Lighthouse')}</button>
+          <button id="iv-close" class="iv-btn ghost">Close</button>
         </div>
         <div class="iv-hint">${esc(this._copy('print_hint', { file: inv.file_name }))}</div>
+        <div class="iv-grid" style="grid-template-columns:1fr; margin-top:8px;">
+          <div><div class="iv-lbl">Link to the saved PDF (Drive) — goes in the email after the title</div>
+            <input class="iv-in" id="iv-link" type="url" placeholder="https://drive.google.com/…" value="${esc(inv.link_url || '')}"></div>
+        </div>
+
+        <div class="iv-sec">Hours by day</div>
+        <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('hours_hint'))}</div>
+        <div class="iv-day head"><div>Day</div><div>From</div><div>Till</div><div class="hrs">Hours</div><div class="note">Note</div><div></div></div>
+        ${(inv.shifts || []).map(sh => `
+          <div class="iv-day" data-shift-row="${sh.id}">
+            <div><input class="iv-in" type="date" data-sf="date" value="${esc(sh.date)}" title="${esc(sh.day_label)}"></div>
+            <div><input class="iv-in" type="time" data-sf="start" value="${esc(sh.start)}"></div>
+            <div><input class="iv-in" type="time" data-sf="end" value="${esc(sh.end)}"></div>
+            <div class="hrs">${InvoicesScreen.plain(sh.hours)} h</div>
+            <div class="note"><input class="iv-in" data-sf="note" value="${esc(sh.note || '')}" placeholder="note"></div>
+            <div><button class="iv-btn danger sm" data-delete-shift="${sh.id}" title="Remove day">✕</button></div>
+          </div>`).join('')}
+        <div class="iv-day" id="iv-shift-new" style="border-top:1px dashed var(--border-color);">
+          <div><input class="iv-in" type="date" data-sf="date" value="${esc(this.nextShiftDate || inv.period_start || '')}" min="${esc(inv.period_start || '')}"></div>
+          <div><input class="iv-in" type="time" data-sf="start" value="${esc(this.nextShiftTimes?.start || '17:00')}"></div>
+          <div><input class="iv-in" type="time" data-sf="end" value="${esc(this.nextShiftTimes?.end || '19:00')}"></div>
+          <div class="hrs"></div>
+          <div class="note"><input class="iv-in" data-sf="note" placeholder="note"></div>
+          <div><button id="iv-shift-add" class="iv-btn sm">Add</button></div>
+        </div>
+        <div class="iv-acts">
+          <span style="font-size:0.9rem; font-weight:700;">${InvoicesScreen.plain(inv.shift_hours || 0)} h over ${(inv.shifts || []).length} day${(inv.shifts || []).length === 1 ? '' : 's'}</span>
+          ${!(inv.shifts || []).length ? `<button id="iv-fill" class="iv-btn ghost sm">📅 Fill from usual week</button>` : ''}
+        </div>
 
         <div style="margin-top:var(--space-3);">
           <div class="iv-row head"><div>Section</div><div class="desc">Description</div><div class="r">Hours / units</div><div class="r">Rate</div><div class="r">Amount</div></div>

@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "../database/Database.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -62,10 +63,15 @@ void InvoiceController::registerRoutes(Router& router, const std::string& prefix
     router.del (prefix + "/plan",        [this](const Request& r) { return handleDeletePlan(r); });
     router.post(prefix + "/issuer",      [this](const Request& r) { return handleIssuer(r); });
     router.del (prefix + "/line",        [this](const Request& r) { return handleDeleteLine(r); });
+    router.del (prefix + "/shift",       [this](const Request& r) { return handleDeleteShift(r); });
+    router.post(prefix + "/default",     [this](const Request& r) { return handleDefault(r); });
+    router.del (prefix + "/default",     [this](const Request& r) { return handleDeleteDefault(r); });
     router.del (prefix,                  [this](const Request& r) { return handleDelete(r); });
     // Param routes last so the static paths above win the prefix match.
     router.post(prefix + "/:id/update",  [this](const Request& r) { return handleUpdate(r); });
     router.post(prefix + "/:id/line",    [this](const Request& r) { return handleLine(r); });
+    router.post(prefix + "/:id/shift",   [this](const Request& r) { return handleShift(r); });
+    router.post(prefix + "/:id/fill",    [this](const Request& r) { return handleFill(r); });
     router.get (prefix + "/:id",         [this](const Request& r) { return handleGet(r); });
 }
 
@@ -77,7 +83,19 @@ bool InvoiceController::gate(const Request& request, Response* error) {
 
 Response InvoiceController::handleBoard(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
-    try { return jsonOut(HttpStatus::OK, model_->board()); }
+    try {
+        json out = model_->board();
+        // Who is looking, so the page can tell "my invoice" from a coach's
+        // (different email wording, the coach gets cc'd).
+        long long viewerPerson = 0;
+        const long long userId = bearerUserId(request);
+        if (userId > 0) {
+            auto rows = Database::getInstance()->query("SELECT person_id FROM users WHERE id = $1::int", {std::to_string(userId)});
+            if (!rows.empty() && !rows[0]["person_id"].is_null()) viewerPerson = rows[0]["person_id"].as<long long>();
+        }
+        out["viewer_person_id"] = viewerPerson;
+        return jsonOut(HttpStatus::OK, out);
+    }
     catch (const std::exception& e) { std::cerr << "[invoices board] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
@@ -137,6 +155,68 @@ Response InvoiceController::handleDeleteLine(const Request& request) {
     if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, "id is required");
     try {
         if (!model_->removeLine(id)) return jsonError(HttpStatus::NOT_FOUND, "no such line");
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) { return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+Response InvoiceController::handleShift(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = idFromPath(request.getPath());
+    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
+    try {
+        std::string err;
+        const long long shiftId = model_->upsertShift(id, intField(body, "id"), body, &err);
+        if (shiftId <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
+        return jsonOut(HttpStatus::OK, model_->get(id));
+    } catch (const std::exception& e) { std::cerr << "[invoices shift] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+Response InvoiceController::handleDeleteShift(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = queryId(request);
+    if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, "id is required");
+    try {
+        if (!model_->removeShift(id)) return jsonError(HttpStatus::NOT_FOUND, "no such day");
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) { return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+Response InvoiceController::handleFill(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = idFromPath(request.getPath());
+    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
+    const bool force = body.contains("force") && body["force"].is_boolean() && body["force"].get<bool>();
+    try {
+        std::string err;
+        const int added = model_->applyDefaults(id, force, &err);
+        if (added <= 0 && !err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
+        json out = model_->get(id);
+        out["added"] = added;
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) { std::cerr << "[invoices fill] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+Response InvoiceController::handleDefault(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
+    const long long issuerId = intField(body, "issuer_id");
+    if (issuerId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "issuer_id is required");
+    try {
+        std::string err;
+        const long long id = model_->upsertDefaultShift(issuerId, intField(body, "id"), body, &err);
+        if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
+        return jsonOut(HttpStatus::OK, {{"id", id}});
+    } catch (const std::exception& e) { std::cerr << "[invoices default] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+Response InvoiceController::handleDeleteDefault(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = queryId(request);
+    if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, "id is required");
+    try {
+        if (!model_->removeDefaultShift(id)) return jsonError(HttpStatus::NOT_FOUND, "no such default");
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) { return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }

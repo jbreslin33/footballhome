@@ -15,6 +15,11 @@
 //   GET    /api/invoices/:id            one sheet with lines + total
 //   POST   /api/invoices/:id/update     { date?, number?, is_final?, note? }
 //   POST   /api/invoices/:id/line       { id?, category, description, quantity, rate, amount? }
+//   POST   /api/invoices/:id/shift      { id?, date, start, end, note }  hours by day (mig 469)
+//   DELETE /api/invoices/shift?id=      one day
+//   POST   /api/invoices/:id/fill       copy the issuer's weekly default onto the period ({ force? })
+//   POST   /api/invoices/default        { id?, issuer_id, weekday, start, end, note }  the usual week (mig 470)
+//   DELETE /api/invoices/default?id=
 //   DELETE /api/invoices/line?id=       one line
 //   POST   /api/invoices/plan           { issuer_id, invoice_id, category, description, total_amount, installment_count, show_total }
 //   DELETE /api/invoices/plan?id=       stop a plan (past lines keep their text)
@@ -35,6 +40,11 @@ private:
     Response handleUpdate(const Request& request);
     Response handleLine(const Request& request);
     Response handleDeleteLine(const Request& request);
+    Response handleShift(const Request& request);
+    Response handleDeleteShift(const Request& request);
+    Response handleFill(const Request& request);
+    Response handleDefault(const Request& request);
+    Response handleDeleteDefault(const Request& request);
     Response handlePlan(const Request& request);
     Response handleDeletePlan(const Request& request);
     Response handleIssuer(const Request& request);

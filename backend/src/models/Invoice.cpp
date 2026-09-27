@@ -97,11 +97,12 @@ json Invoice::board() {
     json out;
     out["bill_to"] = nullptr;
     {
-        auto rows = db_->query("SELECT organization, contact_name, address, city_state_zip FROM invoice_bill_to WHERE is_default ORDER BY id LIMIT 1");
+        auto rows = db_->query("SELECT organization, contact_name, address, city_state_zip, email, email_label, email_to_name FROM invoice_bill_to WHERE is_default ORDER BY id LIMIT 1");
         if (!rows.empty()) {
             const auto& r = rows[0];
             out["bill_to"] = {{"organization", str(r, "organization")}, {"contact_name", str(r, "contact_name")},
-                              {"address", str(r, "address")}, {"city_state_zip", str(r, "city_state_zip")}};
+                              {"address", str(r, "address")}, {"city_state_zip", str(r, "city_state_zip")},
+                              {"email", str(r, "email")}, {"email_label", str(r, "email_label")}, {"email_to_name", str(r, "email_to_name")}};
         }
     }
     out["categories"] = json::array();
@@ -128,10 +129,13 @@ json Invoice::board() {
             {"hourly_rate", numOrNull(r, "hourly_rate")}, {"bills_expenses", r["bills_expenses"].as<bool>()},
             {"next_number", nextNumber(id, year)},
             {"open_plans", openPlans(id)},
+            {"default_shifts", defaultShifts(id)},
             {"invoices", json::array()},
         };
         auto invs = db_->query(R"SQL(
             SELECT v.id, v.invoice_year, v.invoice_number, v.invoice_date::text AS invoice_date, v.is_final,
+                   to_char(date_trunc('week', v.period_start + 6)::date,  'FMMM/FMDD') AS week1,
+                   to_char(date_trunc('week', v.period_start + 13)::date, 'FMMM/FMDD') AS week2,
                    COALESCE((SELECT SUM(amount) FROM invoice_lines l WHERE l.invoice_id = v.id), 0) AS total,
                    COALESCE((SELECT SUM(quantity) FROM invoice_lines l WHERE l.invoice_id = v.id AND l.category = 'labor'), 0) AS hours
               FROM invoices v WHERE v.issuer_id = $1::int
@@ -141,6 +145,7 @@ json Invoice::board() {
                 {"id", v["id"].as<long long>()}, {"year", v["invoice_year"].as<int>()},
                 {"number", v["invoice_number"].as<int>()}, {"date", str(v, "invoice_date")},
                 {"is_final", v["is_final"].as<bool>()}, {"total", num(v, "total")}, {"hours", num(v, "hours")},
+                {"week1", str(v, "week1")}, {"week2", str(v, "week2")},
             });
         }
         out["issuers"].push_back(j);
@@ -152,7 +157,13 @@ json Invoice::get(long long invoiceId) {
     auto rows = db_->query(R"SQL(
         SELECT v.id, v.issuer_id, v.invoice_year, v.invoice_number, v.invoice_date::text AS invoice_date,
                to_char(v.invoice_date, 'MM/DD/YYYY') AS date_us, v.is_final, v.note,
+               v.period_start::text AS period_start, v.period_end::text AS period_end, v.link_url,
+               (SELECT e.email FROM person_emails e WHERE e.person_id = p.id ORDER BY e.is_primary DESC, e.id LIMIT 1) AS issuer_email,
+               to_char(date_trunc('week', v.period_start + 6)::date,  'FMMM/FMDD') AS week1,
+               to_char(date_trunc('week', v.period_start + 13)::date, 'FMMM/FMDD') AS week2,
+               COALESCE(p.last_name,'') AS last_name, COALESCE(p.first_name,'') AS first_name,
                i.file_slug, i.address, i.city_state_zip, i.phone, i.payable_to, i.duty_description, i.hourly_rate, i.bills_expenses,
+               i.person_id AS issuer_person_id,
                BTRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS name
           FROM invoices v JOIN invoice_issuers i ON i.id = v.issuer_id JOIN persons p ON p.id = i.person_id
          WHERE v.id = $1::int)SQL", {std::to_string(invoiceId)});
@@ -163,8 +174,13 @@ json Invoice::get(long long invoiceId) {
         {"year", r["invoice_year"].as<int>()}, {"number", r["invoice_number"].as<int>()},
         {"date", str(r, "invoice_date")}, {"date_us", str(r, "date_us")},
         {"is_final", r["is_final"].as<bool>()}, {"note", str(r, "note")},
+        {"period_start", str(r, "period_start")}, {"period_end", str(r, "period_end")},
+        {"week1", str(r, "week1")}, {"week2", str(r, "week2")}, {"link_url", str(r, "link_url")},
+        {"title", "Invoice #" + std::to_string(r["invoice_number"].as<int>()) + " " + str(r, "week1") + " & " + str(r, "week2")
+                  + ", " + str(r, "last_name") + ", " + str(r, "first_name")},
         {"issuer", {
             {"name", str(r, "name")}, {"file_slug", str(r, "file_slug")}, {"address", str(r, "address")},
+            {"email", str(r, "issuer_email")}, {"person_id", r["issuer_person_id"].as<long long>()},
             {"city_state_zip", str(r, "city_state_zip")}, {"phone", str(r, "phone")}, {"payable_to", str(r, "payable_to")},
             {"duty_description", str(r, "duty_description")}, {"hourly_rate", numOrNull(r, "hourly_rate")},
             {"bills_expenses", r["bills_expenses"].as<bool>()},
@@ -173,10 +189,11 @@ json Invoice::get(long long invoiceId) {
         {"lines", json::array()},
     };
     {
-        auto bt = db_->query("SELECT organization, contact_name, address, city_state_zip FROM invoice_bill_to WHERE is_default ORDER BY id LIMIT 1");
+        auto bt = db_->query("SELECT organization, contact_name, address, city_state_zip, email, email_label, email_to_name FROM invoice_bill_to WHERE is_default ORDER BY id LIMIT 1");
         out["bill_to"] = bt.empty() ? json(nullptr)
             : json{{"organization", str(bt[0], "organization")}, {"contact_name", str(bt[0], "contact_name")},
-                   {"address", str(bt[0], "address")}, {"city_state_zip", str(bt[0], "city_state_zip")}};
+                   {"address", str(bt[0], "address")}, {"city_state_zip", str(bt[0], "city_state_zip")},
+                   {"email", str(bt[0], "email")}, {"email_label", str(bt[0], "email_label")}, {"email_to_name", str(bt[0], "email_to_name")}};
     }
     double total = 0;
     auto lines = db_->query(R"SQL(
@@ -207,7 +224,84 @@ json Invoice::get(long long invoiceId) {
         });
     }
     out["total"] = round2(total);
+
+    // Hours by day (mig 469).
+    out["shifts"] = json::array();
+    double shiftHours = 0;
+    auto shifts = db_->query(R"SQL(
+        SELECT id, work_date::text AS work_date, to_char(work_date, 'Dy MM/DD') AS day_label,
+               to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note,
+               ROUND(EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0, 2) AS hours
+          FROM invoice_work_shifts WHERE invoice_id = $1::int
+         ORDER BY work_date, start_at, id)SQL", {std::to_string(invoiceId)});
+    for (const auto& sh : shifts) {
+        const double h = num(sh, "hours");
+        shiftHours += h;
+        out["shifts"].push_back({
+            {"id", sh["id"].as<long long>()}, {"date", str(sh, "work_date")}, {"day_label", str(sh, "day_label")},
+            {"start", str(sh, "start_at")}, {"end", str(sh, "end_at")}, {"note", str(sh, "note")}, {"hours", h},
+        });
+    }
+    out["shift_hours"] = round2(shiftHours);
     return out;
+}
+
+void Invoice::syncLabor(long long invoiceId) {
+    db_->query(R"SQL(
+        WITH h AS (
+            SELECT COUNT(*) AS n, COALESCE(SUM(EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0), 0) AS hours
+              FROM invoice_work_shifts WHERE invoice_id = $1::int)
+        UPDATE invoice_lines l
+           SET quantity = ROUND(h.hours::numeric, 2),
+               amount   = CASE WHEN l.rate IS NULL THEN l.amount ELSE ROUND(ROUND(h.hours::numeric, 2) * l.rate, 2) END
+          FROM h
+         WHERE l.invoice_id = $1::int AND l.category = 'labor' AND h.n > 0)SQL", {std::to_string(invoiceId)});
+    db_->query("UPDATE invoices SET updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId)});
+}
+
+long long Invoice::upsertShift(long long invoiceId, long long shiftId, const json& f, std::string* error) {
+    const std::string date = s(f, "date"), start = s(f, "start"), end = s(f, "end"), note = s(f, "note");
+    if (date.empty()) { *error = "date is required"; return 0; }
+    if (start.empty() || end.empty()) { *error = "from and till are required"; return 0; }
+    if (db_->query("SELECT 1 FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)}).empty()) { *error = "no such invoice"; return 0; }
+    try {
+        if (shiftId > 0) {
+            auto r = db_->query(
+                "UPDATE invoice_work_shifts SET work_date = $3::date, start_at = $4::time, end_at = $5::time, note = NULLIF($6,'') "
+                "WHERE id = $1::int AND invoice_id = $2::int RETURNING id",
+                {std::to_string(shiftId), std::to_string(invoiceId), date, start, end, note});
+            if (r.empty()) { *error = "no such day"; return 0; }
+            syncLabor(invoiceId);
+            return shiftId;
+        }
+        auto r = db_->query(
+            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, note) "
+            "VALUES ($1::int, $2::date, $3::time, $4::time, NULLIF($5,'')) RETURNING id",
+            {std::to_string(invoiceId), date, start, end, note});
+        if (r.empty()) { *error = "could not add the day"; return 0; }
+        syncLabor(invoiceId);
+        return r[0]["id"].as<long long>();
+    } catch (const std::exception& e) {
+        // The CHECK (end_at > start_at) and bad date / time text land here.
+        *error = "till must be after from";
+        std::cerr << "[invoices shift] " << e.what() << std::endl;
+        return 0;
+    }
+}
+
+bool Invoice::removeShift(long long shiftId) {
+    auto r = db_->query("DELETE FROM invoice_work_shifts WHERE id = $1::int RETURNING invoice_id", {std::to_string(shiftId)});
+    if (r.empty()) return false;
+    const long long invoiceId = r[0]["invoice_id"].as<long long>();
+    // With no days left the hours line goes back to 0 rather than keeping a stale sum.
+    auto left = db_->query("SELECT 1 FROM invoice_work_shifts WHERE invoice_id = $1::int LIMIT 1", {std::to_string(invoiceId)});
+    if (left.empty()) {
+        db_->query("UPDATE invoice_lines SET quantity = 0, amount = 0 WHERE invoice_id = $1::int AND category = 'labor'", {std::to_string(invoiceId)});
+        db_->query("UPDATE invoices SET updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId)});
+    } else {
+        syncLabor(invoiceId);
+    }
+    return true;
 }
 
 long long Invoice::issuerOf(long long invoiceId) {
@@ -225,11 +319,17 @@ long long Invoice::create(long long issuerId, const std::string& isoDate, std::s
                          isoDate.empty() ? std::vector<std::string>{} : std::vector<std::string>{isoDate});
     const int year = yr[0]["y"].as<int>();
     const int number = nextNumber(issuerId, year);
-    auto ins = db_->query(
-        "INSERT INTO invoices (issuer_id, invoice_year, invoice_number, invoice_date) "
-        "VALUES ($1::int, $2::int, $3::int, " + std::string(isoDate.empty() ? "CURRENT_DATE" : "$4::date") + ") RETURNING id",
-        isoDate.empty() ? std::vector<std::string>{std::to_string(issuerId), std::to_string(year), std::to_string(number)}
-                        : std::vector<std::string>{std::to_string(issuerId), std::to_string(year), std::to_string(number), isoDate});
+    // Period from the year's policy (mig 472); the invoice is dated the day
+    // after the period ends (a Friday) unless a date was given.  With no
+    // policy row for the year the period is left blank to be set by hand.
+    auto ins = db_->query(R"SQL(
+        WITH p AS (SELECT fh_invoice_period_start($2::int, $3::int) AS ps, fh_invoice_period_days($2::int) AS days)
+        INSERT INTO invoices (issuer_id, invoice_year, invoice_number, invoice_date, period_start, period_end)
+        SELECT $1::int, $2::int, $3::int,
+               COALESCE(NULLIF($4, '')::date, p.ps + p.days, CURRENT_DATE),
+               p.ps, p.ps + p.days - 1
+          FROM p RETURNING id)SQL",
+        {std::to_string(issuerId), std::to_string(year), std::to_string(number), isoDate});
     if (ins.empty()) { *error = "could not create"; return 0; }
     const long long id = ins[0]["id"].as<long long>();
 
@@ -253,6 +353,10 @@ long long Invoice::create(long long issuerId, const std::string& isoDate, std::s
             {std::to_string(id), p["category"].get<std::string>(), p["description"].get<std::string>(),
              money2(amt), std::to_string(p["id"].get<long long>()), std::to_string(k), std::to_string(sort++)});
     }
+
+    // The usual week, one row per matching day of the period (mig 470).
+    std::string ignored;
+    applyDefaults(id, false, &ignored);
     return id;
 }
 
@@ -271,7 +375,14 @@ bool Invoice::update(long long invoiceId, const json& f, std::string* error) {
             "AND invoice_number = $3::int AND id <> $2::int",
             {cur[0]["issuer_id"].c_str(), std::to_string(invoiceId), std::to_string(num_)});
         if (!clash.empty()) { *error = "that number is already used this year"; return false; }
-        db_->query("UPDATE invoices SET invoice_number = $2::int, updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId), std::to_string(num_)});
+        db_->query(R"SQL(
+            UPDATE invoices v
+               SET invoice_number = $2::int,
+                   period_start = COALESCE(fh_invoice_period_start(v.invoice_year, $2::int), v.period_start),
+                   period_end   = COALESCE(fh_invoice_period_start(v.invoice_year, $2::int) + fh_invoice_period_days(v.invoice_year) - 1, v.period_end),
+                   invoice_date = COALESCE(fh_invoice_period_start(v.invoice_year, $2::int) + fh_invoice_period_days(v.invoice_year), v.invoice_date),
+                   updated_at = now()
+             WHERE id = $1::int)SQL", {std::to_string(invoiceId), std::to_string(num_)});
     }
     if (f.contains("is_final") && f["is_final"].is_boolean()) {
         db_->query("UPDATE invoices SET is_final = $2::bool, updated_at = now() WHERE id = $1::int",
@@ -279,6 +390,15 @@ bool Invoice::update(long long invoiceId, const json& f, std::string* error) {
     }
     if (f.contains("note") && f["note"].is_string()) {
         db_->query("UPDATE invoices SET note = NULLIF($2,''), updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId), f["note"].get<std::string>()});
+    }
+    if (f.contains("link_url") && f["link_url"].is_string()) {
+        db_->query("UPDATE invoices SET link_url = NULLIF(BTRIM($2),''), updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId), f["link_url"].get<std::string>()});
+    }
+    if (f.contains("period_start") && f["period_start"].is_string() && !f["period_start"].get<std::string>().empty()) {
+        db_->query("UPDATE invoices SET period_start = $2::date, updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId), f["period_start"].get<std::string>()});
+    }
+    if (f.contains("period_end") && f["period_end"].is_string() && !f["period_end"].get<std::string>().empty()) {
+        db_->query("UPDATE invoices SET period_end = $2::date, updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId), f["period_end"].get<std::string>()});
     }
     return true;
 }
@@ -382,4 +502,73 @@ bool Invoice::updateIssuer(long long issuerId, const json& f, std::string* error
                    {std::to_string(issuerId), f["bills_expenses"].get<bool>() ? "true" : "false"});
     }
     return true;
+}
+
+// ── weekly default (mig 470) ───────────────────────────────────────────────
+
+json Invoice::defaultShifts(long long issuerId) {
+    auto rows = db_->query(R"SQL(
+        SELECT id, weekday, to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note,
+               ROUND(EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0, 2) AS hours
+          FROM invoice_default_shifts WHERE issuer_id = $1::int ORDER BY weekday, start_at, id)SQL", {std::to_string(issuerId)});
+    json out = json::array();
+    for (const auto& r : rows) {
+        out.push_back({{"id", r["id"].as<long long>()}, {"weekday", r["weekday"].as<int>()}, {"start", str(r, "start_at")},
+                       {"end", str(r, "end_at")}, {"note", str(r, "note")}, {"hours", num(r, "hours")}});
+    }
+    return out;
+}
+
+long long Invoice::upsertDefaultShift(long long issuerId, long long id, const json& f, std::string* error) {
+    const std::string start = s(f, "start"), end = s(f, "end"), note = s(f, "note");
+    if (!hasNum(f, "weekday")) { *error = "weekday is required"; return 0; }
+    const int weekday = static_cast<int>(n(f, "weekday"));
+    if (weekday < 0 || weekday > 6) { *error = "weekday must be 0-6"; return 0; }
+    if (start.empty() || end.empty()) { *error = "from and till are required"; return 0; }
+    try {
+        if (id > 0) {
+            auto r = db_->query(
+                "UPDATE invoice_default_shifts SET weekday = $3::int, start_at = $4::time, end_at = $5::time, note = NULLIF($6,'') "
+                "WHERE id = $1::int AND issuer_id = $2::int RETURNING id",
+                {std::to_string(id), std::to_string(issuerId), std::to_string(weekday), start, end, note});
+            if (r.empty()) { *error = "no such default"; return 0; }
+            return id;
+        }
+        auto r = db_->query(
+            "INSERT INTO invoice_default_shifts (issuer_id, weekday, start_at, end_at, note) "
+            "VALUES ($1::int, $2::int, $3::time, $4::time, NULLIF($5,'')) RETURNING id",
+            {std::to_string(issuerId), std::to_string(weekday), start, end, note});
+        if (r.empty()) { *error = "could not add"; return 0; }
+        return r[0]["id"].as<long long>();
+    } catch (const std::exception& e) {
+        *error = "till must be after from";
+        std::cerr << "[invoices default] " << e.what() << std::endl;
+        return 0;
+    }
+}
+
+bool Invoice::removeDefaultShift(long long id) {
+    auto r = db_->query("DELETE FROM invoice_default_shifts WHERE id = $1::int RETURNING id", {std::to_string(id)});
+    return !r.empty();
+}
+
+int Invoice::applyDefaults(long long invoiceId, bool force, std::string* error) {
+    auto inv = db_->query("SELECT issuer_id, period_start, period_end FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
+    if (inv.empty()) { *error = "no such invoice"; return 0; }
+    if (inv[0]["period_start"].is_null() || inv[0]["period_end"].is_null()) { *error = "set the period first"; return 0; }
+    if (!force) {
+        auto have = db_->query("SELECT 1 FROM invoice_work_shifts WHERE invoice_id = $1::int LIMIT 1", {std::to_string(invoiceId)});
+        if (!have.empty()) { *error = "this invoice already has days"; return 0; }
+    }
+    auto r = db_->query(R"SQL(
+        INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, note)
+        SELECT $1::int, d::date, s.start_at, s.end_at, s.note
+          FROM generate_series($2::date, $3::date, interval '1 day') AS d
+          JOIN invoice_default_shifts s ON s.issuer_id = $4::int AND s.weekday = EXTRACT(DOW FROM d)::int
+         ORDER BY d, s.start_at
+        RETURNING id)SQL",
+        {std::to_string(invoiceId), inv[0]["period_start"].c_str(), inv[0]["period_end"].c_str(), inv[0]["issuer_id"].c_str()});
+    const int added = static_cast<int>(r.size());
+    if (added > 0) syncLabor(invoiceId);
+    return added;
 }
