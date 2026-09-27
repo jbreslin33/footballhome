@@ -239,3 +239,24 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
     }
     return out;
 }
+
+json PersonFines::rulesFor(int personId) {
+    json rules = json::array();
+    if (personId <= 0) return rules;
+    auto rows = db_->query(
+        "SELECT DISTINCT ON (k.sort_order) k.code, k.label, r.amount::text AS amount"
+        "  FROM fine_kinds k"
+        "  JOIN LATERAL ("
+        "    SELECT fh_fine_amount_usd(t.club_id, t.club_section_id, k.code, CURRENT_DATE) AS amount"
+        "      FROM team_persons tp JOIN teams t ON t.id = tp.team_id AND t.is_active"
+        "     WHERE tp.person_id = $1::int AND tp.removed_at IS NULL AND t.club_section_id IS NOT NULL"
+        "     ORDER BY amount DESC NULLS LAST LIMIT 1) r ON true"
+        " WHERE r.amount IS NOT NULL AND r.amount > 0"
+        " ORDER BY k.sort_order",
+        {std::to_string(personId)});
+    for (const auto& r : rows) {
+        rules.push_back({{"kind", r["code"].c_str()}, {"label", r["label"].c_str()},
+                         {"amount", std::atof(r["amount"].c_str())}});
+    }
+    return rules;
+}

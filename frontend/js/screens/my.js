@@ -127,6 +127,7 @@ class MyScreen extends Screen {
         <section id="my-chat" style="margin-bottom: 6px;"></section>
         <section id="my-groupme" style="margin-bottom: 6px;" hidden></section>
         <div id="my-dues-banner"></div>
+        <section id="my-fines" style="margin-bottom: 6px;" hidden></section>
         <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
         </section>
@@ -156,6 +157,7 @@ class MyScreen extends Screen {
       this.dues         = upRes.dues      || {};   // per person: eligible, min_payment, pay_url (mig 416)
       // Pill labels are DB copy; the pills appear once it lands.
       MessageCopy.load(this.auth).then(() => this._renderEvents());
+      this._loadFines().catch(() => {});
       await this._loadNextWeekOpens();
       this._renderEvents();
       this._renderChatShell();
@@ -1254,6 +1256,68 @@ class MyScreen extends Screen {
               style="padding:3px 8px; border-radius:999px; border:1px solid #ef4444; background:rgba(239,68,68,0.18); color:#fca5a5; font-size:0.6rem; font-weight:800; line-height:1.2; text-decoration:none; white-space:normal; text-align:center;">
               ⛔ ${this.escapeHtml(text)}</a>`;
   }
+  // ────── Fines (men only) ─────────────────────────────────────────
+  // GET /api/my/fines: the viewer's fines by month (mig 460/461) and the
+  // rules in force for their section.  Owner 2026-09-27: "list on their
+  // my page the fines in table list at top ... list the fine rules too".
+  // Null fines = no rates for their section (parents, the women): the
+  // panel stays hidden.  Wording: message_templates kind my_fines (mig 462).
+  async _loadFines() {
+    const body = await this._fetch('/api/my/fines');
+    this.fines = body && body.fines ? body.fines : null;
+    this.fineRules = body && Array.isArray(body.rules) ? body.rules : [];
+    await MessageCopy.load(this.auth);
+    this._renderFines();
+  }
+
+  _renderFines() {
+    const host = this.find('#my-fines');
+    if (!host) return;
+    const f = this.fines;
+    if (!f || !Array.isArray(f.months) || !MessageCopy.has('my_fines', 'heading')) { host.hidden = true; host.innerHTML = ''; return; }
+    const money = (n) => { const v = Number(n) || 0; return Number.isInteger(v) ? `$${v}` : `$${v.toFixed(2)}`; };
+    const kindLabel = (k) => ({ match: 'Game', intrasquad: 'Intra Squad', practice: 'Practice' }[k] || k || '');
+    const cell = 'padding:3px 6px; border-bottom:1px solid rgba(255,255,255,0.08); vertical-align:top;';
+
+    const rules = this.fineRules.length ? `
+      <div style="font-size:0.62rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; opacity:0.7; margin:6px 0 2px;">${this.escapeHtml(MessageCopy.block('my_fines', 'rules_heading'))}</div>
+      <table style="width:100%; border-collapse:collapse; font-size:0.74rem;">
+        ${this.fineRules.map(r => `<tr><td style="${cell}">${this.escapeHtml(r.label)}</td><td style="${cell} text-align:right; font-weight:800; white-space:nowrap;">${money(r.amount)}</td></tr>`).join('')}
+      </table>` : '';
+
+    const sinceDate = f.since ? new Date(`${f.since}T12:00:00`) : null;
+    const sinceText = sinceDate && !isNaN(sinceDate)
+      ? MessageCopy.block('my_fines', 'since', { since: sinceDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) }) : '';
+    const months = f.months.filter(mo => Array.isArray(mo.items) && mo.items.length);
+    const total = months.reduce((s, mo) => s + (Number(mo.total) || 0), 0);
+    const rows = months.length ? `
+      <table style="width:100%; border-collapse:collapse; font-size:0.74rem; margin-top:6px;">
+        ${months.map(mo => `
+          ${mo.items.map(it => {
+            const d = new Date(it.startAt);
+            const when = isNaN(d) ? '' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            return `<tr>
+              <td style="${cell} white-space:nowrap; opacity:0.8;">${this.escapeHtml(when)}</td>
+              <td style="${cell}">${this.escapeHtml(kindLabel(it.eventKind))}${it.opponent ? ` vs ${this.escapeHtml(it.opponent)}` : ''}<div style="opacity:0.7;">${this.escapeHtml(it.label)}</div></td>
+              <td style="${cell} text-align:right; font-weight:800; white-space:nowrap;">${money(it.amount)}</td>
+            </tr>`;
+          }).join('')}
+          <tr><td colspan="3" style="padding:3px 6px 8px; text-align:right; font-weight:800; font-size:0.72rem;">${this.escapeHtml(MessageCopy.block('my_fines', 'month_total', { month: mo.label, amount: money(mo.total) }))}</td></tr>`).join('')}
+      </table>` : `<div style="font-size:0.74rem; opacity:0.75; margin-top:6px;">${this.escapeHtml(MessageCopy.block('my_fines', 'empty'))}</div>`;
+
+    host.hidden = false;
+    host.innerHTML = `
+      <div style="padding:8px 10px; border-radius:8px; border:1px solid ${total > 0 ? '#ef4444' : 'rgba(255,255,255,0.16)'}; background:${total > 0 ? 'rgba(239,68,68,0.10)' : 'rgba(15,23,42,0.5)'};">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
+          <h2 style="margin:0; font-size:0.8rem;">⚖️ ${this.escapeHtml(MessageCopy.block('my_fines', 'heading'))}</h2>
+          <span style="font-size:0.9rem; font-weight:800; color:${total > 0 ? '#fca5a5' : 'inherit'};">${money(total)}</span>
+        </div>
+        <div style="font-size:0.66rem; opacity:0.7; margin-top:2px; line-height:1.3;">${this.escapeHtml(MessageCopy.block('my_fines', 'note'))}${sinceText ? ` ${this.escapeHtml(sinceText)}` : ''}</div>
+        ${rules}
+        ${rows}
+      </div>`;
+  }
+
   _renderDuesBanner() {
     const host = this.find('#my-dues-banner');
     if (!host) return;

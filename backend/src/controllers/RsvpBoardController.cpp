@@ -2,12 +2,15 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <cstdio>
 #include <iostream>
 #include <sstream>
 
 #include "../core/Crypto.h"
 #include "../database/Database.h"
 #include "../models/RsvpBoard.h"
+#include "../models/PersonFines.h"
 #include "../models/MessageCopy.h"
 #include "../services/MagicLinkService.h"
 #include "../third_party/json.hpp"
@@ -182,6 +185,63 @@ Response RsvpBoardController::handleList(const Request& request) {
     }
 }
 
+// The fines section of a player's reminder (message_templates kind
+// 'rsvp_reminder_fines', mig 463): the rules in force for their section,
+// then the fines they have earned in the months not yet posted.  '' when
+// their section has no rates.
+static std::string finesBlock(MessageCopy& copy, int personId) {
+    PersonFines model;
+    const json rules = model.rulesFor(personId);
+    if (rules.empty()) return "";
+    auto money = [](double v) {
+        char buf[32];
+        if (std::fabs(v - std::round(v)) < 0.005) std::snprintf(buf, sizeof buf, "$%.0f", v);
+        else std::snprintf(buf, sizeof buf, "$%.2f", v);
+        return std::string(buf);
+    };
+    std::string out;
+    const auto heading = copy.render("rsvp_reminder_fines", "heading", {});
+    if (heading.ok()) out += heading.body + "\n";
+    for (const auto& r : rules) {
+        const auto line = copy.render("rsvp_reminder_fines", "rule",
+                                      {{"label", r.value("label", "")}, {"amount", money(r.value("amount", 0.0))}});
+        if (line.ok()) out += line.body + "\n";
+    }
+    // Fines not yet on LA: every shown month whose posting is not 'posted'.
+    const auto months = model.monthsFor({personId}, 3);
+    auto it = months.find(personId);
+    std::string fined;
+    if (it != months.end() && it->second.contains("months")) {
+        for (const auto& mo : it->second["months"]) {
+            const auto& posting = mo.contains("posting") ? mo["posting"] : json(nullptr);
+            if (posting.is_object() && posting.value("status", "") == "posted") continue;
+            for (const auto& item : mo.value("items", json::array())) {
+                const std::string kind = item.value("eventKind", "");
+                std::string event = kind == "match" ? "Game" : kind == "intrasquad" ? "Intra Squad" : "Practice";
+                if (item.contains("opponent") && item["opponent"].is_string() && !item["opponent"].get<std::string>().empty())
+                    event += " vs " + item["opponent"].get<std::string>();
+                std::string when;
+                {
+                    auto r = Database::getInstance()->query(
+                        "SELECT to_char($1::timestamptz AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS w",
+                        {item.value("startAt", "")});
+                    if (!r.empty()) when = r[0]["w"].c_str();
+                }
+                const auto line = copy.render("rsvp_reminder_fines", "fined",
+                                              {{"when", when}, {"event", event},
+                                               {"label", item.value("label", "")},
+                                               {"amount", money(item.value("amount", 0.0))}});
+                if (line.ok()) fined += line.body + "\n";
+            }
+        }
+    }
+    const auto sub = copy.render("rsvp_reminder_fines", fined.empty() ? "none" : "fined_heading", {});
+    if (sub.ok()) out += "\n" + sub.body + "\n";
+    out += fined;
+    while (!out.empty() && out.back() == '\n') out.pop_back();
+    return out;
+}
+
 Response RsvpBoardController::handleRemind(const Request& request) {
     Scope scope;
     Response error(HttpStatus::OK, "");
@@ -247,9 +307,15 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         // kind 'rsvp_reminder' (migration 363); empty names fall back to
         // the kind='fallback' words (migration 366).
         MessageCopy copy;
+        // {fines}: the rules and any fines so far, for a player whose
+        // section fines (Men, mig 460) — owner 2026-09-27: "on rsvp
+        // reminders ... list fine rules at bottom and list any they were
+        // fined for".  Empty for everyone else, so the [[ ]] around it drops.
+        const std::string fines = finesBlock(copy, static_cast<int>(personId));
         const auto msg = copy.render("rsvp_reminder", ctx.youth ? "parent" : "adult", {
             {"first", ctx.recipientFirstName}, {"child", ctx.playerFirstName},
-            {"events", events}, {"link", minted.url}, {"sender", senderName}});
+            {"events", events}, {"link", minted.url}, {"sender", senderName},
+            {"fines", fines}});
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363)");
 

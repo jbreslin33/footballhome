@@ -57,6 +57,11 @@ public:
     // Ids ≤ 0 are ignored; an empty list is a no-op.
     Map monthsFor(const std::vector<int>& personIds, int monthsBack = 3);
 
+    // The rules in force today for the person's section, in fine_kinds
+    // order: [ { "kind", "label", "amount" } ].  Empty when their section
+    // has no rates (parents, the women) — callers show nothing then.
+    nlohmann::json rulesFor(int personId);
+
 private:
     Database* db_;
 };

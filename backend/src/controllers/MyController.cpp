@@ -1,5 +1,7 @@
 #include "MyController.h"
 
+#include "../models/PersonFines.h"
+
 #include "../core/Crypto.h"
 #include "../database/Database.h"
 #include "../models/MessageCopy.h"
@@ -9,6 +11,7 @@
 #include "../third_party/json.hpp"
 
 #include <exception>
+#include <cstdlib>
 #include <iostream>
 #include <map>
 #include <optional>
@@ -362,6 +365,7 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
     router.get (prefix + "/chat/messages",  [this](const Request& r) { return handleGetChatMessages(r); });
     router.post(prefix + "/chat/messages",  [this](const Request& r) { return handlePostChatMessage(r); });
     router.get (prefix + "/groupme/feed",   [this](const Request& r) { return handleGetGroupMeFeed(r); });
+    router.get (prefix + "/fines",          [this](const Request& r) { return handleGetFines(r); });
     router.post(prefix + "/groupme/messages", [this](const Request& r) { return handlePostGroupMeMessage(r); });
     router.post(prefix + "/events/push-remind", [this](const Request& r) { return handlePushRemind(r); });
     router.post(prefix + "/push-test", [this](const Request& r) { return handlePushTest(r); });
@@ -462,6 +466,32 @@ Response MyController::handleGetChatMessages(const Request& request) {
 // sync_messages on (migration 392).  Same membership gate as the chat
 // itself; a chat with no integration answers with an empty feed, not an
 // error, so the screen just shows nothing.
+// GET /api/my/fines — the viewer's own fines by month (PersonFines, mig
+// 460/461) and the rules in force for their section (fine_kinds labels +
+// fine_policies rates), for the panel at the top of #my.  Owner
+// 2026-09-27: "list on their my page the fines in table list at top" /
+// "list the fine rules too".  { fines: null, rules: [] } for anyone whose
+// section has no rates (parents, the women) — the panel then stays away.
+Response MyController::handleGetFines(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/true, &personId))
+        return *err;
+    try {
+        PersonFines model;
+        const PersonFines::Map byPerson = model.monthsFor({static_cast<int>(personId)}, 3);
+        auto it = byPerson.find(static_cast<int>(personId));
+        json fines = it == byPerson.end() ? json(nullptr) : it->second;
+
+        const json rules = model.rulesFor(static_cast<int>(personId));
+        return jsonOk({{"fines", fines}, {"rules", rules}});
+    } catch (const std::exception& e) {
+        std::cerr << "[MyController::fines] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load fines");
+    }
+}
+
 Response MyController::handleGetGroupMeFeed(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
