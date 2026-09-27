@@ -30,7 +30,20 @@ class Database;
 //                   "total": 4.00,
 //                   "items": [ { "fhEventId", "startAt", "eventKind",
 //                                "opponent", "kind", "label", "amount",
-//                                "response", "attendance" } ] } ] }
+//                                "response", "attendance" } ],
+//                   "posting": { "month": "2026-10", "label": "Oct",
+//                                "firstFriday": "2026-10-02",
+//                                "status": posted|drift|not_posted|due|nothing,
+//                                "postedAmount", "postedOn" } } ],
+//     "dues": { "month": "2026-09", "label": "Sep", "rate": 35,
+//               "firstFriday": "2026-09-04",
+//               "status": posted|not_posted|due, "postedOn" } }
+// A month's fines are posted to LA with the next month's dues on its
+// first Friday; posting/dues read the LA charges FH already mirrors
+// (person_payments, txn_type Charge) and match them by amount and month
+// — the dues charge is the one equal to the rate, the fines charge the
+// one equal to the month's total (or dues + fines in one).  Nothing is
+// marked by hand.
 // The months are the last three calendar months (club time), clipped to
 // the policy's first month, oldest first.  People on no such team are
 // absent from the map — the card then shows nothing.

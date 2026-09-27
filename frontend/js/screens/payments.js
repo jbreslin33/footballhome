@@ -1345,30 +1345,89 @@ class PaymentsScreen extends Screen {
   // what goes on the next posting in LA together with the monthly dues
   // and any prorate.  The box is a button so the card's own click (open
   // the person) leaves it alone.
+  // The bottom line of a box says where the posting stands, read from
+  // the LA charges FH mirrors (owner 2026-09-27: "detect what a charge is
+  // for by amount and timing").  A month's fines go on LA with the next
+  // month's dues on its first Friday.
+  _postingLine(posting, current) {
+    if (!posting) return current ? 'so far' : 'none';
+    const md = (iso) => { const d = this._parseIsoDateOnly(iso); return d ? `${d.getMonth() + 1}/${d.getDate()}` : ''; };
+    const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
+    switch (posting.status) {
+      case 'posted':     return `✓ ${md(posting.postedOn)}`;
+      case 'drift':      return `posted ${fmtAmt(Number(posting.postedAmount) || 0)}`;
+      case 'not_posted': return 'NOT POSTED';
+      case 'due':        return current ? 'so far' : `post ${md(posting.firstFriday)}`;
+      default:           return current ? 'so far' : 'none';
+    }
+  }
+
+  _postingColors(status, on) {
+    if (status === 'not_posted' || status === 'drift') return { bg: '#3a2e05', fg: '#fde68a', border: '#d97706' };
+    if (status === 'posted') return { bg: '#052e16', fg: '#86efac', border: '#15803d' };
+    return on ? { bg: '#3a1f1f', fg: '#fca5a5', border: '#b91c1c' } : { bg: '#1e293b', fg: '#94a3b8', border: '#334155' };
+  }
+
+  _cellHtml({ cls, attrs, tip, colors, top, big, bottom }) {
+    return `
+        <button type="button" class="${cls}" ${attrs || ''}
+                title="${this.escape(tip)}"
+                style="display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+                       min-width:52px; padding:3px 7px; margin-right:3px; box-sizing:border-box; cursor:pointer;
+                       border:1px solid ${colors.border}; background:${colors.bg}; color:${colors.fg}; border-radius:3px;
+                       font-variant-numeric:tabular-nums; vertical-align:middle; font-family:inherit;">
+          <div style="font-size:0.55rem; font-weight:800; letter-spacing:0.06em; opacity:0.85;">${this.escape(top)}</div>
+          <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">${this.escape(big)}</div>
+          <div style="font-size:0.5rem; font-weight:700; opacity:0.7; letter-spacing:0.04em;">${this.escape(bottom)}</div>
+        </button>`;
+  }
+
   renderFinesCells(m) {
     const f = m && m.fines;
     if (!f || !Array.isArray(f.months) || !f.months.length) return '';
     const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
-    return f.months.map((mo) => {
+    const md = (iso) => { const d = this._parseIsoDateOnly(iso); return d ? `${d.getMonth() + 1}/${d.getDate()}` : ''; };
+
+    // This month's dues posting — the $35 charge on the first Friday.
+    let duesCell = '';
+    const d = f.dues;
+    if (d && d.status) {
+      const bottom = d.status === 'posted' ? `✓ ${md(d.postedOn)}` : d.status === 'not_posted' ? 'NOT POSTED' : `post ${md(d.firstFriday)}`;
+      const tip = d.status === 'posted'
+        ? `${d.label} dues ${fmtAmt(Number(d.rate))} charged in LA on ${this.fmtDate(d.postedOn)}`
+        : d.status === 'not_posted'
+          ? `${d.label} dues ${fmtAmt(Number(d.rate))}: no matching LA charge yet — first Friday was ${this.fmtDate(d.firstFriday)}`
+          : `${d.label} dues ${fmtAmt(Number(d.rate))}: post in LA on ${this.fmtDate(d.firstFriday)}`;
+      duesCell = this._cellHtml({ cls: 'pay-dues-cell', tip, colors: this._postingColors(d.status, true),
+                                  top: `${d.label.toUpperCase()} DUES`, big: fmtAmt(Number(d.rate)), bottom });
+    }
+
+    const cells = f.months.map((mo) => {
       const n = Array.isArray(mo.items) ? mo.items.length : 0;
       const total = Number(mo.total) || 0;
-      const on = total > 0;
-      const bg = on ? '#3a1f1f' : '#1e293b', fg = on ? '#fca5a5' : '#94a3b8', border = on ? '#b91c1c' : '#334155';
-      const tip = n
+      const p = mo.posting || null;
+      const status = (!mo.current && p) ? p.status : '';
+      const lines = n
         ? `${mo.label} fines: ${n} — ` + mo.items.map((it) => `${this.fmtDate(it.startAt)} ${it.label} ${fmtAmt(it.amount)}`).join('; ')
         : `${mo.label} fines: none${mo.current ? ' so far' : ''}`;
-      return `
-        <button type="button" class="pay-fines-cell" data-fines-month="${this.escape(mo.month)}"
-                title="${this.escape(tip)}"
-                style="display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
-                       min-width:52px; padding:3px 7px; margin-right:3px; box-sizing:border-box; cursor:pointer;
-                       border:1px solid ${border}; background:${bg}; color:${fg}; border-radius:3px;
-                       font-variant-numeric:tabular-nums; vertical-align:middle; font-family:inherit;">
-          <div style="font-size:0.55rem; font-weight:800; letter-spacing:0.06em; opacity:0.85;">${this.escape(mo.label.toUpperCase())} FINES</div>
-          <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">${fmtAmt(total)}</div>
-          <div style="font-size:0.5rem; font-weight:700; opacity:0.7; letter-spacing:0.04em;">${n ? `${n} fine${n === 1 ? '' : 's'}` : (mo.current ? 'so far' : 'none')}</div>
-        </button>`;
+      const tip = lines + (p && total > 0 ? ` · ${this._postingTip(mo, p)}` : '');
+      return this._cellHtml({ cls: 'pay-fines-cell', attrs: `data-fines-month="${this.escape(mo.month)}"`, tip,
+                              colors: this._postingColors(status, total > 0),
+                              top: `${mo.label.toUpperCase()} FINES`, big: fmtAmt(total),
+                              bottom: this._postingLine(mo.current ? null : p, mo.current) });
     }).join('');
+    return duesCell + cells;
+  }
+
+  _postingTip(mo, p) {
+    const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
+    switch (p.status) {
+      case 'posted':     return `charged in LA on ${this.fmtDate(p.postedOn)} with ${p.label} dues`;
+      case 'drift':      return `LA shows ${fmtAmt(Number(p.postedAmount) || 0)} charged ${this.fmtDate(p.postedOn)}, fines now total ${fmtAmt(Number(mo.total) || 0)}`;
+      case 'not_posted': return `no matching LA charge — post with ${p.label} dues (first Friday was ${this.fmtDate(p.firstFriday)})`;
+      case 'due':        return `post with ${p.label} dues on ${this.fmtDate(p.firstFriday)}`;
+      default:           return '';
+    }
   }
 
   // The month's line items, hidden until its box is tapped.
@@ -1394,6 +1453,7 @@ class PaymentsScreen extends Screen {
             ${this.escape(mo.label)} fines · ${fmtAmt(Number(mo.total) || 0)}${mo.current ? ' so far' : ''}
           </div>
           ${rows}
+          ${mo.posting && (Number(mo.total) || 0) > 0 ? `<div style="margin-top:4px; opacity:0.8;">${this.escape(this._postingTip(mo, mo.posting))}</div>` : ''}
         </div>`;
     }).join('');
   }
