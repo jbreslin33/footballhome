@@ -118,6 +118,16 @@ class InvoicesScreen extends Screen {
                                       padding:1pt 6pt; box-sizing:border-box; }
         .inv-sheet .sh-thanks { text-align:center; font-size:8.5pt; font-weight:700; margin-top:0.45in; }
         .inv-sheet .sh-page { position:absolute; left:0; right:0; bottom:0.3in; text-align:center; font-size:7pt; color:#999; }
+        /* Past the template's 14 rows the sheet shrinks its rows so the invoice stays one page. */
+        .inv-sheet.compact table.sh-table { font-size:9pt; margin-top:0.25in; }
+        .inv-sheet.compact table.sh-table td { height:12pt; padding:2pt 5pt; }
+        .inv-sheet.compact table.sh-table td.cat { font-size:9pt; }
+        .inv-sheet.compact .sh-title { margin-bottom:0.15in; }
+        .inv-sheet.tight table.sh-table { font-size:8pt; margin-top:0.2in; }
+        .inv-sheet.tight table.sh-table td { height:10pt; padding:1pt 4pt; }
+        .inv-sheet.tight table.sh-table td.cat { font-size:8pt; }
+        .inv-sheet.tight .sh-row { margin-bottom:4pt; }
+        .inv-sheet.tight .sh-payable { margin-top:8pt; } .inv-sheet.tight .sh-thanks { margin-top:0.25in; }
         .inv-preview-wrap { overflow:auto; padding:8px 0; }
         @media (max-width: 720px) { .inv-sheet { padding:0.35in 0.3in; min-height:0; }
           .inv-sheet .sh-title { font-size:24pt; } .inv-sheet .sh-row { grid-template-columns:0.9in 1fr; } }
@@ -412,6 +422,9 @@ class InvoicesScreen extends Screen {
 
   // ── render ────────────────────────────────────────────────────────────
 
+  static SHEET_ROWS = 14;   // rows on Lighthouse's template at full size
+  static TIGHT_AT = 20;     // beyond this the rows go smaller still
+
   static money(n) {
     const v = Number(n) || 0;
     return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -565,6 +578,8 @@ class InvoicesScreen extends Screen {
           ${lines}
         </div>
         <div class="iv-total"><span>TOTAL</span><span>${InvoicesScreen.money(inv.total)}</span></div>
+        ${(inv.lines || []).length > InvoicesScreen.SHEET_ROWS ? `<div class="iv-hint" style="color:#f59e0b;">${esc(this._copy('sheet_fit', { n: (inv.lines || []).length, max: InvoicesScreen.SHEET_ROWS }))}</div>`
+          : `<div class="iv-hint">${(inv.lines || []).length} of ${InvoicesScreen.SHEET_ROWS} rows on the sheet</div>`}
 
         ${expenses ? `
         <div class="iv-sec">Add a line</div>
@@ -607,8 +622,9 @@ class InvoicesScreen extends Screen {
       return `<tr><td class="cat">${esc(label)}</td><td class="desc">${esc(l.printed)}</td><td class="c">${InvoicesScreen.plain(l.quantity)}</td><td class="c">${esc(rate)}</td><td class="r">${InvoicesScreen.money(l.amount)}</td></tr>`;
     });
     while (rows.length < MIN_ROWS) rows.push('<tr><td class="cat"></td><td class="desc">&nbsp;</td><td></td><td></td><td></td></tr>');
+    const fit = lines.length > InvoicesScreen.TIGHT_AT ? 'tight' : (lines.length > InvoicesScreen.SHEET_ROWS ? 'compact' : '');
     return `
-      <div class="inv-sheet">
+      <div class="inv-sheet ${fit}">
         <div class="sh-title">INVOICE</div>
         <div class="sh-top">
           <div class="sh-from">
