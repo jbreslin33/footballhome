@@ -45,6 +45,7 @@
 #include "controllers/LockupController.h"
 #include "controllers/ClubLogoController.h"
 #include "controllers/ClubFileController.h"
+#include "controllers/InvoiceController.h"
 #include "controllers/ScheduleReleaseController.h"
 #include "controllers/PaymentsController.h"
 #include "controllers/ChargeFlagsController.h"
@@ -116,6 +117,7 @@ private:
     std::shared_ptr<LockupController> lockup_controller_;
     std::shared_ptr<ClubLogoController> club_logo_controller_;
     std::shared_ptr<ClubFileController> club_file_controller_;
+    std::shared_ptr<InvoiceController> invoice_controller_;
     std::shared_ptr<ScheduleReleaseController> schedule_release_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
     std::shared_ptr<ChargeFlagsController> charge_flags_controller_;
@@ -196,6 +198,7 @@ public:
         lockup_controller_ = std::make_shared<LockupController>();
         club_logo_controller_ = std::make_shared<ClubLogoController>();
         club_file_controller_ = std::make_shared<ClubFileController>();
+        invoice_controller_ = std::make_shared<InvoiceController>();
         schedule_release_controller_ = std::make_shared<ScheduleReleaseController>();
         payments_controller_ = std::make_shared<PaymentsController>();
         charge_flags_controller_ = std::make_shared<ChargeFlagsController>();
@@ -499,6 +502,7 @@ private:
         // #logos (owner 2026-09-25): club crests stored in the DB, opponent text -> club (mig 428).
         router_.useController("/api/club-logos", club_logo_controller_);
         router_.useController("/api/files", club_file_controller_);
+        router_.useController("/api/invoices", invoice_controller_);
         // Schedule release window (migration 334): when next week posts,
         // early opens, standing rule. See ScheduleReleaseController.h.
         router_.useController("/api/schedule", schedule_release_controller_);
