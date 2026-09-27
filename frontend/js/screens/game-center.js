@@ -1784,7 +1784,9 @@ class GameCenterScreen extends Screen {
         const going = s.gameRsvp === 'yes';
         spans.push(pill(gameLabel, going, `${gameLabel}: ${going ? 'Going' : 'Not going / no response'}`, true));
       }
-      return `<div style="display:flex; gap:3px; margin-top:2px;">${spans.join('')}</div>`;
+      // Wrap: a weekday-game window carries 8–11 practices plus the Game
+      // chip (owner 2026-09-26: "the game is getting cut off").
+      return `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:2px;">${spans.join('')}</div>`;
     };
 
     const statsLine = (playerId) => {
