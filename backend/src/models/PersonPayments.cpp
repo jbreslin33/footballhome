@@ -662,7 +662,12 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "         ) ORDER BY pp.paid_at DESC) AS txns"
         "    FROM person_payments pp, win2"
         "   WHERE pp.la_registration_id IS NOT NULL"
-        "     AND pp.paid_at >= win2.prev_start"
+        //  Wide enough for both the dues cycle (prev_start) and the
+        //  calendar-month "This Month" total on #payments, which needs
+        //  the whole current month even on the 15th+ when prev_start
+        //  has already rolled past the 1st.
+        "     AND pp.paid_at >= LEAST(win2.prev_start,"
+        "                             date_trunc('month', now()) - interval '1 month')"
         "   GROUP BY pp.la_registration_id"
         ")"
         "SELECT p.id AS person_id, p.first_name, p.last_name,"

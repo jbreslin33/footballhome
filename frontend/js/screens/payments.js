@@ -2130,32 +2130,21 @@ class PaymentsScreen extends Screen {
   // shown in the summary strip.  Kept pure so we can also feed it into
   // _renderAllProgramsBar() for the cross-program total.
   //
-  // Billing-cycle definition (mirrors backend PersonPayments.cpp):
-  //   A "monthly payment" for a given cycle counts as any non-refund
-  //   payment of $35 or above whose paidAt falls in
-  //     [cycle_start, cycle_end) = [prev-month-15, this-month-15)
-  //   when today ≤ 14, otherwise
-  //     [this-month-15, next-month-15).
-  //   The "This Month" money total therefore sums the CURRENT cycle,
-  //   not the calendar month.  The $35 floor applies to status only;
-  //   the money total sums every non-refund payment in the window
-  //   (money is money) net of refunds in-window.
+  // "This Month" is the CALENDAR month (1st → end, in the viewer's
+  //   local time), not the 15th-to-14th dues cycle the backend uses for
+  //   paid/overdue status (owner 2026-09-26: "it should be the actual
+  //   month of sept etc sept 1 to end").  The $35 floor applies to
+  //   status only; the money total sums every non-refund payment in the
+  //   month (money is money) net of refunds in-month.  The backend
+  //   returns transactions back to the previous calendar month, so the
+  //   whole current month is always present.
   _summarize(data) {
     const members = (data && data.members) || [];
-    // Build the current billing cycle window.
     const now = new Date();
-    const y = now.getUTCFullYear();
-    const mo = now.getUTCMonth();
-    const day = now.getUTCDate();
-    // 15th of the "reference" month (prev if day ≤ 14, else this).
-    const cycleStart = (day <= 14)
-      ? new Date(Date.UTC(y, mo - 1, 15))
-      : new Date(Date.UTC(y, mo,     15));
-    const cycleEnd = new Date(Date.UTC(
-      cycleStart.getUTCFullYear(),
-      cycleStart.getUTCMonth() + 1,
-      15
-    ));
+    const y  = now.getFullYear();
+    const mo = now.getMonth();
+    const cycleStart = new Date(y, mo,     1);
+    const cycleEnd   = new Date(y, mo + 1, 1);
 
     let totalPaid     = 0;
     let totalRefunded = 0;
@@ -2180,8 +2169,8 @@ class PaymentsScreen extends Screen {
           earliestPaidMs = t;
         }
       }
-      // Sum txns in current billing cycle. The backend returns the
-      // previous cycle too, so filter by [cycleStart, cycleEnd) here.
+      // Sum txns in the current calendar month. The backend returns
+      // older ones too, so filter by [cycleStart, cycleEnd) here.
       // Refunds subtract; other types (Charge / Bank / Offline) add.
       for (const t of (m.recentTransactions || [])) {
         if (!t || !t.paidAt) continue;
@@ -2201,8 +2190,8 @@ class PaymentsScreen extends Screen {
     if (earliestPaidMs != null) {
       const first = new Date(earliestPaidMs);
       monthsElapsed =
-        (y - first.getUTCFullYear()) * 12 +
-        (mo - first.getUTCMonth()) + 1;   // inclusive of both ends
+        (y - first.getFullYear()) * 12 +
+        (mo - first.getMonth()) + 1;   // inclusive of both ends
       if (monthsElapsed < 1) monthsElapsed = 1;
     }
     const avgPerMonth = monthsElapsed > 0 ? netCollected / monthsElapsed : 0;
