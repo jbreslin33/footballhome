@@ -52,27 +52,61 @@ class RsvpBoardScreen extends Screen {
     this.bulk    = null;       // last group reminder: { key, channel, html }
     this.day     = 'week';     // 'week' or a club-local YYYY-MM-DD — owner 2026-09-22: pills for the
                                // days left in the week, today as "Today", tomorrow as "Tomorrow"
+    this.windowEndIso = null;  // club-local YYYY-MM-DD the released window ends on (GET /api/schedule/window)
   }
 
   // Club-local YYYY-MM-DD for the day pill, or '' for the whole week.
   _dayIso() { return /^\d{4}-\d{2}-\d{2}$/.test(this.day) ? this.day : ''; }
 
-  // Pills for the rest of the released week: today through Sunday (the
-  // board's week runs Monday–Sunday, club time).  Days already gone are
-  // not shown; today reads "Today", tomorrow "Tomorrow", the rest by name.
+  static get CLUB_TZ() { return 'America/New_York'; }
+  _clubIso(d) { return new Intl.DateTimeFormat('en-CA', { timeZone: RsvpBoardScreen.CLUB_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); }
+
+  // Pills for the rest of the released window: today through the day the
+  // window ends (the board's week runs Monday–Sunday, club time; a week
+  // opened early stretches it — owner 2026-09-27: "when we publish early
+  // that becomes the week", matching the server's fh_schedule_window_end
+  // the card's events already obey).  Days already gone are not shown;
+  // today reads "Today", tomorrow "Tomorrow", the rest of this week by
+  // name, and days past this Sunday by name and date.
   _dayPills() {
-    const tz = 'America/New_York';
-    const iso = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const tz = RsvpBoardScreen.CLUB_TZ;
     const dow = (d) => new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(d);
+    const md  = (d) => new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' }).format(d);
     const pills = [{ key: 'week', label: RsvpBoardScreen.DAYS.week }];
     const d = new Date();
-    for (let i = 0; i < 7; i++) {
-      const name = dow(d);
-      pills.push({ key: iso(d), label: i === 0 ? RsvpBoardScreen.DAYS.today : i === 1 ? RsvpBoardScreen.DAYS.tomorrow : name });
-      if (name === 'Sunday') break;
+    let pastSunday = false;
+    for (let i = 0; i < 28; i++) {
+      const name = dow(d), key = this._clubIso(d);
+      const label = i === 0 ? RsvpBoardScreen.DAYS.today : i === 1 ? RsvpBoardScreen.DAYS.tomorrow : pastSunday ? md(d) : name;
+      pills.push({ key, label });
+      if (name === 'Sunday') {
+        if (!this.windowEndIso || key >= this.windowEndIso) break;
+        pastSunday = true;
+      }
       d.setDate(d.getDate() + 1);
     }
     return pills;
+  }
+
+  // The released window's end for the club (policy + early releases, mig
+  // 334), asked once per visit.  Silent on failure: the pills then stop at
+  // this Sunday.
+  async _loadWindowEnd() {
+    try {
+      const d = new Date(); d.setHours(12, 0, 0, 0);
+      // Monday of this week, club time.
+      const dowIdx = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+        .indexOf(new Intl.DateTimeFormat('en-US', { timeZone: RsvpBoardScreen.CLUB_TZ, weekday: 'long' }).format(d));
+      d.setDate(d.getDate() - ((dowIdx + 6) % 7));
+      const res = await this.auth.fetch(`/api/schedule/window?week_start=${this._clubIso(d)}`);
+      const body = await res.json().catch(() => ({}));
+      const end = res.ok && body.window_end ? new Date(body.window_end) : null;
+      if (!end || isNaN(end)) return;
+      this.windowEndIso = this._clubIso(end);
+      if (this.isMounted) this._renderChips();
+    } catch (err) {
+      console.warn('[rsvp-board] schedule window unavailable:', err);
+    }
   }
 
   _dayLabel() { const pl = this._dayPills().find(x => x.key === this.day); return pl ? pl.label : RsvpBoardScreen.DAYS.week; }
@@ -186,6 +220,7 @@ class RsvpBoardScreen extends Screen {
   onEnter(params) {
     if (params && params.section && RsvpBoardScreen.SECTIONS[params.section]) this.section = params.section;
     this._renderChips();
+    this._loadWindowEnd();
     this.load();
   }
 
