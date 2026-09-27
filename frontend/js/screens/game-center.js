@@ -1643,7 +1643,8 @@ class GameCenterScreen extends Screen {
     }
 
     if (effectiveIsPlayerView) {
-      paint(viewToggleHtml + this._renderMyEligibility() + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
+      paint(viewToggleHtml + this._renderMyEligibility() + this._renderRosterCriteria()
+            + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
       return;
     }
 
@@ -1789,11 +1790,16 @@ class GameCenterScreen extends Screen {
     const statsLine = (playerId) => {
       const s = this.stats.get(playerId);
       if (!s) return '';
-      const needed = s.needed != null ? s.needed : 2;
-      const mark = s.eligible ? '✅' : ((s.practicesAttended + s.practicesProjected) >= needed ? '📅' : '⏳');
-      return `<div style="font-size:0.68rem; opacity:0.65; margin-top:2px;">
-        ${mark} Practices ${s.practicesAttended}/${needed}
-        <span title="${s.windowTotal != null ? s.windowTotal : s.practicesRecentTotal} practices count for this game${s.extended ? ' (weekday-game window)' : ''}">(of ${s.windowTotal != null ? s.windowTotal : s.practicesRecentTotal}${s.extended ? ' · wk' : ''})</span>
+      // Coach row (owner 2026-09-26: "clear with the pill who is eligible,
+      // not eligible and why, highlighted and color coded"): the same
+      // green / yellow / red Practice Criteria pill the players see, then
+      // the day chips that are the "why".
+      const st = this._criteriaState(s);
+      const [cbg, cfg] = st.colour;
+      const rowText = this._eligCopy('row_' + st.state, st.tokens) || st.state;
+      const windowNote = `${s.windowTotal != null ? s.windowTotal : s.practicesRecentTotal} practices count for this game${s.extended ? ' (weekday-game window)' : ''}`;
+      return `<div style="font-size:0.68rem; opacity:0.85; margin-top:2px;">
+        <span title="${this.escapeHtml(windowNote)}" style="display:inline-block; padding:1px 8px; border-radius:999px; background:${cbg}; color:${cfg}; font-weight:700; white-space:nowrap;">${this.escapeHtml(rowText)}</span>
         ${s.practicesUpcomingTotal > 0 ? `· proj ${s.practicesProjected}/${s.practicesUpcomingTotal}` : ''}
         · Game ${rsvpBadge(s.gameRsvp)}${this._rsvpTimeChips(playerId)}
         ${practicePills(s)}
@@ -3069,14 +3075,66 @@ class GameCenterScreen extends Screen {
     return window.MessageCopy ? MessageCopy.block('eligibility', tier, tokens) : '';
   }
 
-  _renderMyEligibility() {
-    if (this.myPlayerId == null) return '';
-    const s = this.stats.get(this.myPlayerId);
-    if (!s || !Array.isArray(s.practices)) return '';
+  // Practice Criteria state for one stats row (mig 457/458): green = met
+  // (exceeding when over the minimum, "projected to exceed" when met with
+  // more Going ahead), yellow = projected to meet from Going RSVPs, red =
+  // short.  The state name is the copy tier suffix: pill_<state> on the
+  // viewer's card, row_<state> on the roster list.
+  _criteriaState(s) {
     const needed    = s.needed != null ? Number(s.needed) : 2;
     const attended  = Number(s.practicesAttended || 0);
     const projected = Number(s.practicesProjected || 0);
     const remaining = Math.max(0, needed - attended);
+    const future    = Array.isArray(s.practices) ? s.practices.filter(p => p.future) : [];
+    const GREEN = ['#166534', '#bbf7d0'], YELLOW = ['#854d0e', '#fef08a'], RED = ['#7f1d1d', '#fecaca'];
+    let state, colour;
+    if (attended > needed)                       { state = 'exceeding';           colour = GREEN; }
+    else if (attended === needed && projected)   { state = 'exceeding_projected'; colour = GREEN; }
+    else if (attended >= needed)                 { state = 'met';                 colour = GREEN; }
+    else if (attended + projected >= needed)     { state = 'projected';           colour = YELLOW; }
+    else if (future.length)                      { state = 'needs';               colour = RED; }
+    else                                         { state = 'not_met';             colour = RED; }
+    const tokens = {
+      attended: String(attended), needed: String(needed), remaining: String(remaining),
+      plural: remaining === 1 ? '' : 's', projected: String(projected),
+      lookback: String(s.lookback != null ? s.lookback : (this.eligibilityPolicy && this.eligibilityPolicy.lookback) || 5),
+    };
+    return { state, colour, tokens, needed, attended, projected, remaining, future };
+  }
+
+  // Everyone's Practice Criteria under the card (owner 2026-09-26: "full
+  // detail of everyone but themselves criteria status should be
+  // highlighted").  Alphabetical by last name, the viewer's own row lit.
+  _renderRosterCriteria() {
+    if (!this.roster || !this.roster.length || !this.stats.size) return '';
+    const heading = this._eligCopy('roster_heading');
+    const rows = [...this.roster]
+      .filter(p => this.stats.has(Number(p.id)))
+      .sort((a, b) => (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase()));
+    if (!rows.length) return '';
+    const html = rows.map(p => {
+      const s = this.stats.get(Number(p.id));
+      const st = this._criteriaState(s);
+      const text = this._eligCopy('row_' + st.state, st.tokens);
+      const mine = this.myPlayerId != null && Number(p.id) === this.myPlayerId;
+      const [bg, fg] = st.colour;
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px var(--space-3); border-bottom:1px solid var(--border-color);
+                          ${mine ? 'background:rgba(96,165,250,0.12); box-shadow:inset 3px 0 0 #60a5fa;' : ''}">
+        <span style="font-size:0.9rem; ${mine ? 'font-weight:700;' : ''}">${this.escapeHtml(p.name)}${mine ? ' <span style="font-size:0.65rem; opacity:0.7;">(you)</span>' : ''}</span>
+        <span style="flex:0 0 auto; padding:2px 9px; border-radius:999px; background:${bg}; color:${fg}; font-size:0.68rem; font-weight:700; white-space:nowrap;">${this.escapeHtml(text || st.state)}</span>
+      </div>`;
+    }).join('');
+    return `
+      <div style="max-width:540px; margin:0 auto var(--space-3);">
+        ${heading ? `<h2 style="margin: var(--space-3) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${this.escapeHtml(heading)}</h2>` : ''}
+        <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">${html}</div>
+      </div>`;
+  }
+
+  _renderMyEligibility() {
+    if (this.myPlayerId == null) return '';
+    const s = this.stats.get(this.myPlayerId);
+    if (!s || !Array.isArray(s.practices)) return '';
     const future    = s.practices.filter(p => p.future);
     const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const when = (p) => {
@@ -3086,25 +3144,11 @@ class GameCenterScreen extends Screen {
       const t = `${((h + 11) % 12) + 1}${m ? ':' + String(m).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`;
       return `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()} ${t}`;
     };
-    const tokens = {
-      attended: String(attended), needed: String(needed), remaining: String(remaining),
-      plural: remaining === 1 ? '' : 's', projected: String(projected),
-      lookback: String(s.lookback != null ? s.lookback : (this.eligibilityPolicy && this.eligibilityPolicy.lookback) || 5),
-      cutoff: s.cutoff ? (() => { const d = new Date(s.cutoff + 'T12:00:00'); return `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`; })() : '',
-    };
-    // Practice Criteria pill (mig 457): green = met (exceeding when over the
-    // minimum, "projected to exceed" when met with more Going ahead),
-    // yellow = projected to meet from Going RSVPs, red = short.
-    const GREEN = ['#166534', '#bbf7d0'], YELLOW = ['#854d0e', '#fef08a'], RED = ['#7f1d1d', '#fecaca'];
-    let tier, colour;
-    if (attended > needed)                       { tier = 'pill_exceeding';           colour = GREEN; }
-    else if (attended === needed && projected)   { tier = 'pill_exceeding_projected'; colour = GREEN; }
-    else if (attended >= needed)                 { tier = 'pill_met';                 colour = GREEN; }
-    else if (attended + projected >= needed)     { tier = 'pill_projected';           colour = YELLOW; }
-    else if (future.length)                      { tier = 'pill_needs';               colour = RED; }
-    else                                         { tier = 'pill_not_met';             colour = RED; }
-    const [bg, fg] = colour;
-    const pillText = this._eligCopy(tier, tokens);
+    const st = this._criteriaState(s);
+    const { tokens } = st;
+    tokens.cutoff = s.cutoff ? (() => { const d = new Date(s.cutoff + 'T12:00:00'); return `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`; })() : '';
+    const [bg, fg] = st.colour;
+    const pillText = this._eligCopy('pill_' + st.state, tokens);
     if (!pillText) return '';   // no copy row → nothing to say (never hard-code it)
     const rule = this._eligCopy(s.extended ? 'rule_extended' : 'rule', tokens);
     const legend = this._eligCopy('legend');

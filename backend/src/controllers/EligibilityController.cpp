@@ -180,9 +180,10 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         // this game come from fh_starter_window() — the last
         // lookback_count before kickoff, or the weekday-game extended
         // window — and eligibility_policies says how many are needed.
-        // Coaches get every rostered player; a player gets one row, their
-        // own (owner 2026-09-26: "show pill if player is eligible or not
-        // and show available practices for them to get there").
+        // Every signed-in viewer gets every rostered player's row; the
+        // caller's own is flagged through myPlayerId (owner 2026-09-26:
+        // "show pill if player is eligible or not and show available
+        // practices for them to get there … everyone can see").
         std::string callerPersonId;
         if (!userId.empty()) {
             pqxx::result pr = db_->query("SELECT person_id FROM users WHERE id = $1::int", {userId});
@@ -196,7 +197,10 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         std::ostringstream statsJson;
         statsJson << "[";
         std::string policyJson = "null";
-        if (!rosterTeamIdsArray.empty() && rosterTeamIdsArray != "{}" && (isCoach || !callerPersonId.empty())) {
+        // Every signed-in viewer sees every rostered player's row (owner
+        // 2026-09-26: "it should show it for the player and all other
+        // players so everyone can see"); the anonymous public page gets none.
+        if (!rosterTeamIdsArray.empty() && rosterTeamIdsArray != "{}" && !userId.empty()) {
             pqxx::result polRow = db_->query(
                 "SELECT p.lookback_count, p.min_sessions_to_start, p.weekday_game_extends_window, p.week_cutoff_dow "
                 "FROM fh_starter_policy($1::int[], $2::int) p", {rosterTeamIdsArray, matchId});
@@ -204,7 +208,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 policyJson = std::string("{\"lookback\":") + polRow[0]["lookback_count"].c_str()
                            + ",\"needed\":" + polRow[0]["min_sessions_to_start"].c_str() + "}";
             }
-            // $3: '' → every rostered player (coach), else just that person.
+            // $3: '' → every rostered player (any signed-in viewer today).
             pqxx::result statsRows = db_->query(R"(
                 WITH match_event AS (
                     SELECT fe.id AS fh_event_id, ge.starts_at
@@ -273,7 +277,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 WHERE tp.team_id = ANY($2::int[]) AND tp.removed_at IS NULL
                   AND ($3 = '' OR pe.id = NULLIF($3, '')::int)
                 ORDER BY pl.id
-            )", {matchId, rosterTeamIdsArray, isCoach ? std::string("") : callerPersonId});
+            )", {matchId, rosterTeamIdsArray, std::string("")});
 
             bool firstStat = true;
             for (const auto& row : statsRows) {
