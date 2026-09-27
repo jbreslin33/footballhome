@@ -276,12 +276,15 @@ void PersonLinker::ensureParentLink(int childPersonId, const json& rec) {
     upsertContact(parentPersonId, parentEmail, parentPhone);
 
     // 6. Set the child's parent_person_id FK (only if not already set to
-    // something else — never overwrite an existing linkage).
+    // something else — never overwrite an existing linkage).  Skip anyone
+    // in person_self_contacts: an adult on a CHILD-typed LA registration
+    // who is contacted directly (migration 464, Sheldon Rhoden).
     try {
         db_->query(
             "UPDATE persons SET parent_person_id = $1::int, updated_at = NOW() "
             "WHERE id = $2::int AND parent_person_id IS DISTINCT FROM $1::int "
-            "  AND (parent_person_id IS NULL OR parent_person_id = $1::int)",
+            "  AND (parent_person_id IS NULL OR parent_person_id = $1::int) "
+            "  AND NOT EXISTS (SELECT 1 FROM person_self_contacts s WHERE s.person_id = $2::int)",
             {std::to_string(parentPersonId), std::to_string(childPersonId)});
     } catch (const std::exception& e) {
         std::cerr << "[PersonLinker::ensureParentLink set-parent] " << e.what()
