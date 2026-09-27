@@ -3179,6 +3179,7 @@ class GameCenterScreen extends Screen {
 
     return `
       <div class="public-card" data-gc-eligibility style="max-width:540px; margin:0 auto var(--space-3); padding: var(--space-3);">
+        ${this._eligCopy('card_heading') ? `<h2 style="margin:0 0 6px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${this.escapeHtml(this._eligCopy('card_heading'))}</h2>` : ''}
         <div style="display:inline-block; padding:4px 12px; border-radius:999px; background:${bg}; color:${fg}; font-size:0.8rem; font-weight:700;">${this.escapeHtml(pillText)}</div>
         ${rule ? `<div style="font-size:0.72rem; opacity:0.7; margin-top:6px;">${this.escapeHtml(rule)}</div>` : ''}
         ${legend ? `<div style="font-size:0.68rem; opacity:0.6; margin-top:4px; display:flex; gap:6px; align-items:flex-start;">
