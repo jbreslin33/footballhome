@@ -13,6 +13,10 @@
 // Three doors:
 //   { pick: true }   the top-level 📋 Attendance tile — pick a day (Today,
 //                    Yesterday, This week, Last week, or any date) then an event.
+//                    "This week" is the released window — Monday of this week
+//                    through fh_schedule_window_end (migration 334), so a week
+//                    opened early (owner 2026-09-27: "this week should show all
+//                    'live' items to rsvp to") is listed with it.
 //   { event: ev }    an event object from GET /api/calendar/upcoming (what
 //                    #my hands over from its "Event Center" link).
 //   { fhEventId: n } just the id — the event is read from
@@ -57,6 +61,7 @@ class EventCenterScreen extends Screen {
     this.category = 'all';
     this.when     = 'today';   // today | yesterday | this-week | last-week | date
     this.date     = null;      // 'YYYY-MM-DD' when `when` is 'date'
+    this.windowEnd = null;     // Date: end of the released window (GET /api/schedule/window)
     this.pill     = 'coming';  // coming | sides | plan | invites
     this.att      = null;      // {canMark, roster: Map(person_id -> {status})}
     this.invites  = null;      // {invites, candidates} | {error}
@@ -129,6 +134,8 @@ class EventCenterScreen extends Screen {
 
   // The picker's window as { start: local midnight, days }.  Weeks run
   // Monday–Sunday (the schedule is released Sunday night for the week ahead).
+  // "This week" runs from this Monday to the end of the released window —
+  // seven days normally, fourteen (or more) when next week was opened early.
   _range() {
     const day = (ymd) => {
       const [y, m, d] = ymd.split('-').map(Number);
@@ -137,9 +144,15 @@ class EventCenterScreen extends Screen {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const monday = (d) => { const m = new Date(d); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return m; };
     const shift = (d, n) => { const s = new Date(d); s.setDate(s.getDate() + n); return s; };
+    const releasedDays = (from) => {
+      if (!(this.windowEnd instanceof Date) || isNaN(this.windowEnd)) return 7;
+      const end = new Date(this.windowEnd); end.setHours(0, 0, 0, 0);
+      const days = Math.round((end - from) / 86400000) + 1;
+      return Math.min(90, Math.max(7, days));
+    };
     switch (this.when) {
       case 'yesterday': return { start: shift(today, -1), days: 1 };
-      case 'this-week': return { start: monday(today), days: 7 };
+      case 'this-week': return { start: monday(today), days: releasedDays(monday(today)) };
       case 'last-week': return { start: shift(monday(today), -7), days: 7 };
       case 'date':      return { start: this.date ? day(this.date) : today, days: 1 };
       default:          return { start: today, days: 1 };
@@ -173,10 +186,36 @@ class EventCenterScreen extends Screen {
     this._loadEvents();
   }
 
+  // The released window's end for the club (policy + early releases),
+  // asked once per visit.  Silent on failure: "This week" then falls back
+  // to the plain Monday–Sunday.
+  async _loadWindowEnd() {
+    if (this.windowEnd) return;
+    try {
+      const { start } = this._range();
+      const body = await this._json(`/api/schedule/window?week_start=${this._ymd(start)}`);
+      const end = body && body.window_end ? new Date(body.window_end) : null;
+      if (end && !isNaN(end)) this.windowEnd = end;
+    } catch (err) {
+      console.warn('[event-center] schedule window unavailable:', err);
+    }
+  }
+
   async _loadEvents() {
     try {
+      if (this.when === 'this-week') await this._loadWindowEnd();
       const body = await this._json(this._feedUrl());
-      this.events = Array.isArray(body.events) ? body.events : [];
+      let events = Array.isArray(body.events) ? body.events : [];
+      // Each event carries its own section's window end; when a section
+      // is not open as far as the club is, its later events stay hidden.
+      if (this.when === 'this-week') {
+        events = events.filter(ev => {
+          if (!ev.schedule_window_end || !ev.starts_at) return true;
+          const end = new Date(ev.schedule_window_end), t = new Date(ev.starts_at);
+          return isNaN(end) || isNaN(t) || t <= end;
+        });
+      }
+      this.events = events;
       // An open event is re-read from the fresh feed (its RSVP list moves
       // when an invite is sent or withdrawn).
       if (this.ev) {
