@@ -42,6 +42,7 @@ set(SOURCES
     src/models/DuesPolicy.cpp
     src/models/PayReminderLog.cpp
     src/models/PersonActivity.cpp
+    src/models/PersonFines.cpp
     src/models/WelcomeLog.cpp
     src/models/WelcomeMessage.cpp
     src/models/MessageCopy.cpp

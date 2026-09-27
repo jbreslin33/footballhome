@@ -12,6 +12,7 @@
 #include "../models/PersonPayments.h"
 #include "../models/PayReminderLog.h"
 #include "../models/PersonActivity.h"
+#include "../models/PersonFines.h"
 #include "../services/LaProgramSync.h"
 #include "../third_party/json.hpp"
 
@@ -583,6 +584,33 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         }
     } catch (const std::exception& e) {
         std::cerr << "[PaymentsController] person activity roll-up failed: " << e.what() << std::endl;
+    }
+
+    // Fines by month (fine_policies / fh_person_fines, migration 460).
+    // Owner 2026-09-27: "a fines part to financial ... next to pro rate
+    // ... last 3 months ... each in a box".  Only people on a team whose
+    // section has a rate in force get an object (Mens today); everyone
+    // else is null and the card shows nothing.  Non-fatal like the two
+    // roll-ups above.
+    try {
+        std::vector<int> pids;
+        for (const auto& row : members) {
+            if (row.contains("personId") && row["personId"].is_number_integer()) {
+                const int pid = row["personId"].get<int>();
+                if (pid > 0) pids.push_back(pid);
+            }
+        }
+        PersonFines fines;
+        const PersonFines::Map byPerson = fines.monthsFor(pids, 3);
+        for (auto& row : members) {
+            row["fines"] = nullptr;
+            if (row.contains("personId") && row["personId"].is_number_integer()) {
+                auto it = byPerson.find(row["personId"].get<int>());
+                if (it != byPerson.end()) row["fines"] = it->second;
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[PaymentsController] person fines roll-up failed: " << e.what() << std::endl;
     }
 
     json out = json::object();

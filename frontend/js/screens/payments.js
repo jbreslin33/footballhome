@@ -206,6 +206,19 @@ class PaymentsScreen extends Screen {
         this.resolveFlag(id, status);
         return;
       }
+      // Fines box → show/hide that month's line items on this card.
+      const finesBtn = e.target.closest('.pay-fines-cell[data-fines-month]');
+      if (finesBtn) {
+        const card = finesBtn.closest('.pay-member-card');
+        const month = finesBtn.getAttribute('data-fines-month');
+        if (card) {
+          card.querySelectorAll('.pay-fines-detail').forEach((d) => {
+            const mine = d.getAttribute('data-fines-month') === month;
+            d.hidden = mine ? !d.hidden : true;
+          });
+        }
+        return;
+      }
       // Card body → open the universal PersonScreen.  Guard against
       // clicks on the inline action buttons and anchors above so their
       // handlers stay in charge.
@@ -1284,6 +1297,14 @@ class PaymentsScreen extends Screen {
           })
         : '';
 
+    // Fines by month — one box per month next to Prorate (owner
+    // 2026-09-27: "similar to pro rate ... show next to pro rate ...
+    // last 3 months ... each in a box").  row.fines is null for anyone
+    // whose section has no fine rate (parents and the women), so their
+    // cards show nothing.  Tap a box for the month's line items.
+    const finesCells = this.renderFinesCells(m);
+    const finesDetail = this.renderFinesDetail(m);
+
     return `
       <div class="pay-member-card"
            data-la-user-id="${m.laUserId || ''}"
@@ -1292,8 +1313,9 @@ class PaymentsScreen extends Screen {
                   ${m.laUserId ? 'cursor:pointer;' : ''}">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div style="font-weight:700; font-size:1rem;">${name}</div>
-          <div style="display:flex; align-items:center; gap:6px;">${prorateCell}${badge}</div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${prorateCell}${finesCells}${badge}</div>
         </div>
+        ${finesDetail}
         ${this.renderDueHero(m)}
         ${dobLine}
         ${contactLine}
@@ -1315,6 +1337,65 @@ class PaymentsScreen extends Screen {
         <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtns.join('')}${pauseBtn}${flagBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: m.laUserId, firstName: m.firstName, fullName: `${m.firstName || ''} ${m.lastName || ''}`.trim() }, { returnTo: 'payments', size: 'md' }) : ''}</div>
       </div>
     `;
+  }
+
+  // One box per month of fines (row.fines from /api/payments/:program/
+  // members, PersonFines, migration 460), styled like the Prorate cell.
+  // The current month is still filling ("so far"); a finished month is
+  // what goes on the next posting in LA together with the monthly dues
+  // and any prorate.  The box is a button so the card's own click (open
+  // the person) leaves it alone.
+  renderFinesCells(m) {
+    const f = m && m.fines;
+    if (!f || !Array.isArray(f.months) || !f.months.length) return '';
+    const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
+    return f.months.map((mo) => {
+      const n = Array.isArray(mo.items) ? mo.items.length : 0;
+      const total = Number(mo.total) || 0;
+      const on = total > 0;
+      const bg = on ? '#3a1f1f' : '#1e293b', fg = on ? '#fca5a5' : '#94a3b8', border = on ? '#b91c1c' : '#334155';
+      const tip = n
+        ? `${mo.label} fines: ${n} — ` + mo.items.map((it) => `${this.fmtDate(it.startAt)} ${it.label} ${fmtAmt(it.amount)}`).join('; ')
+        : `${mo.label} fines: none${mo.current ? ' so far' : ''}`;
+      return `
+        <button type="button" class="pay-fines-cell" data-fines-month="${this.escape(mo.month)}"
+                title="${this.escape(tip)}"
+                style="display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+                       min-width:52px; padding:3px 7px; margin-right:3px; box-sizing:border-box; cursor:pointer;
+                       border:1px solid ${border}; background:${bg}; color:${fg}; border-radius:3px;
+                       font-variant-numeric:tabular-nums; vertical-align:middle; font-family:inherit;">
+          <div style="font-size:0.55rem; font-weight:800; letter-spacing:0.06em; opacity:0.85;">${this.escape(mo.label.toUpperCase())} FINES</div>
+          <div style="font-size:0.95rem; font-weight:800; line-height:1.15;">${fmtAmt(total)}</div>
+          <div style="font-size:0.5rem; font-weight:700; opacity:0.7; letter-spacing:0.04em;">${n ? `${n} fine${n === 1 ? '' : 's'}` : (mo.current ? 'so far' : 'none')}</div>
+        </button>`;
+    }).join('');
+  }
+
+  // The month's line items, hidden until its box is tapped.
+  renderFinesDetail(m) {
+    const f = m && m.fines;
+    if (!f || !Array.isArray(f.months) || !f.months.length) return '';
+    const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
+    const kindLabel = (k) => ({ match: 'Game', intrasquad: 'Intra Squad', practice: 'Practice' }[k] || k || '');
+    return f.months.map((mo) => {
+      const items = Array.isArray(mo.items) ? mo.items : [];
+      const rows = items.length
+        ? items.map((it) => `
+            <div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0;">
+              <span style="opacity:0.7; white-space:nowrap;">${this.fmtDate(it.startAt)}</span>
+              <span style="flex:1;">${this.escape(kindLabel(it.eventKind))}${it.opponent ? ` vs ${this.escape(it.opponent)}` : ''} · ${this.escape(it.label)}</span>
+              <span style="font-weight:700; color:#fca5a5;">${fmtAmt(it.amount)}</span>
+            </div>`).join('')
+        : `<div style="opacity:0.5; font-style:italic;">No fines${mo.current ? ' so far' : ''}</div>`;
+      return `
+        <div class="pay-fines-detail" data-fines-month="${this.escape(mo.month)}" hidden
+             style="border:1px dashed #b91c1c; border-radius:6px; padding:6px 8px; font-size:0.75rem;">
+          <div style="opacity:0.6; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">
+            ${this.escape(mo.label)} fines · ${fmtAmt(Number(mo.total) || 0)}${mo.current ? ' so far' : ''}
+          </div>
+          ${rows}
+        </div>`;
+    }).join('');
   }
 
   // RSVP + attendance trail for one card (row.activity from
