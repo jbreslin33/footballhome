@@ -703,7 +703,7 @@ class InvoicesScreen extends Screen {
     const rows = (i.invoices || []).map(v => `
       <div class="iv-list-row">
         <div style="font-weight:800;">#${v.number}</div>
-        <div>${esc(v.week1 || '')} &amp; ${esc(v.week2 || '')} <span style="opacity:0.65;">· due ${esc(InvoicesScreen.usDate(v.date))}</span> <span class="iv-tag ${v.is_final ? 'final' : 'draft'}">${v.is_final ? 'final' : 'draft'}</span></div>
+        <div>${esc(v.week1 || '')} &amp; ${esc(v.week2 || '')} <span style="opacity:0.65;">· ${v.period_start ? `${esc(InvoicesScreen.dayLabel(v.period_start))} – ${esc(InvoicesScreen.dayLabel(v.period_end))} · ` : ''}due ${esc(InvoicesScreen.usDate(v.date))}</span> <span class="iv-tag ${v.is_final ? 'final' : 'draft'}">${v.is_final ? 'final' : 'draft'}</span></div>
         <div class="hrs" style="opacity:0.7;">${InvoicesScreen.plain(v.hours)} h</div>
         <div style="text-align:right; font-weight:700;">${InvoicesScreen.money(v.total)}</div>
         <div style="display:flex; gap:6px; justify-content:flex-end;">
@@ -784,7 +784,7 @@ class InvoicesScreen extends Screen {
             <input class="iv-in" id="iv-link" type="url" placeholder="https://drive.google.com/…" value="${esc(inv.link_url || '')}"></div>
         </div>
 
-        <div class="iv-sec">Hours by day</div>
+        <div class="iv-sec">Hours by day — ${inv.period_start && inv.period_end ? `${esc(InvoicesScreen.dayLabel(inv.period_start))} to ${esc(InvoicesScreen.dayLabel(inv.period_end))}` : 'set the window above'}</div>
         <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('hours_hint'))}</div>
         <div class="iv-day head"><div>Day</div><div>From</div><div>Till</div><div>Hours</div><div class="note">Note</div><div></div></div>
         ${(() => {

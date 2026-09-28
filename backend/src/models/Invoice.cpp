@@ -134,6 +134,7 @@ json Invoice::board() {
         };
         auto invs = db_->query(R"SQL(
             SELECT v.id, v.invoice_year, v.invoice_number, v.invoice_date::text AS invoice_date, v.is_final,
+                   v.period_start::text AS period_start, v.period_end::text AS period_end,
                    to_char(date_trunc('week', v.period_start + 6)::date,  'FMMM/FMDD') AS week1,
                    to_char(date_trunc('week', v.period_start + 13)::date, 'FMMM/FMDD') AS week2,
                    COALESCE((SELECT SUM(amount) FROM invoice_lines l WHERE l.invoice_id = v.id), 0) AS total,
@@ -146,6 +147,7 @@ json Invoice::board() {
                 {"number", v["invoice_number"].as<int>()}, {"date", str(v, "invoice_date")},
                 {"is_final", v["is_final"].as<bool>()}, {"total", num(v, "total")}, {"hours", num(v, "hours")},
                 {"week1", str(v, "week1")}, {"week2", str(v, "week2")},
+                {"period_start", str(v, "period_start")}, {"period_end", str(v, "period_end")},
             });
         }
         out["issuers"].push_back(j);
