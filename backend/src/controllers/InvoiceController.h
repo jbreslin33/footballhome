@@ -18,7 +18,7 @@
 //   POST   /api/invoices/:id/shift      { id?, date, start, end, note }  hours by day (mig 469)
 //   DELETE /api/invoices/shift?id=      one day
 //   POST   /api/invoices/:id/fill       copy the issuer's weekly default onto the period ({ force? })
-//   POST   /api/invoices/default        { id?, issuer_id, weekday, start, end, note }  the usual week (mig 470)
+//   POST   /api/invoices/default        { id?, issuer_id, day_index 0-13, start|end or hours, note }  the usual 2 weeks (mig 470/477)
 //   DELETE /api/invoices/default?id=
 //   DELETE /api/invoices/line?id=       one line
 //   POST   /api/invoices/plan           { issuer_id, invoice_id, category, description, total_amount, installment_count, show_total }

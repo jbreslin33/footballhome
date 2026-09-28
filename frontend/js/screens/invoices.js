@@ -72,7 +72,7 @@ class InvoicesScreen extends Screen {
         .iv-total { display:flex; justify-content:flex-end; gap:12px; font-weight:800; font-size:1.1rem; padding:10px 0; }
         .iv-acts { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
         .iv-hint { font-size:0.8rem; opacity:0.7; margin-top:6px; }
-        .iv-day { display:grid; grid-template-columns:90px 110px 110px 80px 1fr 76px; gap:8px; align-items:center; padding:6px 0;
+        .iv-day { display:grid; grid-template-columns:100px 110px 110px 80px 1fr 76px; gap:8px; align-items:center; padding:6px 0;
                   border-top:1px solid var(--border-color); font-size:0.9rem; }
         .iv-day:first-child { border-top:none; }
         .iv-day.head { font-size:0.72rem; opacity:0.65; text-transform:uppercase; letter-spacing:0.04em; }
@@ -103,6 +103,11 @@ class InvoicesScreen extends Screen {
         .inv-sheet .sh-over td { border:1px solid #333; padding:0 4pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .inv-sheet .sh-over td.c { text-align:center; } .inv-sheet .sh-over td.r { text-align:right; }
         .inv-preview-wrap { overflow:hidden; padding:8px 0; }
+        .iv-modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:1000; display:flex; align-items:flex-start;
+                       justify-content:center; padding:24px 12px; overflow:auto; }
+        .iv-modal { background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border-color); border-radius:14px;
+                    width:100%; max-width:900px; padding:14px 16px; box-shadow:0 10px 40px rgba(0,0,0,0.4); }
+        .iv-modal .iv-card { background:var(--bg-secondary); }
         .inv-preview-wrap .inv-scale { transform-origin:top left; }
           .inv-sheet .sh-title { font-size:24pt; } .inv-sheet .sh-row { grid-template-columns:0.9in 1fr; } }
       </style>
@@ -349,7 +354,7 @@ class InvoicesScreen extends Screen {
     if (changed === 'hours' && v('hours')) { if (el('start')) el('start').value = ''; if (el('end')) el('end').value = ''; }
     if ((changed === 'start' || changed === 'end') && v('start') && v('end')) { if (el('hours')) el('hours').value = ''; }
     const start = v('start'), end = v('end'), hours = Number(v('hours'));
-    const base = { weekday: Number(row.dataset.weekday), note: v('note') };
+    const base = { day_index: Number(row.dataset.dayIndex), note: v('note') };
     if (start && end) return { ...base, start, end };
     if (hours > 0) return { ...base, hours };
     return null;
@@ -369,7 +374,7 @@ class InvoicesScreen extends Screen {
         return;
       }
       if (id) payload.id = id;
-      else this.extraWeekdays = (this.extraWeekdays || []).filter(d => d !== row.dataset.weekday + '#' + row.dataset.extra);
+      else this.extraWeekdays = (this.extraWeekdays || []).filter(d => d !== row.dataset.dayIndex + '#' + row.dataset.extra);
       await this._post('/api/invoices/default', { issuer_id: issuer.id, ...payload });
       await this.load();
     } catch (err) { this._say(err.message, true); }
@@ -491,9 +496,11 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       if (e.target.closest('#iv-refresh')) { this.load(); return; }
       const pill = e.target.closest('[data-issuer]');
-      if (pill) { this.issuerId = Number(pill.dataset.issuer); this.editIssuer = false; this.confirmDelete = 0; this._renderBody(); return; }
+      if (pill) { this.issuerId = Number(pill.dataset.issuer); this.editIssuer = false; this.showUsual = false; this.confirmDelete = 0; this._renderBody(); return; }
       if (e.target.closest('#iv-new')) { await this.newInvoice(); return; }
       if (e.target.closest('#iv-edit-issuer')) { this.editIssuer = !this.editIssuer; this._renderBody(); return; }
+      if (e.target.closest('#iv-usual-open')) { this.showUsual = true; this._renderBody(); return; }
+      if (e.target.closest('#iv-usual-close') || (e.target.id === 'iv-usual-bg')) { this.showUsual = false; this.extraWeekdays = []; this._renderBody(); return; }
       if (e.target.closest('#iv-save-issuer')) { await this.saveIssuer(); return; }
       if (e.target.closest('#iv-close')) { this.inv = null; this._renderBody(); return; }
       if (e.target.closest('#iv-print')) { this.print(); return; }
@@ -602,8 +609,16 @@ class InvoicesScreen extends Screen {
 
     if (issuer) {
       parts.push(this._renderIssuerCard(issuer));
-      parts.push(this._renderUsualWeek(issuer));
       parts.push(this._renderInvoiceList(issuer));
+      if (this.showUsual) {
+        parts.push(`<div class="iv-modal-bg" id="iv-usual-bg"><div class="iv-modal">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <div style="font-weight:800;">${this.escapeHtml(issuer.name)} — usual 2 weeks</div>
+            <button id="iv-usual-close" class="iv-btn ghost sm">Close</button>
+          </div>
+          ${this._renderUsualWeek(issuer)}
+        </div></div>`);
+      }
     }
     if (this.inv) {
       parts.push(this._renderEditor());
@@ -626,7 +641,10 @@ class InvoicesScreen extends Screen {
               <div style="font-size:0.9rem; margin-top:2px;">${esc(i.duty_description || 'Hours')} @ ${i.hourly_rate == null ? '—' : InvoicesScreen.money(i.hourly_rate)}/h · payable to ${esc(i.payable_to || '—')}${i.bills_expenses ? ' · bills expenses' : ' · hours only'}</div>
               ${missing ? `<div class="iv-hint" style="color:#f59e0b;">${esc(this._copy('missing_from'))}</div>` : ''}
             </div>
-            <button id="iv-edit-issuer" class="iv-btn ghost sm">✏️ Details</button>
+            <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+              <button id="iv-edit-issuer" class="iv-btn ghost sm">✏️ Details</button>
+              <button id="iv-usual-open" class="iv-btn ghost sm">🗓 Usual 2 weeks</button>
+            </div>
           </div>
         </div>`;
     }
@@ -678,23 +696,22 @@ class InvoicesScreen extends Screen {
     const esc = (t) => this.escapeHtml(t);
     const defs = i.default_shifts || [];
     const total = defs.reduce((a, d) => a + (Number(d.hours) || 0), 0);
-    const order = [1, 2, 3, 4, 5, 6, 0];   // Mon … Sun
     let rows = '';
-    for (const wd of order) {
-      const mine = defs.filter(d => d.weekday === wd);
-      const label = InvoicesScreen.WEEKDAYS[wd];
-      if (!mine.length) rows += this._entryRow('df', 'default-row', String(wd), label, null, `data-weekday="${wd}"`);
-      mine.forEach((d, k) => { rows += this._entryRow('df', 'default-row', String(wd), k ? '' : label, d, `data-weekday="${wd}"`); });
-      for (const x of (this.extraWeekdays || []).filter(e => e.split('#')[0] === String(wd)))
-        rows += this._entryRow('df', 'default-row', String(wd), '', null, `data-weekday="${wd}" data-extra="${esc(x.split('#')[1])}"`);
+    for (let idx = 0; idx < 14; idx++) {
+      const label = `${InvoicesScreen.WEEKDAYS[(5 + idx) % 7]} · wk ${idx < 7 ? 1 : 2}`;
+      const mine = defs.filter(d => d.day_index === idx);
+      if (!mine.length) rows += this._entryRow('df', 'default-row', String(idx), label, null, `data-day-index="${idx}"`);
+      mine.forEach((d, k) => { rows += this._entryRow('df', 'default-row', String(idx), k ? '' : label, d, `data-day-index="${idx}"`); });
+      for (const x of (this.extraWeekdays || []).filter(e => e.split('#')[0] === String(idx)))
+        rows += this._entryRow('df', 'default-row', String(idx), '', null, `data-day-index="${idx}" data-extra="${esc(x.split('#')[1])}"`);
     }
     return `
-      <div class="iv-sec">Usual week</div>
+      <div class="iv-sec">Friday to the closing Thursday</div>
       <div class="iv-card">
         <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('default_hint', { name: i.name }))}</div>
         <div class="iv-day head"><div>Day</div><div>From</div><div>Till</div><div>Hours</div><div class="note">Note</div><div></div></div>
         ${rows}
-        <div class="iv-hint">${InvoicesScreen.plain(total)} h a week · ${InvoicesScreen.plain(total * 2)} h an invoice</div>
+        <div class="iv-hint">${InvoicesScreen.plain(total)} h an invoice</div>
       </div>`;
   }
 
