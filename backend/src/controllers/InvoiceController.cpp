@@ -67,6 +67,7 @@ void InvoiceController::registerRoutes(Router& router, const std::string& prefix
     router.post(prefix + "/default",     [this](const Request& r) { return handleDefault(r); });
     router.del (prefix + "/default",     [this](const Request& r) { return handleDeleteDefault(r); });
     router.del (prefix,                  [this](const Request& r) { return handleDelete(r); });
+    router.get (prefix + "/public/:slug",[this](const Request& r) { return handlePublic(r); });
     // Param routes last so the static paths above win the prefix match.
     router.post(prefix + "/:id/update",  [this](const Request& r) { return handleUpdate(r); });
     router.post(prefix + "/:id/line",    [this](const Request& r) { return handleLine(r); });
@@ -122,6 +123,28 @@ Response InvoiceController::handleGet(const Request& request) {
         if (inv.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
         return jsonOut(HttpStatus::OK, inv);
     } catch (const std::exception& e) { std::cerr << "[invoices get] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// No gate: the page is for whoever holds the link (the deputy director,
+// the coach).  The slug is a UUID, so the only way in is the link.
+Response InvoiceController::handlePublic(const Request& request) {
+    const std::string marker = "/api/invoices/public/";
+    const std::string path = request.getPath();
+    const auto at = path.find(marker);
+    if (at == std::string::npos) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+    std::string slug = path.substr(at + marker.size());
+    const auto q = slug.find('?'); if (q != std::string::npos) slug = slug.substr(0, q);
+    const auto sl = slug.find('/'); if (sl != std::string::npos) slug = slug.substr(0, sl);
+    try {
+        json inv = model_->getPublic(slug);
+        if (inv.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+        // Nothing the viewer should not have: the sheet fields only.
+        inv.erase("public_slug"); inv.erase("link_url"); inv.erase("note");
+        if (inv.contains("issuer") && inv["issuer"].is_object()) { inv["issuer"].erase("email"); inv["issuer"].erase("person_id"); }
+        inv.erase("shifts"); inv.erase("shift_hours");
+        if (inv.contains("bill_to") && inv["bill_to"].is_object()) { inv["bill_to"].erase("email"); inv["bill_to"].erase("email_to_name"); inv["bill_to"].erase("email_label"); }
+        return jsonOut(HttpStatus::OK, inv);
+    } catch (const std::exception& e) { std::cerr << "[invoices public] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
 Response InvoiceController::handleUpdate(const Request& request) {

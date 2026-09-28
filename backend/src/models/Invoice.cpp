@@ -1,5 +1,6 @@
 #include "Invoice.h"
 
+#include <cctype>
 #include <cmath>
 #include <iostream>
 #include <sstream>
@@ -159,7 +160,7 @@ json Invoice::get(long long invoiceId) {
     auto rows = db_->query(R"SQL(
         SELECT v.id, v.issuer_id, v.invoice_year, v.invoice_number, v.invoice_date::text AS invoice_date,
                to_char(v.invoice_date, 'MM/DD/YYYY') AS date_us, v.is_final, v.note,
-               v.period_start::text AS period_start, v.period_end::text AS period_end, v.link_url,
+               v.period_start::text AS period_start, v.period_end::text AS period_end, v.link_url, v.public_slug::text AS public_slug,
                (SELECT e.email FROM person_emails e WHERE e.person_id = p.id ORDER BY e.is_primary DESC, e.id LIMIT 1) AS issuer_email,
                to_char(date_trunc('week', v.period_start + 6)::date,  'FMMM/FMDD') AS week1,
                to_char(date_trunc('week', v.period_start + 13)::date, 'FMMM/FMDD') AS week2,
@@ -178,6 +179,7 @@ json Invoice::get(long long invoiceId) {
         {"is_final", r["is_final"].as<bool>()}, {"note", str(r, "note")},
         {"period_start", str(r, "period_start")}, {"period_end", str(r, "period_end")},
         {"week1", str(r, "week1")}, {"week2", str(r, "week2")}, {"link_url", str(r, "link_url")},
+        {"public_slug", str(r, "public_slug")},
         {"title", "Invoice #" + std::to_string(r["invoice_number"].as<int>()) + " " + str(r, "week1") + " & " + str(r, "week2")
                   + ", " + str(r, "last_name") + ", " + str(r, "first_name")},
         {"issuer", {
@@ -251,6 +253,10 @@ json Invoice::get(long long invoiceId) {
 }
 
 void Invoice::syncLabor(long long invoiceId) {
+    // A final (sent) invoice keeps its billed hours; the days are reference
+    // until Final is un-ticked (mig 478).
+    auto fin = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
+    if (fin.empty() || fin[0]["is_final"].as<bool>()) return;
     db_->query(R"SQL(
         WITH h AS (
             SELECT COUNT(*) AS n, COALESCE(SUM(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0)), 0) AS hours
@@ -307,12 +313,21 @@ bool Invoice::removeShift(long long shiftId) {
     // With no days left the hours line goes back to 0 rather than keeping a stale sum.
     auto left = db_->query("SELECT 1 FROM invoice_work_shifts WHERE invoice_id = $1::int LIMIT 1", {std::to_string(invoiceId)});
     if (left.empty()) {
-        db_->query("UPDATE invoice_lines SET quantity = 0, amount = 0 WHERE invoice_id = $1::int AND category = 'labor'", {std::to_string(invoiceId)});
+        db_->query("UPDATE invoice_lines SET quantity = 0, amount = 0 WHERE invoice_id = $1::int AND category = 'labor' "
+                   "AND NOT EXISTS (SELECT 1 FROM invoices v WHERE v.id = $1::int AND v.is_final)", {std::to_string(invoiceId)});
         db_->query("UPDATE invoices SET updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId)});
     } else {
         syncLabor(invoiceId);
     }
     return true;
+}
+
+json Invoice::getPublic(const std::string& slug) {
+    if (slug.size() != 36) return json::object();
+    for (char c : slug) if (!(std::isxdigit(static_cast<unsigned char>(c)) || c == '-')) return json::object();
+    auto rows = db_->query("SELECT id FROM invoices WHERE public_slug = $1::uuid", {slug});
+    if (rows.empty()) return json::object();
+    return get(rows[0]["id"].as<long long>());
 }
 
 long long Invoice::issuerOf(long long invoiceId) {
@@ -398,6 +413,8 @@ bool Invoice::update(long long invoiceId, const json& f, std::string* error) {
     if (f.contains("is_final") && f["is_final"].is_boolean()) {
         db_->query("UPDATE invoices SET is_final = $2::bool, updated_at = now() WHERE id = $1::int",
                    {std::to_string(invoiceId), f["is_final"].get<bool>() ? "true" : "false"});
+        // Back to draft: the days drive the hours line again.
+        if (!f["is_final"].get<bool>()) syncLabor(invoiceId);
     }
     if (f.contains("note") && f["note"].is_string()) {
         db_->query("UPDATE invoices SET note = NULLIF($2,''), updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId), f["note"].get<std::string>()});

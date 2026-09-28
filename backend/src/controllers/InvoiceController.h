@@ -13,6 +13,7 @@
 //                                       invoices with totals, open plans
 //   POST   /api/invoices/new            { issuer_id, date? } → { id }
 //   GET    /api/invoices/:id            one sheet with lines + total
+//   GET    /api/invoices/public/:slug   the same sheet, no sign-in (mig 480) — invoice.html?k=<slug>
 //   POST   /api/invoices/:id/update     { date?, number?, is_final?, note? }
 //   POST   /api/invoices/:id/line       { id?, category, description, quantity, rate, amount? }
 //   POST   /api/invoices/:id/shift      { id?, date, start, end, note }  hours by day (mig 469)
@@ -37,6 +38,7 @@ private:
     Response handleBoard(const Request& request);
     Response handleNew(const Request& request);
     Response handleGet(const Request& request);
+    Response handlePublic(const Request& request);
     Response handleUpdate(const Request& request);
     Response handleLine(const Request& request);
     Response handleDeleteLine(const Request& request);

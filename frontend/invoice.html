@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Invoice</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <!-- The public sheet page (mig 480): /invoice?k=<slug>.  Anyone with the
+       link sees the invoice as printed — the deputy director, the coach.
+       Draws the same sheet as #invoices (InvoicesScreen._renderSheet) from
+       GET /api/invoices/public/<slug>, which needs no sign-in. -->
+  <style>
+    @page { size: letter; margin: 0; }
+    :root { --border-color:#ccc; --bg-primary:#fff; --bg-secondary:#f4f4f4; --text-primary:#111; --primary-color:#1d4ed8;
+            --space-2:8px; --space-3:12px; --space-4:16px; }
+    html, body { margin:0; padding:0; background:#e9e9ee; color:#111; font-family:Arial, Helvetica, sans-serif; }
+    .bar { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 14px; background:#fff;
+           border-bottom:1px solid #ddd; font-size:0.95rem; }
+    .bar button { padding:8px 14px; border-radius:10px; border:none; cursor:pointer; font-weight:800; background:#4ade80; color:#0b1c3d; }
+    .wrap { padding:16px 8px; }
+    .inv-preview-wrap { overflow:hidden; }
+    .inv-preview-wrap .inv-scale { transform-origin:top left; }
+    .msg { padding:24px; text-align:center; color:#555; }
+    @media print {
+      html, body { background:#fff; }
+      .bar, .msg { display:none !important; }
+      .wrap { padding:0; }
+      .inv-preview-wrap { overflow:visible; height:auto !important; }
+      .inv-preview-wrap .inv-scale { transform:none !important; }
+      .inv-sheet { box-shadow:none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar"><div id="title">Invoice</div><button id="print">🖨 Print / Save PDF</button></div>
+  <div class="wrap"><div id="sheet"></div><div class="msg" id="msg">Loading…</div></div>
+  <script>
+    // InvoicesScreen expects these from the SPA; the sheet itself needs none of them.
+    class MessageCopy { static load() { return Promise.resolve(); } static block() { return ''; } static render() { return null; } }
+    window.MessageCopy = MessageCopy;
+  </script>
+  <script src="/js/screen-base.js"></script>
+  <script src="/js/screens/invoices.js?v=20260928d"></script>
+  <script>
+    (async () => {
+      const k = new URLSearchParams(location.search).get('k') || '';
+      const msg = document.getElementById('msg');
+      if (!/^[0-9a-f-]{36}$/i.test(k)) { msg.textContent = 'This link is not a valid invoice link.'; return; }
+      let inv;
+      try {
+        const res = await fetch('/api/invoices/public/' + encodeURIComponent(k));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        inv = await res.json();
+      } catch (e) { msg.textContent = 'That invoice could not be found.'; return; }
+      const screen = new InvoicesScreen({ goBack() {}, context: {} }, { fetch() { return Promise.reject(new Error('n/a')); } });
+      const shell = screen.render();                       // carries the sheet CSS
+      document.body.appendChild(shell.querySelector('style'));
+      const host = document.getElementById('sheet');
+      host.innerHTML = '<div class="inv-preview-wrap"><div class="inv-scale">' + screen._renderSheet(inv) + '</div></div>';
+      msg.remove();
+      document.title = String(inv.file_name || 'Invoice').replace(/\.pdf$/i, '');
+      document.getElementById('title').textContent = inv.title || document.title;
+      const fit = () => {
+        const wrap = host.querySelector('.inv-preview-wrap'), inner = host.querySelector('.inv-scale');
+        const scale = Math.min(1, (wrap.clientWidth || 816) / 816);
+        inner.style.transform = 'scale(' + scale + ')';
+        wrap.style.height = Math.ceil(1056 * scale) + 'px';
+      };
+      fit(); window.addEventListener('resize', fit);
+      document.getElementById('print').addEventListener('click', () => window.print());
+    })();
+  </script>
+</body>
+</html>

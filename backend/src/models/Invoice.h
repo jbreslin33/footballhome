@@ -30,6 +30,8 @@ public:
     // One sheet: header, lines in print order, total, file name.  Empty
     // object when missing.
     nlohmann::json get(long long invoiceId);
+    // The same sheet by its public slug (mig 480); empty when unknown.
+    nlohmann::json getPublic(const std::string& slug);
 
     // New draft for the issuer: next number (see nextNumber), today's date
     // unless given, the hours line at the issuer's rate, and one line per

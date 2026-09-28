@@ -389,6 +389,17 @@ class InvoicesScreen extends Screen {
 
   // ── email the deputy director (mig 471) ────────────────────────────────
 
+  _publicUrl(inv) {
+    return inv && inv.public_slug ? `${location.origin}/invoice?k=${inv.public_slug}` : '';
+  }
+
+  async copyPublicLink() {
+    const url = this._publicUrl(this.inv);
+    if (!url) return;
+    try { await navigator.clipboard.writeText(url); this._say('Link copied.'); }
+    catch (_) { this._say(url); }
+  }
+
   emailDeputy() {
     const d = this._emailDraft();
     if (!d) return;
@@ -403,7 +414,7 @@ class InvoicesScreen extends Screen {
     if (!inv) return null;
     const to = inv.bill_to?.email || '';
     const mine = Number(this.board?.viewer_person_id || 0) > 0 && Number(inv.issuer?.person_id) === Number(this.board.viewer_person_id);
-    const link = (inv.link_url || '').trim() || (this._copy('email_no_link') || 'attached');
+    const link = (inv.link_url || '').trim() || this._publicUrl(inv) || (this._copy('email_no_link') || 'view online');
     const tokens = {
       title: inv.title, number: inv.number, name: inv.issuer?.name || '', week1: inv.week1, week2: inv.week2,
       total: InvoicesScreen.money(inv.total), file: inv.file_name, link,
@@ -517,6 +528,7 @@ class InvoicesScreen extends Screen {
       if (rmPlan) { await this.removePlan(Number(rmPlan.dataset.deletePlan)); return; }
       if (e.target.closest('#iv-fill')) { await this.fillFromDefault(); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
+      if (e.target.closest('#iv-copy-link')) { await this.copyPublicLink(); return; }
       const moreDay = e.target.closest('[data-more-day]');
       if (moreDay) { this.extraDays = this.extraDays || []; this.extraDays.push(moreDay.dataset.moreDay + '#' + Date.now()); this._renderBody(); return; }
       const moreWd = e.target.closest('[data-more-weekday]');
@@ -796,9 +808,14 @@ class InvoicesScreen extends Screen {
           <div style="font-size:0.85rem;"><b>Subject:</b> ${esc(d.subject)}</div>
           <pre style="white-space:pre-wrap; font:inherit; font-size:0.9rem; margin:6px 0 0; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px;">${esc(d.body)}</pre>
         </div>` : ''; })()}
-        <div class="iv-grid" style="grid-template-columns:1fr; margin-top:8px;">
-          <div><div class="iv-lbl">Link to the saved PDF (Drive) — goes in the email after the title</div>
-            <input class="iv-in" id="iv-link" type="url" placeholder="https://drive.google.com/…" value="${esc(inv.link_url || '')}"></div>
+        <div class="iv-card" style="margin-top:8px; background:var(--bg-primary);">
+          <div class="iv-lbl">Viewable link — anyone with it sees this sheet; this is the link in the email</div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <a href="${esc(this._publicUrl(inv))}" target="_blank" rel="noopener" style="font-size:0.9rem; word-break:break-all;">${esc(this._publicUrl(inv))}</a>
+            <button id="iv-copy-link" class="iv-btn ghost sm">Copy</button>
+          </div>
+          <details style="margin-top:6px; font-size:0.85rem;"><summary style="cursor:pointer; opacity:0.7;">Use a different link instead (e.g. Drive)</summary>
+            <input class="iv-in" id="iv-link" type="url" placeholder="https://drive.google.com/…" value="${esc(inv.link_url || '')}" style="margin-top:6px;"></details>
         </div>
 
         <div class="iv-sec">Hours by day — ${inv.period_start && inv.period_end ? `${esc(InvoicesScreen.dayLabel(inv.period_start))} to ${esc(InvoicesScreen.dayLabel(inv.period_end))}` : 'set the window above'}</div>
@@ -820,6 +837,7 @@ class InvoicesScreen extends Screen {
         })()}
         <div class="iv-acts">
           <span style="font-size:0.9rem; font-weight:700;">${InvoicesScreen.plain(inv.shift_hours || 0)} h over ${(inv.shifts || []).length} day${(inv.shifts || []).length === 1 ? '' : 's'}</span>
+          ${inv.is_final ? `<span class="iv-hint" style="margin:0;">Final — the sheet keeps its billed hours; un-tick Final to let these days drive it.</span>` : ''}
           ${!(inv.shifts || []).length ? `<button id="iv-fill" class="iv-btn ghost sm">📅 Fill from usual week</button>` : ''}
         </div>
 
