@@ -3,6 +3,7 @@
 #include <sstream>
 #include <regex>
 #include <iostream>
+#include "../third_party/json.hpp"
 
 PublicController::PublicController() {
     db_ = Database::getInstance();
@@ -17,6 +18,7 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
     router.get(prefix + "/teams/:slug/schedule", [this](const Request& r) { return handleGetSchedule(r); });
     router.get(prefix + "/leagueapps-registration-links", [this](const Request& r) { return handleGetRegistrationLinks(r); });
     router.get(prefix + "/program-copy",         [this](const Request& r) { return handleGetProgramCopy(r); });
+    router.post(prefix + "/sms-opt-in",          [this](const Request& r) { return handlePostSmsOptIn(r); });
 }
 
 // ─── GET /api/public/teams ───────────────────────────────────────────────────
@@ -627,5 +629,56 @@ Response PublicController::handleGetProgramCopy(const Request& request) {
         std::cerr << "❌ handleGetProgramCopy: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                         createJSONResponse(false, "Database error"));
+    }
+}
+
+// ─── POST /api/public/sms-opt-in ─────────────────────────────────────────────
+// The consent form on footballhome.org/sms (mig 482).  Body:
+// { name, phone, consent: true, consent_text }.  One row per sign-up is the
+// proof of opt-in the Twilio A2P campaign rests on, so the wording the
+// person ticked is stored with it.  No sign-in: anyone may opt in.
+Response PublicController::handlePostSmsOptIn(const Request& request) {
+    nlohmann::json body;
+    try {
+        body = nlohmann::json::parse(request.getBody());
+        if (!body.is_object()) throw std::runtime_error("not an object");
+    } catch (const std::exception&) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "invalid JSON body"));
+    }
+    auto readStr = [&](const char* k) -> std::string {
+        if (!body.contains(k) || !body[k].is_string()) return {};
+        std::string v = body[k].get<std::string>();
+        while (!v.empty() && std::isspace(static_cast<unsigned char>(v.front()))) v.erase(v.begin());
+        while (!v.empty() && std::isspace(static_cast<unsigned char>(v.back())))  v.pop_back();
+        return v;
+    };
+    const std::string name = readStr("name"), phone = readStr("phone"), consentText = readStr("consent_text");
+    const bool consent = body.contains("consent") && body["consent"].is_boolean() && body["consent"].get<bool>();
+    std::string digits;
+    for (char ch : phone) if (ch >= '0' && ch <= '9') digits.push_back(ch);
+    if (digits.size() == 11 && digits[0] == '1') digits.erase(0, 1);
+    if (!consent)                       return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "consent required"));
+    if (name.empty() || name.size() > 200) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "name required"));
+    if (digits.size() != 10 || phone.size() > 40) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "10-digit US mobile number required"));
+    if (consentText.size() > 2000)      return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "field too long"));
+
+    std::string ip = request.getHeader("X-Forwarded-For");
+    if (ip.empty()) ip = request.getHeader("X-Real-IP");
+    if (auto comma = ip.find(','); comma != std::string::npos) ip = ip.substr(0, comma);
+    std::string ua = request.getHeader("User-Agent");
+    if (ua.size() > 300) ua.resize(300);
+    try {
+        pqxx::result r = db_->query(
+            "INSERT INTO sms_opt_ins (name, phone, phone_digits, consent_text, ip, user_agent, person_id) "
+            "VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), "
+            "        (SELECT pp.person_id FROM person_phones pp WHERE regexp_replace(COALESCE(pp.phone_number,''), '[^0-9]', '', 'g') IN ($3, '1' || $3) "
+            "          ORDER BY pp.person_id LIMIT 1)) "
+            "RETURNING id", {name, phone, digits, consentText, ip, ua});
+        std::ostringstream data;
+        data << "{\"id\":" << r[0]["id"].as<long long>() << "}";
+        return Response(HttpStatus::OK, createJSONResponse(true, "Signed up", data.str()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handlePostSmsOptIn: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }

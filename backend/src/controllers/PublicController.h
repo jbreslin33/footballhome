@@ -37,6 +37,7 @@ private:
     Response handleGetSchedule(const Request& request);
     Response handleGetRegistrationLinks(const Request& request);
     Response handleGetProgramCopy(const Request& request);
+    Response handlePostSmsOptIn(const Request& request);
 
     // Resolver: returns matches.id for the team's "live" match, or 0 if none exists.
     int resolveLiveMatchId(int team_id);
