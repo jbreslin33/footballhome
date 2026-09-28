@@ -414,10 +414,18 @@ class InvoicesScreen extends Screen {
   // ── email the deputy director (mig 471) ────────────────────────────────
 
   emailDeputy() {
+    const d = this._emailDraft();
+    if (!d) return;
+    if (!d.to) { this._say('No email on the bill-to row.', true); return; }
+    this.openGmailCompose(this.buildGmailComposeHref({ to: d.to, cc: d.cc, subject: d.subject, body: d.body }));
+  }
+
+  // The draft as it will open in Gmail: shown on the page under the buttons
+  // ("so i can see if its what we need") and sent by emailDeputy().
+  _emailDraft() {
     const inv = this.inv;
-    if (!inv) return;
+    if (!inv) return null;
     const to = inv.bill_to?.email || '';
-    if (!to) { this._say('No email on the bill-to row.', true); return; }
     const mine = Number(this.board?.viewer_person_id || 0) > 0 && Number(inv.issuer?.person_id) === Number(this.board.viewer_person_id);
     const link = (inv.link_url || '').trim() || (this._copy('email_no_link') || 'attached');
     const tokens = {
@@ -430,7 +438,7 @@ class InvoicesScreen extends Screen {
     const body = r ? r.body : `${inv.title}: ${link}`;
     // A coach's invoice copies the coach ("he is included in this email").
     const cc = !mine && inv.issuer?.email ? inv.issuer.email : undefined;
-    this.openGmailCompose(this.buildGmailComposeHref({ to, cc, subject, body }));
+    return { to, cc, subject, body, mine };
   }
 
   async removeInvoice(id) {
@@ -772,6 +780,13 @@ class InvoicesScreen extends Screen {
           <button id="iv-close" class="iv-btn ghost">Close</button>
         </div>
         <div class="iv-hint">${esc(this._copy('print_hint', { file: inv.file_name }))}</div>
+        ${(() => { const d = this._emailDraft(); return d ? `
+        <div class="iv-card" style="margin-top:8px; background:var(--bg-primary);">
+          <div class="iv-lbl">Email draft — opens in Gmail with your signature added</div>
+          <div style="font-size:0.85rem; margin-top:4px;"><b>To:</b> ${esc(d.to || '—')}${d.cc ? ` &nbsp; <b>Cc:</b> ${esc(d.cc)}` : ''}</div>
+          <div style="font-size:0.85rem;"><b>Subject:</b> ${esc(d.subject)}</div>
+          <pre style="white-space:pre-wrap; font:inherit; font-size:0.9rem; margin:6px 0 0; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px;">${esc(d.body)}</pre>
+        </div>` : ''; })()}
         <div class="iv-grid" style="grid-template-columns:1fr; margin-top:8px;">
           <div><div class="iv-lbl">Link to the saved PDF (Drive) — goes in the email after the title</div>
             <input class="iv-in" id="iv-link" type="url" placeholder="https://drive.google.com/…" value="${esc(inv.link_url || '')}"></div>
