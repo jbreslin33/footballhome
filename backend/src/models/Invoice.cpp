@@ -229,9 +229,10 @@ json Invoice::get(long long invoiceId) {
     out["shifts"] = json::array();
     double shiftHours = 0;
     auto shifts = db_->query(R"SQL(
-        SELECT id, work_date::text AS work_date, to_char(work_date, 'Dy MM/DD') AS day_label,
+        SELECT id, work_date::text AS work_date, to_char(work_date, 'Dy FMMM/FMDD') AS day_label,
                to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note,
-               ROUND(EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0, 2) AS hours
+               (hours IS NOT NULL) AS flat,
+               ROUND(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0), 2) AS hours
           FROM invoice_work_shifts WHERE invoice_id = $1::int
          ORDER BY work_date, start_at, id)SQL", {std::to_string(invoiceId)});
     for (const auto& sh : shifts) {
@@ -240,6 +241,7 @@ json Invoice::get(long long invoiceId) {
         out["shifts"].push_back({
             {"id", sh["id"].as<long long>()}, {"date", str(sh, "work_date")}, {"day_label", str(sh, "day_label")},
             {"start", str(sh, "start_at")}, {"end", str(sh, "end_at")}, {"note", str(sh, "note")}, {"hours", h},
+            {"flat", sh["flat"].as<bool>()},
         });
     }
     out["shift_hours"] = round2(shiftHours);
@@ -249,7 +251,7 @@ json Invoice::get(long long invoiceId) {
 void Invoice::syncLabor(long long invoiceId) {
     db_->query(R"SQL(
         WITH h AS (
-            SELECT COUNT(*) AS n, COALESCE(SUM(EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0), 0) AS hours
+            SELECT COUNT(*) AS n, COALESCE(SUM(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0)), 0) AS hours
               FROM invoice_work_shifts WHERE invoice_id = $1::int)
         UPDATE invoice_lines l
            SET quantity = ROUND(h.hours::numeric, 2),
@@ -260,24 +262,31 @@ void Invoice::syncLabor(long long invoiceId) {
 }
 
 long long Invoice::upsertShift(long long invoiceId, long long shiftId, const json& f, std::string* error) {
-    const std::string date = s(f, "date"), start = s(f, "start"), end = s(f, "end"), note = s(f, "note");
+    // Either from + till (hours follow) or a flat number of hours (times blank).
+    const std::string date = s(f, "date"), note = s(f, "note");
+    std::string start = s(f, "start"), end = s(f, "end"), hours;
     if (date.empty()) { *error = "date is required"; return 0; }
-    if (start.empty() || end.empty()) { *error = "from and till are required"; return 0; }
+    const bool timed = !start.empty() && !end.empty();
+    if (!timed) {
+        if (!hasNum(f, "hours") || n(f, "hours") <= 0) { *error = "enter from and till, or the hours"; return 0; }
+        hours = money2(n(f, "hours")); start.clear(); end.clear();
+    }
     if (db_->query("SELECT 1 FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)}).empty()) { *error = "no such invoice"; return 0; }
     try {
         if (shiftId > 0) {
             auto r = db_->query(
-                "UPDATE invoice_work_shifts SET work_date = $3::date, start_at = $4::time, end_at = $5::time, note = NULLIF($6,'') "
+                "UPDATE invoice_work_shifts SET work_date = $3::date, start_at = NULLIF($4,'')::time, end_at = NULLIF($5,'')::time, "
+                "       hours = NULLIF($7,'')::numeric, note = NULLIF($6,'') "
                 "WHERE id = $1::int AND invoice_id = $2::int RETURNING id",
-                {std::to_string(shiftId), std::to_string(invoiceId), date, start, end, note});
+                {std::to_string(shiftId), std::to_string(invoiceId), date, start, end, note, hours});
             if (r.empty()) { *error = "no such day"; return 0; }
             syncLabor(invoiceId);
             return shiftId;
         }
         auto r = db_->query(
-            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, note) "
-            "VALUES ($1::int, $2::date, $3::time, $4::time, NULLIF($5,'')) RETURNING id",
-            {std::to_string(invoiceId), date, start, end, note});
+            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note) "
+            "VALUES ($1::int, $2::date, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($6,'')::numeric, NULLIF($5,'')) RETURNING id",
+            {std::to_string(invoiceId), date, start, end, note, hours});
         if (r.empty()) { *error = "could not add the day"; return 0; }
         syncLabor(invoiceId);
         return r[0]["id"].as<long long>();
@@ -509,35 +518,42 @@ bool Invoice::updateIssuer(long long issuerId, const json& f, std::string* error
 json Invoice::defaultShifts(long long issuerId) {
     auto rows = db_->query(R"SQL(
         SELECT id, weekday, to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note,
-               ROUND(EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0, 2) AS hours
-          FROM invoice_default_shifts WHERE issuer_id = $1::int ORDER BY weekday, start_at, id)SQL", {std::to_string(issuerId)});
+               (hours IS NOT NULL) AS flat,
+               ROUND(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0), 2) AS hours
+          FROM invoice_default_shifts WHERE issuer_id = $1::int ORDER BY weekday, start_at NULLS LAST, id)SQL", {std::to_string(issuerId)});
     json out = json::array();
     for (const auto& r : rows) {
         out.push_back({{"id", r["id"].as<long long>()}, {"weekday", r["weekday"].as<int>()}, {"start", str(r, "start_at")},
-                       {"end", str(r, "end_at")}, {"note", str(r, "note")}, {"hours", num(r, "hours")}});
+                       {"end", str(r, "end_at")}, {"note", str(r, "note")}, {"hours", num(r, "hours")}, {"flat", r["flat"].as<bool>()}});
     }
     return out;
 }
 
 long long Invoice::upsertDefaultShift(long long issuerId, long long id, const json& f, std::string* error) {
-    const std::string start = s(f, "start"), end = s(f, "end"), note = s(f, "note");
+    std::string start = s(f, "start"), end = s(f, "end"), hours;
+    const std::string note = s(f, "note");
     if (!hasNum(f, "weekday")) { *error = "weekday is required"; return 0; }
     const int weekday = static_cast<int>(n(f, "weekday"));
     if (weekday < 0 || weekday > 6) { *error = "weekday must be 0-6"; return 0; }
-    if (start.empty() || end.empty()) { *error = "from and till are required"; return 0; }
+    const bool timed = !start.empty() && !end.empty();
+    if (!timed) {
+        if (!hasNum(f, "hours") || n(f, "hours") <= 0) { *error = "enter from and till, or the hours"; return 0; }
+        hours = money2(n(f, "hours")); start.clear(); end.clear();
+    }
     try {
         if (id > 0) {
             auto r = db_->query(
-                "UPDATE invoice_default_shifts SET weekday = $3::int, start_at = $4::time, end_at = $5::time, note = NULLIF($6,'') "
+                "UPDATE invoice_default_shifts SET weekday = $3::int, start_at = NULLIF($4,'')::time, end_at = NULLIF($5,'')::time, "
+                "       hours = NULLIF($7,'')::numeric, note = NULLIF($6,'') "
                 "WHERE id = $1::int AND issuer_id = $2::int RETURNING id",
-                {std::to_string(id), std::to_string(issuerId), std::to_string(weekday), start, end, note});
+                {std::to_string(id), std::to_string(issuerId), std::to_string(weekday), start, end, note, hours});
             if (r.empty()) { *error = "no such default"; return 0; }
             return id;
         }
         auto r = db_->query(
-            "INSERT INTO invoice_default_shifts (issuer_id, weekday, start_at, end_at, note) "
-            "VALUES ($1::int, $2::int, $3::time, $4::time, NULLIF($5,'')) RETURNING id",
-            {std::to_string(issuerId), std::to_string(weekday), start, end, note});
+            "INSERT INTO invoice_default_shifts (issuer_id, weekday, start_at, end_at, hours, note) "
+            "VALUES ($1::int, $2::int, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($6,'')::numeric, NULLIF($5,'')) RETURNING id",
+            {std::to_string(issuerId), std::to_string(weekday), start, end, note, hours});
         if (r.empty()) { *error = "could not add"; return 0; }
         return r[0]["id"].as<long long>();
     } catch (const std::exception& e) {
@@ -561,11 +577,11 @@ int Invoice::applyDefaults(long long invoiceId, bool force, std::string* error) 
         if (!have.empty()) { *error = "this invoice already has days"; return 0; }
     }
     auto r = db_->query(R"SQL(
-        INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, note)
-        SELECT $1::int, d::date, s.start_at, s.end_at, s.note
+        INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note)
+        SELECT $1::int, d::date, s.start_at, s.end_at, s.hours, s.note
           FROM generate_series($2::date, $3::date, interval '1 day') AS d
           JOIN invoice_default_shifts s ON s.issuer_id = $4::int AND s.weekday = EXTRACT(DOW FROM d)::int
-         ORDER BY d, s.start_at
+         ORDER BY d, s.start_at NULLS LAST
         RETURNING id)SQL",
         {std::to_string(invoiceId), inv[0]["period_start"].c_str(), inv[0]["period_end"].c_str(), inv[0]["issuer_id"].c_str()});
     const int added = static_cast<int>(r.size());

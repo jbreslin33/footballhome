@@ -56,7 +56,7 @@ class InvoicesScreen extends Screen {
         .iv-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
         .iv-grid .wide { grid-column:1 / -1; }
         .iv-lbl { font-size:0.72rem; opacity:0.65; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:2px; }
-        .iv-row { display:grid; grid-template-columns:70px 1fr 80px 90px 60px; gap:8px; align-items:center; padding:8px 0;
+        .iv-row { display:grid; grid-template-columns:70px 1fr 80px 90px 130px; gap:8px; align-items:center; padding:8px 0;
                   border-top:1px solid var(--border-color); font-size:0.9rem; }
         .iv-row:first-child { border-top:none; }
         .iv-row .r { text-align:right; }
@@ -72,12 +72,12 @@ class InvoicesScreen extends Screen {
         .iv-total { display:flex; justify-content:flex-end; gap:12px; font-weight:800; font-size:1.1rem; padding:10px 0; }
         .iv-acts { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
         .iv-hint { font-size:0.8rem; opacity:0.7; margin-top:6px; }
-        .iv-day { display:grid; grid-template-columns:150px 110px 110px 60px 1fr 40px; gap:8px; align-items:center; padding:6px 0;
+        .iv-day { display:grid; grid-template-columns:90px 110px 110px 80px 1fr 76px; gap:8px; align-items:center; padding:6px 0;
                   border-top:1px solid var(--border-color); font-size:0.9rem; }
         .iv-day:first-child { border-top:none; }
         .iv-day.head { font-size:0.72rem; opacity:0.65; text-transform:uppercase; letter-spacing:0.04em; }
         .iv-day .hrs { text-align:right; font-weight:700; }
-        @media (max-width: 720px) { .iv-day { grid-template-columns:1fr 1fr 1fr 50px; } .iv-day .note { grid-column:1 / 4; } .iv-day.head { display:none; } }
+        @media (max-width: 720px) { .iv-day { grid-template-columns:70px 1fr 1fr 70px; } .iv-day .note { grid-column:1 / 4; } .iv-day.head { display:none; } }
         @media (max-width: 720px) {
           .iv-row { grid-template-columns:1fr 1fr; }
           .iv-row .desc { grid-column:1 / -1; }
@@ -87,55 +87,23 @@ class InvoicesScreen extends Screen {
           .iv-list-row .hrs { display:none; }
         }
 
-        /* ── the sheet: Lighthouse's InvoiceTemplate ─────────────────── */
-        .inv-sheet { background:#fff; color:#000; font-family:Arial, Helvetica, sans-serif; width:100%; max-width:8.5in;
-                     margin:0 auto; padding:0.55in 0.6in 0.6in; box-sizing:border-box; box-shadow:0 2px 12px rgba(0,0,0,0.25);
-                     position:relative; min-height:10.5in; }
-        .inv-sheet .sh-title { text-align:right; font-size:34pt; font-weight:800; color:#5a5a5a; letter-spacing:0.5px;
-                               line-height:1; margin:0.15in 0.05in 0.25in 0; }
-        .inv-sheet .sh-top { display:flex; justify-content:space-between; align-items:flex-start; gap:0.4in; }
-        .inv-sheet .sh-from { flex:1; }
-        .inv-sheet .sh-row { display:grid; grid-template-columns:1.05in 1fr; align-items:baseline; margin:0 0 7pt; }
-        .inv-sheet .sh-row .lbl { font-size:7.5pt; text-align:right; padding-right:8pt; white-space:nowrap; }
-        .inv-sheet .sh-row .val { font-size:10.5pt; }
-        .inv-sheet .sh-row .val.sm { font-size:7.5pt; }
-        .inv-sheet .sh-billto { font-size:8pt; font-weight:700; margin:12pt 0 9pt 0.32in; }
-        .inv-sheet .sh-meta { width:2.3in; padding-top:14pt; }
-        .inv-sheet .sh-meta div { display:grid; grid-template-columns:0.95in 1fr; align-items:baseline; margin-bottom:16pt; }
-        .inv-sheet .sh-meta b { font-size:8.5pt; }
-        .inv-sheet .sh-meta span { font-size:10.5pt; }
-        .inv-sheet table.sh-table { width:100%; border-collapse:collapse; margin-top:0.35in; font-size:10pt; page-break-inside:avoid; }
-        .inv-sheet table.sh-table th { font-size:8.5pt; font-weight:700; text-align:center; padding:4pt 3pt; border:1px solid #333; }
-        .inv-sheet table.sh-table td { border:1px solid #333; padding:3pt 6pt; height:15pt; }
-        .inv-sheet table.sh-table th.cat, .inv-sheet table.sh-table td.cat { border:none; width:0.8in; text-align:right;
-                               font-size:10pt; padding-right:6pt; white-space:nowrap; }
-        .inv-sheet table.sh-table thead tr { border-top:3px solid #333; }
-        .inv-sheet table.sh-table th.cat { border:none; }
-        .inv-sheet table.sh-table td.r { text-align:right; white-space:nowrap; }
-        .inv-sheet table.sh-table td.c { text-align:center; white-space:nowrap; }
-        .inv-sheet table.sh-table td.desc { width:auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:3.6in; }
-        .inv-sheet table.sh-table .col-hu { width:0.8in; } .inv-sheet table.sh-table .col-rate { width:0.8in; }
-        .inv-sheet table.sh-table .col-amt { width:0.95in; }
-        .inv-sheet table.sh-table tr.total td { border:none; }
-        .inv-sheet table.sh-table tr.total td.lbl { text-align:right; font-weight:700; font-size:8.5pt; padding-right:8pt; }
-        .inv-sheet table.sh-table tr.total td.amt { border:1px solid #333; text-align:right; white-space:nowrap; }
-        .inv-sheet .sh-payable { display:flex; align-items:center; gap:6pt; margin:14pt 0 0 0.4in; font-size:8.5pt; font-weight:700; }
-        .inv-sheet .sh-payable .box { flex:0 0 3.2in; border:1px solid #333; min-height:16pt; font-weight:400; font-size:11pt;
-                                      padding:1pt 6pt; box-sizing:border-box; }
-        .inv-sheet .sh-thanks { text-align:center; font-size:8.5pt; font-weight:700; margin-top:0.45in; }
-        .inv-sheet .sh-page { position:absolute; left:0; right:0; bottom:0.3in; text-align:center; font-size:7pt; color:#999; }
-        /* Past the template's 14 rows the sheet shrinks its rows so the invoice stays one page. */
-        .inv-sheet.compact table.sh-table { font-size:9pt; margin-top:0.25in; }
-        .inv-sheet.compact table.sh-table td { height:12pt; padding:2pt 5pt; }
-        .inv-sheet.compact table.sh-table td.cat { font-size:9pt; }
-        .inv-sheet.compact .sh-title { margin-bottom:0.15in; }
-        .inv-sheet.tight table.sh-table { font-size:8pt; margin-top:0.2in; }
-        .inv-sheet.tight table.sh-table td { height:10pt; padding:1pt 4pt; }
-        .inv-sheet.tight table.sh-table td.cat { font-size:8pt; }
-        .inv-sheet.tight .sh-row { margin-bottom:4pt; }
-        .inv-sheet.tight .sh-payable { margin-top:8pt; } .inv-sheet.tight .sh-thanks { margin-top:0.25in; }
-        .inv-preview-wrap { overflow:auto; padding:8px 0; }
-        @media (max-width: 720px) { .inv-sheet { padding:0.35in 0.3in; min-height:0; }
+        /* ── the sheet: Lighthouse's InvoiceTemplate itself (images/invoice-template.png,
+           the template PDF's own page image, 1020×1224 px at 144 ppi) drawn at its place
+           on a letter page, with the values laid over it at the positions James's own
+           typed invoices use (measured from InvoiceJBreslin-2026.19.pdf).  Everything is
+           in pt on a 612×792 pt page so screen and print agree. ─────────────────── */
+        .inv-sheet { position:relative; width:612pt; height:792pt; background:#fff; color:#000;
+                     font-family:Arial, Helvetica, sans-serif; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.25); }
+        .inv-sheet .sh-bg { position:absolute; left:51pt; top:90pt; width:510pt; height:612pt; }
+        .inv-sheet .sh-f { position:absolute; white-space:nowrap; line-height:1; }
+        .inv-sheet .sh-f.r { text-align:right; }
+        .inv-sheet .sh-f.c { text-align:center; }
+        .inv-sheet .sh-over { position:absolute; left:94pt; top:359pt; width:430pt; height:248pt; background:#fff; }
+        .inv-sheet .sh-over table { width:100%; height:100%; border-collapse:collapse; table-layout:fixed; }
+        .inv-sheet .sh-over td { border:1px solid #333; padding:0 4pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .inv-sheet .sh-over td.c { text-align:center; } .inv-sheet .sh-over td.r { text-align:right; }
+        .inv-preview-wrap { overflow:hidden; padding:8px 0; }
+        .inv-preview-wrap .inv-scale { transform-origin:top left; }
           .inv-sheet .sh-title { font-size:24pt; } .inv-sheet .sh-row { grid-template-columns:0.9in 1fr; } }
       </style>
       <div class="screen-header">
@@ -210,7 +178,7 @@ class InvoicesScreen extends Screen {
       const res = await this.auth.fetch(`/api/invoices/${id}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      if (!this.inv || this.inv.id !== body.id) { this.nextShiftDate = null; this.nextShiftTimes = null; }
+      if (!this.inv || this.inv.id !== body.id) { this.extraDays = []; }
       this.inv = body;
       this.issuerId = body.issuer_id;
       this.showPlanForm = false;
@@ -318,39 +286,39 @@ class InvoicesScreen extends Screen {
     } catch (err) { this._say(err.message, true); }
   }
 
-  // ── hours by day (mig 469) ─────────────────────────────────────────────
+  // ── hours by day (mig 469 / 474) ─────────────────────────────────────
+  // Every day of the period is a row.  From + till → hours follow; a
+  // number typed into Hours → the times go blank (owner 2026-09-27).
 
-  _shiftPayload(row) {
-    const v = (sel) => { const el = row.querySelector(sel); return el ? el.value : ''; };
-    return { date: v('[data-sf="date"]'), start: v('[data-sf="start"]'), end: v('[data-sf="end"]'), note: v('[data-sf="note"]') };
+  _dayPayload(row, changed) {
+    const el = (k) => row.querySelector(`[data-sf="${k}"]`);
+    const v = (k) => { const e = el(k); return e ? e.value.trim() : ''; };
+    if (changed === 'hours' && v('hours')) { if (el('start')) el('start').value = ''; if (el('end')) el('end').value = ''; }
+    if ((changed === 'start' || changed === 'end') && v('start') && v('end')) { if (el('hours')) el('hours').value = ''; }
+    const start = v('start'), end = v('end'), hours = Number(v('hours'));
+    const base = { date: row.dataset.date, note: v('note') };
+    if (start && end) return { ...base, start, end };
+    if (hours > 0) return { ...base, hours };
+    return null;   // nothing usable yet (one time filled, or all blank)
   }
 
-  async saveShift(shiftId) {
-    if (!this.inv) return;
-    const row = this.find(`[data-shift-row="${shiftId}"]`);
-    if (!row) return;
-    const payload = this._shiftPayload(row);
-    if (!payload.date || !payload.start || !payload.end) return;
+  async saveDay(row, changed) {
+    if (!this.inv || !row) return;
+    const id = Number(row.dataset.shiftRow) || 0;
+    const payload = this._dayPayload(row, changed);
     try {
-      this.inv = await this._post(`/api/invoices/${this.inv.id}/shift`, { id: shiftId, ...payload });
-      await this.load();
-    } catch (err) { this._say(err.message, true); }
-  }
-
-  async addShift() {
-    if (!this.inv) return;
-    const row = this.find('#iv-shift-new');
-    if (!row) return;
-    const payload = this._shiftPayload(row);
-    if (!payload.date) { this._say('Pick the day.', true); return; }
-    if (!payload.start || !payload.end) { this._say('Enter from and till.', true); return; }
-    try {
+      if (!payload) {
+        // A saved row wiped clean is a removed day.
+        if (id && !row.querySelector('[data-sf="start"]').value && !row.querySelector('[data-sf="end"]').value && !row.querySelector('[data-sf="hours"]').value) {
+          await this._delete(`/api/invoices/shift?id=${id}`);
+          await this.openInvoice(this.inv.id); await this.load();
+        }
+        return;
+      }
+      if (id) payload.id = id;
+      else this.extraDays = (this.extraDays || []).filter(d => d !== row.dataset.date + '#' + row.dataset.extra);
       this.inv = await this._post(`/api/invoices/${this.inv.id}/shift`, payload);
-      this.nextShiftDate = InvoicesScreen.addDays(payload.date, 1);
-      this.nextShiftTimes = { start: payload.start, end: payload.end };
       await this.load();
-      const nd = this.find('#iv-shift-new [data-sf="date"]');
-      if (nd) nd.focus();
     } catch (err) { this._say(err.message, true); }
   }
 
@@ -373,32 +341,35 @@ class InvoicesScreen extends Screen {
     } catch (err) { this._say(err.message, true); }
   }
 
-  // ── the usual week (mig 470) ───────────────────────────────────────────
+  // ── the usual week (mig 470 / 474) ───────────────────────────────────
 
-  _defaultPayload(row) {
-    const v = (sel) => { const el = row.querySelector(sel); return el ? el.value : ''; };
-    return { weekday: Number(v('[data-df="weekday"]')), start: v('[data-df="start"]'), end: v('[data-df="end"]'), note: v('[data-df="note"]') };
+  _defaultPayload(row, changed) {
+    const el = (k) => row.querySelector(`[data-df="${k}"]`);
+    const v = (k) => { const e = el(k); return e ? e.value.trim() : ''; };
+    if (changed === 'hours' && v('hours')) { if (el('start')) el('start').value = ''; if (el('end')) el('end').value = ''; }
+    if ((changed === 'start' || changed === 'end') && v('start') && v('end')) { if (el('hours')) el('hours').value = ''; }
+    const start = v('start'), end = v('end'), hours = Number(v('hours'));
+    const base = { weekday: Number(row.dataset.weekday), note: v('note') };
+    if (start && end) return { ...base, start, end };
+    if (hours > 0) return { ...base, hours };
+    return null;
   }
 
-  async saveDefault(id) {
+  async saveDefaultRow(row, changed) {
     const issuer = this._issuer();
-    const row = this.find(`[data-default-row="${id}"]`);
     if (!issuer || !row) return;
-    const payload = this._defaultPayload(row);
-    if (!payload.start || !payload.end) return;
+    const id = Number(row.dataset.defaultRow) || 0;
+    const payload = this._defaultPayload(row, changed);
     try {
-      await this._post('/api/invoices/default', { id, issuer_id: issuer.id, ...payload });
-      await this.load();
-    } catch (err) { this._say(err.message, true); }
-  }
-
-  async addDefault() {
-    const issuer = this._issuer();
-    const row = this.find('#iv-default-new');
-    if (!issuer || !row) return;
-    const payload = this._defaultPayload(row);
-    if (!payload.start || !payload.end) { this._say('Enter from and till.', true); return; }
-    try {
+      if (!payload) {
+        if (id && !row.querySelector('[data-df="start"]').value && !row.querySelector('[data-df="end"]').value && !row.querySelector('[data-df="hours"]').value) {
+          await this._delete(`/api/invoices/default?id=${id}`);
+          await this.load();
+        }
+        return;
+      }
+      if (id) payload.id = id;
+      else this.extraWeekdays = (this.extraWeekdays || []).filter(d => d !== row.dataset.weekday + '#' + row.dataset.extra);
       await this._post('/api/invoices/default', { issuer_id: issuer.id, ...payload });
       await this.load();
     } catch (err) { this._say(err.message, true); }
@@ -478,13 +449,21 @@ class InvoicesScreen extends Screen {
     const root = document.createElement('div');
     root.className = 'inv-print-root';
     root.appendChild(sheet.cloneNode(true));
+    // Zero page margin: Chrome then prints no header (date, title) or footer
+    // (URL, page number) — owner 2026-09-27: "take off the footballhome
+    // footer … take off date and time stamp at top".  The rule only takes
+    // in Chrome as a top-level @page in <head>, not nested in @media print.
+    const pageStyle = document.createElement('style');
+    pageStyle.textContent = '@page { size: letter; margin: 0; }';
+    document.head.appendChild(pageStyle);
     const style = document.createElement('style');
     style.textContent = `
       @media print {
-        @page { size: letter; margin: 0.4in; }
+        html, body { margin:0 !important; padding:0 !important; }
         body.inv-printing > :not(.inv-print-root) { display:none !important; }
-        body.inv-printing { background:#fff !important; margin:0; }
-        .inv-print-root .inv-sheet { box-shadow:none; max-width:none; width:100%; min-height:0; padding:0.15in 0.2in; }
+        body.inv-printing { background:#fff !important; }
+        .inv-print-root .inv-sheet { box-shadow:none; }
+        .inv-print-root .sh-bg { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
       }
       @media screen { .inv-print-root { display:none; } }
     `;
@@ -495,6 +474,7 @@ class InvoicesScreen extends Screen {
     const done = () => {
       document.body.classList.remove('inv-printing');
       root.remove();
+      pageStyle.remove();
       document.title = title;
       window.removeEventListener('afterprint', done);
     };
@@ -528,10 +508,12 @@ class InvoicesScreen extends Screen {
       if (rmLine) { await this.removeLine(Number(rmLine.dataset.deleteLine)); return; }
       const rmPlan = e.target.closest('[data-delete-plan]');
       if (rmPlan) { await this.removePlan(Number(rmPlan.dataset.deletePlan)); return; }
-      if (e.target.closest('#iv-shift-add')) { await this.addShift(); return; }
       if (e.target.closest('#iv-fill')) { await this.fillFromDefault(); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
-      if (e.target.closest('#iv-default-add')) { await this.addDefault(); return; }
+      const moreDay = e.target.closest('[data-more-day]');
+      if (moreDay) { this.extraDays = this.extraDays || []; this.extraDays.push(moreDay.dataset.moreDay + '#' + Date.now()); this._renderBody(); return; }
+      const moreWd = e.target.closest('[data-more-weekday]');
+      if (moreWd) { this.extraWeekdays = this.extraWeekdays || []; this.extraWeekdays.push(moreWd.dataset.moreWeekday + '#' + Date.now()); this._renderBody(); return; }
       const rmShift = e.target.closest('[data-delete-shift]');
       if (rmShift) { await this.removeShift(Number(rmShift.dataset.deleteShift)); return; }
       const rmDef = e.target.closest('[data-delete-default]');
@@ -555,24 +537,13 @@ class InvoicesScreen extends Screen {
       if (e.target.id === 'iv-pend') { await this.updateInvoice({ period_end: e.target.value }); return; }
       if (e.target.id === 'iv-link') { await this.updateInvoice({ link_url: e.target.value }); return; }
       const sf = e.target.closest('[data-sf]');
-      if (sf) {
-        const row = sf.closest('[data-shift-row]');
-        if (row) { await this.saveShift(Number(row.dataset.shiftRow)); return; }
-        const nrow = sf.closest('#iv-shift-new');
-        if (nrow) { const h = nrow.querySelector('.hrs'); if (h) h.textContent = InvoicesScreen.plain(InvoicesScreen.hoursBetween(nrow.querySelector('[data-sf="start"]').value, nrow.querySelector('[data-sf="end"]').value)) + ' h'; }
-        return;
-      }
+      if (sf) { await this.saveDay(sf.closest('[data-shift-row]'), sf.dataset.sf); return; }
       const df = e.target.closest('[data-df]');
-      if (df) {
-        const row = df.closest('[data-default-row]');
-        if (row) { await this.saveDefault(Number(row.dataset.defaultRow)); }
-        return;
-      }
+      if (df) { await this.saveDefaultRow(df.closest('[data-default-row]'), df.dataset.df); return; }
     });
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.target.closest('#iv-new-desc, #iv-new-qty, #iv-new-rate')) { e.preventDefault(); this.addLine(); }
-      if (e.key === 'Enter' && e.target.closest('#iv-shift-new')) { e.preventDefault(); this.addShift(); }
-      if (e.key === 'Enter' && e.target.closest('#iv-default-new')) { e.preventDefault(); this.addDefault(); }
+      if (e.key === 'Enter' && e.target.closest('[data-sf], [data-df]')) { e.preventDefault(); e.target.blur(); }
       if (e.key === 'Enter' && e.target.closest('[data-f]')) { e.preventDefault(); e.target.blur(); }
     });
   }
@@ -597,6 +568,12 @@ class InvoicesScreen extends Screen {
     return d.toISOString().slice(0, 10);
   }
   static WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  static dayLabel(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    if (!m) return iso;
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    return `${InvoicesScreen.WEEKDAYS[d.getUTCDay()]} ${+m[2]}/${+m[3]}`;
+  }
   static hoursBetween(start, end) {
     const t = (x) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(x || '')); return m ? (+m[1]) * 60 + (+m[2]) : NaN; };
     const a = t(start), b = t(end);
@@ -630,9 +607,10 @@ class InvoicesScreen extends Screen {
     }
     if (this.inv) {
       parts.push(this._renderEditor());
-      parts.push(`<div class="iv-sec">Sheet</div><div class="inv-preview-wrap">${this._renderSheet(this.inv)}</div>`);
+      parts.push(`<div class="iv-sec">Sheet</div><div class="inv-preview-wrap"><div class="inv-scale">${this._renderSheet(this.inv)}</div></div>`);
     }
     body.innerHTML = parts.join('');
+    this._fitPreview();
   }
 
   _renderIssuerCard(i) {
@@ -672,6 +650,26 @@ class InvoicesScreen extends Screen {
       </div>`;
   }
 
+  // One entry row: label | from | till | hours | note | ✕ / +.  `attr` is
+  // data-sf (a day on an invoice) or data-df (the usual week).
+  _entryRow(attr, keyAttr, keyVal, label, sh, extras) {
+    const esc = (t) => this.escapeHtml(t);
+    const id = sh ? sh.id : 0;
+    const flat = sh && sh.flat;
+    return `
+      <div class="iv-day" data-${keyAttr}="${id}" ${extras}>
+        <div style="font-weight:700;">${esc(label)}</div>
+        <div><input class="iv-in" type="time" data-${attr}="start" value="${esc(sh && !flat ? sh.start : '')}"></div>
+        <div><input class="iv-in" type="time" data-${attr}="end" value="${esc(sh && !flat ? sh.end : '')}"></div>
+        <div><input class="iv-in num" type="number" step="0.25" min="0" data-${attr}="hours" value="${sh ? InvoicesScreen.plain(sh.hours) : ''}" placeholder="h" title="${sh && !flat ? 'From till till; type a number to use a flat figure instead' : 'Flat hours, or fill from and till'}"></div>
+        <div class="note"><input class="iv-in" data-${attr}="note" value="${esc(sh ? (sh.note || '') : '')}" placeholder="note"></div>
+        <div style="display:flex; gap:4px;">
+          ${id ? `<button class="iv-btn danger sm" data-delete-${attr === 'sf' ? 'shift' : 'default'}="${id}" title="Clear this day">✕</button>` : ''}
+          ${id ? `<button class="iv-btn ghost sm" data-more-${attr === 'sf' ? 'day' : 'weekday'}="${esc(keyVal)}" title="Another stint the same day">+</button>` : ''}
+        </div>
+      </div>`;
+  }
+
   _weekdaySel(cur, attrs) {
     return `<select class="iv-in" ${attrs}>${InvoicesScreen.WEEKDAYS.map((d, n) => `<option value="${n}" ${n === cur ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
   }
@@ -680,29 +678,23 @@ class InvoicesScreen extends Screen {
     const esc = (t) => this.escapeHtml(t);
     const defs = i.default_shifts || [];
     const total = defs.reduce((a, d) => a + (Number(d.hours) || 0), 0);
+    const order = [1, 2, 3, 4, 5, 6, 0];   // Mon … Sun
+    let rows = '';
+    for (const wd of order) {
+      const mine = defs.filter(d => d.weekday === wd);
+      const label = InvoicesScreen.WEEKDAYS[wd];
+      if (!mine.length) rows += this._entryRow('df', 'default-row', String(wd), label, null, `data-weekday="${wd}"`);
+      mine.forEach((d, k) => { rows += this._entryRow('df', 'default-row', String(wd), k ? '' : label, d, `data-weekday="${wd}"`); });
+      for (const x of (this.extraWeekdays || []).filter(e => e.split('#')[0] === String(wd)))
+        rows += this._entryRow('df', 'default-row', String(wd), '', null, `data-weekday="${wd}" data-extra="${esc(x.split('#')[1])}"`);
+    }
     return `
       <div class="iv-sec">Usual week</div>
       <div class="iv-card">
         <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('default_hint', { name: i.name }))}</div>
-        <div class="iv-day head"><div>Day</div><div>From</div><div>Till</div><div class="hrs">Hours</div><div class="note">Note</div><div></div></div>
-        ${defs.map(d => `
-          <div class="iv-day" data-default-row="${d.id}">
-            <div>${this._weekdaySel(d.weekday, 'data-df="weekday"')}</div>
-            <div><input class="iv-in" type="time" data-df="start" value="${esc(d.start)}"></div>
-            <div><input class="iv-in" type="time" data-df="end" value="${esc(d.end)}"></div>
-            <div class="hrs">${InvoicesScreen.plain(d.hours)} h</div>
-            <div class="note"><input class="iv-in" data-df="note" value="${esc(d.note || '')}" placeholder="note"></div>
-            <div><button class="iv-btn danger sm" data-delete-default="${d.id}" title="Remove">✕</button></div>
-          </div>`).join('')}
-        <div class="iv-day" id="iv-default-new" style="border-top:1px dashed var(--border-color);">
-          <div>${this._weekdaySel(1, 'data-df="weekday"')}</div>
-          <div><input class="iv-in" type="time" data-df="start" value="17:00"></div>
-          <div><input class="iv-in" type="time" data-df="end" value="19:00"></div>
-          <div class="hrs"></div>
-          <div class="note"><input class="iv-in" data-df="note" placeholder="note"></div>
-          <div><button id="iv-default-add" class="iv-btn sm">Add</button></div>
-        </div>
-        ${defs.length ? `<div class="iv-hint">${InvoicesScreen.plain(total)} h a week · ${InvoicesScreen.plain(total * 2)} h an invoice</div>` : ''}
+        <div class="iv-day head"><div>Day</div><div>From</div><div>Till</div><div>Hours</div><div class="note">Note</div><div></div></div>
+        ${rows}
+        <div class="iv-hint">${InvoicesScreen.plain(total)} h a week · ${InvoicesScreen.plain(total * 2)} h an invoice</div>
       </div>`;
   }
 
@@ -794,24 +786,21 @@ class InvoicesScreen extends Screen {
 
         <div class="iv-sec">Hours by day</div>
         <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('hours_hint'))}</div>
-        <div class="iv-day head"><div>Day</div><div>From</div><div>Till</div><div class="hrs">Hours</div><div class="note">Note</div><div></div></div>
-        ${(inv.shifts || []).map(sh => `
-          <div class="iv-day" data-shift-row="${sh.id}">
-            <div><input class="iv-in" type="date" data-sf="date" value="${esc(sh.date)}" title="${esc(sh.day_label)}"></div>
-            <div><input class="iv-in" type="time" data-sf="start" value="${esc(sh.start)}"></div>
-            <div><input class="iv-in" type="time" data-sf="end" value="${esc(sh.end)}"></div>
-            <div class="hrs">${InvoicesScreen.plain(sh.hours)} h</div>
-            <div class="note"><input class="iv-in" data-sf="note" value="${esc(sh.note || '')}" placeholder="note"></div>
-            <div><button class="iv-btn danger sm" data-delete-shift="${sh.id}" title="Remove day">✕</button></div>
-          </div>`).join('')}
-        <div class="iv-day" id="iv-shift-new" style="border-top:1px dashed var(--border-color);">
-          <div><input class="iv-in" type="date" data-sf="date" value="${esc(this.nextShiftDate || inv.period_start || '')}" min="${esc(inv.period_start || '')}"></div>
-          <div><input class="iv-in" type="time" data-sf="start" value="${esc(this.nextShiftTimes?.start || '17:00')}"></div>
-          <div><input class="iv-in" type="time" data-sf="end" value="${esc(this.nextShiftTimes?.end || '19:00')}"></div>
-          <div class="hrs"></div>
-          <div class="note"><input class="iv-in" data-sf="note" placeholder="note"></div>
-          <div><button id="iv-shift-add" class="iv-btn sm">Add</button></div>
-        </div>
+        <div class="iv-day head"><div>Day</div><div>From</div><div>Till</div><div>Hours</div><div class="note">Note</div><div></div></div>
+        ${(() => {
+          const shifts = inv.shifts || [];
+          if (!inv.period_start || !inv.period_end) return `<div class="iv-hint">Set the work-from and work-till dates first.</div>`;
+          let rows = '';
+          for (let d = inv.period_start, n = 0; d <= inv.period_end && n < 62; d = InvoicesScreen.addDays(d, 1), n++) {
+            const label = InvoicesScreen.dayLabel(d);
+            const mine = shifts.filter(x => x.date === d);
+            if (!mine.length) rows += this._entryRow('sf', 'shift-row', d, label, null, `data-date="${d}"`);
+            mine.forEach((x, k) => { rows += this._entryRow('sf', 'shift-row', d, k ? '' : label, x, `data-date="${d}"`); });
+            for (const e of (this.extraDays || []).filter(e => e.split('#')[0] === d))
+              rows += this._entryRow('sf', 'shift-row', d, '', null, `data-date="${d}" data-extra="${esc(e.split('#')[1])}"`);
+          }
+          return rows;
+        })()}
         <div class="iv-acts">
           <span style="font-size:0.9rem; font-weight:700;">${InvoicesScreen.plain(inv.shift_hours || 0)} h over ${(inv.shifts || []).length} day${(inv.shifts || []).length === 1 ? '' : 's'}</span>
           ${!(inv.shifts || []).length ? `<button id="iv-fill" class="iv-btn ghost sm">📅 Fill from usual week</button>` : ''}
@@ -857,44 +846,61 @@ class InvoicesScreen extends Screen {
     const is = inv.issuer || {};
     const bt = inv.bill_to || {};
     const lines = inv.lines || [];
-    const MIN_ROWS = 14;
-    let lastCat = null;
-    const rows = lines.map(l => {
-      const label = l.category !== lastCat ? (l.category_label || '') : '';
-      lastCat = l.category;
-      const rate = l.rate == null ? '' : (l.category === 'labor' ? InvoicesScreen.plain(l.rate) : InvoicesScreen.money(l.rate));
-      return `<tr><td class="cat">${esc(label)}</td><td class="desc">${esc(l.printed)}</td><td class="c">${InvoicesScreen.plain(l.quantity)}</td><td class="c">${esc(rate)}</td><td class="r">${InvoicesScreen.money(l.amount)}</td></tr>`;
-    });
-    while (rows.length < MIN_ROWS) rows.push('<tr><td class="cat"></td><td class="desc">&nbsp;</td><td></td><td></td><td></td></tr>');
-    const fit = lines.length > InvoicesScreen.TIGHT_AT ? 'tight' : (lines.length > InvoicesScreen.SHEET_ROWS ? 'compact' : '');
+    const f = (x, y, text, size = 10, cls = '', w = null) =>
+      `<div class="sh-f ${cls}" style="left:${x}pt; top:${y}pt; font-size:${size}pt;${w != null ? ` width:${w}pt;` : ''}">${esc(text)}</div>`;
+    // Table geometry from the template: 14 rows from y=359 to 607, columns at
+    // x = 94 | 335 | 399 | 460 | 524 (description, hours/units, rate, amount).
+    const ROWS = InvoicesScreen.SHEET_ROWS, TOP = 359, PITCH = 17.7;
+    const COL = { desc: 100, hoursL: 335, hoursW: 64, rateL: 399, rateW: 61, amtR: 517, catR: 88 };
+    const rateText = (l) => l.rate == null ? '' : (l.category === 'labor' ? InvoicesScreen.plain(l.rate) : InvoicesScreen.money(l.rate));
+    let body = '';
+    if (lines.length <= ROWS) {
+      let lastCat = null;
+      lines.forEach((l, i) => {
+        const y = TOP + i * PITCH + 3;
+        const label = l.category !== lastCat ? (l.category_label || '') : '';
+        lastCat = l.category;
+        if (label) body += f(0, y, label, 10, 'r', COL.catR);
+        body += f(COL.desc, y, l.printed, 10, '', 233);
+        body += f(COL.hoursL, y, InvoicesScreen.plain(l.quantity), 10, 'c', COL.hoursW);
+        body += f(COL.rateL, y, rateText(l), 10, 'c', COL.rateW);
+        body += f(COL.amtR - 60, y, InvoicesScreen.money(l.amount), 10, 'r', 60);
+      });
+    } else {
+      // More lines than the template has rows: cover its 14 rows with our own
+      // grid at a tighter pitch, same columns, so it still reads as the sheet.
+      const size = lines.length > InvoicesScreen.TIGHT_AT ? 7.5 : 8.5;
+      let lastCat = null;
+      const rows = lines.map(l => {
+        const label = l.category !== lastCat ? (l.category_label || '') : '';
+        lastCat = l.category;
+        return `<tr><td class="r" style="border:none; width:${COL.catR - 94 + 2}pt;">${esc(label)}</td><td>${esc(l.printed)}</td><td class="c">${InvoicesScreen.plain(l.quantity)}</td><td class="c">${esc(rateText(l))}</td><td class="r">${InvoicesScreen.money(l.amount)}</td></tr>`;
+      }).join('');
+      body += `<div class="sh-over" style="left:0; width:524pt; font-size:${size}pt;"><table><colgroup><col style="width:94pt"><col><col style="width:64pt"><col style="width:61pt"><col style="width:64pt"></colgroup>${rows}</table></div>`;
+    }
     return `
-      <div class="inv-sheet ${fit}">
-        <div class="sh-title">INVOICE</div>
-        <div class="sh-top">
-          <div class="sh-from">
-            <div class="sh-row"><span class="lbl">Address:</span><span class="val">${esc(is.address || '')}</span></div>
-            <div class="sh-row"><span class="lbl">City, State, Zip:</span><span class="val">${esc(is.city_state_zip || '')}</span></div>
-            <div class="sh-row"><span class="lbl">Phone:</span><span class="val">${esc(is.phone || '')}</span></div>
-            <div class="sh-billto">BILL TO:</div>
-            <div class="sh-row"><span class="lbl">Organization:</span><span class="val sm">${esc(bt.organization || '')}</span></div>
-            <div class="sh-row"><span class="lbl">Name:</span><span class="val sm">${esc(bt.contact_name || '')}</span></div>
-            <div class="sh-row"><span class="lbl">Address:</span><span class="val sm">${esc(bt.address || '')}</span></div>
-            <div class="sh-row"><span class="lbl">City, State, Zip:</span><span class="val sm">${esc(bt.city_state_zip || '')}</span></div>
-          </div>
-          <div class="sh-meta">
-            <div><b>INVOICE#:</b><span>${inv.number}</span></div>
-            <div><b>DATE:</b><span>${esc(inv.date_us || InvoicesScreen.usDate(inv.date))}</span></div>
-          </div>
-        </div>
-        <table class="sh-table">
-          <thead><tr><th class="cat"></th><th>DESCRIPTION</th><th class="col-hu">HOURS/UNITS</th><th class="col-rate">RATE</th><th class="col-amt">AMOUNT</th></tr></thead>
-          <tbody>
-            ${rows.join('')}
-            <tr class="total"><td class="cat"></td><td class="lbl" colspan="3">TOTAL</td><td class="amt">${InvoicesScreen.money(inv.total)}</td></tr>
-          </tbody>
-        </table>
-        <div class="sh-payable"><span>${esc(this._copy('payable') || 'Make all checks payable to:')}</span><span class="box">${esc(is.payable_to || '')}</span></div>
-        <div class="sh-thanks">${esc(this._copy('thanks') || 'Thank you for your business!')}</div>
+      <div class="inv-sheet">
+        <img class="sh-bg" src="images/invoice-template.png" alt="">
+        ${f(122, 140, is.address || '', 12)}
+        ${f(133, 160, is.city_state_zip || '', 12)}
+        ${f(111, 182, is.phone || '', 12)}
+        ${f(424, 161, String(inv.number), 10)}
+        ${f(407, 193, inv.date_us || InvoicesScreen.usDate(inv.date), 10)}
+        ${bt.contact_name ? f(122, 244, bt.contact_name, 8) : ''}
+        ${body}
+        ${f(COL.amtR - 70, 612, InvoicesScreen.money(inv.total), 10, 'r', 74)}
+        ${f(220, 633, is.payable_to || '', 12)}
       </div>`;
+  }
+
+  // The sheet is a fixed 8.5×11 in; on a narrow screen scale the preview down to fit.
+  _fitPreview() {
+    const wrap = this.find('.inv-preview-wrap');
+    const inner = wrap && wrap.querySelector('.inv-scale');
+    if (!wrap || !inner) return;
+    const sheetW = 816;   // 612pt in CSS px
+    const scale = Math.min(1, (wrap.clientWidth || sheetW) / sheetW);
+    inner.style.transform = `scale(${scale})`;
+    wrap.style.height = `${Math.ceil(1056 * scale) + 16}px`;
   }
 }
