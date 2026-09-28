@@ -548,7 +548,14 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       if (e.target.closest('#iv-refresh')) { this.load(); return; }
       const pill = e.target.closest('[data-issuer]');
-      if (pill) { this.issuerId = Number(pill.dataset.issuer); this.editIssuer = false; this.showUsual = false; this.confirmDelete = 0; this._renderBody(); return; }
+      if (pill) {
+        // Another person's pill: their board only.  The invoice open on the
+        // page belongs to the previous person, so it closes too (owner
+        // 2026-09-28: "when i hit jamie pill shouldn't all my stuff go away?").
+        const next = Number(pill.dataset.issuer);
+        if (next !== this.issuerId) { this.inv = null; this.extraWeekdays = []; }
+        this.issuerId = next; this.editIssuer = false; this.showUsual = false; this.confirmDelete = 0; this._renderBody(); return;
+      }
       if (e.target.closest('#iv-new')) { await this.newInvoice(); return; }
       if (e.target.closest('#iv-edit-issuer')) { this.editIssuer = !this.editIssuer; this._renderBody(); return; }
       if (e.target.closest('#iv-usual-open')) { this.showUsual = true; this._renderBody(); return; }
