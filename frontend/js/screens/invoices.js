@@ -400,11 +400,41 @@ class InvoicesScreen extends Screen {
     catch (_) { this._say(url); }
   }
 
-  emailDeputy() {
+  // A Gmail compose URL carries plain text only, so "Invoice #19" can't be
+  // a hyperlink through the URL (owner 2026-09-28: "it does not look like
+  // hyper link … can the link be 'Invoice #19'").  The message goes on the
+  // clipboard as text/html + text/plain first, then Gmail opens with To /
+  // Cc / Subject filled and the body empty for one paste.  Clipboard first,
+  // window second: once the new tab has focus this document can't write the
+  // clipboard.  If the clipboard refuses, the plain body rides in the URL
+  // as before.
+  async emailDeputy() {
     const d = this._emailDraft();
     if (!d) return;
     if (!d.to) { this._say('No email on the bill-to row.', true); return; }
-    this.openGmailCompose(this.buildGmailComposeHref({ to: d.to, cc: d.cc, subject: d.subject, body: d.body }));
+    const copied = await this._copyEmailBody(d);
+    this.openGmailCompose(this.buildGmailComposeHref({ to: d.to, cc: d.cc, subject: d.subject, body: copied ? '' : d.body }));
+    if (copied) this._say(this._copy('email_copied') || 'Message copied — paste it into the Gmail body.');
+  }
+
+  async copyEmailBody() {
+    const d = this._emailDraft();
+    if (!d) return;
+    if (await this._copyEmailBody(d)) this._say(this._copy('email_copied') || 'Message copied — paste it into the Gmail body.');
+    else this._say('Could not copy — select the message text and copy it by hand.', true);
+  }
+
+  async _copyEmailBody(d) {
+    try {
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html':  new Blob([d.html], { type: 'text/html' }),
+          'text/plain': new Blob([d.body], { type: 'text/plain' }),
+        })]);
+        return true;
+      }
+    } catch (err) { console.warn('[invoices] rich clipboard write failed:', err); }
+    return false;
   }
 
   // The draft as it will open in Gmail: shown on the page under the buttons
@@ -414,18 +444,29 @@ class InvoicesScreen extends Screen {
     if (!inv) return null;
     const to = inv.bill_to?.email || '';
     const mine = Number(this.board?.viewer_person_id || 0) > 0 && Number(inv.issuer?.person_id) === Number(this.board.viewer_person_id);
-    const link = (inv.link_url || '').trim() || this._publicUrl(inv) || (this._copy('email_no_link') || 'view online');
+    const url = (inv.link_url || '').trim() || this._publicUrl(inv);
+    const link = url || (this._copy('email_no_link') || 'view online');
     const tokens = {
       title: inv.title, number: inv.number, name: inv.issuer?.name || '', week1: inv.week1, week2: inv.week2,
       total: InvoicesScreen.money(inv.total), file: inv.file_name, link,
       to_name: inv.bill_to?.email_to_name || '',
     };
-    const r = window.MessageCopy ? MessageCopy.render('invoices', mine ? 'email' : 'email_coach', tokens) : null;
+    const tier = mine ? 'email' : 'email_coach';
+    const r = window.MessageCopy ? MessageCopy.render('invoices', tier, tokens) : null;
     const subject = r ? r.subject : inv.title;
     const body = r ? r.body : `${inv.title}: ${link}`;
+    // The same message as HTML for the clipboard: {link} becomes
+    // <a href=url>Invoice #19</a> (wording = email_link_text, mig 481).
+    const esc = (t) => this.escapeHtml(t);
+    const linkText = this._copy('email_link_text', { number: inv.number }) || `Invoice #${inv.number}`;
+    const anchor = url ? `<a href="${esc(url)}">${esc(linkText)}</a>` : esc(link);
+    const MARK = '@@fh-link@@';
+    const rh = window.MessageCopy ? MessageCopy.render('invoices', tier, { ...tokens, link: MARK }) : null;
+    const html = esc(rh ? rh.body : `${inv.title}: ${MARK}`).split(MARK).join(anchor)
+      .split('\n').map(line => `<div>${line || '<br>'}</div>`).join('');
     // A coach's invoice copies the coach ("he is included in this email").
     const cc = !mine && inv.issuer?.email ? inv.issuer.email : undefined;
-    return { to, cc, subject, body, mine };
+    return { to, cc, subject, body, html, mine };
   }
 
   async removeInvoice(id) {
@@ -529,6 +570,7 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('#iv-fill')) { await this.fillFromDefault(); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
       if (e.target.closest('#iv-copy-link')) { await this.copyPublicLink(); return; }
+      if (e.target.closest('#iv-copy-email')) { await this.copyEmailBody(); return; }
       const moreDay = e.target.closest('[data-more-day]');
       if (moreDay) { this.extraDays = this.extraDays || []; this.extraDays.push(moreDay.dataset.moreDay + '#' + Date.now()); this._renderBody(); return; }
       const moreWd = e.target.closest('[data-more-weekday]');
@@ -803,10 +845,12 @@ class InvoicesScreen extends Screen {
         <div class="iv-hint">${esc(this._copy('print_hint', { file: inv.file_name }))}</div>
         ${(() => { const d = this._emailDraft(); return d ? `
         <div class="iv-card" style="margin-top:8px; background:var(--bg-primary);">
-          <div class="iv-lbl">Email draft — opens in Gmail with your signature added</div>
+          <div class="iv-lbl">Email draft</div>
+          <div class="iv-hint" style="margin:2px 0 4px;">${esc(this._copy('email_hint'))}</div>
           <div style="font-size:0.85rem; margin-top:4px;"><b>To:</b> ${esc(d.to || '—')}${d.cc ? ` &nbsp; <b>Cc:</b> ${esc(d.cc)}` : ''}</div>
           <div style="font-size:0.85rem;"><b>Subject:</b> ${esc(d.subject)}</div>
-          <pre style="white-space:pre-wrap; font:inherit; font-size:0.9rem; margin:6px 0 0; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px;">${esc(d.body)}</pre>
+          <div style="font-size:0.9rem; margin:6px 0 0; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px;">${d.html}</div>
+          <div style="margin-top:6px;"><button id="iv-copy-email" class="iv-btn ghost sm">Copy message</button></div>
         </div>` : ''; })()}
         <div class="iv-card" style="margin-top:8px; background:var(--bg-primary);">
           <div class="iv-lbl">Viewable link — anyone with it sees this sheet; this is the link in the email</div>
