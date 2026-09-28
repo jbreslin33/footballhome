@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <regex>
+#include <ctime>
 
 #include "../database/Database.h"
 #include "../models/MessageCopy.h"
@@ -57,17 +58,40 @@ const char* kContactsSql =
     "       (SELECT m.channel FROM club_contact_messages m WHERE m.contact_id = c.id ORDER BY m.sent_at DESC LIMIT 1) AS last_channel "
     "  FROM club_contacts c WHERE c.is_active ";
 
-json tiers() {
+json tiers(const std::string& kind = "opponent") {
     json out = json::array();
     auto rows = Database::getInstance()->query(
-        "SELECT tier, label FROM message_templates WHERE kind = 'opponent' AND is_active AND subject IS NOT NULL ORDER BY sort_order, id");
+        "SELECT tier, label FROM message_templates WHERE kind = $1 AND is_active AND subject IS NOT NULL ORDER BY sort_order, id", {kind});
     for (const auto& r : rows) {
         std::string label = str(r, "label");
         auto dash = label.find(" — ");
         if (dash != std::string::npos) label = label.substr(dash + 5);
+        auto colon = label.find(": ");
+        if (colon != std::string::npos) label = label.substr(colon + 2);
         out.push_back({{"tier", str(r, "tier")}, {"label", label}});
     }
     return out;
+}
+
+// leagues row for a label on club_competitions ('CASA' → CASA Select).
+json leagueFor(const std::string& label) {
+    auto rows = Database::getInstance()->query(
+        "SELECT l.id, l.name, COALESCE(l.website_url,'') AS website_url, COALESCE(l.correspondence_email,'') AS correspondence_email "
+        "  FROM leagues l WHERE l.id = (SELECT MIN(league_id) FROM club_competitions WHERE league_label = $1 AND league_id IS NOT NULL) "
+        "     OR (LOWER(l.name) LIKE LOWER($1) || '%' AND NOT EXISTS (SELECT 1 FROM club_competitions WHERE league_label = $1 AND league_id IS NOT NULL)) "
+        " ORDER BY l.id LIMIT 1", {label});
+    if (rows.empty()) return {{"id", 0}, {"name", label}, {"website_url", ""}, {"correspondence_email", ""}};
+    const auto& r = rows[0];
+    return {{"id", r["id"].as<long long>()}, {"name", str(r, "name")}, {"website_url", str(r, "website_url")}, {"correspondence_email", str(r, "correspondence_email")}};
+}
+
+std::string senderName(long long userId) {
+    std::string sender;
+    if (userId > 0) {
+        auto u = Database::getInstance()->query("SELECT COALESCE(p.first_name,'') || CASE WHEN p.last_name IS NULL THEN '' ELSE ' ' || p.last_name END AS nm FROM users us JOIN persons p ON p.id = us.person_id WHERE us.id = $1::int", {std::to_string(userId)});
+        if (!u.empty()) sender = str(u[0], "nm");
+    }
+    return sender;
 }
 
 // The opponent club of a match: the other team's clubs row, else the
@@ -144,6 +168,8 @@ void OpponentsController::registerRoutes(Router& router, const std::string& pref
     router.post  (prefix + "/competition",        [this](const Request& r) { return handleCompetition(r); });
     router.post  (prefix + "/alias",              [this](const Request& r) { return handleAlias(r); });
     router.post  (prefix + "/message",            [this](const Request& r) { return handleMessage(r); });
+    router.get   (prefix + "/league",             [this](const Request& r) { return handleLeague(r); });
+    router.post  (prefix + "/group-message",      [this](const Request& r) { return handleGroupMessage(r); });
     router.get   (prefix + "/for-match/:matchId", [this](const Request& r) { return handleForMatch(r); });
 }
 
@@ -290,6 +316,8 @@ Response OpponentsController::handleMessage(const Request& request) {
     json b; Response err; if (!parseBody(request, &b, &err)) return err;
     const long long contactId = n(b, "contact_id"), matchId = n(b, "match_id");
     const std::string channel = s(b, "channel"); std::string tier = s(b, "tier"); if (tier.empty()) tier = "general";
+    std::string kind = s(b, "kind"); if (kind != "casa") kind = "opponent";
+    const std::string leagueLabel = s(b, "league_label");
     if (!contactId || (channel != "email" && channel != "sms")) return jsonError(HttpStatus::BAD_REQUEST, "contact_id and channel (email|sms) required");
     if (matchId) { if (!matchGate(request, matchId, &err)) return err; }
     else if (!adminGate(request, &err)) return err;
@@ -303,24 +331,114 @@ Response OpponentsController::handleMessage(const Request& request) {
         MatchInfo mi; if (matchId) loadMatch(matchId, &mi);
         std::string first = str(c, "name"); if (auto sp = first.find(' '); sp != std::string::npos) first = first.substr(0, sp);
         if (first.empty()) first = "there";
-        // Who is writing — the signed-in user's first name.
-        std::string sender;
-        const long long userId = bearerUserId(request);
-        if (userId > 0) {
-            auto u = db->query("SELECT COALESCE(p.first_name,'') || CASE WHEN p.last_name IS NULL THEN '' ELSE ' ' || p.last_name END AS nm FROM users us JOIN persons p ON p.id = us.person_id WHERE us.id = $1::int", {std::to_string(userId)});
-            if (!u.empty()) sender = str(u[0], "nm");
+        // Who is writing — the signed-in user.  From the commissioner section
+        // the mail is composed as the league's address (leagues.correspondence_email).
+        long long userId = bearerUserId(request); if (userId < 0) userId = 0;
+        std::string sender = senderName(userId);
+        json league = kind == "casa" ? leagueFor(leagueLabel.empty() ? "CASA" : leagueLabel) : json(nullptr);
+        const std::string fromEmail = league.is_null() ? std::string() : league.value("correspondence_email", "");
+        std::string division;
+        if (!leagueLabel.empty()) {
+            auto d = db->query("SELECT division_label FROM club_competitions WHERE club_id = $1::int AND league_label = $2 ORDER BY season DESC LIMIT 1", {std::to_string(c["club_id"].as<long long>()), leagueLabel});
+            if (!d.empty()) division = str(d[0], "division_label");
         }
         MessageCopy copy;
         MessageCopy::Tokens tokens = {{"club", str(c, "club_name")}, {"contact_first", first}, {"our_team", mi.ourTeam.empty() ? "Lighthouse 1893 SC" : mi.ourTeam},
                                       {"date", mi.date.empty() ? "our next game" : mi.date}, {"time", mi.time.empty() ? "kick-off" : mi.time},
                                       {"venue", mi.venue.empty() ? "the field" : mi.venue}, {"home_away", mi.id ? (mi.isHome ? "vs" : "at") : "vs"},
-                                      {"sender", sender.empty() ? "Lighthouse 1893 SC" : sender}};
-        auto r = copy.render("opponent", tier, tokens);
+                                      {"sender", sender.empty() ? "Lighthouse 1893 SC" : sender}, {"from_email", fromEmail},
+                                      {"league", league.is_null() ? "" : league.value("name", "")}, {"division", division}};
+        auto r = copy.render(kind, tier, tokens);
         if (!r.ok()) return jsonError(HttpStatus::BAD_REQUEST, "no message template '" + tier + "'");
-        db->query("INSERT INTO club_contact_messages (club_id, contact_id, match_id, channel, contact, tier, sent_by_user_id) VALUES ($1::int, $2::int, NULLIF($3,'0')::int, $4, $5, $6, NULLIF($7,'0')::int)",
-                  {std::to_string(c["club_id"].as<long long>()), std::to_string(contactId), std::to_string(matchId), channel, contact, tier, std::to_string(userId > 0 ? userId : 0)});
-        json out = {{"ok", true}, {"subject", r.subject}, {"body", r.body}, {"contact", contact}};
+        db->query("INSERT INTO club_contact_messages (club_id, contact_id, match_id, channel, contact, tier, sent_by_user_id, sender_email, league_label) "
+                  "VALUES ($1::int, $2::int, NULLIF($3,'0')::int, $4, $5, $6, NULLIF($7,'0')::int, NULLIF($8,''), NULLIF($9,''))",
+                  {std::to_string(c["club_id"].as<long long>()), std::to_string(contactId), std::to_string(matchId), channel, contact, tier, std::to_string(userId), fromEmail, leagueLabel});
+        json out = {{"ok", true}, {"subject", r.subject}, {"body", r.body}, {"contact", contact}, {"from_email", fromEmail}};
         copy.addComposeHrefs(out, channel, contact, r.subject, r.body, r.body);
         return jsonOut(HttpStatus::OK, out);
     } catch (const std::exception& e) { std::cerr << "[opponents message] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// ─── the commissioner view of one league (mig 486) ──────────────────────────
+Response OpponentsController::handleLeague(const Request& request) {
+    Response denied; if (!adminGate(request, &denied)) return denied;
+    std::string label = request.getQueryParam("label"); if (label.empty()) label = "CASA";
+    try {
+        auto* db = Database::getInstance();
+        json out = {{"league", leagueFor(label)}, {"label", label}, {"competitions", json::array()}, {"contacts", json::array()},
+                    {"tiers", tiers("casa")}, {"our_links", json::array()}, {"recent", json::array()}};
+        for (const auto& r : db->query(R"SQL(
+            SELECT k.id, k.club_id, c.name AS club_name, COALESCE(c.logo_url,'') AS logo_url, k.division_label, k.season, k.status,
+                   k.lead_name, k.last_contacted, k.notes, k.home_field, k.external_url,
+                   (SELECT to_char(MAX(m.sent_at) AT TIME ZONE 'America/New_York', 'Mon DD') FROM club_contact_messages m WHERE m.club_id = k.club_id AND m.league_label = k.league_label) AS last_sent
+              FROM club_competitions k JOIN clubs c ON c.id = k.club_id
+             WHERE k.league_label = $1 AND k.status = 'opponent'
+             ORDER BY k.season DESC, k.division_label, c.name)SQL", {label}))
+            out["competitions"].push_back({{"id", r["id"].as<long long>()}, {"club_id", r["club_id"].as<long long>()}, {"club_name", str(r, "club_name")},
+                                           {"logo_url", str(r, "logo_url")}, {"division_label", str(r, "division_label")}, {"season", str(r, "season")},
+                                           {"status", str(r, "status")}, {"lead_name", nul(r, "lead_name")}, {"last_contacted", nul(r, "last_contacted")},
+                                           {"notes", nul(r, "notes")}, {"home_field", nul(r, "home_field")}, {"external_url", nul(r, "external_url")}, {"last_sent", nul(r, "last_sent")}});
+        for (const auto& r : db->query(std::string(kContactsSql) +
+                " AND c.club_id IN (SELECT club_id FROM club_competitions WHERE league_label = $1 AND status = 'opponent') ORDER BY c.club_id, c.competition_id NULLS FIRST, c.id", {label}))
+            out["contacts"].push_back(contactJson(r));
+        for (const auto& r : db->query(
+                "SELECT t.name AS team, l.label, l.url FROM team_schedule_links l JOIN teams t ON t.id = l.team_id "
+                " WHERE t.club_id = $1::int AND (l.label ILIKE '%' || $2 || '%' OR l.url ILIKE '%casasoccer%' OR l.url ILIKE '%season-microsites%') ORDER BY t.name, l.sort_order",
+                {std::to_string((long long)WelcomeLog::kLighthouseClubId), label}))
+            out["our_links"].push_back({{"team", str(r, "team")}, {"label", str(r, "label")}, {"url", str(r, "url")}});
+        for (const auto& r : db->query(R"SQL(
+            SELECT to_char(MAX(m.sent_at) AT TIME ZONE 'America/New_York', 'Mon DD, HH12:MI AM') AS sent_at, m.tier, m.channel,
+                   COALESCE(m.group_key, m.id::text) AS grp, COUNT(*) AS n, STRING_AGG(DISTINCT c.name, ', ' ORDER BY c.name) AS clubs
+              FROM club_contact_messages m JOIN clubs c ON c.id = m.club_id
+             WHERE m.league_label = $1
+             GROUP BY COALESCE(m.group_key, m.id::text), m.tier, m.channel
+             ORDER BY MAX(m.sent_at) DESC LIMIT 25)SQL", {label}))
+            out["recent"].push_back({{"sent_at", str(r, "sent_at")}, {"tier", str(r, "tier")}, {"channel", str(r, "channel")}, {"n", r["n"].as<long long>()}, {"clubs", str(r, "clubs")}});
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) { std::cerr << "[opponents league] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// One BCC draft to every club in a division (or the whole league): the
+// recipients are every active contact with an email in scope, de-duplicated.
+// Logged one row per contact under a shared group_key; the client opens Gmail
+// with the league address as authuser.
+Response OpponentsController::handleGroupMessage(const Request& request) {
+    Response denied; if (!adminGate(request, &denied)) return denied;
+    json b; Response err; if (!parseBody(request, &b, &err)) return err;
+    std::string label = s(b, "league_label"); if (label.empty()) label = "CASA";
+    const std::string division = s(b, "division_label");
+    std::string tier = s(b, "tier"); if (tier.empty()) tier = "all_announcement";
+    try {
+        auto* db = Database::getInstance();
+        long long userId = bearerUserId(request); if (userId < 0) userId = 0;
+        const std::string sender = senderName(userId);
+        json league = leagueFor(label);
+        const std::string fromEmail = league.value("correspondence_email", "");
+        MessageCopy copy;
+        auto r = copy.render("casa", tier, {{"sender", sender.empty() ? "The commissioner" : sender}, {"from_email", fromEmail},
+                                            {"league", league.value("name", "")}, {"division", division.empty() ? "Liga 1 & Liga 2" : division}});
+        if (!r.ok()) return jsonError(HttpStatus::BAD_REQUEST, "no message template '" + tier + "'");
+        auto rows = db->query(R"SQL(
+            SELECT DISTINCT ON (LOWER(t.email)) t.id, t.club_id, LOWER(t.email) AS email
+              FROM club_contacts t JOIN club_competitions k ON k.club_id = t.club_id AND (t.competition_id IS NULL OR t.competition_id = k.id)
+             WHERE t.is_active AND t.email IS NOT NULL AND k.league_label = $1 AND k.status = 'opponent' AND ($2 = '' OR k.division_label = $2)
+             ORDER BY LOWER(t.email), t.id)SQL", {label, division});
+        auto scopeClubs = db->query("SELECT COUNT(*) AS n FROM club_competitions k WHERE k.league_label = $1 AND k.status = 'opponent' AND ($2 = '' OR k.division_label = $2)", {label, division});
+        auto withEmail = db->query(R"SQL(
+            SELECT COUNT(DISTINCT k.club_id) AS n FROM club_competitions k
+             WHERE k.league_label = $1 AND k.status = 'opponent' AND ($2 = '' OR k.division_label = $2)
+               AND EXISTS (SELECT 1 FROM club_contacts t WHERE t.club_id = k.club_id AND t.is_active AND t.email IS NOT NULL AND (t.competition_id IS NULL OR t.competition_id = k.id)))SQL", {label, division});
+        const std::string groupKey = std::to_string(std::time(nullptr)) + "-" + std::to_string(userId);
+        json contacts = json::array();
+        for (const auto& c : rows) {
+            contacts.push_back(str(c, "email"));
+            db->query("INSERT INTO club_contact_messages (club_id, contact_id, channel, contact, tier, sent_by_user_id, sender_email, league_label, group_key) "
+                      "VALUES ($1::int, $2::int, 'email', $3, $4, NULLIF($5,'0')::int, NULLIF($6,''), $7, $8)",
+                      {std::to_string(c["club_id"].as<long long>()), std::to_string(c["id"].as<long long>()), str(c, "email"), tier, std::to_string(userId), fromEmail, label, groupKey});
+        }
+        const long long total = scopeClubs.empty() ? 0 : scopeClubs[0]["n"].as<long long>();
+        const long long covered = withEmail.empty() ? 0 : withEmail[0]["n"].as<long long>();
+        return jsonOut(HttpStatus::OK, {{"ok", true}, {"subject", r.subject}, {"body", r.body}, {"contacts", contacts}, {"clubs", covered},
+                                        {"skipped", total - covered}, {"from_email", fromEmail}, {"group_key", groupKey}});
+    } catch (const std::exception& e) { std::cerr << "[opponents group-message] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }

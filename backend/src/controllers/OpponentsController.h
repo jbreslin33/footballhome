@@ -15,7 +15,12 @@
 //   POST   /api/opponents/competition         { id, lead_name?, last_contacted?, notes?, status?, home_field? }
 //                                             or { club_id | club_name, league_label, division_label, season?, status? } to add one
 //   POST   /api/opponents/alias               { club_id, alias }   link an opponent spelling to a club
-//   POST   /api/opponents/message             { contact_id, channel, tier, match_id? } → compose hrefs, logged
+//   POST   /api/opponents/message             { contact_id, channel, tier, match_id?, kind? } → compose hrefs, logged
+//                                             kind 'casa' renders message_templates kind='casa' and logs the league address as sender
+//   GET    /api/opponents/league?label=CASA   the commissioner view (mig 486): that league's competitions + contacts,
+//                                             its correspondence email, kind='casa' tiers, our schedule links, recent sends
+//   POST   /api/opponents/group-message       { league_label, division_label?, tier } → { subject, body, contacts[], clubs, skipped }
+//                                             one BCC draft to every club in the scope; logged per contact with a group_key
 //
 // The page is for club admins.  The per-game endpoints also open to the
 // coaches of either team in that game (canManageTeam), so a coach can
@@ -37,4 +42,6 @@ private:
     Response handleCompetition(const Request& request);
     Response handleAlias(const Request& request);
     Response handleMessage(const Request& request);
+    Response handleLeague(const Request& request);
+    Response handleGroupMessage(const Request& request);
 };

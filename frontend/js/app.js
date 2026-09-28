@@ -68,6 +68,8 @@ class App {
       files: new FilesScreen(this.navigation, this.auth),
       invoices: new InvoicesScreen(this.navigation, this.auth),
       opponents: new OpponentsScreen(this.navigation, this.auth),
+      casa: new CasaHubScreen(this.navigation, this.auth),
+      casaContacts: new CasaContactsScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
@@ -165,6 +167,9 @@ class App {
     this.screenManager.register('invoices', this.screens.invoices);
     // Opponents (#opponents) — who to text/email at the clubs we play, by league › division (mig 483).
     this.screenManager.register('opponents', this.screens.opponents);
+    // CASA commissioner section (#casa hub → #casa-contacts …), mig 486.
+    this.screenManager.register('casa', this.screens.casa);
+    this.screenManager.register('casa-contacts', this.screens.casaContacts);
     // Attendance (#attendance) — the staff page for one calendar event of
     // any kind: who's coming, attendance, 🎟 invites.  See
     // screens/event-center.js.  Was #event-center until 2026-09-24; the old
