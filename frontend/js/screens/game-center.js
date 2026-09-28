@@ -292,6 +292,8 @@ class GameCenterScreen extends Screen {
     this.trainingEvents = []; // [{id, date, title}] — the practice columns
     this.reminders = {};      // person_id → {sms, email: {sent_at, count}} already sent about this game
     this.squadNotice = null;  // {squad, untold, sms: {sent_at}, email: {sent_at}} — the squad game reminder
+    this.oppContacts = null;  // {club:{contacts}, tiers, date…} — the opponent of this game (mig 483)
+    this._oppAddOpen = false;
     this.overlayOpen = false;
     this.filterText = '';
     this.filterRsvp = 'all';
@@ -652,6 +654,14 @@ class GameCenterScreen extends Screen {
       if (squadBtn && this.isCoach && !squadBtn.disabled) { this._sendSquadNotice(squadBtn); return; }
       const remindAll = e.target.closest('[data-gc-remind-all]');
       if (remindAll && this.isCoach && !remindAll.disabled) { this._remindNoResponse(remindAll); return; }
+      const oppSend = e.target.closest('[data-gc-opp-send]');
+      if (oppSend && this.isCoach && !oppSend.disabled) { this._sendToOpponent(oppSend); return; }
+      const oppAdd = e.target.closest('[data-gc-opp-add]');
+      if (oppAdd && this.isCoach) { this._oppAddOpen = !this._oppAddOpen; this._render(); return; }
+      const oppSave = e.target.closest('[data-gc-opp-save]');
+      if (oppSave && this.isCoach) { this._saveOpponentContact(oppSave); return; }
+      const oppPage = e.target.closest('[data-gc-opp-page]');
+      if (oppPage) { this.navigation.goTo('opponents', { clubId: Number(oppPage.dataset.gcOppPage) || 0 }); return; }
       // The Instagram section. Its pill strip flips between the posts
       // without touching the page above; nothing picked means no
       // SocialPostCard is mounted, which is also what defers that
@@ -929,7 +939,7 @@ class GameCenterScreen extends Screen {
       // Reminders already sent about this game — dims a No Response
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
       const remindersPromise = this.isCoach
-        ? Promise.all([this._loadReminders(), this._loadSquadNotice()]) : Promise.resolve();
+        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts()]) : Promise.resolve();
 
       const [rosterResults, detailsData] = await Promise.all([
         Promise.all(rosterTeamIds.map(id =>
@@ -2123,6 +2133,95 @@ class GameCenterScreen extends Screen {
     }
   }
 
+  // The opponent club of this game with its contacts (mig 483) — feeds the
+  // 📇 Contact <club> panel under Game details.  Coach-of-either-team or
+  // admin endpoint; a 403 or an unmatched opponent just hides the panel's
+  // buttons.  Owner 2026-09-28: "right on the game center i should be able
+  // to contact them".
+  async _loadOpponentContacts() {
+    try {
+      const res = await this.auth.fetch(`/api/opponents/for-match/${this.matchId}`);
+      const data = await res.json();
+      this.oppContacts = res.ok ? data : null;
+    } catch (err) {
+      this.oppContacts = null;
+    }
+  }
+
+  _renderOpponentContactsPanel() {
+    const o = this.oppContacts;
+    if (!this.isCoach || !o) return '';
+    const esc = (t) => this.escapeHtml(t);
+    const copy = (tier, tokens) => window.MessageCopy ? MessageCopy.block('opponent', tier, tokens) : '';
+    const club = o.club;
+    const wrap = (title, inner) => `
+      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+          <div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${title}</div>
+          ${club ? `<button class="btn btn-secondary" data-gc-opp-page="${club.id}" style="padding:2px 8px; font-size:0.66rem;">Opponents page ↗</button>` : ''}
+        </div>
+        ${inner}
+      </div>`;
+    if (!club) {
+      return wrap('📇 Contact opponent', `<div style="font-size:0.72rem; opacity:0.75; line-height:1.4;">${esc(copy('game_center_none', { opponent: o.opponent_text || '?' }) || `No club matched to "${o.opponent_text || '?'}".`)}
+        <button class="btn btn-secondary" data-gc-opp-page="0" style="padding:2px 8px; font-size:0.66rem; margin-left:6px;">Open Opponents</button></div>`);
+    }
+    const tiers = o.tiers || [];
+    const tierSel = `<select data-gc-opp-tier style="font-size:0.7rem; padding:3px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); max-width:100%;">
+        ${tiers.map(t => `<option value="${esc(t.tier)}" ${t.tier === (this._oppTier || 'confirm') ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}</select>`;
+    const rows = (club.contacts || []).map(k => `
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:5px 0; border-top:1px solid var(--border-color); font-size:0.76rem;">
+        <div style="flex:1; min-width:140px;">
+          <b>${esc(k.name || k.role || 'Team mailbox')}</b>${k.name && k.role ? ` <span style="opacity:0.65;">· ${esc(k.role)}</span>` : ''}
+          <div style="font-size:0.68rem; opacity:0.7; overflow-wrap:anywhere;">${esc([k.phone, k.email].filter(Boolean).join(' · '))}</div>
+          ${k.last_sent_at ? `<div style="font-size:0.64rem; opacity:0.6;">Last ${k.last_channel === 'sms' ? 'text' : 'email'} ${esc(k.last_sent_at)}</div>` : ''}
+        </div>
+        <button class="btn btn-secondary" data-gc-opp-send="sms" data-contact="${k.id}" ${k.phone ? '' : 'disabled'} style="padding:3px 8px; font-size:0.7rem;">💬 Text</button>
+        <button class="btn btn-primary" data-gc-opp-send="email" data-contact="${k.id}" ${k.email ? '' : 'disabled'} style="padding:3px 8px; font-size:0.7rem;">✉️ Email</button>
+      </div>`).join('');
+    const addForm = this._oppAddOpen ? `
+      <div data-gc-opp-form style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:4px; margin-top:6px;">
+        ${['name', 'role', 'phone', 'email'].map(f => `<input data-f="${f}" placeholder="${f[0].toUpperCase() + f.slice(1)}" style="font-size:0.72rem; padding:5px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">`).join('')}
+        <button class="btn btn-primary" data-gc-opp-save style="padding:4px 8px; font-size:0.7rem;">Save</button>
+      </div>` : '';
+    return wrap(esc(copy('game_center_title', { club: club.name }) || `📇 Contact ${club.name}`), `
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:0.7rem; opacity:0.85;">Message: ${tierSel}</div>
+      ${rows || `<div style="font-size:0.72rem; opacity:0.75; margin-top:4px;">${esc(copy('no_contacts') || 'No contact yet — add a name, phone or email.')}</div>`}
+      <div style="margin-top:6px;"><button class="btn btn-secondary" data-gc-opp-add style="padding:2px 8px; font-size:0.66rem;">${this._oppAddOpen ? 'Cancel' : '＋ contact'}</button></div>
+      ${addForm}`);
+  }
+
+  async _sendToOpponent(btn) {
+    const contactId = Number(btn.dataset.contact); const channel = btn.dataset.gcOppSend;
+    const sel = this.element && this.element.querySelector('[data-gc-opp-tier]');
+    this._oppTier = sel ? sel.value : (this._oppTier || 'confirm');
+    const original = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
+    try {
+      const data = await this._postReminder('/api/opponents/message', { contact_id: contactId, channel, tier: this._oppTier, match_id: this.matchId });
+      const k = ((this.oppContacts && this.oppContacts.club && this.oppContacts.club.contacts) || []).find(x => x.id === contactId);
+      if (k) { k.last_sent_at = 'just now'; k.last_channel = channel; }
+      if (channel === 'email') this.openGmailCompose(data.gmail_href);
+      else window.location.href = data.sms_href;
+      this._render();
+    } catch (err) {
+      console.error('[game-center] opponent message failed:', err);
+      btn.textContent = original; btn.disabled = false;
+      alert(`Could not open the message: ${err.message}`);
+    }
+  }
+
+  async _saveOpponentContact(btn) {
+    const form = btn.closest('[data-gc-opp-form]'); const club = this.oppContacts && this.oppContacts.club;
+    if (!form || !club) return;
+    const v = (f) => { const el = form.querySelector(`[data-f="${f}"]`); return el ? el.value.trim() : ''; };
+    try {
+      await this._postReminder('/api/opponents/contact', { club_id: club.id, match_id: this.matchId, name: v('name'), role: v('role'), phone: v('phone'), email: v('email') });
+      this._oppAddOpen = false;
+      await this._loadOpponentContacts();
+      this._render();
+    } catch (err) { alert(`Could not save: ${err.message}`); }
+  }
+
   // { squad, untold, sms: {sent_at}, email: {sent_at} } for this game.
   async _loadSquadNotice() {
     try {
@@ -2883,7 +2982,7 @@ class GameCenterScreen extends Screen {
   // isCoach, so a player gets nothing here.
   _pillToolsHtml(pill, byZone) {
     let html = '';
-    if (pill === 'game_day') html = this._renderGameDetailsPanel();
+    if (pill === 'game_day') html = this._renderGameDetailsPanel() + this._renderOpponentContactsPanel();
     else if (pill === 'post_game') html = this._renderScorePanel();
     else if (pill === 'lineup' && this.isCoach) {
       const squadCount = byZone.starter.length + byZone.bench.length;

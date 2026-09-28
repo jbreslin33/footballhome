@@ -67,6 +67,7 @@ class App {
       clubLogos: new ClubLogosScreen(this.navigation, this.auth),
       files: new FilesScreen(this.navigation, this.auth),
       invoices: new InvoicesScreen(this.navigation, this.auth),
+      opponents: new OpponentsScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
@@ -162,6 +163,8 @@ class App {
     this.screenManager.register('files', this.screens.files);
     // Invoices (#invoices) — biweekly invoices to The Lighthouse, Inc. (mig 465).
     this.screenManager.register('invoices', this.screens.invoices);
+    // Opponents (#opponents) — who to text/email at the clubs we play, by league › division (mig 483).
+    this.screenManager.register('opponents', this.screens.opponents);
     // Attendance (#attendance) — the staff page for one calendar event of
     // any kind: who's coming, attendance, 🎟 invites.  See
     // screens/event-center.js.  Was #event-center until 2026-09-24; the old

@@ -119,6 +119,7 @@ set(SOURCES
     src/controllers/ClubLogoController.cpp
     src/controllers/ClubFileController.cpp
     src/controllers/InvoiceController.cpp
+    src/controllers/OpponentsController.cpp
     src/services/ClubLogoFinder.cpp
     src/services/ClubLogoSearchScheduler.cpp
     src/controllers/PaymentsController.cpp
