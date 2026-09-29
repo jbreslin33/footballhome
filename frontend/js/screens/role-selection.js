@@ -77,8 +77,8 @@ class RoleSelectionScreen extends Screen {
         <button class="btn btn-lg btn-primary" data-role="financial" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">💰</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Financial</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Payments — Paid Up · Behind · Overdue · Never Paid</div>
+            <div style="font-weight: bold;">Tuition</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Player dues — paid up, behind, blocked, reminders</div>
           </div>
         </button>
 
@@ -394,7 +394,8 @@ class RoleSelectionScreen extends Screen {
       // Club Admin - fetch user's club and go to club admin dashboard
       this.loadClubAdmin();
     } else if (role === 'financial') {
-      // Financial — straight to Payments (the only tile this section
+      // Tuition (was Financial until 2026-09-29: it is player dues; club
+      // money lives on #finances) — straight to Payments (the only tile this section
       // has today; formerly buried under Club Admin's Billing group).
       this.navigation.goTo('payments');
     } else if (role === 'finances') {

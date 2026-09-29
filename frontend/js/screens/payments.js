@@ -60,8 +60,8 @@ class PaymentsScreen extends Screen {
     div.innerHTML = `
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>💳 Payments</h1>
-        <p class="subtitle">Full LeagueApps financials — synced on every load</p>
+        <h1>💳 Tuition</h1>
+        <p class="subtitle">Player dues from LeagueApps — synced on every load</p>
       </div>
 
       <div style="padding: var(--space-4); max-width: 1400px; margin: 0 auto;">
