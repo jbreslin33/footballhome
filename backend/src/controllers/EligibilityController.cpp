@@ -322,9 +322,23 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         
         // Also get metadata
         pqxx::result metaResult = db_->query(
-            "SELECT formation_id, roster_size, notes FROM match_lineup_metadata WHERE match_id = $1",
+            "SELECT m.formation_id, m.roster_size, m.notes, f.code AS formation_code "
+            "  FROM match_lineup_metadata m LEFT JOIN formations f ON f.id = m.formation_id WHERE m.match_id = $1",
             {matchId}
         );
+        // The formations table, id + code, so the page can send the id back
+        // for the shape it draws by code (owner 2026-09-29: "why does it
+        // keep going back to 442 if i set 433" — the choice was never saved).
+        std::ostringstream formationsJson;
+        formationsJson << "[";
+        {
+            bool first = true;
+            for (const auto& f : db_->query("SELECT id, code FROM formations ORDER BY sort_order, id")) {
+                formationsJson << (first ? "" : ",") << "{\"id\":" << f["id"].c_str() << ",\"code\":\"" << escapeJson(f["code"].c_str()) << "\"}";
+                first = false;
+            }
+        }
+        formationsJson << "]";
         
         std::ostringstream json;
         json << "{\"success\":true,\"data\":{\"matchId\":" << matchId << ",";
@@ -349,12 +363,14 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         json << "\"eligibilityPolicy\":" << policyJson << ",";
 
         // Metadata
+        json << "\"formations\":" << formationsJson.str() << ",";
         if (!metaResult.empty()) {
             json << "\"formationId\":" << (metaResult[0]["formation_id"].is_null() ? "null" : metaResult[0]["formation_id"].c_str()) << ",";
+            json << "\"formationCode\":" << (metaResult[0]["formation_code"].is_null() ? "null" : "\"" + escapeJson(metaResult[0]["formation_code"].c_str()) + "\"") << ",";
             json << "\"rosterSize\":" << metaResult[0]["roster_size"].c_str() << ",";
             json << "\"notes\":" << (metaResult[0]["notes"].is_null() ? "null" : "\"" + escapeJson(metaResult[0]["notes"].c_str()) + "\"") << ",";
         } else {
-            json << "\"formationId\":null,\"rosterSize\":20,\"notes\":null,";
+            json << "\"formationId\":null,\"formationCode\":null,\"rosterSize\":20,\"notes\":null,";
         }
         
         json << "\"lineup\":[";

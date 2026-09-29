@@ -796,6 +796,7 @@ class GameCenterScreen extends Screen {
       if (formationSelect && this.isCoach) {
         this.formation = formationSelect.value;
         this._render();
+        this._saveLineup();   // the shape is part of the lineup (match_lineup_metadata.formation_id)
         return;
       }
       if (e.target.id === 'gc-rsvp-filter') {
@@ -888,7 +889,11 @@ class GameCenterScreen extends Screen {
       this.teamId  = lineupData.data.teamId || null;
       this._loadPostStates();
       this.fieldSize = FIELD_SIZES[lineupData.data.fieldSize] ? Number(lineupData.data.fieldSize) : DEFAULT_FIELD_SIZE;
-      this.formation = this._fieldSpec().defaultFormation;
+      // The saved shape (formations.code via match_lineup_metadata) when the
+      // page can draw it for this field size; else the size's default.
+      this.formations = Array.isArray(lineupData.data.formations) ? lineupData.data.formations : [];
+      const savedCode = lineupData.data.formationCode;
+      this.formation = savedCode && this._fieldSpec().formations[savedCode] ? savedCode : this._fieldSpec().defaultFormation;
       this.matchStartsAt = lineupData.data.matchStartsAt || null;
       // isCoach comes from EligibilityController checking the REAL logged-in
       // account's admin/coach status — it never looks at the "view as
@@ -1372,6 +1377,12 @@ class GameCenterScreen extends Screen {
     }, 600);
   }
 
+  // formations.id for the shape on screen (0 = unknown, leaves the saved one).
+  _formationId() {
+    const row = (this.formations || []).find(f => f.code === this.formation);
+    return row ? Number(row.id) : 0;
+  }
+
   async _saveLineup() {
     const starters = [];
     const bench = [];
@@ -1394,7 +1405,7 @@ class GameCenterScreen extends Screen {
       const res = await this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ starters, bench, alternates, formationId: 0, rosterSize: 0 }),
+        body: JSON.stringify({ starters, bench, alternates, formationId: this._formationId(), rosterSize: 0 }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Save failed');
