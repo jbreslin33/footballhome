@@ -112,7 +112,10 @@ json Expenses::projection(int clubId) {
     // ── referee fees ──
     std::map<long long, std::vector<json>> gamesByPolicy;
     for (const auto& r : db->query(kGamesSql, {club})) gamesByPolicy[r["policy_id"].as<long long>()].push_back(gameJson(r));
-    for (const auto& p : db->query("SELECT id, label, group_label, kind, hours_per_game, rate_per_hour, club_section_id, per_game_usd, home_only, note FROM ref_fee_policies WHERE club_id = $1::int AND is_active ORDER BY kind, sort_order, id", {club})) {
+    for (const auto& p : db->query("SELECT p.id, p.label, p.group_label, p.kind, p.hours_per_game, p.rate_per_hour, p.club_section_id, p.per_game_usd, p.home_only, p.note, "
+                                   "       ci.id AS coach_issuer_id, ci.payable_to AS coach "
+                                   "  FROM ref_fee_policies p LEFT JOIN invoice_issuers ci ON ci.id = p.coach_issuer_id "
+                                   " WHERE p.club_id = $1::int AND p.is_active ORDER BY p.kind, p.sort_order, p.id", {club})) {
         const long long pid = p["id"].as<long long>(); const double rate = num(p, "per_game_usd");
         // Coaching hours for a game already played are on that coach's
         // hours-by-day invoice, so only games still ahead project.
@@ -168,6 +171,7 @@ json Expenses::projection(int clubId) {
                                    {"rate_per_hour", p["rate_per_hour"].is_null() ? json(nullptr) : json(num(p, "rate_per_hour"))},
                                    {"section_id", sectionId ? json(sectionId) : json(nullptr)},
                                    {"section", sectionName.count(sectionId) ? sectionName[sectionId] : ""}, {"rate", rate}, {"home_only", p["home_only"].as<bool>()},
+                                   {"coach_issuer_id", p["coach_issuer_id"].is_null() ? json(nullptr) : json(p["coach_issuer_id"].as<long long>())}, {"coach", str(p, "coach")},
                                    {"note", str(p, "note")}, {"seasons", seasons}, {"games", games.size()}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
     }
 
