@@ -21,6 +21,10 @@
 //                                             its correspondence email, kind='casa' tiers, our schedule links, recent sends
 //   POST   /api/opponents/group-message       { league_label, division_label?, tier } → { subject, body, contacts[], clubs, skipped }
 //                                             one BCC draft to every club in the scope; logged per contact with a group_key
+//   GET    /api/opponents/league-fixtures?label=CASA   every game of the league season (mig 488): pulls the league's
+//                                             SportsEngine feed into league_fixtures first, then reads it — the owner
+//                                             wants it "in db and refreshed on every access"; /league does the same
+//                                             pull so the hub tile's count is current too
 //
 // The page is for club admins.  The per-game endpoints also open to the
 // coaches of either team in that game (canManageTeam), so a coach can
@@ -44,4 +48,5 @@ private:
     Response handleMessage(const Request& request);
     Response handleLeague(const Request& request);
     Response handleGroupMessage(const Request& request);
+    Response handleLeagueFixtures(const Request& request);
 };

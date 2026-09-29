@@ -70,6 +70,7 @@ class App {
       opponents: new OpponentsScreen(this.navigation, this.auth),
       casa: new CasaHubScreen(this.navigation, this.auth),
       casaContacts: new CasaContactsScreen(this.navigation, this.auth),
+      casaSchedule: new CasaScheduleScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
@@ -170,6 +171,7 @@ class App {
     // CASA commissioner section (#casa hub → #casa-contacts …), mig 486.
     this.screenManager.register('casa', this.screens.casa);
     this.screenManager.register('casa-contacts', this.screens.casaContacts);
+    this.screenManager.register('casa-schedule', this.screens.casaSchedule);
     // Attendance (#attendance) — the staff page for one calendar event of
     // any kind: who's coming, attendance, 🎟 invites.  See
     // screens/event-center.js.  Was #event-center until 2026-09-24; the old

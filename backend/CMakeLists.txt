@@ -75,6 +75,7 @@ set(SOURCES
     src/services/IdentityService.cpp
     src/services/LeagueAppsService.cpp
     src/services/LaProgramSync.cpp
+    src/services/LeagueFixtureSync.cpp
     src/services/LaSyncScheduler.cpp
     src/services/LockupScheduler.cpp
     src/services/TwilioService.cpp

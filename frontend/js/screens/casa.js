@@ -6,6 +6,10 @@
 //                   Sent mail) — add a tile here for each new commissioner tool.
 //   #casa-contacts  Liga 1 / Liga 2 clubs with their managers; ✉️/💬 per
 //                   contact and one BCC email to a division or the league.
+//   #casa-schedule  every game of the season (mig 488): division + Upcoming /
+//                   Results / All / Table pills; GET /api/opponents/league-fixtures
+//                   pulls the league's SportsEngine feed into league_fixtures on
+//                   every open, so it is current and survives the feed being down.
 //
 // Everything mails from the league's address (leagues.correspondence_email,
 // jbreslin@casasoccerleagues.com) — Gmail opens on that account (authuser),
@@ -30,8 +34,6 @@ class CasaHubScreen extends Screen {
     div.addEventListener('click', (e) => {
       const t = e.target.closest('[data-go]');
       if (t) { this.navigation.goTo(t.dataset.go, { league: 'CASA' }); return; }
-      const l = e.target.closest('[data-links]');
-      if (l) { const box = this.find('#ch-links'); if (box) box.hidden = !box.hidden; }
     });
     return div;
   }
@@ -55,21 +57,16 @@ class CasaHubScreen extends Screen {
     const sub = this.find('#ch-sub'); if (sub) sub.textContent = this._copy('hub_subtitle', { from_email: from });
     const divisions = [...new Set((this.data.competitions || []).map(c => c.division_label))];
     const clubs = new Set((this.data.competitions || []).map(c => c.club_id)).size;
+    const fx = this.data.fixtures || {};
     const tile = (tier, go, extra = '') => { const t = this._tile(tier); return `
       <button class="btn btn-lg btn-primary" ${go ? `data-go="${go}"` : 'data-links'} style="display:flex; align-items:center; gap:var(--space-3); width:100%; text-align:left; margin-bottom:10px;">
         <span style="font-size:2rem;">${tier === 'tile_contacts' ? '📇' : tier === 'tile_links' ? '📅' : '📤'}</span>
         <div style="flex:1;"><div style="font-weight:bold;">${esc(t.label)}</div><div style="font-size:0.85rem; opacity:0.8;">${esc(t.desc)}${extra}</div></div>
       </button>`; };
-    const linkRows = [
-      ...(this.data.our_links || []).map(l => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.team)} — ${esc(l.label)}</a></li>`),
-      `<li><a href="https://www.casasoccerleagues.com/page/show/9496155-liga-1" target="_blank" rel="noopener">Liga 1 — league page (schedule, standings)</a></li>`,
-      `<li><a href="https://www.casasoccerleagues.com/page/show/9496153-liga-2" target="_blank" rel="noopener">Liga 2 — league page (schedule, standings)</a></li>`,
-    ];
     const recent = (this.data.recent || []).slice(0, 8).map(r => `<li style="font-size:0.85rem;">${esc(r.sent_at)} — ${esc(r.tier.replace(/^all_|^one_/, '').replace(/_/g, ' '))} ${r.n > 1 ? `to ${r.n} addresses` : ''} (${esc(r.clubs.length > 90 ? r.clubs.slice(0, 90) + '…' : r.clubs)})</li>`).join('');
     body.innerHTML = `
       ${tile('tile_contacts', 'casa-contacts', ` · ${divisions.map(esc).join(', ')} · ${clubs} clubs`)}
-      ${tile('tile_links', null)}
-      <div id="ch-links" hidden style="margin:-4px 0 12px 8px;"><ul style="margin:0; padding-left:20px;">${linkRows.join('')}</ul></div>
+      ${tile('tile_links', 'casa-schedule', fx.n ? ` · ${fx.n} games${fx.last_fetched_at ? ` · ${fx.fresh ? 'refreshed just now' : `from ${esc(fx.last_fetched_at)}`}` : ''}` : '')}
       ${tile('tile_log', null)}
       <div style="margin:-4px 0 12px 8px;">${recent ? `<ul style="margin:0; padding-left:20px;">${recent}</ul>` : `<div style="font-size:0.85rem; opacity:0.7;">Nothing sent from ${esc(from)} yet.</div>`}</div>`;
   }
@@ -324,5 +321,157 @@ class CasaContactsScreen extends Screen {
       </div>`;
   }
 }
+
+// ─── #casa-schedule — every game of the season, from the DB (mig 488) ───────
+class CasaScheduleScreen extends Screen {
+  constructor(navigation, auth) { super(navigation, auth); this.data = null; this.division = ''; this.view = 'upcoming'; this.search = ''; }
+
+  render() {
+    const div = document.createElement('div');
+    div.className = 'screen';
+    div.innerHTML = `
+      <style>
+        .cx-pills { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; align-items:center; }
+        .cx-pill { padding:8px 14px; border-radius:999px; border:1px solid var(--border-color); background:transparent; color:var(--text-primary); cursor:pointer; font-weight:700; font-size:0.9rem; }
+        .cx-pill.on { background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
+        .cx-pill .n { opacity:0.6; font-weight:500; margin-left:4px; }
+        .cx-in { padding:8px 10px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); font-size:0.9rem; }
+        .cx-hint { font-size:0.8rem; opacity:0.7; margin:4px 0 8px; }
+        .cx-stale { background:#fde68a; color:#3b2f00; border-radius:10px; padding:8px 12px; margin-bottom:10px; font-size:0.85rem; }
+        .cx-day { font-weight:800; margin:14px 0 6px; font-size:0.95rem; opacity:0.85; }
+        .cx-game { display:grid; grid-template-columns:64px 1fr auto; gap:6px 10px; align-items:center; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-secondary); padding:8px 12px; margin-bottom:6px; }
+        .cx-game.ours { border-left:5px solid var(--primary-color); }
+        .cx-time { font-weight:700; font-size:0.85rem; }
+        .cx-teams { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .cx-teams img { width:22px; height:22px; object-fit:contain; border-radius:4px; }
+        .cx-teams b { font-size:0.95rem; }
+        .cx-teams a { color:inherit; text-decoration:none; }
+        .cx-score { font-weight:900; font-size:1rem; padding:2px 8px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border-color); white-space:nowrap; }
+        .cx-badge { font-size:0.72rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#ef4444; color:#fff; text-transform:uppercase; }
+        .cx-venue { grid-column:1 / -1; font-size:0.8rem; opacity:0.75; }
+        .cx-div { font-size:0.72rem; opacity:0.6; margin-left:auto; }
+        .cx-table { width:100%; border-collapse:collapse; font-size:0.88rem; margin-bottom:14px; }
+        .cx-table th, .cx-table td { padding:6px 6px; border-bottom:1px solid var(--border-color); text-align:right; white-space:nowrap; }
+        .cx-table th:nth-child(2), .cx-table td:nth-child(2) { text-align:left; width:100%; }
+        .cx-table tr.ours td { font-weight:800; }
+        .cx-table img { width:18px; height:18px; object-fit:contain; vertical-align:middle; margin-right:6px; }
+        @media (max-width:520px) { .cx-game { grid-template-columns:56px 1fr auto; } }
+      </style>
+      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
+        <button class="btn btn-secondary" id="cx-back">← Back</button>
+        <div style="flex:1;"><h1 style="margin:0;" id="cx-title">📅 CASA schedule</h1><div id="cx-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+      </div>
+      <div class="screen-content" id="cx-body"><div class="loading">Loading…</div></div>`;
+    this.element = div;
+    div.querySelector('#cx-back').addEventListener('click', () => this.navigation.goBack());
+    div.addEventListener('click', (e) => {
+      const d = e.target.closest('[data-division]'); if (d) { this.division = d.dataset.division; this._renderBody(); return; }
+      const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
+    });
+    div.addEventListener('input', (e) => { if (e.target.id === 'cx-search') { this.search = e.target.value.trim().toLowerCase(); this._renderList(); } });
+    return div;
+  }
+
+  onEnter() { this.load(); }
+  _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('casa', tier, tokens) : ''; }
+
+  async load() {
+    const body = this.find('#cx-body'); if (body && !this.data) body.innerHTML = '<div class="loading">Loading…</div>';
+    try {
+      if (window.MessageCopy) await MessageCopy.load(this.auth);
+      const res = await this.auth.fetch('/api/opponents/league-fixtures?label=CASA');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      this.data = data;
+    } catch (err) { if (body) body.innerHTML = `<div class="error-message">${this.escapeHtml(err.message)}</div>`; return; }
+    const sm = this.data.summary || {};
+    const title = this.find('#cx-title'); if (title) title.textContent = '📅 ' + (this._copy('schedule_title') || 'CASA schedule & results');
+    const sub = this.find('#cx-sub'); if (sub) sub.textContent = this._copy('schedule_subtitle', { when: sm.fresh ? 'just now' : (sm.last_fetched_at || 'never'), n: sm.n || 0 });
+    this._renderBody();
+  }
+
+  _ours(f) { const me = this.data.our_club_id; return f.home_club_id === me || f.away_club_id === me; }
+  _inScope(f) { return !this.division || f.division_label === this.division; }
+  _matches(f) { const q = this.search; return !q || `${f.home_name} ${f.away_name} ${f.venue_name || ''}`.toLowerCase().includes(q); }
+
+  _renderBody() {
+    const body = this.find('#cx-body'); if (!body || !this.data) return;
+    const esc = (t) => this.escapeHtml(t);
+    const all = this.data.fixtures || [];
+    const divs = this.data.divisions || [];
+    const sm = this.data.summary || {};
+    const n = (d) => all.filter(f => !d || f.division_label === d).length;
+    const inScope = all.filter(f => this._inScope(f));
+    const counts = { upcoming: inScope.filter(f => !f.past || f.status === 'postponed').length, results: inScope.filter(f => f.status === 'completed').length, all: inScope.length };
+    const views = [['upcoming', 'Upcoming'], ['results', 'Results'], ['all', 'All'], ['table', 'Table']];
+    body.innerHTML = `
+      ${sm.fresh === false && sm.last_fetched_at ? `<div class="cx-stale">${esc(this._copy('schedule_stale', { when: sm.last_fetched_at }) || `Showing the list from ${sm.last_fetched_at}.`)}${sm.note ? ` (${esc(sm.note)})` : ''}</div>` : ''}
+      <div class="cx-pills">
+        <button class="cx-pill ${!this.division ? 'on' : ''}" data-division="">All<span class="n">${n('')}</span></button>
+        ${divs.map(d => `<button class="cx-pill ${this.division === d ? 'on' : ''}" data-division="${esc(d)}">${esc(d)}<span class="n">${n(d)}</span></button>`).join('')}
+      </div>
+      <div class="cx-pills">
+        ${views.map(([k, l]) => `<button class="cx-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${l}${k in counts ? `<span class="n">${counts[k]}</span>` : ''}</button>`).join('')}
+        <input class="cx-in" id="cx-search" placeholder="Club or venue" value="${esc(this.search)}" style="max-width:200px;">
+      </div>
+      <div id="cx-list"></div>
+      <div style="margin-top:18px;"><div class="cx-day">${esc(this._copy('schedule_links') || 'League pages')}</div>
+        <ul style="margin:0; padding-left:20px; font-size:0.9rem;">
+          ${(this.data.our_links || []).map(l => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.team)} — ${esc(l.label)}</a></li>`).join('')}
+          ${this.data.league?.website_url ? `<li><a href="${esc(this.data.league.website_url)}" target="_blank" rel="noopener">${esc(this.data.league.name || 'League site')} ↗</a></li>` : ''}
+        </ul></div>`;
+    this._renderList();
+  }
+
+  _renderList() {
+    const el = this.find('#cx-list'); if (!el) return;
+    if (this.view === 'table') { el.innerHTML = this._tables(); return; }
+    const esc = (t) => this.escapeHtml(t);
+    let rows = (this.data.fixtures || []).filter(f => this._inScope(f) && this._matches(f));
+    if (this.view === 'upcoming') rows = rows.filter(f => !f.past || f.status === 'postponed');
+    else if (this.view === 'results') rows = rows.filter(f => f.status === 'completed').reverse();
+    if (!rows.length) { el.innerHTML = `<div class="cx-hint">${esc(this._copy('schedule_empty') || 'No games match.')}</div>`; return; }
+    const team = (name, logo, url, cid) => `<span style="display:inline-flex; align-items:center; gap:6px;">${logo ? `<img src="${esc(logo)}" alt="">` : ''}<b>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>` : esc(name)}</b></span>`;
+    let html = '', day = '';
+    for (const f of rows) {
+      if (f.date_key !== day) { day = f.date_key; html += `<div class="cx-day">${esc(f.date_label)}</div>`; }
+      const done = f.status === 'completed' && f.home_score !== null && f.away_score !== null;
+      html += `
+        <div class="cx-game ${this._ours(f) ? 'ours' : ''}">
+          <div class="cx-time">${esc(f.time_label)}</div>
+          <div class="cx-teams">${team(f.home_name, f.home_logo, f.home_url)}<span style="opacity:0.6;">v</span>${team(f.away_name, f.away_logo, f.away_url)}${!this.division ? `<span class="cx-div">${esc(f.division_label || '')}</span>` : ''}</div>
+          <div>${done ? `<span class="cx-score">${f.home_score} – ${f.away_score}</span>` : f.status !== 'scheduled' ? `<span class="cx-badge">${esc(f.status)}</span>` : ''}</div>
+          ${f.venue_name ? `<div class="cx-venue">📍 ${esc(f.venue_name)}${f.venue_detail ? ` · ${esc(f.venue_detail)}` : ''}${f.venue_address ? ` · <a href="https://maps.google.com/?q=${encodeURIComponent(f.venue_address)}" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline;">map</a>` : ''}</div>` : ''}
+        </div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  // Standings from completed games: 3/1/0, then goal difference, then goals
+  // for (the league also applies head-to-head before GD; not modelled here).
+  _tables() {
+    const esc = (t) => this.escapeHtml(t);
+    const divs = (this.data.divisions || []).filter(d => !this.division || d === this.division);
+    let html = '';
+    for (const d of divs) {
+      const rows = new Map();
+      const get = (name, cid, logo, url) => { if (!rows.has(name)) rows.set(name, { name, cid, logo, url, p: 0, w: 0, dr: 0, l: 0, gf: 0, ga: 0 }); return rows.get(name); };
+      for (const f of (this.data.fixtures || []).filter(f => f.division_label === d)) {
+        const h = get(f.home_name, f.home_club_id, f.home_logo, f.home_url), a = get(f.away_name, f.away_club_id, f.away_logo, f.away_url);
+        if (f.status !== 'completed' || f.home_score === null || f.away_score === null) continue;
+        h.p++; a.p++; h.gf += f.home_score; h.ga += f.away_score; a.gf += f.away_score; a.ga += f.home_score;
+        if (f.home_score > f.away_score) { h.w++; a.l++; } else if (f.home_score < f.away_score) { a.w++; h.l++; } else { h.dr++; a.dr++; }
+      }
+      const list = [...rows.values()].map(r => ({ ...r, gd: r.gf - r.ga, pts: r.w * 3 + r.dr }))
+        .sort((x, y) => y.pts - x.pts || y.gd - x.gd || y.gf - x.gf || x.name.localeCompare(y.name));
+      html += `<div class="cx-day">${esc(d)}</div>
+        <table class="cx-table"><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th></tr></thead><tbody>
+        ${list.map((r, i) => `<tr class="${r.cid === this.data.our_club_id ? 'ours' : ''}"><td>${i + 1}</td><td>${r.logo ? `<img src="${esc(r.logo)}" alt="">` : ''}${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">${esc(r.name)}</a>` : esc(r.name)}</td><td>${r.p}</td><td>${r.w}</td><td>${r.dr}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gd > 0 ? '+' : ''}${r.gd}</td><td><b>${r.pts}</b></td></tr>`).join('')}
+        </tbody></table>`;
+    }
+    return html || `<div class="cx-hint">${esc(this._copy('schedule_empty') || 'No games match.')}</div>`;
+  }
+}
 window.CasaHubScreen = CasaHubScreen;
 window.CasaContactsScreen = CasaContactsScreen;
+window.CasaScheduleScreen = CasaScheduleScreen;

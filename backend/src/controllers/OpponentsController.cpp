@@ -7,6 +7,7 @@
 #include "../database/Database.h"
 #include "../models/MessageCopy.h"
 #include "../models/WelcomeLog.h"
+#include "../services/LeagueFixtureSync.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -156,6 +157,31 @@ json clubJson(long long clubId) {
     return out;
 }
 
+// ─── league fixtures (mig 488) ──────────────────────────────────────────────
+// The sources of one league label with their last-pull state.  `pulls` is
+// what LeagueFixtureSync::refreshLeague just returned, so "fresh" means this
+// very request got the feed.
+json fixturesSummary(const std::string& label, const json& pulls) {
+    json out = {{"n", 0}, {"last_fetched_at", nullptr}, {"fresh", false}, {"note", ""}, {"sources", json::array()}};
+    long long n = 0; bool anyFresh = false;
+    for (const auto& r : Database::getInstance()->query(R"SQL(
+        SELECT s.id, s.season, s.program_id, COALESCE(s.label,'') AS label, s.last_fetch_ok, COALESCE(s.last_fetch_note,'') AS note,
+               to_char(s.last_fetched_at AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI AM') AS fetched_label,
+               (SELECT COUNT(*) FROM league_fixtures f WHERE f.source_id = s.id AND f.removed_at IS NULL) AS n
+          FROM league_fixture_sources s WHERE s.league_label = $1 AND s.is_active ORDER BY s.season DESC, s.id)SQL", {label})) {
+        const long long id = r["id"].as<long long>();
+        bool fresh = false;
+        for (const auto& p : pulls) if (p.value("source_id", 0LL) == id && p.value("ok", false)) fresh = true;
+        anyFresh = anyFresh || fresh; n += r["n"].as<long long>();
+        out["sources"].push_back({{"id", id}, {"season", str(r, "season")}, {"program_id", str(r, "program_id")}, {"label", str(r, "label")},
+                                  {"last_fetch_ok", r["last_fetch_ok"].is_null() ? json(nullptr) : json(r["last_fetch_ok"].as<bool>())},
+                                  {"note", str(r, "note")}, {"last_fetched_at", nul(r, "fetched_label")}, {"fresh", fresh}, {"n", r["n"].as<long long>()}});
+        if (out["last_fetched_at"].is_null()) { out["last_fetched_at"] = nul(r, "fetched_label"); out["note"] = str(r, "note"); }
+    }
+    out["n"] = n; out["fresh"] = anyFresh;
+    return out;
+}
+
 } // namespace
 
 OpponentsController::OpponentsController() = default;
@@ -170,6 +196,7 @@ void OpponentsController::registerRoutes(Router& router, const std::string& pref
     router.post  (prefix + "/message",            [this](const Request& r) { return handleMessage(r); });
     router.get   (prefix + "/league",             [this](const Request& r) { return handleLeague(r); });
     router.post  (prefix + "/group-message",      [this](const Request& r) { return handleGroupMessage(r); });
+    router.get   (prefix + "/league-fixtures",    [this](const Request& r) { return handleLeagueFixtures(r); });
     router.get   (prefix + "/for-match/:matchId", [this](const Request& r) { return handleForMatch(r); });
 }
 
@@ -365,8 +392,10 @@ Response OpponentsController::handleLeague(const Request& request) {
     std::string label = request.getQueryParam("label"); if (label.empty()) label = "CASA";
     try {
         auto* db = Database::getInstance();
+        // Every access to the section pulls the league's fixture feed first (mig 488).
+        json pulls = LeagueFixtureSync::refreshLeague(label);
         json out = {{"league", leagueFor(label)}, {"label", label}, {"competitions", json::array()}, {"contacts", json::array()},
-                    {"tiers", tiers("casa")}, {"our_links", json::array()}, {"recent", json::array()}};
+                    {"tiers", tiers("casa")}, {"our_links", json::array()}, {"recent", json::array()}, {"fixtures", fixturesSummary(label, pulls)}};
         for (const auto& r : db->query(R"SQL(
             SELECT k.id, k.club_id, c.name AS club_name, COALESCE(c.logo_url,'') AS logo_url, k.division_label, k.season, k.status,
                    k.lead_name, k.last_contacted, k.notes, k.home_field, k.external_url,
@@ -441,4 +470,51 @@ Response OpponentsController::handleGroupMessage(const Request& request) {
         return jsonOut(HttpStatus::OK, {{"ok", true}, {"subject", r.subject}, {"body", r.body}, {"contacts", contacts}, {"clubs", covered},
                                         {"skipped", total - covered}, {"from_email", fromEmail}, {"group_key", groupKey}});
     } catch (const std::exception& e) { std::cerr << "[opponents group-message] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// ─── every game of the league season (mig 488) ──────────────────────────────
+Response OpponentsController::handleLeagueFixtures(const Request& request) {
+    Response denied; if (!adminGate(request, &denied)) return denied;
+    std::string label = request.getQueryParam("label"); if (label.empty()) label = "CASA";
+    try {
+        auto* db = Database::getInstance();
+        json pulls = LeagueFixtureSync::refreshLeague(label);
+        json out = {{"league", leagueFor(label)}, {"label", label}, {"summary", fixturesSummary(label, pulls)},
+                    {"divisions", json::array()}, {"fixtures", json::array()}, {"our_links", json::array()}, {"our_club_id", (long long)WelcomeLog::kLighthouseClubId}};
+        for (const auto& r : db->query(R"SQL(
+            SELECT f.id, f.division_label, f.status, f.home_name, f.away_name, f.home_club_id, f.away_club_id, f.home_score, f.away_score,
+                   f.venue_name, f.venue_detail, f.venue_address, f.home_ext_team_id, f.away_ext_team_id, s.team_page_base,
+                   COALESCE(hc.logo_url,'') AS home_logo, COALESCE(ac.logo_url,'') AS away_logo,
+                   to_char(f.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS date_key,
+                   to_char(f.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS date_label,
+                   to_char(f.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time_label,
+                   (f.starts_at < now()) AS past
+              FROM league_fixtures f JOIN league_fixture_sources s ON s.id = f.source_id
+              LEFT JOIN clubs hc ON hc.id = f.home_club_id LEFT JOIN clubs ac ON ac.id = f.away_club_id
+             WHERE s.league_label = $1 AND s.is_active AND f.removed_at IS NULL
+             ORDER BY f.starts_at, f.division_label, f.id)SQL", {label})) {
+            const std::string base = str(r, "team_page_base");
+            const auto team = [&](const char* ext) { std::string e = str(r, ext); return base.empty() || e.empty() ? json(nullptr) : json(base + e); };
+            out["fixtures"].push_back({{"id", r["id"].as<long long>()}, {"division_label", str(r, "division_label")}, {"status", str(r, "status")},
+                                       {"home_name", str(r, "home_name")}, {"away_name", str(r, "away_name")},
+                                       {"home_club_id", r["home_club_id"].is_null() ? json(nullptr) : json(r["home_club_id"].as<long long>())},
+                                       {"away_club_id", r["away_club_id"].is_null() ? json(nullptr) : json(r["away_club_id"].as<long long>())},
+                                       {"home_score", r["home_score"].is_null() ? json(nullptr) : json(r["home_score"].as<long long>())},
+                                       {"away_score", r["away_score"].is_null() ? json(nullptr) : json(r["away_score"].as<long long>())},
+                                       {"home_logo", str(r, "home_logo")}, {"away_logo", str(r, "away_logo")},
+                                       {"home_url", team("home_ext_team_id")}, {"away_url", team("away_ext_team_id")},
+                                       {"venue_name", nul(r, "venue_name")}, {"venue_detail", nul(r, "venue_detail")}, {"venue_address", nul(r, "venue_address")},
+                                       {"date_key", str(r, "date_key")}, {"date_label", str(r, "date_label")}, {"time_label", str(r, "time_label")},
+                                       {"past", r["past"].as<bool>()}});
+        }
+        for (const auto& r : db->query("SELECT DISTINCT f.division_label FROM league_fixtures f JOIN league_fixture_sources s ON s.id = f.source_id "
+                                       " WHERE s.league_label = $1 AND s.is_active AND f.removed_at IS NULL AND f.division_label IS NOT NULL ORDER BY 1", {label}))
+            out["divisions"].push_back(str(r, "division_label"));
+        for (const auto& r : db->query(
+                "SELECT t.name AS team, l.label, l.url FROM team_schedule_links l JOIN teams t ON t.id = l.team_id "
+                " WHERE t.club_id = $1::int AND (l.label ILIKE '%' || $2 || '%' OR l.url ILIKE '%casasoccer%' OR l.url ILIKE '%season-microsites%') ORDER BY t.name, l.sort_order",
+                {std::to_string((long long)WelcomeLog::kLighthouseClubId), label}))
+            out["our_links"].push_back({{"team", str(r, "team")}, {"label", str(r, "label")}, {"url", str(r, "url")}});
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) { std::cerr << "[opponents league-fixtures] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
