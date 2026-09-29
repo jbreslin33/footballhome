@@ -114,6 +114,9 @@ json Expenses::projection(int clubId) {
     for (const auto& r : db->query(kGamesSql, {club})) gamesByPolicy[r["policy_id"].as<long long>()].push_back(gameJson(r));
     for (const auto& p : db->query("SELECT id, label, group_label, kind, hours_per_game, rate_per_hour, club_section_id, per_game_usd, home_only, note FROM ref_fee_policies WHERE club_id = $1::int AND is_active ORDER BY kind, sort_order, id", {club})) {
         const long long pid = p["id"].as<long long>(); const double rate = num(p, "per_game_usd");
+        // Coaching hours for a game already played are on that coach's
+        // hours-by-day invoice, so only games still ahead project.
+        const bool coaching = str(p, "kind") == "coaching";
         const long long sectionId = p["club_section_id"].is_null() ? 0 : p["club_section_id"].as<long long>();
         Months m; json seasons = json::array();
         const auto& games = gamesByPolicy[pid];
@@ -126,6 +129,7 @@ json Expenses::projection(int clubId) {
                 if (on < from || on > to) continue;
                 known++; counted.insert(g["source"].get<std::string>() + ":" + std::to_string(g["ref_id"].get<long long>()));
                 const std::string ym = monthOf(on); widen(ym);
+                if (coaching && on < today) continue;
                 if (g["invoiced"].is_null()) add(m, ym, rate, 0); else add(m, ym, 0, g["invoiced"]["amount"].get<double>());
                 if (ym > lastKnownMonth) lastKnownMonth = ym;
             }
@@ -141,6 +145,7 @@ json Expenses::projection(int clubId) {
         // Games outside every season window still count where they fall.
         for (const auto& g : games) {
             if (counted.count(g["source"].get<std::string>() + ":" + std::to_string(g["ref_id"].get<long long>()))) continue;
+            if (coaching && g["game_on"].get<std::string>() < today) continue;
             const std::string ym = monthOf(g["game_on"].get<std::string>()); widen(ym);
             if (g["invoiced"].is_null()) add(m, ym, rate, 0); else add(m, ym, 0, g["invoiced"]["amount"].get<double>());
         }
