@@ -231,7 +231,7 @@ json Expenses::projection(int clubId) {
           LEFT JOIN weekly w ON w.issuer_id = i.id
           JOIN days ON true
           JOIN shifts s ON s.issuer_id = i.id AND s.fri0 = days.fri0
-         WHERE i.is_active
+         WHERE i.is_active AND i.pay_basis = 'weekly'   -- a per-game coach projects under Game hours (mig 497)
          GROUP BY i.id, i.payable_to, i.hourly_rate, w.weekly_hours, to_char(days.day, 'YYYY-MM')
          ORDER BY i.sort_order, i.id, ym)SQL")) {
         const long long iid = u["id"].as<long long>();
@@ -252,6 +252,19 @@ json Expenses::projection(int clubId) {
         if (!bm.contains(ym)) bm[ym] = {{"projected", 0.0}, {"invoiced", 0.0}};
         bm[ym]["projected"] = round2(bm[ym]["projected"].get<double>() + amt);
         bySection[0][ym].projected += amt; all[ym].projected += amt;
+    }
+    // A coach paid per game (pay_basis = 'games', mig 497) projects only
+    // through the coaching game-hours policy above; what they have already
+    // invoiced still shows, on its own row, so the invoiced column is whole.
+    for (const auto& u : db->query("SELECT i.id, i.payable_to AS name, i.hourly_rate FROM invoice_issuers i WHERE i.is_active AND i.pay_basis = 'games' "
+                                   "  AND EXISTS (SELECT 1 FROM invoice_lines l JOIN invoices v ON v.id = l.invoice_id WHERE v.issuer_id = i.id AND l.category = 'labor') ORDER BY i.sort_order, i.id")) {
+        const long long iid = u["id"].as<long long>();
+        Months inv;
+        for (const auto& l : db->query("SELECT to_char(i.invoice_date, 'YYYY-MM') AS ym, SUM(l.amount) AS amt FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id "
+                                       " WHERE i.issuer_id = $1::int AND l.category = 'labor' GROUP BY 1", {std::to_string(iid)}))
+            add(inv, str(l, "ym"), 0, num(l, "amt"));
+        out["coaching_usual"].push_back({{"issuer_id", iid}, {"name", str(u, "name")}, {"rate", num(u, "hourly_rate")}, {"weekly_hours", 0.0}, {"pay_basis", "games"},
+                                         {"by_month", monthsJson(inv)}, {"_inv", true}});
     }
     for (auto& e : out["coaching_usual"]) {
         e.erase("_inv");
