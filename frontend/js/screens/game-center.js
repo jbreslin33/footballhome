@@ -146,9 +146,14 @@ const FIELD_SIZES = {
     defaultFormation: '4-4-2',
     formations: {
       '4-4-2':   { rows: [[1], [3, 5, 4, 2], [11, 8, 6, 7], [10, 9]] },
-      '4-3-3':   { counts: [1, 4, 3, 3] },
+      // Owner 2026-09-29: "7 and 11 are wingers, 9 striker, 8 and 10
+      // attacking mids (10 left), 6 def mid, 3 LB, 5 LCB, 4 RCB, 2 RB".
+      // Drawn as a triangle so the 6 sits behind the 8 and 10.
+      '4-3-3':   { rows: [[1], [3, 5, 4, 2], [6], [10, 8], [11, 9, 7]] },
       '3-5-2':   { counts: [1, 3, 5, 2] },
-      '4-2-3-1': { counts: [1, 4, 2, 3, 1] },
+      // Owner: "for the 4231 the 8 and 6 are the cdms left to right and
+      // the rest are same as 433" — 10 is the central attacking mid.
+      '4-2-3-1': { rows: [[1], [3, 5, 4, 2], [8, 6], [11, 10, 7], [9]] },
     },
   },
   9: {
