@@ -313,7 +313,8 @@ Response InvoiceController::handleRefFees(const Request& request) {
                 {std::to_string((long long)WelcomeLog::kLighthouseClubId)}))
             LeagueFixtureSync::refreshLeague(r["l"].c_str());
         json games = json::array();
-        for (const auto& g : Expenses::games(WelcomeLog::kLighthouseClubId)) if (g["invoiced"].is_null() && g["amount"].get<double>() > 0) games.push_back(g);
+        for (const auto& g : Expenses::games(WelcomeLog::kLighthouseClubId))
+            if (g["kind"] == "referee" && g["invoiced"].is_null() && g["amount"].get<double>() > 0) games.push_back(g);
         return jsonOut(HttpStatus::OK, {{"games", games}});
     } catch (const std::exception& e) { std::cerr << "[invoices ref-fees] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }

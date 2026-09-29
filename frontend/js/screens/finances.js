@@ -181,8 +181,14 @@ class FinancesScreen extends Screen {
     const addBy = (into, by) => { for (const [ym, c] of Object.entries(by || {})) { into[ym] = into[ym] || { projected: 0, invoiced: 0 }; into[ym].projected += Number(c.projected || 0); into[ym].invoiced += Number(c.invoiced || 0); } };
     const catLabel = {}; for (const b of (x.budget || [])) catLabel[b.category] = (b.category_label || b.category).replace(/:\s*$/, '');
     catLabel.referees = catLabel.referees || 'Referees';
+    catLabel.labor = this._copy('coaching_label') || 'Coaching';
     const raw = [
-      ...(x.ref_fees || []).map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
+      // Coaching (mig 494): each coach's usual week, then hours per game by league.
+      ...(x.coaching_usual || []).map(u => ({ cat: 'labor', key: `usual:${u.issuer_id}`, keyLabel: this._copy('usual_hours', { name: u.name }) || `Usual hours — ${u.name}`, assumed: false, by: u.by_month || {},
+        hints: [`${u.weekly_hours} h a week × ${FinancesScreen.money2(u.rate)}/h`] })),
+      ...(x.ref_fees || []).filter(p => p.kind === 'coaching').map(p => ({ cat: 'labor', key: `game:${p.label}`, keyLabel: `Game hours — ${p.label}`, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {},
+        hints: [`${p.hours_per_game} h × ${FinancesScreen.money2(p.rate_per_hour)}/h = ${FinancesScreen.money2(p.rate)} per game, home and away`] })),
+      ...(x.ref_fees || []).filter(p => p.kind !== 'coaching').map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
       ...(x.budget || []).map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
         hints: [`${b.label}: ${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}`] })),
     ];
@@ -190,13 +196,13 @@ class FinancesScreen extends Screen {
     for (const r of raw) {
       if (!cats.has(r.cat)) cats.set(r.cat, { code: r.cat, label: catLabel[r.cat] || r.cat, by: {}, items: new Map() });
       const c = cats.get(r.cat); addBy(c.by, r.by);
-      if (!c.items.has(r.key)) c.items.set(r.key, { label: r.key, assumed: false, by: {}, hints: [] });
+      if (!c.items.has(r.key)) c.items.set(r.key, { label: r.keyLabel || r.key, assumed: false, by: {}, hints: [] });
       const it = c.items.get(r.key); it.assumed = it.assumed || r.assumed; it.hints.push(...r.hints); addBy(it.by, r.by);
     }
     const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
     const catRows = [...cats.values()].filter(c => sum(c.by, 'projected') > 0 || sum(c.by, 'invoiced') > 0)
       .sort((a, b) => (order.indexOf(a.code) + 1 || 99) - (order.indexOf(b.code) + 1 || 99));
-    const emoji = { league_dues: '🏆', registrations: '📝', referees: '🧑‍⚖️', field_rentals: '🏟️', facilities: '🎨', equipment: '⚽', uniforms: '👕', other: '📦' };
+    const emoji = { labor: '🧢', league_dues: '🏆', registrations: '📝', referees: '🧑‍⚖️', field_rentals: '🏟️', facilities: '🎨', equipment: '⚽', uniforms: '👕', other: '📦' };
     const outRows = [];   // what the grid prints, in order
     for (const c of catRows) {
       const open = this.expanded.has(c.code);
@@ -213,7 +219,7 @@ class FinancesScreen extends Screen {
     html += `<tr class="sum"><td>${esc(this._copy('row_net') || 'Net')}</td>${months.map(ym => `<td class="${ym === nowYm ? 'now' : ''}" style="font-weight:800; color:${net(ym) < 0 ? '#fca5a5' : '#86efac'};">${M0(net(ym))}</td>`).join('')}<td style="font-weight:800; color:${inTotal * months.length - outTotal < 0 ? '#fca5a5' : '#86efac'};">${M0(inTotal * months.length - outTotal)}</td></tr>`;
 
     // Referee games: what the projection is made of, and what is ticked.
-    const games = x.games || [];
+    const games = (x.games || []).filter(g => g.kind !== 'coaching');
     const byPolicy = new Map();
     for (const g of games) { if (!byPolicy.has(g.policy_label)) byPolicy.set(g.policy_label, []); byPolicy.get(g.policy_label).push(g); }
     let list = '';
@@ -227,7 +233,7 @@ class FinancesScreen extends Screen {
           <span style="width:190px; text-align:right;">${g.invoiced ? `✓ invoice ${esc(g.invoiced.invoice_label || '')}` : g.played ? `<span class="fn-warn">${esc(this._copy('games_played') || 'played — not invoiced yet')}</span>` : ''}</span>
         </div>`;
     }
-    const seasons = (x.ref_fees || []).flatMap(p => (p.seasons || []).map(s => `${p.label} ${s.label}: ${s.known} on the schedule of ${s.expected}${s.is_assumed ? '*' : ''}`));
+    const seasons = (x.ref_fees || []).flatMap(p => (p.seasons || []).map(s => `${p.kind === 'coaching' ? 'Coaching ' : 'Refs '}${p.label} ${s.label}: ${s.known} on the schedule of ${s.expected}${s.is_assumed ? '*' : ''}`));
     return `
       <div class="fn-card">
         <div class="fn-title">${esc(this._copy('cash_title') || 'Cash flow')}</div>

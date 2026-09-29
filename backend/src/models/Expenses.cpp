@@ -48,7 +48,7 @@ const char* kGamesSql = R"SQL(
            AND (NOT p.home_only OR COALESCE(e.is_home, false))
            AND (p.age_band IS NULL OR g.summary ~* ('\m' || p.age_band || '\M'))
     ), games AS (SELECT * FROM fx UNION ALL SELECT * FROM ev)
-    SELECT u.policy_id, p.label AS policy_label, p.club_section_id, p.per_game_usd, u.source, u.ref_id, u.status,
+    SELECT u.policy_id, p.label AS policy_label, p.kind, p.hours_per_game, p.club_section_id, p.per_game_usd, u.source, u.ref_id, u.status,
            to_char(u.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS game_on,
            to_char(u.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS date_label,
            u.opponent, (u.starts_at < now() AND u.status <> 'postponed') AS played,
@@ -63,7 +63,8 @@ const char* kGamesSql = R"SQL(
      ORDER BY u.starts_at, p.sort_order, u.ref_id)SQL";
 
 json gameJson(const pqxx::row& r) {
-    json g = {{"policy_id", r["policy_id"].as<long long>()}, {"policy_label", str(r, "policy_label")},
+    json g = {{"policy_id", r["policy_id"].as<long long>()}, {"policy_label", str(r, "policy_label")}, {"kind", str(r, "kind")},
+              {"hours", r["hours_per_game"].is_null() ? json(nullptr) : json(num(r, "hours_per_game"))},
               {"section_id", r["club_section_id"].is_null() ? json(nullptr) : json(r["club_section_id"].as<long long>())},
               {"source", str(r, "source")}, {"ref_id", r["ref_id"].as<long long>()}, {"status", str(r, "status")},
               {"game_on", str(r, "game_on")}, {"date_label", str(r, "date_label")}, {"opponent", str(r, "opponent")},
@@ -111,7 +112,7 @@ json Expenses::projection(int clubId) {
     // ── referee fees ──
     std::map<long long, std::vector<json>> gamesByPolicy;
     for (const auto& r : db->query(kGamesSql, {club})) gamesByPolicy[r["policy_id"].as<long long>()].push_back(gameJson(r));
-    for (const auto& p : db->query("SELECT id, label, group_label, club_section_id, per_game_usd, home_only, note FROM ref_fee_policies WHERE club_id = $1::int AND is_active ORDER BY sort_order, id", {club})) {
+    for (const auto& p : db->query("SELECT id, label, group_label, kind, hours_per_game, rate_per_hour, club_section_id, per_game_usd, home_only, note FROM ref_fee_policies WHERE club_id = $1::int AND is_active ORDER BY kind, sort_order, id", {club})) {
         const long long pid = p["id"].as<long long>(); const double rate = num(p, "per_game_usd");
         const long long sectionId = p["club_section_id"].is_null() ? 0 : p["club_section_id"].as<long long>();
         Months m; json seasons = json::array();
@@ -144,7 +145,10 @@ json Expenses::projection(int clubId) {
             if (g["invoiced"].is_null()) add(m, ym, rate, 0); else add(m, ym, 0, g["invoiced"]["amount"].get<double>());
         }
         roll(sectionId, m);
-        out["ref_fees"].push_back({{"policy_id", pid}, {"label", str(p, "label")}, {"group_label", str(p, "group_label")}, {"section_id", sectionId ? json(sectionId) : json(nullptr)},
+        out["ref_fees"].push_back({{"policy_id", pid}, {"label", str(p, "label")}, {"group_label", str(p, "group_label")}, {"kind", str(p, "kind")},
+                                   {"hours_per_game", p["hours_per_game"].is_null() ? json(nullptr) : json(num(p, "hours_per_game"))},
+                                   {"rate_per_hour", p["rate_per_hour"].is_null() ? json(nullptr) : json(num(p, "rate_per_hour"))},
+                                   {"section_id", sectionId ? json(sectionId) : json(nullptr)},
                                    {"section", sectionName.count(sectionId) ? sectionName[sectionId] : ""}, {"rate", rate}, {"home_only", p["home_only"].as<bool>()},
                                    {"note", str(p, "note")}, {"seasons", seasons}, {"games", games.size()}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
     }
@@ -197,6 +201,58 @@ json Expenses::projection(int clubId) {
                                  {"paid_before", paidBefore}, {"invoiced", round2(invoiced)}, {"remaining", remaining}, {"period_start", ps}, {"period_end", pe},
                                  {"spread", str(b, "spread")}, {"is_assumed", b["is_assumed"].as<bool>()}, {"note", str(b, "note")},
                                  {"lines", lines}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
+    }
+
+    // ── coaching: usual hours (mig 494) ──
+    // Each active issuer's default week (invoice_default_shifts, day_index
+    // 0-13 over the Fri–Thu fortnight; both weeks are read mod 7) × their
+    // rate, day by day from today for twelve months.  Invoiced = that
+    // issuer's labor lines by invoice month.
+    out["coaching_usual"] = json::array();
+    for (const auto& u : db->query(R"SQL(
+        WITH days AS (
+            SELECT d::date AS day, ((EXTRACT(DOW FROM d)::int + 2) % 7) AS fri0   -- Friday = 0 like day_index
+              FROM generate_series((now() AT TIME ZONE 'America/New_York')::date, (now() AT TIME ZONE 'America/New_York')::date + interval '12 months', interval '1 day') d
+        ), shifts AS (
+            SELECT issuer_id, (day_index % 7) AS fri0,
+                   COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0) AS h
+              FROM invoice_default_shifts
+        ), weekly AS (
+            SELECT issuer_id, SUM(h) AS weekly_hours FROM shifts GROUP BY issuer_id
+        )
+        SELECT i.id, i.payable_to AS name, i.hourly_rate, COALESCE(w.weekly_hours, 0) AS weekly_hours,
+               to_char(days.day, 'YYYY-MM') AS ym, SUM(s.h) AS hours
+          FROM invoice_issuers i
+          LEFT JOIN weekly w ON w.issuer_id = i.id
+          JOIN days ON true
+          JOIN shifts s ON s.issuer_id = i.id AND s.fri0 = days.fri0
+         WHERE i.is_active
+         GROUP BY i.id, i.payable_to, i.hourly_rate, w.weekly_hours, to_char(days.day, 'YYYY-MM')
+         ORDER BY i.sort_order, i.id, ym)SQL")) {
+        const long long iid = u["id"].as<long long>();
+        json* entry = nullptr;
+        for (auto& e : out["coaching_usual"]) if (e["issuer_id"].get<long long>() == iid) entry = &e;
+        if (!entry) {
+            Months inv;
+            for (const auto& l : db->query("SELECT to_char(i.invoice_date, 'YYYY-MM') AS ym, SUM(l.amount) AS amt FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id "
+                                           " WHERE i.issuer_id = $1::int AND l.category = 'labor' GROUP BY 1", {std::to_string(iid)}))
+                add(inv, str(l, "ym"), 0, num(l, "amt"));
+            out["coaching_usual"].push_back({{"issuer_id", iid}, {"name", str(u, "name")}, {"rate", num(u, "hourly_rate")}, {"weekly_hours", num(u, "weekly_hours")},
+                                             {"by_month", monthsJson(inv)}, {"_inv", true}});
+            entry = &out["coaching_usual"].back();
+        }
+        const std::string ym = str(u, "ym"); widen(ym);
+        const double amt = round2(num(u, "hours") * num(u, "hourly_rate"));
+        json& bm = (*entry)["by_month"];
+        if (!bm.contains(ym)) bm[ym] = {{"projected", 0.0}, {"invoiced", 0.0}};
+        bm[ym]["projected"] = round2(bm[ym]["projected"].get<double>() + amt);
+        bySection[0][ym].projected += amt; all[ym].projected += amt;
+    }
+    for (auto& e : out["coaching_usual"]) {
+        e.erase("_inv");
+        double p = 0, i = 0; for (auto& [ym, c] : e["by_month"].items()) { p += c["projected"].get<double>(); i += c["invoiced"].get<double>(); if (monthIndex(ym) < nowIdx) { bySection[0][ym].invoiced += 0; } }
+        for (auto& [ym, c] : e["by_month"].items()) { const double iv = c["invoiced"].get<double>(); if (iv) { bySection[0][ym].invoiced += iv; all[ym].invoiced += iv; } }
+        e["totals"] = {{"projected", round2(p)}, {"invoiced", round2(i)}};
     }
 
     json months = json::array(); for (int i = minIdx; i <= maxIdx; i++) months.push_back(monthAt(i));

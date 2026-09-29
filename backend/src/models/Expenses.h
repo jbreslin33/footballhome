@@ -20,6 +20,10 @@
 //                 should hold, and the shortfall is spread over the season's
 //                 months still ahead.  A game ticked on an invoice
 //                 (ref_fee_payments) is invoiced, not projected.
+//   Coaching      (mig 494) usual hours: each active issuer's default week ×
+//                 rate, day by day from today; game hours: ref_fee_policies
+//                 of kind 'coaching' (hours_per_game × rate_per_hour, every
+//                 game, home and away), same seasons mechanism as referees.
 //   Budget lines  budget_lines: a fixed amount, an amount × the section's
 //                 current members (kits), or an amount × the weeks still
 //                 ahead in the period (paint, mig 491).  Invoice lines / instalment plans
