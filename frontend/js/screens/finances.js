@@ -169,8 +169,8 @@ class FinancesScreen extends Screen {
     // Money out: referee policies, then budget lines.
     const outRows = [
       ...(x.ref_fees || []).map(p => ({ label: `Refs — ${p.label}${p.seasons?.some(s => s.is_assumed) ? '*' : ''}`, emoji: '🧑‍⚖️', by: p.by_month || {}, hint: `${FinancesScreen.money2(p.rate)} per home game` })),
-      ...(x.budget || []).map(b => ({ label: `${b.label}${b.is_assumed ? '*' : ''}`, emoji: b.category === 'uniforms' ? '👕' : '🏆', by: b.by_month || {},
-        hint: `${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}` })),
+      ...(x.budget || []).map(b => ({ label: `${b.label}${b.is_assumed ? '*' : ''}`, emoji: b.category === 'uniforms' ? '👕' : b.category === 'facilities' ? '🎨' : '🏆', by: b.by_month || {},
+        hint: `${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}` })),
     ].filter(r => sum(r.by, 'projected') > 0 || sum(r.by, 'invoiced') > 0);
     const outBy = {}; for (const r of outRows) for (const ym of months) { const c = r.by[ym] || {}; outBy[ym] = outBy[ym] || { projected: 0, invoiced: 0 }; outBy[ym].projected += Number(c.projected || 0); outBy[ym].invoiced += Number(c.invoiced || 0); }
     html += `<tr class="group"><td colspan="${months.length + 2}">${esc(this._copy('row_out') || 'Money out')}</td></tr>`;

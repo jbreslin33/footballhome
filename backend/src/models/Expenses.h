@@ -20,8 +20,9 @@
 //                 should hold, and the shortfall is spread over the season's
 //                 months still ahead.  A game ticked on an invoice
 //                 (ref_fee_payments) is invoiced, not projected.
-//   Budget lines  budget_lines: a fixed amount, or an amount × the section's
-//                 current members (kits).  Invoice lines / instalment plans
+//   Budget lines  budget_lines: a fixed amount, an amount × the section's
+//                 current members (kits), or an amount × the weeks still
+//                 ahead in the period (paint, mig 491).  Invoice lines / instalment plans
 //                 that count toward the line reduce what is still to come;
 //                 the remainder lands in the line's start month (never
 //                 earlier than the current month) or is spread evenly.

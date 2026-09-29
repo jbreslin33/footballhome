@@ -159,6 +159,8 @@ json Expenses::projection(int clubId) {
                      JOIN club_sections s ON s.id = b.club_section_id
                     WHERE m.ended_at IS NULL AND lp.variant = 'active'
                       AND lp.category = CASE s.code WHEN 'M' THEN 'men' WHEN 'W' THEN 'women' WHEN 'B' THEN 'boys' WHEN 'G' THEN 'girls' END)
+                    -- per week (mig 491): the weeks still ahead in the period, forward only
+                    WHEN b.amount_per = 'week' THEN GREATEST(0, CEIL((b.period_end - GREATEST(b.period_start, (now() AT TIME ZONE 'America/New_York')::date) + 1) / 7.0))::int
                ELSE 1 END AS units
           FROM budget_lines b JOIN invoice_line_categories c ON c.code = b.category
          WHERE b.club_id = $1::int AND b.is_active
@@ -217,6 +219,7 @@ json Expenses::openBudgetLines(int clubId) {
                      JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
                     WHERE m.ended_at IS NULL AND lp.variant = 'active'
                       AND lp.category = CASE s.code WHEN 'M' THEN 'men' WHEN 'W' THEN 'women' WHEN 'B' THEN 'boys' WHEN 'G' THEN 'girls' END)
+                    WHEN b.amount_per = 'week' THEN GREATEST(0, CEIL((b.period_end - GREATEST(b.period_start, (now() AT TIME ZONE 'America/New_York')::date) + 1) / 7.0))::int
                ELSE 1 END AS units,
                COALESCE((SELECT SUM(l.amount) FROM invoice_lines l LEFT JOIN invoice_installment_plans p ON p.id = l.plan_id
                           WHERE COALESCE(l.budget_line_id, p.budget_line_id) = b.id), 0) AS invoiced
