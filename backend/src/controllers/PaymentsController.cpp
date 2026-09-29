@@ -13,6 +13,8 @@
 #include "../models/PayReminderLog.h"
 #include "../models/PersonActivity.h"
 #include "../models/PersonFines.h"
+#include "../models/PaymentsOverview.h"
+#include "../models/WelcomeLog.h"
 #include "../services/LaProgramSync.h"
 #include "../third_party/json.hpp"
 
@@ -61,6 +63,15 @@ PaymentsController::PaymentsController()
 PaymentsController::~PaymentsController() = default;
 
 void PaymentsController::registerRoutes(Router& router, const std::string& prefix) {
+    // ── Summary + Projections at the top of #payments (migration 489) ──
+    // laGet syncs all four active membership programs first (LA → DB →
+    // render), then PaymentsOverview reads the balances it just wrote.
+    laGet(router, prefix + "/overview", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
+        [this](const Request& req, const LaSyncMap&) {
+            if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
+            return this->handleOverview(req);
+        });
+
     // ── Payment history per program ──
     // Every route below is registered through laGet(), which mandates a
     // LaProgramSync::run() for {programId} BEFORE the handler runs.  That
@@ -700,4 +711,14 @@ Response PaymentsController::handleSetNextDue(const Request& request) {
     out["nextDueAt"]        = iso;
     out["nextDueSource"]    = "operator_override";
     return Response(HttpStatus::OK, out.dump());
+}
+
+// GET /api/payments/overview — see PaymentsOverview.h for the shape.
+Response PaymentsController::handleOverview(const Request&) {
+    try {
+        return Response(HttpStatus::OK, PaymentsOverview::build(WelcomeLog::kLighthouseClubId).dump());
+    } catch (const std::exception& e) {
+        std::cerr << "[payments overview] " << e.what() << std::endl;
+        return internalErr(e.what());
+    }
 }

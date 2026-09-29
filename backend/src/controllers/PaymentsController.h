@@ -10,6 +10,7 @@ class PersonPayments;
 // dedicated payments screen (Mens / Boys / Girls tabs).
 //
 // Routes (registered under prefix "/api/payments"):
+//   GET /api/payments/overview   Summary + Projections per section and overall (mig 489)
 //   GET /api/payments/mens
 //   GET /api/payments/womens
 //   GET /api/payments/boys
@@ -55,4 +56,5 @@ private:
                                         const LaSyncMap& sync);
     // Operator override: POST /api/payments/members/:regId/next-due.
     Response handleSetNextDue(const Request& request);
+    Response handleOverview(const Request& request);
 };

@@ -37,6 +37,7 @@ set(SOURCES
     src/models/TeamReconciliation.cpp
     src/models/PersonOverride.cpp
     src/models/PersonMerge.cpp
+    src/models/PaymentsOverview.cpp
     src/models/LaPool.cpp
     src/models/PersonBilling.cpp
     src/models/DuesPolicy.cpp
