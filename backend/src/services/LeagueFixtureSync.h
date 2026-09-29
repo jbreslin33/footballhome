@@ -12,8 +12,8 @@
 // source row (last_fetch_ok / last_fetch_note) so the page can say "showing
 // the list from <when>".
 //
-// Where to pull from is data: league_fixture_sources holds the SportsEngine
-// season program id per league label + season.  Nothing here knows CASA.
+// Where to pull from is data: league_fixture_sources holds the feed system
+// and its id per league label + season.  Nothing here knows CASA or APSL.
 class LeagueFixtureSync {
 public:
     struct Result { bool ok = false; int games = 0; int pages = 0; std::string note; };
@@ -23,6 +23,8 @@ public:
     static nlohmann::json refreshLeague(const std::string& leagueLabel);
 
     // One source.  Pulls every page, upserts, marks rows the full pull no
-    // longer lists (removed_at), and stamps the source row.
-    static Result refreshSource(long long sourceId, const std::string& programId);
+    // longer lists (removed_at), and stamps the source row.  system says
+    // the feed shape: 'sportsengine' (paged JSON, mig 488) or
+    // 'teampass_ics' (one iCal file, program_id = its file stem, mig 490).
+    static Result refreshSource(long long sourceId, const std::string& programId, const std::string& system = "sportsengine");
 };

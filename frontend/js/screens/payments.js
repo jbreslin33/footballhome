@@ -65,11 +65,8 @@ class PaymentsScreen extends Screen {
       </div>
 
       <div style="padding: var(--space-4); max-width: 1400px; margin: 0 auto;">
-        <!-- Summary + Projections (migration 489) — owner: "put all at top".
-             Summary = raw totals per section from /api/payments/overview,
-             then the All Programs collected strip; Projections = dues ×
-             members per month and per year, per section and overall. -->
-        <div id="pay-overview-summary"></div>
+        <!-- Summary + Projections lived here for a day (mig 489); they are
+             on #finances since mig 490 so billing stays clean. -->
         <div id="pay-all-programs"
              style="display:flex; gap:var(--space-3); flex-wrap:wrap;
                     padding: var(--space-3);
@@ -79,7 +76,6 @@ class PaymentsScreen extends Screen {
                     font-size: 0.85rem;">
           <div style="opacity:0.7;">🌐 <b>All Programs</b> — loading…</div>
         </div>
-        <div id="pay-overview-projections"></div>
 
         <!-- Standardized filter chip rows (FilterBar): category / program / status.
              Replaces the old pay-tabs tab bar + inline status-chip row so the
@@ -270,7 +266,6 @@ class PaymentsScreen extends Screen {
       });
     }
     this.loadCurrent();
-    this._loadOverview();
     // Kick off the other three program tabs in the background so the
     // "All Programs" roll-up bar at the top can render totals across all
     // four Mens / Womens / Boys / Girls without the operator having to
@@ -2404,92 +2399,6 @@ class PaymentsScreen extends Screen {
       monthsElapsed: earliestMonthsElapsed, avgPerMonth,
       outstandingCount, outstandingTotal, outstandingPerMonth,
     };
-  }
-
-  // ── Summary + Projections at the top (migration 489) ────────────────
-  async _loadOverview() {
-    try {
-      await MessageCopy.load(this.auth);
-      const res = await this.auth.fetch('/api/payments/overview');
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      this.overview = data;
-    } catch (err) {
-      const el = this.find('#pay-overview-summary');
-      if (el) el.innerHTML = `<div class="error-message" style="margin-bottom:var(--space-3);">${this.escape(err.message)}</div>`;
-      return;
-    }
-    this._renderOverview();
-  }
-
-  _renderOverview() {
-    const sumEl = this.find('#pay-overview-summary'), projEl = this.find('#pay-overview-projections');
-    if (!sumEl || !projEl || !this.overview) return;
-    const ov = this.overview;
-    const copy = (tier, tokens = {}) => MessageCopy.block('payments_overview', tier, tokens);
-    const cols = (tier) => copy(tier).split('|').map(c => c.trim()).filter(Boolean);
-    const emoji = { M: '👨', W: '👩', B: '👦', G: '👧' };
-    const sections = ov.sections || [];
-    const all = ov.all || {};
-    const allLabel = copy('all_label') || 'All';
-    const money0 = (v) => `$${Math.round(Number(v) || 0).toLocaleString()}`;
-    const line = sections.length ? money0(sections[0].line) : '';
-    const wrap = 'border:1px solid var(--border-color, #374151); border-radius:6px; background: var(--bg-tertiary, #1f2937); padding: var(--space-3); margin-bottom: var(--space-3);';
-    const th = 'padding:4px 8px; text-align:right; opacity:0.7; font-weight:600; white-space:nowrap;';
-    const td = 'padding:4px 8px; text-align:right; white-space:nowrap;';
-    const nameCell = (s) => `<td style="${td} text-align:left; font-weight:700;">${s.code ? `${emoji[s.code] || ''} ` : ''}${this.escape(s.name)}</td>`;
-    const tone = (n, color) => n ? `color:${color}; font-weight:700;` : 'opacity:0.5;';
-
-    // Summary — raw counts and what is owed, per section then All.
-    const sCols = cols('summary_columns');
-    const sRow = (s, isAll) => `
-      <tr style="${isAll ? 'border-top:2px solid var(--border-color, #374151); font-weight:700;' : ''}">
-        ${nameCell(isAll ? { name: allLabel } : s)}
-        <td style="${td}">${s.members}</td>
-        <td style="${td} ${s.free ? 'opacity:0.8;' : 'opacity:0.5;'}">${s.free}</td>
-        <td style="${td} ${tone(s.paid_up, '#86efac')}">${s.paid_up}</td>
-        <td style="${td} ${tone(s.behind, '#fbbf24')}">${s.behind}</td>
-        <td style="${td} ${tone(s.blocked, '#fca5a5')}">${s.blocked}</td>
-        <td style="${td} ${tone(s.owed, '#fca5a5')}">${this.fmtMoney(s.owed)}</td>
-      </tr>`;
-    sumEl.innerHTML = `
-      <div style="${wrap}">
-        <div style="font-weight:700; font-size:1rem;">${this.escape(copy('summary_title') || 'Summary')}</div>
-        <div style="opacity:0.7; font-size:0.8rem; margin:2px 0 8px;">${this.escape(copy('summary_note', { line }))}</div>
-        <div style="overflow-x:auto;"><table style="border-collapse:collapse; font-size:0.85rem; min-width:520px;">
-          <thead><tr><th style="${th} text-align:left;"></th>${sCols.map(c => `<th style="${th}">${this.escape(c)}</th>`).join('')}</tr></thead>
-          <tbody>${sections.map(s => sRow(s, false)).join('')}${sRow(all, true)}</tbody>
-        </table></div>
-      </div>`;
-
-    // Projections — two reports: every paying member, and only those
-    // current in dues; monthly and yearly, per section then All.
-    const pCols = cols('projections_columns');   // Rate | Per month | Per year
-    const reports = [['all_members', copy('row_all_members') || 'All current members'],
-                     ['current_dues', copy('row_current_dues') || 'Members current in dues']];
-    const pRow = (s, isAll) => `
-      <tr style="${isAll ? 'border-top:2px solid var(--border-color, #374151); font-weight:700;' : ''}">
-        ${nameCell(isAll ? { name: allLabel } : s)}
-        <td style="${td} opacity:0.7;">${isAll ? '' : this.fmtMoney(s.rate)}</td>
-        ${reports.map(([k]) => { const p = (s.projections || {})[k] || {}; return `
-          <td style="${td} opacity:0.6;">${p.count ?? 0}</td>
-          <td style="${td} color:#86efac; font-weight:700;">${money0(p.monthly)}</td>
-          <td style="${td} color:#86efac;">${money0(p.yearly)}</td>`; }).join('')}
-      </tr>`;
-    projEl.innerHTML = `
-      <div style="${wrap}">
-        <div style="font-weight:700; font-size:1rem;">${this.escape(copy('projections_title') || 'Projections')}</div>
-        <div style="opacity:0.7; font-size:0.8rem; margin:2px 0 8px;">${this.escape(copy('projections_note'))}</div>
-        <div style="overflow-x:auto;"><table style="border-collapse:collapse; font-size:0.85rem; min-width:640px;">
-          <thead>
-            <tr><th style="${th}"></th><th style="${th}"></th>
-              ${reports.map(([, label]) => `<th colspan="3" style="${th} text-align:center; border-bottom:1px solid var(--border-color, #374151);">${this.escape(label)}</th>`).join('')}</tr>
-            <tr><th style="${th} text-align:left;"></th><th style="${th}">${this.escape(pCols[0] || 'Rate')}</th>
-              ${reports.map(() => `<th style="${th}">#</th><th style="${th}">${this.escape(pCols[1] || 'Per month')}</th><th style="${th}">${this.escape(pCols[2] || 'Per year')}</th>`).join('')}</tr>
-          </thead>
-          <tbody>${sections.map(s => pRow(s, false)).join('')}${pRow(all, true)}</tbody>
-        </table></div>
-      </div>`;
   }
 
   _renderAllProgramsBar() {

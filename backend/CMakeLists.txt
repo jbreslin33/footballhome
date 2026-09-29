@@ -38,6 +38,7 @@ set(SOURCES
     src/models/PersonOverride.cpp
     src/models/PersonMerge.cpp
     src/models/PaymentsOverview.cpp
+    src/models/Expenses.cpp
     src/models/LaPool.cpp
     src/models/PersonBilling.cpp
     src/models/DuesPolicy.cpp
@@ -121,6 +122,7 @@ set(SOURCES
     src/controllers/ClubLogoController.cpp
     src/controllers/ClubFileController.cpp
     src/controllers/InvoiceController.cpp
+    src/controllers/FinancesController.cpp
     src/controllers/OpponentsController.cpp
     src/services/ClubLogoFinder.cpp
     src/services/ClubLogoSearchScheduler.cpp

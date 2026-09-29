@@ -82,6 +82,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="finances" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📈</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Finances</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Summary · Revenue · Expenses — where the club stands and where it is heading</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="game-center" id="rs-game-center" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">🏟️</span>
           <div style="flex: 1; text-align: left;">
@@ -389,6 +397,9 @@ class RoleSelectionScreen extends Screen {
       // Financial — straight to Payments (the only tile this section
       // has today; formerly buried under Club Admin's Billing group).
       this.navigation.goTo('payments');
+    } else if (role === 'finances') {
+      // #finances (mig 490): summary, revenue and expense projections.
+      this.navigation.goTo('finances');
     } else if (role === 'game-center') {
       // Not a role — the game picker (owner 2026-09-17: top level, for
       // admins and coaches, to set lineups).

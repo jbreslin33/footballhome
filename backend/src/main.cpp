@@ -46,6 +46,7 @@
 #include "controllers/ClubLogoController.h"
 #include "controllers/ClubFileController.h"
 #include "controllers/InvoiceController.h"
+#include "controllers/FinancesController.h"
 #include "controllers/OpponentsController.h"
 #include "controllers/ScheduleReleaseController.h"
 #include "controllers/PaymentsController.h"
@@ -119,6 +120,7 @@ private:
     std::shared_ptr<ClubLogoController> club_logo_controller_;
     std::shared_ptr<ClubFileController> club_file_controller_;
     std::shared_ptr<InvoiceController> invoice_controller_;
+    std::shared_ptr<FinancesController> finances_controller_;
     std::shared_ptr<OpponentsController> opponents_controller_;
     std::shared_ptr<ScheduleReleaseController> schedule_release_controller_;
     std::shared_ptr<PaymentsController> payments_controller_;
@@ -201,6 +203,7 @@ public:
         club_logo_controller_ = std::make_shared<ClubLogoController>();
         club_file_controller_ = std::make_shared<ClubFileController>();
         invoice_controller_ = std::make_shared<InvoiceController>();
+        finances_controller_ = std::make_shared<FinancesController>();
         opponents_controller_ = std::make_shared<OpponentsController>();
         schedule_release_controller_ = std::make_shared<ScheduleReleaseController>();
         payments_controller_ = std::make_shared<PaymentsController>();
@@ -506,6 +509,8 @@ private:
         router_.useController("/api/club-logos", club_logo_controller_);
         router_.useController("/api/files", club_file_controller_);
         router_.useController("/api/invoices", invoice_controller_);
+        // #finances (mig 490): summary, revenue and expense projections.
+        router_.useController("/api/finances", finances_controller_);
         router_.useController("/api/opponents", opponents_controller_);
         // Schedule release window (migration 334): when next week posts,
         // early opens, standing rule. See ScheduleReleaseController.h.

@@ -3,6 +3,9 @@
 #include <iostream>
 
 #include "../database/Database.h"
+#include "../models/Expenses.h"
+#include "../models/WelcomeLog.h"
+#include "../services/LeagueFixtureSync.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -58,6 +61,10 @@ InvoiceController::~InvoiceController() = default;
 
 void InvoiceController::registerRoutes(Router& router, const std::string& prefix) {
     router.get (prefix + "/board",       [this](const Request& r) { return handleBoard(r); });
+    // Referee fees to tick off (mig 490): the home games not yet on any
+    // invoice, and one call that adds them as a Referees line.
+    router.get (prefix + "/ref-fees",    [this](const Request& r) { return handleRefFees(r); });
+    router.post(prefix + "/:id/ref-fees",[this](const Request& r) { return handleAddRefFees(r); });
     router.post(prefix + "/new",         [this](const Request& r) { return handleNew(r); });
     router.post(prefix + "/plan",        [this](const Request& r) { return handlePlan(r); });
     router.del (prefix + "/plan",        [this](const Request& r) { return handleDeletePlan(r); });
@@ -86,6 +93,8 @@ Response InvoiceController::handleBoard(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     try {
         json out = model_->board();
+        // Planned expenses a line can count toward (mig 490, #finances).
+        out["budget_lines"] = Expenses::openBudgetLines(WelcomeLog::kLighthouseClubId);
         // Who is looking, so the page can tell "my invoice" from a coach's
         // (different email wording, the coach gets cc'd).
         long long viewerPerson = 0;
@@ -290,4 +299,41 @@ Response InvoiceController::handleDelete(const Request& request) {
         if (!model_->remove(id)) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) { return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// ─── referee fees (mig 490) ─────────────────────────────────────────────────
+// GET /api/invoices/ref-fees → { games: [...] } — every home game the club
+// pays referees for that is not on an invoice yet, played first.  The
+// league feeds are pulled first so a just-published game is here.
+Response InvoiceController::handleRefFees(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try {
+        for (const auto& r : Database::getInstance()->query(
+                "SELECT DISTINCT fixture_league_label AS l FROM ref_fee_policies WHERE club_id = $1::int AND is_active AND fixture_league_label IS NOT NULL",
+                {std::to_string((long long)WelcomeLog::kLighthouseClubId)}))
+            LeagueFixtureSync::refreshLeague(r["l"].c_str());
+        json games = json::array();
+        for (const auto& g : Expenses::games(WelcomeLog::kLighthouseClubId)) if (g["invoiced"].is_null() && g["amount"].get<double>() > 0) games.push_back(g);
+        return jsonOut(HttpStatus::OK, {{"games", games}});
+    } catch (const std::exception& e) { std::cerr << "[invoices ref-fees] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// POST /api/invoices/:id/ref-fees { games: [{source, ref_id}] } → the sheet.
+// One Referees line for the lot; each game becomes a ref_fee_payments row
+// pointing at it, so deleting the line frees the games again.
+Response InvoiceController::handleAddRefFees(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = idFromPath(request.getPath());
+    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
+    try {
+        json line = Expenses::refLineFor(WelcomeLog::kLighthouseClubId, body.value("games", json::array()));
+        if (line["items"].empty()) return jsonError(HttpStatus::BAD_REQUEST, "pick at least one game that is not invoiced yet");
+        std::string err;
+        const long long lineId = model_->upsertLine(id, 0, {{"category", "referees"}, {"description", "Referees — " + line["description"].get<std::string>()},
+                                                            {"quantity", line["quantity"]}, {"amount", line["amount"]}}, &err);
+        if (lineId <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
+        Expenses::recordRefPayments(lineId, line["items"]);
+        return jsonOut(HttpStatus::OK, model_->get(id));
+    } catch (const std::exception& e) { std::cerr << "[invoices add ref-fees] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }

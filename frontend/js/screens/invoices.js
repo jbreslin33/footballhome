@@ -22,6 +22,7 @@ class InvoicesScreen extends Screen {
     this.board = null;
     this.issuerId = 0;
     this.inv = null;          // the open invoice (full sheet)
+    this.refGames = [];       // home games not yet on an invoice (mig 490), for the open draft
     this.loading = false;
     this.error = null;
     this.flash = '';
@@ -189,6 +190,7 @@ class InvoicesScreen extends Screen {
       this.showPlanForm = false;
       this.flash = '';
       this._renderBody();
+      this._loadRefGames();
       const ed = this.find('#iv-editor');
       if (ed) ed.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) { this._say(err.message, true); }
@@ -212,6 +214,42 @@ class InvoicesScreen extends Screen {
     } catch (err) { this._say(err.message, true); }
   }
 
+  // Referee fees to tick off (mig 490): the home games not on any invoice.
+  async _loadRefGames() {
+    const inv = this.inv;
+    if (!inv || inv.is_final || !inv.issuer?.bills_expenses) { this.refGames = []; return; }
+    try {
+      const res = await this.auth.fetch('/api/invoices/ref-fees');
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      if (this.inv && this.inv.id === inv.id) { this.refGames = body.games || []; this._renderBody(); }
+    } catch (err) { console.warn('ref fees unavailable:', err.message); }
+  }
+
+  async addRefFees() {
+    if (!this.inv) return;
+    const picks = [...this.element.querySelectorAll('[data-ref-game]:checked')].map(cb => { const [source, id] = cb.dataset.refGame.split(':'); return { source, ref_id: Number(id) }; });
+    if (!picks.length) { this._say('Tick at least one game.', true); return; }
+    try {
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/ref-fees`, { games: picks });
+      await this.load();
+      this._loadRefGames();
+    } catch (err) { this._say(err.message, true); }
+  }
+
+  // Budget lines a line can count toward (board.budget_lines, mig 490):
+  // those of the line's category, plus whatever it already points at.
+  _budgetSel(category, current, extra = '') {
+    const esc = (t) => this.escapeHtml(t);
+    const all = (this.board && this.board.budget_lines) || [];
+    const opts = category === '__any__' ? all : all.filter(b => b.category === category || b.id === current);
+    if (!opts.length && !current) return '';
+    return `<select class="iv-in" style="margin-top:3px; font-size:0.78rem; opacity:0.85;" title="${esc(this._copy('budget_label') || 'Counts toward')}" ${extra}>
+      <option value="0">${esc(this._copy('budget_none') || '— not a planned expense —')}</option>
+      ${opts.map(b => `<option value="${b.id}" ${b.id === current ? 'selected' : ''}>${esc(b.label)}${b.section ? ` (${esc(b.section)})` : ''} — ${InvoicesScreen.money(b.remaining)} left</option>`).join('')}
+    </select>`;
+  }
+
   async saveLine(lineId) {
     if (!this.inv) return;
     const row = this.find(`[data-line-row="${lineId}"]`);
@@ -229,6 +267,8 @@ class InvoicesScreen extends Screen {
       quantity: qty,
     };
     if (rate !== null && Number.isFinite(rate)) payload.rate = rate;
+    const bsel = row.querySelector('[data-f="budget_line_id"]');
+    if (bsel) payload.budget_line_id = Number(bsel.value) || null;
     // Amount follows qty × rate unless the amount box was edited to something else.
     const computed = rate !== null && Number.isFinite(rate) ? Math.round(qty * rate * 100) / 100 : null;
     const amt = amtRaw === '' ? null : Number(amtRaw);
@@ -250,7 +290,8 @@ class InvoicesScreen extends Screen {
     if (!desc) { this._say('Describe the line first.', true); return; }
     if (!Number.isFinite(rate)) { this._say('Enter the amount.', true); return; }
     try {
-      this.inv = await this._post(`/api/invoices/${this.inv.id}/line`, { category: cat, description: desc, quantity: qty, rate });
+      const budget = Number(this.find('#iv-new-budget')?.value) || null;
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/line`, { category: cat, description: desc, quantity: qty, rate, budget_line_id: budget });
       await this.load();
     } catch (err) { this._say(err.message, true); }
   }
@@ -273,6 +314,7 @@ class InvoicesScreen extends Screen {
       total_amount: Number(this.find('#iv-plan-total')?.value),
       installment_count: Number(this.find('#iv-plan-count')?.value),
       show_total: !!this.find('#iv-plan-show')?.checked,
+      budget_line_id: Number(this.find('#iv-plan-budget')?.value) || null,
     };
     if (!payload.description) { this._say('Describe the expense first.', true); return; }
     try {
@@ -564,6 +606,7 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('#iv-close')) { this.inv = null; this._renderBody(); return; }
       if (e.target.closest('#iv-print')) { this.print(); return; }
       if (e.target.closest('#iv-add-line')) { await this.addLine(); return; }
+      if (e.target.closest('#iv-refs-add')) { await this.addRefFees(); return; }
       if (e.target.closest('#iv-plan-toggle')) { this.showPlanForm = !this.showPlanForm; this._renderBody(); return; }
       if (e.target.closest('#iv-plan-add')) { await this.addPlan(); return; }
       const open = e.target.closest('[data-open]');
@@ -588,6 +631,14 @@ class InvoicesScreen extends Screen {
       if (rmDef) { await this.removeDefault(Number(rmDef.dataset.deleteDefault)); return; }
     });
     el.addEventListener('change', async (e) => {
+      if (e.target.matches('[data-ref-game]')) {
+        // The button reads "n games, $x" for whatever is ticked.
+        const boxes = [...el.querySelectorAll('[data-ref-game]:checked')];
+        const amount = boxes.reduce((a, b) => a + Number(b.dataset.amount || 0), 0);
+        const btn = el.querySelector('#iv-refs-add');
+        if (btn) { btn.disabled = !boxes.length; btn.textContent = this._copy('refs_button', { n: boxes.length, amount: InvoicesScreen.money(amount) }) || `Add referees line — ${boxes.length}, ${InvoicesScreen.money(amount)}`; }
+        return;
+      }
       const f = e.target.closest('[data-f]');
       if (f) {
         const row = f.closest('[data-line-row]');
@@ -824,7 +875,11 @@ class InvoicesScreen extends Screen {
           <div>${l.category === 'labor' ? '<span style="opacity:0.6; font-size:0.8rem;">Hours</span>' : catSel(l.category, 'data-f="category"')}</div>
           <div class="desc">${locked
             ? `<span>${esc(l.printed)}</span>`
-            : `<input class="iv-in" data-f="description" value="${esc(l.description)}">`}</div>
+            : `<input class="iv-in" data-f="description" value="${esc(l.description)}">`}${
+            l.category === 'labor' ? '' : locked
+              ? (l.budget_line_id ? `<div style="font-size:0.75rem; opacity:0.7; margin-top:2px;">↳ ${esc(((this.board?.budget_lines || []).find(b => b.id === l.budget_line_id) || {}).label || 'planned expense')}</div>` : '')
+              : l.ref_games ? `<div style="font-size:0.75rem; opacity:0.7; margin-top:2px;">🧑‍⚖️ ${l.ref_games} game${l.ref_games === 1 ? '' : 's'} ticked off</div>`
+              : this._budgetSel(l.category, l.budget_line_id, 'data-f="budget_line_id"')}</div>
           <div><input class="iv-in num" data-f="quantity" type="number" step="0.25" min="0" value="${l.quantity}" ${l.category === 'labor' && (inv.shifts || []).length ? 'disabled title="Adds up the days above"' : `title="${l.category === 'labor' ? 'Hours' : 'Units'}"`}></div>
           <div><input class="iv-in num" data-f="rate" type="number" step="0.01" min="0" value="${l.rate == null ? '' : l.rate}" title="Rate"></div>
           <div style="display:flex; gap:4px; align-items:center;">
@@ -904,7 +959,7 @@ class InvoicesScreen extends Screen {
         <div class="iv-sec">Add a line</div>
         <div class="iv-row" style="border-top:none;">
           <div>${catSel('other', 'id="iv-new-cat"')}</div>
-          <div class="desc"><input class="iv-in" id="iv-new-desc" placeholder="Description"></div>
+          <div class="desc"><input class="iv-in" id="iv-new-desc" placeholder="Description">${this._budgetSel('__any__', null, 'id="iv-new-budget"')}</div>
           <div><input class="iv-in num" id="iv-new-qty" type="number" step="1" min="0" value="1" title="Units"></div>
           <div><input class="iv-in num" id="iv-new-rate" type="number" step="0.01" min="0" placeholder="0.00" title="Amount each"></div>
           <div><button id="iv-add-line" class="iv-btn sm">Add</button></div>
@@ -917,13 +972,37 @@ class InvoicesScreen extends Screen {
           <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('plan_hint', { k: 1, n: 'N' }))}</div>
           <div class="iv-grid" style="grid-template-columns:150px 1fr 120px 90px auto;">
             <div><div class="iv-lbl">Section</div>${catSel('equipment', 'id="iv-plan-cat"')}</div>
-            <div><div class="iv-lbl">Description</div><input class="iv-in" id="iv-plan-desc" placeholder="Veo Subscription"></div>
+            <div><div class="iv-lbl">Description</div><input class="iv-in" id="iv-plan-desc" placeholder="Veo Subscription">${this._budgetSel('__any__', null, 'id="iv-plan-budget"')}</div>
             <div><div class="iv-lbl">Total paid</div><input class="iv-in num" id="iv-plan-total" type="number" step="0.01" min="0" placeholder="862.92"></div>
             <div><div class="iv-lbl">Over N</div><input class="iv-in num" id="iv-plan-count" type="number" step="1" min="1" value="4"></div>
             <div><div class="iv-lbl">&nbsp;</div><label style="font-size:0.85rem; display:flex; gap:6px; align-items:center; height:36px;"><input type="checkbox" id="iv-plan-show"> print total</label></div>
           </div>
           <div class="iv-acts"><button id="iv-plan-add" class="iv-btn">Add plan + first instalment</button></div>
-        </div>` : ''}` : ''}
+        </div>` : ''}
+        ${inv.is_final ? '' : this._renderRefFees()}` : ''}
+      </div>`;
+  }
+
+  // Referee fees to tick off on this draft (mig 490).
+  _renderRefFees() {
+    const esc = (t) => this.escapeHtml(t);
+    const games = this.refGames || [];
+    const picked = [...(this.element?.querySelectorAll('[data-ref-game]:checked') || [])].map(cb => cb.dataset.refGame);
+    const rows = games.map(g => `
+      <label style="display:flex; gap:10px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:0.9rem; ${g.played ? '' : 'opacity:0.65;'}">
+        <input type="checkbox" data-ref-game="${esc(g.source)}:${g.ref_id}" data-amount="${g.amount}" ${picked.includes(`${g.source}:${g.ref_id}`) || (g.played && !picked.length && false) ? 'checked' : ''}>
+        <span style="width:90px; font-weight:700;">${esc(g.date_label)}</span>
+        <span style="width:110px; opacity:0.8;">${esc(g.policy_label.replace(/^Parks & Rec /, ''))}</span>
+        <span style="flex:1;">${esc(g.opponent)}</span>
+        <span style="width:70px; text-align:right;">${InvoicesScreen.money(g.amount)}</span>
+        <span style="width:90px; text-align:right; font-size:0.78rem; opacity:0.7;">${g.played ? 'played' : 'upcoming'}</span>
+      </label>`).join('');
+    return `
+      <div class="iv-sec">🧑‍⚖️ ${esc(this._copy('refs_title') || 'Referee fees')}</div>
+      <div class="iv-card">
+        <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('refs_hint'))}</div>
+        ${rows || `<div class="iv-hint">${esc(this._copy('refs_empty') || 'No home games waiting to be invoiced.')}</div>`}
+        ${rows ? `<div class="iv-acts"><button id="iv-refs-add" class="iv-btn" disabled>${esc(this._copy('refs_button', { n: 0, amount: '$0.00' }))}</button></div>` : ''}
       </div>`;
   }
 

@@ -55,7 +55,7 @@ Invoice::Invoice() : db_(Database::getInstance()) {}
 
 json Invoice::openPlans(long long issuerId) {
     auto rows = db_->query(R"SQL(
-        SELECT p.id, p.category, p.description, p.total_amount, p.installment_count, p.show_total,
+        SELECT p.id, p.category, p.description, p.total_amount, p.installment_count, p.show_total, p.budget_line_id,
                COALESCE(MAX(l.installment_no), 0) AS used
           FROM invoice_installment_plans p
           LEFT JOIN invoice_lines l ON l.plan_id = p.id
@@ -74,6 +74,7 @@ json Invoice::openPlans(long long issuerId) {
             {"total_amount", total},
             {"installment_count", count},
             {"show_total", r["show_total"].as<bool>()},
+            {"budget_line_id", r["budget_line_id"].is_null() ? json(nullptr) : json(r["budget_line_id"].as<long long>())},
             {"used", r["used"].as<int>()},
             {"next_no", r["used"].as<int>() + 1},
             {"per_amount", round2(total / count)},
@@ -202,8 +203,9 @@ json Invoice::get(long long invoiceId) {
     double total = 0;
     auto lines = db_->query(R"SQL(
         SELECT l.id, l.category, c.label AS category_label, l.description, l.quantity, l.rate, l.amount,
-               l.plan_id, l.installment_no, l.sort_order,
-               p.installment_count, p.total_amount AS plan_total, p.show_total
+               l.plan_id, l.installment_no, l.sort_order, COALESCE(l.budget_line_id, p.budget_line_id) AS budget_line_id,
+               p.installment_count, p.total_amount AS plan_total, p.show_total,
+               (SELECT COUNT(*) FROM ref_fee_payments rp WHERE rp.invoice_line_id = l.id) AS ref_games
           FROM invoice_lines l
           JOIN invoice_line_categories c ON c.code = l.category
           LEFT JOIN invoice_installment_plans p ON p.id = l.plan_id
@@ -224,6 +226,8 @@ json Invoice::get(long long invoiceId) {
             {"plan_id", l["plan_id"].is_null() ? json(nullptr) : json(l["plan_id"].as<long long>())},
             {"installment_no", l["installment_no"].is_null() ? json(nullptr) : json(l["installment_no"].as<int>())},
             {"installment_count", l["installment_count"].is_null() ? json(nullptr) : json(l["installment_count"].as<int>())},
+            {"budget_line_id", l["budget_line_id"].is_null() ? json(nullptr) : json(l["budget_line_id"].as<long long>())},
+            {"ref_games", l["ref_games"].as<long long>()},
             {"sort_order", l["sort_order"].as<int>()},
         });
     }
@@ -374,10 +378,11 @@ long long Invoice::create(long long issuerId, const std::string& isoDate, std::s
         const double total = p["total_amount"].get<double>(), per = round2(total / count);
         const double amt = (k == count) ? round2(total - per * (count - 1)) : per;   // last one absorbs rounding
         db_->query(
-            "INSERT INTO invoice_lines (invoice_id, category, description, quantity, rate, amount, plan_id, installment_no, sort_order) "
-            "VALUES ($1::int, $2, $3, 1, $4::numeric, $4::numeric, $5::int, $6::int, $7::int)",
+            "INSERT INTO invoice_lines (invoice_id, category, description, quantity, rate, amount, plan_id, installment_no, sort_order, budget_line_id) "
+            "VALUES ($1::int, $2, $3, 1, $4::numeric, $4::numeric, $5::int, $6::int, $7::int, NULLIF($8,'')::int)",
             {std::to_string(id), p["category"].get<std::string>(), p["description"].get<std::string>(),
-             money2(amt), std::to_string(p["id"].get<long long>()), std::to_string(k), std::to_string(sort++)});
+             money2(amt), std::to_string(p["id"].get<long long>()), std::to_string(k), std::to_string(sort++),
+             p["budget_line_id"].is_null() ? std::string() : std::to_string(p["budget_line_id"].get<long long>())});
     }
 
     // The usual week, one row per matching day of the period (mig 470).
@@ -445,20 +450,27 @@ long long Invoice::upsertLine(long long invoiceId, long long lineId, const json&
     const bool hasRate = hasNum(f, "rate");
     const double rate = hasRate ? n(f, "rate") : 0.0;
     const double amount = hasNum(f, "amount") ? n(f, "amount") : round2(qty * rate);
+    // What the line counts toward on #finances (mig 490): absent = leave as
+    // is on an update, null/0 = none.
+    const bool hasBudget = f.contains("budget_line_id");
+    const std::string budget = hasBudget && f["budget_line_id"].is_number() && f["budget_line_id"].get<long long>() > 0
+                             ? std::to_string(f["budget_line_id"].get<long long>()) : std::string();
     if (lineId > 0) {
         auto r = db_->query(
-            "UPDATE invoice_lines SET category = $3, description = $4, quantity = $5::numeric, rate = NULLIF($6,'')::numeric, amount = $7::numeric "
+            "UPDATE invoice_lines SET category = $3, description = $4, quantity = $5::numeric, rate = NULLIF($6,'')::numeric, amount = $7::numeric, "
+            "       budget_line_id = CASE WHEN $8::bool THEN NULLIF($9,'')::int ELSE budget_line_id END "
             "WHERE id = $1::int AND invoice_id = $2::int RETURNING id",
-            {std::to_string(lineId), std::to_string(invoiceId), category, description, money2(qty), hasRate ? money2(rate) : "", money2(amount)});
+            {std::to_string(lineId), std::to_string(invoiceId), category, description, money2(qty), hasRate ? money2(rate) : "", money2(amount),
+             hasBudget ? "true" : "false", budget});
         if (r.empty()) { *error = "no such line"; return 0; }
         db_->query("UPDATE invoices SET updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId)});
         return lineId;
     }
     auto r = db_->query(
-        "INSERT INTO invoice_lines (invoice_id, category, description, quantity, rate, amount, sort_order) "
+        "INSERT INTO invoice_lines (invoice_id, category, description, quantity, rate, amount, sort_order, budget_line_id) "
         "VALUES ($1::int, $2, $3, $4::numeric, NULLIF($5,'')::numeric, $6::numeric, "
-        "        (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM invoice_lines WHERE invoice_id = $1::int)) RETURNING id",
-        {std::to_string(invoiceId), category, description, money2(qty), hasRate ? money2(rate) : "", money2(amount)});
+        "        (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM invoice_lines WHERE invoice_id = $1::int), NULLIF($7,'')::int) RETURNING id",
+        {std::to_string(invoiceId), category, description, money2(qty), hasRate ? money2(rate) : "", money2(amount), budget});
     if (r.empty()) { *error = "could not add line"; return 0; }
     db_->query("UPDATE invoices SET updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId)});
     return r[0]["id"].as<long long>();
@@ -481,20 +493,22 @@ long long Invoice::createPlan(long long issuerId, long long invoiceId, const jso
     if (total <= 0) { *error = "total must be positive"; return 0; }
     if (count <= 0) { *error = "instalments must be at least 1"; return 0; }
     const bool showTotal = f.contains("show_total") && f["show_total"].is_boolean() && f["show_total"].get<bool>();
+    const std::string budget = f.contains("budget_line_id") && f["budget_line_id"].is_number() && f["budget_line_id"].get<long long>() > 0
+                             ? std::to_string(f["budget_line_id"].get<long long>()) : std::string();
     auto ins = db_->query(
-        "INSERT INTO invoice_installment_plans (issuer_id, category, description, total_amount, installment_count, show_total) "
-        "VALUES ($1::int, $2, $3, $4::numeric, $5::int, $6::bool) RETURNING id",
-        {std::to_string(issuerId), category, description, money2(total), std::to_string(count), showTotal ? "true" : "false"});
+        "INSERT INTO invoice_installment_plans (issuer_id, category, description, total_amount, installment_count, show_total, budget_line_id) "
+        "VALUES ($1::int, $2, $3, $4::numeric, $5::int, $6::bool, NULLIF($7,'')::int) RETURNING id",
+        {std::to_string(issuerId), category, description, money2(total), std::to_string(count), showTotal ? "true" : "false", budget});
     if (ins.empty()) { *error = "could not create plan"; return 0; }
     const long long planId = ins[0]["id"].as<long long>();
     if (invoiceId > 0 && issuerOf(invoiceId) == issuerId) {
         const double per = round2(total / count);
         const double amt = (count == 1) ? total : per;
         db_->query(
-            "INSERT INTO invoice_lines (invoice_id, category, description, quantity, rate, amount, plan_id, installment_no, sort_order) "
+            "INSERT INTO invoice_lines (invoice_id, category, description, quantity, rate, amount, plan_id, installment_no, sort_order, budget_line_id) "
             "VALUES ($1::int, $2, $3, 1, $4::numeric, $4::numeric, $5::int, 1, "
-            "        (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM invoice_lines WHERE invoice_id = $1::int))",
-            {std::to_string(invoiceId), category, description, money2(amt), std::to_string(planId)});
+            "        (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM invoice_lines WHERE invoice_id = $1::int), NULLIF($6,'')::int)",
+            {std::to_string(invoiceId), category, description, money2(amt), std::to_string(planId), budget});
         db_->query("UPDATE invoices SET updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId)});
     }
     return planId;

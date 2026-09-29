@@ -36,6 +36,8 @@ private:
     bool gate(const Request& request, Response* error);
 
     Response handleBoard(const Request& request);
+    Response handleRefFees(const Request& request);
+    Response handleAddRefFees(const Request& request);
     Response handleNew(const Request& request);
     Response handleGet(const Request& request);
     Response handlePublic(const Request& request);
