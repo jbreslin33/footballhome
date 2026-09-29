@@ -642,6 +642,10 @@ class GameCenterScreen extends Screen {
       }
       const flip = e.target.closest('[data-switch-game]');
       if (flip) { this._switchGame(Number(flip.getAttribute('data-switch-game'))); return; }
+      // Lineup version bar (Official | My draft | … | Compare) and Make official are buttons: click, not change.
+      const viewBtn = e.target.closest('[data-lineup-view]');
+      if (viewBtn) { this._applyView(viewBtn.getAttribute('data-lineup-view')); return; }
+      if (e.target.closest('#gl-make-official')) { this._makeOfficial(); return; }
       const pick = e.target.closest('[data-pick-game]');
       if (pick && this.pickerGames) {
         const ev = this.pickerGames[Number(pick.getAttribute('data-pick-game'))];
@@ -803,9 +807,6 @@ class GameCenterScreen extends Screen {
         this._setBenchOrder(playerId, order);
         return;
       }
-      const viewBtn = e.target.closest('[data-lineup-view]');
-      if (viewBtn) { this._applyView(viewBtn.getAttribute('data-lineup-view')); return; }
-      if (e.target.closest('#gl-make-official')) { this._makeOfficial(); return; }
       if (e.target.id === 'gl-compare-diff') { this.compareOnlyDiff = !!e.target.checked; this._render(); return; }
       const formationSelect = e.target.closest('[data-lineup-formation-select]');
       if (formationSelect && this.isCoach) {
@@ -2167,18 +2168,24 @@ class GameCenterScreen extends Screen {
     // their practice tally and RSVP pill with them — exactly the numbers a
     // coach weighs when deciding who starts.  Every rostered player is now
     // in exactly one card section, whatever their zone.
-    paint(viewToggleHtml + lineupControlsHtml + (this.isCoach ? squadBar : '') + [
+    // Messaging tools belong to the official lineup only: a draft's author
+    // edits like a coach (isCoach flips per view), but a squad reminder or
+    // a Game Link about a mock lineup would tell players a role they do
+    // not hold.  The backend gates the sends on club admin; this keeps the
+    // buttons off every draft view, admin or not.
+    const canMessage = this.isCoach && this.lineupView === 'official';
+    paint(viewToggleHtml + lineupControlsHtml + (canMessage ? squadBar : '') + [
       this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
         // In formation order (1 = keeper …), same numbers as the pills.
         const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
         return order(a) - order(b);
-      }), squadCard) : '',
-      gridSection('Bench', byZone.bench, this.isCoach ? squadCard : null),
-      gridSection('Alternates', byZone.alternate, this.isCoach ? squadCard : null),
+      }), canMessage ? squadCard : null) : '',
+      gridSection('Bench', byZone.bench, canMessage ? squadCard : null),
+      gridSection('Alternates', byZone.alternate, canMessage ? squadCard : null),
       this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
       this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
-      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, { top: remindBar, extra: remindCard }) : '',
+      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: remindCard } : {}) : '',
     ].join(''));
   }
 
