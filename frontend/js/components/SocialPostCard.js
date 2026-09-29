@@ -1797,8 +1797,12 @@ class SocialPostCard {
     const chip = tall ? 34 : 44;
     // Five across leaves ~100px a name; 16px breaks a long first name mid-word there.
     const nameSize = tall ? 14 : pitch.some(row => row && row.length >= 5) ? 15 : 16;
-    const token = (t) => `
-      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:128px;display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
+    // A back four at 128px a chip spans the whole card, which puts the
+    // full backs on the touchline; owner 2026-09-29: "show a narrower
+    // formation for the full backs" — rows of four (and five) get a
+    // tighter cap so the line pulls in from the edges.
+    const token = (t, n = 0) => `
+      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
         <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
         <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;">${t.name ? this.escapeHtml(t.name) : '—'}</div>
         ${t.badgeHtml || ''}
@@ -1819,7 +1823,7 @@ class SocialPostCard {
       </div>` : '';
     return `
       <div style="flex:1;min-height:0;align-self:stretch;margin:0 -28px;padding:10px 6px;box-sizing:border-box;background:#15803d;border-top:2px solid rgba(255,255,255,0.35);border-bottom:2px solid rgba(255,255,255,0.35);display:flex;flex-direction:column;justify-content:space-between;">
-        ${pitch.map(row => row ? `<div style="display:flex;justify-content:center;align-items:flex-start;gap:6px;">${row.map(token).join('')}</div>` : halfway).join('')}
+        ${pitch.map(row => row ? `<div style="display:flex;justify-content:center;align-items:flex-start;gap:6px;">${row.map(t => token(t, row.length)).join('')}</div>` : halfway).join('')}
       </div>
       ${benchHtml}
     `;
