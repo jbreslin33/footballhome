@@ -226,6 +226,17 @@ class GameCenterScreen extends Screen {
     this.fieldSize = DEFAULT_FIELD_SIZE;
     this.matchStartsAt = null; // naive UTC-string date of this match, for the trailing "game" pill
     this.isCoach   = false;
+    // Lineup drafts (mig 495): 'official' | 'draft:<personId>' | 'compare'.
+    // realIsCoach is the account's true standing; isCoach is per view
+    // (a drafter edits only their own draft, so isCoach flips with the view).
+    this.lineupView = 'official';
+    this.realIsCoach = false;
+    this.canDraft = false;
+    this.viewerPersonId = null;
+    this.drafters = [];
+    this.drafts = [];
+    this.official = null;          // snapshot of the official maps + formation
+    this.compareOnlyDiff = true;
     // Coach-only toggle (2026-08-22, owner directive: "only need 1 Lineup
     // button on screen") between the editable coach view and a read-only
     // preview of exactly what players see. Players always get the player
@@ -792,6 +803,10 @@ class GameCenterScreen extends Screen {
         this._setBenchOrder(playerId, order);
         return;
       }
+      const viewBtn = e.target.closest('[data-lineup-view]');
+      if (viewBtn) { this._applyView(viewBtn.getAttribute('data-lineup-view')); return; }
+      if (e.target.closest('#gl-make-official')) { this._makeOfficial(); return; }
+      if (e.target.id === 'gl-compare-diff') { this.compareOnlyDiff = !!e.target.checked; this._render(); return; }
       const formationSelect = e.target.closest('[data-lineup-formation-select]');
       if (formationSelect && this.isCoach) {
         this.formation = formationSelect.value;
@@ -919,6 +934,9 @@ class GameCenterScreen extends Screen {
           this.benchOrder.set(Number(row.playerId), Number(row.slotNumber));
         }
       }
+      this.realIsCoach = this.isCoach;
+      this.official = this._snapshot();
+      this._loadDrafts();   // non-fatal; re-applies the open draft when it lands
       this.stats = new Map();
       for (const row of (lineupData.data.rosterStats || [])) {
         this.stats.set(Number(row.playerId), row);
@@ -1369,6 +1387,145 @@ class GameCenterScreen extends Screen {
     this._toastT = setTimeout(() => { if (t) t.style.opacity = '0'; }, 2500);
   }
 
+  // ── lineup drafts (mig 495) ──────────────────────────────────────────
+  _copyLd(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('lineup_drafts', tier, tokens) : ''; }
+  _snapshot() { return { zones: new Map(this.zones), positions: new Map(this.positions), benchOrder: new Map(this.benchOrder), formation: this.formation }; }
+  _restore(snap) { this.zones = new Map(snap.zones); this.positions = new Map(snap.positions); this.benchOrder = new Map(snap.benchOrder); this.formation = snap.formation; }
+  _isDraftView() { return String(this.lineupView).startsWith('draft:'); }
+  _viewPersonId() { return this._isDraftView() ? Number(this.lineupView.slice(6)) : null; }
+  _draftFor(personId) { return (this.drafts || []).find(d => Number(d.authorPersonId) === Number(personId)) || null; }
+  _mapsFromRows(rows) {
+    const snap = { zones: new Map(), positions: new Map(), benchOrder: new Map(), formation: this._fieldSpec().defaultFormation };
+    for (const row of rows || []) {
+      if (row.zone) snap.zones.set(Number(row.playerId), row.zone);
+      if (row.zone === 'starter' && row.positionId != null) snap.positions.set(Number(row.playerId), Number(row.positionId));
+      if (row.zone === 'bench' && row.slotNumber != null) snap.benchOrder.set(Number(row.playerId), Number(row.slotNumber));
+    }
+    return snap;
+  }
+  _rowsFromMaps() {
+    const rows = [];
+    for (const [playerId, zone] of this.zones.entries())
+      rows.push({ playerId, zone, positionId: zone === 'starter' ? (this.positions.get(playerId) ?? null) : null, slotNumber: zone === 'bench' ? (this.benchOrder.get(playerId) ?? null) : null });
+    return rows;
+  }
+
+  async _loadDrafts() {
+    const matchId = this.matchId;
+    try {
+      if (window.MessageCopy) await MessageCopy.load(this.auth);
+      const res = await this.auth.fetch(`/api/lineup-drafts/${matchId}`);
+      if (res.status === 403 || res.status === 401) { this.canDraft = false; this.drafts = []; return; }
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.success) throw new Error(body.error || `HTTP ${res.status}`);
+      if (this.matchId !== matchId) return;
+      this.canDraft = true;
+      this.viewerPersonId = body.viewerPersonId != null ? Number(body.viewerPersonId) : null;
+      this.drafters = body.drafters || [];
+      this.drafts = body.drafts || [];
+      if (this.lineupView !== 'official') this._applyView(this.lineupView, { silent: true });
+      this._render();
+    } catch (err) { console.warn('[game-center] drafts unavailable:', err.message); }
+  }
+
+  // Switch what the editor shows: the official lineup, one person's draft
+  // (editable only by its author), or the comparison.
+  _applyView(view, { silent = false } = {}) {
+    if (view === 'official' || view === 'compare') {
+      if (this.official) this._restore(this.official);
+      this.isCoach = view === 'official' ? this.realIsCoach : false;
+    } else {
+      const pid = Number(String(view).slice(6));
+      const d = this._draftFor(pid);
+      const snap = this._mapsFromRows(d ? d.rows : []);
+      if (d && d.formationCode && this._fieldSpec().formations[d.formationCode]) snap.formation = d.formationCode;
+      this._restore(snap);
+      this.isCoach = pid === this.viewerPersonId;   // the author edits, everyone else reads
+      if (this.isCoach) this.viewMode = 'coach';
+    }
+    this.lineupView = view;
+    if (!silent) this._render();
+  }
+
+  // The chosen draft becomes the official lineup: load it into the editor
+  // and save through the coach-gated official PUT.
+  async _makeOfficial() {
+    if (!this.realIsCoach || !this._isDraftView()) return;
+    const d = this._draftFor(this._viewPersonId());
+    if (!d) return;
+    const snap = this._snapshot();
+    this.lineupView = 'official';
+    this._restore(snap);
+    this.isCoach = this.realIsCoach;
+    await this._saveLineup();
+    this.flash = this._copyLd('made_official', { name: d.firstName || d.authorName }) || `${d.authorName}'s draft is now the official lineup.`;
+    this._render();
+  }
+
+  _draftBarHtml() {
+    if (!this.canDraft) return '';
+    const esc = (t) => this.escapeHtml(t);
+    const pill = (key, label, extra = '') => `<button type="button" data-lineup-view="${esc(key)}" class="btn btn-sm ${this.lineupView === key ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.78rem; padding:4px 10px; border-radius:999px;">${label}${extra}</button>`;
+    // Official | My draft | one pill per draft someone else has started | Compare
+    const pills = [pill('official', esc(this._copyLd('pill_official') || 'Official'))]
+      .concat(this.viewerPersonId != null ? [pill(`draft:${this.viewerPersonId}`, `📝 ${esc(this._copyLd('pill_my_draft') || 'My draft')}`)] : [])
+      .concat(this.drafters.filter(p => Number(p.personId) !== this.viewerPersonId && this._draftFor(p.personId))
+        .map(p => pill(`draft:${p.personId}`, `📝 ${esc(p.firstName || p.name)}`)))
+      .concat([pill('compare', `🔀 ${esc(this._copyLd('pill_compare') || 'Compare')}`)]);
+    let hint = '';
+    if (this.lineupView === 'official') hint = this._copyLd('official_hint');
+    else if (this._isDraftView()) {
+      const pid = this._viewPersonId(); const d = this._draftFor(pid); const who = this.drafters.find(p => Number(p.personId) === pid) || {};
+      hint = pid === this.viewerPersonId ? this._copyLd('draft_hint')
+           : d ? this._copyLd('draft_readonly', { name: who.firstName || who.name || '' })
+               : this._copyLd('draft_empty', { name: who.firstName || who.name || '' });
+      if (d && d.updatedAt) hint += ` <span style="opacity:0.6;">· ${esc(d.updatedAt)}</span>`;
+    }
+    const makeOfficial = this._isDraftView() && this.realIsCoach && this._draftFor(this._viewPersonId())
+      ? `<button type="button" id="gl-make-official" class="btn btn-primary" style="font-size:0.78rem; padding:4px 10px;">${esc(this._copyLd('make_official') || '✅ Make this the official lineup')}</button>` : '';
+    return `
+      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px;">${pills.join('')}</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.78rem; opacity:0.85; margin-bottom:10px;"><span>${hint}</span>${makeOfficial}</div>`;
+  }
+
+  // Official next to every draft, one column each: S<pos> / B / A / –.
+  _renderCompare() {
+    const esc = (t) => this.escapeHtml(t);
+    const versions = [{ key: 'official', label: this._copyLd('pill_official') || 'Official', snap: this.official || this._snapshot() }]
+      .concat(this.drafters.filter(p => this._draftFor(p.personId)).map(p => { const d = this._draftFor(p.personId); return { key: `draft:${p.personId}`, label: Number(p.personId) === this.viewerPersonId ? (this._copyLd('pill_my_draft') || 'My draft') : (p.firstName || p.name), snap: this._mapsFromRows(d.rows), formation: d.formationCode }; }));
+    versions[0].formation = versions[0].snap.formation;
+    const byId = new Map(this.roster.map(p => [p.id, p]));
+    const ids = new Set(); for (const v of versions) if (v.snap) for (const id of v.snap.zones.keys()) ids.add(id);
+    const cell = (v, id) => { if (!v.snap) return ''; const z = v.snap.zones.get(id); if (!z) return '–'; if (z === 'starter') { const n = v.snap.positions.get(id); return `S${n != null ? n : ''}`; } return z === 'bench' ? 'B' : 'A'; };
+    const rows = [...ids].map(id => { const cells = versions.map(v => cell(v, id)); const differs = new Set(cells.filter(c => c !== '')).size > 1; return { id, name: byId.get(id)?.name || `#${id}`, cells, differs }; })
+      .sort((a, b) => (b.differs - a.differs) || a.name.localeCompare(b.name));
+    const shown = this.compareOnlyDiff ? rows.filter(r => r.differs) : rows;
+    const counts = (v) => { if (!v.snap) return '—'; let s = 0, b = 0, a = 0; for (const z of v.snap.zones.values()) { if (z === 'starter') s++; else if (z === 'bench') b++; else a++; } return `${s} / ${b} / ${a}`; };
+    const th = 'padding:4px 8px; text-align:center; font-size:0.72rem; opacity:0.8; white-space:nowrap;';
+    const td = 'padding:4px 8px; text-align:center; font-size:0.85rem; font-weight:700;';
+    return `
+      <div style="border:1px solid var(--border-color); border-radius:8px; padding:10px; background:var(--bg-secondary);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+          <span style="font-size:0.78rem; opacity:0.8;">${esc(this._copyLd('compare_note'))}</span>
+          <label style="font-size:0.78rem; display:flex; gap:6px; align-items:center;"><input type="checkbox" id="gl-compare-diff" ${this.compareOnlyDiff ? 'checked' : ''}> ${esc(this._copyLd('compare_only_diff') || 'Differences only')}</label>
+        </div>
+        <div style="overflow-x:auto;"><table style="border-collapse:collapse; min-width:100%;">
+          <thead>
+            <tr><th style="${th} text-align:left;"></th>${versions.map(v => `<th style="${th}">${esc(v.label)}${v.snap ? '' : '<br><span style="opacity:0.5;">no draft</span>'}</th>`).join('')}</tr>
+            <tr><th style="${th} text-align:left; font-weight:400;">formation</th>${versions.map(v => `<th style="${th} font-weight:400;">${esc(v.formation || '')}</th>`).join('')}</tr>
+            <tr><th style="${th} text-align:left; font-weight:400;">S / B / A</th>${versions.map(v => `<th style="${th} font-weight:400;">${counts(v)}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            ${shown.map(r => `<tr style="${r.differs ? 'background:rgba(245,158,11,0.12);' : ''} border-top:1px solid var(--border-color);">
+              <td style="padding:4px 8px; font-size:0.85rem; white-space:nowrap;">${esc(r.name)}</td>
+              ${r.cells.map(c => `<td style="${td} ${c === '–' ? 'opacity:0.35;' : c.startsWith('S') ? 'color:#86efac;' : c === 'B' ? 'color:#fbbf24;' : ''}">${esc(c)}</td>`).join('')}
+            </tr>`).join('')}
+            ${shown.length ? '' : `<tr><td colspan="${versions.length + 1}" style="padding:10px; opacity:0.7; font-size:0.85rem;">${esc(this._copyLd('compare_same') || 'Every version agrees.')}</td></tr>`}
+          </tbody>
+        </table></div>
+      </div>`;
+  }
+
   _scheduleSave() {
     if (this._saveTimer) clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => {
@@ -1401,14 +1558,29 @@ class GameCenterScreen extends Screen {
       }
       else if (zone === 'alternate') alternates.push({ playerId });
     }
+    const payload = { starters, bench, alternates, formationId: this._formationId(), rosterSize: 0 };
     try {
+      if (this._isDraftView()) {
+        // My draft (mig 495) — the same shape, my own row.
+        if (this._viewPersonId() !== this.viewerPersonId) return;
+        const res = await this.auth.fetch(`/api/lineup-drafts/${this.matchId}/mine`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Save failed');
+        const me = this.drafters.find(p => Number(p.personId) === this.viewerPersonId) || {};
+        const d = this._draftFor(this.viewerPersonId);
+        const rows = this._rowsFromMaps();
+        if (d) { d.rows = rows; d.formationCode = this.formation; }
+        else this.drafts.push({ id: data.draftId, authorPersonId: this.viewerPersonId, authorName: me.name || '', firstName: me.firstName || '', mine: true, formationCode: this.formation, updatedAt: '', rows });
+        return;
+      }
       const res = await this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ starters, bench, alternates, formationId: this._formationId(), rosterSize: 0 }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Save failed');
+      this.official = this._snapshot();
     } catch (err) {
       console.error('[game-lineup] save failed:', err);
     }
@@ -1653,9 +1825,9 @@ class GameCenterScreen extends Screen {
     // flip the one card, that post's tools and Post button sit right
     // under it, and the lineup editor follows.
     const paint = (bodyHtml) => {
-      head.innerHTML = `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+      head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
         + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
-        + this._renderCard('top', this.pill) + this._pillToolsHtml(this.pill, byZone) + this._postButtonHtml();
+        + this._renderCard('top', this.pill) + (this.lineupView === 'official' ? this._pillToolsHtml(this.pill, byZone) + this._postButtonHtml() : '');
       box.innerHTML = bodyHtml;
       this._renderSocial(byZone);
       this._mountCard('top', this.pill, byZone);
@@ -1667,6 +1839,8 @@ class GameCenterScreen extends Screen {
       paint('');
       return;
     }
+
+    if (this.lineupView === 'compare') { paint(this._renderCompare()); return; }
 
     if (effectiveIsPlayerView) {
       paint(viewToggleHtml + this._renderMyEligibility() + this._renderRosterCriteria()

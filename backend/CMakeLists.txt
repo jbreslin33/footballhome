@@ -123,6 +123,7 @@ set(SOURCES
     src/controllers/ClubFileController.cpp
     src/controllers/InvoiceController.cpp
     src/controllers/FinancesController.cpp
+    src/controllers/LineupDraftController.cpp
     src/controllers/OpponentsController.cpp
     src/services/ClubLogoFinder.cpp
     src/services/ClubLogoSearchScheduler.cpp
