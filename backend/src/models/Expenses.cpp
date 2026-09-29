@@ -111,7 +111,7 @@ json Expenses::projection(int clubId) {
     // ── referee fees ──
     std::map<long long, std::vector<json>> gamesByPolicy;
     for (const auto& r : db->query(kGamesSql, {club})) gamesByPolicy[r["policy_id"].as<long long>()].push_back(gameJson(r));
-    for (const auto& p : db->query("SELECT id, label, club_section_id, per_game_usd, home_only, note FROM ref_fee_policies WHERE club_id = $1::int AND is_active ORDER BY sort_order, id", {club})) {
+    for (const auto& p : db->query("SELECT id, label, group_label, club_section_id, per_game_usd, home_only, note FROM ref_fee_policies WHERE club_id = $1::int AND is_active ORDER BY sort_order, id", {club})) {
         const long long pid = p["id"].as<long long>(); const double rate = num(p, "per_game_usd");
         const long long sectionId = p["club_section_id"].is_null() ? 0 : p["club_section_id"].as<long long>();
         Months m; json seasons = json::array();
@@ -144,14 +144,14 @@ json Expenses::projection(int clubId) {
             if (g["invoiced"].is_null()) add(m, ym, rate, 0); else add(m, ym, 0, g["invoiced"]["amount"].get<double>());
         }
         roll(sectionId, m);
-        out["ref_fees"].push_back({{"policy_id", pid}, {"label", str(p, "label")}, {"section_id", sectionId ? json(sectionId) : json(nullptr)},
+        out["ref_fees"].push_back({{"policy_id", pid}, {"label", str(p, "label")}, {"group_label", str(p, "group_label")}, {"section_id", sectionId ? json(sectionId) : json(nullptr)},
                                    {"section", sectionName.count(sectionId) ? sectionName[sectionId] : ""}, {"rate", rate}, {"home_only", p["home_only"].as<bool>()},
                                    {"note", str(p, "note")}, {"seasons", seasons}, {"games", games.size()}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
     }
 
     // ── budget lines ──
     for (const auto& b : db->query(R"SQL(
-        SELECT b.id, b.label, c.label AS category_label, b.category, b.club_section_id, b.amount_usd, b.amount_per, b.paid_before_usd,
+        SELECT b.id, b.label, b.group_label, c.label AS category_label, b.category, b.club_section_id, b.amount_usd, b.amount_per, b.paid_before_usd,
                b.period_start::text AS ps, b.period_end::text AS pe, b.spread, b.is_assumed, b.note,
                CASE WHEN b.amount_per = 'member' THEN (
                    SELECT COUNT(DISTINCT m.person_id) FROM person_la_memberships m
@@ -191,7 +191,7 @@ json Expenses::projection(int clubId) {
             } else add(m, monthAt(startIdx), remaining, 0);
         }
         roll(sectionId, m);
-        out["budget"].push_back({{"id", bid}, {"label", str(b, "label")}, {"category", str(b, "category")}, {"category_label", str(b, "category_label")},
+        out["budget"].push_back({{"id", bid}, {"label", str(b, "label")}, {"group_label", str(b, "group_label")}, {"category", str(b, "category")}, {"category_label", str(b, "category_label")},
                                  {"section_id", sectionId ? json(sectionId) : json(nullptr)}, {"section", sectionName.count(sectionId) ? sectionName[sectionId] : ""},
                                  {"amount", num(b, "amount_usd")}, {"amount_per", str(b, "amount_per")}, {"units", units}, {"total", total},
                                  {"paid_before", paidBefore}, {"invoiced", round2(invoiced)}, {"remaining", remaining}, {"period_start", ps}, {"period_end", pe},

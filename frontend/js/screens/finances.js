@@ -15,7 +15,7 @@
 // Wording: message_templates kind 'payments_overview' (summary / revenue)
 // and 'finances' (page, pills, cash flow).
 class FinancesScreen extends Screen {
-  constructor(navigation, auth) { super(navigation, auth); this.summary = null; this.expenses = null; this.view = 'summary'; this.err = ''; }
+  constructor(navigation, auth) { super(navigation, auth); this.summary = null; this.expenses = null; this.view = 'summary'; this.err = ''; this.expanded = new Set(); }
 
   render() {
     const div = document.createElement('div');
@@ -34,6 +34,11 @@ class FinancesScreen extends Screen {
         .fn-table th:first-child, .fn-table td:first-child { text-align:left; }
         .fn-table tr.sum td { border-top:2px solid var(--border-color, #374151); font-weight:700; }
         .fn-table tr.group td { padding-top:10px; font-weight:800; opacity:0.85; }
+        .fn-table tr.cat td { font-weight:700; cursor:pointer; }
+        .fn-table tr.cat td:first-child::before { content:'▸ '; opacity:0.6; }
+        .fn-table tr.cat.open td:first-child::before { content:'▾ '; }
+        .fn-table tr.item td { opacity:0.85; font-size:0.82rem; }
+        .fn-table tr.item td:first-child { padding-left:26px; }
         .fn-table td.now { background:rgba(14,165,233,0.10); }
         .fn-in { color:#86efac; } .fn-out { color:#fca5a5; } .fn-dim { opacity:0.5; }
         .fn-tick { font-size:0.7rem; opacity:0.75; display:block; }
@@ -52,7 +57,10 @@ class FinancesScreen extends Screen {
       </div>`;
     this.element = div;
     div.querySelector('#fn-back').addEventListener('click', () => this.navigation.goBack());
-    div.addEventListener('click', (e) => { const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); } });
+    div.addEventListener('click', (e) => {
+      const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
+      const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
+    });
     return div;
   }
 
@@ -166,15 +174,39 @@ class FinancesScreen extends Screen {
     for (const r of inRows) html += `<tr><td>${r.emoji} ${esc(r.label)}</td>${months.map(ym => cell(ym, r.monthly, 0, 'fn-in')).join('')}<td class="fn-in">${M0(r.monthly * months.length)}</td></tr>`;
     html += `<tr class="sum"><td>${esc(this._copy('row_in') || 'Money in')}</td>${months.map(ym => cell(ym, inTotal, 0, 'fn-in')).join('')}<td class="fn-in">${M0(inTotal * months.length)}</td></tr>`;
 
-    // Money out: referee policies, then budget lines.
-    const outRows = [
-      ...(x.ref_fees || []).map(p => ({ label: `Refs — ${p.label}${p.seasons?.some(s => s.is_assumed) ? '*' : ''}`, emoji: '🧑‍⚖️', by: p.by_month || {}, hint: `${FinancesScreen.money2(p.rate)} per home game` })),
-      ...(x.budget || []).map(b => ({ label: `${b.label}${b.is_assumed ? '*' : ''}`, emoji: b.category === 'uniforms' ? '👕' : b.category === 'facilities' ? '🎨' : '🏆', by: b.by_month || {},
-        hint: `${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}` })),
-    ].filter(r => sum(r.by, 'projected') > 0 || sum(r.by, 'invoiced') > 0);
-    const outBy = {}; for (const r of outRows) for (const ym of months) { const c = r.by[ym] || {}; outBy[ym] = outBy[ym] || { projected: 0, invoiced: 0 }; outBy[ym].projected += Number(c.projected || 0); outBy[ym].invoiced += Number(c.invoiced || 0); }
-    html += `<tr class="group"><td colspan="${months.length + 2}">${esc(this._copy('row_out') || 'Money out')}</td></tr>`;
-    for (const r of outRows) html += `<tr><td title="${esc(r.hint)}">${r.emoji} ${esc(r.label)}</td>${months.map(ym => cell(ym, (r.by[ym] || {}).projected, (r.by[ym] || {}).invoiced, 'fn-out')).join('')}<td class="fn-out">${M0(sum(r.by, 'projected'))}</td></tr>`;
+    // Money out, rolled up by major category (invoice_line_categories, mig
+    // 493): one row per category with monthly totals; tap to expand into
+    // its items, where rows sharing a group_label are one line ("u8 fall
+    // winter spring all one line").
+    const addBy = (into, by) => { for (const [ym, c] of Object.entries(by || {})) { into[ym] = into[ym] || { projected: 0, invoiced: 0 }; into[ym].projected += Number(c.projected || 0); into[ym].invoiced += Number(c.invoiced || 0); } };
+    const catLabel = {}; for (const b of (x.budget || [])) catLabel[b.category] = (b.category_label || b.category).replace(/:\s*$/, '');
+    catLabel.referees = catLabel.referees || 'Referees';
+    const raw = [
+      ...(x.ref_fees || []).map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
+      ...(x.budget || []).map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
+        hints: [`${b.label}: ${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}`] })),
+    ];
+    const cats = new Map();
+    for (const r of raw) {
+      if (!cats.has(r.cat)) cats.set(r.cat, { code: r.cat, label: catLabel[r.cat] || r.cat, by: {}, items: new Map() });
+      const c = cats.get(r.cat); addBy(c.by, r.by);
+      if (!c.items.has(r.key)) c.items.set(r.key, { label: r.key, assumed: false, by: {}, hints: [] });
+      const it = c.items.get(r.key); it.assumed = it.assumed || r.assumed; it.hints.push(...r.hints); addBy(it.by, r.by);
+    }
+    const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
+    const catRows = [...cats.values()].filter(c => sum(c.by, 'projected') > 0 || sum(c.by, 'invoiced') > 0)
+      .sort((a, b) => (order.indexOf(a.code) + 1 || 99) - (order.indexOf(b.code) + 1 || 99));
+    const emoji = { league_dues: '🏆', registrations: '📝', referees: '🧑‍⚖️', field_rentals: '🏟️', facilities: '🎨', equipment: '⚽', uniforms: '👕', other: '📦' };
+    const outRows = [];   // what the grid prints, in order
+    for (const c of catRows) {
+      const open = this.expanded.has(c.code);
+      const items = [...c.items.values()].filter(i => sum(i.by, 'projected') > 0 || sum(i.by, 'invoiced') > 0);
+      outRows.push({ kind: 'cat', code: c.code, open, label: `${c.label}${items.some(i => i.assumed) ? '*' : ''}`, emoji: emoji[c.code] || '', by: c.by, hint: `${items.length} item${items.length === 1 ? '' : 's'}` });
+      if (open) for (const i of items) outRows.push({ kind: 'item', label: `${i.label}${i.assumed ? '*' : ''}`, emoji: '', by: i.by, hint: i.hints.join('\n') });
+    }
+    const outBy = {}; for (const c of catRows) addBy(outBy, c.by);
+    html += `<tr class="group"><td colspan="${months.length + 2}">${esc(this._copy('row_out') || 'Money out')} <span style="font-weight:400; opacity:0.6; font-size:0.78rem;">${esc(this._copy('expand_hint'))}</span></td></tr>`;
+    for (const r of outRows) html += `<tr class="${r.kind} ${r.open ? 'open' : ''}" ${r.kind === 'cat' ? `data-cat="${esc(r.code)}"` : ''}><td title="${esc(r.hint)}">${r.emoji ? r.emoji + ' ' : ''}${esc(r.label)}</td>${months.map(ym => cell(ym, (r.by[ym] || {}).projected, (r.by[ym] || {}).invoiced, 'fn-out')).join('')}<td class="fn-out">${M0(sum(r.by, 'projected'))}</td></tr>`;
     const outTotal = sum(outBy, 'projected');
     html += `<tr class="sum"><td>${esc(this._copy('row_out') || 'Money out')}</td>${months.map(ym => cell(ym, outBy[ym]?.projected, outBy[ym]?.invoiced, 'fn-out')).join('')}<td class="fn-out">${M0(outTotal)}</td></tr>`;
     const net = (ym) => inTotal - Number(outBy[ym]?.projected || 0);
