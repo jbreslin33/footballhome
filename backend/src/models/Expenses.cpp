@@ -121,9 +121,9 @@ json Expenses::projection(int clubId) {
         Months m; json seasons = json::array();
         const auto& games = gamesByPolicy[pid];
         std::set<std::string> counted;   // game keys placed by a season
-        for (const auto& s : db->query("SELECT id, label, starts_on::text AS s, ends_on::text AS e, home_games_expected, is_assumed FROM ref_fee_seasons WHERE policy_id = $1::int ORDER BY starts_on", {std::to_string(pid)})) {
+        for (const auto& s : db->query("SELECT id, label, starts_on::text AS s, ends_on::text AS e, home_games_expected, is_assumed, game_weekday FROM ref_fee_seasons WHERE policy_id = $1::int ORDER BY starts_on", {std::to_string(pid)})) {
             const std::string from = str(s, "s"), to = str(s, "e"); const int expected = s["home_games_expected"].as<int>();
-            int known = 0; std::string lastKnownMonth;
+            int known = 0; std::string lastKnownMonth, lastKnownDate;
             for (const auto& g : games) {
                 const std::string on = g["game_on"].get<std::string>();
                 if (on < from || on > to) continue;
@@ -132,13 +132,26 @@ json Expenses::projection(int clubId) {
                 if (coaching && on < today) continue;
                 if (g["invoiced"].is_null()) add(m, ym, rate, 0); else add(m, ym, 0, g["invoiced"]["amount"].get<double>());
                 if (ym > lastKnownMonth) lastKnownMonth = ym;
+                if (on > lastKnownDate) lastKnownDate = on;
             }
-            const int remainder = std::max(0, expected - known);
+            const int remainder = std::max(0, expected - known); int left = remainder;
             const int endIdx = monthIndex(monthOf(to)); widen(monthOf(from)); widen(monthOf(to));
+            // Games on a fixed weekday (mig 499, owner: "games are sundays"):
+            // one per such day still ahead in the window, after the last
+            // game already on the schedule; anything beyond that many days
+            // is dealt round the months like the rest.
+            if (!s["game_weekday"].is_null() && left > 0) {
+                for (const auto& d : db->query("SELECT to_char(d, 'YYYY-MM') AS ym FROM generate_series(GREATEST($1::date, $3::date), $2::date, interval '1 day') d "
+                                               " WHERE EXTRACT(DOW FROM d)::int = $4::int AND d::date > COALESCE(NULLIF($5, '')::date, DATE '1900-01-01') ORDER BY d",
+                                               {from, to, today, std::to_string(s["game_weekday"].as<int>()), lastKnownDate})) {
+                    if (left == 0) break;
+                    add(m, str(d, "ym"), rate, 0); left--;
+                }
+            }
             int startIdx = std::max(nowIdx, lastKnownMonth.empty() ? monthIndex(monthOf(from)) : monthIndex(lastKnownMonth) + 1);
             if (startIdx > endIdx) startIdx = std::max(nowIdx, endIdx);   // season over or nearly: whatever is left lands now / at the end
             const int n = std::max(1, endIdx - startIdx + 1);
-            for (int k = 0; k < remainder; k++) add(m, monthAt(startIdx + (k % n)), rate, 0);   // one game at a time round the months
+            for (int k = 0; k < left; k++) add(m, monthAt(startIdx + (k % n)), rate, 0);   // one game at a time round the months
             seasons.push_back({{"id", s["id"].as<long long>()}, {"label", str(s, "label")}, {"starts_on", from}, {"ends_on", to},
                                {"expected", expected}, {"known", known}, {"remainder", remainder}, {"is_assumed", s["is_assumed"].as<bool>()}});
         }
