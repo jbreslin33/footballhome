@@ -15,7 +15,8 @@
 //                                               available = one of the game's teams has an active
 //                                               official_roster_sources row.
 //   POST /api/official-roster/:matchId/refresh  pulls the sheet from the league site right now
-//                                               (services/TeamPassRoster) and replaces the game's
+//                                               (services/TeamPassRoster for the APSL, GoogleSheetRoster
+//                                               for CASA — by the source row's system) and replaces the game's
 //                                               row in match_official_rosters → the same body.
 //   GET  /api/official-roster/:matchId/pdf      the stored bytes.
 //

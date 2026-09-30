@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "RosterFile.h"
 
 // TeamPassRoster — pulls a team's official "Printable Roster" PDF from
 // TeamPass (app.teampass.com, the APSL's league site), the sheet a referee
@@ -25,11 +26,7 @@
 // the same names apsl-credentials.conf uses).
 class TeamPassRoster {
 public:
-    struct Result {
-        bool ok = false;
-        std::string pdf;      // the bytes, exactly as TeamPass sent them
-        std::string error;    // why not, in words a coach can act on
-    };
+    using Result = RosterFile;
 
     // siteSlug "APSL", externalTeamId "165430", credentialsKey "APSL".
     static Result fetch(const std::string& siteSlug, const std::string& externalTeamId, const std::string& credentialsKey);

@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "../database/Database.h"
+#include "../services/GoogleSheetRoster.h"
 #include "../services/TeamPassRoster.h"
 
 using nlohmann::json;
@@ -135,8 +136,9 @@ Response OfficialRosterController::handleRefresh(const Request& request) {
         if (src.empty()) return jsonError(HttpStatus::NOT_FOUND, "No league roster is set up for this game's team.");
         const std::string sourceId = str(src[0], "id"), system = str(src[0], "system");
 
-        TeamPassRoster::Result pulled;
+        RosterFile pulled;
         if (system == "teampass") pulled = TeamPassRoster::fetch(str(src[0], "site_slug"), str(src[0], "external_team_id"), str(src[0], "credentials_key"));
+        else if (system == "google_sheet") pulled = GoogleSheetRoster::fetch(str(src[0], "site_slug"), str(src[0], "external_team_id"));
         else pulled.error = "no fetcher for " + system;
 
         db->query("UPDATE official_roster_sources SET last_fetched_at = now(), last_fetch_ok = $2::boolean, last_fetch_note = NULLIF($3, '') WHERE id = $1::int",

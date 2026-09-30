@@ -79,6 +79,7 @@ set(SOURCES
     src/services/LaProgramSync.cpp
     src/services/LeagueFixtureSync.cpp
     src/services/TeamPassRoster.cpp
+    src/services/GoogleSheetRoster.cpp
     src/services/LaSyncScheduler.cpp
     src/services/LockupScheduler.cpp
     src/services/TwilioService.cpp
