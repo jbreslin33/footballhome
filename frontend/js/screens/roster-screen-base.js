@@ -1408,14 +1408,7 @@ class RosterScreenBase extends Screen {
   // where assigning window.location.href is not (notably iOS Safari for
   // sms:/tel:). Must be called synchronously from inside a click
   // handler — see the ORDER IS LOAD-BEARING note in the sms branch.
-  static openExternal(url) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => a.remove(), 0);
-  }
+  static openExternal(url) { BulkMessageComposer.openExternal(url); }
 
   // Human label for a whole-board send ("all boys"). Each board names
   // itself; the base can't infer it.
@@ -1493,131 +1486,12 @@ class RosterScreenBase extends Screen {
   // The clipboard can only hold one thing, which is exactly why the body
   // goes in the URL instead.
   _openMessageComposer({ btn, entry, kind, info }) {
-    document.querySelectorAll('.rb-msg-overlay').forEach(n => n.remove());
-
-    const isEmail = kind === 'email';
-    const count   = isEmail ? info.emails.length : info.phones.length;
-    const missing = isEmail ? info.noEmail.length : info.noPhone.length;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'rb-msg-overlay';
-    overlay.style.cssText =
-      'position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.55);' +
-      'display:flex; align-items:center; justify-content:center; padding:16px;';
-
-    overlay.innerHTML = `
-      <div class="rb-msg-panel" style="background:var(--bg-primary,#0f172a); color:inherit; border:1px solid var(--border-color,#334155);
-                  border-radius:var(--radius-md,8px); width:min(520px,100%); max-height:90vh; overflow:auto; padding:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:4px;">
-          <strong style="font-size:1rem;">${isEmail ? '✉ Email' : '💬 Text'} — ${entry.preset ? `${entry.preset.label}, ` : ''}${entry.scope}</strong>
-          <button type="button" data-msg-cancel style="background:none; border:none; color:inherit; font-size:1.2rem; cursor:pointer; opacity:0.7;">×</button>
-        </div>
-        <div style="font-size:0.8rem; opacity:0.75; margin-bottom:12px;">
-          ${count} recipient${count === 1 ? '' : 's'}${isEmail ? ' (BCC)' : ''}${missing ? ` · ${missing} with no ${isEmail ? 'email' : 'number'}` : ''}
-        </div>
-        ${isEmail ? `
-          <input type="text" data-msg-subject value="${(entry.preset && entry.preset.subject) || ((MessageCopy.render('bulk_subject', 'default', { scope: entry.scope }) || {}).subject || '')}"
-                 style="width:100%; box-sizing:border-box; margin-bottom:8px; padding:8px; border-radius:6px;
-                        border:1px solid var(--border-color,#334155); background:var(--bg-secondary,#1e293b); color:inherit;">
-        ` : ''}
-        <textarea data-msg-body rows="6" placeholder="Type your message…"
-                  style="width:100%; box-sizing:border-box; padding:8px; border-radius:6px; resize:vertical;
-                         border:1px solid var(--border-color,#334155); background:var(--bg-secondary,#1e293b); color:inherit;"></textarea>
-        ${isEmail ? '' : `
-          <div data-msg-count style="font-size:0.72rem; opacity:0.6; margin-top:4px;">0 characters</div>`}
-        <div style="font-size:0.75rem; opacity:0.7; margin:12px 0; line-height:1.45;">
-          ${isEmail
-            ? 'Opens a Gmail draft with your message and the recipients in BCC. Nothing sends until you press Send in Gmail.'
-            : `Opens Messages with all ${count} recipient${count === 1 ? '' : 's'} and your text filled in — check the <strong>To:</strong> field looks right, then send. The numbers are also copied, so if the app drops any you can clear To: and paste the full list.`}
-        </div>
-        <div style="display:flex; gap:8px; justify-content:flex-end;">
-          <button type="button" data-msg-cancel
-                  style="padding:8px 14px; border-radius:6px; cursor:pointer; border:1px solid var(--border-color,#334155); background:transparent; color:inherit;">Cancel</button>
-          <button type="button" data-msg-go
-                  style="padding:8px 14px; border-radius:6px; cursor:pointer; border:none; background:#10b981; color:#0f172a; font-weight:700;">
-            ${isEmail ? 'Open Gmail draft' : 'Open Messages'}
-          </button>
-        </div>
-      </div>`;
-
-    const close = () => overlay.remove();
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay || e.target.closest('[data-msg-cancel]')) { e.preventDefault(); close(); }
+    // The box itself lives in components/bulk-message-composer.js so
+    // Game Center's game buttons share it (2026-09-30).
+    BulkMessageComposer.open({
+      screen: this, entry, kind, info,
+      onSent: (n) => this._flashMsgBtn(btn, `✓ ${n}`),
     });
-    document.addEventListener('keydown', function esc(ev) {
-      if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
-    });
-
-    const bodyEl = overlay.querySelector('[data-msg-body]');
-    // A preset seeds the box; it stays fully editable so the operator can
-    // add a line before sending.
-    if (entry.preset && entry.preset.body) bodyEl.value = entry.preset.body;
-    const countEl = overlay.querySelector('[data-msg-count]');
-    if (countEl) {
-      const updateCount = () => {
-        const n = bodyEl.value.length;
-        // 160 GSM-7 chars per segment; past that carriers split the send.
-        const segs = n === 0 ? 0 : Math.ceil(n / 160);
-        countEl.textContent = `${n} character${n === 1 ? '' : 's'}${segs > 1 ? ` · ${segs} texts` : ''}`;
-      };
-      bodyEl.addEventListener('input', updateCount);
-      updateCount();
-    }
-
-    overlay.querySelector('[data-msg-go]').addEventListener('click', (e) => {
-      e.preventDefault();
-      const body = bodyEl.value;
-
-      // Both channels go through the canonical Screen helpers rather
-      // than a hand-rolled URL. screen-base.js:20 says why in as many
-      // words: these keep getting hand-rolled per screen and keep
-      // breaking. Concretely, a hand-rolled Gmail URL misses `tf=1`
-      // (without which Gmail silently DROPS bcc and you get a blank
-      // compose) and misses the Android mailto: branch (mail.google.com
-      // is an Android App Link, and the native app's parser drops bcc).
-      if (isEmail) {
-        const subject = (overlay.querySelector('[data-msg-subject]') || {}).value
-                     || ((MessageCopy.render('bulk_subject', 'default', { scope: entry.scope }) || {}).subject || '');
-        const href = this.buildGmailComposeHref({
-          bcc: info.emails.join(','),
-          subject,
-          body,
-        });
-        close();
-        this.openGmailCompose(href);
-        this._flashMsgBtn(btn, `✓ ${info.emails.length}`);
-        return;
-      }
-
-      const numbers = info.phones.join(RosterMessaging.PHONE_SEPARATOR);
-
-      // Recipients ride the URL — buildSmsComposeHref's comment notes
-      // both Google Messages and iOS Messages take a comma-separated
-      // list — so there's nothing to paste in the normal case.
-      //
-      // The clipboard copy stays as a fallback: a long list is where
-      // messaging apps quietly drop recipients, and if that happens the
-      // operator can clear To: and paste the full set instead of
-      // discovering later that half the parents never got it.
-      //
-      // ORDER IS LOAD-BEARING (owner 2026-08-27: "it says it copied ...
-      // but nothing shows on my phone"). Opening an external scheme
-      // needs a live user activation and `await` spends it, so the
-      // navigation must fire in this same tick — the same trap
-      // boys-roster.js:1133 documents for the PAY button.
-      const copyPromise = (navigator.clipboard && navigator.clipboard.writeText)
-        ? navigator.clipboard.writeText(numbers).catch(() => {})
-        : Promise.resolve();
-
-      RosterScreenBase.openExternal(this.buildSmsComposeHref({ to: numbers, body }));
-
-      close();
-      this._flashMsgBtn(btn, `✓ ${info.phones.length}`);
-      copyPromise.then(() => { /* clipboard is a fallback, not the path */ });
-    });
-
-    document.body.appendChild(overlay);
-    bodyEl.focus();
   }
 
   // Fallbacks so base helpers (renderMagicLinkButtons et al.) work on a

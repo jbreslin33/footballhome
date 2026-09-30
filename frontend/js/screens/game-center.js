@@ -310,6 +310,7 @@ class GameCenterScreen extends Screen {
     this.squadNotice = null;  // {squad, untold, sms: {sent_at}, email: {sent_at}} — the squad game reminder
     this.oppContacts = null;  // {club:{contacts}, tiers, date…} — the opponent of this game (mig 483)
     this.officialRoster = null;  // {available, league, saved} — the league's own roster sheet for this game (mig 501)
+    this.gameRecipients = null;  // [{personId, name, rsvp, email, phone, viaParent}] — everyone on the game's rosters (mig 506)
     this._rosterPull = null;     // {busy} | {error} while / after a pull
     this._oppAddOpen = false;
     this.overlayOpen = false;
@@ -682,6 +683,8 @@ class GameCenterScreen extends Screen {
       if (oppAdd && this.isCoach) { this._oppAddOpen = !this._oppAddOpen; this._render(); return; }
       const oppSave = e.target.closest('[data-gc-opp-save]');
       if (oppSave && this.isCoach) { this._saveOpponentContact(oppSave); return; }
+      const msgBtn = e.target.closest('[data-gc-msg-kind]');
+      if (msgBtn && this.realIsCoach && !msgBtn.disabled) { this._messageGame(msgBtn); return; }
       const rosterPull = e.target.closest('[data-gc-roster-pull]');
       if (rosterPull && !rosterPull.disabled) { this._printOfficialRoster(true); return; }
       const rosterOpen = e.target.closest('[data-gc-roster-open]');
@@ -974,7 +977,7 @@ class GameCenterScreen extends Screen {
       // Reminders already sent about this game — dims a No Response
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
       const remindersPromise = this.isCoach
-        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts()]) : Promise.resolve();
+        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients()]) : Promise.resolve();
       // The league's roster sheet is for the players too (owner 2026-09-30:
       // "all players to see it so we can ask one to print it if we forget").
       const officialRosterPromise = this._loadOfficialRoster();
@@ -2398,6 +2401,82 @@ class GameCenterScreen extends Screen {
       ${addForm}`);
   }
 
+  // Bulk ✉ / 💬 to everyone on the game's rosters, by RSVP (owner
+  // 2026-09-30: "email in bulk everyone from a game. diff buttons for
+  // those going, going and undecided, then an all button … game changed
+  // to diff day so i need to email all parents of just u8").  The list
+  // comes from /api/game-message (parents for youth), the box is the
+  // roster boards' BulkMessageComposer, so Gmail opens with everyone in
+  // BCC and nothing is sent from here.
+  async _loadGameRecipients() {
+    try {
+      const res = await this.auth.fetch(`/api/game-message/${this.matchId}/recipients`);
+      const data = await res.json();
+      this.gameRecipients = res.ok && data.success ? (data.people || []) : null;
+    } catch (err) {
+      this.gameRecipients = null;
+    }
+  }
+
+  _copyGm(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('game_message', tier, tokens) : ''; }
+
+  // The three lists the buttons offer.  "Undecided" is anyone who has
+  // not said no: no answer yet, or maybe.
+  _gameRecipientGroups() {
+    const all = this.gameRecipients || [];
+    return [
+      { key: 'going',           people: all.filter(p => p.rsvp === 'yes') },
+      { key: 'going_undecided', people: all.filter(p => p.rsvp !== 'no') },
+      { key: 'all',             people: all },
+    ];
+  }
+
+  _gameLabelForMessage() {
+    const m = this.matchDetails || {};
+    const home = m.home_team_name || '', away = m.away_team_name || '';
+    const teams = home && away ? `${home} vs ${away}` : (home || away || this.title || '');
+    return [teams, this._whenLabel()].filter(Boolean).join(' · ');
+  }
+
+  _renderGameMessagePanel() {
+    if (!this.realIsCoach || this.lineupView !== 'official' || !this.gameRecipients || !window.RosterMessaging) return '';
+    const esc = (t) => this.escapeHtml(t);
+    const contact = (p) => ({ phone: p.phone, email: p.email });
+    const rows = this._gameRecipientGroups().map(g => {
+      const info = RosterMessaging.collect(g.people, contact);
+      const btn = (kind, icon, n) => `
+        <button type="button" class="btn btn-secondary" data-gc-msg-kind="${kind}" data-gc-msg-group="${g.key}" ${n ? '' : 'disabled'}
+                style="padding:3px 10px; font-size:0.72rem; font-weight:700;">${icon} ${n}</button>`;
+      return `
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:5px 0; border-top:1px solid var(--border-color); font-size:0.76rem;">
+          <div style="flex:1; min-width:120px;"><b>${esc(this._copyGm('group_' + g.key))}</b> <span style="opacity:0.65;">· ${g.people.length}</span></div>
+          ${btn('email', '✉', info.emails.length)}${btn('sms', '💬', info.phones.length)}
+        </div>`;
+    }).join('');
+    return `
+      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
+        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">${esc(this._copyGm('title'))}</div>
+        <div style="font-size:0.7rem; opacity:0.75; line-height:1.4; margin-bottom:4px;">${esc(this._copyGm('hint'))}</div>
+        ${rows}
+      </div>`;
+  }
+
+  _messageGame(btn) {
+    const group = this._gameRecipientGroups().find(g => g.key === btn.dataset.gcMsgGroup);
+    if (!group || !window.RosterMessaging || !window.BulkMessageComposer) return;
+    const kind = btn.dataset.gcMsgKind;
+    const info = RosterMessaging.collect(group.people, (p) => ({ phone: p.phone, email: p.email }));
+    if (kind === 'email' ? !info.emails.length : !info.phones.length) return;
+    const game = this._gameLabelForMessage();
+    const scope = this._copyGm('scope', { group: this._copyGm('group_' + group.key), game });
+    const subject = this._copyGm('subject', { game });
+    BulkMessageComposer.open({
+      screen: this, kind, info,
+      entry: { scope, preset: subject ? { label: '', subject } : null },
+      onSent: (n) => this._toast(`✓ ${n}`),
+    });
+  }
+
   // The league's own roster sheet — the PDF a referee checks players
   // against.  Owner 2026-09-30: "it has to be the official exact roster
   // from site … printed fresh for each game … to prove the roster is
@@ -3278,7 +3357,7 @@ class GameCenterScreen extends Screen {
     }
     // The league's roster sheet sits with the two squad pills — the
     // landing pill included, so it is there when a coach opens the game.
-    if (pill === 'lineup' || pill === 'starters_bench') html += this._renderOfficialRosterPanel();
+    if (pill === 'lineup' || pill === 'starters_bench') html += this._renderGameMessagePanel() + this._renderOfficialRosterPanel();
     return html ? `<div style="max-width:540px; margin:10px auto 0;">${html}</div>` : '';
   }
 
