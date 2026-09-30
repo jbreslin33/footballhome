@@ -13,6 +13,13 @@
 #include <sys/stat.h>
 #include <unistd.h>   // access() — is an overlay already stored for this post?
 
+// Every clip is re-encoded to H.264 at a fixed 30 fps.  The frame rate is
+// not optional: the card clip the browser records (MediaRecorder webm)
+// carries no frame rate, only a 1 ms timebase, so ffmpeg read it as
+// 1000 fps and wrote ~30,000 frames for a 30 s clip — minutes of encoding,
+// past nginx's 120 s proxy timeout ("upload failed … 504", 2026-09-30).
+static const std::string kX264Args = " -r 30 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p";
+
 static std::string base64Decode(const std::string& encoded) {
     static const std::string chars =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -829,12 +836,12 @@ Response SocialController::handleUploadMediaRaw(const Request& request) {
             const std::string dims = std::to_string(ovW) + ":" + std::to_string(ovH);
             ffmpegCmd = "ffmpeg -y -i " + srcFile + " -i " + overlayFile +
                 " -filter_complex \"[0:v]scale=" + dims + ":force_original_aspect_ratio=increase,"
-                "crop=" + dims + ",setsar=1[bg];[bg][1:v]overlay=0:0:format=auto\""
-                " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                "crop=" + dims + ",setsar=1[bg];[bg][1:v]overlay=0:0:format=auto\"" +
+                kX264Args +
                 " -movflags +faststart -c:a aac -b:a 128k " + mp4File + " 2>&1";
         } else {
             ffmpegCmd = "ffmpeg -y -i " + srcFile +
-                " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                kX264Args +
                 " -movflags +faststart -c:a aac -b:a 128k " + mp4File + " 2>&1";
         }
         std::cout << "🎬 Converting raw upload (" << mediaBytes.size() << " bytes, overlay="
@@ -1027,14 +1034,14 @@ Response SocialController::handleUploadMedia(const Request& request) {
                 const std::string dims = std::to_string(ovW) + ":" + std::to_string(ovH);
                 ffmpegCmd = "ffmpeg -y -i " + srcFile + " -i " + overlayFile +
                     " -filter_complex \"[0:v]scale=" + dims + ":force_original_aspect_ratio=increase,"
-                    "crop=" + dims + ",setsar=1[bg];[bg][1:v]overlay=0:0:format=auto\""
-                    " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                    "crop=" + dims + ",setsar=1[bg];[bg][1:v]overlay=0:0:format=auto\"" +
+                    kX264Args +
                     " -movflags +faststart -c:a aac -b:a 128k " + mp4File + " 2>&1";
             } else {
                 // The generated clip: its graphics are already burned
                 // into every recorded frame, and it carries no audio.
                 ffmpegCmd = "ffmpeg -y -i " + srcFile +
-                    " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                    kX264Args +
                     " -movflags +faststart -an " + mp4File + " 2>&1";
             }
             std::cout << "🎬 Converting video: " << ffmpegCmd << std::endl;
@@ -1996,7 +2003,7 @@ Response SocialController::handleUploadPromoMedia(const Request& request) {
             }
 
             std::string ffmpegCmd = "ffmpeg -y -i " + webmFile +
-                " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                kX264Args +
                 " -movflags +faststart -an " + mp4File + " 2>&1";
             std::cout << "🎬 Converting promo video: " << ffmpegCmd << std::endl;
             int ffResult = system(ffmpegCmd.c_str());
@@ -2433,7 +2440,7 @@ Response SocialController::handleUploadContentMedia(const Request& request) {
 
             // Re-encode to Instagram-compatible MP4
             std::string ffmpegCmd = "ffmpeg -y -i " + tempFile +
-                " -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p"
+                kX264Args +
                 " -movflags +faststart -an " + mp4File + " 2>&1";
             std::cout << "🎬 Converting content video: " << ffmpegCmd << std::endl;
             int ffResult = system(ffmpegCmd.c_str());
