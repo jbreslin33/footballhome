@@ -34,6 +34,7 @@ private:
     Response handleCreateOrUpdatePost(const Request& request);
     Response handleDeletePost(const Request& request);
     Response handlePostToInstagram(const Request& request);
+    Response handleReopenPost(const Request& request);
     Response handleUploadMedia(const Request& request);
 
     // Raw-binary upload path (2026-08-28). handleUploadMedia takes the

@@ -267,11 +267,16 @@ class SocialPostCard {
       ? this.auth.fetch(`/api/stats/matches/${this.matchId}/events`).then(r => r.json()).catch(() => ({ data: [] }))
       : Promise.resolve({ data: [] });
 
+    // Wording for the posted-state tools (message_templates kind
+    // social_post, mig 503); a failure only costs those labels.
+    const copyPromise = window.MessageCopy ? MessageCopy.load(this.auth).catch(() => {}) : Promise.resolve();
+
     Promise.all([
       this.auth.fetch(`/api/social/match/${this.matchId}/team/${this.teamId}`).then(r => r.json()),
       this.auth.fetch('/api/social/post-types').then(r => r.json()),
       statsPromise,
-      allEventsPromise
+      allEventsPromise,
+      copyPromise
     ]).then(([postsData, typesData, statsData, eventsData]) => {
       if (postsData.success) {
         const posts = postsData.data || [];
@@ -502,6 +507,42 @@ class SocialPostCard {
     }
   }
 
+  _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('social_post', tier, tokens) : ''; }
+
+  // A post that went out can't be edited on Instagram, only deleted
+  // there.  Owner 2026-09-30: "have a button if it says posted that we can
+  // put that we deleted from insta so that it allows new post".  Two taps
+  // (the first arms it, and disarms itself after a few seconds); the
+  // backend turns the row back into a bare draft and the card reloads, so
+  // caption and graphic are rebuilt from today's data.
+  async _reopenPost(btn) {
+    if (!this.post || !this.post.post_id || btn.disabled) return;
+    if (btn.dataset.armed !== '1') {
+      btn.dataset.armed = '1';
+      btn.textContent = this._copy('reopen_confirm');
+      clearTimeout(this._reopenDisarm);
+      this._reopenDisarm = setTimeout(() => {
+        if (!btn.isConnected) return;
+        btn.dataset.armed = '';
+        btn.textContent = this._copy('reopen_button');
+      }, 6000);
+      return;
+    }
+    clearTimeout(this._reopenDisarm);
+    btn.disabled = true;
+    try {
+      const res = await this.auth.fetch(`/api/social/posts/${this.post.post_id}/reopen`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
+      this._localPreviewWins = false;
+      this.load();
+    } catch (err) {
+      btn.disabled = false;
+      btn.dataset.armed = '';
+      btn.textContent = this._copy('reopen_failed', { reason: err.message });
+    }
+  }
+
   // The publish button names the post it sends, so a coach flipping
   // between post types in Game Center always reads what "live" means.
   postButtonLabel() {
@@ -656,7 +697,12 @@ class SocialPostCard {
               <button class="spc-btn spc-btn-schedule">📅 Schedule</button>
             </div>
             <button class="spc-btn spc-btn-post">${this.escapeHtml(this.postButtonLabel())}</button>
-          ` : ''}
+          ` : `
+            <div class="spc-reopen" style="display:flex; flex-direction:column; gap:6px; width:100%;">
+              <span class="spc-media-hint">${this.escapeHtml(this._copy('reopen_hint'))}</span>
+              <button type="button" class="spc-btn spc-btn-reopen">${this.escapeHtml(this._copy('reopen_button'))}</button>
+            </div>
+          `}
         </div>
       </div>
     `;
@@ -2044,6 +2090,14 @@ class SocialPostCard {
       saveBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.saveCaption();
+      });
+    }
+
+    const reopenBtn = this.container.querySelector('.spc-btn-reopen');
+    if (reopenBtn) {
+      reopenBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._reopenPost(reopenBtn);
       });
     }
 

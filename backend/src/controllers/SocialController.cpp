@@ -279,6 +279,12 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
         return this->handlePostToInstagram(request);
     });
 
+    // POST /api/social/posts/:postId/reopen - A posted post that was
+    // deleted on Instagram becomes a fresh draft again (mig 503)
+    router.post(prefix + "/posts/:postId/reopen", [this](const Request& request) {
+        return this->handleReopenPost(request);
+    });
+
     // POST /api/social/posts/:postId/media - Upload media (base64 video/image)
     router.post(prefix + "/posts/:postId/media", [this](const Request& request) {
         return this->handleUploadMedia(request);
@@ -694,6 +700,37 @@ Response SocialController::handleDeletePost(const Request& request) {
         std::string postId = extractPostIdFromPath(request.getPath());
         db_->query("DELETE FROM social_posts WHERE id = " + postId);
         return Response(HttpStatus::OK, createJSONResponse(true, "Post deleted"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+// A published post cannot be edited on Instagram, only deleted there.
+// Owner 2026-09-30: "we need to be able to regenerate post if we deleted it
+// from insta. like have a button if it says posted that we can put that we
+// deleted from insta so that it allows new post".  The row goes back to a
+// bare draft — no Instagram id, caption or stored media — so the card
+// rebuilds the caption and the graphic from today's data, and nothing of
+// the old post can be sent again by accident.
+Response SocialController::handleReopenPost(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        std::string postId = extractPostIdFromPath(request.getPath());
+        if (postId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing post ID"));
+        }
+        auto rows = db_->query(
+            "UPDATE social_posts SET status = 'draft', posted_at = NULL, external_media_id = NULL, "
+            "scheduled_at = NULL, error_message = NULL, caption = NULL, image_path = NULL, image_url = NULL, "
+            "video_path = NULL, video_url = NULL, media_type = 'image', updated_at = NOW() "
+            "WHERE id = " + postId + " AND status = 'posted' RETURNING id");
+        if (rows.empty()) {
+            return Response(HttpStatus::CONFLICT, createJSONResponse(false, "That post is not marked as posted."));
+        }
+        return Response(HttpStatus::OK, createJSONResponse(true, "Post reopened"));
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, std::string("Error: ") + e.what()));
