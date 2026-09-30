@@ -27,6 +27,12 @@ else
 
   # Tear down on exit so a restart leaves a clean namespace.
   trap 'echo "[scraper] 🔓 Stopping WireGuard"; wg-quick down "$INTERFACE" 2>/dev/null || true' EXIT
+
+  # Forward proxy for the backend (tinyproxy.conf).  Only behind the
+  # tunnel: without it the proxy would just relay from the blocked IP.
+  if [ "${SCRAPE_PROXY:-1}" = "1" ] && command -v tinyproxy >/dev/null 2>&1; then
+    tinyproxy -c /etc/tinyproxy/tinyproxy.conf && echo "[scraper] 🔀 Proxy listening on :3128 (teampass.com only)"
+  fi
 fi
 
 exec "$@"

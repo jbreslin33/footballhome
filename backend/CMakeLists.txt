@@ -78,6 +78,7 @@ set(SOURCES
     src/services/LeagueAppsService.cpp
     src/services/LaProgramSync.cpp
     src/services/LeagueFixtureSync.cpp
+    src/services/TeamPassRoster.cpp
     src/services/LaSyncScheduler.cpp
     src/services/LockupScheduler.cpp
     src/services/TwilioService.cpp
@@ -124,6 +125,7 @@ set(SOURCES
     src/controllers/InvoiceController.cpp
     src/controllers/FinancesController.cpp
     src/controllers/LineupDraftController.cpp
+    src/controllers/OfficialRosterController.cpp
     src/controllers/OpponentsController.cpp
     src/services/ClubLogoFinder.cpp
     src/services/ClubLogoSearchScheduler.cpp

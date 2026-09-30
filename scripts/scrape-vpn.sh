@@ -48,6 +48,12 @@ CONTAINER="footballhome_scraper"
 IMAGE="footballhome-scraper:latest"
 WG_INTERFACE="${WG_INTERFACE:-scrape-vpn}"
 
+# The container also joins the app's network so the backend can use its
+# forward proxy (http://footballhome_scraper:3128, teampass.com only — see
+# .docker/scraper/tinyproxy.conf and OfficialRosterService).  Skipped when
+# that network does not exist (a box with no app stack).
+APP_NETWORK="${APP_NETWORK:-footballhome_footballhome_network}"
+
 # Per-user staging dir for the WireGuard config so rootless podman can
 # read it (the canonical /etc/wireguard is root-only). The conf is
 # copied here on `up` via sudo, then bind-mounted read-only into the
@@ -94,6 +100,11 @@ require_wg_config() {
   if [ "${NO_VPN:-0}" = "1" ]; then
     return 0
   fi
+  # An already-staged copy is enough (sudo may not be available, e.g. a
+  # restart from a non-interactive session).
+  if [ -f "$WG_STAGE_DIR/${WG_INTERFACE}.conf" ]; then
+    return 0
+  fi
   if ! sudo test -r "/etc/wireguard/${WG_INTERFACE}.conf"; then
     echo "❌ Missing /etc/wireguard/${WG_INTERFACE}.conf" >&2
     echo "   Import a config first:" >&2
@@ -113,7 +124,7 @@ stage_wg_config() {
   chmod 700 "$WG_STAGE_DIR"
   local src="/etc/wireguard/${WG_INTERFACE}.conf"
   local dst="$WG_STAGE_DIR/${WG_INTERFACE}.conf"
-  if [ ! -f "$dst" ] || sudo test "$src" -nt "$dst"; then
+  if [ ! -f "$dst" ] || sudo -n test "$src" -nt "$dst" 2>/dev/null; then
     echo "   📋 Staging $src → $dst (sudo, one-time)"
     sudo cat "$src" > "$dst"
     chmod 600 "$dst"
@@ -140,12 +151,18 @@ cmd_up() {
 
   echo "🚀 Starting $CONTAINER (VPN interface: $WG_INTERFACE)..."
 
+  local net_args=()
+  if engine network exists "$APP_NETWORK" 2>/dev/null; then
+    net_args=(--network "$APP_NETWORK")
+  fi
+
   # Run the container directly instead of through compose because compose's
   # privileges/cap_add handling is inconsistent across podman versions.
   engine run -d \
     --name "$CONTAINER" \
     --hostname scraper \
-    --restart unless-stopped \
+    --restart always \
+    "${net_args[@]}" \
     --privileged \
     --cap-add NET_ADMIN \
     --cap-add SYS_MODULE \

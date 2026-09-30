@@ -71,6 +71,27 @@ fast subsequent runs (`make scrape-vpn-down` to stop it).
 ./scripts/scrape-vpn.sh logs                  # see entrypoint output
 ```
 
+## The backend's way out: the forward proxy
+
+The C++ backend also needs TeamPass — the official roster print on
+`#game-center` (migration 501, `backend/src/services/TeamPassRoster.cpp`)
+signs in and downloads the league's roster PDF on every tap. It cannot run
+inside this container, so the container runs a small forward proxy
+(tinyproxy, `.docker/scraper/tinyproxy.conf`) behind the tunnel:
+
+- The container joins the app network (`footballhome_footballhome_network`),
+  so the backend reaches it as `http://footballhome_scraper:3128`
+  (`TEAMPASS_PROXY_URL` overrides; `direct` = no proxy).
+- The proxy relays HTTPS to `*.teampass.com` only and the port is never
+  published on the host.
+- The container is `--restart always`: if it is down, the roster print
+  fails with "the league site did not answer".
+
+```bash
+make scrape-vpn-up        # after a rebuild, or if the container is gone
+sudo podman logs footballhome_scraper | grep scraper   # "Proxy listening on :3128"
+```
+
 ## Escape hatches
 
 | Situation                        | Command                             |

@@ -309,6 +309,8 @@ class GameCenterScreen extends Screen {
     this.reminders = {};      // person_id → {sms, email: {sent_at, count}} already sent about this game
     this.squadNotice = null;  // {squad, untold, sms: {sent_at}, email: {sent_at}} — the squad game reminder
     this.oppContacts = null;  // {club:{contacts}, tiers, date…} — the opponent of this game (mig 483)
+    this.officialRoster = null;  // {available, league, saved} — the league's own roster sheet for this game (mig 501)
+    this._rosterPull = null;     // {busy} | {error} while / after a pull
     this._oppAddOpen = false;
     this.overlayOpen = false;
     this.filterText = '';
@@ -680,6 +682,10 @@ class GameCenterScreen extends Screen {
       if (oppAdd && this.isCoach) { this._oppAddOpen = !this._oppAddOpen; this._render(); return; }
       const oppSave = e.target.closest('[data-gc-opp-save]');
       if (oppSave && this.isCoach) { this._saveOpponentContact(oppSave); return; }
+      const rosterPull = e.target.closest('[data-gc-roster-pull]');
+      if (rosterPull && !rosterPull.disabled) { this._printOfficialRoster(true); return; }
+      const rosterOpen = e.target.closest('[data-gc-roster-open]');
+      if (rosterOpen && !rosterOpen.disabled) { this._printOfficialRoster(false); return; }
       const oppPage = e.target.closest('[data-gc-opp-page]');
       if (oppPage) { this.navigation.goTo('opponents', { clubId: Number(oppPage.dataset.gcOppPage) || 0 }); return; }
       // The Instagram section. Its pill strip flips between the posts
@@ -969,12 +975,16 @@ class GameCenterScreen extends Screen {
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
       const remindersPromise = this.isCoach
         ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts()]) : Promise.resolve();
+      // The league's roster sheet is for the players too (owner 2026-09-30:
+      // "all players to see it so we can ask one to print it if we forget").
+      const officialRosterPromise = this._loadOfficialRoster();
 
       const [rosterResults, detailsData] = await Promise.all([
         Promise.all(rosterTeamIds.map(id =>
           this.auth.fetch(`/api/teams/${id}/roster`).then(r => r.json()).then(d => ({ id, d })))),
         detailsPromise,
         remindersPromise,
+        officialRosterPromise,
       ]);
 
       if (detailsData && detailsData.success) {
@@ -2388,6 +2398,82 @@ class GameCenterScreen extends Screen {
       ${addForm}`);
   }
 
+  // The league's own roster sheet — the PDF a referee checks players
+  // against.  Owner 2026-09-30: "it has to be the official exact roster
+  // from site … printed fresh for each game … to prove the roster is
+  // current to refs".  The backend signs in to the league site and pulls
+  // it on every tap; the game keeps only that latest copy (mig 501).
+  // Coaches, club admins and everyone on the game's rosters get it; the
+  // endpoint answers anyone else 403 and the panel stays away.
+  async _loadOfficialRoster() {
+    this._rosterPull = null;
+    try {
+      const res = await this.auth.fetch(`/api/official-roster/${this.matchId}`);
+      const data = await res.json();
+      this.officialRoster = res.ok && data.available ? data : null;
+    } catch (err) {
+      this.officialRoster = null;
+    }
+  }
+
+  _renderOfficialRosterPanel() {
+    const o = this.officialRoster;
+    if (this.lineupView !== 'official' || !o) return '';
+    const esc = (t) => this.escapeHtml(t);
+    const copy = (tier, tokens = {}) => window.MessageCopy ? MessageCopy.block('official_roster', tier, { league: o.league, ...tokens }) : '';
+    const pull = this._rosterPull || {};
+    const saved = o.saved;
+    const when = saved && saved.fetchedAt ? new Date(saved.fetchedAt) : null;
+    const whenText = when && !isNaN(when)
+      ? when.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+    let status = copy('none');
+    if (pull.busy) status = copy('working');
+    else if (pull.error) status = copy('failed', { reason: pull.error });
+    else if (saved) status = saved.fetchedBy ? copy('saved', { when: whenText, name: saved.fetchedBy }) : copy('saved_anon', { when: whenText });
+    return `
+      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
+        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">${esc(copy('title'))}</div>
+        <div style="font-size:0.7rem; opacity:0.75; line-height:1.4;">${esc(copy('hint'))}</div>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+          <button class="btn btn-primary" data-gc-roster-pull ${pull.busy ? 'disabled' : ''} style="padding:5px 12px; font-size:0.75rem;">${esc(copy('pull'))}</button>
+          ${saved && !pull.busy ? `<button class="btn btn-secondary" data-gc-roster-open style="padding:3px 8px; font-size:0.68rem;">${esc(copy('reopen'))}</button>` : ''}
+        </div>
+        <div data-gc-roster-status style="font-size:0.68rem; margin-top:6px; line-height:1.4; ${pull.error ? 'color:#f87171;' : 'opacity:0.7;'}">${esc(status)}</div>
+      </div>`;
+  }
+
+  // fresh = pull from the league first; otherwise just reopen the copy
+  // this game already holds.  The tab is opened inside the tap (so the
+  // popup blocker allows it) and pointed at the PDF once it arrives.
+  async _printOfficialRoster(fresh) {
+    const o = this.officialRoster;
+    if (!o || (this._rosterPull && this._rosterPull.busy)) return;
+    const copy = (tier, tokens = {}) => window.MessageCopy ? MessageCopy.block('official_roster', tier, { league: o.league, ...tokens }) : '';
+    const tab = window.open('', '_blank');
+    if (tab && fresh) { try { tab.document.title = copy('title'); tab.document.body.textContent = copy('working'); } catch (e) { /* cosmetic */ } }
+    this._rosterPull = { busy: true };
+    this._render();
+    try {
+      if (fresh) {
+        const res = await this.auth.fetch(`/api/official-roster/${this.matchId}/refresh`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+        this.officialRoster = data;
+      }
+      const res = await this.auth.fetch(`/api/official-roster/${this.matchId}/pdf`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const url = URL.createObjectURL(await res.blob());
+      if (tab) tab.location = url;
+      else { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); }
+      setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);   // long enough to print from the tab
+      this._rosterPull = null;
+    } catch (err) {
+      if (tab) tab.close();
+      this._rosterPull = { error: err.message };
+    }
+    this._render();
+  }
+
   async _sendToOpponent(btn) {
     const contactId = Number(btn.dataset.contact); const channel = btn.dataset.gcOppSend;
     const sel = this.element && this.element.querySelector('[data-gc-opp-tier]');
@@ -3190,6 +3276,9 @@ class GameCenterScreen extends Screen {
                   style="font-size:0.75rem; padding:4px 10px;">👥 RSVP &amp; Player Details</button>
         </div>`;
     }
+    // The league's roster sheet sits with the two squad pills — the
+    // landing pill included, so it is there when a coach opens the game.
+    if (pill === 'lineup' || pill === 'starters_bench') html += this._renderOfficialRosterPanel();
     return html ? `<div style="max-width:540px; margin:10px auto 0;">${html}</div>` : '';
   }
 

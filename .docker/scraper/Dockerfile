@@ -34,7 +34,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         chromium-sandbox \
         fonts-liberation \
         libnss3 \
+        tinyproxy \
     && rm -rf /var/lib/apt/lists/*
+
+# Forward proxy for the C++ backend (OfficialRosterService): TeamPass drops
+# the host's IP on its login and team pages, so the backend sends those
+# requests through this container's tunnel.  CONNECT to teampass.com only.
+COPY tinyproxy.conf tinyproxy.filter /etc/tinyproxy/
 
 # Symlinks so existing scripts that look for google-chrome[-stable] also work.
 RUN ln -sf /usr/bin/chromium /usr/local/bin/google-chrome \
