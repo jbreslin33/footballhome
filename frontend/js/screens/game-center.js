@@ -2014,8 +2014,11 @@ class GameCenterScreen extends Screen {
       const [cbg, cfg] = st.colour;
       const rowText = this._eligCopy('row_' + st.state, st.tokens) || st.state;
       const windowNote = `${s.windowTotal != null ? s.windowTotal : s.practicesRecentTotal} practices count for this game${s.extended ? ' (weekday-game window)' : ''}`;
+      const rt = this._rsvpTimingState(s);
+      const rtText = rt ? this._eligCopy('rsvp_row_' + rt.state, rt.tokens) : '';
       return `<div style="font-size:0.68rem; opacity:0.85; margin-top:2px;">
         <span title="${this.escapeHtml(windowNote)}" style="display:inline-block; padding:1px 8px; border-radius:999px; background:${cbg}; color:${cfg}; font-weight:700; white-space:nowrap;">${this.escapeHtml(rowText)}</span>
+        ${rtText ? `<span style="display:inline-block; padding:1px 8px; border-radius:999px; background:${rt.colour[0]}; color:${rt.colour[1]}; font-weight:700; white-space:nowrap;">${this.escapeHtml(rtText)}</span>` : ''}
         ${s.practicesUpcomingTotal > 0 ? `· proj ${s.practicesProjected}/${s.practicesUpcomingTotal}` : ''}
         · Game ${rsvpBadge(s.gameRsvp)}${this._rsvpTimeChips(playerId)}
         ${practicePills(s)}
@@ -3568,6 +3571,39 @@ class GameCenterScreen extends Screen {
     return { state, colour, tokens, needed, attended, projected, remaining, future };
   }
 
+  // Game RSVP Criteria for one stats row (mig 507): the game's own RSVP
+  // had to be in by its deadline to start — on_time = answered in time (a
+  // later change keeps it), pending = not answered, deadline still ahead,
+  // late = missed it.  null when no deadline applies to this game or
+  // player.  The state is the copy tier suffix: rsvp_pill_<state> /
+  // rsvp_row_<state>.
+  _rsvpTimingState(s) {
+    // pending is red, not yellow: with no answer in, the player is
+    // projected NOT eligible (owner 2026-10-01: "i want it clear also even
+    // now that a player has no rsvp and thus is projected to be ineligible").
+    const COLOURS = { on_time: ['#166534', '#bbf7d0'], pending: ['#7f1d1d', '#fecaca'], late: ['#7f1d1d', '#fecaca'] };
+    if (!s || !COLOURS[s.rsvpTiming]) return null;
+    const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const d = s.rsvpDeadlineDay ? new Date(s.rsvpDeadlineDay + 'T12:00:00') : null;
+    const day = d && !isNaN(d) ? `${DOW[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}` : '';
+    return { state: s.rsvpTiming, colour: COLOURS[s.rsvpTiming], tokens: { day } };
+  }
+
+  // Both criteria rolled into one verdict for the card's header (owner
+  // 2026-10-01: "eligibility at top as header"): eligible, projected
+  // (yellow — on track if they attend what they said Going to), projected
+  // NOT (red — something is still missing but can be fixed), not eligible
+  // (red — a criterion can no longer be met).  Copy tier: overall_<state>.
+  _overallEligibility(st, rt) {
+    const GREEN = ['#166534', '#bbf7d0'], YELLOW = ['#854d0e', '#fef08a'], RED = ['#7f1d1d', '#fecaca'];
+    const rsvp = rt ? rt.state : 'on_time';
+    const practiceMet = st.attended >= st.needed;
+    if (rsvp === 'late' || st.state === 'not_met') return { state: 'not_eligible', colour: RED };
+    if (rsvp === 'pending' || st.state === 'needs') return { state: 'projected_not', colour: RED };
+    if (practiceMet) return { state: 'eligible', colour: GREEN };
+    return { state: 'projected', colour: YELLOW };
+  }
+
   // Everyone's Practice Criteria under the card (owner 2026-09-26: "full
   // detail of everyone but themselves criteria status should be
   // highlighted").  Alphabetical by last name, the viewer's own row lit.
@@ -3584,10 +3620,13 @@ class GameCenterScreen extends Screen {
       const text = this._eligCopy('row_' + st.state, st.tokens);
       const mine = this.myPlayerId != null && Number(p.id) === this.myPlayerId;
       const [bg, fg] = st.colour;
+      const rt = this._rsvpTimingState(s);
+      const rtText = rt ? this._eligCopy('rsvp_row_' + rt.state, rt.tokens) : '';
+      const pill = (label, [pbg, pfg]) => `<span style="padding:2px 9px; border-radius:999px; background:${pbg}; color:${pfg}; font-size:0.68rem; font-weight:700; white-space:nowrap;">${this.escapeHtml(label)}</span>`;
       return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px var(--space-3); border-bottom:1px solid var(--border-color);
                           ${mine ? 'background:rgba(96,165,250,0.12); box-shadow:inset 3px 0 0 #60a5fa;' : ''}">
         <span style="font-size:0.9rem; ${mine ? 'font-weight:700;' : ''}">${this.escapeHtml(p.name)}${mine ? ' <span style="font-size:0.65rem; opacity:0.7;">(you)</span>' : ''}</span>
-        <span style="flex:0 0 auto; padding:2px 9px; border-radius:999px; background:${bg}; color:${fg}; font-size:0.68rem; font-weight:700; white-space:nowrap;">${this.escapeHtml(text || st.state)}</span>
+        <span style="flex:0 1 auto; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px;">${pill(text || st.state, [bg, fg])}${rtText ? pill(rtText, rt.colour) : ''}</span>
       </div>`;
     }).join('');
     return `
@@ -3618,6 +3657,10 @@ class GameCenterScreen extends Screen {
     if (!pillText) return '';   // no copy row → nothing to say (never hard-code it)
     const rule = this._eligCopy(s.extended ? 'rule_extended' : 'rule', tokens);
     const legend = this._eligCopy('legend');
+    // The second criterion: the game's own RSVP in by its deadline (mig 507).
+    const rt = this._rsvpTimingState(s);
+    const rtPill = rt ? this._eligCopy('rsvp_pill_' + rt.state, rt.tokens) : '';
+    const rtRule = rt ? this._eligCopy('rsvp_rule', rt.tokens) : '';
 
     const chip = (p) => {
       const ok = !!p.attended;
@@ -3643,19 +3686,49 @@ class GameCenterScreen extends Screen {
         }).join('')
       : `<div style="font-size:0.78rem; opacity:0.7; padding:4px 0;">${this.escapeHtml(this._eligCopy('remedy_none'))}</div>`;
 
+    // The game's own Going / Out, so a missing answer is fixed right here.
+    const gameRemedy = (() => {
+      if (!rt || !s.gameFhEventId) return '';
+      const going = s.gameRsvp === 'yes', out = s.gameRsvp === 'no';
+      const b = (resp, on, label, onBg) => `<button type="button" data-elig-rsvp="${resp}" data-fh-event-id="${s.gameFhEventId}"
+          style="padding:4px 10px; border-radius:999px; border:1px solid ${on ? onBg : 'var(--border-color)'}; background:${on ? onBg : 'transparent'};
+                 color:${on ? '#fff' : 'var(--text-primary)'}; font-size:0.72rem; font-weight:700; cursor:pointer;">${label}</button>`;
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:8px; margin-top:8px; border-top:1px solid var(--border-color);">
+        <div style="font-size:0.82rem; font-weight:600;">${this.escapeHtml(this._eligCopy('rsvp_remedy_heading'))}</div>
+        <div style="display:flex; gap:6px; flex:0 0 auto;">${b('yes', going, 'Going', '#166534')}${b('no', out, 'Out', '#7f1d1d')}</div>
+      </div>`;
+    })();
+    const overall = this._overallEligibility(st, rt);
+    const overallText = this._eligCopy('overall_' + overall.state);
+    const box = (heading, inner) => `
+        <div style="margin-top:10px; padding:10px; border:1px solid var(--border-color); border-radius:8px;">
+          ${heading ? `<div style="font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase; font-weight:700; opacity:0.8; margin-bottom:6px;">${this.escapeHtml(heading)}</div>` : ''}
+          ${inner}
+        </div>`;
+    const pill = (text, [pbg, pfg], attr = '') => `<div ${attr} style="display:inline-block; padding:4px 12px; border-radius:999px; background:${pbg}; color:${pfg}; font-size:0.8rem; font-weight:700;">${this.escapeHtml(text)}</div>`;
+
+    // Header verdict on top, then one box per criterion (owner 2026-10-01:
+    // "2 boxes. one for practice criteria and one for rsvp on time for
+    // game and have eligibility at top as header").
     return `
       <div class="public-card" data-gc-eligibility style="max-width:540px; margin:0 auto var(--space-3); padding: var(--space-3);">
         ${this._eligCopy('card_heading') ? `<h2 style="margin:0 0 6px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${this.escapeHtml(this._eligCopy('card_heading'))}</h2>` : ''}
-        <div style="display:inline-block; padding:4px 12px; border-radius:999px; background:${bg}; color:${fg}; font-size:0.8rem; font-weight:700;">${this.escapeHtml(pillText)}</div>
-        ${rule ? `<div style="font-size:0.72rem; opacity:0.7; margin-top:6px;">${this.escapeHtml(rule)}</div>` : ''}
-        ${legend ? `<div style="font-size:0.68rem; opacity:0.6; margin-top:4px; display:flex; gap:6px; align-items:flex-start;">
-          <span style="flex:0 0 auto; display:inline-flex; gap:2px; margin-top:2px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span><span style="width:8px;height:8px;border-radius:50%;background:#eab308;display:inline-block;"></span><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span></span>
-          <span>${this.escapeHtml(legend)}</span></div>` : ''}
-        <div style="font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin-top:10px;">${this.escapeHtml(this._eligCopy('window_heading'))}</div>
-        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">${s.practices.map(chip).join('')}</div>
-        <div style="font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin-top:10px;">${this.escapeHtml(this._eligCopy('remedy_heading'))}</div>
+        ${overallText ? pill(overallText, overall.colour, `data-gc-elig-overall="${overall.state}"`) : ''}
         <div data-gc-elig-msg style="font-size:0.72rem; min-height:0;"></div>
-        <div>${remedy}</div>
+        ${box(this._eligCopy('practice_box_heading'), `
+          ${pill(pillText, [bg, fg])}
+          ${rule ? `<div style="font-size:0.72rem; opacity:0.7; margin-top:6px;">${this.escapeHtml(rule)}</div>` : ''}
+          ${legend ? `<div style="font-size:0.68rem; opacity:0.6; margin-top:4px; display:flex; gap:6px; align-items:flex-start;">
+            <span style="flex:0 0 auto; display:inline-flex; gap:2px; margin-top:2px;"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;"></span><span style="width:8px;height:8px;border-radius:50%;background:#eab308;display:inline-block;"></span><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span></span>
+            <span>${this.escapeHtml(legend)}</span></div>` : ''}
+          <div style="font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin-top:10px;">${this.escapeHtml(this._eligCopy('window_heading'))}</div>
+          <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">${s.practices.map(chip).join('')}</div>
+          <div style="font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin-top:10px;">${this.escapeHtml(this._eligCopy('remedy_heading'))}</div>
+          <div>${remedy}</div>`)}
+        ${rtPill ? box(this._eligCopy('rsvp_box_heading'), `
+          ${pill(rtPill, rt.colour, `data-gc-rsvp-timing="${rt.state}"`)}
+          ${rtRule ? `<div style="font-size:0.72rem; opacity:0.7; margin-top:6px;">${this.escapeHtml(rtRule)}</div>` : ''}
+          ${gameRemedy}`) : ''}
       </div>`;
   }
 
@@ -3667,7 +3740,8 @@ class GameCenterScreen extends Screen {
     const response = btn.dataset.eligRsvp === 'no' ? 'no' : 'yes';
     const s = this.myPlayerId != null ? this.stats.get(this.myPlayerId) : null;
     const p = s && Array.isArray(s.practices) ? s.practices.find(x => Number(x.fhEventId) === fhEventId) : null;
-    const clearing = !!(p && p.rsvp === response);
+    const isGame = !!(s && Number(s.gameFhEventId) === fhEventId);
+    const clearing = isGame ? s.gameRsvp === response : !!(p && p.rsvp === response);
     const payload = { fh_event_id: fhEventId };
     if (!clearing) payload.response = response;
     btn.disabled = true;

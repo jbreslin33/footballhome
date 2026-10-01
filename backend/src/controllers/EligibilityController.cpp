@@ -227,6 +227,15 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                     CROSS JOIN LATERAL fh_starter_window($2::int[], me.starts_at, $1::int) w
                     JOIN fh_events fe ON fe.id = w.fh_event_id
                     JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                ),
+                -- Second criterion (mig 507): the game's own RSVP had to be
+                -- in by its deadline — only where the policy says a late
+                -- answer costs the start (Men, mig 508).  One row, deadline
+                -- NULL = no such rule for this game.
+                dl AS (
+                    SELECT me.fh_event_id,
+                           (SELECT i.deadline FROM fh_rsvp_deadline_info(me.fh_event_id) i WHERE i.blocks_start) AS deadline
+                    FROM match_event me
                 )
                 SELECT DISTINCT ON (pl.id) pl.id AS player_id,
                        (SELECT needed FROM pol) AS needed,
@@ -247,6 +256,23 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                        (SELECT to_char(min(cutoff) AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') FROM win) AS cutoff,
                        (SELECT r.response FROM fh_event_rsvps r, match_event me
                           WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp,
+                       (SELECT me.fh_event_id FROM match_event me) AS game_fh_event_id,
+                       (SELECT to_char((dl.deadline AT TIME ZONE 'America/New_York')::date - 1, 'YYYY-MM-DD') FROM dl) AS rsvp_deadline_day,
+                       -- on_time: first answer before the deadline (a later
+                       -- change keeps it — owner 2026-10-01); pending: not
+                       -- answered, deadline still ahead; late: missed it.
+                       -- NULL for someone rostered only after the deadline.
+                       (SELECT CASE
+                                 WHEN dl.deadline IS NULL THEN NULL
+                                 WHEN EXISTS (SELECT 1 FROM fh_event_rsvp_first_answers fa
+                                               WHERE fa.fh_event_id = dl.fh_event_id AND fa.person_id = pe.id
+                                                 AND fa.first_responded_at < dl.deadline) THEN 'on_time'
+                                 WHEN now() < dl.deadline THEN 'pending'
+                                 WHEN (SELECT min(x.joined_at) FROM team_persons x
+                                        WHERE x.person_id = pe.id AND x.team_id = ANY($2::int[])
+                                          AND x.removed_at IS NULL) >= dl.deadline THEN NULL
+                                 ELSE 'late' END
+                          FROM dl) AS rsvp_timing,
                        (SELECT json_agg(json_build_object(
                                   'fhEventId', pw.fh_event_id,
                                   'kind', pw.kind,
@@ -294,7 +320,11 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 statsJson << "\"windowTotal\":" << row["window_total"].c_str() << ",";
                 statsJson << "\"needed\":" << needed << ",";
                 statsJson << "\"lookback\":" << row["lookback"].c_str() << ",";
-                statsJson << "\"eligible\":" << (attended >= needed ? "true" : "false") << ",";
+                const std::string rsvpTiming = row["rsvp_timing"].is_null() ? "" : row["rsvp_timing"].c_str();
+                statsJson << "\"eligible\":" << (attended >= needed && rsvpTiming != "late" ? "true" : "false") << ",";
+                statsJson << "\"gameFhEventId\":" << (row["game_fh_event_id"].is_null() ? "null" : row["game_fh_event_id"].c_str()) << ",";
+                statsJson << "\"rsvpTiming\":" << (rsvpTiming.empty() ? "null" : "\"" + rsvpTiming + "\"") << ",";
+                statsJson << "\"rsvpDeadlineDay\":" << (row["rsvp_deadline_day"].is_null() ? "null" : "\"" + std::string(row["rsvp_deadline_day"].c_str()) + "\"") << ",";
                 statsJson << "\"extended\":" << (row["extended"].as<bool>() ? "true" : "false") << ",";
                 statsJson << "\"cutoff\":" << (row["cutoff"].is_null() ? "null" : "\"" + std::string(row["cutoff"].c_str()) + "\"") << ",";
                 statsJson << "\"gameRsvp\":" << (row["game_rsvp"].is_null() ? "null" : "\"" + std::string(row["game_rsvp"].c_str()) + "\"") << ",";

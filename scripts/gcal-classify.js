@@ -739,6 +739,16 @@ async function migrateSplitSeriesRsvps(pg) {
   stats.pairs = pairs.length;
 
   for (const p of pairs) {
+    // First-answer times first (mig 507): the trigger on fh_event_rsvps
+    // would otherwise stamp the new event with the last-changed time.
+    await pg.query(`
+      INSERT INTO fh_event_rsvp_first_answers (fh_event_id, person_id, first_responded_at)
+      SELECT $2, f.person_id, f.first_responded_at
+      FROM fh_event_rsvp_first_answers f
+      WHERE f.fh_event_id = $1
+      ON CONFLICT (fh_event_id, person_id) DO NOTHING
+    `, [p.old_fh_event_id, p.new_fh_event_id]);
+
     const rsvpRes = await pg.query(`
       INSERT INTO fh_event_rsvps (fh_event_id, person_id, response, responded_at, created_via)
       SELECT $2, r.person_id, r.response, r.responded_at, r.created_via

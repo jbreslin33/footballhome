@@ -510,7 +510,10 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
           FROM roster r
         UNION ALL
         SELECT 'event', o.fh_event_id,
-               o.line || COALESCE(E'\n  ' || o.message_notes, ''), o.starts_at,
+               -- A game's line carries its RSVP deadline (mig 507) — for the
+               -- player hat only; coaches and staff do not start.
+               o.line || COALESCE(E'\n  ' || CASE WHEN o.role = 'player' THEN fh_rsvp_deadline_note(o.fh_event_id) END, '')
+                      || COALESCE(E'\n  ' || o.message_notes, ''), o.starts_at,
                to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') FROM open_events o
          ORDER BY what, starts_at)SQL";
     auto rows = db->query(sql, {"", "", "{}", std::to_string(personId), "all"});
@@ -531,10 +534,12 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
     GroupReminderContext ctx;
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
         SELECT p.id AS person_id, COALESCE(p.parent_person_id, p.id) AS recipient_person_id,
-               o.line || COALESCE(E'\n  ' || o.message_notes, '') AS line,
+               o.line || COALESCE(E'\n  ' || CASE WHEN o.role = 'player' THEN fh_rsvp_deadline_note(o.fh_event_id) END, '')
+                      || COALESCE(E'\n  ' || o.message_notes, '') AS line,
                ph.phone_number AS phone, em.email AS email,
                (SELECT jsonb_agg(jsonb_build_object(
-                         'id', w.fh_event_id, 'line', w.line,
+                         'id', w.fh_event_id,
+                         'line', w.line || COALESCE(E'\n  ' || CASE WHEN w.role = 'player' THEN fh_rsvp_deadline_note(w.fh_event_id) END, ''),
                          'at', to_char(w.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS'))
                        ORDER BY w.starts_at)
                   FROM open_events w WHERE w.person_id = p.id)::text AS week_events
