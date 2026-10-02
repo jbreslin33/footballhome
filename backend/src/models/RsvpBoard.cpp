@@ -112,6 +112,13 @@ const char* kBaseCtes = R"SQL(
                             AND (s.team_id IS NULL OR s.team_id = r.team_id)
                             AND s.starts_at <= ge.starts_at
                             AND (s.ends_at IS NULL OR s.ends_at > ge.starts_at))
+         -- An injured player (person_injuries, mig 510) owes no answer
+         -- while it lasts — nothing unanswered, so no reminder — but an
+         -- answer they do give still counts.  The player hat only.
+         AND NOT (r.role_rank = 2
+                  AND fh_person_injured_at(r.person_id, ge.starts_at)
+                  AND NOT EXISTS (SELECT 1 FROM fh_event_rsvps irv
+                                   WHERE irv.fh_event_id = fe.id AND irv.person_id = r.person_id))
        GROUP BY r.person_id, fe.id, fe.kind, fe.opponent, fe.fh_notes, ge.starts_at, ge.ends_at
     ), expected_roles AS (
       -- The role on each event, and whether this person wears more than
@@ -211,6 +218,7 @@ json RsvpBoard::list(const std::string& sectionCode,
               FROM expected e WHERE e.person_id = p.id) AS role,
            (SELECT MIN(e.role_rank) <> MAX(e.role_rank) FROM expected e WHERE e.person_id = p.id) AS dual_role,
            fh_dues_eligible(p.id) AS dues_eligible,
+           fh_person_injury_label(p.id) AS injury,   -- mig 510; NULL = healthy
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line,
                                                          'day', to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'))
                                       ORDER BY o.starts_at), '[]'::jsonb)
@@ -321,6 +329,7 @@ json RsvpBoard::list(const std::string& sectionCode,
             {"last_manual_rsvp_at", iso(row, "last_manual_rsvp_at")},
             {"months_overdue",    row["months_overdue"].is_null() ? json(nullptr) : json(row["months_overdue"].as<int>())},
             {"dues_eligible",     row["dues_eligible"].is_null() ? true : row["dues_eligible"].as<bool>()},   // migration 416
+            {"injury",            textOrNull(row, "injury")},
             {"payment_status",    textOrNull(row, "la_payment_status")},
             {"dues_variant",      textOrNull(row, "dues_variant")},
             {"last_payment_amount", row["last_payment_amount"].is_null() ? json(nullptr)

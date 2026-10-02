@@ -328,7 +328,170 @@ class RosterScreenBase extends Screen {
   // Screens call this alongside their roster fetch and await it before
   // the first render, so renderStatusSelect can stay synchronous.
   ensureRosterStatuses() {
-    return RosterScreenBase.loadRosterStatuses(this.auth);
+    return Promise.all([
+      RosterScreenBase.loadRosterStatuses(this.auth),
+      RosterScreenBase.loadHealth(this.auth),
+    ]);
+  }
+
+  // ── Health: Healthy / injured, with a time frame (migration 510) ─────
+  //
+  // Owner 2026-10-02: "we need an injured check box or setting in the drop
+  // down … Healthy, short term injury, long term injury. or allow for
+  // setting time frame … this way we can avoid sending practice reminders
+  // and fining them."  A fact about the person, not the team: one
+  // setting, shown on every card the player has.  GET /api/person-health
+  // brings the dropdown (health_statuses), its words (message_templates
+  // kind 'health') and who is injured right now; it is re-read on every
+  // board load, because an injury ends on its own when its back-on day
+  // arrives.  While injured a player owes no RSVP and is not fined — the
+  // server's business (fh_person_injured_at); this file only sets it.
+  static HEALTH = { statuses: [], copy: {}, people: {} };
+
+  static async loadHealth(auth) {
+    try {
+      const res = await auth.fetch('/api/person-health');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      RosterScreenBase.HEALTH = {
+        statuses: Array.isArray(body && body.statuses) ? body.statuses : [],
+        copy:     (body && body.copy) || {},
+        people:   (body && body.people) || {},
+      };
+    } catch (err) {
+      // No control is drawn without the list; the next load() retries.
+      console.warn('health statuses unavailable:', err);
+    }
+    return RosterScreenBase.HEALTH;
+  }
+
+  // The person's health code: their current injury, else the Healthy row.
+  static healthCodeFor(personId) {
+    const H = RosterScreenBase.HEALTH;
+    const mine = H.people[personId];
+    if (mine) return mine.code;
+    const healthy = H.statuses.find(s => !s.isInjured);
+    return healthy ? healthy.code : '';
+  }
+
+  static healthColors(code) {
+    const s = RosterScreenBase.HEALTH.statuses.find(x => x.code === code);
+    if (!s || !s.colorBg) return RosterScreenBase.NEUTRAL_STATUS_COLORS;
+    return { bg: s.colorBg, fg: s.colorFg || '#ffffff', border: s.colorBorder || s.colorBg };
+  }
+
+  healthStyle(code) {
+    const c = RosterScreenBase.healthColors(code);
+    return `background:${c.bg}; color:${c.fg}; border:1px solid ${c.border};`;
+  }
+
+  // Club-local YYYY-MM-DD, `plusDays` days from today.
+  static clubDay(plusDays = 0) {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+    const d = new Date(`${today}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + plusDays);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // The dropdown plus its two dates (shown only while injured), for the
+  // card's ⋯ menu.  "Injured since" may be back-dated so events already
+  // missed are excused too; "Back on" empty = until someone sets Healthy.
+  renderHealthControl(player) {
+    const H = RosterScreenBase.HEALTH;
+    if (!H.statuses.length || !player.personId) return '';
+    const esc     = RosterScreenBase.escapeHtml;
+    const mine    = H.people[player.personId] || null;
+    const current = RosterScreenBase.healthCodeFor(player.personId);
+    const opts = H.statuses.map(s =>
+      `<option value="${esc(s.code)}" ${current === s.code ? 'selected' : ''}>${esc((s.icon ? s.icon + ' ' : '') + s.displayName)}</option>`
+    ).join('');
+    const dateRow = (cls, label, value, bounds) =>
+      `<label class="mr-health-dates" style="display:${mine ? 'flex' : 'none'}; flex-direction:column; gap:1px; font-size:0.58rem; font-weight:700; color:#cbd5e1;">
+         ${esc(label || '')}
+         <input type="date" class="${cls}" value="${esc(value || '')}" ${bounds}
+                style="font-size:0.65rem; padding:0 2px; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; color-scheme:dark;">
+       </label>`;
+    return `<span class="mr-health" data-person-id="${player.personId}" style="display:flex; flex-direction:column; gap:3px;">
+         <select class="mr-health-select" title="${esc(H.copy.select_title || '')}"
+                 style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.healthStyle(current)} ${RosterScreenBase.SELECT_WIDTH_STYLE}">
+           ${opts}
+         </select>
+         ${dateRow('mr-health-since', H.copy.since_label, mine && mine.since, `max="${RosterScreenBase.clubDay()}"`)}
+         ${dateRow('mr-health-until', H.copy.until_label, mine && mine.until, `min="${RosterScreenBase.clubDay(1)}"`)}
+       </span>`;
+  }
+
+  // The read-only chip on the card ("🩹 Short-term injury · back Tue Oct
+  // 20" — the server builds the words), hidden while healthy.
+  renderHealthChip(player) {
+    const H = RosterScreenBase.HEALTH;
+    if (!H.statuses.length || !player.personId) return '';
+    const mine = H.people[player.personId] || null;
+    return `<span data-health-chip="${player.personId}" ${mine ? '' : 'hidden'}
+                  style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap; ${this.healthStyle(mine && mine.code)}">${RosterScreenBase.escapeHtml((mine && mine.label) || '')}</span>`;
+  }
+
+  // The screens' delegated change listeners call this first; true = the
+  // change came from a health control and is being saved.
+  onHealthControlChange(target) {
+    const wrap = target && target.closest && target.closest('.mr-health');
+    if (!wrap) return false;
+    this.saveHealth(wrap);
+    return true;
+  }
+
+  async saveHealth(wrap) {
+    const H = RosterScreenBase.HEALTH;
+    const personId = parseInt(wrap.dataset.personId, 10);
+    const status = H.statuses.find(s => s.code === wrap.querySelector('.mr-health-select').value);
+    if (!personId || !status) return;
+    const body = { person_id: personId, status: status.code };
+    if (status.isInjured) {
+      // An empty "since" keeps what is saved (or starts now); an empty
+      // "back on" means open-ended.
+      const since = wrap.querySelector('.mr-health-since').value;
+      const until = wrap.querySelector('.mr-health-until').value;
+      if (since) body.since = since;
+      if (until) body.until = until;
+    }
+    const controls = wrap.querySelectorAll('select, input');
+    controls.forEach(el => { el.disabled = true; });
+    try {
+      const res = await this.auth.fetch('/api/person-health', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (data.health) H.people[personId] = data.health; else delete H.people[personId];
+    } catch (err) {
+      alert(`Could not save health: ${err.message}`);
+    } finally {
+      controls.forEach(el => { el.disabled = false; });
+      this.paintHealth(personId);   // saved state, or back to it after a failure
+    }
+  }
+
+  // Every card the person has (a player can sit in two columns) shows
+  // what is saved: dropdown, dates and chip.
+  paintHealth(personId) {
+    const mine = RosterScreenBase.HEALTH.people[personId] || null;
+    const code = RosterScreenBase.healthCodeFor(personId);
+    const c = RosterScreenBase.healthColors(code);
+    this.element.querySelectorAll(`.mr-health[data-person-id="${personId}"]`).forEach(wrap => {
+      const select = wrap.querySelector('.mr-health-select');
+      select.value = code;
+      select.style.background = c.bg; select.style.color = c.fg; select.style.borderColor = c.border;
+      wrap.querySelectorAll('.mr-health-dates').forEach(l => { l.style.display = mine ? 'flex' : 'none'; });
+      wrap.querySelector('.mr-health-since').value = (mine && mine.since) || '';
+      wrap.querySelector('.mr-health-until').value = (mine && mine.until) || '';
+    });
+    this.element.querySelectorAll(`[data-health-chip="${personId}"]`).forEach(chip => {
+      chip.hidden = !mine;
+      chip.textContent = (mine && mine.label) || '';
+      chip.style.background = c.bg; chip.style.color = c.fg; chip.style.border = `1px solid ${c.border}`;
+    });
   }
 
   static rosterStatusByCode(code) {
@@ -508,7 +671,7 @@ class RosterScreenBase extends Screen {
                style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.rosterStatusStyle(current)} ${RosterScreenBase.SELECT_WIDTH_STYLE}">
          <option value="" ${!current ? 'selected' : ''}>Status: —</option>
          ${opts}
-       </select>`;
+       </select>${this.renderHealthControl(player)}`;
   }
 
   // Optimistic: flip the select's own state immediately, roll back only
@@ -1047,6 +1210,7 @@ class RosterScreenBase extends Screen {
         ${ageChip}
         ${duesLabel}
         ${statusChip}
+        ${this.renderHealthChip(player)}
         ${activeTeamsBadge}
         ${pickupBadge}
         <span style="display:inline-flex; align-items:stretch; margin-left:auto;">${controls}</span>

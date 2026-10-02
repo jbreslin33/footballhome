@@ -49,6 +49,7 @@ set(SOURCES
     src/models/WelcomeMessage.cpp
     src/models/MessageCopy.cpp
     src/models/RsvpBoard.cpp
+    src/models/PersonHealth.cpp
     src/models/KitBoard.cpp
     src/models/FacilityLockup.cpp
     src/models/LogoImage.cpp
@@ -119,6 +120,7 @@ set(SOURCES
     src/controllers/PayReminderLogController.cpp
     src/controllers/WelcomeController.cpp
     src/controllers/RsvpBoardController.cpp
+    src/controllers/PersonHealthController.cpp
     src/controllers/KitBoardController.cpp
     src/controllers/LockupController.cpp
     src/controllers/ClubLogoController.cpp

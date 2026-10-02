@@ -110,6 +110,7 @@ class BoysRosterScreen extends RosterScreenBase {
     });
 
     this.element.addEventListener('change', e => {
+      if (this.onHealthControlChange(e.target)) return;   // health dropdown + dates (migration 510)
       const posSelect = e.target.closest('.roster-position-select');
       if (posSelect) return this.onPositionSelectChange(posSelect);
       const roleSelect = e.target.closest('.mr-role-select');

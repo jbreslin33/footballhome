@@ -41,6 +41,7 @@
 #include "controllers/PayReminderLogController.h"
 #include "controllers/WelcomeController.h"
 #include "controllers/RsvpBoardController.h"
+#include "controllers/PersonHealthController.h"
 #include "controllers/KitBoardController.h"
 #include "controllers/LockupController.h"
 #include "controllers/ClubLogoController.h"
@@ -118,6 +119,7 @@ private:
     std::shared_ptr<PayReminderLogController> pay_reminder_log_controller_;
     std::shared_ptr<WelcomeController> welcome_controller_;
     std::shared_ptr<RsvpBoardController> rsvp_board_controller_;
+    std::shared_ptr<PersonHealthController> person_health_controller_;
     std::shared_ptr<KitBoardController> kit_board_controller_;
     std::shared_ptr<LockupController> lockup_controller_;
     std::shared_ptr<ClubLogoController> club_logo_controller_;
@@ -204,6 +206,7 @@ public:
         pay_reminder_log_controller_ = std::make_shared<PayReminderLogController>();
         welcome_controller_ = std::make_shared<WelcomeController>();
         rsvp_board_controller_ = std::make_shared<RsvpBoardController>();
+        person_health_controller_ = std::make_shared<PersonHealthController>();
         kit_board_controller_ = std::make_shared<KitBoardController>();
         lockup_controller_ = std::make_shared<LockupController>();
         club_logo_controller_ = std::make_shared<ClubLogoController>();
@@ -510,6 +513,8 @@ private:
         router_.useController("/api/welcomes", welcome_controller_);
         // #rsvps board (owner 2026-09-17): RSVP standing per player + tracked reminders.
         router_.useController("/api/rsvp-board", rsvp_board_controller_);
+        // Health dropdown on the #teams cards (owner 2026-10-02, mig 510): injuries excuse RSVPs + fines.
+        router_.useController("/api/person-health", person_health_controller_);
         // #kit board (owner 2026-09-18): uniform numbers + kit handed out (mig 373).
         router_.useController("/api/kit-board", kit_board_controller_);
         // #security (owner 2026-09-24): nightly gate photo check-in + upload link (mig 421/424).

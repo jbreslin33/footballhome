@@ -698,6 +698,7 @@ class RsvpBoardScreen extends Screen {
           <div style="min-width:0;">
             <div style="font-weight:800;">${this.escapeHtml(p.first_name)} ${this.escapeHtml(p.last_name)}${this._rolePill(p)}</div>
             <div style="font-size:0.72rem; opacity:0.65;">${this.section === 'all' && p.section ? this.escapeHtml(RsvpBoardScreen.SECTIONS[p.section] || p.section) + ' · ' : ''}${teams}${p.youth ? ' · youth' : ''}</div>
+            ${p.injury ? `<div style="margin-top:2px;"><span class="rb-pill" style="background:rgba(245,158,11,0.2); color:#fbbf24;" title="Injured (set on Teams): no RSVP owed, no reminders, no fines while it lasts">${this.escapeHtml(p.injury)}</span></div>` : ''}
           </div>
           <div style="text-align:right;">
             <div class="rb-pct ${pctCls}">${pct == null ? '—' : pct + '%'}</div>
