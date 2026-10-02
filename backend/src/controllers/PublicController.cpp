@@ -633,10 +633,13 @@ Response PublicController::handleGetProgramCopy(const Request& request) {
 }
 
 // ─── POST /api/public/sms-opt-in ─────────────────────────────────────────────
-// The consent form on footballhome.org/sms (mig 482).  Body:
-// { name, phone, consent: true, consent_text }.  One row per sign-up is the
-// proof of opt-in the Twilio A2P campaign rests on, so the wording the
-// person ticked is stored with it.  No sign-in: anyone may opt in.
+// The club sign-up form on footballhome.org/sms (mig 482, 512).  Body:
+// { name, email, phone?, consent: bool, consent_text }.  Every submission is
+// a club_update_signups row.  The text-message box is OPTIONAL (Twilio
+// rejected the campaign, error 30923, while the form would not submit
+// without it): only when it is ticked — consent true, with a 10-digit
+// mobile — is an sms_opt_ins row written too, the proof of opt-in the A2P
+// campaign rests on, holding the wording the person ticked.  No sign-in.
 Response PublicController::handlePostSmsOptIn(const Request& request) {
     nlohmann::json body;
     try {
@@ -652,15 +655,22 @@ Response PublicController::handlePostSmsOptIn(const Request& request) {
         while (!v.empty() && std::isspace(static_cast<unsigned char>(v.back())))  v.pop_back();
         return v;
     };
-    const std::string name = readStr("name"), phone = readStr("phone"), consentText = readStr("consent_text");
+    const std::string name = readStr("name"), email = readStr("email"), phone = readStr("phone"),
+                      consentText = readStr("consent_text");
     const bool consent = body.contains("consent") && body["consent"].is_boolean() && body["consent"].get<bool>();
     std::string digits;
     for (char ch : phone) if (ch >= '0' && ch <= '9') digits.push_back(ch);
     if (digits.size() == 11 && digits[0] == '1') digits.erase(0, 1);
-    if (!consent)                       return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "consent required"));
+    static const std::regex emailRe(R"(^[^@\s]+@[^@\s]+\.[^@\s]+$)");
     if (name.empty() || name.size() > 200) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "name required"));
-    if (digits.size() != 10 || phone.size() > 40) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "10-digit US mobile number required"));
-    if (consentText.size() > 2000)      return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "field too long"));
+    if (email.size() > 254 || !std::regex_match(email, emailRe))
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "email required"));
+    if (phone.size() > 40 || consentText.size() > 2000)
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "field too long"));
+    if (consent && digits.size() != 10)
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "10-digit US mobile number required for text alerts"));
+    if (consent && consentText.empty())
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "consent wording required"));
 
     std::string ip = request.getHeader("X-Forwarded-For");
     if (ip.empty()) ip = request.getHeader("X-Real-IP");
@@ -668,14 +678,23 @@ Response PublicController::handlePostSmsOptIn(const Request& request) {
     std::string ua = request.getHeader("User-Agent");
     if (ua.size() > 300) ua.resize(300);
     try {
+        std::string optInId;
+        if (consent) {
+            pqxx::result o = db_->query(
+                "INSERT INTO sms_opt_ins (name, phone, phone_digits, consent_text, ip, user_agent, person_id) "
+                "VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), "
+                "        (SELECT pp.person_id FROM person_phones pp WHERE regexp_replace(COALESCE(pp.phone_number,''), '[^0-9]', '', 'g') IN ($3, '1' || $3) "
+                "          ORDER BY pp.person_id LIMIT 1)) "
+                "RETURNING id", {name, phone, digits, consentText, ip, ua});
+            optInId = o[0]["id"].c_str();
+        }
         pqxx::result r = db_->query(
-            "INSERT INTO sms_opt_ins (name, phone, phone_digits, consent_text, ip, user_agent, person_id) "
-            "VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), "
-            "        (SELECT pp.person_id FROM person_phones pp WHERE regexp_replace(COALESCE(pp.phone_number,''), '[^0-9]', '', 'g') IN ($3, '1' || $3) "
-            "          ORDER BY pp.person_id LIMIT 1)) "
-            "RETURNING id", {name, phone, digits, consentText, ip, ua});
+            "INSERT INTO club_update_signups (name, email, phone, sms_opt_in_id, ip, user_agent, person_id) "
+            "VALUES ($1, $2, NULLIF($3,''), NULLIF($4,'')::int, NULLIF($5,''), NULLIF($6,''), "
+            "        (SELECT pe.person_id FROM person_emails pe WHERE lower(pe.email) = lower($2) ORDER BY pe.person_id LIMIT 1)) "
+            "RETURNING id", {name, email, phone, optInId, ip, ua});
         std::ostringstream data;
-        data << "{\"id\":" << r[0]["id"].as<long long>() << "}";
+        data << "{\"id\":" << r[0]["id"].as<long long>() << ",\"texts\":" << (consent ? "true" : "false") << "}";
         return Response(HttpStatus::OK, createJSONResponse(true, "Signed up", data.str()));
     } catch (const std::exception& e) {
         std::cerr << "❌ handlePostSmsOptIn: " << e.what() << std::endl;
