@@ -506,7 +506,7 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
 
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
         SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at,
-               NULL::text AS day
+               NULL::text AS day, false AS travel_game
           FROM roster r
         UNION ALL
         SELECT 'event', o.fh_event_id,
@@ -514,7 +514,11 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
                -- player hat only; coaches and staff do not start.
                o.line || COALESCE(E'\n  ' || CASE WHEN o.role = 'player' THEN fh_rsvp_deadline_note(o.fh_event_id) END, '')
                       || COALESCE(E'\n  ' || o.message_notes, ''), o.starts_at,
-               to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') FROM open_events o
+               to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'),
+               -- A travel team's game earns the reminder its travel line
+               -- (mig 509) — the player hat only, like the deadline.
+               (o.role = 'player' AND fh_is_travel_game(o.fh_event_id))
+          FROM open_events o
          ORDER BY what, starts_at)SQL";
     auto rows = db->query(sql, {"", "", "{}", std::to_string(personId), "all"});
     for (const auto& row : rows) {
@@ -523,6 +527,7 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
         } else {
             ctx.openEvents.push_back({row["id"].as<long long>(), row["line"].c_str(),
                                       row["day"].is_null() ? std::string{} : row["day"].c_str()});
+            if (row["travel_game"].as<bool>()) ctx.travelGame = true;
         }
     }
     return ctx;
@@ -537,6 +542,7 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
                o.line || COALESCE(E'\n  ' || CASE WHEN o.role = 'player' THEN fh_rsvp_deadline_note(o.fh_event_id) END, '')
                       || COALESCE(E'\n  ' || o.message_notes, '') AS line,
                ph.phone_number AS phone, em.email AS email,
+               fh_is_travel_game($6::bigint) AS travel_game,   -- mig 509
                (SELECT jsonb_agg(jsonb_build_object(
                          'id', w.fh_event_id,
                          'line', w.line || COALESCE(E'\n  ' || CASE WHEN w.role = 'player' THEN fh_rsvp_deadline_note(w.fh_event_id) END, ''),
@@ -562,6 +568,7 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
     std::vector<std::pair<std::string, OpenEvent>> week;   // (start, event), deduped
     for (const auto& row : rows) {
         if (ctx.line.empty()) ctx.line = row["line"].c_str();
+        ctx.travelGame = row["travel_game"].as<bool>();
         GroupRecipient r;
         r.personId          = row["person_id"].as<long long>();
         r.recipientPersonId = row["recipient_person_id"].as<long long>();

@@ -58,6 +58,7 @@ public:
         std::string email;
         std::vector<long long> teamIds;      // player's active board teams
         std::vector<OpenEvent> openEvents;   // unanswered, not yet ended, released
+        bool        travelGame = false;      // one of them is a travel team's game (mig 509)
     };
     ReminderContext reminderContext(long long personId);
 
@@ -73,6 +74,7 @@ public:
     };
     struct GroupReminderContext {
         std::string line;                    // "" = nobody owes this event an answer
+        bool        travelGame = false;      // the event is a travel team's game (mig 509)
         std::vector<GroupRecipient> recipients;
         // Every still-open event any recipient owes, by start — the
         // "whole week" group message (Game Center, mig 381).
@@ -86,6 +88,7 @@ public:
     // 'adult' | 'parent' (one player, magic link) or 'group_adult' |
     // 'group_parent' (one event, no link) or 'group_week_adult' |
     // 'group_week_parent' (the week, no link), rendered by MessageCopy.
+    // travelGame fills their {travel} token from tier 'travel' (mig 509).
 
     // Writes rsvp_reminders + rsvp_reminder_events; returns the card's
     // fresh last_reminder object.

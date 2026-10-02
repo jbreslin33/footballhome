@@ -312,10 +312,14 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         // reminders ... list fine rules at bottom and list any they were
         // fined for".  Empty for everyone else, so the [[ ]] around it drops.
         const std::string fines = finesBlock(copy, static_cast<int>(personId));
+        // {travel}: the extra line when a travel team's game is on the list
+        // (tier 'travel', mig 509) — owner 2026-10-02: "travel spots carry
+        // extra responsibilty".  Empty otherwise, so its [[ ]] drops.
+        const std::string travel = ctx.travelGame ? copy.render("rsvp_reminder", "travel", {}).body : std::string{};
         const auto msg = copy.render("rsvp_reminder", ctx.youth ? "parent" : "adult", {
             {"first", ctx.recipientFirstName}, {"child", ctx.playerFirstName},
             {"events", events}, {"link", minted.url}, {"sender", senderName},
-            {"fines", fines}});
+            {"fines", fines}, {"travel", travel}});
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363)");
 
@@ -412,9 +416,11 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
         for (const auto& ev : ctx.weekEvents) eventLines += "• " + ev.line + "\n";
         if (!eventLines.empty()) eventLines.pop_back();
         MessageCopy copy;
+        // {travel}: as in the one-player reminder (mig 509).
+        const std::string travel = ctx.travelGame ? copy.render("rsvp_reminder", "travel", {}).body : std::string{};
         const auto msg = copy.render("rsvp_reminder",
             std::string(week ? "group_week_" : "group_") + (youth ? "parent" : "adult"),
-            {{"event", ctx.line}, {"events", eventLines}, {"sender", senderName}});
+            {{"event", ctx.line}, {"events", eventLines}, {"sender", senderName}, {"travel", travel}});
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "group rsvp_reminder template missing (migration 380 / 381)");
 
