@@ -985,7 +985,7 @@ class GameCenterScreen extends Screen {
       // Reminders already sent about this game — dims a No Response
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
       const remindersPromise = this.isCoach
-        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients()]) : Promise.resolve();
+        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients(), this._loadHealth()]) : Promise.resolve();
       // The league's roster sheet is for the players too (owner 2026-09-30:
       // "all players to see it so we can ask one to print it if we forget").
       const officialRosterPromise = this._loadOfficialRoster();
@@ -2048,6 +2048,7 @@ class GameCenterScreen extends Screen {
             <span style="overflow-wrap:break-word; white-space:normal;">${this.escapeHtml(p.name)}</span>
             ${this.isCoach ? this._rsvpStatusPill(p.id) : ''}
             ${this._duesFlag(p)}
+            ${this.isCoach ? this._injuryChip(p.id) : ''}
           </span>
           <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
             ${this.isCoach && this.zones.get(p.id) === 'bench' ? benchOrderControl(p) : ''}
@@ -2349,6 +2350,31 @@ class GameCenterScreen extends Screen {
   _personIdFor(playerId) {
     const row = (this.players || []).find(x => Number(x.playerId) === Number(playerId));
     return row && row.personId ? Number(row.personId) : null;
+  }
+
+  // Who is injured right now (person_injuries, migration 510) — set on
+  // #teams, shown here as the same chip on the player's card in every
+  // section (owner 2026-10-02: "show the injury chip in game center no
+  // response too").  The words, colours and tooltip are the server's.
+  // Admins and coaches only; anyone else just gets no chips.
+  async _loadHealth() {
+    this.health = { people: {}, statuses: [], copy: {} };
+    try {
+      const res = await this.auth.fetch('/api/person-health');
+      const data = await res.json();
+      if (res.ok) this.health = { people: data.people || {}, statuses: data.statuses || [], copy: data.copy || {} };
+    } catch (err) {
+      console.warn('[game-center] health unavailable:', err);
+    }
+  }
+
+  _injuryChip(playerId) {
+    const personId = this._personIdFor(playerId);
+    const mine = personId && this.health && this.health.people[personId];
+    if (!mine || !mine.label) return '';
+    const st = (this.health.statuses || []).find(x => x.code === mine.code) || {};
+    return `<span title="${this.escapeHtml(this.health.copy.select_title || '')}"
+                  style="display:inline-block; padding:1px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; white-space:nowrap; background:${st.colorBg || '#f59e0b'}; color:${st.colorFg || '#422006'};">${this.escapeHtml(mine.label)}</span>`;
   }
 
   // { person_id: { sms: {sent_at, count}, email: {…} } } for this game.
