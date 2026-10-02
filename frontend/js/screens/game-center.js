@@ -968,11 +968,19 @@ class GameCenterScreen extends Screen {
       // Coach-only (the endpoint gates on it too), and deliberately
       // non-fatal: a failure here costs the overlay, not the lineup
       // editor, so it must never reject the whole bootstrap.
-      const detailsPromise = this.isCoach && this.teamId
-        ? this.auth.fetch(`/api/matches/${this.matchId}/roster-players?teamId=${this.teamId}`)
-            .then(r => r.json())
-            .catch(err => { console.warn('[game-center] player details unavailable:', err); return null; })
-        : Promise.resolve(null);
+      // One fetch per roster team, the game's own team first: the endpoint
+      // answers for a single team, so on a two-team game (APSL + APSL
+      // Reserves) the second team's players had no details row — no person
+      // id, and their No Response cards lost the REMIND buttons (owner
+      // 2026-10-02: "why josue david not having email or text for rsvp
+      // reminder").
+      const detailTeamIds = [...new Set([this.teamId, ...rosterTeamIds].filter(Boolean).map(Number))];
+      const detailsPromise = this.isCoach && detailTeamIds.length
+        ? Promise.all(detailTeamIds.map(id =>
+            this.auth.fetch(`/api/matches/${this.matchId}/roster-players?teamId=${id}`)
+              .then(r => r.json())
+              .catch(err => { console.warn('[game-center] player details unavailable:', err); return null; })))
+        : Promise.resolve([]);
 
       // Reminders already sent about this game — dims a No Response
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
@@ -990,9 +998,17 @@ class GameCenterScreen extends Screen {
         officialRosterPromise,
       ]);
 
-      if (detailsData && detailsData.success) {
-        this.players = detailsData.data || [];
-        this.trainingEvents = detailsData.trainingEvents || [];
+      // A player on two of the game's teams keeps the first team's row.
+      const detailSets = (detailsData || []).filter(d => d && d.success);
+      if (detailSets.length) {
+        const seen = new Set();
+        this.players = detailSets.flatMap(d => d.data || []).filter(p => {
+          const key = String(p.playerId);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        this.trainingEvents = detailSets[0].trainingEvents || [];
       }
       const byId = new Map();
       for (const { id: fromTeamId, d: rosterData } of rosterResults) {
