@@ -1396,7 +1396,7 @@ class PaymentsScreen extends Screen {
     if (d && d.status) {
       const bottom = d.status === 'posted' ? `✓ ${md(d.postedOn)}` : d.status === 'not_posted' ? 'NOT POSTED' : `post ${md(d.firstFriday)}`;
       const tip = d.status === 'posted'
-        ? `${d.label} dues ${fmtAmt(Number(d.rate))} charged in LA on ${this.fmtDate(d.postedOn)}`
+        ? `${d.label} dues ${fmtAmt(Number(d.rate))} added in LA on ${this.fmtDate(d.postedOn)}`
         : d.status === 'not_posted'
           ? `${d.label} dues ${fmtAmt(Number(d.rate))}: no matching LA charge yet — first Friday was ${this.fmtDate(d.firstFriday)}`
           : `${d.label} dues ${fmtAmt(Number(d.rate))}: post in LA on ${this.fmtDate(d.firstFriday)}`;
@@ -1424,7 +1424,7 @@ class PaymentsScreen extends Screen {
   _postingTip(mo, p) {
     const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
     switch (p.status) {
-      case 'posted':     return `charged in LA on ${this.fmtDate(p.postedOn)} with ${p.label} dues`;
+      case 'posted':     return `added in LA on ${this.fmtDate(p.postedOn)} with ${p.label} dues`;
       case 'drift':      return `LA shows ${fmtAmt(Number(p.postedAmount) || 0)} charged ${this.fmtDate(p.postedOn)}, fines now total ${fmtAmt(Number(mo.total) || 0)}`;
       case 'not_posted': return `no matching LA charge — post with ${p.label} dues (first Friday was ${this.fmtDate(p.firstFriday)})`;
       case 'due':        return `post with ${p.label} dues on ${this.fmtDate(p.firstFriday)}`;

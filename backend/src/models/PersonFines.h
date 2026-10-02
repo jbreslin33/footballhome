@@ -39,11 +39,12 @@ class Database;
 //               "firstFriday": "2026-09-04",
 //               "status": posted|not_posted|due, "postedOn" } }
 // A month's fines are posted to LA with the next month's dues on its
-// first Friday; posting/dues read the LA charges FH already mirrors
-// (person_payments, txn_type Charge) and match them by amount and month
-// — the dues charge is the one equal to the rate, the fines charge the
-// one equal to the month's total (or dues + fines in one).  Nothing is
-// marked by hand.
+// first Friday; posting/dues read what was added to the LA invoice — each
+// rise in its total due (la_total_due_changes, mig 511; the card charges
+// in person_payments for the time before that log) — and match it by
+// amount and month: the dues line is the one equal to the rate (or a
+// whole number of months), the fines line the one equal to the month's
+// total (or dues + fines in one).  Nothing is marked by hand.
 // The months are the last three calendar months (club time), clipped to
 // the policy's first month, oldest first.  People on no such team are
 // absent from the map — the card then shows nothing.

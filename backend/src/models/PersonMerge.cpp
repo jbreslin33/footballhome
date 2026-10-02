@@ -68,6 +68,7 @@ const std::vector<PersonMerge::ChildTable>& PersonMerge::childTables() {
         { "trail_test_attempts",     Conflict::NoPersonUnique,       {},                 {"id"} },
         { "trail_test_results",      Conflict::NoPersonUnique,       {},                 {"id"} },
         { "person_injuries",         Conflict::NoPersonUnique,       {},                 {"id"} },
+        { "la_total_due_changes",    Conflict::NoPersonUnique,       {},                 {"id"} },
         // These two carry person_id INSIDE their primary key, which the
         // unmerge PK-match in reverse() cannot express: it looks for the
         // snapshot row under the KEPT person, but a PK containing person_id

@@ -82,24 +82,50 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
           << " ORDER BY f.person_id, f.starts_at";
     auto fineRows = db_->query(fines.str());
 
-    // Every LeagueApps charge since the first shown month (person_payments
-    // txn_type 'Charge' — each charge the owner adds in LA is its own row,
-    // amount and day, no description).  Owner 2026-09-27: "you should be
-    // able to detect what a charge is for by amount and timing ... when i
-    // add 35 due to a player around the 1st friday you know its dues.
-    // when i add a 2nd amount around that time it should match the fines."
+    // What was added to each player's LeagueApps invoice since the first
+    // shown month — amount and day, no description (LA's API has none).
+    // Owner 2026-09-27: "you should be able to detect what a charge is for
+    // by amount and timing ... when i add 35 due to a player around the 1st
+    // friday you know its dues.  when i add a 2nd amount around that time
+    // it should match the fines."
+    //   from fh_la_due_log_since()   every rise in the invoice's total due
+    //                                (la_total_due_changes, mig 511) — the
+    //                                line itself, paid or not, however the
+    //                                card was later run (owner 2026-10-02:
+    //                                "store any diff in total due from la
+    //                                and back engineer the amount and
+    //                                date").  A rise taken back off by an
+    //                                equal fall later is not a posting.
+    //   before it                    the card charges (person_payments),
+    //                                the only trace there is.
+    const std::string windowStart =
+        "((date_trunc('month', (now() AT TIME ZONE 'America/New_York')::date)::date"
+        " - interval '" + back + " months')::timestamp AT TIME ZONE 'America/New_York')";
     std::ostringstream charges;
-    charges << "SELECT p.id AS person_id, pp.amount::text AS amount,"
+    charges << "SELECT person_id, amount, ym, day FROM ("
+            << "SELECT p.id AS person_id, pp.amount::text AS amount, pp.paid_at AS at,"
             << "       to_char(pp.paid_at AT TIME ZONE 'America/New_York', 'YYYY-MM') AS ym,"
             << "       to_char(pp.paid_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day"
             << "  FROM person_payments pp"
             << "  JOIN persons p ON p.la_user_id::bigint = pp.la_user_id::bigint"
             << " WHERE pp.txn_type = 'Charge' AND p.id IN (" << ids << ")"
-            << "   AND pp.paid_at >= ((date_trunc('month', (now() AT TIME ZONE 'America/New_York')::date)::date"
-            << "         - interval '" << back << " months')::timestamp AT TIME ZONE 'America/New_York')"
-            << " ORDER BY p.id, pp.paid_at";
+            << "   AND pp.paid_at >= " << windowStart
+            << "   AND pp.paid_at < COALESCE(fh_la_due_log_since(), 'infinity')"
+            << " UNION ALL "
+            << "SELECT c.person_id, c.delta_usd::text, c.observed_at,"
+            << "       to_char(c.observed_at AT TIME ZONE 'America/New_York', 'YYYY-MM'),"
+            << "       to_char(c.observed_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD')"
+            << "  FROM la_total_due_changes c"
+            << "  LEFT JOIN leagueapps_programs lp ON lp.program_id = c.la_program_id"
+            << " WHERE c.person_id IN (" << ids << ") AND c.delta_usd > 0"
+            << "   AND c.observed_at >= GREATEST(" << windowStart << ", fh_la_due_log_since())"
+            << "   AND (c.la_program_id IS NULL OR lp.variant IN ('active', 'inactive'))"
+            << "   AND NOT EXISTS (SELECT 1 FROM la_total_due_changes n"
+            << "                    WHERE n.person_id = c.person_id AND n.delta_usd = -c.delta_usd"
+            << "                      AND n.observed_at > c.observed_at)"
+            << ") x ORDER BY person_id, at";
     auto chargeRows = db_->query(charges.str());
-    struct Charge { double amount; std::string day; bool used = false; };
+    struct Charge { double amount; std::string day; bool used = false; bool withFines = false; };
     std::unordered_map<int, std::unordered_map<std::string, std::vector<Charge>>> chargesBy;   // person → ym → charges
     for (const auto& r : chargeRows) {
         chargesBy[r["person_id"].as<int>()][r["ym"].c_str()].push_back(
@@ -148,12 +174,32 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
         const double rate = rateByClub[w["club_id"].as<int>()];
         auto& myCharges = chargesBy[pid];
 
-        // The dues charge of a month: the first charge equal to the rate.
-        // Claimed first so a $35 fine total can never be mistaken for it.
+        // The dues charge of a month, claimed first so a $35 fine total can
+        // never be mistaken for it:
+        //   1. the first charge equal to the rate;
+        //   2. one equal to the rate + the fines that post that month — dues
+        //      and fines added between two syncs arrive as one move.  Left
+        //      for the fines box to claim too (withFines);
+        //   3. a whole number of months in one — a catch-up, or a card run
+        //      that swept two installments (David Naranjo's $70, 2026-10-02).
         auto duesChargeIn = [&](const std::string& ym) -> Charge* {
             auto it = myCharges.find(ym);
             if (it == myCharges.end()) return nullptr;
             for (auto& c : it->second) if (!c.used && same(c.amount, rate)) { c.used = true; return &c; }
+            double finesDue = 0;
+            for (const auto& m : monthRows) {
+                if (ym != m["post_ym"].c_str()) continue;
+                const std::string fineYm = m["ym"].c_str();
+                if (totals[pid].count(fineYm)) finesDue = totals[pid][fineYm];
+            }
+            if (finesDue > 0.005) {
+                for (auto& c : it->second) if (!c.used && same(c.amount, rate + finesDue)) { c.withFines = true; return &c; }
+            }
+            for (auto& c : it->second) {
+                if (c.used || c.withFines || rate <= 0) continue;
+                const double months = c.amount / rate;
+                if (months > 1.5 && months < 12.5 && same(months, std::round(months))) { c.used = true; return &c; }
+            }
             return nullptr;
         };
         std::unordered_map<std::string, Charge*> duesByYm;
