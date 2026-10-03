@@ -450,7 +450,7 @@ class SocialPostCard {
 
     switch (this.postTypeName) {
       case 'starters_bench':
-        return `⚔️ STARTERS & BENCH\n\n${homeName} vs ${awayName}${leagueLine}\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893${leagueTag ? ' ' + leagueTag : ''} #PhillySoccer #StartingXI`;
+        return `⚔️ ${this.startersBenchTitle()}\n\n${homeName} vs ${awayName}${leagueLine}\n📅 ${dateStr}\n⏰ ${timeStr}\n📍 ${venue}\n\n#Lighthouse1893${leagueTag ? ' ' + leagueTag : ''} #PhillySoccer #StartingXI`;
       case 'game_day': {
         const gameDayLabel = this.getGameDayLabel(rawDate);
         const gameDayEmoji = gameDayLabel === 'GAME DAY' ? '' : gameDayLabel === 'TOMORROW' ? 'See you there! 💪' : 'Mark your calendars! 📌';
@@ -546,7 +546,7 @@ class SocialPostCard {
   // The publish button names the post it sends, so a coach flipping
   // between post types in Game Center always reads what "live" means.
   postButtonLabel() {
-    return `🚀 Post live — ${this.postTypeLabel || this.postTypeName}`;
+    return `🚀 Post live — ${this.typeLabel()}`;
   }
 
   render() {
@@ -570,7 +570,7 @@ class SocialPostCard {
       lineup: '#8b5cf6',
       post_game: '#22c55e'
     };
-    const label = `${icons[this.postTypeName] || '📱'} ${this.postTypeLabel || this.postTypeName}`;
+    const label = `${icons[this.postTypeName] || '📱'} ${this.typeLabel()}`;
     const accent = accentColors[this.postTypeName] || '#6b7280';
 
     // Caption for textarea
@@ -902,7 +902,7 @@ class SocialPostCard {
         rosterHtml = this.buildImageRoster();
         break;
       case 'starters_bench':
-        headerText = 'STARTERS & BENCH';
+        headerText = this.startersBenchTitle();
         // With a pitch to draw, the matchup shrinks to one row so the
         // height goes to names a phone can actually read.
         middleHtml = this.hasPitch()
@@ -1792,6 +1792,18 @@ class SocialPostCard {
       starters: inZone('starter').sort(teamSheetOrder),
       bench: inZone('bench').sort(byLastName),
     };
+  }
+
+  // The Starters & Bench heading; a game where everyone plays hands its
+  // own title in rosterData.title (game-center.js, mig 516).
+  startersBenchTitle() {
+    const title = this.rosterData && this.rosterData.title;
+    return title ? String(title).toUpperCase() : 'STARTERS & BENCH';
+  }
+
+  typeLabel() {
+    const title = this.postTypeName === 'starters_bench' && this.rosterData && this.rosterData.title;
+    return title || this.postTypeLabel || this.postTypeName;
   }
 
   // "STARTING XI" only when the format IS eleven a side — a 7v7 or 9v9

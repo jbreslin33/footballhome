@@ -864,6 +864,8 @@ class GameCenterScreen extends Screen {
   // JS fallback title, else the raw key.
   _pillTitle(key) {
     const meta = POST_PILLS.find(p => p.key === key);
+    // Everyone plays (mig 515/516): no starters or bench to name.
+    if (key === 'starters_bench' && this.everyonePlays && this._copyLe('title')) return this._copyLe('title');
     return (this.postTypeNames && this.postTypeNames[key]) || (meta && meta.title) || key;
   }
 
@@ -1888,7 +1890,8 @@ class GameCenterScreen extends Screen {
     if (this.lineupView === 'compare') { paint(this._renderCompare()); return; }
 
     if (effectiveIsPlayerView) {
-      paint(viewToggleHtml + this._renderMyEligibility() + this._renderRosterCriteria()
+      // Starter criteria mean nothing where everyone plays (mig 515).
+      paint(viewToggleHtml + (this.everyonePlays ? '' : this._renderMyEligibility() + this._renderRosterCriteria())
             + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
       return;
     }
@@ -2001,7 +2004,7 @@ class GameCenterScreen extends Screen {
     const ROLE_LABEL = { starter: '1st Team Starter', bench: '1st Team Bench', reserve: '1st Team Reserve' };
     const roleButtons = (p) => {
       const label = ROLE_LABEL[p.lineupRole];
-      if (!label) return '';
+      if (!label || everyone) return '';
       return `<span title="Roster Role — set on the Teams page"
         style="padding:1px 6px; font-size:0.68rem; font-weight:700; border-radius:3px; background:#334155; color:#e2e8f0; white-space:nowrap;">${label}</span>`;
     };
@@ -2054,8 +2057,8 @@ class GameCenterScreen extends Screen {
       const rt = this._rsvpTimingState(s);
       const rtText = rt ? this._eligCopy('rsvp_row_' + rt.state, rt.tokens) : '';
       return `<div style="font-size:0.68rem; opacity:0.85; margin-top:2px;">
-        <span title="${this.escapeHtml(windowNote)}" style="display:inline-block; padding:1px 8px; border-radius:999px; background:${cbg}; color:${cfg}; font-weight:700; white-space:nowrap;">${this.escapeHtml(rowText)}</span>
-        ${rtText ? `<span style="display:inline-block; padding:1px 8px; border-radius:999px; background:${rt.colour[0]}; color:${rt.colour[1]}; font-weight:700; white-space:nowrap;">${this.escapeHtml(rtText)}</span>` : ''}
+        ${everyone ? '' : `<span title="${this.escapeHtml(windowNote)}" style="display:inline-block; padding:1px 8px; border-radius:999px; background:${cbg}; color:${cfg}; font-weight:700; white-space:nowrap;">${this.escapeHtml(rowText)}</span>`}
+        ${rtText && !everyone ? `<span style="display:inline-block; padding:1px 8px; border-radius:999px; background:${rt.colour[0]}; color:${rt.colour[1]}; font-weight:700; white-space:nowrap;">${this.escapeHtml(rtText)}</span>` : ''}
         ${s.practicesUpcomingTotal > 0 ? `· proj ${s.practicesProjected}/${s.practicesUpcomingTotal}` : ''}
         · Game ${rsvpBadge(s.gameRsvp)}${this._rsvpTimeChips(playerId)}
         ${practicePills(s)}
@@ -3572,7 +3575,8 @@ class GameCenterScreen extends Screen {
         return token;
       }));
     }
-    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing };
+    const title = this.everyonePlays ? this._copyLe('title') : '';
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, title };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from
