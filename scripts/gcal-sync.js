@@ -247,6 +247,11 @@ async function syncCalendar(pg, cal) {
     for (const cal of cals) {
       await syncCalendar(pg, cal);
     }
+    // Bridged matches mirror their calendar event (mig 518).  The
+    // gcal_events trigger does this per change; this pass catches anything
+    // it missed, and says so.
+    const { rows: [{ realigned }] } = await pg.query('SELECT fh_matches_follow_gcal() AS realigned');
+    if (realigned) console.log(`  matches realigned to the calendar: ${realigned}`);
   } finally {
     await pg.end();
   }
