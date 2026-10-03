@@ -1679,6 +1679,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                            fh_dues_line_usd($2::int)               AS line,
                            fh_dues_eligible(p.id, $2::int)         AS eligible,
                            fh_dues_min_payment_usd(p.id, $2::int)  AS min_payment,
+                           fh_dues_blocks_eligibility(p.id, $2::int) AS blocks,
+                           fh_dues_over_line(p.id, $2::int)         AS over_line,
                            fh_fill_form_links('{form:la_dashboard}', $2::int) AS pay_url
                       FROM persons p
                      WHERE p.id = $1::int OR p.parent_person_id = $1::int
@@ -1691,6 +1693,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         {"line",        r["line"].is_null()        ? json(nullptr) : json(r["line"].as<double>())},
                         {"eligible",    r["eligible"].is_null()    ? true : r["eligible"].as<bool>()},
                         {"min_payment", r["min_payment"].is_null() ? 0.0 : r["min_payment"].as<double>()},
+                        {"blocks",      !r["blocks"].is_null()    && r["blocks"].as<bool>()},     // mig 513: the line is a block for this person (Men)
+                        {"over_line",   !r["over_line"].is_null() && r["over_line"].as<bool>()},  // mig 513: at/over the line (warning when not blocked)
                         {"pay_url",     r["pay_url"].is_null()     ? "" : r["pay_url"].c_str()},
                     };
                 }
