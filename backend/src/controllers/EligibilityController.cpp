@@ -83,7 +83,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         // player (no 401 on a missing/absent token), but the game-lineup
         // screen needs to know whether to render edit vs. read-only.
         pqxx::result teamRow = db_->query(
-            "SELECT m.home_team_id, m.away_team_id, t.field_size AS home_field_size "
+            "SELECT m.home_team_id, m.away_team_id, t.field_size AS home_field_size, t.lineup_everyone_plays AS home_everyone_plays "
             "FROM matches m LEFT JOIN teams t ON t.id = m.home_team_id "
             "WHERE m.id = $1", {matchId}
         );
@@ -133,18 +133,32 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         // game's teams all play the same format anyway — max() just
         // settles ties. Home team is only the fallback for an unbridged
         // match. NULL = unknown, and the screen falls back to a full XI.
+        //
+        // everyonePlays (teams.lineup_everyone_plays, migration 515): a
+        // kids' game has no bench — the page draws everyone who is Going.
+        // Same tagged-teams-first read as the format.
         std::string fieldSizeForResponse;
+        bool everyonePlays = false;
+        bool everyonePlaysKnown = false;
         if (!rosterTeamIdsArray.empty() && rosterTeamIdsArray != "{}") {
             pqxx::result fsRow = db_->query(
-                "SELECT max(field_size) AS field_size FROM teams WHERE id = ANY($1::int[])",
+                "SELECT max(field_size) AS field_size, bool_or(lineup_everyone_plays) AS everyone_plays "
+                "FROM teams WHERE id = ANY($1::int[])",
                 {rosterTeamIdsArray}
             );
             if (!fsRow.empty() && !fsRow[0]["field_size"].is_null()) {
                 fieldSizeForResponse = fsRow[0]["field_size"].c_str();
             }
+            if (!fsRow.empty() && !fsRow[0]["everyone_plays"].is_null()) {
+                everyonePlays = fsRow[0]["everyone_plays"].as<bool>();
+                everyonePlaysKnown = true;
+            }
         }
         if (fieldSizeForResponse.empty() && !teamRow.empty() && !teamRow[0]["home_field_size"].is_null()) {
             fieldSizeForResponse = teamRow[0]["home_field_size"].c_str();
+        }
+        if (!everyonePlaysKnown && !teamRow.empty() && !teamRow[0]["home_everyone_plays"].is_null()) {
+            everyonePlays = teamRow[0]["home_everyone_plays"].as<bool>();
         }
 
         // Same naive-UTC-string convention as the practice pills below (no
@@ -375,6 +389,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         json << "\"matchStartsAt\":" << (matchStartsAt.empty() ? "null" : "\"" + matchStartsAt + "\"") << ",";
         json << "\"teamId\":" << (teamIdForResponse.empty() ? "null" : teamIdForResponse) << ",";
         json << "\"fieldSize\":" << (fieldSizeForResponse.empty() ? "null" : fieldSizeForResponse) << ",";
+        json << "\"everyonePlays\":" << (everyonePlays ? "true" : "false") << ",";
         {
             // "{35,120}" -> "[35,120]" — rosterTeamIdsArray is a Postgres
             // array literal of plain ints, safe to reuse verbatim as JSON.

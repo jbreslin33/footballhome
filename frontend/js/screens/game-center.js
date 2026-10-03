@@ -224,6 +224,12 @@ class GameCenterScreen extends Screen {
     // slots there are and which formations are on offer. Unknown/odd
     // sizes fall back to a full XI.
     this.fieldSize = DEFAULT_FIELD_SIZE;
+    // Kids' games (teams.lineup_everyone_plays, mig 515): no bench — the
+    // lineup is everyone whose game RSVP is Going, spread over the pitch
+    // (owner 2026-10-03: "if 12 going show a 444 formation … just fake it
+    // as the kids will be rotated for equal time").  Nothing is picked or
+    // saved in this mode; see _everyoneShape.
+    this.everyonePlays = false;
     this.matchStartsAt = null; // naive UTC-string date of this match, for the trailing "game" pill
     this.isCoach   = false;
     // Lineup drafts (mig 495): 'official' | 'draft:<personId>' | 'compare'.
@@ -914,6 +920,7 @@ class GameCenterScreen extends Screen {
       this.teamId  = lineupData.data.teamId || null;
       this._loadPostStates();
       this.fieldSize = FIELD_SIZES[lineupData.data.fieldSize] ? Number(lineupData.data.fieldSize) : DEFAULT_FIELD_SIZE;
+      this.everyonePlays = lineupData.data.everyonePlays === true;
       // The saved shape (formations.code via match_lineup_metadata) when the
       // page can draw it for this field size; else the size's default.
       this.formations = Array.isArray(lineupData.data.formations) ? lineupData.data.formations : [];
@@ -1493,7 +1500,7 @@ class GameCenterScreen extends Screen {
   }
 
   _draftBarHtml() {
-    if (!this.canDraft) return '';
+    if (!this.canDraft || this.everyonePlays) return '';   // nothing to draft when everyone plays
     const esc = (t) => this.escapeHtml(t);
     const pill = (key, label, extra = '') => `<button type="button" data-lineup-view="${esc(key)}" class="btn btn-sm ${this.lineupView === key ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.78rem; padding:4px 10px; border-radius:999px;">${label}${extra}</button>`;
     // Official | My draft | one pill per draft someone else has started | Compare
@@ -1824,13 +1831,21 @@ class GameCenterScreen extends Screen {
     const unassignedGoing = [], unassignedIneligible = [], unassignedNotGoing = [], unassignedNoResponse = [];
     for (const p of this.roster) {
       const z = this.zones.get(p.id);
-      if (z && byZone[z]) { byZone[z].push(p); continue; }
       const group = rsvpGroup(p.id);
+      // Everyone plays: Going IS the lineup, alphabetical; no bench, no picks.
+      if (this.everyonePlays) {
+        if (group === 'going') byZone.starter.push(p);
+        else if (group === 'notGoing') unassignedNotGoing.push(p);
+        else unassignedNoResponse.push(p);
+        continue;
+      }
+      if (z && byZone[z]) { byZone[z].push(p); continue; }
       if (group === 'going' && p.duesEligible === false) unassignedIneligible.push(p);
       else if (group === 'going') unassignedGoing.push(p);
       else if (group === 'notGoing') unassignedNotGoing.push(p);
       else unassignedNoResponse.push(p);
     }
+    if (this.everyonePlays) byZone.starter.sort(this._byLastName);
     unassignedGoing.sort(byStarterRank);
     unassignedNotGoing.sort(byStarterRank);
     unassignedNoResponse.sort(byStarterRank);
@@ -1902,11 +1917,17 @@ class GameCenterScreen extends Screen {
     // it. to change it on the fly.") — summaryHtml itself is pure post
     // content (pitch + bench) with nothing but the graphic inside the
     // frame; lineupControlsHtml renders as a normal toolbar below it.
+    // Everyone plays (mig 515): the tally is the faked shape, and there is
+    // no formation to choose.
+    const everyone = this.everyonePlays;
+    const tallyText = everyone
+      ? this._copyLe('count', { n: byZone.starter.length, shape: this._everyoneShape(byZone.starter.length).join('-') })
+      : `Starting ${byZone.starter.length}/${this.fieldSize} · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}`;
     const lineupControlsHtml = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 12px; flex-wrap:wrap; gap:8px;">
-        <span style="font-size:0.72rem; opacity:0.75;">Starting ${byZone.starter.length}/${this.fieldSize} · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}</span>
+        <span style="font-size:0.72rem; opacity:0.75;">${this.escapeHtml(tallyText)}</span>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <select data-lineup-formation-select title="Formation (visual layout only)"
+          <select ${everyone ? 'hidden' : ''} data-lineup-formation-select title="Formation (visual layout only)"
                   style="font-size:0.72rem; font-weight:700; padding:4px 6px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
             ${Object.keys(this._fieldSpec().formations).map(f => `<option value="${f}" ${f === this.formation ? 'selected' : ''}>${f}</option>`).join('')}
           </select>
@@ -1919,7 +1940,7 @@ class GameCenterScreen extends Screen {
 
     // Bench/Alt only now — Starting XI goes through the 1-11 position
     // pills below instead of a "Start" button (owner directive).
-    const zoneButtons = (playerId) => `
+    const zoneButtons = (playerId) => everyone ? '' : `
       <div style="display:flex; gap:4px;">
         ${['bench', 'alternate'].map(z => {
           const active = this.zones.get(playerId) === z;
@@ -1931,7 +1952,7 @@ class GameCenterScreen extends Screen {
       </div>`;
 
     const positionPills = (p) => {
-      if (!startingPositions.length) return '';
+      if (!startingPositions.length || everyone) return '';
       return `<div style="display:flex; gap:3px; flex-wrap:wrap; margin-top:4px;">
         ${startingPositions.map(pos => {
           const occupantId = slotToPlayerId.get(pos.id);
@@ -2207,6 +2228,17 @@ class GameCenterScreen extends Screen {
     // not hold.  The backend gates the sends on club admin; this keeps the
     // buttons off every draft view, admin or not.
     const canMessage = this.isCoach && this.lineupView === 'official';
+    // Everyone plays: one Playing section (the Going RSVPs, as drawn), no
+    // Bench / Alternates, and no squad reminder or Game Link — those name
+    // a picked role, and nobody is picked.  The RSVP reminders stay.
+    if (everyone) {
+      paint(viewToggleHtml + lineupControlsHtml + this._everyoneNoteHtml() + [
+        gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter),
+        collapsedSection('✗ Not Going', unassignedNotGoing),
+        collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: remindCard } : {}),
+      ].join(''));
+      return;
+    }
     paint(viewToggleHtml + lineupControlsHtml + (canMessage ? squadBar : '') + [
       this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
         // In formation order (1 = keeper …), same numbers as the pills.
@@ -3496,7 +3528,7 @@ class GameCenterScreen extends Screen {
           firstName: firstName || p.name,
           lastName,
           jerseyNumber: p.jerseyNumber || '',
-          isKeeper: gkPositionIds.has(this.positions.get(p.id)),
+          isKeeper: !this.everyonePlays && gkPositionIds.has(this.positions.get(p.id)),
         });
       }
     }
@@ -3513,9 +3545,22 @@ class GameCenterScreen extends Screen {
     // `live` is the on-page copy of the same card: a filled chip carries
     // the player id its tap-to-remove needs, and "Show Availability"
     // hangs the RSVP pill under the name. Neither reaches the post.
-    const editing = live && this.isCoach && this.viewMode !== 'player';
+    const editing = live && this.isCoach && this.viewMode !== 'player' && !this.everyonePlays;
     let pitch = null;
-    if (byZone.starter.every(p => this.positions.has(p.id))) {
+    if (this.everyonePlays) {
+      // Going, back line first, dealt into the faked shape; the chip shows
+      // the shirt number when the player has one.
+      let idx = 0;
+      const lines = this._everyoneShape(byZone.starter.length).map(count =>
+        byZone.starter.slice(idx, idx += count).map(p => {
+          const token = { number: p.jerseyNumber || '', name: p.name };
+          if (live && this.isCoach && this.viewMode !== 'player' && this.showLineupStats) token.badgeHtml = this._rsvpStatusPill(p.id);
+          return token;
+        }));
+      lines.reverse(); // attack at top
+      if (lines.length) lines.splice(Math.floor(lines.length / 2), 0, null);
+      pitch = lines;
+    } else if (byZone.starter.every(p => this.positions.has(p.id))) {
       const { rosterById, slotToPlayerId } = this._slotMaps();
       pitch = this._pitchRows().map(row => row === HALFWAY_ROW ? null : row.map(pos => {
         const occupant = rosterById.get(slotToPlayerId.get(pos.id));
@@ -3810,6 +3855,7 @@ class GameCenterScreen extends Screen {
   }
 
   _renderPlayerNotes(byZone) {
+    if (this.everyonePlays) return this._everyoneNoteHtml();
     if (byZone.starter.length === 0) {
       return `
         <div class="public-card" style="text-align:center; opacity:0.85; padding: var(--space-4);">
@@ -3829,6 +3875,28 @@ class GameCenterScreen extends Screen {
             </div>`).join('')}
         </div>
       </div>`;
+  }
+
+  // ── Everyone plays (mig 515) ──────────────────────────────────────────
+  // The faked shape for n players, back line first: three lines, as even
+  // as they go, the odd ones to the back (12 → 4-4-4, 10 → 4-3-3,
+  // 7 → 3-2-2); fewer lines for a handful, a fourth past five across.
+  _everyoneShape(n) {
+    if (n <= 0) return [];
+    const lines = n <= 2 ? 1 : n <= 4 ? 2 : Math.max(3, Math.ceil(n / 5));
+    const base = Math.floor(n / lines), extra = n % lines;
+    return Array.from({ length: lines }, (_, i) => base + (i < extra ? 1 : 0));
+  }
+
+  _byLastName(a, b) {
+    return (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase());
+  }
+
+  _copyLe(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('lineup_everyone', tier, tokens) : ''; }
+
+  _everyoneNoteHtml() {
+    const note = this._copyLe('note');
+    return note ? `<div style="max-width:540px; margin:0 auto var(--space-3); font-size:0.78rem; opacity:0.8; text-align:center;">${this.escapeHtml(note)}</div>` : '';
   }
 
   // The formation's rows, attack at top and keeper at bottom, with
