@@ -519,7 +519,7 @@ class GameCenterScreen extends Screen {
               <option value="all">All Players</option>
               <optgroup label="Official Rosters">
                 <option value="roster_lighthouse">APSL Lighthouse 1893</option>
-                <option value="roster_casa">Lighthouse Boys Club</option>
+                <option value="roster_casa">Lighthouse Mens Club Liga 1</option>
                 <option value="roster_u23">Lighthouse Boys Club U23</option>
               </optgroup>
             </select>
@@ -2964,7 +2964,7 @@ class GameCenterScreen extends Screen {
             <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
             ${practiceHeaders}
             <th class="gdr-th-roster" title="APSL Lighthouse 1893 SC">APSL</th>
-            <th class="gdr-th-roster" title="Lighthouse Boys Club">Casa</th>
+            <th class="gdr-th-roster" title="Lighthouse Mens Club Liga 1">Casa</th>
             <th class="gdr-th-roster" title="Lighthouse Boys Club U23">U23</th>
           </tr>
         </thead>
