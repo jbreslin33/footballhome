@@ -28,7 +28,8 @@
 //   GET    /api/opponents/league-scores?label=CASA     the score chase (mig 520): same pull, then the games that
 //                                             kicked off and still have no score, the league's score contacts
 //                                             (club_contacts.score_role) and what was already asked per game
-//   POST   /api/opponents/score-request       { fixture_id, contact_ids[], channel } → { subject, body, recipients[] }
+//   POST   /api/opponents/score-request       { fixture_id, contact_ids[], channel, tier? } → { subject, body, recipients[] }
+//                                             tier score_request (default) | score_app (enter it in the SportsEngine app, mig 522)
 //                                             one ask to one person or several; logged per contact against the game
 //   POST   /api/opponents/score-contact       { contact_id, score_role: main|manager|'' }   main is one per team
 //

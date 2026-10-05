@@ -584,16 +584,16 @@ Response OpponentsController::handleLeagueScores(const Request& request) {
                                        {"score_role", nul(r, "score_role")}});
         // What was already asked, per game and person (latest per channel).
         for (const auto& r : db->query(R"SQL(
-            SELECT m.league_fixture_id, m.contact_id, m.channel, COUNT(*) AS n,
+            SELECT m.league_fixture_id, m.contact_id, m.channel, (m.tier LIKE 'score_app%') AS app, COUNT(*) AS n,
                    to_char(MAX(m.sent_at) AT TIME ZONE 'America/New_York', 'Dy FMHH12:MI AM') AS last_label,
                    EXTRACT(EPOCH FROM MAX(m.sent_at))::bigint AS last_epoch
               FROM club_contact_messages m JOIN league_fixtures f ON f.id = m.league_fixture_id
               JOIN league_fixture_sources s ON s.id = f.source_id
              WHERE s.league_label = $1 AND (f.home_score IS NULL OR f.away_score IS NULL)
-             GROUP BY m.league_fixture_id, m.contact_id, m.channel)SQL", {label}))
+             GROUP BY m.league_fixture_id, m.contact_id, m.channel, (m.tier LIKE 'score_app%'))SQL", {label}))
             out["asks"].push_back({{"fixture_id", r["league_fixture_id"].as<long long>()},
                                    {"contact_id", r["contact_id"].is_null() ? json(nullptr) : json(r["contact_id"].as<long long>())},
-                                   {"channel", str(r, "channel")}, {"n", r["n"].as<long long>()}, {"last", str(r, "last_label")}, {"last_epoch", r["last_epoch"].as<long long>()}});
+                                   {"channel", str(r, "channel")}, {"app", r["app"].as<bool>()}, {"n", r["n"].as<long long>()}, {"last", str(r, "last_label")}, {"last_epoch", r["last_epoch"].as<long long>()}});
         return jsonOut(HttpStatus::OK, out);
     } catch (const std::exception& e) { std::cerr << "[opponents league-scores] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
@@ -634,9 +634,12 @@ Response OpponentsController::handleScoreRequest(const Request& request) {
         const MessageCopy::Tokens tokens = {{"contact_first", first}, {"sender", sender.empty() ? "The commissioner" : sender}, {"from_email", fromEmail},
                                             {"league", league.value("name", "")}, {"division", str(f, "division_label")},
                                             {"home", str(f, "home_name")}, {"away", str(f, "away_name")}, {"date", str(f, "date_label")}};
-        std::string tier = channel == "sms" ? "score_request_sms" : "score_request";
+        // Which message: score_request (reply to me) or score_app (enter it in
+        // the SportsEngine app, mig 522); a text uses the row's _sms twin.
+        std::string base = s(b, "tier"); if (base != "score_app") base = "score_request";
+        std::string tier = channel == "sms" ? base + "_sms" : base;
         auto r = copy.render("casa", tier, tokens);
-        if (!r.ok() && channel == "sms") { tier = "score_request"; r = copy.render("casa", tier, tokens); }
+        if (!r.ok() && channel == "sms") { tier = base; r = copy.render("casa", tier, tokens); }
         if (!r.ok()) return jsonError(HttpStatus::BAD_REQUEST, "no message template '" + tier + "'");
         const std::string groupKey = rows.size() > 1 ? std::to_string(std::time(nullptr)) + "-" + std::to_string(userId) : std::string();
         json recipients = json::array();

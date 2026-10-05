@@ -546,7 +546,8 @@ class MyScreen extends Screen {
         const cutoff = (endsAt && !isNaN(endsAt) ? endsAt.getTime() : t.getTime() + FALLBACK_DURATION_MS)
           + DROP_GRACE_MS;
         return now < cutoff;
-      });
+      })
+      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
 
     if (sub) {
       sub.textContent = list.length
@@ -568,8 +569,68 @@ class MyScreen extends Screen {
 
     box.innerHTML = head + `
       ${this._schedulePillsHtml() ? '' : '<h2 style="margin: 0 0 4px; font-size:0.8rem;">This Week</h2>'}
-      ${list.map(e => this._renderEventCard(e)).join('')}
+      ${this._dayCells(list, e => this._renderEventCard(e), { fillGaps: true, across: true })}
     `;
+  }
+
+  // ────── Day cells ──────────────────────────────────────────────────
+  // Owner 2026-10-05: "we need separators on days. its too confusing for
+  // coaches and me and prob players too. like it should look like a
+  // calendar screen. with the days events in a cell in order."  Every
+  // schedule list on this page is drawn through here: one bordered cell
+  // per day (weekday + date on top, Today / Tomorrow called out), that
+  // day's events inside in the order given.  fillGaps (This week) also
+  // draws the days in between with nothing on, so the week reads as a
+  // calendar; `before(ev)` lets a caller put a divider ahead of a day.
+  _dayKey(iso) { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+
+  _dayCells(list, renderOne, { fillGaps = false, before = null, across = false } = {}) {
+    const days = [];
+    for (const ev of list) {
+      const key = this._dayKey(ev.starts_at);
+      let day = days.find(d => d.key === key);
+      if (!day) { const d = new Date(ev.starts_at); d.setHours(0, 0, 0, 0); day = { key, date: d, events: [] }; days.push(day); }
+      day.events.push(ev);
+    }
+    if (fillGaps && days.length > 1) {
+      days.sort((a, b) => a.date - b.date);
+      for (let i = 0; i < days.length - 1; i++) {
+        const next = new Date(days[i].date); next.setDate(next.getDate() + 1);
+        if (this._dayKey(next) !== days[i + 1].key) days.splice(i + 1, 0, { key: this._dayKey(next), date: next, events: [] });
+      }
+    }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const copy = (tier) => MessageCopy.block('my_schedule', tier);
+    const cells = days.map(day => {
+      const isToday = day.key === this._dayKey(today);
+      const tag = isToday ? copy('day_today') : day.key === this._dayKey(tomorrow) ? copy('day_tomorrow') : '';
+      const weekday = day.date.toLocaleDateString(undefined, { weekday: 'long' });
+      const date = day.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const empty = !day.events.length;
+      return `${before && !empty ? before(day.events[0]) : ''}
+        <div data-day-cell="${day.key}" style="margin:0 0 10px; border-radius:12px; overflow:hidden;
+                    border:2px solid ${isToday ? '#3b82f6' : '#1e3a8a'}; background:rgba(15,23,42,0.35); ${empty ? 'opacity:0.6;' : ''}">
+          <div style="display:flex; align-items:baseline; gap:8px; padding:9px 12px; color:#fff;
+                      background:${isToday ? '#2563eb' : '#1e3a8a'};">
+            <span style="font-size:1.1rem; font-weight:900; letter-spacing:0.02em; text-transform:uppercase;">${this.escapeHtml(weekday)}</span>
+            <span style="font-size:0.95rem; font-weight:700;">${this.escapeHtml(date)}</span>
+            ${tag ? `<span style="font-size:0.6rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; padding:1px 7px; border-radius:999px; background:${isToday ? '#fff' : 'rgba(255,255,255,0.18)'}; color:${isToday ? '#1d4ed8' : 'inherit'};">${this.escapeHtml(tag)}</span>` : ''}
+            <span style="margin-left:auto; font-size:0.72rem; opacity:0.85;">${empty ? this.escapeHtml(copy('day_empty')) : (day.events.length > 1 ? `${day.events.length} events` : '')}</span>
+          </div>
+          ${empty ? '' : `<div style="padding:6px 6px 0;">${day.events.map(renderOne).join('')}</div>`}
+        </div>`;
+    }).join('');
+    // across (This week): on a phone the days run down the screen, on a
+    // wide screen they sit side by side like a calendar week — owner: "on
+    // phone it would go down the screen from monday to sunday but on
+    // desktop it can go across".
+    if (!across) return cells;
+    return `<style>
+        .my-days { display:grid; grid-template-columns:minmax(0, 1fr); gap:0 10px; align-items:start; }
+        @media (min-width: 1100px) { .my-days { grid-template-columns:repeat(var(--my-days), minmax(0, 1fr)); } }
+      </style>
+      <div class="my-days" style="--my-days:${Math.min(days.length, 7)};">${cells}</div>`;
   }
 
   // ────── Schedule pills + the read-ahead list ──────────────────────
@@ -649,16 +710,14 @@ class MyScreen extends Screen {
     };
     const fmt = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     let lastWeek = null;
-    const rows = list.map(e => {
-      let divider = '';
+    const weekDivider = (e) => {
       const wk = weekKey(e.starts_at);
-      if (wk !== lastWeek) {
-        lastWeek = wk;
-        const mon = new Date(wk), sun = new Date(wk); sun.setDate(sun.getDate() + 6);
-        divider = `<div style="margin:10px 0 4px; font-size:0.66rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; opacity:0.6;">${fmt(mon)} – ${fmt(sun)}</div>`;
-      }
-      return divider + (released(e) ? this._renderEventCard(e) : this._renderFutureRow(e));
-    }).join('');
+      if (wk === lastWeek) return '';
+      lastWeek = wk;
+      const mon = new Date(wk), sun = new Date(wk); sun.setDate(sun.getDate() + 6);
+      return `<div style="margin:10px 0 4px; font-size:0.66rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; opacity:0.6;">${fmt(mon)} – ${fmt(sun)}</div>`;
+    };
+    const rows = this._dayCells(list, e => released(e) ? this._renderEventCard(e) : this._renderFutureRow(e), { before: weekDivider });
 
     const note = MessageCopy.block('my_schedule', 'future_note');
     box.innerHTML = head
@@ -813,7 +872,7 @@ class MyScreen extends Screen {
       return;
     }
 
-    box.innerHTML = rangeHtml + list.map(e => this._renderEventCard(e, /*isPast*/ true)).join('');
+    box.innerHTML = rangeHtml + this._dayCells(list, e => this._renderEventCard(e, /*isPast*/ true));
   }
 
   // Ops tags the raw Google Calendar description with a small DSL —

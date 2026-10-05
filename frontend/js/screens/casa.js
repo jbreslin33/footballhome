@@ -490,8 +490,10 @@ class CasaScheduleScreen extends Screen {
 // has landed drops its game off the list.  People on a game card are the
 // team's club_contacts with a score_role (★ main, others "manager"); the
 // rest of the club's contacts sit behind "more" and can be put on the card.
+// The Message pills pick what the buttons send: ask for the score (reply to
+// me) or get the SportsEngine app and enter it yourself (mig 522).
 class CasaScoresScreen extends Screen {
-  constructor(navigation, auth) { super(navigation, auth); this.data = null; this.division = ''; this.more = new Set(); this.flash = ''; this.flashBad = false; }
+  constructor(navigation, auth) { super(navigation, auth); this.data = null; this.division = ''; this.tier = 'score_request'; this.more = new Set(); this.flash = ''; this.flashBad = false; }
 
   render() {
     const div = document.createElement('div');
@@ -544,6 +546,7 @@ class CasaScoresScreen extends Screen {
     div.addEventListener('click', async (e) => {
       const t = e.target;
       const d = t.closest('[data-division]'); if (d) { this.division = d.dataset.division; this._renderBody(); return; }
+      const pick = t.closest('[data-tier]'); if (pick) { this.tier = pick.dataset.tier; this._renderBody(); return; }
       const ask = t.closest('[data-ask]'); if (ask) { await this.ask(Number(ask.dataset.fixture), ask.dataset.contacts.split(',').map(Number), ask.dataset.ask, ask); return; }
       const role = t.closest('[data-score-role]'); if (role) { await this.setRole(Number(role.dataset.contact), role.dataset.scoreRole); return; }
       const more = t.closest('[data-more]'); if (more) { const k = more.dataset.more; if (this.more.has(k)) this.more.delete(k); else this.more.add(k); this._renderBody(); return; }
@@ -593,7 +596,7 @@ class CasaScoresScreen extends Screen {
   async ask(fixtureId, contactIds, channel, btn) {
     const orig = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
     try {
-      const data = await this._post('/api/opponents/score-request', { fixture_id: fixtureId, contact_ids: contactIds, channel });
+      const data = await this._post('/api/opponents/score-request', { fixture_id: fixtureId, contact_ids: contactIds, channel, tier: this.tier });
       const to = (data.recipients || []).map(r => r.contact);
       if (channel === 'email') this.openGmailCompose(this.buildGmailComposeHref({ to: to.join(','), subject: data.subject, body: data.body, authuser: data.from_email || this.data.league?.correspondence_email }));
       else {
@@ -639,6 +642,10 @@ class CasaScoresScreen extends Screen {
         <button class="cz-btn sm ghost" data-refresh>↻ Check again</button>
         <button class="cz-btn sm ghost" data-go="casa-contacts">📇 Edit contacts</button>
       </div>
+      <div class="cz-pills">
+        <span style="font-size:0.8rem; opacity:0.8;">Message:</span>
+        ${[['score_request', 'scores_pick_request', '🙋 Ask for the score'], ['score_app', 'scores_pick_app', '📲 Get the app & enter it']].map(([k, c, d]) => `<button class="cz-pill ${this.tier === k ? 'on' : ''}" data-tier="${k}">${k === 'score_app' ? '📲' : '🙋'} ${esc(this._copy(c) || d.slice(3))}</button>`).join('')}
+      </div>
       <div class="cz-hint">${esc(this._copy('scores_hint'))}</div>
       <div class="cz-sec">${esc(this._copy('scores_waiting') || 'Waiting on a score')} · ${w.length}</div>
       ${html || `<div class="cz-hint">${esc(this._copy('scores_none') || 'Nothing missing.')}</div>`}
@@ -675,7 +682,8 @@ class CasaScoresScreen extends Screen {
         <button class="cz-btn sm alt" data-ask="email" data-fixture="${f.id}" data-contacts="${withEmail.join(',')}" ${withEmail.length ? '' : 'disabled'}>✉️ Email all ${withEmail.length}</button></span>` : '';
     const person = (c, onCard) => {
       const mine = this._asks(f.id, c.id);
-      const sent = mine.map(a => `${a.channel === 'sms' ? 'text' : 'email'} ${a.last}${a.n > 1 ? ` (${a.n}×)` : ''}`).join(' · ');
+      const appWord = this._copy('scores_tag_app') || 'app';
+      const sent = mine.map(a => `${a.app ? appWord + ' ' : ''}${a.channel === 'sms' ? 'text' : 'email'} ${a.last}${a.n > 1 ? ` (${a.n}×)` : ''}`).join(' · ');
       const main = c.score_role === 'main';
       return `
         <div class="cz-person">
