@@ -252,6 +252,11 @@ async function syncCalendar(pg, cal) {
     // it missed, and says so.
     const { rows: [{ realigned }] } = await pg.query('SELECT fh_matches_follow_gcal() AS realigned');
     if (realigned) console.log(`  matches realigned to the calendar: ${realigned}`);
+    // A location the calendar has not used before gets coordinates and
+    // drive times to the others (mig 526) — a no-op when nothing is new,
+    // and never a reason for the sync itself to fail.
+    try { await require('./drive-times').run(pg); }
+    catch (err) { console.error('  drive-times skipped:', err.message); }
   } finally {
     await pg.end();
   }

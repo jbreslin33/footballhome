@@ -49,9 +49,18 @@ class MyScreen extends Screen {
     // My Schedule pills: 'week' (the released week, RSVP-able) or the
     // read-ahead views 'all' | 'games' | 'practices'.  Remembered per device.
     this.scheduleView    = 'week';
+    this.who             = 'all';
+    this.layout          = 'days';   // 'days' | 'list'
+    this.drive           = null;   // places, drive minutes, policy (mig 526)
+    this.conflictPrompt  = null;   // { fhEventId, personId } — a Go that was held back
+    this.conflictNote    = null;   // { fhEventId, personId, text } — a typed time that was refused
     try {
       const v = localStorage.getItem('my.scheduleView');
       if (['week', 'all', 'games', 'practices'].includes(v)) this.scheduleView = v;
+      // Whose schedule (mig 524): 'all' | 'player' | 'coach' | 'child:<person id>'.
+      this.who = localStorage.getItem('my.who') || 'all';
+      // Day cells or the plain list as it was (mig 527).
+      if (localStorage.getItem('my.layout') === 'list') this.layout = 'list';
     } catch (err) { /* private window */ }
     this.futureEvents    = null;         // 90-day feed, loaded on first use
     this.futureError     = null;
@@ -158,6 +167,7 @@ class MyScreen extends Screen {
       // Pill labels are DB copy; the pills appear once it lands.
       MessageCopy.load(this.auth).then(() => this._renderEvents());
       this._loadFines().catch(() => {});
+      this._fetch('/api/calendar/drive-times').then(d => { this.drive = d; this._renderEvents(); }).catch(() => {});
       await this._loadNextWeekOpens();
       this._renderEvents();
       this._renderChatShell();
@@ -243,7 +253,23 @@ class MyScreen extends Screen {
 
       const pid = input.getAttribute('data-ev-person-id');
 
-      this._setRsvpTime(fhEventId, pid ? parseInt(pid, 10) : null, input.getAttribute('data-rsvp-time'), input.value);
+      const which = input.getAttribute('data-rsvp-time'), personId = pid ? parseInt(pid, 10) : null;
+      // A time that would clash with another Go is not saved; the note
+      // under the card says which time works (mig 526).
+      const ev = (this.events || []).find(x => x.fh_event_id === fhEventId);
+      const iso = ev && input.value ? this._nyWallToIso((which === 'arrive' ? this._defArrive(ev, personId) : ev.ends_at) || ev.starts_at, input.value) : null;
+      this.conflictNote = null;
+      if (ev && iso) {
+        const clash = this._conflictsFor(ev, personId, { [which]: iso })[0];
+        if (clash) {
+          const mine = which === 'arrive' ? clash.arriveAt : clash.leaveAt;   // the time on THIS event that fits
+          this.conflictNote = { fhEventId, personId, text: MessageCopy.block('my_schedule', which === 'arrive' ? 'conflict_time_blocked' : 'conflict_time_blocked_leave',
+            { other: EventLabels.title(clash.other), time: mine ? this._nyLabel(mine) : '—' }) };
+          this._renderEvents();
+          return;
+        }
+      }
+      this._setRsvpTime(fhEventId, personId, which, input.value);
 
     });
     this.element.addEventListener('click', (e) => {
@@ -336,8 +362,27 @@ class MyScreen extends Screen {
         const personIdAttr = evBtn.getAttribute('data-ev-person-id');
         const personId = personIdAttr ? parseInt(personIdAttr, 10) : null;
         if (fhEventId && (response === 'yes' || response === 'no')) {
+          // A Go that clashes with another Go of the same person is held
+          // back: the card shows why and the times that would fit (mig 526).
+          const ev = (this.events || []).find(x => x.fh_event_id === fhEventId);
+          this.conflictNote = null;
+          if (response === 'yes' && ev && this._currentRsvpFor(ev, personId) !== 'yes' && this._conflictsFor(ev, personId).length) {
+            this.conflictPrompt = { fhEventId, personId };
+            this._renderEvents();
+            return;
+          }
+          this.conflictPrompt = null;
           this._sendEventRsvp(fhEventId, response, personId);
         }
+        return;
+      }
+      const fix = target.closest('[data-conflict-fix]');
+      if (fix) {
+        e.stopPropagation();
+        const pid = fix.getAttribute('data-ev-person-id');
+        if (fix.getAttribute('data-conflict-fix') === 'cancel') { this.conflictPrompt = null; this._renderEvents(); return; }
+        this._applyConflictFix(parseInt(fix.getAttribute('data-fh-event-id'), 10), pid ? parseInt(pid, 10) : null,
+                               parseInt(fix.getAttribute('data-target-event-id'), 10), fix.getAttribute('data-conflict-fix'), fix.getAttribute('data-time'));
         return;
       }
       // Compact card detail toggle.
@@ -400,6 +445,21 @@ class MyScreen extends Screen {
       this._syncChatComposerState();
     });
     this.element.addEventListener('click', (e) => {
+      const layout = e.target.closest('[data-layout]');
+      if (layout) {
+        this.layout = layout.dataset.layout;
+        try { localStorage.setItem('my.layout', this.layout); } catch (err) { /* private window */ }
+        this._renderEvents();
+        return;
+      }
+      const who = e.target.closest('[data-who]');
+      if (who) {
+        this.who = who.dataset.who;
+        try { localStorage.setItem('my.who', this.who); } catch (err) { /* private window */ }
+        this.expandedEventId = null;
+        this._renderEvents();
+        return;
+      }
       const pill = e.target.closest('[data-schedule-view]');
       if (!pill) return;
       this.scheduleView = pill.dataset.scheduleView;
@@ -500,25 +560,9 @@ class MyScreen extends Screen {
     return ['pickup', 'practice', 'match', 'barn night', 'intrasquad'].includes(kind);
   }
 
-  _renderEvents() {
-    const box = this.find('#my-events');
-    if (!box) return;
-
-    const rangeHtml = this._rangeSelectHtml();
-    const sub = this.find('#my-subtitle');
-
-    if (this.eventsRange !== 'current') {
-      this._renderOldEvents(box, rangeHtml, sub);
-      return;
-    }
-
-    this._renderDuesBanner();
-    const head = rangeHtml + this._schedulePillsHtml();
-    if (this.scheduleView !== 'week') {
-      this._renderFutureEvents(box, head, sub);
-      return;
-    }
-
+  // This week's released, not-yet-over events of the viewer, oldest first
+  // (before the whose-schedule pill narrows them).
+  _weekList() {
     // Keep the player-facing schedule focused on the released window.
     // (Until 2026-09-13 this also dropped Mondays — a leftover from when
     // My was men's-only and the men never trained on Monday.  Youth K-2
@@ -529,7 +573,7 @@ class MyScreen extends Screen {
     // Fallback when ends_at is missing/unparseable — assume a 2hr event so a
     // data gap doesn't drop something that's still in progress.
     const FALLBACK_DURATION_MS = 2 * 60 * 60 * 1000;
-    const list = (this.events || [])
+    return (this.events || [])
       .filter(e => this._isPlayerScheduleEvent(e))
       .filter(e => {
         if (!e.starts_at) return false;
@@ -548,6 +592,28 @@ class MyScreen extends Screen {
         return now < cutoff;
       })
       .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+  }
+
+  _renderEvents() {
+    const box = this.find('#my-events');
+    if (!box) return;
+
+    const rangeHtml = this._rangeSelectHtml();
+    const sub = this.find('#my-subtitle');
+
+    if (this.eventsRange !== 'current') {
+      this._renderOldEvents(box, rangeHtml, sub);
+      return;
+    }
+
+    this._renderDuesBanner();
+    const head = rangeHtml + this._whoPillsHtml() + this._schedulePillsHtml();
+    if (this.scheduleView !== 'week') {
+      this._renderFutureEvents(box, head, sub);
+      return;
+    }
+
+    const list = this._weekList().filter(e => this._whoMatch(e));
 
     if (sub) {
       sub.textContent = list.length
@@ -585,6 +651,8 @@ class MyScreen extends Screen {
   _dayKey(iso) { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 
   _dayCells(list, renderOne, { fillGaps = false, before = null, across = false } = {}) {
+    // The plain list (layout toggle, mig 527): one card after another.
+    if (this.layout === 'list') return list.map(ev => (before ? before(ev) : '') + renderOne(ev)).join('');
     const days = [];
     for (const ev of list) {
       const key = this._dayKey(ev.starts_at);
@@ -615,6 +683,7 @@ class MyScreen extends Screen {
                       background:${isToday ? '#2563eb' : '#1e3a8a'};">
             <span style="font-size:1.1rem; font-weight:900; letter-spacing:0.02em; text-transform:uppercase;">${this.escapeHtml(weekday)}</span>
             <span style="font-size:0.95rem; font-weight:700;">${this.escapeHtml(date)}</span>
+            ${day.events.some(e => this._hasClash(e)) ? `<span style="font-size:0.66rem; font-weight:800; padding:1px 7px; border-radius:999px; background:#dc2626; color:#fff;">${this.escapeHtml(copy('conflict_day'))}</span>` : ''}
             ${tag ? `<span style="font-size:0.6rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; padding:1px 7px; border-radius:999px; background:${isToday ? '#fff' : 'rgba(255,255,255,0.18)'}; color:${isToday ? '#1d4ed8' : 'inherit'};">${this.escapeHtml(tag)}</span>` : ''}
             <span style="margin-left:auto; font-size:0.72rem; opacity:0.85;">${empty ? this.escapeHtml(copy('day_empty')) : (day.events.length > 1 ? `${day.events.length} events` : '')}</span>
           </div>
@@ -640,6 +709,114 @@ class MyScreen extends Screen {
   // event inside the released week is the normal card; anything later is
   // a read-only row — "they can only rsvp to events up to Sunday night",
   // and the server refuses an RSVP outside the window (migration 396).
+
+  // ────── Whose schedule ────────────────────────────────────────────
+  // Owner 2026-10-05: "its confusing with all the stuff jammed in" … "break
+  // down the coaches to the separate teams … u10/u12 practice as one pill,
+  // u8 practice as another … liga1/apsl same pill except for games we need
+  // diff pills for diff teams … show on or above pills which ones they are
+  // missing rsvp for … then if all are filled they are good" … "parents
+  // who have 2 children can have a pill for each … or an all pill".
+  //
+  // Every event sits under one or more pills (mig 524/525):
+  //   g:<group>   a practice of the viewer's own (player or coach), by its
+  //               teams' RSVP group (rsvp_team_groups: 4:30 kids / 5:30
+  //               kids / Men — the feed's teams[].rsvp_group)
+  //   t:<team>    a game of the viewer's own, by the team it is for
+  //   child:<id>  an event of one of the viewer's children
+  // The row appears when the viewer has two or more; each pill carries how
+  // many of this week's events still need an answer (a tick when none); a
+  // child's pill also narrows a card to that child's Go / No row.
+  _whoKeys(ev) {
+    const keys = [];
+    if (ev.my_role) {
+      const isGame = ['match', 'intrasquad'].includes((ev.kind || '').toLowerCase());
+      if (isGame) {
+        const teams = this._mainTeamLabels(ev);
+        for (const t of (teams.length ? teams : ['Games'])) keys.push(`t:${t}`);
+      } else {
+        const groups = [...new Set((Array.isArray(ev.teams) ? ev.teams : []).map(t => t && t.rsvp_group).filter(Boolean))];
+        const fallback = this._mainTeamLabels(ev).join(' / ');
+        for (const g of (groups.length ? groups : (fallback ? [fallback] : []))) keys.push(`g:${g}`);
+      }
+    }
+    for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])) if (c && c.person_id) keys.push(`child:${c.person_id}`);
+    return keys;
+  }
+
+  _whoOptions() {
+    const seen = new Set(); const opts = new Map();
+    const copy = (tier, tokens) => MessageCopy.block('my_schedule', tier, tokens);
+    // Pills for what the list on screen can show: this week's events on
+    // This week, the 90 days ahead on the other views, the range when
+    // looking back — never a pill that would open onto nothing.
+    const source = this.eventsRange !== 'current' ? (this.oldEvents || [])
+                 : this.scheduleView === 'week' ? this._weekList()
+                 : [...(this.events || []), ...(this.futureEvents || [])];
+    for (const ev of source) {
+      if (!ev || seen.has(ev.fh_event_id) || !this._isPlayerScheduleEvent(ev)) continue;
+      seen.add(ev.fh_event_id);
+      for (const key of this._whoKeys(ev)) {
+        if (opts.has(key)) continue;
+        const name = key.slice(key.indexOf(':') + 1);
+        if (key.startsWith('g:')) opts.set(key, { key, order: 1, label: copy('who_practice', { group: name }) || name });
+        else if (key.startsWith('t:')) opts.set(key, { key, order: 2, label: copy('who_game', { team: name }) || name });
+        else {
+          const child = (ev.guardian_targets || []).find(c => c && String(c.person_id) === name);
+          opts.set(key, { key, order: 3, label: String((child && child.name) || '').split(' ')[0] || 'Child' });
+        }
+      }
+    }
+    const list = [...opts.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, undefined, { numeric: true }));
+    return list.length >= 2 ? list : [];
+  }
+
+  // The pill in force: the saved one while this viewer still has it.
+  _who() { return this._whoOptions().some(o => o.key === this.who) ? this.who : 'all'; }
+  _whoMatch(ev) { const who = this._who(); return who === 'all' || this._whoKeys(ev).includes(who); }
+
+  // This week's events still waiting on an answer under one pill: the
+  // viewer's own on a group / team pill, the child's on a child pill, both
+  // on Everyone.  null = that pill has nothing this week.
+  _whoMissing(key) {
+    const week = this._weekList();
+    const open = (ev) => ev.rsvps_open_now !== false;
+    const own = (ev) => ev.my_role && open(ev) && ev.my_rsvp_eligible !== false && !ev.my_rsvp ? 1 : 0;
+    const kid = (ev, id) => {
+      const target = (ev.guardian_targets || []).some(c => c && c.person_id === id);
+      const answered = (Array.isArray(ev.rsvps) ? ev.rsvps : []).some(r => r && r.person_id === id && r.response);
+      return target && open(ev) && !answered ? 1 : 0;
+    };
+    const mine = key === 'all' ? week : week.filter(ev => this._whoKeys(ev).includes(key));
+    if (!mine.length) return null;
+    return mine.reduce((n, ev) => {
+      if (key === 'all') return n + own(ev) + (ev.guardian_targets || []).reduce((m, c) => m + (c ? kid(ev, c.person_id) : 0), 0);
+      return n + (key.startsWith('child:') ? kid(ev, Number(key.slice(6))) : own(ev));
+    }, 0);
+  }
+
+  _whoPillsHtml() {
+    const opts = this._whoOptions();
+    if (!opts.length) return '';
+    const who = this._who();
+    const copy = (tier, tokens) => MessageCopy.block('my_schedule', tier, tokens);
+    const all = [{ key: 'all', label: copy('who_all') || 'All' }, ...opts];
+    return `
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 8px;">
+        ${all.map(o => {
+          const on = who === o.key;
+          const icon = o.key.startsWith('g:') ? '🏃 ' : o.key.startsWith('t:') ? '⚽ ' : o.key.startsWith('child:') ? '🧒 ' : '';
+          const missing = this._whoMissing(o.key);
+          const badge = missing === null ? ''
+            : missing > 0 ? `<span title="${this.escapeHtml(copy('who_missing', { n: missing }))}" style="margin-left:6px; min-width:18px; padding:1px 6px; border-radius:999px; background:#dc2626; color:#fff; font-size:0.72rem; font-weight:900;">${missing}</span>`
+            : `<span title="${this.escapeHtml(copy('who_done'))}" style="margin-left:6px; color:${on ? '#14532d' : '#4ade80'}; font-weight:900;">✓</span>`;
+          return `<button type="button" data-who="${this.escapeHtml(o.key)}"
+                    style="display:inline-flex; align-items:center; padding:7px 12px; border-radius:999px; cursor:pointer; font-size:0.82rem; font-weight:800;
+                           border:1px solid ${on ? '#f59e0b' : 'rgba(255,255,255,0.22)'};
+                           background:${on ? '#f59e0b' : 'transparent'}; color:${on ? '#1f1300' : '#dbeafe'};">${icon}${this.escapeHtml(o.label)}${badge}</button>`;
+        }).join('')}
+      </div>`;
+  }
 
   _schedulePillsHtml() {
     const views = [['week', 'pill_week'], ['all', 'pill_all'], ['games', 'pill_games'], ['practices', 'pill_practices']];
@@ -686,6 +863,7 @@ class MyScreen extends Screen {
     const list = this.futureEvents
       .map(e => live.get(e.fh_event_id) || e)
       .filter(e => this._isPlayerScheduleEvent(e))
+      .filter(e => this._whoMatch(e))
       .filter(e => !kinds || kinds.includes((e.kind || '').toLowerCase()))
       .filter(e => {
         const end = new Date(e.ends_at || e.starts_at).getTime();
@@ -767,8 +945,14 @@ class MyScreen extends Screen {
     const optsHtml = options.map(([val, label]) =>
       `<option value="${val}" ${this.eventsRange === val ? 'selected' : ''}>${this.escapeHtml(label)}</option>`
     ).join('');
+    const layouts = [['days', 'layout_days'], ['list', 'layout_list']].filter(([, tier]) => MessageCopy.has('my_schedule', tier));
+    const layoutHtml = layouts.length < 2 ? '' : layouts.map(([key, tier]) => `<button type="button" data-layout="${key}"
+        style="padding:3px 9px; border-radius:6px; cursor:pointer; font-size:0.68rem; font-weight:700;
+               border:1px solid ${this.layout === key ? '#2563eb' : 'rgba(255,255,255,0.16)'};
+               background:${this.layout === key ? '#2563eb' : 'transparent'}; color:${this.layout === key ? '#fff' : '#dbeafe'};">${this.escapeHtml(MessageCopy.block('my_schedule', tier))}</button>`).join('');
     return `
-      <div style="display:flex; justify-content:flex-end; margin-bottom:6px;">
+      <div style="display:flex; justify-content:flex-end; align-items:center; gap:5px; margin-bottom:6px;">
+        ${layoutHtml}
         <select id="events-range-select" style="padding:3px 6px; border-radius:6px;
                 border:1px solid rgba(255,255,255,0.16); background:rgba(15,23,42,0.7);
                 color:#dbeafe; font-size:0.68rem; font-weight:600;">
@@ -849,8 +1033,10 @@ class MyScreen extends Screen {
       return;
     }
 
+    rangeHtml += this._whoPillsHtml();
     const list = (this.oldEvents || [])
       .filter(e => this._isPlayerScheduleEvent(e))
+      .filter(e => this._whoMatch(e))
       .filter(e => e.starts_at && !isNaN(new Date(e.starts_at)))
       .sort((a, b) => new Date(b.starts_at) - new Date(a.starts_at)); // most recent first
 
@@ -1419,9 +1605,14 @@ class MyScreen extends Screen {
     // directly — one Go/No row per child in guardian_targets, written
     // server-side under the CHILD's own person_id (never the parent's),
     // so the parent never shows up on the who's-going list as a player.
-    const guardianTargets = Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [];
+    // Whose-schedule pill (mig 524): a child's pill keeps only that child's
+    // row and drops the viewer's own; Player / Coach drop the children's.
+    const who = this._who();
+    const whoChild = who.startsWith('child:') ? Number(who.slice(6)) : 0;
+    const guardianTargets = (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])
+      .filter(c => who === 'all' || (whoChild && c && c.person_id === whoChild));
     const rsvpRows = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-    const showOwnRsvpRow = eligibilityOk || guardianTargets.length === 0;
+    const showOwnRsvpRow = !whoChild && (eligibilityOk || guardianTargets.length === 0);
     // Pickup side / practice group the coach put this person on
     // (#event-center's Teams / Groups pill) — colour from the feed's my_sides.
     const sides = Array.isArray(ev.my_sides) ? ev.my_sides : [];
@@ -1584,12 +1775,15 @@ class MyScreen extends Screen {
     const compactMeta = `${leagueLabel ? leagueLabel + ' · ' : ''}${playersGoingCount} players, ${coachesGoingCount} coaches going`
       + (callupsAvailCount ? ` · ${callupsAvailCount} invited available` : '')
       + ` · ${notGoingCount} not going`;
-    const arrivalKickoffLine = (arrival || warmup || kickoff)
-      ? [arrival ? `Arrival ${arrival}` : '', warmup ? `Warmup ${warmup}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')
+    // Coaches of this practice are due before it starts (mig 529) — shown
+    // to the coach, never on a child's view.
+    const coachArrival = !whoChild && ev.coach_arrival_label ? MessageCopy.block('my_schedule', 'coach_arrival', { time: ev.coach_arrival_label }) : '';
+    const arrivalKickoffLine = (arrival || warmup || kickoff || coachArrival)
+      ? [coachArrival, arrival ? `Arrival ${arrival}` : '', warmup ? `Warmup ${warmup}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')
       : '';
     const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · ')].filter(Boolean);
     // Role pill (migration 438): which hat the viewer wears on this event.
-    const rolePillHtml = this._rolePillHtml(ev.my_role);
+    const rolePillHtml = whoChild ? '' : this._rolePillHtml(ev.my_role);   // a child's view is about the child, not my role
 
     return `
       <div style="background: rgba(255,255,255,0.04);
@@ -1640,6 +1834,7 @@ class MyScreen extends Screen {
             ${guardianRowsHtml}
           </div>
         ` : ''}
+        ${this._conflictHtml(ev, isPast)}
         ${isExpanded ? `
           <div style="margin-top: 6px; padding: 6px 7px; border-top: 1px solid rgba(255,255,255,0.08); display:grid; gap: 5px;">
             <div style="font-size:0.64rem; line-height:1.3; opacity:0.82;">${this.escapeHtml(detailLines.join(' • '))}</div>
@@ -1753,6 +1948,151 @@ class MyScreen extends Screen {
     return new Date(Date.UTC(g('year'), g('month') - 1, g('day'), H, M, 0) - offsetMs).toISOString().replace(/\.\d{3}Z$/, 'Z');
   }
 
+  // ────── Schedule conflicts (mig 526) ───────────────────────────────
+  // Owner 2026-10-05: "check for conflicts for the user … take into account
+  // drive times … you can make game time but not arrival time … we should
+  // not let a user even set it if there is conflict. we would suggest what
+  // time to set for their arrival or departure … obviously if event is at
+  // same place there is no conflict."
+  //
+  // Per person (the viewer, or one child): two Going answers clash when the
+  // person cannot leave the earlier event and be at the later one for its
+  // arrival — leave + drive (place_drive_times × traffic factor + parking
+  // buffer, schedule_conflict_policies) > arrive.  A person's own Arrive /
+  // Leave times on the answer count, which is also how a clash is solved.
+  // Events at the same place never clash.  An unknown drive time only
+  // clashes when the two actually overlap.
+
+  _nyLabel(ms) { return new Date(ms).toLocaleTimeString('en-US', { timeZone: MyScreen.NY, hour: 'numeric', minute: '2-digit' }); }
+
+  // null = same place; a number = minutes door to door; undefined = unknown.
+  _travelMinutes(a, b) {
+    const la = String(a.location || '').trim(), lb = String(b.location || '').trim();
+    if (la === lb) return null;
+    const d = this.drive, pol = (d && d.policy) || null;
+    const ia = d && d.places ? d.places[la] : null, ib = d && d.places ? d.places[lb] : null;
+    if (!pol || !ia || !ib) return undefined;
+    if (ia === ib) return null;
+    const raw = d.minutes[`${ia}-${ib}`];
+    if (raw === undefined || raw === null) return undefined;
+    if (raw <= pol.same_place_minutes) return null;
+    return Math.ceil(raw * pol.traffic_factor + pol.buffer_minutes);
+  }
+
+  // When the person is there: their own times on the answer, else the
+  // event's arrival (or start) and end.  `override` tries out a time.
+  _presence(ev, personId, override = null) {
+    const t = this._rsvpTimesFor(ev, personId);
+    const ms = (iso) => new Date(iso).getTime();
+    const start = ms(ev.starts_at), end = ms(ev.ends_at || ev.starts_at), defArrive = ms(this._defArrive(ev, personId));
+    return { start, end, defArrive,
+             arrive: ms((override && override.arrive) || t.arrive || this._defArrive(ev, personId)),
+             leave:  ms((override && override.leave)  || t.leave  || ev.ends_at || ev.starts_at) };
+  }
+
+  _involves(ev, personId) {
+    return personId ? (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []).some(c => c && c.person_id === personId)
+                    : !!(ev.my_role || ev.my_rsvp);
+  }
+
+  // The clashes `ev` has, for one person, with their other Going events.
+  // Each: { other, evIsLater, drive, arriveAt, leaveAt, otherArriveAt,
+  // otherLeaveAt, startOk } — the *At values are the times (ms) that would
+  // make both fit, undefined when that way does not work.
+  _conflictsFor(ev, personId, override = null) {
+    const pol = (this.drive && this.drive.policy) || { round_to_minutes: 5 };
+    const step = Math.max(1, pol.round_to_minutes) * 60000;
+    const now = Date.now(), out = [];
+    const P = this._presence(ev, personId, override);
+    for (const o of (this.events || [])) {
+      if (o === ev || !this._isPlayerScheduleEvent(o) || !this._involves(o, personId)) continue;
+      if (this._currentRsvpFor(o, personId) !== 'yes') continue;
+      const Q = this._presence(o, personId);
+      if (Q.end < now) continue;
+      const evIsLater = P.start > Q.start || (P.start === Q.start && ev.fh_event_id > o.fh_event_id);
+      const [first, second] = evIsLater ? [Q, P] : [P, Q];
+      const travel = this._travelMinutes(evIsLater ? o : ev, evIsLater ? ev : o);
+      if (travel === null) continue;                                   // same place
+      const driveMs = (travel || 0) * 60000;
+      if (first.leave + driveMs <= second.arrive) continue;            // fits
+      const lateArrive = Math.ceil((first.leave + driveMs) / step) * step;   // be at the later one from
+      const earlyLeave = Math.floor((second.arrive - driveMs) / step) * step; // leave the earlier one by
+      const arriveOk = lateArrive < second.end, leaveOk = earlyLeave > first.arrive;
+      out.push({ other: o, evIsLater, drive: travel, unknownDrive: travel === undefined,
+                 startOk: evIsLater && lateArrive <= P.start && lateArrive > P.defArrive,
+                 arriveAt:      evIsLater  && arriveOk ? lateArrive : undefined,
+                 otherLeaveAt:  evIsLater  && leaveOk  ? earlyLeave : undefined,
+                 leaveAt:       !evIsLater && leaveOk  ? earlyLeave : undefined,
+                 otherArriveAt: !evIsLater && arriveOk ? lateArrive : undefined,
+                 firstLeave: first.leave, secondArrive: second.arrive });
+    }
+    return out;
+  }
+
+  // True when someone on this card is Going to two things that clash.
+  _hasClash(ev) {
+    const people = [null, ...(Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []).map(c => c && c.person_id).filter(Boolean)];
+    return people.some(pid => this._involves(ev, pid) && this._currentRsvpFor(ev, pid) === 'yes' && this._conflictsFor(ev, pid).length > 0);
+  }
+
+  // The clash panel(s) of a card: for a Go that was held back (the prompt),
+  // for answers that already clash, and the note for a refused time.
+  _conflictHtml(ev, isPast) {
+    if (isPast || !window.MessageCopy) return '';
+    const copy = (tier, tokens) => MessageCopy.block('my_schedule', tier, tokens);
+    const who = this._who();
+    const whoChild = who.startsWith('child:') ? Number(who.slice(6)) : 0;
+    const kids = (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []).filter(c => c && (who === 'all' || c.person_id === whoChild));
+    const people = [...(whoChild ? [] : [{ id: null, name: '' }]), ...kids.map(c => ({ id: c.person_id, name: String(c.name || '').split(' ')[0] }))];
+    let html = '';
+    for (const p of people) {
+      if (!this._involves(ev, p.id)) continue;
+      const going = this._currentRsvpFor(ev, p.id) === 'yes';
+      const prompted = this.conflictPrompt && this.conflictPrompt.fhEventId === ev.fh_event_id && (this.conflictPrompt.personId || null) === p.id;
+      const note = this.conflictNote && this.conflictNote.fhEventId === ev.fh_event_id && (this.conflictNote.personId || null) === p.id ? this.conflictNote.text : '';
+      const clashes = going || prompted ? this._conflictsFor(ev, p.id) : [];
+      if (!clashes.length && !note) continue;
+      const pidAttr = p.id ? ` data-ev-person-id="${p.id}"` : '';
+      const btn = (kind, targetId, at, label) => `<button type="button" data-conflict-fix="${kind}" data-fh-event-id="${ev.fh_event_id}" data-target-event-id="${targetId}" data-time="${new Date(at).toISOString()}"${pidAttr}
+          style="padding:5px 10px; border-radius:999px; border:none; cursor:pointer; font-size:0.7rem; font-weight:800; background:#fde68a; color:#1f2937;">${this.escapeHtml(label)}</button>`;
+      const blocks = clashes.map(c => {
+        const other = EventLabels.title(c.other);
+        const tokens = { other, other_end: this._nyLabel(c.firstLeave), drive: c.drive || 0,
+                         earliest: this._nyLabel(c.evIsLater ? Math.ceil((c.firstLeave + (c.drive || 0) * 60000) / 60000) * 60000 : (c.leaveAt || c.secondArrive - (c.drive || 0) * 60000)),
+                         arrival: this._nyLabel(c.secondArrive), start: this._nyLabel(new Date(ev.starts_at).getTime()) };
+        const why = c.unknownDrive ? copy('conflict_overlap') : copy(c.evIsLater ? 'conflict_after' : 'conflict_before', tokens);
+        const fixes = [
+          c.arriveAt      ? btn('arrive', ev.fh_event_id, c.arriveAt, copy('conflict_fix_arrive', { time: this._nyLabel(c.arriveAt) })) : '',
+          c.leaveAt       ? btn('leave',  ev.fh_event_id, c.leaveAt,  copy('conflict_fix_leave',  { time: this._nyLabel(c.leaveAt) })) : '',
+          c.otherLeaveAt  ? btn('leave',  c.other.fh_event_id, c.otherLeaveAt,  copy('conflict_fix_other_leave',  { other, time: this._nyLabel(c.otherLeaveAt) })) : '',
+          c.otherArriveAt ? btn('arrive', c.other.fh_event_id, c.otherArriveAt, copy('conflict_fix_other_arrive', { other, time: this._nyLabel(c.otherArriveAt) })) : '',
+        ].filter(Boolean).join('');
+        return `<div style="font-weight:800;">${this.escapeHtml(copy('conflict_title', tokens))}${p.name ? ` · ${this.escapeHtml(p.name)}` : ''}</div>
+          <div style="margin-top:2px;">${this.escapeHtml(why)}${c.startOk ? ' ' + this.escapeHtml(copy('conflict_start_ok', tokens)) : ''}</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:5px;">${fixes || `<span style="font-weight:700;">${this.escapeHtml(copy('conflict_no_fix'))}</span>`}
+            ${prompted ? `<button type="button" data-conflict-fix="cancel" data-fh-event-id="${ev.fh_event_id}"${pidAttr} style="padding:5px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.4); background:transparent; color:inherit; cursor:pointer; font-size:0.7rem; font-weight:700;">${this.escapeHtml(copy('conflict_cancel'))}</button>` : ''}</div>`;
+      }).join('<div style="height:6px;"></div>');
+      html += `<div data-conflict style="margin-top:6px; padding:7px 9px; border-radius:8px; background:rgba(220,38,38,0.22); border:1px solid #f87171; font-size:0.68rem; line-height:1.3;">
+          ${blocks}${note ? `<div style="${blocks ? 'margin-top:6px;' : ''} font-weight:700;">${this.escapeHtml(note)}</div>` : ''}</div>`;
+    }
+    return html;
+  }
+
+  // One of the offered times: set it (on this event or the other one),
+  // which keeps / makes that answer Going, then answer Go here if it was
+  // the other event's time that moved.
+  async _applyConflictFix(fhEventId, personId, targetId, which, iso) {
+    this.conflictPrompt = null; this.conflictNote = null;
+    await this._setRsvpTime(targetId, personId, which, this._nyHHMM(iso));
+    const ev = (this.events || []).find(x => x.fh_event_id === fhEventId);
+    if (ev && targetId !== fhEventId && this._currentRsvpFor(ev, personId) !== 'yes') await this._sendEventRsvp(fhEventId, 'yes', personId);
+    await this._refreshEvents();
+  }
+
+  // When someone is due by default: a coach's own lead before a practice
+  // (mig 529) for the viewer, else the event's arrival, else its start.
+  _defArrive(ev, personId) { return (!personId && ev.coach_arrival_at) || ev.arrival_at || ev.starts_at; }
+
   _rsvpTimesFor(ev, personId) {
     if (!personId) return { arrive: ev.my_arrive_at || null, leave: ev.my_leave_at || null };
     const row = (Array.isArray(ev.rsvps) ? ev.rsvps : []).find(r => r && r.person_id === personId);
@@ -1763,7 +2103,7 @@ class MyScreen extends Screen {
     const mc = window.MessageCopy;
     const t = (tier, fb) => (mc && mc.block && mc.block('rsvp_times', tier)) || fb;
     const cur = this._rsvpTimesFor(ev, personId);
-    const defArrive = ev.arrival_at || ev.starts_at, defLeave = ev.ends_at;
+    const defArrive = this._defArrive(ev, personId), defLeave = ev.ends_at;
     const pidAttr = personId ? ` data-ev-person-id="${personId}"` : '';
     const field = (which, value, isSet, label) => `
       <label style="display:inline-flex; align-items:center; gap:4px; font-size:0.6rem; font-weight:700; opacity:0.95;">
@@ -1798,7 +2138,7 @@ class MyScreen extends Screen {
   async _setRsvpTime(fhEventId, personId, which, hhmm) {
     const ev = (this.events || []).find(e => e.fh_event_id === fhEventId);
     if (!ev || (which !== 'arrive' && which !== 'leave')) return;
-    const base = which === 'arrive' ? (ev.arrival_at || ev.starts_at) : ev.ends_at;
+    const base = which === 'arrive' ? this._defArrive(ev, personId) : ev.ends_at;
     const iso = hhmm ? this._nyWallToIso(base || ev.starts_at, hhmm) : null;
     if (hhmm && !iso) return;
     const payload = { fh_event_id: fhEventId, response: 'yes', [which + '_at']: iso };

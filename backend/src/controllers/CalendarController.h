@@ -102,6 +102,9 @@ private:
     Response upcomingResponse          (const Request& request, long long onlyFhEventId);
     Response handlePostRsvp            (const Request& request);
     Response handleDeleteRsvp          (const Request& request);
+    // Drive times between the places events are held at, and the club's
+    // conflict policy — #my's schedule-conflict check (mig 526).
+    Response handleGetDriveTimes       (const Request& request);
     // Live-lookup fallback for opponent crests (migration 289): queries
     // TheSportsDb's public team search by name and caches the result
     // (found or not) into opponent_logo_cache so we only ever hit the

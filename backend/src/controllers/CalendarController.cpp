@@ -546,6 +546,9 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.del(prefix + "/calendar/rsvp", [this](const Request& req) {
         return this->handleDeleteRsvp(req);
     });
+    router.get(prefix + "/calendar/drive-times", [this](const Request& req) {
+        return this->handleGetDriveTimes(req);
+    });
     router.get(prefix + "/calendar/events/:fhEventId", [this](const Request& req) {
         return handleGetEvent(req);
     });
@@ -1047,6 +1050,13 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                             'short_label',     t.short_label,
                             'gender_category', t.gender_category,
                             'logo_url',        t.logo_url,
+                            -- The RSVP group the team trains in
+                            -- (rsvp_team_groups, mig 419: 4:30 kids /
+                            -- 5:30 kids / Men) — #my's whose-schedule
+                            -- pills group practices by it (mig 525).
+                            'rsvp_group',      (SELECT g.label FROM rsvp_team_group_teams gt
+                                                  JOIN rsvp_team_groups g ON g.id = gt.group_id AND g.is_active
+                                                 WHERE gt.team_id = t.id ORDER BY g.sort_order, g.id LIMIT 1),
                             -- The squad this fixture is actually FOR.
                             -- Every mens game is tagged with both APSL
                             -- and Liga 1 (the other squad is RSVP-
@@ -1430,7 +1440,25 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             -- `eligible` already ORs in "caller is admin" so admins keep
             -- seeing every event for free. Anonymous callers ($1=0) are
             -- left unfiltered (unchanged public-calendar behavior).
-            SELECT base.*, (base.guardian_children IS NOT NULL) AS is_guardian
+            SELECT base.*, (base.guardian_children IS NOT NULL) AS is_guardian,
+                   -- When this viewer, as a coach, is due at a practice:
+                   -- the start less the longest lead of the event's
+                   -- training groups (rsvp_team_groups
+                   -- .coach_arrival_minutes_before, mig 529).  NULL for
+                   -- players, parents, games and groups with no lead.
+                   (SELECT (ge2.starts_at - make_interval(mins => lead.mins))
+                      FROM fh_events fe2
+                      JOIN gcal_events ge2 ON ge2.id = fe2.gcal_event_id
+                     CROSS JOIN LATERAL (
+                           SELECT MAX(g.coach_arrival_minutes_before) AS mins
+                             FROM fh_event_teams fet
+                             JOIN rsvp_team_group_teams gt ON gt.team_id = fet.team_id
+                             JOIN rsvp_team_groups g ON g.id = gt.group_id AND g.is_active
+                            WHERE fet.fh_event_id = fe2.id) lead
+                     WHERE fe2.id = base.fh_event_id
+                       AND base.my_role IN ('coach', 'staff')
+                       AND base.kind = 'practice'
+                       AND lead.mins IS NOT NULL) AS coach_arrival_at
             FROM base
             WHERE $1::int = 0 OR base.eligible
                OR base.guardian_children IS NOT NULL
@@ -1496,6 +1524,16 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["arrival_at"]        = textOrNull(row, "arrival_at_iso");
             ev["warmup_label"]      = textOrNull(row, "warmup_label");
             ev["kickoff_label"]     = textOrNull(row, "kickoff_label");
+            // Coach's own arrival for a practice (mig 529), ISO + NY label.
+            if (row["coach_arrival_at"].is_null()) { ev["coach_arrival_at"] = nullptr; ev["coach_arrival_label"] = nullptr; }
+            else {
+                auto ca = Database::getInstance()->query(
+                    "SELECT to_char($1::timestamptz AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS iso, "
+                    "       to_char($1::timestamptz AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS label",
+                    {row["coach_arrival_at"].c_str()});
+                ev["coach_arrival_at"]    = ca[0]["iso"].c_str();
+                ev["coach_arrival_label"] = ca[0]["label"].c_str();
+            }
             ev["league_logo_url"]   = textOrNull(row, "league_logo_url");
             // No DB match (hand-seeded alias / exact teams.name / prior
             // cache) — try a live lookup exactly once per distinct
@@ -2884,6 +2922,35 @@ Response CalendarController::handleDeleteEventInvite(const Request& request) {
                        {"revoked", !rows.empty()}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handleDeleteEventInvite: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// ─── GET /api/calendar/drive-times (mig 526) ────────────────────────────────
+// What #my needs to tell whether two Going answers can both be kept: each
+// location text → its place, the driving minutes between places (filled by
+// scripts/drive-times.js from the calendar sync) and the club's policy for
+// turning a raw drive time into "can you make it".  Owner 2026-10-05: "take
+// into account drive times to show that player has a conflict … obviously
+// if event is at same place there is no conflict".
+Response CalendarController::handleGetDriveTimes(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    try {
+        auto* db = Database::getInstance();
+        json out = {{"policy", nullptr}, {"places", json::object()}, {"minutes", json::object()}};
+        auto pol = db->query("SELECT traffic_factor, buffer_minutes, same_place_minutes, round_to_minutes FROM schedule_conflict_policies ORDER BY club_id LIMIT 1");
+        if (!pol.empty())
+            out["policy"] = {{"traffic_factor", pol[0]["traffic_factor"].as<double>()}, {"buffer_minutes", pol[0]["buffer_minutes"].as<int>()},
+                             {"same_place_minutes", pol[0]["same_place_minutes"].as<double>()}, {"round_to_minutes", pol[0]["round_to_minutes"].as<int>()}};
+        for (const auto& r : db->query("SELECT id, location FROM event_places WHERE latitude IS NOT NULL"))
+            out["places"][r["location"].c_str()] = r["id"].as<long long>();
+        // minutes["<from>-<to>"] — a few hundred pairs at most.
+        for (const auto& r : db->query("SELECT from_place_id, to_place_id, minutes FROM place_drive_times"))
+            out["minutes"][std::string(r["from_place_id"].c_str()) + "-" + r["to_place_id"].c_str()] = r["minutes"].as<double>();
+        return jsonOk(out);
+    } catch (const std::exception& e) {
+        std::cerr << "[calendar drive-times] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
