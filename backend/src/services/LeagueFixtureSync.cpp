@@ -186,7 +186,10 @@ LeagueFixtureSync::Result LeagueFixtureSync::refreshSource(long long sourceId, c
             }
             const std::string status = sv(ev, "status").empty() ? "scheduled" : sv(ev, "status");
             std::string homeScore = sv(home, "score"), awayScore = sv(away, "score");
-            if (status != "completed") { homeScore.clear(); awayScore.clear(); }
+            // A score a manager entered counts as soon as it is there: SportsEngine
+            // leaves the game "scheduled" until someone marks it final (mig 521).
+            // Only a called-off game's score is dropped.
+            if (status == "postponed" || status == "cancelled" || status == "canceled") { homeScore.clear(); awayScore.clear(); }
             FixtureRow f{extId, divisionOf(ev), startsAt, sv(ev, "end_date_time"), status, sv(home, "name"), sv(away, "name"),
                          sv(home, "originator_id"), sv(away, "originator_id"), homeScore, awayScore,
                          sv(ev, "location_name"), sv(ev, "location_description"), sv(ev, "location_address"), sv(ev, "updated_at")};

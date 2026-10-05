@@ -71,6 +71,7 @@ class App {
       casa: new CasaHubScreen(this.navigation, this.auth),
       casaContacts: new CasaContactsScreen(this.navigation, this.auth),
       casaSchedule: new CasaScheduleScreen(this.navigation, this.auth),
+      casaScores: new CasaScoresScreen(this.navigation, this.auth),
       finances: new FinancesScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
@@ -173,6 +174,7 @@ class App {
     this.screenManager.register('casa', this.screens.casa);
     this.screenManager.register('casa-contacts', this.screens.casaContacts);
     this.screenManager.register('casa-schedule', this.screens.casaSchedule);
+    this.screenManager.register('casa-scores', this.screens.casaScores);
     // #finances (mig 489/490): summary, revenue and expense projections — billing stays on #payments.
     this.screenManager.register('finances', this.screens.finances);
     // Attendance (#attendance) — the staff page for one calendar event of

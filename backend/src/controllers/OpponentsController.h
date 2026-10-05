@@ -25,6 +25,12 @@
 //                                             SportsEngine feed into league_fixtures first, then reads it — the owner
 //                                             wants it "in db and refreshed on every access"; /league does the same
 //                                             pull so the hub tile's count is current too
+//   GET    /api/opponents/league-scores?label=CASA     the score chase (mig 520): same pull, then the games that
+//                                             kicked off and still have no score, the league's score contacts
+//                                             (club_contacts.score_role) and what was already asked per game
+//   POST   /api/opponents/score-request       { fixture_id, contact_ids[], channel } → { subject, body, recipients[] }
+//                                             one ask to one person or several; logged per contact against the game
+//   POST   /api/opponents/score-contact       { contact_id, score_role: main|manager|'' }   main is one per team
 //
 // The page is for club admins.  The per-game endpoints also open to the
 // coaches of either team in that game (canManageTeam), so a coach can
@@ -49,4 +55,7 @@ private:
     Response handleLeague(const Request& request);
     Response handleGroupMessage(const Request& request);
     Response handleLeagueFixtures(const Request& request);
+    Response handleLeagueScores(const Request& request);
+    Response handleScoreRequest(const Request& request);
+    Response handleScoreContact(const Request& request);
 };

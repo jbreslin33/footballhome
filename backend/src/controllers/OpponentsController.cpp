@@ -197,6 +197,9 @@ void OpponentsController::registerRoutes(Router& router, const std::string& pref
     router.get   (prefix + "/league",             [this](const Request& r) { return handleLeague(r); });
     router.post  (prefix + "/group-message",      [this](const Request& r) { return handleGroupMessage(r); });
     router.get   (prefix + "/league-fixtures",    [this](const Request& r) { return handleLeagueFixtures(r); });
+    router.get   (prefix + "/league-scores",      [this](const Request& r) { return handleLeagueScores(r); });
+    router.post  (prefix + "/score-request",      [this](const Request& r) { return handleScoreRequest(r); });
+    router.post  (prefix + "/score-contact",      [this](const Request& r) { return handleScoreContact(r); });
     router.get   (prefix + "/for-match/:matchId", [this](const Request& r) { return handleForMatch(r); });
 }
 
@@ -396,6 +399,12 @@ Response OpponentsController::handleLeague(const Request& request) {
         json pulls = LeagueFixtureSync::refreshLeague(label);
         json out = {{"league", leagueFor(label)}, {"label", label}, {"competitions", json::array()}, {"contacts", json::array()},
                     {"tiers", tiers("casa")}, {"our_links", json::array()}, {"recent", json::array()}, {"fixtures", fixturesSummary(label, pulls)}};
+        // Played games still without a score — the count on the hub's "Scores to chase" tile (mig 520).
+        out["fixtures"]["waiting"] = db->query(
+            "SELECT COUNT(*) AS n FROM league_fixtures f JOIN league_fixture_sources s ON s.id = f.source_id "
+            " WHERE s.league_label = $1 AND s.is_active AND f.removed_at IS NULL AND s.score_due_after_minutes IS NOT NULL "
+            "   AND f.starts_at + make_interval(mins => s.score_due_after_minutes) < now() "
+            "   AND f.status NOT IN ('postponed', 'cancelled', 'canceled', 'forfeit') AND (f.home_score IS NULL OR f.away_score IS NULL)", {label})[0]["n"].as<long long>();
         for (const auto& r : db->query(R"SQL(
             SELECT k.id, k.club_id, c.name AS club_name, COALESCE(c.logo_url,'') AS logo_url, k.division_label, k.season, k.status,
                    k.lead_name, k.last_contacted, k.notes, k.home_field, k.external_url,
@@ -517,4 +526,149 @@ Response OpponentsController::handleLeagueFixtures(const Request& request) {
             out["our_links"].push_back({{"team", str(r, "team")}, {"label", str(r, "label")}, {"url", str(r, "url")}});
         return jsonOut(HttpStatus::OK, out);
     } catch (const std::exception& e) { std::cerr << "[opponents league-fixtures] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// ─── the score chase (mig 520) ──────────────────────────────────────────────
+// Owner 2026-10-05: "every time i open results page … it should check casa
+// website for scores as source of truth on what is in. then it should for
+// each game have a text and email button to request the score from the
+// manager".  The feed is pulled first; a game is "waiting" once it is
+// score_due_after_minutes past kick-off with no score and not called off.
+Response OpponentsController::handleLeagueScores(const Request& request) {
+    Response denied; if (!adminGate(request, &denied)) return denied;
+    std::string label = request.getQueryParam("label"); if (label.empty()) label = "CASA";
+    try {
+        auto* db = Database::getInstance();
+        json pulls = LeagueFixtureSync::refreshLeague(label);
+        json out = {{"league", leagueFor(label)}, {"label", label}, {"summary", fixturesSummary(label, pulls)},
+                    {"waiting", json::array()}, {"recent", json::array()}, {"competitions", json::array()}, {"contacts", json::array()},
+                    {"asks", json::array()}, {"our_club_id", (long long)WelcomeLog::kLighthouseClubId}};
+        const auto fixture = [](const pqxx::row& r) {
+            return json{{"id", r["id"].as<long long>()}, {"division_label", str(r, "division_label")}, {"status", str(r, "status")},
+                        {"home_name", str(r, "home_name")}, {"away_name", str(r, "away_name")},
+                        {"home_club_id", r["home_club_id"].is_null() ? json(nullptr) : json(r["home_club_id"].as<long long>())},
+                        {"away_club_id", r["away_club_id"].is_null() ? json(nullptr) : json(r["away_club_id"].as<long long>())},
+                        {"home_score", r["home_score"].is_null() ? json(nullptr) : json(r["home_score"].as<long long>())},
+                        {"away_score", r["away_score"].is_null() ? json(nullptr) : json(r["away_score"].as<long long>())},
+                        {"home_logo", str(r, "home_logo")}, {"away_logo", str(r, "away_logo")},
+                        {"date_key", str(r, "date_key")}, {"date_label", str(r, "date_label")}, {"time_label", str(r, "time_label")}};
+        };
+        const std::string cols = R"SQL(
+            SELECT f.id, f.division_label, f.status, f.home_name, f.away_name, f.home_club_id, f.away_club_id, f.home_score, f.away_score,
+                   COALESCE(hc.logo_url,'') AS home_logo, COALESCE(ac.logo_url,'') AS away_logo,
+                   to_char(f.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS date_key,
+                   to_char(f.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS date_label,
+                   to_char(f.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time_label
+              FROM league_fixtures f JOIN league_fixture_sources s ON s.id = f.source_id
+              LEFT JOIN clubs hc ON hc.id = f.home_club_id LEFT JOIN clubs ac ON ac.id = f.away_club_id
+             WHERE s.league_label = $1 AND s.is_active AND f.removed_at IS NULL AND s.score_due_after_minutes IS NOT NULL )SQL";
+        for (const auto& r : db->query(cols +
+                " AND f.starts_at + make_interval(mins => s.score_due_after_minutes) < now() "
+                " AND f.status NOT IN ('postponed', 'cancelled', 'canceled', 'forfeit') AND (f.home_score IS NULL OR f.away_score IS NULL) "
+                " ORDER BY f.starts_at, f.division_label, f.id", {label}))
+            out["waiting"].push_back(fixture(r));
+        for (const auto& r : db->query(cols +
+                " AND f.home_score IS NOT NULL AND f.away_score IS NOT NULL AND f.starts_at > now() - interval '15 days' "
+                " ORDER BY f.starts_at DESC, f.division_label, f.id", {label}))
+            out["recent"].push_back(fixture(r));
+        for (const auto& r : db->query(
+                "SELECT k.id, k.club_id, k.division_label FROM club_competitions k WHERE k.league_label = $1 AND k.status = 'opponent' ORDER BY k.season DESC, k.id", {label}))
+            out["competitions"].push_back({{"id", r["id"].as<long long>()}, {"club_id", r["club_id"].as<long long>()}, {"division_label", str(r, "division_label")}});
+        for (const auto& r : db->query(
+                "SELECT c.id, c.club_id, c.competition_id, c.name, c.role, c.phone, c.email, c.score_role FROM club_contacts c "
+                " WHERE c.is_active AND c.club_id IN (SELECT club_id FROM club_competitions WHERE league_label = $1 AND status = 'opponent') "
+                " ORDER BY c.club_id, (c.score_role = 'main') DESC NULLS LAST, (c.score_role IS NULL), c.id", {label}))
+            out["contacts"].push_back({{"id", r["id"].as<long long>()}, {"club_id", r["club_id"].as<long long>()},
+                                       {"competition_id", r["competition_id"].is_null() ? json(nullptr) : json(r["competition_id"].as<long long>())},
+                                       {"name", nul(r, "name")}, {"role", nul(r, "role")}, {"phone", nul(r, "phone")}, {"email", nul(r, "email")},
+                                       {"score_role", nul(r, "score_role")}});
+        // What was already asked, per game and person (latest per channel).
+        for (const auto& r : db->query(R"SQL(
+            SELECT m.league_fixture_id, m.contact_id, m.channel, COUNT(*) AS n,
+                   to_char(MAX(m.sent_at) AT TIME ZONE 'America/New_York', 'Dy FMHH12:MI AM') AS last_label,
+                   EXTRACT(EPOCH FROM MAX(m.sent_at))::bigint AS last_epoch
+              FROM club_contact_messages m JOIN league_fixtures f ON f.id = m.league_fixture_id
+              JOIN league_fixture_sources s ON s.id = f.source_id
+             WHERE s.league_label = $1 AND (f.home_score IS NULL OR f.away_score IS NULL)
+             GROUP BY m.league_fixture_id, m.contact_id, m.channel)SQL", {label}))
+            out["asks"].push_back({{"fixture_id", r["league_fixture_id"].as<long long>()},
+                                   {"contact_id", r["contact_id"].is_null() ? json(nullptr) : json(r["contact_id"].as<long long>())},
+                                   {"channel", str(r, "channel")}, {"n", r["n"].as<long long>()}, {"last", str(r, "last_label")}, {"last_epoch", r["last_epoch"].as<long long>()}});
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) { std::cerr << "[opponents league-scores] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// One ask for one game's score, to one person or several of a team at once.
+// Rendered from message_templates kind 'casa' (score_request for email,
+// score_request_sms for a text), logged per recipient against the game; the
+// client opens Gmail as the league address or the phone's messages.
+Response OpponentsController::handleScoreRequest(const Request& request) {
+    Response denied; if (!adminGate(request, &denied)) return denied;
+    json b; Response err; if (!parseBody(request, &b, &err)) return err;
+    const long long fixtureId = n(b, "fixture_id");
+    const std::string channel = s(b, "channel");
+    std::string ids;
+    if (b.contains("contact_ids") && b["contact_ids"].is_array())
+        for (const auto& v : b["contact_ids"]) if (v.is_number_integer()) ids += (ids.empty() ? "" : ",") + std::to_string(v.get<long long>());
+    if (!fixtureId || ids.empty() || (channel != "email" && channel != "sms")) return jsonError(HttpStatus::BAD_REQUEST, "fixture_id, contact_ids and channel (email|sms) required");
+    try {
+        auto* db = Database::getInstance();
+        auto fx = db->query(R"SQL(
+            SELECT f.id, f.home_name, f.away_name, COALESCE(f.division_label,'') AS division_label, s.league_label,
+                   to_char(f.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS date_label
+              FROM league_fixtures f JOIN league_fixture_sources s ON s.id = f.source_id WHERE f.id = $1::int)SQL", {std::to_string(fixtureId)});
+        if (fx.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such game");
+        const auto& f = fx[0];
+        const std::string label = str(f, "league_label");
+        auto rows = db->query(std::string("SELECT c.id, c.club_id, c.name, ") + (channel == "email" ? "LOWER(c.email)" : "c.phone") + " AS contact "
+                              "  FROM club_contacts c WHERE c.is_active AND c.id = ANY($1::int[]) AND " + (channel == "email" ? "c.email" : "c.phone") + " IS NOT NULL ORDER BY (c.score_role = 'main') DESC NULLS LAST, c.id",
+                              {"{" + ids + "}"});
+        if (rows.empty()) return jsonError(HttpStatus::BAD_REQUEST, channel == "email" ? "nobody picked has an email" : "nobody picked has a phone");
+        std::string first = "all";
+        if (rows.size() == 1) { first = str(rows[0], "name"); if (auto sp = first.find(' '); sp != std::string::npos) first = first.substr(0, sp); }
+        long long userId = bearerUserId(request); if (userId < 0) userId = 0;
+        const std::string sender = senderName(userId);
+        json league = leagueFor(label);
+        const std::string fromEmail = league.value("correspondence_email", "");
+        MessageCopy copy;
+        const MessageCopy::Tokens tokens = {{"contact_first", first}, {"sender", sender.empty() ? "The commissioner" : sender}, {"from_email", fromEmail},
+                                            {"league", league.value("name", "")}, {"division", str(f, "division_label")},
+                                            {"home", str(f, "home_name")}, {"away", str(f, "away_name")}, {"date", str(f, "date_label")}};
+        std::string tier = channel == "sms" ? "score_request_sms" : "score_request";
+        auto r = copy.render("casa", tier, tokens);
+        if (!r.ok() && channel == "sms") { tier = "score_request"; r = copy.render("casa", tier, tokens); }
+        if (!r.ok()) return jsonError(HttpStatus::BAD_REQUEST, "no message template '" + tier + "'");
+        const std::string groupKey = rows.size() > 1 ? std::to_string(std::time(nullptr)) + "-" + std::to_string(userId) : std::string();
+        json recipients = json::array();
+        for (const auto& c : rows) {
+            recipients.push_back({{"contact_id", c["id"].as<long long>()}, {"contact", str(c, "contact")}});
+            db->query("INSERT INTO club_contact_messages (club_id, contact_id, channel, contact, tier, sent_by_user_id, sender_email, league_label, group_key, league_fixture_id) "
+                      "VALUES ($1::int, $2::int, $3, $4, $5, NULLIF($6,'0')::int, NULLIF($7,''), $8, NULLIF($9,''), $10::int)",
+                      {std::to_string(c["club_id"].as<long long>()), std::to_string(c["id"].as<long long>()), channel, str(c, "contact"), tier,
+                       std::to_string(userId), fromEmail, label, groupKey, std::to_string(fixtureId)});
+        }
+        return jsonOut(HttpStatus::OK, {{"ok", true}, {"subject", r.subject}, {"body", r.body}, {"recipients", recipients}, {"from_email", fromEmail}});
+    } catch (const std::exception& e) { std::cerr << "[opponents score-request] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// Tag a contact for score chasing.  'main' is one per team: making someone
+// main turns the previous main of the same club (and overlapping division
+// scope) into a plain manager.
+Response OpponentsController::handleScoreContact(const Request& request) {
+    Response denied; if (!adminGate(request, &denied)) return denied;
+    json b; Response err; if (!parseBody(request, &b, &err)) return err;
+    const long long id = n(b, "contact_id"); const std::string role = s(b, "score_role");
+    if (!id || (role != "main" && role != "manager" && !role.empty())) return jsonError(HttpStatus::BAD_REQUEST, "contact_id and score_role (main|manager|'') required");
+    try {
+        auto* db = Database::getInstance();
+        auto r = db->query("UPDATE club_contacts SET score_role = NULLIF($2,''), updated_at = now() WHERE id = $1::int AND is_active RETURNING club_id, competition_id", {std::to_string(id), role});
+        if (r.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such contact");
+        if (role == "main")
+            db->query("UPDATE club_contacts SET score_role = 'manager', updated_at = now() "
+                      " WHERE club_id = $1::int AND id <> $2::int AND score_role = 'main' "
+                      "   AND (competition_id IS NULL OR NULLIF($3,'0')::int IS NULL OR competition_id = NULLIF($3,'0')::int)",
+                      {std::to_string(r[0]["club_id"].as<long long>()), std::to_string(id),
+                       r[0]["competition_id"].is_null() ? std::string("0") : std::to_string(r[0]["competition_id"].as<long long>())});
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) { std::cerr << "[opponents score-contact] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }

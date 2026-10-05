@@ -3,13 +3,15 @@
 // commissioner section. that i hit casa and then there is more buttons".
 //
 //   #casa           the hub: tiles (Clubs & contacts, Schedule & standings,
-//                   Sent mail) — add a tile here for each new commissioner tool.
+//                   Scores to chase, Sent mail) — add a tile here for each new commissioner tool.
 //   #casa-contacts  Liga 1 / Liga 2 clubs with their managers; ✉️/💬 per
 //                   contact and one BCC email to a division or the league.
 //   #casa-schedule  every game of the season (mig 488): division + Upcoming /
 //                   Results / All / Table pills; GET /api/opponents/league-fixtures
 //                   pulls the league's SportsEngine feed into league_fixtures on
 //                   every open, so it is current and survives the feed being down.
+//   #casa-scores    games already played with no score on the league site
+//                   (mig 520): Text / Email per manager, logged per game.
 //
 // Everything mails from the league's address (leagues.correspondence_email,
 // jbreslin@casasoccerleagues.com) — Gmail opens on that account (authuser),
@@ -60,13 +62,14 @@ class CasaHubScreen extends Screen {
     const fx = this.data.fixtures || {};
     const tile = (tier, go, extra = '') => { const t = this._tile(tier); return `
       <button class="btn btn-lg btn-primary" ${go ? `data-go="${go}"` : 'data-links'} style="display:flex; align-items:center; gap:var(--space-3); width:100%; text-align:left; margin-bottom:10px;">
-        <span style="font-size:2rem;">${tier === 'tile_contacts' ? '📇' : tier === 'tile_links' ? '📅' : '📤'}</span>
+        <span style="font-size:2rem;">${tier === 'tile_contacts' ? '📇' : tier === 'tile_links' ? '📅' : tier === 'tile_scores' ? '🥅' : '📤'}</span>
         <div style="flex:1;"><div style="font-weight:bold;">${esc(t.label)}</div><div style="font-size:0.85rem; opacity:0.8;">${esc(t.desc)}${extra}</div></div>
       </button>`; };
     const recent = (this.data.recent || []).slice(0, 8).map(r => `<li style="font-size:0.85rem;">${esc(r.sent_at)} — ${esc(r.tier.replace(/^all_|^one_/, '').replace(/_/g, ' '))} ${r.n > 1 ? `to ${r.n} addresses` : ''} (${esc(r.clubs.length > 90 ? r.clubs.slice(0, 90) + '…' : r.clubs)})</li>`).join('');
     body.innerHTML = `
       ${tile('tile_contacts', 'casa-contacts', ` · ${divisions.map(esc).join(', ')} · ${clubs} clubs`)}
       ${tile('tile_links', 'casa-schedule', fx.n ? ` · ${fx.n} games${fx.last_fetched_at ? ` · ${fx.fresh ? 'refreshed just now' : `from ${esc(fx.last_fetched_at)}`}` : ''}` : '')}
+      ${tile('tile_scores', 'casa-scores', fx.waiting ? ` · ${fx.waiting} waiting` : '')}
       ${tile('tile_log', null)}
       <div style="margin:-4px 0 12px 8px;">${recent ? `<ul style="margin:0; padding-left:20px;">${recent}</ul>` : `<div style="font-size:0.85rem; opacity:0.7;">Nothing sent from ${esc(from)} yet.</div>`}</div>`;
   }
@@ -391,6 +394,9 @@ class CasaScheduleScreen extends Screen {
   }
 
   _ours(f) { const me = this.data.our_club_id; return f.home_club_id === me || f.away_club_id === me; }
+  // A score is in once both numbers are there, even while SportsEngine still
+  // calls the game scheduled (nobody marked it final yet).
+  _scored(f) { return f.home_score !== null && f.away_score !== null && f.status !== 'postponed'; }
   _inScope(f) { return !this.division || f.division_label === this.division; }
   _matches(f) { const q = this.search; return !q || `${f.home_name} ${f.away_name} ${f.venue_name || ''}`.toLowerCase().includes(q); }
 
@@ -402,7 +408,7 @@ class CasaScheduleScreen extends Screen {
     const sm = this.data.summary || {};
     const n = (d) => all.filter(f => !d || f.division_label === d).length;
     const inScope = all.filter(f => this._inScope(f));
-    const counts = { upcoming: inScope.filter(f => !f.past || f.status === 'postponed').length, results: inScope.filter(f => f.status === 'completed').length, all: inScope.length };
+    const counts = { upcoming: inScope.filter(f => !f.past || f.status === 'postponed').length, results: inScope.filter(f => this._scored(f)).length, all: inScope.length };
     const views = [['upcoming', 'Upcoming'], ['results', 'Results'], ['all', 'All'], ['table', 'Table']];
     body.innerHTML = `
       ${sm.fresh === false && sm.last_fetched_at ? `<div class="cx-stale">${esc(this._copy('schedule_stale', { when: sm.last_fetched_at }) || `Showing the list from ${sm.last_fetched_at}.`)}${sm.note ? ` (${esc(sm.note)})` : ''}</div>` : ''}
@@ -429,18 +435,18 @@ class CasaScheduleScreen extends Screen {
     const esc = (t) => this.escapeHtml(t);
     let rows = (this.data.fixtures || []).filter(f => this._inScope(f) && this._matches(f));
     if (this.view === 'upcoming') rows = rows.filter(f => !f.past || f.status === 'postponed');
-    else if (this.view === 'results') rows = rows.filter(f => f.status === 'completed').reverse();
+    else if (this.view === 'results') rows = rows.filter(f => this._scored(f)).reverse();
     if (!rows.length) { el.innerHTML = `<div class="cx-hint">${esc(this._copy('schedule_empty') || 'No games match.')}</div>`; return; }
     const team = (name, logo, url, cid) => `<span style="display:inline-flex; align-items:center; gap:6px;">${logo ? `<img src="${esc(logo)}" alt="">` : ''}<b>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>` : esc(name)}</b></span>`;
     let html = '', day = '';
     for (const f of rows) {
       if (f.date_key !== day) { day = f.date_key; html += `<div class="cx-day">${esc(f.date_label)}</div>`; }
-      const done = f.status === 'completed' && f.home_score !== null && f.away_score !== null;
+      const done = this._scored(f);
       html += `
         <div class="cx-game ${this._ours(f) ? 'ours' : ''}">
           <div class="cx-time">${esc(f.time_label)}</div>
           <div class="cx-teams">${team(f.home_name, f.home_logo, f.home_url)}<span style="opacity:0.6;">v</span>${team(f.away_name, f.away_logo, f.away_url)}${!this.division ? `<span class="cx-div">${esc(f.division_label || '')}</span>` : ''}</div>
-          <div>${done ? `<span class="cx-score">${f.home_score} – ${f.away_score}</span>` : f.status !== 'scheduled' ? `<span class="cx-badge">${esc(f.status)}</span>` : ''}</div>
+          <div>${done ? `<span class="cx-score">${f.home_score} – ${f.away_score}</span>${f.status !== 'completed' ? ` <span class="cx-badge" style="background:#f59e0b; color:#3b2f00;">${esc(this._copy('scores_not_final') || 'not final')}</span>` : ''}` : f.status !== 'scheduled' ? `<span class="cx-badge">${esc(f.status)}</span>` : ''}</div>
           ${f.venue_name ? `<div class="cx-venue">📍 ${esc(f.venue_name)}${f.venue_detail ? ` · ${esc(f.venue_detail)}` : ''}${f.venue_address ? ` · <a href="https://maps.google.com/?q=${encodeURIComponent(f.venue_address)}" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline;">map</a>` : ''}</div>` : ''}
         </div>`;
     }
@@ -458,7 +464,7 @@ class CasaScheduleScreen extends Screen {
       const get = (name, cid, logo, url) => { if (!rows.has(name)) rows.set(name, { name, cid, logo, url, p: 0, w: 0, dr: 0, l: 0, gf: 0, ga: 0 }); return rows.get(name); };
       for (const f of (this.data.fixtures || []).filter(f => f.division_label === d)) {
         const h = get(f.home_name, f.home_club_id, f.home_logo, f.home_url), a = get(f.away_name, f.away_club_id, f.away_logo, f.away_url);
-        if (f.status !== 'completed' || f.home_score === null || f.away_score === null) continue;
+        if (!this._scored(f)) continue;
         h.p++; a.p++; h.gf += f.home_score; h.ga += f.away_score; a.gf += f.away_score; a.ga += f.home_score;
         if (f.home_score > f.away_score) { h.w++; a.l++; } else if (f.home_score < f.away_score) { a.w++; h.l++; } else { h.dr++; a.dr++; }
       }
@@ -472,6 +478,226 @@ class CasaScheduleScreen extends Screen {
     return html || `<div class="cx-hint">${esc(this._copy('schedule_empty') || 'No games match.')}</div>`;
   }
 }
+// ─── #casa-scores — played games with no score yet, and who to ask (mig 520) ─
+// Owner 2026-10-05: "treat it like the not rsvp yet function … every time i
+// open results page it should check casa website for scores as source of
+// truth on what is in. then for each game a text and email button to request
+// the score from the manager … each manager or person should have its own
+// button on the game card and option to tag the person as main one to ask
+// for score or message all too or just one".
+//
+// GET /api/opponents/league-scores pulls SportsEngine first, so a score that
+// has landed drops its game off the list.  People on a game card are the
+// team's club_contacts with a score_role (★ main, others "manager"); the
+// rest of the club's contacts sit behind "more" and can be put on the card.
+class CasaScoresScreen extends Screen {
+  constructor(navigation, auth) { super(navigation, auth); this.data = null; this.division = ''; this.more = new Set(); this.flash = ''; this.flashBad = false; }
+
+  render() {
+    const div = document.createElement('div');
+    div.className = 'screen';
+    div.innerHTML = `
+      <style>
+        .cz-pills { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; align-items:center; }
+        .cz-pill { padding:8px 14px; border-radius:999px; border:1px solid var(--border-color); background:transparent; color:var(--text-primary); cursor:pointer; font-weight:700; font-size:0.9rem; }
+        .cz-pill.on { background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
+        .cz-pill .n { opacity:0.6; font-weight:500; margin-left:4px; }
+        .cz-hint { font-size:0.8rem; opacity:0.7; margin:4px 0 8px; }
+        .cz-stale { background:#fde68a; color:#3b2f00; border-radius:10px; padding:8px 12px; margin-bottom:10px; font-size:0.85rem; }
+        .cz-flash { padding:8px 12px; border-radius:10px; margin:8px 0; background:rgba(74,222,128,0.15); font-size:0.88rem; }
+        .cz-flash.bad { background:rgba(248,113,113,0.15); }
+        .cz-sec { margin:var(--space-4) 0 var(--space-2); font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; opacity:0.6; }
+        .cz-day { font-weight:800; margin:14px 0 6px; font-size:0.95rem; opacity:0.85; }
+        .cz-game { border:1px solid var(--border-color); border-left:5px solid #f59e0b; border-radius:12px; background:var(--bg-secondary); padding:10px 14px; margin-bottom:var(--space-2); }
+        .cz-game.asked { border-left-color:#4ade80; }
+        .cz-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .cz-top img { width:22px; height:22px; object-fit:contain; border-radius:4px; }
+        .cz-top b { font-size:1rem; }
+        .cz-meta { font-size:0.78rem; opacity:0.7; margin-left:auto; white-space:nowrap; }
+        .cz-asked { font-size:0.78rem; opacity:0.75; margin-top:2px; }
+        .cz-team { margin-top:10px; padding-top:8px; border-top:1px solid var(--border-color); }
+        .cz-team-h { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.82rem; font-weight:800; }
+        .cz-team-h .side { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; opacity:0.6; }
+        .cz-person { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; font-size:0.9rem; }
+        .cz-person .who { flex:1; min-width:150px; }
+        .cz-person .who small { opacity:0.65; }
+        .cz-person .addr { font-size:0.78rem; opacity:0.7; overflow-wrap:anywhere; }
+        .cz-person .sent { font-size:0.72rem; opacity:0.65; }
+        .cz-btn { padding:7px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:800; font-size:0.85rem; color:#0b1c3d; background:#4ade80; }
+        .cz-btn.alt { background:var(--primary-color); color:#fff; }
+        .cz-btn.sm { padding:5px 9px; font-size:0.78rem; }
+        .cz-btn.ghost { background:transparent; color:var(--text-primary); border:1px solid var(--border-color); }
+        .cz-btn[disabled] { opacity:0.4; cursor:not-allowed; }
+        .cz-star { background:transparent; border:none; cursor:pointer; font-size:1.15rem; padding:0 2px; color:#f59e0b; }
+        .cz-star.off { color:var(--text-primary); opacity:0.35; }
+        .cz-in { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 10px; border:1px solid var(--border-color); border-radius:10px; margin-bottom:4px; font-size:0.88rem; }
+        .cz-notfinal { font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#f59e0b; color:#3b2f00; text-transform:uppercase; }
+        .cz-score { font-weight:900; padding:1px 8px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border-color); white-space:nowrap; }
+      </style>
+      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
+        <button class="btn btn-secondary" id="cz-back">← Back</button>
+        <div style="flex:1;"><h1 style="margin:0;" id="cz-title">🥅 CASA scores</h1><div id="cz-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+      </div>
+      <div class="screen-content" id="cz-body"><div class="loading">Loading…</div></div>`;
+    this.element = div;
+    div.querySelector('#cz-back').addEventListener('click', () => this.navigation.goBack());
+    div.addEventListener('click', async (e) => {
+      const t = e.target;
+      const d = t.closest('[data-division]'); if (d) { this.division = d.dataset.division; this._renderBody(); return; }
+      const ask = t.closest('[data-ask]'); if (ask) { await this.ask(Number(ask.dataset.fixture), ask.dataset.contacts.split(',').map(Number), ask.dataset.ask, ask); return; }
+      const role = t.closest('[data-score-role]'); if (role) { await this.setRole(Number(role.dataset.contact), role.dataset.scoreRole); return; }
+      const more = t.closest('[data-more]'); if (more) { const k = more.dataset.more; if (this.more.has(k)) this.more.delete(k); else this.more.add(k); this._renderBody(); return; }
+      if (t.closest('[data-go]')) { this.navigation.goTo(t.closest('[data-go]').dataset.go, { league: 'CASA' }); return; }
+      if (t.closest('[data-refresh]')) { await this.load(); return; }
+    });
+    return div;
+  }
+
+  onEnter() { this.load(); }
+  _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('casa', tier, tokens) : ''; }
+  _say(text, bad = false) { this.flash = text; this.flashBad = bad; this._renderBody(); }
+
+  async load() {
+    const body = this.find('#cz-body'); if (body && !this.data) body.innerHTML = '<div class="loading">Loading…</div>';
+    try {
+      if (window.MessageCopy) await MessageCopy.load(this.auth);
+      const res = await this.auth.fetch('/api/opponents/league-scores?label=CASA');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      this.data = data;
+    } catch (err) { if (body) body.innerHTML = `<div class="error-message">${this.escapeHtml(err.message)}</div>`; return; }
+    const sm = this.data.summary || {};
+    const title = this.find('#cz-title'); if (title) title.textContent = '🥅 ' + (this._copy('scores_title') || 'CASA scores to chase');
+    const sub = this.find('#cz-sub'); if (sub) sub.textContent = this._copy('scores_subtitle', { when: sm.fresh ? 'just now' : (sm.last_fetched_at || 'never'), n: (this.data.waiting || []).length });
+    this._renderBody();
+  }
+
+  async _post(path, payload) {
+    const res = await this.auth.fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload || {}) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    return body;
+  }
+
+  // The contacts of one side of a game: the club's, narrowed to that
+  // division's team where a contact is pinned to one (two-team clubs).
+  _side(f, clubId) {
+    const comp = (this.data.competitions || []).find(k => k.club_id === clubId && k.division_label === f.division_label);
+    const all = (this.data.contacts || []).filter(c => c.club_id === clubId && (!c.competition_id || (comp && c.competition_id === comp.id)));
+    return { tagged: all.filter(c => c.score_role), others: all.filter(c => !c.score_role) };
+  }
+  _asks(fixtureId, contactId) { return (this.data.asks || []).filter(a => a.fixture_id === fixtureId && (contactId === undefined || a.contact_id === contactId)); }
+
+  // One ask to one person or several: the server words and logs it, the
+  // phone's messages or Gmail (as the league address) opens with it filled in.
+  async ask(fixtureId, contactIds, channel, btn) {
+    const orig = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
+    try {
+      const data = await this._post('/api/opponents/score-request', { fixture_id: fixtureId, contact_ids: contactIds, channel });
+      const to = (data.recipients || []).map(r => r.contact);
+      if (channel === 'email') this.openGmailCompose(this.buildGmailComposeHref({ to: to.join(','), subject: data.subject, body: data.body, authuser: data.from_email || this.data.league?.correspondence_email }));
+      else {
+        const nums = to.map(p => p.replace(/[^\d+]/g, '')).join(',');
+        const apple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+        window.location.href = to.length > 1 && apple ? `sms://open?addresses=${nums}&body=${encodeURIComponent(data.body)}` : `sms:${nums}?body=${encodeURIComponent(data.body)}`;
+      }
+      await this.load();
+    } catch (err) { this._say(err.message, true); }
+    finally { btn.disabled = false; btn.textContent = orig; }
+  }
+
+  async setRole(contactId, role) {
+    try { await this._post('/api/opponents/score-contact', { contact_id: contactId, score_role: role }); await this.load(); }
+    catch (err) { this._say(err.message, true); }
+  }
+
+  _renderBody() {
+    const body = this.find('#cz-body'); if (!body || !this.data) return;
+    const esc = (t) => this.escapeHtml(t);
+    const sm = this.data.summary || {};
+    const waiting = this.data.waiting || [], recent = this.data.recent || [];
+    const divs = [...new Set([...waiting, ...recent].map(f => f.division_label).filter(Boolean))].sort();
+    const n = (d) => waiting.filter(f => !d || f.division_label === d).length;
+    const inScope = (f) => !this.division || f.division_label === this.division;
+    const w = waiting.filter(inScope), r = recent.filter(inScope);
+    let html = '', day = '';
+    for (const f of w) {
+      if (f.date_key !== day) { day = f.date_key; html += `<div class="cz-day">${esc(f.date_label)}</div>`; }
+      html += this._game(f);
+    }
+    let inHtml = ''; day = '';
+    for (const f of r) {
+      if (f.date_key !== day) { day = f.date_key; inHtml += `<div class="cz-day">${esc(f.date_label)}</div>`; }
+      inHtml += `<div class="cz-in">${f.home_logo ? `<img src="${esc(f.home_logo)}" alt="" style="width:18px;height:18px;object-fit:contain;">` : ''}<b>${esc(f.home_name)}</b><span class="cz-score">${f.home_score} – ${f.away_score}</span><b>${esc(f.away_name)}</b>${f.away_logo ? `<img src="${esc(f.away_logo)}" alt="" style="width:18px;height:18px;object-fit:contain;">` : ''}${f.status !== 'completed' ? `<span class="cz-notfinal">${esc(this._copy('scores_not_final') || 'not final')}</span>` : ''}<span class="cz-meta">${esc(f.division_label || '')}</span></div>`;
+    }
+    body.innerHTML = `
+      ${this.flash ? `<div class="cz-flash ${this.flashBad ? 'bad' : ''}">${esc(this.flash)}</div>` : ''}
+      ${sm.fresh === false && sm.last_fetched_at ? `<div class="cz-stale">${esc(this._copy('schedule_stale', { when: sm.last_fetched_at }) || `Showing the list from ${sm.last_fetched_at}.`)}</div>` : ''}
+      <div class="cz-pills">
+        <button class="cz-pill ${!this.division ? 'on' : ''}" data-division="">All<span class="n">${n('')}</span></button>
+        ${divs.map(d => `<button class="cz-pill ${this.division === d ? 'on' : ''}" data-division="${esc(d)}">${esc(d)}<span class="n">${n(d)}</span></button>`).join('')}
+        <button class="cz-btn sm ghost" data-refresh>↻ Check again</button>
+        <button class="cz-btn sm ghost" data-go="casa-contacts">📇 Edit contacts</button>
+      </div>
+      <div class="cz-hint">${esc(this._copy('scores_hint'))}</div>
+      <div class="cz-sec">${esc(this._copy('scores_waiting') || 'Waiting on a score')} · ${w.length}</div>
+      ${html || `<div class="cz-hint">${esc(this._copy('scores_none') || 'Nothing missing.')}</div>`}
+      ${inHtml ? `<div class="cz-sec">${esc(this._copy('scores_in') || 'Scores in')} · ${r.length}</div>${inHtml}` : ''}`;
+    this.flash = '';
+  }
+
+  _game(f) {
+    const esc = (t) => this.escapeHtml(t);
+    const asks = this._asks(f.id);
+    const total = asks.reduce((a, x) => a + x.n, 0);
+    const last = asks.slice().sort((a, b) => b.last_epoch - a.last_epoch)[0];
+    const logo = (u) => u ? `<img src="${esc(u)}" alt="">` : '';
+    return `
+      <div class="cz-game ${total ? 'asked' : ''}">
+        <div class="cz-top">${logo(f.home_logo)}<b>${esc(f.home_name)}</b><span style="opacity:0.6;">v</span><b>${esc(f.away_name)}</b>${logo(f.away_logo)}
+          <span class="cz-meta">${esc(f.time_label)} · ${esc(f.division_label || '')}${f.status !== 'scheduled' ? ` · ${esc(f.status)}` : ''}</span></div>
+        ${total ? `<div class="cz-asked">${esc(this._copy('scores_asked', { n: total, when: last.last }) || `Asked ${total}× · last ${last.last}`)}</div>` : ''}
+        ${this._team(f, 'Home', f.home_name, f.home_club_id)}
+        ${this._team(f, 'Away', f.away_name, f.away_club_id)}
+      </div>`;
+  }
+
+  _team(f, side, name, clubId) {
+    const esc = (t) => this.escapeHtml(t);
+    const head = (extra = '') => `<div class="cz-team-h"><span class="side">${side}</span><span>${esc(name)}</span>${extra}</div>`;
+    if (clubId === this.data.our_club_id) return `<div class="cz-team">${head()}<div class="cz-hint">${esc(this._copy('scores_ours') || 'Our team.')}</div></div>`;
+    const { tagged, others } = clubId ? this._side(f, clubId) : { tagged: [], others: [] };
+    const key = `${f.id}:${clubId}`;
+    const open = this.more.has(key);
+    const withPhone = tagged.filter(c => c.phone).map(c => c.id), withEmail = tagged.filter(c => c.email).map(c => c.id);
+    const allBtns = tagged.length > 1 ? `<span style="margin-left:auto; display:flex; gap:6px;">
+        <button class="cz-btn sm" data-ask="sms" data-fixture="${f.id}" data-contacts="${withPhone.join(',')}" ${withPhone.length ? '' : 'disabled'}>💬 Text all ${withPhone.length}</button>
+        <button class="cz-btn sm alt" data-ask="email" data-fixture="${f.id}" data-contacts="${withEmail.join(',')}" ${withEmail.length ? '' : 'disabled'}>✉️ Email all ${withEmail.length}</button></span>` : '';
+    const person = (c, onCard) => {
+      const mine = this._asks(f.id, c.id);
+      const sent = mine.map(a => `${a.channel === 'sms' ? 'text' : 'email'} ${a.last}${a.n > 1 ? ` (${a.n}×)` : ''}`).join(' · ');
+      const main = c.score_role === 'main';
+      return `
+        <div class="cz-person">
+          <button class="cz-star ${main ? '' : 'off'}" data-score-role="${main ? 'manager' : 'main'}" data-contact="${c.id}" title="${main ? 'The one to ask first — tap to unstar' : 'Make this the one to ask first'}">${main ? '★' : '☆'}</button>
+          <div class="who"><b>${esc(c.name || c.role || 'Team mailbox')}</b>${c.name && c.role ? ` <small>· ${esc(c.role)}</small>` : ''}
+            <div class="addr">${[c.phone, c.email].filter(Boolean).map(esc).join(' · ')}</div>
+            ${sent ? `<div class="sent">Asked: ${esc(sent)}</div>` : ''}</div>
+          <button class="cz-btn sm" data-ask="sms" data-fixture="${f.id}" data-contacts="${c.id}" ${c.phone ? '' : 'disabled'}>💬 Text</button>
+          <button class="cz-btn sm alt" data-ask="email" data-fixture="${f.id}" data-contacts="${c.id}" ${c.email ? '' : 'disabled'}>✉️ Email</button>
+          ${onCard ? `<button class="cz-btn sm ghost" data-score-role="" data-contact="${c.id}" title="Take off the game cards">✕</button>`
+                   : `<button class="cz-btn sm ghost" data-score-role="manager" data-contact="${c.id}" title="Show on the game cards">＋ card</button>`}
+        </div>`;
+    };
+    return `
+      <div class="cz-team">${head(allBtns)}
+        ${tagged.length ? tagged.map(c => person(c, true)).join('') : `<div class="cz-hint">${esc(this._copy('scores_no_contact') || 'Nobody tagged for scores yet.')}</div>`}
+        ${others.length ? `<button class="cz-btn sm ghost" data-more="${key}" style="margin-top:2px;">${open ? '▾ Hide' : `▸ ${others.length} more at this club`}</button>` : ''}
+        ${open ? others.map(c => person(c, false)).join('') : ''}
+      </div>`;
+  }
+}
 window.CasaHubScreen = CasaHubScreen;
 window.CasaContactsScreen = CasaContactsScreen;
 window.CasaScheduleScreen = CasaScheduleScreen;
+window.CasaScoresScreen = CasaScoresScreen;
