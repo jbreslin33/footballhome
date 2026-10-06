@@ -1003,8 +1003,9 @@ class PaymentsScreen extends Screen {
 
   // Wording: message_templates kind 'payment_notice_email' /
   // 'payment_notice_sms', tier 'behind_1' | 'behind_2' | 'behind_3'
-  // (migration 399/416) — under a month, 1 full month, at/over the line
-  // (not eligible for games and practices).  The tier is full months
+  // (migration 399/416/536) — under a month, 1 full month, at/over the
+  // line (said softly since 536: "could lead shortly to not being
+  // eligible ... or even release from the team roster").  The tier is full months
   // behind + 1, capped at the line (dues_policies.pause_after_months,
   // full months); the operator never chooses it.
   // → {subject, body, standing, tier} or null.
