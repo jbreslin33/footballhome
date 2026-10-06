@@ -105,6 +105,7 @@ private:
     // Drive times between the places events are held at, and the club's
     // conflict policy — #my's schedule-conflict check (mig 526).
     Response handleGetDriveTimes       (const Request& request);
+    Response handleGetFieldClashes     (const Request& request);   // GET /calendar/field-clashes (mig 532)
     // Live-lookup fallback for opponent crests (migration 289): queries
     // TheSportsDb's public team search by name and caches the result
     // (found or not) into opponent_logo_cache so we only ever hit the

@@ -549,6 +549,9 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.get(prefix + "/calendar/drive-times", [this](const Request& req) {
         return this->handleGetDriveTimes(req);
     });
+    router.get(prefix + "/calendar/field-clashes", [this](const Request& req) {
+        return this->handleGetFieldClashes(req);
+    });
     router.get(prefix + "/calendar/events/:fhEventId", [this](const Request& req) {
         return handleGetEvent(req);
     });
@@ -2933,6 +2936,68 @@ Response CalendarController::handleDeleteEventInvite(const Request& request) {
 // turning a raw drive time into "can you make it".  Owner 2026-10-05: "take
 // into account drive times to show that player has a conflict … obviously
 // if event is at same place there is no conflict".
+// GET /calendar/field-clashes?days=120 — every instant from today at which
+// the games on one facility need more than one field (fh_field_clashes,
+// mig 532: a game's share of the field comes from its team's format in
+// field_formats).  Each clash lists the games running together with their
+// format; a team without a field_size is marked unknown.  #calendar shows
+// them in a strip, and the all-clear date when there are none.
+Response CalendarController::handleGetFieldClashes(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    int days = 120;
+    if (request.hasQueryParam("days")) {
+        try { days = std::stoi(request.getQueryParam("days")); } catch (...) { days = 120; }
+        if (days < 1) days = 1;
+        if (days > 366) days = 366;
+    }
+    try {
+        auto* db = Database::getInstance();
+        const std::string d = std::to_string(days);
+        json out = {{"days", days}, {"clashes", json::array()}};
+        auto through = db->query("SELECT to_char((now() AT TIME ZONE 'America/New_York')::date + $1::int, 'Dy Mon FMDD') AS t", {d});
+        out["through"] = through.empty() ? "" : through[0]["t"].c_str();
+        auto rows = db->query(
+            "SELECT facility_id, facility, at_instant, total_share, fh_event_ids::text AS ids, "
+            "       to_char(at_instant AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS day_label, "
+            "       to_char(at_instant AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time_label, "
+            "       to_char(at_instant AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day "
+            "  FROM fh_field_clashes(date_trunc('day', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York', now() + ($1::int || ' days')::interval) "
+            " ORDER BY at_instant, facility_id", {d});
+        for (const auto& r : rows) {
+            json clash = {{"facility_id", r["facility_id"].as<long long>()}, {"facility", r["facility"].c_str()},
+                          {"day", r["day"].c_str()}, {"day_label", r["day_label"].c_str()}, {"time_label", r["time_label"].c_str()},
+                          {"total_share", r["total_share"].as<double>()}, {"games", json::array()}};
+            // The games in the set, in kick-off order, each with its format.
+            auto games = db->query(
+                "SELECT fe.id, ge.summary, fe.opponent, fe.is_home, "
+                "       to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS starts, "
+                "       to_char(ge.ends_at   AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS ends, "
+                "       (SELECT string_agg(t.name, ' + ' ORDER BY t.board_sort_order NULLS LAST, t.id) FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id WHERE fet.fh_event_id = fe.id) AS teams, "
+                "       (SELECT ff.label FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id JOIN field_formats ff ON ff.players_per_side = t.field_size WHERE fet.fh_event_id = fe.id ORDER BY ff.field_share DESC LIMIT 1) AS format, "
+                "       COALESCE((SELECT max(COALESCE(ff.field_share, 1.0)) FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id LEFT JOIN field_formats ff ON ff.players_per_side = t.field_size WHERE fet.fh_event_id = fe.id), 1.0) AS share, "
+                "       EXISTS (SELECT 1 FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id WHERE fet.fh_event_id = fe.id AND t.field_size IS NULL) "
+                "         OR NOT EXISTS (SELECT 1 FROM fh_event_teams fet WHERE fet.fh_event_id = fe.id) AS unknown "
+                "  FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+                " WHERE fe.id = ANY($1::bigint[]) ORDER BY ge.starts_at, fe.id", {r["ids"].c_str()});
+            for (const auto& g : games) {
+                clash["games"].push_back({{"fh_event_id", g["id"].as<long long>()}, {"summary", g["summary"].is_null() ? "" : g["summary"].c_str()},
+                                          {"opponent", g["opponent"].is_null() ? "" : g["opponent"].c_str()},
+                                          {"is_home", g["is_home"].is_null() ? json(nullptr) : json(g["is_home"].as<bool>())},
+                                          {"starts", g["starts"].c_str()}, {"ends", g["ends"].c_str()},
+                                          {"teams", g["teams"].is_null() ? "" : g["teams"].c_str()},
+                                          {"format", g["format"].is_null() ? "" : g["format"].c_str()},
+                                          {"share", g["share"].as<double>()}, {"unknown", g["unknown"].as<bool>()}});
+            }
+            out["clashes"].push_back(clash);
+        }
+        return jsonOk(out);
+    } catch (const std::exception& e) {
+        std::cerr << "[calendar field-clashes] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
 Response CalendarController::handleGetDriveTimes(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;

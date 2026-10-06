@@ -81,6 +81,7 @@ class CalendarScreen extends Screen {
 
         <div id="cal-push-banner"></div>
         <div id="cal-release-strip"></div>
+        <div id="cal-clash-strip"></div>
 
         <div id="cal-loading" style="text-align:center; padding: var(--space-6); opacity:0.7;">
           Loading calendar…
@@ -451,6 +452,7 @@ class CalendarScreen extends Screen {
       this.error     = null;
       this._renderGroups();
       this._loadReleaseStrip().catch((err) => console.warn('[calendar] release strip failed:', err));
+      this._loadClashStrip().catch((err) => console.warn('[calendar] clash strip failed:', err));
     } catch (err) {
       console.error('[calendar] load failed:', err);
       this.error = err.message || 'Failed to load calendar.';
@@ -968,6 +970,60 @@ class CalendarScreen extends Screen {
     }
     this.anchorDate = this._startOfDay(next);
     this._load();
+  }
+
+  // ---------- field clash strip (migration 532) ----------
+  // Owner 2026-10-06: "check for any overlap of games at lighthouse sports
+  // complex of game start times … and end times" … "build the overlap check
+  // on #calendar".  GET /api/calendar/field-clashes: every instant from
+  // today on at which the games on one facility need more than one field
+  // (team format → field_formats share).  Always the next 120 days,
+  // whatever the view shows, so a clash is seen the day the sync pulls the
+  // game in; the all-clear line says how far ahead was checked.
+  static get CLASH_DAYS() { return 120; }
+
+  _calCopy(tier, tokens = {}) {
+    const mc = window.MessageCopy;
+    return (mc && mc.block && mc.block('calendar', tier, tokens)) || '';
+  }
+
+  async _loadClashStrip() {
+    const el = this.find('#cal-clash-strip');
+    if (!el) return;
+    const res = await this.auth.fetch(`/api/calendar/field-clashes?days=${CalendarScreen.CLASH_DAYS}`);
+    if (!res.ok) { el.innerHTML = ''; return; }
+    const body = await res.json();
+    this._clashes = body;
+    el.innerHTML = this._renderClashStrip(body);
+  }
+
+  _renderClashStrip(body) {
+    const esc = (t) => this._escape(t);
+    const clashes = (body && body.clashes) || [];
+    const base = 'padding:8px 12px; margin-bottom: var(--space-3); border-radius:8px; font-size:0.85rem;';
+    if (!clashes.length) {
+      return `<div style="${base} background:rgba(22,101,52,0.18); border:1px solid rgba(74,222,128,0.35);">
+        ${esc(this._calCopy('clash_none', { through: body.through || '' }) || `✅ No field clashes on the calendar through ${body.through || ''}.`)}
+      </div>`;
+    }
+    const fields = (n) => `${Number(n).toFixed(2).replace(/\.?0+$/, '')}`;
+    const rows = clashes.map(c => `
+      <div style="padding:6px 0; border-top:1px solid rgba(255,255,255,0.12);">
+        <div style="font-weight:700;">${esc(this._calCopy('clash_line', { facility: c.facility, day: c.day_label, time: c.time_label, total: fields(c.total_share) })
+          || `${c.facility} · ${c.day_label} at ${c.time_label} — these games need ${fields(c.total_share)} fields at once:`)}</div>
+        <ul style="margin:4px 0 0 18px; padding:0; line-height:1.5;">
+          ${c.games.map(g => `<li>${esc(g.starts)}–${esc(g.ends)} <strong>${esc(g.summary || g.teams)}</strong>
+              <span style="opacity:0.75;">· ${g.format ? esc(g.format) : esc(this._calCopy('clash_unknown') || 'format not set')} · ${fields(g.share)} field${Number(g.share) === 1 ? '' : 's'}${g.unknown && g.format ? ` · ${esc(this._calCopy('clash_unknown') || 'format not set')}` : ''}</span></li>`).join('')}
+        </ul>
+      </div>`).join('');
+    return `<div style="${base} background:rgba(245,158,11,0.14); border:1px solid rgba(251,191,36,0.5);">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <strong>${esc(this._calCopy('clash_title') || '⚠ Field clash')}</strong>
+        <span style="opacity:0.8;">${clashes.length} in the next ${body.days || CalendarScreen.CLASH_DAYS} days</span>
+        <span style="opacity:0.65; font-size:0.78rem; flex-basis:100%;">${esc(this._calCopy('clash_hint'))}</span>
+      </div>
+      ${rows}
+    </div>`;
   }
 
   // ---------- schedule release strip (migration 334) ----------
