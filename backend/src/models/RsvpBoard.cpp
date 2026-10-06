@@ -218,6 +218,11 @@ json RsvpBoard::list(const std::string& sectionCode,
               FROM expected e WHERE e.person_id = p.id) AS role,
            (SELECT MIN(e.role_rank) <> MAX(e.role_rank) FROM expected e WHERE e.person_id = p.id) AS dual_role,
            fh_dues_eligible(p.id) AS dues_eligible,
+           -- Age badge (owner 2026-10-06): the player's single age this
+           -- season from their birth date, beside the oldest age their board
+           -- teams are named for, so a card shows who plays up or over.
+           fh_youth_single_age(p.birth_date, fh_season_end_year(now())) AS single_age,
+           (SELECT max(fh_team_age(r.team_id)) FROM roster r WHERE r.person_id = p.id) AS team_age,
            fh_person_injury_label(p.id) AS injury,   -- mig 510; NULL = healthy
            (SELECT COALESCE(jsonb_agg(jsonb_build_object('fh_event_id', o.fh_event_id, 'line', o.line,
                                                          'day', to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'))
@@ -329,6 +334,8 @@ json RsvpBoard::list(const std::string& sectionCode,
             {"last_manual_rsvp_at", iso(row, "last_manual_rsvp_at")},
             {"months_overdue",    row["months_overdue"].is_null() ? json(nullptr) : json(row["months_overdue"].as<int>())},
             {"dues_eligible",     row["dues_eligible"].is_null() ? true : row["dues_eligible"].as<bool>()},   // migration 416
+            {"single_age",        row["single_age"].is_null() ? json(nullptr) : json(row["single_age"].as<int>())},
+            {"team_age",          row["team_age"].is_null()   ? json(nullptr) : json(row["team_age"].as<int>())},
             {"injury",            textOrNull(row, "injury")},
             {"payment_status",    textOrNull(row, "la_payment_status")},
             {"dues_variant",      textOrNull(row, "dues_variant")},

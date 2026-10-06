@@ -127,6 +127,25 @@ class RsvpBoardScreen extends Screen {
     return { worst: 'Worst RSVP %', open: 'Most unanswered now', quiet: 'Longest since last RSVP', nagged: 'Most reminders needed', name: 'Name' };
   }
 
+  // Age badge beside a youth player's name (owner 2026-10-06: "show badge
+  // for actually age group on player cards"): their single age this
+  // season from the birth date (fh_youth_single_age), amber when they play
+  // up on an older team, red when over the team's age, grey when the birth
+  // date is missing.  Coaches and staff get none.
+  _agePill(p) {
+    if (!p || p.role !== 'player' || p.team_age == null) return '';
+    // A U12 side is the 11s and 12s (two-year bands), so one year under
+    // the team's age is in age; two or more under is playing up.
+    const age = p.single_age;
+    const over = age != null && age > p.team_age, up = age != null && age < p.team_age - 1;
+    const [bg, fg, title] = age == null ? ['rgba(148,163,184,0.2)', '#cbd5e1', 'No birth date on file']
+      : over ? ['rgba(239,68,68,0.22)', '#fca5a5', `Age ${age} this season — over the U${p.team_age} age`]
+      : up   ? ['rgba(245,158,11,0.22)', '#fcd34d', `Age ${age} this season — playing up on U${p.team_age}`]
+             : ['rgba(59,130,246,0.18)', '#bfdbfe', `Age ${age} this season — in age for U${p.team_age} (U${p.team_age - 1}–U${p.team_age})`];
+    return `<span title="${this.escapeHtml(title)}" style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:999px; background:${bg}; color:${fg};
+                   font-size:0.6rem; font-weight:800; letter-spacing:0.05em; vertical-align:middle;">${age == null ? 'AGE ?' : `U${age}${up ? ' ↑' : over ? ' !' : ''}`}</span>`;
+  }
+
   // COACH / STAFF pill beside a name (players get none); "dual role" when
   // the same person is on the board more than one way (owner 2026-09-25).
   // Words are message_templates kind 'my_role' (mig 438).
@@ -775,7 +794,7 @@ class RsvpBoardScreen extends Screen {
       <div class="rb-card" data-card="${p.person_id}">
         <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
           <div style="min-width:0;">
-            <div style="font-weight:800;">${this.escapeHtml(p.first_name)} ${this.escapeHtml(p.last_name)}${this._rolePill(p)}</div>
+            <div style="font-weight:800;">${this.escapeHtml(p.first_name)} ${this.escapeHtml(p.last_name)}${this._rolePill(p)}${this._agePill(p)}</div>
             <div style="font-size:0.72rem; opacity:0.65;">${this.section === 'all' && p.section ? this.escapeHtml(RsvpBoardScreen.SECTIONS[p.section] || p.section) + ' · ' : ''}${teams}${p.youth ? ' · youth' : ''}</div>
             ${p.injury ? `<div style="margin-top:2px;"><span class="rb-pill" style="background:rgba(245,158,11,0.2); color:#fbbf24;" title="Injured (set on Teams): no RSVP owed, no reminders, no fines while it lasts">${this.escapeHtml(p.injury)}</span></div>` : ''}
           </div>
