@@ -1,5 +1,6 @@
 #include "Invoice.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <iostream>
@@ -385,10 +386,114 @@ long long Invoice::create(long long issuerId, const std::string& isoDate, std::s
              p["budget_line_id"].is_null() ? std::string() : std::to_string(p["budget_line_id"].get<long long>())});
     }
 
-    // The usual week, one row per matching day of the period (mig 470).
+    // The usual week, one row per matching day of the period (mig 470),
+    // then the games the coaching policies pay this issuer for (mig 531).
     std::string ignored;
     applyDefaults(id, false, &ignored);
+    addGames(id, {}, true, &ignored);
     return id;
+}
+
+// ─── games off the calendar (mig 531) ───────────────────────────────────────
+namespace {
+// $1 invoice, $2 issuer, $3 period start, $4 period end (club-local dates).
+// One row per match in the period that is the issuer's: a team they coach
+// is tagged on it, or its coaching policy names them.  The policy (kind
+// coaching, matched like Expenses::games: category, league label, age
+// band in the title) gives hours_per_game; without one the calendar's own
+// length stands.  Times are club-local; a game whose till would pass
+// midnight is kept as flat hours (the shifts CHECK wants end > start).
+const char* kPeriodGamesSql = R"SQL(
+    WITH iss AS (
+        SELECT i.id, i.person_id FROM invoice_issuers i WHERE i.id = $2::int
+    ), pol AS (
+        SELECT p.* FROM ref_fee_policies p WHERE p.kind = 'coaching' AND p.is_active
+    ), ev AS (
+        SELECT e.id AS fh_event_id, g.starts_at, g.ends_at, e.is_home,
+               COALESCE(NULLIF(BTRIM(e.opponent), ''), 'TBD') AS opponent,
+               (SELECT string_agg(t.name, ' + ' ORDER BY t.board_sort_order NULLS LAST, t.id)
+                  FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id WHERE fet.fh_event_id = e.id) AS team_label,
+               p.id AS policy_id, p.label AS policy_label, p.hours_per_game, p.coach_issuer_id,
+               EXISTS (SELECT 1 FROM fh_event_teams fet
+                         JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
+                         JOIN coaches c ON c.id = tc.coach_id
+                        WHERE fet.fh_event_id = e.id AND c.person_id = (SELECT person_id FROM iss)) AS coaches_team
+          FROM fh_events e
+          JOIN gcal_events g ON g.id = e.gcal_event_id AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
+          LEFT JOIN LATERAL (
+                SELECT p.* FROM pol p
+                 WHERE (p.event_category IS NULL OR e.category = p.event_category)
+                   AND e.league = ANY (p.event_league_labels)
+                   AND (p.age_band IS NULL OR g.summary ~* ('\m' || p.age_band || '\M'))
+                 ORDER BY p.sort_order, p.id LIMIT 1) p ON true
+         WHERE e.kind = 'match'
+           AND (g.starts_at AT TIME ZONE 'America/New_York')::date BETWEEN $3::date AND $4::date
+    ), mine AS (
+        SELECT ev.*,
+               ROUND(COALESCE(ev.hours_per_game, EXTRACT(EPOCH FROM (ev.ends_at - ev.starts_at)) / 3600.0)::numeric, 2) AS hours,
+               (ev.starts_at AT TIME ZONE 'America/New_York')::date AS work_date,
+               (ev.starts_at AT TIME ZONE 'America/New_York')::time AS start_at
+          FROM ev
+         WHERE ev.coaches_team OR ev.coach_issuer_id = $2::int
+    )
+    SELECT m.fh_event_id, m.work_date::text AS work_date, to_char(m.work_date, 'Dy FMMM/FMDD') AS day_label,
+           to_char(m.start_at, 'HH24:MI') AS start_at,
+           CASE WHEN (m.start_at + (m.hours || ' hours')::interval) < interval '24 hours'
+                THEN to_char(m.start_at + (m.hours || ' hours')::interval, 'HH24:MI') END AS end_at,
+           m.hours, m.opponent, m.is_home, m.team_label, m.policy_id, m.policy_label,
+           (m.coach_issuer_id = $2::int) AS policy_pays,
+           (m.starts_at < now()) AS played,
+           COALESCE(regexp_replace(m.policy_label, '^Parks & Rec ', ''), m.team_label, 'Game') || CASE WHEN m.is_home THEN ' vs ' ELSE ' at ' END || m.opponent AS note,
+           EXISTS (SELECT 1 FROM invoice_work_shifts s WHERE s.invoice_id = $1::int AND s.fh_event_id = m.fh_event_id) AS added,
+           -- A day row typed by hand (or the usual week) that already covers
+           -- this time: adding the game too would bill the hours twice.
+           EXISTS (SELECT 1 FROM invoice_work_shifts s
+                    WHERE s.invoice_id = $1::int AND s.fh_event_id IS DISTINCT FROM m.fh_event_id AND s.work_date = m.work_date
+                      AND (s.start_at IS NULL
+                           OR (s.start_at < m.start_at + (m.hours || ' hours')::interval AND s.end_at > m.start_at))) AS overlaps
+      FROM mine m
+     ORDER BY m.starts_at, m.fh_event_id)SQL";
+}  // namespace
+
+json Invoice::periodGames(long long invoiceId) {
+    auto inv = db_->query("SELECT issuer_id, period_start::text AS ps, period_end::text AS pe FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
+    json out = json::array();
+    if (inv.empty() || inv[0]["ps"].is_null() || inv[0]["pe"].is_null()) return out;
+    for (const auto& r : db_->query(kPeriodGamesSql, {std::to_string(invoiceId), inv[0]["issuer_id"].c_str(), str(inv[0], "ps"), str(inv[0], "pe")})) {
+        out.push_back({{"fh_event_id", r["fh_event_id"].as<long long>()}, {"date", str(r, "work_date")}, {"day_label", str(r, "day_label")},
+                       {"start", str(r, "start_at")}, {"end", str(r, "end_at")}, {"hours", num(r, "hours")},
+                       {"opponent", str(r, "opponent")}, {"is_home", r["is_home"].is_null() ? json(nullptr) : json(r["is_home"].as<bool>())},
+                       {"team_label", str(r, "team_label")}, {"policy_label", str(r, "policy_label")},
+                       {"policy_pays", !r["policy_pays"].is_null() && r["policy_pays"].as<bool>()},
+                       {"played", r["played"].as<bool>()}, {"note", str(r, "note")}, {"added", r["added"].as<bool>()},
+                       {"overlaps", r["overlaps"].as<bool>()}});
+    }
+    return out;
+}
+
+int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEventIds, bool policyOnly, std::string* error) {
+    auto inv = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
+    if (inv.empty()) { *error = "no such invoice"; return 0; }
+    if (inv[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return 0; }
+    int added = 0;
+    for (const auto& g : periodGames(invoiceId)) {
+        const long long fhEventId = g["fh_event_id"].get<long long>();
+        if (g["added"].get<bool>()) continue;
+        const bool picked = fhEventIds.empty() ? (policyOnly ? g["policy_pays"].get<bool>() : true)
+                                               : std::find(fhEventIds.begin(), fhEventIds.end(), fhEventId) != fhEventIds.end();
+        if (!picked) continue;
+        const bool timed = g["end"].is_string() && !g["end"].get<std::string>().empty();
+        auto r = db_->query(
+            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note, fh_event_id) "
+            "VALUES ($1::int, $2::date, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($5,'')::numeric, NULLIF($6,''), $7::bigint) "
+            "ON CONFLICT DO NOTHING RETURNING id",
+            {std::to_string(invoiceId), g["date"].get<std::string>(), timed ? g["start"].get<std::string>() : std::string{},
+             timed ? g["end"].get<std::string>() : std::string{}, timed ? std::string{} : money2(g["hours"].get<double>()),
+             g["note"].get<std::string>(), std::to_string(fhEventId)});
+        if (!r.empty()) added++;
+    }
+    if (added > 0) syncLabor(invoiceId);
+    return added;
 }
 
 bool Invoice::update(long long invoiceId, const json& f, std::string* error) {

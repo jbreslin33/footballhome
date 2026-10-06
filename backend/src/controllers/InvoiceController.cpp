@@ -80,6 +80,8 @@ void InvoiceController::registerRoutes(Router& router, const std::string& prefix
     router.post(prefix + "/:id/line",    [this](const Request& r) { return handleLine(r); });
     router.post(prefix + "/:id/shift",   [this](const Request& r) { return handleShift(r); });
     router.post(prefix + "/:id/fill",    [this](const Request& r) { return handleFill(r); });
+    router.get (prefix + "/:id/games",   [this](const Request& r) { return handleGames(r); });
+    router.post(prefix + "/:id/games",   [this](const Request& r) { return handleAddGames(r); });
     router.get (prefix + "/:id",         [this](const Request& r) { return handleGet(r); });
 }
 
@@ -299,6 +301,41 @@ Response InvoiceController::handleDelete(const Request& request) {
         if (!model_->remove(id)) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) { return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// ─── games off the calendar (mig 531) ───────────────────────────────────────
+// GET /api/invoices/:id/games → { games: [...] } — the period's matches of
+// a team the issuer coaches (or whose policy pays them), with the hours a
+// day row would get and whether it is already one.
+Response InvoiceController::handleGames(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = idFromPath(request.getPath());
+    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+    try {
+        return jsonOut(HttpStatus::OK, {{"games", model_->periodGames(id)}});
+    } catch (const std::exception& e) { std::cerr << "[invoices games] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// POST /api/invoices/:id/games { fh_event_ids: [...] } → the sheet, with
+// `added`.  Each picked game becomes a day row (kick-off to the policy's
+// hours, else the calendar length); games already on the days are skipped.
+Response InvoiceController::handleAddGames(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = idFromPath(request.getPath());
+    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
+    std::vector<long long> ids;
+    if (body.contains("fh_event_ids") && body["fh_event_ids"].is_array())
+        for (const auto& v : body["fh_event_ids"]) if (v.is_number()) ids.push_back(v.get<long long>());
+    if (ids.empty()) return jsonError(HttpStatus::BAD_REQUEST, "tick at least one game");
+    try {
+        std::string err;
+        const int added = model_->addGames(id, ids, false, &err);
+        if (added <= 0 && !err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
+        json out = model_->get(id);
+        out["added"] = added;
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) { std::cerr << "[invoices add games] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
 // ─── referee fees (mig 490) ─────────────────────────────────────────────────

@@ -61,6 +61,15 @@ public:
     // Copy the issuer's usual week onto the invoice's period.  Only when the
     // invoice has no days yet, unless force.  Returns days added.
     int applyDefaults(long long invoiceId, bool force, std::string* error);
+    // Games on the calendar in the invoice's period (mig 531): every match
+    // of a team the issuer coaches, or whose coaching policy pays them
+    // (coach_issuer_id), with the hours the policy gives a game (else the
+    // calendar length) and whether it is already a day row.
+    nlohmann::json periodGames(long long invoiceId);
+    // Add those games as day rows: the fh_event_ids given, or — with none —
+    // only the games whose policy names this issuer (what a new invoice
+    // does).  Already-added games are skipped.  Returns days added.
+    int addGames(long long invoiceId, const std::vector<long long>& fhEventIds, bool policyOnly, std::string* error);
 
     bool updateIssuer(long long issuerId, const nlohmann::json& fields, std::string* error);
 

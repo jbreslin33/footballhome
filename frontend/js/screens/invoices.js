@@ -191,6 +191,7 @@ class InvoicesScreen extends Screen {
       this.flash = '';
       this._renderBody();
       this._loadRefGames();
+      this._loadGames();
       const ed = this.find('#iv-editor');
       if (ed) ed.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) { this._say(err.message, true); }
@@ -224,6 +225,33 @@ class InvoicesScreen extends Screen {
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       if (this.inv && this.inv.id === inv.id) { this.refGames = body.games || []; this._renderBody(); }
     } catch (err) { console.warn('ref fees unavailable:', err.message); }
+  }
+
+  // Games off the calendar (mig 531): the period's matches of a team the
+  // issuer coaches, to tick and add as day rows.  Owner 2026-10-06: "we
+  // are missing youth games that were played. u12 parkwood game on sunday".
+  async _loadGames() {
+    const inv = this.inv;
+    if (!inv || inv.is_final) { this.calGames = []; return; }
+    try {
+      const res = await this.auth.fetch(`/api/invoices/${inv.id}/games`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      if (this.inv && this.inv.id === inv.id) { this.calGames = body.games || []; this._renderBody(); }
+    } catch (err) { console.warn('calendar games unavailable:', err.message); }
+  }
+
+  async addGames() {
+    if (!this.inv) return;
+    const picks = [...this.element.querySelectorAll('[data-cal-game]:checked')].map(cb => Number(cb.dataset.calGame));
+    if (!picks.length) { this._say('Tick at least one game.', true); return; }
+    try {
+      const body = await this._post(`/api/invoices/${this.inv.id}/games`, { fh_event_ids: picks });
+      this.inv = body;
+      await this.load();
+      this._loadGames();
+      this._say(this._copy('games_added', { n: body.added || 0 }) || `${body.added || 0} game(s) added to the days.`);
+    } catch (err) { this._say(err.message, true); }
   }
 
   async addRefFees() {
@@ -618,6 +646,7 @@ class InvoicesScreen extends Screen {
       const rmPlan = e.target.closest('[data-delete-plan]');
       if (rmPlan) { await this.removePlan(Number(rmPlan.dataset.deletePlan)); return; }
       if (e.target.closest('#iv-fill')) { await this.fillFromDefault(); return; }
+      if (e.target.closest('#iv-games-add')) { await this.addGames(); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
       if (e.target.closest('#iv-copy-link')) { await this.copyPublicLink(); return; }
       if (e.target.closest('#iv-copy-email')) { await this.copyEmailBody(); return; }
@@ -631,6 +660,12 @@ class InvoicesScreen extends Screen {
       if (rmDef) { await this.removeDefault(Number(rmDef.dataset.deleteDefault)); return; }
     });
     el.addEventListener('change', async (e) => {
+      if (e.target.matches('[data-cal-game]')) {
+        const n = el.querySelectorAll('[data-cal-game]:checked').length;
+        const btn = el.querySelector('#iv-games-add');
+        if (btn) { btn.disabled = !n; btn.textContent = this._copy('games_button', { n }) || `🏟 Add ${n} game(s) as days`; }
+        return;
+      }
       if (e.target.matches('[data-ref-game]')) {
         // The button reads "n games, $x" for whatever is ticked.
         const boxes = [...el.querySelectorAll('[data-ref-game]:checked')];
@@ -946,6 +981,7 @@ class InvoicesScreen extends Screen {
           ${inv.is_final ? `<span class="iv-hint" style="margin:0;">Final — the sheet keeps its billed hours; un-tick Final to let these days drive it.</span>` : ''}
           ${!(inv.shifts || []).length ? `<button id="iv-fill" class="iv-btn ghost sm">📅 Fill from usual week</button>` : ''}
         </div>
+        ${inv.is_final ? '' : this._renderCalGames()}
 
         <div style="margin-top:var(--space-3);">
           <div class="iv-row head"><div>Section</div><div class="desc">Description</div><div class="r">Hours / units</div><div class="r">Rate</div><div class="r">Amount</div></div>
@@ -981,6 +1017,35 @@ class InvoicesScreen extends Screen {
         </div>` : ''}
         ${inv.is_final ? '' : this._renderRefFees()}` : ''}
       </div>`;
+  }
+
+  // Games off the calendar to add as days (mig 531): played ones start
+  // ticked; a game already on the days shows as such and cannot be re-added.
+  _renderCalGames() {
+    const esc = (t) => this.escapeHtml(t);
+    const games = this.calGames || [];
+    const waiting = games.filter(g => !g.added);
+    if (!games.length) return '';
+    const picked = [...(this.element?.querySelectorAll('[data-cal-game]') || [])].length
+      ? [...this.element.querySelectorAll('[data-cal-game]:checked')].map(cb => Number(cb.dataset.calGame))
+      : waiting.filter(g => g.played && !g.overlaps).map(g => g.fh_event_id);
+    const rows = games.map(g => `
+      <label style="display:flex; gap:10px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:0.9rem; ${g.added || !g.played ? 'opacity:0.65;' : ''}">
+        ${g.added ? `<span style="width:13px; text-align:center;">✓</span>` : `<input type="checkbox" data-cal-game="${g.fh_event_id}" ${picked.includes(g.fh_event_id) ? 'checked' : ''}>`}
+        <span style="width:90px; font-weight:700;">${esc(g.day_label)}</span>
+        <span style="flex:1;">${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}</span>
+        <span style="width:110px; text-align:right; opacity:0.85;">${esc(g.start)}${g.end ? `–${esc(g.end)}` : ''}</span>
+        <span style="width:50px; text-align:right;">${InvoicesScreen.plain(g.hours)} h</span>
+        <span style="width:90px; text-align:right; font-size:0.78rem; opacity:0.7;">${g.added ? 'on the days' : g.played ? 'played' : 'upcoming'}</span>
+        ${g.overlaps && !g.added ? `<span style="font-size:0.72rem; color:#f59e0b;" title="A day row on this date already covers this time — adding the game would bill it twice">⚠ inside a day already</span>` : ''}
+      </label>`).join('');
+    const n = picked.length;
+    return `
+      <div class="iv-sec" style="margin-top:var(--space-3);">${esc(this._copy('games_title') || 'Games on the calendar')}</div>
+      <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('games_hint'))}</div>
+      ${rows}
+      ${waiting.length ? `<div class="iv-acts"><button id="iv-games-add" class="iv-btn sm" ${n ? '' : 'disabled'}>${esc(this._copy('games_button', { n }) || `🏟 Add ${n} game(s) as days`)}</button></div>`
+                       : `<div class="iv-hint">${esc(this._copy('games_empty') || 'No games of yours in this period that are not already on the days.')}</div>`}`;
   }
 
   // Referee fees to tick off on this draft (mig 490).
