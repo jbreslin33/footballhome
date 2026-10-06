@@ -2069,7 +2069,7 @@ class GameCenterScreen extends Screen {
       <div style="padding:6px var(--space-3); border-bottom:1px solid var(--border-color);">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
           <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
-            <span style="overflow-wrap:break-word; white-space:normal;">${this.escapeHtml(p.name)}</span>
+            <span ${this._eligNameTitle(p.id)}style="overflow-wrap:break-word; white-space:normal; ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}</span>
             ${this.isCoach ? this._rsvpStatusPill(p.id) : ''}
             ${this._duesFlag(p)}
             ${this.isCoach ? this._injuryChip(p.id) : ''}
@@ -3533,6 +3533,7 @@ class GameCenterScreen extends Screen {
           firstName: firstName || p.name,
           lastName,
           jerseyNumber: p.jerseyNumber || '',
+          nameStyle: live ? this._eligNameStyle(p.id) : '',
           isKeeper: !this.everyonePlays && gkPositionIds.has(this.positions.get(p.id)),
         });
       }
@@ -3549,7 +3550,8 @@ class GameCenterScreen extends Screen {
     //
     // `live` is the on-page copy of the same card: a filled chip carries
     // the player id its tap-to-remove needs, and "Show Availability"
-    // hangs the RSVP pill under the name. Neither reaches the post.
+    // hangs the RSVP pill under the name. Neither reaches the post, and
+    // nor does the eligibility colour on a name (_eligNameStyle).
     const editing = live && this.isCoach && this.viewMode !== 'player' && !this.everyonePlays;
     let pitch = null;
     if (this.everyonePlays) {
@@ -3570,6 +3572,7 @@ class GameCenterScreen extends Screen {
       pitch = this._pitchRows().map(row => row === HALFWAY_ROW ? null : row.map(pos => {
         const occupant = rosterById.get(slotToPlayerId.get(pos.id));
         const token = { number: pos.sortOrder, name: occupant ? occupant.name : '' };
+        if (live && occupant) token.nameStyle = this._eligNameStyle(occupant.id, { onPitch: true });
         if (editing && occupant) {
           token.removeId = occupant.id;
           if (this.showLineupStats) token.badgeHtml = this._rsvpStatusPill(occupant.id);
@@ -3697,6 +3700,40 @@ class GameCenterScreen extends Screen {
     return { state: 'projected', colour: YELLOW };
   }
 
+  // A player's name in the colour of that verdict, everywhere Game Center
+  // prints it (owner 2026-10-06: "color names with eligiblity on game
+  // center. green if eligible. yellow if projected and red if not
+  // projected. green text on gree backroound of pitch is problem so maybe
+  // green higlight in some way"): green = eligible to start, yellow =
+  // projected eligible, red = projected not / not eligible.  On dark
+  // ground the name's text takes the colour; on the pitch it gets a light
+  // highlight behind dark text instead, all three the same way.  '' where
+  // there is no verdict — no stats row, or a game everyone plays in.
+  _eligVerdict(playerId) {
+    if (this.everyonePlays || !this.stats) return null;
+    const s = this.stats.get(Number(playerId));
+    if (!s) return null;
+    return this._overallEligibility(this._criteriaState(s), this._rsvpTimingState(s)).state;
+  }
+
+  _eligNameStyle(playerId, { onPitch = false } = {}) {
+    const v = this._eligVerdict(playerId);
+    if (!v) return '';
+    const tone = v === 'eligible' ? 'green' : v === 'projected' ? 'yellow' : 'red';
+    if (onPitch) {
+      const [bg, fg] = { green: ['#bbf7d0', '#14532d'], yellow: ['#fef08a', '#713f12'], red: ['#fecaca', '#7f1d1d'] }[tone];
+      return `background:${bg};color:${fg};padding:1px 5px;border-radius:4px;`;
+    }
+    return `color:${{ green: '#4ade80', yellow: '#facc15', red: '#f87171' }[tone]};`;
+  }
+
+  // The verdict in words, as the name's tooltip (copy tier overall_<state>).
+  _eligNameTitle(playerId) {
+    const v = this._eligVerdict(playerId);
+    const text = v ? this._eligCopy('overall_' + v) : '';
+    return text ? `title="${this.escapeHtml(text)}" ` : '';
+  }
+
   // Everyone's Practice Criteria under the card (owner 2026-09-26: "full
   // detail of everyone but themselves criteria status should be
   // highlighted").  Alphabetical by last name, the viewer's own row lit.
@@ -3718,7 +3755,7 @@ class GameCenterScreen extends Screen {
       const pill = (label, [pbg, pfg]) => `<span style="padding:2px 9px; border-radius:999px; background:${pbg}; color:${pfg}; font-size:0.68rem; font-weight:700; white-space:nowrap;">${this.escapeHtml(label)}</span>`;
       return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px var(--space-3); border-bottom:1px solid var(--border-color);
                           ${mine ? 'background:rgba(96,165,250,0.12); box-shadow:inset 3px 0 0 #60a5fa;' : ''}">
-        <span style="font-size:0.9rem; ${mine ? 'font-weight:700;' : ''}">${this.escapeHtml(p.name)}${mine ? ' <span style="font-size:0.65rem; opacity:0.7;">(you)</span>' : ''}</span>
+        <span ${this._eligNameTitle(p.id)}style="font-size:0.9rem; ${mine ? 'font-weight:700;' : ''} ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}${mine ? ' <span style="font-size:0.65rem; opacity:0.7;">(you)</span>' : ''}</span>
         <span style="flex:0 1 auto; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px;">${pill(text || st.state, [bg, fg])}${rtText ? pill(rtText, rt.colour) : ''}</span>
       </div>`;
     }).join('');
@@ -3877,7 +3914,7 @@ class GameCenterScreen extends Screen {
         <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
           ${alternates.map(p => `
             <div style="padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
-              <span style="font-size:0.95em;">${this.escapeHtml(p.name)}</span> ${this._duesFlag(p)}
+              <span ${this._eligNameTitle(p.id)}style="font-size:0.95em; ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}</span> ${this._duesFlag(p)}
             </div>`).join('')}
         </div>
       </div>`;
