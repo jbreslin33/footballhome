@@ -73,6 +73,7 @@ class App {
       casaSchedule: new CasaScheduleScreen(this.navigation, this.auth),
       casaScores: new CasaScoresScreen(this.navigation, this.auth),
       finances: new FinancesScreen(this.navigation, this.auth),
+      fines: new FinesScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
@@ -177,6 +178,8 @@ class App {
     this.screenManager.register('casa-scores', this.screens.casaScores);
     // #finances (mig 489/490): summary, revenue and expense projections — billing stays on #payments.
     this.screenManager.register('finances', this.screens.finances);
+    // #fines (mig 534): the Men's fines by month and player, on their own page.
+    this.screenManager.register('fines', this.screens.fines);
     // Attendance (#attendance) — the staff page for one calendar event of
     // any kind: who's coming, attendance, 🎟 invites.  See
     // screens/event-center.js.  Was #event-center until 2026-09-24; the old

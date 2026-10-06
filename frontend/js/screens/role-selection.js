@@ -90,6 +90,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="fines" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">💸</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('fines', 'tile_title')) || 'Fines'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('fines', 'tile_sub')) || "Men's fines — missed RSVPs and no-shows by month, who owes what, what is on LeagueApps"}</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="game-center" id="rs-game-center" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">🏟️</span>
           <div style="flex: 1; text-align: left;">
@@ -401,6 +409,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'finances') {
       // #finances (mig 490): summary, revenue and expense projections.
       this.navigation.goTo('finances');
+    } else if (role === 'fines') {
+      // #fines (mig 534): the Men's fines by month and player.
+      this.navigation.goTo('fines');
     } else if (role === 'game-center') {
       // Not a role — the game picker (owner 2026-09-17: top level, for
       // admins and coaches, to set lineups).

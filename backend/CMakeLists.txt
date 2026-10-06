@@ -127,6 +127,7 @@ set(SOURCES
     src/controllers/ClubFileController.cpp
     src/controllers/InvoiceController.cpp
     src/controllers/FinancesController.cpp
+    src/controllers/FinesController.cpp
     src/controllers/LineupDraftController.cpp
     src/controllers/OfficialRosterController.cpp
     src/controllers/GameMessageController.cpp

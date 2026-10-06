@@ -48,6 +48,7 @@
 #include "controllers/ClubFileController.h"
 #include "controllers/InvoiceController.h"
 #include "controllers/FinancesController.h"
+#include "controllers/FinesController.h"
 #include "controllers/LineupDraftController.h"
 #include "controllers/OfficialRosterController.h"
 #include "controllers/GameMessageController.h"
@@ -126,6 +127,7 @@ private:
     std::shared_ptr<ClubFileController> club_file_controller_;
     std::shared_ptr<InvoiceController> invoice_controller_;
     std::shared_ptr<FinancesController> finances_controller_;
+    std::shared_ptr<FinesController> fines_controller_;
     std::shared_ptr<LineupDraftController> lineup_draft_controller_;
     std::shared_ptr<OfficialRosterController> official_roster_controller_;
     std::shared_ptr<GameMessageController> game_message_controller_;
@@ -213,6 +215,7 @@ public:
         club_file_controller_ = std::make_shared<ClubFileController>();
         invoice_controller_ = std::make_shared<InvoiceController>();
         finances_controller_ = std::make_shared<FinancesController>();
+        fines_controller_ = std::make_shared<FinesController>();
         lineup_draft_controller_ = std::make_shared<LineupDraftController>();
         official_roster_controller_ = std::make_shared<OfficialRosterController>();
         game_message_controller_ = std::make_shared<GameMessageController>();
@@ -525,6 +528,8 @@ private:
         router_.useController("/api/invoices", invoice_controller_);
         // #finances (mig 490): summary, revenue and expense projections.
         router_.useController("/api/finances", finances_controller_);
+        // #fines (mig 534): the Men's fines by month and player.
+        router_.useController("/api/fines", fines_controller_);
         // Lineup drafts next to the official lineup (mig 495).
         router_.useController("/api/lineup-drafts", lineup_draft_controller_);
         // The league's own roster sheet, pulled fresh per game (mig 501).
