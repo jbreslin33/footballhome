@@ -3551,7 +3551,7 @@ class GameCenterScreen extends Screen {
     // `live` is the on-page copy of the same card: a filled chip carries
     // the player id its tap-to-remove needs, and "Show Availability"
     // hangs the RSVP pill under the name. Neither reaches the post, and
-    // nor does the eligibility colour on a name (_eligNameStyle).
+    // nor does the eligibility mark on a name (_eligNameStyle).
     const editing = live && this.isCoach && this.viewMode !== 'player' && !this.everyonePlays;
     let pitch = null;
     if (this.everyonePlays) {
@@ -3581,7 +3581,7 @@ class GameCenterScreen extends Screen {
       }));
     }
     const title = this.everyonePlays ? this._copyLe('title') : '';
-    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, title };
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from
@@ -3700,15 +3700,18 @@ class GameCenterScreen extends Screen {
     return { state: 'projected', colour: YELLOW };
   }
 
-  // A player's name in the colour of that verdict, everywhere Game Center
-  // prints it (owner 2026-10-06: "color names with eligiblity on game
-  // center. green if eligible. yellow if projected and red if not
-  // projected. green text on gree backroound of pitch is problem so maybe
-  // green higlight in some way"): green = eligible to start, yellow =
-  // projected eligible, red = projected not / not eligible.  On dark
-  // ground the name's text takes the colour; on the pitch it gets a light
-  // highlight behind dark text instead, all three the same way.  '' where
-  // there is no verdict — no stats row, or a game everyone plays in.
+  // A player's name marked with that verdict wherever Game Center prints
+  // it (owner 2026-10-06: "color names with eligiblity on game center.
+  // green if eligible. yellow if projected and red if not projected"):
+  // green = criteria met, yellow = projected to meet them, red =
+  // projected not to / not eligible.  The name's text takes the colour.
+  // On the pitch green letters would vanish into the grass, so there each
+  // letter is outlined in white — no box round the name (owner, of
+  // highlight boxes: "yikes that looks ugly ... met is green with white
+  // border. projected to meet is yellow. projected to not meet is red ...
+  // i mean border around each letter not a 'card'").  Red is outlined the
+  // same way, being as hard to read on grass; yellow needs none.  ''
+  // where there is no verdict — no stats row, or a game everyone plays in.
   _eligVerdict(playerId) {
     if (this.everyonePlays || !this.stats) return null;
     const s = this.stats.get(Number(playerId));
@@ -3721,8 +3724,10 @@ class GameCenterScreen extends Screen {
     if (!v) return '';
     const tone = v === 'eligible' ? 'green' : v === 'projected' ? 'yellow' : 'red';
     if (onPitch) {
-      const [bg, fg] = { green: ['#bbf7d0', '#14532d'], yellow: ['#fef08a', '#713f12'], red: ['#fecaca', '#7f1d1d'] }[tone];
-      return `background:${bg};color:${fg};padding:1px 5px;border-radius:4px;`;
+      // text-shadow all round rather than -webkit-text-stroke, which eats
+      // into letters this small.
+      const outline = 'text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 -1px 0 #fff,0 1px 0 #fff,-1px 0 0 #fff,1px 0 0 #fff;';
+      return { green: `color:#22c55e;${outline}`, yellow: 'color:#facc15;', red: `color:#b91c1c;${outline}` }[tone];
     }
     return `color:${{ green: '#4ade80', yellow: '#facc15', red: '#f87171' }[tone]};`;
   }

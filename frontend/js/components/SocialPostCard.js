@@ -1874,10 +1874,15 @@ class SocialPostCard {
         </div>
         ${line}
       </div>`;
-    const benchHtml = bench.length ? `
+    // Game Center's live card heads the band with the totals, so a
+    // lineup one short says "10 STARTERS" (squadCounts); the post only
+    // names the substitutes.
+    const counts = this.squadCounts(pitch.flat().filter(t => t && t.name).length, bench.length);
+    const bandLabel = counts ? `${counts.starters} · ${counts.subs}` : 'SUBSTITUTES';
+    const benchHtml = (bench.length || counts) ? `
       <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
-        <span style="font-size:13px;letter-spacing:3px;color:#f5d442;font-weight:700;">BENCH</span>
-        <div style="font-size:16px;font-weight:700;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.benchName(p)).join(', ')}</div>
+        <span style="font-size:13px;letter-spacing:3px;color:#f5d442;font-weight:700;">${bandLabel}</span>
+        ${bench.length ? `<div style="font-size:16px;font-weight:700;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.benchName(p)).join(', ')}</div>` : ''}
       </div>` : '';
     return `
       <div style="flex:1;min-height:0;align-self:stretch;margin:0 -28px;padding:10px 6px;box-sizing:border-box;background:#15803d;border-top:2px solid rgba(255,255,255,0.35);border-bottom:2px solid rgba(255,255,255,0.35);display:flex;flex-direction:column;justify-content:space-between;">
@@ -1885,6 +1890,16 @@ class SocialPostCard {
       </div>
       ${benchHtml}
     `;
+  }
+
+  // Head counts for Game Center's live card (owner 2026-10-06: "show me
+  // totals on graphic 11 starters but show 10 starters etc if only 10 and
+  // same for bench 9 bench or 7 bench etc ... use substitues").  null on
+  // the post, and on a game where everyone plays (rosterData.title).
+  squadCounts(nStarters, nSubs) {
+    if (!(this.rosterData && this.rosterData.live) || this.rosterData.title) return null;
+    return { starters: `${nStarters} ${nStarters === 1 ? 'STARTER' : 'STARTERS'}`,
+             subs: `${nSubs} ${nSubs === 1 ? 'SUBSTITUTE' : 'SUBSTITUTES'}` };
   }
 
   // A bench name in the CSV.  On Game Center's live card
@@ -1911,6 +1926,7 @@ class SocialPostCard {
     }
     const { starters, bench } = lineup;
     if (starters.length === 0 && bench.length === 0) return '';
+    const counts = this.squadCounts(starters.length, bench.length);
 
     const section = (title, list) => list.length ? `
       <div style="text-align:left;">
@@ -1921,8 +1937,8 @@ class SocialPostCard {
     return `
       <div style="height:1px;min-height:1px;flex-shrink:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);width:80%;margin:12px auto;"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;width:100%;">
-        ${section(this.startersLabel(), starters)}
-        ${section(`BENCH`, bench)}
+        ${section(counts ? counts.starters : this.startersLabel(), starters)}
+        ${section(counts ? counts.subs : 'SUBSTITUTES', bench)}
       </div>
     `;
   }
