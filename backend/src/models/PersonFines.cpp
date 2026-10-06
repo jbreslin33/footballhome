@@ -181,15 +181,22 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
         //      and fines added between two syncs arrive as one move.  Left
         //      for the fines box to claim too (withFines);
         //   3. a whole number of months in one — a catch-up, or a card run
-        //      that swept two installments (David Naranjo's $70, 2026-10-02).
+        //      that swept two installments (David Naranjo's $70, 2026-10-02);
+        //   4. anything else above the rate, in a month a month of fines
+        //      posts in — the bill went on as dues + fines and the fines are
+        //      the difference (owner 2026-10-06: "instead of 35 they will owe
+        //      35+ ... you would then be able to tell i fined them and how
+        //      much by deducting the diff").  Left for the fines box too.
         auto duesChargeIn = [&](const std::string& ym) -> Charge* {
             auto it = myCharges.find(ym);
             if (it == myCharges.end()) return nullptr;
             for (auto& c : it->second) if (!c.used && same(c.amount, rate)) { c.used = true; return &c; }
             double finesDue = 0;
+            bool finesPostHere = false;
             for (const auto& m : monthRows) {
                 if (ym != m["post_ym"].c_str()) continue;
                 const std::string fineYm = m["ym"].c_str();
+                if (fineYm >= sinceYm) finesPostHere = true;
                 if (totals[pid].count(fineYm)) finesDue = totals[pid][fineYm];
             }
             if (finesDue > 0.005) {
@@ -199,6 +206,9 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
                 if (c.used || c.withFines || rate <= 0) continue;
                 const double months = c.amount / rate;
                 if (months > 1.5 && months < 12.5 && same(months, std::round(months))) { c.used = true; return &c; }
+            }
+            if (finesPostHere && rate > 0) {
+                for (auto& c : it->second) if (!c.used && c.amount > rate + 0.005) { c.withFines = true; return &c; }
             }
             return nullptr;
         };
@@ -211,6 +221,9 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
             return c;
         };
         for (const auto& m : monthRows) { duesFor(m["ym"].c_str()); duesFor(m["post_ym"].c_str()); }
+        // What a charge says about fines: all of it, or what is left of a
+        // dues + fines bill once the dues come off.
+        auto finesPart = [&](const Charge& c) { return c.withFines ? c.amount - rate : c.amount; };
 
         json monthsJson = json::array();
         double total = 0;
@@ -223,7 +236,9 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
             // Posting: the month's fines go on LA with the NEXT month's dues
             // (first Friday).  posted = a charge that month equal to the
             // fine total (or to dues + fines in one); drift = a charge is
-            // there but the total has since moved; not_posted = the first
+            // there for another amount — the total has since moved, or the
+            // bill went on with a different sum on top of the dues
+            // (postedAmount is that difference); not_posted = the first
             // Friday has passed with nothing; due = not yet time; nothing =
             // no fines to post.
             const std::string postYm = m["post_ym"].c_str();
@@ -237,24 +252,38 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
                 if (it != myCharges.end()) {
                     for (auto& c : it->second) {
                         if (c.used) continue;
-                        if (same(c.amount, t) || same(c.amount, rate + t)) { hit = &c; break; }
-                        if (!near || std::fabs(c.amount - t) < std::fabs(near->amount - t)) near = &c;
+                        if (same(finesPart(c), t) || (!c.withFines && same(c.amount, rate + t))) { hit = &c; break; }
+                        if (!near || std::fabs(finesPart(c) - t) < std::fabs(finesPart(*near) - t)) near = &c;
                     }
                 }
                 if (hit) {
                     hit->used = true;
                     posting["status"] = "posted";
-                    posting["postedAmount"] = same(hit->amount, t) ? t : hit->amount - rate;
+                    posting["postedAmount"] = t;
                     posting["postedOn"] = hit->day;
-                } else if (near && today >= postFri) {
+                } else if (near && (near->withFines || today >= postFri)) {
                     near->used = true;
                     posting["status"] = "drift";
-                    posting["postedAmount"] = near->amount;
+                    posting["postedAmount"] = finesPart(*near);
                     posting["postedOn"] = near->day;
                 } else if (today >= postFri) {
                     posting["status"] = "not_posted";
                 } else {
                     posting["status"] = "due";
+                }
+            } else {
+                // Nothing worked out, yet the bill went on above the dues:
+                // the difference is a fine added by hand.
+                auto it = myCharges.find(postYm);
+                if (it != myCharges.end()) {
+                    for (auto& c : it->second) {
+                        if (c.used || !c.withFines) continue;
+                        c.used = true;
+                        posting["status"] = "drift";
+                        posting["postedAmount"] = finesPart(c);
+                        posting["postedOn"] = c.day;
+                        break;
+                    }
                 }
             }
 

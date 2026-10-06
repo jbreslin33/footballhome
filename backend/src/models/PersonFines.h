@@ -44,7 +44,10 @@ class Database;
 // in person_payments for the time before that log) — and match it by
 // amount and month: the dues line is the one equal to the rate (or a
 // whole number of months), the fines line the one equal to the month's
-// total (or dues + fines in one).  Nothing is marked by hand.
+// total (or dues + fines in one).  A bill above the rate that matches
+// neither is dues + fines all the same: the fines posted are the
+// difference (drift when that is not the month's total).  Nothing is
+// marked by hand.
 // The months are the last three calendar months (club time), clipped to
 // the policy's first month, oldest first.  People on no such team are
 // absent from the map — the card then shows nothing.

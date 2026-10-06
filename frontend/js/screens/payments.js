@@ -1304,6 +1304,9 @@ class PaymentsScreen extends Screen {
     // last 3 months ... each in a box").  row.fines is null for anyone
     // whose section has no fine rate (parents and the women), so their
     // cards show nothing.  Tap a box for the month's line items.
+    // Between them sit the bills they go on — this month's and next
+    // month's so far, dues + fines (owner 2026-10-06: "instead of 35
+    // they will owe 35+").
     const finesCells = this.renderFinesCells(m);
     const finesDetail = this.renderFinesDetail(m);
 
@@ -1384,27 +1387,72 @@ class PaymentsScreen extends Screen {
         </button>`;
   }
 
+  // Bill wording (message_templates kind tuition_bill, migration 535).
+  _billCopy(tier, tokens, fallback) {
+    return (window.MessageCopy && MessageCopy.has('tuition_bill', tier)) ? MessageCopy.block('tuition_bill', tier, tokens) : fallback;
+  }
+
+  // The two bills the fines ride on (owner 2026-10-06: "it should work
+  // like pro rate. i will then add it to total at end of month. so
+  // instead of 35 they will owe 35+"):
+  //   this  this month's bill = dues + last month's fines, with where it
+  //         stands on LA (the dues charge and the fines posting together);
+  //   next  next month's bill so far = dues + this month's fines.
+  // Each carries finesMonth, the month whose fines are on it.
+  _bills(f) {
+    const months = (f && Array.isArray(f.months)) ? f.months : [];
+    const d = f && f.dues;
+    const out = { this: null, next: null };
+    if (!d || !d.status || !months.length) return out;
+    const rate = Number(d.rate) || 0;
+    const cur = months[months.length - 1];
+    const prev = months.find((mo) => !mo.current && mo.posting && mo.posting.month === d.month) || null;
+    const prevFines = prev ? (Number(prev.total) || 0) : 0;
+    const ps = prev && prev.posting ? prev.posting.status : 'nothing';
+    // What LA holds of this bill: the dues, plus whatever went on as fines.
+    const finesOnLa = (ps === 'posted' || ps === 'drift') ? (Number(prev.posting.postedAmount) || 0) : 0;
+    let status = d.status;                       // posted | not_posted | due
+    if (status === 'posted' && (ps === 'drift' || ps === 'not_posted' || (ps === 'due' && prevFines > 0))) status = 'short';
+    out.this = { month: d.month, label: d.label, firstFriday: d.firstFriday, postedOn: d.postedOn, rate,
+                 fines: prevFines, total: rate + prevFines, onLa: rate + finesOnLa, status,
+                 finesMonth: prev ? prev.month : '', finesLabel: prev ? prev.label : '' };
+    if (cur && cur.current && cur.posting) {
+      const fines = Number(cur.total) || 0;
+      out.next = { month: cur.posting.month, label: cur.posting.label, firstFriday: cur.posting.firstFriday, rate,
+                   fines, total: rate + fines, finesMonth: cur.month, finesLabel: cur.label };
+    }
+    return out;
+  }
+
+  // "Oct bill: $35 dues + $2 Sep fines = $37" — the sum behind a bill box.
+  _billLine(b, soFar) {
+    const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
+    const tokens = { month: b.label, dues: fmtAmt(b.rate), fines: fmtAmt(b.fines), fines_month: b.finesLabel,
+                     total: fmtAmt(b.total), date: this.fmtDate(b.firstFriday) };
+    if (!b.finesLabel) return this._billCopy('line_dues_only', tokens, `${b.label} bill: ${tokens.dues} dues`);
+    return soFar
+      ? this._billCopy('line_so_far', tokens, `${b.label} bill so far: ${tokens.dues} dues + ${tokens.fines} ${b.finesLabel} fines = ${tokens.total} — post ${tokens.date}`)
+      : this._billCopy('line', tokens, `${b.label} bill: ${tokens.dues} dues + ${tokens.fines} ${b.finesLabel} fines = ${tokens.total}`);
+  }
+
+  _billState(b) {
+    const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
+    const md = (iso) => { const d = this._parseIsoDateOnly(iso); return d ? `${d.getMonth() + 1}/${d.getDate()}` : ''; };
+    switch (b.status) {
+      case 'posted':     return this._billCopy('posted', { date: md(b.postedOn) }, `✓ ${md(b.postedOn)}`);
+      case 'short':      return this._billCopy('on_la', { amount: fmtAmt(b.onLa) }, `${fmtAmt(b.onLa)} on LA`);
+      case 'not_posted': return this._billCopy('not_posted', {}, 'NOT POSTED');
+      default:           return this._billCopy('post', { date: md(b.firstFriday) }, `post ${md(b.firstFriday)}`);
+    }
+  }
+
   renderFinesCells(m) {
     const f = m && m.fines;
     if (!f || !Array.isArray(f.months) || !f.months.length) return '';
     const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
-    const md = (iso) => { const d = this._parseIsoDateOnly(iso); return d ? `${d.getMonth() + 1}/${d.getDate()}` : ''; };
+    const bills = this._bills(f);
 
-    // This month's dues posting — the $35 charge on the first Friday.
-    let duesCell = '';
-    const d = f.dues;
-    if (d && d.status) {
-      const bottom = d.status === 'posted' ? `✓ ${md(d.postedOn)}` : d.status === 'not_posted' ? 'NOT POSTED' : `post ${md(d.firstFriday)}`;
-      const tip = d.status === 'posted'
-        ? `${d.label} dues ${fmtAmt(Number(d.rate))} added in LA on ${this.fmtDate(d.postedOn)}`
-        : d.status === 'not_posted'
-          ? `${d.label} dues ${fmtAmt(Number(d.rate))}: no matching LA charge yet — first Friday was ${this.fmtDate(d.firstFriday)}`
-          : `${d.label} dues ${fmtAmt(Number(d.rate))}: post in LA on ${this.fmtDate(d.firstFriday)}`;
-      duesCell = this._cellHtml({ cls: 'pay-dues-cell', tip, colors: this._postingColors(d.status, true),
-                                  top: `${d.label.toUpperCase()} DUES`, big: fmtAmt(Number(d.rate)), bottom });
-    }
-
-    const cells = f.months.map((mo) => {
+    const finesCell = (mo) => {
       const n = Array.isArray(mo.items) ? mo.items.length : 0;
       const total = Number(mo.total) || 0;
       const p = mo.posting || null;
@@ -1412,13 +1460,39 @@ class PaymentsScreen extends Screen {
       const lines = n
         ? `${mo.label} fines: ${n} — ` + mo.items.map((it) => `${this.fmtDate(it.startAt)} ${it.label} ${fmtAmt(it.amount)}`).join('; ')
         : `${mo.label} fines: none${mo.current ? ' so far' : ''}`;
-      const tip = lines + (p && total > 0 ? ` · ${this._postingTip(mo, p)}` : '');
+      const tip = lines + (p && (total > 0 || p.status === 'drift') ? ` · ${this._postingTip(mo, p)}` : '');
       return this._cellHtml({ cls: 'pay-fines-cell', attrs: `data-fines-month="${this.escape(mo.month)}"`, tip,
                               colors: this._postingColors(status, total > 0),
                               top: `${mo.label.toUpperCase()} FINES`, big: fmtAmt(total),
                               bottom: this._postingLine(mo.current ? null : p, mo.current) });
+    };
+
+    // A bill box: the amount to put on LA — dues + the fines riding on it.
+    // Tap it for the fines behind the sum.
+    const billCell = (b, next) => {
+      if (!b) return '';
+      const status = next ? '' : (b.status === 'short' ? 'drift' : b.status);
+      const sum = this._billCopy(next ? 'sum_so_far' : 'sum', { dues: fmtAmt(b.rate), fines: fmtAmt(b.fines) },
+                                 `${fmtAmt(b.rate)} + ${fmtAmt(b.fines)}${next ? ' so far' : ''}`);
+      const bottom = next ? (b.fines > 0 ? sum : this._billState(b)) : this._billState(b);
+      const tip = this._billLine(b, next) + (next ? '' : ` · ${this._billState(b)}`);
+      return this._cellHtml({ cls: b.finesMonth ? 'pay-fines-cell' : 'pay-dues-cell',
+                              attrs: b.finesMonth ? `data-fines-month="${this.escape(b.finesMonth)}"` : '', tip,
+                              colors: this._postingColors(status, next ? b.fines > 0 : true),
+                              top: this._billCopy('box_top', { month: b.label.toUpperCase() }, `${b.label.toUpperCase()} BILL`),
+                              big: fmtAmt(b.total), bottom });
+    };
+
+    // Ledger order: a month's fines, then the bill they go on.
+    return f.months.map((mo) => {
+      let cell = finesCell(mo);
+      if (bills.this && bills.this.finesMonth === mo.month) cell += billCell(bills.this, false);
+      if (mo.current) {
+        if (bills.this && !bills.this.finesMonth) cell = billCell(bills.this, false) + cell;
+        cell += billCell(bills.next, true);
+      }
+      return cell;
     }).join('');
-    return duesCell + cells;
   }
 
   _postingTip(mo, p) {
@@ -1438,7 +1512,12 @@ class PaymentsScreen extends Screen {
     if (!f || !Array.isArray(f.months) || !f.months.length) return '';
     const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
     const kindLabel = (k) => ({ match: 'Game', intrasquad: 'Intra Squad', practice: 'Practice' }[k] || k || '');
+    const bills = this._bills(f);
     return f.months.map((mo) => {
+      // The bill this month's fines go on, and where it stands.
+      const bill = (bills.next && bills.next.finesMonth === mo.month) ? this._billLine(bills.next, true)
+        : (bills.this && bills.this.finesMonth === mo.month) ? `${this._billLine(bills.this, false)} · ${this._billState(bills.this)}`
+        : '';
       const items = Array.isArray(mo.items) ? mo.items : [];
       const rows = items.length
         ? items.map((it) => `
@@ -1455,7 +1534,8 @@ class PaymentsScreen extends Screen {
             ${this.escape(mo.label)} fines · ${fmtAmt(Number(mo.total) || 0)}${mo.current ? ' so far' : ''}
           </div>
           ${rows}
-          ${mo.posting && (Number(mo.total) || 0) > 0 ? `<div style="margin-top:4px; opacity:0.8;">${this.escape(this._postingTip(mo, mo.posting))}</div>` : ''}
+          ${mo.posting && ((Number(mo.total) || 0) > 0 || mo.posting.status === 'drift') ? `<div style="margin-top:4px; opacity:0.8;">${this.escape(this._postingTip(mo, mo.posting))}</div>` : ''}
+          ${bill ? `<div style="margin-top:4px; font-weight:700;">${this.escape(bill)}</div>` : ''}
         </div>`;
     }).join('');
   }
