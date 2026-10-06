@@ -304,7 +304,7 @@ class RsvpBoardScreen extends Screen {
     const people = (this.data && this.data.people) || [];
     this.find('#rb-days').innerHTML = pills.map(pl => {
       if (pl.key === 'week') return chip('day', pl.key, pl.label, pl.key === this.day);
-      const n = people.filter(p => (p.open_events || []).some(ev => ev.day === pl.key)).length;
+      const n = people.filter(p => (this.role === 'all' ? this._roles(p).has('player') : this._inRole(p)) && (p.open_events || []).some(ev => ev.day === pl.key)).length;
       return `<button class="rb-chip${pl.key === this.day ? ' on' : ''}" data-day="${pl.key}"
                       style="${n || pl.key === this.day ? '' : 'opacity:0.45;'}"
                       title="${n} player${n === 1 ? '' : 's'} with something unanswered">${this.escapeHtml(pl.label)}${people.length ? ` <span style="opacity:0.7; font-weight:400;">${n}</span>` : ''}</button>`;
@@ -442,13 +442,19 @@ class RsvpBoardScreen extends Screen {
     };
     list.sort(sorters[this.sort] || sorters.worst);
 
-    const owing  = list.filter(p => this._openFor(p).length > 0).length;
-    const behind = list.filter(p => this._openFor(p).length + this._missedFor(p).length > 0).length;
+    // Every number is one hat (owner 2026-10-06): under Everyone the
+    // tallies are players, with coaches and staff counted beside them.
+    const tally  = this.role === 'all' ? list.filter(p => this._roles(p).has('player')) : list;
+    const owing  = tally.filter(p => this._openFor(p).length > 0).length;
+    const behind = tally.filter(p => this._openFor(p).length + this._missedFor(p).length > 0).length;
     const dayLabel = dayOn ? `${this._dayLabel().toLowerCase()} (${this._dayIso()})` : 'this week';
-    const noun = this.role === 'all' ? `player${list.length === 1 ? '' : 's'}`
-               : list.length === 1 ? 'person' : this._whoLabel(this.role).toLowerCase();
+    const nCoaches = list.filter(p => this._roles(p).has('coach')).length;
+    const nStaff   = list.filter(p => this._roles(p).has('staff')).length;
+    const head = this.role === 'all'
+      ? `${tally.length} player${tally.length === 1 ? '' : 's'}${nCoaches ? ` · ${nCoaches} coach${nCoaches === 1 ? '' : 'es'}` : ''}${nStaff ? ` · ${nStaff} staff` : ''} (counted apart)`
+      : `${list.length} ${list.length === 1 ? 'person' : this._whoLabel(this.role).toLowerCase()}`;
     this.find('#rb-summary').textContent =
-      `${list.length} ${noun} · ${owing} with unanswered events ${dayOn ? dayLabel : 'right now'} · ${behind} below 100% ${dayLabel} · ` +
+      `${head} · ${owing} with unanswered events ${dayOn ? dayLabel : 'right now'} · ${behind} below 100% ${dayLabel} · ` +
       `RSVP % covers ${RsvpBoardScreen.WINDOWS[this.window].toLowerCase()}, ` +
       `${{ all: 'practices & games', games: 'games only', practices: 'practices only' }[this.kind]} (from the day they joined the team)`;
 
@@ -470,6 +476,12 @@ class RsvpBoardScreen extends Screen {
     const owing = people.filter(p =>
       this._inTeams(p) && this._inRole(p) &&
       this._openFor(p).some(ev => ev.fh_event_id === this.eventId));
+    // Said apart (owner 2026-10-06): the message still goes to everyone
+    // owing under the Who pill, but the number never lumps hats together.
+    const hatOn = (p) => ((p.week_events || []).find(w => w && w.fh_event_id === this.eventId) || {}).role || 'player';
+    const owingPlayers = owing.filter(p => hatOn(p) === 'player').length;
+    const owingSide = owing.length - owingPlayers;
+    const owingText = `<b>${owingPlayers}</b> player${owingPlayers === 1 ? '' : 's'}${owingSide ? ` and <b>${owingSide}</b> coach${owingSide === 1 ? '' : 'es'}/staff` : ''}`;
     const phones = owing.filter(p => p.has_phone).length;
     const emails = owing.filter(p => p.has_email).length;
     const btn = (channel, icon, n, bg, what) =>
@@ -477,7 +489,7 @@ class RsvpBoardScreen extends Screen {
                title="${this.escapeHtml(n ? what : 'Nobody unanswered has one on file')}">${icon} ${channel === 'sms' ? 'GROUP TEXT' : 'EMAIL'} ${n}</button>`;
     slot.innerHTML = this._whoHtml(people, events) + `
       <div class="rb-bulk">
-        <span><b>${owing.length}</b> ${owing.length === 1 ? 'has' : 'have'} not answered
+        <span>${owingText} ${owing.length === 1 ? 'has' : 'have'} not answered
               <b>${this.escapeHtml(events.get(this.eventId) || '')}</b> — remind them all at once:</span>
         ${btn('sms', '💬', phones, '#0284c7', 'One group text (split into groups of 10) — no sign-in link, everyone sees each other\'s number')}
         ${btn('email', '✉', emails, '#7c3aed', 'One email, everyone BCC\'d — no sign-in link')}
@@ -588,25 +600,46 @@ class RsvpBoardScreen extends Screen {
   // names under whichever is open.  From each card's week_events, so it
   // follows the team pills and needs no extra fetch.  A yes from over the
   // dues line sits under Ineligible (migration 416).
+  // Players only in the pills; coaches and staff on the event sit in their
+  // own line underneath, never inside a player number (owner 2026-10-06:
+  // "we need to know what coaches are going but NEVER add them to the
+  // player total or any other total").  The hat is the event's role
+  // (week_events[].role), so a coach who also plays is counted as whatever
+  // they are on this event.
   _whoHtml(people, events) {
     const ans = (p) => (p.week_events || []).find(w => w && w.fh_event_id === this.eventId);
     const scoped = people.filter(p => this._inTeams(p) && this._inRole(p) && ans(p));
+    const players = scoped.filter(p => (ans(p).role || 'player') === 'player');
     const lists = {
-      going:      scoped.filter(p => ans(p).response === 'yes' && p.dues_eligible !== false),
-      ineligible: scoped.filter(p => ans(p).response === 'yes' && p.dues_eligible === false),
-      notgoing:   scoped.filter(p => ans(p).response === 'no'),
+      going:      players.filter(p => ans(p).response === 'yes' && p.dues_eligible !== false),
+      ineligible: players.filter(p => ans(p).response === 'yes' && p.dues_eligible === false),
+      notgoing:   players.filter(p => ans(p).response === 'no'),
     };
     const pill = (key, label, cls) =>
       `<button class="rb-chip${this.who === key ? ' on' : ''}" data-who="${key}"><span class="${cls}">${label}</span> ${lists[key].length}</button>`;
+    const name = (p) => this.escapeHtml(`${p.first_name || ''} ${p.last_name || ''}`.trim());
     const names = (list) => list.map(p => `${p.first_name || ''} ${p.last_name || ''}`.trim())
       .sort((a, b) => a.localeCompare(b)).map(n => this.escapeHtml(n)).join(', ') || 'Nobody yet.';
+    const sideLine = (label, hat) => {
+      const side = scoped.filter(p => ans(p).role === hat);
+      if (!side.length) return '';
+      const part = (mark, cls, list) => list.length ? `<span class="${cls}">${mark}</span> ${list.map(name).join(', ')}` : '';
+      return `<span style="flex-basis:100%; font-size:0.82rem; line-height:1.4; opacity:0.9;">
+        <b>${label}</b> (${side.length}, not in the player counts) —
+        ${[part('✓', 'rb-good', side.filter(p => ans(p).response === 'yes')),
+           part('✗', '',        side.filter(p => ans(p).response === 'no')),
+           part('? unanswered:', 'rb-bad', side.filter(p => !ans(p).response))].filter(Boolean).join(' · ')}</span>`;
+    };
+    const showPlayers = this.role === 'all' || this.role === 'player';
     return `
       <div class="rb-bulk" style="background:rgba(148,163,184,0.08);">
-        <span>Answered <b>${this.escapeHtml(events.get(this.eventId) || '')}</b>:</span>
-        ${pill('going', '✓ Going', 'rb-good')}
+        <span>Answered <b>${this.escapeHtml(events.get(this.eventId) || '')}</b>${showPlayers ? ' — players:' : ':'}</span>
+        ${showPlayers ? `${pill('going', '✓ Going', 'rb-good')}
         ${lists.ineligible.length ? pill('ineligible', '⛔ Ineligible', 'rb-bad') : ''}
         ${pill('notgoing', '✗ Not going', '')}
-        ${this.who && lists[this.who] ? `<span style="flex-basis:100%; font-size:0.85rem; line-height:1.4;">${names(lists[this.who])}</span>` : ''}
+        ${this.who && lists[this.who] ? `<span style="flex-basis:100%; font-size:0.85rem; line-height:1.4;">${names(lists[this.who])}</span>` : ''}` : ''}
+        ${sideLine('Coaches', 'coach')}
+        ${sideLine('Staff', 'staff')}
       </div>`;
   }
 
@@ -628,10 +661,16 @@ class RsvpBoardScreen extends Screen {
           const ha = g.is_home == null ? 'vs' : (g.is_home ? 'vs' : '@');
           const title = g.kind === 'match' ? `${ha} ${this.escapeHtml(g.opponent)}`
                       : g.kind === 'intrasquad' ? 'Intra Squad' : 'Practice';
+          // Player numbers only; coaches and staff on their own line
+          // (owner 2026-10-06: "NEVER add them to the player total").
+          const side = (label, n, y, no, un) => n
+            ? `<div style="font-size:0.72rem; opacity:0.8; margin-top:2px;">${label} <span class="rb-good">${y} going</span> · ${no} not · <span class="${un ? 'rb-bad' : ''}">${un} unanswered</span> of ${n}</div>` : '';
           const counts = g.released
             ? `<span class="rb-good">${g.yes} going</span>${g.yes_ineligible ? ` · <span class="rb-bad" title="Said going but over the dues line — not counted">⛔ ${g.yes_ineligible} ineligible</span>` : ''} · <span>${g.no} not</span> ·
                <span class="${g.unanswered ? 'rb-bad' : 'rb-good'}" style="font-weight:800;">${g.unanswered} unanswered</span>
-               <span style="opacity:0.6;"> of ${g.expected}</span>`
+               <span style="opacity:0.6;"> of ${g.expected} players</span>
+               ${side('Coaches', g.coaches, g.coaches_yes, g.coaches_no, g.coaches_unanswered)}
+               ${side('Staff', g.staff, g.staff_yes, g.staff_no, g.staff_unanswered)}`
             : `<span style="opacity:0.7;">Not released to players yet — nobody can answer</span>`;
           const cls = ['rb-game', on ? 'on' : '', g.kind === 'practice' ? 'practice' : '', g.team_id == null ? 'total' : ''].filter(Boolean).join(' ');
           return `
@@ -662,7 +701,9 @@ class RsvpBoardScreen extends Screen {
       if (group.length > 1 && group[0] === g) {
         tiles.push({ ...g, team_id: null,
           team_label: `All teams · ${group.map(x => x.team_label).join(' + ')}`,
-          expected: g.all_expected, yes: g.all_yes, yes_ineligible: g.all_yes_ineligible, no: g.all_no, unanswered: g.all_unanswered });
+          expected: g.all_expected, yes: g.all_yes, yes_ineligible: g.all_yes_ineligible, no: g.all_no, unanswered: g.all_unanswered,
+          coaches: g.all_coaches, coaches_yes: g.all_coaches_yes, coaches_no: g.all_coaches_no, coaches_unanswered: g.all_coaches_unanswered,
+          staff: g.all_staff, staff_yes: g.all_staff_yes, staff_no: g.all_staff_no, staff_unanswered: g.all_staff_unanswered });
       }
       tiles.push(g);
     }

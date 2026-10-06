@@ -1200,8 +1200,12 @@ class MyScreen extends Screen {
     `;
 
     const notGoingExpanded = this.notGoingExpandedEvents.has(ev.fh_event_id);
-    const notGoingTotal    = notGoingPlayers.length + notGoingCoaches.length;
+    // Players and coaches are never one number (owner 2026-10-06): the
+    // header carries the player count, with the coaches said beside it.
+    const notGoingTotal    = notGoingPlayers.length + notGoingCoaches.length;   // whether the section shows at all
     const noResponseTotal  = noResponsePlayers.length + noResponseCoaches.length;
+    const splitCount = (players, coaches) =>
+      `${players.length}${coaches.length ? ` <span style="font-weight:600; opacity:0.7;">+ ${coaches.length} coach${coaches.length === 1 ? '' : 'es'}</span>` : ''}`;
 
     return `
       <div style="background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,0.18);
@@ -1234,7 +1238,7 @@ class MyScreen extends Screen {
                            background:transparent; border:none; padding:0; cursor:pointer; color:inherit;">
               <span style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
                           color:rgba(226,232,240,0.75);">
-                Not Going (${notGoingTotal})
+                Not Going (${splitCount(notGoingPlayers, notGoingCoaches)})
               </span>
               <span style="font-size:0.62rem; opacity:0.6;">${notGoingExpanded ? '▲ Hide' : '▼ Show'}</span>
             </button>
@@ -1250,7 +1254,7 @@ class MyScreen extends Screen {
           <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
             <div style="font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
                         color:rgba(226,232,240,0.75); margin-bottom:6px;">
-              No Response (${noResponseTotal})
+              No Response (${splitCount(noResponsePlayers, noResponseCoaches)})
             </div>
             <div style="display:grid; gap:10px;">
               <div>${groupHtml('Coaches No Response', noResponseCoaches, 'no response', rowsHtml(noResponseCoaches))}</div>
@@ -1718,7 +1722,8 @@ class MyScreen extends Screen {
     const coachesGoingCount = rsvps.filter(r => r && r.response === 'yes' && r.is_coach).length;
     // Invited players who said yes are AVAILABLE, not going (migration 355).
     const callupsAvailCount = rsvps.filter(r => r && r.response === 'yes' && r.is_callup).length;
-    const notGoingCount = rsvps.filter(r => r && r.response === 'no').length;
+    const notGoingCount = rsvps.filter(r => r && r.response === 'no' && !r.is_coach).length;
+    const coachesNotGoingCount = rsvps.filter(r => r && r.response === 'no' && r.is_coach).length;
     const isExpanded = this.expandedEventId === ev.fh_event_id;
     const viewLabel = isExpanded ? 'Hide' : 'View';
 
@@ -1774,7 +1779,7 @@ class MyScreen extends Screen {
     const leagueLabel = (ev.league || '').trim();
     const compactMeta = `${leagueLabel ? leagueLabel + ' · ' : ''}${playersGoingCount} players, ${coachesGoingCount} coaches going`
       + (callupsAvailCount ? ` · ${callupsAvailCount} invited available` : '')
-      + ` · ${notGoingCount} not going`;
+      + ` · ${notGoingCount} not going${coachesNotGoingCount ? ` (+${coachesNotGoingCount} coach${coachesNotGoingCount === 1 ? '' : 'es'})` : ''}`;
     // Coaches of this practice are due before it starts (mig 529) — shown
     // to the coach, never on a child's view.
     const coachArrival = !whoChild && ev.coach_arrival_label ? MessageCopy.block('my_schedule', 'coach_arrival', { time: ev.coach_arrival_label }) : '';

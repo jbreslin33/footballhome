@@ -2756,7 +2756,9 @@ class GameCenterScreen extends Screen {
     btn.textContent = '⏳';
     try {
       const data = await this._postReminder('/api/rsvp-board/remind-event',
-        { match_id: Number(this.matchId), scope: 'week', channel });
+        // Players only — the No Response list above is players, so the
+        // message matches it (owner 2026-10-06: coaches never in a player total).
+        { match_id: Number(this.matchId), scope: 'week', channel, role: 'player' });
       const contacts = data.contacts || [];
       const skipped = data.no_contact
         ? ` · ${data.no_contact} skipped (no ${channel === 'sms' ? 'mobile' : 'email'} on file)` : '';

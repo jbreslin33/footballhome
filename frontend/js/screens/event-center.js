@@ -639,9 +639,11 @@ class EventCenterScreen extends Screen {
         ${colors.map(c => `<button type="button" class="ec-chip ${this.sideColors.has(c.code) ? 'on' : ''}"
             data-ec-side-color="${c.code}">${swatch(c, 10)} ${this.escapeHtml(c.label)}</button>`).join('')}
       </div>
-      ${group('Going', players.filter(p => p.rsvp === 'yes'))}
-      ${group('No response', players.filter(p => p.rsvp !== 'yes' && p.rsvp !== 'no'))}
-      ${group('Not going', players.filter(p => p.rsvp === 'no'))}`;
+      ${group('Going', players.filter(p => !p.is_coach && p.rsvp === 'yes'))}
+      ${group('No response', players.filter(p => !p.is_coach && p.rsvp !== 'yes' && p.rsvp !== 'no'))}
+      ${group('Not going', players.filter(p => !p.is_coach && p.rsvp === 'no'))}
+      ${players.some(p => p.is_coach) ? `<div class="ec-box" style="border-style:dashed; opacity:0.85;"><span class="ec-h">Coaches — not on a side</span>
+        <div class="ec-row"><span>${players.filter(p => p.is_coach).map(p => this.escapeHtml([p.first_name, p.last_name].filter(Boolean).join(' '))).join(', ')}</span></div></div>` : ''}`;
   }
 
   _attendanceCell(personId) {
@@ -694,15 +696,35 @@ class EventCenterScreen extends Screen {
       return `<div class="ec-box" style="opacity:0.7;">Nobody is on this event's list — tag a team on the calendar event.</div>`;
     }
     // A yes from someone over the dues line (dues_eligible=false,
-    // migration 416) is kept but counted apart from Going.
-    const goingAll = rsvps.filter(r => r && r.response === 'yes');
+    // migration 416) is kept but counted apart from Going.  Coaches sit in
+    // their own box with their own going / not / no-response lines and
+    // never inside a player group or count (owner 2026-10-06).
+    const coaches  = rsvps.filter(r => r && r.is_coach);
+    const players  = rsvps.filter(r => r && !r.is_coach);
+    const goingAll = players.filter(r => r.response === 'yes');
     const going    = goingAll.filter(r => r.dues_eligible !== false);
+    const coachBox = () => {
+      if (!coaches.length) return '';
+      const part = (label, list) => list.length
+        ? `<div class="ec-row"><span><b>${label}</b> ${list.map(r => this.escapeHtml(nameOf(r))).join(', ')}</span><span style="opacity:0.7;">${list.length}</span></div>` : '';
+      return `<div class="ec-box" style="border-style:dashed;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;">
+          <span class="ec-h">Coaches (${coaches.length}) — not in the player counts</span>
+          ${this.att ? `<span style="font-size:0.78rem; color:#22c55e; font-weight:700;">${present(coaches)} present</span>` : ''}
+        </div>
+        ${part('✓ Going', coaches.filter(r => r.response === 'yes'))}
+        ${part('✗ Not going', coaches.filter(r => r.response === 'no'))}
+        ${part('? No response', coaches.filter(r => r.response !== 'yes' && r.response !== 'no'))}
+        ${this.att ? coaches.map(r => `<div class="ec-row"><span>${this.escapeHtml(nameOf(r))}</span>${this._attendanceCell(r.person_id)}</div>`).join('') : ''}
+      </div>`;
+    };
     return `
       ${group('Going', going.filter(r => !r.is_callup))}
       ${group('Invited · Available', going.filter(r => r.is_callup))}
       ${group('⛔ Said going · Ineligible (dues)', goingAll.filter(r => r.dues_eligible === false))}
-      ${group('Not going', rsvps.filter(r => r && r.response === 'no'))}
-      ${group('No response', rsvps.filter(r => r && r.response !== 'yes' && r.response !== 'no'))}`;
+      ${group('Not going', players.filter(r => r.response === 'no'))}
+      ${group('No response', players.filter(r => r.response !== 'yes' && r.response !== 'no'))}
+      ${coachBox()}`;
   }
 
   // Open invites with their answer and a withdraw, then everyone who COULD

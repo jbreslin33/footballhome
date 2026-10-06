@@ -2459,30 +2459,33 @@ Response CalendarController::handleGetEventSides(const Request& request) {
         }
 
         auto rows = db->query(R"SQL(
-            SELECT roster.person_id, roster.first_name, roster.last_name,
+            SELECT roster.person_id, roster.first_name, roster.last_name, roster.is_coach,
                    rv.response AS rsvp, ml.squad_color
               FROM (
+                -- A player wins over a coach row for the same person; a
+                -- coach-only person is flagged so the sides keep them apart
+                -- (owner 2026-10-06: coaches never inside a player count).
                 SELECT DISTINCT ON (combined.person_id) combined.*
                   FROM (
-                    SELECT p.id AS person_id, p.first_name, p.last_name
+                    SELECT p.id AS person_id, p.first_name, p.last_name, false AS is_coach
                       FROM fh_event_teams fet
                       JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
                       JOIN persons p ON p.id = tp.person_id
                      WHERE fet.fh_event_id = $1::bigint
                     UNION ALL
-                    SELECT p.id, p.first_name, p.last_name
+                    SELECT p.id, p.first_name, p.last_name, true
                       FROM fh_event_teams fet
                       JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
                       JOIN coaches co ON co.id = tc.coach_id
                       JOIN persons p ON p.id = co.person_id
                      WHERE fet.fh_event_id = $1::bigint
                     UNION ALL
-                    SELECT p.id, p.first_name, p.last_name
+                    SELECT p.id, p.first_name, p.last_name, false
                       FROM fh_event_invites i
                       JOIN persons p ON p.id = i.person_id
                      WHERE i.fh_event_id = $1::bigint AND i.revoked_at IS NULL
                   ) combined
-                 ORDER BY combined.person_id
+                 ORDER BY combined.person_id, combined.is_coach
               ) roster
               LEFT JOIN fh_event_rsvps rv
                      ON rv.fh_event_id = $1::bigint AND rv.person_id = roster.person_id
@@ -2500,6 +2503,7 @@ Response CalendarController::handleGetEventSides(const Request& request) {
                 {"last_name",   textOrNull(row, "last_name")},
                 {"rsvp",        textOrNull(row, "rsvp")},
                 {"squad_color", textOrNull(row, "squad_color")},
+                {"is_coach",    row["is_coach"].as<bool>()},
             });
         }
         return jsonOk({{"fh_event_id", fhEventId}, {"can_edit", canEdit},

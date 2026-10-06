@@ -418,16 +418,28 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
            to_char(ev.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') AS when_text,
            to_char(ev.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day,
            c.expected, c.yes, c.yes_ineligible, c.no,
-           t.expected AS all_expected, t.yes AS all_yes, t.yes_ineligible AS all_yes_ineligible, t.no AS all_no
+           c.coaches, c.coaches_yes, c.coaches_no, c.staff, c.staff_yes, c.staff_no,
+           t.expected AS all_expected, t.yes AS all_yes, t.yes_ineligible AS all_yes_ineligible, t.no AS all_no,
+           t.coaches AS all_coaches, t.coaches_yes AS all_coaches_yes, t.coaches_no AS all_coaches_no,
+           t.staff AS all_staff, t.staff_yes AS all_staff_yes, t.staff_no AS all_staff_no
       FROM ev
       -- A yes from someone over the dues line (migration 416) is kept but
       -- counted apart (owner 2026-09-23): `yes` is eligible yeses only,
       -- `yes_ineligible` the rest; unanswered = expected − both − no.
+      -- Players only in expected / yes / no (owner 2026-10-06: coaches
+      -- "NEVER add them to the player total or any other total"); the
+      -- coaches (role_rank 1) and staff (3) on the event are counted apart.
       CROSS JOIN LATERAL (
-            SELECT count(*) AS expected,
-                   count(*) FILTER (WHERE rv.response = 'yes' AND     fh_dues_eligible(e.person_id)) AS yes,
-                   count(*) FILTER (WHERE rv.response = 'yes' AND NOT fh_dues_eligible(e.person_id)) AS yes_ineligible,
-                   count(*) FILTER (WHERE rv.response = 'no')  AS no
+            SELECT count(*) FILTER (WHERE e.role_rank = 2) AS expected,
+                   count(*) FILTER (WHERE e.role_rank = 2 AND rv.response = 'yes' AND     fh_dues_eligible(e.person_id)) AS yes,
+                   count(*) FILTER (WHERE e.role_rank = 2 AND rv.response = 'yes' AND NOT fh_dues_eligible(e.person_id)) AS yes_ineligible,
+                   count(*) FILTER (WHERE e.role_rank = 2 AND rv.response = 'no')  AS no,
+                   count(*) FILTER (WHERE e.role_rank = 1) AS coaches,
+                   count(*) FILTER (WHERE e.role_rank = 1 AND rv.response = 'yes') AS coaches_yes,
+                   count(*) FILTER (WHERE e.role_rank = 1 AND rv.response = 'no')  AS coaches_no,
+                   count(*) FILTER (WHERE e.role_rank = 3) AS staff,
+                   count(*) FILTER (WHERE e.role_rank = 3 AND rv.response = 'yes') AS staff_yes,
+                   count(*) FILTER (WHERE e.role_rank = 3 AND rv.response = 'no')  AS staff_no
               -- One row per (person, team): roster carries a row per role now.
               FROM (SELECT DISTINCT person_id, team_id FROM roster) r
               JOIN expected e ON e.person_id = r.person_id AND e.fh_event_id = ev.fh_event_id
@@ -438,10 +450,16 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
       -- double-count a shared practice; `expected` is already one row per
       -- person per event).
       CROSS JOIN LATERAL (
-            SELECT count(*) AS expected,
-                   count(*) FILTER (WHERE rv.response = 'yes' AND     fh_dues_eligible(e.person_id)) AS yes,
-                   count(*) FILTER (WHERE rv.response = 'yes' AND NOT fh_dues_eligible(e.person_id)) AS yes_ineligible,
-                   count(*) FILTER (WHERE rv.response = 'no')  AS no
+            SELECT count(*) FILTER (WHERE e.role_rank = 2) AS expected,
+                   count(*) FILTER (WHERE e.role_rank = 2 AND rv.response = 'yes' AND     fh_dues_eligible(e.person_id)) AS yes,
+                   count(*) FILTER (WHERE e.role_rank = 2 AND rv.response = 'yes' AND NOT fh_dues_eligible(e.person_id)) AS yes_ineligible,
+                   count(*) FILTER (WHERE e.role_rank = 2 AND rv.response = 'no')  AS no,
+                   count(*) FILTER (WHERE e.role_rank = 1) AS coaches,
+                   count(*) FILTER (WHERE e.role_rank = 1 AND rv.response = 'yes') AS coaches_yes,
+                   count(*) FILTER (WHERE e.role_rank = 1 AND rv.response = 'no')  AS coaches_no,
+                   count(*) FILTER (WHERE e.role_rank = 3) AS staff,
+                   count(*) FILTER (WHERE e.role_rank = 3 AND rv.response = 'yes') AS staff_yes,
+                   count(*) FILTER (WHERE e.role_rank = 3 AND rv.response = 'no')  AS staff_no
               FROM expected e
               LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
              WHERE e.fh_event_id = ev.fh_event_id) t
@@ -482,6 +500,17 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
             {"all_no",         allNo},
             {"all_unanswered", allExpected - allYes - allYesIneligible - allNo},
         });
+        // Coaches and staff apart from the players (owner 2026-10-06).
+        auto& ev = events.back();
+        for (const char* pre : {"", "all_"}) {
+            for (const char* who : {"coaches", "staff"}) {
+                const std::string k = std::string(pre) + who;
+                const long long n   = row[k.c_str()].as<long long>();
+                const long long y   = row[(k + "_yes").c_str()].as<long long>();
+                const long long no_ = row[(k + "_no").c_str()].as<long long>();
+                ev[k] = n; ev[k + "_yes"] = y; ev[k + "_no"] = no_; ev[k + "_unanswered"] = n - y - no_;
+            }
+        }
     }
     return events;
 }
