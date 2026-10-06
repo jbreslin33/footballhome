@@ -548,11 +548,16 @@ class RsvpBoardScreen extends Screen {
   // practices, the day pill keeps that day only — with Today picked and
   // no game today, no game tile shows.  A team's next game beyond the
   // release window rides along on the whole-week view as "not released".
+  // The team pills narrow the tiles too (owner 2026-10-06: "when i click u8
+  // travel and games only why do u10 games show?"): with teams picked, only
+  // their events; the All-teams total then only appears when every team
+  // sharing the event is picked.
   _snapshotEvents() {
     const day = this._dayIso();
     return ((this.data && this.data.events) || []).filter(ev =>
       (this.kind === 'all' || (this.kind === 'games') === (ev.kind !== 'practice')) &&
-      (!day || ev.day === day));
+      (!day || ev.day === day) &&
+      (this.teamIds.size === 0 || this.teamIds.has(ev.team_id)));
   }
 
   _inTeams(p)  { return this.teamIds.size === 0 || (p.teams || []).some(t => this.teamIds.has(t.id)); }
