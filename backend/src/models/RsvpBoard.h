@@ -81,8 +81,11 @@ public:
         std::vector<OpenEvent> weekEvents;
     };
     // sectionCode "" = any section (the caller scopes by event / team).
+    // role "all" or one hat — player | coach | staff — on that event
+    // (#rsvps Who pill, mig 530).
     GroupReminderContext groupReminderContext(const std::string& sectionCode, long long fhEventId,
-                                              const std::vector<long long>& teamIds);
+                                              const std::vector<long long>& teamIds,
+                                              const std::string& role = "all");
 
     // The copy itself is message_templates kind='rsvp_reminder', tier
     // 'adult' | 'parent' (one player, magic link) or 'group_adult' |

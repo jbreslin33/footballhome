@@ -41,6 +41,9 @@ class RsvpBoardScreen extends Screen {
     // Team pills multi-select (owner 2026-09-23); empty = every team.
     // Group pills (rsvp_team_groups, migration 419) toggle a set at once.
     this.teamIds = new Set();
+    // Who pill (owner 2026-10-06: "add coaches pill"): all | player | coach | staff.
+    // A dual-role person sits under every hat they wear on the board.
+    this.role    = 'all';
     this.who     = null;       // 'going' | 'ineligible' | 'notgoing' — names open under the event bar
     this.eventId = null;       // "unanswered for this event" filter
     this.openOnly = false;
@@ -192,6 +195,7 @@ class RsvpBoardScreen extends Screen {
         <div class="rb-group"><span class="rb-lbl">RSVP % over</span><div id="rb-windows" class="rb-chips"></div></div>
         <div class="rb-group"><span class="rb-lbl">Events</span><div id="rb-kinds" class="rb-chips"></div></div>
         <div class="rb-group" id="rb-teams-group"><span class="rb-lbl">Team</span><div id="rb-teams" class="rb-chips"></div></div>
+        <div class="rb-group" id="rb-who-group"><span class="rb-lbl">Who</span><div id="rb-who" class="rb-chips"></div></div>
         <div id="rb-next" style="margin-bottom:var(--space-3);"></div>
         <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-3);">
           <label style="font-size:0.8rem; opacity:0.75;">Sort
@@ -239,6 +243,8 @@ class RsvpBoardScreen extends Screen {
       if (win) { this.window = win.dataset.window; this._renderChips(); this.load(); return; }
       const kind = e.target.closest('[data-kind]');
       if (kind) { this.kind = kind.dataset.kind; this.eventId = null; this._renderChips(); this.load(); return; }
+      const role = e.target.closest('[data-role]');
+      if (role) { this.role = role.dataset.role; this.who = null; this._renderChips(); this._renderBody(); return; }
       // Snapshot tile: focus the cards on that team's players who have
       // not answered that event; tap again to clear.
       const game = e.target.closest('[data-game]');
@@ -309,6 +315,17 @@ class RsvpBoardScreen extends Screen {
       .map(([k, l]) => chip('window', k, l, k === this.window)).join('');
     this.find('#rb-kinds').innerHTML = Object.entries(RsvpBoardScreen.KINDS)
       .map(([k, l]) => chip('kind', k, l, k === this.kind)).join('');
+    // Who pills: Everyone always; a hat only when somebody on the board
+    // wears it, with how many of them still owe an answer.
+    const hats = ['all', 'player', 'coach', 'staff'].filter(r =>
+      r === 'all' || r === this.role || people.some(p => this._roles(p).has(r)));
+    if (!hats.includes(this.role)) this.role = 'all';
+    this.find('#rb-who').innerHTML = hats.map(r => {
+      const owing = r === 'all' ? 0 : people.filter(p => this._roles(p).has(r) && this._openFor(p).length > 0).length;
+      return `<button class="rb-chip${r === this.role ? ' on' : ''}" data-role="${r}"
+                      title="${r === 'all' ? 'Everybody on the board' : `${owing} with something unanswered`}">${this.escapeHtml(this._whoLabel(r))}${r !== 'all' && people.length ? ` <span style="opacity:0.7; font-weight:400;">${owing}</span>` : ''}</button>`;
+    }).join('');
+    this.find('#rb-who-group').style.display = hats.length > 1 ? '' : 'none';
     this.find('#rb-sort').innerHTML = Object.entries(RsvpBoardScreen.SORTS)
       .map(([k, l]) => `<option value="${k}"${k === this.sort ? ' selected' : ''}>${this.escapeHtml(l)}</option>`).join('');
     const openOnly = this.find('#rb-open-only');
@@ -403,7 +420,7 @@ class RsvpBoardScreen extends Screen {
 
     const dayOn = this.day !== 'week';
     const list = people.filter(p =>
-      this._inTeams(p) &&
+      this._inTeams(p) && this._inRole(p) &&
       (this.eventId == null || this._openFor(p).some(ev => ev.fh_event_id === this.eventId)) &&
       // A day pill is a straggler list: only players with something still
       // unanswered that day.
@@ -428,8 +445,10 @@ class RsvpBoardScreen extends Screen {
     const owing  = list.filter(p => this._openFor(p).length > 0).length;
     const behind = list.filter(p => this._openFor(p).length + this._missedFor(p).length > 0).length;
     const dayLabel = dayOn ? `${this._dayLabel().toLowerCase()} (${this._dayIso()})` : 'this week';
+    const noun = this.role === 'all' ? `player${list.length === 1 ? '' : 's'}`
+               : list.length === 1 ? 'person' : this._whoLabel(this.role).toLowerCase();
     this.find('#rb-summary').textContent =
-      `${list.length} player${list.length === 1 ? '' : 's'} · ${owing} with unanswered events ${dayOn ? dayLabel : 'right now'} · ${behind} below 100% ${dayLabel} · ` +
+      `${list.length} ${noun} · ${owing} with unanswered events ${dayOn ? dayLabel : 'right now'} · ${behind} below 100% ${dayLabel} · ` +
       `RSVP % covers ${RsvpBoardScreen.WINDOWS[this.window].toLowerCase()}, ` +
       `${{ all: 'practices & games', games: 'games only', practices: 'practices only' }[this.kind]} (from the day they joined the team)`;
 
@@ -445,11 +464,11 @@ class RsvpBoardScreen extends Screen {
     const slot = this.find('#rb-bulk');
     if (!slot) return;
     if (this.eventId == null) { slot.innerHTML = ''; this.bulk = null; return; }
-    const key = `${this.section}:${this.eventId}:${this._teamKey()}`;
+    const key = `${this.section}:${this.eventId}:${this._teamKey()}:${this.role}`;
     if (this.bulk && this.bulk.key !== key) this.bulk = null;
 
     const owing = people.filter(p =>
-      this._inTeams(p) &&
+      this._inTeams(p) && this._inRole(p) &&
       this._openFor(p).some(ev => ev.fh_event_id === this.eventId));
     const phones = owing.filter(p => p.has_phone).length;
     const emails = owing.filter(p => p.has_email).length;
@@ -473,7 +492,7 @@ class RsvpBoardScreen extends Screen {
   // bigger group becomes several links — a tap can only open one thread.
   async _remindEvent(btn) {
     const channel = btn.dataset.bulk === 'email' ? 'email' : 'sms';
-    const key = `${this.section}:${this.eventId}:${this._teamKey()}`;
+    const key = `${this.section}:${this.eventId}:${this._teamKey()}:${this.role}`;
     const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = '⏳';
@@ -485,7 +504,7 @@ class RsvpBoardScreen extends Screen {
         : ((((this.data && this.data.people) || []).find(p => (p.open_events || []).some(ev => ev.fh_event_id === this.eventId)) || {}).section || 'mens');
       const res = await fetch('/api/rsvp-board/remind-event', {
         method: 'POST', headers, credentials: 'same-origin',
-        body: JSON.stringify({ section, fh_event_id: this.eventId, team_ids: [...this.teamIds], channel }),
+        body: JSON.stringify({ section, fh_event_id: this.eventId, team_ids: [...this.teamIds], role: this.role, channel }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -537,6 +556,20 @@ class RsvpBoardScreen extends Screen {
   }
 
   _inTeams(p)  { return this.teamIds.size === 0 || (p.teams || []).some(t => this.teamIds.has(t.id)); }
+  // Every hat a person wears on the board: the row's lead role plus the
+  // role on each of the week's events (a coach who also plays has both).
+  _roles(p) {
+    const set = new Set();
+    if (p && p.role) set.add(p.role);
+    for (const w of ((p && p.week_events) || [])) if (w && w.role) set.add(w.role);
+    return set;
+  }
+  _inRole(p)   { return this.role === 'all' || this._roles(p).has(this.role); }
+  // Pill words are message_templates kind 'rsvp_board_who' (mig 530).
+  _whoLabel(r) {
+    const mc = window.MessageCopy;
+    return (mc && mc.block && mc.block('rsvp_board_who', r)) || { all: 'Everyone', player: 'Players', coach: 'Coaches', staff: 'Staff' }[r] || r;
+  }
   _teamKey()   { return [...this.teamIds].sort((a, b) => a - b).join('+'); }
   // A tile is lit when its event is picked and the team pills match it:
   // the All-teams total ↔ no team picked, a team tile ↔ just that team.
@@ -552,7 +585,7 @@ class RsvpBoardScreen extends Screen {
   // dues line sits under Ineligible (migration 416).
   _whoHtml(people, events) {
     const ans = (p) => (p.week_events || []).find(w => w && w.fh_event_id === this.eventId);
-    const scoped = people.filter(p => this._inTeams(p) && ans(p));
+    const scoped = people.filter(p => this._inTeams(p) && this._inRole(p) && ans(p));
     const lists = {
       going:      scoped.filter(p => ans(p).response === 'yes' && p.dues_eligible !== false),
       ineligible: scoped.filter(p => ans(p).response === 'yes' && p.dues_eligible === false),

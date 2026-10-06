@@ -543,7 +543,8 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
 }
 
 RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
-        const std::string& sectionCode, long long fhEventId, const std::vector<long long>& teamIds) {
+        const std::string& sectionCode, long long fhEventId, const std::vector<long long>& teamIds,
+        const std::string& role) {
     auto* db = Database::getInstance();
     GroupReminderContext ctx;
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
@@ -572,8 +573,9 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
                  ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
                           x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
          WHERE o.fh_event_id = $6::bigint
+           AND ($7::text = 'all' OR o.role = $7::text)   -- #rsvps Who pill (mig 530)
          ORDER BY p.last_name, p.first_name)SQL";
-    auto rows = db->query(sql, {sectionCode, "", pgIntArray(teamIds), "0", "all", std::to_string(fhEventId)});
+    auto rows = db->query(sql, {sectionCode, "", pgIntArray(teamIds), "0", "all", std::to_string(fhEventId), role});
     std::vector<std::pair<std::string, OpenEvent>> week;   // (start, event), deduped
     for (const auto& row : rows) {
         if (ctx.line.empty()) ctx.line = row["line"].c_str();

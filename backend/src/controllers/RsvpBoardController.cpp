@@ -352,9 +352,10 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
         return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
     }
     long long fhEventId = 0, teamId = 0, matchId = 0;
-    std::string channel, sectionKey, reach;
+    std::string channel, sectionKey, reach, role;
     try {
         fhEventId  = body.value("fh_event_id", 0LL);
+        role       = body.value("role", std::string("all"));   // #rsvps Who pill (mig 530)
         matchId    = body.value("match_id", 0LL);
         reach      = body.value("scope", std::string("event"));
         teamId     = body.contains("team_id") && !body["team_id"].is_null() ? body["team_id"].get<long long>() : 0LL;
@@ -379,6 +380,8 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
     if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id or match_id required");
     if (channel != "sms" && channel != "email")
         return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
+    if (role != "all" && role != "player" && role != "coach" && role != "staff")
+        return jsonError(HttpStatus::BAD_REQUEST, "role must be all, player, coach or staff");
 
     // The teams asked for (team_ids, or the older single team_id), else
     // whatever the caller may see.  #rsvps sends several since its team
@@ -396,7 +399,7 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
     }
 
     try {
-        auto ctx = model_->groupReminderContext(def ? def->code : "", fhEventId, teamIds);
+        auto ctx = model_->groupReminderContext(def ? def->code : "", fhEventId, teamIds, role);
         if (ctx.recipients.empty())
             return jsonError(HttpStatus::CONFLICT,
                 "Nothing to remind — nobody can still answer that event (all answered, not released yet, or already over).");
