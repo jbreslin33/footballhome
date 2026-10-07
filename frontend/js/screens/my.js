@@ -66,7 +66,7 @@ class MyScreen extends Screen {
     } catch (err) { /* private window */ }
     this.futureEvents    = null;         // 90-day feed, loaded on first use
     this.futureError     = null;
-    this.eventsRange     = 'current';    // 'current' | 'yesterday' | 'last7' | 'last30' | 'all'
+    this.eventsRange     = 'current';    // 'current' | 'from:YYYY-MM-DD' (7 days from that date)
     this.oldEvents       = null;         // cached results for the active non-current range
     this.oldEventsLoading = false;
     this.oldEventsError  = null;
@@ -450,6 +450,7 @@ class MyScreen extends Screen {
       this._syncChatComposerState();
     });
     this.element.addEventListener('click', (e) => {
+      if (e.target.closest('[data-range-this-week]')) { this._onRangeChange('current'); return; }
       const layout = e.target.closest('[data-layout]');
       if (layout) {
         this.layout = layout.dataset.layout;
@@ -482,9 +483,9 @@ class MyScreen extends Screen {
       this._renderEvents();
     });
     this.element.addEventListener('change', (e) => {
-      const select = e.target.closest('#events-range-select');
-      if (!select) return;
-      this._onRangeChange(select.value);
+      const date = e.target.closest('#events-range-date');
+      if (!date) return;
+      this._onRangeChange(date.value ? `from:${date.value}` : 'current');
     });
   }
 
@@ -1033,36 +1034,23 @@ class MyScreen extends Screen {
 
   // ────── Old events (range picker) ─────────────────────────────────
 
+  // This week, or any 7 days from a picked date — back or forward alike
+  // (owner 2026-10-07: "make it a simple date picker with this week or
+  // date picker. date picker shows 7 days from date picked … this allows
+  // for quick going back or forward").  eventsRange is 'current' or
+  // 'from:YYYY-MM-DD'.
   _rangeSelectHtml() {
-    // Looking ahead as well as back (owner 2026-10-07: "the drop down for
-    // this week etc should allow for looking ahead").  Ahead of the
-    // released week an event is read-only ("not released yet").
-    const options = [
-      ['current', 'This Week'],
-      ['next7', 'Next Week'],
-      ['next30', 'Next Month'],
-      ['next90', 'Next 3 Months'],
-      ['yesterday', 'Yesterday'],
-      ['last7', 'Last Week'],
-      ['last30', 'Last Month'],
-      ['all', 'All Past'],
-    ];
-    const optsHtml = options.map(([val, label]) =>
-      `<option value="${val}" ${this.eventsRange === val ? 'selected' : ''}>${this.escapeHtml(label)}</option>`
-    ).join('');
-    const layouts = [];   // Calendar / List toggle retired 2026-10-07 — the day grid is the only layout
-    const layoutHtml = layouts.length < 2 ? '' : layouts.map(([key, tier]) => `<button type="button" data-layout="${key}"
-        style="padding:3px 9px; border-radius:6px; cursor:pointer; font-size:0.68rem; font-weight:700;
-               border:1px solid ${this.layout === key ? '#2563eb' : 'rgba(255,255,255,0.16)'};
-               background:${this.layout === key ? '#2563eb' : 'transparent'}; color:${this.layout === key ? '#fff' : '#dbeafe'};">${this.escapeHtml(MessageCopy.block('my_schedule', tier))}</button>`).join('');
+    const from = String(this.eventsRange).startsWith('from:') ? this.eventsRange.slice(5) : '';
+    const onWeek = !from;
     return `
       <div style="display:flex; justify-content:flex-end; align-items:center; gap:5px; margin-bottom:6px;">
-        ${layoutHtml}
-        <select id="events-range-select" style="padding:3px 6px; border-radius:6px;
-                border:1px solid rgba(255,255,255,0.16); background:rgba(15,23,42,0.7);
-                color:#dbeafe; font-size:0.68rem; font-weight:600;">
-          ${optsHtml}
-        </select>
+        <button type="button" data-range-this-week
+                style="padding:3px 9px; border-radius:6px; cursor:pointer; font-size:0.68rem; font-weight:700;
+                       border:1px solid ${onWeek ? '#2563eb' : 'rgba(255,255,255,0.16)'};
+                       background:${onWeek ? '#2563eb' : 'transparent'}; color:${onWeek ? '#fff' : '#dbeafe'};">This week</button>
+        <input type="date" id="events-range-date" value="${this.escapeHtml(from)}" aria-label="Show 7 days from"
+               style="padding:2px 6px; border-radius:6px; border:1px solid ${onWeek ? 'rgba(255,255,255,0.16)' : '#2563eb'};
+                      background:rgba(15,23,42,0.7); color:#dbeafe; font-size:0.68rem; font-weight:600; color-scheme:dark;">
       </div>`;
   }
 
@@ -1091,38 +1079,20 @@ class MyScreen extends Screen {
     this._renderEvents();
 
     try {
-      let events;
-      if (rangeKey === 'all') {
-        events = [];
-        let chunkEnd = new Date();
-        for (let i = 0; i < 4; i++) {
-          const chunkStart = new Date(chunkEnd.getTime() - 90 * 24 * 60 * 60 * 1000);
-          const res = await this._fetch(
-            `/api/calendar/upcoming?start=${encodeURIComponent(chunkStart.toISOString())}&days=90`);
-          const chunk = res.events || [];
-          if (chunk.length === 0) break;
-          events = events.concat(chunk);
-          chunkEnd = chunkStart;
-        }
-      } else if (rangeKey.startsWith('next')) {
-        // From the end of this week's window forward.
-        const daysAhead = { next7: 7, next30: 30, next90: 90 }[rangeKey] || 7;
-        const start = this._weekWindowEnd();
-        const res = await this._fetch(
-          `/api/calendar/upcoming?start=${encodeURIComponent(start.toISOString())}&days=${daysAhead}`);
-        events = res.events || [];
-      } else {
-        const daysBack = { yesterday: 1, last7: 7, last30: 30 }[rangeKey] || 7;
-        const start = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
-        const res = await this._fetch(
-          `/api/calendar/upcoming?start=${encodeURIComponent(start.toISOString())}&days=${daysBack}`);
-        events = res.events || [];
-      }
+      const day = String(rangeKey).startsWith('from:') ? rangeKey.slice(5) : '';
+      const start = day ? new Date(`${day}T00:00:00`) : new Date();
+      const res = await this._fetch(
+        `/api/calendar/upcoming?start=${encodeURIComponent(start.toISOString())}&days=7`);
+      const end = start.getTime() + 7 * 24 * 60 * 60 * 1000;
+      const events = (res.events || []).filter(e => {
+        const t = new Date(e.starts_at).getTime();
+        return !isNaN(t) && t >= start.getTime() && t < end;
+      });
       if (this.eventsRange !== rangeKey) return; // user switched ranges while this was in flight
       this.oldEvents = events;
     } catch (err) {
       if (this.eventsRange !== rangeKey) return;
-      console.error('[my] old events load failed:', err);
+      console.error('[my] range load failed:', err);
       this.oldEventsError = err.message || 'Failed to load.';
     } finally {
       if (this.eventsRange === rangeKey) this.oldEventsLoading = false;
@@ -1146,17 +1116,14 @@ class MyScreen extends Screen {
     }
 
     rangeHtml += this._whoPillsHtml();
-    const ahead = String(this.eventsRange).startsWith('next');
     const list = (this.oldEvents || [])
       .filter(e => this._isPlayerScheduleEvent(e))
       .filter(e => this._whoMatch(e))
       .filter(e => e.starts_at && !isNaN(new Date(e.starts_at)))
-      .sort((a, b) => ahead ? new Date(a.starts_at) - new Date(b.starts_at)      // soonest first
-                            : new Date(b.starts_at) - new Date(a.starts_at));    // most recent first
+      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));   // in order, like the week
 
-    const rangeLabels = { yesterday: 'yesterday', last7: 'the last week', last30: 'the last month', all: 'your history',
-                          next7: 'next week', next30: 'the next month', next90: 'the next 3 months' };
-    const rangeLabel = rangeLabels[this.eventsRange] || 'this range';
+    const from = String(this.eventsRange).startsWith('from:') ? this.eventsRange.slice(5) : '';
+    const rangeLabel = from ? `the 7 days from ${this._eventDateStr(`${from}T12:00:00`) || from}` : 'this range';
 
     if (sub) {
       sub.textContent = list.length
@@ -1173,13 +1140,14 @@ class MyScreen extends Screen {
       return;
     }
 
-    if (ahead) {
-      const weekEnd = this._weekWindowEnd();
-      const released = (e) => new Date(e.starts_at) <= (e.schedule_window_end ? new Date(e.schedule_window_end) : weekEnd);
-      box.innerHTML = rangeHtml + this._dayCells(list, e => released(e) ? this._renderEventCard(e) : this._renderFutureRow(e));
-      return;
-    }
-    box.innerHTML = rangeHtml + this._dayCells(list, e => this._renderEventCard(e, /*isPast*/ true));
+    // A past event is read-only; a coming one is live when released and
+    // a "not released yet" row beyond the window.
+    const weekEnd = this._weekWindowEnd();
+    const now = Date.now();
+    const released = (e) => new Date(e.starts_at) <= (e.schedule_window_end ? new Date(e.schedule_window_end) : weekEnd);
+    box.innerHTML = rangeHtml + this._dayCells(list, e =>
+      new Date(e.ends_at || e.starts_at).getTime() < now ? this._renderEventCard(e, /*isPast*/ true)
+      : released(e) ? this._renderEventCard(e) : this._renderFutureRow(e));
   }
 
   // Ops tags the raw Google Calendar description with a small DSL —
