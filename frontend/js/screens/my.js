@@ -622,7 +622,7 @@ class MyScreen extends Screen {
 
     this._renderDuesBanner();
     const head = rangeHtml + this._whoPillsHtml() + this._schedulePillsHtml();
-    if (this.scheduleView !== 'week') {
+    if (this._view() !== 'week') {
       this._renderFutureEvents(box, head, sub);
       return;
     }
@@ -768,7 +768,7 @@ class MyScreen extends Screen {
   _whoSource() {
     const seen = new Set(); const out = [];
     const source = this.eventsRange !== 'current' ? (this.oldEvents || [])
-                 : this.scheduleView === 'week' ? this._weekList()
+                 : this._view() === 'week' ? this._weekList()
                  : [...(this.events || []), ...(this.futureEvents || [])];
     for (const ev of source) {
       if (!ev || seen.has(ev.fh_event_id) || !this._isPlayerScheduleEvent(ev)) continue;
@@ -896,13 +896,24 @@ class MyScreen extends Screen {
     return html;
   }
 
+  // A parent with no hat of their own (owner 2026-10-07: "don't even have
+  // practice or game only as it just confuses them. 1 kid parents just
+  // show the cal. multi show each kid as a pill and maybe an all pill"):
+  // no This week / All / Games only / Practices only row, the week only.
+  _parentOnly() {
+    const all = [...(this.events || []), ...(this.futureEvents || [])].filter(ev => ev && this._isPlayerScheduleEvent(ev));
+    return all.length > 0 && !all.some(ev => ev.my_role) && all.some(ev => Array.isArray(ev.guardian_targets) && ev.guardian_targets.length);
+  }
+  _view() { return this._parentOnly() ? 'week' : this.scheduleView; }
+
   _schedulePillsHtml() {
+    if (this._parentOnly()) return '';
     const views = [['week', 'pill_week'], ['all', 'pill_all'], ['games', 'pill_games'], ['practices', 'pill_practices']];
     if (!views.every(([, tier]) => MessageCopy.has('my_schedule', tier))) return '';
     return `
       <div style="display:flex; gap:5px; flex-wrap:wrap; margin:0 0 6px;">
         ${views.map(([view, tier]) => {
-          const on = this.scheduleView === view;
+          const on = this._view() === view;
           return `<button type="button" data-schedule-view="${view}"
                     style="padding:4px 11px; border-radius:999px; cursor:pointer; font-size:0.7rem; font-weight:700;
                            border:1px solid ${on ? '#2563eb' : 'rgba(255,255,255,0.16)'};
@@ -933,7 +944,7 @@ class MyScreen extends Screen {
       this._loadFutureEvents();
       return;
     }
-    const kinds = { games: ['match', 'intrasquad'], practices: ['practice', 'pickup'] }[this.scheduleView];
+    const kinds = { games: ['match', 'intrasquad'], practices: ['practice', 'pickup'] }[this._view()];
     const now = Date.now();
     // The 14-day feed is the live one (polled, carries RSVP state) — a
     // released event is drawn from it so the card never goes stale.
