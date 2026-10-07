@@ -124,9 +124,17 @@
             const targets = (me && me.games && me.games[String(g.fh_event_id)]) || [];
             const mine = new Set();   // my household's names, highlighted on the card
             for (const t of targets) mine.add(t.name);
+            // Count-only sections: the viewer's own unanswered household
+            // members are named in the count — only they see it (mig 545).
+            const myOpen = targets.filter(t => !t.response).map(t => t.name);
+            const andWord = c('and_word') || 'and';
+            const myNames = myOpen.length <= 1 ? myOpen.join('') : myOpen.slice(0, -1).join(', ') + ' ' + andWord + ' ' + myOpen[myOpen.length - 1];
+            const countText = !g.no_response_count ? (c('none_zero') || 'Everyone has answered')
+              : myOpen.length ? (c('none_count_mine', { n: g.no_response_count, names: myNames }) || `${g.no_response_count} still to answer — including ${myNames}`)
+              : (c('none_count', { n: g.no_response_count }) || `${g.no_response_count} still to answer`);
             const noneHtml = g.no_response
               ? `<div class="names">${namesHtml(g.no_response, mine)}</div>`
-              : `<div class="count">${esc(g.no_response_count ? (c('none_count', { n: g.no_response_count }) || `${g.no_response_count} still to answer`) : (c('none_zero') || 'Everyone has answered'))}</div>`;
+              : `<div class="count">${esc(countText)}</div>`;
             const answerHtml = targets.length ? `
               <div class="answer">
                 <h4>${esc(c('answer_title', { first: me.first_name || '' }))}</h4>
