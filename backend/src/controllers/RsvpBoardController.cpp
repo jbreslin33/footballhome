@@ -189,58 +189,6 @@ Response RsvpBoardController::handleList(const Request& request) {
 // 'rsvp_reminder_fines', mig 463): the rules in force for their section,
 // then the fines they have earned in the months not yet posted.  '' when
 // their section has no rates.
-static std::string finesBlock(MessageCopy& copy, int personId) {
-    PersonFines model;
-    const json rules = model.rulesFor(personId);
-    if (rules.empty()) return "";
-    auto money = [](double v) {
-        char buf[32];
-        if (std::fabs(v - std::round(v)) < 0.005) std::snprintf(buf, sizeof buf, "$%.0f", v);
-        else std::snprintf(buf, sizeof buf, "$%.2f", v);
-        return std::string(buf);
-    };
-    std::string out;
-    const auto heading = copy.render("rsvp_reminder_fines", "heading", {});
-    if (heading.ok()) out += heading.body + "\n";
-    for (const auto& r : rules) {
-        const auto line = copy.render("rsvp_reminder_fines", "rule",
-                                      {{"label", r.value("label", "")}, {"amount", money(r.value("amount", 0.0))}});
-        if (line.ok()) out += line.body + "\n";
-    }
-    // Fines not yet on LA: every shown month whose posting is not 'posted'.
-    const auto months = model.monthsFor({personId}, 3);
-    auto it = months.find(personId);
-    std::string fined;
-    if (it != months.end() && it->second.contains("months")) {
-        for (const auto& mo : it->second["months"]) {
-            const auto& posting = mo.contains("posting") ? mo["posting"] : json(nullptr);
-            if (posting.is_object() && posting.value("status", "") == "posted") continue;
-            for (const auto& item : mo.value("items", json::array())) {
-                const std::string kind = item.value("eventKind", "");
-                std::string event = kind == "match" ? "Game" : kind == "intrasquad" ? "Intra Squad" : "Practice";
-                if (item.contains("opponent") && item["opponent"].is_string() && !item["opponent"].get<std::string>().empty())
-                    event += " vs " + item["opponent"].get<std::string>();
-                std::string when;
-                {
-                    auto r = Database::getInstance()->query(
-                        "SELECT to_char($1::timestamptz AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS w",
-                        {item.value("startAt", "")});
-                    if (!r.empty()) when = r[0]["w"].c_str();
-                }
-                const auto line = copy.render("rsvp_reminder_fines", "fined",
-                                              {{"when", when}, {"event", event},
-                                               {"label", item.value("label", "")},
-                                               {"amount", money(item.value("amount", 0.0))}});
-                if (line.ok()) fined += line.body + "\n";
-            }
-        }
-    }
-    const auto sub = copy.render("rsvp_reminder_fines", fined.empty() ? "none" : "fined_heading", {});
-    if (sub.ok()) out += "\n" + sub.body + "\n";
-    out += fined;
-    while (!out.empty() && out.back() == '\n') out.pop_back();
-    return out;
-}
 
 Response RsvpBoardController::handleRemind(const Request& request) {
     Scope scope;
@@ -307,19 +255,54 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         // kind 'rsvp_reminder' (migration 363); empty names fall back to
         // the kind='fallback' words (migration 366).
         MessageCopy copy;
-        // {fines}: the rules and any fines so far, for a player whose
-        // section fines (Men, mig 460) — owner 2026-09-27: "on rsvp
-        // reminders ... list fine rules at bottom and list any they were
-        // fined for".  Empty for everyone else, so the [[ ]] around it drops.
-        const std::string fines = finesBlock(copy, static_cast<int>(personId));
+        // {missing}: how many game / practice RSVPs are open, not which
+        // (mig 538) — owner 2026-10-07: "leave out what rsvp is missing ...
+        // just say your missing practice rsvps, or games and practice or
+        // game rsvp depening on what they are missing ... list total
+        // missing ... the message seems robotic".  Tiers missing_games /
+        // missing_practices / missing_both; "a" for one, the number past
+        // that.  {events} still lists them for any template that wants it.
+        int games = 0, practices = 0;
+        std::string deadline;
+        for (const auto& ev : ctx.openEvents) {
+            if (ev.kind == "practice") ++practices; else ++games;
+            if (deadline.empty() && ev.kind != "practice") deadline = ev.deadline;
+        }
+        const auto count = [](int n) { return n == 1 ? std::string("a") : std::to_string(n); };
+        const MessageCopy::Tokens countTokens = {
+            {"games", count(games)}, {"games_s", games == 1 ? "" : "s"},
+            {"practices", count(practices)}, {"practices_s", practices == 1 ? "" : "s"},
+            {"total", std::to_string(games + practices)}};
+        const std::string missing = copy.render("rsvp_reminder",
+            games && practices ? "missing_both" : games ? "missing_games" : "missing_practices", countTokens).body;
+        // {fine_note}: one line for a player whose section fines missed
+        // RSVPs (Men, mig 460) — owner 2026-10-07: "for men just lmk its a
+        // fine for missed rsvps".  Empty elsewhere, so its [[ ]] drops.
+        std::string fineNote;
+        {
+            std::string practiceFine, gameFine;
+            for (const auto& r : PersonFines().rulesFor(static_cast<int>(personId))) {
+                const std::string kind = r.value("kind", "");
+                char buf[32];
+                const double v = r.value("amount", 0.0);
+                if (std::fabs(v - std::round(v)) < 0.005) std::snprintf(buf, sizeof buf, "$%.0f", v);
+                else std::snprintf(buf, sizeof buf, "$%.2f", v);
+                if (kind == "missed_rsvp_practice") practiceFine = buf;
+                else if (kind == "missed_rsvp_game") gameFine = buf;
+            }
+            if (!practiceFine.empty() || !gameFine.empty())
+                fineNote = copy.render("rsvp_reminder", "fine_note",
+                                       {{"practice_fine", practiceFine}, {"game_fine", gameFine}}).body;
+        }
         // {travel}: the extra line when a travel team's game is on the list
         // (tier 'travel', mig 509) — owner 2026-10-02: "travel spots carry
         // extra responsibilty".  Empty otherwise, so its [[ ]] drops.
         const std::string travel = ctx.travelGame ? copy.render("rsvp_reminder", "travel", {}).body : std::string{};
         const auto msg = copy.render("rsvp_reminder", ctx.youth ? "parent" : "adult", {
             {"first", ctx.recipientFirstName}, {"child", ctx.playerFirstName},
-            {"events", events}, {"link", minted.url}, {"sender", senderName},
-            {"fines", fines}, {"travel", travel}});
+            {"events", events}, {"missing", missing}, {"deadline", deadline},
+            {"link", minted.url}, {"sender", senderName},
+            {"fine_note", fineNote}, {"travel", travel}});
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363)");
 

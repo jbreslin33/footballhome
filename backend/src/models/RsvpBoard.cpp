@@ -145,7 +145,7 @@ const char* kBaseCtes = R"SQL(
       -- along in the reminder message while it can still be answered
       -- (message_notes; the board keeps the short line).  Game notes are
       -- kit lists and stay off the reminder.
-      SELECT e.person_id, e.fh_event_id, e.starts_at,
+      SELECT e.person_id, e.fh_event_id, e.starts_at, e.kind,
              (e.ends_at > now()) AS still_open,
              to_char(e.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') AS "when",
              CASE e.kind WHEN 'match'      THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
@@ -551,7 +551,7 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
 
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
         SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at,
-               NULL::text AS day, false AS travel_game
+               NULL::text AS day, false AS travel_game, NULL::text AS kind, NULL::text AS deadline
           FROM roster r
         UNION ALL
         SELECT 'event', o.fh_event_id,
@@ -562,7 +562,12 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
                to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'),
                -- A travel team's game earns the reminder its travel line
                -- (mig 509) — the player hat only, like the deadline.
-               (o.role = 'player' AND fh_is_travel_game(o.fh_event_id))
+               (o.role = 'player' AND fh_is_travel_game(o.fh_event_id)),
+               -- The kind and the deadline on their own (mig 538): the
+               -- reminder now says how many game / practice RSVPs are
+               -- missing instead of listing them.
+               o.kind,
+               CASE WHEN o.role = 'player' THEN fh_rsvp_deadline_note(o.fh_event_id) END
           FROM open_events o
          ORDER BY what, starts_at)SQL";
     auto rows = db->query(sql, {"", "", "{}", std::to_string(personId), "all"});
@@ -571,7 +576,9 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
             ctx.teamIds.push_back(row["id"].as<long long>());
         } else {
             ctx.openEvents.push_back({row["id"].as<long long>(), row["line"].c_str(),
-                                      row["day"].is_null() ? std::string{} : row["day"].c_str()});
+                                      row["day"].is_null() ? std::string{} : row["day"].c_str(),
+                                      row["kind"].is_null() ? std::string{} : row["kind"].c_str(),
+                                      row["deadline"].is_null() ? std::string{} : row["deadline"].c_str()});
             if (row["travel_game"].as<bool>()) ctx.travelGame = true;
         }
     }

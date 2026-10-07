@@ -47,7 +47,9 @@ public:
                               const std::vector<long long>& scopeTeamIds);
 
     // Everything a reminder for one player needs.
-    struct OpenEvent { long long fhEventId; std::string line; std::string day; };   // day: club-local YYYY-MM-DD
+    // day: club-local YYYY-MM-DD; kind: practice | match | intrasquad;
+    // deadline: the game's RSVP deadline note for a player, "" otherwise.
+    struct OpenEvent { long long fhEventId; std::string line; std::string day; std::string kind; std::string deadline; };
     struct ReminderContext {
         bool        found = false;
         std::string playerFirstName;
