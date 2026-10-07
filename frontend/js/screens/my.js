@@ -49,7 +49,8 @@ class MyScreen extends Screen {
     // My Schedule pills: 'week' (the released week, RSVP-able) or the
     // read-ahead views 'all' | 'games' | 'practices'.  Remembered per device.
     this.scheduleView    = 'week';
-    this.who             = 'all';
+    this.who             = '';             // person pill: '' = default (first person) | all | role:<hat> | child:<id>
+    this.whoSub          = 'all';          // team / group pill under it: all | g:<group> | t:<team>
     this.layout          = 'days';   // 'days' | 'list'
     this.drive           = null;   // places, drive minutes, policy (mig 526)
     this.conflictPrompt  = null;   // { fhEventId, personId } — a Go that was held back
@@ -58,7 +59,8 @@ class MyScreen extends Screen {
       const v = localStorage.getItem('my.scheduleView');
       if (['week', 'all', 'games', 'practices'].includes(v)) this.scheduleView = v;
       // Whose schedule (mig 524): 'all' | 'player' | 'coach' | 'child:<person id>'.
-      this.who = localStorage.getItem('my.who') || 'all';
+      this.who = localStorage.getItem('my.who') || '';
+      this.whoSub = localStorage.getItem('my.whoSub') || 'all';
       // Day cells or the plain list as it was (mig 527).
       if (localStorage.getItem('my.layout') === 'list') this.layout = 'list';
     } catch (err) { /* private window */ }
@@ -458,7 +460,16 @@ class MyScreen extends Screen {
       const who = e.target.closest('[data-who]');
       if (who) {
         this.who = who.dataset.who;
-        try { localStorage.setItem('my.who', this.who); } catch (err) { /* private window */ }
+        this.whoSub = 'all';
+        try { localStorage.setItem('my.who', this.who); localStorage.setItem('my.whoSub', 'all'); } catch (err) { /* private window */ }
+        this.expandedEventId = null;
+        this._renderEvents();
+        return;
+      }
+      const whoSub = e.target.closest('[data-who-sub]');
+      if (whoSub) {
+        this.whoSub = whoSub.dataset.whoSub;
+        try { localStorage.setItem('my.whoSub', this.whoSub); } catch (err) { /* private window */ }
         this.expandedEventId = null;
         this._renderEvents();
         return;
@@ -730,58 +741,107 @@ class MyScreen extends Screen {
   // The row appears when the viewer has two or more; each pill carries how
   // many of this week's events still need an answer (a tick when none); a
   // child's pill also narrows a card to that child's Go / No row.
+  // Person keys (mig 547): the viewer's hat on the event and each child.
   _whoKeys(ev) {
     const keys = [];
-    if (ev.my_role) {
-      const isGame = ['match', 'intrasquad'].includes((ev.kind || '').toLowerCase());
-      if (isGame) {
-        const teams = this._mainTeamLabels(ev);
-        for (const t of (teams.length ? teams : ['Games'])) keys.push(`t:${t}`);
-      } else {
-        const groups = [...new Set((Array.isArray(ev.teams) ? ev.teams : []).map(t => t && t.rsvp_group).filter(Boolean))];
-        const fallback = this._mainTeamLabels(ev).join(' / ');
-        for (const g of (groups.length ? groups : (fallback ? [fallback] : []))) keys.push(`g:${g}`);
-      }
-    }
+    if (ev.my_role) keys.push(`role:${String(ev.my_role).toLowerCase()}`);
     for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])) if (c && c.person_id) keys.push(`child:${c.person_id}`);
     return keys;
   }
-
-  _whoOptions() {
-    const seen = new Set(); const opts = new Map();
-    const copy = (tier, tokens) => MessageCopy.block('my_schedule', tier, tokens);
-    // Pills for what the list on screen can show: this week's events on
-    // This week, the 90 days ahead on the other views, the range when
-    // looking back — never a pill that would open onto nothing.
+  // Team / practice-group keys of the viewer's OWN events (the sub-row).
+  _subKeys(ev) {
+    const keys = [];
+    if (!ev.my_role) return keys;
+    const isGame = ['match', 'intrasquad'].includes((ev.kind || '').toLowerCase());
+    if (isGame) {
+      const teams = this._mainTeamLabels(ev);
+      for (const t of (teams.length ? teams : ['Games'])) keys.push(`t:${t}`);
+    } else {
+      const groups = [...new Set((Array.isArray(ev.teams) ? ev.teams : []).map(t => t && t.rsvp_group).filter(Boolean))];
+      const fallback = this._mainTeamLabels(ev).join(' / ');
+      for (const g of (groups.length ? groups : (fallback ? [fallback] : []))) keys.push(`g:${g}`);
+    }
+    return keys;
+  }
+  // The events the pills describe: this week's on This week, the 90 days
+  // ahead on the other views, the range when looking back.
+  _whoSource() {
+    const seen = new Set(); const out = [];
     const source = this.eventsRange !== 'current' ? (this.oldEvents || [])
                  : this.scheduleView === 'week' ? this._weekList()
                  : [...(this.events || []), ...(this.futureEvents || [])];
     for (const ev of source) {
       if (!ev || seen.has(ev.fh_event_id) || !this._isPlayerScheduleEvent(ev)) continue;
-      seen.add(ev.fh_event_id);
+      seen.add(ev.fh_event_id); out.push(ev);
+    }
+    return out;
+  }
+  // The person row (owner 2026-10-07: "a me coach pill, me player pill …
+  // each kid would have a pill … that should be the view because dumping
+  // everything in a column is confusing"): Me · coach / Me · player / each
+  // child.  Shown when there are two or more; a lone hat with no children
+  // shows no row and its team pills stand alone.
+  _whoOptions() {
+    const opts = new Map();
+    const copy = (tier, tokens) => MessageCopy.block('my_schedule', tier, tokens);
+    for (const ev of this._whoSource()) {
       for (const key of this._whoKeys(ev)) {
         if (opts.has(key)) continue;
-        const name = key.slice(key.indexOf(':') + 1);
-        if (key.startsWith('g:')) opts.set(key, { key, order: 1, label: copy('who_practice', { group: name }) || name });
-        else if (key.startsWith('t:')) opts.set(key, { key, order: 2, label: copy('who_game', { team: name }) || name });
-        else {
-          const child = (ev.guardian_targets || []).find(c => c && String(c.person_id) === name);
-          opts.set(key, { key, order: 3, label: String((child && child.name) || '').split(' ')[0] || 'Child' });
+        if (key.startsWith('role:')) {
+          const role = key.slice(5);
+          opts.set(key, { key, order: role === 'coach' ? 1 : role === 'player' ? 2 : 3, role,
+                          label: copy(`who_${role}`) || `Me · ${role}` });
+        } else {
+          const id = key.slice(6);
+          const child = (ev.guardian_targets || []).find(c => c && String(c.person_id) === id);
+          opts.set(key, { key, order: 4, label: String((child && child.name) || '').split(' ')[0] || 'Child' });
         }
       }
     }
     const list = [...opts.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, undefined, { numeric: true }));
     return list.length >= 2 ? list : [];
   }
-
-  // The pill in force: the saved one while this viewer still has it.
-  _who() { return this._whoOptions().some(o => o.key === this.who) ? this.who : 'all'; }
-  _whoMatch(ev) { const who = this._who(); return who === 'all' || this._whoKeys(ev).includes(who); }
-
+  // The person in force: the saved pill while this viewer still has it;
+  // nothing saved → the first person, never everyone at once.
+  _who() {
+    const opts = this._whoOptions();
+    if (!opts.length) return 'all';
+    if (this.who === 'all' || opts.some(o => o.key === this.who)) return this.who;
+    return opts[0].key;
+  }
+  // The team / group pills under the person in force (or the viewer's
+  // own events when there is no person row): shown when two or more.
+  _subOptions() {
+    const who = this._who();
+    if (who.startsWith('child:')) return [];
+    if (who === 'all' && this._whoOptions().length) return [];   // everyone at once: no sub-row
+    const role = who.startsWith('role:') ? who.slice(5) : null;
+    const opts = new Map();
+    const copy = (tier, tokens) => MessageCopy.block('my_schedule', tier, tokens);
+    for (const ev of this._whoSource()) {
+      if (role && String(ev.my_role || '').toLowerCase() !== role) continue;
+      for (const key of this._subKeys(ev)) {
+        if (opts.has(key)) continue;
+        const name = key.slice(2);
+        if (key.startsWith('g:')) opts.set(key, { key, order: 1, label: copy('who_practice', { group: name }) || name });
+        else opts.set(key, { key, order: 2, label: copy('who_game', { team: name }) || name });
+      }
+    }
+    const list = [...opts.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, undefined, { numeric: true }));
+    return list.length >= 2 ? list : [];
+  }
+  _whoSubKey() { return this._subOptions().some(o => o.key === this.whoSub) ? this.whoSub : 'all'; }
+  _whoMatch(ev) {
+    const who = this._who();
+    if (who !== 'all' && !this._whoKeys(ev).includes(who)) return false;
+    const sub = this._whoSubKey();
+    if (sub !== 'all' && !this._subKeys(ev).includes(sub)) return false;
+    return true;
+  }
   // This week's events still waiting on an answer under one pill: the
-  // viewer's own on a group / team pill, the child's on a child pill, both
-  // on Everyone.  null = that pill has nothing this week.
-  _whoMissing(key) {
+  // viewer's own under a hat or team pill, the child's under a child pill,
+  // everyone's under All.  null = that pill has nothing this week.
+  _whoMissing(key, subKey) {
     const week = this._weekList();
     const open = (ev) => ev.rsvps_open_now !== false;
     const own = (ev) => ev.my_role && open(ev) && ev.my_rsvp_eligible !== false && !ev.my_rsvp ? 1 : 0;
@@ -790,7 +850,8 @@ class MyScreen extends Screen {
       const answered = (Array.isArray(ev.rsvps) ? ev.rsvps : []).some(r => r && r.person_id === id && r.response);
       return target && open(ev) && !answered ? 1 : 0;
     };
-    const mine = key === 'all' ? week : week.filter(ev => this._whoKeys(ev).includes(key));
+    let mine = key === 'all' ? week : week.filter(ev => this._whoKeys(ev).includes(key));
+    if (subKey && subKey !== 'all') mine = mine.filter(ev => this._subKeys(ev).includes(subKey));
     if (!mine.length) return null;
     return mine.reduce((n, ev) => {
       if (key === 'all') return n + own(ev) + (ev.guardian_targets || []).reduce((m, c) => m + (c ? kid(ev, c.person_id) : 0), 0);
@@ -799,26 +860,40 @@ class MyScreen extends Screen {
   }
 
   _whoPillsHtml() {
-    const opts = this._whoOptions();
-    if (!opts.length) return '';
-    const who = this._who();
     const copy = (tier, tokens) => MessageCopy.block('my_schedule', tier, tokens);
-    const all = [{ key: 'all', label: copy('who_all') || 'All' }, ...opts];
-    return `
-      <div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 8px;">
-        ${all.map(o => {
-          const on = who === o.key;
-          const icon = o.key.startsWith('g:') ? '🏃 ' : o.key.startsWith('t:') ? '⚽ ' : o.key.startsWith('child:') ? '🧒 ' : '';
-          const missing = this._whoMissing(o.key);
-          const badge = missing === null ? ''
-            : missing > 0 ? `<span title="${this.escapeHtml(copy('who_missing', { n: missing }))}" style="margin-left:6px; min-width:18px; padding:1px 6px; border-radius:999px; background:#dc2626; color:#fff; font-size:0.72rem; font-weight:900;">${missing}</span>`
-            : `<span title="${this.escapeHtml(copy('who_done'))}" style="margin-left:6px; color:${on ? '#14532d' : '#4ade80'}; font-weight:900;">✓</span>`;
-          return `<button type="button" data-who="${this.escapeHtml(o.key)}"
-                    style="display:inline-flex; align-items:center; padding:7px 12px; border-radius:999px; cursor:pointer; font-size:0.82rem; font-weight:800;
-                           border:1px solid ${on ? '#f59e0b' : 'rgba(255,255,255,0.22)'};
-                           background:${on ? '#f59e0b' : 'transparent'}; color:${on ? '#1f1300' : '#dbeafe'};">${icon}${this.escapeHtml(o.label)}${badge}</button>`;
-        }).join('')}
+    // Every pill says where it stands: a red count still to answer, a
+    // green tick when done (owner: "show a symbol … filled out or needs
+    // attention").
+    const pill = (attr, key, label, icon, on, missing) => {
+      const badge = missing === null ? ''
+        : missing > 0 ? `<span title="${this.escapeHtml(copy('who_missing', { n: missing }))}" style="margin-left:6px; min-width:18px; padding:1px 6px; border-radius:999px; background:#dc2626; color:#fff; font-size:0.72rem; font-weight:900;">${missing}</span>`
+        : `<span title="${this.escapeHtml(copy('who_done'))}" style="margin-left:6px; color:${on ? '#14532d' : '#4ade80'}; font-weight:900;">✓</span>`;
+      return `<button type="button" ${attr}="${this.escapeHtml(key)}"
+                style="display:inline-flex; align-items:center; padding:7px 12px; border-radius:999px; cursor:pointer; font-size:0.82rem; font-weight:800;
+                       border:1px solid ${on ? '#f59e0b' : 'rgba(255,255,255,0.22)'};
+                       background:${on ? '#f59e0b' : 'transparent'}; color:${on ? '#1f1300' : '#dbeafe'};">${icon}${this.escapeHtml(label)}${badge}</button>`;
+    };
+    const people = this._whoOptions();
+    const who = this._who();
+    let html = '';
+    if (people.length) {
+      const all = [...people, { key: 'all', label: copy('who_all') || 'All' }];
+      html += `<div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 6px;">
+        ${all.map(o => pill('data-who', o.key, o.label,
+            o.key === 'role:coach' ? '📋 ' : o.key === 'role:player' ? '⚽ ' : o.key.startsWith('child:') ? '🧒 ' : '',
+            who === o.key, this._whoMissing(o.key))).join('')}
       </div>`;
+    }
+    const subs = this._subOptions();
+    if (subs.length) {
+      const sub = this._whoSubKey();
+      const all = [{ key: 'all', label: people.length ? (copy('who_sub_all') || 'All') : (copy('who_all') || 'All') }, ...subs];
+      html += `<div style="display:flex; gap:5px; flex-wrap:wrap; margin:0 0 8px; ${people.length ? 'padding-left:6px;' : ''}">
+        ${all.map(o => pill('data-who-sub', o.key, o.label, o.key.startsWith('g:') ? '🏃 ' : o.key.startsWith('t:') ? '⚽ ' : '',
+            sub === o.key, this._whoMissing(who, o.key))).join('')}
+      </div>`;
+    }
+    return html;
   }
 
   _schedulePillsHtml() {
