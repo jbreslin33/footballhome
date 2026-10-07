@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdio>
 #include <iostream>
+#include <map>
 #include <sstream>
 
 #include "../core/Crypto.h"
@@ -249,7 +250,8 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         // Only events that can still be answered — one that already went
         // by would just confuse the player (owner 2026-09-19).
         std::string events;
-        for (const auto& ev : ctx.openEvents) events += "• " + ev.line + "\n";
+        for (const auto& ev : ctx.openEvents)
+            events += "• " + (ctx.siblings.empty() ? std::string{} : ev.playerFirstName + ": ") + ev.line + "\n";
         if (!events.empty()) events.pop_back();
 
         // kind 'rsvp_reminder' (migration 363); empty names fall back to
@@ -262,19 +264,50 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         // missing ... the message seems robotic".  Tiers missing_games /
         // missing_practices / missing_both; "a" for one, the number past
         // that.  {events} still lists them for any template that wants it.
+        const auto count = [](int n) { return n == 1 ? std::string("a") : std::to_string(n); };
+        const auto missingFor = [&](int games, int practices) {
+            const MessageCopy::Tokens countTokens = {
+                {"games", count(games)}, {"games_s", games == 1 ? "" : "s"},
+                {"practices", count(practices)}, {"practices_s", practices == 1 ? "" : "s"},
+                {"total", std::to_string(games + practices)}};
+            return copy.render("rsvp_reminder",
+                games && practices ? "missing_both" : games ? "missing_games" : "missing_practices", countTokens).body;
+        };
         int games = 0, practices = 0;
         std::string deadline;
+        // Per child, in the order they came (the clicked child first) —
+        // one parent, one message (mig 542).
+        std::vector<long long> childOrder;
+        std::map<long long, std::pair<int, int>> perChild;   // id → {games, practices}
+        std::map<long long, std::string> childName;
         for (const auto& ev : ctx.openEvents) {
             if (ev.kind == "practice") ++practices; else ++games;
             if (deadline.empty() && ev.kind != "practice") deadline = ev.deadline;
+            if (!perChild.count(ev.playerId)) { childOrder.push_back(ev.playerId); childName[ev.playerId] = ev.playerFirstName; }
+            auto& pc = perChild[ev.playerId];
+            if (ev.kind == "practice") ++pc.second; else ++pc.first;
         }
-        const auto count = [](int n) { return n == 1 ? std::string("a") : std::to_string(n); };
-        const MessageCopy::Tokens countTokens = {
-            {"games", count(games)}, {"games_s", games == 1 ? "" : "s"},
-            {"practices", count(practices)}, {"practices_s", practices == 1 ? "" : "s"},
-            {"total", std::to_string(games + practices)}};
-        const std::string missing = copy.render("rsvp_reminder",
-            games && practices ? "missing_both" : games ? "missing_games" : "missing_practices", countTokens).body;
+        const std::string missing = missingFor(games, practices);
+        // {children}: "Alex, Angel and Ryan" (the recipient themself as
+        // "you"); {per_child}: a line each (tier child_line) — only when more
+        // than one person has something open, so one child, or one adult,
+        // still reads as before.
+        std::string children, perChildLines;
+        const bool multi = childOrder.size() > 1;
+        if (multi) {
+            const std::string andWord = copy.render("rsvp_reminder", "and_word", {}).body;
+            const std::string youWord = copy.render("rsvp_reminder", "you_word", {}).body;
+            for (size_t i = 0; i < childOrder.size(); ++i) {
+                const auto id = childOrder[i];
+                const std::string name = id == ctx.recipientPersonId ? (youWord.empty() ? "you" : youWord) : childName[id];
+                if (i) children += (i + 1 == childOrder.size() ? " " + (andWord.empty() ? "and" : andWord) + " " : ", ");
+                children += name;
+                perChildLines += copy.render("rsvp_reminder", "child_line",
+                                             {{"child", name},
+                                              {"missing", missingFor(perChild[id].first, perChild[id].second)}}).body + "\n";
+            }
+            if (!perChildLines.empty()) perChildLines.pop_back();
+        }
         // {fine_note}: one line for a player whose section fines missed
         // RSVPs (Men, mig 460) — owner 2026-10-07: "for men just lmk its a
         // fine for missed rsvps".  Empty elsewhere, so its [[ ]] drops.
@@ -298,22 +331,35 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         // (tier 'travel', mig 509) — owner 2026-10-02: "travel spots carry
         // extra responsibilty".  Empty otherwise, so its [[ ]] drops.
         const std::string travel = ctx.travelGame ? copy.render("rsvp_reminder", "travel", {}).body : std::string{};
-        const auto msg = copy.render("rsvp_reminder", ctx.youth ? "parent" : "adult", {
+        const auto msg = copy.render("rsvp_reminder", multi ? "multi" : ctx.youth ? "parent" : "adult", {
             {"first", ctx.recipientFirstName}, {"child", ctx.playerFirstName},
+            {"children", children}, {"per_child", perChildLines},
             {"events", events}, {"missing", missing}, {"deadline", deadline},
             {"link", minted.url}, {"sender", senderName},
             {"fine_note", fineNote}, {"travel", travel}});
         if (!msg.ok())
-            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363)");
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363/542)");
 
-        json lastReminder = model_->logReminder(personId, ctx.recipientPersonId, channel, contact,
-                                                scope.userId, ctx.openEvents);
+        // One send, logged against every child it covered, each with their
+        // own events — the board dims every sibling's card (mig 542).
+        json lastReminder;
+        json also = json::array();
+        for (const auto id : childOrder) {
+            std::vector<RsvpBoard::OpenEvent> theirs;
+            for (const auto& ev : ctx.openEvents) if (ev.playerId == id) theirs.push_back(ev);
+            json lr = model_->logReminder(id, ctx.recipientPersonId, channel, contact, scope.userId, theirs);
+            if (id == personId) lastReminder = lr;
+            else also.push_back({{"person_id", id}, {"last_reminder", lr}});
+        }
+        if (lastReminder.is_null())
+            lastReminder = model_->logReminder(personId, ctx.recipientPersonId, channel, contact, scope.userId, {});
 
         json out = {
             {"url",           minted.url},
             {"expires_at",    minted.expiresIso},
             {"event_count",   ctx.openEvents.size()},
             {"last_reminder", lastReminder},
+            {"also",          also},
         };
         copy.addComposeHrefs(out, channel, contact, msg.subject, msg.body, msg.body);
         return jsonOut(HttpStatus::CREATED, out);

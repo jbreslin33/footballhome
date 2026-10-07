@@ -872,6 +872,24 @@ class RsvpBoardScreen extends Screen {
   // recipient's magic link), logs it, and hands back the compose href for
   // THIS device's Messages / Gmail.  Nothing is sent until the operator
   // presses send there.  Opening after an await works in practice for
+  // Dim a card's REMIND buttons and stamp when/by whom — the clicked
+  // card and, for a parent, each sibling's (mig 542).
+  _markReminded(card, person, lr, channel) {
+    const rem = lr || {};
+    card.querySelectorAll('[data-remind]').forEach(b => {
+      const isSms = b.dataset.remind === 'sms';
+      const mine  = isSms ? (rem.week_sms || 0) : (rem.week_email || 0);
+      b.textContent = `${isSms ? '💬' : '✉'} REMIND ✓${mine ? ` ×${mine}` : ''}`;
+      b.style.opacity = '0.45';
+    });
+    const tally = card.querySelector('[data-reminder-tally]');
+    if (tally && person) tally.textContent = this._tallyText(person);
+    const slot = card.querySelector('[data-reminded]');
+    if (slot && lr) {
+      slot.textContent = `${channel === 'sms' ? '💬' : '✉'} ${this._fmtDate(lr.sent_at)}` + (lr.by ? ` · ${lr.by}` : '');
+    }
+  }
+
   // sms: and Gmail compose — same as the LINK / WELCOME buttons.
   async _remind(btn) {
     const channel  = btn.dataset.remind === 'email' ? 'email' : 'sms';
@@ -893,6 +911,13 @@ class RsvpBoardScreen extends Screen {
 
       const person = ((this.data && this.data.people) || []).find(p => p.person_id === personId);
       if (person && data.last_reminder) this._applyTally(person, data.last_reminder);
+      // One parent, one message: the siblings it covered dim too (mig 542).
+      for (const a of (Array.isArray(data.also) ? data.also : [])) {
+        const sib = ((this.data && this.data.people) || []).find(p => p.person_id === a.person_id);
+        if (sib && a.last_reminder) this._applyTally(sib, a.last_reminder);
+        const sibCard = this.find(`[data-card="${a.person_id}"]`);
+        if (sibCard) this._markReminded(sibCard, sib, a.last_reminder, channel);
+      }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
       else window.location.href = data.sms_href;
 

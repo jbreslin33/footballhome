@@ -570,17 +570,41 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
                CASE WHEN o.role = 'player' THEN fh_rsvp_deadline_note(o.fh_event_id) END
           FROM open_events o
          ORDER BY what, starts_at)SQL";
-    auto rows = db->query(sql, {"", "", "{}", std::to_string(personId), "all"});
-    for (const auto& row : rows) {
-        if (std::string(row["what"].c_str()) == "team") {
-            ctx.teamIds.push_back(row["id"].as<long long>());
-        } else {
-            ctx.openEvents.push_back({row["id"].as<long long>(), row["line"].c_str(),
-                                      row["day"].is_null() ? std::string{} : row["day"].c_str(),
-                                      row["kind"].is_null() ? std::string{} : row["kind"].c_str(),
-                                      row["deadline"].is_null() ? std::string{} : row["deadline"].c_str()});
-            if (row["travel_game"].as<bool>()) ctx.travelGame = true;
+    auto collect = [&](long long pid, const std::string& firstName, bool teamsToo) {
+        auto rows = db->query(sql, {"", "", "{}", std::to_string(pid), "all"});
+        for (const auto& row : rows) {
+            if (std::string(row["what"].c_str()) == "team") {
+                if (teamsToo) ctx.teamIds.push_back(row["id"].as<long long>());
+            } else {
+                OpenEvent ev{row["id"].as<long long>(), row["line"].c_str(),
+                             row["day"].is_null() ? std::string{} : row["day"].c_str(),
+                             row["kind"].is_null() ? std::string{} : row["kind"].c_str(),
+                             row["deadline"].is_null() ? std::string{} : row["deadline"].c_str(),
+                             pid, firstName};
+                ctx.openEvents.push_back(std::move(ev));
+                if (row["travel_game"].as<bool>()) ctx.travelGame = true;
+            }
         }
+    };
+    collect(personId, ctx.playerFirstName, true);
+
+    // ONE reminder per human (mig 542) — owner 2026-10-07: "i don't want
+    // to send them 2x" / "same with coaches who also play on team".  The
+    // recipient's own open events (every hat: player, coach, staff — the
+    // roster CTE already folds a coach-player into one person) and every
+    // child of theirs on a board team ride along with the clicked one.
+    if (ctx.youth) collect(ctx.recipientPersonId, ctx.recipientFirstName, false);
+    auto kids = db->query(R"SQL(
+        SELECT DISTINCT p.id, COALESCE(p.first_name, '') AS fn
+          FROM persons p
+          JOIN team_persons tp ON tp.person_id = p.id AND tp.removed_at IS NULL
+          JOIN teams t ON t.id = tp.team_id AND t.is_active AND t.board_sort_order IS NOT NULL
+         WHERE p.parent_person_id = $1::int AND p.id <> $2::int
+         ORDER BY fn, p.id)SQL", {std::to_string(ctx.recipientPersonId), std::to_string(personId)});
+    for (const auto& r : kids) {
+        const long long sid = r["id"].as<long long>();
+        ctx.siblings.emplace_back(sid, r["fn"].c_str());
+        collect(sid, r["fn"].c_str(), false);
     }
     return ctx;
 }

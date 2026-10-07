@@ -49,7 +49,10 @@ public:
     // Everything a reminder for one player needs.
     // day: club-local YYYY-MM-DD; kind: practice | match | intrasquad;
     // deadline: the game's RSVP deadline note for a player, "" otherwise.
-    struct OpenEvent { long long fhEventId; std::string line; std::string day; std::string kind; std::string deadline; };
+    // playerId / playerFirstName: whose event — a parent's reminder covers
+    // every child (mig 542), so the list mixes children.
+    struct OpenEvent { long long fhEventId; std::string line; std::string day; std::string kind; std::string deadline;
+                       long long playerId = 0; std::string playerFirstName; };
     struct ReminderContext {
         bool        found = false;
         std::string playerFirstName;
@@ -61,6 +64,11 @@ public:
         std::vector<long long> teamIds;      // player's active board teams
         std::vector<OpenEvent> openEvents;   // unanswered, not yet ended, released
         bool        travelGame = false;      // one of them is a travel team's game (mig 509)
+        // The recipient's other children on board teams whose open events
+        // are folded into this reminder, and for a youth the parent's own
+        // events too (mig 542) — owner 2026-10-07: "i don't want to send
+        // them 2x" / "same with coaches who also play".  {id, first name}.
+        std::vector<std::pair<long long, std::string>> siblings;
     };
     ReminderContext reminderContext(long long personId);
 
