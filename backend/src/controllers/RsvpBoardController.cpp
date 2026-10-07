@@ -14,6 +14,7 @@
 #include "../models/PersonFines.h"
 #include "../models/MessageCopy.h"
 #include "../services/MagicLinkService.h"
+#include "../services/GroupMeService.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -84,6 +85,7 @@ void RsvpBoardController::registerRoutes(Router& router, const std::string& pref
 
     router.post(prefix + "/remind", [this](const Request& r) { return handleRemind(r); });
     router.post(prefix + "/remind-event", [this](const Request& r) { return handleRemindEvent(r); });
+    router.post(prefix + "/roll-call",    [this](const Request& r) { return handleRollCall(r); });
     router.get(prefix + "/reminders", [this](const Request& r) { return handleReminders(r); });
     router.post(prefix + "/squad-notice", [this](const Request& r) { return handleSquadNotice(r); });
     router.get(prefix + "/squad-notice", [this](const Request& r) { return handleSquadNoticeStatus(r); });
@@ -126,6 +128,14 @@ bool RsvpBoardController::resolveScope(const Request& request, Scope* scope, Res
         }
     }
     return true;
+}
+
+// club_sections.rsvp_roll_call for a section code (mig 543).
+static bool rollCallOn(const std::string& sectionCode) {
+    if (sectionCode.empty()) return false;
+    auto r = Database::getInstance()->query(
+        "SELECT rsvp_roll_call FROM club_sections WHERE code = $1", {sectionCode});
+    return !r.empty() && r[0]["rsvp_roll_call"].as<bool>();
 }
 
 Response RsvpBoardController::handleList(const Request& request) {
@@ -178,6 +188,7 @@ Response RsvpBoardController::handleList(const Request& request) {
             {"is_admin",     scope.isAdmin},
             {"events",       model_->weekEvents(def->code, scope.coachTeamIds)},
             {"team_groups",  model_->teamGroups()},   // migration 419
+            {"roll_call",    rollCallOn(def->code)},  // migration 543
             {"people",       std::move(people)},
         });
     } catch (const std::exception& e) {
@@ -245,7 +256,18 @@ Response RsvpBoardController::handleRemind(const Request& request) {
                 {std::to_string(scope.personId)});
             if (!s.empty()) senderName = s[0]["fn"].c_str();
         }
-        const auto minted = MagicLinkService::mint(ctx.recipientPersonId, channel, contact, scope.userId);
+        // The link lands on the live roll call card for the household's
+        // teams (mig 544), signed in, with their own Going / Not Going.
+        std::string landing;
+        {
+            std::vector<long long> covered = {personId, ctx.recipientPersonId};
+            for (const auto& ev : ctx.openEvents) covered.push_back(ev.playerId);
+            std::string sectionCode;
+            const auto teams = model_->boardTeamsOf(covered, &sectionCode);
+            const std::string url = model_->rollCallLink(sectionCode, teams, scope.userId);
+            if (auto at = url.find("/rc/"); at != std::string::npos) landing = url.substr(at + 1);
+        }
+        const auto minted = MagicLinkService::mint(ctx.recipientPersonId, channel, contact, scope.userId, 0, 0, landing);
 
         // Only events that can still be answered — one that already went
         // by would just confuse the player (owner 2026-09-19).
@@ -369,6 +391,93 @@ Response RsvpBoardController::handleRemind(const Request& request) {
     }
 }
 
+// POST /roll-call { section, fh_event_id, team_ids, channel: sms|groupme|copy }
+// The roll call for one game (mig 543) — owner 2026-10-07: "a message …
+// that has the going and not going list but shows the non respondants".
+// Players only, first name + initial.  sms → the body + every expected
+// player's phone (the whole squad sees it); groupme → posted to the
+// section's chat; copy → the body.  Every send is a rsvp_roll_calls row.
+Response RsvpBoardController::handleRollCall(const Request& request) {
+    Scope scope;
+    Response error(HttpStatus::OK, "");
+    if (!resolveScope(request, &scope, &error)) return error;
+    json body;
+    try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
+    catch (const std::exception& e) { return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what()); }
+    const long long fhEventId = body.value("fh_event_id", 0LL);
+    const std::string channel = body.value("channel", std::string("copy"));
+    const SectionDef* def = findSection(body.value("section", std::string{}));
+    if (!def) return jsonError(HttpStatus::BAD_REQUEST, "section must be mens, womens, boys or girls");
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    if (channel != "sms" && channel != "groupme" && channel != "copy")
+        return jsonError(HttpStatus::BAD_REQUEST, "channel must be sms, groupme or copy");
+    if (!rollCallOn(def->code)) return jsonError(HttpStatus::FORBIDDEN, "The roll call is not on for this section.");
+    std::vector<long long> teamIds = scope.coachTeamIds;
+    if (body.contains("team_ids") && body["team_ids"].is_array()) {
+        std::vector<long long> picked;
+        for (const auto& v : body["team_ids"]) if (v.is_number()) picked.push_back(v.get<long long>());
+        for (long long t : picked)
+            if (!scope.isAdmin && std::find(teamIds.begin(), teamIds.end(), t) == teamIds.end())
+                return jsonError(HttpStatus::FORBIDDEN, "That is not a team you coach.");
+        if (!picked.empty()) teamIds = picked;
+    }
+    try {
+        const auto rc = model_->rollCall(def->code, fhEventId, teamIds);
+        if (!rc.found) return jsonError(HttpStatus::NOT_FOUND, "Nobody is expected on that event under these teams.");
+        std::string senderName;
+        {
+            auto s = Database::getInstance()->query(
+                "SELECT COALESCE(first_name,'') AS fn FROM persons WHERE id = $1::int", {std::to_string(scope.personId)});
+            if (!s.empty()) senderName = s[0]["fn"].c_str();
+        }
+        MessageCopy copy;
+        const std::string nobody = copy.render("rsvp_roll_call", "nobody", {}).body;
+        std::string sep = copy.render("rsvp_roll_call", "name_sep", {}).body;
+        if (sep.empty()) sep = ", ";
+        const auto join = [&](const std::vector<std::string>& v) {
+            if (v.empty()) return nobody.empty() ? std::string("nobody") : nobody;
+            std::string out;
+            for (size_t i = 0; i < v.size(); ++i) out += (i ? sep : "") + v[i];
+            return out;
+        };
+        const auto msg = copy.render("rsvp_roll_call", "body", {
+            {"event", rc.line}, {"deadline", rc.deadline}, {"sender", senderName},
+            {"link", model_->rollCallLink(def->code, teamIds, scope.userId)},
+            {"n_going", std::to_string(rc.going.size())},     {"going", join(rc.going)},
+            {"n_not",   std::to_string(rc.notGoing.size())},  {"not_going", join(rc.notGoing)},
+            {"n_none",  std::to_string(rc.noResponse.size())}, {"no_response", join(rc.noResponse)}});
+        if (!msg.ok()) return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_roll_call template missing (migration 543)");
+
+        std::string externalId;
+        if (channel == "groupme") {
+            auto chat = Database::getInstance()->query(
+                "SELECT ci.external_id FROM club_sections cs "
+                "  JOIN chats c ON c.slug = cs.rsvp_roll_call_chat_slug "
+                "  JOIN chat_integrations ci ON ci.chat_id = c.id AND ci.post_messages "
+                "  JOIN chat_providers p ON p.id = ci.provider_id AND p.name = 'groupme' AND p.is_active "
+                " WHERE cs.code = $1 LIMIT 1", {def->code});
+            if (chat.empty()) return jsonError(HttpStatus::CONFLICT, "This section has no GroupMe to post to.");
+            externalId = GroupMeService::getInstance().postMessage(chat[0]["external_id"].c_str(), msg.body);
+            if (externalId.empty()) return jsonError(HttpStatus::BAD_GATEWAY, "GroupMe did not take the post.");
+        }
+        Database::getInstance()->query(
+            "INSERT INTO rsvp_roll_calls (fh_event_id, channel, sent_by_user_id, going, not_going, no_response, body, external_id) "
+            "VALUES ($1::bigint, $2, NULLIF($3::int, 0), $4::int, $5::int, $6::int, $7, NULLIF($8, ''))",
+            {std::to_string(fhEventId), channel, std::to_string(scope.userId),
+             std::to_string(rc.going.size()), std::to_string(rc.notGoing.size()), std::to_string(rc.noResponse.size()),
+             msg.body, externalId});
+        json out = {
+            {"body", msg.body}, {"channel", channel},
+            {"going", rc.going.size()}, {"not_going", rc.notGoing.size()}, {"no_response", rc.noResponse.size()},
+            {"contacts", rc.phones}, {"posted", !externalId.empty()},
+        };
+        return jsonOut(HttpStatus::CREATED, out);
+    } catch (const std::exception& e) {
+        std::cerr << "RsvpBoardController::handleRollCall: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not build the roll call");
+    }
+}
+
 Response RsvpBoardController::handleRemindEvent(const Request& request) {
     Scope scope;
     Response error(HttpStatus::OK, "");
@@ -444,6 +553,7 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
         const bool youth = std::any_of(ctx.recipients.begin(), ctx.recipients.end(),
             [](const RsvpBoard::GroupRecipient& r) { return r.recipientPersonId != r.personId; });
         const bool week = reach == "week";
+        const std::string rollCallUrl = model_->rollCallLink(def ? def->code : "", teamIds, scope.userId);   // mig 544
         std::string eventLines;
         for (const auto& ev : ctx.weekEvents) eventLines += "• " + ev.line + "\n";
         if (!eventLines.empty()) eventLines.pop_back();
@@ -452,7 +562,8 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
         const std::string travel = ctx.travelGame ? copy.render("rsvp_reminder", "travel", {}).body : std::string{};
         const auto msg = copy.render("rsvp_reminder",
             std::string(week ? "group_week_" : "group_") + (youth ? "parent" : "adult"),
-            {{"event", ctx.line}, {"events", eventLines}, {"sender", senderName}, {"travel", travel}});
+            {{"event", ctx.line}, {"events", eventLines}, {"sender", senderName}, {"travel", travel},
+             {"roll_call", rollCallUrl}});
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "group rsvp_reminder template missing (migration 380 / 381)");
 

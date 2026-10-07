@@ -101,6 +101,7 @@ private:
     Response handleGetEvent            (const Request& request);
     Response upcomingResponse          (const Request& request, long long onlyFhEventId);
     Response handlePostRsvp            (const Request& request);
+    Response handleGetRollCallMe       (const Request& request);   // mig 544
     Response handleDeleteRsvp          (const Request& request);
     // Drive times between the places events are held at, and the club's
     // conflict policy — #my's schedule-conflict check (mig 526).

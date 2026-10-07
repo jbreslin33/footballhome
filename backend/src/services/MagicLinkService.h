@@ -25,10 +25,13 @@ public:
     // adminUserId <= 0 store NULL.  matchId > 0 makes verify land on that
     // game's Game Center instead of #calendar (mig 384).  Throws on DB
     // failure.
+    // landing (mig 544): a site path verify lands on instead of #my,
+    // e.g. "rc/<slug>" for the live roll call card.
     static Minted mint(long long          personId,
                        const std::string& channel,      // "email" | "sms"
                        const std::string& contact,
                        long long          adminUserId,
                        long long          chatEventId = 0,
-                       long long          matchId = 0);
+                       long long          matchId = 0,
+                       const std::string& landing = "");
 };

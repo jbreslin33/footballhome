@@ -40,6 +40,7 @@ private:
     Response handleGetProgramCopy(const Request& request);
     Response handlePostSmsOptIn(const Request& request);
     Response handleGetSmsOptInPrefill(const Request& request);
+    Response handleGetRollCall(const Request& request);   // mig 544
     Response handleTwilioSmsInbound(const Request& request);
     Response handleTwilioSmsStatus(const Request& request);
     bool twilioSignatureOk(const Request& request, const std::map<std::string, std::string>& form);

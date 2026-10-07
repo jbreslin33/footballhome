@@ -543,6 +543,11 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.post(prefix + "/calendar/rsvp", [this](const Request& req) {
         return this->handlePostRsvp(req);
     });
+    // The live roll call card (mig 544): who the signed-in viewer may
+    // answer for on each game of the card — themself and their children.
+    router.get(prefix + "/calendar/roll-call/me", [this](const Request& req) {
+        return this->handleGetRollCallMe(req);
+    });
     router.del(prefix + "/calendar/rsvp", [this](const Request& req) {
         return this->handleDeleteRsvp(req);
     });
@@ -1873,6 +1878,66 @@ std::optional<std::string> CalendarController::fetchAndCacheOpponentLogo(const s
 //     409 with an explanatory body.
 //   * Upsert one fh_event_rsvps row (fh_event_id, person_id) →
 //     (response, responded_at=now(), created_via='manual').
+// GET /api/calendar/roll-call/me?k=<slug> — for the signed-in viewer
+// (cookie or Bearer), per game on the card: the people they may answer
+// for (themself if expected, each of their children who is) with the
+// current answer.  The answer itself goes through POST /calendar/rsvp.
+Response CalendarController::handleGetRollCallMe(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.personId;
+    const std::string slug = request.getQueryParam("k");
+    if (slug.empty() || slug.size() > 64) return jsonError(HttpStatus::BAD_REQUEST, "k required");
+    try {
+        auto* db = Database::getInstance();
+        auto rows = db->query(R"SQL(
+            WITH l AS (SELECT team_ids FROM rsvp_roll_call_links WHERE slug = $1),
+            me AS (SELECT COALESCE(first_name, '') AS fn FROM persons WHERE id = $2::int),
+            fam AS (
+              SELECT p.id, COALESCE(p.first_name, '') AS fn, (p.id = $2::int) AS self
+                FROM persons p WHERE p.id = $2::int OR p.parent_person_id = $2::int
+            ),
+            games AS (
+              SELECT fe.id AS fh_event_id, min(ge.starts_at) AS starts_at
+                FROM l, fh_events fe
+                JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
+                JOIN teams t ON t.id = fet.team_id
+               WHERE fet.team_id = ANY(l.team_ids) AND fe.kind IN ('match', 'intrasquad')
+                 AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+                 AND ge.ends_at > now()
+                 AND ge.starts_at < fh_schedule_window_end(t.club_id, t.club_section_id, now())
+               GROUP BY fe.id
+            )
+            SELECT g.fh_event_id, f.id AS person_id, f.fn, f.self, rv.response, (SELECT fn FROM me) AS my_fn
+              FROM games g
+              JOIN fam f ON EXISTS (
+                     SELECT 1 FROM fh_event_teams fet
+                     JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.person_id = f.id AND tp.removed_at IS NULL
+                    WHERE fet.fh_event_id = g.fh_event_id)
+              LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = g.fh_event_id AND rv.person_id = f.id
+             ORDER BY g.starts_at, f.self DESC, f.fn)SQL", {slug, std::to_string(personId)});
+        json games = json::object();
+        std::string myFn;
+        for (const auto& r : rows) {
+            if (myFn.empty() && !r["my_fn"].is_null()) myFn = r["my_fn"].c_str();
+            const std::string key = r["fh_event_id"].c_str();
+            if (!games.contains(key)) games[key] = json::array();
+            games[key].push_back({{"person_id", r["person_id"].as<long long>()}, {"name", r["fn"].c_str()},
+                                  {"self", r["self"].as<bool>()},
+                                  {"response", r["response"].is_null() ? json(nullptr) : json(r["response"].c_str())}});
+        }
+        if (myFn.empty()) {
+            auto me = db->query("SELECT COALESCE(first_name,'') AS fn FROM persons WHERE id = $1::int", {std::to_string(personId)});
+            if (!me.empty()) myFn = me[0]["fn"].c_str();
+        }
+        return jsonOk({{"person_id", personId}, {"first_name", myFn}, {"games", games}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handleGetRollCallMe: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
+    }
+}
+
 Response CalendarController::handlePostRsvp(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;

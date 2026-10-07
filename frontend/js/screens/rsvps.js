@@ -302,6 +302,8 @@ class RsvpBoardScreen extends Screen {
       if (remind && !remind.disabled) { this._remind(remind); return; }
       const bulk = e.target.closest('[data-bulk]');
       if (bulk && !bulk.disabled) { this._remindEvent(bulk); return; }
+      const rollcall = e.target.closest('[data-rollcall]');
+      if (rollcall && !rollcall.disabled) { this._rollCall(rollcall); return; }
     });
     this.element.addEventListener('change', (e) => {
       if (e.target.id === 'rb-sort')      { this.sort = e.target.value; this._renderBody(); }
@@ -513,7 +515,71 @@ class RsvpBoardScreen extends Screen {
         ${btn('sms', '💬', phones, '#0284c7', 'One group text (split into groups of 10) — no sign-in link, everyone sees each other\'s number')}
         ${btn('email', '✉', emails, '#7c3aed', 'One email, everyone BCC\'d — no sign-in link')}
         <span data-bulk-result style="flex-basis:100%;${this.bulk ? '' : ' display:none;'}">${this.bulk ? this.bulk.html : ''}</span>
+      </div>` + this._rollCallHtml();
+  }
+
+  // The roll call (mig 543) — owner 2026-10-07: "a little public shaming
+  // lol … a message that has the going and not going list but shows the
+  // non respondants".  Only where the section's policy allows it
+  // (club_sections.rsvp_roll_call — Men); players only.
+  _rollCallHtml() {
+    if (!this.data || !this.data.roll_call || !this.eventId) return '';
+    const c = (tier, tokens) => (window.MessageCopy && MessageCopy.block('rsvp_roll_call', tier, tokens)) || '';
+    const b = (ch, label, bg) => `<button class="rb-btn" data-rollcall="${ch}" style="background:${bg};">${this.escapeHtml(label)}</button>`;
+    const rc = this.rollCall && this.rollCall.eventId === this.eventId ? this.rollCall : null;
+    return `
+      <div class="rb-bulk" style="margin-top:6px;">
+        <span>${this.escapeHtml(c('intro'))}</span>
+        ${b('sms', c('btn_sms') || '📣 ROLL CALL TEXT', '#b45309')}
+        ${b('groupme', c('btn_groupme') || '📣 ROLL CALL → GROUPME', '#0f766e')}
+        ${b('copy', c('btn_copy') || '📋 COPY ROLL CALL', '#475569')}
+        ${rc ? `<span style="flex-basis:100%;">${rc.html}</span>
+                <pre style="flex-basis:100%; white-space:pre-wrap; font:inherit; font-size:0.8rem; opacity:0.85; margin:4px 0 0; padding:8px; border:1px solid var(--border-color); border-radius:6px;">${this.escapeHtml(rc.body)}</pre>` : ''}
       </div>`;
+  }
+
+  async _rollCall(btn) {
+    const channel = btn.dataset.rollcall;
+    const original = btn.textContent;
+    btn.disabled = true; btn.textContent = '⏳';
+    const c = (tier, tokens) => (window.MessageCopy && MessageCopy.block('rsvp_roll_call', tier, tokens)) || '';
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (this.auth && this.auth.token) headers['Authorization'] = `Bearer ${this.auth.token}`;
+      const section = this.section !== 'all' ? this.section
+        : ((((this.data && this.data.people) || []).find(p => (p.open_events || []).some(ev => ev.fh_event_id === this.eventId)) || {}).section || 'mens');
+      const res = await fetch('/api/rsvp-board/roll-call', {
+        method: 'POST', headers, credentials: 'same-origin',
+        body: JSON.stringify({ section, fh_event_id: this.eventId, team_ids: [...this.teamIds], channel }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      let html = '';
+      if (channel === 'sms') {
+        const contacts = data.contacts || [];
+        const CHUNK_SIZE = 10;
+        const chunks = [];
+        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) chunks.push(contacts.slice(i, i + CHUNK_SIZE));
+        const hrefs = chunks.map(ch => this.buildSmsComposeHref({ to: ch.join(','), body: data.body }));
+        html = chunks.length <= 1
+          ? this.escapeHtml(c('done_sms', { n: contacts.length }) || `Roll call text drafted to ${contacts.length}`)
+          : `Carriers cap a group text around ${CHUNK_SIZE} people — open each part: ` +
+            hrefs.map((h, i) => `<a class="rb-btn" style="background:#b45309;" href="${this.escapeHtml(h)}">📣 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ');
+        if (chunks.length === 1) window.location.href = hrefs[0];
+      } else if (channel === 'groupme') {
+        html = this.escapeHtml(c('done_groupme') || 'Roll call posted to GroupMe.');
+      } else {
+        try { await navigator.clipboard.writeText(data.body); } catch (_e) { /* the preview below is selectable */ }
+        html = this.escapeHtml(c('done_copy') || 'Roll call copied.');
+      }
+      this.rollCall = { eventId: this.eventId, html, body: data.body };
+      this._renderBody();
+    } catch (err) {
+      btn.textContent = original; btn.disabled = false;
+      console.warn('[rsvps] roll call failed:', err);
+      this.rollCall = { eventId: this.eventId, html: `<span class="rb-bad">${this.escapeHtml(err.message)}</span>`, body: '' };
+      this._renderBody();
+    }
   }
 
   // POST renders the DB copy, logs every player as reminded, and hands

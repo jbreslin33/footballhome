@@ -103,6 +103,29 @@ public:
     // 'group_week_parent' (the week, no link), rendered by MessageCopy.
     // travelGame fills their {travel} token from tier 'travel' (mig 509).
 
+    // The roll call for one game (mig 543): every player expected on it
+    // under the picked teams, by answer.  Names are "First L."; phones are
+    // the recipient's (parent for youth) for the group text.
+    struct RollCall {
+        bool        found = false;
+        std::string line;                    // "Sun Oct 12, 1:45 PM — Game vs X"
+        std::string deadline;                // fh_rsvp_deadline_note, "" when none
+        std::vector<std::string> going, notGoing, noResponse;
+        std::vector<std::string> phones;     // distinct, everyone expected
+    };
+    // nameStyle: "full" = "First L.", "first" = first name only (club_sections.roll_call_name_style).
+    RollCall rollCall(const std::string& sectionCode, long long fhEventId, const std::vector<long long>& teamIds,
+                      const std::string& nameStyle = "full");
+
+    // The live card (mig 544).  One link per (section, set of teams);
+    // the card shows that set's released games, by answer, under the
+    // section's naming rules.  rollCallLink() finds or makes the slug and
+    // returns the public URL; rollCallCard() is what /rc/<slug> renders.
+    std::string rollCallLink(const std::string& sectionCode, std::vector<long long> teamIds, long long byUserId);
+    nlohmann::json rollCallCard(const std::string& slug, bool countOpen);
+    // Board teams of these people (for the link a household's reminder carries).
+    std::vector<long long> boardTeamsOf(const std::vector<long long>& personIds, std::string* sectionCode);
+
     // Writes rsvp_reminders + rsvp_reminder_events; returns the card's
     // fresh last_reminder object.
     nlohmann::json logReminder(long long personId, long long recipientPersonId,

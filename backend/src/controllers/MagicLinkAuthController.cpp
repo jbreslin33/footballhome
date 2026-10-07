@@ -290,7 +290,7 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
 
     try {
         auto row = db->query(
-            "SELECT id, person_id, chat_event_id, match_id, "
+            "SELECT id, person_id, chat_event_id, match_id, COALESCE(landing, '') AS landing, "
             "       (expires_at < NOW()) AS expired "
             "  FROM magic_link_tokens WHERE token_hash = $1",
             {hash});
@@ -306,6 +306,9 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
         const long long personId   = row[0]["person_id"].as<long long>();
         const bool      hasEvent   = !row[0]["chat_event_id"].is_null();
         const long long chatEventId = hasEvent ? row[0]["chat_event_id"].as<long long>() : 0;
+        // mig 544: a token minted for the live roll call card lands there
+        // (rc/<slug>), signed in, the JWT in the query for the page to keep.
+        const std::string landing  = row[0]["landing"].c_str();
 
         const std::string ua  = request.getHeader("User-Agent");
         const std::string xff = request.getHeader("X-Forwarded-For");
@@ -376,6 +379,8 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
                     << "}";
             // A base64url JWT is URL-safe as-is; no encoding needed.
             target = publicBaseUrl() + "/oauth-success?token=" + fh::crypto::signJwtHS256(payload.str()) + hashTarget;
+            if (!landing.empty() && landing.find("..") == std::string::npos && landing.rfind("rc/", 0) == 0)
+                target = publicBaseUrl() + "/" + landing + "?token=" + fh::crypto::signJwtHS256(payload.str());
         }
         (void)hasEvent;
         (void)chatEventId;

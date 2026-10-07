@@ -1,4 +1,7 @@
 #include "RsvpBoard.h"
+#include "../services/MagicLinkService.h"
+#include "../core/Crypto.h"
+#include <set>
 
 #include <algorithm>
 #include <sstream>
@@ -664,6 +667,138 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
     std::sort(week.begin(), week.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
     for (auto& w : week) ctx.weekEvents.push_back(std::move(w.second));
     return ctx;
+}
+
+RsvpBoard::RollCall RsvpBoard::rollCall(const std::string& sectionCode, long long fhEventId,
+                                        const std::vector<long long>& teamIds, const std::string& nameStyle) {
+    auto* db = Database::getInstance();
+    RollCall rc;
+    const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
+        SELECT COALESCE(p.first_name, '') || CASE WHEN $7 = 'full' AND COALESCE(p.last_name, '') <> '' THEN ' ' || left(p.last_name, 1) || '.' ELSE '' END AS name,
+               rv.response,
+               to_char(e.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') || ' — '
+                 || CASE e.kind WHEN 'match' THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
+                                WHEN 'intrasquad' THEN 'Intra Squad' ELSE 'Practice' END AS line,
+               fh_rsvp_deadline_note(e.fh_event_id) AS deadline,
+               (SELECT x.phone_number FROM person_phones x
+                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
+                   AND COALESCE(x.can_receive_sms, true)
+                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
+                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) AS phone
+          FROM expected e
+          JOIN persons p ON p.id = e.person_id
+          LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
+         WHERE e.fh_event_id = $6::bigint AND e.role_rank = 2
+         ORDER BY p.last_name, p.first_name)SQL";
+    auto rows = db->query(sql, {sectionCode, "", pgIntArray(teamIds), "0", "all", std::to_string(fhEventId), nameStyle});
+    std::set<std::string> phones;
+    for (const auto& r : rows) {
+        rc.found = true;
+        if (rc.line.empty()) rc.line = r["line"].c_str();
+        if (rc.deadline.empty() && !r["deadline"].is_null()) rc.deadline = r["deadline"].c_str();
+        const std::string name = r["name"].c_str();
+        if (r["response"].is_null()) rc.noResponse.push_back(name);
+        else if (std::string(r["response"].c_str()) == "yes") rc.going.push_back(name);
+        else rc.notGoing.push_back(name);
+        if (!r["phone"].is_null() && phones.insert(r["phone"].c_str()).second) rc.phones.push_back(r["phone"].c_str());
+    }
+    return rc;
+}
+
+std::string RsvpBoard::rollCallLink(const std::string& sectionCode, std::vector<long long> teamIds, long long byUserId) {
+    auto* db = Database::getInstance();
+    if (sectionCode.empty()) return "";
+    // An admin's scope is "every team" (empty): the link is for the whole
+    // section's board teams then.
+    if (teamIds.empty()) {
+        auto all = db->query("SELECT t.id FROM teams t JOIN club_sections cs ON cs.id = t.club_section_id "
+                             " WHERE cs.code = $1 AND t.is_active AND t.board_sort_order IS NOT NULL", {sectionCode});
+        for (const auto& r : all) teamIds.push_back(r["id"].as<long long>());
+    }
+    std::sort(teamIds.begin(), teamIds.end());
+    teamIds.erase(std::unique(teamIds.begin(), teamIds.end()), teamIds.end());
+    if (teamIds.empty()) return "";
+    auto r = db->query("SELECT slug FROM rsvp_roll_call_links WHERE section_code = $1 AND team_ids = $2::bigint[]",
+                       {sectionCode, pgIntArray(teamIds)});
+    std::string slug;
+    if (!r.empty()) slug = r[0]["slug"].c_str();
+    else {
+        slug = fh::crypto::randomTokenB64Url(9);
+        db->query("INSERT INTO rsvp_roll_call_links (slug, section_code, team_ids, created_by_user_id) "
+                  "VALUES ($1, $2, $3::bigint[], NULLIF($4::int, 0)) ON CONFLICT (section_code, team_ids) DO NOTHING",
+                  {slug, sectionCode, pgIntArray(teamIds), std::to_string(byUserId)});
+        auto again = db->query("SELECT slug FROM rsvp_roll_call_links WHERE section_code = $1 AND team_ids = $2::bigint[]",
+                               {sectionCode, pgIntArray(teamIds)});
+        if (!again.empty()) slug = again[0]["slug"].c_str();
+    }
+    return MagicLinkService::publicBaseUrl() + "/rc/" + slug;
+}
+
+std::vector<long long> RsvpBoard::boardTeamsOf(const std::vector<long long>& personIds, std::string* sectionCode) {
+    std::vector<long long> out;
+    if (personIds.empty()) return out;
+    auto rows = Database::getInstance()->query(R"SQL(
+        SELECT DISTINCT tp.team_id, cs.code, t.board_sort_order
+          FROM team_persons tp
+          JOIN teams t ON t.id = tp.team_id AND t.is_active AND t.board_sort_order IS NOT NULL
+          LEFT JOIN club_sections cs ON cs.id = t.club_section_id
+         WHERE tp.person_id = ANY($1::bigint[]) AND tp.removed_at IS NULL
+         ORDER BY t.board_sort_order)SQL", {pgIntArray(personIds)});
+    for (const auto& r : rows) {
+        out.push_back(r["team_id"].as<long long>());
+        if (sectionCode && sectionCode->empty() && !r["code"].is_null()) *sectionCode = r["code"].c_str();
+    }
+    return out;
+}
+
+json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen) {
+    auto* db = Database::getInstance();
+    auto link = db->query(R"SQL(
+        SELECT l.id, l.section_code, l.team_ids::text AS team_ids,
+               cs.roll_call_no_response_names AS names_for_none, cs.roll_call_name_style AS name_style,
+               (SELECT string_agg(COALESCE(t.label, t.name), ' · ' ORDER BY t.board_sort_order)
+                  FROM teams t WHERE t.id = ANY(l.team_ids)) AS teams
+          FROM rsvp_roll_call_links l JOIN club_sections cs ON cs.code = l.section_code
+         WHERE l.slug = $1)SQL", {slug});
+    if (link.empty()) return nullptr;
+    const auto& L = link[0];
+    if (countOpen) db->query("UPDATE rsvp_roll_call_links SET opens = opens + 1, last_opened_at = now() WHERE id = $1::bigint",
+                             {L["id"].c_str()});
+    const std::string section = L["section_code"].c_str();
+    const std::string nameStyle = L["name_style"].c_str();
+    const bool namesForNone = L["names_for_none"].as<bool>();
+    std::vector<long long> teamIds;
+    {
+        std::string lit = L["team_ids"].c_str();
+        for (char& c : lit) if (c == '{' || c == '}' || c == ',') c = ' ';
+        std::istringstream in(lit); long long v;
+        while (in >> v) teamIds.push_back(v);
+    }
+    // The released, still-open games of these teams.
+    auto games = db->query(R"SQL(
+        SELECT fe.id, min(ge.starts_at) AS starts_at
+          FROM fh_events fe
+          JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+          JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
+          JOIN teams t ON t.id = fet.team_id
+         WHERE fet.team_id = ANY($1::bigint[]) AND fe.kind IN ('match', 'intrasquad')
+           AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+           AND ge.ends_at > now()
+           AND ge.starts_at < fh_schedule_window_end(t.club_id, t.club_section_id, now())
+         GROUP BY fe.id ORDER BY min(ge.starts_at))SQL", {pgIntArray(teamIds)});
+    json out = {{"slug", slug}, {"section", section}, {"teams", L["teams"].is_null() ? "" : L["teams"].c_str()},
+                {"names_for_none", namesForNone}, {"name_style", nameStyle}, {"games", json::array()}};
+    for (const auto& g : games) {
+        const long long fhEventId = g["id"].as<long long>();
+        const auto rc = rollCall(section, fhEventId, teamIds, nameStyle);
+        if (!rc.found) continue;
+        json game = {{"fh_event_id", fhEventId}, {"line", rc.line}, {"deadline", rc.deadline},
+                     {"going", rc.going}, {"not_going", rc.notGoing},
+                     {"no_response_count", rc.noResponse.size()},
+                     {"no_response", namesForNone ? json(rc.noResponse) : json(nullptr)}};
+        out["games"].push_back(std::move(game));
+    }
+    return out;
 }
 
 json RsvpBoard::logReminder(long long personId, long long recipientPersonId,

@@ -1,5 +1,6 @@
 #include "PublicController.h"
 #include "../core/Crypto.h"
+#include "../models/RsvpBoard.h"
 #include "../services/MagicLinkService.h"
 #include <map>
 #include <cstdlib>
@@ -25,6 +26,7 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
     router.get(prefix + "/program-copy",         [this](const Request& r) { return handleGetProgramCopy(r); });
     router.post(prefix + "/sms-opt-in",          [this](const Request& r) { return handlePostSmsOptIn(r); });
     router.get(prefix + "/sms-opt-in/prefill",   [this](const Request& r) { return handleGetSmsOptInPrefill(r); });
+    router.get(prefix + "/roll-call",            [this](const Request& r) { return handleGetRollCall(r); });
     router.post(prefix + "/twilio/sms-inbound",  [this](const Request& r) { return handleTwilioSmsInbound(r); });
     router.post(prefix + "/twilio/sms-status",   [this](const Request& r) { return handleTwilioSmsStatus(r); });
 }
@@ -911,4 +913,23 @@ Response PublicController::handleTwilioSmsStatus(const Request& request) {
         std::cerr << "❌ twilio/sms-status: " << e.what() << std::endl;
     }
     return Response(HttpStatus::OK, "");
+}
+
+// ─── GET /api/public/roll-call?k=<slug> ──────────────────────────────────────
+// The live roll call card (mig 544): the released games of the link's
+// teams with who is Going / Not Going and, under the section's rule,
+// who has not answered or just how many.  No sign-in; the slug is the
+// only key.  Every open is counted.
+Response PublicController::handleGetRollCall(const Request& request) {
+    const std::string slug = request.getQueryParam("k");
+    if (slug.empty() || slug.size() > 64) return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "no card"));
+    try {
+        RsvpBoard board;
+        nlohmann::json card = board.rollCallCard(slug, true);
+        if (card.is_null()) return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "no card"));
+        return Response(HttpStatus::OK, createJSONResponse(true, "ok", card.dump()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleGetRollCall: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
+    }
 }

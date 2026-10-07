@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Roll call — Football Home</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <!--
+    The live RSVP roll call card (mig 544): nginx serves this at
+    /rc/<slug> (standalone, like /sms).  It draws, for the link's teams,
+    this week's released game(s) with who is Going, who is Not Going and
+    who still hasn't answered (names or a count, by section rule), fresh
+    on every open and every 30 s.  Opened from a personal reminder link
+    the URL carries ?token=<JWT> (magic-link verify, landing rc/<slug>):
+    kept in localStorage like /oauth-success, so the viewer gets Going /
+    Not Going buttons for themself and their children, written through the
+    same POST /api/calendar/rsvp as #my.  Opened bare, the card is
+    read-only with a button into the app.  Wording = message_templates
+    kind rsvp_roll_call (public rows) via GET /api/public/program-copy.
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #07122b; color: #f1f5f9; font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+    header img { width: 44px; height: 44px; }
+    header strong { font-size: 20px; display: block; }
+    header span { font-size: 13px; color: #94a3b8; }
+    main { max-width: 560px; margin: 0 auto; padding: 0 12px 40px; }
+    .live { font-size: 13px; color: #fbbf24; margin: 0 4px 10px; }
+    .card { background: linear-gradient(160deg, #0b1c3d, #112a5c); border: 1px solid #1e3a8a; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .card h2 { margin: 0 0 2px; font-size: 19px; }
+    .card .dl { font-size: 13px; color: #fcd34d; margin-bottom: 12px; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .col { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px; min-height: 60px; }
+    .col h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .col.go h3 { color: #4ade80; } .col.no h3 { color: #f87171; } .col.none h3 { color: #fbbf24; }
+    .col.none { grid-column: 1 / -1; }
+    .names { font-size: 15px; line-height: 1.6; }
+    .names span { display: inline-block; margin: 0 8px 0 0; white-space: nowrap; }
+    .names .me { background: #fbbf24; color: #1f1300; border-radius: 6px; padding: 0 6px; font-weight: 700; }
+    .count { font-size: 22px; font-weight: 800; color: #fbbf24; }
+    .answer { margin-top: 12px; border-top: 1px dashed #334155; padding-top: 10px; }
+    .answer h4 { margin: 0 0 6px; font-size: 13px; color: #cbd5e1; font-weight: 600; }
+    .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+    .row .who { min-width: 70px; font-weight: 700; }
+    button { font: inherit; font-weight: 700; border: 1px solid #475569; background: transparent; color: #e2e8f0; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+    button.on.go { background: #16a34a; border-color: #16a34a; color: #fff; }
+    button.on.no { background: #dc2626; border-color: #dc2626; color: #fff; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .msg { font-size: 13px; color: #a7f3d0; min-height: 1.2em; }
+    .msg.bad { color: #fca5a5; }
+    .foot { text-align: center; margin-top: 8px; }
+    .foot a { display: inline-block; background: #2563eb; color: #fff; text-decoration: none; font-weight: 700; padding: 12px 20px; border-radius: 999px; }
+    .foot p { font-size: 13px; color: #94a3b8; }
+    .stamp { text-align: center; font-size: 12px; color: #64748b; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/images/lighthouse-1893-crest.png" alt="">
+    <div><strong id="t-title">Roll call</strong><span id="t-teams"></span></div>
+  </header>
+  <main>
+    <div class="live" id="t-live"></div>
+    <div id="cards"><p style="opacity:0.7;">Loading…</p></div>
+    <div class="foot" id="foot"></div>
+    <div class="stamp" id="stamp"></div>
+  </main>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      const fill = (t, tok) => Object.keys(tok || {}).reduce((s, k) => s.split(`{${k}}`).join(tok[k]), t || '');
+      const slug = decodeURIComponent((location.pathname.split('/').filter(Boolean).pop() || ''));
+      const copy = new Map();
+      const c = (tier, tok) => fill(copy.get(tier) || '', tok);
+
+      // A personal link lands here signed in: keep the session the way
+      // /oauth-success does, then drop the token from the address bar.
+      const params = new URLSearchParams(location.search);
+      let token = params.get('token') || '';
+      const store = (k, v) => { try { localStorage.setItem(k, v); } catch (_e) {} };
+      const read  = (k) => { try { return localStorage.getItem(k) || ''; } catch (_e) { return ''; } };
+      if (token) { store('token', token); history.replaceState(null, '', location.pathname); }
+      else token = read('token');
+      const authHeaders = () => token ? { Authorization: 'Bearer ' + token } : {};
+
+      let card = null, me = null, timer = null;
+
+      async function loadCopy() {
+        const j = await fetch('/api/public/program-copy').then(r => r.json()).catch(() => ({}));
+        for (const row of (j.data && j.data.templates) || []) if (row.kind === 'rsvp_roll_call') copy.set(row.tier, row.body || '');
+      }
+      async function loadCard() {
+        const r = await fetch('/api/public/roll-call?k=' + encodeURIComponent(slug), { cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        card = r.ok && j.success ? j.data : null;
+      }
+      async function loadMe() {
+        try {
+          const r = await fetch('/api/calendar/roll-call/me?k=' + encodeURIComponent(slug), { headers: authHeaders(), credentials: 'same-origin', cache: 'no-store' });
+          me = r.ok ? await r.json() : null;
+          if (me && token && !read('user')) {
+            const u = await fetch('/api/auth/me', { headers: authHeaders() }).then(x => x.ok ? x.json() : null).catch(() => null);
+            const user = u && (u.user || u.data || u);
+            if (user) store('user', JSON.stringify(user));
+          }
+        } catch (_e) { me = null; }
+      }
+
+      function namesHtml(list, mine) {
+        if (!list || !list.length) return `<span style="opacity:0.5;">${esc(c('empty_list') || '—')}</span>`;
+        const isMine = (n) => [...mine].some(m => m && (n === m || n.startsWith(m + ' ')));
+        return list.map(n => `<span class="${isMine(n) ? 'me' : ''}">${esc(n)}</span>`).join('');
+      }
+      function render() {
+        $('t-title').textContent = c('page_title') || 'Roll call';
+        $('t-live').textContent = c('live_note');
+        if (!card) { $('cards').innerHTML = `<p style="opacity:0.7;">Not available.</p>`; return; }
+        $('t-teams').textContent = card.teams || '';
+        if (!card.games.length) { $('cards').innerHTML = `<div class="card"><p>${esc(c('no_games') || 'No game is open this week yet.')}</p></div>`; }
+        else {
+          $('cards').innerHTML = card.games.map(g => {
+            const targets = (me && me.games && me.games[String(g.fh_event_id)]) || [];
+            const mine = new Set();   // my household's names, highlighted on the card
+            for (const t of targets) mine.add(t.name);
+            const noneHtml = g.no_response
+              ? `<div class="names">${namesHtml(g.no_response, mine)}</div>`
+              : `<div class="count">${esc(g.no_response_count ? (c('none_count', { n: g.no_response_count }) || `${g.no_response_count} still to answer`) : (c('none_zero') || 'Everyone has answered'))}</div>`;
+            const answerHtml = targets.length ? `
+              <div class="answer">
+                <h4>${esc(c('answer_title', { first: me.first_name || '' }))}</h4>
+                ${targets.map(t => `
+                  <div class="row" data-ev="${g.fh_event_id}" data-pid="${t.person_id}">
+                    <span class="who">${esc(t.name)}</span>
+                    <button class="go ${t.response === 'yes' ? 'on' : ''}" data-r="yes">${esc(c('btn_going') || '✅ Going')}</button>
+                    <button class="no ${t.response === 'no' ? 'on' : ''}" data-r="no">${esc(c('btn_not') || '❌ Not going')}</button>
+                    <span class="msg"></span>
+                  </div>`).join('')}
+              </div>` : '';
+            return `<div class="card">
+              <h2>${esc(g.line)}</h2>
+              ${g.deadline ? `<div class="dl">${esc(g.deadline)}</div>` : '<div class="dl"></div>'}
+              <div class="cols">
+                <div class="col go"><h3>${esc(c('col_going') || 'Going')} · ${g.going.length}</h3><div class="names">${namesHtml(g.going, mine)}</div></div>
+                <div class="col no"><h3>${esc(c('col_not') || 'Not going')} · ${g.not_going.length}</h3><div class="names">${namesHtml(g.not_going, mine)}</div></div>
+                <div class="col none"><h3>${esc(c('col_none') || 'Still to answer')}${g.no_response ? ' · ' + g.no_response_count : ''}</h3>${noneHtml}</div>
+              </div>
+              ${answerHtml}
+            </div>`;
+          }).join('');
+        }
+        $('foot').innerHTML = me
+          ? `<a href="/#my">${esc(c('my_btn') || 'Open my page')}</a>`
+          : `<p>${esc(c('signin_hint'))}</p><a href="/#my">${esc(c('signin_btn') || 'Open Football Home')}</a>`;
+        $('stamp').textContent = c('updated', { time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) });
+      }
+
+      async function refresh() { await Promise.all([loadCard(), loadMe()]); render(); }
+
+      document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-r]');
+        if (!btn) return;
+        const row = btn.closest('.row');
+        const msg = row.querySelector('.msg');
+        row.querySelectorAll('button').forEach(b => b.disabled = true);
+        msg.className = 'msg'; msg.textContent = '…';
+        try {
+          const r = await fetch('/api/calendar/rsvp', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ fh_event_id: Number(row.dataset.ev), person_id: Number(row.dataset.pid), response: btn.dataset.r }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(j.error || j.message || r.statusText);
+          msg.textContent = c('saved') || 'Saved.';
+          await refresh();
+        } catch (err) {
+          msg.className = 'msg bad'; msg.textContent = err.message;
+          row.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+      });
+
+      loadCopy().then(refresh).catch(() => { $('cards').innerHTML = '<p>Not available right now.</p>'; });
+      timer = setInterval(() => { if (!document.hidden) refresh(); }, 30000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+    })();
+  </script>
+</body>
+</html>
