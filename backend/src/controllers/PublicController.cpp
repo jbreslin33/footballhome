@@ -1,4 +1,5 @@
 #include "PublicController.h"
+#include "../core/Crypto.h"
 #include "../models/WelcomeLog.h"
 #include <sstream>
 #include <regex>
@@ -19,6 +20,7 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
     router.get(prefix + "/leagueapps-registration-links", [this](const Request& r) { return handleGetRegistrationLinks(r); });
     router.get(prefix + "/program-copy",         [this](const Request& r) { return handleGetProgramCopy(r); });
     router.post(prefix + "/sms-opt-in",          [this](const Request& r) { return handlePostSmsOptIn(r); });
+    router.get(prefix + "/sms-opt-in/prefill",   [this](const Request& r) { return handleGetSmsOptInPrefill(r); });
 }
 
 // ─── GET /api/public/teams ───────────────────────────────────────────────────
@@ -656,7 +658,20 @@ Response PublicController::handlePostSmsOptIn(const Request& request) {
         return v;
     };
     const std::string name = readStr("name"), email = readStr("email"), phone = readStr("phone"),
-                      consentText = readStr("consent_text");
+                      consentText = readStr("consent_text"), linkToken = readStr("t");
+    // A nudge link from #texts (mig 537): the token names the person, so
+    // the consent is tied to them whatever number they typed.
+    std::string linkPersonId, linkTokenId;
+    if (!linkToken.empty()) {
+        try {
+            pqxx::result t = db_->query(
+                "SELECT id, person_id FROM magic_link_tokens WHERE token_hash = $1 AND expires_at > now()",
+                {fh::crypto::sha256Hex(linkToken)});
+            if (!t.empty()) { linkTokenId = t[0]["id"].c_str(); linkPersonId = t[0]["person_id"].c_str(); }
+        } catch (const std::exception& e) {
+            std::cerr << "handlePostSmsOptIn: token lookup failed: " << e.what() << std::endl;
+        }
+    }
     const bool consent = body.contains("consent") && body["consent"].is_boolean() && body["consent"].get<bool>();
     std::string digits;
     for (char ch : phone) if (ch >= '0' && ch <= '9') digits.push_back(ch);
@@ -681,23 +696,65 @@ Response PublicController::handlePostSmsOptIn(const Request& request) {
         std::string optInId;
         if (consent) {
             pqxx::result o = db_->query(
-                "INSERT INTO sms_opt_ins (name, phone, phone_digits, consent_text, ip, user_agent, person_id) "
+                "INSERT INTO sms_opt_ins (name, phone, phone_digits, consent_text, ip, user_agent, person_id, magic_link_token_id, source) "
                 "VALUES ($1, $2, $3, $4, NULLIF($5,''), NULLIF($6,''), "
-                "        (SELECT pp.person_id FROM person_phones pp WHERE regexp_replace(COALESCE(pp.phone_number,''), '[^0-9]', '', 'g') IN ($3, '1' || $3) "
-                "          ORDER BY pp.person_id LIMIT 1)) "
-                "RETURNING id", {name, phone, digits, consentText, ip, ua});
+                "        COALESCE(NULLIF($7,'')::int, "
+                "          (SELECT pp.person_id FROM person_phones pp WHERE regexp_replace(COALESCE(pp.phone_number,''), '[^0-9]', '', 'g') IN ($3, '1' || $3) "
+                "            ORDER BY pp.person_id LIMIT 1)), "
+                "        NULLIF($8,'')::int, CASE WHEN $8 <> '' THEN 'link:/sms' ELSE 'web:/sms' END) "
+                "RETURNING id", {name, phone, digits, consentText, ip, ua, linkPersonId, linkTokenId});
             optInId = o[0]["id"].c_str();
         }
         pqxx::result r = db_->query(
-            "INSERT INTO club_update_signups (name, email, phone, sms_opt_in_id, ip, user_agent, person_id) "
+            "INSERT INTO club_update_signups (name, email, phone, sms_opt_in_id, ip, user_agent, person_id, source) "
             "VALUES ($1, $2, NULLIF($3,''), NULLIF($4,'')::int, NULLIF($5,''), NULLIF($6,''), "
-            "        (SELECT pe.person_id FROM person_emails pe WHERE lower(pe.email) = lower($2) ORDER BY pe.person_id LIMIT 1)) "
-            "RETURNING id", {name, email, phone, optInId, ip, ua});
+            "        COALESCE(NULLIF($7,'')::int, "
+            "          (SELECT pe.person_id FROM person_emails pe WHERE lower(pe.email) = lower($2) ORDER BY pe.person_id LIMIT 1)), "
+            "        CASE WHEN $7 <> '' THEN 'link:/sms' ELSE 'web:/sms' END) "
+            "RETURNING id", {name, email, phone, optInId, ip, ua, linkPersonId});
         std::ostringstream data;
         data << "{\"id\":" << r[0]["id"].as<long long>() << ",\"texts\":" << (consent ? "true" : "false") << "}";
         return Response(HttpStatus::OK, createJSONResponse(true, "Signed up", data.str()));
     } catch (const std::exception& e) {
         std::cerr << "❌ handlePostSmsOptIn: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
+    }
+}
+
+// ─── GET /api/public/sms-opt-in/prefill?t= ──────────────────────────────────
+// The nudge link from #texts (mig 537) carries a magic-link token; the
+// /sms page asks who it is for and fills the form.  Nothing is signed in
+// and the token is not consumed — the same link works until it expires.
+// Unknown or expired → 404 and the page shows its blank form.
+Response PublicController::handleGetSmsOptInPrefill(const Request& request) {
+    const std::string token = request.getQueryParam("t");
+    if (token.empty() || token.size() > 200) {
+        return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "no link"));
+    }
+    try {
+        pqxx::result r = db_->query(R"SQL(
+            SELECT BTRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS name,
+                   COALESCE(p.first_name,'') AS first,
+                   (SELECT e.email FROM person_emails e WHERE e.person_id = p.id
+                     ORDER BY e.is_primary DESC NULLS LAST, e.id LIMIT 1) AS email,
+                   COALESCE(NULLIF(t.contact,''),
+                            (SELECT x.phone_number FROM person_phones x WHERE x.person_id = p.id
+                               AND COALESCE(x.can_receive_sms, true)
+                             ORDER BY x.is_primary DESC NULLS LAST, x.id LIMIT 1)) AS phone,
+                   to_char(fh_sms_consented_at(p.id) AT TIME ZONE 'America/New_York', 'Mon DD, YYYY') AS consented_on
+              FROM magic_link_tokens t JOIN persons p ON p.id = t.person_id
+             WHERE t.token_hash = $1 AND t.expires_at > now())SQL", {fh::crypto::sha256Hex(token)});
+        if (r.empty()) return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "unknown or expired link"));
+        nlohmann::json data = {
+            {"name",         r[0]["name"].c_str()},
+            {"first",        r[0]["first"].c_str()},
+            {"email",        r[0]["email"].is_null() ? "" : r[0]["email"].c_str()},
+            {"phone",        r[0]["phone"].is_null() ? "" : r[0]["phone"].c_str()},
+            {"consented_on", r[0]["consented_on"].is_null() ? nlohmann::json(nullptr) : nlohmann::json(r[0]["consented_on"].c_str())},
+        };
+        return Response(HttpStatus::OK, createJSONResponse(true, "ok", data.dump()));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleGetSmsOptInPrefill: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }

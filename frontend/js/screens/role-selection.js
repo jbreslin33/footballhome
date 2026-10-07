@@ -122,6 +122,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="texts" id="rs-texts" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📲</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('sms_opt_in', 'tile_title')) || 'Texts'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('sms_opt_in', 'tile_sub')) || 'Who has said yes to club texts — nudge the rest until they do'}</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="casa" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">⚽</span>
           <div style="flex: 1; text-align: left;">
@@ -423,6 +431,9 @@ class RoleSelectionScreen extends Screen {
       this.navigation.goTo('attendance', { pick: true });
     } else if (role === 'kit') {
       this.navigation.goTo('kit');
+    } else if (role === 'texts') {
+      // Not a role — the club-texts opt-in board (mig 537).
+      this.navigation.goTo('texts');
     } else if (role === 'security') {
       // Not a role — the nightly gate-photo board (mig 421/424).
       this.navigation.goTo('security');

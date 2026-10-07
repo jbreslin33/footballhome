@@ -51,6 +51,7 @@ set(SOURCES
     src/models/RsvpBoard.cpp
     src/models/PersonHealth.cpp
     src/models/KitBoard.cpp
+    src/models/SmsOptInBoard.cpp
     src/models/FacilityLockup.cpp
     src/models/LogoImage.cpp
     src/models/ClubLogo.cpp
@@ -128,6 +129,7 @@ set(SOURCES
     src/controllers/InvoiceController.cpp
     src/controllers/FinancesController.cpp
     src/controllers/FinesController.cpp
+    src/controllers/SmsOptInBoardController.cpp
     src/controllers/LineupDraftController.cpp
     src/controllers/OfficialRosterController.cpp
     src/controllers/GameMessageController.cpp

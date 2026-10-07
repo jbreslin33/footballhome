@@ -18,6 +18,10 @@
     row (kind legal_sms, migration 482 / 512) served by
     GET /api/public/program-copy.  The form posts to
     POST /api/public/sms-opt-in, which keeps a ticked consent as proof.
+    Opened from a #texts nudge link (mig 537) the URL carries ?t=<token>:
+    GET /api/public/sms-opt-in/prefill?t= names the person and the form
+    lands filled in (a greeting line, legal_sms tier hello / already); the
+    token goes back with the POST so the consent is tied to the person.
   -->
   <style>
     :root { color-scheme: light; }
@@ -57,6 +61,7 @@
     <div id="body"><p>Loading…</p></div>
     <form id="f" hidden>
       <h3 id="t-title"></h3>
+      <p id="hello" class="msg ok" hidden></p>
       <label class="f" for="name" id="t-name"></label>
       <input type="text" id="name" name="name" autocomplete="name" maxlength="200" required>
       <label class="f" for="email" id="t-email"></label>
@@ -94,7 +99,29 @@
           .replace('Terms and conditions', '<a href="/terms" target="_blank" rel="noopener">Terms and conditions</a>');
         $('go').textContent = c('button');
         $('f').hidden = false;
+        prefill();
       }).catch(() => { $('body').innerHTML = '<p>Not available right now.</p>'; });
+
+      // A personal nudge link (#texts, mig 537): fill the form for the
+      // person it was sent to.  Unknown or expired → the blank form.
+      const linkToken = new URLSearchParams(location.search).get('t') || '';
+      async function prefill() {
+        if (!linkToken) return;
+        try {
+          const r = await fetch('/api/public/sms-opt-in/prefill?t=' + encodeURIComponent(linkToken));
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j.success || !j.data) return;
+          const d = j.data;
+          if (d.name && !$('name').value) $('name').value = d.name;
+          if (d.email && !$('email').value) $('email').value = d.email;
+          if (d.phone && !$('phone').value) $('phone').value = d.phone;
+          const line = d.consented_on
+            ? fill(c('already'), { date: d.consented_on })
+            : fill(c('hello'), { first: d.first || d.name || '', phone: d.phone || '' });
+          if (line) { $('hello').textContent = line; $('hello').hidden = false; }
+          $('f').scrollIntoView({ block: 'start' });
+        } catch (_e) { /* blank form */ }
+      }
 
       $('f').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -111,7 +138,7 @@
         try {
           const r = await fetch('/api/public/sms-opt-in', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, phone, consent: texts, consent_text: texts ? c('consent') : '' }),
+            body: JSON.stringify({ name, email, phone, consent: texts, consent_text: texts ? c('consent') : '', t: linkToken }),
           });
           const j = await r.json().catch(() => ({}));
           if (!r.ok || !j.success) throw new Error(j.message || r.statusText);
