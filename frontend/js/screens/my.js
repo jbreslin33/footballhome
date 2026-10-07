@@ -1707,12 +1707,21 @@ class MyScreen extends Screen {
                      border:1px solid rgba(255,255,255,0.5); vertical-align:middle;"></span>
         ${this.escapeHtml(who)} on the ${this.escapeHtml(side.label)} ${sideWord}</div>`;
     };
-    const guardianRowsHtml = guardianTargets.map(child => {
+    const childButtonsHtml = (child) => {
       const childResponse = (rsvpRows.find(r => r && r.person_id === child.person_id) || {}).response || null;
       const childDisabledMsg = isPast ? 'Event has passed' : openMsg;
       const childClearing = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:clear`);
       const childYesSaving = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:yes`) || childClearing;
       const childNoSaving  = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:no`) || childClearing;
+      return (!isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(child.person_id))) || `
+              ${this._btn('Go', 'yes', childResponse === 'yes', 'solid', childYesSaving,
+                         `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
+              ${this._btn('No', 'no', childResponse === 'no', 'solid', childNoSaving,
+                         `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
+            `;
+    };
+    const guardianRowsHtml = guardianTargets.map(child => {
+      const childResponse = (rsvpRows.find(r => r && r.person_id === child.person_id) || {}).response || null;
       // Invited (fh_event_invites, migration 355): this kid is NOT on the
       // event's roster — the coach invited them to play up. Say so, and
       // word the ask as "are they available", not "are they going".
@@ -1732,14 +1741,7 @@ class MyScreen extends Screen {
             👤 ${this.escapeHtml(child.name || 'Your player')}${callupHtml}
             ${sideHtml(child.person_id, `${first} is`)}
           </div>
-          <div style="display:flex; gap:3px; flex-shrink:0;">
-            ${(!isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(child.person_id))) || `
-              ${this._btn('Go', 'yes', childResponse === 'yes', 'solid', childYesSaving,
-                         `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
-              ${this._btn('No', 'no', childResponse === 'no', 'solid', childNoSaving,
-                         `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}" data-ev-person-id="${child.person_id}"`, childDisabledMsg)}
-            `}
-          </div>
+          <div style="display:flex; gap:3px; flex-shrink:0;">${childButtonsHtml(child)}</div>
         </div>
         ${childResponse === 'yes' && !isPast ? this._rsvpTimesHtml(ev, child.person_id) : ''}
       `;
@@ -1755,7 +1757,12 @@ class MyScreen extends Screen {
     // So: details in the header, then one named row per person, each with
     // its own Go / No and arrive-leave times.  A lone player keeps the
     // compact layout with Go / No beside the details.
-    const stacked = guardianTargets.length > 0;
+    // One child and no row of the viewer's own (a parent of one, or a
+    // child's pill): the child's Go / No sit on the card like a player's
+    // own — no stacked row (owner 2026-10-07: "parents of 1 kid just
+    // need the events").
+    const soloChild = guardianTargets.length === 1 && !showOwnRsvpRow ? guardianTargets[0] : null;
+    const stacked = guardianTargets.length > 0 && !soloChild;
     const viewerFirst = (this.viewer && this.viewer.first_name) ? String(this.viewer.first_name) : '';
     const ownLabel = viewerFirst ? `${viewerFirst} (you)` : 'You';
 
@@ -1912,10 +1919,12 @@ class MyScreen extends Screen {
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${venue ? `📍 ${this.escapeHtml(venue)} · ` : ''}${compactMeta}</div>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
-            ${!stacked && showOwnRsvpRow ? ownButtonsHtml : ''}
+            ${soloChild ? childButtonsHtml(soloChild) : (!stacked && showOwnRsvpRow ? ownButtonsHtml : '')}
           </div>
         </div>
-        ${!stacked && showOwnRsvpRow && per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
+        ${soloChild && soloChild.callup ? `<div style="font-size:0.58rem; line-height:1.25; opacity:0.8; margin-top:2px;">🎟 INVITED — the coach invited ${this.escapeHtml(String(soloChild.name || '').split(' ')[0])} to play up in this game${soloChild.callup_from ? ` (from ${this.escapeHtml(soloChild.callup_from)})` : ''}. Please answer so the coach knows if they are available.</div>` : ''}
+        ${soloChild && ((rsvpRows.find(r => r && r.person_id === soloChild.person_id) || {}).response === 'yes') && !isPast ? this._rsvpTimesHtml(ev, soloChild.person_id) : ''}
+        ${!stacked && !soloChild && showOwnRsvpRow && per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
         ${stacked ? `
           <div style="margin-top:2px;">
             ${showOwnRsvpRow ? `
