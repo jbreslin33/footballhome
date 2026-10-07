@@ -182,6 +182,44 @@ std::string hmacSha256(const std::string& key, const std::string& data) {
     return std::string(reinterpret_cast<const char*>(out), outLen);
 }
 
+std::string hmacSha1(const std::string& key, const std::string& data) {
+    unsigned char out[EVP_MAX_MD_SIZE];
+    unsigned int outLen = 0;
+    if (!HMAC(EVP_sha1(),
+              key.data(), static_cast<int>(key.size()),
+              reinterpret_cast<const unsigned char*>(data.data()),
+              data.size(),
+              out, &outLen)) {
+        throw std::runtime_error("HMAC-SHA1 failed");
+    }
+    return std::string(reinterpret_cast<const char*>(out), outLen);
+}
+
+std::string base64Encode(const std::string& raw) {
+    static const char* tbl = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    size_t i = 0;
+    const auto* d = reinterpret_cast<const unsigned char*>(raw.data());
+    for (; i + 2 < raw.size(); i += 3) {
+        out.push_back(tbl[d[i] >> 2]);
+        out.push_back(tbl[((d[i] & 3) << 4) | (d[i + 1] >> 4)]);
+        out.push_back(tbl[((d[i + 1] & 15) << 2) | (d[i + 2] >> 6)]);
+        out.push_back(tbl[d[i + 2] & 63]);
+    }
+    if (i < raw.size()) {
+        out.push_back(tbl[d[i] >> 2]);
+        if (i + 1 < raw.size()) {
+            out.push_back(tbl[((d[i] & 3) << 4) | (d[i + 1] >> 4)]);
+            out.push_back(tbl[(d[i + 1] & 15) << 2]);
+        } else {
+            out.push_back(tbl[(d[i] & 3) << 4]);
+            out.push_back('=');
+        }
+        out.push_back('=');
+    }
+    return out;
+}
+
 std::string signJwtHS256(const std::string& payloadJson) {
     // Fixed header literal.  Kept as a constant (not built at runtime) so
     // there is exactly one issued header byte-sequence across the process.

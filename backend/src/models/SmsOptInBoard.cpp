@@ -29,6 +29,8 @@ json SmsOptInBoard::roster(long long teamId) {
                           x.is_primary DESC NULLS LAST, x.id LIMIT 1) AS phone,
                to_char(GREATEST(fh_sms_consented_at(p.id), fh_sms_consented_at(COALESCE(p.parent_person_id, p.id)))
                        AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS consented_at,
+               to_char(GREATEST(fh_sms_opted_out_at(p.id), fh_sms_opted_out_at(COALESCE(p.parent_person_id, p.id)))
+                       AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS opted_out_at,
                (SELECT count(*) FROM sms_opt_in_nudges n WHERE n.person_id = p.id) AS nudges,
                to_char((SELECT max(n.sent_at) FROM sms_opt_in_nudges n WHERE n.person_id = p.id)
                        AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_nudge_at
@@ -50,6 +52,7 @@ json SmsOptInBoard::roster(long long teamId) {
             {"recipient_first_name", r["recipient_first_name"].c_str()},
             {"phone",                tsOrNull(r, "phone")},
             {"consented_at",         tsOrNull(r, "consented_at")},
+            {"opted_out_at",         tsOrNull(r, "opted_out_at")},
             {"nudges",               {{"count", r["nudges"].as<int>()}, {"last_at", tsOrNull(r, "last_nudge_at")}}},
         });
     }

@@ -118,7 +118,7 @@ LockupScheduler::Outcome LockupScheduler::deliver(FacilityLockup& model, const F
         else if (!fh::mail::send(out.contact, copy.subject, copy.body)) out.error = "smtp send failed";
         else out.ok = true;
     } else if (channel == "sms") {
-        auto r = TwilioService::getInstance().sendSms(out.contact, copy.body);
+        auto r = TwilioService::getInstance().sendSms(out.contact, copy.body, "lockup_alert");
         out.ok = r.ok; sid = r.sid; out.error = r.error;
     } else if (channel == "call") {
         auto r = TwilioService::getInstance().call(out.contact, copy.body);

@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include "../core/Controller.h"
 #include "../database/Database.h"
 
@@ -39,6 +40,9 @@ private:
     Response handleGetProgramCopy(const Request& request);
     Response handlePostSmsOptIn(const Request& request);
     Response handleGetSmsOptInPrefill(const Request& request);
+    Response handleTwilioSmsInbound(const Request& request);
+    Response handleTwilioSmsStatus(const Request& request);
+    bool twilioSignatureOk(const Request& request, const std::map<std::string, std::string>& form);
 
     // Resolver: returns matches.id for the team's "live" match, or 0 if none exists.
     int resolveLiveMatchId(int team_id);

@@ -39,7 +39,10 @@ public:
     // Returns "" when the input cannot be a phone number.
     static std::string normalizeUs(const std::string& raw);
 
-    Result sendSms(const std::string& toE164, const std::string& body);
+    // Every send is an sms_messages row (mig 540) — purpose names what it
+    // was for (lockup_alert, …); Twilio reports delivery back to
+    // POST /api/public/twilio/sms-status, which updates the row.
+    Result sendSms(const std::string& toE164, const std::string& body, const std::string& purpose = "");
     Result call(const std::string& toE164, const std::string& sayText);
 
 private:

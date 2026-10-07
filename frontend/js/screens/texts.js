@@ -51,6 +51,7 @@ class SmsOptInBoardScreen extends Screen {
         .tx-tag { font-size:0.65rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; opacity:0.6; margin-left:6px; }
         .tx-in { color:#22c55e; font-weight:700; white-space:nowrap; }
         .tx-none { opacity:0.55; font-size:0.8rem; }
+        .tx-stop { color:#ef4444; font-weight:700; white-space:nowrap; }
         .tx-nudge { padding:4px 10px; border-radius:999px; border:1px solid var(--border-color); background:var(--bg-secondary);
                     color:var(--text-primary); cursor:pointer; font-size:0.8rem; font-weight:700; white-space:nowrap; }
         .tx-nudge.sent { opacity:0.7; }
@@ -168,7 +169,7 @@ class SmsOptInBoardScreen extends Screen {
   }
 
   // ── render ──────────────────────────────────────────────────────────
-  _state(p) { return !p.phone ? 'none' : (p.consented_at ? 'in' : 'not'); }
+  _state(p) { return !p.phone ? 'none' : p.consented_at ? 'in' : p.opted_out_at ? 'stopped' : 'not'; }
 
   _summaryHtml() {
     const players = this.players || [];
@@ -177,6 +178,7 @@ class SmsOptInBoardScreen extends Screen {
       in: players.filter(p => p.consented_at).length,
       total: withPhone.length,
       nudged: players.filter(p => p.nudges && p.nudges.count > 0).length,
+      stopped: players.filter(p => this._state(p) === 'stopped').length,
     }) || `${players.filter(p => p.consented_at).length}/${withPhone.length} opted in`);
   }
 
@@ -201,9 +203,10 @@ class SmsOptInBoardScreen extends Screen {
       ['all',  this._copy('filter_all')  || 'Everyone'],
       ['not',  this._copy('filter_not')  || 'Not yet'],
       ['in',   this._copy('filter_in')   || 'Opted in'],
+      ['stopped', this._copy('filter_stopped') || 'Stopped'],
       ['none', this._copy('filter_none') || 'No mobile'],
     ];
-    const counts = { all: this.players.length, not: 0, in: 0, none: 0 };
+    const counts = { all: this.players.length, not: 0, in: 0, stopped: 0, none: 0 };
     this.players.forEach(p => { counts[this._state(p)]++; });
     const shown = this.players.filter(p => this.filter === 'all' || this._state(p) === this.filter);
 
@@ -211,6 +214,7 @@ class SmsOptInBoardScreen extends Screen {
       const st = this._state(p);
       if (st === 'in')   return `<span class="tx-in">${this.escapeHtml(this._copy('status_in', { date: this._md(p.consented_at) }) || `✅ ${this._md(p.consented_at)}`)}</span>`;
       if (st === 'none') return `<span class="tx-none">${this.escapeHtml(this._copy('status_none') || 'no mobile on file')}</span>`;
+      if (st === 'stopped') return `<span class="tx-stop">${this.escapeHtml(this._copy('status_stopped', { date: this._md(p.opted_out_at) }) || `🚫 STOP ${this._md(p.opted_out_at)}`)}</span>`;
       return `<span class="tx-none">${this.escapeHtml(this._copy('status_not') || '—')}</span>`;
     };
     const nudgedCell = (p) => {

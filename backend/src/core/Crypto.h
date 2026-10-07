@@ -46,6 +46,10 @@ const std::string& jwtSecret();
 
 // HMAC-SHA256(key, data).  Returns 32 raw bytes.
 std::string hmacSha256(const std::string& key, const std::string& data);
+// Raw HMAC-SHA1 and standard (padded, +/) base64 — what Twilio signs its
+// webhooks with (X-Twilio-Signature, mig 540).
+std::string hmacSha1(const std::string& key, const std::string& data);
+std::string base64Encode(const std::string& raw);
 
 // Signs a JWT using HS256 with the process JWT secret.  Header is the
 // fixed literal {"alg":"HS256","typ":"JWT"} and the payload is passed

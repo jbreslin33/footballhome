@@ -1,4 +1,6 @@
 #include "TwilioService.h"
+#include "../database/Database.h"
+#include "MagicLinkService.h"
 
 #include <cctype>
 #include <cstdlib>
@@ -103,12 +105,29 @@ TwilioService::Result TwilioService::post(const std::string& resource, const std
     return res;
 }
 
-TwilioService::Result TwilioService::sendSms(const std::string& toE164, const std::string& body) {
+TwilioService::Result TwilioService::sendSms(const std::string& toE164, const std::string& body,
+                                             const std::string& purpose) {
     const std::string form = "From=" + HttpClient::urlEncode(from_) +
                              "&To=" + HttpClient::urlEncode(toE164) +
-                             "&Body=" + HttpClient::urlEncode(body);
+                             "&Body=" + HttpClient::urlEncode(body) +
+                             "&StatusCallback=" + HttpClient::urlEncode(
+                                 MagicLinkService::publicBaseUrl() + "/api/public/twilio/sms-status");
     auto res = post("Messages", form);
     if (!res.ok) std::cerr << "[TwilioService] sms to " << toE164 << " failed: " << res.error << std::endl;
+    // On record either way (mig 540): a send Twilio refused is a row with
+    // no SID and the error, so the log shows what never went out.
+    try {
+        std::string digits;
+        for (unsigned char c : toE164) if (std::isdigit(c)) digits.push_back(static_cast<char>(c));
+        if (digits.size() == 11 && digits[0] == '1') digits.erase(0, 1);
+        Database::getInstance()->query(
+            "INSERT INTO sms_messages (direction, message_sid, from_number, to_number, body, status, error_code, person_id, purpose) "
+            "VALUES ('out', NULLIF($1,''), $2, $3, $4, $5, NULLIF($6,''), fh_person_by_phone($7), NULLIF($8,'')) "
+            "ON CONFLICT (message_sid) DO NOTHING",
+            {res.sid, from_, toE164, body, res.ok ? "queued" : "failed", res.ok ? "" : res.error, digits, purpose});
+    } catch (const std::exception& e) {
+        std::cerr << "[TwilioService] sms log failed: " << e.what() << std::endl;
+    }
     return res;
 }
 

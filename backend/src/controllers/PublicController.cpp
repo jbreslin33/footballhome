@@ -1,5 +1,9 @@
 #include "PublicController.h"
 #include "../core/Crypto.h"
+#include "../services/MagicLinkService.h"
+#include <map>
+#include <cstdlib>
+#include <set>
 #include "../models/WelcomeLog.h"
 #include <sstream>
 #include <regex>
@@ -21,6 +25,8 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
     router.get(prefix + "/program-copy",         [this](const Request& r) { return handleGetProgramCopy(r); });
     router.post(prefix + "/sms-opt-in",          [this](const Request& r) { return handlePostSmsOptIn(r); });
     router.get(prefix + "/sms-opt-in/prefill",   [this](const Request& r) { return handleGetSmsOptInPrefill(r); });
+    router.post(prefix + "/twilio/sms-inbound",  [this](const Request& r) { return handleTwilioSmsInbound(r); });
+    router.post(prefix + "/twilio/sms-status",   [this](const Request& r) { return handleTwilioSmsStatus(r); });
 }
 
 // ─── GET /api/public/teams ───────────────────────────────────────────────────
@@ -757,4 +763,152 @@ Response PublicController::handleGetSmsOptInPrefill(const Request& request) {
         std::cerr << "❌ handleGetSmsOptInPrefill: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
+}
+
+// ─── Twilio webhooks (mig 540) ───────────────────────────────────────────────
+// Owner 2026-10-07: "we need to track it all".  Twilio POSTs a form
+// (application/x-www-form-urlencoded) and signs it: X-Twilio-Signature =
+// base64(HMAC-SHA1(auth token, url + every param key+value sorted by key)).
+// The url is the one configured on the number / messaging service —
+// publicBaseUrl() + the path here.  An unsigned or mis-signed request is
+// 403 and writes nothing.
+namespace {
+
+std::map<std::string, std::string> parseForm(const std::string& body) {
+    auto decode = [](const std::string& in) {
+        std::string out;
+        for (size_t i = 0; i < in.size(); ++i) {
+            if (in[i] == '+') out.push_back(' ');
+            else if (in[i] == '%' && i + 2 < in.size() && std::isxdigit(static_cast<unsigned char>(in[i + 1])) &&
+                     std::isxdigit(static_cast<unsigned char>(in[i + 2]))) {
+                out.push_back(static_cast<char>(std::stoi(in.substr(i + 1, 2), nullptr, 16)));
+                i += 2;
+            } else out.push_back(in[i]);
+        }
+        return out;
+    };
+    std::map<std::string, std::string> form;
+    size_t start = 0;
+    while (start <= body.size()) {
+        size_t amp = body.find('&', start);
+        if (amp == std::string::npos) amp = body.size();
+        const std::string pair = body.substr(start, amp - start);
+        if (!pair.empty()) {
+            const size_t eq = pair.find('=');
+            if (eq == std::string::npos) form[decode(pair)] = "";
+            else form[decode(pair.substr(0, eq))] = decode(pair.substr(eq + 1));
+        }
+        start = amp + 1;
+    }
+    return form;
+}
+
+std::string tenDigits(const std::string& e164) {
+    std::string d;
+    for (unsigned char c : e164) if (std::isdigit(c)) d.push_back(static_cast<char>(c));
+    if (d.size() == 11 && d[0] == '1') d.erase(0, 1);
+    return d;
+}
+
+std::string upperTrim(std::string s) {
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back())))  s.pop_back();
+    for (auto& c : s) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    return s;
+}
+
+const char* kTwiml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>";
+
+}  // namespace
+
+bool PublicController::twilioSignatureOk(const Request& request, const std::map<std::string, std::string>& form) {
+    const char* tok = std::getenv("TWILIO_AUTH_TOKEN");
+    if (!tok || !*tok) return false;
+    const std::string given = request.getHeader("X-Twilio-Signature");
+    if (given.empty()) return false;
+    std::string data = MagicLinkService::publicBaseUrl() + request.getPath();
+    for (const auto& kv : form) data += kv.first + kv.second;   // std::map = sorted by key
+    const std::string expect = fh::crypto::base64Encode(fh::crypto::hmacSha1(tok, data));
+    if (expect.size() != given.size()) return false;
+    unsigned char diff = 0;
+    for (size_t i = 0; i < expect.size(); ++i) diff |= static_cast<unsigned char>(expect[i] ^ given[i]);
+    return diff == 0;
+}
+
+// POST /api/public/twilio/sms-inbound — every text sent to the club
+// number: an sms_messages row; STOP (Twilio's OptOutType, or the keyword)
+// is an sms_opt_outs row, START / UNSTOP / YES a fresh sms_opt_ins row
+// (source keyword:START, the text itself as the consent).  Twilio's own
+// opt-out management sends the confirmation replies; we answer with an
+// empty TwiML so nothing else goes back.
+Response PublicController::handleTwilioSmsInbound(const Request& request) {
+    const auto form = parseForm(request.getBody());
+    if (!twilioSignatureOk(request, form)) {
+        std::cerr << "❌ twilio/sms-inbound: bad signature" << std::endl;
+        return Response(HttpStatus::FORBIDDEN, "forbidden");
+    }
+    auto f = [&](const char* k) { auto it = form.find(k); return it == form.end() ? std::string{} : it->second; };
+    const std::string sid = f("MessageSid"), from = f("From"), to = f("To"), body = f("Body");
+    const std::string digits = tenDigits(from);
+    std::string optOut = upperTrim(f("OptOutType"));
+    if (optOut.empty()) {
+        static const std::set<std::string> stops  = {"STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"};
+        static const std::set<std::string> starts = {"START", "UNSTOP", "YES"};
+        const std::string word = upperTrim(body);
+        if (stops.count(word)) optOut = "STOP";
+        else if (starts.count(word)) optOut = "START";
+        else if (word == "HELP" || word == "INFO") optOut = "HELP";
+    }
+    nlohmann::json raw = nlohmann::json::object();
+    for (const auto& kv : form) raw[kv.first] = kv.second;
+    try {
+        pqxx::result m = db_->query(
+            "INSERT INTO sms_messages (direction, message_sid, from_number, to_number, body, status, opt_out_type, person_id, raw) "
+            "VALUES ('in', NULLIF($1,''), $2, $3, $4, 'received', NULLIF($5,''), fh_person_by_phone($6), $7::jsonb) "
+            "ON CONFLICT (message_sid) DO UPDATE SET updated_at = now() "
+            "RETURNING id, person_id",
+            {sid, from, to, body, optOut, digits, raw.dump()});
+        const std::string msgId = m.empty() ? "" : m[0]["id"].c_str();
+        if (optOut == "STOP" && digits.size() == 10) {
+            db_->query("INSERT INTO sms_opt_outs (phone_digits, person_id, sms_message_id, keyword) "
+                       "VALUES ($1, fh_person_by_phone($1), NULLIF($2,'')::bigint, $3)",
+                       {digits, msgId, upperTrim(body).substr(0, 40)});
+        } else if (optOut == "START" && digits.size() == 10) {
+            db_->query("INSERT INTO sms_opt_ins (name, phone, phone_digits, consent_text, source, person_id) "
+                       "SELECT COALESCE(BTRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')), ''), $2, $1, $3, 'keyword:START', p.id "
+                       "  FROM (SELECT fh_person_by_phone($1) AS id) x LEFT JOIN persons p ON p.id = x.id",
+                       {digits, from, body.substr(0, 200)});
+        }
+        std::cout << "📲 sms in from " << from << (optOut.empty() ? "" : " [" + optOut + "]") << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "❌ twilio/sms-inbound: " << e.what() << std::endl;
+    }
+    Response r(HttpStatus::OK, kTwiml);
+    r.setHeader("Content-Type", "text/xml; charset=utf-8");
+    return r;
+}
+
+// POST /api/public/twilio/sms-status — Twilio's delivery report for a text
+// the backend sent (StatusCallback on every send): status + error code
+// onto the sms_messages row.
+Response PublicController::handleTwilioSmsStatus(const Request& request) {
+    const auto form = parseForm(request.getBody());
+    if (!twilioSignatureOk(request, form)) {
+        std::cerr << "❌ twilio/sms-status: bad signature" << std::endl;
+        return Response(HttpStatus::FORBIDDEN, "forbidden");
+    }
+    auto f = [&](const char* k) { auto it = form.find(k); return it == form.end() ? std::string{} : it->second; };
+    const std::string sid = f("MessageSid"), status = f("MessageStatus"), err = f("ErrorCode");
+    try {
+        if (!sid.empty()) {
+            db_->query("INSERT INTO sms_messages (direction, message_sid, from_number, to_number, body, status, error_code, person_id) "
+                       "VALUES ('out', $1, $3, $4, '', $2, NULLIF($5,''), fh_person_by_phone($6)) "
+                       "ON CONFLICT (message_sid) DO UPDATE SET status = EXCLUDED.status, "
+                       "    error_code = COALESCE(EXCLUDED.error_code, sms_messages.error_code), updated_at = now()",
+                       {sid, status, f("From"), f("To"), err, tenDigits(f("To"))});
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "❌ twilio/sms-status: " << e.what() << std::endl;
+    }
+    return Response(HttpStatus::OK, "");
 }
