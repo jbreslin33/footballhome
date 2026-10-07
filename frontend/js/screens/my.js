@@ -51,7 +51,7 @@ class MyScreen extends Screen {
     this.scheduleView    = 'week';
     this.who             = '';             // person pill: '' = default (first person) | all | role:<hat> | child:<id>
     this.whoSub          = 'all';          // team / group pill under it: all | g:<group> | t:<team>
-    this.layout          = 'days';   // 'days' | 'list'
+    this.layout          = 'days';   // the day grid is the only layout (owner 2026-10-07: "take away list view its bad"); 'list' is parked
     this.drive           = null;   // places, drive minutes, policy (mig 526)
     this.conflictPrompt  = null;   // { fhEventId, personId } — a Go that was held back
     this.conflictNote    = null;   // { fhEventId, personId, text } — a typed time that was refused
@@ -62,7 +62,7 @@ class MyScreen extends Screen {
       this.who = localStorage.getItem('my.who') || '';
       this.whoSub = localStorage.getItem('my.whoSub') || 'all';
       // Day cells or the plain list as it was (mig 527).
-      if (localStorage.getItem('my.layout') === 'list') this.layout = 'list';
+      // my.layout in localStorage is ignored: the day grid is the only layout.
     } catch (err) { /* private window */ }
     this.futureEvents    = null;         // 90-day feed, loaded on first use
     this.futureError     = null;
@@ -1044,7 +1044,7 @@ class MyScreen extends Screen {
     const optsHtml = options.map(([val, label]) =>
       `<option value="${val}" ${this.eventsRange === val ? 'selected' : ''}>${this.escapeHtml(label)}</option>`
     ).join('');
-    const layouts = [['days', 'layout_days'], ['list', 'layout_list']].filter(([, tier]) => MessageCopy.has('my_schedule', tier));
+    const layouts = [];   // Calendar / List toggle retired 2026-10-07 — the day grid is the only layout
     const layoutHtml = layouts.length < 2 ? '' : layouts.map(([key, tier]) => `<button type="button" data-layout="${key}"
         style="padding:3px 9px; border-radius:6px; cursor:pointer; font-size:0.68rem; font-weight:700;
                border:1px solid ${this.layout === key ? '#2563eb' : 'rgba(255,255,255,0.16)'};
