@@ -1034,12 +1034,18 @@ class MyScreen extends Screen {
   // ────── Old events (range picker) ─────────────────────────────────
 
   _rangeSelectHtml() {
+    // Looking ahead as well as back (owner 2026-10-07: "the drop down for
+    // this week etc should allow for looking ahead").  Ahead of the
+    // released week an event is read-only ("not released yet").
     const options = [
       ['current', 'This Week'],
+      ['next7', 'Next Week'],
+      ['next30', 'Next Month'],
+      ['next90', 'Next 3 Months'],
       ['yesterday', 'Yesterday'],
       ['last7', 'Last Week'],
       ['last30', 'Last Month'],
-      ['all', 'All'],
+      ['all', 'All Past'],
     ];
     const optsHtml = options.map(([val, label]) =>
       `<option value="${val}" ${this.eventsRange === val ? 'selected' : ''}>${this.escapeHtml(label)}</option>`
@@ -1098,6 +1104,13 @@ class MyScreen extends Screen {
           events = events.concat(chunk);
           chunkEnd = chunkStart;
         }
+      } else if (rangeKey.startsWith('next')) {
+        // From the end of this week's window forward.
+        const daysAhead = { next7: 7, next30: 30, next90: 90 }[rangeKey] || 7;
+        const start = this._weekWindowEnd();
+        const res = await this._fetch(
+          `/api/calendar/upcoming?start=${encodeURIComponent(start.toISOString())}&days=${daysAhead}`);
+        events = res.events || [];
       } else {
         const daysBack = { yesterday: 1, last7: 7, last30: 30 }[rangeKey] || 7;
         const start = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
@@ -1133,13 +1146,16 @@ class MyScreen extends Screen {
     }
 
     rangeHtml += this._whoPillsHtml();
+    const ahead = String(this.eventsRange).startsWith('next');
     const list = (this.oldEvents || [])
       .filter(e => this._isPlayerScheduleEvent(e))
       .filter(e => this._whoMatch(e))
       .filter(e => e.starts_at && !isNaN(new Date(e.starts_at)))
-      .sort((a, b) => new Date(b.starts_at) - new Date(a.starts_at)); // most recent first
+      .sort((a, b) => ahead ? new Date(a.starts_at) - new Date(b.starts_at)      // soonest first
+                            : new Date(b.starts_at) - new Date(a.starts_at));    // most recent first
 
-    const rangeLabels = { yesterday: 'yesterday', last7: 'the last week', last30: 'the last month', all: 'your history' };
+    const rangeLabels = { yesterday: 'yesterday', last7: 'the last week', last30: 'the last month', all: 'your history',
+                          next7: 'next week', next30: 'the next month', next90: 'the next 3 months' };
     const rangeLabel = rangeLabels[this.eventsRange] || 'this range';
 
     if (sub) {
@@ -1157,6 +1173,12 @@ class MyScreen extends Screen {
       return;
     }
 
+    if (ahead) {
+      const weekEnd = this._weekWindowEnd();
+      const released = (e) => new Date(e.starts_at) <= (e.schedule_window_end ? new Date(e.schedule_window_end) : weekEnd);
+      box.innerHTML = rangeHtml + this._dayCells(list, e => released(e) ? this._renderEventCard(e) : this._renderFutureRow(e));
+      return;
+    }
     box.innerHTML = rangeHtml + this._dayCells(list, e => this._renderEventCard(e, /*isPast*/ true));
   }
 
