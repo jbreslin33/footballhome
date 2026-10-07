@@ -900,14 +900,16 @@ class MyScreen extends Screen {
   // practice or game only as it just confuses them. 1 kid parents just
   // show the cal. multi show each kid as a pill and maybe an all pill"):
   // no This week / All / Games only / Practices only row, the week only.
-  _parentOnly() {
-    const all = [...(this.events || []), ...(this.futureEvents || [])].filter(ev => ev && this._isPlayerScheduleEvent(ev));
-    return all.length > 0 && !all.some(ev => ev.my_role) && all.some(ev => Array.isArray(ev.guardian_targets) && ev.guardian_targets.length);
-  }
-  _view() { return this._parentOnly() ? 'week' : this.scheduleView; }
+  // … and then for everyone (owner, same day: "same for luke and the
+  // coaches. it should have player view and coach view for him"): the
+  // week is the view; the person pills (Me · player / Me · coach / each
+  // child) and the team pills under them do the narrowing.  The row's
+  // code stays for the day it is wanted back; scheduleView is parked.
+  _view() { return 'week'; }
 
   _schedulePillsHtml() {
-    if (this._parentOnly()) return '';
+    return '';
+    // eslint-disable-next-line no-unreachable
     const views = [['week', 'pill_week'], ['all', 'pill_all'], ['games', 'pill_games'], ['practices', 'pill_practices']];
     if (!views.every(([, tier]) => MessageCopy.has('my_schedule', tier))) return '';
     return `
