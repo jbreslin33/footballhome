@@ -756,6 +756,7 @@ json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen) {
     auto link = db->query(R"SQL(
         SELECT l.id, l.section_code, l.team_ids::text AS team_ids,
                cs.roll_call_no_response_names AS names_for_none, cs.roll_call_name_style AS name_style,
+               cs.roll_call_layout AS layout,
                (SELECT string_agg(COALESCE(t.label, t.name), ' · ' ORDER BY t.board_sort_order)
                   FROM teams t WHERE t.id = ANY(l.team_ids)) AS teams
           FROM rsvp_roll_call_links l JOIN club_sections cs ON cs.code = l.section_code
@@ -775,8 +776,13 @@ json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen) {
         while (in >> v) teamIds.push_back(v);
     }
     // The released, still-open games of these teams.
+    // The released, still-open games of these teams — with the team(s)
+    // of the link each one belongs to, so the teams layout (mig 546) can
+    // group them (U6 Intramural, U8 Intramural, U8 Travel …).
     auto games = db->query(R"SQL(
-        SELECT fe.id, min(ge.starts_at) AS starts_at
+        SELECT fe.id, min(ge.starts_at) AS starts_at,
+               string_agg(DISTINCT BTRIM(regexp_replace(COALESCE(t.label, t.name), '^[^[:alnum:]]+', '')), ' · ') AS team_labels,
+               min(t.board_sort_order) AS team_sort
           FROM fh_events fe
           JOIN gcal_events ge ON ge.id = fe.gcal_event_id
           JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
@@ -785,14 +791,22 @@ json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen) {
            AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
            AND ge.ends_at > now()
            AND ge.starts_at < fh_schedule_window_end(t.club_id, t.club_section_id, now())
-         GROUP BY fe.id ORDER BY min(ge.starts_at))SQL", {pgIntArray(teamIds)});
+         GROUP BY fe.id ORDER BY min(t.board_sort_order), min(ge.starts_at))SQL", {pgIntArray(teamIds)});
+    // Every team on the link, so the teams layout can show one with no game.
+    auto teamRows = db->query(
+        "SELECT BTRIM(regexp_replace(COALESCE(t.label, t.name), '^[^[:alnum:]]+', '')) AS label "
+        "  FROM teams t WHERE t.id = ANY($1::bigint[]) ORDER BY t.board_sort_order", {pgIntArray(teamIds)});
+    json teamList = json::array();
+    for (const auto& r : teamRows) teamList.push_back(r["label"].c_str());
     json out = {{"slug", slug}, {"section", section}, {"teams", L["teams"].is_null() ? "" : L["teams"].c_str()},
+                {"team_list", teamList}, {"layout", L["layout"].c_str()},
                 {"names_for_none", namesForNone}, {"name_style", nameStyle}, {"games", json::array()}};
     for (const auto& g : games) {
         const long long fhEventId = g["id"].as<long long>();
         const auto rc = rollCall(section, fhEventId, teamIds, nameStyle);
         if (!rc.found) continue;
         json game = {{"fh_event_id", fhEventId}, {"line", rc.line}, {"deadline", rc.deadline},
+                     {"team_labels", g["team_labels"].is_null() ? "" : g["team_labels"].c_str()},
                      {"going", rc.going}, {"not_going", rc.notGoing},
                      {"no_response_count", rc.noResponse.size()},
                      {"no_response", namesForNone ? json(rc.noResponse) : json(nullptr)}};
