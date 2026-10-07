@@ -40,7 +40,7 @@ class MyScreen extends Screen {
     this.events         = null;          // Array<event> from /api/calendar/upcoming
     this.eventSaving    = new Set();     // "fh_event_id:response" tokens in-flight
     this.dataError      = null;
-    this.expandedEventId = null;         // toggled by the compact View button
+    this.expandedEventId = null;         // toggled by tapping the card
     this.notGoingExpandedEvents = new Set(); // fh_event_ids with "Not Going" list open
 
     // Old-events range picker. 'current' (default) reuses the existing
@@ -386,7 +386,10 @@ class MyScreen extends Screen {
         return;
       }
       // Compact card detail toggle.
-      const viewBtn = target.closest('[data-view-event-id]');
+      // The whole card toggles its details (2026-10-07) — but not a tap on
+      // a control inside it (Go / No, times, Game Center handle themselves).
+      const control = target.closest('button, input, select, textarea, a, label');
+      const viewBtn = control ? null : target.closest('[data-view-event-id]');
       if (viewBtn) {
         e.stopPropagation();
         const fhEventId = parseInt(viewBtn.getAttribute('data-view-event-id'), 10);
@@ -1725,7 +1728,6 @@ class MyScreen extends Screen {
     const notGoingCount = rsvps.filter(r => r && r.response === 'no' && !r.is_coach).length;
     const coachesNotGoingCount = rsvps.filter(r => r && r.response === 'no' && r.is_coach).length;
     const isExpanded = this.expandedEventId === ev.fh_event_id;
-    const viewLabel = isExpanded ? 'Hide' : 'View';
 
     // Crest shown on the card front: opponent's (when resolved) for
     // games, falling back to Lighthouse's own crest when the opponent
@@ -1777,7 +1779,8 @@ class MyScreen extends Screen {
     ` : '';
 
     const leagueLabel = (ev.league || '').trim();
-    const compactMeta = `${leagueLabel ? leagueLabel + ' · ' : ''}${playersGoingCount} players, ${coachesGoingCount} coaches going`
+    const compactMeta = `${leagueLabel ? leagueLabel + ' · ' : ''}${playersGoingCount} going`
+      + (coachesGoingCount ? ` · ${coachesGoingCount} coach${coachesGoingCount === 1 ? '' : 'es'}` : '')
       + (callupsAvailCount ? ` · ${callupsAvailCount} invited available` : '')
       + ` · ${notGoingCount} not going${coachesNotGoingCount ? ` (+${coachesNotGoingCount} coach${coachesNotGoingCount === 1 ? '' : 'es'})` : ''}`;
     // Coaches of this practice are due before it starts (mig 529) — shown
@@ -1790,44 +1793,58 @@ class MyScreen extends Screen {
     // Role pill (migration 438): which hat the viewer wears on this event.
     const rolePillHtml = whoChild ? '' : this._rolePillHtml(ev.my_role);   // a child's view is about the child, not my role
 
-    return `
-      <div style="background: rgba(255,255,255,0.04);
-                  border: 1px solid rgba(255,255,255,0.08);
-                  border-radius: 6px;
-                  padding: 5px 6px;
-                  margin-bottom: 4px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; flex-wrap:wrap;">
-          ${crestHtml}
-          <div style="min-width:160px; flex:1 1 160px;">
-            ${mainTeamHtml}
-            <div style="font-weight:700; font-size:0.7rem; line-height:1.2;">${rolePillHtml}${this.escapeHtml(dateStr)} · ${this.escapeHtml(timeStr)}</div>
-            <div style="font-size:0.66rem; font-weight:600; line-height:1.25; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(title)}</div>
-            ${arrivalKickoffLine ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.85; white-space:normal; overflow-wrap:break-word;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
-            ${venue ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📍 ${this.escapeHtml(venue)}</div>` : ''}
-            ${notes ? `<div style="font-size:0.6rem; line-height:1.2; opacity:0.7; white-space:normal; overflow-wrap:break-word;">📝 ${this.escapeHtml(notes)}</div>` : ''}
-            ${stacked ? '' : ownSideHtml}
-            <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:normal; overflow-wrap:break-word;">${compactMeta}</div>
-          </div>
-          <div style="display:flex; align-items:center; gap:3px; flex-wrap:wrap; justify-content:flex-end; flex-shrink:0;">
-            ${!stacked && showOwnRsvpRow ? ownButtonsHtml : ''}
-            <button type="button" data-view-event-id="${ev.fh_event_id}" style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
-              ${this.escapeHtml(viewLabel)}
-            </button>
-            ${kind === 'match' && ev.match_id ? `
+    // Collapsed: two lines (owner 2026-10-07: "way too much empty space on
+    // the my page event cards … get it down to 1 or 2 lines … get rid of
+    // view button and have whole card clickable to view … we already have
+    // them in date groups with headers").  Line 1 = team pill, time, what;
+    // line 2 = who's going.  Tap anywhere on the card for the rest:
+    // date, arrival / kickoff, venue, notes, the lists, Game Center.
+    const teamPillsInline = mainTeamLabels.map(l => `<span style="display:inline-block; padding:0 6px; border-radius:4px;
+                            background:#1d4ed8; color:#fff; font-size:0.6rem; font-weight:800; letter-spacing:0.04em;
+                            text-transform:uppercase; line-height:1.5; vertical-align:middle; margin-right:3px;">${this.escapeHtml(l)}</span>`).join('');
+    const gameCenterBtnHtml = kind === 'match' && ev.match_id ? `
               <button type="button" data-game-center-match-id="${ev.match_id}"
                       data-game-center-title="${this.escapeHtml(title)}"
                       data-game-center-when="${this.escapeHtml([dateStr, timeStr].filter(Boolean).join(' · '))}"
-                      style="padding:2px 7px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.58rem; font-weight:600; line-height:1;">
+                      style="padding:3px 9px; border-radius:999px; border:1px solid rgba(255,255,255,0.16); background:transparent; color:#dbeafe; font-size:0.62rem; font-weight:600; line-height:1;">
                 🏟️ Game Center
-              </button>
-            ` : ''}
+              </button>` : '';
+    const detailBlockHtml = `
+          <div style="margin-top:5px; padding-top:5px; border-top:1px solid rgba(255,255,255,0.08); display:grid; gap:3px; font-size:0.62rem; line-height:1.3;">
+            <div style="opacity:0.85;">${this.escapeHtml(detailLines.join(' • '))}</div>
+            ${arrivalKickoffLine ? `<div style="opacity:0.85;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
+            ${venue ? `<div style="opacity:0.75;">📍 ${this.escapeHtml(venue)}</div>` : ''}
+            ${notes ? `<div style="opacity:0.75;">📝 ${this.escapeHtml(notes)}</div>` : ''}
+            ${stacked ? '' : ownSideHtml}
+            ${gameCenterBtnHtml ? `<div>${gameCenterBtnHtml}</div>` : ''}
+            ${this._eventRsvpHtml(ev, isPast)}
+          </div>`;
+
+    return `
+      <div data-view-event-id="${ev.fh_event_id}" title="${isExpanded ? 'Tap to close' : 'Tap for details'}"
+           style="background: rgba(255,255,255,0.04);
+                  border: 1px solid rgba(255,255,255,${isExpanded ? '0.18' : '0.08'});
+                  border-radius: 6px;
+                  padding: 4px 6px;
+                  margin-bottom: 3px;
+                  cursor: pointer;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+          ${crestHtml}
+          <div style="min-width:0; flex:1 1 auto;">
+            <div style="font-size:0.7rem; line-height:1.3; white-space:normal; overflow-wrap:break-word;">
+              ${rolePillHtml}${teamPillsInline}<b>${this.escapeHtml(arrival ? `Arrive ${arrival}` : timeStr)}</b> · ${this.escapeHtml(title)}
+            </div>
+            <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${venue ? `📍 ${this.escapeHtml(venue)} · ` : ''}${compactMeta}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
+            ${!stacked && showOwnRsvpRow ? ownButtonsHtml : ''}
           </div>
         </div>
         ${!stacked && showOwnRsvpRow && per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
         ${stacked ? `
-          <div style="margin-top:4px;">
+          <div style="margin-top:2px;">
             ${showOwnRsvpRow ? `
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.08);">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:3px; padding-top:3px; border-top:1px solid rgba(255,255,255,0.08);">
                 <div style="font-size:0.66rem; font-weight:700; line-height:1.2; opacity:0.95;">
                   👤 ${this.escapeHtml(ownLabel)}
                   ${ownSideHtml}
@@ -1840,12 +1857,7 @@ class MyScreen extends Screen {
           </div>
         ` : ''}
         ${this._conflictHtml(ev, isPast)}
-        ${isExpanded ? `
-          <div style="margin-top: 6px; padding: 6px 7px; border-top: 1px solid rgba(255,255,255,0.08); display:grid; gap: 5px;">
-            <div style="font-size:0.64rem; line-height:1.3; opacity:0.82;">${this.escapeHtml(detailLines.join(' • '))}</div>
-            ${this._eventRsvpHtml(ev, isPast)}
-          </div>
-        ` : ''}
+        ${isExpanded ? detailBlockHtml : ''}
       </div>
     `;
   }
