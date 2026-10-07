@@ -50,6 +50,7 @@
 #include "controllers/FinancesController.h"
 #include "controllers/FinesController.h"
 #include "controllers/SmsOptInBoardController.h"
+#include "controllers/ContactsController.h"
 #include "controllers/LineupDraftController.h"
 #include "controllers/OfficialRosterController.h"
 #include "controllers/GameMessageController.h"
@@ -130,6 +131,7 @@ private:
     std::shared_ptr<FinancesController> finances_controller_;
     std::shared_ptr<FinesController> fines_controller_;
     std::shared_ptr<SmsOptInBoardController> sms_opt_in_board_controller_;
+    std::shared_ptr<ContactsController> contacts_controller_;
     std::shared_ptr<LineupDraftController> lineup_draft_controller_;
     std::shared_ptr<OfficialRosterController> official_roster_controller_;
     std::shared_ptr<GameMessageController> game_message_controller_;
@@ -219,6 +221,7 @@ public:
         finances_controller_ = std::make_shared<FinancesController>();
         fines_controller_ = std::make_shared<FinesController>();
         sms_opt_in_board_controller_ = std::make_shared<SmsOptInBoardController>();
+        contacts_controller_ = std::make_shared<ContactsController>();
         lineup_draft_controller_ = std::make_shared<LineupDraftController>();
         official_roster_controller_ = std::make_shared<OfficialRosterController>();
         game_message_controller_ = std::make_shared<GameMessageController>();
@@ -535,6 +538,8 @@ private:
         router_.useController("/api/fines", fines_controller_);
         // #texts (mig 537): who has opted in to club texts, nudge the rest.
         router_.useController("/api/texts-board", sms_opt_in_board_controller_);
+        // #contacts (mig 541): the club's people into the operator's phone as a vCard.
+        router_.useController("/api/contacts", contacts_controller_);
         // Lineup drafts next to the official lineup (mig 495).
         router_.useController("/api/lineup-drafts", lineup_draft_controller_);
         // The league's own roster sheet, pulled fresh per game (mig 501).

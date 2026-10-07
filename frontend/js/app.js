@@ -64,6 +64,7 @@ class App {
       rsvps: new RsvpBoardScreen(this.navigation, this.auth),
       kit: new KitBoardScreen(this.navigation, this.auth),
       texts: new SmsOptInBoardScreen(this.navigation, this.auth),
+      contacts: new ContactsScreen(this.navigation, this.auth),
       security: new SecurityScreen(this.navigation, this.auth),
       clubLogos: new ClubLogosScreen(this.navigation, this.auth),
       files: new FilesScreen(this.navigation, this.auth),
@@ -164,6 +165,8 @@ class App {
     this.screenManager.register('kit', this.screens.kit);
     // Texts (#texts, mig 537) — who has opted in to club texts, nudge the rest. See screens/texts.js.
     this.screenManager.register('texts', this.screens.texts);
+    // Contacts (#contacts, mig 541) — the club's people into the operator's phone as a vCard. See screens/contacts.js.
+    this.screenManager.register('contacts', this.screens.contacts);
     // Security (#security) — nightly gate photo check-in + alert log (mig 421/424). See screens/security.js.
     this.screenManager.register('security', this.screens.security);
     // Club Logos (#logos) — crests stored per club + opponent text -> club (mig 428). See screens/club-logos.js.

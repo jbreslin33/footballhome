@@ -130,6 +130,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="contacts" id="rs-contacts" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📇</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('contacts', 'tile_title')) || 'Contacts'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('contacts', 'tile_sub')) || 'Members, parents, coaches, leads and opponent contacts into your phone in one tap'}</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="casa" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">⚽</span>
           <div style="flex: 1; text-align: left;">
@@ -434,6 +442,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'texts') {
       // Not a role — the club-texts opt-in board (mig 537).
       this.navigation.goTo('texts');
+    } else if (role === 'contacts') {
+      // Not a role — the vCard export page (mig 541).
+      this.navigation.goTo('contacts');
     } else if (role === 'security') {
       // Not a role — the nightly gate-photo board (mig 421/424).
       this.navigation.goTo('security');
