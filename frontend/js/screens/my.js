@@ -828,6 +828,14 @@ class MyScreen extends Screen {
       }
     }
     const list = [...opts.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, undefined, { numeric: true }));
+    // A coach has many teams: the row shows whenever there are two pills.
+    // A player gets the row only when they play for more than one team
+    // (the Men's APSL / Reserves / Liga 1) — one team's game plus its
+    // practice group is just games-or-practices again (owner 2026-10-07:
+    // "u12 travel game pill and 530 kids practice pill … confusing").
+    const isCoach = role === 'coach' || role === 'staff';
+    const gameTeams = list.filter(o => o.key.startsWith('t:')).length;
+    if (!isCoach && gameTeams < 2) return [];
     return list.length >= 2 ? list : [];
   }
   _whoSubKey() { return this._subOptions().some(o => o.key === this.whoSub) ? this.whoSub : 'all'; }
