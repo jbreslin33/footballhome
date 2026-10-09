@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Player Pool</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <!-- The public cup roster sheet (mig 556): /cup-roster?k=<slug>.  Anyone
+       with the link sees the USASA Region I Player Pool sheet as printed.
+       Draws the same sheet as #cup-rosters (CupRostersScreen._renderSheet)
+       from GET /api/cup-rosters/public/<slug>, which needs no sign-in. -->
+  <style>
+    @page { size: letter; margin: 0; }
+    :root { --border-color:#ccc; --bg-primary:#fff; --bg-tertiary:#f4f4f4; --text-primary:#111; --primary-color:#1d4ed8; --space-3:12px; }
+    html, body { margin:0; padding:0; background:#e9e9ee; color:#111; font-family:Arial, Helvetica, sans-serif; }
+    .bar { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 14px; background:#fff; border-bottom:1px solid #ddd; font-size:0.95rem; }
+    .bar button { padding:8px 14px; border-radius:10px; border:none; cursor:pointer; font-weight:800; background:#4ade80; color:#0b1c3d; }
+    .wrap { padding:16px 8px; }
+    .cr-preview-wrap { overflow:hidden; }
+    .cr-preview-wrap .cr-scale { transform-origin:top left; }
+    .msg { padding:24px; text-align:center; color:#555; }
+    @media print {
+      html, body { background:#fff; height:792pt; overflow:hidden; }
+      .bar, .msg { display:none !important; }
+      .wrap { padding:0; height:792pt; overflow:hidden; }
+      .cr-preview-wrap { overflow:visible; height:auto !important; }
+      .cr-preview-wrap .cr-scale { transform:none !important; }
+      .cr-sheet { box-shadow:none !important; }
+      .cr-sheet th, .cr-sheet td, .cr-sheet .cr-bar { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar"><div id="title">Player Pool</div><button id="print">🖨 Print / Save PDF</button></div>
+  <div class="wrap"><div id="sheet"></div><div class="msg" id="msg">Loading…</div></div>
+  <script>
+    class MessageCopy { static load() { return Promise.resolve(); } static block() { return ''; } static fill(t, tokens) { return String(t).replace(/\{(\w+)\}/g, (m, k) => tokens && tokens[k] != null ? tokens[k] : m); } }
+    window.MessageCopy = MessageCopy;
+  </script>
+  <script src="/js/screen-base.js"></script>
+  <script src="/js/screens/cup-rosters.js?v=20261009a"></script>
+  <script>
+    (async () => {
+      const k = new URLSearchParams(location.search).get('k') || '';
+      const msg = document.getElementById('msg');
+      if (!/^[0-9a-f-]{36}$/i.test(k)) { msg.textContent = 'This link is not a valid sheet link.'; return; }
+      let sheet;
+      try {
+        const res = await fetch('/api/cup-rosters/public/' + encodeURIComponent(k));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        sheet = await res.json();
+      } catch (e) { msg.textContent = 'That sheet could not be found.'; return; }
+      const screen = new CupRostersScreen({ goBack() {}, context: {} }, { fetch() { return Promise.reject(new Error('n/a')); } });
+      const shell = screen.render();
+      document.body.appendChild(shell.querySelector('style'));
+      const host = document.getElementById('sheet');
+      host.innerHTML = '<div class="cr-preview-wrap"><div class="cr-scale">' + screen._renderSheet(sheet) + '</div></div>';
+      msg.remove();
+      document.title = sheet.title || sheet.cup || 'Player Pool';
+      document.getElementById('title').textContent = document.title;
+      const fit = () => {
+        const wrap = host.querySelector('.cr-preview-wrap'), inner = host.querySelector('.cr-scale');
+        const scale = Math.min(1, (wrap.clientWidth || 816) / 816);
+        inner.style.transform = 'scale(' + scale + ')';
+        wrap.style.height = Math.ceil(1056 * scale) + 'px';
+      };
+      fit(); window.addEventListener('resize', fit);
+      document.getElementById('print').addEventListener('click', () => window.print());
+    })();
+  </script>
+</body>
+</html>

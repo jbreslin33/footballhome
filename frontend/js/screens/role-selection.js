@@ -162,6 +162,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="cup-rosters" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🏆</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('cup_roster', 'tile_title')) || 'Cup Rosters'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('cup_roster', 'tile_sub')) || 'USASA / EPSA player pool sheets — tick players from APSL, Reserves and Liga 1, print to PDF'}</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="invoices" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">🧾</span>
           <div style="flex: 1; text-align: left;">
@@ -465,6 +473,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'opponents') {
       // Not a role — opponent contacts (mig 483).
       this.navigation.goTo('opponents');
+    } else if (role === 'cup-rosters') {
+      // #cup-rosters (mig 556): the USASA / EPSA player pool sheet.
+      this.navigation.goTo('cup-rosters');
     } else if (role === 'invoices') {
       // Not a role — invoices to The Lighthouse, Inc. (mig 465).
       this.navigation.goTo('invoices');
