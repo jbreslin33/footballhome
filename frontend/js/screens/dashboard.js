@@ -27,6 +27,9 @@
 //   👕 Numbers   person_uniform_numbers vs rostered players.  Cell → #kit.
 //   📋 Leads     leads with no lead_contacts row (the #leads "new"
 //                status), on a running ad or not.  Cell → #leads.
+//   🏠 Home games  every home game in the next 28 days by day, with the
+//                format to line (teams.field_size).  Cell → #calendar; a
+//                game → #game-center on that match.
 //
 // Live: re-read every 10 minutes while open and whenever the tab comes
 // back to the front.  Wording: message_templates kind 'dashboard'.
@@ -51,10 +54,10 @@ class DashboardScreen extends Screen {
     div.className = 'screen';
     div.innerHTML = `
       <style>
-        .db-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px; }
+        .db-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px; align-items:start; }
         .db-cell { border:1px solid var(--border-color, #374151); border-left:5px solid var(--border-color, #374151); border-radius:10px;
                    background:var(--bg-tertiary, #1f2937); padding:14px 16px; cursor:pointer; text-align:left; color:inherit; font:inherit;
-                   display:flex; flex-direction:column; gap:8px; min-height:170px; transition:transform .08s, box-shadow .08s; }
+                   display:flex; flex-direction:column; gap:8px; width:100%; transition:transform .08s, box-shadow .08s; }
         .db-cell:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,0.25); }
         .db-cell.ok { border-left-color:var(--success-color, #16a34a); }
         .db-cell.warn { border-left-color:var(--warning-color, #d97706); }
@@ -112,6 +115,7 @@ class DashboardScreen extends Screen {
     const params = {};
     if (qs) for (const kv of qs.split('&')) { const [k, v] = kv.split('='); params[decodeURIComponent(k)] = decodeURIComponent(v || ''); }
     if (screen === 'teams') this.navigation.context.role = 'club-admin';   // the board scopes by the hat worn (role-selection does the same)
+    if (params.matchId) params.matchId = Number(params.matchId);
     this.navigation.goTo(screen, params);
   }
 
@@ -161,6 +165,7 @@ class DashboardScreen extends Screen {
       <div class="db-grid">
         ${this._rsvpCell(d.rsvps || {}, 'games')}
         ${this._rsvpCell(d.rsvps || {}, 'practices')}
+        ${this._homeCell(d.home_games || {})}
         ${this._payCell(d.payments || {})}
         ${this._rosterCell(d.rosters || {})}
         ${this._kitCell(d.kit || {})}
@@ -218,6 +223,26 @@ class DashboardScreen extends Screen {
     const title = kind === 'games' ? this._t('rsvp_games_title', '⚽ Game RSVPs') : this._t('rsvp_practices_title', '🏃 Practice RSVPs');
     const sub = kind === 'games' ? this._t('rsvp_games_sub', 'Released games this week · rsvp\'d of expected') : this._t('rsvp_practices_sub', 'Released practices this week · rsvp\'d of expected');
     return this._cell(tone, go(''), title, sub, `${big}<div class="db-rows">${rows}</div>`);
+  }
+
+  // Owner 2026-10-09: "add in upcoming home games because i always need
+  // to be aware to line fields and make sure i can be there".  Every home
+  // game in the next 28 days by day, with the format to line.  → #calendar.
+  _homeCell(h) {
+    const games = h.games || [], days = h.days || 28;
+    const byDay = new Map();
+    for (const g of games) { if (!byDay.has(g.day)) byDay.set(g.day, { text: g.day_text, games: [] }); byDay.get(g.day).games.push(g); }
+    const facilities = [...new Set(games.map(g => g.facility).filter(Boolean))];
+    const rows = [...byDay.values()].map(d => `
+      <div class="db-row" style="padding-top:6px;"><span class="l db-h" style="margin:0;">${this.escapeHtml(d.text)}</span>
+        <span class="r" style="font-weight:400; opacity:0.6; font-size:0.75rem;">${d.games.length > 1 ? `${d.games.length} ${this.escapeHtml(this._t('home_games_word', 'games'))}` : ''}</span></div>
+      ${d.games.map(g => `<div class="db-row link" data-db-row="${g.match_id ? `game-center?matchId=${g.match_id}` : 'calendar'}">
+        <span class="l" style="white-space:normal;"><span style="opacity:0.75;">${this.escapeHtml(g.time_text)}</span> · <b>${this.escapeHtml(g.teams || '')}</b> vs ${this.escapeHtml(g.opponent)}</span>
+        <span class="r" style="font-weight:600; opacity:0.8;">${this.escapeHtml(g.format || '')}</span></div>`).join('')}`).join('');
+    const tone = games.some(g => g.day === new Date().toLocaleDateString('en-CA')) ? 'warn' : 'ok';
+    return this._cell(tone, 'calendar', this._t('home_title', '🏠 Home games'), this._t('home_sub', 'Next {days} days at {facility} — line the field, be there', { days, facility: facilities.join(' / ') || 'home' }),
+      `<div class="db-big">${games.length}<small>${this.escapeHtml(this._t('home_count', 'in {days} days', { days }))}</small></div>
+       <div class="db-rows">${rows || `<div class="db-note">${this.escapeHtml(this._t('home_none', 'No home games in the next {days} days', { days }))}</div>`}</div>`);
   }
 
   _payCell(p) {

@@ -241,6 +241,41 @@ Response DashboardController::handleGet(const Request& request) {
                             {"signedup", r["signedup"].as<long long>()}};
         }
 
+        // ── Home games ─────────────────────────────────────────────────
+        {
+            // Owner 2026-10-09: "add in upcoming home games because i always
+            // need to be aware to line fields and make sure i can be there".
+            // Every home game on the calendar in the next 28 days, with the
+            // format (teams.field_size — what to line) and the facility.
+            json games = json::array();
+            for (const auto& r : db->query(R"SQL(
+                SELECT fe.id AS fh_event_id, fe.match_id,
+                       to_char(ge.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS starts_at,
+                       to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day,
+                       to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS day_text,
+                       to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time_text,
+                       COALESCE(NULLIF(BTRIM(fe.opponent), ''), 'TBD') AS opponent,
+                       split_part(COALESCE(ge.location, ''), ',', 1) AS facility,
+                       string_agg(COALESCE(t.label, t.name), ' · ' ORDER BY t.board_sort_order) AS teams,
+                       string_agg(DISTINCT CASE WHEN t.field_size IS NOT NULL THEN t.field_size || 'v' || t.field_size END, '/') AS format
+                  FROM fh_events fe
+                  JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                  LEFT JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
+                  LEFT JOIN teams t ON t.id = fet.team_id AND t.is_active
+                 WHERE fe.kind = 'match' AND fe.is_home
+                   AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+                   AND ge.ends_at > now() AND ge.starts_at < now() + interval '28 days'
+                 GROUP BY fe.id, fe.match_id, ge.starts_at, fe.opponent, ge.location
+                 ORDER BY ge.starts_at)SQL")) {
+                games.push_back({{"fh_event_id", r["fh_event_id"].as<long long>()},
+                                 {"match_id", r["match_id"].is_null() ? json(nullptr) : json(r["match_id"].as<long long>())},
+                                 {"starts_at", str(r, "starts_at")}, {"day", str(r, "day")}, {"day_text", str(r, "day_text")},
+                                 {"time_text", str(r, "time_text")}, {"opponent", str(r, "opponent")}, {"facility", str(r, "facility")},
+                                 {"teams", str(r, "teams")}, {"format", str(r, "format")}});
+            }
+            out["home_games"] = {{"days", 28}, {"games", games}};
+        }
+
         auto now = db->query("SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS t");
         out["generated_at"] = now.empty() ? "" : str(now[0], "t");
         return jsonOut(HttpStatus::OK, out);

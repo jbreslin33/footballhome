@@ -26,6 +26,8 @@
 //                   capped_players, capped_max, full_teams },
 //       kit:      { players, numbered, sections: [{ code, players, numbered }] },
 //       leads:    { new_total, new_on_active, oldest_new_hours, needs_followup },
+//       home_games: { days, games: [{ fh_event_id, match_id, starts_at, day, day_text,
+//                                     time_text, teams, opponent, format, facility }] },
 //       generated_at }
 class DashboardController : public Controller {
 public:
