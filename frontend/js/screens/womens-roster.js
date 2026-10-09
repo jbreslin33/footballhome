@@ -82,6 +82,10 @@ class WomensRosterScreen extends RosterScreenBase {
     });
 
     this.element.addEventListener('change', e => {
+
+      const coachSel = e.target.closest('[data-coach-status], [data-coach-role]');
+
+      if (coachSel) return this.onCoachSelectChange(coachSel);
       if (this.onHealthControlChange(e.target)) return;   // health dropdown + dates (migration 510)
       const posSelect = e.target.closest('.roster-position-select');
       if (posSelect) return this.onPositionSelectChange(posSelect);
@@ -318,6 +322,7 @@ class WomensRosterScreen extends RosterScreenBase {
           </span>
         </div>
         ${this.renderRosterStatusTallies(col, players)}
+        ${this.renderCoachesStrip(col)}
         <div class="wr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:8px; min-height:8px; min-width:${this.colBoxMinWidth()};">
           ${body}

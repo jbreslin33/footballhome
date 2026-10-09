@@ -132,6 +132,7 @@ set(SOURCES
     src/controllers/FinesController.cpp
     src/controllers/DashboardController.cpp
     src/controllers/CupRosterController.cpp
+    src/controllers/RosterSheetController.cpp
     src/controllers/SmsOptInBoardController.cpp
     src/controllers/ContactsController.cpp
     src/controllers/LineupDraftController.cpp

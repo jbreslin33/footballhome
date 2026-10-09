@@ -602,6 +602,87 @@ class RosterScreenBase extends Screen {
   // data-status-tallies (+ data-league-id for ordering) so
   // refreshRosterStatusTallies() can repaint it live after a dropdown
   // change, exactly like the "✓ N on roster" tally.
+  // Coaches on the team with a roster status and role (mig 560, owner
+  // 2026-10-09: "add coaches to the teams on fh. that are 'on roster'
+  // 'not on roster' etc").  Drawn under the status tallies from
+  // /api/team-coaches/:teamId, fetched once per team per page; the ⋯
+  // popover on a coach holds the same status list the players use plus
+  // the role (head / assistant).  The league roster sheet (Game Center
+  // 🖨 Roster sheet) prints the coaches whose status counts as on roster.
+  renderCoachesStrip(col) {
+    if (!col || !col.teamId) return '';
+    const teamId = Number(col.teamId);
+    if (!this._coaches) this._coaches = new Map();
+    if (!this._coaches.has(teamId)) { this._coaches.set(teamId, null); this._loadCoaches(teamId); }
+    return `<div data-coaches-strip="${teamId}" style="margin:0 0 6px;">${this.coachesStripHtml(col, this._coaches.get(teamId))}</div>`;
+  }
+  async _loadCoaches(teamId) {
+    try {
+      const res = await this.auth.fetch(`/api/team-coaches/${teamId}`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      this._coaches.set(teamId, body);
+    } catch (err) { console.warn('[roster] coaches load failed:', err); this._coaches.set(teamId, { coaches: [], roles: [] }); }
+    const strip = this.element && this.element.querySelector(`[data-coaches-strip="${teamId}"]`);
+    const col = (this.columns || []).find(c => Number(c.teamId) === teamId) || { teamId };
+    if (strip) strip.innerHTML = this.coachesStripHtml(col, this._coaches.get(teamId));
+  }
+  coachesStripHtml(col, data) {
+    const esc = RosterScreenBase.escapeHtml;
+    const copy = (tier) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || '';
+    if (!data) return `<span style="font-size:0.62rem; opacity:0.5;">${esc(copy('coaches_h') || 'COACHES')} …</span>`;
+    const coaches = data.coaches || [];
+    if (!coaches.length) return '';
+    const canEdit = this._canEditCoachesFor(col);
+    const statuses = RosterScreenBase.rosterStatusesForColumn(col);
+    const roles = data.roles || [];
+    const rows = coaches.map(c => {
+      const st = c.status || '';
+      const chip = `<span style="font-size:0.58rem; font-weight:800; line-height:1.3; padding:0 4px; border-radius:3px; white-space:nowrap; ${this.rosterStatusStyle(st)}">${esc(st ? (c.status_label || st) : (copy('coach_no_status') || 'Not on roster'))}</span>`;
+      const role = c.role_label && c.role ? `<span style="opacity:0.6;">· ${esc(c.role_label)}</span>` : '';
+      const menu = canEdit ? `
+        <details class="roster-move-details" style="position:relative; display:inline-flex;">
+          <summary style="list-style:none; cursor:pointer; padding:0 5px; font-size:0.7rem; font-weight:800; border-radius:3px; background:#0f172a; border:1px solid var(--border-color);">⋯</summary>
+          <div style="position:absolute; top:100%; left:0; z-index:30; margin-top:2px; display:flex; flex-direction:column; gap:4px; background:#0f172a; padding:5px; border-radius:6px; border:1px solid var(--border-color); min-width:170px;">
+            <select data-coach-status data-team-id="${col.teamId}" data-person-id="${c.person_id}" style="font-size:0.7rem; padding:3px; ${this.rosterStatusStyle(st)}">
+              <option value="" ${st ? '' : 'selected'}>${esc(copy('coach_no_status') || 'Not on roster')}</option>
+              ${statuses.map(x => `<option value="${esc(x.code)}" ${x.code === st ? 'selected' : ''}>${esc(x.displayName || x.code)}</option>`).join('')}
+              ${st && !statuses.some(x => x.code === st) ? `<option value="${esc(st)}" selected>${esc(c.status_label || st)}</option>` : ''}
+            </select>
+            <select data-coach-role data-team-id="${col.teamId}" data-person-id="${c.person_id}" style="font-size:0.7rem; padding:3px;">
+              <option value="" ${c.role ? '' : 'selected'}>Role…</option>
+              ${roles.map(r => `<option value="${esc(r.name)}" ${r.name === c.role ? 'selected' : ''}>${esc(r.label || r.name)}</option>`).join('')}
+            </select>
+          </div>
+        </details>` : '';
+      return `<div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-size:0.68rem; padding:1px 0;">
+        <span style="font-weight:700;">${esc(c.first_name)} ${esc(c.last_name)}</span>${role}${chip}${menu}</div>`;
+    }).join('');
+    return `<div style="font-size:0.62rem; font-weight:700; letter-spacing:0.03em; opacity:0.7;">${esc(copy('coaches_h') || 'COACHES')}</div>${rows}`;
+  }
+  // Who may set a coach's status / role: a club admin, or a coach of that team.
+  _canEditCoachesFor(col) {
+    const ctx = (this.navigation && this.navigation.context) || {};
+    if (ctx.role === 'club-admin') return true;
+    const ids = Array.isArray(ctx.coachedTeamIds) ? ctx.coachedTeamIds.map(Number) : [];
+    return ids.includes(Number(col && col.teamId));
+  }
+  async onCoachSelectChange(select) {
+    const teamId = Number(select.dataset.teamId), personId = Number(select.dataset.personId);
+    if (!teamId || !personId) return;
+    const payload = select.hasAttribute('data-coach-status') ? { rosterStatus: select.value || null } : { coachRole: select.value || null };
+    select.disabled = true;
+    try {
+      const res = await this.auth.fetch(`/api/team-coaches/${teamId}/${personId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      const cur = this._coaches.get(teamId) || {}; cur.coaches = body.coaches || []; this._coaches.set(teamId, cur);
+    } catch (err) { alert(`Could not save: ${err.message}`); }
+    const strip = this.element && this.element.querySelector(`[data-coaches-strip="${teamId}"]`);
+    const col = (this.columns || []).find(c => Number(c.teamId) === teamId) || { teamId };
+    if (strip) strip.innerHTML = this.coachesStripHtml(col, this._coaches.get(teamId));
+  }
+
   renderRosterStatusTallies(col, players) {
     if (!col || !col.teamId) return '';
     const codes = (players || []).map(p => (p && p.rosterStatus) || '');

@@ -51,6 +51,7 @@
 #include "controllers/FinesController.h"
 #include "controllers/DashboardController.h"
 #include "controllers/CupRosterController.h"
+#include "controllers/RosterSheetController.h"
 #include "controllers/SmsOptInBoardController.h"
 #include "controllers/ContactsController.h"
 #include "controllers/LineupDraftController.h"
@@ -134,6 +135,7 @@ private:
     std::shared_ptr<FinesController> fines_controller_;
     std::shared_ptr<DashboardController> dashboard_controller_;
     std::shared_ptr<CupRosterController> cup_roster_controller_;
+    std::shared_ptr<RosterSheetController> roster_sheet_controller_;
     std::shared_ptr<SmsOptInBoardController> sms_opt_in_board_controller_;
     std::shared_ptr<ContactsController> contacts_controller_;
     std::shared_ptr<LineupDraftController> lineup_draft_controller_;
@@ -226,6 +228,7 @@ public:
         fines_controller_ = std::make_shared<FinesController>();
         dashboard_controller_ = std::make_shared<DashboardController>();
         cup_roster_controller_ = std::make_shared<CupRosterController>();
+        roster_sheet_controller_ = std::make_shared<RosterSheetController>();
         sms_opt_in_board_controller_ = std::make_shared<SmsOptInBoardController>();
         contacts_controller_ = std::make_shared<ContactsController>();
         lineup_draft_controller_ = std::make_shared<LineupDraftController>();
@@ -546,6 +549,8 @@ private:
         router_.useController("/api/dashboard", dashboard_controller_);
         // #cup-rosters (mig 556): the USASA / EPSA player pool sheet from the men's rosters.
         router_.useController("/api/cup-rosters", cup_roster_controller_);
+        // League roster sheet per game + coaches with roster status (mig 560/561).
+        router_.useController("/api/roster-sheet", roster_sheet_controller_);
         // #texts (mig 537): who has opted in to club texts, nudge the rest.
         router_.useController("/api/texts-board", sms_opt_in_board_controller_);
         // #contacts (mig 541): the club's people into the operator's phone as a vCard.
