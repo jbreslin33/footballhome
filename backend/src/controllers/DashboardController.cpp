@@ -291,7 +291,7 @@ Response DashboardController::handleGet(const Request& request) {
             json games = json::array();
             for (const auto& r : db->query(R"SQL(
 WITH g AS (
-  SELECT fe.id AS fh_event_id, fe.match_id, ge.starts_at, fe.is_home,
+  SELECT fe.id AS fh_event_id, fe.match_id, ge.starts_at, fe.is_home, fe.league,
          COALESCE(NULLIF(BTRIM(fe.opponent), ''), 'TBD') AS opponent,
          to_char(ge.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS starts_at_iso,
          to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy FMHH12:MI AM') AS when_text,
@@ -345,7 +345,19 @@ SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, 
        (SELECT count(*) FROM match_lineups ml WHERE ml.match_id = t.match_id AND NOT ml.is_starter) AS bench_set,
        (SELECT count(*) FROM match_lineups ml JOIN players pl ON pl.id = ml.player_id
          WHERE ml.match_id = t.match_id
-           AND COALESCE((SELECT r.response FROM fh_event_rsvps r WHERE r.fh_event_id = t.fh_event_id AND r.person_id = pl.person_id), '') <> 'yes') AS lineup_not_going
+           AND COALESCE((SELECT r.response FROM fh_event_rsvps r WHERE r.fh_event_id = t.fh_event_id AND r.person_id = pl.person_id), '') <> 'yes') AS lineup_not_going,
+       -- The opponent's people (owner 2026-10-09: "show opponent contact
+       -- info … for each game"): the club through fh_opponent_club (mig
+       -- 555), its contacts for this game's league first, two at most.
+       (SELECT c.name FROM clubs c WHERE c.id = fh_opponent_club(t.opponent)) AS opponent_club,
+       (SELECT json_agg(json_build_object('name', cc.name, 'role', cc.role, 'phone', cc.phone, 'email', cc.email)
+                        ORDER BY (k.league_label ILIKE t.league) DESC NULLS LAST, cc.competition_id NULLS LAST, cc.id)
+          FROM (SELECT * FROM club_contacts x
+                 WHERE x.club_id = fh_opponent_club(t.opponent) AND x.is_active
+                 ORDER BY (SELECT k2.league_label ILIKE t.league FROM club_competitions k2 WHERE k2.id = x.competition_id) DESC NULLS LAST,
+                          x.competition_id NULLS LAST, x.id
+                 LIMIT 2) cc
+          LEFT JOIN club_competitions k ON k.id = cc.competition_id) AS contacts
   FROM t JOIN c ON c.fh_event_id = t.fh_event_id
  ORDER BY t.starts_at
             )SQL")) {
@@ -359,7 +371,9 @@ SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, 
                                  {"can_start", r["can_start"].as<long long>()}, {"on_track", r["on_track"].as<long long>()},
                                  {"not_going", r["not_going"].as<long long>()},
                                  {"starters_set", r["starters_set"].as<long long>()}, {"bench_set", r["bench_set"].as<long long>()},
-                                 {"lineup_not_going", r["lineup_not_going"].as<long long>()}});
+                                 {"lineup_not_going", r["lineup_not_going"].as<long long>()},
+                                 {"opponent_club", r["opponent_club"].is_null() ? json(nullptr) : json(str(r, "opponent_club"))},
+                                 {"contacts", r["contacts"].is_null() ? json::array() : json::parse(str(r, "contacts"))}});
             }
             out["game_center"] = {{"days", 7}, {"games", games}};
         }

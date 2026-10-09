@@ -131,10 +131,11 @@ bool loadMatch(long long matchId, MatchInfo* mi) {
         mi->opponentText = str(r, "opponent");
         if (mi->opponentText.empty()) mi->opponentText = mi->isHome ? str(r, "away_name") : str(r, "home_name");
         if (!mi->opponentText.empty()) {
+            // fh_opponent_club (mig 555): alias, exact name, then both with
+            // the filler words stripped — "Real Central NJ" finds "Real
+            // Central NJ Soccer".
             auto c = Database::getInstance()->query(
-                "SELECT COALESCE((SELECT club_id FROM club_aliases WHERE LOWER(BTRIM(alias)) = LOWER(BTRIM($1)) LIMIT 1), "
-                "                (SELECT id FROM clubs WHERE LOWER(BTRIM(name)) = LOWER(BTRIM($1)) ORDER BY id LIMIT 1), 0) AS cid",
-                {mi->opponentText});
+                "SELECT COALESCE(fh_opponent_club($1), 0) AS cid", {mi->opponentText});
             if (!c.empty()) mi->clubId = c[0]["cid"].as<long long>();
         }
     }

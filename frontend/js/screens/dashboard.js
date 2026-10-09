@@ -64,6 +64,7 @@ class DashboardScreen extends Screen {
                    background:var(--bg-tertiary, #1f2937); padding:14px 16px; cursor:pointer; text-align:left; color:inherit; font:inherit;
                    display:flex; flex-direction:column; gap:8px; width:100%; transition:transform .08s, box-shadow .08s; }
         .db-cell:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,0.25); }
+        .db-cell a { text-decoration:underline; }
         .db-cell.ok { border-left-color:var(--success-color, #16a34a); }
         .db-cell.warn { border-left-color:var(--warning-color, #d97706); }
         .db-cell.bad { border-left-color:var(--error-color, #dc2626); }
@@ -104,6 +105,7 @@ class DashboardScreen extends Screen {
     div.addEventListener('click', (e) => {
       // A row inside a cell wins over the cell itself (a section → that
       // section's board); otherwise the cell opens its page.
+      if (e.target.closest('a[href]')) return;   // a tel:/mailto: link inside a cell does its own thing
       const row = e.target.closest('[data-db-row]');
       const cell = e.target.closest('[data-db-go]');
       const go = row ? row.dataset.dbRow : cell ? cell.dataset.dbGo : '';
@@ -183,11 +185,11 @@ class DashboardScreen extends Screen {
   }
 
   _cell(tone, go, title, sub, body) {
-    return `<button class="db-cell ${tone}" data-db-go="${this.escapeHtml(go)}">
+    return `<div class="db-cell ${tone}" role="button" tabindex="0" data-db-go="${this.escapeHtml(go)}">
       <div class="db-head"><div class="db-title">${this.escapeHtml(title)}</div></div>
       <div class="db-sub">${this.escapeHtml(sub)}</div>
       ${body}
-    </button>`;
+    </div>`;
   }
 
   // One cell per kind (owner 2026-10-09: "separate game and practice
@@ -264,9 +266,13 @@ class DashboardScreen extends Screen {
         `<span class="${g.everyone_plays || starters >= need ? 'ok' : 'warn'}">${this.escapeHtml(lineup)}</span>`,
         wrong ? `<span class="bad">${this.escapeHtml(this._t('gc_not_going', '{n} in lineup not going', { n: wrong }))}</span>` : '',
       ].filter(Boolean).join(' · ');
+      // The opponent's contact(s): name, role, a tel: and a mailto: link.
+      const contacts = (g.contacts || []).length ? g.contacts.map(c => `${this.escapeHtml(c.name || '')}${c.role ? ` <span style="opacity:0.6;">(${this.escapeHtml(c.role)})</span>` : ''}${c.phone ? ` · <a href="tel:${this.escapeHtml(String(c.phone).replace(/[^+\d]/g, ''))}" style="color:#bfdbfe;">${this.escapeHtml(c.phone)}</a>` : ''}${c.email ? ` · <a href="mailto:${this.escapeHtml(c.email)}" style="color:#bfdbfe;">${this.escapeHtml(c.email)}</a>` : ''}`).join(' · ')
+        : `<span style="opacity:0.6;">${this.escapeHtml(this._t('gc_contact_none', 'no opponent contact on file'))}${g.opponent_club ? '' : ''}</span>`;
       return `<div class="db-row link" data-db-row="game-center?matchId=${g.match_id}" style="flex-direction:column; align-items:stretch; gap:1px; border-left:3px solid ${tone === 'bad' ? '#dc2626' : tone === 'warn' ? '#d97706' : '#16a34a'}; padding-left:8px;">
         <span class="l" style="white-space:normal;"><b>${this.escapeHtml(g.teams || '')}</b> ${g.is_home === false ? '@' : 'vs'} ${this.escapeHtml(g.opponent)} <span style="opacity:0.6;">· ${this.escapeHtml(g.when_text)}</span></span>
-        <span class="db-rows" style="font-size:0.76rem; opacity:0.95; display:block;">${bits}</span></div>`;
+        <span class="db-rows" style="font-size:0.76rem; opacity:0.95; display:block;">${bits}</span>
+        <span style="font-size:0.76rem; opacity:0.85; display:block;">📇 ${contacts}</span></div>`;
     }).join('');
     const tone = tones.includes('bad') ? 'bad' : tones.includes('warn') ? 'warn' : 'ok';
     return this._cell(tone, 'game-center?pick=1', this._t('gc_title', '🏟️ Game Center'), this._t('gc_sub', "This week's games — who is going, who can start, is the lineup set"),
