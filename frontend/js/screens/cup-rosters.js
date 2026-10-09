@@ -95,6 +95,7 @@ class CupRostersScreen extends Screen {
       const pill = e.target.closest('[data-cr-team]'); if (pill) { this.teamPill = pill.dataset.crTeam; this._renderPlayers(); return; }
       if (e.target.closest('#cr-print')) { this.print(); return; }
       if (e.target.closest('#cr-link')) { this.copyLink(); return; }
+      if (e.target.closest('#cr-email')) { this.emailSheet(); return; }
       if (e.target.closest('#cr-delete')) { this.remove(); return; }
     });
     div.addEventListener('change', (e) => {
@@ -161,6 +162,26 @@ class CupRostersScreen extends Screen {
     const b = this.find('#cr-link'); if (b) { const was = b.textContent; b.textContent = '✓ Copied'; setTimeout(() => { if (b.isConnected) b.textContent = was; }, 1500); }
   }
 
+  _recipientsLine() {
+    const rs = (this.board && this.board.recipients) || [];
+    return rs.length ? this._t('email_to', 'Goes to {names}', { names: rs.map(r => `${r.name}${r.role ? ` (${r.role})` : ''}`).join(', ') }) : this._t('email_none', 'No cup roster recipients are loaded yet.');
+  }
+
+  // ✉️ Email sheet (mig 557): a Gmail compose to every cup_roster_recipients
+  // row with the sheet's public link in the body.  A browser cannot attach
+  // a file to a compose window, so the sender attaches the saved PDF.
+  emailSheet() {
+    const s = this.sheet; if (!s) return;
+    const rs = (this.board && this.board.recipients) || [];
+    if (!rs.length) { this.err = this._t('email_none', 'No cup roster recipients are loaded yet.'); this._renderBody(); return; }
+    const tokens = { team: s.team_name || '', cup: s.cup || '', competition: s.competition || '', count: (s.players || []).length,
+                     link: this._publicUrl(), sender: (this.board && this.board.sender) || '' };
+    const r = window.MessageCopy && MessageCopy.render ? MessageCopy.render('cup_roster', 'email', tokens) : null;
+    const subject = (r && r.subject) || `${tokens.team} — ${tokens.cup} player pool`;
+    const body = (r && r.body) || `${tokens.team} player pool: ${tokens.link}`;
+    this.openGmailCompose(this.buildGmailComposeHref({ to: rs.map(x => x.email).join(','), subject, body }));
+  }
+
   async _refreshList() { try { this.board = await this._json('/api/cup-rosters/board'); } catch (_) {} const el = this.find('#cr-list'); if (el) el.innerHTML = this._renderList(); }
 
   _renderBody() {
@@ -178,6 +199,7 @@ class CupRostersScreen extends Screen {
         ${s ? `<div class="cr-btns">
                  <button class="btn btn-primary" id="cr-print">${this.escapeHtml(this._t('print', '🖨 Print / Save PDF'))}</button>
                  <button class="btn btn-secondary" id="cr-link">${this.escapeHtml(this._t('copy_link', '🔗 Copy link'))}</button>
+                 <button class="btn btn-secondary" id="cr-email" title="${this.escapeHtml(this._recipientsLine())}">${this.escapeHtml(this._t('email_btn', '✉️ Email sheet'))}</button>
                  <span style="flex:1;"></span>
                  <button class="btn btn-secondary" id="cr-delete">${this.escapeHtml(this._t('delete', '🗑 Delete'))}</button>
                </div>

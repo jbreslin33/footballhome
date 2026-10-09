@@ -8,7 +8,7 @@
 // invoices. have a blank one and then allow me to check off players to
 // fill it from apsl and liga 1 and reserves".
 //
-//   GET  /api/cup-rosters/board            { rosters: [...], pool: [...], teams: [...], max }
+//   GET  /api/cup-rosters/board            { rosters, pool, teams, max, recipients: [{name, role, email}], sender }
 //   POST /api/cup-rosters/new              {} → { id }  (header copied from the last sheet)
 //   GET  /api/cup-rosters/:id              the sheet with its players
 //   POST /api/cup-rosters/:id/update       { field: value, … }  header fields

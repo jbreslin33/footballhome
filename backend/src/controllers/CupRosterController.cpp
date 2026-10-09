@@ -115,7 +115,16 @@ Response CupRosterController::handleBoard(const Request& request) {
             pool.push_back({{"person_id", p["person_id"].as<long long>()}, {"first_name", str(p, "first_name")}, {"last_name", str(p, "last_name")},
                             {"dob", str(p, "dob")}, {"team_ids", ids}, {"teams", str(p, "teams")}});
         }
-        return jsonOut(HttpStatus::OK, {{"rosters", rosters}, {"pool", pool}, {"teams", teams}, {"max", kPoolMax}});
+        // Who a sheet is emailed to (cup_roster_recipients, mig 557).
+        json recipients = json::array();
+        for (const auto& r : db->query("SELECT name, role, email FROM cup_roster_recipients WHERE is_active ORDER BY sort_order, id"))
+            recipients.push_back({{"name", str(r, "name")}, {"role", str(r, "role")}, {"email", str(r, "email")}});
+        // The sender's name for the email's sign-off.
+        std::string sender;
+        { auto me = db->query("SELECT COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'') AS n FROM users u JOIN persons p ON p.id = u.person_id WHERE u.id = $1::int",
+                              {std::to_string(bearerUserId(request))});
+          if (!me.empty()) sender = str(me[0], "n"); }
+        return jsonOut(HttpStatus::OK, {{"rosters", rosters}, {"pool", pool}, {"teams", teams}, {"max", kPoolMax}, {"recipients", recipients}, {"sender", sender}});
     } catch (const std::exception& e) { std::cerr << "[cup-rosters board] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
