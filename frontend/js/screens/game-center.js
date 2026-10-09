@@ -2670,7 +2670,11 @@ class GameCenterScreen extends Screen {
     const game = m.opponent ? `${t.label || ''} ${m.is_home === false ? 'at' : 'vs'} ${m.opponent}` : (t.label || '');
     const kv = (k, v) => `<div class="rs-kv"><span class="rs-k">${esc(k)}</span><span class="rs-v">${esc(v)}</span></div>`;
     const coachRows = (d.coaches || []).map(c => `<tr><td class="rs-img"><div class="rs-ph"></div></td><td>${esc(c.name)}</td><td>${esc(c.role_label)}</td><td></td><td>${esc(c.email)}</td><td>${esc(c.phone)}</td></tr>`).join('');
-    const playerRows = (d.players || []).map(p => `<tr><td class="rs-n">${p.n}</td><td class="rs-img"><div class="rs-ph"></div></td><td>${p.starter ? '<span class="rs-star">★</span> ' : ''}${esc(p.name)}</td><td class="rs-c">${esc(p.jersey)}</td><td></td><td>${esc(p.birthyear)}</td><td class="rs-c">P</td><td>${esc(p.assigned)}${p.assigned ? ' / ' : ''}</td></tr>`).join('');
+    // A name stored all in lower case (a few LeagueApps rows) prints in
+    // title case; surname order ignores case so it lands in its place.
+    const tidy = (n) => { const t = String(n || ''); return t === t.toLowerCase() ? t.replace(/(^|[\s\-'])(\S)/g, (m, a, b) => a + b.toUpperCase()) : t; };
+    const players = (d.players || []).slice().sort((a, b) => String(a.last_name || '').toLowerCase().localeCompare(String(b.last_name || '').toLowerCase()) || String(a.first_name || '').toLowerCase().localeCompare(String(b.first_name || '').toLowerCase()));
+    const playerRows = players.map((p, i) => `<tr><td class="rs-n">${i + 1}</td><td class="rs-img"><div class="rs-ph"></div></td><td>${p.starter ? '<span class="rs-star">★</span> ' : ''}${esc(tidy(p.last_name))}, ${esc(tidy(p.first_name))}</td><td class="rs-c">${esc(p.jersey)}</td><td></td><td>${esc(p.birthyear)}</td><td class="rs-c">P</td><td>${esc(p.assigned)}</td></tr>`).join('');
     return `<div class="rs-sheet">
       <div class="rs-title">
         <div class="rs-t1">${esc(t.roster_title)}</div>
