@@ -276,6 +276,94 @@ Response DashboardController::handleGet(const Request& request) {
             out["home_games"] = {{"days", 28}, {"games", games}};
         }
 
+        // ── Game Center ────────────────────────────────────────────────
+        {
+            // Owner 2026-10-09: "we need game center dash item. like showing
+            // number of possible starters and subs … and if starters have
+            // been filled out. i know we auto fill the kids".  This week's
+            // games (next 7 days) with the same starter rule Game Center's
+            // Practice Criteria pill applies (EligibilityController):
+            // going = yes + dues-eligible; can_start = going with enough
+            // window practices attended and no late game RSVP where that
+            // costs the start; on_track = going who get there with the
+            // upcoming window practices they said yes to; lineup = the
+            // match_lineups rows (kids' teams auto-fill: everyone_plays).
+            json games = json::array();
+            for (const auto& r : db->query(R"SQL(
+WITH g AS (
+  SELECT fe.id AS fh_event_id, fe.match_id, ge.starts_at, fe.is_home,
+         COALESCE(NULLIF(BTRIM(fe.opponent), ''), 'TBD') AS opponent,
+         to_char(ge.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS starts_at_iso,
+         to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy FMHH12:MI AM') AS when_text,
+         to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day,
+         COALESCE((SELECT array_agg(DISTINCT fet.team_id) FROM fh_event_teams fet WHERE fet.fh_event_id = fe.id),
+                  (SELECT array_remove(ARRAY[m.home_team_id, m.away_team_id], NULL) FROM matches m WHERE m.id = fe.match_id)) AS team_ids
+    FROM fh_events fe
+    JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+   WHERE fe.kind = 'match' AND fe.match_id IS NOT NULL
+     AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+     AND ge.ends_at > now() AND ge.starts_at < now() + interval '7 days'
+), t AS (
+  SELECT g.*, tm.field_size, tm.everyone_plays, tm.teams,
+         (SELECT COALESCE(p.min_sessions_to_start, 2) FROM fh_starter_policy(g.team_ids, g.match_id) p) AS needed,
+         (SELECT array_agg(w.fh_event_id) FROM fh_starter_window(g.team_ids, g.starts_at, g.match_id) w WHERE w.starts_at <  now()) AS past_win,
+         (SELECT array_agg(w.fh_event_id) FROM fh_starter_window(g.team_ids, g.starts_at, g.match_id) w WHERE w.starts_at >= now()) AS future_win,
+         (SELECT i.deadline FROM fh_rsvp_deadline_info(g.fh_event_id) i WHERE i.blocks_start) AS deadline
+    FROM g
+    CROSS JOIN LATERAL (
+      SELECT max(t.field_size) AS field_size, COALESCE(bool_or(t.lineup_everyone_plays), false) AS everyone_plays,
+             string_agg(COALESCE(t.label, t.name), ' · ' ORDER BY t.board_sort_order) AS teams
+        FROM teams t WHERE t.id = ANY(g.team_ids) AND t.is_active) tm
+   WHERE EXISTS (SELECT 1 FROM teams t WHERE t.id = ANY(g.team_ids) AND t.is_active AND t.board_sort_order IS NOT NULL)
+), per AS (
+  SELECT t.fh_event_id, tp.person_id,
+         (SELECT r.response FROM fh_event_rsvps r WHERE r.fh_event_id = t.fh_event_id AND r.person_id = tp.person_id) AS rsvp,
+         fh_dues_eligible(tp.person_id) AS dues_ok,
+         (SELECT count(*) FROM fh_event_attendance a
+           WHERE a.person_id = tp.person_id AND a.status IN ('present','late') AND a.fh_event_id = ANY(COALESCE(t.past_win, '{}'))) AS attended,
+         (SELECT count(*) FROM fh_event_rsvps r
+           WHERE r.person_id = tp.person_id AND r.response = 'yes' AND r.fh_event_id = ANY(COALESCE(t.future_win, '{}'))) AS projected,
+         t.needed,
+         CASE WHEN t.deadline IS NULL OR now() < t.deadline THEN false
+              WHEN EXISTS (SELECT 1 FROM fh_event_rsvp_first_answers fa WHERE fa.fh_event_id = t.fh_event_id AND fa.person_id = tp.person_id AND fa.first_responded_at < t.deadline) THEN false
+              WHEN (SELECT min(x.joined_at) FROM team_persons x WHERE x.person_id = tp.person_id AND x.team_id = ANY(t.team_ids) AND x.removed_at IS NULL) >= t.deadline THEN false
+              ELSE true END AS late
+    FROM t
+    JOIN (SELECT DISTINCT person_id, team_id FROM team_persons WHERE removed_at IS NULL) tp ON tp.team_id = ANY(t.team_ids)
+), c AS (
+  SELECT fh_event_id,
+         count(DISTINCT person_id) AS roster,
+         count(DISTINCT person_id) FILTER (WHERE rsvp = 'yes' AND dues_ok) AS going,
+         count(DISTINCT person_id) FILTER (WHERE rsvp = 'yes' AND dues_ok AND attended >= needed AND NOT late) AS can_start,
+         count(DISTINCT person_id) FILTER (WHERE rsvp = 'yes' AND dues_ok AND attended < needed AND attended + projected >= needed AND NOT late) AS on_track,
+         count(DISTINCT person_id) FILTER (WHERE rsvp = 'no') AS not_going
+    FROM per GROUP BY fh_event_id
+)
+SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, t.opponent, t.is_home, t.field_size, t.everyone_plays, t.needed,
+       c.roster, c.going, c.can_start, c.on_track, c.not_going,
+       (SELECT count(*) FROM match_lineups ml WHERE ml.match_id = t.match_id AND ml.is_starter) AS starters_set,
+       (SELECT count(*) FROM match_lineups ml WHERE ml.match_id = t.match_id AND NOT ml.is_starter) AS bench_set,
+       (SELECT count(*) FROM match_lineups ml JOIN players pl ON pl.id = ml.player_id
+         WHERE ml.match_id = t.match_id
+           AND COALESCE((SELECT r.response FROM fh_event_rsvps r WHERE r.fh_event_id = t.fh_event_id AND r.person_id = pl.person_id), '') <> 'yes') AS lineup_not_going
+  FROM t JOIN c ON c.fh_event_id = t.fh_event_id
+ ORDER BY t.starts_at
+            )SQL")) {
+                games.push_back({{"match_id", r["match_id"].as<long long>()}, {"fh_event_id", r["fh_event_id"].as<long long>()},
+                                 {"starts_at", str(r, "starts_at_iso")}, {"day", str(r, "day")}, {"when_text", str(r, "when_text")},
+                                 {"teams", str(r, "teams")}, {"opponent", str(r, "opponent")},
+                                 {"is_home", r["is_home"].is_null() ? json(nullptr) : json(r["is_home"].as<bool>())},
+                                 {"field_size", r["field_size"].is_null() ? json(nullptr) : json(r["field_size"].as<int>())},
+                                 {"everyone_plays", r["everyone_plays"].as<bool>()}, {"needed", r["needed"].as<int>()},
+                                 {"roster", r["roster"].as<long long>()}, {"going", r["going"].as<long long>()},
+                                 {"can_start", r["can_start"].as<long long>()}, {"on_track", r["on_track"].as<long long>()},
+                                 {"not_going", r["not_going"].as<long long>()},
+                                 {"starters_set", r["starters_set"].as<long long>()}, {"bench_set", r["bench_set"].as<long long>()},
+                                 {"lineup_not_going", r["lineup_not_going"].as<long long>()}});
+            }
+            out["game_center"] = {{"days", 7}, {"games", games}};
+        }
+
         auto now = db->query("SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS t");
         out["generated_at"] = now.empty() ? "" : str(now[0], "t");
         return jsonOut(HttpStatus::OK, out);

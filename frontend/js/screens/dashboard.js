@@ -27,6 +27,9 @@
 //   👕 Numbers   person_uniform_numbers vs rostered players.  Cell → #kit.
 //   📋 Leads     leads with no lead_contacts row (the #leads "new"
 //                status), on a running ad or not.  Cell → #leads.
+//   🏟️ Game Center  this week's games — going, can start (the Practice
+//                Criteria rule), on track, lineup set / everyone plays.
+//                Cell → #game-center picker; a game → that match.
 //   🏠 Home games  every home game in the next 28 days by day, with the
 //                format to line (teams.field_size).  Cell → #calendar; a
 //                game → #game-center on that match.
@@ -76,7 +79,7 @@ class DashboardScreen extends Screen {
         .db-row.link:hover { background:rgba(148,163,184,0.12); }
         .db-row .l { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .db-row .r { white-space:nowrap; font-weight:700; }
-        .db-row .r.warn { color:#fde68a; } .db-row .r.bad { color:#fca5a5; } .db-row .r.ok { color:#86efac; }
+        .db-row .r.warn, .db-row .warn { color:#fde68a; } .db-row .r.bad, .db-row .bad { color:#fca5a5; } .db-row .r.ok, .db-row .ok { color:#86efac; }
         .db-bar { height:6px; border-radius:3px; background:rgba(148,163,184,0.18); overflow:hidden; margin-top:2px; }
         .db-bar > i { display:block; height:100%; background:var(--primary-color, #2563eb); }
         .db-bar > i.full { background:var(--success-color, #16a34a); }
@@ -116,6 +119,7 @@ class DashboardScreen extends Screen {
     if (qs) for (const kv of qs.split('&')) { const [k, v] = kv.split('='); params[decodeURIComponent(k)] = decodeURIComponent(v || ''); }
     if (screen === 'teams') this.navigation.context.role = 'club-admin';   // the board scopes by the hat worn (role-selection does the same)
     if (params.matchId) params.matchId = Number(params.matchId);
+    if (params.pick) params.pick = true;
     this.navigation.goTo(screen, params);
   }
 
@@ -165,6 +169,7 @@ class DashboardScreen extends Screen {
       <div class="db-grid">
         ${this._rsvpCell(d.rsvps || {}, 'games')}
         ${this._rsvpCell(d.rsvps || {}, 'practices')}
+        ${this._gcCell(d.game_center || {})}
         ${this._homeCell(d.home_games || {})}
         ${this._payCell(d.payments || {})}
         ${this._rosterCell(d.rosters || {})}
@@ -228,6 +233,44 @@ class DashboardScreen extends Screen {
   // Owner 2026-10-09: "add in upcoming home games because i always need
   // to be aware to line fields and make sure i can be there".  Every home
   // game in the next 28 days by day, with the format to line.  → #calendar.
+  // Owner 2026-10-09: "we need game center dash item. like showing number
+  // of possible starters and subs … and if starters have been filled out.
+  // i know we auto fill the kids".  This week's games: going, can start
+  // (Game Center's Practice Criteria rule), on track, and the lineup.
+  // Cell → #game-center picker; a game → that match.
+  _gcCell(gc) {
+    const games = gc.games || [], days = gc.days || 7;
+    const tones = [];
+    const rows = games.map(g => {
+      const need = Number(g.field_size) || 11;
+      const going = Number(g.going) || 0, canStart = Number(g.can_start) || 0, onTrack = Number(g.on_track) || 0;
+      const starters = Number(g.starters_set) || 0, bench = Number(g.bench_set) || 0, wrong = Number(g.lineup_not_going) || 0;
+      // Red: not enough going for a side.  Amber: enough going but not
+      // enough who can start, or no lineup yet for a game that needs one.
+      let tone = going < need ? 'bad' : (!g.everyone_plays && (canStart < need || starters < need)) || wrong ? 'warn' : 'ok';
+      tones.push(tone);
+      const lineup = g.everyone_plays ? this._t('gc_everyone', 'everyone plays')
+        : starters === 0 ? this._t('gc_lineup_none', 'no lineup yet')
+        : starters < need ? this._t('gc_lineup_part', 'lineup {starters} of {need}', { starters, need })
+        : this._t('gc_lineup_set', 'lineup {starters} + {bench} bench', { starters, bench });
+      const bits = [
+        `<span class="${going < need ? 'bad' : 'ok'}">${this.escapeHtml(this._t('gc_going', '{n} going of {of}', { n: going, of: g.roster }))}</span>`,
+        this.escapeHtml(this._t('gc_need', 'need {n}', { n: need })),
+        g.everyone_plays ? '' : `<span class="${canStart < need ? 'warn' : 'ok'}">${this.escapeHtml(this._t('gc_can_start', '{n} can start', { n: canStart }))}</span>`,
+        g.everyone_plays || !onTrack ? '' : this.escapeHtml(this._t('gc_on_track', '{n} on track', { n: onTrack })),
+        `<span class="${g.everyone_plays || starters >= need ? 'ok' : 'warn'}">${this.escapeHtml(lineup)}</span>`,
+        wrong ? `<span class="bad">${this.escapeHtml(this._t('gc_not_going', '{n} in lineup not going', { n: wrong }))}</span>` : '',
+      ].filter(Boolean).join(' · ');
+      return `<div class="db-row link" data-db-row="game-center?matchId=${g.match_id}" style="flex-direction:column; align-items:stretch; gap:1px; border-left:3px solid ${tone === 'bad' ? '#dc2626' : tone === 'warn' ? '#d97706' : '#16a34a'}; padding-left:8px;">
+        <span class="l" style="white-space:normal;"><b>${this.escapeHtml(g.teams || '')}</b> ${g.is_home === false ? '@' : 'vs'} ${this.escapeHtml(g.opponent)} <span style="opacity:0.6;">· ${this.escapeHtml(g.when_text)}</span></span>
+        <span class="db-rows" style="font-size:0.76rem; opacity:0.95; display:block;">${bits}</span></div>`;
+    }).join('');
+    const tone = tones.includes('bad') ? 'bad' : tones.includes('warn') ? 'warn' : 'ok';
+    return this._cell(tone, 'game-center?pick=1', this._t('gc_title', '🏟️ Game Center'), this._t('gc_sub', "This week's games — who is going, who can start, is the lineup set"),
+      `<div class="db-big">${games.length}<small>${this.escapeHtml(this._t('gc_count', 'games in {days} days', { days }))}</small></div>
+       <div class="db-rows" style="gap:6px;">${rows || `<div class="db-note">${this.escapeHtml(this._t('gc_none', 'No games in the next {days} days', { days }))}</div>`}</div>`);
+  }
+
   _homeCell(h) {
     const games = h.games || [], days = h.days || 28;
     const byDay = new Map();
