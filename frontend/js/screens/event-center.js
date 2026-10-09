@@ -62,7 +62,7 @@ class EventCenterScreen extends Screen {
     this.when     = 'today';   // today | yesterday | this-week | last-week | date
     this.date     = null;      // 'YYYY-MM-DD' when `when` is 'date'
     this.windowEnd = null;     // Date: end of the released window (GET /api/schedule/window)
-    this.pill     = 'coming';  // coming | sides | plan | invites
+    this.pill     = 'coming';  // coming | sides | plan | cones | invites
     this.att      = null;      // {canMark, roster: Map(person_id -> {status})}
     this.invites  = null;      // {invites, candidates} | {error}
     this.saving   = new Set(); // "att:<pid>" / "inv:<pid>" in flight
@@ -109,7 +109,8 @@ class EventCenterScreen extends Screen {
     this.att = null;
     this.invites = null;
     this.sides = null;        // { canEdit, colors, players }
-    this.plan = undefined;    // undefined = not loaded; null = no plan
+    this.plan = undefined;
+    this.cones = undefined;    // undefined = not loaded; null = no plan
     this.sideColors = null;   // Set of colour codes in play on this event
     this.error = null;
     this.saving.clear();
@@ -269,6 +270,82 @@ class EventCenterScreen extends Screen {
     this._render();
   }
 
+  // Cone setups (mig 559, owner 2026-10-09): the layout this session uses,
+  // the default unless a coach picks another for it.
+  async _loadCones() {
+    const id = this.ev.fh_event_id;
+    try {
+      const body = await this._json(`/api/calendar/events/${id}/cone-setup`);
+      if (!this.ev || this.ev.fh_event_id !== id) return;
+      this.cones = body;
+    } catch (err) { console.error('[event-center] cone setup load failed:', err); this.cones = null; }
+    this._render();
+  }
+  async _pickCones(value) {
+    const id = this.ev.fh_event_id;
+    try {
+      this.cones = await this._json(`/api/calendar/events/${id}/cone-setup`, { method: 'POST', body: JSON.stringify({ cone_setup_id: value ? Number(value) : null }) });
+    } catch (err) { alert(`Could not save: ${err.message}`); }
+    this._render();
+  }
+  // The cones of a setup: every cone_spacing_yd along each rectangle's
+  // edges, corners once.  Pure geometry from the rows — nothing stored per cone.
+  static coneDots(setup) {
+    const sp = Number(setup.cone_spacing_yd) || 5, seen = new Set(), dots = [];
+    const add = (x, y) => { const k = `${x.toFixed(2)},${y.toFixed(2)}`; if (!seen.has(k)) { seen.add(k); dots.push([x, y]); } };
+    for (const a of (setup.areas || [])) {
+      const x0 = Number(a.x), y0 = Number(a.y), w = Number(a.w), h = Number(a.h);
+      for (let d = 0; d <= w + 1e-9; d += sp) { add(x0 + d, y0); add(x0 + d, y0 + h); }
+      for (let d = 0; d <= h + 1e-9; d += sp) { add(x0, y0 + d); add(x0 + w, y0 + d); }
+    }
+    return dots;
+  }
+  // The drawing: the part of the pitch in use (goal line at the bottom),
+  // its boxes, and a dot per cone.  1 yard = 6 px.
+  static coneSvg(setup) {
+    const W = Number(setup.area_width_yd), L = Number(setup.area_length_yd), k = 6, pad = 18;
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const dots = EventCenterScreen.coneDots(setup);
+    const goalAtBottom = setup.area_anchor !== 'top';
+    const half = setup.area_anchor !== 'full';
+    const gw = 8 * k, gx = (W * k - gw) / 2, pa = 18 * k, pw = 44 * k, px = (W * k - pw) / 2, ga = 6 * k, gaw = 20 * k, gax = (W * k - gaw) / 2;
+    const box = (w, d) => `<rect x="${(W * k - w) / 2}" y="${goalAtBottom ? L * k - d : 0}" width="${w}" height="${d}" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3"/>`;
+    return `<svg viewBox="${-pad} ${-pad} ${W * k + 2 * pad} ${L * k + 2 * pad}" style="width:100%; max-width:560px; display:block; background:#14532d; border-radius:8px;" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="${W * k}" height="${L * k}" fill="#166534" stroke="#e5e7eb" stroke-width="1.5"/>
+      ${box(pw, pa)}${box(gaw, ga)}
+      <rect x="${gx}" y="${goalAtBottom ? L * k : -3}" width="${gw}" height="3" fill="#e5e7eb"/>
+      ${half ? `<line x1="0" y1="${goalAtBottom ? 0 : L * k}" x2="${W * k}" y2="${goalAtBottom ? 0 : L * k}" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="6 4"/><circle cx="${W * k / 2}" cy="${goalAtBottom ? 0 : L * k}" r="${10 * k}" fill="none" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3 3"/>` : ''}
+      ${(setup.areas || []).map(a => `<rect x="${Number(a.x) * k}" y="${Number(a.y) * k}" width="${Number(a.w) * k}" height="${Number(a.h) * k}" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="${(Number(a.x) + Number(a.w) / 2) * k}" y="${(Number(a.y) + Number(a.h) / 2) * k}" fill="#fde68a" font-size="11" text-anchor="middle" dominant-baseline="middle" opacity="0.9">${esc(a.label)} · ${esc(Number(a.w))}×${esc(Number(a.h))}</text>`).join('')}
+      ${dots.map(([x, y]) => `<circle cx="${x * k}" cy="${y * k}" r="3.2" fill="#f97316" stroke="#7c2d12" stroke-width="0.8"/>`).join('')}
+      <text x="${W * k / 2}" y="${goalAtBottom ? L * k + 13 : -6}" fill="#e5e7eb" font-size="9" text-anchor="middle" opacity="0.7">${esc(W)} yd</text>
+      <text x="${-6}" y="${L * k / 2}" fill="#e5e7eb" font-size="9" text-anchor="middle" transform="rotate(-90 -6 ${L * k / 2})" opacity="0.7">${esc(L)} yd</text>
+    </svg>`;
+  }
+  _conesHtml() {
+    if (this.cones === undefined) return `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`;
+    const c = this.cones;
+    const copy = (tier, tokens) => window.MessageCopy ? MessageCopy.block('cone_setup', tier, tokens) : '';
+    if (!c || !c.setup) return `<div class="ec-box" style="opacity:0.7;">No cone setups are defined yet.</div>`;
+    const s = c.setup, dots = EventCenterScreen.coneDots(s);
+    const areaWord = copy(`area_${s.area_anchor}`, { length: s.area_length_yd, width: s.area_width_yd }) || `${s.area_anchor} ${s.area_length_yd} × ${s.area_width_yd} yd`;
+    const picker = c.can_edit ? `
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+        <span style="font-size:0.8rem; opacity:0.8;">${this.escapeHtml(copy('choose') || 'Cone setup for this practice')}</span>
+        <select data-ec-cones style="font-size:0.85rem; padding:4px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
+          ${(c.setups || []).map(x => `<option value="${x.id}" ${x.id === s.id ? 'selected' : ''}>${this.escapeHtml(x.name)}${x.is_default ? ` (${this.escapeHtml(copy('default_tag') || 'default')})` : ''}</option>`).join('')}
+        </select>
+      </div>` : '';
+    return `<div class="ec-box">
+      ${picker}
+      <div style="font-weight:700;">${this.escapeHtml(s.name)}${s.is_default ? ` <span style="font-size:0.7rem; opacity:0.6; font-weight:400;">· ${this.escapeHtml(copy('default_tag') || 'default')}</span>` : ''}</div>
+      ${s.description ? `<div style="font-size:0.82rem; opacity:0.8; margin:2px 0 8px;">${this.escapeHtml(s.description)}</div>` : ''}
+      ${c.chosen_id == null ? `<div style="font-size:0.76rem; opacity:0.65; margin-bottom:6px;">${this.escapeHtml(copy('using_default') || 'Using the default setup.')}</div>` : ''}
+      ${EventCenterScreen.coneSvg(s)}
+      <div style="font-size:0.8rem; opacity:0.8; margin-top:6px;">${this.escapeHtml(copy('summary', { cones: dots.length, boxes: (s.areas || []).length, spacing: s.cone_spacing_yd, area: areaWord }) || `${dots.length} cones · ${(s.areas || []).length} boxes · every ${s.cone_spacing_yd} yd · ${areaWord}`)}</div>
+    </div>`;
+  }
+
   async _loadSides() {
     const id = this.ev.fh_event_id;
     try {
@@ -405,6 +482,7 @@ class EventCenterScreen extends Screen {
   // ── events ──────────────────────────────────────────────────────────
   _wire() {
     // The date input: pick any day directly.
+    this.element.addEventListener('change', (e) => { const sel = e.target.closest('[data-ec-cones]'); if (sel) this._pickCones(sel.value); });
     this.element.addEventListener('change', (e) => {
       const el = e.target.closest('[data-ec-date]');
       if (el && el.value) this._setWhen('date', el.value);
@@ -427,6 +505,7 @@ class EventCenterScreen extends Screen {
         if (this.pill === 'invites' && !this.invites) this._loadInvites();
         if (this.pill === 'sides' && !this.sides) this._loadSides();
         if (this.pill === 'plan' && this.plan === undefined) this._loadPlan();
+        if (this.pill === 'cones' && this.cones === undefined) this._loadCones();
         this._render();
         return;
       }
@@ -543,6 +622,8 @@ class EventCenterScreen extends Screen {
     if (ev.kind === 'pickup')   pills.push(['sides', '🎽 Teams']);
     if (ev.kind === 'practice') pills.push(['sides', '🎽 Groups']);
     if (ev.kind === 'practice' || ev.kind === 'pickup') pills.push(['plan', '📝 Session Plan']);
+    // Cone setups (mig 559): the field layout for this session.
+    if (ev.kind === 'practice' || ev.kind === 'pickup') pills.push(['cones', (window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones']);
     // Invites are for an event still to come, by whoever may mark it.
     if (canMark && !this._isPast(ev)) pills.push(['invites', '🎟 Invites']);
     if (!pills.some(([k]) => k === this.pill)) this.pill = 'coming';
@@ -559,7 +640,8 @@ class EventCenterScreen extends Screen {
         Read-only — attendance and invites are for this event's coaches and club admins.</div>` : ''}
       ${this.pill === 'invites' ? this._invitesHtml()
         : this.pill === 'sides' ? this._sidesHtml()
-        : this.pill === 'plan' ? this._planHtml() : this._comingHtml()}`;
+        : this.pill === 'plan' ? this._planHtml()
+        : this.pill === 'cones' ? this._conesHtml() : this._comingHtml()}`;
   }
 
   // The practice plan attached to this event, read-only — sessions in order,

@@ -572,6 +572,13 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.get(prefix + "/calendar/events/:fhEventId/session-plan", [this](const Request& req) {
         return handleGetEventSessionPlan(req);
     });
+    // Cone setups (mig 559): the field layout a practice uses.
+    router.get(prefix + "/calendar/events/:fhEventId/cone-setup", [this](const Request& req) {
+        return handleGetEventConeSetup(req);
+    });
+    router.post(prefix + "/calendar/events/:fhEventId/cone-setup", [this](const Request& req) {
+        return handlePostEventConeSetup(req);
+    });
     router.get(prefix + "/calendar/events/:fhEventId/sides", [this](const Request& req) {
         return handleGetEventSides(req);
     });
@@ -2578,6 +2585,78 @@ Response CalendarController::handleGetEventSides(const Request& request) {
                   << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
+}
+
+// ─── Cone setups (mig 559) ──────────────────────────────────────────────────
+// Owner 2026-10-09: "for each practice a choice of setup of cones … this is
+// the 1st config of field and we would use it for all sessions kids and
+// men".  A setup is cone_setups + its cone_setup_areas (rectangles in yards
+// inside the part of the pitch it uses); the page places the cones along
+// the edges every cone_spacing_yd.  fh_events.cone_setup_id is the
+// practice's choice, NULL = the default.
+namespace {
+json coneSetupJson(Database* db, const pqxx::row& r) {
+    json out = {{"id", r["id"].as<long long>()}, {"code", std::string(r["code"].c_str())}, {"name", std::string(r["name"].c_str())},
+                {"description", std::string(r["description"].c_str())},
+                {"pitch_length_yd", r["pitch_length_yd"].as<double>()}, {"pitch_width_yd", r["pitch_width_yd"].as<double>()},
+                {"area_length_yd", r["area_length_yd"].as<double>()}, {"area_width_yd", r["area_width_yd"].as<double>()},
+                {"area_anchor", std::string(r["area_anchor"].c_str())}, {"cone_spacing_yd", r["cone_spacing_yd"].as<double>()},
+                {"is_default", r["is_default"].as<bool>()}, {"areas", json::array()}};
+    for (const auto& a : db->query("SELECT id, label, x_yd, y_yd, w_yd, h_yd FROM cone_setup_areas WHERE cone_setup_id = $1::int ORDER BY sort_order, id",
+                                   {std::to_string(r["id"].as<long long>())}))
+        out["areas"].push_back({{"id", a["id"].as<long long>()}, {"label", std::string(a["label"].c_str())},
+                                {"x", a["x_yd"].as<double>()}, {"y", a["y_yd"].as<double>()}, {"w", a["w_yd"].as<double>()}, {"h", a["h_yd"].as<double>()}});
+    return out;
+}
+const char* kConeSetupCols = "id, code, name, description, pitch_length_yd, pitch_width_yd, area_length_yd, area_width_yd, area_anchor, cone_spacing_yd, is_default";
+} // namespace
+
+// GET /calendar/events/:fhEventId/cone-setup
+//   { fh_event_id, can_edit, chosen_id, setup: {…} | null, setups: [{…}] }
+Response CalendarController::handleGetEventConeSetup(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    auto* db = Database::getInstance();
+    try {
+        auto ev = db->query("SELECT cone_setup_id FROM fh_events WHERE id = $1::bigint", {std::to_string(fhEventId)});
+        if (ev.empty()) return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
+        const bool chosen = !ev[0]["cone_setup_id"].is_null();
+        json setups = json::array(); json setup = nullptr;
+        for (const auto& r : db->query(std::string("SELECT ") + kConeSetupCols + " FROM cone_setups WHERE is_active ORDER BY sort_order, id")) {
+            json j = coneSetupJson(db, r);
+            if ((chosen && r["id"].as<long long>() == ev[0]["cone_setup_id"].as<long long>()) || (!chosen && r["is_default"].as<bool>())) setup = j;
+            setups.push_back(j);
+        }
+        return jsonOk({{"fh_event_id", fhEventId}, {"can_edit", isEventCoachOrAdmin(db, gate.personId, fhEventId)},
+                       {"chosen_id", chosen ? json(ev[0]["cone_setup_id"].as<long long>()) : json(nullptr)}, {"setup", setup}, {"setups", setups}});
+    } catch (const std::exception& e) { std::cerr << "[cone-setup get] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// POST /calendar/events/:fhEventId/cone-setup  { cone_setup_id | null }
+// null = back to the default.  Coach of the event's team(s) or admin.
+Response CalendarController::handlePostEventConeSetup(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    json body;
+    try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
+    catch (const std::exception& e) { return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what()); }
+    auto* db = Database::getInstance();
+    try {
+        if (db->query("SELECT 1 FROM fh_events WHERE id = $1::bigint", {std::to_string(fhEventId)}).empty()) return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
+        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId)) return jsonError(HttpStatus::FORBIDDEN, "Only a coach of this event's team(s) or a club admin can pick the cone setup.");
+        auto idOpt = jsonInt(body, "cone_setup_id");
+        if (idOpt && *idOpt > 0) {
+            if (db->query("SELECT 1 FROM cone_setups WHERE id = $1::int AND is_active", {std::to_string(*idOpt)}).empty()) return jsonError(HttpStatus::BAD_REQUEST, "no such cone setup");
+            db->query("UPDATE fh_events SET cone_setup_id = $2::int, updated_at = now() WHERE id = $1::bigint", {std::to_string(fhEventId), std::to_string(*idOpt)});
+        } else {
+            db->query("UPDATE fh_events SET cone_setup_id = NULL, updated_at = now() WHERE id = $1::bigint", {std::to_string(fhEventId)});
+        }
+        return handleGetEventConeSetup(request);
+    } catch (const std::exception& e) { std::cerr << "[cone-setup post] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
 // POST /calendar/events/:fhEventId/sides  { person_id, squad_color | null }
