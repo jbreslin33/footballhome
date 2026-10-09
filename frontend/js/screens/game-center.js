@@ -685,6 +685,8 @@ class GameCenterScreen extends Screen {
       if (remindAll && this.isCoach && !remindAll.disabled) { this._remindNoResponse(remindAll); return; }
       const oppSend = e.target.closest('[data-gc-opp-send]');
       if (oppSend && this.isCoach && !oppSend.disabled) { this._sendToOpponent(oppSend); return; }
+      const oppSendAll = e.target.closest('[data-gc-opp-send-all]');
+      if (oppSendAll && this.isCoach && !oppSendAll.disabled) { this._sendToOpponentAll(oppSendAll); return; }
       const oppAdd = e.target.closest('[data-gc-opp-add]');
       if (oppAdd && this.isCoach) { this._oppAddOpen = !this._oppAddOpen; this._render(); return; }
       const oppSave = e.target.closest('[data-gc-opp-save]');
@@ -2453,13 +2455,27 @@ class GameCenterScreen extends Screen {
         ${inner}
       </div>`;
     if (!club) {
+      const lg0 = o.league;
+      const lgBlock0 = lg0 && (lg0.contacts || []).length ? `<div style="margin-top:8px;"><div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${esc(copy('game_center_league', { league: lg0.name || lg0.label }) || `🏛 ${lg0.name || lg0.label} league directors`)}</div>${lg0.contacts.map(k => `<div style="font-size:0.72rem; padding:3px 0;"><b>${esc(k.name || '')}</b> <span style="opacity:0.65;">${esc(k.role || '')}</span> <span style="opacity:0.7;">${esc([k.phone, k.email].filter(Boolean).join(' · '))}</span> <button class="btn btn-secondary" data-gc-opp-send="sms" data-contact="${k.id}" ${k.phone ? '' : 'disabled'} style="padding:2px 6px; font-size:0.66rem;">💬</button> <button class="btn btn-primary" data-gc-opp-send="email" data-contact="${k.id}" ${k.email ? '' : 'disabled'} style="padding:2px 6px; font-size:0.66rem;">✉️</button></div>`).join('')}</div>` : '';
       return wrap('📇 Contact opponent', `<div style="font-size:0.72rem; opacity:0.75; line-height:1.4;">${esc(copy('game_center_none', { opponent: o.opponent_text || '?' }) || `No club matched to "${o.opponent_text || '?'}".`)}
-        <button class="btn btn-secondary" data-gc-opp-page="0" style="padding:2px 8px; font-size:0.66rem; margin-left:6px;">Open Opponents</button></div>`);
+        <button class="btn btn-secondary" data-gc-opp-page="0" style="padding:2px 8px; font-size:0.66rem; margin-left:6px;">Open Opponents</button></div>${lgBlock0}`);
     }
     const tiers = o.tiers || [];
     const tierSel = `<select data-gc-opp-tier style="font-size:0.7rem; padding:3px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); max-width:100%;">
         ${tiers.map(t => `<option value="${esc(t.tier)}" ${t.tier === (this._oppTier || 'confirm') ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}</select>`;
-    const rows = (club.contacts || []).map(k => `
+    // Owner 2026-10-09: "buttons to text or email them individually or
+    // group" — a block's ✉️ Email all / 💬 Text all go to everyone in it
+    // with that channel (one BCC email, one group text); the league body's
+    // directors for this game's age group sit under the opponent (mig 558).
+    const allBtns = (list, scope) => {
+      const emails = list.filter(k => k.email).map(k => k.id), phones = list.filter(k => k.phone).map(k => k.id);
+      if (emails.length + phones.length < 2) return '';
+      return `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+        ${phones.length > 1 ? `<button class="btn btn-secondary" data-gc-opp-send-all="sms" data-scope="${scope}" data-ids="${phones.join(',')}" style="padding:3px 8px; font-size:0.7rem;">${esc(copy('game_center_all_sms') || '💬 Text all')} (${phones.length})</button>` : ''}
+        ${emails.length > 1 ? `<button class="btn btn-primary" data-gc-opp-send-all="email" data-scope="${scope}" data-ids="${emails.join(',')}" style="padding:3px 8px; font-size:0.7rem;">${esc(copy('game_center_all_email') || '✉️ Email all')} (${emails.length})</button>` : ''}
+      </div>`;
+    };
+    const contactRows = (list) => list.map(k => `
       <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:5px 0; border-top:1px solid var(--border-color); font-size:0.76rem;">
         <div style="flex:1; min-width:140px;">
           <b>${esc(k.name || k.role || 'Team mailbox')}</b>${k.name && k.role ? ` <span style="opacity:0.65;">· ${esc(k.role)}</span>` : ''}
@@ -2469,6 +2485,14 @@ class GameCenterScreen extends Screen {
         <button class="btn btn-secondary" data-gc-opp-send="sms" data-contact="${k.id}" ${k.phone ? '' : 'disabled'} style="padding:3px 8px; font-size:0.7rem;">💬 Text</button>
         <button class="btn btn-primary" data-gc-opp-send="email" data-contact="${k.id}" ${k.email ? '' : 'disabled'} style="padding:3px 8px; font-size:0.7rem;">✉️ Email</button>
       </div>`).join('');
+    const rows = contactRows(club.contacts || []);
+    const lg = o.league;
+    const leagueBlock = lg && (lg.contacts || []).length ? `
+      <div style="margin-top:10px; padding-top:6px; border-top:2px solid var(--border-color);">
+        <div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${esc(copy('game_center_league', { league: lg.name || lg.label }) || `🏛 ${lg.name || lg.label} league directors`)}${lg.age ? ` <span style="opacity:0.6; font-weight:400;">· U${esc(lg.age)}</span>` : ''}</div>
+        ${contactRows(lg.contacts)}
+        ${allBtns(lg.contacts, 'league')}
+      </div>` : '';
     const addForm = this._oppAddOpen ? `
       <div data-gc-opp-form style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:4px; margin-top:6px;">
         ${['name', 'role', 'phone', 'email'].map(f => `<input data-f="${f}" placeholder="${f[0].toUpperCase() + f.slice(1)}" style="font-size:0.72rem; padding:5px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">`).join('')}
@@ -2477,8 +2501,9 @@ class GameCenterScreen extends Screen {
     return wrap(esc(copy('game_center_title', { club: club.name }) || `📇 Contact ${club.name}`), `
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:0.7rem; opacity:0.85;">Message: ${tierSel}</div>
       ${rows || `<div style="font-size:0.72rem; opacity:0.75; margin-top:4px;">${esc(copy('no_contacts') || 'No contact yet — add a name, phone or email.')}</div>`}
+      ${allBtns(club.contacts || [], 'club')}
       <div style="margin-top:6px;"><button class="btn btn-secondary" data-gc-opp-add style="padding:2px 8px; font-size:0.66rem;">${this._oppAddOpen ? 'Cancel' : '＋ contact'}</button></div>
-      ${addForm}`);
+      ${addForm}${leagueBlock}`);
   }
 
   // Bulk ✉ / 💬 to everyone on the game's rosters, by RSVP (owner
@@ -2640,13 +2665,34 @@ class GameCenterScreen extends Screen {
     const original = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
     try {
       const data = await this._postReminder('/api/opponents/message', { contact_id: contactId, channel, tier: this._oppTier, match_id: this.matchId });
-      const k = ((this.oppContacts && this.oppContacts.club && this.oppContacts.club.contacts) || []).find(x => x.id === contactId);
+      const k = [...(((this.oppContacts || {}).club || {}).contacts || []), ...(((this.oppContacts || {}).league || {}).contacts || [])].find(x => x.id === contactId);
       if (k) { k.last_sent_at = 'just now'; k.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
       else window.location.href = data.sms_href;
       this._render();
     } catch (err) {
       console.error('[game-center] opponent message failed:', err);
+      btn.textContent = original; btn.disabled = false;
+      alert(`Could not open the message: ${err.message}`);
+    }
+  }
+
+  // ✉️ Email all / 💬 Text all for a block: one compose to everyone in it.
+  async _sendToOpponentAll(btn) {
+    const channel = btn.dataset.gcOppSendAll;
+    const ids = String(btn.dataset.ids || '').split(',').map(Number).filter(Boolean);
+    const sel = this.element && this.element.querySelector('[data-gc-opp-tier]');
+    this._oppTier = sel ? sel.value : (this._oppTier || 'confirm');
+    const original = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
+    try {
+      const data = await this._postReminder('/api/opponents/message', { contact_ids: ids, channel, tier: this._oppTier, match_id: this.matchId });
+      const all = [...(((this.oppContacts || {}).club || {}).contacts || []), ...(((this.oppContacts || {}).league || {}).contacts || [])];
+      for (const k of all) if (ids.includes(k.id)) { k.last_sent_at = 'just now'; k.last_channel = channel; }
+      if (channel === 'email') this.openGmailCompose(data.gmail_href);
+      else window.location.href = data.sms_href;
+      this._render();
+    } catch (err) {
+      console.error('[game-center] opponent group message failed:', err);
       btn.textContent = original; btn.disabled = false;
       alert(`Could not open the message: ${err.message}`);
     }

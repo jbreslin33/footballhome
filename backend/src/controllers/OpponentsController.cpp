@@ -98,12 +98,14 @@ std::string senderName(long long userId) {
 // The opponent club of a match: the other team's clubs row, else the
 // calendar's opponent text through club_aliases / clubs.name (the same
 // chain the crests use, EventController).  Returns 0 when unmatched.
-struct MatchInfo { long long id = 0; long long clubId = 0; std::string opponentText, date, time, venue, ourTeam; bool isHome = true; long long homeTeamId = 0, awayTeamId = 0; };
+struct MatchInfo { long long id = 0; long long clubId = 0; std::string opponentText, date, time, venue, ourTeam, league, teamLabel; bool isHome = true; long long homeTeamId = 0, awayTeamId = 0; };
 bool loadMatch(long long matchId, MatchInfo* mi) {
     auto rows = Database::getInstance()->query(R"SQL(
         SELECT m.id, m.home_team_id, m.away_team_id, ht.name AS home_name, awt.name AS away_name,
                ht.club_id AS home_club, awt.club_id AS away_club,
-               fe.opponent, fe.is_home,
+               fe.opponent, fe.is_home, fe.league,
+               (SELECT string_agg(COALESCE(t.label, t.name), ' · ' ORDER BY t.board_sort_order)
+                  FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id WHERE fet.fh_event_id = fe.id) AS team_label,
                to_char(m.match_date, 'Dy Mon FMDD') AS date_label,
                to_char(COALESCE(fe.kickoff_at AT TIME ZONE 'America/New_York', (m.match_date + COALESCE(m.match_time,'00:00'::time))), 'FMHH12:MI AM') AS time_label,
                COALESCE(v.name, '') AS venue
@@ -122,6 +124,7 @@ bool loadMatch(long long matchId, MatchInfo* mi) {
     const long long homeClub = r["home_club"].is_null() ? 0 : r["home_club"].as<long long>();
     const long long awayClub = r["away_club"].is_null() ? 0 : r["away_club"].as<long long>();
     mi->date = str(r, "date_label"); mi->time = str(r, "time_label"); mi->venue = str(r, "venue");
+    mi->league = str(r, "league"); mi->teamLabel = str(r, "team_label");
     if (!r["is_home"].is_null()) mi->isHome = r["is_home"].as<bool>();
     else if (awayClub == ours && homeClub != ours) mi->isHome = false;
     mi->ourTeam = mi->isHome ? str(r, "home_name") : str(r, "away_name");
@@ -140,6 +143,30 @@ bool loadMatch(long long matchId, MatchInfo* mi) {
         }
     }
     return true;
+}
+
+// The league body behind a game (mig 558): the clubs row whose
+// club_competitions carry status 'league' under this league label, with
+// its officers (no competition) and the directors of the game's age group
+// — "U8" in our team's label matches "Under 8 Boys Blue" / "U8 Boys",
+// never "Under 10"; a boys-section game is Boys, girls stay Girls.
+json leagueJson(const MatchInfo& mi) {
+    if (mi.league.empty()) return nullptr;
+    auto* db = Database::getInstance();
+    auto body = db->query("SELECT DISTINCT c.id, c.name FROM club_competitions k JOIN clubs c ON c.id = k.club_id "
+                          " WHERE k.status = 'league' AND k.league_label ILIKE $1 ORDER BY c.id LIMIT 1", {mi.league});
+    if (body.empty()) return nullptr;
+    std::string age, sex = "Boys";
+    { std::smatch m; static const std::regex re("U(\\d{1,2})"); if (std::regex_search(mi.teamLabel, m, re)) age = m[1].str();
+      if (mi.teamLabel.find("Girl") != std::string::npos || mi.teamLabel.find("👧") != std::string::npos) sex = "Girls"; }
+    json out = {{"id", body[0]["id"].as<long long>()}, {"name", str(body[0], "name")}, {"label", mi.league}, {"age", age}, {"contacts", json::array()}};
+    const std::string divRe = age.empty() ? std::string("") : "(U|Under )" + age + "\\M.*" + sex;
+    for (const auto& r : db->query(std::string(kContactsSql) +
+            " AND c.club_id = $1::int AND (c.competition_id IS NULL OR EXISTS (SELECT 1 FROM club_competitions k WHERE k.id = c.competition_id AND k.status = 'league' "
+            "      AND k.league_label ILIKE $2 AND ($3 = '' OR k.division_label ~* $3)))"
+            " ORDER BY c.competition_id NULLS LAST, c.id", {std::to_string(body[0]["id"].as<long long>()), mi.league, divRe}))
+        out["contacts"].push_back(contactJson(r));
+    return out;
 }
 
 json clubJson(long long clubId) {
@@ -254,6 +281,7 @@ Response OpponentsController::handleForMatch(const Request& request) {
         json out = {{"match_id", matchId}, {"opponent_text", mi.opponentText}, {"is_home", mi.isHome}, {"date", mi.date}, {"time", mi.time},
                     {"venue", mi.venue}, {"our_team", mi.ourTeam}, {"club", nullptr}, {"tiers", tiers()}};
         if (mi.clubId) out["club"] = clubJson(mi.clubId);
+        out["league"] = leagueJson(mi);
         return jsonOut(HttpStatus::OK, out);
     } catch (const std::exception& e) { std::cerr << "[opponents for-match] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
@@ -343,12 +371,65 @@ Response OpponentsController::handleAlias(const Request& request) {
 // One tap: render the chosen template for this contact (and game, when sent
 // from Game Center), log it, hand back the compose hrefs — the same shape
 // /api/rsvp-board/remind returns, so the buttons behave identically.
+Response OpponentsController::handleGroupToContacts(const Request& request, const std::vector<long long>& ids, long long matchId,
+                                                     const std::string& channel, const std::string& tier, const std::string& kind, const std::string& leagueLabel) {
+    Response err;
+    if (channel != "email" && channel != "sms") return jsonError(HttpStatus::BAD_REQUEST, "channel (email|sms) required");
+    if (matchId) { if (!matchGate(request, matchId, &err)) return err; }
+    else if (!adminGate(request, &err)) return err;
+    try {
+        auto* db = Database::getInstance();
+        std::string arr = "{"; for (size_t i = 0; i < ids.size(); ++i) { if (i) arr += ','; arr += std::to_string(ids[i]); } arr += "}";
+        auto rows = db->query("SELECT c.id, c.club_id, c.name, c.phone, c.email, k.name AS club_name FROM club_contacts c JOIN clubs k ON k.id = c.club_id "
+                              " WHERE c.id = ANY($1::int[]) AND c.is_active ORDER BY c.id", {arr});
+        std::vector<std::string> addresses; std::string clubName; long long clubId = 0; int skipped = 0;
+        for (const auto& c : rows) {
+            const std::string a = channel == "email" ? str(c, "email") : str(c, "phone");
+            if (a.empty()) { ++skipped; continue; }
+            addresses.push_back(a);
+            if (clubName.empty()) { clubName = str(c, "club_name"); clubId = c["club_id"].as<long long>(); }
+        }
+        if (addresses.empty()) return jsonError(HttpStatus::BAD_REQUEST, channel == "email" ? "none of these contacts has an email" : "none of these contacts has a phone");
+        MatchInfo mi; if (matchId) loadMatch(matchId, &mi);
+        long long userId = bearerUserId(request); if (userId < 0) userId = 0;
+        std::string sender = senderName(userId);
+        json league = kind == "casa" ? leagueFor(leagueLabel.empty() ? "CASA" : leagueLabel) : json(nullptr);
+        const std::string fromEmail = league.is_null() ? std::string() : league.value("correspondence_email", "");
+        MessageCopy copy;
+        MessageCopy::Tokens tokens = {{"club", clubName}, {"contact_first", "all"}, {"our_team", mi.ourTeam.empty() ? "Lighthouse 1893 SC" : mi.ourTeam},
+                                      {"date", mi.date.empty() ? "our next game" : mi.date}, {"time", mi.time.empty() ? "kick-off" : mi.time},
+                                      {"venue", mi.venue.empty() ? "the field" : mi.venue}, {"home_away", mi.id ? (mi.isHome ? "vs" : "at") : "vs"},
+                                      {"sender", sender.empty() ? "Lighthouse 1893 SC" : sender}, {"from_email", fromEmail},
+                                      {"league", league.is_null() ? "" : league.value("name", "")}, {"division", ""}};
+        auto r = copy.render(kind, tier, tokens);
+        if (!r.ok()) return jsonError(HttpStatus::BAD_REQUEST, "no message template '" + tier + "'");
+        std::string joined; for (size_t i = 0; i < addresses.size(); ++i) { if (i) joined += ','; joined += addresses[i]; }
+        for (const auto& c : rows) {
+            const std::string a = channel == "email" ? str(c, "email") : str(c, "phone");
+            if (a.empty()) continue;
+            db->query("INSERT INTO club_contact_messages (club_id, contact_id, match_id, channel, contact, tier, sent_by_user_id, sender_email, league_label) "
+                      "VALUES ($1::int, $2::int, NULLIF($3,'0')::int, $4, $5, $6, NULLIF($7,'0')::int, NULLIF($8,''), NULLIF($9,''))",
+                      {std::to_string(c["club_id"].as<long long>()), std::to_string(c["id"].as<long long>()), std::to_string(matchId), channel, a, tier, std::to_string(userId), fromEmail, leagueLabel});
+        }
+        json out = {{"ok", true}, {"subject", r.subject}, {"body", r.body}, {"contact", joined}, {"from_email", fromEmail}, {"count", (long long)addresses.size()}, {"skipped", skipped}, {"club_id", clubId}};
+        copy.addComposeHrefs(out, channel, joined, r.subject, r.body, r.body);
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) { std::cerr << "[opponents group-to-contacts] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
 Response OpponentsController::handleMessage(const Request& request) {
     json b; Response err; if (!parseBody(request, &b, &err)) return err;
     const long long contactId = n(b, "contact_id"), matchId = n(b, "match_id");
     const std::string channel = s(b, "channel"); std::string tier = s(b, "tier"); if (tier.empty()) tier = "general";
     std::string kind = s(b, "kind"); if (kind != "casa") kind = "opponent";
     const std::string leagueLabel = s(b, "league_label");
+    // Owner 2026-10-09: "buttons to text or email them individually or
+    // group" — contact_ids[] composes ONE message to everyone listed (BCC
+    // for email, one group thread for text) and logs a row per contact.
+    std::vector<long long> groupIds;
+    if (b.contains("contact_ids") && b["contact_ids"].is_array())
+        for (const auto& v : b["contact_ids"]) { if (v.is_number_integer()) groupIds.push_back(v.get<long long>()); else if (v.is_string()) { try { groupIds.push_back(std::stoll(v.get<std::string>())); } catch (...) {} } }
+    if (!groupIds.empty()) return handleGroupToContacts(request, groupIds, matchId, channel, tier, kind, leagueLabel);
     if (!contactId || (channel != "email" && channel != "sms")) return jsonError(HttpStatus::BAD_REQUEST, "contact_id and channel (email|sms) required");
     if (matchId) { if (!matchGate(request, matchId, &err)) return err; }
     else if (!adminGate(request, &err)) return err;
