@@ -1,0 +1,280 @@
+// dashboard.js — #dashboard: the admin's front page (migration 548).
+// Owner 2026-10-09: "a live dashboard could be interesting. maybe have
+// cells with important information. like quick dash for rsvps to games
+// and practices to identify trouble spots. payments how many are up to
+// date and late and total collected that month. rosters. how many roster
+// spots out of max are filled. how many uniforms assigned out of players
+// on rosters. leads if any leads not contacted" — "then i could click any
+// cell and go to that page that is already working like go to rsvp
+// reminders tuition etc" — "that would be my front page … make that the
+// top page for all admin. coaches can go to my page to rsvp same with
+// players".
+//
+// Nothing is typed in here.  GET /api/dashboard reads the same models the
+// cells' own pages read, so a number here is the number on that page:
+//
+//   ✅ RSVPs     RsvpBoard::weekEvents per section (the #rsvps tiles) —
+//                released games + practices, players still to answer, the
+//                events with the most of their roster unanswered on top.
+//                Cell → #rsvps; a section row → #rsvps for that section.
+//   💰 Dues      PaymentsOverview (the #payments / #finances summary) —
+//                up to date / behind / over the line, owed; collected this
+//                month from person_payments.  Cell → #payments.
+//   👥 Rosters   teams.max_roster vs live team_persons.  Cell → #teams;
+//                a team row → #teams on that section.
+//   👕 Numbers   person_uniform_numbers vs rostered players.  Cell → #kit.
+//   📋 Leads     leads with no lead_contacts row (the #leads "new"
+//                status), on a running ad or not.  Cell → #leads.
+//
+// Live: re-read every 10 minutes while open and whenever the tab comes
+// back to the front.  Wording: message_templates kind 'dashboard'.
+class DashboardScreen extends Screen {
+  static get REFRESH_MS() { return 10 * 60 * 1000; }
+
+  constructor(navigation, auth) {
+    super(navigation, auth);
+    this.data = null; this.err = ''; this.loading = false; this.timer = null;
+    this._onVisible = () => { if (document.visibilityState === 'visible' && this.isMounted) this.load(); };
+  }
+
+  _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('dashboard', tier, tokens) : ''; }
+  _t(tier, fallback, tokens = {}) { return this._copy(tier, tokens) || (window.MessageCopy ? MessageCopy.fill(fallback, tokens) : fallback); }
+  static money(n) { const v = Number(n) || 0; return Number.isInteger(v) ? `$${v.toLocaleString()}` : `$${v.toFixed(2)}`; }
+  static pct(part, whole) { return whole > 0 ? Math.round(100 * part / whole) : 100; }
+  // Traffic light for a share of trouble: green under 10 %, amber under 30 %, red beyond.
+  static tone(badShare) { return badShare < 0.1 ? 'ok' : badShare < 0.3 ? 'warn' : 'bad'; }
+
+  render() {
+    const div = document.createElement('div');
+    div.className = 'screen';
+    div.innerHTML = `
+      <style>
+        .db-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px; }
+        .db-cell { border:1px solid var(--border-color, #374151); border-left:5px solid var(--border-color, #374151); border-radius:10px;
+                   background:var(--bg-tertiary, #1f2937); padding:14px 16px; cursor:pointer; text-align:left; color:inherit; font:inherit;
+                   display:flex; flex-direction:column; gap:8px; min-height:170px; transition:transform .08s, box-shadow .08s; }
+        .db-cell:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,0.25); }
+        .db-cell.ok { border-left-color:var(--success-color, #16a34a); }
+        .db-cell.warn { border-left-color:var(--warning-color, #d97706); }
+        .db-cell.bad { border-left-color:var(--error-color, #dc2626); }
+        .db-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+        .db-title { font-weight:800; font-size:1.05rem; }
+        .db-sub { opacity:0.65; font-size:0.78rem; margin-top:-4px; }
+        .db-big { font-size:2.1rem; font-weight:900; line-height:1.1; }
+        .db-big small { font-size:0.95rem; font-weight:600; opacity:0.7; margin-left:6px; }
+        .db-stats { display:flex; gap:14px; flex-wrap:wrap; }
+        .db-stat .k { font-size:0.65rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; opacity:0.6; }
+        .db-stat .v { font-size:1.25rem; font-weight:800; }
+        .db-stat.ok .v { color:#86efac; } .db-stat.warn .v { color:#fde68a; } .db-stat.bad .v { color:#fca5a5; }
+        .db-rows { display:flex; flex-direction:column; gap:4px; font-size:0.84rem; }
+        .db-row { display:flex; justify-content:space-between; gap:8px; padding:3px 6px; border-radius:6px; }
+        .db-row.link:hover { background:rgba(148,163,184,0.12); }
+        .db-row .l { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .db-row .r { white-space:nowrap; font-weight:700; }
+        .db-row .r.warn { color:#fde68a; } .db-row .r.bad { color:#fca5a5; } .db-row .r.ok { color:#86efac; }
+        .db-bar { height:6px; border-radius:3px; background:rgba(148,163,184,0.18); overflow:hidden; margin-top:2px; }
+        .db-bar > i { display:block; height:100%; background:var(--primary-color, #2563eb); }
+        .db-bar > i.full { background:var(--success-color, #16a34a); }
+        .db-h { font-size:0.68rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; opacity:0.6; margin-top:4px; }
+        .db-tag { display:inline-block; padding:0 6px; border-radius:999px; font-size:0.65rem; font-weight:800; margin-left:6px; background:#052e16; color:#86efac; border:1px solid #15803d; }
+        .db-foot { opacity:0.55; font-size:0.75rem; margin-top:14px; text-align:right; }
+        .db-note { opacity:0.7; font-size:0.82rem; }
+      </style>
+      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
+        <div style="flex:1;"><h1 style="margin:0;" id="db-title">📊 Dashboard</h1><div id="db-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+        <button class="btn btn-secondary" id="db-tools" style="padding:6px 12px; font-size:0.9rem;">🧭 All tools</button>
+        <button class="btn btn-secondary" id="db-refresh" style="padding:6px 12px; font-size:0.9rem;">🔄</button>
+      </div>
+      <div class="screen-content" style="max-width:1300px; margin:0 auto;">
+        <div id="db-body"><div class="loading">Loading…</div></div>
+      </div>`;
+    this.element = div;
+    div.querySelector('#db-tools').addEventListener('click', () => this.navigation.goTo('role-selection'));
+    div.querySelector('#db-refresh').addEventListener('click', () => this.load());
+    div.addEventListener('click', (e) => {
+      // A row inside a cell wins over the cell itself (a section → that
+      // section's board); otherwise the cell opens its page.
+      const row = e.target.closest('[data-db-row]');
+      const cell = e.target.closest('[data-db-go]');
+      const go = row ? row.dataset.dbRow : cell ? cell.dataset.dbGo : '';
+      if (!go) return;
+      e.stopPropagation();
+      this._open(go);
+    });
+    return div;
+  }
+
+  // target: "screen" or "screen?key=value&…" (plain string params).
+  _open(target) {
+    const [screen, qs] = target.split('?');
+    const params = {};
+    if (qs) for (const kv of qs.split('&')) { const [k, v] = kv.split('='); params[decodeURIComponent(k)] = decodeURIComponent(v || ''); }
+    if (screen === 'teams') this.navigation.context.role = 'club-admin';   // the board scopes by the hat worn (role-selection does the same)
+    this.navigation.goTo(screen, params);
+  }
+
+  async onEnter() {
+    if (window.MessageCopy && typeof MessageCopy.load === 'function') { try { await MessageCopy.load(this.auth); } catch (_) { /* fallbacks */ } }
+    const t = this.find('#db-title'), s = this.find('#db-sub'), b = this.find('#db-tools');
+    if (t) t.textContent = this._t('title', '📊 Dashboard');
+    if (s) s.textContent = this._t('subtitle', 'Live from the same boards each cell opens. Tap a cell.');
+    if (b) b.textContent = this._t('all_tools', '🧭 All tools');
+    document.addEventListener('visibilitychange', this._onVisible);
+    this.timer = setInterval(() => { if (this.isMounted && document.visibilityState === 'visible') this.load(); }, DashboardScreen.REFRESH_MS);
+    this.load();
+  }
+
+  onExit() {
+    document.removeEventListener('visibilitychange', this._onVisible);
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    super.onExit();
+  }
+
+  async load() {
+    if (this.loading) return;
+    this.loading = true; this.err = '';
+    if (!this.data) this._renderBody();
+    try {
+      const res = await this.auth.fetch('/api/dashboard');
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      this.data = body;
+    } catch (err) { this.err = err.message || 'Failed to load.'; }
+    this.loading = false;
+    if (this.isMounted) this._renderBody();
+  }
+
+  _renderBody() {
+    const el = this.find('#db-body');
+    if (!el) return;
+    if (!this.data) {
+      el.innerHTML = this.err ? `<div style="color:#f87171; padding:var(--space-3);">⚠️ ${this.escapeHtml(this.err)}</div>` : `<div class="loading">Loading…</div>`;
+      return;
+    }
+    const d = this.data;
+    const when = d.generated_at ? new Date(d.generated_at) : null;
+    const time = when && !isNaN(when) ? when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    el.innerHTML = `
+      ${this.err ? `<div style="color:#f87171; padding:0 0 8px;">⚠️ ${this.escapeHtml(this.err)}</div>` : ''}
+      <div class="db-grid">
+        ${this._rsvpCell(d.rsvps || {})}
+        ${this._payCell(d.payments || {})}
+        ${this._rosterCell(d.rosters || {})}
+        ${this._kitCell(d.kit || {})}
+        ${this._leadsCell(d.leads || {})}
+      </div>
+      <div class="db-foot">${this.escapeHtml(this._t('updated', 'Read {time}', { time }))}${this.loading ? ' · …' : ''}</div>`;
+  }
+
+  _cell(tone, go, title, sub, body) {
+    return `<button class="db-cell ${tone}" data-db-go="${this.escapeHtml(go)}">
+      <div class="db-head"><div class="db-title">${this.escapeHtml(title)}</div></div>
+      <div class="db-sub">${this.escapeHtml(sub)}</div>
+      ${body}
+    </button>`;
+  }
+
+  _rsvpCell(r) {
+    const sections = r.sections || [];
+    const expected = Number(r.expected) || 0, unanswered = Number(r.unanswered) || 0, answered = expected - unanswered;
+    const anyEvents = sections.some(s => (s.events || 0) > 0);
+    const tone = !anyEvents ? 'ok' : DashboardScreen.tone(expected > 0 ? unanswered / expected : 0);
+    const secLabel = (s) => this._t(`rsvp_sec_${s.code}`, s.code === 'M' ? 'Men' : s.code === 'W' ? 'Women' : 'Youth');
+    const rows = sections.map(s => {
+      const ev = Number(s.events) || 0, un = Number(s.unanswered) || 0, ex = Number(s.expected) || 0;
+      const t = ev ? DashboardScreen.tone(ex > 0 ? un / ex : 0) : '';
+      const right = !ev ? this.escapeHtml(this._t('rsvp_none', 'Nothing released yet'))
+        : un === 0 ? `<span class="ok">${this.escapeHtml(this._t('rsvp_clear', 'All answered'))}</span>`
+        : `<span class="${t}">${un}</span> <span style="opacity:0.6; font-weight:400;">/ ${ex}</span>`;
+      return `<div class="db-row link" data-db-row="rsvps?section=${this.escapeHtml(s.key)}">
+        <span class="l">${this.escapeHtml(secLabel(s))} <span style="opacity:0.6;">· ${s.games || 0} ⚽ · ${s.practices || 0} 🏃</span></span>
+        <span class="r">${right}</span></div>`;
+    }).join('');
+    // The three worst events across the sections.
+    const trouble = [];
+    for (const s of sections) for (const ev of (s.trouble || [])) trouble.push({ ...ev, key: s.key });
+    trouble.sort((a, b) => (b.unanswered / Math.max(1, b.expected)) - (a.unanswered / Math.max(1, a.expected)) || (a.starts_at < b.starts_at ? -1 : 1));
+    const troubleHtml = trouble.length ? `<div class="db-h">${this.escapeHtml(this._t('rsvp_trouble', 'Trouble spots'))}</div><div class="db-rows">` + trouble.slice(0, 4).map(ev => {
+      const what = ev.kind === 'practice' ? 'practice' : `vs ${ev.opponent || 'TBD'}`;
+      const t = DashboardScreen.tone(ev.unanswered / Math.max(1, ev.expected));
+      return `<div class="db-row link" data-db-row="rsvps?section=${this.escapeHtml(ev.key)}">
+        <span class="l" title="${this.escapeHtml(`${ev.when_text} ${ev.teams} ${what}`)}">${this.escapeHtml(ev.when_text)} · ${this.escapeHtml(ev.teams)} ${this.escapeHtml(what)}</span>
+        <span class="r ${t}">${this.escapeHtml(this._t('rsvp_row', '{n} of {of} still to answer', { n: ev.unanswered, of: ev.expected }))}</span></div>`;
+    }).join('') + '</div>' : '';
+    const big = anyEvents ? `<div class="db-big">${DashboardScreen.pct(answered, expected)}%<small>${this.escapeHtml(this._t('rsvp_answered', '{n} / {of} answered', { n: answered, of: expected }))}</small></div>`
+                          : `<div class="db-note">${this.escapeHtml(this._t('rsvp_none', 'Nothing released yet'))}</div>`;
+    return this._cell(tone, 'rsvps', this._t('rsvp_title', '✅ RSVPs this week'), this._t('rsvp_sub', 'Released games and practices; players still to answer'),
+      `${big}<div class="db-rows">${rows}</div>${troubleHtml}`);
+  }
+
+  _payCell(p) {
+    const paying = Number(p.paying) || 0, paidUp = Number(p.paid_up) || 0, behind = Number(p.behind) || 0, blocked = Number(p.blocked) || 0;
+    const tone = DashboardScreen.tone(paying > 0 ? (behind + blocked) / paying : 0);
+    const c = p.collected || {};
+    const by = (c.by_section || []).filter(s => Number(s.collected) !== 0);
+    const stat = (k, v, t) => `<div class="db-stat ${t || ''}"><div class="k">${this.escapeHtml(k)}</div><div class="v">${v}</div></div>`;
+    return this._cell(tone, 'payments', this._t('pay_title', '💰 Dues'), this._t('pay_sub', 'Paying members by standing, and what came in this month'),
+      `<div class="db-big">${DashboardScreen.pct(paidUp, paying)}%<small>${paidUp} / ${paying} ${this.escapeHtml(this._t('pay_paid_up', 'Up to date').toLowerCase())}</small></div>
+       <div class="db-stats">
+         ${stat(this._t('pay_paid_up', 'Up to date'), paidUp, 'ok')}
+         ${stat(this._t('pay_behind', 'Behind'), behind, behind ? 'warn' : '')}
+         ${stat(this._t('pay_blocked', 'Over the line'), blocked, blocked ? 'bad' : '')}
+       </div>
+       <div class="db-h">${this.escapeHtml(this._t('pay_collected', 'Collected in {month}', { month: c.month_label || '' }))}</div>
+       <div class="db-rows">
+         <div class="db-row"><span class="l"><b>${DashboardScreen.money(c.total)}</b></span>
+           <span class="r" style="opacity:0.75; font-weight:500;">${by.map(s => `${this.escapeHtml(s.category)} ${DashboardScreen.money(s.collected)}`).join(' · ')}</span></div>
+         <div class="db-row"><span class="l">${this.escapeHtml(this._t('pay_owed', 'Owed in all'))}</span><span class="r ${Number(p.owed) > 0 ? 'warn' : ''}">${DashboardScreen.money(p.owed)}</span></div>
+       </div>`);
+  }
+
+  _rosterCell(r) {
+    const teams = r.teams || [];
+    const cp = Number(r.capped_players) || 0, cm = Number(r.capped_max) || 0, open = Math.max(0, cm - cp);
+    const tone = cm > 0 ? DashboardScreen.tone(open / cm) : 'ok';
+    const secKey = { M: 'mens', W: 'womens', B: 'boys', G: 'girls' };
+    const rows = teams.map(t => {
+      const go = `teams?teamsPill=${secKey[t.section] || 'mens'}`;
+      const capped = t.max != null;
+      const share = capped ? Math.min(1, t.players / Math.max(1, t.max)) : 0;
+      return `<div class="db-row link" data-db-row="${this.escapeHtml(go)}" style="flex-direction:column; align-items:stretch; gap:0;">
+        <div style="display:flex; justify-content:space-between; gap:8px;">
+          <span class="l">${this.escapeHtml(t.label)}${t.full ? `<span class="db-tag">${this.escapeHtml(this._t('roster_full', 'FULL'))}</span>` : ''}</span>
+          <span class="r">${t.players}${capped ? ` <span style="opacity:0.6; font-weight:400;">/ ${t.max}</span>` : ''}</span></div>
+        ${capped ? `<div class="db-bar"><i class="${t.full ? 'full' : ''}" style="width:${Math.round(share * 100)}%"></i></div>` : ''}</div>`;
+    }).join('');
+    return this._cell(tone, 'teams', this._t('roster_title', '👥 Rosters'), this._t('roster_sub', 'Spots filled on capped teams; uncapped teams show their count'),
+      `<div class="db-big">${cp}<small>/ ${cm} · ${this.escapeHtml(this._t('roster_open', '{n} open', { n: open }))} · ${r.full_teams || 0} ${this.escapeHtml(this._t('roster_full', 'FULL').toLowerCase())}</small></div>
+       <div class="db-rows">${rows}</div>`);
+  }
+
+  _kitCell(k) {
+    const players = Number(k.players) || 0, numbered = Number(k.numbered) || 0, missing = players - numbered;
+    const tone = DashboardScreen.tone(players > 0 ? missing / players : 0);
+    const name = { M: this._t('rsvp_sec_M', 'Men'), W: this._t('rsvp_sec_W', 'Women'), B: this._t('rsvp_sec_B', 'Youth'), G: this._t('rsvp_sec_G', 'Girls') };
+    const rows = (k.sections || []).map(s => {
+      const m = (s.players || 0) - (s.numbered || 0);
+      return `<div class="db-row"><span class="l">${this.escapeHtml(name[s.code] || s.code || '—')}</span>
+        <span class="r ${m ? DashboardScreen.tone(m / Math.max(1, s.players)) : 'ok'}">${s.numbered} <span style="opacity:0.6; font-weight:400;">/ ${s.players}</span></span></div>`;
+    }).join('');
+    return this._cell(tone, 'kit', this._t('kit_title', '👕 Uniform numbers'), this._t('kit_sub', 'Players on a roster who have a number'),
+      `<div class="db-big">${numbered}<small>/ ${players} · ${this.escapeHtml(this._t('kit_missing', '{n} without a number', { n: missing }))}</small></div>
+       <div class="db-rows">${rows}</div>`);
+  }
+
+  _leadsCell(l) {
+    const n = Number(l.new_total) || 0, active = Number(l.new_on_active) || 0, fu = Number(l.needs_followup) || 0;
+    const tone = active === 0 ? 'ok' : (Number(l.oldest_active_hours) || 0) > 48 ? 'bad' : 'warn';
+    const stat = (k, v, t) => `<div class="db-stat ${t || ''}"><div class="k">${this.escapeHtml(k)}</div><div class="v">${v}</div></div>`;
+    const sub = n === 0 ? this._t('leads_clear', 'Everyone contacted')
+      : `${this._t('leads_active', '{n} on a running ad', { n: active })}${active ? ' · ' + this._t('leads_oldest', 'oldest waiting {hours} h', { hours: l.oldest_active_hours || 0 }) : ''}`;
+    return this._cell(tone, 'leads', this._t('leads_title', '📋 Leads'), this._t('leads_sub', 'Ad leads nobody has contacted yet'),
+      `<div class="db-big">${n}<small>${this.escapeHtml(this._t('leads_new', 'Not contacted').toLowerCase())} · ${this.escapeHtml(sub)}</small></div>
+       <div class="db-stats">
+         ${stat(this._t('leads_followup', 'Due a follow-up'), fu, fu ? 'warn' : '')}
+         ${stat(this._t('leads_week', 'This week'), l.new_this_week || 0, '')}
+         ${stat(this._t('leads_responded', 'Responded'), l.responded || 0, '')}
+         ${stat(this._t('leads_signedup', 'Signed up'), l.signedup || 0, 'ok')}
+       </div>`);
+  }
+}

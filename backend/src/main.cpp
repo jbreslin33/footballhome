@@ -49,6 +49,7 @@
 #include "controllers/InvoiceController.h"
 #include "controllers/FinancesController.h"
 #include "controllers/FinesController.h"
+#include "controllers/DashboardController.h"
 #include "controllers/SmsOptInBoardController.h"
 #include "controllers/ContactsController.h"
 #include "controllers/LineupDraftController.h"
@@ -130,6 +131,7 @@ private:
     std::shared_ptr<InvoiceController> invoice_controller_;
     std::shared_ptr<FinancesController> finances_controller_;
     std::shared_ptr<FinesController> fines_controller_;
+    std::shared_ptr<DashboardController> dashboard_controller_;
     std::shared_ptr<SmsOptInBoardController> sms_opt_in_board_controller_;
     std::shared_ptr<ContactsController> contacts_controller_;
     std::shared_ptr<LineupDraftController> lineup_draft_controller_;
@@ -220,6 +222,7 @@ public:
         invoice_controller_ = std::make_shared<InvoiceController>();
         finances_controller_ = std::make_shared<FinancesController>();
         fines_controller_ = std::make_shared<FinesController>();
+        dashboard_controller_ = std::make_shared<DashboardController>();
         sms_opt_in_board_controller_ = std::make_shared<SmsOptInBoardController>();
         contacts_controller_ = std::make_shared<ContactsController>();
         lineup_draft_controller_ = std::make_shared<LineupDraftController>();
@@ -536,6 +539,8 @@ private:
         router_.useController("/api/finances", finances_controller_);
         // #fines (mig 534): the Men's fines by month and player.
         router_.useController("/api/fines", fines_controller_);
+        // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
+        router_.useController("/api/dashboard", dashboard_controller_);
         // #texts (mig 537): who has opted in to club texts, nudge the rest.
         router_.useController("/api/texts-board", sms_opt_in_board_controller_);
         // #contacts (mig 541): the club's people into the operator's phone as a vCard.

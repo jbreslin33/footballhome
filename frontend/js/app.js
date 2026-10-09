@@ -76,6 +76,7 @@ class App {
       casaScores: new CasaScoresScreen(this.navigation, this.auth),
       finances: new FinancesScreen(this.navigation, this.auth),
       fines: new FinesScreen(this.navigation, this.auth),
+      dashboard: new DashboardScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
@@ -186,6 +187,8 @@ class App {
     this.screenManager.register('finances', this.screens.finances);
     // #fines (mig 534): the Men's fines by month and player, on their own page.
     this.screenManager.register('fines', this.screens.fines);
+    // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
+    this.screenManager.register('dashboard', this.screens.dashboard);
     // Attendance (#attendance) — the staff page for one calendar event of
     // any kind: who's coming, attendance, 🎟 invites.  See
     // screens/event-center.js.  Was #event-center until 2026-09-24; the old
@@ -294,8 +297,8 @@ class App {
         this.navigation.goTo('game-center', { matchId: Number(game[1]), postType: game[2] || null });
         return;
       }
-      // Resume session - go to role selection
-      this.navigation.goTo('role-selection');
+      // Resume session — the dashboard for an admin, the role picker for everyone else.
+      this.navigation.goTo(this.navigation.home());
     } else {
       console.log('No active session, showing login');
       this.navigation.goTo('login');

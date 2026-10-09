@@ -254,7 +254,7 @@ class LoginScreen extends Screen {
     this.auth.login(username, password)
       .then(data => {
         this.navigation.context.user = data.user;
-        this.navigation.goTo('role-selection');
+        this.navigation.goTo(this.navigation.home());
       })
       .catch(err => {
         if (submitBtn) {

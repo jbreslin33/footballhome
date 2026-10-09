@@ -26,6 +26,14 @@ class RoleSelectionScreen extends Screen {
       </div>
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
+        <button class="btn btn-lg btn-primary" data-role="dashboard" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📊</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('dashboard', 'tile_title')) || 'Dashboard'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('dashboard', 'tile_sub')) || 'The club at a glance — RSVPs, dues, rosters, kit, leads; tap a cell to open its page'}</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="teams" id="rs-teams" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">👥</span>
           <div style="flex: 1; text-align: left;">
@@ -425,6 +433,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'finances') {
       // #finances (mig 490): summary, revenue and expense projections.
       this.navigation.goTo('finances');
+    } else if (role === 'dashboard') {
+      // #dashboard (mig 548): the admin front page.
+      this.navigation.goTo('dashboard');
     } else if (role === 'fines') {
       // #fines (mig 534): the Men's fines by month and player.
       this.navigation.goTo('fines');
