@@ -203,20 +203,20 @@ class DashboardScreen extends Screen {
       const list = s.list.slice().sort((a, b) => (b.unanswered / Math.max(1, b.expected)) - (a.unanswered / Math.max(1, a.expected)) || (a.starts_at < b.starts_at ? -1 : 1));
       const head = `<div class="db-row link" data-db-row="${this.escapeHtml(go(s.key))}" style="padding-top:6px;">
         <span class="l db-h" style="margin:0;">${this.escapeHtml(secLabel(s))}</span>
-        <span class="r" style="font-weight:400; opacity:0.6; font-size:0.75rem;">${!s.events ? this.escapeHtml(this._t('rsvp_none', 'None released')) : s.unanswered === 0 ? `<span class="ok">${this.escapeHtml(this._t('rsvp_clear', 'All in'))}</span>` : `${this.escapeHtml(this._t('rsvp_row', '{n}/{of} no rsvp', { n: s.unanswered, of: s.expected }))}`}</span></div>`;
+        <span class="r" style="font-weight:400; opacity:0.6; font-size:0.75rem;">${!s.events ? this.escapeHtml(this._t('rsvp_none', 'None released')) : s.unanswered === 0 ? `<span class="ok">${this.escapeHtml(this._t('rsvp_clear', 'All in'))}</span>` : `${this.escapeHtml(this._t('rsvp_row', '{n}/{of} rsvp', { n: s.expected - s.unanswered, of: s.expected }))}`}</span></div>`;
       return head + list.map(ev => {
         const what = ev.kind === 'practice' ? '' : ` ${ev.is_home === false ? '@' : 'vs'} ${ev.opponent || 'TBD'}`;
         const un = Number(ev.unanswered) || 0, ex = Number(ev.expected) || 0;
         const t = un ? DashboardScreen.tone(un / Math.max(1, ex)) : 'ok';
         return `<div class="db-row link" data-db-row="${this.escapeHtml(go(s.key))}" style="${un ? '' : 'opacity:0.6;'}">
           <span class="l" style="white-space:normal;"><b>${this.escapeHtml(ev.teams)}</b>${this.escapeHtml(what)} <span style="opacity:0.6;">· ${this.escapeHtml(when(ev))}</span></span>
-          <span class="r ${t}" style="font-size:0.78rem;">${un ? this.escapeHtml(this._t('rsvp_row', '{n}/{of} no rsvp', { n: un, of: ex })) : '✓'}</span></div>`;
+          <span class="r ${t}" style="font-size:0.78rem;">${un ? this.escapeHtml(this._t('rsvp_row', '{n}/{of} rsvp', { n: ex - un, of: ex })) : '✓'}</span></div>`;
       }).join('');
     }).join('');
     const big = anyEvents ? `<div class="db-big">${DashboardScreen.pct(answered, expected)}%<small>${this.escapeHtml(this._t('rsvp_answered', '{n} / {of} answered', { n: answered, of: expected }))}</small></div>`
                           : `<div class="db-note">${this.escapeHtml(this._t('rsvp_none', 'None released'))}</div>`;
     const title = kind === 'games' ? this._t('rsvp_games_title', '⚽ Game RSVPs') : this._t('rsvp_practices_title', '🏃 Practice RSVPs');
-    const sub = kind === 'games' ? this._t('rsvp_games_sub', 'Released games this week · no rsvp') : this._t('rsvp_practices_sub', 'Released practices this week · no rsvp');
+    const sub = kind === 'games' ? this._t('rsvp_games_sub', 'Released games this week · rsvp\'d of expected') : this._t('rsvp_practices_sub', 'Released practices this week · rsvp\'d of expected');
     return this._cell(tone, go(''), title, sub, `${big}<div class="db-rows">${rows}</div>`);
   }
 
