@@ -781,7 +781,8 @@ class MyScreen extends Screen {
   // each kid would have a pill … that should be the view because dumping
   // everything in a column is confusing"): Me · coach / Me · player / each
   // child.  Shown when there are two or more; a lone hat with no children
-  // shows no row and its team pills stand alone.
+  // shows no row and its team pills stand alone.  Me · player comes first
+  // and is the default: a coach who plays owes RSVPs as a player.
   _whoOptions() {
     const opts = new Map();
     const copy = (tier, tokens) => MessageCopy.block('my_schedule', tier, tokens);
@@ -790,7 +791,10 @@ class MyScreen extends Screen {
         if (opts.has(key)) continue;
         if (key.startsWith('role:')) {
           const role = key.slice(5);
-          opts.set(key, { key, order: role === 'coach' ? 1 : role === 'player' ? 2 : 3, role,
+          // The player hat first (owner 2026-10-09: Luke, a coach who
+          // plays, landed on Me · coach and "can't see games and practices
+          // to rsvp to" — his own men's events were behind the player pill).
+          opts.set(key, { key, order: role === 'player' ? 1 : role === 'coach' ? 2 : 3, role,
                           label: copy(`who_${role}`) || `Me · ${role}` });
         } else {
           const id = key.slice(6);
