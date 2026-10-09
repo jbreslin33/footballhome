@@ -26,6 +26,7 @@
 //                   capped_players, capped_max, full_teams },
 //       kit:      { players, numbered, sections: [{ code, players, numbered }] },
 //       leads:    { new_total, new_on_active, oldest_new_hours, needs_followup },
+//       texts:    { players, opted_in, not_yet, no_phone, nudged, sections: [...] },
 //       home_games: { days, games: [{ fh_event_id, match_id, starts_at, day, day_text,
 //                                     time_text, teams, opponent, format, facility }] },
 //       game_center: { days, games: [{ match_id, teams, opponent, when_text, field_size,

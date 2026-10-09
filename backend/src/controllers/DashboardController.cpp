@@ -364,6 +364,40 @@ SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, 
             out["game_center"] = {{"days", 7}, {"games", games}};
         }
 
+        // ── Texts ──────────────────────────────────────────────────────
+        {
+            // Owner 2026-10-09: "add a texts dash cell for who has opted
+            // in".  Rostered players per section by the #texts board's own
+            // test: consent for the player or the parent (fh_sms_consented_at,
+            // mig 537); the rest split by whether there is a phone to nudge.
+            json sections = json::array();
+            long long players = 0, optedIn = 0, notYet = 0, noPhone = 0, nudged = 0;
+            for (const auto& r : db->query(R"SQL(
+WITH pl AS (
+  SELECT DISTINCT cs.code AS section, cs.sort_order, tp.person_id,
+         (fh_sms_consented_at(tp.person_id) IS NOT NULL
+          OR (p.parent_person_id IS NOT NULL AND fh_sms_consented_at(p.parent_person_id) IS NOT NULL)) AS opted_in,
+         EXISTS (SELECT 1 FROM person_phones x WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)) AS has_phone,
+         EXISTS (SELECT 1 FROM sms_opt_in_nudges n WHERE n.person_id = tp.person_id) AS nudged
+    FROM team_persons tp
+    JOIN teams t ON t.id = tp.team_id AND t.is_active AND t.board_sort_order IS NOT NULL
+    JOIN persons p ON p.id = tp.person_id
+    LEFT JOIN club_sections cs ON cs.id = t.club_section_id
+   WHERE tp.removed_at IS NULL)
+SELECT section, count(*) AS players, count(*) FILTER (WHERE opted_in) AS opted_in,
+       count(*) FILTER (WHERE NOT opted_in AND has_phone) AS not_yet,
+       count(*) FILTER (WHERE NOT opted_in AND NOT has_phone) AS no_phone,
+       count(*) FILTER (WHERE NOT opted_in AND nudged) AS nudged
+  FROM pl GROUP BY section, sort_order ORDER BY sort_order NULLS LAST
+            )SQL")) {
+                const long long p = r["players"].as<long long>(), i = r["opted_in"].as<long long>(), n = r["not_yet"].as<long long>(),
+                                np = r["no_phone"].as<long long>(), nd = r["nudged"].as<long long>();
+                players += p; optedIn += i; notYet += n; noPhone += np; nudged += nd;
+                sections.push_back({{"code", str(r, "section")}, {"players", p}, {"opted_in", i}, {"not_yet", n}, {"no_phone", np}, {"nudged", nd}});
+            }
+            out["texts"] = {{"players", players}, {"opted_in", optedIn}, {"not_yet", notYet}, {"no_phone", noPhone}, {"nudged", nudged}, {"sections", sections}};
+        }
+
         auto now = db->query("SELECT to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS t");
         out["generated_at"] = now.empty() ? "" : str(now[0], "t");
         return jsonOut(HttpStatus::OK, out);

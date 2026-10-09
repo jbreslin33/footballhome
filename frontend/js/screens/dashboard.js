@@ -27,6 +27,8 @@
 //   👕 Numbers   person_uniform_numbers vs rostered players.  Cell → #kit.
 //   📋 Leads     leads with no lead_contacts row (the #leads "new"
 //                status), on a running ad or not.  Cell → #leads.
+//   💬 Texts     rostered players (or parent) opted in to club texts, the
+//                #texts board's test: percent + count, per section.  → #texts.
 //   🏟️ Game Center  this week's games — going, can start (the Practice
 //                Criteria rule), on track, lineup set / everyone plays.
 //                Cell → #game-center picker; a game → that match.
@@ -175,6 +177,7 @@ class DashboardScreen extends Screen {
         ${this._rosterCell(d.rosters || {})}
         ${this._kitCell(d.kit || {})}
         ${this._leadsCell(d.leads || {})}
+        ${this._textsCell(d.texts || {})}
       </div>
       <div class="db-foot">${this.escapeHtml(this._t('updated', 'Read {time}', { time }))}${this.loading ? ' · …' : ''}</div>`;
   }
@@ -286,6 +289,20 @@ class DashboardScreen extends Screen {
     return this._cell(tone, 'calendar', this._t('home_title', '🏠 Home games'), this._t('home_sub', 'Next {days} days at {facility} — line the field, be there', { days, facility: facilities.join(' / ') || 'home' }),
       `<div class="db-big">${games.length}<small>${this.escapeHtml(this._t('home_count', 'in {days} days', { days }))}</small></div>
        <div class="db-rows">${rows || `<div class="db-note">${this.escapeHtml(this._t('home_none', 'No home games in the next {days} days', { days }))}</div>`}</div>`);
+  }
+
+  // Owner 2026-10-09: "add a texts dash cell for who has opted in".
+  // Rostered players (or their parent) with club-text consent, the
+  // #texts board's own test.  Cell → #texts.
+  _textsCell(t) {
+    const players = Number(t.players) || 0, optedIn = Number(t.opted_in) || 0;
+    const tone = DashboardScreen.tone(players > 0 ? (players - optedIn) / players : 0);
+    const name = { M: this._t('rsvp_sec_M', 'Men'), W: this._t('rsvp_sec_W', 'Women'), B: this._t('rsvp_sec_B', 'Youth'), G: this._t('rsvp_sec_G', 'Girls') };
+    const rows = (t.sections || []).map(s => `<div class="db-row"><span class="l">${this.escapeHtml(name[s.code] || s.code || '—')}</span>
+        <span class="r ${DashboardScreen.tone(s.players > 0 ? (s.players - s.opted_in) / s.players : 0)}">${s.opted_in} <span style="opacity:0.6; font-weight:400;">/ ${s.players}</span></span></div>`).join('');
+    return this._cell(tone, 'texts', this._t('texts_title', '💬 Texts'), this._t('texts_sub', 'Players (or their parent) opted in to club texts'),
+      `<div class="db-big">${DashboardScreen.pct(optedIn, players)}%<small>${this.escapeHtml(this._t('texts_in', '{n} of {of} opted in', { n: optedIn, of: players }))}</small></div>
+       <div class="db-rows">${rows}</div>`);
   }
 
   _payCell(p) {
