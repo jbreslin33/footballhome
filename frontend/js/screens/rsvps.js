@@ -242,6 +242,8 @@ class RsvpBoardScreen extends Screen {
 
   onEnter(params) {
     if (params && params.section && RsvpBoardScreen.SECTIONS[params.section]) this.section = params.section;
+    // #dashboard (mig 549) lands on games or practices only.
+    if (params && params.kind && RsvpBoardScreen.KINDS[params.kind]) this.kind = params.kind;
     this._renderChips();
     this._loadWindowEnd();
     this.load();

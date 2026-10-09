@@ -13,13 +13,15 @@
 // Nothing is typed in here.  GET /api/dashboard reads the same models the
 // cells' own pages read, so a number here is the number on that page:
 //
-//   ✅ RSVPs     RsvpBoard::weekEvents per section (the #rsvps tiles) —
-//                released games + practices, players still to answer, the
-//                events with the most of their roster unanswered on top.
-//                Cell → #rsvps; a section row → #rsvps for that section.
+//   ⚽ Games / 🏃 Practices   RsvpBoard::weekEvents per section (the #rsvps
+//                tiles), split by kind (owner: "separate game and practice
+//                rsvps") — players still to answer, the events with the most
+//                of their roster unanswered on top.  Cell → #rsvps on that
+//                kind; a section row → that section too.
 //   💰 Dues      PaymentsOverview (the #payments / #finances summary) —
-//                up to date / behind / over the line, owed; collected this
-//                month from person_payments.  Cell → #payments.
+//                up to date / behind / over the line, owed, what a month's
+//                dues come to for all members; collected this month from
+//                person_payments.  Cell → #payments.
 //   👥 Rosters   teams.max_roster vs live team_persons.  Cell → #teams;
 //                a team row → #teams on that section.
 //   👕 Numbers   person_uniform_numbers vs rostered players.  Cell → #kit.
@@ -157,7 +159,8 @@ class DashboardScreen extends Screen {
     el.innerHTML = `
       ${this.err ? `<div style="color:#f87171; padding:0 0 8px;">⚠️ ${this.escapeHtml(this.err)}</div>` : ''}
       <div class="db-grid">
-        ${this._rsvpCell(d.rsvps || {})}
+        ${this._rsvpCell(d.rsvps || {}, 'games')}
+        ${this._rsvpCell(d.rsvps || {}, 'practices')}
         ${this._payCell(d.payments || {})}
         ${this._rosterCell(d.rosters || {})}
         ${this._kitCell(d.kit || {})}
@@ -174,43 +177,56 @@ class DashboardScreen extends Screen {
     </button>`;
   }
 
-  _rsvpCell(r) {
-    const sections = r.sections || [];
-    const expected = Number(r.expected) || 0, unanswered = Number(r.unanswered) || 0, answered = expected - unanswered;
-    const anyEvents = sections.some(s => (s.events || 0) > 0);
+  // One cell per kind (owner 2026-10-09: "separate game and practice
+  // rsvps"): kind 'games' = matches + intra squads, 'practices' = practices,
+  // split from each section's released-week list.
+  _rsvpCell(r, kind) {
+    const isGame = (ev) => ev.kind !== 'practice';
+    const pick = (list) => (list || []).filter(ev => (kind === 'games') === isGame(ev));
+    const sections = (r.sections || []).map(s => {
+      const list = pick(s.list);
+      const expected = list.reduce((a, ev) => a + (Number(ev.expected) || 0), 0);
+      const unanswered = list.reduce((a, ev) => a + (Number(ev.unanswered) || 0), 0);
+      return { code: s.code, key: s.key, list, events: list.length, expected, unanswered };
+    });
+    const expected = sections.reduce((a, s) => a + s.expected, 0), unanswered = sections.reduce((a, s) => a + s.unanswered, 0), answered = expected - unanswered;
+    const anyEvents = sections.some(s => s.events > 0);
     const tone = !anyEvents ? 'ok' : DashboardScreen.tone(expected > 0 ? unanswered / expected : 0);
     const secLabel = (s) => this._t(`rsvp_sec_${s.code}`, s.code === 'M' ? 'Men' : s.code === 'W' ? 'Women' : 'Youth');
+    const go = (key) => `rsvps?kind=${kind}${key ? `&section=${encodeURIComponent(key)}` : ''}`;
     const rows = sections.map(s => {
-      const ev = Number(s.events) || 0, un = Number(s.unanswered) || 0, ex = Number(s.expected) || 0;
-      const t = ev ? DashboardScreen.tone(ex > 0 ? un / ex : 0) : '';
-      const right = !ev ? this.escapeHtml(this._t('rsvp_none', 'Nothing released yet'))
-        : un === 0 ? `<span class="ok">${this.escapeHtml(this._t('rsvp_clear', 'All answered'))}</span>`
-        : `<span class="${t}">${un}</span> <span style="opacity:0.6; font-weight:400;">/ ${ex}</span>`;
-      return `<div class="db-row link" data-db-row="rsvps?section=${this.escapeHtml(s.key)}">
-        <span class="l">${this.escapeHtml(secLabel(s))} <span style="opacity:0.6;">· ${s.games || 0} ⚽ · ${s.practices || 0} 🏃</span></span>
+      const t = s.events ? DashboardScreen.tone(s.expected > 0 ? s.unanswered / s.expected : 0) : '';
+      const right = !s.events ? this.escapeHtml(this._t('rsvp_none', 'Nothing released yet'))
+        : s.unanswered === 0 ? `<span class="ok">${this.escapeHtml(this._t('rsvp_clear', 'All answered'))}</span>`
+        : `<span class="${t}">${s.unanswered}</span> <span style="opacity:0.6; font-weight:400;">/ ${s.expected}</span>`;
+      return `<div class="db-row link" data-db-row="${this.escapeHtml(go(s.key))}">
+        <span class="l">${this.escapeHtml(secLabel(s))} <span style="opacity:0.6;">· ${s.events}</span></span>
         <span class="r">${right}</span></div>`;
     }).join('');
-    // The three worst events across the sections.
+    // The worst events across the sections: largest unanswered share first.
     const trouble = [];
-    for (const s of sections) for (const ev of (s.trouble || [])) trouble.push({ ...ev, key: s.key });
+    for (const s of sections) for (const ev of s.list) if ((Number(ev.unanswered) || 0) > 0) trouble.push({ ...ev, key: s.key });
     trouble.sort((a, b) => (b.unanswered / Math.max(1, b.expected)) - (a.unanswered / Math.max(1, a.expected)) || (a.starts_at < b.starts_at ? -1 : 1));
     const troubleHtml = trouble.length ? `<div class="db-h">${this.escapeHtml(this._t('rsvp_trouble', 'Trouble spots'))}</div><div class="db-rows">` + trouble.slice(0, 4).map(ev => {
-      const what = ev.kind === 'practice' ? 'practice' : `vs ${ev.opponent || 'TBD'}`;
+      const what = ev.kind === 'practice' ? '' : `vs ${ev.opponent || 'TBD'}`;
       const t = DashboardScreen.tone(ev.unanswered / Math.max(1, ev.expected));
-      return `<div class="db-row link" data-db-row="rsvps?section=${this.escapeHtml(ev.key)}">
+      return `<div class="db-row link" data-db-row="${this.escapeHtml(go(ev.key))}">
         <span class="l" title="${this.escapeHtml(`${ev.when_text} ${ev.teams} ${what}`)}">${this.escapeHtml(ev.when_text)} · ${this.escapeHtml(ev.teams)} ${this.escapeHtml(what)}</span>
         <span class="r ${t}">${this.escapeHtml(this._t('rsvp_row', '{n} of {of} still to answer', { n: ev.unanswered, of: ev.expected }))}</span></div>`;
     }).join('') + '</div>' : '';
     const big = anyEvents ? `<div class="db-big">${DashboardScreen.pct(answered, expected)}%<small>${this.escapeHtml(this._t('rsvp_answered', '{n} / {of} answered', { n: answered, of: expected }))}</small></div>`
                           : `<div class="db-note">${this.escapeHtml(this._t('rsvp_none', 'Nothing released yet'))}</div>`;
-    return this._cell(tone, 'rsvps', this._t('rsvp_title', '✅ RSVPs this week'), this._t('rsvp_sub', 'Released games and practices; players still to answer'),
-      `${big}<div class="db-rows">${rows}</div>${troubleHtml}`);
+    const title = kind === 'games' ? this._t('rsvp_games_title', '⚽ Game RSVPs') : this._t('rsvp_practices_title', '🏃 Practice RSVPs');
+    const sub = kind === 'games' ? this._t('rsvp_games_sub', 'Released games this week; players still to answer') : this._t('rsvp_practices_sub', 'Released practices this week; players still to answer');
+    return this._cell(tone, go(''), title, sub, `${big}<div class="db-rows">${rows}</div>${troubleHtml}`);
   }
 
   _payCell(p) {
     const paying = Number(p.paying) || 0, paidUp = Number(p.paid_up) || 0, behind = Number(p.behind) || 0, blocked = Number(p.blocked) || 0;
     const tone = DashboardScreen.tone(paying > 0 ? (behind + blocked) / paying : 0);
     const c = p.collected || {};
+    const proj = p.projections || {};
+    const monthlyAll = Number((proj.all_members || {}).monthly) || 0, monthlyCur = Number((proj.current_dues || {}).monthly) || 0;
     const by = (c.by_section || []).filter(s => Number(s.collected) !== 0);
     const stat = (k, v, t) => `<div class="db-stat ${t || ''}"><div class="k">${this.escapeHtml(k)}</div><div class="v">${v}</div></div>`;
     return this._cell(tone, 'payments', this._t('pay_title', '💰 Dues'), this._t('pay_sub', 'Paying members by standing, and what came in this month'),
@@ -220,9 +236,11 @@ class DashboardScreen extends Screen {
          ${stat(this._t('pay_behind', 'Behind'), behind, behind ? 'warn' : '')}
          ${stat(this._t('pay_blocked', 'Over the line'), blocked, blocked ? 'bad' : '')}
        </div>
-       <div class="db-h">${this.escapeHtml(this._t('pay_collected', 'Collected in {month}', { month: c.month_label || '' }))}</div>
+       <div class="db-h">${this.escapeHtml(this._t('pay_month', 'This month'))}</div>
        <div class="db-rows">
-         <div class="db-row"><span class="l"><b>${DashboardScreen.money(c.total)}</b></span>
+         <div class="db-row"><span class="l">${this.escapeHtml(this._t('pay_monthly', 'Due each month, all members'))}</span><span class="r">${DashboardScreen.money(monthlyAll)} <span style="opacity:0.6; font-weight:400;">· ${this.escapeHtml(this._t('pay_monthly_current', '{amount} from those up to date', { amount: DashboardScreen.money(monthlyCur) }))}</span></span></div>
+         <div class="db-row"><span class="l">${this.escapeHtml(this._t('pay_collected', 'Collected in {month}', { month: c.month_label || '' }))}</span><span class="r ${monthlyAll > 0 ? DashboardScreen.tone(Math.max(0, 1 - Number(c.total || 0) / monthlyAll)) : ''}">${DashboardScreen.money(c.total)}</span></div>
+         <div class="db-row"><span class="l"></span>
            <span class="r" style="opacity:0.75; font-weight:500;">${by.map(s => `${this.escapeHtml(s.category)} ${DashboardScreen.money(s.collected)}`).join(' · ')}</span></div>
          <div class="db-row"><span class="l">${this.escapeHtml(this._t('pay_owed', 'Owed in all'))}</span><span class="r ${Number(p.owed) > 0 ? 'warn' : ''}">${DashboardScreen.money(p.owed)}</span></div>
        </div>`);
