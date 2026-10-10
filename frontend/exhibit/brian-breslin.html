@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brian Breslin</title>
+<meta name="description" content="Brian Breslin — a remembrance in video and news archives, from the Breslin family and Football Home.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --navy: #0F2C59;
+    --gold: #C5A880;
+    --charcoal: #2B2B2B;
+    --line: rgba(15,44,89,0.10);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #ece9e2; }
+  body {
+    font-family: 'Open Sans', Helvetica, Arial, sans-serif;
+    color: var(--charcoal);
+    line-height: 1.55;
+    font-size: 17px;
+    padding: 0 16px 80px;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--navy); color: #fff;
+    margin: 0 -16px 32px; padding: 10px 18px;
+    display: flex; gap: 18px; align-items: center; flex-wrap: wrap;
+    font-family: 'Montserrat', sans-serif; font-size: 0.78rem;
+  }
+  .topbar .grp-label {
+    text-transform: uppercase; font-weight: 700; color: var(--gold);
+    letter-spacing: 2px; font-size: 0.7rem;
+  }
+  .topbar a {
+    background: rgba(255,255,255,0.08); color: #fff; text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.25); padding: 6px 12px; border-radius: 4px;
+  }
+  .topbar a:hover { background: rgba(255,255,255,0.18); }
+  .intro { max-width: 880px; margin: 0 auto 32px; text-align: center; color: #555; }
+  .intro .kicker {
+    font-family: 'Montserrat', sans-serif; text-transform: uppercase;
+    letter-spacing: 2.5px; font-size: 0.75rem; color: var(--gold); font-weight: 700; margin: 0 0 6px;
+  }
+  .intro h1 {
+    font-family: 'Bebas Neue', 'Montserrat', sans-serif; color: var(--navy);
+    font-size: clamp(2.4rem, 7vw, 4.2rem); letter-spacing: 3px; margin: 0 0 8px;
+  }
+  .intro p { margin: 4px 0; font-size: 1rem; }
+  .gold-rule { width: 80px; height: 4px; background: var(--gold); margin: 18px auto; border-radius: 2px; }
+  .poster-list { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
+  .poster {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 22px 40px -28px rgba(15,44,89,0.45);
+  }
+  .poster-band { background: var(--navy); color: #fff; padding: 14px 24px 12px; border-bottom: 4px solid var(--gold); }
+  .poster-band .kicker {
+    font-family: 'Montserrat', sans-serif; text-transform: uppercase; letter-spacing: 2.5px;
+    font-size: 0.7rem; color: var(--gold); margin: 0 0 4px; font-weight: 700;
+  }
+  .poster-band h2 {
+    font-family: 'Bebas Neue', 'Montserrat', sans-serif; margin: 0;
+    font-size: clamp(1.2rem, 3vw, 1.9rem); letter-spacing: 1px; line-height: 1.05;
+  }
+  .poster-body { padding: 18px 24px 18px; }
+  .poster-body p { margin: 0 0 12px; }
+  .video-wrap { background: #000; }
+  .video-wrap video { display: block; width: 100%; max-height: 80vh; }
+  .pending {
+    padding: 48px 24px; text-align: center; color: #666; font-style: italic;
+    background: repeating-linear-gradient(45deg, #f4f2ee, #f4f2ee 12px, #faf9f6 12px, #faf9f6 24px);
+  }
+  .clips { list-style: none; margin: 0; padding: 0; }
+  .clips li { padding: 14px 0; border-top: 1px solid var(--line); }
+  .clips li:first-child { border-top: 0; padding-top: 0; }
+  .clips .src { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.78rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--navy); }
+  .clips .date { color: #777; font-size: 0.85rem; margin-left: 8px; }
+  .clips h3 { margin: 4px 0 6px; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--charcoal); }
+  .clips a { color: var(--navy); }
+  .footer { max-width: 880px; margin: 48px auto 0; text-align: center; color: #777; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<nav class="topbar" aria-label="Exhibit navigation">
+  <span class="grp-label">Lighthouse History</span>
+  <a href="/exhibit/lighthouse-history.html">← The Lighthouse Soccer Exhibition</a>
+  <a href="/exhibit/sources.html">Sources</a>
+</nav>
+
+<section class="intro">
+  <p class="kicker">In memory</p>
+  <h1>Brian Breslin</h1>
+  <div class="gold-rule"></div>
+  <p>A remembrance in video and in the news archives, from the Breslin family.</p>
+</section>
+
+<div class="poster-list">
+
+  <!-- VIDEO — /exhibit/video/brian-breslin.mp4 is kept on the host, not in git. -->
+  <article class="poster" id="video">
+    <header class="poster-band">
+      <p class="kicker">Montage</p>
+      <h2>BRIAN BRESLIN</h2>
+    </header>
+    <div class="video-wrap" id="video-wrap" hidden>
+      <video controls playsinline preload="metadata" poster="/exhibit/video/brian-breslin-poster.jpg">
+        <source src="/exhibit/video/brian-breslin.mp4" type="video/mp4">
+        Your browser can’t play this video. <a href="/exhibit/video/brian-breslin.mp4">Download it instead.</a>
+      </video>
+    </div>
+    <div class="pending" id="video-pending">The video is being put together. Check back soon.</div>
+  </article>
+
+  <!-- NEWS ARCHIVE — one <li> per article; filled in as the family supplies links. -->
+  <article class="poster" id="news">
+    <header class="poster-band">
+      <p class="kicker">News archives</p>
+      <h2>IN THE PAPERS</h2>
+    </header>
+    <div class="poster-body">
+      <ul class="clips" id="clips">
+        <li class="pending-item" style="color:#666;font-style:italic;">Articles are being gathered.</li>
+      </ul>
+    </div>
+  </article>
+
+</div>
+
+<footer class="footer">
+  <p>Part of the Lighthouse History exhibit · <a href="https://footballhome.org/exhibit/lighthouse-history.html" style="color:inherit;">footballhome.org/exhibit</a></p>
+</footer>
+
+<script>
+  // Show the player only once the file exists on the host, so the page is
+  // honest while the montage is still being cut.
+  (function () {
+    var wrap = document.getElementById('video-wrap');
+    var pending = document.getElementById('video-pending');
+    fetch('/exhibit/video/brian-breslin.mp4', { method: 'HEAD' })
+      .then(function (r) {
+        var isVideo = r.ok && /video\//.test(r.headers.get('content-type') || '');
+        if (isVideo) { wrap.hidden = false; pending.hidden = true; }
+      })
+      .catch(function () {});
+  })();
+</script>
+</body>
+</html>

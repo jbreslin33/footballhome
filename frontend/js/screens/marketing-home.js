@@ -99,6 +99,7 @@ class MarketingHomeScreen extends Screen {
         tiles: [
           { id: 'flyers', target: 'flyers', params: {}, icon: '🖨️', label: 'Flyers', description: 'Printable recruitment flyers with QR codes' },
           { id: 'public-exhibits', icon: '🖼️', label: 'Public Exhibits', description: 'Publicly shareable poster boards & history pages' },
+          { id: 'brian-breslin', icon: '🕯️', label: 'Brian Breslin', description: 'In memory — montage video and news archives, part of the history exhibit' },
           { id: 'exhibit-social', icon: '📲', label: 'Exhibit → Social', description: 'Export poster assets as IG carousel, 4:5 single, or long poster renders' },
         ],
       },
@@ -119,6 +120,10 @@ class MarketingHomeScreen extends Screen {
 
         if (section === 'public-exhibits') {
           window.open('/exhibit/lighthouse-history.html', '_blank', 'noopener');
+          return;
+        }
+        if (section === 'brian-breslin') {
+          window.open('/exhibit/brian-breslin.html', '_blank', 'noopener');
           return;
         }
         if (section === 'exhibit-social') {

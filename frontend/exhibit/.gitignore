@@ -1,2 +1,6 @@
 images/_newcandidates/
 *.bak-sources
+video/*.mp4
+video/*.webm
+video/*.mov
+video/_work/
