@@ -276,12 +276,12 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                                  WHERE w2.starts_at < now()
                                    AND EXISTS (SELECT 1 FROM fh_event_attendance fea
                                                 WHERE fea.person_id = pe.id AND fea.fh_event_id = w2.fh_event_id
-                                                  AND fea.status IN ('present', 'late')))
+                                                  AND fea.status IN ('present', 'late', 'excused')))
                           ELSE
                                (SELECT count(*) FROM fh_event_attendance fea
                                  WHERE fea.person_id = pe.id
                                    AND fea.fh_event_id IN (SELECT fh_event_id FROM win WHERE win.starts_at < now())
-                                   AND fea.status IN ('present', 'late'))
+                                   AND fea.status IN ('present', 'late', 'excused'))
                           END) AS practices_attended,
                        (SELECT count(*) FROM win WHERE win.starts_at >= now()) AS upcoming_total,
                        (SELECT CASE WHEN (SELECT week_mode FROM pol) THEN
@@ -325,6 +325,10 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                                   'future', pw.starts_at >= now(),
                                   'rsvp', (SELECT r.response FROM fh_event_rsvps r
                                              WHERE r.fh_event_id = pw.fh_event_id AND r.person_id = pe.id),
+                                  -- mig 563: 'excused' counts toward the
+                                  -- criterion and the chip labels it so.
+                                  'status', (SELECT fea.status FROM fh_event_attendance fea
+                                               WHERE fea.fh_event_id = pw.fh_event_id AND fea.person_id = pe.id),
                                   'attended', CASE WHEN pw.starts_at >= now() THEN
                                       COALESCE(
                                           (SELECT r.response FROM fh_event_rsvps r
@@ -336,7 +340,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                                       EXISTS(
                                           SELECT 1 FROM fh_event_attendance fea
                                           WHERE fea.person_id = pe.id AND fea.fh_event_id = pw.fh_event_id
-                                            AND fea.status IN ('present', 'late'))
+                                            AND fea.status IN ('present', 'late', 'excused'))
                                   END
                                 ) ORDER BY pw.starts_at)
                           FROM win pw) AS practice_pills

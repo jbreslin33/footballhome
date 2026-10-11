@@ -329,10 +329,10 @@ WITH g AS (
               WHERE w.starts_at < now()
                 AND EXISTS (SELECT 1 FROM fh_event_attendance a
                              WHERE a.person_id = tp.person_id AND a.fh_event_id = w.fh_event_id
-                               AND a.status IN ('present','late')))
+                               AND a.status IN ('present','late','excused')))
           ELSE
             (SELECT count(*) FROM fh_event_attendance a
-              WHERE a.person_id = tp.person_id AND a.status IN ('present','late') AND a.fh_event_id = ANY(COALESCE(t.past_win, '{}')))
+              WHERE a.person_id = tp.person_id AND a.status IN ('present','late','excused') AND a.fh_event_id = ANY(COALESCE(t.past_win, '{}')))
           END) AS attended,
          (CASE WHEN t.week_mode THEN
             (SELECT count(DISTINCT (w.starts_at AT TIME ZONE 'America/New_York')::date)

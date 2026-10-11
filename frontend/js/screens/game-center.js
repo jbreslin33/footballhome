@@ -3968,7 +3968,10 @@ class GameCenterScreen extends Screen {
     const chip = (p) => {
       const ok = !!p.attended;
       const label = when(p).replace(/ \d+(:\d+)? [AP]M$/, '');
-      const status = p.future ? (ok ? 'Going' : (p.rsvp === 'no' ? 'Out' : 'No answer')) : (ok ? 'Present' : 'Absent');
+      // 'Excused' counts toward the criterion (mig 563) but is named, not
+      // passed off as Present — the coach marked an absolved absence.
+      const status = p.future ? (ok ? 'Going' : (p.rsvp === 'no' ? 'Out' : 'No answer'))
+                              : (p.status === 'excused' ? 'Excused' : ok ? 'Present' : 'Absent');
       return `<span title="${this.escapeHtml(status)}" style="display:inline-flex; flex-direction:column; align-items:center; gap:1px; min-width:52px; padding:4px 6px; border-radius:8px; font-size:0.62rem;
         background:${ok ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.14)'}; border:1px solid ${ok ? '#22c55e' : '#ef4444'}; ${p.future ? 'opacity:0.8;' : ''}">
         <span style="font-weight:700;">${this.escapeHtml(label)}</span><span>${p.future ? '📅 ' : ''}${this.escapeHtml(status)}</span></span>`;
