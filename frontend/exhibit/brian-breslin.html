@@ -85,6 +85,15 @@
   .clips .date { color: #777; font-size: 0.85rem; margin-left: 8px; }
   .clips h3 { margin: 4px 0 6px; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--charcoal); }
   .clips a { color: var(--navy); }
+  .tally { width: 100%; border-collapse: collapse; margin: 6px 0 14px; }
+  .tally th, .tally td { padding: 8px 10px; border-top: 1px solid var(--line); text-align: left; }
+  .tally th {
+    font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.75rem;
+    letter-spacing: 1.5px; text-transform: uppercase; color: var(--navy); border-top: 0;
+  }
+  .tally td.n { font-family: 'Montserrat', sans-serif; font-weight: 700; color: var(--navy); }
+  .tally tr.total td { border-top: 2px solid var(--gold); font-weight: 700; }
+  .fine { color: #777; font-size: 0.85rem; }
   .footer { max-width: 880px; margin: 48px auto 0; text-align: center; color: #777; font-size: 0.85rem; }
 </style>
 </head>
@@ -119,6 +128,30 @@
       </video>
     </div>
     <div class="pending" id="video-pending">The video is being put together. Check back soon.</div>
+  </article>
+
+  <!-- WHAT THE CLIPPINGS ADD UP TO — printed goals/assists only; papers missed games. -->
+  <article class="poster" id="numbers">
+    <header class="poster-band">
+      <p class="kicker">From the box scores</p>
+      <h2>WHAT THE CLIPPINGS ADD UP TO</h2>
+      <p class="sub">Goals and assists as the papers printed them. The papers didn&#x27;t cover every game, so these are minimums — the real totals are higher.</p>
+    </header>
+    <div class="poster-body">
+      <h3 class="era">Bucknell soccer · a starter in all four seasons, plus a fifth</h3>
+      <table class="tally">
+        <tr><th>Season</th><th>In print</th><th>Goals</th><th>Assists</th></tr>
+        <tr><td>1992 · sophomore</td><td>Kutztown, Susquehanna (8–0), Shippensburg (3–1)</td><td class="n">3</td><td class="n">0</td></tr>
+        <tr><td>1993 · junior</td><td>Two against Delaware (6–0), the game-winner at Fordham, a goal and an assist against Shippensburg, an assist in the Patriot League semifinal — and a converted penalty in the shootout that put Bucknell in the final</td><td class="n">4</td><td class="n">2</td></tr>
+        <tr><td>1994 · senior</td><td>&quot;First goal of the season&quot; at Lehigh (3–2), the overtime winner&#x27;s opener at Delaware (2–1), the goal in the Navy finale; assists against William &amp; Mary and two against Dickinson</td><td class="n">3</td><td class="n">3</td></tr>
+        <tr><td>1995 · graduate student</td><td>Assists against St. Peter&#x27;s and Kutztown (4–0)</td><td class="n">0</td><td class="n">2</td></tr>
+        <tr class="total"><td>In print, 1992–1995</td><td></td><td class="n">10</td><td class="n">7</td></tr>
+      </table>
+      <p>The Daily Item&#x27;s 1994 season preview counted Brian among the <em>top four scorers</em> of Bucknell&#x27;s 11-5-3 team of 1993 — the team that reached the Patriot League final. The Bucknellian&#x27;s 1993 preview named him in the midfield that &quot;will be expected to carry the load.&quot;</p>
+      <h3 class="era">Archbishop Ryan soccer · 1989–1990</h3>
+      <p>Six goals made the Inquirer: one against Cardinal Dougherty, two in a 12–0 win over Bishop McDevitt, and a hat trick against Frankford in September 1990 — alongside first-team all-Catholic honors in soccer <em>and</em> cross country in the same fall.</p>
+      <p class="fine">Where this comes from: every &quot;Brian Breslin&quot; match on Newspapers.com for Pennsylvania (the Inquirer, Daily News and the central-Pa. papers, 1987–1996) and every Breslin mention in the six digitized volumes of The Bucknellian, Bucknell&#x27;s student paper, on the Internet Archive. The Northeast Times isn&#x27;t digitized anywhere — the Free Library of Philadelphia keeps it on microfilm, so those box scores are still out there to add.</p>
+    </div>
   </article>
 
   <!-- NEWS ARCHIVE — one <li> per article; filled in as the family supplies links. -->
