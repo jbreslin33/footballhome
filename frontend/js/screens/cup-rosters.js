@@ -57,19 +57,27 @@ class CupRostersScreen extends Screen {
         /* ── the sheet: 8.5×11 in, drawn to the form ───────────────────── */
         .cr-sheet { position:relative; width:612pt; height:792pt; background:#fff; color:#111; font-family: "Century Gothic", "Trebuchet MS", Arial, sans-serif; box-shadow:0 4px 20px rgba(0,0,0,0.35); box-sizing:border-box; padding:38pt 36pt 0 36pt; font-size:8.5pt; }
         .cr-sheet * { box-sizing:border-box; }
+        /* Colors sampled from the EPSA/USASA PDF itself: bar #244062, label
+           text #366092, cell shade #dce6f1, players row rules #4f81bd. */
         .cr-sheet .type { text-align:center; font-weight:800; font-size:8.5pt; margin-bottom:3pt; }
-        .cr-sheet .cr-bar { background:#1f3864; color:#fff; text-align:center; font-weight:800; font-size:14pt; padding:3pt 0; }
+        .cr-sheet .cr-bar { background:#244062; color:#fff; text-align:center; font-weight:800; font-size:14pt; padding:3pt 0; }
         .cr-sheet table { border-collapse:collapse; width:100%; table-layout:fixed; }
-        .cr-sheet td, .cr-sheet th { border:1px solid #333; padding:1.5pt 3pt; height:13pt; vertical-align:middle; font-size:8.5pt; overflow:hidden; white-space:nowrap; }
-        .cr-sheet th { background:#dbe5f1; color:#1f3864; text-align:left; font-weight:800; }
+        .cr-sheet td, .cr-sheet th { border:1px solid #244062; padding:1.5pt 3pt; height:13pt; vertical-align:middle; font-size:8.5pt; overflow:hidden; white-space:nowrap; }
+        .cr-sheet th { background:#dce6f1; color:#366092; text-align:left; font-weight:800; }
         .cr-sheet th.c { text-align:center; }
-        .cr-sheet td.lab { background:#dbe5f1; color:#1f3864; font-weight:700; }
+        .cr-sheet td.lab { background:#fff; color:#366092; font-weight:700; }
         .cr-sheet .gap { height:9pt; }
         .cr-sheet .players { width:400pt; }
-        .cr-sheet .players th { text-align:center; height:26pt; white-space:normal; line-height:1.1; }
-        .cr-sheet .players td.n { width:14pt; text-align:center; background:#dbe5f1; color:#1f3864; font-weight:700; }
-        .cr-sheet .players tr.alt td { background:#dbe5f1; }
-        .cr-sheet .players tr.alt td.n { background:#dbe5f1; }
+        .cr-sheet .players td, .cr-sheet .players th { border-color:#000; }
+        .cr-sheet .players td { border-top-color:#4f81bd; border-bottom-color:#4f81bd; }
+        .cr-sheet .players tr:last-child td { border-bottom-color:#000; }
+        .cr-sheet .players th { text-align:center; height:26pt; white-space:normal; line-height:1.1; border-bottom:2px solid #000; }
+        /* Banding as the form has it: data cells shade rows 1,3,5…; the
+           number column shades 2,4,6… (its .ns cells) and stays black text. */
+        .cr-sheet .players td.n { width:14pt; text-align:center; background:#fff; color:#000; font-weight:400; }
+        .cr-sheet .players td.n.ns { background:#dce6f1; }
+        .cr-sheet .players tr.alt td { background:#dce6f1; }
+        .cr-sheet .players tr.alt td.n { background:#fff; }
         .cr-sheet .logo { position:absolute; right:40pt; top:262pt; width:110pt; }
         .cr-sheet .count { margin-top:9pt; display:flex; gap:6pt; align-items:flex-start; }
         .cr-sheet .count table { width:130pt; }
@@ -270,7 +278,7 @@ class CupRostersScreen extends Screen {
     const rows = [];
     for (let i = 0; i < max; i++) {
       const p = players[i] || {};
-      rows.push(`<tr class="${i % 2 ? 'alt' : ''}"><td class="n">${i + 1}</td><td>${esc(p.last_name)}</td><td>${esc(p.first_name)}</td><td style="text-align:center;">${esc(p.dob)}</td></tr>`);
+      rows.push(`<tr class="${i % 2 ? '' : 'alt'}"><td class="n${i % 2 ? ' ns' : ''}">${i + 1}</td><td>${esc(p.last_name)}</td><td>${esc(p.first_name)}</td><td style="text-align:center;">${esc(p.dob)}</td></tr>`);
     }
     const v = (k) => esc(s ? s[k] : '');
     return `<div class="cr-sheet">
@@ -298,7 +306,7 @@ class CupRostersScreen extends Screen {
         <tr><th style="background:#fff; border:none;"></th><th class="c">Player's<br>Last Name</th><th class="c">Player's<br>First Name</th><th class="c">DOB<br>m/d/y</th></tr>
         ${rows.join('')}
       </table>
-      <img class="logo" src="/images/usasa-region1.png" alt="">
+      <img class="logo" src="/images/usasa-region1.png?v=2" alt="">
       <div class="count">
         <table><tr><th>PLAYER COUNT</th></tr><tr><td style="font-weight:700;">${players.length}</td></tr></table>
         <div class="note">${esc(this._t('sheet_pool', 'Pool is set at {max}.', { max }))}<br>${esc(this._t('sheet_pool2', 'No more additions allowed after {max} is reached.', { max }))}</div>
