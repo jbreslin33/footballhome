@@ -91,6 +91,10 @@ Response CupRosterController::handleBoard(const Request& request) {
                                {"team_name", str(r, "team_name")}, {"sheet_date", str(r, "sheet_date")}, {"public_slug", str(r, "slug")},
                                {"updated_label", str(r, "updated_label")}, {"players", r["players"].as<long long>()}});
         }
+        // The Cup dropdown (cup_options, mig 564) — rows change by migration.
+        json cups = json::array();
+        for (const auto& c : db->query("SELECT name FROM cup_options WHERE is_active ORDER BY sort_order, id"))
+            cups.push_back(str(c, "name"));
         json teams = json::array();
         for (const auto& t : db->query(R"SQL(
             SELECT t.id, COALESCE(t.label, t.name) AS label FROM teams t JOIN club_sections cs ON cs.id = t.club_section_id
@@ -124,7 +128,7 @@ Response CupRosterController::handleBoard(const Request& request) {
         { auto me = db->query("SELECT COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'') AS n FROM users u JOIN persons p ON p.id = u.person_id WHERE u.id = $1::int",
                               {std::to_string(bearerUserId(request))});
           if (!me.empty()) sender = str(me[0], "n"); }
-        return jsonOut(HttpStatus::OK, {{"rosters", rosters}, {"pool", pool}, {"teams", teams}, {"max", kPoolMax}, {"recipients", recipients}, {"sender", sender}});
+        return jsonOut(HttpStatus::OK, {{"rosters", rosters}, {"pool", pool}, {"teams", teams}, {"cups", cups}, {"max", kPoolMax}, {"recipients", recipients}, {"sender", sender}});
     } catch (const std::exception& e) { std::cerr << "[cup-rosters board] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
@@ -157,13 +161,25 @@ Response CupRosterController::handleNew(const Request& request) {
                          FROM team_coaches tc JOIN coaches c ON c.id = tc.coach_id JOIN persons p ON p.id = c.person_id
                          JOIN teams t ON t.id = tc.team_id JOIN club_sections cs ON cs.id = t.club_section_id AND cs.code = 'M'
                         WHERE tc.ended_at IS NULL ORDER BY t.board_sort_order, tc.started_at LIMIT 1)
-                INSERT INTO cup_rosters (team_name, cup, state_association, competition, state, coach_name, coach_email, coach_phone, sheet_date, created_by_user_id)
+                INSERT INTO cup_rosters (team_name, cup, state_association, competition, state,
+                                         shirt_primary, shorts_primary, socks_primary, shirt_alt, shorts_alt, socks_alt,
+                                         coach_name, coach_email, coach_phone, sheet_date, created_by_user_id)
                 SELECT COALESCE((SELECT body FROM d WHERE tier = 'default_team_name'), ''),
                        COALESCE((SELECT body FROM d WHERE tier = 'default_cup'), ''),
                        COALESCE((SELECT body FROM d WHERE tier = 'default_assoc'), ''),
                        COALESCE((SELECT body FROM d WHERE tier = 'default_competition'), ''),
                        COALESCE((SELECT body FROM d WHERE tier = 'default_state'), ''),
-                       COALESCE((SELECT name FROM coach), ''), COALESCE((SELECT email FROM coach), ''), COALESCE((SELECT phone FROM coach), ''),
+                       COALESCE((SELECT body FROM d WHERE tier = 'default_shirt_primary'), ''),
+                       COALESCE((SELECT body FROM d WHERE tier = 'default_shorts_primary'), ''),
+                       COALESCE((SELECT body FROM d WHERE tier = 'default_socks_primary'), ''),
+                       COALESCE((SELECT body FROM d WHERE tier = 'default_shirt_alt'), ''),
+                       COALESCE((SELECT body FROM d WHERE tier = 'default_shorts_alt'), ''),
+                       COALESCE((SELECT body FROM d WHERE tier = 'default_socks_alt'), ''),
+                       COALESCE((SELECT name FROM coach), ''),
+                       -- The sheet's contact email is the club's (default_coach_email,
+                       -- mig 564), never the coach's personal/footballhome address.
+                       COALESCE(NULLIF((SELECT body FROM d WHERE tier = 'default_coach_email'), ''), (SELECT email FROM coach), ''),
+                       COALESCE((SELECT phone FROM coach), ''),
                        CURRENT_DATE, $1::int
                 RETURNING id)SQL", {uid});
         }

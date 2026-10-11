@@ -41,7 +41,7 @@ class CupRostersScreen extends Screen {
         .cr-list .row:hover, .cr-list .row.on { background:rgba(148,163,184,0.12); }
         .cr-grid { display:grid; grid-template-columns: 1fr 1fr; gap:6px 10px; }
         .cr-grid label { display:flex; flex-direction:column; font-size:0.72rem; opacity:0.8; gap:2px; }
-        .cr-grid input { padding:5px 7px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary, #111827); color:inherit; font:inherit; font-size:0.85rem; }
+        .cr-grid input, .cr-grid select { padding:5px 7px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary, #111827); color:inherit; font:inherit; font-size:0.85rem; }
         .cr-pills { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 8px; }
         .cr-pill { padding:4px 10px; border-radius:999px; border:1px solid var(--border-color); background:transparent; color:inherit; cursor:pointer; font-weight:700; font-size:0.8rem; }
         .cr-pill.on { background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
@@ -220,9 +220,15 @@ class CupRostersScreen extends Screen {
   _renderHeaderForm(s) {
     const esc = (t) => this.escapeHtml(t == null ? '' : t);
     const f = (key, label, extra = '') => `<label>${esc(label)}<input data-cr-field="${key}" value="${esc(s[key])}" ${extra}></label>`;
+    // Cup is a choice (cup_options via the board, mig 564), not free text; a
+    // saved cup no longer on the list still shows as its sheet's own option.
+    const cups = (this.board && this.board.cups) || [];
+    const cupList = (s.cup && !cups.includes(s.cup) ? [s.cup] : []).concat(cups);
+    const cupSel = `<label>Cup<select data-cr-field="cup">${s.cup ? '' : '<option value=""></option>'}${cupList.map(c =>
+      `<option value="${esc(c)}"${c === s.cup ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label>`;
     return `<div class="cr-grid">
       ${f('title', 'Sheet name (yours)')}${f('team_name', 'Team name')}
-      ${f('cup', 'Cup')}${f('competition', 'Competition')}
+      ${cupSel}${f('competition', 'Competition')}
       ${f('state_association', 'State association')}${f('state', 'State')}
       ${f('shirt_primary', 'Shirt — primary')}${f('shirt_alt', 'Shirt — alternate')}
       ${f('shorts_primary', 'Shorts — primary')}${f('shorts_alt', 'Shorts — alternate')}
