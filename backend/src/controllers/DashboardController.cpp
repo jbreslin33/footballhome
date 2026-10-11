@@ -304,12 +304,14 @@ WITH g AS (
      AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
      AND ge.ends_at > now() AND ge.starts_at < now() + interval '7 days'
 ), t AS (
-  SELECT g.*, tm.field_size, tm.everyone_plays, tm.teams,
-         (SELECT COALESCE(p.min_sessions_to_start, 2) FROM fh_starter_policy(g.team_ids, g.match_id) p) AS needed,
+  SELECT g.*, tm.field_size, tm.everyone_plays, tm.teams, nd.needed, nd.week_mode,
          (SELECT array_agg(w.fh_event_id) FROM fh_starter_window(g.team_ids, g.starts_at, g.match_id) w WHERE w.starts_at <  now()) AS past_win,
          (SELECT array_agg(w.fh_event_id) FROM fh_starter_window(g.team_ids, g.starts_at, g.match_id) w WHERE w.starts_at >= now()) AS future_win,
          (SELECT i.deadline FROM fh_rsvp_deadline_info(g.fh_event_id) i WHERE i.blocks_start) AS deadline
     FROM g
+    -- mig 562: needed per game from fh_starter_needed — the men's week rule
+    -- lowers it one per typical practice day that didn't happen this week.
+    CROSS JOIN LATERAL fh_starter_needed(g.team_ids, g.starts_at, g.match_id) nd
     CROSS JOIN LATERAL (
       SELECT max(t.field_size) AS field_size, COALESCE(bool_or(t.lineup_everyone_plays), false) AS everyone_plays,
              string_agg(COALESCE(t.label, t.name), ' · ' ORDER BY t.board_sort_order) AS teams
@@ -319,10 +321,30 @@ WITH g AS (
   SELECT t.fh_event_id, tp.person_id,
          (SELECT r.response FROM fh_event_rsvps r WHERE r.fh_event_id = t.fh_event_id AND r.person_id = tp.person_id) AS rsvp,
          fh_dues_eligible(tp.person_id) AS dues_ok,
-         (SELECT count(*) FROM fh_event_attendance a
-           WHERE a.person_id = tp.person_id AND a.status IN ('present','late') AND a.fh_event_id = ANY(COALESCE(t.past_win, '{}'))) AS attended,
-         (SELECT count(*) FROM fh_event_rsvps r
-           WHERE r.person_id = tp.person_id AND r.response = 'yes' AND r.fh_event_id = ANY(COALESCE(t.future_win, '{}'))) AS projected,
+         -- Week mode (mig 562) counts DAYS, not sessions — same as the
+         -- Game Center's Practice Criteria pill.
+         (CASE WHEN t.week_mode THEN
+            (SELECT count(DISTINCT (w.starts_at AT TIME ZONE 'America/New_York')::date)
+               FROM fh_starter_window(t.team_ids, t.starts_at, t.match_id) w
+              WHERE w.starts_at < now()
+                AND EXISTS (SELECT 1 FROM fh_event_attendance a
+                             WHERE a.person_id = tp.person_id AND a.fh_event_id = w.fh_event_id
+                               AND a.status IN ('present','late')))
+          ELSE
+            (SELECT count(*) FROM fh_event_attendance a
+              WHERE a.person_id = tp.person_id AND a.status IN ('present','late') AND a.fh_event_id = ANY(COALESCE(t.past_win, '{}')))
+          END) AS attended,
+         (CASE WHEN t.week_mode THEN
+            (SELECT count(DISTINCT (w.starts_at AT TIME ZONE 'America/New_York')::date)
+               FROM fh_starter_window(t.team_ids, t.starts_at, t.match_id) w
+              WHERE w.starts_at >= now()
+                AND EXISTS (SELECT 1 FROM fh_event_rsvps r
+                             WHERE r.person_id = tp.person_id AND r.fh_event_id = w.fh_event_id
+                               AND r.response = 'yes'))
+          ELSE
+            (SELECT count(*) FROM fh_event_rsvps r
+              WHERE r.person_id = tp.person_id AND r.response = 'yes' AND r.fh_event_id = ANY(COALESCE(t.future_win, '{}')))
+          END) AS projected,
          t.needed,
          CASE WHEN t.deadline IS NULL OR now() < t.deadline THEN false
               WHEN EXISTS (SELECT 1 FROM fh_event_rsvp_first_answers fa WHERE fa.fh_event_id = t.fh_event_id AND fa.person_id = tp.person_id AND fa.first_responded_at < t.deadline) THEN false

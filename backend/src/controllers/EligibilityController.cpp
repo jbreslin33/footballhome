@@ -192,8 +192,11 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
 
         // Starter eligibility (migration 456): the sessions that count for
         // this game come from fh_starter_window() — the last
-        // lookback_count before kickoff, or the weekday-game extended
-        // window — and eligibility_policies says how many are needed.
+        // lookback_count before kickoff, the weekday-game extended window,
+        // or (men's week rule, mig 562) only the game week's typical
+        // practice days — and fh_starter_needed() says how many are needed
+        // (the week rule lowers the bar one per typical day that didn't
+        // happen, so a week with 2+ cancelled days needs none).
         // Every signed-in viewer gets every rostered player's row; the
         // caller's own is flagged through myPlayerId (owner 2026-09-26:
         // "show pill if player is eligible or not and show available
@@ -230,9 +233,14 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                     WHERE fe.match_id = $1::int
                     LIMIT 1
                 ),
+                -- needed comes from fh_starter_needed (mig 562): the policy
+                -- number, or — men's week rule — lowered one per typical
+                -- practice day (Tue–Sat) of the game week with no session.
                 pol AS (
-                    SELECT COALESCE(p.min_sessions_to_start, 2) AS needed, COALESCE(p.lookback_count, 5) AS lookback
-                    FROM fh_starter_policy($2::int[], $1::int) p
+                    SELECT n.needed, n.base_needed, n.typical_days, n.held_days, n.missed_days, n.week_mode,
+                           (SELECT COALESCE(p.lookback_count, 5) FROM fh_starter_policy($2::int[], $1::int) p) AS lookback
+                    FROM match_event me
+                    CROSS JOIN LATERAL fh_starter_needed($2::int[], me.starts_at, $1::int) n
                 ),
                 win AS (
                     SELECT w.fh_event_id, w.kind, w.starts_at, w.extended, w.cutoff,
@@ -254,18 +262,39 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 SELECT DISTINCT ON (pl.id) pl.id AS player_id,
                        (SELECT needed FROM pol) AS needed,
                        (SELECT lookback FROM pol) AS lookback,
+                       (SELECT week_mode FROM pol) AS week_mode,
+                       (SELECT base_needed FROM pol) AS base_needed,
+                       (SELECT typical_days FROM pol) AS typical_days,
+                       (SELECT held_days FROM pol) AS held_days,
+                       (SELECT missed_days FROM pol) AS missed_days,
                        (SELECT count(*) FROM win) AS window_total,
                        (SELECT count(*) FROM win WHERE win.starts_at < now()) AS recent_total,
-                       (SELECT count(*) FROM fh_event_attendance fea
-                          WHERE fea.person_id = pe.id
-                            AND fea.fh_event_id IN (SELECT fh_event_id FROM win WHERE win.starts_at < now())
-                            AND fea.status IN ('present', 'late')) AS practices_attended,
+                       -- Week mode counts DAYS, not sessions (mig 562): two
+                       -- sessions on one Saturday are one day held/attended.
+                       (SELECT CASE WHEN (SELECT week_mode FROM pol) THEN
+                               (SELECT count(DISTINCT (w2.starts_at AT TIME ZONE 'America/New_York')::date) FROM win w2
+                                 WHERE w2.starts_at < now()
+                                   AND EXISTS (SELECT 1 FROM fh_event_attendance fea
+                                                WHERE fea.person_id = pe.id AND fea.fh_event_id = w2.fh_event_id
+                                                  AND fea.status IN ('present', 'late')))
+                          ELSE
+                               (SELECT count(*) FROM fh_event_attendance fea
+                                 WHERE fea.person_id = pe.id
+                                   AND fea.fh_event_id IN (SELECT fh_event_id FROM win WHERE win.starts_at < now())
+                                   AND fea.status IN ('present', 'late'))
+                          END) AS practices_attended,
                        (SELECT count(*) FROM win WHERE win.starts_at >= now()) AS upcoming_total,
-                       (SELECT count(*) FROM win up
-                          WHERE up.starts_at >= now()
-                            AND (SELECT r.response FROM fh_event_rsvps r
-                                   WHERE r.fh_event_id = up.fh_event_id AND r.person_id = pe.id
-                                ) = 'yes') AS practices_projected,
+                       (SELECT CASE WHEN (SELECT week_mode FROM pol) THEN
+                               (SELECT count(DISTINCT (up.starts_at AT TIME ZONE 'America/New_York')::date) FROM win up
+                                 WHERE up.starts_at >= now()
+                                   AND (SELECT r.response FROM fh_event_rsvps r
+                                          WHERE r.fh_event_id = up.fh_event_id AND r.person_id = pe.id) = 'yes')
+                          ELSE
+                               (SELECT count(*) FROM win up
+                                 WHERE up.starts_at >= now()
+                                   AND (SELECT r.response FROM fh_event_rsvps r
+                                          WHERE r.fh_event_id = up.fh_event_id AND r.person_id = pe.id) = 'yes')
+                          END) AS practices_projected,
                        COALESCE((SELECT bool_or(extended) FROM win), false) AS extended,
                        (SELECT to_char(min(cutoff) AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') FROM win) AS cutoff,
                        (SELECT r.response FROM fh_event_rsvps r, match_event me
@@ -334,6 +363,13 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 statsJson << "\"windowTotal\":" << row["window_total"].c_str() << ",";
                 statsJson << "\"needed\":" << needed << ",";
                 statsJson << "\"lookback\":" << row["lookback"].c_str() << ",";
+                // Week rule (mig 562): which days counted and how far the
+                // bar was lowered, for the player-facing rule explainer.
+                statsJson << "\"weekMode\":" << (row["week_mode"].as<bool>(false) ? "true" : "false") << ",";
+                statsJson << "\"baseNeeded\":" << (row["base_needed"].is_null() ? "null" : row["base_needed"].c_str()) << ",";
+                statsJson << "\"typicalDays\":" << (row["typical_days"].is_null() ? "null" : row["typical_days"].c_str()) << ",";
+                statsJson << "\"heldDays\":" << (row["held_days"].is_null() ? "null" : row["held_days"].c_str()) << ",";
+                statsJson << "\"missedDays\":" << (row["missed_days"].is_null() ? "null" : row["missed_days"].c_str()) << ",";
                 const std::string rsvpTiming = row["rsvp_timing"].is_null() ? "" : row["rsvp_timing"].c_str();
                 statsJson << "\"eligible\":" << (attended >= needed && rsvpTiming != "late" ? "true" : "false") << ",";
                 statsJson << "\"gameFhEventId\":" << (row["game_fh_event_id"].is_null() ? "null" : row["game_fh_event_id"].c_str()) << ",";

@@ -3821,6 +3821,12 @@ class GameCenterScreen extends Screen {
       attended: String(attended), needed: String(needed), remaining: String(remaining),
       plural: remaining === 1 ? '' : 's', projected: String(projected),
       lookback: String(s.lookback != null ? s.lookback : (this.eligibilityPolicy && this.eligibilityPolicy.lookback) || 5),
+      // Week rule (mig 562): only the game week's typical practice days
+      // count, and the bar drops one per day that didn't happen.
+      typical: String(s.typicalDays != null ? s.typicalDays : 5),
+      held: String(s.heldDays != null ? s.heldDays : ''),
+      missed: String(s.missedDays != null ? s.missedDays : 0),
+      base: String(s.baseNeeded != null ? s.baseNeeded : needed),
     };
     return { state, colour, tokens, needed, attended, projected, remaining, future };
   }
@@ -3948,7 +3954,11 @@ class GameCenterScreen extends Screen {
     const [bg, fg] = st.colour;
     const pillText = this._eligCopy('pill_' + st.state, tokens);
     if (!pillText) return '';   // no copy row → nothing to say (never hard-code it)
-    const rule = this._eligCopy(s.extended ? 'rule_extended' : 'rule', tokens);
+    // Week rule (mig 562): its own explainer — all days held, a day
+    // missing (bar lowered), or two+ missing (no practices needed).
+    const rule = s.weekMode
+      ? this._eligCopy(st.needed === 0 ? 'rule_week_zero' : (Number(s.missedDays) > 0 ? 'rule_week_reduced' : 'rule_week'), tokens)
+      : this._eligCopy(s.extended ? 'rule_extended' : 'rule', tokens);
     const legend = this._eligCopy('legend');
     // The second criterion: the game's own RSVP in by its deadline (mig 507).
     const rt = this._rsvpTimingState(s);
