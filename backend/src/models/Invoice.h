@@ -54,6 +54,12 @@ public:
     long long createPlan(long long issuerId, long long invoiceId, const nlohmann::json& fields, std::string* error);
     bool removePlan(long long planId);
 
+    // Reality check against gcal (owner 2026-10-12, run on every open of a
+    // draft sheet): event-backed day rows whose event is now cancelled or
+    // deleted come off (labor resyncs); rows whose event moved are re-dated.
+    // Returns { removed, moved, removed_notes, moved_notes }.
+    nlohmann::json realityCheck(long long invoiceId);
+
     // Hours by day (mig 469): a stint on the invoice, { date, start, end,
     // note }.  The labor line's quantity / amount follow the stints.
     long long upsertShift(long long invoiceId, long long shiftId, const nlohmann::json& fields, std::string* error);

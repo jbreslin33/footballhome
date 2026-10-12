@@ -222,6 +222,14 @@ class InvoicesScreen extends Screen {
       this.issuerId = body.issuer_id;
       this.showPlanForm = false;
       this.flash = '';
+      // Reality check from gcal (owner 2026-10-12): the backend just held
+      // this draft's days against the calendar — say what changed.
+      if (body.reality) {
+        const r = body.reality, bits = [];
+        if (r.removed) bits.push(this._copy('reality_removed', { n: r.removed, list: (r.removed_notes || []).join(', ') }) || `${r.removed} day(s) came off — cancelled on the calendar: ${(r.removed_notes || []).join(', ')}`);
+        if (r.moved) bits.push(this._copy('reality_moved', { n: r.moved, list: (r.moved_notes || []).join(', ') }) || `${r.moved} day(s) moved to match the calendar: ${(r.moved_notes || []).join(', ')}`);
+        this.flash = bits.join(' '); this.flashBad = true;
+      }
       this._renderBody();
       this._loadRefGames();
       this._loadGames();

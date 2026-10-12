@@ -314,6 +314,47 @@ json Invoice::get(long long invoiceId) {
     return out;
 }
 
+json Invoice::realityCheck(long long invoiceId) {
+    // Owner 2026-10-12: "we need to reality check from gcal on every load."
+    // Every time a DRAFT sheet is opened, its event-backed day rows are
+    // held against the calendar as it is now: a row whose event has been
+    // cancelled or deleted comes off (the hours line resyncs), and a row
+    // whose event moved is re-dated to the new start, keeping its length.
+    // Hand-typed rows and the usual week (no fh_event_id) are never
+    // touched; a final sheet is left exactly as it was sent.
+    json out = {{"removed", 0}, {"moved", 0}, {"removed_notes", json::array()}, {"moved_notes", json::array()}};
+    auto fin = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
+    if (fin.empty() || fin[0]["is_final"].as<bool>()) return out;
+    auto removed = db_->query(R"SQL(
+        DELETE FROM invoice_work_shifts s
+         USING fh_events e, gcal_events g
+         WHERE s.invoice_id = $1::int AND e.id = s.fh_event_id AND g.id = e.gcal_event_id
+           AND (g.deleted_at IS NOT NULL OR g.status = 'cancelled')
+         RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
+    for (const auto& r : removed) out["removed_notes"].push_back(str(r, "note"));
+    out["removed"] = static_cast<int>(removed.size());
+    // Moved: the calendar start no longer matches the row.  Timed rows keep
+    // their length from the new start (unless that would pass midnight —
+    // the CHECK wants end > start); flat-hours rows just take the new date.
+    auto moved = db_->query(R"SQL(
+        UPDATE invoice_work_shifts s
+           SET work_date = (g.starts_at AT TIME ZONE 'America/New_York')::date,
+               start_at  = CASE WHEN s.start_at IS NULL THEN NULL ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time END,
+               end_at    = CASE WHEN s.end_at IS NULL THEN NULL ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) END
+          FROM fh_events e JOIN gcal_events g ON g.id = e.gcal_event_id
+         WHERE s.invoice_id = $1::int AND e.id = s.fh_event_id
+           AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
+           AND (s.work_date <> (g.starts_at AT TIME ZONE 'America/New_York')::date
+                OR (s.start_at IS NOT NULL AND s.start_at <> (g.starts_at AT TIME ZONE 'America/New_York')::time))
+           AND (s.start_at IS NULL
+                OR (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) > (g.starts_at AT TIME ZONE 'America/New_York')::time)
+         RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
+    for (const auto& r : moved) out["moved_notes"].push_back(str(r, "note"));
+    out["moved"] = static_cast<int>(moved.size());
+    if (out["removed"].get<int>() > 0) syncLabor(invoiceId);
+    return out;
+}
+
 void Invoice::syncLabor(long long invoiceId) {
     // A final (sent) invoice keeps its billed hours; the days are reference
     // until Final is un-ticked (mig 478).

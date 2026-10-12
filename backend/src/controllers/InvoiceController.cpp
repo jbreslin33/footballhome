@@ -130,8 +130,14 @@ Response InvoiceController::handleGet(const Request& request) {
     const long long id = idFromPath(request.getPath());
     if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
     try {
+        // Reality check against gcal on every open (owner 2026-10-12): a
+        // draft's day rows follow the calendar — cancelled events come off,
+        // moved ones are re-dated.  Admin path only; the public link never
+        // writes.
+        json reality = model_->realityCheck(id);
         json inv = model_->get(id);
         if (inv.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+        if (reality["removed"].get<int>() > 0 || reality["moved"].get<int>() > 0) inv["reality"] = reality;
         return jsonOut(HttpStatus::OK, inv);
     } catch (const std::exception& e) { std::cerr << "[invoices get] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
