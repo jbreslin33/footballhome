@@ -1039,13 +1039,6 @@ class InvoicesScreen extends Screen {
           </div>
         </div>` : ''}
 
-        <div style="margin-top:var(--space-3);">
-          <div class="iv-row head"><div>Section</div><div class="desc">Description</div><div class="r">Hours / units</div><div class="r">Rate</div><div class="r">Amount</div></div>
-          ${lines}
-        </div>
-        ${(inv.lines || []).length > InvoicesScreen.SHEET_ROWS ? `<div class="iv-hint" style="color:#f59e0b;">${esc(this._copy('sheet_fit', { n: (inv.lines || []).length, max: InvoicesScreen.SHEET_ROWS }))}</div>`
-          : `<div class="iv-hint">${(inv.lines || []).length} of ${InvoicesScreen.SHEET_ROWS} rows on the sheet</div>`}
-
         ${expenses ? `
         <div class="iv-sec">Add a line</div>
         <div class="iv-row" style="border-top:none;">
@@ -1071,7 +1064,16 @@ class InvoicesScreen extends Screen {
           <div class="iv-acts"><button id="iv-plan-add" class="iv-btn">Add plan + first instalment</button></div>
         </div>` : ''}
         ${inv.is_final ? '' : this._renderRefFees()}` : ''}
-        <div style="margin-top:var(--space-3); padding-top:10px; border-top:2px solid var(--border-color); text-align:right;">
+        <!-- The one adding-up, at the very bottom: the lines as they print
+             (the labor line carries the summed hours) and the totals under
+             them (owner 2026-10-12: "only add 1x add bottom"). -->
+        <div style="margin-top:var(--space-3); padding-top:6px; border-top:2px solid var(--border-color);">
+          <div class="iv-row head"><div>Section</div><div class="desc">Description</div><div class="r">Hours / units</div><div class="r">Rate</div><div class="r">Amount</div></div>
+          ${lines}
+        </div>
+        ${(inv.lines || []).length > InvoicesScreen.SHEET_ROWS ? `<div class="iv-hint" style="color:#f59e0b;">${esc(this._copy('sheet_fit', { n: (inv.lines || []).length, max: InvoicesScreen.SHEET_ROWS }))}</div>`
+          : `<div class="iv-hint">${(inv.lines || []).length} of ${InvoicesScreen.SHEET_ROWS} rows on the sheet</div>`}
+        <div style="margin-top:8px; padding-top:10px; border-top:1px solid var(--border-color); text-align:right;">
           <div style="font-weight:800;">${esc(this._copy('total_hours') || 'Total hours')} — ${InvoicesScreen.plain(inv.shift_hours || 0)} h</div>
           <div style="font-weight:800; font-size:1.2rem; margin-top:2px;">TOTAL ${InvoicesScreen.money(inv.total)}</div>
         </div>
@@ -1256,12 +1258,17 @@ class InvoicesScreen extends Screen {
       </label>`;
     const ins = games.filter(g => inWindow(g));
     const outs = games.filter(g => !inWindow(g));
+    // Out-of-window games stay folded until needed (owner 2026-10-12:
+    // "leave before window and after not expanded but expandable in case
+    // we need to invoice it on the current one").
     const rows = ins.map(g => row(g, false)).join('')
       + (outs.length ? `
-        <div class="iv-lbl" style="margin:10px 0 2px; opacity:0.55;">${esc(this._copy('refs_outside', {
-            from: InvoicesScreen.dayLabel(inv?.period_start), till: InvoicesScreen.dayLabel(inv?.period_end),
-          }) || `Outside this invoice's window (${InvoicesScreen.dayLabel(inv?.period_start)} – ${InvoicesScreen.dayLabel(inv?.period_end)}) — still unbilled`)}</div>`
-        + outs.map(g => row(g, true)).join('') : '');
+        <details style="margin-top:10px;">
+          <summary class="iv-lbl" style="cursor:pointer; opacity:0.55; margin:0;">${esc(this._copy('refs_outside', {
+              from: InvoicesScreen.dayLabel(inv?.period_start), till: InvoicesScreen.dayLabel(inv?.period_end),
+            }) || `Outside this invoice's window (${InvoicesScreen.dayLabel(inv?.period_start)} – ${InvoicesScreen.dayLabel(inv?.period_end)}) — still unbilled`)} (${outs.length})</summary>
+          ${outs.map(g => row(g, true)).join('')}
+        </details>` : '');
     return `
       <div class="iv-sec">🧑‍⚖️ ${esc(this._copy('refs_title') || 'Referee fees')}</div>
       <div class="iv-card">
