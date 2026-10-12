@@ -1043,7 +1043,6 @@ class InvoicesScreen extends Screen {
           <div class="iv-row head"><div>Section</div><div class="desc">Description</div><div class="r">Hours / units</div><div class="r">Rate</div><div class="r">Amount</div></div>
           ${lines}
         </div>
-        <div class="iv-total"><span>TOTAL</span><span>${InvoicesScreen.money(inv.total)}</span></div>
         ${(inv.lines || []).length > InvoicesScreen.SHEET_ROWS ? `<div class="iv-hint" style="color:#f59e0b;">${esc(this._copy('sheet_fit', { n: (inv.lines || []).length, max: InvoicesScreen.SHEET_ROWS }))}</div>`
           : `<div class="iv-hint">${(inv.lines || []).length} of ${InvoicesScreen.SHEET_ROWS} rows on the sheet</div>`}
 
@@ -1072,6 +1071,10 @@ class InvoicesScreen extends Screen {
           <div class="iv-acts"><button id="iv-plan-add" class="iv-btn">Add plan + first instalment</button></div>
         </div>` : ''}
         ${inv.is_final ? '' : this._renderRefFees()}` : ''}
+        <div style="margin-top:var(--space-3); padding-top:10px; border-top:2px solid var(--border-color); text-align:right;">
+          <div style="font-weight:800;">${esc(this._copy('total_hours') || 'Total hours')} — ${InvoicesScreen.plain(inv.shift_hours || 0)} h</div>
+          <div style="font-weight:800; font-size:1.2rem; margin-top:2px;">TOTAL ${InvoicesScreen.money(inv.total)}</div>
+        </div>
       </div>`;
   }
 
@@ -1136,9 +1139,8 @@ class InvoicesScreen extends Screen {
                </span>`
           : `<span style="width:64px;"></span>`;
       return `
-        <div style="display:flex; gap:10px; align-items:center; padding:5px 0; border-top:1px solid var(--border-color); font-size:0.9rem; ${state === 'no' ? 'opacity:0.55;' : ''}">
+        <div style="display:flex; gap:10px; align-items:center; padding:5px 0 5px 8px; border-top:1px solid var(--border-color); font-size:0.9rem; ${state === 'no' ? 'opacity:0.55;' : ''}">
           ${marks}
-          <span style="width:72px; font-weight:700;">${esc(InvoicesScreen.dayLabel(i.date))}</span>
           <span style="flex:1;">${label}</span>
           <span style="width:68px; font-size:0.78rem;">${this._rsvpBadge(g)}</span>
           <span style="width:76px; font-size:0.78rem;">${this._attBadge(g)}</span>
@@ -1147,12 +1149,33 @@ class InvoicesScreen extends Screen {
           ${s && !locked ? `<button class="iv-btn ghost sm" data-edit-shift="${s.id}" title="Late or stayed on? Override the hours">✏️</button>` : `<span style="width:34px;"></span>`}
         </div>`;
     };
-    const total = Math.round(items.reduce((t, i) => t + (i.s ? Number(i.s.hours) || 0 : 0), 0) * 100) / 100;
-    return items.map(row).join('') + `
-      <div style="display:flex; justify-content:flex-end; gap:12px; align-items:center; padding:10px 34px 4px 0; margin-top:4px;
-                  border-top:2px solid var(--border-color); font-weight:800; font-size:1rem;">
-        <span>${esc(this._copy('total_hours') || 'Total hours')}</span><span>${InvoicesScreen.plain(total)} h</span>
-      </div>`;
+    // Organizing headers only — a week line, then day-of-week lines, each
+    // practice or game one item beneath (owner 2026-10-12: "no need for
+    // headers unless its a date day of week. to organize … and organize
+    // separate 1 week from another").  NOTHING sums here: the one adding-up
+    // is the totals block at the very bottom of the editor ("i don't want
+    // any adding of totals until the bottom").
+    let html = '';
+    let wk = 1;
+    for (let ws = inv.period_start; ws <= inv.period_end && wk < 10; ws = InvoicesScreen.addDays(ws, 7), wk++) {
+      const weRaw = InvoicesScreen.addDays(ws, 6);
+      const we = weRaw < inv.period_end ? weRaw : inv.period_end;
+      const inWeek = items.filter(i => i.date >= ws && i.date <= we);
+      if (!inWeek.length) continue;
+      html += `<div class="iv-sec" style="margin:14px 0 2px;">${esc(this._copy('week_label', { n: wk, from: InvoicesScreen.dayLabel(ws), till: InvoicesScreen.dayLabel(we) }) || `Week ${wk} · ${InvoicesScreen.dayLabel(ws)} – ${InvoicesScreen.dayLabel(we)}`)}</div>`;
+      let lastDate = '';
+      for (const i of inWeek) {
+        if (i.date !== lastDate) {
+          lastDate = i.date;
+          html += `<div style="font-size:0.78rem; font-weight:700; opacity:0.75; margin-top:6px;">${esc(InvoicesScreen.dayLabel(i.date))}</div>`;
+        }
+        html += row(i);
+      }
+    }
+    // An item outside the period's weeks (edited dates) still shows.
+    const stray = items.filter(i => i.date < inv.period_start || i.date > inv.period_end);
+    if (stray.length) html += stray.map(row).join('');
+    return html;
   }
 
   // ✏️ as a popup (owner 2026-10-12: "an edit button to edit the hours
