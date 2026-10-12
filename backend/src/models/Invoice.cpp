@@ -296,7 +296,7 @@ json Invoice::get(long long invoiceId) {
     double shiftHours = 0;
     auto shifts = db_->query(R"SQL(
         SELECT id, work_date::text AS work_date, to_char(work_date, 'Dy FMMM/FMDD') AS day_label,
-               to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note,
+               to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note, fh_event_id,
                (hours IS NOT NULL) AS flat,
                ROUND(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0), 2) AS hours
           FROM invoice_work_shifts WHERE invoice_id = $1::int
@@ -308,6 +308,7 @@ json Invoice::get(long long invoiceId) {
             {"id", sh["id"].as<long long>()}, {"date", str(sh, "work_date")}, {"day_label", str(sh, "day_label")},
             {"start", str(sh, "start_at")}, {"end", str(sh, "end_at")}, {"note", str(sh, "note")}, {"hours", h},
             {"flat", sh["flat"].as<bool>()},
+            {"fh_event_id", sh["fh_event_id"].is_null() ? json(nullptr) : json(sh["fh_event_id"].as<long long>())},
         });
     }
     out["shift_hours"] = round2(shiftHours);

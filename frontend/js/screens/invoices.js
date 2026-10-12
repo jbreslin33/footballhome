@@ -217,7 +217,7 @@ class InvoicesScreen extends Screen {
       const res = await this.auth.fetch(`/api/invoices/${id}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      if (!this.inv || this.inv.id !== body.id) { this.extraDays = []; }
+      if (!this.inv || this.inv.id !== body.id) { this.editShift = 0; this.showAddDay = false; }
       this.inv = body;
       this.issuerId = body.issuer_id;
       this.showPlanForm = false;
@@ -280,19 +280,6 @@ class InvoicesScreen extends Screen {
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       if (this.inv && this.inv.id === inv.id) { this.calGames = body.games || []; this._renderBody(); }
     } catch (err) { console.warn('calendar games unavailable:', err.message); }
-  }
-
-  async addGames() {
-    if (!this.inv) return;
-    const picks = [...this.element.querySelectorAll('[data-cal-game]:checked')].map(cb => Number(cb.dataset.calGame));
-    if (!picks.length) { this._say('Tick at least one game.', true); return; }
-    try {
-      const body = await this._post(`/api/invoices/${this.inv.id}/games`, { fh_event_ids: picks });
-      this.inv = body;
-      await this.load();
-      this._loadGames();
-      this._say(this._copy('games_added', { n: body.added || 0 }) || `${body.added || 0} game(s) added to the days.`);
-    } catch (err) { this._say(err.message, true); }
   }
 
   async addRefFees() {
@@ -432,32 +419,13 @@ class InvoicesScreen extends Screen {
         return;
       }
       if (id) payload.id = id;
-      else this.extraDays = (this.extraDays || []).filter(d => d !== row.dataset.date + '#' + row.dataset.extra);
       this.inv = await this._post(`/api/invoices/${this.inv.id}/shift`, payload);
       await this.load();
     } catch (err) { this._say(err.message, true); }
   }
 
-  async removeShift(shiftId) {
-    if (!this.inv) return;
-    try {
-      await this._delete(`/api/invoices/shift?id=${shiftId}`);
-      await this.openInvoice(this.inv.id);
-      await this.load();
-    } catch (err) { this._say(err.message, true); }
-  }
-
-  async fillFromDefault() {
-    if (!this.inv) return;
-    try {
-      const body = await this._post(`/api/invoices/${this.inv.id}/fill`, {});
-      this.inv = body;
-      await this.load();
-      if (!body.added) this._say('No days added — the usual week is empty for this period.', true);
-    } catch (err) { this._say(err.message, true); }
-  }
-
-  // ── the usual week (mig 470 / 474) ───────────────────────────────────
+  // ── the usual week (mig 470 / 474; since mig 572 the hours come off the
+  // calendar instead — this stays for the modal's data entry points) ─────
 
   _defaultPayload(row, changed) {
     const el = (k) => row.querySelector(`[data-df="${k}"]`);
@@ -708,27 +676,20 @@ class InvoicesScreen extends Screen {
       if (rmLine) { await this.removeLine(Number(rmLine.dataset.deleteLine)); return; }
       const rmPlan = e.target.closest('[data-delete-plan]');
       if (rmPlan) { await this.removePlan(Number(rmPlan.dataset.deletePlan)); return; }
-      if (e.target.closest('#iv-fill')) { await this.fillFromDefault(); return; }
-      if (e.target.closest('#iv-games-add')) { await this.addGames(); return; }
+      if (e.target.closest('#iv-addday')) { this.showAddDay = !this.showAddDay; this._renderBody(); return; }
+      if (e.target.closest('#iv-nd-save')) { await this.addDayManual(); return; }
+      const edt = e.target.closest('[data-edit-shift]');
+      if (edt) { const id = Number(edt.dataset.editShift); this.editShift = this.editShift === id ? 0 : id; this._renderBody(); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
       if (e.target.closest('#iv-copy-link')) { await this.copyPublicLink(); return; }
       if (e.target.closest('#iv-copy-email')) { await this.copyEmailBody(); return; }
-      const moreDay = e.target.closest('[data-more-day]');
-      if (moreDay) { this.extraDays = this.extraDays || []; this.extraDays.push(moreDay.dataset.moreDay + '#' + Date.now()); this._renderBody(); return; }
       const moreWd = e.target.closest('[data-more-weekday]');
       if (moreWd) { this.extraWeekdays = this.extraWeekdays || []; this.extraWeekdays.push(moreWd.dataset.moreWeekday + '#' + Date.now()); this._renderBody(); return; }
-      const rmShift = e.target.closest('[data-delete-shift]');
-      if (rmShift) { await this.removeShift(Number(rmShift.dataset.deleteShift)); return; }
       const rmDef = e.target.closest('[data-delete-default]');
       if (rmDef) { await this.removeDefault(Number(rmDef.dataset.deleteDefault)); return; }
     });
     el.addEventListener('change', async (e) => {
-      if (e.target.matches('[data-cal-game]')) {
-        const n = el.querySelectorAll('[data-cal-game]:checked').length;
-        const btn = el.querySelector('#iv-games-add');
-        if (btn) { btn.disabled = !n; btn.textContent = this._copy('games_button', { n }) || `🏟 Add ${n} game(s) as days`; }
-        return;
-      }
+      if (e.target.matches('[data-ev-tgl]')) { await this._toggleEvent(e.target); return; }
       if (e.target.matches('[data-ref-game]')) {
         // The button reads "n games, $x" for whatever is ticked.
         const boxes = [...el.querySelectorAll('[data-ref-game]:checked')];
@@ -871,7 +832,6 @@ class InvoicesScreen extends Screen {
             </div>
             <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
               <button id="iv-edit-issuer" class="iv-btn ghost sm">✏️ Details</button>
-              <button id="iv-usual-open" class="iv-btn ghost sm">🗓 Usual 2 weeks</button>
             </div>
           </div>
         </div>`;
@@ -1053,29 +1013,25 @@ class InvoicesScreen extends Screen {
             <input class="iv-in" id="iv-link" type="url" placeholder="https://drive.google.com/…" value="${esc(inv.link_url || '')}" style="margin-top:6px;"></details>
         </div>
 
-        <div class="iv-sec">Hours by day — ${inv.period_start && inv.period_end ? `${esc(InvoicesScreen.dayLabel(inv.period_start))} to ${esc(InvoicesScreen.dayLabel(inv.period_end))}` : 'set the window above'}</div>
-        <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('hours_hint'))}</div>
-        <div class="iv-day head"><div>Day</div><div>From</div><div>Till</div><div>Hours</div><div class="note">Note</div><div></div></div>
-        ${(() => {
-          const shifts = inv.shifts || [];
-          if (!inv.period_start || !inv.period_end) return `<div class="iv-hint">Set the work-from and work-till dates first.</div>`;
-          let rows = '';
-          for (let d = inv.period_start, n = 0; d <= inv.period_end && n < 62; d = InvoicesScreen.addDays(d, 1), n++) {
-            const label = InvoicesScreen.dayLabel(d);
-            const mine = shifts.filter(x => x.date === d);
-            if (!mine.length) rows += this._entryRow('sf', 'shift-row', d, label, null, `data-date="${d}"`);
-            mine.forEach((x, k) => { rows += this._entryRow('sf', 'shift-row', d, k ? '' : label, x, `data-date="${d}"`); });
-            for (const e of (this.extraDays || []).filter(e => e.split('#')[0] === d))
-              rows += this._entryRow('sf', 'shift-row', d, '', null, `data-date="${d}" data-extra="${esc(e.split('#')[1])}"`);
-          }
-          return rows;
-        })()}
+        <div class="iv-sec">${esc(this._copy('games_title') || 'Hours from the calendar')} — ${inv.period_start && inv.period_end ? `${esc(InvoicesScreen.dayLabel(inv.period_start))} to ${esc(InvoicesScreen.dayLabel(inv.period_end))}` : 'set the window above'}</div>
+        ${inv.is_final ? '' : `<div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('games_hint'))}</div>`}
+        ${this._renderHoursBreakdown()}
         <div class="iv-acts">
-          <span style="font-size:0.9rem; font-weight:700;">${InvoicesScreen.plain(inv.shift_hours || 0)} h over ${(inv.shifts || []).length} day${(inv.shifts || []).length === 1 ? '' : 's'}</span>
-          ${inv.is_final ? `<span class="iv-hint" style="margin:0;">Final — the sheet keeps its billed hours; un-tick Final to let these days drive it.</span>` : ''}
-          ${!(inv.shifts || []).length ? `<button id="iv-fill" class="iv-btn ghost sm">📅 Fill from usual week</button>` : ''}
+          <span style="font-size:0.9rem; font-weight:700;">${InvoicesScreen.plain(inv.shift_hours || 0)} h on the sheet</span>
+          ${inv.is_final ? `<span class="iv-hint" style="margin:0;">Final — the sheet keeps its billed hours; un-tick Final to change them.</span>`
+                         : `<button id="iv-addday" class="iv-btn ghost sm">${esc(this._copy('day_add') || '➕ Hours without an event')}</button>`}
         </div>
-        ${inv.is_final ? '' : this._renderCalGames()}
+        ${this.showAddDay && !inv.is_final ? `
+        <div class="iv-card" style="margin-top:6px;">
+          <div class="iv-grid" style="grid-template-columns:150px 110px 110px 80px 1fr auto; align-items:end;">
+            <div><div class="iv-lbl">Day</div><input class="iv-in" id="iv-nd-date" type="date" min="${esc(inv.period_start || '')}" max="${esc(inv.period_end || '')}"></div>
+            <div><div class="iv-lbl">From</div><input class="iv-in" id="iv-nd-start" type="time"></div>
+            <div><div class="iv-lbl">Till</div><input class="iv-in" id="iv-nd-end" type="time"></div>
+            <div><div class="iv-lbl">Hours</div><input class="iv-in num" id="iv-nd-hours" type="number" step="0.25" min="0"></div>
+            <div><div class="iv-lbl">Note</div><input class="iv-in" id="iv-nd-note" placeholder="what it was"></div>
+            <div><button id="iv-nd-save" class="iv-btn sm">Add</button></div>
+          </div>
+        </div>` : ''}
 
         <div style="margin-top:var(--space-3);">
           <div class="iv-row head"><div>Section</div><div class="desc">Description</div><div class="r">Hours / units</div><div class="r">Rate</div><div class="r">Amount</div></div>
@@ -1113,43 +1069,116 @@ class InvoicesScreen extends Screen {
       </div>`;
   }
 
-  // Events off the calendar to add as days (mig 531, practices since mig
-  // 569): matches AND practices of a team the issuer coaches, each with the
-  // issuer's own RSVP.  Ticks are prefilled from the RSVPs — a practice
-  // needs an explicit yes; a played match stays ticked unless they said no.
-  // An event already on the days shows as such and cannot be re-added.
-  _renderCalGames() {
-    const esc = (t) => this.escapeHtml(t);
-    const games = this.calGames || [];
-    const waiting = games.filter(g => !g.added);
-    if (!games.length) return '';
-    const prefilled = (g) => g.played && !g.overlaps && (g.kind === 'practice' ? g.rsvp === 'yes' : g.rsvp !== 'no');
-    const picked = [...(this.element?.querySelectorAll('[data-cal-game]') || [])].length
-      ? [...this.element.querySelectorAll('[data-cal-game]:checked')].map(cb => Number(cb.dataset.calGame))
-      : waiting.filter(prefilled).map(g => g.fh_event_id);
-    const badge = (g) => {
-      if (g.rsvp === 'yes') return `<span style="color:#4ade80;">${esc(this._copy('games_rsvp_yes') || '✓ yes')}</span>`;
-      if (g.rsvp === 'no')  return `<span style="color:#f87171;">${esc(this._copy('games_rsvp_no') || '✗ no')}</span>`;
-      return `<span style="opacity:0.5;">${esc(this._copy('games_rsvp_none') || 'no RSVP')}</span>`;
+  _rsvpBadge(g) {
+    if (!g) return '';
+    if (g.rsvp === 'yes') return `<span style="color:#4ade80;">${this.escapeHtml(this._copy('games_rsvp_yes') || '✓ yes')}</span>`;
+    if (g.rsvp === 'no')  return `<span style="color:#f87171;">${this.escapeHtml(this._copy('games_rsvp_no') || '✗ no')}</span>`;
+    return `<span style="opacity:0.5;">${this.escapeHtml(this._copy('games_rsvp_none') || 'no RSVP')}</span>`;
+  }
+
+  // Hours straight off the calendar (owner 2026-10-12: "take out the days
+  // where we edit the day and lets just use gcal for hours for everyone …
+  // the default if we check it off is to give the hours … edit if they
+  // were late but that should be hidden … brek them down by day and
+  // week").  Every event of the issuer's teams in the period is a row,
+  // grouped week › day with subtotals: ticked = billed (a game the
+  // league's coaching hours, a practice the event length); ✏️ opens the
+  // hidden from/till editor; untick takes it off.  Billed rows without an
+  // event (older sheets, hand-added hours) sit in the same breakdown.
+  _renderHoursBreakdown() {
+    const inv = this.inv, esc = (t) => this.escapeHtml(t);
+    if (!inv.period_start || !inv.period_end) return `<div class="iv-hint">Set the work-from and work-till dates first.</div>`;
+    const locked = !!inv.is_final;
+    const shifts = inv.shifts || [];
+    const games = locked ? [] : (this.calGames || []);
+    const byEvent = new Map(shifts.filter(s => s.fh_event_id).map(s => [Number(s.fh_event_id), s]));
+    const evIds = new Set(games.map(g => g.fh_event_id));
+    const items = [];
+    for (const g of games) { const s = byEvent.get(g.fh_event_id) || null; items.push({ date: s ? s.date : g.date, at: (s && !s.flat && s.start) || g.start || '', g, s }); }
+    for (const s of shifts) if (!s.fh_event_id || !evIds.has(Number(s.fh_event_id))) items.push({ date: s.date, at: (!s.flat && s.start) || '', g: null, s });
+    if (!items.length) return `<div class="iv-hint">${esc(this._copy('games_empty') || 'Nothing in this period yet.')}</div>`;
+    items.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at < b.at ? -1 : 1));
+    const sum = (list) => Math.round(list.reduce((t, i) => t + (i.s ? Number(i.s.hours) || 0 : 0), 0) * 100) / 100;
+    const row = (i) => {
+      const { g, s } = i;
+      const time = s ? (s.flat ? '' : `${s.start}–${s.end}`) : `${g.start}${g.end ? `–${g.end}` : ''}`;
+      const label = g ? `${g.kind === 'match' ? '🏟 ' : ''}${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}`
+                      : esc((s && s.note) || 'Hours');
+      return `
+        <div style="display:flex; gap:10px; align-items:center; padding:3px 0 3px 14px; border-top:1px solid var(--border-color); font-size:0.9rem; ${!s && g && !g.played ? 'opacity:0.6;' : ''}">
+          ${locked ? `<span style="width:16px; text-align:center;">${s ? '✓' : ''}</span>`
+                   : `<input type="checkbox" data-ev-tgl data-ev="${g ? g.fh_event_id : 0}" data-shift="${s ? s.id : 0}" ${s ? 'checked' : ''}>`}
+          <span style="flex:1;">${label}</span>
+          <span style="width:66px; font-size:0.78rem;">${this._rsvpBadge(g)}</span>
+          <span style="width:100px; text-align:right; opacity:0.85;">${esc(time)}</span>
+          <span style="width:50px; text-align:right; ${s ? 'font-weight:700;' : 'opacity:0.55;'}">${InvoicesScreen.plain(s ? s.hours : g.hours)} h</span>
+          ${!s && g && g.overlaps ? `<span style="font-size:0.72rem; color:#f59e0b;" title="A billed row on this date already covers this time">⚠</span>` : ''}
+          ${s && !locked ? `<button class="iv-btn ghost sm" data-edit-shift="${s.id}" title="Late or stayed on? Adjust the times">✏️</button>` : `<span style="width:34px;"></span>`}
+        </div>
+        ${s && !locked && this.editShift === s.id ? `
+        <div class="iv-day" data-shift-row="${s.id}" data-date="${s.date}" style="padding-left:40px; border-top:none; grid-template-columns:70px 110px 110px 80px 1fr;">
+          <div style="opacity:0.6; font-size:0.78rem;">adjust</div>
+          <div><input class="iv-in" type="time" data-sf="start" value="${esc(!s.flat ? s.start : '')}"></div>
+          <div><input class="iv-in" type="time" data-sf="end" value="${esc(!s.flat ? s.end : '')}"></div>
+          <div><input class="iv-in num" type="number" step="0.25" min="0" data-sf="hours" value="${InvoicesScreen.plain(s.hours)}"></div>
+          <div class="note"><input class="iv-in" data-sf="note" value="${esc(s.note || '')}" placeholder="note"></div>
+        </div>` : ''}`;
     };
-    const rows = games.map(g => `
-      <label style="display:flex; gap:10px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:0.9rem; ${g.added || !g.played ? 'opacity:0.65;' : ''}">
-        ${g.added ? `<span style="width:13px; text-align:center;">✓</span>` : `<input type="checkbox" data-cal-game="${g.fh_event_id}" ${picked.includes(g.fh_event_id) ? 'checked' : ''}>`}
-        <span style="width:90px; font-weight:700;">${esc(g.day_label)}</span>
-        <span style="flex:1;">${g.kind === 'match' ? '🏟 ' : ''}${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}</span>
-        <span style="width:66px; font-size:0.78rem;">${badge(g)}</span>
-        <span style="width:110px; text-align:right; opacity:0.85;">${esc(g.start)}${g.end ? `–${esc(g.end)}` : ''}</span>
-        <span style="width:50px; text-align:right;">${InvoicesScreen.plain(g.hours)} h</span>
-        <span style="width:90px; text-align:right; font-size:0.78rem; opacity:0.7;">${g.added ? 'on the days' : g.played ? 'played' : 'upcoming'}</span>
-        ${g.overlaps && !g.added ? `<span style="font-size:0.72rem; color:#f59e0b;" title="A day row on this date already covers this time — adding the event would bill it twice">⚠ inside a day already</span>` : ''}
-      </label>`).join('');
-    const n = picked.length;
-    return `
-      <div class="iv-sec" style="margin-top:var(--space-3);">${esc(this._copy('games_title') || 'On the calendar')}</div>
-      <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('games_hint'))}</div>
-      ${rows}
-      ${waiting.length ? `<div class="iv-acts"><button id="iv-games-add" class="iv-btn sm" ${n ? '' : 'disabled'}>${esc(this._copy('games_button', { n }) || `📅 Add ${n} as days`)}</button></div>`
-                       : `<div class="iv-hint">${esc(this._copy('games_empty') || 'Nothing of yours in this period that is not already on the days.')}</div>`}`;
+    let html = '';
+    let wk = 1;
+    for (let ws = inv.period_start; ws <= inv.period_end && wk < 10; ws = InvoicesScreen.addDays(ws, 7), wk++) {
+      const weRaw = InvoicesScreen.addDays(ws, 6);
+      const we = weRaw < inv.period_end ? weRaw : inv.period_end;
+      const inWeek = items.filter(i => i.date >= ws && i.date <= we);
+      html += `<div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px;">
+        <div class="iv-sec" style="margin:0;">${esc(this._copy('week_label', { n: wk, from: InvoicesScreen.dayLabel(ws), till: InvoicesScreen.dayLabel(we) }) || `Week ${wk} · ${InvoicesScreen.dayLabel(ws)} – ${InvoicesScreen.dayLabel(we)}`)}</div>
+        <div style="font-weight:800; font-size:0.9rem;">${InvoicesScreen.plain(sum(inWeek))} h</div>
+      </div>`;
+      if (!inWeek.length) { html += `<div class="iv-hint" style="padding-left:14px;">—</div>`; continue; }
+      let lastDate = '';
+      for (const i of inWeek) {
+        if (i.date !== lastDate) {
+          lastDate = i.date;
+          html += `<div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:700; opacity:0.75; margin-top:6px;">
+            <span>${esc(InvoicesScreen.dayLabel(i.date))}</span><span>${InvoicesScreen.plain(sum(inWeek.filter(x => x.date === i.date)))} h</span></div>`;
+        }
+        html += row(i);
+      }
+    }
+    return html;
+  }
+
+  // Tick = billed at the event's hours; untick = off the sheet.
+  async _toggleEvent(cb) {
+    if (!this.inv) return;
+    const ev = Number(cb.dataset.ev) || 0, shiftId = Number(cb.dataset.shift) || 0;
+    try {
+      if (cb.checked && ev && !shiftId) {
+        this.inv = await this._post(`/api/invoices/${this.inv.id}/games`, { fh_event_ids: [ev] });
+      } else if (!cb.checked && shiftId) {
+        await this._delete(`/api/invoices/shift?id=${shiftId}`);
+        const res = await this.auth.fetch(`/api/invoices/${this.inv.id}`);
+        const body = await res.json().catch(() => ({}));
+        if (res.ok) this.inv = body;
+      } else return;
+      await this.load();
+      this._loadGames();
+    } catch (err) { this._say(err.message, true); }
+  }
+
+  async addDayManual() {
+    if (!this.inv) return;
+    const v = (id) => (this.find(`#iv-nd-${id}`)?.value || '').trim();
+    const payload = { date: v('date'), note: v('note') };
+    if (v('start') && v('end')) { payload.start = v('start'); payload.end = v('end'); }
+    else if (Number(v('hours')) > 0) payload.hours = Number(v('hours'));
+    if (!payload.date) { this._say('Pick the day first.', true); return; }
+    try {
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/shift`, payload);
+      this.showAddDay = false;
+      await this.load();
+      this._loadGames();
+    } catch (err) { this._say(err.message, true); }
   }
 
   // Referee fees to tick off on this draft (mig 490).
