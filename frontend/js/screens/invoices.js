@@ -1211,20 +1211,34 @@ class InvoicesScreen extends Screen {
     } catch (err) { this._say(err.message, true); }
   }
 
-  // Referee fees to tick off on this draft (mig 490).
+  // Referee fees to tick off on this draft (mig 490).  Games outside the
+  // sheet's covered dates sit apart under their own dimmed divider (owner
+  // 2026-10-12: "mark off expenses like refs that are outside the window
+  // of invoice as its confusing") — still tickable, since a missed fee is
+  // swept onto a later sheet.
   _renderRefFees() {
     const esc = (t) => this.escapeHtml(t);
+    const inv = this.inv;
     const games = this.refGames || [];
     const picked = [...(this.element?.querySelectorAll('[data-ref-game]:checked') || [])].map(cb => cb.dataset.refGame);
-    const rows = games.map(g => `
-      <label style="display:flex; gap:10px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:0.9rem; ${g.played ? '' : 'opacity:0.65;'}">
-        <input type="checkbox" data-ref-game="${esc(g.source)}:${g.ref_id}" data-amount="${g.amount}" ${picked.includes(`${g.source}:${g.ref_id}`) || (g.played && !picked.length && false) ? 'checked' : ''}>
+    const inWindow = (g) => !inv?.period_start || !inv?.period_end || (g.game_on >= inv.period_start && g.game_on <= inv.period_end);
+    const row = (g, out) => `
+      <label style="display:flex; gap:10px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:0.9rem; ${out ? 'opacity:0.5;' : g.played ? '' : 'opacity:0.65;'}">
+        <input type="checkbox" data-ref-game="${esc(g.source)}:${g.ref_id}" data-amount="${g.amount}" ${picked.includes(`${g.source}:${g.ref_id}`) ? 'checked' : ''}>
         <span style="width:90px; font-weight:700;">${esc(g.date_label)}</span>
         <span style="width:110px; opacity:0.8;">${esc(g.policy_label.replace(/^Parks & Rec /, ''))}</span>
         <span style="flex:1;">${esc(g.opponent)}</span>
         <span style="width:70px; text-align:right;">${InvoicesScreen.money(g.amount)}</span>
         <span style="width:90px; text-align:right; font-size:0.78rem; opacity:0.7;">${g.played ? 'played' : 'upcoming'}</span>
-      </label>`).join('');
+      </label>`;
+    const ins = games.filter(g => inWindow(g));
+    const outs = games.filter(g => !inWindow(g));
+    const rows = ins.map(g => row(g, false)).join('')
+      + (outs.length ? `
+        <div class="iv-lbl" style="margin:10px 0 2px; opacity:0.55;">${esc(this._copy('refs_outside', {
+            from: InvoicesScreen.dayLabel(inv?.period_start), till: InvoicesScreen.dayLabel(inv?.period_end),
+          }) || `Outside this invoice's window (${InvoicesScreen.dayLabel(inv?.period_start)} – ${InvoicesScreen.dayLabel(inv?.period_end)}) — still unbilled`)}</div>`
+        + outs.map(g => row(g, true)).join('') : '');
     return `
       <div class="iv-sec">🧑‍⚖️ ${esc(this._copy('refs_title') || 'Referee fees')}</div>
       <div class="iv-card">
