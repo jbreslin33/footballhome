@@ -98,17 +98,18 @@ int Invoice::nextNumber(long long issuerId, int year) {
 
 void Invoice::ensureAutoDrafts() {
     // Owner 2026-10-12: "i should not even have to hit new invoice right? it
-    // should auto make them but be editable" … "it needs to be the ones due
-    // the friday that passed."  For every issuer flagged auto_create, the
-    // most recent FINISHED pay period gets a draft the first time the board
-    // is opened past the issuer's latest number — the running period is not
-    // pre-drafted; it appears on its due Friday, when it becomes the one to
-    // send.  Numbers at or behind the latest are never touched, so Jamie's
-    // season gap stays a gap and a finalled period is not re-drafted.
+    // should auto make them but be editable" … "that should be default
+    // showing invoices weak leading up and until sent to julian."  For every
+    // issuer flagged auto_create, the period the club is about to invoice —
+    // dueNumber(): its draft appears a week before its due Friday — gets a
+    // draft the first time the board is opened past the issuer's latest
+    // number.  Numbers at or behind the latest are never touched, so
+    // Jamie's season gap stays a gap and a finalled period is not
+    // re-drafted.
     auto rows = db_->query(R"SQL(
         WITH now_p AS (
             SELECT invoice_year AS y,
-                   (anchor_number + FLOOR((CURRENT_DATE - anchor_start)::numeric / period_days))::int - 1 AS n
+                   (anchor_number + FLOOR((CURRENT_DATE - anchor_start - 7)::numeric / period_days))::int AS n
               FROM invoice_period_policies WHERE invoice_year = EXTRACT(YEAR FROM CURRENT_DATE)::int
         )
         SELECT i.id, p.y, p.n
@@ -150,6 +151,25 @@ json Invoice::board() {
 
     const int year = db_->query("SELECT EXTRACT(YEAR FROM CURRENT_DATE)::int AS y")[0]["y"].as<int>();
     out["year"] = year;
+
+    // The one invoice the club is dealing with now (owner 2026-10-12: "we
+    // are ONLY worried about the invoicess that ended oct 8 and were due
+    // oct 9 … default showing invoices weak leading up and until sent to
+    // julian"): the period whose due Friday is within a week — from the
+    // last week of the period until its sheet is marked Final (sent).
+    // The page opens it and tags it; nothing else gets the spotlight.
+    out["due_year"] = nullptr;
+    out["due_number"] = nullptr;
+    {
+        auto due = db_->query(R"SQL(
+            SELECT invoice_year AS y,
+                   (anchor_number + FLOOR((CURRENT_DATE - anchor_start - 7)::numeric / period_days))::int AS n
+              FROM invoice_period_policies WHERE invoice_year = EXTRACT(YEAR FROM CURRENT_DATE)::int)SQL");
+        if (!due.empty() && due[0]["n"].as<int>() >= 1) {
+            out["due_year"] = due[0]["y"].as<int>();
+            out["due_number"] = due[0]["n"].as<int>();
+        }
+    }
 
     out["issuers"] = json::array();
     auto issuers = db_->query(R"SQL(
