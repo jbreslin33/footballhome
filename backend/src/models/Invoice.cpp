@@ -353,6 +353,12 @@ json Invoice::realityCheck(long long invoiceId) {
     for (const auto& r : moved) out["moved_notes"].push_back(str(r, "note"));
     out["moved"] = static_cast<int>(moved.size());
     if (out["removed"].get<int>() > 0) syncLabor(invoiceId);
+    // Prefill on every open (owner 2026-10-12: "check all events and i
+    // would uncheck. simple."): any period event still unanswered — no day
+    // row, no ✗, no RSVP no — ✓s itself, so a draft is always the full
+    // calendar minus what was unchecked.  Same for every issuer.
+    std::string ignored;
+    addGames(invoiceId, {}, true, &ignored);
     return out;
 }
 
@@ -595,18 +601,20 @@ int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEvent
         {std::to_string(invoiceId)});
     if (inv.empty()) { *error = "no such invoice"; return 0; }
     if (inv[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return 0; }
-    // What a new invoice adds by itself (policyOnly, no ids): the games the
-    // coaching policies pay this issuer for — unless they RSVP'd no (Anthony
-    // said no to the 10/4 U8 game and Luke covered it; the no wins over the
-    // policy) — and, for an events-sourced issuer (mig 569), every event
-    // they RSVP'd yes to.
+    // What a draft adds by itself (policyOnly, no ids) — owner 2026-10-12:
+    // "for youth coaches only check off youth events for them and i can
+    // uncheck. then for me check all events and i would uncheck. simple."
+    // An events issuer ✓s EVERY calendar row (coaches only ever see their
+    // own teams' events), except an explicit RSVP no (it shows ✗ by itself;
+    // Anthony's 10/4 U8) and a stored ✗ — unchecking stays unchecked.
     const bool fromEvents = str(inv[0], "days_source") == "events";
     int added = 0;
     for (const auto& g : periodGames(invoiceId)) {
         const long long fhEventId = g["fh_event_id"].get<long long>();
         if (g["added"].get<bool>()) continue;
-        const bool autoPick = (g["policy_pays"].get<bool>() && g["rsvp"] != "no")
-                           || (fromEvents && g["rsvp"] == "yes");
+        const bool autoPick = fromEvents
+            ? (!g["declined"].get<bool>() && g["rsvp"] != "no")
+            : (g["policy_pays"].get<bool>() && g["rsvp"] != "no");
         const bool picked = fhEventIds.empty() ? (policyOnly ? autoPick : true)
                                                : std::find(fhEventIds.begin(), fhEventIds.end(), fhEventId) != fhEventIds.end();
         if (!picked) continue;

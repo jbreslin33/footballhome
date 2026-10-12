@@ -1132,7 +1132,7 @@ class InvoicesScreen extends Screen {
       const state = s ? 'yes' : (g && (g.declined || g.rsvp === 'no')) ? 'no' : '';
       const time = s ? (s.flat ? '' : `${s.start}–${s.end}`) : `${g.start}${g.end ? `–${g.end}` : ''}`;
       const label = g ? `${g.kind === 'match' ? '🏟 ' : ''}${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}`
-                      : esc((s && s.note) || 'Hours');
+                      : esc((s && s.note) || inv.issuer?.duty_description || 'Hours');
       const marks = locked
         ? `<span style="width:64px; text-align:center;">${s ? '✓' : ''}</span>`
         : g ? `<span style="display:flex; gap:4px;">
@@ -1192,7 +1192,7 @@ class InvoicesScreen extends Screen {
     return `
       <div class="iv-modal-bg" id="iv-shift-bg"><div class="iv-modal" style="max-width:620px;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-          <div style="font-weight:800;">✏️ ${esc(InvoicesScreen.dayLabel(s.date))} — ${esc(s.note || 'Hours')}</div>
+          <div style="font-weight:800;">✏️ ${esc(InvoicesScreen.dayLabel(s.date))} — ${esc(s.note || inv.issuer?.duty_description || 'Hours')}</div>
           <button id="iv-shift-close" class="iv-btn ghost sm">Close</button>
         </div>
         <div class="iv-hint" style="margin:4px 0 8px;">${esc(this._copy('edit_shift_hint') || "Override the event's hours — a late start, or stayed on. Wipe every box to take the day off the sheet.")}</div>
