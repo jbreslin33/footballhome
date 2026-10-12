@@ -822,7 +822,11 @@ class InvoicesScreen extends Screen {
     parts.push(`<div class="iv-pills">${(this.board.issuers || []).map(i =>
       `<button class="iv-pill ${i.id === this.issuerId ? 'on' : ''}" data-issuer="${i.id}">${esc(i.name)}</button>`).join('')}</div>`);
 
-    if (issuer) {
+    // Focus mode (owner 2026-10-12: "once i open it we need to hide the
+    // others … its too confuusing"): with a sheet open, only the pills and
+    // that sheet are on screen.  Close brings the list back; a pill opens
+    // the next person's due sheet.
+    if (issuer && !this.inv) {
       parts.push(this._renderIssuerCard(issuer));
       parts.push(this._renderInvoiceList(issuer));
       if (this.showUsual) {
