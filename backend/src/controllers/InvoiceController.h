@@ -49,6 +49,7 @@ private:
     Response handleFill(const Request& request);
     Response handleGames(const Request& request);      // GET  /:id/games  (mig 531)
     Response handleAddGames(const Request& request);   // POST /:id/games
+    Response handleEventMark(const Request& request);  // POST /:id/event-mark (mig 573)
     Response handleDefault(const Request& request);
     Response handleDeleteDefault(const Request& request);
     Response handlePlan(const Request& request);

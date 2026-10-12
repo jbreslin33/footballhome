@@ -82,6 +82,7 @@ void InvoiceController::registerRoutes(Router& router, const std::string& prefix
     router.post(prefix + "/:id/fill",    [this](const Request& r) { return handleFill(r); });
     router.get (prefix + "/:id/games",   [this](const Request& r) { return handleGames(r); });
     router.post(prefix + "/:id/games",   [this](const Request& r) { return handleAddGames(r); });
+    router.post(prefix + "/:id/event-mark", [this](const Request& r) { return handleEventMark(r); });
     router.get (prefix + "/:id",         [this](const Request& r) { return handleGet(r); });
 }
 
@@ -342,6 +343,25 @@ Response InvoiceController::handleAddGames(const Request& request) {
         out["added"] = added;
         return jsonOut(HttpStatus::OK, out);
     } catch (const std::exception& e) { std::cerr << "[invoices add games] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// POST /api/invoices/:id/event-mark {fh_event_id, mark: worked|no|clear} →
+// the sheet.  One answer per calendar row (mig 573): ✓ bills it, ✗ takes
+// it off and remembers, clear goes back to unanswered.
+Response InvoiceController::handleEventMark(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = idFromPath(request.getPath());
+    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
+    const long long fhEventId = intField(body, "fh_event_id");
+    const std::string mark = body.value("mark", "");
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id is required");
+    if (mark != "worked" && mark != "no" && mark != "clear") return jsonError(HttpStatus::BAD_REQUEST, "mark must be worked, no or clear");
+    try {
+        std::string err;
+        if (!model_->markEvent(id, fhEventId, mark, &err)) return jsonError(HttpStatus::BAD_REQUEST, err);
+        return jsonOut(HttpStatus::OK, model_->get(id));
+    } catch (const std::exception& e) { std::cerr << "[invoices event-mark] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
 // ─── referee fees (mig 490) ─────────────────────────────────────────────────

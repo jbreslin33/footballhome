@@ -73,6 +73,10 @@ class InvoicesScreen extends Screen {
         .iv-tag.final { border-color:#4ade80; color:#4ade80; }
         .iv-tag.draft { border-color:#f59e0b; color:#f59e0b; }
         .iv-tag.due { border-color:#f87171; color:#f87171; font-weight:800; }
+        .iv-mk { width:30px; height:26px; border-radius:8px; border:1px solid var(--border-color); background:transparent;
+                 color:var(--text-primary); cursor:pointer; font-weight:800; font-size:0.85rem; opacity:0.55; }
+        .iv-mk.on-yes { background:#4ade80; border-color:#4ade80; color:#0b1c3d; opacity:1; }
+        .iv-mk.on-no { background:#f87171; border-color:#f87171; color:#fff; opacity:1; }
         .iv-flash { padding:8px 12px; border-radius:8px; background:rgba(74,222,128,0.15); margin-bottom:var(--space-2); font-size:0.85rem; }
         .iv-flash.bad { background:rgba(248,113,113,0.15); }
         .iv-total { display:flex; justify-content:flex-end; gap:12px; font-weight:800; font-size:1.1rem; padding:10px 0; }
@@ -680,6 +684,8 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('#iv-nd-save')) { await this.addDayManual(); return; }
       const edt = e.target.closest('[data-edit-shift]');
       if (edt) { const id = Number(edt.dataset.editShift); this.editShift = this.editShift === id ? 0 : id; this._renderBody(); return; }
+      const mk = e.target.closest('[data-mk]');
+      if (mk) { await this._markEvent(mk); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
       if (e.target.closest('#iv-copy-link')) { await this.copyPublicLink(); return; }
       if (e.target.closest('#iv-copy-email')) { await this.copyEmailBody(); return; }
@@ -689,7 +695,6 @@ class InvoicesScreen extends Screen {
       if (rmDef) { await this.removeDefault(Number(rmDef.dataset.deleteDefault)); return; }
     });
     el.addEventListener('change', async (e) => {
-      if (e.target.matches('[data-ev-tgl]')) { await this._toggleEvent(e.target); return; }
       if (e.target.matches('[data-ref-game]')) {
         // The button reads "n games, $x" for whatever is ticked.
         const boxes = [...el.querySelectorAll('[data-ref-game]:checked')];
@@ -1101,18 +1106,29 @@ class InvoicesScreen extends Screen {
     const sum = (list) => Math.round(list.reduce((t, i) => t + (i.s ? Number(i.s.hours) || 0 : 0), 0) * 100) / 100;
     const row = (i) => {
       const { g, s } = i;
+      // One answer per event (owner 2026-10-12): ✓ worked as coach, ✗ did
+      // not (an RSVP no answers itself), blank = still to answer.  Hours
+      // read 0 until ✓.  A row billed without an event has no buttons at
+      // all ("no need to have HOurs check box. its over load") — ✏️ is its
+      // only control, and wiping the fields there removes it.
+      const state = s ? 'yes' : (g && (g.declined || g.rsvp === 'no')) ? 'no' : '';
       const time = s ? (s.flat ? '' : `${s.start}–${s.end}`) : `${g.start}${g.end ? `–${g.end}` : ''}`;
       const label = g ? `${g.kind === 'match' ? '🏟 ' : ''}${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}`
                       : esc((s && s.note) || 'Hours');
+      const marks = locked
+        ? `<span style="width:64px; text-align:center;">${s ? '✓' : ''}</span>`
+        : g ? `<span style="display:flex; gap:4px;">
+                 <button class="iv-mk ${state === 'yes' ? 'on-yes' : ''}" data-mk="yes" data-ev="${g.fh_event_id}" data-state="${state}" title="${esc(this._copy('mark_yes_tip') || 'Worked this as coach — bill its hours')}">✓</button>
+                 <button class="iv-mk ${state === 'no' ? 'on-no' : ''}" data-mk="no" data-ev="${g.fh_event_id}" data-state="${state}" data-stored="${g.declined ? 1 : 0}" title="${esc(this._copy('mark_no_tip') || 'Did not work this')}">✗</button>
+               </span>`
+          : `<span style="width:64px;"></span>`;
       return `
-        <div style="display:flex; gap:10px; align-items:center; padding:3px 0 3px 14px; border-top:1px solid var(--border-color); font-size:0.9rem; ${!s && g && !g.played ? 'opacity:0.6;' : ''}">
-          ${locked ? `<span style="width:16px; text-align:center;">${s ? '✓' : ''}</span>`
-                   : `<input type="checkbox" data-ev-tgl data-ev="${g ? g.fh_event_id : 0}" data-shift="${s ? s.id : 0}" ${s ? 'checked' : ''}>`}
+        <div style="display:flex; gap:10px; align-items:center; padding:3px 0 3px 14px; border-top:1px solid var(--border-color); font-size:0.9rem; ${state === 'no' ? 'opacity:0.55;' : ''}">
+          ${marks}
           <span style="flex:1;">${label}</span>
           <span style="width:66px; font-size:0.78rem;">${this._rsvpBadge(g)}</span>
           <span style="width:100px; text-align:right; opacity:0.85;">${esc(time)}</span>
-          <span style="width:50px; text-align:right; ${s ? 'font-weight:700;' : 'opacity:0.55;'}">${InvoicesScreen.plain(s ? s.hours : g.hours)} h</span>
-          ${!s && g && g.overlaps ? `<span style="font-size:0.72rem; color:#f59e0b;" title="A billed row on this date already covers this time">⚠</span>` : ''}
+          <span style="width:50px; text-align:right; ${state === 'yes' || (!g && s) ? 'font-weight:700;' : 'opacity:0.45;'}">${state === 'yes' || (!g && s) ? InvoicesScreen.plain(s.hours) : '0'} h</span>
           ${s && !locked ? `<button class="iv-btn ghost sm" data-edit-shift="${s.id}" title="Late or stayed on? Adjust the times">✏️</button>` : `<span style="width:34px;"></span>`}
         </div>
         ${s && !locked && this.editShift === s.id ? `
@@ -1148,19 +1164,17 @@ class InvoicesScreen extends Screen {
     return html;
   }
 
-  // Tick = billed at the event's hours; untick = off the sheet.
-  async _toggleEvent(cb) {
+  // ✓ worked / ✗ didn't on one event row.  Tapping the active mark clears
+  // it back to unanswered; a ✗ shown only because of an RSVP no has
+  // nothing stored, so tapping it stores the answer.
+  async _markEvent(btn) {
     if (!this.inv) return;
-    const ev = Number(cb.dataset.ev) || 0, shiftId = Number(cb.dataset.shift) || 0;
+    const ev = Number(btn.dataset.ev) || 0, state = btn.dataset.state || '';
+    let mark;
+    if (btn.dataset.mk === 'yes') mark = state === 'yes' ? 'clear' : 'worked';
+    else mark = state === 'no' && btn.dataset.stored === '1' ? 'clear' : 'no';
     try {
-      if (cb.checked && ev && !shiftId) {
-        this.inv = await this._post(`/api/invoices/${this.inv.id}/games`, { fh_event_ids: [ev] });
-      } else if (!cb.checked && shiftId) {
-        await this._delete(`/api/invoices/shift?id=${shiftId}`);
-        const res = await this.auth.fetch(`/api/invoices/${this.inv.id}`);
-        const body = await res.json().catch(() => ({}));
-        if (res.ok) this.inv = body;
-      } else return;
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/event-mark`, { fh_event_id: ev, mark });
       await this.load();
       this._loadGames();
     } catch (err) { this._say(err.message, true); }

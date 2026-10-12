@@ -83,6 +83,10 @@ public:
     // 'events' (mig 569).  Already-added events are skipped.  Returns days
     // added.
     int addGames(long long invoiceId, const std::vector<long long>& fhEventIds, bool policyOnly, std::string* error);
+    // ✓ / ✗ / unanswered on one calendar row (mig 573): mark = worked
+    // (bill it), no (off the sheet, remembered in invoice_event_declines)
+    // or clear.
+    bool markEvent(long long invoiceId, long long fhEventId, const std::string& mark, std::string* error);
 
     bool updateIssuer(long long issuerId, const nlohmann::json& fields, std::string* error);
 

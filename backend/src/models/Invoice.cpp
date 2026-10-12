@@ -557,6 +557,7 @@ const char* kPeriodGamesSql = R"SQL(
                 THEN COALESCE(regexp_replace(m.policy_label, '^Parks & Rec ', ''), m.team_label, 'Game') || CASE WHEN m.is_home THEN ' vs ' ELSE ' at ' END || m.opponent
                 ELSE m.summary END AS note,
            EXISTS (SELECT 1 FROM invoice_work_shifts s WHERE s.invoice_id = $1::int AND s.fh_event_id = m.fh_event_id) AS added,
+           EXISTS (SELECT 1 FROM invoice_event_declines d WHERE d.invoice_id = $1::int AND d.fh_event_id = m.fh_event_id) AS declined,
            -- A day row typed by hand (or the usual week) that already covers
            -- this time: adding the game too would bill the hours twice.
            EXISTS (SELECT 1 FROM invoice_work_shifts s
@@ -579,6 +580,7 @@ json Invoice::periodGames(long long invoiceId) {
                        {"team_label", str(r, "team_label")}, {"policy_label", str(r, "policy_label")},
                        {"policy_pays", !r["policy_pays"].is_null() && r["policy_pays"].as<bool>()},
                        {"played", r["played"].as<bool>()}, {"note", str(r, "note")}, {"added", r["added"].as<bool>()},
+                       {"declined", r["declined"].as<bool>()},
                        {"overlaps", r["overlaps"].as<bool>()}});
     }
     return out;
@@ -617,6 +619,30 @@ int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEvent
     }
     if (added > 0) syncLabor(invoiceId);
     return added;
+}
+
+bool Invoice::markEvent(long long invoiceId, long long fhEventId, const std::string& mark, std::string* error) {
+    // One answer per calendar row (owner 2026-10-12: "allow each practice
+    // or game to be checked attended or not as coach"): worked = ✓, its
+    // hours go on the sheet; no = ✗, off the sheet and remembered; clear =
+    // back to unanswered.
+    auto inv = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
+    if (inv.empty()) { *error = "no such invoice"; return false; }
+    if (inv[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return false; }
+    const std::string inv_ = std::to_string(invoiceId), ev = std::to_string(fhEventId);
+    if (mark == "worked") {
+        db_->query("DELETE FROM invoice_event_declines WHERE invoice_id = $1::int AND fh_event_id = $2::bigint", {inv_, ev});
+        addGames(invoiceId, {fhEventId}, false, error);
+        return error->empty();
+    }
+    auto gone = db_->query("DELETE FROM invoice_work_shifts WHERE invoice_id = $1::int AND fh_event_id = $2::bigint RETURNING id", {inv_, ev});
+    if (!gone.empty()) syncLabor(invoiceId);
+    if (mark == "no") {
+        db_->query("INSERT INTO invoice_event_declines (invoice_id, fh_event_id) VALUES ($1::int, $2::bigint) ON CONFLICT DO NOTHING", {inv_, ev});
+    } else {   // clear
+        db_->query("DELETE FROM invoice_event_declines WHERE invoice_id = $1::int AND fh_event_id = $2::bigint", {inv_, ev});
+    }
+    return true;
 }
 
 bool Invoice::update(long long invoiceId, const json& f, std::string* error) {
