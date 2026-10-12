@@ -98,25 +98,26 @@ int Invoice::nextNumber(long long issuerId, int year) {
 
 void Invoice::ensureAutoDrafts() {
     // Owner 2026-10-12: "i should not even have to hit new invoice right? it
-    // should auto make them but be editable."  For every issuer flagged
-    // auto_create, the previous and the current pay period each get a draft
-    // the first time the board is opened past the issuer's latest number.
-    // Numbers at or behind the latest are never touched, so Jamie's season
-    // gap stays a gap and a finalled period is not re-drafted.
+    // should auto make them but be editable" … "it needs to be the ones due
+    // the friday that passed."  For every issuer flagged auto_create, the
+    // most recent FINISHED pay period gets a draft the first time the board
+    // is opened past the issuer's latest number — the running period is not
+    // pre-drafted; it appears on its due Friday, when it becomes the one to
+    // send.  Numbers at or behind the latest are never touched, so Jamie's
+    // season gap stays a gap and a finalled period is not re-drafted.
     auto rows = db_->query(R"SQL(
         WITH now_p AS (
             SELECT invoice_year AS y,
-                   (anchor_number + FLOOR((CURRENT_DATE - anchor_start)::numeric / period_days))::int AS n
+                   (anchor_number + FLOOR((CURRENT_DATE - anchor_start)::numeric / period_days))::int - 1 AS n
               FROM invoice_period_policies WHERE invoice_year = EXTRACT(YEAR FROM CURRENT_DATE)::int
         )
-        SELECT i.id, p.y, k.n
+        SELECT i.id, p.y, p.n
           FROM invoice_issuers i
           CROSS JOIN now_p p
-          CROSS JOIN LATERAL (VALUES (p.n - 1), (p.n)) AS k(n)
-         WHERE i.is_active AND i.auto_create AND k.n >= 1
-           AND k.n > COALESCE((SELECT MAX(v.invoice_number) FROM invoices v
+         WHERE i.is_active AND i.auto_create AND p.n >= 1
+           AND p.n > COALESCE((SELECT MAX(v.invoice_number) FROM invoices v
                                 WHERE v.issuer_id = i.id AND v.invoice_year = p.y), 0)
-         ORDER BY i.id, k.n)SQL");
+         ORDER BY i.id)SQL");
     for (const auto& r : rows) {
         try {
             std::string err;

@@ -72,6 +72,7 @@ class InvoicesScreen extends Screen {
         .iv-tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.72rem; border:1px solid var(--border-color); }
         .iv-tag.final { border-color:#4ade80; color:#4ade80; }
         .iv-tag.draft { border-color:#f59e0b; color:#f59e0b; }
+        .iv-tag.due { border-color:#f87171; color:#f87171; font-weight:800; }
         .iv-flash { padding:8px 12px; border-radius:8px; background:rgba(74,222,128,0.15); margin-bottom:var(--space-2); font-size:0.85rem; }
         .iv-flash.bad { background:rgba(248,113,113,0.15); }
         .iv-total { display:flex; justify-content:flex-end; gap:12px; font-weight:800; font-size:1.1rem; padding:10px 0; }
@@ -133,7 +134,14 @@ class InvoicesScreen extends Screen {
     return div;
   }
 
-  onEnter() { this.load(); }
+  onEnter() {
+    this._autoOpened = false;
+    this.load().then(() => {
+      // Land on the invoice that is due, not just the list (owner
+      // 2026-10-12: "it needs to be the ones due the friday that passed").
+      if (!this._autoOpened && !this.inv) { this._autoOpened = true; this.openDueInvoice(); }
+    });
+  }
 
   _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('invoices', tier, tokens) : ''; }
 
@@ -180,6 +188,26 @@ class InvoicesScreen extends Screen {
   }
 
   _issuer() { return (this.board?.issuers || []).find(i => i.id === this.issuerId) || null; }
+
+  static today() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // The invoice to deal with now (owner 2026-10-12: "it needs to be the
+  // ones due the friday that passed"): the newest unsent one whose due
+  // date has arrived.  The list is newest-first, so the first match wins.
+  _dueInvoice(issuer) {
+    const today = InvoicesScreen.today();
+    return (issuer?.invoices || []).find(v => !v.is_final && v.date && v.date <= today) || null;
+  }
+
+  // Picking an issuer (or landing on the page) opens their due invoice by
+  // itself, so the sheet on screen is the one to check and send.
+  async openDueInvoice() {
+    const due = this._dueInvoice(this._issuer());
+    if (due && (!this.inv || this.inv.id !== due.id)) await this.openInvoice(due.id);
+  }
 
   _say(text, bad = false) { this.flash = text; this.flashBad = bad; this._renderBody(); }
 
@@ -644,8 +672,11 @@ class InvoicesScreen extends Screen {
         // page belongs to the previous person, so it closes too (owner
         // 2026-09-28: "when i hit jamie pill shouldn't all my stuff go away?").
         const next = Number(pill.dataset.issuer);
-        if (next !== this.issuerId) { this.inv = null; this.extraWeekdays = []; }
-        this.issuerId = next; this.editIssuer = false; this.showUsual = false; this.confirmDelete = 0; this._renderBody(); return;
+        const switched = next !== this.issuerId;
+        if (switched) { this.inv = null; this.extraWeekdays = []; }
+        this.issuerId = next; this.editIssuer = false; this.showUsual = false; this.confirmDelete = 0; this._renderBody();
+        if (switched) await this.openDueInvoice();   // their due sheet straight away
+        return;
       }
       if (e.target.closest('#iv-new')) { await this.newInvoice(); return; }
       if (e.target.closest('#iv-edit-issuer')) { this.editIssuer = !this.editIssuer; this._renderBody(); return; }
@@ -906,6 +937,7 @@ class InvoicesScreen extends Screen {
   // (mig 569), so New invoice is only the odd manual extra.
   _renderInvoiceList(i) {
     const esc = (t) => this.escapeHtml(t);
+    const today = InvoicesScreen.today();
     const rows = (i.invoices || []).map(v => `
       <div class="iv-inv-row" data-inv-row="${v.id}">
         <span style="font-weight:800;">#</span><input class="iv-in num" style="width:58px;" data-row-f="number" type="number" min="1" value="${v.number}" title="Pay period of the year">
@@ -916,6 +948,7 @@ class InvoicesScreen extends Screen {
         <span class="iv-lbl" style="margin:0;">due</span>
         <input class="iv-in" style="width:136px;" data-row-f="date" type="date" value="${esc(v.date)}" title="Due date on the sheet">
         <span class="iv-tag ${v.is_final ? 'final' : 'draft'}">${v.is_final ? 'final' : 'draft'}</span>
+        ${!v.is_final && v.date && v.date <= today ? `<span class="iv-tag due">${esc(this._copy('due_badge', { date: InvoicesScreen.usDate(v.date) }) || `due ${InvoicesScreen.usDate(v.date)} — send`)}</span>` : ''}
         <span style="opacity:0.7;">${InvoicesScreen.plain(v.hours)} h</span>
         <span style="font-weight:700;">${InvoicesScreen.money(v.total)}</span>
         <span style="display:flex; gap:6px; margin-left:auto;">
