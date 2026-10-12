@@ -65,6 +65,10 @@ class InvoicesScreen extends Screen {
         .iv-list-row { display:grid; grid-template-columns:70px 1fr 70px 100px auto; gap:8px; align-items:center;
                        padding:8px 0; border-top:1px solid var(--border-color); font-size:0.9rem; }
         .iv-list-row:first-child { border-top:none; }
+        .iv-inv-row { display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; padding:8px 0;
+                      border-top:1px solid var(--border-color); font-size:0.9rem; }
+        .iv-inv-row:first-child { border-top:none; }
+        .iv-inv-row .iv-in { width:auto; }
         .iv-tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.72rem; border:1px solid var(--border-color); }
         .iv-tag.final { border-color:#4ade80; color:#4ade80; }
         .iv-tag.draft { border-color:#f59e0b; color:#f59e0b; }
@@ -494,6 +498,23 @@ class InvoicesScreen extends Screen {
     else this._say('Could not copy — select the message text and copy it by hand.', true);
   }
 
+  // ✉️ straight off the invoice row (owner 2026-10-12: the number, dates
+  // covered and due date live on the row "to see it and edit it send it").
+  // Same message as the editor's Email button, without opening the sheet.
+  async emailRow(id) {
+    try {
+      const res = await this.auth.fetch(`/api/invoices/${id}`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      const d = this._emailDraft(body);
+      if (!d) return;
+      if (!d.to) { this._say('No email on the bill-to row.', true); return; }
+      const copied = await this._copyEmailBody(d);
+      this.openGmailCompose(this.buildGmailComposeHref({ to: d.to, cc: d.cc, subject: d.subject, body: copied ? '' : d.body }));
+      if (copied) this._say(this._copy('email_copied') || 'Message copied — paste it into the Gmail body.');
+    } catch (err) { this._say(err.message, true); }
+  }
+
   async _copyEmailBody(d) {
     try {
       if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
@@ -508,9 +529,9 @@ class InvoicesScreen extends Screen {
   }
 
   // The draft as it will open in Gmail: shown on the page under the buttons
-  // ("so i can see if its what we need") and sent by emailDeputy().
-  _emailDraft() {
-    const inv = this.inv;
+  // ("so i can see if its what we need") and sent by emailDeputy() — or, for
+  // a row's ✉️ button (mig 569), built from a fetched invoice.
+  _emailDraft(inv = this.inv) {
     if (!inv) return null;
     const to = inv.bill_to?.email || '';
     const mine = Number(this.board?.viewer_person_id || 0) > 0 && Number(inv.issuer?.person_id) === Number(this.board.viewer_person_id);
@@ -637,6 +658,8 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('#iv-refs-add')) { await this.addRefFees(); return; }
       if (e.target.closest('#iv-plan-toggle')) { this.showPlanForm = !this.showPlanForm; this._renderBody(); return; }
       if (e.target.closest('#iv-plan-add')) { await this.addPlan(); return; }
+      const em = e.target.closest('[data-email-invoice]');
+      if (em) { await this.emailRow(Number(em.dataset.emailInvoice)); return; }
       const open = e.target.closest('[data-open]');
       if (open) { await this.openInvoice(Number(open.dataset.open)); return; }
       const del = e.target.closest('[data-delete-invoice]');
@@ -681,6 +704,19 @@ class InvoicesScreen extends Screen {
           if (f.dataset.f === 'amount') row.dataset.amountTouched = '1';
           if (f.dataset.f === 'quantity' || f.dataset.f === 'rate') row.dataset.amountTouched = '0';
           await this.saveLine(Number(row.dataset.lineRow));
+        }
+        return;
+      }
+      // The row's own number / covers / due inputs (mig 569).
+      const rf = e.target.closest('[data-row-f]');
+      if (rf) {
+        const id = Number(rf.closest('[data-inv-row]')?.dataset.invRow);
+        if (id) {
+          try {
+            await this._post(`/api/invoices/${id}/update`, { [rf.dataset.rowF]: rf.dataset.rowF === 'number' ? Number(rf.value) : rf.value });
+            if (this.inv && this.inv.id === id) await this.openInvoice(id);
+            await this.load();
+          } catch (err) { this._say(err.message, true); }
         }
         return;
       }
@@ -786,6 +822,7 @@ class InvoicesScreen extends Screen {
               <div style="font-weight:800;">${esc(i.name)} <span style="opacity:0.6; font-weight:400; font-size:0.85rem;">· Invoice${esc(i.file_slug)}-${this.board.year}.N.pdf</span></div>
               <div style="font-size:0.9rem; margin-top:4px;">${esc(i.address || '—')} · ${esc(i.city_state_zip || '—')} · ${esc(i.phone || '—')}</div>
               <div style="font-size:0.9rem; margin-top:2px;">${esc(i.duty_description || 'Hours')} @ ${i.hourly_rate == null ? '—' : InvoicesScreen.money(i.hourly_rate)}/h · payable to ${esc(i.payable_to || '—')}${i.bills_expenses ? ' · bills expenses' : ' · hours only'}</div>
+              ${i.days_source === 'events' ? `<div class="iv-hint" style="margin-top:4px;">${esc(this._copy('days_hint_events', { name: i.name }))}</div>` : ''}
               ${missing ? `<div class="iv-hint" style="color:#f59e0b;">${esc(this._copy('missing_from'))}</div>` : ''}
             </div>
             <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
@@ -862,28 +899,40 @@ class InvoicesScreen extends Screen {
       </div>`;
   }
 
+  // Each invoice is a row with its number, dates covered and due date as
+  // live inputs, plus ✉️ (owner 2026-10-12: "the due date should be on or
+  // round button to see it and edit it send it and so should the dates
+  // covered and the number").  Drafts auto-make themselves on the backend
+  // (mig 569), so New invoice is only the odd manual extra.
   _renderInvoiceList(i) {
     const esc = (t) => this.escapeHtml(t);
     const rows = (i.invoices || []).map(v => `
-      <div class="iv-list-row">
-        <div style="font-weight:800;">#${v.number}</div>
-        <div>${esc(v.week1 || '')} &amp; ${esc(v.week2 || '')} <span style="opacity:0.65;">· ${v.period_start ? `${esc(InvoicesScreen.dayLabel(v.period_start))} – ${esc(InvoicesScreen.dayLabel(v.period_end))} · ` : ''}due ${esc(InvoicesScreen.usDate(v.date))}</span> <span class="iv-tag ${v.is_final ? 'final' : 'draft'}">${v.is_final ? 'final' : 'draft'}</span></div>
-        <div class="hrs" style="opacity:0.7;">${InvoicesScreen.plain(v.hours)} h</div>
-        <div style="text-align:right; font-weight:700;">${InvoicesScreen.money(v.total)}</div>
-        <div style="display:flex; gap:6px; justify-content:flex-end;">
+      <div class="iv-inv-row" data-inv-row="${v.id}">
+        <span style="font-weight:800;">#</span><input class="iv-in num" style="width:58px;" data-row-f="number" type="number" min="1" value="${v.number}" title="Pay period of the year">
+        <span class="iv-lbl" style="margin:0;">covers</span>
+        <input class="iv-in" style="width:136px;" data-row-f="period_start" type="date" value="${esc(v.period_start || '')}" title="Work from (Fri)">
+        <span style="opacity:0.6;">–</span>
+        <input class="iv-in" style="width:136px;" data-row-f="period_end" type="date" value="${esc(v.period_end || '')}" title="Work till (Thu)">
+        <span class="iv-lbl" style="margin:0;">due</span>
+        <input class="iv-in" style="width:136px;" data-row-f="date" type="date" value="${esc(v.date)}" title="Due date on the sheet">
+        <span class="iv-tag ${v.is_final ? 'final' : 'draft'}">${v.is_final ? 'final' : 'draft'}</span>
+        <span style="opacity:0.7;">${InvoicesScreen.plain(v.hours)} h</span>
+        <span style="font-weight:700;">${InvoicesScreen.money(v.total)}</span>
+        <span style="display:flex; gap:6px; margin-left:auto;">
+          <button class="iv-btn ghost sm" data-email-invoice="${v.id}" title="Email ${esc(this.board?.bill_to?.email_label || 'Lighthouse')}">✉️</button>
           <button class="iv-btn alt sm" data-open="${v.id}">Open</button>
           <button class="iv-btn danger sm" data-delete-invoice="${v.id}">${this.confirmDelete === v.id ? esc(this._copy('delete_confirm', { number: `${v.year}.${v.number}` })) : '🗑'}</button>
-        </div>
+        </span>
       </div>`).join('');
     const plans = (i.open_plans || []);
     return `
       <div class="iv-sec">Invoices</div>
       <div class="iv-card">
-        <div class="iv-acts" style="margin:0 0 8px;">
-          <button id="iv-new" class="iv-btn">➕ New invoice #${i.next_number}</button>
+        ${rows || `<div style="opacity:0.7; font-size:0.9rem;">${esc(this._copy('empty', { name: i.name }))}</div>`}
+        <div class="iv-acts" style="margin:8px 0 0;">
+          <button id="iv-new" class="iv-btn ghost sm">➕ New invoice #${i.next_number}</button>
           ${plans.length ? `<span style="font-size:0.85rem; opacity:0.75;">${plans.length} instalment plan${plans.length === 1 ? '' : 's'} still running — the next invoice picks them up</span>` : ''}
         </div>
-        ${rows || `<div style="opacity:0.7; font-size:0.9rem;">${esc(this._copy('empty', { name: i.name }))}</div>`}
       </div>
       ${plans.length ? `
       <div class="iv-sec">Running instalment plans</div>
@@ -1019,33 +1068,43 @@ class InvoicesScreen extends Screen {
       </div>`;
   }
 
-  // Games off the calendar to add as days (mig 531): played ones start
-  // ticked; a game already on the days shows as such and cannot be re-added.
+  // Events off the calendar to add as days (mig 531, practices since mig
+  // 569): matches AND practices of a team the issuer coaches, each with the
+  // issuer's own RSVP.  Ticks are prefilled from the RSVPs — a practice
+  // needs an explicit yes; a played match stays ticked unless they said no.
+  // An event already on the days shows as such and cannot be re-added.
   _renderCalGames() {
     const esc = (t) => this.escapeHtml(t);
     const games = this.calGames || [];
     const waiting = games.filter(g => !g.added);
     if (!games.length) return '';
+    const prefilled = (g) => g.played && !g.overlaps && (g.kind === 'practice' ? g.rsvp === 'yes' : g.rsvp !== 'no');
     const picked = [...(this.element?.querySelectorAll('[data-cal-game]') || [])].length
       ? [...this.element.querySelectorAll('[data-cal-game]:checked')].map(cb => Number(cb.dataset.calGame))
-      : waiting.filter(g => g.played && !g.overlaps).map(g => g.fh_event_id);
+      : waiting.filter(prefilled).map(g => g.fh_event_id);
+    const badge = (g) => {
+      if (g.rsvp === 'yes') return `<span style="color:#4ade80;">${esc(this._copy('games_rsvp_yes') || '✓ yes')}</span>`;
+      if (g.rsvp === 'no')  return `<span style="color:#f87171;">${esc(this._copy('games_rsvp_no') || '✗ no')}</span>`;
+      return `<span style="opacity:0.5;">${esc(this._copy('games_rsvp_none') || 'no RSVP')}</span>`;
+    };
     const rows = games.map(g => `
       <label style="display:flex; gap:10px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:0.9rem; ${g.added || !g.played ? 'opacity:0.65;' : ''}">
         ${g.added ? `<span style="width:13px; text-align:center;">✓</span>` : `<input type="checkbox" data-cal-game="${g.fh_event_id}" ${picked.includes(g.fh_event_id) ? 'checked' : ''}>`}
         <span style="width:90px; font-weight:700;">${esc(g.day_label)}</span>
-        <span style="flex:1;">${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}</span>
+        <span style="flex:1;">${g.kind === 'match' ? '🏟 ' : ''}${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}</span>
+        <span style="width:66px; font-size:0.78rem;">${badge(g)}</span>
         <span style="width:110px; text-align:right; opacity:0.85;">${esc(g.start)}${g.end ? `–${esc(g.end)}` : ''}</span>
         <span style="width:50px; text-align:right;">${InvoicesScreen.plain(g.hours)} h</span>
         <span style="width:90px; text-align:right; font-size:0.78rem; opacity:0.7;">${g.added ? 'on the days' : g.played ? 'played' : 'upcoming'}</span>
-        ${g.overlaps && !g.added ? `<span style="font-size:0.72rem; color:#f59e0b;" title="A day row on this date already covers this time — adding the game would bill it twice">⚠ inside a day already</span>` : ''}
+        ${g.overlaps && !g.added ? `<span style="font-size:0.72rem; color:#f59e0b;" title="A day row on this date already covers this time — adding the event would bill it twice">⚠ inside a day already</span>` : ''}
       </label>`).join('');
     const n = picked.length;
     return `
-      <div class="iv-sec" style="margin-top:var(--space-3);">${esc(this._copy('games_title') || 'Games on the calendar')}</div>
+      <div class="iv-sec" style="margin-top:var(--space-3);">${esc(this._copy('games_title') || 'On the calendar')}</div>
       <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('games_hint'))}</div>
       ${rows}
-      ${waiting.length ? `<div class="iv-acts"><button id="iv-games-add" class="iv-btn sm" ${n ? '' : 'disabled'}>${esc(this._copy('games_button', { n }) || `🏟 Add ${n} game(s) as days`)}</button></div>`
-                       : `<div class="iv-hint">${esc(this._copy('games_empty') || 'No games of yours in this period that are not already on the days.')}</div>`}`;
+      ${waiting.length ? `<div class="iv-acts"><button id="iv-games-add" class="iv-btn sm" ${n ? '' : 'disabled'}>${esc(this._copy('games_button', { n }) || `📅 Add ${n} as days`)}</button></div>`
+                       : `<div class="iv-hint">${esc(this._copy('games_empty') || 'Nothing of yours in this period that is not already on the days.')}</div>`}`;
   }
 
   // Referee fees to tick off on this draft (mig 490).

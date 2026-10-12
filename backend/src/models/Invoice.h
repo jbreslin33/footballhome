@@ -37,6 +37,10 @@ public:
     // unless given, the hours line at the issuer's rate, and one line per
     // open instalment plan.  Returns the invoice id, 0 on failure.
     long long create(long long issuerId, const std::string& isoDate, std::string* error);
+    // What board() runs first (mig 569): a draft for the previous and the
+    // current pay period, for every auto_create issuer whose latest number
+    // is behind them — so nobody has to hit New invoice.
+    void ensureAutoDrafts();
 
     bool update(long long invoiceId, const nlohmann::json& fields, std::string* error);
     bool remove(long long invoiceId);
@@ -61,14 +65,17 @@ public:
     // Copy the issuer's usual week onto the invoice's period.  Only when the
     // invoice has no days yet, unless force.  Returns days added.
     int applyDefaults(long long invoiceId, bool force, std::string* error);
-    // Games on the calendar in the invoice's period (mig 531): every match
-    // of a team the issuer coaches, or whose coaching policy pays them
-    // (coach_issuer_id), with the hours the policy gives a game (else the
+    // Events on the calendar in the invoice's period (mig 531, practices
+    // since mig 569): every match and practice of a team the issuer
+    // coaches, or whose coaching policy pays them (coach_issuer_id), with
+    // the issuer's own RSVP, the hours the policy gives a match (else the
     // calendar length) and whether it is already a day row.
     nlohmann::json periodGames(long long invoiceId);
-    // Add those games as day rows: the fh_event_ids given, or — with none —
-    // only the games whose policy names this issuer (what a new invoice
-    // does).  Already-added games are skipped.  Returns days added.
+    // Add those events as day rows: the fh_event_ids given, or — with none
+    // and policyOnly — what a new invoice adds by itself: the policy-paid
+    // games, plus every RSVP-yes event when the issuer's days_source is
+    // 'events' (mig 569).  Already-added events are skipped.  Returns days
+    // added.
     int addGames(long long invoiceId, const std::vector<long long>& fhEventIds, bool policyOnly, std::string* error);
 
     bool updateIssuer(long long issuerId, const nlohmann::json& fields, std::string* error);
@@ -80,6 +87,10 @@ private:
     // holds it (James does all four in one sitting, so Luke's next is
     // James's current).
     int nextNumber(long long issuerId, int year);
+    // The shared middle of create() and ensureAutoDrafts(): the draft for
+    // one specific (year, number), dated the Friday after the period unless
+    // isoDate is given.
+    long long createNumbered(long long issuerId, int year, int number, const std::string& isoDate, std::string* error);
     // Labor line quantity = SUM(shift hours), amount = quantity × rate,
     // whenever the invoice has any shifts.
     void syncLabor(long long invoiceId);

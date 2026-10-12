@@ -96,7 +96,42 @@ int Invoice::nextNumber(long long issuerId, int year) {
     return mine >= hi ? hi + 1 : hi;
 }
 
+void Invoice::ensureAutoDrafts() {
+    // Owner 2026-10-12: "i should not even have to hit new invoice right? it
+    // should auto make them but be editable."  For every issuer flagged
+    // auto_create, the previous and the current pay period each get a draft
+    // the first time the board is opened past the issuer's latest number.
+    // Numbers at or behind the latest are never touched, so Jamie's season
+    // gap stays a gap and a finalled period is not re-drafted.
+    auto rows = db_->query(R"SQL(
+        WITH now_p AS (
+            SELECT invoice_year AS y,
+                   (anchor_number + FLOOR((CURRENT_DATE - anchor_start)::numeric / period_days))::int AS n
+              FROM invoice_period_policies WHERE invoice_year = EXTRACT(YEAR FROM CURRENT_DATE)::int
+        )
+        SELECT i.id, p.y, k.n
+          FROM invoice_issuers i
+          CROSS JOIN now_p p
+          CROSS JOIN LATERAL (VALUES (p.n - 1), (p.n)) AS k(n)
+         WHERE i.is_active AND i.auto_create AND k.n >= 1
+           AND k.n > COALESCE((SELECT MAX(v.invoice_number) FROM invoices v
+                                WHERE v.issuer_id = i.id AND v.invoice_year = p.y), 0)
+         ORDER BY i.id, k.n)SQL");
+    for (const auto& r : rows) {
+        try {
+            std::string err;
+            if (createNumbered(r["id"].as<long long>(), r["y"].as<int>(), r["n"].as<int>(), "", &err) <= 0 && !err.empty())
+                std::cerr << "[invoices auto] issuer " << r["id"].c_str() << " #" << r["n"].c_str() << ": " << err << std::endl;
+        } catch (const std::exception& e) {
+            // Two admins opening the board at once: the UNIQUE on (issuer,
+            // year, number) lets one insert through and lands the other here.
+            std::cerr << "[invoices auto] issuer " << r["id"].c_str() << " #" << r["n"].c_str() << ": " << e.what() << std::endl;
+        }
+    }
+}
+
 json Invoice::board() {
+    ensureAutoDrafts();
     json out;
     out["bill_to"] = nullptr;
     {
@@ -118,7 +153,7 @@ json Invoice::board() {
     out["issuers"] = json::array();
     auto issuers = db_->query(R"SQL(
         SELECT i.id, i.person_id, i.file_slug, i.address, i.city_state_zip, i.phone, i.payable_to,
-               i.duty_description, i.hourly_rate, i.bills_expenses,
+               i.duty_description, i.hourly_rate, i.bills_expenses, i.days_source,
                BTRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS name
           FROM invoice_issuers i JOIN persons p ON p.id = i.person_id
          WHERE i.is_active ORDER BY i.sort_order, i.id)SQL");
@@ -130,6 +165,7 @@ json Invoice::board() {
             {"city_state_zip", str(r, "city_state_zip")}, {"phone", str(r, "phone")},
             {"payable_to", str(r, "payable_to")}, {"duty_description", str(r, "duty_description")},
             {"hourly_rate", numOrNull(r, "hourly_rate")}, {"bills_expenses", r["bills_expenses"].as<bool>()},
+            {"days_source", str(r, "days_source")},
             {"next_number", nextNumber(id, year)},
             {"open_plans", openPlans(id)},
             {"default_shifts", defaultShifts(id)},
@@ -343,13 +379,15 @@ long long Invoice::issuerOf(long long invoiceId) {
 // ── write ──────────────────────────────────────────────────────────────────
 
 long long Invoice::create(long long issuerId, const std::string& isoDate, std::string* error) {
-    auto iss = db_->query("SELECT duty_description, hourly_rate FROM invoice_issuers WHERE id = $1::int AND is_active", {std::to_string(issuerId)});
-    if (iss.empty()) { *error = "no such issuer"; return 0; }
-    const std::string date = isoDate.empty() ? "CURRENT_DATE" : "$2::date";
     auto yr = db_->query("SELECT EXTRACT(YEAR FROM " + std::string(isoDate.empty() ? "CURRENT_DATE" : "$1::date") + ")::int AS y",
                          isoDate.empty() ? std::vector<std::string>{} : std::vector<std::string>{isoDate});
     const int year = yr[0]["y"].as<int>();
-    const int number = nextNumber(issuerId, year);
+    return createNumbered(issuerId, year, nextNumber(issuerId, year), isoDate, error);
+}
+
+long long Invoice::createNumbered(long long issuerId, int year, int number, const std::string& isoDate, std::string* error) {
+    auto iss = db_->query("SELECT duty_description, hourly_rate, days_source FROM invoice_issuers WHERE id = $1::int AND is_active", {std::to_string(issuerId)});
+    if (iss.empty()) { *error = "no such issuer"; return 0; }
     // Period from the year's policy (mig 472); the invoice is dated the day
     // after the period ends (a Friday) unless a date was given.  With no
     // policy row for the year the period is left blank to be set by hand.
@@ -386,31 +424,38 @@ long long Invoice::create(long long issuerId, const std::string& isoDate, std::s
              p["budget_line_id"].is_null() ? std::string() : std::to_string(p["budget_line_id"].get<long long>())});
     }
 
-    // The usual week, one row per matching day of the period (mig 470),
-    // then the games the coaching policies pay this issuer for (mig 531).
+    // Where the day rows come from (days_source, mig 569): a 'week' issuer
+    // (James) gets the usual week (mig 470) + the policy-paid games (mig
+    // 531); an 'events' issuer (Luke, Anthony) gets their RSVP-yes practices
+    // and games instead — their real weeks swing with who covered what.
     std::string ignored;
-    applyDefaults(id, false, &ignored);
+    if (str(iss[0], "days_source") != "events") applyDefaults(id, false, &ignored);
     addGames(id, {}, true, &ignored);
     return id;
 }
 
-// ─── games off the calendar (mig 531) ───────────────────────────────────────
+// ─── events off the calendar (mig 531, practices since mig 569) ─────────────
 namespace {
 // $1 invoice, $2 issuer, $3 period start, $4 period end (club-local dates).
-// One row per match in the period that is the issuer's: a team they coach
-// is tagged on it, or its coaching policy names them.  The policy (kind
-// coaching, matched like Expenses::games: category, league label, age
-// band in the title) gives hours_per_game; without one the calendar's own
-// length stands.  Times are club-local; a game whose till would pass
-// midnight is kept as flat hours (the shifts CHECK wants end > start).
+// One row per match OR practice in the period that is the issuer's: a team
+// they coach is tagged on it, or its coaching policy names them.  Each row
+// carries the issuer's own RSVP (mig 569) — the page prefills ticks from
+// RSVP = yes, and an events-sourced issuer's new invoice adds those rows by
+// itself.  The policy (kind coaching, matched like Expenses::games:
+// category, league label, age band in the title) gives a match
+// hours_per_game; a practice — or a match without a policy — keeps the
+// calendar's own length.  Times are club-local; an event whose till would
+// pass midnight is kept as flat hours (the shifts CHECK wants end > start).
 const char* kPeriodGamesSql = R"SQL(
     WITH iss AS (
         SELECT i.id, i.person_id FROM invoice_issuers i WHERE i.id = $2::int
     ), pol AS (
         SELECT p.* FROM ref_fee_policies p WHERE p.kind = 'coaching' AND p.is_active
     ), ev AS (
-        SELECT e.id AS fh_event_id, g.starts_at, g.ends_at, e.is_home,
+        SELECT e.id AS fh_event_id, e.kind, g.starts_at, g.ends_at, e.is_home,
                COALESCE(NULLIF(BTRIM(e.opponent), ''), 'TBD') AS opponent,
+               COALESCE(NULLIF(BTRIM(g.summary), ''), 'Practice') AS summary,
+               r.response AS rsvp,
                (SELECT string_agg(t.name, ' + ' ORDER BY t.board_sort_order NULLS LAST, t.id)
                   FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id WHERE fet.fh_event_id = e.id) AS team_label,
                p.id AS policy_id, p.label AS policy_label, p.hours_per_game, p.coach_issuer_id,
@@ -420,13 +465,15 @@ const char* kPeriodGamesSql = R"SQL(
                         WHERE fet.fh_event_id = e.id AND c.person_id = (SELECT person_id FROM iss)) AS coaches_team
           FROM fh_events e
           JOIN gcal_events g ON g.id = e.gcal_event_id AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
+          LEFT JOIN fh_event_rsvps r ON r.fh_event_id = e.id AND r.person_id = (SELECT person_id FROM iss)
           LEFT JOIN LATERAL (
                 SELECT p.* FROM pol p
-                 WHERE (p.event_category IS NULL OR e.category = p.event_category)
+                 WHERE e.kind = 'match'
+                   AND (p.event_category IS NULL OR e.category = p.event_category)
                    AND e.league = ANY (p.event_league_labels)
                    AND (p.age_band IS NULL OR g.summary ~* ('\m' || p.age_band || '\M'))
                  ORDER BY p.sort_order, p.id LIMIT 1) p ON true
-         WHERE e.kind = 'match'
+         WHERE e.kind IN ('match', 'practice')
            AND (g.starts_at AT TIME ZONE 'America/New_York')::date BETWEEN $3::date AND $4::date
     ), mine AS (
         SELECT ev.*,
@@ -436,14 +483,16 @@ const char* kPeriodGamesSql = R"SQL(
           FROM ev
          WHERE ev.coaches_team OR ev.coach_issuer_id = $2::int
     )
-    SELECT m.fh_event_id, m.work_date::text AS work_date, to_char(m.work_date, 'Dy FMMM/FMDD') AS day_label,
+    SELECT m.fh_event_id, m.kind, m.rsvp, m.work_date::text AS work_date, to_char(m.work_date, 'Dy FMMM/FMDD') AS day_label,
            to_char(m.start_at, 'HH24:MI') AS start_at,
            CASE WHEN (m.start_at + (m.hours || ' hours')::interval) < interval '24 hours'
                 THEN to_char(m.start_at + (m.hours || ' hours')::interval, 'HH24:MI') END AS end_at,
            m.hours, m.opponent, m.is_home, m.team_label, m.policy_id, m.policy_label,
            (m.coach_issuer_id = $2::int) AS policy_pays,
            (m.starts_at < now()) AS played,
-           COALESCE(regexp_replace(m.policy_label, '^Parks & Rec ', ''), m.team_label, 'Game') || CASE WHEN m.is_home THEN ' vs ' ELSE ' at ' END || m.opponent AS note,
+           CASE WHEN m.kind = 'match'
+                THEN COALESCE(regexp_replace(m.policy_label, '^Parks & Rec ', ''), m.team_label, 'Game') || CASE WHEN m.is_home THEN ' vs ' ELSE ' at ' END || m.opponent
+                ELSE m.summary END AS note,
            EXISTS (SELECT 1 FROM invoice_work_shifts s WHERE s.invoice_id = $1::int AND s.fh_event_id = m.fh_event_id) AS added,
            -- A day row typed by hand (or the usual week) that already covers
            -- this time: adding the game too would bill the hours twice.
@@ -460,7 +509,8 @@ json Invoice::periodGames(long long invoiceId) {
     json out = json::array();
     if (inv.empty() || inv[0]["ps"].is_null() || inv[0]["pe"].is_null()) return out;
     for (const auto& r : db_->query(kPeriodGamesSql, {std::to_string(invoiceId), inv[0]["issuer_id"].c_str(), str(inv[0], "ps"), str(inv[0], "pe")})) {
-        out.push_back({{"fh_event_id", r["fh_event_id"].as<long long>()}, {"date", str(r, "work_date")}, {"day_label", str(r, "day_label")},
+        out.push_back({{"fh_event_id", r["fh_event_id"].as<long long>()}, {"kind", str(r, "kind")}, {"rsvp", str(r, "rsvp")},
+                       {"date", str(r, "work_date")}, {"day_label", str(r, "day_label")},
                        {"start", str(r, "start_at")}, {"end", str(r, "end_at")}, {"hours", num(r, "hours")},
                        {"opponent", str(r, "opponent")}, {"is_home", r["is_home"].is_null() ? json(nullptr) : json(r["is_home"].as<bool>())},
                        {"team_label", str(r, "team_label")}, {"policy_label", str(r, "policy_label")},
@@ -472,14 +522,24 @@ json Invoice::periodGames(long long invoiceId) {
 }
 
 int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEventIds, bool policyOnly, std::string* error) {
-    auto inv = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
+    auto inv = db_->query(
+        "SELECT v.is_final, i.days_source FROM invoices v JOIN invoice_issuers i ON i.id = v.issuer_id WHERE v.id = $1::int",
+        {std::to_string(invoiceId)});
     if (inv.empty()) { *error = "no such invoice"; return 0; }
     if (inv[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return 0; }
+    // What a new invoice adds by itself (policyOnly, no ids): the games the
+    // coaching policies pay this issuer for — unless they RSVP'd no (Anthony
+    // said no to the 10/4 U8 game and Luke covered it; the no wins over the
+    // policy) — and, for an events-sourced issuer (mig 569), every event
+    // they RSVP'd yes to.
+    const bool fromEvents = str(inv[0], "days_source") == "events";
     int added = 0;
     for (const auto& g : periodGames(invoiceId)) {
         const long long fhEventId = g["fh_event_id"].get<long long>();
         if (g["added"].get<bool>()) continue;
-        const bool picked = fhEventIds.empty() ? (policyOnly ? g["policy_pays"].get<bool>() : true)
+        const bool autoPick = (g["policy_pays"].get<bool>() && g["rsvp"] != "no")
+                           || (fromEvents && g["rsvp"] == "yes");
+        const bool picked = fhEventIds.empty() ? (policyOnly ? autoPick : true)
                                                : std::find(fhEventIds.begin(), fhEventIds.end(), fhEventId) != fhEventIds.end();
         if (!picked) continue;
         const bool timed = g["end"].is_string() && !g["end"].get<std::string>().empty();
