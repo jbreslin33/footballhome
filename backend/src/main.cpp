@@ -49,6 +49,7 @@
 #include "controllers/InvoiceController.h"
 #include "controllers/FinancesController.h"
 #include "controllers/FinesController.h"
+#include "controllers/ScheduleLinksController.h"
 #include "controllers/DashboardController.h"
 #include "controllers/CupRosterController.h"
 #include "controllers/RosterSheetController.h"
@@ -133,6 +134,7 @@ private:
     std::shared_ptr<InvoiceController> invoice_controller_;
     std::shared_ptr<FinancesController> finances_controller_;
     std::shared_ptr<FinesController> fines_controller_;
+    std::shared_ptr<ScheduleLinksController> schedule_links_controller_;
     std::shared_ptr<DashboardController> dashboard_controller_;
     std::shared_ptr<CupRosterController> cup_roster_controller_;
     std::shared_ptr<RosterSheetController> roster_sheet_controller_;
@@ -226,6 +228,7 @@ public:
         invoice_controller_ = std::make_shared<InvoiceController>();
         finances_controller_ = std::make_shared<FinancesController>();
         fines_controller_ = std::make_shared<FinesController>();
+        schedule_links_controller_ = std::make_shared<ScheduleLinksController>();
         dashboard_controller_ = std::make_shared<DashboardController>();
         cup_roster_controller_ = std::make_shared<CupRosterController>();
         roster_sheet_controller_ = std::make_shared<RosterSheetController>();
@@ -545,6 +548,7 @@ private:
         router_.useController("/api/finances", finances_controller_);
         // #fines (mig 534): the Men's fines by month and player.
         router_.useController("/api/fines", fines_controller_);
+        router_.useController("/api/schedule-links", schedule_links_controller_);
         // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
         router_.useController("/api/dashboard", dashboard_controller_);
         // #cup-rosters (mig 556): the USASA / EPSA player pool sheet from the men's rosters.

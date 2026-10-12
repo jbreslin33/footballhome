@@ -162,6 +162,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="league-schedules" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🗓</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('league_schedules', 'tile_title')) || 'League Schedules'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('league_schedules', 'tile_sub')) || "The leagues' own schedule pages — TeamSnap, TeamPass, CASA, GotSport — to check games against the calendar"}</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="cup-rosters" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">🏆</span>
           <div style="flex: 1; text-align: left;">
@@ -425,7 +433,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (!['calendar', 'reports', 'rsvps', 'security', 'logos', 'files', 'invoices', 'opponents', 'casa', 'game-center', 'event-center', 'kit', 'teams', 'tactical'].includes(role)) this.navigation.context.role = role;
+    if (!['calendar', 'reports', 'rsvps', 'security', 'logos', 'files', 'invoices', 'opponents', 'casa', 'game-center', 'event-center', 'kit', 'teams', 'tactical', 'league-schedules'].includes(role)) this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -473,6 +481,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'opponents') {
       // Not a role — opponent contacts (mig 483).
       this.navigation.goTo('opponents');
+    } else if (role === 'league-schedules') {
+      // Not a role — the leagues' own schedule pages, saved as links (mig 566).
+      this.navigation.goTo('league-schedules');
     } else if (role === 'cup-rosters') {
       // #cup-rosters (mig 556): the USASA / EPSA player pool sheet.
       this.navigation.goTo('cup-rosters');

@@ -65,6 +65,7 @@ class App {
       kit: new KitBoardScreen(this.navigation, this.auth),
       texts: new SmsOptInBoardScreen(this.navigation, this.auth),
       contacts: new ContactsScreen(this.navigation, this.auth),
+      leagueSchedules: new LeagueSchedulesScreen(this.navigation, this.auth),
       security: new SecurityScreen(this.navigation, this.auth),
       clubLogos: new ClubLogosScreen(this.navigation, this.auth),
       files: new FilesScreen(this.navigation, this.auth),
@@ -169,6 +170,8 @@ class App {
     this.screenManager.register('texts', this.screens.texts);
     // Contacts (#contacts, mig 541) — the club's people into the operator's phone as a vCard. See screens/contacts.js.
     this.screenManager.register('contacts', this.screens.contacts);
+    // League Schedules (#league-schedules, mig 566) — the leagues' own schedule pages as saved links. See screens/league-schedules.js.
+    this.screenManager.register('league-schedules', this.screens.leagueSchedules);
     // Security (#security) — nightly gate photo check-in + alert log (mig 421/424). See screens/security.js.
     this.screenManager.register('security', this.screens.security);
     // Club Logos (#logos) — crests stored per club + opponent text -> club (mig 428). See screens/club-logos.js.

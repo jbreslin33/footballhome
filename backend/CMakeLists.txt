@@ -130,6 +130,7 @@ set(SOURCES
     src/controllers/InvoiceController.cpp
     src/controllers/FinancesController.cpp
     src/controllers/FinesController.cpp
+    src/controllers/ScheduleLinksController.cpp
     src/controllers/DashboardController.cpp
     src/controllers/CupRosterController.cpp
     src/controllers/RosterSheetController.cpp
