@@ -519,6 +519,7 @@ const char* kPeriodGamesSql = R"SQL(
                COALESCE(NULLIF(BTRIM(e.opponent), ''), 'TBD') AS opponent,
                COALESCE(NULLIF(BTRIM(g.summary), ''), 'Practice') AS summary,
                r.response AS rsvp,
+               att.status AS attendance,
                (SELECT string_agg(t.name, ' + ' ORDER BY t.board_sort_order NULLS LAST, t.id)
                   FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id WHERE fet.fh_event_id = e.id) AS team_label,
                p.id AS policy_id, p.label AS policy_label, p.hours_per_game, p.coach_issuer_id,
@@ -529,6 +530,7 @@ const char* kPeriodGamesSql = R"SQL(
           FROM fh_events e
           JOIN gcal_events g ON g.id = e.gcal_event_id AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
           LEFT JOIN fh_event_rsvps r ON r.fh_event_id = e.id AND r.person_id = (SELECT person_id FROM iss)
+          LEFT JOIN fh_event_attendance att ON att.fh_event_id = e.id AND att.person_id = (SELECT person_id FROM iss)
           LEFT JOIN LATERAL (
                 SELECT p.* FROM pol p
                  WHERE e.kind = 'match'
@@ -546,7 +548,7 @@ const char* kPeriodGamesSql = R"SQL(
           FROM ev
          WHERE ev.coaches_team OR ev.coach_issuer_id = $2::int
     )
-    SELECT m.fh_event_id, m.kind, m.rsvp, m.work_date::text AS work_date, to_char(m.work_date, 'Dy FMMM/FMDD') AS day_label,
+    SELECT m.fh_event_id, m.kind, m.rsvp, m.attendance, m.work_date::text AS work_date, to_char(m.work_date, 'Dy FMMM/FMDD') AS day_label,
            to_char(m.start_at, 'HH24:MI') AS start_at,
            CASE WHEN (m.start_at + (m.hours || ' hours')::interval) < interval '24 hours'
                 THEN to_char(m.start_at + (m.hours || ' hours')::interval, 'HH24:MI') END AS end_at,
@@ -574,6 +576,7 @@ json Invoice::periodGames(long long invoiceId) {
     if (inv.empty() || inv[0]["ps"].is_null() || inv[0]["pe"].is_null()) return out;
     for (const auto& r : db_->query(kPeriodGamesSql, {std::to_string(invoiceId), inv[0]["issuer_id"].c_str(), str(inv[0], "ps"), str(inv[0], "pe")})) {
         out.push_back({{"fh_event_id", r["fh_event_id"].as<long long>()}, {"kind", str(r, "kind")}, {"rsvp", str(r, "rsvp")},
+                       {"attendance", str(r, "attendance")},
                        {"date", str(r, "work_date")}, {"day_label", str(r, "day_label")},
                        {"start", str(r, "start_at")}, {"end", str(r, "end_at")}, {"hours", num(r, "hours")},
                        {"opponent", str(r, "opponent")}, {"is_home", r["is_home"].is_null() ? json(nullptr) : json(r["is_home"].as<bool>())},

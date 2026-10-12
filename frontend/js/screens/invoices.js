@@ -684,6 +684,7 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('#iv-nd-save')) { await this.addDayManual(); return; }
       const edt = e.target.closest('[data-edit-shift]');
       if (edt) { const id = Number(edt.dataset.editShift); this.editShift = this.editShift === id ? 0 : id; this._renderBody(); return; }
+      if (e.target.closest('#iv-shift-close') || e.target.id === 'iv-shift-bg') { this.editShift = 0; this._renderBody(); return; }
       const mk = e.target.closest('[data-mk]');
       if (mk) { await this._markEvent(mk); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
@@ -816,6 +817,7 @@ class InvoicesScreen extends Screen {
     if (this.inv) {
       parts.push(this._renderEditor());
       parts.push(`<div class="iv-sec">Sheet</div><div class="inv-preview-wrap"><div class="inv-scale">${this._renderSheet(this.inv)}</div></div>`);
+      parts.push(this._renderShiftModal());
     }
     body.innerHTML = parts.join('');
     this._fitPreview();
@@ -1022,7 +1024,6 @@ class InvoicesScreen extends Screen {
         ${inv.is_final ? '' : `<div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('games_hint'))}</div>`}
         ${this._renderHoursBreakdown()}
         <div class="iv-acts">
-          <span style="font-size:0.9rem; font-weight:700;">${InvoicesScreen.plain(inv.shift_hours || 0)} h on the sheet</span>
           ${inv.is_final ? `<span class="iv-hint" style="margin:0;">Final — the sheet keeps its billed hours; un-tick Final to change them.</span>`
                          : `<button id="iv-addday" class="iv-btn ghost sm">${esc(this._copy('day_add') || '➕ Hours without an event')}</button>`}
         </div>
@@ -1074,22 +1075,38 @@ class InvoicesScreen extends Screen {
       </div>`;
   }
 
+  // Info only, never a control: the words "RSVP yes", not a ✓ glyph — the
+  // old "✓ yes" read as a tick that wasn't ticked (owner 2026-10-12: "it
+  // says yes but the check is not checked").
   _rsvpBadge(g) {
     if (!g) return '';
-    if (g.rsvp === 'yes') return `<span style="color:#4ade80;">${this.escapeHtml(this._copy('games_rsvp_yes') || '✓ yes')}</span>`;
-    if (g.rsvp === 'no')  return `<span style="color:#f87171;">${this.escapeHtml(this._copy('games_rsvp_no') || '✗ no')}</span>`;
+    if (g.rsvp === 'yes') return `<span style="color:#4ade80;">${this.escapeHtml(this._copy('games_rsvp_yes') || 'RSVP yes')}</span>`;
+    if (g.rsvp === 'no')  return `<span style="color:#f87171;">${this.escapeHtml(this._copy('games_rsvp_no') || 'RSVP no')}</span>`;
     return `<span style="opacity:0.5;">${this.escapeHtml(this._copy('games_rsvp_none') || 'no RSVP')}</span>`;
   }
 
-  // Hours straight off the calendar (owner 2026-10-12: "take out the days
-  // where we edit the day and lets just use gcal for hours for everyone …
-  // the default if we check it off is to give the hours … edit if they
-  // were late but that should be hidden … brek them down by day and
-  // week").  Every event of the issuer's teams in the period is a row,
-  // grouped week › day with subtotals: ticked = billed (a game the
-  // league's coaching hours, a practice the event length); ✏️ opens the
-  // hidden from/till editor; untick takes it off.  Billed rows without an
-  // event (older sheets, hand-added hours) sit in the same breakdown.
+  // The attendance mark from #attendance (fh_event_attendance), the second
+  // informer for the check-off (owner 2026-10-12: "show if rsvp and show if
+  // marked present to inform if we check it off").
+  _attBadge(g) {
+    const esc = (t) => this.escapeHtml(t);
+    if (!g) return '';
+    const a = g.attendance || '';
+    if (a === 'present') return `<span style="color:#4ade80;">${esc(this._copy('games_att_present') || 'present')}</span>`;
+    if (a === 'late')    return `<span style="color:#f59e0b;">${esc(this._copy('games_att_late') || 'late')}</span>`;
+    if (a === 'absent')  return `<span style="color:#f87171;">${esc(this._copy('games_att_absent') || 'absent')}</span>`;
+    if (a === 'excused') return `<span style="color:#60a5fa;">${esc(this._copy('games_att_excused') || 'excused')}</span>`;
+    return g.played ? `<span style="opacity:0.5;">${esc(this._copy('games_att_none') || 'not marked')}</span>` : '';
+  }
+
+  // Hours straight off the calendar — flat line items, nothing summed until
+  // the bottom (owner 2026-10-12: "do not total until bottom total hours.
+  // just line items of each practice or game … so we can check if attended
+  // to get paid or not").  Every event of the issuer's teams in the period
+  // is one row: ✓/✗ check-off, date, what it was, then the two informers —
+  // RSVP and the attendance mark — time and hours.  ✏️ opens the override
+  // popup (_renderShiftModal); billed rows without an event (hand-added
+  // hours) sit in the same list with ✏️ as their only control.
   _renderHoursBreakdown() {
     const inv = this.inv, esc = (t) => this.escapeHtml(t);
     if (!inv.period_start || !inv.period_end) return `<div class="iv-hint">Set the work-from and work-till dates first.</div>`;
@@ -1103,14 +1120,10 @@ class InvoicesScreen extends Screen {
     for (const s of shifts) if (!s.fh_event_id || !evIds.has(Number(s.fh_event_id))) items.push({ date: s.date, at: (!s.flat && s.start) || '', g: null, s });
     if (!items.length) return `<div class="iv-hint">${esc(this._copy('games_empty') || 'Nothing in this period yet.')}</div>`;
     items.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at < b.at ? -1 : 1));
-    const sum = (list) => Math.round(list.reduce((t, i) => t + (i.s ? Number(i.s.hours) || 0 : 0), 0) * 100) / 100;
     const row = (i) => {
       const { g, s } = i;
-      // One answer per event (owner 2026-10-12): ✓ worked as coach, ✗ did
-      // not (an RSVP no answers itself), blank = still to answer.  Hours
-      // read 0 until ✓.  A row billed without an event has no buttons at
-      // all ("no need to have HOurs check box. its over load") — ✏️ is its
-      // only control, and wiping the fields there removes it.
+      // One answer per event: ✓ worked as coach, ✗ did not (an RSVP no
+      // answers itself), blank = still to answer.  Hours read 0 until ✓.
       const state = s ? 'yes' : (g && (g.declined || g.rsvp === 'no')) ? 'no' : '';
       const time = s ? (s.flat ? '' : `${s.start}–${s.end}`) : `${g.start}${g.end ? `–${g.end}` : ''}`;
       const label = g ? `${g.kind === 'match' ? '🏟 ' : ''}${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}`
@@ -1123,45 +1136,48 @@ class InvoicesScreen extends Screen {
                </span>`
           : `<span style="width:64px;"></span>`;
       return `
-        <div style="display:flex; gap:10px; align-items:center; padding:3px 0 3px 14px; border-top:1px solid var(--border-color); font-size:0.9rem; ${state === 'no' ? 'opacity:0.55;' : ''}">
+        <div style="display:flex; gap:10px; align-items:center; padding:5px 0; border-top:1px solid var(--border-color); font-size:0.9rem; ${state === 'no' ? 'opacity:0.55;' : ''}">
           ${marks}
+          <span style="width:72px; font-weight:700;">${esc(InvoicesScreen.dayLabel(i.date))}</span>
           <span style="flex:1;">${label}</span>
-          <span style="width:66px; font-size:0.78rem;">${this._rsvpBadge(g)}</span>
-          <span style="width:100px; text-align:right; opacity:0.85;">${esc(time)}</span>
+          <span style="width:68px; font-size:0.78rem;">${this._rsvpBadge(g)}</span>
+          <span style="width:76px; font-size:0.78rem;">${this._attBadge(g)}</span>
+          <span style="width:92px; text-align:right; opacity:0.85;">${esc(time)}</span>
           <span style="width:50px; text-align:right; ${state === 'yes' || (!g && s) ? 'font-weight:700;' : 'opacity:0.45;'}">${state === 'yes' || (!g && s) ? InvoicesScreen.plain(s.hours) : '0'} h</span>
-          ${s && !locked ? `<button class="iv-btn ghost sm" data-edit-shift="${s.id}" title="Late or stayed on? Adjust the times">✏️</button>` : `<span style="width:34px;"></span>`}
-        </div>
-        ${s && !locked && this.editShift === s.id ? `
-        <div class="iv-day" data-shift-row="${s.id}" data-date="${s.date}" style="padding-left:40px; border-top:none; grid-template-columns:70px 110px 110px 80px 1fr;">
-          <div style="opacity:0.6; font-size:0.78rem;">adjust</div>
-          <div><input class="iv-in" type="time" data-sf="start" value="${esc(!s.flat ? s.start : '')}"></div>
-          <div><input class="iv-in" type="time" data-sf="end" value="${esc(!s.flat ? s.end : '')}"></div>
-          <div><input class="iv-in num" type="number" step="0.25" min="0" data-sf="hours" value="${InvoicesScreen.plain(s.hours)}"></div>
-          <div class="note"><input class="iv-in" data-sf="note" value="${esc(s.note || '')}" placeholder="note"></div>
-        </div>` : ''}`;
+          ${s && !locked ? `<button class="iv-btn ghost sm" data-edit-shift="${s.id}" title="Late or stayed on? Override the hours">✏️</button>` : `<span style="width:34px;"></span>`}
+        </div>`;
     };
-    let html = '';
-    let wk = 1;
-    for (let ws = inv.period_start; ws <= inv.period_end && wk < 10; ws = InvoicesScreen.addDays(ws, 7), wk++) {
-      const weRaw = InvoicesScreen.addDays(ws, 6);
-      const we = weRaw < inv.period_end ? weRaw : inv.period_end;
-      const inWeek = items.filter(i => i.date >= ws && i.date <= we);
-      html += `<div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:10px;">
-        <div class="iv-sec" style="margin:0;">${esc(this._copy('week_label', { n: wk, from: InvoicesScreen.dayLabel(ws), till: InvoicesScreen.dayLabel(we) }) || `Week ${wk} · ${InvoicesScreen.dayLabel(ws)} – ${InvoicesScreen.dayLabel(we)}`)}</div>
-        <div style="font-weight:800; font-size:0.9rem;">${InvoicesScreen.plain(sum(inWeek))} h</div>
+    const total = Math.round(items.reduce((t, i) => t + (i.s ? Number(i.s.hours) || 0 : 0), 0) * 100) / 100;
+    return items.map(row).join('') + `
+      <div style="display:flex; justify-content:flex-end; gap:12px; align-items:center; padding:10px 34px 4px 0; margin-top:4px;
+                  border-top:2px solid var(--border-color); font-weight:800; font-size:1rem;">
+        <span>${esc(this._copy('total_hours') || 'Total hours')}</span><span>${InvoicesScreen.plain(total)} h</span>
       </div>`;
-      if (!inWeek.length) { html += `<div class="iv-hint" style="padding-left:14px;">—</div>`; continue; }
-      let lastDate = '';
-      for (const i of inWeek) {
-        if (i.date !== lastDate) {
-          lastDate = i.date;
-          html += `<div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:700; opacity:0.75; margin-top:6px;">
-            <span>${esc(InvoicesScreen.dayLabel(i.date))}</span><span>${InvoicesScreen.plain(sum(inWeek.filter(x => x.date === i.date)))} h</span></div>`;
-        }
-        html += row(i);
-      }
-    }
-    return html;
+  }
+
+  // ✏️ as a popup (owner 2026-10-12: "an edit button to edit the hours
+  // which will rarely be used to override event hours … like a pop up").
+  // The data-sf inputs save on change exactly as the old inline row did;
+  // wiping every box removes the day, and the popup closes with it.
+  _renderShiftModal() {
+    const inv = this.inv, esc = (t) => this.escapeHtml(t);
+    if (!inv || inv.is_final || !this.editShift) return '';
+    const s = (inv.shifts || []).find(x => x.id === this.editShift);
+    if (!s) return '';
+    return `
+      <div class="iv-modal-bg" id="iv-shift-bg"><div class="iv-modal" style="max-width:620px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div style="font-weight:800;">✏️ ${esc(InvoicesScreen.dayLabel(s.date))} — ${esc(s.note || 'Hours')}</div>
+          <button id="iv-shift-close" class="iv-btn ghost sm">Close</button>
+        </div>
+        <div class="iv-hint" style="margin:4px 0 8px;">${esc(this._copy('edit_shift_hint') || "Override the event's hours — a late start, or stayed on. Wipe every box to take the day off the sheet.")}</div>
+        <div class="iv-day" data-shift-row="${s.id}" data-date="${s.date}" style="border-top:none; grid-template-columns:1fr 1fr 90px 1.4fr;">
+          <div><div class="iv-lbl">From</div><input class="iv-in" type="time" data-sf="start" value="${esc(!s.flat ? s.start : '')}"></div>
+          <div><div class="iv-lbl">Till</div><input class="iv-in" type="time" data-sf="end" value="${esc(!s.flat ? s.end : '')}"></div>
+          <div><div class="iv-lbl">Hours</div><input class="iv-in num" type="number" step="0.25" min="0" data-sf="hours" value="${InvoicesScreen.plain(s.hours)}"></div>
+          <div class="note"><div class="iv-lbl">Note</div><input class="iv-in" data-sf="note" value="${esc(s.note || '')}" placeholder="note"></div>
+        </div>
+      </div></div>`;
   }
 
   // ✓ worked / ✗ didn't on one event row.  Tapping the active mark clears
