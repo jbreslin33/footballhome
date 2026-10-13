@@ -346,9 +346,12 @@ json Expenses::refLineFor(int clubId, const json& picks) {
     if (picks.is_array()) for (const auto& p : picks) if (p.is_object() && p.contains("source") && p.contains("ref_id") && p["ref_id"].is_number())
         wanted.insert(p["source"].get<std::string>() + ":" + std::to_string(p["ref_id"].get<long long>()));
     // "true": the picker offers every game (away too), so the picks must be
-    // looked up in that same wider set.
+    // looked up in that same wider set.  A game shows up once per matching
+    // policy — only its REFEREE row is a fee (its coaching twin once rode
+    // along and billed coach pay on top: 2026.20's "8 games $530").
     for (const auto& r : Database::getInstance()->query(kGamesSql, {std::to_string(clubId), "true"})) {
         const std::string key = str(r, "source") + ":" + std::string(r["ref_id"].c_str());
+        if (str(r, "kind") != "referee") continue;
         if (!wanted.count(key) || !r["payment_id"].is_null()) continue;
         json g = gameJson(r);
         items.push_back({{"policy_id", g["policy_id"]}, {"source", g["source"]}, {"ref_id", g["ref_id"]}, {"game_on", g["game_on"]}, {"opponent", g["opponent"]}, {"amount", g["amount"]}});
@@ -363,18 +366,23 @@ json Expenses::refLineFor(int clubId, const json& picks) {
 
 void Expenses::syncRefLine(long long lineId) {
     // The ONE Referees line mirrors its payments (owner 2026-10-13: "when
-    // adding to refs we update the line item instead of 2 lines") — the
-    // same rebuild mig 578 used: count, sum, and one game listed once.
+    // adding to refs we update the line item instead of 2 lines"), and the
+    // description is SHORTHAND that fits a line item (owner, same day:
+    // "short hand it like: APSL, Liga1, u8,u10") — league labels only,
+    // "×N" when one repeats; the games themselves live in ref_fee_payments.
     auto* db = Database::getInstance();
     db->query(R"SQL(
         UPDATE invoice_lines l
            SET quantity = p.n, amount = p.total, description = 'Referees — ' || p.games
-          FROM (SELECT COUNT(*) AS n, SUM(rp.amount_usd) AS total,
-                       string_agg(pol.label || ' ' || to_char(rp.game_on, 'FMMM/FMDD') || ' ' || rp.opponent,
-                                  ', ' ORDER BY rp.game_on, rp.id) AS games
-                  FROM ref_fee_payments rp
-                  JOIN ref_fee_policies pol ON pol.id = rp.policy_id
-                 WHERE rp.invoice_line_id = $1::int) p
+          FROM (SELECT SUM(g.n) AS n, SUM(g.total) AS total,
+                       string_agg(g.lbl || CASE WHEN g.n > 1 THEN ' ×' || g.n ELSE '' END,
+                                  ', ' ORDER BY g.so, g.lbl) AS games
+                  FROM (SELECT regexp_replace(pol.label, '^Parks & Rec ', '') AS lbl,
+                               COUNT(*) AS n, SUM(rp.amount_usd) AS total, MIN(pol.sort_order) AS so
+                          FROM ref_fee_payments rp
+                          JOIN ref_fee_policies pol ON pol.id = rp.policy_id
+                         WHERE rp.invoice_line_id = $1::int
+                         GROUP BY 1) g) p
          WHERE l.id = $1::int AND p.n > 0)SQL", {std::to_string(lineId)});
     db->query("UPDATE invoices SET updated_at = now() WHERE id = (SELECT invoice_id FROM invoice_lines WHERE id = $1::int)",
               {std::to_string(lineId)});
