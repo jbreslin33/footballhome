@@ -373,7 +373,7 @@ void Expenses::syncRefLine(long long lineId) {
     auto* db = Database::getInstance();
     db->query(R"SQL(
         UPDATE invoice_lines l
-           SET quantity = p.n, amount = p.total, description = 'Referees — ' || p.games
+           SET quantity = 1, rate = p.total, amount = p.total, description = 'Referees — ' || p.games
           FROM (SELECT SUM(g.n) AS n, SUM(g.total) AS total,
                        string_agg(g.lbl || CASE WHEN g.n > 1 THEN ' ×' || g.n ELSE '' END,
                                   ', ' ORDER BY g.so, g.lbl) AS games
