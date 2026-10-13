@@ -43,7 +43,10 @@ const char* kGamesSql = R"SQL(
                f.starts_at, CASE WHEN f.home_club_id = $1::int THEN f.away_name ELSE f.home_name END AS opponent, f.status
           FROM pol p
           JOIN league_fixture_sources s ON s.league_label = p.fixture_league_label AND s.is_active
-          JOIN league_fixtures f ON f.source_id = s.id AND f.removed_at IS NULL AND f.status <> 'cancelled'
+          -- A cancelled or postponed fixture is off the board (owner
+          -- 2026-10-13: "deleted games need to be removed from invoicing");
+          -- a postponed game comes back as a fresh row when rescheduled.
+          JOIN league_fixtures f ON f.source_id = s.id AND f.removed_at IS NULL AND f.status NOT IN ('cancelled', 'postponed')
          WHERE p.fixture_league_label IS NOT NULL
            AND (f.home_club_id = $1::int OR ((NOT p.home_only OR $2::bool) AND f.away_club_id = $1::int))
     ), ev AS (
@@ -52,7 +55,7 @@ const char* kGamesSql = R"SQL(
           FROM pol p
           JOIN fh_events e ON e.kind = 'match' AND (p.event_category IS NULL OR e.category = p.event_category)
                           AND e.league = ANY (p.event_league_labels)
-          JOIN gcal_events g ON g.id = e.gcal_event_id AND g.deleted_at IS NULL
+          JOIN gcal_events g ON g.id = e.gcal_event_id AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
          WHERE p.fixture_league_label IS NULL
            AND (NOT p.home_only OR $2::bool OR COALESCE(e.is_home, false))
            AND (p.age_band IS NULL OR g.summary ~* ('\m' || p.age_band || '\M'))
