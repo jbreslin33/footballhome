@@ -59,4 +59,8 @@ public:
     static nlohmann::json refLineFor(int clubId, const nlohmann::json& picks);
     // Tick those games as paid by that invoice line.
     static void recordRefPayments(long long invoiceLineId, const nlohmann::json& items);
+
+    // Rebuild a Referees line's quantity / amount / description from its
+    // own ref_fee_payments, so new picks merge into the one line.
+    static void syncRefLine(long long lineId);
 };

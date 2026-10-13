@@ -361,6 +361,25 @@ json Expenses::refLineFor(int clubId, const json& picks) {
     return {{"description", desc}, {"quantity", (long long)items.size()}, {"amount", round2(amount)}, {"items", items}};
 }
 
+void Expenses::syncRefLine(long long lineId) {
+    // The ONE Referees line mirrors its payments (owner 2026-10-13: "when
+    // adding to refs we update the line item instead of 2 lines") — the
+    // same rebuild mig 578 used: count, sum, and one game listed once.
+    auto* db = Database::getInstance();
+    db->query(R"SQL(
+        UPDATE invoice_lines l
+           SET quantity = p.n, amount = p.total, description = 'Referees — ' || p.games
+          FROM (SELECT COUNT(*) AS n, SUM(rp.amount_usd) AS total,
+                       string_agg(pol.label || ' ' || to_char(rp.game_on, 'FMMM/FMDD') || ' ' || rp.opponent,
+                                  ', ' ORDER BY rp.game_on, rp.id) AS games
+                  FROM ref_fee_payments rp
+                  JOIN ref_fee_policies pol ON pol.id = rp.policy_id
+                 WHERE rp.invoice_line_id = $1::int) p
+         WHERE l.id = $1::int AND p.n > 0)SQL", {std::to_string(lineId)});
+    db->query("UPDATE invoices SET updated_at = now() WHERE id = (SELECT invoice_id FROM invoice_lines WHERE id = $1::int)",
+              {std::to_string(lineId)});
+}
+
 void Expenses::recordRefPayments(long long invoiceLineId, const json& items) {
     auto* db = Database::getInstance();
     for (const auto& it : items) {

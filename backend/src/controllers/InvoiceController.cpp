@@ -389,8 +389,10 @@ Response InvoiceController::handleRefFees(const Request& request) {
 }
 
 // POST /api/invoices/:id/ref-fees { games: [{source, ref_id}] } → the sheet.
-// One Referees line for the lot; each game becomes a ref_fee_payments row
-// pointing at it, so deleting the line frees the games again.
+// ONE Referees line per invoice (owner 2026-10-13: "when adding to refs we
+// update the line item instead of 2 lines"): new picks become
+// ref_fee_payments rows on the existing line and the line rebuilds from
+// them; the first pick creates it.  Deleting the line frees the games.
 Response InvoiceController::handleAddRefFees(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     const long long id = idFromPath(request.getPath());
@@ -399,11 +401,19 @@ Response InvoiceController::handleAddRefFees(const Request& request) {
     try {
         json line = Expenses::refLineFor(WelcomeLog::kLighthouseClubId, body.value("games", json::array()));
         if (line["items"].empty()) return jsonError(HttpStatus::BAD_REQUEST, "pick at least one game that is not invoiced yet");
-        std::string err;
-        const long long lineId = model_->upsertLine(id, 0, {{"category", "referees"}, {"description", "Referees — " + line["description"].get<std::string>()},
-                                                            {"quantity", line["quantity"]}, {"amount", line["amount"]}}, &err);
-        if (lineId <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
+        long long lineId = 0;
+        auto existing = Database::getInstance()->query(
+            "SELECT id FROM invoice_lines WHERE invoice_id = $1::int AND category = 'referees' ORDER BY id LIMIT 1",
+            {std::to_string(id)});
+        if (!existing.empty()) lineId = existing[0]["id"].as<long long>();
+        else {
+            std::string err;
+            lineId = model_->upsertLine(id, 0, {{"category", "referees"}, {"description", "Referees — " + line["description"].get<std::string>()},
+                                                {"quantity", line["quantity"]}, {"amount", line["amount"]}}, &err);
+            if (lineId <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
+        }
         Expenses::recordRefPayments(lineId, line["items"]);
+        Expenses::syncRefLine(lineId);
         return jsonOut(HttpStatus::OK, model_->get(id));
     } catch (const std::exception& e) { std::cerr << "[invoices add ref-fees] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
