@@ -1118,11 +1118,14 @@ class InvoicesScreen extends Screen {
     const locked = !!inv.is_final;
     const shifts = inv.shifts || [];
     const games = locked ? [] : (this.calGames || []);
-    const byEvent = new Map(shifts.filter(s => s.fh_event_id).map(s => [Number(s.fh_event_id), s]));
-    const evIds = new Set(games.map(g => g.fh_event_id));
+    // A row keys on its fh_event, or — a claimed calendar event (mig 577,
+    // "anytime it says CASA soccer that is me") — on the gcal event.
+    const key = (x) => x.fh_event_id ? `f${x.fh_event_id}` : x.gcal_event_id ? `g${x.gcal_event_id}` : '';
+    const byEvent = new Map(shifts.filter(s => key(s)).map(s => [key(s), s]));
+    const evIds = new Set(games.map(key));
     const items = [];
-    for (const g of games) { const s = byEvent.get(g.fh_event_id) || null; items.push({ date: s ? s.date : g.date, at: (s && !s.flat && s.start) || g.start || '', g, s }); }
-    for (const s of shifts) if (!s.fh_event_id || !evIds.has(Number(s.fh_event_id))) items.push({ date: s.date, at: (!s.flat && s.start) || '', g: null, s });
+    for (const g of games) { const s = byEvent.get(key(g)) || null; items.push({ date: s ? s.date : g.date, at: (s && !s.flat && s.start) || g.start || '', g, s }); }
+    for (const s of shifts) if (!key(s) || !evIds.has(key(s))) items.push({ date: s.date, at: (!s.flat && s.start) || '', g: null, s });
     if (!items.length) return `<div class="iv-hint">${esc(this._copy('games_empty') || 'Nothing in this period yet.')}</div>`;
     items.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at < b.at ? -1 : 1));
     const row = (i) => {
@@ -1136,8 +1139,8 @@ class InvoicesScreen extends Screen {
       const marks = locked
         ? `<span style="width:64px; text-align:center;">${s ? '✓' : ''}</span>`
         : g ? `<span style="display:flex; gap:4px;">
-                 <button class="iv-mk ${state === 'yes' ? 'on-yes' : ''}" data-mk="yes" data-ev="${g.fh_event_id}" data-state="${state}" title="${esc(this._copy('mark_yes_tip') || 'Worked this as coach — bill its hours')}">✓</button>
-                 <button class="iv-mk ${state === 'no' ? 'on-no' : ''}" data-mk="no" data-ev="${g.fh_event_id}" data-state="${state}" data-stored="${g.declined ? 1 : 0}" title="${esc(this._copy('mark_no_tip') || 'Did not work this')}">✗</button>
+                 <button class="iv-mk ${state === 'yes' ? 'on-yes' : ''}" data-mk="yes" data-ev="${g.fh_event_id || ''}" data-gev="${g.gcal_event_id || ''}" data-state="${state}" title="${esc(this._copy('mark_yes_tip') || 'Worked this as coach — bill its hours')}">✓</button>
+                 <button class="iv-mk ${state === 'no' ? 'on-no' : ''}" data-mk="no" data-ev="${g.fh_event_id || ''}" data-gev="${g.gcal_event_id || ''}" data-state="${state}" data-stored="${g.declined ? 1 : 0}" title="${esc(this._copy('mark_no_tip') || 'Did not work this')}">✗</button>
                </span>`
           : `<span style="width:64px;"></span>`;
       return `
@@ -1210,12 +1213,12 @@ class InvoicesScreen extends Screen {
   // nothing stored, so tapping it stores the answer.
   async _markEvent(btn) {
     if (!this.inv) return;
-    const ev = Number(btn.dataset.ev) || 0, state = btn.dataset.state || '';
+    const ev = Number(btn.dataset.ev) || 0, gev = Number(btn.dataset.gev) || 0, state = btn.dataset.state || '';
     let mark;
     if (btn.dataset.mk === 'yes') mark = state === 'yes' ? 'clear' : 'worked';
     else mark = state === 'no' && btn.dataset.stored === '1' ? 'clear' : 'no';
     try {
-      this.inv = await this._post(`/api/invoices/${this.inv.id}/event-mark`, { fh_event_id: ev, mark });
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/event-mark`, ev ? { fh_event_id: ev, mark } : { gcal_event_id: gev, mark });
       await this.load();
       this._loadGames();
     } catch (err) { this._say(err.message, true); }

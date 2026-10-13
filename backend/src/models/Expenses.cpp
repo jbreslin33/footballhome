@@ -25,18 +25,27 @@ std::string monthOf(const std::string& ymd) { return ymd.size() >= 7 ? ymd.subst
 int monthIndex(const std::string& ym) { return std::stoi(ym.substr(0, 4)) * 12 + std::stoi(ym.substr(5, 2)) - 1; }
 std::string monthAt(int idx) { char b[8]; std::snprintf(b, sizeof b, "%04d-%02d", idx / 12, idx % 12 + 1); return b; }
 
-// Every home game a policy pays for — one query, both sources.
+// Every game a policy pays for — one query, both sources.  $2 true widens
+// the net past home_only to EVERY game of the policy's league (owner
+// 2026-10-13: "we need all 'Soccer Games' for potential ref fees") — the
+// invoice picker offers them all and the ticks decide; projections keep $2
+// false so budgets still count the expected home games only.
+//
+// A league feed re-sync replaces league_fixtures rows with fresh ids (old
+// ones get removed_at), so a payment pinned to the old id would let the
+// same game be offered again: the pay join also matches on what the payment
+// recorded — policy + date + opponent.
 const char* kGamesSql = R"SQL(
     WITH pol AS (
         SELECT * FROM ref_fee_policies WHERE club_id = $1::int AND is_active
     ), fx AS (
         SELECT p.id AS policy_id, 'fixture'::text AS source, f.id::bigint AS ref_id, NULL::bigint AS fh_event_id, f.id AS league_fixture_id,
-               f.starts_at, f.away_name AS opponent, f.status
+               f.starts_at, CASE WHEN f.home_club_id = $1::int THEN f.away_name ELSE f.home_name END AS opponent, f.status
           FROM pol p
           JOIN league_fixture_sources s ON s.league_label = p.fixture_league_label AND s.is_active
           JOIN league_fixtures f ON f.source_id = s.id AND f.removed_at IS NULL AND f.status <> 'cancelled'
          WHERE p.fixture_league_label IS NOT NULL
-           AND (f.home_club_id = $1::int OR (NOT p.home_only AND f.away_club_id = $1::int))
+           AND (f.home_club_id = $1::int OR ((NOT p.home_only OR $2::bool) AND f.away_club_id = $1::int))
     ), ev AS (
         SELECT p.id, 'event'::text, e.id::bigint, e.id, NULL::int,
                g.starts_at, COALESCE(NULLIF(e.opponent, ''), g.summary), 'scheduled'::text
@@ -45,7 +54,7 @@ const char* kGamesSql = R"SQL(
                           AND e.league = ANY (p.event_league_labels)
           JOIN gcal_events g ON g.id = e.gcal_event_id AND g.deleted_at IS NULL
          WHERE p.fixture_league_label IS NULL
-           AND (NOT p.home_only OR COALESCE(e.is_home, false))
+           AND (NOT p.home_only OR $2::bool OR COALESCE(e.is_home, false))
            AND (p.age_band IS NULL OR g.summary ~* ('\m' || p.age_band || '\M'))
     ), games AS (SELECT * FROM fx UNION ALL SELECT * FROM ev)
     SELECT u.policy_id, p.label AS policy_label, p.kind, p.hours_per_game, p.club_section_id, p.per_game_usd, u.source, u.ref_id, u.status,
@@ -57,6 +66,8 @@ const char* kGamesSql = R"SQL(
       FROM games u
       JOIN ref_fee_policies p ON p.id = u.policy_id
       LEFT JOIN ref_fee_payments pay ON (u.source = 'fixture' AND pay.league_fixture_id = u.league_fixture_id)
+                                     OR (u.source = 'fixture' AND pay.league_fixture_id IS NOT NULL AND pay.policy_id = u.policy_id
+                                         AND pay.game_on = (u.starts_at AT TIME ZONE 'America/New_York')::date AND pay.opponent = u.opponent)
                                      OR (u.source = 'event'   AND pay.fh_event_id = u.fh_event_id)
       LEFT JOIN invoice_lines il ON il.id = pay.invoice_line_id
       LEFT JOIN invoices i ON i.id = il.invoice_id
@@ -78,9 +89,9 @@ json gameJson(const pqxx::row& r) {
 
 } // namespace
 
-json Expenses::games(int clubId) {
+json Expenses::games(int clubId, bool allGames) {
     json out = json::array();
-    for (const auto& r : Database::getInstance()->query(kGamesSql, {std::to_string(clubId)})) out.push_back(gameJson(r));
+    for (const auto& r : Database::getInstance()->query(kGamesSql, {std::to_string(clubId), allGames ? "true" : "false"})) out.push_back(gameJson(r));
     return out;
 }
 
@@ -111,7 +122,7 @@ json Expenses::projection(int clubId) {
 
     // ── referee fees ──
     std::map<long long, std::vector<json>> gamesByPolicy;
-    for (const auto& r : db->query(kGamesSql, {club})) gamesByPolicy[r["policy_id"].as<long long>()].push_back(gameJson(r));
+    for (const auto& r : db->query(kGamesSql, {club, "false"})) gamesByPolicy[r["policy_id"].as<long long>()].push_back(gameJson(r));
     for (const auto& p : db->query("SELECT p.id, p.label, p.group_label, p.kind, p.hours_per_game, p.rate_per_hour, p.club_section_id, p.per_game_usd, p.home_only, p.note, "
                                    "       ci.id AS coach_issuer_id, ci.payable_to AS coach "
                                    "  FROM ref_fee_policies p LEFT JOIN invoice_issuers ci ON ci.id = p.coach_issuer_id "
@@ -331,7 +342,9 @@ json Expenses::refLineFor(int clubId, const json& picks) {
     std::set<std::string> wanted;
     if (picks.is_array()) for (const auto& p : picks) if (p.is_object() && p.contains("source") && p.contains("ref_id") && p["ref_id"].is_number())
         wanted.insert(p["source"].get<std::string>() + ":" + std::to_string(p["ref_id"].get<long long>()));
-    for (const auto& r : Database::getInstance()->query(kGamesSql, {std::to_string(clubId)})) {
+    // "true": the picker offers every game (away too), so the picks must be
+    // looked up in that same wider set.
+    for (const auto& r : Database::getInstance()->query(kGamesSql, {std::to_string(clubId), "true"})) {
         const std::string key = str(r, "source") + ":" + std::string(r["ref_id"].c_str());
         if (!wanted.count(key) || !r["payment_id"].is_null()) continue;
         json g = gameJson(r);

@@ -35,11 +35,13 @@
 // can roll up per section and overall like the revenue side.
 class Expenses {
 public:
-    // Every home game the club pays referees for, known from the schedules:
-    // { policy_id, policy_label, section_id, source: fixture|event, ref_id,
-    //   game_on, date_label, opponent, amount, played, invoiced: {line_id,
-    //   invoice_id, invoice_label} | null }.  Ordered by date.
-    static nlohmann::json games(int clubId);
+    // Every game a policy pays for, known from the schedules: { policy_id,
+    //   policy_label, section_id, source: fixture|event, ref_id, game_on,
+    //   date_label, opponent, amount, played, invoiced: {line_id,
+    //   invoice_id, invoice_label} | null }.  Ordered by date.  Home games
+    //   only by default (what budgets expect); allGames offers away ones
+    //   too, for the invoice picker's "potential ref fees".
+    static nlohmann::json games(int clubId, bool allGames = false);
 
     // The projection: { months: [YYYY-MM…], today, ref_fees: [policy…],
     //   budget: [line…], sections: [{section_id, name, by_month}], all }.

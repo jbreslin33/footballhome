@@ -87,6 +87,9 @@ public:
     // (bill it), no (off the sheet, remembered in invoice_event_declines)
     // or clear.
     bool markEvent(long long invoiceId, long long fhEventId, const std::string& mark, std::string* error);
+    // Same, for a claimed raw calendar event (mig 577) — keyed on the gcal
+    // event because it has no fh_event.
+    bool markCalendarEvent(long long invoiceId, long long gcalEventId, const std::string& mark, std::string* error);
 
     bool updateIssuer(long long issuerId, const nlohmann::json& fields, std::string* error);
 

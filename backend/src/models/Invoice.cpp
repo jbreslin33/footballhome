@@ -296,7 +296,7 @@ json Invoice::get(long long invoiceId) {
     double shiftHours = 0;
     auto shifts = db_->query(R"SQL(
         SELECT id, work_date::text AS work_date, to_char(work_date, 'Dy FMMM/FMDD') AS day_label,
-               to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note, fh_event_id,
+               to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note, fh_event_id, gcal_event_id,
                (hours IS NOT NULL) AS flat,
                ROUND(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0), 2) AS hours
           FROM invoice_work_shifts WHERE invoice_id = $1::int
@@ -309,6 +309,7 @@ json Invoice::get(long long invoiceId) {
             {"start", str(sh, "start_at")}, {"end", str(sh, "end_at")}, {"note", str(sh, "note")}, {"hours", h},
             {"flat", sh["flat"].as<bool>()},
             {"fh_event_id", sh["fh_event_id"].is_null() ? json(nullptr) : json(sh["fh_event_id"].as<long long>())},
+            {"gcal_event_id", sh["gcal_event_id"].is_null() ? json(nullptr) : json(sh["gcal_event_id"].as<long long>())},
         });
     }
     out["shift_hours"] = round2(shiftHours);
@@ -333,7 +334,15 @@ json Invoice::realityCheck(long long invoiceId) {
            AND (g.deleted_at IS NOT NULL OR g.status = 'cancelled')
          RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
     for (const auto& r : removed) out["removed_notes"].push_back(str(r, "note"));
-    out["removed"] = static_cast<int>(removed.size());
+    // Claimed calendar rows (mig 577) ride on the gcal event directly.
+    auto removedCal = db_->query(R"SQL(
+        DELETE FROM invoice_work_shifts s
+         USING gcal_events g
+         WHERE s.invoice_id = $1::int AND g.id = s.gcal_event_id
+           AND (g.deleted_at IS NOT NULL OR g.status = 'cancelled')
+         RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
+    for (const auto& r : removedCal) out["removed_notes"].push_back(str(r, "note"));
+    out["removed"] = static_cast<int>(removed.size() + removedCal.size());
     // Moved: the calendar start no longer matches the row.  Timed rows keep
     // their length from the new start (unless that would pass midnight —
     // the CHECK wants end > start); flat-hours rows just take the new date.
@@ -351,7 +360,21 @@ json Invoice::realityCheck(long long invoiceId) {
                 OR (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) > (g.starts_at AT TIME ZONE 'America/New_York')::time)
          RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
     for (const auto& r : moved) out["moved_notes"].push_back(str(r, "note"));
-    out["moved"] = static_cast<int>(moved.size());
+    auto movedCal = db_->query(R"SQL(
+        UPDATE invoice_work_shifts s
+           SET work_date = (g.starts_at AT TIME ZONE 'America/New_York')::date,
+               start_at  = CASE WHEN s.start_at IS NULL THEN NULL ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time END,
+               end_at    = CASE WHEN s.end_at IS NULL THEN NULL ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) END
+          FROM gcal_events g
+         WHERE s.invoice_id = $1::int AND g.id = s.gcal_event_id
+           AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
+           AND (s.work_date <> (g.starts_at AT TIME ZONE 'America/New_York')::date
+                OR (s.start_at IS NOT NULL AND s.start_at <> (g.starts_at AT TIME ZONE 'America/New_York')::time))
+           AND (s.start_at IS NULL
+                OR (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) > (g.starts_at AT TIME ZONE 'America/New_York')::time)
+         RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
+    for (const auto& r : movedCal) out["moved_notes"].push_back(str(r, "note"));
+    out["moved"] = static_cast<int>(moved.size() + movedCal.size());
     if (out["removed"].get<int>() > 0) syncLabor(invoiceId);
     // Prefill on every open (owner 2026-10-12: "check all events and i
     // would uncheck. simple."): any period event still unanswered — no day
@@ -515,13 +538,19 @@ namespace {
 // hours_per_game; a practice — or a match without a policy — keeps the
 // calendar's own length.  Times are club-local; an event whose till would
 // pass midnight is kept as flat hours (the shifts CHECK wants end > start).
+//
+// Claimed rows (mig 577): a raw calendar event whose title matches one of
+// the issuer's invoice_issuer_event_claims patterns is their work too —
+// "anytime it says CASA soccer that is me" — even though it never classifies
+// into fh_events.  Those rows key on gcal_event_id instead of fh_event_id,
+// and a title that lives on both calendars (soccer + ops) is one row.
 const char* kPeriodGamesSql = R"SQL(
     WITH iss AS (
         SELECT i.id, i.person_id FROM invoice_issuers i WHERE i.id = $2::int
     ), pol AS (
         SELECT p.* FROM ref_fee_policies p WHERE p.kind = 'coaching' AND p.is_active
     ), ev AS (
-        SELECT e.id AS fh_event_id, e.kind, g.starts_at, g.ends_at, e.is_home,
+        SELECT e.id AS fh_event_id, NULL::bigint AS gcal_event_id, e.kind, g.starts_at, g.ends_at, e.is_home,
                COALESCE(NULLIF(BTRIM(e.opponent), ''), 'TBD') AS opponent,
                COALESCE(NULLIF(BTRIM(g.summary), ''), 'Practice') AS summary,
                r.response AS rsvp,
@@ -546,15 +575,33 @@ const char* kPeriodGamesSql = R"SQL(
                  ORDER BY p.sort_order, p.id LIMIT 1) p ON true
          WHERE e.kind IN ('match', 'practice')
            AND (g.starts_at AT TIME ZONE 'America/New_York')::date BETWEEN $3::date AND $4::date
+    ), claimed AS (
+        SELECT DISTINCT ON (lower(BTRIM(g.summary)), g.starts_at)
+               NULL::bigint AS fh_event_id, g.id AS gcal_event_id, 'work'::text AS kind, g.starts_at, g.ends_at,
+               NULL::boolean AS is_home, 'TBD'::text AS opponent, BTRIM(g.summary) AS summary,
+               NULL::text AS rsvp, NULL::text AS attendance, NULL::text AS team_label,
+               NULL::int AS policy_id, NULL::text AS policy_label, NULL::numeric AS hours_per_game,
+               NULL::int AS coach_issuer_id, true AS coaches_team
+          FROM gcal_events g
+          JOIN invoice_issuer_event_claims cl
+            ON cl.issuer_id = $2::int AND cl.is_active AND g.summary ~* cl.summary_pattern
+         WHERE g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
+           AND (g.starts_at AT TIME ZONE 'America/New_York')::date BETWEEN $3::date AND $4::date
+           AND NOT EXISTS (SELECT 1 FROM fh_events e WHERE e.gcal_event_id = g.id)
+         ORDER BY lower(BTRIM(g.summary)), g.starts_at,
+                  -- the copy a day row or ✗ already points at wins the dedup
+                  (EXISTS (SELECT 1 FROM invoice_work_shifts s WHERE s.invoice_id = $1::int AND s.gcal_event_id = g.id)
+                   OR EXISTS (SELECT 1 FROM invoice_event_declines d WHERE d.invoice_id = $1::int AND d.gcal_event_id = g.id)) DESC,
+                  g.calendar_id, g.id
     ), mine AS (
         SELECT ev.*,
                ROUND(COALESCE(ev.hours_per_game, EXTRACT(EPOCH FROM (ev.ends_at - ev.starts_at)) / 3600.0)::numeric, 2) AS hours,
                (ev.starts_at AT TIME ZONE 'America/New_York')::date AS work_date,
                (ev.starts_at AT TIME ZONE 'America/New_York')::time AS start_at
-          FROM ev
+          FROM (SELECT * FROM ev UNION ALL SELECT * FROM claimed) ev
          WHERE ev.coaches_team OR ev.coach_issuer_id = $2::int
     )
-    SELECT m.fh_event_id, m.kind, m.rsvp, m.attendance, m.work_date::text AS work_date, to_char(m.work_date, 'Dy FMMM/FMDD') AS day_label,
+    SELECT m.fh_event_id, m.gcal_event_id, m.kind, m.rsvp, m.attendance, m.work_date::text AS work_date, to_char(m.work_date, 'Dy FMMM/FMDD') AS day_label,
            to_char(m.start_at, 'HH24:MI') AS start_at,
            CASE WHEN (m.start_at + (m.hours || ' hours')::interval) < interval '24 hours'
                 THEN to_char(m.start_at + (m.hours || ' hours')::interval, 'HH24:MI') END AS end_at,
@@ -564,12 +611,18 @@ const char* kPeriodGamesSql = R"SQL(
            CASE WHEN m.kind = 'match'
                 THEN COALESCE(regexp_replace(m.policy_label, '^Parks & Rec ', ''), m.team_label, 'Game') || CASE WHEN m.is_home THEN ' vs ' ELSE ' at ' END || m.opponent
                 ELSE m.summary END AS note,
-           EXISTS (SELECT 1 FROM invoice_work_shifts s WHERE s.invoice_id = $1::int AND s.fh_event_id = m.fh_event_id) AS added,
-           EXISTS (SELECT 1 FROM invoice_event_declines d WHERE d.invoice_id = $1::int AND d.fh_event_id = m.fh_event_id) AS declined,
+           EXISTS (SELECT 1 FROM invoice_work_shifts s
+                    WHERE s.invoice_id = $1::int
+                      AND (s.fh_event_id = m.fh_event_id OR s.gcal_event_id = m.gcal_event_id)) AS added,
+           EXISTS (SELECT 1 FROM invoice_event_declines d
+                    WHERE d.invoice_id = $1::int
+                      AND (d.fh_event_id = m.fh_event_id OR d.gcal_event_id = m.gcal_event_id)) AS declined,
            -- A day row typed by hand (or the usual week) that already covers
            -- this time: adding the game too would bill the hours twice.
            EXISTS (SELECT 1 FROM invoice_work_shifts s
-                    WHERE s.invoice_id = $1::int AND s.fh_event_id IS DISTINCT FROM m.fh_event_id AND s.work_date = m.work_date
+                    WHERE s.invoice_id = $1::int AND s.work_date = m.work_date
+                      AND NOT (COALESCE(s.fh_event_id = m.fh_event_id, false)
+                            OR COALESCE(s.gcal_event_id = m.gcal_event_id, false))
                       AND (s.start_at IS NULL
                            OR (s.start_at < m.start_at + (m.hours || ' hours')::interval AND s.end_at > m.start_at))) AS overlaps
       FROM mine m
@@ -581,7 +634,9 @@ json Invoice::periodGames(long long invoiceId) {
     json out = json::array();
     if (inv.empty() || inv[0]["ps"].is_null() || inv[0]["pe"].is_null()) return out;
     for (const auto& r : db_->query(kPeriodGamesSql, {std::to_string(invoiceId), inv[0]["issuer_id"].c_str(), str(inv[0], "ps"), str(inv[0], "pe")})) {
-        out.push_back({{"fh_event_id", r["fh_event_id"].as<long long>()}, {"kind", str(r, "kind")}, {"rsvp", str(r, "rsvp")},
+        out.push_back({{"fh_event_id", r["fh_event_id"].is_null() ? json(nullptr) : json(r["fh_event_id"].as<long long>())},
+                       {"gcal_event_id", r["gcal_event_id"].is_null() ? json(nullptr) : json(r["gcal_event_id"].as<long long>())},
+                       {"kind", str(r, "kind")}, {"rsvp", str(r, "rsvp")},
                        {"attendance", str(r, "attendance")},
                        {"date", str(r, "work_date")}, {"day_label", str(r, "day_label")},
                        {"start", str(r, "start_at")}, {"end", str(r, "end_at")}, {"hours", num(r, "hours")},
@@ -610,26 +665,69 @@ int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEvent
     const bool fromEvents = str(inv[0], "days_source") == "events";
     int added = 0;
     for (const auto& g : periodGames(invoiceId)) {
-        const long long fhEventId = g["fh_event_id"].get<long long>();
+        // An event row keys on its fh_event; a claimed calendar row (mig
+        // 577) has none and keys on the gcal event instead.
+        const long long fhEventId = g["fh_event_id"].is_number() ? g["fh_event_id"].get<long long>() : 0;
+        const long long gcalEventId = g["gcal_event_id"].is_number() ? g["gcal_event_id"].get<long long>() : 0;
         if (g["added"].get<bool>()) continue;
         const bool autoPick = fromEvents
             ? (!g["declined"].get<bool>() && g["rsvp"] != "no")
-            : (g["policy_pays"].get<bool>() && g["rsvp"] != "no");
+            : ((g["policy_pays"].get<bool>() || gcalEventId > 0) && g["rsvp"] != "no" && !g["declined"].get<bool>());
         const bool picked = fhEventIds.empty() ? (policyOnly ? autoPick : true)
-                                               : std::find(fhEventIds.begin(), fhEventIds.end(), fhEventId) != fhEventIds.end();
+                                               : (fhEventId > 0 && std::find(fhEventIds.begin(), fhEventIds.end(), fhEventId) != fhEventIds.end());
         if (!picked) continue;
         const bool timed = g["end"].is_string() && !g["end"].get<std::string>().empty();
         auto r = db_->query(
-            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note, fh_event_id) "
-            "VALUES ($1::int, $2::date, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($5,'')::numeric, NULLIF($6,''), $7::bigint) "
+            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note, fh_event_id, gcal_event_id) "
+            "VALUES ($1::int, $2::date, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($5,'')::numeric, NULLIF($6,''), NULLIF($7,'0')::bigint, NULLIF($8,'0')::bigint) "
             "ON CONFLICT DO NOTHING RETURNING id",
             {std::to_string(invoiceId), g["date"].get<std::string>(), timed ? g["start"].get<std::string>() : std::string{},
              timed ? g["end"].get<std::string>() : std::string{}, timed ? std::string{} : money2(g["hours"].get<double>()),
-             g["note"].get<std::string>(), std::to_string(fhEventId)});
+             g["note"].get<std::string>(), std::to_string(fhEventId), std::to_string(gcalEventId)});
         if (!r.empty()) added++;
     }
     if (added > 0) syncLabor(invoiceId);
     return added;
+}
+
+bool Invoice::markCalendarEvent(long long invoiceId, long long gcalEventId, const std::string& mark, std::string* error) {
+    // ✓/✗ on a claimed calendar row (mig 577) — same one-answer contract as
+    // markEvent, keyed on the gcal event because no fh_event exists.
+    auto inv = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
+    if (inv.empty()) { *error = "no such invoice"; return false; }
+    if (inv[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return false; }
+    const std::string inv_ = std::to_string(invoiceId), ev = std::to_string(gcalEventId);
+    if (mark == "worked") {
+        db_->query("DELETE FROM invoice_event_declines WHERE invoice_id = $1::int AND gcal_event_id = $2::bigint", {inv_, ev});
+        auto g = db_->query(R"SQL(
+            SELECT (g.starts_at AT TIME ZONE 'America/New_York')::date::text AS work_date,
+                   to_char(g.starts_at AT TIME ZONE 'America/New_York', 'HH24:MI') AS start_at,
+                   CASE WHEN g.ends_at > g.starts_at
+                         AND (g.ends_at AT TIME ZONE 'America/New_York')::date = (g.starts_at AT TIME ZONE 'America/New_York')::date
+                        THEN to_char(g.ends_at AT TIME ZONE 'America/New_York', 'HH24:MI') END AS end_at,
+                   ROUND(EXTRACT(EPOCH FROM (g.ends_at - g.starts_at)) / 3600.0, 2) AS hours,
+                   BTRIM(g.summary) AS note
+              FROM gcal_events g WHERE g.id = $1::bigint AND g.deleted_at IS NULL)SQL", {ev});
+        if (g.empty()) { *error = "that calendar event is gone"; return false; }
+        const bool timed = !g[0]["end_at"].is_null();
+        auto r = db_->query(
+            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note, gcal_event_id) "
+            "VALUES ($1::int, $2::date, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($5,'')::numeric, NULLIF($6,''), $7::bigint) "
+            "ON CONFLICT DO NOTHING RETURNING id",
+            {inv_, str(g[0], "work_date"), timed ? str(g[0], "start_at") : std::string{},
+             timed ? str(g[0], "end_at") : std::string{}, timed ? std::string{} : money2(num(g[0], "hours")),
+             str(g[0], "note"), ev});
+        if (!r.empty()) syncLabor(invoiceId);
+        return true;
+    }
+    auto gone = db_->query("DELETE FROM invoice_work_shifts WHERE invoice_id = $1::int AND gcal_event_id = $2::bigint RETURNING id", {inv_, ev});
+    if (!gone.empty()) syncLabor(invoiceId);
+    if (mark == "no") {
+        db_->query("INSERT INTO invoice_event_declines (invoice_id, gcal_event_id) VALUES ($1::int, $2::bigint) ON CONFLICT DO NOTHING", {inv_, ev});
+    } else {   // clear
+        db_->query("DELETE FROM invoice_event_declines WHERE invoice_id = $1::int AND gcal_event_id = $2::bigint", {inv_, ev});
+    }
+    return true;
 }
 
 bool Invoice::markEvent(long long invoiceId, long long fhEventId, const std::string& mark, std::string* error) {

@@ -345,29 +345,35 @@ Response InvoiceController::handleAddGames(const Request& request) {
     } catch (const std::exception& e) { std::cerr << "[invoices add games] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
-// POST /api/invoices/:id/event-mark {fh_event_id, mark: worked|no|clear} →
-// the sheet.  One answer per calendar row (mig 573): ✓ bills it, ✗ takes
-// it off and remembers, clear goes back to unanswered.
+// POST /api/invoices/:id/event-mark {fh_event_id | gcal_event_id, mark:
+// worked|no|clear} → the sheet.  One answer per calendar row (mig 573): ✓
+// bills it, ✗ takes it off and remembers, clear goes back to unanswered.  A
+// claimed raw calendar row (mig 577) keys on gcal_event_id instead.
 Response InvoiceController::handleEventMark(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     const long long id = idFromPath(request.getPath());
     if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
     json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
     const long long fhEventId = intField(body, "fh_event_id");
+    const long long gcalEventId = intField(body, "gcal_event_id");
     const std::string mark = body.value("mark", "");
-    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id is required");
+    if (fhEventId <= 0 && gcalEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id or gcal_event_id is required");
     if (mark != "worked" && mark != "no" && mark != "clear") return jsonError(HttpStatus::BAD_REQUEST, "mark must be worked, no or clear");
     try {
         std::string err;
-        if (!model_->markEvent(id, fhEventId, mark, &err)) return jsonError(HttpStatus::BAD_REQUEST, err);
+        const bool ok = fhEventId > 0 ? model_->markEvent(id, fhEventId, mark, &err)
+                                      : model_->markCalendarEvent(id, gcalEventId, mark, &err);
+        if (!ok) return jsonError(HttpStatus::BAD_REQUEST, err);
         return jsonOut(HttpStatus::OK, model_->get(id));
     } catch (const std::exception& e) { std::cerr << "[invoices event-mark] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
 // ─── referee fees (mig 490) ─────────────────────────────────────────────────
-// GET /api/invoices/ref-fees → { games: [...] } — every home game the club
-// pays referees for that is not on an invoice yet, played first.  The
-// league feeds are pulled first so a just-published game is here.
+// GET /api/invoices/ref-fees → { games: [...] } — every game that could
+// carry a referee fee (home AND away since mig 577 — "we need all 'Soccer
+// Games' for potential ref fees") that is not on an invoice yet, played
+// first.  The league feeds are pulled first so a just-published game is
+// here.
 Response InvoiceController::handleRefFees(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     try {
@@ -376,7 +382,7 @@ Response InvoiceController::handleRefFees(const Request& request) {
                 {std::to_string((long long)WelcomeLog::kLighthouseClubId)}))
             LeagueFixtureSync::refreshLeague(r["l"].c_str());
         json games = json::array();
-        for (const auto& g : Expenses::games(WelcomeLog::kLighthouseClubId))
+        for (const auto& g : Expenses::games(WelcomeLog::kLighthouseClubId, true))
             if (g["kind"] == "referee" && g["invoiced"].is_null() && g["amount"].get<double>() > 0) games.push_back(g);
         return jsonOut(HttpStatus::OK, {{"games", games}});
     } catch (const std::exception& e) { std::cerr << "[invoices ref-fees] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
