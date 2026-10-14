@@ -36,12 +36,17 @@ const char* kHeaderFields[] = {"title", "team_name", "cup", "state_association",
 json sheetJson(Database* db, const std::string& where, const std::string& arg) {
     auto rows = db->query("SELECT r.*, r.public_slug::text AS slug, r.sheet_date::text AS sheet_date_iso, "
                           "       to_char(r.sheet_date, 'FMMM/FMDD/YYYY') AS sheet_date_us, "
-                          "       to_char(r.updated_at AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI AM') AS updated_label "
+                          "       to_char(r.updated_at AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI AM') AS updated_label, "
+                          // The cup's official upload file (mig 587), drawn
+                          // from club_files so #cup-rosters can offer it.
+                          "       (SELECT cf.original_filename FROM club_files cf WHERE cf.id = r.bulk_upload_file_id) AS bulk_upload_filename "
                           "  FROM cup_rosters r WHERE " + where, {arg});
     if (rows.empty()) return nullptr;
     const auto& r = rows[0];
     json out = {{"id", r["id"].as<long long>()}, {"public_slug", str(r, "slug")}, {"sheet_date", str(r, "sheet_date_iso")},
                 {"sheet_date_us", str(r, "sheet_date_us")}, {"updated_label", str(r, "updated_label")}, {"max", kPoolMax}, {"players", json::array()}};
+    out["bulk_upload_file_id"] = r["bulk_upload_file_id"].is_null() ? json(nullptr) : json(r["bulk_upload_file_id"].as<long long>());
+    out["bulk_upload_filename"] = str(r, "bulk_upload_filename");
     for (const char* f : kHeaderFields) out[f] = str(r, f);
     for (const auto& p : db->query(R"SQL(
         SELECT p.id AS person_id, COALESCE(p.first_name,'') AS first_name, COALESCE(p.last_name,'') AS last_name,

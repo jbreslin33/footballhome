@@ -21,7 +21,7 @@
 class CupRostersScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
-    this.board = null; this.sheet = null; this.teamPill = 'all'; this.err = ''; this.loading = false; this.blank = false;
+    this.board = null; this.sheet = null; this.teamPill = 'all'; this.cupPill = 'all'; this.err = ''; this.loading = false; this.blank = false;
   }
 
   _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('cup_roster', tier, tokens) : ''; }
@@ -101,6 +101,8 @@ class CupRostersScreen extends Screen {
     div.addEventListener('click', (e) => {
       const row = e.target.closest('[data-cr-open]'); if (row) { this.open(Number(row.dataset.crOpen)); return; }
       const pill = e.target.closest('[data-cr-team]'); if (pill) { this.teamPill = pill.dataset.crTeam; this._renderPlayers(); return; }
+      const cup = e.target.closest('[data-cr-cup]'); if (cup) { this.cupPill = cup.dataset.crCup; this._renderSheetsCard(); return; }
+      if (e.target.closest('#cr-xls')) { this.downloadBulkUpload(); return; }
       if (e.target.closest('#cr-print')) { this.print(); return; }
       if (e.target.closest('#cr-link')) { this.copyLink(); return; }
       if (e.target.closest('#cr-email')) { this.emailSheet(); return; }
@@ -170,6 +172,23 @@ class CupRostersScreen extends Screen {
     const b = this.find('#cr-link'); if (b) { const was = b.textContent; b.textContent = '✓ Copied'; setTimeout(() => { if (b.isConnected) b.textContent = was; }, 1500); }
   }
 
+  // ⬇ The cup's official upload file (mig 587) — e.g. the filled USASA
+  // bulk-upload .xls kept in club_files.  Fetched signed-in (the file is
+  // admins-visibility) and saved, the same shape as the #files download.
+  async downloadBulkUpload() {
+    const s = this.sheet; if (!s || !s.bulk_upload_file_id) return;
+    const name = s.bulk_upload_filename || 'cup-upload.xls';
+    try {
+      const res = await this.auth.fetch(`/api/files/dl/${s.bulk_upload_file_id}/${encodeURIComponent(name)}?download=1`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) { this.err = `Download failed: ${err.message}`; this._renderBody(); }
+  }
+
   _recipientsLine() {
     const rs = (this.board && this.board.recipients) || [];
     return rs.length ? this._t('email_to', 'Goes to {names}', { names: rs.map(r => `${r.name}${r.role ? ` (${r.role})` : ''}`).join(', ') }) : this._t('email_none', 'No cup roster recipients are loaded yet.');
@@ -190,7 +209,7 @@ class CupRostersScreen extends Screen {
     this.openGmailCompose(this.buildGmailComposeHref({ to: rs.map(x => x.email).join(','), subject, body }));
   }
 
-  async _refreshList() { try { this.board = await this._json('/api/cup-rosters/board'); } catch (_) {} const el = this.find('#cr-list'); if (el) el.innerHTML = this._renderList(); }
+  async _refreshList() { try { this.board = await this._json('/api/cup-rosters/board'); } catch (_) {} this._renderSheetsCard(); }
 
   _renderBody() {
     const el = this.find('#cr-body'); if (!el) return;
@@ -199,7 +218,7 @@ class CupRostersScreen extends Screen {
     const s = this.sheet;
     el.innerHTML = `${err}<div class="cr-wrap">
       <div>
-        <div class="cr-card"><h3>Sheets</h3><div class="cr-list" id="cr-list">${this._renderList()}</div></div>
+        <div class="cr-card" id="cr-sheets-card"><h3>Sheets</h3>${this._cupPillsHtml()}<div class="cr-list" id="cr-list">${this._renderList()}</div></div>
         ${s ? `<div class="cr-card"><h3>Sheet</h3>${this._renderHeaderForm(s)}</div>
                <div class="cr-card"><h3 id="cr-players-h"></h3><div class="cr-pills" id="cr-pills"></div><div class="cr-players" id="cr-players"></div></div>` : ''}
       </div>
@@ -208,6 +227,7 @@ class CupRostersScreen extends Screen {
                  <button class="btn btn-primary" id="cr-print">${this.escapeHtml(this._t('print', '🖨 Print / Save PDF'))}</button>
                  <button class="btn btn-secondary" id="cr-link">${this.escapeHtml(this._t('copy_link', '🔗 Copy link'))}</button>
                  <button class="btn btn-secondary" id="cr-email" title="${this.escapeHtml(this._recipientsLine())}">${this.escapeHtml(this._t('email_btn', '✉️ Email sheet'))}</button>
+                 ${s.bulk_upload_file_id ? `<button class="btn btn-secondary" id="cr-xls" title="${this.escapeHtml(s.bulk_upload_filename || '')}">${this.escapeHtml(this._t('bulk_upload_btn', '⬇ Cup upload (.xls)'))}</button>` : ''}
                  <span style="flex:1;"></span>
                  <button class="btn btn-secondary" id="cr-delete">${this.escapeHtml(this._t('delete', '🗑 Delete'))}</button>
                </div>
@@ -217,8 +237,31 @@ class CupRostersScreen extends Screen {
     if (s) { this._renderPlayers(); this._fitPreview(); }
   }
 
+  // One pill per cup that has a sheet, narrowing the Sheets list — only
+  // drawn once the club is actually in more than one cup (owner 2026-10-14:
+  // "it should have pills if needed if we are in multiple cups").  Cups on
+  // cup_options with no sheet yet stay off the row: the dropdown on the
+  // sheet itself is where a new cup starts.
+  _cups() {
+    return [...new Set(((this.board && this.board.rosters) || []).map(r => r.cup).filter(Boolean))];
+  }
+  _cupPillsHtml() {
+    const cups = this._cups();
+    if (cups.length < 2) { this.cupPill = 'all'; return ''; }
+    if (this.cupPill !== 'all' && !cups.includes(this.cupPill)) this.cupPill = 'all';
+    return `<div class="cr-pills">
+      <button class="cr-pill${this.cupPill === 'all' ? ' on' : ''}" data-cr-cup="all">All</button>` +
+      cups.map(c => `<button class="cr-pill${this.cupPill === c ? ' on' : ''}" data-cr-cup="${this.escapeHtml(c)}">${this.escapeHtml(c)}</button>`).join('') +
+    `</div>`;
+  }
+  _renderSheetsCard() {
+    const card = this.find('#cr-sheets-card');
+    if (card) card.innerHTML = `<h3>Sheets</h3>${this._cupPillsHtml()}<div class="cr-list" id="cr-list">${this._renderList()}</div>`;
+  }
+
   _renderList() {
-    const rs = (this.board && this.board.rosters) || [];
+    let rs = (this.board && this.board.rosters) || [];
+    if (this.cupPill !== 'all') rs = rs.filter(r => (r.cup || '') === this.cupPill);
     if (!rs.length) return `<div style="opacity:0.7; font-size:0.85rem;">${this.escapeHtml(this._t('empty_list', 'No sheets yet.'))}</div>`;
     return rs.map(r => `<div class="row${this.sheet && this.sheet.id === r.id ? ' on' : ''}" data-cr-open="${r.id}">
       <span><b>${this.escapeHtml(r.title || r.cup || r.competition || `Sheet ${r.id}`)}</b> <span style="opacity:0.6; font-size:0.8rem;">${this.escapeHtml(r.sheet_date || '')}</span></span>
