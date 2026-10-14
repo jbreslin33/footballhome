@@ -116,8 +116,10 @@ class DashboardScreen extends Screen {
     return div;
   }
 
-  // target: "screen" or "screen?key=value&…" (plain string params).
+  // target: "screen" or "screen?key=value&…" (plain string params), or an
+  // absolute path ("/profiles/") for a static public page → new tab.
   _open(target) {
+    if (target.startsWith('/')) { window.open(target, '_blank', 'noopener'); return; }
     const [screen, qs] = target.split('?');
     const params = {};
     if (qs) for (const kv of qs.split('&')) { const [k, v] = kv.split('='); params[decodeURIComponent(k)] = decodeURIComponent(v || ''); }
@@ -180,8 +182,17 @@ class DashboardScreen extends Screen {
         ${this._kitCell(d.kit || {})}
         ${this._leadsCell(d.leads || {})}
         ${this._textsCell(d.texts || {})}
+        ${this._profilesCell()}
       </div>
       <div class="db-foot">${this.escapeHtml(this._t('updated', 'Read {time}', { time }))}${this.loading ? ' · …' : ''}</div>`;
+  }
+
+  // Owner 2026-10-14: Profiles — players & people of the club, Brian
+  // Breslin the first. A static public page, not an app screen → new tab.
+  _profilesCell() {
+    return this._cell('ok', '/profiles/', this._t('profiles_title', '👥 Profiles'),
+      this._t('profiles_sub', 'Players & people of the club'),
+      `<div class="db-note">${this.escapeHtml(this._t('profiles_note', 'Brian Breslin — video · eulogy · Brian in the Papers · stats'))}</div>`);
   }
 
   _cell(tone, go, title, sub, body) {
