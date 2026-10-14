@@ -26,29 +26,7 @@ class RoleSelectionScreen extends Screen {
       </div>
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
-        <button class="btn btn-lg btn-primary" data-role="dashboard" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📊</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('dashboard', 'tile_title')) || 'Dashboard'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('dashboard', 'tile_sub')) || 'The club at a glance — RSVPs, dues, rosters, kit, leads; tap a cell to open its page'}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="teams" id="rs-teams" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">👥</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Teams</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Every player and every team on one board — assign, move, message</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="tactical" id="rs-tactical" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">♟️</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Tactical</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Game model, practice plans, days, exercises, and the tactical board</div>
-          </div>
-        </button>
+        <div style="display: flex; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Play</div>
 
         <button class="btn btn-lg btn-primary" data-role="player" style="display: flex; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">☑️</span>
@@ -65,44 +43,30 @@ class RoleSelectionScreen extends Screen {
             <div style="font-size: 0.85rem; opacity: 0.8;">Every game and practice, week by week</div>
           </div>
         </button>
-        
-        <button class="btn btn-lg btn-primary" data-role="admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">👨‍💼</span>
+
+        <button class="btn btn-lg btn-primary" data-role="files" style="display: flex; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📁</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Admin</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">System administration</div>
-          </div>
-        </button>
-        
-        <button class="btn btn-lg btn-primary" data-role="club-admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🏢</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Club Admin</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">People, RSVP & club structure</div>
+            <div style="font-weight: bold;">Files</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Files shared with you — admins upload, keep private, or publish by link</div>
           </div>
         </button>
 
-        <button class="btn btn-lg btn-primary" data-role="financial" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">💰</span>
+        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Run the week</div>
+
+        <button class="btn btn-lg btn-primary" data-role="dashboard" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📊</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Tuition</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Player dues — paid up, behind, blocked, reminders</div>
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('dashboard', 'tile_title')) || 'Dashboard'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('dashboard', 'tile_sub')) || 'The club at a glance — RSVPs, dues, rosters, kit, leads; tap a cell to open its page'}</div>
           </div>
         </button>
 
-        <button class="btn btn-lg btn-primary" data-role="finances" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📈</span>
+        <button class="btn btn-lg btn-primary" data-role="rsvps" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">✅</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Finances</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Summary · Revenue · Expenses — where the club stands and where it is heading</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="fines" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">💸</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('fines', 'tile_title')) || 'Fines'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('fines', 'tile_sub')) || "Men's fines — missed RSVPs and no-shows by month, who owes what, what is on LeagueApps"}</div>
+            <div style="font-weight: bold;">RSVP Reminders</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Who owes an answer — players, coaches, staff — remind by text or email with their events + sign-in link</div>
           </div>
         </button>
 
@@ -119,6 +83,32 @@ class RoleSelectionScreen extends Screen {
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Attendance</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">Pick a day, then the practice, pickup or game — take attendance, invite a player</div>
+          </div>
+        </button>
+
+        <button class="btn btn-lg btn-primary" data-role="reports" id="rs-reports" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📊</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Reports</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Attendance &amp; RSVP — who answers, who shows, who went quiet</div>
+          </div>
+        </button>
+
+        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">People & teams</div>
+
+        <button class="btn btn-lg btn-primary" data-role="teams" id="rs-teams" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">👥</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Teams</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Every player and every team on one board — assign, move, message</div>
+          </div>
+        </button>
+
+        <button class="btn btn-lg btn-primary" data-role="tactical" id="rs-tactical" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">♟️</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Tactical</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Game model, practice plans, days, exercises, and the tactical board</div>
           </div>
         </button>
 
@@ -145,6 +135,50 @@ class RoleSelectionScreen extends Screen {
             <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('contacts', 'tile_sub')) || 'Members, parents, coaches, leads and opponent contacts into your phone in one tap'}</div>
           </div>
         </button>
+
+        <button class="btn btn-lg btn-primary" data-role="security" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🔐</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Security</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Upload the photo of the locked gate after the last event — otherwise Football Home keeps calling until it is up</div>
+          </div>
+        </button>
+
+        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Money</div>
+
+        <button class="btn btn-lg btn-primary" data-role="financial" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">💰</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Tuition</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Player dues — paid up, behind, blocked, reminders</div>
+          </div>
+        </button>
+
+        <button class="btn btn-lg btn-primary" data-role="finances" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">📈</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Finances</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Summary · Revenue · Expenses — where the club stands and where it is heading</div>
+          </div>
+        </button>
+
+        <button class="btn btn-lg btn-primary" data-role="fines" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">💸</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('fines', 'tile_title')) || 'Fines'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('fines', 'tile_sub')) || "Men's fines — missed RSVPs and no-shows by month, who owes what, what is on LeagueApps"}</div>
+          </div>
+        </button>
+
+        <button class="btn btn-lg btn-primary" data-role="invoices" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🧾</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Invoices</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Biweekly invoices to The Lighthouse, Inc. — hours, expenses, instalments, print to PDF</div>
+          </div>
+        </button>
+
+        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Leagues & opponents</div>
 
         <button class="btn btn-lg btn-primary" data-role="casa" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">⚽</span>
@@ -178,22 +212,6 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
-        <button class="btn btn-lg btn-primary" data-role="invoices" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🧾</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Invoices</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Biweekly invoices to The Lighthouse, Inc. — hours, expenses, instalments, print to PDF</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="files" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📁</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Files</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Files shared with you — admins upload, keep private, or publish by link</div>
-          </div>
-        </button>
-
         <button class="btn btn-lg btn-primary" data-role="logos" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">🛡️</span>
           <div style="flex: 1; text-align: left;">
@@ -202,27 +220,13 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
-        <button class="btn btn-lg btn-primary" data-role="security" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🔐</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Security</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Upload the photo of the locked gate after the last event — otherwise Football Home keeps calling until it is up</div>
-          </div>
-        </button>
+        <div style="display: ${marketingButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Club site & story</div>
 
-        <button class="btn btn-lg btn-primary" data-role="rsvps" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">✅</span>
+        <button class="btn btn-lg btn-primary" data-role="profiles" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">👥</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">RSVP Reminders</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Who owes an answer — players, coaches, staff — remind by text or email with their events + sign-in link</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="reports" id="rs-reports" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📊</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Reports</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Attendance &amp; RSVP — who answers, who shows, who went quiet</div>
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('profiles', 'tile_title')) || 'Profiles'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('profiles', 'tile_sub')) || 'Players & people of the club — Brian Breslin: video, eulogy, Brian in the Papers, stats'}</div>
           </div>
         </button>
 
@@ -242,6 +246,24 @@ class RoleSelectionScreen extends Screen {
           </div>
         </a>
 
+
+        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">System</div>
+
+        <button class="btn btn-lg btn-primary" data-role="admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">👨‍💼</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Admin</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">System administration</div>
+          </div>
+        </button>
+
+        <button class="btn btn-lg btn-primary" data-role="club-admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🏢</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Club Admin</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">People, RSVP & club structure</div>
+          </div>
+        </button>
         <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
         <button class="btn btn-outline-secondary open-tactical-btn" style="margin-top: var(--space-2);">Open Tactical Board</button>
 
@@ -469,6 +491,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'texts') {
       // Not a role — the club-texts opt-in board (mig 537).
       this.navigation.goTo('texts');
+    } else if (role === 'profiles') {
+      // Not a role — the public Profiles section (static pages).
+      window.open('/profiles/', '_blank', 'noopener');
     } else if (role === 'contacts') {
       // Not a role — the vCard export page (mig 541).
       this.navigation.goTo('contacts');
