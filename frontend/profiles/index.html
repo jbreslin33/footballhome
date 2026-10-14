@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profiles</title>
+<meta name="description" content="Profiles — players and people of Lighthouse Soccer Club and Football Home.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --navy: #0F2C59;
+    --gold: #C5A880;
+    --charcoal: #2B2B2B;
+    --line: rgba(15,44,89,0.10);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #ece9e2; }
+  body {
+    font-family: 'Open Sans', Helvetica, Arial, sans-serif;
+    color: var(--charcoal); line-height: 1.55; font-size: 17px;
+    padding: 0 16px 80px;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--navy); color: #fff;
+    margin: 0 -16px 32px; padding: 10px 18px;
+    display: flex; gap: 18px; align-items: center; flex-wrap: wrap;
+    font-family: 'Montserrat', sans-serif; font-size: 0.78rem;
+  }
+  .topbar .grp-label {
+    text-transform: uppercase; font-weight: 700; color: var(--gold);
+    letter-spacing: 2px; font-size: 0.7rem;
+  }
+  .topbar a {
+    background: rgba(255,255,255,0.08); color: #fff; text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.25); padding: 6px 12px; border-radius: 4px;
+  }
+  .topbar a:hover { background: rgba(255,255,255,0.18); }
+  .intro { max-width: 880px; margin: 0 auto 32px; text-align: center; color: #555; }
+  .intro .kicker {
+    font-family: 'Montserrat', sans-serif; text-transform: uppercase;
+    letter-spacing: 2.5px; font-size: 0.75rem; color: var(--gold); font-weight: 700; margin: 0 0 6px;
+  }
+  .intro h1 {
+    font-family: 'Bebas Neue', 'Montserrat', sans-serif; color: var(--navy);
+    font-size: clamp(2.4rem, 7vw, 4.2rem); letter-spacing: 3px; margin: 0 0 8px;
+  }
+  .gold-rule { width: 80px; height: 4px; background: var(--gold); margin: 18px auto; border-radius: 2px; }
+  .profile-list { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  .profile {
+    display: flex; gap: 0; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden; text-decoration: none; color: inherit;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 22px 40px -28px rgba(15,44,89,0.45);
+  }
+  .profile:hover { box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 26px 44px -26px rgba(15,44,89,0.6); }
+  .profile .thumb {
+    flex: 0 0 180px; background: var(--navy) center/cover no-repeat; min-height: 160px;
+  }
+  .profile .body { padding: 18px 22px; }
+  .profile .kicker {
+    font-family: 'Montserrat', sans-serif; text-transform: uppercase; letter-spacing: 2.5px;
+    font-size: 0.7rem; color: var(--gold); margin: 0 0 4px; font-weight: 700;
+  }
+  .profile h2 {
+    font-family: 'Bebas Neue', 'Montserrat', sans-serif; margin: 0 0 6px;
+    color: var(--navy); font-size: 1.9rem; letter-spacing: 1px; line-height: 1.05;
+  }
+  .profile p { margin: 0 0 8px; color: #555; }
+  .profile .links { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.8rem; color: var(--navy); }
+  .coming { max-width: 880px; margin: 36px auto 0; text-align: center; color: #888; font-style: italic; }
+  @media (max-width: 560px) {
+    .profile { flex-direction: column; }
+    .profile .thumb { flex-basis: auto; height: 180px; }
+  }
+  .footer { max-width: 880px; margin: 48px auto 0; text-align: center; color: #777; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<nav class="topbar" aria-label="Site navigation">
+  <span class="grp-label">Football Home</span>
+  <a href="/exhibit/lighthouse-history.html">The Lighthouse Soccer Exhibition</a>
+</nav>
+
+<section class="intro">
+  <p class="kicker">Lighthouse Soccer Club</p>
+  <h1>PROFILES</h1>
+  <div class="gold-rule"></div>
+  <p>Players and people of the club — their stories, in video, words and newsprint.</p>
+</section>
+
+<div class="profile-list">
+
+  <a class="profile" href="/exhibit/brian-breslin.html">
+    <div class="thumb" style="background-image:url('/exhibit/video/brian-breslin-poster.jpg');"></div>
+    <div class="body">
+      <p class="kicker">In memory</p>
+      <h2>BRIAN BRESLIN</h2>
+      <p>Archbishop Ryan &amp; Bucknell — soccer, cross country, track. Physics and mathematics. In the papers 116 times, and never mentioned one of them.</p>
+      <p class="links">Video · Eulogy · Brian in the Papers · Stats →</p>
+    </div>
+  </a>
+
+</div>
+
+<p class="coming">More profiles to come.</p>
+
+<footer class="footer">
+  <p><a href="https://footballhome.org" style="color:inherit;">footballhome.org</a></p>
+</footer>
+
+</body>
+</html>

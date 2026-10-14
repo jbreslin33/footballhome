@@ -122,8 +122,9 @@
 <body>
 
 <nav class="topbar" aria-label="Exhibit navigation">
-  <span class="grp-label">Lighthouse History</span>
-  <a href="/exhibit/lighthouse-history.html">← The Lighthouse Soccer Exhibition</a>
+  <span class="grp-label">Profiles</span>
+  <a href="/profiles/">← All profiles</a>
+  <a href="/exhibit/lighthouse-history.html">The Lighthouse Soccer Exhibition</a>
   <a href="/exhibit/sources.html">Sources</a>
 </nav>
 
@@ -136,11 +137,13 @@
 </section>
 
 <nav class="pills" aria-label="Page views">
-  <button type="button" data-view="remembrance" aria-pressed="true">Remembrance</button>
+  <button type="button" data-view="video" aria-pressed="true">Video</button>
   <button type="button" data-view="eulogy" aria-pressed="false">Eulogy</button>
+  <button type="button" data-view="papers" aria-pressed="false">Brian in the Papers</button>
+  <button type="button" data-view="stats" aria-pressed="false">Stats</button>
 </nav>
 
-<div class="poster-list" id="view-remembrance">
+<div class="poster-list" id="view-video">
 
   <!-- VIDEO — /exhibit/video/brian-breslin.mp4 is kept on the host, not in git. -->
   <article class="poster" id="video">
@@ -156,7 +159,10 @@
     </div>
     <div class="pending" id="video-pending">The video is being put together. Check back soon.</div>
   </article>
+</div>
 
+<!-- STATS -->
+<div class="poster-list" id="view-stats" hidden>
   <!-- WHAT THE CLIPPINGS ADD UP TO — printed goals/assists only; papers missed games. -->
   <article class="poster" id="numbers">
     <header class="poster-band">
@@ -178,6 +184,22 @@
       <h3 class="era">Archbishop Ryan soccer · 1989–1990</h3>
       <p>Six goals made the Inquirer: one against Cardinal Dougherty, two in a 12–0 win over Bishop McDevitt, and a hat trick against Frankford in September 1990 — alongside first-team all-Catholic honors in soccer <em>and</em> cross country in the same fall.</p>
       <p class="fine">Where this comes from: every &quot;Brian Breslin&quot; match on Newspapers.com for Pennsylvania (the Inquirer, Daily News and the central-Pa. papers, 1987–1996) and every Breslin mention in the six digitized volumes of The Bucknellian, Bucknell&#x27;s student paper, on the Internet Archive. The Northeast Times isn&#x27;t digitized anywhere — the Free Library of Philadelphia keeps it on microfilm, so those box scores are still out there to add.</p>
+    </div>
+  </article>
+</div>
+
+<!-- BRIAN IN THE PAPERS — the book + every clipping -->
+<div class="poster-list" id="view-papers" hidden>
+  <article class="poster" id="book">
+    <header class="poster-band">
+      <p class="kicker">The book</p>
+      <h2>BRIAN IN THE PAPERS</h2>
+      <p class="sub">Every article we&#x27;ve found, full size, in date order — one 8&times;10 page per clipping, ready for a photo book or prints.</p>
+    </header>
+    <div class="poster-body">
+      <a class="all-clips-link" href="/exhibit/print/brian-in-the-papers.pdf">Open the book (PDF) →</a>
+      <a class="all-clips-link" href="/exhibit/print/brian-in-the-papers/">Single 8&times;10 pages for prints →</a>
+      <a class="all-clips-link" href="/exhibit/brian-breslin-archive.html">Every clipping full size →</a>
     </div>
   </article>
 
@@ -379,8 +401,10 @@
   // Remembrance / Eulogy pills. #eulogy in the URL opens the eulogy view.
   (function () {
     var views = {
-      remembrance: document.getElementById('view-remembrance'),
-      eulogy: document.getElementById('view-eulogy')
+      video: document.getElementById('view-video'),
+      eulogy: document.getElementById('view-eulogy'),
+      papers: document.getElementById('view-papers'),
+      stats: document.getElementById('view-stats')
     };
     var buttons = document.querySelectorAll('.pills button');
     function show(name) {
@@ -389,14 +413,15 @@
         b.setAttribute('aria-pressed', b.dataset.view === name ? 'true' : 'false');
       });
       if (history.replaceState) {
-        history.replaceState(null, '', name === 'eulogy' ? '#eulogy' : location.pathname);
+        history.replaceState(null, '', name === 'video' ? location.pathname : '#' + name);
       }
       window.scrollTo(0, 0);
     }
     buttons.forEach(function (b) {
       b.addEventListener('click', function () { show(b.dataset.view); });
     });
-    if (location.hash === '#eulogy') show('eulogy');
+    var h = location.hash.replace('#', '');
+    if (views[h]) show(h);
   })();
 </script>
 </body>
