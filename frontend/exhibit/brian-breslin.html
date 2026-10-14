@@ -52,6 +52,21 @@
   }
   .intro p { margin: 4px 0; font-size: 1rem; }
   .gold-rule { width: 80px; height: 4px; background: var(--gold); margin: 18px auto; border-radius: 2px; }
+  .pills { max-width: 880px; margin: 0 auto 32px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .pills button {
+    font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.8rem;
+    letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+    color: var(--navy); background: #fff; border: 1px solid var(--line);
+    border-radius: 999px; padding: 10px 22px;
+  }
+  .pills button[aria-pressed="true"] {
+    background: var(--navy); color: #fff; border-color: var(--navy);
+    box-shadow: inset 0 -3px 0 var(--gold);
+  }
+  .eulogy-note { color: #777; font-size: 0.85rem; font-style: italic; margin: 0 0 18px; }
+  .eulogy-text { font-family: Georgia, 'Times New Roman', serif; font-size: 1.15rem; line-height: 1.85; max-width: 680px; margin: 0 auto; padding: 10px 0 14px; }
+  .eulogy-text p { margin: 0 0 22px; }
+  .eulogy-text .beat { color: #999; font-size: 0.85rem; font-family: 'Montserrat', sans-serif; font-style: normal; letter-spacing: 1px; text-transform: uppercase; }
   .poster-list { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
   .poster {
     background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
@@ -120,7 +135,12 @@
   <p>A remembrance in video and in the news archives, from the Breslin family.</p>
 </section>
 
-<div class="poster-list">
+<nav class="pills" aria-label="Page views">
+  <button type="button" data-view="remembrance" aria-pressed="true">Remembrance</button>
+  <button type="button" data-view="eulogy" aria-pressed="false">Eulogy</button>
+</nav>
+
+<div class="poster-list" id="view-remembrance">
 
   <!-- VIDEO — /exhibit/video/brian-breslin.mp4 is kept on the host, not in git. -->
   <article class="poster" id="video">
@@ -268,6 +288,42 @@
 
 </div>
 
+<!-- EULOGY — James's working draft; edit freely, it is a script, not a plaque. -->
+<div class="poster-list" id="view-eulogy" hidden>
+  <article class="poster" id="eulogy">
+    <header class="poster-band">
+      <p class="kicker">From his brother James</p>
+      <h2>EULOGY FOR BRIAN</h2>
+    </header>
+    <div class="poster-body">
+      <p class="eulogy-note">Working draft — read it out loud, cut what doesn't sound like you, and trim anywhere it explains too much.</p>
+      <div class="eulogy-text">
+
+        <p>Let me start with the one thing I'm sure of today. If the roles were reversed — if Brian were standing up here giving the eulogy for me — you would not be hearing anything like what you're about to hear. You'd be getting a roast. He'd have had this whole church laughing inside of a minute, all of it at my expense, and every word of it would have been true. Because that was Brian: the most logical person I ever knew, with a gift for boiling anything down to exactly what it was and cutting out the bull.</p>
+
+        <p>I can't match that gift. But he gave it to me, a little of it, over a lot of years. So today I want to use it. I want to break this down the way Brian would.</p>
+
+        <p>Brian was a scientist. He won the physics award in high school. He went to Bucknell and majored in physics and mathematics — while starting four seasons in midfield, but that's a different speech. So let me tell you where Brian is now, in the three languages he and I grew up speaking: faith, physics, and math.</p>
+
+        <p>At Saint Anselm — the church and the school where so many of us in this room grew up — we were taught that we are infinite beings. That this life is one form we take, and that we simply change forms as we move through this world and beyond it.</p>
+
+        <p>Physics, it turns out, agrees. Physics boils that same truth down the way Brian liked things boiled down — into one famous line: <em>matter can neither be created nor destroyed.</em> It only changes form. Nothing in this universe is ever truly lost. Not energy. Not matter. Not Brian. He has changed form — that's all. The faith we were raised in and the science he mastered are saying the same thing. Religion just says it with more incense.</p>
+
+        <p class="beat">[beat — he'd allow one joke per proof]</p>
+
+        <p>Then there's mathematics. Math tells us that some numbers matter more than others. The primes — the numbers divisible only by themselves and one. You cannot break a prime down into anything simpler. It is only, and entirely, itself. That was Brian. You couldn't factor him into anything else. And here is the part Brian the math major knew best: every other number — every single one — is built out of primes. The primes are the building blocks of all the rest of us.</p>
+
+        <p>Religion tells us some numbers matter more than others too. Not the numbers in the box scores — and believe me, Brian's box scores were good; the papers kept count for years. The numbers that matter are the ones nobody ever printed: the number of times you made somebody feel better. The number of times you made somebody laugh. On those numbers, Brian retired as the all-time leader, and the record is not in danger.</p>
+
+        <p class="beat">[more analogies go here]</p>
+
+        <p>So no — I don't accept that we've lost Brian, and neither would he. Nothing is ever lost; it changes form. And every one of us in this room is a number with a factor of Brian in it. Do the math he taught us. That's how an infinite being works.</p>
+
+      </div>
+    </div>
+  </article>
+</div>
+
 <footer class="footer">
   <p>Part of the Lighthouse History exhibit · <a href="https://footballhome.org/exhibit/lighthouse-history.html" style="color:inherit;">footballhome.org/exhibit</a></p>
 </footer>
@@ -284,6 +340,29 @@
         if (isVideo) { wrap.hidden = false; pending.hidden = true; }
       })
       .catch(function () {});
+  })();
+
+  // Remembrance / Eulogy pills. #eulogy in the URL opens the eulogy view.
+  (function () {
+    var views = {
+      remembrance: document.getElementById('view-remembrance'),
+      eulogy: document.getElementById('view-eulogy')
+    };
+    var buttons = document.querySelectorAll('.pills button');
+    function show(name) {
+      Object.keys(views).forEach(function (k) { views[k].hidden = (k !== name); });
+      buttons.forEach(function (b) {
+        b.setAttribute('aria-pressed', b.dataset.view === name ? 'true' : 'false');
+      });
+      if (history.replaceState) {
+        history.replaceState(null, '', name === 'eulogy' ? '#eulogy' : location.pathname);
+      }
+      window.scrollTo(0, 0);
+    }
+    buttons.forEach(function (b) {
+      b.addEventListener('click', function () { show(b.dataset.view); });
+    });
+    if (location.hash === '#eulogy') show('eulogy');
   })();
 </script>
 </body>
