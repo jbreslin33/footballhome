@@ -54,7 +54,7 @@ const char* kBaseCtes = R"SQL(
              fh_schedule_window_end(t.club_id, t.club_section_id, now()) AS window_end
         FROM teams t
         JOIN sec ON sec.team_section_id = t.club_section_id
-       WHERE t.is_active AND t.board_sort_order IS NOT NULL
+       WHERE t.is_active AND (t.board_sort_order IS NOT NULL OR t.rsvp_board)
          AND ($3::int[] = '{}' OR t.id = ANY($3::int[]))
     ), girl AS (
       SELECT DISTINCT plm.person_id
@@ -601,7 +601,7 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
         SELECT DISTINCT p.id, COALESCE(p.first_name, '') AS fn
           FROM persons p
           JOIN team_persons tp ON tp.person_id = p.id AND tp.removed_at IS NULL
-          JOIN teams t ON t.id = tp.team_id AND t.is_active AND t.board_sort_order IS NOT NULL
+          JOIN teams t ON t.id = tp.team_id AND t.is_active AND (t.board_sort_order IS NOT NULL OR t.rsvp_board)
          WHERE p.parent_person_id = $1::int AND p.id <> $2::int
          ORDER BY fn, p.id)SQL", {std::to_string(ctx.recipientPersonId), std::to_string(personId)});
     for (const auto& r : kids) {
@@ -712,7 +712,7 @@ std::string RsvpBoard::rollCallLink(const std::string& sectionCode, std::vector<
     // section's board teams then.
     if (teamIds.empty()) {
         auto all = db->query("SELECT t.id FROM teams t JOIN club_sections cs ON cs.id = t.club_section_id "
-                             " WHERE cs.code = $1 AND t.is_active AND t.board_sort_order IS NOT NULL", {sectionCode});
+                             " WHERE cs.code = $1 AND t.is_active AND (t.board_sort_order IS NOT NULL OR t.rsvp_board)", {sectionCode});
         for (const auto& r : all) teamIds.push_back(r["id"].as<long long>());
     }
     std::sort(teamIds.begin(), teamIds.end());
@@ -740,7 +740,7 @@ std::vector<long long> RsvpBoard::boardTeamsOf(const std::vector<long long>& per
     auto rows = Database::getInstance()->query(R"SQL(
         SELECT DISTINCT tp.team_id, cs.code, t.board_sort_order
           FROM team_persons tp
-          JOIN teams t ON t.id = tp.team_id AND t.is_active AND t.board_sort_order IS NOT NULL
+          JOIN teams t ON t.id = tp.team_id AND t.is_active AND (t.board_sort_order IS NOT NULL OR t.rsvp_board)
           LEFT JOIN club_sections cs ON cs.id = t.club_section_id
          WHERE tp.person_id = ANY($1::bigint[]) AND tp.removed_at IS NULL
          ORDER BY t.board_sort_order)SQL", {pgIntArray(personIds)});
