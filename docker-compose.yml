@@ -164,6 +164,25 @@ services:
   # sidecar calls.  Keep it identical in both services' `environment:`
   # blocks; overridable via the host env so we can tighten it later
   # without a code change here.
+  # Archive drop — token-gated upload receiver for research captures
+  # (e.g. the Newspapers.com full-page recapture for Brian in the Papers,
+  # 2026-10-14).  Browser-side JS fetches a page image inside the user's
+  # own logged-in session and POSTs the bytes here via the frontend
+  # nginx route /archive-drop/.  DROP_TOKEN lives in ./env (never in git).
+  # Files land in ./archive/ on the host — outside frontend/, so nothing
+  # here is publicly served.
+  archive-drop:
+    image: python:3.11-slim
+    container_name: footballhome_archive_drop
+    restart: unless-stopped
+    env_file: ./env
+    volumes:
+      - ./scripts/archive-drop.py:/app/recv.py:ro
+      - ./archive/newspapers-fullres:/files
+    command: python3 /app/recv.py
+    networks:
+      - footballhome_network
+
   leagueapps-sync:
     image: python:3.11-slim
     container_name: footballhome_leagueapps_sync
