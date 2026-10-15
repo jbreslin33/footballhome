@@ -105,3 +105,6 @@ frontend/images/clubs/*
 # League crest cache (mig 434) — the DB holds the bytes
 frontend/images/league-logos/*
 !frontend/images/league-logos/.gitkeep
+# Brian memorial: downloaded newspaper full-page scans (research source,
+# like frontend/exhibit/video/_work) — large binaries, not for git.
+archive/

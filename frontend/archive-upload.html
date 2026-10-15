@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archive Upload</title>
+<style>
+  :root { --navy:#0F2C59; --gold:#C5A880; --ok:#1a7f4b; --bad:#b4232c; --line:rgba(15,44,89,0.14); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#ece9e2; color:#2b2b2b;
+    font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; line-height:1.5; padding:0 16px 60px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:1.5rem; color:var(--navy); margin:28px 0 4px; }
+  .sub { color:#555; margin:0 0 20px; }
+  #drop { border:2.5px dashed var(--navy); border-radius:14px; background:#fafafa;
+    padding:40px 24px; text-align:center; cursor:pointer; transition:background .15s,border-color .15s; }
+  #drop.hot { background:#eef3fb; border-color:var(--gold); }
+  #drop strong { color:var(--navy); font-size:1.15rem; }
+  #drop .hint { color:#777; font-size:.9rem; margin-top:8px; }
+  #pick { display:none; }
+  .bar { height:16px; background:#e3ddd2; border-radius:8px; overflow:hidden; margin:22px 0 6px; }
+  .bar > span { display:block; height:100%; width:0; background:var(--navy); transition:width .2s; }
+  .tally { font-size:.95rem; color:#333; }
+  .tally b { color:var(--navy); }
+  .err { color:var(--bad); }
+  ul#log { list-style:none; padding:0; margin:16px 0 0; max-height:260px; overflow:auto;
+    border:1px solid var(--line); border-radius:10px; }
+  ul#log:empty { display:none; }
+  ul#log li { padding:7px 12px; border-top:1px solid var(--line); font-size:.85rem; display:flex; justify-content:space-between; gap:10px; }
+  ul#log li:first-child { border-top:0; }
+  ul#log li .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  ul#log li .st.ok { color:var(--ok); font-weight:700; }
+  ul#log li .st.bad { color:var(--bad); font-weight:700; }
+  .notoken { background:#fff3cd; border:1px solid #e0c86b; border-radius:10px; padding:14px 16px; color:#705500; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Brian — newspaper page upload</h1>
+  <p class="sub">Drop the downloaded newspaper JPGs here and they go straight onto the Football Home server. You can drag a whole folder, or select all the files.</p>
+
+  <div id="notoken" class="notoken" style="display:none;">
+    This link is missing its one-time key, so uploads won’t be accepted. Use the full link you were given (it ends in <code>#…</code>).
+  </div>
+
+  <div id="drop">
+    <strong>Drop files or a folder here</strong>
+    <div class="hint">…or click to choose files</div>
+    <input id="pick" type="file" multiple accept="image/jpeg,image/jpg,.jpg,.jpeg">
+  </div>
+
+  <div class="bar"><span id="fill"></span></div>
+  <div class="tally" id="tally">No files yet.</div>
+  <ul id="log"></ul>
+</div>
+
+<script>
+(function () {
+  var token = (location.hash || '').replace(/^#/, '').trim();
+  var drop = document.getElementById('drop');
+  var pick = document.getElementById('pick');
+  var fill = document.getElementById('fill');
+  var tally = document.getElementById('tally');
+  var log = document.getElementById('log');
+  if (!token) { document.getElementById('notoken').style.display = 'block'; }
+
+  var queue = [], total = 0, done = 0, ok = 0, bad = 0, running = 0, MAX = 3;
+
+  function isJpg(f) { return /\.jpe?g$/i.test(f.name) || f.type === 'image/jpeg'; }
+
+  function render() {
+    fill.style.width = total ? Math.round(done / total * 100) + '%' : '0';
+    tally.innerHTML = total
+      ? '<b>' + done + '</b> of <b>' + total + '</b> done &nbsp; · &nbsp; <span style="color:var(--ok)">' + ok + ' uploaded</span>'
+        + (bad ? ' &nbsp;·&nbsp; <span class="err">' + bad + ' failed</span>' : '')
+      : 'No files yet.';
+  }
+  function logLine(name, status, cls) {
+    var li = document.createElement('li');
+    li.innerHTML = '<span class="nm">' + name.replace(/</g,'&lt;') + '</span><span class="st ' + cls + '">' + status + '</span>';
+    log.insertBefore(li, log.firstChild);
+  }
+
+  function pump() {
+    while (running < MAX && queue.length) {
+      var f = queue.shift();
+      running++;
+      upload(f);
+    }
+  }
+  function upload(f) {
+    fetch('/archive-drop/drop', {
+      method: 'POST',
+      headers: { 'X-Drop-Token': token, 'X-Drop-Name': f.name, 'Content-Type': 'application/octet-stream' },
+      body: f
+    }).then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function () { ok++; logLine(f.name, 'uploaded', 'ok'); })
+      .catch(function (e) { bad++; logLine(f.name, 'failed (' + e + ')', 'bad'); })
+      .finally(function () { done++; running--; render(); pump(); });
+  }
+
+  function add(files) {
+    var list = [].slice.call(files).filter(isJpg);
+    if (!list.length) return;
+    total += list.length;
+    queue = queue.concat(list);
+    render();
+    pump();
+  }
+
+  pick.addEventListener('change', function () { add(pick.files); pick.value = ''; });
+  drop.addEventListener('click', function () { pick.click(); });
+  ['dragenter','dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('hot'); });
+  });
+  ['dragleave','drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); if (ev==='dragleave') drop.classList.remove('hot'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    drop.classList.remove('hot');
+    var items = e.dataTransfer.items, files = e.dataTransfer.files;
+    // Folder drop: walk entries if available, else fall back to flat file list.
+    var ents = [];
+    if (items && items.length && items[0].webkitGetAsEntry) {
+      for (var i=0;i<items.length;i++){ var en=items[i].webkitGetAsEntry&&items[i].webkitGetAsEntry(); if(en) ents.push(en); }
+    }
+    if (ents.length) { ents.forEach(function (en) { walk(en); }); }
+    else { add(files); }
+  });
+  function walk(entry) {
+    if (entry.isFile) { entry.file(function (f) { add([f]); }); }
+    else if (entry.isDirectory) {
+      var rd = entry.createReader();
+      rd.readEntries(function (ents) { ents.forEach(walk); });
+    }
+  }
+})();
+</script>
+</body>
+</html>
