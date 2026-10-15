@@ -271,7 +271,7 @@ class RsvpBoardScreen extends Screen {
       const game = e.target.closest('[data-game]');
       if (game) {
         const id = Number(game.dataset.game);
-        const team = game.dataset.gameTeam === '' ? null : Number(game.dataset.gameTeam);   // '' = the All-teams total
+        const team = game.dataset.gameTeam === '' ? null : Number(game.dataset.gameTeam);   // '' = merged multi-team tile
         const on = this._tileOn(id, team);
         this.eventId = on ? null : id;
         this.teamIds = (on || team == null) ? new Set() : new Set([team]);
@@ -280,6 +280,15 @@ class RsvpBoardScreen extends Screen {
         this._renderChips();
         this._renderBody();
         return;
+      }
+      // Roster pill under a picked multi-team game: exactly that roster
+      // (tap again for everyone); tiles, counts and reminders all follow.
+      const evTeam = e.target.closest('[data-event-team]');
+      if (evTeam) {
+        const id = evTeam.dataset.eventTeam === '' ? null : Number(evTeam.dataset.eventTeam);
+        this.teamIds = (id == null || (this.teamIds.size === 1 && this.teamIds.has(id)))
+          ? new Set() : new Set([id]);
+        this._renderBody(); return;
       }
       const team = e.target.closest('[data-team]');
       if (team) {
@@ -510,7 +519,7 @@ class RsvpBoardScreen extends Screen {
     const btn = (channel, icon, n, bg, what) =>
       `<button class="rb-btn" data-bulk="${channel}" style="background:${bg};"${n ? '' : ' disabled'}
                title="${this.escapeHtml(n ? what : 'Nobody unanswered has one on file')}">${icon} ${channel === 'sms' ? 'GROUP TEXT' : 'EMAIL'} ${n}</button>`;
-    slot.innerHTML = this._whoHtml(people, events) + `
+    slot.innerHTML = this._teamScopeHtml() + this._whoHtml(people, events) + `
       <div class="rb-bulk">
         <span>${owingText} ${owing.length === 1 ? 'has' : 'have'} not answered
               <b>${this.escapeHtml(events.get(this.eventId) || '')}</b> — remind them all at once:</span>
@@ -649,8 +658,9 @@ class RsvpBoardScreen extends Screen {
   // release window rides along on the whole-week view as "not released".
   // The team pills narrow the tiles too (owner 2026-10-06: "when i click u8
   // travel and games only why do u10 games show?"): with teams picked, only
-  // their events; the All-teams total then only appears when every team
-  // sharing the event is picked.
+  // their events; a game shared by several teams folds into one tile with
+  // the union counts (_snapshotTiles) unless the pills narrow it to a
+  // single one of its rosters.
   _snapshotEvents() {
     const day = this._dayIso();
     return ((this.data && this.data.events) || []).filter(ev =>
@@ -676,10 +686,30 @@ class RsvpBoardScreen extends Screen {
   }
   _teamKey()   { return [...this.teamIds].sort((a, b) => a - b).join('+'); }
   // A tile is lit when its event is picked and the team pills match it:
-  // the All-teams total ↔ no team picked, a team tile ↔ just that team.
+  // a merged multi-team tile ↔ no team picked, a team tile ↔ just that team.
   _tileOn(fhEventId, teamId) {
     if (this.eventId !== fhEventId) return false;
     return teamId == null ? this.teamIds.size === 0 : (this.teamIds.size === 1 && this.teamIds.has(teamId));
+  }
+
+  // Roster pills for a picked game shared by several teams (one tile per
+  // game since 2026-10-15): Everyone = each person once across the rosters,
+  // a team pill = just that roster — and the counts, cards and reminder
+  // buttons below all follow the pick (teamIds drives them already).
+  _teamScopeHtml() {
+    const rows = ((this.data && this.data.events) || []).filter(ev => ev.fh_event_id === this.eventId);
+    if (rows.length < 2) return '';
+    const pill = (teamId, label, unanswered, on) =>
+      `<button class="rb-chip${on ? ' on' : ''}" data-event-team="${teamId == null ? '' : teamId}"
+               title="${teamId == null ? 'Everyone on the game, each person once' : 'Just this roster’s players'}">
+         ${this.escapeHtml(label)} <span class="${unanswered ? 'rb-bad' : 'rb-good'}">${unanswered}</span></button>`;
+    return `
+      <div class="rb-bulk" style="background:rgba(148,163,184,0.08);">
+        <span>Rosters on this game — unanswered each:</span>
+        ${pill(null, 'Everyone', rows[0].all_unanswered, this.teamIds.size === 0)}
+        ${rows.map(r => pill(r.team_id, r.team_label, r.unanswered,
+                             this.teamIds.size === 1 && this.teamIds.has(r.team_id))).join('')}
+      </div>`;
   }
 
   // Who has answered the picked event (owner 2026-09-23: "show who is
@@ -771,11 +801,15 @@ class RsvpBoardScreen extends Screen {
       </div>`;
   }
 
-  // Per-team tiles, plus one "All teams" total ahead of any event shared
-  // by several teams (owner 2026-09-22: "apsl guys being also on liga 1 …
-  // show the total going/not going/unanswered to clear that up").  The
-  // total counts each person once; its tile has no team, so tapping it
-  // narrows the cards to everyone unanswered for the event.
+  // One tile per game.  An event shared by several teams (the APSL game
+  // tagged to 1893 + Reserves) used to show a tile per team plus an
+  // "All teams" total; owner 2026-10-15: "show one instance of game …
+  // section off the players based on rosters but still within the game" —
+  // so the shared game folds into a single tile with the union counts
+  // (each person once), and the per-roster split lives in pills under the
+  // answered strip once the tile is picked (_teamScopeHtml).  With the
+  // team pills narrowed to one of its rosters, that per-team tile (and
+  // its per-roster counts) shows instead.
   _snapshotTiles(events) {
     const byEvent = new Map();
     for (const g of events) {
@@ -785,14 +819,13 @@ class RsvpBoardScreen extends Screen {
     const tiles = [];
     for (const g of events) {
       const group = byEvent.get(g.fh_event_id);
-      if (group.length > 1 && group[0] === g) {
-        tiles.push({ ...g, team_id: null,
-          team_label: `All teams · ${group.map(x => x.team_label).join(' + ')}`,
-          expected: g.all_expected, yes: g.all_yes, yes_ineligible: g.all_yes_ineligible, no: g.all_no, unanswered: g.all_unanswered,
-          coaches: g.all_coaches, coaches_yes: g.all_coaches_yes, coaches_no: g.all_coaches_no, coaches_unanswered: g.all_coaches_unanswered,
-          staff: g.all_staff, staff_yes: g.all_staff_yes, staff_no: g.all_staff_no, staff_unanswered: g.all_staff_unanswered });
-      }
-      tiles.push(g);
+      if (group.length === 1) { tiles.push(g); continue; }
+      if (group[0] !== g) continue;   // the merged tile is already out
+      tiles.push({ ...g, team_id: null,
+        team_label: group.map(x => x.team_label).join(' + '),
+        expected: g.all_expected, yes: g.all_yes, yes_ineligible: g.all_yes_ineligible, no: g.all_no, unanswered: g.all_unanswered,
+        coaches: g.all_coaches, coaches_yes: g.all_coaches_yes, coaches_no: g.all_coaches_no, coaches_unanswered: g.all_coaches_unanswered,
+        staff: g.all_staff, staff_yes: g.all_staff_yes, staff_no: g.all_staff_no, staff_unanswered: g.all_staff_unanswered });
     }
     return tiles;
   }

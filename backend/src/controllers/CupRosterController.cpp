@@ -30,7 +30,10 @@ long long idFromPath(const std::string& path) {
 }
 const char* kHeaderFields[] = {"title", "team_name", "cup", "state_association", "competition", "state",
                                "shirt_primary", "shorts_primary", "socks_primary", "shirt_alt", "shorts_alt", "socks_alt",
-                               "coach_name", "coach_email", "coach_phone", "verification_name"};
+                               "coach_name", "coach_email", "coach_phone", "verification_name",
+                               // Which form the sheet renders as (mig 589) — an FK into
+                               // cup_roster_form_versions, so a bad value is refused by the DB.
+                               "form_version"};
 
 // The whole sheet: header + players in order, names and DOB from persons.
 json sheetJson(Database* db, const std::string& where, const std::string& arg) {
@@ -48,14 +51,34 @@ json sheetJson(Database* db, const std::string& where, const std::string& arg) {
     out["bulk_upload_file_id"] = r["bulk_upload_file_id"].is_null() ? json(nullptr) : json(r["bulk_upload_file_id"].as<long long>());
     out["bulk_upload_filename"] = str(r, "bulk_upload_filename");
     for (const char* f : kHeaderFields) out[f] = str(r, f);
+    // The USASA CUP PLAYER POOL columns (mig 589): primary email/phone,
+    // primary address, zero-padded DOB.  Phone is stored E.164; the upload
+    // wants xxx-xxx-xxxx.  Gender is 'm': the pool is the men's board.
     for (const auto& p : db->query(R"SQL(
         SELECT p.id AS person_id, COALESCE(p.first_name,'') AS first_name, COALESCE(p.last_name,'') AS last_name,
-               to_char(p.birth_date, 'FMMM/FMDD/YYYY') AS dob, p.birth_date::text AS dob_iso, cp.sort_order
+               to_char(p.birth_date, 'FMMM/FMDD/YYYY') AS dob, p.birth_date::text AS dob_iso, cp.sort_order,
+               to_char(p.birth_date, 'MM/DD/YYYY') AS dob_us,
+               COALESCE((SELECT e.email FROM person_emails e WHERE e.person_id = p.id
+                          ORDER BY e.is_primary DESC NULLS LAST, e.id LIMIT 1), '') AS email,
+               COALESCE((SELECT CASE WHEN length(d.n) = 11 AND left(d.n,1) = '1'
+                                     THEN substr(d.n,2,3) || '-' || substr(d.n,5,3) || '-' || substr(d.n,8)
+                                     WHEN length(d.n) = 10
+                                     THEN substr(d.n,1,3) || '-' || substr(d.n,4,3) || '-' || substr(d.n,7)
+                                     ELSE d.n END
+                           FROM (SELECT regexp_replace(x.phone_number, '\D', '', 'g') AS n
+                                   FROM person_phones x WHERE x.person_id = p.id
+                                  ORDER BY x.is_primary DESC NULLS LAST, x.id LIMIT 1) d), '') AS phone,
+               COALESCE(a.address1,'') AS address1, COALESCE(a.address2,'') AS address2,
+               COALESCE(a.city,'') AS city, COALESCE(a.state,'') AS state, COALESCE(a.zip,'') AS zip
           FROM cup_roster_players cp JOIN persons p ON p.id = cp.person_id
+          LEFT JOIN person_addresses a ON a.person_id = p.id AND a.is_primary
          WHERE cp.cup_roster_id = $1::int
          ORDER BY cp.sort_order, p.last_name, p.first_name)SQL", {std::to_string(r["id"].as<long long>())})) {
         out["players"].push_back({{"person_id", p["person_id"].as<long long>()}, {"first_name", str(p, "first_name")}, {"last_name", str(p, "last_name")},
-                                  {"dob", str(p, "dob")}, {"dob_iso", str(p, "dob_iso")}});
+                                  {"dob", str(p, "dob")}, {"dob_iso", str(p, "dob_iso")}, {"dob_us", str(p, "dob_us")},
+                                  {"email", str(p, "email")}, {"phone", str(p, "phone")}, {"gender", "m"},
+                                  {"address1", str(p, "address1")}, {"address2", str(p, "address2")},
+                                  {"city", str(p, "city")}, {"state", str(p, "state")}, {"zip", str(p, "zip")}});
     }
     return out;
 }
@@ -100,6 +123,10 @@ Response CupRosterController::handleBoard(const Request& request) {
         json cups = json::array();
         for (const auto& c : db->query("SELECT name FROM cup_options WHERE is_active ORDER BY sort_order, id"))
             cups.push_back(str(c, "name"));
+        // The form-version pills (cup_roster_form_versions, mig 589).
+        json versions = json::array();
+        for (const auto& v : db->query("SELECT code, label FROM cup_roster_form_versions WHERE is_active ORDER BY sort_order, code"))
+            versions.push_back({{"code", str(v, "code")}, {"label", str(v, "label")}});
         json teams = json::array();
         for (const auto& t : db->query(R"SQL(
             SELECT t.id, COALESCE(t.label, t.name) AS label FROM teams t JOIN club_sections cs ON cs.id = t.club_section_id
@@ -133,7 +160,7 @@ Response CupRosterController::handleBoard(const Request& request) {
         { auto me = db->query("SELECT COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'') AS n FROM users u JOIN persons p ON p.id = u.person_id WHERE u.id = $1::int",
                               {std::to_string(bearerUserId(request))});
           if (!me.empty()) sender = str(me[0], "n"); }
-        return jsonOut(HttpStatus::OK, {{"rosters", rosters}, {"pool", pool}, {"teams", teams}, {"cups", cups}, {"max", kPoolMax}, {"recipients", recipients}, {"sender", sender}});
+        return jsonOut(HttpStatus::OK, {{"rosters", rosters}, {"pool", pool}, {"teams", teams}, {"cups", cups}, {"form_versions", versions}, {"max", kPoolMax}, {"recipients", recipients}, {"sender", sender}});
     } catch (const std::exception& e) { std::cerr << "[cup-rosters board] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
@@ -151,10 +178,10 @@ Response CupRosterController::handleNew(const Request& request) {
             made = db->query(R"SQL(
                 INSERT INTO cup_rosters (title, team_name, cup, state_association, competition, state,
                                          shirt_primary, shorts_primary, socks_primary, shirt_alt, shorts_alt, socks_alt,
-                                         coach_name, coach_email, coach_phone, verification_name, sheet_date, created_by_user_id)
+                                         coach_name, coach_email, coach_phone, verification_name, form_version, sheet_date, created_by_user_id)
                 SELECT '', team_name, cup, state_association, competition, state,
                        shirt_primary, shorts_primary, socks_primary, shirt_alt, shorts_alt, socks_alt,
-                       coach_name, coach_email, coach_phone, verification_name, CURRENT_DATE, $2::int
+                       coach_name, coach_email, coach_phone, verification_name, form_version, CURRENT_DATE, $2::int
                   FROM cup_rosters WHERE id = $1::int RETURNING id)SQL", {std::to_string(last[0]["id"].as<long long>()), uid});
         } else {
             made = db->query(R"SQL(

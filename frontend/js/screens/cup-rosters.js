@@ -1,8 +1,16 @@
-// cup-rosters.js — #cup-rosters: the USASA Region I Player Pool sheet (the
-// EPSA / USASA cup roster form) filled from the men's rosters (mig 556).
-// Owner 2026-10-09: "for cup rosters we fill out special form … reproduce
-// this like we did for invoices. have a blank one and then allow me to
-// check off players to fill it from apsl and liga 1 and reserves".
+// cup-rosters.js — #cup-rosters: the cup roster forms, filled from the men's
+// rosters (mig 556).  Owner 2026-10-09: "for cup rosters we fill out special
+// form … reproduce this like we did for invoices. have a blank one and then
+// allow me to check off players to fill it from apsl and liga 1 and reserves".
+//
+// A sheet renders as one of the form versions (cup_roster_form_versions,
+// mig 589), picked by pills above the preview:
+//   USASA CUP PLAYER POOL       the cup's bulk-upload spreadsheet — Email /
+//                               First / Last / Gender / Cell Phone / DOB /
+//                               Address 1 / Address 2 / City / State / Zip,
+//                               landscape; 📋 Copy rows pastes straight into
+//                               the cup's own sheet, ⬇ CSV downloads it.
+//   USASA Region 1 Player Pool  the printed EPSA/USASA pool form (portrait).
 //
 //   Sheets      one row per saved sheet (GET /api/cup-rosters/board);
 //               + New sheet copies the last sheet's header; 🖨 Blank form
@@ -84,6 +92,19 @@ class CupRostersScreen extends Screen {
         .cr-sheet .count .note { font-weight:800; font-size:9pt; line-height:14pt; }
         .cr-sheet .ver { margin-top:12pt; width:400pt; }
         .cr-sheet .name { margin-top:4pt; width:400pt; }
+        /* ── USASA CUP PLAYER POOL (mig 589): the bulk-upload spreadsheet,
+           letter landscape, drawn as the sheet shows it — light gridlines,
+           bold header row, the bold example row on the blank form. */
+        .cr-ss { position:relative; width:792pt; height:612pt; background:#fff; color:#000; font-family:Calibri, "Trebuchet MS", Arial, sans-serif; font-size:10.5pt; box-shadow:0 4px 20px rgba(0,0,0,0.35); box-sizing:border-box; padding:16pt; }
+        .cr-ss table { border-collapse:collapse; width:100%; table-layout:fixed; }
+        /* As a spreadsheet draws text: clipped at the cell edge, unless the
+           next cell is empty (.sp) — then it spills across the gridline. */
+        .cr-ss td, .cr-ss th { border:1px solid #c6c6c6; padding:0 3px; height:12pt; font-weight:400; text-align:left; vertical-align:middle; white-space:nowrap; overflow:hidden; font-size:10.5pt; }
+        .cr-ss td.sp { overflow:visible; }
+        .cr-ss tr.hdr td, .cr-ss td.b { font-weight:700; }
+        /* The sheet's own chrome — column letters and row numbers — screen only. */
+        .cr-ss .chrome { background:#f8f9fa; color:#5f6368; text-align:center; font-size:7.5pt; font-weight:400; border-color:#c0c0c0; overflow:hidden; }
+        @media print { .cr-ss .chrome { display:none !important; } }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
         <button class="btn btn-secondary" id="cr-back">← Back</button>
@@ -102,6 +123,9 @@ class CupRostersScreen extends Screen {
       const row = e.target.closest('[data-cr-open]'); if (row) { this.open(Number(row.dataset.crOpen)); return; }
       const pill = e.target.closest('[data-cr-team]'); if (pill) { this.teamPill = pill.dataset.crTeam; this._renderPlayers(); return; }
       const cup = e.target.closest('[data-cr-cup]'); if (cup) { this.cupPill = cup.dataset.crCup; this._renderSheetsCard(); return; }
+      const ver = e.target.closest('[data-cr-ver]'); if (ver) { this.setVersion(ver.dataset.crVer); return; }
+      if (e.target.closest('#cr-copyrows')) { this.copyRows(); return; }
+      if (e.target.closest('#cr-csv')) { this.downloadCsv(); return; }
       if (e.target.closest('#cr-xls')) { this.downloadBulkUpload(); return; }
       if (e.target.closest('#cr-print')) { this.print(); return; }
       if (e.target.closest('#cr-link')) { this.copyLink(); return; }
@@ -119,7 +143,7 @@ class CupRostersScreen extends Screen {
     if (window.MessageCopy && typeof MessageCopy.load === 'function') { try { await MessageCopy.load(this.auth); } catch (_) {} }
     const t = this.find('#cr-title'), s = this.find('#cr-sub'), n = this.find('#cr-new'), b = this.find('#cr-blank');
     if (t) t.textContent = this._t('title', '🏆 Cup Rosters');
-    if (s) s.textContent = this._t('subtitle', "The USASA Region I Player Pool form, filled from the men's rosters.");
+    if (s) s.textContent = this._t('subtitle', "The cup roster forms, filled from the men's rosters.");
     if (n) n.textContent = this._t('new', '+ New sheet');
     if (b) b.textContent = this._t('blank', '🖨 Blank form');
     await this.load();
@@ -170,6 +194,43 @@ class CupRostersScreen extends Screen {
     const url = this._publicUrl(); if (!url) return;
     try { await navigator.clipboard.writeText(url); } catch (_) { window.prompt('Copy this link', url); }
     const b = this.find('#cr-link'); if (b) { const was = b.textContent; b.textContent = '✓ Copied'; setTimeout(() => { if (b.isConnected) b.textContent = was; }, 1500); }
+  }
+
+  // The form-version pills (mig 589) — the sheet remembers which form it is.
+  async setVersion(code) {
+    if (!this.sheet || this.sheet.form_version === code) return;
+    try { this.sheet = await this._post(`/api/cup-rosters/${this.sheet.id}/update`, { form_version: code }); this.err = ''; }
+    catch (e) { this.err = e.message; }
+    this._renderBody();
+  }
+
+  // The USASA CUP PLAYER POOL columns, one array per ticked player — the
+  // exact 11 columns the cup's bulk-upload sheet asks for.
+  static get UPLOAD_COLS() { return ['Email', 'First Name', 'Last Name', 'Gender', 'Cell Phone', 'DOB', 'Address 1', 'Address 2', 'City', 'State', 'Zip Code']; }
+  _uploadRows() {
+    return ((this.sheet && this.sheet.players) || []).map(p =>
+      [p.email, p.first_name, p.last_name, p.gender || 'm', p.phone, p.dob_us || p.dob, p.address1, p.address2, p.city, p.state, p.zip]
+        .map(v => (v == null ? '' : String(v))));
+  }
+  // 📋 Copy rows — tab-separated, no header, ready to paste into the cup's
+  // own Google Sheet at row 2 (the header row is already there).
+  async copyRows() {
+    const tsv = this._uploadRows().map(r => r.join('\t')).join('\n');
+    if (!tsv) return;
+    try { await navigator.clipboard.writeText(tsv); } catch (_) { window.prompt('Copy these rows', tsv); }
+    const b = this.find('#cr-copyrows');
+    if (b) { const was = b.textContent; b.textContent = this._t('copied_rows', '✓ Copied — paste into the cup sheet'); setTimeout(() => { if (b.isConnected) b.textContent = was; }, 2500); }
+  }
+  // ⬇ CSV — the same 11 columns with the header row, named for the cup.
+  downloadCsv() {
+    const q = (v) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+    const rows = [CupRostersScreen.UPLOAD_COLS].concat(this._uploadRows());
+    const csv = rows.map(r => r.map(q).join(',')).join('\r\n');
+    const name = `${(this.sheet && this.sheet.team_name) || 'Team'} - USASA CUP PLAYER POOL.csv`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
   // ⬇ The cup's official upload file (mig 587) — e.g. the filled USASA
@@ -223,8 +284,10 @@ class CupRostersScreen extends Screen {
                <div class="cr-card"><h3 id="cr-players-h"></h3><div class="cr-pills" id="cr-pills"></div><div class="cr-players" id="cr-players"></div></div>` : ''}
       </div>
       <div>
-        ${s ? `<div class="cr-btns">
+        ${s ? `${this._versionPillsHtml(s)}<div class="cr-btns">
                  <button class="btn btn-primary" id="cr-print">${this.escapeHtml(this._t('print', '🖨 Print / Save PDF'))}</button>
+                 ${this._isUpload(s) ? `<button class="btn btn-primary" id="cr-copyrows" title="${this.escapeHtml(this._t('copy_rows_tip', 'Tab-separated player rows — paste into the cup sheet at row 2.'))}">${this.escapeHtml(this._t('copy_rows', '📋 Copy rows'))}</button>
+                 <button class="btn btn-secondary" id="cr-csv">${this.escapeHtml(this._t('csv_btn', '⬇ CSV'))}</button>` : ''}
                  <button class="btn btn-secondary" id="cr-link">${this.escapeHtml(this._t('copy_link', '🔗 Copy link'))}</button>
                  <button class="btn btn-secondary" id="cr-email" title="${this.escapeHtml(this._recipientsLine())}">${this.escapeHtml(this._t('email_btn', '✉️ Email sheet'))}</button>
                  ${s.bulk_upload_file_id ? `<button class="btn btn-secondary" id="cr-xls" title="${this.escapeHtml(s.bulk_upload_filename || '')}">${this.escapeHtml(this._t('bulk_upload_btn', '⬇ Cup upload (.xls)'))}</button>` : ''}
@@ -254,6 +317,16 @@ class CupRostersScreen extends Screen {
       cups.map(c => `<button class="cr-pill${this.cupPill === c ? ' on' : ''}" data-cr-cup="${this.escapeHtml(c)}">${this.escapeHtml(c)}</button>`).join('') +
     `</div>`;
   }
+  // Which form a sheet renders as (mig 589) — pills above the preview, one
+  // per cup_roster_form_versions row; labels come from the DB.
+  _isUpload(s) { return ((s && s.form_version) || 'cup_player_pool') !== 'region1_pool'; }
+  _versionPillsHtml(s) {
+    const vs = (this.board && this.board.form_versions) || [];
+    if (!s || vs.length < 2) return '';
+    return `<div class="cr-pills">` + vs.map(v =>
+      `<button class="cr-pill${(s.form_version || 'cup_player_pool') === v.code ? ' on' : ''}" data-cr-ver="${this.escapeHtml(v.code)}">${this.escapeHtml(v.label)}</button>`).join('') + `</div>`;
+  }
+
   _renderSheetsCard() {
     const card = this.find('#cr-sheets-card');
     if (card) card.innerHTML = `<h3>Sheets</h3>${this._cupPillsHtml()}<div class="cr-list" id="cr-list">${this._renderList()}</div>`;
@@ -311,10 +384,58 @@ class CupRostersScreen extends Screen {
 
   _renderSheetOnly() { const el = this.find('#cr-sheet'); if (el && this.sheet) el.innerHTML = this._renderSheet(this.sheet); }
 
-  // The form, drawn in HTML: title bar, four header blocks, 30 numbered rows
-  // with the USASA Region I badge beside them, the player count, the
-  // verification and name lines.  Empty `s` fields give the blank form.
+  // Draw the sheet as its form version (mig 589).  A null `s` (the blank
+  // form) follows the open sheet's version, else the default.
   _renderSheet(s) {
+    const probe = s || this.sheet;
+    return this._isUpload(probe) ? this._renderSheetUpload(s) : this._renderSheetRegion1(s);
+  }
+
+  // USASA CUP PLAYER POOL — the cup's bulk-upload spreadsheet, exactly as
+  // the shared sheet has it: 11 columns with the template's own widths, the
+  // bold header row, and (on the blank form) its bold example row.  Ticked
+  // players fill the rows from their person record: primary email and phone,
+  // DOB, and the primary person_addresses row.
+  _renderSheetUpload(s) {
+    const esc = (t) => this.escapeHtml(t == null ? '' : t);
+    // Column widths straight from the template (Excel character units).
+    const widths = [20.9, 10.2, 5.9, 4.9, 11.7, 9.0, 11.7, 6.1, 8.5, 5.4, 5.6];
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
+    const cols = `<colgroup><col style="width:18pt">${widths.map(w => `<col style="width:${w}%">`).join('')}</colgroup>`;
+    const players = (s && s.players) || [];
+    const rows = [];
+    let n = 1;
+    const cells = (vals, bold) => vals.map((v, i) => {
+      const cls = [];
+      if (bold && bold(i)) cls.push('b');
+      if (v && !(vals[i + 1] || '')) cls.push('sp');     // spill into an empty neighbour
+      return `<td${cls.length ? ` class="${cls.join(' ')}"` : ''}>${esc(v)}</td>`;
+    }).join('');
+    const row = (tds, cls = '') => { rows.push(`<tr${cls ? ` class="${cls}"` : ''}><td class="chrome">${n++}</td>${tds}</tr>`); };
+    row(cells(CupRostersScreen.UPLOAD_COLS), 'hdr');
+    if (!players.length) {
+      // The template's example row: bold through the middle, plain at the ends.
+      const ex = ['example@example.com', 'Example', 'Example', 'm or f', 'xxx-xxx-xxxx', 'mm/dd/YYYY', '111 Example Street', 'APT 2', 'Example', 'NY', '11358'];
+      row(cells(ex, (i) => i > 0 && i < 10));
+    }
+    for (const p of players)
+      row(cells([p.email, p.first_name, p.last_name, p.gender || 'm', p.phone, p.dob_us || p.dob, p.address1, p.address2, p.city, p.state, p.zip]
+        .map(v => (v == null ? '' : String(v)))));
+    const total = Math.max(players.length + 7, 30);
+    while (n <= total + 1) row('<td></td>'.repeat(11));
+    return `<div class="cr-ss">
+      <table>${cols}
+        <tr><td class="chrome" style="height:11pt;"></td>${letters.map(l => `<td class="chrome">${l}</td>`).join('')}</tr>
+        ${rows.join('')}
+      </table>
+    </div>`;
+  }
+
+  // USASA Region 1 Player Pool — the printed EPSA/USASA form: title bar,
+  // four header blocks, 30 numbered rows with the USASA Region I badge
+  // beside them, the player count, the verification and name lines.  Empty
+  // `s` fields give the blank form.
+  _renderSheetRegion1(s) {
     const esc = (t) => this.escapeHtml(t == null ? '' : t);
     const max = (s && s.max) || CupRostersScreen.MAX;
     const players = (s && s.players) || [];
@@ -367,24 +488,28 @@ class CupRostersScreen extends Screen {
   _fitPreview() {
     const wrap = this.find('.cr-preview-wrap'), inner = wrap && wrap.querySelector('.cr-scale');
     if (!wrap || !inner) return;
-    const scale = Math.min(1, (wrap.clientWidth || 816) / 816);
+    const landscape = this._isUpload(this.sheet);           // the upload sheet is letter landscape
+    const w = landscape ? 1056 : 816, h = landscape ? 816 : 1056;
+    const scale = Math.min(1, (wrap.clientWidth || w) / w);
     inner.style.transform = `scale(${scale})`;
-    wrap.style.height = `${Math.ceil(1056 * scale) + 16}px`;
+    wrap.style.height = `${Math.ceil(h * scale) + 16}px`;
   }
 
-  printBlank() { this._printHtml(this._renderSheet(null), 'USASA-Player-Pool-blank'); }
+  printBlank() { this._printHtml(this._renderSheet(null), this._isUpload(this.sheet) ? 'USASA-Cup-Player-Pool-blank' : 'USASA-Player-Pool-blank'); }
   print() { if (this.sheet) this._printHtml(this._renderSheet(this.sheet), `Player-Pool-${(this.sheet.title || this.sheet.cup || 'sheet').replace(/[^A-Za-z0-9]+/g, '-')}`); }
 
   // Same print path as #invoices: the sheet alone on a zero-margin letter
-  // page, so Chrome adds no header or footer.
+  // page (landscape for the upload spreadsheet), so Chrome adds no header
+  // or footer.
   _printHtml(html, title) {
     const was = document.title;
     const root = document.createElement('div'); root.className = 'cr-print-root'; root.innerHTML = html;
-    const pageStyle = document.createElement('style'); pageStyle.textContent = '@page { size: letter; margin: 0; }';
+    const pageStyle = document.createElement('style');
+    pageStyle.textContent = `@page { size: letter${this._isUpload(this.sheet) ? ' landscape' : ''}; margin: 0; }`;
     document.head.appendChild(pageStyle);
     const style = document.createElement('style');
     style.textContent = `@media print { html, body { margin:0 !important; padding:0 !important; } body.cr-printing > :not(.cr-print-root) { display:none !important; } body.cr-printing { background:#fff !important; }
-      .cr-print-root .cr-sheet { box-shadow:none; } .cr-print-root th, .cr-print-root td, .cr-print-root .cr-bar { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+      .cr-print-root .cr-sheet, .cr-print-root .cr-ss { box-shadow:none; } .cr-print-root th, .cr-print-root td, .cr-print-root .cr-bar { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
       @media screen { .cr-print-root { display:none; } }`;
     root.appendChild(style);
     const sheetCss = this.element && this.element.querySelector('style');
