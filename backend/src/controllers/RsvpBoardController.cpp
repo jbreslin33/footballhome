@@ -660,7 +660,9 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
     try {
         auto ctx = model_->squadNoticeContext(matchId);
         if (!ctx.found) return jsonError(HttpStatus::NOT_FOUND, "That game is not on the calendar.");
-        if (ctx.recipients.empty())
+        // An empty squad only blocks the GROUP notice — a personal game
+        // link reaches any player of the game, role or not (mig 593).
+        if (personId <= 0 && ctx.recipients.empty())
             return jsonError(HttpStatus::CONFLICT, "Nobody is in the squad yet — set Starting, Bench or Alternates first.");
 
         std::string senderName;
@@ -675,22 +677,30 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
         if (personId > 0) {
             auto it = std::find_if(ctx.recipients.begin(), ctx.recipients.end(),
                 [&](const RsvpBoard::SquadRecipient& r) { return r.personId == personId; });
-            if (it == ctx.recipients.end())
-                return jsonError(HttpStatus::CONFLICT, "That player is not in the squad for this game.");
+            // No squad role is no longer a refusal: any player of the game
+            // — rostered or an invited call-up — gets the pool message, the
+            // same personal link with no role named (mig 593, owner
+            // 2026-10-16: "ALL PLayers need email and text link
+            // personalized to invite to game").
+            RsvpBoard::SquadRecipient pool;
+            const RsvpBoard::SquadRecipient* who = it != ctx.recipients.end() ? &*it
+                : (model_->poolRecipient(matchId, personId, &pool) ? &pool : nullptr);
+            if (!who)
+                return jsonError(HttpStatus::CONFLICT, "That player is not on this game.");
             // Contact comes from the DB, never the request: the message
             // carries the recipient's sign-in credential.
-            const std::string contact = channel == "sms" ? it->phone : it->email;
+            const std::string contact = channel == "sms" ? who->phone : who->email;
             if (contact.empty())
                 return jsonError(HttpStatus::CONFLICT, channel == "sms" ? "No mobile number on file." : "No email on file.");
-            const bool parent = it->recipientPersonId != it->personId;
-            const auto minted = MagicLinkService::mint(it->recipientPersonId, channel, contact, scope.userId, 0, matchId);
-            const auto msg = copy.render("squad_notice", it->zone + (parent ? "_parent" : "_adult"), {
-                {"first", it->recipientFirstName}, {"child", it->playerFirstName},
+            const bool parent = who->recipientPersonId != who->personId;
+            const auto minted = MagicLinkService::mint(who->recipientPersonId, channel, contact, scope.userId, 0, matchId);
+            const auto msg = copy.render("squad_notice", who->zone + (parent ? "_parent" : "_adult"), {
+                {"first", who->recipientFirstName}, {"child", who->playerFirstName},
                 {"event", ctx.line}, {"where", ctx.where}, {"arrival", ctx.arrival},
                 {"link", minted.url}, {"sender", senderName}});
             if (!msg.ok())
-                return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 384)");
-            model_->logSquadNotice(matchId, *it, channel, contact, scope.userId);
+                return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 384/593)");
+            model_->logSquadNotice(matchId, *who, channel, contact, scope.userId);
             json out = {{"expires_at", minted.expiresIso}, {"status", model_->squadNoticeStatus(matchId)}};
             copy.addComposeHrefs(out, channel, contact, msg.subject, msg.body, msg.body);
             return jsonOut(HttpStatus::CREATED, out);

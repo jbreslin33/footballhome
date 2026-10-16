@@ -164,6 +164,14 @@ public:
     };
     SquadNoticeContext squadNoticeContext(long long matchId);
 
+    // A player of this game with no squad role yet — anyone rostered on
+    // its teams or invited to it (fh_event_invites).  Fills *out with
+    // zone 'pool' so the controller picks the pool_* copy (mig 593: the
+    // personal game link that names no role).  Owner 2026-10-16: "call
+    // ups and ALL PLayers need email and text link personalized to
+    // invite to game".
+    bool poolRecipient(long long matchId, long long personId, SquadRecipient* out);
+
     void logSquadNotice(long long matchId, const SquadRecipient& r, const std::string& channel,
                         const std::string& contact, long long sentByUserId);
 

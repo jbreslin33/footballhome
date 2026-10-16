@@ -2851,7 +2851,20 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
         for (const auto& row : db->query(
                 "SELECT i.person_id, p.first_name, p.last_name, ft.name AS from_team, "
                 "       i.channel, i.contact, er.response, p.parent_person_id, "
-                "       to_char(i.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at "
+                "       to_char(i.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, "
+                // player_id folds a Going call-up into the Game Center
+                // lineup pool (owner 2026-10-16: "the call ups if they say
+                // going to show in lineup"); phone/email put the contact on
+                // their card like everyone else's.
+                "       (SELECT pl.id FROM players pl WHERE pl.person_id = i.person_id ORDER BY pl.id LIMIT 1) AS player_id, "
+                "       COALESCE((SELECT phone_number FROM person_phones WHERE person_id = p.id AND can_receive_sms = true "
+                "                  ORDER BY is_primary DESC, id ASC LIMIT 1), "
+                "                (SELECT phone_number FROM person_phones WHERE person_id = p.parent_person_id AND can_receive_sms = true "
+                "                  ORDER BY is_primary DESC, id ASC LIMIT 1)) AS phone, "
+                "       COALESCE((SELECT email FROM person_emails WHERE person_id = p.id "
+                "                  ORDER BY is_primary DESC, id ASC LIMIT 1), "
+                "                (SELECT email FROM person_emails WHERE person_id = p.parent_person_id "
+                "                  ORDER BY is_primary DESC, id ASC LIMIT 1)) AS email "
                 "  FROM fh_event_invites i "
                 "  JOIN persons p ON p.id = i.person_id "
                 "  LEFT JOIN teams ft ON ft.id = i.from_team_id "
@@ -2869,6 +2882,9 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 {"response",         textOrNull(row, "response")},
                 {"parent_person_id", row["parent_person_id"].is_null() ? json(nullptr) : json(row["parent_person_id"].as<long long>())},
                 {"created_at",       textOrNull(row, "created_at")},
+                {"player_id",        row["player_id"].is_null() ? json(nullptr) : json(row["player_id"].as<long long>())},
+                {"phone",            textOrNull(row, "phone")},
+                {"email",            textOrNull(row, "email")},
             });
         }
 

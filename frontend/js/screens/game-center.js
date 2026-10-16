@@ -1048,6 +1048,27 @@ class GameCenterScreen extends Screen {
       }
       this.roster = [...byId.values()];
 
+      // 🎟 A call-up who answered Going joins the lineup pool like a
+      // rostered player (owner 2026-10-16: "the call ups if they say
+      // going to show in lineup! they are all eligible") — deliberately
+      // NO stats row, so the practice/RSVP-deadline criteria never mark
+      // them ineligible; their card carries a call-up chip instead.
+      for (const inv of ((this.invites && this.invites.invites) || [])) {
+        if (inv.response !== 'yes' || !inv.player_id) continue;
+        const pid = Number(inv.player_id);
+        const name = `${inv.first_name || ''} ${inv.last_name || ''}`.trim() || 'Invited player';
+        if (!byId.has(pid) && !this.roster.some(r => Number(r.id) === pid)) {
+          this.roster.push({ id: pid, name, lastName: inv.last_name || '', lineupRole: null,
+                             teamId: this.teamId, jerseyNumber: null, duesEligible: true,
+                             callUp: true, fromTeam: inv.from_team || '' });
+        }
+        if (!this.players.some(d => Number(d.playerId) === pid))
+          this.players.push({ playerId: pid, personId: inv.person_id, name });
+        if (Array.isArray(this.gameRecipients) && !this.gameRecipients.some(r => Number(r.personId) === Number(inv.person_id)))
+          this.gameRecipients.push({ personId: inv.person_id, name, rsvp: 'yes', email: inv.email || null,
+                                     phone: inv.phone || null, viaParent: !!inv.parent_person_id });
+      }
+
       this.loaded = true;
       this._syncHash();
       this._render();
@@ -1849,7 +1870,9 @@ class GameCenterScreen extends Screen {
     const unassignedGoing = [], unassignedIneligible = [], unassignedNotGoing = [], unassignedNoResponse = [];
     for (const p of this.roster) {
       const z = this.zones.get(p.id);
-      const group = rsvpGroup(p.id);
+      // A folded-in call-up is here BECAUSE they answered Going (no stats
+      // row to read it from) — and never counts as ineligible.
+      const group = p.callUp ? 'going' : rsvpGroup(p.id);
       // Everyone plays: Going IS the lineup, alphabetical; no bench, no picks.
       if (this.everyonePlays) {
         if (group === 'going') byZone.starter.push(p);
@@ -2086,6 +2109,8 @@ class GameCenterScreen extends Screen {
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
           <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
             <span ${this._eligNameTitle(p.id)}style="overflow-wrap:break-word; white-space:normal; ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}</span>
+            ${p.callUp ? `<span title="Invited call-up — Going; the practice criteria don't apply, they're eligible"
+              style="padding:1px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; white-space:nowrap; background:#166534; color:#dcfce7;">🎟 Call-up${p.fromTeam ? ` · ${this.escapeHtml(p.fromTeam)}` : ''}</span>` : ''}
             ${this.isCoach ? this._rsvpStatusPill(p.id) : ''}
             ${this._duesFlag(p)}
             ${this.isCoach ? this._injuryChip(p.id) : ''}
@@ -2102,6 +2127,7 @@ class GameCenterScreen extends Screen {
             ${roleButtons(p)}
           </div>
         ` : ''}
+        ${this.isCoach ? this._contactLine(p.id) : ''}
         ${extra}
       </div>`;
 
@@ -2200,13 +2226,17 @@ class GameCenterScreen extends Screen {
       const personId = this._personIdFor(p.id);
       if (!personId) return '';
       const sent = ((this.squadNotice && this.squadNotice.people) || {})[personId] || {};
-      const zone = this.zones.get(p.id);
+      // No squad role = the pool message (mig 593): the same personal
+      // magic link, no role named — every card gets the buttons (owner
+      // 2026-10-16: "call ups and ALL PLayers need email and text link
+      // personalized to invite to game").
+      const zone = this.zones.get(p.id) || 'pool';
       const moved = sent.told_zone && sent.told_zone !== zone;
       const live = moved ? {} : sent;   // a moved player's buttons light up again
       return `
         <div style="display:flex; gap:6px; align-items:center; margin-top:5px;">
-          ${remindBtn(`data-gc-squad-one="sms" data-person-id="${personId}"`, '💬 GAME LINK', '#0284c7', 'Text their role for this game + their sign-in link straight to this lineup (the parent, for youth)', live.sms)}
-          ${remindBtn(`data-gc-squad-one="email" data-person-id="${personId}"`, '✉ GAME LINK', '#7c3aed', 'Email their role for this game + their sign-in link straight to this lineup (the parent, for youth)', live.email)}
+          ${remindBtn(`data-gc-squad-one="sms" data-person-id="${personId}"`, '💬 GAME LINK', '#0284c7', 'Text their personal sign-in link straight to this game — names their role when they have one (the parent, for youth)', live.sms)}
+          ${remindBtn(`data-gc-squad-one="email" data-person-id="${personId}"`, '✉ GAME LINK', '#7c3aed', 'Email their personal sign-in link straight to this game — names their role when they have one (the parent, for youth)', live.email)}
           <span data-gc-squad-note style="font-size:0.66rem; opacity:0.75;">${moved
             ? `<span style="color:#fbbf24;">moved since told (${this.escapeHtml(sent.told_zone)})</span>`
             : this.escapeHtml(this._sentNote(sent))}</span>
@@ -2250,11 +2280,15 @@ class GameCenterScreen extends Screen {
     // Everyone plays: one Playing section (the Going RSVPs, as drawn), no
     // Bench / Alternates, and no squad reminder or Game Link — those name
     // a picked role, and nobody is picked.  The RSVP reminders stay.
+    // Every card gets the personal GAME LINK buttons, role or not (the
+    // pool message, mig 593) — No Response cards carry the RSVP REMIND
+    // buttons as well.
+    const bothCards = canMessage ? (p) => remindCard(p) + squadCard(p) : null;
     if (everyone) {
       paint(viewToggleHtml + lineupControlsHtml + this._everyoneNoteHtml() + [
-        gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter),
-        collapsedSection('✗ Not Going', unassignedNotGoing),
-        collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: remindCard } : {}),
+        gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter, canMessage ? squadCard : null),
+        collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard } : {}),
+        collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: bothCards } : {}),
         this._renderCallupSection(),
       ].join(''));
       return;
@@ -2267,10 +2301,10 @@ class GameCenterScreen extends Screen {
       }), canMessage ? squadCard : null) : '',
       gridSection('Bench', byZone.bench, canMessage ? squadCard : null),
       gridSection('Alternates', byZone.alternate, canMessage ? squadCard : null),
-      this.isCoach ? gridSection('✓ Going', unassignedGoing) : '',
-      this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible) : '',
-      this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
-      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: remindCard } : {}) : '',
+      this.isCoach ? gridSection('✓ Going', unassignedGoing, canMessage ? squadCard : null) : '',
+      this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible, canMessage ? squadCard : null) : '',
+      this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard } : {}) : '',
+      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: bothCards } : {}) : '',
       this.isCoach ? this._renderCallupSection() : '',
     ].join(''));
   }
@@ -2403,6 +2437,33 @@ class GameCenterScreen extends Screen {
   _personIdFor(playerId) {
     const row = (this.players || []).find(x => Number(x.playerId) === Number(playerId));
     return row && row.personId ? Number(row.personId) : null;
+  }
+
+  // Phone + email on every player card, whatever the section — Going,
+  // Not Going, No Response, Starting/Bench (owner 2026-10-16: "every
+  // player should have contact info on card. going, not going call up
+  // etc").  Same rows the bulk-message buttons use (/api/game-message
+  // recipients, mig 506): the parent's contact for youth, hence the
+  // (parent) tag.  sms:/mailto: so a coach can tap to reach one player
+  // off-script; the REMIND/GAME LINK buttons stay the tracked, DB-copy
+  // path.  Admin/coach endpoint — anyone else has no gameRecipients and
+  // gets no line.
+  _contactLine(playerId) {
+    const personId = this._personIdFor(playerId);
+    const r = personId && (this.gameRecipients || []).find(x => Number(x.personId) === personId);
+    if (!r || (!r.phone && !r.email)) return '';
+    const esc = (t) => this.escapeHtml(t);
+    // Blank compose, not a template (owner 2026-10-16: "also one that is
+    // blank so i can send quick message") — the device's own messaging /
+    // mail app opens with just the recipient filled in.
+    const btn = (href, label, title) => `<a href="${esc(href)}" title="${esc(title)}"
+      style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px;
+             border:1px solid var(--border-color); color:inherit; text-decoration:none; overflow-wrap:anywhere;">${label}</a>`;
+    return `<div style="font-size:0.66rem; opacity:0.9; margin-top:4px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+      ${r.phone ? btn(`sms:${r.phone}`, `💬 ${esc(r.phone)}`, 'Blank text — your own words, nothing pre-written') : ''}
+      ${r.email ? btn(`mailto:${r.email}`, `✉ ${esc(r.email)}`, 'Blank email — your own words, nothing pre-written') : ''}
+      ${r.viaParent ? `<span style="opacity:0.7;">(parent)</span>` : ''}
+    </div>`;
   }
 
   // Who is injured right now (person_injuries, migration 510) — set on
@@ -2636,8 +2697,17 @@ class GameCenterScreen extends Screen {
     };
     const row = (inner) => `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
         padding:6px var(--space-3); border:1px solid var(--border-color); border-radius:6px;">${inner}</div>`;
+    // The contact the invite buttons would use, visible on the card like
+    // every other section's (owner 2026-10-16) — parent's for youth.
+    const contactBits = (r) => {
+      const bits = [r.phone ? `📞 ${r.phone}` : '', r.email ? `✉ ${r.email}` : ''].filter(Boolean);
+      return bits.length ? `<span style="font-size:0.66rem; opacity:0.65; overflow-wrap:anywhere;">${esc(bits.join(' · '))}</span>` : '';
+    };
     const invited = data.invites.map(r => row(`
-        <span style="font-size:0.9em;">${esc(nm(r))}${r.from_team ? `<span style="font-size:0.72rem; opacity:0.6;"> · ${esc(r.from_team)}</span>` : ''}</span>
+        <span style="font-size:0.9em; display:flex; flex-direction:column; min-width:0;">
+          <span>${esc(nm(r))}${r.from_team ? `<span style="font-size:0.72rem; opacity:0.6;"> · ${esc(r.from_team)}</span>` : ''}</span>
+          ${contactBits(r)}
+        </span>
         <span style="display:inline-flex; align-items:center; gap:8px;">
           ${answerChip(r.response)}
           ${sendBtns(r, true)}
@@ -2656,7 +2726,10 @@ class GameCenterScreen extends Screen {
       <div style="font-size:0.72rem; font-weight:700; opacity:0.55; margin:8px 0 4px;">${esc(team)} (${list.length})</div>
       <div style="display:grid; gap:4px;">
         ${list.map(c => row(`
-          <span style="font-size:0.9em;">${esc(nm(c))}${c.single_age ? `<span style="font-size:0.72rem; opacity:0.6;"> · U${esc(String(c.single_age))}</span>` : ''}</span>
+          <span style="font-size:0.9em; display:flex; flex-direction:column; min-width:0;">
+            <span>${esc(nm(c))}${c.single_age ? `<span style="font-size:0.72rem; opacity:0.6;"> · U${esc(String(c.single_age))}</span>` : ''}</span>
+            ${contactBits(c)}
+          </span>
           ${sendBtns(c, false)}`)).join('')}
       </div>`).join('');
     return `
@@ -3759,7 +3832,11 @@ class GameCenterScreen extends Screen {
     }
     // The league's roster sheet sits with the two squad pills — the
     // landing pill included, so it is there when a coach opens the game.
-    if (pill === 'lineup' || pill === 'starters_bench') html += this._renderGameMessagePanel() + this._renderOfficialRosterPanel() + this._renderRosterSheetPanel();
+    // 📇 opponent contacts on the lineup views too, not only the Game day
+    // pill — that's where a coach actually is on match day (owner
+    // 2026-10-16: "need contacts on game center of opponents with email
+    // and text buttons!!!!").
+    if (pill === 'lineup' || pill === 'starters_bench') html += this._renderGameMessagePanel() + this._renderOpponentContactsPanel() + this._renderOfficialRosterPanel() + this._renderRosterSheetPanel();
     return html ? `<div style="max-width:540px; margin:10px auto 0;">${html}</div>` : '';
   }
 

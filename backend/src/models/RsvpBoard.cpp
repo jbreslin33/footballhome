@@ -952,6 +952,50 @@ RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
     return ctx;
 }
 
+bool RsvpBoard::poolRecipient(long long matchId, long long personId, SquadRecipient* out) {
+    auto rows = Database::getInstance()->query(R"SQL(
+        WITH teams_of AS (
+          SELECT COALESCE(
+            (SELECT array_agg(DISTINCT fet.team_id) FROM fh_events fe
+               JOIN fh_event_teams fet ON fet.fh_event_id = fe.id WHERE fe.match_id = $1::int),
+            (SELECT array_remove(ARRAY[m.home_team_id, m.away_team_id], NULL) FROM matches m WHERE m.id = $1::int)) AS ids)
+        SELECT p.id AS person_id, COALESCE(p.parent_person_id, p.id) AS recipient_person_id,
+               COALESCE(p.first_name, '') AS player_first,
+               COALESCE(rp.first_name, '') AS recipient_first,
+               ph.phone_number AS phone, em.email AS email
+          FROM persons p
+          JOIN persons rp ON rp.id = COALESCE(p.parent_person_id, p.id)
+          CROSS JOIN teams_of t
+          LEFT JOIN LATERAL (
+                SELECT x.phone_number FROM person_phones x
+                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
+                   AND COALESCE(x.can_receive_sms, true)
+                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
+                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) ph ON true
+          LEFT JOIN LATERAL (
+                SELECT x.email FROM person_emails x
+                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
+                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
+                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
+         WHERE p.id = $2::int
+           AND (EXISTS (SELECT 1 FROM team_persons tp
+                         WHERE tp.person_id = p.id AND tp.removed_at IS NULL AND tp.team_id = ANY(t.ids))
+             OR EXISTS (SELECT 1 FROM fh_event_invites i
+                          JOIN fh_events fe ON fe.id = i.fh_event_id
+                         WHERE fe.match_id = $1::int AND i.person_id = p.id AND i.revoked_at IS NULL)))SQL",
+        {std::to_string(matchId), std::to_string(personId)});
+    if (rows.empty()) return false;
+    const auto& row = rows[0];
+    out->personId           = row["person_id"].as<long long>();
+    out->recipientPersonId  = row["recipient_person_id"].as<long long>();
+    out->zone               = "pool";
+    out->playerFirstName    = row["player_first"].c_str();
+    out->recipientFirstName = row["recipient_first"].c_str();
+    if (!row["phone"].is_null()) out->phone = row["phone"].c_str();
+    if (!row["email"].is_null()) out->email = row["email"].c_str();
+    return true;
+}
+
 void RsvpBoard::logSquadNotice(long long matchId, const SquadRecipient& r, const std::string& channel,
                                const std::string& contact, long long sentByUserId) {
     Database::getInstance()->query(
