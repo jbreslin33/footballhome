@@ -139,6 +139,16 @@ Response OfficialRosterController::handleRefresh(const Request& request) {
         RosterFile pulled;
         if (system == "teampass") pulled = TeamPassRoster::fetch(str(src[0], "site_slug"), str(src[0], "external_team_id"), str(src[0], "credentials_key"));
         else if (system == "google_sheet") pulled = GoogleSheetRoster::fetch(str(src[0], "site_slug"), str(src[0], "external_team_id"));
+        else if (system == "club_file") {
+            // The league's locked roster, uploaded on #files (mig 592):
+            // external_team_id is the club_files id.  A pull copies the
+            // file's bytes as of this tap, so replacing the upload under
+            // the same id refreshes what every game prints.
+            auto f = db->query("SELECT encode(bytes, 'hex') AS h FROM club_files WHERE id = $1::int",
+                               {str(src[0], "external_team_id")});
+            if (f.empty()) pulled.error = "The uploaded roster file is gone — put it back on #files.";
+            else { pulled.ok = true; pulled.pdf = unhex(str(f[0], "h")); }
+        }
         else pulled.error = "no fetcher for " + system;
 
         db->query("UPDATE official_roster_sources SET last_fetched_at = now(), last_fetch_ok = $2::boolean, last_fetch_note = NULLIF($3, '') WHERE id = $1::int",
