@@ -315,6 +315,9 @@ class GameCenterScreen extends Screen {
     this.reminders = {};      // person_id → {sms, email: {sent_at, count}} already sent about this game
     this.squadNotice = null;  // {squad, untold, sms: {sent_at}, email: {sent_at}} — the squad game reminder
     this.oppContacts = null;  // {club:{contacts}, tiers, date…} — the opponent of this game (mig 483)
+    this.invites = null;      // {invites, candidates} — 🎟 Call-ups section (fh_event_invites, mig 355)
+    this._invBusy = new Set();   // person_ids with an invite POST/DELETE in flight
+    this._invCopied = new Set(); // person_ids whose invite link was put on the clipboard
     this.officialRoster = null;  // {available, league, saved} — the league's own roster sheet for this game (mig 501)
     this.gameRecipients = null;  // [{personId, name, rsvp, email, phone, viaParent}] — everyone on the game's rosters (mig 506)
     this._rosterPull = null;     // {busy} | {error} while / after a pull
@@ -683,6 +686,10 @@ class GameCenterScreen extends Screen {
       if (squadBtn && this.isCoach && !squadBtn.disabled) { this._sendSquadNotice(squadBtn); return; }
       const remindAll = e.target.closest('[data-gc-remind-all]');
       if (remindAll && this.isCoach && !remindAll.disabled) { this._remindNoResponse(remindAll); return; }
+      const invSend = e.target.closest('[data-gc-invite]');
+      if (invSend && this.realIsCoach && !invSend.disabled) { this._sendInvite(invSend); return; }
+      const invRevoke = e.target.closest('[data-gc-inv-revoke]');
+      if (invRevoke && this.realIsCoach && !invRevoke.disabled) { this._revokeInvite(invRevoke); return; }
       const oppSend = e.target.closest('[data-gc-opp-send]');
       if (oppSend && this.isCoach && !oppSend.disabled) { this._sendToOpponent(oppSend); return; }
       const oppSendAll = e.target.closest('[data-gc-opp-send-all]');
@@ -818,6 +825,11 @@ class GameCenterScreen extends Screen {
         return;
       }
     });
+    // Keep the 🎟 Call-ups details open across the re-render an invite
+    // triggers ('toggle' doesn't bubble — capture phase).
+    this.element.addEventListener('toggle', (e) => {
+      if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-gc-inv-details')) this._invOpen = e.target.open;
+    }, true);
     this.element.addEventListener('change', (e) => {
       const benchSelect = e.target.closest('[data-lineup-bench-order-select]');
       if (benchSelect && this.isCoach) {
@@ -998,7 +1010,7 @@ class GameCenterScreen extends Screen {
       // Reminders already sent about this game — dims a No Response
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
       const remindersPromise = this.isCoach
-        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients(), this._loadHealth()]) : Promise.resolve();
+        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients(), this._loadHealth(), this._loadInvites()]) : Promise.resolve();
       // The league's roster sheet is for the players too (owner 2026-09-30:
       // "all players to see it so we can ask one to print it if we forget").
       const officialRosterPromise = this._loadOfficialRoster();
@@ -2243,6 +2255,7 @@ class GameCenterScreen extends Screen {
         gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter),
         collapsedSection('✗ Not Going', unassignedNotGoing),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: remindCard } : {}),
+        this._renderCallupSection(),
       ].join(''));
       return;
     }
@@ -2258,6 +2271,7 @@ class GameCenterScreen extends Screen {
       this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: remindCard } : {}) : '',
+      this.isCoach ? this._renderCallupSection() : '',
     ].join(''));
   }
 
@@ -2506,6 +2520,154 @@ class GameCenterScreen extends Screen {
       ${allBtns(club.contacts || [], 'club')}
       <div style="margin-top:6px;"><button class="btn btn-secondary" data-gc-opp-add style="padding:2px 8px; font-size:0.66rem;">${this._oppAddOpen ? 'Cancel' : '＋ contact'}</button></div>
       ${addForm}${leagueBlock}`);
+  }
+
+  // 🎟 Call-ups — the same club-pass invites the Event Center's Invites
+  // pill offers (fh_event_invites, mig 355), as a section alongside the
+  // RSVP sections here (owner 2026-10-16: "this should be available from
+  // game center … could be a section like the other rsvp sections").
+  // Candidates come from fh_event_invite_candidates(): for youth, every
+  // player within clubs.club_pass_years_up (2) single-age years below the
+  // game's age — all U8/U9s for a U10 game, all U10/U11s for U12 — and
+  // for adults the section's other squads.  An invite row is the ONLY way
+  // a call-up sees the game on their page (never tag the younger team).
+  _fhEventId() { return (this.matchDetails && this.matchDetails.fh_event_id) || null; }
+
+  async _loadInvites() {
+    const id = this._fhEventId();
+    if (!id) { this.invites = null; return; }
+    try {
+      const res = await this.auth.fetch(`/api/calendar/events/${id}/invites`);
+      const body = await res.json().catch(() => null);
+      this.invites = res.ok && body ? { invites: body.invites || [], candidates: body.candidates || [] } : null;
+    } catch (err) {
+      this.invites = null;
+    }
+  }
+
+  // POST the invite, then hand the coach the compose (sms: / Gmail) or
+  // put the message on the clipboard.  The wording is the server's.
+  async _sendInvite(btn) {
+    const personId = Number(btn.dataset.personId);
+    const channel = btn.dataset.gcInvite;
+    if (this._invBusy.has(personId)) return;
+    this._invBusy.add(personId);
+    this._render();
+    try {
+      const res = await this.auth.fetch(`/api/calendar/events/${this._fhEventId()}/invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: personId, channel, contact: (btn.dataset.contact || '').trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+      if (channel === 'email' && data.gmail_href) {
+        this.openGmailCompose(data.gmail_href);
+      } else if (channel === 'sms' && data.sms_href) {
+        window.location.href = data.sms_href;
+      } else if (data.url) {
+        try {
+          await navigator.clipboard.writeText(data.sms_body || data.url);
+          this._invCopied.add(personId);
+        } catch {
+          window.prompt('Copy this invite message:', data.sms_body || data.url);
+        }
+      }
+    } catch (err) {
+      console.error('[game-center] invite failed:', err);
+      alert(`Invite failed: ${err.message}`);
+    } finally {
+      this._invBusy.delete(personId);
+    }
+    await this._loadInvites();
+    this._render();
+  }
+
+  async _revokeInvite(btn) {
+    const personId = Number(btn.dataset.gcInvRevoke);
+    if (this._invBusy.has(personId)) return;
+    this._invBusy.add(personId);
+    this._render();
+    try {
+      const res = await this.auth.fetch(`/api/calendar/events/${this._fhEventId()}/invites/${personId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || data.error || `HTTP ${res.status}`);
+      }
+    } catch (err) {
+      console.error('[game-center] revoke failed:', err);
+      alert(`Could not withdraw invite: ${err.message}`);
+    } finally {
+      this._invBusy.delete(personId);
+    }
+    await this._loadInvites();
+    this._render();
+  }
+
+  // The section itself — rolled up like Not Going / No Response, invited
+  // players (with their answer, re-send, withdraw) on top, then everyone
+  // who could be invited, grouped by the squad they come from.
+  _renderCallupSection() {
+    const data = this.invites;
+    if (!this.realIsCoach || this.lineupView !== 'official' || !data) return '';
+    if (!data.invites.length && !data.candidates.length) return '';
+    const esc = (t) => this.escapeHtml(t);
+    const copy = (tier, tokens = {}) => window.MessageCopy ? MessageCopy.block('callup_panel', tier, tokens) : '';
+    const nm = (r) => `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Unknown';
+    const answers = { yes: ['Available', '#22c55e'], no: ['Not available', '#f87171'], maybe: ['Maybe', '#fbbf24'] };
+    const answerChip = (resp) => {
+      const [label, color] = answers[resp] || ['No response', 'inherit'];
+      return `<span style="font-size:0.72rem; font-weight:700; color:${color}; ${answers[resp] ? '' : 'opacity:0.5;'}">${label}</span>`;
+    };
+    const sendBtns = (r, resend) => {
+      const busy = this._invBusy.has(Number(r.person_id));
+      const verb = resend ? 'Re-send' : 'Invite by';
+      const btn = (channel, contact, icon, bg, title) =>
+        `<button type="button" data-gc-invite="${channel}" data-person-id="${r.person_id}"
+                 data-contact="${esc(contact || '')}" ${busy ? 'disabled' : ''} title="${esc(title)}"
+                 style="padding:2px 8px; border-radius:6px; border:none; cursor:pointer; font-size:0.78rem; background:${bg};">${icon}</button>`;
+      const dim = (icon, why) => `<span style="opacity:0.35;" title="${why}">${icon}</span>`;
+      return `<span style="display:inline-flex; align-items:center; gap:5px;">
+        ${r.phone ? btn('sms', r.phone, '💬', '#38bdf8', `${verb} text (${r.phone}) — the parent's phone, for youth`) : (resend ? '' : dim('💬', 'No SMS on file'))}
+        ${r.email ? btn('email', r.email, '📧', '#a78bfa', `${verb} email (${r.email})`) : (resend ? '' : dim('📧', 'No email on file'))}
+        ${btn('copy', '', '🔗', '#fcd34d', resend ? 'Copy a fresh sign-in link' : 'Invite and copy the sign-in link')}
+        ${this._invCopied.has(Number(r.person_id)) ? `<span style="font-size:0.7rem; color:#fcd34d;">✓ copied</span>` : ''}
+      </span>`;
+    };
+    const row = (inner) => `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+        padding:6px var(--space-3); border:1px solid var(--border-color); border-radius:6px;">${inner}</div>`;
+    const invited = data.invites.map(r => row(`
+        <span style="font-size:0.9em;">${esc(nm(r))}${r.from_team ? `<span style="font-size:0.72rem; opacity:0.6;"> · ${esc(r.from_team)}</span>` : ''}</span>
+        <span style="display:inline-flex; align-items:center; gap:8px;">
+          ${answerChip(r.response)}
+          ${sendBtns(r, true)}
+          <button type="button" data-gc-inv-revoke="${r.person_id}" ${this._invBusy.has(Number(r.person_id)) ? 'disabled' : ''}
+                  title="Withdraw this invite — the game disappears for them again"
+                  style="font-size:0.72rem; font-weight:700; color:#fca5a5; background:transparent;
+                         border:1px solid rgba(248,113,113,0.5); padding:2px 8px; border-radius:999px; cursor:pointer;">✕</button>
+        </span>`)).join('');
+    const byTeam = new Map();
+    for (const c of data.candidates) {
+      const k = c.from_team || 'Other';
+      if (!byTeam.has(k)) byTeam.set(k, []);
+      byTeam.get(k).push(c);
+    }
+    const candidates = [...byTeam.entries()].map(([team, list]) => `
+      <div style="font-size:0.72rem; font-weight:700; opacity:0.55; margin:8px 0 4px;">${esc(team)} (${list.length})</div>
+      <div style="display:grid; gap:4px;">
+        ${list.map(c => row(`
+          <span style="font-size:0.9em;">${esc(nm(c))}${c.single_age ? `<span style="font-size:0.72rem; opacity:0.6;"> · U${esc(String(c.single_age))}</span>` : ''}</span>
+          ${sendBtns(c, false)}`)).join('')}
+      </div>`).join('');
+    return `
+      <details data-gc-inv-details ${this._invOpen ? 'open' : ''} style="margin: var(--space-3) 0;">
+        <summary style="cursor:pointer; font-size:0.85rem; font-weight:700; padding:4px 0;">🎟 Call-ups (${data.invites.length} invited · ${data.candidates.length} eligible)</summary>
+        <div style="font-size:0.7rem; opacity:0.75; line-height:1.4; margin:2px 0 8px;">
+          ${esc(copy('hint') || "An invited player (or their parent) sees this game on their page and gets a Go/No — it's the only way a call-up sees it. Nobody else outside the squad can.")}
+        </div>
+        ${data.invites.length ? `<div style="display:grid; gap:4px; margin-bottom:6px;">${invited}</div>` : ''}
+        ${data.candidates.length ? candidates : `<div style="font-size:0.8rem; opacity:0.55;">Nobody eligible — everyone age-eligible in the program is rostered or already invited.</div>`}
+      </details>`;
   }
 
   // Bulk ✉ / 💬 to everyone on the game's rosters, by RSVP (owner
