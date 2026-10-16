@@ -379,7 +379,32 @@ SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, 
                  ORDER BY (SELECT k2.league_label ILIKE t.league FROM club_competitions k2 WHERE k2.id = x.competition_id) DESC NULLS LAST,
                           x.competition_id NULLS LAST, x.id
                  LIMIT 2) cc
-          LEFT JOIN club_competitions k ON k.id = cc.competition_id) AS contacts
+          LEFT JOIN club_competitions k ON k.id = cc.competition_id) AS contacts,
+       -- Our own coaches for the game's teams, with phone/email for the
+       -- 💬/✉ links (owner 2026-10-16: "text email for opponent coaches
+       -- and our coaches! to message them").
+       (SELECT json_agg(json_build_object('name', x.cname, 'role', x.crole, 'phone', x.cphone, 'email', x.cemail) ORDER BY x.cname)
+          FROM (SELECT DISTINCT ON (co.person_id)
+                       COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'') AS cname,
+                       cr.name AS crole,
+                       (SELECT ph.phone_number FROM person_phones ph WHERE ph.person_id = p.id ORDER BY ph.is_primary DESC NULLS LAST, ph.id LIMIT 1) AS cphone,
+                       (SELECT em.email FROM person_emails em WHERE em.person_id = p.id ORDER BY em.is_primary DESC NULLS LAST, em.id LIMIT 1) AS cemail
+                  FROM team_coaches tc
+                  JOIN coaches co ON co.id = tc.coach_id
+                  JOIN persons p ON p.id = co.person_id
+                  LEFT JOIN coach_roles cr ON cr.id = tc.coach_role_id
+                 WHERE tc.team_id = ANY(t.team_ids) AND tc.ended_at IS NULL
+                 ORDER BY co.person_id, tc.started_at) x) AS our_coaches,
+       -- Players still to answer, right on the cell with the same tracked
+       -- REMIND buttons Game Center has (owner 2026-10-16: "text email
+       -- reminder buttons for every player that shows on home page").
+       (SELECT json_agg(json_build_object('person_id', pp.id,
+                                          'name', COALESCE(pp.first_name,'') || ' ' || COALESCE(pp.last_name,''),
+                                          'has_phone', EXISTS (SELECT 1 FROM person_phones ph WHERE ph.person_id IN (COALESCE(pp.parent_person_id, pp.id), pp.id) AND COALESCE(ph.can_receive_sms, true)),
+                                          'has_email', EXISTS (SELECT 1 FROM person_emails em WHERE em.person_id IN (COALESCE(pp.parent_person_id, pp.id), pp.id)))
+                        ORDER BY pp.last_name, pp.first_name)
+          FROM (SELECT DISTINCT p2.person_id FROM per p2 WHERE p2.fh_event_id = t.fh_event_id AND p2.rsvp IS NULL) pr
+          JOIN persons pp ON pp.id = pr.person_id) AS pending
   FROM t JOIN c ON c.fh_event_id = t.fh_event_id
  ORDER BY t.starts_at
             )SQL")) {
@@ -395,7 +420,9 @@ SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, 
                                  {"starters_set", r["starters_set"].as<long long>()}, {"bench_set", r["bench_set"].as<long long>()},
                                  {"lineup_not_going", r["lineup_not_going"].as<long long>()},
                                  {"opponent_club", r["opponent_club"].is_null() ? json(nullptr) : json(str(r, "opponent_club"))},
-                                 {"contacts", r["contacts"].is_null() ? json::array() : json::parse(str(r, "contacts"))}});
+                                 {"contacts", r["contacts"].is_null() ? json::array() : json::parse(str(r, "contacts"))},
+                                 {"our_coaches", r["our_coaches"].is_null() ? json::array() : json::parse(str(r, "our_coaches"))},
+                                 {"pending", r["pending"].is_null() ? json::array() : json::parse(str(r, "pending"))}});
             }
             out["game_center"] = {{"days", 7}, {"games", games}};
         }

@@ -2111,7 +2111,7 @@ class GameCenterScreen extends Screen {
             <span ${this._eligNameTitle(p.id)}style="overflow-wrap:break-word; white-space:normal; ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}</span>
             ${p.callUp ? `<span title="Invited call-up — Going; the practice criteria don't apply, they're eligible"
               style="padding:1px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; white-space:nowrap; background:#166534; color:#dcfce7;">🎟 Call-up${p.fromTeam ? ` · ${this.escapeHtml(p.fromTeam)}` : ''}</span>` : ''}
-            ${this.isCoach ? this._rsvpStatusPill(p.id) : ''}
+            ${this.isCoach && !p.callUp ? this._rsvpStatusPill(p.id) : ''}
             ${this._duesFlag(p)}
             ${this.isCoach ? this._injuryChip(p.id) : ''}
           </span>

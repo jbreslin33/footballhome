@@ -105,7 +105,9 @@ class DashboardScreen extends Screen {
     div.addEventListener('click', (e) => {
       // A row inside a cell wins over the cell itself (a section → that
       // section's board); otherwise the cell opens its page.
-      if (e.target.closest('a[href]')) return;   // a tel:/mailto: link inside a cell does its own thing
+      if (e.target.closest('a[href]')) return;   // an sms:/mailto: link inside a cell does its own thing
+      const remind = e.target.closest('[data-db-remind]');
+      if (remind) { e.stopPropagation(); this._remind(remind); return; }
       const row = e.target.closest('[data-db-row]');
       const cell = e.target.closest('[data-db-go]');
       const go = row ? row.dataset.dbRow : cell ? cell.dataset.dbGo : '';
@@ -114,6 +116,32 @@ class DashboardScreen extends Screen {
       this._open(go);
     });
     return div;
+  }
+
+  // The same tracked personal reminder Game Center's cards send (DB copy,
+  // the week's unanswered events, their magic link; parent for youth) —
+  // logged on the player's #rsvps card like every other send.
+  async _remind(btn) {
+    const channel = btn.dataset.dbRemind === 'email' ? 'email' : 'sms';
+    const original = btn.textContent;
+    btn.disabled = true; btn.textContent = '⏳';
+    try {
+      const res = await this.auth.fetch('/api/rsvp-board/remind', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: Number(btn.dataset.personId), channel }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+      if (channel === 'email') this.openGmailCompose(data.gmail_href);
+      else window.location.href = data.sms_href;
+      btn.textContent = '✓';
+      setTimeout(() => { if (btn.isConnected) { btn.textContent = original; btn.disabled = false; } }, 2000);
+      return;
+    } catch (err) {
+      btn.textContent = original;
+      btn.title = err.message;
+      btn.disabled = false;
+    }
   }
 
   // target: "screen" or "screen?key=value&…" (plain string params).
@@ -266,13 +294,34 @@ class DashboardScreen extends Screen {
         `<span class="${g.everyone_plays || starters >= need ? 'ok' : 'warn'}">${this.escapeHtml(lineup)}</span>`,
         wrong ? `<span class="bad">${this.escapeHtml(this._t('gc_not_going', '{n} in lineup not going', { n: wrong }))}</span>` : '',
       ].filter(Boolean).join(' · ');
-      // The opponent's contact(s): name, role, a tel: and a mailto: link.
-      const contacts = (g.contacts || []).length ? g.contacts.map(c => `${this.escapeHtml(c.name || '')}${c.role ? ` <span style="opacity:0.6;">(${this.escapeHtml(c.role)})</span>` : ''}${c.phone ? ` · <a href="tel:${this.escapeHtml(String(c.phone).replace(/[^+\d]/g, ''))}" style="color:#bfdbfe;">${this.escapeHtml(c.phone)}</a>` : ''}${c.email ? ` · <a href="mailto:${this.escapeHtml(c.email)}" style="color:#bfdbfe;">${this.escapeHtml(c.email)}</a>` : ''}`).join(' · ')
+      // Contact lines: a person with 💬 (sms:) and ✉ (mailto:) links —
+      // texting beats calling on match day (owner 2026-10-16: "text email
+      // for opponent coaches and our coaches! to message them").
+      const person = (c) => `${this.escapeHtml(c.name || '')}${c.role ? ` <span style="opacity:0.6;">(${this.escapeHtml(c.role)})</span>` : ''}${c.phone ? ` · <a href="sms:${this.escapeHtml(String(c.phone).replace(/[^+\d]/g, ''))}" style="color:#bfdbfe;">💬 ${this.escapeHtml(c.phone)}</a>` : ''}${c.email ? ` · <a href="mailto:${this.escapeHtml(c.email)}" style="color:#bfdbfe;">✉ ${this.escapeHtml(c.email)}</a>` : ''}`;
+      const contacts = (g.contacts || []).length ? g.contacts.map(person).join(' · ')
         : `<span style="opacity:0.6;">${this.escapeHtml(this._t('gc_contact_none', 'no opponent contact on file'))}${g.opponent_club ? '' : ''}</span>`;
+      // Head coach first, three at most — a youth travel team carries many
+      // assistants and the row has a game to describe too.
+      const coachList = [...(g.our_coaches || [])].sort((a, b) =>
+        (/head/i.test(b.role || '') ? 1 : 0) - (/head/i.test(a.role || '') ? 1 : 0));
+      const coaches = coachList.length
+        ? `<span style="font-size:0.76rem; opacity:0.85; display:block;">👟 ${coachList.slice(0, 3).map(person).join(' · ')}${coachList.length > 3 ? ` <span style="opacity:0.6;">+${coachList.length - 3} more</span>` : ''}</span>` : '';
+      // Players still to answer, each with the same tracked REMIND the
+      // Game Center cards send (DB copy + their magic link, parent for
+      // youth) — owner 2026-10-16: "text email reminder buttons for every
+      // player that shows on home page".
+      const pend = (g.pending || []);
+      const pendBtn = (p, ch, icon) => `<button type="button" data-db-remind="${ch}" data-person-id="${p.person_id}"
+            title="${this.escapeHtml(ch === 'sms' ? 'Text every unanswered event this week + their sign-in link' : 'Email every unanswered event this week + their sign-in link')}"
+            style="display:inline-flex; align-items:center; min-width:0; min-height:0; padding:1px 6px; margin:0 1px; border-radius:4px; border:none; cursor:pointer; font-size:0.66rem; line-height:1.4; background:${ch === 'sms' ? '#0284c7' : '#7c3aed'}; color:#fff; vertical-align:middle;">${icon}</button>`;
+      const pending = pend.length ? `<span style="font-size:0.76rem; opacity:0.95; display:block; line-height:1.7;">⏳ ${this.escapeHtml(this._t('gc_pending', '{n} still to answer', { n: pend.length }))}:
+          ${pend.map(p => `<span style="white-space:nowrap; margin-right:8px;">${this.escapeHtml(p.name)}${p.has_phone ? pendBtn(p, 'sms', '💬') : ''}${p.has_email ? pendBtn(p, 'email', '✉') : ''}</span>`).join('')}</span>` : '';
       return `<div class="db-row link" data-db-row="game-center?matchId=${g.match_id}" style="flex-direction:column; align-items:stretch; gap:1px; border-left:3px solid ${tone === 'bad' ? '#dc2626' : tone === 'warn' ? '#d97706' : '#16a34a'}; padding-left:8px;">
         <span class="l" style="white-space:normal;"><b>${this.escapeHtml(g.teams || '')}</b> ${g.is_home === false ? '@' : 'vs'} ${this.escapeHtml(g.opponent)} <span style="opacity:0.6;">· ${this.escapeHtml(g.when_text)}</span></span>
         <span class="db-rows" style="font-size:0.76rem; opacity:0.95; display:block;">${bits}</span>
-        <span style="font-size:0.76rem; opacity:0.85; display:block;">📇 ${contacts}</span></div>`;
+        <span style="font-size:0.76rem; opacity:0.85; display:block;">📇 ${contacts}</span>
+        ${coaches}
+        ${pending}</div>`;
     }).join('');
     const tone = tones.includes('bad') ? 'bad' : tones.includes('warn') ? 'warn' : 'ok';
     return this._cell(tone, 'game-center?pick=1', this._t('gc_title', '🏟️ Game Center'), this._t('gc_sub', "This week's games — who is going, who can start, is the lineup set"),
