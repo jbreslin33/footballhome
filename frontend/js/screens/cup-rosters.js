@@ -59,6 +59,11 @@ class CupRostersScreen extends Screen {
         .cr-players label.off { opacity:0.45; cursor:not-allowed; }
         .cr-players .t { opacity:0.6; font-size:0.72rem; margin-left:auto; white-space:nowrap; }
         .cr-players .nodob { color:#fde68a; font-size:0.7rem; font-weight:800; }
+        .cr-players .rv { flex:none; width:16px; text-align:center; font-weight:800; font-size:0.75rem; }
+        .cr-players .rv.yes { color:#4ade80; }
+        .cr-players .rv.no { color:#f87171; }
+        .cr-players .rv.none { opacity:0.3; }
+        .cr-rsvp-note { font-size:0.72rem; opacity:0.65; padding:0 6px 4px; }
         .cr-btns { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
         .cr-preview-wrap { overflow:hidden; }
         .cr-preview-wrap .cr-scale { transform-origin: top left; }
@@ -92,15 +97,16 @@ class CupRostersScreen extends Screen {
         .cr-sheet .count .note { font-weight:800; font-size:9pt; line-height:14pt; }
         .cr-sheet .ver { margin-top:12pt; width:400pt; }
         .cr-sheet .name { margin-top:4pt; width:400pt; }
-        /* ── USASA CUP PLAYER POOL (mig 589): the bulk-upload spreadsheet,
-           letter landscape, drawn as the sheet shows it — light gridlines,
-           bold header row, the bold example row on the blank form. */
-        .cr-ss { position:relative; width:792pt; height:612pt; background:#fff; color:#000; font-family:Calibri, "Trebuchet MS", Arial, sans-serif; font-size:10.5pt; box-shadow:0 4px 20px rgba(0,0,0,0.35); box-sizing:border-box; padding:16pt; }
-        .cr-ss table { border-collapse:collapse; width:100%; table-layout:fixed; }
-        /* As a spreadsheet draws text: clipped at the cell edge, unless the
-           next cell is empty (.sp) — then it spills across the gridline. */
-        .cr-ss td, .cr-ss th { border:1px solid #c6c6c6; padding:0 3px; height:12pt; font-weight:400; text-align:left; vertical-align:middle; white-space:nowrap; overflow:hidden; font-size:10.5pt; }
-        .cr-ss td.sp { overflow:visible; }
+        /* ── USASA CUP PLAYER POOL (mig 589): the bulk-upload spreadsheet —
+           light gridlines, bold header row, the bold example row on the
+           blank form.  Columns size to their content and the page grows
+           with them (owner 2026-10-16: "the problem is the stuff getting
+           cut off … it doesn't matter how wide, it's a web page"); letter
+           landscape is only the print target, where the whole sheet is
+           scaled down to fit. */
+        .cr-ss { position:relative; width:max-content; min-width:792pt; min-height:612pt; background:#fff; color:#000; font-family:Calibri, "Trebuchet MS", Arial, sans-serif; font-size:10.5pt; box-shadow:0 4px 20px rgba(0,0,0,0.35); box-sizing:border-box; padding:16pt; }
+        .cr-ss table { border-collapse:collapse; width:100%; }
+        .cr-ss td, .cr-ss th { border:1px solid #c6c6c6; padding:0 3px; height:12pt; font-weight:400; text-align:left; vertical-align:middle; white-space:nowrap; font-size:10.5pt; }
         .cr-ss tr.hdr td, .cr-ss td.b { font-weight:700; }
         /* The sheet's own chrome — column letters and row numbers — screen only. */
         .cr-ss .chrome { background:#f8f9fa; color:#5f6368; text-align:center; font-size:7.5pt; font-weight:400; border-color:#c0c0c0; overflow:hidden; }
@@ -374,10 +380,13 @@ class CupRostersScreen extends Screen {
       (b.teams || []).map(t => `<button class="cr-pill${this.teamPill === String(t.id) ? ' on' : ''}" data-cr-team="${t.id}">${this.escapeHtml(t.label)}</button>`).join('');
     const list = (b.pool || []).filter(p => this.teamPill === 'all' || (p.team_ids || []).includes(Number(this.teamPill)));
     const full = on.size >= max;
+    const game = b.rsvp_game && b.rsvp_game.label;   // ✓/✗/– next to the box: who has answered the next cup game
+    const rv = p => !game ? '' : p.rsvp === 'yes' ? '<span class="rv yes">✓</span>' : p.rsvp === 'no' ? '<span class="rv no">✗</span>' : '<span class="rv none">–</span>';
     const el = this.find('#cr-players');
-    if (el) el.innerHTML = (full ? `<div style="color:#fde68a; font-size:0.8rem; padding:2px 6px 6px;">${this.escapeHtml(this._t('full', 'Pool is set at {max}. No more additions allowed.', { max }))}</div>` : '') +
+    if (el) el.innerHTML = (game ? `<div class="cr-rsvp-note">${this.escapeHtml(this._t('rsvp_note', '✓ / ✗ = RSVP to {game}', { game }))}</div>` : '') +
+      (full ? `<div style="color:#fde68a; font-size:0.8rem; padding:2px 6px 6px;">${this.escapeHtml(this._t('full', 'Pool is set at {max}. No more additions allowed.', { max }))}</div>` : '') +
       list.map(p => { const checked = on.has(p.person_id); const off = full && !checked;
-        return `<label class="${off ? 'off' : ''}"><input type="checkbox" data-cr-person="${p.person_id}" ${checked ? 'checked' : ''} ${off ? 'disabled' : ''}>
+        return `<label class="${off ? 'off' : ''}"><input type="checkbox" data-cr-person="${p.person_id}" ${checked ? 'checked' : ''} ${off ? 'disabled' : ''}>${rv(p)}
           <span>${this.escapeHtml(p.last_name)}, ${this.escapeHtml(p.first_name)}${p.dob ? '' : ` <span class="nodob">${this.escapeHtml(this._t('no_dob', 'no DOB on file'))}</span>`}</span>
           <span class="t">${this.escapeHtml(p.teams || '')}${p.dob ? ` · ${this.escapeHtml(p.dob)}` : ''}</span></label>`; }).join('');
   }
@@ -398,19 +407,17 @@ class CupRostersScreen extends Screen {
   // DOB, and the primary person_addresses row.
   _renderSheetUpload(s) {
     const esc = (t) => this.escapeHtml(t == null ? '' : t);
-    // Column widths straight from the template (Excel character units).
+    const players = (s && s.players) || [];
+    // Column widths straight from the template (Excel character units) —
+    // the blank form only.  With players the columns size to their content
+    // so nothing is cut off (owner 2026-10-16).
     const widths = [20.9, 10.2, 5.9, 4.9, 11.7, 9.0, 11.7, 6.1, 8.5, 5.4, 5.6];
     const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
-    const cols = `<colgroup><col style="width:18pt">${widths.map(w => `<col style="width:${w}%">`).join('')}</colgroup>`;
-    const players = (s && s.players) || [];
+    const cols = `<colgroup><col style="width:18pt">${widths.map(w => `<col${players.length ? '' : ` style="width:${w}%"`}>`).join('')}</colgroup>`;
     const rows = [];
     let n = 1;
-    const cells = (vals, bold) => vals.map((v, i) => {
-      const cls = [];
-      if (bold && bold(i)) cls.push('b');
-      if (v && !(vals[i + 1] || '')) cls.push('sp');     // spill into an empty neighbour
-      return `<td${cls.length ? ` class="${cls.join(' ')}"` : ''}>${esc(v)}</td>`;
-    }).join('');
+    const cells = (vals, bold) => vals.map((v, i) =>
+      `<td${bold && bold(i) ? ' class="b"' : ''}>${esc(v)}</td>`).join('');
     const row = (tds, cls = '') => { rows.push(`<tr${cls ? ` class="${cls}"` : ''}><td class="chrome">${n++}</td>${tds}</tr>`); };
     row(cells(CupRostersScreen.UPLOAD_COLS), 'hdr');
     if (!players.length) {
@@ -489,7 +496,10 @@ class CupRostersScreen extends Screen {
     const wrap = this.find('.cr-preview-wrap'), inner = wrap && wrap.querySelector('.cr-scale');
     if (!wrap || !inner) return;
     const landscape = this._isUpload(this.sheet);           // the upload sheet is letter landscape
-    const w = landscape ? 1056 : 816, h = landscape ? 816 : 1056;
+    // The pool sheet can outgrow the letter page (columns size to their
+    // content), so measure what was actually laid out, not the page.
+    const w = Math.max(landscape ? 1056 : 816, inner.scrollWidth);
+    const h = Math.max(landscape ? 816 : 1056, inner.scrollHeight);
     const scale = Math.min(1, (wrap.clientWidth || w) / w);
     inner.style.transform = `scale(${scale})`;
     wrap.style.height = `${Math.ceil(h * scale) + 16}px`;
@@ -507,9 +517,15 @@ class CupRostersScreen extends Screen {
     const pageStyle = document.createElement('style');
     pageStyle.textContent = `@page { size: letter${this._isUpload(this.sheet) ? ' landscape' : ''}; margin: 0; }`;
     document.head.appendChild(pageStyle);
+    // The pool sheet may be wider than the landscape page (columns size to
+    // their content) — scale the printout down to fit instead of clipping.
+    const live = this.find('.cr-scale .cr-ss');
+    const pageW = this._isUpload(this.sheet) ? 1056 : 816;
+    const shrink = live && live.scrollWidth > pageW ? pageW / live.scrollWidth : 1;
     const style = document.createElement('style');
     style.textContent = `@media print { html, body { margin:0 !important; padding:0 !important; } body.cr-printing > :not(.cr-print-root) { display:none !important; } body.cr-printing { background:#fff !important; }
-      .cr-print-root .cr-sheet, .cr-print-root .cr-ss { box-shadow:none; } .cr-print-root th, .cr-print-root td, .cr-print-root .cr-bar { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+      .cr-print-root .cr-sheet, .cr-print-root .cr-ss { box-shadow:none; } .cr-print-root th, .cr-print-root td, .cr-print-root .cr-bar { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      ${shrink < 1 ? `.cr-print-root .cr-ss { transform:scale(${shrink}); transform-origin:top left; }` : ''} }
       @media screen { .cr-print-root { display:none; } }`;
     root.appendChild(style);
     const sheetCss = this.element && this.element.querySelector('style');

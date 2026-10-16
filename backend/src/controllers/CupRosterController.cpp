@@ -1,6 +1,7 @@
 #include "CupRosterController.h"
 
 #include <iostream>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -132,6 +133,28 @@ Response CupRosterController::handleBoard(const Request& request) {
             SELECT t.id, COALESCE(t.label, t.name) AS label FROM teams t JOIN club_sections cs ON cs.id = t.club_section_id
              WHERE cs.code = 'M' AND t.is_active AND t.board_sort_order IS NOT NULL ORDER BY t.board_sort_order)SQL"))
             teams.push_back({{"id", t["id"].as<long long>()}, {"label", str(t, "label")}});
+        // The next cup game and everyone's answer to it, shown beside each
+        // name on the pick list ("important to not have a guy on cup pool
+        // that is unavailable").  The cup container team is the men's team
+        // on the RSVP board without a #teams column (mig 586).
+        json rsvpGame;
+        std::map<long long, std::string> gameRsvps;
+        { auto g = db->query(R"SQL(
+            SELECT e.id, COALESCE(e.league, 'Cup') AS league,
+                   to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy FMMM/FMDD') AS date_label
+              FROM fh_events e
+              JOIN fh_event_teams et ON et.fh_event_id = e.id
+              JOIN teams t ON t.id = et.team_id AND t.is_active AND t.rsvp_board AND t.board_sort_order IS NULL
+              JOIN club_sections cs ON cs.id = t.club_section_id AND cs.code = 'M'
+              JOIN gcal_events ge ON ge.id = e.gcal_event_id AND ge.deleted_at IS NULL AND ge.status <> 'cancelled'
+             WHERE e.kind = 'match' AND ge.starts_at >= now()
+             ORDER BY ge.starts_at LIMIT 1)SQL");
+          if (!g.empty()) {
+            rsvpGame = {{"label", str(g[0], "league") + " " + str(g[0], "date_label")}};
+            for (const auto& r : db->query("SELECT person_id, response FROM fh_event_rsvps WHERE fh_event_id = $1::bigint",
+                                           {std::to_string(g[0]["id"].as<long long>())}))
+                gameRsvps[r["person_id"].as<long long>()] = str(r, "response");
+          } }
         json pool = json::array();
         for (const auto& p : db->query(R"SQL(
             SELECT p.id AS person_id, COALESCE(p.first_name,'') AS first_name, COALESCE(p.last_name,'') AS last_name,
@@ -148,8 +171,10 @@ Response CupRosterController::handleBoard(const Request& request) {
             { std::string a = str(p, "team_ids"); std::string cur;   // "{35,120}" → [35,120]
               for (char ch : a) { if (ch >= '0' && ch <= '9') cur += ch; else if (!cur.empty()) { ids.push_back(std::stoll(cur)); cur.clear(); } }
               if (!cur.empty()) ids.push_back(std::stoll(cur)); }
+            const auto rv = gameRsvps.find(p["person_id"].as<long long>());
             pool.push_back({{"person_id", p["person_id"].as<long long>()}, {"first_name", str(p, "first_name")}, {"last_name", str(p, "last_name")},
-                            {"dob", str(p, "dob")}, {"team_ids", ids}, {"teams", str(p, "teams")}});
+                            {"dob", str(p, "dob")}, {"team_ids", ids}, {"teams", str(p, "teams")},
+                            {"rsvp", rv == gameRsvps.end() ? std::string{} : rv->second}});
         }
         // Who a sheet is emailed to (cup_roster_recipients, mig 557).
         json recipients = json::array();
@@ -160,7 +185,7 @@ Response CupRosterController::handleBoard(const Request& request) {
         { auto me = db->query("SELECT COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'') AS n FROM users u JOIN persons p ON p.id = u.person_id WHERE u.id = $1::int",
                               {std::to_string(bearerUserId(request))});
           if (!me.empty()) sender = str(me[0], "n"); }
-        return jsonOut(HttpStatus::OK, {{"rosters", rosters}, {"pool", pool}, {"teams", teams}, {"cups", cups}, {"form_versions", versions}, {"max", kPoolMax}, {"recipients", recipients}, {"sender", sender}});
+        return jsonOut(HttpStatus::OK, {{"rosters", rosters}, {"pool", pool}, {"teams", teams}, {"cups", cups}, {"form_versions", versions}, {"max", kPoolMax}, {"recipients", recipients}, {"sender", sender}, {"rsvp_game", rsvpGame}});
     } catch (const std::exception& e) { std::cerr << "[cup-rosters board] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 

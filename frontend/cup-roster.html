@@ -40,7 +40,7 @@
     window.MessageCopy = MessageCopy;
   </script>
   <script src="/js/screen-base.js"></script>
-  <script src="/js/screens/cup-rosters.js?v=20261015"></script>
+  <script src="/js/screens/cup-rosters.js?v=20261016"></script>
   <script>
     (async () => {
       const k = new URLSearchParams(location.search).get('k') || '';
@@ -67,7 +67,18 @@
         page.textContent = '@page { size: letter landscape; margin: 0; } @media print { html, body, .wrap { height:612pt !important; } }';
         document.head.appendChild(page);
       }
-      const W = landscape ? 1056 : 816, H = landscape ? 816 : 1056;
+      // The pool sheet's columns size to their content, so it can be wider
+      // than the letter page — measure the real layout, and shrink the
+      // printout to fit the page instead of clipping.
+      const inner0 = host.querySelector('.cr-scale');
+      const W = Math.max(landscape ? 1056 : 816, inner0.scrollWidth);
+      const H = Math.max(landscape ? 816 : 1056, inner0.scrollHeight);
+      const shrink = Math.min(1, (landscape ? 1056 : 816) / W);
+      if (shrink < 1) {
+        const ps = document.createElement('style');
+        ps.textContent = '@media print { .cr-scale { transform:scale(' + shrink + ') !important; transform-origin:top left; } }';
+        document.head.appendChild(ps);
+      }
       const fit = () => {
         const wrap = host.querySelector('.cr-preview-wrap'), inner = host.querySelector('.cr-scale');
         const scale = Math.min(1, (wrap.clientWidth || W) / W);
