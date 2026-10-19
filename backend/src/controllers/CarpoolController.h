@@ -29,5 +29,12 @@ public:
 private:
     Response handleList(const Request& request);
     Response handleCreate(const Request& request);
+    // GET /requests/:id/options — the three timed pickup plans for the
+    // viewer as driver (migs 608/609): ride to the driver's, driver
+    // detours to the rider, or a neutral carpool_spots row, each with
+    // leave/pickup times computed back from the event's arrival deadline
+    // (Nominatim + OSRM via CarpoolRouting; addresses never leave the
+    // server for anyone but the requester, accepted driver, and staff).
+    Response handleOptions(const Request& request);
     Response handleAction(const Request& request, const std::string& action);
 };

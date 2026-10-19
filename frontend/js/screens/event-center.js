@@ -68,6 +68,16 @@ class EventCenterScreen extends Screen {
     this.saving   = new Set(); // "att:<pid>" / "inv:<pid>" in flight
     this.copied   = new Set(); // person_ids whose invite link was copied
     this.error    = null;
+    // 🚗 Carpool on practices and pickup too (owner 2026-10-19: "this
+    // should be for practices too!") — the same shared CarpoolPanel
+    // component Game Center mounts for games (migs 601/608/609).
+    this.carpoolPanel = new CarpoolPanel(this.auth, {
+      fhEventId: () => (this.ev ? this.ev.fh_event_id : null),
+      rerender: () => this._render(),
+      toast: (m) => { this.cpError = m; this._render(); setTimeout(() => { this.cpError = null; this._render(); }, 4000); },
+      escapeHtml: (t) => this.escapeHtml(t),
+    });
+    this.cpError  = null;
   }
 
   render() {
@@ -116,8 +126,12 @@ class EventCenterScreen extends Screen {
     this.saving.clear();
     this.copied.clear();
     this._render();
-    if (this.ev) this._loadAttendance();
-    else if (this.loadingId) this._loadEvent(this.loadingId).then(() => { if (this.ev) this._loadAttendance(); });
+    const loadCarpool = () => {
+      if (this.ev && (this.ev.kind === 'practice' || this.ev.kind === 'pickup'))
+        this.carpoolPanel.load().then(() => this._render());
+    };
+    if (this.ev) { this._loadAttendance(); loadCarpool(); }
+    else if (this.loadingId) this._loadEvent(this.loadingId).then(() => { if (this.ev) { this._loadAttendance(); loadCarpool(); } });
     else this._loadEvents();
   }
 
@@ -534,6 +548,7 @@ class EventCenterScreen extends Screen {
         return;
       }
       if ((el = t('[data-ec-revoke]'))) { this._revokeInvite(Number(el.dataset.ecRevoke)); return; }
+      if ((el = t('[data-gc-cp]'))) { this.carpoolPanel.click(el, this.element); return; }
     });
   }
 
@@ -641,7 +656,9 @@ class EventCenterScreen extends Screen {
       ${this.pill === 'invites' ? this._invitesHtml()
         : this.pill === 'sides' ? this._sidesHtml()
         : this.pill === 'plan' ? this._planHtml()
-        : this.pill === 'cones' ? this._conesHtml() : this._comingHtml()}`;
+        : this.pill === 'cones' ? this._conesHtml() : this._comingHtml()}
+      ${this.cpError ? `<div style="font-size:0.75rem; color:#f59e0b; margin-top:6px;">${this.escapeHtml(this.cpError)}</div>` : ''}
+      ${this.pill === 'coming' && (ev.kind === 'practice' || ev.kind === 'pickup') ? this.carpoolPanel.html() : ''}`;
   }
 
   // The practice plan attached to this event, read-only — sessions in order,

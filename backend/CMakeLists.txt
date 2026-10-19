@@ -133,6 +133,7 @@ set(SOURCES
     src/controllers/FilmController.cpp
     src/controllers/CarpoolController.cpp
     src/controllers/TacticalLiveController.cpp
+    src/services/CarpoolRouting.cpp
     src/controllers/FinesController.cpp
     src/controllers/ScheduleLinksController.cpp
     src/controllers/DashboardController.cpp
