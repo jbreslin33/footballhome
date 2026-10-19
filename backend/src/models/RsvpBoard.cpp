@@ -110,6 +110,10 @@ const char* kBaseCtes = R"SQL(
          AND ge.starts_at >= GREATEST(r.joined_at, epoch.t,
                                       COALESCE(NULLIF($2,'')::timestamptz, '-infinity'))
          AND ge.starts_at <  tm.window_end
+         -- Call-up-gated team (mig 605): rostered players owe nothing on
+         -- its games — only invited ones do (next branch).  The coach and
+         -- staff hats (role_rank 1/3) keep every game.
+         AND NOT (r.role_rank = 2 AND fh_team_callup_only(r.team_id))
          AND NOT EXISTS (SELECT 1 FROM rsvp_suspensions s
                           WHERE s.person_id = r.person_id
                             AND (s.team_id IS NULL OR s.team_id = r.team_id)
@@ -123,6 +127,31 @@ const char* kBaseCtes = R"SQL(
                   AND NOT EXISTS (SELECT 1 FROM fh_event_rsvps irv
                                    WHERE irv.fh_event_id = fe.id AND irv.person_id = r.person_id))
        GROUP BY r.person_id, fe.id, fe.kind, fe.opponent, fe.fh_notes, ge.starts_at, ge.ends_at
+      UNION
+      -- Invited players (fh_event_invites — youth club-pass call-ups and
+      -- call-up-gated squads, mig 605) owe an answer like any rostered
+      -- player, so the board's tiles count them and REMIND reaches them.
+      SELECT DISTINCT i.person_id, fe.id, fe.kind, fe.opponent,
+             fe.fh_notes, ge.starts_at, ge.ends_at, 2 AS role_rank
+        FROM fh_event_invites i
+        JOIN fh_events fe ON fe.id = i.fh_event_id
+                         AND fe.kind IN ('practice','match','intrasquad')
+                         AND ($5 = 'all' OR ($5 = 'games') = (fe.kind IN ('match','intrasquad')))
+        JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+        JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
+        JOIN tm ON tm.id = fet.team_id
+        CROSS JOIN epoch
+       WHERE i.revoked_at IS NULL
+         AND ($4::int = 0 OR i.person_id = $4::int)
+         AND ($1 <> 'G' OR EXISTS (SELECT 1 FROM girl g WHERE g.person_id = i.person_id))
+         AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+         AND ge.starts_at >= GREATEST(i.created_at, epoch.t,
+                                      COALESCE(NULLIF($2,'')::timestamptz, '-infinity'))
+         AND ge.starts_at <  tm.window_end
+         AND NOT EXISTS (SELECT 1 FROM rsvp_suspensions s
+                          WHERE s.person_id = i.person_id
+                            AND s.starts_at <= ge.starts_at
+                            AND (s.ends_at IS NULL OR s.ends_at > ge.starts_at))
     ), expected_roles AS (
       -- The role on each event, and whether this person wears more than
       -- one hat across the window (then every line names the hat, in the
@@ -979,7 +1008,9 @@ bool RsvpBoard::poolRecipient(long long matchId, long long personId, SquadRecipi
                           x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
          WHERE p.id = $2::int
            AND (EXISTS (SELECT 1 FROM team_persons tp
-                         WHERE tp.person_id = p.id AND tp.removed_at IS NULL AND tp.team_id = ANY(t.ids))
+                         WHERE tp.person_id = p.id AND tp.removed_at IS NULL AND tp.team_id = ANY(t.ids)
+                           -- Call-up-gated team (mig 605): invite-only.
+                           AND NOT fh_team_callup_only(tp.team_id))
              OR EXISTS (SELECT 1 FROM fh_event_invites i
                           JOIN fh_events fe ON fe.id = i.fh_event_id
                          WHERE fe.match_id = $1::int AND i.person_id = p.id AND i.revoked_at IS NULL)))SQL",

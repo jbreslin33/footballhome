@@ -816,15 +816,18 @@ Response MyController::handlePushRemind(const Request& request) {
             "  FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
             "  LEFT JOIN fh_event_kind_labels k ON k.kind = fe.kind "
             " WHERE fe.id = $1::bigint "
-            "   AND EXISTS ("
+            "   AND (EXISTS ("
             "     SELECT 1 FROM fh_event_teams fet "
             "     WHERE fet.fh_event_id = fe.id AND ("
             "       EXISTS (SELECT 1 FROM team_persons tp WHERE tp.team_id = fet.team_id "
-            "               AND tp.person_id = $2::int AND tp.removed_at IS NULL) "
+            "               AND tp.person_id = $2::int AND tp.removed_at IS NULL "
+            // Call-up-gated team (mig 605): only an invited player can
+            // be pinged — the invite branch below is their door.
+            "               AND NOT fh_team_callup_only(tp.team_id)) "
             "       OR EXISTS (SELECT 1 FROM team_coaches tc JOIN coaches co ON co.id = tc.coach_id "
             "                  WHERE tc.team_id = fet.team_id AND tc.ended_at IS NULL AND co.person_id = $2::int) "
             "     )"
-            "   ) "
+            "   ) OR fh_event_invited(fe.id, $2::int)) "
             "   AND NOT EXISTS (SELECT 1 FROM fh_event_rsvps r "
             "                    WHERE r.fh_event_id = fe.id AND r.person_id = $2::int "
             "                      AND r.response IS NOT NULL)",

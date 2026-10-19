@@ -107,7 +107,10 @@ const char* kExpectedCte =
     "expected AS ( "
     "  SELECT ev.*, tp.person_id, r.response, r.responded_at, a.status AS att "
     "    FROM ev "
+    // Call-up-gated team (mig 605): roster membership is no expectation,
+    // so a gated team's games don't dent anyone's response rate.
     "    JOIN team_persons tp ON tp.team_id = ev.team_id AND tp.removed_at IS NULL "
+    "                        AND NOT fh_team_callup_only(tp.team_id) "
     "    LEFT JOIN roster_statuses rs ON rs.id = tp.roster_status_id "
     "    LEFT JOIN fh_event_rsvps r "
     "           ON r.fh_event_id = ev.fh_event_id AND r.person_id = tp.person_id "
