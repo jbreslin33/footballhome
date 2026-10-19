@@ -73,6 +73,7 @@ class TacticalScreen extends Screen {
       { id: 'days',           target: 'game-model-admin', params: { ...club, entity: 'days' },      icon: '🗓️', label: 'Days',           description: 'Create and edit the weekly day structure' },
       { id: 'exercises',      target: 'game-model-admin', params: { ...club, entity: 'exercises' }, icon: '🏋️', label: 'Exercises',      description: 'The drills and activities used in sessions' },
       { id: 'board',          target: 'tactical-board',   params: { ...club },                      icon: '📐', label: 'Tactical Board', description: 'Draw formations, runs and set pieces' },
+      { id: 'live',           target: 'tactical-live',    params: {},                               icon: '🧲', label: 'Live Board',     description: 'Meeting mode — every player drags his own piece from his phone' },
     ];
   }
 

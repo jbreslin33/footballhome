@@ -42,6 +42,7 @@ class App {
       playerActions: new PlayerActionsScreen(this.navigation, this.auth),
       adminClubTeams: new AdminClubTeamsScreen(this.navigation, this.auth),
       tacticalBoard: new TacticalBoardScreen(this.navigation, this.auth),
+      tacticalLive: new TacticalLiveScreen(this.navigation, this.auth),
       clubDirectory: new ClubDirectoryScreen(this.navigation, this.auth),
       clubDetail: new ClubDetailScreen(this.navigation, this.auth),
       gameCenter: new GameCenterScreen(this.navigation, this.auth),
@@ -126,6 +127,8 @@ class App {
     this.screenManager.register('player-actions', this.screens.playerActions);
     this.screenManager.register('admin-club-teams', this.screens.adminClubTeams);
     this.screenManager.register('tactical-board', this.screens.tacticalBoard);
+    // Live meeting board (#tactical-live, mig 606) — players drag their own piece.
+    this.screenManager.register('tactical-live', this.screens.tacticalLive);
     this.screenManager.register('club-directory', this.screens.clubDirectory);
     this.screenManager.register('club-detail', this.screens.clubDetail);
     // Game Center (#game-center) — the one page for a single game:
