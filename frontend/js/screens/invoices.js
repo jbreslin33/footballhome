@@ -1157,9 +1157,11 @@ class InvoicesScreen extends Screen {
     // Organizing headers only — a week line, then day-of-week lines, each
     // practice or game one item beneath (owner 2026-10-12: "no need for
     // headers unless its a date day of week. to organize … and organize
-    // separate 1 week from another").  NOTHING sums here: the one adding-up
-    // is the totals block at the very bottom of the editor ("i don't want
-    // any adding of totals until the bottom").
+    // separate 1 week from another").  No money sums here — the one
+    // adding-up of dollars is the totals block at the very bottom ("i
+    // don't want any adding of totals until the bottom") — but the hours
+    // DO close with their own total line (owner 2026-10-19: "manager of
+    // soccer duties should show total at end of hours").
     let html = '';
     let wk = 1;
     for (let ws = inv.period_start; ws <= inv.period_end && wk < 10; ws = InvoicesScreen.addDays(ws, 7), wk++) {
@@ -1180,6 +1182,13 @@ class InvoicesScreen extends Screen {
     // An item outside the period's weeks (edited dates) still shows.
     const stray = items.filter(i => i.date < inv.period_start || i.date > inv.period_end);
     if (stray.length) html += stray.map(row).join('');
+    const duty = inv.issuer?.duty_description || 'Hours';
+    html += `
+      <div style="display:flex; gap:10px; align-items:center; padding:7px 0 2px 8px; border-top:2px solid var(--border-color); margin-top:8px; font-size:0.9rem; font-weight:800;">
+        <span style="flex:1; text-align:right;">${esc(this._copy('hours_total_line', { duty }) || `${duty} — total`)}</span>
+        <span style="width:50px; text-align:right;">${InvoicesScreen.plain(inv.shift_hours || 0)} h</span>
+        <span style="width:34px;"></span>
+      </div>`;
     return html;
   }
 
@@ -1250,15 +1259,24 @@ class InvoicesScreen extends Screen {
     const games = this.refGames || [];
     const picked = [...(this.element?.querySelectorAll('[data-ref-game]:checked') || [])].map(cb => cb.dataset.refGame);
     const inWindow = (g) => !inv?.period_start || !inv?.period_end || (g.game_on >= inv.period_start && g.game_on <= inv.period_end);
-    const row = (g, out) => `
-      <label style="display:flex; gap:10px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:0.9rem; ${out ? 'opacity:0.5;' : g.played ? '' : 'opacity:0.65;'}">
-        <input type="checkbox" data-ref-game="${esc(g.source)}:${g.ref_id}" data-amount="${g.amount}" ${picked.includes(`${g.source}:${g.ref_id}`) ? 'checked' : ''}>
+    // A league-feed game with no matching calendar event is not tickable —
+    // the calendar is the record of what was worked, so it has to be added
+    // by hand if it is real (ADD A LINE).
+    const row = (g, out) => {
+      const offCal = g.in_gcal === false;
+      return `
+      <label style="display:flex; gap:10px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:0.9rem; ${(out || offCal) ? 'opacity:0.5;' : g.played ? '' : 'opacity:0.65;'}">
+        ${offCal ? '<span style="width:13px;"></span>'
+                 : `<input type="checkbox" data-ref-game="${esc(g.source)}:${g.ref_id}" data-amount="${g.amount}" ${picked.includes(`${g.source}:${g.ref_id}`) ? 'checked' : ''}>`}
         <span style="width:90px; font-weight:700;">${esc(g.date_label)}</span>
         <span style="width:110px; opacity:0.8;">${esc(g.policy_label.replace(/^Parks & Rec /, ''))}</span>
         <span style="flex:1;">${esc(g.opponent)}</span>
         <span style="width:70px; text-align:right;">${InvoicesScreen.money(g.amount)}</span>
-        <span style="width:90px; text-align:right; font-size:0.78rem; opacity:0.7;">${g.played ? 'played' : 'upcoming'}</span>
+        <span style="min-width:90px; text-align:right; font-size:0.78rem; opacity:0.7;">${offCal
+          ? esc(this._copy('refs_not_on_gcal') || 'not on the calendar — add manually')
+          : (g.played ? 'played' : 'upcoming')}</span>
       </label>`;
+    };
     const ins = games.filter(g => inWindow(g));
     const outs = games.filter(g => !inWindow(g));
     // Out-of-window games stay folded until needed (owner 2026-10-12:
