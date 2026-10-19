@@ -214,14 +214,16 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
         }
     }
 
-    // 3. Resolve LA userIds → local personId via persons.la_user_id.
+    // 3. Resolve LA userIds → local personId via person_la_user_ids
+    // (migration 602 — a person may hold several live LA userIds, so the
+    // alias table, not persons.la_user_id, is the resolver).
     std::unordered_map<std::string, int> personIdByLaId;
     std::vector<std::string> laUserIdList(syncResult.activeUserIds.begin(),
                                           syncResult.activeUserIds.end());
     if (!laUserIdList.empty()) {
         const std::string sql =
-            "SELECT la_user_id, id "
-            "  FROM persons "
+            "SELECT la_user_id, person_id AS id "
+            "  FROM person_la_user_ids "
             " WHERE la_user_id = ANY($1::text[])";
         const std::vector<std::string> params = {textArrayLiteral(laUserIdList)};
         const auto rows = db_->query(sql, params);
@@ -289,9 +291,9 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
                 // separate eligibility grant exists anymore.
                 const std::string sql =
                     "INSERT INTO team_persons (team_id, person_id, on_roster) "
-                    "SELECT t.id, p.id, false "
+                    "SELECT DISTINCT t.id, a.person_id, false "
                     "  FROM UNNEST($1::text[]) AS ua(uid) "
-                    "  JOIN persons p ON p.la_user_id = ua.uid "
+                    "  JOIN person_la_user_ids a ON a.la_user_id = ua.uid "
                     "  CROSS JOIN teams t "
                     "  JOIN team_eligible_genders teg "
                     "    ON teg.team_id = t.id AND teg.gender = 'mens' "
@@ -327,9 +329,9 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
                     "   AND t.name = 'Pickup' "
                     "   AND tp.removed_at IS NULL "
                     "   AND NOT EXISTS ( "
-                    "         SELECT 1 FROM persons p "
-                    "          WHERE p.id = tp.person_id "
-                    "            AND p.la_user_id = ANY($1::text[]) "
+                    "         SELECT 1 FROM person_la_user_ids a "
+                    "          WHERE a.person_id = tp.person_id "
+                    "            AND a.la_user_id = ANY($1::text[]) "
                     "       )";
                 db_->query(closeSql, params);
             }
@@ -357,11 +359,11 @@ LaPool::Result LaPool::run(int clubId, Gender gender) {
         for (const auto& kv : personIdByLaIdCopy) laIds.push_back(kv.first);
 
         const std::string sql =
-            "SELECT p.la_user_id AS lauid, tp.team_id "
+            "SELECT a.la_user_id AS lauid, tp.team_id "
             "  FROM team_persons tp "
-            "  JOIN persons p ON p.id = tp.person_id "
+            "  JOIN person_la_user_ids a ON a.person_id = tp.person_id "
             " WHERE tp.removed_at IS NULL "
-            "   AND p.la_user_id = ANY($1::text[])";
+            "   AND a.la_user_id = ANY($1::text[])";
         const std::vector<std::string> params = { textArrayLiteral(laIds) };
         const auto rows = db_->query(sql, params);
         for (const auto& row : rows) {

@@ -223,8 +223,12 @@ void PersonLinker::ensureParentLink(int childPersonId, const json& rec) {
     int parentPersonId = 0;
     try {
         // 1. Existing person already linked to the parent userId?
+        // Alias-aware like linkLa step 1 (migration 602).
         auto hit = db_->query(
-            "SELECT id FROM persons WHERE la_user_id = $1 LIMIT 1",
+            "SELECT person_id AS id FROM person_la_user_ids WHERE la_user_id = $1 "
+            "UNION ALL "
+            "SELECT id FROM persons WHERE la_user_id = $1 "
+            "LIMIT 1",
             {parentUserId});
         if (!hit.empty()) {
             parentPersonId = hit[0]["id"].as<int>();
@@ -257,8 +261,13 @@ void PersonLinker::ensureParentLink(int childPersonId, const json& rec) {
                 if (!ins.empty()) parentPersonId = ins[0]["id"].as<int>();
             }
 
-            // 4. Set the parent's la_user_id so step 1 hits next time.
+            // 4. Record the parent's id so step 1 hits next time — alias
+            // row first (migration 602), primary column second.
             if (parentPersonId > 0) {
+                db_->query(
+                    "INSERT INTO person_la_user_ids (la_user_id, person_id) "
+                    "VALUES ($1, $2::int) ON CONFLICT (la_user_id) DO NOTHING",
+                    {parentUserId, std::to_string(parentPersonId)});
                 db_->query(
                     "UPDATE persons SET la_user_id = $1, updated_at = NOW() WHERE id = $2::int",
                     {parentUserId, std::to_string(parentPersonId)});
@@ -318,13 +327,32 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
         return out;
     }
 
-    // 1. Fast-path: person already linked to this LA userId?
+    // 1. Fast-path: person already linked to this LA userId?  The alias
+    // table is the authority (migration 602): a person can hold SEVERAL
+    // live LA userIds at once (Dylan Martinez 22311 carries both the
+    // account that owns his paid men's registration and the older
+    // account that still owns a free pickup registration), and resolving
+    // through aliases is what keeps the two per-program syncs from
+    // fighting over persons.la_user_id and racing duplicate persons rows
+    // into existence.  The persons.la_user_id branch is a self-healing
+    // fallback for any row linked between the 602 backfill and this
+    // code going live.
     try {
         auto hit = db_->query(
-            "SELECT id FROM persons WHERE la_user_id = $1 LIMIT 1",
+            "SELECT person_id AS id, true AS via_alias "
+            "  FROM person_la_user_ids WHERE la_user_id = $1 "
+            "UNION ALL "
+            "SELECT id, false FROM persons WHERE la_user_id = $1 "
+            "LIMIT 1",
             {laUserId});
         if (!hit.empty()) {
             out.personId = hit[0]["id"].as<int>();
+            if (!dryRun && !hit[0]["via_alias"].as<bool>()) {
+                db_->query(
+                    "INSERT INTO person_la_user_ids (la_user_id, person_id) "
+                    "VALUES ($1, $2::int) ON CONFLICT (la_user_id) DO NOTHING",
+                    {laUserId, std::to_string(out.personId)});
+            }
             // Contact backfill even on the fast path — an existing alias
             // may have been created before we started ingesting email/phone,
             // and paused-program regs need their contact rows just as much
@@ -384,9 +412,17 @@ PersonLinker::Result PersonLinker::linkLa(const json& rec, bool dryRun) {
             out.created = true;
         }
 
-        // 4. Set la_user_id in place (so step 1 hits next time).  Overwrites
-        // whatever this person's previous LA userId was -- there is only
-        // ever one current id per person now, enforced by a unique index.
+        // 4. Record the id so step 1 hits next time.  The alias row is
+        // the one that matters (migration 602 — a person may hold several
+        // live LA userIds).  persons.la_user_id stays the PRIMARY /
+        // most-recently-adopted id for the display and board paths that
+        // still key on it; the persons_pin_la_user_id trigger keeps it
+        // from ping-ponging when both the old and new id are already
+        // aliases of this same person.
+        db_->query(
+            "INSERT INTO person_la_user_ids (la_user_id, person_id) "
+            "VALUES ($1, $2::int) ON CONFLICT (la_user_id) DO NOTHING",
+            {laUserId, std::to_string(personId)});
         db_->query(
             "UPDATE persons SET la_user_id = $1, updated_at = NOW() WHERE id = $2::int",
             {laUserId, std::to_string(personId)});
@@ -513,17 +549,19 @@ void PersonLinker::closeStaleMemberships(long long programId,
                                          const std::set<std::string>& activeLaUserIds) {
     if (programId <= 0) return;
     try {
-        // Pull every OPEN row for this program alongside its person's
-        // current la_user_id and close any whose id isn't in this sync's
-        // active set (or has no la_user_id at all — orphaned/manual
-        // insert).  Previously this joined through external_person_aliases
-        // and had to aggregate over potentially several alias rows per
-        // person with bool_or (2026-07-29, Sheldon Rhoden case: a stale
-        // second alias could otherwise flip a still-valid membership
-        // closed on every sync).  With persons.la_user_id always holding
-        // whichever id linkLa() just wrote this same sync pass, there is
-        // no longer a stale id left over to aggregate around — a plain
-        // per-row check is correct.
+        // Pull every OPEN row for this program and close any whose person
+        // has NO alias in this sync's active set.  The check goes through
+        // person_la_user_ids (migration 602), NOT persons.la_user_id: a
+        // person can hold several live LA userIds across programs (Dylan
+        // Martinez, 22311 — paid men's reg on one account, a free pickup
+        // reg on another), and comparing the single primary id against a
+        // per-program active set closed his PAID membership every time
+        // the other program's sync had touched the column last, which
+        // fn_sweep_invalid_rosters then escalated into removing all his
+        // team rows.  Unlike the pre-2026-07-29 external_person_aliases
+        // bug (Sheldon Rhoden: a stale alias of a DIFFERENT person kept a
+        // membership alive), these aliases all belong to the same person,
+        // so EXISTS over them is the correct per-person check.
         //
         // We fetch first + UPDATE by id list rather than a subquery so
         // the DB call count is bounded (2 round-trips) even for a large
@@ -541,10 +579,10 @@ void PersonLinker::closeStaleMemberships(long long programId,
 
         auto rows = db_->query(
             "SELECT plm.id, "
-            "       (p.la_user_id IS NOT NULL "
-            "        AND p.la_user_id = ANY($2::text[])) AS keep "
+            "       EXISTS (SELECT 1 FROM person_la_user_ids a "
+            "                WHERE a.person_id = plm.person_id "
+            "                  AND a.la_user_id = ANY($2::text[])) AS keep "
             "  FROM person_la_memberships plm "
-            "  JOIN persons p ON p.id = plm.person_id "
             " WHERE plm.la_program_id = $1::bigint "
             "   AND plm.ended_at IS NULL",
             {std::to_string(programId), activeArrLit});

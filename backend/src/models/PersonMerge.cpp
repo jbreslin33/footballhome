@@ -61,6 +61,10 @@ const std::vector<PersonMerge::ChildTable>& PersonMerge::childTables() {
         { "fh_event_rsvps",          Conflict::UniquePersonPlusCols, {"fh_event_id"},    {"id"} },
         { "fh_event_attendance",     Conflict::UniquePersonPlusCols, {"fh_event_id"},    {"id"} },
         { "person_la_memberships",   Conflict::UniquePersonPlusCols, {"la_program_id"},  {"id"} },
+        // Added by migration 602.  PK is la_user_id itself (globally
+        // unique), so two persons can never hold the same row and plain
+        // reparenting is always safe.
+        { "person_la_user_ids",      Conflict::NoPersonUnique,       {},                 {"la_user_id"} },
         { "person_kit_issues",       Conflict::UniquePersonPlusCols, {"kit_item_id"},    {"id"} },
         { "person_uniform_numbers",  Conflict::UniquePersonPlusCols, {"uniform_set_id"}, {"id"} },
         { "player_event_reminders",  Conflict::NoPersonUnique,       {},                 {"id"} },
