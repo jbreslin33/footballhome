@@ -1029,7 +1029,8 @@ class MyScreen extends Screen {
         </div>
         <div style="min-width:0; flex:1; font-size:0.74rem; line-height:1.3;">
           <div style="font-weight:800;">${this.escapeHtml(EventLabels.title(ev))}</div>
-          ${ev.location ? `<div style="opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(ev.location)}</div>` : ''}
+          ${ev.location ? `<div style="opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(ev.location)}</div>`
+                        : (ev.hangout_link ? `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><a href="${this.escapeHtml(ev.hangout_link)}" target="_blank" rel="noopener" style="color:#6ee7b7; font-weight:700; text-decoration:none;">📹 Google Meet</a></div>` : '')}
           ${times ? `<div style="opacity:0.7;">${this.escapeHtml(times)}</div>` : ''}
           ${opensText ? `<div style="margin-top:2px; font-size:0.64rem; font-weight:700; color:#93c5fd;">${this.escapeHtml(opensText)}</div>` : ''}
         </div>
@@ -1795,6 +1796,13 @@ class MyScreen extends Screen {
     const timeStr = this._eventTimeStr(ev.starts_at);
     const title   = this._eventTitle(ev);
     const venue   = ev.location || '';
+    // Online session (owner 2026-10-18): a gcal event with a Google Meet
+    // attached and no physical location is a video practice — the join
+    // link IS the venue, so it takes the 📍 slot on the collapsed card,
+    // and the expanded view always gets a Join button when a Meet exists.
+    // <a> clicks are already excluded from tap-to-expand (the `control`
+    // closest() guard in the click handler), so the link just opens.
+    const meetLink = ev.hangout_link || '';
     // Which squad this is FOR — "U10 Travel", "APSL", "Liga 1" — as a
     // loud pill at the top of the card (owner, 2026-09-12: parents and
     // players could not tell the main game from the card front; lower
@@ -1911,6 +1919,9 @@ class MyScreen extends Screen {
             <div style="opacity:0.85;">${this.escapeHtml(detailLines.join(' • '))}</div>
             ${arrivalKickoffLine ? `<div style="opacity:0.85;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
             ${venue ? `<div style="opacity:0.75;">📍 ${this.escapeHtml(venue)}</div>` : ''}
+            ${meetLink ? `<div><a href="${this.escapeHtml(meetLink)}" target="_blank" rel="noopener"
+                   style="display:inline-block; padding:4px 10px; border-radius:6px; background:#065f46;
+                          color:#d1fae5; font-size:0.66rem; font-weight:700; text-decoration:none;">📹 Join Google Meet</a></div>` : ''}
             ${notes ? `<div style="opacity:0.75;">📝 ${this.escapeHtml(notes)}</div>` : ''}
             ${stacked ? '' : ownSideHtml}
             ${gameCenterBtnHtml ? `<div>${gameCenterBtnHtml}</div>` : ''}
@@ -1931,7 +1942,7 @@ class MyScreen extends Screen {
             <div style="font-size:0.7rem; line-height:1.3; white-space:normal; overflow-wrap:break-word;">
               ${rolePillHtml}${teamPillsInline}<b>${this.escapeHtml(arrival ? `Arrive ${arrival}` : timeStr)}</b> · ${this.escapeHtml(title)}
             </div>
-            <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${venue ? `📍 ${this.escapeHtml(venue)} · ` : ''}${compactMeta}</div>
+            <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${venue ? `📍 ${this.escapeHtml(venue)} · ` : (meetLink ? `<a href="${this.escapeHtml(meetLink)}" target="_blank" rel="noopener" style="color:#6ee7b7; font-weight:700; text-decoration:none;">📹 Google Meet</a> · ` : '')}${compactMeta}</div>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
             ${soloChild ? childButtonsHtml(soloChild) : (!stacked && showOwnRsvpRow ? ownButtonsHtml : '')}
