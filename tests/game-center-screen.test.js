@@ -63,6 +63,14 @@ function loadGameCenter() {
       }
     }
     var LighthouseBeam = { animate: () => () => {}, draw: () => {} };
+    // Shared 🚗 component (components/carpool-panel.js, migs 608/609) —
+    // the screen constructs one and calls load/html/click on it.
+    class CarpoolPanel {
+      constructor(auth, hooks) { this.auth = auth; this.hooks = hooks; }
+      async load() {}
+      html() { return ''; }
+      async click() {}
+    }
   `, sandbox);
 
   vm.runInContext(read('screen-base.js'), sandbox);
@@ -321,8 +329,52 @@ test('matchId falls back to navigation.context.match', () => {
   screen.onEnter({ matchId: 999, postType: 'game_day' });
   assert.equal(screen.matchId, 999, 'explicit params win');
   assert.equal(screen.pill, 'game_day');
+
+  // onEnter armed the 15s live-RSVP interval; without this, the pending
+  // timer holds the node:test process open forever.
+  screen.onExit();
+  assert.equal(screen._pollTimer, null, 'onExit stops the live poll');
 });
 
+
+// ---- Live RSVP poll (2026-10-19: the page refreshes itself while open) ----
+
+test('the live poll re-bootstraps only when the game actually changed', async () => {
+  const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
+  // jsdom defaults to visibilityState 'prerender' (hidden: true), which
+  // the poll rightly treats as "tab not visible — stand down".
+  Object.defineProperty(sandbox.document, 'hidden', { value: false });
+  let bootstraps = 0;
+  screen._bootstrap = async () => { bootstraps++; };
+
+  const serverLineup = { success: true, data: {
+    lineup: [{ playerId: 1, zone: 'starter', positionId: 9, slotNumber: 9 }],
+    rosterStats: [{ playerId: 1, gameRsvp: 'yes' }],
+  } };
+  screen.auth.fetch = async () => ({ ok: true, json: async () => serverLineup });
+  screen._liveFpLast = screen._liveFp(serverLineup.data.lineup, serverLineup.data.rosterStats, null);
+  screen._startLivePoll();
+
+  await screen._pollLive();
+  assert.equal(bootstraps, 0, 'unchanged game: no refresh, no re-render');
+
+  serverLineup.data.rosterStats = [{ playerId: 1, gameRsvp: 'no' }];
+  await screen._pollLive();
+  assert.equal(bootstraps, 1, 'an RSVP flip triggers the full refresh');
+
+  // Mid-edit the poll stands down rather than re-rendering the DOM out
+  // from under the coach — and catches up once the edit is over.
+  serverLineup.data.rosterStats = [{ playerId: 1, gameRsvp: 'maybe' }];
+  screen.overlayOpen = true;
+  await screen._pollLive();
+  assert.equal(bootstraps, 1, 'open overlay postpones the refresh');
+  screen.overlayOpen = false;
+  await screen._pollLive();
+  assert.equal(bootstraps, 2, 'the postponed change lands on the next tick');
+
+  screen.onExit();
+  assert.equal(screen._pollTimer, null, 'leaving the screen stops the poll');
+});
 
 // ---- RSVP & Player Details overlay (slice D: moved off #game-day-roster) ----
 

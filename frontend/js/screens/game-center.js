@@ -596,6 +596,7 @@ class GameCenterScreen extends Screen {
     this._detailsMsg = '';
     this._wire();
     this._bootstrap();
+    this._startLivePoll();
   }
 
   // postType is the deep link ("open Game Center on the Match Result
@@ -628,6 +629,7 @@ class GameCenterScreen extends Screen {
   }
 
   onExit() {
+    this._stopLivePoll();
     if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; }
     // The beam's rAF loop and its ResizeObserver both hold the detached
     // canvas alive otherwise — this screen instance is reused across
@@ -638,6 +640,76 @@ class GameCenterScreen extends Screen {
     if (this._jerseyDebounce) { clearTimeout(this._jerseyDebounce); this._jerseyDebounce = null; }
     this.overlayOpen = false;
     this._closeSwapSheet();
+  }
+
+  // ── Live RSVP poll ───────────────────────────────────────────────────
+  // RSVPs land from phones while this page sits open, so the screen
+  // re-checks the game every 15s and re-runs the normal _bootstrap()
+  // only when something actually changed. 15s is human-RSVP speed; the
+  // lineup GET is a few indexed queries against the local DB, so even a
+  // dozen open tabs is noise. The poll never fires into an edit — a
+  // pending autosave, the details overlay, the swap sheet, a draft view,
+  // or any focused field postpones it to a later tick rather than
+  // re-rendering the DOM out from under the coach.
+  _startLivePoll() {
+    this._stopLivePoll();
+    this._pollTimer = setInterval(() => this._pollLive(), 15000);
+    // Coming back to the tab checks immediately instead of waiting out
+    // the remainder of the interval.
+    this._pollOnShow = () => { if (!document.hidden) this._pollLive(); };
+    document.addEventListener('visibilitychange', this._pollOnShow);
+  }
+
+  _stopLivePoll() {
+    if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+    if (this._pollOnShow) { document.removeEventListener('visibilitychange', this._pollOnShow); this._pollOnShow = null; }
+  }
+
+  // One string per game state: lineup zones + roster RSVPs + call-up
+  // answers. Only these fields — anything volatile (stats, timestamps)
+  // would make every poll look like a change.
+  _liveFp(lineupRows, statsRows, invites) {
+    const l = (lineupRows || []).map(r => [Number(r.playerId), r.zone || null, r.positionId ?? null, r.slotNumber ?? null]).sort((a, b) => a[0] - b[0]);
+    const s = (statsRows || []).map(r => [Number(r.playerId), r.gameRsvp ?? null]).sort((a, b) => a[0] - b[0]);
+    const i = ((invites && invites.invites) || []).map(v => [Number(v.person_id), v.response ?? null]).sort((a, b) => a[0] - b[0]);
+    return JSON.stringify([l, s, i]);
+  }
+
+  async _pollLive() {
+    if (document.hidden || !this.matchId || !this.loaded || this.error || this._pollBusy) return;
+    if (this._liveFpLast == null) return;   // no baseline yet — bootstrap sets it
+    // Never refresh into an edit — catch up on a later tick instead.
+    if (this._saveTimer || this._jerseyDebounce || this.overlayOpen || this.announceEditing) return;
+    if (this._isDraftView()) return;
+    if (document.getElementById('gc-swap-sheet')) return;
+    const focused = document.activeElement;
+    if (focused && this.element && this.element.contains(focused)
+        && /^(INPUT|TEXTAREA|SELECT)$/.test(focused.tagName)) return;
+
+    this._pollBusy = true;
+    const matchId = this.matchId;
+    try {
+      const fhEventId = this.isCoach ? this._fhEventId() : null;
+      const [lineupRes, invitesRes] = await Promise.all([
+        this.auth.fetch(`/api/eligibility/lineup/${matchId}`),
+        fhEventId
+          ? this.auth.fetch(`/api/calendar/events/${fhEventId}/invites`).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+      const lineupData = await lineupRes.json().catch(() => null);
+      if (!lineupData || !lineupData.success) return;
+      const invData = invitesRes && invitesRes.ok ? await invitesRes.json().catch(() => null) : null;
+      const fp = this._liveFp(
+        lineupData.data.lineup, lineupData.data.rosterStats,
+        invData ? { invites: invData.invites || [] } : this.invites);
+      // The screen may have moved on while the fetch was in flight.
+      if (!this._pollTimer || matchId !== this.matchId) return;
+      if (fp !== this._liveFpLast) this._bootstrap();   // full refresh; resets the baseline
+    } catch (err) {
+      // A network blip just means the next tick retries.
+    } finally {
+      this._pollBusy = false;
+    }
   }
 
   // Same admin-only gate my.js uses for the "Post to Instagram" button on
@@ -1085,6 +1157,9 @@ class GameCenterScreen extends Screen {
       }
 
       this.loaded = true;
+      // Baseline for the live poll — same fields _pollLive fingerprints,
+      // from the data this render was built on.
+      this._liveFpLast = this._liveFp(lineupData.data.lineup, lineupData.data.rosterStats, this.invites);
       this._syncHash();
       this._render();
     } catch (err) {
