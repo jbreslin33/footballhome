@@ -103,6 +103,7 @@ HttpClient::Response HttpClient::perform(const std::string& url,
     curl_easy_setopt(curl, CURLOPT_USERAGENT, kUserAgent);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, kConnectTimeoutSec);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, totalTimeoutSec_ > 0 ? totalTimeoutSec_ : kTotalTimeoutSec);
+    if (!proxyUrl_.empty()) curl_easy_setopt(curl, CURLOPT_PROXY, proxyUrl_.c_str());
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);          // signal-safe under threads

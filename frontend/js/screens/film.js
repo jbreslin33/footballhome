@@ -81,13 +81,20 @@ class FilmScreen extends Screen {
         lastMd = md;
         html += `<div class="fl-day">${esc(md)} · ${esc(this._md(r.from))}–${esc(this._md(r.till))}</div>`;
       }
+      // Three tiers since mig 607: our game (bold, named as Lighthouse vs
+      // X), any other RESOLVED game (both sides named from the league-wide
+      // feeds — "they may not know easy who the away team was"), and a row
+      // the schedule couldn't place (home team only, as the sheet states).
       const ours = !!(r.game && r.game.opponent);
+      const matched = !ours && !!(r.game && r.game.home && r.game.away);
       const label = ours
         ? esc(this._copy('ours', { day: r.game.day_label, opponent: r.game.opponent }) || `${r.game.day_label} · Lighthouse vs ${r.game.opponent}`)
-        : esc(this._copy('unmatched', { home: r.home_team }) || `${r.home_team} (home team)`);
+        : matched
+          ? esc(this._copy('matched', { day: r.game.day_label, home: r.game.home, away: r.game.away }) || `${r.game.day_label} · ${r.game.home} vs ${r.game.away}`)
+          : esc(this._copy('unmatched', { home: r.home_team }) || `${r.home_team} (home team)`);
       html += `
         <div class="fl-row${ours ? ' ours' : ''}">
-          <span class="who">${ours ? '🏟 ' : ''}${label}${ours ? ` <span class="sub">${esc(r.home_team)} filmed</span>` : ''}</span>
+          <span class="who">${ours ? '🏟 ' : ''}${label}${ours || matched ? ` <span class="sub">${esc(r.home_team)} filmed</span>` : ''}</span>
           <a class="fl-watch" href="${esc(r.url)}" target="_blank" rel="noopener">🎥 ${watch}</a>
         </div>`;
     }

@@ -3,10 +3,12 @@
 #include <cctype>
 #include <ctime>
 #include <iostream>
+#include <set>
 #include <vector>
 
 #include "../core/HttpClient.h"
 #include "../database/Database.h"
+#include "LeagueFixtureSync.h"
 
 namespace {
 
@@ -83,10 +85,20 @@ void FilmSync::refreshIfStale(int maxAgeMinutes) {
     auto* db = Database::getInstance();
     try {
         auto due = db->query(
-            "SELECT id, csv_url FROM film_sources WHERE is_active "
+            "SELECT id, csv_url, league_label FROM film_sources WHERE is_active "
             "  AND (fetched_at IS NULL OR fetched_at < now() - make_interval(mins => $1::int))",
             {std::to_string(maxAgeMinutes)});
         for (const auto& r : due) run(r["id"].as<int>(), r["csv_url"].c_str());
+        // The matcher needs the WHOLE division's fixtures, not just our own
+        // feed (mig 607, owner 2026-10-19: "find who home team was playing
+        // via fuzzy logic based on schedule") — the division-wide
+        // teampass_json source carries them.  Re-pull the league's fixture
+        // sources on the sheet's own staleness cadence.
+        if (!due.empty()) {
+            std::set<std::string> labels;
+            for (const auto& r : due) labels.insert(r["league_label"].c_str());
+            for (const auto& label : labels) LeagueFixtureSync::refreshLeague(label);
+        }
     } catch (const std::exception& e) {
         std::cerr << "[film sync] " << e.what() << std::endl;
     }

@@ -24,7 +24,16 @@ public:
 
     // One source.  Pulls every page, upserts, marks rows the full pull no
     // longer lists (removed_at), and stamps the source row.  system says
-    // the feed shape: 'sportsengine' (paged JSON, mig 488) or
-    // 'teampass_ics' (one iCal file, program_id = its file stem, mig 490).
+    // the feed shape: 'sportsengine' (paged JSON, mig 488), 'teampass_ics'
+    // (one iCal file, program_id = its file stem, mig 490), or
+    // 'teampass_json' (the TeamPass site's Jumbotron widget data: ONE json
+    // with every division's teams and games; program_id is
+    // '<leagueSiteId>/<divisionId>', division empty = the whole league.
+    // Mig 606, owner 2026-10-19: film "should try to find who home team
+    // was playing via fuzzy logic based on schedule" — our own .ics feed
+    // carries only Lighthouse's games, this carries the division's.  The
+    // endpoint answers only through the scraper proxy, like the TeamPass
+    // HTML pages).  Overlap between feeds is deduped in the upsert: one
+    // row per league+season+date+pairing, first source in wins.
     static Result refreshSource(long long sourceId, const std::string& programId, const std::string& system = "sportsengine");
 };

@@ -21,7 +21,7 @@ Response jsonError(HttpStatus s, const std::string& message) { return jsonOut(s,
 constexpr const char* kListSql = R"SQL(
     SELECT l.matchday_label, l.window_start::text AS from_d, l.window_end::text AS till_d,
            l.home_team_text, l.url,
-           g.game_on, g.day_label, g.opponent
+           g.game_on, g.day_label, g.opponent, g.home_name, g.away_name
       FROM film_links l
       JOIN film_sources s ON s.id = l.source_id AND s.is_active
       LEFT JOIN film_team_aliases a ON a.alias = lower(BTRIM(l.home_team_text))
@@ -29,11 +29,19 @@ constexpr const char* kListSql = R"SQL(
             SELECT (f.starts_at AT TIME ZONE 'America/New_York')::date AS game_on,
                    to_char(f.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS day_label,
                    CASE WHEN f.home_club_id = 134 THEN f.away_name
-                        WHEN f.away_club_id = 134 THEN f.home_name END AS opponent
+                        WHEN f.away_club_id = 134 THEN f.home_name END AS opponent,
+                   -- Since mig 607 league_fixtures carries the whole
+                   -- division (per-team .ics feeds), so EVERY film row can
+                   -- name both sides, not just ours (owner 2026-10-19:
+                   -- "players may not know easy who the away team was").
+                   f.home_name, f.away_name
               FROM league_fixtures f
               JOIN league_fixture_sources fs ON fs.id = f.source_id AND fs.league_label = s.league_label
              WHERE f.removed_at IS NULL AND f.status <> 'cancelled'
-               AND (f.home_name = a.feed_name OR f.away_name = a.feed_name
+               -- Prefix either way: the feeds drop/add suffixes per team
+               -- ("Vereinigung Erzgebirge" vs "… Majors").
+               AND (lower(f.home_name) LIKE lower(a.feed_name) || '%' OR lower(a.feed_name) LIKE lower(f.home_name) || '%'
+                    OR lower(f.away_name) LIKE lower(a.feed_name) || '%' OR lower(a.feed_name) LIKE lower(f.away_name) || '%'
                     OR (a.feed_name = 'Lighthouse 1893 SC' AND (f.home_club_id = 134 OR f.away_club_id = 134)))
                AND (f.starts_at AT TIME ZONE 'America/New_York')::date
                      BETWEEN l.window_start - 3 AND l.window_end + 3
@@ -73,7 +81,8 @@ Response FilmController::handleList(const Request& request) {
             json game = nullptr;
             if (!r["game_on"].is_null()) {
                 game = {{"on", str(r, "game_on")}, {"day_label", str(r, "day_label")},
-                        {"opponent", r["opponent"].is_null() ? json(nullptr) : json(str(r, "opponent"))}};
+                        {"opponent", r["opponent"].is_null() ? json(nullptr) : json(str(r, "opponent"))},
+                        {"home", str(r, "home_name")}, {"away", str(r, "away_name")}};
             }
             rows.push_back({{"matchday", str(r, "matchday_label")}, {"from", str(r, "from_d")}, {"till", str(r, "till_d")},
                             {"home_team", str(r, "home_team_text")}, {"url", str(r, "url")}, {"game", game}});

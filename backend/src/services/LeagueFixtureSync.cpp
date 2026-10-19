@@ -1,6 +1,7 @@
 #include "LeagueFixtureSync.h"
 
 #include <cctype>
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 
@@ -46,13 +47,31 @@ struct FixtureRow {
 
 bool upsertFixture(Database* db, const std::string& sid, const FixtureRow& f) {
     try {
+        // A league pulled from MANY per-team feeds (mig 607) sees every game
+        // twice — once in each team's .ics.  The guard keeps one row per
+        // game across a league+season's sources: a NEW row is skipped when a
+        // sibling source already carries that date + pairing; a source's OWN
+        // row always keeps updating (reschedules, cancellations).
         db->query(R"SQL(
             INSERT INTO league_fixtures (source_id, external_id, division_name, division_label, starts_at, ends_at, status,
                                          home_name, away_name, home_club_id, away_club_id, home_ext_team_id, away_ext_team_id,
                                          home_score, away_score, venue_name, venue_detail, venue_address, external_updated_at, last_seen_at, removed_at)
-            VALUES ($1::int, $2, NULLIF($3,''), NULLIF(regexp_replace($3, '^PHL\s+', ''), ''), $4::timestamptz, NULLIF($5,'')::timestamptz, $6,
+            SELECT $1::int, $2, NULLIF($3,''), NULLIF(regexp_replace($3, '^PHL\s+', ''), ''), $4::timestamptz, NULLIF($5,'')::timestamptz, $6,
                     $7, $8, fh_club_id_for_name($7), fh_club_id_for_name($8), NULLIF($9,''), NULLIF($10,''),
-                    NULLIF($11,'')::int, NULLIF($12,'')::int, NULLIF($13,''), NULLIF($14,''), NULLIF($15,''), NULLIF($16,'')::timestamptz, now(), NULL)
+                    NULLIF($11,'')::int, NULLIF($12,'')::int, NULLIF($13,''), NULLIF($14,''), NULLIF($15,''), NULLIF($16,'')::timestamptz, now(), NULL
+             WHERE EXISTS (SELECT 1 FROM league_fixtures o WHERE o.source_id = $1::int AND o.external_id = $2)
+                OR NOT EXISTS (
+                     SELECT 1 FROM league_fixtures f2
+                       JOIN league_fixture_sources s2 ON s2.id = f2.source_id
+                       JOIN league_fixture_sources s1 ON s1.id = $1::int
+                      WHERE f2.source_id <> $1::int AND f2.removed_at IS NULL
+                        AND s2.league_label = s1.league_label AND s2.season = s1.season
+                        AND (f2.starts_at AT TIME ZONE 'America/New_York')::date = ($4::timestamptz AT TIME ZONE 'America/New_York')::date
+                        -- Unordered pair: the feeds disagree on home/away
+                        -- (the 9/30 VE game), so a flipped copy is still
+                        -- the same game.
+                        AND ((lower(f2.home_name) = lower($7) AND lower(f2.away_name) = lower($8))
+                          OR (lower(f2.home_name) = lower($8) AND lower(f2.away_name) = lower($7))))
             ON CONFLICT (source_id, external_id) DO UPDATE SET
                 division_name = EXCLUDED.division_name, division_label = EXCLUDED.division_label,
                 starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at, status = EXCLUDED.status,
@@ -152,6 +171,64 @@ LeagueFixtureSync::Result LeagueFixtureSync::refreshSource(long long sourceId, c
         }
         totalPages = 0;   // skip the paged loop below
     }
+    if (system == "teampass_json") {
+        // The TeamPass Jumbotron data: one json for the whole league
+        // (mig 607).  program_id '<leagueSiteId>/<divisionId>'; the
+        // division filter keeps APSL's national list down to ours.
+        std::string leaguePart = programId, divisionPart;
+        const auto slash = programId.find('/');
+        if (slash != std::string::npos) { leaguePart = programId.substr(0, slash); divisionPart = programId.substr(slash + 1); }
+        const char* proxyEnv = std::getenv("TEAMPASS_PROXY_URL");
+        http.setProxy(proxyEnv && *proxyEnv ? proxyEnv : "http://footballhome_scraper:3128");
+        auto resp = http.get("https://alta.teampass.com/App/Jumbotron/data/" + HttpClient::urlEncode(leaguePart) + "?format=2A",
+                             {{"Accept", "application/json"}});
+        if (!resp.ok()) out.note = "HTTP " + std::to_string(resp.status) + (resp.error.empty() ? "" : " " + resp.error);
+        else {
+            json body = json::parse(resp.body, nullptr, false);
+            if (body.is_discarded() || !body.contains("games") || !body["games"].is_array()
+                || !body.contains("teams") || !body["teams"].is_object()) {
+                out.note = "unexpected feed shape";
+            } else {
+                const json& teams = body["teams"];
+                const json divs = body.contains("divisions") && body["divisions"].is_object() ? body["divisions"] : json::object();
+                for (const auto& g : body["games"]) {
+                    if (!g.is_object() || !g.contains("id") || !g["id"].is_number()) continue;
+                    const std::string divId = g.contains("d") && g["d"].is_number() ? std::to_string(g["d"].get<long long>()) : "";
+                    if (!divisionPart.empty() && divId != divisionPart) continue;
+                    std::string t1, t2;
+                    if (g.contains("t1") && g["t1"].is_number()) t1 = std::to_string(g["t1"].get<long long>());
+                    if (g.contains("t2") && g["t2"].is_number()) t2 = std::to_string(g["t2"].get<long long>());
+                    if (t1.empty() || t2.empty() || !teams.contains(t1) || !teams.contains(t2)) continue;
+                    std::string dt = sv(g, "dt");   // local time, no zone
+                    if (dt.empty()) continue;
+                    for (auto& c : dt) if (c == 'T') c = ' ';
+                    FixtureRow f;
+                    f.extId     = std::to_string(g["id"].get<long long>());
+                    f.division  = divs.contains(divId) ? sv(divs[divId], "name") : "";
+                    f.startsAt  = dt + " America/New_York";
+                    // No cancelled flag in this feed — a called-off game
+                    // just leaves the list, and the sweep below retires it.
+                    f.status    = "scheduled";
+                    f.homeName  = sv(teams[t1], "name");
+                    f.awayName  = sv(teams[t2], "name");
+                    f.homeExt   = t1;
+                    f.awayExt   = t2;
+                    // Scores default to 0 in this feed — real only once the
+                    // game is marked played (st = 1).
+                    if (g.value("st", 0) == 1) {
+                        f.homeScore = std::to_string(g.value("s1", 0));
+                        f.awayScore = std::to_string(g.value("s2", 0));
+                    }
+                    if (f.homeName.empty() || f.awayName.empty()) continue;
+                    if (upsertFixture(db, sid, f)) out.games++;
+                }
+                out.pages = 1;
+                out.ok = out.games > 0;
+                if (!out.ok) out.note = "no games" + (divisionPart.empty() ? std::string{} : " for division " + divisionPart);
+            }
+        }
+        totalPages = 0;
+    }
     for (int page = 1; page <= totalPages && page <= kMaxPages; page++) {
         const std::string url = std::string(kEventsApi) + "?page=" + std::to_string(page) + "&per_page=" + std::to_string(kPerPage) +
                                 "&program_id=" + HttpClient::urlEncode(programId) + "&order_by=starts_at&direction=asc";
@@ -222,3 +299,4 @@ json LeagueFixtureSync::refreshLeague(const std::string& leagueLabel) {
     } catch (const std::exception& e) { std::cerr << "[fixture sync] " << leagueLabel << ": " << e.what() << std::endl; }
     return out;
 }
+

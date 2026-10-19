@@ -44,6 +44,11 @@ public:
     // Claude turn that runs web searches can take a couple of minutes.
     void setTotalTimeoutSec(long seconds) { totalTimeoutSec_ = seconds; }
 
+    // Route this client's requests through an HTTP proxy (e.g. the
+    // scraper-VPN container — TeamPass serves its HTML pages only through
+    // it, while its .ics files answer directly).  Empty = no proxy.
+    void setProxy(const std::string& proxyUrl) { proxyUrl_ = proxyUrl; }
+
     // Plain GET.
     //
     // `unixSocketPath` (optional): when non-empty, libcurl routes the
@@ -88,6 +93,7 @@ public:
 
 private:
     long totalTimeoutSec_ = 0;   // 0 = kTotalTimeoutSec
+    std::string proxyUrl_;       // empty = direct
     // Single performer used by all of the public methods.  `method` is
     // "GET" or "POST"; pass empty body+contentType for GET.
     // `unixSocketPath` empty ⇒ normal TCP+DNS; non-empty ⇒ CURLOPT_UNIX_SOCKET_PATH.
