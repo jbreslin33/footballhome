@@ -2538,19 +2538,26 @@ class MyScreen extends Screen {
   }
 
   // Section links (chat_links rows for the viewer's own club chat —
-  // e.g. the Men's GroupMe join link).  Label + url both come from the DB.
+  // e.g. the Men's GroupMe join link, or the #film game-film page).
+  // Label + url both come from the DB.  An https:// url opens in a new
+  // tab; a #route url is an in-app screen — it must go through the
+  // router (data-player-nav-target delegation above), since setting
+  // location.hash alone does not route this app.
   _renderChatLinks(links) {
     const box = this.find('#chat-links');
     if (!box) return;
-    const safe = links.filter(l => /^https:\/\//i.test(l.url || ''));
-    box.style.display = safe.length ? 'flex' : 'none';
-    box.innerHTML = safe.map(l => `
-      <a href="${this.escapeHtml(l.url)}" target="_blank" rel="noopener"
-         style="padding:4px 9px; border-radius:999px; border:1px solid rgba(96,165,250,0.35);
+    const pill = `padding:4px 9px; border-radius:999px; border:1px solid rgba(96,165,250,0.35);
                 background:rgba(59,130,246,0.2); color:#dbeafe; font-size:0.66rem; font-weight:700;
-                line-height:1; text-decoration:none; display:inline-flex; align-items:center;">
-        ${this.escapeHtml(l.label)}
-      </a>`).join('');
+                line-height:1; text-decoration:none; display:inline-flex; align-items:center; cursor:pointer;`;
+    const safe = links.filter(l => /^(https:\/\/|#[a-z0-9-]+$)/i.test(l.url || ''));
+    box.style.display = safe.length ? 'flex' : 'none';
+    box.innerHTML = safe.map(l => l.url.startsWith('#')
+      ? `<a data-player-nav-target="${this.escapeHtml(l.url.slice(1))}" style="${pill}">
+           ${this.escapeHtml(l.label)}
+         </a>`
+      : `<a href="${this.escapeHtml(l.url)}" target="_blank" rel="noopener" style="${pill}">
+           ${this.escapeHtml(l.label)}
+         </a>`).join('');
   }
 
   _renderChatMessages() {
