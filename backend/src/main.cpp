@@ -50,6 +50,7 @@
 #include "controllers/FinancesController.h"
 #include "controllers/FilmController.h"
 #include "controllers/CarpoolController.h"
+#include "controllers/TacticalLiveController.h"
 #include "controllers/FinesController.h"
 #include "controllers/ScheduleLinksController.h"
 #include "controllers/DashboardController.h"
@@ -137,6 +138,7 @@ private:
     std::shared_ptr<FinancesController> finances_controller_;
     std::shared_ptr<FilmController> film_controller_;
     std::shared_ptr<CarpoolController> carpool_controller_;
+    std::shared_ptr<TacticalLiveController> tactical_live_controller_;
     std::shared_ptr<FinesController> fines_controller_;
     std::shared_ptr<ScheduleLinksController> schedule_links_controller_;
     std::shared_ptr<DashboardController> dashboard_controller_;
@@ -233,6 +235,7 @@ public:
         finances_controller_ = std::make_shared<FinancesController>();
         film_controller_ = std::make_shared<FilmController>();
         carpool_controller_ = std::make_shared<CarpoolController>();
+        tactical_live_controller_ = std::make_shared<TacticalLiveController>();
         fines_controller_ = std::make_shared<FinesController>();
         schedule_links_controller_ = std::make_shared<ScheduleLinksController>();
         dashboard_controller_ = std::make_shared<DashboardController>();
@@ -575,6 +578,7 @@ private:
         // Who a message about one game reaches — the bulk ✉/💬 buttons on #game-center (mig 506).
         router_.useController("/api/game-message", game_message_controller_);
         router_.useController("/api/carpool", carpool_controller_);
+        router_.useController("/api/tactical-live", tactical_live_controller_);
         router_.useController("/api/opponents", opponents_controller_);
         // Schedule release window (migration 334): when next week posts,
         // early opens, standing rule. See ScheduleReleaseController.h.

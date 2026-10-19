@@ -10,10 +10,15 @@
 // u8".
 //
 //   GET /api/game-message/:matchId/recipients
-//     { success, people: [{ personId, name, rsvp: 'yes'|'no'|'maybe'|'none',
+//     { success, people: [{ personId, name, kind: 'roster'|'callup'|'candidate',
+//                           rsvp: 'yes'|'no'|'maybe'|'none',
 //                           email, phone, viaParent }] }
 //
-// Everyone on the rosters of the game's teams, with the RSVP they gave the
+// Everyone on the rosters of the game's teams, its open invitees
+// (fh_event_invites — the actual call-ups, whatever they answered) and,
+// as kind 'candidate', everyone who could still be called up
+// (fh_event_invite_candidates; mig 600, owner 2026-10-19: "can't leave
+// out potentional u8 call ups").  Each with the RSVP they gave the
 // game and the contact a message reaches them by: the parent's for a
 // youth player (persons.parent_person_id), their own otherwise — the same
 // rule as the RSVP board.  The page groups them (going / going +

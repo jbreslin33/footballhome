@@ -132,6 +132,7 @@ set(SOURCES
     src/controllers/FinancesController.cpp
     src/controllers/FilmController.cpp
     src/controllers/CarpoolController.cpp
+    src/controllers/TacticalLiveController.cpp
     src/controllers/FinesController.cpp
     src/controllers/ScheduleLinksController.cpp
     src/controllers/DashboardController.cpp

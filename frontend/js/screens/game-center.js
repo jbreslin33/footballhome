@@ -319,7 +319,10 @@ class GameCenterScreen extends Screen {
     this._invBusy = new Set();   // person_ids with an invite POST/DELETE in flight
     this._invCopied = new Set(); // person_ids whose invite link was put on the clipboard
     this.officialRoster = null;  // {available, league, saved} — the league's own roster sheet for this game (mig 501)
-    this.gameRecipients = null;  // [{personId, name, rsvp, email, phone, viaParent}] — everyone on the game's rosters (mig 506)
+    this.gameRecipients = null;  // [{personId, name, kind, rsvp, email, phone, viaParent}] — roster + call-ups + candidates (migs 506/600)
+    this.carpool = null;         // {viewerPersonId, requests, riders} — 🚗 Carpool (mig 601)
+    this._cpFormFor = null;      // personId whose request form is open
+    this._cpBusy = false;        // a carpool POST in flight
     this._rosterPull = null;     // {busy} | {error} while / after a pull
     this._oppAddOpen = false;
     this.overlayOpen = false;
@@ -708,6 +711,9 @@ class GameCenterScreen extends Screen {
       if (rosterOpen && !rosterOpen.disabled) { this._printOfficialRoster(false); return; }
       const oppPage = e.target.closest('[data-gc-opp-page]');
       if (oppPage) { this.navigation.goTo('opponents', { clubId: Number(oppPage.dataset.gcOppPage) || 0 }); return; }
+      // 🚗 Carpool (mig 601) — everyone on the game, not just coaches.
+      const cpBtn = e.target.closest('[data-gc-cp]');
+      if (cpBtn && !cpBtn.disabled) { this._carpoolClick(cpBtn); return; }
       // The Instagram section. Its pill strip flips between the posts
       // without touching the page above; nothing picked means no
       // SocialPostCard is mounted, which is also what defers that
@@ -1014,6 +1020,8 @@ class GameCenterScreen extends Screen {
       // The league's roster sheet is for the players too (owner 2026-09-30:
       // "all players to see it so we can ask one to print it if we forget").
       const officialRosterPromise = this._loadOfficialRoster();
+      // 🚗 Carpool is for everyone on the game, parents included (mig 601).
+      const carpoolPromise = this._loadCarpool();
 
       const [rosterResults, detailsData] = await Promise.all([
         Promise.all(rosterTeamIds.map(id =>
@@ -1021,6 +1029,7 @@ class GameCenterScreen extends Screen {
         detailsPromise,
         remindersPromise,
         officialRosterPromise,
+        carpoolPromise,
       ]);
 
       // A player on two of the game's teams keeps the first team's row.
@@ -1065,7 +1074,7 @@ class GameCenterScreen extends Screen {
         if (!this.players.some(d => Number(d.playerId) === pid))
           this.players.push({ playerId: pid, personId: inv.person_id, name });
         if (Array.isArray(this.gameRecipients) && !this.gameRecipients.some(r => Number(r.personId) === Number(inv.person_id)))
-          this.gameRecipients.push({ personId: inv.person_id, name, rsvp: 'yes', email: inv.email || null,
+          this.gameRecipients.push({ personId: inv.person_id, name, kind: 'callup', rsvp: 'yes', email: inv.email || null,
                                      phone: inv.phone || null, viaParent: !!inv.parent_person_id });
       }
 
@@ -1930,7 +1939,8 @@ class GameCenterScreen extends Screen {
 
     if (effectiveIsPlayerView) {
       // Starter criteria mean nothing where everyone plays (mig 515).
-      paint(viewToggleHtml + (this.everyonePlays ? '' : this._renderMyEligibility() + this._renderRosterCriteria())
+      paint(viewToggleHtml + this._renderCarpoolPanel()
+            + (this.everyonePlays ? '' : this._renderMyEligibility() + this._renderRosterCriteria())
             + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
       return;
     }
@@ -2762,15 +2772,24 @@ class GameCenterScreen extends Screen {
 
   _copyGm(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('game_message', tier, tokens) : ''; }
 
-  // The three lists the buttons offer.  "Undecided" is anyone who has
-  // not said no: no answer yet, or maybe.
+  // The lists the buttons offer.  "Undecided" is anyone who has not said
+  // no: no answer yet, or maybe.  Since mig 600 the server's rows carry a
+  // kind — roster, callup (an actual invite, whatever they answered) or
+  // candidate (COULD still be called up).  The first three groups are the
+  // squad: roster + call-ups, going or not (owner 2026-10-19: "message
+  // all whether going or not"); the last adds the potential call-ups
+  // ("can't leave out potentional u8 call ups") and only appears when
+  // there are some.
   _gameRecipientGroups() {
     const all = this.gameRecipients || [];
-    return [
-      { key: 'going',           people: all.filter(p => p.rsvp === 'yes') },
-      { key: 'going_undecided', people: all.filter(p => p.rsvp !== 'no') },
-      { key: 'all',             people: all },
+    const squad = all.filter(p => p.kind !== 'candidate');
+    const groups = [
+      { key: 'going',           people: squad.filter(p => p.rsvp === 'yes') },
+      { key: 'going_undecided', people: squad.filter(p => p.rsvp !== 'no') },
+      { key: 'all',             people: squad },
     ];
+    if (squad.length < all.length) groups.push({ key: 'with_candidates', people: all });
+    return groups;
   }
 
   _gameLabelForMessage() {
@@ -2817,6 +2836,136 @@ class GameCenterScreen extends Screen {
       entry: { scope, preset: subject ? { label: '', subject } : null },
       onSent: (n) => this._toast(`✓ ${n}`),
     });
+  }
+
+  // 🚗 Carpool (mig 601, owner 2026-10-19: "would be great to have a
+  // carpool feature on each game. request ride. then they could auto have
+  // address for pickup of child on there. then someone could click to
+  // acccpet carpool to drive?").  A parent posts a ride request for their
+  // player — the pickup address pre-fills from person_addresses and is
+  // snapshotted on the request — and anyone on the game taps "I can
+  // drive".  The endpoint answers 403 to anyone not on the game, and the
+  // panel stays away.  All wording is the DB's (MessageCopy 'carpool').
+  _cpCopy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('carpool', tier, tokens) : ''; }
+
+  _fmtCpAddress(r) {
+    const line1 = [r.address1, r.address2].filter(Boolean).join(', ');
+    const line2 = [r.city, [r.state, r.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    return [line1, line2].filter(Boolean).join(', ');
+  }
+
+  async _loadCarpool() {
+    this.carpool = null;
+    const id = this._fhEventId();
+    if (!id) return;
+    try {
+      const res = await this.auth.fetch(`/api/carpool/${id}`);
+      const data = await res.json().catch(() => null);
+      this.carpool = (res.ok && data && data.success) ? data : null;
+    } catch (err) {
+      this.carpool = null;
+    }
+  }
+
+  _renderCarpoolPanel() {
+    const cp = this.carpool;
+    if (!cp) return '';
+    const esc = (t) => this.escapeHtml(t);
+    const me = Number(cp.viewerPersonId);
+    const smsBtn = (phone, label) => phone ? `<a href="sms:${esc(phone)}" style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; border:1px solid var(--border-color); color:inherit; text-decoration:none; font-size:0.66rem;">💬 ${esc(label || phone)}</a>` : '';
+    const act = (action, id, cls, label) => `<button class="btn ${cls}" data-gc-cp="${action}" data-cp-id="${id}" ${this._cpBusy ? 'disabled' : ''} style="padding:3px 10px; font-size:0.7rem; font-weight:700;">${label}</button>`;
+
+    const rows = (cp.requests || []).map(r => {
+      const addr = this._fmtCpAddress(r);
+      const mineReq = Number(r.requestedBy.personId) === me;
+      const driver = r.acceptedBy;
+      const iDrive = driver && Number(driver.personId) === me;
+      const status = driver
+        ? `<span style="color:#22c55e; font-weight:700;">${esc(this._cpCopy('accepted_by', { driver: driver.name }) || `🚗 ${driver.name} is driving`)}</span>`
+        : `<span style="color:#f59e0b; font-weight:700;">${esc(this._cpCopy('needs_driver') || 'Needs a driver')}</span>`;
+      const btns = [
+        !driver && !mineReq ? act('accept', r.id, 'btn-primary', esc(this._cpCopy('accept') || 'I can drive')) : '',
+        iDrive ? act('unaccept', r.id, 'btn-secondary', esc(this._cpCopy('unaccept') || "Can't drive anymore")) : '',
+        mineReq ? act('cancel', r.id, 'btn-secondary', esc(this._cpCopy('cancel') || 'Cancel request')) : '',
+      ].filter(Boolean).join(' ');
+      return `
+        <div style="padding:7px 0; border-top:1px solid var(--border-color); font-size:0.76rem;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <b>${esc(r.name)}</b> ${status}
+            <span style="flex:1;"></span> ${btns}
+          </div>
+          ${addr ? `<div style="font-size:0.7rem; opacity:0.85; margin-top:2px;">📍 ${esc(this._cpCopy('pickup_label') || 'Pickup')}: ${esc(addr)}</div>` : ''}
+          ${r.note ? `<div style="font-size:0.7rem; opacity:0.75; margin-top:2px;">${esc(r.note)}</div>` : ''}
+          <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:3px; font-size:0.66rem; opacity:0.9;">
+            <span style="opacity:0.7;">${esc(this._cpCopy('asked_by', { name: r.requestedBy.name }) || `Asked by ${r.requestedBy.name}`)}</span>
+            ${!mineReq ? smsBtn(r.requestedBy.phone, r.requestedBy.name) : ''}
+            ${driver && !iDrive ? smsBtn(driver.phone, driver.name) : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    const form = (k) => `
+      <div data-gc-cp-form="${k.personId}" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:4px; margin-top:6px;">
+        ${!this._fmtCpAddress(k) ? `<div style="grid-column:1/-1; font-size:0.68rem; color:#f59e0b;">${esc(this._cpCopy('no_address') || 'No address on file — type the pickup address.')}</div>` : ''}
+        ${[['address1', k.address1], ['address2', k.address2], ['city', k.city], ['state', k.state], ['zip', k.zip]].map(([f, v]) =>
+          `<input data-f="${f}" value="${esc(v || '')}" placeholder="${f[0].toUpperCase() + f.slice(1)}" style="font-size:0.72rem; padding:5px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">`).join('')}
+        <input data-f="note" placeholder="${esc(this._cpCopy('note_ph') || 'Anything the driver should know')}" style="grid-column:1/-1; font-size:0.72rem; padding:5px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">
+        <button class="btn btn-primary" data-gc-cp="save" data-cp-person="${k.personId}" ${this._cpBusy ? 'disabled' : ''} style="padding:4px 8px; font-size:0.7rem;">${esc(this._cpCopy('save') || 'Post request')}</button>
+      </div>`;
+
+    const askBtns = (cp.riders || []).filter(k => !k.open).map(k => `
+      <div style="margin-top:6px;">
+        <button class="btn btn-secondary" data-gc-cp="form" data-cp-person="${k.personId}" style="padding:3px 10px; font-size:0.7rem;">
+          ${this._cpFormFor === Number(k.personId) ? '✕ ' : ''}${esc(this._cpCopy('request_for', { name: k.name }) || `🚗 Request a ride for ${k.name}`)}
+        </button>
+        ${this._cpFormFor === Number(k.personId) ? form(k) : ''}
+      </div>`).join('');
+
+    return `
+      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
+        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">${esc(this._cpCopy('title') || '🚗 Carpool')}</div>
+        <div style="font-size:0.7rem; opacity:0.75; line-height:1.4; margin-bottom:4px;">${esc(this._cpCopy('hint') || '')}</div>
+        ${rows || `<div style="font-size:0.72rem; opacity:0.75;">${esc(this._cpCopy('empty') || 'No ride requests for this game yet.')}</div>`}
+        ${askBtns}
+      </div>`;
+  }
+
+  async _carpoolClick(btn) {
+    const action = btn.dataset.gcCp;
+    if (action === 'form') {
+      const pid = Number(btn.dataset.cpPerson);
+      this._cpFormFor = this._cpFormFor === pid ? null : pid;
+      this._render();
+      return;
+    }
+    if (this._cpBusy) return;
+    this._cpBusy = true;
+    this._render();
+    try {
+      let res;
+      if (action === 'save') {
+        const pid = Number(btn.dataset.cpPerson);
+        const form = this.element.querySelector(`[data-gc-cp-form="${pid}"]`);
+        const val = (f) => { const el = form && form.querySelector(`[data-f="${f}"]`); return el ? el.value.trim() : ''; };
+        res = await this.auth.fetch(`/api/carpool/${this._fhEventId()}/requests`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person_id: pid, address1: val('address1'), address2: val('address2'),
+                                 city: val('city'), state: val('state'), zip: val('zip'), note: val('note') }),
+        });
+        if (res.ok) this._cpFormFor = null;
+      } else {
+        res = await this.auth.fetch(`/api/carpool/requests/${Number(btn.dataset.cpId)}/${action}`, { method: 'POST' });
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      await this._loadCarpool();
+    } catch (err) {
+      this._toast(`⚠ ${err.message}`);
+    } finally {
+      this._cpBusy = false;
+      this._render();
+    }
   }
 
   // The league's own roster sheet — the PDF a referee checks players
@@ -3819,7 +3968,7 @@ class GameCenterScreen extends Screen {
   // isCoach, so a player gets nothing here.
   _pillToolsHtml(pill, byZone) {
     let html = '';
-    if (pill === 'game_day') html = this._renderGameDetailsPanel() + this._renderOpponentContactsPanel();
+    if (pill === 'game_day') html = this._renderGameDetailsPanel() + this._renderCarpoolPanel() + this._renderOpponentContactsPanel();
     else if (pill === 'post_game') html = this._renderScorePanel();
     else if (pill === 'lineup' && this.isCoach) {
       const squadCount = byZone.starter.length + byZone.bench.length;
@@ -3836,7 +3985,7 @@ class GameCenterScreen extends Screen {
     // pill — that's where a coach actually is on match day (owner
     // 2026-10-16: "need contacts on game center of opponents with email
     // and text buttons!!!!").
-    if (pill === 'lineup' || pill === 'starters_bench') html += this._renderGameMessagePanel() + this._renderOpponentContactsPanel() + this._renderOfficialRosterPanel() + this._renderRosterSheetPanel();
+    if (pill === 'lineup' || pill === 'starters_bench') html += this._renderGameMessagePanel() + this._renderCarpoolPanel() + this._renderOpponentContactsPanel() + this._renderOfficialRosterPanel() + this._renderRosterSheetPanel();
     return html ? `<div style="max-width:540px; margin:10px auto 0;">${html}</div>` : '';
   }
 

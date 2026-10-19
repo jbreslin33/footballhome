@@ -52,15 +52,39 @@ Response GameMessageController::handleRecipients(const Request& request) {
         if (gate.empty() || !gate[0]["allowed"].as<bool>())
             return jsonError(HttpStatus::FORBIDDEN, "Messaging a game is for its coaches.");
 
+        // Three kinds of people (mig 600, owner 2026-10-19: "message all
+        // whether going or not but can't leave out potentional u8 call
+        // ups"): the rosters, the game's OPEN invitees (fh_event_invites,
+        // whatever they answered), and everyone who COULD still be called
+        // up (fh_event_invite_candidates — all U8/U9s for a U10 game).
+        // A person wearing two hats keeps the strongest one.
         auto rows = db->query(std::string(R"SQL(
             WITH teams_of AS (SELECT )SQL") + kTeamsOf + R"SQL( AS ids),
+            ev AS (SELECT min(id) AS id FROM fh_events WHERE match_id = $1::int),
             roster AS (
-                SELECT DISTINCT tp.person_id FROM team_persons tp, teams_of t
-                 WHERE tp.removed_at IS NULL AND tp.team_id = ANY(t.ids)
+                SELECT DISTINCT ON (person_id) person_id, kind FROM (
+                    SELECT tp.person_id, 'roster'::text AS kind, 0 AS pri
+                      FROM team_persons tp, teams_of t
+                     WHERE tp.removed_at IS NULL AND tp.team_id = ANY(t.ids)
+                       -- Call-up-gated team (mig 605): its members are not
+                       -- "on" the game — they surface as 'candidate'
+                       -- (fh_event_invite_candidates offers the gated
+                       -- roster) and as 'callup' once invited.
+                       AND NOT fh_team_callup_only(tp.team_id)
+                    UNION ALL
+                    SELECT i.person_id, 'callup', 1
+                      FROM fh_event_invites i JOIN ev ON ev.id = i.fh_event_id
+                     WHERE i.revoked_at IS NULL
+                    UNION ALL
+                    SELECT c.person_id, 'candidate', 2
+                      FROM ev, LATERAL fh_event_invite_candidates(ev.id) c
+                     WHERE ev.id IS NOT NULL
+                ) u ORDER BY person_id, pri
             )
             SELECT p.id AS person_id,
                    NULLIF(trim(COALESCE(p.first_name, '') || ' ' || COALESCE(p.last_name, '')), '') AS name,
                    (p.parent_person_id IS NOT NULL) AS via_parent,
+                   r.kind,
                    COALESCE(rv.response, 'none') AS rsvp,
                    ph.phone_number AS phone, em.email AS email
               FROM roster r
@@ -83,11 +107,12 @@ Response GameMessageController::handleRecipients(const Request& request) {
                      WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
                      ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
                               x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
-             ORDER BY p.last_name, p.first_name)SQL", {mid});
+             ORDER BY (r.kind = 'candidate'), p.last_name, p.first_name)SQL", {mid});
 
         json people = json::array();
         for (const auto& r : rows) {
             people.push_back({{"personId", r["person_id"].as<long long>()}, {"name", str(r, "name")},
+                              {"kind", str(r, "kind")},
                               {"rsvp", str(r, "rsvp")}, {"viaParent", r["via_parent"].as<bool>()},
                               {"email", r["email"].is_null() ? json(nullptr) : json(str(r, "email"))},
                               {"phone", r["phone"].is_null() ? json(nullptr) : json(str(r, "phone"))}});
