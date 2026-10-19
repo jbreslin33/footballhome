@@ -40,7 +40,18 @@ const char* kGamesSql = R"SQL(
         SELECT * FROM ref_fee_policies WHERE club_id = $1::int AND is_active
     ), fx AS (
         SELECT p.id AS policy_id, 'fixture'::text AS source, f.id::bigint AS ref_id, NULL::bigint AS fh_event_id, f.id AS league_fixture_id,
-               f.starts_at, CASE WHEN f.home_club_id = $1::int THEN f.away_name ELSE f.home_name END AS opponent, f.status
+               f.starts_at, CASE WHEN f.home_club_id = $1::int THEN f.away_name ELSE f.home_name END AS opponent, f.status,
+               -- The calendar is the record of what was actually worked
+               -- (owner 2026-10-19: "if an event is in gcal it can be used
+               -- for hours or refs but if not it would need to be added
+               -- manually").  A feed game counts as on the calendar when a
+               -- live gcal match of the same league sits on the same local
+               -- day — opponent spellings differ between the feeds and the
+               -- calendar, so the day+league pair is the match key.
+               EXISTS (SELECT 1 FROM fh_events ge
+                         JOIN gcal_events gg ON gg.id = ge.gcal_event_id AND gg.deleted_at IS NULL AND gg.status IS DISTINCT FROM 'cancelled'
+                        WHERE ge.kind = 'match' AND ge.league = ANY (p.event_league_labels)
+                          AND (gg.starts_at AT TIME ZONE 'America/New_York')::date = (f.starts_at AT TIME ZONE 'America/New_York')::date) AS in_gcal
           FROM pol p
           JOIN league_fixture_sources s ON s.league_label = p.fixture_league_label AND s.is_active
           -- A cancelled or postponed fixture is off the board (owner
@@ -51,7 +62,7 @@ const char* kGamesSql = R"SQL(
            AND (f.home_club_id = $1::int OR ((NOT p.home_only OR $2::bool) AND f.away_club_id = $1::int))
     ), ev AS (
         SELECT p.id, 'event'::text, e.id::bigint, e.id, NULL::int,
-               g.starts_at, COALESCE(NULLIF(e.opponent, ''), g.summary), 'scheduled'::text
+               g.starts_at, COALESCE(NULLIF(e.opponent, ''), g.summary), 'scheduled'::text, true
           FROM pol p
           JOIN fh_events e ON e.kind = 'match' AND (p.event_category IS NULL OR e.category = p.event_category)
                           AND e.league = ANY (p.event_league_labels)
@@ -60,7 +71,7 @@ const char* kGamesSql = R"SQL(
            AND (NOT p.home_only OR $2::bool OR COALESCE(e.is_home, false))
            AND (p.age_band IS NULL OR g.summary ~* ('\m' || p.age_band || '\M'))
     ), games AS (SELECT * FROM fx UNION ALL SELECT * FROM ev)
-    SELECT u.policy_id, p.label AS policy_label, p.kind, p.hours_per_game, p.club_section_id, p.per_game_usd, u.source, u.ref_id, u.status,
+    SELECT u.policy_id, p.label AS policy_label, p.kind, p.hours_per_game, p.club_section_id, p.per_game_usd, u.source, u.ref_id, u.status, u.in_gcal,
            to_char(u.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS game_on,
            to_char(u.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS date_label,
            u.opponent, (u.starts_at < now() AND u.status <> 'postponed') AS played,
@@ -82,7 +93,7 @@ json gameJson(const pqxx::row& r) {
               {"section_id", r["club_section_id"].is_null() ? json(nullptr) : json(r["club_section_id"].as<long long>())},
               {"source", str(r, "source")}, {"ref_id", r["ref_id"].as<long long>()}, {"status", str(r, "status")},
               {"game_on", str(r, "game_on")}, {"date_label", str(r, "date_label")}, {"opponent", str(r, "opponent")},
-              {"amount", num(r, "per_game_usd")}, {"played", r["played"].as<bool>()}, {"invoiced", nullptr}};
+              {"amount", num(r, "per_game_usd")}, {"played", r["played"].as<bool>()}, {"in_gcal", r["in_gcal"].as<bool>()}, {"invoiced", nullptr}};
     if (!r["payment_id"].is_null())
         g["invoiced"] = {{"line_id", r["invoice_line_id"].as<long long>()}, {"amount", num(r, "paid_amount")},
                          {"invoice_id", r["invoice_id"].is_null() ? json(nullptr) : json(r["invoice_id"].as<long long>())},
