@@ -147,6 +147,22 @@
 #                     laGet() — this allowlist entry only covers the
 #                     chat gate.
 #
+#   WelcomeMessage  — the no-team intramural guess (mig 409, commit
+#                     5eb2c1db) reads person_la_memberships only to pick
+#                     WHICH intramural side to prefer (boys vs girls) for
+#                     a youth with no live team.  Audited 2026-10-19: its
+#                     only caller is WelcomeController::handleCreate
+#                     (plain router.post — the WELCOME button), clicked
+#                     from roster boards whose render just ran laGet(),
+#                     plus LaSyncScheduler's 5-minute cadence; a stale
+#                     row at worst prefers the wrong section's intramural
+#                     team in the guess the admin reviews before sending.
+#                     Same weaker-bar rationale as MyController's chat
+#                     gate: nothing payment- or eligibility-sensitive is
+#                     decided.  If WelcomeMessage ever reads membership
+#                     to gate or bill anything, migrate the caller to
+#                     laPost() and drop this entry.
+#
 #   RsvpBoard       — reads dues + the boys/girls split for #rsvps.  Only
 #                     caller is RsvpBoardController, whose list route is
 #                     registered through laGet() (section's programmes);
@@ -156,7 +172,7 @@
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard)|backend/src/core/Controller|backend/src/controllers/MyController)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard|WelcomeMessage)|backend/src/core/Controller|backend/src/controllers/MyController)'
 
 set -euo pipefail
 

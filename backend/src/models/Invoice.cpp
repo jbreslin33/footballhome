@@ -603,7 +603,8 @@ const char* kPeriodGamesSql = R"SQL(
     )
     SELECT m.fh_event_id, m.gcal_event_id, m.kind, m.rsvp, m.attendance, m.work_date::text AS work_date, to_char(m.work_date, 'Dy FMMM/FMDD') AS day_label,
            to_char(m.start_at, 'HH24:MI') AS start_at,
-           CASE WHEN (m.start_at + (m.hours || ' hours')::interval) < interval '24 hours'
+           -- time + interval wraps at midnight, so a crossing shows as end <= start
+           CASE WHEN (m.start_at + (m.hours || ' hours')::interval) > m.start_at
                 THEN to_char(m.start_at + (m.hours || ' hours')::interval, 'HH24:MI') END AS end_at,
            m.hours, m.opponent, m.is_home, m.team_label, m.policy_id, m.policy_label,
            (m.coach_issuer_id = $2::int) AS policy_pays,
