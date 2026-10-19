@@ -77,6 +77,7 @@ class App {
       casaScores: new CasaScoresScreen(this.navigation, this.auth),
       finances: new FinancesScreen(this.navigation, this.auth),
       fines: new FinesScreen(this.navigation, this.auth),
+      film: new FilmScreen(this.navigation, this.auth),
       dashboard: new DashboardScreen(this.navigation, this.auth),
       cupRosters: new CupRostersScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
@@ -191,6 +192,8 @@ class App {
     this.screenManager.register('finances', this.screens.finances);
     // #fines (mig 534): the Men's fines by month and player, on their own page.
     this.screenManager.register('fines', this.screens.fines);
+    // #film (mig 599): the league's game-film sheet, read-only, matched to games.
+    this.screenManager.register('film', this.screens.film);
     // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
     this.screenManager.register('dashboard', this.screens.dashboard);
     // #cup-rosters (mig 556): the USASA / EPSA player pool sheet from the men's rosters.
