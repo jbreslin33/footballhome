@@ -287,7 +287,11 @@ class DashboardScreen extends Screen {
         : starters < need ? this._t('gc_lineup_part', 'lineup {starters} of {need}', { starters, need })
         : this._t('gc_lineup_set', 'lineup {starters} + {bench} bench', { starters, bench });
       const bits = [
+        // {of} = roster + open call-up invites since mig 604 (owner
+        // 2026-10-19: "this is scary to see 4 of 12" when 2 call-ups are
+        // going too) — the extra line says how many of the pool are 🎟.
         `<span class="${going < need ? 'bad' : 'ok'}">${this.escapeHtml(this._t('gc_going', '{n} going of {of}', { n: going, of: g.roster }))}</span>`,
+        Number(g.callups) ? this.escapeHtml(this._t('gc_callups', 'incl. {n} call-ups', { n: Number(g.callups) })) : '',
         this.escapeHtml(this._t('gc_need', 'need {n}', { n: need })),
         g.everyone_plays ? '' : `<span class="${canStart < need ? 'warn' : 'ok'}">${this.escapeHtml(this._t('gc_can_start', '{n} can start', { n: canStart }))}</span>`,
         g.everyone_plays || !onTrack ? '' : this.escapeHtml(this._t('gc_on_track', '{n} on track', { n: onTrack })),

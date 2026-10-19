@@ -345,24 +345,43 @@ WITH g AS (
             (SELECT count(*) FROM fh_event_rsvps r
               WHERE r.person_id = tp.person_id AND r.response = 'yes' AND r.fh_event_id = ANY(COALESCE(t.future_win, '{}')))
           END) AS projected,
-         t.needed,
+         t.needed, tp.is_callup,
          CASE WHEN t.deadline IS NULL OR now() < t.deadline THEN false
               WHEN EXISTS (SELECT 1 FROM fh_event_rsvp_first_answers fa WHERE fa.fh_event_id = t.fh_event_id AND fa.person_id = tp.person_id AND fa.first_responded_at < t.deadline) THEN false
               WHEN (SELECT min(x.joined_at) FROM team_persons x WHERE x.person_id = tp.person_id AND x.team_id = ANY(t.team_ids) AND x.removed_at IS NULL) >= t.deadline THEN false
               ELSE true END AS late
     FROM t
-    JOIN (SELECT DISTINCT person_id, team_id FROM team_persons WHERE removed_at IS NULL) tp ON tp.team_id = ANY(t.team_ids)
+    -- Roster + OPEN call-up invites (mig 604, owner 2026-10-19: "if we
+    -- invted 6 call ups then 6 of 18 right?") — an invitee joins the pool
+    -- the moment the invite is sent, answered or not; uninvited potential
+    -- call-ups count nowhere.
+    JOIN LATERAL (
+      SELECT x.person_id, false AS is_callup
+        FROM (SELECT DISTINCT person_id FROM team_persons
+               WHERE removed_at IS NULL AND team_id = ANY(t.team_ids)) x
+      UNION
+      SELECT i.person_id, true
+        FROM fh_event_invites i
+       WHERE i.fh_event_id = t.fh_event_id AND i.revoked_at IS NULL
+         AND NOT EXISTS (SELECT 1 FROM team_persons z
+                          WHERE z.person_id = i.person_id AND z.removed_at IS NULL
+                            AND z.team_id = ANY(t.team_ids))
+    ) tp ON true
 ), c AS (
   SELECT fh_event_id,
          count(DISTINCT person_id) AS roster,
+         count(DISTINCT person_id) FILTER (WHERE is_callup) AS callups,
          count(DISTINCT person_id) FILTER (WHERE rsvp = 'yes' AND dues_ok) AS going,
-         count(DISTINCT person_id) FILTER (WHERE rsvp = 'yes' AND dues_ok AND attended >= needed AND NOT late) AS can_start,
-         count(DISTINCT person_id) FILTER (WHERE rsvp = 'yes' AND dues_ok AND attended < needed AND attended + projected >= needed AND NOT late) AS on_track,
+         -- A Going call-up is always eligible to start (the 2026-10-16
+         -- lineup rule) — the practice window and deadline are the
+         -- roster's criteria, not theirs.
+         count(DISTINCT person_id) FILTER (WHERE rsvp = 'yes' AND dues_ok AND (is_callup OR (attended >= needed AND NOT late))) AS can_start,
+         count(DISTINCT person_id) FILTER (WHERE NOT is_callup AND rsvp = 'yes' AND dues_ok AND attended < needed AND attended + projected >= needed AND NOT late) AS on_track,
          count(DISTINCT person_id) FILTER (WHERE rsvp = 'no') AS not_going
     FROM per GROUP BY fh_event_id
 )
 SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, t.opponent, t.is_home, t.field_size, t.everyone_plays, t.needed,
-       c.roster, c.going, c.can_start, c.on_track, c.not_going,
+       c.roster, c.callups, c.going, c.can_start, c.on_track, c.not_going,
        (SELECT count(*) FROM match_lineups ml WHERE ml.match_id = t.match_id AND ml.is_starter) AS starters_set,
        (SELECT count(*) FROM match_lineups ml WHERE ml.match_id = t.match_id AND NOT ml.is_starter) AS bench_set,
        (SELECT count(*) FROM match_lineups ml JOIN players pl ON pl.id = ml.player_id
@@ -414,7 +433,8 @@ SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, 
                                  {"is_home", r["is_home"].is_null() ? json(nullptr) : json(r["is_home"].as<bool>())},
                                  {"field_size", r["field_size"].is_null() ? json(nullptr) : json(r["field_size"].as<int>())},
                                  {"everyone_plays", r["everyone_plays"].as<bool>()}, {"needed", r["needed"].as<int>()},
-                                 {"roster", r["roster"].as<long long>()}, {"going", r["going"].as<long long>()},
+                                 {"roster", r["roster"].as<long long>()}, {"callups", r["callups"].as<long long>()},
+                                 {"going", r["going"].as<long long>()},
                                  {"can_start", r["can_start"].as<long long>()}, {"on_track", r["on_track"].as<long long>()},
                                  {"not_going", r["not_going"].as<long long>()},
                                  {"starters_set", r["starters_set"].as<long long>()}, {"bench_set", r["bench_set"].as<long long>()},
