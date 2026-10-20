@@ -2084,6 +2084,7 @@ class GameCenterScreen extends Screen {
     const paint = (bodyHtml) => {
       head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
         + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
+        + this._duesAlternateStripHtml()
         + this._renderCard('top', this.pill) + (this.lineupView === 'official' ? this._pillToolsHtml(this.pill, byZone) + this._postButtonHtml() : '');
       box.innerHTML = bodyHtml;
       this._renderSocial(byZone);
@@ -4267,6 +4268,21 @@ class GameCenterScreen extends Screen {
   // 'eligibility'.
   _eligCopy(tier, tokens = {}) {
     return window.MessageCopy ? MessageCopy.block('eligibility', tier, tokens) : '';
+  }
+
+  // 💰 Dues alternate strip right above the lineup graphic (owner
+  // 2026-10-20: "in the lineup graphic like right above it or across it").
+  // myPlayerId keys the viewer's OWN stats row — the only non-coach row the
+  // server ever flags — so the strip renders for the delinquent player
+  // alone, never on a teammate's screen.
+  _duesAlternateStripHtml() {
+    const s = this.myPlayerId != null ? this.stats.get(this.myPlayerId) : null;
+    if (!s || !s.duesAlternate || !window.MessageCopy) return '';
+    const amount = s.duesBalanceUsd != null ? `$${Number(s.duesBalanceUsd).toFixed(2)}` : '';
+    const text = MessageCopy.block('my_dues', 'alternate_game', { amount });
+    if (!text) return '';
+    return `<div style="max-width:540px; margin:0 auto 8px; padding:7px 10px; border-radius:8px; border:1px solid rgba(245,158,11,0.6);
+                 background:rgba(245,158,11,0.15); color:#fcd34d; font-size:0.72rem; font-weight:700; line-height:1.35;">💰 ${this.escapeHtml(text)}</div>`;
   }
 
   // Dues alternate (mig 613): the PRIVATE warning on the player's own

@@ -1993,6 +1993,24 @@ class MyScreen extends Screen {
           </div>
         </div>
         ${soloChild && soloChild.callup ? `<div style="font-size:0.58rem; line-height:1.25; opacity:0.8; margin-top:2px;">🎟 INVITED — the coach invited ${this.escapeHtml(String(soloChild.name || '').split(' ')[0])} to play up in this game${soloChild.callup_from ? ` (from ${this.escapeHtml(soloChild.callup_from)})` : ''}. Please answer so the coach knows if they are available.</div>` : ''}
+        ${(() => {
+          // 💰 Dues alternate (migs 613–615) on the game card itself (owner:
+          // "it needs to show up on the game card itself in my page").  Only
+          // the delinquent player's own page ever has their dues row, so the
+          // strip is as private as the banner.
+          if (kind !== 'match' || isPast) return '';
+          const d = soloChild ? this._duesFor(soloChild.person_id)
+                  : (!whoChild && ev.my_role === 'player' ? Object.values(this.dues || {}).find(x => x && x.is_self) : null);
+          if (!d || d.alternate !== true || !window.MessageCopy) return '';
+          const text = MessageCopy.block('my_dues', 'alternate_game', this._duesTokens(d));
+          if (!text) return '';
+          const pay = d.pay_url ? `<a href="${this.escapeHtml(d.pay_url)}" target="_blank" rel="noopener"
+            style="padding:2px 8px; border-radius:999px; background:#d97706; color:#fff; font-weight:800; text-decoration:none; white-space:nowrap; font-size:0.58rem;">${this.escapeHtml(MessageCopy.block('my_dues', 'banner_button') || 'Pay here')}</a>` : '';
+          return `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:3px; padding:4px 7px; border-radius:7px;
+                       border:1px solid rgba(245,158,11,0.55); background:rgba(245,158,11,0.14); color:#fcd34d; font-size:0.6rem; font-weight:700; line-height:1.3;">
+            <span style="flex:1; min-width:120px;">💰 ${this.escapeHtml(text)}</span>${pay}
+          </div>`;
+        })()}
         ${soloChild && ((rsvpRows.find(r => r && r.person_id === soloChild.person_id) || {}).response === 'yes') && !isPast ? this._rsvpTimesHtml(ev, soloChild.person_id) : ''}
         ${!stacked && !soloChild && showOwnRsvpRow && per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
         ${stacked ? `
