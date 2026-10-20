@@ -644,13 +644,18 @@ class GameCenterScreen extends Screen {
 
   // ── Live RSVP poll ───────────────────────────────────────────────────
   // RSVPs land from phones while this page sits open, so the screen
-  // re-checks the game every 15s and re-runs the normal _bootstrap()
-  // only when something actually changed. 15s is human-RSVP speed; the
-  // lineup GET is a few indexed queries against the local DB, so even a
-  // dozen open tabs is noise. The poll never fires into an edit — a
-  // pending autosave, the details overlay, the swap sheet, a draft view,
-  // or any focused field postpones it to a later tick rather than
-  // re-rendering the DOM out from under the coach.
+  // re-checks the game every 15s. On a change it applies the payload it
+  // already fetched straight to state and repaints with the same cheap
+  // _render() every zone toggle uses — NOT _bootstrap(), whose full
+  // fetch-everything reload reads as a page refresh (owner 2026-10-19:
+  // "i don't like how page refreshes … after i send email invite").
+  // Your own actions update state locally first, so the tick after one
+  // repaints pixel-identical content — invisible. 15s is human-RSVP
+  // speed; the lineup GET is a few indexed queries against the local DB,
+  // so even a dozen open tabs is noise. The poll never fires into an
+  // edit — a pending autosave, the details overlay, the swap sheet, a
+  // draft view, or any focused field postpones it to a later tick rather
+  // than re-rendering the DOM out from under the coach.
   _startLivePoll() {
     this._stopLivePoll();
     this._pollTimer = setInterval(() => this._pollLive(), 15000);
@@ -702,14 +707,49 @@ class GameCenterScreen extends Screen {
       const fp = this._liveFp(
         lineupData.data.lineup, lineupData.data.rosterStats,
         invData ? { invites: invData.invites || [] } : this.invites);
-      // The screen may have moved on while the fetch was in flight.
+      // The screen may have moved on, or an edit begun, while the fetch
+      // was in flight — a lineup PUT racing this GET must win.
       if (!this._pollTimer || matchId !== this.matchId) return;
-      if (fp !== this._liveFpLast) this._bootstrap();   // full refresh; resets the baseline
+      if (this._saveTimer || this._savingLineup) return;
+      if (fp !== this._liveFpLast) {
+        this._liveFpLast = fp;
+        this._applyLiveData(lineupData.data, invData);
+      }
     } catch (err) {
       // A network blip just means the next tick retries.
     } finally {
       this._pollBusy = false;
     }
+  }
+
+  // A remote change, applied the way a local tap is: overwrite the bits
+  // of state the poll fetched, then one in-place repaint. No network, no
+  // "Loading…" pass, no card teardown.
+  _applyLiveData(data, invData) {
+    this.zones = new Map();
+    this.positions = new Map();
+    this.benchOrder = new Map();
+    for (const row of (data.lineup || [])) {
+      if (row.zone && row.zone !== 'not_selected') {
+        this.zones.set(Number(row.playerId), row.zone);
+      }
+      if (row.zone === 'starter' && row.positionId != null) {
+        this.positions.set(Number(row.playerId), Number(row.positionId));
+      }
+      if (row.zone === 'bench' && row.slotNumber != null) {
+        this.benchOrder.set(Number(row.playerId), Number(row.slotNumber));
+      }
+    }
+    this.official = this._snapshot();
+    this.stats = new Map();
+    for (const row of (data.rosterStats || [])) {
+      this.stats.set(Number(row.playerId), row);
+    }
+    if (invData) {
+      this.invites = { invites: invData.invites || [], candidates: invData.candidates || [] };
+      this._foldInCallups();
+    }
+    this._render();
   }
 
   // Same admin-only gate my.js uses for the "Post to Instagram" button on
@@ -1135,26 +1175,7 @@ class GameCenterScreen extends Screen {
       }
       this.roster = [...byId.values()];
 
-      // 🎟 A call-up who answered Going joins the lineup pool like a
-      // rostered player (owner 2026-10-16: "the call ups if they say
-      // going to show in lineup! they are all eligible") — deliberately
-      // NO stats row, so the practice/RSVP-deadline criteria never mark
-      // them ineligible; their card carries a call-up chip instead.
-      for (const inv of ((this.invites && this.invites.invites) || [])) {
-        if (inv.response !== 'yes' || !inv.player_id) continue;
-        const pid = Number(inv.player_id);
-        const name = `${inv.first_name || ''} ${inv.last_name || ''}`.trim() || 'Invited player';
-        if (!byId.has(pid) && !this.roster.some(r => Number(r.id) === pid)) {
-          this.roster.push({ id: pid, name, lastName: inv.last_name || '', lineupRole: null,
-                             teamId: this.teamId, jerseyNumber: null, duesEligible: true,
-                             callUp: true, fromTeam: inv.from_team || '' });
-        }
-        if (!this.players.some(d => Number(d.playerId) === pid))
-          this.players.push({ playerId: pid, personId: inv.person_id, name });
-        if (Array.isArray(this.gameRecipients) && !this.gameRecipients.some(r => Number(r.personId) === Number(inv.person_id)))
-          this.gameRecipients.push({ personId: inv.person_id, name, kind: 'callup', rsvp: 'yes', email: inv.email || null,
-                                     phone: inv.phone || null, viaParent: !!inv.parent_person_id });
-      }
+      this._foldInCallups();
 
       this.loaded = true;
       // Baseline for the live poll — same fields _pollLive fingerprints,
@@ -1166,6 +1187,31 @@ class GameCenterScreen extends Screen {
       console.error('[game-lineup] load failed:', err);
       this.error = err.message || 'Failed to load lineup.';
       this._render();
+    }
+  }
+
+  // 🎟 A call-up who answered Going joins the lineup pool like a
+  // rostered player (owner 2026-10-16: "the call ups if they say
+  // going to show in lineup! they are all eligible") — deliberately
+  // NO stats row, so the practice/RSVP-deadline criteria never mark
+  // them ineligible; their card carries a call-up chip instead.
+  // Idempotent (every push is guarded), so the live poll can re-run it
+  // whenever a fresh invites payload lands.
+  _foldInCallups() {
+    for (const inv of ((this.invites && this.invites.invites) || [])) {
+      if (inv.response !== 'yes' || !inv.player_id) continue;
+      const pid = Number(inv.player_id);
+      const name = `${inv.first_name || ''} ${inv.last_name || ''}`.trim() || 'Invited player';
+      if (!this.roster.some(r => Number(r.id) === pid)) {
+        this.roster.push({ id: pid, name, lastName: inv.last_name || '', lineupRole: null,
+                           teamId: this.teamId, jerseyNumber: null, duesEligible: true,
+                           callUp: true, fromTeam: inv.from_team || '' });
+      }
+      if (!this.players.some(d => Number(d.playerId) === pid))
+        this.players.push({ playerId: pid, personId: inv.person_id, name });
+      if (Array.isArray(this.gameRecipients) && !this.gameRecipients.some(r => Number(r.personId) === Number(inv.person_id)))
+        this.gameRecipients.push({ personId: inv.person_id, name, kind: 'callup', rsvp: 'yes', email: inv.email || null,
+                                   phone: inv.phone || null, viaParent: !!inv.parent_person_id });
     }
   }
 
@@ -1725,6 +1771,7 @@ class GameCenterScreen extends Screen {
       else if (zone === 'alternate') alternates.push({ playerId });
     }
     const payload = { starters, bench, alternates, formationId: this._formationId(), rosterSize: 0 };
+    this._savingLineup = true;   // the live poll stands down while a PUT is in flight
     try {
       if (this._isDraftView()) {
         // My draft (mig 495) — the same shape, my own row.
@@ -1749,6 +1796,8 @@ class GameCenterScreen extends Screen {
       this.official = this._snapshot();
     } catch (err) {
       console.error('[game-lineup] save failed:', err);
+    } finally {
+      this._savingLineup = false;
     }
   }
 

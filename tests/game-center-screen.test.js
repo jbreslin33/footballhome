@@ -339,38 +339,54 @@ test('matchId falls back to navigation.context.match', () => {
 
 // ---- Live RSVP poll (2026-10-19: the page refreshes itself while open) ----
 
-test('the live poll re-bootstraps only when the game actually changed', async () => {
-  const { screen, sandbox } = mountScreen({ isCoach: true, role: 'club' });
+test('the live poll repaints in place on a change, never reloads the page', async () => {
+  const { screen, sandbox, calls } = mountScreen({ isCoach: true, role: 'club' });
   // jsdom defaults to visibilityState 'prerender' (hidden: true), which
   // the poll rightly treats as "tab not visible — stand down".
   Object.defineProperty(sandbox.document, 'hidden', { value: false });
-  let bootstraps = 0;
+  let bootstraps = 0, renders = 0;
   screen._bootstrap = async () => { bootstraps++; };
+  const realRender = screen._render.bind(screen);
+  screen._render = () => { renders++; realRender(); };
 
   const serverLineup = { success: true, data: {
     lineup: [{ playerId: 1, zone: 'starter', positionId: 9, slotNumber: 9 }],
     rosterStats: [{ playerId: 1, gameRsvp: 'yes' }],
   } };
-  screen.auth.fetch = async () => ({ ok: true, json: async () => serverLineup });
+  screen.auth.fetch = async (url) => { calls.push({ url }); return { ok: true, json: async () => serverLineup }; };
   screen._liveFpLast = screen._liveFp(serverLineup.data.lineup, serverLineup.data.rosterStats, null);
   screen._startLivePoll();
 
   await screen._pollLive();
-  assert.equal(bootstraps, 0, 'unchanged game: no refresh, no re-render');
+  assert.equal(renders, 0, 'unchanged game: no repaint at all');
 
+  // An RSVP flip lands as a state overwrite + one cheap repaint — the
+  // owner vetoed the earlier full _bootstrap() reload ("i don't like how
+  // page refreshes … after i send email invite").
+  calls.length = 0;
   serverLineup.data.rosterStats = [{ playerId: 1, gameRsvp: 'no' }];
   await screen._pollLive();
-  assert.equal(bootstraps, 1, 'an RSVP flip triggers the full refresh');
+  assert.equal(bootstraps, 0, 'never the fetch-everything reload');
+  assert.equal(renders, 1, 'one in-place repaint');
+  assert.equal(screen.stats.get(1).gameRsvp, 'no', 'the fresh RSVP is in state');
+  assert.equal(calls.length, 1, 'only the poll GET itself — applying it costs no extra fetches');
 
   // Mid-edit the poll stands down rather than re-rendering the DOM out
   // from under the coach — and catches up once the edit is over.
   serverLineup.data.rosterStats = [{ playerId: 1, gameRsvp: 'maybe' }];
   screen.overlayOpen = true;
   await screen._pollLive();
-  assert.equal(bootstraps, 1, 'open overlay postpones the refresh');
+  assert.equal(renders, 1, 'open overlay postpones the repaint');
   screen.overlayOpen = false;
   await screen._pollLive();
-  assert.equal(bootstraps, 2, 'the postponed change lands on the next tick');
+  assert.equal(renders, 2, 'the postponed change lands on the next tick');
+
+  // A lineup PUT in flight wins over a poll response from before it.
+  serverLineup.data.rosterStats = [{ playerId: 1, gameRsvp: 'yes' }];
+  screen._savingLineup = true;
+  await screen._pollLive();
+  assert.equal(renders, 2, 'an in-flight save blocks the overwrite');
+  screen._savingLineup = false;
 
   screen.onExit();
   assert.equal(screen._pollTimer, null, 'leaving the screen stops the poll');
