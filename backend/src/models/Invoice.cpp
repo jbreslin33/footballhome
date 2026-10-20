@@ -691,15 +691,18 @@ int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEvent
     return added;
 }
 
-bool Invoice::markCalendarEvent(long long invoiceId, long long gcalEventId, const std::string& mark, std::string* error) {
+bool Invoice::markCalendarEvent(long long invoiceId, long long gcalEventId, const std::string& mark, std::string* error,
+                                const std::string& hours) {
     // ✓/✗ on a claimed calendar row (mig 577) — same one-answer contract as
     // markEvent, keyed on the gcal event because no fh_event exists.
+    // 'partial' (mig 621) bills the given flat hours, like markEvent's.
     auto inv = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
     if (inv.empty()) { *error = "no such invoice"; return false; }
     if (inv[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return false; }
     const std::string inv_ = std::to_string(invoiceId), ev = std::to_string(gcalEventId);
-    if (mark == "worked") {
+    if (mark == "worked" || mark == "partial") {
         db_->query("DELETE FROM invoice_event_declines WHERE invoice_id = $1::int AND gcal_event_id = $2::bigint", {inv_, ev});
+        db_->query("DELETE FROM invoice_work_shifts WHERE invoice_id = $1::int AND gcal_event_id = $2::bigint", {inv_, ev});
         auto g = db_->query(R"SQL(
             SELECT (g.starts_at AT TIME ZONE 'America/New_York')::date::text AS work_date,
                    to_char(g.starts_at AT TIME ZONE 'America/New_York', 'HH24:MI') AS start_at,
@@ -718,7 +721,11 @@ bool Invoice::markCalendarEvent(long long invoiceId, long long gcalEventId, cons
             {inv_, str(g[0], "work_date"), timed ? str(g[0], "start_at") : std::string{},
              timed ? str(g[0], "end_at") : std::string{}, timed ? std::string{} : money2(num(g[0], "hours")),
              str(g[0], "note"), ev});
-        if (!r.empty()) syncLabor(invoiceId);
+        if (mark == "partial") {
+            db_->query("UPDATE invoice_work_shifts SET hours = $3::numeric, start_at = NULL, end_at = NULL "
+                       " WHERE invoice_id = $1::int AND gcal_event_id = $2::bigint", {inv_, ev, hours});
+        }
+        if (!r.empty() || mark == "partial") syncLabor(invoiceId);
         return true;
     }
     auto gone = db_->query("DELETE FROM invoice_work_shifts WHERE invoice_id = $1::int AND gcal_event_id = $2::bigint RETURNING id", {inv_, ev});
@@ -731,19 +738,31 @@ bool Invoice::markCalendarEvent(long long invoiceId, long long gcalEventId, cons
     return true;
 }
 
-bool Invoice::markEvent(long long invoiceId, long long fhEventId, const std::string& mark, std::string* error) {
+bool Invoice::markEvent(long long invoiceId, long long fhEventId, const std::string& mark, std::string* error,
+                        const std::string& hours) {
     // One answer per calendar row (owner 2026-10-12: "allow each practice
     // or game to be checked attended or not as coach"): worked = ✓, its
     // hours go on the sheet; no = ✗, off the sheet and remembered; clear =
-    // back to unanswered.
+    // back to unanswered.  'partial' (mig 621) = 🟡 there for part of it:
+    // bills like worked, then the day's hours become the given flat value
+    // (times come off so the override reads plainly).
     auto inv = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
     if (inv.empty()) { *error = "no such invoice"; return false; }
     if (inv[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return false; }
     const std::string inv_ = std::to_string(invoiceId), ev = std::to_string(fhEventId);
-    if (mark == "worked") {
+    if (mark == "worked" || mark == "partial") {
         db_->query("DELETE FROM invoice_event_declines WHERE invoice_id = $1::int AND fh_event_id = $2::bigint", {inv_, ev});
+        // A re-mark replaces the old answer: drop any existing row first so
+        // partial → full (and back) always lands on the fresh hours.
+        db_->query("DELETE FROM invoice_work_shifts WHERE invoice_id = $1::int AND fh_event_id = $2::bigint", {inv_, ev});
         addGames(invoiceId, {fhEventId}, false, error);
-        return error->empty();
+        if (!error->empty()) return false;
+        if (mark == "partial") {
+            db_->query("UPDATE invoice_work_shifts SET hours = $3::numeric, start_at = NULL, end_at = NULL "
+                       " WHERE invoice_id = $1::int AND fh_event_id = $2::bigint", {inv_, ev, hours});
+            syncLabor(invoiceId);
+        }
+        return true;
     }
     auto gone = db_->query("DELETE FROM invoice_work_shifts WHERE invoice_id = $1::int AND fh_event_id = $2::bigint RETURNING id", {inv_, ev});
     if (!gone.empty()) syncLabor(invoiceId);

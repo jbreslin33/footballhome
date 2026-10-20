@@ -160,6 +160,15 @@ Response OfficialRosterController::handleRefresh(const Request& request) {
             return jsonError(HttpStatus::OK, pulled.error);
         }
 
+        // Parsed player names (mig 620): the same pull refreshes the #teams
+        // board's 🌐 Roster mirror — the league's own spelling, wholesale.
+        if (!pulled.names.empty()) {
+            db->query("DELETE FROM official_roster_names WHERE source_id = $1::int", {sourceId});
+            for (size_t i = 0; i < pulled.names.size(); i++)
+                db->query("INSERT INTO official_roster_names (source_id, full_name, sort_order) VALUES ($1::int, $2, $3::int)",
+                          {sourceId, pulled.names[i], std::to_string(i)});
+        }
+
         db->query(R"SQL(
             INSERT INTO match_official_rosters (match_id, source_id, mime, byte_size, bytes, fetched_at, fetched_by)
             VALUES ($1::int, $2::int, 'application/pdf', $3::int, decode($4, 'hex'), now(), NULLIF($5, '0')::int)

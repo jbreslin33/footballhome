@@ -86,10 +86,14 @@ public:
     // ✓ / ✗ / unanswered on one calendar row (mig 573): mark = worked
     // (bill it), no (off the sheet, remembered in invoice_event_declines)
     // or clear.
-    bool markEvent(long long invoiceId, long long fhEventId, const std::string& mark, std::string* error);
+    // mark 'partial' (mig 621; owner: "turn yellow if there for partial
+    // and put the hours of partial") bills the event at `hours` flat.
+    bool markEvent(long long invoiceId, long long fhEventId, const std::string& mark, std::string* error,
+                   const std::string& hours = std::string());
     // Same, for a claimed raw calendar event (mig 577) — keyed on the gcal
     // event because it has no fh_event.
-    bool markCalendarEvent(long long invoiceId, long long gcalEventId, const std::string& mark, std::string* error);
+    bool markCalendarEvent(long long invoiceId, long long gcalEventId, const std::string& mark, std::string* error,
+                           const std::string& hours = std::string());
 
     bool updateIssuer(long long issuerId, const nlohmann::json& fields, std::string* error);
 

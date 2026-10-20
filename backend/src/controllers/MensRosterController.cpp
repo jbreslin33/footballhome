@@ -10,6 +10,8 @@
 
 #include "../database/Database.h"
 #include "../models/MensTeamAssignments.h"
+#include "../services/TeamPassRoster.h"
+#include "../services/GoogleSheetRoster.h"
 #include "../models/MensTeamColumns.h"
 #include "../third_party/json.hpp"
 
@@ -159,6 +161,9 @@ void MensRosterController::registerRoutes(Router& router, const std::string& pre
     router.post(prefix + "/invite-only", [this](const Request& req) {
         return this->handleInviteOnly(req);
     });
+    router.post(prefix + "/official-roster-refresh", [this](const Request& req) {
+        return this->handleOfficialRosterRefresh(req);
+    });
     router.post(prefix + "/reorder", [this](const Request& req) {
         return this->handleReorder(req);
     });
@@ -279,6 +284,28 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
         } catch (const std::exception& e) {
             std::cerr << "[mens-roster] auto-invites attach failed: " << e.what() << std::endl;
         }
+        // 🌐 The league's OWN roster per team (official_roster_names, mig
+        // 620) — the board's Roster pill mirrors the actual league list.
+        try {
+            auto* db = Database::getInstance();
+            nlohmann::json official = nlohmann::json::object();
+            for (const auto& r : db->query(
+                "SELECT s.team_id, s.league_label, n.full_name, "
+                "       to_char(max(n.pulled_at) OVER (PARTITION BY s.id) AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI am') AS pulled_label "
+                "  FROM official_roster_sources s "
+                "  JOIN official_roster_names n ON n.source_id = s.id "
+                " WHERE s.is_active ORDER BY s.team_id, n.sort_order")) {
+                const std::string tid = r["team_id"].c_str();
+                if (!official.contains(tid))
+                    official[tid] = {{"league", r["league_label"].is_null() ? "" : r["league_label"].c_str()},
+                                     {"pulledAt", r["pulled_label"].is_null() ? "" : r["pulled_label"].c_str()},
+                                     {"names", nlohmann::json::array()}};
+                official[tid]["names"].push_back(r["full_name"].c_str());
+            }
+            result.body["officialRosters"] = std::move(official);
+        } catch (const std::exception& e) {
+            std::cerr << "[mens-roster] official names attach failed: " << e.what() << std::endl;
+        }
         return Response(HttpStatus::OK, result.body.dump());
     } catch (const std::exception& e) {
         std::cerr << "MensRosterController::handleGet error: " << e.what() << std::endl;
@@ -390,6 +417,59 @@ Response MensRosterController::handleAssign(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "MensRosterController::handleAssign error: " << e.what() << std::endl;
         return internalErr(std::string("Failed to update assignment: ") + e.what());
+    }
+}
+
+// POST /api/mens-roster/official-roster-refresh {teamId} — re-pull the
+// league's own roster for the board's 🌐 Roster pill (mig 620; owner:
+// "add 'roster' pill to mirror actual roster on website").  Same fetchers
+// the Game Center printable uses (TeamPass / the CASA sheet); the parsed
+// names land in official_roster_names, the league's spelling verbatim.
+Response MensRosterController::handleOfficialRosterRefresh(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (const std::exception&) { return badRequest("Invalid JSON body"); }
+    long long teamIdLL = 0;
+    if (!readInt(body, "teamId", teamIdLL) || teamIdLL <= 0) return badRequest("teamId required");
+    const int teamId = static_cast<int>(teamIdLL);
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
+    }
+    try {
+        auto db = Database::getInstance();
+        auto src = db->query(
+            "SELECT id, system, site_slug, external_team_id, credentials_key "
+            "  FROM official_roster_sources WHERE team_id = $1::int AND is_active "
+            " ORDER BY id LIMIT 1", {std::to_string(teamId)});
+        if (src.empty()) return notFound("No league roster source is set up for this team");
+        const auto& s = src[0];
+        const std::string sourceId = s["id"].c_str(), system = s["system"].c_str();
+        RosterFile pulled;
+        if (system == "teampass")
+            pulled = TeamPassRoster::fetch(s["site_slug"].c_str(), s["external_team_id"].c_str(),
+                                           s["credentials_key"].is_null() ? "" : s["credentials_key"].c_str());
+        else if (system == "google_sheet")
+            pulled = GoogleSheetRoster::fetch(s["site_slug"].c_str(), s["external_team_id"].c_str());
+        else pulled.error = "this team's roster lives in an uploaded file — replace it on #files";
+        db->query("UPDATE official_roster_sources SET last_fetched_at = now(), last_fetch_ok = $2::boolean, last_fetch_note = NULLIF($3, '') WHERE id = $1::int",
+                  {sourceId, pulled.ok ? "true" : "false", pulled.error});
+        if (!pulled.ok) return errorResponse(HttpStatus::OK, pulled.error);   // reason over gateway status
+        if (!pulled.names.empty()) {
+            db->query("DELETE FROM official_roster_names WHERE source_id = $1::int", {sourceId});
+            for (size_t i = 0; i < pulled.names.size(); i++)
+                db->query("INSERT INTO official_roster_names (source_id, full_name, sort_order) VALUES ($1::int, $2, $3::int)",
+                          {sourceId, pulled.names[i], std::to_string(i)});
+        }
+        json names = json::array();
+        for (const auto& n : pulled.names) names.push_back(n);
+        json out; out["teamId"] = teamId; out["names"] = std::move(names);
+        return Response(HttpStatus::OK, out.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "MensRosterController::handleOfficialRosterRefresh error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to refresh the league roster: ") + e.what());
     }
 }
 

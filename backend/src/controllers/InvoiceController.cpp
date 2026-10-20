@@ -358,11 +358,20 @@ Response InvoiceController::handleEventMark(const Request& request) {
     const long long gcalEventId = intField(body, "gcal_event_id");
     const std::string mark = body.value("mark", "");
     if (fhEventId <= 0 && gcalEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id or gcal_event_id is required");
-    if (mark != "worked" && mark != "no" && mark != "clear") return jsonError(HttpStatus::BAD_REQUEST, "mark must be worked, no or clear");
+    if (mark != "worked" && mark != "no" && mark != "clear" && mark != "partial")
+        return jsonError(HttpStatus::BAD_REQUEST, "mark must be worked, partial, no or clear");
+    // 🟡 partial (mig 621): there for part of it — the hours actually worked.
+    std::string hours;
+    if (mark == "partial") {
+        const double h = body.contains("hours") && body["hours"].is_number() ? body["hours"].get<double>() : 0.0;
+        if (h <= 0 || h > 24) return jsonError(HttpStatus::BAD_REQUEST, "partial needs hours between 0 and 24");
+        std::ostringstream o; o.setf(std::ios::fixed); o.precision(2); o << h;
+        hours = o.str();
+    }
     try {
         std::string err;
-        const bool ok = fhEventId > 0 ? model_->markEvent(id, fhEventId, mark, &err)
-                                      : model_->markCalendarEvent(id, gcalEventId, mark, &err);
+        const bool ok = fhEventId > 0 ? model_->markEvent(id, fhEventId, mark, &err, hours)
+                                      : model_->markCalendarEvent(id, gcalEventId, mark, &err, hours);
         if (!ok) return jsonError(HttpStatus::BAD_REQUEST, err);
         return jsonOut(HttpStatus::OK, model_->get(id));
     } catch (const std::exception& e) { std::cerr << "[invoices event-mark] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }

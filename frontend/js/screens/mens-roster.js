@@ -99,6 +99,10 @@ class MensRosterScreen extends RosterScreenBase {
       if (inviteOnly) return this.onInviteOnlyClick(inviteOnly);
       const catPill = e.target.closest('.mr-cat-pill');
       if (catPill) return this.onCatPillClick(catPill);
+      const officialPill = e.target.closest('.mr-official-pill');
+      if (officialPill) return this.onOfficialPillClick(officialPill);
+      const officialRefresh = e.target.closest('.mr-official-refresh');
+      if (officialRefresh) return this.onOfficialRefreshClick(officialRefresh);
       const pill = e.target.closest('.mr-pill');
       if (pill) return this.onPillClick(pill);
       const focusPill = e.target.closest('.mr-team-focus-pill');
@@ -397,6 +401,37 @@ class MensRosterScreen extends RosterScreenBase {
     `;
   }
 
+  // 🌐 Roster pill: show/hide the league site's own roster for a column.
+  onOfficialPillClick(btn) {
+    const id = parseInt(btn.dataset.teamId, 10);
+    this.officialOpen = this.officialOpen || {};
+    this.officialOpen[id] = !this.officialOpen[id];
+    if (this._data) this.renderRoster(this._data);
+  }
+
+  // 🔄 Pull fresh — re-fetch the league's roster (TeamPass sign-in or the
+  // CASA sheet) and reload the board so the mirror and counts update.
+  async onOfficialRefreshClick(btn) {
+    const teamId = parseInt(btn.dataset.teamId, 10);
+    if (!teamId) return;
+    btn.disabled = true;
+    btn.textContent = '… pulling';
+    try {
+      const res = await this.auth.fetch('/api/mens-roster/official-roster-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      await this.load({ quiet: true });
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '🔄 Pull fresh';
+      alert(`Could not pull the league roster: ${err.message}`);
+    }
+  }
+
   // Column category pill (📄/🩹/⭐/✅): toggles that group's visibility
   // for that one column; remembered per browser.
   onCatPillClick(btn) {
@@ -478,6 +513,67 @@ class MensRosterScreen extends RosterScreenBase {
     for (const p of players) cats[catOf(p)].push(p);
     this.catOff = this.catOff || (() => { try { return JSON.parse(localStorage.getItem('mensRoster.catOff') || '{}'); } catch (e) { return {}; } })();
     const off = (cat) => !!this.catOff[`${col.teamId}:${cat}`];
+    // 🌐 The league's OWN roster (official_roster_names, mig 620; owner:
+    // "add 'roster' pill to mirror actual roster on website") — TeamPass
+    // for APSL, the CASA sheet for Liga 1.  The league's spelling drifts
+    // from ours ("Benzig", "Baidel", a dropped "II"), so matching is
+    // normalized and tolerant; the panel marks who is on both, who is
+    // league-only, and who is on our list but not the league's.
+    const official = (!col.isUnassigned && data.officialRosters && data.officialRosters[String(col.teamId)]) || null;
+    const officialOpen = !!(this.officialOpen && this.officialOpen[col.teamId]);
+    let officialPanel = '';
+    if (official && officialOpen) {
+      const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z ]/g, ' ').replace(/\b(ii|iii|jr|sr)\b/g, '').replace(/\s+/g, ' ').trim();
+      const lev = (a, b) => {
+        const m = a.length, n = b.length;
+        if (Math.abs(m - n) > 2) return 3;
+        let prev = Array.from({ length: n + 1 }, (_, j) => j);
+        for (let i = 1; i <= m; i++) {
+          const cur = [i];
+          for (let j = 1; j <= n; j++)
+            cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+          prev = cur;
+        }
+        return prev[n];
+      };
+      const ours = players.map(p => ({ p, n: norm(p.fullName || `${p.firstName || ''} ${p.lastName || ''}`) }));
+      const matched = new Set();
+      const rows = (official.names || []).map(name => {
+        const o = norm(name);
+        let hit = ours.find(x => x.n === o)
+          || ours.find(x => x.n && o && (x.n.includes(o) || o.includes(x.n)));
+        if (!hit) {
+          const ot = o.split(' '); const ol = ot[ot.length - 1] || '', ofi = (ot[0] || '')[0] || '';
+          hit = ours.find(x => {
+            const t = x.n.split(' '); const l = t[t.length - 1] || '';
+            return ofi === ((t[0] || '')[0] || '') && (l === ol || lev(l, ol) <= 2);
+          });
+        }
+        if (hit) matched.add(hit.p);
+        return `<div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0; font-size:0.74rem;">
+          <span>${hit ? '✓' : '⚠'} ${this.escape(name)}</span>
+          ${hit ? '' : `<span style="color:#f59e0b; font-size:0.68rem;">not on our list</span>`}
+        </div>`;
+      }).join('');
+      const missing = players.filter(p => !matched.has(p));
+      officialPanel = `
+        <div style="margin:2px 0 8px; padding:7px 9px; border:1px solid rgba(96,165,250,0.5); border-radius:8px; background:rgba(96,165,250,0.07);">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:4px;">
+            <span style="font-size:0.7rem; font-weight:800;">🌐 ${this.escape(official.league || 'League')} roster — the site's own list</span>
+            <span style="display:inline-flex; gap:6px; align-items:center;">
+              <span style="font-size:0.62rem; opacity:0.6;">pulled ${this.escape(official.pulledAt || '—')}</span>
+              <button type="button" class="mr-official-refresh" data-team-id="${col.teamId}"
+                style="font-size:0.64rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer;
+                       border:1px solid #60a5fa; background:transparent; color:#60a5fa;">🔄 Pull fresh</button>
+            </span>
+          </div>
+          ${rows || '<div style="font-size:0.74rem; opacity:0.6;">No names pulled yet — tap 🔄 Pull fresh.</div>'}
+          ${missing.length ? `<div style="margin-top:5px; font-size:0.68rem; color:#fca5a5;">
+            On our list but NOT on the league's: ${this.escape(missing.map(p => p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim()).join(', '))}
+          </div>` : ''}
+        </div>`;
+    }
     const catPill = (cat, icon, label, n, color) => (n || cat === 'active') ? `
         <button type="button" class="mr-cat-pill" data-cat-team="${col.teamId}" data-cat="${cat}"
           title="${off(cat) ? `Show ${label.toLowerCase()} (${n})` : `Hide ${label.toLowerCase()}`}"
@@ -490,7 +586,15 @@ class MensRosterScreen extends RosterScreenBase {
         ${catPill('paper', '📄', 'Paper', cats.paper.length, '#f59e0b')}
         ${catPill('injured', '🩹', 'Injured', cats.injured.length, '#f87171')}
         ${catPill('riders', '⭐', 'Rides along', riders.length, '#60a5fa')}
-      </div>`;
+        ${official ? `
+          <button type="button" class="mr-official-pill" data-team-id="${col.teamId}"
+            title="${officialOpen ? 'Hide' : 'Show'} the league site's own roster for this team (TeamPass / league sheet) and the drift against our list"
+            style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
+                   border:1px solid #38bdf8; background:${officialOpen ? '#38bdf826' : 'transparent'};
+                   color:${officialOpen ? '#38bdf8' : '#64748b'};">🌐 Roster (${(official.names || []).length})</button>` : ''}
+      </div>
+      ${officialPanel}`;
+
     const shown = col.isUnassigned ? players : players.filter(p => !off(catOf(p)));
     const ridersHtml = (!col.isUnassigned && riders.length && !off('riders')) ? riders.map(r => `
       <div style="padding:5px 8px; border:1px dashed #60a5fa; border-radius:8px; font-size:0.74rem; background:rgba(96,165,250,0.08);"

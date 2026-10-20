@@ -2,6 +2,9 @@
 
 #include <curl/curl.h>
 
+#include <sstream>
+#include <vector>
+
 #include <cctype>
 #include <iostream>
 
@@ -83,6 +86,43 @@ GoogleSheetRoster::Result GoogleSheetRoster::fetch(const std::string& spreadshee
     auto pdf = get(base + "/export?format=pdf&gid=" + gid);
     if (!pdf.ok()) { out.error = "the roster did not download (" + why(pdf) + ")"; return out; }
     if (pdf.body.rfind("%PDF", 0) != 0) { out.error = "the league's roster sheet sent something that is not a PDF"; return out; }
+
+    // Player NAMES off the same tab as CSV (mig 620) — the sheet carries a
+    // "First Name,Last Name,…" header, then one numbered row per player.
+    // Best-effort: a parse failure never fails the pull (the PDF is the
+    // deliverable); names just stay empty.
+    if (auto csv = get(base + "/export?format=csv&gid=" + gid); csv.ok()) {
+        auto fields = [](const std::string& line) {
+            std::vector<std::string> f;
+            std::string cur; bool q = false;
+            for (char c : line) {
+                if (c == '"') q = !q;
+                else if (c == ',' && !q) { f.push_back(cur); cur.clear(); }
+                else cur.push_back(c);
+            }
+            f.push_back(cur);
+            return f;
+        };
+        std::istringstream in(csv.body);
+        std::string line;
+        int firstCol = -1, lastCol = -1;
+        while (std::getline(in, line)) {
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            auto f = fields(line);
+            if (firstCol < 0) {
+                for (size_t i = 0; i < f.size(); i++) {
+                    if (f[i] == "First Name") firstCol = static_cast<int>(i);
+                    if (f[i] == "Last Name")  lastCol  = static_cast<int>(i);
+                }
+                continue;
+            }
+            if (static_cast<int>(f.size()) <= lastCol) continue;
+            const std::string& fn = f[firstCol];
+            const std::string& ln = f[lastCol];
+            if (fn.empty() || ln.empty()) continue;
+            out.names.push_back(fn + " " + ln);
+        }
+    }
 
     out.pdf = std::move(pdf.body);
     out.ok = true;

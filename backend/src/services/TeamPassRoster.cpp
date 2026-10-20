@@ -209,6 +209,31 @@ TeamPassRoster::Result TeamPassRoster::fetch(const std::string& siteSlug, const 
 
     auto team = web.get(teamUrl, loginUrl);
     if (!team.ok()) { out.error = "the team page did not load (" + why(team) + ")"; return out; }
+
+    // The roster grid (mig 620): each player is a `roster_headshot` block
+    // followed by the name in a fixed-style div — the league's own
+    // spelling, which drifts from ours ("Benzig", "Baidel"), so the board
+    // mirror matches fuzzily.  Manual scan, not regex: the spans between
+    // anchors are kilobytes long.
+    {
+        const std::string kCard = "class=\"roster_headshot\"";
+        const std::string kNameDiv = "<div style=\"font-size:12px;line-height:1;\">";
+        size_t at = 0;
+        while ((at = team.body.find(kCard, at)) != std::string::npos) {
+            const size_t nd = team.body.find(kNameDiv, at);
+            if (nd == std::string::npos) break;
+            const size_t from = nd + kNameDiv.size();
+            const size_t end = team.body.find("</div>", from);
+            if (end == std::string::npos) break;
+            std::string name = htmlDecode(team.body.substr(from, end - from));
+            // trim
+            const size_t b = name.find_first_not_of(" \t\r\n");
+            const size_t e = name.find_last_not_of(" \t\r\n");
+            if (b != std::string::npos) out.names.push_back(name.substr(b, e - b + 1));
+            at = end;
+        }
+    }
+
     const std::string pdfUrl = printableRosterUrl(team.body);
     if (pdfUrl.empty()) {
         out.error = "the league site refused the sign-in, or that login is not staff on this team";

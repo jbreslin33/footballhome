@@ -96,9 +96,18 @@ class InvoicesScreen extends Screen {
                    color:var(--text-primary); text-align:left; min-width:0; }
         .iv-chip > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .iv-chip.on { background:rgba(74,222,128,0.18); border-color:#4ade80; }
-        .iv-chip.off { opacity:0.45; text-decoration:line-through; }
+        .iv-chip.part { background:rgba(234,179,8,0.20); border-color:#eab308; }
+        .iv-chip.off { border-color:#f87171; background:rgba(248,113,113,0.12); }
+        .iv-chip.off .iv-chip-zone:first-child { text-decoration:line-through; opacity:0.6; }
         .iv-chip.todo { border-color:#f59e0b; }
         .iv-chip.ref { border-style:dashed; }
+        .iv-chip-zone { border:none; background:transparent; color:inherit; cursor:pointer; padding:0; font-size:inherit;
+                        display:flex; gap:4px; align-items:center; min-width:0; }
+        .iv-chip-zone > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .iv-mk.on-part { background:#eab308; border-color:#eab308; color:#0b1c3d; opacity:1; }
+        .iv-part-box { display:flex; gap:4px; align-items:center; border:1px solid #eab308; border-radius:6px;
+                       padding:3px 5px; font-size:0.68rem; background:rgba(234,179,8,0.10); }
+        .iv-part-box input { width:58px; }
         .iv-cal .dsum { margin-top:auto; font-size:0.66rem; font-weight:700; text-align:right; opacity:0.85; }
         .iv-cal-tot { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:flex-end; align-items:baseline;
                       padding:8px 4px 2px; font-size:0.85rem; }
@@ -733,8 +742,33 @@ class InvoicesScreen extends Screen {
         try { localStorage.setItem('invoices.calKinds', JSON.stringify(this.calKinds)); } catch (err) { /* private window */ }
         this._renderBody(); return;
       }
-      const calMk = e.target.closest('[data-cal-mk]');
-      if (calMk) { calMk.dataset.mk = 'yes'; await this._markEvent(calMk); return; }
+      // 📅 chip main zone: one tap cycles ✓ worked → ✗ not there → clear.
+      const calCycle = e.target.closest('[data-cal-cycle]');
+      if (calCycle) {
+        const st = calCycle.dataset.state;
+        const mark = (st === '' || st === 'rsvpno') ? 'worked' : (st === 'yes' || st === 'part') ? 'no' : 'clear';
+        await this._postMark(calCycle.dataset.ev, calCycle.dataset.gev, mark);
+        return;
+      }
+      // 🟡 partial: open/close the hours box for this chip or row.
+      const calPart = e.target.closest('[data-cal-part]');
+      if (calPart) {
+        const key = calPart.dataset.calPart;
+        this.partialFor = this.partialFor === key ? null : key;
+        this._renderBody();
+        const box = this.find('[data-part-hours]');
+        if (box) { box.focus(); box.select(); }
+        return;
+      }
+      const partSave = e.target.closest('[data-part-save]');
+      if (partSave) {
+        const hrs = Number(this.find('[data-part-hours]')?.value);
+        if (!(hrs > 0)) { this._say('Type the hours you were there.', true); return; }
+        this.partialFor = null;
+        await this._postMark(partSave.dataset.ev, partSave.dataset.gev, 'partial', hrs);
+        return;
+      }
+      if (e.target.closest('[data-part-close]')) { this.partialFor = null; this._renderBody(); return; }
       const calRef = e.target.closest('[data-cal-ref]');
       if (calRef) { await this._addSingleRefFee(calRef.dataset.calRef); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
@@ -1193,7 +1227,9 @@ class InvoicesScreen extends Screen {
       const billed = !!i.s;
       if (billed) { if (!byDate.has(i.date)) byDate.set(i.date, { chips: [], hours: 0 }); byDate.get(i.date).hours += Number(i.s.hours || 0); }
       if (kind !== 'manual' && this.calKinds[kind] === false) continue;
-      const state = billed ? 'on' : (i.g && (i.g.declined || i.g.rsvp === 'no')) ? 'off' : 'todo';
+      // 🟡 partial (mig 621): billed flat BELOW the event's own hours.
+      const partial = billed && i.g && i.s.flat && Number(i.s.hours) < Number(i.g.hours || 0) - 0.01;
+      const state = billed ? (partial ? 'part' : 'on') : (i.g && (i.g.declined || i.g.rsvp === 'no')) ? 'off' : 'todo';
       // Matches lead with the opponent; everything else reads like the
       // breakdown list (the event's note), never a placeholder team label.
       const label = i.g ? (kind === 'match' ? (i.g.opponent || i.g.note || '') : (i.g.note || i.g.team_label || ''))
@@ -1201,9 +1237,22 @@ class InvoicesScreen extends Screen {
       const hrs = billed ? ` · ${InvoicesScreen.plain(i.s.hours)}h` : '';
       const title = `${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}`;
       const inner = `${ICON[kind]} <span>${esc(label)}</span>${hrs ? `<span style="flex-shrink:0;">${esc(hrs)}</span>` : ''}`;
-      if (locked) put(i.date, `<span class="iv-chip ${state}" title="${esc(title)}">${inner}</span>`);
+      if (locked) put(i.date, `<span class="iv-chip ${state}" style="display:flex;" title="${esc(title)}">${inner}</span>`);
       else if (!i.g && i.s) put(i.date, `<button class="iv-chip ${state}" data-edit-shift="${i.s.id}" title="${esc(title)}">${inner}</button>`);
-      else put(i.date, `<button class="iv-chip ${state}" data-cal-mk data-ev="${i.g.fh_event_id || ''}" data-gev="${i.g.gcal_event_id || ''}" data-state="${state === 'on' ? 'yes' : ''}" title="${esc(title)}">${inner}</button>`);
+      else {
+        // One tap cycles ✓ → ✗ → clear (owner 2026-10-20: "easier to turn
+        // green or red"); the 🟡 corner opens the partial-hours box.
+        const key = i.g.fh_event_id ? `f${i.g.fh_event_id}` : `g${i.g.gcal_event_id}`;
+        const mkState = billed ? (partial ? 'part' : 'yes') : (i.g.declined ? 'no' : (i.g.rsvp === 'no' ? 'rsvpno' : ''));
+        put(i.date, `<span class="iv-chip ${state}" style="display:flex;">
+          <button class="iv-chip-zone" style="flex:1;" data-cal-cycle data-ev="${i.g.fh_event_id || ''}" data-gev="${i.g.gcal_event_id || ''}"
+                  data-state="${mkState}" title="${esc(title)} — ${esc(this._copy('cycle_tip') || 'tap cycles: ✓ worked → ✗ not there → unanswered')}">${inner}</button>
+          <button class="iv-chip-zone" data-cal-part="${key}" data-ev="${i.g.fh_event_id || ''}" data-gev="${i.g.gcal_event_id || ''}"
+                  data-hrs="${Number(i.g.hours || 0)}" title="${esc(this._copy('partial_tip') || 'There for part of it — enter the hours worked')}"
+                  style="flex:0 0 auto; opacity:${state === 'part' ? 1 : 0.55};">🟡</button>
+        </span>`);
+        if (this.partialFor === key) put(i.date, this._partialBoxHtml(key, i.g, i.s));
+      }
     }
     if (this.calKinds.ref !== false) {
       for (const g of (this.refGames || [])) {
@@ -1279,27 +1328,32 @@ class InvoicesScreen extends Screen {
     if (!items.length) return `<div class="iv-hint">${esc(this._copy('games_empty') || 'Nothing in this period yet.')}</div>`;
     const row = (i) => {
       const { g, s } = i;
-      // One answer per event: ✓ worked as coach, ✗ did not (an RSVP no
-      // answers itself), blank = still to answer.  Hours read 0 until ✓.
-      const state = s ? 'yes' : (g && (g.declined || g.rsvp === 'no')) ? 'no' : '';
+      // One answer per event: ✓ worked, 🟡 there for part of it (mig 621,
+      // flat hours below the event's own), ✗ did not (an RSVP no answers
+      // itself), blank = still to answer.  Hours read 0 until ✓/🟡.
+      const partial = s && g && s.flat && Number(s.hours) < Number(g.hours || 0) - 0.01;
+      const state = s ? (partial ? 'part' : 'yes') : (g && (g.declined || g.rsvp === 'no')) ? 'no' : '';
+      const rowKey = g ? (g.fh_event_id ? `f${g.fh_event_id}` : `g${g.gcal_event_id}`) : '';
       const time = s ? (s.flat ? '' : `${s.start}–${s.end}`) : `${g.start}${g.end ? `–${g.end}` : ''}`;
       const label = g ? `${g.kind === 'match' ? '🏟 ' : ''}${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}`
                       : esc((s && s.note) || inv.issuer?.duty_description || 'Hours');
       const marks = locked
-        ? `<span style="width:64px; text-align:center;">${s ? '✓' : ''}</span>`
+        ? `<span style="width:96px; text-align:center;">${s ? (partial ? '🟡' : '✓') : ''}</span>`
         : g ? `<span style="display:flex; gap:4px;">
                  <button class="iv-mk ${state === 'yes' ? 'on-yes' : ''}" data-mk="yes" data-ev="${g.fh_event_id || ''}" data-gev="${g.gcal_event_id || ''}" data-state="${state}" title="${esc(this._copy('mark_yes_tip') || 'Worked this as coach — bill its hours')}">✓</button>
+                 <button class="iv-mk ${state === 'part' ? 'on-part' : ''}" data-mk="part" data-ev="${g.fh_event_id || ''}" data-gev="${g.gcal_event_id || ''}" data-state="${state}" title="${esc(this._copy('partial_tip') || 'There for part of it — enter the hours worked')}">🟡</button>
                  <button class="iv-mk ${state === 'no' ? 'on-no' : ''}" data-mk="no" data-ev="${g.fh_event_id || ''}" data-gev="${g.gcal_event_id || ''}" data-state="${state}" data-stored="${g.declined ? 1 : 0}" title="${esc(this._copy('mark_no_tip') || 'Did not work this')}">✗</button>
                </span>`
-          : `<span style="width:64px;"></span>`;
+          : `<span style="width:96px;"></span>`;
+      const partBox = !locked && rowKey && this.partialFor === rowKey ? this._partialBoxHtml(rowKey, g, s) : '';
       return `
         <div style="display:flex; gap:10px; align-items:center; padding:5px 0 5px 8px; border-top:1px solid var(--border-color); font-size:0.9rem; ${state === 'no' ? 'opacity:0.55;' : ''}">
           ${marks}
-          <span style="flex:1;">${label}</span>
+          <span style="flex:1;">${label}${partBox ? ` ${partBox}` : ''}</span>
           <span style="width:68px; font-size:0.78rem;">${this._rsvpBadge(g)}</span>
           <span style="width:76px; font-size:0.78rem;">${this._attBadge(g)}</span>
           <span style="width:92px; text-align:right; opacity:0.85;">${esc(time)}</span>
-          <span style="width:50px; text-align:right; ${state === 'yes' || (!g && s) ? 'font-weight:700;' : 'opacity:0.45;'}">${state === 'yes' || (!g && s) ? InvoicesScreen.plain(s.hours) : '0'} h</span>
+          <span style="width:50px; text-align:right; ${s ? 'font-weight:700;' : 'opacity:0.45;'} ${state === 'part' ? 'color:#eab308;' : ''}">${s ? InvoicesScreen.plain(s.hours) : '0'} h</span>
           ${s && !locked ? `<button class="iv-btn ghost sm" data-edit-shift="${s.id}" title="Late or stayed on? Override the hours">✏️</button>` : `<span style="width:34px;"></span>`}
         </div>`;
     };
@@ -1366,20 +1420,53 @@ class InvoicesScreen extends Screen {
       </div></div>`;
   }
 
-  // ✓ worked / ✗ didn't on one event row.  Tapping the active mark clears
-  // it back to unanswered; a ✗ shown only because of an RSVP no has
-  // nothing stored, so tapping it stores the answer.
+  // ✓ worked / 🟡 partial / ✗ didn't on one event row.  Tapping the active
+  // mark clears it back to unanswered; a ✗ shown only because of an RSVP
+  // no has nothing stored, so tapping it stores the answer.  🟡 opens the
+  // hours box (mig 621); when already partial it clears.
   async _markEvent(btn) {
     if (!this.inv) return;
     const ev = Number(btn.dataset.ev) || 0, gev = Number(btn.dataset.gev) || 0, state = btn.dataset.state || '';
     let mark;
-    if (btn.dataset.mk === 'yes') mark = state === 'yes' ? 'clear' : 'worked';
+    if (btn.dataset.mk === 'yes') mark = (state === 'yes') ? 'clear' : 'worked';
+    else if (btn.dataset.mk === 'part') {
+      if (state === 'part') mark = 'clear';
+      else {
+        const key = ev ? `f${ev}` : `g${gev}`;
+        this.partialFor = this.partialFor === key ? null : key;
+        this._renderBody();
+        const box = this.find('[data-part-hours]');
+        if (box) { box.focus(); box.select(); }
+        return;
+      }
+    }
     else mark = state === 'no' && btn.dataset.stored === '1' ? 'clear' : 'no';
+    await this._postMark(ev, gev, mark);
+  }
+
+  // Shared POST for ✓/🟡/✗/clear from the list rows and the 📅 chips.
+  async _postMark(ev, gev, mark, hours) {
+    if (!this.inv) return;
+    const body = Number(ev) ? { fh_event_id: Number(ev), mark } : { gcal_event_id: Number(gev), mark };
+    if (mark === 'partial') body.hours = Number(hours);
     try {
-      this.inv = await this._post(`/api/invoices/${this.inv.id}/event-mark`, ev ? { fh_event_id: ev, mark } : { gcal_event_id: gev, mark });
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/event-mark`, body);
       await this.load();
       this._loadGames();
     } catch (err) { this._say(err.message, true); }
+  }
+
+  // The 🟡 hours box (mig 621), shown under a chip or list row.
+  _partialBoxHtml(key, g, s) {
+    const esc = (t) => this.escapeHtml(t);
+    const dflt = s && s.flat ? InvoicesScreen.plain(s.hours) : '';
+    return `<span class="iv-part-box" data-part-row="${key}">
+      🟡 <input class="iv-in num" type="number" step="0.25" min="0.25" max="24" data-part-hours
+                value="${esc(dflt)}" placeholder="${esc(this._copy('partial_ph') || 'hours')}">
+      <button class="iv-btn sm" data-part-save data-ev="${g && g.fh_event_id ? g.fh_event_id : ''}"
+              data-gev="${g && g.gcal_event_id ? g.gcal_event_id : ''}" style="padding:2px 8px;">OK</button>
+      <button class="iv-btn ghost sm" data-part-close style="padding:2px 6px;">✕</button>
+    </span>`;
   }
 
   async addDayManual() {
