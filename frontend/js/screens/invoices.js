@@ -29,6 +29,11 @@ class InvoicesScreen extends Screen {
     this.editIssuer = false;
     this.showPlanForm = false;
     this.confirmDelete = 0;
+    // 📅 Period calendar (owner 2026-10-20: "a calendar type thing …
+    // calendar and pills to show hide things … running total of invoice
+    // below it").  Which chip kinds are showing; remembered per browser.
+    this.calKinds = { match: true, practice: true, claim: true, ref: true };
+    try { Object.assign(this.calKinds, JSON.parse(localStorage.getItem('invoices.calKinds') || '{}')); } catch (err) { /* private window */ }
   }
 
   render() {
@@ -79,6 +84,26 @@ class InvoicesScreen extends Screen {
         .iv-mk.on-no { background:#f87171; border-color:#f87171; color:#fff; opacity:1; }
         .iv-flash { padding:8px 12px; border-radius:8px; background:rgba(74,222,128,0.15); margin-bottom:var(--space-2); font-size:0.85rem; }
         .iv-flash.bad { background:rgba(248,113,113,0.15); }
+        /* 📅 period calendar */
+        .iv-cal { display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; margin-top:6px; }
+        .iv-cal .hd { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; opacity:0.6; text-align:center; padding:2px 0; }
+        .iv-cal .cell { border:1px solid var(--border-color); border-radius:8px; min-height:74px; padding:4px 5px 3px;
+                        display:flex; flex-direction:column; gap:3px; background:var(--bg-primary); min-width:0; }
+        .iv-cal .cell.out { opacity:0.32; background:transparent; }
+        .iv-cal .dnum { font-size:0.7rem; font-weight:700; opacity:0.7; }
+        .iv-chip { display:flex; gap:4px; align-items:center; border:1px solid var(--border-color); border-radius:6px;
+                   padding:2px 5px; font-size:0.68rem; line-height:1.25; cursor:pointer; background:transparent;
+                   color:var(--text-primary); text-align:left; min-width:0; }
+        .iv-chip > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .iv-chip.on { background:rgba(74,222,128,0.18); border-color:#4ade80; }
+        .iv-chip.off { opacity:0.45; text-decoration:line-through; }
+        .iv-chip.todo { border-color:#f59e0b; }
+        .iv-chip.ref { border-style:dashed; }
+        .iv-cal .dsum { margin-top:auto; font-size:0.66rem; font-weight:700; text-align:right; opacity:0.85; }
+        .iv-cal-tot { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:flex-end; align-items:baseline;
+                      padding:8px 4px 2px; font-size:0.85rem; }
+        .iv-cal-tot b { font-size:1.05rem; }
+        @media (max-width: 720px) { .iv-cal .cell { min-height:56px; } .iv-chip { font-size:0.6rem; padding:2px 3px; } }
         .iv-total { display:flex; justify-content:flex-end; gap:12px; font-weight:800; font-size:1.1rem; padding:10px 0; }
         .iv-acts { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
         .iv-hint { font-size:0.8rem; opacity:0.7; margin-top:6px; }
@@ -284,6 +309,18 @@ class InvoicesScreen extends Screen {
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       if (this.inv && this.inv.id === inv.id) { this.calGames = body.games || []; this._renderBody(); }
     } catch (err) { console.warn('calendar games unavailable:', err.message); }
+  }
+
+  // One dashed 🧑‍⚖️ chip on the 📅 calendar = one fee straight onto the
+  // sheet; `tag` is the chip's "source:ref_id".
+  async _addSingleRefFee(tag) {
+    if (!this.inv || !tag) return;
+    const [source, id] = tag.split(':');
+    try {
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/ref-fees`, { games: [{ source, ref_id: Number(id) }] });
+      await this.load();
+      this._loadRefGames();
+    } catch (err) { this._say(err.message, true); }
   }
 
   async addRefFees() {
@@ -687,6 +724,19 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('#iv-shift-close') || e.target.id === 'iv-shift-bg') { this.editShift = 0; this._renderBody(); return; }
       const mk = e.target.closest('[data-mk]');
       if (mk) { await this._markEvent(mk); return; }
+      // 📅 period calendar: pills show/hide chip kinds; an event chip
+      // toggles billed ⟷ unanswered; a dashed ref chip bills that one fee.
+      const calPill = e.target.closest('[data-cal-pill]');
+      if (calPill) {
+        const k = calPill.dataset.calPill;
+        this.calKinds[k] = this.calKinds[k] === false;
+        try { localStorage.setItem('invoices.calKinds', JSON.stringify(this.calKinds)); } catch (err) { /* private window */ }
+        this._renderBody(); return;
+      }
+      const calMk = e.target.closest('[data-cal-mk]');
+      if (calMk) { calMk.dataset.mk = 'yes'; await this._markEvent(calMk); return; }
+      const calRef = e.target.closest('[data-cal-ref]');
+      if (calRef) { await this._addSingleRefFee(calRef.dataset.calRef); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
       if (e.target.closest('#iv-copy-link')) { await this.copyPublicLink(); return; }
       if (e.target.closest('#iv-copy-email')) { await this.copyEmailBody(); return; }
@@ -1021,6 +1071,7 @@ class InvoicesScreen extends Screen {
         </div>
 
         <div class="iv-sec">${esc(this._copy('games_title') || 'Hours from the calendar')} — ${inv.period_start && inv.period_end ? `${esc(InvoicesScreen.dayLabel(inv.period_start))} to ${esc(InvoicesScreen.dayLabel(inv.period_end))}` : 'set the window above'}</div>
+        ${this._renderPeriodCalendar()}
         ${inv.is_final ? '' : `<div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('games_hint'))}</div>`}
         ${this._renderHoursBreakdown()}
         <div class="iv-acts">
@@ -1112,22 +1163,120 @@ class InvoicesScreen extends Screen {
   // RSVP and the attendance mark — time and hours.  ✏️ opens the override
   // popup (_renderShiftModal); billed rows without an event (hand-added
   // hours) sit in the same list with ✏️ as their only control.
-  _renderHoursBreakdown() {
+  // 📅 The period as a calendar (owner 2026-10-20: "a calendar type thing
+  // is better for each person … calendar and pills to show hide things …
+  // running total of invoice below it … total hours and total earned on
+  // each day just for sake of data").  Shows ONLY the invoice's own window
+  // — a Fri→Thu pay period lands as 3 week rows with the lead-in/out days
+  // dimmed.  Chips are the same rows the breakdown list below carries:
+  // green = billed, amber outline = still to answer, struck = not worked;
+  // tap toggles billed ⟷ unanswered (the ✗ nuance stays in the list).
+  // Dashed 🧑‍⚖️ chips are unbilled ref fees — tap puts the fee on the sheet.
+  _renderPeriodCalendar() {
     const inv = this.inv, esc = (t) => this.escapeHtml(t);
-    if (!inv.period_start || !inv.period_end) return `<div class="iv-hint">Set the work-from and work-till dates first.</div>`;
+    if (!inv.period_start || !inv.period_end) return '';
     const locked = !!inv.is_final;
+    const rate = Number(inv.issuer?.hourly_rate || 0);
+    const dow = (iso) => new Date(iso + 'T12:00:00').getDay();
+    const gridStart = InvoicesScreen.addDays(inv.period_start, -dow(inv.period_start));
+    const gridEnd   = InvoicesScreen.addDays(inv.period_end, 6 - dow(inv.period_end));
+
+    // Chips by date: merged period items (events + day rows) and the
+    // unbilled in-window ref fees.
+    const byDate = new Map();
+    const put = (date, html) => { if (!byDate.has(date)) byDate.set(date, { chips: [], hours: 0 }); byDate.get(date).chips.push(html); };
+    const kindOf = (i) => i.g ? (i.g.kind === 'match' ? 'match' : i.g.kind === 'practice' ? 'practice' : 'claim')
+                             : (i.s.gcal_event_id ? 'claim' : i.s.fh_event_id ? 'match' : 'manual');
+    const ICON = { match: '⚽', practice: '🏃', claim: '🧾', manual: '⏱' };
+    for (const i of this._mergedPeriodItems()) {
+      const kind = kindOf(i);
+      const billed = !!i.s;
+      if (billed) { if (!byDate.has(i.date)) byDate.set(i.date, { chips: [], hours: 0 }); byDate.get(i.date).hours += Number(i.s.hours || 0); }
+      if (kind !== 'manual' && this.calKinds[kind] === false) continue;
+      const state = billed ? 'on' : (i.g && (i.g.declined || i.g.rsvp === 'no')) ? 'off' : 'todo';
+      // Matches lead with the opponent; everything else reads like the
+      // breakdown list (the event's note), never a placeholder team label.
+      const label = i.g ? (kind === 'match' ? (i.g.opponent || i.g.note || '') : (i.g.note || i.g.team_label || ''))
+                        : (i.s.note || inv.issuer?.duty_description || 'Hours');
+      const hrs = billed ? ` · ${InvoicesScreen.plain(i.s.hours)}h` : '';
+      const title = `${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}`;
+      const inner = `${ICON[kind]} <span>${esc(label)}</span>${hrs ? `<span style="flex-shrink:0;">${esc(hrs)}</span>` : ''}`;
+      if (locked) put(i.date, `<span class="iv-chip ${state}" title="${esc(title)}">${inner}</span>`);
+      else if (!i.g && i.s) put(i.date, `<button class="iv-chip ${state}" data-edit-shift="${i.s.id}" title="${esc(title)}">${inner}</button>`);
+      else put(i.date, `<button class="iv-chip ${state}" data-cal-mk data-ev="${i.g.fh_event_id || ''}" data-gev="${i.g.gcal_event_id || ''}" data-state="${state === 'on' ? 'yes' : ''}" title="${esc(title)}">${inner}</button>`);
+    }
+    if (this.calKinds.ref !== false) {
+      for (const g of (this.refGames || [])) {
+        if (!g.game_on || g.game_on < gridStart || g.game_on > gridEnd) continue;
+        const inner = `🧑‍⚖️ <span>${esc(g.opponent)}</span><span style="flex-shrink:0;">${InvoicesScreen.money(g.amount)}</span>`;
+        const title = `${g.policy_label} — ${g.opponent} · ${esc(this._copy('cal_ref_tip') || 'tap to put this referee fee on the sheet')}`;
+        put(g.game_on, g.in_gcal === false || locked
+          ? `<span class="iv-chip ref" style="opacity:0.45;" title="${esc(g.opponent)} — not on the calendar">${inner}</span>`
+          : `<button class="iv-chip ref todo" data-cal-ref="${esc(g.source)}:${g.ref_id}" title="${esc(title)}">${inner}</button>`);
+      }
+    }
+
+    // Grid: Su–Sa header, then the period's weeks; out-of-window cells dim.
+    const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let cells = DAYS.map(d => `<div class="hd">${d}</div>`).join('');
+    for (let d = gridStart; d <= gridEnd; d = InvoicesScreen.addDays(d, 1)) {
+      const out = d < inv.period_start || d > inv.period_end;
+      const day = byDate.get(d);
+      const hrs = day ? day.hours : 0;
+      const dnum = d.slice(8).replace(/^0/, '');
+      const dlabel = (d === gridStart || dnum === '1') ? InvoicesScreen.dayLabel(d).replace(/^\w+ /, '') : dnum;
+      cells += `
+        <div class="cell ${out ? 'out' : ''}">
+          <div class="dnum">${esc(dlabel)}</div>
+          ${out ? '' : (day ? day.chips.join('') : '')}
+          ${hrs > 0 ? `<div class="dsum">${InvoicesScreen.plain(hrs)}h · ${InvoicesScreen.money(hrs * rate)}</div>` : ''}
+        </div>`;
+    }
+
+    // Show/hide pills + the running totals of the sheet as it stands.
+    const PILLS = [['match', '⚽ Games'], ['practice', '🏃 Practices'], ['claim', '🧾 Claims'], ['ref', '🧑‍⚖️ Ref fees']];
+    const pills = PILLS.map(([k, label]) =>
+      `<button class="iv-pill ${this.calKinds[k] !== false ? 'on' : ''}" data-cal-pill="${k}" style="padding:4px 10px; font-size:0.78rem;">${esc(label)}</button>`).join('');
+    const sum = (pred) => (inv.lines || []).filter(pred).reduce((a, l) => a + Number(l.amount || 0), 0);
+    const labor = sum(l => l.category === 'labor');
+    const refs  = sum(l => l.category === 'referees');
+    const other = sum(l => l.category !== 'labor' && l.category !== 'referees');
+    const totals = `
+      <div class="iv-cal-tot">
+        <span>${InvoicesScreen.plain(inv.shift_hours || 0)} h · ${InvoicesScreen.money(labor)} ${esc(inv.issuer?.duty_description || 'hours')}</span>
+        ${refs ? `<span>${InvoicesScreen.money(refs)} referees</span>` : ''}
+        ${other ? `<span>${InvoicesScreen.money(other)} other</span>` : ''}
+        <span>${esc(this._copy('cal_running_total') || 'Invoice so far')} <b>${InvoicesScreen.money(inv.total || 0)}</b></span>
+      </div>`;
+    return `<div class="iv-pills" style="margin-top:4px;">${pills}</div><div class="iv-cal">${cells}</div>${totals}`;
+  }
+
+  // Every claimable / claimed thing in the period as one list: calendar
+  // events (coaching + name-claims) paired with their billed day row when
+  // one exists, plus hand-added day rows.  Shared by the hours breakdown
+  // and the 📅 period calendar so the two can't disagree.
+  // A row keys on its fh_event, or — a claimed calendar event (mig 577,
+  // "anytime it says CASA soccer that is me") — on the gcal event.
+  _mergedPeriodItems() {
+    const inv = this.inv;
     const shifts = inv.shifts || [];
-    const games = locked ? [] : (this.calGames || []);
-    // A row keys on its fh_event, or — a claimed calendar event (mig 577,
-    // "anytime it says CASA soccer that is me") — on the gcal event.
+    const games = inv.is_final ? [] : (this.calGames || []);
     const key = (x) => x.fh_event_id ? `f${x.fh_event_id}` : x.gcal_event_id ? `g${x.gcal_event_id}` : '';
     const byEvent = new Map(shifts.filter(s => key(s)).map(s => [key(s), s]));
     const evIds = new Set(games.map(key));
     const items = [];
     for (const g of games) { const s = byEvent.get(key(g)) || null; items.push({ date: s ? s.date : g.date, at: (s && !s.flat && s.start) || g.start || '', g, s }); }
     for (const s of shifts) if (!key(s) || !evIds.has(key(s))) items.push({ date: s.date, at: (!s.flat && s.start) || '', g: null, s });
-    if (!items.length) return `<div class="iv-hint">${esc(this._copy('games_empty') || 'Nothing in this period yet.')}</div>`;
     items.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at < b.at ? -1 : 1));
+    return items;
+  }
+
+  _renderHoursBreakdown() {
+    const inv = this.inv, esc = (t) => this.escapeHtml(t);
+    if (!inv.period_start || !inv.period_end) return `<div class="iv-hint">Set the work-from and work-till dates first.</div>`;
+    const locked = !!inv.is_final;
+    const items = this._mergedPeriodItems();
+    if (!items.length) return `<div class="iv-hint">${esc(this._copy('games_empty') || 'Nothing in this period yet.')}</div>`;
     const row = (i) => {
       const { g, s } = i;
       // One answer per event: ✓ worked as coach, ✗ did not (an RSVP no
