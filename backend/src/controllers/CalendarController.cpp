@@ -1214,7 +1214,13 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         -- someone over it is kept but counted apart
                                                         -- (owner 2026-09-23: "keep but don't count in
                                                         -- totals instead use sep total for ineligible").
-                                                        'dues_eligible', fh_dues_eligible(roster.person_id)
+                                                        'dues_eligible', fh_dues_eligible(roster.person_id),
+                                                        -- 🩹 Open injury (mig 510; owner 2026-10-20: "it just
+                                                        -- marks them injured for game but they can see it but
+                                                        -- unless they change it it auto marks them injured") —
+                                                        -- an injured player with NO explicit answer reads as
+                                                        -- Injured, not No response; an answer always wins.
+                                                        'injury', fh_person_injury_label(roster.person_id)
                         )
                                                 ORDER BY CASE roster.response
                                    WHEN 'yes' THEN 1

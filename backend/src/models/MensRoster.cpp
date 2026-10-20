@@ -1153,6 +1153,7 @@ MensRoster::Result MensRoster::run(bool includeAll,
                 json row             = p;
                 row["teamIds"]       = relevant;
                 row["onRoster"]      = cell ? cell->onRoster : false;
+                row["inviteOnly"]    = cell ? cell->inviteOnly : false;   // 📄 paper spot (mig 619)
                 row["coachSortOrder"] = (cell && cell->coachSortOrder)
                     ? json(*cell->coachSortOrder)
                     : json(nullptr);

@@ -1226,7 +1226,13 @@ class MyScreen extends Screen {
     // #rsvps and Game Center; players never see them.
     const viewerIsAdmin  = this._viewerIsAdmin() && this._adminToolsShown();
     const notGoingAll    = rsvps.filter(r => r && r.response === 'no');
-    const noResponseAll  = rsvps.filter(r => r && !r.response);
+    // 🩹 An open injury answers for them (mig 510; owner 2026-10-20: "it
+    // just marks them injured for game but they can see it but unless they
+    // change it it auto marks them injured"): no explicit response +
+    // injured → the Injured group, never No Response.  Their own Go/No
+    // stays live, and an explicit answer always wins the grouping.
+    const injuredNoAnswer = rsvps.filter(r => r && !r.response && r.injury);
+    const noResponseAll  = rsvps.filter(r => r && !r.response && !r.injury);
     // Invited players (fh_event_invites, migration 355 — youth call-ups
     // and men's play-downs) are listed apart from the roster when they
     // say yes ("available", the coach still picks), but ride along in
@@ -1380,6 +1386,11 @@ class MyScreen extends Screen {
                 <div>${groupHtml('Players Not Going', notGoingPlayers, 'not going', rowsHtml(notGoingPlayers, { grouped: true }))}</div>
               </div>
             ` : ''}
+          </div>
+        ` : ''}
+        ${injuredNoAnswer.length ? `
+          <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
+            ${groupHtml(`🩹 Injured (${injuredNoAnswer.length})`, injuredNoAnswer, 'auto-marked — they can still answer Going', rowsHtml(injuredNoAnswer))}
           </div>
         ` : ''}
         ${noResponseTotal ? `

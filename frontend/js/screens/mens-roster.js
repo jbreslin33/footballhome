@@ -97,6 +97,8 @@ class MensRosterScreen extends RosterScreenBase {
       if (toggle) return this.onRosterToggleClick(toggle);
       const inviteOnly = e.target.closest('.mr-invite-only');
       if (inviteOnly) return this.onInviteOnlyClick(inviteOnly);
+      const catPill = e.target.closest('.mr-cat-pill');
+      if (catPill) return this.onCatPillClick(catPill);
       const pill = e.target.closest('.mr-pill');
       if (pill) return this.onPillClick(pill);
       const focusPill = e.target.closest('.mr-team-focus-pill');
@@ -395,6 +397,16 @@ class MensRosterScreen extends RosterScreenBase {
     `;
   }
 
+  // Column category pill (📄/🩹/⭐/✅): toggles that group's visibility
+  // for that one column; remembered per browser.
+  onCatPillClick(btn) {
+    const key = `${btn.dataset.catTeam}:${btn.dataset.cat}`;
+    this.catOff = this.catOff || {};
+    if (this.catOff[key]) delete this.catOff[key]; else this.catOff[key] = true;
+    try { localStorage.setItem('mensRoster.catOff', JSON.stringify(this.catOff)); } catch (e) { /* private window */ }
+    if (this._data) this.renderRoster(this._data);
+  }
+
   // Purely client-side — re-renders from the already-loaded data, no
   // network round-trip (see renderRoster's showFocusPills block).
   onTeamFocusPillClick(btn) {
@@ -452,9 +464,43 @@ class MensRosterScreen extends RosterScreenBase {
     const renderList = (list) => this.orderColumnPlayers(list)
       .map(({ player, rank }) => this.renderPlayer(player, data.columns, col, rank, list.length)).join('');
 
-    const body = players.length === 0
-      ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
-      : renderList(players);
+    // ── Category pills (owner 2026-10-20: "for each roster have pills
+    // with numbers of players … even liga 1 can then show sheldon if i
+    // include auto call downs") — the column's whole truth: ✅ active
+    // roster, 📄 paper spots, 🩹 injured, and ⭐ standing invitees who
+    // ride this team's games WITHOUT a list spot (team_auto_invites).
+    // Pills filter the column; the counts stay on the pill either way,
+    // so nothing is ever lost track of.
+    const riders = (!col.isUnassigned && data.autoInvites && data.autoInvites[String(col.teamId)]) || [];
+    const catOf = (p) => p.inviteOnly === true ? 'paper'
+      : (RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : 'active');
+    const cats = { active: [], paper: [], injured: [] };
+    for (const p of players) cats[catOf(p)].push(p);
+    this.catOff = this.catOff || (() => { try { return JSON.parse(localStorage.getItem('mensRoster.catOff') || '{}'); } catch (e) { return {}; } })();
+    const off = (cat) => !!this.catOff[`${col.teamId}:${cat}`];
+    const catPill = (cat, icon, label, n, color) => (n || cat === 'active') ? `
+        <button type="button" class="mr-cat-pill" data-cat-team="${col.teamId}" data-cat="${cat}"
+          title="${off(cat) ? `Show ${label.toLowerCase()} (${n})` : `Hide ${label.toLowerCase()}`}"
+          style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
+                 border:1px solid ${color}; background:${off(cat) ? 'transparent' : color + '26'};
+                 color:${off(cat) ? '#64748b' : color};">${icon} ${label} (${n})</button>` : '';
+    const catPills = col.isUnassigned ? '' : `
+      <div style="display:flex; gap:4px; flex-wrap:wrap; margin:2px 0 6px;">
+        ${catPill('active', '✅', 'Active', cats.active.length, '#4ade80')}
+        ${catPill('paper', '📄', 'Paper', cats.paper.length, '#f59e0b')}
+        ${catPill('injured', '🩹', 'Injured', cats.injured.length, '#f87171')}
+        ${catPill('riders', '⭐', 'Rides along', riders.length, '#60a5fa')}
+      </div>`;
+    const shown = col.isUnassigned ? players : players.filter(p => !off(catOf(p)));
+    const ridersHtml = (!col.isUnassigned && riders.length && !off('riders')) ? riders.map(r => `
+      <div style="padding:5px 8px; border:1px dashed #60a5fa; border-radius:8px; font-size:0.74rem; background:rgba(96,165,250,0.08);"
+           title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">
+        ⭐ <b>${this.escape(r.name)}</b> <span style="opacity:0.7;">· from ${this.escape(r.fromTeam || '—')}</span>
+      </div>`).join('') : '';
+
+    const body = shown.length === 0
+      ? (ridersHtml ? '' : '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>')
+      : renderList(shown);
 
     // Column-header financial roll-up ("⚠ N OVERDUE") was removed
     // 2026-07-14 — belongs on the /payments screen, not here.  The
@@ -471,12 +517,14 @@ class MensRosterScreen extends RosterScreenBase {
             ${countHtml}
           </span>
         </div>
+        ${catPills}
         ${this.renderRosterStatusTallies(col, players)}
         ${this.renderCoachesStrip(col)}
         <div class="mr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:6px; min-height:8px; min-width:${this.colBoxMinWidth()};">
           ${body}
         </div>
+        ${ridersHtml ? `<div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">${ridersHtml}</div>` : ''}
       </div>
     `;
   }
