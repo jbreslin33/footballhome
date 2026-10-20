@@ -1236,7 +1236,7 @@ class GameCenterScreen extends Screen {
       if (!this.roster.some(r => Number(r.id) === pid)) {
         this.roster.push({ id: pid, name, lastName: inv.last_name || '', lineupRole: null,
                            teamId: this.teamId, jerseyNumber: null, duesEligible: true,
-                           callUp: true, fromTeam: inv.from_team || '' });
+                           callUp: true, fromTeam: inv.from_team || '', fromTeamId: inv.from_team_id || null });
       }
       if (!this.players.some(d => Number(d.playerId) === pid))
         this.players.push({ playerId: pid, personId: inv.person_id, name });
@@ -1251,6 +1251,16 @@ class GameCenterScreen extends Screen {
   // Call-downs are exactly the folded invitees, so the invite rows'
   // from_team_id identifies them.  Returns the blocking cap row or null;
   // the PUT enforces the same rule server-side.
+  // A folded invitee whose from-team has a cap row for this game is a
+  // CALL-DOWN (APSL → CASA); every other invitee is a call-up.
+  _isCallDown(playerId) {
+    const caps = (this.invites && this.invites.caps) || [];
+    if (!caps.length) return false;
+    const r = this.roster.find(x => Number(x.id) === Number(playerId));
+    if (!r || !r.callUp || !r.fromTeamId) return false;
+    return caps.some(c => Number(c.from_team_id) === Number(r.fromTeamId));
+  }
+
   _callDownCapHit(playerId) {
     const caps = (this.invites && this.invites.caps) || [];
     if (!caps.length) return null;
@@ -2318,8 +2328,17 @@ class GameCenterScreen extends Screen {
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
           <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
             <span ${this._eligNameTitle(p.id)}style="overflow-wrap:break-word; white-space:normal; ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}</span>
-            ${p.callUp ? `<span title="Invited call-up — Going; the practice criteria don't apply, they're eligible"
-              style="padding:1px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; white-space:nowrap; background:#166534; color:#dcfce7;">🎟 Call-up${p.fromTeam ? ` · ${this.escapeHtml(p.fromTeam)}` : ''}</span>` : ''}
+            ${p.callUp ? (() => {
+              // "Call Down" when they come from a capped squad above this
+              // one (APSL → CASA, migs 616/617); "Call-up" otherwise
+              // (owner 2026-10-20: "should have label 'Call Down' to show
+              // them clearly").
+              const down = this._isCallDown(p.id);
+              return `<span title="${down ? 'Call-down from the squad above — counts toward the league cap in starters/bench'
+                                          : "Invited call-up — Going; the practice criteria don't apply, they're eligible"}"
+              style="padding:1px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; white-space:nowrap;
+                     background:${down ? '#7c2d12' : '#166534'}; color:${down ? '#fed7aa' : '#dcfce7'};">🎟 ${down ? 'Call Down' : 'Call-up'}${p.fromTeam ? ` · ${this.escapeHtml(p.fromTeam)}` : ''}</span>`;
+            })() : ''}
             ${this.isCoach && !p.callUp ? this._rsvpStatusPill(p.id) : ''}
             ${this._duesFlag(p)}
             ${this.isCoach ? this._injuryChip(p.id) : ''}
@@ -2993,7 +3012,7 @@ class GameCenterScreen extends Screen {
         </div>
         ${(data.caps || []).map(c => `
           <div style="font-size:0.72rem; font-weight:700; margin:0 0 6px; color:${c.used >= c.max ? '#f87171' : '#fcd34d'};">
-            ⬇ ${esc(copy('cap_line', { from: c.from_team, used: c.used, max: c.max }) || `${c.from_team}: ${c.used} of ${c.max} send-downs used for this game`)}
+            ⬇ ${esc(copy('cap_line', { from: c.from_team, used: c.used, max: c.max }) || `${c.from_team}: ${c.used} of ${c.max} call-downs in the squad (starters + bench) — invites and Going are unlimited`)}
           </div>`).join('')}
         ${data.invites.length ? `<div style="display:grid; gap:4px; margin-bottom:6px;">${invited}</div>` : ''}
         ${data.candidates.length ? candidates : `<div style="font-size:0.8rem; opacity:0.55;">Nobody eligible — everyone age-eligible in the program is rostered or already invited.</div>`}

@@ -630,23 +630,8 @@ Response CalendarController::handlePostAutoInvite(const Request& request) {
             return jsonError(HttpStatus::BAD_REQUEST, "That team is not on this game");
         const std::string t = std::to_string(teamId), p = std::to_string(personId), f = std::to_string(fromTeam);
         if (active) {
-            // The standing list itself respects the cap: a third active
-            // auto from the same squad is refused up front.
-            auto cap = db->query(R"SQL(
-                SELECT c.max_per_event, tm.name AS from_name,
-                       (SELECT count(*) FROM team_auto_invites a
-                         WHERE a.team_id = $1::int AND a.active AND a.person_id <> $2::int
-                           AND EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = a.person_id
-                                        AND tp.team_id = c.from_team_id AND tp.removed_at IS NULL)) AS used
-                  FROM team_invite_caps c JOIN teams tm ON tm.id = c.from_team_id
-                 WHERE c.to_team_id = $1::int
-                   AND EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = $2::int
-                                AND tp.team_id = c.from_team_id AND tp.removed_at IS NULL))SQL", {t, p});
-            for (const auto& c : cap)
-                if (c["used"].as<long long>() >= c["max_per_event"].as<long long>())
-                    return jsonError(HttpStatus::CONFLICT,
-                        "League rule: at most " + std::string(c["max_per_event"].c_str()) + " standing call-downs from "
-                        + std::string(c["from_name"].c_str()) + " — turn one off first.");
+            // No cap here (owner 2026-10-20: invites and Going answers are
+            // unlimited) — the team_invite_caps rule binds the lineup only.
             db->query(
                 "INSERT INTO team_auto_invites (team_id, person_id, from_team_id, active) "
                 "VALUES ($1::int, $2::int, NULLIF($3, '0')::int, true) "
@@ -661,17 +646,7 @@ Response CalendarController::handlePostAutoInvite(const Request& request) {
                  WHERE fet.team_id = $1::int
                    AND NOT EXISTS (SELECT 1 FROM fh_event_invites i
                                     WHERE i.fh_event_id = fet.fh_event_id AND i.person_id = $2::int
-                                      AND i.revoked_at IS NULL)
-                   AND NOT EXISTS (
-                        SELECT 1 FROM team_invite_caps c
-                         WHERE c.to_team_id = $1::int
-                           AND EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = $2::int
-                                        AND tp.team_id = c.from_team_id AND tp.removed_at IS NULL)
-                           AND (SELECT count(*) FROM fh_event_invites i
-                                 WHERE i.fh_event_id = fet.fh_event_id AND i.revoked_at IS NULL
-                                   AND EXISTS (SELECT 1 FROM team_persons tp2 WHERE tp2.person_id = i.person_id
-                                                AND tp2.team_id = c.from_team_id AND tp2.removed_at IS NULL)
-                               ) >= c.max_per_event))SQL", {t, p, f});
+                                      AND i.revoked_at IS NULL))SQL", {t, p, f});
         } else {
             db->query("UPDATE team_auto_invites SET active = false WHERE team_id = $1::int AND person_id = $2::int", {t, p});
             const std::string uid = resolveUserId(db, gate.personId);
@@ -3046,18 +3021,26 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
             });
         }
 
-        // League invite caps that apply to this event (mig 616): the 🎟
-        // panel shows "n of max sent down from <team>" before anyone hits
-        // the enforcement error on the POST.
+        // League squad caps that apply to this event (migs 616/617): `used`
+        // counts call-downs IN THE SAVED LINEUP (starters + bench), because
+        // that is what the rule binds — invites and Going answers are
+        // unlimited (owner 2026-10-20).
         json caps = json::array();
         for (const auto& row : db->query(R"SQL(
                 SELECT t.name AS from_team, c.from_team_id, c.to_team_id, c.max_per_event,
-                       (SELECT count(*) FROM fh_event_invites i
-                         WHERE i.fh_event_id = $1::bigint AND i.revoked_at IS NULL
+                       (SELECT count(*) FROM fh_events fe
+                          JOIN match_lineups ml ON ml.match_id = fe.match_id
+                          JOIN players pl ON pl.id = ml.player_id
+                          JOIN persons pe ON pe.id = pl.person_id
+                         WHERE fe.id = $1::bigint AND fe.match_id IS NOT NULL
+                           AND ml.zone IN ('starter', 'bench')
                            AND EXISTS (SELECT 1 FROM team_persons tp
-                                        WHERE tp.person_id = i.person_id
-                                          AND tp.team_id = c.from_team_id
-                                          AND tp.removed_at IS NULL)) AS used
+                                        WHERE tp.person_id = pe.id AND tp.team_id = c.from_team_id
+                                          AND tp.removed_at IS NULL)
+                           AND NOT EXISTS (SELECT 1 FROM team_persons tp2
+                                            JOIN fh_event_teams fet2 ON fet2.team_id = tp2.team_id
+                                                                    AND fet2.fh_event_id = $1::bigint
+                                           WHERE tp2.person_id = pe.id AND tp2.removed_at IS NULL)) AS used
                   FROM team_invite_caps c
                   JOIN teams t ON t.id = c.from_team_id
                  WHERE EXISTS (SELECT 1 FROM fh_event_teams fet
@@ -3136,39 +3119,10 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
         const std::string fromTeamName = !w["from_team_name"].is_null() ? std::string(w["from_team_name"].c_str())
                                        : !w["inv_from_team_name"].is_null() ? std::string(w["inv_from_team_name"].c_str()) : "";
 
-        // League invite caps (team_invite_caps, mig 616) — e.g. APSL/CASA:
-        // at most 2 players sent down from APSL to a CASA game.  Counts the
-        // event's OTHER open invites whose player is rostered on the capped
-        // from-team; a re-send of this person's own invite always passes.
-        {
-            auto cap = db->query(R"SQL(
-                SELECT c.max_per_event, t.name AS from_name,
-                       (SELECT count(*) FROM fh_event_invites i
-                         WHERE i.fh_event_id = $1::bigint AND i.revoked_at IS NULL
-                           AND i.person_id <> $2::int
-                           AND EXISTS (SELECT 1 FROM team_persons tp
-                                        WHERE tp.person_id = i.person_id
-                                          AND tp.team_id = c.from_team_id
-                                          AND tp.removed_at IS NULL)) AS used
-                  FROM team_invite_caps c
-                  JOIN teams t ON t.id = c.from_team_id
-                 WHERE EXISTS (SELECT 1 FROM fh_event_teams fet
-                                WHERE fet.fh_event_id = $1::bigint AND fet.team_id = c.to_team_id)
-                   AND EXISTS (SELECT 1 FROM team_persons tp
-                                WHERE tp.person_id = $2::int AND tp.team_id = c.from_team_id
-                                  AND tp.removed_at IS NULL))SQL",
-                {std::to_string(fhEventId), std::to_string(targetPersonId)});
-            for (const auto& c : cap) {
-                const long long maxN = c["max_per_event"].as<long long>();
-                const long long used = c["used"].as<long long>();
-                if (used >= maxN) {
-                    return jsonError(HttpStatus::CONFLICT,
-                        "League rule: at most " + std::to_string(maxN) + " players from "
-                        + std::string(c["from_name"].c_str()) + " may be sent down to this game — "
-                        + std::to_string(used) + " already invited. Revoke one first.");
-                }
-            }
-        }
+        // Invites are deliberately UNCAPPED (owner 2026-10-20: "we should be
+        // able to have more than 2 calls out and more than 2 set going") —
+        // the team_invite_caps rule binds the LINEUP, not the invite list
+        // (EligibilityController's lineup PUT + the tap guards).
 
         const auto info = loadInviteEventInfo(db, fhEventId);
         if (!info) return jsonError(HttpStatus::NOT_FOUND, "Event not found");
