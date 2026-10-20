@@ -1859,21 +1859,48 @@ class SocialPostCard {
     // full backs on the touchline; owner 2026-09-29: "show a narrower
     // formation for the full backs" — rows of four (and five) get a
     // tighter cap so the line pulls in from the edges.
-    const token = (t, n = 0) => `
-      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
+    const token = (t, n = 0, extra = '') => `
+      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;${extra}display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
         <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
         <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;${t.name && t.nameStyle ? t.nameStyle : ''}">${t.name ? this.escapeHtml(t.name) : '—'}</div>
         ${t.badgeHtml || ''}
       </div>`;
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
+    const crestCircle = (mt = 0) => `
+      <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;box-sizing:border-box;border:2px solid rgba(255,255,255,0.5);${crestSrc ? 'background:#ffffff;' : ''}display:flex;align-items:center;justify-content:center;${mt ? `margin-top:${mt}px;` : ''}">
+        ${crestSrc ? `<img src="${crestSrc}" style="max-width:28px;max-height:28px;object-fit:contain;" />` : ''}
+      </div>`;
     const halfway = `
       <div style="display:flex;align-items:center;gap:8px;">
         ${line}
-        <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;box-sizing:border-box;border:2px solid rgba(255,255,255,0.5);${crestSrc ? 'background:#ffffff;' : ''}display:flex;align-items:center;justify-content:center;">
-          ${crestSrc ? `<img src="${crestSrc}" style="max-width:28px;max-height:28px;object-fit:contain;" />` : ''}
-        </div>
+        ${crestCircle()}
         ${line}
       </div>`;
+    // token.wide (FIELD_SIZES wideIds — owner 2026-10-19: the 3 and 2
+    // "a little wider" on the back-three shapes): the edge chip's auto
+    // margin soaks up the row's spare width, pushing it outward, while
+    // 30px of row padding keeps it off the touchline (same owner call
+    // as the back-four width cap above).
+    //
+    // rows tagged halfway (FIELD_SIZES midlineRow) stand ON the halfway
+    // line (owner: "put the middle line of 343 at mid line of pitch"):
+    // the line paints behind the positioned chip row at chip-center
+    // height, and the crest keeps its center-circle spot as a flex item
+    // between the two middle chips (even-length rows only — an odd row
+    // has a chip there).
+    const pitchRow = (row) => {
+      const wide = row.some(t => t.wide);
+      const items = row.map((t, i) => token(t, row.length,
+        !t.wide ? '' : i === 0 ? 'margin-right:auto;' : i === row.length - 1 ? 'margin-left:auto;' : ''));
+      if (row.halfway && row.length % 2 === 0) items.splice(row.length / 2, 0, crestCircle(chip / 2 - 20));
+      const flexRow = `<div style="position:relative;display:flex;justify-content:center;align-items:flex-start;gap:6px;${wide ? 'padding:0 30px;' : ''}">${items.join('')}</div>`;
+      if (!row.halfway) return flexRow;
+      return `
+        <div style="position:relative;">
+          <div style="position:absolute;left:0;right:0;top:${chip / 2 - 1}px;height:2px;background:rgba(255,255,255,0.35);"></div>
+          ${flexRow}
+        </div>`;
+    };
     // Game Center's live card heads the band with the totals, so a
     // lineup one short says "10 STARTERS" (squadCounts); the post only
     // names the substitutes.
@@ -1886,7 +1913,7 @@ class SocialPostCard {
       </div>` : '';
     return `
       <div style="flex:1;min-height:0;align-self:stretch;margin:0 -28px;padding:10px 6px;box-sizing:border-box;background:#15803d;border-top:2px solid rgba(255,255,255,0.35);border-bottom:2px solid rgba(255,255,255,0.35);display:flex;flex-direction:column;justify-content:space-between;">
-        ${pitch.map(row => row ? `<div style="display:flex;justify-content:center;align-items:flex-start;gap:6px;">${row.map(t => token(t, row.length)).join('')}</div>` : halfway).join('')}
+        ${pitch.map(row => row ? pitchRow(row) : halfway).join('')}
       </div>
       ${benchHtml}
     `;
