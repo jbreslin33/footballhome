@@ -32,6 +32,12 @@ public:
     // Driving minutes for one leg, cache-first.
     static std::optional<double> minutes(const LatLon& from, const LatLon& to);
 
+    // A street address for a point (Nominatim /reverse, cached in
+    // carpool_revgeo_cache, mig 610) — names the computed neutral
+    // meeting point. nullopt = no answer; '' is cached so a dead point
+    // is never re-asked.
+    static std::optional<std::string> reverseGeocode(const LatLon& at);
+
 private:
     static std::optional<LatLon> geocode(const std::string& address);
 };

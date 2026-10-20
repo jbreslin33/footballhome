@@ -1,8 +1,10 @@
 #include "CarpoolController.h"
 
 #include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <optional>
+#include <sstream>
 
 #include "../database/Database.h"
 #include "../services/CarpoolRouting.h"
@@ -115,16 +117,39 @@ std::string clockLabel(Database* db, double epoch) {
 }
 
 struct PlanOption {
-    std::string kind;              // driver_home | rider_home | spot
+    std::string kind;              // driver_home | rider_home | spot | midpoint
     long long   spotId = 0;
-    std::string spotName;
+    std::string spotName;          // spot row's name, or the midpoint's address
     double leaveEpoch  = 0;        // driver leaves home
     double pickupEpoch = 0;        // rider collected / everyone meets
     double extraMin    = 0;        // vs the driver's straight run
+    double midLat = 0, midLon = 0; // midpoint only — pinned at accept
 };
 
-// The three pickup options for THIS driver and THIS request.  Empty when a
-// coordinate is missing; `missing` says which one, for the no_geo copy.
+// The rider's multi-select (mig 610): which plan kinds the driver may pick.
+struct Willing { bool riderHome = true, driverHome = true, spot = true, midpoint = true; };
+
+Willing requestWilling(Database* db, long long requestId) {
+    Willing w;
+    try {
+        auto r = db->query(
+            "SELECT willing_rider_home, willing_driver_home, willing_spot, willing_midpoint "
+            "  FROM fh_carpool_requests WHERE id = $1::int", {std::to_string(requestId)});
+        if (!r.empty()) {
+            w.riderHome  = r[0]["willing_rider_home"].as<bool>();
+            w.driverHome = r[0]["willing_driver_home"].as<bool>();
+            w.spot       = r[0]["willing_spot"].as<bool>();
+            w.midpoint   = r[0]["willing_midpoint"].as<bool>();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[carpool requestWilling] " << e.what() << std::endl;
+    }
+    return w;
+}
+
+// The pickup options for THIS driver and THIS request — only the kinds the
+// rider said they're willing to do (mig 610); the driver single-selects one.
+// Empty when a coordinate is missing; `missing` says which, for no_geo copy.
 std::vector<PlanOption> computePlans(Database* db, long long requestId,
                                      long long fhEventId, long long driverPersonId,
                                      std::string* missing) {
@@ -138,6 +163,7 @@ std::vector<PlanOption> computePlans(Database* db, long long requestId,
     auto pickup = CarpoolRouting::requestPickup(requestId);
     if (!pickup) { if (missing) *missing = "pickup_address"; return out; }
 
+    const Willing will = requestWilling(db, requestId);
     const TimingPolicy pol = timingPolicy(db);
     auto pad = [&](double rawMin) { return rawMin * pol.factor; };
 
@@ -149,7 +175,7 @@ std::vector<PlanOption> computePlans(Database* db, long long requestId,
     const double base = pad(*dv) + pol.bufferMin;
 
     // 1. Rider comes to the driver's place; everyone leaves together.
-    {
+    if (will.driverHome) {
         PlanOption o; o.kind = "driver_home";
         o.leaveEpoch  = *deadline - base * 60.0;
         o.pickupEpoch = o.leaveEpoch;                 // be there by departure
@@ -157,7 +183,7 @@ std::vector<PlanOption> computePlans(Database* db, long long requestId,
         out.push_back(o);
     }
     // 2. Driver detours via the rider's pickup address.
-    {
+    if (will.riderHome) {
         PlanOption o; o.kind = "rider_home";
         const double total = pad(*dr) + pad(*rv) + pol.bufferMin;
         o.leaveEpoch  = *deadline - total * 60.0;
@@ -166,7 +192,7 @@ std::vector<PlanOption> computePlans(Database* db, long long requestId,
         out.push_back(o);
     }
     // 3. Meet at a neutral spot (carpool_spots rows; Lighthouse seeded).
-    try {
+    if (will.spot) try {
         auto spots = db->query("SELECT id, name, latitude, longitude FROM carpool_spots WHERE is_active ORDER BY id");
         for (const auto& s : spots) {
             LatLon sp{s["latitude"].as<double>(), s["longitude"].as<double>()};
@@ -183,6 +209,27 @@ std::vector<PlanOption> computePlans(Database* db, long long requestId,
         }
     } catch (const std::exception& e) {
         std::cerr << "[carpool computePlans spots] " << e.what() << std::endl;
+    }
+    // 4. A neutral point computed between the two homes (owner 2026-10-19:
+    //    "get picked up at an agreed upon neutral site (which you should
+    //    help calculate and give address)") — halfway, reverse-geocoded to
+    //    a street address.  Times must let BOTH parties get there.
+    if (will.midpoint) {
+        LatLon mid{(driver->lat + pickup->lat) / 2.0, (driver->lon + pickup->lon) / 2.0};
+        auto dm = CarpoolRouting::minutes(*driver, mid);
+        auto rm = CarpoolRouting::minutes(*pickup, mid);
+        auto mv = CarpoolRouting::minutes(mid, *venue);
+        if (dm && rm && mv) {
+            PlanOption o; o.kind = "midpoint";
+            o.midLat = mid.lat; o.midLon = mid.lon;
+            auto addr = CarpoolRouting::reverseGeocode(mid);
+            o.spotName = addr ? *addr : "";
+            o.pickupEpoch = *deadline - (pad(*mv) + pol.bufferMin) * 60.0;   // meet time, for both
+            o.leaveEpoch  = o.pickupEpoch - pad(*dm) * 60.0;                 // the driver's own departure
+            const double total = pad(*dm) + pad(*mv) + pol.bufferMin;
+            o.extraMin    = std::max(0.0, std::round(total - base));
+            out.push_back(o);
+        }
     }
     return out;
 }
@@ -265,7 +312,8 @@ Response CarpoolController::handleList(const Request& request) {
                    r.accepted_by_person_id,
                    NULLIF(trim(COALESCE(ac.first_name,'') || ' ' || COALESCE(ac.last_name,'')), '') AS ac_name,
                    acp.phone_number AS ac_phone,
-                   r.meet_kind, sp.name AS meet_spot, r.meet_extra_minutes,
+                   r.meet_kind, sp.name AS meet_spot, r.meet_extra_minutes, r.meet_address,
+                   r.willing_rider_home, r.willing_driver_home, r.willing_spot, r.willing_midpoint,
                    to_char(r.meet_leave_at  AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS meet_leave,
                    to_char(r.meet_pickup_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS meet_pickup
               FROM fh_carpool_requests r
@@ -303,12 +351,18 @@ Response CarpoolController::handleList(const Request& request) {
                 if (n) extra = *n;
             }
             json meetPlan = nullptr;
-            if (!r["meet_kind"].is_null())
+            if (!r["meet_kind"].is_null()) {
+                // The midpoint's address is derived from two homes, so it
+                // follows the same privacy rule as the pickup address.
+                const std::string meetAddr = (seeAddress && !r["meet_address"].is_null()) ? str(r, "meet_address") : "";
+                json spotName = r["meet_spot"].is_null() ? json(nullptr) : json(str(r, "meet_spot"));
+                if (str(r, "meet_kind") == "midpoint") spotName = meetAddr.empty() ? json(nullptr) : json(meetAddr);
                 meetPlan = {{"kind", str(r, "meet_kind")},
-                            {"spot", r["meet_spot"].is_null() ? json(nullptr) : json(str(r, "meet_spot"))},
+                            {"spot", spotName},
                             {"leaveAt", r["meet_leave"].is_null() ? json(nullptr) : json(str(r, "meet_leave"))},
                             {"pickupAt", r["meet_pickup"].is_null() ? json(nullptr) : json(str(r, "meet_pickup"))},
                             {"extraMinutes", r["meet_extra_minutes"].is_null() ? json(nullptr) : json(r["meet_extra_minutes"].as<long long>())}};
+            }
             requests.push_back({{"id", r["id"].as<long long>()},
                                 {"personId", r["person_id"].as<long long>()},
                                 {"name", str(r, "name")},
@@ -320,6 +374,10 @@ Response CarpoolController::handleList(const Request& request) {
                                 {"note", str(r, "note")},
                                 {"createdAt", str(r, "created_at")},
                                 {"extraMinutes", extra},
+                                {"willing", {{"riderHome", r["willing_rider_home"].as<bool>()},
+                                             {"driverHome", r["willing_driver_home"].as<bool>()},
+                                             {"spot", r["willing_spot"].as<bool>()},
+                                             {"midpoint", r["willing_midpoint"].as<bool>()}}},
                                 {"meetPlan", meetPlan},
                                 {"requestedBy", {{"personId", requesterId},
                                                  {"name", str(r, "rq_name")},
@@ -359,6 +417,7 @@ Response CarpoolController::handleList(const Request& request) {
         for (const auto& r : kids) {
             riders.push_back({{"personId", r["person_id"].as<long long>()},
                               {"name", str(r, "name")}, {"open", r["open"].as<bool>()},
+                              {"mine", r["mine"].as<bool>()},
                               {"address1", str(r, "address1")}, {"address2", str(r, "address2")},
                               {"city", str(r, "city")}, {"state", str(r, "state")}, {"zip", str(r, "zip")}});
         }
@@ -400,16 +459,30 @@ Response CarpoolController::handleCreate(const Request& request) {
         if (ok.empty() || !ok[0]["ok"].as<bool>())
             return jsonError(HttpStatus::FORBIDDEN, "You can only request a ride for your own player on this game.");
 
+        // The rider's multi-select (mig 610).  At least one way to meet must
+        // survive, or no driver could ever accept.
+        auto willing = [&](const char* k, bool dflt) { return body.contains(k) && body[k].is_boolean() ? body[k].get<bool>() : dflt; };
+        const bool wRider  = willing("willing_rider_home", true);
+        const bool wDriver = willing("willing_driver_home", false);
+        const bool wSpot   = willing("willing_spot", false);
+        const bool wMid    = willing("willing_midpoint", false);
+        if (!wRider && !wDriver && !wSpot && !wMid)
+            return jsonError(HttpStatus::BAD_REQUEST, "Pick at least one way the pickup could work.");
+
         long long newId = 0;
         try {
             auto ins = db->query(R"SQL(
                 INSERT INTO fh_carpool_requests
                        (fh_event_id, person_id, requested_by_person_id,
-                        address1, address2, city, state, zip, note)
-                VALUES ($1::bigint, $2::int, $3::int, $4, $5, $6, $7, $8, $9)
+                        address1, address2, city, state, zip, note,
+                        willing_rider_home, willing_driver_home, willing_spot, willing_midpoint)
+                VALUES ($1::bigint, $2::int, $3::int, $4, $5, $6, $7, $8, $9,
+                        $10::bool, $11::bool, $12::bool, $13::bool)
                 RETURNING id)SQL",
                 {eid, rid, pid, field("address1"), field("address2"),
-                 field("city"), field("state"), field("zip"), field("note")});
+                 field("city"), field("state"), field("zip"), field("note"),
+                 wRider ? "true" : "false", wDriver ? "true" : "false",
+                 wSpot ? "true" : "false", wMid ? "true" : "false"});
             if (!ins.empty()) newId = ins[0]["id"].as<long long>();
         } catch (const std::exception&) {
             return jsonError(HttpStatus::CONFLICT, "This player already has an open ride request for this game.");
@@ -494,8 +567,13 @@ Response CarpoolController::handleAction(const Request& request, const std::stri
                 if (body.contains("meet_spot_id") && body["meet_spot_id"].is_number())
                     meetSpot = std::to_string(body["meet_spot_id"].get<long long>());
             } catch (...) { /* plain accept */ }
-            std::string leaveEpoch, pickupEpoch, extraMin;
-            if (meetKind == "driver_home" || meetKind == "rider_home" || meetKind == "spot") {
+            std::string leaveEpoch, pickupEpoch, extraMin, meetLat, meetLon, meetAddr;
+            if (meetKind == "driver_home" || meetKind == "rider_home" || meetKind == "spot"
+                || meetKind == "midpoint") {
+                // computePlans only emits what the rider is willing to do
+                // (mig 610), so a kind that matches nothing is either not
+                // on offer or no longer estimable — the driver re-picks.
+                bool matched = false;
                 std::string missing;
                 for (const auto& o : computePlans(db, reqId, fhEventId, me.personId, &missing)) {
                     if (o.kind != meetKind) continue;
@@ -503,8 +581,17 @@ Response CarpoolController::handleAction(const Request& request, const std::stri
                     leaveEpoch  = std::to_string(o.leaveEpoch);
                     pickupEpoch = std::to_string(o.pickupEpoch);
                     extraMin    = std::to_string(static_cast<long long>(o.extraMin));
+                    if (meetKind == "midpoint") {
+                        std::ostringstream la, lo;
+                        la << std::fixed << std::setprecision(7) << o.midLat;
+                        lo << std::fixed << std::setprecision(7) << o.midLon;
+                        meetLat = la.str(); meetLon = lo.str(); meetAddr = o.spotName;
+                    }
+                    matched = true;
                     break;
                 }
+                if (!matched)
+                    return jsonError(HttpStatus::CONFLICT, "That option isn't available for this request — reopen the picker.");
             } else {
                 meetKind.clear(); meetSpot.clear();
             }
@@ -513,14 +600,18 @@ Response CarpoolController::handleAction(const Request& request, const std::stri
                 "       meet_kind = NULLIF($3, ''), meet_spot_id = NULLIF($4, '')::int, "
                 "       meet_leave_at  = CASE WHEN $5 = '' THEN NULL ELSE to_timestamp($5::double precision) END, "
                 "       meet_pickup_at = CASE WHEN $6 = '' THEN NULL ELSE to_timestamp($6::double precision) END, "
-                "       meet_extra_minutes = NULLIF($7, '')::int "
+                "       meet_extra_minutes = NULLIF($7, '')::int, "
+                "       meet_lat = NULLIF($8, '')::numeric, meet_lon = NULLIF($9, '')::numeric, "
+                "       meet_address = NULLIF($10, '') "
                 "WHERE id = $1::int AND cancelled_at IS NULL AND accepted_by_person_id IS NULL",
-                {id, pid, meetKind, meetSpot, leaveEpoch, pickupEpoch, extraMin});
+                {id, pid, meetKind, meetSpot, leaveEpoch, pickupEpoch, extraMin,
+                 meetLat, meetLon, meetAddr});
         } else if (action == "unaccept") {
             if (driverId != me.personId && !me.isAdmin)
                 return jsonError(HttpStatus::FORBIDDEN, "Only the driver can step back.");
             db->query("UPDATE fh_carpool_requests SET accepted_by_person_id = NULL, accepted_at = NULL, "
-                      "       meet_kind = NULL, meet_spot_id = NULL, meet_leave_at = NULL, meet_pickup_at = NULL "
+                      "       meet_kind = NULL, meet_spot_id = NULL, meet_leave_at = NULL, meet_pickup_at = NULL, "
+                      "       meet_extra_minutes = NULL, meet_lat = NULL, meet_lon = NULL, meet_address = NULL "
                       "WHERE id = $1::int AND cancelled_at IS NULL", {id});
         } else if (action == "cancel") {
             if (requesterId != me.personId && !me.isAdmin)

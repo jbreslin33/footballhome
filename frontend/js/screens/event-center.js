@@ -501,6 +501,10 @@ class EventCenterScreen extends Screen {
       const el = e.target.closest('[data-ec-date]');
       if (el && el.value) this._setWhen('date', el.value);
     });
+    this.element.addEventListener('change', (e) => {
+      const cpBehalf = e.target.closest('[data-gc-cp-behalf]');
+      if (cpBehalf) this.carpoolPanel.behalf(cpBehalf.value);
+    });
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const t = (sel) => e.target.closest(sel);

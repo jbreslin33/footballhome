@@ -955,6 +955,8 @@ class GameCenterScreen extends Screen {
       if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-gc-inv-details')) this._invOpen = e.target.open;
     }, true);
     this.element.addEventListener('change', (e) => {
+      const cpBehalf = e.target.closest('[data-gc-cp-behalf]');
+      if (cpBehalf) { this.carpoolPanel.behalf(cpBehalf.value); return; }
       const benchSelect = e.target.closest('[data-lineup-bench-order-select]');
       if (benchSelect && this.isCoach) {
         const playerId = Number(benchSelect.getAttribute('data-player-id'));

@@ -129,6 +129,62 @@ std::optional<LatLon> CarpoolRouting::eventVenue(long long fhEventId) {
     }
 }
 
+std::optional<std::string> CarpoolRouting::reverseGeocode(const LatLon& at) {
+    auto* db = Database::getInstance();
+    const std::string la = fmt4(at.lat), lo = fmt4(at.lon);
+    try {
+        auto hit = db->query(
+            "SELECT address FROM carpool_revgeo_cache WHERE lat = $1::numeric AND lon = $2::numeric",
+            {la, lo});
+        if (!hit.empty()) {
+            const std::string addr = hit[0]["address"].is_null() ? "" : hit[0]["address"].c_str();
+            if (addr.empty()) return std::nullopt;   // asked before, no answer
+            return addr;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[CarpoolRouting::reverseGeocode cache] " << e.what() << std::endl;
+    }
+
+    std::string address;
+    {
+        std::lock_guard<std::mutex> lock(g_outboundMutex);
+        try {
+            HttpClient http;
+            http.setTotalTimeoutSec(10);
+            // zoom=17 ≈ street/house level — a nameable place to meet at,
+            // not a city or a rooftop.
+            const std::string url =
+                "https://nominatim.openstreetmap.org/reverse?format=json&zoom=17&lat="
+                + fmt7(at.lat) + "&lon=" + fmt7(at.lon);
+            auto res = http.get(url, {{"User-Agent", kUA}, {"Accept", "application/json"}});
+            if (res.ok()) {
+                auto j = json::parse(res.body, nullptr, false);
+                if (j.is_object() && j.contains("display_name") && j["display_name"].is_string()) {
+                    address = j["display_name"].get<std::string>();
+                    // Nominatim's display_name runs to county/state/country —
+                    // keep it to the useful head (street, neighborhood, city).
+                    size_t cut = 0;
+                    for (int commas = 0; cut < address.size(); ++cut)
+                        if (address[cut] == ',' && ++commas == 4) break;
+                    if (cut < address.size()) address.resize(cut);
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[CarpoolRouting::reverseGeocode] " << e.what() << std::endl;
+        }
+    }
+    try {
+        db->query(
+            "INSERT INTO carpool_revgeo_cache (lat, lon, address) VALUES ($1::numeric, $2::numeric, $3) "
+            "ON CONFLICT (lat, lon) DO UPDATE SET address = EXCLUDED.address, fetched_at = now()",
+            {la, lo, address});
+    } catch (const std::exception& e) {
+        std::cerr << "[CarpoolRouting::reverseGeocode store] " << e.what() << std::endl;
+    }
+    if (address.empty()) return std::nullopt;
+    return address;
+}
+
 std::optional<double> CarpoolRouting::minutes(const LatLon& from, const LatLon& to) {
     auto* db = Database::getInstance();
     const std::string fla = fmt4(from.lat), flo = fmt4(from.lon),

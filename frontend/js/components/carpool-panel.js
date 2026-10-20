@@ -58,7 +58,24 @@ class CarpoolPanel {
       return this._copy('opt_driver_home', tokens) || `${tokens.rider} comes to the driver's place — leave together by ${tokens.leave}.`;
     if (kind === 'rider_home')
       return this._copy('opt_rider_home', tokens) || `Driver picks ${tokens.rider} up — leave by ${tokens.leave}, pickup about ${tokens.pickup} (+${tokens.minutes} min).`;
+    if (kind === 'midpoint') {
+      // The computed neutral point; its address follows pickup-address
+      // privacy, so a viewer who may not see it gets the line without one.
+      if (!tokens.spot) return `Meeting halfway — driver leaves by ${tokens.leave}.`;
+      return this._copy('opt_midpoint', tokens) || `Meet in the middle at ${tokens.spot} by ${tokens.pickup} — driver leaves by ${tokens.leave}.`;
+    }
     return this._copy('opt_spot', tokens) || `Meet at ${tokens.spot} by ${tokens.pickup} — driver leaves by ${tokens.leave}.`;
+  }
+
+  // The rider's multi-select, as the driver reads it on an open request.
+  _willingLabels(w) {
+    if (!w) return [];
+    const L = [];
+    if (w.riderHome)  L.push(this._copy('will_rider_home')  || 'Pick me up at my address');
+    if (w.driverHome) L.push(this._copy('will_driver_home') || "I can get to the driver's place");
+    if (w.spot)       L.push(this._copy('will_spot')        || 'Meet at a club spot (like Lighthouse Field)');
+    if (w.midpoint)   L.push(this._copy('will_midpoint')    || "Meet somewhere in the middle — we'll suggest the address");
+    return L;
   }
 
   _optionPicker(r) {
@@ -112,6 +129,11 @@ class CarpoolPanel {
       // The personalized detour nudge — minutes, never the address.
       const nudge = !driver && !mineReq && r.extraMinutes != null
         ? `<div style="font-size:0.7rem; color:#60a5fa; margin-top:2px;">${esc(this._copy('nudge_extra', { name: r.name, minutes: r.extraMinutes }) || `${r.name} is requesting a ride — picking them up adds about ${r.extraMinutes} min for you.`)}</div>` : '';
+      // What the rider said works for them (mig 610) — a would-be driver
+      // reads this before opening the picker.
+      const willList = this._willingLabels(r.willing);
+      const willing = !driver && willList.length
+        ? `<div style="font-size:0.68rem; opacity:0.8; margin-top:2px;">${esc(this._copy('willing_line', { name: r.name, list: willList.join(' · ') }) || `${r.name} is OK with: ${willList.join(' · ')}.`)}</div>` : '';
       // The agreed plan, once a driver picked one.
       const plan = driver && r.meetPlan && r.meetPlan.kind
         ? `<div style="font-size:0.7rem; color:#22c55e; margin-top:2px;">🗺 ${esc(this._planLine(r.meetPlan.kind, { rider: r.name, leave: r.meetPlan.leaveAt || '', pickup: r.meetPlan.pickupAt || '', minutes: r.meetPlan.extraMinutes ?? '', spot: r.meetPlan.spot || '' }))}</div>` : '';
@@ -121,7 +143,7 @@ class CarpoolPanel {
             <b>${esc(r.name)}</b> ${status}
             <span style="flex:1;"></span> ${btns}
           </div>
-          ${nudge}${plan}
+          ${nudge}${willing}${plan}
           ${addr ? `<div style="font-size:0.7rem; opacity:0.85; margin-top:2px;">📍 ${esc(this._copy('pickup_label') || 'Pickup')}: ${esc(addr)}</div>` : ''}
           ${r.note ? `<div style="font-size:0.7rem; opacity:0.75; margin-top:2px;">${esc(r.note)}</div>` : ''}
           ${this.optionsFor === r.id && !driver ? this._optionPicker(r) : ''}
@@ -133,22 +155,61 @@ class CarpoolPanel {
         </div>`;
     }).join('');
 
+    // The rider's multi-select (mig 610; owner: "have option to set what i
+    // am willing to do") — the driver later single-selects ONE of these.
+    const willBoxes = `
+      <div style="grid-column:1/-1; font-size:0.68rem; margin-top:2px;">
+        <div style="font-weight:700; margin-bottom:3px;">${esc(this._copy('will_title') || "What works for you? Pick everything you'd be OK with — the driver chooses one.")}</div>
+        ${[['rider_home', true,  this._copy('will_rider_home')  || 'Pick me up at my address'],
+           ['driver_home', false, this._copy('will_driver_home') || "I can get to the driver's place"],
+           ['spot', false,        this._copy('will_spot')        || 'Meet at a club spot (like Lighthouse Field)'],
+           ['midpoint', false,    this._copy('will_midpoint')    || "Meet somewhere in the middle — we'll suggest the address"]]
+          .map(([key, on, label]) => `
+            <label style="display:flex; gap:6px; align-items:center; padding:2px 0; cursor:pointer;">
+              <input type="checkbox" data-w="${key}" ${on ? 'checked' : ''}> ${esc(label)}
+            </label>`).join('')}
+      </div>`;
+
     const form = (k) => `
       <div data-gc-cp-form="${k.personId}" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:4px; margin-top:6px;">
         ${!this._fmtAddress(k) ? `<div style="grid-column:1/-1; font-size:0.68rem; color:#f59e0b;">${esc(this._copy('no_address') || 'No address on file — type the pickup address.')}</div>` : ''}
         ${[['address1', k.address1], ['address2', k.address2], ['city', k.city], ['state', k.state], ['zip', k.zip]].map(([f, v]) =>
           `<input data-f="${f}" value="${esc(v || '')}" placeholder="${f[0].toUpperCase() + f.slice(1)}" style="font-size:0.72rem; padding:5px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">`).join('')}
+        ${willBoxes}
         <input data-f="note" placeholder="${esc(this._copy('note_ph') || 'Anything the driver should know')}" style="grid-column:1/-1; font-size:0.72rem; padding:5px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">
         <button class="btn btn-primary" data-gc-cp="save" data-cp-person="${k.personId}" ${this.busy ? 'disabled' : ''} style="padding:4px 8px; font-size:0.7rem;">${esc(this._copy('save') || 'Post request')}</button>
       </div>`;
 
-    const askBtns = (cp.riders || []).filter(k => !k.open).map(k => `
-      <div style="margin-top:6px;">
-        <button class="btn btn-secondary" data-gc-cp="form" data-cp-person="${k.personId}" style="padding:3px 10px; font-size:0.7rem;">
-          ${this.formFor === Number(k.personId) ? '✕ ' : ''}${esc(this._copy('request_for', { name: k.name }) || `🚗 Request a ride for ${k.name}`)}
-        </button>
-        ${this.formFor === Number(k.personId) ? form(k) : ''}
-      </div>`).join('');
+    // Personalized (owner: "why am i seeing ride request for everyone lol"):
+    // a button only for yourself and your own kids. Staff keep the
+    // post-on-behalf power, tucked into one dropdown instead of a wall of
+    // buttons.
+    const available = (cp.riders || []).filter(k => !k.open);
+    const mine   = available.filter(k => k.mine !== false);   // older backend: treat all as mine
+    const others = available.filter(k => k.mine === false);
+    const askBtn = (k) => {
+      const self = Number(k.personId) === me;
+      const label = self
+        ? (this._copy('request_mine') || '🚗 Request a ride')
+        : (this._copy('request_kid', { name: k.name }) || `🚗 Request a ride for ${k.name}`);
+      return `
+        <div style="margin-top:6px;">
+          <button class="btn btn-secondary" data-gc-cp="form" data-cp-person="${k.personId}" style="padding:3px 10px; font-size:0.7rem;">
+            ${this.formFor === Number(k.personId) ? '✕ ' : ''}${esc(label)}
+          </button>
+          ${this.formFor === Number(k.personId) ? form(k) : ''}
+        </div>`;
+    };
+    const behalfPicked = others.find(k => this.formFor === Number(k.personId));
+    const behalf = others.length ? `
+      <div style="margin-top:8px;">
+        <select data-gc-cp-behalf style="font-size:0.7rem; padding:4px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); max-width:100%;">
+          <option value="">${esc(this._copy('staff_pick') || "Request on someone's behalf…")}</option>
+          ${others.map(k => `<option value="${k.personId}" ${this.formFor === Number(k.personId) ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}
+        </select>
+        ${behalfPicked ? form(behalfPicked) : ''}
+      </div>` : '';
+    const askBtns = mine.map(askBtn).join('') + behalf;
 
     return `
       <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
@@ -157,6 +218,13 @@ class CarpoolPanel {
         ${rows || `<div style="font-size:0.72rem; opacity:0.75;">${esc(this._copy('empty') || 'No ride requests for this game yet.')}</div>`}
         ${askBtns}
       </div>`;
+  }
+
+  // The staff behalf-of dropdown ([data-gc-cp-behalf]) — hosts route its
+  // change event here; picking a name opens that person's request form.
+  behalf(value) {
+    this.formFor = value ? Number(value) : null;
+    this.host.rerender();
   }
 
   async click(btn, rootEl) {
@@ -192,11 +260,14 @@ class CarpoolPanel {
         const pid = Number(btn.dataset.cpPerson);
         const form = rootEl.querySelector(`[data-gc-cp-form="${pid}"]`);
         const val = (f) => { const el = form && form.querySelector(`[data-f="${f}"]`); return el ? el.value.trim() : ''; };
+        const will = (k) => { const el = form && form.querySelector(`[data-w="${k}"]`); return el ? el.checked : false; };
         res = await this.auth.fetch(`/api/carpool/${this.host.fhEventId()}/requests`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ person_id: pid, address1: val('address1'), address2: val('address2'),
-                                 city: val('city'), state: val('state'), zip: val('zip'), note: val('note') }),
+                                 city: val('city'), state: val('state'), zip: val('zip'), note: val('note'),
+                                 willing_rider_home: will('rider_home'), willing_driver_home: will('driver_home'),
+                                 willing_spot: will('spot'), willing_midpoint: will('midpoint') }),
         });
         if (res.ok) this.formFor = null;
       } else if (action === 'accept-with') {
