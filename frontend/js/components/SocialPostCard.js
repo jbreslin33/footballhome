@@ -1895,7 +1895,7 @@ class SocialPostCard {
       const items = row.map((t, i) => token(t, row.length,
         !t.wide ? '' : i === 0 ? 'margin-right:auto;' : i === row.length - 1 ? 'margin-left:auto;' : ''));
       if (row.halfway && row.length % 2 === 0) items.splice(row.length / 2, 0, crestCircle(chip / 2 - 20));
-      const flexRow = `<div style="position:relative;display:flex;justify-content:center;align-items:flex-start;gap:6px;">${items.join('')}</div>`;
+      const flexRow = `<div style="position:relative;display:flex;justify-content:center;align-items:flex-start;gap:6px;${row.lift ? `transform:translateY(-${row.lift}px);` : ''}">${items.join('')}</div>`;
       if (!row.halfway) return flexRow;
       return `
         <div style="position:relative;">

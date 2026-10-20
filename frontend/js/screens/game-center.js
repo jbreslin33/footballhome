@@ -172,8 +172,10 @@ const FIELD_SIZES = {
       // spine stacks like an American-football I formation. The 2 and
       // 3 stand ON the midline at the sidelines (owner: "for 3313 you
       // can move 2 and 3 up the line mid line"), crest between them;
-      // the 8 holds the base alone.
-      '3-3-1-3': { rows: [[1], [5, 6, 4], [8], [3, 2], [10], [11, 9, 7]], wideIds: [3, 2], midlineRow: 3 },
+      // the 8 holds the base alone. `lifts` (row index → px, see
+      // _pitchRows) nudges the 8 up toward the logo (owner: "push 8 up
+      // a little in the 3313").
+      '3-3-1-3': { rows: [[1], [5, 6, 4], [8], [3, 2], [10], [11, 9, 7]], wideIds: [3, 2], midlineRow: 3, lifts: { 2: 12 } },
     },
   },
   9: {
@@ -4181,10 +4183,12 @@ class GameCenterScreen extends Screen {
           }
           return token;
         });
-        // Row-level flag rides on the array (in-memory pipeline only):
-        // buildImagePitch draws the halfway line through this row. A
-        // SPACER_ROW maps to an empty tokens row and renders as space.
+        // Row-level flags ride on the array (in-memory pipeline only):
+        // buildImagePitch draws the halfway line through a halfway row
+        // and lifts a lift row by that many px. A SPACER_ROW maps to an
+        // empty tokens row and renders as space.
         if (row.halfway) tokens.halfway = true;
+        if (row.lift) tokens.lift = row.lift;
         return tokens;
       });
     }
@@ -4609,6 +4613,13 @@ class GameCenterScreen extends Screen {
     // is the gap between the two midfield bands, which is where a
     // halfway line belongs in that shape anyway. Both verified on the
     // real pitch graphic 2026-08-24.
+    // `lifts` ({row index as written → px}): that row draws a touch
+    // higher than its evenly-spaced slot — a visual nudge, not a slot
+    // change (owner 2026-10-19: "push 8 up a little in the 3313").
+    // Applied before the splices below so the written indices hold.
+    for (const [idx, px] of Object.entries(template.lifts || {})) {
+      rows[rows.length - 1 - Number(idx)].lift = px;
+    }
     // A formation with `midlineRow` merges that band INTO the line's
     // center slot instead: the line stays exactly mid-pitch (owner:
     // "keep the line in middle of pitch") and the band stands on it,
