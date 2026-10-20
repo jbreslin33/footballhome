@@ -838,6 +838,8 @@ class GameCenterScreen extends Screen {
       if (invSend && this.realIsCoach && !invSend.disabled) { this._sendInvite(invSend); return; }
       const invRevoke = e.target.closest('[data-gc-inv-revoke]');
       if (invRevoke && this.realIsCoach && !invRevoke.disabled) { this._revokeInvite(invRevoke); return; }
+      const autoInv = e.target.closest('[data-gc-auto-inv]');
+      if (autoInv && this.realIsCoach && !autoInv.disabled) { this._setAutoInvite(autoInv); return; }
       const oppSend = e.target.closest('[data-gc-opp-send]');
       if (oppSend && this.isCoach && !oppSend.disabled) { this._sendToOpponent(oppSend); return; }
       const oppSendAll = e.target.closest('[data-gc-opp-send-all]');
@@ -1244,6 +1246,28 @@ class GameCenterScreen extends Screen {
     }
   }
 
+  // League call-down cap (migs 616/617): would putting `playerId` into
+  // starters/bench exceed a cap (e.g. 2 down from APSL on a CASA game)?
+  // Call-downs are exactly the folded invitees, so the invite rows'
+  // from_team_id identifies them.  Returns the blocking cap row or null;
+  // the PUT enforces the same rule server-side.
+  _callDownCapHit(playerId) {
+    const caps = (this.invites && this.invites.caps) || [];
+    if (!caps.length) return null;
+    const fromOf = new Map(((this.invites && this.invites.invites) || [])
+      .filter(i => i.player_id && i.from_team_id).map(i => [Number(i.player_id), Number(i.from_team_id)]));
+    const mine = fromOf.get(Number(playerId));
+    if (!mine) return null;
+    for (const c of caps) {
+      if (mine !== Number(c.from_team_id)) continue;
+      const used = [...this.zones.entries()].filter(([id, z]) =>
+        (z === 'starter' || z === 'bench') && Number(id) !== Number(playerId)
+        && fromOf.get(Number(id)) === Number(c.from_team_id)).length;
+      if (used >= Number(c.max)) return c;
+    }
+    return null;
+  }
+
   // Bench/Alt only — Starting XI assignment goes through _setPosition
   // instead (owner directive: picking a position IS how a player becomes
   // a starter, no separate "Start" button). Either way, a player only
@@ -1254,6 +1278,10 @@ class GameCenterScreen extends Screen {
     if (current === zone) {
       this.zones.delete(playerId); // tap active zone again → unassign
     } else {
+      if (zone === 'bench') {
+        const hit = this._callDownCapHit(playerId);
+        if (hit) { this._toast(`League rule: only ${hit.max} call-downs from ${hit.from_team} in the squad — use Alt for the extra.`); return; }
+      }
       const cap = ZONE_CAPS[zone];
       if (cap != null) {
         const countInZone = [...this.zones.values()].filter(z => z === zone).length;
@@ -1320,6 +1348,11 @@ class GameCenterScreen extends Screen {
       this._render();
       this._scheduleSave();
       return;
+    }
+    {
+      // Call-down cap (migs 616/617) — a position pill is the starter door.
+      const hit = this.zones.get(playerId) === 'starter' ? null : this._callDownCapHit(playerId);
+      if (hit) { this._toast(`League rule: only ${hit.max} call-downs from ${hit.from_team} in the squad — use Alt for the extra.`); return; }
     }
     for (const [otherId, otherPos] of this.positions.entries()) {
       if (otherPos === positionId && otherId !== playerId) {
@@ -2820,6 +2853,33 @@ class GameCenterScreen extends Screen {
     this._render();
   }
 
+  // ⭐ Auto toggle (team_auto_invites, mig 617): a standing call-down is
+  // invited to every new game of this team automatically; off revokes its
+  // open auto invites on future games (hand-sent invites stay).
+  async _setAutoInvite(btn) {
+    const personId = Number(btn.dataset.gcAutoInv);
+    if (this._invBusy.has(personId)) return;
+    this._invBusy.add(personId);
+    this._render();
+    try {
+      const res = await this.auth.fetch(`/api/calendar/events/${this._fhEventId()}/auto-invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: personId, team_id: Number(btn.dataset.team),
+                               from_team_id: Number(btn.dataset.from) || null,
+                               active: btn.dataset.on !== '1' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+    } catch (err) {
+      this._toast(`⚠ ${err.message}`);
+    } finally {
+      this._invBusy.delete(personId);
+      await this._loadInvites();
+      this._render();
+    }
+  }
+
   async _revokeInvite(btn) {
     const personId = Number(btn.dataset.gcInvRevoke);
     if (this._invBusy.has(personId)) return;
@@ -2873,6 +2933,19 @@ class GameCenterScreen extends Screen {
     };
     const row = (inner) => `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
         padding:6px var(--space-3); border:1px solid var(--border-color); border-radius:6px;">${inner}</div>`;
+    // ⭐ Standing call-down toggle (mig 617) — only on rows whose squad has
+    // a cap row for this game (the call-down case, e.g. APSL on CASA).
+    const autoBtn = (personId, fromTeamId, on) => {
+      const cap = (data.caps || []).find(c => Number(c.from_team_id) === Number(fromTeamId || 0));
+      if (!cap) return '';
+      return `<button type="button" data-gc-auto-inv="${personId}" data-team="${cap.to_team_id}" data-from="${fromTeamId}"
+        data-on="${on ? 1 : 0}" ${this._invBusy.has(Number(personId)) ? 'disabled' : ''}
+        title="${on ? 'Standing call-down — invited to every game of this team automatically. Tap to turn off.'
+                    : 'Make this a standing call-down — invited to every new game of this team automatically.'}"
+        style="font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:999px; cursor:pointer;
+               border:1px solid ${on ? '#f59e0b' : 'var(--border-color)'};
+               background:${on ? 'rgba(245,158,11,0.18)' : 'transparent'}; color:${on ? '#fcd34d' : 'inherit'};">${on ? '⭐ Auto' : '☆ Auto'}</button>`;
+    };
     // The contact the invite buttons would use, visible on the card like
     // every other section's (owner 2026-10-16) — parent's for youth.
     const contactBits = (r) => {
@@ -2886,6 +2959,7 @@ class GameCenterScreen extends Screen {
         </span>
         <span style="display:inline-flex; align-items:center; gap:8px;">
           ${answerChip(r.response)}
+          ${autoBtn(r.person_id, r.from_team_id, r.auto)}
           ${sendBtns(r, true)}
           <button type="button" data-gc-inv-revoke="${r.person_id}" ${this._invBusy.has(Number(r.person_id)) ? 'disabled' : ''}
                   title="Withdraw this invite — the game disappears for them again"
@@ -2906,7 +2980,10 @@ class GameCenterScreen extends Screen {
             <span>${esc(nm(c))}${c.single_age ? `<span style="font-size:0.72rem; opacity:0.6;"> · U${esc(String(c.single_age))}</span>` : ''}</span>
             ${contactBits(c)}
           </span>
-          ${sendBtns(c, false)}`)).join('')}
+          <span style="display:inline-flex; align-items:center; gap:8px;">
+            ${autoBtn(c.person_id, c.from_team_id, c.auto)}
+            ${sendBtns(c, false)}
+          </span>`)).join('')}
       </div>`).join('');
     return `
       <details data-gc-inv-details ${this._invOpen ? 'open' : ''} style="margin: var(--space-3) 0;">

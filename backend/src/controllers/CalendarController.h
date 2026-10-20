@@ -130,4 +130,5 @@ private:
     Response handleGetEventInvites     (const Request& request);
     Response handlePostEventInvite     (const Request& request);
     Response handleDeleteEventInvite   (const Request& request);
+    Response handlePostAutoInvite      (const Request& request);
 };

@@ -593,6 +593,59 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
             }
         }
 
+        // League call-down cap (team_invite_caps, migs 616/617) — the squad
+        // itself: no more than max_per_event players rostered on the capped
+        // from-team (and NOT on a tagged team) across starters + bench.
+        // Alternates stay unlimited, so the overflow has a place to sit.
+        {
+            auto collectIds = [&](const std::string& key, std::vector<std::string>* out) {
+                size_t start = body.find("\"" + key + "\"");
+                size_t arrStart = (start != std::string::npos) ? body.find("[", start) : std::string::npos;
+                size_t arrEnd = (arrStart != std::string::npos) ? body.find("]", arrStart) : std::string::npos;
+                if (arrStart == std::string::npos || arrEnd == std::string::npos) return;
+                std::string section = body.substr(arrStart, arrEnd - arrStart + 1);
+                std::regex idPattern(R"("playerId"\s*:\s*(\d+))");
+                for (auto it = std::sregex_iterator(section.begin(), section.end(), idPattern);
+                     it != std::sregex_iterator(); ++it) out->push_back((*it)[1].str());
+            };
+            std::vector<std::string> squadIds;
+            collectIds("starters", &squadIds);
+            collectIds("bench", &squadIds);
+            if (!squadIds.empty()) {
+                std::ostringstream arr; arr << "{";
+                for (size_t i = 0; i < squadIds.size(); ++i) arr << (i ? "," : "") << squadIds[i];
+                arr << "}";
+                auto teams = db_->query(
+                    "SELECT COALESCE(array_agg(DISTINCT fet.team_id), '{}') AS ids "
+                    "  FROM fh_events fe JOIN fh_event_teams fet ON fet.fh_event_id = fe.id "
+                    " WHERE fe.match_id = $1::int", {matchId});
+                const std::string teamArr = teams.empty() ? "{}" : std::string(teams[0]["ids"].c_str());
+                if (teamArr != "{}") {
+                    auto caps = db_->query(R"(
+                        SELECT c.max_per_event, t.name AS from_name,
+                               (SELECT count(*) FROM players pl JOIN persons pe ON pe.id = pl.person_id
+                                 WHERE pl.id = ANY($2::int[])
+                                   AND EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = pe.id
+                                                AND tp.team_id = c.from_team_id AND tp.removed_at IS NULL)
+                                   AND NOT EXISTS (SELECT 1 FROM team_persons tp2 WHERE tp2.person_id = pe.id
+                                                AND tp2.team_id = ANY($3::int[]) AND tp2.removed_at IS NULL)) AS used
+                          FROM team_invite_caps c JOIN teams t ON t.id = c.from_team_id
+                         WHERE c.to_team_id = ANY($3::int[]))",
+                        {matchId, arr.str(), teamArr});
+                    for (const auto& c : caps) {
+                        const long long maxN = c["max_per_event"].as<long long>();
+                        const long long used = c["used"].as<long long>();
+                        if (used > maxN) {
+                            return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false,
+                                "League rule: at most " + std::to_string(maxN) + " call-downs from "
+                                + std::string(c["from_name"].c_str()) + " may be in the squad ("
+                                + std::to_string(used) + " assigned) — move the extra to Alternates."));
+                        }
+                    }
+                }
+            }
+        }
+
         // Save metadata
         if (formationId > 0 || rosterSize > 0) {
             if (formationId > 0) {

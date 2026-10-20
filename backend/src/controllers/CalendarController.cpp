@@ -597,6 +597,97 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.del(prefix + "/calendar/events/:fhEventId/invites/:personId", [this](const Request& req) {
         return this->handleDeleteEventInvite(req);
     });
+    router.post(prefix + "/calendar/events/:fhEventId/auto-invites", [this](const Request& req) {
+        return this->handlePostAutoInvite(req);
+    });
+}
+
+// POST /api/calendar/events/:fhEventId/auto-invites — the 🎟 panel's ⭐
+// Auto toggle (team_auto_invites, mig 617): {person_id, team_id,
+// from_team_id, active}.  true = standing call-down: upsert + back-fill
+// this team's upcoming games (skipping any game whose mig-616 cap is
+// already full); false = deactivate + revoke the open 'auto' invites on
+// future games (hand-sent invites stay).  Coach of the event or admin.
+Response CalendarController::handlePostAutoInvite(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    json body;
+    try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
+    catch (const std::exception& e) { return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what()); }
+    const long long teamId   = body.value("team_id", 0LL);
+    const long long personId = body.value("person_id", 0LL);
+    const long long fromTeam = body.value("from_team_id", 0LL);
+    const bool active        = body.value("active", true);
+    if (teamId <= 0 || personId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "team_id and person_id required");
+    auto* db = Database::getInstance();
+    try {
+        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId))
+            return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can set standing call-downs");
+        if (db->query("SELECT 1 FROM fh_event_teams WHERE fh_event_id = $1::bigint AND team_id = $2::int",
+                      {std::to_string(fhEventId), std::to_string(teamId)}).empty())
+            return jsonError(HttpStatus::BAD_REQUEST, "That team is not on this game");
+        const std::string t = std::to_string(teamId), p = std::to_string(personId), f = std::to_string(fromTeam);
+        if (active) {
+            // The standing list itself respects the cap: a third active
+            // auto from the same squad is refused up front.
+            auto cap = db->query(R"SQL(
+                SELECT c.max_per_event, tm.name AS from_name,
+                       (SELECT count(*) FROM team_auto_invites a
+                         WHERE a.team_id = $1::int AND a.active AND a.person_id <> $2::int
+                           AND EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = a.person_id
+                                        AND tp.team_id = c.from_team_id AND tp.removed_at IS NULL)) AS used
+                  FROM team_invite_caps c JOIN teams tm ON tm.id = c.from_team_id
+                 WHERE c.to_team_id = $1::int
+                   AND EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = $2::int
+                                AND tp.team_id = c.from_team_id AND tp.removed_at IS NULL))SQL", {t, p});
+            for (const auto& c : cap)
+                if (c["used"].as<long long>() >= c["max_per_event"].as<long long>())
+                    return jsonError(HttpStatus::CONFLICT,
+                        "League rule: at most " + std::string(c["max_per_event"].c_str()) + " standing call-downs from "
+                        + std::string(c["from_name"].c_str()) + " — turn one off first.");
+            db->query(
+                "INSERT INTO team_auto_invites (team_id, person_id, from_team_id, active) "
+                "VALUES ($1::int, $2::int, NULLIF($3, '0')::int, true) "
+                "ON CONFLICT (team_id, person_id) DO UPDATE SET active = true, "
+                "   from_team_id = COALESCE(EXCLUDED.from_team_id, team_auto_invites.from_team_id)", {t, p, f});
+            db->query(R"SQL(
+                INSERT INTO fh_event_invites (fh_event_id, person_id, from_team_id, recipient_person_id, channel)
+                SELECT fet.fh_event_id, $2::int, NULLIF($3, '0')::int, $2::int, 'auto'
+                  FROM fh_event_teams fet
+                  JOIN fh_events fe ON fe.id = fet.fh_event_id AND fe.kind = 'match'
+                  JOIN gcal_events ge ON ge.id = fe.gcal_event_id AND ge.deleted_at IS NULL AND ge.starts_at > now()
+                 WHERE fet.team_id = $1::int
+                   AND NOT EXISTS (SELECT 1 FROM fh_event_invites i
+                                    WHERE i.fh_event_id = fet.fh_event_id AND i.person_id = $2::int
+                                      AND i.revoked_at IS NULL)
+                   AND NOT EXISTS (
+                        SELECT 1 FROM team_invite_caps c
+                         WHERE c.to_team_id = $1::int
+                           AND EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = $2::int
+                                        AND tp.team_id = c.from_team_id AND tp.removed_at IS NULL)
+                           AND (SELECT count(*) FROM fh_event_invites i
+                                 WHERE i.fh_event_id = fet.fh_event_id AND i.revoked_at IS NULL
+                                   AND EXISTS (SELECT 1 FROM team_persons tp2 WHERE tp2.person_id = i.person_id
+                                                AND tp2.team_id = c.from_team_id AND tp2.removed_at IS NULL)
+                               ) >= c.max_per_event))SQL", {t, p, f});
+        } else {
+            db->query("UPDATE team_auto_invites SET active = false WHERE team_id = $1::int AND person_id = $2::int", {t, p});
+            const std::string uid = resolveUserId(db, gate.personId);
+            db->query(R"SQL(
+                UPDATE fh_event_invites i SET revoked_at = now(), revoked_by_user_id = NULLIF($3, '')::int
+                  FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                 WHERE i.fh_event_id = fe.id AND i.person_id = $2::int AND i.channel = 'auto'
+                   AND i.revoked_at IS NULL AND ge.starts_at > now()
+                   AND EXISTS (SELECT 1 FROM fh_event_teams fet
+                                WHERE fet.fh_event_id = fe.id AND fet.team_id = $1::int))SQL", {t, p, uid});
+        }
+        return jsonOk({{"active", active}});
+    } catch (const std::exception& e) {
+        std::cerr << "CalendarController::handlePostAutoInvite: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
 }
 
 Response CalendarController::handleGetUpcoming(const Request& request) {
@@ -2875,7 +2966,10 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
 
         json invites = json::array();
         for (const auto& row : db->query(
-                "SELECT i.person_id, p.first_name, p.last_name, ft.name AS from_team, "
+                "SELECT i.person_id, p.first_name, p.last_name, ft.name AS from_team, i.from_team_id, "
+                "       EXISTS (SELECT 1 FROM team_auto_invites a JOIN fh_event_teams fet2 "
+                "                 ON fet2.team_id = a.team_id AND fet2.fh_event_id = i.fh_event_id "
+                "                WHERE a.person_id = i.person_id AND a.active) AS auto_invite, "
                 "       i.channel, i.contact, er.response, p.parent_person_id, "
                 "       to_char(i.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, "
                 // player_id folds a Going call-up into the Game Center
@@ -2903,6 +2997,8 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 {"first_name",       textOrNull(row, "first_name")},
                 {"last_name",        textOrNull(row, "last_name")},
                 {"from_team",        textOrNull(row, "from_team")},
+                {"from_team_id",     row["from_team_id"].is_null() ? json(nullptr) : json(row["from_team_id"].as<long long>())},
+                {"auto",             !row["auto_invite"].is_null() && row["auto_invite"].as<bool>()},
                 {"channel",          textOrNull(row, "channel")},
                 {"contact",          textOrNull(row, "contact")},
                 {"response",         textOrNull(row, "response")},
@@ -2918,6 +3014,9 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
         for (const auto& row : db->query(
                 "SELECT c.person_id, p.first_name, p.last_name, c.from_team_id, c.from_team_name, "
                 "       c.single_age, c.basis, p.parent_person_id, "
+                "       EXISTS (SELECT 1 FROM team_auto_invites a JOIN fh_event_teams fet2 "
+                "                 ON fet2.team_id = a.team_id AND fet2.fh_event_id = $1::bigint "
+                "                WHERE a.person_id = c.person_id AND a.active) AS auto_invite, "
                 "       COALESCE((SELECT phone_number FROM person_phones "
                 "                  WHERE person_id = p.id AND can_receive_sms = true "
                 "                  ORDER BY is_primary DESC, id ASC LIMIT 1), "
@@ -2940,6 +3039,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 {"from_team",        textOrNull(row, "from_team_name")},
                 {"single_age",       row["single_age"].is_null() ? json(nullptr) : json(row["single_age"].as<int>())},
                 {"basis",            textOrNull(row, "basis")},
+                {"auto",             !row["auto_invite"].is_null() && row["auto_invite"].as<bool>()},
                 {"parent_person_id", row["parent_person_id"].is_null() ? json(nullptr) : json(row["parent_person_id"].as<long long>())},
                 {"phone",            textOrNull(row, "phone")},
                 {"email",            textOrNull(row, "email")},
@@ -2951,7 +3051,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
         // the enforcement error on the POST.
         json caps = json::array();
         for (const auto& row : db->query(R"SQL(
-                SELECT t.name AS from_team, c.from_team_id, c.max_per_event,
+                SELECT t.name AS from_team, c.from_team_id, c.to_team_id, c.max_per_event,
                        (SELECT count(*) FROM fh_event_invites i
                          WHERE i.fh_event_id = $1::bigint AND i.revoked_at IS NULL
                            AND EXISTS (SELECT 1 FROM team_persons tp
@@ -2965,6 +3065,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 {std::to_string(fhEventId)})) {
             caps.push_back({{"from_team",    textOrNull(row, "from_team")},
                             {"from_team_id", row["from_team_id"].as<long long>()},
+                            {"to_team_id",   row["to_team_id"].as<long long>()},
                             {"max",          row["max_per_event"].as<long long>()},
                             {"used",         row["used"].as<long long>()}});
         }
