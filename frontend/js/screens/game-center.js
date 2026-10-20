@@ -773,7 +773,7 @@ class GameCenterScreen extends Screen {
       this.stats.set(Number(row.playerId), row);
     }
     if (invData) {
-      this.invites = { invites: invData.invites || [], candidates: invData.candidates || [] };
+      this.invites = { invites: invData.invites || [], candidates: invData.candidates || [], caps: invData.caps || [] };
       this._foldInCallups();
     }
     this._render();
@@ -2776,7 +2776,7 @@ class GameCenterScreen extends Screen {
     try {
       const res = await this.auth.fetch(`/api/calendar/events/${id}/invites`);
       const body = await res.json().catch(() => null);
-      this.invites = res.ok && body ? { invites: body.invites || [], candidates: body.candidates || [] } : null;
+      this.invites = res.ok && body ? { invites: body.invites || [], candidates: body.candidates || [], caps: body.caps || [] } : null;
     } catch (err) {
       this.invites = null;
     }
@@ -2914,6 +2914,10 @@ class GameCenterScreen extends Screen {
         <div style="font-size:0.7rem; opacity:0.75; line-height:1.4; margin:2px 0 8px;">
           ${esc(copy('hint') || "An invited player (or their parent) sees this game on their page and gets a Go/No — it's the only way a call-up sees it. Nobody else outside the squad can.")}
         </div>
+        ${(data.caps || []).map(c => `
+          <div style="font-size:0.72rem; font-weight:700; margin:0 0 6px; color:${c.used >= c.max ? '#f87171' : '#fcd34d'};">
+            ⬇ ${esc(copy('cap_line', { from: c.from_team, used: c.used, max: c.max }) || `${c.from_team}: ${c.used} of ${c.max} send-downs used for this game`)}
+          </div>`).join('')}
         ${data.invites.length ? `<div style="display:grid; gap:4px; margin-bottom:6px;">${invited}</div>` : ''}
         ${data.candidates.length ? candidates : `<div style="font-size:0.8rem; opacity:0.55;">Nobody eligible — everyone age-eligible in the program is rostered or already invited.</div>`}
       </details>`;

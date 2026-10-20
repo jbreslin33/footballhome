@@ -2946,8 +2946,31 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
             });
         }
 
+        // League invite caps that apply to this event (mig 616): the 🎟
+        // panel shows "n of max sent down from <team>" before anyone hits
+        // the enforcement error on the POST.
+        json caps = json::array();
+        for (const auto& row : db->query(R"SQL(
+                SELECT t.name AS from_team, c.from_team_id, c.max_per_event,
+                       (SELECT count(*) FROM fh_event_invites i
+                         WHERE i.fh_event_id = $1::bigint AND i.revoked_at IS NULL
+                           AND EXISTS (SELECT 1 FROM team_persons tp
+                                        WHERE tp.person_id = i.person_id
+                                          AND tp.team_id = c.from_team_id
+                                          AND tp.removed_at IS NULL)) AS used
+                  FROM team_invite_caps c
+                  JOIN teams t ON t.id = c.from_team_id
+                 WHERE EXISTS (SELECT 1 FROM fh_event_teams fet
+                                WHERE fet.fh_event_id = $1::bigint AND fet.team_id = c.to_team_id))SQL",
+                {std::to_string(fhEventId)})) {
+            caps.push_back({{"from_team",    textOrNull(row, "from_team")},
+                            {"from_team_id", row["from_team_id"].as<long long>()},
+                            {"max",          row["max_per_event"].as<long long>()},
+                            {"used",         row["used"].as<long long>()}});
+        }
+
         return jsonOk({{"fh_event_id", fhEventId}, {"can_invite", true},
-                       {"invites", invites}, {"candidates", candidates}});
+                       {"invites", invites}, {"candidates", candidates}, {"caps", caps}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handleGetEventInvites: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
@@ -3011,6 +3034,40 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
                                      : !w["inv_from_team_id"].is_null() ? std::string(w["inv_from_team_id"].c_str()) : "";
         const std::string fromTeamName = !w["from_team_name"].is_null() ? std::string(w["from_team_name"].c_str())
                                        : !w["inv_from_team_name"].is_null() ? std::string(w["inv_from_team_name"].c_str()) : "";
+
+        // League invite caps (team_invite_caps, mig 616) — e.g. APSL/CASA:
+        // at most 2 players sent down from APSL to a CASA game.  Counts the
+        // event's OTHER open invites whose player is rostered on the capped
+        // from-team; a re-send of this person's own invite always passes.
+        {
+            auto cap = db->query(R"SQL(
+                SELECT c.max_per_event, t.name AS from_name,
+                       (SELECT count(*) FROM fh_event_invites i
+                         WHERE i.fh_event_id = $1::bigint AND i.revoked_at IS NULL
+                           AND i.person_id <> $2::int
+                           AND EXISTS (SELECT 1 FROM team_persons tp
+                                        WHERE tp.person_id = i.person_id
+                                          AND tp.team_id = c.from_team_id
+                                          AND tp.removed_at IS NULL)) AS used
+                  FROM team_invite_caps c
+                  JOIN teams t ON t.id = c.from_team_id
+                 WHERE EXISTS (SELECT 1 FROM fh_event_teams fet
+                                WHERE fet.fh_event_id = $1::bigint AND fet.team_id = c.to_team_id)
+                   AND EXISTS (SELECT 1 FROM team_persons tp
+                                WHERE tp.person_id = $2::int AND tp.team_id = c.from_team_id
+                                  AND tp.removed_at IS NULL))SQL",
+                {std::to_string(fhEventId), std::to_string(targetPersonId)});
+            for (const auto& c : cap) {
+                const long long maxN = c["max_per_event"].as<long long>();
+                const long long used = c["used"].as<long long>();
+                if (used >= maxN) {
+                    return jsonError(HttpStatus::CONFLICT,
+                        "League rule: at most " + std::to_string(maxN) + " players from "
+                        + std::string(c["from_name"].c_str()) + " may be sent down to this game — "
+                        + std::to_string(used) + " already invited. Revoke one first.");
+                }
+            }
+        }
 
         const auto info = loadInviteEventInfo(db, fhEventId);
         if (!info) return jsonError(HttpStatus::NOT_FOUND, "Event not found");
