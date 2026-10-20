@@ -154,6 +154,15 @@ const FIELD_SIZES = {
       // Owner: "for the 4231 the 8 and 6 are the cdms left to right and
       // the rest are same as 433" — 10 is the central attacking mid.
       '4-2-3-1': { rows: [[1], [3, 5, 4, 2], [8, 6], [11, 10, 7], [9]] },
+      // Owner 2026-10-19: both back-three shapes drop the 6 INTO the
+      // back line (back three 5-6-4). Flat 3-4-3: "balanced 8 and 10
+      // in middle" of the four (10 left, same rule as 4-3-3), 3 and 2
+      // as the wide men.
+      '3-4-3':   { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 9, 7]] },
+      // Owner: "8 where a 6 would normally be and the 10 behind the 9
+      // and in front of the 8 ... its really a 3313" — the 8-10-9
+      // spine stacks like an American-football I formation.
+      '3-3-1-3': { rows: [[1], [5, 6, 4], [3, 8, 2], [10], [11, 9, 7]] },
     },
   },
   9: {
