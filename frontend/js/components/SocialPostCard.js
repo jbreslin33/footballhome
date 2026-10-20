@@ -1851,7 +1851,10 @@ class SocialPostCard {
   // for the five-row shapes so the bench still fits under it.
   buildImagePitch(bench, crestSrc) {
     const pitch = this.rosterData.pitch;
-    const tall = pitch.filter(Boolean).length >= 5;
+    // Rows with chips in them: the halfway row (null) and a midline
+    // shape's empty spacer row take no chip height, so neither counts
+    // toward the one-notch-down sizing.
+    const tall = pitch.filter(r => r && r.length).length >= 5;
     const chip = tall ? 34 : 44;
     // Five across leaves ~100px a name; 16px breaks a long first name mid-word there.
     const nameSize = tall ? 14 : pitch.some(row => row && row.length >= 5) ? 15 : 16;
@@ -1866,25 +1869,39 @@ class SocialPostCard {
         ${t.badgeHtml || ''}
       </div>`;
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
+    const crestCircle = (mt = 0) => `
+      <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;box-sizing:border-box;border:2px solid rgba(255,255,255,0.5);${crestSrc ? 'background:#ffffff;' : ''}display:flex;align-items:center;justify-content:center;${mt ? `margin-top:${mt}px;` : ''}">
+        ${crestSrc ? `<img src="${crestSrc}" style="max-width:28px;max-height:28px;object-fit:contain;" />` : ''}
+      </div>`;
     const halfway = `
       <div style="display:flex;align-items:center;gap:8px;">
         ${line}
-        <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;box-sizing:border-box;border:2px solid rgba(255,255,255,0.5);${crestSrc ? 'background:#ffffff;' : ''}display:flex;align-items:center;justify-content:center;">
-          ${crestSrc ? `<img src="${crestSrc}" style="max-width:28px;max-height:28px;object-fit:contain;" />` : ''}
-        </div>
+        ${crestCircle()}
         ${line}
       </div>`;
-    // token.wide (FIELD_SIZES wideIds — owner 2026-10-19: the 3 and 2
-    // "a little wider" on the back-three shapes): the edge chip's auto
-    // margin soaks up the row's spare width, pushing it outward, while
-    // 30px of row padding keeps it off the touchline (same owner call
-    // as the back-four width cap above). The halfway line always keeps
-    // its own spliced row (owner: "keep the line in middle of pitch").
+    // token.wide (FIELD_SIZES wideIds): the edge chip's auto margin
+    // soaks up the row's spare width, pushing the 2 and 3 out to the
+    // sidelines (owner 2026-10-19: "move the 2 and 3 wider to
+    // sideline").
+    //
+    // A tokens.halfway row (FIELD_SIZES midlineRow) occupies the line
+    // row's own center slot (_pitchRows), so the line stays exactly
+    // mid-pitch: it paints behind the positioned chip row at chip
+    // height, and the crest keeps its center-circle spot as a flex item
+    // between the two middle chips — "straddle the apsl logo with the
+    // 10 and 8". Even-length rows only; an odd row has a chip dead
+    // center. An empty row (SPACER_ROW upstream) renders as open space.
     const pitchRow = (row) => {
-      const wide = row.some(t => t.wide);
       const items = row.map((t, i) => token(t, row.length,
         !t.wide ? '' : i === 0 ? 'margin-right:auto;' : i === row.length - 1 ? 'margin-left:auto;' : ''));
-      return `<div style="display:flex;justify-content:center;align-items:flex-start;gap:6px;${wide ? 'padding:0 30px;' : ''}">${items.join('')}</div>`;
+      if (row.halfway && row.length % 2 === 0) items.splice(row.length / 2, 0, crestCircle(chip / 2 - 20));
+      const flexRow = `<div style="position:relative;display:flex;justify-content:center;align-items:flex-start;gap:6px;">${items.join('')}</div>`;
+      if (!row.halfway) return flexRow;
+      return `
+        <div style="position:relative;">
+          <div style="position:absolute;left:0;right:0;top:${chip / 2 - 1}px;height:2px;background:rgba(255,255,255,0.35);"></div>
+          ${flexRow}
+        </div>`;
     };
     // Game Center's live card heads the band with the totals, so a
     // lineup one short says "10 STARTERS" (squadCounts); the post only

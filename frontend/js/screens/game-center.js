@@ -159,14 +159,21 @@ const FIELD_SIZES = {
       // in middle" of the four (10 left, same rule as 4-3-3), 3 and 2
       // as the wide men.
       //
-      // `wideIds`: chips drawn "a little wider" than their row's normal
-      // spread (owner: "the 3313 can show the 3 and 2 a little wider...
-      // same with the 343") — see SocialPostCard.buildImagePitch.
-      '3-4-3':   { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 9, 7]], wideIds: [3, 2] },
+      // `wideIds`: chips pushed out to the sidelines (owner 2026-10-19:
+      // "move the 2 and 3 wider to sideline") — see buildImagePitch.
+      // `midlineRow`: index into `rows` of the band that stands ON the
+      // halfway line, taking the line row's own center slot so the line
+      // never leaves mid-pitch, 10 and 8 straddling the crest (owner:
+      // "then you can straddle the apsl logo with the 10 and 8") — see
+      // _pitchRows.
+      '3-4-3':   { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 9, 7]], wideIds: [3, 2], midlineRow: 2 },
       // Owner: "8 where a 6 would normally be and the 10 behind the 9
       // and in front of the 8 ... its really a 3313" — the 8-10-9
-      // spine stacks like an American-football I formation.
-      '3-3-1-3': { rows: [[1], [5, 6, 4], [3, 8, 2], [10], [11, 9, 7]], wideIds: [3, 2] },
+      // spine stacks like an American-football I formation. The 2 and
+      // 3 stand ON the midline at the sidelines (owner: "for 3313 you
+      // can move 2 and 3 up the line mid line"), crest between them;
+      // the 8 holds the base alone.
+      '3-3-1-3': { rows: [[1], [5, 6, 4], [8], [3, 2], [10], [11, 9, 7]], wideIds: [3, 2], midlineRow: 3 },
     },
   },
   9: {
@@ -192,6 +199,11 @@ const DEFAULT_FIELD_SIZE = 11;
 // see _renderFormationPitch. Identity comparison only; never rendered
 // as positions.
 const HALFWAY_ROW = Object.freeze([]);
+
+// Second sentinel, same idea: an empty flex row holding the slot a
+// midlineRow band vacated when it dropped onto the line's center slot
+// (_pitchRows) — it renders as open space, the opposing half.
+const SPACER_ROW = Object.freeze([]);
 
 
 // The four moments of a game, in the order they happen — the pill strip
@@ -4169,6 +4181,10 @@ class GameCenterScreen extends Screen {
           }
           return token;
         });
+        // Row-level flag rides on the array (in-memory pipeline only):
+        // buildImagePitch draws the halfway line through this row. A
+        // SPACER_ROW maps to an empty tokens row and renders as space.
+        if (row.halfway) tokens.halfway = true;
         return tokens;
       });
     }
@@ -4593,7 +4609,20 @@ class GameCenterScreen extends Screen {
     // is the gap between the two midfield bands, which is where a
     // halfway line belongs in that shape anyway. Both verified on the
     // real pitch graphic 2026-08-24.
-    rows.splice(Math.floor(rows.length / 2), 0, HALFWAY_ROW);
+    // A formation with `midlineRow` merges that band INTO the line's
+    // center slot instead: the line stays exactly mid-pitch (owner:
+    // "keep the line in middle of pitch") and the band stands on it,
+    // SPACER_ROW holding the slot the band left. Inserting the spacer
+    // directly above the tagged row lands it on the exact center slot
+    // for both current midline shapes (3-4-3: 5 slots, band at 2;
+    // 3-3-1-3: 7 slots, band at 3).
+    if (template.rows && template.midlineRow != null) {
+      const i = rows.length - 1 - template.midlineRow;
+      rows[i].halfway = true;
+      rows.splice(i, 0, SPACER_ROW);
+    } else {
+      rows.splice(Math.floor(rows.length / 2), 0, HALFWAY_ROW);
+    }
     return rows;
   }
 
