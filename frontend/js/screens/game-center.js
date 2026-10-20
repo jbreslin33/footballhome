@@ -162,10 +162,7 @@ const FIELD_SIZES = {
       // `wideIds`: chips drawn "a little wider" than their row's normal
       // spread (owner: "the 3313 can show the 3 and 2 a little wider...
       // same with the 343") — see SocialPostCard.buildImagePitch.
-      // `midlineRow`: index into `rows` of the row the halfway line runs
-      // THROUGH instead of taking its own row (owner: "feel free to put
-      // the middle line of 343 at mid line of pitch") — see _pitchRows.
-      '3-4-3':   { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 9, 7]], wideIds: [3, 2], midlineRow: 2 },
+      '3-4-3':   { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 9, 7]], wideIds: [3, 2] },
       // Owner: "8 where a 6 would normally be and the 10 behind the 9
       // and in front of the 8 ... its really a 3313" — the 8-10-9
       // spine stacks like an American-football I formation.
@@ -4172,9 +4169,6 @@ class GameCenterScreen extends Screen {
           }
           return token;
         });
-        // Row-level flag rides on the array (in-memory pipeline only):
-        // buildImagePitch draws the halfway line through this row.
-        if (row.halfway) tokens.halfway = true;
         return tokens;
       });
     }
@@ -4599,16 +4593,7 @@ class GameCenterScreen extends Screen {
     // is the gap between the two midfield bands, which is where a
     // halfway line belongs in that shape anyway. Both verified on the
     // real pitch graphic 2026-08-24.
-    //
-    // A formation with `midlineRow` opts out of the spliced row: that
-    // band stands ON the halfway line instead (owner 2026-10-19 on the
-    // 3-4-3), so the row is tagged and buildImagePitch draws the line
-    // through it, crest in its usual center-circle spot mid-row.
-    if (template.rows && template.midlineRow != null) {
-      rows[rows.length - 1 - template.midlineRow].halfway = true;
-    } else {
-      rows.splice(Math.floor(rows.length / 2), 0, HALFWAY_ROW);
-    }
+    rows.splice(Math.floor(rows.length / 2), 0, HALFWAY_ROW);
     return rows;
   }
 
