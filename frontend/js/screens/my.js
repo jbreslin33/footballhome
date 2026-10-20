@@ -1702,21 +1702,26 @@ class MyScreen extends Screen {
   _renderDuesBanner() {
     const host = this.find('#my-dues-banner');
     if (!host) return;
-    // Two banners (mig 513): red ⛔ for someone the line blocks (Men —
-    // eligible=false, RSVP refused), amber ⚠️ for someone at/over the line
-    // whose section does not block (youth, women — over_line, still
-    // eligible): "bring it under $70 or you may lose eligibility".
-    const rows = Object.values(this.dues || {}).filter(d => d && (d.eligible === false || d.over_line === true));
+    // Three banners: red ⛔ for someone the line blocks (mig 513, Men —
+    // eligible=false, RSVP refused; off since 2026-10-03), amber 💰 for a
+    // dues ALTERNATE (mig 613/614: ANY balance where the policy alternates
+    // — Men — bottom of the selection pool, never a ban), amber ⚠️ for
+    // someone at/over the line whose section neither blocks nor
+    // alternates (youth, women): "bring it under $70 or you may lose
+    // eligibility".
+    const rows = Object.values(this.dues || {}).filter(d => d && (d.eligible === false || d.over_line === true || d.alternate === true));
     if (!rows.length) { host.innerHTML = ''; return; }
     const button = MessageCopy.block('my_dues', 'banner_button') || 'Pay here';
     host.innerHTML = rows.map(d => {
       const blocked = d.eligible === false;
-      const tier    = blocked ? 'banner' : 'warning';
+      const tier    = blocked ? 'banner' : d.alternate ? 'alternate_banner' : 'warning';
       if (!MessageCopy.has('my_dues', tier)) return '';
       const who  = d.is_self ? '' : `${this.escapeHtml(d.first_name || 'Your player')}: `;
       const text = MessageCopy.block('my_dues', tier, this._duesTokens(d));
       const c    = blocked
         ? { icon: '⛔', border: '#ef4444', bg: 'rgba(239,68,68,0.16)',  fg: '#fca5a5', btn: '#ef4444' }
+        : d.alternate
+        ? { icon: '💰', border: '#f59e0b', bg: 'rgba(245,158,11,0.16)', fg: '#fcd34d', btn: '#d97706' }
         : { icon: '⚠️', border: '#f59e0b', bg: 'rgba(245,158,11,0.16)', fg: '#fcd34d', btn: '#d97706' };
       return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:0 0 6px; padding:8px 10px; border-radius:8px; border:1px solid ${c.border}; background:${c.bg}; color:${c.fg}; font-size:0.74rem; font-weight:700; line-height:1.3;">
         <span>${c.icon} ${who}${this.escapeHtml(text)}</span>
