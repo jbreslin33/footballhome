@@ -2028,7 +2028,10 @@ class GameCenterScreen extends Screen {
       if (rsvp === 'no') return 'notGoing';
       return 'noResponse';
     };
-    const starterEligibleRank = (p) => p.lineupRole === 'starter' ? 0 : 1;
+    // Dues alternates (mig 613: any balance, Men) sink to the bottom of
+    // every selection list — the owner's "bottom of the selection pool".
+    const starterEligibleRank = (p) => (p.lineupRole === 'starter' ? 0 : 1)
+      + (this.stats.get(Number(p.id))?.duesAlternate ? 10 : 0);
     const byStarterRank = (a, b) => starterEligibleRank(a) - starterEligibleRank(b);
 
     const byZone = { starter: [], bench: [], alternate: [] };
@@ -4220,10 +4223,21 @@ class GameCenterScreen extends Screen {
   // Shown, not hidden, so the coach knows why a player is out.  Copy:
   // message_templates my_dues/lineup_flag.
   _duesFlag(p) {
-    if (!p || p.duesEligible !== false || !window.MessageCopy) return '';
-    const text = MessageCopy.block('my_dues', 'lineup_flag');
-    if (!text) return '';
-    return `<span style="font-size:0.62rem; font-weight:800; padding:1px 6px; border-radius:999px; border:1px solid #ef4444; color:#fca5a5; background:rgba(239,68,68,0.18); white-space:nowrap;">⛔ ${this.escapeHtml(text)}</span>`;
+    if (!p || !window.MessageCopy) return '';
+    if (p.duesEligible === false) {
+      const text = MessageCopy.block('my_dues', 'lineup_flag');
+      if (!text) return '';
+      return `<span style="font-size:0.62rem; font-weight:800; padding:1px 6px; border-radius:999px; border:1px solid #ef4444; color:#fca5a5; background:rgba(239,68,68,0.18); white-space:nowrap;">⛔ ${this.escapeHtml(text)}</span>`;
+    }
+    // Dues alternate (mig 613): amber, never a ban.  The server only sets
+    // the flag on rows the viewer may see (coach: all; player: their own),
+    // so this never shows on a teammate's card.
+    if (this.stats.get(Number(p.id))?.duesAlternate) {
+      const text = MessageCopy.block('my_dues', 'alternate_chip');
+      if (!text) return '';
+      return `<span style="font-size:0.62rem; font-weight:800; padding:1px 6px; border-radius:999px; border:1px solid #f59e0b; color:#fcd34d; background:rgba(245,158,11,0.15); white-space:nowrap;">💰 ${this.escapeHtml(text)}</span>`;
+    }
+    return '';
   }
 
   _rsvpStatusPill(playerId) {
@@ -4253,6 +4267,21 @@ class GameCenterScreen extends Screen {
   // 'eligibility'.
   _eligCopy(tier, tokens = {}) {
     return window.MessageCopy ? MessageCopy.block('eligibility', tier, tokens) : '';
+  }
+
+  // Dues alternate (mig 613): the PRIVATE warning on the player's own
+  // eligibility card — the owner's "warn them … right on the game".  Only
+  // the viewer's own stats row ever carries duesAlternate (server-side),
+  // so no teammate reads it.  Copy my_dues/alternate_game, {amount}.
+  _duesAlternateBox(s, box) {
+    if (!s || !s.duesAlternate || !window.MessageCopy) return '';
+    const amount = s.duesBalanceUsd != null ? `$${Number(s.duesBalanceUsd).toFixed(2)}` : '';
+    const text = MessageCopy.block('my_dues', 'alternate_game', { amount });
+    if (!text) return '';
+    return box(MessageCopy.block('my_dues', 'alternate_heading') || '',
+      `<div style="font-size:0.78rem; font-weight:600; color:#fcd34d; display:flex; gap:8px; align-items:flex-start;">
+         <span style="flex:0 0 auto;">💰</span><span>${this.escapeHtml(text)}</span>
+       </div>`);
   }
 
   // Practice Criteria state for one stats row (mig 457/458): green = met
@@ -4478,6 +4507,7 @@ class GameCenterScreen extends Screen {
         ${this._eligCopy('card_heading') ? `<h2 style="margin:0 0 6px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${this.escapeHtml(this._eligCopy('card_heading'))}</h2>` : ''}
         ${overallText ? pill(overallText, overall.colour, `data-gc-elig-overall="${overall.state}"`) : ''}
         <div data-gc-elig-msg style="font-size:0.72rem; min-height:0;"></div>
+        ${this._duesAlternateBox(s, box)}
         ${box(this._eligCopy('practice_box_heading'), `
           ${pill(pillText, [bg, fg])}
           ${rule ? `<div style="font-size:0.72rem; opacity:0.7; margin-top:6px;">${this.escapeHtml(rule)}</div>` : ''}

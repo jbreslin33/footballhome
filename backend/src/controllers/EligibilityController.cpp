@@ -301,6 +301,16 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                           WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp,
                        (SELECT me.fh_event_id FROM match_event me) AS game_fh_event_id,
                        (SELECT to_char((dl.deadline AT TIME ZONE 'America/New_York')::date - 1, 'YYYY-MM-DD') FROM dl) AS rsvp_deadline_day,
+                       -- Dues alternate (mig 613): ANY balance where this
+                       -- game's section policy says so (Men).  Sinks the
+                       -- player to the bottom of the selection pool; the
+                       -- controller blanks it on every row that is not the
+                       -- viewer's own unless the viewer is the coach.
+                       ((SELECT EXISTS (SELECT 1 FROM teams t
+                                         WHERE t.id = ANY($2::int[]) AND t.club_section_id IS NOT NULL
+                                           AND fh_dues_policy_alternates(t.club_id, t.club_section_id)))
+                          AND COALESCE(fh_dues_balance_usd(pe.id), 0) > 0) AS dues_alternate,
+                       COALESCE(fh_dues_balance_usd(pe.id), 0) AS dues_balance,
                        -- on_time: first answer before the deadline (a later
                        -- change keeps it — owner 2026-10-01); pending: not
                        -- answered, deadline still ahead; late: missed it.
@@ -376,6 +386,17 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 statsJson << "\"missedDays\":" << (row["missed_days"].is_null() ? "null" : row["missed_days"].c_str()) << ",";
                 const std::string rsvpTiming = row["rsvp_timing"].is_null() ? "" : row["rsvp_timing"].c_str();
                 statsJson << "\"eligible\":" << (attended >= needed && rsvpTiming != "late" ? "true" : "false") << ",";
+                // Dues alternate (mig 613) is private — the coach sees every
+                // flag, a player only their own; the balance only rides the
+                // player's own row (the warning's {amount}).  Everyone
+                // else's rows read false/null so nothing leaks in the JSON.
+                {
+                    const bool ownRow = !myPlayerId.empty() && myPlayerId == std::string(row["player_id"].c_str());
+                    const bool duesAlt = (isCoach || ownRow)
+                        && !row["dues_alternate"].is_null() && row["dues_alternate"].as<bool>();
+                    statsJson << "\"duesAlternate\":" << (duesAlt ? "true" : "false") << ",";
+                    statsJson << "\"duesBalanceUsd\":" << ((duesAlt && ownRow) ? row["dues_balance"].c_str() : "null") << ",";
+                }
                 statsJson << "\"gameFhEventId\":" << (row["game_fh_event_id"].is_null() ? "null" : row["game_fh_event_id"].c_str()) << ",";
                 statsJson << "\"rsvpTiming\":" << (rsvpTiming.empty() ? "null" : "\"" + rsvpTiming + "\"") << ",";
                 statsJson << "\"rsvpDeadlineDay\":" << (row["rsvp_deadline_day"].is_null() ? "null" : "\"" + std::string(row["rsvp_deadline_day"].c_str()) + "\"") << ",";
