@@ -155,11 +155,15 @@ class Auth {
     // Honouring endpoints (all read-only):
     //   /api/my/*               — MyController
     //   /api/calendar/upcoming  — CalendarController
+    //   /api/carpool/* (GET)    — CarpoolController (2026-10-20: the 🚗
+    //                             panel renders what the viewed-as person
+    //                             would see; its POSTs still run as you)
     let effectivePath = path;
     const method = (options.method || 'GET').toUpperCase();
     const wantsImpersonation = this.viewAsPersonId && (
       path.startsWith('/api/my/') ||
-      (method === 'GET' && path.startsWith('/api/calendar/upcoming'))
+      (method === 'GET' && path.startsWith('/api/calendar/upcoming')) ||
+      (method === 'GET' && path.startsWith('/api/carpool/'))
     );
     if (wantsImpersonation) {
       const sep = path.includes('?') ? '&' : '?';

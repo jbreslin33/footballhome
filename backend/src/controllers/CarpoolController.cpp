@@ -69,6 +69,22 @@ bool loadViewer(Database* db, long long userId, Viewer* out) {
     return true;
 }
 
+// View-as (2026-10-20): `?asPersonId=N` on the two GETs renders the
+// carpool exactly as that person sees it — same read-only, admin-gated
+// contract as MyController::applyImpersonation.  The admin bit is dropped
+// too, so the impersonated view is the person's real one (no staff
+// dropdown, their own family's buttons).  Writes never honour it.
+void applyViewAs(const Request& request, Viewer* v) {
+    if (!v->isAdmin) return;
+    const std::string q = request.getQueryParam("asPersonId");
+    if (q.empty()) return;
+    long long target = 0;
+    try { target = std::stoll(q); } catch (...) { return; }
+    if (target <= 0 || target == v->personId) return;
+    v->personId = target;
+    v->isAdmin  = false;
+}
+
 bool allowedOnEvent(Database* db, long long fhEventId, const Viewer& v) {
     if (v.isAdmin) return true;
     auto rows = db->query(kAllowedSql, {std::to_string(fhEventId), std::to_string(v.personId)});
@@ -298,6 +314,7 @@ Response CarpoolController::handleList(const Request& request) {
         auto* db = Database::getInstance();
         Viewer me;
         if (!loadViewer(db, userId, &me)) return jsonError(HttpStatus::FORBIDDEN, "No person on this account.");
+        applyViewAs(request, &me);
         if (!allowedOnEvent(db, fhEventId, me)) return jsonError(HttpStatus::FORBIDDEN, "Carpool is for people on this game.");
         const std::string eid = std::to_string(fhEventId), pid = std::to_string(me.personId);
 
@@ -397,7 +414,11 @@ Response CarpoolController::handleList(const Request& request) {
                    EXISTS (SELECT 1 FROM fh_carpool_requests r
                             WHERE r.fh_event_id = $1::bigint AND r.person_id = m.id
                               AND r.cancelled_at IS NULL) AS open,
-                   (m.id = $2::int OR m.parent_person_id = $2::int) AS mine,
+                   -- COALESCE: `x OR NULL` is NULL, not false, when
+                   -- parent_person_id is NULL — an un-coalesced NULL here
+                   -- threw on as<bool>() and 500'd the whole panel for any
+                   -- staff viewer (2026-10-20).
+                   COALESCE(m.id = $2::int OR m.parent_person_id = $2::int, false) AS mine,
                    COALESCE(a.address1, CASE WHEN m.id = $2::int OR m.parent_person_id = $2::int THEN va.address1 END, '') AS address1,
                    COALESCE(a.address2, CASE WHEN m.id = $2::int OR m.parent_person_id = $2::int THEN va.address2 END, '') AS address2,
                    COALESCE(a.city,     CASE WHEN m.id = $2::int OR m.parent_person_id = $2::int THEN va.city     END, '') AS city,
@@ -511,6 +532,7 @@ Response CarpoolController::handleOptions(const Request& request) {
         auto* db = Database::getInstance();
         Viewer me;
         if (!loadViewer(db, userId, &me)) return jsonError(HttpStatus::FORBIDDEN, "No person on this account.");
+        applyViewAs(request, &me);
         auto rows = db->query(
             "SELECT fh_event_id, cancelled_at FROM fh_carpool_requests WHERE id = $1::int",
             {std::to_string(reqId)});

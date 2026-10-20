@@ -2098,7 +2098,10 @@ class GameCenterScreen extends Screen {
 
     if (effectiveIsPlayerView) {
       // Starter criteria mean nothing where everyone plays (mig 515).
-      paint(viewToggleHtml + this._renderCarpoolPanel()
+      // 🚗 Carpool: the head's _pillToolsHtml already carries it on the
+      // official lineup view — render it here only on the other views, or
+      // the panel shows twice (2026-10-20, found once the 500 was fixed).
+      paint(viewToggleHtml + (this.lineupView === 'official' ? '' : this._renderCarpoolPanel())
             + (this.everyonePlays ? '' : this._renderMyEligibility() + this._renderRosterCriteria())
             + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
       return;

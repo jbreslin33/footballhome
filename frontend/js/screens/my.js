@@ -95,6 +95,28 @@ class MyScreen extends Screen {
     this.groupmeMessages = [];           // newest-first, as the API returns them
     this.groupmeExpanded = false;
     this.pollTick        = 0;
+
+    // 🚗 Carpool on the expanded card (owner 2026-10-20: a parent's only
+    // route to an event IS #my, and it had no carpool at all) — the same
+    // shared CarpoolPanel Game Center and the Event Center mount.
+    this.carpoolPanel = window.CarpoolPanel ? new CarpoolPanel(this.auth, {
+      fhEventId: () => this.expandedEventId,
+      rerender: () => this._renderEvents(),
+      toast: (m) => this._toast(m),
+      escapeHtml: (t) => this.escapeHtml(t),
+    }) : null;
+  }
+
+  // Transient notice bubble — my.js had no toast; the carpool panel needs
+  // one for its error path.
+  _toast(msg) {
+    const el = document.createElement('div');
+    el.textContent = msg;
+    el.style.cssText = 'position:fixed; bottom:18px; left:50%; transform:translateX(-50%);'
+      + 'background:#1f2937; color:#f9fafb; padding:8px 14px; border-radius:8px;'
+      + 'font-size:0.78rem; z-index:9999; box-shadow:0 4px 14px rgba(0,0,0,0.45);';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
   }
 
   // ---------- lifecycle ----------
@@ -378,6 +400,14 @@ class MyScreen extends Screen {
         }
         return;
       }
+      // 🚗 Carpool buttons inside the expanded card — the shared panel
+      // handles them (components/carpool-panel.js).
+      const cpBtn = target.closest('[data-gc-cp]');
+      if (cpBtn && this.carpoolPanel) {
+        e.stopPropagation();
+        if (!cpBtn.disabled) this.carpoolPanel.click(cpBtn, this.element);
+        return;
+      }
       const fix = target.closest('[data-conflict-fix]');
       if (fix) {
         e.stopPropagation();
@@ -398,6 +428,11 @@ class MyScreen extends Screen {
         this.expandedEventId = this.expandedEventId === fhEventId ? null : fhEventId;
         if (this.expandedEventId === fhEventId && !this.attendanceByEvent.has(fhEventId)) {
           this._loadAttendance(fhEventId);
+        }
+        // 🚗 Carpool rides on the expansion — fetch for THIS event, then
+        // repaint so the panel fills in.
+        if (this.expandedEventId === fhEventId && this.carpoolPanel) {
+          this.carpoolPanel.load().then(() => this._renderEvents());
         }
         this._renderEvents();
         return;
@@ -483,6 +518,9 @@ class MyScreen extends Screen {
       this._renderEvents();
     });
     this.element.addEventListener('change', (e) => {
+      // 🚗 Carpool staff behalf-of dropdown.
+      const cpBehalf = e.target.closest('[data-gc-cp-behalf]');
+      if (cpBehalf && this.carpoolPanel) { this.carpoolPanel.behalf(cpBehalf.value); return; }
       const date = e.target.closest('#events-range-date');
       if (!date) return;
       this._onRangeChange(date.value ? `from:${date.value}` : 'current');
@@ -1926,6 +1964,7 @@ class MyScreen extends Screen {
             ${stacked ? '' : ownSideHtml}
             ${gameCenterBtnHtml ? `<div>${gameCenterBtnHtml}</div>` : ''}
             ${this._eventRsvpHtml(ev, isPast)}
+            ${!isPast && this.carpoolPanel ? this.carpoolPanel.html() : ''}
           </div>`;
 
     return `
