@@ -33,6 +33,9 @@ public:
     struct Cell {
         int  teamId   = 0;
         bool onRoster = false;
+        // 📄 Paper spot (team_persons.invite_only, mig 619): holds the
+        // roster place but grants nothing on games — invite to include.
+        bool inviteOnly = false;
         // Coach-defined ability rank within the team (1..N).  nullopt =
         // "no rank yet" — sort falls back to alphabetical (see
         // MensRoster.cpp comparator).  Written by

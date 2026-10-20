@@ -823,7 +823,7 @@ Response MyController::handlePushRemind(const Request& request) {
             "               AND tp.person_id = $2::int AND tp.removed_at IS NULL "
             // Call-up-gated team (mig 605): only an invited player can
             // be pinged — the invite branch below is their door.
-            "               AND NOT fh_team_callup_only(tp.team_id)) "
+            "               AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only) "
             "       OR EXISTS (SELECT 1 FROM team_coaches tc JOIN coaches co ON co.id = tc.coach_id "
             "                  WHERE tc.team_id = fet.team_id AND tc.ended_at IS NULL AND co.person_id = $2::int) "
             "     )"

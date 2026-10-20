@@ -358,6 +358,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 JOIN persons pe ON pe.id = tp.person_id
                 JOIN players pl ON pl.person_id = pe.id
                 WHERE tp.team_id = ANY($2::int[]) AND tp.removed_at IS NULL
+                  AND NOT tp.invite_only   -- 📄 paper spot (mig 619): no criteria rows
                   AND ($3 = '' OR pe.id = NULLIF($3, '')::int)
                 ORDER BY pl.id
             )", {matchId, rosterTeamIdsArray, std::string("")});

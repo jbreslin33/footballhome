@@ -38,6 +38,7 @@ private:
     Response handleGet(const Request& request, const LaSyncMap& sync);
     Response handleAssign(const Request& request);
     Response handleRosterStatus(const Request& request);
+    Response handleInviteOnly(const Request& request);
     // POST /api/mens-roster/reorder — rewrite coach_sort_order for a
     // team column after the coach drags a card to a new position.
     // Body: {teamId, userIds:[...]} — dense 1..N rank assigned in list

@@ -73,6 +73,7 @@ const char* kBaseCtes = R"SQL(
         JOIN tm ON tm.id = tp.team_id
         LEFT JOIN roster_statuses rs ON rs.id = tp.roster_status_id
        WHERE tp.removed_at IS NULL
+         AND NOT tp.invite_only   -- 📄 paper spot (mig 619): owes no answer
          AND COALESCE(rs.show_in_rsvp, true)
          AND ($4::int = 0 OR tp.person_id = $4::int)
          -- Girls play on boys teams (club_sections.schedule_section_id), so
@@ -1010,7 +1011,7 @@ bool RsvpBoard::poolRecipient(long long matchId, long long personId, SquadRecipi
            AND (EXISTS (SELECT 1 FROM team_persons tp
                          WHERE tp.person_id = p.id AND tp.removed_at IS NULL AND tp.team_id = ANY(t.ids)
                            -- Call-up-gated team (mig 605): invite-only.
-                           AND NOT fh_team_callup_only(tp.team_id))
+                           AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only)
              OR EXISTS (SELECT 1 FROM fh_event_invites i
                           JOIN fh_events fe ON fe.id = i.fh_event_id
                          WHERE fe.match_id = $1::int AND i.person_id = p.id AND i.revoked_at IS NULL)))SQL",

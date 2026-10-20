@@ -95,6 +95,8 @@ class MensRosterScreen extends RosterScreenBase {
       if (moveOpt) return this.onMoveOptionClick(moveOpt);
       const toggle = e.target.closest('.mr-roster-toggle');
       if (toggle) return this.onRosterToggleClick(toggle);
+      const inviteOnly = e.target.closest('.mr-invite-only');
+      if (inviteOnly) return this.onInviteOnlyClick(inviteOnly);
       const pill = e.target.closest('.mr-pill');
       if (pill) return this.onPillClick(pill);
       const focusPill = e.target.closest('.mr-team-focus-pill');
@@ -560,7 +562,26 @@ class MensRosterScreen extends RosterScreenBase {
     // same since it's generic" per owner directive), see
     // RosterScreenBase.renderRoleSelect / renderStatusSelect for the doc.
     const roleSelect   = this.renderRoleSelect(p, col, canMove);
-    const statusSelect = this.renderStatusSelect(p, col, canMove);
+    // 📄 Paper spot (team_persons.invite_only, mig 619) — holds the roster
+    // place but grants nothing on games.  Loud on the card so nobody is
+    // turned "off" without everyone seeing it (owner 2026-10-20: "we don't
+    // want to lose them by turning them 'off' without knowing they are
+    // 'off'"); tap toggles (admins), dim 📄 offers it when unset.
+    const inviteOnlyBtn = (() => {
+      const on = p.inviteOnly === true;
+      if (!canMove && !on) return '';
+      const style = `${btnBase} border:1px solid ${on ? '#f59e0b' : 'rgba(148,163,184,0.45)'};
+                     background:${on ? 'rgba(245,158,11,0.22)' : 'transparent'}; color:${on ? '#fcd34d' : '#94a3b8'};
+                     cursor:${canMove ? 'pointer' : 'default'};`;
+      const title = on
+        ? 'Paper spot — holds the roster place; sees games, reminders, fines and lineups only when invited (🎟). Tap to make them a full roster player again.'
+        : 'Make this a 📄 paper spot: keeps the roster place but no game visibility, reminders or fines — invite them (🎟) when needed.';
+      return canMove
+        ? `<button class="mr-invite-only" type="button" data-user-id="${p.leagueAppsUserId}" data-team-id="${col.teamId}"
+                   data-on="${on ? 1 : 0}" title="${this.escape(title)}" style="${style}">📄${on ? ' INVITE-ONLY' : ''}</button>`
+        : `<span title="${this.escape(title)}" style="${style}">📄 INVITE-ONLY</span>`;
+    })();
+    const statusSelect = this.renderStatusSelect(p, col, canMove) + inviteOnlyBtn;
 
     // Reserve/On-Roster toggle removed 2026-07-04 (pm) per user directive:
     // column membership is the whole game.  Match-day roster selection
@@ -1253,6 +1274,32 @@ class MensRosterScreen extends RosterScreenBase {
       btn.disabled = false;
       btn.style.opacity = '';
       alert(`Could not update roster status: ${err.message}`);
+    }
+  }
+
+  // 📄 Paper spot toggle (mig 619) — same shape as the roster toggle.
+  async onInviteOnlyClick(btn) {
+    const userId = parseInt(btn.dataset.userId, 10);
+    const teamId = parseInt(btn.dataset.teamId, 10);
+    const current = btn.dataset.on === '1';
+    if (!userId || !teamId) return;
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+    try {
+      const res = await this.auth.fetch('/api/mens-roster/invite-only', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leagueAppsUserId: userId, teamId, inviteOnly: !current }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text.slice(0, 200));
+      }
+      await this.load({ quiet: true });
+    } catch (err) {
+      btn.disabled = false;
+      btn.style.opacity = '';
+      alert(`Could not update invite-only: ${err.message}`);
     }
   }
 

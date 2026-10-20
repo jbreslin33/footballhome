@@ -2458,6 +2458,9 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 EXISTS(SELECT 1 FROM team_persons r2 WHERE r2.person_id = pe.id AND r2.team_id = (SELECT id FROM teams WHERE name = 'Lighthouse Old Timers') AND r2.removed_at IS NULL) as on_roster_u23
             FROM matches m
             JOIN team_persons r ON r.team_id = CASE WHEN $2 <> '' THEN $2::int ELSE m.home_team_id END AND r.removed_at IS NULL
+                               -- 📄 paper spot (mig 619): not in the lineup
+                               -- pool unless invited (they fold in via 🎟)
+                               AND NOT r.invite_only
             JOIN persons pe ON pe.id = r.person_id
             JOIN players p ON p.person_id = pe.id
             LEFT JOIN match_lineups ml ON ml.match_id = m.id AND ml.player_id = p.id

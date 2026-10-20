@@ -44,7 +44,7 @@ WITH tm AS (
    WHERE tp.person_id = $1::int AND tp.removed_at IS NULL AND t.is_active
      -- Call-up-gated team (mig 605): its fixtures are invite-only, so the
      -- welcome text must not promise them.
-     AND NOT fh_team_callup_only(tp.team_id)
+     AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
      AND NOT EXISTS (SELECT 1 FROM rsvp_suspensions s
                       WHERE s.person_id = tp.person_id
                         AND (s.team_id IS NULL OR s.team_id = tp.team_id)

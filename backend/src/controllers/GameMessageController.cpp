@@ -70,7 +70,7 @@ Response GameMessageController::handleRecipients(const Request& request) {
                        -- "on" the game — they surface as 'candidate'
                        -- (fh_event_invite_candidates offers the gated
                        -- roster) and as 'callup' once invited.
-                       AND NOT fh_team_callup_only(tp.team_id)
+                       AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
                     UNION ALL
                     SELECT i.person_id, 'callup', 1
                       FROM fh_event_invites i JOIN ev ON ev.id = i.fh_event_id

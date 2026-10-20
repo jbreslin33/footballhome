@@ -156,6 +156,9 @@ void MensRosterController::registerRoutes(Router& router, const std::string& pre
     router.post(prefix + "/roster-status", [this](const Request& req) {
         return this->handleRosterStatus(req);
     });
+    router.post(prefix + "/invite-only", [this](const Request& req) {
+        return this->handleInviteOnly(req);
+    });
     router.post(prefix + "/reorder", [this](const Request& req) {
         return this->handleReorder(req);
     });
@@ -360,6 +363,51 @@ Response MensRosterController::handleAssign(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "MensRosterController::handleAssign error: " << e.what() << std::endl;
         return internalErr(std::string("Failed to update assignment: ") + e.what());
+    }
+}
+
+// POST /api/mens-roster/invite-only — 📄 paper spot toggle (mig 619):
+// {leagueAppsUserId, teamId, inviteOnly}.  The row keeps the roster place
+// but grants nothing on games; the card wears a loud 📄 label so nobody
+// is turned "off" silently.  Alias-aware (person_la_user_ids, mig 602).
+Response MensRosterController::handleInviteOnly(const Request& request) {
+    if (!requireBearer(request)) {
+        return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    }
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (const std::exception&) { return badRequest("Invalid JSON body"); }
+    long long userId = 0, teamIdLL = 0;
+    if (!readInt(body, "leagueAppsUserId", userId) ||
+        !readInt(body, "teamId", teamIdLL) || userId <= 0 || teamIdLL <= 0) {
+        return badRequest("leagueAppsUserId and teamId required");
+    }
+    const int teamId = static_cast<int>(teamIdLL);
+    const bool inviteOnly = readBool(body, "inviteOnly", false);
+    if (!canManageTeam(request, teamId)) {
+        return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
+    }
+    try {
+        auto db = Database::getInstance();
+        auto rows = db->query(
+            "UPDATE team_persons tp SET invite_only = $3::bool "
+            "  FROM persons p "
+            " WHERE tp.person_id = p.id AND tp.team_id = $2::int AND tp.removed_at IS NULL "
+            "   AND (p.la_user_id = $1::bigint "
+            "        OR EXISTS (SELECT 1 FROM person_la_user_ids a "
+            "                    WHERE a.person_id = p.id AND a.la_user_id = $1::bigint)) "
+            "RETURNING tp.person_id",
+            {std::to_string(userId), std::to_string(teamId), inviteOnly ? "true" : "false"});
+        if (rows.empty()) return notFound("No assignment exists for that player on that team");
+        std::ostringstream out;
+        out << "{\"leagueAppsUserId\":" << userId
+            << ",\"teamId\":"           << teamId
+            << ",\"inviteOnly\":"       << (inviteOnly ? "true" : "false")
+            << "}";
+        return Response(HttpStatus::OK, out.str());
+    } catch (const std::exception& e) {
+        std::cerr << "MensRosterController::handleInviteOnly error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to set invite-only: ") + e.what());
     }
 }
 

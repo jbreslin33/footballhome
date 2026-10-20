@@ -34,7 +34,7 @@ constexpr const char* kParty = R"SQL(
           JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
                               -- Call-up-gated team (mig 605): only the
                               -- invited (next branch) are on its games.
-                              AND NOT fh_team_callup_only(tp.team_id)
+                              AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
          WHERE fet.fh_event_id = $1::bigint
         UNION
         SELECT i.person_id FROM fh_event_invites i
