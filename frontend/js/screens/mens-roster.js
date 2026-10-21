@@ -269,6 +269,7 @@ class MensRosterScreen extends RosterScreenBase {
       await presetsReady;
       await copyReady;
       this.renderRoster(data);
+      this.autoPullOfficialRosters(data, { quiet });
     } catch (err) {
       if (loading) loading.style.display = 'none';
       if (errEl) {
@@ -429,6 +430,42 @@ class MensRosterScreen extends RosterScreenBase {
       btn.disabled = false;
       btn.textContent = '🔄 Pull fresh';
       alert(`Could not pull the league roster: ${err.message}`);
+    }
+  }
+
+  // 🌐 Auto-refresh the league-roster mirror on every board load (owner
+  // 2026-10-21: "we should be loading from these links on every mens load
+  // of #teams … then updating db then displaying"). The board renders the
+  // mirrored rows first, each of its columns' sources re-pulls in the
+  // background (TeamPass via the scraper proxy can take seconds, so this
+  // never blocks the board), the names land in official_roster_names, and
+  // ONE quiet reload re-renders from the DB. Quiet loads are background
+  // reconciliations — they never re-pull, which also keeps this from
+  // looping through its own reload. Failures stay silent here; the
+  // panel's 🔄 Pull fresh button is the loud manual path.
+  async autoPullOfficialRosters(data, { quiet = false } = {}) {
+    if (quiet || this._officialPullInFlight) return;
+    const mirrors = data.officialRosters || {};
+    const teamIds = (data.columns || [])
+      .map(c => c.teamId)
+      .filter(id => id && mirrors[String(id)]);
+    if (!teamIds.length) return;
+    this._officialPullInFlight = true;
+    try {
+      const results = await Promise.allSettled(teamIds.map(teamId =>
+        this.auth.fetch('/api/mens-roster/official-roster-refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamId }),
+        }).then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); })
+      ));
+      results.forEach((r, i) => {
+        if (r.status === 'rejected')
+          console.warn(`[mens-roster] official roster auto-pull failed for team ${teamIds[i]}:`, r.reason);
+      });
+      if (results.some(r => r.status === 'fulfilled')) await this.load({ quiet: true });
+    } finally {
+      this._officialPullInFlight = false;
     }
   }
 
