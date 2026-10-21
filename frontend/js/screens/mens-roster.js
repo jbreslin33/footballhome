@@ -707,14 +707,33 @@ class MensRosterScreen extends RosterScreenBase {
     const shown = col.isUnassigned ? players
       : seesOn ? players.filter(p => seesCat(catOf(p)))
       : players.filter(p => !off(catOf(p)));
-    // ⭐ riders render as ordinary rows IN the main list (owner
-    // 2026-10-21: "all pills should just filter the main list" — no
-    // separate strip/box).  Same frame as the player cards.
-    const ridersHtml = (!col.isUnassigned && riders.length && (seesOn || !off('riders'))) ? riders.map(r => `
-      <div style="padding:4px 8px; border:${RosterScreenBase.NEUTRAL_CARD_BORDER}; border-radius:8px; font-size:0.78rem;"
-           title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">
-        ⭐ <b>${this.escape(r.name)}</b> <span style="opacity:0.7;">· rides along from ${this.escape(r.fromTeam || '—')}</span>
-      </div>`).join('') : '';
+    // ⭐ riders render as their FULL home-team card in this column's
+    // main list (owner 2026-10-21: "all pills should just filter the
+    // main list" … "not the normal list of players with their labels
+    // and drop downs" — plain rows read as a second list).  The card is
+    // the rider's real row from their home column, de-fanged here:
+    // draggable off (which also keeps it out of the reorder collector's
+    // .mr-card[draggable="true"] set) and the duplicate DOM id
+    // stripped; the ⋯ menu still acts on their home-team row, which is
+    // the correct semantics.
+    const ridersHtml = (!col.isUnassigned && riders.length && (seesOn || !off('riders'))) ? riders.map(r => {
+      let homeCol = null, hp = null;
+      for (const c of (data.columns || [])) {
+        if (c.teamId === col.teamId) continue;
+        const found = (data.buckets[String(c.teamId)] || []).find(p => Number(p.personId) === Number(r.personId));
+        if (found) { homeCol = c; hp = found; break; }
+      }
+      const caption = `<div style="font-size:0.66rem; color:#60a5fa; font-weight:700; margin:0 0 1px 2px;">⭐ rides along from ${this.escape(r.fromTeam || '—')}</div>`;
+      if (!hp) return `
+        <div style="padding:4px 8px; border:${RosterScreenBase.NEUTRAL_CARD_BORDER}; border-radius:8px; font-size:0.78rem;"
+             title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">
+          ⭐ <b>${this.escape(r.name)}</b> <span style="opacity:0.7;">· rides along from ${this.escape(r.fromTeam || '—')}</span>
+        </div>`;
+      const card = this.renderPlayer(hp, data.columns, homeCol, 0, 0)
+        .replace('draggable="true"', 'draggable="false"')
+        .replace(/ id="mr-card-[^"]*"/, '');
+      return `<div title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">${caption}${card}</div>`;
+    }).join('') : '';
 
     const body = (shown.length === 0 && !ridersHtml)
       ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
