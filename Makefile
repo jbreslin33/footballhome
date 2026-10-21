@@ -794,3 +794,21 @@ print-export-png:
 # Wipe generated print files.
 print-clean:
 	@rm -rf frontend/exhibit/print && echo "Removed frontend/exhibit/print/"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Game v2 (game/DESIGN.md) — the image build IS the test gate: lint
+# gates + full ctest suite run inside the Dockerfile, so a failing
+# test fails the build and no bad image can exist (G0.5).
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+game-deploy:
+	@echo "🎮 Building fh-game image (lint + build + full test suite)..."
+	@$(COMPOSE) --env-file env build footballhome_game
+	@echo "✓ fh-game image built and test-gated."
+	@echo "  Restart the service to pick it up:"
+	@echo "  $(COMPOSE) --env-file env up -d footballhome_game"
+
+# Host-side fast loop (no container): build + run the suite locally.
+game-test:
+	@cmake -S game -B game/build >/dev/null
+	@cmake --build game/build --parallel
+	@ctest --test-dir game/build --output-on-failure

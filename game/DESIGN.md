@@ -179,8 +179,12 @@ slices, exit gates, goldens).
   env-configured, wall-clock pacing outside the sim (GAME_SPEED=0 = headless
   free-run for calibration/FM). 14/14 ctests. Dockerfile moved to G0.5
   where the container gate lands.
-- G0.5 [ ] `make game-deploy`: container image build + full ctest suite
-  inside the image = the standing green gate.
+- G0.5 [x] (2026-10-21) Container gate: two-stage `game/Dockerfile` ([v1]
+  pattern — lint gates `check_no_floats`/`check_no_bad_rng` + Release build
+  + full ctest INSIDE the image build, so a failing test fails the build and
+  a bad image cannot exist). Runtime stage: slim, non-root, binary + libssl.
+  `make game-deploy` (compose build) + `make game-test` (fast host loop).
+  First image built clean.
 - G0.6 [ ] nginx `/game/<key>` proxy (variable upstream, request-time DNS) +
   compose service — the one club-stack touchpoint; coordinated deploy.
 - G0.7 [ ] Browser client: Three.js pitch + player, snapshot interpolation,
