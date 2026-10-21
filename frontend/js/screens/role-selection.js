@@ -94,6 +94,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="jobs" id="rs-jobs" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🧹</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Jobs</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Event jobs auto-assigned from who's going — cones, balls, lights, tents; flag only what didn't get done</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="reports" id="rs-reports" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">📊</span>
           <div style="flex: 1; text-align: left;">
@@ -488,6 +496,9 @@ class RoleSelectionScreen extends Screen {
       this.navigation.goTo('attendance', { pick: true });
     } else if (role === 'kit') {
       this.navigation.goTo('kit');
+    } else if (role === 'jobs') {
+      // Not a role — event jobs (mig 625): auto-assigned, default-done.
+      this.navigation.goTo('jobs');
     } else if (role === 'texts') {
       // Not a role — the club-texts opt-in board (mig 537).
       this.navigation.goTo('texts');

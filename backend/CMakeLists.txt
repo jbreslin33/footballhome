@@ -124,6 +124,7 @@ set(SOURCES
     src/controllers/WelcomeController.cpp
     src/controllers/RsvpBoardController.cpp
     src/controllers/PersonHealthController.cpp
+    src/controllers/JobsController.cpp
     src/controllers/KitBoardController.cpp
     src/controllers/LockupController.cpp
     src/controllers/ClubLogoController.cpp
