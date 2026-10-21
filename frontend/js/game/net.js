@@ -59,6 +59,9 @@
     intent(slot, x, y, action) {
       this.send(GameWire.encodeIntent(slot, x, y, action));
     }
+    setLevels(homeId, awayId) {
+      this.send(GameWire.encodeMatchSettings(homeId, awayId));
+    }
   }
 
   window.GameNet = GameNet;

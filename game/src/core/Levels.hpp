@@ -45,6 +45,20 @@ struct LevelParams {
     }
 };
 
+// Stable wire ids for the bands (PROTOCOL.md §5 MATCH_SETTINGS; append-only).
+inline constexpr const char* kLevelNames[] = {
+    "perfect", "u10", "u14", "amateur", "semipro", "pro", "world"};
+inline constexpr std::uint8_t kLevelCount = 7;
+
+inline const char* levelName(std::uint8_t id) {
+    return id < kLevelCount ? kLevelNames[id] : "perfect";
+}
+inline std::uint8_t levelId(std::string_view name) {
+    for (std::uint8_t i = 0; i < kLevelCount; ++i)
+        if (name == kLevelNames[i]) return i;
+    return 0;
+}
+
 // The level ladder (§5.1: the history ladder IS the level ladder — tactical
 // ERAS join these bands when concepts/recognitions land in G4.2b+).
 // Numbers are first-pass; the calibration harness tunes them.

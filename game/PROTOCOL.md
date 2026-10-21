@@ -1,4 +1,4 @@
-# fh-game wire protocol — v1.2
+# fh-game wire protocol — v1.3
 
 > The protocol is the product boundary (DESIGN.md pillar 4). Every client —
 > browser, native, desktop, headless — implements this document and nothing
@@ -49,6 +49,7 @@ Frame types (u8):
 | 0x21 | EVENT | s→c | §7 |
 | 0x30 | CLAIM / RELEASE slot | c→s | take or drop control of a slot |
 | 0x31 | SPEED | c→s | manager/spectator: request sim speed (server-gated) |
+| 0x32 | MATCH_SETTINGS | c→s | admin: set both teams' skill bands live (1.3): `u8 level_home \| u8 level_away` (band ids 0-6 = perfect/u10/u14/amateur/semipro/pro/world); non-admin senders are ignored |
 | TBD | … | | reserved; new types are additive within a major version |
 
 Snapshot payloads at 22 slots + 3D ball must be measured against the u16
@@ -114,6 +115,8 @@ ball (appended in 1.1):
 match structure (appended in 1.2):
   u8 score_home | u8 score_away | u8 period |
   u16 clock_seconds (resets at full time) | u8 restart_team (0xFF = live)
+levels (appended in 1.3):
+  u8 level_home_id | u8 level_away_id
 ```
 
 - Players are planar (DESIGN.md §4), so player records carry **no z** —

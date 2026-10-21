@@ -10,6 +10,8 @@
   const statusEl = document.getElementById('status');
   const boardEl = document.getElementById('scoreboard');
   const autoBtn = document.getElementById('btn-auto');
+  const lvlHomeBtn = document.getElementById('btn-level-home');
+  const lvlAwayBtn = document.getElementById('btn-level-away');
   const canvas = document.getElementById('game-canvas');
   const renderer = new GameRenderer(canvas);
   const input = new GameInput(
@@ -36,10 +38,39 @@
     toastTimer = setTimeout(updateStatus, ms || 2500);
   }
 
+  // Live levels (from the snapshot 1.3 tail) + admin picker state.
+  const levels = { home: 0, away: 0 };
+
+  function sendLevels() {
+    net.setLevels(levels.home, levels.away);
+  }
+  function paintLevelButtons() {
+    if (lvlHomeBtn)
+      lvlHomeBtn.textContent = 'H: ' + GameWire.LEVELS[levels.home];
+    if (lvlAwayBtn)
+      lvlAwayBtn.textContent = 'A: ' + GameWire.LEVELS[levels.away];
+  }
+
   const net = new GameNet({
     onHello(h) {
       hello = h;
       renderer.buildWorld(h);
+      // Admin capability (bit 3) shows the level pickers.
+      if ((h.capabilities & 8) && lvlHomeBtn && lvlAwayBtn) {
+        lvlHomeBtn.style.display = 'block';
+        lvlAwayBtn.style.display = 'block';
+        const cycle = (side) => {
+          levels[side] = (levels[side] + 1) % GameWire.LEVELS.length;
+          paintLevelButtons();
+          sendLevels();
+        };
+        for (const [btn, side] of [[lvlHomeBtn, 'home'], [lvlAwayBtn, 'away']]) {
+          btn.addEventListener('click', () => cycle(side));
+          btn.addEventListener('touchstart', (e) => {
+            e.preventDefault(); e.stopPropagation(); cycle(side);
+          });
+        }
+      }
       statusEl.textContent =
         `match ${h.matchId} — tap a player to take control`;
       // Ship intents at tick rate for every slot we own. The server
@@ -62,6 +93,12 @@
       renderer.pushSnapshot(s);
       if (s.match && boardEl) {
         const m = s.match;
+        if (m.levelHome !== undefined &&
+            (m.levelHome !== levels.home || m.levelAway !== levels.away)) {
+          levels.home = m.levelHome;
+          levels.away = m.levelAway;
+          paintLevelButtons();
+        }
         const mm = String(Math.floor(m.clockSec / 60)).padStart(2, '0');
         const ss = String(m.clockSec % 60).padStart(2, '0');
         boardEl.textContent =

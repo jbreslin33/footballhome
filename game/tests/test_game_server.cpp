@@ -37,9 +37,10 @@ public:
     void poll(int) override {}
 
     // test drivers
-    void scriptConnect(fh::game::ClientId id) {
+    void scriptConnect(fh::game::ClientId id, const char* role = "") {
         auth::JwtClaims claims;
         claims.person_id = static_cast<std::int64_t>(id);
+        claims.role = role;
         on_connect_(id, claims);
     }
     void scriptMessage(fh::game::ClientId id, const Bytes& bytes) {
@@ -211,6 +212,51 @@ FH_TEST(server_two_frames_in_one_message) {
     r.t.scriptMessage(100, combined);
     r.s.tickOnce();
     FH_EXPECT(r.s.world().player(0).pos.x.raw > x0);
+}
+
+FH_TEST(server_admin_can_retune_levels_others_cannot) {
+    Rig r;
+    r.t.scriptConnect(100, "club");   // admin-ish club role
+    r.t.scriptConnect(200);            // plain player
+
+    // Admin's HELLO carries the admin capability; the player's doesn't.
+    std::size_t consumed = 0;
+    auto ha = decodeFrame(r.t.sent[100][0].data(), r.t.sent[100][0].size(),
+                          consumed);
+    auto hb = decodeFrame(r.t.sent[200][0].data(), r.t.sent[200][0].size(),
+                          consumed);
+    FH_EXPECT(decodeHello(ha->payload)->capabilities & kCapAdmin);
+    FH_EXPECT(!(decodeHello(hb->payload)->capabilities & kCapAdmin));
+
+    // Player tries u10/u10: ignored. Admin sets pro/u10: applied, and the
+    // next snapshot's 1.3 tail reports it.
+    MatchSettingsFrame ms;
+    ms.level_home = 1;  // u10
+    ms.level_away = 1;
+    r.t.scriptMessage(200, encodeFrame(FrameType::MatchSettings,
+                                       encodeMatchSettings(ms)));
+    r.s.tickOnce();
+    auto snap1 = [&] {
+        const auto& fr = r.t.sent[100].back();
+        std::size_t c = 0;
+        auto f = decodeFrame(fr.data(), fr.size(), c);
+        return *decodeSnapshot(f->payload);
+    }();
+    FH_EXPECT_EQ(snap1.level_home, 0);  // unchanged (test cfg default)
+
+    ms.level_home = 5;  // pro
+    ms.level_away = 1;  // u10
+    r.t.scriptMessage(100, encodeFrame(FrameType::MatchSettings,
+                                       encodeMatchSettings(ms)));
+    r.s.tickOnce();
+    auto snap2 = [&] {
+        const auto& fr = r.t.sent[100].back();
+        std::size_t c = 0;
+        auto f = decodeFrame(fr.data(), fr.size(), c);
+        return *decodeSnapshot(f->payload);
+    }();
+    FH_EXPECT_EQ(snap2.level_home, 5);
+    FH_EXPECT_EQ(snap2.level_away, 1);
 }
 
 FH_TEST_MAIN()

@@ -44,4 +44,10 @@ ai::FormationSpec::Pos mapClubPosition(int club_x, int club_y,
 std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
                                                const std::string& code);
 
+// Admin users.id set (the club's real authz chain: users → admins →
+// admin_levels; the JWT's role claim is minted EMPTY, so identity is the
+// gate). Boot-time load; empty set on failure = nobody gets the admin
+// capability, loudly logged.
+std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg);
+
 }  // namespace fh::game::persistence

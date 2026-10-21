@@ -49,7 +49,12 @@ public:
         // Skill levels (G4.3) + the match's noise seed.
         core::LevelParams level_home;
         core::LevelParams level_away;
+        std::uint8_t level_home_id = 0;  // kLevelNames index (for the wire)
+        std::uint8_t level_away_id = 0;
         std::uint64_t match_seed = 0;
+        // users.id values holding the admin capability (club authz chain
+        // users→admins; loaded at boot by main.cpp).
+        std::vector<std::int64_t> admin_user_ids;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);
@@ -77,6 +82,10 @@ private:
 
     // slot → owning client. Absent key = AI-controlled (idle in G0).
     std::unordered_map<std::uint8_t, ClientId> slot_owner_;
+    // Current level ids (mutable via admin MATCH_SETTINGS).
+    std::uint8_t level_id_[2] = {0, 0};
+    // Clients holding the admin capability (granted from the JWT role).
+    std::unordered_map<ClientId, bool> admins_;
     // Connected clients, for snapshot fan-out. Keyed map (not vector) so
     // disconnect is O(1); iteration order doesn't matter — clients receive
     // identical bytes.

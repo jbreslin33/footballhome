@@ -173,6 +173,9 @@ Bytes encodeSnapshot(const SnapshotFrame& f) {
     w.u8(f.score0); w.u8(f.score1); w.u8(f.period);
     w.u16(static_cast<std::uint16_t>(f.clock_ticks / 30));  // whole seconds
     w.u8(f.restart_team);
+    // 1.3 tail: level bands.
+    w.u8(f.level_home);
+    w.u8(f.level_away);
     return std::move(w.out);
 }
 
@@ -207,6 +210,10 @@ std::optional<SnapshotFrame> decodeSnapshot(const Bytes& payload) {
         f.clock_ticks = static_cast<std::uint32_t>(r.u16()) * 30;
         f.restart_team = r.u8();
     }
+    if (r.at + 2 <= payload.size()) {  // 1.3 tail
+        f.level_home = r.u8();
+        f.level_away = r.u8();
+    }
     return f;
 }
 
@@ -226,6 +233,24 @@ std::optional<EventFrame> decodeEvent(const Bytes& payload) {
     f.event_type = r.u8();
     f.team = r.u8();
     f.tick = r.u64();
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
+// ── MATCH_SETTINGS ──────────────────────────────────────────────────────
+
+Bytes encodeMatchSettings(const MatchSettingsFrame& f) {
+    Writer w;
+    w.u8(f.level_home);
+    w.u8(f.level_away);
+    return std::move(w.out);
+}
+
+std::optional<MatchSettingsFrame> decodeMatchSettings(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    MatchSettingsFrame f;
+    f.level_home = r.u8();
+    f.level_away = r.u8();
     if (!r.ok) return std::nullopt;
     return f;
 }

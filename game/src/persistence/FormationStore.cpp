@@ -56,4 +56,24 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
     }
 }
 
+std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg) {
+    try {
+        const std::string conn_str =
+            "host=" + cfg.host + " dbname=" + cfg.dbname +
+            " user=" + cfg.user + " password=" + cfg.password +
+            " connect_timeout=5";
+        pqxx::connection conn{conn_str};
+        pqxx::work tx{conn};
+        const auto rows = tx.exec(
+            "SELECT u.id FROM users u JOIN admins a ON a.user_id = u.id");
+        std::vector<std::int64_t> out;
+        out.reserve(rows.size());
+        for (const auto& row : rows) out.push_back(row[0].as<std::int64_t>());
+        return out;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: admin-id load failed: %s\n", e.what());
+        return {};
+    }
+}
+
 }  // namespace fh::game::persistence

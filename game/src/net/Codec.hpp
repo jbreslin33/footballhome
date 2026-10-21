@@ -70,6 +70,9 @@ struct SnapshotFrame {
     std::uint8_t  period = 1;
     std::uint32_t clock_ticks = 0;     // resets each full time
     std::uint8_t  restart_team = 0xFF; // 0xFF = live ball
+    // Appended in 1.3: current level-band ids (core::kLevelNames).
+    std::uint8_t  level_home = 0;
+    std::uint8_t  level_away = 0;
 };
 
 struct EventFrame {
@@ -126,5 +129,13 @@ std::optional<ClaimFrame> decodeClaim(const Bytes& payload);
 
 Bytes encodeEvent(const EventFrame& f);
 std::optional<EventFrame> decodeEvent(const Bytes& payload);
+
+struct MatchSettingsFrame {
+    // Level band ids (core::kLevelNames indices).
+    std::uint8_t level_home = 0;
+    std::uint8_t level_away = 0;
+};
+Bytes encodeMatchSettings(const MatchSettingsFrame& f);
+std::optional<MatchSettingsFrame> decodeMatchSettings(const Bytes& payload);
 
 }  // namespace fh::game::net

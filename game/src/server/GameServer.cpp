@@ -22,6 +22,8 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     world_.setLevel(1, cfg.level_away);
     world_.setMatchSeed(cfg.match_seed);
     brain_.setLevels(cfg.level_home, cfg.level_away, cfg.match_seed);
+    level_id_[0] = cfg.level_home_id;
+    level_id_[1] = cfg.level_away_id;
     transport_.setOnConnect(
         [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
     transport_.setOnDisconnect([this](ClientId id) { onDisconnect(id); });
@@ -59,13 +61,27 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     }
 }
 
-void GameServer::onConnect(ClientId id, const auth::JwtClaims& /*claims*/) {
-    // G0: everyone is player+spectator. Capability differentiation (manager,
-    // admin) keys off claims + match config from G5 (PROTOCOL.md §3).
+void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
+    // Everyone plays + spectates; the club's admin-ish roles also get the
+    // admin capability (live match settings). Same role set the club app's
+    // role picker treats as admin.
+    // Identity gate: the club mints role:"" into JWTs — real authz is the
+    // users→admins chain, loaded at boot. The role-claim check remains as
+    // a dev-token convenience.
+    bool admin = false;
+    for (const auto uid : cfg_.admin_user_ids) {
+        if (uid == claims.person_id) { admin = true; break; }
+    }
+    admin = admin ||
+        claims.role == "super" || claims.role == "admin" ||
+        claims.role == "club" || claims.role == "system";
+    if (admin) admins_.emplace(id, true);
+
     HelloFrame hello;
     hello.match_id = cfg_.match_id;
     hello.tick_rate = static_cast<std::uint8_t>(core::kTickRate);
-    hello.capabilities = kCapPlayer | kCapSpectator;
+    hello.capabilities = kCapPlayer | kCapSpectator |
+                         (admin ? kCapAdmin : 0);
     hello.slot_count = cfg_.slot_count;
     hello.pitch_half_x = Fixed64::fromFraction(105, 2);  // 52.5 m
     hello.pitch_half_y = Fixed64::fromInt(cfg_.pitch_half_y);
@@ -77,6 +93,7 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& /*claims*/) {
 
 void GameServer::onDisconnect(ClientId id) {
     clients_.erase(id);
+    admins_.erase(id);
     // Release every slot the departing client held; those players revert to
     // idle (AI controllers take them over from G2 on).
     for (auto it = slot_owner_.begin(); it != slot_owner_.end();) {
@@ -129,6 +146,24 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             }
             return;
         }
+        case FrameType::MatchSettings: {
+            // Admin-only: retune both teams' skill bands live. The world
+            // and the brain update together; the seed stays, so the match
+            // continues deterministically under the new config.
+            if (!admins_.count(id)) return;
+            const auto ms = decodeMatchSettings(frame.payload);
+            if (!ms || ms->level_home >= core::kLevelCount ||
+                ms->level_away >= core::kLevelCount)
+                return;
+            level_id_[0] = ms->level_home;
+            level_id_[1] = ms->level_away;
+            const auto home = core::levelParams(core::levelName(ms->level_home));
+            const auto away = core::levelParams(core::levelName(ms->level_away));
+            world_.setLevel(0, home);
+            world_.setLevel(1, away);
+            brain_.setLevels(home, away, world_.matchSeed());
+            return;
+        }
         default:
             return;  // unknown/unexpected types ignored (PROTOCOL.md §9)
     }
@@ -158,6 +193,8 @@ net::Bytes GameServer::buildSnapshotFrame() const {
     s.period = world_.period();
     s.clock_ticks = world_.matchClockTicks();
     s.restart_team = world_.restartTeam();
+    s.level_home = level_id_[0];
+    s.level_away = level_id_[1];
     return encodeFrame(FrameType::Snapshot, encodeSnapshot(s));
 }
 

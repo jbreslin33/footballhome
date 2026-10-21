@@ -53,6 +53,8 @@ int main() {
     // perfect. The level ladder is the history ladder (DESIGN.md 5.1).
     cfg.level_home = core::levelParams(envOr("GAME_LEVEL_HOME", "amateur"));
     cfg.level_away = core::levelParams(envOr("GAME_LEVEL_AWAY", "amateur"));
+    cfg.level_home_id = core::levelId(envOr("GAME_LEVEL_HOME", "amateur"));
+    cfg.level_away_id = core::levelId(envOr("GAME_LEVEL_AWAY", "amateur"));
     cfg.match_seed = std::strtoull(envOr("GAME_MATCH_SEED", "42"), nullptr, 10);
     std::printf("fh-game: levels home=%s away=%s seed=%s\n",
                 envOr("GAME_LEVEL_HOME", "amateur"),
@@ -82,6 +84,9 @@ int main() {
         } else {
             std::printf("fh-game: away formation FALLBACK (built-in)\n");
         }
+        cfg.admin_user_ids = persistence::loadAdminUserIds(db);
+        std::printf("fh-game: %zu admin user(s) loaded\n",
+                    cfg.admin_user_ids.size());
     }
 
     auth::JwtVerifier verifier{secret};

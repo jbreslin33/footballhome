@@ -19,7 +19,10 @@
     SNAPSHOT: 0x20,
     EVENT: 0x21,
     CLAIM: 0x30,
+    MATCH_SETTINGS: 0x32,
   };
+
+  const LEVELS = ['perfect', 'u10', 'u14', 'amateur', 'semipro', 'pro', 'world'];
 
   // i64 raw (Q32.32) → JS float. BigInt keeps 64-bit exactness before the
   // one deliberate float conversion at the boundary.
@@ -79,7 +82,9 @@
     const match = { score0: view.getUint8(p), score1: view.getUint8(p + 1),
                     period: view.getUint8(p + 2),
                     clockSec: view.getUint16(p + 3, true),
-                    restartTeam: view.getUint8(p + 5) };
+                    restartTeam: view.getUint8(p + 5),
+                    levelHome: view.getUint8(p + 6),
+                    levelAway: view.getUint8(p + 7) };
     return { tick, players, ball, match };
   }
 
@@ -103,6 +108,14 @@
     return buf;
   }
 
+  function encodeMatchSettings(levelHome, levelAway) {
+    const p = new ArrayBuffer(2);
+    const v = new DataView(p);
+    v.setUint8(0, levelHome);
+    v.setUint8(1, levelAway);
+    return envelope(FrameType.MATCH_SETTINGS, p);
+  }
+
   function encodeClaim(slot, claim) {
     const p = new ArrayBuffer(2);
     const v = new DataView(p);
@@ -124,6 +137,8 @@
 
   window.GameWire = {
     FrameType,
+    LEVELS,
+    encodeMatchSettings,
     decodeFrame,
     decodeHello,
     decodeSnapshot,

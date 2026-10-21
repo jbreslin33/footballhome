@@ -250,6 +250,34 @@ bool findIntClaimMaybeQuoted(std::string_view json,
     return true;
 }
 
+// Optional simple string claim ("role":"admin"). Returns "" when absent
+// or not a plain string. Same needle discipline as findIntClaim.
+std::string findStringClaim(std::string_view json, std::string_view name)
+{
+    std::string needle;
+    needle.reserve(name.size() + 2);
+    needle.push_back('"');
+    needle.append(name);
+    needle.push_back('"');
+    std::size_t pos = json.find(needle);
+    if (pos == std::string_view::npos) { return {}; }
+    std::size_t i = pos + needle.size();
+    skipWs(json, i);
+    if (i >= json.size() || json[i] != ':') { return {}; }
+    ++i;
+    skipWs(json, i);
+    if (i >= json.size() || json[i] != '"') { return {}; }
+    ++i;
+    std::string out;
+    while (i < json.size() && json[i] != '"') {
+        if (json[i] == '\\') { return {}; }  // escapes: not a simple claim
+        out.push_back(json[i]);
+        ++i;
+    }
+    if (i >= json.size()) { return {}; }
+    return out;
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -313,6 +341,7 @@ std::optional<JwtClaims> JwtVerifier::verify(std::string_view token) const
         return std::nullopt;
     }
     findIntClaim(payload_json, "iat", claims.iat);   // optional
+    claims.role = findStringClaim(payload_json, "role");  // optional
 
     // -- Expiry check ------------------------------------------------------
     const std::int64_t now = clock_();

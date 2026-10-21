@@ -38,6 +38,7 @@ struct JwtClaims {
     std::int64_t person_id = 0;   // required (userId or person_id claim)
     std::int64_t iat       = 0;   // optional; 0 if absent
     std::int64_t exp       = 0;   // required; used for expiry check
+    std::string  role;            // optional club "role" claim ("" if absent)
 };
 
 // Injectable "now" — returns unix seconds. Default calls std::time.

@@ -17,7 +17,7 @@ namespace fh::game::net {
 
 // Protocol version — major bumps reject at HELLO, minor is additive.
 inline constexpr std::uint8_t kProtoMajor = 1;
-inline constexpr std::uint8_t kProtoMinor = 2;  // 1.2: match structure tail
+inline constexpr std::uint8_t kProtoMinor = 3;  // 1.3: live match settings
 inline constexpr std::uint8_t kProtoPatch = 0;
 
 // Envelope: u16 payload_length | u8 frame_type | u8 flags | payload.
@@ -33,6 +33,7 @@ enum class FrameType : std::uint8_t {
     Event        = 0x21,  // versioned match events; Goal is event 1 (G1)
     Claim        = 0x30,
     // 0x31 SPEED reserved — ships with manager/admin clients.
+    MatchSettings = 0x32,  // admin: set team skill levels live (1.3)
 };
 
 // Capability bits granted in HELLO (PROTOCOL.md §3).
