@@ -64,6 +64,7 @@ inline const math::Fixed64 kBallCarryLead = math::Fixed64::fromFraction(2, 5);
 
 // Kick powers (m/s). Preset in G1; pass_power attributes arrive G2.
 inline const math::Fixed64 kGroundKickSpeed = math::Fixed64::fromInt(14);
+inline const math::Fixed64 kShortPassSpeed   = math::Fixed64::fromInt(8);
 inline const math::Fixed64 kLoftKickSpeed   = math::Fixed64::fromInt(12);
 inline const math::Fixed64 kLoftKickRise    = math::Fixed64::fromInt(6);
 

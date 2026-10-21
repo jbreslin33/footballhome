@@ -84,6 +84,7 @@ u8 slot | i64 move_x (Fixed64 raw) | i64 move_y (Fixed64 raw) | u8 action
   - 1 = ground kick (1.1) — direction = move vector, else facing; preset
     power until pass attributes land (G2)
   - 2 = lofted kick (1.1) — same direction rule, adds vertical velocity
+  - 3 = short pass (1.2) — 8 m/s feet-to-feet ball; same direction rule
   - press / switch-player / through-ball / cross / header contest get ids
     additively as their mechanics land.
   - Only the slot's OWNER's action fires, and only while that slot carries

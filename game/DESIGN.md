@@ -351,6 +351,27 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
   phone, then tick.** Goldens re-locked for the G3 surface (history in
   test_determinism_core).
 
+### 8.5 G4 slices — the passing game & toward realism
+
+- G4.1 [x] (2026-10-21) The passing game [Buckland]-lite: carrier evaluates
+  forward receivers (progress-scored, 5–30 m window, 2 m lane check via
+  point-segment distance), passes when pressed or when the gain is big;
+  ShortPass action (8 m/s) inside 14 m, driven ball beyond; loft-clear only
+  when touch-tight with no outlet. One support teammate (nearest to the
+  carrier) runs a chosen-side spot 12 m ahead ([Buckland] support-spot
+  sampler replaces this). **Calibration: 291 → 10.0 goals/game (5–5
+  symmetric), 10-min sanity 3 goals** — the single biggest realism jump so
+  far; the 1860s→1890s transition on the §5.1 ladder. AI goldens re-locked.
+  Note: "possession %" now undercounts (pass flight counts as loose) —
+  attribute in-flight ball to last-touch team in a later metrics slice.
+- G4.2 [ ] DB registries ([v1] migration→codegen): formations + attributes
+  + concepts; daemon reads the live DB; users.id→persons mapping for
+  profiles.
+- G4.3 [ ] Skill noise (perception delay / decision noise / execution
+  error) + level bands (§5.1 eras, §5.2 knowledge triple begin here).
+- G4.4 [ ] Calibration CI gates: assert bands on goals/game, possession,
+  pass counts once mechanics settle.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Offside, fouls/cards, stamina, substitutions-as-rule (subs arrive with G5

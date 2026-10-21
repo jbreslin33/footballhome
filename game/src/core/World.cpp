@@ -87,7 +87,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
         // the carry point of the PREVIOUS tick (feels like a real release).
         const SlotIndex kicker = *ball_.owner;
         const Action act = actions_[kicker];
-        if (act == Action::GroundKick || act == Action::LoftedKick) {
+        if (act == Action::GroundKick || act == Action::LoftedKick ||
+            act == Action::ShortPass) {
             actions_[kicker] = Action::None;
             // Direction: live desire when pushing a direction, else facing.
             Vec2 desire = intents_[*ball_.owner].move;
@@ -97,6 +98,9 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
             if (act == Action::GroundKick) {
                 ball_.vel = Vec3{dir.x * kGroundKickSpeed,
                                  dir.y * kGroundKickSpeed, Fixed64::zero()};
+            } else if (act == Action::ShortPass) {
+                ball_.vel = Vec3{dir.x * kShortPassSpeed,
+                                 dir.y * kShortPassSpeed, Fixed64::zero()};
             } else {
                 ball_.vel = Vec3{dir.x * kLoftKickSpeed,
                                  dir.y * kLoftKickSpeed, kLoftKickRise};

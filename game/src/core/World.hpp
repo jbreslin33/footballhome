@@ -24,8 +24,9 @@ using SlotIndex = std::uint8_t;
 // Kick actions carried in PLAYER_INTENT's `action` field (PROTOCOL.md §4).
 enum class Action : std::uint8_t {
     None       = 0,
-    GroundKick = 1,
-    LoftedKick = 2,
+    GroundKick = 1,  // 14 m/s — drive / long pass / shot
+    LoftedKick = 2,  // 12 m/s + rise — chip / clearance
+    ShortPass  = 3,  // 8 m/s — feet-to-feet inside ~15 m (G4 passing)
 };
 
 struct PlayerState {
