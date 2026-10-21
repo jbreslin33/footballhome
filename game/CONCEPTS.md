@@ -24,6 +24,11 @@ touchline laws — [FH] marks engine-original formulations.
 | 7 | `keeper_sweep` | Keeper owns free balls in the defensive third | through balls die un-contested; keeper rooted (every U-10 keeper) |
 | 8 | `shot_placement` | Shoot inside the far post, away from the keeper | shoots at the keeper's chest |
 | 9 | `line_hold` | Back line holds ≥ ~25 m from the ball instead of man-following into the goalmouth; makes run-timing (and later the trap) real [FH, measured] | the retreat spiral |
+| 10 | `jockey_angle` | Delay shaded a step infield — show the carrier the TOUCHLINE | jockeys square-on; carrier picks either side |
+| 11 | `recover_goal_side` | Beaten → sprint the cover line between ball and goal, never chase the ball | kids chasing the play from behind |
+| 12 | `double_team` | Carrier pinned wide → cover man converges; the touchline is the third defender | wide carriers escape 1v1 forever |
+| 13 | `spread_wide` | In possession, wide players HOLD width — the attack un-bunches [FH/James: the offense's bunching is what stops goals] | attack narrows itself into the block |
+| 14 | `give_and_go` | Pass and MOVE: burst beyond your receiver; the 1-2 emerges from his normal pass choice | pass-and-stand |
 
 ## Build queue (planned; each lands with the behavior that consumes it)
 
@@ -33,14 +38,13 @@ underfoot), `shield_ball` (body between man and ball), `scan_before_receive`
 (open body shape to play forward), `beat_man_1v1` (v1's Feint behavior,
 archived and tested).
 
-**Individual, defending** — `jockey_angle` (show the touchline, not the
-middle), `tackle_timing` (dive on the heavy touch, not on faith),
-`recover_goal_side` (beaten → sprint the cover line, not the ball).
+**Individual, defending** — `tackle_timing` (dive on the heavy touch, not
+on faith), `block_shot_line` (defend the shooting lane inside the box).
 
-**Group (2–4 players)** — `wall_pass` (1-2 around a presser),
+**Group (2–4 players)** — `wall_pass` (the return-ball half of give-and-go
+under an opponent), 
 `third_man` (the free man the second pass finds — v1 behavior archived),
-`overlap` / `underlap`, `double_team` (press + cover converging on a
-trapped carrier), `press_trigger` (bad touch / back-pass / sideline =
+`overlap` / `underlap`, `press_trigger` (bad touch / back-pass / sideline =
 GO — v1's original M5 goal), `cover_shadow` (press while blocking the
 pass lane behind you — v1 archived), `switch_play` (deep block +
 ball-side overload → long diagonal; §5.2's second example).

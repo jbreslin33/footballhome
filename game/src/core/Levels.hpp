@@ -91,12 +91,18 @@ enum Concept : std::uint32_t {
     kKeeperSweep     = 1u << 7,
     kShotPlacement   = 1u << 8,
     kLineHold        = 1u << 9,
+    kJockeyAngle     = 1u << 10,  // show them the touchline
+    kRecoverGoalSide = 1u << 11,  // beaten → sprint the cover line
+    kDoubleTeam      = 1u << 12,  // trap on the touchline
+    kSpreadWide      = 1u << 13,  // attacking WIDTH (James's law, offense side)
+    kGiveAndGo       = 1u << 14,  // pass and MOVE
 };
-inline constexpr std::uint32_t kAllConcepts = (1u << 10) - 1;
+inline constexpr std::uint32_t kAllConcepts = (1u << 15) - 1;
 inline constexpr const char* kConceptNames[] = {
     "delay", "marking", "cover", "support", "outlet",
-    "runs", "over-top", "sweep", "placement", "line-hold"};
-inline constexpr int kConceptCount = 10;
+    "runs", "over-top", "sweep", "placement", "line-hold",
+    "jockey-angle", "recover", "double-team", "width", "give-and-go"};
+inline constexpr int kConceptCount = 15;
 
 // Default knowledge bundle for a level band. EXACTLY reproduces the
 // pre-registry gates (swarm >= 40 lacked the theory), so unedited teams
@@ -105,7 +111,8 @@ inline std::uint32_t conceptBundle(const LevelParams& lv) {
     std::uint32_t m = kCoverMan | kSupportSpot | kShotPlacement | kLineHold;
     if (lv.swarm_pct < 40) {
         m |= kDelayTransition | kManMarking | kBackOutlet | kRunInBehind |
-             kPlayOverTop | kKeeperSweep;
+             kPlayOverTop | kKeeperSweep | kJockeyAngle | kRecoverGoalSide |
+             kDoubleTeam | kSpreadWide | kGiveAndGo;
     }
     return m;
 }

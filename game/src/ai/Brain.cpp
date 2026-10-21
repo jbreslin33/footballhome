@@ -382,6 +382,13 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // 3. Cover man: second-closest to the ball shadows the ball→goal
         //    line, 7 m goal-side.
         if (teamCloserCount(slot, world, seen_ball) == 1 &&
+            (concepts_[slot] & core::kDoubleTeam) && ball.owner &&
+            math::fx_abs(seen_ball.y) > Fixed64::fromInt(22)) {
+            // double_team: the touchline is the extra defender — when the
+            // carrier is pinned wide, the cover man CONVERGES instead of
+            // sitting off, and the trap closes.
+            anchor = Vec2{seen_ball.x, seen_ball.y};
+        } else if (teamCloserCount(slot, world, seen_ball) == 1 &&
             (concepts_[slot] & core::kCoverMan)) {
             const Vec2 own_goal{-sgn * half_x_, Fixed64::zero()};
             const Vec2 to_goal{own_goal.x - seen_ball.x,
@@ -455,6 +462,25 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             }
         }
 
+        // recover_goal_side: I'm upfield of the ball (beaten) — the
+        // coached run is to the COVER LINE between ball and goal, never
+        // straight at the ball. Kids chase; defenders recover.
+        if ((know & core::kRecoverGoalSide) &&
+            me.pos.x * dsgn > seen_ball.x * dsgn + Fixed64::one() &&
+            teamCloserCount(slot, world, seen_ball) >= 1) {
+            const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
+            const Vec2 tg{own_goal.x - seen_ball.x, own_goal.y - seen_ball.y};
+            const Fixed64 len = math::length(tg);
+            if (len > Fixed64::fromInt(1)) {
+                const Fixed64 k = Fixed64::fromInt(6) / len;
+                out.move.move =
+                    seek(me.pos, Vec2{seen_ball.x + tg.x * k,
+                                      seen_ball.y + tg.y * k},
+                         Fixed64::fromFraction(1, 2));
+                return out;
+            }
+        }
+
         const bool in_range =
             distSq(me.pos, seen_ball) < kChaseRadius * kChaseRadius;
         // Swarmy teams send a MOB at the ball, not one presser.
@@ -483,9 +509,18 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             // DELAY [v1 Jockey concept]: 2.2 m goal-side of the carrier,
             // matching laterally; no tackle from here — buy the time the
             // rest need to find their marks.
+            // jockey_angle: shade a step infield of the ball so the
+            // carrier's easy touch is toward the TOUCHLINE, not the
+            // middle — "show them the line".
+            Fixed64 shade = Fixed64::zero();
+            if (know & core::kJockeyAngle) {
+                shade = seen_ball.y.raw >= 0
+                            ? -Fixed64::fromFraction(6, 5)
+                            : Fixed64::fromFraction(6, 5);
+            }
             const Vec2 jockey{
                 seen_ball.x - dsgn * Fixed64::fromFraction(11, 5),
-                seen_ball.y};
+                seen_ball.y + shade};
             out.move.move = seek(me.pos, jockey, Fixed64::fromFraction(3, 10));
             return out;
         }
@@ -542,6 +577,20 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     if (ours && ball.owner && *ball.owner != slot && !mine.keeper) {
         const auto& carrier = world.player(*ball.owner);
         const Fixed64 sgn2 = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+
+        // give_and_go: I JUST passed this ball — keep moving. Burst past
+        // the receiver into the space ahead; his normal pass evaluation
+        // finds me and the 1-2 emerges with no special wall-pass code.
+        if ((concepts_[slot] & core::kGiveAndGo) &&
+            ball.last_kicker == slot) {
+            out.move.move = seek(
+                me.pos,
+                Vec2{carrier.pos.x + sgn2 * Fixed64::fromInt(10),
+                     (carrier.pos.y + me.pos.y) *
+                         Fixed64::fromFraction(1, 2)},
+                Fixed64::fromFraction(1, 2));
+            return out;
+        }
 
         // ── run in behind (G4.8): the most ADVANCED disciplined attacker
         // attacks the space beyond their last outfield defender — the
@@ -631,6 +680,20 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         const Vec2 spot = openness(left) >= openness(right) ? left : right;
         out.move.move = seek(me.pos, spot, kArriveRadius);
         return out;
+        }
+    }
+
+    // spread_wide (James's law, attacking half): "the bunching of the
+    // offense is what stops goals" — so the coached attack UN-bunches.
+    // In possession, wide-based players hold real width, stretching the
+    // defense laterally regardless of the ball-shift pull.
+    if (ours && (concepts_[slot] & core::kSpreadWide) &&
+        math::fx_abs(mine.base.y) > Fixed64::fromFraction(40, 100)) {
+        const Fixed64 wide = Fixed64::fromInt(24);
+        if (mine.base.y.raw >= 0) {
+            if (anchor.y < wide) anchor.y = wide;
+        } else {
+            if (anchor.y > -wide) anchor.y = -wide;
         }
     }
 
