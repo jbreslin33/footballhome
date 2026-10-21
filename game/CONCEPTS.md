@@ -157,6 +157,10 @@ support 90, back_outlet 80; marking stays nearer zonal than full Bielsa
 (man_orientation ~55 — the "modification"). Landed as DB rows (mig 630):
 every Lighthouse rating row cites its verbatim source line.
 
+Teams WEAR a preset (mig 631): `game_demo_teams.style_preset` names one
+and the daemon overlays it at boot and across band changes — Lighthouse
+XI boots playing the club game model, no admin tap needed.
+
 Preset rows LANDED (mig 630, `game_style_presets` +
 `game_style_preset_ratings`): a preset is an OVERLAY — it carries ratings
 only for the dials the school names (concept NAMES, not bit ids; an

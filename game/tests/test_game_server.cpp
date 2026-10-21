@@ -279,6 +279,37 @@ FH_TEST(preset_overlay_touches_only_named_dials) {
     FH_EXPECT_EQ(r[0], 50);  // unnamed dial untouched
 }
 
+FH_TEST(roster_wears_its_named_preset_at_boot) {
+    persistence::StylePreset bielsa;
+    bielsa.name = "Bielsa";
+    bielsa.overlay.fill(-1);
+    bielsa.overlay[18] = 95;  // man-mark
+
+    persistence::DemoTeam team;
+    team.level_band = "world";
+    team.style_preset = "Bielsa";
+
+    FakeTransport t;
+    server::GameServer s{{.match_id = 7, .slot_count = 4,
+                          .roster_home = team, .presets = {bielsa}}, t};
+    t.scriptConnect(100, "club");
+    auto rosters = framesOf(t.sent[100], FrameType::Roster);
+    auto r0 = *decodeRoster(rosters.back());
+    FH_EXPECT_EQ(r0.slots[0].ratings[18], 95);  // home wears Bielsa
+    FH_EXPECT_EQ(r0.slots[2].ratings[18], 0);   // away does not
+
+    // The identity survives a band change (MATCH_SETTINGS reset).
+    MatchSettingsFrame ms;
+    ms.level_home = 4;  // semipro
+    ms.level_away = 4;
+    t.scriptMessage(100, encodeFrame(FrameType::MatchSettings,
+                                     encodeMatchSettings(ms)));
+    rosters = framesOf(t.sent[100], FrameType::Roster);
+    auto r1 = *decodeRoster(rosters.back());
+    FH_EXPECT_EQ(r1.slots[0].ratings[18], 95);
+    FH_EXPECT_EQ(r1.slots[2].ratings[18], 0);
+}
+
 FH_TEST(server_admin_applies_preset_to_one_team_only) {
     persistence::StylePreset bielsa;
     bielsa.name = "Bielsa";

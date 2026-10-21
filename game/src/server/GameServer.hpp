@@ -96,6 +96,9 @@ private:
     std::vector<std::string> slot_names_;
     std::vector<core::ConceptRatings> concept_ratings_;
     void applyRosters();
+    // Overlay a roster's named style preset (mig 631) onto its team's
+    // live ratings — at boot and after band resets.
+    void overlayTeamPreset(bool home);
     void broadcastRoster();
     // Clients holding the admin capability (granted from the JWT role).
     std::unordered_map<ClientId, bool> admins_;

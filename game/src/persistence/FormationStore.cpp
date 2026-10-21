@@ -86,11 +86,14 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
         pqxx::connection conn{conn_str};
         pqxx::work tx{conn};
         const auto team = tx.exec_params(
-            "SELECT id, level_band FROM game_demo_teams WHERE name = $1",
+            "SELECT id, level_band, style_preset FROM game_demo_teams "
+            "WHERE name = $1",
             team_name);
         if (team.empty()) return std::nullopt;
         DemoTeam out;
         out.level_band = team[0][1].as<std::string>();
+        if (!team[0][2].is_null())
+            out.style_preset = team[0][2].as<std::string>();
         const auto rows = tx.exec_params(
             "SELECT name, max_speed_cms, concept_mask FROM game_demo_players "
             "WHERE team_id = $1 ORDER BY shirt",

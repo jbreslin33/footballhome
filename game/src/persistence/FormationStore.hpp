@@ -59,6 +59,9 @@ struct DemoPlayer {
 };
 struct DemoTeam {
     std::string level_band;
+    // Mig 631: the style preset this team WEARS — overlaid onto its
+    // ratings at boot and after band changes. Empty = none.
+    std::string style_preset;
     std::vector<DemoPlayer> players;  // shirt order
 };
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,

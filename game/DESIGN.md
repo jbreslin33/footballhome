@@ -532,6 +532,16 @@ fails the build instead of waiting three slices. AI goldens re-locked
 (3v3 0x711f559f…, 11v11 0x694fffef…); zero-param determinism goldens
 untouched.
 
+### 8.10 G4.15 — teams wear their identity
+
+Mig 631: `game_demo_teams.style_preset` names a mig-630 preset; the
+daemon overlays it onto the team's ratings at boot and re-applies it
+after every MATCH_SETTINGS band reset, so the identity survives level
+changes. Lighthouse XI boots wearing "Lighthouse" — the club game model
+(docs/game-model/) PLAYING, not just spec'd. Boot log names the worn
+preset. No wire changes; the edit panel shows the overlaid ratings via
+the ordinary ROSTER frame.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

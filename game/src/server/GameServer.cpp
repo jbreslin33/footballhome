@@ -95,6 +95,29 @@ void GameServer::applyRosters() {
         concept_ratings_[i] = r;
         brain_.setRatings(i, r);
     }
+    // Teams WEAR their identity (mig 631): a roster naming a style preset
+    // boots with it overlaid — Lighthouse XI plays the club game model
+    // without an admin tapping it on.
+    overlayTeamPreset(true);
+    overlayTeamPreset(false);
+}
+
+void GameServer::overlayTeamPreset(bool home) {
+    const persistence::DemoTeam& team =
+        home ? cfg_.roster_home : cfg_.roster_away;
+    if (team.style_preset.empty()) return;
+    const persistence::StylePreset* preset = nullptr;
+    for (const auto& p : cfg_.presets) {
+        if (p.name == team.style_preset) { preset = &p; break; }
+    }
+    if (!preset) return;  // preset table missing the name: quietly none
+    const std::uint8_t half = cfg_.slot_count / 2;
+    const std::uint8_t from = home ? 0 : half;
+    const std::uint8_t to = home ? half : cfg_.slot_count;
+    for (std::uint8_t sl = from; sl < to; ++sl) {
+        core::applyPresetOverlay(concept_ratings_[sl], preset->overlay);
+        brain_.setRatings(sl, concept_ratings_[sl]);
+    }
 }
 
 void GameServer::broadcastRoster() {
@@ -228,6 +251,9 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
                 concept_ratings_[sl] = core::defaultRatings(b);
                 brain_.setRatings(sl, concept_ratings_[sl]);
             }
+            // A worn identity survives the band change (mig 631).
+            overlayTeamPreset(true);
+            overlayTeamPreset(false);
             broadcastRoster();
             return;
         }
