@@ -707,15 +707,18 @@ class MensRosterScreen extends RosterScreenBase {
     const shown = col.isUnassigned ? players
       : seesOn ? players.filter(p => seesCat(catOf(p)))
       : players.filter(p => !off(catOf(p)));
+    // ⭐ riders render as ordinary rows IN the main list (owner
+    // 2026-10-21: "all pills should just filter the main list" — no
+    // separate strip/box).  Same frame as the player cards.
     const ridersHtml = (!col.isUnassigned && riders.length && (seesOn || !off('riders'))) ? riders.map(r => `
-      <div style="padding:5px 8px; border:1px dashed #60a5fa; border-radius:8px; font-size:0.74rem; background:rgba(96,165,250,0.08);"
+      <div style="padding:4px 8px; border:${RosterScreenBase.NEUTRAL_CARD_BORDER}; border-radius:8px; font-size:0.78rem;"
            title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">
-        ⭐ <b>${this.escape(r.name)}</b> <span style="opacity:0.7;">· from ${this.escape(r.fromTeam || '—')}</span>
+        ⭐ <b>${this.escape(r.name)}</b> <span style="opacity:0.7;">· rides along from ${this.escape(r.fromTeam || '—')}</span>
       </div>`).join('') : '';
 
-    const body = shown.length === 0
-      ? (ridersHtml ? '' : '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>')
-      : renderList(shown);
+    const body = (shown.length === 0 && !ridersHtml)
+      ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
+      : renderList(shown) + ridersHtml;
 
     // Column-header financial roll-up ("⚠ N OVERDUE") was removed
     // 2026-07-14 — belongs on the /payments screen, not here.  The
@@ -739,7 +742,6 @@ class MensRosterScreen extends RosterScreenBase {
              style="display:flex; flex-direction:column; gap:6px; min-height:8px; min-width:${this.colBoxMinWidth()};">
           ${body}
         </div>
-        ${ridersHtml ? `<div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">${ridersHtml}</div>` : ''}
       </div>
     `;
   }
