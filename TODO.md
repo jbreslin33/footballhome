@@ -4,7 +4,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Bugs / fixes
 
-- [ ]
+- [x] 2026-10-21 Lineup edits all reverting on reload (David Masi ALT kept popping back): mig 618's cap-check query passed matchId as an unused $1 — Postgres fails the whole statement, so EVERY lineup save 500'd silently since the 10/20 deploy. Fixed param numbering; David re-set to ALT for tonight; other moves since 10/20 need redoing.
 
 ## Features
 

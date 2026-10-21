@@ -622,17 +622,21 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
                     " WHERE fe.match_id = $1::int", {matchId});
                 const std::string teamArr = teams.empty() ? "{}" : std::string(teams[0]["ids"].c_str());
                 if (teamArr != "{}") {
+                    // NOTE: no matchId param here — an unused $1 made
+                    // Postgres fail the whole save with "could not
+                    // determine data type of parameter $1" (every lineup
+                    // edit silently reverted on reload; caught 10/21).
                     auto caps = db_->query(R"(
                         SELECT c.max_per_event, t.name AS from_name,
                                (SELECT count(*) FROM players pl JOIN persons pe ON pe.id = pl.person_id
-                                 WHERE pl.id = ANY($2::int[])
+                                 WHERE pl.id = ANY($1::int[])
                                    AND EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = pe.id
                                                 AND tp.team_id = c.from_team_id AND tp.removed_at IS NULL)
                                    AND NOT EXISTS (SELECT 1 FROM team_persons tp2 WHERE tp2.person_id = pe.id
-                                                AND tp2.team_id = ANY($3::int[]) AND tp2.removed_at IS NULL)) AS used
+                                                AND tp2.team_id = ANY($2::int[]) AND tp2.removed_at IS NULL)) AS used
                           FROM team_invite_caps c JOIN teams t ON t.id = c.from_team_id
-                         WHERE c.to_team_id = ANY($3::int[]))",
-                        {matchId, arr.str(), teamArr});
+                         WHERE c.to_team_id = ANY($2::int[]))",
+                        {arr.str(), teamArr});
                     for (const auto& c : caps) {
                         const long long maxN = c["max_per_event"].as<long long>();
                         const long long used = c["used"].as<long long>();
