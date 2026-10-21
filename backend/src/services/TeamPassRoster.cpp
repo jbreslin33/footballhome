@@ -217,13 +217,21 @@ TeamPassRoster::Result TeamPassRoster::fetch(const std::string& siteSlug, const 
     // anchors are kilobytes long.
     {
         const std::string kCard = "class=\"roster_headshot\"";
-        const std::string kNameDiv = "<div style=\"font-size:12px;line-height:1;\">";
+        // No closing '>' on the marker: TeamPass appends attributes after
+        // the style at will (10/21 the div grew class="tp1205-fade" and
+        // the parse silently went to zero names), so match the style
+        // alone and skip to the tag's own '>'.  The name is the div's
+        // leading text; an icon (account tick, card flag) may follow as a
+        // nested tag before </div>, so the name stops at the first '<'.
+        const std::string kNameDiv = "<div style=\"font-size:12px;line-height:1;\"";
         size_t at = 0;
         while ((at = team.body.find(kCard, at)) != std::string::npos) {
             const size_t nd = team.body.find(kNameDiv, at);
             if (nd == std::string::npos) break;
-            const size_t from = nd + kNameDiv.size();
-            const size_t end = team.body.find("</div>", from);
+            const size_t open = team.body.find('>', nd);
+            if (open == std::string::npos) break;
+            const size_t from = open + 1;
+            const size_t end = team.body.find('<', from);
             if (end == std::string::npos) break;
             std::string name = htmlDecode(team.body.substr(from, end - from));
             // trim
