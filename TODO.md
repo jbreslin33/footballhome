@@ -32,7 +32,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
     - Water: 2 guys, 1 case each, reimbursed.
     - Bench discipline: make sure everyone on bench has pinnies on and stays seated on the bench — no standing or using a ball on the sidelines.
 
-- [ ] Sim: resume at Slice 35 (M3 doc close-out), then M4 (2v1/2v2/3v2 + off-ball behaviors — seven already implemented/unit-tested, unwired per ADR §22.27), M5 (PressTrigger4v2), then add an 11v11 milestone (formation anchoring, team attack/defend mode, GK, basic restarts; check snapshot frame capacity at 22 slots). Full game = biggest scenario tile; drills stay the teaching path. See sim/DESIGN.md §15.
+- [ ] Sim: 11v11-first plan. Tick Slice 35 (M3 doc close-out), then build ONE parameterized `MatchScenario(pitch, slots per team, formations, rules_flags)` — 11v11, 4v4, 2v1, and coach-painted scenarios are all configs of it (Slice 17 zone constraints = the paint primitive). Slice order: (1) formation anchoring from formation codes (concepts return_to_base/stay_in_zone already migrated), (2) team possession state machine, (3) wire the seven built-but-unplugged off-ball behaviors (ADR §22.27), (4) GK primitive, (5) dumb restarts — kickoff/throw-in/goal-kick/corner, NO offside/fouls in v1, (6) MatchScenario + tile + u16 snapshot-frame capacity check at 22 slots, (7) nearest-player switch so one human can run a team. M4/M5 drills become subset configs shipped after the spine, as data not code. See sim/DESIGN.md §15.
 
 ## Done
 
