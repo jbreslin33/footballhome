@@ -69,7 +69,10 @@ inline const math::Fixed64 kBobbleKeep = math::Fixed64::fromFraction(2, 5);
 inline constexpr int kBobbleLockoutTicks = 8;
 
 // Tackling (G4.6): lunge reach, poke speed, and the recovery stun.
-inline const math::Fixed64 kTackleReach = math::Fixed64::fromFraction(13, 10);
+// 1.8 m: a real lunge with leg extension. 1.3 was unreachable BY
+// CONSTRUCTION from behind a carrier (0.9 m body spacing + 0.4 m ball
+// lead = 1.3 exactly) — AI defenders could never fire the dive.
+inline const math::Fixed64 kTackleReach = math::Fixed64::fromFraction(9, 5);
 inline const math::Fixed64 kTacklePokeSpeed = math::Fixed64::fromInt(6);
 inline constexpr int kTackleMissRecovery = 15;  // 0.5 s flat on the turf
 inline constexpr int kTackleWinRecovery  = 5;   // played the ball, quick up

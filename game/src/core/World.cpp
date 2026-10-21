@@ -134,7 +134,7 @@ void World::tickPlayers() {
     }
 }
 
-void World::tickTackles() {
+void World::tickTackles(std::vector<MatchEvent>& events) {
     // Committed dives (G4.6). Resolved BEFORE kicks, so a well-timed
     // tackle blocks the shot that was about to fire. Only non-owners
     // tackle; only an OPPONENT'S carried ball can be won; a lunge at
@@ -183,8 +183,10 @@ void World::tickTackles() {
             ball_.contest_ticks = 0;
             last_touch_team_ = tackler.team;
             tackler.recovery_ticks = kTackleWinRecovery;
+            events.push_back({MatchEventType::TackleWon, tackler.team});
         } else {
             tackler.recovery_ticks = kTackleMissRecovery;  // beaten
+            events.push_back({MatchEventType::TackleLost, tackler.team});
         }
     }
 }
@@ -493,7 +495,7 @@ void World::tickClock(std::vector<MatchEvent>& events) {
 std::vector<MatchEvent> World::tick() {
     std::vector<MatchEvent> events;
     tickPlayers();
-    tickTackles();
+    tickTackles(events);
     tickPossessionAndKicks(events);
     tickFreeBall(events);
     tickClock(events);

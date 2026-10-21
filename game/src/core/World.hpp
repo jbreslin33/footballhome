@@ -59,6 +59,8 @@ enum class MatchEventType : std::uint8_t {
     Kickoff  = 5,  // team = awarded (after goals and at period starts)
     HalfTime = 6,  // team unused
     FullTime = 7,  // team unused
+    TackleWon  = 8,  // team = tackler's
+    TackleLost = 9,  // team = tackler's (beaten, in recovery)
 };
 
 struct MatchEvent {
@@ -116,7 +118,7 @@ public:
 
 private:
     void tickPlayers();
-    void tickTackles();
+    void tickTackles(std::vector<MatchEvent>& events);
     void tickPossessionAndKicks(std::vector<MatchEvent>& events);
     void tickFreeBall(std::vector<MatchEvent>& events);
     void awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events);

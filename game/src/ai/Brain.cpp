@@ -377,6 +377,25 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         const bool organized = mates_behind >= opps_behind + 1;
         const bool undisciplined = lv.swarm_pct >= 40;
 
+        // Traffic tackles: ANY defender (not just the engaged presser)
+        // dives when an opponent carries into their reach — provided the
+        // team has earned the step (organized) or doesn't know better
+        // (undisciplined). This is what makes dribbling INTO the dropped
+        // block dangerous; without it the block was furniture.
+        if (ball.owner && (organized || undisciplined) && !mine.keeper &&
+            distSq(me.pos, ball.pos) <
+                core::kTackleReach * core::kTackleReach) {
+            const Fixed64 n =
+                core::detNoise(match_seed_, world.tickCount(), slot, 7);
+            const int eagerness = 4 + lv.swarm_pct / 2;  // %/tick
+            if ((n + Fixed64::one()) < Fixed64::fromFraction(eagerness, 50)) {
+                out.move.move = seek(me.pos, Vec2{ball.pos.x, ball.pos.y},
+                                     Fixed64::fromFraction(1, 10));
+                out.action = Action::Tackle;
+                return out;
+            }
+        }
+
         const bool in_range =
             distSq(me.pos, seen_ball) < kChaseRadius * kChaseRadius;
         // Swarmy teams send a MOB at the ball, not one presser.
