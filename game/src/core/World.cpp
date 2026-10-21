@@ -86,6 +86,46 @@ void World::tickPlayers() {
             p.face = math::normalized(desire);
         }
     }
+
+    // Player-player collisions [v1 Slice 27]: circle-circle overlap is
+    // resolved by pushing both bodies apart equally along the centre
+    // axis (equal mass until body attributes land). One pass suffices:
+    // max closing speed is ~0.4 m/tick against a 0.9 m combined radius.
+    // Deterministic: fixed i<j order, exact-overlap fallback is slot-
+    // indexed. James's "bunching stops goals" becomes physical — you
+    // cannot dribble THROUGH a crowd any more.
+    const Fixed64 min_dist = kPlayerRadius + kPlayerRadius;
+    const Fixed64 min_dist_sq = min_dist * min_dist;
+    for (SlotIndex i = 0; i + 1 < players_.size(); ++i) {
+        for (SlotIndex j = i + 1; j < players_.size(); ++j) {
+            Vec2 d{players_[j].pos.x - players_[i].pos.x,
+                   players_[j].pos.y - players_[i].pos.y};
+            const Fixed64 dsq = math::lengthSquared(d);
+            if (dsq >= min_dist_sq) continue;
+            if (dsq.raw == 0) {
+                // Exact overlap: separate along x, lower slot goes -x.
+                d = Vec2{Fixed64::fromFraction(1, 100), Fixed64::zero()};
+            }
+            const Fixed64 dist = math::length(d);
+            const Vec2 n = (dist.raw == 0)
+                               ? Vec2{Fixed64::one(), Fixed64::zero()}
+                               : Vec2{d.x / dist, d.y / dist};
+            const Fixed64 push = (min_dist - dist) * Fixed64::fromFraction(1, 2);
+            players_[i].pos.x -= n.x * push;
+            players_[i].pos.y -= n.y * push;
+            players_[j].pos.x += n.x * push;
+            players_[j].pos.y += n.y * push;
+        }
+    }
+
+    // Re-clamp after collision pushes.
+    const Fixed64 m2 = Fixed64::fromInt(2);
+    for (auto& p : players_) {
+        if (p.pos.x > half_x_ + m2) p.pos.x = half_x_ + m2;
+        if (p.pos.x < -half_x_ - m2) p.pos.x = -half_x_ - m2;
+        if (p.pos.y > half_y_ + m2) p.pos.y = half_y_ + m2;
+        if (p.pos.y < -half_y_ - m2) p.pos.y = -half_y_ - m2;
+    }
 }
 
 void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {

@@ -9,6 +9,7 @@
 using fh::game::core::MoveIntent;
 using fh::game::core::World;
 using fh::game::core::kTickDt;
+using fh::game::core::kPlayerRadius;
 using fh::game::math::Fixed64;
 using fh::game::math::Vec2;
 
@@ -78,13 +79,19 @@ FH_TEST(world_half_desire_is_half_speed) {
 
 FH_TEST(world_slots_are_independent) {
     World w{2, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
+    // Spawn apart: both default to the origin, where the collision
+    // resolver (correctly) pushes overlapping bodies off each other.
+    w.placePlayer(0, {Fixed64::fromInt(-5), Fixed64::zero(), Fixed64::zero()},
+                  {Fixed64::one(), Fixed64::zero()});
+    w.placePlayer(1, {Fixed64::fromInt(5), Fixed64::zero(), Fixed64::zero()},
+                  {Fixed64::one(), Fixed64::zero()});
     MoveIntent east;
     east.move = Vec2{Fixed64::one(), Fixed64::zero()};
     w.setIntent(0, east);  // slot 1 stays idle
     w.tick();
 
-    FH_EXPECT(w.player(0).pos.x.raw > 0);
-    FH_EXPECT_EQ(w.player(1).pos.x.raw, 0);
+    FH_EXPECT(w.player(0).pos.x.raw > Fixed64::fromInt(-5).raw);
+    FH_EXPECT_EQ(w.player(1).pos.x.raw, Fixed64::fromInt(5).raw);
     FH_EXPECT_EQ(w.player(1).pos.y.raw, 0);
 }
 
@@ -109,6 +116,32 @@ FH_TEST(world_unknown_slot_intent_is_dropped) {
     w.setIntent(42, intent);  // out of range: no crash, no effect
     w.tick();
     FH_EXPECT_EQ(w.player(0).pos.x.raw, 0);
+}
+
+FH_TEST(players_cannot_occupy_same_spot) {
+    // Drive two players head-on through each other for 3 seconds; they
+    // must never overlap (combined radius 0.9 m) and must end up pushed
+    // past/beside each other, not superimposed. [v1 Slice 27]
+    World w{2, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34),};
+    w.placePlayer(0, {Fixed64::fromInt(-3), Fixed64::zero(), Fixed64::zero()},
+                  {Fixed64::one(), Fixed64::zero()});
+    w.placePlayer(1, {Fixed64::fromInt(3), Fixed64::zero(), Fixed64::zero()},
+                  {-Fixed64::one(), Fixed64::zero()});
+    MoveIntent east, west;
+    east.move = Vec2{Fixed64::one(), Fixed64::zero()};
+    west.move = Vec2{-Fixed64::one(), Fixed64::zero()};
+    const Fixed64 min_d_sq =
+        (kPlayerRadius + kPlayerRadius) * (kPlayerRadius + kPlayerRadius);
+    for (int t = 0; t < 90; ++t) {
+        w.setIntent(0, east);
+        w.setIntent(1, west);
+        w.tick();
+        const Vec2 d{w.player(1).pos.x - w.player(0).pos.x,
+                     w.player(1).pos.y - w.player(0).pos.y};
+        // Allow a hair of tolerance for the single-pass resolve.
+        FH_EXPECT(fh::game::math::lengthSquared(d).raw >=
+                  (min_d_sq * Fixed64::fromFraction(9, 10)).raw);
+    }
 }
 
 FH_TEST_MAIN()

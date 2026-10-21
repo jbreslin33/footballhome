@@ -28,7 +28,8 @@ namespace {
 //   G3   2026-10-21 restarts + score/clock  0xfa9bf89e7f1477e9
 //   G4.3 2026-10-21 level config in hash    0x2cad88c349759809
 //   G4.4 2026-10-21 keepers+touch+swarm cfg 0x7fe31d46df486a49
-constexpr std::uint64_t kGolden400TicksSeed42 = 0x7fe31d46df486a49ULL;
+//   G4.5 2026-10-21 player collisions       0x423841cf3a6eac06
+constexpr std::uint64_t kGolden400TicksSeed42 = 0x423841cf3a6eac06ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

@@ -4,22 +4,26 @@
 // slot, broadcast-angle camera (DESIGN.md §7 — readable on a 6" phone).
 // Pure dressing: nothing here affects gameplay.
 //
-// Snapshot interpolation [QUAKE]: render ~100 ms in the past, lerping
-// between the two snapshots that bracket the render time. Jitter in frame
-// arrival disappears; the cost is imperceptible latency.
+// Snapshot interpolation [QUAKE]: render ~4 ticks in the past on the
+// SERVER'S tick timeline (not packet-arrival times — WS delivery is
+// bursty, and arrival-based brackets caused visible jerk). We estimate
+// the offset between local clock and tick timeline as the minimum
+// observed (arrival - tick*dt), adapting slowly upward for clock drift.
 
 (function () {
   'use strict';
 
-  const INTERP_DELAY_MS = 100;
+  const INTERP_DELAY_TICKS = 4;  // ~133 ms behind live at 30 Hz
 
   class GameRenderer {
     constructor(canvas) {
       this.canvas = canvas;
       this.players = []; // THREE.Mesh per slot
       this.ballMesh = null;
-      this.buffer = []; // [{at, snap}] arrival-stamped snapshots
+      this.buffer = []; // [{tick, snap}] on the server tick timeline
       this.tickRate = 30;
+      this.timeOffset = null; // local ms ↔ tick-time ms estimate
+      this.lastSnapshotAt = 0;
       this.mySlots = new Set();
 
       this.scene = new THREE.Scene();
@@ -126,7 +130,16 @@
     }
 
     pushSnapshot(snap) {
-      this.buffer.push({ at: performance.now(), snap });
+      const now = performance.now();
+      this.lastSnapshotAt = now;
+      const dt = 1000 / this.tickRate;
+      const offset = now - snap.tick * dt;
+      if (this.timeOffset === null || offset < this.timeOffset) {
+        this.timeOffset = offset;       // fastest observed path wins
+      } else {
+        this.timeOffset += (offset - this.timeOffset) * 0.002; // drift
+      }
+      this.buffer.push({ tick: snap.tick, snap });
       if (this.buffer.length > 90) this.buffer.splice(0, 30);
     }
 
@@ -150,17 +163,21 @@
       }
     }
 
-    // Lerp between the two snapshots bracketing (now − delay).
+    // Lerp between the two snapshots bracketing the render TICK.
     frame() {
       const n = this.buffer.length;
-      if (n >= 1) {
-        const t = performance.now() - INTERP_DELAY_MS;
+      if (n >= 1 && this.timeOffset !== null) {
+        const dt = 1000 / this.tickRate;
+        const renderTick =
+          (performance.now() - this.timeOffset) / dt - INTERP_DELAY_TICKS;
         let a = this.buffer[0], b = this.buffer[n - 1];
         for (let i = n - 1; i > 0; i--) {
-          if (this.buffer[i - 1].at <= t) { a = this.buffer[i - 1]; b = this.buffer[i]; break; }
+          if (this.buffer[i - 1].tick <= renderTick) {
+            a = this.buffer[i - 1]; b = this.buffer[i]; break;
+          }
         }
-        const span = Math.max(b.at - a.at, 1);
-        const alpha = Math.min(Math.max((t - a.at) / span, 0), 1);
+        const span = Math.max(b.tick - a.tick, 1);
+        const alpha = Math.min(Math.max((renderTick - a.tick) / span, 0), 1);
         const count = Math.min(this.players.length, b.snap.players.length);
         for (let i = 0; i < count; i++) {
           const pa = a.snap.players[i], pb = b.snap.players[i];

@@ -51,10 +51,23 @@
       lvlAwayBtn.textContent = 'A: ' + GameWire.LEVELS[levels.away];
   }
 
+  let reconnectTimer = null;
+  function scheduleReconnect() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      statusEl.textContent = 'reconnecting…';
+      net.connect();
+    }, 1500);
+  }
+
   const net = new GameNet({
     onHello(h) {
       hello = h;
-      renderer.buildWorld(h);
+      if (!renderer.built) {        // reconnects reuse the scene
+        renderer.buildWorld(h);
+        renderer.built = true;
+      }
       // Admin capability (bit 3) shows the level pickers.
       if ((h.capabilities & 8) && lvlHomeBtn && lvlAwayBtn) {
         lvlHomeBtn.style.display = 'block';
@@ -76,6 +89,7 @@
       // Ship intents at tick rate for every slot we own. The server
       // samples (last write before its tick wins), so this cadence is
       // exactly right. [QUAKE]
+      if (intentTimer) clearInterval(intentTimer);
       intentTimer = setInterval(() => {
         if (mySlots.size === 0) return;
         const v = input.vector();
@@ -132,8 +146,14 @@
       }
     },
     onClose() {
-      statusEl.textContent = 'disconnected — reload to rejoin';
-      if (intentTimer) clearInterval(intentTimer);
+      // Claims died with the socket; drop them and come back by ourselves
+      // (phones sleep, wifi blips — a sandbox should just rejoin).
+      if (intentTimer) { clearInterval(intentTimer); intentTimer = null; }
+      mySlots.clear();
+      activeSlot = null;
+      renderer.setMySlots(mySlots, activeSlot);
+      statusEl.textContent = 'connection lost — reconnecting…';
+      scheduleReconnect();
     },
   });
 
@@ -200,6 +220,15 @@
 
   function loop() {
     renderer.frame();
+    // Stale-socket watchdog: a dead TCP path can go minutes without a
+    // close event. No snapshot for 4 s while "open" → force the close
+    // path, which reconnects.
+    if (renderer.lastSnapshotAt &&
+        performance.now() - renderer.lastSnapshotAt > 4000 &&
+        net.ws && net.ws.readyState === WebSocket.OPEN) {
+      renderer.lastSnapshotAt = 0;
+      try { net.ws.close(); } catch (e) {}
+    }
     requestAnimationFrame(loop);
   }
 
