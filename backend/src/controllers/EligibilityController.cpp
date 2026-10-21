@@ -465,6 +465,17 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
             json << "\"rosterTeamIds\":" << rosterTeamIdsJson << ",";
         }
         json << "\"isCoach\":" << (isCoach ? "true" : "false") << ",";
+        // Last lineup change, from the DB (owner 2026-10-21: "a timestamp
+        // of last lineup change would help players know at a glance if
+        // something was changed") — every save touches
+        // match_lineup_metadata.updated_at, players and coaches both get it.
+        {
+            auto ts = db_->query(
+                "SELECT to_char(MAX(updated_at) AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI am') AS t "
+                "  FROM match_lineup_metadata WHERE match_id = $1", {matchId});
+            const std::string t = (!ts.empty() && !ts[0]["t"].is_null()) ? ts[0]["t"].c_str() : "";
+            json << "\"lineupChangedAt\":" << (t.empty() ? "null" : "\"" + escapeJson(t) + "\"") << ",";
+        }
         json << "\"rosterStats\":" << statsJson.str() << ",";
         json << "\"myPlayerId\":" << (myPlayerId.empty() ? "null" : myPlayerId) << ",";
         json << "\"eligibilityPolicy\":" << policyJson << ",";
@@ -777,7 +788,23 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
             }
         }
         
-        std::string responseData = "{\"count\":" + std::to_string(insertedCount) + "}";
+        // Every save stamps the lineup's last-change time (owner
+        // 2026-10-21) — even formation-less saves, so the players' "last
+        // change" label and the save-health chip always have DB truth.
+        db_->query(
+            "INSERT INTO match_lineup_metadata (match_id, team_id, roster_size, created_by_user_id, updated_at) "
+            "VALUES ($1, $2, 0, $3, CURRENT_TIMESTAMP) "
+            "ON CONFLICT (match_id, team_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP",
+            {matchId, teamId, userId});
+        std::string savedAt;
+        {
+            auto ts = db_->query(
+                "SELECT to_char(MAX(updated_at) AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI am') AS t "
+                "  FROM match_lineup_metadata WHERE match_id = $1", {matchId});
+            if (!ts.empty() && !ts[0]["t"].is_null()) savedAt = ts[0]["t"].c_str();
+        }
+        std::string responseData = "{\"count\":" + std::to_string(insertedCount)
+            + ",\"savedAt\":\"" + escapeJson(savedAt) + "\"}";
         return Response(HttpStatus::OK, createJsonResponse(true, "Lineup saved", responseData));
         
     } catch (const std::exception& e) {

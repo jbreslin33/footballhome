@@ -729,7 +729,16 @@ class GameCenterScreen extends Screen {
           : Promise.resolve(null),
       ]);
       const lineupData = await lineupRes.json().catch(() => null);
-      if (!lineupData || !lineupData.success) return;
+      if (!lineupData || !lineupData.success) {
+        this._dbState = 'syncfail';
+        this._paintDbStrip();
+        return;
+      }
+      // A quiet tick is still a successful DB sync — the strip's green
+      // stamp moves even when nothing changed.
+      this._dbSyncAt = new Date();
+      if (this._dbState === 'syncfail') this._dbState = 'ok';
+      this._paintDbStrip();
       const invData = invitesRes && invitesRes.ok ? await invitesRes.json().catch(() => null) : null;
       const fp = this._liveFp(
         lineupData.data.lineup, lineupData.data.rosterStats,
@@ -743,16 +752,53 @@ class GameCenterScreen extends Screen {
         this._applyLiveData(lineupData.data, invData);
       }
     } catch (err) {
-      // A network blip just means the next tick retries.
+      // A network blip just means the next tick retries — but the strip
+      // goes red so nobody trusts a stale board (owner 2026-10-21).
+      this._dbState = 'syncfail';
+      this._paintDbStrip();
     } finally {
       this._pollBusy = false;
     }
+  }
+
+  // ── DB-truth status strip (mig 626) ──────────────────────────────────
+  // "Last change <stamp> · DB ✓ <synced>" — the stamp is the SERVER's
+  // match_lineup_metadata.updated_at, never local state; 🟡 while a save
+  // is in flight, red when a save or sync failed (with the reason).
+  // Players get it too: at a glance, has the lineup moved since I looked?
+  _dbStripHtml() {
+    const esc = (t) => this.escapeHtml(t);
+    const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('lineup_status', tier))
+      ? MessageCopy.block('lineup_status', tier, tokens) : '';
+    const changed = this.lineupChangedAt
+      ? (copy('last_change', { when: this.lineupChangedAt }) || `Last change ${this.lineupChangedAt}`)
+      : (copy('no_change', {}) || 'No lineup saved yet');
+    const state = this._dbState || 'ok';
+    const color = state === 'saving' ? '#f59e0b' : state === 'ok' ? '#4ade80' : '#f87171';
+    const syncT = this._dbSyncAt
+      ? this._dbSyncAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : '—';
+    const label = state === 'saving' ? (copy('saving', {}) || 'saving…')
+      : state === 'savefail' ? (copy('save_fail', { when: this.lineupChangedAt || '—', reason: this._dbFailMsg || '' })
+                                || `NOT SAVED — the board still shows ${this.lineupChangedAt || '—'}. ${this._dbFailMsg || ''}`)
+      : state === 'syncfail' ? (copy('sync_fail', {}) || 'sync failed — retrying')
+      : (copy('synced', { when: syncT }) || `DB ✓ ${syncT}`);
+    return `<div data-db-strip style="font-size:0.72rem; font-weight:700; margin:4px 0 6px; color:${color};">
+      <span style="opacity:0.85;">${esc(changed)}</span> · <span>${esc(label)}</span></div>`;
+  }
+
+  _paintDbStrip() {
+    if (!this.element) return;
+    const els = this.element.querySelectorAll('[data-db-strip]');
+    if (!els.length) return;
+    const fresh = this._dbStripHtml();
+    els.forEach(el => { el.outerHTML = fresh; });
   }
 
   // A remote change, applied the way a local tap is: overwrite the bits
   // of state the poll fetched, then one in-place repaint. No network, no
   // "Loading…" pass, no card teardown.
   _applyLiveData(data, invData) {
+    if (data.lineupChangedAt !== undefined) this.lineupChangedAt = data.lineupChangedAt;
     this.zones = new Map();
     this.positions = new Map();
     this.benchOrder = new Map();
@@ -1100,6 +1146,11 @@ class GameCenterScreen extends Screen {
       const savedCode = lineupData.data.formationCode;
       this.formation = savedCode && this._fieldSpec().formations[savedCode] ? savedCode : this._fieldSpec().defaultFormation;
       this.matchStartsAt = lineupData.data.matchStartsAt || null;
+      // DB-truth status strip (mig 626): when the lineup last changed
+      // (server's stamp, shown to players too) and when WE last synced.
+      this.lineupChangedAt = lineupData.data.lineupChangedAt || null;
+      this._dbSyncAt = new Date();
+      this._dbState = 'ok';
       // isCoach comes from EligibilityController checking the REAL logged-in
       // account's admin/coach status — it never looks at the "view as
       // <player>" impersonation the READ request may be carrying, so an
@@ -1844,6 +1895,8 @@ class GameCenterScreen extends Screen {
     }
     const payload = { starters, bench, alternates, formationId: this._formationId(), rosterSize: 0 };
     this._savingLineup = true;   // the live poll stands down while a PUT is in flight
+    const officialSave = !this._isDraftView();
+    if (officialSave) { this._dbState = 'saving'; this._paintDbStrip(); }
     try {
       if (this._isDraftView()) {
         // My draft (mig 495) — the same shape, my own row.
@@ -1866,8 +1919,21 @@ class GameCenterScreen extends Screen {
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Save failed');
       this.official = this._snapshot();
+      // DB confirmed the save: its stamp becomes the "last change".
+      if (data.data && data.data.savedAt) this.lineupChangedAt = data.data.savedAt;
+      this._dbSyncAt = new Date();
+      this._dbState = 'ok';
+      this._paintDbStrip();
     } catch (err) {
       console.error('[game-lineup] save failed:', err);
+      // LOUD failure (10/21: silent 500s let the board lie for a day) —
+      // red strip with the server's reason; the board still shows the
+      // DB's last saved lineup stamp.
+      if (officialSave) {
+        this._dbState = 'savefail';
+        this._dbFailMsg = err.message || '';
+        this._paintDbStrip();
+      }
     } finally {
       this._savingLineup = false;
     }
@@ -2148,7 +2214,8 @@ class GameCenterScreen extends Screen {
       // 🚗 Carpool: the head's _pillToolsHtml already carries it on the
       // official lineup view — render it here only on the other views, or
       // the panel shows twice (2026-10-20, found once the 500 was fixed).
-      paint(viewToggleHtml + (this.lineupView === 'official' ? '' : this._renderCarpoolPanel())
+      paint(viewToggleHtml + this._dbStripHtml()
+            + (this.lineupView === 'official' ? '' : this._renderCarpoolPanel())
             + (this.everyonePlays ? '' : this._renderMyEligibility() + this._renderRosterCriteria())
             + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
       return;
@@ -2186,7 +2253,10 @@ class GameCenterScreen extends Screen {
       : `Starting ${byZone.starter.length}/${this.fieldSize} · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}`;
     const lineupControlsHtml = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 12px; flex-wrap:wrap; gap:8px;">
-        <span style="font-size:0.72rem; opacity:0.75;">${this.escapeHtml(tallyText)}</span>
+        <span style="display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span style="font-size:0.72rem; opacity:0.75;">${this.escapeHtml(tallyText)}</span>
+          ${this._dbStripHtml()}
+        </span>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <select ${everyone ? 'hidden' : ''} data-lineup-formation-select title="Formation (visual layout only)"
                   style="font-size:0.72rem; font-weight:700; padding:4px 6px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">

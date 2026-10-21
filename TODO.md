@@ -34,6 +34,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Done
 
+- [x] 2026-10-21 Game Center DB-truth strip (mig 626): "Last change <stamp> · DB ✓ <synced>" on the lineup for coaches AND players — stamp is match_lineup_metadata.updated_at (every save touches it), 🟡 while saving, red with the server's reason when a save/sync fails. Born from the silent-save bug: the board can no longer lie.
+
 - [x] 2026-10-21 #jobs page shipped (mig 625): job_definitions per event kind (practice set + APSL game-day set, copy in DB), auto-assign on every open from RSVP/attendance (sticky job_homes never bumped, gap-fill by done-before then fewest-in-60-days, second jobs only when short), default-DONE with "didn't do" flags, per-event tents toggle, manual assign/unassign. Admin+coach gated, #jobs tile under All tools.
 
 - [x] 2026-10-21 Incremental backend deploys: persistent builder container + Dockerfile.fast; `make deploy` ≈ 1 min (was 8–10), `make deploy-clean` keeps the full hermetic build, builds flock-locked for parallel sessions. (-j stays 2: gcc-12 ≈ 2 GB/job on the 8 GB box.)
