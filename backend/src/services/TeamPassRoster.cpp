@@ -182,9 +182,35 @@ std::string why(const Session::Reply& r) {
     return r.error.empty() ? "HTTP " + std::to_string(r.status) : r.error;
 }
 
+// Collapse whitespace runs so "Reserve\n\t\tRoster" matches "Reserve Roster" —
+// TeamPass line-wraps its heading text differently from render to render.
+std::string squash(const std::string& s) {
+    std::string r; bool sp = false;
+    for (char c : s) {
+        if (std::isspace(static_cast<unsigned char>(c))) { sp = true; continue; }
+        if (sp && !r.empty()) r += ' ';
+        sp = false; r += c;
+    }
+    return r;
+}
+
+// The <h2> whose (squashed) text contains label; npos if none.
+size_t findSectionHeading(const std::string& html, const std::string& label) {
+    const std::string want = squash(label);
+    for (size_t at = html.find("<h2"); at != std::string::npos; at = html.find("<h2", at + 3)) {
+        const size_t open = html.find('>', at);
+        if (open == std::string::npos) break;
+        const size_t close = html.find("</h2", open);
+        if (close == std::string::npos) break;
+        if (squash(html.substr(open + 1, close - open - 1)).find(want) != std::string::npos) return at;
+    }
+    return std::string::npos;
+}
+
 } // namespace
 
-TeamPassRoster::Result TeamPassRoster::fetch(const std::string& siteSlug, const std::string& externalTeamId, const std::string& credentialsKey) {
+TeamPassRoster::Result TeamPassRoster::fetch(const std::string& siteSlug, const std::string& externalTeamId, const std::string& credentialsKey,
+                                             const std::string& sectionLabel, bool wantPdf) {
     Result out;
     const std::string email = envOr(credentialsKey + "_EMAIL"), password = envOr(credentialsKey + "_PASSWORD");
     if (email.empty() || password.empty()) {
@@ -224,10 +250,36 @@ TeamPassRoster::Result TeamPassRoster::fetch(const std::string& siteSlug, const 
         // leading text; an icon (account tick, card flag) may follow as a
         // nested tag before </div>, so the name stops at the first '<'.
         const std::string kNameDiv = "<div style=\"font-size:12px;line-height:1;\"";
-        size_t at = 0;
-        while ((at = team.body.find(kCard, at)) != std::string::npos) {
+        // One team page can carry SEVERAL squads since TeamPass's 10/21
+        // restyle — ours shows the first team's grid and then an
+        // "<h2>Reserve Roster (…)</h2>" grid.  A source row names its
+        // section (mig 622, section_label) to read that grid; no label
+        // reads the FIRST grid only.  Either way the scan stops at the
+        // next <h2>, the next section's heading.
+        size_t at = 0, stop = team.body.size();
+        if (!sectionLabel.empty()) {
+            // The page carries one grid per squad under <h2> headings —
+            // "Active Roster (20 Players)", "Reserve Roster (28 Players)",
+            // "Inactive Roster (2 Players)" — whose text TeamPass
+            // line-wraps unpredictably, so the match is whitespace-blind.
+            const size_t h = findSectionHeading(team.body, sectionLabel);
+            if (h == std::string::npos) {
+                out.error = "the '" + sectionLabel + "' section is not on the team page";
+                return out;
+            }
+            at = h;
+            const size_t next = team.body.find("<h2", h + 3);
+            if (next != std::string::npos) stop = next;
+        } else {
+            const size_t grid = team.body.find("Table TableRoster");
+            if (grid != std::string::npos) {
+                const size_t next = team.body.find("<h2", grid);
+                if (next != std::string::npos) stop = next;
+            }
+        }
+        while ((at = team.body.find(kCard, at)) != std::string::npos && at < stop) {
             const size_t nd = team.body.find(kNameDiv, at);
-            if (nd == std::string::npos) break;
+            if (nd == std::string::npos || nd >= stop) break;
             const size_t open = team.body.find('>', nd);
             if (open == std::string::npos) break;
             const size_t from = open + 1;
@@ -242,18 +294,24 @@ TeamPassRoster::Result TeamPassRoster::fetch(const std::string& siteSlug, const 
         }
     }
 
+    // The signed "Printable Roster" link only renders for staff, so its
+    // presence doubles as the sign-in check even when the PDF itself is
+    // not wanted (a names-only pull skips the 6MB download — it was
+    // timing out whole board-load pulls for nothing).
     const std::string pdfUrl = printableRosterUrl(team.body);
     if (pdfUrl.empty()) {
         out.error = "the league site refused the sign-in, or that login is not staff on this team";
         return out;
     }
 
-    auto pdf = web.get(pdfUrl, teamUrl);
-    if (!pdf.ok()) { out.error = "the roster did not download (" + why(pdf) + ")"; return out; }
-    if (pdf.body.rfind("%PDF", 0) != 0) { out.error = "the league site sent something that is not a roster PDF"; return out; }
-
-    out.pdf = std::move(pdf.body);
+    if (wantPdf) {
+        auto pdf = web.get(pdfUrl, teamUrl);
+        if (!pdf.ok()) { out.error = "the roster did not download (" + why(pdf) + ")"; return out; }
+        if (pdf.body.rfind("%PDF", 0) != 0) { out.error = "the league site sent something that is not a roster PDF"; return out; }
+        out.pdf = std::move(pdf.body);
+    }
     out.ok = true;
-    std::cerr << "[TeamPassRoster] " << siteSlug << " team " << externalTeamId << ": " << out.pdf.size() << " bytes" << std::endl;
+    std::cerr << "[TeamPassRoster] " << siteSlug << " team " << externalTeamId << ": "
+              << out.names.size() << " names, " << out.pdf.size() << " pdf bytes" << std::endl;
     return out;
 }

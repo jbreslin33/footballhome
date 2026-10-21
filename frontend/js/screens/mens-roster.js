@@ -465,12 +465,21 @@ class MensRosterScreen extends RosterScreenBase {
     teamIds.forEach(id => { this._officialPullState[id] = 'pulling'; });
     if (this._data) this.renderRoster(this._data);
     try {
-      const results = await Promise.allSettled(teamIds.map(teamId =>
-        this.auth.fetch('/api/mens-roster/official-roster-refresh', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ teamId }),
-        }).then(async res => {
+      // ONE pull at a time: every TeamPass pull is a fresh sign-in on the
+      // same account, and concurrent sign-ins race — the losing session
+      // is served the public, grid-less team page and the parse "fails"
+      // (seen 10/21: the Reserves pull read "section not on the page"
+      // while the APSL pull, same page, succeeded).  Sequential is also
+      // kinder to the league site, and each pill flips green/red as its
+      // own pull lands.
+      let anyFresh = false;
+      for (const teamId of teamIds) {
+        try {
+          const res = await this.auth.fetch('/api/mens-roster/official-roster-refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teamId }),
+          });
           const body = await res.json().catch(() => ({}));
           // Fresh names must actually land to count — a 200 whose parse
           // found nothing keeps yesterday's list (the backend's
@@ -478,15 +487,15 @@ class MensRosterScreen extends RosterScreenBase {
           // and has to read as a failure, not a quiet success.
           if (!res.ok || body.error || !(body.names || []).length)
             throw new Error(body.error || `no names parsed (HTTP ${res.status})`);
-        })
-      ));
-      results.forEach((r, i) => {
-        this._officialPullState[teamIds[i]] = r.status === 'fulfilled' ? 'ok' : 'fail';
-        if (r.status === 'rejected')
-          console.warn(`[mens-roster] official roster auto-pull failed for team ${teamIds[i]}:`, r.reason);
-      });
-      if (results.some(r => r.status === 'fulfilled')) await this.load({ quiet: true });
-      else if (this._data) this.renderRoster(this._data);
+          this._officialPullState[teamId] = 'ok';
+          anyFresh = true;
+        } catch (err) {
+          this._officialPullState[teamId] = 'fail';
+          console.warn(`[mens-roster] official roster auto-pull failed for team ${teamId}:`, err);
+        }
+        if (this._data) this.renderRoster(this._data);
+      }
+      if (anyFresh) await this.load({ quiet: true });
     } finally {
       this._officialPullInFlight = false;
     }

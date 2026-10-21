@@ -29,5 +29,12 @@ public:
     using Result = RosterFile;
 
     // siteSlug "APSL", externalTeamId "165430", credentialsKey "APSL".
-    static Result fetch(const std::string& siteSlug, const std::string& externalTeamId, const std::string& credentialsKey);
+    // sectionLabel (mig 622): one TeamPass team page can carry several
+    // squads' grids ("Active Roster (…)", "Reserve Roster (…)"); a
+    // non-empty label reads the grid under the <h2> containing it
+    // (whitespace-blind), empty reads the first grid.
+    // wantPdf=false skips the heavy printable-PDF download — the 🌐
+    // names mirror doesn't need it; the 🖨 printable flow does.
+    static Result fetch(const std::string& siteSlug, const std::string& externalTeamId, const std::string& credentialsKey,
+                        const std::string& sectionLabel = "", bool wantPdf = true);
 };

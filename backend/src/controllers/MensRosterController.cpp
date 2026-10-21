@@ -290,10 +290,13 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
             auto* db = Database::getInstance();
             nlohmann::json official = nlohmann::json::object();
             for (const auto& r : db->query(
+                // LEFT JOIN: a source with no pull yet (mig 622 seeded the
+                // Reserves row empty) still gets its pill — Roster (0) —
+                // so the board's auto-pull can give it its first names.
                 "SELECT s.team_id, s.league_label, s.system, n.full_name, "
                 "       to_char(max(n.pulled_at) OVER (PARTITION BY s.id) AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI am') AS pulled_label "
                 "  FROM official_roster_sources s "
-                "  JOIN official_roster_names n ON n.source_id = s.id "
+                "  LEFT JOIN official_roster_names n ON n.source_id = s.id "
                 " WHERE s.is_active ORDER BY s.team_id, n.sort_order")) {
                 const std::string tid = r["team_id"].c_str();
                 if (!official.contains(tid))
@@ -304,7 +307,7 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
                                      // is an upload with nothing to fetch.
                                      {"system", r["system"].is_null() ? "" : r["system"].c_str()},
                                      {"names", nlohmann::json::array()}};
-                official[tid]["names"].push_back(r["full_name"].c_str());
+                if (!r["full_name"].is_null()) official[tid]["names"].push_back(r["full_name"].c_str());
             }
             result.body["officialRosters"] = std::move(official);
         } catch (const std::exception& e) {
@@ -445,29 +448,57 @@ Response MensRosterController::handleOfficialRosterRefresh(const Request& reques
     try {
         auto db = Database::getInstance();
         auto src = db->query(
-            "SELECT id, system, site_slug, external_team_id, credentials_key "
+            "SELECT id, system, site_slug, external_team_id, credentials_key, section_label "
             "  FROM official_roster_sources WHERE team_id = $1::int AND is_active "
             " ORDER BY id LIMIT 1", {std::to_string(teamId)});
         if (src.empty()) return notFound("No league roster source is set up for this team");
         const auto& s = src[0];
         const std::string sourceId = s["id"].c_str(), system = s["system"].c_str();
+        const int sourceIdNum = std::stoi(sourceId);
+
+        // ONE refresh at a time per source, start to finish.  Two boards
+        // pulling at once (a second admin, or a reload racing a pull the
+        // abandoned page already sent) used to interleave the
+        // DELETE+INSERT into duplicate rows AND race the TeamPass
+        // sign-ins — concurrent logins on the one account get served the
+        // public, grid-less page (seen 10/21).  The advisory lock
+        // serializes the whole pull; whoever waited finds the winner's
+        // fresh rows and serves those without fetching again.
+        auto tx = db->beginTransaction();
+        tx->exec_params("SELECT pg_advisory_xact_lock(622, $1)", sourceIdNum);
+        auto freshQ = tx->exec_params(
+            "SELECT COALESCE(last_fetched_at > now() - interval '45 seconds' AND last_fetch_ok, false) AS fresh "
+            "  FROM official_roster_sources WHERE id = $1", sourceIdNum);
+        json names = json::array();
+        if (!freshQ.empty() && freshQ[0]["fresh"].as<bool>()) {
+            auto rows = tx->exec_params(
+                "SELECT full_name FROM official_roster_names WHERE source_id = $1 ORDER BY sort_order", sourceIdNum);
+            db->commit(tx);
+            for (const auto& r : rows) names.push_back(r["full_name"].c_str());
+            json out; out["teamId"] = teamId; out["names"] = std::move(names);
+            return Response(HttpStatus::OK, out.dump());
+        }
+
         RosterFile pulled;
         if (system == "teampass")
             pulled = TeamPassRoster::fetch(s["site_slug"].c_str(), s["external_team_id"].c_str(),
-                                           s["credentials_key"].is_null() ? "" : s["credentials_key"].c_str());
+                                           s["credentials_key"].is_null() ? "" : s["credentials_key"].c_str(),
+                                           s["section_label"].is_null() ? "" : s["section_label"].c_str(),
+                                           /*wantPdf=*/false);
         else if (system == "google_sheet")
             pulled = GoogleSheetRoster::fetch(s["site_slug"].c_str(), s["external_team_id"].c_str());
         else pulled.error = "this team's roster lives in an uploaded file — replace it on #files";
-        db->query("UPDATE official_roster_sources SET last_fetched_at = now(), last_fetch_ok = $2::boolean, last_fetch_note = NULLIF($3, '') WHERE id = $1::int",
-                  {sourceId, pulled.ok ? "true" : "false", pulled.error});
-        if (!pulled.ok) return errorResponse(HttpStatus::OK, pulled.error);   // reason over gateway status
-        if (!pulled.names.empty()) {
-            db->query("DELETE FROM official_roster_names WHERE source_id = $1::int", {sourceId});
+
+        tx->exec_params("UPDATE official_roster_sources SET last_fetched_at = now(), last_fetch_ok = $2, last_fetch_note = NULLIF($3, '') WHERE id = $1",
+                        sourceIdNum, pulled.ok, pulled.error);
+        if (pulled.ok && !pulled.names.empty()) {
+            tx->exec_params("DELETE FROM official_roster_names WHERE source_id = $1", sourceIdNum);
             for (size_t i = 0; i < pulled.names.size(); i++)
-                db->query("INSERT INTO official_roster_names (source_id, full_name, sort_order) VALUES ($1::int, $2, $3::int)",
-                          {sourceId, pulled.names[i], std::to_string(i)});
+                tx->exec_params("INSERT INTO official_roster_names (source_id, full_name, sort_order) VALUES ($1, $2, $3)",
+                                sourceIdNum, pulled.names[i], static_cast<int>(i));
         }
-        json names = json::array();
+        db->commit(tx);
+        if (!pulled.ok) return errorResponse(HttpStatus::OK, pulled.error);   // reason over gateway status
         for (const auto& n : pulled.names) names.push_back(n);
         json out; out["teamId"] = teamId; out["names"] = std::move(names);
         return Response(HttpStatus::OK, out.dump());
