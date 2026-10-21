@@ -707,7 +707,7 @@ class MensRosterScreen extends RosterScreenBase {
           title="${seesOpen ? 'Hide' : 'Show'} everyone whose ${this.escape(col.label)} games show up automatically to RSVP — roster that grants games plus ⭐ standing invites"
           style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
                  border:1px solid #2dd4bf; background:${seesOpen ? '#2dd4bf26' : 'transparent'};
-                 color:${seesOpen ? '#2dd4bf' : '#64748b'};">👀 Sees games (${seesCount})</button>
+                 color:#2dd4bf;">👀 Sees games (${seesCount})</button>
       </div>
       ${officialPanel}
       ${seesPanel}`;
