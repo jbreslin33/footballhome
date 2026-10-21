@@ -215,6 +215,32 @@ services:
         condition: service_started
 
 
+  # fh-game match daemon (game/DESIGN.md). One container == one match in
+  # G0 (match_id 1); per-match orchestration arrives G3+. Internal network
+  # only — nginx proxies /game → footballhome_game:9200 (TLS terminated at
+  # the frontend). JWT_SECRET flows in from env_file.
+  footballhome_game:
+    build:
+      context: ./game
+      dockerfile: Dockerfile
+    container_name: footballhome_game
+    restart: always
+    env_file: ./env
+    environment:
+      GAME_BIND_ADDRESS: 0.0.0.0
+      GAME_PORT: "9200"
+      GAME_MATCH_ID: "1"
+      GAME_SLOT_COUNT: "22"
+      GAME_SPEED: "1"
+    networks:
+      - footballhome_network
+    healthcheck:
+      test: ["CMD-SHELL", "ss -Hln --tcp sport = :9200 | grep -q LISTEN"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 15s
+
 # Named volumes for persistent data
 volumes:
   db_data:

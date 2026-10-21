@@ -1,0 +1,63 @@
+// frontend/js/game/net.js
+//
+// WebSocket connection to the fh-game match daemon. Auth rides in the
+// subprotocol header — `fh-game.v1.bearer.<JWT>` — reusing the club app's
+// session token from localStorage, exactly like v1's sim client did. [v1]
+
+(function () {
+  'use strict';
+
+  class GameNet {
+    // handlers: { onHello(h), onSnapshot(s), onClose(reason) }
+    constructor(handlers) {
+      this.handlers = handlers;
+      this.ws = null;
+    }
+
+    connect() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/'; // not signed in — go log in
+        return;
+      }
+      const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+      this.ws = new WebSocket(
+        `${scheme}://${location.host}/game`,
+        `fh-game.v1.bearer.${token}`
+      );
+      this.ws.binaryType = 'arraybuffer';
+
+      this.ws.onmessage = (ev) => {
+        const view = new DataView(ev.data);
+        for (const f of GameWire.decodeFrame(ev.data)) {
+          if (f.type === GameWire.FrameType.HELLO) {
+            this.handlers.onHello(GameWire.decodeHello(view, f.payloadAt));
+          } else if (f.type === GameWire.FrameType.SNAPSHOT) {
+            this.handlers.onSnapshot(
+              GameWire.decodeSnapshot(view, f.payloadAt)
+            );
+          }
+          // Unknown frame types are ignored (PROTOCOL.md §9).
+        }
+      };
+      this.ws.onclose = () => this.handlers.onClose('closed');
+      this.ws.onerror = () => this.handlers.onClose('error');
+    }
+
+    send(buf) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(buf);
+    }
+
+    claim(slot) {
+      this.send(GameWire.encodeClaim(slot, true));
+    }
+    release(slot) {
+      this.send(GameWire.encodeClaim(slot, false));
+    }
+    intent(slot, x, y) {
+      this.send(GameWire.encodeIntent(slot, x, y));
+    }
+  }
+
+  window.GameNet = GameNet;
+})();

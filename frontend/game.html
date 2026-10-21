@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <!-- Zero-cache mandate, matching the rest of the app. -->
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Game — Football Home</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1c3d;
+                 font-family: -apple-system, system-ui, sans-serif; }
+    #game-canvas { display: block; width: 100vw; height: 100vh;
+                   touch-action: none; }
+    #status { position: fixed; top: env(safe-area-inset-top, 8px); left: 0;
+              right: 0; text-align: center; color: #f4f6fb; font-size: 14px;
+              padding: 10px 16px; pointer-events: none;
+              text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+    #back { position: fixed; top: env(safe-area-inset-top, 8px); left: 8px;
+            color: #ffcc00; text-decoration: none; font-size: 14px;
+            padding: 10px; }
+    /* Virtual joystick (input.js shows/positions it on touch). */
+    #joystick { display: none; position: fixed; width: 120px; height: 120px;
+                border-radius: 50%; border: 2px solid rgba(255,255,255,.35);
+                background: rgba(255,255,255,.08); pointer-events: none; }
+    #joystick-knob { position: absolute; left: 35px; top: 35px; width: 50px;
+                     height: 50px; border-radius: 50%;
+                     background: rgba(255,204,0,.75); }
+  </style>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+  <a id="back" href="/">‹ Home</a>
+  <div id="status">loading…</div>
+  <div id="joystick"><div id="joystick-knob"></div></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.128.0/three.min.js"></script>
+  <script src="js/game/wire.js?v=20261021a"></script>
+  <script src="js/game/net.js?v=20261021a"></script>
+  <script src="js/game/renderer.js?v=20261021a"></script>
+  <script src="js/game/input.js?v=20261021a"></script>
+  <script src="js/game/client.js?v=20261021a"></script>
+</body>
+</html>
