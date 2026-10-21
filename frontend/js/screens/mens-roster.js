@@ -446,24 +446,47 @@ class MensRosterScreen extends RosterScreenBase {
   async autoPullOfficialRosters(data, { quiet = false } = {}) {
     if (quiet || this._officialPullInFlight) return;
     const mirrors = data.officialRosters || {};
+    // Every ONLINE roster re-pulls, each column independently (owner
+    // 2026-10-21: "this should be done for each roster online").
+    // club_file sources are uploads — nothing to fetch, pill stays plain.
     const teamIds = (data.columns || [])
       .map(c => c.teamId)
-      .filter(id => id && mirrors[String(id)]);
+      .filter(id => {
+        const m = id && mirrors[String(id)];
+        return m && m.system !== 'club_file';
+      });
     if (!teamIds.length) return;
     this._officialPullInFlight = true;
+    // Pill state per team: 'pulling' (🟡) → 'ok' (green, fresh stamp) or
+    // 'fail' (red, the stamp of the list still showing) — owner: "if on
+    // #teams load we don't get latest roster we need to show a red label
+    // … green one that has time stamp or a yellow loading".
+    this._officialPullState = this._officialPullState || {};
+    teamIds.forEach(id => { this._officialPullState[id] = 'pulling'; });
+    if (this._data) this.renderRoster(this._data);
     try {
       const results = await Promise.allSettled(teamIds.map(teamId =>
         this.auth.fetch('/api/mens-roster/official-roster-refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ teamId }),
-        }).then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); })
+        }).then(async res => {
+          const body = await res.json().catch(() => ({}));
+          // Fresh names must actually land to count — a 200 whose parse
+          // found nothing keeps yesterday's list (the backend's
+          // empty-parse guard, e.g. TeamPass changed its markup 10/21)
+          // and has to read as a failure, not a quiet success.
+          if (!res.ok || body.error || !(body.names || []).length)
+            throw new Error(body.error || `no names parsed (HTTP ${res.status})`);
+        })
       ));
       results.forEach((r, i) => {
+        this._officialPullState[teamIds[i]] = r.status === 'fulfilled' ? 'ok' : 'fail';
         if (r.status === 'rejected')
           console.warn(`[mens-roster] official roster auto-pull failed for team ${teamIds[i]}:`, r.reason);
       });
       if (results.some(r => r.status === 'fulfilled')) await this.load({ quiet: true });
+      else if (this._data) this.renderRoster(this._data);
     } finally {
       this._officialPullInFlight = false;
     }
@@ -623,12 +646,27 @@ class MensRosterScreen extends RosterScreenBase {
         ${catPill('paper', '📄', 'Paper', cats.paper.length, '#f59e0b')}
         ${catPill('injured', '🩹', 'Injured', cats.injured.length, '#f87171')}
         ${catPill('riders', '⭐', 'Rides along', riders.length, '#60a5fa')}
-        ${official ? `
+        ${official ? (() => {
+          // Pull state on the pill itself (owner 2026-10-21): 🟡 amber
+          // while this load's pull runs, green ✓ + stamp once fresh names
+          // landed, red ⚠ + the stamp of the list we're STILL showing
+          // when the pull failed.  No state (club_file, or pull not yet
+          // fired) keeps the plain blue pill.
+          const st = (this._officialPullState || {})[col.teamId];
+          const color = st === 'pulling' ? '#f59e0b' : st === 'ok' ? '#4ade80' : st === 'fail' ? '#f87171' : '#38bdf8';
+          const stamp = official.pulledAt || '—';
+          const suffix = st === 'pulling' ? ' · pulling…' : st === 'ok' ? ` · ✓ ${stamp}` : st === 'fail' ? ` · ⚠ ${stamp}` : '';
+          const title = st === 'fail'
+            ? `Could not pull the league's roster just now — still showing the list pulled ${stamp}`
+            : st === 'pulling' ? "Pulling the league's own roster…"
+            : `${officialOpen ? 'Hide' : 'Show'} the league site's own roster for this team (TeamPass / league sheet) and the drift against our list`;
+          return `
           <button type="button" class="mr-official-pill" data-team-id="${col.teamId}"
-            title="${officialOpen ? 'Hide' : 'Show'} the league site's own roster for this team (TeamPass / league sheet) and the drift against our list"
+            title="${this.escape(title)}"
             style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
-                   border:1px solid #38bdf8; background:${officialOpen ? '#38bdf826' : 'transparent'};
-                   color:${officialOpen ? '#38bdf8' : '#64748b'};">🌐 Roster (${(official.names || []).length})</button>` : ''}
+                   border:1px solid ${color}; background:${officialOpen ? color + '26' : 'transparent'};
+                   color:${officialOpen || st ? color : '#64748b'};">🌐 Roster (${(official.names || []).length})${this.escape(suffix)}</button>`;
+        })() : ''}
       </div>
       ${officialPanel}`;
 

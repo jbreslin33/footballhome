@@ -290,7 +290,7 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
             auto* db = Database::getInstance();
             nlohmann::json official = nlohmann::json::object();
             for (const auto& r : db->query(
-                "SELECT s.team_id, s.league_label, n.full_name, "
+                "SELECT s.team_id, s.league_label, s.system, n.full_name, "
                 "       to_char(max(n.pulled_at) OVER (PARTITION BY s.id) AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI am') AS pulled_label "
                 "  FROM official_roster_sources s "
                 "  JOIN official_roster_names n ON n.source_id = s.id "
@@ -299,6 +299,10 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
                 if (!official.contains(tid))
                     official[tid] = {{"league", r["league_label"].is_null() ? "" : r["league_label"].c_str()},
                                      {"pulledAt", r["pulled_label"].is_null() ? "" : r["pulled_label"].c_str()},
+                                     // Which kind of source: teampass / google_sheet
+                                     // re-pull online on every board load; club_file
+                                     // is an upload with nothing to fetch.
+                                     {"system", r["system"].is_null() ? "" : r["system"].c_str()},
                                      {"names", nlohmann::json::array()}};
                 official[tid]["names"].push_back(r["full_name"].c_str());
             }
