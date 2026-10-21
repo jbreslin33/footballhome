@@ -20,6 +20,9 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
   - Jobs have a short title (balls, cones, lights, generator…) with detailed description on click.
   - Done/not-done check-off: default to DONE at end of event; only flag the exceptions by clicking "didn't do".
   - Job definitions + copy live in DB rows (per event kind), per the never-hardcode-copy rule.
+  - Assignment: sticky by default — each player keeps a "home job" for speed/efficiency; NO forced rotation.
+  - Gaps (regular absent / short numbers): fill first with someone who's done the job before, then whoever has done the fewest jobs lately. Cross-training happens organically via absences/overlap.
+  - Late RSVPs re-run the fill logic; home jobs never get bumped, only gap-fills reshuffle.
 
 ## Done
 
