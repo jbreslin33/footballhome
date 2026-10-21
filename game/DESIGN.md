@@ -218,12 +218,19 @@ slices, exit gates, goldens).
   2 = lofted kick; direction = move vector, else carry direction; preset
   powers). Actions latch until consumed by the next tick. Goal detection:
   mouth AABBs at x = ±half_x (7.32 × 2.44 m), goal → event + kickoff reset.
-- G1.4 [ ] Wire: SNAPSHOT appends the ball record (x, y, z + owner), EVENT
-  frame 0x21 ships (goal payload v1); minor version → 1.1. Client renders
-  the ball, kick buttons (Space / loft key + two touch buttons), goal flash.
-- G1.5 [ ] Exit gate: **kickabout on footballhome.org** — claim a player,
-  dribble, pass to a second claimed player, shoot, score, see the flash.
-  New goldens: ball flight + bounce, capture + kick sequence.
+- G1.4 [x] (2026-10-21) Wire 1.1 shipped end to end: SNAPSHOT ball tail,
+  EVENT goal frames; client renders ball + goal frames, Space/PASS and
+  X/LOFT kick controls (keyboard + touch buttons), goal flash + running
+  score from server events only.
+- G1.5 [~] Exit gate verified on DESKTOP against live footballhome.org
+  (2026-10-21): claimed #6, ran onto the loose ball, auto-captured, glue
+  dribble, lofted chip (flight apex 1.74 m), ball outran the chase, rolled
+  in — server GOAL event, "GOAL! 1 — 0", kickoff reset. **Remaining:
+  phone kickabout (ideally 2 humans passing), then tick.**
+- Known gap logged during verification: PLAYERS have no pitch bounds (the
+  scorer chased the ball straight off the grass). Fine for G1 arcade walls
+  era; G2's formation/positioning work should clamp player positions to
+  pitch + margin.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

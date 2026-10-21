@@ -17,6 +17,7 @@
     GOODBYE: 0x02,
     PLAYER_INTENT: 0x10,
     SNAPSHOT: 0x20,
+    EVENT: 0x21,
     CLAIM: 0x30,
   };
 
@@ -70,7 +71,18 @@
       };
       p += 33;
     }
-    return { tick, players };
+    // Ball record (protocol 1.1 additive tail).
+    const ball = { x: fx(view, p), y: fx(view, p + 8), z: fx(view, p + 16),
+                   owner: view.getUint8(p + 24) };
+    return { tick, players, ball };
+  }
+
+  function decodeEvent(view, at) {
+    return {
+      eventType: view.getUint8(at),
+      team: view.getUint8(at + 1),
+      tick: Number(view.getBigUint64(at + 2, true)),
+    };
   }
 
   // ── encoders (client → server) ────────────────────────────────────────
@@ -93,13 +105,14 @@
     return envelope(FrameType.CLAIM, p);
   }
 
-  function encodeIntent(slot, moveX, moveY) {
+  // action: 0 none, 1 ground kick, 2 lofted kick (PROTOCOL.md §4).
+  function encodeIntent(slot, moveX, moveY, action) {
     const p = new ArrayBuffer(18);
     const v = new DataView(p);
     v.setUint8(0, slot);
     v.setBigInt64(1, BigInt(Math.round(moveX * FX)), true);
     v.setBigInt64(9, BigInt(Math.round(moveY * FX)), true);
-    v.setUint8(17, 0); // action: none (G0)
+    v.setUint8(17, action || 0);
     return envelope(FrameType.PLAYER_INTENT, p);
   }
 
@@ -108,6 +121,7 @@
     decodeFrame,
     decodeHello,
     decodeSnapshot,
+    decodeEvent,
     encodeClaim,
     encodeIntent,
   };

@@ -13,17 +13,32 @@
   'use strict';
 
   class GameInput {
-    constructor(joystickEl, knobEl) {
+    constructor(joystickEl, knobEl, passBtn, loftBtn) {
       this.keys = new Set();
       this.joy = { active: false, x: 0, y: 0 };
       this.joystickEl = joystickEl;
       this.knobEl = knobEl;
+      this.pendingAction = 0; // one-shot: consumed by the next intent send
 
       window.addEventListener('keydown', (e) => {
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key))
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ']
+              .includes(e.key))
           e.preventDefault();
+        if (e.key === ' ' && !e.repeat) this.pendingAction = 1;      // pass
+        if (e.key.toLowerCase() === 'x' && !e.repeat) this.pendingAction = 2; // loft
         this.keys.add(e.key.toLowerCase());
       });
+
+      // Touch kick buttons (lower-right). touchstart so they beat the
+      // joystick's window-level handler via stopPropagation.
+      if (passBtn) passBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault(); e.stopPropagation(); this.pendingAction = 1;
+      });
+      if (loftBtn) loftBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault(); e.stopPropagation(); this.pendingAction = 2;
+      });
+      if (passBtn) passBtn.addEventListener('click', () => { this.pendingAction = 1; });
+      if (loftBtn) loftBtn.addEventListener('click', () => { this.pendingAction = 2; });
       window.addEventListener('keyup', (e) =>
         this.keys.delete(e.key.toLowerCase()));
 
@@ -63,6 +78,13 @@
       this.joy.y = 0;
       this.joystickEl.style.display = 'none';
       this.knobEl.style.transform = 'translate(0px, 0px)';
+    }
+
+    // One-shot action for the next intent (0 after the read).
+    consumeAction() {
+      const a = this.pendingAction;
+      this.pendingAction = 0;
+      return a;
     }
 
     // Desire vector in PITCH space. Screen-up = pitch −y because the

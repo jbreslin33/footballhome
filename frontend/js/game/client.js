@@ -12,9 +12,12 @@
   const renderer = new GameRenderer(canvas);
   const input = new GameInput(
     document.getElementById('joystick'),
-    document.getElementById('joystick-knob'));
+    document.getElementById('joystick-knob'),
+    document.getElementById('btn-pass'),
+    document.getElementById('btn-loft'));
 
   const mySlots = new Set();
+  const score = [0, 0];
   let hello = null;
   let intentTimer = null;
 
@@ -30,11 +33,25 @@
       intentTimer = setInterval(() => {
         if (mySlots.size === 0) return;
         const v = input.vector();
-        for (const slot of mySlots) net.intent(slot, v.x, v.y);
+        // The one-shot action goes to ONE slot (the first owned) — the
+        // server only honors it from the ball carrier anyway.
+        let action = input.consumeAction();
+        for (const slot of mySlots) {
+          net.intent(slot, v.x, v.y, action);
+          action = 0;
+        }
       }, 1000 / (h.tickRate || 30));
     },
     onSnapshot(s) {
       renderer.pushSnapshot(s);
+    },
+    onEvent(ev) {
+      if (ev.eventType === 1) {
+        score[ev.team]++;
+        renderer.goalFlash();
+        statusEl.textContent =
+          `GOAL! ${score[0]} — ${score[1]}  (tap a player / WASD + Space to pass, X to loft)`;
+      }
     },
     onClose() {
       statusEl.textContent = 'disconnected — reload to rejoin';
@@ -56,7 +73,7 @@
     }
     renderer.setMySlots(mySlots);
     statusEl.textContent = mySlots.size
-      ? `controlling ${[...mySlots].map((s) => '#' + (s + 1)).join(', ')} — move with WASD / joystick`
+      ? `controlling ${[...mySlots].map((s) => '#' + (s + 1)).join(', ')} — WASD/joystick to move, Space/PASS to kick, X/LOFT to chip`
       : 'tap a player to take control';
   }
   canvas.addEventListener('click', (e) => pickAt(e.clientX, e.clientY));

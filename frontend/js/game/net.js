@@ -36,6 +36,8 @@
             this.handlers.onSnapshot(
               GameWire.decodeSnapshot(view, f.payloadAt)
             );
+          } else if (f.type === GameWire.FrameType.EVENT) {
+            this.handlers.onEvent(GameWire.decodeEvent(view, f.payloadAt));
           }
           // Unknown frame types are ignored (PROTOCOL.md §9).
         }
@@ -54,8 +56,8 @@
     release(slot) {
       this.send(GameWire.encodeClaim(slot, false));
     }
-    intent(slot, x, y) {
-      this.send(GameWire.encodeIntent(slot, x, y));
+    intent(slot, x, y, action) {
+      this.send(GameWire.encodeIntent(slot, x, y, action));
     }
   }
 

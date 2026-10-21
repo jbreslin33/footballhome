@@ -17,6 +17,7 @@
     constructor(canvas) {
       this.canvas = canvas;
       this.players = []; // THREE.Mesh per slot
+      this.ballMesh = null;
       this.buffer = []; // [{at, snap}] arrival-stamped snapshots
       this.tickRate = 30;
       this.mySlots = new Set();
@@ -92,6 +93,32 @@
         this.players.push(group);
       }
 
+      // Goal frames: posts + crossbar at both ends (7.32 x 2.44 m), so
+      // shooting has a visible target. White boxes, slightly proud of the
+      // end line.
+      const postMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      for (const sign of [-1, 1]) {
+        const gx = sign * hx;
+        for (const gy of [-3.66, 3.66]) {
+          const post = new THREE.Mesh(
+            new THREE.BoxGeometry(0.12, 2.44, 0.12), postMat);
+          post.position.set(gx, 1.22, gy);
+          this.scene.add(post);
+        }
+        const bar = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.12, 7.44), postMat);
+        bar.position.set(gx, 2.44, 0);
+        this.scene.add(bar);
+      }
+
+      // The ball: rendered a bit larger than regulation so it reads on a
+      // phone from a broadcast camera.
+      this.ballMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3, 16, 12),
+        new THREE.MeshLambertMaterial({ color: 0xffffff }));
+      this.ballMesh.position.set(0, 0.3, 0);
+      this.scene.add(this.ballMesh);
+
       // Broadcast camera: raised, behind the home touchline, whole pitch
       // in frame on a phone held landscape or portrait.
       this.camera.position.set(0, Math.max(hx, 60) * 0.9, hy * 2.4);
@@ -130,8 +157,27 @@
           this.players[i].position.x = pa.x + (pb.x - pa.x) * alpha;
           this.players[i].position.z = pa.y + (pb.y - pa.y) * alpha;
         }
+        if (this.ballMesh && a.snap.ball && b.snap.ball) {
+          const ba = a.snap.ball, bb = b.snap.ball;
+          this.ballMesh.position.x = ba.x + (bb.x - ba.x) * alpha;
+          this.ballMesh.position.z = ba.y + (bb.y - ba.y) * alpha;
+          // three y is up = sim z; keep the ball's radius above the grass.
+          this.ballMesh.position.y = 0.3 + ba.z + (bb.z - ba.z) * alpha;
+        }
       }
       this.renderer.render(this.scene, this.camera);
+    }
+
+    // GOAL flash: brief white wash + status pulse, triggered by EVENT
+    // frames (never inferred client-side — the server is the authority).
+    goalFlash() {
+      const old = this.scene.background;
+      this.scene.background = new THREE.Color(0xffcc00);
+      setTimeout(() => { this.scene.background = old; }, 180);
+      setTimeout(() => {
+        this.scene.background = new THREE.Color(0xffffff);
+        setTimeout(() => { this.scene.background = old; }, 120);
+      }, 360);
     }
 
     // Returns the slot index under a click/tap, or null. Used to claim.
