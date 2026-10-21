@@ -653,23 +653,16 @@ class MensRosterScreen extends RosterScreenBase {
     }
     // 👀 Sees games (owner 2026-10-21: "a pill that shows all players
     // that get auto showing of [the team's] games for them to rsvp to
-    // … 1 short cut pill", every team): the ONE list a game invite
-    // reaches automatically — active roster + injured (they see games,
-    // just excused) + ⭐ standing invites; 📄 paper spots never, and on
-    // a call-up-gated team (mig 605) roster rows grant nothing, so only
-    // the ⭐ rows count.
+    // … 1 short cut pill … it should show hide like others"): a FILTER
+    // toggle, not a separate list.  ON = the column shows only who a
+    // game invite reaches automatically — active roster + injured
+    // (excused, still see games) + the ⭐ strip; 📄 paper spots hidden,
+    // and on a call-up-gated team (mig 605) roster rows grant nothing,
+    // so only the ⭐ strip remains.
     const gated = Array.isArray(data.callupOnlyTeams) && data.callupOnlyTeams.includes(col.teamId);
-    const seesRoster = gated ? [] : [...cats.active, ...cats.injured];
-    const seesCount = seesRoster.length + riders.length;
-    const seesOpen = !!(this.seesOpen && this.seesOpen[col.teamId]);
-    const seesPanel = (!col.isUnassigned && seesOpen) ? `
-      <div style="margin:2px 0 8px; padding:7px 9px; border:1px solid rgba(45,212,191,0.5); border-radius:8px; background:rgba(45,212,191,0.07);">
-        <div style="font-size:0.7rem; font-weight:800; margin-bottom:4px;">👀 Sees every ${this.escape(col.label)} game — RSVPs land with these ${seesCount}</div>
-        ${gated ? `<div style="font-size:0.68rem; color:#f59e0b; margin-bottom:4px;">Call-up-gated team: the roster grants no games — only standing ⭐ invites and per-game call-ups see them.</div>` : ''}
-        ${seesRoster.map(p => `<div style="font-size:0.74rem; padding:1px 0;">${cats.injured.includes(p) ? '🩹' : '✓'} ${this.escape(p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim())}</div>`).join('')}
-        ${riders.map(r => `<div style="font-size:0.74rem; padding:1px 0;">⭐ ${this.escape(r.name)} <span style="opacity:0.6;">· from ${this.escape(r.fromTeam || '—')}</span></div>`).join('')}
-        ${seesCount === 0 ? '<div style="font-size:0.74rem; opacity:0.6;">Nobody — every appearance is a per-game invite.</div>' : ''}
-      </div>` : '';
+    const seesCount = (gated ? 0 : cats.active.length + cats.injured.length) + riders.length;
+    const seesOn = !!(this.seesOpen && this.seesOpen[col.teamId]);
+    const seesCat = (cat) => gated ? false : (cat === 'active' || cat === 'injured');
     const catPill = (cat, icon, label, n, color) => (n || cat === 'active') ? `
         <button type="button" class="mr-cat-pill" data-cat-team="${col.teamId}" data-cat="${cat}"
           title="${off(cat) ? `Show ${label.toLowerCase()} (${n})` : `Hide ${label.toLowerCase()}`}"
@@ -704,16 +697,17 @@ class MensRosterScreen extends RosterScreenBase {
                    color:${officialOpen || st ? color : '#64748b'};">🌐 Roster (${(official.names || []).length})${this.escape(suffix)}</button>`;
         })() : ''}
         <button type="button" class="mr-sees-pill" data-team-id="${col.teamId}"
-          title="${seesOpen ? 'Hide' : 'Show'} everyone whose ${this.escape(col.label)} games show up automatically to RSVP — roster that grants games plus ⭐ standing invites"
+          title="${seesOn ? 'Back to the full column' : `Show only who gets ${this.escape(col.label)} games automatically to RSVP — roster that grants games plus ⭐ standing invites`}"
           style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
-                 border:1px solid #2dd4bf; background:${seesOpen ? '#2dd4bf26' : 'transparent'};
-                 color:#2dd4bf;">👀 Sees games (${seesCount})</button>
+                 border:1px solid #2dd4bf; background:${seesOn ? '#2dd4bf26' : 'transparent'};
+                 color:${seesOn ? '#2dd4bf' : '#64748b'};">👀 Sees games (${seesCount})</button>
       </div>
-      ${officialPanel}
-      ${seesPanel}`;
+      ${officialPanel}`;
 
-    const shown = col.isUnassigned ? players : players.filter(p => !off(catOf(p)));
-    const ridersHtml = (!col.isUnassigned && riders.length && !off('riders')) ? riders.map(r => `
+    const shown = col.isUnassigned ? players
+      : seesOn ? players.filter(p => seesCat(catOf(p)))
+      : players.filter(p => !off(catOf(p)));
+    const ridersHtml = (!col.isUnassigned && riders.length && (seesOn || !off('riders'))) ? riders.map(r => `
       <div style="padding:5px 8px; border:1px dashed #60a5fa; border-radius:8px; font-size:0.74rem; background:rgba(96,165,250,0.08);"
            title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">
         ⭐ <b>${this.escape(r.name)}</b> <span style="opacity:0.7;">· from ${this.escape(r.fromTeam || '—')}</span>
