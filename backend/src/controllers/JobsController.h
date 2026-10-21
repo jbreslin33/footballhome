@@ -12,6 +12,9 @@
 //     whoever has done the fewest jobs in the last 60 days.
 //   - Late RSVPs re-run the fill on every open; only gap-fills move.
 //   - Check-off defaults to DONE — only exceptions get flagged not_done.
+//   - Sub cards pass on from Game Center: after kickoff, a lineup save
+//     that subs the holder in hands the job to the one player subbed
+//     off (source 'pass' — EligibilityController::handleSaveMatchLineup).
 //   - Definitions + copy are job_definitions rows per event kind (the
 //     APSL game-day set is scoped by league_label).
 //

@@ -163,6 +163,43 @@ void JobsController::ensureAssignments(long long eventId) {
               " WHERE ja.fh_event_id = $1::bigint AND o.fh_event_id = ja.fh_event_id "
               "   AND o.job_definition_id = ja.job_definition_id", {std::to_string(eventId)});
 
+    // "Sub cards: 1 guy who STARTS ON BENCH."  When this game has a
+    // lineup with a bench and has not kicked off, the sub-cards job is
+    // bench-only: a home/fill holder who ended up in the starting XI
+    // (or out of the squad) releases it, home placement and gap-fill
+    // prefer bench players, and the pass-on in
+    // EligibilityController::handleSaveMatchLineup can then actually
+    // fire once the game starts.  manual/pass sources are the coach's
+    // call (or the game's own history) and are never released here.
+    // Every other job stays zone-blind.
+    std::set<int> benchPersons;
+    bool subCardsBenchRule = false;
+    {
+        auto pre = db->query(
+            "SELECT pl.person_id, (ge.starts_at > now()) AS pre_kickoff "
+            "  FROM fh_events fe "
+            "  JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+            "  JOIN match_lineups ml ON ml.match_id = fe.match_id AND ml.zone = 'bench' "
+            "  JOIN players pl ON pl.id = ml.player_id "
+            " WHERE fe.id = $1::bigint", {std::to_string(eventId)});
+        for (const auto& r : pre) {
+            benchPersons.insert(r["person_id"].as<int>());
+            subCardsBenchRule = r["pre_kickoff"].as<bool>();
+        }
+        if (subCardsBenchRule) {
+            for (const auto& d : defs) {
+                if (d.slug != "sub-cards") continue;
+                for (const auto& r : db->query(
+                        "SELECT id, person_id FROM job_assignments "
+                        " WHERE fh_event_id = $1::bigint AND job_definition_id = $2::int "
+                        "   AND source IN ('home', 'fill')",
+                        {std::to_string(eventId), std::to_string(d.id)}))
+                    if (!benchPersons.count(r["person_id"].as<int>()))
+                        db->query("DELETE FROM job_assignments WHERE id = $1::int", {r["id"].c_str()});
+            }
+        }
+    }
+
     // Everyone's history, once: done-this-job-before counts and the
     // last-60-days load, for the fairness ranking.
     std::map<int, std::map<int, int>> doneBefore;   // person → def → times
@@ -217,8 +254,10 @@ void JobsController::ensureAssignments(long long eventId) {
             const auto& v = held[d.id];
             return std::find(v.begin(), v.end(), pid) != v.end();
         };
+        const bool benchOnly = subCardsBenchRule && d.slug == "sub-cards";
         for (int pid : homes[d.id]) {
             if ((int)held[d.id].size() >= d.needed) break;
+            if (benchOnly && !benchPersons.count(pid)) continue;   // a starting home holder sits this one out
             if (!has(pid)) assign(d.id, pid, "home");
         }
         for (int pass = 0; pass < 2 && (int)held[d.id].size() < d.needed; pass++) {
@@ -230,6 +269,10 @@ void JobsController::ensureAssignments(long long eventId) {
                 cands.push_back(pid);
             }
             std::stable_sort(cands.begin(), cands.end(), [&](int a, int b) {
+                if (benchOnly) {                                // sub cards go to a bench player
+                    const bool ba = benchPersons.count(a) > 0, bb2 = benchPersons.count(b) > 0;
+                    if (ba != bb2) return ba;
+                }
                 const bool da = doneBefore[a][d.id] > 0, dbb = doneBefore[b][d.id] > 0;
                 if (da != dbb) return da;                       // done it before first
                 if (recentLoad[a] != recentLoad[b]) return recentLoad[a] < recentLoad[b];

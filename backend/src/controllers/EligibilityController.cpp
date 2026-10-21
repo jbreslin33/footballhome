@@ -1,8 +1,10 @@
 #include "EligibilityController.h"
+#include "JobsController.h"
 #include "../core/Crypto.h"
 #include <sstream>
 #include <regex>
 #include <algorithm>  // std::find — squad colour validation
+#include <map>        // sub-cards pass-on zone diff
 #include <vector>
 #include <iomanip>
 #include <iostream>
@@ -685,6 +687,15 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
             }
         }
         
+        // Sub-cards pass-on needs the zones this save replaces: snapshot
+        // person → zone before the wipe (players hop match_lineups rows
+        // by player_id; jobs live on person_id).
+        std::map<long long, std::string> oldZoneByPerson;
+        for (const auto& r : db_->query(
+                "SELECT pl.person_id, ml.zone FROM match_lineups ml "
+                "  JOIN players pl ON pl.id = ml.player_id WHERE ml.match_id = $1::int", {matchId}))
+            oldZoneByPerson[r["person_id"].as<long long>()] = r["zone"].is_null() ? "" : r["zone"].c_str();
+
         // Delete existing lineup for this match
         db_->query("DELETE FROM match_lineups WHERE match_id = $1", {matchId});
         
@@ -788,6 +799,67 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
             }
         }
         
+        // Sub-cards pass-on (job_definitions slug 'sub-cards', mig 625;
+        // owner's rule: "if he's subbed in, job passes to whoever was
+        // subbed off").  Only once the game has kicked off — before
+        // kickoff a lineup edit is construction, not a substitution —
+        // and only on an unambiguous single swap: the holder went
+        // bench→starter and exactly ONE player went starter→bench in
+        // the same save.  Anything murkier (injury reassign, double
+        // subs) stays the coach's manual call on #jobs.  Advisory —
+        // a hiccup here must never fail the lineup save.
+        try {
+            auto holder = db_->query(
+                "SELECT ja.id AS assignment_id, ja.person_id "
+                "  FROM job_assignments ja "
+                "  JOIN job_definitions d ON d.id = ja.job_definition_id AND d.slug = 'sub-cards' "
+                "  JOIN fh_events fe ON fe.id = ja.fh_event_id "
+                "  JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+                " WHERE fe.match_id = $1::int AND ge.starts_at <= now() "
+                " ORDER BY ja.created_at LIMIT 1", {matchId});
+            if (!holder.empty()) {
+                const long long holderPersonId = holder[0]["person_id"].as<long long>();
+                std::map<long long, std::string> newZoneByPerson;
+                for (const auto& r : db_->query(
+                        "SELECT pl.person_id, ml.zone FROM match_lineups ml "
+                        "  JOIN players pl ON pl.id = ml.player_id WHERE ml.match_id = $1::int", {matchId}))
+                    newZoneByPerson[r["person_id"].as<long long>()] = r["zone"].is_null() ? "" : r["zone"].c_str();
+                auto zoneWas = [&](const std::map<long long, std::string>& m, long long pid) {
+                    auto it = m.find(pid);
+                    return it == m.end() ? std::string() : it->second;
+                };
+                const bool holderSubbedIn =
+                    zoneWas(oldZoneByPerson, holderPersonId) == "bench" &&
+                    zoneWas(newZoneByPerson, holderPersonId) == "starter";
+                if (holderSubbedIn) {
+                    std::vector<long long> cameOff;
+                    for (const auto& [pid, oldZ] : oldZoneByPerson)
+                        if (oldZ == "starter" && zoneWas(newZoneByPerson, pid) == "bench")
+                            cameOff.push_back(pid);
+                    if (cameOff.size() == 1) {
+                        db_->query(
+                            "UPDATE job_assignments SET person_id = $2::int, source = 'pass' "
+                            " WHERE id = $1::int",
+                            {holder[0]["assignment_id"].c_str(), std::to_string(cameOff[0])});
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[lineup save] sub-cards pass-on: " << e.what() << std::endl;
+        }
+
+        // Zones just changed — re-run the jobs auto-assigner so the
+        // sub-cards bench rule follows the lineup (a holder promoted to
+        // the XI pre-kickoff hands the cards to a bench player without
+        // waiting for the next RSVP or #jobs open).  Advisory too.
+        try {
+            auto fhEvent = db_->query(
+                "SELECT id FROM fh_events WHERE match_id = $1::int AND kind = 'match' LIMIT 1", {matchId});
+            if (!fhEvent.empty()) JobsController::ensureAssignments(fhEvent[0]["id"].as<long long>());
+        } catch (const std::exception& e) {
+            std::cerr << "[lineup save] jobs refill: " << e.what() << std::endl;
+        }
+
         // Every save stamps the lineup's last-change time (owner
         // 2026-10-21) — even formation-less saves, so the players' "last
         // change" label and the save-health chip always have DB truth.
