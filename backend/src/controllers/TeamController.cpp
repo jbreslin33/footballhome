@@ -455,6 +455,22 @@ Response TeamController::handleSetRosterStatusForPerson(const Request& request) 
                 return Response(HttpStatus::BAD_REQUEST,
                     createJSONResponse(false, "Status '" + code + "' is not part of this team's league pipeline"));
             }
+            // On Roster is GRANTED, never typed, where the league's own
+            // list is pulled online (owner 2026-10-21: "i should not be
+            // able to set On Roster on players [whose team] has an
+            // accessible online official roster").  The 🌐 pull sets it
+            // on an exact name match; everything else stays manual —
+            // including moving someone OFF On Roster.
+            if (code == "on_roster") {
+                pqxx::result online = db_->query(
+                    "SELECT 1 FROM official_roster_sources s "
+                    " WHERE s.team_id = $1::int AND s.is_active "
+                    "   AND s.system IN ('teampass', 'google_sheet') LIMIT 1", {team_id});
+                if (!online.empty()) {
+                    return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false,
+                        "On Roster comes from the league's own list for this team — it is granted automatically when the 🌐 pull finds the player. Set the paperwork states by hand; the league list sets On Roster."));
+                }
+            }
             statusId = allowed[0]["id"].as<std::string>();
         }
 

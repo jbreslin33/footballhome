@@ -744,9 +744,17 @@ class RosterScreenBase extends Screen {
     const title = col.leagueName
       ? `Official league roster status — ${col.leagueName} pipeline`
       : 'Official league roster status';
-    const opts = options.map(s =>
-      `<option value="${esc(s.code)}" title="${esc(s.description || '')}" ${current === s.code ? 'selected' : ''}>${esc(s.displayName || s.code)}</option>`
-    ).join('\n         ');
+    // On Roster is GRANTED by the 🌐 pull on teams whose league list is
+    // online (2026-10-21) — the option is not pickable there (moving a
+    // player OFF On Roster stays manual; the selected value still shows).
+    const onlineRoster = Array.isArray(this._data && this._data.onlineRosterTeams)
+      && this._data.onlineRosterTeams.includes(col.teamId);
+    const opts = options.map(s => {
+      const locked = onlineRoster && s.code === 'on_roster' && current !== 'on_roster';
+      return `<option value="${esc(s.code)}" ${locked ? 'disabled' : ''}
+        title="${esc(locked ? "Granted by the league's own list — pull 🌐 Roster" : (s.description || ''))}"
+        ${current === s.code ? 'selected' : ''}>${esc(s.displayName || s.code)}${locked ? ' (via 🌐)' : ''}</option>`;
+    }).join('\n         ');
     return `<select class="mr-status-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
                title="${esc(title)}"
                style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.rosterStatusStyle(current)} ${RosterScreenBase.SELECT_WIDTH_STYLE}">
