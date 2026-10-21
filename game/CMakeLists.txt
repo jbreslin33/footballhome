@@ -42,12 +42,33 @@ add_library(game_net STATIC
 )
 target_link_libraries(game_net PUBLIC game_math)
 
+# ── game_ws — WebSocket transport + JWT auth (G0.4) ─────────────────────
+# [v1] RFC 6455 transport (poll(2) event loop) + HMAC-SHA256 JwtVerifier,
+# adopted from archive/sim-2d-v1 with the subprotocol rebranded fh-game.v1.
+find_package(OpenSSL REQUIRED)
+add_library(game_ws STATIC
+  src/net/WebSocketFrame.cpp
+  src/net/WebSocketHandshake.cpp
+  src/net/WebSocketTransport.cpp
+  src/auth/JwtVerifier.cpp
+)
+target_link_libraries(game_ws PUBLIC game_math OpenSSL::Crypto)
+
+# ── game_server + daemon (G0.4) ─────────────────────────────────────────
+add_library(game_server STATIC
+  src/server/GameServer.cpp
+)
+target_link_libraries(game_server PUBLIC game_core game_net game_ws)
+
+add_executable(fh-game src/main.cpp)
+target_link_libraries(fh-game PRIVATE game_server)
+
 # ── tests ──────────────────────────────────────────────────────────────
 enable_testing()
 
 function(game_test name)
   add_executable(${name} tests/${name}.cpp)
-  target_link_libraries(${name} PRIVATE game_core game_net)
+  target_link_libraries(${name} PRIVATE game_server)
   target_include_directories(${name} PRIVATE tests)
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
@@ -61,3 +82,8 @@ game_test(test_world)
 game_test(test_canonical_hash)
 game_test(test_determinism_core)
 game_test(test_codec)
+game_test(test_websocket_frame)
+game_test(test_websocket_handshake)
+game_test(test_websocket_transport)
+game_test(test_jwt_verifier)
+game_test(test_game_server)

@@ -1,0 +1,209 @@
+// game/tests/test_game_server.cpp
+//
+// GameServer behavior against a scripted in-memory transport ([v1]'s
+// FakeTransport testing pattern): HELLO on connect, claim rules, intent
+// authorization, snapshot fan-out, disconnect slot release.
+
+#include "test_harness.hpp"
+#include "net/Codec.hpp"
+#include "net/Wire.hpp"
+#include "server/GameServer.hpp"
+
+#include <map>
+#include <vector>
+
+using namespace fh::game;
+using namespace fh::game::net;
+using fh::game::math::Fixed64;
+
+namespace {
+
+class FakeTransport final : public INetworkTransport {
+public:
+    void setOnConnect(OnConnectFn f) override { on_connect_ = std::move(f); }
+    void setOnDisconnect(OnDisconnectFn f) override {
+        on_disconnect_ = std::move(f);
+    }
+    void setOnMessage(OnMessageFn f) override { on_message_ = std::move(f); }
+
+    bool send(fh::game::ClientId id, std::span<const std::uint8_t> b) override {
+        sent[id].emplace_back(b.begin(), b.end());
+        return true;
+    }
+    void disconnect(fh::game::ClientId id) override {
+        if (on_disconnect_) on_disconnect_(id);
+    }
+    std::size_t clientCount() const override { return 0; }
+    void poll(int) override {}
+
+    // test drivers
+    void scriptConnect(fh::game::ClientId id) {
+        auth::JwtClaims claims;
+        claims.person_id = static_cast<std::int64_t>(id);
+        on_connect_(id, claims);
+    }
+    void scriptMessage(fh::game::ClientId id, const Bytes& bytes) {
+        on_message_(id, std::span<const std::uint8_t>{bytes});
+    }
+    void scriptDisconnect(fh::game::ClientId id) { on_disconnect_(id); }
+
+    std::map<fh::game::ClientId, std::vector<Bytes>> sent;
+
+private:
+    OnConnectFn on_connect_;
+    OnDisconnectFn on_disconnect_;
+    OnMessageFn on_message_;
+};
+
+Bytes claimBytes(std::uint8_t slot, std::uint8_t claim = 1) {
+    ClaimFrame c;
+    c.slot = slot;
+    c.claim = claim;
+    return encodeFrame(FrameType::Claim, encodeClaim(c));
+}
+
+Bytes intentBytes(std::uint8_t slot, Fixed64 mx, Fixed64 my) {
+    PlayerIntentFrame f;
+    f.slot = slot;
+    f.move_x = mx;
+    f.move_y = my;
+    return encodeFrame(FrameType::PlayerIntent, encodePlayerIntent(f));
+}
+
+struct Rig {
+    FakeTransport t;
+    server::GameServer s;
+    Rig() : s{{.match_id = 7, .slot_count = 4}, t} {}
+};
+
+}  // namespace
+
+FH_TEST(server_sends_hello_on_connect) {
+    Rig r;
+    r.t.scriptConnect(100);
+    FH_EXPECT_EQ(r.t.sent[100].size(), 1u);
+
+    std::size_t consumed = 0;
+    auto f = decodeFrame(r.t.sent[100][0].data(), r.t.sent[100][0].size(),
+                         consumed);
+    FH_EXPECT(f.has_value());
+    FH_EXPECT(f->type == FrameType::Hello);
+    auto h = decodeHello(f->payload);
+    FH_EXPECT(h.has_value());
+    FH_EXPECT_EQ(h->match_id, 7u);
+    FH_EXPECT_EQ(h->slot_count, 4);
+    FH_EXPECT_EQ(h->capabilities, kCapPlayer | kCapSpectator);
+}
+
+FH_TEST(server_first_claim_wins) {
+    Rig r;
+    r.t.scriptConnect(100);
+    r.t.scriptConnect(200);
+    r.t.scriptMessage(100, claimBytes(2));
+    r.t.scriptMessage(200, claimBytes(2));  // loses — already owned
+    FH_EXPECT(r.s.slotClaimedBy(2, 100));
+    FH_EXPECT(!r.s.slotClaimedBy(2, 200));
+}
+
+FH_TEST(server_owner_intent_moves_player_foreign_intent_dropped) {
+    Rig r;
+    r.t.scriptConnect(100);
+    r.t.scriptConnect(200);
+    r.t.scriptMessage(100, claimBytes(0));
+
+    // Owner drives slot 0 east; intruder tries to drive it (and slot 1,
+    // which nobody owns) north.
+    r.t.scriptMessage(100, intentBytes(0, Fixed64::one(), Fixed64::zero()));
+    r.t.scriptMessage(200, intentBytes(0, Fixed64::zero(), Fixed64::one()));
+    r.t.scriptMessage(200, intentBytes(1, Fixed64::zero(), Fixed64::one()));
+    r.s.tickOnce();
+
+    FH_EXPECT(r.s.world().player(0).pos.x.raw > 0);
+    FH_EXPECT_EQ(r.s.world().player(0).pos.y.raw, 0);  // intruder ignored
+    FH_EXPECT_EQ(r.s.world().player(1).pos.y.raw, 0);  // unclaimed ignored
+}
+
+FH_TEST(server_one_client_may_hold_multiple_slots) {
+    Rig r;
+    r.t.scriptConnect(100);
+    r.t.scriptMessage(100, claimBytes(0));
+    r.t.scriptMessage(100, claimBytes(1));
+    r.t.scriptMessage(100, intentBytes(0, Fixed64::one(), Fixed64::zero()));
+    r.t.scriptMessage(100, intentBytes(1, Fixed64::zero(), Fixed64::one()));
+    r.s.tickOnce();
+    FH_EXPECT(r.s.world().player(0).pos.x.raw > 0);
+    FH_EXPECT(r.s.world().player(1).pos.y.raw > 0);
+}
+
+FH_TEST(server_broadcasts_snapshot_to_all_clients) {
+    Rig r;
+    r.t.scriptConnect(100);
+    r.t.scriptConnect(200);
+    r.s.tickOnce();
+
+    for (auto id : {fh::game::ClientId{100}, fh::game::ClientId{200}}) {
+        const auto& frames = r.t.sent[id];
+        FH_EXPECT_EQ(frames.size(), 2u);  // HELLO + SNAPSHOT
+        std::size_t consumed = 0;
+        auto f = decodeFrame(frames[1].data(), frames[1].size(), consumed);
+        FH_EXPECT(f.has_value());
+        FH_EXPECT(f->type == FrameType::Snapshot);
+        auto s = decodeSnapshot(f->payload);
+        FH_EXPECT(s.has_value());
+        FH_EXPECT_EQ(s->tick, 1u);
+        FH_EXPECT_EQ(s->players.size(), 4u);
+    }
+}
+
+FH_TEST(server_snapshot_flags_mark_claimed_slots) {
+    Rig r;
+    r.t.scriptConnect(100);
+    r.t.scriptMessage(100, claimBytes(3));
+    r.s.tickOnce();
+
+    const auto& frames = r.t.sent[100];
+    std::size_t consumed = 0;
+    auto f = decodeFrame(frames.back().data(), frames.back().size(), consumed);
+    auto s = decodeSnapshot(f->payload);
+    FH_EXPECT(s.has_value());
+    FH_EXPECT_EQ(s->players[3].flags, 1);
+    FH_EXPECT_EQ(s->players[0].flags, 0);
+}
+
+FH_TEST(server_disconnect_releases_slots) {
+    Rig r;
+    r.t.scriptConnect(100);
+    r.t.scriptMessage(100, claimBytes(2));
+    FH_EXPECT(r.s.slotClaimedBy(2, 100));
+    r.t.scriptDisconnect(100);
+    FH_EXPECT(!r.s.slotClaimedBy(2, 100));
+
+    // The freed slot is claimable by the next client.
+    r.t.scriptConnect(200);
+    r.t.scriptMessage(200, claimBytes(2));
+    FH_EXPECT(r.s.slotClaimedBy(2, 200));
+}
+
+FH_TEST(server_release_frees_only_own_slot) {
+    Rig r;
+    r.t.scriptConnect(100);
+    r.t.scriptConnect(200);
+    r.t.scriptMessage(100, claimBytes(2));
+    r.t.scriptMessage(200, claimBytes(2, /*claim=*/0));  // not the owner
+    FH_EXPECT(r.s.slotClaimedBy(2, 100));
+    r.t.scriptMessage(100, claimBytes(2, /*claim=*/0));
+    FH_EXPECT(!r.s.slotClaimedBy(2, 100));
+}
+
+FH_TEST(server_two_frames_in_one_message) {
+    Rig r;
+    r.t.scriptConnect(100);
+    Bytes combined = claimBytes(0);
+    const Bytes intent = intentBytes(0, Fixed64::one(), Fixed64::zero());
+    combined.insert(combined.end(), intent.begin(), intent.end());
+    r.t.scriptMessage(100, combined);
+    r.s.tickOnce();
+    FH_EXPECT(r.s.world().player(0).pos.x.raw > 0);
+}
+
+FH_TEST_MAIN()

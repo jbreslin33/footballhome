@@ -169,9 +169,16 @@ slices, exit gates, goldens).
   §1/§4/§6 layouts locked in the same slice; players carry no z on the wire
   (planar — ball gets z in G1), 22-player snapshot ≈ 730 B ≈ 22 KB/s @ 30 Hz.
   9/9 ctests green.
-- G0.4 [ ] WebSocket server (v1 handshake/transport patterns re-reviewed, not
-  blind-ported), JWT auth via the club secret, single-match daemon binary +
-  Dockerfile.
+- G0.4 [x] (2026-10-21) WebSocket server + daemon. [v1]'s RFC 6455 stack
+  (frame codec, handshake, poll(2) transport) + HMAC-SHA256 JwtVerifier
+  adopted, subprotocol rebranded `fh-game.v1.bearer.<JWT>`. New
+  `fh::game::server::GameServer`: HELLO on connect, first-claim-wins slots
+  (one client may hold several — "control 1 or more players"), intents
+  authorized against slot ownership (the frame's slot field is a request,
+  never a fact), snapshot fan-out each tick. `fh-game` daemon binary:
+  env-configured, wall-clock pacing outside the sim (GAME_SPEED=0 = headless
+  free-run for calibration/FM). 14/14 ctests. Dockerfile moved to G0.5
+  where the container gate lands.
 - G0.5 [ ] `make game-deploy`: container image build + full ctest suite
   inside the image = the standing green gate.
 - G0.6 [ ] nginx `/game/<key>` proxy (variable upstream, request-time DNS) +
