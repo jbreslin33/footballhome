@@ -157,4 +157,19 @@ struct RosterFrame {
 Bytes encodeRoster(const RosterFrame& f);
 std::optional<RosterFrame> decodeRoster(const Bytes& payload);
 
+// Style-preset catalog (1.4): names only — the vectors stay server-side;
+// a preset's wire id is its INDEX in this list (mig 630 sort order).
+struct PresetsFrame {
+    std::vector<std::string> names;
+};
+Bytes encodePresets(const PresetsFrame& f);
+std::optional<PresetsFrame> decodePresets(const Bytes& payload);
+
+struct ApplyPresetFrame {
+    std::uint8_t team = 0;       // 0 home, 1 away
+    std::uint8_t preset_id = 0;  // PRESETS index
+};
+Bytes encodeApplyPreset(const ApplyPresetFrame& f);
+std::optional<ApplyPresetFrame> decodeApplyPreset(const Bytes& payload);
+
 }  // namespace fh::game::net

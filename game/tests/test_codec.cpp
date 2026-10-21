@@ -176,4 +176,24 @@ FH_TEST(claim_round_trip) {
     FH_EXPECT_EQ(d->claim, 0);
 }
 
+FH_TEST(presets_round_trip) {
+    PresetsFrame f;
+    f.names = {"Lighthouse", "Bielsa", "Positional Play"};
+    auto d = decodePresets(encodePresets(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->names.size(), 3u);
+    FH_EXPECT(d->names[0] == "Lighthouse");
+    FH_EXPECT(d->names[2] == "Positional Play");
+}
+
+FH_TEST(apply_preset_round_trip) {
+    ApplyPresetFrame f;
+    f.team = 1;
+    f.preset_id = 7;
+    auto d = decodeApplyPreset(encodeApplyPreset(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->team, 1);
+    FH_EXPECT_EQ(d->preset_id, 7);
+}
+
 FH_TEST_MAIN()

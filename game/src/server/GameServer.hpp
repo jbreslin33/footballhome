@@ -60,6 +60,9 @@ public:
         // concept overrides. Empty = generic slots at the band defaults.
         persistence::DemoTeam roster_home;
         persistence::DemoTeam roster_away;
+        // Style presets (mig 630): the auteur canon + the club preset.
+        // Wire id = index. Empty = the DB was down; no PRESETS frame.
+        std::vector<persistence::StylePreset> presets;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);

@@ -103,8 +103,10 @@ int main() {
             std::printf("fh-game: away roster %s (%s)\n", ta,
                         cfg.roster_away.level_band.c_str());
         }
-        std::printf("fh-game: %zu admin user(s) loaded\n",
-                    cfg.admin_user_ids.size());
+        // Style presets (mig 630): the auteur canon + the club preset.
+        cfg.presets = persistence::loadStylePresets(db);
+        std::printf("fh-game: %zu admin user(s), %zu style preset(s) loaded\n",
+                    cfg.admin_user_ids.size(), cfg.presets.size());
     }
 
     auth::JwtVerifier verifier{secret};

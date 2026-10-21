@@ -139,6 +139,12 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
     const Bytes frame = encodeFrame(FrameType::Hello, encodeHello(hello));
     transport_.send(id, frame);
     clients_.emplace(id, true);
+    if (!cfg_.presets.empty()) {  // style-preset catalog (1.4, mig 630)
+        PresetsFrame pf;
+        for (const auto& p : cfg_.presets) pf.names.push_back(p.name);
+        transport_.send(id, encodeFrame(FrameType::Presets,
+                                        encodePresets(pf)));
+    }
     broadcastRoster();  // names + knowledge for every client
 }
 
@@ -238,6 +244,27 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             }
             concept_ratings_[ps->slot] = r;
             brain_.setRatings(ps->slot, r);
+            broadcastRoster();
+            return;
+        }
+        case FrameType::ApplyPreset: {
+            // Admin-only: paint one team's identity in one tap (mig 630).
+            // The preset OVERLAYS only the dials it names onto every slot
+            // of the team; unnamed concepts keep their current rating —
+            // "Bielsa base + modifications" composes.
+            if (!admins_.count(id)) return;
+            const auto ap = decodeApplyPreset(frame.payload);
+            if (!ap || ap->team > 1 || ap->preset_id >= cfg_.presets.size())
+                return;
+            const core::PresetOverlay& o =
+                cfg_.presets[ap->preset_id].overlay;
+            const std::uint8_t half = cfg_.slot_count / 2;
+            const std::uint8_t from = ap->team == 0 ? 0 : half;
+            const std::uint8_t to = ap->team == 0 ? half : cfg_.slot_count;
+            for (std::uint8_t sl = from; sl < to; ++sl) {
+                core::applyPresetOverlay(concept_ratings_[sl], o);
+                brain_.setRatings(sl, concept_ratings_[sl]);
+            }
             broadcastRoster();
             return;
         }

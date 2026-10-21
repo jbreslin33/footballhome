@@ -22,6 +22,8 @@
     MATCH_SETTINGS: 0x32,
     PLAYER_SETTINGS: 0x33,
     ROSTER: 0x34,
+    PRESETS: 0x35,
+    APPLY_PRESET: 0x36,
   };
 
   const CONCEPTS = ['delay', 'marking', 'cover', 'support', 'outlet',
@@ -116,6 +118,30 @@
     return slots;
   }
 
+  function decodePresets(view, at) {
+    // 1.4: style-preset catalog — names only; a preset's id is its index.
+    const n = view.getUint8(at);
+    let p = at + 1;
+    const names = [];
+    for (let i = 0; i < n; i++) {
+      const len = view.getUint8(p); p += 1;
+      let name = '';
+      for (let k = 0; k < len; k++)
+        name += String.fromCharCode(view.getUint8(p + k));
+      p += len;
+      names.push(name);
+    }
+    return names;
+  }
+
+  function encodeApplyPreset(team, presetId) {
+    const p = new ArrayBuffer(2);
+    const v = new DataView(p);
+    v.setUint8(0, team);
+    v.setUint8(1, presetId);
+    return envelope(FrameType.APPLY_PRESET, p);
+  }
+
   function encodePlayerSettings(slot, ratings) {
     const p = new ArrayBuffer(2 + ratings.length);
     const v = new DataView(p);
@@ -178,7 +204,9 @@
     CONCEPTS,
     encodeMatchSettings,
     encodePlayerSettings,
+    encodeApplyPreset,
     decodeRoster,
+    decodePresets,
     decodeFrame,
     decodeHello,
     decodeSnapshot,

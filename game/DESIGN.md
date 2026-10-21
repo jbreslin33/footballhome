@@ -459,6 +459,24 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
   select; roster band overrides level env. Verified live: drove "Karl
   Brandt", edited "Luis Serra" down to 8 concepts from the page.
 
+### 8.8 G4.13 — presets become rows, identity becomes one tap
+
+- Mig 630 (`game_style_presets` + `game_style_preset_ratings`): the
+  auteur canon (CONCEPTS.md schools) + THE CLUB PRESET "Lighthouse" as
+  DB rows — concept NAMES not bit ids (names survive bit growth), every
+  Lighthouse rating citing its verbatim docs/game-model/ source line.
+- Overlay semantics: a preset carries only the dials it names; applying
+  it leaves unnamed concepts at their current rating (explicit 0 rows are
+  meaningful — Sacchi zeroes man-mark). `applyPresetOverlay` in
+  Levels.hpp, unit-tested.
+- Wire 1.4: PRESETS (0x35, s→c catalog on connect — names only, id =
+  index, vectors stay server-side) + APPLY_PRESET (0x36, c→s admin:
+  `u8 team | u8 preset_id`) → fresh ROSTER. PROTOCOL.md 0x33/0x34 docs
+  caught up to the graded form G4.11 shipped.
+- Edit mode grew the preset bar: dropdown + → H / → A — a coach paints a
+  team identity in one tap. DB down = no PRESETS frame, bar stays hidden;
+  goldens untouched (presets only act when applied).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

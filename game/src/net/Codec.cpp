@@ -305,6 +305,49 @@ std::optional<RosterFrame> decodeRoster(const Bytes& payload) {
     return f;
 }
 
+Bytes encodePresets(const PresetsFrame& f) {
+    Writer w;
+    w.u8(static_cast<std::uint8_t>(f.names.size()));
+    for (const std::string& n : f.names) {
+        const std::size_t len = n.size() > 40 ? 40 : n.size();
+        w.u8(static_cast<std::uint8_t>(len));
+        for (std::size_t i = 0; i < len; ++i)
+            w.u8(static_cast<std::uint8_t>(n[i]));
+    }
+    return std::move(w.out);
+}
+
+std::optional<PresetsFrame> decodePresets(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    PresetsFrame f;
+    const std::uint8_t n = r.u8();
+    for (std::uint8_t i = 0; i < n && r.ok; ++i) {
+        std::string name;
+        const std::uint8_t len = r.u8();
+        for (std::uint8_t k = 0; k < len; ++k)
+            name.push_back(static_cast<char>(r.u8()));
+        f.names.push_back(std::move(name));
+    }
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
+Bytes encodeApplyPreset(const ApplyPresetFrame& f) {
+    Writer w;
+    w.u8(f.team);
+    w.u8(f.preset_id);
+    return std::move(w.out);
+}
+
+std::optional<ApplyPresetFrame> decodeApplyPreset(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    ApplyPresetFrame f;
+    f.team = r.u8();
+    f.preset_id = r.u8();
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
 // ── CLAIM ───────────────────────────────────────────────────────────────
 
 Bytes encodeClaim(const ClaimFrame& f) {

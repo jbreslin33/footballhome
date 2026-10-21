@@ -110,4 +110,52 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
     }
 }
 
+std::vector<StylePreset> loadStylePresets(const DbConfig& cfg) {
+    std::vector<StylePreset> out;
+    try {
+        const std::string conn_str =
+            "host=" + cfg.host + " dbname=" + cfg.dbname +
+            " user=" + cfg.user + " password=" + cfg.password +
+            " connect_timeout=5";
+        pqxx::connection conn{conn_str};
+        pqxx::work tx{conn};
+        const auto rows = tx.exec(
+            "SELECT p.name, r.concept, r.rating "
+            "FROM game_style_presets p "
+            "JOIN game_style_preset_ratings r ON r.preset_id = p.id "
+            "ORDER BY p.sort_order, p.id");
+        for (const auto& row : rows) {
+            const std::string name = row[0].as<std::string>();
+            if (out.empty() || out.back().name != name) {
+                StylePreset p;
+                p.name = name;
+                p.overlay.fill(-1);
+                out.push_back(std::move(p));
+            }
+            // "concept" is a C++20 keyword — hence dial_name.
+            const std::string dial_name = row[1].as<std::string>();
+            int idx = -1;
+            for (int i = 0; i < core::kConceptCount; ++i) {
+                if (dial_name == core::kConceptNames[i]) { idx = i; break; }
+            }
+            if (idx < 0) {  // a queued concept's row landed early: skip
+                std::fprintf(stderr,
+                             "fh-game: preset '%s' names unknown concept "
+                             "'%s' — skipped\n",
+                             name.c_str(), dial_name.c_str());
+                continue;
+            }
+            int rating = row[2].as<int>();
+            if (rating < 0) rating = 0;
+            if (rating > 100) rating = 100;
+            out.back().overlay[idx] = static_cast<std::int16_t>(rating);
+        }
+        return out;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: style presets load failed: %s\n",
+                     e.what());
+        return {};
+    }
+}
+
 }  // namespace fh::game::persistence

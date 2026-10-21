@@ -119,6 +119,19 @@ inline constexpr int kConceptCount = 20;
 // distances by rating. 0 = doesn't know it; 100 = textbook every time.
 using ConceptRatings = std::array<std::uint8_t, kConceptCount>;
 
+// A style preset is an OVERLAY vector (mig 630, CONCEPTS.md "Schools &
+// auteurs"): -1 = this dial untouched; 0-100 = set it (an explicit 0 is
+// meaningful — Sacchi's zonal marking ZEROES man-mark). Applying one
+// paints only the dials the school names; the rest keep their value.
+using PresetOverlay = std::array<std::int16_t, kConceptCount>;
+
+inline void applyPresetOverlay(ConceptRatings& r, const PresetOverlay& o) {
+    for (int i = 0; i < kConceptCount; ++i) {
+        if (o[i] < 0) continue;
+        r[i] = static_cast<std::uint8_t>(o[i] > 100 ? 100 : o[i]);
+    }
+}
+
 
 
 // Default knowledge bundle for a level band. EXACTLY reproduces the

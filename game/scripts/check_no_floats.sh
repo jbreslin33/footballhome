@@ -46,12 +46,14 @@ fail=0
 for dir in "${FORBIDDEN_MATH_DIRS[@]}"; do
     if [[ ! -d "$dir" ]]; then continue; fi
     # Look for standalone 'float' or 'double' as a whole word.
-    # Excludes comment lines starting with // and #.
+    # Excludes comment lines starting with // and #, and matches inside
+    # string literals (the concept name "double-team" is data, not a type).
     if hits=$(grep -RInE '\b(float|double)\b' \
                 --include='*.cpp' --include='*.hpp' --include='*.h' \
                 "$dir" 2>/dev/null \
                 | grep -vE ':\s*//' \
-                | grep -vE '^\s*\*' || true); then
+                | grep -vE '^\s*\*' \
+                | grep -vE '"[^"]*\b(float|double)\b[^"]*"' || true); then
         if [[ -n "$hits" ]]; then
             echo "ERROR: forbidden 'float' or 'double' in $dir:" >&2
             echo "$hits" >&2

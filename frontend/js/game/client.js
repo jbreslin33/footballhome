@@ -14,6 +14,8 @@
   const lvlAwayBtn = document.getElementById('btn-level-away');
   const editBtn = document.getElementById('btn-edit');
   const editPanel = document.getElementById('edit-panel');
+  const presetBar = document.getElementById('preset-bar');
+  const presetSelect = document.getElementById('preset-select');
   const canvas = document.getElementById('game-canvas');
   const renderer = new GameRenderer(canvas);
   const input = new GameInput(
@@ -43,8 +45,27 @@
 
   // Live levels (from the snapshot 1.3 tail) + admin picker state.
   const levels = { home: 0, away: 0 };
-  let roster = [];        // [{mask, name}] per slot, server-authoritative
+  let roster = [];        // [{ratings, name}] per slot, server-authoritative
+  let presets = [];       // style-preset names (mig 630); id = index
   let editMode = false;   // admin: tap a player to open his knowledge
+
+  // Paint a team identity in one tap (CONCEPTS.md schools; wire 1.4).
+  function paintPresetBar() {
+    if (!presetBar) return;
+    presetBar.style.display =
+      editMode && presets.length ? 'flex' : 'none';
+  }
+  for (const [btnId, team, label] of [['preset-home', 0, 'HOME'],
+                                      ['preset-away', 1, 'AWAY']]) {
+    const btn = document.getElementById(btnId);
+    if (!btn) continue;
+    btn.addEventListener('click', () => {
+      const id = presetSelect.selectedIndex;
+      if (id < 0) return;
+      net.applyPreset(team, id);
+      toast(presets[id] + ' → ' + label);
+    });
+  }
 
   function openEditPanel(slot) {
     const e = roster[slot] || { ratings: [], name: '#' + (slot + 1) };
@@ -111,6 +132,7 @@
           editBtn.style.background =
             editMode ? 'rgba(255,204,0,.5)' : 'rgba(255,255,255,.12)';
           if (!editMode) editPanel.style.display = 'none';
+          paintPresetBar();
         };
         editBtn.addEventListener('click', flipEdit);
         editBtn.addEventListener('touchstart', (e) => {
@@ -184,6 +206,18 @@
     },
     onRoster(r) {
       roster = r;
+    },
+    onPresets(names) {
+      presets = names;
+      if (presetSelect) {
+        presetSelect.innerHTML = '';
+        names.forEach((n) => {
+          const o = document.createElement('option');
+          o.textContent = n;
+          presetSelect.appendChild(o);
+        });
+      }
+      paintPresetBar();
     },
     onEvent(ev) {
       const name = EVENT_NAMES[ev.eventType] || 'event';

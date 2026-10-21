@@ -264,4 +264,70 @@ FH_TEST(server_admin_can_retune_levels_others_cannot) {
     FH_EXPECT_EQ(snap2.level_away, 1);
 }
 
+FH_TEST(preset_overlay_touches_only_named_dials) {
+    core::ConceptRatings r{};
+    r.fill(50);
+    core::PresetOverlay o;
+    o.fill(-1);
+    o[18] = 95;   // man-mark
+    o[1] = 0;     // marking — an explicit zero is meaningful (Sacchi)
+    o[19] = 200;  // junk over 100 clamps
+    core::applyPresetOverlay(r, o);
+    FH_EXPECT_EQ(r[18], 95);
+    FH_EXPECT_EQ(r[1], 0);
+    FH_EXPECT_EQ(r[19], 100);
+    FH_EXPECT_EQ(r[0], 50);  // unnamed dial untouched
+}
+
+FH_TEST(server_admin_applies_preset_to_one_team_only) {
+    persistence::StylePreset bielsa;
+    bielsa.name = "Bielsa";
+    bielsa.overlay.fill(-1);
+    bielsa.overlay[18] = 95;  // man-mark
+    bielsa.overlay[19] = 90;  // verticality
+
+    FakeTransport t;
+    server::GameServer s{{.match_id = 7, .slot_count = 4,
+                          .presets = {bielsa}}, t};
+    t.scriptConnect(100, "club");  // admin
+    t.scriptConnect(200);          // plain player
+
+    // Catalog goes out on connect.
+    const auto cat = framesOf(t.sent[100], FrameType::Presets);
+    FH_EXPECT_EQ(cat.size(), 1u);
+    auto pf = decodePresets(cat[0]);
+    FH_EXPECT(pf.has_value());
+    FH_EXPECT(pf->names.size() == 1 && pf->names[0] == "Bielsa");
+
+    auto lastRoster = [&] {
+        const auto rs = framesOf(t.sent[100], FrameType::Roster);
+        return *decodeRoster(rs.back());
+    };
+    const auto before = lastRoster();
+
+    // Plain player's apply is ignored.
+    ApplyPresetFrame ap;
+    ap.team = 1;  // away = slots 2,3 in the 4-slot rig
+    ap.preset_id = 0;
+    t.scriptMessage(200, encodeFrame(FrameType::ApplyPreset,
+                                     encodeApplyPreset(ap)));
+    FH_EXPECT_EQ(framesOf(t.sent[100], FrameType::Roster).size(), 2u);
+
+    // Admin's apply paints the away slots' named dials, nothing else.
+    t.scriptMessage(100, encodeFrame(FrameType::ApplyPreset,
+                                     encodeApplyPreset(ap)));
+    const auto after = lastRoster();
+    FH_EXPECT_EQ(after.slots[2].ratings[18], 95);
+    FH_EXPECT_EQ(after.slots[3].ratings[19], 90);
+    // Home team untouched; away's unnamed dials keep their values.
+    FH_EXPECT_EQ(after.slots[0].ratings[18], before.slots[0].ratings[18]);
+    FH_EXPECT_EQ(after.slots[2].ratings[0], before.slots[2].ratings[0]);
+
+    // Out-of-range preset id is ignored, not UB.
+    ap.preset_id = 9;
+    t.scriptMessage(100, encodeFrame(FrameType::ApplyPreset,
+                                     encodeApplyPreset(ap)));
+    FH_EXPECT_EQ(framesOf(t.sent[100], FrameType::Roster).size(), 3u);
+}
+
 FH_TEST_MAIN()

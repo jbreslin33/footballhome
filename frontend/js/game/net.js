@@ -38,6 +38,9 @@
             );
           } else if (f.type === GameWire.FrameType.ROSTER) {
             this.handlers.onRoster(GameWire.decodeRoster(view, f.payloadAt));
+          } else if (f.type === GameWire.FrameType.PRESETS) {
+            if (this.handlers.onPresets)
+              this.handlers.onPresets(GameWire.decodePresets(view, f.payloadAt));
           } else if (f.type === GameWire.FrameType.EVENT) {
             this.handlers.onEvent(GameWire.decodeEvent(view, f.payloadAt));
           }
@@ -66,6 +69,9 @@
     }
     setLevels(homeId, awayId) {
       this.send(GameWire.encodeMatchSettings(homeId, awayId));
+    }
+    applyPreset(team, presetId) {
+      this.send(GameWire.encodeApplyPreset(team, presetId));
     }
   }
 

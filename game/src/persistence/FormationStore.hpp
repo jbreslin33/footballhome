@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ai/Formation.hpp"
+#include "core/Levels.hpp"
 
 #include <optional>
 #include <string>
@@ -62,5 +63,15 @@ struct DemoTeam {
 };
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
                                      const std::string& team_name);
+
+// Style presets (migration 630; game/CONCEPTS.md "Schools & auteurs").
+// overlay: -1 = dial untouched, 0-100 = set it. Rows carry concept NAMES;
+// unknown names (queued concepts) are skipped with a log. Empty vector on
+// any failure — the sandbox boots preset-less, loudly.
+struct StylePreset {
+    std::string name;
+    core::PresetOverlay overlay;  // kConceptNames order
+};
+std::vector<StylePreset> loadStylePresets(const DbConfig& cfg);
 
 }  // namespace fh::game::persistence

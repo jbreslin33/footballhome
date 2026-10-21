@@ -1,4 +1,4 @@
-# fh-game wire protocol — v1.3
+# fh-game wire protocol — v1.4
 
 > The protocol is the product boundary (DESIGN.md pillar 4). Every client —
 > browser, native, desktop, headless — implements this document and nothing
@@ -49,9 +49,11 @@ Frame types (u8):
 | 0x21 | EVENT | s→c | §7 |
 | 0x30 | CLAIM / RELEASE slot | c→s | take or drop control of a slot |
 | 0x31 | SPEED | c→s | manager/spectator: request sim speed (server-gated) |
-| 0x33 | PLAYER_SETTINGS | c→s | admin: one slot's concept mask (1.3): `u8 slot \| u64 mask` (bit ids in game/CONCEPTS.md; junk bits masked) |
-| 0x34 | ROSTER | s→c | per-slot knowledge + names (1.3), on connect and after changes: `u8 count`, then per slot `u64 concept_mask \| u8 name_len \| name bytes` |
+| 0x33 | PLAYER_SETTINGS | c→s | admin: one slot's GRADED knowledge (1.4 superseded the 1.3 bitmask): `u8 slot \| u8 count \| u8 rating…` (0-100 per concept, game/CONCEPTS.md order; extra trailing ratings ignored) |
+| 0x34 | ROSTER | s→c | per-slot knowledge + names (1.4 graded form), on connect and after changes: `u8 count`, then per slot `u8 rating_count \| u8 rating… \| u8 name_len \| name bytes` |
 | 0x32 | MATCH_SETTINGS | c→s | admin: set both teams' skill bands live (1.3): `u8 level_home \| u8 level_away` (band ids 0-6 = perfect/u10/u14/amateur/semipro/pro/world); non-admin senders are ignored |
+| 0x35 | PRESETS | s→c | style-preset catalog (1.4), on connect: `u8 count`, then per preset `u8 name_len \| name bytes`; a preset's wire id IS its index in this list. Rows come from `game_style_presets` (mig 630); vectors stay server-side |
+| 0x36 | APPLY_PRESET | c→s | admin: paint one team's identity in one tap (1.4): `u8 team (0 home / 1 away) \| u8 preset_id (PRESETS index)`. The preset OVERLAYS only the dials it names onto every slot of that team (unnamed concepts keep their current rating); server answers with a fresh ROSTER |
 | TBD | … | | reserved; new types are additive within a major version |
 
 Snapshot payloads at 22 slots + 3D ball must be measured against the u16

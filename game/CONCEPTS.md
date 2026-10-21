@@ -153,12 +153,19 @@ from its stated principles: "advance quickly / high energy / high tempo"
 pin their back line" → spread_wide 90, run_in_behind 85, push_up 85;
 "minimum 5 ahead of the ball + support behind for circulation" →
 support 90, back_outlet 80; marking stays nearer zonal than full Bielsa
-(man_orientation ~55 — the "modification"). When preset rows land, every
-principle row cites its verbatim source line.
+(man_orientation ~55 — the "modification"). Landed as DB rows (mig 630):
+every Lighthouse rating row cites its verbatim source line.
 
-Preset rows (name → full rating vector + formation + level overlay) are
-the registry's next table; the edit panel's future "apply preset" button
-is how a coach paints a team identity in one tap.
+Preset rows LANDED (mig 630, `game_style_presets` +
+`game_style_preset_ratings`): a preset is an OVERLAY — it carries ratings
+only for the dials the school names (concept NAMES, not bit ids; an
+explicit 0 row is meaningful — Sacchi zeroes man-mark), and applying one
+leaves every unnamed concept at the player's current value, so "Bielsa
+base + modifications" composes. The daemon loads the catalog at boot,
+serves names via the PRESETS frame (0x35), and APPLY_PRESET (0x36,
+admin) paints one team in one tap — the edit mode's preset bar. Formation
++ level overlay per preset remain future columns; queued concepts join
+their preset rows when their bits land.
 
 ## Compound concepts — interplay IS the next tier [FH/James]
 
