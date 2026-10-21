@@ -8,7 +8,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Features
 
-- [ ]
+- [ ] Finish #teams page: category pills should show the real rosters, and reflect who actually gets to RSVP based on categories. (Another session is working on this.)
 
 ## Done
 
