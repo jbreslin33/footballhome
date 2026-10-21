@@ -281,6 +281,14 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
                     {"fromTeam", r["from_team"].is_null() ? "" : r["from_team"].c_str()}});
             }
             result.body["autoInvites"] = std::move(autoInv);
+            // Call-up-gated teams (mig 605): roster rows grant no games
+            // there, so the 👀 Sees games pill counts only the ⭐
+            // standing invites for these columns.
+            nlohmann::json gated = nlohmann::json::array();
+            for (const auto& r : db->query(
+                "SELECT t.id FROM teams t WHERE t.is_active AND fh_team_callup_only(t.id)"))
+                gated.push_back(r["id"].as<long long>());
+            result.body["callupOnlyTeams"] = std::move(gated);
         } catch (const std::exception& e) {
             std::cerr << "[mens-roster] auto-invites attach failed: " << e.what() << std::endl;
         }

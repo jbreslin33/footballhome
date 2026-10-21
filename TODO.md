@@ -8,7 +8,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Features
 
-- [ ] Finish #teams page: category pills should show the real rosters, and reflect who actually gets to RSVP based on categories. (Another session is working on this.)
+- [ ] Finish #teams page: category pills should show the real rosters, and reflect who actually gets to RSVP based on categories. (Another session is working on this. NOTE 10/21: the “who gets to RSVP” part shipped as the 👀 Sees games pill — name settled, see Done.)
 - [x] #jobs page — SHIPPED 2026-10-21 (mig 625, see Done). Still open:
   - [ ] Player visibility: show each player their job on #my / the game card (magic-link friendly).
   - [ ] Sub-cards pass-on from Game Center subs (today: manual reassign on #jobs).
@@ -33,6 +33,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`. Pending op note: after the next frontend deploy, `sudo podman rm -f footballhome_sim` (see the archive README).
 
 ## Done
+
+- [x] 2026-10-21 #teams 👀 Sees games pill (every column, all sections): the ONE list a team's game invites reach automatically — active roster + 🩹 injured (excused, still see games) + ⭐ standing invites; 📄 paper spots excluded; call-up-gated teams count only ⭐ rows (Reserves reads 0, honestly). Panel lists the names. Name decided: “Sees games” (not “Functional”/“Active” — Active misses riders and lies on gated teams).
 
 - [x] 2026-10-21 Schedule release reworked (mig 627): a weekday game posts ALONE 7 days out; its week's other games wait for Sunday 8 PM (reverses mig 603's whole-week open that had Nov-1 games showing on Oct 21). Also fixed the UTC date-cast bug that let Sunday 8 PM+ kickoffs (Real Central) ride into the new week's feeds, and a per-row window-function hot loop that briefly hung the dashboard.
 

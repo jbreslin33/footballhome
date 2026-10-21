@@ -101,6 +101,14 @@ class MensRosterScreen extends RosterScreenBase {
       if (catPill) return this.onCatPillClick(catPill);
       const officialPill = e.target.closest('.mr-official-pill');
       if (officialPill) return this.onOfficialPillClick(officialPill);
+      const seesPill = e.target.closest('.mr-sees-pill');
+      if (seesPill) {
+        const id = parseInt(seesPill.dataset.teamId, 10);
+        this.seesOpen = this.seesOpen || {};
+        this.seesOpen[id] = !this.seesOpen[id];
+        if (this._data) this.renderRoster(this._data);
+        return;
+      }
       const officialRefresh = e.target.closest('.mr-official-refresh');
       if (officialRefresh) return this.onOfficialRefreshClick(officialRefresh);
       const pill = e.target.closest('.mr-pill');
@@ -643,6 +651,25 @@ class MensRosterScreen extends RosterScreenBase {
           </div>` : ''}
         </div>`;
     }
+    // 👀 Sees games (owner 2026-10-21: "a pill that shows all players
+    // that get auto showing of [the team's] games for them to rsvp to
+    // … 1 short cut pill", every team): the ONE list a game invite
+    // reaches automatically — active roster + injured (they see games,
+    // just excused) + ⭐ standing invites; 📄 paper spots never, and on
+    // a call-up-gated team (mig 605) roster rows grant nothing, so only
+    // the ⭐ rows count.
+    const gated = Array.isArray(data.callupOnlyTeams) && data.callupOnlyTeams.includes(col.teamId);
+    const seesRoster = gated ? [] : [...cats.active, ...cats.injured];
+    const seesCount = seesRoster.length + riders.length;
+    const seesOpen = !!(this.seesOpen && this.seesOpen[col.teamId]);
+    const seesPanel = (!col.isUnassigned && seesOpen) ? `
+      <div style="margin:2px 0 8px; padding:7px 9px; border:1px solid rgba(45,212,191,0.5); border-radius:8px; background:rgba(45,212,191,0.07);">
+        <div style="font-size:0.7rem; font-weight:800; margin-bottom:4px;">👀 Sees every ${this.escape(col.label)} game — RSVPs land with these ${seesCount}</div>
+        ${gated ? `<div style="font-size:0.68rem; color:#f59e0b; margin-bottom:4px;">Call-up-gated team: the roster grants no games — only standing ⭐ invites and per-game call-ups see them.</div>` : ''}
+        ${seesRoster.map(p => `<div style="font-size:0.74rem; padding:1px 0;">${cats.injured.includes(p) ? '🩹' : '✓'} ${this.escape(p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim())}</div>`).join('')}
+        ${riders.map(r => `<div style="font-size:0.74rem; padding:1px 0;">⭐ ${this.escape(r.name)} <span style="opacity:0.6;">· from ${this.escape(r.fromTeam || '—')}</span></div>`).join('')}
+        ${seesCount === 0 ? '<div style="font-size:0.74rem; opacity:0.6;">Nobody — every appearance is a per-game invite.</div>' : ''}
+      </div>` : '';
     const catPill = (cat, icon, label, n, color) => (n || cat === 'active') ? `
         <button type="button" class="mr-cat-pill" data-cat-team="${col.teamId}" data-cat="${cat}"
           title="${off(cat) ? `Show ${label.toLowerCase()} (${n})` : `Hide ${label.toLowerCase()}`}"
@@ -676,8 +703,14 @@ class MensRosterScreen extends RosterScreenBase {
                    border:1px solid ${color}; background:${officialOpen ? color + '26' : 'transparent'};
                    color:${officialOpen || st ? color : '#64748b'};">🌐 Roster (${(official.names || []).length})${this.escape(suffix)}</button>`;
         })() : ''}
+        <button type="button" class="mr-sees-pill" data-team-id="${col.teamId}"
+          title="${seesOpen ? 'Hide' : 'Show'} everyone whose ${this.escape(col.label)} games show up automatically to RSVP — roster that grants games plus ⭐ standing invites"
+          style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
+                 border:1px solid #2dd4bf; background:${seesOpen ? '#2dd4bf26' : 'transparent'};
+                 color:${seesOpen ? '#2dd4bf' : '#64748b'};">👀 Sees games (${seesCount})</button>
       </div>
-      ${officialPanel}`;
+      ${officialPanel}
+      ${seesPanel}`;
 
     const shown = col.isUnassigned ? players : players.filter(p => !off(catOf(p)));
     const ridersHtml = (!col.isUnassigned && riders.length && !off('riders')) ? riders.map(r => `
