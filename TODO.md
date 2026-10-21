@@ -8,7 +8,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Features
 
-- [ ] Finish #teams page: category pills should show the real rosters, and reflect who actually gets to RSVP based on categories. (Another session is working on this. NOTE 10/21: the “who gets to RSVP” part shipped as the 👀 Sees games pill — name settled, see Done.)
+- [x] 2026-10-21 Finish #teams page: closed as shipped — the “who gets to RSVP” half is the 👀 Sees games pill, the “real rosters” half is the per-column category pills (✅/📄/🩹/⭐, 10/20) + the 🌐 league mirrors + Girls filtering to real Girls Club players (since 9/24). Note if wanted later: those per-column pills live on the MEN'S board only — Boys/Girls/Womens columns are plain.
 - [x] #jobs page — SHIPPED 2026-10-21 (mig 625, see Done). Still open:
   - [x] 2026-10-21 Player visibility: 🧹 job strip on the #my event card (own + kids', whose-schedule-pill scoped), description on expand; feed carries my_jobs; RSVP writes re-run the auto-assigner so a late Going picks a job up without a coach opening #jobs; copy = message_templates kind=my_jobs (mig 629). Magic-link friendly for free (rides /api/calendar/upcoming).
   - [x] 2026-10-21 Sub-cards pass-on from Game Center subs: after kickoff, a lineup save that brings the holder on (bench→starter) hands the job to the ONE player who went off in the same save (source 'pass', 🔁 on #jobs); ambiguous saves (double subs, nobody off) stay manual. Pre-kickoff the job is bench-only: auto-assign releases a home/fill holder who's in the XI and prefers bench players (manual/pass never touched); lineup saves now re-run the assigner too.
