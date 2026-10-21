@@ -157,8 +157,12 @@ slices, exit gates, goldens).
   a vetted library is not carrying old architecture). `game/CMakeLists.txt`,
   tests green on host. Landed: namespace `fh::game::math`, 5/5 ctests passed
   (fixed64, fixed_math, trig_lut, rng_det, vec3) on g++ 13 / CMake 3.28.
-- G0.2 [ ] Tick loop + match clock + world skeleton (one entity integrating
-  a move intent) + canonical state hash + **first determinism golden**.
+- G0.2 [x] (2026-10-21) Tick loop + match clock + world skeleton (slot-count
+  agnostic `World` integrating sampled MoveIntents; desire clamped to unit
+  length so a hostile client can't outrun max_speed) + byte-order-stable
+  FNV-1a canonical hash + **first determinism golden** locked at
+  `0xba2dc29b0b1bbb1a` (4 players, seeded intents, 400 ticks, seed 42).
+  8/8 ctests green.
 - G0.3 [ ] Protocol framing: envelope codec, HELLO/GOODBYE, PLAYER_INTENT,
   SNAPSHOT encode/decode with unit tests. The same slice locks §2/§4/§6
   layouts in PROTOCOL.md (doc change lands with the code, v1 style).
