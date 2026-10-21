@@ -1504,12 +1504,13 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         OR fh_event_invited(fe.id, $1::int)
                     )
                 END AS my_rsvp_eligible,
-                -- Schedule release window (migration 334): when the
-                -- shown week ends for this event's club/section, derived
-                -- server-side from the standing policy + early releases.
+                -- Schedule release window (migration 334) as it applies
+                -- to THIS event (mig 627): the week's end, stretched to
+                -- cover an early-opened weekday match ("show the weekday
+                -- game but not the other stuff until sunday 8pm").
                 -- My Schedule hides events past it. NULL when untagged.
                 (
-                    SELECT to_char(fh_schedule_window_end(t.club_id, t.club_section_id, now()) AT TIME ZONE 'UTC',
+                    SELECT to_char(fh_event_window_end(t.club_id, t.club_section_id, ge.starts_at, fe.kind) AT TIME ZONE 'UTC',
                                    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
                     FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id
                     WHERE fet.fh_event_id = fe.id
@@ -1529,12 +1530,18 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
               AND ge.starts_at >= CASE
                   WHEN $5::bigint > 0 THEN '-infinity'::timestamptz
                   WHEN $4 = '' THEN ((now() AT TIME ZONE 'America/New_York')::date) AT TIME ZONE 'America/New_York'
-                  ELSE $4::timestamptz
+                  -- The start DATE is a club-local day, never a bare
+                  -- ::timestamptz (session is UTC, so 'YYYY-MM-DD' cast
+                  -- that way means the previous day 8 PM Eastern — a
+                  -- Sunday-night game rode into the new week's feed all
+                  -- week; owner 10/21: "don't show any sunday games
+                  -- previous even if they kickoff after 8pm").
+                  ELSE ($4::date::timestamp) AT TIME ZONE 'America/New_York'
                 END
               AND ge.starts_at < CASE
                   WHEN $5::bigint > 0 THEN 'infinity'::timestamptz
                   WHEN $4 = '' THEN now() + ($2::int * INTERVAL '1 day')
-                  ELSE $4::timestamptz + ($2::int * INTERVAL '1 day')
+                  ELSE (($4::date::timestamp) AT TIME ZONE 'America/New_York') + ($2::int * INTERVAL '1 day')
                 END
                                AND (
                                         fe.id IS NOT NULL
@@ -2007,7 +2014,7 @@ Response CalendarController::handleGetRollCallMe(const Request& request) {
                WHERE fet.team_id = ANY(l.team_ids) AND fe.kind IN ('match', 'intrasquad')
                  AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
                  AND ge.ends_at > now()
-                 AND ge.starts_at < fh_schedule_window_end(t.club_id, t.club_section_id, now())
+                 AND ge.starts_at < fh_event_window_end(t.club_id, t.club_section_id, ge.starts_at, fe.kind)
                GROUP BY fe.id
             )
             SELECT g.fh_event_id, f.id AS person_id, f.fn, f.self, rv.response, (SELECT fn FROM me) AS my_fn

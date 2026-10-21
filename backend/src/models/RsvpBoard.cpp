@@ -50,9 +50,17 @@ const char* kBaseCtes = R"SQL(
     ), epoch AS (
       SELECT COALESCE(min(responded_at), now()) AS t FROM fh_event_rsvps
     ), tm AS MATERIALIZED (
+      -- window_end AND the weekday early-open inputs are computed ONCE
+      -- per team here: the expected CTE below evaluates its posted
+      -- check per (person x event) row, and a function call there
+      -- (fh_event_posted walks weeks internally) piled queries into
+      -- minutes on 10/21.  Pure arithmetic per row only.
       SELECT DISTINCT t.id, t.name, t.label, t.board_sort_order,
-             fh_schedule_window_end(t.club_id, t.club_section_id, now()) AS window_end
+             fh_schedule_window_end(t.club_id, t.club_section_id, now()) AS window_end,
+             pol.weekday_game_notice_days AS notice_days,
+             COALESCE(pol.time_zone, 'America/New_York') AS tzname
         FROM teams t
+        LEFT JOIN LATERAL fh_schedule_policy(t.club_id, t.club_section_id, now()) pol ON true
         JOIN sec ON sec.team_section_id = t.club_section_id
        WHERE t.is_active AND (t.board_sort_order IS NOT NULL OR t.rsvp_board)
          AND ($3::int[] = '{}' OR t.id = ANY($3::int[]))
@@ -110,7 +118,11 @@ const char* kBaseCtes = R"SQL(
        WHERE ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
          AND ge.starts_at >= GREATEST(r.joined_at, epoch.t,
                                       COALESCE(NULLIF($2,'')::timestamptz, '-infinity'))
-         AND ge.starts_at <  tm.window_end
+         AND (ge.starts_at < tm.window_end
+              -- mig 627: an early-opened weekday game is expected too
+              OR (fe.kind = 'match' AND tm.notice_days IS NOT NULL
+                  AND extract(isodow FROM ge.starts_at AT TIME ZONE tm.tzname) BETWEEN 1 AND 5
+                  AND now() >= ge.starts_at - make_interval(days => tm.notice_days::int)))
          -- Call-up-gated team (mig 605): rostered players owe nothing on
          -- its games — only invited ones do (next branch).  The coach and
          -- staff hats (role_rank 1/3) keep every game.
@@ -148,7 +160,11 @@ const char* kBaseCtes = R"SQL(
          AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
          AND ge.starts_at >= GREATEST(i.created_at, epoch.t,
                                       COALESCE(NULLIF($2,'')::timestamptz, '-infinity'))
-         AND ge.starts_at <  tm.window_end
+         AND (ge.starts_at < tm.window_end
+              -- mig 627: an early-opened weekday game is expected too
+              OR (fe.kind = 'match' AND tm.notice_days IS NOT NULL
+                  AND extract(isodow FROM ge.starts_at AT TIME ZONE tm.tzname) BETWEEN 1 AND 5
+                  AND now() >= ge.starts_at - make_interval(days => tm.notice_days::int)))
          AND NOT EXISTS (SELECT 1 FROM rsvp_suspensions s
                           WHERE s.person_id = i.person_id
                             AND s.starts_at <= ge.starts_at
@@ -444,12 +460,19 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
     ), ev AS MATERIALIZED (
       SELECT tm.id AS team_id, COALESCE(tm.label, tm.name) AS team_label, tm.board_sort_order,
              fe.id AS fh_event_id, fe.kind, fe.opponent, fe.is_home, fut.starts_at,
-             (fut.starts_at < tm.window_end) AS released
+             -- mig 627: an early-opened weekday game is released too
+             (fut.starts_at < tm.window_end
+              OR (fe.kind = 'match' AND tm.notice_days IS NOT NULL
+                  AND extract(isodow FROM fut.starts_at AT TIME ZONE tm.tzname) BETWEEN 1 AND 5
+                  AND now() >= fut.starts_at - make_interval(days => tm.notice_days::int))) AS released
         FROM fut
         JOIN fh_events fe ON fe.gcal_event_id = fut.gcal_event_id AND fe.kind IN ('practice','match','intrasquad')
         JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
         JOIN tm ON tm.id = fet.team_id
        WHERE (fut.starts_at < tm.window_end
+              OR (fe.kind = 'match' AND tm.notice_days IS NOT NULL
+                  AND extract(isodow FROM fut.starts_at AT TIME ZONE tm.tzname) BETWEEN 1 AND 5
+                  AND now() >= fut.starts_at - make_interval(days => tm.notice_days::int))
               OR EXISTS (SELECT 1 FROM ng WHERE ng.team_id = tm.id AND ng.fh_event_id = fe.id))
     )
     SELECT ev.team_id, ev.team_label, ev.fh_event_id, ev.kind, ev.is_home, ev.released,
@@ -820,7 +843,7 @@ json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen) {
          WHERE fet.team_id = ANY($1::bigint[]) AND fe.kind IN ('match', 'intrasquad')
            AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
            AND ge.ends_at > now()
-           AND ge.starts_at < fh_schedule_window_end(t.club_id, t.club_section_id, now())
+           AND ge.starts_at < fh_event_window_end(t.club_id, t.club_section_id, ge.starts_at, fe.kind)
          GROUP BY fe.id ORDER BY min(t.board_sort_order), min(ge.starts_at))SQL", {pgIntArray(teamIds)});
     // Every team on the link, so the teams layout can show one with no game.
     auto teamRows = db->query(

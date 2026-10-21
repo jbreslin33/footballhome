@@ -34,6 +34,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Done
 
+- [x] 2026-10-21 Schedule release reworked (mig 627): a weekday game posts ALONE 7 days out; its week's other games wait for Sunday 8 PM (reverses mig 603's whole-week open that had Nov-1 games showing on Oct 21). Also fixed the UTC date-cast bug that let Sunday 8 PM+ kickoffs (Real Central) ride into the new week's feeds, and a per-row window-function hot loop that briefly hung the dashboard.
+
 - [x] 2026-10-21 Game Center DB-truth strip (mig 626): "Last change <stamp> · DB ✓ <synced>" on the lineup for coaches AND players — stamp is match_lineup_metadata.updated_at (every save touches it), 🟡 while saving, red with the server's reason when a save/sync fails. Born from the silent-save bug: the board can no longer lie.
 
 - [x] 2026-10-21 #jobs page shipped (mig 625): job_definitions per event kind (practice set + APSL game-day set, copy in DB), auto-assign on every open from RSVP/attendance (sticky job_homes never bumped, gap-fill by done-before then fewest-in-60-days, second jobs only when short), default-DONE with "didn't do" flags, per-event tents toggle, manual assign/unassign. Admin+coach gated, #jobs tile under All tools.
