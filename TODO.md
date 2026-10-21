@@ -23,6 +23,14 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
   - Assignment: sticky by default — each player keeps a "home job" for speed/efficiency; NO forced rotation.
   - Gaps (regular absent / short numbers): fill first with someone who's done the job before, then whoever has done the fewest jobs lately. Cross-training happens organically via absences/overlap.
   - Late RSVPs re-run the fill logic; home jobs never get bumped, only gap-fills reshuffle.
+  - APSL game-day job set:
+    - Sub cards: 1 guy who starts on bench. If he's subbed in, job passes to whoever was subbed off; if he's injured, reassign to another guy.
+    - Conduct non-ball warmup.
+    - Conduct ball warmup.
+    - Warm up goalie.
+    - Tents: 4 guys put them up. Per-game toggle (default ON = we bring them); toggled off, those 4 get other jobs.
+    - Water: 2 guys, 1 case each, reimbursed.
+    - Bench discipline: make sure everyone on bench has pinnies on and stays seated on the bench — no standing or using a ball on the sidelines.
 
 ## Done
 
