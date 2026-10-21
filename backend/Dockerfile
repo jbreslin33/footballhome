@@ -1,5 +1,14 @@
-# Use a pre-built image with development tools
-FROM docker.io/library/gcc:12
+# Two stages (2026-10-21):
+#   deps  — the toolchain + libraries, nothing compiled.  The persistent
+#           builder container (`make builder-up`) runs THIS stage with
+#           backend/ bind-mounted, so `make deploy` compiles only what
+#           changed.  Dockerfile.fast assembles the runtime image FROM
+#           this stage too, which keeps builder and runtime in lockstep
+#           by construction: changing the base or packages here rebuilds
+#           both, and that rebuild is a clean build by nature.
+#   build — the full hermetic compile (`make deploy-clean`, and the
+#           fallback when no builder is running).
+FROM docker.io/library/gcc:12 AS deps
 
 # Install required packages
 RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false update && apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false install -y \
@@ -16,6 +25,8 @@ RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false upd
 # Set working directory
 WORKDIR /app
 
+FROM deps AS build
+
 # Copy backend source code and build files (context is already backend/)
 COPY . .
 
@@ -25,7 +36,7 @@ COPY . .
 # OOM-killed at higher parallelism.
 RUN mkdir -p build && cd build && \
     cmake .. && \
-    make -j4
+    make -j2
 
 # Expose port
 EXPOSE 3001

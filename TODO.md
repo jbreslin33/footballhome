@@ -9,7 +9,6 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 ## Features
 
 - [ ] Finish #teams page: category pills should show the real rosters, and reflect who actually gets to RSVP based on categories. (Another session is working on this.)
-- [ ] Build speed: backend image rebuilds all 154 .cpp from scratch each time (make -j2, no cache). -j4 done 10/21; the bigger win is a persistent builder container (incremental make, image copies the binary) — discussed, needs guardrails (pinned base image, flock for parallel sessions, clean-build fallback) and an AGENTS.md note before landing.
 - [ ] #jobs page — event jobs for games, practices, and other events:
   - Jobs are assigned per event based on who is actually going (RSVP + attendance); footballhome auto-assigns.
   - Practice job set: cones (pick up, into shed), balls (gather into bags, into shed), goals (put away any used), lights (6 LED lights w/ stands on generator — 1 player per light for take-down, 4 players carry lights to shed + tarp them), generator (someone shuts it off).
@@ -32,6 +31,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Done
 
+- [x] 2026-10-21 Incremental backend deploys: persistent builder container + Dockerfile.fast; `make deploy` ≈ 1 min (was 8–10), `make deploy-clean` keeps the full hermetic build, builds flock-locked for parallel sessions. (-j stays 2: gcc-12 ≈ 2 GB/job on the 8 GB box.)
 - [x] 2026-10-21 #invoices: calendar hour entries carry real event names (noteless day rows borrow the gcal events their window overlaps; sheet's labor line keeps the duty title).
 - [x] 2026-10-21 #invoices: ref fees default GREEN onto a draft on open (mig 624); tap turns one red = off the sheet + remembered; tap again puts it back; amount editable per fee from the chip.
 - [x] 2026-10-21 #invoices: hours editable per event — the 🟡 box takes any figure 0–24 (partial look only when below the event's own).

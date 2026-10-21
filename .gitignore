@@ -108,3 +108,4 @@ frontend/images/league-logos/*
 # Brian memorial: downloaded newspaper full-page scans (research source,
 # like frontend/exhibit/video/_work) — large binaries, not for git.
 archive/
+backend/.builder-out/

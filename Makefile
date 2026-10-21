@@ -141,10 +141,50 @@ build:
 	@echo "Frontend:  http://localhost:3000"
 	@echo "Backend:   http://localhost:3001"
 
+# ── Incremental deploys (2026-10-21) ────────────────────────────────────
+# A persistent builder container (the Dockerfile's `deps` stage with
+# backend/ bind-mounted read-only) compiles only what changed, so
+# `make deploy` for a C++ edit takes ~30-60s instead of 8-10 min.
+# `make deploy-clean` keeps the full hermetic image build — use it when
+# something behaves in ways the source can't explain, or for periodic
+# hygiene; base-image/package changes rebuild the builder itself (run
+# `make builder-up` again), which is a clean build by construction.
+# Both paths hold BUILD_LOCK so two sessions can't corrupt each other's
+# compile — parallel Claude/human sessions: ONE deployer at a time still
+# applies to the restart, but the lock at least keeps builds safe.
+BUILD_LOCK := /tmp/footballhome-build.lock
+
+builder-up:
+	@echo "🔧 Building the build-env image (deps stage) + starting the builder..."
+	@flock $(BUILD_LOCK) $(ENGINE) build --target deps -t footballhome_build_env ./backend
+	@$(ENGINE) rm -f footballhome_builder 2>/dev/null || true
+	@$(ENGINE) run -d --name footballhome_builder --restart=always \
+		-v $(CURDIR)/backend:/src:ro footballhome_build_env sleep infinity
+	@echo "✓ Builder up — make deploy is now incremental"
+
 deploy:
-	@echo "🚀 Building and deploying backend..."
 	@$(MAKE) --no-print-directory check-la-sync
-	@$(COMPOSE) --env-file env build backend
+	@if $(ENGINE) ps --format '{{.Names}}' | grep -q '^footballhome_builder$$'; then \
+		echo "🚀 Incremental build (builder container)..."; \
+		flock $(BUILD_LOCK) sh -c '\
+			$(ENGINE) exec footballhome_builder sh -c "cmake -S /src -B /build >/dev/null && make -C /build -j2" && \
+			mkdir -p backend/.builder-out && \
+			$(ENGINE) cp footballhome_builder:/build/server backend/.builder-out/server && \
+			$(ENGINE) build -f backend/Dockerfile.fast -t footballhome_backend ./backend' \
+			|| { echo "✗ incremental build failed — try: make deploy-clean"; exit 1; }; \
+		$(MAKE) --no-print-directory restart-backend; \
+	else \
+		echo "No builder running — full build (make builder-up enables fast deploys)"; \
+		$(MAKE) --no-print-directory deploy-clean; \
+	fi
+
+deploy-clean:
+	@echo "🚀 Full (clean) build and deploy..."
+	@$(MAKE) --no-print-directory check-la-sync
+	@flock $(BUILD_LOCK) $(COMPOSE) --env-file env build backend
+	@$(MAKE) --no-print-directory restart-backend
+
+restart-backend:
 	# --depend is required because leagueapps-sync's `requires=footballhome_backend`
 	# in podman-compose creates a hard dependency; without --depend a plain
 	# `rm -f footballhome_backend` errors with 125 "has dependent containers"

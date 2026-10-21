@@ -1,0 +1,21 @@
+# Fast runtime image (2026-10-21) — `make deploy`'s path.  The persistent
+# builder container already compiled the binary incrementally; this just
+# assembles an image with the SAME layout as the full build (source tree
+# at /app for anything read at runtime, binary at /app/build/server), no
+# compiler run.  FROM the deps stage image so runtime libraries always
+# match what the builder compiled against.
+FROM localhost/footballhome_build_env:latest
+
+WORKDIR /app
+
+# Same tree as the full build copies (build/ is dockerignored).
+COPY . .
+
+# The incrementally-built binary, where the CMD expects it.
+COPY .builder-out/server /app/build/server
+
+EXPOSE 3001
+
+RUN chmod +x /app/wait-for-db.sh
+
+CMD ["/app/wait-for-db.sh", "db", "5432", "footballhome_user", "footballhome", "./build/server"]

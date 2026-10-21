@@ -69,6 +69,16 @@ sudo make deploy     # if backend C++ changed
 # frontend-only: pull + hard refresh usually enough
 ```
 
+Backend builds are incremental since 2026-10-21: `make deploy` compiles
+only what changed in the persistent `footballhome_builder` container
+(~1 min end to end). `make deploy-clean` = the full hermetic image
+build — use it when the binary misbehaves inexplicably, and rerun
+`make builder-up` after any backend/Dockerfile base-image or package
+change. Builds hold /tmp/footballhome-build.lock, so parallel sessions
+can't corrupt each other's compile — but ONE session deploys at a time
+(the restart isn't locked), and announce deploys when two sessions are
+live.
+
 ### Do not
 
 - Wipe the cloud DB without asking (`make rebuild` is destructive)
