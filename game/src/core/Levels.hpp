@@ -82,7 +82,7 @@ inline LevelParams levelParams(std::string_view name) {
     if (name == "amateur") return {7, 6, 10, 25, 10, 42, 30, 6};  // Sunday
     if (name == "semipro") return {4, 3, 6, 12, 13, 50, 12, 14};
     if (name == "pro")     return {2, 2, 3, 5, 16, 60, 4, 11};
-    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0, 8};
+    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0, 9};
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 
@@ -111,15 +111,16 @@ enum Concept : std::uint32_t {
     kManOrientation  = 1u << 18,  // mark YOUR man, follow him anywhere
     kVerticality     = 1u << 19,  // forward first; accept tighter lanes
     kInterceptRead   = 1u << 20,  // read the pass: earliest-reach cutoff
+    kRestraint       = 1u << 21,  // don't dive: the anti-tackle
 };
-inline constexpr std::uint32_t kAllConcepts = (1u << 21) - 1;
+inline constexpr std::uint32_t kAllConcepts = (1u << 22) - 1;
 inline constexpr const char* kConceptNames[] = {
     "delay", "marking", "cover", "support", "outlet",
     "runs", "over-top", "sweep", "placement", "line-hold",
     "jockey-angle", "recover", "double-team", "width", "give-and-go",
     "push-up", "counter-press", "balance", "man-mark", "verticality",
-    "intercept"};
-inline constexpr int kConceptCount = 21;
+    "intercept", "restraint"};
+inline constexpr int kConceptCount = 22;
 
 // ── Graded knowledge (James: "implement them on a 0 to 100 scale") ─────
 // A rating is CONSISTENCY + MAGNITUDE in one number: branch concepts roll
@@ -151,7 +152,7 @@ inline std::uint32_t conceptBundle(const LevelParams& lv) {
         m |= kDelayTransition | kManMarking | kBackOutlet | kRunInBehind |
              kPlayOverTop | kKeeperSweep | kJockeyAngle | kRecoverGoalSide |
              kDoubleTeam | kSpreadWide | kGiveAndGo | kPushUp |
-             kCounterPress | kBalance | kInterceptRead;
+             kCounterPress | kBalance | kInterceptRead | kRestraint;
     }
     return m;
 }

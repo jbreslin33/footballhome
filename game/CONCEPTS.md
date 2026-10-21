@@ -35,6 +35,7 @@ touchline laws — [FH] marks engine-original formulations.
 | 18 | `man_orientation` [S] | Mark YOUR man tight and FOLLOW him, anywhere [Bielsa/Gasperini]; 0 = zonal goal-side marking | positional/zonal marking only |
 | 19 | `verticality` [S] | Play forward FIRST: accept tighter lanes, lower the gain threshold [Bielsa/Zeman]; 0 = safe-side selection | sideways-safe passing |
 | 20 | `intercept` | Read the pass: meet a rolling free ball at the earliest-reach point on its friction path (G4.14; rolls per second) | chase the ball's current spot, always a step behind |
+| 21 | `restraint` | Don't dive: the anti-tackle [queue → wired G4.16]. Dive eagerness scales to ~x0.2 at 100 — world matches measured 245 dive attempts vs the ~35 of a real one | rash per-tick diving at the full swarm rate |
 
 ## Build queue (planned; each lands with the behavior that consumes it)
 
@@ -102,8 +103,7 @@ What federations and schools actually teach, mined for registry rows:
   coordination as a TAUGHT skill ladder — step, drop, slide, trap — i.e.
   our line concepts are genuinely separable bits, not one blob.
 
-Queue additions from the dive: `counter_attack` (moment 4), `restraint`
-(don't dive — the anti-tackle), `occupy_half_space`, `slide_with_ball`
+Queue additions from the dive: `counter_attack` (moment 4), `occupy_half_space`, `slide_with_ball`
 (lateral line shift), `step_drop_call` (keeper organizes the line),
 `block_height` as an explicit team tactic (high/mid/low — the FSM layer).
 

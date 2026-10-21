@@ -548,6 +548,16 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             }
         }
         const bool organized = mates_behind >= opps_behind + 1;
+    // restraint (bit 21, CONCEPTS.md queue → wired G4.16): the
+    // anti-tackle. Dive eagerness (%/tick) scales down with the rating:
+    // full rash rate at 0, about a fifth of it at 100 — world matches
+    // measured ~245 dive attempts against the ~35 of a real one. The
+    // floor keeps the STEP real: organized teams still step in.
+    auto restrained = [&](int eag) {
+        const int r = ratings_[slot][21];
+        return eag - eag * r * 4 / 500;  // 100 → x0.2
+    };
+
         // Knowledge gates (CONCEPTS.md): what THIS player knows decides
         // which branches exist for him. undisciplined = lacks the delay
         // theory; a coached kid on a swarm team keeps his head.
@@ -581,7 +591,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                         core::kTackleReach * core::kTackleReach) {
                     const Fixed64 n2 = core::detNoise(
                         match_seed_, world.tickCount(), slot, 9);
-                    const int eag = 4 + lv.swarm_pct / 2;
+                    const int eag = restrained(4 + lv.swarm_pct / 2);
                     if ((n2 + Fixed64::one()) <
                         Fixed64::fromFraction(eag, 50)) {
                         out.action = Action::Tackle;
@@ -601,7 +611,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 core::kTackleReach * core::kTackleReach) {
             const Fixed64 n =
                 core::detNoise(match_seed_, world.tickCount(), slot, 7);
-            const int eagerness = 4 + lv.swarm_pct / 2;  // %/tick
+            const int eagerness = restrained(4 + lv.swarm_pct / 2);
             if ((n + Fixed64::one()) < Fixed64::fromFraction(eagerness, 50)) {
                 out.move.move = seek(me.pos, Vec2{ball.pos.x, ball.pos.y},
                                      Fixed64::fromFraction(1, 10));
@@ -659,7 +669,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                         core::kTackleReach * core::kTackleReach) {
                     const Fixed64 n = core::detNoise(
                         match_seed_, world.tickCount(), slot, 7);
-                    const int eagerness = 4 + lv.swarm_pct / 2;  // %/tick
+                    const int eagerness = restrained(4 + lv.swarm_pct / 2);
                     if ((n + Fixed64::one()) <
                         Fixed64::fromFraction(eagerness, 50)) {
                         out.action = Action::Tackle;

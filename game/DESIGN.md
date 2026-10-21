@@ -542,6 +542,19 @@ changes. Lighthouse XI boots wearing "Lighthouse" — the club game model
 preset. No wire changes; the edit panel shows the overlaid ratings via
 the ordinary ROSTER frame.
 
+### 8.11 G4.16 — restraint: the anti-tackle
+
+CONCEPTS.md queue bit wired: `restraint` (bit 21), the pro's discipline
+NOT to dive. All three dive sites scale their per-tick eagerness by the
+rating (x0.2 at 100); the step stays real (organized teams still step).
+Measured: world-band dive attempts 245 → 127 per match (a real match has
+~35 tackles — directionally right, volume still generous); u10 unchanged
+at ~3,500 attempts (rating 0 — kids dive, as in life). World keeper
+reaction re-centred 8 → 9 ticks to hold the anchor. Refreshed 12-match
+ladder: u10 12.7 / u14 14.7 / amateur 7.7 / semipro 3.1 / pro 1.7 /
+world 2.8 / perfect 1.2 — world EXACTLY at the 2.7 real-world anchor.
+AI goldens re-locked; bands test green.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
