@@ -131,6 +131,32 @@ small-sided scenarios (4v4, 2v1, coach-painted drills).
   history ("beat the pyramid", "break catenaccio", "escape the gegenpress")
   is a coaching curriculum disguised as a game — teaching content for free.
 
+### 5.2 Rated tactical understanding — the knowledge triple [v1]
+
+Tactical intelligence is per-player DATA in three registries (v1 built all
+three: attribute registry, concept registry, PatternRegistry +
+RecognitionSystem — v2 inherits the model):
+
+1. **Recognition** — *can you see it?* Named patterns are computed from
+   world state (e.g. `high_line`: opponents' rear line x + space behind);
+   a player's recognition rating decides IF and HOW EARLY their brain is
+   told the pattern fired.
+2. **Concept** — *do you know the answer?* Concepts gate which behaviors
+   are in a player's bag (`play_over_the_top` responds to `high_line`).
+3. **Execution** — *can you pull it off?* The kick/control attributes +
+   skill noise decide whether the answer comes off.
+
+"Sees the high line and plays over it" = three separately rated, separately
+trainable rows — so every failure is diagnosable (didn't see / didn't know /
+didn't execute), which is the teaching thesis in one sentence. Second worked
+example: `deep_block` + `ball_side_overload` recognitions → `switch_play`
+concept (v1's SwitchSideSupportBehavior is already implemented + tested in
+the archive's seven unwired behaviors) → long cross-field pass execution.
+The pattern vocabulary grows as registry rows: `pressing_trap`, `keeper_off_
+line`, `third_man_free`, … — each one a lesson a coach can rate and train. Tactical
+eras (§5.1) are level-band bundles of concepts + recognitions; painted
+scenarios can target one pattern; training/attendance raises specific rows.
+
 **No neural nets / RL for players** — opaque, non-deterministic,
 unteachable. ML is permitted only offline: optimizing utility weights against
 the calibration harness, with the resulting numbers committed as data.
