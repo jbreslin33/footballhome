@@ -32,6 +32,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
     - Water: 2 guys, 1 case each, reimbursed.
     - Bench discipline: make sure everyone on bench has pinnies on and stays seated on the bench — no standing or using a ball on the sidelines.
 
+- [ ] Sim: resume at Slice 35 (M3 doc close-out), then M4 (2v1/2v2/3v2 + off-ball behaviors — seven already implemented/unit-tested, unwired per ADR §22.27), M5 (PressTrigger4v2), then add an 11v11 milestone (formation anchoring, team attack/defend mode, GK, basic restarts; check snapshot frame capacity at 22 slots). Full game = biggest scenario tile; drills stay the teaching path. See sim/DESIGN.md §15.
+
 ## Done
 
 <!-- - [x] 2026-10-21 example item -->
