@@ -1,0 +1,148 @@
+// game/tests/test_codec.cpp
+//
+// Round-trip, truncation-safety, and forward-compatibility tests for the
+// fh-game.v1 codec (PROTOCOL.md §§1–6, §9).
+
+#include "test_harness.hpp"
+#include "net/Codec.hpp"
+
+using namespace fh::game::net;
+using fh::game::math::Fixed64;
+
+FH_TEST(envelope_round_trip) {
+    Bytes payload{1, 2, 3, 4, 5};
+    Bytes frame = encodeFrame(FrameType::PlayerIntent, payload);
+    FH_EXPECT_EQ(frame.size(), kEnvelopeBytes + 5);
+
+    std::size_t consumed = 0;
+    auto d = decodeFrame(frame.data(), frame.size(), consumed);
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(consumed, frame.size());
+    FH_EXPECT(d->type == FrameType::PlayerIntent);
+    FH_EXPECT(d->payload == payload);
+}
+
+FH_TEST(envelope_partial_input_returns_nullopt) {
+    Bytes frame = encodeFrame(FrameType::Snapshot, Bytes(10, 0xAB));
+    std::size_t consumed = 0;
+    // Every strict prefix of a valid frame must decode to "need more".
+    for (std::size_t cut = 0; cut < frame.size(); ++cut) {
+        auto d = decodeFrame(frame.data(), cut, consumed);
+        FH_EXPECT(!d.has_value());
+    }
+}
+
+FH_TEST(envelope_stream_decodes_two_frames) {
+    Bytes a = encodeFrame(FrameType::Claim, Bytes{7, 1});
+    Bytes b = encodeFrame(FrameType::Goodbye, Bytes{0});
+    Bytes stream = a;
+    stream.insert(stream.end(), b.begin(), b.end());
+
+    std::size_t consumed = 0;
+    auto first = decodeFrame(stream.data(), stream.size(), consumed);
+    FH_EXPECT(first.has_value());
+    FH_EXPECT(first->type == FrameType::Claim);
+    auto second = decodeFrame(stream.data() + consumed,
+                              stream.size() - consumed, consumed);
+    FH_EXPECT(second.has_value());
+    FH_EXPECT(second->type == FrameType::Goodbye);
+}
+
+FH_TEST(hello_round_trip) {
+    HelloFrame h;
+    h.match_id = 123456789ULL;
+    h.tick_rate = 30;
+    h.capabilities = kCapPlayer | kCapSpectator;
+    h.slot_count = 22;
+    h.pitch_half_x = Fixed64::fromFraction(105, 2);  // 52.5 m
+    h.pitch_half_y = Fixed64::fromInt(34);
+
+    auto d = decodeHello(encodeHello(h));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->major, kProtoMajor);
+    FH_EXPECT_EQ(d->match_id, h.match_id);
+    FH_EXPECT_EQ(d->tick_rate, 30);
+    FH_EXPECT_EQ(d->capabilities, h.capabilities);
+    FH_EXPECT_EQ(d->slot_count, 22);
+    FH_EXPECT_EQ(d->pitch_half_x.raw, h.pitch_half_x.raw);
+    FH_EXPECT_EQ(d->pitch_half_y.raw, h.pitch_half_y.raw);
+}
+
+FH_TEST(hello_ignores_trailing_bytes) {
+    // PROTOCOL.md §9: minor versions may append fields; old decoders must
+    // accept and ignore them.
+    Bytes p = encodeHello(HelloFrame{});
+    p.push_back(0xDE);
+    p.push_back(0xAD);
+    FH_EXPECT(decodeHello(p).has_value());
+}
+
+FH_TEST(hello_truncated_fails) {
+    Bytes p = encodeHello(HelloFrame{});
+    p.resize(p.size() - 1);
+    FH_EXPECT(!decodeHello(p).has_value());
+}
+
+FH_TEST(player_intent_round_trip) {
+    PlayerIntentFrame f;
+    f.slot = 9;
+    f.move_x = Fixed64::fromFraction(-3, 4);
+    f.move_y = Fixed64::fromFraction(1, 4);
+    f.action = 0;
+
+    auto d = decodePlayerIntent(encodePlayerIntent(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->slot, 9);
+    FH_EXPECT_EQ(d->move_x.raw, f.move_x.raw);
+    FH_EXPECT_EQ(d->move_y.raw, f.move_y.raw);
+}
+
+FH_TEST(snapshot_round_trip_22_players_fits_envelope) {
+    SnapshotFrame s;
+    s.tick = 54321;
+    for (int i = 0; i < 22; ++i) {
+        PlayerSnap p;
+        p.pos_x = Fixed64::fromInt(i - 11);
+        p.pos_y = Fixed64::fromInt(2 * i - 22);
+        p.vel_x = Fixed64::fromFraction(i, 7);
+        p.vel_y = -Fixed64::fromFraction(i, 5);
+        p.flags = (i == 10) ? 1 : 0;
+        s.players.push_back(p);
+    }
+
+    Bytes payload = encodeSnapshot(s);
+    // The u16 envelope cap check v1 catalogued: 22 planar players must sit
+    // far below 65535 (ball + extensions join later).
+    FH_EXPECT(payload.size() < 2000u);
+    Bytes frame = encodeFrame(FrameType::Snapshot, payload);
+    FH_EXPECT(!frame.empty());
+
+    auto d = decodeSnapshot(payload);
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->tick, 54321u);
+    FH_EXPECT_EQ(d->players.size(), 22u);
+    FH_EXPECT_EQ(d->players[10].flags, 1);
+    FH_EXPECT_EQ(d->players[21].pos_x.raw, Fixed64::fromInt(10).raw);
+    FH_EXPECT_EQ(d->players[3].vel_y.raw, (-Fixed64::fromFraction(3, 5)).raw);
+}
+
+FH_TEST(snapshot_truncated_player_list_fails) {
+    SnapshotFrame s;
+    s.tick = 1;
+    s.players.resize(3);
+    Bytes p = encodeSnapshot(s);
+    p.resize(p.size() - 4);  // cut into the last player record
+    FH_EXPECT(!decodeSnapshot(p).has_value());
+}
+
+FH_TEST(claim_round_trip) {
+    ClaimFrame c;
+    c.slot = 4;
+    c.claim = 0;
+    auto d = decodeClaim(encodeClaim(c));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->slot, 4);
+    FH_EXPECT_EQ(d->claim, 0);
+}
+
+FH_TEST_MAIN()

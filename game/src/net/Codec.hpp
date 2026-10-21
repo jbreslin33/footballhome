@@ -1,0 +1,104 @@
+// game/src/net/Codec.hpp
+//
+// Binary encode/decode for fh-game.v1 frames (PROTOCOL.md §§1–6).
+// Little-endian throughout. Decoders are total functions: any malformed or
+// truncated input returns std::nullopt — never UB, never a throw. Decoders
+// ignore unknown trailing payload bytes (PROTOCOL.md §9: that's what makes
+// minor versions safe); encoders write exactly the documented layout.
+
+#pragma once
+
+#include "math/Fixed64.hpp"
+#include "net/Wire.hpp"
+
+#include <cstdint>
+#include <optional>
+#include <vector>
+
+namespace fh::game::net {
+
+using Bytes = std::vector<std::uint8_t>;
+
+// ── Frame structs (host-side representations) ───────────────────────────
+
+struct HelloFrame {
+    std::uint8_t  major = kProtoMajor;
+    std::uint8_t  minor = kProtoMinor;
+    std::uint8_t  patch = kProtoPatch;
+    std::uint64_t match_id = 0;
+    std::uint8_t  tick_rate = 0;
+    std::uint8_t  capabilities = 0;   // Capability bits for THIS client
+    std::uint8_t  slot_count = 0;
+    math::Fixed64 pitch_half_x{};     // pitch half-extents, metres
+    math::Fixed64 pitch_half_y{};
+};
+
+struct GoodbyeFrame {
+    GoodbyeReason reason = GoodbyeReason::Normal;
+};
+
+struct PlayerIntentFrame {
+    std::uint8_t  slot = 0;
+    math::Fixed64 move_x{};   // desire vector; server clamps to unit length
+    math::Fixed64 move_y{};
+    std::uint8_t  action = 0; // 0 = none (pass/shoot/press arrive in G1+)
+};
+
+struct PlayerSnap {
+    // Players are planar (DESIGN.md §4) — no z on the wire. The ball gets
+    // its own record WITH z when G1 adds it.
+    math::Fixed64 pos_x{}, pos_y{};
+    math::Fixed64 vel_x{}, vel_y{};
+    std::uint8_t  flags = 0;  // bit0 = human-controlled; rest reserved
+};
+
+struct SnapshotFrame {
+    std::uint64_t tick = 0;
+    std::vector<PlayerSnap> players;
+};
+
+struct ClaimFrame {
+    std::uint8_t slot = 0;
+    std::uint8_t claim = 1;   // 1 = claim, 0 = release
+};
+
+// ── Envelope ────────────────────────────────────────────────────────────
+
+// Wraps a payload in the 4-byte envelope. Payloads over 65535 bytes are a
+// protocol-design error; encodeFrame asserts in debug and truncation-guards
+// in release by returning an empty vector (callers treat empty as bug).
+Bytes encodeFrame(FrameType type, const Bytes& payload);
+
+struct DecodedFrame {
+    FrameType type;
+    std::uint8_t flags;
+    // Payload view copied out — frames are small and lifetime headaches
+    // aren't worth it at G0. Revisit only if profiling says so.
+    Bytes payload;
+};
+
+// Decodes ONE frame from the front of `buf`. Returns nullopt if `buf` holds
+// less than a complete frame. On success also writes the total consumed
+// byte count to `consumed` so stream callers can advance.
+std::optional<DecodedFrame> decodeFrame(const std::uint8_t* data,
+                                        std::size_t size,
+                                        std::size_t& consumed);
+
+// ── Per-frame payload codecs (round-trip tested) ────────────────────────
+
+Bytes encodeHello(const HelloFrame& f);
+std::optional<HelloFrame> decodeHello(const Bytes& payload);
+
+Bytes encodeGoodbye(const GoodbyeFrame& f);
+std::optional<GoodbyeFrame> decodeGoodbye(const Bytes& payload);
+
+Bytes encodePlayerIntent(const PlayerIntentFrame& f);
+std::optional<PlayerIntentFrame> decodePlayerIntent(const Bytes& payload);
+
+Bytes encodeSnapshot(const SnapshotFrame& f);
+std::optional<SnapshotFrame> decodeSnapshot(const Bytes& payload);
+
+Bytes encodeClaim(const ClaimFrame& f);
+std::optional<ClaimFrame> decodeClaim(const Bytes& payload);
+
+}  // namespace fh::game::net

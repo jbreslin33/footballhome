@@ -163,9 +163,12 @@ slices, exit gates, goldens).
   FNV-1a canonical hash + **first determinism golden** locked at
   `0xba2dc29b0b1bbb1a` (4 players, seeded intents, 400 ticks, seed 42).
   8/8 ctests green.
-- G0.3 [ ] Protocol framing: envelope codec, HELLO/GOODBYE, PLAYER_INTENT,
-  SNAPSHOT encode/decode with unit tests. The same slice locks §2/§4/§6
-  layouts in PROTOCOL.md (doc change lands with the code, v1 style).
+- G0.3 [x] (2026-10-21) Protocol framing: envelope codec + HELLO/GOODBYE/
+  PLAYER_INTENT/SNAPSHOT/CLAIM encode/decode (`fh::game::net`), total-function
+  decoders (truncation-safe, trailing-bytes-tolerant per §9). PROTOCOL.md
+  §1/§4/§6 layouts locked in the same slice; players carry no z on the wire
+  (planar — ball gets z in G1), 22-player snapshot ≈ 730 B ≈ 22 KB/s @ 30 Hz.
+  9/9 ctests green.
 - G0.4 [ ] WebSocket server (v1 handshake/transport patterns re-reviewed, not
   blind-ported), JWT auth via the club secret, single-match daemon binary +
   Dockerfile.
@@ -183,7 +186,31 @@ slices, exit gates, goldens).
 Offside, fouls/cards, stamina, substitutions-as-rule (subs arrive with G5
 tactical intents), weather, crowd, licensed anything, client-side prediction.
 
-## 9. References
+## 9. Documentation & attribution (standing convention)
+
+- **Docs live with the code and land in the same commit.** DESIGN.md and
+  PROTOCOL.md are never allowed to lag the implementation; a slice that
+  changes behavior updates the doc in the same slice.
+- **In code:** every file opens with a purpose comment; every non-obvious
+  mechanism states its constraint or reason, not its mechanics.
+- **Credit the source of every technique**, in the file header or at the
+  mechanism, using these tags (also used in DESIGN/PROTOCOL prose):
+  - `[HELIOS]` — RoboCup HELIOS/agent2d lineage (e.g. Delaunay ball-relative
+    formations, Akiyama et al.)
+  - `[GRF]` — Google Research Football's rule-based AI structure
+  - `[Buckland]` — *Programming Game AI by Example* (support spots, state-
+    driven team play)
+  - `[QUAKE]` — classic server-authoritative netcode lineage (intents up,
+    snapshots down, client interpolation)
+  - `[v1]` — our own archived 2D sim (archive/sim-2d-v1), adopted or adapted
+  - `[FH]` — **original to Football Home** (e.g. the calibration harness as
+    a CI realism gate; skill-scaled perception/decision/execution noise as
+    the single level mechanism; drills-as-configs of one MatchScenario)
+  - Public-domain algorithms are named plainly (e.g. FNV-1a hash).
+- External code is never pasted in; techniques are learned and re-expressed
+  in fixed point (§3). Credit is about intellectual honesty, not licensing.
+
+## 10. References
 
 - `archive/sim-2d-v1/DESIGN.md` — v1 lessons: §21 blocker catalogues, §22
   ADRs, registry/codegen machinery, orchestration + nginx routing patterns.

@@ -2,7 +2,8 @@
 //
 // Player intent — the only thing a player-client (or an AI controller) may
 // tell the server about a slot (PROTOCOL.md §4). High-level desires, never
-// positions: the server owns all movement.
+// positions: the server owns all movement. [QUAKE] — the classic
+// server-authoritative model: intents up, snapshots down.
 //
 // Tactical intents (PROTOCOL.md §5) are a separate type and arrive with G5.
 

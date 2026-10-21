@@ -36,12 +36,18 @@ add_library(game_core STATIC
 )
 target_link_libraries(game_core PUBLIC game_math)
 
+# ── game_net — fh-game.v1 codec (G0.3) ─────────────────────────────────
+add_library(game_net STATIC
+  src/net/Codec.cpp
+)
+target_link_libraries(game_net PUBLIC game_math)
+
 # ── tests ──────────────────────────────────────────────────────────────
 enable_testing()
 
 function(game_test name)
   add_executable(${name} tests/${name}.cpp)
-  target_link_libraries(${name} PRIVATE game_core)
+  target_link_libraries(${name} PRIVATE game_core game_net)
   target_include_directories(${name} PRIVATE tests)
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
@@ -54,3 +60,4 @@ game_test(test_vec3)
 game_test(test_world)
 game_test(test_canonical_hash)
 game_test(test_determinism_core)
+game_test(test_codec)

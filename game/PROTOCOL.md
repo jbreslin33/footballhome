@@ -18,10 +18,18 @@
 - Auth: JWT travels in the `Sec-WebSocket-Protocol` header:
   `fh-game.v1.bearer.<JWT>` — same shared-secret JWTs the club app already
   issues, so a browser client reuses the session token it has.
-- First server frame: `HELLO` — protocol version (semver), match id, tick
-  rate, sim-speed, pitch dimensions, team/slot manifest, and the client's
-  granted capabilities (see §3). A client that can't speak the major version
+- First server frame: `HELLO`. A client that can't speak the major version
   disconnects with a reason frame: stale clients are told, never desynced.
+  Payload (locked G0.3):
+
+  ```
+  u8 major | u8 minor | u8 patch | u64 match_id | u8 tick_rate |
+  u8 capabilities (§3 bits) | u8 slot_count |
+  i64 pitch_half_x (Fixed64 raw, m) | i64 pitch_half_y (Fixed64 raw, m)
+  ```
+
+  Team manifest and sim-speed fields are appended by later minor versions
+  (decoders already ignore trailing bytes, §9).
 
 ## 2. Frame envelope
 
@@ -63,10 +71,17 @@ with zero `player` connections. Headless calibration = `admin` + max speed.
 
 High-level intents, never positions — the server owns all movement:
 
-- move vector (fixed-point direction + magnitude)
-- action: none / pass (target hint) / shoot (aim hint) / press / switch-player
-- TBD: exact field layout locked in G0; extended actions (through-ball,
-  cross, header contest) arrive additively with the mechanics that use them.
+Layout (locked G0.3):
+
+```
+u8 slot | i64 move_x (Fixed64 raw) | i64 move_y (Fixed64 raw) | u8 action
+```
+
+- The move vector is desire, not position; the server clamps it to unit
+  length, so an overlong vector buys nothing.
+- `action`: 0 = none (G0). Pass / shoot / press / switch-player get ids
+  additively as their mechanics land (G1+); extended actions (through-ball,
+  cross, header contest) likewise.
 
 ## 5. TACTICAL_INTENT (c→s)
 
@@ -82,12 +97,22 @@ The manager-mode class, defined from day one even though it ships in G5:
 
 Authoritative world state, interpolation-friendly:
 
-- tick number, sim-speed, clock, score
-- ball: position (x, y, z), velocity, owner slot (if any)
-- per slot: position (x, y planar), facing, velocity, posture flags
-  (sprinting, dribbling), controller (AI / human client id)
-- TBD: exact packing in G0; delta-encoding is a later optimization, never a
-  v1 requirement.
+Layout (locked G0.3):
+
+```
+u64 tick | u8 player_count |
+per player: i64 pos_x | i64 pos_y | i64 vel_x | i64 vel_y | u8 flags
+```
+
+- Players are planar (DESIGN.md §4), so player records carry **no z** —
+  that's ~8 bytes × 22 players × 30 Hz saved. The ball record (added in G1,
+  appended after the player array) carries x, y, z + velocity + owner slot.
+- `flags`: bit0 = human-controlled; the rest reserved.
+- 22 players ≈ 730 B/frame ≈ 22 KB/s at 30 Hz — comfortably inside the u16
+  envelope and the phone budget. Delta-encoding is a later optimization,
+  never a v1 requirement.
+- Clock/score join the layout with G3 (score/clock/halves slice), appended
+  per §9's additive rule.
 
 ## 7. EVENT (s→c + replay log)
 
