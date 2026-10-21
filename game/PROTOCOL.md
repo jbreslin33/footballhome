@@ -86,6 +86,10 @@ u8 slot | i64 move_x (Fixed64 raw) | i64 move_y (Fixed64 raw) | u8 action
     power until pass attributes land (G2)
   - 2 = lofted kick (1.1) — same direction rule, adds vertical velocity
   - 3 = short pass (1.2) — 8 m/s feet-to-feet ball; same direction rule
+  - 4 = shot (1.2) — 18 m/s placed strike; same direction rule
+  - 5 = tackle (1.3) — committed dive at an OPPONENT'S carried ball within
+    1.3 m: win pokes it loose, miss (or lunging at nothing) stuns the
+    tackler ~0.5 s; owners can't tackle
   - press / switch-player / through-ball / cross / header contest get ids
     additively as their mechanics land.
   - Only the slot's OWNER's action fires, and only while that slot carries

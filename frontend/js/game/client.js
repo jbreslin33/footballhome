@@ -18,7 +18,8 @@
     document.getElementById('joystick'),
     document.getElementById('joystick-knob'),
     document.getElementById('btn-pass'),
-    document.getElementById('btn-loft'));
+    document.getElementById('btn-loft'),
+    document.getElementById('btn-tackle'));
 
   const mySlots = new Set();
   let activeSlot = null;  // the ONE slot the controls drive right now

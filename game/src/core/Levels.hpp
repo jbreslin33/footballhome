@@ -32,6 +32,12 @@ struct LevelParams {
     // 0 = perfect (engine capture cap applies). A faster ball than this
     // bobbles off the touch instead of sticking.
     std::int32_t control_speed_mps = 0;
+    // Tackling: chance a committed dive-in wins the ball (rest = beaten +
+    // stunned in recovery). Dive EAGERNESS is not a separate dial — it
+    // rides swarm_pct (the discipline dial): U-10s dive constantly, pros
+    // pick their moment. "In u10 the players would not just retract
+    // defensively they would dive in — and prob at higher levels too."
+    std::int32_t tackle_success_pct = 0;  // 0 with zero params = no dives
     // Shape discipline [FH, James's law]: percent of swarm-to-the-ball in
     // everyone's positioning. 0 = positional play; high = the U-10 amoeba,
     // which BOTH crowds the defense (bodies stop goals) and bunches the
@@ -41,7 +47,8 @@ struct LevelParams {
     bool isZero() const noexcept {
         return perception_delay_ticks == 0 && kick_angle_err_deg == 0 &&
                kick_power_err_pct == 0 && decision_jitter_pct == 0 &&
-               control_speed_mps == 0 && swarm_pct == 0;
+               control_speed_mps == 0 && swarm_pct == 0 &&
+               tackle_success_pct == 0;
     }
 };
 
@@ -63,12 +70,12 @@ inline std::uint8_t levelId(std::string_view name) {
 // ERAS join these bands when concepts/recognitions land in G4.2b+).
 // Numbers are first-pass; the calibration harness tunes them.
 inline LevelParams levelParams(std::string_view name) {
-    if (name == "u10")     return {18, 18, 25, 60, 6, 80};  // the amoeba
-    if (name == "u14")     return {12, 11, 18, 40, 8, 55};
-    if (name == "amateur") return {7, 6, 10, 25, 10, 30};  // Sunday league
-    if (name == "semipro") return {4, 3, 6, 12, 13, 12};
-    if (name == "pro")     return {2, 2, 3, 5, 16, 4};
-    if (name == "world")   return {1, 1, 2, 2, 18, 0};
+    if (name == "u10")     return {18, 18, 25, 60, 6, 30, 80};  // the amoeba
+    if (name == "u14")     return {12, 11, 18, 40, 8, 35, 55};
+    if (name == "amateur") return {7, 6, 10, 25, 10, 42, 30};  // Sunday league
+    if (name == "semipro") return {4, 3, 6, 12, 13, 50, 12};
+    if (name == "pro")     return {2, 2, 3, 5, 16, 60, 4};
+    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0};
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 

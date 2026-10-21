@@ -68,6 +68,12 @@ inline const math::Fixed64 kKeeperHandsBonus = math::Fixed64::fromInt(6);
 inline const math::Fixed64 kBobbleKeep = math::Fixed64::fromFraction(2, 5);
 inline constexpr int kBobbleLockoutTicks = 8;
 
+// Tackling (G4.6): lunge reach, poke speed, and the recovery stun.
+inline const math::Fixed64 kTackleReach = math::Fixed64::fromFraction(13, 10);
+inline const math::Fixed64 kTacklePokeSpeed = math::Fixed64::fromInt(6);
+inline constexpr int kTackleMissRecovery = 15;  // 0.5 s flat on the turf
+inline constexpr int kTackleWinRecovery  = 5;   // played the ball, quick up
+
 // [v1] glue distance (m): carried ball sits this far ahead of the owner.
 inline const math::Fixed64 kBallCarryLead = math::Fixed64::fromFraction(2, 5);
 

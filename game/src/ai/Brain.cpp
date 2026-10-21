@@ -356,22 +356,105 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     const std::uint8_t restart = world.restartTeam();
     const bool opponents_restart =
         restart != 0xFF && restart != setup_.team_of_slot[slot];
+    // Defending (James's model): DELAY buys time → ORGANIZE into marks +
+    // a free man → with superiority behind the ball, someone STEPS (and
+    // may dive in; outcome resolves in World::tickTackles). "At an
+    // advanced level delay is to gain superiority while transitioning to
+    // defense; once you have marking and a free man, someone steps to
+    // ball." Low-discipline sides skip the theory and dive straight in.
     if (!ours && !opponents_restart) {
+        const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+        int mates_behind = 0, opps_behind = 0;
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            const bool behind =
+                world.player(j).pos.x * dsgn < seen_ball.x * dsgn;
+            if (setup_.team_of_slot[j] == setup_.team_of_slot[slot]) {
+                if (behind) ++mates_behind;
+            } else if (behind) {
+                ++opps_behind;
+            }
+        }
+        const bool organized = mates_behind >= opps_behind + 1;
+        const bool undisciplined = lv.swarm_pct >= 40;
+
         const bool in_range =
             distSq(me.pos, seen_ball) < kChaseRadius * kChaseRadius;
         // Swarmy teams send a MOB at the ball, not one presser.
         const int max_chasers = 1 + lv.swarm_pct / 20;
-        if (in_range &&
-            teamCloserCount(slot, world, seen_ball) < max_chasers) {
-            // Run THROUGH the (perceived) ball: arrive radius far below
-            // the capture radius, or the chaser stops forever just out of
-            // reach (the harness's first catch). A naive fixed-lead
-            // "interception" was tried and measured WORSE at every level
-            // (perfect baseline 10 → 394 goals/game) — proper interception
-            // needs closing-speed math, a later slice.
-            out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
-                                 Fixed64::fromFraction(1, 10));
+        const int rank = teamCloserCount(slot, world, seen_ball);
+        if (in_range && rank < max_chasers) {
+            if (!ball.owner || organized || undisciplined) {
+                // STEP / loose-ball race: through the ball (arrive radius
+                // far below capture radius — the harness's first catch);
+                // dive in when the carried ball is inside tackle reach.
+                out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
+                                     Fixed64::fromFraction(1, 10));
+                if (ball.owner &&
+                    distSq(me.pos, ball.pos) <
+                        core::kTackleReach * core::kTackleReach) {
+                    const Fixed64 n = core::detNoise(
+                        match_seed_, world.tickCount(), slot, 7);
+                    const int eagerness = 4 + lv.swarm_pct / 2;  // %/tick
+                    if ((n + Fixed64::one()) <
+                        Fixed64::fromFraction(eagerness, 50)) {
+                        out.action = Action::Tackle;
+                    }
+                }
+                return out;
+            }
+            // DELAY [v1 Jockey concept]: 2.2 m goal-side of the carrier,
+            // matching laterally; no tackle from here — buy the time the
+            // rest need to find their marks.
+            const Vec2 jockey{
+                seen_ball.x - dsgn * Fixed64::fromFraction(11, 5),
+                seen_ball.y};
+            out.move.move = seek(me.pos, jockey, Fixed64::fromFraction(3, 10));
             return out;
+        }
+
+        // ORGANIZE: non-engaged defenders take MARKS — greedy unique
+        // assignment in slot order over goal-side opponents, standing
+        // 1.5 m goal-side of the mark. Whoever finds no mark is the free
+        // man and falls through to the shape rules.
+        if (ball.owner && rank >= 2 && !undisciplined) {
+            bool marked[32] = {false};
+            SlotIndex my_mark = 255;
+            for (SlotIndex d = 0; d < world.playerCount(); ++d) {
+                if (setup_.team_of_slot[d] != setup_.team_of_slot[slot])
+                    continue;
+                if (teamCloserCount(d, world, seen_ball) < 2) continue;
+                SlotIndex pick = 255;
+                Fixed64 best{};
+                for (SlotIndex o = 0; o < world.playerCount(); ++o) {
+                    if (setup_.team_of_slot[o] == setup_.team_of_slot[slot])
+                        continue;
+                    if (o < 32 && marked[o]) continue;
+                    if (o == *ball.owner) continue;
+                    if (world.player(o).pos.x * dsgn >=
+                        seen_ball.x * dsgn + Fixed64::fromInt(5))
+                        continue;  // not goal-side enough to threaten
+                    const Fixed64 dd =
+                        distSq(world.player(d).pos, world.player(o).pos);
+                    if (pick == 255 || dd < best) {
+                        pick = o;
+                        best = dd;
+                    }
+                }
+                if (pick != 255 && pick < 32) marked[pick] = true;
+                if (d == slot) {
+                    my_mark = pick;
+                    break;
+                }
+            }
+            if (my_mark != 255) {
+                const auto& mk = world.player(my_mark);
+                out.move.move = seek(
+                    me.pos,
+                    Vec2{mk.pos.x - dsgn * Fixed64::fromFraction(3, 2),
+                         mk.pos.y},
+                    Fixed64::fromFraction(1, 2));
+                return out;
+            }
         }
     }
 

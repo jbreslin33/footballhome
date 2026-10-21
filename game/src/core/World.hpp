@@ -31,13 +31,17 @@ enum class Action : std::uint8_t {
     GroundKick = 1,  // 14 m/s — drive / long pass / shot
     LoftedKick = 2,  // 12 m/s + rise — chip / clearance
     ShortPass  = 3,  // 8 m/s — feet-to-feet inside ~15 m (G4 passing)
-    Shot       = 4,  // 24 m/s — a real strike; outfielders can't catch it
+    Shot       = 4,  // 18 m/s — a placed strike
+    Tackle     = 5,  // committed dive at an opponent's carried ball (G4.6)
 };
 
 struct PlayerState {
     math::Vec3 pos{};   // z stays 0 for players (locomotion is planar)
     math::Vec3 vel{};   // metres / second, fixed point
     std::uint8_t team = 0;  // steal contests are opponent-only
+    // Ticks of post-tackle stun: no movement, no actions. The price of
+    // diving in — what makes beating a defender possible.
+    std::int32_t recovery_ticks = 0;
     // Last movement direction (unit-ish); kick/carry direction when the
     // current intent is idle. Set at spawn to face the opponent goal.
     math::Vec2 face{math::Fixed64::one(), math::Fixed64::zero()};
@@ -112,6 +116,7 @@ public:
 
 private:
     void tickPlayers();
+    void tickTackles();
     void tickPossessionAndKicks(std::vector<MatchEvent>& events);
     void tickFreeBall(std::vector<MatchEvent>& events);
     void awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events);

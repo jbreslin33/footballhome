@@ -13,7 +13,7 @@
   'use strict';
 
   class GameInput {
-    constructor(joystickEl, knobEl, passBtn, loftBtn) {
+    constructor(joystickEl, knobEl, passBtn, loftBtn, tackleBtn) {
       this.keys = new Set();
       this.joy = { active: false, x: 0, y: 0 };
       this.joystickEl = joystickEl;
@@ -26,6 +26,7 @@
           e.preventDefault();
         if (e.key === ' ' && !e.repeat) this.pendingAction = 1;      // pass
         if (e.key.toLowerCase() === 'x' && !e.repeat) this.pendingAction = 2; // loft
+        if (e.key.toLowerCase() === 'f' && !e.repeat) this.pendingAction = 5; // tackle
         this.keys.add(e.key.toLowerCase());
       });
 
@@ -37,6 +38,10 @@
       if (loftBtn) loftBtn.addEventListener('touchstart', (e) => {
         e.preventDefault(); e.stopPropagation(); this.pendingAction = 2;
       });
+      if (tackleBtn) tackleBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault(); e.stopPropagation(); this.pendingAction = 5;
+      });
+      if (tackleBtn) tackleBtn.addEventListener('click', () => { this.pendingAction = 5; });
       if (passBtn) passBtn.addEventListener('click', () => { this.pendingAction = 1; });
       if (loftBtn) loftBtn.addEventListener('click', () => { this.pendingAction = 2; });
       window.addEventListener('keyup', (e) =>

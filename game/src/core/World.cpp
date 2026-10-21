@@ -65,11 +65,17 @@ void World::setKeeper(SlotIndex slot, bool keeper) {
 
 void World::tickPlayers() {
     for (SlotIndex i = 0; i < players_.size(); ++i) {
+        PlayerState& p = players_[i];
+        // Tackle recovery: sprawled on the turf — no movement this tick.
+        if (p.recovery_ticks > 0) {
+            --p.recovery_ticks;
+            p.vel = Vec3{};
+            continue;
+        }
         Vec2 desire = intents_[i].move;
         if (math::lengthSquared(desire) > Fixed64::one()) {
             desire = desire.normalized();  // hostile overlong vector buys nothing
         }
-        PlayerState& p = players_[i];
         p.vel = Vec3{desire.x * p.max_speed, desire.y * p.max_speed,
                      Fixed64::zero()};
         p.pos += p.vel * kTickDt;
@@ -128,6 +134,61 @@ void World::tickPlayers() {
     }
 }
 
+void World::tickTackles() {
+    // Committed dives (G4.6). Resolved BEFORE kicks, so a well-timed
+    // tackle blocks the shot that was about to fire. Only non-owners
+    // tackle; only an OPPONENT'S carried ball can be won; a lunge at
+    // nothing still costs the recovery (the whiff).
+    for (SlotIndex i = 0; i < players_.size(); ++i) {
+        if (actions_[i] != Action::Tackle) continue;
+        actions_[i] = Action::None;
+        PlayerState& tackler = players_[i];
+        if (tackler.recovery_ticks > 0) continue;
+        if (ball_.owner && *ball_.owner == i) continue;  // you HAVE it
+
+        const bool opponents_ball =
+            ball_.owner &&
+            players_[*ball_.owner].team != tackler.team;
+        const Vec2 d{ball_.pos.x - tackler.pos.x,
+                     ball_.pos.y - tackler.pos.y};
+        const bool in_reach =
+            math::lengthSquared(d) <= kTackleReach * kTackleReach &&
+            ball_.pos.z < Fixed64::one();
+
+        if (!opponents_ball || !in_reach) {
+            tackler.recovery_ticks = kTackleMissRecovery;  // whiffed
+            continue;
+        }
+
+        // Outcome by the tackler's level skill, deterministic noise.
+        const LevelParams& lv = level_[tackler.team & 1];
+        const int skill =
+            lv.tackle_success_pct > 0 ? lv.tackle_success_pct : 70;
+        const Fixed64 roll = detNoise(match_seed_, clock_.tick(), i, 6);
+        // roll in [-1,1) → success iff (roll+1)/2 < skill%.
+        const bool won =
+            (roll + Fixed64::one()) <
+            Fixed64::fromFraction(skill, 50);  // skill% of the [0,2) span
+        if (won) {
+            // Poke: ball squirts from the tackler THROUGH the ball line,
+            // loose for anyone — a scramble, not a clean possession swap.
+            const Fixed64 dl = math::length(d);
+            const Vec2 n = dl.raw == 0
+                               ? Vec2{Fixed64::one(), Fixed64::zero()}
+                               : Vec2{d.x / dl, d.y / dl};
+            ball_.owner.reset();
+            ball_.vel = Vec3{n.x * kTacklePokeSpeed, n.y * kTacklePokeSpeed,
+                             Fixed64::zero()};
+            ball_.kick_alive = kKickAliveTicks;
+            ball_.contest_ticks = 0;
+            last_touch_team_ = tackler.team;
+            tackler.recovery_ticks = kTackleWinRecovery;
+        } else {
+            tackler.recovery_ticks = kTackleMissRecovery;  // beaten
+        }
+    }
+}
+
 void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
     // ── carry ───────────────────────────────────────────────────────────
     if (ball_.owner) {
@@ -137,7 +198,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
         // the carry point of the PREVIOUS tick (feels like a real release).
         const SlotIndex kicker = *ball_.owner;
         const Action act = actions_[kicker];
-        if (act != Action::None) {
+        if (act != Action::None && players_[kicker].recovery_ticks == 0) {
             actions_[kicker] = Action::None;
             // Direction: live desire when pushing a direction, else facing.
             Vec2 desire = intents_[*ball_.owner].move;
@@ -432,6 +493,7 @@ void World::tickClock(std::vector<MatchEvent>& events) {
 std::vector<MatchEvent> World::tick() {
     std::vector<MatchEvent> events;
     tickPlayers();
+    tickTackles();
     tickPossessionAndKicks(events);
     tickFreeBall(events);
     tickClock(events);
