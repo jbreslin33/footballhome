@@ -9,6 +9,7 @@
 #pragma once
 
 #include "core/Ball.hpp"
+#include "core/Levels.hpp"
 #include "core/Clock.hpp"
 #include "core/Intent.hpp"
 #include "math/Fixed64.hpp"
@@ -77,6 +78,14 @@ public:
     void placePlayer(SlotIndex slot, const math::Vec3& pos,
                      const math::Vec2& face);
     void setTeam(SlotIndex slot, std::uint8_t team);
+    // Skill-noise config (G4.3). Zero params (the default) = perfect
+    // execution; every pre-G4.3 golden locks that baseline.
+    void setLevel(std::uint8_t team, const LevelParams& params);
+    void setMatchSeed(std::uint64_t seed) { match_seed_ = seed; }
+    const LevelParams& level(std::uint8_t team) const {
+        return level_[team & 1];
+    }
+    std::uint64_t matchSeed() const noexcept { return match_seed_; }
 
     // Advance one tick. Returns match events (usually empty).
     std::vector<MatchEvent> tick();
@@ -120,6 +129,8 @@ private:
     std::uint8_t  kickoff_team_ = 0;
     std::uint8_t  restart_team_ = 0xFF;   // 0xFF = live ball
     std::uint8_t  last_touch_team_ = 0;
+    LevelParams   level_[2];
+    std::uint64_t match_seed_ = 0;
 };
 
 }  // namespace fh::game::core

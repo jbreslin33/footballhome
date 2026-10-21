@@ -45,6 +45,16 @@ public:
           math::Fixed64 pitch_half_y,
           FormationSpec home = {}, FormationSpec away = {});
 
+    // Skill noise (G4.3): perception delay + decision jitter per team.
+    // Defaults (zero) = the perfect-play baseline the goldens lock.
+    void setLevels(const core::LevelParams& home,
+                   const core::LevelParams& away,
+                   std::uint64_t match_seed) {
+        level_[0] = home;
+        level_[1] = away;
+        match_seed_ = match_seed;
+    }
+
     // Orders for ONE slot given the current world. Pure + deterministic.
     Orders ordersFor(core::SlotIndex slot, const core::World& world) const;
 
@@ -59,6 +69,8 @@ private:
     TeamSetup setup_;
     math::Fixed64 half_x_, half_y_;
     FormationSpec spec_[2];
+    core::LevelParams level_[2];
+    std::uint64_t match_seed_ = 0;
     // Per-slot index within its own team (formation base lookup).
     std::vector<std::uint8_t> index_in_team_;
     std::vector<std::uint8_t> team_size_;

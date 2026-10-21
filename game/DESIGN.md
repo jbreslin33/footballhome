@@ -376,8 +376,20 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
 - G4.2b [ ] Attribute/concept/recognition registries + per-person profiles
   ([v1] migration→codegen; needs minted migration numbers) and the
   users.id→persons mapping.
-- G4.3 [ ] Skill noise (perception delay / decision noise / execution
-  error) + level bands (§5.1 eras, §5.2 knowledge triple begin here).
+- G4.3 [x] (2026-10-21) Skill noise + level bands [FH]: LevelParams
+  (perception delay ticks / kick angle+power error / decision jitter) per
+  team; noise = PURE hash of (match_seed, tick, slot, channel) so brains
+  stay pure and replays byte-identical; perception = linear backtrack (no
+  history state); error scales by kick kind (short pass ½, drive 1, loft
+  1¼); zero params = the baseline every earlier golden locks (hash grew
+  the config fields — one re-lock). Bands u10→world via GAME_LEVEL_HOME/
+  AWAY + GAME_MATCH_SEED (seeds finally vary matches). **Measured ladder,
+  monotone: perfect 10 / world 19 / semipro 89 / amateur 182 goals per
+  game; pro vs u10 ≈ 175–40.** Sandbox defaults world/world. Negative
+  result recorded: naive fixed-lead interception made every level WORSE
+  (perfect 10→394) — proper closing-speed interception is its own slice.
+  Ordering note: G4.2b (per-person profiles) deferred until slots map to
+  persons (team/lobby selection) — it had no consumer yet.
 - G4.4 [ ] Calibration CI gates: assert bands on goals/game, possession,
   pass counts once mechanics settle.
 

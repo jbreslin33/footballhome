@@ -4,6 +4,7 @@
 
 #include "ai/Formation.hpp"
 #include "core/Ball.hpp"
+#include "core/Levels.hpp"
 
 namespace fh::game::ai {
 
@@ -117,6 +118,26 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     const auto& me = world.player(slot);
     const int sign = attackSign(slot);
 
+    // Perception delay (G4.3): this brain reacts to where the ball WAS
+    // delay ticks ago, approximated linearly (no history state — brains
+    // stay pure). Carrier logic is exempt: the ball is at your feet.
+    const core::LevelParams& lv = level_[setup_.team_of_slot[slot]];
+    Vec3 seen_ball = ball.pos;
+    if (lv.perception_delay_ticks > 0 && (!ball.owner || *ball.owner != slot)) {
+        const Fixed64 back =
+            Fixed64::fromInt(lv.perception_delay_ticks) * core::kTickDt;
+        seen_ball = Vec3{ball.pos.x - ball.vel.x * back,
+                         ball.pos.y - ball.vel.y * back,
+                         ball.pos.z};
+    }
+    // Decision jitter (G4.3): thresholds wobble per (tick, slot).
+    Fixed64 jitter = Fixed64::one();
+    if (lv.decision_jitter_pct > 0) {
+        jitter = Fixed64::one() +
+                 core::detNoise(match_seed_, world.tickCount(), slot, 3) *
+                     Fixed64::fromFraction(lv.decision_jitter_pct, 100);
+    }
+
     // ── I have the ball: shoot in range; else look for a forward pass
     // ([Buckland]-lite: lane-checked, progress-scored); else dribble ─────
     if (ball.owner && *ball.owner == slot) {
@@ -174,7 +195,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         }
 
         if (have_target &&
-            (pressed || best_progress - my_progress > kEagerGain)) {
+            (pressed || best_progress - my_progress > kEagerGain * jitter)) {
             out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
             out.action = target_dist_sq < kSoftPassRange * kSoftPassRange
                              ? Action::ShortPass
@@ -203,7 +224,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     // My formation anchor (ball-shifted), the default duty.
     const FormationSpec::Pos& mine =
         spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]];
-    const Vec2 anchor = anchorFor(mine.base, sign, ball.pos, half_x_,
+    const Vec2 anchor = anchorFor(mine.base, sign, seen_ball, half_x_,
                                   half_y_, mine.keeper);
 
     // ── loose ball: nearest teammate goes for it ────────────────────────
@@ -218,12 +239,15 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         restart != 0xFF && restart != setup_.team_of_slot[slot];
     if (!ours && !opponents_restart) {
         const bool in_range =
-            distSq(me.pos, ball.pos) < kChaseRadius * kChaseRadius;
-        if (in_range && isTeamClosest(slot, world, ball.pos)) {
-            // Run THROUGH the ball: arrive radius far below the capture
-            // radius, or the chaser stops forever just out of reach (the
-            // calibration harness's first catch — 100% loose ball).
-            out.move.move = seek(me.pos, Vec2{ball.pos.x, ball.pos.y},
+            distSq(me.pos, seen_ball) < kChaseRadius * kChaseRadius;
+        if (in_range && isTeamClosest(slot, world, seen_ball)) {
+            // Run THROUGH the (perceived) ball: arrive radius far below
+            // the capture radius, or the chaser stops forever just out of
+            // reach (the harness's first catch). A naive fixed-lead
+            // "interception" was tried and measured WORSE at every level
+            // (perfect baseline 10 → 394 goals/game) — proper interception
+            // needs closing-speed math, a later slice.
+            out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
                                  Fixed64::fromFraction(1, 10));
             return out;
         }

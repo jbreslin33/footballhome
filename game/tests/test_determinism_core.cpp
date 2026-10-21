@@ -26,7 +26,8 @@ namespace {
 //   G1.1 2026-10-21 ball + facing joined  0x4b302451cf0e16e8
 //   G2   2026-10-21 bounds + teams + steal 0x4ed209ee39dfa0f7
 //   G3   2026-10-21 restarts + score/clock  0xfa9bf89e7f1477e9
-constexpr std::uint64_t kGolden400TicksSeed42 = 0xfa9bf89e7f1477e9ULL;
+//   G4.3 2026-10-21 level config in hash    0x2cad88c349759809
+constexpr std::uint64_t kGolden400TicksSeed42 = 0x2cad88c349759809ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

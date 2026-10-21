@@ -5,7 +5,7 @@
 // World+Brain directly; the protocol-speaking headless client replaces it
 // when per-match orchestration lands. Usage:
 //
-//   fh-game-calibrate [matches=5] [players=22] [minutes=90]
+//   fh-game-calibrate [matches=5] [players=22] [minutes=90] [lvl_home] [lvl_away]
 //
 // Output (one line per match + aggregate):
 //   match 1: home 2 — 1 away | possession 51% / 34% (15% loose)
@@ -18,6 +18,7 @@
 // goldens.
 
 #include "ai/Brain.hpp"
+#include "core/Levels.hpp"
 #include "core/World.hpp"
 
 #include <cstdio>
@@ -30,6 +31,8 @@ int main(int argc, char** argv) {
     const int matches = argc > 1 ? std::atoi(argv[1]) : 5;
     const int players = argc > 2 ? std::atoi(argv[2]) : 22;
     const int minutes = argc > 3 ? std::atoi(argv[3]) : 90;
+    const char* lvl_home = argc > 4 ? argv[4] : "perfect";
+    const char* lvl_away = argc > 5 ? argv[5] : "perfect";
     const long ticks = static_cast<long>(minutes) * 60 * core::kTickRate;
 
     long total_goals = 0;
@@ -41,6 +44,12 @@ int main(int argc, char** argv) {
         ai::Brain brain{ai::TeamSetup::splitHalves(
                             static_cast<std::uint8_t>(players)),
                         Fixed64::fromFraction(105, 2), Fixed64::fromInt(34)};
+        world.setLevel(0, core::levelParams(lvl_home));
+        world.setLevel(1, core::levelParams(lvl_away));
+        world.setMatchSeed(static_cast<std::uint64_t>(m));  // vary per match
+        brain.setLevels(core::levelParams(lvl_home),
+                        core::levelParams(lvl_away),
+                        static_cast<std::uint64_t>(m));
         const auto setup = ai::TeamSetup::splitHalves(
             static_cast<std::uint8_t>(players));
 

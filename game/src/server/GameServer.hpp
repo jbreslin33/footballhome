@@ -46,6 +46,10 @@ public:
         // built-ins. Config, not state: loaded once at boot.
         ai::FormationSpec formation_home;
         ai::FormationSpec formation_away;
+        // Skill levels (G4.3) + the match's noise seed.
+        core::LevelParams level_home;
+        core::LevelParams level_away;
+        std::uint64_t match_seed = 0;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);

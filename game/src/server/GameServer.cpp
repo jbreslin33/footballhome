@@ -18,6 +18,10 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
       brain_{ai::TeamSetup::splitHalves(cfg.slot_count),
              Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y),
              cfg.formation_home, cfg.formation_away} {
+    world_.setLevel(0, cfg.level_home);
+    world_.setLevel(1, cfg.level_away);
+    world_.setMatchSeed(cfg.match_seed);
+    brain_.setLevels(cfg.level_home, cfg.level_away, cfg.match_seed);
     transport_.setOnConnect(
         [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
     transport_.setOnDisconnect([this](ClientId id) { onDisconnect(id); });

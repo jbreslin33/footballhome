@@ -53,6 +53,10 @@ void World::setTeam(SlotIndex slot, std::uint8_t team) {
     players_[slot].team = team;
 }
 
+void World::setLevel(std::uint8_t team, const LevelParams& params) {
+    level_[team & 1] = params;
+}
+
 void World::tickPlayers() {
     for (SlotIndex i = 0; i < players_.size(); ++i) {
         Vec2 desire = intents_[i].move;
@@ -95,15 +99,46 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
             Vec2 dir = (desire.x.raw != 0 || desire.y.raw != 0)
                            ? math::normalized(desire)
                            : o.face;
+
+            // Execution noise (G4.3): rotate the kick by a level-scaled
+            // deterministic error and scale its power. A pro's error is a
+            // couple of degrees; a U-10 sprays it. Zero params = exact,
+            // which is the baseline every pre-G4.3 golden locks.
+            const LevelParams& lv = level_[players_[kicker].team & 1];
+            Fixed64 power_scale = Fixed64::one();
+            if (lv.kick_angle_err_deg != 0 || lv.kick_power_err_pct != 0) {
+                const Fixed64 n1 =
+                    detNoise(match_seed_, clock_.tick(), kicker, 1);
+                const Fixed64 n2 =
+                    detNoise(match_seed_, clock_.tick(), kicker, 2);
+                // degrees → radians: deg * 2π/360 ≈ deg * 71/4068.
+                // Short feet-to-feet balls are easier than drives/chips:
+                // half the angle error on a ShortPass, full on a drive,
+                // 1.25x on a loft.
+                Fixed64 kind_scale = Fixed64::one();
+                if (act == Action::ShortPass)
+                    kind_scale = Fixed64::fromFraction(1, 2);
+                else if (act == Action::LoftedKick)
+                    kind_scale = Fixed64::fromFraction(5, 4);
+                const Fixed64 ang = n1 * kind_scale *
+                    Fixed64::fromInt(lv.kick_angle_err_deg) *
+                    Fixed64::fromFraction(71, 4068);
+                const Fixed64 c = math::fx_cos(ang);
+                const Fixed64 sn = math::fx_sin(ang);
+                dir = Vec2{dir.x * c - dir.y * sn, dir.x * sn + dir.y * c};
+                power_scale = Fixed64::one() +
+                    n2 * Fixed64::fromFraction(lv.kick_power_err_pct, 100);
+            }
             if (act == Action::GroundKick) {
-                ball_.vel = Vec3{dir.x * kGroundKickSpeed,
-                                 dir.y * kGroundKickSpeed, Fixed64::zero()};
+                const Fixed64 v = kGroundKickSpeed * power_scale;
+                ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (act == Action::ShortPass) {
-                ball_.vel = Vec3{dir.x * kShortPassSpeed,
-                                 dir.y * kShortPassSpeed, Fixed64::zero()};
+                const Fixed64 v = kShortPassSpeed * power_scale;
+                ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else {
-                ball_.vel = Vec3{dir.x * kLoftKickSpeed,
-                                 dir.y * kLoftKickSpeed, kLoftKickRise};
+                const Fixed64 v = kLoftKickSpeed * power_scale;
+                ball_.vel = Vec3{dir.x * v, dir.y * v,
+                                 kLoftKickRise * power_scale};
             }
             ball_.owner.reset();
             ball_.kick_alive = kKickAliveTicks;

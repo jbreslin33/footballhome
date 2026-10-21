@@ -57,6 +57,16 @@ std::uint64_t canonicalHash(const World& world) {
     mix(h, world.period());
     mix(h, world.matchClockTicks());
     mix(h, world.restartTeam());
+    // Skill-noise config (G4.3): drives evolution, so it is part of the
+    // identity of a run. Zero everywhere for pre-G4.3 goldens.
+    mix(h, world.matchSeed());
+    for (int t = 0; t < 2; ++t) {
+        const LevelParams& lv = world.level(t);
+        mix(h, static_cast<std::uint64_t>(lv.perception_delay_ticks));
+        mix(h, static_cast<std::uint64_t>(lv.kick_angle_err_deg));
+        mix(h, static_cast<std::uint64_t>(lv.kick_power_err_pct));
+        mix(h, static_cast<std::uint64_t>(lv.decision_jitter_pct));
+    }
     return h;
 }
 
