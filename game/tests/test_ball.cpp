@@ -171,7 +171,8 @@ FH_TEST(goal_scores_and_resets_kickoff) {
     bool scored = false;
     std::uint8_t team = 99;
     for (int i = 0; i < 90 && !scored; ++i) {
-        for (const GoalEvent& g : w.tick()) { scored = true; team = g.scoring_team; }
+        for (const MatchEvent& e : w.tick())
+            if (e.type == MatchEventType::Goal) { scored = true; team = e.team; }
     }
     FH_EXPECT(scored);
     FH_EXPECT_EQ(team, 0);  // crossed +x: home scores
@@ -190,13 +191,24 @@ FH_TEST(wide_shot_bounces_off_wall_not_goal) {
     w.tick();
     w.setAction(0, Action::GroundKick);
     w.tick();
-    bool scored = false, came_back = false;
+    bool scored = false;
+    bool restarted = false;
+    std::uint8_t restart_to = 99;
     for (int i = 0; i < 120; ++i) {
-        if (!w.tick().empty()) scored = true;
-        if (w.ball().vel.x.raw < 0) came_back = true;
+        for (const MatchEvent& e : w.tick()) {
+            if (e.type == MatchEventType::Goal) scored = true;
+            if (e.type == MatchEventType::GoalKick) {
+                restarted = true;
+                restart_to = e.team;
+            }
+        }
     }
     FH_EXPECT(!scored);
-    FH_EXPECT(came_back);  // reflected off the arcade wall
+    // G3: the wide shot crosses the end line → goal kick to the DEFENDING
+    // team (away defends +x), ball dead on their 6-metre spot.
+    FH_EXPECT(restarted);
+    FH_EXPECT_EQ(restart_to, 1);
+    FH_EXPECT_EQ(w.restartTeam(), 1);
 }
 
 FH_TEST(non_owner_action_never_kicks) {

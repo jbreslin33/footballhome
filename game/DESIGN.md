@@ -322,6 +322,35 @@ supply turnovers. Shipped level: symmetric 112–91, possession 40/38/20,
 saves + steals + end-to-end play. ~203 goals/game vs the ~2.7 anchor is
 G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
 
+### 8.4 G3 slices — a real match
+
+- G3.1 [x] (2026-10-21) MatchEvent generalization (Goal / ThrowIn / GoalKick / Corner /
+  Kickoff / HalfTime / FullTime, each with a team) replacing the bare
+  GoalEvent; wire EVENT ids assigned once in PROTOCOL.md.
+- G3.2 [x] (2026-10-21) Restarts replace the arcade walls: last-touch tracking; side
+  line → throw-in at the crossing point (other team); end line outside the
+  mouth → corner (attackers, nearest corner) or goal kick (defenders);
+  goal → kickoff awarded to conceders. A restart places a DEAD ball only
+  the awarded team may first-capture; AI opponents hold anchors instead of
+  crowding it (no hands/thrower animation — a throw-in is a kick in v0,
+  documented). NO offside, NO fouls (charter).
+- G3.3 [x] (2026-10-21) Score, match clock, halves in World (period 1/2, configurable
+  half length, kickoff alternates; no side swap in v0 — documented);
+  FullTime → score/clock reset + restart (match 1 is a perpetual sandbox).
+  State surface grows → goldens re-locked once, batched here.
+- G3.4 [x] (2026-10-21) Wire 1.2: SNAPSHOT appends score/period/clock/restart-team
+  (additive); client scoreboard (score + mm:ss + period), restart/goal
+  status toasts, AUTO toggle (auto-switch active to held player nearest
+  the ball) + Q-cycle kept.
+- G3.5 [~] Exit gate verified on DESKTOP (2026-10-21): live sandbox match
+  on footballhome.org with running scoreboard (watched 1-0 become 1-1),
+  "Kickoff — away" toast after the goal, dead-ball restarts in the 1.2
+  snapshots; 5-minute halves (GAME_HALF_MINUTES). Calibration with
+  restarts: symmetric 146-145, possession 33/32/34, 10-min sanity = 27
+  goals (band holds). **Remaining: James plays a timed match on his
+  phone, then tick.** Goldens re-locked for the G3 surface (history in
+  test_determinism_core).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Offside, fouls/cards, stamina, substitutions-as-rule (subs arrive with G5

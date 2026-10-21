@@ -39,6 +39,9 @@ public:
         // Pitch half-extents (m) sent in HELLO. Standard 105x68 pitch.
         std::int32_t  pitch_half_x = 52;  // 52.5 rounds to Fixed in ctor
         std::int32_t  pitch_half_y = 34;
+        // 0 = untimed sandbox. The live daemon sets this from
+        // GAME_HALF_MINUTES (main.cpp).
+        std::uint32_t half_length_ticks = 0;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);

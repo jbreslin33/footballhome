@@ -39,17 +39,31 @@ struct PlayerState {
     math::Fixed64 max_speed{};
 };
 
-// Emitted by tick() when the ball fully crosses a goal mouth.
-struct GoalEvent {
-    std::uint8_t scoring_team = 0;  // 0 = home (attacks +x), 1 = away
+// Match events emitted by tick(). Wire ids in PROTOCOL.md §7 match these
+// values exactly — append-only, never renumber.
+enum class MatchEventType : std::uint8_t {
+    Goal     = 1,  // team = scorer
+    ThrowIn  = 2,  // team = awarded
+    GoalKick = 3,  // team = awarded
+    Corner   = 4,  // team = awarded
+    Kickoff  = 5,  // team = awarded (after goals and at period starts)
+    HalfTime = 6,  // team unused
+    FullTime = 7,  // team unused
+};
+
+struct MatchEvent {
+    MatchEventType type;
+    std::uint8_t team = 0;
 };
 
 class World {
 public:
     // All players share max_speed until attributes land (G2). Pitch half
-    // extents bound the arcade walls and the goal mouths.
+    // extents bound the lines and the goal mouths. half_length_ticks = 0
+    // means an untimed sandbox (no halves, score still kept).
     World(SlotIndex player_count, math::Fixed64 max_speed,
-          math::Fixed64 pitch_half_x, math::Fixed64 pitch_half_y);
+          math::Fixed64 pitch_half_x, math::Fixed64 pitch_half_y,
+          std::uint32_t half_length_ticks = 0);
 
     // Record the latest intent for a slot. Last write before tick() wins —
     // movement is sampled; a non-None action LATCHES until consumed by the
@@ -63,8 +77,8 @@ public:
                      const math::Vec2& face);
     void setTeam(SlotIndex slot, std::uint8_t team);
 
-    // Advance one tick. Returns goal events (usually empty).
-    std::vector<GoalEvent> tick();
+    // Advance one tick. Returns match events (usually empty).
+    std::vector<MatchEvent> tick();
 
     const PlayerState& player(SlotIndex slot) const { return players_[slot]; }
     const BallState& ball() const noexcept { return ball_; }
@@ -72,14 +86,22 @@ public:
         return static_cast<SlotIndex>(players_.size());
     }
     std::uint64_t tickCount() const noexcept { return clock_.tick(); }
+    std::uint8_t score(std::uint8_t team) const { return score_[team & 1]; }
+    std::uint8_t period() const noexcept { return period_; }
+    std::uint32_t matchClockTicks() const noexcept { return match_clock_; }
+    // 0xFF = live ball; else the team awaiting a dead-ball first touch.
+    std::uint8_t restartTeam() const noexcept { return restart_team_; }
     math::Fixed64 pitchHalfX() const noexcept { return half_x_; }
     math::Fixed64 pitchHalfY() const noexcept { return half_y_; }
 
 private:
     void tickPlayers();
-    void tickPossessionAndKicks(std::vector<GoalEvent>& events);
-    void tickFreeBall(std::vector<GoalEvent>& events);
-    void resetKickoff();
+    void tickPossessionAndKicks(std::vector<MatchEvent>& events);
+    void tickFreeBall(std::vector<MatchEvent>& events);
+    void awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events);
+    void awardRestart(MatchEventType type, std::uint8_t team,
+                      const math::Vec3& spot, std::vector<MatchEvent>& events);
+    void tickClock(std::vector<MatchEvent>& events);
 
     std::vector<PlayerState> players_;
     std::vector<MoveIntent>  intents_;
@@ -87,6 +109,16 @@ private:
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};
     Clock clock_;
+
+    // Match structure (G3.3). match_clock_ resets at full time (perpetual
+    // sandbox); kickoff_team_ alternates per period and per full match.
+    std::uint8_t  score_[2] = {0, 0};
+    std::uint8_t  period_ = 1;
+    std::uint32_t match_clock_ = 0;
+    std::uint32_t half_length_ticks_ = 0;
+    std::uint8_t  kickoff_team_ = 0;
+    std::uint8_t  restart_team_ = 0xFF;   // 0xFF = live ball
+    std::uint8_t  last_touch_team_ = 0;
 };
 
 }  // namespace fh::game::core

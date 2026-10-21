@@ -51,6 +51,12 @@ std::uint64_t canonicalHash(const World& world) {
     mix(h, b.last_kicker);
     mix(h, static_cast<std::uint64_t>(b.kicker_lockout));
     mix(h, static_cast<std::uint64_t>(b.contest_ticks));
+    // Match structure (G3.3).
+    mix(h, world.score(0));
+    mix(h, world.score(1));
+    mix(h, world.period());
+    mix(h, world.matchClockTicks());
+    mix(h, world.restartTeam());
     return h;
 }
 

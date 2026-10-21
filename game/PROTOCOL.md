@@ -1,4 +1,4 @@
-# fh-game wire protocol — v1.1
+# fh-game wire protocol — v1.2
 
 > The protocol is the product boundary (DESIGN.md pillar 4). Every client —
 > browser, native, desktop, headless — implements this document and nothing
@@ -110,6 +110,9 @@ u64 tick | u8 player_count |
 per player: i64 pos_x | i64 pos_y | i64 vel_x | i64 vel_y | u8 flags |
 ball (appended in 1.1):
   i64 pos_x | i64 pos_y | i64 pos_z | u8 owner_slot (0xFF = free)
+match structure (appended in 1.2):
+  u8 score_home | u8 score_away | u8 period |
+  u16 clock_seconds (resets at full time) | u8 restart_team (0xFF = live)
 ```
 
 - Players are planar (DESIGN.md §4), so player records carry **no z** —
@@ -119,8 +122,9 @@ ball (appended in 1.1):
 - 22 players ≈ 730 B/frame ≈ 22 KB/s at 30 Hz — comfortably inside the u16
   envelope and the phone budget. Delta-encoding is a later optimization,
   never a v1 requirement.
-- Clock/score join the layout with G3 (score/clock/halves slice), appended
-  per §9's additive rule.
+- A restart (throw-in / goal kick / corner / kickoff) places a DEAD ball:
+  only `restart_team` may take the first touch; everyone sees it via the
+  1.2 tail.
 
 ## 7. EVENT (s→c + replay log)
 
@@ -134,7 +138,9 @@ Layout (locked 1.1):
 u8 event_type | u8 team | u64 tick
 ```
 
-- event_type 1 = goal; `team` is the scoring team (0 = home, attacks +x).
+- event_type values (= `core::MatchEventType`, append-only): 1 goal,
+  2 throw-in, 3 goal kick, 4 corner, 5 kickoff, 6 half time, 7 full time.
+  `team` = scorer (goal) or awarded team (restarts); unused for 6/7.
 - New event types append their own payload fields after `tick`; decoders
   ignore fields they don't know (§9).
 

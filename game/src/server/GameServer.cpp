@@ -13,7 +13,8 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     : cfg_{cfg},
       transport_{transport},
       world_{cfg.slot_count, Fixed64::fromInt(cfg.max_speed_mps),
-             Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y)},
+             Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y),
+             cfg.half_length_ticks},
       brain_{ai::TeamSetup::splitHalves(cfg.slot_count),
              Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y)} {
     transport_.setOnConnect(
@@ -140,6 +141,11 @@ net::Bytes GameServer::buildSnapshotFrame() const {
     s.ball.pos_y = b.pos.y;
     s.ball.pos_z = b.pos.z;
     s.ball.owner = b.owner ? *b.owner : 0xFF;
+    s.score0 = world_.score(0);
+    s.score1 = world_.score(1);
+    s.period = world_.period();
+    s.clock_ticks = world_.matchClockTicks();
+    s.restart_team = world_.restartTeam();
     return encodeFrame(FrameType::Snapshot, encodeSnapshot(s));
 }
 
@@ -153,13 +159,13 @@ void GameServer::tickOnce() {
         if (o.action != core::Action::None) world_.setAction(slot, o.action);
     }
 
-    const auto goals = world_.tick();
+    const auto match_events = world_.tick();
     if (clients_.empty()) return;  // headless idle: nothing to fan out
 
-    for (const core::GoalEvent& g : goals) {
+    for (const core::MatchEvent& e : match_events) {
         EventFrame ev;
-        ev.event_type = 1;  // goal
-        ev.team = g.scoring_team;
+        ev.event_type = static_cast<std::uint8_t>(e.type);
+        ev.team = e.team;
         ev.tick = world_.tickCount();
         const Bytes frame = encodeFrame(FrameType::Event, encodeEvent(ev));
         for (const auto& [id, _] : clients_) transport_.send(id, frame);

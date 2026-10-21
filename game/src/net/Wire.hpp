@@ -17,7 +17,7 @@ namespace fh::game::net {
 
 // Protocol version — major bumps reject at HELLO, minor is additive.
 inline constexpr std::uint8_t kProtoMajor = 1;
-inline constexpr std::uint8_t kProtoMinor = 1;  // 1.1: ball record + EVENT
+inline constexpr std::uint8_t kProtoMinor = 2;  // 1.2: match structure tail
 inline constexpr std::uint8_t kProtoPatch = 0;
 
 // Envelope: u16 payload_length | u8 frame_type | u8 flags | payload.

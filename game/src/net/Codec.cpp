@@ -169,6 +169,10 @@ Bytes encodeSnapshot(const SnapshotFrame& f) {
     // Ball record, appended in 1.1 (additive — see header note).
     w.fx(f.ball.pos_x); w.fx(f.ball.pos_y); w.fx(f.ball.pos_z);
     w.u8(f.ball.owner);
+    // Match structure, appended in 1.2.
+    w.u8(f.score0); w.u8(f.score1); w.u8(f.period);
+    w.u16(static_cast<std::uint16_t>(f.clock_ticks / 30));  // whole seconds
+    w.u8(f.restart_team);
     return std::move(w.out);
 }
 
@@ -194,6 +198,14 @@ std::optional<SnapshotFrame> decodeSnapshot(const Bytes& payload) {
         f.ball.pos_y = r.fx();
         f.ball.pos_z = r.fx();
         f.ball.owner = r.u8();
+    }
+    // 1.2 tail: score/period/clock-seconds/restart (6 bytes).
+    if (r.at + 6 <= payload.size()) {
+        f.score0 = r.u8();
+        f.score1 = r.u8();
+        f.period = r.u8();
+        f.clock_ticks = static_cast<std::uint32_t>(r.u16()) * 30;
+        f.restart_team = r.u8();
     }
     return f;
 }

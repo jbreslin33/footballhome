@@ -17,13 +17,18 @@ const Fixed64 kGoalHeight    = Fixed64::fromFraction(244, 100);  // 2.44
 }  // namespace
 
 World::World(SlotIndex player_count, Fixed64 max_speed,
-             Fixed64 pitch_half_x, Fixed64 pitch_half_y)
+             Fixed64 pitch_half_x, Fixed64 pitch_half_y,
+             std::uint32_t half_length_ticks)
     : players_(player_count),
       intents_(player_count),
       actions_(player_count, Action::None),
       half_x_{pitch_half_x},
-      half_y_{pitch_half_y} {
+      half_y_{pitch_half_y},
+      half_length_ticks_{half_length_ticks} {
     for (auto& p : players_) p.max_speed = max_speed;
+    // The opening kickoff belongs to home; the ball starts dead on the
+    // spot so an away player can't poach it before "the whistle".
+    restart_team_ = 0;
 }
 
 void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
@@ -73,7 +78,7 @@ void World::tickPlayers() {
     }
 }
 
-void World::tickPossessionAndKicks(std::vector<GoalEvent>& /*events*/) {
+void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
     // ── carry ───────────────────────────────────────────────────────────
     if (ball_.owner) {
         const PlayerState& o = players_[*ball_.owner];
@@ -100,6 +105,7 @@ void World::tickPossessionAndKicks(std::vector<GoalEvent>& /*events*/) {
             ball_.kick_alive = kKickAliveTicks;
             ball_.last_kicker = kicker;
             ball_.kicker_lockout = kKickerLockoutTicks;
+            last_touch_team_ = players_[kicker].team;
             return;  // free-ball physics integrates it this same tick
         }
 
@@ -155,6 +161,10 @@ void World::tickPossessionAndKicks(std::vector<GoalEvent>& /*events*/) {
     for (SlotIndex i = 0; i < players_.size(); ++i) {
         if (ball_.kicker_lockout > 0 && i == ball_.last_kicker)
             continue;  // you can't receive your own kick for half a second
+        // Dead-ball restriction (G3.2): only the awarded team may take a
+        // restart's first touch.
+        if (restart_team_ != 0xFF && players_[i].team != restart_team_)
+            continue;
         const Vec2 d{players_[i].pos.x - ball_.pos.x,
                      players_[i].pos.y - ball_.pos.y};
         const Fixed64 dsq = math::lengthSquared(d);
@@ -171,10 +181,12 @@ void World::tickPossessionAndKicks(std::vector<GoalEvent>& /*events*/) {
         ball_.kick_alive = 0;
         ball_.kicker_lockout = 0;
         ball_.contest_ticks = 0;
+        last_touch_team_ = players_[best].team;
+        restart_team_ = 0xFF;  // the dead ball is live again
     }
 }
 
-void World::tickFreeBall(std::vector<GoalEvent>& events) {
+void World::tickFreeBall(std::vector<MatchEvent>& events) {
     if (ball_.owner) return;
     if (ball_.kicker_lockout > 0) --ball_.kicker_lockout;
 
@@ -208,48 +220,100 @@ void World::tickFreeBall(std::vector<GoalEvent>& events) {
         }
     }
 
-    // Goal check BEFORE the walls: a ball crossing the end line inside the
-    // mouth (and under the bar) scores. Home attacks +x.
+    // ── end lines: goal, corner, or goal kick (G3.2) ────────────────────
     const bool in_mouth_y = math::fx_abs(ball_.pos.y) <= kGoalHalfWidth;
     const bool under_bar  = ball_.pos.z <= kGoalHeight;
-    if (ball_.pos.x > half_x_ && in_mouth_y && under_bar) {
-        events.push_back(GoalEvent{0});
-        resetKickoff();
-        return;
-    }
-    if (ball_.pos.x < -half_x_ && in_mouth_y && under_bar) {
-        events.push_back(GoalEvent{1});
-        resetKickoff();
-        return;
-    }
-
-    // Arcade walls [FH placeholder until G3 restarts]: reflect off the
-    // pitch bounds so a kickabout never loses the ball.
+    const Fixed64 corner_y =
+        ball_.pos.y.raw >= 0 ? half_y_ - Fixed64::one() : -half_y_ + Fixed64::one();
     if (ball_.pos.x > half_x_) {
-        ball_.pos.x = half_x_ + half_x_ - ball_.pos.x;
-        ball_.vel.x = -ball_.vel.x;
-    } else if (ball_.pos.x < -half_x_) {
-        ball_.pos.x = -half_x_ - half_x_ - ball_.pos.x;
-        ball_.vel.x = -ball_.vel.x;
+        if (in_mouth_y && under_bar) {
+            ++score_[0];
+            events.push_back({MatchEventType::Goal, 0});
+            awardKickoff(1, events);  // conceders restart
+            return;
+        }
+        // Over the +x end line: home attacks here. Last touch decides.
+        if (last_touch_team_ == 1) {  // defender touched out → corner
+            awardRestart(MatchEventType::Corner, 0,
+                         Vec3{half_x_ - Fixed64::one(), corner_y,
+                              Fixed64::zero()}, events);
+        } else {                       // attacker out → goal kick
+            awardRestart(MatchEventType::GoalKick, 1,
+                         Vec3{half_x_ - Fixed64::fromInt(6), Fixed64::zero(),
+                              Fixed64::zero()}, events);
+        }
+        return;
     }
-    if (ball_.pos.y > half_y_) {
-        ball_.pos.y = half_y_ + half_y_ - ball_.pos.y;
-        ball_.vel.y = -ball_.vel.y;
-    } else if (ball_.pos.y < -half_y_) {
-        ball_.pos.y = -half_y_ - half_y_ - ball_.pos.y;
-        ball_.vel.y = -ball_.vel.y;
+    if (ball_.pos.x < -half_x_) {
+        if (in_mouth_y && under_bar) {
+            ++score_[1];
+            events.push_back({MatchEventType::Goal, 1});
+            awardKickoff(0, events);
+            return;
+        }
+        if (last_touch_team_ == 0) {
+            awardRestart(MatchEventType::Corner, 1,
+                         Vec3{-half_x_ + Fixed64::one(), corner_y,
+                              Fixed64::zero()}, events);
+        } else {
+            awardRestart(MatchEventType::GoalKick, 0,
+                         Vec3{-half_x_ + Fixed64::fromInt(6), Fixed64::zero(),
+                              Fixed64::zero()}, events);
+        }
+        return;
+    }
+
+    // ── side lines: throw-in to the team that didn't touch it out ──────
+    // (A throw-in is a kick in v0 — no hands/thrower animation yet.)
+    if (ball_.pos.y > half_y_ || ball_.pos.y < -half_y_) {
+        const Fixed64 line_y =
+            ball_.pos.y.raw > 0 ? half_y_ : -half_y_;
+        awardRestart(MatchEventType::ThrowIn,
+                     last_touch_team_ == 0 ? 1 : 0,
+                     Vec3{ball_.pos.x, line_y, Fixed64::zero()}, events);
+        return;
     }
 }
 
-void World::resetKickoff() {
-    ball_ = BallState{};  // centre spot, at rest, free
+void World::awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events) {
+    ball_ = BallState{};  // centre spot, at rest, free of carriers
+    restart_team_ = team;
+    events.push_back({MatchEventType::Kickoff, team});
 }
 
-std::vector<GoalEvent> World::tick() {
-    std::vector<GoalEvent> events;
+void World::awardRestart(MatchEventType type, std::uint8_t team,
+                         const Vec3& spot, std::vector<MatchEvent>& events) {
+    ball_ = BallState{};
+    ball_.pos = spot;
+    restart_team_ = team;
+    events.push_back({type, team});
+}
+
+void World::tickClock(std::vector<MatchEvent>& events) {
+    if (half_length_ticks_ == 0) return;  // untimed sandbox
+    ++match_clock_;
+    if (period_ == 1 && match_clock_ == half_length_ticks_) {
+        period_ = 2;
+        events.push_back({MatchEventType::HalfTime, 0});
+        // Second half kicks off to the team that didn't open the match.
+        awardKickoff(kickoff_team_ == 0 ? 1 : 0, events);
+    } else if (period_ == 2 && match_clock_ >= half_length_ticks_ * 2) {
+        events.push_back({MatchEventType::FullTime, 0});
+        // Perpetual sandbox: full reset, opening kickoff alternates.
+        score_[0] = score_[1] = 0;
+        match_clock_ = 0;
+        period_ = 1;
+        kickoff_team_ = kickoff_team_ == 0 ? 1 : 0;
+        awardKickoff(kickoff_team_, events);
+    }
+}
+
+std::vector<MatchEvent> World::tick() {
+    std::vector<MatchEvent> events;
     tickPlayers();
     tickPossessionAndKicks(events);
     tickFreeBall(events);
+    tickClock(events);
     // Actions are per-tick: consumed by the owner's kick above, discarded
     // for everyone else, so a stale tap can't fire ticks later.
     for (auto& a : actions_) a = Action::None;

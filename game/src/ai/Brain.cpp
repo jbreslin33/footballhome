@@ -112,7 +112,12 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     const bool ours =
         ball.owner && setup_.team_of_slot[*ball.owner] ==
                           setup_.team_of_slot[slot];
-    if (!ours) {
+    // Opponent's dead ball (G3.2): we can't touch it — hold shape and
+    // defend the restart instead of crowding an untakeable ball.
+    const std::uint8_t restart = world.restartTeam();
+    const bool opponents_restart =
+        restart != 0xFF && restart != setup_.team_of_slot[slot];
+    if (!ours && !opponents_restart) {
         const bool in_range =
             distSq(me.pos, ball.pos) < kChaseRadius * kChaseRadius;
         if (in_range && isTeamClosest(slot, world, ball.pos)) {

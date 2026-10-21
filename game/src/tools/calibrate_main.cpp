@@ -71,7 +71,8 @@ int main(int argc, char** argv) {
                 world.setIntent(s, o.move);
                 if (o.action != core::Action::None) world.setAction(s, o.action);
             }
-            for (const core::GoalEvent& g : world.tick()) ++score[g.scoring_team];
+            for (const core::MatchEvent& e : world.tick())
+                if (e.type == core::MatchEventType::Goal) ++score[e.team];
             if (world.ball().owner)
                 ++owned_ticks[setup.team_of_slot[*world.ball().owner]];
             else

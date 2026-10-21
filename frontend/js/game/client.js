@@ -8,6 +8,8 @@
   'use strict';
 
   const statusEl = document.getElementById('status');
+  const boardEl = document.getElementById('scoreboard');
+  const autoBtn = document.getElementById('btn-auto');
   const canvas = document.getElementById('game-canvas');
   const renderer = new GameRenderer(canvas);
   const input = new GameInput(
@@ -18,9 +20,21 @@
 
   const mySlots = new Set();
   let activeSlot = null;  // the ONE slot the controls drive right now
-  const score = [0, 0];
+  let autoSwitch = false; // AUTO: drive whichever held player is ball-nearest
   let hello = null;
   let intentTimer = null;
+  let toastTimer = null;
+
+  // Names for EVENT frames (PROTOCOL.md §7 / MatchEventType).
+  const EVENT_NAMES = { 1: 'GOAL!', 2: 'Throw-in', 3: 'Goal kick',
+                        4: 'Corner', 5: 'Kickoff', 6: 'Half time',
+                        7: 'FULL TIME' };
+
+  function toast(text, ms) {
+    statusEl.textContent = text;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(updateStatus, ms || 2500);
+  }
 
   const net = new GameNet({
     onHello(h) {
@@ -46,13 +60,38 @@
     },
     onSnapshot(s) {
       renderer.pushSnapshot(s);
+      if (s.match && boardEl) {
+        const m = s.match;
+        const mm = String(Math.floor(m.clockSec / 60)).padStart(2, '0');
+        const ss = String(m.clockSec % 60).padStart(2, '0');
+        boardEl.textContent =
+          `HOME ${m.score0} — ${m.score1} AWAY   ${mm}:${ss} ${m.period === 2 ? '2H' : '1H'}`;
+      }
+      // AUTO: hand the controls to whichever held player is ball-nearest.
+      if (autoSwitch && mySlots.size > 1 && s.players) {
+        let best = activeSlot, bestD = Infinity;
+        for (const slot of mySlots) {
+          const p = s.players[slot];
+          if (!p) continue;
+          const d = (p.x - s.ball.x) ** 2 + (p.y - s.ball.y) ** 2;
+          if (d < bestD) { bestD = d; best = slot; }
+        }
+        if (best !== activeSlot) {
+          activeSlot = best;
+          renderer.setMySlots(mySlots, activeSlot);
+          updateStatus();
+        }
+      }
     },
     onEvent(ev) {
+      const name = EVENT_NAMES[ev.eventType] || 'event';
       if (ev.eventType === 1) {
-        score[ev.team]++;
         renderer.goalFlash();
-        statusEl.textContent =
-          `GOAL! ${score[0]} — ${score[1]}  (tap a player / WASD + Space to pass, X to loft)`;
+        toast(`⚽ ${name}`, 3000);
+      } else {
+        const side = ev.eventType <= 5
+          ? (ev.team === 0 ? ' — home' : ' — away') : '';
+        toast(`${name}${side}`, 2000);
       }
     },
     onClose() {
@@ -94,6 +133,18 @@
       (others.length ? ` (also holding ${others.map((s) => '#' + (s + 1)).join(', ')} — tap to switch)` : '') +
       ' — WASD/joystick, Space/PASS, X/LOFT';
   }
+  if (autoBtn) {
+    const flip = () => {
+      autoSwitch = !autoSwitch;
+      autoBtn.style.background =
+        autoSwitch ? 'rgba(255,204,0,.5)' : 'rgba(255,255,255,.12)';
+    };
+    autoBtn.addEventListener('click', flip);
+    autoBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation(); flip();
+    });
+  }
+
   // Q cycles which held player you're driving (G2.6).
   window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() !== 'q' || mySlots.size < 2) return;

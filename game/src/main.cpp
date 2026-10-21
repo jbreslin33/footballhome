@@ -42,6 +42,10 @@ int main() {
     cfg.match_id   = std::strtoull(envOr("GAME_MATCH_ID", "1"), nullptr, 10);
     cfg.slot_count = static_cast<std::uint8_t>(
         std::atoi(envOr("GAME_SLOT_COUNT", "22")));
+    // 5-minute halves by default on the sandbox match — long enough to
+    // feel like a game, short enough that a visitor sees a full cycle.
+    cfg.half_length_ticks = static_cast<std::uint32_t>(
+        std::atoi(envOr("GAME_HALF_MINUTES", "5")) * 60 * core::kTickRate);
     const int speed = std::atoi(envOr("GAME_SPEED", "1"));
 
     auth::JwtVerifier verifier{secret};

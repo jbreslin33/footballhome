@@ -74,7 +74,13 @@
     // Ball record (protocol 1.1 additive tail).
     const ball = { x: fx(view, p), y: fx(view, p + 8), z: fx(view, p + 16),
                    owner: view.getUint8(p + 24) };
-    return { tick, players, ball };
+    p += 25;
+    // Match structure (1.2 tail): score, period, clock seconds, restart.
+    const match = { score0: view.getUint8(p), score1: view.getUint8(p + 1),
+                    period: view.getUint8(p + 2),
+                    clockSec: view.getUint16(p + 3, true),
+                    restartTeam: view.getUint8(p + 5) };
+    return { tick, players, ball, match };
   }
 
   function decodeEvent(view, at) {

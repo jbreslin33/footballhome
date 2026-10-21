@@ -64,6 +64,12 @@ struct SnapshotFrame {
     // Appended after the player array in protocol 1.1 — 1.0 decoders
     // ignore it as trailing bytes (§9 additive rule).
     BallSnap ball;
+    // Appended in 1.2 (G3): match structure.
+    std::uint8_t  score0 = 0;
+    std::uint8_t  score1 = 0;
+    std::uint8_t  period = 1;
+    std::uint32_t clock_ticks = 0;     // resets each full time
+    std::uint8_t  restart_team = 0xFF; // 0xFF = live ball
 };
 
 struct EventFrame {
