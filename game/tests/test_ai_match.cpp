@@ -26,8 +26,8 @@ const Fixed64 kHX = Fixed64::fromFraction(105, 2);
 const Fixed64 kHY = Fixed64::fromInt(34);
 
 // Locked after the first green run (G2.6); placeholder 0 fails loudly.
-constexpr std::uint64_t kGolden3v3   = 0x8cbca1b401242a26ULL;
-constexpr std::uint64_t kGolden11v11 = 0xd9761eb503323f87ULL;
+constexpr std::uint64_t kGolden3v3   = 0x9ea1fd765adc7b44ULL;
+constexpr std::uint64_t kGolden11v11 = 0x0a21cf626ad7282fULL;
 
 struct Rig {
     World world;

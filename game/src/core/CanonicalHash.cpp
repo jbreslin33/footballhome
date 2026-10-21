@@ -59,6 +59,8 @@ std::uint64_t canonicalHash(const World& world) {
     mix(h, world.period());
     mix(h, world.matchClockTicks());
     mix(h, world.restartTeam());
+    mix(h, world.offsideMask());
+    mix(h, world.offsideTeam());
     // Skill-noise config (G4.3): drives evolution, so it is part of the
     // identity of a run. Zero everywhere for pre-G4.3 goldens.
     mix(h, world.matchSeed());

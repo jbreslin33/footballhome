@@ -223,9 +223,28 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         if (have_target &&
             (pressed || best_progress - my_progress > kEagerGain * jitter)) {
             out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
-            out.action = target_dist_sq < kSoftPassRange * kSoftPassRange
-                             ? Action::ShortPass
-                             : Action::GroundKick;
+            // Over the top (§5.2's worked example, playable at last): a
+            // receiver BEYOND their last outfield defender gets a lofted
+            // through ball — it flies over the block that a ground pass
+            // would have to thread. Disciplined sides only (a U-10
+            // doesn't know this ball exists).
+            Fixed64 their_line = Fixed64::fromInt(-1000);  // in x*sgn
+            for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
+                    continue;
+                if (world.isKeeper(j)) continue;
+                const Fixed64 depth = world.player(j).pos.x * sgn;
+                if (depth > their_line) their_line = depth;
+            }
+            const bool beyond_line = best_progress > their_line;
+            if (beyond_line && lv.swarm_pct < 40 &&
+                target_dist_sq > kSoftPassRange * kSoftPassRange) {
+                out.action = Action::LoftedKick;  // over the top
+            } else {
+                out.action = target_dist_sq < kSoftPassRange * kSoftPassRange
+                                 ? Action::ShortPass
+                                 : Action::GroundKick;
+            }
             return out;
         }
 
@@ -264,6 +283,26 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             const Fixed64 t = (anchor.x - goal_x) / denom;
             y = seen_ball.y * t;
         }
+        // Sweep (G4.8): a FREE ball in my defensive third is MINE — come
+        // claim it with hands before the runner arrives. This is the
+        // real counter to the ball over the top.
+        const Fixed64 my_depth_limit =
+            -half_x_ * (sign >= 0 ? Fixed64::one() : -Fixed64::one()) *
+            Fixed64::one();  // my goal line x
+        const Fixed64 dsgn_k = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+        const bool ball_in_my_third =
+            seen_ball.x * dsgn_k < -half_x_ + Fixed64::fromInt(20);
+        // Sweeping is an ADVANCED keeper concept — U-10 keepers are
+        // famously rooted to their line (and two sweeping U-10 keepers
+        // measured a 97%-loose swamp: the mechanic itself inverted the
+        // level ladder until gated).
+        if (!ball.owner && ball_in_my_third && lv.swarm_pct < 40) {
+            out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
+                                 Fixed64::fromFraction(1, 10));
+            return out;
+        }
+        (void)my_depth_limit;
+
         // Dive-lite (G4.3b): a FAST free ball coming at my goal is a
         // shot — track where its actual trajectory crosses my x, not
         // the centre line. Perception delay makes slow keepers read it
@@ -319,7 +358,15 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 const Fixed64 depth = world.player(j).pos.x * sgn;
                 if (depth < deepest) deepest = depth;
             }
-            const Fixed64 cover = deepest - Fixed64::fromInt(2);
+            Fixed64 cover = deepest - Fixed64::fromInt(2);
+            // HOLD THE LINE: never drop more than 25 m behind the ball.
+            // Without this floor, a line-riding runner and a man-tracking
+            // back line retreat-spiral each other into the goalmouth
+            // (measured: 0 offsides, goals UP after the offside law
+            // landed). Holding makes the runner's timing problem real —
+            // beyond this line he's offside when the ball is struck.
+            const Fixed64 hold = seen_ball.x * sgn - Fixed64::fromInt(25);
+            if (cover < hold) cover = hold;
             if (anchor.x * sgn > cover) anchor.x = cover * sgn;
             // Never retreat into the goal itself.
             const Fixed64 floor_x = -(half_x_ - Fixed64::fromInt(4));
@@ -480,17 +527,74 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     // ── our ball, off the ball: the carrier's nearest teammate offers a
     // support spot ahead of play ([Buckland]-lite single support player;
     // the sampled support-spot calculator replaces this) ────────────────
-    if (ours && ball.owner && *ball.owner != slot) {
-        // Nearest teammate to the carrier, EXCLUDING the carrier.
+    if (ours && ball.owner && *ball.owner != slot && !mine.keeper) {
         const auto& carrier = world.player(*ball.owner);
-        bool im_support = true;
+        const Fixed64 sgn2 = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+
+        // ── run in behind (G4.8): the most ADVANCED disciplined attacker
+        // attacks the space beyond their last outfield defender — the
+        // run that makes the over-the-top ball a weapon and drags their
+        // line deep. Ball-watchers (swarm ≥ 40) never make it.
+        if (lv.swarm_pct < 40) {
+            bool im_most_advanced = true;
+            const Fixed64 my_prog = me.pos.x * sgn2;
+            for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+                if (i == slot || i == *ball.owner) continue;
+                if (setup_.team_of_slot[i] != setup_.team_of_slot[slot])
+                    continue;
+                if (world.isKeeper(i)) continue;
+                const Fixed64 pr = world.player(i).pos.x * sgn2;
+                if (pr > my_prog || (pr == my_prog && i < slot))
+                    im_most_advanced = false;
+            }
+            if (im_most_advanced) {
+                Fixed64 their_line = Fixed64::fromInt(-1000);
+                for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                    if (setup_.team_of_slot[j] ==
+                        setup_.team_of_slot[slot])
+                        continue;
+                    if (world.isKeeper(j)) continue;
+                    const Fixed64 depth = world.player(j).pos.x * sgn2;
+                    if (depth > their_line) their_line = depth;
+                }
+                // Ride the LINE, not the space behind it — offside now
+                // exists, so the run is timed by the pass (ball in
+                // flight = loose-ball chase takes over). Half a metre
+                // onside for safety; perception delay makes weaker
+                // players misjudge exactly this margin.
+                Fixed64 run_x = (their_line - Fixed64::fromFraction(1, 2)) * sgn2;
+                const Fixed64 cap = half_x_ - Fixed64::fromInt(8);
+                if (run_x * sgn2 > cap) run_x = cap * sgn2;
+                // Attack the channel between ball and goal centre.
+                const Fixed64 run_y = seen_ball.y * Fixed64::fromFraction(1, 2);
+                out.move.move = seek(me.pos, Vec2{run_x, run_y},
+                                     Fixed64::fromFraction(1, 2));
+                return out;
+            }
+        }
+
+        // Support ranking among remaining attackers (carrier excluded).
+        int closer_to_carrier = 0;
         const Fixed64 mine_d = distSq(me.pos, carrier.pos);
-        for (SlotIndex i = 0; i < world.playerCount() && im_support; ++i) {
+        for (SlotIndex i = 0; i < world.playerCount(); ++i) {
             if (i == slot || i == *ball.owner) continue;
             if (setup_.team_of_slot[i] != setup_.team_of_slot[slot]) continue;
             const Fixed64 d = distSq(world.player(i).pos, carrier.pos);
-            if (d < mine_d || (d == mine_d && i < slot)) im_support = false;
+            if (d < mine_d || (d == mine_d && i < slot)) ++closer_to_carrier;
         }
+
+        // ── back outlet (G4.8): second-nearest sits 8 m goal-side of the
+        // carrier — the safety valve that completes the passing triangle.
+        if (closer_to_carrier == 1 && lv.swarm_pct < 40) {
+            out.move.move = seek(
+                me.pos,
+                Vec2{carrier.pos.x - sgn2 * Fixed64::fromInt(8),
+                     carrier.pos.y * Fixed64::fromFraction(3, 4)},
+                kArriveRadius);
+            return out;
+        }
+
+        const bool im_support = closer_to_carrier == 0;
         if (im_support) {
         const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
         // Candidate spots: 12 m goalward of the carrier, offset ±8 m wide;

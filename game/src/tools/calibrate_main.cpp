@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
         }
 
         int score[2] = {0, 0};
-        long tk_won = 0, tk_lost = 0;
+        long tk_won = 0, tk_lost = 0, offsides = 0;
         long owned_ticks[2] = {0, 0};
         long loose_ticks = 0;
 
@@ -86,6 +86,7 @@ int main(int argc, char** argv) {
                 if (e.type == core::MatchEventType::Goal) ++score[e.team];
                 if (e.type == core::MatchEventType::TackleWon) ++tk_won;
                 if (e.type == core::MatchEventType::TackleLost) ++tk_lost;
+                if (e.type == core::MatchEventType::Offside) ++offsides;
             }
             if (world.ball().owner)
                 ++owned_ticks[setup.team_of_slot[*world.ball().owner]];
@@ -95,10 +96,10 @@ int main(int argc, char** argv) {
 
         total_goals += score[0] + score[1];
         std::printf(
-            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% loose) | tackles %ld won / %ld beaten\n",
+            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% loose) | tackles %ld won / %ld beaten | %ld offsides\n",
             m, score[0], score[1], owned_ticks[0] * 100 / ticks,
             owned_ticks[1] * 100 / ticks, loose_ticks * 100 / ticks,
-            tk_won, tk_lost);
+            tk_won, tk_lost, offsides);
     }
 
     std::printf("AGGREGATE over %d: %.1f goals/game | anchor: real-world ~2.7\n",

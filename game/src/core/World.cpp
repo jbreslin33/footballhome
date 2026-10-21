@@ -191,7 +191,8 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
     }
 }
 
-void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
+void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
+    pending_events_ = &events;
     // ── carry ───────────────────────────────────────────────────────────
     if (ball_.owner) {
         const PlayerState& o = players_[*ball_.owner];
@@ -214,7 +215,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
             // which is the baseline every pre-G4.3 golden locks.
             const LevelParams& lv = level_[players_[kicker].team & 1];
             Fixed64 power_scale = Fixed64::one();
-            if (lv.kick_angle_err_deg != 0 || lv.kick_power_err_pct != 0) {
+            if (lv.kick_angle_err_deg != 0 || lv.kick_power_err_pct != 0 ||
+                act == Action::Shot) {
                 const Fixed64 n1 =
                     detNoise(match_seed_, clock_.tick(), kicker, 1);
                 const Fixed64 n2 =
@@ -228,8 +230,15 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
                     kind_scale = Fixed64::fromFraction(1, 2);
                 else if (act == Action::LoftedKick)
                     kind_scale = Fixed64::fromFraction(5, 4);
+                // Shooting is HARD at any level: a flat +5 degrees of
+                // match-pressure error on shots, on top of level error.
+                // (18 m/s strikes at 1-degree error converted like
+                // penalties — nobody finishes like that from 20 m.)
+                const std::int32_t deg =
+                    lv.kick_angle_err_deg +
+                    (act == Action::Shot ? 5 : 0);
                 const Fixed64 ang = n1 * kind_scale *
-                    Fixed64::fromInt(lv.kick_angle_err_deg) *
+                    Fixed64::fromInt(deg) *
                     Fixed64::fromFraction(71, 4068);
                 const Fixed64 c = math::fx_cos(ang);
                 const Fixed64 sn = math::fx_sin(ang);
@@ -256,6 +265,29 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
             ball_.last_kicker = kicker;
             ball_.kicker_lockout = kKickerLockoutTicks;
             last_touch_team_ = players_[kicker].team;
+
+            // Arm offside (G4.8). Second-last OPPONENT line (keeper
+            // counts), the ball, and the halfway line all per the law.
+            const std::uint8_t kt = players_[kicker].team;
+            const Fixed64 os = kt == 0 ? Fixed64::one() : -Fixed64::one();
+            Fixed64 d1 = Fixed64::fromInt(-1000), d2 = d1;
+            for (SlotIndex j = 0; j < players_.size(); ++j) {
+                if (players_[j].team == kt) continue;
+                const Fixed64 depth = players_[j].pos.x * os;
+                if (depth > d1) { d2 = d1; d1 = depth; }
+                else if (depth > d2) { d2 = depth; }
+            }
+            offside_mask_ = 0;
+            offside_team_ = kt;
+            const Fixed64 ball_depth = ball_.pos.x * os;
+            for (SlotIndex j = 0; j < players_.size(); ++j) {
+                if (players_[j].team != kt || j == kicker) continue;
+                const Fixed64 depth = players_[j].pos.x * os;
+                if (depth > d2 && depth > ball_depth &&
+                    depth > Fixed64::zero()) {
+                    offside_mask_ |= (1u << (j & 31));
+                }
+            }
             return;  // free-ball physics integrates it this same tick
         }
 
@@ -333,6 +365,24 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
         }
     }
     if (!found) return;
+
+    // Offside whistle (G4.8): a flagged teammate of the kicker taking the
+    // first touch is caught — indirect free kick (dead ball) where he
+    // touched it. Any opponent touch disarms the flags instead.
+    if (offside_team_ != 0xFF) {
+        if (players_[best].team != offside_team_) {
+            offside_mask_ = 0;
+            offside_team_ = 0xFF;
+        } else if (offside_mask_ & (1u << (best & 31))) {
+            const std::uint8_t awarded = offside_team_ == 0 ? 1 : 0;
+            offside_mask_ = 0;
+            offside_team_ = 0xFF;
+            awardRestart(MatchEventType::Offside, awarded,
+                         Vec3{ball_.pos.x, ball_.pos.y, Fixed64::zero()},
+                         *pending_events_);
+            return;
+        }
+    }
 
     // Touch quality: a ball faster than the toucher's control level
     // bobbles — deflects onward at reduced speed in a noise-rotated
@@ -462,6 +512,8 @@ void World::tickFreeBall(std::vector<MatchEvent>& events) {
 void World::awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events) {
     ball_ = BallState{};  // centre spot, at rest, free of carriers
     restart_team_ = team;
+    offside_mask_ = 0;
+    offside_team_ = 0xFF;
     events.push_back({MatchEventType::Kickoff, team});
 }
 
@@ -470,6 +522,8 @@ void World::awardRestart(MatchEventType type, std::uint8_t team,
     ball_ = BallState{};
     ball_.pos = spot;
     restart_team_ = team;
+    offside_mask_ = 0;
+    offside_team_ = 0xFF;
     events.push_back({type, team});
 }
 

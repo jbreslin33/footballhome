@@ -412,10 +412,39 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
   airtight, not realistic), interception closing-speed math, possession
   metric (flight → last-touch team), then the CI assertion bands.
 
+### 8.6 G4.8 — the attack learns to run, and soccer reinvents offside
+
+- Off-ball attack: run-in-behind by the most advanced disciplined
+  attacker, back outlet (second support, 8 m goal-side) completing the
+  triangle, over-the-top LoftedKick to a receiver beyond their last
+  outfield line (§5.2's "sees the high line, plays over" — live).
+- **The history ladder proved itself in the harness**: runs-in-behind
+  instantly recreated 1860s goal-hanging (world 13→28 goals/game camping
+  behind the line) — the exact problem the real offside law was invented
+  for. So offside landed (charter amended, by measured need): flags armed
+  per kick vs the second-last opponent + ball + halfway line, whistle on
+  flagged first touch, dead-ball free kick, Offside match event (id 10).
+- Then the SECOND emergent lesson: line-riding runners × man-tracking
+  depth cover = a retreat spiral walking both lines into the goalmouth
+  (0 offsides, goals UP). Fix: the back line HOLDS ≥ ball−25 m — which is
+  what makes run timing a real problem (and the trap possible later).
+- Keeper sweeping (free ball in the defensive third is the keeper's,
+  hands and all) — gated as an ADVANCED concept (swarm < 40): two
+  sweeping U-10 keepers measured a 97%-loose swamp and inverted the
+  ladder. U-10 keepers stay rooted, as in life.
+- Flat +5° shot difficulty on top of level error (1° finishing converted
+  like penalties).
+- Ladder as locked: u10 37 / u14 27 / amateur 26 / semipro ~27 / world 17
+  (90-min mirrors) — endpoints right, middle compressed. The SYSTEMATIC
+  parameter sweep via the harness (not sequential nudging) is the
+  remaining G4.4 work, now with offside/tackle/sweep counters to target.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
-Offside, fouls/cards, stamina, substitutions-as-rule (subs arrive with G5
-tactical intents), weather, crowd, licensed anything, client-side prediction.
+Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
+intents), weather, crowd, licensed anything, client-side prediction.
+(Offside was on this list until G4.8, when the harness measured the exact
+1860s goal-hanging problem the law exists to solve — amended by evidence.)
 
 ## 9. Documentation & attribution (standing convention)
 

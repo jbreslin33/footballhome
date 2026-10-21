@@ -61,6 +61,7 @@ enum class MatchEventType : std::uint8_t {
     FullTime = 7,  // team unused
     TackleWon  = 8,  // team = tackler's
     TackleLost = 9,  // team = tackler's (beaten, in recovery)
+    Offside    = 10, // team = the AWARDED (defending) team
 };
 
 struct MatchEvent {
@@ -113,6 +114,8 @@ public:
     std::uint32_t matchClockTicks() const noexcept { return match_clock_; }
     // 0xFF = live ball; else the team awaiting a dead-ball first touch.
     std::uint8_t restartTeam() const noexcept { return restart_team_; }
+    std::uint32_t offsideMask() const noexcept { return offside_mask_; }
+    std::uint8_t offsideTeam() const noexcept { return offside_team_; }
     math::Fixed64 pitchHalfX() const noexcept { return half_x_; }
     math::Fixed64 pitchHalfY() const noexcept { return half_y_; }
 
@@ -143,6 +146,13 @@ private:
     std::uint8_t  kickoff_team_ = 0;
     std::uint8_t  restart_team_ = 0xFF;   // 0xFF = live ball
     std::uint8_t  last_touch_team_ = 0;
+    // Offside (G4.8): armed at every kick — flags teammates of the kicker
+    // beyond the second-last opponent AND the ball, in the opponent half.
+    // First same-team touch by a flagged player = whistle. Cleared by any
+    // opponent touch, dead ball, or goal.
+    std::uint32_t offside_mask_ = 0;
+    std::uint8_t  offside_team_ = 0xFF;  // kicking team while armed
+    std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped
     LevelParams   level_[2];
     std::uint64_t match_seed_ = 0;
 };
