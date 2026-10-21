@@ -532,12 +532,16 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
     try {
         auto db = Database::getInstance();
         auto rows = db->query(
+            // la_user_id is TEXT on persons AND person_la_user_ids —
+            // comparing either to $1::bigint made every 📄 toggle 500
+            // since the alias-aware rewrite (mig 602-era).  Caught
+            // 2026-10-21.
             "UPDATE team_persons tp SET invite_only = $3::bool "
             "  FROM persons p "
             " WHERE tp.person_id = p.id AND tp.team_id = $2::int AND tp.removed_at IS NULL "
-            "   AND (p.la_user_id = $1::bigint "
+            "   AND (p.la_user_id = $1::text "
             "        OR EXISTS (SELECT 1 FROM person_la_user_ids a "
-            "                    WHERE a.person_id = p.id AND a.la_user_id = $1::bigint)) "
+            "                    WHERE a.person_id = p.id AND a.la_user_id = $1::text)) "
             "RETURNING tp.person_id",
             {std::to_string(userId), std::to_string(teamId), inviteOnly ? "true" : "false"});
         if (rows.empty()) return notFound("No assignment exists for that player on that team");

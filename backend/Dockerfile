@@ -25,7 +25,7 @@ COPY . .
 # OOM-killed at higher parallelism.
 RUN mkdir -p build && cd build && \
     cmake .. && \
-    make -j2
+    make -j4
 
 # Expose port
 EXPOSE 3001

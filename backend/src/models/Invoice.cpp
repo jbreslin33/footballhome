@@ -294,19 +294,35 @@ json Invoice::get(long long invoiceId) {
     // Hours by day (mig 469).
     out["shifts"] = json::array();
     double shiftHours = 0;
+    // auto_note (owner TODO 10/21: "'Manager of soccer duties' is too
+    // generic for the calendar … each entry needs the real event name"):
+    // a day row typed with no note — the usual-week stints above all —
+    // borrows the names of the calendar events its window overlaps, so
+    // the check-off reads what was actually worked.  The sheet's labor
+    // line keeps the duty title; this is display only.
     auto shifts = db_->query(R"SQL(
-        SELECT id, work_date::text AS work_date, to_char(work_date, 'Dy FMMM/FMDD') AS day_label,
-               to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note, fh_event_id, gcal_event_id,
-               (hours IS NOT NULL) AS flat,
-               ROUND(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0), 2) AS hours
-          FROM invoice_work_shifts WHERE invoice_id = $1::int
-         ORDER BY work_date, start_at, id)SQL", {std::to_string(invoiceId)});
+        SELECT s.id, s.work_date::text AS work_date, to_char(s.work_date, 'Dy FMMM/FMDD') AS day_label,
+               to_char(s.start_at, 'HH24:MI') AS start_at, to_char(s.end_at, 'HH24:MI') AS end_at, s.note, s.fh_event_id, s.gcal_event_id,
+               (s.hours IS NOT NULL) AS flat,
+               ROUND(COALESCE(s.hours, EXTRACT(EPOCH FROM (s.end_at - s.start_at)) / 3600.0), 2) AS hours,
+               CASE WHEN s.note IS NULL AND s.fh_event_id IS NULL AND s.gcal_event_id IS NULL THEN
+                   (SELECT string_agg(DISTINCT BTRIM(g.summary), ' + ')
+                      FROM gcal_events g
+                     WHERE g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
+                       AND (g.starts_at AT TIME ZONE 'America/New_York')::date = s.work_date
+                       AND (s.start_at IS NULL OR
+                            ((g.starts_at AT TIME ZONE 'America/New_York')::time < COALESCE(s.end_at, '23:59'::time)
+                             AND (g.ends_at AT TIME ZONE 'America/New_York')::time > s.start_at)))
+               END AS auto_note
+          FROM invoice_work_shifts s WHERE s.invoice_id = $1::int
+         ORDER BY s.work_date, s.start_at, s.id)SQL", {std::to_string(invoiceId)});
     for (const auto& sh : shifts) {
         const double h = num(sh, "hours");
         shiftHours += h;
         out["shifts"].push_back({
             {"id", sh["id"].as<long long>()}, {"date", str(sh, "work_date")}, {"day_label", str(sh, "day_label")},
             {"start", str(sh, "start_at")}, {"end", str(sh, "end_at")}, {"note", str(sh, "note")}, {"hours", h},
+            {"auto_note", str(sh, "auto_note")},
             {"flat", sh["flat"].as<bool>()},
             {"fh_event_id", sh["fh_event_id"].is_null() ? json(nullptr) : json(sh["fh_event_id"].as<long long>())},
             {"gcal_event_id", sh["gcal_event_id"].is_null() ? json(nullptr) : json(sh["gcal_event_id"].as<long long>())},

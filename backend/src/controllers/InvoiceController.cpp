@@ -1,6 +1,8 @@
 #include "InvoiceController.h"
 
 #include <iostream>
+#include <set>
+#include <sstream>
 
 #include "../database/Database.h"
 #include "../models/Expenses.h"
@@ -65,6 +67,8 @@ void InvoiceController::registerRoutes(Router& router, const std::string& prefix
     // invoice, and one call that adds them as a Referees line.
     router.get (prefix + "/ref-fees",    [this](const Request& r) { return handleRefFees(r); });
     router.post(prefix + "/:id/ref-fees",[this](const Request& r) { return handleAddRefFees(r); });
+    // 🧑‍⚖️ one fee on/off the sheet, or its amount (mig 624).
+    router.post(prefix + "/:id/ref-fee-mark", [this](const Request& r) { return handleRefFeeMark(r); });
     router.post(prefix + "/new",         [this](const Request& r) { return handleNew(r); });
     router.post(prefix + "/plan",        [this](const Request& r) { return handlePlan(r); });
     router.del (prefix + "/plan",        [this](const Request& r) { return handleDeletePlan(r); });
@@ -136,6 +140,9 @@ Response InvoiceController::handleGet(const Request& request) {
         // moved ones are re-dated.  Admin path only; the public link never
         // writes.
         json reality = model_->realityCheck(id);
+        // 🧑‍⚖️ default-on ref fees (mig 624): the same open-time reconcile
+        // puts the period's played fees on the sheet unless declined.
+        try { autoAddRefFees(id); } catch (const std::exception& e) { std::cerr << "[invoices auto ref-fees] " << e.what() << std::endl; }
         json inv = model_->get(id);
         if (inv.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
         if (reality["removed"].get<int>() > 0 || reality["moved"].get<int>() > 0) inv["reality"] = reality;
@@ -390,9 +397,33 @@ Response InvoiceController::handleRefFees(const Request& request) {
                 "SELECT DISTINCT fixture_league_label AS l FROM ref_fee_policies WHERE club_id = $1::int AND is_active AND fixture_league_label IS NOT NULL",
                 {std::to_string((long long)WelcomeLog::kLighthouseClubId)}))
             LeagueFixtureSync::refreshLeague(r["l"].c_str());
+        // ?invoice=<id> (mig 624): the 📅 calendar's view — include the
+        // fees billed on THAT invoice (on_this + their billed amount) and
+        // the ones declined off it, so chips can read green / red.
+        long long invId = 0;
+        try { invId = std::stoll(request.getQueryParam("invoice")); } catch (...) {}
+        std::set<long long> myLines; std::set<std::string> declined;
+        if (invId > 0) {
+            auto* db = Database::getInstance();
+            for (const auto& r : db->query("SELECT id FROM invoice_lines WHERE invoice_id = $1::int AND category = 'referees'", {std::to_string(invId)}))
+                myLines.insert(r["id"].as<long long>());
+            for (const auto& r : db->query("SELECT source, ref_id FROM invoice_ref_declines WHERE invoice_id = $1::int", {std::to_string(invId)}))
+                declined.insert(std::string(r["source"].c_str()) + ":" + r["ref_id"].c_str());
+        }
         json games = json::array();
-        for (const auto& g : Expenses::games(WelcomeLog::kLighthouseClubId, true))
-            if (g["kind"] == "referee" && g["invoiced"].is_null() && g["amount"].get<double>() > 0) games.push_back(g);
+        for (auto g : Expenses::games(WelcomeLog::kLighthouseClubId, true)) {
+            if (g["kind"] != "referee" || g["amount"].get<double>() <= 0) continue;
+            if (!g["invoiced"].is_null()) {
+                if (invId > 0 && myLines.count(g["invoiced"].value("line_id", 0LL))) {
+                    g["on_this"] = true;
+                    if (g["invoiced"].contains("amount")) g["paid_amount"] = g["invoiced"]["amount"];
+                    games.push_back(g);
+                }
+                continue;   // billed elsewhere: never offered
+            }
+            if (invId > 0) g["declined"] = declined.count(g["source"].get<std::string>() + ":" + std::to_string(g["ref_id"].get<long long>())) > 0;
+            games.push_back(g);
+        }
         return jsonOut(HttpStatus::OK, {{"games", games}});
     } catch (const std::exception& e) { std::cerr << "[invoices ref-fees] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
@@ -408,21 +439,116 @@ Response InvoiceController::handleAddRefFees(const Request& request) {
     if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
     json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
     try {
-        json line = Expenses::refLineFor(WelcomeLog::kLighthouseClubId, body.value("games", json::array()));
-        if (line["items"].empty()) return jsonError(HttpStatus::BAD_REQUEST, "pick at least one game that is not invoiced yet");
-        long long lineId = 0;
-        auto existing = Database::getInstance()->query(
-            "SELECT id FROM invoice_lines WHERE invoice_id = $1::int AND category = 'referees' ORDER BY id LIMIT 1",
-            {std::to_string(id)});
-        if (!existing.empty()) lineId = existing[0]["id"].as<long long>();
-        else {
-            std::string err;
-            lineId = model_->upsertLine(id, 0, {{"category", "referees"}, {"description", "Referees — " + line["description"].get<std::string>()},
-                                                {"quantity", line["quantity"]}, {"amount", line["amount"]}}, &err);
-            if (lineId <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
-        }
-        Expenses::recordRefPayments(lineId, line["items"]);
-        Expenses::syncRefLine(lineId);
+        std::string err;
+        if (addRefFeesTo(id, body.value("games", json::array()), &err) <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
         return jsonOut(HttpStatus::OK, model_->get(id));
     } catch (const std::exception& e) { std::cerr << "[invoices add ref-fees] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+long long InvoiceController::addRefFeesTo(long long invoiceId, const json& picks, std::string* error) {
+    json line = Expenses::refLineFor(WelcomeLog::kLighthouseClubId, picks);
+    if (line["items"].empty()) { *error = "pick at least one game that is not invoiced yet"; return 0; }
+    long long lineId = 0;
+    auto existing = Database::getInstance()->query(
+        "SELECT id FROM invoice_lines WHERE invoice_id = $1::int AND category = 'referees' ORDER BY id LIMIT 1",
+        {std::to_string(invoiceId)});
+    if (!existing.empty()) lineId = existing[0]["id"].as<long long>();
+    else {
+        lineId = model_->upsertLine(invoiceId, 0, {{"category", "referees"}, {"description", "Referees — " + line["description"].get<std::string>()},
+                                                   {"quantity", line["quantity"]}, {"amount", line["amount"]}}, error);
+        if (lineId <= 0) return 0;
+    }
+    Expenses::recordRefPayments(lineId, line["items"]);
+    Expenses::syncRefLine(lineId);
+    return lineId;
+}
+
+// 🧑‍⚖️ Ref fees default ONTO the sheet (mig 624; owner: "green (on the
+// invoice) by default, with a toggle to turn one red").  Every open of a
+// DRAFT whose issuer bills expenses adds the period's played, in-gcal
+// fees that sit on no invoice — minus the ones deliberately declined.
+void InvoiceController::autoAddRefFees(long long invoiceId) {
+    auto* db = Database::getInstance();
+    auto inv = db->query(
+        "SELECT i.period_start::text AS ps, i.period_end::text AS pe, iss.bills_expenses "
+        "  FROM invoices i JOIN invoice_issuers iss ON iss.id = i.issuer_id "
+        " WHERE i.id = $1::int AND NOT i.is_final AND i.period_start IS NOT NULL AND i.period_end IS NOT NULL",
+        {std::to_string(invoiceId)});
+    if (inv.empty() || !inv[0]["bills_expenses"].as<bool>()) return;
+    const std::string ps = inv[0]["ps"].c_str(), pe = inv[0]["pe"].c_str();
+    std::set<std::string> declined;
+    for (const auto& r : db->query("SELECT source, ref_id FROM invoice_ref_declines WHERE invoice_id = $1::int", {std::to_string(invoiceId)}))
+        declined.insert(std::string(r["source"].c_str()) + ":" + r["ref_id"].c_str());
+    json picks = json::array();
+    for (const auto& g : Expenses::games(WelcomeLog::kLighthouseClubId, true)) {
+        if (g["kind"] != "referee" || !g["invoiced"].is_null() || g["amount"].get<double>() <= 0) continue;
+        if (!g["played"].get<bool>() || g["in_gcal"] == false) continue;
+        const std::string on = g["game_on"].get<std::string>();
+        if (on < ps || on > pe) continue;
+        if (declined.count(g["source"].get<std::string>() + ":" + std::to_string(g["ref_id"].get<long long>()))) continue;
+        picks.push_back({{"source", g["source"]}, {"ref_id", g["ref_id"]}});
+    }
+    if (picks.empty()) return;
+    std::string err;
+    addRefFeesTo(invoiceId, picks, &err);
+}
+
+// POST /api/invoices/:id/ref-fee-mark {source, ref_id, action, amount?}
+// (mig 624) — action 'off' takes the one fee off the sheet and remembers
+// the choice (the red chip; auto-add skips it), 'on' puts it back,
+// 'amount' re-prices its ref_fee_payments row.  The ONE Referees line
+// mirrors its payments throughout and goes away with its last fee.
+Response InvoiceController::handleRefFeeMark(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = idFromPath(request.getPath());
+    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
+    const std::string source = body.value("source", ""), action = body.value("action", "");
+    const long long refId = intField(body, "ref_id");
+    if (refId <= 0 || (source != "event" && source != "fixture"))
+        return jsonError(HttpStatus::BAD_REQUEST, "source (event|fixture) and ref_id required");
+    try {
+        auto* db = Database::getInstance();
+        auto fin = db->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(id)});
+        if (fin.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+        if (fin[0]["is_final"].as<bool>()) return jsonError(HttpStatus::BAD_REQUEST, "the invoice is final");
+        const std::string match = (source == "fixture") ? "league_fixture_id" : "fh_event_id";
+        auto lineQ = db->query("SELECT id FROM invoice_lines WHERE invoice_id = $1::int AND category = 'referees' ORDER BY id LIMIT 1",
+                               {std::to_string(id)});
+        // A fixture's id can drift when the league feed re-syncs, so the
+        // payment row is found by id OR by (date, opponent) — the same
+        // fallback Expenses::games pairs them with.
+        const std::string gameOn = body.value("game_on", ""), opponent = body.value("opponent", "");
+        const std::string where = " WHERE invoice_line_id = $1::int AND (" + match + " = $2::bigint"
+            " OR (NULLIF($3, '') IS NOT NULL AND game_on = NULLIF($3, '')::date AND opponent = $4))";
+        if (action == "off") {
+            if (!lineQ.empty()) {
+                const long long lineId = lineQ[0]["id"].as<long long>();
+                db->query("DELETE FROM ref_fee_payments" + where,
+                          {std::to_string(lineId), std::to_string(refId), gameOn, opponent});
+                auto left = db->query("SELECT 1 FROM ref_fee_payments WHERE invoice_line_id = $1::int LIMIT 1", {std::to_string(lineId)});
+                if (left.empty()) db->query("DELETE FROM invoice_lines WHERE id = $1::int", {std::to_string(lineId)});
+                else Expenses::syncRefLine(lineId);
+            }
+            db->query("INSERT INTO invoice_ref_declines (invoice_id, source, ref_id) VALUES ($1::int, $2, $3::bigint) ON CONFLICT DO NOTHING",
+                      {std::to_string(id), source, std::to_string(refId)});
+        } else if (action == "on") {
+            db->query("DELETE FROM invoice_ref_declines WHERE invoice_id = $1::int AND source = $2 AND ref_id = $3::bigint",
+                      {std::to_string(id), source, std::to_string(refId)});
+            std::string err;
+            if (addRefFeesTo(id, json::array({json{{"source", source}, {"ref_id", refId}}}), &err) <= 0)
+                return jsonError(HttpStatus::BAD_REQUEST, err);
+        } else if (action == "amount") {
+            const double amt = body.value("amount", -1.0);
+            if (amt < 0 || amt > 10000) return jsonError(HttpStatus::BAD_REQUEST, "amount must be between 0 and 10000");
+            if (lineQ.empty()) return jsonError(HttpStatus::BAD_REQUEST, "that fee is not on the sheet");
+            const long long lineId = lineQ[0]["id"].as<long long>();
+            std::ostringstream amtStr; amtStr.setf(std::ios::fixed); amtStr.precision(2); amtStr << amt;
+            db->query("UPDATE ref_fee_payments SET amount_usd = $5::numeric" + where,
+                      {std::to_string(lineId), std::to_string(refId), gameOn, opponent, amtStr.str()});
+            Expenses::syncRefLine(lineId);
+        } else return jsonError(HttpStatus::BAD_REQUEST, "action must be off, on or amount");
+        db->query("UPDATE invoices SET updated_at = now() WHERE id = $1::int", {std::to_string(id)});
+        return jsonOut(HttpStatus::OK, model_->get(id));
+    } catch (const std::exception& e) { std::cerr << "[invoices ref-fee-mark] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }

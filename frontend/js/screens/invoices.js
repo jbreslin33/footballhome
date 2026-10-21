@@ -299,7 +299,7 @@ class InvoicesScreen extends Screen {
     const inv = this.inv;
     if (!inv || inv.is_final || !inv.issuer?.bills_expenses) { this.refGames = []; return; }
     try {
-      const res = await this.auth.fetch('/api/invoices/ref-fees');
+      const res = await this.auth.fetch(`/api/invoices/ref-fees?invoice=${inv.id}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       if (this.inv && this.inv.id === inv.id) { this.refGames = body.games || []; this._renderBody(); }
@@ -318,6 +318,23 @@ class InvoicesScreen extends Screen {
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       if (this.inv && this.inv.id === inv.id) { this.calGames = body.games || []; this._renderBody(); }
     } catch (err) { console.warn('calendar games unavailable:', err.message); }
+  }
+
+  // 🧑‍⚖️ one fee on/off the sheet, or its amount (mig 624) — `tag` is
+  // "source:ref_id"; game_on/opponent ride along so a drifted fixture id
+  // still finds its payment row.
+  async _markRefFee(tag, action, data, amount) {
+    if (!this.inv || !tag) return;
+    const [source, id] = tag.split(':');
+    try {
+      this.inv = await this._post(`/api/invoices/${this.inv.id}/ref-fee-mark`, {
+        source, ref_id: Number(id), action,
+        game_on: data.refGameOn || '', opponent: data.refOpp || '',
+        ...(action === 'amount' ? { amount } : {}),
+      });
+      await this.load();
+      this._loadRefGames();
+    } catch (err) { this._say(err.message, true); }
   }
 
   // One dashed 🧑‍⚖️ chip on the 📅 calendar = one fee straight onto the
@@ -771,6 +788,30 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('[data-part-close]')) { this.partialFor = null; this._renderBody(); return; }
       const calRef = e.target.closest('[data-cal-ref]');
       if (calRef) { await this._addSingleRefFee(calRef.dataset.calRef); return; }
+      // 🧑‍⚖️ default-on ref fee (mig 624): main zone toggles on/off the
+      // sheet; the amount zone opens a small box to re-price the one fee.
+      const refOff = e.target.closest('[data-ref-off]');
+      if (refOff) { await this._markRefFee(refOff.dataset.refOff, 'off', refOff.dataset); return; }
+      const refOn = e.target.closest('[data-ref-on]');
+      if (refOn) { await this._markRefFee(refOn.dataset.refOn, 'on', refOn.dataset); return; }
+      const refAmt = e.target.closest('[data-ref-amt]');
+      if (refAmt) {
+        const key = refAmt.dataset.refAmt;
+        this.refAmtFor = this.refAmtFor === key ? null : key;
+        this._renderBody();
+        const box = this.find('[data-ref-amt-input]');
+        if (box) { box.focus(); box.select(); }
+        return;
+      }
+      const refAmtSave = e.target.closest('[data-ref-amt-save]');
+      if (refAmtSave) {
+        const amt = Number(this.find('[data-ref-amt-input]')?.value);
+        if (!(amt >= 0)) { this._say('Type the fee amount.', true); return; }
+        this.refAmtFor = null;
+        await this._markRefFee(refAmtSave.dataset.refAmtSave, 'amount', refAmtSave.dataset, amt);
+        return;
+      }
+      if (e.target.closest('[data-ref-amt-close]')) { this.refAmtFor = null; this._renderBody(); return; }
       if (e.target.closest('#iv-email')) { this.emailDeputy(); return; }
       if (e.target.closest('#iv-copy-link')) { await this.copyPublicLink(); return; }
       if (e.target.closest('#iv-copy-email')) { await this.copyEmailBody(); return; }
@@ -1232,8 +1273,11 @@ class InvoicesScreen extends Screen {
       const state = billed ? (partial ? 'part' : 'on') : (i.g && (i.g.declined || i.g.rsvp === 'no')) ? 'off' : 'todo';
       // Matches lead with the opponent; everything else reads like the
       // breakdown list (the event's note), never a placeholder team label.
+      // auto_note (mig 624 round): a noteless day stint reads the names
+      // of the calendar events its window overlaps, never the generic
+      // duty title (owner: "each entry needs the real event name").
       const label = i.g ? (kind === 'match' ? (i.g.opponent || i.g.note || '') : (i.g.note || i.g.team_label || ''))
-                        : (i.s.note || inv.issuer?.duty_description || 'Hours');
+                        : (i.s.note || i.s.auto_note || inv.issuer?.duty_description || 'Hours');
       const hrs = billed ? ` · ${InvoicesScreen.plain(i.s.hours)}h` : '';
       const title = `${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}`;
       const inner = `${ICON[kind]} <span>${esc(label)}</span>${hrs ? `<span style="flex-shrink:0;">${esc(hrs)}</span>` : ''}`;
@@ -1257,11 +1301,30 @@ class InvoicesScreen extends Screen {
     if (this.calKinds.ref !== false) {
       for (const g of (this.refGames || [])) {
         if (!g.game_on || g.game_on < gridStart || g.game_on > gridEnd) continue;
-        const inner = `🧑‍⚖️ <span>${esc(g.opponent)}</span><span style="flex-shrink:0;">${InvoicesScreen.money(g.amount)}</span>`;
-        const title = `${g.policy_label} — ${g.opponent} · ${esc(this._copy('cal_ref_tip') || 'tap to put this referee fee on the sheet')}`;
-        put(g.game_on, g.in_gcal === false || locked
-          ? `<span class="iv-chip ref" style="opacity:0.45;" title="${esc(g.opponent)} — not on the calendar">${inner}</span>`
-          : `<button class="iv-chip ref todo" data-cal-ref="${esc(g.source)}:${g.ref_id}" title="${esc(title)}">${inner}</button>`);
+        const tag = `${g.source}:${g.ref_id}`;
+        const amt = g.on_this ? (g.paid_amount != null ? g.paid_amount : g.amount) : g.amount;
+        const inner = (zone) => `🧑‍⚖️ <span>${esc(g.opponent)}</span>${zone}`;
+        const amtSpan = `<span style="flex-shrink:0;">${InvoicesScreen.money(amt)}</span>`;
+        if (g.in_gcal === false || locked) {
+          put(g.game_on, `<span class="iv-chip ref ${g.on_this ? 'on' : ''}" style="opacity:0.45;" title="${esc(g.opponent)}${locked ? '' : ' — not on the calendar'}">${inner(amtSpan)}</span>`);
+        } else if (g.on_this) {
+          // 🧑‍⚖️ default ON (mig 624): main zone turns the fee red = off
+          // the sheet; the amount zone re-prices this one fee.
+          put(g.game_on, `<span class="iv-chip ref on" style="display:flex;">
+            <button class="iv-chip-zone" style="flex:1;" data-ref-off="${esc(tag)}" data-ref-game-on="${esc(g.game_on)}" data-ref-opp="${esc(g.opponent)}"
+                    title="${esc(g.policy_label)} — ${esc(g.opponent)} · ${esc(this._copy('ref_on_tip') || 'On the sheet — tap to leave this fee off the invoice')}">${inner('')}</button>
+            <button class="iv-chip-zone" data-ref-amt="${esc(tag)}" style="flex:0 0 auto;"
+                    title="${esc(this._copy('ref_amt_tip') || "Edit this fee's amount")}">${amtSpan}</button>
+          </span>`);
+          if (this.refAmtFor === tag) put(g.game_on, this._refAmtBoxHtml(tag, g, amt));
+        } else if (g.declined) {
+          put(g.game_on, `<button class="iv-chip ref off" data-ref-on="${esc(tag)}" data-ref-game-on="${esc(g.game_on)}" data-ref-opp="${esc(g.opponent)}"
+            title="${esc(g.policy_label)} — ${esc(g.opponent)} · ${esc(this._copy('ref_off_tip') || 'Left off the invoice — tap to put this fee back on')}">
+            <span style="text-decoration:line-through; opacity:0.6;">${inner(amtSpan)}</span></button>`);
+        } else {
+          const title = `${g.policy_label} — ${g.opponent} · ${esc(this._copy('cal_ref_tip') || 'tap to put this referee fee on the sheet')}`;
+          put(g.game_on, `<button class="iv-chip ref todo" data-cal-ref="${esc(tag)}" title="${esc(title)}">${inner(amtSpan)}</button>`);
+        }
       }
     }
 
@@ -1336,7 +1399,7 @@ class InvoicesScreen extends Screen {
       const rowKey = g ? (g.fh_event_id ? `f${g.fh_event_id}` : `g${g.gcal_event_id}`) : '';
       const time = s ? (s.flat ? '' : `${s.start}–${s.end}`) : `${g.start}${g.end ? `–${g.end}` : ''}`;
       const label = g ? `${g.kind === 'match' ? '🏟 ' : ''}${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}`
-                      : esc((s && s.note) || inv.issuer?.duty_description || 'Hours');
+                      : esc((s && (s.note || s.auto_note)) || inv.issuer?.duty_description || 'Hours');
       const marks = locked
         ? `<span style="width:96px; text-align:center;">${s ? (partial ? '🟡' : '✓') : ''}</span>`
         : g ? `<span style="display:flex; gap:4px;">
@@ -1407,7 +1470,7 @@ class InvoicesScreen extends Screen {
     return `
       <div class="iv-modal-bg" id="iv-shift-bg"><div class="iv-modal" style="max-width:620px;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-          <div style="font-weight:800;">✏️ ${esc(InvoicesScreen.dayLabel(s.date))} — ${esc(s.note || inv.issuer?.duty_description || 'Hours')}</div>
+          <div style="font-weight:800;">✏️ ${esc(InvoicesScreen.dayLabel(s.date))} — ${esc(s.note || s.auto_note || inv.issuer?.duty_description || 'Hours')}</div>
           <button id="iv-shift-close" class="iv-btn ghost sm">Close</button>
         </div>
         <div class="iv-hint" style="margin:4px 0 8px;">${esc(this._copy('edit_shift_hint') || "Override the event's hours — a late start, or stayed on. Wipe every box to take the day off the sheet.")}</div>
@@ -1457,6 +1520,19 @@ class InvoicesScreen extends Screen {
   }
 
   // The 🟡 hours box (mig 621), shown under a chip or list row.
+  // 🧑‍⚖️ amount box (mig 624): re-price the one fee; same shape as the
+  // 🟡 partial box.
+  _refAmtBoxHtml(tag, g, amt) {
+    const esc = (t) => this.escapeHtml(t);
+    return `<span class="iv-part-box" data-ref-amt-row="${esc(tag)}">
+      💲 <input class="iv-in num" type="number" step="0.01" min="0" max="10000" data-ref-amt-input
+                value="${esc(InvoicesScreen.plain(amt))}" placeholder="$">
+      <button class="iv-btn sm" data-ref-amt-save="${esc(tag)}" data-ref-game-on="${esc(g.game_on)}"
+              data-ref-opp="${esc(g.opponent)}" style="padding:2px 8px;">OK</button>
+      <button class="iv-btn ghost sm" data-ref-amt-close style="padding:2px 6px;">✕</button>
+    </span>`;
+  }
+
   _partialBoxHtml(key, g, s) {
     const esc = (t) => this.escapeHtml(t);
     const dflt = s && s.flat ? InvoicesScreen.plain(s.hours) : '';

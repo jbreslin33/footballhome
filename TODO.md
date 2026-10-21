@@ -9,11 +9,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 ## Features
 
 - [ ] Finish #teams page: category pills should show the real rosters, and reflect who actually gets to RSVP based on categories. (Another session is working on this.)
-- [ ] #invoices page:
-  - "Manager of soccer duties" is too generic for the calendar — that's the invoice's sum-of-hours title. For the calendar check-off (hours filled by actually working), each entry needs the real event name.
-  - Ref fees: green (on the invoice) by default, with a toggle to turn one red = leave off the invoice.
-  - Ref fees: amount editable per fee.
-  - Hour events: hours editable per event too.
+- [ ] Build speed: backend image rebuilds all 154 .cpp from scratch each time (make -j2, no cache). -j4 done 10/21; the bigger win is a persistent builder container (incremental make, image copies the binary) — discussed, needs guardrails (pinned base image, flock for parallel sessions, clean-build fallback) and an AGENTS.md note before landing.
 - [ ] #jobs page — event jobs for games, practices, and other events:
   - Jobs are assigned per event based on who is actually going (RSVP + attendance); footballhome auto-assigns.
   - Practice job set: cones (pick up, into shed), balls (gather into bags, into shed), goals (put away any used), lights (6 LED lights w/ stands on generator — 1 player per light for take-down, 4 players carry lights to shed + tarp them), generator (someone shuts it off).
@@ -36,4 +32,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Done
 
-<!-- - [x] 2026-10-21 example item -->
+- [x] 2026-10-21 #invoices: calendar hour entries carry real event names (noteless day rows borrow the gcal events their window overlaps; sheet's labor line keeps the duty title).
+- [x] 2026-10-21 #invoices: ref fees default GREEN onto a draft on open (mig 624); tap turns one red = off the sheet + remembered; tap again puts it back; amount editable per fee from the chip.
+- [x] 2026-10-21 #invoices: hours editable per event — the 🟡 box takes any figure 0–24 (partial look only when below the event's own).
+- [x] 2026-10-21 Lucca Santos = 📄 paper spot on Liga 1 (pseudo call-down: no standing Liga 1 games, per-game invites when wanted; plays via Reserves/APSL). Also fixed the 📄 toggle itself — text-vs-bigint la_user_id comparison 500'd every toggle since the alias-aware rewrite.
+- [x] 2026-10-21 #teams: 🌐 league-roster mirror auto-pulls on every mens load, per-pill 🟡/green/red state with timestamps; Reserves got its own mirror (TeamPass section labels, migs 622/623).
