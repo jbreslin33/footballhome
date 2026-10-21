@@ -24,6 +24,7 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     brain_.setLevels(cfg.level_home, cfg.level_away, cfg.match_seed);
     level_id_[0] = cfg.level_home_id;
     level_id_[1] = cfg.level_away_id;
+    applyRosters();
     transport_.setOnConnect(
         [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
     transport_.setOnDisconnect([this](ClientId id) { onDisconnect(id); });
@@ -61,6 +62,44 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     }
 }
 
+void GameServer::applyRosters() {
+    const std::uint8_t per_team = cfg_.slot_count / 2;
+    slot_names_.assign(cfg_.slot_count, "");
+    concept_masks_.assign(cfg_.slot_count, 0);
+    for (std::uint8_t i = 0; i < cfg_.slot_count; ++i) {
+        const bool home = i < per_team;
+        const std::uint8_t k = home ? i : i - per_team;
+        const persistence::DemoTeam& team =
+            home ? cfg_.roster_home : cfg_.roster_away;
+        const core::LevelParams& band =
+            home ? cfg_.level_home : cfg_.level_away;
+        std::uint32_t mask = core::conceptBundle(band);
+        if (k < team.players.size()) {
+            const auto& p = team.players[k];
+            slot_names_[i] = p.name;
+            world_.setMaxSpeed(
+                i, Fixed64::fromFraction(p.max_speed_cms, 100));
+            if (p.concept_mask >= 0)
+                mask = static_cast<std::uint32_t>(p.concept_mask);
+        } else {
+            slot_names_[i] =
+                (home ? "Home " : "Away ") + std::to_string(k + 1);
+        }
+        concept_masks_[i] = mask;
+        brain_.setConcepts(i, mask);
+    }
+}
+
+void GameServer::broadcastRoster() {
+    RosterFrame rf;
+    rf.slots.reserve(cfg_.slot_count);
+    for (std::uint8_t i = 0; i < cfg_.slot_count; ++i) {
+        rf.slots.push_back({concept_masks_[i], slot_names_[i]});
+    }
+    const Bytes frame = encodeFrame(FrameType::Roster, encodeRoster(rf));
+    for (const auto& [cid, _] : clients_) transport_.send(cid, frame);
+}
+
 void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
     // Everyone plays + spectates; the club's admin-ish roles also get the
     // admin capability (live match settings). Same role set the club app's
@@ -89,6 +128,7 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
     const Bytes frame = encodeFrame(FrameType::Hello, encodeHello(hello));
     transport_.send(id, frame);
     clients_.emplace(id, true);
+    broadcastRoster();  // names + knowledge for every client
 }
 
 void GameServer::onDisconnect(ClientId id) {
@@ -162,6 +202,28 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             world_.setLevel(0, home);
             world_.setLevel(1, away);
             brain_.setLevels(home, away, world_.matchSeed());
+            // Band change resets knowledge to the new bundles (names and
+            // speeds stay — identity is the roster's, knowledge is the
+            // band's unless re-edited).
+            for (std::uint8_t sl = 0; sl < cfg_.slot_count; ++sl) {
+                const core::LevelParams& b =
+                    sl < cfg_.slot_count / 2 ? home : away;
+                concept_masks_[sl] = core::conceptBundle(b);
+                brain_.setConcepts(sl, concept_masks_[sl]);
+            }
+            broadcastRoster();
+            return;
+        }
+        case FrameType::PlayerSettings: {
+            // Admin-only: rewrite one player's knowledge live (the edit
+            // screen). CONCEPTS.md bit ids; junk bits masked off.
+            if (!admins_.count(id)) return;
+            const auto ps = decodePlayerSettings(frame.payload);
+            if (!ps || ps->slot >= cfg_.slot_count) return;
+            concept_masks_[ps->slot] =
+                ps->concept_mask & core::kAllConcepts;
+            brain_.setConcepts(ps->slot, concept_masks_[ps->slot]);
+            broadcastRoster();
             return;
         }
         default:

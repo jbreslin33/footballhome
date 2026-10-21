@@ -439,6 +439,26 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
   parameter sweep via the harness (not sequential nudging) is the
   remaining G4.4 work, now with offside/tackle/sweep counters to target.
 
+### 8.7 G4.9 — concepts become per-player, editable, fictional-rostered
+
+- game/CONCEPTS.md: the knowledge taxonomy (10 wired concepts with bit
+  ids + the build queue through team-tactics tier). James's standing
+  instruction: MORE detail than FIFA/FM ever simulates — understanding is
+  the product.
+- Per-slot concept masks gate every knowledge branch in the Brain (the
+  swarm>=40 team gate decomposed into per-player bits; band bundles
+  reproduce prior behavior exactly — goldens unchanged).
+- Wire 1.3: PLAYER_SETTINGS (0x33, admin) + ROSTER (0x34, names + masks).
+  In-game EDIT mode: tap a player, tick his knowledge, APPLY — live.
+- Fictional demo rosters (mig 628, James: real teams are a bad idea
+  during dev): five teams filling the ladder — Lighthouse XI (world),
+  Harbor Athletic (semipro), Sunday Albion (amateur, with 'Old Gio':
+  full knowledge, 4.8 m/s legs), Tide U14, Minnows U10 (with 'Lily
+  Park', the coached kid who marks while her team swarms). Per-player
+  names + speeds + concept overrides from the DB; GAME_TEAM_HOME/AWAY
+  select; roster band overrides level env. Verified live: drove "Karl
+  Brandt", edited "Luis Serra" down to 8 concepts from the page.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

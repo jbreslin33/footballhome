@@ -20,7 +20,12 @@
     EVENT: 0x21,
     CLAIM: 0x30,
     MATCH_SETTINGS: 0x32,
+    PLAYER_SETTINGS: 0x33,
+    ROSTER: 0x34,
   };
+
+  const CONCEPTS = ['delay', 'marking', 'cover', 'support', 'outlet',
+                    'runs', 'over-top', 'sweep', 'placement', 'line-hold'];
 
   const LEVELS = ['perfect', 'u10', 'u14', 'amateur', 'semipro', 'pro', 'world'];
 
@@ -88,6 +93,30 @@
     return { tick, players, ball, match };
   }
 
+  function decodeRoster(view, at) {
+    const n = view.getUint8(at);
+    let p = at + 1;
+    const slots = [];
+    for (let i = 0; i < n; i++) {
+      const mask = Number(view.getBigUint64(p, true));
+      const len = view.getUint8(p + 8);
+      let name = '';
+      for (let k = 0; k < len; k++)
+        name += String.fromCharCode(view.getUint8(p + 9 + k));
+      slots.push({ mask, name });
+      p += 9 + len;
+    }
+    return slots;
+  }
+
+  function encodePlayerSettings(slot, mask) {
+    const p = new ArrayBuffer(9);
+    const v = new DataView(p);
+    v.setUint8(0, slot);
+    v.setBigUint64(1, BigInt(mask >>> 0), true);
+    return envelope(FrameType.PLAYER_SETTINGS, p);
+  }
+
   function decodeEvent(view, at) {
     return {
       eventType: view.getUint8(at),
@@ -138,7 +167,10 @@
   window.GameWire = {
     FrameType,
     LEVELS,
+    CONCEPTS,
     encodeMatchSettings,
+    encodePlayerSettings,
+    decodeRoster,
     decodeFrame,
     decodeHello,
     decodeSnapshot,

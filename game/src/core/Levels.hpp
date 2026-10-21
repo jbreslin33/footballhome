@@ -79,6 +79,37 @@ inline LevelParams levelParams(std::string_view name) {
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 
+// ── Concept bits (game/CONCEPTS.md is the registry; append-only) ───────
+enum Concept : std::uint32_t {
+    kDelayTransition = 1u << 0,
+    kManMarking      = 1u << 1,
+    kCoverMan        = 1u << 2,
+    kSupportSpot     = 1u << 3,
+    kBackOutlet      = 1u << 4,
+    kRunInBehind     = 1u << 5,
+    kPlayOverTop     = 1u << 6,
+    kKeeperSweep     = 1u << 7,
+    kShotPlacement   = 1u << 8,
+    kLineHold        = 1u << 9,
+};
+inline constexpr std::uint32_t kAllConcepts = (1u << 10) - 1;
+inline constexpr const char* kConceptNames[] = {
+    "delay", "marking", "cover", "support", "outlet",
+    "runs", "over-top", "sweep", "placement", "line-hold"};
+inline constexpr int kConceptCount = 10;
+
+// Default knowledge bundle for a level band. EXACTLY reproduces the
+// pre-registry gates (swarm >= 40 lacked the theory), so unedited teams
+// behave identically to before the registry existed.
+inline std::uint32_t conceptBundle(const LevelParams& lv) {
+    std::uint32_t m = kCoverMan | kSupportSpot | kShotPlacement | kLineHold;
+    if (lv.swarm_pct < 40) {
+        m |= kDelayTransition | kManMarking | kBackOutlet | kRunInBehind |
+             kPlayOverTop | kKeeperSweep;
+    }
+    return m;
+}
+
 // Pure deterministic noise in [-1, 1) as Fixed64.
 //   channel disambiguates uses within one (tick, slot).
 inline math::Fixed64 detNoise(std::uint64_t match_seed, std::uint64_t tick,

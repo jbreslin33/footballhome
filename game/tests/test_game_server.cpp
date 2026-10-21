@@ -63,6 +63,18 @@ Bytes claimBytes(std::uint8_t slot, std::uint8_t claim = 1) {
     return encodeFrame(FrameType::Claim, encodeClaim(c));
 }
 
+// All frames of one type a client received (connect now also sends
+// ROSTER, so index-based assumptions broke).
+std::vector<Bytes> framesOf(const std::vector<Bytes>& sent, FrameType t) {
+    std::vector<Bytes> out;
+    for (const auto& b : sent) {
+        std::size_t c = 0;
+        auto f = decodeFrame(b.data(), b.size(), c);
+        if (f && f->type == t) out.push_back(f->payload);
+    }
+    return out;
+}
+
 Bytes intentBytes(std::uint8_t slot, Fixed64 mx, Fixed64 my) {
     PlayerIntentFrame f;
     f.slot = slot;
@@ -82,14 +94,11 @@ struct Rig {
 FH_TEST(server_sends_hello_on_connect) {
     Rig r;
     r.t.scriptConnect(100);
-    FH_EXPECT_EQ(r.t.sent[100].size(), 1u);
-
-    std::size_t consumed = 0;
-    auto f = decodeFrame(r.t.sent[100][0].data(), r.t.sent[100][0].size(),
-                         consumed);
-    FH_EXPECT(f.has_value());
-    FH_EXPECT(f->type == FrameType::Hello);
-    auto h = decodeHello(f->payload);
+    const auto hellos = framesOf(r.t.sent[100], FrameType::Hello);
+    FH_EXPECT_EQ(hellos.size(), 1u);
+    const auto rosters = framesOf(r.t.sent[100], FrameType::Roster);
+    FH_EXPECT_EQ(rosters.size(), 1u);
+    auto h = decodeHello(hellos[0]);
     FH_EXPECT(h.has_value());
     FH_EXPECT_EQ(h->match_id, 7u);
     FH_EXPECT_EQ(h->slot_count, 4);
@@ -149,13 +158,9 @@ FH_TEST(server_broadcasts_snapshot_to_all_clients) {
     r.s.tickOnce();
 
     for (auto id : {fh::game::ClientId{100}, fh::game::ClientId{200}}) {
-        const auto& frames = r.t.sent[id];
-        FH_EXPECT_EQ(frames.size(), 2u);  // HELLO + SNAPSHOT
-        std::size_t consumed = 0;
-        auto f = decodeFrame(frames[1].data(), frames[1].size(), consumed);
-        FH_EXPECT(f.has_value());
-        FH_EXPECT(f->type == FrameType::Snapshot);
-        auto s = decodeSnapshot(f->payload);
+        const auto snaps = framesOf(r.t.sent[id], FrameType::Snapshot);
+        FH_EXPECT_EQ(snaps.size(), 1u);
+        auto s = decodeSnapshot(snaps.back());
         FH_EXPECT(s.has_value());
         FH_EXPECT_EQ(s->tick, 1u);
         FH_EXPECT_EQ(s->players.size(), 4u);

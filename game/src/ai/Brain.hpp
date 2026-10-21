@@ -53,6 +53,19 @@ public:
         level_[0] = home;
         level_[1] = away;
         match_seed_ = match_seed;
+        // Reset every slot's knowledge to its band's default bundle.
+        for (std::size_t i = 0; i < concepts_.size(); ++i) {
+            concepts_[i] = core::conceptBundle(
+                level_[setup_.team_of_slot[i]]);
+        }
+    }
+
+    // Per-slot knowledge (game/CONCEPTS.md). Overrides the band bundle.
+    void setConcepts(core::SlotIndex slot, std::uint32_t mask) {
+        if (slot < concepts_.size()) concepts_[slot] = mask;
+    }
+    std::uint32_t concepts(core::SlotIndex slot) const {
+        return slot < concepts_.size() ? concepts_[slot] : 0;
     }
 
     // Orders for ONE slot given the current world. Pure + deterministic.
@@ -75,6 +88,7 @@ private:
     FormationSpec spec_[2];
     core::LevelParams level_[2];
     std::uint64_t match_seed_ = 0;
+    std::vector<std::uint32_t> concepts_;
     // Per-slot index within its own team (formation base lookup).
     std::vector<std::uint8_t> index_in_team_;
     std::vector<std::uint8_t> team_size_;

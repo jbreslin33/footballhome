@@ -34,6 +34,8 @@ enum class FrameType : std::uint8_t {
     Claim        = 0x30,
     // 0x31 SPEED reserved — ships with manager/admin clients.
     MatchSettings = 0x32,  // admin: set team skill levels live (1.3)
+    PlayerSettings = 0x33, // admin: set one slot's concept mask (1.3)
+    Roster         = 0x34, // s→c: per-slot names + concept masks (1.3)
 };
 
 // Capability bits granted in HELLO (PROTOCOL.md §3).

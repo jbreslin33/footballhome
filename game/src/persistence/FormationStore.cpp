@@ -76,4 +76,38 @@ std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg) {
     }
 }
 
+std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
+                                     const std::string& team_name) {
+    try {
+        const std::string conn_str =
+            "host=" + cfg.host + " dbname=" + cfg.dbname +
+            " user=" + cfg.user + " password=" + cfg.password +
+            " connect_timeout=5";
+        pqxx::connection conn{conn_str};
+        pqxx::work tx{conn};
+        const auto team = tx.exec_params(
+            "SELECT id, level_band FROM game_demo_teams WHERE name = $1",
+            team_name);
+        if (team.empty()) return std::nullopt;
+        DemoTeam out;
+        out.level_band = team[0][1].as<std::string>();
+        const auto rows = tx.exec_params(
+            "SELECT name, max_speed_cms, concept_mask FROM game_demo_players "
+            "WHERE team_id = $1 ORDER BY shirt",
+            team[0][0].as<int>());
+        for (const auto& r : rows) {
+            DemoPlayer p;
+            p.name = r[0].as<std::string>();
+            p.max_speed_cms = r[1].as<std::int32_t>();
+            p.concept_mask = r[2].is_null() ? -1 : r[2].as<std::int32_t>();
+            out.players.push_back(std::move(p));
+        }
+        return out;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: demo team '%s' load failed: %s\n",
+                     team_name.c_str(), e.what());
+        return std::nullopt;
+    }
+}
+
 }  // namespace fh::game::persistence

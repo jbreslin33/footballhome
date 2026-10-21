@@ -19,6 +19,7 @@
 #pragma once
 
 #include "ai/Brain.hpp"
+#include "persistence/FormationStore.hpp"
 #include "common/IdTypes.hpp"
 #include "core/World.hpp"
 #include "net/Codec.hpp"
@@ -55,6 +56,10 @@ public:
         // users.id values holding the admin capability (club authz chain
         // users→admins; loaded at boot by main.cpp).
         std::vector<std::int64_t> admin_user_ids;
+        // Fictional demo rosters (mig 628): names + per-slot speed +
+        // concept overrides. Empty = generic slots at the band defaults.
+        persistence::DemoTeam roster_home;
+        persistence::DemoTeam roster_away;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);
@@ -84,6 +89,11 @@ private:
     std::unordered_map<std::uint8_t, ClientId> slot_owner_;
     // Current level ids (mutable via admin MATCH_SETTINGS).
     std::uint8_t level_id_[2] = {0, 0};
+    // Per-slot names + live concept masks (served via ROSTER frames).
+    std::vector<std::string> slot_names_;
+    std::vector<std::uint32_t> concept_masks_;
+    void applyRosters();
+    void broadcastRoster();
     // Clients holding the admin capability (granted from the JWT role).
     std::unordered_map<ClientId, bool> admins_;
     // Connected clients, for snapshot fan-out. Keyed map (not vector) so

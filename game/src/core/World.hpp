@@ -90,6 +90,9 @@ public:
                      const math::Vec2& face);
     void setTeam(SlotIndex slot, std::uint8_t team);
     void setKeeper(SlotIndex slot, bool keeper);
+    void setMaxSpeed(SlotIndex slot, math::Fixed64 v) {
+        if (slot < players_.size()) players_[slot].max_speed = v;
+    }
     bool isKeeper(SlotIndex slot) const { return keeper_[slot]; }
     // Skill-noise config (G4.3). Zero params (the default) = perfect
     // execution; every pre-G4.3 golden locks that baseline.

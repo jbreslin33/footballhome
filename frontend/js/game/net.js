@@ -36,6 +36,8 @@
             this.handlers.onSnapshot(
               GameWire.decodeSnapshot(view, f.payloadAt)
             );
+          } else if (f.type === GameWire.FrameType.ROSTER) {
+            this.handlers.onRoster(GameWire.decodeRoster(view, f.payloadAt));
           } else if (f.type === GameWire.FrameType.EVENT) {
             this.handlers.onEvent(GameWire.decodeEvent(view, f.payloadAt));
           }
@@ -58,6 +60,9 @@
     }
     intent(slot, x, y, action) {
       this.send(GameWire.encodeIntent(slot, x, y, action));
+    }
+    setConcepts(slot, mask) {
+      this.send(GameWire.encodePlayerSettings(slot, mask));
     }
     setLevels(homeId, awayId) {
       this.send(GameWire.encodeMatchSettings(homeId, awayId));

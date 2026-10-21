@@ -12,6 +12,8 @@
   const autoBtn = document.getElementById('btn-auto');
   const lvlHomeBtn = document.getElementById('btn-level-home');
   const lvlAwayBtn = document.getElementById('btn-level-away');
+  const editBtn = document.getElementById('btn-edit');
+  const editPanel = document.getElementById('edit-panel');
   const canvas = document.getElementById('game-canvas');
   const renderer = new GameRenderer(canvas);
   const input = new GameInput(
@@ -41,6 +43,34 @@
 
   // Live levels (from the snapshot 1.3 tail) + admin picker state.
   const levels = { home: 0, away: 0 };
+  let roster = [];        // [{mask, name}] per slot, server-authoritative
+  let editMode = false;   // admin: tap a player to open his knowledge
+
+  function openEditPanel(slot) {
+    const e = roster[slot] || { mask: 0, name: '#' + (slot + 1) };
+    let html = `<b>${e.name}</b> <span style="opacity:.6">(slot ${slot + 1})</span><br>`;
+    GameWire.CONCEPTS.forEach((c, bit) => {
+      const on = (e.mask >> bit) & 1;
+      html += `<label style="display:inline-block;width:46%;margin:3px 0;">
+        <input type="checkbox" data-bit="${bit}" ${on ? 'checked' : ''}> ${c}</label>`;
+    });
+    html += `<div style="margin-top:8px;text-align:right;">
+      <button id="ep-close">close</button>
+      <button id="ep-apply" style="background:#ffcc00;color:#0b1c3d;
+        border:none;padding:4px 14px;border-radius:6px;font-weight:700;">APPLY</button></div>`;
+    editPanel.innerHTML = html;
+    editPanel.style.display = 'block';
+    editPanel.querySelector('#ep-close').onclick = () =>
+      (editPanel.style.display = 'none');
+    editPanel.querySelector('#ep-apply').onclick = () => {
+      let mask = 0;
+      editPanel.querySelectorAll('input[data-bit]').forEach((cb) => {
+        if (cb.checked) mask |= 1 << +cb.dataset.bit;
+      });
+      net.setConcepts(slot, mask);
+      editPanel.style.display = 'none';
+    };
+  }
 
   function sendLevels() {
     net.setLevels(levels.home, levels.away);
@@ -70,6 +100,19 @@
         renderer.built = true;
       }
       // Admin capability (bit 3) shows the level pickers.
+      if ((h.capabilities & 8) && editBtn) {
+        editBtn.style.display = 'block';
+        const flipEdit = () => {
+          editMode = !editMode;
+          editBtn.style.background =
+            editMode ? 'rgba(255,204,0,.5)' : 'rgba(255,255,255,.12)';
+          if (!editMode) editPanel.style.display = 'none';
+        };
+        editBtn.addEventListener('click', flipEdit);
+        editBtn.addEventListener('touchstart', (e) => {
+          e.preventDefault(); e.stopPropagation(); flipEdit();
+        });
+      }
       if ((h.capabilities & 8) && lvlHomeBtn && lvlAwayBtn) {
         lvlHomeBtn.style.display = 'block';
         lvlAwayBtn.style.display = 'block';
@@ -135,6 +178,9 @@
         }
       }
     },
+    onRoster(r) {
+      roster = r;
+    },
     onEvent(ev) {
       const name = EVENT_NAMES[ev.eventType] || 'event';
       if (ev.eventType === 1) {
@@ -165,6 +211,10 @@
     if (!hello) return;
     const slot = renderer.pickSlot(x, y);
     if (slot === null) return;
+    if (editMode) {           // admin edit screen: inspect, don't claim
+      openEditPanel(slot);
+      return;
+    }
     if (!mySlots.has(slot)) {
       mySlots.add(slot);
       net.claim(slot);
@@ -186,8 +236,10 @@
       return;
     }
     const others = [...mySlots].filter((s) => s !== activeSlot);
+    const myName = roster[activeSlot]
+      ? roster[activeSlot].name : '#' + (activeSlot + 1);
     statusEl.textContent =
-      `driving #${activeSlot + 1}` +
+      `driving ${myName}` +
       (others.length ? ` (also holding ${others.map((s) => '#' + (s + 1)).join(', ')} — tap to switch)` : '') +
       ' — WASD/joystick, Space/PASS, X/LOFT';
   }

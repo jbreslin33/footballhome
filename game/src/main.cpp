@@ -85,6 +85,24 @@ int main() {
             std::printf("fh-game: away formation FALLBACK (built-in)\n");
         }
         cfg.admin_user_ids = persistence::loadAdminUserIds(db);
+        // Fictional demo rosters (mig 628): named players filling the
+        // ladder. A roster's band OVERRIDES GAME_LEVEL_* defaults.
+        const char* th = envOr("GAME_TEAM_HOME", "Lighthouse XI");
+        const char* ta = envOr("GAME_TEAM_AWAY", "Harbor Athletic");
+        if (auto t = persistence::loadDemoTeam(db, th)) {
+            cfg.roster_home = std::move(*t);
+            cfg.level_home = core::levelParams(cfg.roster_home.level_band);
+            cfg.level_home_id = core::levelId(cfg.roster_home.level_band);
+            std::printf("fh-game: home roster %s (%s)\n", th,
+                        cfg.roster_home.level_band.c_str());
+        }
+        if (auto t = persistence::loadDemoTeam(db, ta)) {
+            cfg.roster_away = std::move(*t);
+            cfg.level_away = core::levelParams(cfg.roster_away.level_band);
+            cfg.level_away_id = core::levelId(cfg.roster_away.level_band);
+            std::printf("fh-game: away roster %s (%s)\n", ta,
+                        cfg.roster_away.level_band.c_str());
+        }
         std::printf("fh-game: %zu admin user(s) loaded\n",
                     cfg.admin_user_ids.size());
     }

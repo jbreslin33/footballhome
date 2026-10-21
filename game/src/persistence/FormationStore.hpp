@@ -50,4 +50,17 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
 // capability, loudly logged.
 std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg);
 
+// Fictional demo rosters (migration 628; game/CONCEPTS.md §registry).
+struct DemoPlayer {
+    std::string name;
+    std::int32_t max_speed_cms = 600;
+    std::int32_t concept_mask = -1;  // -1 = use the band bundle
+};
+struct DemoTeam {
+    std::string level_band;
+    std::vector<DemoPlayer> players;  // shirt order
+};
+std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
+                                     const std::string& team_name);
+
 }  // namespace fh::game::persistence

@@ -98,6 +98,7 @@ Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y,
                                     : builtinFormation(count[0]);
     spec_[1] = away.valid(count[1]) ? std::move(away)
                                     : builtinFormation(count[1]);
+    concepts_.assign(n, core::conceptBundle(core::LevelParams{}));
 }
 
 int Brain::teamCloserCount(SlotIndex slot, const World& world,
@@ -161,7 +162,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             // keeper's current side — a placed 24 m/s strike beats
             // angle-play positioning; a sprayed one doesn't (level
             // noise decides which you hit).
-            Fixed64 aim_y = Fixed64::fromFraction(28, 10);
+            Fixed64 aim_y = (concepts_[slot] & core::kShotPlacement)
+                                ? Fixed64::fromFraction(28, 10)
+                                : Fixed64::zero();  // straight at the keeper
             for (SlotIndex i = 0; i < world.playerCount(); ++i) {
                 if (setup_.team_of_slot[i] == setup_.team_of_slot[slot])
                     continue;
@@ -237,7 +240,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 if (depth > their_line) their_line = depth;
             }
             const bool beyond_line = best_progress > their_line;
-            if (beyond_line && lv.swarm_pct < 40 &&
+            if (beyond_line && (concepts_[slot] & core::kPlayOverTop) &&
                 target_dist_sq > kSoftPassRange * kSoftPassRange) {
                 out.action = Action::LoftedKick;  // over the top
             } else {
@@ -296,7 +299,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // famously rooted to their line (and two sweeping U-10 keepers
         // measured a 97%-loose swamp: the mechanic itself inverted the
         // level ladder until gated).
-        if (!ball.owner && ball_in_my_third && lv.swarm_pct < 40) {
+        if (!ball.owner && ball_in_my_third &&
+            (concepts_[slot] & core::kKeeperSweep)) {
             out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
                                  Fixed64::fromFraction(1, 10));
             return out;
@@ -365,8 +369,11 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             // (measured: 0 offsides, goals UP after the offside law
             // landed). Holding makes the runner's timing problem real —
             // beyond this line he's offside when the ball is struck.
-            const Fixed64 hold = seen_ball.x * sgn - Fixed64::fromInt(25);
-            if (cover < hold) cover = hold;
+            if (concepts_[slot] & core::kLineHold) {
+                const Fixed64 hold =
+                    seen_ball.x * sgn - Fixed64::fromInt(25);
+                if (cover < hold) cover = hold;
+            }
             if (anchor.x * sgn > cover) anchor.x = cover * sgn;
             // Never retreat into the goal itself.
             const Fixed64 floor_x = -(half_x_ - Fixed64::fromInt(4));
@@ -374,7 +381,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         }
         // 3. Cover man: second-closest to the ball shadows the ball→goal
         //    line, 7 m goal-side.
-        if (teamCloserCount(slot, world, seen_ball) == 1) {
+        if (teamCloserCount(slot, world, seen_ball) == 1 &&
+            (concepts_[slot] & core::kCoverMan)) {
             const Vec2 own_goal{-sgn * half_x_, Fixed64::zero()};
             const Vec2 to_goal{own_goal.x - seen_ball.x,
                                own_goal.y - seen_ball.y};
@@ -422,7 +430,11 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             }
         }
         const bool organized = mates_behind >= opps_behind + 1;
-        const bool undisciplined = lv.swarm_pct >= 40;
+        // Knowledge gates (CONCEPTS.md): what THIS player knows decides
+        // which branches exist for him. undisciplined = lacks the delay
+        // theory; a coached kid on a swarm team keeps his head.
+        const std::uint32_t know = concepts_[slot];
+        const bool undisciplined = !(know & core::kDelayTransition);
 
         // Traffic tackles: ANY defender (not just the engaged presser)
         // dives when an opponent carries into their reach — provided the
@@ -482,7 +494,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // assignment in slot order over goal-side opponents, standing
         // 1.5 m goal-side of the mark. Whoever finds no mark is the free
         // man and falls through to the shape rules.
-        if (ball.owner && rank >= 2 && !undisciplined) {
+        if (ball.owner && rank >= 2 && (know & core::kManMarking)) {
             bool marked[32] = {false};
             SlotIndex my_mark = 255;
             for (SlotIndex d = 0; d < world.playerCount(); ++d) {
@@ -535,7 +547,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // attacks the space beyond their last outfield defender — the
         // run that makes the over-the-top ball a weapon and drags their
         // line deep. Ball-watchers (swarm ≥ 40) never make it.
-        if (lv.swarm_pct < 40) {
+        if (concepts_[slot] & core::kRunInBehind) {
             bool im_most_advanced = true;
             const Fixed64 my_prog = me.pos.x * sgn2;
             for (SlotIndex i = 0; i < world.playerCount(); ++i) {
@@ -585,7 +597,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
 
         // ── back outlet (G4.8): second-nearest sits 8 m goal-side of the
         // carrier — the safety valve that completes the passing triangle.
-        if (closer_to_carrier == 1 && lv.swarm_pct < 40) {
+        if (closer_to_carrier == 1 &&
+            (concepts_[slot] & core::kBackOutlet)) {
             out.move.move = seek(
                 me.pos,
                 Vec2{carrier.pos.x - sgn2 * Fixed64::fromInt(8),
@@ -594,7 +607,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             return out;
         }
 
-        const bool im_support = closer_to_carrier == 0;
+        const bool im_support =
+            closer_to_carrier == 0 && (concepts_[slot] & core::kSupportSpot);
         if (im_support) {
         const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
         // Candidate spots: 12 m goalward of the carrier, offset ±8 m wide;

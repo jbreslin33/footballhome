@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace fh::game::net {
@@ -137,5 +138,22 @@ struct MatchSettingsFrame {
 };
 Bytes encodeMatchSettings(const MatchSettingsFrame& f);
 std::optional<MatchSettingsFrame> decodeMatchSettings(const Bytes& payload);
+
+struct PlayerSettingsFrame {
+    std::uint8_t slot = 0;
+    std::uint32_t concept_mask = 0;  // game/CONCEPTS.md bit ids
+};
+Bytes encodePlayerSettings(const PlayerSettingsFrame& f);
+std::optional<PlayerSettingsFrame> decodePlayerSettings(const Bytes& payload);
+
+struct RosterEntry {
+    std::uint32_t concept_mask = 0;
+    std::string name;
+};
+struct RosterFrame {
+    std::vector<RosterEntry> slots;
+};
+Bytes encodeRoster(const RosterFrame& f);
+std::optional<RosterFrame> decodeRoster(const Bytes& payload);
 
 }  // namespace fh::game::net

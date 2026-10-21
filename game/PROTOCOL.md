@@ -49,6 +49,8 @@ Frame types (u8):
 | 0x21 | EVENT | s→c | §7 |
 | 0x30 | CLAIM / RELEASE slot | c→s | take or drop control of a slot |
 | 0x31 | SPEED | c→s | manager/spectator: request sim speed (server-gated) |
+| 0x33 | PLAYER_SETTINGS | c→s | admin: one slot's concept mask (1.3): `u8 slot \| u64 mask` (bit ids in game/CONCEPTS.md; junk bits masked) |
+| 0x34 | ROSTER | s→c | per-slot knowledge + names (1.3), on connect and after changes: `u8 count`, then per slot `u64 concept_mask \| u8 name_len \| name bytes` |
 | 0x32 | MATCH_SETTINGS | c→s | admin: set both teams' skill bands live (1.3): `u8 level_home \| u8 level_away` (band ids 0-6 = perfect/u10/u14/amateur/semipro/pro/world); non-admin senders are ignored |
 | TBD | … | | reserved; new types are additive within a major version |
 
