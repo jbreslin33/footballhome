@@ -130,13 +130,23 @@
       if (this.buffer.length > 90) this.buffer.splice(0, 30);
     }
 
-    setMySlots(slots) {
+    // Held players glow faint gold; the ACTIVE one (the slot the controls
+    // drive) glows bright. One glance says who you are.
+    setMySlots(slots, activeSlot) {
       this.mySlots = slots;
       for (const g of this.players) {
-        const mine = slots.has(g.userData.slot);
-        g.userData.body.material.emissive =
-          new THREE.Color(mine ? 0xffcc00 : 0x000000);
-        g.userData.body.material.emissiveIntensity = mine ? 0.5 : 0;
+        const slot = g.userData.slot;
+        const mat = g.userData.body.material;
+        if (slot === activeSlot) {
+          mat.emissive = new THREE.Color(0xffcc00);
+          mat.emissiveIntensity = 0.85;
+        } else if (slots.has(slot)) {
+          mat.emissive = new THREE.Color(0xffcc00);
+          mat.emissiveIntensity = 0.25;
+        } else {
+          mat.emissive = new THREE.Color(0x000000);
+          mat.emissiveIntensity = 0;
+        }
       }
     }
 

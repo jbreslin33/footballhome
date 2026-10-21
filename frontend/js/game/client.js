@@ -17,6 +17,7 @@
     document.getElementById('btn-loft'));
 
   const mySlots = new Set();
+  let activeSlot = null;  // the ONE slot the controls drive right now
   const score = [0, 0];
   let hello = null;
   let intentTimer = null;
@@ -33,12 +34,13 @@
       intentTimer = setInterval(() => {
         if (mySlots.size === 0) return;
         const v = input.vector();
-        // The one-shot action goes to ONE slot (the first owned) — the
-        // server only honors it from the ball carrier anyway.
-        let action = input.consumeAction();
+        const action = input.consumeAction();
+        // One input device drives ONE player. Other claimed slots get an
+        // explicit zero vector each tick — the server samples intents and
+        // would otherwise keep running their last one forever.
         for (const slot of mySlots) {
-          net.intent(slot, v.x, v.y, action);
-          action = 0;
+          if (slot === activeSlot) net.intent(slot, v.x, v.y, action);
+          else net.intent(slot, 0, 0, 0);
         }
       }, 1000 / (h.tickRate || 30));
     },
@@ -59,22 +61,38 @@
     },
   });
 
-  // Claim on tap/click. A second tap on an owned player releases it.
+  // Tap rules: unclaimed → claim it AND make it the active one;
+  // claimed-but-inactive → switch control to it; the active one → release
+  // it (control falls to another claimed player if you still hold one).
   function pickAt(x, y) {
     if (!hello) return;
     const slot = renderer.pickSlot(x, y);
     if (slot === null) return;
-    if (mySlots.has(slot)) {
-      mySlots.delete(slot);
-      net.release(slot);
-    } else {
+    if (!mySlots.has(slot)) {
       mySlots.add(slot);
       net.claim(slot);
+      activeSlot = slot;
+    } else if (slot !== activeSlot) {
+      activeSlot = slot;
+    } else {
+      mySlots.delete(slot);
+      net.release(slot);
+      activeSlot = mySlots.size ? [...mySlots][0] : null;
     }
-    renderer.setMySlots(mySlots);
-    statusEl.textContent = mySlots.size
-      ? `controlling ${[...mySlots].map((s) => '#' + (s + 1)).join(', ')} — WASD/joystick to move, Space/PASS to kick, X/LOFT to chip`
-      : 'tap a player to take control';
+    renderer.setMySlots(mySlots, activeSlot);
+    updateStatus();
+  }
+
+  function updateStatus() {
+    if (!mySlots.size) {
+      statusEl.textContent = 'tap a player to take control';
+      return;
+    }
+    const others = [...mySlots].filter((s) => s !== activeSlot);
+    statusEl.textContent =
+      `driving #${activeSlot + 1}` +
+      (others.length ? ` (also holding ${others.map((s) => '#' + (s + 1)).join(', ')} — tap to switch)` : '') +
+      ' — WASD/joystick, Space/PASS, X/LOFT';
   }
   canvas.addEventListener('click', (e) => pickAt(e.clientX, e.clientY));
   canvas.addEventListener('touchstart', (e) => {
