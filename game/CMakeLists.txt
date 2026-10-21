@@ -54,11 +54,22 @@ add_library(game_ws STATIC
 )
 target_link_libraries(game_ws PUBLIC game_math OpenSSL::Crypto)
 
+# ── game_ai — formations + first team brains (G2) ───────────────────────
+add_library(game_ai STATIC
+  src/ai/Formation.cpp
+  src/ai/Brain.cpp
+)
+target_link_libraries(game_ai PUBLIC game_core)
+
+# Calibration harness v0 [FH] — headless AI-vs-AI matches + stats (G2.5).
+add_executable(fh-game-calibrate src/tools/calibrate_main.cpp)
+target_link_libraries(fh-game-calibrate PRIVATE game_ai)
+
 # ── game_server + daemon (G0.4) ─────────────────────────────────────────
 add_library(game_server STATIC
   src/server/GameServer.cpp
 )
-target_link_libraries(game_server PUBLIC game_core game_net game_ws)
+target_link_libraries(game_server PUBLIC game_ai game_core game_net game_ws)
 
 add_executable(fh-game src/main.cpp)
 target_link_libraries(fh-game PRIVATE game_server)
@@ -80,6 +91,7 @@ game_test(test_rng_det)
 game_test(test_vec3)
 game_test(test_world)
 game_test(test_ball)
+game_test(test_ai_match)
 game_test(test_canonical_hash)
 game_test(test_determinism_core)
 game_test(test_codec)

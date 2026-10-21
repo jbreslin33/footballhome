@@ -31,6 +31,7 @@ enum class Action : std::uint8_t {
 struct PlayerState {
     math::Vec3 pos{};   // z stays 0 for players (locomotion is planar)
     math::Vec3 vel{};   // metres / second, fixed point
+    std::uint8_t team = 0;  // steal contests are opponent-only
     // Last movement direction (unit-ish); kick/carry direction when the
     // current intent is idle. Set at spawn to face the opponent goal.
     math::Vec2 face{math::Fixed64::one(), math::Fixed64::zero()};
@@ -60,6 +61,7 @@ public:
     // initial kick/carry direction (toward the opponent goal).
     void placePlayer(SlotIndex slot, const math::Vec3& pos,
                      const math::Vec2& face);
+    void setTeam(SlotIndex slot, std::uint8_t team);
 
     // Advance one tick. Returns goal events (usually empty).
     std::vector<GoalEvent> tick();

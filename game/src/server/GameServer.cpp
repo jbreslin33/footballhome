@@ -13,6 +13,8 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     : cfg_{cfg},
       transport_{transport},
       world_{cfg.slot_count, Fixed64::fromInt(cfg.max_speed_mps),
+             Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y)},
+      brain_{ai::TeamSetup::splitHalves(cfg.slot_count),
              Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y)} {
     transport_.setOnConnect(
         [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
@@ -40,6 +42,7 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
         const math::Vec2 face{home ? Fixed64::one() : -Fixed64::one(),
                               Fixed64::zero()};
         world_.placePlayer(i, math::Vec3{x, y, Fixed64::zero()}, face);
+        world_.setTeam(i, home ? 0 : 1);
     }
 }
 
@@ -141,6 +144,15 @@ net::Bytes GameServer::buildSnapshotFrame() const {
 }
 
 void GameServer::tickOnce() {
+    // AI drives every slot no human holds (claims always override; a
+    // released slot reverts to its brain next tick).
+    for (std::uint8_t slot = 0; slot < cfg_.slot_count; ++slot) {
+        if (slot_owner_.count(slot)) continue;
+        const ai::Orders o = brain_.ordersFor(slot, world_);
+        world_.setIntent(slot, o.move);
+        if (o.action != core::Action::None) world_.setAction(slot, o.action);
+    }
+
     const auto goals = world_.tick();
     if (clients_.empty()) return;  // headless idle: nothing to fan out
 

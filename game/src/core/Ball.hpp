@@ -51,9 +51,13 @@ inline const math::Fixed64 kBounceDeadSpeed = math::Fixed64::fromFraction(1, 2);
 // is picked up.
 inline const math::Fixed64 kBallControlRadius = math::Fixed64::fromFraction(1, 2);
 
-// A free ball faster than this (m/s, squared compare) cannot be captured —
-// it runs through you in G1 (controlled first touch is a G2 mechanic).
-inline const math::Fixed64 kCaptureMaxSpeed = math::Fixed64::fromInt(8);
+// A free ball faster than this (m/s) cannot be captured. 20 covers every
+// current kick, which makes receiving AND intercepting the same mechanic:
+// stand on the ball's path, the ball is yours (soccer, in one rule). The
+// G1 value of 8 made passes unreceivable — the calibration harness caught
+// it. Touch QUALITY (fast balls bobbling off weak first touches) arrives
+// with attributes in G4.
+inline const math::Fixed64 kCaptureMaxSpeed = math::Fixed64::fromInt(20);
 
 // [v1] glue distance (m): carried ball sits this far ahead of the owner.
 inline const math::Fixed64 kBallCarryLead = math::Fixed64::fromFraction(2, 5);
@@ -65,11 +69,27 @@ inline const math::Fixed64 kLoftKickRise    = math::Fixed64::fromInt(6);
 
 // ── state ───────────────────────────────────────────────────────────────
 
+// Ticks after a kick during which the KICKER cannot recapture their own
+// ball — without it a carrier running behind their shot re-captures it
+// every other tick and "machine-guns" the ball upfield (the calibration
+// harness's second catch: 160-goal games of shot-stutter).
+inline constexpr int kKickerLockoutTicks = 15;  // 0.5 s at 30 Hz
+
+// Touch-to-steal [v1 M2 contest lineage]: an OPPONENT within this radius
+// of a carried ball builds contest pressure; at kStealTicks consecutive
+// ticks the ball changes hands. Pressing becomes real: you cannot carry
+// through a defender who stays touch-tight for a third of a second.
+inline const math::Fixed64 kStealRadius = math::Fixed64::fromFraction(3, 5);
+inline constexpr int kStealTicks = 10;
+
 struct BallState {
     math::Vec3 pos{};
     math::Vec3 vel{};
     std::optional<std::uint8_t> owner;  // nullopt = free
     int kick_alive = 0;                 // ticks of snap-to-rest suppression
+    std::uint8_t last_kicker = 0xFF;    // slot that last kicked it
+    int kicker_lockout = 0;             // ticks last_kicker may not recapture
+    int contest_ticks = 0;              // consecutive ticks an opponent is touch-tight
 };
 
 }  // namespace fh::game::core

@@ -94,6 +94,15 @@
       (others.length ? ` (also holding ${others.map((s) => '#' + (s + 1)).join(', ')} — tap to switch)` : '') +
       ' — WASD/joystick, Space/PASS, X/LOFT';
   }
+  // Q cycles which held player you're driving (G2.6).
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() !== 'q' || mySlots.size < 2) return;
+    const list = [...mySlots];
+    activeSlot = list[(list.indexOf(activeSlot) + 1) % list.length];
+    renderer.setMySlots(mySlots, activeSlot);
+    updateStatus();
+  });
+
   canvas.addEventListener('click', (e) => pickAt(e.clientX, e.clientY));
   canvas.addEventListener('touchstart', (e) => {
     const t = e.touches[0];

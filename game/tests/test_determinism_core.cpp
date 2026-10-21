@@ -24,7 +24,8 @@ namespace {
 // Golden history (re-locked ONCE per deliberate state-surface change):
 //   G0.2 2026-10-21 initial lock          0xba2dc29b0b1bbb1a
 //   G1.1 2026-10-21 ball + facing joined  0x4b302451cf0e16e8
-constexpr std::uint64_t kGolden400TicksSeed42 = 0x4b302451cf0e16e8ULL;
+//   G2   2026-10-21 bounds + teams + steal 0x4ed209ee39dfa0f7
+constexpr std::uint64_t kGolden400TicksSeed42 = 0x4ed209ee39dfa0f7ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

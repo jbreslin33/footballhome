@@ -43,6 +43,11 @@ void World::placePlayer(SlotIndex slot, const Vec3& pos, const Vec2& face) {
     players_[slot].face = face;
 }
 
+void World::setTeam(SlotIndex slot, std::uint8_t team) {
+    if (slot >= players_.size()) return;
+    players_[slot].team = team;
+}
+
 void World::tickPlayers() {
     for (SlotIndex i = 0; i < players_.size(); ++i) {
         Vec2 desire = intents_[i].move;
@@ -53,6 +58,14 @@ void World::tickPlayers() {
         p.vel = Vec3{desire.x * p.max_speed, desire.y * p.max_speed,
                      Fixed64::zero()};
         p.pos += p.vel * kTickDt;
+        // Pitch bounds (+2 m apron): G1's live test watched a scorer chase
+        // the ball clean off the grass. Hard clamp, no bounce — players
+        // aren't balls.
+        const Fixed64 margin = Fixed64::fromInt(2);
+        if (p.pos.x > half_x_ + margin) p.pos.x = half_x_ + margin;
+        if (p.pos.x < -half_x_ - margin) p.pos.x = -half_x_ - margin;
+        if (p.pos.y > half_y_ + margin) p.pos.y = half_y_ + margin;
+        if (p.pos.y < -half_y_ - margin) p.pos.y = -half_y_ - margin;
         // Track facing from actual movement; idle players keep facing.
         if (desire.x.raw != 0 || desire.y.raw != 0) {
             p.face = math::normalized(desire);
@@ -67,9 +80,10 @@ void World::tickPossessionAndKicks(std::vector<GoalEvent>& /*events*/) {
 
         // Consume a latched kick before gluing, so the kick leaves from
         // the carry point of the PREVIOUS tick (feels like a real release).
-        const Action act = actions_[*ball_.owner];
+        const SlotIndex kicker = *ball_.owner;
+        const Action act = actions_[kicker];
         if (act == Action::GroundKick || act == Action::LoftedKick) {
-            actions_[*ball_.owner] = Action::None;
+            actions_[kicker] = Action::None;
             // Direction: live desire when pushing a direction, else facing.
             Vec2 desire = intents_[*ball_.owner].move;
             Vec2 dir = (desire.x.raw != 0 || desire.y.raw != 0)
@@ -84,6 +98,8 @@ void World::tickPossessionAndKicks(std::vector<GoalEvent>& /*events*/) {
             }
             ball_.owner.reset();
             ball_.kick_alive = kKickAliveTicks;
+            ball_.last_kicker = kicker;
+            ball_.kicker_lockout = kKickerLockoutTicks;
             return;  // free-ball physics integrates it this same tick
         }
 
@@ -91,6 +107,35 @@ void World::tickPossessionAndKicks(std::vector<GoalEvent>& /*events*/) {
         ball_.pos = Vec3{o.pos.x + o.face.x * kBallCarryLead,
                          o.pos.y + o.face.y * kBallCarryLead, Fixed64::zero()};
         ball_.vel = o.vel;
+
+        // Touch-to-steal contest [v1]: an opponent touch-tight on the
+        // carried ball for kStealTicks takes it (nearest wins, lower slot
+        // breaks ties). Teammates never contest.
+        const Fixed64 steal_sq = kStealRadius * kStealRadius;
+        bool contested = false;
+        Fixed64 best_sq{};
+        SlotIndex thief = 0;
+        for (SlotIndex i = 0; i < players_.size(); ++i) {
+            if (i == *ball_.owner) continue;
+            if (players_[i].team == players_[*ball_.owner].team) continue;
+            const Vec2 d{players_[i].pos.x - ball_.pos.x,
+                         players_[i].pos.y - ball_.pos.y};
+            const Fixed64 dsq = math::lengthSquared(d);
+            if (dsq > steal_sq) continue;
+            if (!contested || dsq < best_sq) {
+                contested = true;
+                best_sq = dsq;
+                thief = i;
+            }
+        }
+        if (contested) {
+            if (++ball_.contest_ticks >= kStealTicks) {
+                ball_.owner = thief;
+                ball_.contest_ticks = 0;
+            }
+        } else {
+            ball_.contest_ticks = 0;
+        }
         return;
     }
 
@@ -108,6 +153,8 @@ void World::tickPossessionAndKicks(std::vector<GoalEvent>& /*events*/) {
     Fixed64 best_sq{};
     SlotIndex best = 0;
     for (SlotIndex i = 0; i < players_.size(); ++i) {
+        if (ball_.kicker_lockout > 0 && i == ball_.last_kicker)
+            continue;  // you can't receive your own kick for half a second
         const Vec2 d{players_[i].pos.x - ball_.pos.x,
                      players_[i].pos.y - ball_.pos.y};
         const Fixed64 dsq = math::lengthSquared(d);
@@ -122,11 +169,14 @@ void World::tickPossessionAndKicks(std::vector<GoalEvent>& /*events*/) {
         ball_.owner = best;
         ball_.vel = Vec3{};
         ball_.kick_alive = 0;
+        ball_.kicker_lockout = 0;
+        ball_.contest_ticks = 0;
     }
 }
 
 void World::tickFreeBall(std::vector<GoalEvent>& events) {
     if (ball_.owner) return;
+    if (ball_.kicker_lockout > 0) --ball_.kicker_lockout;
 
     // Vertical: gravity while airborne, bounce on impact.
     const bool airborne = ball_.pos.z.raw > 0 || ball_.vel.z.raw != 0;

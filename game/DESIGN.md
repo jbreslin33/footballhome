@@ -232,6 +232,44 @@ slices, exit gates, goldens).
   era; G2's formation/positioning work should clamp player positions to
   pitch + margin.
 
+### 8.3 G2 slices — shape and brains
+
+- G2.1 [x] (2026-10-21) Player pitch bounds (clamp to pitch + 2 m margin — the G1 live
+  test watched a scorer sprint into the void). Changes the state surface →
+  golden re-lock batched with G2.2's.
+- G2.2 [x] (2026-10-21) Formations as data-shaped specs: per-team-size base positions
+  (11 = 4-4-2, 3 = 1-1-1, generic lines otherwise) + ball-relative anchor
+  shift ([HELIOS]-lite: translate the shape toward the ball, clamped;
+  the full Delaunay interpolation and the DB formation registry with
+  [v1]-style migration→codegen land in their own slice before G3 closes —
+  in-code specs are an explicit, documented stopgap).
+- G2.3 [x] (2026-10-21) Team setup (World::setTeam) + possession state (ours / theirs / loose, from ball
+  owner's team) feeding the AI.
+- G2.4 [x] (2026-10-21) First AI brains for every un-claimed slot, deterministic and
+  pure ([FH]/[Buckland]-lite utility): hold shifted anchor; nearest to a
+  loose ball chases; nearest presses an opposing carrier; an AI carrier
+  dribbles at goal and shoots inside 22 m (aim = goal centre, kick = the
+  existing action path). Humans always override by claiming; released
+  slots revert to AI.
+- G2.5 [x] (2026-10-21) Calibration harness v0 [FH]: `fh-game-calibrate` headless tool —
+  N AI-vs-AI matches at free-run speed, prints goals/game + possession
+  split; ctest sanity gate (a match completes; goals in a sane band).
+  Protocol-speaking harness replaces it when orchestration lands.
+- G2.6 [x] (2026-10-21) Standing 3v3 golden (slot-count agnosticism enforced in CI) +
+  11v11 AI-match golden; client Q-key cycles held players.
+
+**G2 calibration log (the harness earning its keep on day one):** run 1
+caught chasers stopping 1.5 m from a 0.5 m-capture ball (100% loose);
+run 2 caught kicks being unreceivable (capture cap 8 < kick 14 — raised to
+20: receiving and intercepting became the same mechanic); run 3 exposed
+shot-stutter self-recapture (fixed: 0.5 s kicker lockout) and that pressing
+without STEALING is cosmetic (one-sided 160–0 cycles) — touch-to-steal
+[v1 contest lineage] added (0.6 m, 10 ticks); runs 4–5 showed kick-under-
+pressure degenerates to ping-pong (50–79% loose) — carriers carry, steals
+supply turnovers. Shipped level: symmetric 112–91, possession 40/38/20,
+saves + steals + end-to-end play. ~203 goals/game vs the ~2.7 anchor is
+G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Offside, fouls/cards, stamina, substitutions-as-rule (subs arrive with G5

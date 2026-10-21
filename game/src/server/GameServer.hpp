@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "ai/Brain.hpp"
 #include "common/IdTypes.hpp"
 #include "core/World.hpp"
 #include "net/Codec.hpp"
@@ -61,6 +62,7 @@ private:
     Config cfg_;
     net::INetworkTransport& transport_;
     core::World world_;
+    ai::Brain brain_;
 
     // slot → owning client. Absent key = AI-controlled (idle in G0).
     std::unordered_map<std::uint8_t, ClientId> slot_owner_;
