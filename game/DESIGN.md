@@ -85,6 +85,13 @@ small-sided scenarios (4v4, 2v1, coach-painted drills).
   match, reaper), reachable via nginx WebSocket proxy with runtime DNS
   resolution (variable `proxy_pass` — the v1 pattern that resolves at request
   time, never startup).
+- **Club integration (not optional — the point).** The game runs on the club
+  app's own data: game profiles key on `persons.id` (your real squad are the
+  characters, at their real levels); teams/rosters/formations are the club's
+  existing rows; auth is the club's JWTs, so magic links drop a player into
+  the game as themselves with zero signup (v1 proved this end to end). FM
+  mode manages real club teams and fixtures; painted scenarios attach to a
+  real person; training/attendance can feed attribute growth over time.
 
 ## 5. AI — three layers, hand-authored, data-driven
 
