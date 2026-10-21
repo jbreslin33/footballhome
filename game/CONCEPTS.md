@@ -32,6 +32,8 @@ touchline laws — [FH] marks engine-original formulations.
 | 15 | `push_up` | The line STEPS UP as the ball moves away — stay ≤ ~15 m behind the ball, squeeze the team short [DFB/RB school; James: "white line still too far back"] | a line that only retreats |
 | 16 | `counter_press` | First ~3 s after LOSING the ball: swarm to win it back before organizing [KNVB moment 3 / gegenpress] | jog back and concede the transition |
 | 17 | `balance` | Ball on the far side → weak-side defender tucks toward the centre [FA principles] | stretched square across the back |
+| 18 | `man_orientation` [S] | Mark YOUR man tight and FOLLOW him, anywhere [Bielsa/Gasperini]; 0 = zonal goal-side marking | positional/zonal marking only |
+| 19 | `verticality` [S] | Play forward FIRST: accept tighter lanes, lower the gain threshold [Bielsa/Zeman]; 0 = safe-side selection | sideways-safe passing |
 
 ## Build queue (planned; each lands with the behavior that consumes it)
 
@@ -103,6 +105,60 @@ Queue additions from the dive: `counter_attack` (moment 4), `restraint`
 (don't dive — the anti-tackle), `occupy_half_space`, `slide_with_ball`
 (lateral line shift), `step_drop_call` (keeper organizes the line),
 `block_height` as an explicit team tactic (high/mid/low — the FSM layer).
+
+## Schools & auteurs — a school is a PRESET VECTOR [FH]
+
+A named coach's "philosophy" decomposes into values on registry dials plus
+(sometimes) one signature mechanic. STYLE concepts (class S below) default
+to 0 at every band — they are chosen identities, not skill-ladder items; a
+U-10 team can be coached Bielsa-ish, badly.
+
+- **Bielsa** (and Leeds-era murderball): man_orientation 95 (mark YOUR man
+  everywhere), counter_press 90, verticality 90 (forward first, risk the
+  lane), spread_wide 85, push_up 85, universal running (future stamina
+  dial at 100). Signature wired this pass: man_orientation + verticality.
+- **Michels/Cruyff → Guardiola** (total football → positional play):
+  spread_wide 90, support 95, third_man/occupy_half_space (queued),
+  push_up 80, counter_press 80 (the 6-second rule is Pep's),
+  verticality LOW (~35 — the point is control), tempo_control (queued).
+- **Sacchi** (the 4-4-2 pressing block): compactness ≤25 m (block_height
+  mid), line_hold 95, push_up 90, balance 95, marking ZONAL
+  (man_orientation 0), press_as_unit (queued) — the whole team moves on
+  one string.
+- **Klopp/Rangnick** (gegenpress): counter_press 100, verticality 80,
+  push_up 85, transition speed over possession (counter_attack queued).
+- **Mourinho** (low-block transition): push_up 25, line_hold 90, balance
+  90, cover 95, counter_attack 95 (queued), verticality 85 IN TRANSITION
+  only (phase-dependent styles need the tactic FSM).
+- **Simeone** (5-4-1/4-4-2 mid-block): balance 95, compact two banks,
+  double_team 90 on the touchline trap, delay 95, restraint (queued) 90.
+- **Lobanovskyi** (universality, the scientific school): every player
+  high on EVERY concept — the vector is flat and high; his legacy is the
+  measurement idea itself (our harness is Lobanovskyian).
+- **Zeman** (vertical chaos): verticality 100, push_up 95, placement 90,
+  defense left as an exercise — the fun preset.
+- **Gasperini** (man-orientation all over): man_orientation 100 with the
+  back line too — the stress test for marking vs runs interplay.
+- **De Zerbi** (bait-press build): keeper_sweep 95 + build-out pauses
+  (tempo_control + play_out_back, queued) — luring the press to beat it.
+- **Herrera** (catenaccio): the historical libero = cover_man 100 as a
+  PERMANENT role — era content for the §5.1 ladder.
+
+**THE CLUB PRESET — "Lighthouse" [FH]:** the club's own game model is
+Bielsa-based with modifications (James), formalized in the U.S. Soccer
+U17+ framework extraction at `docs/game-model/` (verbatim principles →
+sub-principles — the intended Game Model DB source). First-pass vector
+from its stated principles: "advance quickly / high energy / high tempo"
+→ verticality 85, counter_press 85; "create attacking shape, stretch,
+pin their back line" → spread_wide 90, run_in_behind 85, push_up 85;
+"minimum 5 ahead of the ball + support behind for circulation" →
+support 90, back_outlet 80; marking stays nearer zonal than full Bielsa
+(man_orientation ~55 — the "modification"). When preset rows land, every
+principle row cites its verbatim source line.
+
+Preset rows (name → full rating vector + formation + level overlay) are
+the registry's next table; the edit panel's future "apply preset" button
+is how a coach paints a team identity in one tap.
 
 ## Compound concepts — interplay IS the next tier [FH/James]
 

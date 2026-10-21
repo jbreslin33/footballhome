@@ -209,9 +209,13 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             for (SlotIndex j = 0; j < world.playerCount() && open; ++j) {
                 if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
                     continue;
+                const Fixed64 lane =
+                    kLaneWidth -
+                    kLaneWidth * degree(slot, 19) *
+                        Fixed64::fromFraction(2, 5);
                 open = pointSegmentDistSq(
                            Vec2{world.player(j).pos.x, world.player(j).pos.y},
-                           a, b) > kLaneWidth * kLaneWidth;
+                           a, b) > lane * lane;
             }
             if (!open) continue;
             if (!have_target || progress > best_progress) {
@@ -222,8 +226,14 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             }
         }
 
+        // verticality [Bielsa/Zeman]: forward FIRST — the gain threshold
+        // collapses with the rating (0.4x at 100): play the ball on.
+        const Fixed64 vdeg = degree(slot, 19);
+        const Fixed64 gain_scale =
+            Fixed64::one() - vdeg * Fixed64::fromFraction(6, 10);
         if (have_target &&
-            (pressed || best_progress - my_progress > kEagerGain * jitter)) {
+            (pressed ||
+             best_progress - my_progress > kEagerGain * jitter * gain_scale)) {
             out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
             // Over the top (§5.2's worked example, playable at last): a
             // receiver BEYOND their last outfield defender gets a lofted
@@ -594,9 +604,14 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                         continue;
                     if (o < 32 && marked[o]) continue;
                     if (o == *ball.owner) continue;
+                    // Zonal marking only tracks goal-side threats; a
+                    // man-oriented marker follows his man much higher.
+                    const Fixed64 track_line =
+                        Fixed64::fromInt(5) +
+                        Fixed64::fromInt(25) * degree(d, 18);
                     if (world.player(o).pos.x * dsgn >=
-                        seen_ball.x * dsgn + Fixed64::fromInt(5))
-                        continue;  // not goal-side enough to threaten
+                        seen_ball.x * dsgn + track_line)
+                        continue;
                     const Fixed64 dd =
                         distSq(world.player(d).pos, world.player(o).pos);
                     if (pick == 255 || dd < best) {
@@ -612,10 +627,15 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             }
             if (my_mark != 255) {
                 const auto& mk = world.player(my_mark);
+                // man_orientation [Bielsa/Gasperini]: tight to the man
+                // (1.5 m zonal → 0.6 m at 100), and FOLLOW him rather
+                // than release to shape.
+                const Fixed64 gap =
+                    Fixed64::fromFraction(3, 2) -
+                    Fixed64::fromFraction(9, 10) * degree(slot, 18);
                 out.move.move = seek(
                     me.pos,
-                    Vec2{mk.pos.x - dsgn * Fixed64::fromFraction(3, 2),
-                         mk.pos.y},
+                    Vec2{mk.pos.x - dsgn * gap, mk.pos.y},
                     Fixed64::fromFraction(1, 2));
                 return out;
             }
