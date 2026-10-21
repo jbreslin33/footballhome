@@ -149,6 +149,31 @@ v1 shipped its first four milestones in ~17 days of sessions against a
 sessions. Slices get specced per-milestone as work opens (v1 style: numbered
 slices, exit gates, goldens).
 
+### 8.1 G0 slices
+
+- G0.1 [x] (2026-10-21) Scaffolding + fixed-point math core **adopted verbatim from v1
+  after review** (`Fixed64`, `FixedMath`, `TrigLUT`, `RngDet`, `Vec3` + their
+  golden tests — knowledge-free, dimension-agnostic infrastructure; adopting
+  a vetted library is not carrying old architecture). `game/CMakeLists.txt`,
+  tests green on host. Landed: namespace `fh::game::math`, 5/5 ctests passed
+  (fixed64, fixed_math, trig_lut, rng_det, vec3) on g++ 13 / CMake 3.28.
+- G0.2 [ ] Tick loop + match clock + world skeleton (one entity integrating
+  a move intent) + canonical state hash + **first determinism golden**.
+- G0.3 [ ] Protocol framing: envelope codec, HELLO/GOODBYE, PLAYER_INTENT,
+  SNAPSHOT encode/decode with unit tests. The same slice locks §2/§4/§6
+  layouts in PROTOCOL.md (doc change lands with the code, v1 style).
+- G0.4 [ ] WebSocket server (v1 handshake/transport patterns re-reviewed, not
+  blind-ported), JWT auth via the club secret, single-match daemon binary +
+  Dockerfile.
+- G0.5 [ ] `make game-deploy`: container image build + full ctest suite
+  inside the image = the standing green gate.
+- G0.6 [ ] nginx `/game/<key>` proxy (variable upstream, request-time DNS) +
+  compose service — the one club-stack touchpoint; coordinated deploy.
+- G0.7 [ ] Browser client: Three.js pitch + player, snapshot interpolation,
+  virtual joystick + keyboard, `game.html`.
+- G0.8 [ ] Exit gate: **move a player around a 3D pitch from a phone over
+  prod TLS**; determinism golden re-verified; G0 close-out ticked here.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Offside, fouls/cards, stamina, substitutions-as-rule (subs arrive with G5
