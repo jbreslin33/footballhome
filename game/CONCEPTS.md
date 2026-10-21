@@ -59,6 +59,33 @@ coordination), `tempo_control` (when to kill the game).
 **Keeper** — `narrow_angle`, `distribute_quickly` (counter launch),
 `command_box` (crosses — needs aerial balls first).
 
+## Compound concepts — interplay IS the next tier [FH/James]
+
+"An interplay of 2 concepts is probably a concept of itself." Confirmed in
+the engine before it was named: the wall pass was never coded — it EMERGES
+when give_and_go (the passer keeps moving) meets the receiver's ordinary
+pass evaluation. The composition is the concept.
+
+This is how the taxonomy's tiers relate: group tactics are compositions of
+individual bits, team tactics are compositions of group ones —
+  wall_pass        = give_and_go × support_spot        (both players)
+  third_man        = wall_pass × a second mover
+  double_team      = cover_man × step                   (now a bit itself)
+  press_as_unit    = delay × marking × cover × step     (team-wide, timed)
+  offside_trap     = line_hold × coordinated step
+  tiki-taka (era)  = triangles × spread_wide × tempo_control
+And it is why the §5.1 history ladder is real: an era is an accumulated
+stack of compounds, each buildable only after its components existed.
+
+Registry consequence: a compound concept's row carries REQUIRES links to
+its component bits (teachable only after them — the same progression a
+coaching curriculum uses: technique → pattern → small game). Some
+compounds need no code of their own (wall_pass is free once its parts
+exist); others add a small coordination behavior on top. Detecting that a
+compound has EMERGED in play (two bits firing in sequence) is also the
+recognition layer's future replay-annotation hook: "that was a 1-2 — Lily
+just learned it."
+
 ## Mechanics of the registry
 
 - Per-SLOT `u32` bitmask in the live match, admin-editable in-game
