@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "ai/Formation.hpp"
 #include "core/World.hpp"
 
 #include <cstdint>
@@ -37,8 +38,12 @@ struct Orders {
 
 class Brain {
 public:
+    // Formation specs per team; an invalid/empty spec falls back to the
+    // built-in for that team's size (tests and DB-down boots take this
+    // path, so goldens never depend on the database).
     Brain(TeamSetup setup, math::Fixed64 pitch_half_x,
-          math::Fixed64 pitch_half_y);
+          math::Fixed64 pitch_half_y,
+          FormationSpec home = {}, FormationSpec away = {});
 
     // Orders for ONE slot given the current world. Pure + deterministic.
     Orders ordersFor(core::SlotIndex slot, const core::World& world) const;
@@ -53,6 +58,7 @@ private:
 
     TeamSetup setup_;
     math::Fixed64 half_x_, half_y_;
+    FormationSpec spec_[2];
     // Per-slot index within its own team (formation base lookup).
     std::vector<std::uint8_t> index_in_team_;
     std::vector<std::uint8_t> team_size_;

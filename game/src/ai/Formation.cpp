@@ -65,6 +65,16 @@ std::vector<Vec2> formationBases(std::uint8_t n) {
     }
 }
 
+FormationSpec builtinFormation(std::uint8_t n) {
+    FormationSpec spec;
+    const auto bases = formationBases(n);
+    spec.positions.reserve(bases.size());
+    for (std::size_t i = 0; i < bases.size(); ++i) {
+        spec.positions.push_back({bases[i], n >= 5 && i == 0});
+    }
+    return spec;
+}
+
 Vec2 anchorFor(const Vec2& base, int attack_sign, const Vec3& ball,
                Fixed64 half_x, Fixed64 half_y, bool is_keeper) {
     // Normalized → pitch metres, mirrored for the attack direction.

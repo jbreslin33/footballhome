@@ -232,6 +232,16 @@ services:
       GAME_MATCH_ID: "1"
       GAME_SLOT_COUNT: "22"
       GAME_SPEED: "1"
+      # Formation codes resolved against the club's `formations` table at
+      # boot (G4.2). POSTGRES_PASSWORD flows in via env_file.
+      GAME_FORMATION_HOME: "4-4-2"
+      GAME_FORMATION_AWAY: "4-3-3"
+      POSTGRES_HOST: footballhome_db
+      POSTGRES_DB: footballhome
+      POSTGRES_USER: footballhome_user
+      # Explicit (not via env_file) to match the db/backend services —
+      # the env file's POSTGRES_PASSWORD differs from the container DB's.
+      POSTGRES_PASSWORD: footballhome_pass
     networks:
       - footballhome_network
     healthcheck:

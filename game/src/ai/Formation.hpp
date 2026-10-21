@@ -23,9 +23,28 @@
 
 namespace fh::game::ai {
 
+// A formation shape: normalized bases + keeper flags. Sourced either from
+// the club's `formations` table (persistence/FormationStore) or from the
+// built-ins below.
+struct FormationSpec {
+    struct Pos {
+        math::Vec2 base;
+        bool keeper = false;
+    };
+    std::vector<Pos> positions;
+
+    bool valid(std::uint8_t team_size) const {
+        return positions.size() == team_size;
+    }
+};
+
 // Base positions for a team of `n`, normalized as described above.
 // Index 0 is the goalkeeper when n >= 5.
 std::vector<math::Vec2> formationBases(std::uint8_t n);
+
+// The in-code fallback spec (same numbers as formationBases; keeper is
+// index 0 for teams of 5+). Used when the DB is unavailable and by tests.
+FormationSpec builtinFormation(std::uint8_t n);
 
 // Pitch-space anchor for one team member.
 //   base        normalized base from formationBases

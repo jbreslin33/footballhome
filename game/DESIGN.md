@@ -364,9 +364,18 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
   far; the 1860s→1890s transition on the §5.1 ladder. AI goldens re-locked.
   Note: "possession %" now undercounts (pass flight counts as loose) —
   attribute in-flight ball to last-touch team in a later metrics slice.
-- G4.2 [ ] DB registries ([v1] migration→codegen): formations + attributes
-  + concepts; daemon reads the live DB; users.id→persons mapping for
-  profiles.
+- G4.2a [x] (2026-10-21) Formations from the CLUB's own `formations` table
+  — no new tables, no migration: the lineup picker's positions_json rows
+  ARE the AI shapes (Postgres expands the JSON server-side; the daemon
+  never parses JSON). Boot-time load only, loud FALLBACK to built-ins when
+  the DB is down (goldens/tests use built-ins, never the DB). Compose:
+  GAME_FORMATION_HOME=4-4-2 / AWAY=4-3-3 + explicit POSTGRES_* (password
+  matches the db service, not the env file). Live: home plays the club's
+  4-4-2, away its 4-3-3; a formation added on the club page is instantly
+  a playable AI shape.
+- G4.2b [ ] Attribute/concept/recognition registries + per-person profiles
+  ([v1] migration→codegen; needs minted migration numbers) and the
+  users.id→persons mapping.
 - G4.3 [ ] Skill noise (perception delay / decision noise / execution
   error) + level bands (§5.1 eras, §5.2 knowledge triple begin here).
 - G4.4 [ ] Calibration CI gates: assert bands on goals/game, possession,

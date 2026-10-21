@@ -65,6 +65,17 @@ target_link_libraries(game_ai PUBLIC game_core)
 add_executable(fh-game-calibrate src/tools/calibrate_main.cpp)
 target_link_libraries(fh-game-calibrate PRIVATE game_ai)
 
+# ── game_persistence — boot-time config loads from the club DB (G4.2) ──
+# [v1] pattern: pkg-config libpqxx; pre-source_location ABI pin for the
+# system libpqxx.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PQXX REQUIRED IMPORTED_TARGET libpqxx)
+add_library(game_persistence STATIC
+  src/persistence/FormationStore.cpp
+)
+target_compile_definitions(game_persistence PUBLIC pqxx_have_source_location=0)
+target_link_libraries(game_persistence PUBLIC game_ai PkgConfig::PQXX)
+
 # ── game_server + daemon (G0.4) ─────────────────────────────────────────
 add_library(game_server STATIC
   src/server/GameServer.cpp
@@ -72,14 +83,14 @@ add_library(game_server STATIC
 target_link_libraries(game_server PUBLIC game_ai game_core game_net game_ws)
 
 add_executable(fh-game src/main.cpp)
-target_link_libraries(fh-game PRIVATE game_server)
+target_link_libraries(fh-game PRIVATE game_server game_persistence)
 
 # ── tests ──────────────────────────────────────────────────────────────
 enable_testing()
 
 function(game_test name)
   add_executable(${name} tests/${name}.cpp)
-  target_link_libraries(${name} PRIVATE game_server)
+  target_link_libraries(${name} PRIVATE game_server game_persistence)
   target_include_directories(${name} PRIVATE tests)
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
@@ -92,6 +103,7 @@ game_test(test_vec3)
 game_test(test_world)
 game_test(test_ball)
 game_test(test_ai_match)
+game_test(test_formation_store)
 game_test(test_canonical_hash)
 game_test(test_determinism_core)
 game_test(test_codec)

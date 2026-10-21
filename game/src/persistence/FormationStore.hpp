@@ -1,0 +1,47 @@
+// game/src/persistence/FormationStore.hpp
+//
+// Loads AI formation shapes from the CLUB's own `formations` table — the
+// same rows the lineup picker and tactical boards use (open system,
+// DESIGN.md §2: adding a formation on the club page makes it a playable
+// AI shape, no engine change). Postgres parses positions_json server-side
+// (jsonb_array_elements), so no JSON code enters the daemon.
+//
+// Coordinate mapping (club → game):
+//   club y: 0 = own goal line … 100 = attacking goal line
+//     → base.x normalized [-1, 0] kickoff shape: base_x = (y - 100) / 100
+//   club x: 0 … 100 across the width (50 = centre)
+//     → base.y normalized [-1, +1]: base_y = (x - 50) / 50
+//   keeper = label "GK".
+//
+// DB access happens ONCE at boot (config load, not gameplay); the sim loop
+// never touches the database. On any failure the caller falls back to the
+// built-in specs with a loud log — the sandbox must boot even if the DB is
+// down.
+
+#pragma once
+
+#include "ai/Formation.hpp"
+
+#include <optional>
+#include <string>
+
+namespace fh::game::persistence {
+
+struct DbConfig {
+    std::string host = "footballhome_db";
+    std::string dbname = "footballhome";
+    std::string user = "footballhome_user";
+    std::string password;  // from POSTGRES_PASSWORD
+};
+
+// Pure mapping from one club-formation position row to a normalized base
+// (unit-tested without a database).
+ai::FormationSpec::Pos mapClubPosition(int club_x, int club_y,
+                                       bool is_keeper);
+
+// Load a formation by its club `code` (e.g. "4-4-2"). nullopt on any
+// failure (connection, unknown code, malformed rows) — caller falls back.
+std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
+                                               const std::string& code);
+
+}  // namespace fh::game::persistence

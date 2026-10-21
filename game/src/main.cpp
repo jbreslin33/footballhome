@@ -12,6 +12,7 @@
 // loop; the World itself never sees time except as tick counts.
 
 #include "net/WebSocketTransport.hpp"
+#include "persistence/FormationStore.hpp"
 #include "server/GameServer.hpp"
 
 #include <chrono>
@@ -47,6 +48,31 @@ int main() {
     cfg.half_length_ticks = static_cast<std::uint32_t>(
         std::atoi(envOr("GAME_HALF_MINUTES", "5")) * 60 * core::kTickRate);
     const int speed = std::atoi(envOr("GAME_SPEED", "1"));
+
+    // Formations come from the club's own `formations` table (open system:
+    // rows added on the club page become playable AI shapes). DB down or
+    // code unknown = loud log + built-in shapes; the sandbox always boots.
+    {
+        persistence::DbConfig db;
+        db.host = envOr("POSTGRES_HOST", "footballhome_db");
+        db.dbname = envOr("POSTGRES_DB", "footballhome");
+        db.user = envOr("POSTGRES_USER", "footballhome_user");
+        db.password = envOr("POSTGRES_PASSWORD", "");
+        const char* home_code = envOr("GAME_FORMATION_HOME", "4-4-2");
+        const char* away_code = envOr("GAME_FORMATION_AWAY", "4-3-3");
+        if (auto f = persistence::loadFormation(db, home_code)) {
+            cfg.formation_home = std::move(*f);
+            std::printf("fh-game: home formation %s (club DB)\n", home_code);
+        } else {
+            std::printf("fh-game: home formation FALLBACK (built-in)\n");
+        }
+        if (auto f = persistence::loadFormation(db, away_code)) {
+            cfg.formation_away = std::move(*f);
+            std::printf("fh-game: away formation %s (club DB)\n", away_code);
+        } else {
+            std::printf("fh-game: away formation FALLBACK (built-in)\n");
+        }
+    }
 
     auth::JwtVerifier verifier{secret};
 

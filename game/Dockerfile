@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         make \
         pkg-config \
         libssl-dev \
+        libpqxx-dev \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -47,6 +48,7 @@ FROM debian:trixie-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libstdc++6 \
         libssl3 \
+        libpqxx-7.10 \
         iproute2 \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*

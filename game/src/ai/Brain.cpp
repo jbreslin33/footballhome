@@ -82,7 +82,8 @@ TeamSetup TeamSetup::splitHalves(std::uint8_t slot_count) {
     return s;
 }
 
-Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y)
+Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y,
+             FormationSpec home, FormationSpec away)
     : setup_{std::move(setup)}, half_x_{pitch_half_x}, half_y_{pitch_half_y} {
     const auto n = setup_.team_of_slot.size();
     index_in_team_.resize(n);
@@ -92,6 +93,10 @@ Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y)
         index_in_team_[i] = count[setup_.team_of_slot[i]]++;
     for (std::size_t i = 0; i < n; ++i)
         team_size_[i] = count[setup_.team_of_slot[i]];
+    spec_[0] = home.valid(count[0]) ? std::move(home)
+                                    : builtinFormation(count[0]);
+    spec_[1] = away.valid(count[1]) ? std::move(away)
+                                    : builtinFormation(count[1]);
 }
 
 bool Brain::isTeamClosest(SlotIndex slot, const World& world,
@@ -196,11 +201,10 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     }
 
     // My formation anchor (ball-shifted), the default duty.
-    const auto bases = formationBases(team_size_[slot]);
-    const Vec2 anchor =
-        anchorFor(bases[index_in_team_[slot]], sign, ball.pos, half_x_,
-                  half_y_, /*is_keeper=*/team_size_[slot] >= 5 &&
-                                           index_in_team_[slot] == 0);
+    const FormationSpec::Pos& mine =
+        spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]];
+    const Vec2 anchor = anchorFor(mine.base, sign, ball.pos, half_x_,
+                                  half_y_, mine.keeper);
 
     // ── loose ball: nearest teammate goes for it ────────────────────────
     // ── their ball: nearest teammate presses the carrier ────────────────

@@ -42,6 +42,10 @@ public:
         // 0 = untimed sandbox. The live daemon sets this from
         // GAME_HALF_MINUTES (main.cpp).
         std::uint32_t half_length_ticks = 0;
+        // Formation shapes (loaded from the club DB by main.cpp); empty =
+        // built-ins. Config, not state: loaded once at boot.
+        ai::FormationSpec formation_home;
+        ai::FormationSpec formation_away;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);

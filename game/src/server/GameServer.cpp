@@ -16,7 +16,8 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
              Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y),
              cfg.half_length_ticks},
       brain_{ai::TeamSetup::splitHalves(cfg.slot_count),
-             Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y)} {
+             Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y),
+             cfg.formation_home, cfg.formation_away} {
     transport_.setOnConnect(
         [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
     transport_.setOnDisconnect([this](ClientId id) { onDisconnect(id); });
