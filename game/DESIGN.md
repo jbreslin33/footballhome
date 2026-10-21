@@ -105,6 +105,32 @@ small-sided scenarios (4v4, 2v1, coach-painted drills).
    world cup) = attribute distribution + noise scale. One knob, not twelve
    codepaths.
 
+### 5.1 Technique inventory & the history ladder [FH]
+
+- **Techniques by layer** (what "utility AI" concretely means here):
+  team layer = finite state machine over tactic states [Buckland's team
+  states]; role layer = cost-minimizing assignment (who presses / covers /
+  outlets) [HELIOS marking]; player layer = utility-scored behavior bags
+  with hysteresis [v1], executed through steering behaviors (seek / arrive /
+  pursue / interpose) [Reynolds via Buckland]. G2 ships the primitive form:
+  steering + a priority rule list + linear formation shift; each upgrade
+  replaces a piece in place. Next majors: [Buckland]'s support-spot
+  calculator (the passing game's heart) + his messaging pattern for
+  coordination; [HELIOS] Delaunay formations; someday [HELIOS] chain-action
+  search for pass sequences. [GRF]'s rule-based 11v11 is the sanity
+  benchmark.
+- **Tactics are implanted, not evolved.** Mechanics must land in dependency
+  order — which IS soccer's historical order (no passing game without a
+  pass, no WM without positions, no gegenpress without press triggers) —
+  but tactical knowledge arrives off-the-shelf as registry data, never
+  rediscovered by self-play (§5's no-RL charter).
+- **The history ladder = the level ladder [FH].** U-8 swarm ball IS 1860s
+  soccer; positional U-12 is the 1900s; a pressing high-school side is the
+  1980s; pro positional play is the 2020s. Levels therefore combine
+  attribute/noise scaling with TACTICAL ERA, and a campaign through soccer
+  history ("beat the pyramid", "break catenaccio", "escape the gegenpress")
+  is a coaching curriculum disguised as a game — teaching content for free.
+
 **No neural nets / RL for players** — opaque, non-deterministic,
 unteachable. ML is permitted only offline: optimizing utility weights against
 the calibration harness, with the resulting numbers committed as data.
