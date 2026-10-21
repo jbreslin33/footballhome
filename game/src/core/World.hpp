@@ -36,6 +36,10 @@ public:
     // intents are sampled, not queued (one effective intent per tick).
     void setIntent(SlotIndex slot, const MoveIntent& intent);
 
+    // Place a player (spawn/reset positioning — scenario setup, not
+    // gameplay). Formation-driven placement replaces ad-hoc spawns in G2.
+    void placePlayer(SlotIndex slot, const math::Vec3& pos);
+
     // Advance one tick: for every player, velocity = clamped desire *
     // max_speed; position += velocity * dt. Deterministic.
     void tick();

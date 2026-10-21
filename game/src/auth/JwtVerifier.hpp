@@ -31,7 +31,11 @@
 namespace fh::game::auth {
 
 struct JwtClaims {
-    std::int64_t person_id = 0;   // required
+    // Verified identity. From a club token this is users.id (the backend
+    // mints {"userId":"<users.id>"}); from a v1-style dev token it is
+    // person_id. The users.id → persons.id mapping for game profiles is a
+    // DB lookup that lands with G2's attribute layer.
+    std::int64_t person_id = 0;   // required (userId or person_id claim)
     std::int64_t iat       = 0;   // optional; 0 if absent
     std::int64_t exp       = 0;   // required; used for expiry check
 };

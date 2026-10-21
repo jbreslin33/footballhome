@@ -74,4 +74,9 @@
   statusEl.textContent = 'connecting…';
   net.connect();
   loop();
+
+  // Debug handle for automated testing and console poking — reads state,
+  // never owns it (the server stays authoritative regardless).
+  window.__game = { renderer, net, mySlots, pickAt, input,
+                    get hello() { return hello; } };
 })();

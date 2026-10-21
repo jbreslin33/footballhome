@@ -211,6 +211,45 @@ bool findIntClaim(std::string_view json,
     return false;
 }
 
+// Like findIntClaim, but also accepts a STRING-encoded integer ("42").
+// The club backend's tokens carry `userId` as a JSON string (AuthController
+// mints {"userId":"<users.id>", ...}), so the game must parse both shapes.
+bool findIntClaimMaybeQuoted(std::string_view json,
+                             std::string_view name,
+                             std::int64_t&    out) noexcept
+{
+    if (findIntClaim(json, name, out)) { return true; }
+
+    std::string needle;
+    needle.reserve(name.size() + 2);
+    needle.push_back('"');
+    needle.append(name);
+    needle.push_back('"');
+
+    std::size_t pos = json.find(needle);
+    if (pos == std::string_view::npos) { return false; }
+    std::size_t i = pos + needle.size();
+    skipWs(json, i);
+    if (i >= json.size() || json[i] != ':') { return false; }
+    ++i;
+    skipWs(json, i);
+    if (i >= json.size() || json[i] != '"') { return false; }
+    ++i;
+    if (i >= json.size() || !std::isdigit(static_cast<unsigned char>(json[i]))) {
+        return false;
+    }
+    std::int64_t val = 0;
+    while (i < json.size() && std::isdigit(static_cast<unsigned char>(json[i]))) {
+        const int d = json[i] - '0';
+        if (val > (INT64_MAX - d) / 10) { return false; }
+        val = val * 10 + d;
+        ++i;
+    }
+    if (i >= json.size() || json[i] != '"') { return false; }
+    out = val;
+    return true;
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -260,7 +299,12 @@ std::optional<JwtClaims> JwtVerifier::verify(std::string_view token) const
 
     JwtClaims claims;
 
-    if (!findIntClaim(payload_json, "person_id", claims.person_id)) {
+    // Identity: accept either `person_id` (v1 dev-token shape) or the club
+    // backend's real shape, `userId` = users.id as a JSON string. G0 only
+    // needs a verified identity; mapping users.id → persons.id for profiles
+    // happens when the DB layer lands (G2) — see JwtClaims doc.
+    if (!findIntClaim(payload_json, "person_id", claims.person_id) &&
+        !findIntClaimMaybeQuoted(payload_json, "userId", claims.person_id)) {
         return std::nullopt;
     }
     if (claims.person_id <= 0) { return std::nullopt; }

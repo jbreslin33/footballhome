@@ -20,6 +20,23 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
         [this](ClientId id, std::span<const std::uint8_t> b) {
             onMessage(id, b);
         });
+
+    // G0 spawn: two facing 11-column lines, home (first half of slots) in
+    // the west half, away mirrored east — enough to see and pick every
+    // player. Real formation anchoring replaces this in G2 [HELIOS].
+    const auto n = cfg_.slot_count;
+    const std::uint8_t per_team = n / 2;
+    for (std::uint8_t i = 0; i < n; ++i) {
+        const bool home = i < per_team;
+        const std::uint8_t k = home ? i : i - per_team;
+        // y spreads players across the width: -25..+25 m.
+        const Fixed64 y = per_team > 1
+            ? Fixed64::fromInt(-25) +
+                  Fixed64::fromInt(50) * Fixed64::fromFraction(k, per_team - 1)
+            : Fixed64::zero();
+        const Fixed64 x = Fixed64::fromInt(home ? -15 : 15);
+        world_.placePlayer(i, math::Vec3{x, y, Fixed64::zero()});
+    }
 }
 
 void GameServer::onConnect(ClientId id, const auth::JwtClaims& /*claims*/) {

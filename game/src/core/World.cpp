@@ -18,6 +18,11 @@ void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
     intents_[slot] = intent;
 }
 
+void World::placePlayer(SlotIndex slot, const Vec3& pos) {
+    if (slot >= players_.size()) return;
+    players_[slot].pos = pos;
+}
+
 void World::tick() {
     for (SlotIndex i = 0; i < players_.size(); ++i) {
         Vec2 desire = intents_[i].move;

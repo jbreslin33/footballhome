@@ -185,12 +185,23 @@ slices, exit gates, goldens).
   a bad image cannot exist). Runtime stage: slim, non-root, binary + libssl.
   `make game-deploy` (compose build) + `make game-test` (fast host loop).
   First image built clean.
-- G0.6 [ ] nginx `/game/<key>` proxy (variable upstream, request-time DNS) +
-  compose service — the one club-stack touchpoint; coordinated deploy.
-- G0.7 [ ] Browser client: Three.js pitch + player, snapshot interpolation,
-  virtual joystick + keyboard, `game.html`.
-- G0.8 [ ] Exit gate: **move a player around a 3D pitch from a phone over
-  prod TLS**; determinism golden re-verified; G0 close-out ticked here.
+- G0.6 [x] (2026-10-21) nginx `/game` proxy (variable upstream + resolver =
+  request-time DNS, so nginx starts with the daemon down — the old /sim
+  literal-host footgun avoided) + `footballhome_game` compose service.
+  Deployed; the retired sim container was removed in the same deploy.
+- G0.7 [x] (2026-10-21) Browser client: `game.html` + `js/game/` (wire
+  codec via DataView/BigInt, WS subprotocol auth reusing the club session
+  token, Three.js broadcast-camera pitch, 100 ms snapshot interpolation
+  [QUAKE], tap-to-claim, WASD + anchored virtual joystick). JwtVerifier
+  extended to the club backend's real claim shape (`userId` as JSON string
+  = users.id; users.id → persons.id mapping lands with G2's DB layer).
+  G0 spawn: two facing team lines via `World::placePlayer` (golden
+  unaffected — its world never places).
+- G0.8 [~] Exit gate verified end-to-end on DESKTOP against live
+  footballhome.org (2026-10-21): claim → drive → 17.0 m east at exactly
+  6 m/s, server-computed, through host nginx + container nginx + daemon
+  with a real club JWT. 14/14 ctests green, golden intact. **Remaining:
+  James's phone test, then tick this box.**
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

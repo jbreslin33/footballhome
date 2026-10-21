@@ -103,6 +103,28 @@ FH_TEST(verifies_valid_token) {
     FH_EXPECT_EQ(claims->exp,        2'000);
 }
 
+FH_TEST(verifies_club_backend_token_shape) {
+    // The real club backend mints {"userId":"<users.id>", "email":..,
+    // "role":.., "iat":.., "exp":..} with userId as a JSON STRING. This is
+    // the shape every signed-in browser carries — it must verify.
+    JwtVerifier v(std::string{kSecret}, fixedClock(1'000));
+    const std::string payload =
+        R"({"userId":"17","email":"x@y.z","role":"admin","iat":900,"exp":2000})";
+    const std::string tok = signHs256(kHeader, payload, kSecret);
+
+    const auto claims = v.verify(tok);
+    FH_EXPECT(claims.has_value());
+    FH_EXPECT_EQ(claims->person_id, 17);
+    FH_EXPECT_EQ(claims->exp, 2'000);
+}
+
+FH_TEST(rejects_non_numeric_userId) {
+    JwtVerifier v(std::string{kSecret}, fixedClock(1'000));
+    const std::string payload =
+        R"({"userId":"abc","iat":900,"exp":2000})";
+    FH_EXPECT(!v.verify(signHs256(kHeader, payload, kSecret)).has_value());
+}
+
 FH_TEST(rejects_expired_token) {
     // exp equals now — must be rejected (strict >).
     JwtVerifier v(std::string{kSecret}, fixedClock(2'000));

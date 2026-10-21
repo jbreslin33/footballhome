@@ -111,6 +111,11 @@ FH_TEST(server_owner_intent_moves_player_foreign_intent_dropped) {
     r.t.scriptConnect(200);
     r.t.scriptMessage(100, claimBytes(0));
 
+    // Players spawn at team lines now, so assert DELTAS from spawn.
+    const auto x0 = r.s.world().player(0).pos.x.raw;
+    const auto y0 = r.s.world().player(0).pos.y.raw;
+    const auto y1 = r.s.world().player(1).pos.y.raw;
+
     // Owner drives slot 0 east; intruder tries to drive it (and slot 1,
     // which nobody owns) north.
     r.t.scriptMessage(100, intentBytes(0, Fixed64::one(), Fixed64::zero()));
@@ -118,9 +123,9 @@ FH_TEST(server_owner_intent_moves_player_foreign_intent_dropped) {
     r.t.scriptMessage(200, intentBytes(1, Fixed64::zero(), Fixed64::one()));
     r.s.tickOnce();
 
-    FH_EXPECT(r.s.world().player(0).pos.x.raw > 0);
-    FH_EXPECT_EQ(r.s.world().player(0).pos.y.raw, 0);  // intruder ignored
-    FH_EXPECT_EQ(r.s.world().player(1).pos.y.raw, 0);  // unclaimed ignored
+    FH_EXPECT(r.s.world().player(0).pos.x.raw > x0);
+    FH_EXPECT_EQ(r.s.world().player(0).pos.y.raw, y0);  // intruder ignored
+    FH_EXPECT_EQ(r.s.world().player(1).pos.y.raw, y1);  // unclaimed ignored
 }
 
 FH_TEST(server_one_client_may_hold_multiple_slots) {
@@ -128,11 +133,13 @@ FH_TEST(server_one_client_may_hold_multiple_slots) {
     r.t.scriptConnect(100);
     r.t.scriptMessage(100, claimBytes(0));
     r.t.scriptMessage(100, claimBytes(1));
+    const auto x0 = r.s.world().player(0).pos.x.raw;
+    const auto y1 = r.s.world().player(1).pos.y.raw;
     r.t.scriptMessage(100, intentBytes(0, Fixed64::one(), Fixed64::zero()));
     r.t.scriptMessage(100, intentBytes(1, Fixed64::zero(), Fixed64::one()));
     r.s.tickOnce();
-    FH_EXPECT(r.s.world().player(0).pos.x.raw > 0);
-    FH_EXPECT(r.s.world().player(1).pos.y.raw > 0);
+    FH_EXPECT(r.s.world().player(0).pos.x.raw > x0);
+    FH_EXPECT(r.s.world().player(1).pos.y.raw > y1);
 }
 
 FH_TEST(server_broadcasts_snapshot_to_all_clients) {
@@ -198,12 +205,13 @@ FH_TEST(server_release_frees_only_own_slot) {
 FH_TEST(server_two_frames_in_one_message) {
     Rig r;
     r.t.scriptConnect(100);
+    const auto x0 = r.s.world().player(0).pos.x.raw;
     Bytes combined = claimBytes(0);
     const Bytes intent = intentBytes(0, Fixed64::one(), Fixed64::zero());
     combined.insert(combined.end(), intent.begin(), intent.end());
     r.t.scriptMessage(100, combined);
     r.s.tickOnce();
-    FH_EXPECT(r.s.world().player(0).pos.x.raw > 0);
+    FH_EXPECT(r.s.world().player(0).pos.x.raw > x0);
 }
 
 FH_TEST_MAIN()
