@@ -10,7 +10,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 - [ ] Finish #teams page: category pills should show the real rosters, and reflect who actually gets to RSVP based on categories. (Another session is working on this. NOTE 10/21: the “who gets to RSVP” part shipped as the 👀 Sees games pill — name settled, see Done.)
 - [x] #jobs page — SHIPPED 2026-10-21 (mig 625, see Done). Still open:
-  - [ ] Player visibility: show each player their job on #my / the game card (magic-link friendly).
+  - [x] 2026-10-21 Player visibility: 🧹 job strip on the #my event card (own + kids', whose-schedule-pill scoped), description on expand; feed carries my_jobs; RSVP writes re-run the auto-assigner so a late Going picks a job up without a coach opening #jobs; copy = message_templates kind=my_jobs (mig 629). Magic-link friendly for free (rides /api/calendar/upcoming).
   - [ ] Sub-cards pass-on from Game Center subs (today: manual reassign on #jobs).
   - ~~original spec below~~ — event jobs for games, practices, and other events:
   - Jobs are assigned per event based on who is actually going (RSVP + attendance); footballhome auto-assigns.

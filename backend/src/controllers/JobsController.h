@@ -27,9 +27,15 @@ class JobsController : public Controller {
 public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
+    // The auto-assigner — also run by CalendarController after every
+    // RSVP write, so a late Going / Not going refills jobs right away
+    // and the player's #my card (which only READS assignments) is
+    // never waiting on a coach to open #jobs.  Harmless no-op for
+    // event kinds without job_definitions.
+    static void ensureAssignments(long long eventId);
+
 private:
     bool gate(const Request& request, Response* error);
-    void ensureAssignments(long long eventId);
 
     Response handleBoard(const Request& request);
     Response handleEvent(const Request& request);

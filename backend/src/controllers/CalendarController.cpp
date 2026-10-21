@@ -1,4 +1,5 @@
 #include "CalendarController.h"
+#include "JobsController.h"
 #include "../models/ClubLogoSearch.h"
 
 #include "../core/Crypto.h"
@@ -904,6 +905,34 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 to_char(mr.leave_at  AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS my_leave_at,
                 to_char(mr.arrive_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS my_arrive_label,
                 to_char(mr.leave_at  AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS my_leave_label,
+                -- The viewer's event job(s) (mig 625 #jobs, player
+                -- visibility): their own assignment and their kids' on
+                -- this event, title + description straight from
+                -- job_definitions.  A toggled-off job (event_job_offs —
+                -- tents) is skipped even if a stale assignment row
+                -- survives until the next auto-assign pass.  Empty array
+                -- when nothing is assigned yet — assignment happens on
+                -- #jobs open and on every RSVP write, never here (this
+                -- is the hot read path).
+                (
+                    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+                               'title',       d.title,
+                               'description', d.description,
+                               'person_id',   ja.person_id,
+                               'first_name',  COALESCE(jp.first_name, ''),
+                               'is_self',     ja.person_id = $1::int,
+                               'not_done',    ja.not_done)
+                           ORDER BY d.sort_order, d.id), '[]'::jsonb)::text
+                      FROM job_assignments ja
+                      JOIN job_definitions d ON d.id = ja.job_definition_id
+                      JOIN persons jp ON jp.id = ja.person_id
+                     WHERE ja.fh_event_id = fe.id
+                       AND (ja.person_id = $1::int OR jp.parent_person_id = $1::int)
+                       AND NOT EXISTS (
+                             SELECT 1 FROM event_job_offs o
+                              WHERE o.fh_event_id = ja.fh_event_id
+                                AND o.job_definition_id = ja.job_definition_id)
+                ) AS my_jobs_json,
                 (
                     SELECT COUNT(*)::int
                     FROM fh_event_teams fet2
@@ -1682,6 +1711,13 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["my_arrive_label"]   = textOrNull(row, "my_arrive_label");
             ev["my_leave_label"]    = textOrNull(row, "my_leave_label");
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
+            // The viewer's + their kids' event jobs (mig 625) — [] when
+            // none assigned (or anonymous: person 0 matches nobody).
+            try {
+                ev["my_jobs"] = json::parse(row["my_jobs_json"].c_str());
+            } catch (...) {
+                ev["my_jobs"] = json::array();
+            }
             ev["is_mine"]           = row["is_mine"].as<bool>();
             ev["my_role"]           = textOrNull(row, "my_role");
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
@@ -2182,6 +2218,14 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
                              "RSVP write returned no row");
         }
+        // Event jobs (mig 625) follow who is actually going: a Going
+        // picks up any open job, a Not going hands theirs to the next
+        // in line.  Advisory — a refill hiccup must never fail the RSVP.
+        try {
+            JobsController::ensureAssignments(fhEventId);
+        } catch (const std::exception& e) {
+            std::cerr << "CalendarController::handlePostRsvp jobs refill: " << e.what() << std::endl;
+        }
         // Standby is opt-out (mig 385 tells the alternate so): Not Going
         // takes the player off the game's alternates.  Starters and bench
         // stay — a coach has to fill that spot, so they see it first.
@@ -2273,6 +2317,13 @@ Response CalendarController::handleDeleteRsvp(const Request& request) {
 
         if (row.empty()) {
             return jsonError(HttpStatus::NOT_FOUND, "no RSVP to clear");
+        }
+        // Cleared answer = out of the going pool — give their job away
+        // (see handlePostRsvp; advisory for the same reason).
+        try {
+            JobsController::ensureAssignments(fhEventId);
+        } catch (const std::exception& e) {
+            std::cerr << "CalendarController::handleDeleteRsvp jobs refill: " << e.what() << std::endl;
         }
         return jsonOk({{"cleared", true}, {"person_id", targetPersonId}});
     } catch (const std::exception& e) {

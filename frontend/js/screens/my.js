@@ -1952,6 +1952,34 @@ class MyScreen extends Screen {
     // Role pill (migration 438): which hat the viewer wears on this event.
     const rolePillHtml = whoChild ? '' : this._rolePillHtml(ev.my_role);   // a child's view is about the child, not my role
 
+    // 🧹 Event job(s) (mig 625/629): the viewer's own assignment and
+    // their kids', straight off the feed's my_jobs.  Scoped like the
+    // guardian rows by the whose-schedule pill: a child's pill keeps
+    // only that child's job, Player / Coach keep only the viewer's own.
+    // Copy is message_templates kind='my_jobs' — no row, no strip.
+    const myJobs = (Array.isArray(ev.my_jobs) ? ev.my_jobs : [])
+      .filter(j => whoChild ? j.person_id === whoChild : (who === 'all' || j.is_self));
+    const jobText = (j) => j.is_self
+      ? MessageCopy.block('my_jobs', 'self_job', { title: j.title })
+      : MessageCopy.block('my_jobs', 'child_job',
+          { child: String(j.first_name || '').trim() || 'Your player', title: j.title });
+    const jobsStripHtml = (() => {
+      const lines = myJobs.map(jobText).filter(Boolean);
+      if (!lines.length) return '';
+      return `<div style="display:flex; flex-direction:column; gap:1px; margin-top:3px; padding:4px 7px; border-radius:7px;
+                   border:1px solid rgba(96,165,250,0.45); background:rgba(37,99,235,0.12); color:#bfdbfe;
+                   font-size:0.6rem; font-weight:700; line-height:1.3;">
+        ${lines.map(t => `<span>🧹 ${this.escapeHtml(t)}</span>`).join('')}
+      </div>`;
+    })();
+    // Expanded card: same jobs with the what-to-do from job_definitions.
+    const jobsDetailHtml = myJobs.map(j => {
+      const t = jobText(j);
+      if (!t) return '';
+      return `<div style="line-height:1.35;">🧹 <b>${this.escapeHtml(t)}</b>${j.description
+        ? `<span style="opacity:0.8;"> — ${this.escapeHtml(j.description)}</span>` : ''}</div>`;
+    }).join('');
+
     // Collapsed: two lines (owner 2026-10-07: "way too much empty space on
     // the my page event cards … get it down to 1 or 2 lines … get rid of
     // view button and have whole card clickable to view … we already have
@@ -1977,6 +2005,7 @@ class MyScreen extends Screen {
                    style="display:inline-block; padding:4px 10px; border-radius:6px; background:#065f46;
                           color:#d1fae5; font-size:0.66rem; font-weight:700; text-decoration:none;">📹 Join Google Meet</a></div>` : ''}
             ${notes ? `<div style="opacity:0.75;">📝 ${this.escapeHtml(notes)}</div>` : ''}
+            ${jobsDetailHtml}
             ${stacked ? '' : ownSideHtml}
             ${gameCenterBtnHtml ? `<div>${gameCenterBtnHtml}</div>` : ''}
             ${this._eventRsvpHtml(ev, isPast)}
@@ -2022,6 +2051,7 @@ class MyScreen extends Screen {
             <span style="flex:1; min-width:120px;">💰 ${this.escapeHtml(text)}</span>${pay}
           </div>`;
         })()}
+        ${jobsStripHtml}
         ${soloChild && ((rsvpRows.find(r => r && r.person_id === soloChild.person_id) || {}).response === 'yes') && !isPast ? this._rsvpTimesHtml(ev, soloChild.person_id) : ''}
         ${!stacked && !soloChild && showOwnRsvpRow && per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
         ${stacked ? `
