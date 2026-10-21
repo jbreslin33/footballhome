@@ -37,8 +37,16 @@ std::uint64_t canonicalHash(const World& world) {
         mixFixed(h, p.vel.x);
         mixFixed(h, p.vel.y);
         mixFixed(h, p.vel.z);
+        mixFixed(h, p.face.x);   // facing drives kicks — authoritative state
+        mixFixed(h, p.face.y);
         mixFixed(h, p.max_speed);
     }
+    // Ball joined the state surface in G1.1 (golden re-locked then, once).
+    const BallState& b = world.ball();
+    mixFixed(h, b.pos.x); mixFixed(h, b.pos.y); mixFixed(h, b.pos.z);
+    mixFixed(h, b.vel.x); mixFixed(h, b.vel.y); mixFixed(h, b.vel.z);
+    mix(h, b.owner ? *b.owner : 0xFFu);
+    mix(h, static_cast<std::uint64_t>(b.kick_alive));
     return h;
 }
 

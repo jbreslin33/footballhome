@@ -21,11 +21,13 @@ using fh::game::math::Vec2;
 
 namespace {
 
-// Golden: locked 2026-10-21 with slice G0.2 (initial lock).
-constexpr std::uint64_t kGolden400TicksSeed42 = 0xba2dc29b0b1bbb1aULL;
+// Golden history (re-locked ONCE per deliberate state-surface change):
+//   G0.2 2026-10-21 initial lock          0xba2dc29b0b1bbb1a
+//   G1.1 2026-10-21 ball + facing joined  0x4b302451cf0e16e8
+constexpr std::uint64_t kGolden400TicksSeed42 = 0x4b302451cf0e16e8ULL;
 
 std::uint64_t scriptedRun() {
-    World w{4, Fixed64::fromInt(6)};
+    World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};
     RngDet rng{42};
     for (int t = 0; t < 400; ++t) {
         for (std::uint8_t slot = 0; slot < 4; ++slot) {

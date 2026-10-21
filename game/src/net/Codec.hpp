@@ -52,9 +52,26 @@ struct PlayerSnap {
     std::uint8_t  flags = 0;  // bit0 = human-controlled; rest reserved
 };
 
+struct BallSnap {
+    // The ball is the one entity with z on the wire (DESIGN.md §4).
+    math::Fixed64 pos_x{}, pos_y{}, pos_z{};
+    std::uint8_t  owner = 0xFF;  // slot carrying the ball; 0xFF = free
+};
+
 struct SnapshotFrame {
     std::uint64_t tick = 0;
     std::vector<PlayerSnap> players;
+    // Appended after the player array in protocol 1.1 — 1.0 decoders
+    // ignore it as trailing bytes (§9 additive rule).
+    BallSnap ball;
+};
+
+struct EventFrame {
+    // Versioned match events [v1 model]: append-only payloads keyed by
+    // event_type; Goal = 1 carries the scoring team.
+    std::uint8_t  event_type = 0;   // 1 = goal
+    std::uint8_t  team = 0;         // scoring team for Goal
+    std::uint64_t tick = 0;
 };
 
 struct ClaimFrame {
@@ -100,5 +117,8 @@ std::optional<SnapshotFrame> decodeSnapshot(const Bytes& payload);
 
 Bytes encodeClaim(const ClaimFrame& f);
 std::optional<ClaimFrame> decodeClaim(const Bytes& payload);
+
+Bytes encodeEvent(const EventFrame& f);
+std::optional<EventFrame> decodeEvent(const Bytes& payload);
 
 }  // namespace fh::game::net

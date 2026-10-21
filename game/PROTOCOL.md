@@ -1,4 +1,4 @@
-# fh-game wire protocol — v1 (DRAFT)
+# fh-game wire protocol — v1.1
 
 > The protocol is the product boundary (DESIGN.md pillar 4). Every client —
 > browser, native, desktop, headless — implements this document and nothing
@@ -79,9 +79,15 @@ u8 slot | i64 move_x (Fixed64 raw) | i64 move_y (Fixed64 raw) | u8 action
 
 - The move vector is desire, not position; the server clamps it to unit
   length, so an overlong vector buys nothing.
-- `action`: 0 = none (G0). Pass / shoot / press / switch-player get ids
-  additively as their mechanics land (G1+); extended actions (through-ball,
-  cross, header contest) likewise.
+- `action` (one-shot; latches server-side until the next tick consumes it):
+  - 0 = none
+  - 1 = ground kick (1.1) — direction = move vector, else facing; preset
+    power until pass attributes land (G2)
+  - 2 = lofted kick (1.1) — same direction rule, adds vertical velocity
+  - press / switch-player / through-ball / cross / header contest get ids
+    additively as their mechanics land.
+  - Only the slot's OWNER's action fires, and only while that slot carries
+    the ball.
 
 ## 5. TACTICAL_INTENT (c→s)
 
@@ -101,7 +107,9 @@ Layout (locked G0.3):
 
 ```
 u64 tick | u8 player_count |
-per player: i64 pos_x | i64 pos_y | i64 vel_x | i64 vel_y | u8 flags
+per player: i64 pos_x | i64 pos_y | i64 vel_x | i64 vel_y | u8 flags |
+ball (appended in 1.1):
+  i64 pos_x | i64 pos_y | i64 pos_z | u8 owner_slot (0xFF = free)
 ```
 
 - Players are planar (DESIGN.md §4), so player records carry **no z** —
@@ -116,9 +124,19 @@ per player: i64 pos_x | i64 pos_y | i64 vel_x | i64 vel_y | u8 flags
 
 ## 7. EVENT (s→c + replay log)
 
-Versioned, append-only event records (v1's model): goal, kickoff, ball-out →
+Versioned, append-only event records ([v1] model): goal, kickoff, ball-out →
 restart type, sub made, tactic changed. Events are the source for match
 reports, highlights, and the calibration harness's statistics.
+
+Layout (locked 1.1):
+
+```
+u8 event_type | u8 team | u64 tick
+```
+
+- event_type 1 = goal; `team` is the scoring team (0 = home, attacks +x).
+- New event types append their own payload fields after `tick`; decoders
+  ignore fields they don't know (§9).
 
 ## 8. Replay
 

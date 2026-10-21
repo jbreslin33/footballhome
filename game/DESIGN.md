@@ -203,6 +203,28 @@ slices, exit gates, goldens).
   with a real club JWT. 14/14 ctests green, golden intact. **Remaining:
   James's phone test, then tick this box.**
 
+### 8.2 G1 slices — the ball
+
+- G1.1 [x] (2026-10-21) 3D ball in `core`: gravity + ground bounce (restitution) on z,
+  [v1]'s multiplicative roll decay + snap-to-rest + kick-alive runway on the
+  ground plane (constants re-derived for 30 Hz), arcade boundary walls at
+  the pitch edges ([FH] placeholder until G3 restarts replace them —
+  kickabout must not lose the ball). World gains pitch dims + the ball;
+  canonical hash extends to ball state; **golden re-locked once, here**.
+- G1.2 [x] (2026-10-21) Possession: automatic first-touch capture (slow ball within
+  [v1] control radius 0.5 m, nearest wins, lower slot breaks ties), glue
+  carry 0.4 m ahead of movement, no stealing yet (press arrives G2).
+- G1.3 [x] (2026-10-21) Kick actions via the intent `action` field (1 = ground kick,
+  2 = lofted kick; direction = move vector, else carry direction; preset
+  powers). Actions latch until consumed by the next tick. Goal detection:
+  mouth AABBs at x = ±half_x (7.32 × 2.44 m), goal → event + kickoff reset.
+- G1.4 [ ] Wire: SNAPSHOT appends the ball record (x, y, z + owner), EVENT
+  frame 0x21 ships (goal payload v1); minor version → 1.1. Client renders
+  the ball, kick buttons (Space / loft key + two touch buttons), goal flash.
+- G1.5 [ ] Exit gate: **kickabout on footballhome.org** — claim a player,
+  dribble, pass to a second claimed player, shoot, score, see the flash.
+  New goldens: ball flight + bounce, capture + kick sequence.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Offside, fouls/cards, stamina, substitutions-as-rule (subs arrive with G5

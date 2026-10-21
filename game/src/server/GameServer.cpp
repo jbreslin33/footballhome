@@ -12,7 +12,8 @@ using namespace net;
 GameServer::GameServer(Config cfg, INetworkTransport& transport)
     : cfg_{cfg},
       transport_{transport},
-      world_{cfg.slot_count, Fixed64::fromInt(cfg.max_speed_mps)} {
+      world_{cfg.slot_count, Fixed64::fromInt(cfg.max_speed_mps),
+             Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y)} {
     transport_.setOnConnect(
         [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
     transport_.setOnDisconnect([this](ClientId id) { onDisconnect(id); });
@@ -35,7 +36,10 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
                   Fixed64::fromInt(50) * Fixed64::fromFraction(k, per_team - 1)
             : Fixed64::zero();
         const Fixed64 x = Fixed64::fromInt(home ? -15 : 15);
-        world_.placePlayer(i, math::Vec3{x, y, Fixed64::zero()});
+        // Face the opponent goal: home attacks +x, away attacks -x.
+        const math::Vec2 face{home ? Fixed64::one() : -Fixed64::one(),
+                              Fixed64::zero()};
+        world_.placePlayer(i, math::Vec3{x, y, Fixed64::zero()}, face);
     }
 }
 
@@ -103,6 +107,10 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             core::MoveIntent intent;
             intent.move = math::Vec2{p->move_x, p->move_y};
             world_.setIntent(p->slot, intent);
+            if (p->action != 0) {
+                world_.setAction(p->slot,
+                                 static_cast<core::Action>(p->action));
+            }
             return;
         }
         default:
@@ -124,12 +132,27 @@ net::Bytes GameServer::buildSnapshotFrame() const {
         snap.flags = slot_owner_.count(i) ? 1 : 0;
         s.players.push_back(snap);
     }
+    const core::BallState& b = world_.ball();
+    s.ball.pos_x = b.pos.x;
+    s.ball.pos_y = b.pos.y;
+    s.ball.pos_z = b.pos.z;
+    s.ball.owner = b.owner ? *b.owner : 0xFF;
     return encodeFrame(FrameType::Snapshot, encodeSnapshot(s));
 }
 
 void GameServer::tickOnce() {
-    world_.tick();
+    const auto goals = world_.tick();
     if (clients_.empty()) return;  // headless idle: nothing to fan out
+
+    for (const core::GoalEvent& g : goals) {
+        EventFrame ev;
+        ev.event_type = 1;  // goal
+        ev.team = g.scoring_team;
+        ev.tick = world_.tickCount();
+        const Bytes frame = encodeFrame(FrameType::Event, encodeEvent(ev));
+        for (const auto& [id, _] : clients_) transport_.send(id, frame);
+    }
+
     const Bytes frame = buildSnapshotFrame();
     for (const auto& [id, _] : clients_) transport_.send(id, frame);
 }

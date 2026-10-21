@@ -131,8 +131,39 @@ FH_TEST(snapshot_truncated_player_list_fails) {
     s.tick = 1;
     s.players.resize(3);
     Bytes p = encodeSnapshot(s);
-    p.resize(p.size() - 4);  // cut into the last player record
+    // Cut past the 25-byte ball record AND into the last player record.
+    // (A missing/partial BALL record alone is tolerated — it's the 1.1
+    // additive tail; the PLAYER array is 1.0 structure and must be whole.)
+    p.resize(p.size() - 25 - 4);
     FH_EXPECT(!decodeSnapshot(p).has_value());
+}
+
+FH_TEST(snapshot_ball_record_round_trips) {
+    SnapshotFrame s;
+    s.tick = 9;
+    s.players.resize(2);
+    s.ball.pos_x = Fixed64::fromInt(-3);
+    s.ball.pos_y = Fixed64::fromFraction(7, 2);
+    s.ball.pos_z = Fixed64::fromFraction(5, 4);
+    s.ball.owner = 11;
+
+    auto d = decodeSnapshot(encodeSnapshot(s));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->ball.pos_x.raw, s.ball.pos_x.raw);
+    FH_EXPECT_EQ(d->ball.pos_z.raw, s.ball.pos_z.raw);
+    FH_EXPECT_EQ(d->ball.owner, 11);
+}
+
+FH_TEST(event_round_trip) {
+    EventFrame e;
+    e.event_type = 1;
+    e.team = 1;
+    e.tick = 777;
+    auto d = decodeEvent(encodeEvent(e));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->event_type, 1);
+    FH_EXPECT_EQ(d->team, 1);
+    FH_EXPECT_EQ(d->tick, 777u);
 }
 
 FH_TEST(claim_round_trip) {

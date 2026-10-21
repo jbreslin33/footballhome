@@ -17,7 +17,7 @@ namespace fh::game::net {
 
 // Protocol version — major bumps reject at HELLO, minor is additive.
 inline constexpr std::uint8_t kProtoMajor = 1;
-inline constexpr std::uint8_t kProtoMinor = 0;
+inline constexpr std::uint8_t kProtoMinor = 1;  // 1.1: ball record + EVENT
 inline constexpr std::uint8_t kProtoPatch = 0;
 
 // Envelope: u16 payload_length | u8 frame_type | u8 flags | payload.
@@ -30,7 +30,7 @@ enum class FrameType : std::uint8_t {
     PlayerIntent = 0x10,
     // 0x11 TACTICAL_INTENT reserved — ships with G5 (PROTOCOL.md §5).
     Snapshot     = 0x20,
-    // 0x21 EVENT reserved — ships with G1 goal detection.
+    Event        = 0x21,  // versioned match events; Goal is event 1 (G1)
     Claim        = 0x30,
     // 0x31 SPEED reserved — ships with manager/admin clients.
 };

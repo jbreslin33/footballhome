@@ -166,6 +166,9 @@ Bytes encodeSnapshot(const SnapshotFrame& f) {
         w.fx(p.vel_x); w.fx(p.vel_y);
         w.u8(p.flags);
     }
+    // Ball record, appended in 1.1 (additive — see header note).
+    w.fx(f.ball.pos_x); w.fx(f.ball.pos_y); w.fx(f.ball.pos_z);
+    w.u8(f.ball.owner);
     return std::move(w.out);
 }
 
@@ -182,6 +185,35 @@ std::optional<SnapshotFrame> decodeSnapshot(const Bytes& payload) {
         p.flags = r.u8();
         f.players.push_back(p);
     }
+    if (!r.ok) return std::nullopt;
+
+    // Ball record (1.1). A 1.0 SNAPSHOT lacks it; decode as "free ball at
+    // origin" rather than failing, since the record is additive.
+    if (r.at + 25 <= payload.size()) {
+        f.ball.pos_x = r.fx();
+        f.ball.pos_y = r.fx();
+        f.ball.pos_z = r.fx();
+        f.ball.owner = r.u8();
+    }
+    return f;
+}
+
+// ── EVENT ───────────────────────────────────────────────────────────────
+
+Bytes encodeEvent(const EventFrame& f) {
+    Writer w;
+    w.u8(f.event_type);
+    w.u8(f.team);
+    w.u64(f.tick);
+    return std::move(w.out);
+}
+
+std::optional<EventFrame> decodeEvent(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    EventFrame f;
+    f.event_type = r.u8();
+    f.team = r.u8();
+    f.tick = r.u64();
     if (!r.ok) return std::nullopt;
     return f;
 }

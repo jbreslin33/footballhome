@@ -17,7 +17,7 @@ const Fixed64 kMaxSpeed = Fixed64::fromInt(6);  // m/s
 }
 
 FH_TEST(world_starts_at_origin_tick_zero) {
-    World w{3, kMaxSpeed};
+    World w{3, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
     FH_EXPECT_EQ(w.tickCount(), 0u);
     FH_EXPECT_EQ(w.playerCount(), 3);
     for (int i = 0; i < 3; ++i) {
@@ -28,7 +28,7 @@ FH_TEST(world_starts_at_origin_tick_zero) {
 }
 
 FH_TEST(world_integrates_exactly) {
-    World w{1, kMaxSpeed};
+    World w{1, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
     MoveIntent intent;
     intent.move = Vec2{Fixed64::one(), Fixed64::zero()};  // full east
     w.setIntent(0, intent);
@@ -49,13 +49,13 @@ FH_TEST(world_integrates_exactly) {
 FH_TEST(world_clamps_overlong_desire) {
     // A hostile client sends a length-10 vector; speed must equal a unit
     // vector's speed in the same direction.
-    World cheat{1, kMaxSpeed};
+    World cheat{1, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
     MoveIntent long_intent;
     long_intent.move = Vec2{Fixed64::fromInt(10), Fixed64::zero()};
     cheat.setIntent(0, long_intent);
     cheat.tick();
 
-    World honest{1, kMaxSpeed};
+    World honest{1, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
     MoveIntent unit_intent;
     unit_intent.move = Vec2{Fixed64::one(), Fixed64::zero()};
     honest.setIntent(0, unit_intent);
@@ -65,7 +65,7 @@ FH_TEST(world_clamps_overlong_desire) {
 }
 
 FH_TEST(world_half_desire_is_half_speed) {
-    World w{1, kMaxSpeed};
+    World w{1, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
     MoveIntent intent;
     intent.move = Vec2{Fixed64::fromFraction(1, 2), Fixed64::zero()};
     w.setIntent(0, intent);
@@ -77,7 +77,7 @@ FH_TEST(world_half_desire_is_half_speed) {
 }
 
 FH_TEST(world_slots_are_independent) {
-    World w{2, kMaxSpeed};
+    World w{2, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
     MoveIntent east;
     east.move = Vec2{Fixed64::one(), Fixed64::zero()};
     w.setIntent(0, east);  // slot 1 stays idle
@@ -89,7 +89,7 @@ FH_TEST(world_slots_are_independent) {
 }
 
 FH_TEST(world_intent_is_sampled_last_write_wins) {
-    World w{1, kMaxSpeed};
+    World w{1, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
     MoveIntent east;
     east.move = Vec2{Fixed64::one(), Fixed64::zero()};
     MoveIntent north;
@@ -103,7 +103,7 @@ FH_TEST(world_intent_is_sampled_last_write_wins) {
 }
 
 FH_TEST(world_unknown_slot_intent_is_dropped) {
-    World w{1, kMaxSpeed};
+    World w{1, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
     MoveIntent intent;
     intent.move = Vec2{Fixed64::one(), Fixed64::zero()};
     w.setIntent(42, intent);  // out of range: no crash, no effect
