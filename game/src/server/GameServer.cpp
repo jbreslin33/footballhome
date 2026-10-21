@@ -65,7 +65,7 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
 void GameServer::applyRosters() {
     const std::uint8_t per_team = cfg_.slot_count / 2;
     slot_names_.assign(cfg_.slot_count, "");
-    concept_masks_.assign(cfg_.slot_count, 0);
+    concept_ratings_.assign(cfg_.slot_count, core::ConceptRatings{});
     for (std::uint8_t i = 0; i < cfg_.slot_count; ++i) {
         const bool home = i < per_team;
         const std::uint8_t k = home ? i : i - per_team;
@@ -73,20 +73,27 @@ void GameServer::applyRosters() {
             home ? cfg_.roster_home : cfg_.roster_away;
         const core::LevelParams& band =
             home ? cfg_.level_home : cfg_.level_away;
-        std::uint32_t mask = core::conceptBundle(band);
+        core::ConceptRatings r = core::defaultRatings(band);
         if (k < team.players.size()) {
             const auto& p = team.players[k];
             slot_names_[i] = p.name;
             world_.setMaxSpeed(
                 i, Fixed64::fromFraction(p.max_speed_cms, 100));
-            if (p.concept_mask >= 0)
-                mask = static_cast<std::uint32_t>(p.concept_mask);
+            // Legacy mask override → that player's known set at a strong
+            // personal quality (85): Old Gio knows EVERYTHING well.
+            if (p.concept_mask >= 0) {
+                for (int c = 0; c < core::kConceptCount; ++c)
+                    r[c] = (static_cast<std::uint32_t>(p.concept_mask) &
+                            (1u << c))
+                               ? 85
+                               : 0;
+            }
         } else {
             slot_names_[i] =
                 (home ? "Home " : "Away ") + std::to_string(k + 1);
         }
-        concept_masks_[i] = mask;
-        brain_.setConcepts(i, mask);
+        concept_ratings_[i] = r;
+        brain_.setRatings(i, r);
     }
 }
 
@@ -94,7 +101,11 @@ void GameServer::broadcastRoster() {
     RosterFrame rf;
     rf.slots.reserve(cfg_.slot_count);
     for (std::uint8_t i = 0; i < cfg_.slot_count; ++i) {
-        rf.slots.push_back({concept_masks_[i], slot_names_[i]});
+        RosterEntry e;
+        e.name = slot_names_[i];
+        e.ratings.assign(concept_ratings_[i].begin(),
+                         concept_ratings_[i].end());
+        rf.slots.push_back(std::move(e));
     }
     const Bytes frame = encodeFrame(FrameType::Roster, encodeRoster(rf));
     for (const auto& [cid, _] : clients_) transport_.send(cid, frame);
@@ -208,8 +219,8 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             for (std::uint8_t sl = 0; sl < cfg_.slot_count; ++sl) {
                 const core::LevelParams& b =
                     sl < cfg_.slot_count / 2 ? home : away;
-                concept_masks_[sl] = core::conceptBundle(b);
-                brain_.setConcepts(sl, concept_masks_[sl]);
+                concept_ratings_[sl] = core::defaultRatings(b);
+                brain_.setRatings(sl, concept_ratings_[sl]);
             }
             broadcastRoster();
             return;
@@ -220,9 +231,13 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             if (!admins_.count(id)) return;
             const auto ps = decodePlayerSettings(frame.payload);
             if (!ps || ps->slot >= cfg_.slot_count) return;
-            concept_masks_[ps->slot] =
-                ps->concept_mask & core::kAllConcepts;
-            brain_.setConcepts(ps->slot, concept_masks_[ps->slot]);
+            core::ConceptRatings r{};
+            for (std::size_t c = 0;
+                 c < r.size() && c < ps->ratings.size(); ++c) {
+                r[c] = ps->ratings[c] > 100 ? 100 : ps->ratings[c];
+            }
+            concept_ratings_[ps->slot] = r;
+            brain_.setRatings(ps->slot, r);
             broadcastRoster();
             return;
         }

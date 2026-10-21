@@ -258,7 +258,8 @@ std::optional<MatchSettingsFrame> decodeMatchSettings(const Bytes& payload) {
 Bytes encodePlayerSettings(const PlayerSettingsFrame& f) {
     Writer w;
     w.u8(f.slot);
-    w.u64(f.concept_mask);  // u64 slot for headroom; low 32 bits used
+    w.u8(static_cast<std::uint8_t>(f.ratings.size()));
+    for (std::uint8_t v : f.ratings) w.u8(v);
     return std::move(w.out);
 }
 
@@ -266,7 +267,8 @@ std::optional<PlayerSettingsFrame> decodePlayerSettings(const Bytes& payload) {
     Reader r{payload.data(), payload.size()};
     PlayerSettingsFrame f;
     f.slot = r.u8();
-    f.concept_mask = static_cast<std::uint32_t>(r.u64());
+    const std::uint8_t n = r.u8();
+    for (std::uint8_t i = 0; i < n && r.ok; ++i) f.ratings.push_back(r.u8());
     if (!r.ok) return std::nullopt;
     return f;
 }
@@ -275,7 +277,8 @@ Bytes encodeRoster(const RosterFrame& f) {
     Writer w;
     w.u8(static_cast<std::uint8_t>(f.slots.size()));
     for (const RosterEntry& e : f.slots) {
-        w.u64(e.concept_mask);
+        w.u8(static_cast<std::uint8_t>(e.ratings.size()));
+        for (std::uint8_t v : e.ratings) w.u8(v);
         const std::size_t len = e.name.size() > 40 ? 40 : e.name.size();
         w.u8(static_cast<std::uint8_t>(len));
         for (std::size_t i = 0; i < len; ++i)
@@ -290,7 +293,9 @@ std::optional<RosterFrame> decodeRoster(const Bytes& payload) {
     const std::uint8_t n = r.u8();
     for (std::uint8_t i = 0; i < n && r.ok; ++i) {
         RosterEntry e;
-        e.concept_mask = static_cast<std::uint32_t>(r.u64());
+        const std::uint8_t rc = r.u8();
+        for (std::uint8_t k = 0; k < rc && r.ok; ++k)
+            e.ratings.push_back(r.u8());
         const std::uint8_t len = r.u8();
         for (std::uint8_t k = 0; k < len; ++k)
             e.name.push_back(static_cast<char>(r.u8()));

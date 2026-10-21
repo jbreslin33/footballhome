@@ -318,6 +318,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         }
         if (contested) {
             if (++ball_.contest_ticks >= kStealTicks) {
+                losing_team_ = players_[*ball_.owner].team;
+                turnover_tick_ = clock_.tick();
                 ball_.owner = thief;
                 ball_.contest_ticks = 0;
             }
@@ -410,6 +412,11 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         }
     }
 
+    // Possession swap = the transition moment (KNVB's 3rd/4th moment).
+    if (last_touch_team_ != players_[best].team) {
+        losing_team_ = last_touch_team_;
+        turnover_tick_ = clock_.tick();
+    }
     ball_.owner = best;
     ball_.vel = Vec3{};
     ball_.pos.z = Fixed64::zero();  // keepers bring a high ball down

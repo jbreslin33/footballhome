@@ -61,8 +61,8 @@
     intent(slot, x, y, action) {
       this.send(GameWire.encodeIntent(slot, x, y, action));
     }
-    setConcepts(slot, mask) {
-      this.send(GameWire.encodePlayerSettings(slot, mask));
+    setConcepts(slot, ratings) {
+      this.send(GameWire.encodePlayerSettings(slot, ratings));
     }
     setLevels(homeId, awayId) {
       this.send(GameWire.encodeMatchSettings(homeId, awayId));

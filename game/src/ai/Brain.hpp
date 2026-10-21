@@ -53,19 +53,19 @@ public:
         level_[0] = home;
         level_[1] = away;
         match_seed_ = match_seed;
-        // Reset every slot's knowledge to its band's default bundle.
-        for (std::size_t i = 0; i < concepts_.size(); ++i) {
-            concepts_[i] = core::conceptBundle(
+        // Reset every slot's knowledge to its band's default ratings.
+        for (std::size_t i = 0; i < ratings_.size(); ++i) {
+            ratings_[i] = core::defaultRatings(
                 level_[setup_.team_of_slot[i]]);
         }
     }
 
-    // Per-slot knowledge (game/CONCEPTS.md). Overrides the band bundle.
-    void setConcepts(core::SlotIndex slot, std::uint32_t mask) {
-        if (slot < concepts_.size()) concepts_[slot] = mask;
+    // Per-slot graded knowledge (game/CONCEPTS.md; 0-100 per concept).
+    void setRatings(core::SlotIndex slot, const core::ConceptRatings& r) {
+        if (slot < ratings_.size()) ratings_[slot] = r;
     }
-    std::uint32_t concepts(core::SlotIndex slot) const {
-        return slot < concepts_.size() ? concepts_[slot] : 0;
+    const core::ConceptRatings& ratings(core::SlotIndex slot) const {
+        return ratings_[slot];
     }
 
     // Orders for ONE slot given the current world. Pure + deterministic.
@@ -88,7 +88,23 @@ private:
     FormationSpec spec_[2];
     core::LevelParams level_[2];
     std::uint64_t match_seed_ = 0;
-    std::vector<std::uint32_t> concepts_;
+    std::vector<core::ConceptRatings> ratings_;
+    // Graded application: does slot APPLY concept (bit index) this tick?
+    // Consistency roll — deterministic noise vs the rating.
+    bool applies(core::SlotIndex slot, int concept_idx,
+                 std::uint64_t tick) const {
+        const std::uint8_t r = ratings_[slot][concept_idx];
+        if (r == 0) return false;
+        if (r >= 100) return true;
+        const auto n = core::detNoise(match_seed_, tick, slot,
+                                      static_cast<std::uint8_t>(32 + concept_idx));
+        return (n + math::Fixed64::one()) <
+               math::Fixed64::fromFraction(r, 50);
+    }
+    // Magnitude helper: rating as a 0..1 Fixed64.
+    math::Fixed64 degree(core::SlotIndex slot, int concept_idx) const {
+        return math::Fixed64::fromFraction(ratings_[slot][concept_idx], 100);
+    }
     // Per-slot index within its own team (formation base lookup).
     std::vector<std::uint8_t> index_in_team_;
     std::vector<std::uint8_t> team_size_;

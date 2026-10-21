@@ -31,7 +31,8 @@ namespace {
 //   G4.5 2026-10-21 player collisions       0x423841cf3a6eac06
 //   G4.6 2026-10-21 tackles + recovery      0x997a2b004b2d98c6
 //   G4.8 2026-10-21 offside + shot error    0x2f7a4328ec4cc0b9
-constexpr std::uint64_t kGolden400TicksSeed42 = 0x2f7a4328ec4cc0b9ULL;
+//   G4.11 2026-10-21 graded + transitions   0x66874b880508cbe6
+constexpr std::uint64_t kGolden400TicksSeed42 = 0x66874b880508cbe6ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

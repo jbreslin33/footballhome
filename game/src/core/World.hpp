@@ -119,6 +119,9 @@ public:
     std::uint8_t restartTeam() const noexcept { return restart_team_; }
     std::uint32_t offsideMask() const noexcept { return offside_mask_; }
     std::uint8_t offsideTeam() const noexcept { return offside_team_; }
+    // Transition clock (G4.11): which team LOST the ball last, and when.
+    std::uint8_t lastLosingTeam() const noexcept { return losing_team_; }
+    std::uint64_t turnoverTick() const noexcept { return turnover_tick_; }
     math::Fixed64 pitchHalfX() const noexcept { return half_x_; }
     math::Fixed64 pitchHalfY() const noexcept { return half_y_; }
 
@@ -155,6 +158,8 @@ private:
     // opponent touch, dead ball, or goal.
     std::uint32_t offside_mask_ = 0;
     std::uint8_t  offside_team_ = 0xFF;  // kicking team while armed
+    std::uint8_t  losing_team_ = 0xFF;
+    std::uint64_t turnover_tick_ = 0;
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped
     LevelParams   level_[2];
     std::uint64_t match_seed_ = 0;

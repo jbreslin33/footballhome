@@ -89,9 +89,9 @@ private:
     std::unordered_map<std::uint8_t, ClientId> slot_owner_;
     // Current level ids (mutable via admin MATCH_SETTINGS).
     std::uint8_t level_id_[2] = {0, 0};
-    // Per-slot names + live concept masks (served via ROSTER frames).
+    // Per-slot names + live concept RATINGS (served via ROSTER frames).
     std::vector<std::string> slot_names_;
-    std::vector<std::uint32_t> concept_masks_;
+    std::vector<core::ConceptRatings> concept_ratings_;
     void applyRosters();
     void broadcastRoster();
     // Clients holding the admin capability (granted from the JWT role).

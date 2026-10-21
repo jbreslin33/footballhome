@@ -13,6 +13,7 @@
 
 #include "math/Fixed64.hpp"
 
+#include <array>
 #include <cstdint>
 #include <string_view>
 
@@ -96,13 +97,25 @@ enum Concept : std::uint32_t {
     kDoubleTeam      = 1u << 12,  // trap on the touchline
     kSpreadWide      = 1u << 13,  // attacking WIDTH (James's law, offense side)
     kGiveAndGo       = 1u << 14,  // pass and MOVE
+    kPushUp          = 1u << 15,  // squeeze: line steps UP with the ball
+    kCounterPress    = 1u << 16,  // 6-second rule after losing it
+    kBalance         = 1u << 17,  // weak-side tuck [FA principles]
 };
-inline constexpr std::uint32_t kAllConcepts = (1u << 15) - 1;
+inline constexpr std::uint32_t kAllConcepts = (1u << 18) - 1;
 inline constexpr const char* kConceptNames[] = {
     "delay", "marking", "cover", "support", "outlet",
     "runs", "over-top", "sweep", "placement", "line-hold",
-    "jockey-angle", "recover", "double-team", "width", "give-and-go"};
-inline constexpr int kConceptCount = 15;
+    "jockey-angle", "recover", "double-team", "width", "give-and-go",
+    "push-up", "counter-press", "balance"};
+inline constexpr int kConceptCount = 18;
+
+// ── Graded knowledge (James: "implement them on a 0 to 100 scale") ─────
+// A rating is CONSISTENCY + MAGNITUDE in one number: branch concepts roll
+// (noise < rating%) per application; spatial concepts also lerp their
+// distances by rating. 0 = doesn't know it; 100 = textbook every time.
+using ConceptRatings = std::array<std::uint8_t, kConceptCount>;
+
+
 
 // Default knowledge bundle for a level band. EXACTLY reproduces the
 // pre-registry gates (swarm >= 40 lacked the theory), so unedited teams
@@ -112,9 +125,29 @@ inline std::uint32_t conceptBundle(const LevelParams& lv) {
     if (lv.swarm_pct < 40) {
         m |= kDelayTransition | kManMarking | kBackOutlet | kRunInBehind |
              kPlayOverTop | kKeeperSweep | kJockeyAngle | kRecoverGoalSide |
-             kDoubleTeam | kSpreadWide | kGiveAndGo;
+             kDoubleTeam | kSpreadWide | kGiveAndGo | kPushUp |
+             kCounterPress | kBalance;
     }
     return m;
+}
+
+// Band defaults: the band's quality on every concept it "knows" (the old
+// bundle), 0 on the rest — U-10s don't do delay theory AT ALL; a semipro
+// does everything at 68.
+inline ConceptRatings defaultRatings(const LevelParams& lv) {
+    std::uint8_t q = 50;
+    if (lv.swarm_pct >= 70)      q = 12;   // u10
+    else if (lv.swarm_pct >= 40) q = 30;   // u14
+    else if (lv.swarm_pct >= 25) q = 50;   // amateur
+    else if (lv.swarm_pct >= 10) q = 68;   // semipro
+    else if (lv.swarm_pct >= 3)  q = 82;   // pro
+    else if (!lv.isZero())       q = 92;   // world
+    else                         q = 100;  // perfect
+    ConceptRatings r{};
+    const std::uint32_t bundle = conceptBundle(lv);
+    for (int i = 0; i < kConceptCount; ++i)
+        r[i] = (bundle & (1u << i)) ? q : 0;
+    return r;
 }
 
 // Pure deterministic noise in [-1, 1) as Fixed64.

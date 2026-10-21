@@ -141,13 +141,14 @@ std::optional<MatchSettingsFrame> decodeMatchSettings(const Bytes& payload);
 
 struct PlayerSettingsFrame {
     std::uint8_t slot = 0;
-    std::uint32_t concept_mask = 0;  // game/CONCEPTS.md bit ids
+    // 0-100 per concept, CONCEPTS.md order (1.4: graded knowledge).
+    std::vector<std::uint8_t> ratings;
 };
 Bytes encodePlayerSettings(const PlayerSettingsFrame& f);
 std::optional<PlayerSettingsFrame> decodePlayerSettings(const Bytes& payload);
 
 struct RosterEntry {
-    std::uint32_t concept_mask = 0;
+    std::vector<std::uint8_t> ratings;  // 0-100 per concept
     std::string name;
 };
 struct RosterFrame {

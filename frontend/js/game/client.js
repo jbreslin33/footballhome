@@ -47,14 +47,18 @@
   let editMode = false;   // admin: tap a player to open his knowledge
 
   function openEditPanel(slot) {
-    const e = roster[slot] || { mask: 0, name: '#' + (slot + 1) };
-    let html = `<b>${e.name}</b> <span style="opacity:.6">(slot ${slot + 1})</span><br>`;
-    GameWire.CONCEPTS.forEach((c, bit) => {
-      const on = (e.mask >> bit) & 1;
-      html += `<label style="display:inline-block;width:46%;margin:3px 0;">
-        <input type="checkbox" data-bit="${bit}" ${on ? 'checked' : ''}> ${c}</label>`;
+    const e = roster[slot] || { ratings: [], name: '#' + (slot + 1) };
+    let html = `<b>${e.name}</b> <span style="opacity:.6">(slot ${slot + 1})</span>
+      <div style="max-height:52vh;overflow-y:auto;margin-top:6px;">`;
+    GameWire.CONCEPTS.forEach((c, i) => {
+      const v = e.ratings[i] || 0;
+      html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
+        <span style="width:92px;font-size:11px;">${c}</span>
+        <input type="range" min="0" max="100" value="${v}" data-idx="${i}"
+               style="flex:1;" oninput="this.nextElementSibling.textContent=this.value">
+        <span style="width:26px;text-align:right;font-size:11px;">${v}</span></div>`;
     });
-    html += `<div style="margin-top:8px;text-align:right;">
+    html += `</div><div style="margin-top:8px;text-align:right;">
       <button id="ep-close">close</button>
       <button id="ep-apply" style="background:#ffcc00;color:#0b1c3d;
         border:none;padding:4px 14px;border-radius:6px;font-weight:700;">APPLY</button></div>`;
@@ -63,11 +67,11 @@
     editPanel.querySelector('#ep-close').onclick = () =>
       (editPanel.style.display = 'none');
     editPanel.querySelector('#ep-apply').onclick = () => {
-      let mask = 0;
-      editPanel.querySelectorAll('input[data-bit]').forEach((cb) => {
-        if (cb.checked) mask |= 1 << +cb.dataset.bit;
+      const ratings = new Array(GameWire.CONCEPTS.length).fill(0);
+      editPanel.querySelectorAll('input[data-idx]').forEach((sl) => {
+        ratings[+sl.dataset.idx] = +sl.value;
       });
-      net.setConcepts(slot, mask);
+      net.setConcepts(slot, ratings);
       editPanel.style.display = 'none';
     };
   }

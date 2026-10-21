@@ -27,7 +27,7 @@
   const CONCEPTS = ['delay', 'marking', 'cover', 'support', 'outlet',
                     'runs', 'over-top', 'sweep', 'placement', 'line-hold',
                     'jockey-angle', 'recover', 'double-team', 'width',
-                    'give-and-go'];
+                    'give-and-go', 'push-up', 'counter-press', 'balance'];
 
   const LEVELS = ['perfect', 'u10', 'u14', 'amateur', 'semipro', 'pro', 'world'];
 
@@ -96,26 +96,31 @@
   }
 
   function decodeRoster(view, at) {
+    // 1.4: graded knowledge — per slot a rating byte array + name.
     const n = view.getUint8(at);
     let p = at + 1;
     const slots = [];
     for (let i = 0; i < n; i++) {
-      const mask = Number(view.getBigUint64(p, true));
-      const len = view.getUint8(p + 8);
+      const rc = view.getUint8(p); p += 1;
+      const ratings = [];
+      for (let k = 0; k < rc; k++) ratings.push(view.getUint8(p + k));
+      p += rc;
+      const len = view.getUint8(p); p += 1;
       let name = '';
       for (let k = 0; k < len; k++)
-        name += String.fromCharCode(view.getUint8(p + 9 + k));
-      slots.push({ mask, name });
-      p += 9 + len;
+        name += String.fromCharCode(view.getUint8(p + k));
+      p += len;
+      slots.push({ ratings, name });
     }
     return slots;
   }
 
-  function encodePlayerSettings(slot, mask) {
-    const p = new ArrayBuffer(9);
+  function encodePlayerSettings(slot, ratings) {
+    const p = new ArrayBuffer(2 + ratings.length);
     const v = new DataView(p);
     v.setUint8(0, slot);
-    v.setBigUint64(1, BigInt(mask >>> 0), true);
+    v.setUint8(1, ratings.length);
+    ratings.forEach((r, i) => v.setUint8(2 + i, Math.max(0, Math.min(100, r | 0))));
     return envelope(FrameType.PLAYER_SETTINGS, p);
   }
 

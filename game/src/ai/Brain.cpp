@@ -98,7 +98,7 @@ Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y,
                                     : builtinFormation(count[0]);
     spec_[1] = away.valid(count[1]) ? std::move(away)
                                     : builtinFormation(count[1]);
-    concepts_.assign(n, core::conceptBundle(core::LevelParams{}));
+    ratings_.assign(n, core::defaultRatings(core::LevelParams{}));
 }
 
 int Brain::teamCloserCount(SlotIndex slot, const World& world,
@@ -162,9 +162,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             // keeper's current side — a placed 24 m/s strike beats
             // angle-play positioning; a sprayed one doesn't (level
             // noise decides which you hit).
-            Fixed64 aim_y = (concepts_[slot] & core::kShotPlacement)
-                                ? Fixed64::fromFraction(28, 10)
-                                : Fixed64::zero();  // straight at the keeper
+            Fixed64 aim_y =
+                Fixed64::fromFraction(28, 10) * degree(slot, 8);
             for (SlotIndex i = 0; i < world.playerCount(); ++i) {
                 if (setup_.team_of_slot[i] == setup_.team_of_slot[slot])
                     continue;
@@ -240,7 +239,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 if (depth > their_line) their_line = depth;
             }
             const bool beyond_line = best_progress > their_line;
-            if (beyond_line && (concepts_[slot] & core::kPlayOverTop) &&
+            if (beyond_line && applies(slot, 6, world.tickCount()) &&
                 target_dist_sq > kSoftPassRange * kSoftPassRange) {
                 out.action = Action::LoftedKick;  // over the top
             } else {
@@ -300,7 +299,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // measured a 97%-loose swamp: the mechanic itself inverted the
         // level ladder until gated).
         if (!ball.owner && ball_in_my_third &&
-            (concepts_[slot] & core::kKeeperSweep)) {
+            applies(slot, 7, world.tickCount())) {
             out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
                                  Fixed64::fromFraction(1, 10));
             return out;
@@ -369,9 +368,13 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             // (measured: 0 offsides, goals UP after the offside law
             // landed). Holding makes the runner's timing problem real —
             // beyond this line he's offside when the ball is struck.
-            if (concepts_[slot] & core::kLineHold) {
-                const Fixed64 hold =
-                    seen_ball.x * sgn - Fixed64::fromInt(25);
+            if (ratings_[slot][9] > 0) {
+                // push_up (15) squeezes the hold distance: 25 m at 0 →
+                // 12 m at 100 — "the white line steps up" [James].
+                const Fixed64 dist =
+                    Fixed64::fromInt(25) -
+                    Fixed64::fromInt(13) * degree(slot, 15);
+                const Fixed64 hold = seen_ball.x * sgn - dist;
                 if (cover < hold) cover = hold;
             }
             if (anchor.x * sgn > cover) anchor.x = cover * sgn;
@@ -382,14 +385,14 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // 3. Cover man: second-closest to the ball shadows the ball→goal
         //    line, 7 m goal-side.
         if (teamCloserCount(slot, world, seen_ball) == 1 &&
-            (concepts_[slot] & core::kDoubleTeam) && ball.owner &&
+            applies(slot, 12, world.tickCount()) && ball.owner &&
             math::fx_abs(seen_ball.y) > Fixed64::fromInt(22)) {
             // double_team: the touchline is the extra defender — when the
             // carrier is pinned wide, the cover man CONVERGES instead of
             // sitting off, and the trap closes.
             anchor = Vec2{seen_ball.x, seen_ball.y};
         } else if (teamCloserCount(slot, world, seen_ball) == 1 &&
-            (concepts_[slot] & core::kCoverMan)) {
+            ratings_[slot][2] > 0) {
             const Vec2 own_goal{-sgn * half_x_, Fixed64::zero()};
             const Vec2 to_goal{own_goal.x - seen_ball.x,
                                own_goal.y - seen_ball.y};
@@ -440,8 +443,45 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // Knowledge gates (CONCEPTS.md): what THIS player knows decides
         // which branches exist for him. undisciplined = lacks the delay
         // theory; a coached kid on a swarm team keeps his head.
-        const std::uint32_t know = concepts_[slot];
-        const bool undisciplined = !(know & core::kDelayTransition);
+        // Graded knowledge: the delay THEORY is known at all only above
+        // 0; its per-moment application rolls against the rating.
+        const bool undisciplined = ratings_[slot][0] == 0;
+
+        // counter_press (G4.11, KNVB moment 3 / gegenpress): for ~3 s
+        // after WE lose the ball, the nearby disciplined player hunts it
+        // regardless of organization — win it back before they settle.
+        // Window scales with the rating.
+        if (world.lastLosingTeam() == setup_.team_of_slot[slot] &&
+            ratings_[slot][16] > 0) {
+            const std::uint64_t since =
+                world.tickCount() - world.turnoverTick();
+            const std::uint64_t window =
+                10 + static_cast<std::uint64_t>(ratings_[slot][16]);
+            if (since < window &&
+                distSq(me.pos, seen_ball) < Fixed64::fromInt(400) &&
+                teamCloserCount(slot, world, seen_ball) < 2) {
+                out.move.move = seek(me.pos,
+                                     Vec2{seen_ball.x, seen_ball.y},
+                                     Fixed64::fromFraction(1, 10));
+                // Impulse semantics: dives are a PER-TICK RATE (the
+                // eagerness dial), never a per-tick probability equal to
+                // the rating — rating 68 as %/tick produced 8k-tackle
+                // matches. Ratings gate WHETHER you counter-press and for
+                // HOW LONG; indiscipline still sets how rashly you dive.
+                if (ball.owner &&
+                    distSq(me.pos, ball.pos) <
+                        core::kTackleReach * core::kTackleReach) {
+                    const Fixed64 n2 = core::detNoise(
+                        match_seed_, world.tickCount(), slot, 9);
+                    const int eag = 4 + lv.swarm_pct / 2;
+                    if ((n2 + Fixed64::one()) <
+                        Fixed64::fromFraction(eag, 50)) {
+                        out.action = Action::Tackle;
+                    }
+                }
+                return out;
+            }
+        }
 
         // Traffic tackles: ANY defender (not just the engaged presser)
         // dives when an opponent carries into their reach — provided the
@@ -465,7 +505,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // recover_goal_side: I'm upfield of the ball (beaten) — the
         // coached run is to the COVER LINE between ball and goal, never
         // straight at the ball. Kids chase; defenders recover.
-        if ((know & core::kRecoverGoalSide) &&
+        if (applies(slot, 11, world.tickCount()) &&
             me.pos.x * dsgn > seen_ball.x * dsgn + Fixed64::one() &&
             teamCloserCount(slot, world, seen_ball) >= 1) {
             const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
@@ -513,10 +553,11 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             // carrier's easy touch is toward the TOUCHLINE, not the
             // middle — "show them the line".
             Fixed64 shade = Fixed64::zero();
-            if (know & core::kJockeyAngle) {
-                shade = seen_ball.y.raw >= 0
-                            ? -Fixed64::fromFraction(6, 5)
-                            : Fixed64::fromFraction(6, 5);
+            if (ratings_[slot][10] > 0) {
+                shade = (seen_ball.y.raw >= 0
+                             ? -Fixed64::fromFraction(6, 5)
+                             : Fixed64::fromFraction(6, 5)) *
+                        degree(slot, 10);
             }
             const Vec2 jockey{
                 seen_ball.x - dsgn * Fixed64::fromFraction(11, 5),
@@ -525,11 +566,21 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             return out;
         }
 
+        // balance (G4.11, FA principles): ball on the FAR side → the
+        // weak-side player tucks toward the centre, by rating.
+        if (ratings_[slot][17] > 0 &&
+            math::fx_abs(seen_ball.y) > Fixed64::fromInt(15) &&
+            ((seen_ball.y.raw > 0) != (anchor.y.raw > 0))) {
+            anchor.y = anchor.y -
+                       anchor.y * degree(slot, 17) *
+                           Fixed64::fromFraction(6, 10);
+        }
+
         // ORGANIZE: non-engaged defenders take MARKS — greedy unique
         // assignment in slot order over goal-side opponents, standing
         // 1.5 m goal-side of the mark. Whoever finds no mark is the free
         // man and falls through to the shape rules.
-        if (ball.owner && rank >= 2 && (know & core::kManMarking)) {
+        if (ball.owner && rank >= 2 && applies(slot, 1, world.tickCount())) {
             bool marked[32] = {false};
             SlotIndex my_mark = 255;
             for (SlotIndex d = 0; d < world.playerCount(); ++d) {
@@ -581,8 +632,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // give_and_go: I JUST passed this ball — keep moving. Burst past
         // the receiver into the space ahead; his normal pass evaluation
         // finds me and the 1-2 emerges with no special wall-pass code.
-        if ((concepts_[slot] & core::kGiveAndGo) &&
-            ball.last_kicker == slot) {
+        if (ratings_[slot][14] > 0 && ball.last_kicker == slot &&
+            applies(slot, 14, world.tickCount() / 30)) {
             out.move.move = seek(
                 me.pos,
                 Vec2{carrier.pos.x + sgn2 * Fixed64::fromInt(10),
@@ -596,7 +647,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // attacks the space beyond their last outfield defender — the
         // run that makes the over-the-top ball a weapon and drags their
         // line deep. Ball-watchers (swarm ≥ 40) never make it.
-        if (concepts_[slot] & core::kRunInBehind) {
+        if (applies(slot, 5, world.tickCount() / 30)) {
             bool im_most_advanced = true;
             const Fixed64 my_prog = me.pos.x * sgn2;
             for (SlotIndex i = 0; i < world.playerCount(); ++i) {
@@ -646,8 +697,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
 
         // ── back outlet (G4.8): second-nearest sits 8 m goal-side of the
         // carrier — the safety valve that completes the passing triangle.
-        if (closer_to_carrier == 1 &&
-            (concepts_[slot] & core::kBackOutlet)) {
+        if (closer_to_carrier == 1 && applies(slot, 4, world.tickCount() / 30)) {
             out.move.move = seek(
                 me.pos,
                 Vec2{carrier.pos.x - sgn2 * Fixed64::fromInt(8),
@@ -657,7 +707,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         }
 
         const bool im_support =
-            closer_to_carrier == 0 && (concepts_[slot] & core::kSupportSpot);
+            closer_to_carrier == 0 && ratings_[slot][3] > 0;
         if (im_support) {
         const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
         // Candidate spots: 12 m goalward of the carrier, offset ±8 m wide;
@@ -687,9 +737,10 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     // offense is what stops goals" — so the coached attack UN-bunches.
     // In possession, wide-based players hold real width, stretching the
     // defense laterally regardless of the ball-shift pull.
-    if (ours && (concepts_[slot] & core::kSpreadWide) &&
+    if (ours && ratings_[slot][13] > 0 &&
         math::fx_abs(mine.base.y) > Fixed64::fromFraction(40, 100)) {
-        const Fixed64 wide = Fixed64::fromInt(24);
+        const Fixed64 wide = Fixed64::fromInt(10) +
+                             Fixed64::fromInt(16) * degree(slot, 13);
         if (mine.base.y.raw >= 0) {
             if (anchor.y < wide) anchor.y = wide;
         } else {

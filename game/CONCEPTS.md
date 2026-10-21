@@ -29,6 +29,9 @@ touchline laws — [FH] marks engine-original formulations.
 | 12 | `double_team` | Carrier pinned wide → cover man converges; the touchline is the third defender | wide carriers escape 1v1 forever |
 | 13 | `spread_wide` | In possession, wide players HOLD width — the attack un-bunches [FH/James: the offense's bunching is what stops goals] | attack narrows itself into the block |
 | 14 | `give_and_go` | Pass and MOVE: burst beyond your receiver; the 1-2 emerges from his normal pass choice | pass-and-stand |
+| 15 | `push_up` | The line STEPS UP as the ball moves away — stay ≤ ~15 m behind the ball, squeeze the team short [DFB/RB school; James: "white line still too far back"] | a line that only retreats |
+| 16 | `counter_press` | First ~3 s after LOSING the ball: swarm to win it back before organizing [KNVB moment 3 / gegenpress] | jog back and concede the transition |
+| 17 | `balance` | Ball on the far side → weak-side defender tucks toward the centre [FA principles] | stretched square across the back |
 
 ## Build queue (planned; each lands with the behavior that consumes it)
 
@@ -58,6 +61,48 @@ coordination), `tempo_control` (when to kill the game).
 
 **Keeper** — `narrow_angle`, `distribute_quickly` (counter launch),
 `command_box` (crosses — needs aerial balls first).
+
+## Game-model sources — the deep dive
+
+What federations and schools actually teach, mined for registry rows:
+
+- **English FA principles of play** (the 1960s Allen Wade canon, still the
+  spine of every coaching badge): attacking = penetration, support,
+  mobility, WIDTH, creativity; defending = DELAY, cover, BALANCE,
+  compactness, control/restraint. Maps almost 1:1 onto our bits — delay(0),
+  cover(2), support(3), width(13) wired; **balance** (weak-side tuck) and
+  **restraint** (when NOT to dive) are the gaps this pass fills/queues.
+- **KNVB / Dutch school** (van Gaal lineage): the FOUR-MOMENT model —
+  attack, defense, attack→defense transition, defense→attack transition.
+  Our engine has moments 1-2; the TRANSITIONS are where it's thinnest.
+  **counter_press** (the 6-second swarm after losing it) is moment 3's
+  signature concept — wired this pass. Moment 4 (fast break on winning it)
+  queues as `counter_attack`.
+- **German DFB / RB school** (gegenpressing): pressing as the best
+  playmaker; counter-press triggers and PUSH-UP — the line steps WITH the
+  press so the team stays ≤ ~35 m long. **push_up/squeeze** wired this
+  pass (James's live observation: "the white line is still too far back"
+  — the line must step up as the ball advances away, not only retreat).
+- **Belgian FA model** (the 2000s reboot behind the golden generation):
+  1v1 dominance early, zonal play later; age-staged concept introduction —
+  direct validation of the band-bundle idea (concepts arrive by level).
+- **Horst Wein / FUNiño** and **Tom Byer**: game-forms before tactics,
+  technique before game-forms — the u10 bundle SHOULD be nearly empty;
+  what kids lack isn't execution of tactics, it's the concepts themselves.
+- **Positional play school** (La Masia/Pep lineage, via Inverting the
+  Pyramid [Wilson] and Zonal Marking [Cox] for the historical arcs):
+  numerical superiority (our organized test), positional superiority
+  (free man), qualitative superiority (per-player ability vs marker —
+  future matchup logic); zones/half-spaces queue as `occupy_half_space`;
+  `third_man` already queued.
+- **Italian school** (Viscidi's azzurri youth model): defensive line
+  coordination as a TAUGHT skill ladder — step, drop, slide, trap — i.e.
+  our line concepts are genuinely separable bits, not one blob.
+
+Queue additions from the dive: `counter_attack` (moment 4), `restraint`
+(don't dive — the anti-tackle), `occupy_half_space`, `slide_with_ball`
+(lateral line shift), `step_drop_call` (keeper organizes the line),
+`block_height` as an explicit team tactic (high/mid/low — the FSM layer).
 
 ## Compound concepts — interplay IS the next tier [FH/James]
 
@@ -94,8 +139,12 @@ just learned it."
   their band. Per-PERSON persistence (game_player_concepts rows keyed on
   persons.id) lands with team/lobby selection — the mask is the runtime
   form either way.
-- A concept is binary knowledge; HOW WELL it executes stays in ability
-  params and noise. "Knows to switch play, can't hit the pass" = bit 6
+- Knowledge is GRADED 0-100 (James: "implement them on a 0 to 100
+  scale"): the rating is consistency (sustained duties roll noise <
+  rating per application) and magnitude (spatial concepts lerp their
+  distances — push_up squeezes the line 25 m → 12 m across the scale).
+  IMPULSES (dives) keep the eagerness per-tick RATE — rating-as-%/tick on
+  a tackle measured an 8,500-tackle match before that lesson was learned. "Knows to switch play, can't hit the pass" = bit 6
   set, kick_angle_err high. The recognition layer (§5.2 — seeing the cue
   early vs late) is the third axis, still ahead.
 - Teaching loop: a drill/painted scenario targets one concept; completing
