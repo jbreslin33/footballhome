@@ -72,6 +72,34 @@ Fixed64 pointSegmentDistSq(const Vec2& p, const Vec2& a, const Vec2& b) {
     return math::lengthSquared(d);
 }
 
+// Earliest-reach interception of a rolling free ball (G4.14): walk the
+// ball's deterministic friction path in 6-tick strides and aim at the
+// FIRST point the chaser can reach by the time the ball does. Aiming at
+// the ball's current spot is always a step behind; G4.3's naive fixed
+// lead aimed PAST the catchable point and measured worse at every level
+// (negative result recorded) — the bounded scan can do neither.
+Vec2 interceptPoint(const Vec3& my_pos, const Vec3& ball_pos,
+                    const Vec3& ball_vel, Fixed64 my_speed) {
+    Vec2 pos{ball_pos.x, ball_pos.y};
+    Vec2 vel{ball_vel.x, ball_vel.y};
+    Fixed64 t = Fixed64::zero();
+    const Fixed64 stride = core::kTickDt * Fixed64::fromInt(6);
+    for (int step = 0; step < 8; ++step) {  // 48 ticks = 1.6 s lookahead
+        for (int k = 0; k < 6; ++k) {
+            pos = Vec2{pos.x + vel.x * core::kTickDt,
+                       pos.y + vel.y * core::kTickDt};
+            vel = Vec2{vel.x * core::kBallRollDecayPerTick,
+                       vel.y * core::kBallRollDecayPerTick};
+        }
+        t += stride;
+        const Vec2 d{pos.x - my_pos.x, pos.y - my_pos.y};
+        const Fixed64 run = my_speed * t + Fixed64::one();
+        if (math::lengthSquared(d) <= run * run) return pos;
+    }
+    // Not reachable inside the scan: chase where it is, as before.
+    return Vec2{ball_pos.x, ball_pos.y};
+}
+
 }  // namespace
 
 TeamSetup TeamSetup::splitHalves(std::uint8_t slot_count) {
@@ -155,15 +183,17 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     // ── I have the ball: shoot in range; else look for a forward pass
     // ([Buckland]-lite: lane-checked, progress-scored); else dribble ─────
     if (ball.owner && *ball.owner == slot) {
+        const bool im_keeper = world.isKeeper(slot);
         const Vec2 goal{sign >= 0 ? half_x_ : -half_x_, Fixed64::zero()};
         const Vec2 to_goal{goal.x - me.pos.x, goal.y - me.pos.y};
-        if (math::lengthSquared(to_goal) < kShootRange * kShootRange) {
+        if (!im_keeper &&
+            math::lengthSquared(to_goal) < kShootRange * kShootRange) {
             // Placement (G4.3b): aim inside the post AWAY from the
             // keeper's current side — a placed 24 m/s strike beats
             // angle-play positioning; a sprayed one doesn't (level
             // noise decides which you hit).
             Fixed64 aim_y =
-                Fixed64::fromFraction(28, 10) * degree(slot, 8);
+                Fixed64::fromFraction(33, 10) * degree(slot, 8);
             for (SlotIndex i = 0; i < world.playerCount(); ++i) {
                 if (setup_.team_of_slot[i] == setup_.team_of_slot[slot])
                     continue;
@@ -232,7 +262,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         const Fixed64 gain_scale =
             Fixed64::one() - vdeg * Fixed64::fromFraction(6, 10);
         if (have_target &&
-            (pressed ||
+            (pressed || im_keeper ||
              best_progress - my_progress > kEagerGain * jitter * gain_scale)) {
             out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
             // Over the top (§5.2's worked example, playable at last): a
@@ -257,6 +287,34 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                                  ? Action::ShortPass
                                  : Action::GroundKick;
             }
+            return out;
+        }
+
+        // Keeper distribution (G4.14): a keeper NEVER dribbles out — with
+        // no open pass he PUNTS to the emptier wide midfield channel.
+        // The keeper-catch → short-pass-into-the-counter-press →
+        // poke → re-shot loop was the pinball engine behind 1,600
+        // shots/match at top levels; the punt turns a save into a
+        // midfield contest, as in life.
+        if (im_keeper) {
+            const Fixed64 sgn_k = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+            const Fixed64 ch_y = half_y_ * Fixed64::fromFraction(3, 5);
+            int crowd[2] = {0, 0};  // opponents near the left/right channel
+            const Vec2 ch[2] = {Vec2{sgn_k * Fixed64::fromInt(10), -ch_y},
+                                Vec2{sgn_k * Fixed64::fromInt(10), ch_y}};
+            for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
+                    continue;
+                for (int c = 0; c < 2; ++c) {
+                    const Vec2 d{world.player(j).pos.x - ch[c].x,
+                                 world.player(j).pos.y - ch[c].y};
+                    if (math::lengthSquared(d) < Fixed64::fromInt(225))
+                        ++crowd[c];
+                }
+            }
+            const Vec2 target = crowd[0] <= crowd[1] ? ch[0] : ch[1];
+            out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
+            out.action = Action::LoftedKick;
             return out;
         }
 
@@ -307,12 +365,29 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // Sweeping is an ADVANCED keeper concept — U-10 keepers are
         // famously rooted to their line (and two sweeping U-10 keepers
         // measured a 97%-loose swamp: the mechanic itself inverted the
-        // level ladder until gated).
+        // level ladder until gated). G4.14: sweep only when it's
+        // WINNABLE — the harness measured beaten keepers 13-14 m off
+        // their line (every unwinnable sweep vacates the net for the
+        // next 20 m shot). "Is it mine?" is the first judgment a real
+        // keeper makes; margin = 2 m in the keeper's favor required.
         if (!ball.owner && ball_in_my_third &&
             applies(slot, 7, world.tickCount())) {
-            out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
-                                 Fixed64::fromFraction(1, 10));
-            return out;
+            Fixed64 opp_best_sq = Fixed64::fromInt(10000);
+            for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
+                    continue;
+                const Fixed64 d = distSq(world.player(j).pos, seen_ball);
+                if (d < opp_best_sq) opp_best_sq = d;
+            }
+            const Fixed64 my_d =
+                math::length(Vec2{seen_ball.x - me.pos.x,
+                                  seen_ball.y - me.pos.y}) +
+                Fixed64::fromInt(2);
+            if (my_d * my_d < opp_best_sq) {
+                out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
+                                     Fixed64::fromFraction(1, 10));
+                return out;
+            }
         }
         (void)my_depth_limit;
 
@@ -326,7 +401,19 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
              (sign < 0 && ball.vel.x.raw > 0));
         const Fixed64 speed_sq = ball.vel.x * ball.vel.x +
                                  ball.vel.y * ball.vel.y;
-        if (incoming && speed_sq > Fixed64::fromInt(144) &&
+        // Reaction knob (G4.14, THE G4.4 item): the keeper holds his
+        // angle-play spot for the first reaction ticks of a shot's
+        // flight — a placed strike beats the slow-to-move, as in life.
+        const bool reacted =
+            lv.keeper_reaction_ticks <= 0 ||
+            core::kKickAliveTicks - ball.kick_alive >=
+                lv.keeper_reaction_ticks;
+        // The speed gate is about "is it moving", NOT "is it fast": a
+        // 14 m/s youth shot decays to ~7 m/s over 17 m of grass and
+        // arrived UNDER the old 12 m/s gate — u14 keepers watched
+        // tricklers roll past from 3 m away (measured, G4.14). Any
+        // incoming ball on a goalward track gets tracked.
+        if (reacted && incoming && speed_sq > Fixed64::fromInt(16) &&
             math::fx_abs(ball.vel.x) > Fixed64::one()) {
             const Fixed64 flight_t =
                 (anchor.x - seen_ball.x) / ball.vel.x;
@@ -336,6 +423,17 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         if (y > lim) y = lim;
         if (y < -lim) y = -lim;
         anchor.y = y;
+        // A keeper does ONLY keeper things (G4.14): without this return
+        // he fell through into the outfield counter-press and loose-ball
+        // chase branches and hunted balls up to 28 m from goal — the
+        // harness measured beaten keepers 12-14 m off their line. His
+        // ball-winning is the gated sweep and dive-lite above, full stop.
+        // Arrive radius 0.5 m, NOT the shared 1.5 m: hands reach 1.2 m,
+        // so the generic radius left a dead band where he stood still
+        // and watched the ball pass 1.3 m away (measured: beaten keepers
+        // 2.4 m off the crossing point with the shot aimed 1 m out).
+        out.move.move = seek(me.pos, anchor, Fixed64::fromFraction(1, 2));
+        return out;
     }
 
     const bool ours =
@@ -541,7 +639,20 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 // STEP / loose-ball race: through the ball (arrive radius
                 // far below capture radius — the harness's first catch);
                 // dive in when the carried ball is inside tackle reach.
-                out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
+                // A rolling FREE ball is met at the earliest-reach point
+                // on its friction path (closing-speed interception,
+                // G4.14); a carried or flying ball is chased directly.
+                Vec2 chase_to{seen_ball.x, seen_ball.y};
+                // intercept (bit 20, skill class): the coached read.
+                // Ungated it measured u10 22 goals (loose-ball mobs
+                // arriving in sync) and world 1.9 (airtight) — the read
+                // is TAUGHT, so it rolls per second like other duties.
+                if (!ball.owner &&
+                    ball.pos.z < Fixed64::fromFraction(1, 2) &&
+                    applies(slot, 20, world.tickCount() / 30))
+                    chase_to = interceptPoint(me.pos, seen_ball, ball.vel,
+                                              Fixed64::fromInt(6));
+                out.move.move = seek(me.pos, chase_to,
                                      Fixed64::fromFraction(1, 10));
                 if (ball.owner &&
                     distSq(me.pos, ball.pos) <

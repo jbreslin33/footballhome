@@ -188,11 +188,11 @@ same DB registries and never touches the match engine.
 
 | # | Adds | Exit gate (playability checkpoint) | Status |
 |---|---|---|---|
-| **G0** | Protocol v1 handshake + intents/snapshots; fixed-point core (port Fixed64/FixedMath/TrigLUT concepts from v1); tick loop; WebSocket server; `make game-deploy` container test gate; Three.js client: pitch + one movable player | **You move a player around a 3D pitch from your phone.** Walking skeleton — every later slice lands inside it | not started |
-| **G1** | 3D ball: dribble, ground pass, lofted kick, bounce; goal detection; first determinism goldens | **Kickabout**: dribble and shoot on a goal; two humans pass | not started |
-| **G2** | Parameterized `MatchScenario`; formation anchoring; team possession state; utility-AI roles; calibration harness v0 (headless client, max-speed); standing 3v3 golden | **Playable 3v3 vs AI** — first real game | not started |
-| **G3** | 22 slots; GK behaviors; restarts (kickoff, throw-in, goal-kick, corner — no offside/fouls); score/clock/halves; player switching | **Full 11v11 vs AI in the browser — THE PROTOTYPE** | not started |
-| **G4** | Calibration CI gates live; level bands (youth→world cup) via attribute distributions + noise scaling; touch-control + camera polish | Realistic, level-aware 11v11 that fails CI if it goes arcadey | not started |
+| **G0** | Protocol v1 handshake + intents/snapshots; fixed-point core (port Fixed64/FixedMath/TrigLUT concepts from v1); tick loop; WebSocket server; `make game-deploy` container test gate; Three.js client: pitch + one movable player | **You move a player around a 3D pitch from your phone.** Walking skeleton — every later slice lands inside it | **done** (10/21) |
+| **G1** | 3D ball: dribble, ground pass, lofted kick, bounce; goal detection; first determinism goldens | **Kickabout**: dribble and shoot on a goal; two humans pass | **done** (10/21) |
+| **G2** | Parameterized `MatchScenario`; formation anchoring; team possession state; utility-AI roles; calibration harness v0 (headless client, max-speed); standing 3v3 golden | **Playable 3v3 vs AI** — first real game | **done** (10/21) |
+| **G3** | 22 slots; GK behaviors; restarts (kickoff, throw-in, goal-kick, corner — no offside/fouls); score/clock/halves; player switching | **Full 11v11 vs AI in the browser — THE PROTOTYPE** | **done** (10/21) |
+| **G4** | Calibration CI gates live; level bands (youth→world cup) via attribute distributions + noise scaling; touch-control + camera polish | Realistic, level-aware 11v11 that fails CI if it goes arcadey | **in progress** (G4.1-G4.14; CI gate LIVE) |
 | **G5** | Manager mode v0: tactical intents live (subs, formation, tactic state); fast-forward; AI-vs-AI spectating | **Watch your lineup play your tactic, FM-style** | not started |
 | **G6+** | Drills as `MatchScenario` configs (2v1, 4v2 press…); coach-painted scenarios; replay viewer; desktop client; WASM offline | Teaching library + client family | not started |
 
@@ -390,7 +390,7 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
   (perfect 10→394) — proper closing-speed interception is its own slice.
   Ordering note: G4.2b (per-person profiles) deferred until slots map to
   persons (team/lobby selection) — it had no consumer yet.
-- G4.4 [~] (2026-10-21, in progress) Defense-as-structure + keeper hands +
+- G4.4 [x] (2026-10-21; closed by G4.14) Defense-as-structure + keeper hands +
   touch quality. James's two laws drove the slice: **"the thing that stops
   goals really is the bunching"** and **"the swarming of defense and the
   bunching of the offense is what stops goals."** Shipped mechanics:
@@ -407,10 +407,10 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
   attack AND barricades its goal — shape discipline IS a skill).
   **Measured ladder (mirrors, 90 min): perfect 0 / world 0.5 / semipro
   9.5 / amateur 26 / u10 58 goals per game.** Sandbox = semipro (3-4 and
-  8-4 scorelines). Remaining for the [x]: keeper reaction-time knob so
-  top-level placed shots score at xG-like rates (perfect 0-0 forever is
-  airtight, not realistic), interception closing-speed math, possession
-  metric (flight → last-touch team), then the CI assertion bands.
+  8-4 scorelines). The four items that were owed for this [x] — keeper
+  reaction-time knob, interception closing-speed math, possession metric
+  (flight → last-touch team), CI assertion bands — all landed in G4.14
+  (§8.9).
 
 ### 8.6 G4.8 — the attack learns to run, and soccer reinvents offside
 
@@ -476,6 +476,61 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
 - Edit mode grew the preset bar: dropdown + → H / → A — a coach paints a
   team identity in one tap. DB down = no PRESETS frame, bar stays hidden;
   goldens untouched (presets only act when applied).
+
+### 8.9 G4.14 — the sweep that found the keeper, G4.4 closed
+
+The G4.11 grading had quietly INVERTED the ladder (measured at slice
+start: pro 37 / world 30 / u10 30 goals per game) — three slices of
+golden-gated work never noticed, which is exactly why the calibration CI
+gate exists. Diagnosis was instrumentation, not nudging: the harness grew
+possession-by-last-touch (the G4.1 metric gap, closed), shots + goal
+anatomy (breakaway flag, scoring distance, PRE-TICK keeper geometry — the
+Goal event fires after the kickoff reset and the first readings were
+reset-state garbage), and dial-override args for no-recompile sweeps.
+
+What the instruments found, in order:
+- **Keepers were the whole inversion.** Beaten keepers measured 12-14 m
+  off their line: the keeper block never `return`ed, so keepers fell
+  through into the outfield counter-press/chase branches and hunted balls
+  28 m upfield. The one-line fix (keepers do ONLY keeper things) took
+  world 32 → 0.7 overnight. Supporting fixes: sweep gated on WINNABLE
+  ("is it mine?" — keeper must beat the nearest opponent by 2 m), and the
+  keeper's arrive radius cut 1.5 → 0.5 m (hands reach 1.2 m; the shared
+  radius left a dead band where he stood watching the ball pass).
+- **u14 keepers watched tricklers roll in**: a 14 m/s youth shot decays
+  to ~7 m/s over 17 m of grass, arriving UNDER dive-lite's 12 m/s "is a
+  shot" gate. The gate now asks "is it moving goalward" (4 m/s).
+- **Keeper parry**: a beaten-control keeper's bobble was direction-
+  preserving — u14 keepers deflected 23% of shots into their own net.
+  Parries now always push away from goal.
+- **Keeper reaction knob** (the owed G4.4 item): `keeper_reaction_ticks`
+  per band — the keeper holds his angle-play spot for the first reaction
+  ticks of a shot's flight. Physiological values (world 8 ticks ≈ 0.27 s
+  … u10 18). Brain-side dial, deliberately NOT in the canonical hash.
+- **Strike power is a skill**: shot speed caps at the band's
+  control_speed + 6 (a U-10 "blast" is 12 m/s); kShotSpeed restored to
+  24 m/s — above the 20 m/s outfield capture cap, so only keepers can
+  handle a top-band strike. Placement aims 3.3 m inside the post.
+- **Closing-speed interception** (the owed G4.3 negative-result redo):
+  earliest-reach point on the ball's friction path, bounded 48-tick scan
+  (can't aim past the catchable point, unlike the fixed-lead that
+  measured worse). Ungated it re-broke the ladder both ways (u10 22,
+  world 1.9), so it landed as concept bit 20 `intercept` — graded,
+  per-second rolls, in the swarm<40 bundle.
+- **Keeper distribution**: keepers never dribble out; open pass at ANY
+  gain, else PUNT to the emptier wide midfield channel.
+
+**Locked ladder (12-match 90-min mirrors, 2026-10-21): u10 12.7 /
+u14 14.7 / amateur 9.1 / semipro 2.6 / pro 2.8 / world 2.2 /
+perfect 0.8 goals/game** — first-ever realistic magnitudes (real-world
+anchor 2.7; prior best had world at 17). u10/u14 are adjacent chaos
+bands within noise of each other; the top three sit AT the anchor.
+`test_calibration_bands` (ctest, ~25 s, 4-match samples) asserts the
+ladder's SHAPE — u10 ∈ [6,25], amateur ∈ [4,16], world ∈ [0.5,6],
+u10 > amateur > world, u10 ≥ 2×world — so the next silent inversion
+fails the build instead of waiting three slices. AI goldens re-locked
+(3v3 0x711f559f…, 11v11 0x694fffef…); zero-param determinism goldens
+untouched.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

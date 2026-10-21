@@ -122,6 +122,9 @@ public:
     // Transition clock (G4.11): which team LOST the ball last, and when.
     std::uint8_t lastLosingTeam() const noexcept { return losing_team_; }
     std::uint64_t turnoverTick() const noexcept { return turnover_tick_; }
+    // Which team touched the ball last — a ball in flight still "belongs"
+    // to its kicker's team for possession accounting (G4.1 metric gap).
+    std::uint8_t lastTouchTeam() const noexcept { return last_touch_team_; }
     math::Fixed64 pitchHalfX() const noexcept { return half_x_; }
     math::Fixed64 pitchHalfY() const noexcept { return half_y_; }
 

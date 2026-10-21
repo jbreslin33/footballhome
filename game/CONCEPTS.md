@@ -34,6 +34,7 @@ touchline laws — [FH] marks engine-original formulations.
 | 17 | `balance` | Ball on the far side → weak-side defender tucks toward the centre [FA principles] | stretched square across the back |
 | 18 | `man_orientation` [S] | Mark YOUR man tight and FOLLOW him, anywhere [Bielsa/Gasperini]; 0 = zonal goal-side marking | positional/zonal marking only |
 | 19 | `verticality` [S] | Play forward FIRST: accept tighter lanes, lower the gain threshold [Bielsa/Zeman]; 0 = safe-side selection | sideways-safe passing |
+| 20 | `intercept` | Read the pass: meet a rolling free ball at the earliest-reach point on its friction path (G4.14; rolls per second) | chase the ball's current spot, always a step behind |
 
 ## Build queue (planned; each lands with the behavior that consumes it)
 

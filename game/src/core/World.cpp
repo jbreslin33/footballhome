@@ -250,7 +250,18 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 const Fixed64 v = kGroundKickSpeed * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (act == Action::Shot) {
-                const Fixed64 v = kShotSpeed * power_scale;
+                // Strike power is a SKILL (G4.14): a level's hardest shot
+                // is its control speed + 6 — you can't strike what you
+                // can't control. A U-10 "blast" is 12 m/s (his own
+                // keeper's hands cap); only the top bands hit the full
+                // 24 m/s that outfielders (cap 20) can't even touch.
+                Fixed64 top = kShotSpeed;
+                if (lv.control_speed_mps > 0) {
+                    const Fixed64 ceil =
+                        Fixed64::fromInt(lv.control_speed_mps + 6);
+                    if (ceil < top) top = ceil;
+                }
+                const Fixed64 v = top * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (act == Action::ShortPass) {
                 const Fixed64 v = kShortPassSpeed * power_scale;
@@ -401,9 +412,20 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             const Fixed64 c = math::fx_cos(ang);
             const Fixed64 sn = math::fx_sin(ang);
             const Vec2 v{ball_.vel.x, ball_.vel.y};
-            ball_.vel = Vec3{(v.x * c - v.y * sn) * kBobbleKeep,
-                             (v.x * sn + v.y * c) * kBobbleKeep,
-                             Fixed64::zero()};
+            Vec2 defl{(v.x * c - v.y * sn) * kBobbleKeep,
+                      (v.x * sn + v.y * c) * kBobbleKeep};
+            // A keeper's bobble is a PARRY (G4.14): he pushes the ball
+            // away from his goal, never through himself into it — the
+            // direction-preserving deflection had u14 keepers parrying
+            // 23% of shots into their own net (measured).
+            if (keeper_[best]) {
+                const bool home = players_[best].team == 0;
+                // Team 0 defends -x: the parry must carry +x, and vice
+                // versa.
+                if (home ? defl.x.raw < 0 : defl.x.raw > 0)
+                    defl.x = -defl.x;
+            }
+            ball_.vel = Vec3{defl.x, defl.y, Fixed64::zero()};
             ball_.pos.z = Fixed64::zero();
             ball_.last_kicker = best;
             ball_.kicker_lockout = kBobbleLockoutTicks;

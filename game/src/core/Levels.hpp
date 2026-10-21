@@ -44,12 +44,18 @@ struct LevelParams {
     // which BOTH crowds the defense (bodies stop goals) and bunches the
     // offense (no space to attack) — §5.1's 1860s end of the ladder.
     std::int32_t swarm_pct = 0;
+    // Keeper reaction (G4.14, the G4.4 knob): ticks of shot flight before
+    // the keeper's dive-lite starts tracking the actual trajectory — until
+    // then he holds his angle-play spot. 0 = instant (the baseline every
+    // earlier golden locks). Brain-side dial: deliberately NOT in the
+    // canonical hash (the hash sees its effects through the intents).
+    std::int32_t keeper_reaction_ticks = 0;
 
     bool isZero() const noexcept {
         return perception_delay_ticks == 0 && kick_angle_err_deg == 0 &&
                kick_power_err_pct == 0 && decision_jitter_pct == 0 &&
                control_speed_mps == 0 && swarm_pct == 0 &&
-               tackle_success_pct == 0;
+               tackle_success_pct == 0 && keeper_reaction_ticks == 0;
     }
 };
 
@@ -71,12 +77,12 @@ inline std::uint8_t levelId(std::string_view name) {
 // ERAS join these bands when concepts/recognitions land in G4.2b+).
 // Numbers are first-pass; the calibration harness tunes them.
 inline LevelParams levelParams(std::string_view name) {
-    if (name == "u10")     return {18, 18, 25, 60, 6, 30, 80};  // the amoeba
-    if (name == "u14")     return {12, 11, 18, 40, 8, 35, 55};
-    if (name == "amateur") return {7, 6, 10, 25, 10, 42, 30};  // Sunday league
-    if (name == "semipro") return {4, 3, 6, 12, 13, 50, 12};
-    if (name == "pro")     return {2, 2, 3, 5, 16, 60, 4};
-    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0};
+    if (name == "u10")     return {18, 18, 25, 60, 6, 30, 80, 18};  // amoeba
+    if (name == "u14")     return {12, 13, 18, 40, 8, 35, 55, 14};
+    if (name == "amateur") return {7, 6, 10, 25, 10, 42, 30, 6};  // Sunday
+    if (name == "semipro") return {4, 3, 6, 12, 13, 50, 12, 14};
+    if (name == "pro")     return {2, 2, 3, 5, 16, 60, 4, 11};
+    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0, 8};
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 
@@ -104,14 +110,16 @@ enum Concept : std::uint32_t {
     // schools (Bielsa etc.) are preset vectors over these + the rest.
     kManOrientation  = 1u << 18,  // mark YOUR man, follow him anywhere
     kVerticality     = 1u << 19,  // forward first; accept tighter lanes
+    kInterceptRead   = 1u << 20,  // read the pass: earliest-reach cutoff
 };
-inline constexpr std::uint32_t kAllConcepts = (1u << 20) - 1;
+inline constexpr std::uint32_t kAllConcepts = (1u << 21) - 1;
 inline constexpr const char* kConceptNames[] = {
     "delay", "marking", "cover", "support", "outlet",
     "runs", "over-top", "sweep", "placement", "line-hold",
     "jockey-angle", "recover", "double-team", "width", "give-and-go",
-    "push-up", "counter-press", "balance", "man-mark", "verticality"};
-inline constexpr int kConceptCount = 20;
+    "push-up", "counter-press", "balance", "man-mark", "verticality",
+    "intercept"};
+inline constexpr int kConceptCount = 21;
 
 // ── Graded knowledge (James: "implement them on a 0 to 100 scale") ─────
 // A rating is CONSISTENCY + MAGNITUDE in one number: branch concepts roll
@@ -143,7 +151,7 @@ inline std::uint32_t conceptBundle(const LevelParams& lv) {
         m |= kDelayTransition | kManMarking | kBackOutlet | kRunInBehind |
              kPlayOverTop | kKeeperSweep | kJockeyAngle | kRecoverGoalSide |
              kDoubleTeam | kSpreadWide | kGiveAndGo | kPushUp |
-             kCounterPress | kBalance;
+             kCounterPress | kBalance | kInterceptRead;
     }
     return m;
 }

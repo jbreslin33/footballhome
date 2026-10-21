@@ -88,7 +88,7 @@ inline const math::Fixed64 kShortPassSpeed   = math::Fixed64::fromInt(8);
 // hands (cap 26) handle it cleanly. 24 was measured to produce uncatchable
 // pinball (564 goals/game perfect, 99% loose mixed) — G4.4 owns the full
 // shot/save statistical model.
-inline const math::Fixed64 kShotSpeed        = math::Fixed64::fromInt(18);
+inline const math::Fixed64 kShotSpeed        = math::Fixed64::fromInt(24);
 inline const math::Fixed64 kLoftKickSpeed   = math::Fixed64::fromInt(12);
 inline const math::Fixed64 kLoftKickRise    = math::Fixed64::fromInt(6);
 

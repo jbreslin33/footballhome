@@ -30,7 +30,7 @@
                     'runs', 'over-top', 'sweep', 'placement', 'line-hold',
                     'jockey-angle', 'recover', 'double-team', 'width',
                     'give-and-go', 'push-up', 'counter-press', 'balance',
-                    'man-mark', 'verticality'];
+                    'man-mark', 'verticality', 'intercept'];
 
   const LEVELS = ['perfect', 'u10', 'u14', 'amateur', 'semipro', 'pro', 'world'];
 
