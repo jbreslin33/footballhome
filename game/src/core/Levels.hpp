@@ -28,10 +28,20 @@ struct LevelParams {
     std::int32_t kick_power_err_pct = 0;
     // Decision: jitter (percent) applied to pass/chase thresholds.
     std::int32_t decision_jitter_pct = 0;
+    // Touch: fastest ball (m/s) this level can control first-time.
+    // 0 = perfect (engine capture cap applies). A faster ball than this
+    // bobbles off the touch instead of sticking.
+    std::int32_t control_speed_mps = 0;
+    // Shape discipline [FH, James's law]: percent of swarm-to-the-ball in
+    // everyone's positioning. 0 = positional play; high = the U-10 amoeba,
+    // which BOTH crowds the defense (bodies stop goals) and bunches the
+    // offense (no space to attack) — §5.1's 1860s end of the ladder.
+    std::int32_t swarm_pct = 0;
 
     bool isZero() const noexcept {
         return perception_delay_ticks == 0 && kick_angle_err_deg == 0 &&
-               kick_power_err_pct == 0 && decision_jitter_pct == 0;
+               kick_power_err_pct == 0 && decision_jitter_pct == 0 &&
+               control_speed_mps == 0 && swarm_pct == 0;
     }
 };
 
@@ -39,12 +49,12 @@ struct LevelParams {
 // ERAS join these bands when concepts/recognitions land in G4.2b+).
 // Numbers are first-pass; the calibration harness tunes them.
 inline LevelParams levelParams(std::string_view name) {
-    if (name == "u10")     return {18, 18, 25, 60};  // sees late, sprays it
-    if (name == "u14")     return {12, 11, 18, 40};
-    if (name == "amateur") return {7, 6, 10, 25};    // decent Sunday league
-    if (name == "semipro") return {4, 3, 6, 12};
-    if (name == "pro")     return {2, 2, 3, 5};
-    if (name == "world")   return {1, 1, 2, 2};
+    if (name == "u10")     return {18, 18, 25, 60, 6, 80};  // the amoeba
+    if (name == "u14")     return {12, 11, 18, 40, 8, 55};
+    if (name == "amateur") return {7, 6, 10, 25, 10, 30};  // Sunday league
+    if (name == "semipro") return {4, 3, 6, 12, 13, 12};
+    if (name == "pro")     return {2, 2, 3, 5, 16, 4};
+    if (name == "world")   return {1, 1, 2, 2, 18, 0};
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 

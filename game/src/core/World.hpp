@@ -28,6 +28,7 @@ enum class Action : std::uint8_t {
     GroundKick = 1,  // 14 m/s — drive / long pass / shot
     LoftedKick = 2,  // 12 m/s + rise — chip / clearance
     ShortPass  = 3,  // 8 m/s — feet-to-feet inside ~15 m (G4 passing)
+    Shot       = 4,  // 24 m/s — a real strike; outfielders can't catch it
 };
 
 struct PlayerState {
@@ -78,6 +79,8 @@ public:
     void placePlayer(SlotIndex slot, const math::Vec3& pos,
                      const math::Vec2& face);
     void setTeam(SlotIndex slot, std::uint8_t team);
+    void setKeeper(SlotIndex slot, bool keeper);
+    bool isKeeper(SlotIndex slot) const { return keeper_[slot]; }
     // Skill-noise config (G4.3). Zero params (the default) = perfect
     // execution; every pre-G4.3 golden locks that baseline.
     void setLevel(std::uint8_t team, const LevelParams& params);
@@ -116,6 +119,7 @@ private:
     std::vector<PlayerState> players_;
     std::vector<MoveIntent>  intents_;
     std::vector<Action>      actions_;
+    std::vector<bool>        keeper_;
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};
     Clock clock_;

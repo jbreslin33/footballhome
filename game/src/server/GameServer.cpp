@@ -49,6 +49,13 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
                               Fixed64::zero()};
         world_.placePlayer(i, math::Vec3{x, y, Fixed64::zero()}, face);
         world_.setTeam(i, home ? 0 : 1);
+        // Keeper flag from the formation spec (hands + angle play).
+        const ai::FormationSpec& spec =
+            home ? (cfg_.formation_home.valid(per_team) ? cfg_.formation_home
+                                                        : ai::builtinFormation(per_team))
+                 : (cfg_.formation_away.valid(per_team) ? cfg_.formation_away
+                                                        : ai::builtinFormation(per_team));
+        world_.setKeeper(i, spec.positions[k].keeper);
     }
 }
 

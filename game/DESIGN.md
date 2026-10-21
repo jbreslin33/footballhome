@@ -390,8 +390,27 @@ G4's job (GK hands, passing, shot noise, touch quality all precede tuning).
   (perfect 10→394) — proper closing-speed interception is its own slice.
   Ordering note: G4.2b (per-person profiles) deferred until slots map to
   persons (team/lobby selection) — it had no consumer yet.
-- G4.4 [ ] Calibration CI gates: assert bands on goals/game, possession,
-  pass counts once mechanics settle.
+- G4.4 [~] (2026-10-21, in progress) Defense-as-structure + keeper hands +
+  touch quality. James's two laws drove the slice: **"the thing that stops
+  goals really is the bunching"** and **"the swarming of defense and the
+  bunching of the offense is what stops goals."** Shipped mechanics:
+  keeper hands (1.2 m reach, 2.2 m height, +6 m/s hands bonus, high-ball
+  catch) + angle play + dive-lite (fast incoming ball → track its actual
+  trajectory); touch quality (ball faster than your level's control speed
+  bobbles off the first touch, ±60° noise deflection — receiving and
+  intercepting degrade together); Shot action (18 m/s — 24 measured as
+  uncatchable pinball, reverted) with far-corner placement away from the
+  keeper; defensive SHAPE — compactness cap (no anchor >10 m upfield of
+  the ball), back-line depth cover (track the deepest runner, no offside
+  law yet), cover man (2nd-closest sits on the ball→goal line 7 m
+  goal-side); and the swarm_pct level dial (the U-10 amoeba crowds its own
+  attack AND barricades its goal — shape discipline IS a skill).
+  **Measured ladder (mirrors, 90 min): perfect 0 / world 0.5 / semipro
+  9.5 / amateur 26 / u10 58 goals per game.** Sandbox = semipro (3-4 and
+  8-4 scorelines). Remaining for the [x]: keeper reaction-time knob so
+  top-level placed shots score at xG-like rates (perfect 0-0 forever is
+  airtight, not realistic), interception closing-speed math, possession
+  metric (flight → last-touch team), then the CI assertion bands.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

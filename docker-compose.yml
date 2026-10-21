@@ -237,8 +237,8 @@ services:
       GAME_FORMATION_HOME: "4-4-2"
       GAME_FORMATION_AWAY: "4-3-3"
       # Skill bands (G4.3): u10|u14|amateur|semipro|pro|world|perfect.
-      GAME_LEVEL_HOME: "world"
-      GAME_LEVEL_AWAY: "world"
+      GAME_LEVEL_HOME: "semipro"
+      GAME_LEVEL_AWAY: "semipro"
       GAME_MATCH_SEED: "42"
       POSTGRES_HOST: footballhome_db
       POSTGRES_DB: footballhome

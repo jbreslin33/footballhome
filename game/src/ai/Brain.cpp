@@ -100,6 +100,19 @@ Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y,
                                     : builtinFormation(count[1]);
 }
 
+int Brain::teamCloserCount(SlotIndex slot, const World& world,
+                           const Vec3& target) const {
+    const Fixed64 mine = distSq(world.player(slot).pos, target);
+    int closer = 0;
+    for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+        if (i == slot) continue;
+        if (setup_.team_of_slot[i] != setup_.team_of_slot[slot]) continue;
+        const Fixed64 d = distSq(world.player(i).pos, target);
+        if (d < mine || (d == mine && i < slot)) ++closer;
+    }
+    return closer;
+}
+
 bool Brain::isTeamClosest(SlotIndex slot, const World& world,
                           const Vec3& target) const {
     const Fixed64 mine = distSq(world.player(slot).pos, target);
@@ -144,8 +157,21 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         const Vec2 goal{sign >= 0 ? half_x_ : -half_x_, Fixed64::zero()};
         const Vec2 to_goal{goal.x - me.pos.x, goal.y - me.pos.y};
         if (math::lengthSquared(to_goal) < kShootRange * kShootRange) {
-            out.move.move = seek(me.pos, goal, kArriveRadius);
-            out.action = Action::GroundKick;  // shot
+            // Placement (G4.3b): aim inside the post AWAY from the
+            // keeper's current side — a placed 24 m/s strike beats
+            // angle-play positioning; a sprayed one doesn't (level
+            // noise decides which you hit).
+            Fixed64 aim_y = Fixed64::fromFraction(28, 10);
+            for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+                if (setup_.team_of_slot[i] == setup_.team_of_slot[slot])
+                    continue;
+                if (!world.isKeeper(i)) continue;
+                if (world.player(i).pos.y.raw > 0) aim_y = -aim_y;
+                break;
+            }
+            out.move.move =
+                seek(me.pos, Vec2{goal.x, aim_y}, kArriveRadius);
+            out.action = Action::Shot;
             return out;
         }
 
@@ -224,14 +250,107 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     // My formation anchor (ball-shifted), the default duty.
     const FormationSpec::Pos& mine =
         spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]];
-    const Vec2 anchor = anchorFor(mine.base, sign, seen_ball, half_x_,
-                                  half_y_, mine.keeper);
+    Vec2 anchor = anchorFor(mine.base, sign, seen_ball, half_x_,
+                            half_y_, mine.keeper);
+    if (mine.keeper) {
+        // Angle play (G4.3b): stand where the ball→goal-centre line
+        // crosses the keeper's x, so central shots meet hands. Division
+        // is guarded (ball at the goal line exactly → hold centre).
+        const Fixed64 goal_x =
+            sign >= 0 ? -half_x_ : half_x_;  // MY goal is behind me
+        const Fixed64 denom = seen_ball.x - goal_x;
+        Fixed64 y = Fixed64::zero();
+        if (math::fx_abs(denom) > Fixed64::one()) {
+            const Fixed64 t = (anchor.x - goal_x) / denom;
+            y = seen_ball.y * t;
+        }
+        // Dive-lite (G4.3b): a FAST free ball coming at my goal is a
+        // shot — track where its actual trajectory crosses my x, not
+        // the centre line. Perception delay makes slow keepers read it
+        // late, which is exactly how levels should feel.
+        const bool incoming =
+            !ball.owner &&
+            ((sign >= 0 && ball.vel.x.raw < 0) ||
+             (sign < 0 && ball.vel.x.raw > 0));
+        const Fixed64 speed_sq = ball.vel.x * ball.vel.x +
+                                 ball.vel.y * ball.vel.y;
+        if (incoming && speed_sq > Fixed64::fromInt(144) &&
+            math::fx_abs(ball.vel.x) > Fixed64::one()) {
+            const Fixed64 flight_t =
+                (anchor.x - seen_ball.x) / ball.vel.x;
+            y = seen_ball.y + ball.vel.y * flight_t;
+        }
+        const Fixed64 lim = Fixed64::fromInt(6);
+        if (y > lim) y = lim;
+        if (y < -lim) y = -lim;
+        anchor.y = y;
+    }
 
-    // ── loose ball: nearest teammate goes for it ────────────────────────
-    // ── their ball: nearest teammate presses the carrier ────────────────
     const bool ours =
         ball.owner && setup_.team_of_slot[*ball.owner] ==
                           setup_.team_of_slot[slot];
+
+    // ── defensive shape (G4.4, James's law: "the thing that stops goals
+    // really is the bunching") ──────────────────────────────────────────
+    // Without the ball, the SHAPE defends, not the keeper:
+    //   1. Compactness: nobody holds an anchor more than ~10 m upfield of
+    //      the ball — the whole block drops goal-side as play advances.
+    //   2. Depth cover: the back line (deep bases) tracks the deepest
+    //      opponent, killing the run in behind (no offside law yet, so
+    //      the last man MUST mind the space).
+    //   3. Cover man: the second-closest defender sits on the ball→goal
+    //      line ~7 m goal-side of the ball — a beaten press is met by
+    //      cover, not a breakaway.
+    if (!ours && !mine.keeper) {
+        const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+        // My goal is at -sgn * half_x. "Deep" = small x*sgn.
+        // 1. Compactness cap: anchor_x*sgn <= ball_x*sgn + 10.
+        const Fixed64 press_line = seen_ball.x * sgn + Fixed64::fromInt(10);
+        if (anchor.x * sgn > press_line) {
+            anchor.x = press_line * sgn;
+        }
+        // 2. Depth cover for the back line (bases at or behind -55%):
+        //    stay goal-side of the deepest opponent by 2 m.
+        if (mine.base.x <= Fixed64::fromFraction(-55, 100)) {
+            Fixed64 deepest = Fixed64::fromInt(1000);  // in x*sgn terms
+            for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
+                    continue;
+                const Fixed64 depth = world.player(j).pos.x * sgn;
+                if (depth < deepest) deepest = depth;
+            }
+            const Fixed64 cover = deepest - Fixed64::fromInt(2);
+            if (anchor.x * sgn > cover) anchor.x = cover * sgn;
+            // Never retreat into the goal itself.
+            const Fixed64 floor_x = -(half_x_ - Fixed64::fromInt(4));
+            if (anchor.x * sgn < floor_x) anchor.x = floor_x * sgn;
+        }
+        // 3. Cover man: second-closest to the ball shadows the ball→goal
+        //    line, 7 m goal-side.
+        if (teamCloserCount(slot, world, seen_ball) == 1) {
+            const Vec2 own_goal{-sgn * half_x_, Fixed64::zero()};
+            const Vec2 to_goal{own_goal.x - seen_ball.x,
+                               own_goal.y - seen_ball.y};
+            const Fixed64 len = math::length(to_goal);
+            if (len > Fixed64::fromInt(1)) {
+                const Fixed64 k = Fixed64::fromInt(7) / len;
+                anchor = Vec2{seen_ball.x + to_goal.x * k,
+                              seen_ball.y + to_goal.y * k};
+            }
+        }
+    }
+
+    // ── swarm (G4.4, James's law #2): low-discipline levels collapse
+    // toward the ball in BOTH phases — crowding their own attack and
+    // accidentally barricading their goal. Keepers exempt.
+    if (lv.swarm_pct > 0 && !mine.keeper) {
+        const Fixed64 f = Fixed64::fromFraction(lv.swarm_pct, 100);
+        anchor = Vec2{anchor.x + (seen_ball.x - anchor.x) * f,
+                      anchor.y + (seen_ball.y - anchor.y) * f};
+    }
+
+    // ── loose ball: nearest teammate goes for it ────────────────────────
+    // ── their ball: nearest teammate presses the carrier ────────────────
     // Opponent's dead ball (G3.2): we can't touch it — hold shape and
     // defend the restart instead of crowding an untakeable ball.
     const std::uint8_t restart = world.restartTeam();
@@ -240,7 +359,10 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     if (!ours && !opponents_restart) {
         const bool in_range =
             distSq(me.pos, seen_ball) < kChaseRadius * kChaseRadius;
-        if (in_range && isTeamClosest(slot, world, seen_ball)) {
+        // Swarmy teams send a MOB at the ball, not one presser.
+        const int max_chasers = 1 + lv.swarm_pct / 20;
+        if (in_range &&
+            teamCloserCount(slot, world, seen_ball) < max_chasers) {
             // Run THROUGH the (perceived) ball: arrive radius far below
             // the capture radius, or the chaser stops forever just out of
             // reach (the harness's first catch). A naive fixed-lead

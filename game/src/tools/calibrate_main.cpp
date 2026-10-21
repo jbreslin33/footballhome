@@ -68,6 +68,7 @@ int main(int argc, char** argv) {
                                               : -Fixed64::one(),
                                          Fixed64::zero()});
             world.setTeam(i, home ? 0 : 1);
+            world.setKeeper(i, ai::builtinFormation(per_team).positions[k].keeper);
         }
 
         int score[2] = {0, 0};

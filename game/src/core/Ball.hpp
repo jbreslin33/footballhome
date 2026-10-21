@@ -59,12 +59,27 @@ inline const math::Fixed64 kBallControlRadius = math::Fixed64::fromFraction(1, 2
 // with attributes in G4.
 inline const math::Fixed64 kCaptureMaxSpeed = math::Fixed64::fromInt(20);
 
+// Keeper hands: a designated keeper claims the ball in a wider radius
+// (dive/reach), higher (jump), and controls faster balls (+ hands bonus).
+inline const math::Fixed64 kKeeperReach = math::Fixed64::fromFraction(6, 5);
+inline const math::Fixed64 kKeeperReachZ = math::Fixed64::fromFraction(11, 5);
+inline const math::Fixed64 kKeeperHandsBonus = math::Fixed64::fromInt(6);
+// A failed first touch deflects the ball at this fraction of its speed.
+inline const math::Fixed64 kBobbleKeep = math::Fixed64::fromFraction(2, 5);
+inline constexpr int kBobbleLockoutTicks = 8;
+
 // [v1] glue distance (m): carried ball sits this far ahead of the owner.
 inline const math::Fixed64 kBallCarryLead = math::Fixed64::fromFraction(2, 5);
 
 // Kick powers (m/s). Preset in G1; pass_power attributes arrive G2.
 inline const math::Fixed64 kGroundKickSpeed = math::Fixed64::fromInt(14);
 inline const math::Fixed64 kShortPassSpeed   = math::Fixed64::fromInt(8);
+// A struck shot. 18 m/s: inside the outfield capture cap (20), so a body
+// in the way blocks it (usually as a bobble, via control limits); keeper
+// hands (cap 26) handle it cleanly. 24 was measured to produce uncatchable
+// pinball (564 goals/game perfect, 99% loose mixed) — G4.4 owns the full
+// shot/save statistical model.
+inline const math::Fixed64 kShotSpeed        = math::Fixed64::fromInt(18);
 inline const math::Fixed64 kLoftKickSpeed   = math::Fixed64::fromInt(12);
 inline const math::Fixed64 kLoftKickRise    = math::Fixed64::fromInt(6);
 

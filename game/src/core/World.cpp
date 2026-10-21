@@ -22,6 +22,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
     : players_(player_count),
       intents_(player_count),
       actions_(player_count, Action::None),
+      keeper_(player_count, false),
       half_x_{pitch_half_x},
       half_y_{pitch_half_y},
       half_length_ticks_{half_length_ticks} {
@@ -55,6 +56,11 @@ void World::setTeam(SlotIndex slot, std::uint8_t team) {
 
 void World::setLevel(std::uint8_t team, const LevelParams& params) {
     level_[team & 1] = params;
+}
+
+void World::setKeeper(SlotIndex slot, bool keeper) {
+    if (slot >= keeper_.size()) return;
+    keeper_[slot] = keeper;
 }
 
 void World::tickPlayers() {
@@ -91,8 +97,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
         // the carry point of the PREVIOUS tick (feels like a real release).
         const SlotIndex kicker = *ball_.owner;
         const Action act = actions_[kicker];
-        if (act == Action::GroundKick || act == Action::LoftedKick ||
-            act == Action::ShortPass) {
+        if (act != Action::None) {
             actions_[kicker] = Action::None;
             // Direction: live desire when pushing a direction, else facing.
             Vec2 desire = intents_[*ball_.owner].move;
@@ -131,6 +136,9 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
             }
             if (act == Action::GroundKick) {
                 const Fixed64 v = kGroundKickSpeed * power_scale;
+                ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
+            } else if (act == Action::Shot) {
+                const Fixed64 v = kShotSpeed * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (act == Action::ShortPass) {
                 const Fixed64 v = kShortPassSpeed * power_scale;
@@ -184,16 +192,14 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
         return;
     }
 
-    // ── first-touch capture [v1 rules] ──────────────────────────────────
-    // Slow, low, free ball; nearest in-radius player wins; lower slot
-    // breaks ties. A fast ball runs through everyone in G1 (controlled
-    // first touch is a G2 mechanic).
+    // ── first-touch capture [v1 rules] + touch quality + keeper hands ──
+    // Nearest in-radius player wins (lower slot breaks ties). Keepers
+    // reach wider and higher and handle faster balls (G4.3b). A ball too
+    // fast for the winner's CONTROL level bobbles off the touch instead
+    // of sticking — a deflection, not a catch.
     const Fixed64 planar_speed_sq = ball_.vel.x * ball_.vel.x +
                                     ball_.vel.y * ball_.vel.y;
-    if (planar_speed_sq > kCaptureMaxSpeed * kCaptureMaxSpeed) return;
-    if (ball_.pos.z > kBallControlRadius) return;
 
-    const Fixed64 radius_sq = kBallControlRadius * kBallControlRadius;
     bool found = false;
     Fixed64 best_sq{};
     SlotIndex best = 0;
@@ -204,25 +210,61 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& /*events*/) {
         // restart's first touch.
         if (restart_team_ != 0xFF && players_[i].team != restart_team_)
             continue;
+        const bool gk = keeper_[i];
+        const Fixed64 reach = gk ? kKeeperReach : kBallControlRadius;
+        const Fixed64 reach_z = gk ? kKeeperReachZ : kBallControlRadius;
+        if (ball_.pos.z > reach_z) continue;
+        // Hard cap: nobody touches a ball above the engine capture cap
+        // (keepers get a hands bonus on top).
+        const Fixed64 cap =
+            gk ? kCaptureMaxSpeed + kKeeperHandsBonus : kCaptureMaxSpeed;
+        if (planar_speed_sq > cap * cap) continue;
         const Vec2 d{players_[i].pos.x - ball_.pos.x,
                      players_[i].pos.y - ball_.pos.y};
         const Fixed64 dsq = math::lengthSquared(d);
-        if (dsq > radius_sq) continue;
+        if (dsq > reach * reach) continue;
         if (!found || dsq < best_sq) {
             found = true;
             best_sq = dsq;
             best = i;
         }
     }
-    if (found) {
-        ball_.owner = best;
-        ball_.vel = Vec3{};
-        ball_.kick_alive = 0;
-        ball_.kicker_lockout = 0;
-        ball_.contest_ticks = 0;
-        last_touch_team_ = players_[best].team;
-        restart_team_ = 0xFF;  // the dead ball is live again
+    if (!found) return;
+
+    // Touch quality: a ball faster than the toucher's control level
+    // bobbles — deflects onward at reduced speed in a noise-rotated
+    // direction — instead of sticking. Keepers add their hands bonus.
+    const LevelParams& lv = level_[players_[best].team & 1];
+    if (lv.control_speed_mps > 0) {
+        Fixed64 ctrl = Fixed64::fromInt(lv.control_speed_mps);
+        if (keeper_[best]) ctrl += kKeeperHandsBonus;
+        if (planar_speed_sq > ctrl * ctrl) {
+            const Fixed64 n =
+                detNoise(match_seed_, clock_.tick(), best, 5);
+            const Fixed64 ang = n * Fixed64::fromFraction(71, 4068) *
+                                Fixed64::fromInt(60);  // up to ±60°
+            const Fixed64 c = math::fx_cos(ang);
+            const Fixed64 sn = math::fx_sin(ang);
+            const Vec2 v{ball_.vel.x, ball_.vel.y};
+            ball_.vel = Vec3{(v.x * c - v.y * sn) * kBobbleKeep,
+                             (v.x * sn + v.y * c) * kBobbleKeep,
+                             Fixed64::zero()};
+            ball_.pos.z = Fixed64::zero();
+            ball_.last_kicker = best;
+            ball_.kicker_lockout = kBobbleLockoutTicks;
+            last_touch_team_ = players_[best].team;
+            return;  // still nobody's ball
+        }
     }
+
+    ball_.owner = best;
+    ball_.vel = Vec3{};
+    ball_.pos.z = Fixed64::zero();  // keepers bring a high ball down
+    ball_.kick_alive = 0;
+    ball_.kicker_lockout = 0;
+    ball_.contest_ticks = 0;
+    last_touch_team_ = players_[best].team;
+    restart_team_ = 0xFF;  // the dead ball is live again
 }
 
 void World::tickFreeBall(std::vector<MatchEvent>& events) {

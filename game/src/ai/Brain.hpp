@@ -65,6 +65,10 @@ private:
     // Is `slot` its team's closest player to `target` (ties → lower slot)?
     bool isTeamClosest(core::SlotIndex slot, const core::World& world,
                        const math::Vec3& target) const;
+    // How many teammates are strictly closer to `target` (0 = I am
+    // closest, 1 = I am the cover man, ...).
+    int teamCloserCount(core::SlotIndex slot, const core::World& world,
+                        const math::Vec3& target) const;
 
     TeamSetup setup_;
     math::Fixed64 half_x_, half_y_;

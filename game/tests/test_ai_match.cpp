@@ -9,6 +9,7 @@
 #include "ai/Brain.hpp"
 #include "ai/Formation.hpp"
 #include "core/CanonicalHash.hpp"
+#include "core/Levels.hpp"
 #include "core/World.hpp"
 
 #include <cstdio>
@@ -25,8 +26,8 @@ const Fixed64 kHX = Fixed64::fromFraction(105, 2);
 const Fixed64 kHY = Fixed64::fromInt(34);
 
 // Locked after the first green run (G2.6); placeholder 0 fails loudly.
-constexpr std::uint64_t kGolden3v3   = 0xb87290833881c50dULL;
-constexpr std::uint64_t kGolden11v11 = 0xe7f85717640605deULL;
+constexpr std::uint64_t kGolden3v3   = 0x508102d890d3cc33ULL;
+constexpr std::uint64_t kGolden11v11 = 0x883c0b3e63564ad7ULL;
 
 struct Rig {
     World world;
@@ -50,6 +51,7 @@ struct Rig {
                               Vec2{home ? Fixed64::one() : -Fixed64::one(),
                                    Fixed64::zero()});
             world.setTeam(i, home ? 0 : 1);
+            world.setKeeper(i, ai::builtinFormation(per).positions[k].keeper);
         }
     }
 
@@ -131,15 +133,19 @@ FH_TEST(ai_match_flows_possession_and_stays_on_pitch) {
 }
 
 FH_TEST(calibration_sanity_goals_in_band) {
-    // The realism gate's v0: an 11v11 AI match must produce SOME goals
-    // (play flows end to end) and not thousands (mechanics intact).
-    // Current measured level: ~203/90min — grinding this toward ~2.7 is
-    // G4's whole job; this band only catches mechanical breakage.
+    // The realism gate's v0: a SEMIPRO 11v11 AI half-hour must produce
+    // some goals (play flows, defenses beatable) and not dozens
+    // (mechanics intact). Semipro measured ~9.5/90min when locked.
     Rig r{22};
-    const int goals = r.run(30 * 60 * 10);  // 10 sim-minutes
-    std::printf("10-min AI match: %d goals\n", goals);
+    const auto lv = fh::game::core::levelParams("semipro");
+    r.world.setLevel(0, lv);
+    r.world.setLevel(1, lv);
+    r.world.setMatchSeed(7);
+    r.brain.setLevels(lv, lv, 7);
+    const int goals = r.run(30 * 60 * 30);  // 30 sim-minutes
+    std::printf("30-min semipro AI match: %d goals\n", goals);
     FH_EXPECT(goals >= 1);
-    FH_EXPECT(goals <= 80);
+    FH_EXPECT(goals <= 40);
 }
 
 FH_TEST(steal_contest_transfers_carried_ball) {
