@@ -101,10 +101,6 @@ help:
 	@echo "  make dev-down DEV=jbreslin           Stop slot (DEV_WIPE=1 also drops DB volume)"
 	@echo "  Slots/ports: config/dev-slots.conf"
 	@echo ""
-	@echo "Sim runtime (C++ tactical simulator — see sim/DESIGN.md):"
-	@echo "  make sim-deploy               Rebuild sim image + registry-consistency guard"
-	@echo "  make sim-load-test-10min      10-min AsyncPgLog persistence load test"
-	@echo "  make sim-load-test-orchestrator  20-match parallel orchestration load test"
 	@echo ""
 	@echo "VPN — scraper container (default, safe over SSH):"
 	@echo "  make scrape-vpn-up       Start the dedicated scraper+VPN container (SSH-safe)"
@@ -206,64 +202,6 @@ test:
 	@echo "🧪 Running tests..."
 	@npm test
 
-# 10-minute sim persistence load test — proves AsyncPgLog<InputRow> drops
-# zero rows under simulated 100 ms Postgres latency for a full 10-minute
-# match (DESIGN.md §16.5 exit criterion). Opt-in because it takes ~10
-# minutes; the 5-second variant already runs in every sim image build
-# via ctest. Uses a fresh debian:trixie-slim container to compile just
-# the load-test binary, mirroring scripts/check_determinism_cross_arch.sh.
-sim-load-test-10min:
-	@echo "🧪 Running 10-minute AsyncPgLog load test (wall time ~10 min)..."
-	@sudo podman run --rm \
-		-v $(PWD)/sim:/work/sim:ro,z \
-		-e DEBIAN_FRONTEND=noninteractive \
-		-e FH_SIM_LOAD_10MIN=1 \
-		docker.io/library/debian:trixie-slim \
-		bash -c 'set -euo pipefail; \
-			apt-get update -qq >/dev/null; \
-			apt-get install -y -qq --no-install-recommends \
-				g++ cmake ninja-build make pkg-config \
-				libssl-dev libpqxx-dev ca-certificates >/dev/null; \
-			cp -R /work/sim /tmp/sim; \
-			cd /tmp/sim; \
-			cmake -S . -B build-x -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null; \
-			cmake --build build-x --target test_async_pg_log_load >/dev/null; \
-			./build-x/tests/test_async_pg_log_load'
-
-# 20-match orchestration load test (Slice 14.7) — spawns N sim
-# containers in parallel via POST /api/sim/matches, lets them tick
-# idle, tears them down via POST /api/sim/matches/:id/stop, and
-# verifies no orphan containers or DB rows survive. Uses the live
-# stack (unlike sim-load-test-10min which spins up an ephemeral
-# debian container). Overridable knobs at the top of the script.
-sim-load-test-orchestrator:
-	@bash sim/scripts/load_test_orchestrator.sh
-
-# Rebuild the sim runtime image + verify registry consistency before
-# declaring the deploy successful. Fixes the §21.8 M3-blocker footgun
-# where a migration touching sim_attribute_registry / sim_concept_registry
-# without a matching sim/src/common/M0Registry.generated.hpp regenerate +
-# runtime rebuild crashes every new match spawn at bootstrap with
-# `verifyM0RegistryConsistency: compile-time=N db=M` (2026-07-17 root
-# cause of "ball and players don't render on 2v0" — see sim/DESIGN.md §21.8).
-#
-# Guard: after podman-compose builds the new image, spawns a throwaway probe
-# container on the shared footballhome network, runs the exact bootstrap
-# path (registry SELECTs + drift check) against the live footballhome_db,
-# and refuses to succeed unless the probe reaches "listening on ...".
-#
-# In-flight matches keep their pre-existing image (immutable per container).
-# New matches spawned via SimOrchestrator after this target succeeds pick
-# up the fresh image.
-sim-deploy:
-	@echo "🎮 Rebuilding sim runtime image..."
-	@$(COMPOSE) --env-file env build footballhome_sim
-	@echo ""
-	@echo "🔍 Verifying registry consistency (compile-time vs live DB)..."
-	@bash sim/scripts/check_registry_consistency.sh
-	@echo ""
-	@echo "✓ sim runtime image is live and registry-consistent."
-	@echo "  New matches spawned via SimOrchestrator will use this image."
 	@echo "  In-flight matches keep their pre-existing image (immutable per container)."
 
 # ============================================================

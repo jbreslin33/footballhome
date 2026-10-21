@@ -60,7 +60,7 @@ services:
       # Slice 13 sub-slice 8: sim debug endpoints (/api/sim/debug/*).
       # Admin-only + rate-limited; still gated behind this flag so a
       # future prod deploy can turn it off without a rebuild.
-      FH_ENABLE_SIM_DEBUG: ${FH_ENABLE_SIM_DEBUG:-1}
+      FH_ENABLE_SIM_DEBUG: ${FH_ENABLE_SIM_DEBUG:-0}
       # Cross-container replay RPC (sub-slice 8.1). Backend POSTs to
       # this URL. FH_SIM_ADMIN_TOKEN is deliberately NOT listed here;
       # it flows in from `env_file: ./env` above so we don't override
@@ -213,60 +213,6 @@ services:
     depends_on:
       backend:
         condition: service_started
-
-  # C++ tactical football simulator (M0).
-  #
-  # Owns one Match, drives a 20 Hz tick loop, and exposes /sim as a
-  # WebSocket endpoint (fh-sim.v1 wire protocol, §7 of sim/DESIGN.md).
-  # Every client authenticates with a JWT_SECRET-signed token — the
-  # SAME shared secret the backend uses — so browser clients only need
-  # to hand the sim the token they already have.
-  #
-  # nginx (frontend container) proxies /sim → footballhome_sim:9100.
-  # Never expose 9100 to the host; the browser talks WSS via the
-  # frontend's TLS-terminating nginx.
-  footballhome_sim:
-    build:
-      context: ./sim
-      dockerfile: Dockerfile
-      args:
-        # Computed on the host by build.sh (git describe --tags --dirty
-        # --always) and forwarded here so the container image knows
-        # exactly which commit produced it — see sim/DESIGN.md §16.6
-        # task 7. Falls back to "unknown" if the env var isn't set.
-        FH_SIM_GIT_DESCRIBE: "${FH_SIM_GIT_DESCRIBE:-unknown}"
-    container_name: footballhome_sim
-    restart: always
-    env_file: ./env
-    environment:
-      SIM_BIND_ADDRESS: 0.0.0.0
-      SIM_PORT: "9100"
-      SIM_MATCH_ID: "1"
-      SIM_MATCH_SEED: "42"
-      POSTGRES_PASSWORD: footballhome_pass
-      # Admin HTTP endpoint (POST /admin/replay) — enabled when the
-      # FH_SIM_ADMIN_TOKEN bearer token (loaded from env_file above)
-      # is non-empty. Backend/SimDebugController posts to it using
-      # the same token. See sim/DESIGN.md §16.6 sub-slice 8.1 and
-      # §22.12. FH_SIM_ADMIN_TOKEN is deliberately NOT listed here
-      # so it flows in from env_file rather than being clobbered to
-      # empty by shell substitution.
-      SIM_ADMIN_BIND_ADDRESS: 0.0.0.0
-      SIM_ADMIN_PORT: "9101"
-    networks:
-      - footballhome_network
-    # No ports: block — the sim is only reachable via nginx on the
-    # internal footballhome_network.
-    healthcheck:
-      # A raw TCP connect to 9100 is enough to prove the process is up
-      # and the socket is listening. WebSocket handshake is not exercised
-      # here; the backend / frontend do that end-to-end.
-      test: ["CMD-SHELL", "ss -Hln --tcp sport = :9100 | grep -q LISTEN"]
-      interval: 15s
-      timeout: 5s
-      retries: 4
-      start_period: 30s
-
 
 
 # Named volumes for persistent data

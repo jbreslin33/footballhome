@@ -137,45 +137,7 @@ echo ""
 # STEP 1: BUILD
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Regenerate the sim registry catalog header from the registry-seeding
-# migrations. The sim container build context is ./sim, so the migration
-# files (which live in ./database/) are not visible during `podman build`
-# — the header must be produced on the host first. See sim/DESIGN.md
-# section 22.11.
-#
-# Migration sources (order = registry-id order; awk processes each
-# INSERT INTO sim_attribute_registry / sim_concept_registry block it
-# encounters, independent of file boundaries):
-#   200 = baseline (attrs 1..9 + run_to_point concept + empty_pitch scenario)
-#   208 = physical.dribble_efficiency (attr 10, Slice 16.1)
-#   209 = physical.max_dribble_speed + max_carry_sprint_speed (attrs 11+12, Slice 25.2)
-#   216 = physical.press_resistance (attr 13, Slice 24.3b)
-#   217 = physical.pass_power (attr 14, Slice 26.1)
-#   220 = physical.body_mass (attr 15, Slice 27.3)
-#   224 = pressing concept (Slice 30.2)
-#   225 = marking + jockey concepts (Slice 31.1)
-#   226 = M3 behavior attribute batch (Slice 31.3)
-echo -e "${YELLOW}🔧 Regenerating sim registry header from migrations 200 + 208 + 209 + 216 + 217 + 220 + 224 + 225 + 226...${NC}"
-awk -f sim/scripts/gen_registry_header.awk \
-    database/migrations/200-sim-registries.sql \
-    database/migrations/208-sim-attr-dribble-efficiency.sql \
-    database/migrations/209-sim-attr-carry-speeds.sql \
-    database/migrations/216-sim-attr-press-resistance.sql \
-    database/migrations/217-sim-attr-pass-power.sql \
-    database/migrations/220-sim-attr-body-mass.sql \
-    database/migrations/224-sim-concept-pressing.sql \
-    database/migrations/225-sim-concept-marking-jockey.sql \
-    database/migrations/226-sim-attr-m3-batch.sql \
-    > sim/src/common/M0Registry.generated.hpp
-echo -e "${GREEN}✓ sim/src/common/M0Registry.generated.hpp regenerated${NC}"
-echo ""
-
 echo -e "${YELLOW}🔨 Building images...${NC}"
-# Compute + export the sim's build-time version so docker-compose can
-# forward it to the sim Dockerfile ARG (see sim/DESIGN.md §16.6 task 7).
-# Falls back to "unknown" if this isn't a git checkout.
-export FH_SIM_GIT_DESCRIBE="$(git describe --tags --dirty --always 2>/dev/null || echo unknown)"
-echo -e "${BLUE}  FH_SIM_GIT_DESCRIBE=${FH_SIM_GIT_DESCRIBE}${NC}"
 "${DOCKER_COMPOSE[@]}" build
 echo -e "${GREEN}✓ Build complete${NC}"
 echo ""

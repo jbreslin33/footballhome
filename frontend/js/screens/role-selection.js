@@ -238,14 +238,6 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
-        <a href="/tactical-games.html" class="btn btn-lg btn-primary" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit;">
-          <span style="font-size: 2rem;">⚽</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Tactical Games</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Sim demo + cognitive learning games</div>
-          </div>
-        </a>
-
 
         <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">System</div>
 
