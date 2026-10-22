@@ -1066,6 +1066,7 @@
       ? footContours(CT.usgsTopo, 0xe0262d, '#ff8a8a', 50) : null;
 
     return {
+      site,   // site-metre group (pitch-planner.js draws into it)
       // Contours. mode: 'lidar' (10 cm from USGS 3DEP; white every half
       // metre), 'city' (2 ft), 'topo' (USGS topo map, 10 ft), 'all', 'off'.
       // Runoff channels show with every mode but 'off'.

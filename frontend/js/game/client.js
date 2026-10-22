@@ -393,6 +393,8 @@
       e.preventDefault(); e.stopPropagation(); toggleContours();
     });
   }
+  // Drag-and-drop pitch planner (📐 PLAN): live legality + water score.
+  if (window.PitchPlanner) window.PitchPlanner.attach(renderer);
   // Candidate pitch spots: one pill per spot down the left side (colour,
   // id, water rating); tap to show/hide it.
   const LAYC = window.LIGHTHOUSE_LAYOUT || {};
