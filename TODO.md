@@ -4,6 +4,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Bugs / fixes
 
+- [ ] 2026-10-22 Game Center Instagram card: 4:5 crop suspicion on the top graphic (buildCardHtml) — verify what Instagram actually shows and fix the crop if it's cutting content.
 - [x] 2026-10-21 Lineup edits all reverting on reload (David Masi ALT kept popping back): mig 618's cap-check query passed matchId as an unused $1 — Postgres fails the whole statement, so EVERY lineup save 500'd silently since the 10/20 deploy. Fixed param numbering; David re-set to ALT for tonight; other moves since 10/20 need redoing.
 
 ## Features
@@ -29,6 +30,13 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
     - Tents: 4 guys put them up. Per-game toggle (default ON = we bring them); toggled off, those 4 get other jobs.
     - Water: 2 guys, 1 case each, reimbursed.
     - Bench discipline: make sure everyone on bench has pinnies on and stays seated on the bench — no standing or using a ball on the sidelines.
+
+- [ ] 2026-10-22 Roster category pills (✅/📄/🩹/⭐) on Boys/Girls/Womens columns — currently Men's board only (noted when #teams closed 10/21).
+- [ ] 2026-10-22 Youth carpool: midpoint suggestions are hollow because youth families mostly lack `person_addresses` rows — backfill addresses (LA export / registration data) so the 🚗 panel works for youth games.
+- [ ] 2026-10-22 Youth opponent contacts: #opponents / Game Center 📇 is empty for youth leagues — load contacts as youth fixtures firm up (DB-only, per the no-PII-in-git rule).
+- [ ] 2026-10-22 Postmark: account still pending approval — only @footballhome.org recipients deliver. Owner must chase Postmark support; until then no real email sends.
+- [ ] 2026-10-22 Newspaper book recapture: 30/95 pages at full res; blocked on a live newspapers.com session (James signs in, Claude drives — never exfil tokens/URLs).
+- [ ] 2026-10-22 Seasonal chore: APSL TeamPass team id changes each season — re-point the 🖨 roster scraper + 🌐 mirror when the new season's pages go up.
 
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`. Pending op note: after the next frontend deploy, `sudo podman rm -f footballhome_sim` (see the archive README).
 
