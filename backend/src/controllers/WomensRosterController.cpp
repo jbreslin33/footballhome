@@ -9,6 +9,7 @@
 #include "../database/Database.h"
 #include "../models/MensTeamAssignments.h"
 #include "../models/MensTeamColumns.h"
+#include "../models/RosterBoardExtras.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -165,6 +166,9 @@ Response WomensRosterController::handleGet(const Request& request, const LaSyncM
             body << "{\"error\":" << jsonEscape(result.error) << "}";
             return Response(HttpStatus::CONFLICT, body.str());
         }
+        // ⭐/👀/🌐 pill data, same shape as the mens board (owner
+        // 2026-10-22: the column category pills come to every section).
+        RosterBoardExtras::attach(result.body, "womens-roster");
         return Response(HttpStatus::OK, result.body.dump());
     } catch (const std::exception& e) {
         std::cerr << "WomensRosterController::handleGet error: " << e.what() << std::endl;

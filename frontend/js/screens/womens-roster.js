@@ -64,6 +64,9 @@ class WomensRosterScreen extends RosterScreenBase {
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
       if (e.target.closest('#wr-refresh')) return this.load({ refreshLa: true });
+      // ✅/📄/🩹/⭐/🌐/👀 column pills — shared with every roster board
+      // (RosterScreenBase.handleRosterPillClicks, 2026-10-22).
+      if (this.handleRosterPillClicks(e)) return;
       const moveOpt = e.target.closest('.roster-move-option');
       if (moveOpt) return this.onMoveOptionClick(moveOpt);
       const focusPill = e.target.closest('.wr-team-focus-pill');
@@ -178,6 +181,9 @@ class WomensRosterScreen extends RosterScreenBase {
       await statusesReady;
       await copyReady;
       this.renderRoster(data);
+      // 🌐 any ONLINE league mirrors re-pull in the background (shared
+      // with mens; the women's teams have no sources today → no-op).
+      this.autoPullOfficialRosters(data, { quiet });
     } catch (err) {
       if (loading) loading.style.display = 'none';
       if (errEl) {
@@ -307,9 +313,14 @@ class WomensRosterScreen extends RosterScreenBase {
     const renderList = (list) => this.orderColumnPlayers(list)
       .map(({ player, rank }) => this.renderPlayer(player, data.columns, col, rank, list.length)).join('');
 
-    const body = players.length === 0
+    // ✅/📄/🩹/⭐/🌐/👀 column pills — shared with the mens board
+    // (RosterScreenBase.renderColumnPills, 2026-10-22: "the column
+    // category pills come to every section").
+    const { pillsHtml: catPills, shown, ridersHtml } = this.renderColumnPills(col, players, data);
+
+    const body = (shown.length === 0 && !ridersHtml)
       ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
-      : renderList(players);
+      : renderList(shown) + ridersHtml;
 
     return `
       <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid #475569; min-width:${this.colBoxMinWidth()};">
@@ -321,6 +332,7 @@ class WomensRosterScreen extends RosterScreenBase {
             ${countHtml}
           </span>
         </div>
+        ${catPills}
         ${this.renderRosterStatusTallies(col, players)}
         ${this.renderCoachesStrip(col)}
         <div class="wr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"

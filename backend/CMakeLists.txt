@@ -70,6 +70,7 @@ set(SOURCES
     src/models/PickupMembership.cpp
     src/models/PersonNameOverrides.cpp
     src/models/MensRoster.cpp
+    src/models/RosterBoardExtras.cpp
     src/models/BoysRoster.cpp
     src/models/WomensRoster.cpp
     src/models/Lead.cpp

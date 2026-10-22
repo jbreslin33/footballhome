@@ -1767,6 +1767,313 @@ class RosterScreenBase extends Screen {
       .replace(/"/g, '&quot;');
   }
 
+  // ── Column category pills (✅/📄/🩹/⭐/🌐/👀) — every board ──────────
+  //
+  // Born on the mens board (owner 2026-10-20: "for each roster have
+  // pills with numbers of players"), lifted here 2026-10-22 so Boys/
+  // Girls/Womens columns carry the same truth: ✅ active roster,
+  // 📄 paper spots, 🩹 injured, ⭐ standing invitees riding the team's
+  // games without a list spot, 🌐 the league's own mirrored roster,
+  // and the 👀 Sees games filter. The backend ships one payload shape
+  // for all boards (RosterBoardExtras.cpp).
+
+  // ONE localStorage key for every board: the stored keys are
+  // `${teamId}:${cat}` and team ids are club-unique, so boards can't
+  // collide — and mens' pills keep their pre-lift saved prefs.
+  static get CAT_OFF_STORAGE_KEY() { return 'mensRoster.catOff'; }
+
+  // The shared delegated-click hooks. Each board's click listener calls
+  // this first; true = handled, stop there.
+  handleRosterPillClicks(e) {
+    const catPill = e.target.closest('.mr-cat-pill');
+    if (catPill) { this.onCatPillClick(catPill); return true; }
+    const officialPill = e.target.closest('.mr-official-pill');
+    if (officialPill) { this.onOfficialPillClick(officialPill); return true; }
+    const seesPill = e.target.closest('.mr-sees-pill');
+    if (seesPill) {
+      const id = parseInt(seesPill.dataset.teamId, 10);
+      this.seesOpen = this.seesOpen || {};
+      this.seesOpen[id] = !this.seesOpen[id];
+      if (this._data) this.renderRoster(this._data);
+      return true;
+    }
+    const officialRefresh = e.target.closest('.mr-official-refresh');
+    if (officialRefresh) { this.onOfficialRefreshClick(officialRefresh); return true; }
+    return false;
+  }
+
+  // Category pill: toggles that group's visibility for that one column;
+  // remembered per browser.
+  onCatPillClick(btn) {
+    const key = `${btn.dataset.catTeam}:${btn.dataset.cat}`;
+    this.catOff = this.catOff || {};
+    if (this.catOff[key]) delete this.catOff[key]; else this.catOff[key] = true;
+    try { localStorage.setItem(RosterScreenBase.CAT_OFF_STORAGE_KEY, JSON.stringify(this.catOff)); } catch (e) { /* private window */ }
+    if (this._data) this.renderRoster(this._data);
+  }
+
+  // 🌐 Roster pill: show/hide the league site's own roster for a column.
+  onOfficialPillClick(btn) {
+    const id = parseInt(btn.dataset.teamId, 10);
+    this.officialOpen = this.officialOpen || {};
+    this.officialOpen[id] = !this.officialOpen[id];
+    if (this._data) this.renderRoster(this._data);
+  }
+
+  // 🔄 Pull fresh — re-fetch the league's roster (TeamPass sign-in or the
+  // CASA sheet) and reload the board so the mirror and counts update.
+  async onOfficialRefreshClick(btn) {
+    const teamId = parseInt(btn.dataset.teamId, 10);
+    if (!teamId) return;
+    btn.disabled = true;
+    btn.textContent = '… pulling';
+    try {
+      const res = await this.auth.fetch('/api/mens-roster/official-roster-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      await this.load({ quiet: true });
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '🔄 Pull fresh';
+      alert(`Could not pull the league roster: ${err.message}`);
+    }
+  }
+
+  // 🌐 Auto-refresh the league-roster mirror on every board load (owner
+  // 2026-10-21: "we should be loading from these links on every mens load
+  // of #teams … then updating db then displaying"). The board renders the
+  // mirrored rows first, each of its columns' sources re-pulls in the
+  // background (TeamPass via the scraper proxy can take seconds, so this
+  // never blocks the board), the names land in official_roster_names, and
+  // ONE quiet reload re-renders from the DB. Quiet loads are background
+  // reconciliations — they never re-pull, which also keeps this from
+  // looping through its own reload. Failures stay silent here; the
+  // panel's 🔄 Pull fresh button is the loud manual path.
+  async autoPullOfficialRosters(data, { quiet = false } = {}) {
+    if (quiet || this._officialPullInFlight) return;
+    const mirrors = data.officialRosters || {};
+    // Every ONLINE roster re-pulls, each column independently (owner
+    // 2026-10-21: "this should be done for each roster online").
+    // club_file sources are uploads — nothing to fetch, pill stays plain.
+    const teamIds = (data.columns || [])
+      .map(c => c.teamId)
+      .filter(id => {
+        const m = id && mirrors[String(id)];
+        return m && m.system !== 'club_file';
+      });
+    if (!teamIds.length) return;
+    this._officialPullInFlight = true;
+    // Pill state per team: 'pulling' (🟡) → 'ok' (green, fresh stamp) or
+    // 'fail' (red, the stamp of the list still showing) — owner: "if on
+    // #teams load we don't get latest roster we need to show a red label
+    // … green one that has time stamp or a yellow loading".
+    this._officialPullState = this._officialPullState || {};
+    teamIds.forEach(id => { this._officialPullState[id] = 'pulling'; });
+    if (this._data) this.renderRoster(this._data);
+    try {
+      // ONE pull at a time: every TeamPass pull is a fresh sign-in on the
+      // same account, and concurrent sign-ins race — the losing session
+      // is served the public, grid-less team page and the parse "fails"
+      // (seen 10/21: the Reserves pull read "section not on the page"
+      // while the APSL pull, same page, succeeded).  Sequential is also
+      // kinder to the league site, and each pill flips green/red as its
+      // own pull lands.
+      let anyFresh = false;
+      for (const teamId of teamIds) {
+        try {
+          const res = await this.auth.fetch('/api/mens-roster/official-roster-refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ teamId }),
+          });
+          const body = await res.json().catch(() => ({}));
+          // Fresh names must actually land to count — a 200 whose parse
+          // found nothing keeps yesterday's list (the backend's
+          // empty-parse guard, e.g. TeamPass changed its markup 10/21)
+          // and has to read as a failure, not a quiet success.
+          if (!res.ok || body.error || !(body.names || []).length)
+            throw new Error(body.error || `no names parsed (HTTP ${res.status})`);
+          this._officialPullState[teamId] = 'ok';
+          anyFresh = true;
+        } catch (err) {
+          this._officialPullState[teamId] = 'fail';
+          console.warn(`[roster] official roster auto-pull failed for team ${teamId}:`, err);
+        }
+        if (this._data) this.renderRoster(this._data);
+      }
+      if (anyFresh) await this.load({ quiet: true });
+    } finally {
+      this._officialPullInFlight = false;
+    }
+  }
+
+  // The column's pill strip plus the filtered body it implies. Returns
+  // { pillsHtml, shown, ridersHtml }: boards drop pillsHtml above the
+  // player list, render `shown` instead of the raw column players, and
+  // append ridersHtml after the list.
+  renderColumnPills(col, players, data) {
+    if (col.isUnassigned) return { pillsHtml: '', shown: players, ridersHtml: '' };
+
+    const riders = (data.autoInvites && data.autoInvites[String(col.teamId)]) || [];
+    const catOf = (p) => p.inviteOnly === true ? 'paper'
+      : (RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : 'active');
+    const cats = { active: [], paper: [], injured: [] };
+    for (const p of players) cats[catOf(p)].push(p);
+    this.catOff = this.catOff || (() => { try { return JSON.parse(localStorage.getItem(RosterScreenBase.CAT_OFF_STORAGE_KEY) || '{}'); } catch (e) { return {}; } })();
+    const off = (cat) => !!this.catOff[`${col.teamId}:${cat}`];
+    // 🌐 The league's OWN roster (official_roster_names, mig 620) —
+    // TeamPass for APSL, the CASA sheet for Liga 1.  The league's
+    // spelling drifts from ours ("Benzig", "Baidel", a dropped "II"),
+    // so matching is normalized and tolerant; the panel marks who is on
+    // both, who is league-only, and who is on our list but not the
+    // league's.  A club_file source with no extracted names yet gets no
+    // pill — there is nothing to show and nothing to pull.
+    let official = (data.officialRosters && data.officialRosters[String(col.teamId)]) || null;
+    if (official && official.system === 'club_file' && !(official.names || []).length) official = null;
+    const officialOpen = !!(this.officialOpen && this.officialOpen[col.teamId]);
+    let officialPanel = '';
+    if (official && officialOpen) {
+      const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z ]/g, ' ').replace(/\b(ii|iii|jr|sr)\b/g, '').replace(/\s+/g, ' ').trim();
+      const lev = (a, b) => {
+        const m = a.length, n = b.length;
+        if (Math.abs(m - n) > 2) return 3;
+        let prev = Array.from({ length: n + 1 }, (_, j) => j);
+        for (let i = 1; i <= m; i++) {
+          const cur = [i];
+          for (let j = 1; j <= n; j++)
+            cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+          prev = cur;
+        }
+        return prev[n];
+      };
+      const ours = players.map(p => ({ p, n: norm(p.fullName || `${p.firstName || ''} ${p.lastName || ''}`) }));
+      const matched = new Set();
+      const rows = (official.names || []).map(name => {
+        const o = norm(name);
+        let hit = ours.find(x => x.n === o)
+          || ours.find(x => x.n && o && (x.n.includes(o) || o.includes(x.n)));
+        if (!hit) {
+          const ot = o.split(' '); const ol = ot[ot.length - 1] || '', ofi = (ot[0] || '')[0] || '';
+          hit = ours.find(x => {
+            const t = x.n.split(' '); const l = t[t.length - 1] || '';
+            return ofi === ((t[0] || '')[0] || '') && (l === ol || lev(l, ol) <= 2);
+          });
+        }
+        if (hit) matched.add(hit.p);
+        return `<div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0; font-size:0.74rem;">
+          <span>${hit ? '✓' : '⚠'} ${this.escape(name)}</span>
+          ${hit ? '' : `<span style="color:#f59e0b; font-size:0.68rem;">not on our list</span>`}
+        </div>`;
+      }).join('');
+      const missing = players.filter(p => !matched.has(p));
+      // club_file names come from an upload — nothing online to re-pull.
+      const refreshBtn = official.system === 'club_file' ? '' : `
+              <button type="button" class="mr-official-refresh" data-team-id="${col.teamId}"
+                style="font-size:0.64rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer;
+                       border:1px solid #60a5fa; background:transparent; color:#60a5fa;">🔄 Pull fresh</button>`;
+      officialPanel = `
+        <div style="margin:2px 0 8px; padding:7px 9px; border:1px solid rgba(96,165,250,0.5); border-radius:8px; background:rgba(96,165,250,0.07);">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:4px;">
+            <span style="font-size:0.7rem; font-weight:800;">🌐 ${this.escape(official.league || 'League')} roster — the site's own list</span>
+            <span style="display:inline-flex; gap:6px; align-items:center;">
+              <span style="font-size:0.62rem; opacity:0.6;">pulled ${this.escape(official.pulledAt || '—')}</span>
+              ${refreshBtn}
+            </span>
+          </div>
+          ${rows || '<div style="font-size:0.74rem; opacity:0.6;">No names pulled yet — tap 🔄 Pull fresh.</div>'}
+          ${missing.length ? `<div style="margin-top:5px; font-size:0.68rem; color:#fca5a5;">
+            On our list but NOT on the league's: ${this.escape(missing.map(p => p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim()).join(', '))}
+          </div>` : ''}
+        </div>`;
+    }
+    // 👀 Sees games (owner 2026-10-21): a FILTER toggle, not a separate
+    // list.  ON = the column shows only who a game invite reaches
+    // automatically — active roster + injured (excused, still see games)
+    // + the ⭐ strip; 📄 paper spots hidden, and on a call-up-gated team
+    // (mig 605) roster rows grant nothing, so only the ⭐ strip remains.
+    const gated = Array.isArray(data.callupOnlyTeams) && data.callupOnlyTeams.includes(col.teamId);
+    const seesCount = (gated ? 0 : cats.active.length + cats.injured.length) + riders.length;
+    const seesOn = !!(this.seesOpen && this.seesOpen[col.teamId]);
+    const seesCat = (cat) => gated ? false : (cat === 'active' || cat === 'injured');
+    const catPill = (cat, icon, label, n, color) => (n || cat === 'active') ? `
+        <button type="button" class="mr-cat-pill" data-cat-team="${col.teamId}" data-cat="${cat}"
+          title="${off(cat) ? `Show ${label.toLowerCase()} (${n})` : `Hide ${label.toLowerCase()}`}"
+          style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
+                 border:1px solid ${color}; background:${off(cat) ? 'transparent' : color + '26'};
+                 color:${off(cat) ? '#64748b' : color};">${icon} ${label} (${n})</button>` : '';
+    const pillsHtml = `
+      <div style="display:flex; gap:4px; flex-wrap:wrap; margin:2px 0 6px;">
+        ${catPill('active', '✅', 'Active', cats.active.length, '#4ade80')}
+        ${catPill('paper', '📄', 'Paper', cats.paper.length, '#f59e0b')}
+        ${catPill('injured', '🩹', 'Injured', cats.injured.length, '#f87171')}
+        ${catPill('riders', '⭐', 'Rides along', riders.length, '#60a5fa')}
+        ${official ? (() => {
+          // Pull state on the pill itself (owner 2026-10-21): 🟡 amber
+          // while this load's pull runs, green ✓ + stamp once fresh names
+          // landed, red ⚠ + the stamp of the list we're STILL showing
+          // when the pull failed.  No state (club_file, or pull not yet
+          // fired) keeps the plain blue pill.
+          const st = (this._officialPullState || {})[col.teamId];
+          const color = st === 'pulling' ? '#f59e0b' : st === 'ok' ? '#4ade80' : st === 'fail' ? '#f87171' : '#38bdf8';
+          const stamp = official.pulledAt || '—';
+          const suffix = st === 'pulling' ? ' · pulling…' : st === 'ok' ? ` · ✓ ${stamp}` : st === 'fail' ? ` · ⚠ ${stamp}` : '';
+          const title = st === 'fail'
+            ? `Could not pull the league's roster just now — still showing the list pulled ${stamp}`
+            : st === 'pulling' ? "Pulling the league's own roster…"
+            : `${officialOpen ? 'Hide' : 'Show'} the league site's own roster for this team (TeamPass / league sheet) and the drift against our list`;
+          return `
+          <button type="button" class="mr-official-pill" data-team-id="${col.teamId}"
+            title="${this.escape(title)}"
+            style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
+                   border:1px solid ${color}; background:${officialOpen ? color + '26' : 'transparent'};
+                   color:${officialOpen || st ? color : '#64748b'};">🌐 Roster (${(official.names || []).length})${this.escape(suffix)}</button>`;
+        })() : ''}
+        <button type="button" class="mr-sees-pill" data-team-id="${col.teamId}"
+          title="${seesOn ? 'Back to the full column' : `Show only who gets ${this.escape(col.label)} games automatically to RSVP — roster that grants games plus ⭐ standing invites`}"
+          style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
+                 border:1px solid #2dd4bf; background:${seesOn ? '#2dd4bf26' : 'transparent'};
+                 color:${seesOn ? '#2dd4bf' : '#64748b'};">👀 Sees games (${seesCount})</button>
+      </div>
+      ${officialPanel}`;
+
+    const shown = seesOn ? players.filter(p => seesCat(catOf(p)))
+      : players.filter(p => !off(catOf(p)));
+    // ⭐ riders render as their FULL home-team card in this column's
+    // main list (owner 2026-10-21: "all pills should just filter the
+    // main list" … "not the normal list of players with their labels
+    // and drop downs" — plain rows read as a second list).  The card is
+    // the rider's real row from their home column, de-fanged here:
+    // draggable off (which also keeps it out of the reorder collector's
+    // draggable="true" set) and the duplicate DOM id stripped; the ⋯
+    // menu still acts on their home-team row, which is the correct
+    // semantics.
+    const ridersHtml = (riders.length && (seesOn || !off('riders'))) ? riders.map(r => {
+      let homeCol = null, hp = null;
+      for (const c of (data.columns || [])) {
+        if (c.teamId === col.teamId) continue;
+        const found = (data.buckets[String(c.teamId)] || []).find(p => Number(p.personId) === Number(r.personId));
+        if (found) { homeCol = c; hp = found; break; }
+      }
+      const caption = `<div style="font-size:0.66rem; color:#60a5fa; font-weight:700; margin:0 0 1px 2px;">⭐ rides along from ${this.escape(r.fromTeam || '—')}</div>`;
+      if (!hp) return `
+        <div style="padding:4px 8px; border:${RosterScreenBase.NEUTRAL_CARD_BORDER}; border-radius:8px; font-size:0.78rem;"
+             title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">
+          ⭐ <b>${this.escape(r.name)}</b> <span style="opacity:0.7;">· rides along from ${this.escape(r.fromTeam || '—')}</span>
+        </div>`;
+      const card = this.renderPlayer(hp, data.columns, homeCol, 0, 0)
+        .replace('draggable="true"', 'draggable="false"')
+        .replace(/ id="[a-z]+-card-[^"]*"/, '');
+      return `<div title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">${caption}${card}</div>`;
+    }).join('') : '';
+
+    return { pillsHtml, shown, ridersHtml };
+  }
+
   _flashMsgBtn(btn, text) {
     const orig = btn.innerHTML;
     const origW = btn.style.background;
