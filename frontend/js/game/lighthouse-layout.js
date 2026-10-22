@@ -25,7 +25,7 @@ window.LIGHTHOUSE_LAYOUT = {
   realPitch: { x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67 },
   // Superseded: the painted pitch on today's imagery — ~90 x 60.5 m, axis
   // 61.5°, centre (-15.7, -33.4).
-  oldPitch: { x: -15.7, z: -33.4, rotDeg: 61.5, length: 90, width: 60.5 },
+  oldPitch: { x: -13.75, z: -32.1, rotDeg: 61.3, length: 90.6, width: 60.0 },   // traced from Google's paint
 
   // Fences, traced on the City 2025 orthoimagery (same numbers as the
   // planner). The vendor fence is pole bases: straight along the main
@@ -58,10 +58,10 @@ window.LIGHTHOUSE_LAYOUT = {
 
   // Kids' fields — to be placed with James (size, spot, orientation).
   // e.g. { name: '7v7', x: .., z: .., length: 55, width: 36, rotDeg: .. }
-  // Second set of painted lines (Google imagery): a long touchline ~81 m
-  // toward the softball fence, a parallel line ~32 m away, rotated ~30°.
-  // Probably the youth / 7v7 layout — James to name and size it.
-  kidsFields: [{ name: 'painted lines B (7v7?)', x: 44.7, z: 25.9, length: 81, width: 31.8, rotDeg: 29.9 }],
+  // TODAY'S PLAYING FIELD, traced from the paint on Google's imagery
+  // (10/22): 80.5 x 30.7 m, long sides parallel to the softball 3rd-base
+  // fence — where the players actually play.
+  kidsFields: [{ name: 'today\'s playing field (Google paint)', x: 48.0, z: 28.0, length: 80.5, width: 30.7, rotDeg: 28.5 }],
   // Cemetery boundary fence (New Cathedral Cemetery), along the OSM
   // cemetery outline.
   cemeteryFence: { height: 2.0 },
