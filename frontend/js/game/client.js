@@ -421,6 +421,7 @@
         e.preventDefault(); e.stopPropagation();
         on = !on;
         if (renderer.field && renderer.field.setCandidate) renderer.field.setCandidate(cd.id, on);
+        if (cd.id === 'A') for (const o of (renderer.pitchParts || [])) o.visible = on;
         paint();
       };
       b.addEventListener('click', flip);

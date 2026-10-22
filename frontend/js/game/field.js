@@ -321,11 +321,13 @@
     const details = [];
 
     // ── bleachers: in GAME-pitch coordinates (world) ───────────────────
+    const planAOverlay = [];
     for (const b of (LAY.bleachers || [])) {
       const m = bleacher(b.len || 7.5);
       m.position.set(b.x, 0, b.z);
       m.rotation.y = (b.face || 0) * D2R;
       scene.add(m);
+      planAOverlay.push(m);
     }
     if (!SITE) return { update() {} };
 
@@ -1031,6 +1033,7 @@
         mesh.renderOrder = 42;
         if (!drainage) { drainage = new THREE.Group(); site.add(drainage); }
         drainage.add(mesh);
+        planAOverlay.push(mesh);
       }
     }
     const cityContours = CT && CT.city2ft && CT.city2ft.length
@@ -1051,6 +1054,7 @@
       // Candidate pitch spot on/off (layout.candidates[].id).
       setCandidate(id, on) {
         for (const o of (candObjs[id] || [])) o.visible = !!on;
+        if (id === 'A') for (const o of planAOverlay) o.visible = !!on;
       },
       // Leaves: false = see-through wire canopy (default), true = solid.
       setLeaves(on) {

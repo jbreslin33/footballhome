@@ -177,6 +177,8 @@
       pitch.renderOrder = 20;
       pitch.receiveShadow = true;
       this.scene.add(pitch);
+      // The game pitch IS plan A's spot; the plan-A pill hides it whole.
+      this.pitchParts = [pitch];
       this.field = LighthouseField.build(this.scene, hx, hy);
 
       // Goal frames + nets (7.32 x 2.44 m, 2 m deep).
@@ -191,6 +193,7 @@
           post.position.set(gx, 1.22, gy);
           post.castShadow = true;
           this.scene.add(post);
+          this.pitchParts.push(post);
         }
         const bar = new THREE.Mesh(
           new THREE.CylinderGeometry(0.06, 0.06, 7.44, 8), postMat);
@@ -198,10 +201,12 @@
         bar.position.set(gx, 2.44, 0);
         bar.castShadow = true;
         this.scene.add(bar);
+        this.pitchParts.push(bar);
         const net = new THREE.Mesh(
           new THREE.BoxGeometry(2, 2.44, 7.32, 4, 6, 14), netMat);
         net.position.set(gx + sign * 1, 1.22, 0);
         this.scene.add(net);
+        this.pitchParts.push(net);
       }
 
       // Players: slots [0, n/2) = home, rest = away.
