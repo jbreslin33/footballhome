@@ -36,6 +36,7 @@ touchline laws — [FH] marks engine-original formulations.
 | 19 | `verticality` [S] | Play forward FIRST: accept tighter lanes, lower the gain threshold [Bielsa/Zeman]; 0 = safe-side selection | sideways-safe passing |
 | 20 | `intercept` | Read the pass: meet a rolling free ball at the earliest-reach point on its friction path (G4.14; rolls per second) | chase the ball's current spot, always a step behind |
 | 21 | `restraint` | Don't dive: the anti-tackle [queue → wired G4.16]. Dive eagerness scales to ~x0.2 at 100 — world matches measured 245 dive attempts vs the ~35 of a real one | rash per-tick diving at the full swarm rate |
+| 22 | `tackle_timing` | Dive on the exposed ball, not on faith [queue → wired G4.17]: the carried ball rides ahead of the carrier's FACING, so the ball-side dive pokes the ball and the from-behind lunge goes through the man — rated players suppress the latter to ~x0.1 at 100 | lunges from behind at the same rate as from the front |
 
 ## Build queue (planned; each lands with the behavior that consumes it)
 
@@ -45,8 +46,8 @@ underfoot), `shield_ball` (body between man and ball), `scan_before_receive`
 (open body shape to play forward), `beat_man_1v1` (v1's Feint behavior,
 archived and tested).
 
-**Individual, defending** — `tackle_timing` (dive on the heavy touch, not
-on faith), `block_shot_line` (defend the shooting lane inside the box).
+**Individual, defending** — `block_shot_line` (defend the shooting lane
+inside the box).
 
 **Group (2–4 players)** — `wall_pass` (the return-ball half of give-and-go
 under an opponent), 

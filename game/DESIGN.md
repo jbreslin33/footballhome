@@ -555,6 +555,27 @@ ladder: u10 12.7 / u14 14.7 / amateur 7.7 / semipro 3.1 / pro 1.7 /
 world 2.8 / perfect 1.2 — world EXACTLY at the 2.7 real-world anchor.
 AI goldens re-locked; bands test green.
 
+### 8.12 G4.17 — tackle timing: dive on the exposed ball
+
+CONCEPTS.md queue bit wired: `tackle_timing` (bit 22), the companion to
+G4.16's restraint. The carried ball glues ahead of the carrier's FACING
+(§ the [v1] glue), so the engine-honest reading of "dive on the heavy
+touch, not on faith" is geometric: a defender in the carrier's front
+half-plane pokes through the ball; a lunge from behind goes through the
+man. Rated players suppress the from-behind dive (x0.1 at 100) and keep
+the ball-side dive at the restraint-scaled rate. Dive eagerness moved to
+a tenths scale in the same change — the old integer math was rounding
+away most of restraint's suppression (world eagerness 4→2 instead of
+4→1.056), so part of this slice's drop is restraint finally applying at
+its spec'd strength. Measured (12-match 90-min mirrors): world resolved
+dives 127 → ~50 per match against the ~35 real-tackle anchor, and the
+dive ladder is now monotone with skill — u10 3,878 / u14 1,071 /
+amateur 163 / semipro 119 / pro 67 / world 50 (kids dive, pros pick
+their moment). Goals ladder refreshed: u10 12.7 / u14 14.7 / amateur
+7.2 / semipro 2.8 / pro 2.8 / world 3.1 / perfect 1.4 — world a hair
+above the 2.7 anchor, within sample noise (bands test green). 11v11 AI
+golden re-locked (0x0d7303454c42cdda); 3v3 golden unchanged.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

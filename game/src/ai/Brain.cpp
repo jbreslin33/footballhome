@@ -548,14 +548,30 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             }
         }
         const bool organized = mates_behind >= opps_behind + 1;
-    // restraint (bit 21, CONCEPTS.md queue → wired G4.16): the
-    // anti-tackle. Dive eagerness (%/tick) scales down with the rating:
-    // full rash rate at 0, about a fifth of it at 100 — world matches
-    // measured ~245 dive attempts against the ~35 of a real one. The
-    // floor keeps the STEP real: organized teams still step in.
-    auto restrained = [&](int eag) {
-        const int r = ratings_[slot][21];
-        return eag - eag * r * 4 / 500;  // 100 → x0.2
+    // Dive eagerness, in TENTHS of the old %-scale (the integer math at
+    // the restraint-scaled magnitudes was rounding away most of the
+    // suppression). Two graded concepts compose here:
+    // - restraint (bit 21, G4.16): the anti-tackle. All dives scale down
+    //   with the rating — full rash rate at 0, a fifth of it at 100. The
+    //   floor keeps the STEP real: organized teams still step in.
+    // - tackle_timing (bit 22, G4.17): dive on the exposed ball, not on
+    //   faith. The carried ball rides AHEAD of the carrier's facing, so a
+    //   defender in the carrier's front half-plane pokes through the
+    //   ball; a lunge from behind goes through the man. Rated players
+    //   suppress the from-behind dive hard (x0.1 at 100) and keep the
+    //   ball-side dive at the restraint-scaled rate — volume falls and
+    //   the dives that remain are the clean ones.
+    auto dive_eagerness = [&](int base) {
+        int e = base * 10;
+        e -= e * ratings_[slot][21] * 4 / 500;  // restraint: 100 → x0.2
+        const int t = ratings_[slot][22];
+        if (t > 0 && ball.owner) {
+            const auto& c = world.player(*ball.owner);
+            const Fixed64 dot = c.face.x * (me.pos.x - c.pos.x) +
+                                c.face.y * (me.pos.y - c.pos.y);
+            if (dot.raw <= 0) e -= e * t * 9 / 1000;  // behind: 100 → x0.1
+        }
+        return e;
     };
 
         // Knowledge gates (CONCEPTS.md): what THIS player knows decides
@@ -591,9 +607,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                         core::kTackleReach * core::kTackleReach) {
                     const Fixed64 n2 = core::detNoise(
                         match_seed_, world.tickCount(), slot, 9);
-                    const int eag = restrained(4 + lv.swarm_pct / 2);
+                    const int eag = dive_eagerness(4 + lv.swarm_pct / 2);
                     if ((n2 + Fixed64::one()) <
-                        Fixed64::fromFraction(eag, 50)) {
+                        Fixed64::fromFraction(eag, 500)) {
                         out.action = Action::Tackle;
                     }
                 }
@@ -611,8 +627,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 core::kTackleReach * core::kTackleReach) {
             const Fixed64 n =
                 core::detNoise(match_seed_, world.tickCount(), slot, 7);
-            const int eagerness = restrained(4 + lv.swarm_pct / 2);
-            if ((n + Fixed64::one()) < Fixed64::fromFraction(eagerness, 50)) {
+            const int eagerness = dive_eagerness(4 + lv.swarm_pct / 2);
+            if ((n + Fixed64::one()) < Fixed64::fromFraction(eagerness, 500)) {
                 out.move.move = seek(me.pos, Vec2{ball.pos.x, ball.pos.y},
                                      Fixed64::fromFraction(1, 10));
                 out.action = Action::Tackle;
@@ -669,9 +685,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                         core::kTackleReach * core::kTackleReach) {
                     const Fixed64 n = core::detNoise(
                         match_seed_, world.tickCount(), slot, 7);
-                    const int eagerness = restrained(4 + lv.swarm_pct / 2);
+                    const int eagerness = dive_eagerness(4 + lv.swarm_pct / 2);
                     if ((n + Fixed64::one()) <
-                        Fixed64::fromFraction(eagerness, 50)) {
+                        Fixed64::fromFraction(eagerness, 500)) {
                         out.action = Action::Tackle;
                     }
                 }
