@@ -122,6 +122,9 @@ public:
     // Transition clock (G4.11): which team LOST the ball last, and when.
     std::uint8_t lastLosingTeam() const noexcept { return losing_team_; }
     std::uint64_t turnoverTick() const noexcept { return turnover_tick_; }
+    // Where the ball was won (G4.18): a COUNTER starts from a deep win;
+    // a recovered rebound in their box is a scramble, not a transition.
+    math::Fixed64 turnoverBallX() const noexcept { return turnover_ball_x_; }
     // Which team touched the ball last — a ball in flight still "belongs"
     // to its kicker's team for possession accounting (G4.1 metric gap).
     std::uint8_t lastTouchTeam() const noexcept { return last_touch_team_; }
@@ -163,6 +166,7 @@ private:
     std::uint8_t  offside_team_ = 0xFF;  // kicking team while armed
     std::uint8_t  losing_team_ = 0xFF;
     std::uint64_t turnover_tick_ = 0;
+    math::Fixed64 turnover_ball_x_{};
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped
     LevelParams   level_[2];
     std::uint64_t match_seed_ = 0;

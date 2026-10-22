@@ -101,6 +101,24 @@ private:
         return (n + math::Fixed64::one()) <
                math::Fixed64::fromFraction(r, 50);
     }
+    // counter_attack (bit 23, G4.18): is slot's team inside its fast-break
+    // window — ball won from the opponent IN OUR OWN HALF, within
+    // 2 s + rating ticks? A rebound recovered in their box is a
+    // scramble, not a transition (measured: those wins sit 0.6 s
+    // before the goal and doubled world scoring when they counted).
+    bool inCounterWindow(core::SlotIndex slot,
+                         const core::World& world) const {
+        const std::uint8_t r = ratings_[slot][23];
+        const std::uint8_t team = setup_.team_of_slot[slot];
+        if (r == 0 || world.lastLosingTeam() == 0xFF ||
+            world.lastLosingTeam() == team)
+            return false;
+        if (world.tickCount() - world.turnoverTick() >=
+            60 + static_cast<std::uint64_t>(r))
+            return false;
+        const math::Fixed64 x = world.turnoverBallX();
+        return team == 0 ? x.raw < 0 : x.raw > 0;
+    }
     // Magnitude helper: rating as a 0..1 Fixed64.
     math::Fixed64 degree(core::SlotIndex slot, int concept_idx) const {
         return math::Fixed64::fromFraction(ratings_[slot][concept_idx], 100);

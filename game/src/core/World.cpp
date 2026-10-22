@@ -331,6 +331,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             if (++ball_.contest_ticks >= kStealTicks) {
                 losing_team_ = players_[*ball_.owner].team;
                 turnover_tick_ = clock_.tick();
+                turnover_ball_x_ = ball_.pos.x;
                 ball_.owner = thief;
                 ball_.contest_ticks = 0;
             }
@@ -438,6 +439,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     if (last_touch_team_ != players_[best].team) {
         losing_team_ = last_touch_team_;
         turnover_tick_ = clock_.tick();
+        turnover_ball_x_ = ball_.pos.x;
     }
     ball_.owner = best;
     ball_.vel = Vec3{};

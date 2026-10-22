@@ -576,6 +576,51 @@ their moment). Goals ladder refreshed: u10 12.7 / u14 14.7 / amateur
 above the 2.7 anchor, within sample noise (bands test green). 11v11 AI
 golden re-locked (0x0d7303454c42cdda); 3v3 golden unchanged.
 
+### 8.13 G4.18 — counter attack, and the harness learns where goals come from
+
+Built `counter_attack` (bit 23, KNVB moment 4): carrier gain threshold
+collapses inside a fast-break window, a second runner joins the run in
+behind. Band-wide it took world 3.1 → 5.8 goals — so before tuning, the
+harness learned to see goal ORIGINS, and what it saw re-scoped the slice:
+
+- **"Wins" 0.6 s before the goal.** A keeper parry or a block makes the
+  defenders last-touch, so the attacker collecting the rebound registers
+  a turnover — the window was opening on rebounds in the box. World now
+  records `turnoverBallX` (not in the canonical hash); a counter = ball
+  won in your OWN half.
+- **Goal origin by band** (12×90-min mirrors, pre-slice brain): semipro
+  10 of 33 goals are counters (~30% — real-world-like); world **0 of
+  37** — 35 are SCRAMBLES (win < 3 s before the goal: 17 off keeper
+  parries, 18 off outfield deflections). The world band hits the 2.7
+  anchor for the wrong reason: airtight structure, every goal a second
+  ball. Anything adding bodies near goal inflates world scoring.
+- **Possession churn — the root.** Changes per match by cause: amateur
+  691 (7.8 s each), semipro 1,097 (4.9 s), **world 2,459 (2.2 s — worse
+  than u10's 2.3 s)**, of which 2,230 are a loser's kick collected by the
+  other side. Real football: ~200–250 possessions. The asymmetry: G4.14
+  taught DEFENDERS the earliest-reach read (`intercept`), but PASSERS
+  still judge a lane by a static 2 m corridor at current positions —
+  the better the band, the more passes are read. Counter funnel at
+  semipro (own-half wins → final third ≤10 s → shot): 413 → 155 → 96
+  per team per match, and the counter identity moved none of it
+  (416 → 149 → 95) — breaks die to churn, not to lack of intent.
+
+Shipped at the scope the evidence supports: `counter_attack` is a STYLE
+concept [S] (default 0, out of the band bundle — every golden is
+byte-identical to G4.17) with **no preset rows yet** (head-to-head it
+measured null-to-harmful; rows — incl. Lighthouse's sourced "attack
+quickly with numbers… before the opponent can recover" — land once
+possession can last). Harness grew: counter/scramble goal classes,
+scramble cause (parry / deflection / poke), the counter funnel, churn
+anatomy, and argv[9] home-team concept overrides ("name:rating,...") for
+head-to-head identity tests.
+
+**Next — G4.19, pass safety [Buckland]:** the passer runs the
+interceptor's closing-speed math against every opponent on the pass's
+friction path and rejects passes someone reaches first. Targets: world
+churn toward ~250 changes/match, goals from scrambles toward a minority,
+then re-measure counter_attack and land its preset rows.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

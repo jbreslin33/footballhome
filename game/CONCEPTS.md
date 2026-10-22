@@ -37,6 +37,7 @@ touchline laws — [FH] marks engine-original formulations.
 | 20 | `intercept` | Read the pass: meet a rolling free ball at the earliest-reach point on its friction path (G4.14; rolls per second) | chase the ball's current spot, always a step behind |
 | 21 | `restraint` | Don't dive: the anti-tackle [queue → wired G4.16]. Dive eagerness scales to ~x0.2 at 100 — world matches measured 245 dive attempts vs the ~35 of a real one | rash per-tick diving at the full swarm rate |
 | 22 | `tackle_timing` | Dive on the exposed ball, not on faith [queue → wired G4.17]: the carried ball rides ahead of the carrier's FACING, so the ball-side dive pokes the ball and the from-behind lunge goes through the man — rated players suppress the latter to ~x0.1 at 100 | lunges from behind at the same rate as from the front |
+| 23 | `counter_attack` [S] | Moment 4 [KNVB]: ball won in OUR half → for 2 s + rating ticks the carrier's gain threshold collapses (≥ verticality-100 forwardness) and a SECOND runner joins the run in behind (G4.18). Style, not skill: band-wide it measured world 3.1 → 5.0 goals, all scrambles; head-to-head it changed nothing in the break funnel because possession churns every ~2–5 s. Inert until G4.19 (pass safety) lets possession last; preset rows land then | wins it and recycles; nobody breaks
 
 ## Build queue (planned; each lands with the behavior that consumes it)
 
@@ -104,7 +105,7 @@ What federations and schools actually teach, mined for registry rows:
   coordination as a TAUGHT skill ladder — step, drop, slide, trap — i.e.
   our line concepts are genuinely separable bits, not one blob.
 
-Queue additions from the dive: `counter_attack` (moment 4), `occupy_half_space`, `slide_with_ball`
+Queue additions from the dive: `counter_attack` (moment 4 — wired G4.18 as [S]), `occupy_half_space`, `slide_with_ball`
 (lateral line shift), `step_drop_call` (keeper organizes the line),
 `block_height` as an explicit team tactic (high/mid/low — the FSM layer).
 

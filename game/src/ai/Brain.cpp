@@ -258,7 +258,17 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
 
         // verticality [Bielsa/Zeman]: forward FIRST — the gain threshold
         // collapses with the rating (0.4x at 100): play the ball on.
-        const Fixed64 vdeg = degree(slot, 19);
+        Fixed64 vdeg = degree(slot, 19);
+        // counter_attack (bit 23, G4.18, KNVB moment 4): the first
+        // seconds after WINNING the ball are the fast break — their
+        // shape is broken, so even a control-minded side plays forward
+        // NOW. Inside the window (own-half win, length scales with the
+        // rating) the gain threshold collapses at least as far as verticality 100
+        // would take it; outside it, style resumes.
+        if (inCounterWindow(slot, world)) {
+            const Fixed64 cdeg = degree(slot, 23);
+            if (cdeg > vdeg) vdeg = cdeg;
+        }
         const Fixed64 gain_scale =
             Fixed64::one() - vdeg * Fixed64::fromFraction(6, 10);
         if (have_target &&
@@ -804,8 +814,11 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // attacks the space beyond their last outfield defender — the
         // run that makes the over-the-top ball a weapon and drags their
         // line deep. Ball-watchers (swarm ≥ 40) never make it.
-        if (applies(slot, 5, world.tickCount() / 30)) {
-            bool im_most_advanced = true;
+        // counter_attack (bit 23, G4.18): during the fast-break window a
+        // SECOND runner joins — moment 4 is arriving in NUMBERS before
+        // their shape reforms; one runner the recovering line can track.
+        {
+            int more_adv = 0;
             const Fixed64 my_prog = me.pos.x * sgn2;
             for (SlotIndex i = 0; i < world.playerCount(); ++i) {
                 if (i == slot || i == *ball.owner) continue;
@@ -814,9 +827,13 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 if (world.isKeeper(i)) continue;
                 const Fixed64 pr = world.player(i).pos.x * sgn2;
                 if (pr > my_prog || (pr == my_prog && i < slot))
-                    im_most_advanced = false;
+                    ++more_adv;
             }
-            if (im_most_advanced) {
+            const bool runs_now =
+                (more_adv == 0 && applies(slot, 5, world.tickCount() / 30)) ||
+                (more_adv == 1 && inCounterWindow(slot, world) &&
+                 applies(slot, 23, world.tickCount() / 30));
+            if (runs_now) {
                 Fixed64 their_line = Fixed64::fromInt(-1000);
                 for (SlotIndex j = 0; j < world.playerCount(); ++j) {
                     if (setup_.team_of_slot[j] ==

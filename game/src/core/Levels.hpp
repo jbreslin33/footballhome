@@ -113,15 +113,18 @@ enum Concept : std::uint32_t {
     kInterceptRead   = 1u << 20,  // read the pass: earliest-reach cutoff
     kRestraint       = 1u << 21,  // don't dive: the anti-tackle
     kTackleTiming    = 1u << 22,  // dive on the exposed ball, not on faith
+    // [S] like 18/19: a band-wide counter measured world 3.1 → 5.0 goals
+    // (extra bodies in the box feed the scramble) — it's an identity.
+    kCounterAttack   = 1u << 23,  // fast break: moment 4 [KNVB]
 };
-inline constexpr std::uint32_t kAllConcepts = (1u << 23) - 1;
+inline constexpr std::uint32_t kAllConcepts = (1u << 24) - 1;
 inline constexpr const char* kConceptNames[] = {
     "delay", "marking", "cover", "support", "outlet",
     "runs", "over-top", "sweep", "placement", "line-hold",
     "jockey-angle", "recover", "double-team", "width", "give-and-go",
     "push-up", "counter-press", "balance", "man-mark", "verticality",
-    "intercept", "restraint", "tackle-timing"};
-inline constexpr int kConceptCount = 23;
+    "intercept", "restraint", "tackle-timing", "counter-attack"};
+inline constexpr int kConceptCount = 24;
 
 // ── Graded knowledge (James: "implement them on a 0 to 100 scale") ─────
 // A rating is CONSISTENCY + MAGNITUDE in one number: branch concepts roll
