@@ -22,6 +22,9 @@
   // Water score per m² (3 pond + 1.5 runoff + 0.5 flat): cyan = 10, A = 0.
   const DENS_CYAN = (3 * 95 + 1.5 * 394 + 0.5 * 935) / (105.16 * 67.67);
   const DENS_A = (3 * 175 + 1.5 * 386 + 0.5 * 1336) / (105.16 * 67.67);
+  // Rules shown as a distance only, never an offence (James, 10/22: "don't
+  // do 15 yards from main diamond just show how far").
+  const INFO = { main_infield: true };
   const SEVEN_SIZES = [[70, 35], [65, 35], [60, 35], [55, 35], [60, 30]];
   const NAMES = {
     main_infield: 'main diamond infield', softball_skin: 'softball infield dirt',
@@ -108,6 +111,7 @@
     const out = [], rb = bbox(R);
     const add = (n, have, need) => out.push({ n, have, need });
     for (const r of rules) {
+      if (INFO[r.n]) continue;
       if (r.k === 'poly') {
         const b = r.bb || (r.bb = bbox(r.pts));
         if (rb[0] - b[1] > r.min || b[0] - rb[1] > r.min || rb[2] - b[3] > r.min || b[2] - rb[3] > r.min) continue;
@@ -227,7 +231,7 @@
     const copyBtn = mk('button', pill, 'COPY');
     tap(copyBtn, () => {
       const txt = pitches.map((p) => `${p.id} ${p.size[0]}x${p.size[1]} yd at (${p.x.toFixed(1)}, ${p.z.toFixed(1)}) ${p.rot.toFixed(0)}°` +
-        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}, rating ${p.ev.w.rating.toFixed(1)}`).join('\n');
+        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}, rating ${p.ev.w.rating.toFixed(1)}, main infield ${(p.ev.infield / YD).toFixed(1)} yd`).join('\n');
       if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
       copyBtn.textContent = 'COPIED';
       setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
@@ -235,7 +239,7 @@
     bar.appendChild(copyBtn);
     panel.appendChild(bar);
     panel.appendChild(mk('div', 'opacity:.7;margin-top:4px;font-size:11px;',
-      'Drag a pitch to move it · ↺ ↻ or [ ] to turn the selected one · red = too close to something'));
+      'Drag a pitch to move it · ↺ ↻ or [ ] to turn the selected one · red = too close to something (the main diamond is distance only)'));
 
     // Outline (4 strips + halfway) and a faint fill, in a group per pitch
     // turned like field.js's boxes, so a drag only moves the group.
@@ -290,8 +294,10 @@
         if (d < GAP) off.push({ n: 'other', have: d, need: GAP });
       }
       off.sort((a, b) => (a.have - a.need) - (b.have - b.need));
+      const main = DATA.profiles[p.profile].find((r) => r.n === 'main_infield');
       p.R = R;
-      p.ev = { ok: off.length === 0, off, w: water(DATA.grid, p.x, p.z, th, L, W) };
+      p.ev = { ok: off.length === 0, off, w: water(DATA.grid, p.x, p.z, th, L, W),
+               infield: main ? rectDist(R, c, main.pts, !!main.c) : null };
     }
     // Rule name -> words: layout structures by their layout name.
     const label = (n) => {
@@ -345,7 +351,9 @@
         rows[p.id].parentNode.style.background = p === sel ? 'rgba(255,255,255,.12)' : 'transparent';
         rows[p.id].innerHTML = '<b>' + (p === sel ? '▶ ' : '') + p.id + ' ' + p.size[0] + '×' + p.size[1] + ' yd</b> · ' +
           p.rot.toFixed(0) + '° · water <b>' + w.rating.toFixed(1) + '/10</b> (pond ' + pct('pond') + ', runoff ' +
-          pct('flow') + ', flat ' + pct('flat') + ')<br>' + why;
+          pct('flow') + ', flat ' + pct('flat') + ')' +
+          (ev.infield != null ? '<br><span style="opacity:.85">⚾ main diamond infield: ' +
+            (ev.infield <= 0 ? 'overlapping' : fmt(ev.infield) + ' away') + '</span>' : '') + '<br>' + why;
       }
       sizeBtn.textContent = '7v7 SIZE ' + pitches[1].size[0] + '×' + pitches[1].size[1];
     }
