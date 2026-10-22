@@ -53,7 +53,7 @@ window.LIGHTHOUSE_LAYOUT = {
   diamonds: [
     { name: 'main (baseball)', home: [-68.5, 29.5], bearing: -45, base: 27.43, infield: 'grass', arc: 47 },
     { name: 'east (softball)', home: [85.9, 13.4], bearing: -107, base: 18.29, infield: 'dirt', arc: 28 },
-    { name: 'by the paddock (small)', home: [61, 66], bearing: -135, base: 18.29, infield: 'dirt', arc: 22 }, // CONFIRM orientation
+    { name: 'by the playground (small)', home: [61, 66], bearing: -135, base: 18.29, infield: 'dirt', arc: 22 }, // CONFIRM orientation
   ],
 
   // Kids' fields — to be placed with James (size, spot, orientation).
@@ -78,17 +78,70 @@ window.LIGHTHOUSE_LAYOUT = {
     { x: 18, z: 37.5, len: 6, face: 180 },
   ],
 
-  // THE BARN (James: "biggest building on complex", "baseball field is
-  // near barn"): the dark-roofed building by Erie with the dirt paddock on
-  // its west side, beside the SE diamond. Esri imagery 14.9 x 9.1; Google's
-  // newer imagery ~16 x 12 with its lean-to.
-  barn: { x: 24.9, z: 54.7, w: 16, d: 11, rotDeg: -8, roof: 'dark', walls: 'red' },
-  paddock: { x: 13.0, z: 56.5, w: 6.9, d: 10.3 },
-  greenShed: { x: 43.2, z: 57.0, w: 3.4, d: 17, rotDeg: 0 },
-  // The other big building, south of the main diamond (Google labels it
-  // "Li'Vere Candles & Co"); ~17.6 x 12, dark roof.
-  buildings: [{ name: 'east-of-League-Park block', x: -39.8, z: 48.8, w: 17.6, d: 12, h: 6,
-                rotDeg: -8, color: 0x7a6658 }],
+  // THE BARN — really an event hall (James, 10/22), between the village
+  // road and Erie Ave (Google pins "Li'Vere Candles & Co" on it). City 2025
+  // imagery, shadows lifted: 17.0 m east–west x 11.1 m, turned 12.4° (east
+  // end further south); gable roof whose ridge runs north–south across the
+  // short side, so the gable ends face the road and Erie. gableBarn's
+  // ridge is its w axis, hence w 11.1 and rotDeg 12.4 + 90.
+  barn: { x: -39.87, z: 51.95, w: 11.1, d: 17.0, rotDeg: 102.4, roof: 'dark', walls: 'tan' },
+  // Lighthouse Village (City 2025 imagery): south of the metal fence, the
+  // vendor stall row faces the road in front of the barn. The long roof
+  // runs x -56…-28; three small grey-roofed stalls sit at its east end;
+  // the white-roofed building closes the road's east end. Entries marked
+  // CONFIRM are measured but James still has to name them.
+  buildings: [{ name: 'vendor stall row', x: -42, z: 36, w: 28, d: 4, h: 3, color: 0x7a5c44 },
+              { name: 'vendor stall', x: -28.1, z: 36.7, w: 2.8, d: 3, h: 2.5, color: 0x8a8f96 },
+              { name: 'vendor stall', x: -25.2, z: 36.7, w: 2.8, d: 3, h: 2.5, color: 0x8a8f96 },
+              { name: 'vendor stall', x: -22.3, z: 36.7, w: 2.8, d: 3, h: 2.5, color: 0x8a8f96 },
+              { name: 'white-roofed building, road end', x: 19.8, z: 43.5, w: 6, d: 7, h: 3,
+                rotDeg: 5, color: 0xd9d6cf },
+              // White-roofed block just east of the hall (2.8 x 12.3 m).
+              { name: 'snack bar + bathrooms (CONFIRM)', x: -25.4, z: 54.6, w: 2.8, d: 12.3, h: 3,
+                color: 0xd9d6cf },
+              // Long dark roof by the parking-lot entrance (28.6 x ~3 m).
+              { name: 'long dark roof by the entrance — the dugout? (CONFIRM)', x: -89.3, z: 47.2,
+                w: 28.6, d: 3, h: 2.6, rotDeg: 7.6, color: 0x4a3b30 },
+              // Plank-topped wooden structure on the playground's east side.
+              { name: 'wooden structure — the dugout? (CONFIRM)', x: 37.05, z: 55.9, w: 3.1, d: 5, h: 2.6,
+                color: 0x9a7650 },
+              // By Whitaker Ave: trailers / stands parallel to the avenue.
+              { name: 'Whitaker trailer (blue-grey roof)', x: 99.5, z: 37, w: 19, d: 3.5, h: 3,
+                rotDeg: 120, color: 0x8d99a3 },
+              { name: 'Whitaker stand (red roof)', x: 107, z: 41, w: 14, d: 4.5, h: 3,
+                rotDeg: 120, color: 0x8a4a3a },
+              { name: 'Whitaker stand (tan roof)', x: 85, z: 66, w: 12.6, d: 3.5, h: 3,
+                rotDeg: 119, color: 0xc9a27a }],
+  // Pop-up canopies ("gazebos"), roof slab on four legs. CONFIRM which set
+  // James means: white ones by the entrance-side Erie walk, coloured ones
+  // south of the playground, green ones by Whitaker.
+  canopies: [
+    { name: 'white canopies (gazebos?)', x: -78.4, z: 59.2, w: 8, d: 3.7, color: 0xf2f2f0 },
+    { name: 'coloured canopies (gazebos?)', x: 41.8, z: 74, w: 5.7, d: 5.7, color: 0x8a6fb0 },
+    { name: 'green canopies', x: 95.3, z: 64.7, w: 8, d: 6.8, color: 0x3f8a5a },
+  ],
+  // Fenced playground / picnic pad by Erie (was mistaken for a barn +
+  // paddock on older imagery): asphalt pad, sand pit, fence on three sides
+  // (the south side is lost under the trees).
+  playground: {
+    fence: [[9.8, 63.5], [9.8, 49.3], [39, 52.1], [36.3, 64.8]],
+    pad: [[19.1, 51.0], [33.4, 52.1], [34.0, 62.5], [18.7, 61.4]],
+    sand: [[11.1, 52.7], [17.0, 52.5], [18.9, 54.6], [18.0, 63.3], [10.9, 63.3]],
+  },
+  // Flat ground polygons (layer 'road' asphalt or 'path' concrete). The
+  // village road: between the stalls and the barn, then east along the
+  // fence to the white building; a lot opens south off it at x -12…3.
+  roads: [
+    { name: 'village road', kind: 'road', pts: [[-56, 38.2], [-24, 37.2], [16.5, 40.7], [16.5, 46.8],
+      [3.2, 45.6], [3.2, 50], [-12, 50], [-12, 44.2], [-20, 43.4], [-54, 43.6]] },
+    { name: 'concrete apron', kind: 'path', pts: [[-20.5, 34.9], [10, 38.1], [16.5, 39.9], [16.5, 40.7], [-24, 37.2]] },
+  ],
+  // Low three-rail wooden fence between the metal fence and the road (a
+  // gap with two heavy posts at x ≈ 10–13), continuing east to x ≈ 43.
+  railFences: [
+    { name: 'village rail fence', color: 0x5a4636, pts: [[-20.1, 34.6], [10.2, 37.9]] },
+    { name: 'village rail fence east', color: 0x5a4636, pts: [[12.9, 38.1], [26, 40.4], [42.8, 42.6]] },
+  ],
 
   // Rodeo area (north-east). Imagery: a round pen (Esri: ~20 m across;
   // Google's newer imagery shows white panels + little bleachers), an
@@ -101,12 +154,8 @@ window.LIGHTHOUSE_LAYOUT = {
   sheds: [{ x: 137.9, z: -131.0, w: 14.3, d: 6.9, rotDeg: -5, roof: 'red' }],
   trailers: [{ x: 146.1, z: -127.0, w: 8, d: 2.5, rotDeg: -20 }],
 
-  // Horses (LOD detail — only drawn up close): at the barn's paddock and
-  // by the rodeo.
+  // Horses (LOD detail — only drawn up close), by the rodeo.
   horses: [
-    { x: 11, z: 54, rotDeg: 20, coat: 0x6b3e26 },
-    { x: 15, z: 59, rotDeg: 150, coat: 0x2a1d15 },
-    { x: 13, z: 52, rotDeg: -70, coat: 0xb08a5a },
     { x: 140, z: -124, rotDeg: 90, coat: 0x8a5a3a },
     { x: 150, z: -108, rotDeg: 200, coat: 0x4a3326 },
   ],

@@ -484,7 +484,8 @@
       railFence(site, pts, true);
     }
     if (L.barn) {
-      const b = gableBarn(L.barn.w, L.barn.d, L.barn.walls === 'red' ? 0x9b2f2a : 0x8a7a66,
+      const b = gableBarn(L.barn.w, L.barn.d,
+                          { red: 0x9b2f2a, tan: 0xb8a487 }[L.barn.walls] || 0x8a7a66,
                           L.barn.roof === 'red' ? 0x8c2a24 : 0x2f3338);
       b.position.set(L.barn.x, 0, L.barn.z);
       b.rotation.y = -(L.barn.rotDeg || 0) * D2R;
@@ -514,6 +515,33 @@
                    [p.x + p.w / 2, p.z + p.d / 2], [p.x - p.w / 2, p.z + p.d / 2]];
       addFlat(layers.dirt[0], pts, layers.dirt[2] + 0.005);
       railFence(site, pts, true);
+    }
+    for (const r of (L.roads || [])) {
+      const ly = layers[r.kind || 'road'];
+      addFlat(ly[0], r.pts, ly[2]);
+    }
+    for (const rf of (L.railFences || [])) railFence(site, rf.pts, false, rf.color);
+    for (const c of (L.canopies || [])) {
+      const g = new THREE.Group();
+      const top = new THREE.Mesh(new THREE.BoxGeometry(c.w, 0.12, c.d), std(c.color, { roughness: 0.9 }));
+      top.position.y = 2.6;
+      top.castShadow = true;
+      g.add(top);
+      const legM = std(0x9aa1a8, { metalness: 0.6, roughness: 0.4 });
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.6, 6), legM);
+        leg.position.set(sx * (c.w / 2 - 0.1), 1.3, sz * (c.d / 2 - 0.1));
+        g.add(leg);
+      }
+      g.position.set(c.x, 0, c.z);
+      g.rotation.y = -(c.rotDeg || 0) * D2R;
+      site.add(g);
+    }
+    if (L.playground) {
+      const pg = L.playground;
+      if (pg.pad) addFlat(layers.road[0], pg.pad, layers.road[2]);
+      if (pg.sand) addFlat(layers.sand[0], pg.sand, layers.sand[2]);
+      if (pg.fence) railFence(site, pg.fence, false, 0x6b7178);
     }
     if (L.greenShed) {
       const g = L.greenShed;
@@ -713,9 +741,10 @@
     return m;
   }
 
-  // Two-rail post fence along a closed polygon.
-  function railFence(parent, pts, closed) {
-    const rail = std(0xe9e6dc);
+  // Two-rail post fence along a polyline (closed = back to the start),
+  // posts every <= 2.5 m.
+  function railFence(parent, pts, closed, color) {
+    const rail = std(color || 0xe9e6dc);
     const n = closed ? pts.length : pts.length - 1;
     for (let k = 0; k < n; k++) {
       const [ax, az] = pts[k], [bx, bz] = pts[(k + 1) % pts.length];
@@ -726,9 +755,12 @@
         r.rotation.y = -Math.atan2(bz - az, bx - ax);
         parent.add(r);
       }
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.4, 0.15), rail);
-      post.position.set(ax, 0.7, az);
-      parent.add(post);
+      const np = Math.max(1, Math.ceil(len / 2.5));
+      for (let i = 0; i < np + (!closed && k === n - 1 ? 1 : 0); i++) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.4, 0.15), rail);
+        post.position.set(ax + (bx - ax) * i / np, 0.7, az + (bz - az) * i / np);
+        parent.add(post);
+      }
     }
   }
 
