@@ -221,10 +221,21 @@
       for (const ev of ['mouseup', 'mouseleave', 'touchend', 'touchcancel']) b.addEventListener(ev, stop);
       bar.appendChild(b);
     }
+    // ⭐ BEST: snap the selected pitch to the driest legal spot of its size
+    // (the 100 % spot, data.ranges[size].at).
+    const bestBtn = mk('button', pill + 'border-color:#ffd24d;', '⭐ BEST');
+    tap(bestBtn, () => {
+      const r = DATA.ranges[sel.size[0] + 'x' + sel.size[1]];
+      if (!r || !r.at) return;
+      sel.x = r.at[0]; sel.z = r.at[1]; sel.rot = r.at[2];
+      update();
+      flyTo(sel);
+    });
+    bar.appendChild(bestBtn);
     const sizeBtn = mk('button', pill);
     tap(sizeBtn, () => {
       const p = pitches[1];
-      p.size = SEVEN_SIZES[(SEVEN_SIZES.indexOf(p.size) + 1) % SEVEN_SIZES.length];
+      p.size = SEVEN_SIZES[(SEVEN_SIZES.indexOf(sizeOf(p.size)) + 1) % SEVEN_SIZES.length];
       rebuild(p);
       update();
     });
@@ -232,13 +243,82 @@
     const copyBtn = mk('button', pill, 'COPY');
     tap(copyBtn, () => {
       const txt = pitches.map((p) => `${p.id} ${p.size[0]}x${p.size[1]} yd at (${p.x.toFixed(1)}, ${p.z.toFixed(1)}) ${p.rot.toFixed(0)}°` +
-        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}, water ${p.ev.w.pct.toFixed(0)}%, main infield ${(p.ev.infield / YD).toFixed(1)} yd`).join('\n');
+        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}, dry ${p.ev.w.pct.toFixed(0)}%, main infield ${(p.ev.infield / YD).toFixed(1)} yd`).join('\n');
       if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
       copyBtn.textContent = 'COPIED';
       setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
     });
     bar.appendChild(copyBtn);
     panel.appendChild(bar);
+
+    // SPOTS (James: "click button to reset it there. allow for saving a
+    // spot and delete a spot and give it a name"): built-in spots from
+    // layout.planSpots + ones saved in this browser (localStorage). Tap a
+    // spot = move the selected pitch there; 💾 saves where it is now; ✕
+    // deletes a saved one.
+    const SPOT_KEY = 'fh.lighthouse.planSpots.v1';
+    const loadSaved = () => {
+      try { return JSON.parse(localStorage.getItem(SPOT_KEY) || '[]'); } catch (e) { return []; }
+    };
+    const storeSaved = (list) => {
+      try { localStorage.setItem(SPOT_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+    };
+    const spotBox = mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;');
+    panel.appendChild(spotBox);
+    const sizeOf = (sz) => SEVEN_SIZES.find((q) => q[0] === sz[0] && q[1] === sz[1]) || sz;
+    function applySpot(sp) {
+      const p = pitches.find((q) => q.id === sp.pitch);
+      if (!p) return;
+      sel = p;
+      p.x = sp.x; p.z = sp.z; p.rot = sp.rotDeg;
+      if (sp.size && (sp.size[0] !== p.size[0] || sp.size[1] !== p.size[1])) { p.size = sizeOf(sp.size); rebuild(p); }
+      update();
+      flyTo(p);
+    }
+    function paintSpots() {
+      spotBox.innerHTML = '';
+      spotBox.appendChild(mk('span', 'opacity:.75;font-size:11px;', '📌 ' + sel.id + ' spots:'));
+      const saved = loadSaved();
+      const all = (LAY.planSpots || []).map((sp) => ({ sp, saved: false }))
+        .concat(saved.map((sp, i) => ({ sp, saved: true, i })))
+        .filter((e) => e.sp.pitch === sel.id);
+      for (const e of all) {
+        const b = mk('button', pill + (e.saved ? '' : 'border-color:#ffd24d;'), e.sp.name);
+        b.title = `(${e.sp.x.toFixed(1)}, ${e.sp.z.toFixed(1)}) ${e.sp.rotDeg.toFixed(0)}°` +
+          (e.sp.size ? ` ${e.sp.size[0]}×${e.sp.size[1]} yd` : '');
+        tap(b, () => applySpot(e.sp));
+        spotBox.appendChild(b);
+        if (e.saved) {
+          const x = mk('button', pill + 'padding:4px 7px;color:#ff8a94;', '✕');
+          x.title = 'Delete "' + e.sp.name + '"';
+          tap(x, () => {
+            const list = loadSaved();
+            list.splice(e.i, 1);
+            storeSaved(list);
+            paintSpots();
+          });
+          spotBox.appendChild(x);
+        }
+      }
+      const name = document.createElement('input');
+      name.placeholder = 'name this spot';
+      name.style.cssText = 'min-width:0;width:130px;padding:4px 8px;border-radius:12px;border:1px solid #889;' +
+        'background:rgba(255,255,255,.08);color:#f4f6fb;font:12px system-ui,sans-serif;';
+      for (const ev of ['mousedown', 'touchstart', 'keydown']) name.addEventListener(ev, (e) => e.stopPropagation());
+      const save = mk('button', pill, '💾 SAVE');
+      const doSave = () => {
+        const n = name.value.trim() || (sel.id + ' ' + new Date().toLocaleString());
+        const list = loadSaved();
+        list.push({ name: n, pitch: sel.id, x: +sel.x.toFixed(2), z: +sel.z.toFixed(2),
+                    rotDeg: +sel.rot.toFixed(1), size: sel.size.slice() });
+        if (!storeSaved(list)) save.textContent = '⚠ NOT SAVED';
+        paintSpots();
+      };
+      tap(save, doSave);
+      name.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
+      spotBox.appendChild(name);
+      spotBox.appendChild(save);
+    }
     panel.appendChild(mk('div', 'opacity:.7;margin-top:4px;font-size:11px;',
       'Drag a pitch to move it · ↺ ↻ or [ ] to turn the selected one · red = too close to something (the main diamond is distance only)'));
 
@@ -377,7 +457,7 @@
       b.style.borderColor = hex;
       b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' + hex + '"></span>' +
         '📐 ' + p.id + ' ' + p.size[0] + '×' + p.size[1] +
-        (p.ev ? ' · water ' + p.ev.w.pct.toFixed(0) + '% · ' + (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : ' · tap to plan');
+        (p.ev ? ' · dry ' + p.ev.w.pct.toFixed(0) + '% · ' + (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : ' · tap to plan');
     };
     for (const p of pitches) paintPill(p);
 
@@ -395,11 +475,12 @@
             '</span>').join('<br>');
         rows[p.id].parentNode.style.background = p === sel ? 'rgba(255,255,255,.12)' : 'transparent';
         rows[p.id].innerHTML = '<b>' + (p === sel ? '▶ ' : '') + p.id + ' ' + p.size[0] + '×' + p.size[1] + ' yd</b> · ' +
-          p.rot.toFixed(0) + '° · water <b>' + w.pct.toFixed(0) + '%</b> (pond ' + pct('pond') + ', runoff ' +
-          pct('flow') + ', flat ' + pct('flat') + ')' +
+          p.rot.toFixed(0) + '° · dry <b>' + w.pct.toFixed(0) + '%</b> <span style="opacity:.7">(100% = driest legal spot)</span> · pond ' + pct('pond') + ', runoff ' +
+          pct('flow') + ', flat ' + pct('flat') +
           (ev.infield != null ? '<br><span style="opacity:.85">⚾ main diamond infield: ' +
             (ev.infield <= 0 ? 'overlapping' : fmt(ev.infield) + ' away') + '</span>' : '') + '<br>' + why;
       }
+      if (paintSpots.for !== sel) { paintSpots.for = sel; paintSpots(); }
       sizeBtn.textContent = '7v7 SIZE ' + pitches[1].size[0] + '×' + pitches[1].size[1];
     }
 

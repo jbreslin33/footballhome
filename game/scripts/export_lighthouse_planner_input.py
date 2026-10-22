@@ -133,8 +133,11 @@ def sweep_ranges(binary, d):
                               '--box', '-120,130,-140,95', '--top', '100000000'],
                              capture_output=True, check=True, text=True).stdout.splitlines()
         area = L * W * 0.9144 ** 2
-        dens = [float(r.split('\t')[7]) / area for r in res[1:-1]]
-        out['%dx%d' % (L, W)] = {'best': round(min(dens), 5), 'worst': round(max(dens), 5), 'legal': len(dens)}
+        rows = [r.split('\t') for r in res[1:-1]]
+        dens = [float(r[7]) / area for r in rows]
+        b = rows[dens.index(min(dens))]   # the 100 % spot (⭐ BEST snaps here)
+        out['%dx%d' % (L, W)] = {'best': round(min(dens), 5), 'worst': round(max(dens), 5), 'legal': len(dens),
+                                 'at': [float(b[0]), float(b[1]), float(b[2])]}
         print(L, W, out['%dx%d' % (L, W)], flush=True)
     return out
 

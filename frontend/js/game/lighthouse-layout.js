@@ -36,18 +36,10 @@ window.LIGHTHOUSE_LAYOUT = {
   // goal line is 10 ft off the vendor fence — 99.9 m (109 yd) long, right
   // up against the main diamond's infield. Drawn in yellow.
   oldPitch: { x: -11.5, z: -28.0, rotDeg: 61.3, length: 99.9, width: 60.0 },
-  // FLOOD (James): the water comes from today's cemetery-end goal — the
-  // whole width out to the 6-yard box is flood plain — then drains toward
-  // Erie Ave down the yellow sideline by the main diamond, 10–15 yd in, to
-  // the vendor fence. Deep blue = always wet (box zone + first 10 yd),
-  // light = out to 15 yd. The planned 11v11 misses the box zone by 7 m;
-  // only its south-west corner is touched: 48 sq yd (0.6%) in the 10 yd
-  // strip, 129 sq yd (1.5%) out to 15 yd.
-  flood: [
-    { name: 'wet: 15 yd in from the yellow sideline', opacity: 0.28, pts: [[-49.77, -63.99], [-1.8, 23.63], [-13.83, 30.22], [-61.8, -57.41]] },
-    { name: 'wet: 10 yd in from the yellow sideline', opacity: 0.5, pts: [[-53.78, -61.8], [-5.81, 25.83], [-13.83, 30.22], [-61.8, -57.41]] },
-    { name: 'flood plain: cemetery goal out to the 6-yard box', opacity: 0.5, pts: [[-9.17, -86.22], [-6.53, -81.4], [-59.16, -52.58], [-61.8, -57.41]] },
-  ],
+  // FLOOD (removed 10/22): James's hand-drawn flood areas (cemetery-end
+  // 6-yd box, wet strip by the yellow sideline) came out — the box floods
+  // because cars compact it (stop driving there), and the lidar already
+  // scores the real runoff. In git history before this change.
 
   // Fences, traced on the City 2025 orthoimagery (same numbers as the
   // planner). The vendor fence is pole bases: straight along the main
@@ -88,12 +80,6 @@ window.LIGHTHOUSE_LAYOUT = {
   // Google prints them (measured on two zoom levels, agree within 0.5 m),
   // painted flat on the grass north-up to help orient the game view.
   labels: [{ text: '260', x: 32.8, z: -54.9, size: 8 }],
-  // FILL (James, 10/22): build up with dirt the little triangle where the
-  // flood strip clips the planned 11v11's south-west corner — out to the
-  // 15 yd wet line: 109 m² (131 sq yd), running 25 yd up the west
-  // touchline from the corner and 11 yd in along the goal line. 6 in of
-  // dirt = 16.7 m³ (21.8 cu yd); 12 in = 33.3 m³ (43.6 cu yd).
-  fill: [{ name: 'built-up dirt, 11v11 south-west corner', raise: 0.15, pts: [[-1.8, 23.63], [-12.19, 29.32], [-10.66, 7.45]] }],
   // CANDIDATE SPOTS for the 115 x 74 yd pitch (water search, 10/22): every
   // legal placement (>= 10 ft off both fences, >= 15 yd off the main
   // infield, off dirt, clear of trees + rodeo fence) scored on the lidar
@@ -125,6 +111,19 @@ window.LIGHTHOUSE_LAYOUT = {
       water: { pond: 123, flow: 353, flat: 985 }, cemetery: 15.1, infieldYd: 27.7 },
     { id: '6', label: '6 8/10 · 1.8% pond', name: 'softball-fence angle — over the flooded 6-yd box', color: 0xa07bff, x: 27, z: -45, rotDeg: 35, length: 105.16, width: 67.67,
       water: { pond: 129, flow: 400, flat: 885 }, cemetery: 11.9, infieldYd: 37.6 }
+  ],
+  // Built-in spots for the pitch planner's 📌 buttons (pitch-planner.js);
+  // spots James saves himself live in his browser. From fh-field-planner,
+  // 1 m x 1° over the whole park, every mapped obstacle (10/22):
+  planSpots: [
+    // Driest legal 11v11 on the lidar (100 %) — but it runs onto the main
+    // diamond's infield dirt.
+    { name: 'Perfect (lidar, over infield dirt)', pitch: '11v11', x: -42, z: -29, rotDeg: 154 },
+    // Driest 11v11 that stays off the main infield dirt.
+    { name: 'Perfect, off the dirt', pitch: '11v11', x: -10, z: -31, rotDeg: 34 },
+    { name: 'Cyan plan', pitch: '11v11', x: 30, z: -33.5, rotDeg: 155 },
+    // Driest 70 x 35 >= 10 yd off cyan — only fits over the main infield.
+    { name: 'Driest 10 yd off cyan', pitch: '7v7', size: [70, 35], x: -73, z: -9, rotDeg: 52 },
   ],
   // Planned 7v7 pitches, 70 x 35 yd (64.0 x 32.0 m), laid ACROSS the
   // planned 11v11, one in each half (the usual small-sided layout): each

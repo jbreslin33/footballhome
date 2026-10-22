@@ -699,23 +699,10 @@
       addRibbon(layers.chalk[0], c.concat([c[0]]), 0.12, layers.chalk[2]);
     }
 
-    // WATER layer (button): James's flood areas + lidar runoff channels;
+    // WATER layer (button): lidar runoff channels;
     // pitch-planner.js adds live per-m² cells inside the dragged pitches.
     const waterLayer = new THREE.Group();
     site.add(waterLayer);
-    if (L.flood && L.flood.length) {
-      // Standing water: translucent blue, drawn over grass AND the game
-      // pitch (which sits at y 0.05 with its own polygon offset).
-      for (const f of L.flood) {
-        const water = new Merge();
-        addFlat(water, f.pts, 0.09);
-        const wm = water.mesh(new THREE.MeshStandardMaterial({ color: 0x2f7bd6, transparent: true,
-          opacity: f.opacity || 0.45, roughness: 0.15, metalness: 0.1, depthWrite: false,
-          side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
-        wm.renderOrder = 30;
-        waterLayer.add(wm);
-      }
-    }
     if (L.oldPitch) {
       // The 11v11 pitch painted today (Google imagery), full markings in
       // yellow so it reads apart from the white game pitch.
