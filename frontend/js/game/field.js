@@ -916,10 +916,56 @@
       contours.renderOrder = 40;
       site.add(contours);
     }
+    // Official contour sets, labelled in feet: City of Philadelphia 2018
+    // lidar (2 ft, orange) and the USGS topo-map contours (10 ft, red).
+    const footContours = (levels, color, labelColor, every) => {
+      const grp = new THREE.Group(), pos = [], labelAt = [];
+      for (const lv of levels) {
+        for (const ln of lv.lines) {
+          let run = every / 2;
+          for (let k = 0; k + 3 < ln.length; k += 2) {
+            pos.push(ln[k], 0.32, ln[k + 1], ln[k + 2], 0.32, ln[k + 3]);
+            run += Math.hypot(ln[k + 2] - ln[k], ln[k + 3] - ln[k + 1]);
+            if (run > every) { labelAt.push([ln[k], ln[k + 1], lv.ft]); run = 0; }
+          }
+        }
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      const lines = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color, depthWrite: false }));
+      lines.renderOrder = 41;
+      grp.add(lines);
+      for (const [x, z, ft] of labelAt) {
+        const cv = document.createElement('canvas');
+        cv.width = 128; cv.height = 48;
+        const c2 = cv.getContext('2d');
+        c2.font = 'bold 30px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+        c2.lineWidth = 6; c2.strokeStyle = 'rgba(0,0,0,0.8)'; c2.strokeText(ft + ' ft', 64, 24);
+        c2.fillStyle = labelColor; c2.fillText(ft + ' ft', 64, 24);
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.9),
+          new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
+        m.rotation.x = -Math.PI / 2;
+        m.position.set(x, 0.34, z);
+        m.renderOrder = 42;
+        grp.add(m);
+      }
+      grp.visible = false;
+      site.add(grp);
+      return grp;
+    };
+    const cityContours = CT && CT.city2ft && CT.city2ft.length
+      ? footContours(CT.city2ft, 0xff7a1a, '#ffb066', 60) : null;
+    const topoContours = CT && CT.usgsTopo && CT.usgsTopo.length
+      ? footContours(CT.usgsTopo, 0xe0262d, '#ff8a8a', 50) : null;
 
     return {
-      // Contours: 10 cm ground contours on/off (white = every half metre).
-      setContours(on) { if (contours) contours.visible = !!on; },
+      // Contours. mode: 'lidar' (10 cm from USGS 3DEP; white every half
+      // metre), 'city' (2 ft), 'topo' (USGS topo map, 10 ft), 'all', 'off'.
+      setContours(mode) {
+        if (contours) contours.visible = mode === 'lidar' || mode === 'all';
+        if (cityContours) cityContours.visible = mode === 'city' || mode === 'all';
+        if (topoContours) topoContours.visible = mode === 'topo' || mode === 'all';
+      },
       // Leaves: false = see-through wire canopy (default), true = solid.
       setLeaves(on) {
         if (leavesWire) leavesWire.visible = !on;

@@ -375,13 +375,17 @@
       e.preventDefault(); e.stopPropagation(); toggleLeaves();
     });
   }
-  // Ground contours (lidar, 10 cm): CONTOURS button or K.
+  // Ground contours: button or K cycles lidar 10 cm (USGS 3DEP) → City
+  // 2 ft → USGS topo 10 ft → all → off.
   const contoursBtn = document.getElementById('btn-contours');
-  let contoursOn = true;
+  const CMODES = ['lidar', 'city', 'topo', 'all', 'off'];
+  const CLABEL = { lidar: 'LIDAR 10CM', city: 'CITY 2FT', topo: 'USGS 10FT', all: 'ALL LINES',
+                   off: 'CONTOURS OFF' };
+  let cmode = 0;
   const toggleContours = () => {
-    contoursOn = !contoursOn;
-    if (renderer.field && renderer.field.setContours) renderer.field.setContours(contoursOn);
-    if (contoursBtn) contoursBtn.textContent = contoursOn ? 'CONTOURS ON' : 'CONTOURS OFF';
+    cmode = (cmode + 1) % CMODES.length;
+    if (renderer.field && renderer.field.setContours) renderer.field.setContours(CMODES[cmode]);
+    if (contoursBtn) contoursBtn.textContent = CLABEL[CMODES[cmode]];
   };
   if (contoursBtn) {
     contoursBtn.addEventListener('click', toggleContours);
