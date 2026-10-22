@@ -25,7 +25,21 @@ window.LIGHTHOUSE_LAYOUT = {
   realPitch: { x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67 },
   // Superseded: the painted pitch on today's imagery — ~90 x 60.5 m, axis
   // 61.5°, centre (-15.7, -33.4).
-  oldPitch: { x: -13.75, z: -32.1, rotDeg: 61.3, length: 90.6, width: 60.0 },   // traced from Google's paint
+  // The pitch in use today (James, 10/22): the Google-painted 11v11's
+  // touchlines (traced, 60 m apart, 61.3°) run on straight until the south
+  // goal line is 10 ft off the vendor fence — 99.9 m (109 yd) long, right
+  // up against the main diamond's infield. Drawn in yellow.
+  oldPitch: { x: -11.5, z: -28.0, rotDeg: 61.3, length: 99.9, width: 60.0 },
+  // FLOOD (James): today's pitch floods 10 yd in from that vendor-fence
+  // goal line — the water drains to the fence. Drawn as blue water: the
+  // observed wet strip, plus the same depth (10 ft line + 10 yd) all
+  // along the fence. On the planned 11v11 that is 1,012 m² (1,210 sq yd,
+  // 14% of it): 7.7–10.1 yd deep along its south goal line, plus the
+  // corner of today's wet strip it overlaps.
+  flood: [
+    { name: "today's wet strip (last 10 yd)", pts: [[34.41, -6.61], [38.8, 1.41], [-13.83, 30.22], [-18.22, 22.2]] },
+    { name: 'fence-side drainage band (10 ft line + 10 yd)', pts: [[-59.99, 29.35], [-36.22, 29.45], [-33.02, 29.15], [-29.02, 29.65], [-26.3, 29.37], [-23.26, 29.05], [-19.73, 29.07], [-14.73, 30.07], [-11.61, 30.56], [-8.49, 30.93], [-5.53, 31.2], [-2.26, 31.4], [1.1, 31.74], [4.16, 32.07], [7.46, 32.38], [10.64, 32.71], [60.31, 37.89], [61.26, 28.79], [11.59, 23.61], [8.36, 23.28], [5.07, 22.97], [2.05, 22.64], [-1.53, 22.29], [-4.83, 22.08], [-7.53, 21.83], [-10.37, 21.5], [-13.08, 21.08], [-18.6, 20], [-23.72, 19.92], [-27.21, 20.27], [-28.76, 20.51], [-32.76, 20.01], [-36.29, 20.31], [-59.95, 20.21]] },
+  ],
 
   // Fences, traced on the City 2025 orthoimagery (same numbers as the
   // planner). The vendor fence is pole bases: straight along the main

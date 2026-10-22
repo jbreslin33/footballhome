@@ -697,6 +697,17 @@
       addRibbon(layers.chalk[0], c.concat([c[0]]), 0.12, layers.chalk[2]);
     }
 
+    if (L.flood && L.flood.length) {
+      // Standing water: translucent blue, drawn over grass AND the game
+      // pitch (which sits at y 0.05 with its own polygon offset).
+      const water = new Merge();
+      for (const f of L.flood) addFlat(water, f.pts, 0.09);
+      const wm = water.mesh(new THREE.MeshStandardMaterial({ color: 0x2f7bd6, transparent: true,
+        opacity: 0.45, roughness: 0.15, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide,
+        polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
+      wm.renderOrder = 30;
+      site.add(wm);
+    }
     for (const sv of (L.sevens || [])) {
       // Planned 7v7s: chalk outline, halfway, centre circle, goal areas.
       const a = sv.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
@@ -718,7 +729,8 @@
       // yellow so it reads apart from the white game pitch.
       const o = L.oldPitch, a = o.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
       const at = ([u, v]) => [o.x + u * ca - v * sa, o.z + u * sa + v * ca];
-      const ln = (pts) => addRibbon(layers.paint[0], pts.map(at), 0.25, layers.paint[2]);
+      const paint = new Merge();
+      const ln = (pts) => addRibbon(paint, pts.map(at), 0.25, 0.08);
       const l = o.length / 2, w = o.width / 2;
       ln([[-l, -w], [l, -w], [l, w], [-l, w], [-l, -w]]);
       ln([[0, -w], [0, w]]);
@@ -737,6 +749,12 @@
         ring(spot, 0, 9.15, mid - half, mid + half);
         ring(spot, 0, 0.2, 0, Math.PI * 2);
       }
+      // Over the game pitch too (it sits at y 0.05 with a polygon offset),
+      // so the whole of today's pitch reads where the two overlap.
+      const pm = paint.mesh(new THREE.MeshStandardMaterial({ color: 0xffd400, roughness: 0.8,
+        side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
+      pm.renderOrder = 31;
+      site.add(pm);
     }
 
     for (const lb of (L.labels || [])) {
