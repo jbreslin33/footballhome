@@ -734,7 +734,8 @@
       site.add(pad);
       fillObjs.push(pad);
     }
-    const candObjs = {};
+    const candObjs = {}, candOn = {};
+    let candHidden = false;
     // Name label flat on the grass at a candidate's (or proposed 7v7's) centre.
     const candLabel = (cd) => {
       const cv = document.createElement('canvas');
@@ -1078,9 +1079,16 @@
       },
       // Candidate pitch spot on/off (layout.candidates[].id).
       setCandidate(id, on) {
-        for (const o of (candObjs[id] || [])) o.visible = !!on;
+        candOn[id] = !!on;
+        for (const o of (candObjs[id] || [])) o.visible = !!on && !candHidden;
         if (id === (LAY.gamePitchCandidate || 'A')) for (const o of planAOverlay) o.visible = !!on;
         if (id === 'A') for (const o of fillObjs) o.visible = !!on;
+      },
+      // 📐 PLAN hides every candidate outline + label (pill states kept).
+      hideCandidates(hidden) {
+        candHidden = !!hidden;
+        for (const id in candObjs)
+          for (const o of candObjs[id]) o.visible = !candHidden && candOn[id] !== false;
       },
       // Leaves: false = see-through wire canopy (default), true = solid.
       setLeaves(on) {

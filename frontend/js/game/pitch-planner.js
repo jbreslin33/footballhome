@@ -192,10 +192,17 @@
       'background:rgba(255,255,255,.1);color:#f4f6fb;font:600 12px system-ui,sans-serif;cursor:pointer;';
     const rows = {};
     for (const p of pitches) {
-      const r = mk('div', 'padding:4px 6px;border-radius:8px;cursor:pointer;margin-bottom:4px;');
-      tap(r, () => { sel = p; paint(); });
+      const r = mk('div', 'display:flex;gap:6px;align-items:flex-start;padding:4px 6px;border-radius:8px;' +
+        'cursor:pointer;margin-bottom:4px;');
+      const go = mk('button', pill + 'flex:none;', '📍');
+      go.title = 'Fly the camera to this pitch';
+      tap(go, () => { sel = p; flyTo(p); paint(); });
+      const txt = mk('div', 'flex:1;min-width:0;');
+      r.appendChild(go);
+      r.appendChild(txt);
+      tap(txt, () => { sel = p; paint(); });
       panel.appendChild(r);
-      rows[p.id] = r;
+      rows[p.id] = txt;
     }
     const bar = mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;');
     const turn = (d) => { sel.rot = ((sel.rot + d) % 360 + 360) % 360; update(); };
@@ -252,6 +259,21 @@
         m.renderOrder = 61;
         g.add(m);
       }
+      // Big name on the grass so it reads apart from the candidate outlines.
+      const cv = document.createElement('canvas');
+      cv.width = 512; cv.height = 128;
+      const c2 = cv.getContext('2d');
+      c2.font = 'bold 96px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(p.id, 256, 64);
+      c2.fillStyle = '#ffffff'; c2.fillText(p.id, 256, 64);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.8, W * 0.2),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
+          depthWrite: false, depthTest: false }));
+      lab.rotation.x = -Math.PI / 2;
+      lab.rotation.z = Math.PI / 2;     // reads along the short side
+      lab.position.x = L / 4;
+      lab.renderOrder = 62;
+      g.add(lab);
       g.position.y = 0.6;
       g.visible = on;
       site.add(g);
@@ -279,7 +301,37 @@
     };
     const fmt = (m) => (m < 9.144 ? (m / FT).toFixed(1) + ' ft' : (m / YD).toFixed(1) + ' yd');
 
+    // A pill per plan pitch at the top of the candidate pill list (James:
+    // "it should show with pills like others"): tap = PLAN on + fly there.
+    const pills = {};
+    for (const p of pitches) {
+      const b = mk('button', 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
+        'border-radius:14px;border:2px solid #33ff66;background:rgba(10,14,20,.72);color:#f4f6fb;' +
+        'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;');
+      tap(b, () => {
+        if (!renderer.field || !renderer.field.site) return;
+        sel = p;
+        if (!on) setOn(true); else { flyTo(p); paint(); }
+      });
+      pills[p.id] = b;
+    }
+    const placePills = () => {
+      const box = document.getElementById('cand-pills');
+      if (!box) { setTimeout(placePills, 300); return; }
+      for (const p of pitches.slice().reverse()) box.insertBefore(pills[p.id], box.firstChild);
+    };
+    placePills();
+    const paintPill = (p) => {
+      const b = pills[p.id], hex = !p.ev ? '#8899aa' : p.ev.ok ? '#33ff66' : '#ff3344';
+      b.style.borderColor = hex;
+      b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' + hex + '"></span>' +
+        '📐 ' + p.id + ' ' + p.size[0] + '×' + p.size[1] +
+        (p.ev ? ' · ' + p.ev.w.rating.toFixed(1) + '/10 · ' + (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : ' · tap to plan');
+    };
+    for (const p of pitches) paintPill(p);
+
     function paint() {
+      for (const p of pitches) paintPill(p);
       for (const p of pitches) {
         const ev = p.ev;
         if (!ev) continue;
@@ -290,7 +342,7 @@
           : ev.off.slice(0, 3).map((o) => '<span style="color:#ff6b78">✗ ' + label(o.n) +
             (o.need > 0 ? ': ' + (o.have <= 0 ? 'overlapping' : fmt(o.have)) + ' (needs ' + fmt(o.need) + ')' : '') +
             '</span>').join('<br>');
-        rows[p.id].style.background = p === sel ? 'rgba(255,255,255,.12)' : 'transparent';
+        rows[p.id].parentNode.style.background = p === sel ? 'rgba(255,255,255,.12)' : 'transparent';
         rows[p.id].innerHTML = '<b>' + (p === sel ? '▶ ' : '') + p.id + ' ' + p.size[0] + '×' + p.size[1] + ' yd</b> · ' +
           p.rot.toFixed(0) + '° · water <b>' + w.rating.toFixed(1) + '/10</b> (pond ' + pct('pond') + ', runoff ' +
           pct('flow') + ', flat ' + pct('flat') + ')<br>' + why;
@@ -305,13 +357,28 @@
       paint();
     }
 
+    // Park the camera over a pitch (FOLLOW OFF), looking down at it.
+    function flyTo(p) {
+      const rig = renderer.rig, v = new THREE.Vector3(p.x, 0, p.z);
+      renderer.field.site.localToWorld(v);
+      if (rig.follow) {
+        rig.setFollow(false);
+        const fb = document.getElementById('btn-follow');
+        if (fb) { fb.textContent = 'FOLLOW OFF'; fb.style.background = 'rgba(255,204,0,.5)'; }
+      }
+      rig.target.set(v.x, 0, v.z);
+      rig.user.dist = p.size[0] * YD * 1.3;
+      rig.user.pitch = 1.2;
+    }
+
     function setOn(v) {
       on = v;
+      if (renderer.field.hideCandidates) renderer.field.hideCandidates(on);
       btn.style.background = on ? 'rgba(255,204,0,.5)' : '';
       panel.style.display = on ? 'block' : 'none';
       if (on) for (const p of pitches) if (!p.g) rebuild(p);
       for (const p of pitches) if (p.g) p.g.visible = on;
-      if (on) update();
+      if (on) { update(); flyTo(sel); }
     }
     tap(btn, () => {
       if (!renderer.field || !renderer.field.site) return;   // field still loading
