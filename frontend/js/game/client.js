@@ -35,7 +35,7 @@
   // Names for EVENT frames (PROTOCOL.md §7 / MatchEventType).
   const EVENT_NAMES = { 1: 'GOAL!', 2: 'Throw-in', 3: 'Goal kick',
                         4: 'Corner', 5: 'Kickoff', 6: 'Half time',
-                        7: 'FULL TIME' };
+                        7: 'FULL TIME', 10: 'Offside' };
 
   function toast(text, ms) {
     statusEl.textContent = text;
@@ -155,14 +155,16 @@
         }
       }
       statusEl.textContent =
-        `match ${h.matchId} — tap a player to take control`;
+        `match ${h.matchId} — tap a player to take control · drag to rotate`;
       // Ship intents at tick rate for every slot we own. The server
       // samples (last write before its tick wins), so this cadence is
       // exactly right. [QUAKE]
       if (intentTimer) clearInterval(intentTimer);
       intentTimer = setInterval(() => {
         if (mySlots.size === 0) return;
-        const v = input.vector();
+        // Controls are CAMERA-relative: "up" means away from the viewer
+        // however the camera has been rotated.
+        const v = renderer.screenToPitch(input.vector());
         const action = input.consumeAction();
         // One input device drives ONE player. Other claimed slots get an
         // explicit zero vector each tick — the server samples intents and
@@ -220,13 +222,16 @@
       paintPresetBar();
     },
     onEvent(ev) {
-      const name = EVENT_NAMES[ev.eventType] || 'event';
+      // Tackles (8/9) fire dozens of times a match — not toast-worthy.
+      if (!EVENT_NAMES[ev.eventType]) return;
+      const name = EVENT_NAMES[ev.eventType];
       if (ev.eventType === 1) {
         renderer.goalFlash();
         toast(`⚽ ${name}`, 3000);
       } else {
-        const side = ev.eventType <= 5
-          ? (ev.team === 0 ? ' — home' : ' — away') : '';
+        const side = ev.eventType === 10
+          ? (ev.team === 0 ? ' — free kick home' : ' — free kick away')
+          : ev.eventType <= 5 ? (ev.team === 0 ? ' — home' : ' — away') : '';
         toast(`${name}${side}`, 2000);
       }
     },
@@ -279,7 +284,7 @@
     statusEl.textContent =
       `driving ${myName}` +
       (others.length ? ` (also holding ${others.map((s) => '#' + (s + 1)).join(', ')} — tap to switch)` : '') +
-      ' — WASD/joystick, Space/PASS, X/LOFT';
+      ' — WASD/joystick, Space/PASS, X/LOFT, C camera, drag to rotate';
   }
   if (autoBtn) {
     const flip = () => {
@@ -302,11 +307,42 @@
     updateStatus();
   });
 
-  canvas.addEventListener('click', (e) => pickAt(e.clientX, e.clientY));
+  // A click/tap claims — unless it turned into a camera drag.
+  canvas.addEventListener('click', (e) => {
+    if (renderer.rig.dragged) { renderer.rig.dragged = false; return; }
+    pickAt(e.clientX, e.clientY);
+  });
+  let tapStart = null;
   canvas.addEventListener('touchstart', (e) => {
     const t = e.touches[0];
     // Upper part of the screen only — lower part belongs to the joystick.
-    if (t && t.clientY < window.innerHeight * 0.4) pickAt(t.clientX, t.clientY);
+    tapStart = (e.touches.length === 1 && t && t.clientY < window.innerHeight * 0.4)
+      ? { x: t.clientX, y: t.clientY } : null;
+  });
+  canvas.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    if (tapStart && t && !renderer.rig.dragged &&
+        Math.hypot(t.clientX - tapStart.x, t.clientY - tapStart.y) < 8)
+      pickAt(t.clientX, t.clientY);
+    tapStart = null;
+    renderer.rig.dragged = false;
+  });
+
+  // Camera: C or the CAM button cycles TV / FREE / BEHIND / TOP; any
+  // drag rotates (free orbit), wheel or pinch zooms.
+  const camBtn = document.getElementById('btn-cam');
+  renderer.rig.onModeChange = (label) => {
+    if (camBtn) camBtn.textContent = 'CAM ' + label;
+  };
+  if (camBtn) {
+    camBtn.textContent = 'CAM ' + renderer.rig.label();
+    camBtn.addEventListener('click', () => renderer.rig.cycle());
+    camBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation(); renderer.rig.cycle();
+    });
+  }
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'c' && !e.repeat) renderer.rig.cycle();
   });
 
   function loop() {

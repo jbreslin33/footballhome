@@ -885,6 +885,42 @@ backpedal speed < forward, and/or delay ends at a depth line (the
 defender holds and engages) — so carried entries fall toward ~45 and
 the block-shot work (branch game/g4-block-shot-wip) can land.
 
+### 8.22 G4.26 — players you can watch: humanoids, animation, a camera you turn
+
+James, 2026-10-22: "we are far away from realistic — need player
+animations and ability to rotate and to be more playable." Client-side,
+no protocol cost beyond one reserved flag bit:
+
+- **Humanoid figures** (`frontend/js/game/players.js`): primitive-built
+  rig with hip / knee / shoulder / elbow pivots; home navy-gold, away
+  white, keepers in their own kit (snapshot flags bit1 = goalkeeper,
+  PROTOCOL 1.4 additive — the only server change); shirt numbers on the
+  back; varied skin/hair.
+- **Procedural animation** driven by what the wire already carries
+  (interpolated velocity): run cycle with speed-scaled cadence/stride,
+  knee heel-kick on the back-swing, counter-swinging arms, sprint lean,
+  bob, breathing idle, keeper set position; a KICK animation queued on
+  the server timeline when the ball leaves its owner. Bodies TURN to
+  face travel (~11 rad/s, shortest way) and hold facing when still.
+- **Camera rig** (`camera.js`): TV (broadcast, pans with play) / FREE
+  (drag to orbit, wheel or pinch to zoom) / BEHIND (behind your player
+  looking up the pitch he attacks) / TOP (tactical). Any drag rotates;
+  C or the CAM button cycles; modes ease, never cut.
+- **Controls are camera-relative**: "up" is away from the viewer however
+  the view is turned (verified: W behind a home player = +12.9 m up the
+  pitch in 2 s, 0 lateral). A drag never claims a player; touch claims
+  on release.
+- Pitch dressing: mowing stripes, full Laws markings (areas, spots,
+  arcs, corners), goal nets, blob shadows, a rolling panelled ball;
+  controlled player = gold ring (any shirt glow tinted navy kits);
+  tackle events no longer toast "event", offside does.
+
+Also measured (sim): a jockey BACKPEDAL speed (100/65/50% when
+retreating) moved nothing — carried final-third entries stayed ~118 —
+so the delay branch isn't where the escort lives; reverted. Next sim
+step attributes the carrier's escort by branch (the G4.20/G4.24 tag
+method) before changing behavior.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

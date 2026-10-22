@@ -130,7 +130,8 @@ levels (appended in 1.3):
 - Players are planar (DESIGN.md §4), so player records carry **no z** —
   that's ~8 bytes × 22 players × 30 Hz saved. The ball record (added in G1,
   appended after the player array) carries x, y, z + velocity + owner slot.
-- `flags`: bit0 = human-controlled; the rest reserved.
+- `flags`: bit0 = human-controlled; bit1 = goalkeeper (1.4 additive,
+  2026-10-22 — older clients ignore it); the rest reserved.
 - 22 players ≈ 730 B/frame ≈ 22 KB/s at 30 Hz — comfortably inside the u16
   envelope and the phone budget. Delta-encoding is a later optimization,
   never a v1 requirement.

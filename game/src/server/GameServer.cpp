@@ -310,7 +310,10 @@ net::Bytes GameServer::buildSnapshotFrame() const {
         snap.pos_y = p.pos.y;
         snap.vel_x = p.vel.x;
         snap.vel_y = p.vel.y;
-        snap.flags = slot_owner_.count(i) ? 1 : 0;
+        // bit0 human-controlled; bit1 keeper (1.4 additive — clients
+        // dress keepers in their own kit).
+        snap.flags = static_cast<std::uint8_t>(
+            (slot_owner_.count(i) ? 1 : 0) | (world_.isKeeper(i) ? 2 : 0));
         s.players.push_back(snap);
     }
     const core::BallState& b = world_.ball();
