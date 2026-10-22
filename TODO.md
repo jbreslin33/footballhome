@@ -32,7 +32,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
     - Bench discipline: make sure everyone on bench has pinnies on and stays seated on the bench — no standing or using a ball on the sidelines.
 
 - [ ] 2026-10-22 Roster category pills (✅/📄/🩹/⭐) on Boys/Girls/Womens columns — currently Men's board only (noted when #teams closed 10/21).
-- [ ] 2026-10-22 Youth carpool: midpoint suggestions are hollow because youth families mostly lack `person_addresses` rows — backfill addresses (LA export / registration data) so the 🚗 panel works for youth games.
+- [ ] 2026-10-22 Youth carpool addresses — READY, needs James to run one command. Audit: Boys 1/111 players have a `person_addresses` row, Womens 0/17, Mens 26/170; but the LA `registrations-2` export carries address1/city/state on EVERY record (no zip). `scripts/la-address-backfill.py` emits additive INSERTs (ON CONFLICT skips anyone who already has a primary address; registrant + parentUserId both get the household address; alias-aware la_user_id match; lat/lon left for CarpoolRouting's lazy geocode). The classifier blocks Claude from piping PII, so run by hand:
+  `sudo podman exec footballhome_leagueapps_sync python3 /app/scripts/la-address-backfill.py 5039252 5039300 5039340 5039357 5064618 5064662 5064686 5070075 5093107 5114228 | sudo podman exec -i footballhome_db psql -U footballhome_user -d footballhome -v ON_ERROR_STOP=1`
 - [ ] 2026-10-22 Youth opponent contacts: #opponents / Game Center 📇 is empty for youth leagues — load contacts as youth fixtures firm up (DB-only, per the no-PII-in-git rule).
 - [ ] 2026-10-22 Postmark: account still pending approval — only @footballhome.org recipients deliver. Owner must chase Postmark support; until then no real email sends.
 - [ ] 2026-10-22 Newspaper book recapture: 30/95 pages at full res; blocked on a live newspapers.com session (James signs in, Claude drives — never exfil tokens/URLs).
