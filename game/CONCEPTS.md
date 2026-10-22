@@ -39,6 +39,7 @@ touchline laws — [FH] marks engine-original formulations.
 | 22 | `tackle_timing` | Dive on the exposed ball, not on faith [queue → wired G4.17]: the carried ball rides ahead of the carrier's FACING, so the ball-side dive pokes the ball and the from-behind lunge goes through the man — rated players suppress the latter to ~x0.1 at 100 | lunges from behind at the same rate as from the front |
 | 23 | `counter_attack` [S] | Moment 4 [KNVB]: ball won in OUR half → for 2 s + rating ticks the carrier's gain threshold collapses (≥ verticality-100 forwardness) and a SECOND runner joins the run in behind (G4.18). Style, not skill: band-wide it measured world 3.1 → 5.0 goals, all scrambles; head-to-head it changed nothing in the break funnel because possession churns every ~2–5 s. Re-measured after G4.19 (possession now ~10 s): still no gain reaching the final third and concedes more — a real break needs the carrier to RUN WITH THE BALL into space (queued `slide_with_ball`/carry-into-space), so no preset rows yet | wins it and recycles; nobody breaks
 | 24 | `safe_pass` | Keep the ball [Buckland, G4.19]: the passer runs the interceptor's closing-speed math on the pass's friction path (opponent reach before the receiver's = unsafe; lofted balls over the line exempt); pressed with nothing forward → RECYCLE the safest pass any direction (the G4.8 back outlet finally receives); clear the ball only in your own defensive third. Rolls per second | passes into readers; boots it away under any pressure (world measured 2,459 possession changes/match, 2.2 s each)
+| 25 | `shot_selection` | Shoot on CHANCE QUALITY, not range [G4.21; FH after the xG literature]: visible goal angle (radians, via fx_atan2) halved per outfield body inside the shooter→post→post triangle; shoot at ≥ 0.30 rad (≥ 0.18 pressed), always inside 8 m. Rolls per second | shoots the first tick inside 22 m, whatever's in the way |
 
 ## Build queue (planned; each lands with the behavior that consumes it)
 
@@ -49,7 +50,8 @@ underfoot), `shield_ball` (body between man and ball), `scan_before_receive`
 archived and tested).
 
 **Individual, defending** — `block_shot_line` (defend the shooting lane
-inside the box).
+inside the box — G4.21 measured the need: defenders DELAY all the way into
+their own six-yard box, so raising the shot bar only moved shots closer).
 
 **Group (2–4 players)** — `wall_pass` (the return-ball half of give-and-go
 under an opponent), 

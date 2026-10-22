@@ -700,6 +700,33 @@ u10 12.2 / u14 13.5 / amateur 8.0 / semipro 3.4 / pro 1.9 / world 1.2 /
 perfect 1.9. Bands green; goldens re-locked (3v3 0x91d77760…, 11v11
 0x77151252…). Shot selection (§8.14's next) resumes as G4.21.
 
+### 8.16 G4.21 — shot selection, and what it proved about the box
+
+`shot_selection` (bit 25, band bundle, per-second roll): shoot on chance
+quality — visible goal angle (fx_atan2) halved per outfield body inside
+the shooter→post→post triangle — at ≥ 0.30 rad (0.18 pressed), always
+inside 8 m. Kids still shoot on range.
+
+Ladder (12×90): u10 12.2 / u14 13.5 / amateur 7.5 / semipro 3.3 / pro
+2.7 / world 3.0 / perfect 2.4 — pro and world AT the 2.7 anchor, and
+goals are now mostly built, not scrambled (semipro 21 of 40 counters, 4
+scrambles). Bands green; 11v11 golden re-locked (0xb80b68b7…; 3v3
+unchanged).
+
+**But shot VOLUME didn't move (world ~276/match vs real ~25), and the
+bar sweep says why:** u45/p30 → world 4.5 goals, u60/p40 → 16.2, u80/p55
+→ 31.8 — shots flat at ~240-276 throughout. A carrier who declines the
+range shot dribbles on into the 8 m always-shoot zone, unopposed:
+defenders DELAY (jockey 2.2 m goal-side, backing off) all the way into
+their own six-yard box. Volume is a box-DEFENDING problem. Shipped at
+the safe 30/18 point.
+
+**Next — box defending (`block_shot_line` + no-delay-in-the-box):**
+inside ~18 m of goal the jockey must STEP and the nearest free defender
+blocks the shot lane. Target: shots → tens per match, conversion → ~10%
+(today ~1%: keepers save a flood of poor shots), then keeper reaction
+re-tuned against real volume.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

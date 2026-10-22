@@ -112,6 +112,37 @@ Vec2 interceptPoint(const Vec3& my_pos, const Vec3& ball_pos,
     return Vec2{ball_pos.x, ball_pos.y};
 }
 
+// Chance quality (G4.21, shot_selection) [FH, after the xG literature's
+// two dominant features — visible goal angle and bodies in the way]: the
+// angle the goal mouth subtends at the shooter (radians), halved for
+// every OUTFIELD opponent standing inside the shooter→post→post
+// triangle. The keeper is excluded — placement already plays him.
+// Laws of the Game: goal 7.32 m wide (World.cpp owns the physics copy).
+Fixed64 chanceQuality(const World& world, const TeamSetup& setup,
+                      SlotIndex shooter, const Vec2& goal) {
+    const Fixed64 half_w = Fixed64::fromFraction(732, 200);
+    const auto& me = world.player(shooter);
+    const Vec2 s{me.pos.x, me.pos.y};
+    const Vec2 p1{goal.x, -half_w}, p2{goal.x, half_w};
+    const Vec2 a{p1.x - s.x, p1.y - s.y}, b{p2.x - s.x, p2.y - s.y};
+    const Fixed64 cr = a.x * b.y - a.y * b.x;
+    Fixed64 q = math::fx_abs(math::fx_atan2(cr, dot(a, b)));
+    auto side = [](const Vec2& o, const Vec2& u, const Vec2& v) {
+        return (u.x - o.x) * (v.y - o.y) - (u.y - o.y) * (v.x - o.x);
+    };
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup.team_of_slot[j] == setup.team_of_slot[shooter]) continue;
+        if (world.isKeeper(j)) continue;
+        const Vec2 o{world.player(j).pos.x, world.player(j).pos.y};
+        const Fixed64 d1 = side(s, p1, o), d2 = side(p1, p2, o),
+                      d3 = side(p2, s, o);
+        const bool neg = d1.raw < 0 || d2.raw < 0 || d3.raw < 0;
+        const bool pos = d1.raw > 0 || d2.raw > 0 || d3.raw > 0;
+        if (!(neg && pos)) q = q * Fixed64::fromFraction(1, 2);
+    }
+    return q;
+}
+
 // Pass safety [Buckland] (G4.19): the PASSER runs the interceptor's own
 // closing-speed math. Walk the ground pass's friction path (3-tick
 // strides) until it reaches the receiver; the pass is unsafe if any
@@ -244,8 +275,29 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         const bool im_keeper = world.isKeeper(slot);
         const Vec2 goal{sign >= 0 ? half_x_ : -half_x_, Fixed64::zero()};
         const Vec2 to_goal{goal.x - me.pos.x, goal.y - me.pos.y};
-        if (!im_keeper &&
-            math::lengthSquared(to_goal) < kShootRange * kShootRange) {
+        // Am I pressed? (Pass eagerness rises under pressure.)
+        bool pressed = false;
+        for (SlotIndex i = 0; i < world.playerCount() && !pressed; ++i) {
+            if (setup_.team_of_slot[i] == setup_.team_of_slot[slot]) continue;
+            pressed = distSq(me.pos, world.player(i).pos) <
+                      kPressureRadius * kPressureRadius;
+        }
+        // shot_selection (bit 25, G4.21): a selecting shooter fires on
+        // CHANCE QUALITY, not range — ~17° of clear goal (~10° when
+        // pressed: shoot or lose it), always inside 8 m. Range-only
+        // shooting fired the first tick a carrier entered 22 m: world
+        // matches measured ~259 shots against a real ~25. Kids (and
+        // anyone not applying it this second) still shoot on range.
+        bool shoot_now =
+            !im_keeper &&
+            math::lengthSquared(to_goal) < kShootRange * kShootRange;
+        if (shoot_now && applies(slot, 25, world.tickCount() / 30) &&
+            math::lengthSquared(to_goal) >= Fixed64::fromInt(64)) {
+            const Fixed64 bar = pressed ? Fixed64::fromFraction(18, 100)
+                                        : Fixed64::fromFraction(30, 100);
+            shoot_now = chanceQuality(world, setup_, slot, goal) >= bar;
+        }
+        if (shoot_now) {
             // Placement (G4.3b): aim inside the post AWAY from the
             // keeper's current side — a placed 24 m/s strike beats
             // angle-play positioning; a sprayed one doesn't (level
@@ -263,14 +315,6 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 seek(me.pos, Vec2{goal.x, aim_y}, kArriveRadius);
             out.action = Action::Shot;
             return out;
-        }
-
-        // Am I pressed? (Pass eagerness rises under pressure.)
-        bool pressed = false;
-        for (SlotIndex i = 0; i < world.playerCount() && !pressed; ++i) {
-            if (setup_.team_of_slot[i] == setup_.team_of_slot[slot]) continue;
-            pressed = distSq(me.pos, world.player(i).pos) <
-                      kPressureRadius * kPressureRadius;
         }
 
         // Best forward receiver with an open lane. Progress = x toward MY
