@@ -953,6 +953,29 @@
       site.add(grp);
       return grp;
     };
+    // Runoff channels (lidar D8 flow): blue ribbons, wider and brighter the
+    // more ground drains through them.
+    let drainage = null;
+    const DR = window.LIGHTHOUSE_DRAINAGE;
+    if (DR && DR.segs.length) {
+      drainage = new THREE.Group();
+      const classes = [[300, 2000, 0x3d7fd9, 0.5], [2000, 15000, 0x29a8ff, 0.9], [15000, 1e9, 0x00d5ff, 1.4]];
+      for (const [lo, hi, color, wd] of classes) {
+        const mg = new Merge();
+        const s = DR.segs;
+        for (let k = 0; k < s.length; k += 5) {
+          if (s[k + 4] < lo || s[k + 4] >= hi) continue;
+          addRibbon(mg, [[s[k], s[k + 1]], [s[k + 2], s[k + 3]]], wd, 0.36);
+        }
+        if (!mg.pos.length) continue;
+        const mesh = mg.mesh(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85,
+          depthWrite: false, side: THREE.DoubleSide, polygonOffset: true,
+          polygonOffsetFactor: -8, polygonOffsetUnits: -32 }));
+        mesh.renderOrder = 43;
+        drainage.add(mesh);
+      }
+      site.add(drainage);
+    }
     const cityContours = CT && CT.city2ft && CT.city2ft.length
       ? footContours(CT.city2ft, 0xff7a1a, '#ffb066', 60) : null;
     const topoContours = CT && CT.usgsTopo && CT.usgsTopo.length
@@ -961,10 +984,12 @@
     return {
       // Contours. mode: 'lidar' (10 cm from USGS 3DEP; white every half
       // metre), 'city' (2 ft), 'topo' (USGS topo map, 10 ft), 'all', 'off'.
+      // Runoff channels show with every mode but 'off'.
       setContours(mode) {
         if (contours) contours.visible = mode === 'lidar' || mode === 'all';
         if (cityContours) cityContours.visible = mode === 'city' || mode === 'all';
         if (topoContours) topoContours.visible = mode === 'topo' || mode === 'all';
+        if (drainage) drainage.visible = mode !== 'off';
       },
       // Leaves: false = see-through wire canopy (default), true = solid.
       setLeaves(on) {
