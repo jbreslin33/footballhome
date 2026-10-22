@@ -9,11 +9,12 @@
 // from satellite imagery (Esri z19, ~0.23 m/px) and need his eye.
 
 window.LIGHTHOUSE_LAYOUT = {
-  // Where the GAME's 105 x 68 pitch sits. PLACEHOLDER: centred on the
-  // larger OSM soccer outline (way 762100601 — 96 x 51.5 m, an OLD
-  // outline) along its long axis. rotDeg = long axis, degrees from east
-  // toward south. CONFIRM with James.
-  gamePitch: { x: -10.6, z: -19.8, rotDeg: 58.1 },
+  // Where the GAME's 105 x 68 pitch sits. rotDeg = long axis, degrees
+  // from east toward south. James (10/22): "soccer field should be right
+  // on edge of baseball field near barn." Between the main diamond (W)
+  // and the NE diamond (E) the only fit is NORTH–SOUTH, its south goal
+  // line just north of the barn / SE diamond / parked bleachers. CONFIRM.
+  gamePitch: { x: 20, z: -22.5, rotDeg: 90 },
 
   // Kids' fields — to be placed with James (size, spot, orientation).
   // e.g. { name: '7v7', x: .., z: .., length: 55, width: 36, rotDeg: .. }
@@ -31,25 +32,31 @@ window.LIGHTHOUSE_LAYOUT = {
     { x: 18, z: 37.5, len: 6, face: 180 },
   ],
 
+  // THE BARN (James: "biggest building on complex", "baseball field is
+  // near barn"): the dark-roofed building by Erie with the dirt paddock on
+  // its west side, beside the SE diamond. Esri imagery 14.9 x 9.1; Google's
+  // newer imagery ~16 x 12 with its lean-to.
+  barn: { x: 24.9, z: 54.7, w: 16, d: 11, rotDeg: -8, roof: 'dark', walls: 'red' },
+  paddock: { x: 13.0, z: 56.5, w: 6.9, d: 10.3 },
+  greenShed: { x: 43.2, z: 57.0, w: 3.4, d: 17, rotDeg: 0 },
+  // The other big building, south of the main diamond (Google labels it
+  // "Li'Vere Candles & Co"); ~17.6 x 12, dark roof.
+  buildings: [{ name: 'east-of-League-Park block', x: -39.8, z: 48.8, w: 17.6, d: 12, h: 6,
+                rotDeg: -8, color: 0x7a6658 }],
+
   // Rodeo area (north-east). Imagery: a round pen (Esri: ~20 m across;
   // Google's newer imagery shows white panels + little bleachers), an
-  // oval pen beside it, and a red-roofed barn north-west of the ring.
+  // oval pen beside it, and a small red-roofed shed north-west of it.
   rodeo: {
     ring: { x: 146.8, z: -111.1, r: 12 },                       // CONFIRM size
     ovalPen: { x: 161.7, z: -128.1, w: 16, d: 11.4, rotDeg: -30 },
     ringBleachers: true,
   },
-  barn: { x: 137.9, z: -131.0, w: 14.3, d: 6.9, rotDeg: -5, roof: 'red', walls: 'red' }, // CONFIRM which building is "the barn"
+  sheds: [{ x: 137.9, z: -131.0, w: 14.3, d: 6.9, rotDeg: -5, roof: 'red' }],
   trailers: [{ x: 146.1, z: -127.0, w: 8, d: 2.5, rotDeg: -20 }],
 
-  // By Erie Ave: the dark-roofed block with a dirt paddock on its west
-  // side (stables?) and a long green shed. CONFIRM what they are.
-  stable: { x: 24.9, z: 54.7, w: 14.9, d: 9.1, rotDeg: -8 },
-  paddock: { x: 13.0, z: 56.5, w: 6.9, d: 10.3 },
-  greenShed: { x: 43.2, z: 57.0, w: 3.4, d: 17, rotDeg: 0 },
-
-  // Horses (LOD detail — only drawn up close): at the stables/paddock
-  // and by the rodeo barn.
+  // Horses (LOD detail — only drawn up close): at the barn's paddock and
+  // by the rodeo.
   horses: [
     { x: 11, z: 54, rotDeg: 20, coat: 0x6b3e26 },
     { x: 15, z: 59, rotDeg: 150, coat: 0x2a1d15 },

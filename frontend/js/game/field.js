@@ -486,6 +486,17 @@
       b.rotation.y = -(L.barn.rotDeg || 0) * D2R;
       site.add(b);
     }
+    for (const sh of (L.sheds || [])) {
+      const b = gableBarn(sh.w, sh.d, 0x8a7a66, sh.roof === 'red' ? 0x8c2a24 : 0x2f3338);
+      b.scale.y = 0.7;
+      b.position.set(sh.x, 0, sh.z);
+      b.rotation.y = -(sh.rotDeg || 0) * D2R;
+      site.add(b);
+    }
+    for (const bd of (L.buildings || [])) {
+      site.add(box(bd.x, bd.z, bd.w, bd.d, bd.h || 6, bd.color || 0x7a6658, bd.rotDeg));
+      site.add(box(bd.x, bd.z, bd.w + 0.6, bd.d + 0.6, 0.25, 0x2f3338, bd.rotDeg, bd.h || 6));
+    }
     for (const t of (L.trailers || [])) site.add(box(t.x, t.z, t.w, t.d, 2.8, 0xe4e6ea, t.rotDeg));
     if (L.stable) {
       const s = L.stable;
