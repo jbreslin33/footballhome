@@ -807,6 +807,17 @@ Still open, unchanged by this slice: shot VOLUME (~250/match) and
 conversion ~1-5% — ball-winning (duels: 3% won) is next, then the parked
 block-shot work (§8.17).
 
+### 8.19 Match length — real football (James, 2026-10-22)
+
+"It needs to be real football 90 minutes, 45 minute halves, and the game
+super realistic." The sandbox's 5-minute halves (G3) are retired: 2 × 45
+min at real time is now both the compose setting and the code default.
+The clock is never compressed FIFA-style — FIFA accelerates the clock
+and over-produces chances to keep scorelines up; here the calibrated
+ladder (§8.18, per 90 real minutes) IS the live scoreline. The wire
+clock is cumulative (u16 seconds), so the second half reads 45:00 →
+90:00 like a broadcast.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

@@ -43,10 +43,11 @@ int main() {
     cfg.match_id   = std::strtoull(envOr("GAME_MATCH_ID", "1"), nullptr, 10);
     cfg.slot_count = static_cast<std::uint8_t>(
         std::atoi(envOr("GAME_SLOT_COUNT", "22")));
-    // 5-minute halves by default on the sandbox match — long enough to
-    // feel like a game, short enough that a visitor sees a full cycle.
+    // Real football: 2 x 45-minute halves at real time (James, 10/22:
+    // "it needs to be real football 90 minutes"). The clock is never
+    // compressed FIFA-style — scorelines stay calibrated to real play.
     cfg.half_length_ticks = static_cast<std::uint32_t>(
-        std::atoi(envOr("GAME_HALF_MINUTES", "5")) * 60 * core::kTickRate);
+        std::atoi(envOr("GAME_HALF_MINUTES", "45")) * 60 * core::kTickRate);
     const int speed = std::atoi(envOr("GAME_SPEED", "1"));
 
     // Skill levels (G4.3): u10 | u14 | amateur | semipro | pro | world |

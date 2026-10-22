@@ -232,6 +232,7 @@ services:
       GAME_MATCH_ID: "1"
       GAME_SLOT_COUNT: "22"
       GAME_SPEED: "1"
+      GAME_HALF_MINUTES: "45"   # real football: 2 x 45 min at real time
       # Formation codes resolved against the club's `formations` table at
       # boot (G4.2). POSTGRES_PASSWORD flows in via env_file.
       GAME_FORMATION_HOME: "4-4-2"
