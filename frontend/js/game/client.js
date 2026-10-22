@@ -342,6 +342,22 @@
       e.preventDefault(); e.stopPropagation(); renderer.rig.cycle();
     });
   }
+  // FOLLOW button or V: stop the camera tracking the ball so it can be
+  // parked and panned (drag) anywhere on the site.
+  const followBtn = document.getElementById('btn-follow');
+  const toggleFollow = () => {
+    renderer.rig.setFollow(!renderer.rig.follow);
+    if (followBtn) {
+      followBtn.textContent = renderer.rig.follow ? 'FOLLOW ON' : 'FOLLOW OFF';
+      followBtn.style.background = renderer.rig.follow ? '' : 'rgba(255,204,0,.5)';
+    }
+  };
+  if (followBtn) {
+    followBtn.addEventListener('click', toggleFollow);
+    followBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation(); toggleFollow();
+    });
+  }
   // Zoom: +/− buttons (hold repeats), + / − / = keys; wheel and pinch
   // are handled by the rig itself. 1–6 pick a camera directly.
   const zoomBy = (f) => renderer.rig.zoom(f);
@@ -448,6 +464,7 @@
     if (k === 'c' && !e.repeat) renderer.rig.cycle();
     if (k === 'l' && !e.repeat) toggleLeaves();
     if (k === 'k' && !e.repeat) toggleContours();
+    if (k === 'v' && !e.repeat) toggleFollow();
     if (k === '+' || k === '=') zoomBy(0.85);
     if (k === '-' || k === '_') zoomBy(1 / 0.85);
     if (k >= '1' && k <= '6' && !e.repeat) renderer.rig.setMode(CAMS[+k - 1]);

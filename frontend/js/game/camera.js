@@ -10,6 +10,10 @@
 //   1ST   — first person: at his eye line, looking where he faces
 //   TOP   — overhead tactical
 //   FREE  — drag to orbit anywhere
+// FOLLOW OFF (button or V; James, 10/22 "option to stop ball follow ... so
+// i can move cam"): the camera stops tracking the ball and stays where you
+// put it — one-finger / left drag PANS across the ground, right- or
+// shift-drag / two fingers rotate, wheel / pinch zoom.
 // ZOOM works in every mode (wheel, pinch, the +/− buttons): it scales the
 // mode's distance; in 1ST it narrows/widens the field of view. Any drag
 // rotates (dropping into FREE). C or the CAM button cycles.
@@ -35,6 +39,7 @@
       this.zoomMul = 1;                                 // every other mode
       this.fov = 45;
       this.dragged = false;   // client checks to suppress a claim tap
+      this.follow = true;     // false: target parked, drags pan
       this.onModeChange = null;
       this.bindPointer();
     }
@@ -49,6 +54,20 @@
       if (this.onModeChange) this.onModeChange(LABEL[m]);
     }
     cycle() { this.setMode(MODES[(MODES.indexOf(this.mode) + 1) % MODES.length]); }
+    setFollow(on) {
+      this.follow = !!on;
+      if (!this.follow) this.setMode('orbit');   // keeps the current view
+    }
+
+    // Slide the parked target across the ground with the drag (screen
+    // pixels), scaled so the ground under the finger roughly tracks it.
+    pan(dx, dy) {
+      const s = this.cur.dist * 0.0016, yaw = this.cur.yaw;
+      const rx = Math.cos(yaw), rz = -Math.sin(yaw);    // view right
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw);   // view forward
+      this.target.x += -rx * dx * s + fx * dy * s;
+      this.target.z += -rz * dx * s + fz * dy * s;
+    }
     label() { return LABEL[this.mode]; }
 
     // f > 1 zooms OUT, f < 1 zooms IN.
@@ -65,7 +84,8 @@
       let down = null;
       c.addEventListener('contextmenu', (e) => e.preventDefault());
       c.addEventListener('mousedown', (e) => {
-        down = { x: e.clientX, y: e.clientY, moved: false };
+        down = { x: e.clientX, y: e.clientY, moved: false,
+                 pan: !this.follow && e.button === 0 && !e.shiftKey };
         this.dragged = false;
       });
       window.addEventListener('mousemove', (e) => {
@@ -73,7 +93,8 @@
         const dx = e.clientX - down.x, dy = e.clientY - down.y;
         if (!down.moved && Math.hypot(dx, dy) < 5) return;
         if (!down.moved) { down.moved = true; this.dragged = true; this.setMode('orbit'); }
-        this.rotate(e.movementX, e.movementY);
+        if (down.pan) this.pan(e.movementX, e.movementY);
+        else this.rotate(e.movementX, e.movementY);
       });
       window.addEventListener('mouseup', () => { down = null; });
       c.addEventListener('wheel', (e) => {
@@ -92,7 +113,7 @@
                  d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) };
           t1 = null;
         } else if (e.touches.length === 1 &&
-                   e.touches[0].clientY < window.innerHeight * 0.4) {
+                   (!this.follow || e.touches[0].clientY < window.innerHeight * 0.4)) {
           t1 = { x: e.touches[0].clientX, y: e.touches[0].clientY, moved: false };
           this.dragged = false;
         }
@@ -114,7 +135,8 @@
           const dx = t.clientX - t1.x, dy = t.clientY - t1.y;
           if (!t1.moved && Math.hypot(dx, dy) < 8) return;
           if (!t1.moved) { t1.moved = true; this.dragged = true; this.setMode('orbit'); }
-          this.rotate(dx, dy);
+          if (this.follow) this.rotate(dx, dy);
+          else this.pan(dx, dy);
           t1.x = t.clientX; t1.y = t.clientY;
         }
       }, { passive: true });
@@ -189,6 +211,7 @@
           goal = { ...this.user };
       }
       this.applyFov(45, dt);
+      if (!this.follow) { tx = this.target.x; ty = this.target.y; tz = this.target.z; }
       const k = Math.min(1, dt * 4);
       this.target.x += (tx - this.target.x) * k;
       this.target.y += (ty - this.target.y) * k;
