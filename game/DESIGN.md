@@ -757,6 +757,56 @@ engaged-defender tackle success vs the carrier's touch, interceptions of
 the carry, ball out of play. Targets: possessions → ~100-150 per team,
 shots → tens, conversion ~10%; then land the parked block-shot work.
 
+### 8.18 G4.23 — the accidental chip: youth scoring was a bug
+
+Set out to fix ball-winning; the duel instrument (every carry an opponent
+engaged inside tackle reach, by outcome) confirmed the gap — world
+defenders engaged 2.0 s and won 3% — but the first remedy tried (carrier
+top speed ×0.85, the real with-ball ratio) barely moved duels (3 → 4%)
+and sent amateur to 26.5 goals on 73 shots. Chasing THAT found the
+biggest calibration bug in the project:
+
+- **Goal anatomy, read PRE-tick** (the G4.14 trap, hit again: the Goal
+  event fires after the kickoff reset, so a post-tick read called every
+  goal an own goal): 33 of 36 HEAD amateur goals had no shot in the 20 s
+  before — they were the touch-tight **"clear" lofted along the
+  carrier's run**, i.e. at goal: an uncounted chip over the keeper. The
+  loft-clear dates to G4.1, so youth/amateur scoring had ridden it all
+  along. Fixed: in shooting range the boot IS a shot (shot physics,
+  counted); elsewhere it's a clearance to the emptier wide channel
+  upfield. Without it the ladder INVERTED: u10 2.8 / u14 1.4 / amateur
+  0.5 / world 3.9.
+- **Shot outcomes** (followed from the strike to first resolution):
+  keepers held ~90% of ALL shots and ~0% missed the target. Dive-lite
+  tracked every shot to ±6 m; a slow strike gives a 6 m/s keeper time to
+  reach anything. Keepers now project to the GOAL line and LEAVE shots
+  going wide (> post + 0.3 m): off-target 0 → 20-30% (real ~a third).
+- **Strike power** (G4.14's cap reversed): hardest shot = control + 6
+  equalled the band's own keeper catch cap — a U-10 keeper caught every
+  U-10 shot he reached. Now control + 12 (amateur 22 m/s, u10 18; top
+  bands still the 24 m/s kShotSpeed), keeper hands bonus 6 → 10 (sweep:
+  +6 amateur 8.8 > u14, +8 5.9, +10 4.2 — the first fully ordered
+  ladder).
+- **Keeper handling** (`keeper_fumble_pct`, World-side, hashed only when
+  set so zero-param goldens hold): shot-speed balls fumbled u10 40% /
+  u14 28 / amateur 15 / semipro 8 / pro 5 / world 3; a third of fumbles
+  squirm through.
+- **Keeper reaction made monotone**: the G4.14 table (u10 18 / u14 14 /
+  amateur 6 / semipro 14 / pro 11 / world 9) was tuned while chips
+  inflated amateur — semipro reacting 2.3× slower than amateur sent it
+  to 7.5 goals. Now 18 / 15 / 12 / 11 / 10 / 9.
+- Dribble ×0.85 dropped (no duel benefit, ladder harm).
+
+**Ladder (12×90): u10 7.8 / u14 6.4 / amateur 4.2 / semipro 3.1 / pro
+3.0 / world 3.3** — every goal now from a real shot, magnitudes realistic
+at every band, monotone within noise. Bands test green (its 4-match u10
+> amateur assertion caught the +6 hands variant). 11v11 golden re-locked
+(0x78ee092b…); 3v3 + determinism goldens unchanged.
+
+Still open, unchanged by this slice: shot VOLUME (~250/match) and
+conversion ~1-5% — ball-winning (duels: 3% won) is next, then the parked
+block-shot work (§8.17).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

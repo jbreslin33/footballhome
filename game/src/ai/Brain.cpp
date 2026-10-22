@@ -511,7 +511,35 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                               Fixed64::fromFraction(6, 5) *
                                   Fixed64::fromFraction(6, 5);
             }
-            if (touch_tight) out.action = Action::LoftedKick;
+            // In shooting range the boot IS a shot (shot physics, counted
+            // as one); elsewhere it's a CLEARANCE to the emptier wide
+            // channel upfield — never along the carrier's run. The old
+            // loft-along-desire chipped the keeper from every pressed
+            // attack: 33 of 36 HEAD amateur goals were these uncounted
+            // "clears" (G4.23 goal anatomy, read pre-tick).
+            if (touch_tight) {
+                if (math::lengthSquared(to_goal) < kShootRange * kShootRange) {
+                    out.action = Action::Shot;
+                } else {
+                    const Fixed64 cx = me.pos.x + sgn * Fixed64::fromInt(20);
+                    const Fixed64 cy = half_y_ * Fixed64::fromFraction(3, 5);
+                    int crowd[2] = {0, 0};
+                    const Vec2 ch[2] = {Vec2{cx, -cy}, Vec2{cx, cy}};
+                    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                        if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
+                            continue;
+                        for (int c = 0; c < 2; ++c) {
+                            const Vec2 d{world.player(j).pos.x - ch[c].x,
+                                         world.player(j).pos.y - ch[c].y};
+                            if (math::lengthSquared(d) < Fixed64::fromInt(225))
+                                ++crowd[c];
+                        }
+                    }
+                    out.move.move = seek(me.pos, crowd[0] <= crowd[1] ? ch[0] : ch[1],
+                                         Fixed64::fromFraction(1, 10));
+                    out.action = Action::LoftedKick;
+                }
+            }
         }
         return out;
     }
@@ -595,9 +623,19 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // incoming ball on a goalward track gets tracked.
         if (reacted && incoming && speed_sq > Fixed64::fromInt(16) &&
             math::fx_abs(ball.vel.x) > Fixed64::one()) {
-            const Fixed64 flight_t =
-                (anchor.x - seen_ball.x) / ball.vel.x;
-            y = seen_ball.y + ball.vel.y * flight_t;
+            // Leave it if it's going WIDE (G4.23): project to the GOAL
+            // line; outside the post + 0.3 m the keeper holds his angle
+            // spot. Tracking every shot to ±6 m had keepers collecting
+            // 90% of all shots and ~0% missing the target — a slow
+            // amateur strike gives a 6 m/s keeper time to reach anything.
+            const Fixed64 goal_x = sign >= 0 ? -half_x_ : half_x_;
+            const Fixed64 gt = (goal_x - seen_ball.x) / ball.vel.x;
+            const Fixed64 y_goal = seen_ball.y + ball.vel.y * gt;
+            if (math::fx_abs(y_goal) <= Fixed64::fromFraction(396, 100)) {
+                const Fixed64 flight_t =
+                    (anchor.x - seen_ball.x) / ball.vel.x;
+                y = seen_ball.y + ball.vel.y * flight_t;
+            }
         }
         const Fixed64 lim = Fixed64::fromInt(6);
         if (y > lim) y = lim;

@@ -128,7 +128,21 @@ int main(int argc, char** argv) {
         long owned_ticks[2] = {0, 0};
         long contested_ticks = 0;
         long shots[2] = {0, 0};
+        // Shot outcome (G4.23): follow each shot to its first resolution.
+        int shot_live = -1;  // shooting team while tracking
+        int shot_pending = -1;  // shooter slot, armed until the ball leaves
+        std::uint8_t shot_kicker = 0xFF;
+        long so[5] = {0, 0, 0, 0, 0};  // goal/off-target/keeper/blocked/other
         long shot_depth[3] = {0, 0, 0};  // <8 m / 8-16.5 / 16.5+
+        // Duel anatomy (G4.23): every CARRY (one owner, continuous) that
+        // an opponent engaged (came inside tackle reach), by how it
+        // ended: kicked (pass/shot/clear), stolen (touch contest), poked
+        // (tackle), other. Plus engaged-ticks per engaged carry.
+        int carry_owner = -1;
+        bool carry_engaged = false;
+        long carry_eng_ticks = 0, eng_ticks_sum = 0;
+        long duel_end[4] = {0, 0, 0, 0};  // kicked/stolen/poked/other
+        long carries = 0;
         long shot_press[3] = {0, 0, 0};  // nearest opp <2 m / 2-5 / 5+
         // Goal anatomy (G4.14): what KIND of goals is each level scoring?
         // Per team: last shot's distance and whether the shooter was past
@@ -238,6 +252,7 @@ int main(int argc, char** argv) {
                     *world.ball().owner == s) {
                     const int team = setup.team_of_slot[s];
                     ++shots[team];
+                    shot_pending = s;
                     if (fn_team == team && !fn_shot_done) {
                         fn_shot_done = true;
                         ++fn_shot[team];
@@ -282,6 +297,25 @@ int main(int argc, char** argv) {
             double pre_by = world.ball().pos.y.toDouble();
             double pre_bvx = world.ball().vel.x.toDouble();
             double pre_bvy = world.ball().vel.y.toDouble();
+            const int pre_owner_slot =
+                world.ball().owner ? static_cast<int>(*world.ball().owner) : -1;
+            if (pre_owner_slot >= 0) {
+                const auto& c = world.player(static_cast<std::uint8_t>(pre_owner_slot));
+                bool eng = false;
+                for (std::uint8_t j = 0; j < players && !eng; ++j) {
+                    if (setup.team_of_slot[j] == setup.team_of_slot[pre_owner_slot]) continue;
+                    const double dx = world.player(j).pos.x.toDouble() - c.pos.x.toDouble();
+                    const double dy = world.player(j).pos.y.toDouble() - c.pos.y.toDouble();
+                    eng = dx * dx + dy * dy < 1.8 * 1.8;
+                }
+                if (pre_owner_slot != carry_owner) {
+                    carry_owner = pre_owner_slot;
+                    carry_engaged = false;
+                    carry_eng_ticks = 0;
+                    ++carries;
+                }
+                if (eng) { carry_engaged = true; ++carry_eng_ticks; }
+            }
             pre_owned = world.ball().owner.has_value();
             pre_lk_slot = world.ball().last_kicker;
             const std::uint8_t pre_lost = world.lastLosingTeam();
@@ -294,7 +328,38 @@ int main(int argc, char** argv) {
                 pre_k[tm][0] = world.player(j).pos.x.toDouble();
                 pre_k[tm][1] = world.player(j).pos.y.toDouble();
             }
-            for (const core::MatchEvent& e : world.tick()) {
+            const std::uint8_t pre_lk_so = world.ball().last_kicker;
+            const auto evs_so = world.tick();
+            if (shot_pending >= 0) {
+                // The strike itself: start tracking only once the ball has
+                // left the shooter's foot (last_kicker == shooter, free).
+                if (!world.ball().owner &&
+                    world.ball().last_kicker == shot_pending) {
+                    shot_live = setup.team_of_slot[shot_pending];
+                    shot_kicker = static_cast<std::uint8_t>(shot_pending);
+                }
+                shot_pending = -1;
+            } else if (shot_live >= 0) {
+                bool goal = false, out = false;
+                for (const auto& e : evs_so) {
+                    if (e.type == core::MatchEventType::Goal) goal = true;
+                    if (e.type == core::MatchEventType::GoalKick ||
+                        e.type == core::MatchEventType::Corner ||
+                        e.type == core::MatchEventType::ThrowIn) out = true;
+                }
+                const std::uint8_t lk = world.ball().last_kicker;
+                if (goal) { ++so[0]; shot_live = -1; }
+                else if (out) { ++so[1]; shot_live = -1; }
+                else if (world.ball().owner || lk != shot_kicker) {
+                    const std::uint8_t who = world.ball().owner ? *world.ball().owner : lk;
+                    if (who < players && setup.team_of_slot[who] != shot_live)
+                        ++so[world.isKeeper(who) ? 2 : 3];
+                    else
+                        ++so[4];
+                    shot_live = -1;
+                }
+            }
+            for (const core::MatchEvent& e : evs_so) {
                 if (e.type == core::MatchEventType::Goal) {
                     ++score[e.team];
                     if (last_shot_breakaway[e.team]) ++breakaway_goals;
@@ -374,6 +439,26 @@ int main(int argc, char** argv) {
                 }
                 if (t - fn_start >= 15 * core::kTickRate) fn_team = -1;
             }
+            if (carry_owner >= 0) {
+                const bool still = world.ball().owner &&
+                    static_cast<int>(*world.ball().owner) == carry_owner;
+                if (!still) {
+                    if (carry_engaged) {
+                        eng_ticks_sum += carry_eng_ticks;
+                        int why = 3;
+                        if (!world.ball().owner &&
+                            world.ball().last_kicker == carry_owner) why = 0;
+                        else if (world.ball().owner &&
+                                 setup.team_of_slot[*world.ball().owner] !=
+                                     setup.team_of_slot[carry_owner]) why = 1;
+                        else if (t == last_poke_any) why = 2;
+                        ++duel_end[why];
+                    }
+                    carry_owner = world.ball().owner
+                        ? -2 : -1;  // -2: new owner picked up next tick
+                    if (world.ball().owner) carry_owner = -1;
+                }
+            }
             {
                 const std::uint8_t lk = world.ball().last_kicker;
                 if (lk != prev_lk && lk < players && !world.ball().owner) {
@@ -396,7 +481,7 @@ int main(int argc, char** argv) {
         total_goals += score[0] + score[1];
         const int goals = score[0] + score[1];
         std::printf(
-            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | lost-kick short %ld ground %ld loft %ld shot %ld other %ld | jitter rev %ld/%ld/%ld flick %ld/%ld/%ld | shot depth %ld/%ld/%ld press %ld/%ld/%ld | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
+            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | lost-kick short %ld ground %ld loft %ld shot %ld other %ld | jitter rev %ld/%ld/%ld flick %ld/%ld/%ld | shot depth %ld/%ld/%ld press %ld/%ld/%ld | shot-out goal %ld off %ld keeper %ld blocked %ld other %ld | duels %ld engaged of %ld carries: kicked %ld stolen %ld poked %ld other %ld, %.1f s engaged | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
             m, score[0], score[1], owned_ticks[0] * 100 / ticks,
             owned_ticks[1] * 100 / ticks, contested_ticks * 100 / ticks,
             shots[0], shots[1], tk_won, tk_lost, offsides,
@@ -410,6 +495,13 @@ int main(int argc, char** argv) {
             jit_flick[0], jit_flick[1], jit_flick[2],
             shot_depth[0], shot_depth[1], shot_depth[2],
             shot_press[0], shot_press[1], shot_press[2],
+            so[0], so[1], so[2], so[3], so[4],
+            duel_end[0] + duel_end[1] + duel_end[2] + duel_end[3], carries,
+            duel_end[0], duel_end[1], duel_end[2], duel_end[3],
+            (duel_end[0] + duel_end[1] + duel_end[2] + duel_end[3])
+                ? static_cast<double>(eng_ticks_sum) / core::kTickRate /
+                      (duel_end[0] + duel_end[1] + duel_end[2] + duel_end[3])
+                : 0.0,
             goals ? scoring_dist_sum / goals : 0.0,
             goals ? keeper_dist_sum / goals : 0.0,
             goals ? keeper_ball_sum / goals : 0.0,

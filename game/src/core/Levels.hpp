@@ -50,12 +50,16 @@ struct LevelParams {
     // earlier golden locks). Brain-side dial: deliberately NOT in the
     // canonical hash (the hash sees its effects through the intents).
     std::int32_t keeper_reaction_ticks = 0;
+    // Keeper handling (G4.23): percent of shot-speed balls a keeper
+    // reaches that he fumbles. World-side, so it IS in the canonical hash.
+    std::int32_t keeper_fumble_pct = 0;
 
     bool isZero() const noexcept {
         return perception_delay_ticks == 0 && kick_angle_err_deg == 0 &&
                kick_power_err_pct == 0 && decision_jitter_pct == 0 &&
                control_speed_mps == 0 && swarm_pct == 0 &&
-               tackle_success_pct == 0 && keeper_reaction_ticks == 0;
+               tackle_success_pct == 0 && keeper_reaction_ticks == 0 &&
+               keeper_fumble_pct == 0;
     }
 };
 
@@ -77,12 +81,12 @@ inline std::uint8_t levelId(std::string_view name) {
 // ERAS join these bands when concepts/recognitions land in G4.2b+).
 // Numbers are first-pass; the calibration harness tunes them.
 inline LevelParams levelParams(std::string_view name) {
-    if (name == "u10")     return {18, 18, 25, 60, 6, 30, 80, 18};  // amoeba
-    if (name == "u14")     return {12, 13, 18, 40, 8, 35, 55, 14};
-    if (name == "amateur") return {7, 6, 10, 25, 10, 42, 30, 6};  // Sunday
-    if (name == "semipro") return {4, 3, 6, 12, 13, 50, 12, 14};
-    if (name == "pro")     return {2, 2, 3, 5, 16, 60, 4, 11};
-    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0, 9};
+    if (name == "u10")     return {18, 18, 25, 60, 6, 30, 80, 18, 40};  // amoeba
+    if (name == "u14")     return {12, 13, 18, 40, 8, 35, 55, 15, 28};
+    if (name == "amateur") return {7, 6, 10, 25, 10, 42, 30, 12, 15};  // Sunday
+    if (name == "semipro") return {4, 3, 6, 12, 13, 50, 12, 11, 8};
+    if (name == "pro")     return {2, 2, 3, 5, 16, 60, 4, 10, 5};
+    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0, 9, 3};
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 

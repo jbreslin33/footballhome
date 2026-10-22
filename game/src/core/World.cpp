@@ -258,7 +258,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 Fixed64 top = kShotSpeed;
                 if (lv.control_speed_mps > 0) {
                     const Fixed64 ceil =
-                        Fixed64::fromInt(lv.control_speed_mps + 6);
+                        Fixed64::fromInt(lv.control_speed_mps + 12);
                     if (ceil < top) top = ceil;
                 }
                 const Fixed64 v = top * power_scale;
@@ -402,10 +402,28 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     // bobbles — deflects onward at reduced speed in a noise-rotated
     // direction — instead of sticking. Keepers add their hands bonus.
     const LevelParams& lv = level_[players_[best].team & 1];
-    if (lv.control_speed_mps > 0) {
+    // Keeper handling (G4.23): a shot-speed ball (> 6 m/s) a keeper
+    // reaches can still be FUMBLED, by level. Without it a level's
+    // hardest shot (control + 6) equals its own keeper's catch cap, so a
+    // U-10 keeper caught every U-10 shot he reached — and youth scoring
+    // came almost entirely from an accidental lofted "clear" (G4.23).
+    // Two thirds of fumbles parry (rebound in front of goal); a third
+    // squirm THROUGH along the ball's own line, as youth spills do.
+    bool fumbled = false, squirm = false;
+    if (keeper_[best] && lv.keeper_fumble_pct > 0 &&
+        planar_speed_sq > Fixed64::fromInt(36)) {
+        const Fixed64 r = detNoise(match_seed_, clock_.tick(), best, 11);
+        fumbled = (r + Fixed64::one()) <
+                  Fixed64::fromFraction(lv.keeper_fumble_pct, 50);
+        if (fumbled) {
+            const Fixed64 r2 = detNoise(match_seed_, clock_.tick(), best, 12);
+            squirm = (r2 + Fixed64::one()) < Fixed64::fromFraction(2, 3);
+        }
+    }
+    if (lv.control_speed_mps > 0 || fumbled) {
         Fixed64 ctrl = Fixed64::fromInt(lv.control_speed_mps);
         if (keeper_[best]) ctrl += kKeeperHandsBonus;
-        if (planar_speed_sq > ctrl * ctrl) {
+        if (fumbled || planar_speed_sq > ctrl * ctrl) {
             const Fixed64 n =
                 detNoise(match_seed_, clock_.tick(), best, 5);
             const Fixed64 ang = n * Fixed64::fromFraction(71, 4068) *
@@ -419,7 +437,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             // away from his goal, never through himself into it — the
             // direction-preserving deflection had u14 keepers parrying
             // 23% of shots into their own net (measured).
-            if (keeper_[best]) {
+            if (squirm) {
+                defl = Vec2{ball_.vel.x * kBobbleKeep,
+                            ball_.vel.y * kBobbleKeep};
+            } else if (keeper_[best]) {
                 const bool home = players_[best].team == 0;
                 // Team 0 defends -x: the parry must carry +x, and vice
                 // versa.

@@ -63,7 +63,7 @@ inline const math::Fixed64 kCaptureMaxSpeed = math::Fixed64::fromInt(20);
 // (dive/reach), higher (jump), and controls faster balls (+ hands bonus).
 inline const math::Fixed64 kKeeperReach = math::Fixed64::fromFraction(6, 5);
 inline const math::Fixed64 kKeeperReachZ = math::Fixed64::fromFraction(11, 5);
-inline const math::Fixed64 kKeeperHandsBonus = math::Fixed64::fromInt(6);
+inline const math::Fixed64 kKeeperHandsBonus = math::Fixed64::fromInt(10);
 // A failed first touch deflects the ball at this fraction of its speed.
 inline const math::Fixed64 kBobbleKeep = math::Fixed64::fromFraction(2, 5);
 inline constexpr int kBobbleLockoutTicks = 8;

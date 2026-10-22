@@ -75,6 +75,10 @@ std::uint64_t canonicalHash(const World& world) {
         mix(h, static_cast<std::uint64_t>(lv.control_speed_mps));
         mix(h, static_cast<std::uint64_t>(lv.swarm_pct));
         mix(h, static_cast<std::uint64_t>(lv.tackle_success_pct));
+        // G4.23 field: mixed only when set, so every zero-param
+        // determinism golden stays byte-identical.
+        if (lv.keeper_fumble_pct != 0)
+            mix(h, static_cast<std::uint64_t>(lv.keeper_fumble_pct));
     }
     return h;
 }
