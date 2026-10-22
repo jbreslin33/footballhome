@@ -101,14 +101,14 @@ window.LIGHTHOUSE_LAYOUT = {
   // Rating 0-10 = water only (A = plan A = 0, driest = 10). Plan A, pushed
   // onto the low flat vendor end, is the WETTEST of all 1,278 legal spots.
   candidates: [
-    // James: same orientation as today's Google-painted pitch (61°), off
-    // its flooding cemetery-end 6-yard box, slid away from the baseball
-    // diamond toward the barn. Fits only by dropping the 10 ft buffer round
-    // the softball diamond: its corner touches the softball infield dirt
-    // (0 ft, no overlap), 14.5 ft off the 3B fence, 10.8 ft off the vendor
-    // fence, 22 yd off the main infield, 2.3 m clear of the flooded box.
-    { id: 'Y', label: 'Y 3/10', name: "today's yellow angle, off the flood", color: 0xffe14d, x: 14, z: -30, rotDeg: 61, length: 105.16, width: 67.67,
-      water: { pond: 180, flow: 400, flat: 993 }, cemetery: 24.9, infieldYd: 22.1 },
+    // James: same orientation as today's Google-painted pitch (61°), slid
+    // up and left (seen from the barn) until it just kisses the flooding
+    // cemetery-end 6-yard box of today's pitch (5 cm clear). Needs the 10 ft
+    // softball-diamond buffer dropped: 4.9 ft off the softball infield dirt,
+    // 21.9 ft off its 3B fence, 10.2 ft off the vendor fence, 18.1 yd off
+    // the main infield, 23.9 m from the cemetery.
+    { id: 'Y', label: 'Y 5.8/10', name: "today's yellow angle, kissing the 6-yd box", color: 0xffe14d, x: 9.75, z: -30.25, rotDeg: 61, length: 105.16, width: 67.67,
+      water: { pond: 150, flow: 399, flat: 918 }, cemetery: 23.9, infieldYd: 18.1 },
     { id: 'A', label: 'A 0/10', name: 'plan A (fences)', color: 0xffffff, x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67,
       water: { pond: 175, flow: 386, flat: 1336 }, cemetery: 35.5, infieldYd: 16.6 },
     { id: '1', label: '1 10/10', name: "old-timers' spot, highest ground", color: 0xff3b3b, x: 23.82, z: -54.7, rotDeg: 152, length: 105.16, width: 67.67,
