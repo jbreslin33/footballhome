@@ -11,31 +11,37 @@
 window.LIGHTHOUSE_LAYOUT = {
   // THE PLANNED PITCH (James, 10/22): 115 x 74 yd (105.16 x 67.67 m —
   // the game's 105 x 68 to within 33 cm, so game and real pitch are one).
-  // Placed by search (game/scripts-style solver in the session notes) under
-  // his constraints: touchlines EXACTLY 10 ft (no closer) from the metal
-  // foul-ball fence and the softball 3RD-BASE fence; >= 15 yd from the main
-  // diamond's infield dirt (floods); off all infield dirt; clear of trees +
-  // the rodeo fence; pushed toward the rodeo and the barn (away from the
-  // worn cemetery-end goalmouth). Result: due north–south (90.25°), 10.1 ft
-  // from both fences, 19.6 yd from the main infield. The METAL FENCE line
-  // is a placeholder until laser-measured on site (it sets the N–S
-  // position); the softball fence is measured (0.07 m/px imagery).
-  gamePitch: { x: 24.75, z: -22.75, rotDeg: 90.25 },
-  realPitch: { x: 24.75, z: -22.75, rotDeg: 90.25, length: 105.16, width: 67.67 },
+  // Placed by game/scripts/plan_lighthouse_pitch.py under his rules: EXACTLY
+  // 10 ft (no closer) from the metal vendor-protector fence and the softball
+  // 3RD-BASE fence; >= 15 yd from the main diamond's infield dirt (floods);
+  // off all infield dirt; clear of trees + the curved rodeo fence; then as
+  // far from the cemetery tree line as those allow. Measured on the City of
+  // Philadelphia 2025 orthoimagery (3-inch). East–west can't fit (73 m
+  // between the main infield buffer and the softball fence), so it runs
+  // north–south, 4° east of north: south goal line 10.1–12 ft off the vendor
+  // fence (nearest at its 8th pole from the east end), east touchline 10.1
+  // ft from the 3B fence's end post, main infield 16.5 yd, cemetery 35.5 m.
+  gamePitch: { x: 25.15, z: -19.65, rotDeg: 94 },
+  realPitch: { x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67 },
   // Superseded: the painted pitch on today's imagery — ~90 x 60.5 m, axis
   // 61.5°, centre (-15.7, -33.4).
   oldPitch: { x: -15.7, z: -33.4, rotDeg: 61.5, length: 90, width: 60.5 },
 
-  // Fences (Google imagery, 0.07–0.14 m/px). The softball fences are
-  // symmetric about home→2nd: the 3rd-base fence is the 1st-base fence
-  // (clearly visible, 23.69 m) mirrored — the two backstop corners sit
-  // exactly symmetric about that axis (offset 0.000 m along it).
+  // Fences, traced on the City 2025 orthoimagery (same numbers as the
+  // planner). The vendor fence is pole bases: straight along the main
+  // diamond's 1st-base line, then bending ~6° south at x ≈ -20 (west bases
+  // half-hidden in building shadow — read at their north-most). The rodeo
+  // fence is a long curve bowing west.
   fences: [
-    { name: 'softball 1st-base fence', kind: 'chain', h: 2.4, pts: [[91.55, 18.77], [97.46, 8.34], [103.02, -1.95]] },
-    { name: 'softball 3rd-base fence (mirrored)', kind: 'chain', h: 2.4, pts: [[82.86, 21.54], [61.51, 11.29]] },
-    { name: 'softball backstop', kind: 'chain', h: 4, pts: [[82.86, 21.54], [87.2, 22.4], [91.55, 18.77]] },
-    { name: 'rodeo fence', kind: 'chain', h: 1.8, pts: [[93.3, -87.5], [137.1, -20.1]] },
-    { name: 'metal foul-ball fence (PLACEHOLDER — laser-measure)', kind: 'metal', h: 2.4, pts: [[-35, 33], [45, 33]] },
+    { name: 'softball 1st-base fence', kind: 'chain', h: 2.4, pts: [[91.9, 19.8], [97.6, 9.4], [103.0, -1.9]] },
+    { name: 'softball 3rd-base fence', kind: 'chain', h: 2.4, pts: [[82.9, 22.2], [60.1, 9.6]] },
+    { name: 'softball backstop', kind: 'chain', h: 4, pts: [[82.9, 22.2], [87.4, 21.0], [91.9, 19.8]] },
+    { name: 'rodeo fence', kind: 'chain', h: 1.8, pts: [[88.6, -95.7], [91.7, -87.0], [93.2, -80.1], [96.6, -75.1],
+      [98.2, -70.9], [100.5, -66.3], [103.5, -60.2], [106.6, -55.6], [111.1, -50.3], [114.9, -45.7],
+      [119.5, -41.1], [124.1, -35.8], [128.7, -29.7]] },
+    { name: 'metal vendor-protector fence', kind: 'metal', h: 2.4, pts: [[-60, 32.4], [-36.2, 32.5], [-29.1, 32.7],
+      [-20.1, 32.1], [-15.28, 33.07], [-12.03, 33.58], [-8.81, 33.96], [-5.76, 34.24], [-2.51, 34.44],
+      [0.79, 34.77], [3.85, 35.1], [7.16, 35.41], [10.33, 35.74]] },
   ],
 
   // Ball fields, MEASURED on satellite imagery (5 m grid on Esri z19):
@@ -45,8 +51,8 @@ window.LIGHTHOUSE_LAYOUT = {
   // radius from home plate. Replaces guessing from OSM's whole-field
   // outlines, which put the infields in the wrong spots.
   diamonds: [
-    { name: 'main (baseball)', home: [-69, 28], bearing: -45, base: 27.43, infield: 'grass', arc: 47 },
-    { name: 'east (softball)', home: [83.2, 13.2], bearing: -104.5, base: 18.29, infield: 'dirt', arc: 28 },
+    { name: 'main (baseball)', home: [-68.5, 29.5], bearing: -45, base: 27.43, infield: 'grass', arc: 47 },
+    { name: 'east (softball)', home: [85.9, 13.4], bearing: -107, base: 18.29, infield: 'dirt', arc: 28 },
     { name: 'by the paddock (small)', home: [61, 66], bearing: -135, base: 18.29, infield: 'dirt', arc: 22 }, // CONFIRM orientation
   ],
 
