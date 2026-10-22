@@ -9,20 +9,34 @@
 // from satellite imagery (Esri z19, ~0.23 m/px) and need his eye.
 
 window.LIGHTHOUSE_LAYOUT = {
-  // Where the GAME's 105 x 68 pitch sits. rotDeg = long axis, degrees
-  // from east toward south. James (10/22): "soccer field should be right
-  // on edge of baseball field near barn." Between the main diamond (W)
-  // and the NE diamond (E) the only fit is NORTH–SOUTH, its south goal
-  // line just north of the barn / SE diamond / parked bleachers. CONFIRM.
-  // MEASURED from Google's current satellite imagery (painted lines,
-  // calibrated on the two measured home plates, 0.139 m/px): the soccer
-  // pitch — goal line + penalty area (~15.5 m) + goal area + penalty arc
-  // facing a centre circle 45 m out → ~90 m long x 60.5 m wide, long axis
-  // 61.5° (runs NNW from a goal line mid-complex). From the hospital the
-  // main diamond is at its bottom-left (James). The GAME's pitch is still
-  // 105 x 68, centred + aligned on it; realPitch keeps the measured size.
-  gamePitch: { x: -15.7, z: -33.4, rotDeg: 61.5 },
-  realPitch: { x: -15.7, z: -33.4, rotDeg: 61.5, length: 90, width: 60.5 },
+  // THE PLANNED PITCH (James, 10/22): 115 x 74 yd (105.16 x 67.67 m —
+  // the game's 105 x 68 to within 33 cm, so game and real pitch are one).
+  // Placed by search (game/scripts-style solver in the session notes) under
+  // his constraints: touchlines EXACTLY 10 ft (no closer) from the metal
+  // foul-ball fence and the softball 3RD-BASE fence; >= 15 yd from the main
+  // diamond's infield dirt (floods); off all infield dirt; clear of trees +
+  // the rodeo fence; pushed toward the rodeo and the barn (away from the
+  // worn cemetery-end goalmouth). Result: due north–south (90.25°), 10.1 ft
+  // from both fences, 19.6 yd from the main infield. The METAL FENCE line
+  // is a placeholder until laser-measured on site (it sets the N–S
+  // position); the softball fence is measured (0.07 m/px imagery).
+  gamePitch: { x: 24.75, z: -22.75, rotDeg: 90.25 },
+  realPitch: { x: 24.75, z: -22.75, rotDeg: 90.25, length: 105.16, width: 67.67 },
+  // Superseded: the painted pitch on today's imagery — ~90 x 60.5 m, axis
+  // 61.5°, centre (-15.7, -33.4).
+  oldPitch: { x: -15.7, z: -33.4, rotDeg: 61.5, length: 90, width: 60.5 },
+
+  // Fences (Google imagery, 0.07–0.14 m/px). The softball fences are
+  // symmetric about home→2nd: the 3rd-base fence is the 1st-base fence
+  // (clearly visible, 23.69 m) mirrored — the two backstop corners sit
+  // exactly symmetric about that axis (offset 0.000 m along it).
+  fences: [
+    { name: 'softball 1st-base fence', kind: 'chain', h: 2.4, pts: [[91.55, 18.77], [97.46, 8.34], [103.02, -1.95]] },
+    { name: 'softball 3rd-base fence (mirrored)', kind: 'chain', h: 2.4, pts: [[82.86, 21.54], [61.51, 11.29]] },
+    { name: 'softball backstop', kind: 'chain', h: 4, pts: [[82.86, 21.54], [87.2, 22.4], [91.55, 18.77]] },
+    { name: 'rodeo fence', kind: 'chain', h: 1.8, pts: [[93.3, -87.5], [137.1, -20.1]] },
+    { name: 'metal foul-ball fence (PLACEHOLDER — laser-measure)', kind: 'metal', h: 2.4, pts: [[-35, 33], [45, 33]] },
+  ],
 
   // Ball fields, MEASURED on satellite imagery (5 m grid on Esri z19):
   // home plate, bearing = direction home → 2nd base (degrees from east

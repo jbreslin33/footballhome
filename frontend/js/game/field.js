@@ -595,6 +595,28 @@
       posts.forEach(([x, z], i) => { M.compose(Pv.set(x, H / 2, z), Q, S.set(1, 1, 1)); pm.setMatrixAt(i, M); });
       site.add(pm);
     }
+    // Measured fences: chain-link panels (see-through) or solid metal.
+    for (const fz of (L.fences || [])) {
+      const H = fz.h || 2;
+      const mat = fz.kind === 'metal'
+        ? std(0x6f767e, { metalness: 0.7, roughness: 0.4 })
+        : std(0x9aa1a8, { metalness: 0.5, roughness: 0.5, transparent: true, opacity: 0.45 });
+      const postM = std(0x6b7178, { metalness: 0.6, roughness: 0.4 });
+      for (let k = 0; k + 1 < fz.pts.length; k++) {
+        const [ax, az] = fz.pts[k], [bx, bz] = fz.pts[k + 1];
+        const len = Math.hypot(bx - ax, bz - az);
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(len, H, 0.05), mat);
+        panel.position.set((ax + bx) / 2, H / 2, (az + bz) / 2);
+        panel.rotation.y = -Math.atan2(bz - az, bx - ax);
+        panel.castShadow = fz.kind === 'metal';
+        site.add(panel);
+        for (let t = 0; t <= len + 0.01; t += 3) {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, H + 0.1, 6), postM);
+          post.position.set(ax + (bx - ax) * t / len, (H + 0.1) / 2, az + (bz - az) * t / len);
+          site.add(post);
+        }
+      }
+    }
     for (const kf of (L.kidsFields || [])) {
       // Kids' fields: painted lines (James to place). Simple outline for now.
       const a = (kf.rotDeg || 0) * D2R, l = kf.length / 2, w = kf.width / 2;
