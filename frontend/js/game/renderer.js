@@ -39,6 +39,58 @@
     return t;
   }
 
+  // The pitch surface WITH its markings painted in (Laws of the Game, 12 cm
+  // lines): real pitches are paint on grass, and separate line geometry
+  // lost depth fights with the turf at range. Canvas spans the pitch plus
+  // a 2 m apron; ~19 px per metre.
+  function pitchTexture(hx, hy) {
+    const PW = hx * 2 + 4, PH = hy * 2 + 4;
+    const W = 2048, H = Math.round(2048 * PH / PW);
+    const k = W / PW;
+    const X = (x) => (x + hx + 2) * k, Y = (z) => (z + hy + 2) * k;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const stripes = 12;
+    for (let i = 0; i < stripes; i++) {
+      g.fillStyle = i % 2 ? '#2f8a2e' : '#277a27';
+      g.fillRect(X(-hx + (2 * hx / stripes) * i), 0, (2 * hx / stripes) * k + 1, H);
+    }
+    g.fillStyle = '#277a27';
+    g.fillRect(0, 0, X(-hx), H); g.fillRect(X(hx), 0, W - X(hx), H);
+    const img = g.getImageData(0, 0, W, H);
+    for (let p = 0; p < img.data.length; p += 4) {
+      const n = (Math.random() - 0.5) * 22;
+      img.data[p] += n * 0.6; img.data[p + 1] += n; img.data[p + 2] += n * 0.4;
+    }
+    g.putImageData(img, 0, 0);
+    g.strokeStyle = 'rgba(250,250,245,0.95)';
+    g.fillStyle = 'rgba(250,250,245,0.95)';
+    g.lineWidth = 0.12 * k;
+    const rect = (x0, z0, x1, z1) => g.strokeRect(X(x0), Y(z0), (x1 - x0) * k, (z1 - z0) * k);
+    const arc = (x, z, r, a0, a1) => { g.beginPath(); g.arc(X(x), Y(z), r * k, a0, a1); g.stroke(); };
+    const spot = (x, z) => { g.beginPath(); g.arc(X(x), Y(z), 0.15 * k, 0, Math.PI * 2); g.fill(); };
+    rect(-hx, -hy, hx, hy);
+    g.beginPath(); g.moveTo(X(0), Y(-hy)); g.lineTo(X(0), Y(hy)); g.stroke();
+    arc(0, 0, 9.15, 0, Math.PI * 2);
+    spot(0, 0);
+    const a = Math.acos(5.5 / 9.15);
+    for (const s of [-1, 1]) {
+      const gx = s * hx;
+      rect(Math.min(gx, gx - s * 16.5), -20.16, Math.max(gx, gx - s * 16.5), 20.16);
+      rect(Math.min(gx, gx - s * 5.5), -9.16, Math.max(gx, gx - s * 5.5), 9.16);
+      const sp = gx - s * 11;
+      spot(sp, 0);
+      if (s > 0) arc(sp, 0, 9.15, Math.PI - a, Math.PI + a);
+      else arc(sp, 0, 9.15, -a, a);
+      for (const cz of [-1, 1]) {
+        const a0 = s > 0 ? (cz > 0 ? Math.PI : Math.PI / 2) : (cz > 0 ? -Math.PI / 2 : 0);
+        arc(gx, cz * hy, 1, a0, a0 + Math.PI / 2);
+      }
+    }
+    return new THREE.CanvasTexture(c);
+  }
+
   class GameRenderer {
     constructor(canvas) {
       this.canvas = canvas;
@@ -62,7 +114,7 @@
       this.scene.fog = new THREE.Fog(0x9cc3e6, 220, 520);
 
       this.camera = new THREE.PerspectiveCamera(
-        45, window.innerWidth / window.innerHeight, 0.1, 900);
+        45, window.innerWidth / window.innerHeight, 0.5, 1400);
       this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       this.renderer.shadowMap.enabled = true;
@@ -94,7 +146,7 @@
     line(points, mat) {
       this.scene.add(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(
-          points.map(([x, z]) => new THREE.Vector3(x, 0.02, z))), mat));
+          points.map(([x, z]) => new THREE.Vector3(x, 0.09, z))), mat));
     }
     arc(cx, cz, r, a0, a1, mat) {
       const pts = [];
@@ -115,36 +167,17 @@
       // mowing stripes + blade noise, receiving real shadows.
       const pitch = new THREE.Mesh(
         new THREE.PlaneGeometry(hx * 2 + 4, hy * 2 + 4),
-        new THREE.MeshStandardMaterial({ map: grassTexture(true), roughness: 1 }));
+        new THREE.MeshStandardMaterial({ map: pitchTexture(hx, hy), roughness: 1 }));
       pitch.material.map.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
       pitch.rotation.x = -Math.PI / 2;
+      pitch.position.y = 0.05;
+      pitch.material.polygonOffset = true;
+      pitch.material.polygonOffsetFactor = -4;
+      pitch.material.polygonOffsetUnits = -16;
+      pitch.renderOrder = 20;
       pitch.receiveShadow = true;
       this.scene.add(pitch);
       this.field = LighthouseField.build(this.scene, hx, hy);
-
-      // Full markings (Laws of the Game): touch/goal lines, halfway,
-      // centre circle + spot, penalty + goal areas, spots, arcs, corners.
-      const mark = new THREE.LineBasicMaterial({ color: 0xffffff });
-      this.line([[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy], [-hx, -hy]], mark);
-      this.line([[0, -hy], [0, hy]], mark);
-      this.arc(0, 0, 9.15, 0, Math.PI * 2, mark);
-      this.arc(0, 0, 0.2, 0, Math.PI * 2, mark);
-      for (const s of [-1, 1]) {
-        const gx = s * hx;
-        const pa = gx - s * 16.5, ga = gx - s * 5.5;
-        this.line([[gx, -20.16], [pa, -20.16], [pa, 20.16], [gx, 20.16]], mark);
-        this.line([[gx, -9.16], [ga, -9.16], [ga, 9.16], [gx, 9.16]], mark);
-        const spot = gx - s * 11;
-        this.arc(spot, 0, 0.2, 0, Math.PI * 2, mark);
-        // Penalty arc: the part of the 9.15 m circle outside the area.
-        const a = Math.acos(5.5 / 9.15);
-        if (s > 0) this.arc(spot, 0, 9.15, Math.PI - a, Math.PI + a, mark);
-        else this.arc(spot, 0, 9.15, -a, a, mark);
-        for (const cy of [-1, 1]) {
-          const a0 = s > 0 ? (cy > 0 ? Math.PI : Math.PI / 2) : (cy > 0 ? -Math.PI / 2 : 0);
-          this.arc(gx, cy * hy, 1, a0, a0 + Math.PI / 2, mark);
-        }
-      }
 
       // Goal frames + nets (7.32 x 2.44 m, 2 m deep).
       const postMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
