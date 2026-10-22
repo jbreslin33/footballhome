@@ -99,7 +99,8 @@ window.LIGHTHOUSE_LAYOUT = {
   // infield, off dirt, clear of trees + rodeo fence) scored on the lidar
   // per m²: 3 x pond + 1.5 x runoff crossing + 0.5 x too-flat (< 0.5 %).
   // Rating 0-10 = water only, among these candidates at their CURRENT
-  // spots (wettest = 0, driest = 10); "% wet" = (pond + runoff) / pitch. Plan A, pushed
+  // spots (wettest = 0, driest = 10); "% pond" = standing water / pitch
+  // (runoff crossing is ~5.5 % on every spot, so it hid the spread). Plan A, pushed
   // onto the low flat vendor end, is the WETTEST of all 1,278 legal spots.
   candidates: [
     // James: same orientation as today's Google-painted pitch (61°), slid
@@ -108,21 +109,21 @@ window.LIGHTHOUSE_LAYOUT = {
     // softball-diamond buffer dropped: 4.9 ft off the softball infield dirt,
     // 21.9 ft off its 3B fence, 10.2 ft off the vendor fence, 18.1 yd off
     // the main infield, 23.9 m from the cemetery.
-    { id: 'Y', label: 'Y 6.2/10 · 7.7% wet', name: "today's yellow angle, kissing the 6-yd box", color: 0xffe14d, x: 9.75, z: -30.25, rotDeg: 61, length: 105.16, width: 67.67,
+    { id: 'Y', label: 'Y 6.2/10 · 2.1% pond', name: "today's yellow angle, kissing the 6-yd box", color: 0xffe14d, x: 9.75, z: -30.25, rotDeg: 61, length: 105.16, width: 67.67,
       water: { pond: 150, flow: 399, flat: 918 }, cemetery: 23.9, infieldYd: 18.1 },
-    { id: 'A', label: 'A 0/10 · 7.9% wet', name: 'plan A (fences)', color: 0xffffff, x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67,
+    { id: 'A', label: 'A 0/10 · 2.5% pond', name: 'plan A (fences)', color: 0xffffff, x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67,
       water: { pond: 175, flow: 386, flat: 1336 }, cemetery: 35.5, infieldYd: 16.6 },
-    { id: '1', label: '1 9.3/10 · 7.1% wet', name: "old-timers' spot, highest ground", color: 0xff3b3b, x: 23.82, z: -54.7, rotDeg: 152, length: 105.16, width: 67.67,
+    { id: '1', label: '1 9.3/10 · 1.6% pond', name: "old-timers' spot, highest ground", color: 0xff3b3b, x: 23.82, z: -54.7, rotDeg: 152, length: 105.16, width: 67.67,
       water: { pond: 111, flow: 396, flat: 897 }, cemetery: 4.6, infieldYd: 26.9 },
-    { id: '2', label: '2 8.7/10 · 7.2% wet', name: 'dry + room', color: 0x7dff3b, x: 24, z: -42, rotDeg: 155, length: 105.16, width: 67.67,
+    { id: '2', label: '2 8.7/10 · 1.7% pond', name: 'dry + room', color: 0x7dff3b, x: 24, z: -42, rotDeg: 155, length: 105.16, width: 67.67,
       water: { pond: 120, flow: 391, flat: 905 }, cemetery: 29.4, infieldYd: 16.5 },
-    { id: '3', label: '3 10/10 · 6.9% wet', name: 'THE PLAN: kissing the softball field', color: 0x00e5ff, x: 30, z: -33.5, rotDeg: 155, length: 105.16, width: 67.67,
+    { id: '3', label: '3 10/10 · 1.3% pond', name: 'THE PLAN: kissing the softball field', color: 0x00e5ff, x: 30, z: -33.5, rotDeg: 155, length: 105.16, width: 67.67,
       water: { pond: 95, flow: 394, flat: 935 }, cemetery: 36.4, infieldYd: 19.7 },
-    { id: '4', label: '4 8.7/10 · 7.8% wet', name: 'today\'s angle — over the flooded 6-yd box', color: 0xff9a1a, x: 6, z: -36, rotDeg: 55, length: 105.16, width: 67.67,
+    { id: '4', label: '4 8.7/10 · 1.6% pond', name: 'today\'s angle — over the flooded 6-yd box', color: 0xff9a1a, x: 6, z: -36, rotDeg: 55, length: 105.16, width: 67.67,
       water: { pond: 115, flow: 437, flat: 800 }, cemetery: 16.3, infieldYd: 18.9 },
-    { id: '5', label: '5 8.9/10 · 6.7% wet', name: 'north-south — over the flooded 6-yd box', color: 0xff3bd5, x: 27, z: -45, rotDeg: 85, length: 105.16, width: 67.67,
+    { id: '5', label: '5 8.9/10 · 1.7% pond', name: 'north-south — over the flooded 6-yd box', color: 0xff3bd5, x: 27, z: -45, rotDeg: 85, length: 105.16, width: 67.67,
       water: { pond: 123, flow: 353, flat: 985 }, cemetery: 15.1, infieldYd: 27.7 },
-    { id: '6', label: '6 8/10 · 7.4% wet', name: 'softball-fence angle — over the flooded 6-yd box', color: 0xa07bff, x: 27, z: -45, rotDeg: 35, length: 105.16, width: 67.67,
+    { id: '6', label: '6 8/10 · 1.8% pond', name: 'softball-fence angle — over the flooded 6-yd box', color: 0xa07bff, x: 27, z: -45, rotDeg: 35, length: 105.16, width: 67.67,
       water: { pond: 129, flow: 400, flat: 885 }, cemetery: 11.9, infieldYd: 37.6 }
   ],
   // Planned 7v7 pitches, 70 x 35 yd (64.0 x 32.0 m), laid ACROSS the
