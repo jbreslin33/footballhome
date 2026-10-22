@@ -353,11 +353,11 @@
     // Draw-order layers: each sits a little higher AND gets a stronger
     // polygon offset — millimetre gaps alone z-fought into moiré at range.
     const LAYER_ORDER = ['campus', 'industrial', 'cemetery', 'recreation', 'parking',
-                         'pitchgrass', 'playground', 'dirt', 'sand', 'infield', 'rail', 'road', 'path', 'chalk'];
+                         'pitchgrass', 'playground', 'dirt', 'sand', 'infield', 'rail', 'road', 'path', 'chalk', 'paint'];
     const COLORS = { campus: 0xb9b6ae, industrial: 0x9a958c, cemetery: 0x5f8f4a,
       recreation: 0x4f8a3a, parking: 0x55595f, pitchgrass: 0x548f3d, playground: 0xb5513c,
       dirt: 0xb8865a, sand: 0xd8c08f, infield: 0x57943f, rail: 0x6f6658, road: 0x3b3f45,
-      path: 0xc9c2b1, chalk: 0xf4f4ee };
+      path: 0xc9c2b1, chalk: 0xf4f4ee, paint: 0xffd400 };
     COLORS.road = 0x5a5e64; COLORS.parking = 0x6a6e73; COLORS.rail = 0x7a7064;
     const layers = {};
     LAYER_ORDER.forEach((k, i) => { layers[k] = [new Merge(), COLORS[k], -0.07 + i * 0.004, i]; });
@@ -651,6 +651,32 @@
       const c = [[-l, -w], [l, -w], [l, w], [-l, w]].map(([u, v]) =>
         [kf.x + u * Math.cos(a) - v * Math.sin(a), kf.z + u * Math.sin(a) + v * Math.cos(a)]);
       addRibbon(layers.chalk[0], c.concat([c[0]]), 0.12, layers.chalk[2]);
+    }
+
+    if (L.oldPitch) {
+      // The 11v11 pitch painted today (Google imagery), full markings in
+      // yellow so it reads apart from the white game pitch.
+      const o = L.oldPitch, a = o.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
+      const at = ([u, v]) => [o.x + u * ca - v * sa, o.z + u * sa + v * ca];
+      const ln = (pts) => addRibbon(layers.paint[0], pts.map(at), 0.25, layers.paint[2]);
+      const l = o.length / 2, w = o.width / 2;
+      ln([[-l, -w], [l, -w], [l, w], [-l, w], [-l, -w]]);
+      ln([[0, -w], [0, w]]);
+      const ring = (cu, cv, r, t0, t1) => {
+        const pts = [];
+        for (let k = 0; k <= 32; k++) { const t = t0 + (t1 - t0) * k / 32; pts.push([cu + Math.cos(t) * r, cv + Math.sin(t) * r]); }
+        ln(pts);
+      };
+      ring(0, 0, 9.15, 0, Math.PI * 2);
+      for (const sg of [-1, 1]) {
+        const e = sg * l;
+        ln([[e, -20.16], [e - sg * 16.5, -20.16], [e - sg * 16.5, 20.16], [e, 20.16]]);
+        ln([[e, -9.16], [e - sg * 5.5, -9.16], [e - sg * 5.5, 9.16], [e, 9.16]]);
+        const spot = e - sg * 11, half = Math.acos(5.5 / 9.15);
+        const mid = sg > 0 ? Math.PI : 0;
+        ring(spot, 0, 9.15, mid - half, mid + half);
+        ring(spot, 0, 0.2, 0, Math.PI * 2);
+      }
     }
 
     for (const k of Object.keys(layers)) {
