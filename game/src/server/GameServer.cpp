@@ -312,8 +312,11 @@ net::Bytes GameServer::buildSnapshotFrame() const {
         snap.vel_y = p.vel.y;
         // bit0 human-controlled; bit1 keeper (1.4 additive — clients
         // dress keepers in their own kit).
+        // bit2 down in a tackle; bit3 dispossessed / off balance (G4.27,
+        // so the client can animate slides and stumbles).
         snap.flags = static_cast<std::uint8_t>(
-            (slot_owner_.count(i) ? 1 : 0) | (world_.isKeeper(i) ? 2 : 0));
+            (slot_owner_.count(i) ? 1 : 0) | (world_.isKeeper(i) ? 2 : 0) |
+            (p.recovery_kind == 1 ? 4 : 0) | (p.recovery_kind == 2 ? 8 : 0));
         s.players.push_back(snap);
     }
     const core::BallState& b = world_.ball();

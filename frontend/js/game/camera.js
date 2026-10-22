@@ -22,7 +22,7 @@
       this.canvas = canvas;
       this.mode = 'broadcast';
       this.target = new THREE.Vector3();
-      this.cur = { yaw: 0, pitch: 0.62, dist: 78 };    // eased state
+      this.cur = { yaw: 0, pitch: 0.6, dist: 52 };     // eased state
       this.user = { yaw: 0, pitch: 0.55, dist: 45 };   // orbit params
       this.dragged = false;   // client checks to suppress a claim tap
       this.onModeChange = null;
@@ -123,7 +123,9 @@
         case 'broadcast':
           // TV gantry: side-on from the home touchline, panning with play.
           tx = b.x * 0.75; tz = b.y * 0.25;
-          goal = { yaw: 0, pitch: 0.62, dist: 68 };
+          // Gantry at the FRONT of the main stand's roof line, not inside
+          // it (the roof filled the lower frame from 68 m out).
+          goal = { yaw: 0, pitch: 0.6, dist: 52 };
           break;
         case 'top':
           tx = b.x * 0.3; tz = 0;

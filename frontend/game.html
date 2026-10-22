@@ -14,10 +14,13 @@
                  font-family: -apple-system, system-ui, sans-serif; }
     #game-canvas { display: block; width: 100vw; height: 100vh;
                    touch-action: none; }
-    #status { position: fixed; top: env(safe-area-inset-top, 8px); left: 0;
-              right: 0; text-align: center; color: #f4f6fb; font-size: 14px;
-              padding: 10px 16px; pointer-events: none;
-              text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+    #status { position: fixed; top: env(safe-area-inset-top, 8px); left: 50%;
+              transform: translateX(-50%); max-width: 70vw; text-align: center;
+              color: #f4f6fb; font-size: 13px; padding: 6px 14px; margin-top: 4px;
+              pointer-events: none; background: rgba(11,28,61,.72);
+              border-radius: 16px; }
+    #scoreboard { background: rgba(11,28,61,.85); padding: 6px 12px;
+                  border-radius: 8px; border: 1px solid rgba(255,204,0,.35); }
     #back { position: fixed; top: env(safe-area-inset-top, 8px); left: 8px;
             color: #ffcc00; text-decoration: none; font-size: 14px;
             padding: 10px; }
@@ -89,10 +92,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>
   <script src="js/game/wire.js?v=20261022e"></script>
   <script src="js/game/net.js?v=20261022e"></script>
-  <script src="js/game/players.js?v=20261022e"></script>
-  <script src="js/game/camera.js?v=20261022e"></script>
-  <script src="js/game/renderer.js?v=20261022g"></script>
+  <script src="js/game/players.js?v=20261022h"></script>
+  <script src="js/game/camera.js?v=20261022i"></script>
+  <script src="js/game/renderer.js?v=20261022j"></script>
   <script src="js/game/input.js?v=20261022e"></script>
-  <script src="js/game/client.js?v=20261022g"></script>
+  <script src="js/game/client.js?v=20261022h"></script>
 </body>
 </html>

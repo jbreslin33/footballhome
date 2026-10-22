@@ -68,7 +68,7 @@ void World::tickPlayers() {
         PlayerState& p = players_[i];
         // Tackle recovery: sprawled on the turf — no movement this tick.
         if (p.recovery_ticks > 0) {
-            --p.recovery_ticks;
+            if (--p.recovery_ticks == 0) p.recovery_kind = 0;
             p.vel = Vec3{};
             continue;
         }
@@ -157,6 +157,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
 
         if (!opponents_ball || !in_reach) {
             tackler.recovery_ticks = kTackleMissRecovery;  // whiffed
+            tackler.recovery_kind = 1;
             continue;
         }
 
@@ -180,6 +181,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
             const SlotIndex carrier = *ball_.owner;
             PlayerState& cp = players_[carrier];
             cp.recovery_ticks = kDispossessedRecovery;
+            cp.recovery_kind = 2;
             ball_.contest_ticks = 0;
             last_touch_team_ = tackler.team;
             losing_team_ = cp.team;
@@ -202,9 +204,11 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
                 ball_.kick_alive = kKickAliveTicks;
             }
             tackler.recovery_ticks = kTackleWinRecovery;
+            tackler.recovery_kind = 1;
             events.push_back({MatchEventType::TackleWon, tackler.team});
         } else {
             tackler.recovery_ticks = kTackleMissRecovery;  // beaten
+            tackler.recovery_kind = 1;
             events.push_back({MatchEventType::TackleLost, tackler.team});
         }
     }

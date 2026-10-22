@@ -227,6 +227,7 @@
       const name = EVENT_NAMES[ev.eventType];
       if (ev.eventType === 1) {
         renderer.goalFlash();
+        renderer.celebrate(ev.team);
         toast(`⚽ ${name}`, 3000);
       } else {
         const side = ev.eventType === 10

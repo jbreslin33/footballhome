@@ -921,6 +921,30 @@ so the delay branch isn't where the escort lives; reverted. Next sim
 step attributes the carrier's escort by branch (the G4.20/G4.24 tag
 method) before changing behavior.
 
+### 8.23 G4.27 — graphics + animation pass (James: "make that even better")
+
+- **Rig v2** (`players.js`): capsule anatomy on MeshStandard materials —
+  pelvis hub, twisting chest, neck/head, hip→knee→ankle→boot,
+  shoulder→sleeve→elbow→hand; three hair cuts, collar ring, sock trim
+  bands, team boots (away red), keeper gloves; all meshes cast shadows.
+- **Animation layers**, each overlay with an eased weight (nothing
+  snaps): stride (cadence/stride by speed; quicker, shorter DRIBBLE
+  steps when carrying), banking into turns from yaw rate, head + chest
+  TRACK THE BALL, kick (wind-back/strike, opposite arm, chest twist),
+  SLIDE TACKLE (flags bit2), STUMBLE when dispossessed (bit3), KEEPER
+  DIVE (keeper moving fast with the ball near), HEADER jump (ball at
+  head height arriving), GOAL CELEBRATION (scoring side, from the Goal
+  EVENT — never inferred).
+- **Server**: PlayerState.recovery_kind (1 tackle / 2 dispossessed) →
+  snapshot flags bit2/bit3; presentation only, not hashed (goldens held).
+- **Scene**: real PCF-soft shadows from a low evening sun (2048 map;
+  1024 on touch devices), canvas grass (mowing stripes + blade noise,
+  anisotropic), four raked stands with crowd textures + roofs, LED
+  boards round the pitch (club copy), corner floodlight masts. Tone
+  mapping tried (ACES) and dropped — it bleached kits and grass.
+  Broadcast camera moved to the front of the main stand (from 68 m out
+  the roof filled the lower frame). Status/score on dark pills.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

@@ -44,6 +44,10 @@ struct PlayerState {
     // Ticks of post-tackle stun: no movement, no actions. The price of
     // diving in — what makes beating a defender possible.
     std::int32_t recovery_ticks = 0;
+    // WHY he's recovering (G4.27, presentation only — not hashed; the
+    // ticks above carry the gameplay): 1 = went to ground in a tackle,
+    // 2 = dispossessed, knocked off balance.
+    std::uint8_t recovery_kind = 0;
     // Last movement direction (unit-ish); kick/carry direction when the
     // current intent is idle. Set at spawn to face the opponent goal.
     math::Vec2 face{math::Fixed64::one(), math::Fixed64::zero()};

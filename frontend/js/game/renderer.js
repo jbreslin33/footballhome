@@ -16,6 +16,148 @@
   const INTERP_DELAY_TICKS = 4;  // ~133 ms behind live at 30 Hz
   const NO_OWNER = 255;
 
+  // Grass: mowing stripes (pitch) or plain (surround) + per-pixel blade
+  // noise, so the surface reads as turf rather than flat paint.
+  function grassTexture(striped) {
+    const W = striped ? 1024 : 256, H = striped ? 512 : 256;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    const stripes = 12;
+    for (let i = 0; i < (striped ? stripes : 1); i++) {
+      x.fillStyle = striped ? (i % 2 ? '#2f8a2e' : '#277a27') : '#236b24';
+      x.fillRect(striped ? (W / stripes) * i : 0, 0, striped ? W / stripes : W, H);
+    }
+    const img = x.getImageData(0, 0, W, H);
+    for (let p = 0; p < img.data.length; p += 4) {
+      const n = (Math.random() - 0.5) * 22;
+      img.data[p] += n * 0.6; img.data[p + 1] += n; img.data[p + 2] += n * 0.4;
+    }
+    x.putImageData(img, 0, 0);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  }
+
+  // Crowd: thousands of tiny shirts/faces on dark terraces.
+  function crowdTexture(home) {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 256;
+    const x = c.getContext('2d');
+    x.fillStyle = '#1a1f2b'; x.fillRect(0, 0, 512, 256);
+    const shirts = home
+      ? ['#14326e', '#14326e', '#ffcc00', '#f4f6fb', '#14326e', '#2b3a55']
+      : ['#c8102e', '#f4f6fb', '#555', '#2b3a55', '#888', '#c8102e'];
+    const faces = ['#f1c27d', '#c68642', '#8d5524', '#e0ac69'];
+    for (let r = 0; r < 32; r++) {
+      for (let k = 0; k < 96; k++) {
+        if (Math.random() < 0.12) continue;      // empty seats
+        const px = k * 5.33 + Math.random() * 2, py = r * 8 + 2;
+        x.fillStyle = shirts[(Math.random() * shirts.length) | 0];
+        x.fillRect(px, py + 3, 4, 4);
+        x.fillStyle = faces[(Math.random() * faces.length) | 0];
+        x.fillRect(px + 1, py, 2.5, 3);
+      }
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  }
+
+  function boardTexture(text, bg, fg) {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 64;
+    const x = c.getContext('2d');
+    x.fillStyle = bg; x.fillRect(0, 0, 512, 64);
+    x.fillStyle = fg;
+    x.font = 'bold 40px system-ui, sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(text, 256, 34);
+    return new THREE.CanvasTexture(c);
+  }
+
+  // Stadium dressing: raked stands with crowds and roofs on all four
+  // sides, LED advertising boards round the pitch, floodlight masts.
+  function buildStadium(scene, hx, hy) {
+    const concrete = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.9 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7 });
+    const sides = [
+      { len: hx * 2 + 16, off: hy + 9, rot: 0, home: true },              // main stand (+z)
+      { len: hx * 2 + 16, off: hy + 9, rot: Math.PI, home: false },       // opposite (−z)
+      { len: hy * 2 + 16, off: hx + 9, rot: Math.PI / 2, home: true },    // end (+x)
+      { len: hy * 2 + 16, off: hx + 9, rot: -Math.PI / 2, home: false },  // end (−x)
+    ];
+    for (const sd of sides) {
+      const g = new THREE.Group();
+      g.rotation.y = sd.rot;
+      const depth = 18, rise = 11;
+      const slope = Math.hypot(depth, rise);
+      const tex = crowdTexture(sd.home);
+      tex.repeat.set(sd.len / 14, 3);
+      const terrace = new THREE.Mesh(
+        new THREE.PlaneGeometry(sd.len, slope),
+        new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
+      // Face the pitch (normal up and toward it) and rise AWAY from it;
+      // the half-turn flips the texture back so the crowd sits upright.
+      terrace.rotation.x = Math.atan2(depth, rise) + Math.PI;
+      tex.center.set(0.5, 0.5);
+      tex.rotation = Math.PI;
+      terrace.position.set(0, rise / 2 + 0.6, sd.off + depth / 2);
+      terrace.receiveShadow = true;
+      g.add(terrace);
+      const front = new THREE.Mesh(new THREE.BoxGeometry(sd.len, 1.2, 0.4), concrete);
+      front.position.set(0, 0.6, sd.off);
+      g.add(front);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(sd.len, rise + 6, 0.6), concrete);
+      back.position.set(0, (rise + 6) / 2, sd.off + depth + 0.3);
+      g.add(back);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(sd.len, 0.4, depth + 4), roofMat);
+      roof.position.set(0, rise + 6, sd.off + depth / 2 - 1);
+      roof.rotation.x = 0.08;
+      g.add(roof);
+      scene.add(g);
+    }
+
+    // LED boards, 1 m tall, 4 m off the lines (behind the goals too).
+    const ads = [
+      ['FOOTBALL HOME', '#14326e', '#ffcc00'],
+      ['LIGHTHOUSE · EST. 1893', '#ffcc00', '#14326e'],
+      ['FOOTBALLHOME.ORG', '#0b1c3d', '#f4f6fb'],
+    ];
+    let n = 0;
+    const board = (w, x0, z0, rotY) => {
+      const [t, bg, fg] = ads[n++ % ads.length];
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.9, 0.12),
+        [concrete, concrete, concrete, concrete,
+         new THREE.MeshBasicMaterial({ map: boardTexture(t, bg, fg) }), concrete]);
+      m.position.set(x0, 0.45, z0);
+      m.rotation.y = rotY;
+      m.castShadow = true;
+      scene.add(m);
+    };
+    for (let x = -hx + 6; x < hx; x += 12) {
+      board(11.6, x, hy + 4, Math.PI);   // faces the pitch (−z)
+      board(11.6, x, -hy - 4, 0);
+    }
+    for (const sgn of [-1, 1]) {
+      for (const z of [-14, 14]) board(11.6, sgn * (hx + 4), z, -sgn * Math.PI / 2);
+    }
+
+    // Floodlight masts at the corners with glowing lamp banks.
+    const lamp = new THREE.MeshBasicMaterial({ color: 0xfffbe6 });
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.7, 34, 8), concrete);
+        mast.position.set(sx * (hx + 16), 17, sz * (hy + 16));
+        scene.add(mast);
+        const bank = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 0.6), lamp);
+        bank.position.set(sx * (hx + 16), 35, sz * (hy + 16));
+        bank.lookAt(0, 0, 0);
+        scene.add(bank);
+      }
+    }
+  }
+
   class GameRenderer {
     constructor(canvas) {
       this.canvas = canvas;
@@ -42,12 +184,21 @@
         45, window.innerWidth / window.innerHeight, 0.1, 500);
       this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.rig = new CameraRig(this.camera, canvas);
 
-      const sun = new THREE.DirectionalLight(0xffffff, 0.85);
-      sun.position.set(30, 80, 20);
+      // Low evening sun from the main-stand side: long readable shadows.
+      const sun = new THREE.DirectionalLight(0xfff1dc, 1.15);
+      sun.position.set(-40, 70, 45);
+      sun.castShadow = true;
+      const mobile = matchMedia('(pointer: coarse)').matches;
+      sun.shadow.mapSize.set(mobile ? 1024 : 2048, mobile ? 1024 : 2048);
+      Object.assign(sun.shadow.camera, { left: -75, right: 75, top: 60, bottom: -60, near: 10, far: 200 });
+      sun.shadow.bias = -0.0004;
+      sun.shadow.normalBias = 0.03;
       this.scene.add(sun);
-      this.scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x2e5d2e, 0.55));
+      this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x355e2f, 0.5));
 
       window.addEventListener('resize', () => this.resize());
       this.resize();
@@ -79,22 +230,24 @@
       const hx = hello.pitchHalfX, hy = hello.pitchHalfY;
       this.hx = hx; this.hy = hy;
 
-      // Grass with mowing stripes (sim x → three x, sim y → three z).
+      // Grass (sim x → three x, sim y → three z): one canvas texture with
+      // mowing stripes + blade noise, receiving real shadows.
       const surround = new THREE.Mesh(
-        new THREE.PlaneGeometry(hx * 2 + 24, hy * 2 + 24),
-        new THREE.MeshLambertMaterial({ color: 0x2a6f2d }));
+        new THREE.PlaneGeometry(hx * 2 + 30, hy * 2 + 30),
+        new THREE.MeshStandardMaterial({ map: grassTexture(false), roughness: 1 }));
+      surround.material.map.repeat.set(6, 4);
       surround.rotation.x = -Math.PI / 2;
       surround.position.y = -0.01;
+      surround.receiveShadow = true;
       this.scene.add(surround);
-      const stripes = 12, sw = (hx * 2) / stripes;
-      for (let i = 0; i < stripes; i++) {
-        const s = new THREE.Mesh(
-          new THREE.PlaneGeometry(sw, hy * 2),
-          new THREE.MeshLambertMaterial({ color: i % 2 ? 0x2f8a34 : 0x2a7a2f }));
-        s.rotation.x = -Math.PI / 2;
-        s.position.set(-hx + sw * (i + 0.5), 0, 0);
-        this.scene.add(s);
-      }
+      const pitch = new THREE.Mesh(
+        new THREE.PlaneGeometry(hx * 2 + 4, hy * 2 + 4),
+        new THREE.MeshStandardMaterial({ map: grassTexture(true), roughness: 1 }));
+      pitch.material.map.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+      pitch.rotation.x = -Math.PI / 2;
+      pitch.receiveShadow = true;
+      this.scene.add(pitch);
+      buildStadium(this.scene, hx, hy);
 
       // Full markings (Laws of the Game): touch/goal lines, halfway,
       // centre circle + spot, penalty + goal areas, spots, arcs, corners.
@@ -130,12 +283,14 @@
           const post = new THREE.Mesh(
             new THREE.CylinderGeometry(0.06, 0.06, 2.44, 8), postMat);
           post.position.set(gx, 1.22, gy);
+          post.castShadow = true;
           this.scene.add(post);
         }
         const bar = new THREE.Mesh(
           new THREE.CylinderGeometry(0.06, 0.06, 7.44, 8), postMat);
         bar.rotation.x = Math.PI / 2;
         bar.position.set(gx, 2.44, 0);
+        bar.castShadow = true;
         this.scene.add(bar);
         const net = new THREE.Mesh(
           new THREE.BoxGeometry(2, 2.44, 7.32, 4, 6, 14), netMat);
@@ -145,19 +300,12 @@
 
       // Players: slots [0, n/2) = home, rest = away.
       this.halfN = Math.floor(hello.slotCount / 2);
-      const shadowGeo = new THREE.CircleGeometry(0.45, 16);
-      const shadowMat = new THREE.MeshBasicMaterial({
-        color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
       for (let i = 0; i < hello.slotCount; i++) {
         const f = new PlayerFigure(i, i < this.halfN, false);
         this.figures.push(f);
         this.players.push(f.root);
         this.scene.add(f.root);
-        const sh = new THREE.Mesh(shadowGeo, shadowMat);
-        sh.rotation.x = -Math.PI / 2;
-        sh.position.y = 0.015;
-        this.shadows.push(sh);
-        this.scene.add(sh);
+
       }
 
       this.ring = new THREE.Mesh(
@@ -179,15 +327,11 @@
       for (let i = 0; i < 6; i++)
         x.fillRect(i * 11 + (i % 2) * 3, (i % 2) * 14 + 4, 6, 8);
       this.ballMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.22, 16, 12),
-        new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(c) }));
+        new THREE.SphereGeometry(0.22, 20, 14),
+        new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(c), roughness: 0.45 }));
       this.ballMesh.position.set(0, 0.22, 0);
+      this.ballMesh.castShadow = true;
       this.scene.add(this.ballMesh);
-      this.ballShadow = new THREE.Mesh(
-        new THREE.CircleGeometry(0.25, 16), shadowMat.clone());
-      this.ballShadow.rotation.x = -Math.PI / 2;
-      this.ballShadow.position.y = 0.016;
-      this.scene.add(this.ballShadow);
     }
 
     pushSnapshot(snap) {
@@ -257,24 +401,7 @@
           const k = this.kicks.shift();
           if (this.figures[k.slot]) this.figures[k.slot].kick();
         }
-        const count = Math.min(this.figures.length, b.snap.players.length);
-        for (let i = 0; i < count; i++) {
-          const pa = a.snap.players[i], pb = b.snap.players[i];
-          const x = pa.x + (pb.x - pa.x) * alpha;
-          const y = pa.y + (pb.y - pa.y) * alpha;
-          const vx = pa.vx + (pb.vx - pa.vx) * alpha;
-          const vy = pa.vy + (pb.vy - pa.vy) * alpha;
-          const f = this.figures[i];
-          f.root.position.set(x, 0, y);
-          f.update(dt, vx, vy);
-          this.shadows[i].position.x = x;
-          this.shadows[i].position.z = y;
-          if (i === this.activeSlot) {
-            me = { x, y, team: i < this.halfN ? 0 : 1 };
-            this.ring.position.x = x;
-            this.ring.position.z = y;
-          }
-        }
+        // Ball first: every figure looks at it.
         if (this.ballMesh && a.snap.ball && b.snap.ball) {
           const ba = a.snap.ball, bb = b.snap.ball;
           const x = ba.x + (bb.x - ba.x) * alpha;
@@ -289,16 +416,35 @@
             m.rotateOnWorldAxis(axis, d / 0.22);
           }
           m.position.set(x, 0.22 + z, y);
-          this.ballShadow.position.x = x;
-          this.ballShadow.position.z = y;
-          const s = 1 / (1 + z * 0.35);
-          this.ballShadow.scale.set(s, s, s);
-          this.ballShadow.material.opacity = 0.3 * s;
-          ballPos = { x, y };
+          ballPos = { x, y, z };
+        }
+        const owner = b.snap.ball ? b.snap.ball.owner : NO_OWNER;
+        const count = Math.min(this.figures.length, b.snap.players.length);
+        for (let i = 0; i < count; i++) {
+          const pa = a.snap.players[i], pb = b.snap.players[i];
+          const x = pa.x + (pb.x - pa.x) * alpha;
+          const y = pa.y + (pb.y - pa.y) * alpha;
+          const vx = pa.vx + (pb.vx - pa.vx) * alpha;
+          const vy = pa.vy + (pb.vy - pa.vy) * alpha;
+          const f = this.figures[i];
+          f.root.position.set(x, 0, y);
+          f.update(dt, { vx, vy, flags: pb.flags, ball: ballPos,
+                         hasBall: owner === i, me: { x, y } });
+          if (i === this.activeSlot) {
+            me = { x, y, team: i < this.halfN ? 0 : 1 };
+            this.ring.position.x = x;
+            this.ring.position.z = y;
+          }
         }
       }
       this.rig.update(dt, { ball: ballPos, me, hx: this.hx, hy: this.hy });
       this.renderer.render(this.scene, this.camera);
+    }
+
+    // The scoring side celebrates (EVENT-driven, never inferred).
+    celebrate(team) {
+      for (const f of this.figures)
+        if ((f.slot < this.halfN ? 0 : 1) === team) f.celebrate();
     }
 
     // GOAL flash: brief white wash + status pulse, triggered by EVENT
