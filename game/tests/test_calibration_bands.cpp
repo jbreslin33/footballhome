@@ -87,8 +87,13 @@ FH_TEST(ladder_shape_holds) {
     const double world = avgGoals("world");
 
     // Per-band sanity ranges (wide on purpose — shape, not tuning).
-    FH_EXPECT(u10 >= 6.0 && u10 <= 25.0);
-    FH_EXPECT(amateur >= 4.0 && amateur <= 16.0);
+    // Floors lowered in G4.25: the G4.14 values (u10 ≥ 6, amateur ≥ 4)
+    // were set while an accidental lofted "clear" inflated youth and
+    // amateur scoring (G4.23); realistic bands now sit near those
+    // floors, so a 4-match sample made the gate a coin flip. The
+    // ORDERING assertions below are the real guard and are unchanged.
+    FH_EXPECT(u10 >= 4.0 && u10 <= 25.0);
+    FH_EXPECT(amateur >= 2.5 && amateur <= 16.0);
     FH_EXPECT(world >= 0.5 && world <= 6.0);
 
     // The ladder's shape: chaos >> Sunday league > world class.

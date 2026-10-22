@@ -24,6 +24,8 @@ using SlotIndex = std::uint8_t;
 
 // Player body radius (m) for circle-circle collision [v1 Slice 27].
 inline const math::Fixed64 kPlayerRadius = math::Fixed64::fromFraction(45, 100);
+// Body height for blocking a ball (G4.25): below this a shot hits a body.
+inline const math::Fixed64 kBodyHeight = math::Fixed64::fromFraction(18, 10);
 
 // Kick actions carried in PLAYER_INTENT's `action` field (PROTOCOL.md §4).
 enum class Action : std::uint8_t {

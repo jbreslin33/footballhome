@@ -143,6 +143,17 @@ int main(int argc, char** argv) {
         long carry_eng_ticks = 0, eng_ticks_sum = 0;
         long duel_end[4] = {0, 0, 0, 0};  // kicked/stolen/poked/other
         long carries = 0;
+        // Final-third ENTRIES (G4.24 → next): an episode opens when a
+        // team's ball (carried, or its kick in flight) crosses into the
+        // attacking third (> 17.5 m past halfway); closes on that team's
+        // shot, a turnover, or the ball retreating out of the third.
+        // Split by how it entered: carried or passed.
+        int ent_team = -1;
+        bool ent_carried = false;
+        long ent_n[2] = {0, 0}, ent_shot[2] = {0, 0}, ent_lost[2] = {0, 0},
+             ent_back[2] = {0, 0};  // index: 0 carried, 1 passed
+        double prev_bx = 0;
+        int prev_poss = -1;
         long shot_press[3] = {0, 0, 0};  // nearest opp <2 m / 2-5 / 5+
         // Goal anatomy (G4.14): what KIND of goals is each level scoring?
         // Per team: last shot's distance and whether the shooter was past
@@ -252,6 +263,7 @@ int main(int argc, char** argv) {
                     *world.ball().owner == s) {
                     const int team = setup.team_of_slot[s];
                     ++shots[team];
+                    if (ent_team == team) { ++ent_shot[ent_carried ? 0 : 1]; ent_team = -1; }
                     shot_pending = s;
                     if (fn_team == team && !fn_shot_done) {
                         fn_shot_done = true;
@@ -468,6 +480,28 @@ int main(int argc, char** argv) {
                 }
                 prev_lk = lk;
             }
+            {
+                const int poss = world.ball().owner
+                    ? (int)setup.team_of_slot[*world.ball().owner]
+                    : (world.lastTouchTeam() <= 1 ? (int)world.lastTouchTeam() : -1);
+                const double bx = world.ball().pos.x.toDouble();
+                if (ent_team >= 0) {
+                    const double d = ent_team == 0 ? bx : -bx;
+                    if (poss != ent_team && poss >= 0) { ++ent_lost[ent_carried ? 0 : 1]; ent_team = -1; }
+                    else if (d < 17.5) { ++ent_back[ent_carried ? 0 : 1]; ent_team = -1; }
+                }
+                if (ent_team < 0 && poss >= 0 && poss == prev_poss) {
+                    const double d0 = poss == 0 ? prev_bx : -prev_bx;
+                    const double d1 = poss == 0 ? bx : -bx;
+                    if (d0 < 17.5 && d1 >= 17.5) {
+                        ent_team = poss;
+                        ent_carried = world.ball().owner.has_value();
+                        ++ent_n[ent_carried ? 0 : 1];
+                    }
+                }
+                prev_bx = bx;
+                prev_poss = poss;
+            }
             // Possession: a ball in flight belongs to its last-touch team
             // (the G4.1 metric gap, closed). Contested = untouched yet.
             if (world.ball().owner)
@@ -481,7 +515,7 @@ int main(int argc, char** argv) {
         total_goals += score[0] + score[1];
         const int goals = score[0] + score[1];
         std::printf(
-            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | lost-kick short %ld ground %ld loft %ld shot %ld other %ld | jitter rev %ld/%ld/%ld flick %ld/%ld/%ld | shot depth %ld/%ld/%ld press %ld/%ld/%ld | shot-out goal %ld off %ld keeper %ld blocked %ld other %ld | duels %ld engaged of %ld carries: kicked %ld stolen %ld poked %ld other %ld, %.1f s engaged | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
+            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | lost-kick short %ld ground %ld loft %ld shot %ld other %ld | jitter rev %ld/%ld/%ld flick %ld/%ld/%ld | shot depth %ld/%ld/%ld press %ld/%ld/%ld | shot-out goal %ld off %ld keeper %ld blocked %ld other %ld | entries carried %ld>shot %ld lost %ld back %ld passed %ld>shot %ld lost %ld back %ld | duels %ld engaged of %ld carries: kicked %ld stolen %ld poked %ld other %ld, %.1f s engaged | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
             m, score[0], score[1], owned_ticks[0] * 100 / ticks,
             owned_ticks[1] * 100 / ticks, contested_ticks * 100 / ticks,
             shots[0], shots[1], tk_won, tk_lost, offsides,
@@ -496,6 +530,8 @@ int main(int argc, char** argv) {
             shot_depth[0], shot_depth[1], shot_depth[2],
             shot_press[0], shot_press[1], shot_press[2],
             so[0], so[1], so[2], so[3], so[4],
+            ent_n[0], ent_shot[0], ent_lost[0], ent_back[0],
+            ent_n[1], ent_shot[1], ent_lost[1], ent_back[1],
             duel_end[0] + duel_end[1] + duel_end[2] + duel_end[3], carries,
             duel_end[0], duel_end[1], duel_end[2], duel_end[3],
             (duel_end[0] + duel_end[1] + duel_end[2] + duel_end[3])

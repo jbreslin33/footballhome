@@ -368,6 +368,64 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     const Fixed64 planar_speed_sq = ball_.vel.x * ball_.vel.x +
                                     ball_.vel.y * ball_.vel.y;
 
+    // Body block (G4.25): a ball too fast to CONTROL still hits bodies.
+    // Above the capture cap outfielders were ghosts — a 24 m/s shot
+    // passed through them (world: 0% of shots blocked; real ~a quarter
+    // to a third), and at 0.8 m/tick it could also tunnel past a 0.5 m
+    // capture radius. Sweep this tick's path; the first OPPONENT
+    // outfield body within body radius below head height rebounds it —
+    // reversed, ±60° noise, 30% of its speed.
+    if (planar_speed_sq > kCaptureMaxSpeed * kCaptureMaxSpeed &&
+        ball_.pos.z < kBodyHeight) {
+        const Vec2 a{ball_.pos.x, ball_.pos.y};
+        const Vec2 step{ball_.vel.x * kTickDt, ball_.vel.y * kTickDt};
+        const Fixed64 step_sq = math::lengthSquared(step);
+        bool hit = false;
+        Fixed64 best_t{};
+        SlotIndex blocker = 0;
+        for (SlotIndex i = 0; i < players_.size(); ++i) {
+            if (keeper_[i]) continue;
+            if (ball_.kicker_lockout > 0 && i == ball_.last_kicker) continue;
+            // Opponents block; the kicker's teammates are assumed to get
+            // out of the way (blocked shots are defenders' bodies).
+            if (ball_.last_kicker < players_.size() &&
+                players_[i].team == players_[ball_.last_kicker].team)
+                continue;
+            const Vec2 ap{players_[i].pos.x - a.x, players_[i].pos.y - a.y};
+            Fixed64 t = step_sq.raw == 0
+                            ? Fixed64::zero()
+                            : (ap.x * step.x + ap.y * step.y) / step_sq;
+            if (t < Fixed64::zero()) t = Fixed64::zero();
+            if (t > Fixed64::one()) t = Fixed64::one();
+            const Vec2 c{a.x + step.x * t - players_[i].pos.x,
+                         a.y + step.y * t - players_[i].pos.y};
+            if (math::lengthSquared(c) > kPlayerRadius * kPlayerRadius)
+                continue;
+            if (!hit || t < best_t) { hit = true; best_t = t; blocker = i; }
+        }
+        if (hit) {
+            const Fixed64 n = detNoise(match_seed_, clock_.tick(), blocker, 15);
+            const Fixed64 ang = n * Fixed64::fromFraction(71, 4068) *
+                                Fixed64::fromInt(60);
+            const Fixed64 c = math::fx_cos(ang);
+            const Fixed64 sn = math::fx_sin(ang);
+            const Vec2 v{-ball_.vel.x, -ball_.vel.y};
+            const Fixed64 keep = Fixed64::fromFraction(3, 10);
+            ball_.vel = Vec3{(v.x * c - v.y * sn) * keep,
+                             (v.x * sn + v.y * c) * keep, Fixed64::zero()};
+            ball_.last_kicker = blocker;
+            ball_.kicker_lockout = kBobbleLockoutTicks;
+            ball_.kick_alive = kKickAliveTicks;
+            last_touch_team_ = players_[blocker].team;
+            if (offside_team_ != 0xFF &&
+                players_[blocker].team != offside_team_) {
+                offside_mask_ = 0;
+                offside_team_ = 0xFF;
+            }
+            return;
+        }
+    }
+
     bool found = false;
     Fixed64 best_sq{};
     SlotIndex best = 0;

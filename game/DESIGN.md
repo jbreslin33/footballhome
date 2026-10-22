@@ -854,6 +854,37 @@ instrument for final-third ENTRIES (real ~45 per team, ~25% → shot) to
 see where the defensive block leaks. block-shot stays parked (alone it
 takes world to 1.6).
 
+### 8.21 G4.25 — bodies block shots; where attacks really leak
+
+New instrument — final-third ENTRIES (episode opens when a team's ball
+crosses 17.5 m past halfway; closes on its shot, a turnover, or a
+retreat): world teams CARRY the ball in ~119×/match and shoot after
+81%; passed entries (18) die 92% of the time. Real: ~45 entries per
+team, ~25% → a shot. The attack walks in because the jockeying
+defender retreats at full speed 2.2 m goal-side — an ESCORT. Tried:
+"a set defender is planted" (carrier takes the whole collision push) —
+no effect, carriers rarely touch their marker; reverted.
+
+Shipped — **body blocks.** Above the 20 m/s capture cap outfielders were
+ghosts: a 24 m/s shot passed through them (world: 0% of shots blocked;
+real ~a quarter to a third), and at 0.8 m/tick could tunnel a 0.5 m
+capture radius. The ball's path for the coming tick is now swept; the
+first OPPONENT outfield body within 0.45 m below 1.8 m rebounds it
+(reversed, ±60° noise, 30% speed). Opponents only: teammate blocks
+measured u10 dropping to 5.2 (the amoeba shooting into its own backs).
+Blocked: world 0 → 12%, pro 7, semipro 9, amateur 9, u14 31, u10 56.
+
+**Ladder (12×90): u10 6.2 / u14 6.8 / amateur 4.4 / semipro 3.0 / pro
+2.7 / world 2.5.** Bands floors lowered (u10 6 → 4, amateur 4 → 2.5):
+the G4.14 floors were set while the chip bug inflated those bands, and
+realistic values now sit on them — a 4-match sample made the gate a
+coin flip. Ordering assertions unchanged. Goldens unchanged.
+
+Next: the ESCORT. Delay must stop being a full-speed retreat —
+backpedal speed < forward, and/or delay ends at a depth line (the
+defender holds and engages) — so carried entries fall toward ~45 and
+the block-shot work (branch game/g4-block-shot-wip) can land.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
