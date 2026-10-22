@@ -325,7 +325,16 @@ class App {
         this.navigation.goTo('game-center', { matchId: Number(game[1]), postType: game[2] || null });
         return;
       }
-      // Resume session — the dashboard for an admin, the role picker for everyone else.
+      // Back within minutes of leaving (a REMIND text, an email) — the
+      // phone reloaded the app; put the user back on that screen.
+      const back = this.navigation.takeReturn();
+      if (back) {
+        if (back.role) this.navigation.context.role = back.role;
+        if (back.team) this.navigation.context.team = back.team;
+        this.navigation.goTo(back.screen, back.params || {});
+        return;
+      }
+      // Resume session — the role picker for everyone.
       this.navigation.goTo(this.navigation.home());
     } else {
       console.log('No active session, showing login');

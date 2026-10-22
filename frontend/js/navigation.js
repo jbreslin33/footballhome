@@ -35,6 +35,14 @@ class NavigationStateMachine {
       team: null    // Set on team selection
     };
 
+    // Note the current screen whenever the app goes to the background
+    // (see rememberForReturn).  pagehide covers browsers that skip
+    // visibilitychange on the way out.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.rememberForReturn();
+    });
+    window.addEventListener('pagehide', () => this.rememberForReturn());
+
     // Listen for browser back/forward buttons (and our own goBack()).
     window.addEventListener('popstate', (event) => {
       const pending = this._pendingBack;
@@ -145,6 +153,46 @@ class NavigationStateMachine {
   // "Run the week" tile.
   home() {
     return 'role-selection';
+  }
+
+  // Coming back to the app after a few minutes away.  Owner 2026-10-22:
+  // texting a no-RSVP player from #rsvps "closes and moves me from that
+  // area … i gotta go back in" — a REMIND / sms: / mailto: hand-off
+  // sends the installed app to the background, the phone often reloads
+  // it on the way back, and a cold start always landed on home().  So
+  // every time the page is hidden it notes where it was; a start within
+  // RESUME_MS puts the user back there.  Opening the app later still
+  // lands on home().
+  static RESUME_KEY = 'fhResume';
+  static RESUME_MS  = 10 * 60 * 1000;
+
+  rememberForReturn() {
+    if (!this.currentState || ['login', 'oauth-success'].includes(this.currentState)) return;
+    try {
+      localStorage.setItem(NavigationStateMachine.RESUME_KEY, JSON.stringify({
+        screen: this.currentState,
+        params: this.currentParams || {},
+        role:   this.context.role,
+        team:   this.context.team,
+        at:     Date.now(),
+      }));
+    } catch (e) {
+      // Params that won't serialise, or storage blocked: start() goes home.
+    }
+  }
+
+  // The remembered screen when it is recent and still exists, else null.
+  // Read once — a second reload in the window resumes from the newer note.
+  takeReturn() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(NavigationStateMachine.RESUME_KEY) || 'null');
+      localStorage.removeItem(NavigationStateMachine.RESUME_KEY);
+      if (!saved || !saved.screen || Date.now() - saved.at > NavigationStateMachine.RESUME_MS) return null;
+      if (!this.screenManager.screens[saved.screen]) return null;
+      return saved;
+    } catch (e) {
+      return null;
+    }
   }
 
   goBack() {
