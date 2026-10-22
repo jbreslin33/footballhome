@@ -679,6 +679,25 @@
       }
     }
 
+    for (const lb of (L.labels || [])) {
+      const cv = document.createElement('canvas');
+      cv.width = 256; cv.height = 128;
+      const g = cv.getContext('2d');
+      g.font = 'bold 84px sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 14; g.strokeStyle = 'rgba(255,255,255,0.9)';
+      g.strokeText(lb.text, 128, 64);
+      g.fillStyle = '#3c4043';
+      g.fillText(lb.text, 128, 64);
+      const tex = new THREE.CanvasTexture(cv);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(lb.size * 2, lb.size),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+      m.rotation.x = -Math.PI / 2;
+      m.position.set(lb.x, 0.3, lb.z);
+      m.renderOrder = 50;
+      site.add(m);
+    }
+
     for (const k of Object.keys(layers)) {
       const [m, color, , i] = layers[k];
       if (!m.pos.length) continue;

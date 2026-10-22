@@ -62,6 +62,10 @@ window.LIGHTHOUSE_LAYOUT = {
   // (10/22): 80.5 x 30.7 m, long sides parallel to the softball 3rd-base
   // fence — where the players actually play.
   kidsFields: [{ name: 'today\'s playing field (Google paint)', x: 48.0, z: 28.0, length: 80.5, width: 30.7, rotDeg: 28.5 }],
+  // Map labels copied from Google Maps' satellite view, at the exact spot
+  // Google prints them (measured on two zoom levels, agree within 0.5 m),
+  // painted flat on the grass north-up to help orient the game view.
+  labels: [{ text: '260', x: 32.8, z: -54.9, size: 4 }],
   // Cemetery boundary fence (New Cathedral Cemetery), along the OSM
   // cemetery outline.
   cemeteryFence: { height: 2.0 },
