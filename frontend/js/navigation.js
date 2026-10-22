@@ -169,9 +169,16 @@ class NavigationStateMachine {
   rememberForReturn() {
     if (!this.currentState || ['login', 'oauth-success'].includes(this.currentState)) return;
     try {
+      // A screen with in-memory view state (open groups, picked filters)
+      // hands it over through resumeState(); it comes back to that
+      // screen's onEnter as params.resume.
+      const screen = this.screenManager.screens[this.currentState];
+      const view = screen && typeof screen.resumeState === 'function' ? screen.resumeState() : null;
+      const params = Object.assign({}, this.currentParams || {});
+      if (view) params.resume = view; else delete params.resume;
       localStorage.setItem(NavigationStateMachine.RESUME_KEY, JSON.stringify({
         screen: this.currentState,
-        params: this.currentParams || {},
+        params,
         role:   this.context.role,
         team:   this.context.team,
         at:     Date.now(),

@@ -240,7 +240,32 @@ class RsvpBoardScreen extends Screen {
     return div;
   }
 
+  // The board as the admin left it — the picked game whose no-response
+  // players are open, team / who / day pills, filters — saved by
+  // Navigation.rememberForReturn so a phone reload after a REMIND text
+  // reopens it as it was (owner 2026-10-22: "its still closing the no
+  // response people and i need to open again").
+  resumeState() {
+    return {
+      section: this.section, window: this.window, kind: this.kind, sort: this.sort,
+      teamIds: [...this.teamIds], role: this.role, who: this.who, eventId: this.eventId,
+      openOnly: this.openOnly, search: this.search, day: this.day,
+    };
+  }
+
+  restoreState(s) {
+    if (!s) return;
+    if (RsvpBoardScreen.SECTIONS[s.section]) this.section = s.section;
+    for (const k of ['window', 'kind', 'sort', 'role', 'who', 'eventId', 'openOnly', 'search', 'day']) {
+      if (s[k] !== undefined) this[k] = s[k];
+    }
+    this.teamIds = new Set(Array.isArray(s.teamIds) ? s.teamIds : []);
+    const search = this.find('#rb-search');
+    if (search) search.value = this.search || '';
+  }
+
   onEnter(params) {
+    if (params && params.resume) this.restoreState(params.resume);
     if (params && params.section && RsvpBoardScreen.SECTIONS[params.section]) this.section = params.section;
     // #dashboard (mig 549) lands on games or practices only.
     if (params && params.kind && RsvpBoardScreen.KINDS[params.kind]) this.kind = params.kind;
