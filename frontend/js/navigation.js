@@ -138,14 +138,13 @@ class NavigationStateMachine {
     console.log(`Navigation: ${state}`, { context: this.context, history: this.history });
   }
 
-  // Where a signed-in user lands: admins on #dashboard (owner 2026-10-09:
-  // "that would be my front page … make that the top page for all admin");
-  // coaches and players on the role picker, whose Player tile is #my.
+  // Where a signed-in user lands: everyone on the role picker. Admins
+  // landed on #dashboard from 2026-10-09; owner 2026-10-22 reversed it
+  // ("leave dashboard but don't default to that … default to
+  // #role-selection") — #dashboard stays one tap away as the first
+  // "Run the week" tile.
   home() {
-    const user = (this.auth && typeof this.auth.getUser === 'function' && this.auth.getUser()) || this.context.user || null;
-    const role = user && user.role;
-    const admin = !!role && ['club', 'sport_division', 'team', 'super', 'system', 'league'].includes(role);
-    return admin ? 'dashboard' : 'role-selection';
+    return 'role-selection';
   }
 
   goBack() {
