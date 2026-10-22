@@ -100,6 +100,52 @@ Vec2 interceptPoint(const Vec3& my_pos, const Vec3& ball_pos,
     return Vec2{ball_pos.x, ball_pos.y};
 }
 
+// Pass safety [Buckland] (G4.19): the PASSER runs the interceptor's own
+// closing-speed math. Walk the ground pass's friction path (3-tick
+// strides) until it reaches the receiver; the pass is unsafe if any
+// opponent can reach a point on it by the time the ball does —
+// max_speed x (t - reaction) + reach — BEFORE the receiver, stepping to
+// meet it, gets there first (opponents checked first per stride: ties go
+// to the defender, the cautious read). The static 2 m corridor alone let
+// G4.14's earliest-reach defenders read every pass: world matches
+// measured 2,230 balls collected by the other side (2.2 s possessions).
+bool passSafe(const World& world, const TeamSetup& setup, SlotIndex passer,
+              SlotIndex receiver, const Vec2& from, const Vec2& to,
+              Fixed64 speed, Fixed64 reach) {
+    const Vec2 ab{to.x - from.x, to.y - from.y};
+    const Fixed64 len = math::length(ab);
+    if (len.raw == 0) return true;
+    const Vec2 dir{ab.x / len, ab.y / len};
+    const Fixed64 reaction = Fixed64::fromFraction(1, 5);  // 0.2 s
+    Vec2 pos = from;
+    Fixed64 s = speed, travelled = Fixed64::zero(), t = Fixed64::zero();
+    for (int stride = 0; stride < 30; ++stride) {  // 90 ticks = 3 s
+        for (int k = 0; k < 3; ++k) {
+            const Fixed64 step = s * core::kTickDt;
+            pos = Vec2{pos.x + dir.x * step, pos.y + dir.y * step};
+            travelled += step;
+            s = s * core::kBallRollDecayPerTick;
+        }
+        t += core::kTickDt * Fixed64::fromInt(3);
+        const Fixed64 react_t =
+            t > reaction ? t - reaction : Fixed64::zero();
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup.team_of_slot[j] == setup.team_of_slot[passer])
+                continue;
+            const auto& o = world.player(j);
+            const Vec2 d{o.pos.x - pos.x, o.pos.y - pos.y};
+            const Fixed64 run = o.max_speed * react_t + reach;
+            if (math::lengthSquared(d) <= run * run) return false;
+        }
+        const auto& r = world.player(receiver);
+        const Vec2 dr{r.pos.x - pos.x, r.pos.y - pos.y};
+        const Fixed64 rrun = r.max_speed * react_t + reach;
+        if (math::lengthSquared(dr) <= rrun * rrun) return true;
+        if (travelled >= len) return true;  // arrived at the receiver
+    }
+    return false;  // dies short of the receiver
+}
+
 }  // namespace
 
 TeamSetup TeamSetup::splitHalves(std::uint8_t slot_count) {
@@ -219,6 +265,47 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // goal; deterministic tie-break by slot order (iteration order).
         const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
         const Fixed64 my_progress = me.pos.x * sgn;
+        Fixed64 their_line = Fixed64::fromInt(-1000);  // in x*sgn
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
+                continue;
+            if (world.isKeeper(j)) continue;
+            const Fixed64 depth = world.player(j).pos.x * sgn;
+            if (depth > their_line) their_line = depth;
+        }
+        // safe_pass (bit 24, G4.19 [Buckland]): this tick, does the passer
+        // READ the interceptors? Rolls per SECOND like the other duties —
+        // a per-tick roll at 92 leaves a blind tick inside 92% of
+        // one-second carries, and the pass fires on exactly that tick.
+        // u10/u14 never read.
+        // Verticality accepts risk: the cautious 1 m reach shrinks to
+        // 0.6 m at 100. A ball lofted over the line flies over the block,
+        // so only ground passes are read.
+        const bool reads = applies(slot, 24, world.tickCount() / 30);
+        const Fixed64 safe_reach =
+            Fixed64::one() - degree(slot, 19) * Fixed64::fromFraction(2, 5);
+        auto lane_open = [&](const Vec2& a, const Vec2& b) {
+            const Fixed64 lane =
+                kLaneWidth -
+                kLaneWidth * degree(slot, 19) * Fixed64::fromFraction(2, 5);
+            for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
+                    continue;
+                if (pointSegmentDistSq(Vec2{world.player(j).pos.x,
+                                            world.player(j).pos.y},
+                                       a, b) <= lane * lane)
+                    return false;
+            }
+            return true;
+        };
+        auto safe = [&](SlotIndex recv, const Vec2& a, const Vec2& b,
+                        Fixed64 dsq, bool lofted) {
+            if (!reads || lofted) return true;
+            const Fixed64 v = dsq < kSoftPassRange * kSoftPassRange
+                                  ? core::kShortPassSpeed
+                                  : core::kGroundKickSpeed;
+            return passSafe(world, setup_, slot, recv, a, b, v, safe_reach);
+        };
         bool have_target = false;
         Fixed64 best_progress{};
         Vec2 target{};
@@ -233,21 +320,13 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             if (dsq < kPassMin * kPassMin || dsq > kPassMax * kPassMax)
                 continue;
             // Lane check: any opponent near the carrier→mate segment?
-            bool open = true;
             const Vec2 a{me.pos.x, me.pos.y};
             const Vec2 b{mate.pos.x, mate.pos.y};
-            for (SlotIndex j = 0; j < world.playerCount() && open; ++j) {
-                if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
-                    continue;
-                const Fixed64 lane =
-                    kLaneWidth -
-                    kLaneWidth * degree(slot, 19) *
-                        Fixed64::fromFraction(2, 5);
-                open = pointSegmentDistSq(
-                           Vec2{world.player(j).pos.x, world.player(j).pos.y},
-                           a, b) > lane * lane;
-            }
-            if (!open) continue;
+            if (!lane_open(a, b)) continue;
+            const bool lofted = progress > their_line &&
+                                ratings_[slot][6] > 0 &&
+                                dsq > kSoftPassRange * kSoftPassRange;
+            if (!safe(i, a, b, dsq, lofted)) continue;
             if (!have_target || progress > best_progress) {
                 have_target = true;
                 best_progress = progress;
@@ -280,14 +359,6 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             // through ball — it flies over the block that a ground pass
             // would have to thread. Disciplined sides only (a U-10
             // doesn't know this ball exists).
-            Fixed64 their_line = Fixed64::fromInt(-1000);  // in x*sgn
-            for (SlotIndex j = 0; j < world.playerCount(); ++j) {
-                if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
-                    continue;
-                if (world.isKeeper(j)) continue;
-                const Fixed64 depth = world.player(j).pos.x * sgn;
-                if (depth > their_line) their_line = depth;
-            }
             const bool beyond_line = best_progress > their_line;
             if (beyond_line && applies(slot, 6, world.tickCount()) &&
                 target_dist_sq > kSoftPassRange * kSoftPassRange) {
@@ -298,6 +369,43 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                                  : Action::GroundKick;
             }
             return out;
+        }
+
+        // Recycle (safe_pass, G4.19): pressed with nothing on going
+        // forward, a reading passer keeps the ball — the safest-read pass
+        // in ANY direction (the G4.8 back outlet finally receives). Most
+        // progress among the safe ones; blind passers dribble or hoof.
+        if (reads && pressed) {
+            bool have = false;
+            Fixed64 best{};
+            Vec2 to{};
+            Fixed64 to_dsq{};
+            for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+                if (i == slot) continue;
+                if (setup_.team_of_slot[i] != setup_.team_of_slot[slot])
+                    continue;
+                const auto& mate = world.player(i);
+                const Fixed64 dsq = distSq(me.pos, mate.pos);
+                if (dsq < kPassMin * kPassMin || dsq > kPassMax * kPassMax)
+                    continue;
+                const Vec2 a{me.pos.x, me.pos.y};
+                const Vec2 b{mate.pos.x, mate.pos.y};
+                if (!lane_open(a, b) || !safe(i, a, b, dsq, false)) continue;
+                const Fixed64 progress = mate.pos.x * sgn;
+                if (!have || progress > best) {
+                    have = true;
+                    best = progress;
+                    to = b;
+                    to_dsq = dsq;
+                }
+            }
+            if (have) {
+                out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+                out.action = to_dsq < kSoftPassRange * kSoftPassRange
+                                 ? Action::ShortPass
+                                 : Action::GroundKick;
+                return out;
+            }
         }
 
         // Keeper distribution (G4.14): a keeper NEVER dribbles out — with
@@ -329,9 +437,15 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         }
 
         // No pass: dribble at goal; if touch-tight with no outlet, clear
-        // over the press rather than donating a steal.
+        // over the press rather than donating a steal. A READING passer
+        // (safe_pass) clears only in his own defensive third — elsewhere
+        // he keeps it and risks the duel. The clear-anywhere hoof was
+        // 858 of world's 989 lost kicks per match (G4.19 A/B: without
+        // it, possessions 5.1 s → 12.2 s).
         out.move.move = seek(me.pos, goal, kArriveRadius);
-        if (pressed) {
+        const bool keeps_it =
+            reads && me.pos.x * sgn > -half_x_ + Fixed64::fromInt(35);
+        if (pressed && !keeps_it) {
             bool touch_tight = false;
             for (SlotIndex i = 0; i < world.playerCount() && !touch_tight;
                  ++i) {

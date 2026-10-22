@@ -621,6 +621,49 @@ friction path and rejects passes someone reaches first. Targets: world
 churn toward ~250 changes/match, goals from scrambles toward a minority,
 then re-measure counter_attack and land its preset rows.
 
+### 8.14 G4.19 — pass safety: the team learns to keep the ball
+
+`safe_pass` (bit 24, band bundle, graded, rolls per second) [Buckland]:
+1. **Read the interceptors.** The passer walks the ground pass's friction
+   path in 3-tick strides; unsafe if any opponent reaches a point
+   (max_speed × (t − 0.2 s) + reach) before the receiver stepping to meet
+   it (ties to the defender). Verticality shrinks the 1 m reach to 0.6 m
+   (accepts risk). Balls lofted over the line are exempt.
+2. **Recycle.** Pressed with nothing safe forward → the most progressive
+   SAFE pass in any direction. The old loop only considered receivers
+   ≥ 3 m forward, so the G4.8 "safety valve" back outlet could never
+   actually receive.
+3. **Clear only in your own third.** The A/B that found it: the
+   touch-tight "clear over the press" fired anywhere and was 858 of
+   world's 989 lost kicks per match; without it possessions went
+   5.1 s → 12.2 s. Readers now keep it outside their defensive third.
+
+Two traps measured along the way: a per-TICK roll at rating 92 leaves a
+blind tick inside 92% of one-second carries (the pass fires on exactly
+that tick) — duties roll per second; and short/driven passes lost fell
+from ~2,200 to ~32 per world match once read, so what remained was
+never passing.
+
+**Churn ladder (12×90-min mirrors, changes/match → avg possession):**
+u10 2,346 (2.3 s, unchanged — kids don't read) / u14 1,530 (3.5 s) /
+amateur 622 (8.7 s) / semipro 641 (8.4 s) / pro 577 (9.4 s) / **world
+2,459 → 535 (2.2 s → 10.1 s)** / perfect 650. Real football ~200–250.
+**Goals:** u10 12.7 / u14 14.7 / amateur 5.4 / semipro 1.8 / pro 1.8 /
+world 2.2 / perfect 0.8 — world's first counter goals (3 of 26). Bands
+test green; AI goldens re-locked (3v3 0x20c5332a…, 11v11 0x2124a848…).
+
+counter_attack re-measured as promised: possession lasts now, yet the
+identity still gains nothing reaching the final third (semipro 65 → 58
+per match) and concedes more. Passing forward sooner isn't what makes
+a break: the carrier must RUN WITH THE BALL into space. Stays inert, no
+preset rows; carry-into-space queued.
+
+**Next — shot selection.** Keeping the ball exposed the last pinball
+source: carriers now dribble into the 22 m ring and ALWAYS shoot —
+world 259 shots/match (real ~25), 223 of its lost kicks are shots.
+Shoot on chance quality (angle, distance, keeper position, blockers),
+not on range; then re-tune keeper reaction against real shot volume.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

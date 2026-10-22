@@ -163,6 +163,10 @@ int main(int argc, char** argv) {
         bool pre_owned = false;
         std::uint8_t pre_lk_slot = 0xFF;
         long last_poke_any = -100000;
+        // Kick-lost by the kind of kick the loser last made.
+        int last_kick_kind[32];
+        for (int& k : last_kick_kind) k = 0;
+        long kl_kind[5] = {0, 0, 0, 0, 0};  // short/ground/loft/shot/other
         double scoring_dist_sum = 0, keeper_dist_sum = 0;
         double keeper_ball_sum = 0, ball_speed_sum = 0;
         bool last_shot_breakaway[2] = {false, false};
@@ -173,6 +177,15 @@ int main(int argc, char** argv) {
                 const ai::Orders o = brain.ordersFor(s, world);
                 world.setIntent(s, o.move);
                 if (o.action != core::Action::None) world.setAction(s, o.action);
+                if (o.action != core::Action::None && world.ball().owner &&
+                    *world.ball().owner == s) {
+                    last_kick_kind[s & 31] =
+                        o.action == core::Action::ShortPass   ? 0
+                        : o.action == core::Action::GroundKick ? 1
+                        : o.action == core::Action::LoftedKick ? 2
+                        : o.action == core::Action::Shot       ? 3
+                                                               : 4;
+                }
                 // A shot ORDER only fires if this slot carries the ball.
                 if (o.action == core::Action::Shot && world.ball().owner &&
                     *world.ball().owner == s) {
@@ -274,7 +287,10 @@ int main(int argc, char** argv) {
                 else if (pre_lk_slot < players &&
                          setup.team_of_slot[pre_lk_slot] == lost_by) {
                     if (world.isKeeper(pre_lk_slot)) ++ch_keeper;
-                    else ++ch_kick;
+                    else {
+                        ++ch_kick;
+                        ++kl_kind[last_kick_kind[pre_lk_slot & 31]];
+                    }
                 } else ++ch_other;
                 fn_team = -1;
                 const std::uint8_t lost = world.lastLosingTeam();
@@ -320,7 +336,7 @@ int main(int argc, char** argv) {
         total_goals += score[0] + score[1];
         const int goals = score[0] + score[1];
         std::printf(
-            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
+            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | lost-kick short %ld ground %ld loft %ld shot %ld other %ld | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
             m, score[0], score[1], owned_ticks[0] * 100 / ticks,
             owned_ticks[1] * 100 / ticks, contested_ticks * 100 / ticks,
             shots[0], shots[1], tk_won, tk_lost, offsides,
@@ -329,6 +345,7 @@ int main(int argc, char** argv) {
             fn_wins[0], fn_third[0], fn_shot[0],
             fn_wins[1], fn_third[1], fn_shot[1],
             ch_steal, ch_poke, ch_kick, ch_keeper, ch_other,
+            kl_kind[0], kl_kind[1], kl_kind[2], kl_kind[3], kl_kind[4],
             goals ? scoring_dist_sum / goals : 0.0,
             goals ? keeper_dist_sum / goals : 0.0,
             goals ? keeper_ball_sum / goals : 0.0,

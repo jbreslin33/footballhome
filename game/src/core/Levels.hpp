@@ -116,15 +116,17 @@ enum Concept : std::uint32_t {
     // [S] like 18/19: a band-wide counter measured world 3.1 → 5.0 goals
     // (extra bodies in the box feed the scramble) — it's an identity.
     kCounterAttack   = 1u << 23,  // fast break: moment 4 [KNVB]
+    kSafePass        = 1u << 24,  // read the interceptors; recycle [Buckland]
 };
-inline constexpr std::uint32_t kAllConcepts = (1u << 24) - 1;
+inline constexpr std::uint32_t kAllConcepts = (1u << 25) - 1;
 inline constexpr const char* kConceptNames[] = {
     "delay", "marking", "cover", "support", "outlet",
     "runs", "over-top", "sweep", "placement", "line-hold",
     "jockey-angle", "recover", "double-team", "width", "give-and-go",
     "push-up", "counter-press", "balance", "man-mark", "verticality",
-    "intercept", "restraint", "tackle-timing", "counter-attack"};
-inline constexpr int kConceptCount = 24;
+    "intercept", "restraint", "tackle-timing", "counter-attack",
+    "safe-pass"};
+inline constexpr int kConceptCount = 25;
 
 // ── Graded knowledge (James: "implement them on a 0 to 100 scale") ─────
 // A rating is CONSISTENCY + MAGNITUDE in one number: branch concepts roll
@@ -157,7 +159,7 @@ inline std::uint32_t conceptBundle(const LevelParams& lv) {
              kPlayOverTop | kKeeperSweep | kJockeyAngle | kRecoverGoalSide |
              kDoubleTeam | kSpreadWide | kGiveAndGo | kPushUp |
              kCounterPress | kBalance | kInterceptRead | kRestraint |
-             kTackleTiming;
+             kTackleTiming | kSafePass;
     }
     return m;
 }
