@@ -14,11 +14,37 @@ window.LIGHTHOUSE_LAYOUT = {
   // on edge of baseball field near barn." Between the main diamond (W)
   // and the NE diamond (E) the only fit is NORTH–SOUTH, its south goal
   // line just north of the barn / SE diamond / parked bleachers. CONFIRM.
-  gamePitch: { x: 20, z: -22.5, rotDeg: 90 },
+  // MEASURED from Google's current satellite imagery (painted lines,
+  // calibrated on the two measured home plates, 0.139 m/px): the soccer
+  // pitch — goal line + penalty area (~15.5 m) + goal area + penalty arc
+  // facing a centre circle 45 m out → ~90 m long x 60.5 m wide, long axis
+  // 61.5° (runs NNW from a goal line mid-complex). From the hospital the
+  // main diamond is at its bottom-left (James). The GAME's pitch is still
+  // 105 x 68, centred + aligned on it; realPitch keeps the measured size.
+  gamePitch: { x: -15.7, z: -33.4, rotDeg: 61.5 },
+  realPitch: { x: -15.7, z: -33.4, rotDeg: 61.5, length: 90, width: 60.5 },
+
+  // Ball fields, MEASURED on satellite imagery (5 m grid on Esri z19):
+  // home plate, bearing = direction home → 2nd base (degrees from east
+  // toward south; −45 = north-east), base = base-path length, infield =
+  // 'grass' (baseball cut) or 'dirt' (softball skin), arc = dirt-arc
+  // radius from home plate. Replaces guessing from OSM's whole-field
+  // outlines, which put the infields in the wrong spots.
+  diamonds: [
+    { name: 'main (baseball)', home: [-69, 28], bearing: -45, base: 27.43, infield: 'grass', arc: 47 },
+    { name: 'east (softball)', home: [83.2, 13.2], bearing: -104.5, base: 18.29, infield: 'dirt', arc: 28 },
+    { name: 'by the paddock (small)', home: [61, 66], bearing: -135, base: 18.29, infield: 'dirt', arc: 22 }, // CONFIRM orientation
+  ],
 
   // Kids' fields — to be placed with James (size, spot, orientation).
   // e.g. { name: '7v7', x: .., z: .., length: 55, width: 36, rotDeg: .. }
-  kidsFields: [],
+  // Second set of painted lines (Google imagery): a long touchline ~81 m
+  // toward the softball fence, a parallel line ~32 m away, rotated ~30°.
+  // Probably the youth / 7v7 layout — James to name and size it.
+  kidsFields: [{ name: 'painted lines B (7v7?)', x: 44.7, z: 25.9, length: 81, width: 31.8, rotDeg: 29.9 }],
+  // Cemetery boundary fence (New Cathedral Cemetery), along the OSM
+  // cemetery outline.
+  cemeteryFence: { height: 2.0 },
 
   // The five movable 3-row bleachers, in GAME-PITCH coordinates
   // (x along the pitch, z across; touchlines at z = ±34). Imagery shows

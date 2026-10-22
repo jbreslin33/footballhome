@@ -331,6 +331,8 @@
 
     // ── the site group, placed so layout.gamePitch lands on the world
     // origin with its long axis along world x ────────────────────────
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(),
+          S = new THREE.Vector3(), Pv = new THREE.Vector3();
     const gp = LAY.gamePitch || { x: 0, z: 0, rotDeg: 0 };
     const th = gp.rotDeg * D2R;
     const site = new THREE.Group();
@@ -351,11 +353,11 @@
     // Draw-order layers: each sits a little higher AND gets a stronger
     // polygon offset — millimetre gaps alone z-fought into moiré at range.
     const LAYER_ORDER = ['campus', 'industrial', 'cemetery', 'recreation', 'parking',
-                         'pitchgrass', 'playground', 'dirt', 'sand', 'infield', 'rail', 'road', 'path'];
+                         'pitchgrass', 'playground', 'dirt', 'sand', 'infield', 'rail', 'road', 'path', 'chalk'];
     const COLORS = { campus: 0xb9b6ae, industrial: 0x9a958c, cemetery: 0x5f8f4a,
       recreation: 0x4f8a3a, parking: 0x55595f, pitchgrass: 0x548f3d, playground: 0xb5513c,
       dirt: 0xb8865a, sand: 0xd8c08f, infield: 0x57943f, rail: 0x6f6658, road: 0x3b3f45,
-      path: 0xc9c2b1 };
+      path: 0xc9c2b1, chalk: 0xf4f4ee };
     COLORS.road = 0x5a5e64; COLORS.parking = 0x6a6e73; COLORS.rail = 0x7a7064;
     const layers = {};
     LAYER_ORDER.forEach((k, i) => { layers[k] = [new Merge(), COLORS[k], -0.07 + i * 0.004, i]; });
@@ -374,7 +376,9 @@
           cemetery = P;
           break;
         case 'pitch':
-          if (f.sport === 'baseball') {
+          if (f.sport === 'baseball' && LAY.diamonds) {
+            // Measured diamonds in the layout replace the OSM guesses.
+          } else if (f.sport === 'baseball') {
             const inf = baseballInfield(P);
             addFlat(layers.dirt[0], inf.fan, layers.dirt[2]);
             addFlat(layers.infield[0], inf.diamond, layers.infield[2]);
@@ -533,14 +537,70 @@
       }
       site.add(hs);
     }
+    for (const dm of (L.diamonds || [])) {
+      const [hxp, hzp] = dm.home, b = dm.bearing * D2R;
+      const at = (ang, r) => [hxp + Math.cos(ang) * r, hzp + Math.sin(ang) * r];
+      // Dirt fan between the foul lines out to the arc.
+      const fan = [dm.home];
+      for (let k = 0; k <= 20; k++) fan.push(at(b - Math.PI / 4 + (Math.PI / 2) * (k / 20), dm.arc));
+      addFlat(layers.dirt[0], fan, layers.dirt[2]);
+      // Grass infield square (baseball cut) inside the base paths.
+      const s = dm.base, inset = 1.4;
+      if (dm.infield === 'grass') {
+        const sq = [at(b, inset * 1.414), at(b - Math.PI / 4, s - inset).map((v, i) => v + (at(b + Math.PI / 4, inset)[i] - dm.home[i])),
+                    at(b, s * 1.414 - inset * 1.414), at(b + Math.PI / 4, s - inset).map((v, i) => v + (at(b - Math.PI / 4, inset)[i] - dm.home[i]))];
+        addFlat(layers.infield[0], sq, layers.infield[2]);
+        const mound = at(b, 18.44 * s / 27.43);
+        const m = [];
+        for (let k = 0; k < 14; k++) m.push([mound[0] + Math.cos(k / 14 * 6.283) * 2.74, mound[1] + Math.sin(k / 14 * 6.283) * 2.74]);
+        addFlat(layers.dirt[0], m, layers.dirt[2] + 0.01);
+      }
+      // Bases (white bags) + home plate, chalk foul lines, backstop.
+      const bagM = std(0xf7f7f2);
+      for (const [ang, r] of [[b - Math.PI / 4, s], [b, s * Math.SQRT2], [b + Math.PI / 4, s], [0, 0]]) {
+        const [bx, bz] = r ? at(ang, r) : dm.home;
+        const bag = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.4), bagM);
+        bag.position.set(bx, 0.04, bz);
+        bag.rotation.y = -b + Math.PI / 4;
+        site.add(bag);
+      }
+      for (const side of [-1, 1]) {
+        const end = at(b + side * Math.PI / 4, dm.arc + 40);
+        addRibbon(layers.chalk[0], [dm.home, end], 0.12, layers.chalk[2]);
+      }
+      const back = at(b + Math.PI, 7);
+      const fence = new THREE.Mesh(new THREE.BoxGeometry(12, 3.6, 0.06),
+        std(0x9aa1a8, { metalness: 0.5, roughness: 0.5, transparent: true, opacity: 0.5 }));
+      fence.position.set(back[0], 1.8, back[1]);
+      fence.rotation.y = -b + Math.PI / 2;
+      site.add(fence);
+    }
+    // Cemetery fence: black iron, posts every 3 m + two rails.
+    if (L.cemeteryFence && cemetery) {
+      const H = L.cemeteryFence.height || 2;
+      const iron = std(0x1d1f22, { metalness: 0.6, roughness: 0.5 });
+      const posts = [];
+      for (let k = 0; k + 1 < cemetery.length; k++) {
+        const [ax, az] = cemetery[k], [bx, bz] = cemetery[k + 1];
+        const len = Math.hypot(bx - ax, bz - az);
+        for (const hh of [0.3, H - 0.15]) {
+          const r = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.05), iron);
+          r.position.set((ax + bx) / 2, hh, (az + bz) / 2);
+          r.rotation.y = -Math.atan2(bz - az, bx - ax);
+          site.add(r);
+        }
+        for (let t = 0; t < len; t += 3) posts.push([ax + (bx - ax) * t / len, az + (bz - az) * t / len]);
+      }
+      const pm = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, H, 0.06), iron, posts.length);
+      posts.forEach(([x, z], i) => { M.compose(Pv.set(x, H / 2, z), Q, S.set(1, 1, 1)); pm.setMatrixAt(i, M); });
+      site.add(pm);
+    }
     for (const kf of (L.kidsFields || [])) {
       // Kids' fields: painted lines (James to place). Simple outline for now.
       const a = (kf.rotDeg || 0) * D2R, l = kf.length / 2, w = kf.width / 2;
       const c = [[-l, -w], [l, -w], [l, w], [-l, w]].map(([u, v]) =>
         [kf.x + u * Math.cos(a) - v * Math.sin(a), kf.z + u * Math.sin(a) + v * Math.cos(a)]);
-      const pts = c.concat([c[0]]).map(([x, z]) => new THREE.Vector3(x, 0.03, z));
-      site.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
-                              new THREE.LineBasicMaterial({ color: 0xffffff })));
+      addRibbon(layers.chalk[0], c.concat([c[0]]), 0.12, layers.chalk[2]);
     }
 
     for (const k of Object.keys(layers)) {
@@ -555,8 +615,6 @@
     if (buildings.pos.length) site.add(buildings.mesh(std(0xc9c4ba), { cast: true }));
 
     // ── trees (instanced, from imagery) ─────────────────────────────────
-    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(),
-          S = new THREE.Vector3(), Pv = new THREE.Vector3();
     if (TREES.length) {
       const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.25, 0.35, 3, 6),
                                              std(0x5b4636), TREES.length);
