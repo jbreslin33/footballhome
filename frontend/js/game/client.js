@@ -285,7 +285,7 @@
     statusEl.textContent =
       `driving ${myName}` +
       (others.length ? ` (also holding ${others.map((s) => '#' + (s + 1)).join(', ')} — tap to switch)` : '') +
-      ' — WASD/joystick, Space/PASS, X/LOFT, C camera, drag to rotate';
+      ' — WASD/joystick, Space pass, X loft · C or 1–6 camera, +/− zoom';
   }
   if (autoBtn) {
     const flip = () => {
@@ -342,8 +342,31 @@
       e.preventDefault(); e.stopPropagation(); renderer.rig.cycle();
     });
   }
+  // Zoom: +/− buttons (hold repeats), + / − / = keys; wheel and pinch
+  // are handled by the rig itself. 1–6 pick a camera directly.
+  const zoomBy = (f) => renderer.rig.zoom(f);
+  for (const [id, f] of [['btn-zoom-in', 0.85], ['btn-zoom-out', 1 / 0.85]]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    let rep = null;
+    const start = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      zoomBy(f);
+      rep = setInterval(() => zoomBy(f), 120);
+    };
+    const stop = () => { if (rep) clearInterval(rep); rep = null; };
+    el.addEventListener('mousedown', start);
+    el.addEventListener('touchstart', start);
+    for (const ev of ['mouseup', 'mouseleave', 'touchend', 'touchcancel'])
+      el.addEventListener(ev, stop);
+  }
+  const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];
   window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'c' && !e.repeat) renderer.rig.cycle();
+    const k = e.key.toLowerCase();
+    if (k === 'c' && !e.repeat) renderer.rig.cycle();
+    if (k === '+' || k === '=') zoomBy(0.85);
+    if (k === '-' || k === '_') zoomBy(1 / 0.85);
+    if (k >= '1' && k <= '6' && !e.repeat) renderer.rig.setMode(CAMS[+k - 1]);
   });
 
   function loop() {

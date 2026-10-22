@@ -2,19 +2,27 @@
 //
 // Camera rig: one spherical camera (target, yaw, pitch, distance) that
 // eases toward the current MODE's goal, so switching views never cuts.
-//   broadcast — raised side-on TV angle, pans with the ball (default)
-//   orbit     — free: drag to rotate, wheel / pinch to zoom, follows ball
-//   follow    — behind YOUR player, looking up the pitch he attacks
-//   top       — tactical overhead, the whole shape at once
-// Any drag rotates (and drops into orbit); C or the CAM button cycles.
-// basis() lets input map screen directions onto the pitch, so "up" on
-// the keys or joystick always means away from the viewer.
+//   TV    — broadcast: raised side-on, follows the play tight enough that
+//           the pitch fills the screen
+//   BALL  — chase cam: low and close, trailing the ball
+//   3RD   — third person: behind YOUR player (or the ball carrier when
+//           you hold no one), looking up the pitch he attacks
+//   1ST   — first person: at his eye line, looking where he faces
+//   TOP   — overhead tactical
+//   FREE  — drag to orbit anywhere
+// ZOOM works in every mode (wheel, pinch, the +/− buttons): it scales the
+// mode's distance; in 1ST it narrows/widens the field of view. Any drag
+// rotates (dropping into FREE). C or the CAM button cycles.
+// screenToPitch() maps screen directions onto the pitch so "up" on the
+// keys/joystick is always away from the viewer.
 
 (function () {
   'use strict';
 
-  const MODES = ['broadcast', 'orbit', 'follow', 'top'];
-  const LABEL = { broadcast: 'TV', orbit: 'FREE', follow: 'BEHIND', top: 'TOP' };
+  const MODES = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];
+  const LABEL = { broadcast: 'TV', ball: 'BALL', third: '3RD', first: '1ST',
+                  top: 'TOP', orbit: 'FREE' };
+  const wrap = (a) => ((a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 
   class CameraRig {
     constructor(camera, canvas) {
@@ -22,8 +30,10 @@
       this.canvas = canvas;
       this.mode = 'broadcast';
       this.target = new THREE.Vector3();
-      this.cur = { yaw: 0, pitch: 0.6, dist: 52 };     // eased state
-      this.user = { yaw: 0, pitch: 0.55, dist: 45 };   // orbit params
+      this.cur = { yaw: 0, pitch: 0.58, dist: 60 };    // eased state
+      this.user = { yaw: 0, pitch: 0.55, dist: 45 };   // FREE params
+      this.zoomMul = 1;                                 // every other mode
+      this.fov = 45;
       this.dragged = false;   // client checks to suppress a claim tap
       this.onModeChange = null;
       this.bindPointer();
@@ -31,18 +41,24 @@
 
     setMode(m) {
       if (m === 'orbit' && this.mode !== 'orbit') {
-        // Enter free orbit from wherever the camera is now.
         this.user.yaw = this.cur.yaw;
-        this.user.pitch = this.cur.pitch;
+        this.user.pitch = Math.max(0.1, this.cur.pitch);
         this.user.dist = Math.min(this.cur.dist, 70);
       }
       this.mode = m;
       if (this.onModeChange) this.onModeChange(LABEL[m]);
     }
-    cycle() {
-      this.setMode(MODES[(MODES.indexOf(this.mode) + 1) % MODES.length]);
-    }
+    cycle() { this.setMode(MODES[(MODES.indexOf(this.mode) + 1) % MODES.length]); }
     label() { return LABEL[this.mode]; }
+
+    // f > 1 zooms OUT, f < 1 zooms IN.
+    zoom(f) {
+      if (this.mode === 'orbit') {
+        this.user.dist = Math.min(220, Math.max(4, this.user.dist * f));
+      } else {
+        this.zoomMul = Math.min(3, Math.max(0.3, this.zoomMul * f));
+      }
+    }
 
     bindPointer() {
       const c = this.canvas;
@@ -62,13 +78,12 @@
       window.addEventListener('mouseup', () => { down = null; });
       c.addEventListener('wheel', (e) => {
         e.preventDefault();
-        if (this.mode !== 'orbit') this.setMode('orbit');
         this.zoom(Math.exp(e.deltaY * 0.0012));
       }, { passive: false });
 
-      // Touch: two fingers = rotate (midpoint drag) + pinch zoom. One
-      // finger in the upper area (above the joystick zone) drags to rotate;
-      // a still tap there is still a claim (client decides on touchend).
+      // Touch: two fingers = pinch zoom (any mode) + midpoint drag rotate.
+      // One finger in the upper area drags to rotate; a still tap there is
+      // still a claim (client decides on touchend).
       let t2 = null, t1 = null;
       c.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
@@ -87,9 +102,11 @@
           const [a, b] = e.touches;
           const mx = (a.clientX + b.clientX) / 2, my = (a.clientY + b.clientY) / 2;
           const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-          if (this.mode !== 'orbit') this.setMode('orbit');
-          this.rotate(mx - t2.mx, my - t2.my);
           if (t2.d > 0) this.zoom(t2.d / d);
+          if (Math.hypot(mx - t2.mx, my - t2.my) > 2) {
+            if (this.mode !== 'orbit') this.setMode('orbit');
+            this.rotate(mx - t2.mx, my - t2.my);
+          }
           t2 = { mx, my, d };
           this.dragged = true;
         } else if (t1 && e.touches.length === 1) {
@@ -109,65 +126,96 @@
 
     rotate(dx, dy) {
       this.user.yaw -= dx * 0.006;
-      this.user.pitch = Math.min(1.45, Math.max(0.08, this.user.pitch + dy * 0.004));
-    }
-    zoom(f) {
-      this.user.dist = Math.min(170, Math.max(6, this.user.dist * f));
+      this.user.pitch = Math.min(1.5, Math.max(0.04, this.user.pitch + dy * 0.004));
     }
 
-    // ctx: { ball:{x,y}, me:{x,y,team}|null, hx, hy }
+    // ctx: { ball:{x,y,z}, me:{x,y,team,yaw}|null }
     update(dt, ctx) {
-      const b = ctx.ball || { x: 0, y: 0 };
-      let goal, tx = b.x, tz = b.y;
+      const b = ctx.ball || { x: 0, y: 0, z: 0 };
+      const m = ctx.me;
+      const Z = this.zoomMul;
+      let goal, tx = b.x, tz = b.y, ty = 0;
+      // The ball's heading (for the chase cam).
+      if (this.prevBall) {
+        const vx = (b.x - this.prevBall.x) / Math.max(dt, 1e-3);
+        const vz = (b.y - this.prevBall.y) / Math.max(dt, 1e-3);
+        if (Math.hypot(vx, vz) > 2) this.ballHeading = Math.atan2(vx, vz);
+      }
+      this.prevBall = { x: b.x, y: b.y };
+
       switch (this.mode) {
         case 'broadcast':
-          // TV gantry: side-on from the home touchline, panning with play.
-          tx = b.x * 0.75; tz = b.y * 0.25;
-          // Gantry at the FRONT of the main stand's roof line, not inside
-          // it (the roof filled the lower frame from 68 m out).
-          goal = { yaw: 0, pitch: 0.6, dist: 52 };
+          // TV: side-on, following the play — the pitch fills the frame.
+          // Aim biased ~8 m toward the near side so BOTH touchlines fit
+          // (unbiased, the near touchline fell below the frame).
+          tx = b.x * 0.92; tz = b.y * 0.3 + 8;
+          goal = { yaw: 0, pitch: 0.56,
+                   dist: 58 * Z * Math.max(1, 1.3 / this.camera.aspect) };
           break;
-        case 'top':
-          tx = b.x * 0.3; tz = 0;
-          goal = { yaw: 0, pitch: 1.45, dist: 92 };
-          break;
-        case 'follow': {
-          const m = ctx.me;
-          if (m) {
-            // Behind the player, looking up the pitch he attacks (home
-            // attacks +x): camera offset −x for home, +x for away.
-            const ax = m.team === 0 ? 1 : -1;
-            tx = m.x + ax * 7; tz = m.y * 0.85;
-            goal = { yaw: ax > 0 ? -Math.PI / 2 : Math.PI / 2, pitch: 0.32, dist: 19 };
-          } else {
-            goal = { yaw: this.cur.yaw, pitch: 0.4, dist: 30 };
-          }
+        case 'ball': {
+          // Chase: trail the ball's travel, low and close.
+          const h = this.ballHeading !== undefined ? this.ballHeading : Math.PI / 2;
+          ty = 1;
+          goal = { yaw: h + Math.PI, pitch: 0.28, dist: 16 * Z };
           break;
         }
-        default:  // orbit
+        case 'third':
+          if (m) {
+            const ax = m.team === 0 ? 1 : -1;     // home attacks +x
+            tx = m.x + ax * 6; tz = m.y * 0.9; ty = 1;
+            goal = { yaw: ax > 0 ? -Math.PI / 2 : Math.PI / 2, pitch: 0.3, dist: 17 * Z };
+          } else {
+            goal = { yaw: this.cur.yaw, pitch: 0.4, dist: 30 * Z };
+          }
+          break;
+        case 'first':
+          if (m) {
+            // Eye line, looking where he faces. Zoom = field of view.
+            const yaw = m.yaw !== undefined ? m.yaw : (m.team === 0 ? Math.PI / 2 : -Math.PI / 2);
+            this.cur.yaw += wrap(yaw + Math.PI - this.cur.yaw) * Math.min(1, dt * 5);
+            const fx = -Math.sin(this.cur.yaw), fz = -Math.cos(this.cur.yaw);
+            this.camera.position.set(m.x - fx * 0.15, 1.7, m.y - fz * 0.15);
+            this.camera.lookAt(m.x + fx * 20, 1.1, m.y + fz * 20);
+            this.applyFov(Math.min(100, Math.max(25, 70 * Z)), dt);
+            return;
+          }
+          goal = { yaw: this.cur.yaw, pitch: 0.4, dist: 30 * Z };
+          break;
+        case 'top':
+          tx = b.x * 0.35; tz = 0;
+          goal = { yaw: 0, pitch: 1.5, dist: 96 * Z * Math.max(1, 1.2 / this.camera.aspect) };
+          break;
+        default:  // FREE
           goal = { ...this.user };
       }
+      this.applyFov(45, dt);
       const k = Math.min(1, dt * 4);
       this.target.x += (tx - this.target.x) * k;
+      this.target.y += (ty - this.target.y) * k;
       this.target.z += (tz - this.target.z) * k;
-      let dy = goal.yaw - this.cur.yaw;
-      dy = ((dy + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
       const kk = this.mode === 'orbit' ? Math.min(1, dt * 14) : k;
-      this.cur.yaw += dy * kk;
+      this.cur.yaw += wrap(goal.yaw - this.cur.yaw) * kk;
       this.cur.pitch += (goal.pitch - this.cur.pitch) * kk;
       this.cur.dist += (goal.dist - this.cur.dist) * kk;
 
       const { yaw, pitch, dist } = this.cur;
       this.camera.position.set(
         this.target.x + dist * Math.sin(yaw) * Math.cos(pitch),
-        this.target.y + dist * Math.sin(pitch),
+        Math.max(0.6, this.target.y + dist * Math.sin(pitch)),
         this.target.z + dist * Math.cos(yaw) * Math.cos(pitch));
       this.camera.lookAt(this.target);
     }
 
+    applyFov(want, dt) {
+      if (Math.abs(this.fov - want) < 0.05) return;
+      this.fov += (want - this.fov) * Math.min(1, dt * 6);
+      this.camera.fov = this.fov;
+      this.camera.updateProjectionMatrix();
+    }
+
     // Screen-space desire (x right, y DOWN) → pitch-space vector, relative
-    // to where the camera is looking. Yaw 0 = the old fixed broadcast
-    // mapping exactly (screen-up = pitch −y).
+    // to where the camera is looking. Yaw 0 = the broadcast mapping
+    // exactly (screen-up = pitch −y).
     screenToPitch(v) {
       const yaw = this.cur.yaw;
       const fx = -Math.sin(yaw), fz = -Math.cos(yaw);   // view forward

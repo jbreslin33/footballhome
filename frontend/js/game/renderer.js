@@ -39,125 +39,6 @@
     return t;
   }
 
-  // Crowd: thousands of tiny shirts/faces on dark terraces.
-  function crowdTexture(home) {
-    const c = document.createElement('canvas');
-    c.width = 512; c.height = 256;
-    const x = c.getContext('2d');
-    x.fillStyle = '#1a1f2b'; x.fillRect(0, 0, 512, 256);
-    const shirts = home
-      ? ['#14326e', '#14326e', '#ffcc00', '#f4f6fb', '#14326e', '#2b3a55']
-      : ['#c8102e', '#f4f6fb', '#555', '#2b3a55', '#888', '#c8102e'];
-    const faces = ['#f1c27d', '#c68642', '#8d5524', '#e0ac69'];
-    for (let r = 0; r < 32; r++) {
-      for (let k = 0; k < 96; k++) {
-        if (Math.random() < 0.12) continue;      // empty seats
-        const px = k * 5.33 + Math.random() * 2, py = r * 8 + 2;
-        x.fillStyle = shirts[(Math.random() * shirts.length) | 0];
-        x.fillRect(px, py + 3, 4, 4);
-        x.fillStyle = faces[(Math.random() * faces.length) | 0];
-        x.fillRect(px + 1, py, 2.5, 3);
-      }
-    }
-    const t = new THREE.CanvasTexture(c);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    return t;
-  }
-
-  function boardTexture(text, bg, fg) {
-    const c = document.createElement('canvas');
-    c.width = 512; c.height = 64;
-    const x = c.getContext('2d');
-    x.fillStyle = bg; x.fillRect(0, 0, 512, 64);
-    x.fillStyle = fg;
-    x.font = 'bold 40px system-ui, sans-serif';
-    x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.fillText(text, 256, 34);
-    return new THREE.CanvasTexture(c);
-  }
-
-  // Stadium dressing: raked stands with crowds and roofs on all four
-  // sides, LED advertising boards round the pitch, floodlight masts.
-  function buildStadium(scene, hx, hy) {
-    const concrete = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.9 });
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7 });
-    const sides = [
-      { len: hx * 2 + 16, off: hy + 9, rot: 0, home: true },              // main stand (+z)
-      { len: hx * 2 + 16, off: hy + 9, rot: Math.PI, home: false },       // opposite (−z)
-      { len: hy * 2 + 16, off: hx + 9, rot: Math.PI / 2, home: true },    // end (+x)
-      { len: hy * 2 + 16, off: hx + 9, rot: -Math.PI / 2, home: false },  // end (−x)
-    ];
-    for (const sd of sides) {
-      const g = new THREE.Group();
-      g.rotation.y = sd.rot;
-      const depth = 18, rise = 11;
-      const slope = Math.hypot(depth, rise);
-      const tex = crowdTexture(sd.home);
-      tex.repeat.set(sd.len / 14, 3);
-      const terrace = new THREE.Mesh(
-        new THREE.PlaneGeometry(sd.len, slope),
-        new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
-      // Face the pitch (normal up and toward it) and rise AWAY from it;
-      // the half-turn flips the texture back so the crowd sits upright.
-      terrace.rotation.x = Math.atan2(depth, rise) + Math.PI;
-      tex.center.set(0.5, 0.5);
-      tex.rotation = Math.PI;
-      terrace.position.set(0, rise / 2 + 0.6, sd.off + depth / 2);
-      terrace.receiveShadow = true;
-      g.add(terrace);
-      const front = new THREE.Mesh(new THREE.BoxGeometry(sd.len, 1.2, 0.4), concrete);
-      front.position.set(0, 0.6, sd.off);
-      g.add(front);
-      const back = new THREE.Mesh(new THREE.BoxGeometry(sd.len, rise + 6, 0.6), concrete);
-      back.position.set(0, (rise + 6) / 2, sd.off + depth + 0.3);
-      g.add(back);
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(sd.len, 0.4, depth + 4), roofMat);
-      roof.position.set(0, rise + 6, sd.off + depth / 2 - 1);
-      roof.rotation.x = 0.08;
-      g.add(roof);
-      scene.add(g);
-    }
-
-    // LED boards, 1 m tall, 4 m off the lines (behind the goals too).
-    const ads = [
-      ['FOOTBALL HOME', '#14326e', '#ffcc00'],
-      ['LIGHTHOUSE · EST. 1893', '#ffcc00', '#14326e'],
-      ['FOOTBALLHOME.ORG', '#0b1c3d', '#f4f6fb'],
-    ];
-    let n = 0;
-    const board = (w, x0, z0, rotY) => {
-      const [t, bg, fg] = ads[n++ % ads.length];
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.9, 0.12),
-        [concrete, concrete, concrete, concrete,
-         new THREE.MeshBasicMaterial({ map: boardTexture(t, bg, fg) }), concrete]);
-      m.position.set(x0, 0.45, z0);
-      m.rotation.y = rotY;
-      m.castShadow = true;
-      scene.add(m);
-    };
-    for (let x = -hx + 6; x < hx; x += 12) {
-      board(11.6, x, hy + 4, Math.PI);   // faces the pitch (−z)
-      board(11.6, x, -hy - 4, 0);
-    }
-    for (const sgn of [-1, 1]) {
-      for (const z of [-14, 14]) board(11.6, sgn * (hx + 4), z, -sgn * Math.PI / 2);
-    }
-
-    // Floodlight masts at the corners with glowing lamp banks.
-    const lamp = new THREE.MeshBasicMaterial({ color: 0xfffbe6 });
-    for (const sx of [-1, 1]) {
-      for (const sz of [-1, 1]) {
-        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.7, 34, 8), concrete);
-        mast.position.set(sx * (hx + 16), 17, sz * (hy + 16));
-        scene.add(mast);
-        const bank = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 0.6), lamp);
-        bank.position.set(sx * (hx + 16), 35, sz * (hy + 16));
-        bank.lookAt(0, 0, 0);
-        scene.add(bank);
-      }
-    }
-  }
-
   class GameRenderer {
     constructor(canvas) {
       this.canvas = canvas;
@@ -177,11 +58,11 @@
       this.halfN = 11;
 
       this.scene = new THREE.Scene();
-      this.scene.background = new THREE.Color(0x0b1c3d); // club navy sky
-      this.scene.fog = new THREE.Fog(0x0b1c3d, 140, 260);
+      this.scene.background = new THREE.Color(0x9cc3e6); // open daytime sky
+      this.scene.fog = new THREE.Fog(0x9cc3e6, 220, 520);
 
       this.camera = new THREE.PerspectiveCamera(
-        45, window.innerWidth / window.innerHeight, 0.1, 500);
+        45, window.innerWidth / window.innerHeight, 0.1, 900);
       this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       this.renderer.shadowMap.enabled = true;
@@ -232,14 +113,6 @@
 
       // Grass (sim x → three x, sim y → three z): one canvas texture with
       // mowing stripes + blade noise, receiving real shadows.
-      const surround = new THREE.Mesh(
-        new THREE.PlaneGeometry(hx * 2 + 30, hy * 2 + 30),
-        new THREE.MeshStandardMaterial({ map: grassTexture(false), roughness: 1 }));
-      surround.material.map.repeat.set(6, 4);
-      surround.rotation.x = -Math.PI / 2;
-      surround.position.y = -0.01;
-      surround.receiveShadow = true;
-      this.scene.add(surround);
       const pitch = new THREE.Mesh(
         new THREE.PlaneGeometry(hx * 2 + 4, hy * 2 + 4),
         new THREE.MeshStandardMaterial({ map: grassTexture(true), roughness: 1 }));
@@ -247,7 +120,7 @@
       pitch.rotation.x = -Math.PI / 2;
       pitch.receiveShadow = true;
       this.scene.add(pitch);
-      buildStadium(this.scene, hx, hy);
+      this.field = LighthouseField.build(this.scene, hx, hy);
 
       // Full markings (Laws of the Game): touch/goal lines, halfway,
       // centre circle + spot, penalty + goal areas, spots, arcs, corners.
@@ -430,14 +303,26 @@
           f.root.position.set(x, 0, y);
           f.update(dt, { vx, vy, flags: pb.flags, ball: ballPos,
                          hasBall: owner === i, me: { x, y } });
+          if (owner === i) {
+            this.carrierSlot = i;
+            this.lastOwnerPos = { x, y, team: i < this.halfN ? 0 : 1, yaw: f.yaw };
+          }
           if (i === this.activeSlot) {
-            me = { x, y, team: i < this.halfN ? 0 : 1 };
+            me = { x, y, team: i < this.halfN ? 0 : 1, yaw: f.yaw };
             this.ring.position.x = x;
             this.ring.position.z = y;
           }
         }
       }
+      // No controlled player: "the man" is whoever has the ball.
+      if (!me && this.lastOwnerPos) me = this.lastOwnerPos;
       this.rig.update(dt, { ball: ballPos, me, hx: this.hx, hy: this.hy });
+      if (this.field) this.field.update(this.camera, now / 1000);
+      // First person: hide your own body (the camera is in his head).
+      const firstSlot = this.activeSlot !== null && this.activeSlot !== undefined
+        ? this.activeSlot : this.carrierSlot;
+      for (const f of this.figures)
+        f.root.visible = !(this.rig.mode === 'first' && f.slot === firstSlot);
       this.renderer.render(this.scene, this.camera);
     }
 

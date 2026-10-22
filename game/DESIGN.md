@@ -945,6 +945,36 @@ method) before changing behavior.
   Broadcast camera moved to the front of the main stand (from 68 m out
   the roof filled the lower frame). Status/score on dark pills.
 
+### 8.24 G4.28 — Lighthouse Field, mapped; six camera views; zoom
+
+James: "field gets cut off at bottom. crowd is not needed… just a grass
+field with some stands like 3 row stands, movable like 5 of them…
+199 east erie avenue… bonus if you map the complex… the barn and the
+rodeo area and the tree line and the baseball field… horses in the
+stables and the sixers bball court — details not rendered unless we
+scan the field… use more of screen for pitch… zoom controls… follow
+ball, follow man… broadcast, overhead, 1st person, 3rd person."
+
+- `frontend/js/game/field.js`: the stadium is gone. Five portable 3-row
+  aluminium bleachers round the pitch; beyond them Lighthouse Sport
+  Complex Field mapped from satellite imagery of 199 E Erie Ave (scale
+  from the map's scale bars, 0.81 / 0.405 m/px): the grass lot, N Front
+  St, Erie Ave (it runs at an angle), Whitaker Ave, Cedar Hill Cemetery
+  + headstones, the tree lines, the main diamond (grass infield, mound,
+  backstop) and two skin infields, the rodeo ring (sand, white panels,
+  four little bleachers, tent, trailers), the barn (red, gable, white
+  X-door) + fenced paddock, the clubhouse on Erie with its sign, The
+  League Park building, the parking lot, neighbourhood massing. First
+  pass had Front St 150 m off (the internal tree line read as the
+  boundary) — corrected from the close view.
+- LOD DETAILS, drawn only within range of the camera: grazing horses at
+  the barn, the League Park court's Sixers-colours markings + hoops,
+  parked cars.
+- `camera.js`: TV (tight broadcast, aim biased so both touchlines fit),
+  BALL (chase), 3RD (behind your player — or the ball carrier), 1ST (eye
+  line, own body hidden, zoom = field of view), TOP, FREE. C cycles,
+  1–6 select; zoom in EVERY mode via wheel, pinch, +/− buttons, +/− keys.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
