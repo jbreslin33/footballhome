@@ -977,6 +977,14 @@ class SocialPostCard {
     const cardHeight = hasRoster ? 700
       : hasPlayersPlayed ? Math.max(640, 500 + lineupBlock.rows * 23)
       : hasGoalScorers ? 580 : announce ? 640 : 540;
+    // Instagram crops a feed post taller than 4:5 (1080×1350) from both
+    // ends — exactly where the header and the sponsor footer sit. The
+    // tall cards (roster at 700, a long post_game lineup) can't shrink
+    // without clipping names, so the card WIDENS to sit exactly at 4:5
+    // instead; squarer cards keep the 540 floor. The backend already
+    // fits video to the overlay's own ffprobed size, so the wider card
+    // flows through every path unchanged.
+    const cardWidth = Math.max(540, Math.ceil(cardHeight * 0.8));
 
     // Background layer. Three cases, in priority order:
     //   overlayOnly → nothing (transparent, for the ffmpeg video burn)
@@ -1004,7 +1012,7 @@ class SocialPostCard {
 
     const html = `
       <div style="
-        width:540px; height:${cardHeight}px;
+        width:${cardWidth}px; height:${cardHeight}px;
         ${cardBackground}
         color:#fff; text-align:center; position:relative; overflow:hidden;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
@@ -1059,13 +1067,13 @@ class SocialPostCard {
         </div>
       </div>
     `;
-    return { html, width: 540, height: cardHeight };
+    return { html, width: cardWidth, height: cardHeight };
   }
 
   async _generateImageOnce({ overlayOnly = false } = {}) {
     if (typeof html2canvas === 'undefined') return;
 
-    const { html, height: cardHeight } = await this.buildCardHtml({ overlayOnly });
+    const { html, width: cardWidth, height: cardHeight } = await this.buildCardHtml({ overlayOnly });
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;';
     wrapper.innerHTML = html;
@@ -1096,7 +1104,7 @@ class SocialPostCard {
       // preview's own base image or restart the beam animation.
       if (overlayOnly) return canvas.toDataURL('image/png');
       // Store base image (card without beam)
-      this.cardWidth = 540;
+      this.cardWidth = cardWidth;
       this.cardHeight = cardHeight;
       const baseImg = new Image();
       baseImg.src = canvas.toDataURL('image/png');

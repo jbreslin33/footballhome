@@ -4,7 +4,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Bugs / fixes
 
-- [ ] 2026-10-22 Game Center Instagram card: 4:5 crop suspicion on the top graphic (buildCardHtml) — verify what Instagram actually shows and fix the crop if it's cutting content.
+- [x] 2026-10-22 Game Center Instagram card 4:5 crop: confirmed by the math — Instagram crops feed posts taller than 4:5, and the roster card (540×700) and long post_game lineups (500+rows×23) exceeded it, losing the header and sponsor footer. Fix: the card now WIDENS to exactly 4:5 when content pushes it past (540 stays the floor; squarer cards untouched); game-center live card + beam follow built.width. Backend untouched — video already fits to the overlay's ffprobed size.
 - [x] 2026-10-21 Lineup edits all reverting on reload (David Masi ALT kept popping back): mig 618's cap-check query passed matchId as an unused $1 — Postgres fails the whole statement, so EVERY lineup save 500'd silently since the 10/20 deploy. Fixed param numbering; David re-set to ALT for tonight; other moves since 10/20 need redoing.
 
 ## Features

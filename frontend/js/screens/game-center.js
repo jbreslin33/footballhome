@@ -398,9 +398,10 @@ class GameCenterScreen extends Screen {
     const st = this._cardSlot(slot);
     const built = st.built && st.built.key === this._cardKey(pill) ? st.built : null;
     const h = built ? built.height : 700;
+    const w = (built && built.width) || 540;
     return `
-      <div data-gc-card="${slot}" style="position:relative; width:100%; max-width:540px; margin:0 auto 12px; aspect-ratio:540 / ${h}; overflow:hidden; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
-        <div data-gc-card-inner style="position:absolute; left:0; top:0; width:540px; transform-origin:0 0;">${built ? built.html : ''}</div>
+      <div data-gc-card="${slot}" style="position:relative; width:100%; max-width:540px; margin:0 auto 12px; aspect-ratio:${w} / ${h}; overflow:hidden; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
+        <div data-gc-card-inner style="position:absolute; left:0; top:0; width:${w}px; transform-origin:0 0;">${built ? built.html : ''}</div>
         <canvas data-gc-card-beam style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;"></canvas>
       </div>`;
   }
@@ -433,7 +434,8 @@ class GameCenterScreen extends Screen {
     const host = this.element && this.element.querySelector(`[data-gc-card="${slot}"]`);
     if (!host) return;
     const inner = host.querySelector('[data-gc-card-inner]');
-    const fit = () => { if (inner && host.clientWidth) inner.style.transform = `scale(${host.clientWidth / 540})`; };
+    const cardW = (st.built && st.built.width) || 540;
+    const fit = () => { if (inner && host.clientWidth) inner.style.transform = `scale(${host.clientWidth / cardW})`; };
     fit();
     if (typeof ResizeObserver !== 'undefined') {
       st.resizeObs = new ResizeObserver(fit);
@@ -444,7 +446,7 @@ class GameCenterScreen extends Screen {
     if (!beam || !st.built || typeof window.LighthouseBeam === 'undefined') return;
     // Same canvas geometry and rotation period as SocialPostCard's
     // startAnimatedPreview, so the beam sits where the posted clip has it.
-    beam.width = 540 * 2;
+    beam.width = cardW * 2;
     beam.height = st.built.height * 2;
     if (!this._lighthouseStartTime) this._lighthouseStartTime = performance.now();
     st.stopBeam = window.LighthouseBeam.animate(beam, {
@@ -480,12 +482,14 @@ class GameCenterScreen extends Screen {
       if (seq !== st.seq) return;
       const changed = !st.built || st.built.key !== key
         || st.built.html !== built.html || st.built.height !== built.height;
-      st.built = { key, html: built.html, height: built.height };
+      st.built = { key, html: built.html, width: built.width, height: built.height };
       if (!changed) return;
       const host = this.element && this.element.querySelector(`[data-gc-card="${slot}"]`);
       if (!host) return;
-      host.style.aspectRatio = `540 / ${built.height}`;
-      host.querySelector('[data-gc-card-inner]').innerHTML = built.html;
+      host.style.aspectRatio = `${built.width || 540} / ${built.height}`;
+      const inner = host.querySelector('[data-gc-card-inner]');
+      inner.style.width = `${built.width || 540}px`;
+      inner.innerHTML = built.html;
       this._fitCard(slot);
     } catch (err) {
       console.warn('[game-center] card build failed:', err);
