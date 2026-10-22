@@ -735,6 +735,23 @@
       fillObjs.push(pad);
     }
     const candObjs = {};
+    // Name label flat on the grass at a candidate's (or proposed 7v7's) centre.
+    const candLabel = (cd) => {
+      const cv = document.createElement('canvas');
+      cv.width = 512; cv.height = 96;
+      const c2 = cv.getContext('2d');
+      c2.font = 'bold 56px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.lineWidth = 10; c2.strokeStyle = 'rgba(0,0,0,0.85)'; c2.strokeText(cd.label, 256, 48);
+      c2.fillStyle = '#' + cd.color.toString(16).padStart(6, '0'); c2.fillText(cd.label, 256, 48);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(24, 4.5),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
+          depthWrite: false, depthTest: false }));
+      lab.rotation.x = -Math.PI / 2;
+      lab.position.set(cd.x, 0.45, cd.z);
+      lab.renderOrder = 45;
+      site.add(lab);
+      return lab;
+    };
     for (const cd of (L.candidates || [])) {
       // Candidate pitch spots (water search): coloured outline + halfway +
       // boxes, drawn over everything, with a name label at the centre.
@@ -753,27 +770,14 @@
         depthWrite: false, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -34 }));
       mesh.renderOrder = 44;
       site.add(mesh);
-      const cv = document.createElement('canvas');
-      cv.width = 512; cv.height = 96;
-      const c2 = cv.getContext('2d');
-      c2.font = 'bold 56px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
-      c2.lineWidth = 10; c2.strokeStyle = 'rgba(0,0,0,0.85)'; c2.strokeText(cd.label, 256, 48);
-      c2.fillStyle = '#' + cd.color.toString(16).padStart(6, '0'); c2.fillText(cd.label, 256, 48);
-      const lab = new THREE.Mesh(new THREE.PlaneGeometry(24, 4.5),
-        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
-          depthWrite: false, depthTest: false }));
-      lab.rotation.x = -Math.PI / 2;
-      lab.position.set(cd.x, 0.45, cd.z);
-      lab.renderOrder = 45;
-      site.add(lab);
-      candObjs[cd.id] = [mesh, lab];
+      candObjs[cd.id] = [mesh, candLabel(cd)];
     }
     for (const sv of (L.sevens || [])) {
       // Planned 7v7s: chalk outline, halfway, centre circle, goal areas.
       const a = sv.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
       const at = ([u, v]) => [sv.x + u * ca - v * sa, sv.z + u * sa + v * ca];
       const chalk = new Merge();
-      const ln = (pts) => addRibbon(chalk, pts.map(at), 0.15, 0.08);
+      const ln = (pts) => addRibbon(chalk, pts.map(at), sv.id ? 0.45 : 0.15, 0.08);
       const l = sv.length / 2, w = sv.width / 2;
       ln([[-l, -w], [l, -w], [l, w], [-l, w], [-l, -w]]);
       ln([[0, -w], [0, w]]);
@@ -785,10 +789,12 @@
         ln([[e, -9], [e - sg * 9, -9], [e - sg * 9, 9], [e, 9]]);
       }
       // Over the game pitch too (the 7v7s sit across the 11v11's halves).
-      const cm = chalk.mesh(new THREE.MeshBasicMaterial({ color: 0xdff4ff, side: THREE.DoubleSide,
+      // A proposed 7v7 (has an id) draws in its colour and gets a pill.
+      const cm = chalk.mesh(new THREE.MeshBasicMaterial({ color: sv.id ? sv.color : 0xdff4ff, side: THREE.DoubleSide,
         polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -26 }));
       cm.renderOrder = 31;
       site.add(cm);
+      if (sv.id) candObjs[sv.id] = [cm, candLabel(sv)];
     }
     if (L.oldPitch) {
       // The 11v11 pitch painted today (Google imagery), full markings in

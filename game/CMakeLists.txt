@@ -65,6 +65,10 @@ target_link_libraries(game_ai PUBLIC game_core)
 add_executable(fh-game-calibrate src/tools/calibrate_main.cpp)
 target_link_libraries(fh-game-calibrate PRIVATE game_ai)
 
+# Lighthouse Field pitch-placement sweep [FH] — offline planning tool fed by
+# game/scripts/export_lighthouse_planner_input.py (no game libraries).
+add_executable(fh-field-planner src/tools/field_planner_main.cpp)
+
 # ── game_persistence — boot-time config loads from the club DB (G4.2) ──
 # [v1] pattern: pkg-config libpqxx; pre-source_location ABI pin for the
 # system libpqxx.

@@ -395,7 +395,8 @@
   }
   // Candidate pitch spots: one pill per spot down the left side (colour,
   // id, water rating); tap to show/hide it.
-  const cands = (window.LIGHTHOUSE_LAYOUT && window.LIGHTHOUSE_LAYOUT.candidates) || [];
+  const LAYC = window.LIGHTHOUSE_LAYOUT || {};
+  const cands = (LAYC.candidates || []).concat((LAYC.sevens || []).filter((sv) => sv.id));
   if (cands.length) {
     const box = document.createElement('div');
     box.id = 'cand-pills';
@@ -406,7 +407,8 @@
       const b = document.createElement('button');
       b.type = 'button';
       b.title = cd.name + ' — puddle ' + cd.water.pond + ' m², runoff ' + cd.water.flow + ' m², flat ' +
-        cd.water.flat + ' m²; ' + cd.cemetery + ' m from the cemetery; ' + cd.infieldYd + ' yd off the infield';
+        cd.water.flat + ' m²' + (cd.cemetery != null ? '; ' + cd.cemetery + ' m from the cemetery; ' +
+        cd.infieldYd + ' yd off the infield' : '');
       b.style.cssText = 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
         'border-radius:14px;border:2px solid ' + hex + ';background:rgba(10,14,20,.72);color:#f4f6fb;' +
         'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;';
