@@ -411,53 +411,6 @@
   }
   // Drag-and-drop pitch planner (📐 PLAN): live legality + water score.
   if (window.PitchPlanner) window.PitchPlanner.attach(renderer);
-  // Candidate pitch spots: one pill per spot down the left side (colour,
-  // id, water rating); tap to show/hide it.
-  const LAYC = window.LIGHTHOUSE_LAYOUT || {};
-  const cands = (LAYC.candidates || []).concat((LAYC.sevens || []).filter((sv) => sv.id));
-  if (cands.length) {
-    const box = document.createElement('div');
-    box.id = 'cand-pills';
-    box.style.cssText = 'position:fixed;left:8px;top:84px;display:flex;flex-direction:column;gap:6px;' +
-      'z-index:12;max-height:70vh;overflow-y:auto;';
-    for (const cd of cands) {
-      const hex = '#' + cd.color.toString(16).padStart(6, '0');
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.title = cd.name + ' — puddle ' + cd.water.pond + ' m², runoff ' + cd.water.flow + ' m², flat ' +
-        cd.water.flat + ' m²' + (cd.cemetery != null ? '; ' + cd.cemetery + ' m from the cemetery; ' +
-        cd.infieldYd + ' yd off the infield' : '');
-      b.style.cssText = 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
-        'border-radius:14px;border:2px solid ' + hex + ';background:rgba(10,14,20,.72);color:#f4f6fb;' +
-        'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;';
-      let on = true;
-      const paint = () => {
-        b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' +
-          (on ? hex : 'transparent') + ';border:1px solid ' + hex + '"></span>' + cd.label + ' · ' + cd.name;
-        b.style.opacity = on ? '1' : '0.55';
-      };
-      paint();
-      const apply = () => {
-        if (!renderer.field || !renderer.field.setCandidate) return false;
-        renderer.field.setCandidate(cd.id, on);
-        if (cd.id === (window.LIGHTHOUSE_LAYOUT.gamePitchCandidate || 'A'))
-          for (const o of (renderer.pitchParts || [])) o.visible = on;
-        return true;
-      };
-      // The field may still be loading: re-apply once it exists.
-      const waitApply = () => { if (!apply()) setTimeout(waitApply, 300); };
-      const flip = (e) => {
-        e.preventDefault(); e.stopPropagation();
-        on = !on;
-        waitApply();
-        paint();
-      };
-      b.addEventListener('click', flip);
-      b.addEventListener('touchstart', flip);
-      box.appendChild(b);
-    }
-    document.body.appendChild(box);
-  }
   const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();

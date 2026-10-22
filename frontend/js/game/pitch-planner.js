@@ -4,24 +4,26 @@
 // drag the 11v11 and the 7v7 field and rotate? ... turn it red if it is
 // hitting something or too close ... calc a score for it on the fly").
 //
-// PLAN button shows two outlines on the real site: the 11v11 (starts on
-// cyan, the plan) and a 7v7. Drag one to move it; ↺ / ↻ (or [ / ]) turn
-// the selected one; SIZE cycles the 7v7's size. Every move re-checks the
-// same rules the C++ sweep uses (lighthouse-planner-data.js, exported by
+// The DEFAULT view (James: "moving an 11v11 and 7v7 pitch should be
+// default get rid of other stuff"): two outlines on the real site, the
+// 11v11 (starts on cyan, the plan) and a 7v7, with pills on the left.
+// Drag one to move it; ↺ / ↻ (or [ / ]) turn the selected one; SIZE
+// cycles the 7v7's size; WATER toggles the water layer (runoff, flood
+// areas, and live per-m² cells inside each pitch). Every move re-checks
+// the rules the C++ sweep uses (lighthouse-planner-data.js, exported by
 // game/scripts/export_lighthouse_planner_input.py --js; the geometry is a
-// port of game/src/tools/field_planner_main.cpp) plus 10 yd between the two
-// pitches, and re-scores the water on the lidar classes: green = legal,
-// red = the closest offences listed in the panel. Rating uses the
-// candidates' scale: 10 = cyan's water per m², 0 = plan A's.
+// port of game/src/tools/field_planner_main.cpp) plus 10 yd between the
+// two pitches, and re-scores the water: green = legal, red = the closest
+// offences listed in the panel. Water rating (James: "percent of the
+// perfect spot to the worst legal spot at 0 percent") = 100 % at the
+// driest legal spot of that size anywhere in the park, 0 % at the
+// wettest (data.ranges, from the sweep).
 
 (function () {
   'use strict';
 
   const YD = 0.9144, FT = 0.3048, D2R = Math.PI / 180;
   const GAP = 10 * YD;                       // between the two pitches
-  // Water score per m² (3 pond + 1.5 runoff + 0.5 flat): cyan = 10, A = 0.
-  const DENS_CYAN = (3 * 95 + 1.5 * 394 + 0.5 * 935) / (105.16 * 67.67);
-  const DENS_A = (3 * 175 + 1.5 * 386 + 0.5 * 1336) / (105.16 * 67.67);
   // Rules shown as a distance only, never an offence (James, 10/22: "don't
   // do 15 yards from main diamond just show how far").
   const INFO = { main_infield: true };
@@ -141,8 +143,11 @@
     return out;
   }
 
-  // Water on the lidar classes, sampled every metre over the pitch.
-  function water(G, cx, cz, th, L, W) {
+  // Water on the lidar classes, sampled every metre over the pitch; cells
+  // (optional) collects [u, v, class] for the live water layer. range =
+  // data.ranges[size]: percent of the way from the wettest legal spot (0)
+  // to the driest (100).
+  function water(G, cx, cz, th, L, W, range, cells) {
     const ca = Math.cos(th), sa = Math.sin(th);
     let n = 0, pond = 0, flow = 0, flat = 0;
     for (let u = -L / 2 + 0.5; u < L / 2; u += 1)
@@ -152,9 +157,11 @@
         if (i < 0 || j < 0 || i >= G.nx || j >= G.nz) continue;
         const k = G.cls.charCodeAt(j * G.nx + i) - 48;
         if (k === 1) pond++; else if (k === 2) flow++; else if (k === 3) flat++;
+        if (k && cells) cells.push(u, v, k);
       }
     const dens = (3 * pond + 1.5 * flow + 0.5 * flat) / n;
-    return { pond, flow, flat, n, rating: Math.max(0, 10 * (DENS_A - dens) / (DENS_A - DENS_CYAN)) };
+    const pct = range ? Math.max(0, Math.min(100, 100 * (range.worst - dens) / (range.worst - range.best))) : null;
+    return { pond, flow, flat, n, dens, pct };
   }
 
   // ── the planner ──────────────────────────────────────────────────────
@@ -164,20 +171,14 @@
     if (!DATA || !window.THREE) return;
     const rp = LAY.realPitch || { x: 30, z: -33.5, rotDeg: 155 };
     const pitches = [
-      { id: '11v11', profile: '11v11', size: [115, 74], x: rp.x, z: rp.z, rot: rp.rotDeg },
-      // Closest a 70 x 35 gets to the plan without hitting anything (4.6
-      // yd off cyan, cemetery side) — drag cyan to make room.
-      { id: '7v7', profile: '7v7', size: SEVEN_SIZES[0], x: 13.5, z: -86, rot: 156 },
+      { id: '11v11', size: [115, 74], x: rp.x, z: rp.z, rot: rp.rotDeg },
+      // Driest legal 70 x 35 >= 10 yd off cyan (sweep, 10/22): beside the
+      // main diamond, 31 yd off cyan.
+      { id: '7v7', size: SEVEN_SIZES[0], x: -73, z: -9, rot: 52 },
     ];
-    let on = false, sel = pitches[1], drag = null, justDragged = false;
-
-    const btn = document.createElement('button');
-    btn.className = 'kick-btn';
-    btn.textContent = '📐 PLAN';
-    btn.style.cssText = 'right:12px;top:204px;bottom:auto;width:92px;height:34px;border-radius:17px;font-size:11px;';
-    document.body.appendChild(btn);
+    let on = false, sel = pitches[1], drag = null, justDragged = false, waterOn = true;
     const panel = document.createElement('div');
-    panel.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:none;' +
+    panel.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:block;' +
       'background:rgba(10,14,20,.86);color:#f4f6fb;font:12px system-ui,sans-serif;border-radius:10px;' +
       'padding:8px 10px;max-width:min(560px,calc(100vw - 16px));box-sizing:border-box;';
     document.body.appendChild(panel);
@@ -231,7 +232,7 @@
     const copyBtn = mk('button', pill, 'COPY');
     tap(copyBtn, () => {
       const txt = pitches.map((p) => `${p.id} ${p.size[0]}x${p.size[1]} yd at (${p.x.toFixed(1)}, ${p.z.toFixed(1)}) ${p.rot.toFixed(0)}°` +
-        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}, rating ${p.ev.w.rating.toFixed(1)}, main infield ${(p.ev.infield / YD).toFixed(1)} yd`).join('\n');
+        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}, water ${p.ev.w.pct.toFixed(0)}%, main infield ${(p.ev.infield / YD).toFixed(1)} yd`).join('\n');
       if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
       copyBtn.textContent = 'COPIED';
       setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
@@ -278,26 +279,54 @@
       lab.position.x = L / 4;
       lab.renderOrder = 62;
       g.add(lab);
+      // Live water cells (1 m squares, pitch-local), refilled on every move.
+      const n = Math.ceil(L) * Math.ceil(W);
+      const cg = new THREE.PlaneGeometry(0.96, 0.96);
+      cg.rotateX(-Math.PI / 2);
+      p.cells = new THREE.InstancedMesh(cg, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.6,
+        depthWrite: false, side: THREE.DoubleSide }), n);
+      p.cells.count = 0;
+      p.cells.renderOrder = 59;
+      p.cells.position.y = -0.2;
+      p.cells.visible = waterOn;
+      g.add(p.cells);
       g.position.y = 0.6;
       g.visible = on;
       site.add(g);
       p.g = g;
     }
+    const CELL_COL = [null, new THREE.Color(0x1e5bff), new THREE.Color(0x00d5ff), new THREE.Color(0xffb000)];
+    const mtx = new THREE.Matrix4();
+    function fillCells(p, cells) {
+      if (!p.cells) return;
+      let k = 0;
+      for (let i = 0; i < cells.length && k < p.cells.instanceMatrix.count; i += 3, k++) {
+        mtx.makeTranslation(cells[i], 0, cells[i + 1]);
+        p.cells.setMatrixAt(k, mtx);
+        p.cells.setColorAt(k, CELL_COL[cells[i + 2]]);
+      }
+      p.cells.count = k;
+      p.cells.instanceMatrix.needsUpdate = true;
+      if (p.cells.instanceColor) p.cells.instanceColor.needsUpdate = true;
+    }
 
     function evaluate(p) {
       const th = p.rot * D2R, L = p.size[0] * YD, W = p.size[1] * YD;
       const R = rect(p.x, p.z, th, L, W), c = [p.x, p.z];
-      const off = offences(DATA.profiles[p.profile], R, c);
+      const off = offences(DATA.rules, R, c);
       const o = pitches.find((q) => q !== p);
       if (o && o.R) {
         const d = inRect(c, o.R) || inRect([o.x, o.z], R) ? 0 : rectDist(R, c, o.R, true);
         if (d < GAP) off.push({ n: 'other', have: d, need: GAP });
       }
       off.sort((a, b) => (a.have - a.need) - (b.have - b.need));
-      const main = DATA.profiles[p.profile].find((r) => r.n === 'main_infield');
+      const main = DATA.rules.find((r) => r.n === 'main_infield');
+      const cells = [];
       p.R = R;
-      p.ev = { ok: off.length === 0, off, w: water(DATA.grid, p.x, p.z, th, L, W),
+      p.ev = { ok: off.length === 0, off,
+               w: water(DATA.grid, p.x, p.z, th, L, W, DATA.ranges[p.size[0] + 'x' + p.size[1]], cells),
                infield: main ? rectDist(R, c, main.pts, !!main.c) : null };
+      fillCells(p, cells);
     }
     // Rule name -> words: layout structures by their layout name.
     const label = (n) => {
@@ -315,24 +344,40 @@
         'border-radius:14px;border:2px solid #33ff66;background:rgba(10,14,20,.72);color:#f4f6fb;' +
         'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;');
       tap(b, () => {
-        if (!renderer.field || !renderer.field.site) return;
+        if (!on) return;
         sel = p;
-        if (!on) setOn(true); else { flyTo(p); paint(); }
+        flyTo(p);
+        paint();
       });
       pills[p.id] = b;
     }
-    const placePills = () => {
-      const box = document.getElementById('cand-pills');
-      if (!box) { setTimeout(placePills, 300); return; }
-      for (const p of pitches.slice().reverse()) box.insertBefore(pills[p.id], box.firstChild);
+    const pillBox = mk('div', 'position:fixed;left:8px;top:84px;display:flex;flex-direction:column;gap:6px;z-index:12;');
+    for (const p of pitches) pillBox.appendChild(pills[p.id]);
+    // WATER: the field's water layer + the live cells in both pitches.
+    const waterPill = mk('button', 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
+      'border-radius:14px;border:2px solid #29a8ff;background:rgba(10,14,20,.72);color:#f4f6fb;' +
+      'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;');
+    const paintWater = () => {
+      waterPill.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' +
+        (waterOn ? '#29a8ff' : 'transparent') + ';border:1px solid #29a8ff"></span>💧 WATER ' + (waterOn ? 'ON' : 'OFF') +
+        (waterOn ? ' · <span style="color:#6f95ff">■ pond</span> <span style="color:#00d5ff">■ runoff</span> ' +
+          '<span style="color:#ffb000">■ flat</span>' : '');
     };
-    placePills();
+    tap(waterPill, () => {
+      waterOn = !waterOn;
+      if (renderer.field && renderer.field.setWater) renderer.field.setWater(waterOn);
+      for (const p of pitches) if (p.cells) p.cells.visible = waterOn;
+      paintWater();
+    });
+    paintWater();
+    pillBox.appendChild(waterPill);
+    document.body.appendChild(pillBox);
     const paintPill = (p) => {
       const b = pills[p.id], hex = !p.ev ? '#8899aa' : p.ev.ok ? '#33ff66' : '#ff3344';
       b.style.borderColor = hex;
       b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' + hex + '"></span>' +
         '📐 ' + p.id + ' ' + p.size[0] + '×' + p.size[1] +
-        (p.ev ? ' · ' + p.ev.w.rating.toFixed(1) + '/10 · ' + (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : ' · tap to plan');
+        (p.ev ? ' · water ' + p.ev.w.pct.toFixed(0) + '% · ' + (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : ' · tap to plan');
     };
     for (const p of pitches) paintPill(p);
 
@@ -350,7 +395,7 @@
             '</span>').join('<br>');
         rows[p.id].parentNode.style.background = p === sel ? 'rgba(255,255,255,.12)' : 'transparent';
         rows[p.id].innerHTML = '<b>' + (p === sel ? '▶ ' : '') + p.id + ' ' + p.size[0] + '×' + p.size[1] + ' yd</b> · ' +
-          p.rot.toFixed(0) + '° · water <b>' + w.rating.toFixed(1) + '/10</b> (pond ' + pct('pond') + ', runoff ' +
+          p.rot.toFixed(0) + '° · water <b>' + w.pct.toFixed(0) + '%</b> (pond ' + pct('pond') + ', runoff ' +
           pct('flow') + ', flat ' + pct('flat') + ')' +
           (ev.infield != null ? '<br><span style="opacity:.85">⚾ main diamond infield: ' +
             (ev.infield <= 0 ? 'overlapping' : fmt(ev.infield) + ' away') + '</span>' : '') + '<br>' + why;
@@ -379,19 +424,16 @@
       rig.user.pitch = 1.2;
     }
 
-    function setOn(v) {
-      on = v;
-      if (renderer.field.hideCandidates) renderer.field.hideCandidates(on);
-      btn.style.background = on ? 'rgba(255,204,0,.5)' : '';
-      panel.style.display = on ? 'block' : 'none';
-      if (on) for (const p of pitches) if (!p.g) rebuild(p);
-      for (const p of pitches) if (p.g) p.g.visible = on;
-      if (on) { update(); flyTo(sel); }
+    // On by default: wait for the field, build, frame both pitches.
+    function start() {
+      if (!renderer.field || !renderer.field.site) { setTimeout(start, 300); return; }
+      on = true;
+      for (const p of pitches) rebuild(p);
+      update();
+      flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
+              size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
     }
-    tap(btn, () => {
-      if (!renderer.field || !renderer.field.site) return;   // field still loading
-      setOn(!on);
-    });
+    start();
 
     // Screen point -> site metres on the ground plane.
     const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),

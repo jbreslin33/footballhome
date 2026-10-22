@@ -699,6 +699,10 @@
       addRibbon(layers.chalk[0], c.concat([c[0]]), 0.12, layers.chalk[2]);
     }
 
+    // WATER layer (button): James's flood areas + lidar runoff channels;
+    // pitch-planner.js adds live per-m² cells inside the dragged pitches.
+    const waterLayer = new THREE.Group();
+    site.add(waterLayer);
     if (L.flood && L.flood.length) {
       // Standing water: translucent blue, drawn over grass AND the game
       // pitch (which sits at y 0.05 with its own polygon offset).
@@ -709,93 +713,8 @@
           opacity: f.opacity || 0.45, roughness: 0.15, metalness: 0.1, depthWrite: false,
           side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
         wm.renderOrder = 30;
-        site.add(wm);
+        waterLayer.add(wm);
       }
-    }
-    const fillObjs = [];
-    for (const d of (L.drains || [])) {
-      // Proposed interceptor drains: brown gravel strip, 1.2 m.
-      const mg = new Merge();
-      addRibbon(mg, d.pts, 1.2, 0.38);
-      const dm = mg.mesh(new THREE.MeshBasicMaterial({ color: 0x8a5a2b, side: THREE.DoubleSide,
-        depthWrite: false, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -33 }));
-      dm.renderOrder = 44;
-      site.add(dm);
-      planAOverlay.push(dm);
-    }
-    for (const f of (L.fill || [])) {
-      // Built-up dirt: a low raised pad, drawn over the water and pitch.
-      const g = new THREE.ExtrudeGeometry(shapeOf(f.pts), { depth: f.raise || 0.15, bevelEnabled: false });
-      g.applyMatrix4(FLAT);
-      const pad = new THREE.Mesh(g, std(0x8a6a4a, { roughness: 1 }));
-      pad.position.y = 0.05;
-      pad.renderOrder = 32;
-      pad.receiveShadow = pad.castShadow = true;
-      site.add(pad);
-      fillObjs.push(pad);
-    }
-    const candObjs = {}, candOn = {};
-    let candHidden = false;
-    // Name label flat on the grass at a candidate's (or proposed 7v7's) centre.
-    const candLabel = (cd) => {
-      const cv = document.createElement('canvas');
-      cv.width = 512; cv.height = 96;
-      const c2 = cv.getContext('2d');
-      c2.font = 'bold 56px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
-      c2.lineWidth = 10; c2.strokeStyle = 'rgba(0,0,0,0.85)'; c2.strokeText(cd.label, 256, 48);
-      c2.fillStyle = '#' + cd.color.toString(16).padStart(6, '0'); c2.fillText(cd.label, 256, 48);
-      const lab = new THREE.Mesh(new THREE.PlaneGeometry(24, 4.5),
-        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
-          depthWrite: false, depthTest: false }));
-      lab.rotation.x = -Math.PI / 2;
-      lab.position.set(cd.x, 0.45, cd.z);
-      lab.renderOrder = 45;
-      site.add(lab);
-      return lab;
-    };
-    for (const cd of (L.candidates || [])) {
-      // Candidate pitch spots (water search): coloured outline + halfway +
-      // boxes, drawn over everything, with a name label at the centre.
-      const a = cd.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
-      const at = ([u, v]) => [cd.x + u * ca - v * sa, cd.z + u * sa + v * ca];
-      const mg = new Merge();
-      const ln = (pts) => addRibbon(mg, pts.map(at), 0.45, 0.4);
-      const l = cd.length / 2, w = cd.width / 2;
-      ln([[-l, -w], [l, -w], [l, w], [-l, w], [-l, -w]]);
-      ln([[0, -w], [0, w]]);
-      for (const sg of [-1, 1]) {
-        const e = sg * l;
-        ln([[e, -20.16], [e - sg * 16.5, -20.16], [e - sg * 16.5, 20.16], [e, 20.16]]);
-      }
-      const mesh = mg.mesh(new THREE.MeshBasicMaterial({ color: cd.color, side: THREE.DoubleSide,
-        depthWrite: false, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -34 }));
-      mesh.renderOrder = 44;
-      site.add(mesh);
-      candObjs[cd.id] = [mesh, candLabel(cd)];
-    }
-    for (const sv of (L.sevens || [])) {
-      // Planned 7v7s: chalk outline, halfway, centre circle, goal areas.
-      const a = sv.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
-      const at = ([u, v]) => [sv.x + u * ca - v * sa, sv.z + u * sa + v * ca];
-      const chalk = new Merge();
-      const ln = (pts) => addRibbon(chalk, pts.map(at), sv.id ? 0.45 : 0.15, 0.08);
-      const l = sv.length / 2, w = sv.width / 2;
-      ln([[-l, -w], [l, -w], [l, w], [-l, w], [-l, -w]]);
-      ln([[0, -w], [0, w]]);
-      const c = [];
-      for (let k = 0; k <= 32; k++) c.push([Math.cos(k / 16 * Math.PI) * 6.4, Math.sin(k / 16 * Math.PI) * 6.4]);
-      ln(c);
-      for (const sg of [-1, 1]) {
-        const e = sg * l;
-        ln([[e, -9], [e - sg * 9, -9], [e - sg * 9, 9], [e, 9]]);
-      }
-      // Over the game pitch too (the 7v7s sit across the 11v11's halves).
-      // A proposed 7v7 (has an id) draws in its colour and gets a pill.
-      const cm = chalk.mesh(new THREE.MeshBasicMaterial({ color: sv.id ? sv.color : 0xdff4ff, side: THREE.DoubleSide,
-        polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -26 }));
-      cm.renderOrder = 31;
-      site.add(cm);
-      if (sv.id) candObjs[sv.id] = [cm, candLabel(sv)];
     }
     if (L.oldPitch) {
       // The 11v11 pitch painted today (Google imagery), full markings in
@@ -1035,31 +954,7 @@
         mesh.renderOrder = 43;
         drainage.add(mesh);
       }
-      site.add(drainage);
-    }
-    // Water problems on the planned pitch, per square metre (lidar): blue =
-    // standing water, cyan = runoff crossing, amber = too flat (< 0.5 %).
-    if (DR && DR.pitch && DR.pitch.cells.length) {
-      const KIND = { pond: [0x1e5bff, 0.75], flow: [0x00d5ff, 0.6], flat: [0xffb000, 0.35] };
-      const th = ((LAY.realPitch || gp).rotDeg) * D2R, ca = Math.cos(th), sa = Math.sin(th);
-      for (const kind of Object.keys(KIND)) {
-        const mg = new Merge();
-        for (const c of DR.pitch.cells) {
-          if (c[2] !== kind) continue;
-          const corner = (u, v) => [c[0] + u * ca - v * sa, c[1] + u * sa + v * ca];
-          const a = corner(-0.5, -0.5), b = corner(0.5, -0.5), d2 = corner(0.5, 0.5), e2 = corner(-0.5, 0.5);
-          mg.tri(a, b, d2, 0.34);
-          mg.tri(a, d2, e2, 0.34);
-        }
-        if (!mg.pos.length) continue;
-        const mesh = mg.mesh(new THREE.MeshBasicMaterial({ color: KIND[kind][0], transparent: true,
-          opacity: KIND[kind][1], depthWrite: false, side: THREE.DoubleSide, polygonOffset: true,
-          polygonOffsetFactor: -8, polygonOffsetUnits: -30 }));
-        mesh.renderOrder = 42;
-        if (!drainage) { drainage = new THREE.Group(); site.add(drainage); }
-        drainage.add(mesh);
-        planAOverlay.push(mesh);
-      }
+      waterLayer.add(drainage);
     }
     const cityContours = CT && CT.city2ft && CT.city2ft.length
       ? footContours(CT.city2ft, 0xff7a1a, '#ffb066', 60) : null;
@@ -1070,26 +965,14 @@
       site,   // site-metre group (pitch-planner.js draws into it)
       // Contours. mode: 'lidar' (10 cm from USGS 3DEP; white every half
       // metre), 'city' (2 ft), 'topo' (USGS topo map, 10 ft), 'all', 'off'.
-      // Runoff channels show with every mode but 'off'.
+      // Runoff channels live in the WATER layer (setWater).
       setContours(mode) {
         if (contours) contours.visible = mode === 'lidar' || mode === 'all';
         if (cityContours) cityContours.visible = mode === 'city' || mode === 'all';
         if (topoContours) topoContours.visible = mode === 'topo' || mode === 'all';
-        if (drainage) drainage.visible = mode !== 'off';
       },
-      // Candidate pitch spot on/off (layout.candidates[].id).
-      setCandidate(id, on) {
-        candOn[id] = !!on;
-        for (const o of (candObjs[id] || [])) o.visible = !!on && !candHidden;
-        if (id === (LAY.gamePitchCandidate || 'A')) for (const o of planAOverlay) o.visible = !!on;
-        if (id === 'A') for (const o of fillObjs) o.visible = !!on;
-      },
-      // 📐 PLAN hides every candidate outline + label (pill states kept).
-      hideCandidates(hidden) {
-        candHidden = !!hidden;
-        for (const id in candObjs)
-          for (const o of candObjs[id]) o.visible = !candHidden && candOn[id] !== false;
-      },
+      waterLayer,
+      setWater(on) { waterLayer.visible = !!on; },
       // Leaves: false = see-through wire canopy (default), true = solid.
       setLeaves(on) {
         if (leavesWire) leavesWire.visible = !on;

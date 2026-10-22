@@ -9,17 +9,19 @@ planner does the placement sweep, which in Python took minutes (James,
 Writes two files into OUT_DIR (default: LH_SCRATCH or /tmp/lighthouse-water/):
   obstacles.txt — one rule per line, site metres (x east, z south):
     poly    <name> <closed 0|1> <min_m> x z x z ...   rect stays >= min_m off it
+    info    <name> <closed 0|1> <min_m> x z ...       shown as a distance, never checked
     inside  <name> <margin_m> x z ...                 rect inside polygon, margin
     outside <name> x z ...                            no corner/centre inside
     below   <name> <slope_east> x z ...               every corner z < line(x)
     left    <name> x z ...                            every corner x < line(z)
     points  <name> <min_m> x z ...                    e.g. tree crowns
   grid.bin     — int32 x0, z0, nx, nz, then float32 g, filled, acc (row = z)
-Profiles: '11v11' = plan_lighthouse_pitch.py's rules; '7v7' = the kids'
-rules from 10/22 (real rail fences, park boundary, no vendor-line
-extension; the small Erie/Whitaker diamond may be played over).
-Usage: export_lighthouse_planner_input.py 11v11|7v7 [OUT_DIR]   (repo root)
-       export_lighthouse_planner_input.py --js frontend/js/game/lighthouse-planner-data.js [GRID_DIR]
+Profiles: 'site' = every mapped obstacle (both pitch sizes; the main
+infield is distance-only 'info'); 'plan' = plan_lighthouse_pitch.py's
+original 11v11 rules.
+Usage: export_lighthouse_planner_input.py site|plan [OUT_DIR]   (repo root)
+       export_lighthouse_planner_input.py --js frontend/js/game/lighthouse-planner-data.js GRID_DIR FH_FIELD_PLANNER
+         (also sweeps each plannable size for the driest/wettest legal spot)
 """
 import json
 import math
@@ -62,7 +64,14 @@ def box(b):
 
 
 def rules(profile):
-    out = [line('poly', 'main_infield', 1, P.YD15, pts=P.MAIN_DIRT),
+    """profile: 'site' = every mapped obstacle, used for both pitch sizes
+    since 10/22 (11v11 and 7v7 are dragged around the same park); 'plan' =
+    plan_lighthouse_pitch.py's original 11v11 rules (vendor line extended
+    east, 15 yd off the main infield), kept to reproduce its search.
+    In 'site' the main infield is 'info' — distance only (James: "don't do
+    15 yards from main diamond just show how far"); the sweep ignores it."""
+    main = 'poly' if profile == 'plan' else 'info'
+    out = [line(main, 'main_infield', 1, P.YD15, pts=P.MAIN_DIRT),
            line('poly', 'softball_skin', 1, 0.3, pts=P.SKIN),
            line('poly', 'fence_3B', 0, P.FT10, pts=P.FENCE_3B),
            line('poly', 'backstop_1B', 0, P.FT10, pts=P.BACKSTOP_1B),
@@ -70,7 +79,7 @@ def rules(profile):
            line('poly', 'rodeo', 0, P.FT10, pts=P.RODEO),
            line('left', 'west_of_rodeo', pts=P.RODEO),
            line('points', 'trees', 2.0, pts=P.trees)]
-    if profile == '11v11':
+    if profile == 'plan':
         out.append(line('below', 'north_of_vendor', P.VENDOR_SLOPE, pts=P.VENDOR))
     else:
         site = P.load_js('frontend/js/game/lighthouse-site.js')
@@ -103,7 +112,7 @@ def parse(rule_line):
     t = rule_line.split()
     r = {'k': t[0], 'n': t[1]}
     i = 2
-    if r['k'] == 'poly':
+    if r['k'] in ('poly', 'info'):
         r['c'], r['min'], i = int(t[2]), float(t[3]), 4
     elif r['k'] in ('inside', 'points'):
         r['min'], i = float(t[2]), 3
@@ -114,7 +123,23 @@ def parse(rule_line):
     return r
 
 
-def write_js(path):
+def sweep_ranges(binary, d):
+    """Driest / wettest legal water score per m² for each plannable size,
+    from the C++ sweep (2 m x 2°, whole park) — the planner's 100 % / 0 %."""
+    out = {}
+    for L, W in ((115, 74), (70, 35), (65, 35), (60, 35), (55, 35), (60, 30)):
+        res = subprocess.run([binary, os.path.join(d, 'obstacles.txt'), os.path.join(d, 'grid.bin'),
+                              '--size', '%d,%d' % (L, W), '--rot', '0,180,2', '--step', '2',
+                              '--box', '-120,130,-140,95', '--top', '100000000'],
+                             capture_output=True, check=True, text=True).stdout.splitlines()
+        area = L * W * 0.9144 ** 2
+        dens = [float(r.split('\t')[7]) / area for r in res[1:-1]]
+        out['%dx%d' % (L, W)] = {'best': round(min(dens), 5), 'worst': round(max(dens), 5), 'legal': len(dens)}
+        print(L, W, out['%dx%d' % (L, W)], flush=True)
+    return out
+
+
+def write_js(path, ranges):
     """Both profiles + a per-cell water class grid for the in-game
     drag-and-drop planner (frontend/js/game/pitch-planner.js): 0 dry,
     1 pond (pit-filled > 1 cm), 2 runoff (>= 150 m² upslope), 3 flat
@@ -138,7 +163,7 @@ def write_js(path):
                     c = 3
             row.append(str(c))
         rows.append(''.join(row))
-    data = {'profiles': {p: [parse(r) for r in rules(p)] for p in ('11v11', '7v7')},
+    data = {'rules': [parse(r) for r in rules('site')], 'ranges': ranges,
             'grid': {'x0': W.X0, 'z0': W.Z0, 'nx': nx, 'nz': nz, 'cls': ''.join(rows)}}
     with open(path, 'w') as fh:
         fh.write('// GENERATED by game/scripts/export_lighthouse_planner_input.py --js — do not hand-edit.\n'
@@ -151,11 +176,17 @@ def main():
     if sys.argv[1] == '--js':
         d = sys.argv[3] if len(sys.argv) > 3 else os.environ.get('LH_SCRATCH', '/tmp/lighthouse-water/')
         os.environ['LH_SCRATCH'] = d.rstrip('/') + '/'
-        write_js(sys.argv[2])
+        # --js OUT GRID_DIR fh-field-planner-binary
+        export(d, 'site')
+        write_js(sys.argv[2], sweep_ranges(sys.argv[4], d))
         return
     profile = sys.argv[1]
     d = sys.argv[2] if len(sys.argv) > 2 else os.environ.get('LH_SCRATCH', '/tmp/lighthouse-water/')
     os.environ['LH_SCRATCH'] = d.rstrip('/') + '/'
+    export(d, profile)
+
+
+def export(d, profile):
     import search_lighthouse_pitch_water as W  # cached lidar grids (fetches once)
     with open(os.path.join(d, 'obstacles.txt'), 'w') as fh:
         fh.write('\n'.join(rules(profile)) + '\n')
