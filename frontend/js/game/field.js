@@ -753,25 +753,61 @@
     }
     if (buildings.pos.length) site.add(buildings.mesh(std(0xc9c4ba), { cast: true }));
 
-    // ── trees (instanced, from imagery) ─────────────────────────────────
+    // ── trees: one per detected crown [x, z, crown radius] ─────────────
+    // Trunk at the crown centre; limbs + twigs as real geometry; leaves
+    // default to a see-through wire canopy (you can see the play through
+    // the tree line but know the tree is there) — setLeaves(true) swaps in
+    // solid foliage.
+    let leavesWire = null, leavesSolid = null;
     if (TREES.length) {
-      const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.25, 0.35, 3, 6),
-                                             std(0x5b4636), TREES.length);
-      const crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(3.4, 1),
+      const wood = new Merge();
+      const cyl = new THREE.CylinderGeometry(0.6, 1, 1, 5, 1, true);
+      const up = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
+      const limb = (ax, ay, az, bx, by, bz, r0) => {
+        dir.set(bx - ax, by - ay, bz - az);
+        const len = dir.length();
+        Q.setFromUnitVectors(up, dir.normalize());
+        M.compose(Pv.set((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2), Q, S.set(r0, len, r0));
+        wood.add(cyl, M);
+      };
+      const wireC = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ color: 0x5fae4a, wireframe: true, transparent: true, opacity: 0.45 }),
+        TREES.length);
+      const solidC = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1),
         std(0x2f6b2a, { roughness: 1, flatShading: true }), TREES.length);
       const col = new THREE.Color();
-      TREES.forEach(([x, z], i) => {
-        const k = 0.85 + rnd() * 0.6;
-        const jx = x + (rnd() - 0.5) * 2, jz = z + (rnd() - 0.5) * 2;
-        M.compose(Pv.set(jx, 1.5 * k, jz), Q, S.set(k, k, k));
-        trunks.setMatrixAt(i, M);
-        M.compose(Pv.set(jx, 5.2 * k, jz), Q, S.set(k * 1.1, k, k * 1.1));
-        crowns.setMatrixAt(i, M);
+      const I = new THREE.Quaternion();
+      TREES.forEach((t, i) => {
+        const [x, z] = t, r = t[2] || 3.4;
+        const H = Math.min(22, Math.max(5, 4 + 1.7 * r));
+        const trunkH = 0.45 * H, crownHalf = 0.55 * H / 2, cy = trunkH + crownHalf;
+        const tr = 0.12 + 0.035 * r;
+        limb(x, 0, z, x, trunkH + 0.4, z, tr);
+        const nL = 5 + (r > 5 ? 2 : 0);
+        for (let k = 0; k < nL; k++) {
+          const a = (k / nL) * Math.PI * 2 + rnd() * 0.6;
+          const sy = trunkH * (0.75 + rnd() * 0.25);
+          const ex = x + Math.cos(a) * r * 0.85, ez = z + Math.sin(a) * r * 0.85;
+          const ey = cy + (rnd() - 0.3) * crownHalf * 0.9;
+          limb(x, sy, z, ex, ey, ez, tr * 0.45);
+          for (let j = 0; j < 2; j++) {          // twigs off each limb
+            const f = 0.55 + rnd() * 0.3;
+            const bx = x + (ex - x) * f, by = sy + (ey - sy) * f, bz = z + (ez - z) * f;
+            const ta = a + (j ? 0.7 : -0.7);
+            limb(bx, by, bz, bx + Math.cos(ta) * r * 0.35, by + crownHalf * 0.35, bz + Math.sin(ta) * r * 0.35, tr * 0.18);
+          }
+        }
+        M.compose(Pv.set(x, cy, z), I, S.set(r, crownHalf, r));
+        wireC.setMatrixAt(i, M);
+        solidC.setMatrixAt(i, M);
         col.setHSL(0.27 + rnd() * 0.05, 0.45, 0.22 + rnd() * 0.08);
-        crowns.setColorAt(i, col);
+        solidC.setColorAt(i, col);
       });
-      trunks.castShadow = crowns.castShadow = true;
-      site.add(trunks, crowns);
+      const woodMesh = wood.mesh(std(0x5b4636, { side: THREE.DoubleSide }), { cast: true });
+      solidC.castShadow = true;
+      solidC.visible = false;
+      site.add(woodMesh, wireC, solidC);
+      leavesWire = wireC; leavesSolid = solidC;
     }
 
     // ── cemetery headstones ─────────────────────────────────────────────
@@ -811,6 +847,11 @@
 
     for (const d of details) d.obj.visible = false;
     return {
+      // Leaves: false = see-through wire canopy (default), true = solid.
+      setLeaves(on) {
+        if (leavesWire) leavesWire.visible = !on;
+        if (leavesSolid) leavesSolid.visible = !!on;
+      },
       update(camera, t) {
         for (const d of details) {
           const near = Math.hypot(camera.position.x - d.x, camera.position.z - d.z) <

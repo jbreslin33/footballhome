@@ -360,10 +360,26 @@
     for (const ev of ['mouseup', 'mouseleave', 'touchend', 'touchcancel'])
       el.addEventListener(ev, stop);
   }
+  // Trees: see-through wire leaves by default; LEAVES button or L shows
+  // solid foliage.
+  const leavesBtn = document.getElementById('btn-leaves');
+  let leavesOn = false;
+  const toggleLeaves = () => {
+    leavesOn = !leavesOn;
+    if (renderer.field && renderer.field.setLeaves) renderer.field.setLeaves(leavesOn);
+    if (leavesBtn) leavesBtn.textContent = leavesOn ? 'LEAVES ON' : 'LEAVES OFF';
+  };
+  if (leavesBtn) {
+    leavesBtn.addEventListener('click', toggleLeaves);
+    leavesBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation(); toggleLeaves();
+    });
+  }
   const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'c' && !e.repeat) renderer.rig.cycle();
+    if (k === 'l' && !e.repeat) toggleLeaves();
     if (k === '+' || k === '=') zoomBy(0.85);
     if (k === '-' || k === '_') zoomBy(1 / 0.85);
     if (k >= '1' && k <= '6' && !e.repeat) renderer.rig.setMode(CAMS[+k - 1]);
