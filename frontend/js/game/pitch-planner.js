@@ -24,9 +24,8 @@
 
   const YD = 0.9144, FT = 0.3048, D2R = Math.PI / 180;
   const GAP = 10 * YD;                       // between the two pitches
-  // Rules shown as a distance only, never an offence (James, 10/22: "don't
-  // do 15 yards from main diamond just show how far").
-  const INFO = { main_infield: true };
+  // Rules shown as a distance only, never an offence ('info' kind).
+  const INFO = {};
   const SEVEN_SIZES = [[70, 35], [65, 35], [60, 35], [55, 35], [60, 30]];
   const NAMES = {
     main_infield: 'main diamond infield', softball_skin: 'softball infield dirt',
@@ -172,10 +171,11 @@
     const rp = LAY.realPitch || { x: 30, z: -33.5, rotDeg: 155 };
     const pitches = [
       { id: '11v11', size: [115, 74], x: rp.x, z: rp.z, rot: rp.rotDeg },
-      // Driest legal 70 x 35 >= 10 yd off cyan (sweep, 10/22): beside the
-      // main diamond, 31 yd off cyan.
-      { id: '7v7', size: SEVEN_SIZES[0], x: -73, z: -9, rot: 52 },
+      // Starts on the driest legal 70 x 35 (⭐ BEST's spot).
+      { id: '7v7', size: SEVEN_SIZES[0], x: 0, z: 0, rot: 0 },
     ];
+    const best7 = DATA.ranges['70x35'] && DATA.ranges['70x35'].at;
+    if (best7) [pitches[1].x, pitches[1].z, pitches[1].rot] = best7;
     let on = false, sel = pitches[1], drag = null, justDragged = false, waterOn = true;
     const panel = document.createElement('div');
     panel.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:block;' +
@@ -320,7 +320,7 @@
       spotBox.appendChild(save);
     }
     panel.appendChild(mk('div', 'opacity:.7;margin-top:4px;font-size:11px;',
-      'Drag a pitch to move it · ↺ ↻ or [ ] to turn the selected one · red = too close to something (the main diamond is distance only)'));
+      'Drag a pitch to move it · ↺ ↻ or [ ] to turn the selected one · red = too close to something or on a diamond'));
 
     // Outline (4 strips + halfway) and a faint fill, in a group per pitch
     // turned like field.js's boxes, so a drag only moves the group.

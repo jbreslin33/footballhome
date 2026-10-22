@@ -113,17 +113,10 @@ window.LIGHTHOUSE_LAYOUT = {
       water: { pond: 129, flow: 400, flat: 885 }, cemetery: 11.9, infieldYd: 37.6 }
   ],
   // Built-in spots for the pitch planner's 📌 buttons (pitch-planner.js);
-  // spots James saves himself live in his browser. From fh-field-planner,
-  // 1 m x 1° over the whole park, every mapped obstacle (10/22):
+  // spots James saves himself live in his browser. The driest legal spot
+  // of each size is ⭐ BEST (lighthouse-planner-data.js ranges[size].at).
   planSpots: [
-    // Driest legal 11v11 on the lidar (100 %) — but it runs onto the main
-    // diamond's infield dirt.
-    { name: 'Perfect (lidar, over infield dirt)', pitch: '11v11', x: -42, z: -29, rotDeg: 154 },
-    // Driest 11v11 that stays off the main infield dirt.
-    { name: 'Perfect, off the dirt', pitch: '11v11', x: -10, z: -31, rotDeg: 34 },
     { name: 'Cyan plan', pitch: '11v11', x: 30, z: -33.5, rotDeg: 155 },
-    // Driest 70 x 35 >= 10 yd off cyan — only fits over the main infield.
-    { name: 'Driest 10 yd off cyan', pitch: '7v7', size: [70, 35], x: -73, z: -9, rotDeg: 52 },
   ],
   // Planned 7v7 pitches, 70 x 35 yd (64.0 x 32.0 m), laid ACROSS the
   // planned 11v11, one in each half (the usual small-sided layout): each

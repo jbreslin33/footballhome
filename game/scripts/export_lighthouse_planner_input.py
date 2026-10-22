@@ -68,17 +68,21 @@ def rules(profile):
     since 10/22 (11v11 and 7v7 are dragged around the same park); 'plan' =
     plan_lighthouse_pitch.py's original 11v11 rules (vendor line extended
     east, 15 yd off the main infield), kept to reproduce its search.
-    In 'site' the main infield is 'info' — distance only (James: "don't do
-    15 yards from main diamond just show how far"); the sweep ignores it."""
-    main = 'poly' if profile == 'plan' else 'info'
-    out = [line(main, 'main_infield', 1, P.YD15, pts=P.MAIN_DIRT),
+    In 'site' the main infield only has to be kept off (no 15 yd buffer:
+    James, "don't do 15 yards from main diamond just show how far")."""
+    # Main infield: 'plan' = 15 yd off; 'site' = just off it (James: "best
+    # can't overlap baseball field or softball"), no 15 yd buffer.
+    out = [line('poly', 'main_infield', 1, P.YD15 if profile == 'plan' else 0.3, pts=P.MAIN_DIRT),
            line('poly', 'softball_skin', 1, 0.3, pts=P.SKIN),
            line('poly', 'fence_3B', 0, P.FT10, pts=P.FENCE_3B),
            line('poly', 'backstop_1B', 0, P.FT10, pts=P.BACKSTOP_1B),
            line('poly', 'vendor', 0, P.FT10, pts=P.VENDOR),
            line('poly', 'rodeo', 0, P.FT10, pts=P.RODEO),
            line('left', 'west_of_rodeo', pts=P.RODEO),
-           line('points', 'trees', 2.0, pts=P.trees)]
+           # Trunk only, not canopy (James, 10/22: "tree root only counts not
+           # branches"): the crown point is the trunk; 0.5 m for trunk +
+           # root flare. 'plan' keeps the planner's original 2 m.
+           line('points', 'trees', 2.0 if profile == 'plan' else 0.5, pts=P.trees)]
     if profile == 'plan':
         out.append(line('below', 'north_of_vendor', P.VENDOR_SLOPE, pts=P.VENDOR))
     else:
