@@ -375,11 +375,26 @@
       e.preventDefault(); e.stopPropagation(); toggleLeaves();
     });
   }
+  // Ground contours (lidar, 10 cm): CONTOURS button or K.
+  const contoursBtn = document.getElementById('btn-contours');
+  let contoursOn = true;
+  const toggleContours = () => {
+    contoursOn = !contoursOn;
+    if (renderer.field && renderer.field.setContours) renderer.field.setContours(contoursOn);
+    if (contoursBtn) contoursBtn.textContent = contoursOn ? 'CONTOURS ON' : 'CONTOURS OFF';
+  };
+  if (contoursBtn) {
+    contoursBtn.addEventListener('click', toggleContours);
+    contoursBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation(); toggleContours();
+    });
+  }
   const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'c' && !e.repeat) renderer.rig.cycle();
     if (k === 'l' && !e.repeat) toggleLeaves();
+    if (k === 'k' && !e.repeat) toggleContours();
     if (k === '+' || k === '=') zoomBy(0.85);
     if (k === '-' || k === '_') zoomBy(1 / 0.85);
     if (k >= '1' && k <= '6' && !e.repeat) renderer.rig.setMode(CAMS[+k - 1]);

@@ -892,7 +892,34 @@
     }
 
     for (const d of details) d.obj.visible = false;
+    // ── ground contours (USGS 3DEP lidar, 10 cm) ─────────────────────────
+    let contours = null;
+    const CT = window.LIGHTHOUSE_CONTOURS;
+    if (CT && CT.levels.length) {
+      const pos = [], colA = [];
+      const lo = CT.levels[0].z, hi = CT.levels[CT.levels.length - 1].z;
+      const c = new THREE.Color(), cLo = new THREE.Color(0x1f5fd6), cHi = new THREE.Color(0xd9a441);
+      for (const lv of CT.levels) {
+        const major = Math.abs(lv.z * 2 - Math.round(lv.z * 2)) < 1e-6;   // every 0.5 m
+        if (major) c.set(0xffffff); else c.copy(cLo).lerp(cHi, (lv.z - lo) / (hi - lo || 1));
+        const s = lv.s;
+        for (let k = 0; k < s.length; k += 4) {
+          pos.push(s[k], 0.3, s[k + 1], s[k + 2], 0.3, s[k + 3]);
+          colA.push(c.r, c.g, c.b, c.r, c.g, c.b);
+        }
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(colA, 3));
+      contours = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true,
+        transparent: true, opacity: 0.85, depthWrite: false }));
+      contours.renderOrder = 40;
+      site.add(contours);
+    }
+
     return {
+      // Contours: 10 cm ground contours on/off (white = every half metre).
+      setContours(on) { if (contours) contours.visible = !!on; },
       // Leaves: false = see-through wire canopy (default), true = solid.
       setLeaves(on) {
         if (leavesWire) leavesWire.visible = !on;
