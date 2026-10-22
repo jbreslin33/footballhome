@@ -82,6 +82,12 @@ window.LIGHTHOUSE_LAYOUT = {
   // Google prints them (measured on two zoom levels, agree within 0.5 m),
   // painted flat on the grass north-up to help orient the game view.
   labels: [{ text: '260', x: 32.8, z: -54.9, size: 8 }],
+  // FILL (James, 10/22): build up with dirt the little triangle where the
+  // flood strip clips the planned 11v11's south-west corner — out to the
+  // 15 yd wet line: 109 m² (131 sq yd), running 25 yd up the west
+  // touchline from the corner and 11 yd in along the goal line. 6 in of
+  // dirt = 16.7 m³ (21.8 cu yd); 12 in = 33.3 m³ (43.6 cu yd).
+  fill: [{ name: 'built-up dirt, 11v11 south-west corner', raise: 0.15, pts: [[-1.8, 23.63], [-12.19, 29.32], [-10.66, 7.45]] }],
   // Planned 7v7 pitches, 70 x 35 yd (64.0 x 32.0 m), placed by search
   // around the planned 11v11 (James, 10/22):
   //  - rodeo end: 10 ft off the softball 1st-base fence AND 10 ft off the

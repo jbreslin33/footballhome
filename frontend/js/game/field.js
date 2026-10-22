@@ -710,6 +710,16 @@
         site.add(wm);
       }
     }
+    for (const f of (L.fill || [])) {
+      // Built-up dirt: a low raised pad, drawn over the water and pitch.
+      const g = new THREE.ExtrudeGeometry(shapeOf(f.pts), { depth: f.raise || 0.15, bevelEnabled: false });
+      g.applyMatrix4(FLAT);
+      const pad = new THREE.Mesh(g, std(0x8a6a4a, { roughness: 1 }));
+      pad.position.y = 0.05;
+      pad.renderOrder = 32;
+      pad.receiveShadow = pad.castShadow = true;
+      site.add(pad);
+    }
     for (const sv of (L.sevens || [])) {
       // Planned 7v7s: chalk outline, halfway, centre circle, goal areas.
       const a = sv.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
