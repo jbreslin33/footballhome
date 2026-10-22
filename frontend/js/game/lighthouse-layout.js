@@ -106,7 +106,7 @@ window.LIGHTHOUSE_LAYOUT = {
   candidates: [
     { id: 'A', label: 'A 0/10', name: 'plan A (fences)', color: 0xffffff, x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67,
       water: { pond: 175, flow: 386, flat: 1336 }, cemetery: 35.5, infieldYd: 16.6 },
-    { id: '1', label: '1 10/10', name: 'driest', color: 0xff3b3b, x: 21, z: -60, rotDeg: 145, length: 105.16, width: 67.67,
+    { id: '1', label: '1 10/10', name: "driest — the old-timers' spot", color: 0xff3b3b, x: 21, z: -60, rotDeg: 145, length: 105.16, width: 67.67,
       water: { pond: 109, flow: 357, flat: 900 }, cemetery: 4.6, infieldYd: 26.9 },
     { id: '2', label: '2 8.1/10', name: 'dry + room', color: 0x7dff3b, x: 24, z: -42, rotDeg: 155, length: 105.16, width: 67.67,
       water: { pond: 120, flow: 391, flat: 905 }, cemetery: 29.4, infieldYd: 16.5 },
