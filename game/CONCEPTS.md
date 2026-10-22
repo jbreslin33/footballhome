@@ -49,9 +49,10 @@ underfoot), `shield_ball` (body between man and ball), `scan_before_receive`
 (open body shape to play forward), `beat_man_1v1` (v1's Feint behavior,
 archived and tested).
 
-**Individual, defending** — `block_shot_line` (defend the shooting lane
-inside the box — G4.21 measured the need: defenders DELAY all the way into
-their own six-yard box, so raising the shot bar only moved shots closer).
+**Individual, defending** — `block_shot_line` (no delay within shooting
+range + a body in the lane; built in G4.22, parked on branch
+`game/g4-block-shot-wip` until ball-winning lands — DESIGN.md §8.17),
+`win_duel` (dispossess a moving dribbler: the G4.22 root cause).
 
 **Group (2–4 players)** — `wall_pass` (the return-ball half of give-and-go
 under an opponent), 

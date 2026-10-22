@@ -713,19 +713,49 @@ goals are now mostly built, not scrambled (semipro 21 of 40 counters, 4
 scrambles). Bands green; 11v11 golden re-locked (0xb80b68b7…; 3v3
 unchanged).
 
-**But shot VOLUME didn't move (world ~276/match vs real ~25), and the
-bar sweep says why:** u45/p30 → world 4.5 goals, u60/p40 → 16.2, u80/p55
-→ 31.8 — shots flat at ~240-276 throughout. A carrier who declines the
-range shot dribbles on into the 8 m always-shoot zone, unopposed:
-defenders DELAY (jockey 2.2 m goal-side, backing off) all the way into
-their own six-yard box. Volume is a box-DEFENDING problem. Shipped at
-the safe 30/18 point.
+**But shot VOLUME didn't move (world ~276/match vs real ~25):** the bar
+sweep (u45/p30 → world 4.5 goals, u60/p40 → 16.2, u80/p55 → 31.8, shots
+flat at ~240-276) showed a carrier who declines one shot gets a better
+one later. Shipped at the safe 30/18 point. *(The diagnosis first written
+here — "defenders delay into their own six-yard box" — was WRONG; G4.22
+measured it. See §8.17.)*
 
-**Next — box defending (`block_shot_line` + no-delay-in-the-box):**
-inside ~18 m of goal the jockey must STEP and the nearest free defender
-blocks the shot lane. Target: shots → tens per match, conversion → ~10%
-(today ~1%: keepers save a flood of poor shots), then keeper reaction
-re-tuned against real volume.
+### 8.17 G4.22 — the shot flood is a ball-winning problem (investigation)
+
+No behavior shipped; the harness grew shot anatomy (depth bucket +
+nearest defender at the strike) and the record is corrected. Measured
+(world mirrors):
+
+- **Shots are NOT box shots:** <8 m 1 / 8-16.5 m 11 / beyond the box
+  **267** per match; a defender within 2 m on 68%. G4.21's six-yard-box
+  diagnosis was wrong.
+- **Not a counting artifact** (0 of ~250 shot orders issued while
+  stunned), **not a rebound loop** (~88% of a team's shots come 15 s+
+  after its previous one), **not the per-second roll leak** (home
+  shot-selection forced to 100: 132 vs 136 shots).
+- Tried and measured, all leaving volume at ~240-265: pressed discount
+  only inside the box; a body within 1 m of the shot triangle blocks
+  (moves shots closer: 8-16.5 m 11 → 109); `block-shot` (no delay within
+  25 m of goal, cover man 7 → 2 m in the lane); final-third patience
+  (recycle unpressed). Re-sweeping the bar on top of all of it: world
+  4.7 → 18.5 → 24.9 goals as it rises, shots flat at ~240.
+
+**Conclusion:** each attack ends in exactly ONE shot — the bar only sets
+its quality — because possessions don't end any other way: world
+defenders dispossess a dribbler ~8 times (tackle) + ~70 (steal) per
+match. G4.16/17 made defenders DISCIPLINED (dive less, time it); nothing
+makes them able to WIN it once engaged. Real: ~100 possessions per team
+with ~12% ending in a shot (here ~330 and ~40%).
+
+The defending mechanisms are realistic but alone only cut shot QUALITY
+(world 3.0 → ~1 goal/game), so they're parked on branch
+`game/g4-block-shot-wip` (commit 2f7c404a) for the next slice.
+
+**Next — ball-winning:** duels for a moving dribbler (the touch-tight
+steal needs 10 static ticks inside 0.6 m — a dribbler outruns it),
+engaged-defender tackle success vs the carrier's touch, interceptions of
+the carry, ball out of play. Targets: possessions → ~100-150 per team,
+shots → tens, conversion ~10%; then land the parked block-shot work.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

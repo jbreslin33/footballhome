@@ -128,6 +128,8 @@ int main(int argc, char** argv) {
         long owned_ticks[2] = {0, 0};
         long contested_ticks = 0;
         long shots[2] = {0, 0};
+        long shot_depth[3] = {0, 0, 0};  // <8 m / 8-16.5 / 16.5+
+        long shot_press[3] = {0, 0, 0};  // nearest opp <2 m / 2-5 / 5+
         // Goal anatomy (G4.14): what KIND of goals is each level scoring?
         // Per team: last shot's distance and whether the shooter was past
         // every outfield defender (a breakaway). A goal is attributed to
@@ -258,6 +260,19 @@ int main(int argc, char** argv) {
                             past_all = false;
                     }
                     last_shot_breakaway[team] = past_all;
+                    // Shot anatomy (G4.22): depth bucket + nearest
+                    // defender distance at the moment of the strike.
+                    const double depth = last_shot_dist[team];
+                    ++shot_depth[depth < 8 ? 0 : depth < 16.5 ? 1 : 2];
+                    double nd = 1e9;
+                    for (std::uint8_t j = 0; j < players; ++j) {
+                        if (setup.team_of_slot[j] == team) continue;
+                        const double ox = world.player(j).pos.x.toDouble() - p.pos.x.toDouble();
+                        const double oy = world.player(j).pos.y.toDouble() - p.pos.y.toDouble();
+                        const double dd = std::sqrt(ox * ox + oy * oy);
+                        if (dd < nd) nd = dd;
+                    }
+                    ++shot_press[nd < 2 ? 0 : nd < 5 ? 1 : 2];
                 }
             }
             // Pre-tick state: the Goal event is emitted AFTER the
@@ -381,7 +396,7 @@ int main(int argc, char** argv) {
         total_goals += score[0] + score[1];
         const int goals = score[0] + score[1];
         std::printf(
-            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | lost-kick short %ld ground %ld loft %ld shot %ld other %ld | jitter rev %ld/%ld/%ld flick %ld/%ld/%ld | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
+            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | lost-kick short %ld ground %ld loft %ld shot %ld other %ld | jitter rev %ld/%ld/%ld flick %ld/%ld/%ld | shot depth %ld/%ld/%ld press %ld/%ld/%ld | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
             m, score[0], score[1], owned_ticks[0] * 100 / ticks,
             owned_ticks[1] * 100 / ticks, contested_ticks * 100 / ticks,
             shots[0], shots[1], tk_won, tk_lost, offsides,
@@ -393,6 +408,8 @@ int main(int argc, char** argv) {
             kl_kind[0], kl_kind[1], kl_kind[2], kl_kind[3], kl_kind[4],
             jit_rev[0], jit_rev[1], jit_rev[2],
             jit_flick[0], jit_flick[1], jit_flick[2],
+            shot_depth[0], shot_depth[1], shot_depth[2],
+            shot_press[0], shot_press[1], shot_press[2],
             goals ? scoring_dist_sum / goals : 0.0,
             goals ? keeper_dist_sum / goals : 0.0,
             goals ? keeper_ball_sum / goals : 0.0,
