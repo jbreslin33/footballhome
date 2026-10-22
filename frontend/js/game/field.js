@@ -700,13 +700,15 @@
     if (L.flood && L.flood.length) {
       // Standing water: translucent blue, drawn over grass AND the game
       // pitch (which sits at y 0.05 with its own polygon offset).
-      const water = new Merge();
-      for (const f of L.flood) addFlat(water, f.pts, 0.09);
-      const wm = water.mesh(new THREE.MeshStandardMaterial({ color: 0x2f7bd6, transparent: true,
-        opacity: 0.45, roughness: 0.15, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide,
-        polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
-      wm.renderOrder = 30;
-      site.add(wm);
+      for (const f of L.flood) {
+        const water = new Merge();
+        addFlat(water, f.pts, 0.09);
+        const wm = water.mesh(new THREE.MeshStandardMaterial({ color: 0x2f7bd6, transparent: true,
+          opacity: f.opacity || 0.45, roughness: 0.15, metalness: 0.1, depthWrite: false,
+          side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
+        wm.renderOrder = 30;
+        site.add(wm);
+      }
     }
     for (const sv of (L.sevens || [])) {
       // Planned 7v7s: chalk outline, halfway, centre circle, goal areas.
