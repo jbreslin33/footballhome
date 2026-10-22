@@ -393,6 +393,42 @@
       e.preventDefault(); e.stopPropagation(); toggleContours();
     });
   }
+  // Candidate pitch spots: one pill per spot down the left side (colour,
+  // id, water rating); tap to show/hide it.
+  const cands = (window.LIGHTHOUSE_LAYOUT && window.LIGHTHOUSE_LAYOUT.candidates) || [];
+  if (cands.length) {
+    const box = document.createElement('div');
+    box.id = 'cand-pills';
+    box.style.cssText = 'position:fixed;left:8px;top:84px;display:flex;flex-direction:column;gap:6px;' +
+      'z-index:12;max-height:70vh;overflow-y:auto;';
+    for (const cd of cands) {
+      const hex = '#' + cd.color.toString(16).padStart(6, '0');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.title = cd.name + ' — puddle ' + cd.water.pond + ' m², runoff ' + cd.water.flow + ' m², flat ' +
+        cd.water.flat + ' m²; ' + cd.cemetery + ' m from the cemetery; ' + cd.infieldYd + ' yd off the infield';
+      b.style.cssText = 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
+        'border-radius:14px;border:2px solid ' + hex + ';background:rgba(10,14,20,.72);color:#f4f6fb;' +
+        'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;';
+      let on = true;
+      const paint = () => {
+        b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' +
+          (on ? hex : 'transparent') + ';border:1px solid ' + hex + '"></span>' + cd.label + ' · ' + cd.name;
+        b.style.opacity = on ? '1' : '0.55';
+      };
+      paint();
+      const flip = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        on = !on;
+        if (renderer.field && renderer.field.setCandidate) renderer.field.setCandidate(cd.id, on);
+        paint();
+      };
+      b.addEventListener('click', flip);
+      b.addEventListener('touchstart', flip);
+      box.appendChild(b);
+    }
+    document.body.appendChild(box);
+  }
   const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();

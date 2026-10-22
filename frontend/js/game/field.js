@@ -720,6 +720,40 @@
       pad.receiveShadow = pad.castShadow = true;
       site.add(pad);
     }
+    const candObjs = {};
+    for (const cd of (L.candidates || [])) {
+      // Candidate pitch spots (water search): coloured outline + halfway +
+      // boxes, drawn over everything, with a name label at the centre.
+      const a = cd.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
+      const at = ([u, v]) => [cd.x + u * ca - v * sa, cd.z + u * sa + v * ca];
+      const mg = new Merge();
+      const ln = (pts) => addRibbon(mg, pts.map(at), 0.45, 0.4);
+      const l = cd.length / 2, w = cd.width / 2;
+      ln([[-l, -w], [l, -w], [l, w], [-l, w], [-l, -w]]);
+      ln([[0, -w], [0, w]]);
+      for (const sg of [-1, 1]) {
+        const e = sg * l;
+        ln([[e, -20.16], [e - sg * 16.5, -20.16], [e - sg * 16.5, 20.16], [e, 20.16]]);
+      }
+      const mesh = mg.mesh(new THREE.MeshBasicMaterial({ color: cd.color, side: THREE.DoubleSide,
+        depthWrite: false, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -34 }));
+      mesh.renderOrder = 44;
+      site.add(mesh);
+      const cv = document.createElement('canvas');
+      cv.width = 512; cv.height = 96;
+      const c2 = cv.getContext('2d');
+      c2.font = 'bold 56px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.lineWidth = 10; c2.strokeStyle = 'rgba(0,0,0,0.85)'; c2.strokeText(cd.label, 256, 48);
+      c2.fillStyle = '#' + cd.color.toString(16).padStart(6, '0'); c2.fillText(cd.label, 256, 48);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(24, 4.5),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
+          depthWrite: false, depthTest: false }));
+      lab.rotation.x = -Math.PI / 2;
+      lab.position.set(cd.x, 0.45, cd.z);
+      lab.renderOrder = 45;
+      site.add(lab);
+      candObjs[cd.id] = [mesh, lab];
+    }
     for (const sv of (L.sevens || [])) {
       // Planned 7v7s: chalk outline, halfway, centre circle, goal areas.
       const a = sv.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
@@ -1013,6 +1047,10 @@
         if (cityContours) cityContours.visible = mode === 'city' || mode === 'all';
         if (topoContours) topoContours.visible = mode === 'topo' || mode === 'all';
         if (drainage) drainage.visible = mode !== 'off';
+      },
+      // Candidate pitch spot on/off (layout.candidates[].id).
+      setCandidate(id, on) {
+        for (const o of (candObjs[id] || [])) o.visible = !!on;
       },
       // Leaves: false = see-through wire canopy (default), true = solid.
       setLeaves(on) {

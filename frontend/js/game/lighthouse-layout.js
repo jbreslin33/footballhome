@@ -88,6 +88,28 @@ window.LIGHTHOUSE_LAYOUT = {
   // touchline from the corner and 11 yd in along the goal line. 6 in of
   // dirt = 16.7 m³ (21.8 cu yd); 12 in = 33.3 m³ (43.6 cu yd).
   fill: [{ name: 'built-up dirt, 11v11 south-west corner', raise: 0.15, pts: [[-1.8, 23.63], [-12.19, 29.32], [-10.66, 7.45]] }],
+  // CANDIDATE SPOTS for the 115 x 74 yd pitch (water search, 10/22): every
+  // legal placement (>= 10 ft off both fences, >= 15 yd off the main
+  // infield, off dirt, clear of trees + rodeo fence) scored on the lidar
+  // per m²: 3 x pond + 1.5 x runoff crossing + 0.5 x too-flat (< 0.5 %).
+  // Rating 0-10 = water only (A = plan A = 0, driest = 10). Plan A, pushed
+  // onto the low flat vendor end, is the WETTEST of all 1,278 legal spots.
+  candidates: [
+    { id: 'A', label: 'A 0/10', name: 'plan A (fences)', color: 0xffffff, x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67,
+      water: { pond: 175, flow: 386, flat: 1336 }, cemetery: 35.5, infieldYd: 16.6 },
+    { id: '1', label: '1 10/10', name: 'driest', color: 0xff3b3b, x: 21, z: -60, rotDeg: 145, length: 105.16, width: 67.67,
+      water: { pond: 109, flow: 357, flat: 900 }, cemetery: 4.6, infieldYd: 26.9 },
+    { id: '2', label: '2 8.1/10', name: 'dry + room', color: 0x7dff3b, x: 24, z: -42, rotDeg: 155, length: 105.16, width: 67.67,
+      water: { pond: 120, flow: 391, flat: 905 }, cemetery: 29.4, infieldYd: 16.5 },
+    { id: '3', label: '3 9.2/10', name: 'dry, far from cemetery', color: 0x00e5ff, x: 30, z: -36, rotDeg: 155, length: 105.16, width: 67.67,
+      water: { pond: 96, flow: 389, flat: 951 }, cemetery: 36.4, infieldYd: 19.7 },
+    { id: '4', label: '4 8.1/10', name: 'today\'s angle', color: 0xff9a1a, x: 6, z: -36, rotDeg: 55, length: 105.16, width: 67.67,
+      water: { pond: 115, flow: 437, flat: 800 }, cemetery: 16.3, infieldYd: 18.9 },
+    { id: '5', label: '5 8.3/10', name: 'north-south', color: 0xff3bd5, x: 27, z: -45, rotDeg: 85, length: 105.16, width: 67.67,
+      water: { pond: 123, flow: 353, flat: 985 }, cemetery: 15.1, infieldYd: 27.7 },
+    { id: '6', label: '6 7.5/10', name: 'softball-fence angle', color: 0xa07bff, x: 27, z: -45, rotDeg: 35, length: 105.16, width: 67.67,
+      water: { pond: 129, flow: 400, flat: 885 }, cemetery: 11.9, infieldYd: 37.6 }
+  ],
   // Planned 7v7 pitches, 70 x 35 yd (64.0 x 32.0 m), placed by search
   // around the planned 11v11 (James, 10/22):
   //  - rodeo end: 10 ft off the softball 1st-base fence AND 10 ft off the
