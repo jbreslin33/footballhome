@@ -147,6 +147,19 @@ int main(int argc, char** argv) {
         long last_deflect[2] = {-100000, -100000};
         long last_poke[2] = {-100000, -100000};
         std::uint8_t prev_lk = 0xFF;
+        // Jitter (G4.20, James: "players jitter"): per outfield player,
+        // ORDERED-heading reversals (consecutive move intents > 90° apart)
+        // and go/stop flicker (moving → still → moving inside 3 ticks).
+        // Split by role: the carrier, his nearest teammate, everyone else.
+        long jit_rev[3] = {0, 0, 0}, jit_flick[3] = {0, 0, 0};
+        math::Vec2 prev_mv[32];
+        int still_run[32];
+        bool was_moving[32];
+        for (int k = 0; k < 32; ++k) {
+            prev_mv[k] = math::Vec2{};
+            still_run[k] = 0;
+            was_moving[k] = false;
+        }
         // Counter funnel (G4.18), per team: own-half wins → reached the
         // final third within 10 s with no turnover between → shot in 15 s.
         long fn_wins[2] = {0, 0}, fn_third[2] = {0, 0}, fn_shot[2] = {0, 0};
@@ -175,6 +188,38 @@ int main(int argc, char** argv) {
         for (long t = 0; t < ticks; ++t) {
             for (std::uint8_t s = 0; s < players; ++s) {
                 const ai::Orders o = brain.ordersFor(s, world);
+                if (!world.isKeeper(s)) {
+                    int role = 2;
+                    if (world.ball().owner) {
+                        const std::uint8_t c = *world.ball().owner;
+                        if (c == s) role = 0;
+                        else if (setup.team_of_slot[c] == setup.team_of_slot[s]) {
+                            Fixed64 md = math::lengthSquared(math::Vec2{
+                                world.player(s).pos.x - world.player(c).pos.x,
+                                world.player(s).pos.y - world.player(c).pos.y});
+                            bool nearest = true;
+                            for (std::uint8_t q = 0; q < players && nearest; ++q) {
+                                if (q == s || q == c || setup.team_of_slot[q] != setup.team_of_slot[s]) continue;
+                                const Fixed64 d = math::lengthSquared(math::Vec2{
+                                    world.player(q).pos.x - world.player(c).pos.x,
+                                    world.player(q).pos.y - world.player(c).pos.y});
+                                if (d < md) nearest = false;
+                            }
+                            if (nearest) role = 1;
+                        }
+                    }
+                    const math::Vec2 mv = o.move.move;
+                    const bool moving = mv.x.raw != 0 || mv.y.raw != 0;
+                    if (moving && (prev_mv[s].x.raw != 0 || prev_mv[s].y.raw != 0) &&
+                        math::dot(mv, prev_mv[s]).raw < 0)
+                        ++jit_rev[role];
+                    if (moving && !was_moving[s] && still_run[s] > 0 &&
+                        still_run[s] < 3)
+                        ++jit_flick[role];
+                    if (moving) { prev_mv[s] = mv; still_run[s] = 0; }
+                    else ++still_run[s];
+                    was_moving[s] = moving;
+                }
                 world.setIntent(s, o.move);
                 if (o.action != core::Action::None) world.setAction(s, o.action);
                 if (o.action != core::Action::None && world.ball().owner &&
@@ -336,7 +381,7 @@ int main(int argc, char** argv) {
         total_goals += score[0] + score[1];
         const int goals = score[0] + score[1];
         std::printf(
-            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | lost-kick short %ld ground %ld loft %ld shot %ld other %ld | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
+            "match %d: home %d - %d away | possession %ld%% / %ld%% (%ld%% contested) | shots %ld / %ld | tackles %ld won / %ld beaten | %ld offsides | breakaway %ld/%d | counters %ld/%d, scrambles %ld/%d (parry %ld, deflect %ld, poke %ld) | funnel H %ld>%ld>%ld A %ld>%ld>%ld | churn steal %ld poke %ld kick %ld keeper %ld other %ld | lost-kick short %ld ground %ld loft %ld shot %ld other %ld | jitter rev %ld/%ld/%ld flick %ld/%ld/%ld | scoring dist %.1f m | gk off goal %.1f m, off ball %.1f m, ball %.1f m/s\n",
             m, score[0], score[1], owned_ticks[0] * 100 / ticks,
             owned_ticks[1] * 100 / ticks, contested_ticks * 100 / ticks,
             shots[0], shots[1], tk_won, tk_lost, offsides,
@@ -346,6 +391,8 @@ int main(int argc, char** argv) {
             fn_wins[1], fn_third[1], fn_shot[1],
             ch_steal, ch_poke, ch_kick, ch_keeper, ch_other,
             kl_kind[0], kl_kind[1], kl_kind[2], kl_kind[3], kl_kind[4],
+            jit_rev[0], jit_rev[1], jit_rev[2],
+            jit_flick[0], jit_flick[1], jit_flick[2],
             goals ? scoring_dist_sum / goals : 0.0,
             goals ? keeper_dist_sum / goals : 0.0,
             goals ? keeper_ball_sum / goals : 0.0,

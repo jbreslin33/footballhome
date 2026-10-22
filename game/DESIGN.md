@@ -664,6 +664,42 @@ world 259 shots/match (real ~25), 223 of its lost kicks are shots.
 Shoot on chance quality (angle, distance, keeper position, blockers),
 not on range; then re-tune keeper reaction against real shot volume.
 
+### 8.15 G4.20 — players stop jittering (James: "players jitter")
+
+James's live report, then his diagnosis as a question: "are they flipping
+between states?" — yes. The harness grew a jitter metric (ordered-heading
+reversals > 90° between ticks, and go-stop flicker) split by role, and a
+temporary branch tag (source line per order) attributed every flip.
+Measured in the live matchup (world vs semipro), pre-existing — G4.19
+didn't cause it (prior commit identical):
+
+- **Bang-bang steering.** World sets velocity = desire × max_speed with
+  no acceleration; `seek` returned full speed or a dead stop, so every
+  off-ball player tracking a drifting anchor stop-started ~3-4×/s
+  (~4,000 flickers/min). Fix: continuous arrive ramp [Reynolds, via
+  Buckland] — full speed outside the arrive radius, linear to zero at a
+  settle radius; never overshoots. Anchor-HOLD settles at 0.5 m (anchors
+  wobble with every touch; chasing the wobble shuffled and spun bodies).
+- **Per-tick consistency rolls on sustained duties** (marking, recover,
+  double-team, keeper sweep): a rating-92 marker dropped his man on 8%
+  of TICKS (semipro: 32%). All duties now roll per second (G4.19's
+  lesson, applied everywhere; over-the-top stays per-tick — a one-shot
+  kick choice).
+- **Recover ↔ anchor fight**: a forward caught upfield "recovered"
+  behind the ball, crossed it, and his anchor pulled him back up. Only a
+  player whose ANCHOR is goal-side of the ball is beaten.
+- **Marks dropped on every opponent pass**: marking required an
+  opponent CARRYING the ball; their pass in flight released all markers.
+  Their ball now includes their pass in flight.
+
+**Off-ball, per minute: flicker 3,699 → 35; reversals 1,023 → 308** (~one
+re-orientation per player every 3.5 s — ordinary football). Calmer
+defenders reshaped goal ORIGINS: semipro 14 of 41 goals are counters
+(34%), world 6 of 14 — scrambles no longer dominate. Ladder (12×90):
+u10 12.2 / u14 13.5 / amateur 8.0 / semipro 3.4 / pro 1.9 / world 1.2 /
+perfect 1.9. Bands green; goldens re-locked (3v3 0x91d77760…, 11v11
+0x77151252…). Shot selection (§8.14's next) resumes as G4.21.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

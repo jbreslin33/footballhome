@@ -42,12 +42,24 @@ const Fixed64 kChaseRadius = Fixed64::fromInt(28);
 // oscillating over the point.
 const Fixed64 kArriveRadius = Fixed64::fromFraction(3, 2);
 
-Vec2 seek(const Vec3& from, const Vec2& to, Fixed64 arrive) {
+// Arrive steering [Reynolds, via Buckland]: full speed outside the arrive
+// radius, then desire ramps DOWN continuously to zero at the settle
+// radius (World moves at |desire| x max_speed). The old bang-bang version
+// (full speed / dead stop) had every off-ball player tracking a drifting
+// anchor stop-start ~3-4x per second — James: "players jitter"; the
+// harness measured ~4,000 go-stop flickers/min per match. The ramp's
+// per-tick step is always shorter than the gap (never overshoots) and is
+// continuous at both radii (no start-stop edge). Inside settle: stand —
+// a near-zero vector would spin the body to face it.
+Vec2 seek(const Vec3& from, const Vec2& to, Fixed64 arrive,
+          Fixed64 settle = Fixed64::fromFraction(1, 20)) {
     const Vec2 d{to.x - from.x, to.y - from.y};
-    if (math::lengthSquared(d) < arrive * arrive) {
-        return Vec2{};  // close enough — stop
-    }
-    return math::normalized(d);
+    const Fixed64 dsq = math::lengthSquared(d);
+    if (dsq >= arrive * arrive) return math::normalized(d);
+    if (dsq <= settle * settle) return Vec2{};
+    const Fixed64 len = math::length(d);
+    const Fixed64 k = (len - settle) / ((arrive - settle) * len);
+    return Vec2{d.x * k, d.y * k};
 }
 
 Fixed64 distSq(const Vec3& a, const Vec3& b) {
@@ -495,7 +507,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // next 20 m shot). "Is it mine?" is the first judgment a real
         // keeper makes; margin = 2 m in the keeper's favor required.
         if (!ball.owner && ball_in_my_third &&
-            applies(slot, 7, world.tickCount())) {
+            applies(slot, 7, world.tickCount() / 30)) {
             Fixed64 opp_best_sq = Fixed64::fromInt(10000);
             for (SlotIndex j = 0; j < world.playerCount(); ++j) {
                 if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
@@ -617,7 +629,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // 3. Cover man: second-closest to the ball shadows the ball→goal
         //    line, 7 m goal-side.
         if (teamCloserCount(slot, world, seen_ball) == 1 &&
-            applies(slot, 12, world.tickCount()) && ball.owner &&
+            applies(slot, 12, world.tickCount() / 30) && ball.owner &&
             math::fx_abs(seen_ball.y) > Fixed64::fromInt(22)) {
             // double_team: the touchline is the extra defender — when the
             // carrier is pinned wide, the cover man CONVERGES instead of
@@ -763,7 +775,12 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // recover_goal_side: I'm upfield of the ball (beaten) — the
         // coached run is to the COVER LINE between ball and goal, never
         // straight at the ball. Kids chase; defenders recover.
-        if (applies(slot, 11, world.tickCount()) &&
+        // Only a player whose SHAPE belongs goal-side of the ball is
+        // "beaten": a forward's anchor is upfield, and recover vs. anchor
+        // pulling opposite ways flip-flopped every few ticks across the
+        // ball line (~5,500 reversals in 40 measured minutes).
+        if (applies(slot, 11, world.tickCount() / 30) &&
+            anchor.x * dsgn < seen_ball.x * dsgn &&
             me.pos.x * dsgn > seen_ball.x * dsgn + Fixed64::one() &&
             teamCloserCount(slot, world, seen_ball) >= 1) {
             const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
@@ -851,7 +868,14 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // assignment in slot order over goal-side opponents, standing
         // 1.5 m goal-side of the mark. Whoever finds no mark is the free
         // man and falls through to the shape rules.
-        if (ball.owner && rank >= 2 && applies(slot, 1, world.tickCount())) {
+        // Their ball INCLUDES their pass in flight: releasing every mark
+        // for each opponent pass then snapping back was the third-biggest
+        // flip-flop source (G4.20 jitter attribution).
+        const bool their_ball =
+            ball.owner ||
+            world.lastTouchTeam() != setup_.team_of_slot[slot];
+        if (their_ball && rank >= 2 &&
+            applies(slot, 1, world.tickCount() / 30)) {
             bool marked[32] = {false};
             SlotIndex my_mark = 255;
             for (SlotIndex d = 0; d < world.playerCount(); ++d) {
@@ -1037,7 +1061,11 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     }
 
     // ── otherwise: hold the shifted anchor (shape IS support) ──────────
-    out.move.move = seek(me.pos, anchor, kArriveRadius);
+    // Settled within 0.5 m: anchors are ball-relative approximations that
+    // wobble with every touch; chasing the wobble read as shuffling and
+    // body-spinning (5,312 same-branch reversals in 40 measured minutes).
+    out.move.move = seek(me.pos, anchor, kArriveRadius,
+                         Fixed64::fromFraction(1, 2));
     return out;
 }
 
