@@ -712,6 +712,17 @@
         site.add(wm);
       }
     }
+    const fillObjs = [];
+    for (const d of (L.drains || [])) {
+      // Proposed interceptor drains: brown gravel strip, 1.2 m.
+      const mg = new Merge();
+      addRibbon(mg, d.pts, 1.2, 0.38);
+      const dm = mg.mesh(new THREE.MeshBasicMaterial({ color: 0x8a5a2b, side: THREE.DoubleSide,
+        depthWrite: false, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -33 }));
+      dm.renderOrder = 44;
+      site.add(dm);
+      planAOverlay.push(dm);
+    }
     for (const f of (L.fill || [])) {
       // Built-up dirt: a low raised pad, drawn over the water and pitch.
       const g = new THREE.ExtrudeGeometry(shapeOf(f.pts), { depth: f.raise || 0.15, bevelEnabled: false });
@@ -721,6 +732,7 @@
       pad.renderOrder = 32;
       pad.receiveShadow = pad.castShadow = true;
       site.add(pad);
+      fillObjs.push(pad);
     }
     const candObjs = {};
     for (const cd of (L.candidates || [])) {
@@ -760,7 +772,8 @@
       // Planned 7v7s: chalk outline, halfway, centre circle, goal areas.
       const a = sv.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
       const at = ([u, v]) => [sv.x + u * ca - v * sa, sv.z + u * sa + v * ca];
-      const ln = (pts) => addRibbon(layers.chalk[0], pts.map(at), 0.12, layers.chalk[2]);
+      const chalk = new Merge();
+      const ln = (pts) => addRibbon(chalk, pts.map(at), 0.15, 0.08);
       const l = sv.length / 2, w = sv.width / 2;
       ln([[-l, -w], [l, -w], [l, w], [-l, w], [-l, -w]]);
       ln([[0, -w], [0, w]]);
@@ -771,6 +784,11 @@
         const e = sg * l;
         ln([[e, -9], [e - sg * 9, -9], [e - sg * 9, 9], [e, 9]]);
       }
+      // Over the game pitch too (the 7v7s sit across the 11v11's halves).
+      const cm = chalk.mesh(new THREE.MeshBasicMaterial({ color: 0xdff4ff, side: THREE.DoubleSide,
+        polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -26 }));
+      cm.renderOrder = 31;
+      site.add(cm);
     }
     if (L.oldPitch) {
       // The 11v11 pitch painted today (Google imagery), full markings in
@@ -1054,7 +1072,8 @@
       // Candidate pitch spot on/off (layout.candidates[].id).
       setCandidate(id, on) {
         for (const o of (candObjs[id] || [])) o.visible = !!on;
-        if (id === 'A') for (const o of planAOverlay) o.visible = !!on;
+        if (id === (LAY.gamePitchCandidate || 'A')) for (const o of planAOverlay) o.visible = !!on;
+        if (id === 'A') for (const o of fillObjs) o.visible = !!on;
       },
       // Leaves: false = see-through wire canopy (default), true = solid.
       setLeaves(on) {

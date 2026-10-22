@@ -9,20 +9,29 @@
 // from satellite imagery (Esri z19, ~0.23 m/px) and need his eye.
 
 window.LIGHTHOUSE_LAYOUT = {
-  // THE PLANNED PITCH (James, 10/22): 115 x 74 yd (105.16 x 67.67 m —
-  // the game's 105 x 68 to within 33 cm, so game and real pitch are one).
-  // Placed by game/scripts/plan_lighthouse_pitch.py under his rules: EXACTLY
-  // 10 ft (no closer) from the metal vendor-protector fence and the softball
-  // 3RD-BASE fence; >= 15 yd from the main diamond's infield dirt (floods);
-  // off all infield dirt; clear of trees + the curved rodeo fence; then as
-  // far from the cemetery tree line as those allow. Measured on the City of
-  // Philadelphia 2025 orthoimagery (3-inch). East–west can't fit (73 m
-  // between the main infield buffer and the softball fence), so it runs
-  // north–south, 4° east of north: south goal line 10.1–12 ft off the vendor
-  // fence (nearest at its 8th pole from the east end), east touchline 10.1
-  // ft from the 3B fence's end post, main infield 16.5 yd, cemetery 35.5 m.
-  gamePitch: { x: 25.15, z: -19.65, rotDeg: 94 },
-  realPitch: { x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67 },
+  // THE PLANNED PITCH (James, 10/22): 115 x 74 yd (105.16 x 67.67 m — the
+  // game's 105 x 68 to within 33 cm, so game and real pitch are one).
+  // Spot 3 of the lidar water search (search_lighthouse_pitch_water.py),
+  // refined: centre (28, -33), turned 159°. James liked its orientation.
+  // Of the legal spots >= 30 m from the cemetery it is the driest; 42 m from
+  // the cemetery, 15.7 yd off the main infield, 54 ft off the vendor fence,
+  // 57 ft off the softball 3B fence, 3 ft off the softball dirt. Sliding it
+  // toward the cemetery does NOT escape the runoff vein (it starts on the
+  // cemetery slope and runs the field's length) — it only gets wetter; the
+  // fix is the interceptor drains below.
+  // Plan A (10 ft off both fences, 25.15, -19.65, 94°) was the wettest of
+  // all 1,278 legal spots and is kept as candidate A.
+  gamePitch: { x: 28, z: -33, rotDeg: 159 },
+  realPitch: { x: 28, z: -33, rotDeg: 159, length: 105.16, width: 67.67 },
+  gamePitchCandidate: '3',
+  // Interceptor drains (French drain / swale) 4 m outside the pitch: along
+  // the cemetery-side touchline and across the rodeo end, catching the
+  // cemetery-slope runoff before it crosses; they empty into the main
+  // channel that already drains to Erie Ave.
+  drains: [
+    { name: 'interceptor, cemetery-side touchline', pts: [[67.3, -88.6], [-38.4, -48.0]] },
+    { name: 'interceptor, rodeo end', pts: [[92.9, -21.7], [67.3, -88.6]] },
+  ],
   // Superseded: the painted pitch on today's imagery — ~90 x 60.5 m, axis
   // 61.5°, centre (-15.7, -33.4).
   // The pitch in use today (James, 10/22): the Google-painted 11v11's
@@ -101,7 +110,7 @@ window.LIGHTHOUSE_LAYOUT = {
       water: { pond: 109, flow: 357, flat: 900 }, cemetery: 4.6, infieldYd: 26.9 },
     { id: '2', label: '2 8.1/10', name: 'dry + room', color: 0x7dff3b, x: 24, z: -42, rotDeg: 155, length: 105.16, width: 67.67,
       water: { pond: 120, flow: 391, flat: 905 }, cemetery: 29.4, infieldYd: 16.5 },
-    { id: '3', label: '3 9.2/10', name: 'dry, far from cemetery', color: 0x00e5ff, x: 30, z: -36, rotDeg: 155, length: 105.16, width: 67.67,
+    { id: '3', label: '3 9.2/10', name: 'THE PLAN: dry, far from cemetery', color: 0x00e5ff, x: 28, z: -33, rotDeg: 159, length: 105.16, width: 67.67,
       water: { pond: 96, flow: 389, flat: 951 }, cemetery: 36.4, infieldYd: 19.7 },
     { id: '4', label: '4 8.1/10', name: 'today\'s angle', color: 0xff9a1a, x: 6, z: -36, rotDeg: 55, length: 105.16, width: 67.67,
       water: { pond: 115, flow: 437, flat: 800 }, cemetery: 16.3, infieldYd: 18.9 },
@@ -110,15 +119,15 @@ window.LIGHTHOUSE_LAYOUT = {
     { id: '6', label: '6 7.5/10', name: 'softball-fence angle', color: 0xa07bff, x: 27, z: -45, rotDeg: 35, length: 105.16, width: 67.67,
       water: { pond: 129, flow: 400, flat: 885 }, cemetery: 11.9, infieldYd: 37.6 }
   ],
-  // Planned 7v7 pitches, 70 x 35 yd (64.0 x 32.0 m), placed by search
-  // around the planned 11v11 (James, 10/22):
-  //  - rodeo end: 10 ft off the softball 1st-base fence AND 10 ft off the
-  //    curved rodeo fence; 13 yd from the 11v11, clear of trees.
-  //  - left field of the main diamond: 19.6 yd off its infield dirt,
-  //    22 yd from the 11v11, 20 ft from the cemetery-edge dirt road.
+  // Planned 7v7 pitches, 70 x 35 yd (64.0 x 32.0 m), laid ACROSS the
+  // planned 11v11, one in each half (the usual small-sided layout): with
+  // the 11v11 in the middle of the field only 4 stand-alone spots passed
+  // every rule, all squeezed in by the Whitaker stands. Each 7v7 runs
+  // touchline to touchline (1.8 m spare each side) and sits centred in its
+  // half (10.3 m clear of halfway and of the 11v11 goal line).
   sevens: [
-    { name: '7v7 by the rodeo', x: 90, z: -35, rotDeg: 36, length: 64.01, width: 32.0 },
-    { name: '7v7 in left field', x: -43, z: -47, rotDeg: 178, length: 64.01, width: 32.0 },
+    { name: '7v7, rodeo-end half', x: 52.54, z: -42.42, rotDeg: 249, length: 64.01, width: 32.0 },
+    { name: '7v7, main-diamond-end half', x: 3.46, z: -23.58, rotDeg: 249, length: 64.01, width: 32.0 },
   ],
   // Cemetery boundary fence (New Cathedral Cemetery), along the OSM
   // cemetery outline.

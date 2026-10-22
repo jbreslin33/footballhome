@@ -417,11 +417,19 @@
         b.style.opacity = on ? '1' : '0.55';
       };
       paint();
+      const apply = () => {
+        if (!renderer.field || !renderer.field.setCandidate) return false;
+        renderer.field.setCandidate(cd.id, on);
+        if (cd.id === (window.LIGHTHOUSE_LAYOUT.gamePitchCandidate || 'A'))
+          for (const o of (renderer.pitchParts || [])) o.visible = on;
+        return true;
+      };
+      // The field may still be loading: re-apply once it exists.
+      const waitApply = () => { if (!apply()) setTimeout(waitApply, 300); };
       const flip = (e) => {
         e.preventDefault(); e.stopPropagation();
         on = !on;
-        if (renderer.field && renderer.field.setCandidate) renderer.field.setCandidate(cd.id, on);
-        if (cd.id === 'A') for (const o of (renderer.pitchParts || [])) o.visible = on;
+        waitApply();
         paint();
       };
       b.addEventListener('click', flip);
