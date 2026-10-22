@@ -133,14 +133,8 @@ window.LIGHTHOUSE_LAYOUT = {
   sevens: [
     { name: '7v7, rodeo-end half', x: 53.8, z: -44.6, rotDeg: 245, length: 64.01, width: 32.0 },
     { name: '7v7, main-diamond-end half', x: 6.2, z: -22.4, rotDeg: 245, length: 64.01, width: 32.0 },
-    // PROPOSED stand-alone 7v7 (James, 10/22: >= 10 yd off cyan; the small
-    // Erie/Whitaker diamond may be played over). fh-field-planner, 1 m x 1°
-    // over the whole park: every legal spot (283) sits in one pocket south of
-    // the softball 3rd-base fence, east of the rail fence's end; this is the
-    // driest, 40.3 yd off cyan. Only one fits — a second leaves no room.
-    // Over the small diamond; the playground beside it isn't mapped (CONFIRM).
-    { id: 'K', label: 'K 7v7 · 3.3% pond', name: '7v7 over the small diamond, 40 yd off cyan', color: 0x4d8bff,
-      x: 56, z: 61, rotDeg: 175, length: 64.01, width: 32.0, water: { pond: 68, flow: 128, flat: 54 } },
+    // A proposed stand-alone 7v7 ('K', 10/22) sat on the playground and
+    // the Whitaker stand — retired; place 7v7s with 📐 PLAN (pitch-planner.js).
   ],
   // Cemetery boundary fence (New Cathedral Cemetery), along the OSM
   // cemetery outline.
