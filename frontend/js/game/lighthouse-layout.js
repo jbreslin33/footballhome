@@ -19,18 +19,21 @@ window.LIGHTHOUSE_LAYOUT = {
   // road, so it turns to 152° on the same centre (21, -60): 10+ ft off the
   // road, 9 m from the cemetery, 21.6 yd off the main infield, 107 ft off
   // the softball dirt, 128 ft off the vendor fence. Car wear at the
-  // cemetery end James says can be mitigated. Spot 3 (28, -33, 159°) and plan
+  // cemetery end James says can be mitigated. Then slid 6 m toward the
+  // softball side (James: today's cemetery-end 6-yard box floods — worn to
+  // dirt) to 23.82, -54.7: clear of that flood plain by 3.5 m and 14.8 m
+  // from the cemetery, for ~3 % more water score. Spot 3 (28, -33, 159°) and plan
   // A (10 ft off both fences — the WETTEST legal spot) stay as candidates.
-  gamePitch: { x: 21, z: -60, rotDeg: 152 },
-  realPitch: { x: 21, z: -60, rotDeg: 152, length: 105.16, width: 67.67 },
+  gamePitch: { x: 23.82, z: -54.7, rotDeg: 152 },
+  realPitch: { x: 23.82, z: -54.7, rotDeg: 152, length: 105.16, width: 67.67 },
   gamePitchCandidate: '1',
   // Optional interceptor drains (French drain / swale) 3 m outside the
   // pitch: along the cemetery-side touchline and across the rodeo end,
   // catching cemetery-slope runoff before it crosses; they empty into the
   // main channel that already drains to Erie Ave.
   drains: [
-    { name: 'interceptor, cemetery-side touchline', pts: [[52.8, -118.6], [-45.4, -66.4]] },
-    { name: 'interceptor, rodeo end', pts: [[86.0, -56.2], [52.8, -118.6]] },
+    { name: 'interceptor, cemetery-side touchline', pts: [[55.6, -113.3], [-42.5, -61.1]] },
+    { name: 'interceptor, rodeo end', pts: [[88.8, -50.9], [55.6, -113.3]] },
   ],
   // Superseded: the painted pitch on today's imagery — ~90 x 60.5 m, axis
   // 61.5°, centre (-15.7, -33.4).
@@ -106,7 +109,7 @@ window.LIGHTHOUSE_LAYOUT = {
   candidates: [
     { id: 'A', label: 'A 0/10', name: 'plan A (fences)', color: 0xffffff, x: 25.15, z: -19.65, rotDeg: 94, length: 105.16, width: 67.67,
       water: { pond: 175, flow: 386, flat: 1336 }, cemetery: 35.5, infieldYd: 16.6 },
-    { id: '1', label: '1 10/10', name: "THE PLAN: old-timers' spot, highest ground", color: 0xff3b3b, x: 21, z: -60, rotDeg: 152, length: 105.16, width: 67.67,
+    { id: '1', label: '1 10/10', name: "THE PLAN: old-timers' spot, highest ground", color: 0xff3b3b, x: 23.82, z: -54.7, rotDeg: 152, length: 105.16, width: 67.67,
       water: { pond: 109, flow: 357, flat: 900 }, cemetery: 4.6, infieldYd: 26.9 },
     { id: '2', label: '2 8.1/10', name: 'dry + room', color: 0x7dff3b, x: 24, z: -42, rotDeg: 155, length: 105.16, width: 67.67,
       water: { pond: 120, flow: 391, flat: 905 }, cemetery: 29.4, infieldYd: 16.5 },
@@ -124,8 +127,8 @@ window.LIGHTHOUSE_LAYOUT = {
   // runs touchline to touchline (1.8 m spare each side), centred in its
   // half (10.3 m clear of halfway and of the 11v11 goal line).
   sevens: [
-    { name: '7v7, rodeo-end half', x: 44.2, z: -72.3, rotDeg: 242, length: 64.01, width: 32.0 },
-    { name: '7v7, main-diamond-end half', x: -2.2, z: -47.7, rotDeg: 242, length: 64.01, width: 32.0 },
+    { name: '7v7, rodeo-end half', x: 47.0, z: -67.0, rotDeg: 242, length: 64.01, width: 32.0 },
+    { name: '7v7, main-diamond-end half', x: 0.6, z: -42.4, rotDeg: 242, length: 64.01, width: 32.0 },
   ],
   // Cemetery boundary fence (New Cathedral Cemetery), along the OSM
   // cemetery outline.
