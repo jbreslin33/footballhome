@@ -65,7 +65,7 @@ window.LIGHTHOUSE_LAYOUT = {
   // Map labels copied from Google Maps' satellite view, at the exact spot
   // Google prints them (measured on two zoom levels, agree within 0.5 m),
   // painted flat on the grass north-up to help orient the game view.
-  labels: [{ text: '260', x: 32.8, z: -54.9, size: 4 }],
+  labels: [{ text: '260', x: 32.8, z: -54.9, size: 8 }],
   // Cemetery boundary fence (New Cathedral Cemetery), along the OSM
   // cemetery outline.
   cemeteryFence: { height: 2.0 },
@@ -95,9 +95,8 @@ window.LIGHTHOUSE_LAYOUT = {
   // the white-roofed building closes the road's east end. Entries marked
   // CONFIRM are measured but James still has to name them.
   buildings: [{ name: 'vendor stall row', x: -42, z: 36, w: 28, d: 4, h: 3, color: 0x7a5c44 },
-              { name: 'vendor stall', x: -28.1, z: 36.7, w: 2.8, d: 3, h: 2.5, color: 0x8a8f96 },
-              { name: 'vendor stall', x: -25.2, z: 36.7, w: 2.8, d: 3, h: 2.5, color: 0x8a8f96 },
-              { name: 'vendor stall', x: -22.3, z: 36.7, w: 2.8, d: 3, h: 2.5, color: 0x8a8f96 },
+              { name: 'vendor stall', x: -27.5, z: 36.0, w: 2.8, d: 2.2, h: 2.5, color: 0x8a8f96 },
+              { name: 'vendor stall', x: -24.55, z: 36.0, w: 2.8, d: 2.2, h: 2.5, color: 0x8a8f96 },
               { name: 'white-roofed building, road end', x: 19.8, z: 43.5, w: 6, d: 7, h: 3,
                 rotDeg: 5, color: 0xd9d6cf },
               // White-roofed block just east of the hall (2.8 x 12.3 m).
@@ -132,6 +131,11 @@ window.LIGHTHOUSE_LAYOUT = {
     pad: [[19.1, 51.0], [33.4, 52.1], [34.0, 62.5], [18.7, 61.4]],
     sand: [[11.1, 52.7], [17.0, 52.5], [18.9, 54.6], [18.0, 63.3], [10.9, 63.3]],
   },
+  // The LAST vendor stall (east end, by the end of the metal fence) is a
+  // carnival basketball game (James): open to the road, hoops on its back
+  // wall. Footprint measured on City 2025 imagery (2.9 x 2.2 m).
+  booths: [{ name: 'carnival basketball game', kind: 'basketball', x: -21.55, z: 36.0, w: 2.9, d: 2.2,
+             h: 2.6, face: 'south' }],
   // Flat ground polygons (layer 'road' asphalt or 'path' concrete). The
   // village road: between the stalls and the barn, then east along the
   // fence to the white building; a lot opens south off it at x -12…3.

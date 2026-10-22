@@ -520,6 +520,49 @@
       const ly = layers[r.kind || 'road'];
       addFlat(ly[0], r.pts, ly[2]);
     }
+    for (const b of (L.booths || [])) {
+      // Carnival game booth: back + side walls, striped awning roof, open
+      // front; the basketball game gets two hoops on the back wall.
+      const g = new THREE.Group(), H = b.h || 2.6;
+      const wallM = std(0xe8e2d4), red = std(0xc0262d), white = std(0xf4f1ea);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(b.w, H, 0.08), wallM);
+      back.position.set(0, H / 2, -b.d / 2);
+      g.add(back);
+      for (const sx of [-1, 1]) {
+        const side = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, b.d), wallM);
+        side.position.set(sx * b.w / 2, H / 2, 0);
+        g.add(side);
+      }
+      const n = 6;
+      for (let i = 0; i < n; i++) {
+        const st = new THREE.Mesh(new THREE.BoxGeometry(b.w / n, 0.08, b.d + 0.4), i % 2 ? white : red);
+        st.position.set(-b.w / 2 + (i + 0.5) * b.w / n, H + 0.04, 0.2);
+        g.add(st);
+      }
+      const counter = new THREE.Mesh(new THREE.BoxGeometry(b.w, 0.9, 0.3), red);
+      counter.position.set(0, 0.45, b.d / 2 - 0.15);
+      g.add(counter);
+      if (b.kind === 'basketball') {
+        const rimM = std(0xff6a13, { metalness: 0.5, roughness: 0.4 });
+        for (const hx of [-b.w / 4, b.w / 4]) {
+          const board = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.04), white);
+          board.position.set(hx, 2.0, -b.d / 2 + 0.06);
+          g.add(board);
+          const rim = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.015, 6, 16), rimM);
+          rim.rotation.x = Math.PI / 2;
+          rim.position.set(hx, 1.85, -b.d / 2 + 0.28);
+          g.add(rim);
+          const ball = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), rimM);
+          ball.position.set(hx, 0.95, b.d / 2 - 0.15);
+          g.add(ball);
+        }
+      }
+      g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      g.position.set(b.x, 0, b.z);
+      // Local -z is the back wall: face 'south' puts the open front toward +z.
+      g.rotation.y = b.face === 'north' ? Math.PI : 0;
+      site.add(g);
+    }
     for (const t of (L.tracks || [])) addRibbon(layers.dust[0], t.pts, t.w, layers.dust[2]);
     for (const rf of (L.railFences || [])) railFence(site, rf.pts, false, rf.color);
     for (const c of (L.canopies || [])) {
