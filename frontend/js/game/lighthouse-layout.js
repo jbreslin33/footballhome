@@ -140,6 +140,17 @@ window.LIGHTHOUSE_LAYOUT = {
       [3.2, 45.6], [3.2, 50], [-12, 50], [-12, 44.2], [-20, 43.4], [-54, 43.6]] },
     { name: 'concrete apron', kind: 'path', pts: [[-20.5, 34.9], [10, 38.1], [16.5, 39.9], [16.5, 40.7], [-24, 37.2]] },
   ],
+  // Dusty dirt road between the grass and the cemetery tree line (City
+  // 2025 imagery, centreline): from the parking-lot side in the south-west,
+  // up the west edge, then north-east along the cemetery trees and on past
+  // the rodeo end. ~6.5 m wide; the south-west spur ~5 m.
+  tracks: [
+    { name: 'cemetery-edge dirt road', w: 6.5, pts: [[-104.5, -47.6], [-97.7, -57.5], [-79.5, -70.4],
+      [-64.4, -78.7], [-53, -82.5], [-41.7, -90], [-30.3, -97.6], [-13.6, -105.1], [0.2, -109.3],
+      [13.1, -112.7], [28.4, -116.1], [43.6, -119.5], [58.8, -123], [74.1, -126.4], [78, -128],
+      [97, -135.5], [119.8, -138.5]] },
+    { name: 'dirt road, south-west spur', w: 5, pts: [[-110, -30], [-108.3, -37], [-104.5, -47.6]] },
+  ],
   // Low three-rail wooden fence between the metal fence and the road (a
   // gap with two heavy posts at x ≈ 10–13), continuing east to x ≈ 43.
   railFences: [

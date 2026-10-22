@@ -353,11 +353,11 @@
     // Draw-order layers: each sits a little higher AND gets a stronger
     // polygon offset — millimetre gaps alone z-fought into moiré at range.
     const LAYER_ORDER = ['campus', 'industrial', 'cemetery', 'recreation', 'parking',
-                         'pitchgrass', 'playground', 'dirt', 'sand', 'infield', 'rail', 'road', 'path', 'chalk', 'paint'];
+                         'pitchgrass', 'playground', 'dirt', 'sand', 'infield', 'rail', 'road', 'path', 'dust', 'chalk', 'paint'];
     const COLORS = { campus: 0xb9b6ae, industrial: 0x9a958c, cemetery: 0x5f8f4a,
       recreation: 0x4f8a3a, parking: 0x55595f, pitchgrass: 0x548f3d, playground: 0xb5513c,
       dirt: 0xb8865a, sand: 0xd8c08f, infield: 0x57943f, rail: 0x6f6658, road: 0x3b3f45,
-      path: 0xc9c2b1, chalk: 0xf4f4ee, paint: 0xffd400 };
+      path: 0xc9c2b1, dust: 0xc8b48e, chalk: 0xf4f4ee, paint: 0xffd400 };
     COLORS.road = 0x5a5e64; COLORS.parking = 0x6a6e73; COLORS.rail = 0x7a7064;
     const layers = {};
     LAYER_ORDER.forEach((k, i) => { layers[k] = [new Merge(), COLORS[k], -0.07 + i * 0.004, i]; });
@@ -520,6 +520,7 @@
       const ly = layers[r.kind || 'road'];
       addFlat(ly[0], r.pts, ly[2]);
     }
+    for (const t of (L.tracks || [])) addRibbon(layers.dust[0], t.pts, t.w, layers.dust[2]);
     for (const rf of (L.railFences || [])) railFence(site, rf.pts, false, rf.color);
     for (const c of (L.canopies || [])) {
       const g = new THREE.Group();
