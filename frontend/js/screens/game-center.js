@@ -243,6 +243,7 @@ class GameCenterScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.matchId   = null;
+    this._openFolds = new Set();   // No Response / Not Going folds held open (see collapsedSection)
     this.title     = '';
     this.when      = '';
     this.teamId    = null;
@@ -591,7 +592,27 @@ class GameCenterScreen extends Screen {
     return el;
   }
 
+  // The game as the coach left it — which game (the in-screen switcher
+  // changes it without a navigation), pill, and open folds — for
+  // Navigation.rememberForReturn, so a phone reload after a REMIND text
+  // reopens it as it was.
+  resumeState() {
+    return {
+      matchId: this.matchId, title: this.title, when: this.when, view: this.view,
+      postType: this.pill, folds: [...this._openFolds], invOpen: !!this._invOpen,
+    };
+  }
+
   onEnter(params = {}) {
+    this._openFolds = this._openFolds || new Set();   // No Response / Not Going folds held open
+    if (params.resume) {
+      const r = params.resume;
+      this._openFolds = new Set(Array.isArray(r.folds) ? r.folds : []);
+      this._invOpen = !!r.invOpen;
+      params = r.matchId != null
+        ? { matchId: r.matchId, title: r.title || '', when: r.when || '', view: r.view || undefined, postType: r.postType }
+        : { pick: true };
+    }
     // navigation.context.match is the fallback because that's how
     // #game-day-roster's callers (my.js's schedule card,
     // team-dashboard.js's "Game Day" button) have always passed the
@@ -1032,6 +1053,8 @@ class GameCenterScreen extends Screen {
     // triggers ('toggle' doesn't bubble — capture phase).
     this.element.addEventListener('toggle', (e) => {
       if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-gc-inv-details')) this._invOpen = e.target.open;
+      const fold = e.target && e.target.getAttribute && e.target.getAttribute('data-gc-fold');
+      if (fold) { if (e.target.open) this._openFolds.add(fold); else this._openFolds.delete(fold); }
     }, true);
     this.element.addEventListener('change', (e) => {
       const cpBehalf = e.target.closest('[data-gc-cp-behalf]');
@@ -2453,8 +2476,11 @@ class GameCenterScreen extends Screen {
     // Not Going / No Response rolled up out of the way by default (owner
     // directive: "...have them rolled up so they are not in way") — a
     // coach almost never needs these, unlike Going.
-    const collapsedSection = (label, players, { top = '', extra = null } = {}) => `
-      <details style="margin: var(--space-3) 0;">
+    // key: which fold this is, so it stays open across the re-render a
+    // REMIND tap triggers (owner 2026-10-22: "its still closing the no
+    // response people and i need to open again").
+    const collapsedSection = (label, players, { top = '', extra = null, key = '' } = {}) => `
+      <details data-gc-fold="${key}" ${key && this._openFolds.has(key) ? 'open' : ''} style="margin: var(--space-3) 0;">
         <summary style="cursor:pointer; font-size:0.85rem; font-weight:700; padding:4px 0;">${label} (${players.length})</summary>
         ${players.length ? top : ''}
         ${cardGrid(players, extra)}
@@ -2589,8 +2615,8 @@ class GameCenterScreen extends Screen {
     if (everyone) {
       paint(viewToggleHtml + lineupControlsHtml + this._everyoneNoteHtml() + [
         gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter, canMessage ? squadCard : null),
-        collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard } : {}),
-        collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: bothCards } : {}),
+        collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
+        collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
         this._renderCallupSection(),
       ].join(''));
       return;
@@ -2605,8 +2631,8 @@ class GameCenterScreen extends Screen {
       gridSection('Alternates', byZone.alternate, canMessage ? squadCard : null),
       this.isCoach ? gridSection('✓ Going', unassignedGoing, canMessage ? squadCard : null) : '',
       this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible, canMessage ? squadCard : null) : '',
-      this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard } : {}) : '',
-      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: bothCards } : {}) : '',
+      this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }) : '',
+      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
       this.isCoach ? this._renderCallupSection() : '',
     ].join(''));
   }
