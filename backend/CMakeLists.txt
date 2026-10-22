@@ -59,6 +59,8 @@ set(SOURCES
     src/models/ClubFile.cpp
     src/models/Invoice.cpp
     src/models/LeagueLogo.cpp
+    src/models/Organization.cpp
+    src/models/Club.cpp
     src/models/ClubLogoSearch.cpp
     src/models/PersonPayments.cpp
     src/models/ChargeFlags.cpp
@@ -159,6 +161,7 @@ set(SOURCES
     src/controllers/EligibilityController.cpp
     src/controllers/SocialController.cpp
     src/controllers/PublicController.cpp
+    src/controllers/OrganizationController.cpp
     src/controllers/MatchSeriesController.cpp
     src/controllers/MyController.cpp
     src/controllers/PushController.cpp

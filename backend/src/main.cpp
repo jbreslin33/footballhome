@@ -74,6 +74,7 @@
 #include "controllers/EligibilityController.h"
 #include "controllers/SocialController.h"
 #include "controllers/PublicController.h"
+#include "controllers/OrganizationController.h"
 #include "controllers/MatchSeriesController.h"
 #include "controllers/MyController.h"
 #include "controllers/PushController.h"
@@ -163,6 +164,7 @@ private:
     std::shared_ptr<EligibilityController> eligibility_controller_;
     std::shared_ptr<SocialController> social_controller_;
     std::shared_ptr<PublicController> public_controller_;
+    std::shared_ptr<OrganizationController> organization_controller_;
     std::shared_ptr<MatchSeriesController> match_series_controller_;
     std::shared_ptr<MyController> my_controller_;
     std::shared_ptr<PushController> push_controller_;
@@ -261,6 +263,7 @@ public:
         eligibility_controller_ = std::make_shared<EligibilityController>();
         social_controller_ = std::make_shared<SocialController>();
         public_controller_ = std::make_shared<PublicController>();
+        organization_controller_ = std::make_shared<OrganizationController>();
         match_series_controller_ = std::make_shared<MatchSeriesController>();
         my_controller_ = std::make_shared<MyController>();
         push_controller_ = std::make_shared<PushController>();
@@ -612,6 +615,8 @@ private:
         router_.useController("/api/eligibility", eligibility_controller_);
         router_.useController("/api/social", social_controller_);
         router_.useController("/api/public", public_controller_);
+        // footballhome.org/<slug> club / league pages (mig 632).
+        router_.useController("/api/orgs", organization_controller_);
         // Recurring event series admin surface (GET/POST/PUT/DELETE
         // CRUD).  The Sunday-8pm materialisation cron was retired
         // 2026-07-17 when RSVPs moved onto the gcal-driven

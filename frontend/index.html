@@ -2,6 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- footballhome.org/<slug>/ → /<slug> (mig 632) before any relative
+         css/ or js/ path below resolves under the slug. -->
+    <script>
+      if (/^\/[a-z0-9]+(-[a-z0-9]+)*\/$/i.test(location.pathname)) {
+        location.replace(location.pathname.slice(0, -1) + location.search + location.hash);
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Football Home - Coach</title>
 
@@ -379,9 +386,10 @@
   <script src="js/screens/public-team.js?v=20260917a"></script>
   <script src="js/screens/public-program-info.js?v=20260918a"></script>
   <script src="js/screens/public-teams-list.js?v=20260917e"></script>
+  <script src="js/screens/public-org.js?v=20261022a"></script>
   <script src="js/screens/my.js?v=20261021a"></script>
     <!-- App Bootstrap -->
-    <script src="js/app.js?v=20261009b"></script>
+    <script src="js/app.js?v=20261022a"></script>
 
     <!-- ── Service worker registration (2026-08-09) ─────────────────────
          Re-enabled to support Web Push (RSVP reminders, men's chat) —

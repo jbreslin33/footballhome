@@ -91,6 +91,7 @@ class App {
       publicLineup: new PublicLineupScreen(this.navigation, this.auth),
       publicSchedule: new PublicScheduleScreen(this.navigation, this.auth),
       publicTeamsList: new PublicTeamsListScreen(this.navigation, this.auth),
+      publicOrg: new PublicOrgScreen(this.navigation, this.auth),
       publicProgramInfo: new PublicProgramInfoScreen(this.navigation, this.auth),
       my: new MyScreen(this.navigation, this.auth),
       calendar: new CalendarScreen(this.navigation, this.auth),
@@ -222,6 +223,7 @@ class App {
     this.screenManager.register('public-schedule', this.screens.publicSchedule);
     this.screenManager.register('public-program-info', this.screens.publicProgramInfo);
     this.screenManager.register('teams-directory', this.screens.publicTeamsList);
+    this.screenManager.register('public-org', this.screens.publicOrg);
     this.screenManager.register('my', this.screens.my);
     // Google Calendar mirror view — CalendarScreen renders the
     // agenda list backed by GET /api/calendar/upcoming (Slice 4).
@@ -260,6 +262,17 @@ class App {
       // hijacked the board for coaches/admins (2026-09-03 → 09-05).
       if (hash === '#schedules') {
         this.screenManager.show('teams-directory', {});
+        return true;
+      }
+
+      // footballhome.org/<slug> — a club / league page (mig 632).  Only
+      // with no hash, so /lighthouse#info/youth etc. still reach the hash
+      // routes above and the app.  A ?token= landing (/oauth-success) is a
+      // sign-in, never a page.  An unknown slug sends the visitor to /.
+      const orgMatch = !hash && !new URLSearchParams(window.location.search).has('token')
+        && window.location.pathname.match(/^\/([a-z0-9]+(?:-[a-z0-9]+)*)$/i);
+      if (orgMatch) {
+        this.screenManager.show('public-org', { slug: orgMatch[1].toLowerCase() });
         return true;
       }
 
