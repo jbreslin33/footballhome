@@ -976,6 +976,29 @@
       }
       site.add(drainage);
     }
+    // Water problems on the planned pitch, per square metre (lidar): blue =
+    // standing water, cyan = runoff crossing, amber = too flat (< 0.5 %).
+    if (DR && DR.pitch && DR.pitch.cells.length) {
+      const KIND = { pond: [0x1e5bff, 0.75], flow: [0x00d5ff, 0.6], flat: [0xffb000, 0.35] };
+      const th = ((LAY.realPitch || gp).rotDeg) * D2R, ca = Math.cos(th), sa = Math.sin(th);
+      for (const kind of Object.keys(KIND)) {
+        const mg = new Merge();
+        for (const c of DR.pitch.cells) {
+          if (c[2] !== kind) continue;
+          const corner = (u, v) => [c[0] + u * ca - v * sa, c[1] + u * sa + v * ca];
+          const a = corner(-0.5, -0.5), b = corner(0.5, -0.5), d2 = corner(0.5, 0.5), e2 = corner(-0.5, 0.5);
+          mg.tri(a, b, d2, 0.34);
+          mg.tri(a, d2, e2, 0.34);
+        }
+        if (!mg.pos.length) continue;
+        const mesh = mg.mesh(new THREE.MeshBasicMaterial({ color: KIND[kind][0], transparent: true,
+          opacity: KIND[kind][1], depthWrite: false, side: THREE.DoubleSide, polygonOffset: true,
+          polygonOffsetFactor: -8, polygonOffsetUnits: -30 }));
+        mesh.renderOrder = 42;
+        if (!drainage) { drainage = new THREE.Group(); site.add(drainage); }
+        drainage.add(mesh);
+      }
+    }
     const cityContours = CT && CT.city2ft && CT.city2ft.length
       ? footContours(CT.city2ft, 0xff7a1a, '#ffb066', 60) : null;
     const topoContours = CT && CT.usgsTopo && CT.usgsTopo.length
