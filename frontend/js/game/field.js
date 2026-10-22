@@ -697,6 +697,22 @@
       addRibbon(layers.chalk[0], c.concat([c[0]]), 0.12, layers.chalk[2]);
     }
 
+    for (const sv of (L.sevens || [])) {
+      // Planned 7v7s: chalk outline, halfway, centre circle, goal areas.
+      const a = sv.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
+      const at = ([u, v]) => [sv.x + u * ca - v * sa, sv.z + u * sa + v * ca];
+      const ln = (pts) => addRibbon(layers.chalk[0], pts.map(at), 0.12, layers.chalk[2]);
+      const l = sv.length / 2, w = sv.width / 2;
+      ln([[-l, -w], [l, -w], [l, w], [-l, w], [-l, -w]]);
+      ln([[0, -w], [0, w]]);
+      const c = [];
+      for (let k = 0; k <= 32; k++) c.push([Math.cos(k / 16 * Math.PI) * 6.4, Math.sin(k / 16 * Math.PI) * 6.4]);
+      ln(c);
+      for (const sg of [-1, 1]) {
+        const e = sg * l;
+        ln([[e, -9], [e - sg * 9, -9], [e - sg * 9, 9], [e, 9]]);
+      }
+    }
     if (L.oldPitch) {
       // The 11v11 pitch painted today (Google imagery), full markings in
       // yellow so it reads apart from the white game pitch.

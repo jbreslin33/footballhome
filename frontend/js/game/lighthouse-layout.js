@@ -66,6 +66,16 @@ window.LIGHTHOUSE_LAYOUT = {
   // Google prints them (measured on two zoom levels, agree within 0.5 m),
   // painted flat on the grass north-up to help orient the game view.
   labels: [{ text: '260', x: 32.8, z: -54.9, size: 8 }],
+  // Planned 7v7 pitches, 70 x 35 yd (64.0 x 32.0 m), placed by search
+  // around the planned 11v11 (James, 10/22):
+  //  - rodeo end: 10 ft off the softball 1st-base fence AND 10 ft off the
+  //    curved rodeo fence; 13 yd from the 11v11, clear of trees.
+  //  - left field of the main diamond: 19.6 yd off its infield dirt,
+  //    22 yd from the 11v11, 20 ft from the cemetery-edge dirt road.
+  sevens: [
+    { name: '7v7 by the rodeo', x: 90, z: -35, rotDeg: 36, length: 64.01, width: 32.0 },
+    { name: '7v7 in left field', x: -43, z: -47, rotDeg: 178, length: 64.01, width: 32.0 },
+  ],
   // Cemetery boundary fence (New Cathedral Cemetery), along the OSM
   // cemetery outline.
   cemeteryFence: { height: 2.0 },
