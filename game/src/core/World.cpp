@@ -170,18 +170,37 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
             (roll + Fixed64::one()) <
             Fixed64::fromFraction(skill, 50);  // skill% of the [0,2) span
         if (won) {
-            // Poke: ball squirts from the tackler THROUGH the ball line,
-            // loose for anyone — a scramble, not a clean possession swap.
-            const Fixed64 dl = math::length(d);
-            const Vec2 n = dl.raw == 0
-                               ? Vec2{Fixed64::one(), Fixed64::zero()}
-                               : Vec2{d.x / dl, d.y / dl};
-            ball_.owner.reset();
-            ball_.vel = Vec3{n.x * kTacklePokeSpeed, n.y * kTacklePokeSpeed,
-                             Fixed64::zero()};
-            ball_.kick_alive = kKickAliveTicks;
+            // A won tackle (G4.24) is a CLEAN WIN most of the time — the
+            // tackler comes away with it and the dispossessed carrier is
+            // off balance — else the ball squirts SIDEWAYS, across the
+            // carrier's line: a true 50/50. The old poke drove the ball
+            // from the tackler THROUGH the ball line, i.e. from a front-on
+            // tackle straight back to the carrier's feet: world matches
+            // won 52 tackles and changed possession 5 times.
+            const SlotIndex carrier = *ball_.owner;
+            PlayerState& cp = players_[carrier];
+            cp.recovery_ticks = kDispossessedRecovery;
             ball_.contest_ticks = 0;
             last_touch_team_ = tackler.team;
+            losing_team_ = cp.team;
+            turnover_tick_ = clock_.tick();
+            turnover_ball_x_ = ball_.pos.x;
+            const Fixed64 r2 = detNoise(match_seed_, clock_.tick(), i, 14);
+            if ((r2 + Fixed64::one()) < Fixed64::fromFraction(7, 5)) {
+                ball_.owner = i;  // clean: 70% of won tackles
+                ball_.vel = Vec3{};
+            } else {
+                // Squirt across the carrier→ball line; side by noise sign.
+                const Vec2 cb{ball_.pos.x - cp.pos.x, ball_.pos.y - cp.pos.y};
+                const Fixed64 cl = math::length(cb);
+                Vec2 n = cl.raw == 0 ? Vec2{Fixed64::zero(), Fixed64::one()}
+                                     : Vec2{-cb.y / cl, cb.x / cl};
+                if (r2.raw & 1) n = Vec2{-n.x, -n.y};
+                ball_.owner.reset();
+                ball_.vel = Vec3{n.x * kTacklePokeSpeed,
+                                 n.y * kTacklePokeSpeed, Fixed64::zero()};
+                ball_.kick_alive = kKickAliveTicks;
+            }
             tackler.recovery_ticks = kTackleWinRecovery;
             events.push_back({MatchEventType::TackleWon, tackler.team});
         } else {

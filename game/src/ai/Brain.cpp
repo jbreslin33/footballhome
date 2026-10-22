@@ -903,11 +903,15 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                                               Fixed64::fromInt(6));
                 out.move.move = seek(me.pos, chase_to,
                                      Fixed64::fromFraction(1, 10));
+                // Own noise channel (G4.24): this roll used channel 7 —
+                // the SAME value the traffic-tackle check above had
+                // already failed this tick, so the step branch's dive was
+                // dead code (world: 28,748 engaged ticks, 0 tackles).
                 if (ball.owner &&
                     distSq(me.pos, ball.pos) <
                         core::kTackleReach * core::kTackleReach) {
                     const Fixed64 n = core::detNoise(
-                        match_seed_, world.tickCount(), slot, 7);
+                        match_seed_, world.tickCount(), slot, 13);
                     const int eagerness = dive_eagerness(4 + lv.swarm_pct / 2);
                     if ((n + Fixed64::one()) <
                         Fixed64::fromFraction(eagerness, 500)) {

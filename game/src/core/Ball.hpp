@@ -76,6 +76,7 @@ inline const math::Fixed64 kTackleReach = math::Fixed64::fromFraction(9, 5);
 inline const math::Fixed64 kTacklePokeSpeed = math::Fixed64::fromInt(6);
 inline constexpr int kTackleMissRecovery = 15;  // 0.5 s flat on the turf
 inline constexpr int kTackleWinRecovery  = 5;   // played the ball, quick up
+inline constexpr int kDispossessedRecovery = 10;  // tackled carrier, off balance (G4.24)
 
 // [v1] glue distance (m): carried ball sits this far ahead of the owner.
 inline const math::Fixed64 kBallCarryLead = math::Fixed64::fromFraction(2, 5);

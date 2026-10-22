@@ -818,6 +818,42 @@ ladder (§8.18, per 90 real minutes) IS the live scoreline. The wire
 clock is cumulative (u16 seconds), so the second half reads 45:00 →
 90:00 like a broadcast.
 
+### 8.20 G4.24 — ball-winning: two bugs made won tackles worthless
+
+Duel instrument at slice start (world): defender inside tackle reach
+2.0 s per duel, ball won 3%. Branch-tagging the engaged defender found:
+
+- **Dead-code tackle.** The STEP branch (the engaged presser's own
+  dive) rolled noise channel 7 — the very value the traffic-tackle check
+  above had already failed that tick — so it could never fire: 28,748
+  engaged ticks, 0 tackles. Own channel (13) now. Lesson for every
+  roll: two decisions on one (tick, slot) need DIFFERENT channels, or
+  the second is the first's shadow.
+- **Won tackles handed the ball back.** World matches won 52 tackles and
+  changed possession 5 times: the poke drove the ball from the tackler
+  THROUGH the ball line — from a front-on tackle, straight back to the
+  carrier's feet. A won tackle is now a clean win 70% (tackler takes it;
+  carrier off balance kDispossessedRecovery = 10 ticks) and a sideways
+  squirt across the carrier's line 30% (a true 50/50). Turnover clock +
+  location recorded on the tackle.
+
+Duels won: world 3 → 14% / pro 17 / semipro 22 / amateur 20 / u14 49 /
+u10 57 (the u10 frenzy: ~5,400 dives a match). Ball-winning helped
+amateur defending more than amateur attack (bands test caught amateur
+2.5 < world 3.5 in its sample), so keeper fumbles re-set: amateur 15 →
+22%, world 3 → 2%. **Ladder (12×90): u10 11.2 / u14 7.3 / amateur 5.2 /
+semipro 2.7 / pro 2.5 / world 2.8.** Bands green; AI goldens re-locked
+(3v3 0xdf0bf528…, 11v11 0x1cf73c7a…).
+
+Shot volume is STILL ~250 (world 264): with ball-winning and the parked
+block-shot work combined, the bar sweep repeats the G4.22 pattern —
+shots flat at ~230-250, goals 1.6 → 8.9 → 19.9 as the bar rises. A
+declined shooter still reaches a better chance; 14% duels can't stop
+him. The attack is reaching shooting range far too easily — next is an
+instrument for final-third ENTRIES (real ~45 per team, ~25% → shot) to
+see where the defensive block leaks. block-shot stays parked (alone it
+takes world to 1.6).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

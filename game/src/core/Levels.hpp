@@ -83,10 +83,10 @@ inline std::uint8_t levelId(std::string_view name) {
 inline LevelParams levelParams(std::string_view name) {
     if (name == "u10")     return {18, 18, 25, 60, 6, 30, 80, 18, 40};  // amoeba
     if (name == "u14")     return {12, 13, 18, 40, 8, 35, 55, 15, 28};
-    if (name == "amateur") return {7, 6, 10, 25, 10, 42, 30, 12, 15};  // Sunday
+    if (name == "amateur") return {7, 6, 10, 25, 10, 42, 30, 12, 22};  // Sunday
     if (name == "semipro") return {4, 3, 6, 12, 13, 50, 12, 11, 8};
     if (name == "pro")     return {2, 2, 3, 5, 16, 60, 4, 10, 5};
-    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0, 9, 3};
+    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0, 9, 2};
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 
