@@ -28,6 +28,9 @@
     TEAMS: 0x38,
     RELOAD_ROSTERS: 0x39,
     CONCEPTS: 0x3A,
+    BRAIN: 0x3B,          // G4.41: each player's decision, ~5 Hz to watchers
+    BRAIN_WATCH: 0x3C,
+    BRAIN_LEGEND: 0x3D,
   };
 
   // G4.30 attribute order (game_attributes.sort_order; PROTOCOL 0x37).
@@ -186,6 +189,27 @@
     return names;
   }
 
+  // G4.41 (1.7): u8 count, per slot u8 why | i16 target x dm | i16 target
+  // y dm | u8 other (255 none) | u8 ladder rung.
+  function decodeBrain(view, at) {
+    const n = view.getUint8(at);
+    const out = [];
+    let p = at + 1;
+    for (let i = 0; i < n; i++) {
+      out.push({ why: view.getUint8(p), tx: view.getInt16(p + 1, true) / 10,
+                 ty: view.getInt16(p + 3, true) / 10, other: view.getUint8(p + 5),
+                 rung: view.getUint8(p + 6) });
+      p += 7;
+    }
+    return out;
+  }
+
+  function encodeBrainWatch(on) {
+    const p = new ArrayBuffer(1);
+    new DataView(p).setUint8(0, on ? 1 : 0);
+    return envelope(FrameType.BRAIN_WATCH, p);
+  }
+
   function encodeApplyPreset(team, presetId) {
     const p = new ArrayBuffer(2);
     const v = new DataView(p);
@@ -263,6 +287,8 @@
     encodeApplyPreset,
     decodeRoster,
     decodePresets,
+    decodeBrain,
+    encodeBrainWatch,
     decodeFrame,
     decodeHello,
     decodeSnapshot,

@@ -313,6 +313,102 @@
     }, 1500);
   }
 
+
+  // ── Brain overlay (G4.41) — James: "we should have overlay that shows info
+  // about players brain. pills to show just one guy etc or whole team. like
+  // a hud … buckland does basically this in his book". Pills: off / one
+  // player / home / away / both. Each shown player: what he decided, a line
+  // to where he's going, a dashed line to the man he's acting on. ──
+  const WHY_CONCEPT = {
+    'pass ladder': 'pass-ladder', 'over the top': 'over-top', 'recycle': 'safe-pass',
+    'keeper sweep': 'sweep', 'cover shadow': 'cover-shadow', 'counter-press': 'counter-press',
+    'tackle': 'tackle-timing', 'recover goal-side': 'recover', 'chase ball': 'intercept',
+    'delay': 'delay', 'libero': 'libero', 'mark': 'marking', 'give and go': 'give-and-go',
+    'blind-side run': 'blind-side-run', 'run in behind': 'runs', 'outlet': 'outlet',
+    'support': 'support', 'shoot': 'shot-selection',
+  };
+  let brainMode = 'off', brainSlot = null, brainLegend = [], brainEntries = null;
+  const brainBar = document.createElement('div');
+  brainBar.className = 'game-only';
+  brainBar.setAttribute('role', 'group');
+  brainBar.setAttribute('aria-label', 'Brain overlay');
+  brainBar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);' +
+    'top:calc(env(safe-area-inset-top, 0px) + 30px);display:flex;gap:4px;z-index:20;' +
+    'background:rgba(10,14,20,.55);padding:4px;border-radius:16px;';
+  const brainPanel = document.createElement('div');
+  brainPanel.className = 'game-only';
+  brainPanel.hidden = true;
+  brainPanel.style.cssText = 'position:fixed;left:12px;top:calc(env(safe-area-inset-top, 0px) + 130px);' +
+    'width:250px;max-width:calc(100vw - 24px);background:rgba(10,14,20,.78);color:#fff;' +
+    'font:12px/1.4 system-ui,sans-serif;padding:8px 10px;border-radius:10px;z-index:20;';
+  document.body.append(brainBar, brainPanel);
+  function brainLabels() {
+    return [['off', 'Brain off'], ['one', 'One'],
+            ['home', (teams && teams.home) || 'Home'], ['away', (teams && teams.away) || 'Away'], ['all', 'Both']];
+  }
+  function paintBrainBar() {
+    brainBar.innerHTML = '';
+    for (const [mode, label] of brainLabels()) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.setAttribute('aria-pressed', String(brainMode === mode));
+      b.style.cssText = 'border:0;border-radius:12px;padding:4px 10px;font:700 11px system-ui,sans-serif;cursor:pointer;' +
+        (brainMode === mode ? 'background:#ffcc00;color:#0b1c3d;' : 'background:transparent;color:#fff;');
+      b.onclick = () => setBrainMode(mode);
+      brainBar.appendChild(b);
+    }
+  }
+  function brainShown() {
+    const n = (hello && hello.slotCount) || roster.length || 22;
+    const half = Math.floor(n / 2);
+    const set = new Set();
+    for (let i = 0; i < n; i++) {
+      if (brainMode === 'all' || (brainMode === 'home' && i < half) || (brainMode === 'away' && i >= half) ||
+          (brainMode === 'one' && i === brainSlot)) set.add(i);
+    }
+    return set;
+  }
+  function setBrainMode(mode) {
+    const was = brainMode;
+    brainMode = mode;
+    if (mode === 'one' && brainSlot === null)
+      brainSlot = renderer.carrierSlot !== undefined && renderer.carrierSlot !== null ? renderer.carrierSlot : 0;
+    if ((was === 'off') !== (mode === 'off')) net.brainWatch(mode !== 'off');
+    paintBrainBar();
+    paintBrain();
+  }
+  function slotName(i) {
+    const r = roster[i];
+    return r && r.name ? r.name : '#' + (i + 1);
+  }
+  function paintBrain() {
+    renderer.setBrain(brainMode === 'off' ? null : { entries: brainEntries, legend: brainLegend, show: brainShown() });
+    brainPanel.hidden = brainMode !== 'one';
+    if (brainMode !== 'one') return;
+    const n = (hello && hello.slotCount) || roster.length || 22;
+    const e = brainEntries && brainEntries[brainSlot];
+    const why = e ? brainLegend[e.why] || '?' : '…';
+    const half = Math.floor(n / 2);
+    const team = brainSlot < half ? (teams && teams.home) : (teams && teams.away);
+    const concept = WHY_CONCEPT[why];
+    const ci = concept ? GameWire.CONCEPTS.indexOf(concept) : -1;
+    const rating = ci >= 0 && roster[brainSlot] ? roster[brainSlot].ratings[ci] : null;
+    const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    brainPanel.innerHTML =
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">` +
+      `<button type="button" data-b="-1" aria-label="Previous player" style="border:0;border-radius:8px;padding:2px 8px;cursor:pointer;">‹</button>` +
+      `<strong style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(slotName(brainSlot))}</strong>` +
+      `<button type="button" data-b="1" aria-label="Next player" style="border:0;border-radius:8px;padding:2px 8px;cursor:pointer;">›</button></div>` +
+      `<div style="opacity:.75;">${esc(team || '')}</div>` +
+      `<div style="margin-top:6px;">Decision: <strong style="color:#ffcc00;">${esc(why)}</strong>${e && e.rung ? ' · rung ' + e.rung : ''}</div>` +
+      (e && e.other !== 255 ? `<div>Acting on: ${esc(slotName(e.other))}</div>` : '') +
+      (concept ? `<div>${esc(concept)}: ${rating === null ? '—' : rating}</div>` : '');
+    for (const b of brainPanel.querySelectorAll('[data-b]'))
+      b.onclick = () => { brainSlot = (brainSlot + Number(b.dataset.b) + n) % n; paintBrain(); };
+  }
+  paintBrainBar();
+
   const net = new GameNet({
     onHello(h) {
       hello = h;
@@ -409,9 +505,18 @@
     onRoster(r) {
       roster = r;
       applyIdentities();   // names may have changed (lineup / reload)
+      if (brainMode === 'one') paintBrain();
+    },
+    onBrain(entries) {
+      brainEntries = entries;
+      if (brainMode !== 'off') paintBrain();
+    },
+    onBrainLegend(names) {
+      brainLegend = names;
     },
     onTeams(t) {
       teams = t;
+      paintBrainBar();
       // Names + position numbers over the players (mig 643): both teams'
       // slot numbers from the club API, names from ROSTER.
       for (const k of Object.keys(teamCache)) delete teamCache[k];

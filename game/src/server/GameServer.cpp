@@ -214,6 +214,11 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
         transport_.send(id, encodeFrame(FrameType::Presets,
                                         encodePresets(pf)));
     }
+    {  // G4.41 (1.7): the brain overlay's decision names, index = why code.
+        PresetsFrame lf;
+        for (int i = 0; i < ai::kWhyCount; ++i) lf.names.push_back(ai::kWhyNames[i]);
+        transport_.send(id, encodeFrame(FrameType::BrainLegend, encodePresets(lf)));
+    }
     // G4.30: which teams are playing — the editor's key into the club API.
     sendTeams(id);
     broadcastRoster();  // names + knowledge for every client
@@ -249,6 +254,7 @@ void GameServer::broadcastTeams() {
 void GameServer::onDisconnect(ClientId id) {
     clients_.erase(id);
     admins_.erase(id);
+    brain_watchers_.erase(id);
     // Release every slot the departing client held; those players revert to
     // idle (AI controllers take them over from G2 on).
     for (auto it = slot_owner_.begin(); it != slot_owner_.end();) {
@@ -372,6 +378,18 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             brain_.setSlotLevel(pa->slot, lv);
             return;
         }
+        case FrameType::BrainWatch: {
+            // G4.41: anyone may watch the brains — it's a teaching tool.
+            const auto bw = decodeBrainWatch(frame.payload);
+            if (!bw) return;
+            if (bw->on) {
+                brain_watchers_[id] = true;
+                if (!last_orders_.empty()) sendBrain();
+            } else {
+                brain_watchers_.erase(id);
+            }
+            return;
+        }
         case FrameType::ReloadRosters: {
             // Admin-only (G4.32): re-read both teams from the club DB —
             // the page saved a lineup / attributes / roles / kit there.
@@ -450,9 +468,15 @@ net::Bytes GameServer::buildSnapshotFrame() const {
 void GameServer::tickOnce() {
     // AI drives every slot no human holds (claims always override; a
     // released slot reverts to its brain next tick).
+    if (last_orders_.size() != cfg_.slot_count) last_orders_.assign(cfg_.slot_count, ai::Orders{});
     for (std::uint8_t slot = 0; slot < cfg_.slot_count; ++slot) {
-        if (slot_owner_.count(slot)) continue;
+        if (slot_owner_.count(slot)) {
+            last_orders_[slot] = ai::Orders{};
+            last_orders_[slot].why = ai::Why::Human;
+            continue;
+        }
         const ai::Orders o = brain_.ordersFor(slot, world_);
+        last_orders_[slot] = o;
         world_.setIntent(slot, o.move);
         if (o.action != core::Action::None) world_.setAction(slot, o.action);
     }
@@ -471,6 +495,28 @@ void GameServer::tickOnce() {
 
     const Bytes frame = buildSnapshotFrame();
     for (const auto& [id, _] : clients_) transport_.send(id, frame);
+    // The brain overlay at ~5 Hz, only to clients that switched it on.
+    if (!brain_watchers_.empty() && world_.tickCount() % 6 == 0) sendBrain();
+}
+
+void GameServer::sendBrain() {
+    BrainFrame bf;
+    bf.slots.reserve(last_orders_.size());
+    auto dm = [](Fixed64 v) {
+        const std::int64_t d = (v * Fixed64::fromInt(10)).raw >> Fixed64::FRAC_BITS;
+        return static_cast<std::int16_t>(d < -32000 ? -32000 : (d > 32000 ? 32000 : d));
+    };
+    for (const ai::Orders& o : last_orders_) {
+        BrainEntry e;
+        e.why = static_cast<std::uint8_t>(o.why);
+        e.target_dm_x = dm(o.target.x);
+        e.target_dm_y = dm(o.target.y);
+        e.other = o.other >= 0 && o.other < 255 ? static_cast<std::uint8_t>(o.other) : 255;
+        e.rung = o.rung;
+        bf.slots.push_back(e);
+    }
+    const Bytes frame = encodeFrame(FrameType::Brain, encodeBrain(bf));
+    for (const auto& [id, _] : brain_watchers_) transport_.send(id, frame);
 }
 
 bool GameServer::slotClaimedBy(std::uint8_t slot, ClientId client) const {

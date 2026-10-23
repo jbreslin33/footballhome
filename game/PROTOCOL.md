@@ -58,6 +58,9 @@ Frame types (u8):
 | 0x38 | TEAMS | s→c | the two teams playing (1.5, G4.30), on connect: `u8 len \| home name (UTF-8) \| u8 len \| away name` — game_demo_teams names, the editor's key into `/api/game/roster` |
 | 0x39 | RELOAD_ROSTERS | c→s | admin (1.5, G4.32): empty payload — re-read both teams (lineup, attributes, roles, kits) from the club DB after the page saved them; answers with fresh TEAMS + ROSTER. Formations are not reloaded |
 | 0x3A | CONCEPTS | s→c | the curriculum (1.6, G4.37), on connect: same layout as PRESETS — `u8 count`, then per concept id `u8 name_len \| name bytes` (a hole = empty name). Rows come from `game_concepts` (mig 650); it replaces the client's built-in list, and ROSTER / PLAYER_SETTINGS rating vectors are indexed by these ids (`rating_count` = this count) |
+| 0x3B | BRAIN | s→c | the brain overlay (1.7, G4.41), ~5 Hz, only to clients that sent BRAIN_WATCH on: `u8 count`, then per slot `u8 why (BRAIN_LEGEND index) \| i16 target x dm \| i16 target y dm \| u8 other slot (255 none) \| u8 ladder rung (0 n/a)` |
+| 0x3C | BRAIN_WATCH | c→s | anyone (1.7): `u8 on` — start / stop the BRAIN feed for this client |
+| 0x3D | BRAIN_LEGEND | s→c | on connect (1.7): the decision names, PRESETS layout; a BRAIN entry's `why` indexes it |
 | TBD | … | | reserved; new types are additive within a major version |
 
 Snapshot payloads at 22 slots + 3D ball must be measured against the u16

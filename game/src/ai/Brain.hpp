@@ -32,9 +32,33 @@ struct TeamSetup {
     static TeamSetup splitHalves(std::uint8_t slot_count);
 };
 
+// WHY a player did what he did (G4.41, the brain overlay — James: "an
+// overlay that shows info about players brain … buckland does basically
+// this", after [Buckland]'s Simple Soccer debug view). Read-only: the sim
+// never looks at it, so it can't move a golden. Names = kWhyNames, sent to
+// clients in the BRAIN_LEGEND frame.
+enum class Why : std::uint8_t {
+    Hold, Shoot, Pass, PassLadder, OverTop, Recycle, KeeperPunt, Dribble, Clear,
+    KeeperSweep, KeeperPosition, CoverShadow, CounterPress, Tackle, Recover,
+    Press, Chase, Delay, Libero, Mark, GiveAndGo, BlindSideRun, RunInBehind,
+    Outlet, Support, Human,
+};
+inline constexpr const char* kWhyNames[] = {
+    "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
+    "keeper sweep", "keeper position", "cover shadow", "counter-press", "tackle", "recover goal-side",
+    "press", "chase ball", "delay", "libero", "mark", "give and go", "blind-side run", "run in behind",
+    "outlet", "support", "human",
+};
+inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
+
 struct Orders {
     core::MoveIntent move;
     core::Action action = core::Action::None;
+    // The overlay's read of the decision (never fed back into the sim).
+    Why why = Why::Hold;
+    math::Vec2 target{};          // where he's going / aiming
+    std::int16_t other = -1;      // the pass receiver, marked man, pressed carrier
+    std::uint8_t rung = 0;        // pass-ladder rung of a laddered pass (1-6)
 };
 
 class Brain {

@@ -422,4 +422,50 @@ std::optional<TeamsFrame> decodeTeams(const Bytes& payload) {
     return f;
 }
 
+// ── BRAIN / BRAIN_WATCH (1.7, G4.41) ────────────────────────────────────
+
+Bytes encodeBrain(const BrainFrame& f) {
+    Writer w;
+    w.u8(static_cast<std::uint8_t>(f.slots.size()));
+    for (const BrainEntry& e : f.slots) {
+        w.u8(e.why);
+        w.u16(static_cast<std::uint16_t>(e.target_dm_x));
+        w.u16(static_cast<std::uint16_t>(e.target_dm_y));
+        w.u8(e.other);
+        w.u8(e.rung);
+    }
+    return std::move(w.out);
+}
+
+std::optional<BrainFrame> decodeBrain(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    BrainFrame f;
+    const std::uint8_t n = r.u8();
+    for (std::uint8_t i = 0; i < n && r.ok; ++i) {
+        BrainEntry e;
+        e.why = r.u8();
+        e.target_dm_x = static_cast<std::int16_t>(r.u16());
+        e.target_dm_y = static_cast<std::int16_t>(r.u16());
+        e.other = r.u8();
+        e.rung = r.u8();
+        f.slots.push_back(e);
+    }
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
+Bytes encodeBrainWatch(const BrainWatchFrame& f) {
+    Writer w;
+    w.u8(f.on);
+    return std::move(w.out);
+}
+
+std::optional<BrainWatchFrame> decodeBrainWatch(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    BrainWatchFrame f;
+    f.on = r.u8();
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
 }  // namespace fh::game::net

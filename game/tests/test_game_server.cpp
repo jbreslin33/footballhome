@@ -5,6 +5,7 @@
 // authorization, snapshot fan-out, disconnect slot release.
 
 #include "test_harness.hpp"
+#include "ai/Brain.hpp"
 #include "net/Codec.hpp"
 #include "net/Wire.hpp"
 #include "server/GameServer.hpp"
@@ -409,6 +410,47 @@ FH_TEST(server_admin_applies_preset_to_one_team_only) {
     t.scriptMessage(100, encodeFrame(FrameType::ApplyPreset,
                                      encodeApplyPreset(ap)));
     FH_EXPECT_EQ(framesOf(t.sent[100], FrameType::Roster).size(), 3u);
+}
+
+FH_TEST(brain_overlay_goes_only_to_watchers) {
+    Rig r;
+    r.t.scriptConnect(100);
+    r.t.scriptConnect(200);
+    // The decision names arrive on connect.
+    const auto legend = framesOf(r.t.sent[100], FrameType::BrainLegend);
+    FH_EXPECT_EQ(legend.size(), 1u);
+    auto names = decodePresets(legend[0]);
+    FH_EXPECT(names.has_value() && static_cast<int>(names->names.size()) == ai::kWhyCount);
+    FH_EXPECT(names->names[static_cast<int>(ai::Why::PassLadder)] == "pass ladder");
+    // 100 switches the overlay on; 200 doesn't.
+    BrainWatchFrame on;
+    on.on = 1;
+    r.t.scriptMessage(100, encodeFrame(FrameType::BrainWatch, encodeBrainWatch(on)));
+    r.t.scriptMessage(200, claimBytes(0));          // a human holds slot 0
+    for (int i = 0; i < 12; ++i) r.s.tickOnce();
+    const auto b100 = framesOf(r.t.sent[100], FrameType::Brain);
+    FH_EXPECT(b100.size() >= 2u);
+    FH_EXPECT(framesOf(r.t.sent[200], FrameType::Brain).empty());
+    auto bf = decodeBrain(b100.back());
+    FH_EXPECT(bf.has_value() && bf->slots.size() == 4u);
+    FH_EXPECT_EQ(bf->slots[0].why, static_cast<std::uint8_t>(ai::Why::Human));
+    // Off again: no more frames.
+    BrainWatchFrame off;
+    r.t.scriptMessage(100, encodeFrame(FrameType::BrainWatch, encodeBrainWatch(off)));
+    const auto before = framesOf(r.t.sent[100], FrameType::Brain).size();
+    for (int i = 0; i < 12; ++i) r.s.tickOnce();
+    FH_EXPECT_EQ(framesOf(r.t.sent[100], FrameType::Brain).size(), before);
+}
+
+FH_TEST(brain_frame_round_trips) {
+    BrainFrame f;
+    BrainEntry e;
+    e.why = 3; e.target_dm_x = -251; e.target_dm_y = 340; e.other = 7; e.rung = 1;
+    f.slots = {e, BrainEntry{}};
+    auto d = decodeBrain(encodeBrain(f));
+    FH_EXPECT(d.has_value() && d->slots.size() == 2u);
+    FH_EXPECT(d->slots[0].why == 3 && d->slots[0].target_dm_x == -251 && d->slots[0].target_dm_y == 340);
+    FH_EXPECT(d->slots[0].other == 7 && d->slots[0].rung == 1 && d->slots[1].other == 255);
 }
 
 FH_TEST_MAIN()

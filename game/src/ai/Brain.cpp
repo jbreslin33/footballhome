@@ -314,6 +314,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             out.move.move =
                 seek(me.pos, Vec2{goal.x, aim_y}, kArriveRadius);
             out.action = Action::Shot;
+            out.why = Why::Shoot;
+            out.target = Vec2{goal.x, aim_y};
             return out;
         }
 
@@ -375,6 +377,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         Fixed64 best_progress{};
         Vec2 target{};
         Fixed64 target_dist_sq{};
+        SlotIndex target_slot = 0;
         for (SlotIndex i = 0; i < world.playerCount(); ++i) {
             if (i == slot) continue;
             if (setup_.team_of_slot[i] != setup_.team_of_slot[slot]) continue;
@@ -411,6 +414,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 best_rung = r;
                 target = b;
                 target_dist_sq = dsq;
+                target_slot = i;
             }
         }
 
@@ -450,6 +454,10 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                                  ? Action::ShortPass
                                  : Action::GroundKick;
             }
+            out.why = out.action == Action::LoftedKick ? Why::OverTop : (ladder_fires ? Why::PassLadder : Why::Pass);
+            out.rung = static_cast<std::uint8_t>(best_rung);
+            out.target = target;
+            out.other = static_cast<std::int16_t>(target_slot);
             return out;
         }
 
@@ -462,6 +470,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             Fixed64 best{};
             Vec2 to{};
             Fixed64 to_dsq{};
+            SlotIndex recycle_slot = 0;
             for (SlotIndex i = 0; i < world.playerCount(); ++i) {
                 if (i == slot) continue;
                 if (setup_.team_of_slot[i] != setup_.team_of_slot[slot])
@@ -479,6 +488,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                     best = progress;
                     to = b;
                     to_dsq = dsq;
+                    recycle_slot = i;
                 }
             }
             if (have) {
@@ -486,6 +496,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 out.action = to_dsq < kSoftPassRange * kSoftPassRange
                                  ? Action::ShortPass
                                  : Action::GroundKick;
+                out.why = Why::Recycle;
+                out.target = to;
+                out.other = static_cast<std::int16_t>(recycle_slot);
                 return out;
             }
         }
@@ -515,6 +528,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             const Vec2 target = crowd[0] <= crowd[1] ? ch[0] : ch[1];
             out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
             out.action = Action::LoftedKick;
+            out.why = Why::KeeperPunt;
+            out.target = target;
             return out;
         }
 
@@ -567,6 +582,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 }
             }
         }
+        out.why = out.action == Action::Shot ? Why::Shoot : (out.action == Action::LoftedKick ? Why::Clear : Why::Dribble);
+        out.target = goal;
         return out;
     }
 
@@ -620,6 +637,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             if (my_d * my_d < opp_best_sq) {
                 out.move.move = seek(me.pos, Vec2{seen_ball.x, seen_ball.y},
                                      Fixed64::fromFraction(1, 10));
+                out.why = Why::KeeperSweep;
+                out.target = Vec2{seen_ball.x, seen_ball.y};
                 return out;
             }
         }
@@ -677,6 +696,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // and watched the ball pass 1.3 m away (measured: beaten keepers
         // 2.4 m off the crossing point with the shot aimed 1 m out).
         out.move.move = seek(me.pos, anchor, Fixed64::fromFraction(1, 2));
+        out.why = Why::KeeperPosition;
+        out.target = anchor;
         return out;
     }
 
@@ -800,6 +821,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                                     half_x_, degree(slot, 27)};
             if (auto t = book_.cover_shadow.target(cx)) {
                 out.move.move = seek(me.pos, *t, Fixed64::fromFraction(3, 10));
+                out.why = Why::CoverShadow;
+                out.target = *t;
+                out.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
                 return out;
             }
         }
@@ -879,6 +903,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                         out.action = Action::Tackle;
                     }
                 }
+                out.why = Why::CounterPress;
+                out.target = Vec2{seen_ball.x, seen_ball.y};
+                out.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
                 return out;
             }
         }
@@ -898,6 +925,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 out.move.move = seek(me.pos, Vec2{ball.pos.x, ball.pos.y},
                                      Fixed64::fromFraction(1, 10));
                 out.action = Action::Tackle;
+                out.why = Why::Tackle;
+                out.target = Vec2{ball.pos.x, ball.pos.y};
+                out.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
                 return out;
             }
         }
@@ -922,6 +952,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                     seek(me.pos, Vec2{seen_ball.x + tg.x * k,
                                       seen_ball.y + tg.y * k},
                          Fixed64::fromFraction(1, 2));
+                out.why = Why::Recover;
+                out.target = Vec2{seen_ball.x + tg.x * k, seen_ball.y + tg.y * k};
                 return out;
             }
         }
@@ -966,6 +998,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                         out.action = Action::Tackle;
                     }
                 }
+                out.why = ball.owner ? Why::Press : Why::Chase;
+                out.target = chase_to;
+                out.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
                 return out;
             }
             // DELAY [v1 Jockey concept]: 2.2 m goal-side of the carrier,
@@ -985,6 +1020,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 seen_ball.x - dsgn * Fixed64::fromFraction(11, 5),
                 seen_ball.y + shade};
             out.move.move = seek(me.pos, jockey, Fixed64::fromFraction(3, 10));
+            out.why = Why::Delay;
+            out.target = jockey;
+            out.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
             return out;
         }
 
@@ -994,6 +1032,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
                                     half_x_, degree(slot, 26)};
             out.move.move = seek(me.pos, book_.libero.target(cx), Fixed64::fromFraction(1, 2));
+            out.why = Why::Libero;
+            out.target = book_.libero.target(cx);
             return out;
         }
 
@@ -1069,6 +1109,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                     me.pos,
                     Vec2{mk.pos.x - dsgn * gap, mk.pos.y},
                     Fixed64::fromFraction(1, 2));
+                out.why = Why::Mark;
+                out.target = Vec2{mk.pos.x - dsgn * gap, mk.pos.y};
+                out.other = static_cast<std::int16_t>(my_mark);
                 return out;
             }
         }
@@ -1092,6 +1135,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                      (carrier.pos.y + me.pos.y) *
                          Fixed64::fromFraction(1, 2)},
                 Fixed64::fromFraction(1, 2));
+            out.why = Why::GiveAndGo;
+            out.target = Vec2{carrier.pos.x + sgn2 * Fixed64::fromInt(10), (carrier.pos.y + me.pos.y) * Fixed64::fromFraction(1, 2)};
+            out.other = static_cast<std::int16_t>(*ball.owner);
             return out;
         }
 
@@ -1103,6 +1149,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                                     half_x_, degree(slot, 30)};
             if (auto t = book_.blind_side_run.target(cx)) {
                 out.move.move = seek(me.pos, *t, Fixed64::fromFraction(1, 2));
+                out.why = Why::BlindSideRun;
+                out.target = *t;
+                out.other = static_cast<std::int16_t>(*ball.owner);
                 return out;
             }
         }
@@ -1152,6 +1201,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 const Fixed64 run_y = seen_ball.y * Fixed64::fromFraction(1, 2);
                 out.move.move = seek(me.pos, Vec2{run_x, run_y},
                                      Fixed64::fromFraction(1, 2));
+                out.why = Why::RunInBehind;
+                out.target = Vec2{run_x, run_y};
+                out.other = static_cast<std::int16_t>(*ball.owner);
                 return out;
             }
         }
@@ -1174,6 +1226,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 Vec2{carrier.pos.x - sgn2 * Fixed64::fromInt(8),
                      carrier.pos.y * Fixed64::fromFraction(3, 4)},
                 kArriveRadius);
+            out.why = Why::Outlet;
+            out.target = Vec2{carrier.pos.x - sgn2 * Fixed64::fromInt(8), carrier.pos.y * Fixed64::fromFraction(3, 4)};
+            out.other = static_cast<std::int16_t>(*ball.owner);
             return out;
         }
 
@@ -1200,6 +1255,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         const Vec2 right{ahead, carrier.pos.y + Fixed64::fromInt(8)};
         const Vec2 spot = openness(left) >= openness(right) ? left : right;
         out.move.move = seek(me.pos, spot, kArriveRadius);
+        out.why = Why::Support;
+        out.target = spot;
+        out.other = static_cast<std::int16_t>(*ball.owner);
         return out;
         }
     }
@@ -1225,6 +1283,8 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     // body-spinning (5,312 same-branch reversals in 40 measured minutes).
     out.move.move = seek(me.pos, anchor, kArriveRadius,
                          Fixed64::fromFraction(1, 2));
+    out.why = Why::Hold;
+    out.target = anchor;
     return out;
 }
 

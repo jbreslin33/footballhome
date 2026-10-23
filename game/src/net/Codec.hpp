@@ -194,4 +194,23 @@ struct TeamsFrame {
 Bytes encodeTeams(const TeamsFrame& f);
 std::optional<TeamsFrame> decodeTeams(const Bytes& payload);
 
+// G4.41 (1.7): the brain overlay [Buckland's Simple Soccer debug view].
+struct BrainEntry {
+    std::uint8_t why = 0;        // index into the BRAIN_LEGEND names
+    std::int16_t target_dm_x = 0, target_dm_y = 0;  // decimetres
+    std::uint8_t other = 255;    // slot he's acting on (receiver / mark / carrier); 255 = none
+    std::uint8_t rung = 0;       // pass-ladder rung (1-6), 0 = n/a
+};
+struct BrainFrame {
+    std::vector<BrainEntry> slots;
+};
+Bytes encodeBrain(const BrainFrame& f);
+std::optional<BrainFrame> decodeBrain(const Bytes& payload);
+
+struct BrainWatchFrame {
+    std::uint8_t on = 0;
+};
+Bytes encodeBrainWatch(const BrainWatchFrame& f);
+std::optional<BrainWatchFrame> decodeBrainWatch(const Bytes& payload);
+
 }  // namespace fh::game::net

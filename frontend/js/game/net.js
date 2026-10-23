@@ -46,6 +46,10 @@
             // replaces the built-in list in place (id = index; "" = hole).
             const names = GameWire.decodePresets(view, f.payloadAt);
             GameWire.CONCEPTS.splice(0, GameWire.CONCEPTS.length, ...names);
+          } else if (f.type === GameWire.FrameType.BRAIN) {
+            if (this.handlers.onBrain) this.handlers.onBrain(GameWire.decodeBrain(view, f.payloadAt));
+          } else if (f.type === GameWire.FrameType.BRAIN_LEGEND) {
+            if (this.handlers.onBrainLegend) this.handlers.onBrainLegend(GameWire.decodePresets(view, f.payloadAt));
           } else if (f.type === GameWire.FrameType.TEAMS) {
             if (this.handlers.onTeams)
               this.handlers.onTeams(GameWire.decodeTeams(view, f.payloadAt, f.payloadLen));
@@ -83,6 +87,9 @@
     }
     setLevels(homeId, awayId) {
       this.send(GameWire.encodeMatchSettings(homeId, awayId));
+    }
+    brainWatch(on) {
+      this.send(GameWire.encodeBrainWatch(on));
     }
     applyPreset(team, presetId) {
       this.send(GameWire.encodeApplyPreset(team, presetId));

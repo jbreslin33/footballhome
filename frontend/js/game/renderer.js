@@ -366,7 +366,78 @@
         f.root.visible = showMatch && !(this.rig.mode === 'first' && f.slot === firstSlot);
       if (this.ballMesh) this.ballMesh.visible = showMatch;
       if (this.ring && !showMatch) this.ring.visible = false;
+      this.drawBrain();
       this.renderer.render(this.scene, this.camera);
+    }
+
+    // ── Brain overlay (G4.41, after [Buckland]'s Simple Soccer debug view):
+    // for each shown player a label of what he decided, a line to where
+    // he's going and a dashed line to the man he's acting on. ──
+    setBrain(view) { this.brain = view; }   // { entries, legend, show: Set }
+    drawBrain() {
+      const v = this.brain;
+      this.brainParts = this.brainParts || [];
+      const n = this.figures.length;
+      for (let i = 0; i < n; i++) {
+        const show = v && v.show && v.show.has(i) && v.entries && v.entries[i] && this.showMatch !== false;
+        let part = this.brainParts[i];
+        if (!show) { if (part) part.group.visible = false; continue; }
+        if (!part) {
+          const group = new THREE.Group();
+          const home = i < this.halfN;
+          const col = home ? 0x2b7bff : 0xff3355;
+          const go = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+                                    new THREE.LineBasicMaterial({ color: col, depthTest: false, transparent: true, opacity: 0.9 }));
+          const act = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+                                     new THREE.LineDashedMaterial({ color: 0xffcc00, dashSize: 0.6, gapSize: 0.4, depthTest: false, transparent: true }));
+          const dot = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.4, 20), new THREE.MeshBasicMaterial({ color: col, depthTest: false, side: THREE.DoubleSide }));
+          dot.rotation.x = -Math.PI / 2;
+          go.renderOrder = act.renderOrder = dot.renderOrder = 60;
+          group.add(go, act, dot);
+          this.scene.add(group);
+          part = this.brainParts[i] = { group, go, act, dot, text: null, sprite: null };
+        }
+        part.group.visible = true;
+        const e = v.entries[i];
+        const p = this.figures[i].root.position;
+        const set = (line, a, b) => {
+          const pos = line.geometry.attributes.position;
+          pos.setXYZ(0, a.x, 0.08, a.z); pos.setXYZ(1, b.x, 0.08, b.z); pos.needsUpdate = true;
+          line.geometry.computeBoundingSphere();
+        };
+        set(part.go, p, { x: e.tx, z: e.ty });
+        part.dot.position.set(e.tx, 0.09, e.ty);
+        const other = e.other !== 255 && this.figures[e.other] ? this.figures[e.other].root.position : null;
+        part.act.visible = !!other;
+        if (other) { set(part.act, p, other); part.act.computeLineDistances(); }
+        let text = (v.legend && v.legend[e.why]) || '?';
+        if (e.rung) text += ' · rung ' + e.rung;
+        if (text !== part.text) {
+          if (part.sprite) { this.figures[i].root.remove(part.sprite); part.sprite.material.map.dispose(); part.sprite.material.dispose(); }
+          const c = document.createElement('canvas');
+          c.width = 256; c.height = 56;
+          const x = c.getContext('2d');
+          x.font = 'bold 28px system-ui, sans-serif';
+          x.textAlign = 'center'; x.textBaseline = 'middle';
+          const w = Math.min(250, x.measureText(text).width + 18);
+          x.fillStyle = 'rgba(255,204,0,0.92)';
+          x.fillRect(128 - w / 2, 8, w, 40);
+          x.fillStyle = '#10161f';
+          x.fillText(text, 128, 29);
+          const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+          sp.scale.set(1.9, 0.42, 1);
+          sp.position.y = 2.85;
+          sp.renderOrder = 71;
+          this.figures[i].root.add(sp);
+          part.sprite = sp; part.text = text;
+        }
+        if (part.sprite) part.sprite.visible = true;
+      }
+      if (!v || !v.show) for (const part of this.brainParts) if (part && part.sprite) part.sprite.visible = false;
+      for (let i = 0; i < this.brainParts.length; i++) {
+        const part = this.brainParts[i];
+        if (part && part.sprite && !(v && v.show && v.show.has(i))) part.sprite.visible = false;
+      }
     }
 
     // The scoring side celebrates (EVENT-driven, never inferred).

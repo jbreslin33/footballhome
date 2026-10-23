@@ -126,6 +126,10 @@ private:
     void broadcastRoster();
     // Clients holding the admin capability (granted from the JWT role).
     std::unordered_map<ClientId, bool> admins_;
+    // G4.41 brain overlay: each slot's last decision, and who's watching.
+    std::vector<ai::Orders> last_orders_;
+    std::unordered_map<ClientId, bool> brain_watchers_;
+    void sendBrain();
     // Connected clients, for snapshot fan-out. Keyed map (not vector) so
     // disconnect is O(1); iteration order doesn't matter — clients receive
     // identical bytes.

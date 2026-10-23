@@ -42,6 +42,9 @@ enum class FrameType : std::uint8_t {
     Teams          = 0x38, // s→c: the two teams' names, on connect (1.5)
     ReloadRosters  = 0x39, // admin: re-read both teams from the club DB (1.5)
     Concepts       = 0x3A, // s→c: the curriculum's concept names by id, on connect (1.6)
+    Brain          = 0x3B, // s→c: each player's decision (why / target / other), ~5 Hz to watchers (1.7)
+    BrainWatch     = 0x3C, // c→s: switch the brain overlay feed on / off (1.7)
+    BrainLegend    = 0x3D, // s→c: the decision names, on connect (1.7)
 };
 
 // Capability bits granted in HELLO (PROTOCOL.md §3).

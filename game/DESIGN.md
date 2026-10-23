@@ -1287,6 +1287,30 @@ the LIVE mix (Lighthouse's own marking/man-mark ability rows 90, the rest
 curriculum: a system demands its core concept at full ability; rate the
 players who have it, don't inflate the model.
 
+### 8.35-8.37 G4.39-G4.41 — curriculum content, real squads, the brain overlay
+
+- **G4.39 curriculum content** (mig 653 schema, 655 content): 73 new
+  concepts (149 total), 180 techniques (10 families, 28 groups) with ages,
+  25 attributes, concept→technique links; single-source / unverified rows
+  in, flagged by the view `game_curriculum_to_evaluate` (James: "flag the
+  ones that have only 1 source and evaluate").
+- **G4.40 squads** (mig 656-658, `game/scripts/load_squads.py`): the APSL
+  Jumbotron feed + team pages (via the scraper proxy) and the club rosters
+  and lineups rate both squads: quality by TABLE POSITION in each
+  division (no outliers), Lighthouse tiers APSL starter > APSL bench >
+  Liga 1 starter > Liga 1 bench, pace physical (not quality), age moves the
+  mental side and potential; hand edits (source 'edited') survive reloads.
+  The game always boots Lighthouse APSL vs Ukrainian Nationals.
+- **G4.41 brain overlay** — James: "an overlay that shows info about
+  players brain. pills to show just one guy etc or whole team. like a hud …
+  buckland does basically this in his book" [Buckland: Simple Soccer's
+  debug display]. Every Brain decision point (21) tags `Orders.why /
+  target / other / rung` — read-only, goldens unchanged. Wire 1.7 BRAIN
+  (~5 Hz to watchers), BRAIN_WATCH, BRAIN_LEGEND. Client: pills Off / One /
+  home / away / Both; each shown player a decision label, a line to his
+  target and a dashed line to the man he's acting on; One = a panel with
+  his decision and the rating of the concept behind it, ‹ › to step.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
