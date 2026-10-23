@@ -709,6 +709,7 @@
     // pitch-planner.js adds live per-m² cells inside the dragged pitches.
     const waterLayer = new THREE.Group();
     site.add(waterLayer);
+    let oldPitchMesh = null;
     if (L.oldPitch) {
       // The 11v11 pitch painted today (Google imagery), full markings in
       // yellow so it reads apart from the white game pitch.
@@ -739,7 +740,9 @@
       const pm = paint.mesh(new THREE.MeshStandardMaterial({ color: 0xffd400, roughness: 0.8,
         side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
       pm.renderOrder = 31;
+      pm.visible = false;   // DESIGN only (setOldPitch) — James: not in GAME
       site.add(pm);
+      oldPitchMesh = pm;
     }
 
     for (const lb of (L.labels || [])) {
@@ -1000,6 +1003,8 @@
           d.z = w.z;
         }
       },
+      // Today's painted (yellow) pitch: a DESIGN reference only.
+      setOldPitch(on) { if (oldPitchMesh) oldPitchMesh.visible = !!on; },
       // The designed 7v7 painted on the grass in GAME (chalk + centre
       // circle + goal areas, like layout.sevens); null removes it.
       setGameSeven(sv) {

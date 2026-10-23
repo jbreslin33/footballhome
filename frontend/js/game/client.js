@@ -662,6 +662,9 @@
     renderer.field.setContours(CMODES[cmode]);
     if (contoursBtn) contoursBtn.textContent = CLABEL[CMODES[cmode]];
     syncGameField();
+    // Today's yellow painted pitch only in DESIGN (James: "yellow field
+    // needs to not be in game just design").
+    if (renderer.field.setOldPitch) renderer.field.setOldPitch(design);
     // Ball-follow only in GAME; every other mode parks the camera.
     if (renderer.rig.follow !== (mode === 'game')) toggleFollow();
   };
