@@ -88,6 +88,8 @@ int main() {
         }
         cfg.admin_user_ids = persistence::loadAdminUserIds(db);
         cfg.db = db;   // G4.32: admin RELOAD_ROSTERS re-reads the teams
+        cfg.model_params = persistence::loadModelParams(db);   // G4.33
+        std::printf("fh-game: %zu game-model param(s) loaded\n", cfg.model_params.size());
         // Fictional demo rosters (mig 628): named players filling the
         // ladder. A roster's band OVERRIDES GAME_LEVEL_* defaults.
         const char* th = envOr("GAME_TEAM_HOME", "Lighthouse XI");

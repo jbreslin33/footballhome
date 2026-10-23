@@ -20,6 +20,8 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
       brain_{ai::TeamSetup::splitHalves(cfg.slot_count),
              Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y),
              cfg.formation_home, cfg.formation_away} {
+    skills_ = core::SkillSet(cfg.model_params);   // G4.33: DB numbers
+    brain_.setModelParams(cfg.model_params);
     world_.setLevel(0, cfg.level_home);
     world_.setLevel(1, cfg.level_away);
     world_.setMatchSeed(cfg.match_seed);
@@ -73,7 +75,7 @@ void GameServer::applySlotLevels() {
         const persistence::DemoTeam& team =
             home ? cfg_.roster_home : cfg_.roster_away;
         if (k >= team.players.size()) continue;
-        const core::LevelParams lv = core::levelForPlayer(
+        const core::LevelParams lv = skills_.apply(
             world_.level(home ? 0 : 1), team.players[k].attrs);
         world_.setSlotLevel(i, lv);
         brain_.setSlotLevel(i, lv);
@@ -98,7 +100,7 @@ void GameServer::applyRosters() {
             // Pace (mig 636) sets top speed when rated; else the row's
             // max_speed_cms as before.
             const std::int32_t cms = p.attrs.pace >= 0
-                                         ? core::paceSpeedCms(p.attrs.pace)
+                                         ? skills_.speedCms(p.attrs.pace)
                                          : p.max_speed_cms;
             world_.setMaxSpeed(i, Fixed64::fromFraction(cms, 100));
             // Legacy mask override → that player's known set at a strong
@@ -355,11 +357,11 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
                 *core::attributeAt(a, i) =
                     v == 255 ? std::int16_t{-1} : std::int16_t(v > 100 ? 100 : v);
             }
-            const std::int32_t cms = a.pace >= 0 ? core::paceSpeedCms(a.pace)
+            const std::int32_t cms = a.pace >= 0 ? skills_.speedCms(a.pace)
                                                  : team.players[k].max_speed_cms;
             world_.setMaxSpeed(pa->slot, Fixed64::fromFraction(cms, 100));
             const core::LevelParams lv =
-                core::levelForPlayer(world_.level(home ? 0 : 1), a);
+                skills_.apply(world_.level(home ? 0 : 1), a);
             world_.setSlotLevel(pa->slot, lv);
             brain_.setSlotLevel(pa->slot, lv);
             return;

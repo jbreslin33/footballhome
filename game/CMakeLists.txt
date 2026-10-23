@@ -58,6 +58,7 @@ target_link_libraries(game_ws PUBLIC game_math OpenSSL::Crypto)
 add_library(game_ai STATIC
   src/ai/Formation.cpp
   src/ai/Brain.cpp
+  src/ai/Concept.cpp
 )
 target_link_libraries(game_ai PUBLIC game_core)
 
@@ -117,4 +118,5 @@ game_test(test_websocket_transport)
 game_test(test_jwt_verifier)
 game_test(test_game_server)
 game_test(test_player_attributes)
+game_test(test_concepts)
 game_test(test_calibration_bands)

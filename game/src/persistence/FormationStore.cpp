@@ -223,4 +223,23 @@ std::vector<StylePreset> loadStylePresets(const DbConfig& cfg) {
     }
 }
 
+core::ModelParams loadModelParams(const DbConfig& cfg) {
+    core::ModelParams out;
+    try {
+        const std::string conn_str =
+            "host=" + cfg.host + " dbname=" + cfg.dbname +
+            " user=" + cfg.user + " password=" + cfg.password +
+            " connect_timeout=5";
+        pqxx::connection conn{conn_str};
+        pqxx::work tx{conn};
+        for (const auto& r : tx.exec(
+                 "SELECT owner || '.' || code || '.' || param, round(value * 1000)::bigint "
+                 "FROM game_model_params"))
+            out.setMilli(r[0].as<std::string>(), r[1].as<std::int64_t>());
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: game_model_params load failed (class defaults): %s\n", e.what());
+    }
+    return out;
+}
+
 }  // namespace fh::game::persistence

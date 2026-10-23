@@ -7,6 +7,7 @@
 #include "test_harness.hpp"
 #include "core/CanonicalHash.hpp"
 #include "core/Levels.hpp"
+#include "core/Skill.hpp"
 #include "core/World.hpp"
 
 using namespace fh::game;

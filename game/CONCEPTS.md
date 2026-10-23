@@ -41,6 +41,12 @@ touchline laws — [FH] marks engine-original formulations.
 | 24 | `safe_pass` | Keep the ball [Buckland, G4.19]: the passer runs the interceptor's closing-speed math on the pass's friction path (opponent reach before the receiver's = unsafe; lofted balls over the line exempt); pressed with nothing forward → RECYCLE the safest pass any direction (the G4.8 back outlet finally receives); clear the ball only in your own defensive third. Rolls per second | passes into readers; boots it away under any pressure (world measured 2,459 possession changes/match, 2.2 s each)
 | 25 | `shot_selection` | Shoot on CHANCE QUALITY, not range [G4.21; FH after the xG literature]: visible goal angle (radians, via fx_atan2) halved per outfield body inside the shooter→post→post triangle; shoot at ≥ 0.30 rad (≥ 0.18 pressed), always inside 8 m. Rolls per second | shoots the first tick inside 22 m, whatever's in the way |
 
+| 26 | `libero` [S] | The free +1 behind man-oriented marking [Bielsa]: marks nobody, shadows the ball across 2-5 m behind the deepest teammate, meets a long ball where it lands (G4.33, class `ai::Libero`) | a spare defender who just stands in the line |
+| 27 | `cover_shadow` [S] | The 9 presses their building CB along the line to his nearest midfield receiver, the pass in his shadow [Bielsa/Klopp] (G4.33, `ai::CoverShadow`) | running straight at the carrier, leaving the 6 open |
+| 28 | `line_step` [S] | Palla coperta / scoperta [Sacchi; FA / KNVB / DFB back four]: the line STEPS UP while the ball travels or the carrier is turned back / pressed, and HOLDS when a free opponent receives facing forward (G4.33, `ai::LineStep`) | a line that only drops, or steps up into the long ball |
+
+From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Concept.hpp) and their numbers are rows in `game_model_params` (mig 642). The 26 older concepts move into classes one at a time, each move held to the goldens.
+
 ## Build queue (planned; each lands with the behavior that consumes it)
 
 **Individual, attacking** — `first_touch_direction` (touch into space, not

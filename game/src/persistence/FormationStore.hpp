@@ -22,6 +22,7 @@
 
 #include "ai/Formation.hpp"
 #include "core/Levels.hpp"
+#include "core/ModelParams.hpp"
 
 #include <optional>
 #include <string>
@@ -90,5 +91,10 @@ struct StylePreset {
     core::PresetOverlay overlay;  // kConceptNames order
 };
 std::vector<StylePreset> loadStylePresets(const DbConfig& cfg);
+
+// G4.33 (mig 642): every number the Skill / Concept classes use, keyed
+// "owner.code.param". Empty on any failure — the classes keep their
+// seeded defaults, loudly logged.
+core::ModelParams loadModelParams(const DbConfig& cfg);
 
 }  // namespace fh::game::persistence

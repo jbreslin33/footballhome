@@ -703,6 +703,18 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 const Fixed64 hold = seen_ball.x * sgn - dist;
                 if (cover < hold) cover = hold;
             }
+            // line-step (bit 28, G4.33) [Sacchi palla coperta / scoperta;
+            // James: "when ball is moving push up and stop as opp is
+            // receiving and can play long. push up if opp is turned toward
+            // their own goal with ball"] — ai::LineStep.
+            if (ratings_[slot][28] > 0 && applies(slot, 28, world.tickCount() / 30)) {
+                const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                                        half_x_, degree(slot, 28)};
+                if (auto line = book_.line_step.stepLine(cx)) {
+                    if (cover < *line) cover = *line;          // leave the runner offside
+                    if (anchor.x * sgn < *line) anchor.x = *line * sgn;  // and STEP UP
+                }
+            }
             if (anchor.x * sgn > cover) anchor.x = cover * sgn;
             // Never retreat into the goal itself.
             const Fixed64 floor_x = -(half_x_ - Fixed64::fromInt(4));
@@ -755,6 +767,16 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     // ball." Low-discipline sides skip the theory and dive straight in.
     if (!ours && !opponents_restart) {
         const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+        // cover_shadow (bit 27, G4.33) [Bielsa; James: "the lh 9 should
+        // look to cover shadow press the ball carrying cb"] — ai::CoverShadow.
+        if (ratings_[slot][27] > 0 && applies(slot, 27, world.tickCount() / 30)) {
+            const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                                    half_x_, degree(slot, 27)};
+            if (auto t = book_.cover_shadow.target(cx)) {
+                out.move.move = seek(me.pos, *t, Fixed64::fromFraction(3, 10));
+                return out;
+            }
+        }
         int mates_behind = 0, opps_behind = 0;
         for (SlotIndex j = 0; j < world.playerCount(); ++j) {
             const bool behind =
@@ -937,6 +959,15 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 seen_ball.x - dsgn * Fixed64::fromFraction(11, 5),
                 seen_ball.y + shade};
             out.move.move = seek(me.pos, jockey, Fixed64::fromFraction(3, 10));
+            return out;
+        }
+
+        // libero (bit 26, G4.33) [Bielsa's +1; James: "free libero follow
+        // ball but set themselves ready for long ball"] — ai::Libero.
+        if (ratings_[slot][26] > 0 && applies(slot, 26, world.tickCount() / 30)) {
+            const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                                    half_x_, degree(slot, 26)};
+            out.move.move = seek(me.pos, book_.libero.target(cx), Fixed64::fromFraction(1, 2));
             return out;
         }
 

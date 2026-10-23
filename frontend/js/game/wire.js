@@ -40,7 +40,7 @@
                     'give-and-go', 'push-up', 'counter-press', 'balance',
                     'man-mark', 'verticality', 'intercept', 'restraint',
                     'tackle-timing', 'counter-attack', 'safe-pass',
-                    'shot-selection'];
+                    'shot-selection', 'libero', 'cover-shadow', 'line-step'];
 
   const LEVELS = ['perfect', 'u10', 'u14', 'amateur', 'semipro', 'pro', 'world'];
 

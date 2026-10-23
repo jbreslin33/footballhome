@@ -19,6 +19,8 @@
 #pragma once
 
 #include "ai/Brain.hpp"
+#include "core/ModelParams.hpp"
+#include "core/Skill.hpp"
 #include "persistence/FormationStore.hpp"
 #include "common/IdTypes.hpp"
 #include "core/World.hpp"
@@ -68,6 +70,9 @@ public:
         // attributes, roles, kits edited from the page). Unset = no reload
         // (tests, DB-down boots).
         std::optional<persistence::DbConfig> db;
+        // G4.33: game-model numbers (game_model_params) for the Skill and
+        // Concept classes; empty = their seeded defaults.
+        core::ModelParams model_params;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);
@@ -105,6 +110,7 @@ private:
     // attributes (core::levelForPlayer), into World + Brain. Re-run after
     // every band change (MATCH_SETTINGS) — attributes are the roster's.
     void applySlotLevels();
+    core::SkillSet skills_;   // G4.33: one class per attribute
     void applyPlayerConcepts(std::uint8_t slot);
     // G4.32: send the TEAMS frame (names + kits) to one client / everyone.
     void sendTeams(ClientId id);

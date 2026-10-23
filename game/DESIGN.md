@@ -1094,6 +1094,30 @@ DB, then wire 1.5 RELOAD_ROSTERS (0x39, admin) makes the running match
 re-read both teams — a config load between ticks; a failed load keeps the
 team as it was; formations stay.
 
+### 8.29 G4.33 — concepts and skills become classes; numbers come from the DB
+
+James: "each concept is a class? extended from concept? each skill a
+skill extended from skills? … no hard code. all comes from db and oop".
+
+- **Skills** (`core::Skill`, game/src/core/Skill.hpp): Pace, Passing,
+  Shooting, FirstTouch, Tackling, Anticipation, Decisions, Goalkeeping —
+  one class each, held by `core::SkillSet` in registry order. One integer
+  formula (`scaled`) reproduces G4.30's numbers exactly, so every golden
+  held.
+- **Concepts** (`ai::Concept`, game/src/ai/Concept.hpp): `Libero`,
+  `CoverShadow`, `LineStep` — each knows its registry name + bit; the
+  Brain still rolls the player's rating, then asks the class for a
+  target or a line. The 26 inline concepts migrate one by one.
+- **Numbers** in `game_model_params` (mig 642, owner.code.param + unit +
+  source note), loaded at boot into `core::ModelParams`, converted to
+  Fixed64 once (milli-units) so the same rows give the same match.
+- **Lighthouse out of possession [Bielsa]:** every outfield man marks; the
+  free CB is the libero (95); the starting 9 presses on a cover shadow
+  (90). **Both teams step their line [Sacchi]** at a semi-pro 68:
+  up while the ball is covered, hold when a free man receives facing
+  forward. All three are STYLE concepts (default 0 at every band) so the
+  bands and goldens are untouched; teams are coached into them by rows.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

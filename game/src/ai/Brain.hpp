@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "ai/Concept.hpp"
 #include "ai/Formation.hpp"
 #include "core/World.hpp"
 
@@ -47,6 +48,10 @@ public:
 
     // Skill noise (G4.3): perception delay + decision jitter per team.
     // Defaults (zero) = the perfect-play baseline the goldens lock.
+    // G4.33: the class-based concepts read their numbers from the club DB
+    // (game_model_params); without it they keep their seeded defaults.
+    void setModelParams(const core::ModelParams& p) { book_.configure(p); }
+
     // Per-player level (G4.30): the band bent by the player's attributes.
     void setSlotLevel(core::SlotIndex slot, const core::LevelParams& lv) {
         if (slot_level_.size() <= slot) {
@@ -102,6 +107,7 @@ private:
     math::Fixed64 half_x_, half_y_;
     FormationSpec spec_[2];
     core::LevelParams level_[2];
+    ConceptBook book_;   // G4.33 class-based concepts
     // G4.30 per-player levels (perception, decisions, keeper reaction);
     // empty / unset = the team band.
     std::vector<core::LevelParams>  slot_level_;

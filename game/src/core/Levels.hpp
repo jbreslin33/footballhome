@@ -120,46 +120,8 @@ inline std::int16_t* attributeAt(PlayerAttributes& a, int i) {
     return i >= 0 && i < kAttributeCount ? f[i] : nullptr;
 }
 
-// Error-type dials: x1.5 at 0, x1 at 50, x0.5 at 100 (rounded integer).
-inline std::int32_t scaleErrByRating(std::int32_t v, std::int16_t r) {
-    if (r < 0) return v;
-    return (v * (150 - r) + 50) / 100;
-}
-
-// The band bent by one player's attributes. Pure + integer, so per-player
-// levels stay deterministic; all -1 returns the band unchanged.
-inline LevelParams levelForPlayer(const LevelParams& band,
-                                  const PlayerAttributes& a) {
-    LevelParams p = band;
-    p.kick_angle_err_deg = scaleErrByRating(band.kick_angle_err_deg, a.passing);
-    p.kick_power_err_pct = scaleErrByRating(band.kick_power_err_pct, a.passing);
-    if (a.shooting >= 0) {
-        p.shot_angle_err_deg = scaleErrByRating(band.kick_angle_err_deg, a.shooting);
-        p.shot_power_err_pct = scaleErrByRating(band.kick_power_err_pct, a.shooting);
-    }
-    // Touch: gentler, x0.75 at 0 … x1.25 at 100 (a ball 25 % faster).
-    if (a.first_touch >= 0)
-        p.control_speed_mps =
-            (band.control_speed_mps * (150 + a.first_touch) + 100) / 200;
-    // Tackling: +/-30 points around the band, 5-95. A band with no dives
-    // (zero = perfect play) stays without them.
-    if (a.tackling >= 0 && band.tackle_success_pct > 0) {
-        std::int32_t t = band.tackle_success_pct + (a.tackling - 50) * 3 / 5;
-        p.tackle_success_pct = t < 5 ? 5 : (t > 95 ? 95 : t);
-    }
-    p.perception_delay_ticks =
-        scaleErrByRating(band.perception_delay_ticks, a.anticipation);
-    p.decision_jitter_pct =
-        scaleErrByRating(band.decision_jitter_pct, a.decisions);
-    p.keeper_reaction_ticks =
-        scaleErrByRating(band.keeper_reaction_ticks, a.goalkeeping);
-    p.keeper_fumble_pct = scaleErrByRating(band.keeper_fumble_pct, a.goalkeeping);
-    return p;
-}
-
-// Pace → top speed (cm/s): 5.4 m/s at 0, 6.4 at 50, 7.4 at 100 — APSL
-// legs, around the semipro demo rosters' 5.8-6.7.
-inline std::int32_t paceSpeedCms(std::int16_t pace) { return 540 + 2 * pace; }
+// The scaling itself lives in the Skill classes (core/Skill.hpp, G4.33):
+// one class per attribute, numbers from game_model_params.
 
 // ── Concept bits (game/CONCEPTS.md is the registry; append-only) ───────
 enum Concept : std::uint32_t {
@@ -193,16 +155,21 @@ enum Concept : std::uint32_t {
     kCounterAttack   = 1u << 23,  // fast break: moment 4 [KNVB]
     kSafePass        = 1u << 24,  // read the interceptors; recycle [Buckland]
     kShotSelection   = 1u << 25,  // shoot on chance quality, not range
+    // G4.33 [Bielsa]: roles of the man-oriented +1 system, STYLE class
+    // (default 0 at every band — a team is coached into them).
+    kLibero          = 1u << 26,  // the free +1: follow the ball, deep, read the long ball
+    kCoverShadow     = 1u << 27,  // the 9 presses their CB on the pass he'd play
+    kLineStep        = 1u << 28,  // [Sacchi] step up on a covered ball, hold on an open one
 };
-inline constexpr std::uint32_t kAllConcepts = (1u << 26) - 1;
+inline constexpr std::uint32_t kAllConcepts = (1u << 29) - 1;
 inline constexpr const char* kConceptNames[] = {
     "delay", "marking", "cover", "support", "outlet",
     "runs", "over-top", "sweep", "placement", "line-hold",
     "jockey-angle", "recover", "double-team", "width", "give-and-go",
     "push-up", "counter-press", "balance", "man-mark", "verticality",
     "intercept", "restraint", "tackle-timing", "counter-attack",
-    "safe-pass", "shot-selection"};
-inline constexpr int kConceptCount = 26;
+    "safe-pass", "shot-selection", "libero", "cover-shadow", "line-step"};
+inline constexpr int kConceptCount = 29;
 
 // ── Graded knowledge (James: "implement them on a 0 to 100 scale") ─────
 // A rating is CONSISTENCY + MAGNITUDE in one number: branch concepts roll
