@@ -106,6 +106,26 @@ FH_TEST(libero_lapses_too_deep_or_too_high) {
     FH_EXPECT(out.target(ctx(w, 0, +1, Vec2{Fixed64::zero(), Fixed64::zero()}, 100)).x == Fixed64::fromInt(-14));
 }
 
+FH_TEST(pass_habits_pick_short_and_simple_or_long) {
+    auto w = pitch();
+    w.placePlayer(0, at(0, 0), kFacePlus);     // on the ball
+    w.placePlayer(1, at(-4, 6), kFacePlus);    // short, slightly back
+    w.placePlayer(2, at(14, 0), kFaceMinus);
+    w.placePlayer(3, at(30, 0), kFaceMinus);
+    ai::ShortSimple shortp;
+    shortp.configure(core::ModelParams{});
+    // The nearest open man; back is fine.
+    FH_EXPECT(shortp.pick(ctx(w, 0, +1, Vec2{}, 100), [](const Vec2&, const Vec2&) { return true; }) == core::SlotIndex{1});
+    // His lane shut: nobody.
+    FH_EXPECT(!shortp.pick(ctx(w, 0, +1, Vec2{}, 100), [](const Vec2&, const Vec2&) { return false; }));
+    // Route one: a forward man 25 m away, lofted over their man.
+    ai::DirectBall direct;
+    direct.configure(core::ModelParams{});
+    FH_EXPECT(!direct.pick(ctx(w, 0, +1, Vec2{}, 100)));   // nobody 10 m+ ahead
+    w.placePlayer(1, at(24, 7), kFacePlus);
+    FH_EXPECT(direct.pick(ctx(w, 0, +1, Vec2{}, 100)) == core::SlotIndex{1});
+}
+
 FH_TEST(cover_shadow_stands_on_the_lane_to_the_receiver) {
     auto w = pitch();
     w.placePlayer(0, at(10, 10), kFacePlus);    // our 9

@@ -12,7 +12,8 @@
 // Overrides change a team's game-model DEMAND for one run (A/B a concept on
 // the real matchup), e.g. "home:blind-side-run=0"; "home:!marking" drops
 // the players' own ABILITY rows for that concept (they fall back to their
-// quality). The DB is never written.
+// quality); "home:~direct-ball" drops their TENDENCY rows for it (G4.47).
+// The DB is never written.
 // Env: POSTGRES_HOST (localhost from the host), POSTGRES_DB, POSTGRES_USER,
 // POSTGRES_PASSWORD, GAME_TEAM_HOME / GAME_TEAM_AWAY.
 //
@@ -75,6 +76,18 @@ void applyOverrides(server::GameServer::Config& cfg, const char* spec, bool home
         std::size_t end = s.find(',', at);
         if (end == std::string::npos) end = s.size();
         const std::string item = s.substr(at, end - at);
+        if (!item.empty() && item[0] == '~') {
+            const int id = core::concepts().find(item.substr(1));
+            if (id < 0) { std::fprintf(stderr, "unknown concept '%s'\n", item.c_str() + 1); std::exit(2); }
+            auto& team = home ? cfg.roster_home : cfg.roster_away;
+            int dropped = 0;
+            for (auto& p : team.players)
+                for (auto it = p.tendencies.begin(); it != p.tendencies.end();)
+                    if (it->first == id) { it = p.tendencies.erase(it); ++dropped; } else ++it;
+            std::printf("override: %s tendency rows for %s dropped (%d)\n", model.c_str(), item.c_str() + 1, dropped);
+            at = end + 1;
+            continue;
+        }
         if (!item.empty() && item[0] == '!') {
             const int id = core::concepts().find(item.substr(1));
             if (id < 0) { std::fprintf(stderr, "unknown concept '%s'\n", item.c_str() + 1); std::exit(2); }

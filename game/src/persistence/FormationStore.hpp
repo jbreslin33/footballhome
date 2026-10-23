@@ -69,6 +69,9 @@ struct DemoPlayer {
     // Mig 639 (G4.31): the player's own ABILITY rows — (concept id, 0-100)
     // over his band's (mig 652: he plays min(demand, ability)).
     std::vector<std::pair<int, std::uint8_t>> concepts;
+    // Mig 669 (G4.47): his TENDENCIES — (concept id, 0-100; 50 = neutral):
+    // how much he likes a concept, apart from how well he does it.
+    std::vector<std::pair<int, std::uint8_t>> tendencies;
 };
 struct DemoTeam {
     std::string name;  // game_demo_teams.name (the TEAMS frame)

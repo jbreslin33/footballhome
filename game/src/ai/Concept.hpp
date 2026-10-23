@@ -27,6 +27,7 @@
 #include "math/Vec3.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 
@@ -233,6 +234,38 @@ private:
 };
 
 // The class-based concepts a Brain carries.
+
+// The pass ladder's two LAPSES — and two Football Manager-style
+// TENDENCIES (G4.47, mig 669). James: "like football manager … tries short
+// passes at a certain percent. tries long balls?" Each is right in its own
+// system; for a laddered side it's what he does instead of looking up.
+//
+// Short simple — the possession habit [Guardiola juego de posición]: the
+// nearest open man, sideways or back is fine.
+class ShortSimple : public Concept {
+public:
+    ShortSimple() : Concept("short-simple", 151) {}
+    void configure(const core::ModelParams& p) override;
+    using LaneOpen = std::function<bool(const math::Vec2&, const math::Vec2&)>;
+    std::optional<core::SlotIndex> pick(const ConceptContext& c, const LaneOpen& open) const;
+
+private:
+    math::Fixed64 min_, max_, back_;
+};
+
+// Direct ball — route one [Reep]: lofted to the furthest-forward man in
+// range, over whatever is in the lane. (Range = the lofted kick's carry
+// until the loft gets variable power.)
+class DirectBall : public Concept {
+public:
+    DirectBall() : Concept("direct-ball", 152) {}
+    void configure(const core::ModelParams& p) override;
+    std::optional<core::SlotIndex> pick(const ConceptContext& c) const;
+
+private:
+    math::Fixed64 min_gain_, min_, max_;
+};
+
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
@@ -242,6 +275,8 @@ struct ConceptBook {
     ReleaseTiming release_timing;
     DeepSweeper deep_sweeper;
     StepOut step_out;
+    ShortSimple short_simple;
+    DirectBall direct_ball;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -252,6 +287,8 @@ struct ConceptBook {
         release_timing.configure(p);
         deep_sweeper.configure(p);
         step_out.configure(p);
+        short_simple.configure(p);
+        direct_ball.configure(p);
     }
 };
 

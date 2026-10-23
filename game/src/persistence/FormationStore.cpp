@@ -167,6 +167,19 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
                     out.players[i].concepts.emplace_back(
                         idx, static_cast<std::uint8_t>(v < 0 ? 0 : (v > 100 ? 100 : v)));
         }
+        // Mig 669 tendencies, by concept NAME.
+        for (const auto& r : tx.exec_params(
+                 "SELECT shirt, concept, tendency FROM game_demo_player_tendencies "
+                 "WHERE team_id = $1",
+                 team_id)) {
+            const int idx = core::concepts().find(r[1].as<std::string>());
+            if (idx < 0) continue;
+            const int v = r[2].as<int>();
+            for (std::size_t i = 0; i < shirts.size(); ++i)
+                if (shirts[i] == r[0].as<int>())
+                    out.players[i].tendencies.emplace_back(
+                        idx, static_cast<std::uint8_t>(v < 0 ? 0 : (v > 100 ? 100 : v)));
+        }
         return out;
     } catch (const std::exception& e) {
         std::fprintf(stderr, "fh-game: demo team '%s' load failed: %s\n",

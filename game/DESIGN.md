@@ -1395,6 +1395,32 @@ players who have it, don't inflate the model.
   style tendencies) — a pass-choice lapse into the neighbour pass type he
   prefers.
 
+### 8.42 G4.47 — pass lapses and tendencies (Football Manager style)
+
+- James: "like football manager … tries short passes at a certain percent.
+  tries long balls?" — "i like both ideas". Two mechanisms, one rule
+  (`Brain::choose`):
+  1. **Tendency** (`game_demo_player_tendencies`, mig 669): how much he
+     LIKES a concept, apart from how well he does it (50 neutral). Above 50
+     he plays it on his own initiative (t − 50)% of windows ×
+     `skill.tendency.initiative` — even when he could do what the model
+     asks. It also weights which way he lapses (else his ability does).
+  2. **Lapse**: the model asks, his ability roll fails → a lapses-to
+     neighbour (§8.41).
+- The pass ladder lapses into two pass habits, each right in its system:
+  **short-simple** (151, `ai::ShortSimple`, possession [Guardiola]): the
+  nearest open man within 15 m, up to 5 m back; **direct-ball** (152,
+  `ai::DirectBall`, route one [Reep]): lofted to the furthest-forward man
+  10 m+ ahead, 15-30 m away, over the lane. Overlay: "lapse: short and
+  simple" / "lapse: hit it long" / "likes it short" / "likes it long" (and
+  the libero's "likes to sit deep / step out"). The 30 m cap is the lofted
+  kick's fixed carry; a real 50 m diagonal needs a variable-power loft.
+- First real tendency: Lighthouse's 6 (long passing rated 74-80) likes it
+  long, 75. fh-game-match gains `home:~concept` (drop tendency rows).
+- Measured (60): lapses 668 −0.27 → + pass lapses −0.17 → + the 6's long
+  ball **−0.03 ± 0.17** (goals 1.20 − 1.23: fewer both ways). Each step is
+  inside one SE — realism, not a tuning win.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

@@ -106,6 +106,12 @@ void GameServer::applyRosters() {
                 (home ? "Home " : "Away ") + std::to_string(k + 1);
         }
         ability_[i] = buildAbility(i, home ? cfg_.level_home : cfg_.level_away);
+        core::PresetOverlay likes;
+        likes.fill(-1);
+        if (k < team.players.size())
+            for (const auto& [idx, v] : team.players[k].tendencies)
+                if (idx >= 0 && idx < core::concepts().size()) likes[idx] = v;
+        brain_.setTendencies(i, likes);
     }
     // Teams PLAY their game model (mig 652; were worn presets, mig 631).
     for (int side = 0; side < 2; ++side) {

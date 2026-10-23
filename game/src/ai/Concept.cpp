@@ -130,6 +130,57 @@ Vec2 StepOut::target(const ConceptContext& c) const {
     return Vec2{(line + step_) * s, my_y};
 }
 
+// ── ShortSimple / DirectBall (the pass ladder's lapses, G4.47) ─────────
+void ShortSimple::configure(const core::ModelParams& p) {
+    min_ = p.fixed(key("min_m"), 5000);
+    max_ = p.fixed(key("max_m"), 15000);
+    back_ = p.fixed(key("back_m"), 5000);
+}
+
+std::optional<core::SlotIndex> ShortSimple::pick(const ConceptContext& c, const LaneOpen& open) const {
+    const auto& w = c.world;
+    const auto& me = w.player(c.slot);
+    const Fixed64 s = c.sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    std::optional<core::SlotIndex> best;
+    Fixed64 best_d2 = max_ * max_;
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
+        const auto& m = w.player(j);
+        if (j == c.slot || m.team != me.team) continue;
+        if ((m.pos.x - me.pos.x) * s < -back_) continue;
+        const Fixed64 d2 = dist2(m.pos, me.pos);
+        if (d2 < min_ * min_ || d2 > best_d2) continue;
+        if (!open(Vec2{me.pos.x, me.pos.y}, Vec2{m.pos.x, m.pos.y})) continue;
+        best_d2 = d2;
+        best = j;
+    }
+    return best;
+}
+
+void DirectBall::configure(const core::ModelParams& p) {
+    min_gain_ = p.fixed(key("min_gain_m"), 10000);
+    min_ = p.fixed(key("min_m"), 15000);
+    max_ = p.fixed(key("max_m"), 30000);
+}
+
+std::optional<core::SlotIndex> DirectBall::pick(const ConceptContext& c) const {
+    const auto& w = c.world;
+    const auto& me = w.player(c.slot);
+    const Fixed64 s = c.sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    std::optional<core::SlotIndex> best;
+    Fixed64 best_x = me.pos.x * s + min_gain_;
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
+        const auto& m = w.player(j);
+        if (j == c.slot || m.team != me.team || w.isKeeper(j)) continue;
+        const Fixed64 x = m.pos.x * s;
+        if (x < best_x) continue;
+        const Fixed64 d2 = dist2(m.pos, me.pos);
+        if (d2 < min_ * min_ || d2 > max_ * max_) continue;
+        best_x = x;
+        best = j;
+    }
+    return best;
+}
+
 // ── CoverShadow ─────────────────────────────────────────────────────────
 void CoverShadow::configure(const core::ModelParams& p) {
     deep_x_ = p.fixed(key("deep_x_m"), 15000);

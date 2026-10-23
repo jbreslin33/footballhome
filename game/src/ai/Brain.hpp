@@ -42,6 +42,7 @@ enum class Why : std::uint8_t {
     KeeperSweep, KeeperPosition, CoverShadow, CounterPress, Tackle, Recover,
     Press, Chase, Delay, Libero, Mark, GiveAndGo, BlindSideRun, RunInBehind,
     Outlet, Support, Human, WaitForRunner, LapseDeep, LapseStepOut,
+    LapseShort, LapseLong, HabitShort, HabitLong, HabitDeep, HabitStepOut,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -49,6 +50,8 @@ inline constexpr const char* kWhyNames[] = {
     "press", "chase ball", "delay", "libero", "mark", "give and go", "blind-side run", "run in behind",
     "outlet", "support", "human", "wait for the runner",
     "lapse: sweeping too deep", "lapse: stepped out too high",
+    "lapse: short and simple", "lapse: hit it long",
+    "likes it short", "likes it long", "likes to sit deep", "likes to step out",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -75,7 +78,10 @@ public:
     // Defaults (zero) = the perfect-play baseline the goldens lock.
     // G4.33: the class-based concepts read their numbers from the club DB
     // (game_model_params); without it they keep their seeded defaults.
-    void setModelParams(const core::ModelParams& p) { book_.configure(p); }
+    void setModelParams(const core::ModelParams& p) {
+        book_.configure(p);
+        initiative_ = p.fixed("skill.tendency.initiative", 1000);
+    }
 
     // Per-player level (G4.30): the band bent by the player's attributes.
     void setSlotLevel(core::SlotIndex slot, const core::LevelParams& lv) {
@@ -115,6 +121,17 @@ public:
         if (habits_.size() <= slot) habits_.resize(slot + 1u, core::ConceptRatings{});
         habits_[slot] = r;
     }
+    // His TENDENCIES (G4.47, mig 669; -1 = none): how much he LIKES a
+    // concept, apart from how well he does it — weights his lapses and
+    // makes him try a liked neighbour on his own initiative.
+    void setTendencies(core::SlotIndex slot, const core::PresetOverlay& t) {
+        if (tendencies_.size() <= slot) {
+            core::PresetOverlay none;
+            none.fill(-1);
+            tendencies_.resize(slot + 1u, none);
+        }
+        tendencies_[slot] = t;
+    }
     const core::ConceptRatings& ratings(core::SlotIndex slot) const {
         return ratings_[slot];
     }
@@ -146,6 +163,8 @@ private:
     std::uint64_t match_seed_ = 0;
     std::vector<core::ConceptRatings> ratings_;
     std::vector<core::ConceptRatings> habits_;
+    std::vector<core::PresetOverlay> tendencies_;
+    math::Fixed64 initiative_ = math::Fixed64::one();
     // Graded application: does slot APPLY concept (bit index) this tick?
     // Consistency roll — deterministic noise vs the rating.
     bool applies(core::SlotIndex slot, int concept_idx,
@@ -158,23 +177,51 @@ private:
         return (n + math::Fixed64::one()) <
                math::Fixed64::fromFraction(r, 50);
     }
+    int tendency(core::SlotIndex slot, int c) const {
+        return slot < tendencies_.size() ? tendencies_[slot][c] : -1;
+    }
     // The concept slot lapses into when his roll on concept_idx fails
-    // (G4.46): one of its 'lapses-to' neighbours, weighted by his ability on
-    // each; -1 = none known (he falls through to the generic brain).
+    // (G4.46): one of its 'lapses-to' neighbours, weighted by his tendency
+    // on each when he has one, else his ability (habit); -1 = none.
     int lapse(core::SlotIndex slot, int concept_idx, std::uint64_t window) const {
         if (slot >= habits_.size()) return -1;
+        auto weight = [&](int to) {
+            const int t = tendency(slot, to);
+            return t >= 0 ? t : static_cast<int>(habits_[slot][to]);
+        };
         int total = 0;
-        for (int to : core::concepts().lapses(concept_idx)) total += habits_[slot][to];
+        for (int to : core::concepts().lapses(concept_idx)) total += weight(to);
         if (total <= 0) return -1;
         const auto n = core::detNoise(match_seed_, window, slot, static_cast<std::uint8_t>(240));
         // n in [-1, 1) → a pick in [0, total).
         int pick = static_cast<int>((((n + math::Fixed64::one()) * total) / 2).raw >>
                                     math::Fixed64::FRAC_BITS);
         for (int to : core::concepts().lapses(concept_idx)) {
-            pick -= habits_[slot][to];
+            pick -= weight(to);
             if (pick < 0) return to;
         }
         return -1;
+    }
+    // What slot actually plays for concept_idx this window (G4.47):
+    //   1. a neighbour he LIKES (tendency t > 50) on his own initiative,
+    //      (t − 50)% of windows × tendency.initiative — "tries long balls";
+    //   2. else the concept itself, when his model asks and his ability
+    //      roll succeeds;
+    //   3. else, when asked, a lapse into a neighbour;
+    //   -1 = none of it (the generic brain).
+    int choose(core::SlotIndex slot, int concept_idx, std::uint64_t window) const {
+        int k = 0;
+        for (int to : core::concepts().lapses(concept_idx)) {
+            const int t = tendency(slot, to);
+            ++k;
+            if (t <= 50) continue;
+            const auto n = core::detNoise(match_seed_, window, slot, static_cast<std::uint8_t>(240 + k));
+            if ((n + math::Fixed64::one()) * 50 < math::Fixed64::fromInt(t - 50) * initiative_)
+                return to;
+        }
+        if (ratings_[slot][concept_idx] == 0) return -1;
+        if (applies(slot, concept_idx, window)) return concept_idx;
+        return lapse(slot, concept_idx, window);
     }
     // counter_attack (bit 23, G4.18): is slot's team inside its fast-break
     // window — ball won from the opponent IN OUR OWN HALF, within

@@ -368,8 +368,11 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // a laddered passer ranks receivers by rung (behind their line
         // first, central before wide) instead of raw progress, and plays
         // a high enough rung at once. Rolls per second like safe_pass.
-        const bool ladder =
-            ratings_[slot][29] > 0 && applies(slot, 29, world.tickCount() / 30);
+        // G4.47: what he plays — the ladder, a liked pass on his own
+        // initiative, or a lapse (short and simple / hit it long).
+        const int pass_choice = im_keeper ? (ratings_[slot][29] > 0 && applies(slot, 29, world.tickCount() / 30) ? 29 : -1)
+                                          : choose(slot, 29, world.tickCount() / 30);
+        const bool ladder = pass_choice == 29;
         // release_timing (id 60, G4.44) [Bielsa-Leeds f54/67/71]: an
         // unpressed carrier holds for a teammate about to break the line.
         const bool release = ratings_[slot][60] > 0 && !pressed && !im_keeper &&
@@ -421,6 +424,27 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 target = b;
                 target_dist_sq = dsq;
                 target_slot = i;
+            }
+        }
+
+        // G4.47 pass habits / lapses: he plays HIS ball, now.
+        if (pass_choice == book_.short_simple.bit() || pass_choice == book_.direct_ball.bit()) {
+            const ConceptContext pcx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                                     half_x_, degree(slot, pass_choice)};
+            const bool liked = ratings_[slot][29] == 0 || applies(slot, 29, world.tickCount() / 30);
+            const bool longball = pass_choice == book_.direct_ball.bit();
+            const auto r = longball ? book_.direct_ball.pick(pcx) : book_.short_simple.pick(pcx, lane_open);
+            if (r) {
+                const Vec2 to{world.player(*r).pos.x, world.player(*r).pos.y};
+                out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+                out.action = longball ? Action::LoftedKick
+                                      : (distSq(me.pos, Vec3{to.x, to.y, Fixed64::zero()}) < kSoftPassRange * kSoftPassRange
+                                             ? Action::ShortPass : Action::GroundKick);
+                out.why = longball ? (liked ? Why::HabitLong : Why::LapseLong)
+                                   : (liked ? Why::HabitShort : Why::LapseShort);
+                out.target = to;
+                out.other = static_cast<std::int16_t>(*r);
+                return out;
             }
         }
 
@@ -1049,19 +1073,18 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
                                     half_x_, degree(slot, 26)};
             const std::uint64_t win = world.tickCount() / book_.libero.lapseWindowTicks();
+            const int to = choose(slot, 26, win);
+            const bool liked = to >= 0 && to != 26 && applies(slot, 26, win);
             std::optional<Vec2> lt;
-            if (applies(slot, 26, win)) {
+            if (to == 26) {
                 lt = book_.libero.target(cx, !book_.line_step.covered(cx));
                 out.why = Why::Libero;
-            } else {
-                const int to = lapse(slot, 26, win);
-                if (to == book_.deep_sweeper.bit()) {
-                    lt = book_.deep_sweeper.target(cx);
-                    out.why = Why::LapseDeep;
-                } else if (to == book_.step_out.bit()) {
-                    lt = book_.step_out.target(cx);
-                    out.why = Why::LapseStepOut;
-                }
+            } else if (to == book_.deep_sweeper.bit()) {
+                lt = book_.deep_sweeper.target(cx);
+                out.why = liked ? Why::HabitDeep : Why::LapseDeep;
+            } else if (to == book_.step_out.bit()) {
+                lt = book_.step_out.target(cx);
+                out.why = liked ? Why::HabitStepOut : Why::LapseStepOut;
             }
             if (lt) {
                 out.move.move = seek(me.pos, *lt, Fixed64::fromFraction(1, 2));
