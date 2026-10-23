@@ -344,6 +344,8 @@ class GameCenterScreen extends Screen {
     this.squadNotice = null;  // {squad, untold, sms: {sent_at}, email: {sent_at}} — the squad game reminder
     this.oppContacts = null;  // {club:{contacts}, tiers, date…} — the opponent of this game (mig 483)
     this.invites = null;      // {invites, candidates} — 🎟 Call-ups section (fh_event_invites, mig 355)
+    this.regGaps = null;      // [{person_id, …, subject, body}] — Going, not on the official roster (mig 638)
+    this.textMarks = null;    // {marks: {person_id: {game_link, reg_link}}, optedIn: Set} — club-number texts (mig 647)
     this._invBusy = new Set();   // person_ids with an invite POST/DELETE in flight
     this._invCopied = new Set(); // person_ids whose invite link was put on the clipboard
     this.officialRoster = null;  // {available, league, saved} — the league's own roster sheet for this game (mig 501)
@@ -848,6 +850,10 @@ class GameCenterScreen extends Screen {
       this._foldInCallups();
     }
     this._render();
+    // An RSVP change can open or close a registration gap (mig 638).
+    if (this.realIsCoach) this._loadRegGaps().then(() => this._render()).catch(() => {});
+    // Delivery reports land within seconds of a club text (mig 647).
+    if (this.isCoach) this._loadTextMarks().then(() => this._render()).catch(() => {});
   }
 
   // Same admin-only gate my.js uses for the "Post to Instagram" button on
@@ -899,6 +905,14 @@ class GameCenterScreen extends Screen {
       if (availBtn && !availBtn.disabled) { this._setMyAvailability(availBtn); return; }
       const eligBtn = e.target.closest('[data-elig-rsvp]');
       if (eligBtn && !eligBtn.disabled) { this._setEligibilityRsvp(eligBtn); return; }
+      const why = e.target.closest('[data-gc-why]');
+      if (why) {
+        const note = why.closest('[data-gc-contact]')?.querySelector('[data-gc-squad-note]');
+        if (note) note.innerHTML = `<span style="color:#fbbf24; font-weight:700;">${this.escapeHtml(why.dataset.gcWhy)}</span>`;
+        return;
+      }
+      const clubText = e.target.closest('[data-gc-club-text]');
+      if (clubText && this.isCoach && !clubText.disabled) { this._sendClubText(clubText); return; }
       const squadOne = e.target.closest('[data-gc-squad-one]');
       if (squadOne && this.isCoach && !squadOne.disabled) { this._sendSquadNoticeOne(squadOne); return; }
       const squadBtn = e.target.closest('[data-gc-squad-notice]');
@@ -1243,7 +1257,7 @@ class GameCenterScreen extends Screen {
       // Reminders already sent about this game — dims a No Response
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
       const remindersPromise = this.isCoach
-        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients(), this._loadHealth(), this._loadInvites()]) : Promise.resolve();
+        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients(), this._loadHealth(), this._loadInvites(), this._loadRegGaps(), this._loadTextMarks()]) : Promise.resolve();
       // The league's roster sheet is for the players too (owner 2026-09-30:
       // "all players to see it so we can ask one to print it if we forget").
       const officialRosterPromise = this._loadOfficialRoster();
@@ -1292,6 +1306,7 @@ class GameCenterScreen extends Screen {
       this._liveFpLast = this._liveFp(lineupData.data.lineup, lineupData.data.rosterStats, this.invites);
       this._syncHash();
       this._render();
+      if (this.isCoach) this._pullLeagueList();
     } catch (err) {
       console.error('[game-lineup] load failed:', err);
       this.error = err.message || 'Failed to load lineup.';
@@ -1314,7 +1329,8 @@ class GameCenterScreen extends Screen {
       if (!this.roster.some(r => Number(r.id) === pid)) {
         this.roster.push({ id: pid, name, lastName: inv.last_name || '', lineupRole: null,
                            teamId: this.teamId, jerseyNumber: null, duesEligible: true,
-                           callUp: true, fromTeam: inv.from_team || '', fromTeamId: inv.from_team_id || null });
+                           callUp: true, fromTeam: inv.from_team || '', fromTeamId: inv.from_team_id || null,
+                           standing: !!inv.auto, callIn: !!inv.call_in });
       }
       if (!this.players.some(d => Number(d.playerId) === pid))
         this.players.push({ playerId: pid, personId: inv.person_id, name });
@@ -2426,15 +2442,24 @@ class GameCenterScreen extends Screen {
           <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
             <span ${this._eligNameTitle(p.id)}style="overflow-wrap:break-word; white-space:normal; ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}</span>
             ${p.callUp ? (() => {
-              // "Call Down" when they come from a capped squad above this
-              // one (APSL → CASA, migs 616/617); "Call-up" otherwise
-              // (owner 2026-10-20: "should have label 'Call Down' to show
-              // them clearly").
+              // Which kind of invitee (owner 2026-10-22): ⭐ Standing
+              // Call-up = a team_auto_invites rider (Rhoden, Pena); ↔ Call
+              // In = rostered here invite-only from a same-level squad
+              // (Lucca, mig 637); 🎟 Call Down = a per-game invite from a
+              // capped squad above (APSL → CASA, migs 616/617, e.g. Luke);
+              // 🎟 Call-up otherwise.  The cap still binds a standing
+              // call-up — _isCallDown decides that, not the label.
               const down = this._isCallDown(p.id);
-              return `<span title="${down ? 'Call-down from the squad above — counts toward the league cap in starters/bench'
-                                          : "Invited call-up — Going; the practice criteria don't apply, they're eligible"}"
+              const kind = p.standing ? 'standing' : p.callIn ? 'call_in' : down ? 'call_down' : 'call_up';
+              const fallback = { standing: '⭐ Standing Call-up', call_in: '↔ Call In', call_down: '🎟 Call Down', call_up: '🎟 Call-up' }[kind];
+              const label = (window.MessageCopy && MessageCopy.block('invite_chip', kind)) || fallback;
+              const [bg, fg] = { standing: ['#1e3a8a', '#bfdbfe'], call_in: ['#4c1d95', '#ddd6fe'], call_down: ['#7c2d12', '#fed7aa'], call_up: ['#166534', '#dcfce7'] }[kind];
+              const tip = down ? 'From the squad above — counts toward the league cap in starters/bench'
+                : p.callIn ? 'Call In — rostered here, plays when invited; eligible'
+                : "Invited call-up — Going; the practice criteria don't apply, they're eligible";
+              return `<span title="${tip}"
               style="padding:1px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; white-space:nowrap;
-                     background:${down ? '#7c2d12' : '#166534'}; color:${down ? '#fed7aa' : '#dcfce7'};">🎟 ${down ? 'Call Down' : 'Call-up'}${p.fromTeam ? ` · ${this.escapeHtml(p.fromTeam)}` : ''}</span>`;
+                     background:${bg}; color:${fg};">${this.escapeHtml(label)}${p.fromTeam && !p.callIn ? ` · ${this.escapeHtml(p.fromTeam)}` : ''}</span>`;
             })() : ''}
             ${this.isCoach && !p.callUp ? this._rsvpStatusPill(p.id) : ''}
             ${this._duesFlag(p)}
@@ -2452,7 +2477,7 @@ class GameCenterScreen extends Screen {
             ${roleButtons(p)}
           </div>
         ` : ''}
-        ${this.isCoach ? this._contactLine(p.id) : ''}
+        ${this.isCoach && !String(extra).includes('data-gc-contact') ? this._contactLine(p.id) : ''}
         ${extra}
       </div>`;
 
@@ -2561,13 +2586,73 @@ class GameCenterScreen extends Screen {
       const zone = this.zones.get(p.id) || 'pool';
       const moved = sent.told_zone && sent.told_zone !== zone;
       const live = moved ? {} : sent;   // a moved player's buttons light up again
+      // Two contact boxes on every card, always the same buttons in the
+      // same places (mig 649; owner 2026-10-23: "auto or manual can be
+      // greyed out depending on if they have number or opted in. this way
+      // cards are same size").  AUTO = the club number (opted-in only,
+      // tracked to delivered/opened); MANUAL = the coach's own phone and
+      // email, always there.  A greyed button still answers a tap with
+      // why.  REG = the registration gap's league form (migs 638/645).
+      const gap = this._regGapFor(personId);
+      const regOn = !!(gap && !gap.player_done);
+      const line = regOn ? this._leagueListLine() : null;
+      const st = (this.textMarks && this.textMarks.people && this.textMarks.people[String(personId)]) || null;
+      const cb = (tier, tokens) => (window.MessageCopy && MessageCopy.block('contact_box', tier, tokens)) || '';
+      // Unknown state (marks not loaded, an un-rostered call-up) never
+      // greys MANUAL — the server still refuses what it cannot send.
+      const hasPhone = st ? !!st.phone : true;
+      const hasEmail = st ? !!st.email : true;
+      const consent = st ? st.consent : 'none';
+      const autoWhy = !hasPhone ? cb('why_nophone') : consent === 'stopped' ? cb('why_stopped')
+                    : consent !== 'in' ? cb('why_none') : '';
+      const badge = !hasPhone ? cb('badge_nophone') : consent === 'in' ? cb('badge_in')
+                  : consent === 'stopped' ? cb('badge_stopped') : cb('badge_none');
+      const grey = (label, why) => `<button type="button" data-gc-why="${this.escapeHtml(why)}" title="${this.escapeHtml(why)}"
+          style="padding:3px 9px; border-radius:6px; border:none; cursor:help; font-weight:800; font-size:0.68rem; color:#cbd5e1; background:#475569; opacity:0.35;">${label}</button>`;
+      const link = (href, label, bg, title, blank) => `<a href="${href}" ${blank ? 'target="_blank" rel="noopener noreferrer"' : ''} title="${this.escapeHtml(title)}"
+          style="padding:3px 9px; border-radius:6px; font-weight:800; font-size:0.68rem; color:#fff; background:${bg}; text-decoration:none; white-space:nowrap;">${label}</a>`;
+      const clubBtn = (kind, label) => `<button type="button" data-gc-club-text="${kind}" data-person-id="${personId}"
+          title="${this.escapeHtml((window.MessageCopy && MessageCopy.block('text_mark', 'button_tip')) || '')}"
+          style="padding:3px 9px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.68rem; color:#fff; background:#059669;">${label}</button>`;
+      const noReg = cb('why_noreg');
+      const autoBox = [
+        autoWhy ? grey('📲 GAME', autoWhy) : clubBtn('game_link', '📲 GAME'),
+        !regOn ? grey('📲 REG', noReg) : autoWhy ? grey('📲 REG', autoWhy) : clubBtn('reg_link', '📲 REG'),
+      ].join('');
+      const smsReg  = regOn && gap.phone ? this.buildSmsComposeHref({ to: gap.phone, body: gap.body || '' }) : null;
+      const mailReg = regOn && gap.email ? this.buildGmailComposeHref({ to: gap.email, subject: gap.subject || '', body: gap.body || '' }) : null;
+      const manualBox = [
+        hasPhone ? remindBtn(`data-gc-squad-one="sms" data-person-id="${personId}"`, '💬 GAME', '#0284c7', 'Text their personal sign-in link from your phone — names their role when they have one (the parent, for youth)', live.sms) : grey('💬 GAME', cb('why_nophone')),
+        hasEmail ? remindBtn(`data-gc-squad-one="email" data-person-id="${personId}"`, '✉ GAME', '#7c3aed', 'Email their personal sign-in link straight to this game — names their role when they have one (the parent, for youth)', live.email) : grey('✉ GAME', cb('why_noemail')),
+        st && st.phone ? link(`tel:${encodeURIComponent(st.phone)}`, cb('call') || '📞 CALL', '#334155', st.phone, false) : grey(cb('call') || '📞 CALL', cb('why_nophone')),
+        st && st.phone ? link(`sms:${st.phone}`, cb('blank_sms') || '💬 BLANK', '#334155', cb('blank_tip', { to: st.phone }), false) : grey(cb('blank_sms') || '💬 BLANK', cb('why_nophone')),
+        st && st.email ? link(`mailto:${st.email}`, cb('blank_email') || '✉ BLANK', '#334155', cb('blank_tip', { to: st.email }), false) : grey(cb('blank_email') || '✉ BLANK', cb('why_noemail')),
+        !regOn ? grey('💬 REG', noReg) : smsReg ? link(smsReg, '💬 REG', '#334155', `Text ${gap.phone} — ${gap.form_label}`, false) : grey('💬 REG', cb('why_nophone')),
+        !regOn ? grey('✉ REG', noReg) : mailReg ? link(mailReg, '✉ REG', '#334155', `Email ${gap.email} — ${gap.form_label}`, true) : grey('✉ REG', cb('why_noemail')),
+      ].join('');
+      const boxStyle = 'flex:1 1 140px; min-width:0; border:1px solid var(--border-color); border-radius:8px; padding:4px 6px;';
+      const boxHead = 'font-size:0.58rem; font-weight:800; letter-spacing:0.04em; opacity:0.6; margin-bottom:3px;';
+      const reply = st && st.reply_body
+        ? cb('reply', { time: this._sentWhen(st.reply_at), body: st.reply_body }) : '';
+      // One status line, always present, so a send never grows the card.
+      const status = [
+        moved ? `<span style="color:#fbbf24;">moved since told (${this.escapeHtml(sent.told_zone)})</span>` : this.escapeHtml(this._sentNote(sent)),
+        this._textMarkHtml(personId, 'game_link'),
+        regOn ? `<span style="opacity:0.8;">${this.escapeHtml(this._regGapReason(gap))}</span>` : '',
+        this._textMarkHtml(personId, 'reg_link'),
+        line && line.bad ? `<span style="font-weight:800; color:#ef4444;">⚠ ${this.escapeHtml((window.MessageCopy && MessageCopy.block('reg_gap', 'card_stale')) || 'list check failed')}</span>` : '',
+        reply ? `<span style="color:#38bdf8; font-weight:700;">${this.escapeHtml(reply)}</span>` : '',
+      ].filter(Boolean).join(' · ');
       return `
-        <div style="display:flex; gap:6px; align-items:center; margin-top:5px;">
-          ${remindBtn(`data-gc-squad-one="sms" data-person-id="${personId}"`, '💬 GAME LINK', '#0284c7', 'Text their personal sign-in link straight to this game — names their role when they have one (the parent, for youth)', live.sms)}
-          ${remindBtn(`data-gc-squad-one="email" data-person-id="${personId}"`, '✉ GAME LINK', '#7c3aed', 'Email their personal sign-in link straight to this game — names their role when they have one (the parent, for youth)', live.email)}
-          <span data-gc-squad-note style="font-size:0.66rem; opacity:0.75;">${moved
-            ? `<span style="color:#fbbf24;">moved since told (${this.escapeHtml(sent.told_zone)})</span>`
-            : this.escapeHtml(this._sentNote(sent))}</span>
+        <div data-gc-contact style="margin-top:5px;">
+          <div style="font-size:0.66rem; font-weight:800; margin-bottom:3px;">${this.escapeHtml(badge)}</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <div style="${boxStyle}"><div style="${boxHead}">${this.escapeHtml(cb('auto') || 'AUTO')}</div>
+              <div style="display:flex; gap:4px; flex-wrap:wrap;">${autoBox}</div></div>
+            <div style="${boxStyle}"><div style="${boxHead}">${this.escapeHtml(cb('manual') || 'MANUAL')}</div>
+              <div style="display:flex; gap:4px; flex-wrap:wrap;">${manualBox}</div></div>
+          </div>
+          <div data-gc-squad-note style="font-size:0.66rem; opacity:0.85; min-height:1.3em; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${status || '&nbsp;'}</div>
         </div>`;
     };
 
@@ -2613,7 +2698,7 @@ class GameCenterScreen extends Screen {
     // buttons as well.
     const bothCards = canMessage ? (p) => remindCard(p) + squadCard(p) : null;
     if (everyone) {
-      paint(viewToggleHtml + lineupControlsHtml + this._everyoneNoteHtml() + [
+      paint(viewToggleHtml + lineupControlsHtml + this._renderRegGapSection() + this._everyoneNoteHtml() + [
         gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter, canMessage ? squadCard : null),
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
@@ -2621,7 +2706,7 @@ class GameCenterScreen extends Screen {
       ].join(''));
       return;
     }
-    paint(viewToggleHtml + lineupControlsHtml + (canMessage ? squadBar : '') + [
+    paint(viewToggleHtml + lineupControlsHtml + this._renderRegGapSection() + (canMessage ? squadBar : '') + [
       this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
         // In formation order (1 = keeper …), same numbers as the pills.
         const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
@@ -2734,6 +2819,7 @@ class GameCenterScreen extends Screen {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (data.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(data.sms_opt_in);   // 📲 mig 647
       const final = clearing ? null : ((data.rsvp && data.rsvp.response) || response);
       if (!personId) ev.my_rsvp = final;
       const rsvpPersonId = personId || (data.rsvp && data.rsvp.person_id) || data.person_id;
@@ -2932,6 +3018,193 @@ class GameCenterScreen extends Screen {
     } catch (err) {
       this.invites = null;
     }
+  }
+
+  // ⚠ Going but not on the official roster (mig 638; owner 2026-10-22:
+  // "if a player is set going to a game and NOT on official roster yet
+  // then there should be on game center a quick send registration link
+  // for apsl or casa").  The server picks the league's form and fills its
+  // link; a league with no form answers an empty list.
+  async _loadRegGaps() {
+    const id = this._fhEventId();
+    if (!id) { this.regGaps = null; return; }
+    try {
+      const res = await this.auth.fetch(`/api/calendar/events/${id}/registration-gaps`);
+      const body = await res.json().catch(() => null);
+      this.regGaps = res.ok && body ? (body.gaps || []) : null;
+      this.leagueList = res.ok && body ? (body.league_list || null) : null;
+    } catch (err) {
+      this.regGaps = null;
+      this.leagueList = null;
+    }
+  }
+
+  // 🌐 Re-pull the league's own list (the CASA sheet) once per game open
+  // (mig 645; owner 2026-10-23: "not on casa roster as looked up … on
+  // screen load").  The same refresh #teams runs; the gaps then reload
+  // from the fresh list.  A failed pull keeps yesterday's names and the
+  // strip says so in red — "we need to make sure we show that it failed".
+  async _pullLeagueList() {
+    const id = this._fhEventId();
+    const list = this.leagueList;
+    if (!id || !list || !list.team_id || this._leagueListPulledFor === id) return;
+    this._leagueListPulledFor = id;
+    this._leagueListState = 'pulling';
+    this._leagueListError = null;
+    this._render();
+    try {
+      const res = await this.auth.fetch('/api/mens-roster/official-roster-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: list.team_id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body.error || !(body.names || []).length)
+        throw new Error(body.error || body.message || `no names parsed (HTTP ${res.status})`);
+      this._leagueListState = 'ok';
+    } catch (err) {
+      this._leagueListState = 'fail';
+      this._leagueListError = err.message;
+    }
+    if (this._fhEventId() !== id) return;
+    await this._loadRegGaps();
+    this._render();
+  }
+
+  // The league list's state line for the strip: 🟡 pulling, ✓ checked,
+  // or ⚠ failed / never pulled — the last two in red.
+  _leagueListLine() {
+    const list = this.leagueList;
+    if (!list) return null;
+    const copy = (tier, tokens) => (window.MessageCopy ? MessageCopy.block('reg_gap', tier, tokens) : '') || '';
+    const when = (iso) => iso ? new Date(iso).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+    const league = list.league || '';
+    if (this._leagueListState === 'pulling') return { bad: false, text: copy('list_pulling', { league }) };
+    if (!list.names_pulled_at) return { bad: true, text: copy('list_never', { league }) };
+    const failed = this._leagueListState === 'fail' || list.ok === false;
+    if (failed) return { bad: true, text: copy('list_failed', { league, time: when(list.names_pulled_at),
+                                                                note: this._leagueListError || list.note || '?' }) };
+    return { bad: false, text: copy('list_ok', { league, time: when(list.fetched_at), n: list.names }) };
+  }
+
+  // 📲 Club-number texts (mig 647; owner 2026-10-23: "we don't want
+  // messages going into the void. does it show if delivered? if
+  // opened?").  The club number sends, Twilio reports delivery, and the
+  // magic link's real taps (previews excluded) are the "opened" mark.
+  async _loadTextMarks() {
+    if (!this.matchId) { this.textMarks = null; return; }
+    try {
+      const res = await this.auth.fetch(`/api/rsvp-board/text-marks?match_id=${encodeURIComponent(this.matchId)}`);
+      const body = await res.json().catch(() => null);
+      this.textMarks = res.ok && body ? { marks: body.marks || {}, optedIn: new Set(body.opted_in || []), people: body.people || {} } : null;
+    } catch (err) {
+      this.textMarks = null;
+    }
+  }
+
+  // sent → delivered ✓ / FAILED — reason, then opened ✓ once the link
+  // in it was really tapped.
+  _textMarkHtml(personId, kind) {
+    const m = this.textMarks && this.textMarks.marks[String(personId)] && this.textMarks.marks[String(personId)][kind];
+    if (!m) return '';
+    const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('text_mark', tier, tokens)) || '';
+    const time = this._sentWhen(m.sent_at);
+    const st = m.status || '';
+    const failed = st === 'failed' || st === 'undelivered';
+    const text = failed ? copy('failed', { time, error: m.error_text || m.error_code || st })
+               : st === 'delivered' ? copy('delivered', { time }) : copy('sent', { time });
+    const opened = m.opened_at ? ` · ${copy('opened', { time: this._sentWhen(m.opened_at) })}` : '';
+    return `<span style="font-size:0.66rem; font-weight:${failed ? 800 : 600}; color:${failed ? '#ef4444' : '#34d399'};">${this.escapeHtml(text + opened)}</span>`;
+  }
+
+  async _sendClubText(btn) {
+    const personId = Number(btn.dataset.personId);
+    const kind = btn.dataset.gcClubText;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    try {
+      if (kind === 'game_link' && this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
+      const res = kind === 'game_link'
+        ? await this.auth.fetch('/api/rsvp-board/squad-notice', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ match_id: Number(this.matchId), person_id: personId, channel: 'club_sms' }) })
+        : await this.auth.fetch(`/api/calendar/events/${this._fhEventId()}/registration-gaps/text`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ person_id: personId }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        const why = data.error || data.message || `HTTP ${res.status}`;
+        throw new Error(why === 'not_opted_in' ? ((window.MessageCopy && MessageCopy.block('text_mark', 'no_consent')) || why) : why);
+      }
+      if (data.status) this.squadNotice = data.status;
+    } catch (err) {
+      alert(err.message);
+    }
+    await this._loadTextMarks();
+    this._render();
+  }
+
+  // The gap row for one person (mig 638/645) — the card's registration
+  // buttons read it.
+  _regGapFor(personId) {
+    return (this.regGaps || []).find(g => g.person_id === personId) || null;
+  }
+
+  // 💬/✉ registration link pair for one gap — the strip and the card
+  // share it.  The message is the league form's DB copy, filled server-side.
+  _regGapButtons(g) {
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const btn = 'padding:2px 8px; border-radius:6px; font-size:0.76rem; font-weight:700; text-decoration:none; white-space:nowrap;';
+    const sms = g.phone ? this.buildSmsComposeHref({ to: g.phone, body: g.body || '' }) : null;
+    const mail = g.email ? this.buildGmailComposeHref({ to: g.email, subject: g.subject || '', body: g.body || '' }) : null;
+    return `${sms ? `<a href="${sms}" title="Text ${esc(g.phone)} — ${esc(g.form_label)}" style="${btn} background:#334155; color:#fff;">💬 ${esc(g.form_label)}</a>` : ''}
+      ${mail ? `<a href="${mail}" target="_blank" rel="noopener noreferrer" title="Email ${esc(g.email)} — ${esc(g.form_label)}" style="${btn} background:#334155; color:#fff;">✉ ${esc(g.form_label)}</a>` : ''}
+      ${!sms && !mail ? '<span style="font-size:0.74rem; opacity:0.5;">no phone or email on file</span>' : ''}`;
+  }
+
+  // Why this person is a gap: the league-list reasons (mig 645) name the
+  // league; otherwise their roster status.
+  _regGapReason(g) {
+    const copy = (tier, tokens = {}) => window.MessageCopy ? MessageCopy.block('reg_gap', tier, tokens) : '';
+    const league = (this.leagueList && this.leagueList.league) || '';
+    if (g.reason === 'not_on_list' || g.reason === 'calldown_cap_full') {
+      const why = copy(g.reason, { league });
+      if (why) return g.status_label ? `${why} · ${g.status_label}` : why;
+    }
+    return g.status_label || copy('no_status') || 'no status';
+  }
+
+  // One row per gap: name, roster status, and the league's registration
+  // nudge as 💬 text + ✉ email — the same message the #teams roster card
+  // sends.  Players who already submitted (roster_statuses.player_done)
+  // are listed without buttons.  Coach + official lineup view only.
+  _renderRegGapSection() {
+    const gaps = this.regGaps;
+    const line = this._leagueListLine();
+    // The strip also stands alone to say the list check failed — an
+    // empty list from a stale pull must not read as "all registered".
+    if (!this.realIsCoach || this.lineupView !== 'official' || !gaps) return '';
+    if (!gaps.length && !(line && (line.bad || this._leagueListState === 'pulling'))) return '';
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const copy = (tier, tokens = {}) => window.MessageCopy ? MessageCopy.block('reg_gap', tier, tokens) : '';
+    const rows = gaps.map(g => {
+      const name = `${g.first_name || ''} ${g.last_name || ''}`.trim();
+      const actions = g.player_done
+        ? `<span style="font-size:0.74rem; opacity:0.7;">${esc(copy('waiting') || 'submitted — waiting on the league')}</span>`
+        : this._regGapButtons(g);
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:5px 0; border-bottom:1px solid var(--border-color);">
+        <span style="font-size:0.88rem;"><b>${esc(name)}</b> <span style="font-size:0.72rem; opacity:0.75;">· ${esc(this._regGapReason(g))}</span></span>
+        <span style="display:inline-flex; gap:6px; align-items:center;">${actions}</span>
+      </div>`;
+    }).join('');
+    const lineHtml = line && line.text ? `<div data-gc-league-list style="font-size:0.74rem; margin:2px 0 4px; font-weight:${line.bad ? 800 : 600};
+        color:${line.bad ? '#ef4444' : 'inherit'}; opacity:${line.bad ? 1 : 0.8};">${esc(line.text)}</div>` : '';
+    return `<div style="margin:0 0 12px; padding:8px 12px; border:1px solid ${line && line.bad ? '#ef4444' : '#f59e0b'}; border-radius:10px; background:rgba(245,158,11,0.08);">
+      <div style="font-weight:800; font-size:0.9rem;">${esc(copy('title', { n: gaps.length }) || `⚠ Going but not on the official roster (${gaps.length})`)}</div>
+      <div style="font-size:0.74rem; opacity:0.75; margin:2px 0 4px;">${esc(copy('hint'))}</div>
+      ${lineHtml}
+      ${rows}
+    </div>`;
   }
 
   // POST the invite, then hand the coach the compose (sms: / Gmail) or
@@ -3636,7 +3909,7 @@ class GameCenterScreen extends Screen {
   // Card button — one player's own game reminder.
   async _sendSquadNoticeOne(btn) {
     const channel = btn.dataset.gcSquadOne === 'email' ? 'email' : 'sms';
-    const note = btn.parentElement.querySelector('[data-gc-squad-note]');
+    const note = (btn.closest('[data-gc-contact]') || btn.parentElement).querySelector('[data-gc-squad-note]');
     const original = btn.textContent;
     btn.disabled = true;
     btn.textContent = '⏳';
@@ -4762,6 +5035,7 @@ class GameCenterScreen extends Screen {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (data.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(data.sms_opt_in);   // 📲 mig 647
       const again = await this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`);
       const body = await again.json().catch(() => null);
       if (body && body.success && body.data) {

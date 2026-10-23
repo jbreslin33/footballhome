@@ -503,7 +503,9 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
             // comparing either to $1::bigint made every 📄 toggle 500
             // since the alias-aware rewrite (mig 602-era).  Caught
             // 2026-10-21.
-            "UPDATE team_persons tp SET invite_only = $3::bool "
+            // Turning a spot back to full roster also ends a ↔ call-in
+            // (mig 637: call_in only means anything with invite_only).
+            "UPDATE team_persons tp SET invite_only = $3::bool, call_in = tp.call_in AND $3::bool "
             "  FROM persons p "
             " WHERE tp.person_id = p.id AND tp.team_id = $2::int AND tp.removed_at IS NULL "
             "   AND (p.la_user_id = $1::text "

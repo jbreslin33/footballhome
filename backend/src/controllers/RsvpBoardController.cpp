@@ -15,6 +15,7 @@
 #include "../models/MessageCopy.h"
 #include "../services/MagicLinkService.h"
 #include "../services/GroupMeService.h"
+#include "../services/TwilioService.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -89,6 +90,7 @@ void RsvpBoardController::registerRoutes(Router& router, const std::string& pref
     router.get(prefix + "/reminders", [this](const Request& r) { return handleReminders(r); });
     router.post(prefix + "/squad-notice", [this](const Request& r) { return handleSquadNotice(r); });
     router.get(prefix + "/squad-notice", [this](const Request& r) { return handleSquadNoticeStatus(r); });
+    router.get(prefix + "/text-marks", [this](const Request& r) { return handleTextMarks(r); });
 }
 
 bool RsvpBoardController::resolveScope(const Request& request, Scope* scope, Response* error) {
@@ -652,8 +654,12 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
         return jsonError(HttpStatus::BAD_REQUEST, "match_id and person_id must be numbers, channel and scope strings");
     }
     if (matchId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id required");
-    if (channel != "sms" && channel != "email")
-        return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
+    // club_sms (mig 647): the club number sends it — one player only,
+    // opted in only, and Game Center shows sent → delivered → opened.
+    if (channel != "sms" && channel != "email" && channel != "club_sms")
+        return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms', 'email' or 'club_sms'");
+    if (channel == "club_sms" && personId <= 0)
+        return jsonError(HttpStatus::BAD_REQUEST, "club_sms reaches one player — person_id required");
     if (reach != "all" && reach != "changed")
         return jsonError(HttpStatus::BAD_REQUEST, "scope must be 'all' or 'changed'");
 
@@ -689,17 +695,36 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
                 return jsonError(HttpStatus::CONFLICT, "That player is not on this game.");
             // Contact comes from the DB, never the request: the message
             // carries the recipient's sign-in credential.
-            const std::string contact = channel == "sms" ? who->phone : who->email;
+            const bool club = channel == "club_sms";
+            const std::string contact = channel == "email" ? who->email : who->phone;
             if (contact.empty())
-                return jsonError(HttpStatus::CONFLICT, channel == "sms" ? "No mobile number on file." : "No email on file.");
+                return jsonError(HttpStatus::CONFLICT, channel == "email" ? "No email on file." : "No mobile number on file.");
+            if (club) {
+                auto c = Database::getInstance()->query(
+                    "SELECT fh_sms_consented_at($1::int) IS NOT NULL AS ok", {std::to_string(who->recipientPersonId)});
+                if (c.empty() || !c[0]["ok"].as<bool>())
+                    return jsonError(HttpStatus::CONFLICT, "not_opted_in");
+            }
             const bool parent = who->recipientPersonId != who->personId;
-            const auto minted = MagicLinkService::mint(who->recipientPersonId, channel, contact, scope.userId, 0, matchId);
+            const auto minted = MagicLinkService::mint(who->recipientPersonId, club ? "sms" : channel, contact, scope.userId, 0, matchId);
             const auto msg = copy.render("squad_notice", who->zone + (parent ? "_parent" : "_adult"), {
                 {"first", who->recipientFirstName}, {"child", who->playerFirstName},
                 {"event", ctx.line}, {"where", ctx.where}, {"arrival", ctx.arrival},
                 {"link", minted.url}, {"sender", senderName}});
             if (!msg.ok())
                 return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 384/593)");
+            if (club) {
+                // Brand first, opt-out last — the A2P campaign promises both.
+                const auto pre  = copy.render("club_sms", "prefix", {});
+                const auto foot = copy.render("club_sms", "footer", {});
+                const auto sent = TwilioService::getInstance().sendSms(
+                    TwilioService::normalizeUs(contact), pre.body + msg.body + foot.body,
+                    "game_link:" + std::to_string(matchId), who->personId, minted.tokenId);
+                if (!sent.ok) return jsonError(HttpStatus::BAD_GATEWAY, "The club text did not go out: " + sent.error);
+                model_->logSquadNotice(matchId, *who, "sms", contact, scope.userId);
+                return jsonOut(HttpStatus::CREATED, {{"sent", true}, {"sid", sent.sid},
+                                                     {"status", model_->squadNoticeStatus(matchId)}});
+            }
             model_->logSquadNotice(matchId, *who, channel, contact, scope.userId);
             json out = {{"expires_at", minted.expiresIso}, {"status", model_->squadNoticeStatus(matchId)}};
             copy.addComposeHrefs(out, channel, contact, msg.subject, msg.body, msg.body);
@@ -767,5 +792,55 @@ Response RsvpBoardController::handleSquadNoticeStatus(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "RsvpBoardController::handleSquadNoticeStatus: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the game reminder status");
+    }
+}
+
+// GET /text-marks?match_id= — Game Center's per-card club-text marks (mig
+// 647): the latest club-number text per player and kind (game_link /
+// reg_link) with its delivery state and first real open, plus who can be
+// texted from the club number at all (opted in — the parent for youth).
+Response RsvpBoardController::handleTextMarks(const Request& request) {
+    Scope scope;
+    Response error(HttpStatus::OK, "");
+    if (!resolveScope(request, &scope, &error)) return error;
+
+    long long matchId = 0;
+    try { matchId = std::stoll(request.getQueryParam("match_id")); } catch (const std::exception&) {}
+    if (matchId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id required");
+    try {
+        auto* db = Database::getInstance();
+        auto ev = db->query("SELECT id FROM fh_events WHERE match_id = $1::int ORDER BY id LIMIT 1", {std::to_string(matchId)});
+        if (ev.empty()) return jsonOut(HttpStatus::OK, {{"marks", json::object()}, {"opted_in", json::array()}});
+        const std::string fhEventId = ev[0]["id"].c_str();
+        json marks = json::object();
+        for (const auto& r : db->query(
+                "SELECT person_id, kind, status, error_code, error_text, "
+                "       to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at, "
+                "       to_char(opened_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS opened_at "
+                "  FROM fh_game_text_marks($1::int, $2::bigint)", {std::to_string(matchId), fhEventId})) {
+            json m = json::object();
+            for (const char* k : {"status", "error_code", "error_text", "sent_at", "opened_at"})
+                m[k] = r[k].is_null() ? json(nullptr) : json(r[k].c_str());
+            marks[r["person_id"].c_str()][r["kind"].c_str()] = m;
+        }
+        // Each card's contact state (mig 649): who a text reaches (the
+        // parent for a child account), opted in / STOPped / neither, their
+        // mobile and email, and the latest reply to the club number.
+        json people = json::object();
+        json optedIn = json::array();
+        for (const auto& r : db->query(
+                "SELECT person_id, consent, phone, email, reply_body, "
+                "       to_char(reply_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reply_at "
+                "  FROM fh_game_contact_states($1::bigint)", {fhEventId})) {
+            json p = json::object();
+            for (const char* k : {"consent", "phone", "email", "reply_body", "reply_at"})
+                p[k] = r[k].is_null() ? json(nullptr) : json(r[k].c_str());
+            people[r["person_id"].c_str()] = p;
+            if (std::string(r["consent"].c_str()) == "in") optedIn.push_back(r["person_id"].as<long long>());
+        }
+        return jsonOut(HttpStatus::OK, {{"marks", marks}, {"opted_in", optedIn}, {"people", people}});
+    } catch (const std::exception& e) {
+        std::cerr << "RsvpBoardController::handleTextMarks: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the text marks");
     }
 }

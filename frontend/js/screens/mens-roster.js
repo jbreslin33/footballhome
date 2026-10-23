@@ -587,16 +587,25 @@ class MensRosterScreen extends RosterScreenBase {
     const inviteOnlyBtn = (() => {
       const on = p.inviteOnly === true;
       if (!canMove && !on) return '';
-      const style = `${btnBase} border:1px solid ${on ? '#f59e0b' : 'rgba(148,163,184,0.45)'};
-                     background:${on ? 'rgba(245,158,11,0.22)' : 'transparent'}; color:${on ? '#fcd34d' : '#94a3b8'};
+      // ↔ Call In (mig 637) wears its own label on the same toggle — a
+      // same-level player who plays here when invited, not a 📄 filler.
+      // Tapping it off makes them a full roster player (clears both).
+      const callIn = on && p.callIn === true;
+      const [bd, bg, fg] = callIn ? ['#a78bfa', 'rgba(167,139,250,0.22)', '#ddd6fe']
+        : on ? ['#f59e0b', 'rgba(245,158,11,0.22)', '#fcd34d'] : ['rgba(148,163,184,0.45)', 'transparent', '#94a3b8'];
+      const style = `${btnBase} border:1px solid ${bd}; background:${bg}; color:${fg};
                      cursor:${canMove ? 'pointer' : 'default'};`;
-      const title = on
+      const title = callIn
+        ? (MessageCopy.block('invite_chip', 'call_in_tip') || 'Call In — plays here only when invited (🎟).') + (canMove ? ' Tap to make them a full roster player.' : '')
+        : on
         ? 'Paper spot — holds the roster place; sees games, reminders, fines and lineups only when invited (🎟). Tap to make them a full roster player again.'
         : 'Make this a 📄 paper spot: keeps the roster place but no game visibility, reminders or fines — invite them (🎟) when needed.';
+      const label = callIn ? this.escape((MessageCopy.block('invite_chip', 'call_in') || '↔ Call In').toUpperCase())
+        : on ? '📄 INVITE-ONLY' : '📄';
       return canMove
         ? `<button class="mr-invite-only" type="button" data-user-id="${p.leagueAppsUserId}" data-team-id="${col.teamId}"
-                   data-on="${on ? 1 : 0}" title="${this.escape(title)}" style="${style}">📄${on ? ' INVITE-ONLY' : ''}</button>`
-        : `<span title="${this.escape(title)}" style="${style}">📄 INVITE-ONLY</span>`;
+                   data-on="${on ? 1 : 0}" title="${this.escape(title)}" style="${style}">${label}</button>`
+        : `<span title="${this.escape(title)}" style="${style}">${label}</span>`;
     })();
     const statusSelect = this.renderStatusSelect(p, col, canMove) + inviteOnlyBtn;
 

@@ -42,7 +42,10 @@ public:
     // Every send is an sms_messages row (mig 540) — purpose names what it
     // was for (lockup_alert, …); Twilio reports delivery back to
     // POST /api/public/twilio/sms-status, which updates the row.
-    Result sendSms(const std::string& toE164, const std::string& body, const std::string& purpose = "");
+    // forPersonId / magicLinkTokenId (mig 647): the player the text was
+    // about and the link it carried — Game Center's delivered/opened marks.
+    Result sendSms(const std::string& toE164, const std::string& body, const std::string& purpose = "",
+                   long long forPersonId = 0, long long magicLinkTokenId = 0);
     Result call(const std::string& toE164, const std::string& sayText);
 
 private:

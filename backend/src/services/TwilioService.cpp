@@ -106,7 +106,8 @@ TwilioService::Result TwilioService::post(const std::string& resource, const std
 }
 
 TwilioService::Result TwilioService::sendSms(const std::string& toE164, const std::string& body,
-                                             const std::string& purpose) {
+                                             const std::string& purpose, long long forPersonId,
+                                             long long magicLinkTokenId) {
     const std::string form = "From=" + HttpClient::urlEncode(from_) +
                              "&To=" + HttpClient::urlEncode(toE164) +
                              "&Body=" + HttpClient::urlEncode(body) +
@@ -121,10 +122,13 @@ TwilioService::Result TwilioService::sendSms(const std::string& toE164, const st
         for (unsigned char c : toE164) if (std::isdigit(c)) digits.push_back(static_cast<char>(c));
         if (digits.size() == 11 && digits[0] == '1') digits.erase(0, 1);
         Database::getInstance()->query(
-            "INSERT INTO sms_messages (direction, message_sid, from_number, to_number, body, status, error_code, person_id, purpose) "
-            "VALUES ('out', NULLIF($1,''), $2, $3, $4, $5, NULLIF($6,''), fh_person_by_phone($7), NULLIF($8,'')) "
+            "INSERT INTO sms_messages (direction, message_sid, from_number, to_number, body, status, error_code, person_id, purpose, "
+            "                          for_person_id, magic_link_token_id) "
+            "VALUES ('out', NULLIF($1,''), $2, $3, $4, $5, NULLIF($6,''), fh_person_by_phone($7), NULLIF($8,''), "
+            "        NULLIF($9,'0')::int, NULLIF($10,'0')::int) "
             "ON CONFLICT (message_sid) DO NOTHING",
-            {res.sid, from_, toE164, body, res.ok ? "queued" : "failed", res.ok ? "" : res.error, digits, purpose});
+            {res.sid, from_, toE164, body, res.ok ? "queued" : "failed", res.ok ? "" : res.error, digits, purpose,
+             std::to_string(forPersonId), std::to_string(magicLinkTokenId)});
     } catch (const std::exception& e) {
         std::cerr << "[TwilioService] sms log failed: " << e.what() << std::endl;
     }

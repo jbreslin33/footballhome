@@ -36,7 +36,7 @@ MagicLinkService::Minted MagicLinkService::mint(long long          personId,
         "VALUES ($1, $2::int, NULLIF($3, '')::int, $4, $5, "
         "        NULLIF($6, '')::int, "
         "        NOW() + ($7 || ' seconds')::interval, NULLIF($8, '')::int, NULLIF($9, '')) "
-        "RETURNING to_char(expires_at AT TIME ZONE 'UTC', "
+        "RETURNING id, to_char(expires_at AT TIME ZONE 'UTC', "
         "                   'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS expires_iso",
         {tokenHash,
          std::to_string(personId),
@@ -49,6 +49,7 @@ MagicLinkService::Minted MagicLinkService::mint(long long          personId,
 
     Minted out;
     out.expiresIso = ins[0]["expires_iso"].as<std::string>();
+    out.tokenId    = ins[0]["id"].as<long long>();
     out.url = publicBaseUrl()
             + "/api/auth/magic-link/verify?token="
             + fh::crypto::urlEncode(token);

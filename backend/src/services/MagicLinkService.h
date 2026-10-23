@@ -15,6 +15,7 @@ public:
     struct Minted {
         std::string url;        // https://footballhome.org/api/auth/magic-link/verify?token=…
         std::string expiresIso; // "YYYY-MM-DDTHH:MM:SS.mmmZ" (UTC)
+        long long   tokenId = 0;  // magic_link_tokens.id — its opens (mig 647)
     };
 
     // Public origin the verify URL is built on — PUBLIC_BASE_URL env,

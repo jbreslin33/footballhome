@@ -66,6 +66,7 @@
     <div class="foot" id="foot"></div>
     <div class="stamp" id="stamp"></div>
   </main>
+  <script src="/js/lib/sms-opt-in-ask.js?v=20261023a"></script>
   <script>
     (function () {
       const $ = (id) => document.getElementById(id);
@@ -181,6 +182,7 @@
           });
           const j = await r.json().catch(() => ({}));
           if (!r.ok) throw new Error(j.error || j.message || r.statusText);
+          if (j.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(j.sms_opt_in);   // 📲 mig 647
           msg.textContent = c('saved') || 'Saved.';
           await refresh();
         } catch (err) {
