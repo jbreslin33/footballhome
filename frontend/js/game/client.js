@@ -72,6 +72,20 @@
   // or KNOWLEDGE (concept ratings, live). James: "give our guys random
   // attributes and i can fix them and describe the type of player".
   let teams = null;            // { home, away } from the TEAMS frame
+  let idTeams = null;          // [home, away] roster payloads: slot numbers
+  // Each on-pitch figure: its formation slot's shirt number + last name.
+  function applyIdentities() {
+    const figs = renderer.figures || [];
+    if (!figs.length || !roster.length) return;
+    const perTeam = figs.length / 2;
+    figs.forEach((f, i) => {
+      const side = i < perTeam ? 0 : 1;
+      const k = side ? i - perTeam : i;
+      const nums = idTeams && idTeams[side] && idTeams[side].numbers;
+      const n = (nums && nums[k]) || (k + 1);
+      f.setIdentity(n, roster[i] && roster[i].name);
+    });
+  }
   const teamCache = {};        // team name → /api/game/roster payload
   const authHeaders = () => {
     let t = '';
@@ -389,9 +403,16 @@
     },
     onRoster(r) {
       roster = r;
+      applyIdentities();   // names may have changed (lineup / reload)
     },
     onTeams(t) {
       teams = t;
+      // Names + position numbers over the players (mig 643): both teams'
+      // slot numbers from the club API, names from ROSTER.
+      for (const k of Object.keys(teamCache)) delete teamCache[k];
+      Promise.all([loadTeam(t.home, true), loadTeam(t.away, true)])
+        .then(([h, a]) => { idTeams = [h, a]; applyIdentities(); })
+        .catch(() => { idTeams = null; applyIdentities(); });
       // The teams' own kits (mig 639): recolour and rebuild the figures.
       if (t.kits && (t.kits[0] || t.kits[1])) {
         PlayerFigure.setKits(t.kits[0], t.kits[1]);

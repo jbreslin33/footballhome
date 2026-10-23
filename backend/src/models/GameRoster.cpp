@@ -46,15 +46,21 @@ json GameRoster::team(const std::string& name) {
             if (p["shirt"] == r["shirt"].as<int>())
                 p["attrs"][r["attribute"].as<std::string>()] = r["rating"].as<int>();
     }
-    json slots = json::array();
+    json slots = json::array(), numbers = json::array();
     for (const auto& r : db->query(
-             "SELECT e->>'label' AS label FROM formations f, "
-             "       jsonb_array_elements(f.positions_json::jsonb) e "
-             " WHERE f.code = $1 ORDER BY (e->>'slot')::int", {t[0]["formation"].as<std::string>()}))
+             "SELECT e->>'label' AS label, n.shirt_number "
+             "  FROM formations f CROSS JOIN jsonb_array_elements(f.positions_json::jsonb) e "
+             "  LEFT JOIN formation_slot_numbers n "
+             "         ON n.formation_code = f.code AND n.slot = (e->>'slot')::int "
+             " WHERE f.code = $1 ORDER BY (e->>'slot')::int", {t[0]["formation"].as<std::string>()})) {
         slots.push_back(r["label"].as<std::string>());
+        // mig 643: the slot's traditional shirt number (9 = the striker)
+        numbers.push_back(r["shirt_number"].is_null() ? json(nullptr) : json(r["shirt_number"].as<int>()));
+    }
     return {{"team", t[0]["name"].as<std::string>()},
             {"formation", t[0]["formation"].as<std::string>()},
             {"slots", slots},
+            {"numbers", numbers},
             {"game_center", t[0]["has_club"].as<bool>()},
             {"level_band", t[0]["level_band"].as<std::string>()},
             {"attributes", attributes},

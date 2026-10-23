@@ -82,6 +82,11 @@
     }
 
     build(home, keeper) {
+      this.buildBody(home, keeper);
+      if (this.tagName) this.attachTag();   // build clears root; keep the name tag
+    }
+
+    buildBody(home, keeper) {
       const kit = KIT[(home ? 'home' : 'away') + (keeper ? 'Gk' : '')];
       this.kit = kit;
       this.keeper = keeper;
@@ -109,7 +114,7 @@
       const collar = mesh(g('collar', () => new THREE.TorusGeometry(0.07, 0.022, 6, 14)),
                           mat(kit.trim), 0.52);
       collar.rotation.x = Math.PI / 2;
-      const plate = numberDecal(this.slot % 11 + 1, kit);
+      const plate = numberDecal(this.number || this.slot % 11 + 1, kit);
       plate.position.y = 0.3;
       chest.add(torso, collar, plate);
 
@@ -359,6 +364,42 @@
   PlayerFigure.setKits = (home, away) => {
     if (home) Object.assign(KIT.home, home);
     if (away) Object.assign(KIT.away, away);
+  };
+  // Video-game identity (James: "names video game style last name over
+  // player and their position number like 9 for striker"): the slot's
+  // position number on the shirt + a last-name tag over the head. A new
+  // number rebuilds the figure; the tag survives rebuilds.
+  PlayerFigure.prototype.setIdentity = function (number, name) {
+    const last = String(name || '').trim().split(/\s+/).pop().toUpperCase();
+    const numChanged = number && number !== this.number;
+    this.number = number || this.number;
+    if (numChanged) this.build(this.home, this.keeper);
+    if (last !== this.tagName || numChanged) {
+      this.tagName = last;
+      this.attachTag();
+    }
+  };
+  PlayerFigure.prototype.attachTag = function () {
+    if (this.tag) { this.root.remove(this.tag); this.tag.material.map.dispose(); this.tag.material.dispose(); }
+    this.tag = null;
+    if (!this.tagName) return;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 64;
+    const x = c.getContext('2d');
+    const text = (this.number ? this.number + ' ' : '') + this.tagName;
+    x.font = 'bold 34px system-ui, sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    const w = Math.min(248, x.measureText(text).width + 22);
+    x.fillStyle = 'rgba(10,14,20,0.62)';
+    x.fillRect(128 - w / 2, 10, w, 44);
+    x.fillStyle = '#ffffff';
+    x.fillText(text, 128, 33);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+    sp.scale.set(1.9, 0.475, 1);
+    sp.position.y = 2.35;
+    sp.renderOrder = 70;
+    this.root.add(sp);
+    this.tag = sp;
   };
   window.PlayerFigure = PlayerFigure;
 })();
