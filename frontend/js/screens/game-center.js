@@ -911,6 +911,10 @@ class GameCenterScreen extends Screen {
         if (note) note.innerHTML = `<span style="color:#fbbf24; font-weight:700;">${this.escapeHtml(why.dataset.gcWhy)}</span>`;
         return;
       }
+      const contactOpen = e.target.closest('[data-gc-contact-open]');
+      if (contactOpen && this.isCoach) { this._openContactSheet(Number(contactOpen.dataset.gcContactOpen)); return; }
+      const groupWho = e.target.closest('[data-gc-group-who]');
+      if (groupWho) { this._groupWho = groupWho.dataset.gcGroupWho; this._render(); return; }
       const clubText = e.target.closest('[data-gc-club-text]');
       if (clubText && this.isCoach && !clubText.disabled) { this._sendClubText(clubText); return; }
       const squadOne = e.target.closest('[data-gc-squad-one]');
@@ -2527,24 +2531,6 @@ class GameCenterScreen extends Screen {
     const remindBtn = (attrs, label, bg, title, sent = null) =>
       `<button type="button" ${attrs} title="${this.escapeHtml(sent ? this._sentTitle(sent) + ' — click to send again' : title)}"
                style="padding:3px 9px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.68rem; color:#fff; background:${bg};${sent ? ' opacity:0.4;' : ''}">${label}${sent ? ` ✓ ×${sent.count || 1}` : ''}</button>`;
-    const remindBar = `
-      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:4px 0 8px; font-size:0.78rem;">
-        <span style="opacity:0.75;">Remind everyone who hasn't answered this game — lists the week's open events, practices too:</span>
-        ${remindBtn('data-gc-remind-all="sms"', '💬 GROUP TEXT', '#0284c7', 'One group text (split into groups of 10) — no sign-in link, everyone sees each other\'s number')}
-        ${remindBtn('data-gc-remind-all="email"', '✉ EMAIL', '#7c3aed', 'One email, everyone BCC\'d — no sign-in link')}
-        <span data-gc-remind-result style="flex-basis:100%;"></span>
-      </div>`;
-    const remindCard = (p) => {
-      const personId = this._personIdFor(p.id);
-      if (!personId) return '';
-      const sent = (this.reminders || {})[personId] || {};
-      return `
-        <div style="display:flex; gap:6px; align-items:center; margin-top:5px;">
-          ${remindBtn(`data-gc-remind="sms" data-person-id="${personId}"`, '💬 REMIND', '#0284c7', 'Text every unanswered event this week + their sign-in link (the parent, for youth)', this._weekSent(sent))}
-          ${remindBtn(`data-gc-remind="email" data-person-id="${personId}"`, '✉ REMIND', '#7c3aed', 'Email every unanswered event this week + their sign-in link (the parent, for youth)', this._weekSent(sent))}
-          <span data-gc-remind-note style="font-size:0.66rem; opacity:0.75;">${this.escapeHtml(this._sentNote(sent))}</span>
-        </div>`;
-    };
 
     // Game reminder to the whole squad — Starting, Bench and Alternates,
     // Going or not (owner 2026-09-19: "i got guys who set going asking if
@@ -2559,18 +2545,6 @@ class GameCenterScreen extends Screen {
     // 2026-09-19: "send again to all or just the ones changed").
     const told = !!(this.squadNotice && (this.squadNotice.sms || this.squadNotice.email));
     const untold = (this.squadNotice && this.squadNotice.untold) || 0;
-    const squadBar = squadSize ? `
-      <div data-gc-squad-bar style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 12px; font-size:0.78rem;">
-        <span style="opacity:0.75;">Game reminder to the squad (${squadSize}) — game, where, arrival + a link to this lineup:</span>
-        ${remindBtn('data-gc-squad-notice="sms" data-scope="all"', '💬 GROUP TEXT', '#0284c7', 'One group text to Starting, Bench and Alternates (split into groups of 10) — no sign-in link, everyone sees each other\'s number', this.squadNotice?.sms)}
-        ${remindBtn('data-gc-squad-notice="email" data-scope="all"', '✉ EMAIL', '#7c3aed', 'One email to Starting, Bench and Alternates, everyone BCC\'d — no sign-in link', this.squadNotice?.email)}
-        ${told && untold ? `
-          <span style="opacity:0.75;">· ${untold} added or moved since:</span>
-          ${remindBtn('data-gc-squad-notice="sms" data-scope="changed"', `💬 TEXT THE ${untold}`, '#0284c7', 'Group text only the players who were never told, or whose role changed since')}
-          ${remindBtn('data-gc-squad-notice="email" data-scope="changed"', `✉ EMAIL THE ${untold}`, '#7c3aed', 'Email (BCC) only the players who were never told, or whose role changed since')}`
-          : `<span style="opacity:0.75;">${told ? 'everyone told ✓' : ''}</span>`}
-        <span data-gc-squad-result style="flex-basis:100%;"></span>
-      </div>` : '';
     // Card buttons on Starting / Bench / Alternates — the player's own
     // message: names their role, magic link lands on this game (mig 384).
     // Dim once sent; amber "moved" when the role they were told is not
@@ -2585,58 +2559,30 @@ class GameCenterScreen extends Screen {
       // personalized to invite to game").
       const zone = this.zones.get(p.id) || 'pool';
       const moved = sent.told_zone && sent.told_zone !== zone;
-      const live = moved ? {} : sent;   // a moved player's buttons light up again
-      // Two contact boxes on every card, always the same buttons in the
-      // same places (mig 649; owner 2026-10-23: "auto or manual can be
-      // greyed out depending on if they have number or opted in. this way
-      // cards are same size").  AUTO = the club number (opted-in only,
-      // tracked to delivered/opened); MANUAL = the coach's own phone and
-      // email, always there.  A greyed button still answers a tap with
-      // why.  REG = the registration gap's league form (migs 638/645).
+      // One ✉ CONTACT button per card (mig 654; owner 2026-10-23: "its
+      // confusing in game center what does what as far as communication …
+      // needs to be more clear").  The card keeps the primary-channel
+      // badge and one status line; WHAT / HOW and whether each way works
+      // live in the contact sheet (_openContactSheet).
       const gap = this._regGapFor(personId);
       const regOn = !!(gap && !gap.player_done);
       const line = regOn ? this._leagueListLine() : null;
       const st = (this.textMarks && this.textMarks.people && this.textMarks.people[String(personId)]) || null;
       const cb = (tier, tokens) => (window.MessageCopy && MessageCopy.block('contact_box', tier, tokens)) || '';
-      // Unknown state (marks not loaded, an un-rostered call-up) never
-      // greys MANUAL — the server still refuses what it cannot send.
+      const cm = (tier, tokens) => (window.MessageCopy && MessageCopy.block('contact_menu', tier, tokens)) || '';
       const hasPhone = st ? !!st.phone : true;
-      const hasEmail = st ? !!st.email : true;
       const consent = st ? st.consent : 'none';
-      const autoWhy = !hasPhone ? cb('why_nophone') : consent === 'stopped' ? cb('why_stopped')
-                    : consent !== 'in' ? cb('why_none') : '';
       const badge = !hasPhone ? cb('badge_nophone') : consent === 'in' ? cb('badge_in')
                   : consent === 'stopped' ? cb('badge_stopped') : cb('badge_none');
-      const grey = (label, why) => `<button type="button" data-gc-why="${this.escapeHtml(why)}" title="${this.escapeHtml(why)}"
-          style="padding:3px 9px; border-radius:6px; border:none; cursor:help; font-weight:800; font-size:0.68rem; color:#cbd5e1; background:#475569; opacity:0.35;">${label}</button>`;
-      const link = (href, label, bg, title, blank) => `<a href="${href}" ${blank ? 'target="_blank" rel="noopener noreferrer"' : ''} title="${this.escapeHtml(title)}"
-          style="padding:3px 9px; border-radius:6px; font-weight:800; font-size:0.68rem; color:#fff; background:${bg}; text-decoration:none; white-space:nowrap;">${label}</a>`;
-      const clubBtn = (kind, label) => `<button type="button" data-gc-club-text="${kind}" data-person-id="${personId}"
-          title="${this.escapeHtml((window.MessageCopy && MessageCopy.block('text_mark', 'button_tip')) || '')}"
-          style="padding:3px 9px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.68rem; color:#fff; background:#059669;">${label}</button>`;
-      const noReg = cb('why_noreg');
-      const autoBox = [
-        autoWhy ? grey('📲 GAME', autoWhy) : clubBtn('game_link', '📲 GAME'),
-        !regOn ? grey('📲 REG', noReg) : autoWhy ? grey('📲 REG', autoWhy) : clubBtn('reg_link', '📲 REG'),
-      ].join('');
-      const smsReg  = regOn && gap.phone ? this.buildSmsComposeHref({ to: gap.phone, body: gap.body || '' }) : null;
-      const mailReg = regOn && gap.email ? this.buildGmailComposeHref({ to: gap.email, subject: gap.subject || '', body: gap.body || '' }) : null;
-      const manualBox = [
-        hasPhone ? remindBtn(`data-gc-squad-one="sms" data-person-id="${personId}"`, '💬 GAME', '#0284c7', 'Text their personal sign-in link from your phone — names their role when they have one (the parent, for youth)', live.sms) : grey('💬 GAME', cb('why_nophone')),
-        hasEmail ? remindBtn(`data-gc-squad-one="email" data-person-id="${personId}"`, '✉ GAME', '#7c3aed', 'Email their personal sign-in link straight to this game — names their role when they have one (the parent, for youth)', live.email) : grey('✉ GAME', cb('why_noemail')),
-        st && st.phone ? link(`tel:${encodeURIComponent(st.phone)}`, cb('call') || '📞 CALL', '#334155', st.phone, false) : grey(cb('call') || '📞 CALL', cb('why_nophone')),
-        st && st.phone ? link(`sms:${st.phone}`, cb('blank_sms') || '💬 BLANK', '#334155', cb('blank_tip', { to: st.phone }), false) : grey(cb('blank_sms') || '💬 BLANK', cb('why_nophone')),
-        st && st.email ? link(`mailto:${st.email}`, cb('blank_email') || '✉ BLANK', '#334155', cb('blank_tip', { to: st.email }), false) : grey(cb('blank_email') || '✉ BLANK', cb('why_noemail')),
-        !regOn ? grey('💬 REG', noReg) : smsReg ? link(smsReg, '💬 REG', '#334155', `Text ${gap.phone} — ${gap.form_label}`, false) : grey('💬 REG', cb('why_nophone')),
-        !regOn ? grey('✉ REG', noReg) : mailReg ? link(mailReg, '✉ REG', '#334155', `Email ${gap.email} — ${gap.form_label}`, true) : grey('✉ REG', cb('why_noemail')),
-      ].join('');
-      const boxStyle = 'flex:1 1 140px; min-width:0; border:1px solid var(--border-color); border-radius:8px; padding:4px 6px;';
-      const boxHead = 'font-size:0.58rem; font-weight:800; letter-spacing:0.04em; opacity:0.6; margin-bottom:3px;';
-      const reply = st && st.reply_body
-        ? cb('reply', { time: this._sentWhen(st.reply_at), body: st.reply_body }) : '';
+      this._contactCtx = this._contactCtx || {};
+      this._contactCtx[personId] = { name: p.name || '', noResp: !!(this._noRespIds && this._noRespIds.has(p.id)),
+                                     gap: regOn ? gap : null, st };
+      const reply = st && st.reply_body ? cb('reply', { time: this._sentWhen(st.reply_at), body: st.reply_body }) : '';
       // One status line, always present, so a send never grows the card.
+      const remindSent = (this.reminders || {})[personId] || {};
       const status = [
         moved ? `<span style="color:#fbbf24;">moved since told (${this.escapeHtml(sent.told_zone)})</span>` : this.escapeHtml(this._sentNote(sent)),
+        this._contactCtx[personId].noResp ? this.escapeHtml(this._sentNote(remindSent)) : '',
         this._textMarkHtml(personId, 'game_link'),
         regOn ? `<span style="opacity:0.8;">${this.escapeHtml(this._regGapReason(gap))}</span>` : '',
         this._textMarkHtml(personId, 'reg_link'),
@@ -2645,12 +2591,10 @@ class GameCenterScreen extends Screen {
       ].filter(Boolean).join(' · ');
       return `
         <div data-gc-contact style="margin-top:5px;">
-          <div style="font-size:0.66rem; font-weight:800; margin-bottom:3px;">${this.escapeHtml(badge)}</div>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <div style="${boxStyle}"><div style="${boxHead}">${this.escapeHtml(cb('auto') || 'AUTO')}</div>
-              <div style="display:flex; gap:4px; flex-wrap:wrap;">${autoBox}</div></div>
-            <div style="${boxStyle}"><div style="${boxHead}">${this.escapeHtml(cb('manual') || 'MANUAL')}</div>
-              <div style="display:flex; gap:4px; flex-wrap:wrap;">${manualBox}</div></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+            <span style="font-size:0.68rem; font-weight:800;">${this.escapeHtml(badge)}</span>
+            <button type="button" data-gc-contact-open="${personId}"
+              style="padding:4px 12px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.72rem; color:#fff; background:#0284c7;">${this.escapeHtml(cm('button') || '✉ CONTACT')}${regOn ? ' ⚠' : ''}</button>
           </div>
           <div data-gc-squad-note style="font-size:0.66rem; opacity:0.85; min-height:1.3em; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${status || '&nbsp;'}</div>
         </div>`;
@@ -2696,17 +2640,26 @@ class GameCenterScreen extends Screen {
     // Every card gets the personal GAME LINK buttons, role or not (the
     // pool message, mig 593) — No Response cards carry the RSVP REMIND
     // buttons as well.
-    const bothCards = canMessage ? (p) => remindCard(p) + squadCard(p) : null;
+    this._noRespIds = new Set(unassignedNoResponse.map(x => x.id));
+    // 📣 One group bar (mig 654) in place of the squad bar and the No
+    // Response bar: WHO, then HOW.  The buttons are the same tracked
+    // sends as before (squad notice / remind-event), so dimming and
+    // "everyone told ✓" carry over.
+    const groupBar = this._groupBarHtml({
+      squad: everyone ? 0 : squadSize, changed: told ? untold : 0,
+      noResp: unassignedNoResponse.length, squadSent: this.squadNotice,
+    }, remindBtn);
+    const bothCards = canMessage ? squadCard : null;
     if (everyone) {
-      paint(viewToggleHtml + lineupControlsHtml + this._renderRegGapSection() + this._everyoneNoteHtml() + [
+      paint(viewToggleHtml + lineupControlsHtml + this._renderRegGapSection() + (canMessage ? groupBar : '') + this._everyoneNoteHtml() + [
         gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter, canMessage ? squadCard : null),
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
-        collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
+        collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
         this._renderCallupSection(),
       ].join(''));
       return;
     }
-    paint(viewToggleHtml + lineupControlsHtml + this._renderRegGapSection() + (canMessage ? squadBar : '') + [
+    paint(viewToggleHtml + lineupControlsHtml + this._renderRegGapSection() + (canMessage ? groupBar : '') + [
       this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
         // In formation order (1 = keeper …), same numbers as the pills.
         const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
@@ -2717,7 +2670,7 @@ class GameCenterScreen extends Screen {
       this.isCoach ? gridSection('✓ Going', unassignedGoing, canMessage ? squadCard : null) : '',
       this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible, canMessage ? squadCard : null) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }) : '',
-      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { top: remindBar, extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
+      this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
       this.isCoach ? this._renderCallupSection() : '',
     ].join(''));
   }
@@ -3087,6 +3040,189 @@ class GameCenterScreen extends Screen {
     return { bad: false, text: copy('list_ok', { league, time: when(list.fetched_at), n: list.names }) };
   }
 
+  // ---- Contact menu (mig 654) ----
+  //
+  // Owner 2026-10-23: "its confusing in game center what does what as far
+  // as communication … and what works — needs to be more clear".  One
+  // sheet per player: WHAT to send, HOW to send it, and beside every HOW
+  // whether it works for this person or why not.  The sends are the same
+  // tracked paths the old buttons used (squad notice, remind, club text,
+  // registration form); the sheet only chooses between them.
+
+  _cm(tier, tokens) { return (window.MessageCopy && MessageCopy.block('contact_menu', tier, tokens)) || ''; }
+
+  // The choices for one person: WHAT (only what applies to them) and, for
+  // the chosen WHAT, every HOW with ok / why-not.
+  _contactChoices(personId, what) {
+    const c = (this._contactCtx || {})[personId] || {};
+    const st = c.st;
+    const cb = (tier, tokens) => (window.MessageCopy && MessageCopy.block('contact_box', tier, tokens)) || '';
+    const whats = [{ key: 'game', label: this._cm('what_game') }];
+    if (c.noResp) whats.unshift({ key: 'remind', label: this._cm('what_remind') });
+    if (c.gap) whats.push({ key: 'reg', label: this._cm('what_reg', { form: c.gap.form_label || '' }) });
+    whats.push({ key: 'blank', label: this._cm('what_blank') });
+    const w = whats.some(x => x.key === what) ? what : (c.gap ? 'reg' : whats[0].key);
+    const hasPhone = st ? !!st.phone : true;
+    const hasEmail = st ? !!st.email : true;
+    const consent = st ? st.consent : 'none';
+    const clubWhy = !hasPhone ? cb('why_nophone') : consent === 'stopped' ? cb('why_stopped')
+                  : consent !== 'in' ? cb('why_none')
+                  : (w === 'game' || w === 'reg') ? '' : this._cm('why_club_what');
+    const regPhoneWhy = w === 'reg' && !(c.gap && c.gap.phone) ? cb('why_nophone') : '';
+    const regEmailWhy = w === 'reg' && !(c.gap && c.gap.email) ? cb('why_noemail') : '';
+    const blankWhy = (field) => w === 'blank' && !(st && st[field]) ? cb(field === 'phone' ? 'why_nophone' : 'why_noemail') : '';
+    const hows = [
+      { key: 'club',  label: this._cm('how_club'),  why: clubWhy },
+      { key: 'phone', label: this._cm('how_phone'), why: !hasPhone ? cb('why_nophone') : regPhoneWhy || blankWhy('phone') },
+      { key: 'email', label: this._cm('how_email'), why: !hasEmail ? cb('why_noemail') : regEmailWhy || blankWhy('email') },
+      { key: 'call',  label: this._cm('how_call'),  why: st && st.phone ? '' : cb('why_nophone') },
+    ];
+    return { c, whats, what: w, hows };
+  }
+
+  _openContactSheet(personId) {
+    const prev = this._contactSheet;
+    this._contactSheet = { personId, what: prev && prev.personId === personId ? prev.what : null, how: null, error: '' };
+    this._renderContactSheet();
+  }
+
+  _closeContactSheet() {
+    this._contactSheet = null;
+    document.getElementById('gc-contact-sheet')?.remove();
+  }
+
+  // The sheet lives on <body>, outside the screen's re-render, so the 15s
+  // live poll never closes it under the coach's thumb.
+  _renderContactSheet() {
+    const sh = this._contactSheet;
+    if (!sh) return this._closeContactSheet();
+    const { c, whats, what, hows } = this._contactChoices(sh.personId, sh.what);
+    sh.what = what;
+    const firstOk = hows.find(h => !h.why && h.key !== 'call');
+    if (!sh.how || (hows.find(h => h.key === sh.how) || {}).why) sh.how = firstOk ? firstOk.key : 'call';
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const radio = (group, key, label, on, why) => `
+      <label style="display:flex; align-items:flex-start; gap:8px; padding:7px 8px; border-radius:8px; cursor:${why ? 'not-allowed' : 'pointer'};
+                    background:${on ? 'rgba(2,132,199,0.18)' : 'transparent'}; opacity:${why ? 0.55 : 1};">
+        <input type="radio" name="gc-cs-${group}" data-gc-cs-${group}="${key}" ${on ? 'checked' : ''} ${why ? 'disabled' : ''} style="margin-top:2px;">
+        <span style="flex:1;">${esc(label)}${group === 'how'
+          ? `<br><span style="font-size:0.75rem; font-weight:700; color:${why ? '#fbbf24' : '#34d399'};">${esc(why ? '⚠ ' + why : this._cm('works'))}</span>` : ''}</span>
+      </label>`;
+    const title = this._cm('title', { name: c.name || '' });
+    let el = document.getElementById('gc-contact-sheet');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'gc-contact-sheet';
+      el.setAttribute('role', 'dialog');
+      el.addEventListener('click', (e) => this._onContactSheetClick(e));
+      document.body.appendChild(el);
+    }
+    el.style.cssText = 'position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.55); display:flex; align-items:flex-end; justify-content:center;';
+    el.innerHTML = `
+      <div data-gc-contact style="width:100%; max-width:480px; max-height:90vh; overflow:auto; margin:0 12px 12px; padding:14px 16px;
+                                   border-radius:14px; background:#0f172a; color:#f8fafc; border:1px solid #334155; font-size:0.9rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <b style="font-size:1.02rem;">${esc(title)}</b>
+          <button type="button" data-gc-cs-close style="border:none; background:none; color:#94a3b8; font-size:1.3rem; cursor:pointer;" aria-label="${esc(this._cm('cancel'))}">×</button>
+        </div>
+        ${sh.how === 'call' ? '' : `<div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6; margin:4px 0 2px;">${esc(this._cm('what').toUpperCase())}</div>
+        ${whats.map(x => radio('what', x.key, x.label, x.key === what, '')).join('')}`}
+        <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6; margin:10px 0 2px;">${esc(this._cm('how').toUpperCase())}</div>
+        ${hows.map(h => radio('how', h.key, h.label, h.key === sh.how, h.why)).join('')}
+        <div style="display:flex; gap:8px; align-items:center; margin-top:12px;">
+          <button type="button" data-gc-cs-send style="flex:1; padding:11px; border-radius:10px; border:none; cursor:pointer; font-weight:800; font-size:0.95rem; color:#fff; background:#0284c7;">${esc(sh.how === 'call' ? this._cm('call_go') : this._cm('send'))}</button>
+          <span data-gc-remind-note data-gc-squad-note style="flex:1; font-size:0.75rem;">${sh.error ? `<span style="color:#f87171;">${esc(sh.error)}</span>` : ''}</span>
+        </div>
+      </div>`;
+  }
+
+  _onContactSheetClick(e) {
+    const sh = this._contactSheet;
+    if (!sh) return;
+    if (e.target.id === 'gc-contact-sheet' || e.target.closest('[data-gc-cs-close]')) { this._closeContactSheet(); return; }
+    const w = e.target.closest('[data-gc-cs-what]');
+    if (w && !w.disabled) { sh.what = w.dataset.gcCsWhat; sh.how = null; this._renderContactSheet(); return; }
+    const h = e.target.closest('[data-gc-cs-how]');
+    if (h && !h.disabled) { sh.how = h.dataset.gcCsHow; this._renderContactSheet(); return; }
+    const send = e.target.closest('[data-gc-cs-send]');
+    if (send && !send.disabled) this._contactSend(send);
+  }
+
+  // Hand the choice to the send it always was.  The Send button carries
+  // the old buttons' data attributes, so each handler runs unchanged.
+  async _contactSend(btn) {
+    const sh = this._contactSheet;
+    const { c, what, hows } = this._contactChoices(sh.personId, sh.what);
+    const how = hows.find(x => x.key === sh.how);
+    if (!how || how.why) return;
+    const pid = String(sh.personId);
+    const st = c.st || {};
+    btn.dataset.personId = pid;
+    const done = async () => { this._closeContactSheet(); await this._loadTextMarks(); this._render(); };
+    if (how.key === 'call') { window.location.href = `tel:${st.phone}`; return this._closeContactSheet(); }
+    if (what === 'blank') {
+      window.location.href = how.key === 'phone' ? `sms:${st.phone}` : `mailto:${st.email}`;
+      return this._closeContactSheet();
+    }
+    if (what === 'reg' && how.key !== 'club') {
+      const g = c.gap;
+      if (how.key === 'phone') window.location.href = this.buildSmsComposeHref({ to: g.phone, body: g.body || '' });
+      else this.openGmailCompose(this.buildGmailComposeHref({ to: g.email, subject: g.subject || '', body: g.body || '' }));
+      return this._closeContactSheet();
+    }
+    if (how.key === 'club') {
+      btn.dataset.gcClubText = what === 'reg' ? 'reg_link' : 'game_link';
+      const ok = await this._sendClubText(btn);
+      return ok ? done() : this._renderContactSheetError(btn);
+    }
+    if (what === 'remind') {
+      btn.dataset.gcRemind = how.key === 'email' ? 'email' : 'sms';
+      await this._remindPlayer(btn);
+    } else {
+      btn.dataset.gcSquadOne = how.key === 'email' ? 'email' : 'sms';
+      await this._sendSquadNoticeOne(btn);
+    }
+    // The handlers write a failure into the sheet's note; no note = sent.
+    if (!btn.closest('[data-gc-contact]')?.querySelector('[data-gc-squad-note] span')) this._closeContactSheet();
+  }
+
+  _renderContactSheetError(btn) {
+    const note = btn.closest('[data-gc-contact]')?.querySelector('[data-gc-squad-note]');
+    if (this._contactSheet) this._contactSheet.error = note ? note.textContent : '';
+    this._renderContactSheet();
+  }
+
+  // 📣 WHO pills, then the HOW buttons for that group (the tracked squad
+  // notice / remind-event sends).  In "everyone plays" games there is no
+  // squad, so only No response is offered.
+  _groupBarHtml({ squad, changed, noResp, squadSent }, remindBtn) {
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const whos = [
+      squad ? { key: 'squad', label: this._cm('who_squad', { n: squad }) } : null,
+      changed ? { key: 'changed', label: this._cm('who_changed', { n: changed }) } : null,
+      { key: 'noresp', label: this._cm('who_noresp', { n: noResp }) },
+    ].filter(Boolean);
+    const who = whos.some(w => w.key === this._groupWho) ? this._groupWho : whos[0].key;
+    const n = who === 'squad' ? squad : who === 'changed' ? changed : noResp;
+    const pill = (w) => `<button type="button" data-gc-group-who="${w.key}" style="padding:4px 10px; border-radius:999px; cursor:pointer; font-size:0.74rem; font-weight:700;
+        border:1px solid ${w.key === who ? '#0284c7' : 'var(--border-color)'}; background:${w.key === who ? 'rgba(2,132,199,0.2)' : 'transparent'}; color:inherit;">${esc(w.label)}</button>`;
+    const btns = !n ? `<span style="opacity:0.7;">${esc(this._cm('group_none'))}</span>`
+      : who === 'noresp'
+        ? `${remindBtn('data-gc-remind-all="sms"', esc(this._cm('group_text')), '#0284c7', '')}
+           ${remindBtn('data-gc-remind-all="email"', esc(this._cm('group_email')), '#7c3aed', '')}`
+        : `${remindBtn(`data-gc-squad-notice="sms" data-scope="${who === 'changed' ? 'changed' : 'all'}"`, esc(this._cm('group_text')), '#0284c7', '', who === 'squad' ? squadSent?.sms : null)}
+           ${remindBtn(`data-gc-squad-notice="email" data-scope="${who === 'changed' ? 'changed' : 'all'}"`, esc(this._cm('group_email')), '#7c3aed', '', who === 'squad' ? squadSent?.email : null)}`;
+    return `
+      <div style="margin:0 0 12px; padding:8px 12px; border:1px solid var(--border-color); border-radius:10px;">
+        <div style="font-weight:800; font-size:0.88rem; margin-bottom:6px;">${esc(this._cm('bar_title'))}</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
+          <span style="font-size:0.7rem; font-weight:800; opacity:0.6; align-self:center;">${esc(this._cm('who').toUpperCase())}</span>${whos.map(pill).join('')}</div>
+        <div style="font-size:0.74rem; opacity:0.75; margin-bottom:6px;">${esc(this._cm(who === 'noresp' ? 'group_what_noresp' : 'group_what_squad'))}</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:0.78rem;">${btns}
+          <span data-gc-squad-result data-gc-remind-result style="flex-basis:100%;"></span></div>
+      </div>`;
+  }
+
   // 📲 Club-number texts (mig 647; owner 2026-10-23: "we don't want
   // messages going into the void. does it show if delivered? if
   // opened?").  The club number sends, Twilio reports delivery, and the
@@ -3138,10 +3274,15 @@ class GameCenterScreen extends Screen {
       }
       if (data.status) this.squadNotice = data.status;
     } catch (err) {
-      alert(err.message);
+      const note = btn.closest('[data-gc-contact]')?.querySelector('[data-gc-squad-note]');
+      if (note) note.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
+      else alert(err.message);
+      btn.disabled = false;
+      return false;
     }
     await this._loadTextMarks();
     this._render();
+    return true;
   }
 
   // The gap row for one person (mig 638/645) — the card's registration
