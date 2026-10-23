@@ -58,6 +58,9 @@ struct DemoPlayer {
     std::string name;
     std::int32_t max_speed_cms = 600;
     std::int32_t concept_mask = -1;  // -1 = use the band bundle
+    // Mig 656: his overall ability from his teams' records (0-100; -1 = the
+    // team's, else the band's) — his default on every concept his band knows.
+    std::int16_t quality = -1;
     // Mig 636 (G4.30): per-player attributes (-1 = band), the formation
     // slot label he boots in ('SUB' = bench) and James's description.
     core::PlayerAttributes attrs;
@@ -74,6 +77,7 @@ struct DemoTeam {
     // style preset, mig 631) — its DEMAND. Empty = none (core concepts
     // asked in full, style concepts not at all).
     std::string game_model;
+    std::int16_t quality = -1;   // mig 656: team strength from its record; -1 = the band
     // Mig 636: the club formation code this team plays (overrides
     // GAME_FORMATION_*). Empty = the env's choice.
     std::string formation_code;

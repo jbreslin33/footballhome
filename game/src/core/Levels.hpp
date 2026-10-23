@@ -162,10 +162,12 @@ inline int levelRankOf(const LevelParams& lv) {
 // What a band's players KNOW (ability): the band's quality on every concept
 // taught at or below its level (game_concepts.taught_from), 0 on the rest —
 // U-10s don't do delay theory AT ALL; a semipro knows it all at 68.
-inline ConceptRatings defaultAbility(const LevelParams& lv) {
+// quality (0-100, mig 656) replaces the band's number for a player whose
+// teams' records rate him; which concepts he knows stays the band's.
+inline ConceptRatings defaultAbility(const LevelParams& lv, int quality = -1) {
     static constexpr std::uint8_t kQuality[] = {0, 12, 30, 50, 68, 82, 92, 100};
     const int rank = levelRankOf(lv);
-    const std::uint8_t q = kQuality[rank];
+    const std::uint8_t q = quality >= 0 && quality <= 100 ? static_cast<std::uint8_t>(quality) : kQuality[rank];
     ConceptRatings r{};
     const ConceptRegistry& reg = concepts();
     for (int i = 0; i < reg.size(); ++i) {

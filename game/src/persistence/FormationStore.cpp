@@ -87,7 +87,7 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
         pqxx::work tx{conn};
         const auto team = tx.exec_params(
             "SELECT id, level_band, game_model, formation_code, "
-            "       kit_shirt, kit_shorts, kit_socks, kit_trim "
+            "       kit_shirt, kit_shorts, kit_socks, kit_trim, quality "
             "FROM game_demo_teams WHERE name = $1",
             team_name);
         if (team.empty()) return std::nullopt;
@@ -106,10 +106,11 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
             if (hex.size() == 7 && hex[0] == '#')
                 *kit[c] = static_cast<std::int32_t>(std::stol(hex.substr(1), nullptr, 16));
         }
+        if (!team[0][8].is_null()) out.quality = team[0][8].as<std::int16_t>();
         const int team_id = team[0][0].as<int>();
         const auto rows = tx.exec_params(
             "SELECT shirt, name, max_speed_cms, concept_mask, "
-            "       COALESCE(position, ''), COALESCE(description, '') "
+            "       COALESCE(position, ''), COALESCE(description, ''), quality "
             "FROM game_demo_players WHERE team_id = $1 "
             // Mig 641: the lineup, not the shirts, decides who starts —
             // index = formation slot (1-11), then the bench by shirt.
@@ -124,6 +125,7 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
             p.concept_mask = r[3].is_null() ? -1 : r[3].as<std::int32_t>();
             p.position = r[4].as<std::string>();
             p.description = r[5].as<std::string>();
+            if (!r[6].is_null()) p.quality = r[6].as<std::int16_t>();
             out.players.push_back(std::move(p));
         }
         // Mig 636 attributes, by registry code (unknown codes = rows for

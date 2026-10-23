@@ -120,11 +120,14 @@ void GameServer::applyRosters() {
 }
 
 core::ConceptRatings GameServer::buildAbility(std::uint8_t sl, const core::LevelParams& band) const {
-    core::ConceptRatings r = core::defaultAbility(band);
     const std::uint8_t per_team = cfg_.slot_count / 2;
     const bool home = sl < per_team;
     const std::uint8_t k = home ? sl : sl - per_team;
     const persistence::DemoTeam& team = home ? cfg_.roster_home : cfg_.roster_away;
+    // Mig 656: his own quality, else his team's, else the band's.
+    const int quality = k < team.players.size() && team.players[k].quality >= 0
+                            ? team.players[k].quality : team.quality;
+    core::ConceptRatings r = core::defaultAbility(band, quality);
     if (k >= team.players.size()) return r;
     const auto& p = team.players[k];
     // Legacy mask override → that player's known set at a strong personal
