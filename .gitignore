@@ -109,3 +109,4 @@ frontend/images/league-logos/*
 # like frontend/exhibit/video/_work) — large binaries, not for git.
 archive/
 backend/.builder-out/
+**/__pycache__/
