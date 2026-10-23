@@ -109,8 +109,9 @@ int main() {
         std::printf("fh-game: %zu game-model param(s) loaded\n", cfg.model_params.size());
         // Fictional demo rosters (mig 628): named players filling the
         // ladder. A roster's band OVERRIDES GAME_LEVEL_* defaults.
-        const char* th = envOr("GAME_TEAM_HOME", "Lighthouse XI");
-        const char* ta = envOr("GAME_TEAM_AWAY", "Harbor Athletic");
+        // James 10/23: "game right now should always be lh vs ukies".
+        const char* th = envOr("GAME_TEAM_HOME", "Lighthouse APSL");
+        const char* ta = envOr("GAME_TEAM_AWAY", "Ukrainian Nationals");
         if (auto t = persistence::loadDemoTeam(db, th)) {
             cfg.roster_home = std::move(*t);
             cfg.level_home = core::levelParams(cfg.roster_home.level_band);
