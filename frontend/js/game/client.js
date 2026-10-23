@@ -411,37 +411,54 @@
   }
   // Drag-and-drop pitch planner: live legality + water score.
   const planner = window.PitchPlanner ? window.PitchPlanner.attach(renderer) : null;
-  // 🎮 GAME / 📐 PLAN (James: "clear all measurement and rain stuff so we
-  // can focus on game"): GAME hides the planner, the water layer and the
-  // contours and follows the ball again; PLAN brings them back with the
-  // camera parked. Remembered per device; GAME by default.
-  const planBtn = document.getElementById('btn-plan');
-  let planMode = false;
-  try { planMode = localStorage.getItem('fh.game.planMode') === '1'; } catch (e) { /* default GAME */ }
+  // MODES over the one Lighthouse model (James 10/22: a "game" button and
+  // a "design" button, later practice setup / barn night / rodeo — each
+  // mode brings only its own controls, so none is cluttered). GAME: the
+  // match + its controls, ball-follow, no contours. DESIGN: the pitch
+  // planner, contours, camera parked; game-only controls hidden (CSS
+  // body.mode-design .game-only). Remembered per device; GAME by default.
+  const modeBar = document.getElementById('mode-bar');
+  let mode = 'game';
+  try {
+    mode = localStorage.getItem('fh.game.mode') ||
+      (localStorage.getItem('fh.game.planMode') === '1' ? 'design' : 'game');
+  } catch (e) { /* default GAME */ }
+  // Modes set up but not built yet (James: "setup the others functionally
+  // but not implemented"): the model with the game controls cleared and a
+  // note of what's coming.
+  const COMING = {
+    practice: '🦺 <b>Practice setup</b> — coming: place cones, grids and stations on the field so every coach knows where tonight\'s session goes.',
+    barn: '🎪 <b>Barn night</b> — coming: simulate a fundraiser night at the barn, people arriving, going in and out.',
+    rodeo: '🐂 <b>Rodeo night</b> — coming: the rodeo with the band, the bulls, and cars driving in.',
+  };
+  const modeNote = document.getElementById('mode-note');
+  if (mode !== 'game' && mode !== 'design' && !COMING[mode]) mode = 'game';
   const applyMode = () => {
-    if (planner) planner.setOn(planMode);
+    const design = mode === 'design';
+    const other = !!COMING[mode];
+    document.body.classList.toggle('mode-design', design);
+    document.body.classList.toggle('mode-other', other);
+    if (modeNote) modeNote.innerHTML = other ? COMING[mode] : '';
+    if (planner) planner.setOn(design);
+    if (modeBar) for (const b of modeBar.querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === mode);
     if (!renderer.field || !renderer.field.setContours) { setTimeout(applyMode, 300); return; }
-    cmode = CMODES.indexOf(planMode ? 'lidar' : 'off');
+    cmode = CMODES.indexOf(design ? 'lidar' : 'off');
     renderer.field.setContours(CMODES[cmode]);
     if (contoursBtn) contoursBtn.textContent = CLABEL[CMODES[cmode]];
-    if (renderer.rig.follow === planMode) toggleFollow();
-    if (planBtn) {
-      // A pill like the planner's: dot + what tapping it does.
-      planBtn.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;border:1px solid #ffd24d;' +
-        'background:' + (planMode ? '#ffd24d' : 'transparent') + '"></span>' +
-        (planMode ? '📐 PLANNER ON · tap for 🎮 game only' : '🎮 GAME · tap for 📐 planner');
-    }
+    // Ball-follow only in GAME; every other mode parks the camera.
+    if (renderer.rig.follow !== (mode === 'game')) toggleFollow();
   };
-  const flipMode = () => {
-    planMode = !planMode;
-    try { localStorage.setItem('fh.game.planMode', planMode ? '1' : '0'); } catch (e) { /* this visit only */ }
+  const setMode = (m) => {
+    if (m === mode) return;
+    mode = m;
+    try { localStorage.setItem('fh.game.mode', mode); } catch (e) { /* this visit only */ }
     applyMode();
   };
-  if (planBtn) {
-    planBtn.addEventListener('click', flipMode);
-    planBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault(); e.stopPropagation(); flipMode();
-    });
+  if (modeBar) {
+    for (const b of modeBar.querySelectorAll('button')) {
+      b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); setMode(b.dataset.mode); });
+      b.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); setMode(b.dataset.mode); });
+    }
   }
   applyMode();
   const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];

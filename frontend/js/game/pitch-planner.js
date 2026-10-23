@@ -883,6 +883,9 @@
       on = wantOn;
       panel.style.display = on ? 'block' : 'none';
       pillBox.style.display = on ? 'flex' : 'none';
+      // Sit just under the mode bar, which wraps on a phone.
+      const bar = document.getElementById('mode-bar');
+      if (on && bar) pillBox.style.top = Math.round(bar.getBoundingClientRect().bottom + 6) + 'px';
       for (const p of all()) if (p.g) p.g.visible = on;
       if (renderer.field && renderer.field.setWater) renderer.field.setWater(on && waterOn);
       drag = null;

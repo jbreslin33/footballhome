@@ -39,32 +39,45 @@
                 touch-action: none; user-select: none; -webkit-user-select: none; }
     #btn-pass { bottom: calc(env(safe-area-inset-bottom, 12px) + 104px); }
     #btn-loft { bottom: calc(env(safe-area-inset-bottom, 12px) + 16px); }
+    /* Modes over the one Lighthouse model (James 10/22): GAME shows the
+       match controls; DESIGN (the pitch planner) hides them. */
+    body.mode-design .game-only, body.mode-other .game-only { display: none !important; }
+    #mode-note { display: none; position: fixed; left: 50%; transform: translateX(-50%); top: 8px; z-index: 20;
+      max-width: min(520px, calc(100vw - 16px)); box-sizing: border-box; padding: 8px 12px; border-radius: 10px;
+      background: rgba(10,14,20,.86); color: #f4f6fb; font: 12px system-ui, sans-serif; }
+    body.mode-other #mode-note { display: block; }
+    #mode-bar { position: fixed; left: 8px; top: 84px; z-index: 12; display: flex; flex-wrap: wrap; gap: 0;
+      max-width: calc(100vw - 120px);
+      border: 2px solid #ffd24d; border-radius: 14px; overflow: hidden; background: rgba(10,14,20,.72); }
+    #mode-bar button { min-width: 0; min-height: 0; padding: 4px 12px; border: 0; background: transparent;
+      color: #f4f6fb; font: 600 11px system-ui, sans-serif; cursor: pointer; }
+    #mode-bar button.on { background: #ffd24d; color: #10141a; }
   </style>
 </head>
 <body>
   <canvas id="game-canvas"></canvas>
   <a id="back" href="/">‹ Home</a>
-  <div id="scoreboard" style="position: fixed; top: env(safe-area-inset-top, 8px);
+  <div id="scoreboard" class="game-only" style="position: fixed; top: env(safe-area-inset-top, 8px);
        right: 12px; color: #ffcc00; font-weight: 700; font-size: 14px;
        letter-spacing: 1px; pointer-events: none;
        text-shadow: 0 1px 3px rgba(0,0,0,.6);"></div>
-  <div id="status">loading…</div>
-  <button id="btn-auto" class="kick-btn" style="right: auto; left: 16px;
+  <div id="status" class="game-only">loading…</div>
+  <button id="btn-auto" class="kick-btn game-only" style="right: auto; left: 16px;
        bottom: calc(env(safe-area-inset-bottom, 12px) + 16px); width: 60px;
        height: 60px; font-size: 11px;">AUTO</button>
   <!-- Admin-only (shown when HELLO grants the admin capability): tap to
        cycle each team's skill band live. -->
-  <button id="btn-level-home" class="kick-btn" style="display: none;
+  <button id="btn-level-home" class="kick-btn game-only" style="display: none;
        right: auto; left: 12px; top: 44px; bottom: auto; width: 92px;
        height: 34px; border-radius: 17px; font-size: 11px;">H: —</button>
-  <button id="btn-level-away" class="kick-btn" style="display: none;
+  <button id="btn-level-away" class="kick-btn game-only" style="display: none;
        right: auto; left: 112px; top: 44px; bottom: auto; width: 92px;
        height: 34px; border-radius: 17px; font-size: 11px;">A: —</button>
-  <button id="btn-edit" class="kick-btn" style="display: none; right: auto;
+  <button id="btn-edit" class="kick-btn game-only" style="display: none; right: auto;
        left: 212px; top: 44px; bottom: auto; width: 64px; height: 34px;
        border-radius: 17px; font-size: 11px;">EDIT</button>
   <!-- Admin edit mode: paint a team identity in one tap (mig 630 presets). -->
-  <div id="preset-bar" style="display: none; position: fixed; top: 86px;
+  <div id="preset-bar" class="game-only" style="display: none; position: fixed; top: 86px;
        left: 12px; align-items: center; gap: 6px; z-index: 10;">
     <select id="preset-select" style="height: 30px; max-width: 150px;
          background: rgba(11,28,61,.95); color: #f4f6fb; font-size: 12px;
@@ -77,7 +90,7 @@
          min-width: 0; min-height: 0; width: 48px; height: 30px;
          border-radius: 15px; font-size: 11px;">→ A</button>
   </div>
-  <div id="edit-panel" style="display: none; position: fixed; top: 126px;
+  <div id="edit-panel" class="game-only" style="display: none; position: fixed; top: 126px;
        left: 12px; width: 280px; background: rgba(11,28,61,.95);
        border: 1px solid rgba(255,255,255,.25); border-radius: 10px;
        padding: 12px; color: #f4f6fb; font-size: 13px; z-index: 10;"></div>
@@ -99,15 +112,12 @@
   <button id="btn-follow" class="kick-btn" style="right: 12px; top: 244px;
        bottom: auto; width: 92px; height: 34px; border-radius: 17px;
        font-size: 11px;">FOLLOW ON</button>
-  <button id="btn-plan" style="position: fixed; left: 8px; top: 84px; z-index: 12;
-       display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 0;
-       padding: 4px 10px; border-radius: 14px; border: 2px solid #ffd24d;
-       background: rgba(10,14,20,.72); color: #f4f6fb;
-       font: 600 11px system-ui, sans-serif; cursor: pointer;">📐 PLAN</button>
-  <div id="joystick"><div id="joystick-knob"></div></div>
-  <button id="btn-pass" class="kick-btn">PASS</button>
-  <button id="btn-loft" class="kick-btn">LOFT</button>
-  <button id="btn-tackle" class="kick-btn" style="bottom: calc(env(safe-area-inset-bottom, 12px) + 192px);">TKL</button>
+  <div id="mode-bar"><button data-mode="game">🎮 GAME</button><button data-mode="design">📐 DESIGN</button><button data-mode="practice">🦺 PRACTICE</button><button data-mode="barn">🎪 BARN NIGHT</button><button data-mode="rodeo">🐂 RODEO</button></div>
+  <div id="mode-note"></div>
+  <div id="joystick" class="game-only"><div id="joystick-knob"></div></div>
+  <button id="btn-pass" class="kick-btn game-only">PASS</button>
+  <button id="btn-loft" class="kick-btn game-only">LOFT</button>
+  <button id="btn-tackle" class="kick-btn game-only" style="bottom: calc(env(safe-area-inset-bottom, 12px) + 192px);">TKL</button>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>
   <script src="js/game/wire.js?v=20261022e"></script>
@@ -123,7 +133,7 @@
   <script src="js/game/renderer.js?v=20261022zw"></script>
   <script src="js/game/input.js?v=20261022e"></script>
   <script src="js/game/lighthouse-planner-data.js?v=20261022d"></script>
-  <script src="js/game/pitch-planner.js?v=20261022n"></script>
-  <script src="js/game/client.js?v=20261022zzn"></script>
+  <script src="js/game/pitch-planner.js?v=20261022o"></script>
+  <script src="js/game/client.js?v=20261022zzp"></script>
 </body>
 </html>
