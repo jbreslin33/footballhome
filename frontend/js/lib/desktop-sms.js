@@ -72,6 +72,7 @@
           <b style="font-size:1.02rem;">${esc(t('title', {}, '💬 Text from your phone — on this computer'))}</b>
           <button type="button" data-ds-close style="border:none; background:none; color:#94a3b8; font-size:1.3rem; cursor:pointer;">×</button>
         </div>
+        <div data-ds-relay></div>
         <div style="font-size:0.78rem; opacity:0.75; margin:4px 0 12px;">${esc(t('hint', {}, ''))}</div>
         <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6;">${esc(t('to', { n: to.length }, `To (${to.length})`).toUpperCase())}</div>
         <div style="display:flex; flex-direction:column; gap:4px; margin:4px 0 10px;">
@@ -116,6 +117,121 @@
       }
     });
     document.body.appendChild(el);
+    relaySection(el.querySelector('[data-ds-relay]'), to, body);
+  }
+
+  // ---- FH Texter (mig 667) ----
+  // The coach's own Android, paired once, sends the text when they click
+  // Send here — no pasting, no touching the phone.  Football Home checks
+  // every guardrail (one recipient, spacing, daily cap, STOP); this only
+  // shows the state and asks.
+  const r = (tier, tokens, fb) =>
+    (window.MessageCopy && MessageCopy.block && MessageCopy.block('phone_relay', tier, tokens)) || fb || '';
+
+  function authFetch(url, opts = {}) {
+    let token = '';
+    try { token = localStorage.getItem('token') || ''; } catch (_e) {}
+    return fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}),
+                                             ...(token ? { Authorization: 'Bearer ' + token } : {}) } });
+  }
+
+  function ago(iso) {
+    if (!iso) return 'never';
+    const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+  }
+
+  const big = 'border:none; border-radius:10px; padding:13px; font-weight:900; font-size:1rem; cursor:pointer; color:#fff; width:100%;';
+
+  async function relaySection(slot, to, body) {
+    if (!slot) return;
+    let st;
+    try {
+      const res = await authFetch('/api/phone-relay/status');
+      if (!res.ok) return;                       // not an admin: the paste path only
+      st = await res.json();
+    } catch (_e) { return; }
+    const dev = (st.devices || [])[0];
+    const counter = `<div style="font-size:0.72rem; opacity:0.65; margin-top:4px;">${esc(r('today', { n: st.today, cap: st.cap }))}</div>`;
+    const off = (why) => `<div style="margin-bottom:12px; padding:10px; border-radius:10px; border:1px dashed #475569;">
+        <div style="font-weight:800; opacity:0.55;">${esc(r('send', {}, '📱 Send from my phone'))}</div>
+        <div style="font-size:0.78rem; color:#fbbf24; margin-top:3px;">⚠ ${esc(why)}</div>
+        ${!dev ? `<button type="button" data-ds-setup style="border:none; background:none; color:#7dd3fc; text-decoration:underline; cursor:pointer; padding:6px 0 0; font-size:0.82rem;">${esc(r('setup'))}</button>` : counter}
+      </div>`;
+    if (!dev) slot.innerHTML = off(r('not_paired'));
+    else if (!dev.online) slot.innerHTML = off(r('offline', { ago: ago(dev.last_seen_at) }));
+    else if (to.length !== 1) slot.innerHTML = off(r('group'));
+    else if (st.today >= st.cap) slot.innerHTML = off(r('cap', { n: st.today }));
+    else slot.innerHTML = `<div style="margin-bottom:12px;">
+        <button type="button" data-ds-relay-send style="${big} background:#059669;">${esc(r('send', {}, '📱 Send from my phone'))}</button>
+        <div data-ds-relay-status style="font-size:0.8rem; margin-top:5px; color:#a7f3d0;">${esc(r('send_hint', { device: dev.name }))}</div>
+        ${counter}
+      </div>`;
+    slot.onclick = (e) => {
+      if (e.target.closest('[data-ds-setup]')) { e.stopPropagation(); setup(slot); return; }
+      const btn = e.target.closest('[data-ds-relay-send]');
+      if (btn && !btn.disabled) { e.stopPropagation(); sendViaPhone(slot, btn, to[0], body); }
+    };
+  }
+
+  async function sendViaPhone(slot, btn, to, body) {
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    const line = slot.querySelector('[data-ds-relay-status]');
+    const say = (text, color) => { if (line) { line.textContent = text; line.style.color = color || '#a7f3d0'; } };
+    let res, data;
+    try {
+      res = await authFetch('/api/phone-relay/texts', { method: 'POST', body: JSON.stringify({ to, body }) });
+      data = await res.json().catch(() => ({}));
+    } catch (err) { data = { error: err.message }; }
+    if (!res || !res.ok) {
+      say('⚠ ' + (data.error || 'could not send'), '#fbbf24');
+      btn.disabled = false; btn.style.opacity = '';
+      return;
+    }
+    // Follow it until the phone reports back (or gives up).
+    const words = (d) => d.status === 'failed' ? r('failed', { error: d.error || '?' }) : r(d.status, {}, d.status);
+    say(words(data));
+    const started = Date.now();
+    const tick = async () => {
+      try {
+        const s = await (await authFetch(`/api/phone-relay/texts/${data.id}`)).json();
+        const bad = s.status === 'failed' || s.status === 'expired';
+        say((bad ? '⚠ ' : '') + words(s), bad ? '#f87171' : '#a7f3d0');
+        if (s.status === 'delivered' || bad) return;
+        if (s.status === 'sent') btn.textContent = r('sent', {}, 'sent ✓');
+      } catch (_e) { /* keep trying */ }
+      if (Date.now() - started < 5 * 60000 && document.body.contains(slot)) setTimeout(tick, 2000);
+    };
+    setTimeout(tick, 1500);
+  }
+
+  // One-time pairing: a code on this screen, typed into the app.
+  async function setup(slot) {
+    let data = {};
+    try { data = await (await authFetch('/api/phone-relay/pair-code', { method: 'POST', body: '{}' })).json(); } catch (_e) {}
+    if (!data.code) { slot.innerHTML = `<div style="color:#f87171;">⚠ ${esc(data.error || 'could not start setup')}</div>`; return; }
+    slot.innerHTML = `<div style="margin-bottom:12px; padding:12px; border-radius:10px; border:1px solid #0284c7; background:rgba(2,132,199,0.12);">
+        <div style="font-weight:900; margin-bottom:6px;">${esc(r('setup_title'))}</div>
+        <div style="font-size:0.85rem; white-space:pre-line;">${esc(r('setup_steps', { url: data.apk_url }))}</div>
+        <div style="font-family:monospace; font-size:2rem; font-weight:900; letter-spacing:0.25em; text-align:center; margin:10px 0;">${esc(data.code)}</div>
+        <div data-ds-pair-status style="font-size:0.8rem; color:#7dd3fc;">${esc(r('setup_wait'))}</div>
+      </div>`;
+    const started = Date.now();
+    const wait = async () => {
+      if (!document.body.contains(slot)) return;
+      try {
+        const st = await (await authFetch('/api/phone-relay/status')).json();
+        const dev = (st.devices || [])[0];
+        if (dev) {
+          const s = slot.querySelector('[data-ds-pair-status]');
+          if (s) { s.textContent = r('setup_done', { device: dev.name }); s.style.color = '#34d399'; }
+          return;
+        }
+      } catch (_e) {}
+      if (Date.now() - started < 15 * 60000) setTimeout(wait, 3000);
+    };
+    setTimeout(wait, 3000);
   }
 
   // Google Messages in its own small window beside Football Home, named so

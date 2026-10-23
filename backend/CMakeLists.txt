@@ -132,6 +132,7 @@ set(SOURCES
     src/controllers/JobsController.cpp
     src/controllers/KitBoardController.cpp
     src/controllers/FieldPlanController.cpp
+    src/controllers/PhoneRelayController.cpp
     src/controllers/GameRosterController.cpp
     src/controllers/LockupController.cpp
     src/controllers/ClubLogoController.cpp

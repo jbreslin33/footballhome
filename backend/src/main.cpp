@@ -45,6 +45,7 @@
 #include "controllers/JobsController.h"
 #include "controllers/KitBoardController.h"
 #include "controllers/FieldPlanController.h"
+#include "controllers/PhoneRelayController.h"
 #include "controllers/GameRosterController.h"
 #include "controllers/LockupController.h"
 #include "controllers/ClubLogoController.h"
@@ -137,6 +138,7 @@ private:
     std::shared_ptr<JobsController> jobs_controller_;
     std::shared_ptr<KitBoardController> kit_board_controller_;
     std::shared_ptr<FieldPlanController> field_plan_controller_;
+    std::shared_ptr<PhoneRelayController> phone_relay_controller_;
     std::shared_ptr<GameRosterController> game_roster_controller_;
     std::shared_ptr<LockupController> lockup_controller_;
     std::shared_ptr<ClubLogoController> club_logo_controller_;
@@ -238,6 +240,7 @@ public:
         jobs_controller_ = std::make_shared<JobsController>();
         kit_board_controller_ = std::make_shared<KitBoardController>();
         field_plan_controller_ = std::make_shared<FieldPlanController>();
+        phone_relay_controller_ = std::make_shared<PhoneRelayController>();
         game_roster_controller_ = std::make_shared<GameRosterController>();
         lockup_controller_ = std::make_shared<LockupController>();
         club_logo_controller_ = std::make_shared<ClubLogoController>();
@@ -562,6 +565,8 @@ private:
         // #kit board (owner 2026-09-18): uniform numbers + kit handed out (mig 373).
         router_.useController("/api/kit-board", kit_board_controller_);
         router_.useController("/api/field-plan", field_plan_controller_);
+        // FH Texter (mig 667): a coach's own phone sends what they click Send on.
+        router_.useController("/api/phone-relay", phone_relay_controller_);
         router_.useController("/api/game", game_roster_controller_);
         // #security (owner 2026-09-24): nightly gate photo check-in + upload link (mig 421/424).
         router_.useController("/api/security", lockup_controller_);

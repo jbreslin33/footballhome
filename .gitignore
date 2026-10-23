@@ -110,3 +110,6 @@ frontend/images/league-logos/*
 archive/
 backend/.builder-out/
 **/__pycache__/
+phone-app/**/build/
+phone-app/**/.gradle/
+phone-app/**/local.properties

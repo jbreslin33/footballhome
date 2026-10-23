@@ -1,0 +1,41 @@
+// FH Texter — Football Home's phone relay (mig 667).  Plain Java, no
+// libraries: the Android framework is all it needs.
+plugins { id 'com.android.application' }
+
+// The release key lives outside the repo (~/fh-android/keystore.properties)
+// so every build signs with the same key and installs as an update.
+def ksProps = new Properties()
+def ksFile = file(System.getenv('FH_KEYSTORE_PROPS') ?: '/opt/fh-android/keystore.properties')
+if (ksFile.exists()) ksFile.withInputStream { ksProps.load(it) }
+
+android {
+    namespace 'org.footballhome.texter'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'org.footballhome.texter'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+    signingConfigs {
+        release {
+            if (ksProps['storeFile']) {
+                storeFile file(ksProps['storeFile'])
+                storePassword ksProps['storePassword']
+                keyAlias ksProps['keyAlias']
+                keyPassword ksProps['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
