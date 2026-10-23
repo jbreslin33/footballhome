@@ -61,4 +61,5 @@ private:
     Response handleReminders(const Request& request);
     Response handleSquadNotice(const Request& request);
     Response handleSquadNoticeStatus(const Request& request);
+    Response handleTextMarks(const Request& request);
 };

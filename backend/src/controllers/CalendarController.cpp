@@ -9,6 +9,7 @@
 #include "../models/WelcomeLog.h"
 #include "../services/MagicLinkService.h"
 #include "../services/SessionService.h"
+#include "../services/TwilioService.h"
 #include "../third_party/json.hpp"
 
 #include <algorithm>
@@ -591,6 +592,15 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     });
     router.get(prefix + "/calendar/events/:fhEventId/invites", [this](const Request& req) {
         return this->handleGetEventInvites(req);
+    });
+    router.get(prefix + "/calendar/events/:fhEventId/registration-gaps", [this](const Request& req) {
+        return this->handleGetRegistrationGaps(req);
+    });
+    router.post(prefix + "/calendar/events/:fhEventId/registration-gaps/text", [this](const Request& req) {
+        return this->handlePostRegistrationGapText(req);
+    });
+    router.post(prefix + "/calendar/sms-opt-in-ask", [this](const Request& req) {
+        return this->handlePostSmsOptInAsk(req);
     });
     router.post(prefix + "/calendar/events/:fhEventId/invites", [this](const Request& req) {
         return this->handlePostEventInvite(req);
@@ -2265,7 +2275,39 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             {"arrive_label",  textOrNull(r0, "arrive_label")},
             {"leave_label",   textOrNull(r0, "leave_label")},
         };
-        return jsonOk({{"rsvp", rsvp}, {"standby_dropped", standby}});
+        // 📲 Text opt-in ask (mig 647): once per event, at most once a day,
+        // never after "don't ask" or a STOP — the signed-in person, so a
+        // parent answering for a child is the one asked.  The card links
+        // to footballhome.org/sms pre-filled; consent is only ever given
+        // there.  Never fails the RSVP.
+        json optIn = nullptr;
+        try {
+            auto ask = db->query("SELECT fh_sms_opt_in_should_ask($1::int, $2::bigint) AS ask",
+                                 {std::to_string(personId), std::to_string(fhEventId)});
+            if (!ask.empty() && ask[0]["ask"].as<bool>()) {
+                db->query("INSERT INTO sms_opt_in_asks (person_id, fh_event_id) VALUES ($1::int, $2::bigint) "
+                          "ON CONFLICT (person_id, fh_event_id) DO NOTHING",
+                          {std::to_string(personId), std::to_string(fhEventId)});
+                auto ph = db->query(
+                    "SELECT phone_number FROM person_phones WHERE person_id = $1::int AND can_receive_sms "
+                    " ORDER BY is_primary DESC, id LIMIT 1", {std::to_string(personId)});
+                const std::string phone = ph.empty() ? "" : ph[0]["phone_number"].c_str();
+                const auto minted = MagicLinkService::mint(personId, "sms", phone, 0);   // "" → /sms falls back to the phone on file
+                std::string link = minted.url;
+                if (auto at = link.find("token="); at != std::string::npos)
+                    link = MagicLinkService::publicBaseUrl() + "/sms?t=" + link.substr(at + 6);
+                // The card's words ride along (message_templates kind
+                // sms_opt_in_ask) so #my, Game Center and /rc share them.
+                MessageCopy copy;
+                json words = json::object();
+                for (const char* tier : {"title", "body", "yes", "later", "never"})
+                    words[tier] = copy.render("sms_opt_in_ask", tier, {{"phone", phone}}).body;
+                optIn = {{"fh_event_id", fhEventId}, {"url", link}, {"phone", phone}, {"copy", words}};
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "CalendarController::handlePostRsvp opt-in ask: " << e.what() << std::endl;
+        }
+        return jsonOk({{"rsvp", rsvp}, {"standby_dropped", standby}, {"sms_opt_in", optIn}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handlePostRsvp: "
                   << e.what() << std::endl;
@@ -2989,6 +3031,137 @@ Response CalendarController::handleGetEventSessionPlan(const Request& request) {
     }
 }
 
+// GET /calendar/events/:id/registration-gaps — Going players rostered on
+// the game's team but not yet on the league's official roster, each with
+// that league's registration nudge (fh_event_registration_gaps, mig 638;
+// the form per league is league_registration_forms).  Owner 2026-10-22:
+// "if a player is set going to a game and NOT on official roster yet then
+// there should be on game center a quick send registration link".  Event
+// coach or admin only — it carries contacts.  A league with no form row
+// (youth, Tri County) answers an empty list.  Mig 645: for a list-checked
+// league (CASA) the league's own list decides and Going invitees count —
+// an APSL call-down only while the call-down cap is full (reason
+// calldown_cap_full); league_list is the list's pull state.
+Response CalendarController::handleGetRegistrationGaps(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    try {
+        auto* db = Database::getInstance();
+        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId)) {
+            return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can see registration gaps");
+        }
+        json rows = json::array();
+        for (const auto& r : db->query(
+                "SELECT * FROM fh_event_registration_gaps($1::bigint, $2::int)",
+                {std::to_string(fhEventId), std::to_string(WelcomeLog::kLighthouseClubId)})) {
+            rows.push_back({
+                {"person_id",    r["person_id"].as<long long>()},
+                {"first_name",   textOrNull(r, "first_name")},
+                {"last_name",    textOrNull(r, "last_name")},
+                {"status_code",  textOrNull(r, "status_code")},
+                {"status_label", textOrNull(r, "status_label")},
+                {"player_done",  !r["player_done"].is_null() && r["player_done"].as<bool>()},
+                {"phone",        textOrNull(r, "phone")},
+                {"email",        textOrNull(r, "email")},
+                {"form_label",   textOrNull(r, "form_label")},
+                {"subject",      textOrNull(r, "subject")},
+                {"body",         textOrNull(r, "body")},
+                {"reason",       textOrNull(r, "reason")}});
+        }
+        // The league's own list the check ran on (mig 645) — Game Center
+        // re-pulls it on open and says loudly when the pull failed.
+        json list = nullptr;
+        for (const auto& r : db->query(
+                "SELECT source_id, team_id, league_label, system, last_fetch_ok, last_fetch_note, names, matched, "
+                "       to_char(last_fetched_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS last_fetched_at, "
+                "       to_char(names_pulled_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS names_pulled_at "
+                "  FROM fh_event_league_list($1::bigint)", {std::to_string(fhEventId)})) {
+            list = {{"source_id",       r["source_id"].as<long long>()},
+                    {"team_id",         r["team_id"].as<long long>()},
+                    {"league",          textOrNull(r, "league_label")},
+                    {"system",          textOrNull(r, "system")},
+                    {"ok",              r["last_fetch_ok"].is_null() ? json(nullptr) : json(r["last_fetch_ok"].as<bool>())},
+                    {"note",            textOrNull(r, "last_fetch_note")},
+                    {"fetched_at",      textOrNull(r, "last_fetched_at")},
+                    {"names_pulled_at", textOrNull(r, "names_pulled_at")},
+                    {"names",           r["names"].as<long long>()},
+                    {"matched",         r["matched"].as<long long>()}};
+        }
+        return jsonOk({{"gaps", rows}, {"league_list", list}});
+    } catch (const std::exception& e) {
+        std::cerr << "[registration-gaps] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /calendar/events/:id/registration-gaps/text {person_id} — the
+// registration gap's league form sent from the club number (mig 647):
+// event coach or admin, the player must be a current gap and opted in;
+// Game Center's card shows sent → delivered (purpose reg_link:<event>).
+Response CalendarController::handlePostRegistrationGapText(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON body"); }
+    const auto target = jsonInt(body, "person_id");
+    if (!target || *target <= 0) return jsonError(HttpStatus::BAD_REQUEST, "person_id required");
+    try {
+        auto* db = Database::getInstance();
+        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId))
+            return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can text registration links");
+        auto g = db->query(
+            "SELECT g.phone, g.body, g.player_done, fh_sms_consented_at(g.person_id) IS NOT NULL AS consented "
+            "  FROM fh_event_registration_gaps($1::bigint, $2::int) g WHERE g.person_id = $3::int",
+            {std::to_string(fhEventId), std::to_string(WelcomeLog::kLighthouseClubId), std::to_string(*target)});
+        if (g.empty()) return jsonError(HttpStatus::CONFLICT, "That player has no registration gap on this game.");
+        if (g[0]["player_done"].as<bool>()) return jsonError(HttpStatus::CONFLICT, "They already submitted — waiting on the league.");
+        if (!g[0]["consented"].as<bool>()) return jsonError(HttpStatus::CONFLICT, "not_opted_in");
+        const std::string phone = textOrNull(g[0], "phone").is_null() ? "" : g[0]["phone"].c_str();
+        if (phone.empty()) return jsonError(HttpStatus::CONFLICT, "No mobile number on file.");
+        MessageCopy copy;
+        const auto pre  = copy.render("club_sms", "prefix", {});
+        const auto foot = copy.render("club_sms", "footer", {});
+        const auto sent = TwilioService::getInstance().sendSms(
+            TwilioService::normalizeUs(phone), pre.body + g[0]["body"].c_str() + foot.body,
+            "reg_link:" + std::to_string(fhEventId), *target, 0);
+        if (!sent.ok) return jsonError(HttpStatus::BAD_GATEWAY, "The club text did not go out: " + sent.error);
+        return jsonOk({{"sent", true}, {"sid", sent.sid}});
+    } catch (const std::exception& e) {
+        std::cerr << "[registration-gap-text] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /calendar/sms-opt-in-ask {fh_event_id, answer} — the RSVP ask
+// card's answer (mig 647): opened (went to /sms), later, never.
+Response CalendarController::handlePostSmsOptInAsk(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON body"); }
+    const auto ev = jsonInt(body, "fh_event_id");
+    const std::string answer = body.value("answer", std::string{});
+    if (!ev || *ev <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    if (answer != "opened" && answer != "later" && answer != "never")
+        return jsonError(HttpStatus::BAD_REQUEST, "answer must be opened, later or never");
+    try {
+        Database::getInstance()->query(
+            "UPDATE sms_opt_in_asks SET answer = $3, answered_at = now() "
+            " WHERE person_id = $1::int AND fh_event_id = $2::bigint",
+            {std::to_string(gate.personId), std::to_string(*ev), answer});
+        return jsonOk({{"answer", answer}});
+    } catch (const std::exception& e) {
+        std::cerr << "[sms-opt-in-ask] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
 Response CalendarController::handleGetEventInvites(const Request& request) {
     auto gate = requireSession(request);
     if (gate.error) return *gate.error;
@@ -3009,6 +3182,12 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 "       EXISTS (SELECT 1 FROM team_auto_invites a JOIN fh_event_teams fet2 "
                 "                 ON fet2.team_id = a.team_id AND fet2.fh_event_id = i.fh_event_id "
                 "                WHERE a.person_id = i.person_id AND a.active) AS auto_invite, "
+                // ↔ Call In (mig 637): rostered on this game's team as a
+                // same-level invite-only player — Game Center's chip.
+                "       EXISTS (SELECT 1 FROM fh_event_teams fet3 JOIN team_persons tp3 "
+                "                 ON tp3.team_id = fet3.team_id AND tp3.person_id = i.person_id "
+                "                AND tp3.removed_at IS NULL AND tp3.invite_only AND tp3.call_in "
+                "                WHERE fet3.fh_event_id = i.fh_event_id) AS call_in, "
                 "       i.channel, i.contact, er.response, p.parent_person_id, "
                 "       to_char(i.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, "
                 // player_id folds a Going call-up into the Game Center
@@ -3038,6 +3217,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 {"from_team",        textOrNull(row, "from_team")},
                 {"from_team_id",     row["from_team_id"].is_null() ? json(nullptr) : json(row["from_team_id"].as<long long>())},
                 {"auto",             !row["auto_invite"].is_null() && row["auto_invite"].as<bool>()},
+                {"call_in",          !row["call_in"].is_null() && row["call_in"].as<bool>()},
                 {"channel",          textOrNull(row, "channel")},
                 {"contact",          textOrNull(row, "contact")},
                 {"response",         textOrNull(row, "response")},
@@ -3305,7 +3485,8 @@ Response CalendarController::handleDeleteEventInvite(const Request& request) {
 // GET /calendar/field-clashes?days=120 — every instant from today at which
 // the games on one facility need more than one field (fh_field_clashes,
 // mig 532: a game's share of the field comes from its team's format in
-// field_formats).  Each clash lists the games running together with their
+// field_formats; mig 634: or from the facility's layout in force at
+// kick-off, fh_event_field_share).  Each clash lists the games running together with their
 // format; a team without a field_size is marked unknown.  #calendar shows
 // them in a strip, and the all-clear date when there are none.
 Response CalendarController::handleGetFieldClashes(const Request& request) {
@@ -3341,7 +3522,7 @@ Response CalendarController::handleGetFieldClashes(const Request& request) {
                 "       to_char(ge.ends_at   AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS ends, "
                 "       (SELECT string_agg(t.name, ' + ' ORDER BY t.board_sort_order NULLS LAST, t.id) FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id WHERE fet.fh_event_id = fe.id) AS teams, "
                 "       (SELECT ff.label FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id JOIN field_formats ff ON ff.players_per_side = t.field_size WHERE fet.fh_event_id = fe.id ORDER BY ff.field_share DESC LIMIT 1) AS format, "
-                "       COALESCE((SELECT max(COALESCE(ff.field_share, 1.0)) FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id LEFT JOIN field_formats ff ON ff.players_per_side = t.field_size WHERE fet.fh_event_id = fe.id), 1.0) AS share, "
+                "       fh_event_field_share(fe.id) AS share, "
                 "       EXISTS (SELECT 1 FROM fh_event_teams fet JOIN teams t ON t.id = fet.team_id WHERE fet.fh_event_id = fe.id AND t.field_size IS NULL) "
                 "         OR NOT EXISTS (SELECT 1 FROM fh_event_teams fet WHERE fet.fh_event_id = fe.id) AS unknown "
                 "  FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "

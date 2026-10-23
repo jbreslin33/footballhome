@@ -314,6 +314,12 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
         const std::string xff = request.getHeader("X-Forwarded-For");
         const std::string ip  = firstForwardedIp(xff);
 
+        // Every hit is an open on record (mig 647) — a messaging app's
+        // link preview is flagged so it never reads as the person tapping.
+        db->query("INSERT INTO magic_link_opens (token_id, user_agent, is_preview) "
+                  "VALUES ($1::int, NULLIF($2, ''), fh_is_link_preview(NULLIF($2, '')))",
+                  {std::to_string(tokenRowId), ua});
+
         auto& sessions = SessionService::getInstance();
         auto minted    = sessions.createSession(personId, ua, ip);
 

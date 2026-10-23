@@ -1296,6 +1296,7 @@ class RosterScreenBase extends Screen {
            style="${cardBaseStyle} display:flex; flex-direction:row; align-items:center; gap:4px; flex-wrap:${isScroll ? 'nowrap' : 'wrap'}; row-gap:1px;">
         ${posControl}
         <strong style="font-size:0.72rem; line-height:1.2; ${nameStyle}">${fullName}</strong>
+        ${player.nameChipHtml || ''}
         ${ageChip}
         ${duesLabel}
         ${statusChip}
@@ -1919,9 +1920,11 @@ class RosterScreenBase extends Screen {
     if (col.isUnassigned) return { pillsHtml: '', shown: players, ridersHtml: '' };
 
     const riders = (data.autoInvites && data.autoInvites[String(col.teamId)]) || [];
-    const catOf = (p) => p.inviteOnly === true ? 'paper'
+    // ↔ Call In (mig 637) is an invite-only row too, but its own
+    // category — a same-level player, not a 📄 roster-filler.
+    const catOf = (p) => p.inviteOnly === true ? (p.callIn === true ? 'callin' : 'paper')
       : (RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : 'active');
-    const cats = { active: [], paper: [], injured: [] };
+    const cats = { active: [], paper: [], callin: [], injured: [] };
     for (const p of players) cats[catOf(p)].push(p);
     this.catOff = this.catOff || (() => { try { return JSON.parse(localStorage.getItem(RosterScreenBase.CAT_OFF_STORAGE_KEY) || '{}'); } catch (e) { return {}; } })();
     const off = (cat) => !!this.catOff[`${col.teamId}:${cat}`];
@@ -2008,10 +2011,10 @@ class RosterScreenBase extends Screen {
                  color:${off(cat) ? '#64748b' : color};">${icon} ${label} (${n})</button>` : '';
     const pillsHtml = `
       <div style="display:flex; gap:4px; flex-wrap:wrap; margin:2px 0 6px;">
-        ${catPill('active', '✅', 'Active', cats.active.length, '#4ade80')}
+        ${catPill('active', '✅', 'Active', cats.active.length + riders.length, '#4ade80')}
         ${catPill('paper', '📄', 'Paper', cats.paper.length, '#f59e0b')}
+        ${catPill('callin', '', MessageCopy.block('invite_chip', 'cat_call_in') || '↔ Call In', cats.callin.length, '#a78bfa')}
         ${catPill('injured', '🩹', 'Injured', cats.injured.length, '#f87171')}
-        ${catPill('riders', '⭐', 'Rides along', riders.length, '#60a5fa')}
         ${official ? (() => {
           // Pull state on the pill itself (owner 2026-10-21): 🟡 amber
           // while this load's pull runs, green ✓ + stamp once fresh names
@@ -2043,32 +2046,34 @@ class RosterScreenBase extends Screen {
 
     const shown = seesOn ? players.filter(p => seesCat(catOf(p)))
       : players.filter(p => !off(catOf(p)));
-    // ⭐ riders render as their FULL home-team card in this column's
-    // main list (owner 2026-10-21: "all pills should just filter the
-    // main list" … "not the normal list of players with their labels
-    // and drop downs" — plain rows read as a second list).  The card is
-    // the rider's real row from their home column, de-fanged here:
-    // draggable off (which also keeps it out of the reorder collector's
-    // draggable="true" set) and the duplicate DOM id stripped; the ⋯
-    // menu still acts on their home-team row, which is the correct
-    // semantics.
-    const ridersHtml = (riders.length && (seesOn || !off('riders'))) ? riders.map(r => {
+    // ⭐ Standing call-ups (team_auto_invites) are listed with the
+    // column's ✅ Active players (owner 2026-10-22: "rhoden and pena
+    // should show like others but with standing call up chip on name") —
+    // the rider's real card from their home column, de-fanged here
+    // (draggable off, which also keeps it out of the reorder collector,
+    // and the duplicate DOM id stripped), with the chip on the name.  The
+    // ⋯ menu still acts on their home-team row, which is the right
+    // semantics.  The Active pill shows and hides them with the rest.
+    const chipLabel = MessageCopy.block('invite_chip', 'standing') || '⭐ Standing Call-up';
+    const chipTip = MessageCopy.block('invite_chip', 'standing_tip', { team: col.label || '' })
+      || `Standing invite — rides every ${col.label || ''} game automatically`;
+    const nameChipHtml = (r) => `<span title="${this.escape(chipTip)}"
+      style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
+             background:rgba(96,165,250,0.18); border:1px solid #60a5fa; color:#bfdbfe;">${this.escape(chipLabel)}${r.fromTeam ? ` · ${this.escape(r.fromTeam)}` : ''}</span>`;
+    const ridersHtml = (riders.length && (seesOn || !off('active'))) ? riders.map(r => {
       let homeCol = null, hp = null;
       for (const c of (data.columns || [])) {
         if (c.teamId === col.teamId) continue;
         const found = (data.buckets[String(c.teamId)] || []).find(p => Number(p.personId) === Number(r.personId));
         if (found) { homeCol = c; hp = found; break; }
       }
-      const caption = `<div style="font-size:0.66rem; color:#60a5fa; font-weight:700; margin:0 0 1px 2px;">⭐ rides along from ${this.escape(r.fromTeam || '—')}</div>`;
       if (!hp) return `
-        <div style="padding:4px 8px; border:${RosterScreenBase.NEUTRAL_CARD_BORDER}; border-radius:8px; font-size:0.78rem;"
-             title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">
-          ⭐ <b>${this.escape(r.name)}</b> <span style="opacity:0.7;">· rides along from ${this.escape(r.fromTeam || '—')}</span>
+        <div style="padding:4px 8px; border:${RosterScreenBase.NEUTRAL_CARD_BORDER}; border-radius:8px; font-size:0.78rem;">
+          <b>${this.escape(r.name)}</b> ${nameChipHtml(r)}
         </div>`;
-      const card = this.renderPlayer(hp, data.columns, homeCol, 0, 0)
+      return this.renderPlayer({ ...hp, nameChipHtml: nameChipHtml(r) }, data.columns, homeCol, 0, 0)
         .replace('draggable="true"', 'draggable="false"')
         .replace(/ id="[a-z]+-card-[^"]*"/, '');
-      return `<div title="Standing invite — auto-invited to every ${this.escape(col.label)} game; manage with the ⭐ on the game's 🎟 panel">${caption}${card}</div>`;
     }).join('') : '';
 
     return { pillsHtml, shown, ridersHtml };

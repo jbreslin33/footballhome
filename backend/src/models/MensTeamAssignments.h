@@ -36,6 +36,9 @@ public:
         // 📄 Paper spot (team_persons.invite_only, mig 619): holds the
         // roster place but grants nothing on games — invite to include.
         bool inviteOnly = false;
+        // ↔ Call In (team_persons.call_in, mig 637): an invite-only row
+        // for a same-level player — its own category, never 📄 Paper.
+        bool callIn = false;
         // Coach-defined ability rank within the team (1..N).  nullopt =
         // "no rank yet" — sort falls back to alphabetical (see
         // MensRoster.cpp comparator).  Written by

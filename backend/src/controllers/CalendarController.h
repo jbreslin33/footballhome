@@ -128,6 +128,9 @@ private:
     //   POST   /api/calendar/events/:fhEventId/invites            {person_id, channel, contact?} → link + hrefs
     //   DELETE /api/calendar/events/:fhEventId/invites/:personId  revoke (row kept)
     Response handleGetEventInvites     (const Request& request);
+    Response handleGetRegistrationGaps (const Request& request);
+    Response handlePostRegistrationGapText(const Request& request);
+    Response handlePostSmsOptInAsk(const Request& request);
     Response handlePostEventInvite     (const Request& request);
     Response handleDeleteEventInvite   (const Request& request);
     Response handlePostAutoInvite      (const Request& request);

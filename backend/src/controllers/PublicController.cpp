@@ -2,6 +2,8 @@
 #include "../core/Crypto.h"
 #include "../models/RsvpBoard.h"
 #include "../services/MagicLinkService.h"
+#include "../services/TwilioService.h"
+#include "../models/MessageCopy.h"
 #include <map>
 #include <cstdlib>
 #include <set>
@@ -868,9 +870,30 @@ Response PublicController::handleTwilioSmsInbound(const Request& request) {
             "INSERT INTO sms_messages (direction, message_sid, from_number, to_number, body, status, opt_out_type, person_id, raw) "
             "VALUES ('in', NULLIF($1,''), $2, $3, $4, 'received', NULLIF($5,''), fh_person_by_phone($6), $7::jsonb) "
             "ON CONFLICT (message_sid) DO UPDATE SET updated_at = now() "
-            "RETURNING id, person_id",
+            "RETURNING id, person_id, (xmax = 0) AS inserted",
             {sid, from, to, body, optOut, digits, raw.dump()});
         const std::string msgId = m.empty() ? "" : m[0]["id"].c_str();
+        // 📩 A reply reaches a person (mig 649): forwarded from the club
+        // number to everyone in sms_reply_forward_to.  First delivery only
+        // — Twilio retries a webhook, and a retry must not forward twice.
+        // Keywords and texts from a forward recipient are left out by
+        // fh_sms_reply_forwards.
+        if (!msgId.empty() && optOut.empty() && m[0]["inserted"].as<bool>()) {
+            try {
+                MessageCopy copy;
+                const auto pre  = copy.render("club_sms", "prefix", {});
+                const auto foot = copy.render("club_sms", "footer", {});
+                for (const auto& f : db_->query("SELECT to_phone, from_label, body FROM fh_sms_reply_forwards($1::bigint)", {msgId})) {
+                    const auto msg = copy.render("club_sms", "reply_forward",
+                        {{"from", f["from_label"].c_str()}, {"body", f["body"].c_str()}});
+                    if (!msg.ok()) break;
+                    TwilioService::getInstance().sendSms(TwilioService::normalizeUs(f["to_phone"].c_str()),
+                                                         pre.body + msg.body + foot.body, "reply_forward");
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "❌ twilio/sms-inbound forward: " << e.what() << std::endl;
+            }
+        }
         if (optOut == "STOP" && digits.size() == 10) {
             db_->query("INSERT INTO sms_opt_outs (phone_digits, person_id, sms_message_id, keyword) "
                        "VALUES ($1, fh_person_by_phone($1), NULLIF($2,'')::bigint, $3)",

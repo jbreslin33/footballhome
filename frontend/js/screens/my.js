@@ -2377,6 +2377,7 @@ class MyScreen extends Screen {
       const body = await this._fetch('/api/calendar/rsvp', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
+      if (body && body.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(body.sms_opt_in);   // 📲 mig 647
       const r = body && body.rsvp;
       if (r) {
         if (!personId) {
@@ -2431,6 +2432,7 @@ class MyScreen extends Screen {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      if (body && body.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(body.sms_opt_in);   // 📲 mig 647
       // Optimistic local mutation so the UI updates instantly.
       if (ev) {
         const rsvpPersonId  = (body && body.rsvp && body.rsvp.person_id) || personId;
