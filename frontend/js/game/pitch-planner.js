@@ -82,6 +82,27 @@
     if (closed && inPoly(rc, P)) return 0;
     return d;
   };
+  // Nearest points between two rects, edge to edge: { d, a, b } (d 0 and
+  // no points when they overlap).
+  const closest = (A, B) => {
+    const cp = (p, a, b) => {
+      const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz;
+      const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / l2));
+      return [a[0] + t * dx, a[1] + t * dz];
+    };
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 4; j++)
+        if (crosses(A[i], A[(i + 1) % 4], B[j], B[(j + 1) % 4])) return { d: 0 };
+    if (A.some((p) => inRect(p, B)) || B.some((p) => inRect(p, A))) return { d: 0 };
+    let best = { d: 1e9 };
+    for (const [P, Q, flip] of [[A, B, false], [B, A, true]])
+      for (const p of P)
+        for (let j = 0; j < 4; j++) {
+          const q = cp(p, Q[j], Q[(j + 1) % 4]), d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+          if (d < best.d) best = flip ? { d, a: q, b: p } : { d, a: p, b: q };
+        }
+    return best;
+  };
   const lineZ = (P, slope, x) => {
     const n = P.length;
     if (x >= P[n - 1][0]) return P[n - 1][1] + slope * (x - P[n - 1][0]);
@@ -195,6 +216,10 @@
     };
     const pill = 'min-width:0;min-height:0;padding:4px 9px;border-radius:12px;border:1px solid #889;' +
       'background:rgba(255,255,255,.1);color:#f4f6fb;font:600 12px system-ui,sans-serif;cursor:pointer;';
+    // Always-on gap between the two pitches (James: "show distance always
+    // between 7v7 and 11v11 as they move").
+    const gapRow = mk('div', 'padding:2px 6px 6px;font-weight:600;');
+    panel.appendChild(gapRow);
     const rows = {};
     for (const p of pitches) {
       const r = mk('div', 'display:flex;gap:6px;align-items:flex-start;padding:4px 6px;border-radius:8px;' +
@@ -484,11 +509,62 @@
       sizeBtn.textContent = '7v7 SIZE ' + pitches[1].size[0] + '×' + pitches[1].size[1];
     }
 
+    // Gap ruler on the grass: white strip between the nearest edges and a
+    // label at its middle, redrawn on every move.
+    let ruler = null;
+    function paintGap() {
+      const [A, B] = pitches;
+      if (!A.R || !B.R) return;
+      const g = closest(A.R, B.R), ok = g.d >= GAP;
+      const txt = g.d <= 0 ? 'overlapping' : (g.d / YD).toFixed(1) + ' yd';
+      gapRow.innerHTML = '↔ 11v11 to 7v7: <span style="color:' + (ok ? '#5f6' : '#ff6b78') + '">' + txt + '</span>' +
+        ' <span style="opacity:.6;font-weight:400">(10 yd apart to be clear)</span>';
+      const site = renderer.field && renderer.field.site;
+      if (!site) return;
+      if (!ruler) {
+        const strip = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.5),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, side: THREE.DoubleSide }));
+        strip.rotation.x = -Math.PI / 2;
+        strip.renderOrder = 63;
+        const bar = new THREE.Group();
+        bar.add(strip);
+        const cv = document.createElement('canvas');
+        cv.width = 512; cv.height = 128;
+        const tex = new THREE.CanvasTexture(cv);
+        const lab = new THREE.Mesh(new THREE.PlaneGeometry(16, 4),
+          new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+        lab.rotation.x = -Math.PI / 2;
+        lab.renderOrder = 64;
+        site.add(bar, lab);
+        ruler = { bar, strip, lab, cv, tex };
+      }
+      const c2 = ruler.cv.getContext('2d');
+      c2.clearRect(0, 0, 512, 128);
+      c2.font = 'bold 84px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(txt, 256, 64);
+      c2.fillStyle = ok ? '#7dff9a' : '#ff6b78'; c2.fillText(txt, 256, 64);
+      ruler.tex.needsUpdate = true;
+      const show = on && g.d > 0;
+      ruler.bar.visible = show;
+      if (show) {
+        const mx = (g.a[0] + g.b[0]) / 2, mz = (g.a[1] + g.b[1]) / 2;
+        ruler.bar.position.set(mx, 0.7, mz);
+        ruler.bar.rotation.y = -Math.atan2(g.b[1] - g.a[1], g.b[0] - g.a[0]);
+        ruler.strip.scale.x = Math.max(0.01, g.d);
+        ruler.lab.position.set(mx, 0.75, mz);
+      } else {
+        // Overlapping: label sits at the 7v7's centre.
+        ruler.lab.position.set(B.x, 0.75, B.z);
+      }
+      ruler.lab.visible = on;
+    }
+
     function update() {
       for (const p of pitches) if (p.g) { p.g.position.x = p.x; p.g.position.z = p.z; p.g.rotation.y = -p.rot * D2R; }
       // Each pitch's 10 yd gap reads the other's rect: settle both, twice.
       for (let k = 0; k < 2; k++) for (const p of pitches) evaluate(p);
       paint();
+      paintGap();
     }
 
     // Park the camera over a pitch (FOLLOW OFF), looking down at it.
