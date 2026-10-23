@@ -362,6 +362,15 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                                   : core::kGroundKickSpeed;
             return passSafe(world, setup_, slot, recv, a, b, v, safe_reach);
         };
+        // pass_ladder (bit 29, G4.35) [Bielsa-Leeds ch4] — ai::PassLadder:
+        // a laddered passer ranks receivers by rung (behind their line
+        // first, central before wide) instead of raw progress, and plays
+        // a high enough rung at once. Rolls per second like safe_pass.
+        const bool ladder =
+            ratings_[slot][29] > 0 && applies(slot, 29, world.tickCount() / 30);
+        const auto lines = ladder ? book_.pass_ladder.lines(world, slot, sign)
+                                  : PassLadder::Lines{};
+        int best_rung = 0;
         bool have_target = false;
         Fixed64 best_progress{};
         Vec2 target{};
@@ -383,9 +392,14 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                                 ratings_[slot][6] > 0 &&
                                 dsq > kSoftPassRange * kSoftPassRange;
             if (!safe(i, a, b, dsq, lofted)) continue;
-            if (!have_target || progress > best_progress) {
+            const int r = ladder ? book_.pass_ladder.rung(progress, mate.pos.y, lines) : 0;
+            const bool wins =
+                ladder ? PassLadder::better(r, progress, best_rung, best_progress)
+                       : progress > best_progress;
+            if (!have_target || wins) {
                 have_target = true;
                 best_progress = progress;
+                best_rung = r;
                 target = b;
                 target_dist_sq = dsq;
             }
@@ -406,8 +420,11 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         }
         const Fixed64 gain_scale =
             Fixed64::one() - vdeg * Fixed64::fromFraction(6, 10);
+        const bool ladder_fires =
+            ladder && best_rung > 0 &&
+            best_rung <= book_.pass_ladder.fireRung(degree(slot, 29));
         if (have_target &&
-            (pressed || im_keeper ||
+            (pressed || im_keeper || ladder_fires ||
              best_progress - my_progress > kEagerGain * jitter * gain_scale)) {
             out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
             // Over the top (§5.2's worked example, playable at last): a

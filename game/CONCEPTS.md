@@ -44,6 +44,7 @@ touchline laws — [FH] marks engine-original formulations.
 | 26 | `libero` [S] | The free +1 behind man-oriented marking [Bielsa]: marks nobody, shadows the ball across 2-5 m behind the deepest teammate, meets a long ball where it lands (G4.33, class `ai::Libero`) | a spare defender who just stands in the line |
 | 27 | `cover_shadow` [S] | The 9 presses their building CB along the line to his nearest midfield receiver, the pass in his shadow [Bielsa/Klopp] (G4.33, `ai::CoverShadow`) | running straight at the carrier, leaving the 6 open |
 | 28 | `line_step` [S] | Palla coperta / scoperta [Sacchi; FA / KNVB / DFB back four]: the line STEPS UP while the ball travels or the carrier is turned back / pressed, and HOLDS when a free opponent receives facing forward (G4.33, `ai::LineStep`) | a line that only drops, or steps up into the long ball |
+| 29 | `pass_ladder` [S] | Look forward in order [Bielsa-Leeds ch4]: behind their back line (central, then wide) → the pocket in front of it → past their first line; rank receivers by rung, play a high enough rung at once with no gain threshold (G4.35, `ai::PassLadder`) | the most-progress receiver, and only if it gains 8 m |
 
 From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Concept.hpp) and their numbers are rows in `game_model_params` (mig 642). The 26 older concepts move into classes one at a time, each move held to the goldens.
 
@@ -75,6 +76,102 @@ unnatural side, full-backs give the width [Premier League]), `ten_arrives`
 (the 10 arrives behind the lone 9), `overlap` / `underlap` (Bielsa's
 full-back runs around / inside the winger), `rotation` (Bielsa's
 positional interchanges that break man-marking).
+
+**The Lighthouse game model from the Leeds book (G4.35 research)** —
+[Bielsa-Leeds]: *Marcelo Bielsa*, a tactical analysis of Leeds United
+2019/20 (Kindle B08TDTYFPG; ch = chapter, f = figure). James: "this lh
+game model but we will add to it". Read cover to cover 10/23; paraphrased,
+never quoted. Ordered by build value — how often the book shows it and
+how much else depends on it. Each is a future `ai::Concept` class with
+its numbers in `game_model_params` and a Bielsa preset row.
+
+*Foundations (everything below leans on these):*
+- `pass_ladder` [ch4] — **BUILT G4.35 (bit 29, mig 646; DESIGN §8.31).**
+  The passer's progression order: (1) behind their
+  back line, central → (2) behind it, wide → (3) in front of it, central
+  → (4) in front of it, wide → (5) between their first and middle lines,
+  central → (6) the same, wide; then lateral/back only to reach a man who
+  HAS a vertical lane. Each rung is gated by the existing `safe_pass`
+  interceptor math. Built as the receiver RANKING + an at-once fire rule;
+  the lateral-to-find-a-lane step is still to come.
+- `rotation` [ch5, f5/27–31/62/80, all five goals] — the most-shown
+  pattern. Trigger: carrier has time but no clean vertical. A MOVER leaves
+  his slot (drop / out wide / across) only where his marker will follow;
+  the nearest teammate FILLS the vacated slot and becomes the target. The
+  6 is the anchor and never rotates [ch10]. Note: rotations bite harder
+  against man-markers — our own Bielsa defence is the most exposed to it.
+- `blind_side_run` [f7/21/35/46/48/51/65/78/81/82] — the runner sits on
+  the far shoulder of his defender and goes when the defender's facing
+  turns to the ball, or on a cue: the 9 checks toward the ball then spins
+  in behind; a line defender stepping out to the ball = run into the hole
+  he left; a teammate turning forward on the ball = go. Angle the run to
+  stay onside and away from contact.
+
+*Out of possession [ch2–3]:*
+- `match_up` — CBs = their strikers + 1 (back three vs two strikers);
+  the spare is the libero (have). The 9 marks nobody unless the block is
+  pinned deep [f9].
+- `press_minus_one` [f14–16/36] — press their build-up line with one
+  fewer (2 CBs → the 9; 3 → the 9 + the wide forward on the side his
+  angle leaves open); everyone else tight on his man.
+- Press triggers [f16–17/41/55/64]: `touchline_trap` (pass to a man on
+  the touchline → two press, a third cuts the down-the-line pass, all
+  angled to keep their own man in their cover shadow), `back_to_goal`
+  (receiver facing his own goal → three nearest close, the 9 screens the
+  back pass), `loose_pass` (heavy touch / bad pass → nearest two jump),
+  `press_through` (after a lay-off the presser carries on to the next
+  carrier [f60/64]).
+- `cover_shadow` generalised [ch11] — ANY presser who leaves his man
+  curves his run to keep that man behind him (today only the 9 does).
+- `chain_recover` [f11/18–19] — beaten: the nearest player AHEAD of the
+  ball sprints back goal-side of the carrier and the next man forward
+  takes his orphaned opponent; back line and libero never step out for it.
+- `find_your_man` [ch2, f12] — on losing the ball: near your man → tight;
+  far → slide sideways onto the lane between ball and him.
+
+*Transitions:*
+- `screen_transition` [ch1, f59] — the 6 is first into the space in front
+  of the back line on a turnover, and steps to a carrier entering zone 14.
+- `regain_spread` [f13/37] — on winning it the wide men sprint back to the
+  touchlines and forward ("make the pitch big"); the 9 pre-sits in a
+  pocket and attacks the gap between their CBs at once [f83–84].
+- `second_ball` [f66/79] — midfielders attack a dropping clearance; the
+  nearest wide man or 8 supports underneath the 9 for his knock-down.
+
+*In possession, shape:*
+- `pivot_drop` [ch1, f57, ch10] — when their first-line pressers ≥ our CBs,
+  the 6 drops BESIDE a CB (left side, so the LB pushes on), not between.
+- `eights_high` / `empty_centre` [ch1/5/7] — both 8s go up toward the 9 as
+  soon as we build; the centre is only used by rotating INTO it.
+- `inverted_fullback` [ch9] — the full-back takes the lane his winger
+  leaves: winger wide → FB inside beside the 6 (esp. ball on the far
+  side); winger carries inside → FB overlaps outside [f52].
+- `hold_width_weak_side` + `switch_play` [ch6, f34/45] — the far winger
+  never drifts ballward; once the block has shifted across, the diagonal
+  to his 1v1 outranks a short vertical.
+- `box_occupancy` [f75/84, goals 1–3] — flood the middle of the box; the
+  9 at the far post, the far full-back arrives at the back post, an 8
+  arrives late at the edge for the cut-back.
+
+*In possession, on the ball:*
+- `drive_into_space` [f31/44/48/50/53/58, goal 4] — when a rotation empties
+  a lane, the carrier (CBs and full-backs included) runs the ball into it,
+  forcing another defender out of his slot.
+- `release_timing` [f54/67/71] — hold the ball until the runner reaches
+  the release point, then play; play first time when the run is already on
+  [f72].
+- `body_feint_pass` [f46/61/63/69/73] — show one pass (usually the switch),
+  defenders shade to it, play another; `no_look_pass` [f70] is its
+  variant. Needs defenders that read the passer's facing.
+- `change_of_pace` [f76–77] — the winger waits for the defender to commit,
+  then bursts past (feeds the queued `beat_man_1v1`).
+
+*Player traits, not concepts (player rows):* composure / press resistance
+(White, Klich, Hernandez beat pressers instead of clearing [f49/65]),
+discipline (Harrison holds width; Klich over-commits [f18]), take-on bias,
+preferred foot. Calibration targets per 90 from the book's season data
+sit in the research notes (e.g. wide forward dribble success ~55%, cross
+success ~27%, CB ~7.5 progressive passes).
 
 **Individual, defending** — `block_shot_line` (no delay within shooting
 range + a body in the lane; built in G4.22, parked on branch

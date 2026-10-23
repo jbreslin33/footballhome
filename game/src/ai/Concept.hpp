@@ -16,7 +16,8 @@
 // Sources: [Bielsa] man-oriented marking with a free +1 (libero) and the 9
 // pressing on a cover shadow; [Sacchi] palla coperta / scoperta — the line
 // steps up on a covered ball, drops on an uncovered one (the same rule in
-// the FA, KNVB and DFB back-four models).
+// the FA, KNVB and DFB back-four models); [Bielsa-Leeds] the Leeds 2019/20
+// tactical analysis (CONCEPTS.md G4.35) — the pass ladder.
 
 #pragma once
 
@@ -100,16 +101,48 @@ private:
     math::Fixed64 step_behind_, receive_radius_, pressure_radius_, moving_speed_;
 };
 
+// The pass ladder [Bielsa-Leeds ch4]: the passer's order of looking
+// forward, like a quarterback's progressions —
+//   1 behind their back line, central   2 behind it, wide
+//   3 in front of it, central           4 in front of it, wide
+//   5 past their first line, central    6 past it, wide
+// 0 = not past their first line (off the ladder). Lower rung wins, more
+// progress breaks the tie; a reachable rung up to fireRung(rating) is
+// played at once — no "is it worth it" gain threshold. Lane + interceptor
+// safety stay the Brain's existing safe_pass gate.
+class PassLadder : public Concept {
+public:
+    PassLadder() : Concept("pass-ladder", 29) {}
+    void configure(const core::ModelParams& p) override;
+    // Their lines, as x · sign (toward the goal we attack).
+    struct Lines {
+        math::Fixed64 back;   // deepest outfield opponent
+        math::Fixed64 first;  // most advanced outfield opponent
+    };
+    Lines lines(const core::World& w, core::SlotIndex passer, int sign) const;
+    int rung(math::Fixed64 progress, math::Fixed64 y, const Lines& l) const;
+    // Rungs 1..fireRung are played without the gain threshold.
+    int fireRung(math::Fixed64 degree) const;
+    // Is (rung a, progress a) a better target than (rung b, progress b)?
+    static bool better(int ra, math::Fixed64 pa, int rb, math::Fixed64 pb);
+
+private:
+    math::Fixed64 pocket_depth_, central_half_width_, fire_span_;
+    int fire_min_ = 2;
+};
+
 // The class-based concepts a Brain carries.
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
     LineStep line_step;
+    PassLadder pass_ladder;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
         cover_shadow.configure(p);
         line_step.configure(p);
+        pass_ladder.configure(p);
     }
 };
 

@@ -1133,6 +1133,38 @@ Ukies. Per-player roles (libero, cover-shadow 9, line-step 68) still sit
 on top. The roles the research names but the engine can't yet play are
 queued in CONCEPTS.md.
 
+### 8.31 G4.35 — the pass ladder (first concept from the Leeds book)
+
+James: "yes build pass_ladder" — first build from the Leeds 2019/20 book
+plan (CONCEPTS.md G4.35, [Bielsa-Leeds ch4]). Concept bit 29
+`pass-ladder`, class `ai::PassLadder`: the carrier ranks forward
+receivers by RUNG instead of raw progress — 1/2 behind their deepest
+outfield player (central, then wide), 3/4 in the 10 m pocket in front
+of it, 5/6 past their most advanced outfielder, 0 = off the ladder —
+and plays any rung up to `fireRung(rating)` at once, skipping the 8 m
+"worth it" gain threshold (rating 0 → rungs 1-2, 50 → 3, 90/100 → 4).
+Lanes and interceptor safety stay the existing safe_pass gate. Numbers
+in `game_model_params` (mig 646: pocket depth 10 m, central half-width
+20 m, fire rung 2 + 2 × rating); STYLE class, so every band, golden and
+calibration test is unchanged (20/20). The Bielsa preset carries it at 90.
+
+Measured (fh-game-calibrate, 30 semipro 11v11 matches per row, home
+team overridden):
+
+| Home team | Goals H–A | Shots H–A | Passed final-third entries → shot / lost |
+|---|---|---|---|
+| Bielsa preset | 2.67–1.90 | 106–63 | 153 → 6.6 / 145 |
+| Bielsa + ladder 90 | 2.67–1.73 | 105–62 | 154 → 6.9 / 146 |
+| Plain mirror | 1.57–1.70 | 117–114 | 76 → 0.5 / 76 |
+| Plain + ladder 90 | 1.70–1.53 | 114–111 | 80 → 0.7 / 79 |
+
+A small, consistent edge (goal margin +0.17 to +0.30), not a step change.
+The table names the real blocker: ~95% of PASSED entries into the final
+third are lost — the receiving end (first touch under pressure, a runner
+timed to the pass, the next pass) can't use a better-chosen ball yet. That
+is what `blind_side_run`, `rotation` and `release_timing` (next in the
+plan) are for; re-measure the ladder after each.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

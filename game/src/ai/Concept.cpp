@@ -130,4 +130,45 @@ std::optional<Fixed64> LineStep::stepLine(const ConceptContext& c) const {
     return c.seen_ball.x * s - step_behind_;
 }
 
+// ── PassLadder ──────────────────────────────────────────────────────────
+void PassLadder::configure(const core::ModelParams& p) {
+    pocket_depth_ = p.fixed(key("pocket_depth_m"), 10000);
+    central_half_width_ = p.fixed(key("central_half_width_m"), 20000);
+    fire_min_ = p.integer(key("fire_rung_min"), 2);
+    fire_span_ = p.fixed(key("fire_rung_span"), 2000);
+}
+
+PassLadder::Lines PassLadder::lines(const core::World& w, core::SlotIndex passer, int sign) const {
+    const Fixed64 s = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    const auto team = w.player(passer).team;
+    Lines l{Fixed64::fromInt(-1000), Fixed64::fromInt(1000)};
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
+        if (w.player(j).team == team || w.isKeeper(j)) continue;
+        const Fixed64 d = w.player(j).pos.x * s;
+        if (d > l.back) l.back = d;
+        if (d < l.first) l.first = d;
+    }
+    return l;
+}
+
+int PassLadder::rung(Fixed64 progress, Fixed64 y, const Lines& l) const {
+    const int wide = math::fx_abs(y) > central_half_width_ ? 1 : 0;
+    if (progress > l.back) return 1 + wide;                  // in behind
+    if (progress > l.back - pocket_depth_) return 3 + wide;  // the pocket in front of the line
+    if (progress > l.first) return 5 + wide;                 // past their first line
+    return 0;
+}
+
+int PassLadder::fireRung(Fixed64 degree) const {
+    // Rounded: Bielsa's 90 reaches rung 4 (pocket wide) with the defaults.
+    const Fixed64 extra = fire_span_ * degree + Fixed64::halfConst();
+    return fire_min_ + static_cast<int>(extra.raw >> Fixed64::FRAC_BITS);
+}
+
+bool PassLadder::better(int ra, Fixed64 pa, int rb, Fixed64 pb) {
+    const int a = ra == 0 ? 7 : ra;
+    const int b = rb == 0 ? 7 : rb;
+    return a != b ? a < b : pa > pb;
+}
+
 }  // namespace fh::game::ai

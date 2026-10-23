@@ -160,16 +160,19 @@ enum Concept : std::uint32_t {
     kLibero          = 1u << 26,  // the free +1: follow the ball, deep, read the long ball
     kCoverShadow     = 1u << 27,  // the 9 presses their CB on the pass he'd play
     kLineStep        = 1u << 28,  // [Sacchi] step up on a covered ball, hold on an open one
+    // G4.35 [Bielsa-Leeds]: STYLE class too (default 0 at every band).
+    kPassLadder      = 1u << 29,  // look forward in order: behind the line first
 };
-inline constexpr std::uint32_t kAllConcepts = (1u << 29) - 1;
+inline constexpr std::uint32_t kAllConcepts = (1u << 30) - 1;
 inline constexpr const char* kConceptNames[] = {
     "delay", "marking", "cover", "support", "outlet",
     "runs", "over-top", "sweep", "placement", "line-hold",
     "jockey-angle", "recover", "double-team", "width", "give-and-go",
     "push-up", "counter-press", "balance", "man-mark", "verticality",
     "intercept", "restraint", "tackle-timing", "counter-attack",
-    "safe-pass", "shot-selection", "libero", "cover-shadow", "line-step"};
-inline constexpr int kConceptCount = 29;
+    "safe-pass", "shot-selection", "libero", "cover-shadow", "line-step",
+    "pass-ladder"};
+inline constexpr int kConceptCount = 30;
 
 // ── Graded knowledge (James: "implement them on a 0 to 100 scale") ─────
 // A rating is CONSISTENCY + MAGNITUDE in one number: branch concepts roll

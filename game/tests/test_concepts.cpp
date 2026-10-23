@@ -2,6 +2,7 @@
 // numbers from game_model_params.
 
 #include "test_harness.hpp"
+#include "ai/Brain.hpp"
 #include "ai/Concept.hpp"
 #include "core/ModelParams.hpp"
 #include "core/Skill.hpp"
@@ -60,6 +61,7 @@ FH_TEST(concepts_carry_their_registry_identity) {
     FH_EXPECT(b.libero.name() == core::kConceptNames[b.libero.bit()]);
     FH_EXPECT(b.cover_shadow.name() == core::kConceptNames[b.cover_shadow.bit()]);
     FH_EXPECT(b.line_step.name() == core::kConceptNames[b.line_step.bit()]);
+    FH_EXPECT(b.pass_ladder.name() == core::kConceptNames[b.pass_ladder.bit()]);
 }
 
 FH_TEST(libero_sits_behind_the_deepest_teammate_on_the_ball_side) {
@@ -129,6 +131,89 @@ FH_TEST(line_steps_on_a_covered_ball_and_holds_on_an_open_one) {
     // … but a free opponent about to receive it facing forward: hold.
     w.placePlayer(3, at(-8, 2), kFaceMinus);
     FH_EXPECT(!ls.covered(ctx(w, 0, +1, Vec2{Fixed64::fromInt(-5), Fixed64::zero()}, 68)));
+}
+
+FH_TEST(pass_ladder_rungs_follow_the_book_order) {
+    ai::PassLadder pl;
+    pl.configure(core::ModelParams{});
+    const ai::PassLadder::Lines l{Fixed64::fromInt(20), Fixed64::fromInt(0)};
+    auto r = [&](int x, int y) { return pl.rung(Fixed64::fromInt(x), Fixed64::fromInt(y), l); };
+    FH_EXPECT(r(25, 0) == 1 && r(25, -25) == 2);    // behind the line: central, wide
+    FH_EXPECT(r(15, 5) == 3 && r(15, 22) == 4);     // pocket (within 10 m in front)
+    FH_EXPECT(r(5, 0) == 5 && r(5, 30) == 6);       // past their first line
+    FH_EXPECT(r(-3, 0) == 0);                       // not past anyone: off the ladder
+    // Lower rung wins; on the same rung more progress wins; 0 is last.
+    FH_EXPECT(ai::PassLadder::better(1, Fixed64::fromInt(21), 2, Fixed64::fromInt(30)));
+    FH_EXPECT(ai::PassLadder::better(3, Fixed64::fromInt(18), 3, Fixed64::fromInt(12)));
+    FH_EXPECT(ai::PassLadder::better(6, Fixed64::fromInt(1), 0, Fixed64::fromInt(9)));
+    // Rungs played at once: 2 at rating 0, 3 at 50, 4 at 90 and 100.
+    FH_EXPECT(pl.fireRung(Fixed64::zero()) == 2);
+    FH_EXPECT(pl.fireRung(Fixed64::fromFraction(1, 2)) == 3);
+    FH_EXPECT(pl.fireRung(Fixed64::fromFraction(9, 10)) == 4);
+    FH_EXPECT(pl.fireRung(Fixed64::one()) == 4);
+    // A DB row moves the line between central and wide.
+    core::ModelParams p;
+    p.setMilli("concept.pass-ladder.central_half_width_m", 30000);
+    pl.configure(p);
+    FH_EXPECT(r(25, -25) == 1);
+}
+
+namespace {
+// 4v4, nobody a keeper: team 0 (slots 0-3) attacks +x; slot 0 carries.
+struct LadderRig {
+    core::World w{8, Fixed64::fromInt(6), Fixed64::fromFraction(105, 2), Fixed64::fromInt(34)};
+    ai::Brain brain{ai::TeamSetup::splitHalves(8), Fixed64::fromFraction(105, 2), Fixed64::fromInt(34)};
+    LadderRig() {
+        for (core::SlotIndex i = 0; i < 8; ++i) w.setTeam(i, i < 4 ? 0 : 1);
+    }
+    void carry(int x, int y) {
+        w.placePlayer(0, at(x, y), kFacePlus);
+        core::BallState b;
+        b.pos = at(x, y);
+        b.owner = 0;
+        w.placeBall(b);
+    }
+    ai::Orders orders(int ladder_rating) {
+        core::ConceptRatings r{};
+        r[29] = static_cast<std::uint8_t>(ladder_rating);
+        brain.setRatings(0, r);
+        return brain.ordersFor(0, w);
+    }
+};
+}  // namespace
+
+FH_TEST(laddered_passer_prefers_central_in_behind_over_more_progress_wide) {
+    LadderRig g;
+    g.carry(0, 10);
+    g.w.placePlayer(1, at(24, 10), kFacePlus);    // behind their line, central (rung 1)
+    g.w.placePlayer(2, at(26, 24), kFacePlus);    // behind it, wide, 2 m further (rung 2)
+    g.w.placePlayer(3, at(-20, 0), kFacePlus);
+    g.w.placePlayer(4, at(20, 0), kFaceMinus);    // their back line x 20
+    g.w.placePlayer(5, at(20, -15), kFaceMinus);
+    g.w.placePlayer(6, at(5, -25), kFaceMinus);   // their first line x 5
+    g.w.placePlayer(7, at(5, -10), kFaceMinus);
+    // Without the ladder: most progress — the wide man.
+    const ai::Orders plain = g.orders(0);
+    FH_EXPECT(plain.action == core::Action::GroundKick && plain.move.move.y > Fixed64::zero());
+    // With it: the central ball in behind (straight up the pitch).
+    const ai::Orders lad = g.orders(100);
+    FH_EXPECT(lad.action == core::Action::GroundKick && lad.move.move.y == Fixed64::zero());
+}
+
+FH_TEST(laddered_passer_plays_the_pocket_without_the_gain_threshold) {
+    LadderRig g;
+    g.carry(8, 0);
+    g.w.placePlayer(1, at(14, 0), kFacePlus);     // 6 m on, in the pocket (rung 3)
+    g.w.placePlayer(2, at(-20, 20), kFacePlus);
+    g.w.placePlayer(3, at(-20, -20), kFacePlus);
+    g.w.placePlayer(4, at(20, -8), kFaceMinus);   // their back line x 20
+    g.w.placePlayer(5, at(20, 8), kFaceMinus);
+    g.w.placePlayer(6, at(0, -25), kFaceMinus);
+    g.w.placePlayer(7, at(0, 25), kFaceMinus);
+    // 6 m of gain is under the 8 m "worth it" threshold: plain carries on.
+    FH_EXPECT(g.orders(0).action == core::Action::None);
+    // The ladder plays it: rung 3 is within fireRung(1.0) = 4.
+    FH_EXPECT(g.orders(100).action == core::Action::ShortPass);
 }
 
 FH_TEST_MAIN()
