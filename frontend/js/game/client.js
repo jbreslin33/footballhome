@@ -383,8 +383,12 @@
         }
         const mm = String(Math.floor(m.clockSec / 60)).padStart(2, '0');
         const ss = String(m.clockSec % 60).padStart(2, '0');
+        // Team names from the TEAMS frame (game_demo_teams) — James: "should
+        // say that in score label".
+        const homeName = (teams && teams.home) || 'HOME';
+        const awayName = (teams && teams.away) || 'AWAY';
         boardEl.textContent =
-          `HOME ${m.score0} — ${m.score1} AWAY   ${mm}:${ss} ${m.period === 2 ? '2H' : '1H'}`;
+          `${homeName} ${m.score0} — ${m.score1} ${awayName}   ${mm}:${ss} ${m.period === 2 ? '2H' : '1H'}`;
       }
       // AUTO: hand the controls to whichever held player is ball-nearest.
       if (autoSwitch && mySlots.size > 1 && s.players) {
