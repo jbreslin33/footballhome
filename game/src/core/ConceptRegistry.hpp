@@ -24,8 +24,9 @@ namespace fh::game::core {
 inline constexpr int kMaxConcepts = 255;
 
 // Level ladder ranks for "taught from" (u10 = 1 … world = 6; perfect = 7
-// knows every taught concept). 0 = never a level default (a STYLE concept
-// a team is coached into, or a lesson not yet placed on the ladder).
+// knows every taught concept): the lowest band whose players KNOW it
+// (ability). 0 = nobody by default (a role skill such as the libero, or a
+// lesson not yet placed on the ladder).
 int levelRank(const std::string& level);
 
 class ConceptRegistry {
@@ -33,16 +34,22 @@ public:
     // The 31 concepts that predate the table, in their wire order.
     static ConceptRegistry builtin();
 
-    void add(int id, std::string name, int taught_from_rank);
+    // style = a chosen identity (default demand 0: only a game model asks
+    // for it); core = any good team does it (default demand 100).
+    void add(int id, std::string name, int taught_from_rank, bool style = false);
     // Max id + 1 (ids may have holes; a hole has no name).
     int size() const { return static_cast<int>(names_.size()); }
     int find(const std::string& name) const;  // -1 when unknown
     const std::string& name(int id) const;
     int taughtFrom(int id) const;
+    bool isStyle(int id) const;
+    // What a team asks of a concept when its game model doesn't say.
+    int defaultDemand(int id) const { return isStyle(id) ? 0 : 100; }
 
 private:
     std::vector<std::string> names_;
     std::vector<int> taught_from_;
+    std::vector<char> style_;
 };
 
 // The registry in force (builtin until the daemon loads the DB at boot).

@@ -1242,6 +1242,51 @@ list itself was C++, against "no hard code, all from DB". Now:
   the record. Next for the club app (not built — no ghost features): a
   curriculum page and per-lesson player ratings over these rows.
 
+### 8.34 G4.38 — taxonomy → game model → formation → player
+
+James: "what we want is a taxonomy of football. then the game models
+filter right? then the formation filters further then the player filters
+further." Concepts, game models and formations overlap (Bielsa's press run
+is Klopp's and Pochettino's), so each is its own layer over ONE shared set
+of concepts (mig 652):
+
+- **Taxonomy** — `game_moments` (the four + set pieces) → `game_principles`
+  (a tree; 19 seeded: build up, break the lines, pressure on the ball,
+  press as a team, delay and recover, …) → `game_concepts` (all 76 placed).
+  `game_sources` + `game_concept_sources` (one idea, many sources and local
+  names; the old free-text column parsed into 98 rows) and
+  `game_concept_links` (requires / refines / counters).
+- **Game model** — `game_models` (school / club / federation / formation /
+  team, with a PARENT: a team model is its school plus changes) →
+  `game_model_concepts` (DEMAND 0-100) + `game_model_concept_params` (a
+  model's own numbers — table ready, engine use with the first concept that
+  needs it). The 13 presets moved in; two TEAM models now inherit: Lighthouse
+  APSL ← Bielsa (+ line step 68), Ukrainian Nationals ← Classic 4-2-3-1
+  (+ line step 68). Bielsa's libero / cover-shadow became school demands.
+- **Formation** — `game_roles` (9), `formation_slot_roles` (4-3-3, 4-2-3-1,
+  3-3-1-3), `game_role_concepts` (78 links: the coaching list per position),
+  `game_model_role_concepts` (role demand inside one model; empty until a
+  model needs it).
+- **Player** — `game_demo_player_concepts` is his ABILITY (the backend's
+  lineup roles write it, unchanged).
+
+The engine rule: a player PLAYS **min(demand, ability)**; demand − ability
+is what to coach. `core::defaultAbility` (band quality on every concept
+taught at or below the band — style concepts are now learnable from
+amateur; libero / cover-shadow stay role skills), `defaultDemand` (core 100,
+style 0), `effectiveRatings`; `defaultRatings` = no model = the old bundles
+exactly (goldens unchanged). The server keeps `ability_` per slot and
+`team_model_` per side; band changes move ability, APPLY_PRESET switches a
+team's model. 20/20.
+
+Measured (60 semipro matches/row, home = Bielsa): painted at 90-95 as
+before: +1.03 ± 0.26; capped at semipro ability 68 everywhere: **−0.52 ±
+0.21** (half-learned man-marking is worse than none — plain mirror −0.13);
+the LIVE mix (Lighthouse's own marking/man-mark ability rows 90, the rest
+68): +1.10 ± 0.32 — unchanged, so it deployed. The lesson for the
+curriculum: a system demands its core concept at full ability; rate the
+players who have it, don't inflate the model.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

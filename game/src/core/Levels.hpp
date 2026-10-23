@@ -133,10 +133,11 @@ inline std::int16_t* attributeAt(PlayerAttributes& a, int i) {
 // distances by rating. 0 = doesn't know it; 100 = textbook every time.
 using ConceptRatings = std::array<std::uint8_t, kMaxConcepts>;
 
-// A style preset is an OVERLAY vector (mig 630, CONCEPTS.md "Schools &
-// auteurs"): -1 = this dial untouched; 0-100 = set it (an explicit 0 is
-// meaningful — Sacchi's zonal marking ZEROES man-mark). Applying one
-// paints only the dials the school names; the rest keep their value.
+// A game model's DEMAND is an OVERLAY vector (mig 652, game_model_concepts;
+// was the style preset, mig 630): -1 = the model doesn't say; 0-100 = it
+// asks this much (an explicit 0 is meaningful — Sacchi's zonal marking
+// ZEROES man-mark). applyPresetOverlay paints a vector directly (the
+// calibration harness's "name:rating" overrides).
 using PresetOverlay = std::array<std::int16_t, kMaxConcepts>;
 
 inline void applyPresetOverlay(ConceptRatings& r, const PresetOverlay& o) {
@@ -158,10 +159,10 @@ inline int levelRankOf(const LevelParams& lv) {
     return 7;
 }
 
-// Band defaults: the band's quality on every concept taught at or below its
-// level (game_concepts.taught_from), 0 on the rest — U-10s don't do delay
-// theory AT ALL; a semipro does everything taught by then at 68.
-inline ConceptRatings defaultRatings(const LevelParams& lv) {
+// What a band's players KNOW (ability): the band's quality on every concept
+// taught at or below its level (game_concepts.taught_from), 0 on the rest —
+// U-10s don't do delay theory AT ALL; a semipro knows it all at 68.
+inline ConceptRatings defaultAbility(const LevelParams& lv) {
     static constexpr std::uint8_t kQuality[] = {0, 12, 30, 50, 68, 82, 92, 100};
     const int rank = levelRankOf(lv);
     const std::uint8_t q = kQuality[rank];
@@ -172,6 +173,29 @@ inline ConceptRatings defaultRatings(const LevelParams& lv) {
         r[i] = (from > 0 && rank >= from) ? q : 0;
     }
     return r;
+}
+
+// The taxonomy → game model → formation → player chain (G4.38, mig 652):
+// a player PLAYS min(demand, ability). Demand is what his team's game
+// model asks (overlay; -1 = unset → the concept's default: core 100,
+// style 0); ability is what he knows. demand − ability is what to coach.
+inline ConceptRatings effectiveRatings(const ConceptRatings& ability,
+                                       const PresetOverlay& demand) {
+    ConceptRatings r{};
+    const ConceptRegistry& reg = concepts();
+    for (int i = 0; i < reg.size(); ++i) {
+        int d = demand[i] >= 0 ? demand[i] : reg.defaultDemand(i);
+        if (d > 100) d = 100;
+        r[i] = static_cast<std::uint8_t>(d < ability[i] ? d : ability[i]);
+    }
+    return r;
+}
+
+// A band with no game model: core concepts at the band's quality, style 0.
+inline ConceptRatings defaultRatings(const LevelParams& lv) {
+    PresetOverlay none;
+    none.fill(-1);
+    return effectiveRatings(defaultAbility(lv), none);
 }
 
 // Pure deterministic noise in [-1, 1) as Fixed64.

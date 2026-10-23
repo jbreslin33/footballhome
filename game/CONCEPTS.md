@@ -1,9 +1,11 @@
 # Soccer concept taxonomy — the knowledge registry
 
-> **Since G4.37 the curriculum lives in the club DB:** `game_concepts` +
-> `game_concept_requires` (mig 650, DESIGN §8.33) are the record — ids,
-> lesson text, level, prerequisites, sources. This file is the design
-> notes and reasoning behind those rows. Add a lesson by migration row.
+> **The curriculum lives in the club DB** (mig 650/652, DESIGN §8.33-8.34):
+> taxonomy (`game_moments` → `game_principles` → `game_concepts`, with
+> `game_concept_sources` and `game_concept_links`), game models
+> (`game_models` + demands), formation roles (`formation_slot_roles`,
+> `game_role_concepts`). A player plays min(demand, ability). This file is
+> the design notes behind those rows. Add a lesson by migration row.
 
 The living curriculum (DESIGN.md §5.2): every concept is a nameable piece
 of soccer understanding a player HAS or LACKS, independent of physical

@@ -86,14 +86,12 @@ void GameServer::applyRosters() {
     const std::uint8_t per_team = cfg_.slot_count / 2;
     slot_names_.assign(cfg_.slot_count, "");
     concept_ratings_.assign(cfg_.slot_count, core::ConceptRatings{});
+    ability_.assign(cfg_.slot_count, core::ConceptRatings{});
     for (std::uint8_t i = 0; i < cfg_.slot_count; ++i) {
         const bool home = i < per_team;
         const std::uint8_t k = home ? i : i - per_team;
         const persistence::DemoTeam& team =
             home ? cfg_.roster_home : cfg_.roster_away;
-        const core::LevelParams& band =
-            home ? cfg_.level_home : cfg_.level_away;
-        core::ConceptRatings r = core::defaultRatings(band);
         if (k < team.players.size()) {
             const auto& p = team.players[k];
             slot_names_[i] = p.name;
@@ -103,58 +101,59 @@ void GameServer::applyRosters() {
                                          ? skills_.speedCms(p.attrs.pace)
                                          : p.max_speed_cms;
             world_.setMaxSpeed(i, Fixed64::fromFraction(cms, 100));
-            // Legacy mask override → that player's known set at a strong
-            // personal quality (85): Old Gio knows EVERYTHING well.
-            if (p.concept_mask >= 0) {
-                // (the legacy mask only ever covered ids 0-31)
-                const int n = core::concepts().size();
-                for (int c = 0; c < n; ++c)
-                    r[c] = (c < 32 && (static_cast<std::uint32_t>(p.concept_mask) &
-                                       (1u << c)))
-                               ? 85
-                               : 0;
-            }
         } else {
             slot_names_[i] =
                 (home ? "Home " : "Away ") + std::to_string(k + 1);
         }
-        concept_ratings_[i] = r;
-        brain_.setRatings(i, r);
+        ability_[i] = buildAbility(i, home ? cfg_.level_home : cfg_.level_away);
     }
-    // Teams WEAR their identity (mig 631): a roster naming a style preset
-    // boots with it overlaid — Lighthouse XI plays the club game model
-    // without an admin tapping it on.
-    overlayTeamPreset(true);
-    overlayTeamPreset(false);
+    // Teams PLAY their game model (mig 652; were worn presets, mig 631).
+    for (int side = 0; side < 2; ++side) {
+        const std::string& want = side == 0 ? cfg_.roster_home.game_model
+                                            : cfg_.roster_away.game_model;
+        team_model_[side] = -1;
+        for (std::size_t m = 0; m < cfg_.models.size(); ++m)
+            if (!want.empty() && cfg_.models[m].name == want) team_model_[side] = static_cast<int>(m);
+    }
+    recomputeKnowledge(true);
+    recomputeKnowledge(false);
 }
 
-void GameServer::overlayTeamPreset(bool home) {
-    const persistence::DemoTeam& team =
-        home ? cfg_.roster_home : cfg_.roster_away;
-    const persistence::StylePreset* preset = nullptr;
-    for (const auto& p : cfg_.presets) {
-        if (!team.style_preset.empty() && p.name == team.style_preset) { preset = &p; break; }
-    }
-    const std::uint8_t half = cfg_.slot_count / 2;
-    const std::uint8_t from = home ? 0 : half;
-    const std::uint8_t to = home ? half : cfg_.slot_count;
-    for (std::uint8_t sl = from; sl < to; ++sl) {
-        if (preset) core::applyPresetOverlay(concept_ratings_[sl], preset->overlay);
-        applyPlayerConcepts(sl);
-        brain_.setRatings(sl, concept_ratings_[sl]);
-    }
-}
-
-// Mig 639 (G4.31): the rostered player's own knowledge overrides, after
-// the team preset — his ROLE (the spare centre back) beats the identity.
-void GameServer::applyPlayerConcepts(std::uint8_t sl) {
+core::ConceptRatings GameServer::buildAbility(std::uint8_t sl, const core::LevelParams& band) const {
+    core::ConceptRatings r = core::defaultAbility(band);
     const std::uint8_t per_team = cfg_.slot_count / 2;
     const bool home = sl < per_team;
     const std::uint8_t k = home ? sl : sl - per_team;
     const persistence::DemoTeam& team = home ? cfg_.roster_home : cfg_.roster_away;
-    if (k >= team.players.size()) return;
-    for (const auto& [idx, v] : team.players[k].concepts)
-        if (idx >= 0 && idx < core::concepts().size()) concept_ratings_[sl][idx] = v;
+    if (k >= team.players.size()) return r;
+    const auto& p = team.players[k];
+    // Legacy mask override → that player's known set at a strong personal
+    // quality (85): Old Gio knows EVERYTHING well. (The mask only ever
+    // covered ids 0-31.)
+    if (p.concept_mask >= 0) {
+        const int n = core::concepts().size();
+        for (int c = 0; c < n; ++c)
+            r[c] = (c < 32 && (static_cast<std::uint32_t>(p.concept_mask) & (1u << c))) ? 85 : 0;
+    }
+    // Mig 639: the player's own ability rows (his role: the free centre
+    // back knows the libero's job; nobody else does).
+    for (const auto& [idx, v] : p.concepts)
+        if (idx >= 0 && idx < core::concepts().size()) r[idx] = v;
+    return r;
+}
+
+void GameServer::recomputeKnowledge(bool home) {
+    core::PresetOverlay none;
+    none.fill(-1);
+    const int m = team_model_[home ? 0 : 1];
+    const core::PresetOverlay& demand = m >= 0 ? cfg_.models[m].overlay : none;
+    const std::uint8_t half = cfg_.slot_count / 2;
+    const std::uint8_t from = home ? 0 : half;
+    const std::uint8_t to = home ? half : cfg_.slot_count;
+    for (std::uint8_t sl = from; sl < to; ++sl) {
+        concept_ratings_[sl] = core::effectiveRatings(ability_[sl], demand);
+        brain_.setRatings(sl, concept_ratings_[sl]);
+    }
 }
 
 void GameServer::broadcastRoster() {
@@ -206,9 +205,9 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
         for (int i = 0; i < reg.size(); ++i) cf.names.push_back(reg.name(i));
         transport_.send(id, encodeFrame(FrameType::Concepts, encodePresets(cf)));
     }
-    if (!cfg_.presets.empty()) {  // style-preset catalog (1.4, mig 630)
+    if (!cfg_.models.empty()) {  // game-model catalog (1.4 PRESETS frame)
         PresetsFrame pf;
-        for (const auto& p : cfg_.presets) pf.names.push_back(p.name);
+        for (const auto& m : cfg_.models) pf.names.push_back(m.name);
         transport_.send(id, encodeFrame(FrameType::Presets,
                                         encodePresets(pf)));
     }
@@ -316,18 +315,12 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             world_.setLevel(1, away);
             brain_.setLevels(home, away, world_.matchSeed());
             applySlotLevels();   // attributes bend the NEW band
-            // Band change resets knowledge to the new bundles (names and
-            // speeds stay — identity is the roster's, knowledge is the
-            // band's unless re-edited).
-            for (std::uint8_t sl = 0; sl < cfg_.slot_count; ++sl) {
-                const core::LevelParams& b =
-                    sl < cfg_.slot_count / 2 ? home : away;
-                concept_ratings_[sl] = core::defaultRatings(b);
-                brain_.setRatings(sl, concept_ratings_[sl]);
-            }
-            // A worn identity survives the band change (mig 631).
-            overlayTeamPreset(true);
-            overlayTeamPreset(false);
+            // Band change: every player's ABILITY follows the new band (his
+            // own rows stay on top); the team keeps its game model.
+            for (std::uint8_t sl = 0; sl < cfg_.slot_count; ++sl)
+                ability_[sl] = buildAbility(sl, sl < cfg_.slot_count / 2 ? home : away);
+            recomputeKnowledge(true);
+            recomputeKnowledge(false);
             broadcastRoster();
             return;
         }
@@ -397,24 +390,17 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             return;
         }
         case FrameType::ApplyPreset: {
-            // Admin-only: paint one team's identity in one tap (mig 630).
-            // The preset OVERLAYS only the dials it names onto every slot
-            // of the team; unnamed concepts keep their current rating —
-            // "Bielsa base + modifications" composes.
+            // Admin-only: switch one team to another game model in one tap
+            // (mig 652; the wire still calls it a preset). Players keep
+            // their ability; the demand changes, so they play
+            // min(new demand, ability).
             if (!admins_.count(id)) return;
             const auto ap = decodeApplyPreset(frame.payload);
-            if (!ap || ap->team > 1 || ap->preset_id >= cfg_.presets.size())
+            if (!ap || ap->team > 1 || ap->preset_id >= cfg_.models.size())
                 return;
-            const core::PresetOverlay& o =
-                cfg_.presets[ap->preset_id].overlay;
-            const std::uint8_t half = cfg_.slot_count / 2;
-            const std::uint8_t from = ap->team == 0 ? 0 : half;
-            const std::uint8_t to = ap->team == 0 ? half : cfg_.slot_count;
-            for (std::uint8_t sl = from; sl < to; ++sl) {
-                core::applyPresetOverlay(concept_ratings_[sl], o);
-                applyPlayerConcepts(sl);   // roles survive a painted identity
-                brain_.setRatings(sl, concept_ratings_[sl]);
-            }
+            // The team now plays that model: its demand, their ability.
+            team_model_[ap->team] = ap->preset_id;
+            recomputeKnowledge(ap->team == 0);
             broadcastRoster();
             return;
         }

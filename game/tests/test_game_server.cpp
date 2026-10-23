@@ -297,39 +297,70 @@ FH_TEST(preset_overlay_touches_only_named_dials) {
     FH_EXPECT_EQ(r[0], 50);  // unnamed dial untouched
 }
 
-FH_TEST(roster_wears_its_named_preset_at_boot) {
-    persistence::StylePreset bielsa;
+FH_TEST(team_plays_min_of_its_model_demand_and_its_ability) {
+    persistence::GameModel bielsa;
     bielsa.name = "Bielsa";
     bielsa.overlay.fill(-1);
-    bielsa.overlay[18] = 95;  // man-mark
+    bielsa.overlay[18] = 95;  // man-mark (style)
+    bielsa.overlay[26] = 95;  // libero (a role skill: nobody knows it by default)
 
     persistence::DemoTeam team;
     team.level_band = "world";
-    team.style_preset = "Bielsa";
+    team.game_model = "Bielsa";
+    persistence::DemoPlayer gk, cb;
+    gk.name = "Keeper";
+    cb.name = "Free CB";
+    cb.concepts = {{26, 95}};   // HIS ability row: he knows the libero's job
+    team.players = {gk, cb};
 
     FakeTransport t;
     server::GameServer s{{.match_id = 7, .slot_count = 4,
-                          .roster_home = team, .presets = {bielsa}}, t};
+                          .level_home = core::levelParams("world"),
+                          .roster_home = team, .models = {bielsa}}, t};
     t.scriptConnect(100, "club");
-    auto rosters = framesOf(t.sent[100], FrameType::Roster);
-    auto r0 = *decodeRoster(rosters.back());
-    FH_EXPECT_EQ(r0.slots[0].ratings[18], 95);  // home wears Bielsa
-    FH_EXPECT_EQ(r0.slots[2].ratings[18], 0);   // away does not
+    auto r0 = *decodeRoster(framesOf(t.sent[100], FrameType::Roster).back());
+    FH_EXPECT_EQ(r0.slots[0].ratings[18], 92);  // asked 95, a world side knows it at 92
+    FH_EXPECT_EQ(r0.slots[1].ratings[26], 95);  // the free CB plays the libero
+    FH_EXPECT_EQ(r0.slots[0].ratings[26], 0);   // asked, but the keeper doesn't know it
+    FH_EXPECT_EQ(r0.slots[2].ratings[18], 0);   // away plays no model: style unasked
 
-    // The identity survives a band change (MATCH_SETTINGS reset).
+    // A band change moves ABILITY; the model and the player's row stay.
     MatchSettingsFrame ms;
     ms.level_home = 4;  // semipro
     ms.level_away = 4;
     t.scriptMessage(100, encodeFrame(FrameType::MatchSettings,
                                      encodeMatchSettings(ms)));
-    rosters = framesOf(t.sent[100], FrameType::Roster);
-    auto r1 = *decodeRoster(rosters.back());
-    FH_EXPECT_EQ(r1.slots[0].ratings[18], 95);
+    auto r1 = *decodeRoster(framesOf(t.sent[100], FrameType::Roster).back());
+    FH_EXPECT_EQ(r1.slots[0].ratings[18], 68);  // a semi-pro side plays Bielsa at 68
+    FH_EXPECT_EQ(r1.slots[1].ratings[26], 95);
     FH_EXPECT_EQ(r1.slots[2].ratings[18], 0);
 }
 
+FH_TEST(a_team_model_inherits_its_school) {
+    persistence::GameModel school, team, orphan;
+    school.name = "Bielsa";
+    school.overlay.fill(-1);
+    school.overlay[18] = 95;
+    school.overlay[19] = 90;
+    team.name = "Lighthouse APSL";
+    team.parent = "Bielsa";
+    team.overlay.fill(-1);
+    team.overlay[19] = 70;   // our change
+    team.overlay[28] = 68;   // our addition
+    orphan.name = "Loop";
+    orphan.parent = "Loop";  // a cycle just stops
+    orphan.overlay.fill(-1);
+    std::vector<persistence::GameModel> ms{school, team, orphan};
+    persistence::resolveGameModels(ms);
+    FH_EXPECT_EQ(ms[1].overlay[18], 95);   // inherited
+    FH_EXPECT_EQ(ms[1].overlay[19], 70);   // own demand wins
+    FH_EXPECT_EQ(ms[1].overlay[28], 68);
+    FH_EXPECT_EQ(ms[0].overlay[28], -1);   // the school is unchanged
+    FH_EXPECT_EQ(ms[2].overlay[18], -1);
+}
+
 FH_TEST(server_admin_applies_preset_to_one_team_only) {
-    persistence::StylePreset bielsa;
+    persistence::GameModel bielsa;
     bielsa.name = "Bielsa";
     bielsa.overlay.fill(-1);
     bielsa.overlay[18] = 95;  // man-mark
@@ -337,7 +368,7 @@ FH_TEST(server_admin_applies_preset_to_one_team_only) {
 
     FakeTransport t;
     server::GameServer s{{.match_id = 7, .slot_count = 4,
-                          .presets = {bielsa}}, t};
+                          .models = {bielsa}}, t};
     t.scriptConnect(100, "club");  // admin
     t.scriptConnect(200);          // plain player
 
@@ -362,7 +393,8 @@ FH_TEST(server_admin_applies_preset_to_one_team_only) {
                                      encodeApplyPreset(ap)));
     FH_EXPECT_EQ(framesOf(t.sent[100], FrameType::Roster).size(), 2u);
 
-    // Admin's apply paints the away slots' named dials, nothing else.
+    // Admin's apply: the away team plays Bielsa (perfect band: ability
+    // 100, so they play the demand); nothing else changes.
     t.scriptMessage(100, encodeFrame(FrameType::ApplyPreset,
                                      encodeApplyPreset(ap)));
     const auto after = lastRoster();

@@ -63,16 +63,17 @@ struct DemoPlayer {
     core::PlayerAttributes attrs;
     std::string position;
     std::string description;
-    // Mig 639 (G4.31): knowledge overrides — (concept index, 0-100),
-    // applied after the team's style preset (a role beats the identity).
+    // Mig 639 (G4.31): the player's own ABILITY rows — (concept id, 0-100)
+    // over his band's (mig 652: he plays min(demand, ability)).
     std::vector<std::pair<int, std::uint8_t>> concepts;
 };
 struct DemoTeam {
     std::string name;  // game_demo_teams.name (the TEAMS frame)
     std::string level_band;
-    // Mig 631: the style preset this team WEARS — overlaid onto its
-    // ratings at boot and after band changes. Empty = none.
-    std::string style_preset;
+    // Mig 652: the game model this team plays (game_models.name; was the
+    // style preset, mig 631) — its DEMAND. Empty = none (core concepts
+    // asked in full, style concepts not at all).
+    std::string game_model;
     // Mig 636: the club formation code this team plays (overrides
     // GAME_FORMATION_*). Empty = the env's choice.
     std::string formation_code;
@@ -83,15 +84,20 @@ struct DemoTeam {
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
                                      const std::string& team_name);
 
-// Style presets (migration 630; game/CONCEPTS.md "Schools & auteurs").
-// overlay: -1 = dial untouched, 0-100 = set it. Rows carry concept NAMES;
-// unknown names (queued concepts) are skipped with a log. Empty vector on
-// any failure — the sandbox boots preset-less, loudly.
-struct StylePreset {
+// Game models (mig 652; were the style presets, mig 630): a school, club,
+// federation, formation or team model — its DEMAND per concept id
+// (-1 = doesn't say, 0-100 = asks this much). A model inherits every
+// demand of its parent it doesn't set itself (a team model = its school
+// plus changes); loadGameModels returns them RESOLVED. Empty on failure.
+struct GameModel {
     std::string name;
+    std::string parent;           // "" = none
     core::PresetOverlay overlay;  // by curriculum id (game_concepts)
 };
-std::vector<StylePreset> loadStylePresets(const DbConfig& cfg);
+std::vector<GameModel> loadGameModels(const DbConfig& cfg);
+// Fold each model's parent chain into its overlay (own demand wins; a
+// cycle or a missing parent just stops the chain).
+void resolveGameModels(std::vector<GameModel>& models);
 
 // G4.33 (mig 642): every number the Skill / Concept classes use, keyed
 // "owner.code.param". Empty on any failure — the classes keep their

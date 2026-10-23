@@ -63,9 +63,10 @@ public:
         // concept overrides. Empty = generic slots at the band defaults.
         persistence::DemoTeam roster_home;
         persistence::DemoTeam roster_away;
-        // Style presets (mig 630): the auteur canon + the club preset.
-        // Wire id = index. Empty = the DB was down; no PRESETS frame.
-        std::vector<persistence::StylePreset> presets;
+        // Game models (mig 652; were the style presets): resolved demand
+        // overlays. Wire id = index (PRESETS frame). Empty = the DB was
+        // down; no PRESETS frame.
+        std::vector<persistence::GameModel> models;
         // G4.32: the club DB, for an admin RELOAD_ROSTERS (lineups,
         // attributes, roles, kits edited from the page). Unset = no reload
         // (tests, DB-down boots).
@@ -102,22 +103,26 @@ private:
     std::unordered_map<std::uint8_t, ClientId> slot_owner_;
     // Current level ids (mutable via admin MATCH_SETTINGS).
     std::uint8_t level_id_[2] = {0, 0};
-    // Per-slot names + live concept RATINGS (served via ROSTER frames).
+    // Per-slot names + live concept RATINGS (served via ROSTER frames):
+    // what each player PLAYS = min(his team model's demand, his ability).
     std::vector<std::string> slot_names_;
     std::vector<core::ConceptRatings> concept_ratings_;
+    std::vector<core::ConceptRatings> ability_;   // what each player KNOWS
+    int team_model_[2] = {-1, -1};                // index into cfg_.models
     void applyRosters();
+    // Ability for one slot under a band: the band's defaults, then the
+    // legacy mask, then the player's own rows.
+    core::ConceptRatings buildAbility(std::uint8_t slot, const core::LevelParams& band) const;
+    // Re-derive one team's played ratings from ability + its model.
+    void recomputeKnowledge(bool home);
     // G4.30: each rostered player's level = his team band bent by his
     // attributes (core::levelForPlayer), into World + Brain. Re-run after
     // every band change (MATCH_SETTINGS) — attributes are the roster's.
     void applySlotLevels();
     core::SkillSet skills_;   // G4.33: one class per attribute
-    void applyPlayerConcepts(std::uint8_t slot);
     // G4.32: send the TEAMS frame (names + kits) to one client / everyone.
     void sendTeams(ClientId id);
     void broadcastTeams();
-    // Overlay a roster's named style preset (mig 631) onto its team's
-    // live ratings — at boot and after band resets.
-    void overlayTeamPreset(bool home);
     void broadcastRoster();
     // Clients holding the admin capability (granted from the JWT role).
     std::unordered_map<ClientId, bool> admins_;

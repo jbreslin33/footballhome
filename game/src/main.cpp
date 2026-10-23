@@ -117,9 +117,9 @@ int main() {
             cfg.level_home_id = core::levelId(cfg.roster_home.level_band);
             std::printf("fh-game: home roster %s (%s%s%s)\n", th,
                         cfg.roster_home.level_band.c_str(),
-                        cfg.roster_home.style_preset.empty() ? ""
-                                                             : ", wears ",
-                        cfg.roster_home.style_preset.c_str());
+                        cfg.roster_home.game_model.empty() ? ""
+                                                           : ", plays ",
+                        cfg.roster_home.game_model.c_str());
         }
         if (auto t = persistence::loadDemoTeam(db, ta)) {
             cfg.roster_away = std::move(*t);
@@ -127,9 +127,9 @@ int main() {
             cfg.level_away_id = core::levelId(cfg.roster_away.level_band);
             std::printf("fh-game: away roster %s (%s%s%s)\n", ta,
                         cfg.roster_away.level_band.c_str(),
-                        cfg.roster_away.style_preset.empty() ? ""
-                                                             : ", wears ",
-                        cfg.roster_away.style_preset.c_str());
+                        cfg.roster_away.game_model.empty() ? ""
+                                                           : ", plays ",
+                        cfg.roster_away.game_model.c_str());
         }
         // Mig 636: a roster that names its formation plays it (Ukies 4-2-3-1,
         // Lighthouse APSL 4-3-3), over GAME_FORMATION_*.
@@ -143,10 +143,10 @@ int main() {
                             roster->formation_code.c_str());
             }
         }
-        // Style presets (mig 630): the auteur canon + the club preset.
-        cfg.presets = persistence::loadStylePresets(db);
-        std::printf("fh-game: %zu admin user(s), %zu style preset(s) loaded\n",
-                    cfg.admin_user_ids.size(), cfg.presets.size());
+        // Game models (mig 652): schools, federations, formations, teams.
+        cfg.models = persistence::loadGameModels(db);
+        std::printf("fh-game: %zu admin user(s), %zu game model(s) loaded\n",
+                    cfg.admin_user_ids.size(), cfg.models.size());
     }
 
     auth::JwtVerifier verifier{secret};

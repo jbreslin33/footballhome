@@ -86,7 +86,7 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
         pqxx::connection conn{conn_str};
         pqxx::work tx{conn};
         const auto team = tx.exec_params(
-            "SELECT id, level_band, style_preset, formation_code, "
+            "SELECT id, level_band, game_model, formation_code, "
             "       kit_shirt, kit_shorts, kit_socks, kit_trim "
             "FROM game_demo_teams WHERE name = $1",
             team_name);
@@ -95,7 +95,7 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
         out.name = team_name;
         out.level_band = team[0][1].as<std::string>();
         if (!team[0][2].is_null())
-            out.style_preset = team[0][2].as<std::string>();
+            out.game_model = team[0][2].as<std::string>();
         if (!team[0][3].is_null())
             out.formation_code = team[0][3].as<std::string>();
         // '#rrggbb' → 0xRRGGBB (mig 639).
@@ -173,8 +173,8 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
     }
 }
 
-std::vector<StylePreset> loadStylePresets(const DbConfig& cfg) {
-    std::vector<StylePreset> out;
+std::vector<GameModel> loadGameModels(const DbConfig& cfg) {
+    std::vector<GameModel> out;
     try {
         const std::string conn_str =
             "host=" + cfg.host + " dbname=" + cfg.dbname +
@@ -182,39 +182,51 @@ std::vector<StylePreset> loadStylePresets(const DbConfig& cfg) {
             " connect_timeout=5";
         pqxx::connection conn{conn_str};
         pqxx::work tx{conn};
-        const auto rows = tx.exec(
-            "SELECT p.name, r.concept, r.rating "
-            "FROM game_style_presets p "
-            "JOIN game_style_preset_ratings r ON r.preset_id = p.id "
-            "ORDER BY p.sort_order, p.id");
-        for (const auto& row : rows) {
-            const std::string name = row[0].as<std::string>();
-            if (out.empty() || out.back().name != name) {
-                StylePreset p;
-                p.name = name;
-                p.overlay.fill(-1);
-                out.push_back(std::move(p));
-            }
-            // "concept" is a C++20 keyword — hence dial_name.
-            const std::string dial_name = row[1].as<std::string>();
-            const int idx = core::concepts().find(dial_name);
-            if (idx < 0) {  // not in the curriculum (game_concepts): skip
-                std::fprintf(stderr,
-                             "fh-game: preset '%s' names unknown concept "
-                             "'%s' — skipped\n",
-                             name.c_str(), dial_name.c_str());
-                continue;
-            }
-            int rating = row[2].as<int>();
-            if (rating < 0) rating = 0;
-            if (rating > 100) rating = 100;
-            out.back().overlay[idx] = static_cast<std::int16_t>(rating);
+        for (const auto& row : tx.exec(
+                 "SELECT m.name, COALESCE(p.name, '') FROM game_models m "
+                 "LEFT JOIN game_models p ON p.id = m.parent_id "
+                 "ORDER BY m.sort_order, m.id")) {
+            GameModel g;
+            g.name = row[0].as<std::string>();
+            g.parent = row[1].as<std::string>();
+            g.overlay.fill(-1);
+            out.push_back(std::move(g));
         }
+        for (const auto& row : tx.exec(
+                 "SELECT m.name, mc.concept_id, mc.demand FROM game_model_concepts mc "
+                 "JOIN game_models m ON m.id = mc.model_id")) {
+            const std::string name = row[0].as<std::string>();
+            const int id = row[1].as<int>();
+            if (id < 0 || id >= core::kMaxConcepts) continue;
+            int d = row[2].as<int>();
+            d = d < 0 ? 0 : (d > 100 ? 100 : d);
+            for (auto& g : out)
+                if (g.name == name) g.overlay[id] = static_cast<std::int16_t>(d);
+        }
+        resolveGameModels(out);
         return out;
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "fh-game: style presets load failed: %s\n",
-                     e.what());
+        std::fprintf(stderr, "fh-game: game models load failed: %s\n", e.what());
         return {};
+    }
+}
+
+void resolveGameModels(std::vector<GameModel>& models) {
+    const std::vector<GameModel> own = models;
+    auto find = [&](const std::string& n) -> const GameModel* {
+        for (const auto& g : own)
+            if (g.name == n) return &g;
+        return nullptr;
+    };
+    for (auto& g : models) {
+        std::string parent = g.parent;
+        for (int depth = 0; depth < 16 && !parent.empty(); ++depth) {
+            const GameModel* p = find(parent);
+            if (!p || p->name == g.name) break;
+            for (int i = 0; i < core::kMaxConcepts; ++i)
+                if (g.overlay[i] < 0) g.overlay[i] = p->overlay[i];
+            parent = p->parent;
+        }
     }
 }
 
@@ -247,9 +259,10 @@ std::optional<core::ConceptRegistry> loadConcepts(const DbConfig& cfg) {
         pqxx::work tx{conn};
         core::ConceptRegistry reg;
         for (const auto& r : tx.exec(
-                 "SELECT id, name, COALESCE(taught_from, '') FROM game_concepts ORDER BY id"))
+                 "SELECT id, name, COALESCE(taught_from, ''), kind = 'style' "
+                 "FROM game_concepts ORDER BY id"))
             reg.add(r[0].as<int>(), r[1].as<std::string>(),
-                    core::levelRank(r[2].as<std::string>()));
+                    core::levelRank(r[2].as<std::string>()), r[3].as<bool>());
         if (reg.size() == 0) return std::nullopt;
         return reg;
     } catch (const std::exception& e) {

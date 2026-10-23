@@ -25,41 +25,44 @@ int levelRank(const std::string& level) {
 }
 
 ConceptRegistry ConceptRegistry::builtin() {
-    // Wire order, with the level each was a default from before the table
-    // existed: the four every band knows (u10), the coached bundle that
-    // amateur and up know, and the STYLE concepts no band knows by default.
-    static const struct { const char* name; const char* from; } kSeed[] = {
-        {"delay", "amateur"},        {"marking", "amateur"},
-        {"cover", "u10"},            {"support", "u10"},
-        {"outlet", "amateur"},       {"runs", "amateur"},
-        {"over-top", "amateur"},     {"sweep", "amateur"},
-        {"placement", "u10"},        {"line-hold", "u10"},
-        {"jockey-angle", "amateur"}, {"recover", "amateur"},
-        {"double-team", "amateur"},  {"width", "amateur"},
-        {"give-and-go", "amateur"},  {"push-up", "amateur"},
-        {"counter-press", "amateur"},{"balance", "amateur"},
-        {"man-mark", ""},            {"verticality", ""},
-        {"intercept", "amateur"},    {"restraint", "amateur"},
-        {"tackle-timing", "amateur"},{"counter-attack", ""},
-        {"safe-pass", "amateur"},    {"shot-selection", "amateur"},
-        {"libero", ""},              {"cover-shadow", ""},
-        {"line-step", ""},           {"pass-ladder", ""},
-        {"blind-side-run", ""},
+    // Wire order, with the level whose players know each (mig 650/652):
+    // the four every band knows (u10), the coached bundle amateur and up
+    // know, the STYLE concepts (S) learnable from amateur but only asked
+    // for by a game model, and the two role skills nobody knows by default.
+    static const struct { const char* name; const char* from; bool style; } kSeed[] = {
+        {"delay", "amateur", false},        {"marking", "amateur", false},
+        {"cover", "u10", false},            {"support", "u10", false},
+        {"outlet", "amateur", false},       {"runs", "amateur", false},
+        {"over-top", "amateur", false},     {"sweep", "amateur", false},
+        {"placement", "u10", false},        {"line-hold", "u10", false},
+        {"jockey-angle", "amateur", false}, {"recover", "amateur", false},
+        {"double-team", "amateur", false},  {"width", "amateur", false},
+        {"give-and-go", "amateur", false},  {"push-up", "amateur", false},
+        {"counter-press", "amateur", false},{"balance", "amateur", false},
+        {"man-mark", "amateur", true},      {"verticality", "amateur", true},
+        {"intercept", "amateur", false},    {"restraint", "amateur", false},
+        {"tackle-timing", "amateur", false},{"counter-attack", "amateur", true},
+        {"safe-pass", "amateur", false},    {"shot-selection", "amateur", false},
+        {"libero", "", true},               {"cover-shadow", "", true},
+        {"line-step", "amateur", true},     {"pass-ladder", "amateur", true},
+        {"blind-side-run", "amateur", true},
     };
     ConceptRegistry r;
     int id = 0;
-    for (const auto& s : kSeed) r.add(id++, s.name, levelRank(s.from));
+    for (const auto& s : kSeed) r.add(id++, s.name, levelRank(s.from), s.style);
     return r;
 }
 
-void ConceptRegistry::add(int id, std::string name, int taught_from_rank) {
+void ConceptRegistry::add(int id, std::string name, int taught_from_rank, bool style) {
     if (id < 0 || id >= kMaxConcepts) return;
     if (id >= size()) {
         names_.resize(id + 1);
         taught_from_.resize(id + 1, 0);
+        style_.resize(id + 1, 0);
     }
     names_[id] = std::move(name);
     taught_from_[id] = taught_from_rank;
+    style_[id] = style ? 1 : 0;
 }
 
 int ConceptRegistry::find(const std::string& name) const {
@@ -75,6 +78,10 @@ const std::string& ConceptRegistry::name(int id) const {
 
 int ConceptRegistry::taughtFrom(int id) const {
     return id >= 0 && id < size() ? taught_from_[id] : 0;
+}
+
+bool ConceptRegistry::isStyle(int id) const {
+    return id >= 0 && id < size() && style_[id] != 0;
 }
 
 const ConceptRegistry& concepts() { return active(); }
