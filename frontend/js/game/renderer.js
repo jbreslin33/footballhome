@@ -359,8 +359,13 @@
       // First person: hide your own body (the camera is in his head).
       const firstSlot = this.activeSlot !== null && this.activeSlot !== undefined
         ? this.activeSlot : this.carrierSlot;
+      // showMatch false (non-GAME modes, client.js): the complex without
+      // the match — no players, no ball.
+      const showMatch = this.showMatch !== false;
       for (const f of this.figures)
-        f.root.visible = !(this.rig.mode === 'first' && f.slot === firstSlot);
+        f.root.visible = showMatch && !(this.rig.mode === 'first' && f.slot === firstSlot);
+      if (this.ballMesh) this.ballMesh.visible = showMatch;
+      if (this.ring && !showMatch) this.ring.visible = false;
       this.renderer.render(this.scene, this.camera);
     }
 

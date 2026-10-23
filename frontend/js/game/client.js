@@ -438,6 +438,9 @@
     const other = !!COMING[mode];
     document.body.classList.toggle('mode-design', design);
     document.body.classList.toggle('mode-other', other);
+    // The match (players + ball) only in GAME and DESIGN; the other modes
+    // show the complex itself — field, animals, buildings, trees.
+    renderer.showMatch = !other;
     if (modeNote) modeNote.innerHTML = other ? COMING[mode] : '';
     if (planner) planner.setOn(design);
     if (modeBar) for (const b of modeBar.querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === mode);
