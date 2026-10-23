@@ -255,6 +255,18 @@ class RoleSelectionScreen extends Screen {
         </button>
 
 
+        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">${(window.MessageCopy && MessageCopy.block('installs', 'section')) || 'Installs'}</div>
+
+        <!-- Things you install (mig 670). FH Texter = the APK your Android
+             sends desktop-clicked texts with (mig 667). -->
+        <a href="/app/fh-texter.apk" download class="btn btn-lg btn-primary" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit;">
+          <span style="font-size: 2rem;">📱</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('installs', 'fh_texter_title')) || 'FH Texter (Android)'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('installs', 'fh_texter_sub')) || 'Open on your Android to install — your phone then sends the texts you click on the desktop. Pair it from any text button.'}</div>
+          </div>
+        </a>
+
         <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">System</div>
 
         <button class="btn btn-lg btn-primary" data-role="admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
