@@ -20,13 +20,14 @@ Fixed64 dist2(const math::Vec3& a, const math::Vec3& b) {
 void Libero::configure(const core::ModelParams& p) {
     depth_min_ = p.fixed(key("depth_min_m"), 2000);
     depth_span_ = p.fixed(key("depth_span_m"), 3000);
-    follow_ = p.fixed(key("lateral_follow"), 600);
-    lateral_max_ = p.fixed(key("lateral_max_m"), 20000);
+    follow_ = p.fixed(key("lateral_follow"), 1000);       // into the ball's channel
+    lateral_max_ = p.fixed(key("lateral_max_m"), 19000);  // channels 2-4 only (mig 665)
     lead_s_ = p.fixed(key("long_ball_lead_s"), 800);
     long_ball_z_ = p.fixed(key("long_ball_height_m"), 1000);
+    level_ = p.fixed(key("level_offset_m"), 500);
 }
 
-Vec2 Libero::target(const ConceptContext& c) const {
+Vec2 Libero::target(const ConceptContext& c, bool can_play_long) const {
     const auto& w = c.world;
     const auto& ball = w.ball();
     const auto& me = w.player(c.slot);
@@ -40,7 +41,10 @@ Vec2 Libero::target(const ConceptContext& c) const {
         const Fixed64 d = w.player(j).pos.x * s;
         if (d < deepest) deepest = d;
     }
-    Fixed64 depth = deepest - depth_min_ - depth_span_ * c.degree;
+    // With the line (a step goal-side of it) while the ball is covered;
+    // sweeping depth behind it only when they can play long.
+    Fixed64 depth = can_play_long ? deepest - depth_min_ - depth_span_ * c.degree
+                                  : deepest - level_;
     const Fixed64 floor_x = -(c.half_x - Fixed64::fromInt(6));
     if (depth < floor_x) depth = floor_x;
     Fixed64 y = c.seen_ball.y * follow_;

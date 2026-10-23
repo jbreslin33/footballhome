@@ -1045,9 +1045,10 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         if (ratings_[slot][26] > 0 && applies(slot, 26, world.tickCount() / 30)) {
             const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
                                     half_x_, degree(slot, 26)};
-            out.move.move = seek(me.pos, book_.libero.target(cx), Fixed64::fromFraction(1, 2));
+            const Vec2 lt = book_.libero.target(cx, !book_.line_step.covered(cx));
+            out.move.move = seek(me.pos, lt, Fixed64::fromFraction(1, 2));
             out.why = Why::Libero;
-            out.target = book_.libero.target(cx);
+            out.target = lt;
             return out;
         }
 

@@ -1354,6 +1354,22 @@ players who have it, don't inflate the model.
   known by default). The blocker is the receiving end: the ball in behind
   still rarely reaches a runner behind the line.
 
+### 8.40 G4.45 — the libero holds the line, moves into the ball's channel
+
+- James: the libero stays WITH the line in defensive phases until their
+  carrier can play long forward — "that is standard". `Libero::target(cx,
+  can_play_long)`: while the ball is covered (`LineStep::covered`) he stands
+  0.5 m goal-side of the deepest teammate (`level_offset_m`); sweeping depth
+  behind it only once a free carrier faces forward; a long ball in the air
+  is still met where it lands. This fixes §8.39's finding (he sat 2-5 m
+  behind the line and played everyone onside).
+- Channels: five equal channels across the width (13.6 m each); he follows
+  the ball fully into its channel within 2-4 (`lateral_follow` 1.0,
+  `lateral_max_m` 19, mig 666) and avoids 1 and 5 unless absolutely needed
+  — the long ball dropping out wide.
+- Measured (real matchup, 60): −0.55 → line rule −0.23 → line + channels
+  **+0.25 ± 0.22** (W24 D19 L17).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

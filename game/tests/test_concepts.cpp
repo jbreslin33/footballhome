@@ -73,11 +73,16 @@ FH_TEST(libero_sits_behind_the_deepest_teammate_on_the_ball_side) {
     w.placePlayer(3, at(10, 0), kFaceMinus);
     ai::Libero lib;
     lib.configure(core::ModelParams{});
-    // rating 100: 2 + 3 = 5 m behind -20; ball at y=20 → 0.6 x 20 = 12.
-    const Vec2 t = lib.target(ctx(w, 0, +1, Vec2{Fixed64::zero(), Fixed64::fromInt(20)}, 100));
+    // Their carrier can play long: sweeping depth, 2 + 3 = 5 m behind -20;
+    // the ball out wide at y=25 (channel 5): he stops at channel 4's edge, 19.
+    const Vec2 t = lib.target(ctx(w, 0, +1, Vec2{Fixed64::zero(), Fixed64::fromInt(25)}, 100), true);
     FH_EXPECT(t.x == Fixed64::fromInt(-25));
-    // 0.6 is not exact in binary fixed point: within a millimetre.
-    FH_EXPECT(math::fx_abs(t.y - Fixed64::fromInt(12)) < Fixed64::fromFraction(1, 1000));
+    FH_EXPECT(t.y == Fixed64::fromInt(19));
+    // The ball in the half-space (y=12, channel 4): he's in its channel.
+    FH_EXPECT(lib.target(ctx(w, 0, +1, Vec2{Fixed64::zero(), Fixed64::fromInt(12)}, 100), true).y == Fixed64::fromInt(12));
+    // Covered ball: he's part of the line, 0.5 m goal-side of it.
+    const Vec2 on_line = lib.target(ctx(w, 0, +1, Vec2{Fixed64::zero(), Fixed64::fromInt(25)}, 100), false);
+    FH_EXPECT(on_line.x == -Fixed64::fromFraction(41, 2));
 }
 
 FH_TEST(cover_shadow_stands_on_the_lane_to_the_receiver) {

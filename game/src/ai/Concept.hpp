@@ -58,17 +58,26 @@ private:
     int bit_;
 };
 
-// The free +1 [Bielsa]: marks nobody; shadows the ball across, a few metres
-// BEHIND the deepest teammate, and meets a long ball where it drops.
+// The free +1 [Bielsa]: marks nobody and moves into the ball's channel —
+// channels 2-4 only (James: "avoids channels 1 and 5 unless absolutely
+// needed": the long ball dropping out wide is the absolutely-needed). In the
+// defensive phase he is PART OF THE LINE — level with the deepest teammate,
+// stepping with it, holding the offside — and drops a few metres behind it
+// only when their carrier can play long forward (an uncovered ball, the
+// line step's own test); a long ball in the air he meets where it lands.
+// James 10/23: "libero should stay with line until ball carrier can play
+// long forward. that is standard." (G4.45 — the old always-deep libero
+// played everyone onside: Lighthouse measured +0.22 WITHOUT him.)
 class Libero : public Concept {
 public:
     Libero() : Concept("libero", 26) {}
     void configure(const core::ModelParams& p) override;
-    // Where he should be (their ball). Never empty.
-    math::Vec2 target(const ConceptContext& c) const;
+    // Where he should be (their ball). Never empty. can_play_long = their
+    // carrier is free to play forward (LineStep::covered() is false).
+    math::Vec2 target(const ConceptContext& c, bool can_play_long) const;
 
 private:
-    math::Fixed64 depth_min_, depth_span_, follow_, lateral_max_, lead_s_, long_ball_z_;
+    math::Fixed64 depth_min_, depth_span_, follow_, lateral_max_, lead_s_, long_ball_z_, level_;
 };
 
 // The 9's press on their building centre back [Bielsa]: run at him along
