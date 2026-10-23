@@ -17,4 +17,8 @@ private:
     std::unique_ptr<GameRoster> model_;
     Response handleRoster(const Request& request);
     Response handleSavePlayer(const Request& request);
+    Response handleSaveLineup(const Request& request);
+    Response handleGameCenterLineups(const Request& request);
+    Response handleImportGameCenter(const Request& request);
+    bool requireAdmin(const Request& request, Response* error);
 };

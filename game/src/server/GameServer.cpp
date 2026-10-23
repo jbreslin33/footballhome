@@ -4,6 +4,8 @@
 
 #include "net/Wire.hpp"
 
+#include <cstdio>
+
 namespace fh::game::server {
 
 using math::Fixed64;
@@ -200,20 +202,35 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
                                         encodePresets(pf)));
     }
     // G4.30: which teams are playing — the editor's key into the club API.
-    {
-        TeamsFrame tf;
-        tf.home = cfg_.roster_home.name;
-        tf.away = cfg_.roster_away.name;
-        const persistence::DemoTeam* tt[2] = {&cfg_.roster_home, &cfg_.roster_away};
-        for (int t = 0; t < 2; ++t) {   // mig 639 kits
-            tf.kit[t][0] = tt[t]->kit_shirt;
-            tf.kit[t][1] = tt[t]->kit_shorts;
-            tf.kit[t][2] = tt[t]->kit_socks;
-            tf.kit[t][3] = tt[t]->kit_trim;
-        }
-        transport_.send(id, encodeFrame(FrameType::Teams, encodeTeams(tf)));
-    }
+    sendTeams(id);
     broadcastRoster();  // names + knowledge for every client
+}
+
+namespace {
+TeamsFrame teamsFrame(const persistence::DemoTeam& home, const persistence::DemoTeam& away) {
+    TeamsFrame tf;
+    tf.home = home.name;
+    tf.away = away.name;
+    const persistence::DemoTeam* tt[2] = {&home, &away};
+    for (int t = 0; t < 2; ++t) {   // mig 639 kits
+        tf.kit[t][0] = tt[t]->kit_shirt;
+        tf.kit[t][1] = tt[t]->kit_shorts;
+        tf.kit[t][2] = tt[t]->kit_socks;
+        tf.kit[t][3] = tt[t]->kit_trim;
+    }
+    return tf;
+}
+}  // namespace
+
+void GameServer::sendTeams(ClientId id) {
+    transport_.send(id, encodeFrame(FrameType::Teams,
+                                    encodeTeams(teamsFrame(cfg_.roster_home, cfg_.roster_away))));
+}
+
+void GameServer::broadcastTeams() {
+    const Bytes frame = encodeFrame(FrameType::Teams,
+                                    encodeTeams(teamsFrame(cfg_.roster_home, cfg_.roster_away)));
+    for (const auto& [cid, _] : clients_) transport_.send(cid, frame);
 }
 
 void GameServer::onDisconnect(ClientId id) {
@@ -345,6 +362,26 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
                 core::levelForPlayer(world_.level(home ? 0 : 1), a);
             world_.setSlotLevel(pa->slot, lv);
             brain_.setSlotLevel(pa->slot, lv);
+            return;
+        }
+        case FrameType::ReloadRosters: {
+            // Admin-only (G4.32): re-read both teams from the club DB —
+            // the page saved a lineup / attributes / roles / kit there.
+            // Config load between ticks, not sim-loop DB access: a failed
+            // load keeps the team as it is. Formations stay (Brain shape).
+            if (!admins_.count(id) || !cfg_.db) return;
+            for (persistence::DemoTeam* team : {&cfg_.roster_home, &cfg_.roster_away}) {
+                if (team->name.empty()) continue;
+                if (auto t = persistence::loadDemoTeam(*cfg_.db, team->name)) {
+                    t->formation_code = team->formation_code;
+                    *team = std::move(*t);
+                }
+            }
+            applyRosters();
+            applySlotLevels();
+            broadcastTeams();
+            broadcastRoster();
+            std::printf("fh-game: rosters reloaded from the club DB\n");
             return;
         }
         case FrameType::ApplyPreset: {

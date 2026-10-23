@@ -40,6 +40,7 @@ enum class FrameType : std::uint8_t {
     ApplyPreset    = 0x36, // admin: overlay a preset onto one team (1.4)
     PlayerAttributes = 0x37, // admin: one slot's attributes, live (1.5, G4.30)
     Teams          = 0x38, // s→c: the two teams' names, on connect (1.5)
+    ReloadRosters  = 0x39, // admin: re-read both teams from the club DB (1.5)
 };
 
 // Capability bits granted in HELLO (PROTOCOL.md §3).

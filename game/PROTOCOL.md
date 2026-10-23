@@ -56,6 +56,7 @@ Frame types (u8):
 | 0x36 | APPLY_PRESET | c→s | admin: paint one team's identity in one tap (1.4): `u8 team (0 home / 1 away) \| u8 preset_id (PRESETS index)`. The preset OVERLAYS only the dials it names onto every slot of that team (unnamed concepts keep their current rating); server answers with a fresh ROSTER |
 | 0x37 | PLAYER_ATTRIBUTES | c→s | admin (1.5, G4.30): one slot's attributes, live: `u8 slot \| u8 count \| u8 rating…` in game_attributes order (pace, passing, shooting, first_touch, tackling, anticipation, decisions, goalkeeping); 255 = unrated (the band). The editor saves the same values to the club DB (`/api/game/player`), which the daemon reads at boot |
 | 0x38 | TEAMS | s→c | the two teams playing (1.5, G4.30), on connect: `u8 len \| home name (UTF-8) \| u8 len \| away name` — game_demo_teams names, the editor's key into `/api/game/roster` |
+| 0x39 | RELOAD_ROSTERS | c→s | admin (1.5, G4.32): empty payload — re-read both teams (lineup, attributes, roles, kits) from the club DB after the page saved them; answers with fresh TEAMS + ROSTER. Formations are not reloaded |
 | TBD | … | | reserved; new types are additive within a major version |
 
 Snapshot payloads at 22 slots + 3D ball must be measured against the u16

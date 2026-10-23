@@ -70,6 +70,9 @@
     setConcepts(slot, ratings) {
       this.send(GameWire.encodePlayerSettings(slot, ratings));
     }
+    reloadRosters() {
+      this.send(GameWire.encodeReloadRosters());
+    }
     setAttributes(slot, ratings) {
       this.send(GameWire.encodePlayerAttributes(slot, ratings));
     }

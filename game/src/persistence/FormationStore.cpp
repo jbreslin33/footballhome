@@ -110,7 +110,10 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
         const auto rows = tx.exec_params(
             "SELECT shirt, name, max_speed_cms, concept_mask, "
             "       COALESCE(position, ''), COALESCE(description, '') "
-            "FROM game_demo_players WHERE team_id = $1 ORDER BY shirt",
+            "FROM game_demo_players WHERE team_id = $1 "
+            // Mig 641: the lineup, not the shirts, decides who starts —
+            // index = formation slot (1-11), then the bench by shirt.
+            "ORDER BY lineup_slot NULLS LAST, shirt",
             team_id);
         std::vector<int> shirts;
         for (const auto& r : rows) {

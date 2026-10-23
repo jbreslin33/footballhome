@@ -99,7 +99,7 @@
       background:${tab === id ? '#ffcc00' : 'transparent'};color:${tab === id ? '#0b1c3d' : '#f4f6fb'};font-weight:700;">${label}</button>`;
     editPanel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
         <b>${esc(e.name)}</b><button id="ep-close">✕</button></div>
-      <div style="display:flex;gap:6px;margin:6px 0;">${tabBtn('player', 'PLAYER')}${tabBtn('knowledge', 'KNOWLEDGE')}</div>
+      <div style="display:flex;gap:6px;margin:6px 0;">${tabBtn('player', 'PLAYER')}${tabBtn('lineup', 'LINEUP')}${tabBtn('knowledge', 'KNOWLEDGE')}</div>
       <div id="ep-body">loading…</div>`;
     editPanel.style.display = 'block';
     editPanel.style.width = 'min(340px, calc(100vw - 24px))';
@@ -107,7 +107,7 @@
     editPanel.querySelectorAll('button[data-tab]').forEach((b) => (b.onclick = () => openEditPanel(slot, b.dataset.tab)));
     const body = editPanel.querySelector('#ep-body');
     if (tab === 'knowledge') return renderKnowledge(body, slot, e);
-    renderPlayer(body, slot).catch((err) => {
+    (tab === 'lineup' ? renderLineup(body, slot) : renderPlayer(body, slot)).catch((err) => {
       body.innerHTML = '<span style="color:#ff8a94">Couldn\'t load the roster: ' + esc(err.message) + '</span>';
     });
   }
@@ -166,6 +166,92 @@
       };
     };
     draw();
+  }
+
+  // LINEUP (mig 641; James: "allow for lineup change and for set lineup
+  // from game center"): who starts in each formation slot, bench included;
+  // a team linked to the club can take a Game Center lineup. Both save to
+  // the DB, then RELOAD_ROSTERS makes the running match re-read the teams.
+  async function renderLineup(body, slot) {
+    const perTeam = ((hello && hello.slotCount) || 22) / 2;
+    const away = slot >= perTeam;
+    const teamName = teams && (away ? teams.away : teams.home);
+    if (!teamName) { body.textContent = 'This match has no rostered teams.'; return; }
+    const t = await loadTeam(teamName, true);
+    const after = (msg, ok, text) => {
+      for (const k of Object.keys(teamCache)) delete teamCache[k];   // slot order changed
+      net.reloadRosters();
+      msg.textContent = text;
+      msg.style.color = ok ? '#7dff9a' : '#ff8a94';
+    };
+    let html = `<div style="font-size:11px;opacity:.7;margin-bottom:4px;">${esc(t.team)} · ${esc(t.formation)} — who starts where</div>`;
+    t.slots.forEach((label, i) => {
+      const cur = t.players.find((p) => p.lineup_slot === i + 1);
+      html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
+        <span style="width:34px;font-size:11px;font-weight:700;">${esc(label)}</span>
+        <select data-slot="${i}" style="flex:1;min-width:0;background:#0b1c3d;color:#f4f6fb;border:1px solid #889;border-radius:6px;padding:2px;">` +
+        t.players.map((p) => `<option value="${p.shirt}"${cur && cur.shirt === p.shirt ? ' selected' : ''}>#${p.shirt} ${esc(p.name)}${p.lineup_slot ? '' : ' (bench)'}</option>`).join('') +
+        `</select></div>`;
+    });
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+        <span id="lu-msg" style="font-size:11px;opacity:.8;"></span>
+        <button id="lu-save" style="background:#ffcc00;color:#0b1c3d;border:none;padding:4px 14px;border-radius:6px;font-weight:700;">SAVE LINEUP</button></div>`;
+    if (t.game_center) {
+      html += `<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.2);">
+        <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Set lineup from Game Center</div>
+        <select id="gc-match" style="width:100%;background:#0b1c3d;color:#f4f6fb;border:1px solid #889;border-radius:6px;padding:3px;"><option>loading…</option></select>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+          <span id="gc-msg" style="font-size:11px;opacity:.8;"></span>
+          <button id="gc-set" style="background:#ffcc00;color:#0b1c3d;border:none;padding:4px 10px;border-radius:6px;font-weight:700;">SET FROM GAME CENTER</button></div></div>`;
+    }
+    body.innerHTML = html;
+    shieldKeys(body);
+    body.querySelector('#lu-save').onclick = async () => {
+      const msg = body.querySelector('#lu-msg');
+      const shirts = [...body.querySelectorAll('select[data-slot]')].map((sel) => +sel.value);
+      if (new Set(shirts).size !== shirts.length) {
+        msg.textContent = '⚠ someone is picked twice';
+        msg.style.color = '#ff8a94';
+        return;
+      }
+      msg.textContent = 'saving…';
+      try {
+        const r = await fetch('/api/game/lineup', { method: 'PUT', headers: authHeaders(),
+          body: JSON.stringify({ team: t.team, shirts }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+        after(msg, true, '✓ saved — the match re-reads the team now');
+      } catch (err) {
+        after(msg, false, '⚠ not saved: ' + err.message);
+      }
+    };
+    if (!t.game_center) return;
+    const sel = body.querySelector('#gc-match');
+    try {
+      const r = await fetch('/api/game/game-center-lineups?team=' + encodeURIComponent(t.team), { headers: authHeaders() });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+      sel.innerHTML = j.matches.length
+        ? j.matches.map((m) => `<option value="${m.match_id}">${esc(m.date)} · ${esc(m.title)} (${m.starters} starters)</option>`).join('')
+        : '<option value="">No Game Center lineups yet</option>';
+    } catch (err) {
+      sel.innerHTML = '<option value="">' + esc('Couldn\'t load: ' + err.message) + '</option>';
+    }
+    body.querySelector('#gc-set').onclick = async () => {
+      const msg = body.querySelector('#gc-msg');
+      if (!sel.value) return;
+      msg.textContent = 'setting…';
+      try {
+        const r = await fetch('/api/game/lineup/game-center', { method: 'POST', headers: authHeaders(),
+          body: JSON.stringify({ team: t.team, match_id: +sel.value }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+        after(msg, true, '✓ set' + (j.added ? ` (${j.added} new to the game)` : '') + ' — playing it now');
+        setTimeout(() => renderLineup(body, slot).catch(() => {}), 600);
+      } catch (err) {
+        after(msg, false, '⚠ not set: ' + err.message);
+      }
+    };
   }
 
   function renderKnowledge(body, slot, e) {

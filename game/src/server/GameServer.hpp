@@ -26,6 +26,7 @@
 #include "net/INetworkTransport.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <unordered_map>
 
 namespace fh::game::server {
@@ -63,6 +64,10 @@ public:
         // Style presets (mig 630): the auteur canon + the club preset.
         // Wire id = index. Empty = the DB was down; no PRESETS frame.
         std::vector<persistence::StylePreset> presets;
+        // G4.32: the club DB, for an admin RELOAD_ROSTERS (lineups,
+        // attributes, roles, kits edited from the page). Unset = no reload
+        // (tests, DB-down boots).
+        std::optional<persistence::DbConfig> db;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);
@@ -101,6 +106,9 @@ private:
     // every band change (MATCH_SETTINGS) — attributes are the roster's.
     void applySlotLevels();
     void applyPlayerConcepts(std::uint8_t slot);
+    // G4.32: send the TEAMS frame (names + kits) to one client / everyone.
+    void sendTeams(ClientId id);
+    void broadcastTeams();
     // Overlay a roster's named style preset (mig 631) onto its team's
     // live ratings — at boot and after band resets.
     void overlayTeamPreset(bool home);

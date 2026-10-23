@@ -1078,6 +1078,22 @@ white shirts" … "use our lineup from last game vs medford".
   (the second striker drops in as the third CM); attributes and
   descriptions follow the person across the reseat.
 
+### 8.28 G4.32 — lineups you change, and "set lineup from Game Center"
+
+James: "allow for lineup change and for set lineup from game center".
+Mig 641: `game_demo_players.lineup_slot` (1-11, NULL = bench) — starters
+are the lineup, not the first eleven shirts; daemon + API order players
+by it. `game_demo_teams.club_team_id` links Lighthouse APSL to team 35.
+The edit panel's LINEUP tab picks who starts in each formation slot and
+can SET FROM GAME CENTER (any game of the linked team with a starting XI):
+starters are mapped to the formation by their club position (greedy best
+fit — the Medford 4-4-2 → 4-3-3 rule of mig 640, generalised), players
+new to the game join with the random draw, and a team playing the +1
+scheme re-picks its free CB among the CBs now starting. Both save to the
+DB, then wire 1.5 RELOAD_ROSTERS (0x39, admin) makes the running match
+re-read both teams — a config load between ticks; a failed load keeps the
+team as it was; formations stay.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

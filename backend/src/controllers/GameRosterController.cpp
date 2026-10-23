@@ -6,6 +6,8 @@
 
 #include "../database/Database.h"
 #include "../models/GameRoster.h"
+
+#include <stdexcept>
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -31,6 +33,9 @@ GameRosterController::~GameRosterController() = default;
 void GameRosterController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix + "/roster", [this](const Request& r) { return handleRoster(r); });
     router.put(prefix + "/player", [this](const Request& r) { return handleSavePlayer(r); });
+    router.put(prefix + "/lineup", [this](const Request& r) { return handleSaveLineup(r); });
+    router.get(prefix + "/game-center-lineups", [this](const Request& r) { return handleGameCenterLineups(r); });
+    router.post(prefix + "/lineup/game-center", [this](const Request& r) { return handleImportGameCenter(r); });
 }
 
 // GET /roster?team=Lighthouse%20APSL — signed-in members (real people's
@@ -87,6 +92,75 @@ Response GameRosterController::handleSavePlayer(const Request& request) {
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) {
         std::cerr << "GameRosterController::handleSavePlayer: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+bool GameRosterController::requireAdmin(const Request& request, Response* error) {
+    if (!requireBearer(request)) {
+        *error = jsonError(HttpStatus::UNAUTHORIZED, "Sign in to edit the game.");
+        return false;
+    }
+    if (Database::getInstance()->query("SELECT 1 FROM admins WHERE user_id = $1::int LIMIT 1",
+                                       {std::to_string(bearerUserId(request))}).empty()) {
+        *error = jsonError(HttpStatus::FORBIDDEN, "Only club admins edit the game.");
+        return false;
+    }
+    return true;
+}
+
+// PUT /lineup { team, shirts: [11 shirts, GK first] } — admins (mig 641).
+Response GameRosterController::handleSaveLineup(const Request& request) {
+    Response error(HttpStatus::OK, "");
+    if (!requireAdmin(request, &error)) return error;
+    try {
+        const json body = json::parse(request.getBody());
+        if (!body.contains("team") || !body["team"].is_string() || !body.contains("shirts") ||
+            !body["shirts"].is_array())
+            return jsonError(HttpStatus::BAD_REQUEST, "team and shirts required");
+        std::vector<int> shirts;
+        for (const auto& s : body["shirts"]) {
+            if (!s.is_number_integer()) return jsonError(HttpStatus::BAD_REQUEST, "shirts are numbers");
+            shirts.push_back(s.get<int>());
+        }
+        model_->saveLineup(body["team"].get<std::string>(), shirts);
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::invalid_argument& e) {
+        return jsonError(HttpStatus::BAD_REQUEST, e.what());
+    } catch (const std::exception& e) {
+        std::cerr << "GameRosterController::handleSaveLineup: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /game-center-lineups?team= — signed-in members.
+Response GameRosterController::handleGameCenterLineups(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Sign in to see lineups.");
+    const std::string team = request.getQueryParam("team");
+    if (team.empty() || team.size() > 80) return jsonError(HttpStatus::BAD_REQUEST, "team required");
+    try {
+        return jsonOut(HttpStatus::OK, {{"matches", model_->gameCenterLineups(team)}});
+    } catch (const std::exception& e) {
+        std::cerr << "GameRosterController::handleGameCenterLineups: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /lineup/game-center { team, match_id } — admins (mig 641).
+Response GameRosterController::handleImportGameCenter(const Request& request) {
+    Response error(HttpStatus::OK, "");
+    if (!requireAdmin(request, &error)) return error;
+    try {
+        const json body = json::parse(request.getBody());
+        if (!body.contains("team") || !body["team"].is_string() || !body.contains("match_id") ||
+            !body["match_id"].is_number_integer())
+            return jsonError(HttpStatus::BAD_REQUEST, "team and match_id required");
+        return jsonOut(HttpStatus::OK, model_->importGameCenterLineup(body["team"].get<std::string>(),
+                                                                       body["match_id"].get<long long>()));
+    } catch (const std::invalid_argument& e) {
+        return jsonError(HttpStatus::BAD_REQUEST, e.what());
+    } catch (const std::exception& e) {
+        std::cerr << "GameRosterController::handleImportGameCenter: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

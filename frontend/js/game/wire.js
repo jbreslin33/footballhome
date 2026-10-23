@@ -26,6 +26,7 @@
     APPLY_PRESET: 0x36,
     PLAYER_ATTRIBUTES: 0x37,
     TEAMS: 0x38,
+    RELOAD_ROSTERS: 0x39,
   };
 
   // G4.30 attribute order (game_attributes.sort_order; PROTOCOL 0x37).
@@ -162,6 +163,11 @@
     return envelope(FrameType.PLAYER_ATTRIBUTES, p);
   }
 
+  // 1.5 admin: re-read both teams from the club DB (lineups, attributes…).
+  function encodeReloadRosters() {
+    return envelope(FrameType.RELOAD_ROSTERS, new ArrayBuffer(0));
+  }
+
   function decodePresets(view, at) {
     // 1.4: style-preset catalog — names only; a preset's id is its index.
     const n = view.getUint8(at);
@@ -247,6 +253,7 @@
     encodeMatchSettings,
     encodePlayerSettings,
     encodePlayerAttributes,
+    encodeReloadRosters,
     decodeTeams,
     ATTRIBUTES,
     encodeApplyPreset,
