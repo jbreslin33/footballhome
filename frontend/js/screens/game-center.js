@@ -1336,21 +1336,30 @@ class GameCenterScreen extends Screen {
   // them ineligible; their card carries a call-up chip instead.
   // Idempotent (every push is guarded), so the live poll can re-run it
   // whenever a fresh invites payload lands.
+  // A Going invitee joins the lineup pool; a STANDING call-down (⭐,
+  // team_auto_invites) always does, whatever they answered, so they sit
+  // in Going / Not Going / No Response with the squad and get the same
+  // reminders (owner 2026-10-23: "they need to be by default with the
+  // normal list of players just have a label on them. if not i will miss
+  // them to remind them").  Per-game call-ups and ↔ Call Ins stay in the
+  // 🎟 panel until they say Going.
   _foldInCallups() {
     for (const inv of ((this.invites && this.invites.invites) || [])) {
-      if (inv.response !== 'yes' || !inv.player_id) continue;
+      if (!inv.player_id || (inv.response !== 'yes' && !inv.auto)) continue;
       const pid = Number(inv.player_id);
       const name = `${inv.first_name || ''} ${inv.last_name || ''}`.trim() || 'Invited player';
-      if (!this.roster.some(r => Number(r.id) === pid)) {
+      const have = this.roster.find(r => Number(r.id) === pid);
+      if (have) { if (have.callUp) have.inviteRsvp = inv.response || null; }
+      else {
         this.roster.push({ id: pid, name, lastName: inv.last_name || '', lineupRole: null,
                            teamId: this.teamId, jerseyNumber: null, duesEligible: true,
                            callUp: true, fromTeam: inv.from_team || '', fromTeamId: inv.from_team_id || null,
-                           standing: !!inv.auto, callIn: !!inv.call_in });
+                           standing: !!inv.auto, callIn: !!inv.call_in, inviteRsvp: inv.response || null });
       }
       if (!this.players.some(d => Number(d.playerId) === pid))
         this.players.push({ playerId: pid, personId: inv.person_id, name });
       if (Array.isArray(this.gameRecipients) && !this.gameRecipients.some(r => Number(r.personId) === Number(inv.person_id)))
-        this.gameRecipients.push({ personId: inv.person_id, name, kind: 'callup', rsvp: 'yes', email: inv.email || null,
+        this.gameRecipients.push({ personId: inv.person_id, name, kind: 'callup', rsvp: inv.response || null, email: inv.email || null,
                                    phone: inv.phone || null, viaParent: !!inv.parent_person_id });
     }
   }
@@ -2208,9 +2217,12 @@ class GameCenterScreen extends Screen {
     const unassignedGoing = [], unassignedIneligible = [], unassignedNotGoing = [], unassignedNoResponse = [];
     for (const p of this.roster) {
       const z = this.zones.get(p.id);
-      // A folded-in call-up is here BECAUSE they answered Going (no stats
-      // row to read it from) — and never counts as ineligible.
-      const group = p.callUp ? 'going' : rsvpGroup(p.id);
+      // A folded-in invitee has no stats row: their answer is the
+      // invite's (a standing call-down may not have answered yet), and
+      // they never count as ineligible.
+      const group = p.callUp
+        ? (p.inviteRsvp === 'yes' ? 'going' : p.inviteRsvp === 'no' ? 'notGoing' : 'noResponse')
+        : rsvpGroup(p.id);
       // Everyone plays: Going IS the lineup, alphabetical; no bench, no picks.
       if (this.everyonePlays) {
         if (group === 'going') byZone.starter.push(p);
@@ -3572,7 +3584,8 @@ class GameCenterScreen extends Screen {
       const bits = [r.phone ? `📞 ${r.phone}` : '', r.email ? `✉ ${r.email}` : ''].filter(Boolean);
       return bits.length ? `<span style="font-size:0.66rem; opacity:0.65; overflow-wrap:anywhere;">${esc(bits.join(' · '))}</span>` : '';
     };
-    const invited = data.invites.map(r => row(`
+    const standing = data.invites.filter(r => r.auto);
+    const invited = data.invites.filter(r => !r.auto).map(r => row(`
         <span style="font-size:0.9em; display:flex; flex-direction:column; min-width:0;">
           <span>${esc(nm(r))}${r.from_team ? `<span style="font-size:0.72rem; opacity:0.6;"> · ${esc(r.from_team)}</span>` : ''}</span>
           ${contactBits(r)}
@@ -3607,7 +3620,7 @@ class GameCenterScreen extends Screen {
       </div>`).join('');
     return `
       <details data-gc-inv-details ${this._invOpen ? 'open' : ''} style="margin: var(--space-3) 0;">
-        <summary style="cursor:pointer; font-size:0.85rem; font-weight:700; padding:4px 0;">🎟 Call-ups (${data.invites.length} invited · ${data.candidates.length} eligible)</summary>
+        <summary style="cursor:pointer; font-size:0.85rem; font-weight:700; padding:4px 0;">🎟 Call-ups (${data.invites.length - standing.length} invited · ${data.candidates.length} eligible)</summary>
         <div style="font-size:0.7rem; opacity:0.75; line-height:1.4; margin:2px 0 8px;">
           ${esc(copy('hint') || "An invited player (or their parent) sees this game on their page and gets a Go/No — it's the only way a call-up sees it. Nobody else outside the squad can.")}
         </div>
@@ -3615,7 +3628,11 @@ class GameCenterScreen extends Screen {
           <div style="font-size:0.72rem; font-weight:700; margin:0 0 6px; color:${c.used >= c.max ? '#f87171' : '#fcd34d'};">
             ⬇ ${esc(copy('cap_line', { from: c.from_team, used: c.used, max: c.max }) || `${c.from_team}: ${c.used} of ${c.max} call-downs in the squad (starters + bench) — invites and Going are unlimited`)}
           </div>`).join('')}
-        ${data.invites.length ? `<div style="display:grid; gap:4px; margin-bottom:6px;">${invited}</div>` : ''}
+        ${standing.length ? `<div style="font-size:0.74rem; margin:0 0 8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span style="opacity:0.8;">${esc(copy('standing_note', { names: standing.map(nm).join(', ') }))}</span>
+          ${standing.map(r => `<span style="display:inline-flex; gap:4px; align-items:center;">${esc(nm(r))} ${autoBtn(r.person_id, r.from_team_id, true)}</span>`).join('')}
+        </div>` : ''}
+        ${invited ? `<div style="display:grid; gap:4px; margin-bottom:6px;">${invited}</div>` : ''}
         ${data.candidates.length ? candidates : `<div style="font-size:0.8rem; opacity:0.55;">Nobody eligible — everyone age-eligible in the program is rostered or already invited.</div>`}
       </details>`;
   }
