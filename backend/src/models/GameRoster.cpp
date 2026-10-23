@@ -159,39 +159,38 @@ void GameRoster::afterLineup(pqxx::work& tx, int teamId) {
     for (std::size_t i = 0; i < labels.size(); ++i)
         tx.exec_params("UPDATE game_demo_players SET position = $3 WHERE team_id = $1 AND lineup_slot = $2",
                        teamId, static_cast<int>(i + 1), labels[i]);
-    // A team stepping its line (mig 642) gives newcomers the same rating.
-    tx.exec_params("INSERT INTO game_demo_player_concepts (team_id, shirt, concept, rating) "
-                   "SELECT p.team_id, p.shirt, 'line-step', "
-                   "       (SELECT max(rating) FROM game_demo_player_concepts "
-                   "         WHERE team_id = $1 AND concept = 'line-step') "
-                   "  FROM game_demo_players p WHERE p.team_id = $1 AND p.position <> 'GK' "
-                   "   AND EXISTS (SELECT 1 FROM game_demo_player_concepts WHERE team_id = $1 AND concept = 'line-step') "
-                   "ON CONFLICT (team_id, shirt, concept) DO NOTHING", teamId);
-    // The +1 scheme (mig 639): someone is the free man (cover 95, marking 0).
+    // Roles from the lineup (mig 639/642, reworked mig 661). Since mig 652 a
+    // player PLAYS min(his team model's demand, his ability): the model asks
+    // for man-marking, the line step and the cover; these rows only say WHO
+    // holds a role, at the player's own quality — never an inflated number
+    // (the old marking 90 / line-step 68 / cover 95 rows made a 60-rated
+    // squad play like a 90 one; fh-game-match, DESIGN §8.38).
     auto scheme = tx.exec_params(
-        "SELECT 1 FROM game_demo_player_concepts WHERE team_id = $1 AND concept = 'cover' AND rating = 95 LIMIT 1",
+        "SELECT 1 FROM game_demo_player_concepts WHERE team_id = $1 AND concept = 'libero' AND rating > 0 LIMIT 1",
         teamId);
     if (scheme.empty()) return;
     tx.exec_params("DELETE FROM game_demo_player_concepts WHERE team_id = $1 "
                    "   AND concept IN ('marking', 'man-mark', 'cover', 'libero', 'cover-shadow')", teamId);
-    tx.exec_params("INSERT INTO game_demo_player_concepts (team_id, shirt, concept, rating) "
-                   "SELECT team_id, shirt, c, 90 FROM game_demo_players, (VALUES ('marking'), ('man-mark')) v(c) "
-                   " WHERE team_id = $1 AND position <> 'GK'", teamId);
+    // The free man (+1) [Bielsa]: the best-reading starting CB knows the
+    // libero's job and marks nobody.
     tx.exec_params(
         "INSERT INTO game_demo_player_concepts (team_id, shirt, concept, rating) "
-        "SELECT s.team_id, s.shirt, v.c, v.r FROM ("
-        "  SELECT p.team_id, p.shirt FROM game_demo_players p "
+        "SELECT s.team_id, s.shirt, v.c, CASE WHEN v.c = 'libero' THEN s.q ELSE 0 END FROM ("
+        "  SELECT p.team_id, p.shirt, COALESCE(p.quality, t.quality, 68) AS q FROM game_demo_players p "
+        "    JOIN game_demo_teams t ON t.id = p.team_id "
         "    LEFT JOIN game_demo_player_attributes a ON a.team_id = p.team_id AND a.shirt = p.shirt "
         "         AND a.attribute IN ('anticipation', 'decisions') "
         "   WHERE p.team_id = $1 AND p.position = 'CB' AND p.lineup_slot IS NOT NULL "
-        "   GROUP BY p.team_id, p.shirt ORDER BY COALESCE(sum(a.rating), 0) DESC, p.shirt LIMIT 1) s "
-        " CROSS JOIN (VALUES ('marking', 0), ('man-mark', 0), ('cover', 95), ('libero', 95)) v(c, r) "
+        "   GROUP BY p.team_id, p.shirt, p.quality, t.quality "
+        "   ORDER BY COALESCE(sum(a.rating), 0) DESC, p.shirt LIMIT 1) s "
+        " CROSS JOIN (VALUES ('marking'), ('man-mark'), ('libero')) v(c) "
         "ON CONFLICT (team_id, shirt, concept) DO UPDATE SET rating = EXCLUDED.rating",
         teamId);
     // The starting 9 presses on a cover shadow (mig 642) [Bielsa].
     tx.exec_params("INSERT INTO game_demo_player_concepts (team_id, shirt, concept, rating) "
-                   "SELECT team_id, shirt, 'cover-shadow', 90 FROM game_demo_players "
-                   " WHERE team_id = $1 AND lineup_slot IS NOT NULL AND position = 'ST' "
+                   "SELECT p.team_id, p.shirt, 'cover-shadow', COALESCE(p.quality, t.quality, 68) "
+                   "  FROM game_demo_players p JOIN game_demo_teams t ON t.id = p.team_id "
+                   " WHERE p.team_id = $1 AND p.lineup_slot IS NOT NULL AND p.position = 'ST' "
                    "ON CONFLICT (team_id, shirt, concept) DO UPDATE SET rating = EXCLUDED.rating", teamId);
 }
 
