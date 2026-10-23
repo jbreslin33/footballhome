@@ -24,8 +24,12 @@
 // delete it. Red when it's on the 11v11 or 7v7 or breaks a site rule.
 // Boxes live in this browser (localStorage), like saved spots.
 // SAVING (James: "your saves are not working it reverts ... make sure it
-// saves"): every move of a pitch or box is saved as it happens and comes
-// back on reload. 📌 SET DEFAULT stores the whole layout as the default;
+// saves" / "yes of course db lol"): the layout lives in the club DB
+// (/api/field-plan, migration 635) so every device sees the same one; this
+// browser keeps a copy for offline. Every move of a pitch or box saves a
+// moment after it stops; club admins write, everyone else reads. The first
+// admin load uploads whatever this browser already had (boxes, spots,
+// default) when the DB has none yet. 📌 SET DEFAULT stores the whole layout as the default;
 // ↺ DEFAULT snaps everything back to it (before one is set: cyan + the
 // 7v7's ⭐ BEST spot).
 
@@ -241,10 +245,55 @@
         for (const b of st.boxes) boxes.push(Object.assign({ kind: 'box' }, b));
       }
     }
+    // ── the club DB (/api/field-plan); localStorage stays as this device's copy ──
+    const API = '/api/field-plan';
+    const token = () => { try { return localStorage.getItem('token') || ''; } catch (e) { return ''; } };
+    let canWrite = !!token(), dbDefault = null, dbSpots = null;
+    const api = (method, path, body) => fetch(API + path, {
+      method,
+      headers: Object.assign({ 'Content-Type': 'application/json' }, token() ? { Authorization: 'Bearer ' + token() } : {}),
+      body: body ? JSON.stringify(body) : undefined,
+    }).then(async (r) => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw Object.assign(new Error(j.error || 'HTTP ' + r.status), { status: r.status });
+      return j;
+    });
+    const toItems = (st) => (st.pitches || []).map((p) => ({ key: p.id, kind: 'pitch', length_yd: p.size[0],
+      width_yd: p.size[1], x: p.x, z: p.z, rot: p.rot }))
+      .concat((st.boxes || []).map((b) => ({ key: b.id, kind: 'practice_box', name: b.name, length_yd: b.size[0],
+        width_yd: b.size[1], x: b.x, z: b.z, rot: b.rot })));
+    const fromItems = (items) => ({
+      pitches: items.filter((i) => i.kind === 'pitch').map((i) => ({ id: i.key, x: i.x, z: i.z, rot: i.rot,
+        size: [i.length_yd, i.width_yd] })),
+      boxes: items.filter((i) => i.kind === 'practice_box').map((i) => ({ id: i.key, name: i.name,
+        size: [i.length_yd, i.width_yd], x: i.x, z: i.z, rot: i.rot })),
+    });
+    const syncEl = document.createElement('div');
+    syncEl.style.cssText = 'padding:0 6px 4px;font-size:11px;';
+    const setSync = (msg, ok) => { syncEl.textContent = msg; syncEl.style.color = ok ? '#7dff9a' : '#ffb000'; };
+    function pushLayout(kind, st) {
+      if (!canWrite) {
+        setSync('⚠ saved on this device only — sign in as a club admin to save it for everyone', false);
+        return Promise.resolve(false);
+      }
+      setSync('☁ saving…', true);
+      return api('PUT', '/layout', { kind, items: toItems(st) })
+        .then(() => { setSync('☁ saved for everyone' + (kind === 'default' ? ' (default)' : ''), true); return true; })
+        .catch((e) => {
+          if (e.status === 401 || e.status === 403) canWrite = false;
+          setSync('⚠ not saved to the club (' + e.message + ') — kept on this device', false);
+          return false;
+        });
+    }
     let saveTimer = null;
     const saveState = () => {
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => { writeJSON(STATE_KEY, snapshot()); saveBoxes(); }, 250);
+      saveTimer = setTimeout(() => {
+        const st = snapshot();
+        writeJSON(STATE_KEY, st);
+        saveBoxes();
+        pushLayout('current', st);
+      }, 600);
     };
     const title = (p) => (p.kind === 'box' ? p.name : p.id);
     let on = false, sel = pitches[1], drag = null, justDragged = false, waterOn = true;
@@ -269,6 +318,7 @@
     // Always-on gap between the two pitches (James: "show distance always
     // between 7v7 and 11v11 as they move").
     const gapRow = mk('div', 'padding:2px 6px 6px;font-weight:600;');
+    panel.appendChild(syncEl);
     panel.appendChild(gapRow);
     const rows = {};
     const rowsBox = mk('div', 'max-height:38vh;overflow-y:auto;');
@@ -339,12 +389,17 @@
     bar.appendChild(copyBtn);
     const setDefBtn = mk('button', pill, '📌 SET DEFAULT');
     tap(setDefBtn, () => {
-      setDefBtn.textContent = writeJSON(DEFAULT_KEY, snapshot()) ? '✓ DEFAULT SET' : '⚠ NOT SAVED';
-      setTimeout(() => { setDefBtn.textContent = '📌 SET DEFAULT'; }, 1500);
+      const st = snapshot();
+      dbDefault = st;
+      writeJSON(DEFAULT_KEY, st);
+      pushLayout('default', st).then((ok) => {
+        setDefBtn.textContent = ok ? '✓ DEFAULT SET' : '✓ SET (this device)';
+        setTimeout(() => { setDefBtn.textContent = '📌 SET DEFAULT'; }, 1500);
+      });
     });
     const resetBtn = mk('button', pill, '↺ DEFAULT');
     tap(resetBtn, () => {
-      restore(readJSON(DEFAULT_KEY) || builtinDefault);
+      restore(dbDefault || readJSON(DEFAULT_KEY) || builtinDefault);
       for (const p of all()) rebuild(p);
       sel = pitches[0];
       buildLists();
@@ -369,6 +424,12 @@
     const spotBox = mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;');
     panel.appendChild(spotBox);
     const sizeOf = (sz) => SEVEN_SIZES.find((q) => q[0] === sz[0] && q[1] === sz[1]) || sz;
+    // Spots in one shape: { id?, name, pitch, x, z, rotDeg, size }.
+    const spotList = () => (dbSpots
+      ? dbSpots.map((s) => ({ id: s.id, name: s.name, pitch: s.pitch, x: s.x, z: s.z, rotDeg: s.rot,
+                             size: [s.length_yd, s.width_yd] }))
+      : loadSaved());
+    const reloadSpots = () => api('GET', '').then((j) => { dbSpots = j.spots; paintSpots(); }).catch(() => {});
     function applySpot(sp) {
       const p = pitches.find((q) => q.id === sp.pitch);
       if (!p) return;
@@ -381,7 +442,7 @@
     function paintSpots() {
       spotBox.innerHTML = '';
       spotBox.appendChild(mk('span', 'opacity:.75;font-size:11px;', '📌 ' + sel.id + ' spots:'));
-      const saved = loadSaved();
+      const saved = spotList();
       const all = (LAY.planSpots || []).map((sp) => ({ sp, saved: false }))
         .concat(saved.map((sp, i) => ({ sp, saved: true, i })))
         .filter((e) => e.sp.pitch === sel.id);
@@ -395,6 +456,11 @@
           const x = mk('button', pill + 'padding:4px 7px;color:#ff8a94;', '✕');
           x.title = 'Delete "' + e.sp.name + '"';
           tap(x, () => {
+            if (dbSpots && e.sp.id) {
+              api('DELETE', '/spot?id=' + e.sp.id).then(reloadSpots)
+                .catch((err) => setSync('⚠ spot not deleted (' + err.message + ')', false));
+              return;
+            }
             const list = loadSaved();
             list.splice(e.i, 1);
             storeSaved(list);
@@ -411,6 +477,12 @@
       const save = mk('button', pill, '💾 SAVE');
       const doSave = () => {
         const n = name.value.trim() || (sel.id + ' ' + new Date().toLocaleString());
+        if (dbSpots && canWrite) {
+          api('POST', '/spot', { pitch: sel.id, name: n, length_yd: sel.size[0], width_yd: sel.size[1],
+                                 x: +sel.x.toFixed(2), z: +sel.z.toFixed(2), rot: +sel.rot.toFixed(1) })
+            .then(reloadSpots).catch((err) => setSync('⚠ spot not saved (' + err.message + ')', false));
+          return;
+        }
         const list = loadSaved();
         list.push({ name: n, pitch: sel.id, x: +sel.x.toFixed(2), z: +sel.z.toFixed(2),
                     rotDeg: +sel.rot.toFixed(1), size: sel.size.slice() });
@@ -759,12 +831,48 @@
       rig.user.pitch = 1.2;
     }
 
-    // On by default: wait for the field, build, frame both pitches.
-    function start() {
+    // On by default: wait for the field, read the club's layout, build,
+    // frame both pitches.
+    const dbLoad = api('GET', '').catch(() => null);
+    async function start() {
       if (!renderer.field || !renderer.field.site) { setTimeout(start, 300); return; }
+      const db = await Promise.race([dbLoad, new Promise((r) => setTimeout(() => r(null), 5000))]);
       on = true;
-      // Last saved layout, else the default (pitches only: boxes already
-      // loaded from their own key).
+      if (db && db.current) {
+        restore(fromItems(db.current.items));
+        setSync('☁ the club layout' + (canWrite ? '' : ' (view only — sign in as a club admin to change it)'), true);
+      } else {
+        localStart();
+        if (db) {
+          // DB empty: this browser's layout becomes the club's (admins).
+          writeJSON(STATE_KEY, snapshot());
+          pushLayout('current', snapshot());
+        } else setSync('⚠ club layout unreachable — using this device\'s copy', false);
+      }
+      if (db) {
+        dbDefault = db.default ? fromItems(db.default.items) : null;
+        if (!dbDefault && readJSON(DEFAULT_KEY) && canWrite) {
+          dbDefault = readJSON(DEFAULT_KEY);
+          pushLayout('default', dbDefault);
+        }
+        dbSpots = db.spots;
+        const local = loadSaved();
+        if (!dbSpots.length && local.length && canWrite) {
+          // Upload this browser's saved spots once.
+          Promise.all(local.map((sp) => api('POST', '/spot', { pitch: sp.pitch, name: String(sp.name),
+            length_yd: (sp.size || [115, 74])[0], width_yd: (sp.size || [115, 74])[1], x: sp.x, z: sp.z, rot: sp.rotDeg })
+            .catch(() => null))).then(reloadSpots);
+        }
+      }
+      for (const p of all()) rebuild(p);
+      buildLists();
+      update();
+      flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
+              size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
+    }
+    // No club layout yet (or offline): this device's last layout, else
+    // its default, else spots saved as "now".
+    function localStart() {
       const st = readJSON(STATE_KEY) || readJSON(DEFAULT_KEY);
       if (st) restore({ pitches: st.pitches });
       else {
@@ -777,11 +885,6 @@
           if (sp.size) p.size = sizeOf(sp.size);
         }
       }
-      for (const p of all()) rebuild(p);
-      buildLists();
-      update();
-      flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
-              size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
     }
     start();
 

@@ -44,6 +44,7 @@
 #include "controllers/PersonHealthController.h"
 #include "controllers/JobsController.h"
 #include "controllers/KitBoardController.h"
+#include "controllers/FieldPlanController.h"
 #include "controllers/LockupController.h"
 #include "controllers/ClubLogoController.h"
 #include "controllers/ClubFileController.h"
@@ -134,6 +135,7 @@ private:
     std::shared_ptr<PersonHealthController> person_health_controller_;
     std::shared_ptr<JobsController> jobs_controller_;
     std::shared_ptr<KitBoardController> kit_board_controller_;
+    std::shared_ptr<FieldPlanController> field_plan_controller_;
     std::shared_ptr<LockupController> lockup_controller_;
     std::shared_ptr<ClubLogoController> club_logo_controller_;
     std::shared_ptr<ClubFileController> club_file_controller_;
@@ -233,6 +235,7 @@ public:
         person_health_controller_ = std::make_shared<PersonHealthController>();
         jobs_controller_ = std::make_shared<JobsController>();
         kit_board_controller_ = std::make_shared<KitBoardController>();
+        field_plan_controller_ = std::make_shared<FieldPlanController>();
         lockup_controller_ = std::make_shared<LockupController>();
         club_logo_controller_ = std::make_shared<ClubLogoController>();
         club_file_controller_ = std::make_shared<ClubFileController>();
@@ -555,6 +558,7 @@ private:
         router_.useController("/api/jobs", jobs_controller_);
         // #kit board (owner 2026-09-18): uniform numbers + kit handed out (mig 373).
         router_.useController("/api/kit-board", kit_board_controller_);
+        router_.useController("/api/field-plan", field_plan_controller_);
         // #security (owner 2026-09-24): nightly gate photo check-in + upload link (mig 421/424).
         router_.useController("/api/security", lockup_controller_);
         // #logos (owner 2026-09-25): club crests stored in the DB, opponent text -> club (mig 428).

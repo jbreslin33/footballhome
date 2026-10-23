@@ -51,6 +51,7 @@ set(SOURCES
     src/models/RsvpBoard.cpp
     src/models/PersonHealth.cpp
     src/models/KitBoard.cpp
+    src/models/FieldPlan.cpp
     src/models/SmsOptInBoard.cpp
     src/models/Contacts.cpp
     src/models/FacilityLockup.cpp
@@ -129,6 +130,7 @@ set(SOURCES
     src/controllers/PersonHealthController.cpp
     src/controllers/JobsController.cpp
     src/controllers/KitBoardController.cpp
+    src/controllers/FieldPlanController.cpp
     src/controllers/LockupController.cpp
     src/controllers/ClubLogoController.cpp
     src/controllers/ClubFileController.cpp
