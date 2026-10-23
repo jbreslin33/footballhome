@@ -110,25 +110,62 @@ private:
 // progress breaks the tie; a reachable rung up to fireRung(rating) is
 // played at once — no "is it worth it" gain threshold. Lane + interceptor
 // safety stay the Brain's existing safe_pass gate.
+// Rungs 1-2 are a ball into SPACE (G4.36): a receiver standing beyond
+// their line is offside, so a laddered passer skips anyone in an offside
+// position and plays an onside runner where he will be (leadPoint).
 class PassLadder : public Concept {
 public:
     PassLadder() : Concept("pass-ladder", 29) {}
     void configure(const core::ModelParams& p) override;
     // Their lines, as x · sign (toward the goal we attack).
     struct Lines {
-        math::Fixed64 back;   // deepest outfield opponent
-        math::Fixed64 first;  // most advanced outfield opponent
+        math::Fixed64 back;     // deepest outfield opponent
+        math::Fixed64 first;    // most advanced outfield opponent
+        math::Fixed64 offside;  // second-last opponent, keeper included
     };
     Lines lines(const core::World& w, core::SlotIndex passer, int sign) const;
     int rung(math::Fixed64 progress, math::Fixed64 y, const Lines& l) const;
     // Rungs 1..fireRung are played without the gain threshold.
     int fireRung(math::Fixed64 degree) const;
+    // Offside position by the law (beyond the second-last opponent, the
+    // ball and halfway) — the World arms exactly this on the kick.
+    static bool offsidePosition(math::Fixed64 progress, math::Fixed64 ball_progress,
+                                const Lines& l);
+    // Where to play a moving receiver from `from`: as far along his run as
+    // he gets while the ball travels (reaction + distance / pass speed).
+    math::Vec2 leadPoint(const core::PlayerState& p, const math::Vec3& from) const;
     // Is (rung a, progress a) a better target than (rung b, progress b)?
     static bool better(int ra, math::Fixed64 pa, int rb, math::Fixed64 pb);
 
 private:
-    math::Fixed64 pocket_depth_, central_half_width_, fire_span_;
+    math::Fixed64 pocket_depth_, central_half_width_, fire_span_, lead_s_, pass_speed_;
     int fire_min_ = 2;
+};
+
+// The blind-side run [Bielsa-Leeds f7/21/35/46/48/51/65/78/81/82] — the
+// Bamford/Harrison run. Up at their line, the runner waits ONSIDE on the
+// far-from-ball shoulder of his nearest line defender; he goes when the
+// man on the ball has TIME to play (nobody within carrier_free_m — the
+// book's cue is the passer turning forward, f82, but our carriers always
+// face their dribble, so "free to pass" is the honest equivalent) and
+// that defender can't see him (he is behind his facing — ball-watching,
+// f81): a diagonal across the defender's back into the space behind. The
+// laddered passer leads him (PassLadder::leadPoint). Only the team's
+// max_runners most advanced attackers make it (the 9 and a winger / 8).
+class BlindSideRun : public Concept {
+public:
+    BlindSideRun() : Concept("blind-side-run", 30) {}
+    void configure(const core::ModelParams& p) override;
+    // Where this attacker should be on our ball; empty when he isn't up
+    // at their line with a defender to beat (other duties take over).
+    std::optional<math::Vec2> target(const ConceptContext& c) const;
+    // The cue: the carrier is free to pass and the marker can't see me.
+    bool go(const ConceptContext& c, core::SlotIndex marker) const;
+
+private:
+    math::Fixed64 line_band_, marker_radius_, shoulder_, onside_margin_,
+        run_depth_, channel_pull_, carrier_free_, blind_cos_, end_margin_;
+    int max_runners_ = 2;
 };
 
 // The class-based concepts a Brain carries.
@@ -137,12 +174,14 @@ struct ConceptBook {
     CoverShadow cover_shadow;
     LineStep line_step;
     PassLadder pass_ladder;
+    BlindSideRun blind_side_run;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
         cover_shadow.configure(p);
         line_step.configure(p);
         pass_ladder.configure(p);
+        blind_side_run.configure(p);
     }
 };
 

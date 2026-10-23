@@ -45,6 +45,7 @@ touchline laws — [FH] marks engine-original formulations.
 | 27 | `cover_shadow` [S] | The 9 presses their building CB along the line to his nearest midfield receiver, the pass in his shadow [Bielsa/Klopp] (G4.33, `ai::CoverShadow`) | running straight at the carrier, leaving the 6 open |
 | 28 | `line_step` [S] | Palla coperta / scoperta [Sacchi; FA / KNVB / DFB back four]: the line STEPS UP while the ball travels or the carrier is turned back / pressed, and HOLDS when a free opponent receives facing forward (G4.33, `ai::LineStep`) | a line that only drops, or steps up into the long ball |
 | 29 | `pass_ladder` [S] | Look forward in order [Bielsa-Leeds ch4]: behind their back line (central, then wide) → the pocket in front of it → past their first line; rank receivers by rung, play a high enough rung at once with no gain threshold (G4.35, `ai::PassLadder`) | the most-progress receiver, and only if it gains 8 m |
+| 30 | `blind_side_run` [S] | Wait onside on the far shoulder of your line defender; go in behind when the carrier is free and he can't see you; come back if the pass didn't come [Bielsa-Leeds f7/21/81/82] (G4.36, `ai::BlindSideRun`; not in a preset yet — DESIGN §8.32) | ride the line, run when the ball is already in flight |
 
 From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Concept.hpp) and their numbers are rows in `game_model_params` (mig 642). The 26 older concepts move into classes one at a time, each move held to the goldens.
 
@@ -100,7 +101,9 @@ its numbers in `game_model_params` and a Bielsa preset row.
   the nearest teammate FILLS the vacated slot and becomes the target. The
   6 is the anchor and never rotates [ch10]. Note: rotations bite harder
   against man-markers — our own Bielsa defence is the most exposed to it.
-- `blind_side_run` [f7/21/35/46/48/51/65/78/81/82] — the runner sits on
+- `blind_side_run` [f7/21/35/46/48/51/65/78/81/82] — **BUILT G4.36 (bit
+  30, mig 648; DESIGN §8.32) but not switched on: lands in front of the
+  line until `release_timing` exists.** The runner sits on
   the far shoulder of his defender and goes when the defender's facing
   turns to the ball, or on a cue: the 9 checks toward the ball then spins
   in behind; a line defender stepping out to the ball = run into the hole

@@ -1165,6 +1165,51 @@ timed to the pass, the next pass) can't use a better-chosen ball yet. That
 is what `blind_side_run`, `rotation` and `release_timing` (next in the
 plan) are for; re-measure the ladder after each.
 
+### 8.32 G4.36 — the blind-side run; the ladder learns offside
+
+James: "build blind_side_run next". Building it exposed a flaw in §8.31:
+offside is the real law here (World arms it on every kick: beyond the
+second-last opponent, the ball and halfway), so the ladder's rungs 1-2 —
+ranked by where a receiver STANDS — mostly pointed at men already
+offside. Rungs 1-2 are a ball into SPACE for an onside RUNNER.
+
+- **Ladder fix:** a laddered passer skips anyone in an offside position
+  (`PassLadder::offsidePosition`, the World's own rule) and plays a moving
+  receiver at his lead point — where he'll be after 0.3 s reaction + the
+  ball's flight (distance / 12 m/s); the rung comes from that point.
+- **`blind_side_run`** (bit 30, `ai::BlindSideRun`) [Bielsa-Leeds
+  f7/21/35/46/48/51/65/78/81/82]: the two most advanced attackers within
+  18 m of their line wait 2 m onside on the far-from-ball shoulder of
+  their nearest line defender; GO when our carrier is free (nobody within
+  3.5 m) and the defender can't see them (runner > 90° off his facing):
+  10 m behind the line, pulled 0.6 toward the channel — across his back.
+  A run the pass didn't find (offside, ball still ours) comes back to the
+  waiting spot to re-time. Numbers: mig 648. STYLE, default 0.
+- Measuring changed the design twice (scratch probe, 3-6 matches): the
+  book's cue "passer turns forward" fires 96% of the time here (carriers
+  always face their dribble) → replaced by "carrier free"; the first lead
+  (a flat 1 s) put the ball behind the line ~1% of the time → flight-time
+  lead.
+
+Measured (60 semipro 11v11 matches per row, home = Bielsa preset; ± 1 SE):
+
+| Home team | Goals H–A | Margin | Offsides/match |
+|---|---|---|---|
+| Bielsa | 2.37–1.62 | +0.75 ± 0.23 | 0.33 |
+| + pass ladder 90 (offside-aware) | 2.63–1.60 | +1.03 ± 0.26 | 0.15 |
+| + ladder + blind-side run 85 | 2.47–1.85 | +0.62 ± 0.27 | 0.07 |
+
+The run HAPPENS (probe: ~15 receptions a match by a going runner) but
+lands at x ≈ 19.5 m — in front of their line, ~33 m out — not in behind:
+39 of 92 receptions led to a hard strike within 3 s, none scored. So it
+is NOT in the Bielsa preset yet (Lighthouse doesn't play it); the ladder
+fix ships. Next lever is the receiving end, not more runs: a runner
+going beyond the line needs the pass on the RELEASE tick (`release_timing`:
+the carrier holds for the runner, then plays) — then switch the run on
+by preset row and re-measure. Concept bits: 31 used of 32 — the next
+concept needs the registry off the u32 bitmask (ratings arrays already
+carry it; `conceptBundle` is the only mask user).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

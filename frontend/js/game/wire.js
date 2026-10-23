@@ -41,7 +41,7 @@
                     'man-mark', 'verticality', 'intercept', 'restraint',
                     'tackle-timing', 'counter-attack', 'safe-pass',
                     'shot-selection', 'libero', 'cover-shadow', 'line-step',
-                    'pass-ladder'];
+                    'pass-ladder', 'blind-side-run'];
 
   const LEVELS = ['perfect', 'u10', 'u14', 'amateur', 'semipro', 'pro', 'world'];
 

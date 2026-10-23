@@ -96,6 +96,8 @@ public:
                      const math::Vec2& face);
     // Scenario setup (tests, painted situations), like placePlayer.
     void placeBall(const BallState& b) { ball_ = b; }
+    // Scenario setup: a player already on the move (a runner mid-run).
+    void placeVelocity(SlotIndex slot, const math::Vec3& vel) { players_[slot].vel = vel; }
     void setTeam(SlotIndex slot, std::uint8_t team);
     void setKeeper(SlotIndex slot, bool keeper);
     void setMaxSpeed(SlotIndex slot, math::Fixed64 v) {

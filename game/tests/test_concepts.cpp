@@ -62,6 +62,7 @@ FH_TEST(concepts_carry_their_registry_identity) {
     FH_EXPECT(b.cover_shadow.name() == core::kConceptNames[b.cover_shadow.bit()]);
     FH_EXPECT(b.line_step.name() == core::kConceptNames[b.line_step.bit()]);
     FH_EXPECT(b.pass_ladder.name() == core::kConceptNames[b.pass_ladder.bit()]);
+    FH_EXPECT(b.blind_side_run.name() == core::kConceptNames[b.blind_side_run.bit()]);
 }
 
 FH_TEST(libero_sits_behind_the_deepest_teammate_on_the_ball_side) {
@@ -136,7 +137,7 @@ FH_TEST(line_steps_on_a_covered_ball_and_holds_on_an_open_one) {
 FH_TEST(pass_ladder_rungs_follow_the_book_order) {
     ai::PassLadder pl;
     pl.configure(core::ModelParams{});
-    const ai::PassLadder::Lines l{Fixed64::fromInt(20), Fixed64::fromInt(0)};
+    const ai::PassLadder::Lines l{Fixed64::fromInt(20), Fixed64::fromInt(0), Fixed64::fromInt(20)};
     auto r = [&](int x, int y) { return pl.rung(Fixed64::fromInt(x), Fixed64::fromInt(y), l); };
     FH_EXPECT(r(25, 0) == 1 && r(25, -25) == 2);    // behind the line: central, wide
     FH_EXPECT(r(15, 5) == 3 && r(15, 22) == 4);     // pocket (within 10 m in front)
@@ -156,6 +157,11 @@ FH_TEST(pass_ladder_rungs_follow_the_book_order) {
     p.setMilli("concept.pass-ladder.central_half_width_m", 30000);
     pl.configure(p);
     FH_EXPECT(r(25, -25) == 1);
+    // Offside position: beyond the second-last opponent AND the ball AND
+    // halfway; level is onside.
+    FH_EXPECT(ai::PassLadder::offsidePosition(Fixed64::fromInt(21), Fixed64::zero(), l));
+    FH_EXPECT(!ai::PassLadder::offsidePosition(Fixed64::fromInt(20), Fixed64::zero(), l));
+    FH_EXPECT(!ai::PassLadder::offsidePosition(Fixed64::fromInt(21), Fixed64::fromInt(22), l));
 }
 
 namespace {
@@ -182,20 +188,25 @@ struct LadderRig {
 };
 }  // namespace
 
-FH_TEST(laddered_passer_prefers_central_in_behind_over_more_progress_wide) {
+FH_TEST(laddered_passer_skips_offside_and_leads_the_central_runner) {
     LadderRig g;
-    g.carry(0, 10);
-    g.w.placePlayer(1, at(24, 10), kFacePlus);    // behind their line, central (rung 1)
-    g.w.placePlayer(2, at(26, 24), kFacePlus);    // behind it, wide, 2 m further (rung 2)
-    g.w.placePlayer(3, at(-20, 0), kFacePlus);
-    g.w.placePlayer(4, at(20, 0), kFaceMinus);    // their back line x 20
+    g.carry(5, 10);
+    // Two onside runners at x 19, one stride short of their line (x 20),
+    // led by reaction 0.3 s + flight (distance / 12 m/s):
+    g.w.placePlayer(1, at(19, 10), kFacePlus);    // central, 7 m/s → lead x ≈ 29.3: rung 1
+    g.w.placeVelocity(1, at(7, 0));
+    g.w.placePlayer(2, at(19, 22), kFacePlus);    // wide, 6 m/s → lead x ≈ 30.0: rung 2, more progress
+    g.w.placeVelocity(2, at(6, 0));
+    g.w.placePlayer(3, at(24, 4), kFacePlus);     // standing BEYOND their line: offside
+    g.w.placePlayer(4, at(20, 0), kFaceMinus);    // their line x 20
     g.w.placePlayer(5, at(20, -15), kFaceMinus);
-    g.w.placePlayer(6, at(5, -25), kFaceMinus);   // their first line x 5
+    g.w.placePlayer(6, at(5, -25), kFaceMinus);
     g.w.placePlayer(7, at(5, -10), kFaceMinus);
-    // Without the ladder: most progress — the wide man.
+    // Without the ladder: most progress — the man standing offside.
     const ai::Orders plain = g.orders(0);
-    FH_EXPECT(plain.action == core::Action::GroundKick && plain.move.move.y > Fixed64::zero());
-    // With it: the central ball in behind (straight up the pitch).
+    FH_EXPECT(plain.action == core::Action::GroundKick && plain.move.move.y < Fixed64::zero());
+    // With it: the ball into the space ahead of the central runner
+    // (straight up the pitch), not the offside man, not the wide run.
     const ai::Orders lad = g.orders(100);
     FH_EXPECT(lad.action == core::Action::GroundKick && lad.move.move.y == Fixed64::zero());
 }
@@ -214,6 +225,46 @@ FH_TEST(laddered_passer_plays_the_pocket_without_the_gain_threshold) {
     FH_EXPECT(g.orders(0).action == core::Action::None);
     // The ladder plays it: rung 3 is within fireRung(1.0) = 4.
     FH_EXPECT(g.orders(100).action == core::Action::ShortPass);
+}
+
+FH_TEST(blind_side_run_waits_onside_then_goes_behind_a_ball_watcher) {
+    auto w = pitch();
+    ai::BlindSideRun bs;
+    bs.configure(core::ModelParams{});
+    const Vec2 ball{Fixed64::zero(), Fixed64::zero()};
+    core::BallState b;
+    b.pos = at(0, 0);
+    b.owner = 0;
+    w.placeBall(b);
+    w.placePlayer(1, at(19, 11), kFacePlus);   // our runner, up at their line
+    const Vec2 watching = math::normalized(Vec2{Fixed64::fromInt(-20), Fixed64::fromInt(-8)});
+    w.placePlayer(2, at(20, 8), watching);     // their defender, eyes on the ball
+    w.placePlayer(0, at(0, 0), kFacePlus);
+    // Carrier pressed (a man 2 m off him): no time to pass — wait onside
+    // (2 m) on the defender's far shoulder (8 + 1.5).
+    w.placePlayer(3, at(2, 0), kFaceMinus);
+    auto t = bs.target(ctx(w, 1, +1, ball, 90));
+    FH_EXPECT(t.has_value() && t->x == Fixed64::fromInt(18) && t->y == Fixed64::fromFraction(19, 2));
+    // Carrier free and the defender watches the ball: GO — 10 m behind
+    // the line, across his back toward the channel (9.5 x 0.6).
+    w.placePlayer(3, at(20, -10), kFaceMinus);
+    t = bs.target(ctx(w, 1, +1, ball, 90));
+    FH_EXPECT(t.has_value() && t->x == Fixed64::fromInt(30));
+    FH_EXPECT(math::fx_abs(t->y - Fixed64::fromFraction(57, 10)) < Fixed64::fromFraction(1, 1000));
+    // He turns to face the runner: seen — back to waiting.
+    w.placePlayer(2, at(20, 8), math::normalized(Vec2{Fixed64::fromInt(-1), Fixed64::fromInt(3)}));
+    t = bs.target(ctx(w, 1, +1, ball, 90));
+    FH_EXPECT(t.has_value() && t->x == Fixed64::fromInt(18));
+    // A run the pass didn't find: he's offside (beyond both defenders)
+    // while we still have the ball — back to the waiting spot to re-time.
+    w.placePlayer(2, at(20, 8), watching);
+    w.placePlayer(1, at(23, 11), kFacePlus);
+    t = bs.target(ctx(w, 1, +1, ball, 90));
+    FH_EXPECT(t.has_value() && t->x == Fixed64::fromInt(18));
+    w.placePlayer(1, at(19, 11), kFacePlus);
+    // Not up at their line (more than 18 m short of it): not this concept's job.
+    w.placePlayer(1, at(1, 11), kFacePlus);
+    FH_EXPECT(!bs.target(ctx(w, 1, +1, ball, 90)).has_value());
 }
 
 FH_TEST_MAIN()

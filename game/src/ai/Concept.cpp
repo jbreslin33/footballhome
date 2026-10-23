@@ -136,15 +136,21 @@ void PassLadder::configure(const core::ModelParams& p) {
     central_half_width_ = p.fixed(key("central_half_width_m"), 20000);
     fire_min_ = p.integer(key("fire_rung_min"), 2);
     fire_span_ = p.fixed(key("fire_rung_span"), 2000);
+    lead_s_ = p.fixed(key("lead_s"), 300);
+    pass_speed_ = p.fixed(key("lead_pass_speed_mps"), 12000);
 }
 
 PassLadder::Lines PassLadder::lines(const core::World& w, core::SlotIndex passer, int sign) const {
     const Fixed64 s = sign >= 0 ? Fixed64::one() : -Fixed64::one();
     const auto team = w.player(passer).team;
-    Lines l{Fixed64::fromInt(-1000), Fixed64::fromInt(1000)};
+    Lines l{Fixed64::fromInt(-1000), Fixed64::fromInt(1000), Fixed64::fromInt(-1000)};
+    Fixed64 last = Fixed64::fromInt(-1000);
     for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
-        if (w.player(j).team == team || w.isKeeper(j)) continue;
+        if (w.player(j).team == team) continue;
         const Fixed64 d = w.player(j).pos.x * s;
+        if (d > last) { l.offside = last; last = d; }
+        else if (d > l.offside) l.offside = d;
+        if (w.isKeeper(j)) continue;
         if (d > l.back) l.back = d;
         if (d < l.first) l.first = d;
     }
@@ -165,10 +171,104 @@ int PassLadder::fireRung(Fixed64 degree) const {
     return fire_min_ + static_cast<int>(extra.raw >> Fixed64::FRAC_BITS);
 }
 
+bool PassLadder::offsidePosition(Fixed64 progress, Fixed64 ball_progress, const Lines& l) {
+    return progress > l.offside && progress > ball_progress && progress > Fixed64::zero();
+}
+
+Vec2 PassLadder::leadPoint(const core::PlayerState& p, const math::Vec3& from) const {
+    const Fixed64 t = lead_s_ + math::length(Vec2{p.pos.x - from.x, p.pos.y - from.y}) / pass_speed_;
+    return Vec2{p.pos.x + p.vel.x * t, p.pos.y + p.vel.y * t};
+}
+
 bool PassLadder::better(int ra, Fixed64 pa, int rb, Fixed64 pb) {
     const int a = ra == 0 ? 7 : ra;
     const int b = rb == 0 ? 7 : rb;
     return a != b ? a < b : pa > pb;
+}
+
+// ── BlindSideRun ────────────────────────────────────────────────────────
+void BlindSideRun::configure(const core::ModelParams& p) {
+    line_band_ = p.fixed(key("line_band_m"), 18000);
+    marker_radius_ = p.fixed(key("marker_radius_m"), 10000);
+    shoulder_ = p.fixed(key("shoulder_m"), 1500);
+    onside_margin_ = p.fixed(key("onside_margin_m"), 2000);
+    run_depth_ = p.fixed(key("run_depth_m"), 10000);
+    channel_pull_ = p.fixed(key("channel_pull"), 600);
+    carrier_free_ = p.fixed(key("carrier_free_m"), 3500);
+    max_runners_ = p.integer(key("max_runners"), 2);
+    blind_cos_ = p.fixed(key("blind_cos"), 0);
+    end_margin_ = p.fixed(key("end_margin_m"), 6000);
+}
+
+bool BlindSideRun::go(const ConceptContext& c, core::SlotIndex marker) const {
+    const auto& w = c.world;
+    const auto& ball = w.ball();
+    if (!ball.owner) return false;
+    const auto& car = w.player(*ball.owner);
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j)         // no time to pass yet
+        if (w.player(j).team != car.team && dist2(w.player(j).pos, car.pos) < sq(carrier_free_))
+            return false;
+    const auto& mk = w.player(marker);
+    const auto& me = w.player(c.slot);
+    const Vec2 to_me = math::normalized(Vec2{me.pos.x - mk.pos.x, me.pos.y - mk.pos.y});
+    return mk.face.x * to_me.x + mk.face.y * to_me.y < blind_cos_;  // behind his eyes
+}
+
+std::optional<Vec2> BlindSideRun::target(const ConceptContext& c) const {
+    const auto& w = c.world;
+    const auto& ball = w.ball();
+    const auto& me = w.player(c.slot);
+    if (!ball.owner || w.player(*ball.owner).team != me.team || *ball.owner == c.slot)
+        return std::nullopt;
+    const Fixed64 s = c.sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    // Their line: the deepest outfield opponent; the offside line: the
+    // second-last opponent, keeper included.
+    Fixed64 line = Fixed64::fromInt(-1000), last = line, offside = line;
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
+        const auto& op = w.player(j);
+        if (op.team == me.team) continue;
+        const Fixed64 d = op.pos.x * s;
+        if (d > last) { offside = last; last = d; }
+        else if (d > offside) offside = d;
+        if (!w.isKeeper(j) && d > line) line = d;
+    }
+    if (me.pos.x * s < line - line_band_) return std::nullopt;   // not up at their line
+    // Only the most advanced few make the run (ties → lower slot).
+    int ahead = 0;
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
+        const auto& t = w.player(j);
+        if (j == c.slot || t.team != me.team || w.isKeeper(j) || j == *ball.owner) continue;
+        if (t.pos.x * s > me.pos.x * s || (t.pos.x * s == me.pos.x * s && j < c.slot)) ++ahead;
+    }
+    if (ahead >= max_runners_) return std::nullopt;
+    // My man: the nearest line defender (within the band of the line).
+    core::SlotIndex mk = 255;
+    Fixed64 best{};
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
+        const auto& op = w.player(j);
+        if (op.team == me.team || w.isKeeper(j)) continue;
+        if (op.pos.x * s < line - line_band_) continue;
+        const Fixed64 d = dist2(me.pos, op.pos);
+        if (d > sq(marker_radius_)) continue;
+        if (mk == 255 || d < best) { mk = j; best = d; }
+    }
+    if (mk == 255) return std::nullopt;
+    const auto& m = w.player(mk);
+    // Far-from-ball shoulder: the side of him away from the ball.
+    const Fixed64 side = m.pos.y >= c.seen_ball.y ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 shoulder_y = m.pos.y + side * shoulder_;
+    // Wait onside on his blind shoulder — and a run the pass didn't find
+    // (now offside with the ball still at our feet) comes back to re-time.
+    const Fixed64 ball_x = w.ball().pos.x * s;
+    const bool offside_now =
+        me.pos.x * s > offside && me.pos.x * s > ball_x && me.pos.x * s > Fixed64::zero();
+    if (offside_now || !go(c, mk)) return Vec2{(line - onside_margin_) * s, shoulder_y};
+    // Go: across his back into the space behind, pulled toward the channel
+    // between him and goal.
+    Fixed64 depth = line + run_depth_;
+    const Fixed64 cap = c.half_x - end_margin_;
+    if (depth > cap) depth = cap;
+    return Vec2{depth * s, shoulder_y * channel_pull_};
 }
 
 }  // namespace fh::game::ai

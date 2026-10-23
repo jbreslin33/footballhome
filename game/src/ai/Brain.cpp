@@ -379,20 +379,29 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             if (i == slot) continue;
             if (setup_.team_of_slot[i] != setup_.team_of_slot[slot]) continue;
             const auto& mate = world.player(i);
-            const Fixed64 progress = mate.pos.x * sgn;
+            Vec2 b{mate.pos.x, mate.pos.y};
+            // G4.36: a laddered passer never picks a man in an offside
+            // position, and plays an onside runner into the space he is
+            // running into (rungs 1-2 are a ball into space) [Bielsa-Leeds].
+            if (ladder) {
+                if (PassLadder::offsidePosition(mate.pos.x * sgn, my_progress, lines))
+                    continue;
+                const Vec2 lead = book_.pass_ladder.leadPoint(mate, me.pos);
+                if (lead.x * sgn > lines.back && lead.x * sgn > b.x * sgn) b = lead;
+            }
+            const Fixed64 progress = b.x * sgn;
             if (progress < my_progress + Fixed64::fromInt(3)) continue;
-            const Fixed64 dsq = distSq(me.pos, mate.pos);
+            const Fixed64 dsq = distSq(me.pos, Vec3{b.x, b.y, Fixed64::zero()});
             if (dsq < kPassMin * kPassMin || dsq > kPassMax * kPassMax)
                 continue;
             // Lane check: any opponent near the carrier→mate segment?
             const Vec2 a{me.pos.x, me.pos.y};
-            const Vec2 b{mate.pos.x, mate.pos.y};
             if (!lane_open(a, b)) continue;
             const bool lofted = progress > their_line &&
                                 ratings_[slot][6] > 0 &&
                                 dsq > kSoftPassRange * kSoftPassRange;
             if (!safe(i, a, b, dsq, lofted)) continue;
-            const int r = ladder ? book_.pass_ladder.rung(progress, mate.pos.y, lines) : 0;
+            const int r = ladder ? book_.pass_ladder.rung(progress, b.y, lines) : 0;
             const bool wins =
                 ladder ? PassLadder::better(r, progress, best_rung, best_progress)
                        : progress > best_progress;
@@ -1084,6 +1093,18 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                          Fixed64::fromFraction(1, 2)},
                 Fixed64::fromFraction(1, 2));
             return out;
+        }
+
+        // blind_side_run (bit 30, G4.36) [Bielsa-Leeds] — ai::BlindSideRun:
+        // up at their line, wait onside on the defender's far shoulder; go
+        // in behind when the carrier turns forward and he can't see you.
+        if (ratings_[slot][30] > 0 && applies(slot, 30, world.tickCount() / 30)) {
+            const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                                    half_x_, degree(slot, 30)};
+            if (auto t = book_.blind_side_run.target(cx)) {
+                out.move.move = seek(me.pos, *t, Fixed64::fromFraction(1, 2));
+                return out;
+            }
         }
 
         // ── run in behind (G4.8): the most ADVANCED disciplined attacker
