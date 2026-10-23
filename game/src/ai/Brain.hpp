@@ -47,6 +47,21 @@ public:
 
     // Skill noise (G4.3): perception delay + decision jitter per team.
     // Defaults (zero) = the perfect-play baseline the goldens lock.
+    // Per-player level (G4.30): the band bent by the player's attributes.
+    void setSlotLevel(core::SlotIndex slot, const core::LevelParams& lv) {
+        if (slot_level_.size() <= slot) {
+            slot_level_.resize(slot + 1u);
+            slot_level_set_.resize(slot + 1u, 0);
+        }
+        slot_level_[slot] = lv;
+        slot_level_set_[slot] = 1;
+    }
+    const core::LevelParams& levelOf(core::SlotIndex slot) const {
+        return slot < slot_level_set_.size() && slot_level_set_[slot]
+                   ? slot_level_[slot]
+                   : level_[setup_.team_of_slot[slot]];
+    }
+
     void setLevels(const core::LevelParams& home,
                    const core::LevelParams& away,
                    std::uint64_t match_seed) {
@@ -87,6 +102,10 @@ private:
     math::Fixed64 half_x_, half_y_;
     FormationSpec spec_[2];
     core::LevelParams level_[2];
+    // G4.30 per-player levels (perception, decisions, keeper reaction);
+    // empty / unset = the team band.
+    std::vector<core::LevelParams>  slot_level_;
+    std::vector<std::uint8_t>       slot_level_set_;
     std::uint64_t match_seed_ = 0;
     std::vector<core::ConceptRatings> ratings_;
     // Graded application: does slot APPLY concept (bit index) this tick?

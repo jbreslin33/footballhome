@@ -58,6 +58,16 @@ void World::setLevel(std::uint8_t team, const LevelParams& params) {
     level_[team & 1] = params;
 }
 
+void World::setSlotLevel(SlotIndex slot, const LevelParams& params) {
+    if (slot >= players_.size()) return;
+    if (slot_level_.size() < players_.size()) {
+        slot_level_.resize(players_.size());
+        slot_level_set_.resize(players_.size(), 0);
+    }
+    slot_level_[slot] = params;
+    slot_level_set_[slot] = 1;
+}
+
 void World::setKeeper(SlotIndex slot, bool keeper) {
     if (slot >= keeper_.size()) return;
     keeper_[slot] = keeper;
@@ -162,7 +172,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
         }
 
         // Outcome by the tackler's level skill, deterministic noise.
-        const LevelParams& lv = level_[tackler.team & 1];
+        const LevelParams& lv = levelOf(i);
         const int skill =
             lv.tackle_success_pct > 0 ? lv.tackle_success_pct : 70;
         const Fixed64 roll = detNoise(match_seed_, clock_.tick(), i, 6);
@@ -236,7 +246,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             // deterministic error and scale its power. A pro's error is a
             // couple of degrees; a U-10 sprays it. Zero params = exact,
             // which is the baseline every pre-G4.3 golden locks.
-            const LevelParams& lv = level_[players_[kicker].team & 1];
+            const LevelParams& lv = levelOf(kicker);
             Fixed64 power_scale = Fixed64::one();
             if (lv.kick_angle_err_deg != 0 || lv.kick_power_err_pct != 0 ||
                 act == Action::Shot) {
@@ -257,9 +267,11 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 // match-pressure error on shots, on top of level error.
                 // (18 m/s strikes at 1-degree error converted like
                 // penalties — nobody finishes like that from 20 m.)
+                const bool shot = act == Action::Shot;
                 const std::int32_t deg =
-                    lv.kick_angle_err_deg +
-                    (act == Action::Shot ? 5 : 0);
+                    (shot && lv.shot_angle_err_deg >= 0 ? lv.shot_angle_err_deg
+                                                        : lv.kick_angle_err_deg) +
+                    (shot ? 5 : 0);
                 const Fixed64 ang = n1 * kind_scale *
                     Fixed64::fromInt(deg) *
                     Fixed64::fromFraction(71, 4068);
@@ -267,7 +279,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 const Fixed64 sn = math::fx_sin(ang);
                 dir = Vec2{dir.x * c - dir.y * sn, dir.x * sn + dir.y * c};
                 power_scale = Fixed64::one() +
-                    n2 * Fixed64::fromFraction(lv.kick_power_err_pct, 100);
+                    n2 * Fixed64::fromFraction(
+                             shot && lv.shot_power_err_pct >= 0 ? lv.shot_power_err_pct
+                                                                : lv.kick_power_err_pct,
+                             100);
             }
             if (act == Action::GroundKick) {
                 const Fixed64 v = kGroundKickSpeed * power_scale;
@@ -482,7 +497,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     // Touch quality: a ball faster than the toucher's control level
     // bobbles — deflects onward at reduced speed in a noise-rotated
     // direction — instead of sticking. Keepers add their hands bonus.
-    const LevelParams& lv = level_[players_[best].team & 1];
+    const LevelParams& lv = levelOf(best);
     // Keeper handling (G4.23): a shot-speed ball (> 6 m/s) a keeper
     // reaches can still be FUMBLED, by level. Without it a level's
     // hardest shot (control + 6) equals its own keeper's catch cap, so a

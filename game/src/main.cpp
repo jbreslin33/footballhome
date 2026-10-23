@@ -18,6 +18,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <tuple>
 #include <string>
 #include <thread>
 
@@ -109,6 +110,18 @@ int main() {
                         cfg.roster_away.style_preset.empty() ? ""
                                                              : ", wears ",
                         cfg.roster_away.style_preset.c_str());
+        }
+        // Mig 636: a roster that names its formation plays it (Ukies 4-2-3-1,
+        // Lighthouse APSL 4-3-3), over GAME_FORMATION_*.
+        for (auto [roster, spec, side] :
+             {std::tuple{&cfg.roster_home, &cfg.formation_home, "home"},
+              std::tuple{&cfg.roster_away, &cfg.formation_away, "away"}}) {
+            if (roster->formation_code.empty()) continue;
+            if (auto f = persistence::loadFormation(db, roster->formation_code)) {
+                *spec = std::move(*f);
+                std::printf("fh-game: %s formation %s (the team's own)\n", side,
+                            roster->formation_code.c_str());
+            }
         }
         // Style presets (mig 630): the auteur canon + the club preset.
         cfg.presets = persistence::loadStylePresets(db);

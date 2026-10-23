@@ -25,6 +25,7 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     level_id_[0] = cfg.level_home_id;
     level_id_[1] = cfg.level_away_id;
     applyRosters();
+    applySlotLevels();
     transport_.setOnConnect(
         [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
     transport_.setOnDisconnect([this](ClientId id) { onDisconnect(id); });
@@ -62,6 +63,21 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     }
 }
 
+void GameServer::applySlotLevels() {
+    const std::uint8_t per_team = cfg_.slot_count / 2;
+    for (std::uint8_t i = 0; i < cfg_.slot_count; ++i) {
+        const bool home = i < per_team;
+        const std::uint8_t k = home ? i : i - per_team;
+        const persistence::DemoTeam& team =
+            home ? cfg_.roster_home : cfg_.roster_away;
+        if (k >= team.players.size()) continue;
+        const core::LevelParams lv = core::levelForPlayer(
+            world_.level(home ? 0 : 1), team.players[k].attrs);
+        world_.setSlotLevel(i, lv);
+        brain_.setSlotLevel(i, lv);
+    }
+}
+
 void GameServer::applyRosters() {
     const std::uint8_t per_team = cfg_.slot_count / 2;
     slot_names_.assign(cfg_.slot_count, "");
@@ -77,8 +93,12 @@ void GameServer::applyRosters() {
         if (k < team.players.size()) {
             const auto& p = team.players[k];
             slot_names_[i] = p.name;
-            world_.setMaxSpeed(
-                i, Fixed64::fromFraction(p.max_speed_cms, 100));
+            // Pace (mig 636) sets top speed when rated; else the row's
+            // max_speed_cms as before.
+            const std::int32_t cms = p.attrs.pace >= 0
+                                         ? core::paceSpeedCms(p.attrs.pace)
+                                         : p.max_speed_cms;
+            world_.setMaxSpeed(i, Fixed64::fromFraction(cms, 100));
             // Legacy mask override → that player's known set at a strong
             // personal quality (85): Old Gio knows EVERYTHING well.
             if (p.concept_mask >= 0) {
@@ -242,6 +262,7 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             world_.setLevel(0, home);
             world_.setLevel(1, away);
             brain_.setLevels(home, away, world_.matchSeed());
+            applySlotLevels();   // attributes bend the NEW band
             // Band change resets knowledge to the new bundles (names and
             // speeds stay — identity is the roster's, knowledge is the
             // band's unless re-edited).

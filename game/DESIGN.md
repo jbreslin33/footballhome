@@ -1015,6 +1015,39 @@ headstones; the whole site is rotated so the game pitch lands on its real
 spot and angle. Pitch markings are now PAINTED into a 2048-px turf
 texture (line geometry lost depth fights with the turf at range).
 
+### 8.26 G4.30 — real teams, real attributes: Lighthouse APSL vs the Ukies
+
+James (10/22): "lets make Lighthouse APSL vs Ukrainian Nationals … give
+our guys random attributes and i can fix them and describe the type of
+player … this will be an attempt to start a game realistic for apsl".
+
+- **Attributes become per player [FH].** Mig 636's `game_attributes`
+  registry (pace, passing, shooting, first touch, tackling, anticipation,
+  decisions, goalkeeping — 0-100, 50 = the team's band EXACTLY) and
+  `game_demo_player_attributes`. `core::levelForPlayer` bends the band's
+  numbers per player (errors x1.5 at 0 … x0.5 at 100; touch x0.75…x1.25;
+  tackling ±30 points; pace → 5.4-7.4 m/s), and World/Brain read a
+  per-slot level where one is set — unset slots ARE their band, so every
+  golden held (19/19, calibration unchanged). Shots got their own error
+  dials (default "same as passes") so a finisher who can't pass is
+  expressible. Per-slot levels join the canonical hash only when set.
+- **Real people, at James's request** — reversing mig 628's
+  fictional-only rule for these two teams. No names in git: the migration
+  copies them from the club's rows when it runs. Lighthouse APSL = the
+  RSVP-able APSL roster (active, not invite-only), seated in the 4-3-3 by
+  each player's last Game Center lineup position (GK from the lineup —
+  no `is_keeper` flags exist); the rest are the bench (loaded, not on the
+  pitch yet). Ukrainian Nationals = the six players on file plus numbered
+  placeholders (the full APSL roster isn't in the DB). Attributes are a
+  deterministic random draw (40-75; keepers 60-80 in goal) for James to
+  correct.
+- **Teams carry their formation** (`game_demo_teams.formation_code`):
+  Ukies 4-2-3-1, Lighthouse APSL 4-3-3 wearing the "Lighthouse" preset
+  (the club's Bielsa-based model). The -1/+1 match-up that PRODUCES the
+  4-3-3 is queued as the `match_up` concept (CONCEPTS.md).
+- Next: an editor for attributes + the player-type description (DB-backed,
+  so James's corrections persist), the full Ukies roster, substitutes.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

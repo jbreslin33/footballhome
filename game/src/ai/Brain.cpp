@@ -252,7 +252,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     // Perception delay (G4.3): this brain reacts to where the ball WAS
     // delay ticks ago, approximated linearly (no history state — brains
     // stay pure). Carrier logic is exempt: the ball is at your feet.
-    const core::LevelParams& lv = level_[setup_.team_of_slot[slot]];
+    const core::LevelParams& lv = levelOf(slot);
     Vec3 seen_ball = ball.pos;
     if (lv.perception_delay_ticks > 0 && (!ball.owner || *ball.owner != slot)) {
         const Fixed64 back =

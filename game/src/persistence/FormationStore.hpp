@@ -56,13 +56,21 @@ struct DemoPlayer {
     std::string name;
     std::int32_t max_speed_cms = 600;
     std::int32_t concept_mask = -1;  // -1 = use the band bundle
+    // Mig 636 (G4.30): per-player attributes (-1 = band), the formation
+    // slot label he boots in ('SUB' = bench) and James's description.
+    core::PlayerAttributes attrs;
+    std::string position;
+    std::string description;
 };
 struct DemoTeam {
     std::string level_band;
     // Mig 631: the style preset this team WEARS — overlaid onto its
     // ratings at boot and after band changes. Empty = none.
     std::string style_preset;
-    std::vector<DemoPlayer> players;  // shirt order
+    // Mig 636: the club formation code this team plays (overrides
+    // GAME_FORMATION_*). Empty = the env's choice.
+    std::string formation_code;
+    std::vector<DemoPlayer> players;  // shirt order (1 = GK; past 11 = bench)
 };
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
                                      const std::string& team_name);

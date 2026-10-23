@@ -96,6 +96,10 @@ private:
     std::vector<std::string> slot_names_;
     std::vector<core::ConceptRatings> concept_ratings_;
     void applyRosters();
+    // G4.30: each rostered player's level = his team band bent by his
+    // attributes (core::levelForPlayer), into World + Brain. Re-run after
+    // every band change (MATCH_SETTINGS) — attributes are the roster's.
+    void applySlotLevels();
     // Overlay a roster's named style preset (mig 631) onto its team's
     // live ratings — at boot and after band resets.
     void overlayTeamPreset(bool home);

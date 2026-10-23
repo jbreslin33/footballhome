@@ -237,6 +237,10 @@ services:
       # boot (G4.2). POSTGRES_PASSWORD flows in via env_file.
       GAME_FORMATION_HOME: "4-4-2"
       GAME_FORMATION_AWAY: "4-3-3"
+      # Mig 636 (G4.30): real teams; each plays its own formation
+      # (game_demo_teams.formation_code) over the two lines above.
+      GAME_TEAM_HOME: "Lighthouse APSL"
+      GAME_TEAM_AWAY: "Ukrainian Nationals"
       # Skill bands (G4.3): u10|u14|amateur|semipro|pro|world|perfect.
       GAME_LEVEL_HOME: "semipro"
       GAME_LEVEL_AWAY: "semipro"

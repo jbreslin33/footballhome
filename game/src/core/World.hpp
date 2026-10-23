@@ -107,6 +107,18 @@ public:
     const LevelParams& level(std::uint8_t team) const {
         return level_[team & 1];
     }
+    // Per-player level (G4.30): the team band bent by that player's
+    // attributes (levelForPlayer). Unset slots use their team's band, so
+    // nothing changes until a roster carries attributes.
+    void setSlotLevel(SlotIndex slot, const LevelParams& params);
+    void clearSlotLevels() { slot_level_set_.assign(slot_level_set_.size(), 0); }
+    bool hasSlotLevel(SlotIndex slot) const {
+        return slot < slot_level_set_.size() && slot_level_set_[slot];
+    }
+    const LevelParams& levelOf(SlotIndex slot) const {
+        return hasSlotLevel(slot) ? slot_level_[slot]
+                                  : level_[players_[slot].team & 1];
+    }
     std::uint64_t matchSeed() const noexcept { return match_seed_; }
 
     // Advance one tick. Returns match events (usually empty).
@@ -175,6 +187,8 @@ private:
     math::Fixed64 turnover_ball_x_{};
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped
     LevelParams   level_[2];
+    std::vector<LevelParams>  slot_level_;
+    std::vector<std::uint8_t> slot_level_set_;
     std::uint64_t match_seed_ = 0;
 };
 

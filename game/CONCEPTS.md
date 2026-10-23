@@ -49,6 +49,16 @@ underfoot), `shield_ball` (body between man and ball), `scan_before_receive`
 (open body shape to play forward), `beat_man_1v1` (v1's Feint behavior,
 archived and tested).
 
+**Team, shape** — `match_up` [Bielsa; James 10/22: "us matching in our -1,
++1 bielsa system so would end up a 433 but flexible"]: read the opponent's
+shape and SET ours from it — +1 at the back (one more defender than their
+forwards: their lone 9 → our two CBs, one spare), man-oriented match-ups
+through the middle, -1 up top (one fewer attacker than their back line).
+Today that answer is hand-picked as the formation (APSL 4-3-3 vs the Ukies'
+4-2-3-1, mig 636); the concept makes the team derive and re-derive it live
+when the opponent changes shape — a recognition (`opponent_shape`) plus a
+team-layer response, rated per team.
+
 **Individual, defending** — `block_shot_line` (no delay within shooting
 range + a body in the lane; built in G4.22, parked on branch
 `game/g4-block-shot-wip` until ball-winning lands — DESIGN.md §8.17),

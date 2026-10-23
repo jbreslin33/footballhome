@@ -80,6 +80,20 @@ std::uint64_t canonicalHash(const World& world) {
         if (lv.keeper_fumble_pct != 0)
             mix(h, static_cast<std::uint64_t>(lv.keeper_fumble_pct));
     }
+    // G4.30 per-player levels: mixed only for slots that have one, so
+    // every band-only golden stays byte-identical.
+    for (SlotIndex s = 0; s < world.playerCount(); ++s) {
+        if (!world.hasSlotLevel(s)) continue;
+        const LevelParams& lv = world.levelOf(s);
+        mix(h, static_cast<std::uint64_t>(s));
+        mix(h, static_cast<std::uint64_t>(lv.kick_angle_err_deg));
+        mix(h, static_cast<std::uint64_t>(lv.kick_power_err_pct));
+        mix(h, static_cast<std::uint64_t>(lv.shot_angle_err_deg));
+        mix(h, static_cast<std::uint64_t>(lv.shot_power_err_pct));
+        mix(h, static_cast<std::uint64_t>(lv.control_speed_mps));
+        mix(h, static_cast<std::uint64_t>(lv.tackle_success_pct));
+        mix(h, static_cast<std::uint64_t>(lv.keeper_fumble_pct));
+    }
     return h;
 }
 

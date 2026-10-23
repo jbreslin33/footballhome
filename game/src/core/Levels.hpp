@@ -53,6 +53,11 @@ struct LevelParams {
     // Keeper handling (G4.23): percent of shot-speed balls a keeper
     // reaches that he fumbles. World-side, so it IS in the canonical hash.
     std::int32_t keeper_fumble_pct = 0;
+    // Shots (G4.30, per-player SHOOTING): angle / power error on Shot
+    // kicks. -1 = the kick_* errors above (every band row leaves these at
+    // -1, so a band alone shoots exactly as before).
+    std::int32_t shot_angle_err_deg = -1;
+    std::int32_t shot_power_err_pct = -1;
 
     bool isZero() const noexcept {
         return perception_delay_ticks == 0 && kick_angle_err_deg == 0 &&
@@ -89,6 +94,63 @@ inline LevelParams levelParams(std::string_view name) {
     if (name == "world")   return {1, 1, 2, 2, 18, 65, 0, 9, 2};
     return {};  // "perfect" and anything unknown: the zero baseline
 }
+
+// ── Per-player attributes (G4.30; DB registry game_attributes, mig 636) ─
+// 0-100 per player, 50 = the team's band EXACTLY, -1 = not rated (band).
+// Each attribute scales the band number(s) it names in game_attributes;
+// a player is his band, bent by his attributes [FH]. New attributes = a
+// registry row + a field here + the scaling below.
+struct PlayerAttributes {
+    std::int16_t pace = -1;          // top speed (paceSpeedCms)
+    std::int16_t passing = -1;       // kick angle/power error on passes
+    std::int16_t shooting = -1;      // shot angle/power error
+    std::int16_t first_touch = -1;   // control speed
+    std::int16_t tackling = -1;      // tackle success
+    std::int16_t anticipation = -1;  // perception delay
+    std::int16_t decisions = -1;     // decision jitter
+    std::int16_t goalkeeping = -1;   // keeper reaction + fumbles
+};
+
+// Error-type dials: x1.5 at 0, x1 at 50, x0.5 at 100 (rounded integer).
+inline std::int32_t scaleErrByRating(std::int32_t v, std::int16_t r) {
+    if (r < 0) return v;
+    return (v * (150 - r) + 50) / 100;
+}
+
+// The band bent by one player's attributes. Pure + integer, so per-player
+// levels stay deterministic; all -1 returns the band unchanged.
+inline LevelParams levelForPlayer(const LevelParams& band,
+                                  const PlayerAttributes& a) {
+    LevelParams p = band;
+    p.kick_angle_err_deg = scaleErrByRating(band.kick_angle_err_deg, a.passing);
+    p.kick_power_err_pct = scaleErrByRating(band.kick_power_err_pct, a.passing);
+    if (a.shooting >= 0) {
+        p.shot_angle_err_deg = scaleErrByRating(band.kick_angle_err_deg, a.shooting);
+        p.shot_power_err_pct = scaleErrByRating(band.kick_power_err_pct, a.shooting);
+    }
+    // Touch: gentler, x0.75 at 0 … x1.25 at 100 (a ball 25 % faster).
+    if (a.first_touch >= 0)
+        p.control_speed_mps =
+            (band.control_speed_mps * (150 + a.first_touch) + 100) / 200;
+    // Tackling: +/-30 points around the band, 5-95. A band with no dives
+    // (zero = perfect play) stays without them.
+    if (a.tackling >= 0 && band.tackle_success_pct > 0) {
+        std::int32_t t = band.tackle_success_pct + (a.tackling - 50) * 3 / 5;
+        p.tackle_success_pct = t < 5 ? 5 : (t > 95 ? 95 : t);
+    }
+    p.perception_delay_ticks =
+        scaleErrByRating(band.perception_delay_ticks, a.anticipation);
+    p.decision_jitter_pct =
+        scaleErrByRating(band.decision_jitter_pct, a.decisions);
+    p.keeper_reaction_ticks =
+        scaleErrByRating(band.keeper_reaction_ticks, a.goalkeeping);
+    p.keeper_fumble_pct = scaleErrByRating(band.keeper_fumble_pct, a.goalkeeping);
+    return p;
+}
+
+// Pace → top speed (cm/s): 5.4 m/s at 0, 6.4 at 50, 7.4 at 100 — APSL
+// legs, around the semipro demo rosters' 5.8-6.7.
+inline std::int32_t paceSpeedCms(std::int16_t pace) { return 540 + 2 * pace; }
 
 // ── Concept bits (game/CONCEPTS.md is the registry; append-only) ───────
 enum Concept : std::uint32_t {

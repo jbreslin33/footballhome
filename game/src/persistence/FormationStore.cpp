@@ -86,24 +86,55 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
         pqxx::connection conn{conn_str};
         pqxx::work tx{conn};
         const auto team = tx.exec_params(
-            "SELECT id, level_band, style_preset FROM game_demo_teams "
-            "WHERE name = $1",
+            "SELECT id, level_band, style_preset, formation_code "
+            "FROM game_demo_teams WHERE name = $1",
             team_name);
         if (team.empty()) return std::nullopt;
         DemoTeam out;
         out.level_band = team[0][1].as<std::string>();
         if (!team[0][2].is_null())
             out.style_preset = team[0][2].as<std::string>();
+        if (!team[0][3].is_null())
+            out.formation_code = team[0][3].as<std::string>();
+        const int team_id = team[0][0].as<int>();
         const auto rows = tx.exec_params(
-            "SELECT name, max_speed_cms, concept_mask FROM game_demo_players "
-            "WHERE team_id = $1 ORDER BY shirt",
-            team[0][0].as<int>());
+            "SELECT shirt, name, max_speed_cms, concept_mask, "
+            "       COALESCE(position, ''), COALESCE(description, '') "
+            "FROM game_demo_players WHERE team_id = $1 ORDER BY shirt",
+            team_id);
+        std::vector<int> shirts;
         for (const auto& r : rows) {
             DemoPlayer p;
-            p.name = r[0].as<std::string>();
-            p.max_speed_cms = r[1].as<std::int32_t>();
-            p.concept_mask = r[2].is_null() ? -1 : r[2].as<std::int32_t>();
+            shirts.push_back(r[0].as<int>());
+            p.name = r[1].as<std::string>();
+            p.max_speed_cms = r[2].as<std::int32_t>();
+            p.concept_mask = r[3].is_null() ? -1 : r[3].as<std::int32_t>();
+            p.position = r[4].as<std::string>();
+            p.description = r[5].as<std::string>();
             out.players.push_back(std::move(p));
+        }
+        // Mig 636 attributes, by registry code (unknown codes = rows for
+        // attributes this build doesn't wire yet: skipped).
+        const auto attrs = tx.exec_params(
+            "SELECT shirt, attribute, rating FROM game_demo_player_attributes "
+            "WHERE team_id = $1",
+            team_id);
+        for (const auto& r : attrs) {
+            const int shirt = r[0].as<int>();
+            const std::string code = r[1].as<std::string>();
+            const auto v = static_cast<std::int16_t>(r[2].as<int>());
+            for (std::size_t i = 0; i < shirts.size(); ++i) {
+                if (shirts[i] != shirt) continue;
+                core::PlayerAttributes& a = out.players[i].attrs;
+                if (code == "pace") a.pace = v;
+                else if (code == "passing") a.passing = v;
+                else if (code == "shooting") a.shooting = v;
+                else if (code == "first_touch") a.first_touch = v;
+                else if (code == "tackling") a.tackling = v;
+                else if (code == "anticipation") a.anticipation = v;
+                else if (code == "decisions") a.decisions = v;
+                else if (code == "goalkeeping") a.goalkeeping = v;
+            }
         }
         return out;
     } catch (const std::exception& e) {
