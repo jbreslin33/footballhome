@@ -43,7 +43,7 @@
               this.handlers.onPresets(GameWire.decodePresets(view, f.payloadAt));
           } else if (f.type === GameWire.FrameType.TEAMS) {
             if (this.handlers.onTeams)
-              this.handlers.onTeams(GameWire.decodeTeams(view, f.payloadAt));
+              this.handlers.onTeams(GameWire.decodeTeams(view, f.payloadAt, f.payloadLen));
           } else if (f.type === GameWire.FrameType.EVENT) {
             this.handlers.onEvent(GameWire.decodeEvent(view, f.payloadAt));
           }

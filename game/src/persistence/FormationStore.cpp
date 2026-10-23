@@ -86,7 +86,8 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
         pqxx::connection conn{conn_str};
         pqxx::work tx{conn};
         const auto team = tx.exec_params(
-            "SELECT id, level_band, style_preset, formation_code "
+            "SELECT id, level_band, style_preset, formation_code, "
+            "       kit_shirt, kit_shorts, kit_socks, kit_trim "
             "FROM game_demo_teams WHERE name = $1",
             team_name);
         if (team.empty()) return std::nullopt;
@@ -97,6 +98,14 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
             out.style_preset = team[0][2].as<std::string>();
         if (!team[0][3].is_null())
             out.formation_code = team[0][3].as<std::string>();
+        // '#rrggbb' → 0xRRGGBB (mig 639).
+        std::int32_t* kit[4] = {&out.kit_shirt, &out.kit_shorts, &out.kit_socks, &out.kit_trim};
+        for (int c = 0; c < 4; ++c) {
+            if (team[0][4 + c].is_null()) continue;
+            const std::string hex = team[0][4 + c].as<std::string>();
+            if (hex.size() == 7 && hex[0] == '#')
+                *kit[c] = static_cast<std::int32_t>(std::stol(hex.substr(1), nullptr, 16));
+        }
         const int team_id = team[0][0].as<int>();
         const auto rows = tx.exec_params(
             "SELECT shirt, name, max_speed_cms, concept_mask, "
@@ -136,6 +145,24 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
                 else if (code == "decisions") a.decisions = v;
                 else if (code == "goalkeeping") a.goalkeeping = v;
             }
+        }
+        // Mig 639 knowledge overrides, by concept NAME.
+        const auto cons = tx.exec_params(
+            "SELECT shirt, concept, rating FROM game_demo_player_concepts "
+            "WHERE team_id = $1",
+            team_id);
+        for (const auto& r : cons) {
+            const int shirt = r[0].as<int>();
+            const std::string name = r[1].as<std::string>();
+            int idx = -1;
+            for (int c = 0; c < core::kConceptCount; ++c)
+                if (name == core::kConceptNames[c]) idx = c;
+            if (idx < 0) continue;   // a concept this build doesn't know yet
+            const int v = r[2].as<int>();
+            for (std::size_t i = 0; i < shirts.size(); ++i)
+                if (shirts[i] == shirt)
+                    out.players[i].concepts.emplace_back(
+                        idx, static_cast<std::uint8_t>(v < 0 ? 0 : (v > 100 ? 100 : v)));
         }
         return out;
     } catch (const std::exception& e) {

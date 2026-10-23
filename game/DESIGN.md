@@ -1056,6 +1056,28 @@ player … this will be an attempt to start a game realistic for apsl".
   as UTF-8.
 - Next: the full Ukies roster, substitutes, the `match_up` concept.
 
+### 8.27 G4.31 — Lighthouse man-marks with a free +1; kits; the Medford XI
+
+James: "make lighthouse man mark with + 1 and -1 on center backs. make lh
+white socks, blue shorts blue shirts. ukies black socks white shorts and
+white shirts" … "use our lineup from last game vs medford".
+
+- **Per-player knowledge** (mig 639 `game_demo_player_concepts`, by
+  concept NAME) applies after the team's style preset — and after an
+  admin paints a preset — so a ROLE beats the identity. Lighthouse APSL:
+  every outfield player marking 90 + man-mark 90; one centre back marking
+  0 / man-mark 0 / cover 95 — the free man. The Brain's marking hand-out
+  now skips non-markers (rating 0), so nobody's man is spent on the spare:
+  vs the Ukies' lone 9 one CB takes him and one is free (+1); our front
+  three meet their back four (-1). Goldens + calibration unchanged.
+- **Kits** live on the team row (mig 639) and ride the TEAMS frame as
+  optional trailing bytes (older decoders stop after the names); the
+  client recolours and rebuilds the figures. Keepers keep their kit.
+- **The Medford XI** (mig 640): Lighthouse APSL reseated from the 10/21
+  game's Game Center lineup (match 9330), 4-4-2 labels mapped to the 4-3-3
+  (the second striker drops in as the third CM); attributes and
+  descriptions follow the person across the reseat.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

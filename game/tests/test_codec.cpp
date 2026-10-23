@@ -215,6 +215,25 @@ FH_TEST(teams_round_trip) {
     FH_EXPECT(d.has_value());
     FH_EXPECT(d->home == "Lighthouse APSL");
     FH_EXPECT(d->away == "Ukrainian Nationals");
+    FH_EXPECT(d->kit[0][0] == -1 && d->kit[1][3] == -1);   // no kits sent
+}
+
+FH_TEST(teams_kits_round_trip) {
+    TeamsFrame f{"Lighthouse APSL", "Ukrainian Nationals"};
+    f.kit[0][0] = 0x14326e; f.kit[0][2] = 0xf4f6fb;
+    f.kit[1][1] = 0xf4f6fb; f.kit[1][2] = 0x111111;
+    auto d = decodeTeams(encodeTeams(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT(d->kit[0][0] == 0x14326e && d->kit[0][1] == -1 && d->kit[0][2] == 0xf4f6fb);
+    FH_EXPECT(d->kit[1][1] == 0xf4f6fb && d->kit[1][2] == 0x111111);
+    // An older encoder (names only) still decodes: kits stay -1.
+    Bytes names_only;
+    for (const std::string s : {"A", "B"}) {
+        names_only.push_back(static_cast<std::uint8_t>(s.size()));
+        for (char c : s) names_only.push_back(static_cast<std::uint8_t>(c));
+    }
+    auto o = decodeTeams(names_only);
+    FH_EXPECT(o.has_value() && o->home == "A" && o->kit[0][0] == -1);
 }
 
 FH_TEST_MAIN()

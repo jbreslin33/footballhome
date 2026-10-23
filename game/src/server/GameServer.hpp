@@ -100,6 +100,7 @@ private:
     // attributes (core::levelForPlayer), into World + Brain. Re-run after
     // every band change (MATCH_SETTINGS) — attributes are the roster's.
     void applySlotLevels();
+    void applyPlayerConcepts(std::uint8_t slot);
     // Overlay a roster's named style preset (mig 631) onto its team's
     // live ratings — at boot and after band resets.
     void overlayTeamPreset(bool home);

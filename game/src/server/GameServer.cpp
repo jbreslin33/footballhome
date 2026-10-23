@@ -125,19 +125,30 @@ void GameServer::applyRosters() {
 void GameServer::overlayTeamPreset(bool home) {
     const persistence::DemoTeam& team =
         home ? cfg_.roster_home : cfg_.roster_away;
-    if (team.style_preset.empty()) return;
     const persistence::StylePreset* preset = nullptr;
     for (const auto& p : cfg_.presets) {
-        if (p.name == team.style_preset) { preset = &p; break; }
+        if (!team.style_preset.empty() && p.name == team.style_preset) { preset = &p; break; }
     }
-    if (!preset) return;  // preset table missing the name: quietly none
     const std::uint8_t half = cfg_.slot_count / 2;
     const std::uint8_t from = home ? 0 : half;
     const std::uint8_t to = home ? half : cfg_.slot_count;
     for (std::uint8_t sl = from; sl < to; ++sl) {
-        core::applyPresetOverlay(concept_ratings_[sl], preset->overlay);
+        if (preset) core::applyPresetOverlay(concept_ratings_[sl], preset->overlay);
+        applyPlayerConcepts(sl);
         brain_.setRatings(sl, concept_ratings_[sl]);
     }
+}
+
+// Mig 639 (G4.31): the rostered player's own knowledge overrides, after
+// the team preset — his ROLE (the spare centre back) beats the identity.
+void GameServer::applyPlayerConcepts(std::uint8_t sl) {
+    const std::uint8_t per_team = cfg_.slot_count / 2;
+    const bool home = sl < per_team;
+    const std::uint8_t k = home ? sl : sl - per_team;
+    const persistence::DemoTeam& team = home ? cfg_.roster_home : cfg_.roster_away;
+    if (k >= team.players.size()) return;
+    for (const auto& [idx, v] : team.players[k].concepts)
+        if (idx >= 0 && idx < core::kConceptCount) concept_ratings_[sl][idx] = v;
 }
 
 void GameServer::broadcastRoster() {
@@ -189,9 +200,19 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
                                         encodePresets(pf)));
     }
     // G4.30: which teams are playing — the editor's key into the club API.
-    transport_.send(id, encodeFrame(FrameType::Teams,
-                                    encodeTeams({cfg_.roster_home.name,
-                                                 cfg_.roster_away.name})));
+    {
+        TeamsFrame tf;
+        tf.home = cfg_.roster_home.name;
+        tf.away = cfg_.roster_away.name;
+        const persistence::DemoTeam* tt[2] = {&cfg_.roster_home, &cfg_.roster_away};
+        for (int t = 0; t < 2; ++t) {   // mig 639 kits
+            tf.kit[t][0] = tt[t]->kit_shirt;
+            tf.kit[t][1] = tt[t]->kit_shorts;
+            tf.kit[t][2] = tt[t]->kit_socks;
+            tf.kit[t][3] = tt[t]->kit_trim;
+        }
+        transport_.send(id, encodeFrame(FrameType::Teams, encodeTeams(tf)));
+    }
     broadcastRoster();  // names + knowledge for every client
 }
 
@@ -342,6 +363,7 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             const std::uint8_t to = ap->team == 0 ? half : cfg_.slot_count;
             for (std::uint8_t sl = from; sl < to; ++sl) {
                 core::applyPresetOverlay(concept_ratings_[sl], o);
+                applyPlayerConcepts(sl);   // roles survive a painted identity
                 brain_.setRatings(sl, concept_ratings_[sl]);
             }
             broadcastRoster();

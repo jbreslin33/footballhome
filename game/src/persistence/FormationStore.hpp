@@ -61,6 +61,9 @@ struct DemoPlayer {
     core::PlayerAttributes attrs;
     std::string position;
     std::string description;
+    // Mig 639 (G4.31): knowledge overrides — (concept index, 0-100),
+    // applied after the team's style preset (a role beats the identity).
+    std::vector<std::pair<int, std::uint8_t>> concepts;
 };
 struct DemoTeam {
     std::string name;  // game_demo_teams.name (the TEAMS frame)
@@ -71,6 +74,8 @@ struct DemoTeam {
     // Mig 636: the club formation code this team plays (overrides
     // GAME_FORMATION_*). Empty = the env's choice.
     std::string formation_code;
+    // Mig 639: kit colours 0xRRGGBB, -1 = the client's default.
+    std::int32_t kit_shirt = -1, kit_shorts = -1, kit_socks = -1, kit_trim = -1;
     std::vector<DemoPlayer> players;  // shirt order (1 = GK; past 11 = bench)
 };
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,

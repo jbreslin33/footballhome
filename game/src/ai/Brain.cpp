@@ -967,6 +967,10 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             for (SlotIndex d = 0; d < world.playerCount(); ++d) {
                 if (setup_.team_of_slot[d] != setup_.team_of_slot[slot])
                     continue;
+                // A teammate who doesn't mark (rating 0 — the free man,
+                // the +1 behind the duels [Bielsa]) takes nobody's man
+                // out of the hand-out (G4.31).
+                if (ratings_[d][1] == 0) continue;
                 if (teamCloserCount(d, world, seen_ball) < 2) continue;
                 SlotIndex pick = 255;
                 Fixed64 best{};

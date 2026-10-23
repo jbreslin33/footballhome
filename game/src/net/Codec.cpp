@@ -35,6 +35,7 @@ struct Reader {
         if (at + k > n) { ok = false; return false; }
         return true;
     }
+    std::size_t remaining() const { return at < n ? n - at : 0; }
     std::uint8_t u8() {
         if (!need(1)) return 0;
         return p[at++];
@@ -391,6 +392,14 @@ Bytes encodeTeams(const TeamsFrame& f) {
         w.u8(static_cast<std::uint8_t>(len));
         for (std::size_t i = 0; i < len; ++i) w.u8(static_cast<std::uint8_t>((*n)[i]));
     }
+    for (int t = 0; t < 2; ++t)
+        for (int c = 0; c < 4; ++c) {
+            const std::int32_t v = f.kit[t][c];
+            w.u8(v < 0 ? 0 : 1);
+            w.u8(static_cast<std::uint8_t>((v >> 16) & 0xff));
+            w.u8(static_cast<std::uint8_t>((v >> 8) & 0xff));
+            w.u8(static_cast<std::uint8_t>(v & 0xff));
+        }
     return std::move(w.out);
 }
 
@@ -402,6 +411,14 @@ std::optional<TeamsFrame> decodeTeams(const Bytes& payload) {
         for (std::uint8_t k = 0; k < len && r.ok; ++k) n->push_back(static_cast<char>(r.u8()));
     }
     if (!r.ok) return std::nullopt;
+    // Kits are optional trailing bytes (G4.31).
+    if (r.remaining() >= 32) {
+        for (int t = 0; t < 2; ++t)
+            for (int c = 0; c < 4; ++c) {
+                const std::uint8_t on = r.u8(), rr = r.u8(), gg = r.u8(), bb = r.u8();
+                f.kit[t][c] = on ? (rr << 16) | (gg << 8) | bb : -1;
+            }
+    }
     return f;
 }
 

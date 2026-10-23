@@ -126,7 +126,7 @@
   }
 
   // 1.5: the two teams playing (game_demo_teams names), UTF-8.
-  function decodeTeams(view, at) {
+  function decodeTeams(view, at, payloadLen) {
     let p = at;
     const out = [];
     for (let t = 0; t < 2; t++) {
@@ -134,7 +134,22 @@
       out.push(utf8.decode(new Uint8Array(view.buffer, view.byteOffset + p, len)));
       p += len;
     }
-    return { home: out[0], away: out[1] };
+    // G4.31: optional trailing kits — per team shirt/shorts/socks/trim,
+    // each u8 present + r g b.
+    const kits = [null, null];
+    if (payloadLen != null && p + 32 <= at + payloadLen) {
+      for (let t = 0; t < 2; t++) {
+        const k = {};
+        for (const part of ['shirt', 'shorts', 'socks', 'trim']) {
+          const on = view.getUint8(p);
+          const rgb = (view.getUint8(p + 1) << 16) | (view.getUint8(p + 2) << 8) | view.getUint8(p + 3);
+          p += 4;
+          if (on) k[part] = rgb;
+        }
+        kits[t] = k;
+      }
+    }
+    return { home: out[0], away: out[1], kits };
   }
 
   // 1.5 admin: one slot's attributes (ATTRIBUTES order; null = unrated → 255).

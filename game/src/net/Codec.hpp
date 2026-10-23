@@ -187,6 +187,9 @@ std::optional<PlayerAttributesFrame> decodePlayerAttributes(const Bytes& payload
 struct TeamsFrame {
     std::string home;
     std::string away;
+    // G4.31 (1.5, trailing — older decoders stop after the names): kit
+    // colours per team, shirt / shorts / socks / trim, 0xRRGGBB or -1.
+    std::int32_t kit[2][4] = {{-1, -1, -1, -1}, {-1, -1, -1, -1}};
 };
 Bytes encodeTeams(const TeamsFrame& f);
 std::optional<TeamsFrame> decodeTeams(const Bytes& payload);

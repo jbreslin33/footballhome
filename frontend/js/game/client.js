@@ -306,6 +306,11 @@
     },
     onTeams(t) {
       teams = t;
+      // The teams' own kits (mig 639): recolour and rebuild the figures.
+      if (t.kits && (t.kits[0] || t.kits[1])) {
+        PlayerFigure.setKits(t.kits[0], t.kits[1]);
+        for (const f of (renderer.figures || [])) f.build(f.home, f.keeper);
+      }
     },
     onPresets(names) {
       presets = names;

@@ -353,5 +353,12 @@
     }
   }
 
+  // Team kits from the DB (mig 639, TEAMS frame): { shirt, shorts, socks,
+  // trim } per side, outfield only (keepers keep their contrasting kit).
+  // Callers rebuild existing figures afterwards.
+  PlayerFigure.setKits = (home, away) => {
+    if (home) Object.assign(KIT.home, home);
+    if (away) Object.assign(KIT.away, away);
+  };
   window.PlayerFigure = PlayerFigure;
 })();
