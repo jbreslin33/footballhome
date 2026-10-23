@@ -2,7 +2,10 @@
 
 #include "ai/Concept.hpp"
 
+#include "core/Clock.hpp"
 #include "math/FixedMath.hpp"
+
+#include <optional>
 
 namespace fh::game::ai {
 
@@ -25,6 +28,8 @@ void Libero::configure(const core::ModelParams& p) {
     lead_s_ = p.fixed(key("long_ball_lead_s"), 800);
     long_ball_z_ = p.fixed(key("long_ball_height_m"), 1000);
     level_ = p.fixed(key("level_offset_m"), 500);
+    lapse_window_ticks_ = p.integer(key("lapse_window_s"), 3) * core::kTickRate;
+    if (lapse_window_ticks_ < 1) lapse_window_ticks_ = 1;
 }
 
 Vec2 Libero::target(const ConceptContext& c, bool can_play_long) const {
@@ -51,6 +56,78 @@ Vec2 Libero::target(const ConceptContext& c, bool can_play_long) const {
     if (y > lateral_max_) y = lateral_max_;
     if (y < -lateral_max_) y = -lateral_max_;
     return Vec2{depth * s, y};
+}
+
+// ── DeepSweeper / StepOut (the libero's lapses, G4.46) ──────────────────
+namespace {
+// x · s of the deepest outfield teammate (own goal negative).
+Fixed64 deepestMate(const ConceptContext& c, Fixed64 s) {
+    const auto& w = c.world;
+    const auto& me = w.player(c.slot);
+    Fixed64 deepest = Fixed64::fromInt(1000);
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
+        if (j == c.slot || w.player(j).team != me.team || w.isKeeper(j)) continue;
+        const Fixed64 d = w.player(j).pos.x * s;
+        if (d < deepest) deepest = d;
+    }
+    return deepest;
+}
+Fixed64 clampY(Fixed64 y, Fixed64 m) { return y > m ? m : (y < -m ? -m : y); }
+}  // namespace
+
+void DeepSweeper::configure(const core::ModelParams& p) {
+    depth_ = p.fixed(key("depth_m"), 4000);
+    follow_ = p.fixed(key("lateral_follow"), 1000);
+    lateral_max_ = p.fixed(key("lateral_max_m"), 19000);
+    lead_s_ = p.fixed(key("long_ball_lead_s"), 800);
+    long_ball_z_ = p.fixed(key("long_ball_height_m"), 1000);
+}
+
+Vec2 DeepSweeper::target(const ConceptContext& c) const {
+    const auto& ball = c.world.ball();
+    const Fixed64 s = c.sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    if (!ball.owner && ball.pos.z > long_ball_z_ && ball.vel.x * s < Fixed64::zero())
+        return Vec2{ball.pos.x + ball.vel.x * lead_s_, ball.pos.y + ball.vel.y * lead_s_};
+    Fixed64 depth = deepestMate(c, s) - depth_;
+    const Fixed64 floor_x = -(c.half_x - Fixed64::fromInt(6));
+    if (depth < floor_x) depth = floor_x;
+    return Vec2{depth * s, clampY(c.seen_ball.y * follow_, lateral_max_)};
+}
+
+void StepOut::configure(const core::ModelParams& p) {
+    reach_ = p.fixed(key("reach_m"), 20000);
+    channel_ = p.fixed(key("channel_m"), 13600);
+    gap_ = p.fixed(key("goal_side_m"), 1500);
+    step_ = p.fixed(key("step_m"), 6000);
+    follow_ = p.fixed(key("lateral_follow"), 1000);
+    lateral_max_ = p.fixed(key("lateral_max_m"), 19000);
+}
+
+Vec2 StepOut::target(const ConceptContext& c) const {
+    const auto& w = c.world;
+    const auto& me = w.player(c.slot);
+    const Fixed64 s = c.sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 line = deepestMate(c, s);
+    const Fixed64 my_y = clampY(c.seen_ball.y * follow_, lateral_max_);
+    // The man between the lines in his channel: ahead of our line, within
+    // reach, nearest across.
+    std::optional<core::SlotIndex> best;
+    Fixed64 best_dy = Fixed64::fromInt(1000);
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
+        const auto& o = w.player(j);
+        if (o.team == me.team || w.isKeeper(j)) continue;
+        const Fixed64 ahead = o.pos.x * s - line;
+        if (ahead < Fixed64::zero() || ahead > reach_) continue;
+        const Fixed64 dy = math::fx_abs(o.pos.y - my_y);
+        if (dy > channel_ || dy >= best_dy) continue;
+        best_dy = dy;
+        best = j;
+    }
+    if (best) {
+        const auto& o = w.player(*best);
+        return Vec2{o.pos.x - gap_ * s, o.pos.y};
+    }
+    return Vec2{(line + step_) * s, my_y};
 }
 
 // ── CoverShadow ─────────────────────────────────────────────────────────

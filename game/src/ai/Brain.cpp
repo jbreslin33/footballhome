@@ -1042,14 +1042,32 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
 
         // libero (bit 26, G4.33) [Bielsa's +1; James: "free libero follow
         // ball but set themselves ready for long ball"] — ai::Libero.
-        if (ratings_[slot][26] > 0 && applies(slot, 26, world.tickCount() / 30)) {
+        // G4.46: the roll is per lapse window; a failed roll is a LAPSE into
+        // the neighbour concept he's best at (sweeping too deep / stepping
+        // out too high), not the generic brain.
+        if (ratings_[slot][26] > 0) {
             const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
                                     half_x_, degree(slot, 26)};
-            const Vec2 lt = book_.libero.target(cx, !book_.line_step.covered(cx));
-            out.move.move = seek(me.pos, lt, Fixed64::fromFraction(1, 2));
-            out.why = Why::Libero;
-            out.target = lt;
-            return out;
+            const std::uint64_t win = world.tickCount() / book_.libero.lapseWindowTicks();
+            std::optional<Vec2> lt;
+            if (applies(slot, 26, win)) {
+                lt = book_.libero.target(cx, !book_.line_step.covered(cx));
+                out.why = Why::Libero;
+            } else {
+                const int to = lapse(slot, 26, win);
+                if (to == book_.deep_sweeper.bit()) {
+                    lt = book_.deep_sweeper.target(cx);
+                    out.why = Why::LapseDeep;
+                } else if (to == book_.step_out.bit()) {
+                    lt = book_.step_out.target(cx);
+                    out.why = Why::LapseStepOut;
+                }
+            }
+            if (lt) {
+                out.move.move = seek(me.pos, *lt, Fixed64::fromFraction(1, 2));
+                out.target = *lt;
+                return out;
+            }
         }
 
         // balance (G4.11, FA principles): ball on the FAR side → the

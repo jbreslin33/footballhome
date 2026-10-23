@@ -266,6 +266,10 @@ std::optional<core::ConceptRegistry> loadConcepts(const DbConfig& cfg) {
             reg.add(r[0].as<int>(), r[1].as<std::string>(),
                     core::levelRank(r[2].as<std::string>()), r[3].as<bool>());
         if (reg.size() == 0) return std::nullopt;
+        for (const auto& r : tx.exec(
+                 "SELECT concept_id, other_id FROM game_concept_links "
+                 "WHERE kind = 'lapses-to' ORDER BY concept_id, other_id"))
+            reg.addLapse(r[0].as<int>(), r[1].as<int>());
         return reg;
     } catch (const std::exception& e) {
         std::fprintf(stderr, "fh-game: game_concepts load failed (builtin curriculum): %s\n", e.what());

@@ -1370,6 +1370,31 @@ players who have it, don't inflate the model.
 - Measured (real matchup, 60): −0.55 → line rule −0.23 → line + channels
   **+0.25 ± 0.22** (W24 D19 L17).
 
+### 8.41 G4.46 — lapses: failing a concept = drifting into a neighbour
+
+- James: "a bad libero will lag behind the line too much and also get
+  caught too high up" … "they drift into another concept not in the game
+  model … a concept that is good in other systems". So there are no "bad"
+  concepts. `game_concept_links` gains kind **lapses-to** (mig 668): when a
+  player fails his ability roll on a demanded concept he plays one of its
+  lapse neighbours, picked in proportion to his own ABILITY on each (his
+  habit — `Brain::setHabits` gets ability before the model's demand;
+  `Brain::lapse`). No neighbour known → the old fall-through. `[FH]`
+- The libero's roll is per 3 s window (`lapse_window_s`), so a lapse lasts
+  long enough to cost. His lapses, both right elsewhere:
+  - **deep-sweeper** (149, `ai::DeepSweeper`) [catenaccio]: always 4 m
+    behind the line — "lapse: sweeping too deep" in the overlay;
+  - **step-out** (150, `ai::StepOut`) [Gasperini]: out to the man between
+    the lines in his channel, else 6 m off the line — "lapse: stepped out
+    too high".
+- Measured (real matchup, 60): Lighthouse's libero (ability 64) lapses about
+  a third of the time: +0.25 → **−0.27 ± 0.19**; with no libero +0.22. At
+  his level the game now says play a flat back four, or coach the libero
+  (demand − ability = 36 to coach).
+- Next: the same mechanism for techniques and decisions (Football Manager
+  style tendencies) — a pass-choice lapse into the neighbour pass type he
+  prefers.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

@@ -45,11 +45,17 @@ public:
     bool isStyle(int id) const;
     // What a team asks of a concept when its game model doesn't say.
     int defaultDemand(int id) const { return isStyle(id) ? 0 : 100; }
+    // Lapses (G4.46, game_concept_links kind 'lapses-to'): what a player
+    // drifts into when he fails his roll on `id` — a neighbour concept that
+    // is right in another system, never a "bad" one.
+    void addLapse(int id, int to);
+    const std::vector<int>& lapses(int id) const;
 
 private:
     std::vector<std::string> names_;
     std::vector<int> taught_from_;
     std::vector<char> style_;
+    std::vector<std::vector<int>> lapses_;
 };
 
 // The registry in force (builtin until the daemon loads the DB at boot).

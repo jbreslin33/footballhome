@@ -26,6 +26,7 @@
 #include "core/World.hpp"
 #include "math/Vec3.hpp"
 
+#include <cstdint>
 #include <optional>
 #include <string>
 
@@ -75,9 +76,45 @@ public:
     // Where he should be (their ball). Never empty. can_play_long = their
     // carrier is free to play forward (LineStep::covered() is false).
     math::Vec2 target(const ConceptContext& c, bool can_play_long) const;
+    // How long one lapse lasts: the ability roll is per window, so a
+    // switched-off libero stays switched off a few seconds (mig 668).
+    std::int32_t lapseWindowTicks() const { return lapse_window_ticks_; }
 
 private:
     math::Fixed64 depth_min_, depth_span_, follow_, lateral_max_, lead_s_, long_ball_z_, level_;
+    std::int32_t lapse_window_ticks_ = 90;
+};
+
+// The libero's two LAPSES (G4.46, mig 668). James: "a bad libero will lag
+// behind the line too much and also get caught too high up" / "they drift
+// into another concept not in the game model … which is a concept that is
+// good in other systems". No "bad" concepts: each is right somewhere.
+//
+// Deep sweeper — catenaccio's libero [Herrera/Rocco]: always a few metres
+// BEHIND the line, ball covered or not; right in a deep block against pace,
+// wrong behind a stepping line (he plays everyone onside).
+class DeepSweeper : public Concept {
+public:
+    DeepSweeper() : Concept("deep-sweeper", 149) {}
+    void configure(const core::ModelParams& p) override;
+    math::Vec2 target(const ConceptContext& c) const;
+
+private:
+    math::Fixed64 depth_, follow_, lateral_max_, lead_s_, long_ball_z_;
+};
+
+// Step out — the front-foot defender [Gasperini/Bielsa man-orientation]:
+// leaves the line to engage the man receiving between the lines, in his
+// channel; right in an aggressive man-oriented press, wrong as the spare
+// man (he's caught high when the ball goes in behind).
+class StepOut : public Concept {
+public:
+    StepOut() : Concept("step-out", 150) {}
+    void configure(const core::ModelParams& p) override;
+    math::Vec2 target(const ConceptContext& c) const;
+
+private:
+    math::Fixed64 reach_, channel_, gap_, step_, follow_, lateral_max_;
 };
 
 // The 9's press on their building centre back [Bielsa]: run at him along
@@ -203,6 +240,8 @@ struct ConceptBook {
     PassLadder pass_ladder;
     BlindSideRun blind_side_run;
     ReleaseTiming release_timing;
+    DeepSweeper deep_sweeper;
+    StepOut step_out;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -211,6 +250,8 @@ struct ConceptBook {
         pass_ladder.configure(p);
         blind_side_run.configure(p);
         release_timing.configure(p);
+        deep_sweeper.configure(p);
+        step_out.configure(p);
     }
 };
 

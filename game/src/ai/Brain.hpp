@@ -41,13 +41,14 @@ enum class Why : std::uint8_t {
     Hold, Shoot, Pass, PassLadder, OverTop, Recycle, KeeperPunt, Dribble, Clear,
     KeeperSweep, KeeperPosition, CoverShadow, CounterPress, Tackle, Recover,
     Press, Chase, Delay, Libero, Mark, GiveAndGo, BlindSideRun, RunInBehind,
-    Outlet, Support, Human, WaitForRunner,
+    Outlet, Support, Human, WaitForRunner, LapseDeep, LapseStepOut,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
     "keeper sweep", "keeper position", "cover shadow", "counter-press", "tackle", "recover goal-side",
     "press", "chase ball", "delay", "libero", "mark", "give and go", "blind-side run", "run in behind",
     "outlet", "support", "human", "wait for the runner",
+    "lapse: sweeping too deep", "lapse: stepped out too high",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -108,6 +109,12 @@ public:
     void setRatings(core::SlotIndex slot, const core::ConceptRatings& r) {
         if (slot < ratings_.size()) ratings_[slot] = r;
     }
+    // What he KNOWS (ability, before the game model's demand): his habits —
+    // a lapse picks the neighbour concept he's best at (G4.46).
+    void setHabits(core::SlotIndex slot, const core::ConceptRatings& r) {
+        if (habits_.size() <= slot) habits_.resize(slot + 1u, core::ConceptRatings{});
+        habits_[slot] = r;
+    }
     const core::ConceptRatings& ratings(core::SlotIndex slot) const {
         return ratings_[slot];
     }
@@ -138,6 +145,7 @@ private:
     std::vector<std::uint8_t>       slot_level_set_;
     std::uint64_t match_seed_ = 0;
     std::vector<core::ConceptRatings> ratings_;
+    std::vector<core::ConceptRatings> habits_;
     // Graded application: does slot APPLY concept (bit index) this tick?
     // Consistency roll — deterministic noise vs the rating.
     bool applies(core::SlotIndex slot, int concept_idx,
@@ -149,6 +157,24 @@ private:
                                       static_cast<std::uint8_t>(32 + concept_idx));
         return (n + math::Fixed64::one()) <
                math::Fixed64::fromFraction(r, 50);
+    }
+    // The concept slot lapses into when his roll on concept_idx fails
+    // (G4.46): one of its 'lapses-to' neighbours, weighted by his ability on
+    // each; -1 = none known (he falls through to the generic brain).
+    int lapse(core::SlotIndex slot, int concept_idx, std::uint64_t window) const {
+        if (slot >= habits_.size()) return -1;
+        int total = 0;
+        for (int to : core::concepts().lapses(concept_idx)) total += habits_[slot][to];
+        if (total <= 0) return -1;
+        const auto n = core::detNoise(match_seed_, window, slot, static_cast<std::uint8_t>(240));
+        // n in [-1, 1) → a pick in [0, total).
+        int pick = static_cast<int>((((n + math::Fixed64::one()) * total) / 2).raw >>
+                                    math::Fixed64::FRAC_BITS);
+        for (int to : core::concepts().lapses(concept_idx)) {
+            pick -= habits_[slot][to];
+            if (pick < 0) return to;
+        }
+        return -1;
     }
     // counter_attack (bit 23, G4.18): is slot's team inside its fast-break
     // window — ball won from the opponent IN OUR OWN HALF, within

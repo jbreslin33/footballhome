@@ -85,6 +85,27 @@ FH_TEST(libero_sits_behind_the_deepest_teammate_on_the_ball_side) {
     FH_EXPECT(on_line.x == -Fixed64::fromFraction(41, 2));
 }
 
+FH_TEST(libero_lapses_too_deep_or_too_high) {
+    auto w = pitch();
+    w.placePlayer(0, at(-30, 0), kFacePlus);   // the free man
+    w.placePlayer(1, at(-20, 5), kFacePlus);   // deepest teammate: the line
+    w.placePlayer(2, at(-8, 3), kFaceMinus);   // their 10, between the lines
+    w.placePlayer(3, at(10, 0), kFaceMinus);
+    const auto c = ctx(w, 0, +1, Vec2{Fixed64::zero(), Fixed64::zero()}, 100);
+    // Too deep: 4 m behind the line whatever the ball.
+    ai::DeepSweeper deep;
+    deep.configure(core::ModelParams{});
+    FH_EXPECT(deep.target(c).x == Fixed64::fromInt(-24));
+    // Too high: out to their 10, 1.5 m goal-side of him.
+    ai::StepOut out;
+    out.configure(core::ModelParams{});
+    const Vec2 t = out.target(c);
+    FH_EXPECT(t.x == -Fixed64::fromFraction(19, 2) && t.y == Fixed64::fromInt(3));
+    // Nobody between the lines: he still steps 6 m off the line.
+    w.placePlayer(2, at(10, 20), kFaceMinus);
+    FH_EXPECT(out.target(ctx(w, 0, +1, Vec2{Fixed64::zero(), Fixed64::zero()}, 100)).x == Fixed64::fromInt(-14));
+}
+
 FH_TEST(cover_shadow_stands_on_the_lane_to_the_receiver) {
     auto w = pitch();
     w.placePlayer(0, at(10, 10), kFacePlus);    // our 9

@@ -12,6 +12,7 @@ ConceptRegistry& active() {
     return r;
 }
 const std::string kNoName;
+const std::vector<int> kNoLapses;
 }  // namespace
 
 int levelRank(const std::string& level) {
@@ -63,6 +64,16 @@ void ConceptRegistry::add(int id, std::string name, int taught_from_rank, bool s
     names_[id] = std::move(name);
     taught_from_[id] = taught_from_rank;
     style_[id] = style ? 1 : 0;
+}
+
+void ConceptRegistry::addLapse(int id, int to) {
+    if (id < 0 || id >= size() || to < 0 || to >= size() || id == to) return;
+    if (lapses_.size() < names_.size()) lapses_.resize(names_.size());
+    lapses_[id].push_back(to);
+}
+
+const std::vector<int>& ConceptRegistry::lapses(int id) const {
+    return id >= 0 && id < static_cast<int>(lapses_.size()) ? lapses_[id] : kNoLapses;
 }
 
 int ConceptRegistry::find(const std::string& name) const {

@@ -156,6 +156,7 @@ void GameServer::recomputeKnowledge(bool home) {
     for (std::uint8_t sl = from; sl < to; ++sl) {
         concept_ratings_[sl] = core::effectiveRatings(ability_[sl], demand);
         brain_.setRatings(sl, concept_ratings_[sl]);
+        brain_.setHabits(sl, ability_[sl]);
     }
 }
 
