@@ -271,4 +271,26 @@ std::optional<Vec2> BlindSideRun::target(const ConceptContext& c) const {
     return Vec2{depth * s, shoulder_y * channel_pull_};
 }
 
+// ── ReleaseTiming ───────────────────────────────────────────────────────
+void ReleaseTiming::configure(const core::ModelParams& p) {
+    approach_ = p.fixed(key("approach_m"), 15000);
+    runner_speed_ = p.fixed(key("runner_speed_mps"), 4000);
+}
+
+bool ReleaseTiming::hold(const core::World& w, core::SlotIndex carrier, int sign,
+                         const PassLadder::Lines& l, const PassLadder&) const {
+    const Fixed64 s = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    const auto& car = w.player(carrier);
+    for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
+        const auto& m = w.player(j);
+        if (j == carrier || m.team != car.team || w.isKeeper(j)) continue;
+        const Fixed64 prog = m.pos.x * s;
+        if (prog > l.offside) continue;                       // already offside: no
+        if (l.offside - prog > approach_) continue;           // not near the line yet
+        if (m.vel.x * s < runner_speed_) continue;            // not attacking it
+        return true;
+    }
+    return false;
+}
+
 }  // namespace fh::game::ai

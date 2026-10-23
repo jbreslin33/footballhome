@@ -1334,6 +1334,26 @@ players who have it, don't inflate the model.
   blind-side run off: −1.53 ± 0.25 — it still costs ~0.4 a match until
   release timing lands.
 
+### 8.39 G4.44 — no inflated role rows; release timing built, parked
+
+- **Role rows** (backend `GameRoster::afterLineup`, mig 662): the lineup
+  roles write only WHO holds a role — the free CB (libero at his own
+  quality, marking / man-mark 0) and the starting 9 (cover-shadow at his
+  quality) — never marking 90 / line-step 68 / cover 95. Live after the
+  fix: Lighthouse 20-13-27, −0.55 ± 0.29 (60 matches).
+- **What the real matchup says about Lighthouse's concepts** (60 each):
+  without the libero +0.22 (he HURTS — he sits 2-5 m behind the line and
+  plays everyone onside); without the line step −1.93; without the 9's
+  cover shadow −1.23; without the blind-side run −0.19 (it still costs).
+- **Release timing** (`ai::ReleaseTiming`, curriculum id 60): an unpressed
+  carrier holds — at a walking carry — while a teammate attacks their line
+  (onside, ≥ 4 m/s, within 15 m), and plays only the ball in behind (ladder
+  rungs 1-2) once it is on; "wait for the runner" in the overlay. Measured:
+  neutral for Lighthouse, costs the Ukies ~0.6 a match (neither −0.55, LH
+  only −0.47, Ukies only +0.13, both +0.02) — so it is PARKED (mig 664: not
+  known by default). The blocker is the receiving end: the ball in behind
+  still rarely reaches a runner behind the line.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

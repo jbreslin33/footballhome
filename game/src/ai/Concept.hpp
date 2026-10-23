@@ -169,6 +169,23 @@ private:
     int max_runners_ = 2;
 };
 
+// Release timing [Bielsa-Leeds f54/f67/f71] — the passer's half of the
+// blind-side run (G4.44): a teammate is attacking their line — onside,
+// moving forward at pace, within approach_m of it — so an unpressed carrier
+// HOLDS the ball (keeps carrying) and plays only the ball in behind (ladder
+// rungs 1-2) once it is on: his lead point beyond the line, in range, lane
+// open. A runner who slows, or runs offside, ends the hold. Curriculum id 60.
+class ReleaseTiming : public Concept {
+public:
+    ReleaseTiming() : Concept("release-timing", 60) {}
+    void configure(const core::ModelParams& p) override;
+    bool hold(const core::World& w, core::SlotIndex carrier, int sign,
+              const PassLadder::Lines& l, const PassLadder& ladder) const;
+
+private:
+    math::Fixed64 approach_, runner_speed_;
+};
+
 // The class-based concepts a Brain carries.
 struct ConceptBook {
     Libero libero;
@@ -176,6 +193,7 @@ struct ConceptBook {
     LineStep line_step;
     PassLadder pass_ladder;
     BlindSideRun blind_side_run;
+    ReleaseTiming release_timing;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -183,6 +201,7 @@ struct ConceptBook {
         line_step.configure(p);
         pass_ladder.configure(p);
         blind_side_run.configure(p);
+        release_timing.configure(p);
     }
 };
 

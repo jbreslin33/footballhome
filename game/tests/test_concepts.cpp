@@ -287,4 +287,38 @@ FH_TEST(the_curriculum_grows_by_rows_past_32_concepts) {
     core::setConcepts(core::ConceptRegistry::builtin());
 }
 
+FH_TEST(release_timing_holds_for_the_runner_then_lets_it_go) {
+    LadderRig g;
+    g.carry(5, 0);
+    g.w.placePlayer(1, at(15, -6), kFacePlus);    // a pocket pass, 10 m on (rung 3)
+    g.w.placePlayer(2, at(12, 12), kFacePlus);    // the runner, 8 m short of their line,
+    g.w.placeVelocity(2, at(5, 0));               // attacking it at 5 m/s
+    g.w.placePlayer(3, at(-20, 0), kFacePlus);
+    g.w.placePlayer(4, at(20, -8), kFaceMinus);   // their line x 20
+    g.w.placePlayer(5, at(20, 2), kFaceMinus);
+    g.w.placePlayer(6, at(-5, -25), kFaceMinus);
+    g.w.placePlayer(7, at(-5, 25), kFaceMinus);
+    auto orders = [&](int release) {
+        core::ConceptRatings r{};
+        r[29] = 100;                               // pass ladder
+        r[60] = static_cast<std::uint8_t>(release);
+        g.brain.setRatings(0, r);
+        return g.brain.ordersFor(0, g.w);
+    };
+    // Without it: the ladder plays the pocket pass now.
+    FH_EXPECT(orders(0).action == core::Action::ShortPass);
+    // With it: hold — his ball in behind isn't on yet (lead x ~19.3).
+    const auto held = orders(100);
+    FH_EXPECT(held.action == core::Action::None && held.why == ai::Why::WaitForRunner);
+    // Closer and faster: his lead is beyond the line — the ball in behind goes to him.
+    g.w.placePlayer(2, at(16, 12), kFacePlus);
+    g.w.placeVelocity(2, at(7, 0));
+    const auto go = orders(100);
+    FH_EXPECT(go.action != core::Action::None && go.other == 2 && go.rung >= 1 && go.rung <= 2);
+    // A runner who stops ends the hold: the passer plays on.
+    g.w.placeVelocity(2, at(0, 0));
+    const auto on = orders(100);
+    FH_EXPECT(on.action != core::Action::None && on.why != ai::Why::WaitForRunner);
+}
+
 FH_TEST_MAIN()

@@ -41,13 +41,13 @@ enum class Why : std::uint8_t {
     Hold, Shoot, Pass, PassLadder, OverTop, Recycle, KeeperPunt, Dribble, Clear,
     KeeperSweep, KeeperPosition, CoverShadow, CounterPress, Tackle, Recover,
     Press, Chase, Delay, Libero, Mark, GiveAndGo, BlindSideRun, RunInBehind,
-    Outlet, Support, Human,
+    Outlet, Support, Human, WaitForRunner,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
     "keeper sweep", "keeper position", "cover shadow", "counter-press", "tackle", "recover goal-side",
     "press", "chase ball", "delay", "libero", "mark", "give and go", "blind-side run", "run in behind",
-    "outlet", "support", "human",
+    "outlet", "support", "human", "wait for the runner",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 

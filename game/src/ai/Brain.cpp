@@ -370,8 +370,14 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // a high enough rung at once. Rolls per second like safe_pass.
         const bool ladder =
             ratings_[slot][29] > 0 && applies(slot, 29, world.tickCount() / 30);
-        const auto lines = ladder ? book_.pass_ladder.lines(world, slot, sign)
-                                  : PassLadder::Lines{};
+        // release_timing (id 60, G4.44) [Bielsa-Leeds f54/67/71]: an
+        // unpressed carrier holds for a teammate about to break the line.
+        const bool release = ratings_[slot][60] > 0 && !pressed && !im_keeper &&
+                             applies(slot, 60, world.tickCount() / 30);
+        const auto lines = (ladder || release) ? book_.pass_ladder.lines(world, slot, sign)
+                                               : PassLadder::Lines{};
+        const bool holding = release &&
+            book_.release_timing.hold(world, slot, sign, lines, book_.pass_ladder);
         int best_rung = 0;
         bool have_target = false;
         Fixed64 best_progress{};
@@ -436,7 +442,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         const bool ladder_fires =
             ladder && best_rung > 0 &&
             best_rung <= book_.pass_ladder.fireRung(degree(slot, 29));
-        if (have_target &&
+        // Holding for a runner: only the ball in behind (rungs 1-2) may go.
+        const bool in_behind = ladder && best_rung >= 1 && best_rung <= 2;
+        if (have_target && !(holding && !in_behind) &&
             (pressed || im_keeper || ladder_fires ||
              best_progress - my_progress > kEagerGain * jitter * gain_scale)) {
             out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
@@ -540,6 +548,12 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // 858 of world's 989 lost kicks per match (G4.19 A/B: without
         // it, possessions 5.1 s → 12.2 s).
         out.move.move = seek(me.pos, goal, kArriveRadius);
+        // Holding for a runner (release_timing): slow the ball down — a
+        // walking carry keeps it, a sprint into the block loses it.
+        if (holding) {
+            const Fixed64 walk = Fixed64::fromFraction(35, 100);
+            out.move.move = Vec2{out.move.move.x * walk, out.move.move.y * walk};
+        }
         const bool keeps_it =
             reads && me.pos.x * sgn > -half_x_ + Fixed64::fromInt(35);
         if (pressed && !keeps_it) {
@@ -582,7 +596,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 }
             }
         }
-        out.why = out.action == Action::Shot ? Why::Shoot : (out.action == Action::LoftedKick ? Why::Clear : Why::Dribble);
+        out.why = out.action == Action::Shot ? Why::Shoot : (out.action == Action::LoftedKick ? Why::Clear : (holding ? Why::WaitForRunner : Why::Dribble));
         out.target = goal;
         return out;
     }
