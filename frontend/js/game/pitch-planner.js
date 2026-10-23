@@ -18,6 +18,12 @@
 // perfect spot to the worst legal spot at 0 percent") = 100 % at the
 // driest legal spot of that size anywhere in the park, 0 % at the
 // wettest (data.ranges, from the sweep).
+// PRACTICE BOXES (James: "create practice boxes so we stay off pitch ...
+// name them like Monday, Tuesday"): ➕ ADD BOX drops a named box where the
+// camera looks; drag / turn it like a pitch, set its size, rename or
+// delete it. Red when it's on the 11v11 or 7v7 or breaks a site rule.
+// Boxes live in this browser (localStorage), like saved spots. On load
+// each pitch starts on its saved spot named "final" when there is one.
 
 (function () {
   'use strict';
@@ -31,7 +37,7 @@
     main_infield: 'main diamond infield', softball_skin: 'softball infield dirt',
     fence_3B: 'softball 3rd-base fence', backstop_1B: 'softball backstop / 1st-base fence',
     vendor: 'vendor fence', rodeo: 'rodeo fence', west_of_rodeo: 'past the rodeo fence',
-    trees: 'a tree', north_of_vendor: 'past the vendor fence line', park: 'the park edge',
+    trees: 'a tree trunk', on_11v11: 'on the 11v11', on_7v7: 'on the 7v7', north_of_vendor: 'past the vendor fence line', park: 'the park edge',
     cemetery: 'the cemetery', cemetery_edge: 'the cemetery', barn: 'the barn (event hall)',
     playground: 'the playground fence', rail_fence_0: 'village rail fence',
     rail_fence_1: 'village rail fence (east)', dirt_road_0: 'cemetery dirt road',
@@ -197,6 +203,18 @@
     ];
     const best7 = DATA.ranges['70x35'] && DATA.ranges['70x35'].at;
     if (best7) [pitches[1].x, pitches[1].z, pitches[1].rot] = best7;
+    const BOX_KEY = 'fh.lighthouse.practiceBoxes.v1';
+    const boxes = (() => {
+      try { return JSON.parse(localStorage.getItem(BOX_KEY) || '[]'); } catch (e) { return []; }
+    })().map((b) => Object.assign(b, { kind: 'box' }));
+    const saveBoxes = () => {
+      try {
+        localStorage.setItem(BOX_KEY, JSON.stringify(boxes.map((b) => ({ id: b.id, name: b.name, size: b.size,
+          x: +b.x.toFixed(2), z: +b.z.toFixed(2), rot: +b.rot.toFixed(1) }))));
+      } catch (e) { /* private window: boxes last until reload */ }
+    };
+    const all = () => pitches.concat(boxes);
+    const title = (p) => (p.kind === 'box' ? p.name : p.id);
     let on = false, sel = pitches[1], drag = null, justDragged = false, waterOn = true;
     const panel = document.createElement('div');
     panel.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:block;' +
@@ -221,21 +239,32 @@
     const gapRow = mk('div', 'padding:2px 6px 6px;font-weight:600;');
     panel.appendChild(gapRow);
     const rows = {};
-    for (const p of pitches) {
-      const r = mk('div', 'display:flex;gap:6px;align-items:flex-start;padding:4px 6px;border-radius:8px;' +
-        'cursor:pointer;margin-bottom:4px;');
-      const go = mk('button', pill + 'flex:none;', '📍');
-      go.title = 'Fly the camera to this pitch';
-      tap(go, () => { sel = p; flyTo(p); paint(); });
-      const txt = mk('div', 'flex:1;min-width:0;');
-      r.appendChild(go);
-      r.appendChild(txt);
-      tap(txt, () => { sel = p; paint(); });
-      panel.appendChild(r);
-      rows[p.id] = txt;
+    const rowsBox = mk('div', 'max-height:38vh;overflow-y:auto;');
+    panel.appendChild(rowsBox);
+    function buildRows() {
+      rowsBox.innerHTML = '';
+      for (const k in rows) delete rows[k];
+      for (const p of all()) {
+        const r = mk('div', 'display:flex;gap:6px;align-items:flex-start;padding:4px 6px;border-radius:8px;' +
+          'cursor:pointer;margin-bottom:4px;');
+        const go = mk('button', pill + 'flex:none;', '📍');
+        go.title = 'Fly the camera to it';
+        tap(go, () => { sel = p; flyTo(p); paint(); });
+        const txt = mk('div', 'flex:1;min-width:0;');
+        r.appendChild(go);
+        r.appendChild(txt);
+        tap(txt, () => { sel = p; paint(); });
+        rowsBox.appendChild(r);
+        rows[p.id] = txt;
+      }
     }
+    buildRows();
     const bar = mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;');
-    const turn = (d) => { sel.rot = ((sel.rot + d) % 360 + 360) % 360; update(); };
+    const turn = (d) => {
+      sel.rot = ((sel.rot + d) % 360 + 360) % 360;
+      update();
+      if (sel.kind === 'box') saveBoxes();
+    };
     for (const [t, d] of [['↺ 5°', -5], ['↺ 1°', -1], ['↻ 1°', 1], ['↻ 5°', 5]]) {
       const b = mk('button', pill, t);
       let rep = null;
@@ -250,6 +279,7 @@
     // (the 100 % spot, data.ranges[size].at).
     const bestBtn = mk('button', pill + 'border-color:#ffd24d;', '⭐ BEST');
     tap(bestBtn, () => {
+      if (sel.kind === 'box') return;
       const r = DATA.ranges[sel.size[0] + 'x' + sel.size[1]];
       if (!r || !r.at) return;
       sel.x = r.at[0]; sel.z = r.at[1]; sel.rot = r.at[2];
@@ -267,8 +297,9 @@
     bar.appendChild(sizeBtn);
     const copyBtn = mk('button', pill, 'COPY');
     tap(copyBtn, () => {
-      const txt = pitches.map((p) => `${p.id} ${p.size[0]}x${p.size[1]} yd at (${p.x.toFixed(1)}, ${p.z.toFixed(1)}) ${p.rot.toFixed(0)}°` +
-        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}, dry ${p.ev.w.pct.toFixed(0)}%, main infield ${(p.ev.infield / YD).toFixed(1)} yd`).join('\n');
+      const txt = all().map((p) => `${title(p)} ${p.size[0]}x${p.size[1]} yd at (${p.x.toFixed(1)}, ${p.z.toFixed(1)}) ${p.rot.toFixed(0)}°` +
+        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}` + (p.ev.w.pct != null ? `, dry ${p.ev.w.pct.toFixed(0)}%` : '') +
+        `, main infield ${(p.ev.infield / YD).toFixed(1)} yd`).join('\n');
       if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
       copyBtn.textContent = 'COPIED';
       setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
@@ -344,6 +375,72 @@
       spotBox.appendChild(name);
       spotBox.appendChild(save);
     }
+    // ── practice boxes ──
+    const textIn = (ph, w) => {
+      const i = document.createElement('input');
+      i.placeholder = ph;
+      i.style.cssText = 'min-width:0;width:' + w + 'px;padding:4px 8px;border-radius:12px;border:1px solid #889;' +
+        'background:rgba(255,255,255,.08);color:#f4f6fb;font:12px system-ui,sans-serif;';
+      for (const ev of ['mousedown', 'touchstart', 'keydown']) i.addEventListener(ev, (e) => e.stopPropagation());
+      return i;
+    };
+    const boxCtl = mk('div', 'display:none;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;');
+    panel.appendChild(boxCtl);
+    function paintBoxCtl() {
+      boxCtl.innerHTML = '';
+      if (sel.kind !== 'box') { boxCtl.style.display = 'none'; return; }
+      boxCtl.style.display = 'flex';
+      const b = sel;
+      boxCtl.appendChild(mk('span', 'opacity:.75;font-size:11px;', '🟧 box:'));
+      const nm = textIn('name', 110);
+      nm.value = b.name;
+      const L = textIn('length', 52), W = textIn('width', 52);
+      L.type = W.type = 'number';
+      L.value = b.size[0]; W.value = b.size[1];
+      const apply = () => {
+        const nl = Math.max(5, Math.min(120, +L.value || b.size[0])), nw = Math.max(5, Math.min(80, +W.value || b.size[1]));
+        const rename = nm.value.trim() && nm.value.trim() !== b.name;
+        if (rename) b.name = nm.value.trim();
+        if (nl !== b.size[0] || nw !== b.size[1] || rename) { b.size = [nl, nw]; rebuild(b); buildLists(); }
+        saveBoxes();
+        update();
+      };
+      for (const i of [nm, L, W]) {
+        i.addEventListener('change', apply);
+        i.addEventListener('keydown', (e) => { if (e.key === 'Enter') apply(); });
+      }
+      const del = mk('button', pill + 'color:#ff8a94;', '🗑 DELETE');
+      tap(del, () => {
+        boxes.splice(boxes.indexOf(b), 1);
+        if (b.g) b.g.parent.remove(b.g);
+        sel = pitches[0];
+        saveBoxes();
+        buildLists();
+        update();
+      });
+      boxCtl.append(nm, L, mk('span', '', '×'), W, mk('span', 'opacity:.75', 'yd'), del);
+    }
+    const addRow = mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;');
+    const addName = textIn('practice box name (Monday…)', 190);
+    const addBtn = mk('button', pill + 'border-color:#ffa630;', '➕ ADD BOX');
+    const addBox = () => {
+      if (!on) return;   // field still loading
+      // Dropped where the camera is looking, 40 x 30 yd, square to the 11v11.
+      const t = renderer.field.site.worldToLocal(renderer.rig.target.clone());
+      const b = { kind: 'box', id: 'box-' + Date.now(), name: addName.value.trim() || 'Practice ' + (boxes.length + 1),
+                  size: [40, 30], x: t.x, z: t.z, rot: pitches[0].rot };
+      boxes.push(b);
+      addName.value = '';
+      rebuild(b);
+      sel = b;
+      buildLists();
+      saveBoxes();
+      update();
+    };
+    tap(addBtn, addBox);
+    addName.addEventListener('keydown', (e) => { if (e.key === 'Enter') addBox(); });
+    addRow.append(mk('span', 'opacity:.75;font-size:11px;', '🟧 practice:'), addName, addBtn);
+    panel.appendChild(addRow);
     panel.appendChild(mk('div', 'opacity:.7;margin-top:4px;font-size:11px;',
       'Drag a pitch to move it · ↺ ↻ or [ ] to turn the selected one · red = too close to something or on a diamond'));
 
@@ -358,11 +455,13 @@
       const L = p.size[0] * YD, W = p.size[1] * YD, t = 0.6;
       const g = new THREE.Group();
       p.lineMat = new THREE.MeshBasicMaterial({ color: 0x33ff66, depthTest: false, side: THREE.DoubleSide });
+      const lines = [[L, t, 0, -W / 2], [L, t, 0, W / 2], [t, W, -L / 2, 0], [t, W, L / 2, 0]];
+      if (p.kind !== 'box') lines.push([t, W, 0, 0]);       // halfway
       p.fill = new THREE.Mesh(new THREE.PlaneGeometry(L, W), fillMat(0x33ff66));
       p.fill.rotation.x = -Math.PI / 2;
       p.fill.renderOrder = 60;
       g.add(p.fill);
-      for (const [w, d, x, z] of [[L, t, 0, -W / 2], [L, t, 0, W / 2], [t, W, -L / 2, 0], [t, W, L / 2, 0], [t, W, 0, 0]]) {
+      for (const [w, d, x, z] of lines) {
         const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), p.lineMat);
         m.rotation.x = -Math.PI / 2;
         m.position.set(x, 0, z);
@@ -373,15 +472,18 @@
       const cv = document.createElement('canvas');
       cv.width = 512; cv.height = 128;
       const c2 = cv.getContext('2d');
-      c2.font = 'bold 96px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
-      c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(p.id, 256, 64);
-      c2.fillStyle = '#ffffff'; c2.fillText(p.id, 256, 64);
+      const name = title(p);
+      c2.font = 'bold 96px sans-serif';
+      const fs = Math.min(96, Math.floor(96 * 480 / Math.max(1, c2.measureText(name).width)));
+      c2.font = 'bold ' + fs + 'px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(name, 256, 64);
+      c2.fillStyle = p.kind === 'box' ? '#ffd29a' : '#ffffff'; c2.fillText(name, 256, 64);
       const lab = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.8, W * 0.2),
         new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
           depthWrite: false, depthTest: false }));
       lab.rotation.x = -Math.PI / 2;
       lab.rotation.z = Math.PI / 2;     // reads along the short side
-      lab.position.x = L / 4;
+      lab.position.x = p.kind === 'box' ? 0 : L / 4;
       lab.renderOrder = 62;
       g.add(lab);
       // Live water cells (1 m squares, pitch-local), refilled on every move.
@@ -419,10 +521,16 @@
       const th = p.rot * D2R, L = p.size[0] * YD, W = p.size[1] * YD;
       const R = rect(p.x, p.z, th, L, W), c = [p.x, p.z];
       const off = offences(DATA.rules, R, c);
-      const o = pitches.find((q) => q !== p);
-      if (o && o.R) {
-        const d = inRect(c, o.R) || inRect([o.x, o.z], R) ? 0 : rectDist(R, c, o.R, true);
-        if (d < GAP) off.push({ n: 'other', have: d, need: GAP });
+      if (p.kind === 'box') {
+        // Practice boxes stay off both pitches (touching is fine).
+        for (const q of pitches)
+          if (q.R && closest(R, q.R).d <= 0) off.push({ n: 'on_' + q.id, have: 0, need: 0 });
+      } else {
+        const o = pitches.find((q) => q !== p);
+        if (o && o.R) {
+          const d = inRect(c, o.R) || inRect([o.x, o.z], R) ? 0 : rectDist(R, c, o.R, true);
+          if (d < GAP) off.push({ n: 'other', have: d, need: GAP });
+        }
       }
       off.sort((a, b) => (a.have - a.need) - (b.have - b.need));
       const main = DATA.rules.find((r) => r.n === 'main_infield');
@@ -430,7 +538,8 @@
       p.R = R;
       p.ev = { ok: off.length === 0, off,
                w: water(DATA.grid, p.x, p.z, th, L, W, DATA.ranges[p.size[0] + 'x' + p.size[1]], cells),
-               infield: main ? rectDist(R, c, main.pts, !!main.c) : null };
+               infield: main ? rectDist(R, c, main.pts, !!main.c) : null,
+               toPitch: p.kind === 'box' && pitches[0].R ? closest(R, pitches[0].R).d : null };
       fillCells(p, cells);
     }
     // Rule name -> words: layout structures by their layout name.
@@ -444,7 +553,11 @@
     // A pill per plan pitch at the top of the candidate pill list (James:
     // "it should show with pills like others"): tap = PLAN on + fly there.
     const pills = {};
-    for (const p of pitches) {
+    const pillList = mk('div', 'display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto;');
+    function buildPills() {
+      pillList.innerHTML = '';
+      for (const k in pills) delete pills[k];
+      for (const p of all()) {
       const b = mk('button', 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
         'border-radius:14px;border:2px solid #33ff66;background:rgba(10,14,20,.72);color:#f4f6fb;' +
         'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;');
@@ -455,9 +568,13 @@
         paint();
       });
       pills[p.id] = b;
+      pillList.appendChild(b);
+      paintPill(p);
+      }
     }
+    const buildLists = () => { buildRows(); buildPills(); paintSpots.for = null; if (on) paint(); };
     const pillBox = mk('div', 'position:fixed;left:8px;top:84px;display:flex;flex-direction:column;gap:6px;z-index:12;');
-    for (const p of pitches) pillBox.appendChild(pills[p.id]);
+    pillBox.appendChild(pillList);
     // WATER: the field's water layer + the live cells in both pitches.
     const waterPill = mk('button', 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
       'border-radius:14px;border:2px solid #29a8ff;background:rgba(10,14,20,.72);color:#f4f6fb;' +
@@ -471,27 +588,30 @@
     tap(waterPill, () => {
       waterOn = !waterOn;
       if (renderer.field && renderer.field.setWater) renderer.field.setWater(waterOn);
-      for (const p of pitches) if (p.cells) p.cells.visible = waterOn;
+      for (const p of all()) if (p.cells) p.cells.visible = waterOn;
       paintWater();
     });
     paintWater();
     pillBox.appendChild(waterPill);
     document.body.appendChild(pillBox);
-    const paintPill = (p) => {
-      const b = pills[p.id], hex = !p.ev ? '#8899aa' : p.ev.ok ? '#33ff66' : '#ff3344';
+    function paintPill(p) {
+      const b = pills[p.id];
+      if (!b) return;
+      const hex = !p.ev ? '#8899aa' : p.ev.ok ? (p.kind === 'box' ? '#ffa630' : '#33ff66') : '#ff3344';
       b.style.borderColor = hex;
       b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' + hex + '"></span>' +
-        '📐 ' + p.id + ' ' + p.size[0] + '×' + p.size[1] +
-        (p.ev ? ' · dry ' + p.ev.w.pct.toFixed(0) + '% · ' + (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : ' · tap to plan');
-    };
-    for (const p of pitches) paintPill(p);
+        (p.kind === 'box' ? '🟧 ' : '📐 ') + title(p) + ' ' + p.size[0] + '×' + p.size[1] +
+        (p.ev ? (p.ev.w.pct != null ? ' · dry ' + p.ev.w.pct.toFixed(0) + '%' : '') + ' · ' +
+          (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : '');
+    }
+    buildPills();
 
     function paint() {
-      for (const p of pitches) paintPill(p);
-      for (const p of pitches) {
+      for (const p of all()) paintPill(p);
+      for (const p of all()) {
         const ev = p.ev;
-        if (!ev) continue;
-        const col = ev.ok ? 0x33ff66 : 0xff3344;
+        if (!ev || !rows[p.id]) continue;
+        const col = ev.ok ? (p.kind === 'box' ? 0xffa630 : 0x33ff66) : 0xff3344;
         if (p.lineMat) { p.lineMat.color.setHex(col); p.fill.material.color.setHex(col); }
         const w = ev.w, pct = (k) => (100 * w[k] / w.n).toFixed(1) + '%';
         const why = ev.ok ? '<span style="color:#5f6">✓ clear of everything</span>'
@@ -499,13 +619,21 @@
             (o.need > 0 ? ': ' + (o.have <= 0 ? 'overlapping' : fmt(o.have)) + ' (needs ' + fmt(o.need) + ')' : '') +
             '</span>').join('<br>');
         rows[p.id].parentNode.style.background = p === sel ? 'rgba(255,255,255,.12)' : 'transparent';
-        rows[p.id].innerHTML = '<b>' + (p === sel ? '▶ ' : '') + p.id + ' ' + p.size[0] + '×' + p.size[1] + ' yd</b> · ' +
-          p.rot.toFixed(0) + '° · dry <b>' + w.pct.toFixed(0) + '%</b> <span style="opacity:.7">(100% = driest legal spot)</span> · pond ' + pct('pond') + ', runoff ' +
+        rows[p.id].innerHTML = '<b>' + (p === sel ? '▶ ' : '') + (p.kind === 'box' ? '🟧 ' : '') + title(p) + ' ' +
+          p.size[0] + '×' + p.size[1] + ' yd</b> · ' + p.rot.toFixed(0) + '° · ' +
+          (w.pct != null ? 'dry <b>' + w.pct.toFixed(0) + '%</b> <span style="opacity:.7">(100% = driest legal spot)</span> · '
+            : (ev.toPitch != null ? '↔ 11v11 <b>' + (ev.toPitch <= 0 ? 'on it' : fmt(ev.toPitch)) + '</b> · ' : '')) +
+          'pond ' + pct('pond') + ', runoff ' +
           pct('flow') + ', flat ' + pct('flat') +
           (ev.infield != null ? '<br><span style="opacity:.85">⚾ main diamond infield: ' +
             (ev.infield <= 0 ? 'overlapping' : fmt(ev.infield) + ' away') + '</span>' : '') + '<br>' + why;
       }
-      if (paintSpots.for !== sel) { paintSpots.for = sel; paintSpots(); }
+      if (paintSpots.for !== sel) {
+        paintSpots.for = sel;
+        paintSpots();
+        paintBoxCtl();
+        spotBox.style.display = sel.kind === 'box' ? 'none' : 'flex';
+      }
       sizeBtn.textContent = '7v7 SIZE ' + pitches[1].size[0] + '×' + pitches[1].size[1];
     }
 
@@ -560,9 +688,11 @@
     }
 
     function update() {
-      for (const p of pitches) if (p.g) { p.g.position.x = p.x; p.g.position.z = p.z; p.g.rotation.y = -p.rot * D2R; }
-      // Each pitch's 10 yd gap reads the other's rect: settle both, twice.
+      for (const p of all()) if (p.g) { p.g.position.x = p.x; p.g.position.z = p.z; p.g.rotation.y = -p.rot * D2R; }
+      // Each pitch's 10 yd gap reads the other's rect: settle both, twice;
+      // then the boxes, which read the pitches.
       for (let k = 0; k < 2; k++) for (const p of pitches) evaluate(p);
+      for (const b of boxes) evaluate(b);
       paint();
       paintGap();
     }
@@ -585,7 +715,14 @@
     function start() {
       if (!renderer.field || !renderer.field.site) { setTimeout(start, 300); return; }
       on = true;
-      for (const p of pitches) rebuild(p);
+      // Each pitch starts on its saved spot named "final", if any.
+      for (const sp of loadSaved()) {
+        const p = pitches.find((q) => q.id === sp.pitch);
+        if (!p || String(sp.name).trim().toLowerCase() !== 'final') continue;
+        p.x = sp.x; p.z = sp.z; p.rot = sp.rotDeg;
+        if (sp.size) p.size = sizeOf(sp.size);
+      }
+      for (const p of all()) rebuild(p);
       update();
       flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
               size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
@@ -605,7 +742,7 @@
     function grab(cx, cy) {
       const s = sitePoint(cx, cy);
       if (!s) return false;
-      const order = [sel].concat(pitches.filter((p) => p !== sel));
+      const order = [sel].concat(boxes.filter((p) => p !== sel), pitches.filter((p) => p !== sel));
       const p = order.find((q) => q.R && inRect(s, q.R));
       if (!p) return false;
       sel = p;
@@ -628,7 +765,8 @@
       if (on && e.target === canvas && grab(e.clientX, e.clientY)) stop(e);
     }, true);
     window.addEventListener('mousemove', (e) => { if (drag) { move(e.clientX, e.clientY); stop(e); } }, true);
-    window.addEventListener('mouseup', () => { drag = null; }, true);
+    const endDrag = () => { if (drag && drag.p.kind === 'box') saveBoxes(); drag = null; };
+    window.addEventListener('mouseup', endDrag, true);
     window.addEventListener('click', (e) => {
       if (justDragged && e.target === canvas) { justDragged = false; stop(e); }
     }, true);
@@ -640,7 +778,7 @@
       if (drag && e.touches.length === 1) { move(e.touches[0].clientX, e.touches[0].clientY); stop(e); }
     }, { capture: true, passive: false });
     window.addEventListener('touchend', (e) => {
-      if (drag) { drag = null; stop(e); justDragged = false; }
+      if (drag) { endDrag(); stop(e); justDragged = false; }
     }, { capture: true, passive: false });
     window.addEventListener('keydown', (e) => {
       if (!on) return;
