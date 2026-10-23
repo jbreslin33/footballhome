@@ -115,14 +115,7 @@ window.LIGHTHOUSE_LAYOUT = {
   // Built-in spots for the pitch planner's 📌 buttons (pitch-planner.js);
   // spots James saves himself live in his browser. The driest legal spot
   // of each size is ⭐ BEST (lighthouse-planner-data.js ranges[size].at).
-  planSpots: [
-    { name: 'Cyan plan', pitch: '11v11', x: 30, z: -33.5, rotDeg: 155 },
-    // 7v7s clear of the 11v11 (fh-field-planner, 1 m x 2°, 10/22): a full
-    // 70 x 35 only fits next to the ⭐ BEST 11v11 (31.5 yd off it, same
-    // angle); next to cyan the fences cap a 70 x 35 at 9.6 yd, so 65 x 35.
-    { name: 'Beside BEST 11v11 (31 yd)', pitch: '7v7', size: [70, 35], x: 55, z: -83, rotDeg: 34 },
-    { name: 'Beside cyan, 65×35 (19 yd)', pitch: '7v7', size: [65, 35], x: -75, z: -36, rotDeg: 122 },
-  ],
+  planSpots: [],
   // Planned 7v7 pitches, 70 x 35 yd (64.0 x 32.0 m), laid ACROSS the
   // planned 11v11, one in each half (the usual small-sided layout): each
   // runs touchline to touchline (1.8 m spare each side), centred in its

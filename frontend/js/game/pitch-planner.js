@@ -22,8 +22,12 @@
 // name them like Monday, Tuesday"): ➕ ADD BOX drops a named box where the
 // camera looks; drag / turn it like a pitch, set its size, rename or
 // delete it. Red when it's on the 11v11 or 7v7 or breaks a site rule.
-// Boxes live in this browser (localStorage), like saved spots. On load
-// each pitch starts on its saved spot named "final" when there is one.
+// Boxes live in this browser (localStorage), like saved spots.
+// SAVING (James: "your saves are not working it reverts ... make sure it
+// saves"): every move of a pitch or box is saved as it happens and comes
+// back on reload. 📌 SET DEFAULT stores the whole layout as the default;
+// ↺ DEFAULT snaps everything back to it (before one is set: cyan + the
+// 7v7's ⭐ BEST spot).
 
 (function () {
   'use strict';
@@ -214,6 +218,34 @@
       } catch (e) { /* private window: boxes last until reload */ }
     };
     const all = () => pitches.concat(boxes);
+    const STATE_KEY = 'fh.lighthouse.planState.v1', DEFAULT_KEY = 'fh.lighthouse.planDefault.v1';
+    const snapshot = () => ({
+      pitches: pitches.map((p) => ({ id: p.id, x: +p.x.toFixed(2), z: +p.z.toFixed(2), rot: +p.rot.toFixed(1), size: p.size.slice() })),
+      boxes: boxes.map((b) => ({ id: b.id, name: b.name, size: b.size.slice(), x: +b.x.toFixed(2), z: +b.z.toFixed(2), rot: +b.rot.toFixed(1) })),
+    });
+    const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+    const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+    // The built-in default: cyan for the 11v11, the 7v7 on its ⭐ BEST spot.
+    const builtinDefault = { pitches: snapshot().pitches };   // leaves boxes alone
+    // Put pitches (and, when given, boxes) where a snapshot says.
+    function restore(st) {
+      for (const sp of (st && st.pitches) || []) {
+        const p = pitches.find((q) => q.id === sp.id);
+        if (!p) continue;
+        p.x = sp.x; p.z = sp.z; p.rot = sp.rot;
+        if (sp.size) p.size = SEVEN_SIZES.find((q) => q[0] === sp.size[0] && q[1] === sp.size[1]) || sp.size;
+      }
+      if (st && st.boxes) {
+        for (const b of boxes) if (b.g) b.g.parent.remove(b.g);
+        boxes.length = 0;
+        for (const b of st.boxes) boxes.push(Object.assign({ kind: 'box' }, b));
+      }
+    }
+    let saveTimer = null;
+    const saveState = () => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => { writeJSON(STATE_KEY, snapshot()); saveBoxes(); }, 250);
+    };
     const title = (p) => (p.kind === 'box' ? p.name : p.id);
     let on = false, sel = pitches[1], drag = null, justDragged = false, waterOn = true;
     const panel = document.createElement('div');
@@ -305,6 +337,21 @@
       setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
     });
     bar.appendChild(copyBtn);
+    const setDefBtn = mk('button', pill, '📌 SET DEFAULT');
+    tap(setDefBtn, () => {
+      setDefBtn.textContent = writeJSON(DEFAULT_KEY, snapshot()) ? '✓ DEFAULT SET' : '⚠ NOT SAVED';
+      setTimeout(() => { setDefBtn.textContent = '📌 SET DEFAULT'; }, 1500);
+    });
+    const resetBtn = mk('button', pill, '↺ DEFAULT');
+    tap(resetBtn, () => {
+      restore(readJSON(DEFAULT_KEY) || builtinDefault);
+      for (const p of all()) rebuild(p);
+      sel = pitches[0];
+      buildLists();
+      update();
+      saveBoxes();
+    });
+    bar.append(setDefBtn, resetBtn);
     panel.appendChild(bar);
 
     // SPOTS (James: "click button to reset it there. allow for saving a
@@ -695,6 +742,7 @@
       for (const b of boxes) evaluate(b);
       paint();
       paintGap();
+      if (on) saveState();
     }
 
     // Park the camera over a pitch (FOLLOW OFF), looking down at it.
@@ -715,14 +763,22 @@
     function start() {
       if (!renderer.field || !renderer.field.site) { setTimeout(start, 300); return; }
       on = true;
-      // Each pitch starts on its saved spot named "final", if any.
-      for (const sp of loadSaved()) {
-        const p = pitches.find((q) => q.id === sp.pitch);
-        if (!p || String(sp.name).trim().toLowerCase() !== 'final') continue;
-        p.x = sp.x; p.z = sp.z; p.rot = sp.rotDeg;
-        if (sp.size) p.size = sizeOf(sp.size);
+      // Last saved layout, else the default (pitches only: boxes already
+      // loaded from their own key).
+      const st = readJSON(STATE_KEY) || readJSON(DEFAULT_KEY);
+      if (st) restore({ pitches: st.pitches });
+      else {
+        // First run of the auto-save: pick up spots saved as "now" (James's
+        // layout from before saving was automatic, 10/22).
+        for (const sp of loadSaved()) {
+          const p = pitches.find((q) => q.id === sp.pitch);
+          if (!p || String(sp.name).trim().toLowerCase() !== 'now') continue;
+          p.x = sp.x; p.z = sp.z; p.rot = sp.rotDeg;
+          if (sp.size) p.size = sizeOf(sp.size);
+        }
       }
       for (const p of all()) rebuild(p);
+      buildLists();
       update();
       flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
               size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
