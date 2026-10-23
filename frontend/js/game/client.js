@@ -409,8 +409,41 @@
       e.preventDefault(); e.stopPropagation(); toggleContours();
     });
   }
-  // Drag-and-drop pitch planner (📐 PLAN): live legality + water score.
-  if (window.PitchPlanner) window.PitchPlanner.attach(renderer);
+  // Drag-and-drop pitch planner: live legality + water score.
+  const planner = window.PitchPlanner ? window.PitchPlanner.attach(renderer) : null;
+  // 🎮 GAME / 📐 PLAN (James: "clear all measurement and rain stuff so we
+  // can focus on game"): GAME hides the planner, the water layer and the
+  // contours and follows the ball again; PLAN brings them back with the
+  // camera parked. Remembered per device; GAME by default.
+  const planBtn = document.getElementById('btn-plan');
+  let planMode = false;
+  try { planMode = localStorage.getItem('fh.game.planMode') === '1'; } catch (e) { /* default GAME */ }
+  const applyMode = () => {
+    if (planner) planner.setOn(planMode);
+    if (!renderer.field || !renderer.field.setContours) { setTimeout(applyMode, 300); return; }
+    cmode = CMODES.indexOf(planMode ? 'lidar' : 'off');
+    renderer.field.setContours(CMODES[cmode]);
+    if (contoursBtn) contoursBtn.textContent = CLABEL[CMODES[cmode]];
+    if (renderer.rig.follow === planMode) toggleFollow();
+    if (planBtn) {
+      // A pill like the planner's: dot + what tapping it does.
+      planBtn.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;border:1px solid #ffd24d;' +
+        'background:' + (planMode ? '#ffd24d' : 'transparent') + '"></span>' +
+        (planMode ? '📐 PLANNER ON · tap for 🎮 game only' : '🎮 GAME · tap for 📐 planner');
+    }
+  };
+  const flipMode = () => {
+    planMode = !planMode;
+    try { localStorage.setItem('fh.game.planMode', planMode ? '1' : '0'); } catch (e) { /* this visit only */ }
+    applyMode();
+  };
+  if (planBtn) {
+    planBtn.addEventListener('click', flipMode);
+    planBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation(); flipMode();
+    });
+  }
+  applyMode();
   const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();

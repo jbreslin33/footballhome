@@ -23,6 +23,10 @@
 // camera looks; drag / turn it like a pitch, set its size, rename or
 // delete it. Red when it's on the 11v11 or 7v7 or breaks a site rule.
 // Boxes live in this browser (localStorage), like saved spots.
+// GAME / PLAN (James: "clear all measurement and rain stuff so we can
+// focus on game"): attach() returns { setOn }; client.js's 🎮/📐 button
+// hides or shows every planner layer — outlines, boxes, ruler, water,
+// panel, pills. Built once either way, so switching is instant.
 // SAVING (James: "your saves are not working it reverts ... make sure it
 // saves" / "yes of course db lol"): the layout lives in the club DB
 // (/api/field-plan, migration 635) so every device sees the same one; this
@@ -296,7 +300,7 @@
       }, 600);
     };
     const title = (p) => (p.kind === 'box' ? p.name : p.id);
-    let on = false, sel = pitches[1], drag = null, justDragged = false, waterOn = true;
+    let on = false, built = false, wantOn = true, sel = pitches[1], drag = null, justDragged = false, waterOn = true;
     const panel = document.createElement('div');
     panel.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:block;' +
       'background:rgba(10,14,20,.86);color:#f4f6fb;font:12px system-ui,sans-serif;border-radius:10px;' +
@@ -692,7 +696,8 @@
       }
     }
     const buildLists = () => { buildRows(); buildPills(); paintSpots.for = null; if (on) paint(); };
-    const pillBox = mk('div', 'position:fixed;left:8px;top:84px;display:flex;flex-direction:column;gap:6px;z-index:12;');
+    // Under the 🎮/📐 mode pill (client.js, top 84px).
+    const pillBox = mk('div', 'position:fixed;left:8px;top:116px;display:flex;flex-direction:column;gap:6px;z-index:12;');
     pillBox.appendChild(pillList);
     // WATER: the field's water layer + the live cells in both pitches.
     const waterPill = mk('button', 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
@@ -706,7 +711,7 @@
     };
     tap(waterPill, () => {
       waterOn = !waterOn;
-      if (renderer.field && renderer.field.setWater) renderer.field.setWater(waterOn);
+      if (renderer.field && renderer.field.setWater) renderer.field.setWater(on && waterOn);
       for (const p of all()) if (p.cells) p.cells.visible = waterOn;
       paintWater();
     });
@@ -804,6 +809,7 @@
         ruler.lab.position.set(B.x, 0.75, B.z);
       }
       ruler.lab.visible = on;
+      if (!on) ruler.bar.visible = false;
     }
 
     function update() {
@@ -837,7 +843,7 @@
     async function start() {
       if (!renderer.field || !renderer.field.site) { setTimeout(start, 300); return; }
       const db = await Promise.race([dbLoad, new Promise((r) => setTimeout(() => r(null), 5000))]);
-      on = true;
+      on = true;   // build + evaluate with everything on, then apply wantOn
       if (db && db.current) {
         restore(fromItems(db.current.items));
         setSync('☁ the club layout' + (canWrite ? '' : ' (view only — sign in as a club admin to change it)'), true);
@@ -867,8 +873,22 @@
       for (const p of all()) rebuild(p);
       buildLists();
       update();
-      flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
-              size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
+      built = true;
+      setOn(wantOn);
+    }
+    // Show / hide every planner layer; showing frames both pitches.
+    function setOn(v) {
+      wantOn = !!v;
+      if (!built) return;
+      on = wantOn;
+      panel.style.display = on ? 'block' : 'none';
+      pillBox.style.display = on ? 'flex' : 'none';
+      for (const p of all()) if (p.g) p.g.visible = on;
+      if (renderer.field && renderer.field.setWater) renderer.field.setWater(on && waterOn);
+      drag = null;
+      paintGap();
+      if (on) flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
+                      size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
     }
     // No club layout yet (or offline): this device's last layout, else
     // its default, else spots saved as "now".
@@ -887,6 +907,7 @@
       }
     }
     start();
+    return { setOn, isOn: () => wantOn };
 
     // Screen point -> site metres on the ground plane.
     const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
