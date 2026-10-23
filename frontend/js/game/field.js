@@ -336,13 +336,19 @@
     const M = new THREE.Matrix4(), Q = new THREE.Quaternion(),
           S = new THREE.Vector3(), Pv = new THREE.Vector3();
     const gp = LAY.gamePitch || { x: 0, z: 0, rotDeg: 0 };
-    const th = gp.rotDeg * D2R;
     const site = new THREE.Group();
-    site.rotation.y = th;
-    site.position.set(-(gp.x * Math.cos(th) + gp.z * Math.sin(th)), 0,
-                      -(-gp.x * Math.sin(th) + gp.z * Math.cos(th)));
+    // Place the site so pitch p (site metres + degrees) lands on the world
+    // origin. setGamePitch re-runs it once the club's designed 11v11 loads
+    // (James: "we need field oriented like it is in design").
+    const placeSite = (p) => {
+      const th = p.rotDeg * D2R;
+      site.rotation.y = th;
+      site.position.set(-(p.x * Math.cos(th) + p.z * Math.sin(th)), 0,
+                        -(-p.x * Math.sin(th) + p.z * Math.cos(th)));
+      site.updateMatrixWorld(true);
+    };
+    placeSite(gp);
     scene.add(site);
-    site.updateMatrixWorld(true);
     const toWorld = (x, z) => new THREE.Vector3(x, 0, z).applyMatrix4(site.matrixWorld);
 
     // ── ground layers ────────────────────────────────────────────────
@@ -419,7 +425,7 @@
             }
             site.add(det);
             const w = toWorld(r.x, r.z);
-            details.push({ obj: det, x: w.x, z: w.z, r: 80 });
+            details.push({ obj: det, x: w.x, z: w.z, lx: r.x, lz: r.z, r: 80 });
           } else {
             addFlat(layers.pitchgrass[0], P, layers.pitchgrass[2]);
           }
@@ -602,7 +608,7 @@
         hs.add(m);
         const w = toWorld(h.x, h.z);
         const one = new THREE.Group();
-        details.push({ obj: m, x: w.x, z: w.z, r: 60,
+        details.push({ obj: m, x: w.x, z: w.z, lx: h.x, lz: h.z, r: 60,
           tick(t) {
             const k = Math.sin(t * 0.6 + m.userData.phase);
             m.userData.neck.rotation.z = k > 0.2 ? -0.9 * Math.min(1, (k - 0.2) * 2) : 0;
@@ -855,7 +861,7 @@
         }
       site.add(cars);
       const w = toWorld(r.x, r.z);
-      details.push({ obj: cars, x: w.x, z: w.z, r: 70 + Math.max(r.L, r.W) / 2 });
+      details.push({ obj: cars, x: w.x, z: w.z, lx: r.x, lz: r.z, r: 70 + Math.max(r.L, r.W) / 2 });
     }
 
     for (const d of details) d.obj.visible = false;
@@ -943,6 +949,28 @@
       }
       waterLayer.add(drainage);
     }
+    // Chalk for one 7v7 (site metres, yards → metres by the caller).
+    let gameSeven = null;
+    const sevenChalk = (sv, color) => {
+      const a = sv.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
+      const at = ([u, v]) => [sv.x + u * ca - v * sa, sv.z + u * sa + v * ca];
+      const chalk = new Merge();
+      const ln = (pts) => addRibbon(chalk, pts.map(at), 0.12, 0.09);
+      const l = sv.length / 2, w = sv.width / 2;
+      ln([[-l, -w], [l, -w], [l, w], [-l, w], [-l, -w]]);
+      ln([[0, -w], [0, w]]);
+      const c = [];
+      for (let k = 0; k <= 32; k++) c.push([Math.cos(k / 16 * Math.PI) * 6.4, Math.sin(k / 16 * Math.PI) * 6.4]);
+      ln(c);
+      for (const sg of [-1, 1]) {
+        const e = sg * l;
+        ln([[e, -9], [e - sg * 9, -9], [e - sg * 9, 9], [e, 9]]);
+      }
+      const m = chalk.mesh(new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide,
+        polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -26 }));
+      m.renderOrder = 31;
+      return m;
+    };
     const cityContours = CT && CT.city2ft && CT.city2ft.length
       ? footContours(CT.city2ft, 0xff7a1a, '#ffb066', 60) : null;
     const topoContours = CT && CT.usgsTopo && CT.usgsTopo.length
@@ -960,6 +988,26 @@
       },
       waterLayer,
       setWater(on) { waterLayer.visible = !!on; },
+      // Move the match onto a designed pitch (site metres, degrees): the
+      // whole site turns so it lands on the world origin; LOD anchors
+      // follow. Bleachers + the game pitch are world-side and come along.
+      setGamePitch(p) {
+        placeSite(p);
+        for (const d of details) {
+          if (d.lx === undefined) continue;
+          const w = toWorld(d.lx, d.lz);
+          d.x = w.x;
+          d.z = w.z;
+        }
+      },
+      // The designed 7v7 painted on the grass in GAME (chalk + centre
+      // circle + goal areas, like layout.sevens); null removes it.
+      setGameSeven(sv) {
+        if (gameSeven) { site.remove(gameSeven); gameSeven = null; }
+        if (!sv) return;
+        gameSeven = sevenChalk(sv, 0xf4f6fb);
+        site.add(gameSeven);
+      },
       // Leaves: false = see-through wire canopy (default), true = solid.
       setLeaves(on) {
         if (leavesWire) leavesWire.visible = !on;

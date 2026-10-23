@@ -910,7 +910,10 @@
       }
     }
     start();
-    return { setOn, isOn: () => wantOn };
+    // The designed pitches as they stand (GAME plays on them): null until
+    // the club layout has loaded.
+    const current = () => (built ? pitches.map((p) => ({ id: p.id, x: p.x, z: p.z, rot: p.rot, size: p.size.slice() })) : null);
+    return { setOn, isOn: () => wantOn, current };
 
     // Screen point -> site metres on the ground plane.
     const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),

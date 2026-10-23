@@ -622,6 +622,30 @@
   };
   const modeNote = document.getElementById('mode-note');
   if (mode !== 'game' && mode !== 'design' && !COMING[mode]) mode = 'game';
+  // GAME plays on the DESIGNED pitch (James: "we need field oriented like
+  // it is in design. and add 7v7 too"): the site turns so the club's 11v11
+  // is the match pitch, and the designed 7v7 is chalked on the grass. From
+  // the planner when it's loaded (live drags), else the saved club layout.
+  let savedPlan = null;
+  fetch('/api/field-plan').then((r) => (r.ok ? r.json() : null)).then((j) => {
+    if (j && j.current) {
+      savedPlan = j.current.items.filter((i) => i.kind === 'pitch')
+        .map((i) => ({ id: i.key, x: i.x, z: i.z, rot: i.rot, size: [i.length_yd, i.width_yd] }));
+      if (mode === 'game') syncGameField();
+    }
+  }).catch(() => { /* keep the built-in spot */ });
+  function syncGameField() {
+    const f = renderer.field;
+    if (!f || !f.setGamePitch) { setTimeout(syncGameField, 300); return; }
+    const ps = (planner && planner.current()) || savedPlan;
+    if (!ps) return;
+    const big = ps.find((p) => p.id === '11v11');
+    const seven = ps.find((p) => p.id === '7v7');
+    if (big) f.setGamePitch({ x: big.x, z: big.z, rotDeg: big.rot });
+    f.setGameSeven(mode === 'game' && seven
+      ? { x: seven.x, z: seven.z, rotDeg: seven.rot, length: seven.size[0] * 0.9144, width: seven.size[1] * 0.9144 }
+      : null);
+  }
   const applyMode = () => {
     const design = mode === 'design';
     const other = !!COMING[mode];
@@ -637,6 +661,7 @@
     cmode = CMODES.indexOf(design ? 'lidar' : 'off');
     renderer.field.setContours(CMODES[cmode]);
     if (contoursBtn) contoursBtn.textContent = CLABEL[CMODES[cmode]];
+    syncGameField();
     // Ball-follow only in GAME; every other mode parks the camera.
     if (renderer.rig.follow !== (mode === 'game')) toggleFollow();
   };
