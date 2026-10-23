@@ -1311,6 +1311,29 @@ players who have it, don't inflate the model.
   target and a dashed line to the man he's acting on; One = a panel with
   his decision and the rating of the concept behind it, ‹ › to step.
 
+### 8.38 G4.42-G4.43 — the two game models, measured on the real matchup
+
+- **Game models** (mig 660): Bielsa from the literature (64 demands, each
+  citing the Leeds book chapter / figure) ← Lighthouse APSL; U.S. Soccer
+  U17+ (48, main principle 85 / sub-principle 75) ← Ukrainian Nationals.
+- **fh-game-match** (`game/scripts/match.sh [matches] [minutes]
+  [home:concept=demand,...|-] [away:...]`): N full matches of the REAL
+  matchup through `server::loadMatchFromDb` — the same loader the daemon
+  now uses (squads, models, qualities, attributes, edits, formations,
+  settings, curriculum), the real GameServer with a no-op network, seed
+  base+m. Overrides A/B a demand (`home:blind-side-run=0`) or drop the
+  players' ability rows for a concept (`home:!marking`). DB never written.
+- **First finding:** the backend's lineup roles (mig 639) wrote marking /
+  man-mark 90 as every Lighthouse outfielder's ABILITY. With those, the
+  60-rated side beat the 71-rated Ukies 39-12-9 (+1.37 ± 0.26 / 60
+  matches); at their own quality they lose 5-9-46 (−2.13 ± 0.29). The 90s
+  were removed (the free CB's 0s and the libero / cover-shadow role skills
+  kept). `GameRoster::afterLineup` still writes them on a lineup save —
+  changing it waits for a safe backend deploy.
+- **Live now** (60 matches): Lighthouse 8-7-45, 1.38-3.28, −1.90 ± 0.29;
+  blind-side run off: −1.53 ± 0.25 — it still costs ~0.4 a match until
+  release timing lands.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

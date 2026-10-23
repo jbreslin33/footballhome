@@ -88,8 +88,18 @@ add_library(game_server STATIC
 )
 target_link_libraries(game_server PUBLIC game_ai game_core game_net game_ws)
 
+# G4.43: the DB → match loader shared by the daemon and the match harness.
+add_library(game_match STATIC
+  src/server/MatchSetup.cpp
+)
+target_link_libraries(game_match PUBLIC game_server game_persistence)
+
 add_executable(fh-game src/main.cpp)
-target_link_libraries(fh-game PRIVATE game_server game_persistence)
+target_link_libraries(fh-game PRIVATE game_match)
+
+# G4.43: N full matches of the REAL matchup, loaded from the club DB.
+add_executable(fh-game-match src/tools/match_main.cpp)
+target_link_libraries(fh-game-match PRIVATE game_match)
 
 # ── tests ──────────────────────────────────────────────────────────────
 enable_testing()
