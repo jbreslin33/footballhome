@@ -911,6 +911,17 @@ class GameCenterScreen extends Screen {
         if (note) note.innerHTML = `<span style="color:#fbbf24; font-weight:700;">${this.escapeHtml(why.dataset.gcWhy)}</span>`;
         return;
       }
+      const fixReg = e.target.closest('[data-gc-fix-reg]');
+      if (fixReg && this.isCoach) { this._openContactSheet(Number(fixReg.dataset.gcFixReg), 'reg'); return; }
+      const jump = e.target.closest('[data-gc-jump]');
+      if (jump) {
+        const card = this.element.querySelector(`#gc-card-${jump.dataset.gcJump}`);
+        if (card) {
+          card.closest('details')?.setAttribute('open', '');
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+      }
       const contactOpen = e.target.closest('[data-gc-contact-open]');
       if (contactOpen && this.isCoach) { this._openContactSheet(Number(contactOpen.dataset.gcContactOpen)); return; }
       const groupWho = e.target.closest('[data-gc-group-who]');
@@ -2493,7 +2504,7 @@ class GameCenterScreen extends Screen {
     // bordered tile instead of a shared list divider.
     const cardGrid = (players, extra = null) => players.length
       ? `<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:6px;">
-          ${players.map(p => `<div style="border:1px solid var(--border-color); border-radius:6px; overflow:hidden;">${playerRow(p, extra ? extra(p) : '')}</div>`).join('')}
+          ${players.map(p => this._cardWrap(p, playerRow(p, extra ? extra(p) : ''))).join('')}
         </div>`
       : `<div style="padding:6px var(--space-3); opacity:0.6; font-size:0.85em;">None yet</div>`;
 
@@ -3040,6 +3051,75 @@ class GameCenterScreen extends Screen {
     return { bad: false, text: copy('list_ok', { league, time: when(list.fetched_at), n: list.names }) };
   }
 
+  // ---- Can't-play warnings (mig 661) ----
+  //
+  // Owner 2026-10-23: "we need a warning system on game center that a
+  // player is not on roster or in the case of call downs that there are
+  // too many call downs … telegraph the remedy and put that player in red
+  // like the whole card should be flashing red".  A registration gap
+  // (Going, not on the league's list / roster, or a call-down once both
+  // squad spots are taken) pulses red with why and a Fix button; a player
+  // who already submitted is amber and steady.  Coaches only.
+
+  _regWarnCopy(tier, tokens, fallback) {
+    return (window.MessageCopy && MessageCopy.block('reg_warning', tier, tokens)) || fallback || '';
+  }
+
+  // Why this gap can't play, in one line.
+  _regWarnText(g) {
+    const league = (this.leagueList && this.leagueList.league) || 'league';
+    if (g.player_done) return this._regWarnCopy('waiting', { league });
+    if (g.reason === 'calldown_cap_full') {
+      const cap = ((this.invites && this.invites.caps) || [])[0] || {};
+      return this._regWarnCopy('calldown', { used: cap.used ?? '?', max: cap.max ?? '?', league });
+    }
+    if (g.reason === 'not_on_list') return this._regWarnCopy('not_on_list', { league });
+    return this._regWarnCopy('not_on_roster', { status: g.status_label || 'no status' });
+  }
+
+  // Every card in a section grid comes through here: a plain bordered
+  // tile, or — for a registration gap — the red pulsing one with the
+  // banner and the fix on top.
+  _cardWrap(p, inner) {
+    const personId = this._personIdFor(p.id);
+    const g = this.isCoach && personId ? this._regGapFor(personId) : null;
+    const id = personId ? ` id="gc-card-${personId}"` : '';
+    if (!g) return `<div${id} style="border:1px solid var(--border-color); border-radius:6px; overflow:hidden;">${inner}</div>`;
+    this._ensureWarnStyles();
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const waiting = !!g.player_done;
+    const canFix = !waiting && this.lineupView === 'official';
+    const banner = `
+      <div style="padding:6px 10px; font-size:0.74rem; font-weight:800; color:#fff; background:${waiting ? '#b45309' : '#b91c1c'};">
+        ${esc(this._regWarnText(g))}
+        ${canFix ? `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:5px;">
+          <button type="button" data-gc-fix-reg="${personId}" style="padding:5px 12px; border-radius:6px; border:2px solid #fff; cursor:pointer;
+                  font-weight:900; font-size:0.76rem; color:#b91c1c; background:#fff;">${esc(this._regWarnCopy('fix'))}</button>
+          ${g.reason === 'calldown_cap_full' ? `<span style="font-weight:600; opacity:0.9;">${esc(this._regWarnCopy('calldown_alt'))}</span>` : ''}
+        </div>` : ''}
+      </div>`;
+    return `<div${id} class="${waiting ? 'gc-warn-wait' : 'gc-warn-alert'}" style="border-radius:6px; overflow:hidden;">${banner}${inner}</div>`;
+  }
+
+  // The pulse lives in one stylesheet; reduced-motion users get a steady
+  // red border instead of the flash.
+  _ensureWarnStyles() {
+    if (document.getElementById('gc-warn-styles')) return;
+    const st = document.createElement('style');
+    st.id = 'gc-warn-styles';
+    st.textContent = `
+      @keyframes gcWarnPulse {
+        0%, 100% { box-shadow: 0 0 0 2px #dc2626, 0 0 0 0 rgba(220,38,38,0.0); background: rgba(220,38,38,0.10); }
+        50%      { box-shadow: 0 0 0 3px #ef4444, 0 0 18px 4px rgba(239,68,68,0.55); background: rgba(220,38,38,0.28); }
+      }
+      .gc-warn-alert { animation: gcWarnPulse 1.1s ease-in-out infinite; }
+      .gc-warn-wait  { box-shadow: 0 0 0 2px #d97706; background: rgba(217,119,6,0.10); }
+      @media (prefers-reduced-motion: reduce) {
+        .gc-warn-alert { animation: none; box-shadow: 0 0 0 3px #dc2626; background: rgba(220,38,38,0.18); }
+      }`;
+    document.head.appendChild(st);
+  }
+
   // ---- Contact menu (mig 654) ----
   //
   // Owner 2026-10-23: "its confusing in game center what does what as far
@@ -3080,9 +3160,9 @@ class GameCenterScreen extends Screen {
     return { c, whats, what: w, hows };
   }
 
-  _openContactSheet(personId) {
+  _openContactSheet(personId, what = null) {
     const prev = this._contactSheet;
-    this._contactSheet = { personId, what: prev && prev.personId === personId ? prev.what : null, how: null, error: '' };
+    this._contactSheet = { personId, what: what || (prev && prev.personId === personId ? prev.what : null), how: null, error: '' };
     this._renderContactSheet();
   }
 
@@ -3335,14 +3415,20 @@ class GameCenterScreen extends Screen {
         ? `<span style="font-size:0.74rem; opacity:0.7;">${esc(copy('waiting') || 'submitted — waiting on the league')}</span>`
         : this._regGapButtons(g);
       return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:5px 0; border-bottom:1px solid var(--border-color);">
-        <span style="font-size:0.88rem;"><b>${esc(name)}</b> <span style="font-size:0.72rem; opacity:0.75;">· ${esc(this._regGapReason(g))}</span></span>
+        <span style="font-size:0.88rem;"><a href="javascript:void(0)" data-gc-jump="${g.person_id}" style="color:inherit; font-weight:800; text-decoration:underline;">${esc(name)}</a> <span style="font-size:0.72rem; opacity:0.75;">· ${esc(this._regGapReason(g))}</span></span>
         <span style="display:inline-flex; gap:6px; align-items:center;">${actions}</span>
       </div>`;
     }).join('');
     const lineHtml = line && line.text ? `<div data-gc-league-list style="font-size:0.74rem; margin:2px 0 4px; font-weight:${line.bad ? 800 : 600};
         color:${line.bad ? '#ef4444' : 'inherit'}; opacity:${line.bad ? 1 : 0.8};">${esc(line.text)}</div>` : '';
-    return `<div style="margin:0 0 12px; padding:8px 12px; border:1px solid ${line && line.bad ? '#ef4444' : '#f59e0b'}; border-radius:10px; background:rgba(245,158,11,0.08);">
-      <div style="font-weight:800; font-size:0.9rem;">${esc(copy('title', { n: gaps.length }) || `⚠ Going but not on the official roster (${gaps.length})`)}</div>
+    const blocked = gaps.filter(g => !g.player_done).length;
+    const waiting = gaps.length - blocked;
+    const red = blocked > 0 || (line && line.bad);
+    const title = blocked
+      ? this._regWarnCopy('strip_title', { n: blocked }) + (waiting ? ` · ${this._regWarnCopy('strip_waiting', { n: waiting })}` : '')
+      : (copy('title', { n: gaps.length }) || `⚠ Going but not on the official roster (${gaps.length})`);
+    return `<div style="margin:0 0 12px; padding:8px 12px; border:2px solid ${red ? '#ef4444' : '#f59e0b'}; border-radius:10px; background:${red ? 'rgba(220,38,38,0.10)' : 'rgba(245,158,11,0.08)'};">
+      <div style="font-weight:800; font-size:0.9rem; color:${blocked ? '#f87171' : 'inherit'};">${esc(title)}</div>
       <div style="font-size:0.74rem; opacity:0.75; margin:2px 0 4px;">${esc(copy('hint'))}</div>
       ${lineHtml}
       ${rows}
