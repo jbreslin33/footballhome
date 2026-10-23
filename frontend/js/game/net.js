@@ -41,6 +41,11 @@
           } else if (f.type === GameWire.FrameType.PRESETS) {
             if (this.handlers.onPresets)
               this.handlers.onPresets(GameWire.decodePresets(view, f.payloadAt));
+          } else if (f.type === GameWire.FrameType.CONCEPTS) {
+            // G4.37 (1.6): the curriculum's names by id from the club DB —
+            // replaces the built-in list in place (id = index; "" = hole).
+            const names = GameWire.decodePresets(view, f.payloadAt);
+            GameWire.CONCEPTS.splice(0, GameWire.CONCEPTS.length, ...names);
           } else if (f.type === GameWire.FrameType.TEAMS) {
             if (this.handlers.onTeams)
               this.handlers.onTeams(GameWire.decodeTeams(view, f.payloadAt, f.payloadLen));

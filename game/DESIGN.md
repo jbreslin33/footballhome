@@ -1206,9 +1206,41 @@ is NOT in the Bielsa preset yet (Lighthouse doesn't play it); the ladder
 fix ships. Next lever is the receiving end, not more runs: a runner
 going beyond the line needs the pass on the RELEASE tick (`release_timing`:
 the carrier holds for the runner, then plays) — then switch the run on
-by preset row and re-measure. Concept bits: 31 used of 32 — the next
-concept needs the registry off the u32 bitmask (ratings arrays already
-carry it; `conceptBundle` is the only mask user).
+by preset row and re-measure. (The 32-concept cap noted here is gone:
+§8.33.)
+
+### 8.33 G4.37 — the concept registry IS the curriculum
+
+James: "there is always room for a concept right?" / "the concepts are
+also the curriculum to teach". The cap was an implementation leftover
+(the level-band defaults packed into a u32, `conceptBundle`) — and the
+list itself was C++, against "no hard code, all from DB". Now:
+
+- **`game_concepts`** (mig 650) is the curriculum: stable id (= wire id,
+  0-254), name, title, family (individual / group / team / keeper),
+  moment (KNVB four: in / out of possession, to attack / to defend), kind
+  (core / style), `taught_from` (lowest level band that knows it by
+  default), status (wired / queued / teaching), the lesson (cue → answer,
+  what lacking it looks like) and sources. **`game_concept_requires`** =
+  teach this before that (wall-pass ← give-and-go + support, …). Seeded
+  with the 31 wired concepts at their old ids and the 45 queued lessons
+  from CONCEPTS.md (the Leeds book plan included); 26 prerequisite links.
+- **`core::ConceptRegistry`** loads it at boot (`fh-game: N concept(s) in
+  the curriculum`); `builtin()` = the wired 31 for tests and DB-down
+  boots. A DB that renumbers a wired id is REFUSED at boot (ids key every
+  saved rating). Engine classes bind by name; a concept without a class
+  is still rated and taught — it just doesn't drive behaviour.
+- Rating vectors hold `kMaxConcepts` = 255 (the wire's u8 count);
+  `defaultRatings` = band quality on every concept with `taught_from` at
+  or below the band — the old bundles reproduced exactly (goldens and
+  calibration unchanged, 20/20).
+- Wire 1.6: **CONCEPTS (0x3A)** sends the names on connect; ROSTER sends
+  `rating_count` = curriculum size; the client replaces its built-in list
+  and the editor skips id holes.
+- Adding a lesson is now a row. Wiring it into play is a class + params +
+  `status = 'wired'`. CONCEPTS.md stays the design notes; the table is
+  the record. Next for the club app (not built — no ghost features): a
+  curriculum page and per-lesson player ratings over these rows.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

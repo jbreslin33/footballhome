@@ -58,11 +58,11 @@ FH_TEST(skill_set_defaults_equal_the_old_formulas_and_db_rows_change_them) {
 
 FH_TEST(concepts_carry_their_registry_identity) {
     ai::ConceptBook b;
-    FH_EXPECT(b.libero.name() == core::kConceptNames[b.libero.bit()]);
-    FH_EXPECT(b.cover_shadow.name() == core::kConceptNames[b.cover_shadow.bit()]);
-    FH_EXPECT(b.line_step.name() == core::kConceptNames[b.line_step.bit()]);
-    FH_EXPECT(b.pass_ladder.name() == core::kConceptNames[b.pass_ladder.bit()]);
-    FH_EXPECT(b.blind_side_run.name() == core::kConceptNames[b.blind_side_run.bit()]);
+    FH_EXPECT(b.libero.name() == core::concepts().name(b.libero.bit()));
+    FH_EXPECT(b.cover_shadow.name() == core::concepts().name(b.cover_shadow.bit()));
+    FH_EXPECT(b.line_step.name() == core::concepts().name(b.line_step.bit()));
+    FH_EXPECT(b.pass_ladder.name() == core::concepts().name(b.pass_ladder.bit()));
+    FH_EXPECT(b.blind_side_run.name() == core::concepts().name(b.blind_side_run.bit()));
 }
 
 FH_TEST(libero_sits_behind_the_deepest_teammate_on_the_ball_side) {
@@ -265,6 +265,26 @@ FH_TEST(blind_side_run_waits_onside_then_goes_behind_a_ball_watcher) {
     // Not up at their line (more than 18 m short of it): not this concept's job.
     w.placePlayer(1, at(1, 11), kFacePlus);
     FH_EXPECT(!bs.target(ctx(w, 1, +1, ball, 90)).has_value());
+}
+
+FH_TEST(the_curriculum_grows_by_rows_past_32_concepts) {
+    // Built in: the 31 wired concepts, ids = the old bits.
+    const core::ConceptRegistry b = core::ConceptRegistry::builtin();
+    FH_EXPECT(b.size() == 31 && b.find("pass-ladder") == 29 && b.name(30) == "blind-side-run");
+    FH_EXPECT(b.find("rotation") == -1);
+    // A DB curriculum: the wired 31 plus lessons far past the old 32-bit cap,
+    // with a hole — taught or not, every one has a rating slot.
+    core::ConceptRegistry db = core::ConceptRegistry::builtin();
+    db.add(40, "rotation", 0);                                  // style lesson, no class yet
+    db.add(120, "first-touch-direction", core::levelRank("u14"));  // taught from U-14
+    FH_EXPECT(db.size() == 121 && db.find("first-touch-direction") == 120 && db.name(60).empty());
+    core::setConcepts(db);
+    const auto u14 = core::defaultRatings(core::levelParams("u14"));
+    const auto u10 = core::defaultRatings(core::levelParams("u10"));
+    FH_EXPECT(u14[120] == 30 && u10[120] == 0);   // the U-14 band knows it at its quality
+    FH_EXPECT(u14[40] == 0);                       // style: never a band default
+    FH_EXPECT(u14[2] == 30 && u14[0] == 0);        // cover from u10; delay from amateur
+    core::setConcepts(core::ConceptRegistry::builtin());
 }
 
 FH_TEST_MAIN()

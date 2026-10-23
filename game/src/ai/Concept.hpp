@@ -3,8 +3,9 @@
 // Concepts as classes (G4.33). James: "each concept is a class? extended
 // from concept? … no hard code. all comes from db and oop".
 //
-// A Concept knows its registry name + bit (core::kConceptNames — the wire
-// and game_demo_player_concepts use the name) and its numbers, which come
+// A Concept knows its curriculum name + id (core::concepts(), game_concepts
+// mig 650; the wire and game_demo_player_concepts use the name) and its
+// numbers, which come
 // from game_model_params ("concept.<name>.<param>", mig 642; constructor
 // defaults = the seeded rows, used only without a DB). The Brain asks it
 // at the phase it belongs to; WHETHER a player uses it this tick is still

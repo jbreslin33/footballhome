@@ -74,6 +74,23 @@ int main() {
         db.password = envOr("POSTGRES_PASSWORD", "");
         const char* home_code = envOr("GAME_FORMATION_HOME", "4-4-2");
         const char* away_code = envOr("GAME_FORMATION_AWAY", "4-3-3");
+        // G4.37: the curriculum first — rosters and presets name concepts.
+        // A DB that renumbered a wired concept is refused (ids are wire
+        // format and every saved rating keys on them).
+        if (auto reg = persistence::loadConcepts(db)) {
+            const core::ConceptRegistry wired = core::ConceptRegistry::builtin();
+            bool same = true;
+            for (int i = 0; i < wired.size(); ++i)
+                if (reg->name(i) != wired.name(i)) {
+                    std::fprintf(stderr, "fh-game: game_concepts id %d is '%s', wired '%s' — REFUSED, builtin curriculum kept\n",
+                                 i, reg->name(i).c_str(), wired.name(i).c_str());
+                    same = false;
+                }
+            if (same) {
+                std::printf("fh-game: %d concept(s) in the curriculum (club DB)\n", reg->size());
+                core::setConcepts(std::move(*reg));
+            }
+        }
         if (auto f = persistence::loadFormation(db, home_code)) {
             cfg.formation_home = std::move(*f);
             std::printf("fh-game: home formation %s (club DB)\n", home_code);

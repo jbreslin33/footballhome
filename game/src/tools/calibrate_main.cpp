@@ -88,10 +88,10 @@ int main(int argc, char** argv) {
                 const std::size_t colon = item.find(':');
                 if (colon != std::string::npos) {
                     const std::string name = item.substr(0, colon);
-                    for (int c = 0; c < core::kConceptCount; ++c)
-                        if (name == core::kConceptNames[c])
-                            ov[c] = static_cast<std::int16_t>(
-                                std::atoi(item.c_str() + colon + 1));
+                    const int c = core::concepts().find(name);
+                    if (c >= 0)
+                        ov[c] = static_cast<std::int16_t>(
+                            std::atoi(item.c_str() + colon + 1));
                 }
                 at = end + 1;
             }

@@ -271,6 +271,7 @@
   function renderKnowledge(body, slot, e) {
     let html = `<div style="max-height:52vh;overflow-y:auto;">`;
     GameWire.CONCEPTS.forEach((c, i) => {
+      if (!c) return;   // an id hole in the curriculum
       const v = e.ratings[i] || 0;
       html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
         <span style="width:92px;font-size:11px;">${c}</span>

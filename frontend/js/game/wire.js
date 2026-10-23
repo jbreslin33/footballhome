@@ -27,6 +27,7 @@
     PLAYER_ATTRIBUTES: 0x37,
     TEAMS: 0x38,
     RELOAD_ROSTERS: 0x39,
+    CONCEPTS: 0x3A,
   };
 
   // G4.30 attribute order (game_attributes.sort_order; PROTOCOL 0x37).
@@ -34,6 +35,8 @@
                       'anticipation', 'decisions', 'goalkeeping'];
   const utf8 = new TextDecoder();
 
+  // Built-in curriculum (ids 0-30); the server's CONCEPTS frame (0x3A,
+  // game_concepts) replaces it on connect.
   const CONCEPTS = ['delay', 'marking', 'cover', 'support', 'outlet',
                     'runs', 'over-top', 'sweep', 'placement', 'line-hold',
                     'jockey-angle', 'recover', 'double-team', 'width',

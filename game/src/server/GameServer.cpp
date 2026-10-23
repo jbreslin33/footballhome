@@ -106,9 +106,11 @@ void GameServer::applyRosters() {
             // Legacy mask override → that player's known set at a strong
             // personal quality (85): Old Gio knows EVERYTHING well.
             if (p.concept_mask >= 0) {
-                for (int c = 0; c < core::kConceptCount; ++c)
-                    r[c] = (static_cast<std::uint32_t>(p.concept_mask) &
-                            (1u << c))
+                // (the legacy mask only ever covered ids 0-31)
+                const int n = core::concepts().size();
+                for (int c = 0; c < n; ++c)
+                    r[c] = (c < 32 && (static_cast<std::uint32_t>(p.concept_mask) &
+                                       (1u << c)))
                                ? 85
                                : 0;
             }
@@ -152,7 +154,7 @@ void GameServer::applyPlayerConcepts(std::uint8_t sl) {
     const persistence::DemoTeam& team = home ? cfg_.roster_home : cfg_.roster_away;
     if (k >= team.players.size()) return;
     for (const auto& [idx, v] : team.players[k].concepts)
-        if (idx >= 0 && idx < core::kConceptCount) concept_ratings_[sl][idx] = v;
+        if (idx >= 0 && idx < core::concepts().size()) concept_ratings_[sl][idx] = v;
 }
 
 void GameServer::broadcastRoster() {
@@ -162,7 +164,7 @@ void GameServer::broadcastRoster() {
         RosterEntry e;
         e.name = slot_names_[i];
         e.ratings.assign(concept_ratings_[i].begin(),
-                         concept_ratings_[i].end());
+                         concept_ratings_[i].begin() + core::concepts().size());
         rf.slots.push_back(std::move(e));
     }
     const Bytes frame = encodeFrame(FrameType::Roster, encodeRoster(rf));
@@ -197,6 +199,13 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
     const Bytes frame = encodeFrame(FrameType::Hello, encodeHello(hello));
     transport_.send(id, frame);
     clients_.emplace(id, true);
+    {  // G4.37 (1.6): the curriculum's names, index = concept id (a hole
+       // is ""). Same name-list layout as PRESETS.
+        PresetsFrame cf;
+        const core::ConceptRegistry& reg = core::concepts();
+        for (int i = 0; i < reg.size(); ++i) cf.names.push_back(reg.name(i));
+        transport_.send(id, encodeFrame(FrameType::Concepts, encodePresets(cf)));
+    }
     if (!cfg_.presets.empty()) {  // style-preset catalog (1.4, mig 630)
         PresetsFrame pf;
         for (const auto& p : cfg_.presets) pf.names.push_back(p.name);
@@ -324,13 +333,14 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
         }
         case FrameType::PlayerSettings: {
             // Admin-only: rewrite one player's knowledge live (the edit
-            // screen). CONCEPTS.md bit ids; junk bits masked off.
+            // screen). Curriculum ids (game_concepts); extras ignored.
             if (!admins_.count(id)) return;
             const auto ps = decodePlayerSettings(frame.payload);
             if (!ps || ps->slot >= cfg_.slot_count) return;
             core::ConceptRatings r{};
+            const std::size_t n = static_cast<std::size_t>(core::concepts().size());
             for (std::size_t c = 0;
-                 c < r.size() && c < ps->ratings.size(); ++c) {
+                 c < n && c < ps->ratings.size(); ++c) {
                 r[c] = ps->ratings[c] > 100 ? 100 : ps->ratings[c];
             }
             concept_ratings_[ps->slot] = r;

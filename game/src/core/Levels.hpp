@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "core/ConceptRegistry.hpp"
 #include "math/Fixed64.hpp"
 
 #include <array>
@@ -123,110 +124,53 @@ inline std::int16_t* attributeAt(PlayerAttributes& a, int i) {
 // The scaling itself lives in the Skill classes (core/Skill.hpp, G4.33):
 // one class per attribute, numbers from game_model_params.
 
-// ── Concept bits (game/CONCEPTS.md is the registry; append-only) ───────
-enum Concept : std::uint32_t {
-    kDelayTransition = 1u << 0,
-    kManMarking      = 1u << 1,
-    kCoverMan        = 1u << 2,
-    kSupportSpot     = 1u << 3,
-    kBackOutlet      = 1u << 4,
-    kRunInBehind     = 1u << 5,
-    kPlayOverTop     = 1u << 6,
-    kKeeperSweep     = 1u << 7,
-    kShotPlacement   = 1u << 8,
-    kLineHold        = 1u << 9,
-    kJockeyAngle     = 1u << 10,  // show them the touchline
-    kRecoverGoalSide = 1u << 11,  // beaten → sprint the cover line
-    kDoubleTeam      = 1u << 12,  // trap on the touchline
-    kSpreadWide      = 1u << 13,  // attacking WIDTH (James's law, offense side)
-    kGiveAndGo       = 1u << 14,  // pass and MOVE
-    kPushUp          = 1u << 15,  // squeeze: line steps UP with the ball
-    kCounterPress    = 1u << 16,  // 6-second rule after losing it
-    kBalance         = 1u << 17,  // weak-side tuck [FA principles]
-    // STYLE class [S]: chosen identities, default 0 at every band —
-    // schools (Bielsa etc.) are preset vectors over these + the rest.
-    kManOrientation  = 1u << 18,  // mark YOUR man, follow him anywhere
-    kVerticality     = 1u << 19,  // forward first; accept tighter lanes
-    kInterceptRead   = 1u << 20,  // read the pass: earliest-reach cutoff
-    kRestraint       = 1u << 21,  // don't dive: the anti-tackle
-    kTackleTiming    = 1u << 22,  // dive on the exposed ball, not on faith
-    // [S] like 18/19: a band-wide counter measured world 3.1 → 5.0 goals
-    // (extra bodies in the box feed the scramble) — it's an identity.
-    kCounterAttack   = 1u << 23,  // fast break: moment 4 [KNVB]
-    kSafePass        = 1u << 24,  // read the interceptors; recycle [Buckland]
-    kShotSelection   = 1u << 25,  // shoot on chance quality, not range
-    // G4.33 [Bielsa]: roles of the man-oriented +1 system, STYLE class
-    // (default 0 at every band — a team is coached into them).
-    kLibero          = 1u << 26,  // the free +1: follow the ball, deep, read the long ball
-    kCoverShadow     = 1u << 27,  // the 9 presses their CB on the pass he'd play
-    kLineStep        = 1u << 28,  // [Sacchi] step up on a covered ball, hold on an open one
-    // G4.35 [Bielsa-Leeds]: STYLE class too (default 0 at every band).
-    kPassLadder      = 1u << 29,  // look forward in order: behind the line first
-    kBlindSideRun    = 1u << 30,  // wait on the far shoulder, go when he can't see you
-};
-inline constexpr std::uint32_t kAllConcepts = (1u << 31) - 1;
-inline constexpr const char* kConceptNames[] = {
-    "delay", "marking", "cover", "support", "outlet",
-    "runs", "over-top", "sweep", "placement", "line-hold",
-    "jockey-angle", "recover", "double-team", "width", "give-and-go",
-    "push-up", "counter-press", "balance", "man-mark", "verticality",
-    "intercept", "restraint", "tackle-timing", "counter-attack",
-    "safe-pass", "shot-selection", "libero", "cover-shadow", "line-step",
-    "pass-ladder", "blind-side-run"};
-inline constexpr int kConceptCount = 31;
+// ── Concepts: the registry is the curriculum (core/ConceptRegistry.hpp,
+// game_concepts mig 650). Ratings are indexed by the stable concept id.
 
 // ── Graded knowledge (James: "implement them on a 0 to 100 scale") ─────
 // A rating is CONSISTENCY + MAGNITUDE in one number: branch concepts roll
 // (noise < rating%) per application; spatial concepts also lerp their
 // distances by rating. 0 = doesn't know it; 100 = textbook every time.
-using ConceptRatings = std::array<std::uint8_t, kConceptCount>;
+using ConceptRatings = std::array<std::uint8_t, kMaxConcepts>;
 
 // A style preset is an OVERLAY vector (mig 630, CONCEPTS.md "Schools &
 // auteurs"): -1 = this dial untouched; 0-100 = set it (an explicit 0 is
 // meaningful — Sacchi's zonal marking ZEROES man-mark). Applying one
 // paints only the dials the school names; the rest keep their value.
-using PresetOverlay = std::array<std::int16_t, kConceptCount>;
+using PresetOverlay = std::array<std::int16_t, kMaxConcepts>;
 
 inline void applyPresetOverlay(ConceptRatings& r, const PresetOverlay& o) {
-    for (int i = 0; i < kConceptCount; ++i) {
+    for (int i = 0; i < kMaxConcepts; ++i) {
         if (o[i] < 0) continue;
         r[i] = static_cast<std::uint8_t>(o[i] > 100 ? 100 : o[i]);
     }
 }
 
-
-
-// Default knowledge bundle for a level band. EXACTLY reproduces the
-// pre-registry gates (swarm >= 40 lacked the theory), so unedited teams
-// behave identically to before the registry existed.
-inline std::uint32_t conceptBundle(const LevelParams& lv) {
-    std::uint32_t m = kCoverMan | kSupportSpot | kShotPlacement | kLineHold;
-    if (lv.swarm_pct < 40) {
-        m |= kDelayTransition | kManMarking | kBackOutlet | kRunInBehind |
-             kPlayOverTop | kKeeperSweep | kJockeyAngle | kRecoverGoalSide |
-             kDoubleTeam | kSpreadWide | kGiveAndGo | kPushUp |
-             kCounterPress | kBalance | kInterceptRead | kRestraint |
-             kTackleTiming | kSafePass | kShotSelection;
-    }
-    return m;
+// The band's place on the level ladder (u10 = 1 … world = 6, perfect = 7),
+// by the same thresholds as its quality below.
+inline int levelRankOf(const LevelParams& lv) {
+    if (lv.swarm_pct >= 70) return 1;
+    if (lv.swarm_pct >= 40) return 2;
+    if (lv.swarm_pct >= 25) return 3;
+    if (lv.swarm_pct >= 10) return 4;
+    if (lv.swarm_pct >= 3) return 5;
+    if (!lv.isZero()) return 6;
+    return 7;
 }
 
-// Band defaults: the band's quality on every concept it "knows" (the old
-// bundle), 0 on the rest — U-10s don't do delay theory AT ALL; a semipro
-// does everything at 68.
+// Band defaults: the band's quality on every concept taught at or below its
+// level (game_concepts.taught_from), 0 on the rest — U-10s don't do delay
+// theory AT ALL; a semipro does everything taught by then at 68.
 inline ConceptRatings defaultRatings(const LevelParams& lv) {
-    std::uint8_t q = 50;
-    if (lv.swarm_pct >= 70)      q = 12;   // u10
-    else if (lv.swarm_pct >= 40) q = 30;   // u14
-    else if (lv.swarm_pct >= 25) q = 50;   // amateur
-    else if (lv.swarm_pct >= 10) q = 68;   // semipro
-    else if (lv.swarm_pct >= 3)  q = 82;   // pro
-    else if (!lv.isZero())       q = 92;   // world
-    else                         q = 100;  // perfect
+    static constexpr std::uint8_t kQuality[] = {0, 12, 30, 50, 68, 82, 92, 100};
+    const int rank = levelRankOf(lv);
+    const std::uint8_t q = kQuality[rank];
     ConceptRatings r{};
-    const std::uint32_t bundle = conceptBundle(lv);
-    for (int i = 0; i < kConceptCount; ++i)
-        r[i] = (bundle & (1u << i)) ? q : 0;
+    const ConceptRegistry& reg = concepts();
+    for (int i = 0; i < reg.size(); ++i) {
+        const int from = reg.taughtFrom(i);
+        r[i] = (from > 0 && rank >= from) ? q : 0;
+    }
     return r;
 }
 

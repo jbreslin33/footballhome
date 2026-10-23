@@ -22,6 +22,7 @@
 
 #include "ai/Formation.hpp"
 #include "core/Levels.hpp"
+#include "core/ConceptRegistry.hpp"
 #include "core/ModelParams.hpp"
 
 #include <optional>
@@ -88,7 +89,7 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
 // any failure — the sandbox boots preset-less, loudly.
 struct StylePreset {
     std::string name;
-    core::PresetOverlay overlay;  // kConceptNames order
+    core::PresetOverlay overlay;  // by curriculum id (game_concepts)
 };
 std::vector<StylePreset> loadStylePresets(const DbConfig& cfg);
 
@@ -96,5 +97,9 @@ std::vector<StylePreset> loadStylePresets(const DbConfig& cfg);
 // "owner.code.param". Empty on any failure — the classes keep their
 // seeded defaults, loudly logged.
 core::ModelParams loadModelParams(const DbConfig& cfg);
+
+// G4.37 (mig 650): the curriculum — every concept by stable id, with the
+// level it is a default from. Empty on any failure (keep builtin()).
+std::optional<core::ConceptRegistry> loadConcepts(const DbConfig& cfg);
 
 }  // namespace fh::game::persistence

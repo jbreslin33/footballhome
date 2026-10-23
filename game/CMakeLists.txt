@@ -33,6 +33,7 @@ target_include_directories(game_math PUBLIC src)
 add_library(game_core STATIC
   src/core/World.cpp
   src/core/CanonicalHash.cpp
+  src/core/ConceptRegistry.cpp
 )
 target_link_libraries(game_core PUBLIC game_math)
 

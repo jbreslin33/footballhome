@@ -157,10 +157,8 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
         for (const auto& r : cons) {
             const int shirt = r[0].as<int>();
             const std::string name = r[1].as<std::string>();
-            int idx = -1;
-            for (int c = 0; c < core::kConceptCount; ++c)
-                if (name == core::kConceptNames[c]) idx = c;
-            if (idx < 0) continue;   // a concept this build doesn't know yet
+            const int idx = core::concepts().find(name);
+            if (idx < 0) continue;   // not in the curriculum (game_concepts)
             const int v = r[2].as<int>();
             for (std::size_t i = 0; i < shirts.size(); ++i)
                 if (shirts[i] == shirt)
@@ -199,11 +197,8 @@ std::vector<StylePreset> loadStylePresets(const DbConfig& cfg) {
             }
             // "concept" is a C++20 keyword — hence dial_name.
             const std::string dial_name = row[1].as<std::string>();
-            int idx = -1;
-            for (int i = 0; i < core::kConceptCount; ++i) {
-                if (dial_name == core::kConceptNames[i]) { idx = i; break; }
-            }
-            if (idx < 0) {  // a queued concept's row landed early: skip
+            const int idx = core::concepts().find(dial_name);
+            if (idx < 0) {  // not in the curriculum (game_concepts): skip
                 std::fprintf(stderr,
                              "fh-game: preset '%s' names unknown concept "
                              "'%s' — skipped\n",
@@ -240,6 +235,27 @@ core::ModelParams loadModelParams(const DbConfig& cfg) {
         std::fprintf(stderr, "fh-game: game_model_params load failed (class defaults): %s\n", e.what());
     }
     return out;
+}
+
+std::optional<core::ConceptRegistry> loadConcepts(const DbConfig& cfg) {
+    try {
+        const std::string conn_str =
+            "host=" + cfg.host + " dbname=" + cfg.dbname +
+            " user=" + cfg.user + " password=" + cfg.password +
+            " connect_timeout=5";
+        pqxx::connection conn{conn_str};
+        pqxx::work tx{conn};
+        core::ConceptRegistry reg;
+        for (const auto& r : tx.exec(
+                 "SELECT id, name, COALESCE(taught_from, '') FROM game_concepts ORDER BY id"))
+            reg.add(r[0].as<int>(), r[1].as<std::string>(),
+                    core::levelRank(r[2].as<std::string>()));
+        if (reg.size() == 0) return std::nullopt;
+        return reg;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: game_concepts load failed (builtin curriculum): %s\n", e.what());
+        return std::nullopt;
+    }
 }
 
 }  // namespace fh::game::persistence
