@@ -83,9 +83,15 @@
         ${body ? `<div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6;">${esc(t('message', {}, 'Message').toUpperCase())}</div>
         <pre style="white-space:pre-wrap; font-family:inherit; font-size:0.85rem; background:#1e293b; border-radius:8px; padding:8px 10px; margin:4px 0 6px; max-height:30vh; overflow:auto;">${esc(body)}</pre>
         <div style="text-align:right; margin-bottom:12px;"><button type="button" data-ds-copy-body style="${b}">${esc(t('copy', {}, 'Copy'))}</button></div>` : ''}
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <button type="button" data-ds-open style="${b} flex:1; padding:11px; background:#0284c7; font-size:0.95rem;">${esc(t('open', {}, 'Open Google Messages'))}</button>
-          <button type="button" data-ds-close style="${b}">${esc(t('close', {}, 'Done'))}</button>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <button type="button" data-ds-step1 style="${b} padding:12px; background:#0284c7; font-size:0.98rem;">${esc(t('step1', {}, '1 · Copy number & open Messages'))}</button>
+          <div data-ds-hint1 style="display:none; font-size:0.78rem; color:#7dd3fc;">${esc(t('step1_hint', {}, 'In Messages: Start chat → paste (Ctrl+V) → Enter.'))}</div>
+          ${body ? `<button type="button" data-ds-step2 style="${b} padding:12px; background:#7c3aed; font-size:0.98rem;">${esc(t('step2', {}, '2 · Copy message'))}</button>
+          <div data-ds-hint2 style="display:none; font-size:0.78rem; color:#c4b5fd;">${esc(t('step2_hint', {}, 'Click the message box in Messages → paste (Ctrl+V) → send.'))}</div>` : ''}
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <span style="font-size:0.7rem; opacity:0.6;">${esc(t('tabs_hint', {}, ''))}</span>
+            <button type="button" data-ds-close style="${b}">${esc(t('close', {}, 'Done'))}</button>
+          </div>
         </div>
         <div style="margin-top:8px; text-align:center;"><a href="${esc(href)}" data-ds-native
           style="font-size:0.75rem; color:#94a3b8;">${esc(t('phone_app', {}, 'Open my texting app instead'))}</a></div>
@@ -96,12 +102,30 @@
       if (c) { copy(c.dataset.dsCopy, c); return; }
       const cb = e.target.closest('[data-ds-copy-body]');
       if (cb) { copy(body, cb); return; }
-      if (e.target.closest('[data-ds-open]')) {
-        // One named tab: every text reuses the same Google Messages window.
-        window.open('https://messages.google.com/web/conversations/new', 'fh-google-messages');
+      const s1 = e.target.closest('[data-ds-step1]');
+      if (s1) {
+        copy(to.join(', '), s1);
+        openMessages();
+        el.querySelector('[data-ds-hint1]').style.display = '';
+        return;
+      }
+      const s2 = e.target.closest('[data-ds-step2]');
+      if (s2) {
+        copy(body, s2);
+        el.querySelector('[data-ds-hint2]').style.display = '';
       }
     });
     document.body.appendChild(el);
+  }
+
+  // Google Messages in its own small window beside Football Home, named so
+  // every text reuses it (a hand-opened Messages tab can't be reached).
+  function openMessages() {
+    const w = Math.min(560, Math.round(screen.availWidth * 0.4));
+    const left = Math.max(0, screen.availWidth - w);
+    const win = window.open('https://messages.google.com/web/conversations/new', 'fh-google-messages',
+      `popup,width=${w},height=${screen.availHeight},left=${left},top=0`);
+    if (win) win.focus();
   }
 
   // Screens hand an sms: href here instead of assigning location.href.
