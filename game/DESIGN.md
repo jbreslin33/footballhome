@@ -1118,6 +1118,21 @@ skill extended from skills? … no hard code. all comes from db and oop".
   forward. All three are STYLE concepts (default 0 at every band) so the
   bands and goldens are untouched; teams are coached into them by rows.
 
+### 8.30 G4.34 — researched team models: Ukies 4-2-3-1, Lighthouse Bielsa
+
+James: "look up how a 4231 defense and offense works for ukies. use
+bielsa system of tactics for lh". Data only (mig 644), every rating citing
+its source: the **Bielsa** preset completed (13 dials: man-mark 95,
+marking 90, counter-press 90, verticality 90, runs 90, counter-attack 85,
+give-and-go 85, support 85, width 85, push-up 85, intercept 80,
+double-team 75, safe-pass 45) and now worn by Lighthouse APSL; a new
+**Classic 4-2-3-1** preset (zonal back four, double pivot screening and
+intercepting, full-backs tucking in, compact mid-block, CBs into the
+pivots, 10 supporting the 9, width from the full-backs) worn by the
+Ukies. Per-player roles (libero, cover-shadow 9, line-step 68) still sit
+on top. The roles the research names but the engine can't yet play are
+queued in CONCEPTS.md.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

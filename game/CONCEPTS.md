@@ -65,6 +65,17 @@ Today that answer is hand-picked as the formation (APSL 4-3-3 vs the Ukies'
 when the opponent changes shape — a recognition (`opponent_shape`) plus a
 team-layer response, rated per team.
 
+**Team, roles from the 4-2-3-1 and Bielsa research (G4.34)** — what the
+presets can't express yet, each a future `ai::Concept` class with its
+numbers in `game_model_params`: `pivot_drop` (one 6 drops between the
+CBs to build with a numerical edge [sportmonks]), `pivot_step` (one pivot
+steps up to press beside the 10 while the other covers across [Premier
+League explainer]), `inside_forward` (wide players cut inside on their
+unnatural side, full-backs give the width [Premier League]), `ten_arrives`
+(the 10 arrives behind the lone 9), `overlap` / `underlap` (Bielsa's
+full-back runs around / inside the winger), `rotation` (Bielsa's
+positional interchanges that break man-marking).
+
 **Individual, defending** — `block_shot_line` (no delay within shooting
 range + a body in the lane; built in G4.22, parked on branch
 `game/g4-block-shot-wip` until ball-winning lands — DESIGN.md §8.17),
