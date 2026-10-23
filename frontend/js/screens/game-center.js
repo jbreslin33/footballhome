@@ -3161,12 +3161,13 @@ class GameCenterScreen extends Screen {
     const done = async () => { this._closeContactSheet(); await this._loadTextMarks(); this._render(); };
     if (how.key === 'call') { window.location.href = `tel:${st.phone}`; return this._closeContactSheet(); }
     if (what === 'blank') {
-      window.location.href = how.key === 'phone' ? `sms:${st.phone}` : `mailto:${st.email}`;
+      if (how.key === 'phone') DesktopSms.open(`sms:${st.phone}`);
+      else window.location.href = `mailto:${st.email}`;
       return this._closeContactSheet();
     }
     if (what === 'reg' && how.key !== 'club') {
       const g = c.gap;
-      if (how.key === 'phone') window.location.href = this.buildSmsComposeHref({ to: g.phone, body: g.body || '' });
+      if (how.key === 'phone') DesktopSms.open(this.buildSmsComposeHref({ to: g.phone, body: g.body || '' }));
       else this.openGmailCompose(this.buildGmailComposeHref({ to: g.email, subject: g.subject || '', body: g.body || '' }));
       return this._closeContactSheet();
     }
@@ -3367,7 +3368,7 @@ class GameCenterScreen extends Screen {
       if (channel === 'email' && data.gmail_href) {
         this.openGmailCompose(data.gmail_href);
       } else if (channel === 'sms' && data.sms_href) {
-        window.location.href = data.sms_href;
+        (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
       } else if (data.url) {
         try {
           await navigator.clipboard.writeText(data.sms_body || data.url);
@@ -3837,7 +3838,7 @@ class GameCenterScreen extends Screen {
       const k = [...(((this.oppContacts || {}).club || {}).contacts || []), ...(((this.oppContacts || {}).league || {}).contacts || [])].find(x => x.id === contactId);
       if (k) { k.last_sent_at = 'just now'; k.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else window.location.href = data.sms_href;
+      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
       this._render();
     } catch (err) {
       console.error('[game-center] opponent message failed:', err);
@@ -3858,7 +3859,7 @@ class GameCenterScreen extends Screen {
       const all = [...(((this.oppContacts || {}).club || {}).contacts || []), ...(((this.oppContacts || {}).league || {}).contacts || [])];
       for (const k of all) if (ids.includes(k.id)) { k.last_sent_at = 'just now'; k.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else window.location.href = data.sms_href;
+      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
       this._render();
     } catch (err) {
       console.error('[game-center] opponent group message failed:', err);
@@ -3950,7 +3951,7 @@ class GameCenterScreen extends Screen {
     try {
       const data = await this._postReminder('/api/rsvp-board/remind', { person_id: Number(btn.dataset.personId), channel });
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else window.location.href = data.sms_href;
+      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
       btn.textContent = original;
       await this._loadReminders();
       this._paintSent();
@@ -3990,7 +3991,7 @@ class GameCenterScreen extends Screen {
           ? `💬 Group text drafted to ${contacts.length}${skipped}`
           : `Carriers cap a group text around ${CHUNK_SIZE} people — open each part: ` +
             hrefs.map((h, i) => `<a href="${this.escapeHtml(h)}" style="display:inline-block; padding:3px 9px; border-radius:6px; text-decoration:none; font-weight:800; font-size:0.68rem; color:#fff; background:#0284c7;">💬 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ') + skipped;
-        if (chunks.length === 1) window.location.href = hrefs[0];
+        if (chunks.length === 1) (window.DesktopSms ? DesktopSms.open(hrefs[0]) : (window.location.href = hrefs[0]));
       }
       if (slot) slot.innerHTML = html;
       await this._loadReminders();
@@ -4031,7 +4032,7 @@ class GameCenterScreen extends Screen {
           ? `💬 Group text drafted to ${contacts.length}${skipped}`
           : `Carriers cap a group text around ${CHUNK_SIZE} people — open each part: ` +
             hrefs.map((h, i) => `<a href="${this.escapeHtml(h)}" style="display:inline-block; padding:3px 9px; border-radius:6px; text-decoration:none; font-weight:800; font-size:0.68rem; color:#fff; background:#0284c7;">💬 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ') + skipped;
-        if (chunks.length === 1) window.location.href = hrefs[0];
+        if (chunks.length === 1) (window.DesktopSms ? DesktopSms.open(hrefs[0]) : (window.location.href = hrefs[0]));
       }
       this.squadNotice = data.status || this.squadNotice;
       // Re-render so every card and the bar dim together; the result
@@ -4059,7 +4060,7 @@ class GameCenterScreen extends Screen {
       const data = await this._postReminder('/api/rsvp-board/squad-notice',
         { match_id: Number(this.matchId), person_id: Number(btn.dataset.personId), channel });
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else window.location.href = data.sms_href;
+      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
       this.squadNotice = data.status || this.squadNotice;
       this._render();
       return;

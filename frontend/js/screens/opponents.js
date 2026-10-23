@@ -209,7 +209,7 @@ class OpponentsScreen extends Screen {
       const c = (this.board?.contacts || []).find(x => x.id === contactId);
       if (c) { c.last_sent_at = 'just now'; c.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else window.location.href = data.sms_href;
+      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
       this._renderBody();
     } catch (err) { this._say(err.message, true); }
     finally { btn.disabled = false; btn.textContent = orig; }

@@ -601,7 +601,7 @@ class RsvpBoardScreen extends Screen {
           ? this.escapeHtml(c('done_sms', { n: contacts.length }) || `Roll call text drafted to ${contacts.length}`)
           : `Carriers cap a group text around ${CHUNK_SIZE} people — open each part: ` +
             hrefs.map((h, i) => `<a class="rb-btn" style="background:#b45309;" href="${this.escapeHtml(h)}">📣 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ');
-        if (chunks.length === 1) window.location.href = hrefs[0];
+        if (chunks.length === 1) (window.DesktopSms ? DesktopSms.open(hrefs[0]) : (window.location.href = hrefs[0]));
       } else if (channel === 'groupme') {
         html = this.escapeHtml(c('done_groupme') || 'Roll call posted to GroupMe.');
       } else {
@@ -662,7 +662,7 @@ class RsvpBoardScreen extends Screen {
           ? `💬 Group text drafted to ${contacts.length}${skipped}`
           : `Carriers cap a group text around ${CHUNK_SIZE} people — open each part: ` +
             hrefs.map((h, i) => `<a class="rb-btn" style="background:#0284c7;" href="${this.escapeHtml(h)}">💬 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ') + skipped;
-        if (chunks.length === 1) window.location.href = hrefs[0];
+        if (chunks.length === 1) (window.DesktopSms ? DesktopSms.open(hrefs[0]) : (window.location.href = hrefs[0]));
       }
       this.bulk = { key, channel, html };
       this._renderBody();
@@ -1045,7 +1045,7 @@ class RsvpBoardScreen extends Screen {
         if (sibCard) this._markReminded(sibCard, sib, a.last_reminder, channel);
       }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else window.location.href = data.sms_href;
+      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
 
       btn.disabled = false;
       const card = btn.closest('[data-card]');

@@ -221,7 +221,7 @@ class CasaContactsScreen extends Screen {
       const c = (this.data?.contacts || []).find(x => x.id === contactId);
       if (c) { c.last_sent_at = 'just now'; c.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(this.buildGmailComposeHref({ to: data.contact, subject: data.subject, body: data.body, authuser: data.from_email || this._from() }));
-      else window.location.href = data.sms_href;
+      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
       this._renderBody();
     } catch (err) { this._say(err.message, true); }
     finally { btn.disabled = false; btn.textContent = orig; }
@@ -602,7 +602,8 @@ class CasaScoresScreen extends Screen {
       else {
         const nums = to.map(p => p.replace(/[^\d+]/g, '')).join(',');
         const apple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
-        window.location.href = to.length > 1 && apple ? `sms://open?addresses=${nums}&body=${encodeURIComponent(data.body)}` : `sms:${nums}?body=${encodeURIComponent(data.body)}`;
+        if (window.DesktopSms && DesktopSms.isDesktop()) DesktopSms.open(`sms:${nums}?body=${encodeURIComponent(data.body)}`);
+        else window.location.href = to.length > 1 && apple ? `sms://open?addresses=${nums}&body=${encodeURIComponent(data.body)}` : `sms:${nums}?body=${encodeURIComponent(data.body)}`;
       }
       await this.load();
     } catch (err) { this._say(err.message, true); }

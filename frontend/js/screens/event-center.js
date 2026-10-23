@@ -459,7 +459,7 @@ class EventCenterScreen extends Screen {
       if (channel === 'email' && data.gmail_href) {
         this.openGmailCompose(data.gmail_href);
       } else if (channel === 'sms' && data.sms_href) {
-        window.location.href = data.sms_href;
+        (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
       } else if (data.url) {
         try {
           await navigator.clipboard.writeText(data.sms_body || data.url);
