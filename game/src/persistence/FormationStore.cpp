@@ -91,6 +91,7 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
             team_name);
         if (team.empty()) return std::nullopt;
         DemoTeam out;
+        out.name = team_name;
         out.level_band = team[0][1].as<std::string>();
         if (!team[0][2].is_null())
             out.style_preset = team[0][2].as<std::string>();

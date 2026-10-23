@@ -111,6 +111,15 @@ struct PlayerAttributes {
     std::int16_t goalkeeping = -1;   // keeper reaction + fumbles
 };
 
+// Wire / registry order (game_attributes.sort_order; PROTOCOL 0x37).
+inline constexpr int kAttributeCount = 8;
+inline std::int16_t* attributeAt(PlayerAttributes& a, int i) {
+    std::int16_t* f[kAttributeCount] = {&a.pace, &a.passing, &a.shooting, &a.first_touch,
+                                        &a.tackling, &a.anticipation, &a.decisions,
+                                        &a.goalkeeping};
+    return i >= 0 && i < kAttributeCount ? f[i] : nullptr;
+}
+
 // Error-type dials: x1.5 at 0, x1 at 50, x0.5 at 100 (rounded integer).
 inline std::int32_t scaleErrByRating(std::int32_t v, std::int16_t r) {
     if (r < 0) return v;

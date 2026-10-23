@@ -196,4 +196,25 @@ FH_TEST(apply_preset_round_trip) {
     FH_EXPECT_EQ(d->preset_id, 7);
 }
 
+FH_TEST(player_attributes_round_trip) {
+    PlayerAttributesFrame f;
+    f.slot = 13;
+    f.ratings = {70, 55, 255, 40, 100, 0, 61, 22};   // 255 = unrated
+    auto d = decodePlayerAttributes(encodePlayerAttributes(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->slot, 13);
+    FH_EXPECT_EQ(d->ratings.size(), 8u);
+    FH_EXPECT_EQ(d->ratings[2], 255);
+    FH_EXPECT_EQ(d->ratings[4], 100);
+    FH_EXPECT(!decodePlayerAttributes(Bytes{3, 8, 1}).has_value());  // truncated
+}
+
+FH_TEST(teams_round_trip) {
+    TeamsFrame f{"Lighthouse APSL", "Ukrainian Nationals"};
+    auto d = decodeTeams(encodeTeams(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT(d->home == "Lighthouse APSL");
+    FH_EXPECT(d->away == "Ukrainian Nationals");
+}
+
 FH_TEST_MAIN()

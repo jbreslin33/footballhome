@@ -1045,8 +1045,16 @@ player … this will be an attempt to start a game realistic for apsl".
   Ukies 4-2-3-1, Lighthouse APSL 4-3-3 wearing the "Lighthouse" preset
   (the club's Bielsa-based model). The -1/+1 match-up that PRODUCES the
   4-3-3 is queued as the `match_up` concept (CONCEPTS.md).
-- Next: an editor for attributes + the player-type description (DB-backed,
-  so James's corrections persist), the full Ukies roster, substitutes.
+- **The editor (same day):** EDIT → tap a player → PLAYER tab: the eight
+  attribute sliders + "what type of player is he?" for him or anyone on
+  his team (bench included). SAVE writes the club DB (`/api/game/roster`
+  read for signed-in members, `/api/game/player` save for admins — the
+  daemon still reads the DB only at boot) AND sends wire 1.5's
+  PLAYER_ATTRIBUTES (0x37) so the running match uses the new numbers at
+  once; TEAMS (0x38) tells the client which rosters it's looking at. The
+  old concept sliders are the KNOWLEDGE tab. Names on the wire now decode
+  as UTF-8.
+- Next: the full Ukies roster, substitutes, the `match_up` concept.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

@@ -63,6 +63,7 @@ struct DemoPlayer {
     std::string description;
 };
 struct DemoTeam {
+    std::string name;  // game_demo_teams.name (the TEAMS frame)
     std::string level_band;
     // Mig 631: the style preset this team WEARS — overlaid onto its
     // ratings at boot and after band changes. Empty = none.

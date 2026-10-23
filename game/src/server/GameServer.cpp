@@ -188,6 +188,10 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
         transport_.send(id, encodeFrame(FrameType::Presets,
                                         encodePresets(pf)));
     }
+    // G4.30: which teams are playing — the editor's key into the club API.
+    transport_.send(id, encodeFrame(FrameType::Teams,
+                                    encodeTeams({cfg_.roster_home.name,
+                                                 cfg_.roster_away.name})));
     broadcastRoster();  // names + knowledge for every client
 }
 
@@ -292,6 +296,34 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             concept_ratings_[ps->slot] = r;
             brain_.setRatings(ps->slot, r);
             broadcastRoster();
+            return;
+        }
+        case FrameType::PlayerAttributes: {
+            // Admin-only (G4.30): one rostered player's attributes, live —
+            // the editor saves them to the club DB (boot reads them there)
+            // and sends them here so the running match uses them now.
+            if (!admins_.count(id)) return;
+            const auto pa = decodePlayerAttributes(frame.payload);
+            if (!pa || pa->slot >= cfg_.slot_count) return;
+            const std::uint8_t per_team = cfg_.slot_count / 2;
+            const bool home = pa->slot < per_team;
+            const std::uint8_t k = home ? pa->slot : pa->slot - per_team;
+            persistence::DemoTeam& team = home ? cfg_.roster_home : cfg_.roster_away;
+            if (k >= team.players.size()) return;
+            core::PlayerAttributes& a = team.players[k].attrs;
+            for (int i = 0; i < core::kAttributeCount &&
+                            i < static_cast<int>(pa->ratings.size()); ++i) {
+                const std::uint8_t v = pa->ratings[i];
+                *core::attributeAt(a, i) =
+                    v == 255 ? std::int16_t{-1} : std::int16_t(v > 100 ? 100 : v);
+            }
+            const std::int32_t cms = a.pace >= 0 ? core::paceSpeedCms(a.pace)
+                                                 : team.players[k].max_speed_cms;
+            world_.setMaxSpeed(pa->slot, Fixed64::fromFraction(cms, 100));
+            const core::LevelParams lv =
+                core::levelForPlayer(world_.level(home ? 0 : 1), a);
+            world_.setSlotLevel(pa->slot, lv);
+            brain_.setSlotLevel(pa->slot, lv);
             return;
         }
         case FrameType::ApplyPreset: {

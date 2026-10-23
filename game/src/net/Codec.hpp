@@ -172,4 +172,23 @@ struct ApplyPresetFrame {
 Bytes encodeApplyPreset(const ApplyPresetFrame& f);
 std::optional<ApplyPresetFrame> decodeApplyPreset(const Bytes& payload);
 
+// G4.30 (1.5): one slot's attributes, game_attributes sort order (pace,
+// passing, shooting, first_touch, tackling, anticipation, decisions,
+// goalkeeping); 255 = unrated (the band). Same layout as PLAYER_SETTINGS.
+struct PlayerAttributesFrame {
+    std::uint8_t slot = 0;
+    std::vector<std::uint8_t> ratings;
+};
+Bytes encodePlayerAttributes(const PlayerAttributesFrame& f);
+std::optional<PlayerAttributesFrame> decodePlayerAttributes(const Bytes& payload);
+
+// G4.30 (1.5): the two teams playing (game_demo_teams names) — the
+// client's key into /api/game/roster for the attribute editor.
+struct TeamsFrame {
+    std::string home;
+    std::string away;
+};
+Bytes encodeTeams(const TeamsFrame& f);
+std::optional<TeamsFrame> decodeTeams(const Bytes& payload);
+
 }  // namespace fh::game::net

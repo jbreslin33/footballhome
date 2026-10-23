@@ -24,7 +24,14 @@
     ROSTER: 0x34,
     PRESETS: 0x35,
     APPLY_PRESET: 0x36,
+    PLAYER_ATTRIBUTES: 0x37,
+    TEAMS: 0x38,
   };
+
+  // G4.30 attribute order (game_attributes.sort_order; PROTOCOL 0x37).
+  const ATTRIBUTES = ['pace', 'passing', 'shooting', 'first_touch', 'tackling',
+                      'anticipation', 'decisions', 'goalkeeping'];
+  const utf8 = new TextDecoder();
 
   const CONCEPTS = ['delay', 'marking', 'cover', 'support', 'outlet',
                     'runs', 'over-top', 'sweep', 'placement', 'line-hold',
@@ -111,13 +118,33 @@
       for (let k = 0; k < rc; k++) ratings.push(view.getUint8(p + k));
       p += rc;
       const len = view.getUint8(p); p += 1;
-      let name = '';
-      for (let k = 0; k < len; k++)
-        name += String.fromCharCode(view.getUint8(p + k));
+      const name = utf8.decode(new Uint8Array(view.buffer, view.byteOffset + p, len));
       p += len;
       slots.push({ ratings, name });
     }
     return slots;
+  }
+
+  // 1.5: the two teams playing (game_demo_teams names), UTF-8.
+  function decodeTeams(view, at) {
+    let p = at;
+    const out = [];
+    for (let t = 0; t < 2; t++) {
+      const len = view.getUint8(p); p += 1;
+      out.push(utf8.decode(new Uint8Array(view.buffer, view.byteOffset + p, len)));
+      p += len;
+    }
+    return { home: out[0], away: out[1] };
+  }
+
+  // 1.5 admin: one slot's attributes (ATTRIBUTES order; null = unrated → 255).
+  function encodePlayerAttributes(slot, ratings) {
+    const p = new ArrayBuffer(2 + ratings.length);
+    const v = new DataView(p);
+    v.setUint8(0, slot);
+    v.setUint8(1, ratings.length);
+    ratings.forEach((r, i) => v.setUint8(2 + i, r == null ? 255 : Math.max(0, Math.min(100, r | 0))));
+    return envelope(FrameType.PLAYER_ATTRIBUTES, p);
   }
 
   function decodePresets(view, at) {
@@ -127,9 +154,7 @@
     const names = [];
     for (let i = 0; i < n; i++) {
       const len = view.getUint8(p); p += 1;
-      let name = '';
-      for (let k = 0; k < len; k++)
-        name += String.fromCharCode(view.getUint8(p + k));
+      const name = utf8.decode(new Uint8Array(view.buffer, view.byteOffset + p, len));
       p += len;
       names.push(name);
     }
@@ -206,6 +231,9 @@
     CONCEPTS,
     encodeMatchSettings,
     encodePlayerSettings,
+    encodePlayerAttributes,
+    decodeTeams,
+    ATTRIBUTES,
     encodeApplyPreset,
     decodeRoster,
     decodePresets,

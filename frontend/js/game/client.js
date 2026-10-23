@@ -67,10 +67,109 @@
     });
   }
 
-  function openEditPanel(slot) {
+  // ── EDIT panel (admin): tap a player → PLAYER (attributes + what type of
+  // player he is, saved to the club DB and sent live to the match, G4.30)
+  // or KNOWLEDGE (concept ratings, live). James: "give our guys random
+  // attributes and i can fix them and describe the type of player".
+  let teams = null;            // { home, away } from the TEAMS frame
+  const teamCache = {};        // team name → /api/game/roster payload
+  const authHeaders = () => {
+    let t = '';
+    try { t = localStorage.getItem('token') || ''; } catch (e) { /* none */ }
+    return Object.assign({ 'Content-Type': 'application/json' }, t ? { Authorization: 'Bearer ' + t } : {});
+  };
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  async function loadTeam(name, fresh) {
+    if (!fresh && teamCache[name]) return teamCache[name];
+    const r = await fetch('/api/game/roster?team=' + encodeURIComponent(name), { headers: authHeaders() });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    teamCache[name] = j;
+    return j;
+  }
+  // Typing in the panel must not steer the player or fire game keys.
+  const shieldKeys = (root) => root.querySelectorAll('input, textarea, select').forEach((el) => {
+    for (const ev of ['keydown', 'keyup', 'keypress']) el.addEventListener(ev, (e) => e.stopPropagation());
+  });
+
+  function openEditPanel(slot, tab) {
     const e = roster[slot] || { ratings: [], name: '#' + (slot + 1) };
-    let html = `<b>${e.name}</b> <span style="opacity:.6">(slot ${slot + 1})</span>
-      <div style="max-height:52vh;overflow-y:auto;margin-top:6px;">`;
+    tab = tab || 'player';
+    const tabBtn = (id, label) => `<button data-tab="${id}" style="padding:3px 10px;border-radius:12px;border:1px solid #889;
+      background:${tab === id ? '#ffcc00' : 'transparent'};color:${tab === id ? '#0b1c3d' : '#f4f6fb'};font-weight:700;">${label}</button>`;
+    editPanel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+        <b>${esc(e.name)}</b><button id="ep-close">✕</button></div>
+      <div style="display:flex;gap:6px;margin:6px 0;">${tabBtn('player', 'PLAYER')}${tabBtn('knowledge', 'KNOWLEDGE')}</div>
+      <div id="ep-body">loading…</div>`;
+    editPanel.style.display = 'block';
+    editPanel.style.width = 'min(340px, calc(100vw - 24px))';
+    editPanel.querySelector('#ep-close').onclick = () => (editPanel.style.display = 'none');
+    editPanel.querySelectorAll('button[data-tab]').forEach((b) => (b.onclick = () => openEditPanel(slot, b.dataset.tab)));
+    const body = editPanel.querySelector('#ep-body');
+    if (tab === 'knowledge') return renderKnowledge(body, slot, e);
+    renderPlayer(body, slot).catch((err) => {
+      body.innerHTML = '<span style="color:#ff8a94">Couldn\'t load the roster: ' + esc(err.message) + '</span>';
+    });
+  }
+
+  async function renderPlayer(body, slot) {
+    const perTeam = ((hello && hello.slotCount) || 22) / 2;
+    const away = slot >= perTeam;
+    const teamName = teams && (away ? teams.away : teams.home);
+    if (!teamName) { body.textContent = 'This match has no rostered teams.'; return; }
+    const t = await loadTeam(teamName);
+    let idx = away ? slot - perTeam : slot;       // roster order = slot order
+    const draw = () => {
+      const p = t.players[idx];
+      if (!p) { body.textContent = 'No rostered player in this slot.'; return; }
+      const onPitch = idx < perTeam;
+      let html = `<select id="ep-who" style="width:100%;margin-bottom:6px;background:#0b1c3d;color:#f4f6fb;border:1px solid #889;border-radius:6px;padding:3px;">` +
+        t.players.map((q, i) => `<option value="${i}"${i === idx ? ' selected' : ''}>#${q.shirt} ${esc(q.name)} · ${esc(q.position || '')}${i >= perTeam ? ' (bench)' : ''}</option>`).join('') +
+        `</select><div style="font-size:11px;opacity:.7;margin-bottom:4px;">${esc(t.team)} · ${esc(t.formation)} · ${esc(t.level_band)} — 50 = average for this level</div>`;
+      for (const a of t.attributes) {
+        const v = p.attrs[a.code];
+        html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;" title="${esc(a.description)}">
+          <span style="width:92px;font-size:11px;">${esc(a.name)}</span>
+          <input type="range" min="0" max="100" value="${v == null ? 50 : v}" data-attr="${a.code}" style="flex:1;"
+                 oninput="this.nextElementSibling.textContent=this.value">
+          <span style="width:26px;text-align:right;font-size:11px;">${v == null ? '—' : v}</span></div>`;
+      }
+      html += `<textarea id="ep-desc" rows="3" placeholder="What type of player is he? (e.g. ball-playing centre back, wins everything in the air, slow on the turn)"
+          style="width:100%;box-sizing:border-box;margin-top:6px;background:#0b1c3d;color:#f4f6fb;border:1px solid #889;border-radius:6px;padding:4px;font:12px system-ui,sans-serif;">${esc(p.description || '')}</textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+          <span id="ep-msg" style="font-size:11px;opacity:.8;">${onPitch ? 'Saves to the club and applies to the match now' : 'On the bench — saves to the club'}</span>
+          <button id="ep-save" style="background:#ffcc00;color:#0b1c3d;border:none;padding:4px 14px;border-radius:6px;font-weight:700;">SAVE</button></div>`;
+      body.innerHTML = html;
+      shieldKeys(body);
+      body.querySelector('#ep-who').onchange = (ev) => { idx = +ev.target.value; draw(); };
+      body.querySelector('#ep-save').onclick = async () => {
+        const msg = body.querySelector('#ep-msg');
+        const attrs = {};
+        body.querySelectorAll('input[data-attr]').forEach((sl) => { attrs[sl.dataset.attr] = +sl.value; });
+        const description = body.querySelector('#ep-desc').value.trim();
+        msg.textContent = 'saving…';
+        try {
+          const r = await fetch('/api/game/player', { method: 'PUT', headers: authHeaders(),
+            body: JSON.stringify({ team: t.team, shirt: p.shirt, attrs, description }) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+          p.attrs = attrs;
+          p.description = description;
+          // Live: the running match uses the new numbers now (wire 0x37).
+          if (onPitch) net.setAttributes((away ? perTeam : 0) + idx, GameWire.ATTRIBUTES.map((c) => attrs[c]));
+          msg.textContent = onPitch ? '✓ saved — playing with it now' : '✓ saved';
+          msg.style.color = '#7dff9a';
+        } catch (err) {
+          msg.textContent = '⚠ not saved: ' + err.message;
+          msg.style.color = '#ff8a94';
+        }
+      };
+    };
+    draw();
+  }
+
+  function renderKnowledge(body, slot, e) {
+    let html = `<div style="max-height:52vh;overflow-y:auto;">`;
     GameWire.CONCEPTS.forEach((c, i) => {
       const v = e.ratings[i] || 0;
       html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
@@ -80,16 +179,12 @@
         <span style="width:26px;text-align:right;font-size:11px;">${v}</span></div>`;
     });
     html += `</div><div style="margin-top:8px;text-align:right;">
-      <button id="ep-close">close</button>
       <button id="ep-apply" style="background:#ffcc00;color:#0b1c3d;
         border:none;padding:4px 14px;border-radius:6px;font-weight:700;">APPLY</button></div>`;
-    editPanel.innerHTML = html;
-    editPanel.style.display = 'block';
-    editPanel.querySelector('#ep-close').onclick = () =>
-      (editPanel.style.display = 'none');
-    editPanel.querySelector('#ep-apply').onclick = () => {
+    body.innerHTML = html;
+    body.querySelector('#ep-apply').onclick = () => {
       const ratings = new Array(GameWire.CONCEPTS.length).fill(0);
-      editPanel.querySelectorAll('input[data-idx]').forEach((sl) => {
+      body.querySelectorAll('input[data-idx]').forEach((sl) => {
         ratings[+sl.dataset.idx] = +sl.value;
       });
       net.setConcepts(slot, ratings);
@@ -208,6 +303,9 @@
     },
     onRoster(r) {
       roster = r;
+    },
+    onTeams(t) {
+      teams = t;
     },
     onPresets(names) {
       presets = names;

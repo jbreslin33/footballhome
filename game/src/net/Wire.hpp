@@ -38,6 +38,8 @@ enum class FrameType : std::uint8_t {
     Roster         = 0x34, // s→c: per-slot names + concept ratings (1.4)
     Presets        = 0x35, // s→c: style-preset catalog, names only (1.4)
     ApplyPreset    = 0x36, // admin: overlay a preset onto one team (1.4)
+    PlayerAttributes = 0x37, // admin: one slot's attributes, live (1.5, G4.30)
+    Teams          = 0x38, // s→c: the two teams' names, on connect (1.5)
 };
 
 // Capability bits granted in HELLO (PROTOCOL.md §3).

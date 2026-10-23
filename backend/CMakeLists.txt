@@ -52,6 +52,7 @@ set(SOURCES
     src/models/PersonHealth.cpp
     src/models/KitBoard.cpp
     src/models/FieldPlan.cpp
+    src/models/GameRoster.cpp
     src/models/SmsOptInBoard.cpp
     src/models/Contacts.cpp
     src/models/FacilityLockup.cpp
@@ -131,6 +132,7 @@ set(SOURCES
     src/controllers/JobsController.cpp
     src/controllers/KitBoardController.cpp
     src/controllers/FieldPlanController.cpp
+    src/controllers/GameRosterController.cpp
     src/controllers/LockupController.cpp
     src/controllers/ClubLogoController.cpp
     src/controllers/ClubFileController.cpp

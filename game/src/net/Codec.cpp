@@ -366,4 +366,43 @@ std::optional<ClaimFrame> decodeClaim(const Bytes& payload) {
     return f;
 }
 
+Bytes encodePlayerAttributes(const PlayerAttributesFrame& f) {
+    Writer w;
+    w.u8(f.slot);
+    w.u8(static_cast<std::uint8_t>(f.ratings.size()));
+    for (std::uint8_t v : f.ratings) w.u8(v);
+    return std::move(w.out);
+}
+
+std::optional<PlayerAttributesFrame> decodePlayerAttributes(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    PlayerAttributesFrame f;
+    f.slot = r.u8();
+    const std::uint8_t n = r.u8();
+    for (std::uint8_t i = 0; i < n && r.ok; ++i) f.ratings.push_back(r.u8());
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
+Bytes encodeTeams(const TeamsFrame& f) {
+    Writer w;
+    for (const std::string* n : {&f.home, &f.away}) {
+        const std::size_t len = n->size() > 60 ? 60 : n->size();
+        w.u8(static_cast<std::uint8_t>(len));
+        for (std::size_t i = 0; i < len; ++i) w.u8(static_cast<std::uint8_t>((*n)[i]));
+    }
+    return std::move(w.out);
+}
+
+std::optional<TeamsFrame> decodeTeams(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    TeamsFrame f;
+    for (std::string* n : {&f.home, &f.away}) {
+        const std::uint8_t len = r.u8();
+        for (std::uint8_t k = 0; k < len && r.ok; ++k) n->push_back(static_cast<char>(r.u8()));
+    }
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
 }  // namespace fh::game::net

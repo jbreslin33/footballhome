@@ -54,6 +54,8 @@ Frame types (u8):
 | 0x32 | MATCH_SETTINGS | c→s | admin: set both teams' skill bands live (1.3): `u8 level_home \| u8 level_away` (band ids 0-6 = perfect/u10/u14/amateur/semipro/pro/world); non-admin senders are ignored |
 | 0x35 | PRESETS | s→c | style-preset catalog (1.4), on connect: `u8 count`, then per preset `u8 name_len \| name bytes`; a preset's wire id IS its index in this list. Rows come from `game_style_presets` (mig 630); vectors stay server-side |
 | 0x36 | APPLY_PRESET | c→s | admin: paint one team's identity in one tap (1.4): `u8 team (0 home / 1 away) \| u8 preset_id (PRESETS index)`. The preset OVERLAYS only the dials it names onto every slot of that team (unnamed concepts keep their current rating); server answers with a fresh ROSTER |
+| 0x37 | PLAYER_ATTRIBUTES | c→s | admin (1.5, G4.30): one slot's attributes, live: `u8 slot \| u8 count \| u8 rating…` in game_attributes order (pace, passing, shooting, first_touch, tackling, anticipation, decisions, goalkeeping); 255 = unrated (the band). The editor saves the same values to the club DB (`/api/game/player`), which the daemon reads at boot |
+| 0x38 | TEAMS | s→c | the two teams playing (1.5, G4.30), on connect: `u8 len \| home name (UTF-8) \| u8 len \| away name` — game_demo_teams names, the editor's key into `/api/game/roster` |
 | TBD | … | | reserved; new types are additive within a major version |
 
 Snapshot payloads at 22 slots + 3D ball must be measured against the u16
