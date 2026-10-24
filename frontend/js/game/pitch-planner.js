@@ -157,8 +157,9 @@
   // can show the worst first. have/need in metres; need 0 = must not touch.
   function offences(rules, R, c) {
     const out = [], rb = bbox(R);
-    const add = (n, have, need) => out.push({ n, have, need });
-    for (const r of rules) {
+    const add = (n, have, need, at) => out.push({ n, have, need, r, at });
+    let r = null;
+    for (r of rules) {
       if (INFO[r.n]) continue;
       if (r.k === 'poly') {
         const b = r.bb || (r.bb = bbox(r.pts));
@@ -176,14 +177,14 @@
         if (R.some((p) => p[0] >= lineX(r.pts, p[1]))) add(r.n, 0, 0);
       } else if (r.k === 'points') {
         const reach = Math.hypot(R[0][0] - c[0], R[0][1] - c[1]) + r.min;
-        let worst = 1e9;
+        let worst = 1e9, at = null;
         for (const t of r.pts) {
           if (Math.abs(t[0] - c[0]) > reach || Math.abs(t[1] - c[1]) > reach) continue;
           let d = inRect(t, R) ? 0 : 1e9;
           for (let i = 0; i < 4 && d > 0; i++) d = Math.min(d, segDist(t, R[i], R[(i + 1) % 4]));
-          worst = Math.min(worst, d);
+          if (d < worst) { worst = d; at = t; }
         }
-        if (worst < r.min) add(r.n, worst, r.min);
+        if (worst < r.min) add(r.n, worst, r.min, at);
       }
     }
     return out;
@@ -224,7 +225,7 @@
   // device. Field layers come from field.js setLayer.
   const LAYERS = [
     ['panel', '📋 PANEL'], ['pitches', '📐 PITCHES'], ['boxes', '🟧 PRACTICE'], ['ruler', '📏 GAP'],
-    ['handles', '✥ HANDLES'], ['match', '🏟 MATCH'], ['paint', '🟨 TODAY\'S PITCH'], ['water', '💧 WATER'],
+    ['handles', '✥ HANDLES'], ['problems', '⚠ PROBLEMS'], ['match', '🏟 MATCH'], ['paint', '🟨 TODAY\'S PITCH'], ['water', '💧 WATER'],
     ['contours', '〰 CONTOURS'], ['trees', '🌳 TREES'], ['buildings', '🏠 BUILDINGS'], ['fences', '🚧 FENCES'],
     ['props', '🐴 PROPS'], ['labels', '🔤 LABELS'], ['ground', '🟩 GROUND'],
   ];
@@ -743,7 +744,7 @@
       handles.stem.scale.set(Math.max(0.01, ro - L / 2), hs, 1);
     }
     (function tick() {
-      if (on) placeHandles();
+      if (on) { placeHandles(); if (probs.length) paintProblems(); }
       requestAnimationFrame(tick);
     })();
 
@@ -754,12 +755,12 @@
       if (p.kind === 'box') {
         // Practice boxes stay off both pitches (touching is fine).
         for (const q of pitches)
-          if (q.R && closest(R, q.R).d <= 0) off.push({ n: 'on_' + q.id, have: 0, need: 0 });
+          if (q.R && closest(R, q.R).d <= 0) off.push({ n: 'on_' + q.id, have: 0, need: 0, r: { k: 'poly', pts: q.R, c: 1 } });
       } else {
         const o = pitches.find((q) => q !== p);
         if (o && o.R) {
           const d = inRect(c, o.R) || inRect([o.x, o.z], R) ? 0 : rectDist(R, c, o.R, true);
-          if (d < GAP) off.push({ n: 'other', have: d, need: GAP });
+          if (d < GAP) off.push({ n: 'other', have: d, need: GAP, r: { k: 'poly', pts: o.R, c: 1 } });
         }
       }
       off.sort((a, b) => (a.have - a.need) - (b.have - b.need));
@@ -779,6 +780,61 @@
       return NAMES[n] || n.replace(/_\d+$/, '').replace(/_/g, ' ');
     };
     const fmt = (m) => (m < 9.144 ? (m / FT).toFixed(1) + ' ft' : (m / YD).toFixed(1) + ' yd');
+    // Exact (James 10/24: "i need to know exact probs for the field. and
+    // exact distance for prob"): yards to the hundredth + feet.
+    const exact = (m) => (m / YD).toFixed(2) + ' yd (' + (m / FT).toFixed(1) + ' ft)';
+    // Where a problem is: { a: point on the pitch edge, b: point on the
+    // obstacle } at the measured distance; overlapping = b inside.
+    const cpSeg = (p, a, b) => {
+      const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz;
+      const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / l2));
+      return [a[0] + t * dx, a[1] + t * dz];
+    };
+    function where(R, o) {
+      const edges = (P, closed) => {
+        const out = [];
+        for (let i = 0; i + 1 < P.length + (closed ? 1 : 0); i++) out.push([P[i], P[(i + 1) % P.length]]);
+        return out;
+      };
+      const RE = edges(R, true);
+      if (o.at) {
+        let best = null;
+        for (const [a, b] of RE) {
+          const q = cpSeg(o.at, a, b), d = Math.hypot(q[0] - o.at[0], q[1] - o.at[1]);
+          if (!best || d < best.d) best = { d, a: q, b: o.at };
+        }
+        return best;
+      }
+      const r = o.r;
+      if (!r || !r.pts) return null;
+      if (r.k === 'below' || r.k === 'left') {
+        // The corner over the line.
+        const bad = R.find((p) => (r.k === 'below' ? p[1] >= lineZ(r.pts, r.slope, p[0]) : p[0] >= lineX(r.pts, p[1])));
+        return bad ? { d: 0, a: bad, b: bad } : null;
+      }
+      const PE = edges(r.pts, !!r.c || r.k === 'outside');
+      let best = null;
+      for (const [a, b] of RE)
+        for (const [c, e] of PE) {
+          if (crosses(a, b, c, e)) {
+            // Crossing point: overlapping here.
+            const d1 = orient(c, e, a), d2 = orient(c, e, b), t = d1 / (d1 - d2);
+            const x = [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+            return { d: 0, a: x, b: x };
+          }
+          for (const [p, s0, s1, flip] of [[c, a, b, true], [e, a, b, true], [a, c, e, false], [b, c, e, false]]) {
+            const q = cpSeg(p, s0, s1), d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+            if (!best || d < best.d) best = flip ? { d, a: q, b: p } : { d, a: p, b: q };
+          }
+        }
+      if (best && o.have <= 0) {
+        // Wholly inside one another: mark the obstacle point inside.
+        const inside = r.pts.find((p) => inRect(p, R));
+        if (inside) return { d: 0, a: inside, b: inside };
+        return { d: 0, a: [R[0][0], R[0][1]], b: [R[0][0], R[0][1]] };
+      }
+      return best;
+    }
 
     // ── left column: an item pill per pitch/box, then the layer pills ──
     const pillBox = mk('div', 'position:fixed;left:8px;top:116px;display:flex;flex-direction:column;gap:6px;z-index:12;' +
@@ -828,7 +884,7 @@
       const b = mk('button', lp + 'background:rgba(255,255,255,.12);color:#f4f6fb;', t);
       tap(b, () => {
         // ALL OFF keeps the pitches, boxes and handles: the things being designed.
-        for (const [k] of LAYERS) show[k] = v || ['pitches', 'boxes', 'handles'].includes(k);
+        for (const [k] of LAYERS) show[k] = v || ['pitches', 'boxes', 'handles', 'problems'].includes(k);
         writeJSON(LAYER_KEY, show);
         applyLayers();
       });
@@ -861,6 +917,8 @@
       for (const m of renderer.pitchParts || []) m.visible = show.match;
       paintGap();
       placeHandles();
+      paint();
+      paintProblems();
     }
     // Leaving DESIGN: everything back on; client.js then sets its mode's
     // contours / painted pitch.
@@ -886,6 +944,7 @@
       sel = p;
       paintCtl();
       paint();
+      paintProblems();
     }
     function paint() {
       for (const p of all()) paintPill(p);
@@ -901,9 +960,14 @@
       if (!ev) return;
       const w = ev.w, pct = (k) => (100 * w[k] / w.n).toFixed(1) + '%';
       const why = ev.ok ? '<span style="color:#5f6">✓ clear of everything</span>'
-        : ev.off.slice(0, 3).map((o) => '<span style="color:#ff6b78">✗ ' + label(o.n) +
-          (o.need > 0 ? ': ' + (o.have <= 0 ? 'overlapping' : fmt(o.have)) + ' (needs ' + fmt(o.need) + ')' : '') +
-          '</span>').join('<br>');
+        : !show.problems ? '<span style="color:#ff6b78">✗ ' + ev.off.length + ' problem' + (ev.off.length > 1 ? 's' : '') +
+            '</span> <span style="opacity:.6">(⚠ PROBLEMS pill to show)</span>'
+        : '<b style="color:#ff6b78">✗ ' + ev.off.length + ' problem' + (ev.off.length > 1 ? 's' : '') + ':</b>' +
+          ev.off.map((o, i) => '<br><span style="color:#ff6b78">' + (i + 1) + '. ' + label(o.n) + ' — ' +
+            (o.need > 0
+              ? (o.have <= 0 ? 'overlapping' : exact(o.have) + ' away') + ', needs ' + exact(o.need) +
+                ' → move <b>' + exact(o.need - Math.max(0, o.have)) + '</b>' + (o.have <= 0 ? ' past it' : ' further')
+              : 'must not touch — it does') + '</span>').join('');
       detail.innerHTML = '<b>▶ ' + (p.kind === 'box' ? '🟧 ' : '📐 ') + title(p) + ' ' + p.size[0] + '×' + p.size[1] +
         ' yd</b> · ' + p.rot.toFixed(0) + '° · ' +
         (w.pct != null ? 'dry <b>' + w.pct.toFixed(0) + '%</b> · '
@@ -964,6 +1028,69 @@
       ruler.lab.visible = vis;
     }
 
+    // PROBLEM markers: a red line from the selected item's edge to each
+    // thing it is too close to, numbered like the panel list, with the
+    // exact distance. ⚠ PROBLEMS pill hides them.
+    const probs = [];
+    function probMark() {
+      const strip = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.35),
+        new THREE.MeshBasicMaterial({ color: 0xff3344, depthTest: false, side: THREE.DoubleSide }));
+      strip.rotation.x = -Math.PI / 2;
+      strip.renderOrder = 63;
+      const bar = new THREE.Group();
+      bar.add(strip);
+      const dot = new THREE.Mesh(new THREE.CircleGeometry(0.6, 16),
+        new THREE.MeshBasicMaterial({ color: 0xff3344, depthTest: false, side: THREE.DoubleSide }));
+      dot.rotation.x = -Math.PI / 2;
+      dot.renderOrder = 63;
+      const cv = document.createElement('canvas');
+      cv.width = 512; cv.height = 128;
+      const tex = new THREE.CanvasTexture(cv);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.25),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+      lab.rotation.x = -Math.PI / 2;
+      lab.renderOrder = 64;
+      renderer.field.site.add(bar, dot, lab);
+      return { bar, strip, dot, lab, cv, tex, txt: null };
+    }
+    function paintProblems() {
+      const site = renderer.field && renderer.field.site;
+      if (!site) return;
+      const list = on && show.problems && sel && sel.ev && sel.g && sel.g.visible ? sel.ev.off : [];
+      const hs = hSize();
+      let k = 0;
+      for (const o of list) {
+        const w = where(sel.R, o);
+        if (!w) continue;
+        const m = probs[k] || (probs[k] = probMark());
+        k++;
+        const txt = k + '. ' + (o.need > 0 ? (o.have <= 0 ? 'ON IT' : (o.have / YD).toFixed(2) + ' yd') + ' / ' +
+          (o.need / YD).toFixed(1) : 'TOUCHING');
+        if (m.txt !== txt) {
+          const c2 = m.cv.getContext('2d');
+          c2.clearRect(0, 0, 512, 128);
+          c2.font = 'bold 72px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+          c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.9)'; c2.strokeText(txt, 256, 64);
+          c2.fillStyle = '#ff8a94'; c2.fillText(txt, 256, 64);
+          m.tex.needsUpdate = true;
+          m.txt = txt;
+        }
+        const d = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
+        const mx = (w.a[0] + w.b[0]) / 2, mz = (w.a[1] + w.b[1]) / 2;
+        m.bar.visible = d > 0.05;
+        m.bar.position.set(mx, 0.75, mz);
+        m.bar.rotation.y = -Math.atan2(w.b[1] - w.a[1], w.b[0] - w.a[0]);
+        m.strip.scale.set(Math.max(0.01, d), Math.max(1, hs * 0.5), 1);
+        m.dot.visible = true;
+        m.dot.position.set(w.b[0], 0.76, w.b[1]);
+        m.dot.scale.setScalar(Math.max(1, hs * 0.6));
+        m.lab.visible = true;
+        m.lab.position.set(mx, 0.8, mz + hs * 0.6);
+        m.lab.scale.set(hs * 6, hs * 6, 1);
+      }
+      for (; k < probs.length; k++) probs[k].bar.visible = probs[k].dot.visible = probs[k].lab.visible = false;
+    }
+
     function update() {
       for (const p of all()) if (p.g) { p.g.position.x = p.x; p.g.position.z = p.z; p.g.rotation.y = -p.rot * D2R; }
       // Each pitch's 10 yd gap reads the other's rect: settle both, twice;
@@ -973,6 +1100,7 @@
       paint();
       paintGap();
       placeHandles();
+      paintProblems();
       if (on) saveState();
     }
 
@@ -1052,6 +1180,7 @@
         resetLayers();
         paintGap();
         placeHandles();
+        paintProblems();
       }
       if (on) flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
                       size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
