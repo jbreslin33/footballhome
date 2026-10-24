@@ -419,8 +419,8 @@ SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, 
        -- reminder buttons for every player that shows on home page").
        (SELECT json_agg(json_build_object('person_id', pp.id,
                                           'name', COALESCE(pp.first_name,'') || ' ' || COALESCE(pp.last_name,''),
-                                          'has_phone', EXISTS (SELECT 1 FROM person_phones ph WHERE ph.person_id IN (COALESCE(pp.parent_person_id, pp.id), pp.id) AND COALESCE(ph.can_receive_sms, true)),
-                                          'has_email', EXISTS (SELECT 1 FROM person_emails em WHERE em.person_id IN (COALESCE(pp.parent_person_id, pp.id), pp.id)))
+                                          'has_phone', EXISTS (SELECT 1 FROM fh_message_recipients(pp.id) m WHERE fh_recipient_phone(m.recipient_person_id, pp.id) IS NOT NULL),
+                                          'has_email', EXISTS (SELECT 1 FROM fh_message_recipients(pp.id) m WHERE fh_recipient_email(m.recipient_person_id, pp.id) IS NOT NULL))
                         ORDER BY pp.last_name, pp.first_name)
           FROM (SELECT DISTINCT p2.person_id FROM per p2 WHERE p2.fh_event_id = t.fh_event_id AND p2.rsvp IS NULL) pr
           JOIN persons pp ON pp.id = pr.person_id) AS pending
@@ -459,8 +459,9 @@ SELECT t.match_id, t.fh_event_id, t.starts_at_iso, t.day, t.when_text, t.teams, 
 WITH pl AS (
   SELECT DISTINCT cs.code AS section, cs.sort_order, tp.person_id,
          (fh_sms_consented_at(tp.person_id) IS NOT NULL
-          OR (p.parent_person_id IS NOT NULL AND fh_sms_consented_at(p.parent_person_id) IS NOT NULL)) AS opted_in,
-         EXISTS (SELECT 1 FROM person_phones x WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)) AS has_phone,
+          OR EXISTS (SELECT 1 FROM person_guardians g WHERE g.child_person_id = p.id
+                        AND fh_sms_consented_at(g.guardian_person_id) IS NOT NULL)) AS opted_in,   -- any parent (mig 682)
+         EXISTS (SELECT 1 FROM fh_message_recipients(p.id) m WHERE fh_recipient_phone(m.recipient_person_id, p.id) IS NOT NULL) AS has_phone,
          EXISTS (SELECT 1 FROM sms_opt_in_nudges n WHERE n.person_id = tp.person_id) AS nudged
     FROM team_persons tp
     JOIN teams t ON t.id = tp.team_id AND t.is_active AND t.board_sort_order IS NOT NULL

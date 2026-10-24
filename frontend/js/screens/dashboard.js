@@ -132,8 +132,7 @@ class DashboardScreen extends Screen {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
-      if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
+      this.openSends(data, channel);   // one per parent (mig 682)
       btn.textContent = '✓';
       setTimeout(() => { if (btn.isConnected) { btn.textContent = original; btn.disabled = false; } }, 2000);
       return;

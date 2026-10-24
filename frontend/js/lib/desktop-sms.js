@@ -260,5 +260,47 @@
     show(a.getAttribute('href'));
   }, true);
 
-  window.DesktopSms = { open, isDesktop, parse };
+  // Several separate messages at once — a kid's two parents each get
+  // their own (mig 682; owner 2026-10-24: "separate to both … they are
+  // divorced").  items = [{name, href}] (sms: or a Gmail/mailto link).
+  // One item opens directly; more show one button per person, ticked as
+  // each is opened, so no two parents ever share a thread.
+  function openMany(items, opts = {}) {
+    items = (items || []).filter(i => i && i.href);
+    if (!items.length) return;
+    const go = (it) => {
+      if (/^sms:/i.test(it.href)) open(it.href);
+      else if (opts.openEmail) opts.openEmail(it.href);
+      else window.open(it.href, '_blank', 'noopener');
+    };
+    if (items.length === 1) { go(items[0]); return; }
+    document.getElementById('fh-send-many')?.remove();
+    const el = document.createElement('div');
+    el.id = 'fh-send-many';
+    el.setAttribute('role', 'dialog');
+    el.style.cssText = 'position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center;';
+    const b = 'border:none; border-radius:10px; padding:12px; font-weight:800; cursor:pointer; color:#fff; width:100%; font-size:0.95rem;';
+    el.innerHTML = `
+      <div style="width:100%; max-width:420px; margin:12px; padding:16px 18px; border-radius:14px; background:#0f172a; color:#f8fafc; border:1px solid #334155;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <b>${esc(opts.title || t('many_title', { n: items.length }, `${items.length} separate messages`))}</b>
+          <button type="button" data-sm-close style="border:none; background:none; color:#94a3b8; font-size:1.3rem; cursor:pointer;">×</button>
+        </div>
+        <div style="font-size:0.78rem; opacity:0.75; margin-bottom:10px;">${esc(t('many_hint', {}, 'Each one gets their own message — open them one at a time.'))}</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${items.map((it, i) => `<button type="button" data-sm-i="${i}" style="${b} background:#0284c7;">${esc(it.label || it.name || '')}</button>`).join('')}
+        </div>
+      </div>`;
+    el.addEventListener('click', (e) => {
+      if (e.target === el || e.target.closest('[data-sm-close]')) { el.remove(); return; }
+      const btn = e.target.closest('[data-sm-i]');
+      if (!btn) return;
+      go(items[Number(btn.dataset.smI)]);
+      btn.style.background = '#059669';
+      btn.textContent = '✓ ' + btn.textContent.replace(/^✓ /, '');
+    });
+    document.body.appendChild(el);
+  }
+
+  window.DesktopSms = { open, openMany, isDesktop, parse };
 })();

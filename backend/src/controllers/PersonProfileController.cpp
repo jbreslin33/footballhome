@@ -257,6 +257,13 @@ Response PersonProfileController::buildProfile(int personId, long long laUserId)
             "LIMIT 20",
             { personIdStr });
 
+        // Every parent of this person, primary first (mig 682).
+        std::string guardianIds;
+        for (const auto& g : db_->query(
+                "SELECT guardian_person_id FROM person_guardians WHERE child_person_id = $1::int "
+                " ORDER BY is_primary DESC, created_at, guardian_person_id", { personIdStr }))
+            guardianIds += (guardianIds.empty() ? "" : ",") + std::string(g["guardian_person_id"].c_str());
+
         // ── Assemble the JSON payload ────────────────────────────────
         std::ostringstream json;
         json << "{"
@@ -270,6 +277,7 @@ Response PersonProfileController::buildProfile(int personId, long long laUserId)
              <<     ",\"birthDate\":"   << strOrNull(p["birth_date"])
              <<     ",\"leagueAppsPaymentStatus\":" << strOrNull(p["leagueapps_payment_status"])
              <<     ",\"parentPersonId\":" << intOrNull(p["parent_person_id"])
+             <<     ",\"guardianPersonIds\":[" << guardianIds << "]"
              <<     ",\"fhMemberAt\":"  << strOrNull(p["fh_member_at"])
              <<     ",\"createdAt\":"   << strOrNull(p["created_at"])
              <<     ",\"updatedAt\":"   << strOrNull(p["updated_at"])

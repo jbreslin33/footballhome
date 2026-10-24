@@ -47,7 +47,7 @@ constexpr const char* kParty = R"SQL(
 const std::string kAllowedSql = std::string("WITH ") + kParty + R"SQL(
     SELECT EXISTS (SELECT 1 FROM party WHERE person_id = $2::int)
         OR EXISTS (SELECT 1 FROM party pa JOIN persons c ON c.id = pa.person_id
-                    WHERE c.parent_person_id = $2::int)
+                    WHERE fh_is_guardian($2::int, c.id))
         OR EXISTS (SELECT 1 FROM fh_event_teams fet
                      JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
                      JOIN coaches co ON co.id = tc.coach_id
@@ -414,24 +414,22 @@ Response CarpoolController::handleList(const Request& request) {
                    EXISTS (SELECT 1 FROM fh_carpool_requests r
                             WHERE r.fh_event_id = $1::bigint AND r.person_id = m.id
                               AND r.cancelled_at IS NULL) AS open,
-                   -- COALESCE: `x OR NULL` is NULL, not false, when
-                   -- parent_person_id is NULL — an un-coalesced NULL here
-                   -- threw on as<bool>() and 500'd the whole panel for any
-                   -- staff viewer (2026-10-20).
-                   COALESCE(m.id = $2::int OR m.parent_person_id = $2::int, false) AS mine,
-                   COALESCE(a.address1, CASE WHEN m.id = $2::int OR m.parent_person_id = $2::int THEN va.address1 END, '') AS address1,
-                   COALESCE(a.address2, CASE WHEN m.id = $2::int OR m.parent_person_id = $2::int THEN va.address2 END, '') AS address2,
-                   COALESCE(a.city,     CASE WHEN m.id = $2::int OR m.parent_person_id = $2::int THEN va.city     END, '') AS city,
-                   COALESCE(a.state,    CASE WHEN m.id = $2::int OR m.parent_person_id = $2::int THEN va.state    END, '') AS state,
-                   COALESCE(a.zip,      CASE WHEN m.id = $2::int OR m.parent_person_id = $2::int THEN va.zip      END, '') AS zip
+                   -- Me or one of my kids (any parent, mig 682).
+                   mk.mine,
+                   COALESCE(a.address1, CASE WHEN mk.mine THEN va.address1 END, '') AS address1,
+                   COALESCE(a.address2, CASE WHEN mk.mine THEN va.address2 END, '') AS address2,
+                   COALESCE(a.city,     CASE WHEN mk.mine THEN va.city     END, '') AS city,
+                   COALESCE(a.state,    CASE WHEN mk.mine THEN va.state    END, '') AS state,
+                   COALESCE(a.zip,      CASE WHEN mk.mine THEN va.zip      END, '') AS zip
               FROM persons m
+              CROSS JOIN LATERAL (SELECT (m.id = $2::int OR fh_is_guardian($2::int, m.id)) AS mine) mk
               LEFT JOIN LATERAL (SELECT * FROM person_addresses x
                                   WHERE x.person_id = m.id AND x.is_primary LIMIT 1) a ON true
               LEFT JOIN LATERAL (SELECT * FROM person_addresses x
                                   WHERE x.person_id = $2::int AND x.is_primary LIMIT 1) va ON true
-             WHERE (m.id = $2::int OR m.parent_person_id = $2::int OR $3::bool)
+             WHERE (mk.mine OR $3::bool)
                AND m.id IN (SELECT person_id FROM party)
-             ORDER BY (m.id = $2::int OR m.parent_person_id = $2::int) DESC, m.first_name, m.last_name)SQL",
+             ORDER BY mk.mine DESC, m.first_name, m.last_name)SQL",
             {eid, pid, staff ? "true" : "false"});
 
         json riders = json::array();
@@ -474,7 +472,7 @@ Response CarpoolController::handleCreate(const Request& request) {
         auto ok = db->query(std::string("WITH ") + kParty + R"SQL(
             SELECT EXISTS (SELECT 1 FROM persons m
                             WHERE m.id = $3::int
-                              AND ($4::bool OR m.id = $2::int OR m.parent_person_id = $2::int)
+                              AND ($4::bool OR m.id = $2::int OR fh_is_guardian($2::int, m.id))
                               AND m.id IN (SELECT person_id FROM party)) AS ok)SQL",
             {eid, pid, rid, staffOnEvent(db, fhEventId, me) ? "true" : "false"});
         if (ok.empty() || !ok[0]["ok"].as<bool>())

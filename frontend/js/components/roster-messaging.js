@@ -78,6 +78,7 @@
   // is the board's parent-vs-player rule.
   function collect(players, contactFor) {
     const phones = new Map();   // normalized -> display form
+    const phoneKids = {};       // display phone -> player keys (mig 682: parents of one kid never share a group text)
     const emails = new Map();   // normalized -> display form
     const seen   = new Set();   // personId, so a player in two columns counts once
     const noPhone = [];
@@ -90,16 +91,27 @@
       seen.add(key);
 
       const c = contactFor(p) || {};
-      const ph = normalizePhone(c.phone);
-      const em = normalizeEmail(c.email);
-      if (ph && !phones.has(ph)) phones.set(ph, dialable(ph));
-      if (em && !emails.has(em)) emails.set(em, em);
-      if (!ph) noPhone.push(p.fullName || 'unknown');
-      if (!em) noEmail.push(p.fullName || 'unknown');
+      // c.extra: more people to reach for this player — a kid's other
+      // parents (mig 682), each their own contact.
+      const all = [c, ...(Array.isArray(c.extra) ? c.extra : [])];
+      let anyPh = false, anyEm = false;
+      for (const x of all) {
+        const ph = normalizePhone(x && x.phone);
+        const em = normalizeEmail(x && x.email);
+        if (ph) {
+          anyPh = true;
+          if (!phones.has(ph)) phones.set(ph, dialable(ph));
+          (phoneKids[phones.get(ph)] = phoneKids[phones.get(ph)] || []).push(key);
+        }
+        if (em) { anyEm = true; if (!emails.has(em)) emails.set(em, em); }
+      }
+      if (!anyPh) noPhone.push(p.fullName || 'unknown');
+      if (!anyEm) noEmail.push(p.fullName || 'unknown');
     }
 
     return {
       phones:  [...phones.values()],
+      phoneKids,
       emails:  [...emails.values()],
       people:  seen.size,
       noPhone,

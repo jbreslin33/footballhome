@@ -65,25 +65,35 @@ bool SmsOptInBoard::onTeam(long long teamId, long long personId) {
         {std::to_string(teamId), std::to_string(personId)}).empty();
 }
 
-SmsOptInBoard::Person SmsOptInBoard::person(long long personId) {
+SmsOptInBoard::Person SmsOptInBoard::person(long long personId, long long recipientPersonId) {
     Person out;
+    // The recipient asked for if they are one of this person's (each
+    // parent opts in for themself, mig 682), else the first.
     auto rows = Database::getInstance()->query(R"SQL(
-        SELECT COALESCE(p.first_name,'') AS fn, p.parent_person_id, COALESCE(par.first_name,'') AS parent_fn,
-               (SELECT x.phone_number FROM person_phones x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                   AND COALESCE(x.can_receive_sms, true)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) AS phone
-          FROM persons p LEFT JOIN persons par ON par.id = p.parent_person_id
-         WHERE p.id = $1::int)SQL", {std::to_string(personId)});
+        SELECT COALESCE(p.first_name,'') AS fn, m.recipient_person_id AS rid,
+               COALESCE(rp.first_name,'') AS recipient_fn,
+               fh_recipient_phone(m.recipient_person_id, p.id) AS phone
+          FROM persons p
+          JOIN LATERAL (SELECT x.recipient_person_id FROM fh_message_recipients(p.id) x
+                         ORDER BY (x.recipient_person_id = $2::int) DESC, x.ord LIMIT 1) m ON true
+          JOIN persons rp ON rp.id = m.recipient_person_id
+         WHERE p.id = $1::int)SQL", {std::to_string(personId), std::to_string(recipientPersonId)});
     if (rows.empty()) return out;
     const auto& r = rows[0];
     out.found              = true;
-    out.youth              = !r["parent_person_id"].is_null();
-    out.recipientPersonId  = out.youth ? r["parent_person_id"].as<long long>() : personId;
+    out.recipientPersonId  = r["rid"].as<long long>();
+    out.youth              = out.recipientPersonId != personId;
     out.playerFirstName    = r["fn"].c_str();
-    out.recipientFirstName = out.youth ? r["parent_fn"].c_str() : out.playerFirstName;
+    out.recipientFirstName = r["recipient_fn"].c_str();
     if (!r["phone"].is_null()) out.phone = r["phone"].c_str();
+    return out;
+}
+
+std::vector<long long> SmsOptInBoard::recipients(long long personId) {
+    std::vector<long long> out;
+    for (const auto& r : Database::getInstance()->query(
+            "SELECT recipient_person_id FROM fh_message_recipients($1::int) ORDER BY ord", {std::to_string(personId)}))
+        out.push_back(r["recipient_person_id"].as<long long>());
     return out;
 }
 

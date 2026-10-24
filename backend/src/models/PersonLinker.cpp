@@ -122,7 +122,7 @@ void PersonLinker::adoptLoginOnlyDuplicate(int keepPersonId, const std::string& 
             "   AND NOT EXISTS (SELECT 1 FROM person_la_memberships m WHERE m.person_id = p.id) "
             "   AND NOT EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = p.id) "
             "   AND NOT EXISTS (SELECT 1 FROM coaches c WHERE c.person_id = p.id) "
-            "   AND NOT EXISTS (SELECT 1 FROM persons k WHERE k.parent_person_id = p.id) "
+            "   AND NOT EXISTS (SELECT 1 FROM person_guardians g WHERE g.guardian_person_id = p.id) "
             "   AND NOT EXISTS (SELECT 1 FROM admins a JOIN users u2 ON u2.id = a.user_id "
             "                    WHERE u2.person_id = p.id) "
             " LIMIT 1",
@@ -294,6 +294,15 @@ void PersonLinker::ensureParentLink(int childPersonId, const json& rec) {
             "WHERE id = $2::int AND parent_person_id IS DISTINCT FROM $1::int "
             "  AND (parent_person_id IS NULL OR parent_person_id = $1::int) "
             "  AND NOT EXISTS (SELECT 1 FROM person_self_contacts s WHERE s.person_id = $2::int)",
+            {std::to_string(parentPersonId), std::to_string(childPersonId)});
+        // A kid can have more than one parent (mig 682): an LA parent who
+        // isn't the primary is added as another guardian, not ignored.
+        db_->query(
+            "INSERT INTO person_guardians (child_person_id, guardian_person_id, is_primary, source) "
+            "SELECT $2::int, $1::int, false, 'la' "
+            " WHERE $1::int <> $2::int "
+            "   AND NOT EXISTS (SELECT 1 FROM person_self_contacts s WHERE s.person_id = $2::int) "
+            "ON CONFLICT (child_person_id, guardian_person_id) DO NOTHING",
             {std::to_string(parentPersonId), std::to_string(childPersonId)});
     } catch (const std::exception& e) {
         std::cerr << "[PersonLinker::ensureParentLink set-parent] " << e.what()

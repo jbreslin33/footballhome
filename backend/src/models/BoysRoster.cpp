@@ -571,6 +571,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
     // the player. Resolved in the same batch as the other per-person
     // lookups; null when the child row has no parent linked yet.
     std::unordered_map<long long, long long> parentPersonIdByPerson;
+    std::unordered_map<long long, json> guardiansByPerson;   // child → [{personId, firstName}] (mig 682)
     {
         std::vector<long long> personIds;
         personIds.reserve(all.size());
@@ -607,6 +608,18 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
                     parentPersonIdByPerson[r["id"].as<long long>()] =
                         r["parent_person_id"].as<long long>();
                 }
+                // Every parent (mig 682): one sign-in / welcome button each.
+                for (const auto& r : Database::getInstance()->query(
+                        "SELECT g.child_person_id, g.guardian_person_id, COALESCE(gp.first_name, '') AS fn, "
+                        "       fh_recipient_phone(g.guardian_person_id, g.guardian_person_id) AS phone, "
+                        "       fh_recipient_email(g.guardian_person_id, g.guardian_person_id) AS email "
+                        "  FROM person_guardians g JOIN persons gp ON gp.id = g.guardian_person_id "
+                        " WHERE g.child_person_id IN (" + idList.str() + ") "
+                        " ORDER BY g.child_person_id, g.is_primary DESC, g.created_at, g.guardian_person_id"))
+                    guardiansByPerson[r["child_person_id"].as<long long>()].push_back(
+                        {{"personId", r["guardian_person_id"].as<long long>()}, {"firstName", r["fn"].c_str()},
+                         {"phone", r["phone"].is_null() ? json(nullptr) : json(r["phone"].c_str())},
+                         {"email", r["email"].is_null() ? json(nullptr) : json(r["email"].c_str())}});
             } catch (const std::exception& e) {
                 std::cerr << "[BoysRoster] parent_person_id lookup failed: " << e.what() << std::endl;
             }
@@ -627,6 +640,8 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
             auto parIt = parentPersonIdByPerson.find(resolvedPersonId);
             p["parentPersonId"] = (parIt != parentPersonIdByPerson.end())
                 ? json(parIt->second) : json(nullptr);
+            auto gIt = guardiansByPerson.find(resolvedPersonId);
+            p["guardians"] = gIt != guardiansByPerson.end() ? gIt->second : json::array();
         }
         {
             // Admin name override beats the LA-supplied name. Applied to

@@ -578,30 +578,38 @@ json RsvpBoard::weekEvents(const std::string& sectionCode,
     return events;
 }
 
-RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
+std::vector<RsvpBoard::Recipient> RsvpBoard::messageRecipients(long long personId) {
+    std::vector<Recipient> out;
+    for (const auto& r : Database::getInstance()->query(
+            "SELECT m.recipient_person_id, COALESCE(p.first_name, '') AS fn "
+            "  FROM fh_message_recipients($1::int) m JOIN persons p ON p.id = m.recipient_person_id "
+            " ORDER BY m.ord", {std::to_string(personId)}))
+        out.push_back({r["recipient_person_id"].as<long long>(), r["fn"].c_str()});
+    return out;
+}
+
+RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId, long long recipientPersonId) {
     auto* db = Database::getInstance();
     ReminderContext ctx;
 
+    // The recipient: the one asked for, if they really are one of this
+    // person's recipients (mig 682), else the first (primary parent / self).
     auto who = db->query(R"SQL(
-        SELECT COALESCE(p.first_name,'') AS fn, p.parent_person_id,
-               COALESCE(par.first_name,'') AS parent_fn,
-               (SELECT x.phone_number FROM person_phones x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                   AND COALESCE(x.can_receive_sms, true)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) AS phone,
-               (SELECT x.email FROM person_emails x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) AS email
-          FROM persons p LEFT JOIN persons par ON par.id = p.parent_person_id
-         WHERE p.id = $1::int)SQL", {std::to_string(personId)});
+        SELECT COALESCE(p.first_name,'') AS fn, m.recipient_person_id AS rid,
+               COALESCE(rp.first_name,'') AS recipient_fn,
+               fh_recipient_phone(m.recipient_person_id, p.id) AS phone,
+               fh_recipient_email(m.recipient_person_id, p.id) AS email
+          FROM persons p
+          JOIN LATERAL (SELECT x.recipient_person_id FROM fh_message_recipients(p.id) x
+                         ORDER BY (x.recipient_person_id = $2::int) DESC, x.ord LIMIT 1) m ON true
+          JOIN persons rp ON rp.id = m.recipient_person_id
+         WHERE p.id = $1::int)SQL", {std::to_string(personId), std::to_string(recipientPersonId)});
     if (who.empty()) return ctx;
     ctx.found              = true;
     ctx.playerFirstName    = who[0]["fn"].c_str();
-    ctx.youth              = !who[0]["parent_person_id"].is_null();
-    ctx.recipientPersonId  = ctx.youth ? who[0]["parent_person_id"].as<long long>() : personId;
-    ctx.recipientFirstName = ctx.youth ? who[0]["parent_fn"].c_str() : ctx.playerFirstName;
+    ctx.recipientPersonId  = who[0]["rid"].as<long long>();
+    ctx.youth              = ctx.recipientPersonId != personId;
+    ctx.recipientFirstName = who[0]["recipient_fn"].c_str();
     if (!who[0]["phone"].is_null()) ctx.phone = who[0]["phone"].c_str();
     if (!who[0]["email"].is_null()) ctx.email = who[0]["email"].c_str();
 
@@ -655,7 +663,7 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId) {
           FROM persons p
           JOIN team_persons tp ON tp.person_id = p.id AND tp.removed_at IS NULL
           JOIN teams t ON t.id = tp.team_id AND t.is_active AND (t.board_sort_order IS NOT NULL OR t.rsvp_board)
-         WHERE p.parent_person_id = $1::int AND p.id <> $2::int
+         WHERE fh_is_guardian($1::int, p.id) AND p.id <> $2::int
          ORDER BY fn, p.id)SQL", {std::to_string(ctx.recipientPersonId), std::to_string(personId)});
     for (const auto& r : kids) {
         const long long sid = r["id"].as<long long>();
@@ -671,7 +679,7 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
     auto* db = Database::getInstance();
     GroupReminderContext ctx;
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
-        SELECT p.id AS person_id, COALESCE(p.parent_person_id, p.id) AS recipient_person_id,
+        SELECT p.id AS person_id, mr.recipient_person_id,
                o.line || COALESCE(E'\n  ' || CASE WHEN o.role = 'player' THEN fh_rsvp_deadline_note(o.fh_event_id) END, '')
                       || COALESCE(E'\n  ' || o.message_notes, '') AS line,
                ph.phone_number AS phone, em.email AS email,
@@ -684,17 +692,10 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
                   FROM open_events w WHERE w.person_id = p.id)::text AS week_events
           FROM open_events o
           JOIN persons p ON p.id = o.person_id
-          LEFT JOIN LATERAL (
-                SELECT x.phone_number FROM person_phones x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                   AND COALESCE(x.can_receive_sms, true)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) ph ON true
-          LEFT JOIN LATERAL (
-                SELECT x.email FROM person_emails x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
+          -- One row per recipient: each parent, or the player (mig 682).
+          CROSS JOIN LATERAL fh_message_recipients(p.id) mr
+          CROSS JOIN LATERAL (SELECT fh_recipient_phone(mr.recipient_person_id, p.id) AS phone_number) ph
+          CROSS JOIN LATERAL (SELECT fh_recipient_email(mr.recipient_person_id, p.id) AS email) em
          WHERE o.fh_event_id = $6::bigint
            AND ($7::text = 'all' OR o.role = $7::text)   -- #rsvps Who pill (mig 530)
          ORDER BY p.last_name, p.first_name)SQL";
@@ -733,13 +734,10 @@ RsvpBoard::RollCall RsvpBoard::rollCall(const std::string& sectionCode, long lon
                  || CASE e.kind WHEN 'match' THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
                                 WHEN 'intrasquad' THEN 'Intra Squad' ELSE 'Practice' END AS line,
                fh_rsvp_deadline_note(e.fh_event_id) AS deadline,
-               (SELECT x.phone_number FROM person_phones x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                   AND COALESCE(x.can_receive_sms, true)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) AS phone
+               fh_recipient_phone(mr.recipient_person_id, p.id) AS phone, p.id AS person_id, mr.ord
           FROM expected e
           JOIN persons p ON p.id = e.person_id
+          CROSS JOIN LATERAL fh_message_recipients(p.id) mr   -- every parent (mig 682)
           LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
          WHERE e.fh_event_id = $6::bigint AND e.role_rank = 2
          ORDER BY p.last_name, p.first_name)SQL";
@@ -750,10 +748,17 @@ RsvpBoard::RollCall RsvpBoard::rollCall(const std::string& sectionCode, long lon
         if (rc.line.empty()) rc.line = r["line"].c_str();
         if (rc.deadline.empty() && !r["deadline"].is_null()) rc.deadline = r["deadline"].c_str();
         const std::string name = r["name"].c_str();
-        if (r["response"].is_null()) rc.noResponse.push_back(name);
-        else if (std::string(r["response"].c_str()) == "yes") rc.going.push_back(name);
-        else rc.notGoing.push_back(name);
-        if (!r["phone"].is_null() && phones.insert(r["phone"].c_str()).second) rc.phones.push_back(r["phone"].c_str());
+        // A kid with two parents is one row per parent (mig 682): the name
+        // goes on the card once, every parent's phone into the text.
+        if (r["ord"].as<int>() == 1) {
+            if (r["response"].is_null()) rc.noResponse.push_back(name);
+            else if (std::string(r["response"].c_str()) == "yes") rc.going.push_back(name);
+            else rc.notGoing.push_back(name);
+        }
+        if (!r["phone"].is_null()) {
+            if (phones.insert(r["phone"].c_str()).second) rc.phones.push_back(r["phone"].c_str());
+            rc.phoneKids[r["phone"].c_str()].push_back(r["person_id"].as<long long>());
+        }
     }
     return rc;
 }
@@ -964,32 +969,24 @@ RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
     ctx.arrival = ev[0]["arrival"].c_str();
 
     auto rows = db->query(R"SQL(
-        SELECT p.id AS person_id, COALESCE(p.parent_person_id, p.id) AS recipient_person_id,
+        SELECT p.id AS person_id, mr.recipient_person_id,
                ml.zone, COALESCE(last.zone, '') AS told_zone,
                COALESCE(p.first_name, '') AS player_first,
-               COALESCE(rp.first_name, '') AS recipient_first,
+               (SELECT COALESCE(rp.first_name, '') FROM persons rp WHERE rp.id = mr.recipient_person_id) AS recipient_first,
                ph.phone_number AS phone, em.email AS email
           FROM match_lineups ml
           JOIN players pl ON pl.id = ml.player_id
           JOIN persons p ON p.id = pl.person_id
-          JOIN persons rp ON rp.id = COALESCE(p.parent_person_id, p.id)
           LEFT JOIN LATERAL (
                 SELECT sn.zone FROM squad_notices sn
                  WHERE sn.match_id = ml.match_id AND sn.person_id = p.id
                  ORDER BY sn.sent_at DESC LIMIT 1) last ON true
-          LEFT JOIN LATERAL (
-                SELECT x.phone_number FROM person_phones x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                   AND COALESCE(x.can_receive_sms, true)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) ph ON true
-          LEFT JOIN LATERAL (
-                SELECT x.email FROM person_emails x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
+          -- One row per recipient: each parent, or the player (mig 682).
+          CROSS JOIN LATERAL fh_message_recipients(p.id) mr
+          CROSS JOIN LATERAL (SELECT fh_recipient_phone(mr.recipient_person_id, p.id) AS phone_number) ph
+          CROSS JOIN LATERAL (SELECT fh_recipient_email(mr.recipient_person_id, p.id) AS email) em
          WHERE ml.match_id = $1::int AND ml.zone IN ('starter', 'bench', 'alternate')
-         ORDER BY p.last_name, p.first_name)SQL", {std::to_string(matchId)});
+         ORDER BY p.last_name, p.first_name, mr.ord)SQL", {std::to_string(matchId)});
     for (const auto& row : rows) {
         SquadRecipient r;
         r.personId          = row["person_id"].as<long long>();
@@ -1005,31 +1002,24 @@ RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
     return ctx;
 }
 
-bool RsvpBoard::poolRecipient(long long matchId, long long personId, SquadRecipient* out) {
+bool RsvpBoard::poolRecipient(long long matchId, long long personId, SquadRecipient* out,
+                              long long recipientPersonId) {
     auto rows = Database::getInstance()->query(R"SQL(
         WITH teams_of AS (
           SELECT COALESCE(
             (SELECT array_agg(DISTINCT fet.team_id) FROM fh_events fe
                JOIN fh_event_teams fet ON fet.fh_event_id = fe.id WHERE fe.match_id = $1::int),
             (SELECT array_remove(ARRAY[m.home_team_id, m.away_team_id], NULL) FROM matches m WHERE m.id = $1::int)) AS ids)
-        SELECT p.id AS person_id, COALESCE(p.parent_person_id, p.id) AS recipient_person_id,
+        SELECT p.id AS person_id, mr.recipient_person_id,
                COALESCE(p.first_name, '') AS player_first,
-               COALESCE(rp.first_name, '') AS recipient_first,
+               (SELECT COALESCE(rp.first_name, '') FROM persons rp WHERE rp.id = mr.recipient_person_id) AS recipient_first,
                ph.phone_number AS phone, em.email AS email
           FROM persons p
-          JOIN persons rp ON rp.id = COALESCE(p.parent_person_id, p.id)
           CROSS JOIN teams_of t
-          LEFT JOIN LATERAL (
-                SELECT x.phone_number FROM person_phones x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                   AND COALESCE(x.can_receive_sms, true)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) ph ON true
-          LEFT JOIN LATERAL (
-                SELECT x.email FROM person_emails x
-                 WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                 ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                          x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
+          -- One row per recipient: each parent, or the player (mig 682).
+          CROSS JOIN LATERAL fh_message_recipients(p.id) mr
+          CROSS JOIN LATERAL (SELECT fh_recipient_phone(mr.recipient_person_id, p.id) AS phone_number) ph
+          CROSS JOIN LATERAL (SELECT fh_recipient_email(mr.recipient_person_id, p.id) AS email) em
          WHERE p.id = $2::int
            AND (EXISTS (SELECT 1 FROM team_persons tp
                          WHERE tp.person_id = p.id AND tp.removed_at IS NULL AND tp.team_id = ANY(t.ids)
@@ -1037,8 +1027,10 @@ bool RsvpBoard::poolRecipient(long long matchId, long long personId, SquadRecipi
                            AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only)
              OR EXISTS (SELECT 1 FROM fh_event_invites i
                           JOIN fh_events fe ON fe.id = i.fh_event_id
-                         WHERE fe.match_id = $1::int AND i.person_id = p.id AND i.revoked_at IS NULL)))SQL",
-        {std::to_string(matchId), std::to_string(personId)});
+                         WHERE fe.match_id = $1::int AND i.person_id = p.id AND i.revoked_at IS NULL))
+           AND ($3::int = 0 OR mr.recipient_person_id = $3::int)
+         ORDER BY mr.ord LIMIT 1)SQL",
+        {std::to_string(matchId), std::to_string(personId), std::to_string(recipientPersonId)});
     if (rows.empty()) return false;
     const auto& row = rows[0];
     out->personId           = row["person_id"].as<long long>();

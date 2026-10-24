@@ -595,7 +595,7 @@ class RsvpBoardScreen extends Screen {
         const contacts = data.contacts || [];
         const CHUNK_SIZE = 10;
         const chunks = [];
-        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) chunks.push(contacts.slice(i, i + CHUNK_SIZE));
+        chunks.push(...Screen.chunkContacts(contacts, data.kids, CHUNK_SIZE));   // parents of one kid never share a part (mig 682)
         const hrefs = chunks.map(ch => this.buildSmsComposeHref({ to: ch.join(','), body: data.body }));
         html = chunks.length <= 1
           ? this.escapeHtml(c('done_sms', { n: contacts.length }) || `Roll call text drafted to ${contacts.length}`)
@@ -656,7 +656,7 @@ class RsvpBoardScreen extends Screen {
       } else {
         const CHUNK_SIZE = 10;
         const chunks = [];
-        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) chunks.push(contacts.slice(i, i + CHUNK_SIZE));
+        chunks.push(...Screen.chunkContacts(contacts, data.kids, CHUNK_SIZE));   // parents of one kid never share a part (mig 682)
         const hrefs = chunks.map(c => this.buildSmsComposeHref({ to: c.join(','), body: data.body }));
         html = chunks.length === 1
           ? `💬 Group text drafted to ${contacts.length}${skipped}`
@@ -1044,8 +1044,7 @@ class RsvpBoardScreen extends Screen {
         const sibCard = this.find(`[data-card="${a.person_id}"]`);
         if (sibCard) this._markReminded(sibCard, sib, a.last_reminder, channel);
       }
-      if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
+      this.openSends(data, channel);   // one per parent (mig 682)
 
       btn.disabled = false;
       const card = btn.closest('[data-card]');

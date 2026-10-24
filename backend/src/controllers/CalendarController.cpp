@@ -470,7 +470,7 @@ std::optional<Response> resolveRsvpTarget(Database* db,
         "          WHERE u.person_id = $2::int) AS is_admin, "
         "  ($2::int = $3::int OR EXISTS ("
         "      SELECT 1 FROM persons "
-        "       WHERE id = $3::int AND parent_person_id = $2::int"
+        "       WHERE id = $3::int AND fh_is_guardian($2::int, id)"
         "  )) AS may_act_for_target, "
         "  (EXISTS ("
         "    SELECT 1 FROM fh_event_teams fet "
@@ -937,7 +937,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                       JOIN job_definitions d ON d.id = ja.job_definition_id
                       JOIN persons jp ON jp.id = ja.person_id
                      WHERE ja.fh_event_id = fe.id
-                       AND (ja.person_id = $1::int OR jp.parent_person_id = $1::int)
+                       AND (ja.person_id = $1::int OR fh_is_guardian($1::int, jp.id))
                        AND NOT EXISTS (
                              SELECT 1 FROM event_job_offs o
                               WHERE o.fh_event_id = ja.fh_event_id
@@ -1095,7 +1095,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                             AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
                         JOIN persons child ON child.id = tp.person_id
                         WHERE fet.fh_event_id = fe.id
-                          AND child.parent_person_id = $1::int
+                          AND fh_is_guardian($1::int, child.id)
                         UNION
                         -- Invited kids (fh_event_invites, migration 355):
                         -- a call-up the coach explicitly invited. Age-
@@ -1104,7 +1104,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         FROM fh_event_invites i
                         JOIN persons child ON child.id = i.person_id
                         WHERE i.fh_event_id = fe.id AND i.revoked_at IS NULL
-                          AND child.parent_person_id = $1::int
+                          AND fh_is_guardian($1::int, child.id)
                     ) kids
                 ) AS guardian_children,
                 -- Just the invited subset, for the "why can I see this" line.
@@ -1113,7 +1113,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     FROM fh_event_invites i
                     JOIN persons child ON child.id = i.person_id
                     WHERE i.fh_event_id = fe.id AND i.revoked_at IS NULL
-                      AND child.parent_person_id = $1::int
+                      AND fh_is_guardian($1::int, child.id)
                 ) AS invited_children,
                 -- Structured sibling of guardian_children above, used to
                 -- actually drive the guardian's Go/No buttons (one row
@@ -1134,7 +1134,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                             AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
                         JOIN persons child ON child.id = tp.person_id
                         WHERE fet.fh_event_id = fe.id
-                          AND child.parent_person_id = $1::int
+                          AND fh_is_guardian($1::int, child.id)
                           AND NOT EXISTS (
                               SELECT 1 FROM rsvp_suspensions s
                               WHERE s.person_id = tp.person_id
@@ -1156,7 +1156,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         JOIN persons child ON child.id = i.person_id
                         LEFT JOIN teams ft ON ft.id = i.from_team_id
                         WHERE i.fh_event_id = fe.id AND i.revoked_at IS NULL
-                          AND child.parent_person_id = $1::int
+                          AND fh_is_guardian($1::int, child.id)
                     ) sub
                 ), '[]'::jsonb) AS guardian_targets,
                 -- Pickup side / practice group (match_lineups.squad_color,
@@ -1172,7 +1172,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     JOIN persons sp      ON sp.id = spl.person_id
                     JOIN squad_colors sc ON sc.code = ml.squad_color
                     WHERE ml.fh_event_id = fe.id
-                      AND (sp.id = $1::int OR sp.parent_person_id = $1::int)
+                      AND (sp.id = $1::int OR fh_is_guardian($1::int, sp.id))
                 ), '[]'::jsonb) AS my_sides,
                 COALESCE((
                     SELECT jsonb_agg(
@@ -1828,7 +1828,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                   LEFT JOIN persons child ON child.id = tp.person_id
                                  WHERE tp.team_id = f.team_id AND tp.removed_at IS NULL
                                    AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
-                                   AND (tp.person_id = $1::int OR child.parent_person_id = $1::int))
+                                   AND (tp.person_id = $1::int OR fh_is_guardian($1::int, child.id)))
                      OR EXISTS (SELECT 1 FROM team_coaches tc JOIN coaches co ON co.id = tc.coach_id
                                  WHERE tc.team_id = f.team_id AND tc.ended_at IS NULL
                                    AND co.person_id = $1::int)
@@ -1882,7 +1882,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                            fh_dues_alternate(p.id, $2::int)          AS alternate,
                            fh_fill_form_links('{form:la_dashboard}', $2::int) AS pay_url
                       FROM persons p
-                     WHERE p.id = $1::int OR p.parent_person_id = $1::int
+                     WHERE p.id = $1::int OR fh_is_guardian($1::int, p.id)
                 )SQL", {std::to_string(personId), std::to_string(WelcomeLog::kLighthouseClubId)});
                 for (const auto& r : dr) {
                     dues[std::string(r["id"].c_str())] = {
@@ -2049,7 +2049,7 @@ Response CalendarController::handleGetRollCallMe(const Request& request) {
             me AS (SELECT COALESCE(first_name, '') AS fn FROM persons WHERE id = $2::int),
             fam AS (
               SELECT p.id, COALESCE(p.first_name, '') AS fn, (p.id = $2::int) AS self
-                FROM persons p WHERE p.id = $2::int OR p.parent_person_id = $2::int
+                FROM persons p WHERE p.id = $2::int OR fh_is_guardian($2::int, p.id)
             ),
             games AS (
               SELECT fe.id AS fh_event_id, min(ge.starts_at) AS starts_at
@@ -3356,8 +3356,39 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
                              "(rostered already, wrong age or program, or another section).");
         }
         const std::string firstName = w["first_name"].is_null() ? "" : w["first_name"].c_str();
-        const bool youth = !w["parent_person_id"].is_null();
-        const long long recipientPersonId = youth ? w["parent_person_id"].as<long long>() : targetPersonId;
+        // Every parent gets their own invite message and link (mig 682);
+        // the invite row itself stays one per player — it is what lets the
+        // call-up see the game — and records the first recipient.
+        struct InviteRecipient { long long personId; std::string first, phone, email; };
+        std::vector<InviteRecipient> recipients;
+        for (const auto& r : db->query(
+                "SELECT m.recipient_person_id, COALESCE(rp.first_name, '') AS fn, "
+                "       fh_recipient_phone(m.recipient_person_id, $1::int) AS phone, "
+                "       fh_recipient_email(m.recipient_person_id, $1::int) AS email "
+                "  FROM fh_message_recipients($1::int) m JOIN persons rp ON rp.id = m.recipient_person_id "
+                " ORDER BY m.ord", {std::to_string(targetPersonId)}))
+            recipients.push_back({r["recipient_person_id"].as<long long>(), r["fn"].c_str(),
+                                  r["phone"].is_null() ? "" : r["phone"].c_str(),
+                                  r["email"].is_null() ? "" : r["email"].c_str()});
+        if (body.contains("recipient_person_ids") && body["recipient_person_ids"].is_array()) {
+            std::vector<InviteRecipient> want;
+            for (const auto& v : body["recipient_person_ids"]) {
+                auto it = std::find_if(recipients.begin(), recipients.end(), [&](const InviteRecipient& r) {
+                    return v.is_number_integer() && r.personId == v.get<long long>(); });
+                if (it == recipients.end()) return jsonError(HttpStatus::BAD_REQUEST, "recipient_person_ids must be this player's parents");
+                want.push_back(*it);
+            }
+            recipients = want;
+        }
+        if (recipients.empty()) return jsonError(HttpStatus::NOT_FOUND, "Person not found");
+        const bool youth = recipients[0].personId != targetPersonId;
+        // One recipient keeps the contact the caller chose; with two parents
+        // each one's own number / email comes from the DB.
+        if (recipients.size() == 1 && !contact.empty()) {
+            (channel == "email" ? recipients[0].email : recipients[0].phone) = contact;
+        }
+        const long long recipientPersonId = recipients[0].personId;
+        if (channel != "copy") contact = channel == "email" ? recipients[0].email : recipients[0].phone;
         const std::string fromTeamId = !w["from_team_id"].is_null() ? std::string(w["from_team_id"].c_str())
                                      : !w["inv_from_team_id"].is_null() ? std::string(w["inv_from_team_id"].c_str()) : "";
         const std::string fromTeamName = !w["from_team_name"].is_null() ? std::string(w["from_team_name"].c_str())
@@ -3374,12 +3405,6 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
         const std::string adminUserIdStr = resolveUserId(db, personId);
         const long long adminUserId = adminUserIdStr.empty() ? 0 : std::stoll(adminUserIdStr);
 
-        // Magic link for the RECIPIENT (parent for youth). magic_link_tokens
-        // only knows sms/email; a copied link is minted as sms.
-        const auto minted = MagicLinkService::mint(recipientPersonId,
-                                                   channel == "email" ? "email" : "sms",
-                                                   contact, adminUserId);
-
         auto ins = db->query(
             "INSERT INTO fh_event_invites "
             "    (fh_event_id, person_id, from_team_id, recipient_person_id, invited_by_user_id, channel, contact) "
@@ -3391,14 +3416,6 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
             {std::to_string(fhEventId), std::to_string(targetPersonId), fromTeamId,
              std::to_string(recipientPersonId), adminUserIdStr, channel, contact});
 
-        // Recipient's first name for the greeting (parent for youth).
-        std::string recipientFirst = firstName;
-        if (youth) {
-            auto r = db->query("SELECT COALESCE(first_name, '') AS fn FROM persons WHERE id = $1::int",
-                               {std::to_string(recipientPersonId)});
-            if (!r.empty()) recipientFirst = r[0]["fn"].c_str();
-        }
-
         // ── Copy ── message_templates kind 'event_invite' / 'event_invite_sms',
         // tier adult|parent (migration 366).  Player-facing: squad + kind
         // label + opponent + time, never the gcal title.
@@ -3408,19 +3425,7 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
             if (!k.empty()) kindLabel = k[0]["player_label"].c_str();
         }
         MessageCopy copy;
-        const MessageCopy::Tokens tokens = {
-            {"first", recipientFirst}, {"child", youth ? firstName : std::string{}},
-            {"team", info->teamLabel}, {"from_team", fromTeamName}, {"kind", kindLabel},
-            {"opponent", info->kind == "match" ? info->opponent : std::string{}},
-            {"when", info->whenEt}, {"link", minted.url},
-        };
         const std::string tier = youth ? "parent" : "adult";
-        const auto email = copy.render("event_invite", tier, tokens);
-        const auto sms   = copy.render("event_invite_sms", tier, tokens);
-        if (!email.ok() || !sms.ok())
-            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "event_invite template missing (migration 366)");
-        const std::string smsBody = copy.withSmsLinkHint(sms.body);
-
         json invite = {
             {"person_id",  targetPersonId},
             {"first_name", firstName},
@@ -3431,13 +3436,41 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
             {"response",   nullptr},
             {"created_at", ins.empty() ? json(nullptr) : json(std::string(ins[0]["created_at"].c_str()))},
         };
-        json out = {
-            {"url",        minted.url},
-            {"expires_at", minted.expiresIso},
-            {"invite",     invite},
-            {"sms_body",   smsBody},
-        };
-        copy.addComposeHrefs(out, channel, contact, email.subject, email.body, sms.body);
+        json sends = json::array();
+        for (const auto& rcp : recipients) {
+            const std::string theirContact = channel == "email" ? rcp.email : channel == "sms" ? rcp.phone : std::string{};
+            if (channel != "copy" && theirContact.empty()) continue;
+            // Magic link for the RECIPIENT (each parent for youth).
+            // magic_link_tokens only knows sms/email; a copied link is minted as sms.
+            const auto minted = MagicLinkService::mint(rcp.personId, channel == "email" ? "email" : "sms",
+                                                       theirContact, adminUserId);
+            const MessageCopy::Tokens tokens = {
+                {"first", youth ? rcp.first : firstName}, {"child", youth ? firstName : std::string{}},
+                {"team", info->teamLabel}, {"from_team", fromTeamName}, {"kind", kindLabel},
+                {"opponent", info->kind == "match" ? info->opponent : std::string{}},
+                {"when", info->whenEt}, {"link", minted.url},
+            };
+            const auto email = copy.render("event_invite", tier, tokens);
+            const auto sms   = copy.render("event_invite_sms", tier, tokens);
+            if (!email.ok() || !sms.ok())
+                return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "event_invite template missing (migration 366)");
+            json one = {
+                {"url",        minted.url},
+                {"expires_at", minted.expiresIso},
+                {"invite",     invite},
+                {"sms_body",   copy.withSmsLinkHint(sms.body)},
+                {"recipient_person_id", rcp.personId},
+                {"recipient_name",      youth ? rcp.first : firstName},
+                {"contact",             theirContact},
+            };
+            copy.addComposeHrefs(one, channel, theirContact, email.subject, email.body, sms.body);
+            sends.push_back(std::move(one));
+        }
+        if (sends.empty())
+            return jsonError(HttpStatus::CONFLICT, channel == "email" ? "No email on file." : "No mobile number on file.");
+        // Top level = the first send (callers that predate mig 682).
+        json out = sends[0];
+        out["sends"] = sends;
         Response r(HttpStatus::CREATED, out.dump());
         r.setHeader("Content-Type", "application/json; charset=utf-8");
         return r;

@@ -25,7 +25,11 @@ public:
         std::string recipientFirstName;
         std::string phone;          // "" when none
     };
-    Person person(long long personId);
+    // recipientPersonId 0 = the first recipient (primary parent / self).
+    Person person(long long personId, long long recipientPersonId = 0);
+    // Every recipient of a message about this person — each parent, or
+    // the person (mig 682).
+    std::vector<long long> recipients(long long personId);
 
     // Writes sms_opt_in_nudges; returns {count, last_at} for the row.
     nlohmann::json logNudge(long long personId, long long recipientPersonId,

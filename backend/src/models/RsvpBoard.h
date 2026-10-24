@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include <string>
 #include <vector>
 #include "../third_party/json.hpp"
@@ -70,7 +71,15 @@ public:
         // them 2x" / "same with coaches who also play".  {id, first name}.
         std::vector<std::pair<long long, std::string>> siblings;
     };
-    ReminderContext reminderContext(long long personId);
+    // recipientPersonId 0 = the first of fh_message_recipients (primary
+    // parent, or the player).  A kid with two parents gets one reminder
+    // per parent (mig 682) — the controller loops messageRecipients().
+    ReminderContext reminderContext(long long personId, long long recipientPersonId = 0);
+
+    // Who a message about this person goes to: each parent (primary
+    // first), or the person themself (fh_message_recipients, mig 682).
+    struct Recipient { long long personId = 0; std::string firstName; };
+    std::vector<Recipient> messageRecipients(long long personId);
 
     // One still-open event, and everybody in the section (optionally one
     // team) who has not answered it — for ONE group text / BCC email
@@ -112,6 +121,7 @@ public:
         std::string deadline;                // fh_rsvp_deadline_note, "" when none
         std::vector<std::string> going, notGoing, noResponse;
         std::vector<std::string> phones;     // distinct, everyone expected
+        std::map<std::string, std::vector<long long>> phoneKids;   // phone → player ids (mig 682)
     };
     // nameStyle: "full" = "First L.", "first" = first name only (club_sections.roll_call_name_style).
     RollCall rollCall(const std::string& sectionCode, long long fhEventId, const std::vector<long long>& teamIds,
@@ -170,7 +180,8 @@ public:
     // personal game link that names no role).  Owner 2026-10-16: "call
     // ups and ALL PLayers need email and text link personalized to
     // invite to game".
-    bool poolRecipient(long long matchId, long long personId, SquadRecipient* out);
+    bool poolRecipient(long long matchId, long long personId, SquadRecipient* out,
+                       long long recipientPersonId = 0);
 
     void logSquadNotice(long long matchId, const SquadRecipient& r, const std::string& channel,
                         const std::string& contact, long long sentByUserId);

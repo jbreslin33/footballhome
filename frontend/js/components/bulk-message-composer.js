@@ -134,6 +134,20 @@
         return;
       }
 
+      // Two parents of the same kid never share a group text (mig 682 —
+      // divorced parents): split only where they would, one tap per part.
+      const parts = (typeof Screen !== 'undefined' && Screen.chunkContacts && info.phoneKids)
+        ? Screen.chunkContacts(info.phones, info.phoneKids, Infinity) : [info.phones];
+      if (parts.length > 1 && window.DesktopSms && DesktopSms.openMany) {
+        const word = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('desktop_sms', tier, tokens)) || fb;
+        close();
+        DesktopSms.openMany(parts.map((p, i) => ({
+          label: word('many_part', { n: i + 1, total: parts.length, count: p.length }, `💬 Part ${i + 1}/${parts.length} (${p.length})`),
+          href: screen.buildSmsComposeHref({ to: p.join(RosterMessaging.PHONE_SEPARATOR), body }) })));
+        if (onSent) onSent(info.phones.length);
+        return;
+      }
+
       const numbers = info.phones.join(RosterMessaging.PHONE_SEPARATOR);
 
       // Recipients ride the URL — buildSmsComposeHref's comment notes

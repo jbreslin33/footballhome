@@ -86,7 +86,15 @@ Response GameMessageController::handleRecipients(const Request& request) {
                    (p.parent_person_id IS NOT NULL) AS via_parent,
                    r.kind,
                    COALESCE(rv.response, 'none') AS rsvp,
-                   ph.phone_number AS phone, em.email AS email
+                   ph.phone_number AS phone, em.email AS email,
+                   -- Every parent's own contact (mig 682): a kid with two
+                   -- parents reaches both, each separately.
+                   (SELECT jsonb_agg(jsonb_build_object(
+                             'name',  COALESCE(rp.first_name, ''),
+                             'phone', fh_recipient_phone(m.recipient_person_id, p.id),
+                             'email', fh_recipient_email(m.recipient_person_id, p.id)) ORDER BY m.ord)
+                      FROM fh_message_recipients(p.id) m JOIN persons rp ON rp.id = m.recipient_person_id
+                     WHERE m.is_guardian)::text AS parents
               FROM roster r
               JOIN persons p ON p.id = r.person_id
               -- The answer given to this game (its calendar event), latest first.
@@ -95,18 +103,11 @@ Response GameMessageController::handleRecipients(const Request& request) {
                       JOIN fh_events fe ON fe.id = x.fh_event_id AND fe.match_id = $1::int
                      WHERE x.person_id = p.id
                      ORDER BY x.responded_at DESC LIMIT 1) rv ON true
-              -- Contact: the parent's for youth, falling back to the player's own.
-              LEFT JOIN LATERAL (
-                    SELECT x.phone_number FROM person_phones x
-                     WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                       AND COALESCE(x.can_receive_sms, true)
-                     ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                              x.is_primary DESC NULLS LAST, x.id LIMIT 1) ph ON true
-              LEFT JOIN LATERAL (
-                    SELECT x.email FROM person_emails x
-                     WHERE x.person_id IN (COALESCE(p.parent_person_id, p.id), p.id)
-                     ORDER BY (x.person_id = COALESCE(p.parent_person_id, p.id)) DESC,
-                              x.is_primary DESC NULLS LAST, x.id LIMIT 1) em ON true
+              -- Contact: the primary parent's for youth, falling back to the player's own.
+              CROSS JOIN LATERAL (SELECT fh_recipient_phone((SELECT m.recipient_person_id FROM fh_message_recipients(p.id) m
+                                                              ORDER BY m.ord LIMIT 1), p.id) AS phone_number) ph
+              CROSS JOIN LATERAL (SELECT fh_recipient_email((SELECT m.recipient_person_id FROM fh_message_recipients(p.id) m
+                                                              ORDER BY m.ord LIMIT 1), p.id) AS email) em
              ORDER BY (r.kind = 'candidate'), p.last_name, p.first_name)SQL", {mid});
 
         json people = json::array();
@@ -115,7 +116,8 @@ Response GameMessageController::handleRecipients(const Request& request) {
                               {"kind", str(r, "kind")},
                               {"rsvp", str(r, "rsvp")}, {"viaParent", r["via_parent"].as<bool>()},
                               {"email", r["email"].is_null() ? json(nullptr) : json(str(r, "email"))},
-                              {"phone", r["phone"].is_null() ? json(nullptr) : json(str(r, "phone"))}});
+                              {"phone", r["phone"].is_null() ? json(nullptr) : json(str(r, "phone"))},
+                              {"parents", r["parents"].is_null() ? json::array() : json::parse(r["parents"].c_str())}});
         }
         return jsonOut(HttpStatus::OK, {{"success", true}, {"people", people}});
     } catch (const std::exception& e) {

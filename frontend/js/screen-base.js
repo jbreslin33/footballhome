@@ -66,6 +66,19 @@ class Screen {
 
   // Navigates to a Gmail compose href from JS (vs. a plain <a href>
   // button, which the browser navigates on tap without any JS needed).
+  // A personal send's compose links — one per recipient (mig 682: each
+  // parent of a kid gets their own message; one recipient opens straight
+  // away as before).  data = the endpoint's reply (sends[] or the old shape).
+  openSends(data, channel) {
+    const list = ((data && data.sends) || [data]).map(x => ({
+      name: x.recipient_name || '', label: `${channel === 'email' ? '✉' : '💬'} ${x.recipient_name || ''}`,
+      href: channel === 'email' ? x.gmail_href : x.sms_href }));
+    if (window.DesktopSms && DesktopSms.openMany) DesktopSms.openMany(list, { openEmail: (h) => this.openGmailCompose(h) });
+    else if (list[0] && list[0].href) {
+      if (channel === 'email') this.openGmailCompose(list[0].href); else window.location.href = list[0].href;
+    }
+  }
+
   openGmailCompose(href) {
     if (!href) return;
     if (href.startsWith('mailto:')) {
@@ -115,6 +128,22 @@ class Screen {
   }
 
   static get SMS_LINK_HINT() { return MessageCopy.smsLinkHint; }
+  // Group-text parts (carriers cap a group text around `size`).  kids
+  // (contact → player ids, from the server) keeps two parents of the same
+  // kid out of the same part (mig 682 — divorced parents must never share
+  // a thread).  Without kids it is the plain split it always was.
+  static chunkContacts(contacts, kids, size = 10) {
+    const chunks = [];
+    for (const c of contacts || []) {
+      const mine = (kids && kids[c]) || [];
+      const clash = (ch) => mine.length && ch.some(o => ((kids && kids[o]) || []).some(k => mine.includes(k)));
+      let ch = chunks.find(x => x.length < size && !clash(x));
+      if (!ch) { ch = []; chunks.push(ch); }
+      ch.push(c);
+    }
+    return chunks;
+  }
+
   static withSmsLinkHint(body) {
     const text = String(body || '');
     const hint = Screen.SMS_LINK_HINT;

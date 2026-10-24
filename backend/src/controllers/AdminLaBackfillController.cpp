@@ -919,7 +919,7 @@ Response AdminLaBackfillController::handlePeople(const Request& request) {
             "     AND NOT EXISTS (SELECT 1 FROM team_persons tp WHERE tp.person_id = pe.id) "
             "     AND NOT EXISTS (SELECT 1 FROM person_la_memberships m WHERE m.person_id = pe.id) "
             "     AND NOT EXISTS (SELECT 1 FROM coaches c WHERE c.person_id = pe.id) "
-            "     AND NOT EXISTS (SELECT 1 FROM persons k WHERE k.parent_person_id = pe.id) "
+            "     AND NOT EXISTS (SELECT 1 FROM person_guardians g WHERE g.guardian_person_id = pe.id) "
             "     AND NOT EXISTS (SELECT 1 FROM admins a JOIN users u2 ON u2.id = a.user_id "
             "                      WHERE u2.person_id = pe.id) "
             "), split_rostered AS ( "

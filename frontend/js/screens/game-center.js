@@ -3146,7 +3146,7 @@ class GameCenterScreen extends Screen {
 
   // The choices for one person: WHAT (only what applies to them) and, for
   // the chosen WHAT, every HOW with ok / why-not.
-  _contactChoices(personId, what) {
+  _contactChoices(personId, what, toIds) {
     const c = (this._contactCtx || {})[personId] || {};
     const st = c.st;
     const cb = (tier, tokens) => (window.MessageCopy && MessageCopy.block('contact_box', tier, tokens)) || '';
@@ -3155,34 +3155,58 @@ class GameCenterScreen extends Screen {
     if (c.gap) whats.push({ key: 'reg', label: this._cm('what_reg', { form: c.gap.form_label || '' }) });
     whats.push({ key: 'blank', label: this._cm('what_blank') });
     const w = whats.some(x => x.key === what) ? what : (c.gap ? 'reg' : whats[0].key);
-    const hasPhone = st ? !!st.phone : true;
-    const hasEmail = st ? !!st.email : true;
-    const consent = st ? st.consent : 'none';
+    // TO (mig 682/683): every parent of a kid, each sent their own
+    // message — owner 2026-10-24: "they are divorced so we want option to
+    // send to both but sep".  One recipient = the card's own state.
+    const recips = st && Array.isArray(st.recipients) && st.recipients.length
+      ? st.recipients.map(r => ({ id: r.recipient_person_id, name: r.recipient_name || '', consent: r.consent || 'none',
+                                  phone: r.phone || null, email: r.email || null }))
+      : [{ id: null, name: c.name || '', consent: st ? st.consent : 'none', phone: st ? st.phone : true, email: st ? st.email : true }];
+    const ticked = toIds ? recips.filter(r => toIds.includes(r.id)) : recips;
+    const multi = ticked.length > 1;
+    const one = ticked[0] || recips[0];
+    const hasPhone = ticked.some(r => !!r.phone);
+    const hasEmail = ticked.some(r => !!r.email);
+    const anyStopped = ticked.some(r => r.consent === 'stopped');
+    const allIn = ticked.length > 0 && ticked.every(r => r.consent === 'in');
     const regPhoneWhy = w === 'reg' && !(c.gap && c.gap.phone) ? cb('why_nophone') : '';
     const regEmailWhy = w === 'reg' && !(c.gap && c.gap.email) ? cb('why_noemail') : '';
-    const blankWhy = (field) => w === 'blank' && !(st && st[field]) ? cb(field === 'phone' ? 'why_nophone' : 'why_noemail') : '';
+    const noneWhy = ticked.length ? '' : this._cm('none_ticked');
     const hows = [
-      { key: 'text',  label: this._cm('how_text'), why: !hasPhone ? cb('why_nophone') : regPhoneWhy || blankWhy('phone') },
-      { key: 'email', label: this._cm('how_email'), why: !hasEmail ? cb('why_noemail') : regEmailWhy || blankWhy('email') },
-      { key: 'call',  label: this._cm('how_call'),  why: st && st.phone ? '' : cb('why_nophone') },
+      { key: 'text',  label: this._cm('how_text'), why: noneWhy || (!hasPhone ? cb('why_nophone') : regPhoneWhy) },
+      { key: 'email', label: this._cm('how_email'), why: noneWhy || (!hasEmail ? cb('why_noemail') : regEmailWhy) },
+      { key: 'call',  label: this._cm('how_call'),  why: noneWhy || (hasPhone ? '' : cb('why_nophone')) },
     ];
     // 📲 Text's sub-options (mig 675; owner 2026-10-24: "inside each
     // option it has sub option and defaults to default but allows radio
     // button to change it for that message").  The default is the rule in
-    // _textRoute; the others stay pickable unless they can't work.
+    // _textRoute — per parent when two are ticked ("Best for each").
     const r = this.relay;
-    const vias = [
-      { key: 'club',  label: this._cm('via_club'),
-        why: consent === 'stopped' ? cb('why_stopped') : consent !== 'in' ? cb('why_none')
-           : (w === 'game' || w === 'reg') ? '' : this._cm('why_club_what') },
-      ...(r ? [{ key: 'relay', label: this._cm('via_relay', { device: r.device ? r.device.name : '' }),
-        why: consent === 'stopped' ? this._cm('manual_why_stopped')
-           : !r.device ? this._cm('manual_why_unpaired') : !r.device.online ? this._cm('manual_why_offline')
-           : r.today >= r.cap ? this._cm('manual_why_cap') : '' }] : []),
-      { key: 'paste', label: this._cm('via_paste'), why: '' },
-    ];
-    const defVia = { club: 'club', relay: 'relay', manual: 'paste' }[this._textRoute(w, consent).route];
-    return { c, whats, what: w, hows, vias, defVia };
+    const clubWhy = (w === 'game' || w === 'reg') ? '' : this._cm('why_club_what');
+    const relayWhy = !r ? '' : anyStopped ? this._cm('manual_why_stopped')
+                   : !r.device ? this._cm('manual_why_unpaired') : !r.device.online ? this._cm('manual_why_offline')
+                   : r.today + ticked.length > r.cap ? this._cm('manual_why_cap') : '';
+    const device = r && r.device ? r.device.name : '';
+    let vias;
+    if (!multi) {
+      vias = [
+        { key: 'club',  label: this._cm('via_club'),
+          why: one.consent === 'stopped' ? cb('why_stopped') : one.consent !== 'in' ? cb('why_none') : clubWhy },
+        ...(r ? [{ key: 'relay', label: this._cm('via_relay', { device }), why: relayWhy }] : []),
+        { key: 'paste', label: this._cm('via_paste'), why: '' },
+      ];
+    } else {
+      const word = { club: this._cm('route_club_short'), relay: this._cm('route_relay_short'), manual: this._cm('route_paste_short') };
+      const routes = ticked.map(t => `${t.name}: ${word[this._textRoute(w, t.consent).route]}`).join(' · ');
+      vias = [
+        { key: 'best',  label: this._cm('via_best', { routes }), why: '' },
+        { key: 'club',  label: this._cm('via_club_all'), why: !allIn ? this._cm('why_not_all_in') : clubWhy },
+        ...(r ? [{ key: 'relay', label: this._cm('via_relay_all', { device }), why: relayWhy }] : []),
+        { key: 'paste', label: this._cm('via_paste_all'), why: '' },
+      ];
+    }
+    const defVia = multi ? 'best' : { club: 'club', relay: 'relay', manual: 'paste' }[this._textRoute(w, one.consent).route];
+    return { c, whats, what: w, hows, vias, defVia, recips, ticked };
   }
 
   // Which number a 📲 Text goes from (mig 673; owner 2026-10-24: "default
@@ -3203,7 +3227,7 @@ class GameCenterScreen extends Screen {
 
   _openContactSheet(personId, what = null) {
     const prev = this._contactSheet;
-    this._contactSheet = { personId, what: what || (prev && prev.personId === personId ? prev.what : null), how: null, error: '' };
+    this._contactSheet = { personId, what: what || (prev && prev.personId === personId ? prev.what : null), how: null, error: '', to: null };
     this._renderContactSheet();
   }
 
@@ -3217,8 +3241,9 @@ class GameCenterScreen extends Screen {
   _renderContactSheet() {
     const sh = this._contactSheet;
     if (!sh) return this._closeContactSheet();
-    const { c, whats, what, hows, vias, defVia } = this._contactChoices(sh.personId, sh.what);
+    const { c, whats, what, hows, vias, defVia, recips } = this._contactChoices(sh.personId, sh.what, sh.to);
     sh.what = what;
+    if (!sh.to) sh.to = recips.map(r => r.id);
     if (!sh.via || (vias.find(v => v.key === sh.via) || {}).why) sh.via = defVia;
     const firstOk = hows.find(h => !h.why && h.key !== 'call');
     if (!sh.how || (hows.find(h => h.key === sh.how) || {}).why) sh.how = firstOk ? firstOk.key : 'call';
@@ -3250,13 +3275,20 @@ class GameCenterScreen extends Screen {
           <b style="font-size:1.02rem;">${esc(title)}</b>
           <button type="button" data-gc-cs-close style="border:none; background:none; color:#94a3b8; font-size:1.3rem; cursor:pointer;" aria-label="${esc(this._cm('cancel'))}">×</button>
         </div>
+        ${recips.length > 1 ? `<div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6; margin:4px 0 2px;">${esc(this._cm('to').toUpperCase())}
+            <span style="font-weight:600; letter-spacing:0; text-transform:none;">— ${esc(this._cm('to_hint'))}</span></div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">${recips.map(r => `
+            <label style="display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; cursor:pointer;
+                          border:1px solid ${sh.to.includes(r.id) ? '#0284c7' : '#334155'}; background:${sh.to.includes(r.id) ? 'rgba(2,132,199,0.18)' : 'transparent'};">
+              <input type="checkbox" data-gc-cs-to="${r.id}" ${sh.to.includes(r.id) ? 'checked' : ''}>
+              <span>${esc(r.name)}</span></label>`).join('')}</div>` : ''}
         ${sh.how === 'call' ? '' : `<div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6; margin:4px 0 2px;">${esc(this._cm('what').toUpperCase())}</div>
         ${whats.map(x => radio('what', x.key, x.label, x.key === what, '')).join('')}`}
         <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6; margin:10px 0 2px;">${esc(this._cm('how').toUpperCase())}</div>
         ${hows.map(h => radio('how', h.key, h.label, h.key === sh.how, h.why)
           + (h.key === 'text' && sh.how === 'text' && !h.why
              ? `<div style="margin-left:26px; border-left:2px solid #334155; padding-left:6px;">${vias.map(v => radio('via', v.key, v.label, v.key === sh.via, v.why)).join('')}
-                ${what === 'blank' && sh.via === 'relay' ? `<textarea data-gc-cs-body rows="4" maxlength="1600" placeholder="${esc(this._cm('blank_placeholder'))}"
+                ${what === 'blank' && (sh.via === 'relay' || sh.via === 'best') ? `<textarea data-gc-cs-body rows="4" maxlength="1600" placeholder="${esc(this._cm('blank_placeholder'))}"
                   style="width:100%; box-sizing:border-box; margin:6px 0 4px; padding:8px; border-radius:8px; border:1px solid #334155; background:#1e293b; color:#f8fafc; font:inherit; font-size:0.9rem;">${esc(sh.body || '')}</textarea>` : ''}</div>` : '')).join('')}
         <div style="display:flex; gap:8px; align-items:center; margin-top:12px;">
           <button type="button" data-gc-cs-send style="flex:1; padding:11px; border-radius:10px; border:none; cursor:pointer; font-weight:800; font-size:0.95rem; color:#fff; background:#0284c7;">${esc(sh.how === 'call' ? this._cm('call_go') : this._cm('send'))}</button>
@@ -3271,6 +3303,14 @@ class GameCenterScreen extends Screen {
     if (e.target.id === 'gc-contact-sheet' || e.target.closest('[data-gc-cs-close]')) { this._closeContactSheet(); return; }
     const w = e.target.closest('[data-gc-cs-what]');
     if (w && !w.disabled) { sh.what = w.dataset.gcCsWhat; sh.how = null; sh.via = null; this._renderContactSheet(); return; }
+    const to = e.target.closest('[data-gc-cs-to]');
+    if (to) {
+      const id = Number(to.dataset.gcCsTo);
+      sh.to = to.checked ? [...new Set([...(sh.to || []), id])] : (sh.to || []).filter(x => x !== id);
+      sh.how = null; sh.via = null;
+      this._renderContactSheet();
+      return;
+    }
     const v = e.target.closest('[data-gc-cs-via]');
     if (v && !v.disabled) { sh.via = v.dataset.gcCsVia; this._renderContactSheet(); return; }
     const h = e.target.closest('[data-gc-cs-how]');
@@ -3279,48 +3319,78 @@ class GameCenterScreen extends Screen {
     if (send && !send.disabled) this._contactSend(send);
   }
 
-  // Hand the choice to the send it always was.  The Send button carries
-  // the old buttons' data attributes, so each handler runs unchanged.
+  // Hand the choice to the sends it always was — once per ticked parent
+  // (mig 682: each gets their own message, never one thread).  Text
+  // routes are per parent under "Best for each".
   async _contactSend(btn) {
     const sh = this._contactSheet;
-    const { c, what, hows } = this._contactChoices(sh.personId, sh.what);
+    const { c, what, hows, ticked } = this._contactChoices(sh.personId, sh.what, sh.to);
     const how = hows.find(x => x.key === sh.how);
-    if (!how || how.why) return;
-    const pid = String(sh.personId);
-    const st = c.st || {};
-    btn.dataset.personId = pid;
+    if (!how || how.why || !ticked.length) return;
+    btn.dataset.personId = String(sh.personId);
+    const ids = ticked.map(t => t.id).filter(id => id != null);
     const done = async () => { this._closeContactSheet(); await this._loadTextMarks(); this._render(); };
-    const hk = how.key === 'text' ? { club: 'club', relay: 'relay', paste: 'phone' }[sh.via] || 'phone' : how.key;
-    if (hk === 'relay') {
-      const ok = await this._sendViaPhone(btn, what, c);
-      return ok ? done() : this._renderContactSheetError(btn);
+    const fail = (msg) => {
+      const note = btn.closest('[data-gc-contact]')?.querySelector('[data-gc-squad-note]');
+      if (note) note.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(msg)}</span>`;
+      this._renderContactSheetError(btn);
+    };
+    const words = ((sh.body || '')).trim();
+    const items = [];   // separate compose links, one per parent → DesktopSms.openMany
+    try {
+      if (how.key === 'call') {
+        ticked.filter(t => t.phone).forEach(t => items.push({ name: t.name, label: `📞 ${t.name}`, href: `tel:${t.phone}` }));
+        if (items.length === 1) window.location.href = items[0].href;
+        else DesktopSms.openMany(items, { openEmail: (h) => { window.location.href = h; } });
+        return this._closeContactSheet();
+      }
+      if (how.key === 'email') {
+        if (what === 'blank') ticked.filter(t => t.email).forEach(t => items.push({ name: t.name, label: `✉ ${t.name}`, href: `mailto:${t.email}` }));
+        else if (what === 'reg') items.push({ name: c.name, label: `✉ ${c.name}`, href: this.buildGmailComposeHref({ to: c.gap.email, subject: c.gap.subject || '', body: c.gap.body || '' }) });
+        else (await this._composeSends(what, 'email', ids)).forEach(x => items.push({ name: x.recipient_name, label: `✉ ${x.recipient_name}`, href: x.gmail_href }));
+        DesktopSms.openMany(items, { openEmail: (h) => /^mailto:/.test(h) ? (window.location.href = h) : this.openGmailCompose(h) });
+        return done();
+      }
+      // 📲 Text: each ticked parent's route.
+      const routeOf = (t) => sh.via === 'best'
+        ? { club: 'club', relay: 'relay', manual: 'paste' }[this._textRoute(what, t.consent).route]
+        : sh.via;
+      const by = { club: [], relay: [], paste: [] };
+      ticked.forEach(t => by[routeOf(t) || 'paste'].push(t));
+      if (by.club.length) {
+        btn.dataset.gcClubText = what === 'reg' ? 'reg_link' : 'game_link';
+        if (!(await this._sendClubText(btn, by.club.map(t => t.id)))) return this._renderContactSheetError(btn);
+      }
+      for (const t of by.relay) {
+        if (!(await this._sendViaPhone(btn, what, c, t))) return this._renderContactSheetError(btn);
+      }
+      if (by.paste.length) {
+        if (what === 'blank') by.paste.filter(t => t.phone).forEach(t => items.push({ name: t.name, label: `💬 ${t.name}`, href: this.buildSmsComposeHref({ to: t.phone, body: words }) }));
+        else if (what === 'reg') items.push({ name: c.name, label: `💬 ${c.name}`, href: this.buildSmsComposeHref({ to: c.gap.phone, body: c.gap.body || '' }) });
+        else (await this._composeSends(what, 'sms', by.paste.map(t => t.id))).forEach(x => items.push({ name: x.recipient_name, label: `💬 ${x.recipient_name}`, href: x.sms_href }));
+        DesktopSms.openMany(items);
+      }
+      return done();
+    } catch (err) {
+      return fail(err.message);
     }
-    if (how.key === 'call') { window.location.href = `tel:${st.phone}`; return this._closeContactSheet(); }
-    if (what === 'blank') {
-      if (hk === 'phone') DesktopSms.open(this.buildSmsComposeHref({ to: st.phone, body: (sh.body || '').trim() }));
-      else window.location.href = `mailto:${st.email}`;
-      return this._closeContactSheet();
-    }
-    if (what === 'reg' && hk !== 'club') {
-      const g = c.gap;
-      if (hk === 'phone') DesktopSms.open(this.buildSmsComposeHref({ to: g.phone, body: g.body || '' }));
-      else this.openGmailCompose(this.buildGmailComposeHref({ to: g.email, subject: g.subject || '', body: g.body || '' }));
-      return this._closeContactSheet();
-    }
-    if (hk === 'club') {
-      btn.dataset.gcClubText = what === 'reg' ? 'reg_link' : 'game_link';
-      const ok = await this._sendClubText(btn);
-      return ok ? done() : this._renderContactSheetError(btn);
-    }
+  }
+
+  // The tracked personal message (RSVP reminder or game link) for some of
+  // a player's parents, built server-side — one entry per parent, each
+  // with their own sign-in link (mig 682).
+  async _composeSends(what, channel, ids) {
+    const pid = Number(this._contactSheet.personId);
+    const body = { person_id: pid, channel, ...(ids.length ? { recipient_person_ids: ids } : {}) };
     if (what === 'remind') {
-      btn.dataset.gcRemind = hk === 'email' ? 'email' : 'sms';
-      await this._remindPlayer(btn);
-    } else {
-      btn.dataset.gcSquadOne = hk === 'email' ? 'email' : 'sms';
-      await this._sendSquadNoticeOne(btn);
+      const data = await this._postReminder('/api/rsvp-board/remind', body);
+      await this._loadReminders();
+      return data.sends || [data];
     }
-    // The handlers write a failure into the sheet's note; no note = sent.
-    if (!btn.closest('[data-gc-contact]')?.querySelector('[data-gc-squad-note] span')) this._closeContactSheet();
+    if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
+    const data = await this._postReminder('/api/rsvp-board/squad-notice', { ...body, match_id: Number(this.matchId) });
+    this.squadNotice = data.status || this.squadNotice;
+    return data.sends || [data];
   }
 
   _renderContactSheetError(btn) {
@@ -3387,49 +3457,58 @@ class GameCenterScreen extends Screen {
   // sent → delivered ✓ / FAILED — reason, then opened ✓ once the link
   // in it was really tapped.
   _textMarkHtml(personId, kind) {
-    const m = this.textMarks && this.textMarks.marks[String(personId)] && this.textMarks.marks[String(personId)][kind];
-    if (!m) return '';
+    const all = this.textMarks && this.textMarks.marks[String(personId)];
+    if (!all || !all[kind]) return '';
     const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('text_mark', tier, tokens)) || '';
-    const time = this._sentWhen(m.sent_at);
-    const st = m.status || '';
-    const failed = st === 'failed' || st === 'undelivered';
-    const text = failed ? copy('failed', { time, error: m.error_text || m.error_code || st })
-               : st === 'delivered' ? copy('delivered', { time })
-               : st === 'queued' ? copy('queued', { time }) : copy('sent', { time });
-    const opened = m.opened_at ? ` · ${copy('opened', { time: this._sentWhen(m.opened_at) })}` : '';
-    // 📱 = went from the owner's phone through FH Texter (mig 673).
-    const via = m.via === 'phone' ? `${copy('via_phone')} ` : '';
-    return `<span style="font-size:0.66rem; font-weight:${failed ? 800 : 600}; color:${failed ? '#ef4444' : '#34d399'};">${this.escapeHtml(via + text + opened)}</span>`;
+    // Two parents texted separately → one mark each, named (mig 682/683).
+    const by = Array.isArray(all[kind + '_by']) && all[kind + '_by'].length > 1 ? all[kind + '_by'] : [all[kind]];
+    const people = (this.textMarks.people || {})[String(personId)] || {};
+    const nameOf = (rid) => ((people.recipients || []).find(r => r.recipient_person_id === rid) || {}).recipient_name || '';
+    return by.map(m => {
+      const time = this._sentWhen(m.sent_at);
+      const st = m.status || '';
+      const failed = st === 'failed' || st === 'undelivered';
+      const text = failed ? copy('failed', { time, error: m.error_text || m.error_code || st })
+                 : st === 'delivered' ? copy('delivered', { time })
+                 : st === 'queued' ? copy('queued', { time }) : copy('sent', { time });
+      const opened = m.opened_at ? ` · ${copy('opened', { time: this._sentWhen(m.opened_at) })}` : '';
+      // 📱 = went from the owner's phone through FH Texter (mig 673).
+      const via = m.via === 'phone' ? `${copy('via_phone')} ` : '';
+      const who = by.length > 1 && nameOf(m.recipient_person_id) ? `${nameOf(m.recipient_person_id)}: ` : '';
+      return `<span style="font-size:0.66rem; font-weight:${failed ? 800 : 600}; color:${failed ? '#ef4444' : '#34d399'};">${this.escapeHtml(who + via + text + opened)}</span>`;
+    }).join(' · ');
   }
+
 
   // 📲 Text for a player not opted in (mig 673): the same tracked message
   // the copy-and-paste path builds — game link, RSVP reminder or the
   // registration form — queued to FH Texter instead, one text, one click.
   // If the phone refuses it (offline, cap, STOP) the paste panel opens
   // with that same text, so nothing is lost.
-  async _sendViaPhone(btn, what, c) {
+  async _sendViaPhone(btn, what, c, t) {
     const personId = Number(btn.dataset.personId);
     const note = btn.closest('[data-gc-contact]')?.querySelector('[data-gc-squad-note]');
     btn.disabled = true;
     btn.textContent = '⏳';
     let href = '', tokenId = 0, purpose = '';
+    const only = t && t.id != null ? { recipient_person_ids: [t.id] } : {};
     try {
       if (what === 'blank') {
         const words = ((this._contactSheet && this._contactSheet.body) || '').trim();
         if (!words) throw new Error(this._cm('blank_empty'));
-        href = this.buildSmsComposeHref({ to: (c.st && c.st.phone) || '', body: words });
+        href = this.buildSmsComposeHref({ to: (t && t.phone) || (c.st && c.st.phone) || '', body: words });
         purpose = 'blank';
       } else if (what === 'reg') {
         href = this.buildSmsComposeHref({ to: c.gap.phone, body: c.gap.body || '' });
         purpose = `reg_link:${this._fhEventId()}`;
       } else if (what === 'remind') {
-        const data = await this._postReminder('/api/rsvp-board/remind', { person_id: personId, channel: 'sms' });
+        const data = await this._postReminder('/api/rsvp-board/remind', { person_id: personId, channel: 'sms', ...only });
         href = data.sms_href; tokenId = data.token_id || 0; purpose = `remind:${this.matchId}`;
         await this._loadReminders();
       } else {
         if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
         const data = await this._postReminder('/api/rsvp-board/squad-notice',
-          { match_id: Number(this.matchId), person_id: personId, channel: 'sms' });
+          { match_id: Number(this.matchId), person_id: personId, channel: 'sms', ...only });
         href = data.sms_href; tokenId = data.token_id || 0; purpose = `game_link:${this.matchId}`;
         this.squadNotice = data.status || this.squadNotice;
       }
@@ -3455,10 +3534,13 @@ class GameCenterScreen extends Screen {
         if (slot) slot.insertAdjacentHTML('beforebegin', `<div style="color:#fbbf24; font-size:0.82rem; margin:6px 0;">⚠ ${this.escapeHtml(why)}</div>`);
       }, 50);
     }
+    btn.disabled = false;
     return true;
   }
 
-  async _sendClubText(btn) {
+  // ids: the parents to text from the club number (mig 682); omitted =
+  // every opted-in one the server finds.
+  async _sendClubText(btn, ids) {
     const personId = Number(btn.dataset.personId);
     const kind = btn.dataset.gcClubText;
     btn.disabled = true;
@@ -3468,7 +3550,8 @@ class GameCenterScreen extends Screen {
       const res = kind === 'game_link'
         ? await this.auth.fetch('/api/rsvp-board/squad-notice', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ match_id: Number(this.matchId), person_id: personId, channel: 'club_sms' }) })
+            body: JSON.stringify({ match_id: Number(this.matchId), person_id: personId, channel: 'club_sms',
+                                   ...(ids && ids.filter(x => x != null).length ? { recipient_person_ids: ids.filter(x => x != null) } : {}) }) })
         : await this.auth.fetch(`/api/calendar/events/${this._fhEventId()}/registration-gaps/text`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ person_id: personId }) });
@@ -3575,10 +3658,8 @@ class GameCenterScreen extends Screen {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
-      if (channel === 'email' && data.gmail_href) {
-        this.openGmailCompose(data.gmail_href);
-      } else if (channel === 'sms' && data.sms_href) {
-        (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
+      if ((channel === 'email' && data.gmail_href) || (channel === 'sms' && data.sms_href)) {
+        this.openSends(data, channel);   // one per parent (mig 682)
       } else if (data.url) {
         try {
           await navigator.clipboard.writeText(data.sms_body || data.url);
@@ -3798,7 +3879,7 @@ class GameCenterScreen extends Screen {
   _renderGameMessagePanel() {
     if (!this.realIsCoach || this.lineupView !== 'official' || !this.gameRecipients || !window.RosterMessaging) return '';
     const esc = (t) => this.escapeHtml(t);
-    const contact = (p) => ({ phone: p.phone, email: p.email });
+    const contact = (p) => ({ phone: p.phone, email: p.email, extra: p.parents });   // every parent (mig 682)
     const rows = this._gameRecipientGroups().map(g => {
       const info = RosterMessaging.collect(g.people, contact);
       const btn = (kind, icon, n) => `
@@ -3822,7 +3903,7 @@ class GameCenterScreen extends Screen {
     const group = this._gameRecipientGroups().find(g => g.key === btn.dataset.gcMsgGroup);
     if (!group || !window.RosterMessaging || !window.BulkMessageComposer) return;
     const kind = btn.dataset.gcMsgKind;
-    const info = RosterMessaging.collect(group.people, (p) => ({ phone: p.phone, email: p.email }));
+    const info = RosterMessaging.collect(group.people, (p) => ({ phone: p.phone, email: p.email, extra: p.parents }));
     if (kind === 'email' ? !info.emails.length : !info.phones.length) return;
     const game = this._gameLabelForMessage();
     const scope = this._copyGm('scope', { group: this._copyGm('group_' + group.key), game });
@@ -4165,8 +4246,7 @@ class GameCenterScreen extends Screen {
     btn.textContent = '⏳';
     try {
       const data = await this._postReminder('/api/rsvp-board/remind', { person_id: Number(btn.dataset.personId), channel });
-      if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
+      this.openSends(data, channel);
       btn.textContent = original;
       await this._loadReminders();
       this._paintSent();
@@ -4200,7 +4280,7 @@ class GameCenterScreen extends Screen {
       } else {
         const CHUNK_SIZE = 10;
         const chunks = [];
-        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) chunks.push(contacts.slice(i, i + CHUNK_SIZE));
+        chunks.push(...Screen.chunkContacts(contacts, data.kids, CHUNK_SIZE));   // parents of one kid never share a part (mig 682)
         const hrefs = chunks.map(c => this.buildSmsComposeHref({ to: c.join(','), body: data.body }));
         html = chunks.length === 1
           ? `💬 Group text drafted to ${contacts.length}${skipped}`
@@ -4241,7 +4321,7 @@ class GameCenterScreen extends Screen {
       } else {
         const CHUNK_SIZE = 10;
         const chunks = [];
-        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) chunks.push(contacts.slice(i, i + CHUNK_SIZE));
+        chunks.push(...Screen.chunkContacts(contacts, data.kids, CHUNK_SIZE));   // parents of one kid never share a part (mig 682)
         const hrefs = chunks.map(c => this.buildSmsComposeHref({ to: c.join(','), body: data.body }));
         html = chunks.length === 1
           ? `💬 Group text drafted to ${contacts.length}${skipped}`
@@ -4274,8 +4354,7 @@ class GameCenterScreen extends Screen {
       if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
       const data = await this._postReminder('/api/rsvp-board/squad-notice',
         { match_id: Number(this.matchId), person_id: Number(btn.dataset.personId), channel });
-      if (channel === 'email') this.openGmailCompose(data.gmail_href);
-      else (window.DesktopSms ? DesktopSms.open(data.sms_href) : (window.location.href = data.sms_href));
+      this.openSends(data, channel);
       this.squadNotice = data.status || this.squadNotice;
       this._render();
       return;

@@ -37,7 +37,8 @@ std::vector<Contacts::Row> Contacts::list(long long userId) {
           SELECT par.id, 'parents', NULL,
                  string_agg(DISTINCT COALESCE(p.first_name, '') || ' (' || b.label || ')', ', ')
             FROM team_persons tp JOIN board b ON b.id = tp.team_id
-            JOIN persons p ON p.id = tp.person_id JOIN persons par ON par.id = p.parent_person_id
+            JOIN persons p ON p.id = tp.person_id
+            JOIN person_guardians g ON g.child_person_id = p.id JOIN persons par ON par.id = g.guardian_person_id
            WHERE tp.removed_at IS NULL
            GROUP BY par.id
         ), coaches AS (

@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <iostream>
 #include <map>
+#include <set>
 #include <sstream>
 
 #include "../core/Crypto.h"
@@ -48,6 +49,28 @@ const std::vector<SectionDef>& sections() {
 const SectionDef* findSection(const std::string& key) {
     for (const auto& d : sections()) if (key == d.key) return &d;
     return nullptr;
+}
+
+// Which of a player's recipients a personal send goes to (mig 682): the
+// body's recipient_person_ids if given (each must be one of them), else
+// every one — a kid with two parents gets two separate messages.
+// Returns false on a bad pick.
+bool pickRecipients(const std::vector<RsvpBoard::Recipient>& all, const json& body,
+                    std::vector<RsvpBoard::Recipient>* out) {
+    out->clear();
+    if (!body.contains("recipient_person_ids") || !body["recipient_person_ids"].is_array()) {
+        *out = all;
+        return true;
+    }
+    for (const auto& v : body["recipient_person_ids"]) {
+        if (!v.is_number_integer()) return false;
+        auto it = std::find_if(all.begin(), all.end(),
+                               [&](const RsvpBoard::Recipient& r) { return r.personId == v.get<long long>(); });
+        if (it == all.end()) return false;
+        if (std::none_of(out->begin(), out->end(), [&](const RsvpBoard::Recipient& r) { return r.personId == it->personId; }))
+            out->push_back(*it);
+    }
+    return !out->empty();
 }
 
 }  // namespace
@@ -230,7 +253,18 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
 
     try {
-        auto ctx = model_->reminderContext(personId);
+        // One reminder per parent, each with their own words, link and log
+        // row (mig 682) — owner 2026-10-24: "any text should go out
+        // separate to both".
+        std::vector<RsvpBoard::Recipient> recipients;
+        if (!pickRecipients(model_->messageRecipients(personId), body, &recipients))
+            return jsonError(HttpStatus::BAD_REQUEST, "recipient_person_ids must be this player's parents");
+        json sends = json::array();
+        std::string firstErr;
+        HttpStatus firstCode = HttpStatus::CONFLICT;
+        const auto skip = [&](HttpStatus c, const std::string& m) { if (firstErr.empty()) { firstErr = m; firstCode = c; } };
+        for (const auto& rcp : recipients) {
+        auto ctx = model_->reminderContext(personId, rcp.personId);
         if (!ctx.found) return jsonError(HttpStatus::NOT_FOUND, "Person not found");
 
         if (!scope.isAdmin) {
@@ -243,13 +277,17 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         // Contact comes from the DB, never the request: the message carries
         // the recipient's sign-in credential.
         const std::string contact = channel == "sms" ? ctx.phone : ctx.email;
-        if (contact.empty())
-            return jsonError(HttpStatus::CONFLICT, channel == "sms" ? "No mobile number on file." : "No email on file.");
+        if (contact.empty()) {
+            skip(HttpStatus::CONFLICT, channel == "sms" ? "No mobile number on file." : "No email on file.");
+            continue;
+        }
         // The board's day pills narrow the cards, not the message: a
         // reminder always lists every still-answerable event of the week
         // (owner 2026-09-22).
-        if (ctx.openEvents.empty())
-            return jsonError(HttpStatus::CONFLICT, "Nothing to remind — nothing left to answer this week.");
+        if (ctx.openEvents.empty()) {
+            skip(HttpStatus::CONFLICT, "Nothing to remind — nothing left to answer this week.");
+            continue;
+        }
 
         std::string senderName;
         {
@@ -385,8 +423,18 @@ Response RsvpBoardController::handleRemind(const Request& request) {
             {"event_count",   ctx.openEvents.size()},
             {"last_reminder", lastReminder},
             {"also",          also},
+            {"recipient_person_id", ctx.recipientPersonId},
+            {"recipient_name",      ctx.recipientFirstName},
+            {"contact",             contact},
         };
         copy.addComposeHrefs(out, channel, contact, msg.subject, msg.body, msg.body);
+        sends.push_back(std::move(out));
+        }
+        if (sends.empty()) return jsonError(firstCode, firstErr.empty() ? "Nothing to send." : firstErr);
+        // Top level = the first send (callers that predate mig 682);
+        // sends[] = one per parent.
+        json out = sends[0];
+        out["sends"] = sends;
         return jsonOut(HttpStatus::CREATED, out);
     } catch (const std::exception& e) {
         std::cerr << "RsvpBoardController::handleRemind: " << e.what() << std::endl;
@@ -472,7 +520,7 @@ Response RsvpBoardController::handleRollCall(const Request& request) {
         json out = {
             {"body", msg.body}, {"channel", channel},
             {"going", rc.going.size()}, {"not_going", rc.notGoing.size()}, {"no_response", rc.noResponse.size()},
-            {"contacts", rc.phones}, {"posted", !externalId.empty()},
+            {"contacts", rc.phones}, {"kids", rc.phoneKids}, {"posted", !externalId.empty()},
         };
         return jsonOut(HttpStatus::CREATED, out);
     } catch (const std::exception& e) {
@@ -570,20 +618,27 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "group rsvp_reminder template missing (migration 380 / 381)");
 
-        // Siblings share a parent: one contact, every player logged.
+        // Siblings share a parent: one contact, every player logged.  Both
+        // parents of a kid are in (mig 682); "kids" lets the group-text
+        // chunker keep them in separate threads.
         json contacts = json::array();
+        json kids = json::object();
         json reminded = json::object();
-        long long noContact = 0;
+        std::set<long long> reached, players;
         const std::vector<RsvpBoard::OpenEvent> events = {{fhEventId, ctx.line}};
         for (const auto& r : ctx.recipients) {
+            players.insert(r.personId);
             const std::string& contact = channel == "sms" ? r.phone : r.email;
-            if (contact.empty()) { ++noContact; continue; }
+            if (contact.empty()) continue;
+            reached.insert(r.personId);
             if (std::find(contacts.begin(), contacts.end(), json(contact)) == contacts.end())
                 contacts.push_back(contact);
+            kids[contact].push_back(r.personId);
             reminded[std::to_string(r.personId)] =
                 model_->logReminder(r.personId, r.recipientPersonId, channel, contact, scope.userId,
                                     week ? r.weekEvents : events, true);
         }
+        const long long noContact = static_cast<long long>(players.size() - reached.size());
         if (contacts.empty())
             return jsonError(HttpStatus::CONFLICT, channel == "sms"
                 ? "Nobody unanswered has a mobile number on file." : "Nobody unanswered has an email on file.");
@@ -593,6 +648,7 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
             {"subject",    msg.subject},
             {"body",       msg.body},
             {"contacts",   contacts},
+            {"kids",       kids},          // contact → player ids (mig 682)
             {"reminded",   reminded},      // person_id → the card's fresh last_reminder
             {"no_contact", noContact},
         });
@@ -682,56 +738,78 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
         MessageCopy copy;
 
         if (personId > 0) {
-            auto it = std::find_if(ctx.recipients.begin(), ctx.recipients.end(),
-                [&](const RsvpBoard::SquadRecipient& r) { return r.personId == personId; });
-            // No squad role is no longer a refusal: any player of the game
-            // — rostered or an invited call-up — gets the pool message, the
-            // same personal link with no role named (mig 593, owner
-            // 2026-10-16: "ALL PLayers need email and text link
-            // personalized to invite to game").
-            RsvpBoard::SquadRecipient pool;
-            const RsvpBoard::SquadRecipient* who = it != ctx.recipients.end() ? &*it
-                : (model_->poolRecipient(matchId, personId, &pool) ? &pool : nullptr);
-            if (!who)
-                return jsonError(HttpStatus::CONFLICT, "That player is not on this game.");
-            // Contact comes from the DB, never the request: the message
-            // carries the recipient's sign-in credential.
+            // One game link per parent, each with their own sign-in link
+            // and log row (mig 682); the body's recipient_person_ids narrows it.
+            std::vector<RsvpBoard::Recipient> recipients;
+            if (!pickRecipients(model_->messageRecipients(personId), body, &recipients))
+                return jsonError(HttpStatus::BAD_REQUEST, "recipient_person_ids must be this player's parents");
             const bool club = channel == "club_sms";
-            const std::string contact = channel == "email" ? who->email : who->phone;
-            if (contact.empty())
-                return jsonError(HttpStatus::CONFLICT, channel == "email" ? "No email on file." : "No mobile number on file.");
-            if (club) {
-                auto c = Database::getInstance()->query(
-                    "SELECT fh_sms_consented_at($1::int) IS NOT NULL AS ok", {std::to_string(who->recipientPersonId)});
-                if (c.empty() || !c[0]["ok"].as<bool>())
-                    return jsonError(HttpStatus::CONFLICT, "not_opted_in");
+            json sends = json::array();
+            std::string firstErr;
+            HttpStatus firstCode = HttpStatus::CONFLICT;
+            const auto skip = [&](HttpStatus c, const std::string& m) { if (firstErr.empty()) { firstErr = m; firstCode = c; } };
+            for (const auto& rcp : recipients) {
+                auto it = std::find_if(ctx.recipients.begin(), ctx.recipients.end(),
+                    [&](const RsvpBoard::SquadRecipient& r) { return r.personId == personId && r.recipientPersonId == rcp.personId; });
+                // No squad role is no longer a refusal: any player of the game
+                // — rostered or an invited call-up — gets the pool message, the
+                // same personal link with no role named (mig 593, owner
+                // 2026-10-16: "ALL PLayers need email and text link
+                // personalized to invite to game").
+                RsvpBoard::SquadRecipient pool;
+                const RsvpBoard::SquadRecipient* who = it != ctx.recipients.end() ? &*it
+                    : (model_->poolRecipient(matchId, personId, &pool, rcp.personId) ? &pool : nullptr);
+                if (!who)
+                    return jsonError(HttpStatus::CONFLICT, "That player is not on this game.");
+                // Contact comes from the DB, never the request: the message
+                // carries the recipient's sign-in credential.
+                const std::string contact = channel == "email" ? who->email : who->phone;
+                if (contact.empty()) {
+                    skip(HttpStatus::CONFLICT, channel == "email" ? "No email on file." : "No mobile number on file.");
+                    continue;
+                }
+                if (club) {
+                    auto c = Database::getInstance()->query(
+                        "SELECT fh_sms_consented_at($1::int) IS NOT NULL AS ok", {std::to_string(who->recipientPersonId)});
+                    if (c.empty() || !c[0]["ok"].as<bool>()) { skip(HttpStatus::CONFLICT, "not_opted_in"); continue; }
+                }
+                const bool parent = who->recipientPersonId != who->personId;
+                const auto minted = MagicLinkService::mint(who->recipientPersonId, club ? "sms" : channel, contact, scope.userId, 0, matchId);
+                const auto msg = copy.render("squad_notice", who->zone + (parent ? "_parent" : "_adult"), {
+                    {"first", who->recipientFirstName}, {"child", who->playerFirstName},
+                    {"event", ctx.line}, {"where", ctx.where}, {"arrival", ctx.arrival},
+                    {"link", minted.url}, {"sender", senderName}});
+                if (!msg.ok())
+                    return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 384/593)");
+                json one = {{"recipient_person_id", who->recipientPersonId},
+                            {"recipient_name", who->recipientFirstName}, {"contact", contact}};
+                if (club) {
+                    // Brand first, opt-out last — the A2P campaign promises both.
+                    const auto pre  = copy.render("club_sms", "prefix", {});
+                    const auto foot = copy.render("club_sms", "footer", {});
+                    const auto sent = TwilioService::getInstance().sendSms(
+                        TwilioService::normalizeUs(contact), pre.body + msg.body + foot.body,
+                        "game_link:" + std::to_string(matchId), who->personId, minted.tokenId);
+                    if (!sent.ok) { skip(HttpStatus::BAD_GATEWAY, "The club text did not go out: " + sent.error); continue; }
+                    model_->logSquadNotice(matchId, *who, "sms", contact, scope.userId);
+                    one["sent"] = true;
+                    one["sid"] = sent.sid;
+                } else {
+                    model_->logSquadNotice(matchId, *who, channel, contact, scope.userId);
+                    // token_id: an FH Texter send carries it so the card's
+                    // opened ✓ works for phone texts too (mig 673).
+                    one["expires_at"] = minted.expiresIso;
+                    one["token_id"] = minted.tokenId;
+                    copy.addComposeHrefs(one, channel, contact, msg.subject, msg.body, msg.body);
+                }
+                sends.push_back(std::move(one));
             }
-            const bool parent = who->recipientPersonId != who->personId;
-            const auto minted = MagicLinkService::mint(who->recipientPersonId, club ? "sms" : channel, contact, scope.userId, 0, matchId);
-            const auto msg = copy.render("squad_notice", who->zone + (parent ? "_parent" : "_adult"), {
-                {"first", who->recipientFirstName}, {"child", who->playerFirstName},
-                {"event", ctx.line}, {"where", ctx.where}, {"arrival", ctx.arrival},
-                {"link", minted.url}, {"sender", senderName}});
-            if (!msg.ok())
-                return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 384/593)");
-            if (club) {
-                // Brand first, opt-out last — the A2P campaign promises both.
-                const auto pre  = copy.render("club_sms", "prefix", {});
-                const auto foot = copy.render("club_sms", "footer", {});
-                const auto sent = TwilioService::getInstance().sendSms(
-                    TwilioService::normalizeUs(contact), pre.body + msg.body + foot.body,
-                    "game_link:" + std::to_string(matchId), who->personId, minted.tokenId);
-                if (!sent.ok) return jsonError(HttpStatus::BAD_GATEWAY, "The club text did not go out: " + sent.error);
-                model_->logSquadNotice(matchId, *who, "sms", contact, scope.userId);
-                return jsonOut(HttpStatus::CREATED, {{"sent", true}, {"sid", sent.sid},
-                                                     {"status", model_->squadNoticeStatus(matchId)}});
-            }
-            model_->logSquadNotice(matchId, *who, channel, contact, scope.userId);
-            // token_id: an FH Texter send carries it so the card's
-            // opened ✓ works for phone texts too (mig 673).
-            json out = {{"expires_at", minted.expiresIso}, {"token_id", minted.tokenId},
-                        {"status", model_->squadNoticeStatus(matchId)}};
-            copy.addComposeHrefs(out, channel, contact, msg.subject, msg.body, msg.body);
+            if (sends.empty()) return jsonError(firstCode, firstErr.empty() ? "Nothing to send." : firstErr);
+            // Top level = the first send (callers that predate mig 682).
+            json out = sends[0];
+            out["sends"] = sends;
+            if (!firstErr.empty()) out["skipped"] = firstErr;
+            out["status"] = model_->squadNoticeStatus(matchId);
             return jsonOut(HttpStatus::CREATED, out);
         }
 
@@ -753,16 +831,24 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 383)");
 
-        // Siblings share a parent: one contact, every player logged.
+        // Siblings share a parent: one contact, every player logged.  A kid
+        // with two parents puts both in (mig 682); "kids" says which
+        // players each contact came through, so a group text never puts
+        // two parents of the same kid in one thread.
         json contacts = json::array();
-        long long noContact = 0;
+        json kids = json::object();
+        std::set<long long> reached, players;
         for (const auto& r : ctx.recipients) {
+            players.insert(r.personId);
             const std::string& contact = channel == "sms" ? r.phone : r.email;
-            if (contact.empty()) { ++noContact; continue; }
+            if (contact.empty()) continue;
+            reached.insert(r.personId);
             if (std::find(contacts.begin(), contacts.end(), json(contact)) == contacts.end())
                 contacts.push_back(contact);
+            kids[contact].push_back(r.personId);
             model_->logSquadNotice(matchId, r, channel, contact, scope.userId);
         }
+        const long long noContact = static_cast<long long>(players.size() - reached.size());
         if (contacts.empty())
             return jsonError(HttpStatus::CONFLICT, channel == "sms"
                 ? "Nobody in the squad has a mobile number on file." : "Nobody in the squad has an email on file.");
@@ -772,6 +858,7 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
             {"subject",    msg.subject},
             {"body",       channel == "sms" ? copy.withSmsLinkHint(msg.body) : msg.body},
             {"contacts",   contacts},
+            {"kids",       kids},
             {"no_contact", noContact},
             {"status",     model_->squadNoticeStatus(matchId)},
         });
@@ -820,12 +907,17 @@ Response RsvpBoardController::handleTextMarks(const Request& request) {
         for (const auto& r : db->query(
                 "SELECT person_id, kind, status, error_code, error_text, "
                 "       to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at, "
-                "       to_char(opened_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS opened_at, via "
-                "  FROM fh_game_text_marks($1::int, $2::bigint)", {std::to_string(matchId), fhEventId})) {
+                "       to_char(opened_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS opened_at, via, "
+                "       recipient_person_id "
+                "  FROM fh_game_text_marks($1::int, $2::bigint) ORDER BY sent_at", {std::to_string(matchId), fhEventId})) {
             json m = json::object();
             for (const char* k : {"status", "error_code", "error_text", "sent_at", "opened_at", "via"})
                 m[k] = r[k].is_null() ? json(nullptr) : json(r[k].c_str());
+            m["recipient_person_id"] = r["recipient_person_id"].is_null() ? json(nullptr) : json(r["recipient_person_id"].as<long long>());
+            // [pid][kind] = the newest (compat); [pid][kind + "_by"] = one per
+            // parent, so a two-parent card shows both (mig 683).
             marks[r["person_id"].c_str()][r["kind"].c_str()] = m;
+            marks[r["person_id"].c_str()][std::string(r["kind"].c_str()) + "_by"].push_back(m);
         }
         // Each card's contact state (mig 649): who a text reaches (the
         // parent for a child account), opted in / STOPped / neither, their
@@ -833,14 +925,21 @@ Response RsvpBoardController::handleTextMarks(const Request& request) {
         json people = json::object();
         json optedIn = json::array();
         for (const auto& r : db->query(
-                "SELECT person_id, consent, phone, email, reply_body, "
+                "SELECT person_id, recipient_person_id, recipient_name, consent, phone, email, reply_body, "
                 "       to_char(reply_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS reply_at "
-                "  FROM fh_game_contact_states($1::bigint)", {fhEventId})) {
+                "  FROM fh_game_contact_states($1::bigint) ORDER BY person_id, ord", {fhEventId})) {
             json p = json::object();
-            for (const char* k : {"consent", "phone", "email", "reply_body", "reply_at"})
+            for (const char* k : {"consent", "phone", "email", "reply_body", "reply_at", "recipient_name"})
                 p[k] = r[k].is_null() ? json(nullptr) : json(r[k].c_str());
-            people[r["person_id"].c_str()] = p;
-            if (std::string(r["consent"].c_str()) == "in") optedIn.push_back(r["person_id"].as<long long>());
+            p["recipient_person_id"] = r["recipient_person_id"].as<long long>();
+            // One row per parent (mig 683): the card's top-level fields are
+            // the primary's (as before); recipients[] holds every parent.
+            const std::string pid = r["person_id"].c_str();
+            if (!people.contains(pid)) {
+                people[pid] = p;
+                if (std::string(r["consent"].c_str()) == "in") optedIn.push_back(r["person_id"].as<long long>());
+            }
+            people[pid]["recipients"].push_back(p);
         }
         return jsonOut(HttpStatus::OK, {{"marks", marks}, {"opted_in", optedIn}, {"people", people}});
     } catch (const std::exception& e) {

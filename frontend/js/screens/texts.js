@@ -143,7 +143,7 @@ class SmsOptInBoardScreen extends Screen {
       if (body.nudges) player.nudges = body.nudges;
       if (note) note.textContent = '';
       this._render();
-      if (body.sms_href) (window.DesktopSms ? DesktopSms.open(body.sms_href) : (window.location.href = body.sms_href));
+      if (body.sms_href) this.openSends(body, 'sms');   // each parent opts in for themself (mig 682)
     } catch (err) {
       btn.disabled = false;
       btn.textContent = was;

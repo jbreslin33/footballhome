@@ -686,6 +686,18 @@ class BoysRosterScreen extends RosterScreenBase {
       needsDocs: BoysRosterScreen.playerNeedsDocs(p, col),
     });
 
+    // Every other parent (mig 682 — divorced parents each sign in and get
+    // their own welcome): the same two button sets, named, to their own
+    // number / email.
+    const otherParents = (p.guardians || []).filter(g => g.personId !== (p.parentPersonId || null));
+    const otherParentBtns = otherParents.map(g => `
+      <div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin-top:4px;">
+        <span style="font-size:0.7rem; font-weight:800; opacity:0.75;">${this.escapeHtml(g.firstName || '')}</span>
+        ${this.renderMagicLinkButtons(p, { personId: g.personId, phone: g.phone, email: g.email })}
+        ${this.renderWelcomeButtons(p, { personId: g.personId, playerPersonId: p.personId, phone: g.phone, email: g.email,
+                                         needsDocs: BoysRosterScreen.playerNeedsDocs(p, col) })}
+      </div>`).join('');
+
     let delinqBtns = '';
     // Prorate context (2026-07-09) — mirror mens-roster: if the youth
     // player is a mid-cycle signup who hasn't paid the full $35 yet,
@@ -862,7 +874,7 @@ class BoysRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: `${docsBtn}${profileBtn}${linkBtns}${welcomeBtns}`,
+      viewButtonHtml: `${docsBtn}${profileBtn}${linkBtns}${welcomeBtns}${otherParentBtns}`,
       borderColor: cardBorder,
       canMove,
     });

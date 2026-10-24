@@ -1209,7 +1209,7 @@ Response LeadsController::handleUnjoinedMembers(const Request& request, const La
                 "       COALESCE((SELECT string_agg(pe.email, ', ' "
                 "                                   ORDER BY pe.is_primary DESC, pe.email) "
                 "                   FROM person_emails pe "
-                "                  WHERE pe.person_id = COALESCE(p.parent_person_id, p.id)), '') AS emails, "
+                "                  WHERE pe.person_id IN (SELECT m.recipient_person_id FROM fh_message_recipients(p.id) m)), '') AS emails, "
                 "       COALESCE((SELECT pp.phone_number FROM person_phones pp "
                 "                  WHERE pp.person_id = COALESCE(p.parent_person_id, p.id) "
                 "                  ORDER BY pp.is_primary DESC, pp.id LIMIT 1), '')             AS phone "

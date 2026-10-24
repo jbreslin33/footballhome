@@ -123,10 +123,6 @@ Response SmsOptInBoardController::handleNudge(const Request& request) {
 
     try {
         if (!model_->onTeam(teamId, personId)) return jsonError(HttpStatus::BAD_REQUEST, "That player is not on this team.");
-        const auto who = model_->person(personId);
-        if (!who.found) return jsonError(HttpStatus::NOT_FOUND, "Person not found");
-        if (who.phone.empty()) return jsonError(HttpStatus::CONFLICT, "No mobile number on file.");
-
         std::string senderName;
         {
             auto s = Database::getInstance()->query(
@@ -134,24 +130,51 @@ Response SmsOptInBoardController::handleNudge(const Request& request) {
                 {std::to_string(scope.userId)});
             if (!s.empty()) senderName = s[0]["fn"].c_str();
         }
-
-        const auto minted = MagicLinkService::mint(who.recipientPersonId, "sms", who.phone, scope.userId);
-        // The same token, on the sign-up page instead of the sign-in
-        // endpoint: /sms?t=… reads it to pre-fill the form.
-        std::string link = minted.url;
-        if (auto at = link.find("token="); at != std::string::npos) {
-            link = MagicLinkService::publicBaseUrl() + "/sms?t=" + link.substr(at + 6);
+        // Each parent opts in for themself (mig 682): one nudge per parent,
+        // or the ones in recipient_person_ids.
+        std::vector<long long> picked = model_->recipients(personId);
+        if (body.contains("recipient_person_ids") && body["recipient_person_ids"].is_array()) {
+            std::vector<long long> want;
+            for (const auto& v : body["recipient_person_ids"]) {
+                if (!v.is_number_integer() || std::find(picked.begin(), picked.end(), v.get<long long>()) == picked.end())
+                    return jsonError(HttpStatus::BAD_REQUEST, "recipient_person_ids must be this player's parents");
+                want.push_back(v.get<long long>());
+            }
+            picked = want;
         }
+        json sends = json::array();
+        json nudges;
+        for (const long long rid : picked) {
+            const auto who = model_->person(personId, rid);
+            if (!who.found) return jsonError(HttpStatus::NOT_FOUND, "Person not found");
+            if (who.phone.empty()) continue;
 
-        MessageCopy copy;
-        const auto msg = copy.render("sms_opt_in", who.youth ? "parent" : "adult", {
-            {"first", who.recipientFirstName}, {"child", who.playerFirstName},
-            {"link", link}, {"sender", senderName}});
-        if (!msg.ok()) return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "sms_opt_in template missing (migration 537)");
+            const auto minted = MagicLinkService::mint(who.recipientPersonId, "sms", who.phone, scope.userId);
+            // The same token, on the sign-up page instead of the sign-in
+            // endpoint: /sms?t=… reads it to pre-fill the form.
+            std::string link = minted.url;
+            if (auto at = link.find("token="); at != std::string::npos) {
+                link = MagicLinkService::publicBaseUrl() + "/sms?t=" + link.substr(at + 6);
+            }
 
-        json nudges = model_->logNudge(personId, who.recipientPersonId, "sms", who.phone, scope.userId);
-        json out = {{"url", link}, {"expires_at", minted.expiresIso}, {"nudges", nudges}};
-        copy.addComposeHrefs(out, "sms", who.phone, "", msg.body, msg.body);
+            MessageCopy copy;
+            const auto msg = copy.render("sms_opt_in", who.youth ? "parent" : "adult", {
+                {"first", who.recipientFirstName}, {"child", who.playerFirstName},
+                {"link", link}, {"sender", senderName}});
+            if (!msg.ok()) return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "sms_opt_in template missing (migration 537)");
+
+            nudges = model_->logNudge(personId, who.recipientPersonId, "sms", who.phone, scope.userId);
+            json one = {{"url", link}, {"expires_at", minted.expiresIso},
+                        {"recipient_person_id", who.recipientPersonId}, {"recipient_name", who.recipientFirstName},
+                        {"contact", who.phone}};
+            copy.addComposeHrefs(one, "sms", who.phone, "", msg.body, msg.body);
+            sends.push_back(std::move(one));
+        }
+        if (sends.empty()) return jsonError(HttpStatus::CONFLICT, "No mobile number on file.");
+        // Top level = the first send (callers that predate mig 682).
+        json out = sends[0];
+        out["nudges"] = nudges;
+        out["sends"] = sends;
         return jsonOut(HttpStatus::CREATED, out);
     } catch (const std::exception& e) {
         std::cerr << "SmsOptInBoardController::handleNudge: " << e.what() << std::endl;
