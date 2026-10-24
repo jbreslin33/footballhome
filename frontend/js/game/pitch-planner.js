@@ -50,6 +50,7 @@
 
   const YD = 0.9144, FT = 0.3048, D2R = Math.PI / 180;
   const GAP = 10 * YD;                       // between the two pitches
+  const NEAR = 15 * FT;                      // legal but close: marked green
   // Rules shown as a distance only, never an offence ('info' kind).
   const INFO = {};
   const SEVEN_SIZES = [[70, 35], [65, 35], [60, 35], [55, 35], [60, 30]];
@@ -155,20 +156,23 @@
 
   // Every offence (not just the first), nearest-to-legal last so the panel
   // can show the worst first. have/need in metres; need 0 = must not touch.
-  function offences(rules, R, c) {
-    const out = [], rb = bbox(R);
-    const add = (n, have, need, at) => out.push({ n, have, need, r, at });
+  // slack (m, optional): also list things legal but within slack of
+  // their limit, flagged ok (the planner's green "near" marks).
+  function offences(rules, R, c, slack) {
+    const out = [], rb = bbox(R), sl = slack || 0;
+    const add = (n, have, need, at) => out.push({ n, have, need, r, at, ok: need > 0 && have >= need });
     let r = null;
     for (r of rules) {
       if (INFO[r.n]) continue;
       if (r.k === 'poly') {
         const b = r.bb || (r.bb = bbox(r.pts));
-        if (rb[0] - b[1] > r.min || b[0] - rb[1] > r.min || rb[2] - b[3] > r.min || b[2] - rb[3] > r.min) continue;
+        const lim = r.min + sl;
+        if (rb[0] - b[1] > lim || b[0] - rb[1] > lim || rb[2] - b[3] > lim || b[2] - rb[3] > lim) continue;
         const d = rectDist(R, c, r.pts, !!r.c);
-        if (d < r.min) add(r.n, d, r.min);
+        if (d < lim) add(r.n, d, r.min);
       } else if (r.k === 'inside') {
         if (R.some((p) => !inPoly(p, r.pts))) add(r.n, 0, r.min);
-        else { const d = rectDist(R, c, r.pts, false); if (d < r.min) add(r.n, d, r.min); }
+        else { const d = rectDist(R, c, r.pts, false); if (d < r.min + sl) add(r.n, d, r.min); }
       } else if (r.k === 'outside') {
         if (inPoly(c, r.pts) || R.some((p) => inPoly(p, r.pts))) add(r.n, 0, 0);
       } else if (r.k === 'below') {
@@ -176,7 +180,7 @@
       } else if (r.k === 'left') {
         if (R.some((p) => p[0] >= lineX(r.pts, p[1]))) add(r.n, 0, 0);
       } else if (r.k === 'points') {
-        const reach = Math.hypot(R[0][0] - c[0], R[0][1] - c[1]) + r.min;
+        const reach = Math.hypot(R[0][0] - c[0], R[0][1] - c[1]) + r.min + sl;
         let worst = 1e9, at = null;
         for (const t of r.pts) {
           if (Math.abs(t[0] - c[0]) > reach || Math.abs(t[1] - c[1]) > reach) continue;
@@ -184,7 +188,7 @@
           for (let i = 0; i < 4 && d > 0; i++) d = Math.min(d, segDist(t, R[i], R[(i + 1) % 4]));
           if (d < worst) { worst = d; at = t; }
         }
-        if (worst < r.min) add(r.n, worst, r.min, at);
+        if (worst < r.min + sl) add(r.n, worst, r.min, at);
       }
     }
     return out;
@@ -755,7 +759,10 @@
     function evaluate(p) {
       const th = p.rot * D2R, L = p.size[0] * YD, W = p.size[1] * YD;
       const R = rect(p.x, p.z, th, L, W), c = [p.x, p.z];
-      const off = offences(DATA.rules, R, c);
+      // Problems + things within NEAR of their limit (James 10/24: "show
+      // distance from fences etc in feet. as we need 10 feet").
+      const found = offences(DATA.rules, R, c, NEAR);
+      const off = found.filter((o) => !o.ok), near = found.filter((o) => o.ok);
       if (p.kind === 'box') {
         // Practice boxes stay off both pitches (touching is fine).
         for (const q of pitches)
@@ -771,7 +778,7 @@
       const main = DATA.rules.find((r) => r.n === 'main_infield');
       const cells = [];
       p.R = R;
-      p.ev = { ok: off.length === 0, off,
+      p.ev = { ok: off.length === 0, off, near,
                w: water(DATA.grid, p.x, p.z, th, L, W, DATA.ranges[p.size[0] + 'x' + p.size[1]], cells),
                infield: main ? rectDist(R, c, main.pts, !!main.c) : null,
                toPitch: p.kind === 'box' && pitches[0].R ? closest(R, pitches[0].R).d : null };
@@ -786,7 +793,8 @@
     const fmt = (m) => (m < 9.144 ? (m / FT).toFixed(1) + ' ft' : (m / YD).toFixed(1) + ' yd');
     // Exact (James 10/24: "i need to know exact probs for the field. and
     // exact distance for prob"): yards to the hundredth + feet.
-    const exact = (m) => (m / YD).toFixed(2) + ' yd (' + (m / FT).toFixed(1) + ' ft)';
+    const exact = (m) => (m / FT).toFixed(1) + ' ft (' + (m / YD).toFixed(2) + ' yd)';
+    const feet = (m) => +(m / FT).toFixed(1) + ' ft';
     // Where a problem is: { a: point on the pitch edge, b: point on the
     // obstacle } at the measured distance; overlapping = b inside.
     const cpSeg = (p, a, b) => {
@@ -1100,27 +1108,36 @@
       lab.rotation.x = -Math.PI / 2;
       lab.renderOrder = 64;
       renderer.field.site.add(bar, dot, lab);
-      return { bar, strip, dot, lab, cv, tex, txt: null };
+      return { bar, strip, dot, lab, cv, tex, txt: null, col: 0xff3344 };
     }
     function paintProblems() {
       const site = renderer.field && renderer.field.site;
       if (!site) return;
-      const list = on && show.problems && sel && sel.ev && sel.g && sel.g.visible ? sel.ev.off : [];
+      const list = on && show.problems && sel && sel.ev && sel.g && sel.g.visible
+        ? sel.ev.off.concat(sel.ev.near) : [];
       const hs = hSize();
-      let k = 0;
+      let k = 0, n = 0;
       for (const o of list) {
         const w = where(sel.R, o);
         if (!w) continue;
         const m = probs[k] || (probs[k] = probMark());
         k++;
-        const txt = k + '. ' + (o.need > 0 ? (o.have <= 0 ? 'ON IT' : (o.have / YD).toFixed(2) + ' yd') + ' / ' +
-          (o.need / YD).toFixed(1) : 'TOUCHING');
+        // Red = problem (numbered like the panel), green = legal but close.
+        const txt = o.ok ? feet(o.have) + ' ✓ (' + feet(o.need) + ')'
+          : ++n + '. ' + (o.need > 0 ? (o.have <= 0 ? 'ON IT' : feet(o.have)) + ' / ' + feet(o.need) : 'TOUCHING');
+        const col = o.ok ? 0x33dd66 : 0xff3344;
+        if (m.col !== col) {
+          m.strip.material.color.setHex(col);
+          m.dot.material.color.setHex(col);
+          m.col = col;
+          m.txt = null;
+        }
         if (m.txt !== txt) {
           const c2 = m.cv.getContext('2d');
           c2.clearRect(0, 0, 512, 128);
           c2.font = 'bold 72px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
           c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.9)'; c2.strokeText(txt, 256, 64);
-          c2.fillStyle = '#ff8a94'; c2.fillText(txt, 256, 64);
+          c2.fillStyle = col === 0x33dd66 ? '#8dffaa' : '#ff8a94'; c2.fillText(txt, 256, 64);
           m.tex.needsUpdate = true;
           m.txt = txt;
         }
