@@ -330,11 +330,18 @@
       'padding:8px 10px;max-width:min(560px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow-y:auto;' +
       'box-sizing:border-box;');
     document.body.appendChild(panel);
+    // Hidden panel leaves a tab in its place (James 10/24: "i hid it now
+    // don't know how to get it back").
+    const showBtn = mk('button', 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:none;' +
+      'min-width:0;min-height:0;padding:6px 14px;border-radius:14px;border:2px solid #ffd24d;' +
+      'background:rgba(10,14,20,.86);color:#ffd24d;font:700 12px system-ui,sans-serif;cursor:pointer;', '📋 SHOW PANEL');
+    document.body.appendChild(showBtn);
     const head = mk('div', 'display:flex;align-items:center;gap:8px;');
     const syncEl = mk('div', 'flex:1;min-width:0;font-size:11px;');
     const hideBtn = mk('button', pill + 'padding:2px 9px;', '✕ hide');
     hideBtn.title = 'Hide this panel (📋 PANEL pill brings it back)';
     tap(hideBtn, () => setLayer('panel', false));
+    tap(showBtn, () => setLayer('panel', true));
     head.append(syncEl, hideBtn);
     panel.appendChild(head);
     const setSync = (msg, ok) => { syncEl.textContent = msg; syncEl.style.color = ok ? '#7dff9a' : '#ffb000'; };
@@ -836,6 +843,7 @@
       if (!on) return;
       const f = renderer.field;
       panel.style.display = show.panel ? 'block' : 'none';
+      showBtn.style.display = show.panel ? 'none' : 'block';
       for (const p of all()) if (p.g) p.g.visible = visibleOf(p);
       for (const p of all()) if (p.cells) p.cells.visible = show.water;
       if (f) {
@@ -1034,6 +1042,7 @@
       if (on) applyLayers();
       else {
         panel.style.display = 'none';
+        showBtn.style.display = 'none';
         for (const p of all()) if (p.g) p.g.visible = false;
         resetLayers();
         paintGap();
