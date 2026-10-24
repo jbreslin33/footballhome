@@ -202,4 +202,17 @@ FH_TEST(fx_hypot_matches_std) {
     }
 }
 
+FH_TEST(fx_exp_neg_matches_std) {
+    // 0 .. 12 in 1/64 steps: relative error under 1e-6 (or 1e-9 absolute).
+    for (int i = 0; i <= 12 * 64; ++i) {
+        const Fixed64 x = Fixed64::fromFraction(i, 64);
+        const double got = fx_exp_neg(x).toDouble();
+        const double want = std::exp(-double(i) / 64.0);
+        FH_EXPECT(std::fabs(got - want) <= 1e-6 * want + 1e-9);
+    }
+    FH_EXPECT_EQ(fx_exp_neg(Fixed64::zero()).raw, Fixed64::one().raw);
+    FH_EXPECT_EQ(fx_exp_neg(-Fixed64::one()).raw, Fixed64::one().raw);
+    FH_EXPECT_EQ(fx_exp_neg(Fixed64::fromInt(30)).raw, 0);
+}
+
 FH_TEST_MAIN()

@@ -48,6 +48,8 @@ void World::setAction(SlotIndex slot, Action action, std::uint8_t carry_m) {
 void World::placePlayer(SlotIndex slot, const Vec3& pos, const Vec2& face) {
     if (slot >= players_.size()) return;
     players_[slot].pos = pos;
+    players_[slot].vel = Vec3{};  // placed standing (G4.51: speed is state)
+    players_[slot].dive_ticks = 0;
     players_[slot].face = face;
 }
 
@@ -88,19 +90,38 @@ void World::tickPlayers() {
         if (math::lengthSquared(desire) > Fixed64::one()) {
             desire = desire.normalized();  // hostile overlong vector buys nothing
         }
-        p.vel = Vec3{desire.x * p.max_speed, desire.y * p.max_speed,
-                     Fixed64::zero()};
+        // Locomotion (G4.51): velocity relaxes toward the wanted one
+        // (Locomotion.hpp) — no more 0 → top speed in a tick, no free
+        // reversals. A carrier's top speed is the dribble share of his own.
+        const Fixed64 top = (ball_.owner && *ball_.owner == i) ? p.max_speed * loco_.dribble()
+                                                               : p.max_speed;
+        // In the air from a dive he goes where he launched (G4.51).
+        const bool flying = p.dive_ticks > 0;
+        const Vec2 v = flying ? Vec2{p.vel.x, p.vel.y}
+                              : loco_.step(Vec2{p.vel.x, p.vel.y},
+                                           Vec2{desire.x * top, desire.y * top}, kTickDt);
+        p.vel = Vec3{v.x, v.y, Fixed64::zero()};
         p.pos += p.vel * kTickDt;
         // Pitch bounds (+2 m apron): G1's live test watched a scorer chase
         // the ball clean off the grass. Hard clamp, no bounce — players
         // aren't balls.
         const Fixed64 margin = Fixed64::fromInt(2);
-        if (p.pos.x > half_x_ + margin) p.pos.x = half_x_ + margin;
-        if (p.pos.x < -half_x_ - margin) p.pos.x = -half_x_ - margin;
-        if (p.pos.y > half_y_ + margin) p.pos.y = half_y_ + margin;
-        if (p.pos.y < -half_y_ - margin) p.pos.y = -half_y_ - margin;
-        // Track facing from actual movement; idle players keep facing.
-        if (desire.x.raw != 0 || desire.y.raw != 0) {
+        // The wall also stops him (G4.51): no speed kept into it.
+        if (p.pos.x > half_x_ + margin) { p.pos.x = half_x_ + margin; p.vel.x = Fixed64::zero(); }
+        if (p.pos.x < -half_x_ - margin) { p.pos.x = -half_x_ - margin; p.vel.x = Fixed64::zero(); }
+        if (p.pos.y > half_y_ + margin) { p.pos.y = half_y_ + margin; p.vel.y = Fixed64::zero(); }
+        if (p.pos.y < -half_y_ - margin) { p.pos.y = -half_y_ - margin; p.vel.y = Fixed64::zero(); }
+        if (flying && --p.dive_ticks == 0) {  // lands: down on the turf
+            p.vel = Vec3{};
+            p.recovery_ticks = loco_.diveGroundTicks();
+            p.recovery_kind = 3;
+        }
+        // Facing follows the BODY (G4.51): his direction of travel once
+        // he's moving (≥ 0.5 m/s) — the carried ball goes where he goes,
+        // not where he wishes; nearly still, he turns on the spot.
+        if (math::lengthSquared(v) >= Fixed64::fromFraction(1, 4)) {
+            p.face = math::normalized(v);
+        } else if (desire.x.raw != 0 || desire.y.raw != 0) {
             p.face = math::normalized(desire);
         }
     }
@@ -143,6 +164,24 @@ void World::tickPlayers() {
         if (p.pos.x < -half_x_ - m2) p.pos.x = -half_x_ - m2;
         if (p.pos.y > half_y_ + m2) p.pos.y = half_y_ + m2;
         if (p.pos.y < -half_y_ - m2) p.pos.y = -half_y_ - m2;
+    }
+}
+
+void World::tickDives() {
+    // Keeper dives (G4.51): consumed here, before movement, so the launch
+    // tick already flies. Only a keeper, on his feet, without the ball.
+    for (SlotIndex i = 0; i < players_.size(); ++i) {
+        if (actions_[i] != Action::Dive) continue;
+        actions_[i] = Action::None;
+        PlayerState& p = players_[i];
+        if (!keeper_[i] || p.recovery_ticks > 0 || p.dive_ticks > 0) continue;
+        if (ball_.owner && *ball_.owner == i) continue;
+        const Vec2 desire = intents_[i].move;
+        if (desire.x.raw == 0 && desire.y.raw == 0) continue;
+        const Vec2 dir = math::normalized(desire);
+        p.vel = Vec3{dir.x * loco_.diveSpeed(), dir.y * loco_.diveSpeed(), Fixed64::zero()};
+        p.dive_ticks = loco_.diveAirTicks();
+        p.face = dir;
     }
 }
 
@@ -712,6 +751,7 @@ void World::tickClock(std::vector<MatchEvent>& events) {
 
 std::vector<MatchEvent> World::tick() {
     std::vector<MatchEvent> events;
+    tickDives();
     tickPlayers();
     tickTackles(events);
     tickPossessionAndKicks(events);

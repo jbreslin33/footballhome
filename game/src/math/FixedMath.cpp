@@ -209,4 +209,25 @@ Fixed64 fx_hypot(Fixed64 x, Fixed64 y) noexcept {
     return fx_sqrt(x * x + y * y);
 }
 
+// =============================================================================
+// fx_exp_neg — e^(-x), x >= 0.
+// =============================================================================
+Fixed64 fx_exp_neg(Fixed64 x) noexcept {
+    if (x.raw <= 0) return Fixed64::one();
+    // round(e^-k * 2^32), k = 0..20 (generated offline; no float at runtime).
+    static constexpr std::int64_t kExpNegInt[21] = {
+        4294967296LL, 1580030169LL, 581260615LL, 213833830LL, 78665070LL,
+        28939262LL, 10646160LL, 3916503LL, 1440801LL, 530041LL, 194991LL,
+        71733LL, 26389LL, 9708LL, 3571LL, 1314LL, 483LL, 178LL, 65LL, 24LL, 9LL};
+    const std::int64_t n = x.raw >> Fixed64::FRAC_BITS;
+    if (n > 20) return Fixed64::zero();
+    const Fixed64 f = Fixed64::fromRaw(x.raw - (n << Fixed64::FRAC_BITS));
+    const Fixed64 y = Fixed64::fromRaw(f.raw >> 4);  // f / 16
+    const Fixed64 y2 = y * y;
+    Fixed64 e = Fixed64::one() - y + y2 / Fixed64::fromInt(2) -
+                y2 * y / Fixed64::fromInt(6) + y2 * y2 / Fixed64::fromInt(24);
+    for (int i = 0; i < 4; ++i) e = e * e;  // ^16
+    return Fixed64::fromRaw(kExpNegInt[n]) * e;
+}
+
 }  // namespace fh::game::math

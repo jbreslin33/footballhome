@@ -101,6 +101,9 @@ u8 slot | i64 move_x (Fixed64 raw) | i64 move_y (Fixed64 raw) | u8 action
   - 5 = tackle (1.3) — committed dive at an OPPONENT'S carried ball within
     1.3 m: win pokes it loose, miss (or lunging at nothing) stuns the
     tackler ~0.5 s; owners can't tackle
+  - 6 = dive (G4.51) — KEEPER only, on his feet, without the ball: a
+    launch along the move vector (physics.keeper_dive speed), ballistic
+    while airborne, then down on the turf; ignored for anyone else
   - press / switch-player / through-ball / cross / header contest get ids
     additively as their mechanics land.
   - Only the slot's OWNER's action fires, and only while that slot carries

@@ -1556,6 +1556,55 @@ roster is placeholders, so the real matchup leans on fiction.
 Expect the ladder to break hard after step 1 — that shows how much was
 propped up.
 
+### 8.47 G4.51 — locomotion: bodies get up to speed (§8.46 step 1a)
+
+- **The law** (`core::Locomotion`, mig 678, new param owner `physics`):
+  velocity relaxes toward the wanted one, dv/dt = (v_wanted − v)/τ,
+  |dv/dt| ≤ max_accel [Furusawa/Hill 1927; Samozino/Morin]: τ 1.2 s,
+  cap 7 m/s² (braking, cutting, reversing), carrier top speed 88% of his
+  own. From rest he reaches 63% of top speed in 1.2 s, not 100% in one
+  tick; a reversal at speed brakes first. Facing follows the BODY once it
+  moves ≥ 0.5 m/s, so the carried ball goes where he goes. Pitch-edge clamp
+  kills the speed into it; placement starts a player standing.
+- **The brain reads the same law** (`Locomotion::reach`, closed form
+  top·t − (top − v0)·τ(1 − e^(−t/τ)), v0 = his speed along the line):
+  pass safety, the flight read and `interceptPoint` — which had the
+  chaser's speed hard-coded at 6 m/s since G4.14 — now ask what his legs
+  can do from how he is moving. New `math::fx_exp_neg` (table + Taylor,
+  < 1e-6) and a per-tick lag table; out-of-reach men skip the sqrt.
+- **The keeper dive** (Action 6 `Dive`, wire additive): measured first —
+  keepers on the law conceded 28 goals a world match (they ran at
+  shots); exempt from it, 0.5 (87 of 88 on target saved). Neither is
+  football. A dive is a launch: 4 m/s along his line, ballistic 0.6 s,
+  then 0.8 s on the turf. The keeper dives when his feet can't get him
+  there before the ball AND it arrives while he's still airborne
+  (`Why::KeeperDive`, "keeper dive"). No client animation yet (the
+  snapshot flags don't carry it).
+- Measured (60, real matchup; per team):
+
+| | G4.49 | G4.51 | Real (approx.) |
+|---|---|---|---|
+| Margin LH | −2.32 ± 0.22 | **+0.72 ± 0.28** | — |
+| Goals | 1.02 / 3.33 | 2.42 / 1.70 | ~1.4 |
+| Shots | 95 / 133 | 38 / 30 | ~13 |
+| Clears | 339 / 274 | 162 / 114 | ~20 |
+| Pass completion | ~89% | ~70% | ~70-80% semipro |
+| Final-third entries | 160 / 143 | 122 / 76 | ~45 |
+| Kicks | 1,217 / 1,450 | 614 / 716 | ~500 |
+
+  Ladder (4×90 mirrors): u10 19.5 / u14 17.0 / amateur 11.8 / semipro
+  3.0 / pro 3.0 / world 4.0 (was 28.2 before the dive); bands test green.
+  Duels: world tackles won 54 a match (G4.24: ~50 resolved dives).
+- **Still unreal, and the next biggest:** shots ~3× and 90% from outside
+  the box (shot selection); clears ~6× (the catch-all fallback); amateur
+  and youth scoring high (youth keepers dive like pros — the Goalkeeping
+  skill should scale the dive; amateur 11.8 vs Sunday ~4-5); the u10
+  keeper fudge (§8.43) still in. Harness ~2.5× slower per match (41 µs a
+  tick; the live budget is 33 ms).
+- Next in step 1: **1b** facing separate from movement (intent + wire) →
+  backpedal and jockey; **1c** jog / run / sprint effort and real top
+  speeds (pace still maps to 5.4-7.4 m/s).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

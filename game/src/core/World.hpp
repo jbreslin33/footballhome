@@ -9,6 +9,7 @@
 #pragma once
 
 #include "core/Ball.hpp"
+#include "core/Locomotion.hpp"
 #include "core/Levels.hpp"
 #include "core/Clock.hpp"
 #include "core/Intent.hpp"
@@ -35,6 +36,7 @@ enum class Action : std::uint8_t {
     ShortPass  = 3,  // 8 m/s — feet-to-feet inside ~15 m (G4 passing)
     Shot       = 4,  // 18 m/s — a placed strike
     Tackle     = 5,  // committed dive at an opponent's carried ball (G4.6)
+    Dive       = 6,  // keeper's launch along the move vector (G4.51)
 };
 
 struct PlayerState {
@@ -46,8 +48,10 @@ struct PlayerState {
     std::int32_t recovery_ticks = 0;
     // WHY he's recovering (G4.27, presentation only — not hashed; the
     // ticks above carry the gameplay): 1 = went to ground in a tackle,
-    // 2 = dispossessed, knocked off balance.
+    // 2 = dispossessed, knocked off balance, 3 = landed from a keeper dive.
     std::uint8_t recovery_kind = 0;
+    // Keeper dive (G4.51): ticks still airborne — ballistic, no steering.
+    std::int32_t dive_ticks = 0;
     // Last movement direction (unit-ish); kick/carry direction when the
     // current intent is idle. Set at spawn to face the opponent goal.
     math::Vec2 face{math::Fixed64::one(), math::Fixed64::zero()};
@@ -103,6 +107,9 @@ public:
     void placeVelocity(SlotIndex slot, const math::Vec3& vel) { players_[slot].vel = vel; }
     void setTeam(SlotIndex slot, std::uint8_t team);
     void setKeeper(SlotIndex slot, bool keeper);
+    // G4.51: the locomotion law (DB numbers; default = mig 674's rows).
+    void setLocomotion(const Locomotion& l) { loco_ = l; }
+    const Locomotion& locomotion() const noexcept { return loco_; }
     void setMaxSpeed(SlotIndex slot, math::Fixed64 v) {
         if (slot < players_.size()) players_[slot].max_speed = v;
     }
@@ -159,6 +166,7 @@ public:
 private:
     void tickPlayers();
     void tickTackles(std::vector<MatchEvent>& events);
+    void tickDives();
     void tickPossessionAndKicks(std::vector<MatchEvent>& events);
     void tickFreeBall(std::vector<MatchEvent>& events);
     void awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events);
@@ -171,6 +179,7 @@ private:
     std::vector<Action>      actions_;
     std::vector<std::uint8_t> carry_m_;   // latched with the action (G4.48)
     std::vector<bool>        keeper_;
+    Locomotion loco_;
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};
     Clock clock_;

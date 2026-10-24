@@ -42,6 +42,7 @@ std::uint64_t canonicalHash(const World& world) {
         mix(h, p.team);
         mix(h, world.isKeeper(i) ? 1u : 0u);
         mix(h, static_cast<std::uint64_t>(p.recovery_ticks));
+        mix(h, static_cast<std::uint64_t>(p.dive_ticks));
         mixFixed(h, p.max_speed);
     }
     // Ball joined the state surface in G1.1 (golden re-locked then, once).

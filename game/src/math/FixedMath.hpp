@@ -6,6 +6,7 @@
 //   fx_sin    : LUT of 4096 entries + linear interpolation, exact modular reduce.
 //   fx_cos    : fx_sin(x + π/2).
 //   fx_atan2  : LUT of 2048 entries + quadrant fold-in, uses ratio in [0,1].
+//   fx_exp_neg: e^(-x), integer-part table + Taylor on f/16, squared x4.
 //
 // All functions take and return Fixed64 only. NO float/double in the sim
 // loop. Enforced by scripts/check_no_floats.sh.
@@ -76,5 +77,13 @@ Fixed64 fx_atan2(Fixed64 y, Fixed64 x) noexcept;
 //   large; safe for pitch-scale coordinates (< 100 m).
 // -----------------------------------------------------------------------------
 Fixed64 fx_hypot(Fixed64 x, Fixed64 y) noexcept;
+
+// -----------------------------------------------------------------------------
+// fx_exp_neg(x) = e^(-x) for x >= 0 (G4.51, the locomotion law's decay).
+//   Method: x = n + f (n integer, f in [0,1)); e^(-n) from a 21-entry raw
+//   table (0 beyond 20); e^(-f) = (e^(-f/16))^16 with a 4-term Taylor series
+//   on f/16 <= 1/16 (error < 2^-26 before squaring). Negative x returns 1.
+// -----------------------------------------------------------------------------
+Fixed64 fx_exp_neg(Fixed64 x) noexcept;
 
 }  // namespace fh::game::math

@@ -21,6 +21,7 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
              Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y),
              cfg.formation_home, cfg.formation_away} {
     skills_ = core::SkillSet(cfg.model_params);   // G4.33: DB numbers
+    world_.setLocomotion(core::Locomotion(cfg.model_params));   // G4.51
     brain_.setModelParams(cfg.model_params);
     world_.setLevel(0, cfg.level_home);
     world_.setLevel(1, cfg.level_away);
