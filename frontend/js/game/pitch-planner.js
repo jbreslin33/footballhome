@@ -1006,7 +1006,8 @@
     function paintPill(p) {
       const b = pills[p.id];
       if (!b) return;
-      const hex = !p.ev ? '#8899aa' : p.ev.ok ? (p.kind === 'box' ? '#ffa630' : '#33ff66') : '#ff3344';
+      // Green when good, red when not — boxes too (James 10/24: "and turn green when good").
+      const hex = !p.ev ? '#8899aa' : p.ev.ok ? '#33ff66' : '#ff3344';
       b.style.borderColor = hex;
       b.style.background = p === sel ? 'rgba(255,210,77,.28)' : 'rgba(10,14,20,.72)';
       b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' + hex + '"></span>' +
@@ -1025,7 +1026,7 @@
       for (const p of all()) paintPill(p);
       for (const p of all()) {
         if (!p.ev || !p.lineMat) continue;
-        const col = p.ev.ok ? (p.kind === 'box' ? 0xffa630 : 0x33ff66) : 0xff3344;
+        const col = p.ev.ok ? 0x33ff66 : 0xff3344;
         p.lineMat.color.setHex(col);
         p.fill.material.color.setHex(col);
       }
@@ -1128,18 +1129,28 @@
     function paintProblems() {
       const site = renderer.field && renderer.field.site;
       if (!site) return;
-      const list = on && show.problems && sel && sel.ev && sel.g && sel.g.visible
-        ? sel.ev.off.concat(sel.ev.near) : [];
+      // Every visible pitch and box shows its problems (James 10/24:
+      // "practice boxes need to show obstructions too"); the green "close"
+      // marks only for the selected one, to keep the grass readable.
+      const list = [];
+      if (on && show.problems)
+        for (const p of all()) {
+          if (!p.ev || !p.g || !p.g.visible) continue;
+          for (const o of p.ev.off) list.push([p, o]);
+          if (p === sel) for (const o of p.ev.near) list.push([p, o]);
+        }
       const hs = hSize();
-      let k = 0, n = 0;
-      for (const o of list) {
-        const w = where(sel.R, o);
+      let k = 0, n = 0, last = null;
+      for (const [p, o] of list) {
+        if (p !== last) { last = p; n = 0; }
+        const w = where(p.R, o);
         if (!w) continue;
         const m = probs[k] || (probs[k] = probMark());
         k++;
         // Red = problem (numbered like the panel), green = legal but close.
         const txt = o.ok ? feet(o.have) + ' ✓ (' + feet(o.need) + ')'
-          : ++n + '. ' + (o.need > 0 ? (o.have <= 0 ? 'ON IT' : feet(o.have)) + ' / ' + feet(o.need) : 'TOUCHING');
+          : ++n + '. ' + (o.need > 0 ? (o.have <= 0 ? 'ON IT' : feet(o.have)) + ' / ' + feet(o.need)
+            : /^on_/.test(o.n) ? 'ON ' + o.n.slice(3).toUpperCase() : 'TOUCHING');
         const col = o.ok ? 0x33dd66 : 0xff3344;
         if (m.col !== col) {
           m.strip.material.color.setHex(col);
