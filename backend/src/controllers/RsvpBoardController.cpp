@@ -736,6 +736,15 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
             if (!s.empty()) senderName = s[0]["fn"].c_str();
         }
         MessageCopy copy;
+        // Short and urgent (mig 685; owner 2026-10-24: "the game one needs
+        // urgency but short and sweet. if game is tomorrow it needs to
+        // stress that"): {when} = TODAY / TOMORROW / Sat + time, {urgent}
+        // = the role's nudge, only when the game is today or tomorrow.
+        const std::string dayWord = ctx.soon ? copy.render("squad_notice", "day_" + ctx.day, {}).body : ctx.day;
+        const std::string when = (dayWord.empty() ? ctx.day : dayWord) + " " + ctx.time;
+        const auto urgentFor = [&](const std::string& zone) {
+            return ctx.soon ? copy.render("squad_notice", "nudge_" + zone, {}).body : std::string{};
+        };
 
         if (personId > 0) {
             // One game link per parent, each with their own sign-in link
@@ -777,7 +786,8 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
                 const auto minted = MagicLinkService::mint(who->recipientPersonId, club ? "sms" : channel, contact, scope.userId, 0, matchId);
                 const auto msg = copy.render("squad_notice", who->zone + (parent ? "_parent" : "_adult"), {
                     {"first", who->recipientFirstName}, {"child", who->playerFirstName},
-                    {"event", ctx.line}, {"where", ctx.where}, {"arrival", ctx.arrival},
+                    {"event", ctx.shortEvent}, {"when", when}, {"urgent", urgentFor(who->zone)},
+                    {"where", ctx.where}, {"arrival", ctx.arrival},
                     {"link", minted.url}, {"sender", senderName}});
                 if (!msg.ok())
                     return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 384/593)");
@@ -826,7 +836,8 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
         const std::string link = MagicLinkService::publicBaseUrl() + "/#game-center/"
                                + std::to_string(matchId) + "/starters_bench";
         const auto msg = copy.render("squad_notice", youth ? "group_parent" : "group_adult",
-            {{"event", ctx.line}, {"where", ctx.where}, {"arrival", ctx.arrival},
+            {{"event", ctx.shortEvent}, {"when", when}, {"urgent", urgentFor("group")},
+             {"where", ctx.where}, {"arrival", ctx.arrival},
              {"link", link}, {"sender", senderName}});
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 383)");

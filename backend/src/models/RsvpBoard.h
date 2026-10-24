@@ -170,6 +170,12 @@ public:
         std::string line;                    // "Sun Sep 20, 1:45 PM — Game vs Oaklyn United"
         std::string where;                   // "" when the event has no location
         std::string arrival;                 // "12:45 PM", "" when none
+        // Short and urgent (mig 685): "3:00 PM vs Oaklyn United", the
+        // day as today | tomorrow | Sat, and whether it is that close.
+        std::string shortEvent;
+        std::string time;
+        std::string day;                     // "today" | "tomorrow" | "Sat"
+        bool        soon = false;            // today or tomorrow
         std::vector<SquadRecipient> recipients;
     };
     SquadNoticeContext squadNoticeContext(long long matchId);

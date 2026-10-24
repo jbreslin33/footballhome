@@ -957,7 +957,13 @@ RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
                  || CASE fe.kind WHEN 'intrasquad' THEN 'Intra Squad'
                                  ELSE 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(fe.opponent), ''), '') END AS line,
                COALESCE(NULLIF(BTRIM(ge.location), ''), '') AS location,
-               COALESCE(to_char(fe.arrival_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM'), '') AS arrival
+               COALESCE(to_char(fe.arrival_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM'), '') AS arrival,
+               CASE fe.kind WHEN 'intrasquad' THEN 'Intra Squad'
+                            ELSE COALESCE('vs ' || NULLIF(BTRIM(fe.opponent), ''), 'Game') END AS short_event,
+               to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time,
+               CASE (ge.starts_at AT TIME ZONE 'America/New_York')::date - (now() AT TIME ZONE 'America/New_York')::date
+                    WHEN 0 THEN 'today' WHEN 1 THEN 'tomorrow'
+                    ELSE to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy') END AS day
           FROM fh_events fe
           JOIN gcal_events ge ON ge.id = fe.gcal_event_id
          WHERE fe.match_id = $1::int
@@ -967,6 +973,10 @@ RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
     ctx.line    = ev[0]["line"].c_str();
     ctx.where   = ev[0]["location"].c_str();
     ctx.arrival = ev[0]["arrival"].c_str();
+    ctx.shortEvent = ev[0]["short_event"].c_str();
+    ctx.time       = ev[0]["time"].c_str();
+    ctx.day        = ev[0]["day"].c_str();
+    ctx.soon       = ctx.day == "today" || ctx.day == "tomorrow";
 
     auto rows = db->query(R"SQL(
         SELECT p.id AS person_id, mr.recipient_person_id,
