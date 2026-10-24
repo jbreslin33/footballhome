@@ -73,7 +73,9 @@
     // f > 1 zooms OUT, f < 1 zooms IN.
     zoom(f) {
       if (this.mode === 'orbit') {
-        this.user.dist = Math.min(220, Math.max(4, this.user.dist * f));
+        // 700 m out shows the whole complex (James 10/24: "need zoom to be
+        // able to go further out"); renderer.frame pushes fog/far back.
+        this.user.dist = Math.min(700, Math.max(4, this.user.dist * f));
       } else {
         this.zoomMul = Math.min(3, Math.max(0.3, this.zoomMul * f));
       }

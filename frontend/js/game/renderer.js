@@ -292,6 +292,12 @@
 
     // Lerp between the two snapshots bracketing the render TICK.
     frame() {
+      // Fog and the far plane follow a far-out camera, so zooming out shows
+      // the complex instead of sky (defaults unchanged up close).
+      const cd = this.rig.cur.dist;
+      const fogNear = Math.max(220, cd * 1.3), fogFar = Math.max(520, cd * 3), far = Math.max(1400, cd * 3.5);
+      if (this.scene.fog.near !== fogNear) { this.scene.fog.near = fogNear; this.scene.fog.far = fogFar; }
+      if (this.camera.far !== far) { this.camera.far = far; this.camera.updateProjectionMatrix(); }
       const now = performance.now();
       const dt = this.lastFrameAt ? Math.min((now - this.lastFrameAt) / 1000, 0.1) : 0.016;
       this.lastFrameAt = now;
