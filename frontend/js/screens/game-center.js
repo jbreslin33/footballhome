@@ -3161,17 +3161,28 @@ class GameCenterScreen extends Screen {
     const regPhoneWhy = w === 'reg' && !(c.gap && c.gap.phone) ? cb('why_nophone') : '';
     const regEmailWhy = w === 'reg' && !(c.gap && c.gap.email) ? cb('why_noemail') : '';
     const blankWhy = (field) => w === 'blank' && !(st && st[field]) ? cb(field === 'phone' ? 'why_nophone' : 'why_noemail') : '';
-    const route = this._textRoute(w, consent);
-    const routeLine = route.route === 'club' ? this._cm('route_club')
-                    : route.route === 'relay' ? this._cm('route_relay', { device: this.relay.device.name })
-                    : route.why ? this._cm('route_manual', { why: route.why }) : '';
     const hows = [
-      { key: 'text',  label: routeLine ? `${this._cm('how_text')} — ${routeLine}` : this._cm('how_phone'),
-        why: !hasPhone ? cb('why_nophone') : regPhoneWhy || blankWhy('phone') },
+      { key: 'text',  label: this._cm('how_text'), why: !hasPhone ? cb('why_nophone') : regPhoneWhy || blankWhy('phone') },
       { key: 'email', label: this._cm('how_email'), why: !hasEmail ? cb('why_noemail') : regEmailWhy || blankWhy('email') },
       { key: 'call',  label: this._cm('how_call'),  why: st && st.phone ? '' : cb('why_nophone') },
     ];
-    return { c, whats, what: w, hows };
+    // 📲 Text's sub-options (mig 675; owner 2026-10-24: "inside each
+    // option it has sub option and defaults to default but allows radio
+    // button to change it for that message").  The default is the rule in
+    // _textRoute; the others stay pickable unless they can't work.
+    const r = this.relay;
+    const vias = [
+      { key: 'club',  label: this._cm('via_club'),
+        why: consent === 'stopped' ? cb('why_stopped') : consent !== 'in' ? cb('why_none')
+           : (w === 'game' || w === 'reg') ? '' : this._cm('why_club_what') },
+      ...(r ? [{ key: 'relay', label: this._cm('via_relay', { device: r.device ? r.device.name : '' }),
+        why: w === 'blank' ? this._cm('manual_why_blank') : consent === 'stopped' ? this._cm('manual_why_stopped')
+           : !r.device ? this._cm('manual_why_unpaired') : !r.device.online ? this._cm('manual_why_offline')
+           : r.today >= r.cap ? this._cm('manual_why_cap') : '' }] : []),
+      { key: 'paste', label: this._cm('via_paste'), why: '' },
+    ];
+    const defVia = { club: 'club', relay: 'relay', manual: 'paste' }[this._textRoute(w, consent).route];
+    return { c, whats, what: w, hows, vias, defVia };
   }
 
   // Which number a 📲 Text goes from (mig 673; owner 2026-10-24: "default
@@ -3207,8 +3218,9 @@ class GameCenterScreen extends Screen {
   _renderContactSheet() {
     const sh = this._contactSheet;
     if (!sh) return this._closeContactSheet();
-    const { c, whats, what, hows } = this._contactChoices(sh.personId, sh.what);
+    const { c, whats, what, hows, vias, defVia } = this._contactChoices(sh.personId, sh.what);
     sh.what = what;
+    if (!sh.via || (vias.find(v => v.key === sh.via) || {}).why) sh.via = defVia;
     const firstOk = hows.find(h => !h.why && h.key !== 'call');
     if (!sh.how || (hows.find(h => h.key === sh.how) || {}).why) sh.how = firstOk ? firstOk.key : 'call';
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
@@ -3216,7 +3228,7 @@ class GameCenterScreen extends Screen {
       <label style="display:flex; align-items:flex-start; gap:8px; padding:7px 8px; border-radius:8px; cursor:${why ? 'not-allowed' : 'pointer'};
                     background:${on ? 'rgba(2,132,199,0.18)' : 'transparent'}; opacity:${why ? 0.55 : 1};">
         <input type="radio" name="gc-cs-${group}" data-gc-cs-${group}="${key}" ${on ? 'checked' : ''} ${why ? 'disabled' : ''} style="margin-top:2px;">
-        <span style="flex:1;">${esc(label)}${group === 'how'
+        <span style="flex:1;">${esc(label)}${group !== 'what'
           ? `<br><span style="font-size:0.75rem; font-weight:700; color:${why ? '#fbbf24' : '#34d399'};">${esc(why ? '⚠ ' + why : this._cm('works'))}</span>` : ''}</span>
       </label>`;
     const title = this._cm('title', { name: c.name || '' });
@@ -3239,7 +3251,9 @@ class GameCenterScreen extends Screen {
         ${sh.how === 'call' ? '' : `<div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6; margin:4px 0 2px;">${esc(this._cm('what').toUpperCase())}</div>
         ${whats.map(x => radio('what', x.key, x.label, x.key === what, '')).join('')}`}
         <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6; margin:10px 0 2px;">${esc(this._cm('how').toUpperCase())}</div>
-        ${hows.map(h => radio('how', h.key, h.label, h.key === sh.how, h.why)).join('')}
+        ${hows.map(h => radio('how', h.key, h.label, h.key === sh.how, h.why)
+          + (h.key === 'text' && sh.how === 'text' && !h.why
+             ? `<div style="margin-left:26px; border-left:2px solid #334155; padding-left:6px;">${vias.map(v => radio('via', v.key, v.label, v.key === sh.via, v.why)).join('')}</div>` : '')).join('')}
         <div style="display:flex; gap:8px; align-items:center; margin-top:12px;">
           <button type="button" data-gc-cs-send style="flex:1; padding:11px; border-radius:10px; border:none; cursor:pointer; font-weight:800; font-size:0.95rem; color:#fff; background:#0284c7;">${esc(sh.how === 'call' ? this._cm('call_go') : this._cm('send'))}</button>
           <span data-gc-remind-note data-gc-squad-note style="flex:1; font-size:0.75rem;">${sh.error ? `<span style="color:#f87171;">${esc(sh.error)}</span>` : ''}</span>
@@ -3252,7 +3266,9 @@ class GameCenterScreen extends Screen {
     if (!sh) return;
     if (e.target.id === 'gc-contact-sheet' || e.target.closest('[data-gc-cs-close]')) { this._closeContactSheet(); return; }
     const w = e.target.closest('[data-gc-cs-what]');
-    if (w && !w.disabled) { sh.what = w.dataset.gcCsWhat; sh.how = null; this._renderContactSheet(); return; }
+    if (w && !w.disabled) { sh.what = w.dataset.gcCsWhat; sh.how = null; sh.via = null; this._renderContactSheet(); return; }
+    const v = e.target.closest('[data-gc-cs-via]');
+    if (v && !v.disabled) { sh.via = v.dataset.gcCsVia; this._renderContactSheet(); return; }
     const h = e.target.closest('[data-gc-cs-how]');
     if (h && !h.disabled) { sh.how = h.dataset.gcCsHow; this._renderContactSheet(); return; }
     const send = e.target.closest('[data-gc-cs-send]');
@@ -3270,8 +3286,7 @@ class GameCenterScreen extends Screen {
     const st = c.st || {};
     btn.dataset.personId = pid;
     const done = async () => { this._closeContactSheet(); await this._loadTextMarks(); this._render(); };
-    const hk = how.key !== 'text' ? how.key
-             : { club: 'club', relay: 'relay', manual: 'phone' }[this._textRoute(what, st.consent || 'none').route];
+    const hk = how.key === 'text' ? { club: 'club', relay: 'relay', paste: 'phone' }[sh.via] || 'phone' : how.key;
     if (hk === 'relay') {
       const ok = await this._sendViaPhone(btn, what, c);
       return ok ? done() : this._renderContactSheetError(btn);
