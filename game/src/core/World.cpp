@@ -99,9 +99,21 @@ void World::tickPlayers() {
                                                                : p.max_speed;
         // In the air from a dive he goes where he launched (G4.51).
         const bool flying = p.dive_ticks > 0;
+        // Facing (G4.53): his body turns toward where he wants to face —
+        // the intent's face, else the way he's trying to go — at his own
+        // yaw rate; moving off that line costs speed (Body::gait).
+        if (!flying) {
+            Vec2 want = intents_[i].face;
+            if (want.x.raw == 0 && want.y.raw == 0) want = desire;
+            if (want.x.raw != 0 || want.y.raw != 0)
+                p.face = body.turnToward(p.face, math::normalized(want), kTickDt);
+        }
+        Fixed64 share = Fixed64::one();
+        if (desire.x.raw != 0 || desire.y.raw != 0)
+            share = body.gait(p.face, math::normalized(desire));
         const Vec2 v = flying ? Vec2{p.vel.x, p.vel.y}
                               : body.step(Vec2{p.vel.x, p.vel.y},
-                                           Vec2{desire.x * top, desire.y * top}, kTickDt);
+                                           Vec2{desire.x * top * share, desire.y * top * share}, kTickDt);
         p.vel = Vec3{v.x, v.y, Fixed64::zero()};
         p.pos += p.vel * kTickDt;
         // Pitch bounds (+2 m apron): G1's live test watched a scorer chase
@@ -118,14 +130,9 @@ void World::tickPlayers() {
             p.recovery_ticks = loco_.diveGroundTicks();
             p.recovery_kind = 3;
         }
-        // Facing follows the BODY (G4.51): his direction of travel once
-        // he's moving (≥ 0.5 m/s) — the carried ball goes where he goes,
-        // not where he wishes; nearly still, he turns on the spot.
-        if (math::lengthSquared(v) >= Fixed64::fromFraction(1, 4)) {
+        // In the air from a dive he faces where he flies.
+        if (flying && math::lengthSquared(v) >= Fixed64::fromFraction(1, 4))
             p.face = math::normalized(v);
-        } else if (desire.x.raw != 0 || desire.y.raw != 0) {
-            p.face = math::normalized(desire);
-        }
     }
 
     // Player-player collisions [v1 Slice 27]: circle-circle overlap is

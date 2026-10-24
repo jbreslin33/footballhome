@@ -38,7 +38,16 @@ public:
                math::Fixed64::fromInt(4)) {}
     Body(math::Fixed64 tau, math::Fixed64 brake, math::Fixed64 turn,
          math::Fixed64 dribble, math::Fixed64 dive_speed)
-        : tau_(tau), brake_(brake), turn_(turn), dribble_(dribble), dive_speed_(dive_speed) {
+        : Body(tau, brake, turn, dribble, dive_speed, math::Fixed64::fromFraction(1, 2),
+               math::Fixed64::fromFraction(65, 100), math::Fixed64::fromInt(9)) {}
+    // G4.53: side / back = his top speed shuffling sideways / backpedalling,
+    // as shares of his forward top speed; yaw = how fast his body turns
+    // (rad/s) toward where he wants to face.
+    Body(math::Fixed64 tau, math::Fixed64 brake, math::Fixed64 turn,
+         math::Fixed64 dribble, math::Fixed64 dive_speed, math::Fixed64 side,
+         math::Fixed64 back, math::Fixed64 yaw)
+        : tau_(tau), brake_(brake), turn_(turn), dribble_(dribble), dive_speed_(dive_speed),
+          side_(side), back_(back), yaw_(yaw) {
         // lag() at every tick out to kLagTicks, once per body (fx_exp_neg
         // per read made the Brain's reach scans ~5x slower).
         for (int k = 0; k <= kLagTicks; ++k) {
@@ -52,6 +61,30 @@ public:
     math::Fixed64 turn() const noexcept { return turn_; }
     math::Fixed64 dribble() const noexcept { return dribble_; }
     math::Fixed64 diveSpeed() const noexcept { return dive_speed_; }
+    math::Fixed64 side() const noexcept { return side_; }
+    math::Fixed64 back() const noexcept { return back_; }
+    math::Fixed64 yaw() const noexcept { return yaw_; }
+
+    // Gait (G4.53): his top-speed share for moving along `dir` while facing
+    // `face` (both unit): 1 running forward, side() shuffling square,
+    // back() backpedalling — linear in the cosine between them.
+    math::Fixed64 gait(math::Vec2 face, math::Vec2 dir) const {
+        const math::Fixed64 c = face.x * dir.x + face.y * dir.y;
+        return c.raw >= 0 ? side_ + (math::Fixed64::one() - side_) * c
+                          : side_ + (back_ - side_) * (-c);
+    }
+
+    // Body turn (G4.53): `face` rotated toward `want` by at most yaw()·dt.
+    math::Vec2 turnToward(math::Vec2 face, math::Vec2 want, math::Fixed64 dt) const {
+        const math::Fixed64 cross = face.x * want.y - face.y * want.x;
+        const math::Fixed64 dot = face.x * want.x + face.y * want.y;
+        const math::Fixed64 ang = math::fx_atan2(cross, dot);
+        const math::Fixed64 step = yaw_ * dt;
+        if (math::fx_abs(ang) <= step) return want;
+        const math::Fixed64 a = ang.raw > 0 ? step : -step;
+        const math::Fixed64 c = math::fx_cos(a), s = math::fx_sin(a);
+        return math::Vec2{face.x * c - face.y * s, face.x * s + face.y * c};
+    }
 
     // One tick of the law: the new planar velocity.
     math::Vec2 step(math::Vec2 v, math::Vec2 wanted, math::Fixed64 dt) const {
@@ -103,7 +136,7 @@ private:
     }
 
     static constexpr int kLagTicks = 10 * kTickRate;
-    math::Fixed64 tau_, brake_, turn_, dribble_, dive_speed_;
+    math::Fixed64 tau_, brake_, turn_, dribble_, dive_speed_, side_, back_, yaw_;
     math::Fixed64 lag_[kLagTicks + 1];
 };
 

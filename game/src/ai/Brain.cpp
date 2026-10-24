@@ -387,6 +387,34 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
 }
 
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
+    Orders o = decide(slot, world);
+    if (o.move.face.x.raw != 0 || o.move.face.y.raw != 0) return o;
+    const auto& ball = world.ball();
+    const auto& me = world.player(slot);
+    if (ball.owner && *ball.owner == slot) return o;   // carriers face their carry
+    const Vec2 to_ball{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y};
+    if (to_ball.x.raw == 0 && to_ball.y.raw == 0) return o;
+    // Keepers face the ball for the set position (keeper craft, no roll) —
+    // a short adjustment shuffles; a long one he turns and runs.
+    const Fixed64 within = book_.face_the_play.within();
+    const bool short_move =
+        distSq(me.pos, Vec3{o.target.x, o.target.y, Fixed64::zero()}) <= within * within;
+    if (world.isKeeper(slot)) { if (short_move) o.move.face = to_ball; return o; }
+    switch (o.why) {
+        case Why::RunInBehind: case Why::BlindSideRun: case Why::KeepRunning:
+        case Why::MeetPass: case Why::Chase: case Why::Press: case Why::Recover:
+        case Why::Human:
+            return o;   // these face where they're going
+        default: break;
+    }
+    const int bit = book_.face_the_play.bit();
+    if (ratings_[slot][bit] <= 0 || !applies(slot, bit, world.tickCount() / 30)) return o;
+    if (!short_move) return o;
+    o.move.face = to_ball;
+    return o;
+}
+
+Orders Brain::decide(SlotIndex slot, const World& world) const {
     Orders out;
     const auto& ball = world.ball();
     const auto& me = world.player(slot);

@@ -158,6 +158,9 @@ public:
     const FlightRead& flightRead(const core::World& world) const;
 
 private:
+    // The decision itself; ordersFor() adds where his body faces (G4.53).
+    Orders decide(core::SlotIndex slot, const core::World& world) const;
+
     int attackSign(core::SlotIndex slot) const {
         return setup_.team_of_slot[slot] == 0 ? +1 : -1;
     }

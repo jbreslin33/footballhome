@@ -18,6 +18,10 @@ struct MoveIntent {
     // strength in [0, 1]; the world clamps anything longer to unit length,
     // so a hostile client cannot move faster by sending a long vector.
     math::Vec2 move{};
+    // Where he wants his body to face (G4.53), any length; zero = the way
+    // he's travelling. Facing away from his travel costs speed (Body::gait):
+    // a backpedal or side-shuffle is slower than running forward.
+    math::Vec2 face{};
 };
 
 }  // namespace fh::game::core

@@ -51,6 +51,9 @@ struct PlayerSnap {
     math::Fixed64 pos_x{}, pos_y{};
     math::Fixed64 vel_x{}, vel_y{};
     std::uint8_t  flags = 0;  // bit0 = human-controlled; rest reserved
+    // 1.8 tail (G4.53): where his body faces, a unit vector ×127 — apart
+    // from his velocity now (a backpedal faces against it).
+    std::int8_t   face_x = 127, face_y = 0;
 };
 
 struct BallSnap {

@@ -131,10 +131,11 @@ FH_TEST(snapshot_truncated_player_list_fails) {
     s.tick = 1;
     s.players.resize(3);
     Bytes p = encodeSnapshot(s);
-    // Cut past the additive tails (25-byte ball + 6-byte match structure)
-    // AND into the last player record. (Missing/partial tails alone are
-    // tolerated; the PLAYER array is 1.0 structure and must be whole.)
-    p.resize(p.size() - 25 - 6 - 4);
+    // Cut past the additive tails (25-byte ball + 6-byte match structure,
+    // 2-byte levels, 1.8's 2-byte facing per player) AND into the last
+    // player record. (Missing/partial tails alone are tolerated; the
+    // PLAYER array is 1.0 structure and must be whole.)
+    p.resize(p.size() - 2 * 3 - 25 - 6 - 4);
     FH_EXPECT(!decodeSnapshot(p).has_value());
 }
 

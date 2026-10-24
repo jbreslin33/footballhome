@@ -202,7 +202,10 @@
 
       // ── facing + turn rate (for leaning into turns) ─────────────────
       const prevYaw = this.yaw;
-      if (speed > 0.4 && !(flags & 4)) {
+      if (ctx.fx !== undefined && !(flags & 4)) {
+        // The server's facing (1.8): he can face the ball while moving away.
+        this.yaw += wrap(Math.atan2(ctx.fx, ctx.fy) - this.yaw) * Math.min(1, dt * 11);
+      } else if (speed > 0.4 && !(flags & 4)) {
         this.yaw += wrap(Math.atan2(vx, vy) - this.yaw) * Math.min(1, dt * 11);
       }
       this.yawRate = ease(this.yawRate, wrap(this.yaw - prevYaw) / Math.max(dt, 1e-3), 8, dt);

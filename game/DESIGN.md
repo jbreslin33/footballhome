@@ -1660,6 +1660,59 @@ only bend it. Done right, a band only generates unrated players'
 attributes (the centre of each bell curve); swarm becomes his own
 `discipline` (unwired today).
 
+### 8.49 G4.53 — facing apart from movement: backpedal, shuffle, see ball and man (§8.46 step 1b)
+
+- **Engine.** `MoveIntent.face` (zero = the way he travels). His body turns
+  toward it at his own yaw rate (`Body::turnToward`, agility 7 / 9 / 11
+  rad/s), and moving off that line costs speed (`Body::gait`, linear in the
+  cosine): forward 100%, side-shuffle 40 / 50 / 60%, backpedal 55 / 65 / 75%
+  of his forward top speed (agility 0 / 50 / 100; mig 686, [FH] estimates to
+  source). Facing is no longer copied from velocity. Snapshot 1.8 appends
+  facing (i8 x, i8 y per player); the client turns figures to it.
+- **Knowledge.** `face-the-play` (154, core, U-10, "see ball and man"):
+  off the ball and adjusting within 10 m, he faces the ball; a failed roll
+  turns his back and runs. Runs in behind, chases, presses, recovery
+  sprints and meet-the-pass face their travel. Keepers face the ball for
+  the set position on short adjustments (always facing measured 5.4 goals a
+  match — a keeper shuffling 30 m at half speed); long ones turn and run.
+- **The harness never played meet-the-pass.** `ConceptRegistry::builtin()`
+  (DB-less: the calibration harness, the tests) stopped at concept 30, so
+  every concept wired after G4.36 — meet-the-pass included — was off in
+  calibration. 153 and 154 are now built in.
+- Measured (60, real matchup): G4.52 +1.47 (goals 2.68–1.22, LH shots 42)
+  → G4.53 **+1.60 ± 0.25** (3.18–1.58, shots 51 / 36); face-the-play off
+  +1.45 ± 0.33 (neutral). Ladder u10 16.8 / amateur 11.5 / world 4.8.
+  Defending got harder: a body that must turn before it sprints, and a
+  shuffle or backpedal slower than a sprinting dribbler. Real defenders
+  don't backpedal square-on — they jockey **side-on** and drop-step to run
+  with him. That (1v1 defending choices: stance, distance, show
+  inside/outside, engage or contain — the knowledge sweep's biggest gap)
+  is next.
+- Not yet: human clients send no facing (they face their travel); the
+  carried ball still sits ahead of facing.
+
+### 8.50 The taxonomy sweep (2026-10-24)
+
+James: "search for all possible things a player can do and all possible
+knowledge … and team tactics … the goal is to simulate football" /
+"looking off an opponent with your eyes or your body" / "butt size helps
+dribblers … low centre of gravity" / "take ideas from Football Manager but
+go beyond". Five sweeps → 906 candidates for review at
+https://claude.ai/artifact/GqcmcjN9VabWS1RkQQLhXW (strike / discuss, five
+decisions; marks in its db): 353 actions (61 fouls, 45 deception with the
+cue each fakes, gaits, aerial play, calls), 128 knowledge (6 new
+principles: See the picture, Disguise and deceive, Read the opponent,
+Manage the game, Talk and organise, Penalty duel), 145 team (24 roles, 19
+game models, set pieces, game management, 33 Laws), 34 body (the
+glute/low-COG claim is anecdote; low COM is sound physics — model it from
+height, mass, hip width, never as a "small = dribbler" rule), 246 Football
+Manager elements (37 gaps; replace FM's dice rolls with simulation, keep
+its catalogue). Engine needs, by items: the referee and the laws 186, body
+contact 118, team shape 116, ball at height 104, a readable/fakeable body
+99, restarts 94. Raw sweeps + page builder:
+~/footballhome-notes/taxonomy-2026-10-24/. Kept items become queued rows
+after James marks the page.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

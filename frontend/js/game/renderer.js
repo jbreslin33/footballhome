@@ -345,7 +345,7 @@
           const vy = pa.vy + (pb.vy - pa.vy) * alpha;
           const f = this.figures[i];
           f.root.position.set(x, 0, y);
-          f.update(dt, { vx, vy, flags: pb.flags, ball: ballPos,
+          f.update(dt, { vx, vy, fx: pb.fx, fy: pb.fy, flags: pb.flags, ball: ballPos,
                          hasBall: owner === i, me: { x, y } });
           if (owner === i) {
             this.carrierSlot = i;

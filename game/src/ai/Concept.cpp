@@ -188,6 +188,11 @@ void MeetThePass::configure(const core::ModelParams& p) {
     horizon_ticks_ = p.integer(key("horizon_ticks"), 90);
 }
 
+// ── FaceThePlay (G4.53) ─────────────────────────────────────────────────
+void FaceThePlay::configure(const core::ModelParams& p) {
+    within_ = p.fixed(key("within_m"), 10000);
+}
+
 // ── CoverShadow ─────────────────────────────────────────────────────────
 void CoverShadow::configure(const core::ModelParams& p) {
     deep_x_ = p.fixed(key("deep_x_m"), 15000);

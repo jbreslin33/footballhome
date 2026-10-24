@@ -109,18 +109,18 @@ FH_TEST(server_sends_hello_on_connect) {
 FH_TEST(server_sends_the_curriculum_and_sized_rosters_on_connect) {
     // G4.37: a DB curriculum with a lesson far past the old 32 cap.
     core::ConceptRegistry db = core::ConceptRegistry::builtin();
-    db.add(75, "command-box", 0);
+    db.add(200, "command-box", 0);
     core::setConcepts(db);
     Rig r;
     r.t.scriptConnect(100);
     const auto cs = framesOf(r.t.sent[100], FrameType::Concepts);
     FH_EXPECT_EQ(cs.size(), 1u);
     auto names = decodePresets(cs[0]);   // same name-list layout as PRESETS
-    FH_EXPECT(names.has_value() && names->names.size() == 76u);
-    FH_EXPECT(names->names[29] == "pass-ladder" && names->names[75] == "command-box");
+    FH_EXPECT(names.has_value() && names->names.size() == 201u);
+    FH_EXPECT(names->names[29] == "pass-ladder" && names->names[200] == "command-box");
     FH_EXPECT(names->names[40].empty());   // an id hole
     auto roster = decodeRoster(framesOf(r.t.sent[100], FrameType::Roster).back());
-    FH_EXPECT(roster.has_value() && roster->slots[0].ratings.size() == 76u);
+    FH_EXPECT(roster.has_value() && roster->slots[0].ratings.size() == 201u);
     core::setConcepts(core::ConceptRegistry::builtin());
 }
 

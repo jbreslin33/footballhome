@@ -113,6 +113,15 @@
                     restartTeam: view.getUint8(p + 5),
                     levelHome: view.getUint8(p + 6),
                     levelAway: view.getUint8(p + 7) };
+    p += 8;
+    // Facing (1.8 tail, G4.53): i8 x | i8 y per player, unit ×127 — the
+    // body's facing apart from its velocity (a backpedal faces against it).
+    if (p + 2 * count <= view.byteLength) {
+      for (let i = 0; i < count; i++) {
+        players[i].fx = view.getInt8(p + 2 * i) / 127;
+        players[i].fy = view.getInt8(p + 2 * i + 1) / 127;
+      }
+    }
     return { tick, players, ball, match };
   }
 

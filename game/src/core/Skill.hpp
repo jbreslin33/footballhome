@@ -245,6 +245,7 @@ public:
         skills_.emplace_back(agility_);
         skills_.emplace_back(dribbling_);
         for (auto& s : skills_) s->configure(p);
+        for (BodySkill* g : {&side_, &back_, &yaw_}) g->configure(p);
     }
     // The band bent by one player's attributes; all -1 = the band itself.
     LevelParams apply(const LevelParams& band, const PlayerAttributes& a) const {
@@ -261,7 +262,8 @@ public:
     Body body(const PlayerAttributes& a) const {
         return Body(accel_->value(a.acceleration), decel_->value(a.deceleration),
                     agility_->value(a.agility), dribbling_->value(a.dribbling),
-                    gk_->diveSpeed(a.goalkeeping));
+                    gk_->diveSpeed(a.goalkeeping), side_.value(a.agility),
+                    back_.value(a.agility), yaw_.value(a.agility));
     }
     const std::vector<std::unique_ptr<Skill>>& skills() const { return skills_; }
 
@@ -270,6 +272,12 @@ private:
     Pace* pace_ = nullptr;
     Goalkeeping* gk_ = nullptr;
     BodySkill *accel_ = nullptr, *decel_ = nullptr, *agility_ = nullptr, *dribbling_ = nullptr;
+    // G4.53: his gaits and body turn, also from agility — side-shuffle and
+    // backpedal top speed as shares of his forward top speed, yaw in rad/s
+    // (≈ 400 / 520 / 630 °/s).
+    BodySkill side_{"agility", "side_share", 400, 500, 600};
+    BodySkill back_{"agility", "back_share", 550, 650, 750};
+    BodySkill yaw_{"agility", "yaw_rads", 7000, 9000, 11000};
 };
 
 // Back-compat helpers: the default (DB-less) skill set.

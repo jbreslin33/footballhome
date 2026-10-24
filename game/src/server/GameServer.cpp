@@ -451,6 +451,9 @@ net::Bytes GameServer::buildSnapshotFrame() const {
         snap.pos_y = p.pos.y;
         snap.vel_x = p.vel.x;
         snap.vel_y = p.vel.y;
+        // G4.53: the body's facing, apart from its velocity.
+        snap.face_x = static_cast<std::int8_t>((p.face.x * Fixed64::fromInt(127)).raw >> Fixed64::FRAC_BITS);
+        snap.face_y = static_cast<std::int8_t>((p.face.y * Fixed64::fromInt(127)).raw >> Fixed64::FRAC_BITS);
         // bit0 human-controlled; bit1 keeper (1.4 additive — clients
         // dress keepers in their own kit).
         // bit2 down in a tackle; bit3 dispossessed / off balance (G4.27,

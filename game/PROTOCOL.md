@@ -135,6 +135,8 @@ match structure (appended in 1.2):
   u16 clock_seconds (resets at full time) | u8 restart_team (0xFF = live)
 levels (appended in 1.3):
   u8 level_home_id | u8 level_away_id
+facing (appended in 1.8, G4.53):
+  per player: i8 face_x | i8 face_y   (unit vector × 127)
 ```
 
 - Players are planar (DESIGN.md §4), so player records carry **no z** —

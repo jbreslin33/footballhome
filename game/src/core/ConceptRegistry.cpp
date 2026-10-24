@@ -51,6 +51,11 @@ ConceptRegistry ConceptRegistry::builtin() {
     ConceptRegistry r;
     int id = 0;
     for (const auto& s : kSeed) r.add(id++, s.name, levelRank(s.from), s.style);
+    // Later core lessons (G4.53): DB-less boots — the calibration harness,
+    // the tests — play them too. Until now the harness never ran
+    // meet-the-pass (153) at all.
+    r.add(153, "meet-the-pass", levelRank("u10"), false);
+    r.add(154, "face-the-play", levelRank("u10"), false);
     return r;
 }
 

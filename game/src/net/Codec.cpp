@@ -177,6 +177,11 @@ Bytes encodeSnapshot(const SnapshotFrame& f) {
     // 1.3 tail: level bands.
     w.u8(f.level_home);
     w.u8(f.level_away);
+    // 1.8 tail: facing per player, i8 x | i8 y (unit ×127).
+    for (const PlayerSnap& p : f.players) {
+        w.u8(static_cast<std::uint8_t>(p.face_x));
+        w.u8(static_cast<std::uint8_t>(p.face_y));
+    }
     return std::move(w.out);
 }
 
@@ -214,6 +219,12 @@ std::optional<SnapshotFrame> decodeSnapshot(const Bytes& payload) {
     if (r.at + 2 <= payload.size()) {  // 1.3 tail
         f.level_home = r.u8();
         f.level_away = r.u8();
+    }
+    if (r.at + 2 * f.players.size() <= payload.size()) {  // 1.8 tail: facing
+        for (PlayerSnap& p : f.players) {
+            p.face_x = static_cast<std::int8_t>(r.u8());
+            p.face_y = static_cast<std::int8_t>(r.u8());
+        }
     }
     return f;
 }

@@ -296,6 +296,22 @@ private:
     int horizon_ticks_ = 90;
 };
 
+// See ball and man (G4.53, core, from U-10) [coaching: "keep the play in
+// front of you", "open body / see ball and man"]: off the ball, adjusting
+// a short way (within within_m of where he's going), he faces the ball
+// and shuffles or backpedals instead of turning his back. A failed roll =
+// he turns and runs, back to the play — the youth habit. Runs in behind,
+// chases, presses and recovery sprints face their travel.
+class FaceThePlay : public Concept {
+public:
+    FaceThePlay() : Concept("face-the-play", 154) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 within() const { return within_; }
+
+private:
+    math::Fixed64 within_;
+};
+
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
@@ -308,6 +324,7 @@ struct ConceptBook {
     ShortSimple short_simple;
     DirectBall direct_ball;
     MeetThePass meet_the_pass;
+    FaceThePlay face_the_play;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -321,6 +338,7 @@ struct ConceptBook {
         short_simple.configure(p);
         direct_ball.configure(p);
         meet_the_pass.configure(p);
+        face_the_play.configure(p);
     }
 };
 
