@@ -40,7 +40,12 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 - [ ] 2026-10-22 Newspaper book recapture: 30/95 pages at full res; blocked on a live newspapers.com session (James signs in, Claude drives — never exfil tokens/URLs).
 - [ ] 2026-10-22 Seasonal chore: APSL TeamPass team id changes each season — re-point the 🖨 roster scraper + 🌐 mirror when the new season's pages go up.
 
-- [ ] 2026-10-24 FH Texter as the fallback for players who haven't opted in to Twilio texts. The app on James's Android (mig 667, phone-app/fh-texter, paired 10/23) already sends a desktop-clicked text from his own number. Today it's manual only: admin clicks "📱 Send from my phone" in the desktop-sms panel. Wanted: when a text can't go through Twilio because the player has no fh_sms_consented_at, route it to the phone instead of dropping it. Keep the phone_relay_policy guardrails (30/day, 20s gap, 1 recipient, never group texts, no STOPped numbers). Open question: auto-queue vs a "send these N from my phone" button — 30/day won't cover a full reminder round.
+- [x] 2026-10-24 FH Texter fallback (mig 673): Game Center ✉ CONTACT's club text and my-phone options merged into one "📲 Text" that picks its own route. Opted in → club number (Twilio). Not opted in → your phone via FH Texter, with the same personal game link / RSVP reminder / registration form. Phone offline, cap reached, STOP, or Blank → the copy & paste panel. The route is named under the option. Cards show 📱 sent → delivered → opened like club texts. One click per player, never a batch (owner's pick).
+
+- [ ] 2026-10-24 League contacts in Game Center: the 📇 panel only knows opponent clubs (club_contacts). Add league-level contacts so a Women's game can reach the league in one tap:
+  - Tri County (TCWSL, leagues.id 7): pull the league admin contact from https://www.tcwsl.com/.
+  - Gordon Dunlop, ref assignor for Tri County AND PPR: email given by James 10/24 in chat; load it into the DB only, never git.
+  - Needs a home that isn't a club (one person can serve two leagues), shown on the game's league in the 📇 panel. Loaded by psql or the page, never in a migration file (contacts-in-DB rule).
 
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`. Pending op note: after the next frontend deploy, `sudo podman rm -f footballhome_sim` (see the archive README).
 

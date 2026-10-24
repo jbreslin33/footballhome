@@ -381,6 +381,7 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         json out = {
             {"url",           minted.url},
             {"expires_at",    minted.expiresIso},
+            {"token_id",      minted.tokenId},
             {"event_count",   ctx.openEvents.size()},
             {"last_reminder", lastReminder},
             {"also",          also},
@@ -726,7 +727,10 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
                                                      {"status", model_->squadNoticeStatus(matchId)}});
             }
             model_->logSquadNotice(matchId, *who, channel, contact, scope.userId);
-            json out = {{"expires_at", minted.expiresIso}, {"status", model_->squadNoticeStatus(matchId)}};
+            // token_id: an FH Texter send carries it so the card's
+            // opened ✓ works for phone texts too (mig 673).
+            json out = {{"expires_at", minted.expiresIso}, {"token_id", minted.tokenId},
+                        {"status", model_->squadNoticeStatus(matchId)}};
             copy.addComposeHrefs(out, channel, contact, msg.subject, msg.body, msg.body);
             return jsonOut(HttpStatus::CREATED, out);
         }
@@ -816,10 +820,10 @@ Response RsvpBoardController::handleTextMarks(const Request& request) {
         for (const auto& r : db->query(
                 "SELECT person_id, kind, status, error_code, error_text, "
                 "       to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at, "
-                "       to_char(opened_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS opened_at "
+                "       to_char(opened_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS opened_at, via "
                 "  FROM fh_game_text_marks($1::int, $2::bigint)", {std::to_string(matchId), fhEventId})) {
             json m = json::object();
-            for (const char* k : {"status", "error_code", "error_text", "sent_at", "opened_at"})
+            for (const char* k : {"status", "error_code", "error_text", "sent_at", "opened_at", "via"})
                 m[k] = r[k].is_null() ? json(nullptr) : json(r[k].c_str());
             marks[r["person_id"].c_str()][r["kind"].c_str()] = m;
         }

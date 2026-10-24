@@ -190,7 +190,7 @@ Response PhoneRelayController::handlePairCode(const Request& request) {
     }
 }
 
-// POST /texts {to, body, for_person_id?, purpose?} — one text, one
+// POST /texts {to, body, for_person_id?, purpose?, magic_link_token_id?} — one text, one
 // recipient, from the sender's own phone.  Every guardrail is checked
 // here, before anything reaches the phone.
 Response PhoneRelayController::handleQueue(const Request& request) {
@@ -203,6 +203,7 @@ Response PhoneRelayController::handleQueue(const Request& request) {
     const std::string text = str(body, "body");
     const std::string purpose = str(body, "purpose");
     const long long forPersonId = num(body, "for_person_id");
+    const long long tokenId = num(body, "magic_link_token_id");
     if (rawTo.find_first_of(",;") != std::string::npos)
         return jsonError(HttpStatus::BAD_REQUEST, "One person at a time from your number.", "group");
     const std::string digits = tenDigits(rawTo);
@@ -248,14 +249,16 @@ Response PhoneRelayController::handleQueue(const Request& request) {
         }
         // The next free slot: min_gap_seconds after this phone's last one.
         auto ins = tx->exec_params(
-            "INSERT INTO phone_relay_texts (device_id, sender_person_id, for_person_id, to_phone, body, purpose, not_before) "
+            "INSERT INTO phone_relay_texts (device_id, sender_person_id, for_person_id, to_phone, body, purpose, "
+            "                               magic_link_token_id, not_before) "
             "SELECT $1, $2, NULLIF($3, 0), $4, $5, NULLIF($6, ''), "
+            "       (SELECT k.id FROM magic_link_tokens k WHERE k.id = NULLIF($7, 0)), "
             "       GREATEST(now(), COALESCE((SELECT max(t.not_before) FROM phone_relay_texts t WHERE t.device_id = $1 "
             "                                   AND t.status IN ('queued', 'sending', 'sent', 'delivered')), now() - interval '1 day') "
             "                       + make_interval(secs => p.min_gap_seconds)) "
             "  FROM phone_relay_policy p "
             "RETURNING " + kTextCols,
-            deviceId, personId, forPersonId, "+1" + digits, text, purpose);
+            deviceId, personId, forPersonId, "+1" + digits, text, purpose, tokenId);
         db->commit(tx);
         json out = textRow(ins[0]);
         out["today"] = today + 1;

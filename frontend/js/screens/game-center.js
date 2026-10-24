@@ -346,6 +346,7 @@ class GameCenterScreen extends Screen {
     this.invites = null;      // {invites, candidates} — 🎟 Call-ups section (fh_event_invites, mig 355)
     this.regGaps = null;      // [{person_id, …, subject, body}] — Going, not on the official roster (mig 638)
     this.textMarks = null;    // {marks: {person_id: {game_link, reg_link}}, optedIn: Set} — club-number texts (mig 647)
+    this.relay = null;        // FH Texter status for 📲 Text's fallback (mig 673)
     this._invBusy = new Set();   // person_ids with an invite POST/DELETE in flight
     this._invCopied = new Set(); // person_ids whose invite link was put on the clipboard
     this.officialRoster = null;  // {available, league, saved} — the league's own roster sheet for this game (mig 501)
@@ -3157,19 +3158,37 @@ class GameCenterScreen extends Screen {
     const hasPhone = st ? !!st.phone : true;
     const hasEmail = st ? !!st.email : true;
     const consent = st ? st.consent : 'none';
-    const clubWhy = !hasPhone ? cb('why_nophone') : consent === 'stopped' ? cb('why_stopped')
-                  : consent !== 'in' ? cb('why_none')
-                  : (w === 'game' || w === 'reg') ? '' : this._cm('why_club_what');
     const regPhoneWhy = w === 'reg' && !(c.gap && c.gap.phone) ? cb('why_nophone') : '';
     const regEmailWhy = w === 'reg' && !(c.gap && c.gap.email) ? cb('why_noemail') : '';
     const blankWhy = (field) => w === 'blank' && !(st && st[field]) ? cb(field === 'phone' ? 'why_nophone' : 'why_noemail') : '';
+    const route = this._textRoute(w, consent);
+    const routeLine = route.route === 'club' ? this._cm('route_club')
+                    : route.route === 'relay' ? this._cm('route_relay', { device: this.relay.device.name })
+                    : route.why ? this._cm('route_manual', { why: route.why }) : '';
     const hows = [
-      { key: 'club',  label: this._cm('how_club'),  why: clubWhy },
-      { key: 'phone', label: this._cm('how_phone'), why: !hasPhone ? cb('why_nophone') : regPhoneWhy || blankWhy('phone') },
+      { key: 'text',  label: routeLine ? `${this._cm('how_text')} — ${routeLine}` : this._cm('how_phone'),
+        why: !hasPhone ? cb('why_nophone') : regPhoneWhy || blankWhy('phone') },
       { key: 'email', label: this._cm('how_email'), why: !hasEmail ? cb('why_noemail') : regEmailWhy || blankWhy('email') },
       { key: 'call',  label: this._cm('how_call'),  why: st && st.phone ? '' : cb('why_nophone') },
     ];
     return { c, whats, what: w, hows };
+  }
+
+  // Which number a 📲 Text goes from (mig 673; owner 2026-10-24: "default
+  // to using twilio phone for text. then fall back to my phone app if not
+  // opted in"): the club number for an opted-in player's game link or
+  // registration form, else FH Texter on the owner's phone, else copy &
+  // paste.  Coaches without FH Texter (admins only) just paste.
+  _textRoute(what, consent) {
+    if (consent === 'in' && (what === 'game' || what === 'reg')) return { route: 'club' };
+    const r = this.relay;
+    if (!r) return { route: 'manual', why: '' };
+    const why = what === 'blank' ? 'manual_why_blank'
+              : consent === 'stopped' ? 'manual_why_stopped'
+              : !r.device ? 'manual_why_unpaired'
+              : !r.device.online ? 'manual_why_offline'
+              : r.today >= r.cap ? 'manual_why_cap' : '';
+    return why ? { route: 'manual', why: this._cm(why) } : { route: 'relay' };
   }
 
   _openContactSheet(personId, what = null) {
@@ -3251,28 +3270,34 @@ class GameCenterScreen extends Screen {
     const st = c.st || {};
     btn.dataset.personId = pid;
     const done = async () => { this._closeContactSheet(); await this._loadTextMarks(); this._render(); };
+    const hk = how.key !== 'text' ? how.key
+             : { club: 'club', relay: 'relay', manual: 'phone' }[this._textRoute(what, st.consent || 'none').route];
+    if (hk === 'relay') {
+      const ok = await this._sendViaPhone(btn, what, c);
+      return ok ? done() : this._renderContactSheetError(btn);
+    }
     if (how.key === 'call') { window.location.href = `tel:${st.phone}`; return this._closeContactSheet(); }
     if (what === 'blank') {
-      if (how.key === 'phone') DesktopSms.open(`sms:${st.phone}`);
+      if (hk === 'phone') DesktopSms.open(`sms:${st.phone}`);
       else window.location.href = `mailto:${st.email}`;
       return this._closeContactSheet();
     }
-    if (what === 'reg' && how.key !== 'club') {
+    if (what === 'reg' && hk !== 'club') {
       const g = c.gap;
-      if (how.key === 'phone') DesktopSms.open(this.buildSmsComposeHref({ to: g.phone, body: g.body || '' }));
+      if (hk === 'phone') DesktopSms.open(this.buildSmsComposeHref({ to: g.phone, body: g.body || '' }));
       else this.openGmailCompose(this.buildGmailComposeHref({ to: g.email, subject: g.subject || '', body: g.body || '' }));
       return this._closeContactSheet();
     }
-    if (how.key === 'club') {
+    if (hk === 'club') {
       btn.dataset.gcClubText = what === 'reg' ? 'reg_link' : 'game_link';
       const ok = await this._sendClubText(btn);
       return ok ? done() : this._renderContactSheetError(btn);
     }
     if (what === 'remind') {
-      btn.dataset.gcRemind = how.key === 'email' ? 'email' : 'sms';
+      btn.dataset.gcRemind = hk === 'email' ? 'email' : 'sms';
       await this._remindPlayer(btn);
     } else {
-      btn.dataset.gcSquadOne = how.key === 'email' ? 'email' : 'sms';
+      btn.dataset.gcSquadOne = hk === 'email' ? 'email' : 'sms';
       await this._sendSquadNoticeOne(btn);
     }
     // The handlers write a failure into the sheet's note; no note = sent.
@@ -3329,6 +3354,15 @@ class GameCenterScreen extends Screen {
     } catch (err) {
       this.textMarks = null;
     }
+    // FH Texter (mig 667/673) — admins only; a 403 just means 📲 Text
+    // falls back to copy & paste.
+    try {
+      const res = await this.auth.fetch('/api/phone-relay/status');
+      const st = res.ok ? await res.json().catch(() => null) : null;
+      this.relay = st ? { device: (st.devices || [])[0] || null, today: st.today || 0, cap: st.cap || 0 } : null;
+    } catch (err) {
+      this.relay = null;
+    }
   }
 
   // sent → delivered ✓ / FAILED — reason, then opened ✓ once the link
@@ -3341,9 +3375,63 @@ class GameCenterScreen extends Screen {
     const st = m.status || '';
     const failed = st === 'failed' || st === 'undelivered';
     const text = failed ? copy('failed', { time, error: m.error_text || m.error_code || st })
-               : st === 'delivered' ? copy('delivered', { time }) : copy('sent', { time });
+               : st === 'delivered' ? copy('delivered', { time })
+               : st === 'queued' ? copy('queued', { time }) : copy('sent', { time });
     const opened = m.opened_at ? ` · ${copy('opened', { time: this._sentWhen(m.opened_at) })}` : '';
-    return `<span style="font-size:0.66rem; font-weight:${failed ? 800 : 600}; color:${failed ? '#ef4444' : '#34d399'};">${this.escapeHtml(text + opened)}</span>`;
+    // 📱 = went from the owner's phone through FH Texter (mig 673).
+    const via = m.via === 'phone' ? `${copy('via_phone')} ` : '';
+    return `<span style="font-size:0.66rem; font-weight:${failed ? 800 : 600}; color:${failed ? '#ef4444' : '#34d399'};">${this.escapeHtml(via + text + opened)}</span>`;
+  }
+
+  // 📲 Text for a player not opted in (mig 673): the same tracked message
+  // the copy-and-paste path builds — game link, RSVP reminder or the
+  // registration form — queued to FH Texter instead, one text, one click.
+  // If the phone refuses it (offline, cap, STOP) the paste panel opens
+  // with that same text, so nothing is lost.
+  async _sendViaPhone(btn, what, c) {
+    const personId = Number(btn.dataset.personId);
+    const note = btn.closest('[data-gc-contact]')?.querySelector('[data-gc-squad-note]');
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    let href = '', tokenId = 0, purpose = '';
+    try {
+      if (what === 'reg') {
+        href = this.buildSmsComposeHref({ to: c.gap.phone, body: c.gap.body || '' });
+        purpose = `reg_link:${this._fhEventId()}`;
+      } else if (what === 'remind') {
+        const data = await this._postReminder('/api/rsvp-board/remind', { person_id: personId, channel: 'sms' });
+        href = data.sms_href; tokenId = data.token_id || 0; purpose = `remind:${this.matchId}`;
+        await this._loadReminders();
+      } else {
+        if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
+        const data = await this._postReminder('/api/rsvp-board/squad-notice',
+          { match_id: Number(this.matchId), person_id: personId, channel: 'sms' });
+        href = data.sms_href; tokenId = data.token_id || 0; purpose = `game_link:${this.matchId}`;
+        this.squadNotice = data.status || this.squadNotice;
+      }
+    } catch (err) {
+      if (note) note.innerHTML = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
+      btn.disabled = false;
+      return false;
+    }
+    const { to, body } = DesktopSms.parse(href);
+    let res = null, data = {};
+    try {
+      res = await this.auth.fetch('/api/phone-relay/texts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: to[0] || '', body, for_person_id: personId, purpose, magic_link_token_id: tokenId }) });
+      data = await res.json().catch(() => ({}));
+    } catch (err) { data = { error: err.message }; }
+    if (!res || !res.ok) {
+      this._closeContactSheet();
+      DesktopSms.open(href);
+      const why = this._cm('relay_fell_back', { error: data.error || (res ? `HTTP ${res.status}` : '?') });
+      setTimeout(() => {
+        const slot = document.querySelector('#fh-desktop-sms [data-ds-relay]');
+        if (slot) slot.insertAdjacentHTML('beforebegin', `<div style="color:#fbbf24; font-size:0.82rem; margin:6px 0;">⚠ ${this.escapeHtml(why)}</div>`);
+      }, 50);
+    }
+    return true;
   }
 
   async _sendClubText(btn) {

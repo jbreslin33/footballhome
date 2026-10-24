@@ -260,5 +260,5 @@
     show(a.getAttribute('href'));
   }, true);
 
-  window.DesktopSms = { open, isDesktop };
+  window.DesktopSms = { open, isDesktop, parse };
 })();
