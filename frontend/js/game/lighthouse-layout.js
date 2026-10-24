@@ -35,7 +35,12 @@ window.LIGHTHOUSE_LAYOUT = {
   // touchlines (traced, 60 m apart, 61.3°) run on straight until the south
   // goal line is 10 ft off the vendor fence — 99.9 m (109 yd) long, right
   // up against the main diamond's infield. Drawn in yellow.
-  oldPitch: { x: -11.5, z: -28.0, rotDeg: 61.3, length: 99.9, width: 60.0 },
+  // 10/24 (James: "make yellow 110 by 74 as that is current pitch ... keep
+  // kissing the baseball infield ... same orientation ... extend it towards
+  // rodeo"): was 99.9 x 60.0 m at (-11.5, -28.0). The infield touchline
+  // and the south (vendor-fence) goal line stay put; +7.67 m of width goes
+  // toward the rodeo, +0.68 m of length onto the north goal line.
+  oldPitch: { x: -8.30, z: -30.14, rotDeg: 61.3, length: 100.58, width: 67.67 },
   // FLOOD (removed 10/22): James's hand-drawn flood areas (cemetery-end
   // 6-yd box, wet strip by the yellow sideline) came out — the box floods
   // because cars compact it (stop driving there), and the lidar already
