@@ -255,14 +255,21 @@
     };
     const all = () => pitches.concat(boxes);
     const STATE_KEY = 'fh.lighthouse.planState.v1', DEFAULT_KEY = 'fh.lighthouse.planDefault.v1';
-    const LAYER_KEY = 'fh.lighthouse.designLayers.v1';
+    const LAYER_KEY = 'fh.lighthouse.designLayers.v2';   // v2: panel starts off
+    try {
+      const v1 = localStorage.getItem('fh.lighthouse.designLayers.v1');
+      if (v1 && !localStorage.getItem(LAYER_KEY)) {
+        localStorage.setItem(LAYER_KEY, JSON.stringify(Object.assign(JSON.parse(v1), { panel: false })));
+        localStorage.removeItem('fh.lighthouse.designLayers.v1');
+      }
+    } catch (e) { /* defaults */ }
     const snapshot = () => ({
       pitches: pitches.map((p) => ({ id: p.id, x: +p.x.toFixed(2), z: +p.z.toFixed(2), rot: +p.rot.toFixed(1), size: p.size.slice() })),
       boxes: boxes.map((b) => ({ id: b.id, name: b.name, size: b.size.slice(), x: +b.x.toFixed(2), z: +b.z.toFixed(2), rot: +b.rot.toFixed(1) })),
     });
     const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
     const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
-    const show = Object.assign(Object.fromEntries(LAYERS.map(([k]) => [k, true])), readJSON(LAYER_KEY) || {});
+    const show = Object.assign(Object.fromEntries(LAYERS.map(([k]) => [k, k !== 'panel'])), readJSON(LAYER_KEY) || {});
     // The built-in default: cyan for the 11v11, the 7v7 on its ⭐ BEST spot.
     const builtinDefault = { pitches: snapshot().pitches };   // leaves boxes alone
     // Put pitches (and, when given, boxes) where a snapshot says.
@@ -326,23 +333,21 @@
     const row = () => mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;');
 
     // ── the panel: only the SELECTED item, hideable (✕ or the 📋 pill) ──
-    const panel = mk('div', 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:block;' +
-      'background:rgba(10,14,20,.86);color:#f4f6fb;font:12px system-ui,sans-serif;border-radius:10px;' +
-      'padding:8px 10px;max-width:min(560px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow-y:auto;' +
+    // OFF by default and docked right under the camera buttons (James
+    // 10/24: "i hate the pop up ... we need it off to side" / "i don't
+    // think we even need anything on it"): the field itself carries size,
+    // turn and problems; the 📋 PANEL pill opens this for typed sizes,
+    // spots and defaults.
+    const panel = mk('div', 'position:fixed;right:8px;top:286px;z-index:20;display:none;width:280px;' +
+      'background:rgba(10,14,20,.86);color:#f4f6fb;font:11px system-ui,sans-serif;border-radius:10px;' +
+      'padding:6px 8px;max-width:calc(100vw - 16px);max-height:calc(100vh - 294px);overflow-y:auto;' +
       'box-sizing:border-box;');
     document.body.appendChild(panel);
-    // Hidden panel leaves a tab in its place (James 10/24: "i hid it now
-    // don't know how to get it back").
-    const showBtn = mk('button', 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:none;' +
-      'min-width:0;min-height:0;padding:6px 14px;border-radius:14px;border:2px solid #ffd24d;' +
-      'background:rgba(10,14,20,.86);color:#ffd24d;font:700 12px system-ui,sans-serif;cursor:pointer;', '📋 SHOW PANEL');
-    document.body.appendChild(showBtn);
     const head = mk('div', 'display:flex;align-items:center;gap:8px;');
     const syncEl = mk('div', 'flex:1;min-width:0;font-size:11px;');
     const hideBtn = mk('button', pill + 'padding:2px 9px;', '✕ hide');
     hideBtn.title = 'Hide this panel (📋 PANEL pill brings it back)';
     tap(hideBtn, () => setLayer('panel', false));
-    tap(showBtn, () => setLayer('panel', true));
     head.append(syncEl, hideBtn);
     panel.appendChild(head);
     const setSync = (msg, ok) => { syncEl.textContent = msg; syncEl.style.color = ok ? '#7dff9a' : '#ffb000'; };
@@ -454,13 +459,7 @@
       }
       if (p.kind === 'box') {
         const del = mk('button', pill + 'color:#ff8a94;', '🗑 DELETE');
-        tap(del, () => {
-          boxes.splice(boxes.indexOf(p), 1);
-          if (p.g) p.g.parent.remove(p.g);
-          select(pitches[0]);
-          buildPills();
-          update();
-        });
+        tap(del, () => removeBox(p));
         r3.appendChild(del);
       } else {
         // ⭐ BEST: snap to the driest legal spot of its size (data.ranges).
@@ -484,6 +483,13 @@
       paintSpots();
     }
     const turn = (d) => { setRot(sel, sel.rot + d); update(); };
+    function removeBox(b) {
+      boxes.splice(boxes.indexOf(b), 1);
+      if (b.g) b.g.parent.remove(b.g);
+      select(pitches[0]);
+      buildPills();
+      update();
+    }
 
     // SPOTS (James: "click button to reset it there. allow for saving a
     // spot and delete a spot and give it a name"): built-in spots from
@@ -616,8 +622,6 @@
     });
     addRow.append(addName, addBtn, copyBtn, setDefBtn, resetBtn);
     panel.appendChild(addRow);
-    panel.appendChild(mk('div', 'opacity:.7;margin-top:6px;font-size:11px;',
-      'Drag a pitch or box to move it · drag the ◯ on its end to turn it · drag a ■ corner to resize · [ ] turn 1°'));
 
     // Outline (4 strips + halfway) and a faint fill, in a group per pitch
     // turned like field.js's boxes, so a drag only moves the group.
@@ -848,18 +852,47 @@
       pillList.innerHTML = '';
       for (const k in pills) delete pills[k];
       for (const p of all()) {
-        const b = mk('button', itemPill);
+        const b = mk('button', itemPill + 'flex:1;');
         tap(b, () => {
           if (!on) return;
           select(p);
           flyTo(p);
         });
         pills[p.id] = b;
-        pillList.appendChild(b);
+        const line = mk('div', 'display:flex;gap:4px;align-items:center;');
+        line.appendChild(b);
+        if (p.kind === 'box') {
+          const x = mk('button', itemPill + 'border-color:#ff6b78;color:#ff8a94;padding:4px 8px;flex:none;', '✕');
+          x.title = 'Delete "' + p.name + '"';
+          tap(x, () => removeBox(p));
+          line.appendChild(x);
+        }
+        pillList.appendChild(line);
         paintPill(p);
       }
     }
-    pillBox.appendChild(pillList);
+    // Every HUD hides (James 10/24: "every hud needs to have a hide mode
+    // right?"): ▾ collapses the item pills and the layer pills, ✕ hides
+    // the panel, ◐ HUD (bottom left) hides the whole HUD but itself.
+    const fold = (key, text, body) => {
+      const h = mk('button', 'min-width:0;min-height:0;padding:2px 8px;border:0;border-radius:10px;align-self:flex-start;' +
+        'background:rgba(10,14,20,.72);color:#ffd24d;font:700 10px system-ui,sans-serif;cursor:pointer;');
+      const paintFold = () => {
+        h.textContent = (show[key] === false ? '▸ ' : '▾ ') + text;
+        body.style.display = show[key] === false ? 'none' : '';
+      };
+      tap(h, () => { show[key] = show[key] === false; writeJSON(LAYER_KEY, show); paintFold(); });
+      paintFold();
+      return h;
+    };
+    const itemsBody = mk('div', 'display:flex;flex-direction:column;gap:6px;');
+    pillBox.appendChild(fold('ui_items', 'PITCHES & BOXES', itemsBody));
+    pillBox.appendChild(itemsBody);
+    itemsBody.appendChild(pillList);
+    const addPill = mk('button', itemPill + 'border-color:#ffa630;border-style:dashed;', '➕ PRACTICE BOX');
+    addPill.title = 'Drop a 40 × 30 yd box where the camera looks';
+    tap(addPill, () => addBox());
+    itemsBody.appendChild(addPill);
     const layerBox = mk('div', 'display:flex;flex-wrap:wrap;gap:4px;padding:6px;border-radius:12px;' +
       'background:rgba(10,14,20,.72);');
     const layerPills = {};
@@ -884,14 +917,33 @@
       const b = mk('button', lp + 'background:rgba(255,255,255,.12);color:#f4f6fb;', t);
       tap(b, () => {
         // ALL OFF keeps the pitches, boxes and handles: the things being designed.
-        for (const [k] of LAYERS) show[k] = v || ['pitches', 'boxes', 'handles', 'problems'].includes(k);
+        for (const [k] of LAYERS) if (k !== 'panel') show[k] = v || ['pitches', 'boxes', 'handles', 'problems'].includes(k);
         writeJSON(LAYER_KEY, show);
         applyLayers();
       });
       layerBox.appendChild(b);
     }
+    pillBox.appendChild(fold('ui_layers', 'SHOW / HIDE', layerBox));
     pillBox.appendChild(layerBox);
     document.body.appendChild(pillBox);
+    const HUD_IDS = ['mode-bar', 'back', 'btn-cam', 'btn-zoom-in', 'btn-zoom-out', 'btn-follow'];
+    const hudBtn = mk('button', 'position:fixed;left:8px;bottom:calc(env(safe-area-inset-bottom, 0px) + 8px);z-index:30;' +
+      'display:none;min-width:0;min-height:0;padding:5px 11px;border-radius:14px;border:2px solid #ffd24d;' +
+      'background:rgba(10,14,20,.8);color:#ffd24d;font:700 11px system-ui,sans-serif;cursor:pointer;');
+    document.body.appendChild(hudBtn);
+    function applyHud() {
+      const hide = on && show.ui_hud === false;
+      hudBtn.style.display = on ? 'block' : 'none';
+      hudBtn.textContent = hide ? '◑ SHOW HUD' : '◐ HUD';
+      hudBtn.title = hide ? 'Bring the controls back' : 'Hide every control — just the field';
+      pillBox.style.display = on && !hide ? 'flex' : 'none';
+      panel.style.display = on && !hide && show.panel ? 'block' : 'none';
+      for (const id of HUD_IDS) {
+        const el = document.getElementById(id);
+        if (el) el.style.visibility = hide ? 'hidden' : '';
+      }
+    }
+    tap(hudBtn, () => { show.ui_hud = show.ui_hud === false; writeJSON(LAYER_KEY, show); applyHud(); });
     function setLayer(k, v) {
       show[k] = !!v;
       writeJSON(LAYER_KEY, show);
@@ -903,8 +955,7 @@
       for (const [k] of LAYERS) paintLayerPill(k);
       if (!on) return;
       const f = renderer.field;
-      panel.style.display = show.panel ? 'block' : 'none';
-      showBtn.style.display = show.panel ? 'none' : 'block';
+      applyHud();
       for (const p of all()) if (p.g) p.g.visible = visibleOf(p);
       for (const p of all()) if (p.cells) p.cells.visible = show.water;
       if (f) {
@@ -958,7 +1009,7 @@
       for (const [k, v] of [['L', p.size[0]], ['W', p.size[1]], ['A', +p.rot.toFixed(1)]])
         if (inputs[k] && document.activeElement !== inputs[k]) inputs[k].value = v;
       if (!ev) return;
-      const w = ev.w, pct = (k) => (100 * w[k] / w.n).toFixed(1) + '%';
+      const w = ev.w;
       const why = ev.ok ? '<span style="color:#5f6">✓ clear of everything</span>'
         : !show.problems ? '<span style="color:#ff6b78">✗ ' + ev.off.length + ' problem' + (ev.off.length > 1 ? 's' : '') +
             '</span> <span style="opacity:.6">(⚠ PROBLEMS pill to show)</span>'
@@ -970,10 +1021,8 @@
               : 'must not touch — it does') + '</span>').join('');
       detail.innerHTML = '<b>▶ ' + (p.kind === 'box' ? '🟧 ' : '📐 ') + title(p) + ' ' + p.size[0] + '×' + p.size[1] +
         ' yd</b> · ' + p.rot.toFixed(0) + '° · ' +
-        (w.pct != null ? 'dry <b>' + w.pct.toFixed(0) + '%</b> · '
-          : (ev.toPitch != null ? '↔ 11v11 <b>' + (ev.toPitch <= 0 ? 'on it' : fmt(ev.toPitch)) + '</b> · '
-            : '<span style="opacity:.6">dry % only for swept sizes</span> · ')) +
-        'pond ' + pct('pond') + ', runoff ' + pct('flow') + ', flat ' + pct('flat') +
+        (w.pct != null ? 'dry <b>' + w.pct.toFixed(0) + '%</b>'
+          : (ev.toPitch != null ? '↔ 11v11 <b>' + (ev.toPitch <= 0 ? 'on it' : fmt(ev.toPitch)) + '</b>' : '')) +
         (ev.infield != null ? '<br><span style="opacity:.85">⚾ main diamond infield: ' +
           (ev.infield <= 0 ? 'overlapping' : fmt(ev.infield) + ' away') + '</span>' : '') + '<br>' + why;
     }
@@ -1163,7 +1212,6 @@
       wantOn = !!v;
       if (!built) return;
       on = wantOn;
-      pillBox.style.display = on ? 'flex' : 'none';
       // Sit just under the mode bar, which wraps on a phone.
       const bar = document.getElementById('mode-bar');
       if (on && bar) {
@@ -1174,8 +1222,7 @@
       drag = null;
       if (on) applyLayers();
       else {
-        panel.style.display = 'none';
-        showBtn.style.display = 'none';
+        applyHud();
         for (const p of all()) if (p.g) p.g.visible = false;
         resetLayers();
         paintGap();
