@@ -643,18 +643,23 @@
         m.renderOrder = 61;
         g.add(m);
       }
-      // Big name on the grass.
+      // Big name on the grass, its size in yards under it (James 10/24:
+      // "when we resize pitch it needs to say size ... on the pitch in
+      // yards") — rebuilt on every size change.
       const cv = document.createElement('canvas');
-      cv.width = 512; cv.height = 128;
+      cv.width = 512; cv.height = 224;
       const c2 = cv.getContext('2d');
-      const name = title(p);
-      c2.font = 'bold 96px sans-serif';
-      const fs = Math.min(96, Math.floor(96 * 480 / Math.max(1, c2.measureText(name).width)));
-      c2.font = 'bold ' + fs + 'px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
-      c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(name, 256, 64);
-      c2.fillStyle = p.kind === 'box' ? '#ffd29a' : '#ffffff'; c2.fillText(name, 256, 64);
-      const lw = Math.min(W * 0.8, L * 0.45 * 4);
-      const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, lw / 4),
+      const text = (t, max, y, color) => {
+        c2.font = 'bold ' + max + 'px sans-serif';
+        const fs = Math.min(max, Math.floor(max * 480 / Math.max(1, c2.measureText(t).width)));
+        c2.font = 'bold ' + fs + 'px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+        c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(t, 256, y);
+        c2.fillStyle = color; c2.fillText(t, 256, y);
+      };
+      text(title(p), 96, 66, p.kind === 'box' ? '#ffd29a' : '#ffffff');
+      text(p.size[0] + ' × ' + p.size[1] + ' yd', 76, 172, '#ffd24d');
+      const lw = Math.min(W * 0.8, L * 0.9);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, lw * 224 / 512),
         new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
           depthWrite: false, depthTest: false }));
       lab.rotation.x = -Math.PI / 2;
