@@ -77,9 +77,12 @@ window.LIGHTHOUSE_LAYOUT = {
   // outlines, which put the infields in the wrong spots.
   diamonds: [
     { name: 'main (baseball)', home: [-68.5, 29.5], bearing: -45, base: 27.43, infield: 'grass', arc: 47 },
-    // East softball (home [85.9, 13.4]) and the small one by the playground
-    // (home [61, 66]): removed by the grounds crew (James 10/24) — only the
-    // main diamond stays.
+    // East softball + the small one by the playground: the grounds crew is
+    // removing them, but they're drawn until then (James 10/24: "need
+    // softball baseball infields to show but not be factor in fit") — no
+    // infield is a planner rule (pitch-planner.js INFO).
+    { name: 'east (softball)', home: [85.9, 13.4], bearing: -107, base: 18.29, infield: 'dirt', arc: 28 },
+    { name: 'by the playground (small)', home: [61, 66], bearing: -135, base: 18.29, infield: 'dirt', arc: 22 }, // CONFIRM orientation
   ],
 
   // Kids' fields — to be placed with James (size, spot, orientation).
