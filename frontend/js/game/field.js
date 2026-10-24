@@ -769,6 +769,30 @@
         side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
       pm.renderOrder = 31;
       pm.visible = false;   // DESIGN only (setOldPitch) — James: not in GAME
+      // Its size in yards on the grass (James 10/24: "can we show yellow
+      // pitch dimensions?"), just outside a touchline so it never sits on
+      // a designed pitch's own label.
+      const cv = document.createElement('canvas');
+      cv.width = 1024; cv.height = 128;
+      const c2 = cv.getContext('2d');
+      const t = 'TODAY\'S PITCH  ' + (o.length / 0.9144).toFixed(1) + ' × ' + (o.width / 0.9144).toFixed(1) + ' yd';
+      c2.font = 'bold 84px sans-serif';
+      const fs = Math.min(84, Math.floor(84 * 990 / Math.max(1, c2.measureText(t).width)));
+      c2.font = 'bold ' + fs + 'px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(t, 512, 64);
+      c2.fillStyle = '#ffd400'; c2.fillText(t, 512, 64);
+      const lw = Math.min(48, l * 1.2);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, lw / 8),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
+          depthWrite: false, depthTest: false }));
+      lab.rotation.x = -Math.PI / 2;
+      lab.position.z = w + lw / 16 + 1.5;   // reads along the touchline, outside it
+      lab.renderOrder = 62;
+      const labG = new THREE.Group();   // pm's geometry is in site metres
+      labG.position.set(o.x, 0.5, o.z);
+      labG.rotation.y = -a;
+      labG.add(lab);
+      pm.add(labG);
       site.add(pm);
       oldPitchMesh = pm;
     }
