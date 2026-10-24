@@ -84,11 +84,11 @@ Fixed64 pointSegmentDistSq(const Vec2& p, const Vec2& a, const Vec2& b) {
     return math::lengthSquared(d);
 }
 
-// G4.51: how far p runs toward `at` in t seconds — the World's locomotion
-// law from his current speed along that line (core::Locomotion::reach),
-// not top speed from a standing start. lag_t = locomotion.lag(t).
-Fixed64 runToward(const World& world, const core::PlayerState& p, const Vec2& at,
-                  Fixed64 t, Fixed64 lag_t) {
+// G4.51: how far he runs toward `at` in t seconds — his own body's law
+// (core::Body::reach, G4.52) from his current speed along that line, not
+// top speed from a standing start.
+Fixed64 runToward(const World& world, SlotIndex slot, const Vec2& at, Fixed64 t) {
+    const core::PlayerState& p = world.player(slot);
     const Vec2 d{at.x - p.pos.x, at.y - p.pos.y};
     // Out of reach even at full speed the whole way: skip the sqrt.
     const Fixed64 best = p.max_speed * t;
@@ -96,7 +96,7 @@ Fixed64 runToward(const World& world, const core::PlayerState& p, const Vec2& at
         return best;
     const Fixed64 len = math::length(d);
     const Fixed64 v0 = len.raw > 0 ? (p.vel.x * d.x + p.vel.y * d.y) / len : Fixed64::zero();
-    return world.locomotion().reachLag(v0, p.max_speed, t, lag_t);
+    return world.body(slot).reach(v0, p.max_speed, t);
 }
 
 // Earliest-reach interception of a rolling free ball (G4.14): walk the
@@ -105,9 +105,9 @@ Fixed64 runToward(const World& world, const core::PlayerState& p, const Vec2& at
 // the ball's current spot is always a step behind; G4.3's naive fixed
 // lead aimed PAST the catchable point and measured worse at every level
 // (negative result recorded) — the bounded scan can do neither.
-Vec2 interceptPoint(const World& world, const core::PlayerState& me, const Vec3& ball_pos,
+Vec2 interceptPoint(const World& world, SlotIndex me, const Vec3& ball_pos,
                     const Vec3& ball_vel) {
-    const Vec3& my_pos = me.pos;
+    const Vec3& my_pos = world.player(me).pos;
     Vec2 pos{ball_pos.x, ball_pos.y};
     Vec2 vel{ball_vel.x, ball_vel.y};
     Fixed64 t = Fixed64::zero();
@@ -121,7 +121,7 @@ Vec2 interceptPoint(const World& world, const core::PlayerState& me, const Vec3&
         }
         t += stride;
         const Vec2 d{pos.x - my_pos.x, pos.y - my_pos.y};
-        const Fixed64 run = runToward(world, me, pos, t, world.locomotion().lag(t)) + Fixed64::one();
+        const Fixed64 run = runToward(world, me, pos, t) + Fixed64::one();
         if (math::lengthSquared(d) <= run * run) return pos;
     }
     // Not reachable inside the scan: chase where it is, as before.
@@ -189,18 +189,17 @@ bool passSafe(const World& world, const TeamSetup& setup, SlotIndex passer,
         t += core::kTickDt * Fixed64::fromInt(3);
         const Fixed64 react_t =
             t > reaction ? t - reaction : Fixed64::zero();
-        const Fixed64 lag_t = world.locomotion().lag(react_t);
         for (SlotIndex j = 0; j < world.playerCount(); ++j) {
             if (setup.team_of_slot[j] == setup.team_of_slot[passer])
                 continue;
             const auto& o = world.player(j);
             const Vec2 d{o.pos.x - pos.x, o.pos.y - pos.y};
-            const Fixed64 run = runToward(world, o, pos, react_t, lag_t) + reach;
+            const Fixed64 run = runToward(world, j, pos, react_t) + reach;
             if (math::lengthSquared(d) <= run * run) return false;
         }
         const auto& r = world.player(receiver);
         const Vec2 dr{r.pos.x - pos.x, r.pos.y - pos.y};
-        const Fixed64 rrun = runToward(world, r, pos, react_t, lag_t) + reach;
+        const Fixed64 rrun = runToward(world, receiver, pos, react_t) + reach;
         if (math::lengthSquared(dr) <= rrun * rrun) return true;
         if (travelled >= len) return true;  // arrived at the receiver
     }
@@ -370,7 +369,7 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
                 if (!own_end || math::fx_abs(pos.y) > box_y) continue;
             }
             const Fixed64 rt = t > react[i] ? t - react[i] : Fixed64::zero();
-            const Fixed64 run = runToward(world, p, Vec2{pos.x, pos.y}, rt, world.locomotion().lag(rt)) +
+            const Fixed64 run = runToward(world, i, Vec2{pos.x, pos.y}, rt) +
                                 (gk ? core::kKeeperReach : core::kBallControlRadius);
             if (distSq(p.pos, pos) <= run * run) {
                 f.tick[i] = static_cast<std::int16_t>(k);
@@ -911,7 +910,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             const auto& loco = world.locomotion();
             const Vec2 gap{anchor.x - me.pos.x, anchor.y - me.pos.y};
             const Fixed64 dist = math::length(gap);
-            const Fixed64 feet = runToward(world, me, anchor, arrive_t, loco.lag(arrive_t)) + core::kKeeperReach;
+            const Fixed64 feet = runToward(world, slot, anchor, arrive_t) + core::kKeeperReach;
             const Fixed64 air_t = Fixed64::fromInt(loco.diveAirTicks()) * core::kTickDt;
             if (dist > feet && arrive_t <= air_t && dist.raw > 0) {
                 out.move.move = Vec2{gap.x / dist, gap.y / dist};
@@ -1270,7 +1269,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 else if (!ball.owner &&
                     ball.pos.z < Fixed64::fromFraction(1, 2) &&
                     applies(slot, 20, world.tickCount() / 30))
-                    chase_to = interceptPoint(world, me, seen_ball, ball.vel);
+                    chase_to = interceptPoint(world, slot, seen_ball, ball.vel);
                 out.move.move = seek(me.pos, chase_to,
                                      Fixed64::fromFraction(1, 10));
                 // Own noise channel (G4.24): this roll used channel 7 —

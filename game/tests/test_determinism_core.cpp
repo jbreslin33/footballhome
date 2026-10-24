@@ -33,7 +33,8 @@ namespace {
 //   G4.8 2026-10-21 offside + shot error    0x2f7a4328ec4cc0b9
 //   G4.11 2026-10-21 graded + transitions   0x66874b880508cbe6
 //   G4.51 2026-10-24 locomotion law + dive  0x19531f520b02f94f
-constexpr std::uint64_t kGolden400TicksSeed42 = 0x19531f520b02f94fULL;
+//   G4.52 2026-10-24 per-player bodies      0x01a4b675f63d88f3
+constexpr std::uint64_t kGolden400TicksSeed42 = 0x01a4b675f63d88f3ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

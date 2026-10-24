@@ -113,15 +113,22 @@ struct PlayerAttributes {
     std::int16_t tackling = -1;      // tackle success
     std::int16_t anticipation = -1;  // perception delay
     std::int16_t decisions = -1;     // decision jitter
-    std::int16_t goalkeeping = -1;   // keeper reaction + fumbles
+    std::int16_t goalkeeping = -1;   // keeper reaction + fumbles + dive (G4.52)
+    // The body (G4.52): his own locomotion — core::Body via SkillSet::body.
+    std::int16_t acceleration = -1;  // τ: how fast he gets up to speed
+    std::int16_t deceleration = -1;  // braking limit
+    std::int16_t agility = -1;       // turning / cutting limit
+    std::int16_t dribbling = -1;     // top speed with the ball, as a share
 };
 
 // Wire / registry order (game_attributes.sort_order; PROTOCOL 0x37).
-inline constexpr int kAttributeCount = 8;
+// Append-only: the wire carries this order (0x37 is count-prefixed).
+inline constexpr int kAttributeCount = 12;
 inline std::int16_t* attributeAt(PlayerAttributes& a, int i) {
     std::int16_t* f[kAttributeCount] = {&a.pace, &a.passing, &a.shooting, &a.first_touch,
                                         &a.tackling, &a.anticipation, &a.decisions,
-                                        &a.goalkeeping};
+                                        &a.goalkeeping, &a.acceleration, &a.deceleration,
+                                        &a.agility, &a.dribbling};
     return i >= 0 && i < kAttributeCount ? f[i] : nullptr;
 }
 

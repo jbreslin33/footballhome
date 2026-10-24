@@ -1605,6 +1605,61 @@ propped up.
   backpedal and jockey; **1c** jog / run / sprint effort and real top
   speeds (pace still maps to 5.4-7.4 m/s).
 
+### 8.48 G4.52 — every player's own body; people are individual, the world is shared
+
+James: "all players should have different rates of acceleration and speed
+… with or without ball" / "we want to not use global dampings" / "use a
+bell curve?" / "we want everything individual based right? except the
+concepts that are team based" / "there is no team skill — maybe a tactic
+or style".
+
+- **The rule.** Numbers about PEOPLE are each player's own; numbers about
+  the WORLD (gravity, ball bounce/roll/skid, pitch, goal, the laws) are
+  shared; a TEAM has a tactic / style (game model demands, formation,
+  roles, team concepts) — never a skill. Team concepts are still played by
+  individuals at min(demand, his ability).
+- **`core::Body`** per slot (World::setBody, hashed): his τ (acceleration
+  1.5 / 1.2 / 0.9 s at 0 / 50 / 100), braking limit (deceleration 5 / 7 / 9
+  m/s²), turning limit (agility 4 / 6 / 8 m/s² — braking and turning are
+  now separate, split along his line of travel; G4.51 had one 7 m/s² cap),
+  top speed with the ball (dribbling 80 / 88 / 95% — so he also gets up to
+  speed slower with it) and dive launch (goalkeeping 3 / 4 / 5 m/s).
+  `BodySkill` classes read three DB points each (mig 679, owner `skill`);
+  G4.51's four shared `physics` rows are deleted. Only the dive's air and
+  ground time stay shared (the physics of a jump). The Brain reads each
+  man's own law (`runToward(world, slot, …)`).
+- **Attributes:** acceleration / deceleration / agility wired, `dribbling`
+  new (mig 679); engine order append-only, wire 0x37 grows to 12
+  (count-prefixed, so an 8-value frame from an old client still works).
+  The editor already lists every registry attribute.
+- **Who has what — the bell curve** (`game/scripts/draw_bodies.py`):
+  N(50, 12), seeded per (team, shirt, attribute), correlated the way
+  bodies are [FH estimates]: acceleration ρ 0.6 with his pace z inside his
+  team (measured 0.52), deceleration 0.5 / agility 0.4 with acceleration,
+  dribbling 0.5 with first touch; position shape (wide men quicker, CBs
+  slower to turn). 528 ratings drawn, source 'derived' — edits never
+  overwritten. Age not used (no age on game_demo_players).
+- Measured: ladder u10 14.0 / amateur 9.5 / world 3.5 (bands green);
+  real matchup (60) **+1.47 ± 0.27** (was +0.72), shots 42 / 28, clears
+  165 / 117, pass completion ~70%. The swing is random bodies against a
+  partly placeholder Ukies squad — margin means little until bodies are
+  rated. The calibration harness still plays identical 50-bodies per band.
+
+**Still shared that is about people — to individualize** (adds to §8.46):
+kick powers (8 / 14 / 24 m/s presets; `power` unwired), body size and
+mass in collisions (`strength` unwired), reaction time (0.2 s in pass
+safety and meet-the-pass; `reaction` unwired), jumping reach (`jumping_reach`
+unwired), tackle reach, steal radius and ticks, the 20 m/s control cap,
+keeper reach / hands bonus, dive air time. Pace still maps to 5.4-7.4 m/s
+at every level (step 1c).
+
+**Dissolve the band** (new step, after 1c): the level band (u10 … world)
+is a team-wide skill dial — every player starts from the same perception
+delay, kick error, tackle success, swarm and keeper numbers, attributes
+only bend it. Done right, a band only generates unrated players'
+attributes (the centre of each bell curve); swarm becomes his own
+`discipline` (unwired today).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

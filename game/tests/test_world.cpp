@@ -39,7 +39,7 @@ FH_TEST(world_integrates_exactly) {
     intent.move = Vec2{Fixed64::one(), Fixed64::zero()};  // full east
     w.setIntent(0, intent);
 
-    const fh::game::core::Locomotion loco;
+    const fh::game::core::Body loco;
     Vec2 v{};
     Fixed64 expected = Fixed64::zero();
     for (int t = 0; t < 90; ++t) {
@@ -86,7 +86,7 @@ FH_TEST(keeper_dive_flies_then_lands) {
     w.setAction(0, fh::game::core::Action::Dive);
     w.tick();
     const auto& loco = w.locomotion();
-    FH_EXPECT_EQ(w.player(0).vel.y.raw, loco.diveSpeed().raw);  // launched, not accelerating
+    FH_EXPECT_EQ(w.player(0).vel.y.raw, w.body(0).diveSpeed().raw);  // launched, not accelerating
     for (int t = 1; t < loco.diveAirTicks(); ++t) w.tick();
     FH_EXPECT_EQ(w.player(0).dive_ticks, 0);
     FH_EXPECT(w.player(0).recovery_ticks > 0);  // down on the turf

@@ -43,6 +43,12 @@ std::uint64_t canonicalHash(const World& world) {
         mix(h, world.isKeeper(i) ? 1u : 0u);
         mix(h, static_cast<std::uint64_t>(p.recovery_ticks));
         mix(h, static_cast<std::uint64_t>(p.dive_ticks));
+        const Body& body = world.body(i);   // G4.52: his own locomotion
+        mixFixed(h, body.tau());
+        mixFixed(h, body.brake());
+        mixFixed(h, body.turn());
+        mixFixed(h, body.dribble());
+        mixFixed(h, body.diveSpeed());
         mixFixed(h, p.max_speed);
     }
     // Ball joined the state surface in G1.1 (golden re-locked then, once).

@@ -102,6 +102,7 @@ void GameServer::applyRosters() {
                                          ? skills_.speedCms(p.attrs.pace)
                                          : p.max_speed_cms;
             world_.setMaxSpeed(i, Fixed64::fromFraction(cms, 100));
+            world_.setBody(i, skills_.body(p.attrs));   // G4.52: his own body
         } else {
             slot_names_[i] =
                 (home ? "Home " : "Away ") + std::to_string(k + 1);
@@ -380,6 +381,7 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             const std::int32_t cms = a.pace >= 0 ? skills_.speedCms(a.pace)
                                                  : team.players[k].max_speed_cms;
             world_.setMaxSpeed(pa->slot, Fixed64::fromFraction(cms, 100));
+            world_.setBody(pa->slot, skills_.body(a));
             const core::LevelParams lv =
                 skills_.apply(world_.level(home ? 0 : 1), a);
             world_.setSlotLevel(pa->slot, lv);

@@ -107,9 +107,13 @@ public:
     void placeVelocity(SlotIndex slot, const math::Vec3& vel) { players_[slot].vel = vel; }
     void setTeam(SlotIndex slot, std::uint8_t team);
     void setKeeper(SlotIndex slot, bool keeper);
-    // G4.51: the locomotion law (DB numbers; default = mig 674's rows).
+    // G4.51: the shared dive timings (mig 678); G4.52: each slot's Body.
     void setLocomotion(const Locomotion& l) { loco_ = l; }
     const Locomotion& locomotion() const noexcept { return loco_; }
+    void setBody(SlotIndex slot, const Body& b) {
+        if (slot < bodies_.size()) bodies_[slot] = b;
+    }
+    const Body& body(SlotIndex slot) const { return bodies_[slot]; }
     void setMaxSpeed(SlotIndex slot, math::Fixed64 v) {
         if (slot < players_.size()) players_[slot].max_speed = v;
     }
@@ -180,6 +184,7 @@ private:
     std::vector<std::uint8_t> carry_m_;   // latched with the action (G4.48)
     std::vector<bool>        keeper_;
     Locomotion loco_;
+    std::vector<Body> bodies_;
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};
     Clock clock_;

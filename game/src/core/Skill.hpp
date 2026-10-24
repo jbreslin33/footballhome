@@ -16,6 +16,7 @@
 #pragma once
 
 #include "core/Levels.hpp"
+#include "core/Locomotion.hpp"
 #include "core/ModelParams.hpp"
 
 #include <memory>
@@ -152,13 +153,73 @@ public:
     }
 };
 
+// A body number (G4.52): one physical quantity read off the rating by
+// three DB points — at0 / at50 / at100 in milli-units — straight lines
+// between. Unrated (-1) = at50, a 50-rated body. Not band noise: apply()
+// leaves the level alone; SkillSet::body() reads value().
+class BodySkill : public Skill {
+public:
+    BodySkill(std::string code, const char* param, std::int64_t at0, std::int64_t at50,
+              std::int64_t at100)
+        : Skill(std::move(code)), param_(param), def_{at0, at50, at100}, pts_{at0, at50, at100} {}
+    void configure(const ModelParams& p) override {
+        pts_[0] = p.milli(key((param_ + "_at0").c_str()), def_[0]);
+        pts_[1] = p.milli(key((param_ + "_at50").c_str()), def_[1]);
+        pts_[2] = p.milli(key((param_ + "_at100").c_str()), def_[2]);
+    }
+    void apply(LevelParams&, const LevelParams&, int) const override {}
+    math::Fixed64 value(int rating) const {
+        if (rating < 0) rating = 50;
+        if (rating > 100) rating = 100;
+        const std::int64_t lo = rating <= 50 ? pts_[0] : pts_[1];
+        const std::int64_t hi = rating <= 50 ? pts_[1] : pts_[2];
+        const std::int64_t r = rating <= 50 ? rating : rating - 50;
+        const std::int64_t milli = lo + (hi - lo) * r / 50;
+        return math::Fixed64::fromFraction(static_cast<std::int32_t>(milli), 1000);
+    }
+
+private:
+    std::string param_;
+    std::int64_t def_[3], pts_[3];
+};
+
+// τ of his sprint law: 1.5 s at 0, 1.2 at 50, 0.9 at 100.
+class Acceleration : public BodySkill {
+public:
+    Acceleration() : BodySkill("acceleration", "tau_s", 1500, 1200, 900) {}
+};
+// His braking limit: 5 / 7 / 9 m/s².
+class Deceleration : public BodySkill {
+public:
+    Deceleration() : BodySkill("deceleration", "brake_mps2", 5000, 7000, 9000) {}
+};
+// His turning / cutting limit (sideways acceleration): 4 / 6 / 8 m/s².
+class Agility : public BodySkill {
+public:
+    Agility() : BodySkill("agility", "turn_mps2", 4000, 6000, 8000) {}
+};
+// His top speed with the ball, as a share of his own: 80 / 88 / 95 %.
+class Dribbling : public BodySkill {
+public:
+    Dribbling() : BodySkill("dribbling", "share", 800, 880, 950) {}
+};
+
 class Goalkeeping : public ErrorSkill {
 public:
     Goalkeeping() : ErrorSkill("goalkeeping") {}
+    void configure(const ModelParams& p) override {
+        ErrorSkill::configure(p);
+        dive_.configure(p);
+    }
     void apply(LevelParams& o, const LevelParams& b, int r) const override {
         o.keeper_reaction_ticks = err(b.keeper_reaction_ticks, r);
         o.keeper_fumble_pct = err(b.keeper_fumble_pct, r);
     }
+    // His dive's launch speed (G4.52): 3 / 4 / 5 m/s.
+    math::Fixed64 diveSpeed(int rating) const { return dive_.value(rating); }
+
+private:
+    BodySkill dive_{"goalkeeping", "dive_mps", 3000, 4000, 5000};
 };
 
 // The registry, in game_attributes order (= PlayerAttributes / wire 0x37).
@@ -173,7 +234,16 @@ public:
         skills_.emplace_back(new Tackling());
         skills_.emplace_back(new Anticipation());
         skills_.emplace_back(new Decisions());
-        skills_.emplace_back(new Goalkeeping());
+        gk_ = new Goalkeeping();
+        skills_.emplace_back(gk_);
+        accel_ = new Acceleration();
+        decel_ = new Deceleration();
+        agility_ = new Agility();
+        dribbling_ = new Dribbling();
+        skills_.emplace_back(accel_);
+        skills_.emplace_back(decel_);
+        skills_.emplace_back(agility_);
+        skills_.emplace_back(dribbling_);
         for (auto& s : skills_) s->configure(p);
     }
     // The band bent by one player's attributes; all -1 = the band itself.
@@ -187,11 +257,19 @@ public:
         return out;
     }
     std::int32_t speedCms(std::int16_t pace) const { return pace_->speedCms(pace); }
+    // His own body (G4.52): unrated attributes are a 50-rated body.
+    Body body(const PlayerAttributes& a) const {
+        return Body(accel_->value(a.acceleration), decel_->value(a.deceleration),
+                    agility_->value(a.agility), dribbling_->value(a.dribbling),
+                    gk_->diveSpeed(a.goalkeeping));
+    }
     const std::vector<std::unique_ptr<Skill>>& skills() const { return skills_; }
 
 private:
     std::vector<std::unique_ptr<Skill>> skills_;
     Pace* pace_ = nullptr;
+    Goalkeeping* gk_ = nullptr;
+    BodySkill *accel_ = nullptr, *decel_ = nullptr, *agility_ = nullptr, *dribbling_ = nullptr;
 };
 
 // Back-compat helpers: the default (DB-less) skill set.

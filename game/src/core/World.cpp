@@ -23,6 +23,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
       intents_(player_count),
       actions_(player_count, Action::None),
       carry_m_(player_count, 0),
+      bodies_(player_count),
       keeper_(player_count, false),
       half_x_{pitch_half_x},
       half_y_{pitch_half_y},
@@ -93,12 +94,13 @@ void World::tickPlayers() {
         // Locomotion (G4.51): velocity relaxes toward the wanted one
         // (Locomotion.hpp) — no more 0 → top speed in a tick, no free
         // reversals. A carrier's top speed is the dribble share of his own.
-        const Fixed64 top = (ball_.owner && *ball_.owner == i) ? p.max_speed * loco_.dribble()
+        const Body& body = bodies_[i];
+        const Fixed64 top = (ball_.owner && *ball_.owner == i) ? p.max_speed * body.dribble()
                                                                : p.max_speed;
         // In the air from a dive he goes where he launched (G4.51).
         const bool flying = p.dive_ticks > 0;
         const Vec2 v = flying ? Vec2{p.vel.x, p.vel.y}
-                              : loco_.step(Vec2{p.vel.x, p.vel.y},
+                              : body.step(Vec2{p.vel.x, p.vel.y},
                                            Vec2{desire.x * top, desire.y * top}, kTickDt);
         p.vel = Vec3{v.x, v.y, Fixed64::zero()};
         p.pos += p.vel * kTickDt;
@@ -179,7 +181,8 @@ void World::tickDives() {
         const Vec2 desire = intents_[i].move;
         if (desire.x.raw == 0 && desire.y.raw == 0) continue;
         const Vec2 dir = math::normalized(desire);
-        p.vel = Vec3{dir.x * loco_.diveSpeed(), dir.y * loco_.diveSpeed(), Fixed64::zero()};
+        const Fixed64 dive = bodies_[i].diveSpeed();
+        p.vel = Vec3{dir.x * dive, dir.y * dive, Fixed64::zero()};
         p.dive_ticks = loco_.diveAirTicks();
         p.face = dir;
     }

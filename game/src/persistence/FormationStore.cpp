@@ -149,6 +149,10 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
                 else if (code == "anticipation") a.anticipation = v;
                 else if (code == "decisions") a.decisions = v;
                 else if (code == "goalkeeping") a.goalkeeping = v;
+                else if (code == "acceleration") a.acceleration = v;
+                else if (code == "deceleration") a.deceleration = v;
+                else if (code == "agility") a.agility = v;
+                else if (code == "dribbling") a.dribbling = v;
             }
         }
         // Mig 639 knowledge overrides, by concept NAME.
