@@ -52,6 +52,7 @@
   const YD = 0.9144, FT = 0.3048, D2R = Math.PI / 180;
   const GAP = 10 * YD;                       // between the two pitches
   const NEAR = 15 * FT;                      // legal but close: marked green
+  const LAB_W = 3.6;                         // mark label width, in handle sizes
   // Rules skipped by the planner — never a problem or a mark (James 10/24:
   // "shut off all baseball and softball infields as we can visually see
   // them" / "all but 1 is getting removed by grounds crew"): the main
@@ -269,7 +270,14 @@
       } catch (e) { /* private window: boxes last until reload */ }
     };
     const all = () => pitches.concat(boxes);
-    const STATE_KEY = 'fh.lighthouse.planState.v1', DEFAULT_KEY = 'fh.lighthouse.planDefault.v1';
+    const STATE_KEY = 'fh.lighthouse.planState.v1';
+    // Fresh start (James 10/24: "get rid of all old saves", migration 681):
+    // the old per-device default and spots copies go too, so none of them
+    // can be uploaded back.
+    try {
+      localStorage.removeItem('fh.lighthouse.planDefault.v1');
+      localStorage.removeItem('fh.lighthouse.planSpots.v1');
+    } catch (e) { /* private window */ }
     const LAYER_KEY = 'fh.lighthouse.designLayers.v2';   // v2: panel starts off
     try {
       const v1 = localStorage.getItem('fh.lighthouse.designLayers.v1');
@@ -539,7 +547,6 @@
     tap(setDefBtn, () => {
       const st = snapshot();
       dbDefault = st;
-      writeJSON(DEFAULT_KEY, st);
       pushLayout('default', st).then((ok) => {
         setDefBtn.textContent = ok ? '✓ DEFAULT SET' : '✓ SET (this device)';
         setTimeout(() => { setDefBtn.textContent = '📌 SET DEFAULT'; }, 1500);
@@ -547,7 +554,7 @@
     });
     const resetBtn = mk('button', pill, '↺ DEFAULT');
     tap(resetBtn, () => {
-      restore(dbDefault || readJSON(DEFAULT_KEY) || builtinDefault);
+      restore(dbDefault || builtinDefault);
       for (const p of all()) rebuild(p);
       select(pitches[0]);
       buildPills();
@@ -596,7 +603,7 @@
       };
       text(title(p), 96, 66, p.kind === 'box' ? '#ffd29a' : '#ffffff');
       text(p.size[0] + ' × ' + p.size[1] + ' yd', 76, 172, '#ffd24d');
-      const lw = Math.min(W * 0.8, L * 0.9);
+      const lw = Math.min(W * 0.55, L * 0.6);   // smaller (James 10/24: "make writing smaller")
       const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, lw * 224 / 512),
         new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
           depthWrite: false, depthTest: false }));
@@ -1092,6 +1099,7 @@
         // Overlapping: label sits at the 7v7's centre.
         ruler.lab.position.set(B.x, 0.75, B.z);
       }
+      ruler.lab.scale.setScalar(LAB_W * hSize() / 16);
       ruler.lab.visible = vis;
     }
 
@@ -1134,6 +1142,21 @@
           if (p === sel) for (const o of p.ev.near) list.push([p, o]);
         }
       const hs = hSize();
+      // Labels never sit on each other (James 10/24: the village fence
+      // corner was cluttered): each is an axis-aligned box in site metres
+      // (text runs along site x); one that would hit a placed label slides
+      // along z, 1, −1, 2, −2 … label heights, to the first free spot.
+      const lw = LAB_W * hs, lh = lw / 4, placed = [];
+      const ruler0 = ruler && ruler.lab.visible ? ruler.lab.position : null;
+      if (ruler0) placed.push([ruler0.x, ruler0.z]);
+      const free = (x, z) => placed.every(([px, pz]) => Math.abs(px - x) > lw * 1.02 || Math.abs(pz - z) > lh * 1.1);
+      const spot = (x, z) => {
+        for (let i = 0; i < 13; i++) {
+          const dz = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * lh * 1.15;
+          if (free(x, z + dz)) return [x, z + dz];
+        }
+        return [x, z];
+      };
       let k = 0, n = 0, last = null;
       for (const [p, o] of list) {
         if (p !== last) { last = p; n = 0; }
@@ -1171,8 +1194,10 @@
         m.dot.position.set(w.b[0], 0.76, w.b[1]);
         m.dot.scale.setScalar(Math.max(1, hs * 0.6));
         m.lab.visible = true;
-        m.lab.position.set(mx, 0.8, mz + hs * 0.6);
-        m.lab.scale.set(hs * 6, hs * 6, 1);
+        const [lx, lz] = spot(mx, mz + lh * 0.7);
+        placed.push([lx, lz]);
+        m.lab.position.set(lx, 0.8, lz);
+        m.lab.scale.set(lw, lw, 1);
       }
       for (; k < probs.length; k++) probs[k].bar.visible = probs[k].dot.visible = probs[k].lab.visible = false;
     }
@@ -1224,10 +1249,6 @@
       }
       if (db) {
         dbDefault = db.default ? fromItems(db.default.items) : null;
-        if (!dbDefault && readJSON(DEFAULT_KEY) && canWrite) {
-          dbDefault = readJSON(DEFAULT_KEY);
-          pushLayout('default', dbDefault);
-        }
         dbSaves = db.saves || [];
         paintSaves();
       }
@@ -1266,7 +1287,7 @@
     // No club layout yet (or offline): this device's last layout, else
     // its default.
     function localStart() {
-      const st = readJSON(STATE_KEY) || readJSON(DEFAULT_KEY);
+      const st = readJSON(STATE_KEY);
       if (st) restore({ pitches: st.pitches });
     }
     start();

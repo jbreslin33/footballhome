@@ -22,8 +22,6 @@ private:
 
     Response handleGet(const Request& request);
     Response handlePutLayout(const Request& request);
-    Response handleAddSpot(const Request& request);
-    Response handleDeleteSpot(const Request& request);
     Response handleAddSave(const Request& request);
     Response handleDeleteSave(const Request& request);
 };
