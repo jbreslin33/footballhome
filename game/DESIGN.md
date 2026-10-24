@@ -1421,6 +1421,141 @@ players who have it, don't inflate the model.
   ball **−0.03 ± 0.17** (goals 1.20 − 1.23: fewer both ways). Each step is
   inside one SE — realism, not a tuning win.
 
+### 8.43 G4.48 — the aimed loft
+
+- The lofted kick had one power (12 m/s + 6 m/s rise): first bounce ~15 m
+  out, then ~45 m of skipping, so direct-ball capped itself at 30 m. A
+  LoftedKick now carries `carry_m` (Orders → `World::setAction`): power
+  from the drag-free flight law (first bounce at v²·2r/g, rise = r·v,
+  `kLoftLaunchRatio` ½ ≈ the chip's 27°), capped by the kicker's
+  `kick_range_m` (band u10 30 … world 60 m; passing 0 → 80%, 100 → 120%).
+  Direct-ball, over-the-top, keeper punts and clears drop the ball where the
+  receiver will be / inside the pitch (dropping a clear ON the wide channel
+  put ~300 balls a match into touch). Mig 671: direct-ball `max_m` 30 → 50.
+- **Grass skid** `kBounceSkid` 0.65: a bounce keeps 65% of forward speed
+  (without it a 40 m pass landed at 20 m/s and ran 40 m on).
+- fh-game-match grew the instruments that drove G4.49: every kick resolved
+  at the next owner by the passer's reason (to the man he picked / a mate /
+  lost / dead), goal anatomy by the assisting pass, escort attribution;
+  `GAME_PARAMS="owner.code.param=v,…"` A/Bs any param without the DB.
+- **u10 keeper dials** reaction 18 → 45 ticks, fumble 40 → 80%: without
+  them u10 (2.2) scored less than amateur (3.8) on the bands test. This is
+  a ladder fudge, not a sourced value — §8.46 step 3 undoes it.
+
+### 8.44 G4.49 — meet the pass (and the flight read)
+
+- The pass tally showed, while OUR pass travelled, every brain read the
+  free ball as THEIR ball: the receiver stood, forwards turned back; the
+  man the passer picked got 24%, the ball in behind 2%. `Brain::flightRead`
+  now simulates the ball's flight (air and ground, World's own bounce/skid/
+  roll) and finds where and when each player can first take it.
+- `meet-the-pass` (153, core, u10, mig 672) [Buckland ReceiveBall,
+  stateless; Coerver "come to the ball"]: our first man goes to meet it; if
+  we get there first the ball is still ours (attacking shape holds) and a
+  runner ahead of it keeps running. `intercept` (20) chases by the same read.
+- Measured (real matchup, 60 each, ± 1 SE):
+
+| Tree | Margin | Goals LH–Ukies |
+|---|---|---|
+| G4.47 (committed) | −0.32 ± 0.21 | 1.38–1.70 |
+| G4.48 + G4.49 | **−2.32 ± 0.22** | 1.02–3.33 |
+| meet-the-pass off | −0.57 ± 0.19 | 1.02–1.58 |
+| meet on, flight not "ours" | −0.92 ± 0.17 | 0.75–1.67 |
+| keep-running off | −1.97 ± 0.22 | 0.63–2.60 |
+| aimed loft off (World) | −3.80 ± 0.35 | 1.27–5.07 |
+| flight-read intercept off | −2.83 ± 0.31 | 1.25–4.08 |
+
+  The picked man's share barely moves (43.3 → 43.6%); the Ukies score
+  1.6 a match off ordinary passes (0.38 without it). Treating our ball in
+  flight as ours sends everybody forward — there is no rest defence
+  (curriculum 70, queued). **Shipped ON, imbalance and all** (James,
+  10/24: "it's ok to be unbalanced while we continue to calibrate"):
+  meeting the pass is right; the missing rest defence is the problem.
+- `match.sh 'home:!meet-the-pass'` does NOTHING for a core concept (no
+  ability rows to drop — it reports "dropped (0)"). A/B core concepts in
+  code or by a demand override, never by `!`.
+
+### 8.45 G4.50 attempt — dribble speed (not shipped, see §8.46)
+
+Carrier at 85% of top speed (the ball-at-feet sprint). Bands: u10 5.0 /
+amateur 0.8 / world 0.0; 95% → world 0.8, 92% → 0.5. Second time it was
+dropped for ladder harm (first: G4.23). It is right, and it fails because
+of §8.46's root cause, so it returns in step 1.
+
+### 8.46 Audit (2026-10-24) — the shortcuts, and the method from here
+
+James: "the way we should build the game is the same way a coach coaches
+… we see something not optimal and fix the biggest problems first … we
+should not take short cuts. we should lay bare what should be done."
+
+**The method.** A change is judged by REALISM — event volumes and shapes
+against real football — not by the LH–Ukies margin or by the goals
+ladder holding. Margin is the last check, never the target. Unbalanced
+is fine mid-calibration. One change, 60 matches, kept if it is more real.
+Failures are recorded (what didn't work, and why) like successes.
+
+**Where we are vs real** (G4.49 tree, per team per match; reference
+numbers approximate pro, to be sourced into DB rows in step 2):
+
+| Stat | Us | Real |
+|---|---|---|
+| Shots | 95 / 133 (23 / 31 with dribble 85%) | ~13 |
+| Clears | 340 / 275, ~87% lost | ~20 |
+| Final-third entries | 160 / 143 | ~45 |
+| Kicks | ~1,100 | ~500 |
+
+**Root cause: no locomotion physics.** `World::tickPlayers` sets
+`vel = desire × max_speed` — 0 → top speed in one tick, 180° turns free.
+G4.20 saw it and ramped the BRAIN's steering instead. It explains: the
+ESCORT (a defender backpedals at full speed and mirrors every cut),
+duels won 3-14% (a 1v1 is a pure speed race), dribble speed failing twice
+(a slower carrier can never get away), and the shot flood (G4.22:
+possessions end in a shot because nothing else can end them).
+
+**The recurring shortcut: tuning to the goals ladder.** Keepers absorbed
+every other bug: reaction table tuned while the chip bug inflated scoring
+(G4.14, reset G4.23); fumbles re-set so amateur > world (G4.24); hands
+bonus 6 → 10 picked by ladder sweep (G4.23); u10 18 → 45 / 40 → 80%
+(G4.48); a flat +5° on every shot (G4.8) because good finishers converted
+like penalties; the shot-selection bar shipped "at the safe point"
+(G4.21). The bands test gates goals only, on 4-match samples, with
+floors lowered in G4.25 — a gate that rewards exactly this.
+
+**Realistic things parked because goals fell:** dribble speed (×2);
+block-shot (branch `game/g4-block-shot-wip`, G4.22); teammate body
+blocks (G4.25); release timing (mig 664); the blind-side run out of the
+Bielsa model (G4.36). Each needs re-measuring on real physics.
+
+**Clamps standing in for football:** anchors ≤ 10 m upfield of the ball;
+the back line holds ≥ ball − 25 m (a fix for a retreat spiral); the clear
+as catch-all (aim hard-coded +35 m); carriers always face their dribble
+(no separate facing — no backpedal, no "passer turns forward"); steals =
+10 ticks within 0.6 m; any ball < 20 m/s is controllable; pace maps to
+5.4-7.4 m/s (an average speed standing in for top speed + acceleration).
+`Brain.cpp` holds ~111 numeric literals against ~23 DB reads — the "no
+hard code, all from DB" rule (G4.33) is mostly unmet.
+
+**Measurement:** the Ukies' positions are guesses and part of their
+roster is placeholders, so the real matchup leans on fiction.
+
+**What should be done, in order:**
+1. **Locomotion** — acceleration (Furusawa/Hill mono-exponential, τ from
+   sprint data), braking, turn limit, dribble speed: World-side, DB rows
+   (owner `physics`). 1b: facing separate from movement (intent + wire)
+   → a real backpedal / jockey. 1c: top speed vs effort (jog / run /
+   sprint) once acceleration exists; pace → real top speeds.
+2. **Realism scoreboard** — reference stats as sourced DB rows;
+   fh-game-match prints us vs real; it replaces the goals-only bands gate.
+3. **Keepers back to sourced values**; drop the +5°; goals land where
+   they land.
+4. **Re-measure the parked work** on the new physics.
+5. **Clamps → concepts**: rest defence (70), delay/jockey, purposeful
+   clears, compactness as a concept not a cap.
+6. **Brain numbers → `game_model_params`** as each piece is touched.
+
+Expect the ladder to break hard after step 1 — that shows how much was
+propped up.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

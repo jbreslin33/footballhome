@@ -81,7 +81,17 @@ public:
     void apply(LevelParams& o, const LevelParams& b, int r) const override {
         o.kick_angle_err_deg = err(b.kick_angle_err_deg, r);
         o.kick_power_err_pct = err(b.kick_power_err_pct, r);
+        // Range (G4.48): 80% of the band's at 0 → 120% at 100.
+        o.kick_range_m = scaled(b.kick_range_m, r, range_at0_, range_at100_);
     }
+    void configure(const ModelParams& p) override {
+        ErrorSkill::configure(p);
+        range_at0_ = p.integer(key("range_at0_pct"), 80);
+        range_at100_ = p.integer(key("range_at100_pct"), 120);
+    }
+
+private:
+    std::int32_t range_at0_ = 80, range_at100_ = 120;
 };
 
 class Shooting : public ErrorSkill {

@@ -63,7 +63,7 @@ int mirrorGoals(const char* band, std::uint64_t seed) {
         for (std::uint8_t s = 0; s < players; ++s) {
             const ai::Orders o = brain.ordersFor(s, world);
             world.setIntent(s, o.move);
-            if (o.action != core::Action::None) world.setAction(s, o.action);
+            if (o.action != core::Action::None) world.setAction(s, o.action, o.carry_m);
         }
         for (const core::MatchEvent& e : world.tick())
             if (e.type == core::MatchEventType::Goal) ++goals;

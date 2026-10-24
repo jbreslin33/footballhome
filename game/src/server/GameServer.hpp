@@ -82,6 +82,10 @@ public:
     void tickOnce();
 
     const core::World& world() const noexcept { return world_; }
+    // Each slot's decision on the last tick (the brain overlay's read;
+    // fh-game-match tallies pass outcomes by it).
+    const std::vector<ai::Orders>& lastOrders() const noexcept { return last_orders_; }
+    const std::vector<core::MatchEvent>& lastEvents() const noexcept { return last_events_; }
 
     // Exposed for tests.
     bool slotClaimedBy(std::uint8_t slot, ClientId client) const;
@@ -128,6 +132,7 @@ private:
     std::unordered_map<ClientId, bool> admins_;
     // G4.41 brain overlay: each slot's last decision, and who's watching.
     std::vector<ai::Orders> last_orders_;
+    std::vector<core::MatchEvent> last_events_;   // the last tick's (tools read them)
     std::unordered_map<ClientId, bool> brain_watchers_;
     void sendBrain();
     // Connected clients, for snapshot fan-out. Keyed map (not vector) so

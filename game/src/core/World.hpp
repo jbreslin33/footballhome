@@ -88,7 +88,10 @@ public:
     // movement is sampled; a non-None action LATCHES until consumed by the
     // tick (so a tap between ticks is never lost).
     void setIntent(SlotIndex slot, const MoveIntent& intent);
-    void setAction(SlotIndex slot, Action action);
+    // carry_m (G4.48) — a LoftedKick aimed to first bounce this many
+    // metres away (power from the flight law, kLoftLaunchRatio); 0 = the
+    // preset 12 + 6 m/s chip. Other actions ignore it.
+    void setAction(SlotIndex slot, Action action, std::uint8_t carry_m = 0);
 
     // Spawn/reset placement (scenario setup, not gameplay). `face` is the
     // initial kick/carry direction (toward the opponent goal).
@@ -166,6 +169,7 @@ private:
     std::vector<PlayerState> players_;
     std::vector<MoveIntent>  intents_;
     std::vector<Action>      actions_;
+    std::vector<std::uint8_t> carry_m_;   // latched with the action (G4.48)
     std::vector<bool>        keeper_;
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};

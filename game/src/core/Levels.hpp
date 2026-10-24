@@ -59,6 +59,9 @@ struct LevelParams {
     // -1, so a band alone shoots exactly as before).
     std::int32_t shot_angle_err_deg = -1;
     std::int32_t shot_power_err_pct = -1;
+    // Kick range (G4.48): the longest aimed loft this level can carry, in
+    // metres; 0 = no cap. A U-10 can't hit a 40 m ball. World-side.
+    std::int32_t kick_range_m = 0;
 
     bool isZero() const noexcept {
         return perception_delay_ticks == 0 && kick_angle_err_deg == 0 &&
@@ -87,12 +90,13 @@ inline std::uint8_t levelId(std::string_view name) {
 // ERAS join these bands when concepts/recognitions land in G4.2b+).
 // Numbers are first-pass; the calibration harness tunes them.
 inline LevelParams levelParams(std::string_view name) {
-    if (name == "u10")     return {18, 18, 25, 60, 6, 30, 80, 18, 40};  // amoeba
-    if (name == "u14")     return {12, 13, 18, 40, 8, 35, 55, 15, 28};
-    if (name == "amateur") return {7, 6, 10, 25, 10, 42, 30, 12, 22};  // Sunday
-    if (name == "semipro") return {4, 3, 6, 12, 13, 50, 12, 11, 8};
-    if (name == "pro")     return {2, 2, 3, 5, 16, 60, 4, 10, 5};
-    if (name == "world")   return {1, 1, 2, 2, 18, 65, 0, 9, 2};
+    auto band = [](LevelParams p, std::int32_t range_m) { p.kick_range_m = range_m; return p; };
+    if (name == "u10")     return band({18, 18, 25, 60, 6, 30, 80, 45, 80}, 30);  // amoeba
+    if (name == "u14")     return band({12, 13, 18, 40, 8, 35, 55, 15, 28}, 40);
+    if (name == "amateur") return band({7, 6, 10, 25, 10, 42, 30, 12, 22}, 45);  // Sunday
+    if (name == "semipro") return band({4, 3, 6, 12, 13, 50, 12, 11, 8}, 50);
+    if (name == "pro")     return band({2, 2, 3, 5, 16, 60, 4, 10, 5}, 55);
+    if (name == "world")   return band({1, 1, 2, 2, 18, 65, 0, 9, 2}, 60);
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 

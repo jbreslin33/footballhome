@@ -22,6 +22,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
     : players_(player_count),
       intents_(player_count),
       actions_(player_count, Action::None),
+      carry_m_(player_count, 0),
       keeper_(player_count, false),
       half_x_{pitch_half_x},
       half_y_{pitch_half_y},
@@ -37,10 +38,11 @@ void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
     intents_[slot] = intent;
 }
 
-void World::setAction(SlotIndex slot, Action action) {
+void World::setAction(SlotIndex slot, Action action, std::uint8_t carry_m) {
     if (slot >= actions_.size()) return;
     if (action == Action::None) return;  // only non-None latches
     actions_[slot] = action;
+    carry_m_[slot] = carry_m;
 }
 
 void World::placePlayer(SlotIndex slot, const Vec3& pos, const Vec2& face) {
@@ -304,6 +306,16 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             } else if (act == Action::ShortPass) {
                 const Fixed64 v = kShortPassSpeed * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
+            } else if (carry_m_[kicker] > 0) {
+                // Aimed loft (G4.48): no drag, so the first bounce lands at
+                // v² · 2r / g with rise = r · v — solve for v. The power
+                // error scales both, so a 10% miss is ~21% of the carry.
+                const std::int32_t cap = lv.kick_range_m;
+                const Fixed64 d = Fixed64::fromInt(
+                    cap > 0 && carry_m_[kicker] > cap ? cap : carry_m_[kicker]);
+                const Fixed64 v =
+                    math::fx_sqrt(kGravity * d / (kLoftLaunchRatio * 2)) * power_scale;
+                ball_.vel = Vec3{dir.x * v, dir.y * v, v * kLoftLaunchRatio};
             } else {
                 const Fixed64 v = kLoftKickSpeed * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v,
@@ -586,6 +598,10 @@ void World::tickFreeBall(std::vector<MatchEvent>& events) {
         ball_.vel.z = (impact > kBounceDeadSpeed)
                           ? impact * kBallRestitution
                           : Fixed64::zero();
+        if (impact > kBounceDeadSpeed) {
+            ball_.vel.x = ball_.vel.x * kBounceSkid;
+            ball_.vel.y = ball_.vel.y * kBounceSkid;
+        }
     }
 
     // Ground roll [v1]: multiplicative decay + snap-to-rest (suppressed
@@ -704,6 +720,7 @@ std::vector<MatchEvent> World::tick() {
     // Actions are per-tick: consumed by the owner's kick above, discarded
     // for everyone else, so a stale tap can't fire ticks later.
     for (auto& a : actions_) a = Action::None;
+    for (auto& c : carry_m_) c = 0;
     clock_.advance();
     return events;
 }

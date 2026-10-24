@@ -42,6 +42,10 @@ struct ConceptContext {
     math::Vec2 seen_ball;     // the ball as this player perceives it
     math::Fixed64 half_x;     // pitch half-length
     math::Fixed64 degree;     // this player's rating as 0..1
+    // The flight read (G4.49) for a free ball: the team that takes it
+    // first (-1 = none / the ball is owned) and where.
+    int flight_first = -1;
+    math::Vec2 flight_at{};
 };
 
 class Concept {
@@ -135,7 +139,9 @@ private:
 // Palla coperta / scoperta [Sacchi]: the back line STEPS UP while the ball
 // is covered — travelling between their players, or at the feet of a man
 // turned toward his own goal or under pressure — and stops when a free
-// opponent is receiving facing forward (he can play long).
+// opponent is receiving facing forward (he can play long). A ball in the
+// air is read by its flight (G4.49): ours to win = covered; THEIR ball
+// played forward to them (a long ball over the line) = uncovered, drop.
 class LineStep : public Concept {
 public:
     LineStep() : Concept("line-step", 28) {}
@@ -146,7 +152,7 @@ public:
     bool covered(const ConceptContext& c) const;
 
 private:
-    math::Fixed64 step_behind_, receive_radius_, pressure_radius_, moving_speed_;
+    math::Fixed64 step_behind_, receive_radius_, pressure_radius_, moving_speed_, forward_;
 };
 
 // The pass ladder [Bielsa-Leeds ch4]: the passer's order of looking
@@ -254,16 +260,40 @@ private:
 };
 
 // Direct ball — route one [Reep]: lofted to the furthest-forward man in
-// range, over whatever is in the lane. (Range = the lofted kick's carry
-// until the loft gets variable power.)
+// range, over whatever is in the lane, dropped where he'll be (G4.48's
+// aimed loft; max_m = the passer's range).
 class DirectBall : public Concept {
 public:
     DirectBall() : Concept("direct-ball", 152) {}
     void configure(const core::ModelParams& p) override;
     std::optional<core::SlotIndex> pick(const ConceptContext& c) const;
+    // The passer's lofted range (G4.48): also caps an over-the-top ball.
+    math::Fixed64 maxRange() const { return max_; }
 
 private:
     math::Fixed64 min_gain_, min_, max_;
+};
+
+// Meet the pass (G4.49) [Buckland's ReceiveBall state, re-expressed
+// stateless; Wiel Coerver / every coaching manual: "come to the ball"]: our
+// ball is travelling — the man who can take it first goes to the point
+// where he can, and the rest keep playing as if we have it, because we
+// will. Without it the receiver stood still and the whole team turned back
+// to defend its own pass (a free ball read as THEIR ball): Lighthouse's
+// intended receiver got 24% of passes, the ball in behind 2%. Curriculum id
+// 153; the other side's half of the same read is intercept (20).
+class MeetThePass : public Concept {
+public:
+    MeetThePass() : Concept("meet-the-pass", 153) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 reaction() const { return reaction_; }
+    int horizonTicks() const { return horizon_ticks_; }
+    // A runner ahead of our ball in flight keeps going at least this fast.
+    math::Fixed64 keepRunningSpeed() const { return keep_running_; }
+
+private:
+    math::Fixed64 reaction_, keep_running_;
+    int horizon_ticks_ = 90;
 };
 
 struct ConceptBook {
@@ -277,6 +307,7 @@ struct ConceptBook {
     StepOut step_out;
     ShortSimple short_simple;
     DirectBall direct_ball;
+    MeetThePass meet_the_pass;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -289,6 +320,7 @@ struct ConceptBook {
         step_out.configure(p);
         short_simple.configure(p);
         direct_ball.configure(p);
+        meet_the_pass.configure(p);
     }
 };
 

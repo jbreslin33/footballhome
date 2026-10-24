@@ -13,13 +13,15 @@
 // the real matchup), e.g. "home:blind-side-run=0"; "home:!marking" drops
 // the players' own ABILITY rows for that concept (they fall back to their
 // quality); "home:~direct-ball" drops their TENDENCY rows for it (G4.47).
-// The DB is never written.
+// The DB is never written. GAME_PARAMS="key=value,..." overrides
+// game_model_params numbers for the run.
 // Env: POSTGRES_HOST (localhost from the host), POSTGRES_DB, POSTGRES_USER,
 // POSTGRES_PASSWORD, GAME_TEAM_HOME / GAME_TEAM_AWAY.
 //
 // Each match uses seed base+m, so N matches are a fixed sample: the same
 // DB gives the same numbers, and any difference IS a change.
 
+#include "ai/Brain.hpp"
 #include "core/Clock.hpp"
 #include "net/INetworkTransport.hpp"
 #include "server/GameServer.hpp"
@@ -112,6 +114,13 @@ void applyOverrides(server::GameServer::Config& cfg, const char* spec, bool home
     }
 }
 
+// Pass outcomes by the passer's reason (Orders::why): every kick is
+// resolved at the next player to own the ball — his own team (and whether
+// it was the man he picked), the other team, or a dead ball first.
+struct PassTally {
+    long kicks = 0, mate = 0, intended = 0, lost = 0, dead = 0, offside = 0;
+};
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -130,6 +139,24 @@ int main(int argc, char** argv) {
     names.team_home = envOr("GAME_TEAM_HOME", names.team_home.c_str());
     names.team_away = envOr("GAME_TEAM_AWAY", names.team_away.c_str());
     server::loadMatchFromDb(base, db, names, true);
+    // GAME_PARAMS="concept.meet-the-pass.keep_running_mps=99,..." — A/B a
+    // game_model_params number (both teams) without touching the DB.
+    if (const char* gp = std::getenv("GAME_PARAMS")) {
+        std::string s = gp;
+        std::size_t at = 0;
+        while (at < s.size()) {
+            std::size_t end = s.find(',', at);
+            if (end == std::string::npos) end = s.size();
+            const std::string item = s.substr(at, end - at);
+            const std::size_t eq = item.find('=');
+            if (eq != std::string::npos) {
+                base.model_params.setMilli(item.substr(0, eq),
+                                           std::llround(std::atof(item.c_str() + eq + 1) * 1000));
+                std::printf("param: %s\n", item.c_str());
+            }
+            at = end + 1;
+        }
+    }
     applyOverrides(base, argc > 3 ? argv[3] : "-", true);
     applyOverrides(base, argc > 4 ? argv[4] : "-", false);
 
@@ -138,12 +165,95 @@ int main(int argc, char** argv) {
     int w = 0, d = 0, l = 0;
     long gh = 0, ga = 0;
     std::vector<int> margins;
+    PassTally tally[2][ai::kWhyCount + 1] = {};  // + rungs 1-2: the ball in behind
+    // Goal anatomy: the reason of the last completed pass before each goal
+    // (the "assist"), and how many were breakaways (no outfield defender
+    // goal-side of the shooter when he shot).
+    long assist[2][ai::kWhyCount + 2] = {};   // +1 = none (won it and went), +2 slot spare
+    long breakaways[2] = {0, 0};
+    // Escort attribution: every tick a team carries in the final third
+    // (17.5 m past halfway), the nearest defender's reason and distance.
+    long esc_ticks[2] = {0, 0}, esc_why[2][ai::kWhyCount] = {}, esc_near[2] = {0, 0};
+    long entries[2] = {0, 0};
     for (int m = 0; m < matches; ++m) {
         server::GameServer::Config cfg = base;
         cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
         NullTransport t;
         server::GameServer s{cfg, t};
-        for (long k = 0; k < ticks; ++k) s.tickOnce();
+        int pend_team = -1, pend_why = 0, pend_other = -1;
+        int last_assist[2] = {ai::kWhyCount + 1, ai::kWhyCount + 1};
+        bool shot_breakaway[2] = {false, false};
+        bool in_third[2] = {false, false};
+        for (long k = 0; k < ticks; ++k) {
+            const auto before = s.world().ball().owner;
+            s.tickOnce();
+            const auto& b = s.world().ball();
+            if (b.owner) {
+                const auto& c = s.world().player(*b.owner);
+                const int ct = c.team;
+                const bool third = (ct == 0 ? c.pos.x.toDouble() : -c.pos.x.toDouble()) > 17.5;
+                if (third && !in_third[ct]) ++entries[ct];
+                in_third[ct] = third;
+                in_third[ct ^ 1] = false;
+                if (third) {
+                    double best = 1e9; int who = -1;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == ct || s.world().isKeeper(j)) continue;
+                        const double dx = d.pos.x.toDouble() - c.pos.x.toDouble(), dy = d.pos.y.toDouble() - c.pos.y.toDouble();
+                        if (dx * dx + dy * dy < best) { best = dx * dx + dy * dy; who = j; }
+                    }
+                    ++esc_ticks[ct];
+                    if (who >= 0) ++esc_why[ct][static_cast<int>(s.lastOrders()[who].why)];
+                    if (best < 1.8 * 1.8) ++esc_near[ct];
+                }
+            }
+            for (const auto& e : s.lastEvents()) {
+                if (e.type != core::MatchEventType::Goal) continue;
+                ++assist[e.team][last_assist[e.team]];
+                if (shot_breakaway[e.team]) ++breakaways[e.team];
+            }
+            if (b.owner) {  // a change of possession resets the move
+                const int ot = s.world().player(*b.owner).team;
+                if (before && s.world().player(*before).team != ot) last_assist[ot] = ai::kWhyCount + 1;
+            }
+            if (pend_team >= 0) {
+                PassTally& t = tally[pend_team][pend_why];
+                if (s.world().restartTeam() != 0xFF) {
+                    ++t.dead;
+                    for (const auto& e : s.lastEvents())
+                        if (e.type == core::MatchEventType::Offside) ++t.offside;
+                    pend_team = -1;
+                } else if (b.owner) {
+                    if (s.world().player(*b.owner).team == pend_team) {
+                        if (pend_why != static_cast<int>(ai::Why::Shoot)) last_assist[pend_team] = pend_why;
+                        ++t.mate;
+                        if (*b.owner == pend_other) ++t.intended;
+                    } else {
+                        ++t.lost;
+                    }
+                    pend_team = -1;
+                }
+            }
+            if (before && !b.owner && b.last_kicker == *before &&
+                s.world().restartTeam() == 0xFF) {
+                const ai::Orders& o = s.lastOrders()[*before];
+                pend_team = s.world().player(*before).team;
+                if (o.why == ai::Why::Shoot) {
+                    const auto& sh = s.world().player(*before);
+                    bool alone = true;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == sh.team || s.world().isKeeper(j)) continue;
+                        if (sh.team == 0 ? d.pos.x > sh.pos.x : d.pos.x < sh.pos.x) alone = false;
+                    }
+                    shot_breakaway[pend_team] = alone;
+                }
+                pend_why = o.rung >= 1 && o.rung <= 2 ? ai::kWhyCount : static_cast<int>(o.why);
+                pend_other = o.other;
+                ++tally[pend_team][pend_why].kicks;
+            }
+        }
         const int h = s.world().score(0), a = s.world().score(1);
         gh += h; ga += a;
         margins.push_back(h - a);
@@ -158,5 +268,38 @@ int main(int argc, char** argv) {
     std::printf("\n%s vs %s over %d matches: W%d D%d L%d | goals %.2f - %.2f | margin %+.2f ± %.2f (1 SE)\n",
                 names.team_home.c_str(), names.team_away.c_str(), matches, w, d, l,
                 static_cast<double>(gh) / matches, static_cast<double>(ga) / matches, mean, se);
+    // Pass outcomes (Shoot/Clear/punts included: every kick from a carry).
+    for (int team = 0; team < 2; ++team) {
+        std::printf("\n%s kicks per match by reason: kicks | to a mate (the one he picked) | lost | dead (offside)\n",
+                    team == 0 ? names.team_home.c_str() : names.team_away.c_str());
+        for (int w = 0; w <= ai::kWhyCount; ++w) {
+            const PassTally& t = tally[team][w];
+            if (t.kicks == 0) continue;
+            const double n = matches;
+            std::printf("  %-28s %6.1f | %5.1f%% (%5.1f%%) | %5.1f%% | %5.1f%% (%4.1f%%)\n", w == ai::kWhyCount ? "in behind (rungs 1-2)" : ai::kWhyNames[w],
+                        t.kicks / n, 100.0 * t.mate / t.kicks, 100.0 * t.intended / t.kicks,
+                        100.0 * t.lost / t.kicks, 100.0 * t.dead / t.kicks, 100.0 * t.offside / t.kicks);
+        }
+    }
+    for (int team = 0; team < 2; ++team) {
+        std::printf("\n%s final-third entries %.1f/match, carrying %.0f s/match there, tight (<1.8 m) %.0f%%; nearest defender doing:\n",
+                    team == 0 ? names.team_home.c_str() : names.team_away.c_str(),
+                    static_cast<double>(entries[team]) / matches, esc_ticks[team] / 30.0 / matches,
+                    esc_ticks[team] ? 100.0 * esc_near[team] / esc_ticks[team] : 0.0);
+        for (int w = 0; w < ai::kWhyCount; ++w)
+            if (esc_why[team][w] * 100 >= esc_ticks[team] * 2)
+                std::printf("  %-28s %4.0f%%\n", ai::kWhyNames[w], 100.0 * esc_why[team][w] / esc_ticks[team]);
+    }
+    for (int team = 0; team < 2; ++team) {
+        std::printf("\n%s goals per match by the last pass before them (breakaways %.2f):\n",
+                    team == 0 ? names.team_home.c_str() : names.team_away.c_str(),
+                    static_cast<double>(breakaways[team]) / matches);
+        for (int w = 0; w <= ai::kWhyCount + 1; ++w) {
+            if (!assist[team][w]) continue;
+            const char* n = w == ai::kWhyCount ? "in behind (rungs 1-2)"
+                          : w == ai::kWhyCount + 1 ? "(no pass: won it / carried)" : ai::kWhyNames[w];
+            std::printf("  %-28s %5.2f\n", n, static_cast<double>(assist[team][w]) / matches);
+        }
+    }
     return 0;
 }

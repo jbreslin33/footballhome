@@ -44,6 +44,12 @@ inline const math::Fixed64 kGravity = math::Fixed64::fromFraction(981, 100);
 inline const math::Fixed64 kBallRestitution =
     math::Fixed64::fromFraction(11, 20);
 
+// Grass skid (G4.48): a bounce keeps this much of the ball's FORWARD speed
+// too. Without it every lofted ball skipped on at full pace — a 40 m pass
+// landed at 20 m/s (past any first touch) and bounced 40 m more, out of
+// play. Real turf takes ~a third off on a dropping ball.
+inline const math::Fixed64 kBounceSkid = math::Fixed64::fromFraction(13, 20);
+
 // Below this vertical impact speed (m/s) a bounce squashes to rolling.
 inline const math::Fixed64 kBounceDeadSpeed = math::Fixed64::fromFraction(1, 2);
 
@@ -92,6 +98,10 @@ inline const math::Fixed64 kShortPassSpeed   = math::Fixed64::fromInt(8);
 inline const math::Fixed64 kShotSpeed        = math::Fixed64::fromInt(24);
 inline const math::Fixed64 kLoftKickSpeed   = math::Fixed64::fromInt(12);
 inline const math::Fixed64 kLoftKickRise    = math::Fixed64::fromInt(6);
+// Aimed loft (G4.48): rise / forward speed. 1/2 = the preset chip's own
+// ~27° launch; a 40 m ball leaves at ~22 m/s and peaks at ~5 m — a driven
+// long pass, not a skied hoof.
+inline const math::Fixed64 kLoftLaunchRatio = math::Fixed64::fromFraction(1, 2);
 
 // ── state ───────────────────────────────────────────────────────────────
 

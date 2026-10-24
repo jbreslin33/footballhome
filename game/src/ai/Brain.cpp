@@ -189,6 +189,46 @@ bool passSafe(const World& world, const TeamSetup& setup, SlotIndex passer,
     return false;  // dies short of the receiver
 }
 
+// Aimed loft (G4.48): where to drop a lofted pass for a moving mate — his
+// spot after the ball's flight (2·r·v / g at the carry that reaches it,
+// solved twice: the lead moves the carry) — and that carry, capped at the
+// passer's range. Lands at his feet on the first bounce, the one moment a
+// dropping ball is low enough to take.
+struct Loft {
+    Vec2 at;
+    std::uint8_t carry_m;
+};
+Loft loftTo(const core::PlayerState& mate, const Vec3& from, Fixed64 max_m) {
+    Vec2 at{mate.pos.x, mate.pos.y};
+    Fixed64 d{};
+    for (int k = 0; k < 3; ++k) {
+        d = math::length(Vec2{at.x - from.x, at.y - from.y});
+        if (d > max_m) d = max_m;
+        if (d < Fixed64::one()) d = Fixed64::one();
+        const Fixed64 two_r = core::kLoftLaunchRatio * 2;
+        const Fixed64 v = math::fx_sqrt(core::kGravity * d / two_r);
+        const Fixed64 t = two_r * v / core::kGravity;
+        at = Vec2{mate.pos.x + mate.vel.x * t, mate.pos.y + mate.vel.y * t};
+    }
+    const std::int64_t m = (d + Fixed64::fromFraction(1, 2)).raw >> Fixed64::FRAC_BITS;
+    return Loft{at, static_cast<std::uint8_t>(m < 1 ? 1 : (m > 255 ? 255 : m))};
+}
+
+// The carry that drops a loft on a fixed spot (clearances, punts).
+std::uint8_t aimedCarry(const Vec3& from, const Vec2& to, Fixed64 max_m) {
+    Fixed64 d = math::length(Vec2{to.x - from.x, to.y - from.y});
+    if (d > max_m) d = max_m;
+    const std::int64_t m = (d + Fixed64::fromFraction(1, 2)).raw >> Fixed64::FRAC_BITS;
+    return static_cast<std::uint8_t>(m < 1 ? 1 : (m > 255 ? 255 : m));
+}
+
+// A loft's max carry for this player: the concept's number, capped by his
+// level's kick range (G4.48) — he never asks for a ball he can't hit.
+Fixed64 rangeFor(const core::LevelParams& lv, Fixed64 max_m) {
+    const Fixed64 r = Fixed64::fromInt(lv.kick_range_m);
+    return lv.kick_range_m > 0 && r < max_m ? r : max_m;
+}
+
 }  // namespace
 
 TeamSetup TeamSetup::splitHalves(std::uint8_t slot_count) {
@@ -243,11 +283,107 @@ bool Brain::isTeamClosest(SlotIndex slot, const World& world,
     return true;
 }
 
+const Brain::FlightRead& Brain::flightRead(const World& world) const {
+    const auto& b = world.ball();
+    if (flight_tick_ == world.tickCount() && flight_key_[0] == b.pos.x.raw &&
+        flight_key_[1] == b.pos.y.raw && flight_key_[2] == b.vel.x.raw)
+        return flight_;
+    flight_tick_ = world.tickCount();
+    flight_key_[0] = b.pos.x.raw;
+    flight_key_[1] = b.pos.y.raw;
+    flight_key_[2] = b.vel.x.raw;
+    FlightRead& f = flight_;
+    const SlotIndex n = world.playerCount();
+    f.tick.assign(n, -1);
+    f.at.assign(n, Vec2{});
+    f.first[0] = f.first[1] = -1;
+    f.live = !b.owner && world.restartTeam() == 0xFF;
+    if (!f.live) return f;
+
+    // Each man starts after his reaction (+ his perception delay).
+    Fixed64 react[64];
+    for (SlotIndex i = 0; i < n && i < 64; ++i)
+        react[i] = book_.meet_the_pass.reaction() +
+                   Fixed64::fromInt(levelOf(i).perception_delay_ticks) * core::kTickDt;
+    const Fixed64 box_x = half_x_ - Fixed64::fromFraction(33, 2);   // 16.5 m
+    const Fixed64 box_y = Fixed64::fromFraction(2016, 100);          // 20.16 m
+    const std::uint32_t flagged = world.offsideMask();
+    const std::uint8_t flag_team = world.offsideTeam();
+    Vec3 pos = b.pos, vel = b.vel;
+    int open = n;
+    const int horizon = book_.meet_the_pass.horizonTicks();
+    for (int k = 0; k <= horizon && open > 0; ++k) {
+        if (k > 0) {  // World::tickFreeBall, one tick
+            if (pos.z.raw > 0 || vel.z.raw != 0) vel.z -= core::kGravity * core::kTickDt;
+            pos += vel * core::kTickDt;
+            if (pos.z.raw < 0) {
+                pos.z = Fixed64::zero();
+                const Fixed64 impact = -vel.z;
+                if (impact > core::kBounceDeadSpeed) {
+                    vel.z = impact * core::kBallRestitution;
+                    vel.x = vel.x * core::kBounceSkid;
+                    vel.y = vel.y * core::kBounceSkid;
+                } else {
+                    vel.z = Fixed64::zero();
+                }
+            }
+            if (pos.z.raw == 0 && vel.z.raw == 0) {
+                vel.x = vel.x * core::kBallRollDecayPerTick;
+                vel.y = vel.y * core::kBallRollDecayPerTick;
+            }
+        }
+        if (math::fx_abs(pos.x) > half_x_ || math::fx_abs(pos.y) > half_y_) break;  // out of play
+        const bool rolling = pos.z.raw == 0 && vel.z.raw == 0;
+        if (rolling && k % 3 != 0) continue;  // a rolling ball: every 3rd tick is plenty
+        const Fixed64 sp2 = vel.x * vel.x + vel.y * vel.y;
+        const Fixed64 t = core::kTickDt * Fixed64::fromInt(k);
+        for (SlotIndex i = 0; i < n && i < 64; ++i) {
+            if (f.tick[i] >= 0) continue;
+            if (i == b.last_kicker && k < b.kicker_lockout) continue;
+            const auto& p = world.player(i);
+            // A man in an offside position leaves it (the flag decides).
+            if (flag_team != 0xFF && p.team == flag_team && ((flagged >> (i & 31)) & 1u)) continue;
+            const bool gk = world.isKeeper(i);
+            if (pos.z > (gk ? core::kKeeperReachZ : core::kBallControlRadius)) continue;
+            const Fixed64 cap = gk ? core::kCaptureMaxSpeed + core::kKeeperHandsBonus : core::kCaptureMaxSpeed;
+            if (sp2 > cap * cap) continue;
+            if (gk) {  // hands only in his own box
+                const bool own_end = setup_.team_of_slot[i] == 0 ? pos.x < -box_x : pos.x > box_x;
+                if (!own_end || math::fx_abs(pos.y) > box_y) continue;
+            }
+            const Fixed64 rt = t > react[i] ? t - react[i] : Fixed64::zero();
+            const Fixed64 run = p.max_speed * rt + (gk ? core::kKeeperReach : core::kBallControlRadius);
+            if (distSq(p.pos, pos) <= run * run) {
+                f.tick[i] = static_cast<std::int16_t>(k);
+                f.at[i] = Vec2{pos.x, pos.y};
+                --open;
+            }
+        }
+    }
+    for (SlotIndex i = 0; i < n; ++i) {
+        if (f.tick[i] < 0) continue;
+        int& first = f.first[setup_.team_of_slot[i]];
+        if (first < 0 || f.tick[i] < f.tick[first]) first = i;
+    }
+    return f;
+}
+
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     Orders out;
     const auto& ball = world.ball();
     const auto& me = world.player(slot);
     const int sign = attackSign(slot);
+
+    // The flight read for the line's concepts (G4.49).
+    auto withFlight = [&](ConceptContext& cx) {
+        if (ball.owner || world.restartTeam() != 0xFF) return;
+        const FlightRead& fr = flightRead(world);
+        const int a = fr.first[0], b = fr.first[1];
+        const int win = a < 0 ? b : (b < 0 || fr.tick[a] <= fr.tick[b] ? a : b);
+        if (win < 0) return;
+        cx.flight_first = setup_.team_of_slot[win];
+        cx.flight_at = fr.at[win];
+    };
 
     // Perception delay (G4.3): this brain reacts to where the ball WAS
     // delay ticks ago, approximated linearly (no history state — brains
@@ -435,7 +571,13 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             const bool longball = pass_choice == book_.direct_ball.bit();
             const auto r = longball ? book_.direct_ball.pick(pcx) : book_.short_simple.pick(pcx, lane_open);
             if (r) {
-                const Vec2 to{world.player(*r).pos.x, world.player(*r).pos.y};
+                Vec2 to{world.player(*r).pos.x, world.player(*r).pos.y};
+                if (longball) {
+                    // Dropped where he'll be (G4.48), not hit at where he is.
+                    const Loft lf = loftTo(world.player(*r), me.pos, rangeFor(lv, book_.direct_ball.maxRange()));
+                    to = lf.at;
+                    out.carry_m = lf.carry_m;
+                }
                 out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
                 out.action = longball ? Action::LoftedKick
                                       : (distSq(me.pos, Vec3{to.x, to.y, Fixed64::zero()}) < kSoftPassRange * kSoftPassRange
@@ -481,6 +623,12 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             if (beyond_line && applies(slot, 6, world.tickCount()) &&
                 target_dist_sq > kSoftPassRange * kSoftPassRange) {
                 out.action = Action::LoftedKick;  // over the top
+                // Dropped into his run (G4.48): the preset chip bounced on
+                // ~45 m past a 20 m runner.
+                const Loft lf = loftTo(world.player(target_slot), me.pos, rangeFor(lv, book_.direct_ball.maxRange()));
+                target = lf.at;
+                out.carry_m = lf.carry_m;
+                out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
             } else {
                 out.action = target_dist_sq < kSoftPassRange * kSoftPassRange
                                  ? Action::ShortPass
@@ -560,6 +708,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             const Vec2 target = crowd[0] <= crowd[1] ? ch[0] : ch[1];
             out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
             out.action = Action::LoftedKick;
+            out.carry_m = aimedCarry(me.pos, target, rangeFor(lv, Fixed64::fromInt(60)));
             out.why = Why::KeeperPunt;
             out.target = target;
             return out;
@@ -614,9 +763,17 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                                 ++crowd[c];
                         }
                     }
-                    out.move.move = seek(me.pos, crowd[0] <= crowd[1] ? ch[0] : ch[1],
-                                         Fixed64::fromFraction(1, 10));
+                    // Aimed (G4.48): long and up the emptier side, landing
+                    // inside the pitch — it runs on ~20 m after the bounce,
+                    // so dropping it ON the wide channel put ~300 balls a
+                    // match into touch.
+                    Fixed64 ax = me.pos.x * sgn + Fixed64::fromInt(35);
+                    if (ax > half_x_ - Fixed64::fromInt(30)) ax = half_x_ - Fixed64::fromInt(30);
+                    const Fixed64 ay = half_y_ * Fixed64::fromFraction(7, 20);
+                    const Vec2 to{ax * sgn, crowd[0] <= crowd[1] ? -ay : ay};
+                    out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
                     out.action = Action::LoftedKick;
+                    out.carry_m = aimedCarry(me.pos, to, rangeFor(lv, Fixed64::fromInt(50)));
                 }
             }
         }
@@ -739,9 +896,46 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         return out;
     }
 
+    // ── meet the pass (G4.49) — ai::MeetThePass: our ball is travelling.
+    // The man who can take it first goes to where he can; if we get there
+    // before them it's still OUR ball, and the rest keep attacking.
+    const std::uint8_t my_team = setup_.team_of_slot[slot];
+    const int meet = book_.meet_the_pass.bit();
+    bool flight_ours = false;
+    if (!ball.owner && world.restartTeam() == 0xFF && world.lastTouchTeam() == my_team &&
+        ratings_[slot][meet] > 0 && applies(slot, meet, world.tickCount() / 30)) {
+        const FlightRead& fr = flightRead(world);
+        const int mine_first = fr.first[my_team], theirs = fr.first[my_team ^ 1];
+        if (mine_first >= 0) {
+            flight_ours = theirs < 0 || fr.tick[mine_first] < fr.tick[theirs];
+            if (mine_first == slot) {
+                out.move.move = seek(me.pos, fr.at[slot], Fixed64::fromFraction(1, 10));
+                out.why = Why::MeetPass;
+                out.target = fr.at[slot];
+                return out;
+            }
+        }
+    }
     const bool ours =
-        ball.owner && setup_.team_of_slot[*ball.owner] ==
-                          setup_.team_of_slot[slot];
+        (ball.owner && setup_.team_of_slot[*ball.owner] == my_team) || flight_ours;
+
+    // Our ball in flight: a runner ahead of it keeps running — stopping to
+    // watch it was the run that never got the ball in behind. Not a man
+    // the flag has caught, and never into the end zone.
+    if (flight_ours && !mine.keeper) {
+        const Fixed64 sg = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+        const bool flagged = world.offsideTeam() == my_team &&
+                             ((world.offsideMask() >> (slot & 31)) & 1u);
+        if (!flagged && me.pos.x * sg > ball.pos.x * sg &&
+            me.vel.x * sg > book_.meet_the_pass.keepRunningSpeed() &&
+            me.pos.x * sg < half_x_ - Fixed64::fromInt(8)) {
+            const Vec2 dir = math::normalized(Vec2{me.vel.x, me.vel.y});
+            out.move.move = dir;
+            out.why = Why::KeepRunning;
+            out.target = Vec2{me.pos.x + dir.x * Fixed64::fromInt(5), me.pos.y + dir.y * Fixed64::fromInt(5)};
+            return out;
+        }
+    }
 
     // ── defensive shape (G4.4, James's law: "the thing that stops goals
     // really is the bunching") ──────────────────────────────────────────
@@ -793,8 +987,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             // receiving and can play long. push up if opp is turned toward
             // their own goal with ball"] — ai::LineStep.
             if (ratings_[slot][28] > 0 && applies(slot, 28, world.tickCount() / 30)) {
-                const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
                                         half_x_, degree(slot, 28)};
+                withFlight(cx);
                 if (auto line = book_.line_step.stepLine(cx)) {
                     if (cover < *line) cover = *line;          // leave the runner offside
                     if (anchor.x * sgn < *line) anchor.x = *line * sgn;  // and STEP UP
@@ -1001,7 +1196,23 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // Swarmy teams send a MOB at the ball, not one presser.
         const int max_chasers = 1 + lv.swarm_pct / 20;
         const int rank = teamCloserCount(slot, world, seen_ball);
-        if (in_range && rank < max_chasers) {
+        // intercept (bit 20) reads the FLIGHT (G4.49): a free ball is
+        // chased by the man who reaches it first, to where he does — in the
+        // air too. Rank-by-distance sent the nearest man under a 40 m ball
+        // that was landing on someone else.
+        bool race = false, race_first = false;
+        Vec2 race_to{};
+        if (!ball.owner && applies(slot, 20, world.tickCount() / 30)) {
+            const FlightRead& fr = flightRead(world);
+            if (fr.live && fr.first[my_team] >= 0) {
+                race = true;
+                race_first = fr.first[my_team] == slot;
+                race_to = fr.at[slot];
+            }
+        }
+        const bool chases = race ? (race_first || (max_chasers > 1 && in_range && rank < max_chasers))
+                                 : (in_range && rank < max_chasers);
+        if (chases) {
             if (!ball.owner || organized || undisciplined) {
                 // STEP / loose-ball race: through the ball (arrive radius
                 // far below capture radius — the harness's first catch);
@@ -1014,7 +1225,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 // Ungated it measured u10 22 goals (loose-ball mobs
                 // arriving in sync) and world 1.9 (airtight) — the read
                 // is TAUGHT, so it rolls per second like other duties.
-                if (!ball.owner &&
+                if (race_first)
+                    chase_to = race_to;
+                else if (!ball.owner &&
                     ball.pos.z < Fixed64::fromFraction(1, 2) &&
                     applies(slot, 20, world.tickCount() / 30))
                     chase_to = interceptPoint(me.pos, seen_ball, ball.vel,
@@ -1070,8 +1283,9 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         // the neighbour concept he's best at (sweeping too deep / stepping
         // out too high), not the generic brain.
         if (ratings_[slot][26] > 0) {
-            const ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+            ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
                                     half_x_, degree(slot, 26)};
+                withFlight(cx);
             const std::uint64_t win = world.tickCount() / book_.libero.lapseWindowTicks();
             const int to = choose(slot, 26, win);
             const bool liked = to >= 0 && to != 26 && applies(slot, 26, win);

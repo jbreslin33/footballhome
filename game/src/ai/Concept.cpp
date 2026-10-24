@@ -181,6 +181,13 @@ std::optional<core::SlotIndex> DirectBall::pick(const ConceptContext& c) const {
     return best;
 }
 
+// ── MeetThePass (G4.49) ─────────────────────────────────────────────────
+void MeetThePass::configure(const core::ModelParams& p) {
+    reaction_ = p.fixed(key("reaction_s"), 200);
+    keep_running_ = p.fixed(key("keep_running_mps"), 3000);
+    horizon_ticks_ = p.integer(key("horizon_ticks"), 90);
+}
+
 // ── CoverShadow ─────────────────────────────────────────────────────────
 void CoverShadow::configure(const core::ModelParams& p) {
     deep_x_ = p.fixed(key("deep_x_m"), 15000);
@@ -223,6 +230,7 @@ void LineStep::configure(const core::ModelParams& p) {
     receive_radius_ = p.fixed(key("receive_radius_m"), 6000);
     pressure_radius_ = p.fixed(key("pressure_radius_m"), 3000);
     moving_speed_ = p.fixed(key("moving_speed_mps"), 4000);
+    forward_ = p.fixed(key("forward_ball_m"), 5000);
 }
 
 bool LineStep::covered(const ConceptContext& c) const {
@@ -247,10 +255,18 @@ bool LineStep::covered(const ConceptContext& c) const {
     // is about to receive it facing forward.
     const Fixed64 speed2 = sq(ball.vel.x) + sq(ball.vel.y);
     if (speed2 < sq(moving_speed_)) return false;
+    // Read by its flight (G4.49): we win it → covered; a ball played
+    // FORWARD to them (toward our goal) → uncovered, whoever is near it now.
+    math::Vec3 at = ball.pos;
+    if (c.flight_first >= 0) {
+        if (c.flight_first == me.team) return true;
+        if ((ball.pos.x - c.flight_at.x) * s > forward_) return false;
+        at = math::Vec3{c.flight_at.x, c.flight_at.y, Fixed64::zero()};
+    }
     for (core::SlotIndex o = 0; o < w.playerCount(); ++o) {
         const auto& op = w.player(o);
         if (op.team == me.team) continue;
-        if (dist2(op.pos, ball.pos) > sq(receive_radius_)) continue;
+        if (dist2(op.pos, at) > sq(receive_radius_)) continue;
         if (facesForward(op) && !pressed(op)) return false;
     }
     return true;

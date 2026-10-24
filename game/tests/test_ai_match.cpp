@@ -26,8 +26,8 @@ const Fixed64 kHX = Fixed64::fromFraction(105, 2);
 const Fixed64 kHY = Fixed64::fromInt(34);
 
 // Locked after the first green run (G2.6); placeholder 0 fails loudly.
-constexpr std::uint64_t kGolden3v3   = 0xdf0bf5282d4b767eULL;
-constexpr std::uint64_t kGolden11v11 = 0x1cf73c7aaec85f54ULL;
+constexpr std::uint64_t kGolden3v3   = 0x4e6199a7231b4c18ULL;
+constexpr std::uint64_t kGolden11v11 = 0x75a479514b0edb60ULL;
 
 struct Rig {
     World world;
@@ -62,7 +62,7 @@ struct Rig {
                 const ai::Orders o = brain.ordersFor(s, world);
                 world.setIntent(s, o.move);
                 if (o.action != core::Action::None)
-                    world.setAction(s, o.action);
+                    world.setAction(s, o.action, o.carry_m);
             }
             for (const core::MatchEvent& e : world.tick())
                 if (e.type == core::MatchEventType::Goal) ++goals;

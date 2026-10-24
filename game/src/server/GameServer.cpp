@@ -485,10 +485,11 @@ void GameServer::tickOnce() {
         const ai::Orders o = brain_.ordersFor(slot, world_);
         last_orders_[slot] = o;
         world_.setIntent(slot, o.move);
-        if (o.action != core::Action::None) world_.setAction(slot, o.action);
+        if (o.action != core::Action::None) world_.setAction(slot, o.action, o.carry_m);
     }
 
-    const auto match_events = world_.tick();
+    last_events_ = world_.tick();
+    const auto& match_events = last_events_;
     if (clients_.empty()) return;  // headless idle: nothing to fan out
 
     for (const core::MatchEvent& e : match_events) {

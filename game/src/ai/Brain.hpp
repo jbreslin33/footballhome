@@ -43,6 +43,7 @@ enum class Why : std::uint8_t {
     Press, Chase, Delay, Libero, Mark, GiveAndGo, BlindSideRun, RunInBehind,
     Outlet, Support, Human, WaitForRunner, LapseDeep, LapseStepOut,
     LapseShort, LapseLong, HabitShort, HabitLong, HabitDeep, HabitStepOut,
+    MeetPass, KeepRunning,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -52,6 +53,7 @@ inline constexpr const char* kWhyNames[] = {
     "lapse: sweeping too deep", "lapse: stepped out too high",
     "lapse: short and simple", "lapse: hit it long",
     "likes it short", "likes it long", "likes to sit deep", "likes to step out",
+    "meet the pass", "keep running",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -63,6 +65,9 @@ struct Orders {
     math::Vec2 target{};          // where he's going / aiming
     std::int16_t other = -1;      // the pass receiver, marked man, pressed carrier
     std::uint8_t rung = 0;        // pass-ladder rung of a laddered pass (1-6)
+    // An aimed LoftedKick's first-bounce distance (G4.48); 0 = the preset
+    // chip (clearances, punts).
+    std::uint8_t carry_m = 0;
 };
 
 class Brain {
@@ -139,6 +144,19 @@ public:
     // Orders for ONE slot given the current world. Pure + deterministic.
     Orders ordersFor(core::SlotIndex slot, const core::World& world) const;
 
+    // The flight read (G4.49): for a free live ball, where and when each
+    // player can first take it — the ball's own path walked tick by tick
+    // (gravity, bounces, skid, roll), a touch only where it's low and slow
+    // enough to control. A pure function of the world; cached per tick
+    // because all 22 brains ask the same question.
+    struct FlightRead {
+        bool live = false;                 // a free ball in play
+        std::vector<std::int16_t> tick;    // ticks until slot can take it; -1 = can't (horizon)
+        std::vector<math::Vec2> at;        // where
+        int first[2] = {-1, -1};           // each team's first man to it
+    };
+    const FlightRead& flightRead(const core::World& world) const;
+
 private:
     int attackSign(core::SlotIndex slot) const {
         return setup_.team_of_slot[slot] == 0 ? +1 : -1;
@@ -164,6 +182,9 @@ private:
     std::vector<core::ConceptRatings> ratings_;
     std::vector<core::ConceptRatings> habits_;
     std::vector<core::PresetOverlay> tendencies_;
+    mutable FlightRead flight_;
+    mutable std::uint64_t flight_tick_ = ~std::uint64_t{0};
+    mutable std::int64_t flight_key_[3] = {0, 0, 0};
     math::Fixed64 initiative_ = math::Fixed64::one();
     // Graded application: does slot APPLY concept (bit index) this tick?
     // Consistency roll — deterministic noise vs the rating.
