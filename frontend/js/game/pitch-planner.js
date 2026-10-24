@@ -590,22 +590,17 @@
       }
       // Big name on the grass, its size in yards under it (James 10/24:
       // "when we resize pitch it needs to say size ... on the pitch in
-      // yards") — rebuilt on every size change.
+      // yards") — rebuilt on every size change — and its water level
+      // against the whole park's (paintLabel redraws on every move).
       const cv = document.createElement('canvas');
-      cv.width = 512; cv.height = 224;
-      const c2 = cv.getContext('2d');
-      const text = (t, max, y, color) => {
-        c2.font = 'bold ' + max + 'px sans-serif';
-        const fs = Math.min(max, Math.floor(max * 480 / Math.max(1, c2.measureText(t).width)));
-        c2.font = 'bold ' + fs + 'px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
-        c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(t, 256, y);
-        c2.fillStyle = color; c2.fillText(t, 256, y);
-      };
-      text(title(p), 96, 66, p.kind === 'box' ? '#ffd29a' : '#ffffff');
-      text(p.size[0] + ' × ' + p.size[1] + ' yd', 76, 172, '#ffd24d');
+      cv.width = 512; cv.height = 320;
+      p.labCv = cv;
+      p.labWater = null;
       const lw = Math.min(W * 0.55, L * 0.6);   // smaller (James 10/24: "make writing smaller")
-      const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, lw * 224 / 512),
-        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
+      p.labTex = new THREE.CanvasTexture(cv);
+      paintLabel(p);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, lw * 320 / 512),
+        new THREE.MeshBasicMaterial({ map: p.labTex, transparent: true,
           depthWrite: false, depthTest: false }));
       lab.rotation.x = -Math.PI / 2;
       lab.rotation.z = Math.PI / 2;     // reads along the short side
@@ -628,6 +623,47 @@
       g.visible = visibleOf(p);
       site.add(g);
       p.g = g;
+    }
+    // Water level vs the complex (James 10/24: "need a water level to show
+    // for field based on overall water level of complex. on each pitch as
+    // its moved and resized"): the pitch's water score (water(): 3 x pond
+    // + 1.5 x runoff + 0.5 x flat per m²) over the same score for every
+    // m² inside the park boundary. Any size, live.
+    const PARK_DENS = (() => {
+      const G = DATA.grid, park = DATA.rules.find((r) => r.n === 'park');
+      if (!G || !park) return null;
+      let n = 0, sum = 0;
+      for (let j = 0; j < G.nz; j++)
+        for (let i = 0; i < G.nx; i++) {
+          if (!inPoly([G.x0 + i, G.z0 + j], park.pts)) continue;
+          const k = G.cls.charCodeAt(j * G.nx + i) - 48;
+          n++;
+          sum += k === 1 ? 3 : k === 2 ? 1.5 : k === 3 ? 0.5 : 0;
+        }
+      return n ? sum / n : null;
+    })();
+    const waterVsPark = (p) => {
+      if (!PARK_DENS || !p.ev) return null;
+      const r = p.ev.w.dens / PARK_DENS, d = Math.round(Math.abs(1 - r) * 100);
+      return { r, txt: d === 0 ? 'same water as park' : d + '% ' + (r < 1 ? 'drier' : 'wetter') + ' than park' };
+    };
+    function paintLabel(p) {
+      const wv = waterVsPark(p), wt = wv ? '💧 ' + wv.txt : '';
+      if (p.labWater === wt) return;
+      p.labWater = wt;
+      const c2 = p.labCv.getContext('2d');
+      c2.clearRect(0, 0, 512, 320);
+      const text = (t, max, y, color) => {
+        c2.font = 'bold ' + max + 'px sans-serif';
+        const fs = Math.min(max, Math.floor(max * 480 / Math.max(1, c2.measureText(t).width)));
+        c2.font = 'bold ' + fs + 'px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+        c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(t, 256, y);
+        c2.fillStyle = color; c2.fillText(t, 256, y);
+      };
+      text(title(p), 96, 62, p.kind === 'box' ? '#ffd29a' : '#ffffff');
+      text(p.size[0] + ' × ' + p.size[1] + ' yd', 76, 164, '#ffd24d');
+      if (wt) text(wt, 60, 262, wv.r < 1 ? '#7fd8ff' : '#ffb27a');
+      p.labTex.needsUpdate = true;
     }
     const CELL_COL = [null, new THREE.Color(0x1e5bff), new THREE.Color(0x00d5ff), new THREE.Color(0xffb000)];
     const mtx = new THREE.Matrix4();
@@ -719,6 +755,7 @@
                infield: main ? rectDist(R, c, main.pts, !!main.c) : null,
                toPitch: p.kind === 'box' && pitches[0].R ? closest(R, pitches[0].R).d : null };
       fillCells(p, cells);
+      if (p.labCv) paintLabel(p);
     }
     // Rule name -> words: layout structures by their layout name.
     const label = (n) => {
@@ -1013,7 +1050,8 @@
       b.style.background = p === sel ? 'rgba(255,210,77,.28)' : 'rgba(10,14,20,.72)';
       b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' + hex + '"></span>' +
         (p === sel ? '▶ ' : '') + (p.kind === 'box' ? '🟧 ' : '📐 ') + title(p) + ' ' + p.size[0] + '×' + p.size[1] +
-        (p.ev ? (p.ev.w.pct != null ? ' · dry ' + p.ev.w.pct.toFixed(0) + '%' : '') + ' · ' +
+        (p.ev ? (p.ev.w.pct != null ? ' · dry ' + p.ev.w.pct.toFixed(0) + '%' : '') +
+          (waterVsPark(p) ? ' · 💧 ' + waterVsPark(p).txt.replace(' than park', '') : '') + ' · ' +
           (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : '');
     }
 
