@@ -2293,9 +2293,7 @@ Response CalendarController::handlePostRsvp(const Request& request) {
                     " ORDER BY is_primary DESC, id LIMIT 1", {std::to_string(personId)});
                 const std::string phone = ph.empty() ? "" : ph[0]["phone_number"].c_str();
                 const auto minted = MagicLinkService::mint(personId, "sms", phone, 0);   // "" → /sms falls back to the phone on file
-                std::string link = minted.url;
-                if (auto at = link.find("token="); at != std::string::npos)
-                    link = MagicLinkService::publicBaseUrl() + "/sms?t=" + link.substr(at + 6);
+                const std::string link = MagicLinkService::publicBaseUrl() + "/sms?t=" + minted.token;
                 // The card's words ride along (message_templates kind
                 // sms_opt_in_ask) so #my, Game Center and /rc share them.
                 MessageCopy copy;

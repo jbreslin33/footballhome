@@ -20,6 +20,9 @@ public:
     ~MagicLinkAuthController() override;
 
     void registerRoutes(Router& router, const std::string& prefix) override;
+    // GET /api/m/<token> — the short link texts carry; 302 to verify.
+    // Public: main.cpp mounts it outside the /api/auth prefix.
+    Response handleShort(const Request& request);
 
 private:
     Response handleMint(const Request& request);

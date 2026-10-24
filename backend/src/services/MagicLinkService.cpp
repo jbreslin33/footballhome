@@ -25,7 +25,11 @@ MagicLinkService::Minted MagicLinkService::mint(long long          personId,
                                                 const std::string& landing) {
     // Token + hash; expires_at is computed server-side from NOW() so the
     // TTL is unaffected by clock skew between this process and Postgres.
-    const std::string token     = fh::crypto::randomTokenB64Url(32);
+    // 9 random bytes = a 12-character token (72 bits): short enough that a
+    // reminder text fits one SMS segment (owner 2026-10-24: "they all need
+    // to be shorter"), far beyond guessing within the 72-hour TTL.  Only
+    // its sha256 is stored, as before; older 43-character tokens still verify.
+    const std::string token     = fh::crypto::randomTokenB64Url(9);
     const std::string tokenHash = fh::crypto::sha256Hex(token);
     const std::string ttlSecs   = std::to_string(SessionService::kMagicLinkTtl.count());
 
@@ -50,8 +54,10 @@ MagicLinkService::Minted MagicLinkService::mint(long long          personId,
     Minted out;
     out.expiresIso = ins[0]["expires_iso"].as<std::string>();
     out.tokenId    = ins[0]["id"].as<long long>();
-    out.url = publicBaseUrl()
-            + "/api/auth/magic-link/verify?token="
-            + fh::crypto::urlEncode(token);
+    out.token = token;
+    // /api/m/<token> forwards to /api/auth/magic-link/verify?token=…
+    // (MagicLinkAuthController::handleShort) — /api/ already reaches the
+    // backend, so no web-server change.
+    out.url = publicBaseUrl() + "/api/m/" + token;
     return out;
 }

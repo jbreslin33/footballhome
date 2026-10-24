@@ -108,6 +108,23 @@ Response jsonError(HttpStatus s, const std::string& message) {
 MagicLinkAuthController::MagicLinkAuthController() = default;
 MagicLinkAuthController::~MagicLinkAuthController() = default;
 
+// GET /api/m/<token> — the short form of a sign-in link (2026-10-24, so a
+// reminder fits one SMS segment).  Forwards to the verify endpoint, which
+// does everything (opens, previews, landing) exactly as for the long form.
+Response MagicLinkAuthController::handleShort(const Request& request) {
+    const std::string path = request.getPath();
+    const std::string token = path.substr(path.find_last_of('/') + 1);
+    const bool ok = token.size() >= 8 && token.size() <= 64 &&
+        std::all_of(token.begin(), token.end(), [](unsigned char c) { return std::isalnum(c) || c == '-' || c == '_'; });
+    if (!ok) return htmlError(HttpStatus::BAD_REQUEST, "That link is not complete — open the newest text instead.");
+    Response r(HttpStatus::FOUND);
+    r.setHeader("Location", publicBaseUrl() + "/api/auth/magic-link/verify?token=" + token);
+    r.setHeader("Cache-Control", "no-store");
+    r.setBody("Redirecting...");
+    r.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return r;
+}
+
 void MagicLinkAuthController::registerRoutes(Router& router, const std::string& prefix) {
     router.post(prefix + "/magic-link/mint",   [this](const Request& r) { return handleMint(r); });
     router.get (prefix + "/magic-link/verify", [this](const Request& r) { return handleVerify(r); });

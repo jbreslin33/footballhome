@@ -507,6 +507,11 @@ private:
         // (login, register, me/roles, user/teams, ...) stay reachable
         // because their paths don't collide.
         router_.useController("/api/auth", magic_link_auth_controller_);
+        // Short sign-in links in texts: /api/m/<token> → verify.
+        {
+            auto ml = magic_link_auth_controller_;
+            router_.get("/api/m/:token", [ml](const Request& r) { return ml->handleShort(r); });
+        }
         router_.useController("/api/auth", auth_controller_);
         router_.useController("/api/auth/google", oauth_controller_);
         router_.useController("/api/teams", team_controller_);

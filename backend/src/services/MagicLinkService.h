@@ -13,7 +13,8 @@
 class MagicLinkService {
 public:
     struct Minted {
-        std::string url;        // https://footballhome.org/api/auth/magic-link/verify?token=…
+        std::string url;        // https://footballhome.org/api/m/<token> — short, for texts (2026-10-24)
+        std::string token;      // the raw token (e.g. /sms?t=<token> pre-fill)
         std::string expiresIso; // "YYYY-MM-DDTHH:MM:SS.mmmZ" (UTC)
         long long   tokenId = 0;  // magic_link_tokens.id — its opens (mig 647)
     };

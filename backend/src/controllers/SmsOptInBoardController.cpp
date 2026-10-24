@@ -152,10 +152,7 @@ Response SmsOptInBoardController::handleNudge(const Request& request) {
             const auto minted = MagicLinkService::mint(who.recipientPersonId, "sms", who.phone, scope.userId);
             // The same token, on the sign-up page instead of the sign-in
             // endpoint: /sms?t=… reads it to pre-fill the form.
-            std::string link = minted.url;
-            if (auto at = link.find("token="); at != std::string::npos) {
-                link = MagicLinkService::publicBaseUrl() + "/sms?t=" + link.substr(at + 6);
-            }
+            const std::string link = MagicLinkService::publicBaseUrl() + "/sms?t=" + minted.token;
 
             MessageCopy copy;
             const auto msg = copy.render("sms_opt_in", who.youth ? "parent" : "adult", {
