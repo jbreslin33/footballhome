@@ -703,6 +703,7 @@
     }
     // Measured fences: chain-link panels (see-through) or solid metal.
     for (const fz of (L.fences || [])) {
+      into = fz.group ? fz.group + '_fences' : 'fences';
       const H = fz.h || 2;
       const mat = fz.kind === 'metal'
         ? std(0x6f767e, { metalness: 0.7, roughness: 0.4 })
@@ -1046,8 +1047,8 @@
     };
     return {
       site,   // site-metre group (pitch-planner.js draws into it)
-      // Layer names: ground, buildings, fences, props, trees, labels,
-      // contours, water, paint (today's pitch).
+      // Layer names: ground, buildings, fences, softball_fences, props,
+      // trees, labels, contours, water, paint (today's pitch).
       layers: Object.keys(layerGroups),
       setLayer,
       // Contours. mode: 'lidar' (10 cm from USGS 3DEP; white every half

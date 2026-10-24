@@ -46,11 +46,17 @@ window.LIGHTHOUSE_LAYOUT = {
   // diamond's 1st-base line, then bending ~6° south at x ≈ -20 (west bases
   // half-hidden in building shadow — read at their north-most). The rodeo
   // fence is a long curve bowing west.
+  // group 'softball': the removed softball diamond's fences, still up until
+  // the grounds crew pulls them (James 10/24: "until fences are removed we
+  // need keep fence but allow fence to be toggled off") — DESIGN's ⛓
+  // SOFTBALL FENCE pill hides them and drops their 10 ft rule.
   fences: [
-    { name: 'softball 1st-base fence', kind: 'chain', h: 2.4, pts: [[91.9, 19.8], [97.6, 9.4], [103.0, -1.9]] },
-    { name: 'softball 3rd-base fence', kind: 'chain', h: 2.4, pts: [[82.9, 22.2], [60.1, 9.6]] },
-    { name: 'softball backstop', kind: 'chain', h: 4, pts: [[82.9, 22.2], [87.4, 21.0], [91.9, 19.8]] },
-    { name: 'rodeo fence', kind: 'chain', h: 1.8, pts: [[88.6, -95.7], [91.7, -87.0], [93.2, -80.1], [96.6, -75.1],
+    { name: 'softball 1st-base fence', group: 'softball', kind: 'chain', h: 2.4, pts: [[91.9, 19.8], [97.6, 9.4], [103.0, -1.9]] },
+    { name: 'softball 3rd-base fence', group: 'softball', kind: 'chain', h: 2.4, pts: [[82.9, 22.2], [60.1, 9.6]] },
+    { name: 'softball backstop', group: 'softball', kind: 'chain', h: 4, pts: [[82.9, 22.2], [87.4, 21.0], [91.9, 19.8]] },
+    // group 'rodeo': may be moved slightly (James 10/24) — ⛓ RODEO FENCE
+    // pill. Every other fence is static.
+    { name: 'rodeo fence', group: 'rodeo', kind: 'chain', h: 1.8, pts: [[88.6, -95.7], [91.7, -87.0], [93.2, -80.1], [96.6, -75.1],
       [98.2, -70.9], [100.5, -66.3], [103.5, -60.2], [106.6, -55.6], [111.1, -50.3], [114.9, -45.7],
       [119.5, -41.1], [124.1, -35.8], [128.7, -29.7]] },
     { name: 'metal vendor-protector fence', kind: 'metal', h: 2.4, pts: [[-60, 32.4], [-36.2, 32.5], [-29.1, 32.7],
@@ -66,8 +72,9 @@ window.LIGHTHOUSE_LAYOUT = {
   // outlines, which put the infields in the wrong spots.
   diamonds: [
     { name: 'main (baseball)', home: [-68.5, 29.5], bearing: -45, base: 27.43, infield: 'grass', arc: 47 },
-    { name: 'east (softball)', home: [85.9, 13.4], bearing: -107, base: 18.29, infield: 'dirt', arc: 28 },
-    { name: 'by the playground (small)', home: [61, 66], bearing: -135, base: 18.29, infield: 'dirt', arc: 22 }, // CONFIRM orientation
+    // East softball (home [85.9, 13.4]) and the small one by the playground
+    // (home [61, 66]): removed by the grounds crew (James 10/24) — only the
+    // main diamond stays.
   ],
 
   // Kids' fields — to be placed with James (size, spot, orientation).

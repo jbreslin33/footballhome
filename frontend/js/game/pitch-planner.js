@@ -51,8 +51,17 @@
   const YD = 0.9144, FT = 0.3048, D2R = Math.PI / 180;
   const GAP = 10 * YD;                       // between the two pitches
   const NEAR = 15 * FT;                      // legal but close: marked green
-  // Rules shown as a distance only, never an offence ('info' kind).
-  const INFO = {};
+  // Rules skipped by the planner — never a problem or a mark (James 10/24:
+  // "shut off all baseball and softball infields as we can visually see
+  // them" / "all but 1 is getting removed by grounds crew"): the main
+  // infield (still drawn) and the removed softball skin. Two fences can
+  // go (James 10/24: "rodeo fence can be moved slightly so allow a toggle.
+  // and the softball fence allow a toggle. all others should be static"):
+  // their pill hides the fence AND drops its 10 ft rule here. The C++
+  // sweep's data.ranges / ⭐ BEST still avoid all of them until the
+  // exporter is rerun.
+  const INFO = { main_infield: true, softball_skin: true };
+  const FENCE_RULES = { softball_fences: ['fence_3B', 'backstop_1B'], rodeo_fences: ['rodeo'] };
   const SEVEN_SIZES = [[70, 35], [65, 35], [60, 35], [55, 35], [60, 30]];
   const NAMES = {
     main_infield: 'main diamond infield', softball_skin: 'softball infield dirt',
@@ -230,10 +239,11 @@
   const LAYERS = [
     ['panel', '📋 PANEL'], ['pitches', '📐 PITCHES'], ['boxes', '🟧 PRACTICE'], ['ruler', '📏 GAP'],
     ['handles', '✥ HANDLES'], ['problems', '⚠ PROBLEMS'], ['match', '🏟 MATCH'], ['paint', '🟨 TODAY\'S PITCH'], ['water', '💧 WATER'],
-    ['contours', '〰 CONTOURS'], ['trees', '🌳 TREES'], ['buildings', '🏠 BUILDINGS'], ['fences', '🚧 FENCES'],
+    ['contours', '〰 CONTOURS'], ['trees', '🌳 TREES'], ['buildings', '🏠 BUILDINGS'],
+    ['softball_fences', '⛓ SOFTBALL FENCE'], ['rodeo_fences', '⛓ RODEO FENCE'],
     ['props', '🐴 PROPS'], ['labels', '🔤 LABELS'], ['ground', '🟩 GROUND'],
   ];
-  const FIELD_LAYERS = ['trees', 'buildings', 'fences', 'props', 'labels', 'ground'];
+  const FIELD_LAYERS = ['trees', 'buildings', 'softball_fences', 'rodeo_fences', 'props', 'labels', 'ground'];
 
   function attach(renderer) {
     const DATA = window.LIGHTHOUSE_PLANNER;
@@ -925,7 +935,10 @@
       const b = mk('button', lp + 'background:rgba(255,255,255,.12);color:#f4f6fb;', t);
       tap(b, () => {
         // ALL OFF keeps the pitches, boxes and handles: the things being designed.
-        for (const [k] of LAYERS) if (k !== 'panel') show[k] = v || ['pitches', 'boxes', 'handles', 'problems'].includes(k);
+        for (const [k] of LAYERS) {
+          if (k === 'panel' || FENCE_RULES[k]) continue;   // fence pills change rules: only by hand
+          show[k] = v || ['pitches', 'boxes', 'handles', 'problems'].includes(k);
+        }
         writeJSON(LAYER_KEY, show);
         applyLayers();
       });
@@ -956,11 +969,14 @@
       show[k] = !!v;
       writeJSON(LAYER_KEY, show);
       applyLayers();
+      if (FENCE_RULES[k] && built) update(true);
     }
     // Apply every layer (DESIGN on): planner layers + field.js layers +
     // the match (pitch, goals, players, ball).
     function applyLayers() {
       for (const [k] of LAYERS) paintLayerPill(k);
+      // Fences hidden = gone: their 10 ft rule goes with them.
+      for (const k in FENCE_RULES) for (const n of FENCE_RULES[k]) INFO[n] = !show[k];
       if (!on) return;
       const f = renderer.field;
       applyHud();
@@ -1031,8 +1047,7 @@
         ' yd</b> · ' + p.rot.toFixed(0) + '° · ' +
         (w.pct != null ? 'dry <b>' + w.pct.toFixed(0) + '%</b>'
           : (ev.toPitch != null ? '↔ 11v11 <b>' + (ev.toPitch <= 0 ? 'on it' : fmt(ev.toPitch)) + '</b>' : '')) +
-        (ev.infield != null ? '<br><span style="opacity:.85">⚾ main diamond infield: ' +
-          (ev.infield <= 0 ? 'overlapping' : fmt(ev.infield) + ' away') + '</span>' : '') + '<br>' + why;
+        '<br>' + why;
     }
 
     // Gap ruler on the grass: white strip between the nearest edges and a
@@ -1157,7 +1172,7 @@
       for (; k < probs.length; k++) probs[k].bar.visible = probs[k].dot.visible = probs[k].lab.visible = false;
     }
 
-    function update() {
+    function update(noSave) {
       for (const p of all()) if (p.g) { p.g.position.x = p.x; p.g.position.z = p.z; p.g.rotation.y = -p.rot * D2R; }
       // Each pitch's 10 yd gap reads the other's rect: settle both, twice;
       // then the boxes, which read the pitches.
@@ -1167,7 +1182,7 @@
       paintGap();
       placeHandles();
       paintProblems();
-      if (on) saveState();
+      if (on && !noSave) saveState();
     }
 
     // Park the camera over a pitch (FOLLOW OFF), looking down at it.
