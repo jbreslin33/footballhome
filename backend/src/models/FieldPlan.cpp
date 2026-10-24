@@ -57,7 +57,69 @@ json FieldPlan::get(long long facilityId) {
                                 {"x", r["x_m"].as<double>()},
                                 {"z", r["z_m"].as<double>()},
                                 {"rot", r["rot_deg"].as<double>()}});
+    out["saves"] = saves(facilityId);
     return out;
+}
+
+json FieldPlan::saves(long long facilityId) {
+    auto* db = Database::getInstance();
+    json out = json::array();
+    for (const auto& s : db->query(
+             "SELECT s.id, s.name, "
+             "       to_char(s.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, "
+             "       NULLIF(btrim(concat_ws(' ', p.first_name, p.last_name)), '') AS by_name "
+             "  FROM field_plan_saves s "
+             "  LEFT JOIN users u ON u.id = s.created_by "
+             "  LEFT JOIN persons p ON p.id = u.person_id "
+             " WHERE s.facility_id = $1::int ORDER BY s.created_at DESC, s.id DESC",
+             {std::to_string(facilityId)})) {
+        json items = json::array();
+        for (const auto& r : db->query(
+                 "SELECT item_key, kind, name, length_yd, width_yd, x_m, z_m, rot_deg "
+                 "  FROM field_plan_save_items WHERE save_id = $1::int ORDER BY kind, item_key",
+                 {s["id"].as<std::string>()}))
+            items.push_back(itemJson(r));
+        out.push_back({{"id", s["id"].as<long long>()},
+                       {"name", s["name"].as<std::string>()},
+                       {"created_at", s["created_at"].as<std::string>()},
+                       {"by", s["by_name"].is_null() ? json(nullptr) : json(s["by_name"].as<std::string>())},
+                       {"items", items}});
+    }
+    return out;
+}
+
+long long FieldPlan::addSave(long long facilityId, const std::string& name, const json& items,
+                             long long byUserId) {
+    auto* db = Database::getInstance();
+    auto tx = db->beginTransaction();
+    try {
+        auto sv = tx->exec_params(
+            "INSERT INTO field_plan_saves (facility_id, name, created_by) VALUES ($1, btrim($2), $3) RETURNING id",
+            facilityId, name, byUserId);
+        const long long saveId = sv[0]["id"].as<long long>();
+        for (const auto& it : items) {
+            const bool box = it.value("kind", "pitch") == "practice_box";
+            tx->exec_params(
+                "INSERT INTO field_plan_save_items (save_id, item_key, kind, name, length_yd, width_yd, x_m, z_m, rot_deg) "
+                "VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9)",
+                saveId, it.at("key").get<std::string>(), box ? "practice_box" : "pitch",
+                it.contains("name") && it["name"].is_string() ? it["name"].get<std::string>() : std::string(),
+                it.at("length_yd").get<double>(), it.at("width_yd").get<double>(),
+                it.at("x").get<double>(), it.at("z").get<double>(), it.at("rot").get<double>());
+        }
+        db->commit(tx);
+        return saveId;
+    } catch (...) {
+        db->rollback(tx);
+        throw;
+    }
+}
+
+bool FieldPlan::deleteSave(long long facilityId, long long saveId) {
+    auto rows = Database::getInstance()->query(
+        "DELETE FROM field_plan_saves WHERE id = $1::int AND facility_id = $2::int RETURNING id",
+        {std::to_string(saveId), std::to_string(facilityId)});
+    return !rows.empty();
 }
 
 void FieldPlan::putLayout(long long facilityId, const std::string& kind, const json& items,

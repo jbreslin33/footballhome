@@ -40,10 +40,11 @@
 // (/api/field-plan, migration 635) so every device sees the same one; this
 // browser keeps a copy for offline. Every move of a pitch or box saves a
 // moment after it stops; club admins write, everyone else reads. The first
-// admin load uploads whatever this browser already had (boxes, spots,
+// admin load uploads whatever this browser already had (boxes,
 // default) when the DB has none yet. 📌 SET DEFAULT stores the whole layout as the default;
 // ↺ DEFAULT snaps everything back to it (before one is set: cyan + the
-// 7v7's ⭐ BEST spot).
+// 7v7's ⭐ BEST spot). 💾 SAVES (10/24, migration 680) freeze the whole
+// layout under a name as a version in the DB; the per-pitch spots are gone.
 
 (function () {
   'use strict';
@@ -303,7 +304,7 @@
     // ── the club DB (/api/field-plan); localStorage stays as this device's copy ──
     const API = '/api/field-plan';
     const token = () => { try { return localStorage.getItem('token') || ''; } catch (e) { return ''; } };
-    let canWrite = !!token(), dbDefault = null, dbSpots = null;
+    let canWrite = !!token(), dbDefault = null, dbSaves = [];
     const api = (method, path, body) => fetch(API + path, {
       method,
       headers: Object.assign({ 'Content-Type': 'application/json' }, token() ? { Authorization: 'Bearer ' + token() } : {}),
@@ -350,8 +351,8 @@
     // OFF by default and docked right under the camera buttons (James
     // 10/24: "i hate the pop up ... we need it off to side" / "i don't
     // think we even need anything on it"): the field itself carries size,
-    // turn and problems; the 📋 PANEL pill opens this for typed sizes,
-    // spots and defaults.
+    // turn and problems; the 📋 PANEL pill opens this for typed sizes and
+    // defaults (named saves live in the left column's 💾 SAVES).
     const panel = mk('div', 'position:fixed;right:8px;top:286px;z-index:20;display:none;width:280px;' +
       'background:rgba(10,14,20,.86);color:#f4f6fb;font:11px system-ui,sans-serif;border-radius:10px;' +
       'padding:6px 8px;max-width:calc(100vw - 16px);max-height:calc(100vh - 294px);overflow-y:auto;' +
@@ -493,8 +494,6 @@
       tap(fly, () => flyTo(p));
       r3.appendChild(fly);
       ctl.appendChild(r3);
-      spotBox.style.display = p.kind === 'box' ? 'none' : 'flex';
-      paintSpots();
     }
     const turn = (d) => { setRot(sel, sel.rot + d); update(); };
     function removeBox(b) {
@@ -503,86 +502,6 @@
       select(pitches[0]);
       buildPills();
       update();
-    }
-
-    // SPOTS (James: "click button to reset it there. allow for saving a
-    // spot and delete a spot and give it a name"): built-in spots from
-    // layout.planSpots + the club's saved ones. Tap a spot = move the
-    // selected pitch there; 💾 saves where it is now; ✕ deletes a saved one.
-    const SPOT_KEY = 'fh.lighthouse.planSpots.v1';
-    const loadSaved = () => {
-      try { return JSON.parse(localStorage.getItem(SPOT_KEY) || '[]'); } catch (e) { return []; }
-    };
-    const storeSaved = (list) => {
-      try { localStorage.setItem(SPOT_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
-    };
-    const spotBox = row();
-    panel.appendChild(spotBox);
-    // Spots in one shape: { id?, name, pitch, x, z, rotDeg, size }.
-    const spotList = () => (dbSpots
-      ? dbSpots.map((s) => ({ id: s.id, name: s.name, pitch: s.pitch, x: s.x, z: s.z, rotDeg: s.rot,
-                             size: [s.length_yd, s.width_yd] }))
-      : loadSaved());
-    const reloadSpots = () => api('GET', '').then((j) => { dbSpots = j.spots; paintSpots(); }).catch(() => {});
-    function applySpot(sp) {
-      const p = pitches.find((q) => q.id === sp.pitch);
-      if (!p) return;
-      p.x = sp.x; p.z = sp.z; p.rot = sp.rotDeg;
-      if (sp.size) setSize(p, sp.size[0], sp.size[1]);
-      select(p);
-      update();
-      flyTo(p);
-    }
-    function paintSpots() {
-      spotBox.innerHTML = '';
-      if (sel.kind === 'box') return;
-      spotBox.appendChild(mk('span', 'opacity:.75;font-size:11px;', '📌 ' + sel.id + ' spots:'));
-      const saved = spotList();
-      const list = (LAY.planSpots || []).map((sp) => ({ sp, saved: false }))
-        .concat(saved.map((sp, i) => ({ sp, saved: true, i })))
-        .filter((e) => e.sp.pitch === sel.id);
-      for (const e of list) {
-        const b = mk('button', pill + (e.saved ? '' : 'border-color:#ffd24d;'), e.sp.name);
-        b.title = `(${e.sp.x.toFixed(1)}, ${e.sp.z.toFixed(1)}) ${e.sp.rotDeg.toFixed(0)}°` +
-          (e.sp.size ? ` ${e.sp.size[0]}×${e.sp.size[1]} yd` : '');
-        tap(b, () => applySpot(e.sp));
-        spotBox.appendChild(b);
-        if (e.saved) {
-          const x = mk('button', pill + 'padding:4px 7px;color:#ff8a94;', '✕');
-          x.title = 'Delete "' + e.sp.name + '"';
-          tap(x, () => {
-            if (dbSpots && e.sp.id) {
-              api('DELETE', '/spot?id=' + e.sp.id).then(reloadSpots)
-                .catch((err) => setSync('⚠ spot not deleted (' + err.message + ')', false));
-              return;
-            }
-            const l = loadSaved();
-            l.splice(e.i, 1);
-            storeSaved(l);
-            paintSpots();
-          });
-          spotBox.appendChild(x);
-        }
-      }
-      const name = textIn('name this spot', 120);
-      const save = mk('button', pill, '💾 SAVE');
-      const doSave = () => {
-        const n = name.value.trim() || (sel.id + ' ' + new Date().toLocaleString());
-        if (dbSpots && canWrite) {
-          api('POST', '/spot', { pitch: sel.id, name: n, length_yd: sel.size[0], width_yd: sel.size[1],
-                                 x: +sel.x.toFixed(2), z: +sel.z.toFixed(2), rot: +sel.rot.toFixed(1) })
-            .then(reloadSpots).catch((err) => setSync('⚠ spot not saved (' + err.message + ')', false));
-          return;
-        }
-        const l = loadSaved();
-        l.push({ name: n, pitch: sel.id, x: +sel.x.toFixed(2), z: +sel.z.toFixed(2),
-                 rotDeg: +sel.rot.toFixed(1), size: sel.size.slice() });
-        if (!storeSaved(l)) save.textContent = '⚠ NOT SAVED';
-        paintSpots();
-      };
-      tap(save, doSave);
-      name.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
-      spotBox.append(name, save);
     }
 
     // Whole-layout row: add a practice box, copy, default.
@@ -911,6 +830,81 @@
     addPill.title = 'Drop a 40 × 30 yd box where the camera looks';
     tap(addPill, () => addBox());
     itemsBody.appendChild(addPill);
+
+    // 💾 SAVES (James 10/24: "we need to be able to save whole page as a
+    // name. not individual fields. whole save and it goes as a version in
+    // db"): every pitch and box, frozen under a name (migration 680,
+    // POST /api/field-plan/save). The same name again = its next version.
+    // Tap a save to put the whole layout back; ✕ then ✕? deletes it.
+    const savesBody = mk('div', 'display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:12px;' +
+      'background:rgba(10,14,20,.72);');
+    pillBox.appendChild(fold('ui_saves', 'SAVES', savesBody));
+    pillBox.appendChild(savesBody);
+    const saveRow = mk('div', 'display:flex;gap:4px;');
+    const saveName = textIn('name this layout', 150);
+    saveName.style.flex = '1';
+    const saveBtn = mk('button', pill + 'border-color:#ffd24d;color:#ffd24d;flex:none;', '💾 SAVE');
+    saveRow.append(saveName, saveBtn);
+    const saveMsg = mk('div', 'font:11px system-ui,sans-serif;color:#c8ccd4;display:none;');
+    const saveList = mk('div', 'display:flex;flex-direction:column;gap:3px;');
+    savesBody.append(saveRow, saveMsg, saveList);
+    const say = (t, ok) => {
+      saveMsg.textContent = t;
+      saveMsg.style.color = ok ? '#7dff9a' : '#ffb000';
+      saveMsg.style.display = t ? 'block' : 'none';
+    };
+    const reloadSaves = () => api('GET', '').then((j) => { dbSaves = j.saves || []; paintSaves(); }).catch(() => {});
+    function doSave() {
+      const n = saveName.value.trim();
+      if (!n) { say('Type a name first', false); saveName.focus(); return; }
+      if (!canWrite) { say('Sign in as a club admin to save', false); return; }
+      say('saving…', true);
+      api('POST', '/save', { name: n, items: toItems(snapshot()) })
+        .then(() => { saveName.value = ''; say('✓ saved "' + n + '"', true); return reloadSaves(); })
+        .catch((e) => say('⚠ not saved (' + e.message + ')', false));
+    }
+    tap(saveBtn, doSave);
+    saveName.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
+    function loadSave(sv) {
+      restore(fromItems(sv.items));
+      for (const p of all()) rebuild(p);
+      select(pitches[0]);
+      buildPills();
+      update();   // the loaded layout becomes the club's current one
+      say('✓ loaded "' + sv.name + '"', true);
+    }
+    function paintSaves() {
+      saveList.innerHTML = '';
+      if (!dbSaves.length) {
+        saveList.appendChild(mk('div', 'font:11px system-ui,sans-serif;opacity:.6;', 'No saves yet'));
+        return;
+      }
+      // Version numbers per name, oldest = v1 (list is newest first).
+      const seen = {}, ver = new Map();
+      for (const sv of dbSaves.slice().reverse()) ver.set(sv, (seen[sv.name] = (seen[sv.name] || 0) + 1));
+      for (const sv of dbSaves) {
+        const line = mk('div', 'display:flex;gap:4px;align-items:center;');
+        const when = new Date(sv.created_at);
+        const b = mk('button', pill + 'flex:1;text-align:left;font-size:11px;padding:3px 8px;');
+        b.textContent = sv.name + (seen[sv.name] > 1 ? ' v' + ver.get(sv) : '') + ' · ' +
+          when.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+          when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        b.title = sv.items.map((i) => (i.kind === 'pitch' ? i.key : i.name) + ' ' + i.length_yd + '×' + i.width_yd).join(', ') +
+          (sv.by ? ' — saved by ' + sv.by : '');
+        tap(b, () => { if (on) loadSave(sv); });
+        const x = mk('button', pill + 'flex:none;padding:3px 7px;font-size:11px;color:#ff8a94;', '✕');
+        x.title = 'Delete this save (tap twice)';
+        let armed = false;
+        tap(x, () => {
+          if (!armed) { armed = true; x.textContent = '✕?'; setTimeout(() => { armed = false; x.textContent = '✕'; }, 2500); return; }
+          api('DELETE', '/save?id=' + sv.id).then(reloadSaves)
+            .catch((e) => say('⚠ not deleted (' + e.message + ')', false));
+        });
+        line.append(b, x);
+        saveList.appendChild(line);
+      }
+    }
+    paintSaves();
     const layerBox = mk('div', 'display:flex;flex-wrap:wrap;gap:4px;padding:6px;border-radius:12px;' +
       'background:rgba(10,14,20,.72);');
     const layerPills = {};
@@ -1234,14 +1228,8 @@
           dbDefault = readJSON(DEFAULT_KEY);
           pushLayout('default', dbDefault);
         }
-        dbSpots = db.spots;
-        const local = loadSaved();
-        if (!dbSpots.length && local.length && canWrite) {
-          // Upload this browser's saved spots once.
-          Promise.all(local.map((sp) => api('POST', '/spot', { pitch: sp.pitch, name: String(sp.name),
-            length_yd: (sp.size || [115, 74])[0], width_yd: (sp.size || [115, 74])[1], x: sp.x, z: sp.z, rot: sp.rotDeg })
-            .catch(() => null))).then(reloadSpots);
-        }
+        dbSaves = db.saves || [];
+        paintSaves();
       }
       for (const p of all()) rebuild(p);
       buildPills();
@@ -1276,20 +1264,10 @@
                       size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
     }
     // No club layout yet (or offline): this device's last layout, else
-    // its default, else spots saved as "now".
+    // its default.
     function localStart() {
       const st = readJSON(STATE_KEY) || readJSON(DEFAULT_KEY);
       if (st) restore({ pitches: st.pitches });
-      else {
-        // First run of the auto-save: pick up spots saved as "now" (James's
-        // layout from before saving was automatic, 10/22).
-        for (const sp of loadSaved()) {
-          const p = pitches.find((q) => q.id === sp.pitch);
-          if (!p || String(sp.name).trim().toLowerCase() !== 'now') continue;
-          p.x = sp.x; p.z = sp.z; p.rot = sp.rotDeg;
-          if (sp.size) p.size = [+sp.size[0], +sp.size[1]];
-        }
-      }
     }
     start();
 

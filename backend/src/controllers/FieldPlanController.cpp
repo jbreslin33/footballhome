@@ -64,6 +64,8 @@ void FieldPlanController::registerRoutes(Router& router, const std::string& pref
     router.put (prefix + "/layout", [this](const Request& r) { return handlePutLayout(r); });
     router.post(prefix + "/spot",   [this](const Request& r) { return handleAddSpot(r); });
     router.del (prefix + "/spot",   [this](const Request& r) { return handleDeleteSpot(r); });
+    router.post(prefix + "/save",   [this](const Request& r) { return handleAddSave(r); });
+    router.del (prefix + "/save",   [this](const Request& r) { return handleDeleteSave(r); });
 }
 
 bool FieldPlanController::requireAdmin(const Request& request, long long* userId, Response* error) {
@@ -155,6 +157,51 @@ Response FieldPlanController::handleDeleteSpot(const Request& request) {
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) {
         std::cerr << "FieldPlanController::handleDeleteSpot: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /save  { name, items: [{ key, kind, name?, length_yd, width_yd, x, z, rot }] }
+// A named snapshot of the whole layout (migration 680); a repeated name is
+// a new version.
+Response FieldPlanController::handleAddSave(const Request& request) {
+    long long userId = 0;
+    Response error(HttpStatus::OK, "");
+    if (!requireAdmin(request, &userId, &error)) return error;
+    json body;
+    if (!parseBody(request, &body, &error)) return error;
+    const std::string name = body.contains("name") && body["name"].is_string() ? body["name"].get<std::string>() : "";
+    if (name.find_first_not_of(" \t") == std::string::npos || name.size() > 80)
+        return jsonError(HttpStatus::BAD_REQUEST, "name: 1–80 characters");
+    if (!body.contains("items") || !body["items"].is_array() || body["items"].empty() ||
+        body["items"].size() > 100)
+        return jsonError(HttpStatus::BAD_REQUEST, "items: an array of 1 to 100");
+    for (const auto& it : body["items"])
+        if (!validItem(it, false)) return jsonError(HttpStatus::BAD_REQUEST, "Bad item: " + it.dump());
+    try {
+        const long long fid = facility(request);
+        if (!fid) return jsonError(HttpStatus::NOT_FOUND, "No such facility.");
+        return jsonOut(HttpStatus::OK, {{"id", model_->addSave(fid, name, body["items"], userId)}});
+    } catch (const std::exception& e) {
+        std::cerr << "FieldPlanController::handleAddSave: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// DELETE /save?id=
+Response FieldPlanController::handleDeleteSave(const Request& request) {
+    long long userId = 0;
+    Response error(HttpStatus::OK, "");
+    if (!requireAdmin(request, &userId, &error)) return error;
+    long long id = 0;
+    try { id = std::stoll(request.getQueryParam("id")); } catch (...) {}
+    if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, "id required");
+    try {
+        const long long fid = facility(request);
+        if (!model_->deleteSave(fid, id)) return jsonError(HttpStatus::NOT_FOUND, "No such save.");
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) {
+        std::cerr << "FieldPlanController::handleDeleteSave: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
