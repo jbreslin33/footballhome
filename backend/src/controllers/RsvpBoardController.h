@@ -60,6 +60,7 @@ private:
     Response handleRollCall(const Request& request);   // mig 543
     Response handleReminders(const Request& request);
     Response handleSquadNotice(const Request& request);
+    Response handleDuesNote(const Request& request);
     Response handleSquadNoticeStatus(const Request& request);
     Response handleTextMarks(const Request& request);
 };

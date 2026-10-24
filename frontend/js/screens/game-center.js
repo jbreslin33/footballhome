@@ -914,6 +914,8 @@ class GameCenterScreen extends Screen {
       }
       const fixReg = e.target.closest('[data-gc-fix-reg]');
       if (fixReg && this.isCoach) { this._openContactSheet(Number(fixReg.dataset.gcFixReg), 'reg'); return; }
+      const duesNote = e.target.closest('[data-gc-dues-note]');
+      if (duesNote && this.isCoach) { this._openContactSheet(Number(duesNote.dataset.gcDuesNote), 'dues'); return; }
       const jump = e.target.closest('[data-gc-jump]');
       if (jump) {
         const card = this.element.querySelector(`#gc-card-${jump.dataset.gcJump}`);
@@ -2202,7 +2204,8 @@ class GameCenterScreen extends Screen {
     const rsvpGroup = (playerId) => {
       const rsvp = this.stats.get(playerId)?.gameRsvp;
       if (rsvp === 'yes') return 'going';
-      if (rsvp === 'no') return 'notGoing';
+      // Coaching only (mig 688): a coach who also plays, not playing this one.
+      if (rsvp === 'no' || rsvp === 'coaching') return 'notGoing';
       return 'noResponse';
     };
     // Dues alternates (mig 613: any balance, Men) sink to the bottom of
@@ -2600,7 +2603,8 @@ class GameCenterScreen extends Screen {
                   : consent === 'stopped' ? cb('badge_stopped') : cb('badge_none');
       this._contactCtx = this._contactCtx || {};
       this._contactCtx[personId] = { name: p.name || '', noResp: !!(this._noRespIds && this._noRespIds.has(p.id)),
-                                     gap: regOn ? gap : null, st };
+                                     gap: regOn ? gap : null, st,
+                                     duesAlt: !!this.stats.get(Number(p.id))?.duesAlternate };
       const reply = st && st.reply_body ? cb('reply', { time: this._sentWhen(st.reply_at), body: st.reply_body }) : '';
       // One status line, always present, so a send never grows the card.
       const remindSent = (this.reminders || {})[personId] || {};
@@ -3153,8 +3157,17 @@ class GameCenterScreen extends Screen {
     const whats = [{ key: 'game', label: this._cm('what_game') }];
     if (c.noResp) whats.unshift({ key: 'remind', label: this._cm('what_remind') });
     if (c.gap) whats.push({ key: 'reg', label: this._cm('what_reg', { form: c.gap.form_label || '' }) });
+    // Owes dues and the rule makes them an alternate (mig 613/687): the
+    // note that says why and how to move back up.
+    if (c.duesAlt) whats.push({ key: 'dues', label: this._cm('what_dues') });
     whats.push({ key: 'blank', label: this._cm('what_blank') });
-    const w = whats.some(x => x.key === what) ? what : (c.gap ? 'reg' : whats[0].key);
+    // The recommended message for this card's problem (owner 2026-10-24:
+    // "players in red that are not on roster, owe dues etc and they
+    // recommend message to send"): registration first, then dues, then
+    // the RSVP reminder / game link.
+    const rec = c.gap ? 'reg' : c.duesAlt ? 'dues' : whats[0].key;
+    whats.forEach(x => { if (x.key === rec && (c.gap || c.duesAlt || c.noResp)) x.label += ` ${this._cm('recommended') || '⭐'}`; });
+    const w = whats.some(x => x.key === what) ? what : rec;
     // TO (mig 682/683): every parent of a kid, each sent their own
     // message — owner 2026-10-24: "they are divorced so we want option to
     // send to both but sep".  One recipient = the card's own state.
@@ -3387,6 +3400,10 @@ class GameCenterScreen extends Screen {
       await this._loadReminders();
       return data.sends || [data];
     }
+    if (what === 'dues') {
+      const data = await this._postReminder('/api/rsvp-board/dues-note', { ...body, match_id: Number(this.matchId) });
+      return data.sends || [data];
+    }
     if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
     const data = await this._postReminder('/api/rsvp-board/squad-notice', { ...body, match_id: Number(this.matchId) });
     this.squadNotice = data.status || this.squadNotice;
@@ -3505,6 +3522,10 @@ class GameCenterScreen extends Screen {
         const data = await this._postReminder('/api/rsvp-board/remind', { person_id: personId, channel: 'sms', ...only });
         href = data.sms_href; tokenId = data.token_id || 0; purpose = `remind:${this.matchId}`;
         await this._loadReminders();
+      } else if (what === 'dues') {
+        const data = await this._postReminder('/api/rsvp-board/dues-note',
+          { match_id: Number(this.matchId), person_id: personId, channel: 'sms', ...only });
+        href = data.sms_href; tokenId = data.token_id || 0; purpose = `dues:${this.matchId}`;
       } else {
         if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); }
         const data = await this._postReminder('/api/rsvp-board/squad-notice',
@@ -5145,7 +5166,9 @@ class GameCenterScreen extends Screen {
     if (this.stats.get(Number(p.id))?.duesAlternate) {
       const text = MessageCopy.block('my_dues', 'alternate_chip');
       if (!text) return '';
-      return `<span style="font-size:0.62rem; font-weight:800; padding:1px 6px; border-radius:999px; border:1px solid #f59e0b; color:#fcd34d; background:rgba(245,158,11,0.15); white-space:nowrap;">💰 ${this.escapeHtml(text)}</span>`;
+      // Coaches: tap the chip → contact sheet on the dues note (mig 687).
+      const pid = this.isCoach ? this._personIdFor(p.id) : null;
+      return `<span ${pid ? `data-gc-dues-note="${pid}" role="button" title="${this.escapeHtml(this._cm('what_dues'))}" ` : ''}style="${pid ? 'cursor:pointer; ' : ''}font-size:0.62rem; font-weight:800; padding:1px 6px; border-radius:999px; border:1px solid #f59e0b; color:#fcd34d; background:rgba(245,158,11,0.15); white-space:nowrap;">💰 ${this.escapeHtml(text)}</span>`;
     }
     return '';
   }
@@ -5155,6 +5178,7 @@ class GameCenterScreen extends Screen {
       yes:   { label: 'Going',     bg: '#166534', fg: '#bbf7d0' },
       no:    { label: 'Not Going', bg: '#7f1d1d', fg: '#fecaca' },
       maybe: { label: 'Maybe',     bg: '#78350f', fg: '#fde68a' },
+      coaching: { label: (window.MessageCopy && MessageCopy.block('my_role', 'choice_coach')) || 'Coaching only', bg: '#1e3a8a', fg: '#bfdbfe' },
     };
     const rsvp = this.stats.get(playerId)?.gameRsvp;
     const v = RSVP_PILL[rsvp] || { label: 'No RSVP', bg: '#374151', fg: '#d1d5db' };

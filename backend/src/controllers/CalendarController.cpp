@@ -1064,6 +1064,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     WHEN fh_event_invited(fe.id, $1::int) THEN 'invited'
                     WHEN fh_event_staff(fe.id, $1::int) THEN 'staff'
                 END AS my_role,
+                -- Coach who also plays on this event's team (mig 688): the
+                -- card offers Both / Playing / Coaching only when Going.
+                fh_event_dual_role(fe.id, $1::int) AS dual_role,
+                (SELECT r.role_choice FROM fh_event_rsvps r
+                  WHERE r.fh_event_id = fe.id AND r.person_id = $1::int) AS my_role_choice,
                 -- Guardian visibility (2026-08-28).  A parent of a
                 -- rostered child holds no team_persons row of their own,
                 -- so `eligible` is false for them and every one of their
@@ -1496,7 +1501,12 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                        WHERE i.fh_event_id = fe.id
                                                          AND i.revoked_at IS NULL
                                                     ) combined
-                                                 ORDER BY combined.person_id, combined.is_coach ASC
+                                                 -- Coaching only (mig 688) keeps the coach row; otherwise the player row.
+                                                 ORDER BY combined.person_id,
+                                                          (combined.is_coach = EXISTS (SELECT 1 FROM fh_event_rsvps rc
+                                                              WHERE rc.fh_event_id = fe.id AND rc.person_id = combined.person_id
+                                                                AND rc.role_choice = 'coach')) DESC,
+                                                          combined.is_coach ASC
                                         ) roster
                                         WHERE roster.is_pickup_only = false
                                              OR roster.response = 'yes'
@@ -1730,6 +1740,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             }
             ev["is_mine"]           = row["is_mine"].as<bool>();
             ev["my_role"]           = textOrNull(row, "my_role");
+            ev["dual_role"]         = row["dual_role"].as<bool>();
+            ev["my_role_choice"]    = textOrNull(row, "my_role_choice");
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
             ev["guardian_children"] = textOrNull(row, "guardian_children");
             ev["schedule_window_end"] = textOrNull(row, "schedule_window_end");
@@ -2196,22 +2208,31 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             if (!body.contains(key) || body[key].is_null()) return "";
             return body[key].is_string() ? body[key].get<std::string>() : "";
         };
+        // Both / Playing / Coaching only (mig 688) — stored only for a
+        // dual-role person; any other value is ignored.
+        std::string roleChoice = body.contains("role_choice") && body["role_choice"].is_string()
+                               ? body["role_choice"].get<std::string>() : std::string{};
+        if (roleChoice != "both" && roleChoice != "player" && roleChoice != "coach") roleChoice.clear();
+        const bool setRoleChoice = !roleChoice.empty();
         const bool setArrive = response == "no" || body.contains("arrive_at");
         const bool setLeave  = response == "no" || body.contains("leave_at");
         const std::string arriveIso = response == "no" ? "" : isoOrEmpty("arrive_at");
         const std::string leaveIso  = response == "no" ? "" : isoOrEmpty("leave_at");
         auto row = db->query(
             "INSERT INTO fh_event_rsvps "
-            "    (fh_event_id, person_id, response, responded_at, created_via, arrive_at, leave_at) "
+            "    (fh_event_id, person_id, response, responded_at, created_via, arrive_at, leave_at, role_choice) "
             "VALUES ($1::bigint, $2::int, $3, now(), 'manual', "
-            "        NULLIF($4, '')::timestamptz, NULLIF($5, '')::timestamptz) "
+            "        NULLIF($4, '')::timestamptz, NULLIF($5, '')::timestamptz, "
+            "        CASE WHEN fh_event_dual_role($1::bigint, $2::int) THEN NULLIF($8, '') END) "
             "ON CONFLICT (fh_event_id, person_id) DO UPDATE "
             "   SET response     = EXCLUDED.response, "
             "       responded_at = EXCLUDED.responded_at, "
             "       created_via  = EXCLUDED.created_via, "
             "       arrive_at    = CASE WHEN $6::boolean THEN EXCLUDED.arrive_at ELSE fh_event_rsvps.arrive_at END, "
-            "       leave_at     = CASE WHEN $7::boolean THEN EXCLUDED.leave_at  ELSE fh_event_rsvps.leave_at  END "
-            "RETURNING id, fh_event_id, person_id, response, created_via, "
+            "       leave_at     = CASE WHEN $7::boolean THEN EXCLUDED.leave_at  ELSE fh_event_rsvps.leave_at  END, "
+            // mig 688: a dual-role person's hat — kept unless this write names one.
+            "       role_choice  = CASE WHEN $9::boolean THEN EXCLUDED.role_choice ELSE fh_event_rsvps.role_choice END "
+            "RETURNING id, fh_event_id, person_id, response, created_via, role_choice, "
             "          to_char(responded_at AT TIME ZONE 'UTC', "
             "                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS responded_at, "
             "          to_char(arrive_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS arrive_at, "
@@ -2222,7 +2243,8 @@ Response CalendarController::handlePostRsvp(const Request& request) {
              std::to_string(targetPersonId),
              response,
              arriveIso, leaveIso,
-             setArrive ? "true" : "false", setLeave ? "true" : "false"});
+             setArrive ? "true" : "false", setLeave ? "true" : "false",
+             roleChoice, setRoleChoice ? "true" : "false"});
 
         if (row.empty()) {
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
@@ -2274,6 +2296,7 @@ Response CalendarController::handlePostRsvp(const Request& request) {
             {"leave_at",      textOrNull(r0, "leave_at")},
             {"arrive_label",  textOrNull(r0, "arrive_label")},
             {"leave_label",   textOrNull(r0, "leave_label")},
+            {"role_choice",   textOrNull(r0, "role_choice")},
         };
         // 📲 Text opt-in ask (mig 647): once per event, at most once a day,
         // never after "don't ask" or a STOP — the signed-in person, so a

@@ -378,6 +378,12 @@ class MyScreen extends Screen {
         this._setRsvpTime(fhEventId, pid ? parseInt(pid, 10) : null, resetBtn.getAttribute('data-rsvp-time-reset'), '');
         return;
       }
+      const roleBtn = target.closest('[data-role-choice]');
+      if (roleBtn) {
+        e.stopPropagation();
+        this._setRoleChoice(parseInt(roleBtn.getAttribute('data-fh-event-id'), 10), roleBtn.getAttribute('data-role-choice'));
+        return;
+      }
       const evBtn = target.closest('[data-ev-btn]');
       if (evBtn) {
         e.stopPropagation();
@@ -1844,7 +1850,7 @@ class MyScreen extends Screen {
       ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
                  `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
       ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
-                 `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}`;
+                 `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}${per === 'yes' ? this._roleChoiceHtml(ev) : ''}`;
 
     const dateStr = this._eventDateStr(ev.starts_at);
     const timeStr = this._eventTimeStr(ev.starts_at);
@@ -1950,7 +1956,7 @@ class MyScreen extends Screen {
       : '';
     const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · ')].filter(Boolean);
     // Role pill (migration 438): which hat the viewer wears on this event.
-    const rolePillHtml = whoChild ? '' : this._rolePillHtml(ev.my_role);   // a child's view is about the child, not my role
+    const rolePillHtml = whoChild ? '' : this._rolePillHtml(ev.dual_role ? 'both' : ev.my_role);   // mig 688: COACH + PLAYER   // a child's view is about the child, not my role
 
     // 🧹 Event job(s) (mig 625/629): the viewer's own assignment and
     // their kids', straight off the feed's my_jobs.  Scoped like the
@@ -2134,12 +2140,47 @@ class MyScreen extends Screen {
   // "COACH" / "PLAYER" / "STAFF" / "INVITED" at the head of a card, from
   // the feed's my_role (migration 438); words are message_templates
   // kind 'my_role'.  Nothing for a guardian-only card.
+  // Going as: Both / Playing / Coaching only — only for a coach who also
+  // plays on this event's team (mig 688; owner 2026-10-24: "default to
+  // both? so players like luke breslin don't get flooded with options").
+  _roleChoiceHtml(ev) {
+    if (!ev || !ev.dual_role) return '';
+    const mc = window.MessageCopy;
+    const w = (tier, fb) => (mc && mc.block && mc.block('my_role', tier)) || fb;
+    const cur = ev.my_role_choice || 'both';
+    const pill = (key, fb) => `<button type="button" data-role-choice="${key}" data-fh-event-id="${ev.fh_event_id}"
+        style="min-width:0; min-height:0; padding:3px 9px; border-radius:999px; cursor:pointer; font-size:0.72rem; font-weight:800;
+               border:1px solid ${cur === key ? '#0284c7' : 'var(--border-color)'}; background:${cur === key ? 'rgba(2,132,199,0.25)' : 'transparent'}; color:inherit;">${this.escapeHtml(w('choice_' + key, fb))}</button>`;
+    return `<div style="flex-basis:100%; display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:6px; font-size:0.72rem;">
+        <span style="opacity:0.75; font-weight:700;">${this.escapeHtml(w('choice_q', 'Going as:'))}</span>
+        ${pill('both', 'Both')}${pill('player', 'Playing')}${pill('coach', 'Coaching only')}</div>`;
+  }
+
+  async _setRoleChoice(fhEventId, choice) {
+    const ev = (this.events || []).find(e => e.fh_event_id === fhEventId);
+    if (!ev || !['both', 'player', 'coach'].includes(choice)) return;
+    const prev = ev.my_role_choice;
+    ev.my_role_choice = choice;
+    this._renderEvents();
+    try {
+      const body = await this._fetch('/api/calendar/rsvp', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fh_event_id: fhEventId, response: 'yes', role_choice: choice }) });
+      if (body && body.rsvp) ev.my_role_choice = body.rsvp.role_choice || choice;
+    } catch (err) {
+      ev.my_role_choice = prev;
+      alert(`Could not save: ${err.message}`);
+    }
+    this._renderEvents();
+  }
+
   _rolePillHtml(role) {
     if (!role) return '';
     const mc = window.MessageCopy;
     const word = (mc && mc.block && mc.block('my_role', role)) || String(role).toUpperCase();
     const colors = {
       coach:   ['rgba(245,158,11,0.22)', '#fcd34d', 'rgba(245,158,11,0.6)'],
+      both:    ['rgba(245,158,11,0.22)', '#fcd34d', 'rgba(245,158,11,0.6)'],
       player:  ['rgba(59,130,246,0.22)', '#bfdbfe', 'rgba(96,165,250,0.6)'],
       staff:   ['rgba(168,85,247,0.22)', '#e9d5ff', 'rgba(192,132,252,0.6)'],
       invited: ['rgba(245,158,11,0.18)', '#fcd34d', 'rgba(245,158,11,0.55)'],

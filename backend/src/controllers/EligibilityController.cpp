@@ -299,8 +299,11 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                           END) AS practices_projected,
                        COALESCE((SELECT bool_or(extended) FROM win), false) AS extended,
                        (SELECT to_char(min(cutoff) AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') FROM win) AS cutoff,
-                       (SELECT r.response FROM fh_event_rsvps r, match_event me
-                          WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp,
+                       -- A coach who also plays and chose Coaching only (mig 688)
+                       -- is not in the lineup pool: 'coaching', not 'yes'.
+                       (SELECT CASE WHEN r.response = 'yes' AND r.role_choice = 'coach' THEN 'coaching' ELSE r.response END
+                          FROM fh_event_rsvps r, match_event me
+                         WHERE r.fh_event_id = me.fh_event_id AND r.person_id = pe.id) AS game_rsvp,
                        (SELECT me.fh_event_id FROM match_event me) AS game_fh_event_id,
                        (SELECT to_char((dl.deadline AT TIME ZONE 'America/New_York')::date - 1, 'YYYY-MM-DD') FROM dl) AS rsvp_deadline_day,
                        -- Dues alternate (mig 613): ANY balance where this

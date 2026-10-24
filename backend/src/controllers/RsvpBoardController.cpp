@@ -14,6 +14,7 @@
 #include "../models/RsvpBoard.h"
 #include "../models/PersonFines.h"
 #include "../models/MessageCopy.h"
+#include "../models/WelcomeLog.h"
 #include "../services/MagicLinkService.h"
 #include "../services/GroupMeService.h"
 #include "../services/TwilioService.h"
@@ -112,6 +113,7 @@ void RsvpBoardController::registerRoutes(Router& router, const std::string& pref
     router.post(prefix + "/roll-call",    [this](const Request& r) { return handleRollCall(r); });
     router.get(prefix + "/reminders", [this](const Request& r) { return handleReminders(r); });
     router.post(prefix + "/squad-notice", [this](const Request& r) { return handleSquadNotice(r); });
+    router.post(prefix + "/dues-note",    [this](const Request& r) { return handleDuesNote(r); });
     router.get(prefix + "/squad-notice", [this](const Request& r) { return handleSquadNoticeStatus(r); });
     router.get(prefix + "/text-marks", [this](const Request& r) { return handleTextMarks(r); });
 }
@@ -876,6 +878,79 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "RsvpBoardController::handleSquadNotice: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not build the game reminder");
+    }
+}
+
+// POST /dues-note {match_id, person_id, channel: sms|email, recipient_person_ids?}
+// Why a player who owes dues is an alternate for this game (mig 687;
+// owner 2026-10-24: "a message for players who owe money and were put on
+// as alternates … should be universal … explains that system puts them
+// as alternates if we have enough dues paying players").  Personal: one
+// per parent, each with their own sign-in link (lands on #my, where the
+// balance and Pay button are).  Only for a player the dues rule flags
+// (fh_dues_alternate) — the amount stays private to them.
+Response RsvpBoardController::handleDuesNote(const Request& request) {
+    Scope scope;
+    Response error(HttpStatus::OK, "");
+    if (!resolveScope(request, &scope, &error)) return error;
+    json body;
+    try {
+        body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
+    }
+    const long long matchId = body.value("match_id", 0LL), personId = body.value("person_id", 0LL);
+    const std::string channel = body.value("channel", std::string{});
+    if (matchId <= 0 || personId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id and person_id required");
+    if (channel != "sms" && channel != "email") return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
+    try {
+        auto* db = Database::getInstance();
+        auto d = db->query(
+            "SELECT fh_dues_alternate($1::int, $2::int) AS alt, fh_dues_balance_usd($1::int) AS bal",
+            {std::to_string(personId), std::to_string(WelcomeLog::kLighthouseClubId)});
+        if (d.empty() || !d[0]["alt"].as<bool>())
+            return jsonError(HttpStatus::CONFLICT, "That player doesn't owe dues on a team with the alternate rule.");
+        char amount[32];
+        std::snprintf(amount, sizeof amount, "$%.2f", d[0]["bal"].is_null() ? 0.0 : d[0]["bal"].as<double>());
+        const auto ctx = model_->squadNoticeContext(matchId);
+        if (!ctx.found) return jsonError(HttpStatus::NOT_FOUND, "That game is not on the calendar.");
+        std::vector<RsvpBoard::Recipient> recipients;
+        if (!pickRecipients(model_->messageRecipients(personId), body, &recipients))
+            return jsonError(HttpStatus::BAD_REQUEST, "recipient_person_ids must be this player's parents");
+        std::string senderName;
+        {
+            auto s = db->query("SELECT COALESCE(first_name,'') AS fn FROM persons WHERE id = $1::int",
+                               {std::to_string(scope.personId)});
+            if (!s.empty()) senderName = s[0]["fn"].c_str();
+        }
+        auto pf = db->query("SELECT COALESCE(first_name,'') AS fn FROM persons WHERE id = $1::int", {std::to_string(personId)});
+        const std::string playerFirst = pf.empty() ? "" : pf[0]["fn"].c_str();
+        MessageCopy copy;
+        const std::string when = ctx.day + " " + ctx.time;
+        json sends = json::array();
+        for (const auto& rcp : recipients) {
+            const bool parent = rcp.personId != personId;
+            auto c = db->query(std::string("SELECT fh_recipient_") + (channel == "email" ? "email" : "phone")
+                               + "($1::int, $2::int) AS c", {std::to_string(rcp.personId), std::to_string(personId)});
+            const std::string contact = c.empty() || c[0]["c"].is_null() ? "" : c[0]["c"].c_str();
+            if (contact.empty()) continue;
+            const auto minted = MagicLinkService::mint(rcp.personId, channel, contact, scope.userId);
+            const auto msg = copy.render("dues_alternate_note", parent ? "parent" : "adult", {
+                {"first", rcp.firstName}, {"child", playerFirst}, {"amount", amount},
+                {"when", when}, {"event", ctx.shortEvent}, {"link", minted.url}, {"sender", senderName}});
+            if (!msg.ok()) return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "dues_alternate_note template missing (migration 687)");
+            json one = {{"recipient_person_id", rcp.personId}, {"recipient_name", rcp.firstName},
+                        {"contact", contact}, {"token_id", minted.tokenId}};
+            copy.addComposeHrefs(one, channel, contact, msg.subject, msg.body, msg.body);
+            sends.push_back(std::move(one));
+        }
+        if (sends.empty()) return jsonError(HttpStatus::CONFLICT, channel == "email" ? "No email on file." : "No mobile number on file.");
+        json out = sends[0];
+        out["sends"] = sends;
+        return jsonOut(HttpStatus::CREATED, out);
+    } catch (const std::exception& e) {
+        std::cerr << "RsvpBoardController::handleDuesNote: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not build the dues note");
     }
 }
 

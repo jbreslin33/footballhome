@@ -106,7 +106,12 @@ const char* kBaseCtes = R"SQL(
          AND ($4::int = 0 OR cs.person_id = $4::int)
     ), expected AS MATERIALIZED (
       SELECT r.person_id, fe.id AS fh_event_id, fe.kind, fe.opponent,
-             fe.fh_notes, ge.starts_at, ge.ends_at, MIN(r.role_rank) AS role_rank
+             fe.fh_notes, ge.starts_at, ge.ends_at,
+             -- Coaching beats playing for the label, except a coach who
+             -- also plays on this event's team counts as a PLAYER unless
+             -- they chose Coaching only (mig 688).
+             CASE WHEN MIN(r.role_rank) = 1 AND fh_event_counts_as_player(fe.id, r.person_id) THEN 2
+                  ELSE MIN(r.role_rank) END AS role_rank
         FROM roster r
         JOIN tm ON tm.id = r.team_id
         JOIN fh_event_teams fet ON fet.team_id = r.team_id
