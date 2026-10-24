@@ -7,9 +7,17 @@
 // The DEFAULT view (James: "moving an 11v11 and 7v7 pitch should be
 // default get rid of other stuff"): two outlines on the real site, the
 // 11v11 (starts on cyan, the plan) and a 7v7, with pills on the left.
-// Drag one to move it; ↺ / ↻ (or [ / ]) turn the selected one; SIZE
-// cycles the 7v7's size; WATER toggles the water layer (runoff, flood
-// areas, and live per-m² cells inside each pitch). Every move re-checks
+// 10/24 (James: "the pop up needs to be able to be hidden. i need to be
+// able to turn off everything. with pills. only things movable are 7v7
+// and 11v11 ... diff sizes and move and rotate them. same practice
+// pitches"): the panel shows only the SELECTED item and hides (✕ / 📋
+// PANEL); LAYER pills switch every kind of thing off — pitches, boxes,
+// handles, match, today's pitch, water, contours, trees, buildings,
+// fences, props, labels, ground (field.js setLayer) — remembered on this
+// device. The 11v11, the 7v7 and each practice box take any size: drag
+// a ■ corner (opposite corner stays put), type length × width, or tap a
+// size chip; drag the ◯ handle off the end to turn it (or ↺ ↻ / [ ]).
+// Nothing else on the site moves. Every move re-checks
 // the rules the C++ sweep uses (lighthouse-planner-data.js, exported by
 // game/scripts/export_lighthouse_planner_input.py --js; the geometry is a
 // port of game/src/tools/field_planner_main.cpp) plus 10 yd between the
@@ -22,7 +30,7 @@
 // name them like Monday, Tuesday"): ➕ ADD BOX drops a named box where the
 // camera looks; drag / turn it like a pitch, set its size, rename or
 // delete it. Red when it's on the 11v11 or 7v7 or breaks a site rule.
-// Boxes live in this browser (localStorage), like saved spots.
+// Boxes save with the club layout (below).
 // GAME / PLAN (James: "clear all measurement and rain stuff so we can
 // focus on game"): attach() returns { setOn }; client.js's 🎮/📐 button
 // hides or shows every planner layer — outlines, boxes, ruler, water,
@@ -203,6 +211,25 @@
   }
 
   // ── the planner ──────────────────────────────────────────────────────
+  // Sizes offered as one-tap chips per kind (any size can be typed or
+  // dragged; the water % needs a swept size, data.ranges).
+  const PRESETS = {
+    '11v11': [[120, 80], [115, 74], [110, 70], [100, 65], [100, 60]],
+    '7v7': SEVEN_SIZES,
+    box: [[40, 30], [30, 20], [25, 20], [20, 15]],
+  };
+  const LIMITS = { pitch: [[20, 130], [15, 100]], box: [[5, 120], [5, 80]] };
+  // LAYER pills (James 10/24: "i need to be able to turn off everything.
+  // with pills"): every kind of thing on screen, on/off, remembered on this
+  // device. Field layers come from field.js setLayer.
+  const LAYERS = [
+    ['panel', '📋 PANEL'], ['pitches', '📐 PITCHES'], ['boxes', '🟧 PRACTICE'], ['ruler', '📏 GAP'],
+    ['handles', '✥ HANDLES'], ['match', '🏟 MATCH'], ['paint', '🟨 TODAY\'S PITCH'], ['water', '💧 WATER'],
+    ['contours', '〰 CONTOURS'], ['trees', '🌳 TREES'], ['buildings', '🏠 BUILDINGS'], ['fences', '🚧 FENCES'],
+    ['props', '🐴 PROPS'], ['labels', '🔤 LABELS'], ['ground', '🟩 GROUND'],
+  ];
+  const FIELD_LAYERS = ['trees', 'buildings', 'fences', 'props', 'labels', 'ground'];
+
   function attach(renderer) {
     const DATA = window.LIGHTHOUSE_PLANNER;
     const LAY = window.LIGHTHOUSE_LAYOUT || {};
@@ -227,12 +254,14 @@
     };
     const all = () => pitches.concat(boxes);
     const STATE_KEY = 'fh.lighthouse.planState.v1', DEFAULT_KEY = 'fh.lighthouse.planDefault.v1';
+    const LAYER_KEY = 'fh.lighthouse.designLayers.v1';
     const snapshot = () => ({
       pitches: pitches.map((p) => ({ id: p.id, x: +p.x.toFixed(2), z: +p.z.toFixed(2), rot: +p.rot.toFixed(1), size: p.size.slice() })),
       boxes: boxes.map((b) => ({ id: b.id, name: b.name, size: b.size.slice(), x: +b.x.toFixed(2), z: +b.z.toFixed(2), rot: +b.rot.toFixed(1) })),
     });
     const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
     const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+    const show = Object.assign(Object.fromEntries(LAYERS.map(([k]) => [k, true])), readJSON(LAYER_KEY) || {});
     // The built-in default: cyan for the 11v11, the 7v7 on its ⭐ BEST spot.
     const builtinDefault = { pitches: snapshot().pitches };   // leaves boxes alone
     // Put pitches (and, when given, boxes) where a snapshot says.
@@ -241,12 +270,12 @@
         const p = pitches.find((q) => q.id === sp.id);
         if (!p) continue;
         p.x = sp.x; p.z = sp.z; p.rot = sp.rot;
-        if (sp.size) p.size = SEVEN_SIZES.find((q) => q[0] === sp.size[0] && q[1] === sp.size[1]) || sp.size;
+        if (sp.size) p.size = [+sp.size[0], +sp.size[1]];
       }
       if (st && st.boxes) {
         for (const b of boxes) if (b.g) b.g.parent.remove(b.g);
         boxes.length = 0;
-        for (const b of st.boxes) boxes.push(Object.assign({ kind: 'box' }, b));
+        for (const b of st.boxes) boxes.push(Object.assign({ kind: 'box' }, b, { size: [+b.size[0], +b.size[1]] }));
       }
     }
     // ── the club DB (/api/field-plan); localStorage stays as this device's copy ──
@@ -272,8 +301,42 @@
       boxes: items.filter((i) => i.kind === 'practice_box').map((i) => ({ id: i.key, name: i.name,
         size: [i.length_yd, i.width_yd], x: i.x, z: i.z, rot: i.rot })),
     });
-    const syncEl = document.createElement('div');
-    syncEl.style.cssText = 'padding:0 6px 4px;font-size:11px;';
+
+    const mk = (tag, css, text) => {
+      const e = document.createElement(tag);
+      e.style.cssText = css;
+      if (text != null) e.textContent = text;
+      return e;
+    };
+    const tap = (el, fn) => {
+      el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); fn(); });
+      el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); fn(); });
+    };
+    const pill = 'min-width:0;min-height:0;padding:4px 9px;border-radius:12px;border:1px solid #889;' +
+      'background:rgba(255,255,255,.1);color:#f4f6fb;font:600 12px system-ui,sans-serif;cursor:pointer;';
+    const textIn = (ph, w) => {
+      const i = document.createElement('input');
+      i.placeholder = ph;
+      i.style.cssText = 'min-width:0;width:' + w + 'px;padding:4px 8px;border-radius:12px;border:1px solid #889;' +
+        'background:rgba(255,255,255,.08);color:#f4f6fb;font:12px system-ui,sans-serif;';
+      for (const ev of ['mousedown', 'touchstart', 'keydown']) i.addEventListener(ev, (e) => e.stopPropagation());
+      return i;
+    };
+    const row = () => mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;');
+
+    // ── the panel: only the SELECTED item, hideable (✕ or the 📋 pill) ──
+    const panel = mk('div', 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:block;' +
+      'background:rgba(10,14,20,.86);color:#f4f6fb;font:12px system-ui,sans-serif;border-radius:10px;' +
+      'padding:8px 10px;max-width:min(560px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow-y:auto;' +
+      'box-sizing:border-box;');
+    document.body.appendChild(panel);
+    const head = mk('div', 'display:flex;align-items:center;gap:8px;');
+    const syncEl = mk('div', 'flex:1;min-width:0;font-size:11px;');
+    const hideBtn = mk('button', pill + 'padding:2px 9px;', '✕ hide');
+    hideBtn.title = 'Hide this panel (📋 PANEL pill brings it back)';
+    tap(hideBtn, () => setLayer('panel', false));
+    head.append(syncEl, hideBtn);
+    panel.appendChild(head);
     const setSync = (msg, ok) => { syncEl.textContent = msg; syncEl.style.color = ok ? '#7dff9a' : '#ffb000'; };
     function pushLayout(kind, st) {
       if (!canWrite) {
@@ -300,124 +363,124 @@
       }, 600);
     };
     const title = (p) => (p.kind === 'box' ? p.name : p.id);
-    let on = false, built = false, wantOn = true, sel = pitches[1], drag = null, justDragged = false, waterOn = true;
-    const panel = document.createElement('div');
-    panel.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:20;display:block;' +
-      'background:rgba(10,14,20,.86);color:#f4f6fb;font:12px system-ui,sans-serif;border-radius:10px;' +
-      'padding:8px 10px;max-width:min(560px,calc(100vw - 16px));box-sizing:border-box;';
-    document.body.appendChild(panel);
-
-    const mk = (tag, css, text) => {
-      const e = document.createElement(tag);
-      e.style.cssText = css;
-      if (text != null) e.textContent = text;
-      return e;
-    };
-    const tap = (el, fn) => {
-      el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); fn(); });
-      el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); fn(); });
-    };
-    const pill = 'min-width:0;min-height:0;padding:4px 9px;border-radius:12px;border:1px solid #889;' +
-      'background:rgba(255,255,255,.1);color:#f4f6fb;font:600 12px system-ui,sans-serif;cursor:pointer;';
+    const limits = (p) => LIMITS[p.kind === 'box' ? 'box' : 'pitch'];
+    let on = false, built = false, wantOn = true, sel = pitches[1], drag = null, justDragged = false;
     // Always-on gap between the two pitches (James: "show distance always
     // between 7v7 and 11v11 as they move").
-    const gapRow = mk('div', 'padding:2px 6px 6px;font-weight:600;');
-    panel.appendChild(syncEl);
+    const gapRow = mk('div', 'padding:4px 0 2px;font-weight:600;');
     panel.appendChild(gapRow);
-    const rows = {};
-    const rowsBox = mk('div', 'max-height:38vh;overflow-y:auto;');
-    panel.appendChild(rowsBox);
-    function buildRows() {
-      rowsBox.innerHTML = '';
-      for (const k in rows) delete rows[k];
-      for (const p of all()) {
-        const r = mk('div', 'display:flex;gap:6px;align-items:flex-start;padding:4px 6px;border-radius:8px;' +
-          'cursor:pointer;margin-bottom:4px;');
-        const go = mk('button', pill + 'flex:none;', '📍');
-        go.title = 'Fly the camera to it';
-        tap(go, () => { sel = p; flyTo(p); paint(); });
-        const txt = mk('div', 'flex:1;min-width:0;');
-        r.appendChild(go);
-        r.appendChild(txt);
-        tap(txt, () => { sel = p; paint(); });
-        rowsBox.appendChild(r);
-        rows[p.id] = txt;
-      }
-    }
-    buildRows();
-    const bar = mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;');
-    const turn = (d) => {
-      sel.rot = ((sel.rot + d) % 360 + 360) % 360;
-      update();
-      if (sel.kind === 'box') saveBoxes();
-    };
-    for (const [t, d] of [['↺ 5°', -5], ['↺ 1°', -1], ['↻ 1°', 1], ['↻ 5°', 5]]) {
-      const b = mk('button', pill, t);
-      let rep = null;
-      const start = (e) => { e.preventDefault(); e.stopPropagation(); turn(d); rep = setInterval(() => turn(d), 150); };
-      const stop = () => { if (rep) clearInterval(rep); rep = null; };
-      b.addEventListener('mousedown', start);
-      b.addEventListener('touchstart', start);
-      for (const ev of ['mouseup', 'mouseleave', 'touchend', 'touchcancel']) b.addEventListener(ev, stop);
-      bar.appendChild(b);
-    }
-    // ⭐ BEST: snap the selected pitch to the driest legal spot of its size
-    // (the 100 % spot, data.ranges[size].at).
-    const bestBtn = mk('button', pill + 'border-color:#ffd24d;', '⭐ BEST');
-    tap(bestBtn, () => {
-      if (sel.kind === 'box') return;
-      const r = DATA.ranges[sel.size[0] + 'x' + sel.size[1]];
-      if (!r || !r.at) return;
-      sel.x = r.at[0]; sel.z = r.at[1]; sel.rot = r.at[2];
-      update();
-      flyTo(sel);
-    });
-    bar.appendChild(bestBtn);
-    const sizeBtn = mk('button', pill);
-    tap(sizeBtn, () => {
-      const p = pitches[1];
-      p.size = SEVEN_SIZES[(SEVEN_SIZES.indexOf(sizeOf(p.size)) + 1) % SEVEN_SIZES.length];
+    const detail = mk('div', 'padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.08);margin-top:4px;');
+    panel.appendChild(detail);
+
+    // Edit row for the selected item: name (boxes), length × width, angle,
+    // size chips, turn buttons, ⭐ BEST / 🗑.
+    const ctl = mk('div', '');
+    panel.appendChild(ctl);
+    const inputs = {};
+    function setSize(p, L, W) {
+      const [[l0, l1], [w0, w1]] = limits(p);
+      L = Math.round(Math.max(l0, Math.min(l1, +L || p.size[0])));
+      W = Math.round(Math.max(w0, Math.min(w1, +W || p.size[1])));
+      if (L === p.size[0] && W === p.size[1]) return false;
+      p.size = [L, W];
       rebuild(p);
-      update();
-    });
-    bar.appendChild(sizeBtn);
-    const copyBtn = mk('button', pill, 'COPY');
-    tap(copyBtn, () => {
-      const txt = all().map((p) => `${title(p)} ${p.size[0]}x${p.size[1]} yd at (${p.x.toFixed(1)}, ${p.z.toFixed(1)}) ${p.rot.toFixed(0)}°` +
-        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}` + (p.ev.w.pct != null ? `, dry ${p.ev.w.pct.toFixed(0)}%` : '') +
-        `, main infield ${(p.ev.infield / YD).toFixed(1)} yd`).join('\n');
-      if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
-      copyBtn.textContent = 'COPIED';
-      setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
-    });
-    bar.appendChild(copyBtn);
-    const setDefBtn = mk('button', pill, '📌 SET DEFAULT');
-    tap(setDefBtn, () => {
-      const st = snapshot();
-      dbDefault = st;
-      writeJSON(DEFAULT_KEY, st);
-      pushLayout('default', st).then((ok) => {
-        setDefBtn.textContent = ok ? '✓ DEFAULT SET' : '✓ SET (this device)';
-        setTimeout(() => { setDefBtn.textContent = '📌 SET DEFAULT'; }, 1500);
-      });
-    });
-    const resetBtn = mk('button', pill, '↺ DEFAULT');
-    tap(resetBtn, () => {
-      restore(dbDefault || readJSON(DEFAULT_KEY) || builtinDefault);
-      for (const p of all()) rebuild(p);
-      sel = pitches[0];
-      buildLists();
-      update();
-      saveBoxes();
-    });
-    bar.append(setDefBtn, resetBtn);
-    panel.appendChild(bar);
+      return true;
+    }
+    const setRot = (p, deg) => { p.rot = ((deg % 360) + 360) % 360; };
+    function paintCtl() {
+      ctl.innerHTML = '';
+      for (const k in inputs) delete inputs[k];
+      const p = sel;
+      const r1 = row();
+      if (p.kind === 'box') {
+        const nm = textIn('name', 110);
+        nm.value = p.name;
+        const rename = () => {
+          const v = nm.value.trim();
+          if (!v || v === p.name) return;
+          p.name = v;
+          rebuild(p);
+          buildPills();
+          update();
+        };
+        nm.addEventListener('change', rename);
+        nm.addEventListener('keydown', (e) => { if (e.key === 'Enter') rename(); });
+        r1.appendChild(nm);
+      }
+      const L = textIn('length', 52), W = textIn('width', 52), A = textIn('°', 52);
+      L.type = W.type = A.type = 'number';
+      inputs.L = L; inputs.W = W; inputs.A = A;
+      const applySize = () => { if (setSize(p, L.value, W.value)) update(); else paint(); };
+      const applyRot = () => { setRot(p, +A.value || 0); update(); };
+      for (const i of [L, W]) {
+        i.addEventListener('change', applySize);
+        i.addEventListener('keydown', (e) => { if (e.key === 'Enter') applySize(); });
+      }
+      A.addEventListener('change', applyRot);
+      A.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyRot(); });
+      r1.append(mk('span', 'opacity:.75;font-size:11px;', 'size'), L, mk('span', '', '×'), W,
+                mk('span', 'opacity:.75', 'yd'), mk('span', 'opacity:.75;font-size:11px;margin-left:6px;', 'angle'), A,
+                mk('span', 'opacity:.75', '°'));
+      ctl.appendChild(r1);
+      const r2 = row();
+      for (const [l, w] of PRESETS[p.kind === 'box' ? 'box' : p.id] || []) {
+        const b = mk('button', pill + (DATA.ranges[l + 'x' + w] ? 'border-color:#29a8ff;' : ''), l + '×' + w);
+        b.title = DATA.ranges[l + 'x' + w] ? 'swept size — dry % available' : '';
+        tap(b, () => { if (setSize(p, l, w)) update(); });
+        r2.appendChild(b);
+      }
+      ctl.appendChild(r2);
+      const r3 = row();
+      for (const [t, d] of [['↺ 5°', -5], ['↺ 1°', -1], ['↻ 1°', 1], ['↻ 5°', 5], ['⟲ 90°', 90]]) {
+        const b = mk('button', pill, t);
+        let rep = null;
+        const start = (e) => {
+          e.preventDefault(); e.stopPropagation(); turn(d);
+          if (Math.abs(d) < 90) rep = setInterval(() => turn(d), 150);
+        };
+        const stop = () => { if (rep) clearInterval(rep); rep = null; };
+        b.addEventListener('mousedown', start);
+        b.addEventListener('touchstart', start);
+        for (const ev of ['mouseup', 'mouseleave', 'touchend', 'touchcancel']) b.addEventListener(ev, stop);
+        r3.appendChild(b);
+      }
+      if (p.kind === 'box') {
+        const del = mk('button', pill + 'color:#ff8a94;', '🗑 DELETE');
+        tap(del, () => {
+          boxes.splice(boxes.indexOf(p), 1);
+          if (p.g) p.g.parent.remove(p.g);
+          select(pitches[0]);
+          buildPills();
+          update();
+        });
+        r3.appendChild(del);
+      } else {
+        // ⭐ BEST: snap to the driest legal spot of its size (data.ranges).
+        const r = DATA.ranges[p.size[0] + 'x' + p.size[1]];
+        const best = mk('button', pill + 'border-color:#ffd24d;' + (r && r.at ? '' : 'opacity:.4;'), '⭐ BEST');
+        best.title = r && r.at ? 'Driest legal spot for this size' : 'No sweep for this size';
+        tap(best, () => {
+          const rr = DATA.ranges[p.size[0] + 'x' + p.size[1]];
+          if (!rr || !rr.at) return;
+          p.x = rr.at[0]; p.z = rr.at[1]; p.rot = rr.at[2];
+          update();
+          flyTo(p);
+        });
+        r3.appendChild(best);
+      }
+      const fly = mk('button', pill, '📍 GO');
+      tap(fly, () => flyTo(p));
+      r3.appendChild(fly);
+      ctl.appendChild(r3);
+      spotBox.style.display = p.kind === 'box' ? 'none' : 'flex';
+      paintSpots();
+    }
+    const turn = (d) => { setRot(sel, sel.rot + d); update(); };
 
     // SPOTS (James: "click button to reset it there. allow for saving a
     // spot and delete a spot and give it a name"): built-in spots from
-    // layout.planSpots + ones saved in this browser (localStorage). Tap a
-    // spot = move the selected pitch there; 💾 saves where it is now; ✕
-    // deletes a saved one.
+    // layout.planSpots + the club's saved ones. Tap a spot = move the
+    // selected pitch there; 💾 saves where it is now; ✕ deletes a saved one.
     const SPOT_KEY = 'fh.lighthouse.planSpots.v1';
     const loadSaved = () => {
       try { return JSON.parse(localStorage.getItem(SPOT_KEY) || '[]'); } catch (e) { return []; }
@@ -425,9 +488,8 @@
     const storeSaved = (list) => {
       try { localStorage.setItem(SPOT_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
     };
-    const spotBox = mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;');
+    const spotBox = row();
     panel.appendChild(spotBox);
-    const sizeOf = (sz) => SEVEN_SIZES.find((q) => q[0] === sz[0] && q[1] === sz[1]) || sz;
     // Spots in one shape: { id?, name, pitch, x, z, rotDeg, size }.
     const spotList = () => (dbSpots
       ? dbSpots.map((s) => ({ id: s.id, name: s.name, pitch: s.pitch, x: s.x, z: s.z, rotDeg: s.rot,
@@ -437,20 +499,21 @@
     function applySpot(sp) {
       const p = pitches.find((q) => q.id === sp.pitch);
       if (!p) return;
-      sel = p;
       p.x = sp.x; p.z = sp.z; p.rot = sp.rotDeg;
-      if (sp.size && (sp.size[0] !== p.size[0] || sp.size[1] !== p.size[1])) { p.size = sizeOf(sp.size); rebuild(p); }
+      if (sp.size) setSize(p, sp.size[0], sp.size[1]);
+      select(p);
       update();
       flyTo(p);
     }
     function paintSpots() {
       spotBox.innerHTML = '';
+      if (sel.kind === 'box') return;
       spotBox.appendChild(mk('span', 'opacity:.75;font-size:11px;', '📌 ' + sel.id + ' spots:'));
       const saved = spotList();
-      const all = (LAY.planSpots || []).map((sp) => ({ sp, saved: false }))
+      const list = (LAY.planSpots || []).map((sp) => ({ sp, saved: false }))
         .concat(saved.map((sp, i) => ({ sp, saved: true, i })))
         .filter((e) => e.sp.pitch === sel.id);
-      for (const e of all) {
+      for (const e of list) {
         const b = mk('button', pill + (e.saved ? '' : 'border-color:#ffd24d;'), e.sp.name);
         b.title = `(${e.sp.x.toFixed(1)}, ${e.sp.z.toFixed(1)}) ${e.sp.rotDeg.toFixed(0)}°` +
           (e.sp.size ? ` ${e.sp.size[0]}×${e.sp.size[1]} yd` : '');
@@ -465,19 +528,15 @@
                 .catch((err) => setSync('⚠ spot not deleted (' + err.message + ')', false));
               return;
             }
-            const list = loadSaved();
-            list.splice(e.i, 1);
-            storeSaved(list);
+            const l = loadSaved();
+            l.splice(e.i, 1);
+            storeSaved(l);
             paintSpots();
           });
           spotBox.appendChild(x);
         }
       }
-      const name = document.createElement('input');
-      name.placeholder = 'name this spot';
-      name.style.cssText = 'min-width:0;width:130px;padding:4px 8px;border-radius:12px;border:1px solid #889;' +
-        'background:rgba(255,255,255,.08);color:#f4f6fb;font:12px system-ui,sans-serif;';
-      for (const ev of ['mousedown', 'touchstart', 'keydown']) name.addEventListener(ev, (e) => e.stopPropagation());
+      const name = textIn('name this spot', 120);
       const save = mk('button', pill, '💾 SAVE');
       const doSave = () => {
         const n = name.value.trim() || (sel.id + ' ' + new Date().toLocaleString());
@@ -487,64 +546,22 @@
             .then(reloadSpots).catch((err) => setSync('⚠ spot not saved (' + err.message + ')', false));
           return;
         }
-        const list = loadSaved();
-        list.push({ name: n, pitch: sel.id, x: +sel.x.toFixed(2), z: +sel.z.toFixed(2),
-                    rotDeg: +sel.rot.toFixed(1), size: sel.size.slice() });
-        if (!storeSaved(list)) save.textContent = '⚠ NOT SAVED';
+        const l = loadSaved();
+        l.push({ name: n, pitch: sel.id, x: +sel.x.toFixed(2), z: +sel.z.toFixed(2),
+                 rotDeg: +sel.rot.toFixed(1), size: sel.size.slice() });
+        if (!storeSaved(l)) save.textContent = '⚠ NOT SAVED';
         paintSpots();
       };
       tap(save, doSave);
       name.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
-      spotBox.appendChild(name);
-      spotBox.appendChild(save);
+      spotBox.append(name, save);
     }
-    // ── practice boxes ──
-    const textIn = (ph, w) => {
-      const i = document.createElement('input');
-      i.placeholder = ph;
-      i.style.cssText = 'min-width:0;width:' + w + 'px;padding:4px 8px;border-radius:12px;border:1px solid #889;' +
-        'background:rgba(255,255,255,.08);color:#f4f6fb;font:12px system-ui,sans-serif;';
-      for (const ev of ['mousedown', 'touchstart', 'keydown']) i.addEventListener(ev, (e) => e.stopPropagation());
-      return i;
-    };
-    const boxCtl = mk('div', 'display:none;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;');
-    panel.appendChild(boxCtl);
-    function paintBoxCtl() {
-      boxCtl.innerHTML = '';
-      if (sel.kind !== 'box') { boxCtl.style.display = 'none'; return; }
-      boxCtl.style.display = 'flex';
-      const b = sel;
-      boxCtl.appendChild(mk('span', 'opacity:.75;font-size:11px;', '🟧 box:'));
-      const nm = textIn('name', 110);
-      nm.value = b.name;
-      const L = textIn('length', 52), W = textIn('width', 52);
-      L.type = W.type = 'number';
-      L.value = b.size[0]; W.value = b.size[1];
-      const apply = () => {
-        const nl = Math.max(5, Math.min(120, +L.value || b.size[0])), nw = Math.max(5, Math.min(80, +W.value || b.size[1]));
-        const rename = nm.value.trim() && nm.value.trim() !== b.name;
-        if (rename) b.name = nm.value.trim();
-        if (nl !== b.size[0] || nw !== b.size[1] || rename) { b.size = [nl, nw]; rebuild(b); buildLists(); }
-        saveBoxes();
-        update();
-      };
-      for (const i of [nm, L, W]) {
-        i.addEventListener('change', apply);
-        i.addEventListener('keydown', (e) => { if (e.key === 'Enter') apply(); });
-      }
-      const del = mk('button', pill + 'color:#ff8a94;', '🗑 DELETE');
-      tap(del, () => {
-        boxes.splice(boxes.indexOf(b), 1);
-        if (b.g) b.g.parent.remove(b.g);
-        sel = pitches[0];
-        saveBoxes();
-        buildLists();
-        update();
-      });
-      boxCtl.append(nm, L, mk('span', '', '×'), W, mk('span', 'opacity:.75', 'yd'), del);
-    }
-    const addRow = mk('div', 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;');
-    const addName = textIn('practice box name (Monday…)', 190);
+
+    // Whole-layout row: add a practice box, copy, default.
+    const addRow = row();
+    addRow.style.borderTop = '1px solid rgba(255,255,255,.15)';
+    addRow.style.paddingTop = '6px';
+    const addName = textIn('practice box name (Monday…)', 170);
     const addBtn = mk('button', pill + 'border-color:#ffa630;', '➕ ADD BOX');
     const addBox = () => {
       if (!on) return;   // field still loading
@@ -554,23 +571,51 @@
                   size: [40, 30], x: t.x, z: t.z, rot: pitches[0].rot };
       boxes.push(b);
       addName.value = '';
+      if (!show.boxes) setLayer('boxes', true);
       rebuild(b);
-      sel = b;
-      buildLists();
-      saveBoxes();
+      select(b);
+      buildPills();
       update();
     };
     tap(addBtn, addBox);
     addName.addEventListener('keydown', (e) => { if (e.key === 'Enter') addBox(); });
-    addRow.append(mk('span', 'opacity:.75;font-size:11px;', '🟧 practice:'), addName, addBtn);
+    const copyBtn = mk('button', pill, 'COPY');
+    tap(copyBtn, () => {
+      const txt = all().map((p) => `${title(p)} ${p.size[0]}x${p.size[1]} yd at (${p.x.toFixed(1)}, ${p.z.toFixed(1)}) ${p.rot.toFixed(0)}°` +
+        ` — ${p.ev.ok ? 'OK' : 'BLOCKED'}` + (p.ev.w.pct != null ? `, dry ${p.ev.w.pct.toFixed(0)}%` : '') +
+        `, main infield ${(p.ev.infield / YD).toFixed(1)} yd`).join('\n');
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
+      copyBtn.textContent = 'COPIED';
+      setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1200);
+    });
+    const setDefBtn = mk('button', pill, '📌 SET DEFAULT');
+    tap(setDefBtn, () => {
+      const st = snapshot();
+      dbDefault = st;
+      writeJSON(DEFAULT_KEY, st);
+      pushLayout('default', st).then((ok) => {
+        setDefBtn.textContent = ok ? '✓ DEFAULT SET' : '✓ SET (this device)';
+        setTimeout(() => { setDefBtn.textContent = '📌 SET DEFAULT'; }, 1500);
+      });
+    });
+    const resetBtn = mk('button', pill, '↺ DEFAULT');
+    tap(resetBtn, () => {
+      restore(dbDefault || readJSON(DEFAULT_KEY) || builtinDefault);
+      for (const p of all()) rebuild(p);
+      select(pitches[0]);
+      buildPills();
+      update();
+    });
+    addRow.append(addName, addBtn, copyBtn, setDefBtn, resetBtn);
     panel.appendChild(addRow);
-    panel.appendChild(mk('div', 'opacity:.7;margin-top:4px;font-size:11px;',
-      'Drag a pitch to move it · ↺ ↻ or [ ] to turn the selected one · red = too close to something or on a diamond'));
+    panel.appendChild(mk('div', 'opacity:.7;margin-top:6px;font-size:11px;',
+      'Drag a pitch or box to move it · drag the ◯ on its end to turn it · drag a ■ corner to resize · [ ] turn 1°'));
 
     // Outline (4 strips + halfway) and a faint fill, in a group per pitch
     // turned like field.js's boxes, so a drag only moves the group.
     const fillMat = (c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.14,
       depthWrite: false, side: THREE.DoubleSide });
+    const visibleOf = (p) => on && (p.kind === 'box' ? show.boxes : show.pitches);
     function rebuild(p) {
       const site = renderer.field && renderer.field.site;
       if (!site) return;
@@ -591,7 +636,7 @@
         m.renderOrder = 61;
         g.add(m);
       }
-      // Big name on the grass so it reads apart from the candidate outlines.
+      // Big name on the grass.
       const cv = document.createElement('canvas');
       cv.width = 512; cv.height = 128;
       const c2 = cv.getContext('2d');
@@ -601,7 +646,8 @@
       c2.font = 'bold ' + fs + 'px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
       c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(name, 256, 64);
       c2.fillStyle = p.kind === 'box' ? '#ffd29a' : '#ffffff'; c2.fillText(name, 256, 64);
-      const lab = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.8, W * 0.2),
+      const lw = Math.min(W * 0.8, L * 0.45 * 4);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(lw, lw / 4),
         new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true,
           depthWrite: false, depthTest: false }));
       lab.rotation.x = -Math.PI / 2;
@@ -618,10 +664,11 @@
       p.cells.count = 0;
       p.cells.renderOrder = 59;
       p.cells.position.y = -0.2;
-      p.cells.visible = waterOn;
+      p.cells.visible = show.water;
       g.add(p.cells);
-      g.position.y = 0.6;
-      g.visible = on;
+      g.position.set(p.x, 0.6, p.z);
+      g.rotation.y = -p.rot * D2R;
+      g.visible = visibleOf(p);
       site.add(g);
       p.g = g;
     }
@@ -639,6 +686,54 @@
       p.cells.instanceMatrix.needsUpdate = true;
       if (p.cells.instanceColor) p.cells.instanceColor.needsUpdate = true;
     }
+
+    // ── handles on the selected item: ■ corners resize, ◯ turns ──
+    const HCOL = 0xffd24d;
+    const hMat = new THREE.MeshBasicMaterial({ color: HCOL, depthTest: false, side: THREE.DoubleSide });
+    const hRim = new THREE.MeshBasicMaterial({ color: 0x10141a, depthTest: false, side: THREE.DoubleSide });
+    const handles = { g: new THREE.Group(), corners: [], rot: null, stem: null };
+    const flat = (geo, mat, order) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.rotation.x = -Math.PI / 2;
+      m.renderOrder = order;
+      return m;
+    };
+    for (let i = 0; i < 4; i++) {
+      const c = new THREE.Group();
+      c.add(flat(new THREE.PlaneGeometry(1.25, 1.25), hRim, 65), flat(new THREE.PlaneGeometry(1, 1), hMat, 66));
+      handles.corners.push(c);
+      handles.g.add(c);
+    }
+    handles.rot = new THREE.Group();
+    handles.rot.add(flat(new THREE.CircleGeometry(0.75, 24), hRim, 65), flat(new THREE.CircleGeometry(0.6, 24), hMat, 66));
+    handles.stem = flat(new THREE.PlaneGeometry(1, 0.18), hMat, 64);
+    handles.g.add(handles.rot, handles.stem);
+    // Handle size in metres: about the same on screen at any zoom.
+    const hSize = () => Math.max(1, Math.min(8, renderer.camera.position.distanceTo(renderer.rig.target) * 0.022));
+    const rotOff = (p, hs) => p.size[0] * YD / 2 + Math.max(4, hs * 3);
+    function placeHandles() {
+      const site = renderer.field && renderer.field.site;
+      if (!site) return;
+      if (!handles.g.parent) site.add(handles.g);
+      const vis = on && show.handles && sel && sel.g && sel.g.visible;
+      handles.g.visible = !!vis;
+      if (!vis) return;
+      const hs = hSize(), L = sel.size[0] * YD, W = sel.size[1] * YD, ro = rotOff(sel, hs);
+      handles.g.position.set(sel.x, 0.8, sel.z);
+      handles.g.rotation.y = -sel.rot * D2R;
+      [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([su, sv], i) => {
+        handles.corners[i].position.set(su * L / 2, 0, sv * W / 2);
+        handles.corners[i].scale.setScalar(hs);
+      });
+      handles.rot.position.set(ro, 0, 0);
+      handles.rot.scale.setScalar(hs);
+      handles.stem.position.set((L / 2 + ro) / 2, 0, 0);
+      handles.stem.scale.set(Math.max(0.01, ro - L / 2), hs, 1);
+    }
+    (function tick() {
+      if (on) placeHandles();
+      requestAnimationFrame(tick);
+    })();
 
     function evaluate(p) {
       const th = p.rot * D2R, L = p.size[0] * YD, W = p.size[1] * YD;
@@ -673,92 +768,137 @@
     };
     const fmt = (m) => (m < 9.144 ? (m / FT).toFixed(1) + ' ft' : (m / YD).toFixed(1) + ' yd');
 
-    // A pill per plan pitch at the top of the candidate pill list (James:
-    // "it should show with pills like others"): tap = PLAN on + fly there.
+    // ── left column: an item pill per pitch/box, then the layer pills ──
+    const pillBox = mk('div', 'position:fixed;left:8px;top:116px;display:flex;flex-direction:column;gap:6px;z-index:12;' +
+      'max-width:min(300px,calc(100vw - 16px));max-height:calc(100vh - 124px);overflow-y:auto;');
     const pills = {};
-    const pillList = mk('div', 'display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto;');
+    const pillList = mk('div', 'display:flex;flex-direction:column;gap:6px;');
+    const itemPill = 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
+      'border-radius:14px;border:2px solid #33ff66;background:rgba(10,14,20,.72);color:#f4f6fb;' +
+      'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;';
     function buildPills() {
       pillList.innerHTML = '';
       for (const k in pills) delete pills[k];
       for (const p of all()) {
-      const b = mk('button', 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
-        'border-radius:14px;border:2px solid #33ff66;background:rgba(10,14,20,.72);color:#f4f6fb;' +
-        'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;');
-      tap(b, () => {
-        if (!on) return;
-        sel = p;
-        flyTo(p);
-        paint();
-      });
-      pills[p.id] = b;
-      pillList.appendChild(b);
-      paintPill(p);
+        const b = mk('button', itemPill);
+        tap(b, () => {
+          if (!on) return;
+          select(p);
+          flyTo(p);
+        });
+        pills[p.id] = b;
+        pillList.appendChild(b);
+        paintPill(p);
       }
     }
-    const buildLists = () => { buildRows(); buildPills(); paintSpots.for = null; if (on) paint(); };
-    // Under the 🎮/📐 mode pill (client.js, top 84px).
-    const pillBox = mk('div', 'position:fixed;left:8px;top:116px;display:flex;flex-direction:column;gap:6px;z-index:12;');
     pillBox.appendChild(pillList);
-    // WATER: the field's water layer + the live cells in both pitches.
-    const waterPill = mk('button', 'display:flex;align-items:center;gap:6px;min-width:0;min-height:0;padding:4px 10px;' +
-      'border-radius:14px;border:2px solid #29a8ff;background:rgba(10,14,20,.72);color:#f4f6fb;' +
-      'font:600 11px system-ui,sans-serif;cursor:pointer;text-align:left;');
-    const paintWater = () => {
-      waterPill.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' +
-        (waterOn ? '#29a8ff' : 'transparent') + ';border:1px solid #29a8ff"></span>💧 WATER ' + (waterOn ? 'ON' : 'OFF') +
-        (waterOn ? ' · <span style="color:#6f95ff">■ pond</span> <span style="color:#00d5ff">■ runoff</span> ' +
-          '<span style="color:#ffb000">■ flat</span>' : '');
+    const layerBox = mk('div', 'display:flex;flex-wrap:wrap;gap:4px;padding:6px;border-radius:12px;' +
+      'background:rgba(10,14,20,.72);');
+    const layerPills = {};
+    const lp = 'min-width:0;min-height:0;padding:3px 8px;border-radius:11px;border:1px solid #889;' +
+      'font:600 10px system-ui,sans-serif;cursor:pointer;';
+    const paintLayerPill = (k) => {
+      const b = layerPills[k];
+      if (!b) return;
+      b.style.background = show[k] ? '#ffd24d' : 'transparent';
+      b.style.color = show[k] ? '#10141a' : '#c8ccd4';
+      b.style.borderColor = show[k] ? '#ffd24d' : '#667';
+      b.style.textDecoration = show[k] ? 'none' : 'line-through';
     };
-    tap(waterPill, () => {
-      waterOn = !waterOn;
-      if (renderer.field && renderer.field.setWater) renderer.field.setWater(on && waterOn);
-      for (const p of all()) if (p.cells) p.cells.visible = waterOn;
-      paintWater();
-    });
-    paintWater();
-    pillBox.appendChild(waterPill);
+    for (const [k, t] of LAYERS) {
+      const b = mk('button', lp, t);
+      layerPills[k] = b;
+      tap(b, () => setLayer(k, !show[k]));
+      layerBox.appendChild(b);
+      paintLayerPill(k);
+    }
+    for (const [t, v] of [['ALL ON', true], ['ALL OFF', false]]) {
+      const b = mk('button', lp + 'background:rgba(255,255,255,.12);color:#f4f6fb;', t);
+      tap(b, () => {
+        // ALL OFF keeps the pitches, boxes and handles: the things being designed.
+        for (const [k] of LAYERS) show[k] = v || ['pitches', 'boxes', 'handles'].includes(k);
+        writeJSON(LAYER_KEY, show);
+        applyLayers();
+      });
+      layerBox.appendChild(b);
+    }
+    pillBox.appendChild(layerBox);
     document.body.appendChild(pillBox);
+    function setLayer(k, v) {
+      show[k] = !!v;
+      writeJSON(LAYER_KEY, show);
+      applyLayers();
+    }
+    // Apply every layer (DESIGN on): planner layers + field.js layers +
+    // the match (pitch, goals, players, ball).
+    function applyLayers() {
+      for (const [k] of LAYERS) paintLayerPill(k);
+      if (!on) return;
+      const f = renderer.field;
+      panel.style.display = show.panel ? 'block' : 'none';
+      for (const p of all()) if (p.g) p.g.visible = visibleOf(p);
+      for (const p of all()) if (p.cells) p.cells.visible = show.water;
+      if (f) {
+        if (f.setWater) f.setWater(show.water);
+        if (f.setOldPitch) f.setOldPitch(show.paint);
+        if (f.setContours) f.setContours(show.contours ? 'lidar' : 'off');
+        if (f.setLayer) for (const k of FIELD_LAYERS) f.setLayer(k, show[k]);
+      }
+      renderer.showMatch = show.match;
+      for (const m of renderer.pitchParts || []) m.visible = show.match;
+      paintGap();
+      placeHandles();
+    }
+    // Leaving DESIGN: everything back on; client.js then sets its mode's
+    // contours / painted pitch.
+    function resetLayers() {
+      const f = renderer.field;
+      if (f && f.setLayer) for (const k of FIELD_LAYERS) f.setLayer(k, true);
+      if (f && f.setWater) f.setWater(false);
+      for (const m of renderer.pitchParts || []) m.visible = true;
+    }
     function paintPill(p) {
       const b = pills[p.id];
       if (!b) return;
       const hex = !p.ev ? '#8899aa' : p.ev.ok ? (p.kind === 'box' ? '#ffa630' : '#33ff66') : '#ff3344';
       b.style.borderColor = hex;
+      b.style.background = p === sel ? 'rgba(255,210,77,.28)' : 'rgba(10,14,20,.72)';
       b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' + hex + '"></span>' +
-        (p.kind === 'box' ? '🟧 ' : '📐 ') + title(p) + ' ' + p.size[0] + '×' + p.size[1] +
+        (p === sel ? '▶ ' : '') + (p.kind === 'box' ? '🟧 ' : '📐 ') + title(p) + ' ' + p.size[0] + '×' + p.size[1] +
         (p.ev ? (p.ev.w.pct != null ? ' · dry ' + p.ev.w.pct.toFixed(0) + '%' : '') + ' · ' +
           (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : '');
     }
-    buildPills();
 
+    function select(p) {
+      sel = p;
+      paintCtl();
+      paint();
+    }
     function paint() {
       for (const p of all()) paintPill(p);
       for (const p of all()) {
-        const ev = p.ev;
-        if (!ev || !rows[p.id]) continue;
-        const col = ev.ok ? (p.kind === 'box' ? 0xffa630 : 0x33ff66) : 0xff3344;
-        if (p.lineMat) { p.lineMat.color.setHex(col); p.fill.material.color.setHex(col); }
-        const w = ev.w, pct = (k) => (100 * w[k] / w.n).toFixed(1) + '%';
-        const why = ev.ok ? '<span style="color:#5f6">✓ clear of everything</span>'
-          : ev.off.slice(0, 3).map((o) => '<span style="color:#ff6b78">✗ ' + label(o.n) +
-            (o.need > 0 ? ': ' + (o.have <= 0 ? 'overlapping' : fmt(o.have)) + ' (needs ' + fmt(o.need) + ')' : '') +
-            '</span>').join('<br>');
-        rows[p.id].parentNode.style.background = p === sel ? 'rgba(255,255,255,.12)' : 'transparent';
-        rows[p.id].innerHTML = '<b>' + (p === sel ? '▶ ' : '') + (p.kind === 'box' ? '🟧 ' : '') + title(p) + ' ' +
-          p.size[0] + '×' + p.size[1] + ' yd</b> · ' + p.rot.toFixed(0) + '° · ' +
-          (w.pct != null ? 'dry <b>' + w.pct.toFixed(0) + '%</b> <span style="opacity:.7">(100% = driest legal spot)</span> · '
-            : (ev.toPitch != null ? '↔ 11v11 <b>' + (ev.toPitch <= 0 ? 'on it' : fmt(ev.toPitch)) + '</b> · ' : '')) +
-          'pond ' + pct('pond') + ', runoff ' +
-          pct('flow') + ', flat ' + pct('flat') +
-          (ev.infield != null ? '<br><span style="opacity:.85">⚾ main diamond infield: ' +
-            (ev.infield <= 0 ? 'overlapping' : fmt(ev.infield) + ' away') + '</span>' : '') + '<br>' + why;
+        if (!p.ev || !p.lineMat) continue;
+        const col = p.ev.ok ? (p.kind === 'box' ? 0xffa630 : 0x33ff66) : 0xff3344;
+        p.lineMat.color.setHex(col);
+        p.fill.material.color.setHex(col);
       }
-      if (paintSpots.for !== sel) {
-        paintSpots.for = sel;
-        paintSpots();
-        paintBoxCtl();
-        spotBox.style.display = sel.kind === 'box' ? 'none' : 'flex';
-      }
-      sizeBtn.textContent = '7v7 SIZE ' + pitches[1].size[0] + '×' + pitches[1].size[1];
+      const p = sel, ev = p.ev;
+      for (const [k, v] of [['L', p.size[0]], ['W', p.size[1]], ['A', +p.rot.toFixed(1)]])
+        if (inputs[k] && document.activeElement !== inputs[k]) inputs[k].value = v;
+      if (!ev) return;
+      const w = ev.w, pct = (k) => (100 * w[k] / w.n).toFixed(1) + '%';
+      const why = ev.ok ? '<span style="color:#5f6">✓ clear of everything</span>'
+        : ev.off.slice(0, 3).map((o) => '<span style="color:#ff6b78">✗ ' + label(o.n) +
+          (o.need > 0 ? ': ' + (o.have <= 0 ? 'overlapping' : fmt(o.have)) + ' (needs ' + fmt(o.need) + ')' : '') +
+          '</span>').join('<br>');
+      detail.innerHTML = '<b>▶ ' + (p.kind === 'box' ? '🟧 ' : '📐 ') + title(p) + ' ' + p.size[0] + '×' + p.size[1] +
+        ' yd</b> · ' + p.rot.toFixed(0) + '° · ' +
+        (w.pct != null ? 'dry <b>' + w.pct.toFixed(0) + '%</b> · '
+          : (ev.toPitch != null ? '↔ 11v11 <b>' + (ev.toPitch <= 0 ? 'on it' : fmt(ev.toPitch)) + '</b> · '
+            : '<span style="opacity:.6">dry % only for swept sizes</span> · ')) +
+        'pond ' + pct('pond') + ', runoff ' + pct('flow') + ', flat ' + pct('flat') +
+        (ev.infield != null ? '<br><span style="opacity:.85">⚾ main diamond infield: ' +
+          (ev.infield <= 0 ? 'overlapping' : fmt(ev.infield) + ' away') + '</span>' : '') + '<br>' + why;
     }
 
     // Gap ruler on the grass: white strip between the nearest edges and a
@@ -796,9 +936,9 @@
       c2.lineWidth = 14; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(txt, 256, 64);
       c2.fillStyle = ok ? '#7dff9a' : '#ff6b78'; c2.fillText(txt, 256, 64);
       ruler.tex.needsUpdate = true;
-      const show = on && g.d > 0;
-      ruler.bar.visible = show;
-      if (show) {
+      const vis = on && show.ruler && show.pitches;
+      ruler.bar.visible = vis && g.d > 0;
+      if (g.d > 0) {
         const mx = (g.a[0] + g.b[0]) / 2, mz = (g.a[1] + g.b[1]) / 2;
         ruler.bar.position.set(mx, 0.7, mz);
         ruler.bar.rotation.y = -Math.atan2(g.b[1] - g.a[1], g.b[0] - g.a[0]);
@@ -808,8 +948,7 @@
         // Overlapping: label sits at the 7v7's centre.
         ruler.lab.position.set(B.x, 0.75, B.z);
       }
-      ruler.lab.visible = on;
-      if (!on) ruler.bar.visible = false;
+      ruler.lab.visible = vis;
     }
 
     function update() {
@@ -820,6 +959,7 @@
       for (const b of boxes) evaluate(b);
       paint();
       paintGap();
+      placeHandles();
       if (on) saveState();
     }
 
@@ -871,8 +1011,9 @@
         }
       }
       for (const p of all()) rebuild(p);
-      buildLists();
+      buildPills();
       update();
+      select(sel);
       built = true;
       setOn(wantOn);
     }
@@ -881,15 +1022,23 @@
       wantOn = !!v;
       if (!built) return;
       on = wantOn;
-      panel.style.display = on ? 'block' : 'none';
       pillBox.style.display = on ? 'flex' : 'none';
       // Sit just under the mode bar, which wraps on a phone.
       const bar = document.getElementById('mode-bar');
-      if (on && bar) pillBox.style.top = Math.round(bar.getBoundingClientRect().bottom + 6) + 'px';
-      for (const p of all()) if (p.g) p.g.visible = on;
-      if (renderer.field && renderer.field.setWater) renderer.field.setWater(on && waterOn);
+      if (on && bar) {
+        const top = Math.round(bar.getBoundingClientRect().bottom + 6);
+        pillBox.style.top = top + 'px';
+        pillBox.style.maxHeight = 'calc(100vh - ' + (top + 8) + 'px)';
+      }
       drag = null;
-      paintGap();
+      if (on) applyLayers();
+      else {
+        panel.style.display = 'none';
+        for (const p of all()) if (p.g) p.g.visible = false;
+        resetLayers();
+        paintGap();
+        placeHandles();
+      }
       if (on) flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
                       size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
     }
@@ -905,15 +1054,11 @@
           const p = pitches.find((q) => q.id === sp.pitch);
           if (!p || String(sp.name).trim().toLowerCase() !== 'now') continue;
           p.x = sp.x; p.z = sp.z; p.rot = sp.rotDeg;
-          if (sp.size) p.size = sizeOf(sp.size);
+          if (sp.size) p.size = [+sp.size[0], +sp.size[1]];
         }
       }
     }
     start();
-    // The designed pitches as they stand (GAME plays on them): null until
-    // the club layout has loaded.
-    const current = () => (built ? pitches.map((p) => ({ id: p.id, x: p.x, z: p.z, rot: p.rot, size: p.size.slice() })) : null);
-    return { setOn, isOn: () => wantOn, current };
 
     // Screen point -> site metres on the ground plane.
     const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
@@ -925,22 +1070,56 @@
       const v = renderer.field.site.worldToLocal(hit.clone());
       return [v.x, v.z];
     }
+    // Site point -> the item's own axes (u along its length, v across).
+    const local = (p, s) => {
+      const th = p.rot * D2R, c = Math.cos(th), sn = Math.sin(th), dx = s[0] - p.x, dz = s[1] - p.z;
+      return [dx * c + dz * sn, -dx * sn + dz * c];
+    };
+    // Grab order: the selected item's handles, then any visible item under
+    // the pointer (selected first, boxes over pitches).
     function grab(cx, cy) {
       const s = sitePoint(cx, cy);
       if (!s) return false;
+      if (handles.g.visible && sel) {
+        const hs = hSize(), [u, v] = local(sel, s), L = sel.size[0] * YD, W = sel.size[1] * YD, reach = hs * 1.3;
+        if (Math.hypot(u - rotOff(sel, hs), v) < reach) {
+          drag = { p: sel, kind: 'rot' };
+          return true;
+        }
+        for (const [su, sv] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+          if (Math.hypot(u - su * L / 2, v - sv * W / 2) < reach) {
+            // The opposite corner stays put.
+            const th = sel.rot * D2R, c = Math.cos(th), sn = Math.sin(th), au = -su * L / 2, av = -sv * W / 2;
+            drag = { p: sel, kind: 'size', ax: sel.x + au * c - av * sn, az: sel.z + au * sn + av * c };
+            return true;
+          }
+        }
+      }
       const order = [sel].concat(boxes.filter((p) => p !== sel), pitches.filter((p) => p !== sel));
-      const p = order.find((q) => q.R && inRect(s, q.R));
+      const p = order.find((q) => q.R && q.g && q.g.visible && inRect(s, q.R));
       if (!p) return false;
-      sel = p;
-      drag = { p, dx: p.x - s[0], dz: p.z - s[1] };
-      paint();
+      if (p !== sel) select(p);
+      drag = { p, kind: 'move', dx: p.x - s[0], dz: p.z - s[1] };
       return true;
     }
     function move(cx, cy) {
       const s = sitePoint(cx, cy);
       if (!s) return;
-      drag.p.x = s[0] + drag.dx;
-      drag.p.z = s[1] + drag.dz;
+      const p = drag.p;
+      if (drag.kind === 'move') {
+        p.x = s[0] + drag.dx;
+        p.z = s[1] + drag.dz;
+      } else if (drag.kind === 'rot') {
+        setRot(p, Math.round(Math.atan2(s[1] - p.z, s[0] - p.x) / D2R * 2) / 2);
+      } else {
+        const th = p.rot * D2R, c = Math.cos(th), sn = Math.sin(th);
+        const dx = s[0] - drag.ax, dz = s[1] - drag.az;
+        const du = dx * c + dz * sn, dv = -dx * sn + dz * c;
+        setSize(p, Math.abs(du) / YD, Math.abs(dv) / YD);
+        const ou = (du < 0 ? -1 : 1) * p.size[0] * YD / 2, ov = (dv < 0 ? -1 : 1) * p.size[1] * YD / 2;
+        p.x = drag.ax + ou * c - ov * sn;
+        p.z = drag.az + ou * sn + ov * c;
+      }
       justDragged = true;
       update();
     }
@@ -951,7 +1130,7 @@
       if (on && e.target === canvas && grab(e.clientX, e.clientY)) stop(e);
     }, true);
     window.addEventListener('mousemove', (e) => { if (drag) { move(e.clientX, e.clientY); stop(e); } }, true);
-    const endDrag = () => { if (drag && drag.p.kind === 'box') saveBoxes(); drag = null; };
+    const endDrag = () => { if (drag && drag.kind === 'size') paintCtl(); drag = null; };
     window.addEventListener('mouseup', endDrag, true);
     window.addEventListener('click', (e) => {
       if (justDragged && e.target === canvas) { justDragged = false; stop(e); }
@@ -971,6 +1150,11 @@
       if (e.key === '[') turn(-1);
       else if (e.key === ']') turn(1);
     });
+
+    // The designed pitches as they stand (GAME plays on them): null until
+    // the club layout has loaded.
+    const current = () => (built ? pitches.map((p) => ({ id: p.id, x: p.x, z: p.z, rot: p.rot, size: p.size.slice() })) : null);
+    return { setOn, isOn: () => wantOn, current };
   }
 
   window.PitchPlanner = { attach, offences, water, rect };

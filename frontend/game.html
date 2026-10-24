@@ -42,6 +42,8 @@
     /* Modes over the one Lighthouse model (James 10/22): GAME shows the
        match controls; DESIGN (the pitch planner) hides them. */
     body.mode-design .game-only, body.mode-other .game-only { display: none !important; }
+    /* DESIGN's layer pills switch leaves/contours (pitch-planner.js). */
+    body.mode-design #btn-leaves, body.mode-design #btn-contours { display: none !important; }
     #mode-note { display: none; position: fixed; left: 50%; transform: translateX(-50%); top: 8px; z-index: 20;
       max-width: min(520px, calc(100vw - 16px)); box-sizing: border-box; padding: 8px 12px; border-radius: 10px;
       background: rgba(10,14,20,.86); color: #f4f6fb; font: 12px system-ui, sans-serif; }
@@ -128,12 +130,12 @@
   <script src="js/game/lighthouse-contours.js?v=20261022zs"></script>
   <script src="js/game/lighthouse-drainage.js?v=20261022zzd"></script>
   <script src="js/game/lighthouse-layout.js?v=20261022zzo"></script>
-  <script src="js/game/field.js?v=20261022zzo"></script>
+  <script src="js/game/field.js?v=20261024a"></script>
   <script src="js/game/camera.js?v=20261022p"></script>
   <script src="js/game/renderer.js?v=20261023a"></script>
   <script src="js/game/input.js?v=20261022e"></script>
   <script src="js/game/lighthouse-planner-data.js?v=20261022d"></script>
-  <script src="js/game/pitch-planner.js?v=20261022p"></script>
-  <script src="js/game/client.js?v=20261023d"></script>
+  <script src="js/game/pitch-planner.js?v=20261024a"></script>
+  <script src="js/game/client.js?v=20261024a"></script>
 </body>
 </html>

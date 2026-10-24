@@ -349,6 +349,19 @@
     };
     placeSite(gp);
     scene.add(site);
+    // LAYERS (James 10/24: "i need to be able to turn off everything. with
+    // pills"): while the site builds, every site.add lands in the group of
+    // the section being built (into = ...), so DESIGN can hide each kind
+    // whole — setLayer(name, on). Restored to the plain add before return.
+    const layerGroups = {};
+    let into = 'ground';
+    const siteAdd = site.add.bind(site);
+    site.add = (...objs) => {
+      let g = layerGroups[into];
+      if (!g) { g = new THREE.Group(); g.name = into; siteAdd(g); layerGroups[into] = g; }
+      g.add(...objs);
+      return site;
+    };
     const toWorld = (x, z) => new THREE.Vector3(x, 0, z).applyMatrix4(site.matrixWorld);
 
     // ── ground layers ────────────────────────────────────────────────
@@ -400,7 +413,7 @@
               std(0x9aa1a8, { metalness: 0.5, roughness: 0.5, transparent: true, opacity: 0.5 }));
             fence.position.set(bx, 2, bz);
             fence.rotation.y = -inf.back + Math.PI / 2;
-            site.add(fence);
+            into = 'fences'; site.add(fence); into = 'ground';
           } else if (f.sport === 'basketball') {
             const r = orientedRect(P);
             const court = new THREE.Mesh(new THREE.PlaneGeometry(r.L + 1.5, r.W + 1.5),
@@ -451,6 +464,7 @@
 
     // ── today's layout: rodeo, barn, stables, paddock, shed, horses ────
     const L = LAY;
+    into = 'fences';
     if (L.rodeo && L.rodeo.ring) {
       const { x, z, r } = L.rodeo.ring;
       const ring = [], apron = [];
@@ -471,6 +485,7 @@
         p.castShadow = true;
         site.add(p);
       }
+      into = 'props';
       if (L.rodeo.ringBleachers) {
         for (const t of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
           const b = bleacher(5);
@@ -479,6 +494,7 @@
           site.add(b);
         }
       }
+      into = 'fences';
     }
     if (L.rodeo && L.rodeo.ovalPen) {
       const o = L.rodeo.ovalPen, oa = (o.rotDeg || 0) * D2R;
@@ -491,6 +507,7 @@
       addFlat(layers.dirt[0], pts, layers.dirt[2] + 0.005);
       railFence(site, pts, true);
     }
+    into = 'buildings';
     if (L.barn) {
       const b = gableBarn(L.barn.w, L.barn.d,
                           { red: 0x9b2f2a, tan: 0xb8a487 }[L.barn.walls] || 0x8a7a66,
@@ -517,6 +534,7 @@
       site.add(blk);
       site.add(box(s.x, s.z, s.w + 0.6, s.d + 0.6, 0.25, 0x2f3338, s.rotDeg, 4.2));  // dark roof
     }
+    into = 'fences';
     if (L.paddock) {
       const p = L.paddock;
       const pts = [[p.x - p.w / 2, p.z - p.d / 2], [p.x + p.w / 2, p.z - p.d / 2],
@@ -528,6 +546,7 @@
       const ly = layers[r.kind || 'road'];
       addFlat(ly[0], r.pts, ly[2]);
     }
+    into = 'props';
     for (const b of (L.booths || [])) {
       // Carnival game booth: back + side walls, striped awning roof, open
       // front; the basketball game gets two hoops on the back wall.
@@ -572,7 +591,9 @@
       site.add(g);
     }
     for (const t of (L.tracks || [])) addRibbon(layers.dust[0], t.pts, t.w, layers.dust[2]);
+    into = 'fences';
     for (const rf of (L.railFences || [])) railFence(site, rf.pts, false, rf.color);
+    into = 'props';
     for (const c of (L.canopies || [])) {
       const g = new THREE.Group();
       const top = new THREE.Mesh(new THREE.BoxGeometry(c.w, 0.12, c.d), std(c.color, { roughness: 0.9 }));
@@ -589,16 +610,19 @@
       g.rotation.y = -(c.rotDeg || 0) * D2R;
       site.add(g);
     }
+    into = 'fences';
     if (L.playground) {
       const pg = L.playground;
       if (pg.pad) addFlat(layers.road[0], pg.pad, layers.road[2]);
       if (pg.sand) addFlat(layers.sand[0], pg.sand, layers.sand[2]);
       if (pg.fence) railFence(site, pg.fence, false, 0x6b7178);
     }
+    into = 'buildings';
     if (L.greenShed) {
       const g = L.greenShed;
       site.add(box(g.x, g.z, g.w, g.d, 2.6, 0x3f7a4a, g.rotDeg));
     }
+    into = 'props';
     if (L.horses && L.horses.length) {
       const hs = new THREE.Group();
       for (const h of L.horses) {
@@ -617,6 +641,7 @@
       }
       site.add(hs);
     }
+    into = 'ground';
     for (const dm of (L.diamonds || [])) {
       const [hxp, hzp] = dm.home, b = dm.bearing * D2R;
       const at = (ang, r) => [hxp + Math.cos(ang) * r, hzp + Math.sin(ang) * r];
@@ -653,9 +678,10 @@
         std(0x9aa1a8, { metalness: 0.5, roughness: 0.5, transparent: true, opacity: 0.5 }));
       fence.position.set(back[0], 1.8, back[1]);
       fence.rotation.y = -b + Math.PI / 2;
-      site.add(fence);
+      into = 'fences'; site.add(fence); into = 'ground';
     }
     // Cemetery fence: black iron, posts every 3 m + two rails.
+    into = 'fences';
     if (L.cemeteryFence && cemetery) {
       const H = L.cemeteryFence.height || 2;
       const iron = std(0x1d1f22, { metalness: 0.6, roughness: 0.5 });
@@ -708,7 +734,9 @@
     // WATER layer (button): lidar runoff channels;
     // pitch-planner.js adds live per-m² cells inside the dragged pitches.
     const waterLayer = new THREE.Group();
+    into = 'water';
     site.add(waterLayer);
+    into = 'paint';
     let oldPitchMesh = null;
     if (L.oldPitch) {
       // The 11v11 pitch painted today (Google imagery), full markings in
@@ -745,6 +773,7 @@
       oldPitchMesh = pm;
     }
 
+    into = 'labels';
     for (const lb of (L.labels || [])) {
       const cv = document.createElement('canvas');
       cv.width = 256; cv.height = 128;
@@ -764,6 +793,7 @@
       site.add(m);
     }
 
+    into = 'ground';
     for (const k of Object.keys(layers)) {
       const [m, color, , i] = layers[k];
       if (!m.pos.length) continue;
@@ -773,6 +803,7 @@
       mesh.renderOrder = i;
       site.add(mesh);
     }
+    into = 'buildings';
     if (buildings.pos.length) site.add(buildings.mesh(std(0xc9c4ba), { cast: true }));
 
     // ── trees: one per detected crown [x, z, crown radius] ─────────────
@@ -780,6 +811,7 @@
     // default to a see-through wire canopy (you can see the play through
     // the tree line but know the tree is there) — setLeaves(true) swaps in
     // solid foliage.
+    into = 'trees';
     let leavesWire = null, leavesSolid = null;
     if (TREES.length) {
       const wood = new Merge();
@@ -833,6 +865,7 @@
     }
 
     // ── cemetery headstones ─────────────────────────────────────────────
+    into = 'props';
     if (cemetery) {
       const xs = cemetery.map((p) => p[0]), zs = cemetery.map((p) => p[1]);
       const stones = [];
@@ -869,6 +902,7 @@
 
     for (const d of details) d.obj.visible = false;
     // ── ground contours (USGS 3DEP lidar, 10 cm) ─────────────────────────
+    into = 'contours';
     let contours = null;
     const CT = window.LIGHTHOUSE_CONTOURS;
     if (CT && CT.levels.length) {
@@ -979,8 +1013,19 @@
     const topoContours = CT && CT.usgsTopo && CT.usgsTopo.length
       ? footContours(CT.usgsTopo, 0xe0262d, '#ff8a8a', 50) : null;
 
+    delete site.add;   // back to THREE's add: later adds (planner, 7v7 chalk) sit on the site
+    // Bleachers are world-side (game-pitch coordinates): the props layer
+    // hides them too.
+    const setLayer = (k, v) => {
+      if (layerGroups[k]) layerGroups[k].visible = !!v;
+      if (k === 'props') for (const m of planAOverlay) m.visible = !!v;
+    };
     return {
       site,   // site-metre group (pitch-planner.js draws into it)
+      // Layer names: ground, buildings, fences, props, trees, labels,
+      // contours, water, paint (today's pitch).
+      layers: Object.keys(layerGroups),
+      setLayer,
       // Contours. mode: 'lidar' (10 cm from USGS 3DEP; white every half
       // metre), 'city' (2 ft), 'topo' (USGS topo map, 10 ft), 'all', 'off'.
       // Runoff channels live in the WATER layer (setWater).

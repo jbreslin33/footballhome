@@ -786,9 +786,12 @@
     // show the complex itself — field, animals, buildings, trees.
     renderer.showMatch = !other;
     if (modeNote) modeNote.innerHTML = other ? COMING[mode] : '';
-    if (planner) planner.setOn(design);
     if (modeBar) for (const b of modeBar.querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === mode);
-    if (!renderer.field || !renderer.field.setContours) { setTimeout(applyMode, 300); return; }
+    if (!renderer.field || !renderer.field.setContours) {
+      if (planner) planner.setOn(design);   // so a late planner build lands in the right mode
+      setTimeout(applyMode, 300);
+      return;
+    }
     cmode = CMODES.indexOf(design ? 'lidar' : 'off');
     renderer.field.setContours(CMODES[cmode]);
     if (contoursBtn) contoursBtn.textContent = CLABEL[CMODES[cmode]];
@@ -798,6 +801,9 @@
     if (renderer.field.setOldPitch) renderer.field.setOldPitch(design);
     // Ball-follow only in GAME; every other mode parks the camera.
     if (renderer.rig.follow !== (mode === 'game')) toggleFollow();
+    // Last: in DESIGN the planner's layer pills decide contours, today's
+    // pitch, water and the match, over the mode defaults above.
+    if (planner) planner.setOn(design);
   };
   const setMode = (m) => {
     if (m === mode) return;
