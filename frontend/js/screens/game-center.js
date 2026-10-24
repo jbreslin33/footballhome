@@ -3176,7 +3176,7 @@ class GameCenterScreen extends Screen {
         why: consent === 'stopped' ? cb('why_stopped') : consent !== 'in' ? cb('why_none')
            : (w === 'game' || w === 'reg') ? '' : this._cm('why_club_what') },
       ...(r ? [{ key: 'relay', label: this._cm('via_relay', { device: r.device ? r.device.name : '' }),
-        why: w === 'blank' ? this._cm('manual_why_blank') : consent === 'stopped' ? this._cm('manual_why_stopped')
+        why: consent === 'stopped' ? this._cm('manual_why_stopped')
            : !r.device ? this._cm('manual_why_unpaired') : !r.device.online ? this._cm('manual_why_offline')
            : r.today >= r.cap ? this._cm('manual_why_cap') : '' }] : []),
       { key: 'paste', label: this._cm('via_paste'), why: '' },
@@ -3194,8 +3194,7 @@ class GameCenterScreen extends Screen {
     if (consent === 'in' && (what === 'game' || what === 'reg')) return { route: 'club' };
     const r = this.relay;
     if (!r) return { route: 'manual', why: '' };
-    const why = what === 'blank' ? 'manual_why_blank'
-              : consent === 'stopped' ? 'manual_why_stopped'
+    const why = consent === 'stopped' ? 'manual_why_stopped'
               : !r.device ? 'manual_why_unpaired'
               : !r.device.online ? 'manual_why_offline'
               : r.today >= r.cap ? 'manual_why_cap' : '';
@@ -3238,6 +3237,9 @@ class GameCenterScreen extends Screen {
       el.id = 'gc-contact-sheet';
       el.setAttribute('role', 'dialog');
       el.addEventListener('click', (e) => this._onContactSheetClick(e));
+      el.addEventListener('input', (e) => {
+        if (e.target.matches('[data-gc-cs-body]') && this._contactSheet) this._contactSheet.body = e.target.value;
+      });
       document.body.appendChild(el);
     }
     el.style.cssText = 'position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.55); display:flex; align-items:flex-end; justify-content:center;';
@@ -3253,7 +3255,9 @@ class GameCenterScreen extends Screen {
         <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6; margin:10px 0 2px;">${esc(this._cm('how').toUpperCase())}</div>
         ${hows.map(h => radio('how', h.key, h.label, h.key === sh.how, h.why)
           + (h.key === 'text' && sh.how === 'text' && !h.why
-             ? `<div style="margin-left:26px; border-left:2px solid #334155; padding-left:6px;">${vias.map(v => radio('via', v.key, v.label, v.key === sh.via, v.why)).join('')}</div>` : '')).join('')}
+             ? `<div style="margin-left:26px; border-left:2px solid #334155; padding-left:6px;">${vias.map(v => radio('via', v.key, v.label, v.key === sh.via, v.why)).join('')}
+                ${what === 'blank' && sh.via === 'relay' ? `<textarea data-gc-cs-body rows="4" maxlength="1600" placeholder="${esc(this._cm('blank_placeholder'))}"
+                  style="width:100%; box-sizing:border-box; margin:6px 0 4px; padding:8px; border-radius:8px; border:1px solid #334155; background:#1e293b; color:#f8fafc; font:inherit; font-size:0.9rem;">${esc(sh.body || '')}</textarea>` : ''}</div>` : '')).join('')}
         <div style="display:flex; gap:8px; align-items:center; margin-top:12px;">
           <button type="button" data-gc-cs-send style="flex:1; padding:11px; border-radius:10px; border:none; cursor:pointer; font-weight:800; font-size:0.95rem; color:#fff; background:#0284c7;">${esc(sh.how === 'call' ? this._cm('call_go') : this._cm('send'))}</button>
           <span data-gc-remind-note data-gc-squad-note style="flex:1; font-size:0.75rem;">${sh.error ? `<span style="color:#f87171;">${esc(sh.error)}</span>` : ''}</span>
@@ -3293,7 +3297,7 @@ class GameCenterScreen extends Screen {
     }
     if (how.key === 'call') { window.location.href = `tel:${st.phone}`; return this._closeContactSheet(); }
     if (what === 'blank') {
-      if (hk === 'phone') DesktopSms.open(`sms:${st.phone}`);
+      if (hk === 'phone') DesktopSms.open(this.buildSmsComposeHref({ to: st.phone, body: (sh.body || '').trim() }));
       else window.location.href = `mailto:${st.email}`;
       return this._closeContactSheet();
     }
@@ -3410,7 +3414,12 @@ class GameCenterScreen extends Screen {
     btn.textContent = '⏳';
     let href = '', tokenId = 0, purpose = '';
     try {
-      if (what === 'reg') {
+      if (what === 'blank') {
+        const words = ((this._contactSheet && this._contactSheet.body) || '').trim();
+        if (!words) throw new Error(this._cm('blank_empty'));
+        href = this.buildSmsComposeHref({ to: (c.st && c.st.phone) || '', body: words });
+        purpose = 'blank';
+      } else if (what === 'reg') {
         href = this.buildSmsComposeHref({ to: c.gap.phone, body: c.gap.body || '' });
         purpose = `reg_link:${this._fhEventId()}`;
       } else if (what === 'remind') {
