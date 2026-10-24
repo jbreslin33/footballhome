@@ -9,6 +9,8 @@ import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.text.InputFilter;
@@ -31,6 +33,12 @@ public class MainActivity extends Activity {
     private TextView status;
     private EditText code;
     private Button pair, battery, unpair;
+    // While this screen is open the status line re-reads the service's
+    // last check-in every 2 seconds, so "on and working" is live.
+    private final Handler tick = new Handler(Looper.getMainLooper());
+    private final Runnable ticker = new Runnable() {
+        @Override public void run() { refresh(); tick.postDelayed(this, 2000); }
+    };
 
     @Override protected void onCreate(Bundle saved) {
         super.onCreate(saved);
@@ -91,6 +99,12 @@ public class MainActivity extends Activity {
         super.onResume();
         refresh();
         if (Api.paired(this) && hasSms()) RelayService.start(this);
+        tick.postDelayed(ticker, 2000);
+    }
+
+    @Override protected void onPause() {
+        tick.removeCallbacks(ticker);
+        super.onPause();
     }
 
     private void refresh() {
@@ -100,8 +114,18 @@ public class MainActivity extends Activity {
             status.setTextColor(Color.parseColor("#B45309"));
         } else if (paired) {
             String who = Api.prefs(this).getString("first_name", "");
-            status.setText("✓ Ready" + (who.isEmpty() ? "" : " — paired to " + who) + ". You can close this app.");
-            status.setTextColor(Color.parseColor("#15803D"));
+            long ok = Api.prefs(this).getLong("last_ok_at", 0);
+            long ago = (System.currentTimeMillis() - ok) / 1000;
+            String trouble = Api.prefs(this).getString("trouble", "");
+            if (ok > 0 && ago < 60) {
+                status.setText("✅ On and working" + (who.isEmpty() ? "" : " — paired to " + who)
+                        + "\nLast check-in " + ago + "s ago. You can close this app.");
+                status.setTextColor(Color.parseColor("#15803D"));
+            } else {
+                status.setText("⚠ Not reaching Football Home" + (ok > 0 ? " since " + RelayService.clock(ok) : " yet")
+                        + (trouble.isEmpty() ? "" : "\n(" + trouble + ")") + "\nCheck the internet — it keeps retrying.");
+                status.setTextColor(Color.parseColor("#B45309"));
+            }
         } else {
             status.setText("Not paired yet. On the computer, open Football Home → a text → Set up FH Texter, then type the code here.");
             status.setTextColor(Color.parseColor("#B45309"));

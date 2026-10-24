@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.telephony.SmsManager;
 
 import org.json.JSONObject;
@@ -26,10 +27,17 @@ public class RelayService extends Service {
     static final String CHANNEL = "fh_texter";
     static final int NOTIFY_ID = 1;
     static final long POLL_MS = 6000;
+    // Screen off: a little slower to spare the battery — still well inside
+    // the 2 minutes after which Football Home calls the phone offline.
+    static final long POLL_ASLEEP_MS = 15000;
 
     private HandlerThread thread;
     private Handler handler;
     private volatile boolean running;
+    // v1.1: without it the CPU sleeps with the screen and check-ins stop
+    // (10/24: offline from 4:38 PM with the phone on and the app "Ready").
+    private PowerManager.WakeLock wake;
+    private Boolean connected;   // last state shown, so the notification changes only when it does
 
     static void start(Context c) {
         Intent i = new Intent(c, RelayService.class);
@@ -41,11 +49,17 @@ public class RelayService extends Service {
     @Override public IBinder onBind(Intent intent) { return null; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
-        Notification n = notification("Ready — sends what you click Send on in Football Home");
+        Notification n = notification("Starting — connecting to Football Home…");
         if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFY_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
         else startForeground(NOTIFY_ID, n);
         if (!running) {
             running = true;
+            PowerManager pm = getSystemService(PowerManager.class);
+            if (pm != null && wake == null) {
+                wake = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "fhtexter:relay");
+                wake.setReferenceCounted(false);
+                wake.acquire();
+            }
             thread = new HandlerThread("fh-texter");
             thread.start();
             handler = new Handler(thread.getLooper());
@@ -57,6 +71,8 @@ public class RelayService extends Service {
     @Override public void onDestroy() {
         running = false;
         if (thread != null) thread.quitSafely();
+        if (wake != null && wake.isHeld()) wake.release();
+        wake = null;
         super.onDestroy();
     }
 
@@ -73,12 +89,37 @@ public class RelayService extends Service {
                 stopSelf();
                 return;
             }
+            if (r.ok()) checkedIn(); else trouble(r.error());
             JSONObject text = r.ok() ? r.body.optJSONObject("text") : null;
             if (text != null) send(text.getLong("id"), text.getString("to"), text.getString("body"));
         } catch (Exception e) {
-            update("Problem: " + e.getMessage());
+            trouble(e.getMessage());
         }
-        if (running) handler.postDelayed(this::poll, POLL_MS);
+        PowerManager pm = getSystemService(PowerManager.class);
+        boolean awake = pm == null || pm.isInteractive();
+        if (running) handler.postDelayed(this::poll, awake ? POLL_MS : POLL_ASLEEP_MS);
+    }
+
+    // The app screen reads these to say "on and working" or since when not.
+    private void checkedIn() {
+        Api.prefs(this).edit().putLong("last_ok_at", System.currentTimeMillis()).remove("trouble").apply();
+        if (!Boolean.TRUE.equals(connected)) {
+            connected = true;
+            update("✅ On — connected to Football Home");
+        }
+    }
+
+    private void trouble(String why) {
+        Api.prefs(this).edit().putString("trouble", why == null ? "no answer" : why).apply();
+        if (!Boolean.FALSE.equals(connected)) {
+            connected = false;
+            long ok = Api.prefs(this).getLong("last_ok_at", 0);
+            update("⚠ Can't reach Football Home" + (ok > 0 ? " since " + clock(ok) : "") + " — retrying (internet?)");
+        }
+    }
+
+    static String clock(long millis) {
+        return java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date(millis));
     }
 
     // Long texts go as one multipart SMS; the last part's sent / delivered
@@ -94,7 +135,7 @@ public class RelayService extends Service {
                 delivered.add(last ? SmsResultReceiver.intent(this, id, "delivered") : null);
             }
             sms.sendMultipartTextMessage(to, null, parts, sent, delivered);
-            update("Sent a text " + java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(new java.util.Date()));
+            update("✅ On — sent a text " + clock(System.currentTimeMillis()));
         } catch (Exception e) {
             SmsResultReceiver.report(this, id, "failed", "the phone could not send: " + e.getMessage());
         }
