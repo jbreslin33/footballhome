@@ -247,13 +247,14 @@ window.LIGHTHOUSE_LAYOUT = {
   // Shallow right field: lidar wetness 10–12× the park's at 20–37 m out,
   // 0–40° ("avoid the swampy area in shallow right field"). Rodeo lumps:
   // the first 20 m past the yellow's rodeo touchline has 18–26 % more
-  // 10 cm contour per m² ("it gets hilly"); a full 115 yd only fits by
-  // edging into it, so it's a penalty, not a no-go.
+  // 10 cm contour per m² ("it gets hilly") — drawn as a penalty band for a
+  // while, then taken out (James 10/24: "take out the yellow safety line
+  // rectangle"); pitch-planner.js still rules how far past the yellow a
+  // pitch reaches. (Its band also covered the softball's flat shallow
+  // left/centre.)
   avoidZones: [
     { id: 'swamp_rf', name: 'swampy shallow right field', mode: 'nogo', kind: 'sector', diamond: 0,
       r0: 20, r1: 37, a0: 0, a1: 40 },
-    { id: 'rodeo_lumps', name: 'lumpy ground past the yellow rodeo touchline', mode: 'penalty', weight: 0.5,
-      kind: 'band', pitch: 'oldPitch', side: 'rodeo', from: 0, to: 20 },
   ],
   proposedLanes: [
     { name: 'proposed lane behind the yellow pitch', behind: 'oldPitch', end: 'north', joins: 'cemetery-edge dirt road',

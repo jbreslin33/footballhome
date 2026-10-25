@@ -245,11 +245,11 @@
     ['handles', '✥ HANDLES'], ['problems', '⚠ PROBLEMS'], ['match', '🏟 MATCH'], ['paint', '🟨 TODAY\'S PITCH'], ['water', '💧 WATER'],
     ['contours', '〰 CONTOURS'], ['trees', '🌳 TREES'], ['buildings', '🏠 BUILDINGS'],
     ['softball_fences', '⛓ SOFTBALL FENCE'], ['rodeo_fences', '⛓ RODEO FENCE'], ['proposed_lane', '🚗 PROPOSED LANE'], ['channels', '🟠 WATER CHANNELS'],
-    ['avoid_swamp_rf', '🚫 SWAMP RF'], ['avoid_rodeo_lumps', '⛰ RODEO LUMPS'],
+    ['avoid_swamp_rf', '🚫 SWAMP RF'],
     ['props', '🐴 PROPS'], ['labels', '🔤 LABELS'], ['ground', '🟩 GROUND'],
   ];
   const FIELD_LAYERS = ['trees', 'buildings', 'softball_fences', 'rodeo_fences', 'proposed_lane', 'channels',
-                        'avoid_swamp_rf', 'avoid_rodeo_lumps', 'props', 'labels', 'ground'];
+                        'avoid_swamp_rf', 'props', 'labels', 'ground'];
 
   function attach(renderer) {
     const DATA = window.LIGHTHOUSE_PLANNER;
@@ -1237,10 +1237,10 @@
         (p === sel ? '▶ ' : '') + (p.kind === 'box' ? '🟧 ' : '📐 ') + title(p) + ' ' + p.size[0] + '×' + p.size[1] +
         (p.ev ? (p.ev.w.pct != null ? ' · dry ' + p.ev.w.pct.toFixed(0) + '%' : '') +
           (waterVsPark(p) ? ' · 💧 ' + waterVsPark(p).txt.replace(' than park', '') : '') +
+          (p.kind !== 'box' && dipPastYellow(p) ? ' · ⛰ ' + (dipPastYellow(p).m / YD).toFixed(1) + ' yd past yellow' : '') +
           penaltyZones().map((zn) => {
             const f = zoneShare(p.x, p.z, p.rot, p.size[0] * YD, p.size[1] * YD, zn);
-            const d = p.kind === 'box' ? null : dipPastYellow(p);
-            return f > 0.005 ? ' · ⛰ ' + (d ? (d.m / YD).toFixed(1) + ' yd past yellow, ' : '') + Math.round(100 * f) + '% lumpy' : '';
+            return f > 0.005 ? ' · ' + Math.round(100 * f) + '% in ' + zn.name : '';
           }).join('') + ' · ' +
           (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : '');
     }
@@ -1455,7 +1455,7 @@
       if (!site) return;
       const hs = hSize();
       for (const p of pitches) {
-        const d = on && show.pitches && show.avoid_rodeo_lumps !== false ? dipPastYellow(p) : null;
+        const d = on && show.pitches ? dipPastYellow(p) : null;
         let m = dips[p.id];
         if (!d) { if (m) m.bar.visible = m.lab.visible = false; continue; }
         if (!m) {
