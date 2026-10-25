@@ -28,6 +28,77 @@ bool FinesController::gate(const Request& request, Response* error) {
 
 void FinesController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix, [this](const Request& r) { return handleBoard(r); });
+    router.get (prefix + "/disputes",     [this](const Request& r) { return handleDisputes(r); });
+    router.post(prefix + "/disputes/:id", [this](const Request& r) { return handleDecide(r); });
+}
+
+// GET /api/fines/disputes — pending "I was there" disputes (mig 691).
+Response FinesController::handleDisputes(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try {
+        json out = json::array();
+        for (const auto& r : Database::getInstance()->query(R"SQL(
+            SELECT d.id, d.person_id, COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'') AS name,
+                   d.fh_event_id, d.note,
+                   to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD, FMHH12:MI AM') || ' '
+                     || CASE fe.kind WHEN 'practice' THEN 'Practice' WHEN 'intrasquad' THEN 'Intra Squad'
+                                     ELSE 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(fe.opponent), ''), '') END AS event,
+                   (SELECT f.amount_usd FROM fh_person_fines(ARRAY[d.person_id], ge.starts_at - interval '1 day') f
+                     WHERE f.fh_event_id = d.fh_event_id LIMIT 1)::text AS amount,
+                   to_char(d.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
+              FROM fine_disputes d
+              JOIN persons p ON p.id = d.person_id
+              JOIN fh_events fe ON fe.id = d.fh_event_id
+              JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+             WHERE d.status = 'pending'
+             ORDER BY d.created_at)SQL")) {
+            out.push_back({{"id", r["id"].as<long long>()}, {"person_id", r["person_id"].as<long long>()},
+                           {"name", r["name"].c_str()}, {"fh_event_id", r["fh_event_id"].as<long long>()},
+                           {"event", r["event"].c_str()},
+                           {"note", r["note"].is_null() ? json(nullptr) : json(r["note"].c_str())},
+                           {"amount", r["amount"].is_null() ? json(nullptr) : json(std::atof(r["amount"].c_str()))},
+                           {"created_at", r["created_at"].c_str()}});
+        }
+        return jsonOk({{"disputes", out}});
+    } catch (const std::exception& e) {
+        std::cerr << "[FinesController::disputes] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load disputes");
+    }
+}
+
+// POST /api/fines/disputes/:id {decision: approve|deny} — approve marks the
+// player present for the event (the no-show fine goes away on its own).
+Response FinesController::handleDecide(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const std::string path = request.getPath();
+    long long id = 0;
+    try { id = std::stoll(path.substr(path.find_last_of('/') + 1)); } catch (...) {}
+    json body;
+    try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); } catch (...) {}
+    const std::string decision = body.value("decision", std::string{});
+    if (id <= 0 || (decision != "approve" && decision != "deny"))
+        return jsonError(HttpStatus::BAD_REQUEST, "decision must be approve or deny");
+    const std::string userId = std::to_string(bearerUserId(request));
+    try {
+        auto* db = Database::getInstance();
+        auto tx = db->beginTransaction();
+        auto d = tx->exec_params(
+            "UPDATE fine_disputes SET status = $2, decided_by_user_id = NULLIF($3, '0')::int, decided_at = now() "
+            " WHERE id = $1 AND status = 'pending' RETURNING person_id, fh_event_id",
+            id, decision == "approve" ? "approved" : "denied", userId);
+        if (d.empty()) { db->rollback(tx); return jsonError(HttpStatus::CONFLICT, "Already decided."); }
+        if (decision == "approve") {
+            tx->exec_params(
+                "UPDATE fh_event_attendance SET status = 'present', marked_by_user_id = NULLIF($3, '0')::int, marked_at = now() "
+                " WHERE fh_event_id = $1 AND person_id = $2 AND status = 'absent'",
+                d[0]["fh_event_id"].as<long long>(), d[0]["person_id"].as<long long>(), userId);
+        }
+        db->commit(tx);
+        return jsonOk({{"status", decision == "approve" ? "approved" : "denied"}});
+    } catch (const std::exception& e) {
+        std::cerr << "[FinesController::decide] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save the decision");
+    }
 }
 
 // GET /api/fines?months=6

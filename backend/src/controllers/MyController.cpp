@@ -366,6 +366,7 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
     router.post(prefix + "/chat/messages",  [this](const Request& r) { return handlePostChatMessage(r); });
     router.get (prefix + "/groupme/feed",   [this](const Request& r) { return handleGetGroupMeFeed(r); });
     router.get (prefix + "/fines",          [this](const Request& r) { return handleGetFines(r); });
+    router.post(prefix + "/fines/dispute",  [this](const Request& r) { return handlePostFineDispute(r); });
     router.post(prefix + "/groupme/messages", [this](const Request& r) { return handlePostGroupMeMessage(r); });
     router.post(prefix + "/events/push-remind", [this](const Request& r) { return handlePushRemind(r); });
     router.post(prefix + "/push-test", [this](const Request& r) { return handlePushTest(r); });
@@ -489,6 +490,44 @@ Response MyController::handleGetFines(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "[MyController::fines] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load fines");
+    }
+}
+
+// POST /api/my/fines/dispute {fh_event_id, note?} — "I was there, I was
+// marked absent" (mig 691).  Only a no-show fine the player really has
+// can be disputed, once; the player's own session only (no view-as).
+Response MyController::handlePostFineDispute(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long personId = gate.session->personId;
+    json body;
+    try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON"); }
+    const long long eventId = body.contains("fh_event_id") && body["fh_event_id"].is_number_integer()
+                            ? body["fh_event_id"].get<long long>() : 0;
+    std::string note = body.contains("note") && body["note"].is_string() ? body["note"].get<std::string>() : "";
+    if (note.size() > 500) note.resize(500);
+    if (eventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    try {
+        auto* db = Database::getInstance();
+        auto f = db->query(
+            "SELECT 1 FROM fh_person_fines(ARRAY[$1::int], now() - interval '6 months') f "
+            " WHERE f.fh_event_id = $2::bigint AND f.fine_kind LIKE 'no_show%'",
+            {std::to_string(personId), std::to_string(eventId)});
+        if (f.empty()) return jsonError(HttpStatus::CONFLICT, "Only a said-yes, marked-absent fine can be disputed.");
+        auto r = db->query(
+            "INSERT INTO fine_disputes (person_id, fh_event_id, note) VALUES ($1::int, $2::bigint, NULLIF($3, '')) "
+            "ON CONFLICT (person_id, fh_event_id) DO NOTHING RETURNING status",
+            {std::to_string(personId), std::to_string(eventId), note});
+        if (r.empty()) {
+            auto s = db->query("SELECT status FROM fine_disputes WHERE person_id = $1::int AND fh_event_id = $2::bigint",
+                               {std::to_string(personId), std::to_string(eventId)});
+            return jsonOk({{"status", s.empty() ? "pending" : s[0]["status"].c_str()}});
+        }
+        return jsonOk({{"status", r[0]["status"].c_str()}});
+    } catch (const std::exception& e) {
+        std::cerr << "[MyController::fineDispute] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not send the dispute");
     }
 }
 

@@ -16,4 +16,6 @@ public:
 private:
     bool gate(const Request& request, Response* error);
     Response handleBoard(const Request& request);
+    Response handleDisputes(const Request& request);
+    Response handleDecide(const Request& request);
 };

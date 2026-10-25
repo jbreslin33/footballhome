@@ -74,6 +74,8 @@ class FinesScreen extends Screen {
     div.querySelector('#fi-back').addEventListener('click', () => this.navigation.goBack());
     div.querySelector('#fi-refresh').addEventListener('click', () => this.load());
     div.addEventListener('click', (e) => {
+      const dispute = e.target.closest('[data-fi-dispute]');
+      if (dispute) { dispute.disabled = true; this._decide(Number(dispute.dataset.fiDispute), dispute.dataset.decision); return; }
       const pill = e.target.closest('[data-fi-month]');
       if (pill) { this.month = pill.dataset.fiMonth; this._renderBody(); return; }
       const sort = e.target.closest('[data-fi-sort]');
@@ -101,13 +103,43 @@ class FinesScreen extends Screen {
   async load() {
     this.loading = true; this.err = ''; this._renderBody();
     try {
-      const res = await this.auth.fetch('/api/fines?months=6');
+      const [res, dres] = await Promise.all([this.auth.fetch('/api/fines?months=6'), this.auth.fetch('/api/fines/disputes')]);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       this.data = body;
+      // "I was there" disputes on no-show fines (mig 691).
+      const dbody = dres.ok ? await dres.json().catch(() => ({})) : {};
+      this.disputes = Array.isArray(dbody.disputes) ? dbody.disputes : [];
     } catch (err) { this.data = null; this.err = err.message || 'Failed to load.'; }
     this.loading = false;
     if (this.isMounted) { this._renderPills(); this._renderBody(); }
+  }
+
+  // Pending disputes first: Approve marks the player present (the no-show
+  // fine goes away on its own), Deny keeps it (mig 691).
+  _disputesHtml() {
+    const list = this.disputes || [];
+    if (!list.length) return '';
+    const b = (bg) => `min-width:0; min-height:0; padding:5px 10px; border-radius:8px; border:none; cursor:pointer; font-weight:800; font-size:0.78rem; color:#fff; background:${bg};`;
+    return `<div class="fi-card" style="border:1px solid #f59e0b; margin-bottom:var(--space-3); padding:10px 12px;">
+        <div style="font-weight:800; margin-bottom:6px;">⚖️ ${this.escapeHtml(this._copy('disputes_heading', { n: list.length }) || `Disputes (${list.length})`)}</div>
+        ${list.map(d => `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:6px 0; border-top:1px solid var(--border-color);">
+            <div style="flex:1; min-width:220px; font-size:0.85rem;">${this.escapeHtml(this._copy('dispute_line', { name: d.name, event: d.event, amount: FinesScreen.money(d.amount) }))}
+              ${d.note ? `<div style="opacity:0.8; font-style:italic; margin-top:2px;">"${this.escapeHtml(d.note)}"</div>` : ''}</div>
+            <button type="button" data-fi-dispute="${d.id}" data-decision="approve" style="${b('#059669')}">${this.escapeHtml(this._copy('dispute_approve') || 'Approve')}</button>
+            <button type="button" data-fi-dispute="${d.id}" data-decision="deny" style="${b('#7f1d1d')}">${this.escapeHtml(this._copy('dispute_deny') || 'Deny')}</button>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  async _decide(id, decision) {
+    try {
+      const res = await this.auth.fetch(`/api/fines/disputes/${id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    } catch (err) { alert(`Could not save: ${err.message}`); }
+    this.load();
   }
 
   _months() { return ((this.data && this.data.months) || []).slice().reverse(); }   // newest first
@@ -207,6 +239,6 @@ class FinesScreen extends Screen {
         ${!Object.keys(byKind).some(k => k.startsWith('no_show')) ? `<div class="fi-note" style="margin-top:8px;">${this.escapeHtml(this._copy('no_shows_note'))}</div>` : ''}
       </div>` : '';
 
-    el.innerHTML = `${stats}<div class="fi-card">${table}</div>${rules}`;
+    el.innerHTML = `${this._disputesHtml()}${stats}<div class="fi-card">${table}</div>${rules}`;
   }
 }

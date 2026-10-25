@@ -378,6 +378,21 @@ class MyScreen extends Screen {
         this._setRsvpTime(fhEventId, pid ? parseInt(pid, 10) : null, resetBtn.getAttribute('data-rsvp-time-reset'), '');
         return;
       }
+      const disputeBtn = target.closest('[data-fine-dispute]');
+      if (disputeBtn) {
+        e.stopPropagation();
+        this._disputeOpen = Number(disputeBtn.getAttribute('data-fine-dispute'));
+        this._renderFines();
+        return;
+      }
+      const disputeSend = target.closest('[data-fine-dispute-send]');
+      if (disputeSend) {
+        e.stopPropagation();
+        const note = disputeSend.parentElement.querySelector('[data-fine-dispute-note]');
+        disputeSend.disabled = true;
+        this._sendFineDispute(Number(disputeSend.getAttribute('data-fine-dispute-send')), note ? note.value.trim() : '');
+        return;
+      }
       const roleBtn = target.closest('[data-role-choice]');
       if (roleBtn) {
         e.stopPropagation();
@@ -1696,7 +1711,7 @@ class MyScreen extends Screen {
             const when = isNaN(d) ? '' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
             return `<tr>
               <td style="${cell} white-space:nowrap; opacity:0.8;">${this.escapeHtml(when)}</td>
-              <td style="${cell}">${this.escapeHtml(kindLabel(it.eventKind))}${it.opponent ? ` vs ${this.escapeHtml(it.opponent)}` : ''}<div style="opacity:0.7;">${this.escapeHtml(it.label)}</div></td>
+              <td style="${cell}">${this.escapeHtml(kindLabel(it.eventKind))}${it.opponent ? ` vs ${this.escapeHtml(it.opponent)}` : ''}<div style="opacity:0.7;">${this.escapeHtml(it.label)}</div>${this._fineDisputeHtml(it)}</td>
               <td style="${cell} text-align:right; font-weight:800; white-space:nowrap;">${money(it.amount)}</td>
             </tr>`;
           }).join('')}
@@ -1714,6 +1729,43 @@ class MyScreen extends Screen {
         ${rules}
         ${rows}
       </div>`;
+  }
+
+  // "I was there — dispute" on a said-yes / marked-absent fine (mig 691;
+  // owner 2026-10-24: no-RSVP fines are not disputable).  Pending / denied
+  // show as a status line; an approved one is gone (marked present).
+  _fineDisputeHtml(it) {
+    if (!it || !it.disputable) return '';
+    const t = (tier) => MessageCopy.block('my_fines', tier) || '';
+    if (it.dispute) {
+      const color = it.dispute === 'denied' ? '#fca5a5' : it.dispute === 'approved' ? '#86efac' : '#fcd34d';
+      return `<div style="margin-top:3px; font-size:0.68rem; font-weight:800; color:${color};">${this.escapeHtml(t('dispute_' + it.dispute))}</div>`;
+    }
+    if (this._disputeOpen === it.fhEventId) {
+      return `<div style="margin-top:4px; display:flex; flex-direction:column; gap:4px;">
+          <textarea data-fine-dispute-note rows="2" maxlength="500" placeholder="${this.escapeHtml(t('dispute_note'))}"
+            style="width:100%; box-sizing:border-box; font:inherit; font-size:0.72rem; padding:4px 6px; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:rgba(15,23,42,0.6); color:inherit;"></textarea>
+          <button type="button" data-fine-dispute-send="${it.fhEventId}"
+            style="align-self:flex-start; min-width:0; min-height:0; padding:4px 10px; border-radius:6px; border:none; cursor:pointer; font-size:0.7rem; font-weight:800; color:#fff; background:#0284c7;">${this.escapeHtml(t('dispute_send'))}</button>
+        </div>`;
+    }
+    return `<button type="button" data-fine-dispute="${it.fhEventId}"
+        style="margin-top:4px; min-width:0; min-height:0; padding:3px 9px; border-radius:999px; cursor:pointer; font-size:0.66rem; font-weight:800;
+               border:1px solid #f59e0b; background:rgba(245,158,11,0.15); color:#fcd34d;">${this.escapeHtml(t('dispute_button'))}</button>`;
+  }
+
+  async _sendFineDispute(fhEventId, note) {
+    try {
+      const body = await this._fetch('/api/my/fines/dispute', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fh_event_id: fhEventId, note: note || '' }) });
+      for (const mo of (this.fines && this.fines.months) || [])
+        for (const it of mo.items || []) if (it.fhEventId === fhEventId) it.dispute = (body && body.status) || 'pending';
+      this._disputeOpen = null;
+    } catch (err) {
+      alert(`Could not send the dispute: ${err.message}`);
+    }
+    this._renderFines();
   }
 
   _renderDuesBanner() {

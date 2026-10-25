@@ -1,6 +1,7 @@
 #include "PersonFines.h"
 
 #include <cmath>
+#include <map>
 #include <cstdlib>
 #include <sstream>
 
@@ -142,6 +143,12 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
     }
     auto same = [](double a, double b) { return std::fabs(a - b) < 0.005; };
 
+    // Disputes on no-show fines (mig 691): (person, event) → status.
+    std::map<std::pair<int, long long>, std::string> disputes;
+    for (const auto& d : db_->query("SELECT person_id, fh_event_id, status FROM fine_disputes "
+                                    " WHERE person_id = ANY(ARRAY[" + ids + "]::int[])"))
+        disputes[{d["person_id"].as<int>(), d["fh_event_id"].as<long long>()}] = d["status"].c_str();
+
     // person → ym → items
     std::unordered_map<int, std::unordered_map<std::string, json>> byPerson;
     std::unordered_map<int, std::unordered_map<std::string, double>> totals;
@@ -161,6 +168,11 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
             {"amount",     amount},
             {"response",   strOrNull(r, "response")},
             {"attendance", strOrNull(r, "attendance")},
+            // Only a said-yes / marked-absent fine can be disputed (mig 691).
+            {"disputable", std::string(r["fine_kind"].c_str()).rfind("no_show", 0) == 0},
+            {"dispute",    [&]() -> json {
+                auto it = disputes.find({pid, r["fh_event_id"].as<long long>()});
+                return it == disputes.end() ? json(nullptr) : json(it->second); }()},
         });
         totals[pid][ym] += amount;
     }
