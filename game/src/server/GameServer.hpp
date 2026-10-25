@@ -78,6 +78,7 @@ public:
         std::vector<std::pair<int, int>> direct_pairs;
         // G4.58: phases of play (DB) for the admin RUN_PHASE frame.
         std::vector<persistence::Phase> phases;
+        std::vector<persistence::PhasePosition> phase_positions;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);

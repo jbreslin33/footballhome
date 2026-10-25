@@ -458,6 +458,20 @@ const std::vector<std::uint8_t>& Brain::directOpponents(const World& world, std:
 }
 
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
+    // A restart shape is held until the dead ball is played (G4.58).
+    if (hold_team_ != 0xFF && world.restartTeam() == hold_team_ && !world.ball().owner) {
+        for (const auto& [s, mark] : hold_) {
+            if (s != slot) continue;
+            const auto& b = world.ball().pos;
+            if (distSq(Vec3{mark.x, mark.y, Fixed64::zero()}, b) < Fixed64::fromInt(4)) break;   // the taker
+            Orders h;
+            h.move.move = seek(world.player(slot).pos, mark, Fixed64::fromFraction(1, 2));
+            h.move.face = Vec2{b.x - world.player(slot).pos.x, b.y - world.player(slot).pos.y};
+            h.why = Why::Hold;
+            h.target = mark;
+            return h;
+        }
+    }
     Orders o = decide(slot, world);
     unmark(slot, world, o);
     if (o.move.face.x.raw != 0 || o.move.face.y.raw != 0) return o;

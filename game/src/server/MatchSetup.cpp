@@ -53,6 +53,7 @@ void loadMatchFromDb(GameServer::Config& cfg, const persistence::DbConfig& db,
     cfg.model_params = persistence::loadModelParams(db);   // G4.33
     cfg.direct_pairs = persistence::loadDirectOpponents(db);   // G4.57
     cfg.phases = persistence::loadPhases(db);                  // G4.58
+    cfg.phase_positions = persistence::loadPhasePositions(db); // mig 697
     say("fh-game: %zu phase(s) of play\n", cfg.phases.size());
     say("fh-game: %zu game-model param(s) loaded\n", cfg.model_params.size());
     // Fictional demo rosters (mig 628): named players filling the

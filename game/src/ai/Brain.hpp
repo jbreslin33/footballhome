@@ -85,6 +85,13 @@ public:
     // G4.33: the class-based concepts read their numbers from the club DB
     // (game_model_params); without it they keep their seeded defaults.
     void setDirectPairs(std::vector<std::pair<int, int>> pairs) { direct_pairs_ = std::move(pairs); direct_.clear(); }
+    // A restart shape (G4.58, phases of play): while `team`'s dead ball is
+    // waiting, each listed slot holds his mark facing the ball (the taker —
+    // the one on the ball — plays as usual); released on the first touch.
+    void setRestartShape(std::uint8_t team, std::vector<std::pair<std::uint8_t, math::Vec2>> marks) {
+        hold_team_ = team; hold_ = std::move(marks);
+    }
+    void clearRestartShape() { hold_.clear(); hold_team_ = 0xFF; }
     void setModelParams(const core::ModelParams& p) {
         book_.configure(p);
         initiative_ = p.fixed("skill.tendency.initiative", 1000);
@@ -198,6 +205,8 @@ private:
     const std::vector<std::uint8_t>& directOpponents(const core::World& world, std::uint64_t sec) const;
     mutable std::vector<std::uint8_t> direct_;
     std::vector<std::pair<int, int>> direct_pairs_;
+    std::vector<std::pair<std::uint8_t, math::Vec2>> hold_;
+    std::uint8_t hold_team_ = 0xFF;
     mutable std::uint64_t direct_sec_ = ~std::uint64_t{0};
     mutable FlightRead flight_;
     mutable std::uint64_t flight_tick_ = ~std::uint64_t{0};

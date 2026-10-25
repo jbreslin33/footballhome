@@ -467,6 +467,7 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
     const math::Vec3 ball{bx, by, Fixed64::zero()};
     // Everyone into his shape for that ball, facing it.
     std::vector<math::Vec2> at(n);
+    std::vector<bool> placed(n, false);
     for (std::uint8_t i = 0; i < n; ++i) {
         const bool home = i < per_team;
         const std::uint8_t k = home ? i : i - per_team;
@@ -480,6 +481,26 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
             if (home && a.x > -Fixed64::one()) a.x = -Fixed64::one();
             if (!home && a.x < Fixed64::one()) a.x = Fixed64::one();
         }
+        // The restart shape (migs 697-698): each team stands where its
+        // formation's rows for this phase say, by position number — side
+        // 'in' for the team in possession, 'out' for the defenders. Depth is
+        // from the team's OWN goal line, width + = left from its view.
+        placed[i] = false;
+        if (pos.number > 0) {
+            const bool in = (home ? 0 : 1) == team;
+            const Fixed64 own = home ? Fixed64::one() : -Fixed64::one();   // its attack direction
+            const std::string& fcode = home ? cfg_.roster_home.formation_code : cfg_.roster_away.formation_code;
+            for (const auto& pp : cfg_.phase_positions) {
+                if (pp.phase != ph.code || pp.formation != fcode || pp.number != pos.number ||
+                    pp.side != (in ? "in" : "out"))
+                    continue;
+                const Fixed64 depth = Fixed64::fromFraction(pp.depth_cm, 100);
+                const Fixed64 width = Fixed64::fromFraction(pp.width_cm, 100);
+                a = math::Vec2{(-hx + depth) * own, width * own};
+                placed[i] = true;
+                break;
+            }
+        }
         at[i] = a;
     }
     // How high the defending team starts (mig 696): its most advanced
@@ -490,11 +511,11 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
         auto from_our_goal = [&](Fixed64 x) { return x * sgn + hx; };
         Fixed64 front = Fixed64::fromInt(1000);
         for (std::uint8_t i = 0; i < n; ++i)
-            if ((i < per_team ? 0 : 1) == def && !world_.isKeeper(i) && from_our_goal(at[i].x) < front)
+            if ((i < per_team ? 0 : 1) == def && !world_.isKeeper(i) && !placed[i] && from_our_goal(at[i].x) < front)
                 front = from_our_goal(at[i].x);
         const Fixed64 shift = hx * Fixed64::fromFraction(ph.press_line_pct, 50) - front;
         for (std::uint8_t i = 0; i < n; ++i) {
-            if ((i < per_team ? 0 : 1) != def || world_.isKeeper(i)) continue;
+            if ((i < per_team ? 0 : 1) != def || world_.isKeeper(i) || placed[i]) continue;
             Fixed64 x = at[i].x + shift * sgn;
             const Fixed64 lim = hx - Fixed64::fromInt(2);
             if (x > lim) x = lim;
@@ -502,6 +523,12 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
             at[i].x = x;
         }
     }
+    // The team in possession holds its restart shape until the ball is played.
+    // Both teams hold their restart shapes until the ball is played.
+    std::vector<std::pair<std::uint8_t, math::Vec2>> marks;
+    for (std::uint8_t i = 0; i < n; ++i)
+        if ((i < per_team ? 0 : 1) == team || placed[i]) marks.emplace_back(i, at[i]);
+    if (ph.kind == "open") brain_.clearRestartShape(); else brain_.setRestartShape(team, std::move(marks));
     for (std::uint8_t i = 0; i < n; ++i) {
         const bool home = i < per_team;
         math::Vec2 face{ball.x - at[i].x, ball.y - at[i].y};
@@ -587,6 +614,7 @@ void GameServer::tickOnce() {
     }
 
     last_events_ = world_.tick();
+    if (world_.restartTeam() == 0xFF) brain_.clearRestartShape();   // played: shape released
     const auto& match_events = last_events_;
     if (clients_.empty()) return;  // headless idle: nothing to fan out
 

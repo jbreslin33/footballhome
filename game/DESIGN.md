@@ -1856,6 +1856,19 @@ designing the game … coaching methodology is the most important."
   the possessing team's goal line, its shape with it, its keeper home.
   From the keeper = 20 (James: "set ukies in 4231 in our zone first off")
   — their front four just outside our box against Lighthouse's 4-3-3.
+- **Restart shapes as rows** (`game_phase_positions`, migs 697-698): per
+  phase, formation, side (in / out of possession) and position number —
+  depth from the team's own goal line, width + = left. A formation with
+  rows stands there; without, its ordinary shape. Both teams HOLD their
+  marks (facing the ball) until the dead ball is played
+  (`Brain::setRestartShape`), the taker excepted. From the keeper, James's
+  4-3-3 (sources: FIFA Training Centre goal-kick build-up, Coaches' Voice;
+  metres [FH] / James): keeper on the ball; CBs low on the box edge (7 m,
+  ±19); the 6 just above the box (19 m); full-backs on the touchlines
+  (30 m, ±33.5); the 8 and 10 high short of halfway (42 m, ±13); the front
+  three near halfway (49-50 m). The Ukies' 4-2-3-1 pressing (James): back
+  four on halfway, CDMs 8-10 yd ahead, the line of three 8-10 yd ahead of
+  them (7 and 11 in lanes 2 and 4 of 5, the 10 in lane 3), the 9 ahead.
 - **Client:** an admin bar under the Brain pill — pick a phase, ▶ either
   team. Deterministic engine: the same phase on the same seed replays
   exactly, so one change at a time shows its own effect.

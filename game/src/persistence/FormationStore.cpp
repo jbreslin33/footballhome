@@ -74,6 +74,22 @@ std::vector<Phase> loadPhases(const DbConfig& cfg) {
     return out;
 }
 
+std::vector<PhasePosition> loadPhasePositions(const DbConfig& cfg) {
+    std::vector<PhasePosition> out;
+    try {
+        pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
+                              " password=" + cfg.password + " connect_timeout=5"};
+        pqxx::work tx{conn};
+        for (const auto& r : tx.exec("SELECT phase_code, formation_code, side, number, round(depth_m * 100)::int, "
+                                     "round(width_m * 100)::int FROM game_phase_positions"))
+            out.push_back(PhasePosition{r[0].as<std::string>(), r[1].as<std::string>(), r[2].as<std::string>(),
+                                        r[3].as<int>(), r[4].as<int>(), r[5].as<int>()});
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: phase positions load failed: %s\n", e.what());
+    }
+    return out;
+}
+
 std::vector<std::pair<int, int>> loadDirectOpponents(const DbConfig& cfg) {
     std::vector<std::pair<int, int>> out;
     try {

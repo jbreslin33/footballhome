@@ -88,6 +88,15 @@ struct Phase {
     int press_line_pct = -1;
 };
 std::vector<Phase> loadPhases(const DbConfig& cfg);
+// Restart shapes (mig 697): where the team in possession stands for a
+// phase, per formation and position number, in metres (depth from its own
+// goal line, width + = left from its view).
+struct PhasePosition {
+    std::string phase, formation, side = "in";   // side: in | out (mig 698)
+    int number = 0;
+    int depth_cm = 0, width_cm = 0;
+};
+std::vector<PhasePosition> loadPhasePositions(const DbConfig& cfg);
 
 struct DemoTeam {
     std::string name;  // game_demo_teams.name (the TEAMS frame)
