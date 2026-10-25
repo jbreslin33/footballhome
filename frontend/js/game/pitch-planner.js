@@ -1078,6 +1078,10 @@
       }
     }
     paintSaves();
+    // Saves made elsewhere (another device, or Claude) show up when this
+    // tab comes back into view (James 10/24: "i don't see it?").
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reloadSaves(); });
+    window.addEventListener('focus', () => reloadSaves());
     const layerBox = mk('div', 'display:flex;flex-wrap:wrap;gap:4px;padding:6px;border-radius:12px;' +
       'background:rgba(10,14,20,.72);');
     const layerPills = {};
