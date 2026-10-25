@@ -1002,6 +1002,50 @@
       }
     }
     tap(optHere, () => optimise(false));
+
+    // NUDGE (James 10/24: "we need a nudge button lol"): move the selected
+    // pitch or box one step the way the arrow points on screen (from the
+    // camera's heading), so it can creep to exactly 10 ft off a fence while
+    // the marks update; ↺ ↻ turn it by the step's angle. Arrow keys and
+    // [ ] do the same.
+    const NUDGE = [['1 ft', FT, 0.5], ['1 yd', YD, 1], ['5 yd', 5 * YD, 5]];
+    let nudgeI = 0;
+    const nudgeRow = mk('div', 'display:flex;gap:3px;align-items:center;flex-wrap:wrap;');
+    const nb = (t, ttl) => { const b = mk('button', itemPill + 'padding:3px 9px;justify-content:center;', t); b.title = ttl; return b; };
+    const nL = nb('◀', 'Nudge left (← key)'), nU = nb('▲', 'Nudge up / away (↑ key)'), nD = nb('▼', 'Nudge down / toward you (↓ key)'),
+          nR = nb('▶', 'Nudge right (→ key)'), tL = nb('↺', 'Turn left ([ key)'), tR = nb('↻', 'Turn right (] key)');
+    const stepB = mk('button', itemPill + 'padding:3px 8px;border-color:#ffd24d;color:#ffd24d;');
+    const paintStep = () => { stepB.textContent = 'step ' + NUDGE[nudgeI][0] + ' / ' + NUDGE[nudgeI][2] + '°'; };
+    paintStep();
+    tap(stepB, () => { nudgeI = (nudgeI + 1) % NUDGE.length; paintStep(); });
+    nudgeRow.append(mk('span', 'font:700 10px system-ui,sans-serif;color:#ffd24d;', 'NUDGE'), nL, nU, nD, nR, tL, tR, stepB);
+    itemsBody.appendChild(nudgeRow);
+    function nudge(dx, dy) {     // dx: screen right, dy: screen up
+      if (!on || !sel) return;
+      const site = renderer.field.site, cam = renderer.camera;
+      const f = new THREE.Vector3();
+      cam.getWorldDirection(f);
+      f.y = 0;
+      if (f.lengthSq() < 1e-6) f.set(0, 0, -1);
+      f.normalize();
+      const r = new THREE.Vector3(-f.z, 0, f.x);   // screen right on the ground
+      const o0 = site.worldToLocal(new THREE.Vector3(0, 0, 0)), w = new THREE.Vector3()
+        .addScaledVector(r, dx).addScaledVector(f, dy).multiplyScalar(NUDGE[nudgeI][1]);
+      const o1 = site.worldToLocal(w.clone());
+      sel.x += o1.x - o0.x;
+      sel.z += o1.z - o0.z;
+      update();
+    }
+    const hold = (b, fn) => {
+      let rep = null;
+      const start = (e) => { e.preventDefault(); e.stopPropagation(); fn(); rep = setInterval(fn, 160); };
+      const stop = () => { if (rep) clearInterval(rep); rep = null; };
+      b.addEventListener('mousedown', start);
+      b.addEventListener('touchstart', start);
+      for (const ev of ['mouseup', 'mouseleave', 'touchend', 'touchcancel']) b.addEventListener(ev, stop);
+    };
+    hold(nL, () => nudge(-1, 0)); hold(nR, () => nudge(1, 0)); hold(nU, () => nudge(0, 1)); hold(nD, () => nudge(0, -1));
+    hold(tL, () => turn(-NUDGE[nudgeI][2])); hold(tR, () => turn(NUDGE[nudgeI][2]));
     tap(optAny, () => optimise(true));
 
     // 💾 SAVES (James 10/24: "we need to be able to save whole page as a
@@ -1660,9 +1704,14 @@
     }, { capture: true, passive: false });
     window.addEventListener('keydown', (e) => {
       if (!on) return;
-      if (e.key === '[') turn(-1);
-      else if (e.key === ']') turn(1);
-    });
+      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      if (e.key === '[') turn(-NUDGE[nudgeI][2]);
+      else if (e.key === ']') turn(NUDGE[nudgeI][2]);
+      else if (e.key.startsWith('Arrow')) {
+        e.preventDefault(); e.stopImmediatePropagation();   // DESIGN only: the game's arrow keys stay its own
+        nudge(e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0, e.key === 'ArrowUp' ? 1 : e.key === 'ArrowDown' ? -1 : 0);
+      }
+    }, true);
 
     // The designed pitches as they stand (GAME plays on them): null until
     // the club layout has loaded.
