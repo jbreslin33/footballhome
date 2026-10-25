@@ -591,93 +591,80 @@
       site.add(g);
     }
     for (const t of (L.tracks || [])) addRibbon(layers.dust[0], t.pts, t.w, layers.dust[2]);
-    // Proposed lanes (layout proposedLanes): the lane rides its road's
-    // tree-line side, bending out wherever a trunk would sit in it or
-    // within ln.root metres of its edge (James 10/24: "it can't go through
-    // a tree root"), smoothed so a wide truck can follow it; see-through
-    // orange with dashed edges = not built yet. Its fence (ln.fence) runs
-    // on the road's field side; it lands in L.fences (group
-    // 'proposed_lane') so it draws like the measured fences, and
-    // pitch-planner.js turns ln.fencePts into a 10 ft rule.
+    // Proposed lane (layout proposedLanes), James 10/24: "right behind the
+    // current yellow pitch ... between that and tree roots". A straight
+    // lane parallel to the yellow pitch's north goal line, ln.fenceGap m
+    // behind it a fence, then ln.gap, then the lane (ln.w wide), run on at
+    // both ends until it meets the tan road (a bypass for wide trucks).
+    // It can't bend into the pitch, so every trunk within ln.root m of its
+    // edge is ringed red (ln.blockers). See-through purple, dashed edges =
+    // not built yet (orange = water channels). The fence lands in L.fences
+    // (group 'proposed_lane') and pitch-planner.js makes it a 10 ft rule.
     into = 'proposed_lane';
     for (const ln of (L.proposedLanes || [])) {
-      const road = (L.tracks || []).find((t) => t.name === ln.along);
-      if (!road) continue;
-      const sgn = ln.side === 'south' ? -1 : 1, P = road.pts;
-      // Road centreline every 2 m, each with its unit normal toward the lane side.
-      const S = [];
-      for (let i = 0; i + 1 < P.length; i++) {
-        const [ax, az] = P[i], [bx, bz] = P[i + 1], len = Math.hypot(bx - ax, bz - az);
-        const nx = sgn * (bz - az) / len, nz = sgn * -(bx - ax) / len, ux = (bx - ax) / len, uz = (bz - az) / len;
-        for (let t = 0; t < len; t += 2) S.push({ x: ax + ux * t, z: az + uz * t, nx, nz, ux, uz });
-      }
-      const last = P[P.length - 1], pl = S[S.length - 1];
-      S.push(Object.assign({}, pl, { x: last[0], z: last[1] }));
-      const o0 = road.w / 2 + (ln.gap || 0) + ln.w / 2, half = ln.w / 2 + (ln.root || 1);
-      // Per sample: the nearest offset ≥ o0 with no trunk in the band.
-      const near = TREES.filter((t) => S.some((q) => Math.abs(t[0] - q.x) < 40 && Math.abs(t[1] - q.z) < 40));
-      // Each sample's trunks, as lateral offsets (within ±3 m along).
-      const LAT = S.map((q) => {
-        const lat = [];
-        for (const t of near) {
-          const dx = t[0] - q.x, dz = t[1] - q.z, al = dx * q.ux + dz * q.uz;
-          if (Math.abs(al) < 3) lat.push(dx * q.nx + dz * q.nz);
-        }
-        return lat;
-      });
-      const clear = (i, o) => {
-        for (let k = 0; k < 20; k++) {
-          const hit = LAT[i].find((l) => Math.abs(l - o) < half);
-          if (hit === undefined) return o;
-          o = hit + half + 0.01;
-        }
-        return o;
+      const pt = L[ln.behind], road = (L.tracks || []).find((t) => t.name === ln.joins);
+      if (!pt || !road) continue;
+      const a = pt.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
+      const at = (u, v) => [pt.x + u * ca - v * sa, pt.z + u * sa + v * ca];
+      const sg = ln.end === 'south' ? 1 : -1, goal = sg * pt.length / 2;
+      const uFence = goal + sg * (ln.fenceGap || 1), uLane = uFence + sg * ((ln.gap || 0.5) + ln.w / 2);
+      // How far the lane edge is from the edge of any dirt road (the tan
+      // road or its south-west spur), to find where the lane meets it.
+      const roadGap = (p) => {
+        let d = 1e9;
+        for (const rd of (L.tracks || []))
+          for (let i = 0; i + 1 < rd.pts.length; i++) {
+            const [ax, az] = rd.pts[i], [bx, bz] = rd.pts[i + 1], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+            const t = l2 ? Math.max(0, Math.min(1, ((p[0] - ax) * dx + (p[1] - az) * dz) / l2)) : 0;
+            d = Math.min(d, Math.hypot(p[0] - ax - t * dx, p[1] - az - t * dz) - rd.w / 2 - ln.w / 2);
+          }
+        return d;
       };
-      const offs = S.map((_, i) => clear(i, o0));
-      // Smooth for a truck (widest within ±12 m, then a ±8 m average); the
-      // smoothing can push the lane onto a trunk further out, so re-clear
-      // and re-smooth until no sample has a trunk in its band.
-      let sm = offs;
-      for (let pass = 0; pass < 12; pass++) {
-        const mx = offs.map((_, i) => Math.max(...offs.slice(Math.max(0, i - 6), i + 7)));
-        sm = mx.map((_, i) => { const w = mx.slice(Math.max(0, i - 4), i + 5); return Math.max(mx[i], w.reduce((a, b) => a + b, 0) / w.length); });
-        let moved = false;
-        sm.forEach((o, i) => { const c = clear(i, o); if (c > o + 1e-6) { offs[i] = Math.max(offs[i], c); moved = true; } });
-        if (!moved) break;
-      }
-      ln.pts = S.map((q, i) => [q.x + q.nx * sm[i], q.z + q.nz * sm[i]]);
-      ln.maxOffset = Math.max(...sm);
-      // Trunks left in the lane after smoothing (should be none).
-      ln.trunksInLane = near.filter((t) => ln.pts.some((p, i) => i + 1 < ln.pts.length &&
-        (() => { const a = p, b = ln.pts[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz;
-                 const tt = l2 ? Math.max(0, Math.min(1, ((t[0] - a[0]) * dx + (t[1] - a[1]) * dz) / l2)) : 0;
-                 return Math.hypot(t[0] - a[0] - tt * dx, t[1] - a[1] - tt * dz) < ln.w / 2; })())).length;
+      ln.joined = [];
+      const reach = (dir) => {   // run v outward from the touchline until the lane meets a road
+        for (let v = pt.width / 2; v < pt.width / 2 + 120; v += 0.5)
+          if (roadGap(at(uLane, dir * v)) <= 0) { ln.joined.push(true); return dir * v; }
+        ln.joined.push(false);
+        return dir * (pt.width / 2 + 5);
+      };
+      const v0 = reach(-1), v1 = reach(1);
+      ln.pts = [];
+      for (let v = v0; v <= v1 + 1e-6; v += 2) ln.pts.push(at(uLane, Math.min(v, v1)));
+      if (ln.pts.length < 2) continue;
       const m = new Merge();
       addRibbon(m, ln.pts, ln.w, 0.07);
-      // On top of the ground layers (they z-fought it into dashes), like
-      // the planner's pitch outlines.
-      const lane = m.mesh(new THREE.MeshBasicMaterial({ color: 0xff8c1a, transparent: true, opacity: 0.55,
+      // Purple: orange is the water channels.
+      const lane = m.mesh(new THREE.MeshBasicMaterial({ color: 0xa64dff, transparent: true, opacity: 0.55,
         depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
       lane.renderOrder = 57;
       site.add(lane);
       const edgeM = new Merge();
-      for (const sd of [-1, 1]) {
-        // Dashed white edges, 2 m on / 2 m off.
-        for (let i = 0; i + 1 < ln.pts.length; i++) {
-          if (i % 2) continue;
-          const a = ln.pts[i], b = ln.pts[i + 1], dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1;
-          const ox = -dz / l * ln.w / 2 * sd, oz = dx / l * ln.w / 2 * sd;
-          addRibbon(edgeM, [[a[0] + ox, a[1] + oz], [b[0] + ox, b[1] + oz]], 0.2, 0.08);
-        }
-      }
-      const edges = edgeM.mesh(new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide,
-        depthTest: false }));
+      for (const sd of [-1, 1])
+        for (let v = v0; v < v1; v += 4)
+          addRibbon(edgeM, [at(uLane + sd * ln.w / 2, v), at(uLane + sd * ln.w / 2, Math.min(v1, v + 2))], 0.2, 0.08);
+      const edges = edgeM.mesh(new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false }));
       edges.renderOrder = 58;
       site.add(edges);
+      // Trunks in the lane or within ln.root of its edge.
+      const lim = ln.w / 2 + (ln.root || 1);
+      ln.blockers = TREES.filter((t) => {
+        const dx = t[0] - pt.x, dz = t[1] - pt.z, u = dx * ca + dz * sa, v = -dx * sa + dz * ca;
+        return Math.abs(u - uLane) < lim && v > v0 - lim && v < v1 + lim;
+      }).map((t) => {
+        const dx = t[0] - pt.x, dz = t[1] - pt.z, u = dx * ca + dz * sa;
+        return { x: t[0], z: t[1], edge: Math.abs(u - uLane) - ln.w / 2 };
+      });
+      const ringM = new THREE.MeshBasicMaterial({ color: 0xff2233, depthTest: false, side: THREE.DoubleSide });
+      for (const t of ln.blockers) {
+        const r = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.6, 24), ringM);
+        r.rotation.x = -Math.PI / 2;
+        r.position.set(t.x, 0.5, t.z);
+        r.renderOrder = 60;
+        site.add(r);
+      }
       if (ln.fence) {
-        // The fence: along the road's other (field) edge, ln.fence.off m out.
-        const fo = -(road.w / 2 + (ln.fence.off || 0.3));
-        ln.fencePts = S.filter((_, i) => i % 3 === 0 || i === S.length - 1).map((q) => [q.x + q.nx * fo, q.z + q.nz * fo]);
+        ln.fencePts = [];
+        for (let v = -pt.width / 2 - 2; v <= pt.width / 2 + 2 + 1e-6; v += 4) ln.fencePts.push(at(uFence, Math.min(v, pt.width / 2 + 2)));
         (L.fences = L.fences || []).push({ name: ln.fence.name, group: 'proposed_lane', kind: ln.fence.kind || 'chain',
                                            h: ln.fence.h || 1.8, pts: ln.fencePts });
       }
@@ -1101,6 +1088,24 @@
         drainage.add(mesh);
       }
       waterLayer.add(drainage);
+      // The MAIN channels in bold orange on top (James 10/24: "put in
+      // orange the spots that you think are the water channels"): every
+      // D8 path carrying ≥ 0.5 ha of ground, wider the more drains in.
+      into = 'channels';
+      for (const [lo, hi, wd] of [[5000, 15000, 1.2], [15000, 40000, 2.0], [40000, 1e9, 3.0]]) {
+        const mg = new Merge();
+        for (let k = 0; k < DR.segs.length; k += 5) {
+          const s5 = DR.segs;
+          if (s5[k + 4] < lo || s5[k + 4] >= hi) continue;
+          addRibbon(mg, [[s5[k], s5[k + 1]], [s5[k + 2], s5[k + 3]]], wd, 0.4);
+        }
+        if (!mg.pos.length) continue;
+        const mesh = mg.mesh(new THREE.MeshBasicMaterial({ color: 0xff6a00, transparent: true, opacity: 0.9,
+          depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
+        mesh.renderOrder = 59;
+        site.add(mesh);
+      }
+      into = 'contours';
     }
     // Chalk for one 7v7 (site metres, yards → metres by the caller).
     let gameSeven = null;
@@ -1140,7 +1145,7 @@
       site,   // site-metre group (pitch-planner.js draws into it)
       // Layer names: ground, buildings, fences, softball_fences, props,
       // trees, labels, contours, water, paint (today's pitch),
-      // proposed_lane.
+      // proposed_lane, channels.
       layers: Object.keys(layerGroups),
       setLayer,
       // Contours. mode: 'lidar' (10 cm from USGS 3DEP; white every half

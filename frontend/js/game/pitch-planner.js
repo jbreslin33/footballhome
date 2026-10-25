@@ -243,10 +243,10 @@
     ['panel', '📋 PANEL'], ['pitches', '📐 PITCHES'], ['boxes', '🟧 PRACTICE'], ['ruler', '📏 GAP'],
     ['handles', '✥ HANDLES'], ['problems', '⚠ PROBLEMS'], ['match', '🏟 MATCH'], ['paint', '🟨 TODAY\'S PITCH'], ['water', '💧 WATER'],
     ['contours', '〰 CONTOURS'], ['trees', '🌳 TREES'], ['buildings', '🏠 BUILDINGS'],
-    ['softball_fences', '⛓ SOFTBALL FENCE'], ['rodeo_fences', '⛓ RODEO FENCE'], ['proposed_lane', '🚗 PROPOSED LANE'],
+    ['softball_fences', '⛓ SOFTBALL FENCE'], ['rodeo_fences', '⛓ RODEO FENCE'], ['proposed_lane', '🚗 PROPOSED LANE'], ['channels', '🟠 WATER CHANNELS'],
     ['props', '🐴 PROPS'], ['labels', '🔤 LABELS'], ['ground', '🟩 GROUND'],
   ];
-  const FIELD_LAYERS = ['trees', 'buildings', 'softball_fences', 'rodeo_fences', 'proposed_lane', 'props', 'labels', 'ground'];
+  const FIELD_LAYERS = ['trees', 'buildings', 'softball_fences', 'rodeo_fences', 'proposed_lane', 'channels', 'props', 'labels', 'ground'];
 
   function attach(renderer) {
     const DATA = window.LIGHTHOUSE_PLANNER;

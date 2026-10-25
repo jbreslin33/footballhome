@@ -230,17 +230,19 @@ window.LIGHTHOUSE_LAYOUT = {
       [97, -135.5], [119.8, -138.5]] },
     { name: 'dirt road, south-west spur', w: 5, pts: [[-110, -30], [-108.3, -37], [-104.5, -47.6]] },
   ],
-  // PROPOSED (James 10/24): a lane along the tree line, under the canopy,
-  // beside the tan dirt road — a way round when the road is blocked, or
-  // two-way traffic — for wide trucks. Rides the road's north (tree-line)
-  // side: w = 14 ft (8.5 ft truck + mirrors + clearance), gap = strip
-  // between the road's edge and the lane, root = metres kept between the
-  // lane's edge and any trunk ("it can't go through a tree root"). A
-  // fence goes with it on the road's field side and counts as an
-  // obstruction (10 ft rule). field.js draws both (🚗 PROPOSED LANE pill).
+  // PROPOSED (James 10/24): a lane for wide trucks "right behind the
+  // current yellow pitch ... between that and tree roots" — a bypass when
+  // the tan road is blocked, or two-way traffic. Straight, parallel to the
+  // yellow (oldPitch) north goal line: fence fenceGap m behind the goal
+  // line, then gap, then the 14 ft lane (8.5 ft truck + mirrors), run on
+  // to the tan road at both ends. Trunks within root m of its edge are
+  // ringed red. The fence counts as an obstruction (10 ft). (The first
+  // draft rode the road's north side — that's the cemetery.) field.js
+  // draws it; 🚗 PROPOSED LANE pill.
   proposedLanes: [
-    { name: 'proposed tree-line lane', along: 'cemetery-edge dirt road', side: 'north', gap: 0.5, w: 4.27, root: 1,
-      fence: { name: 'proposed lane fence (field side)', off: 0.3, kind: 'chain', h: 1.8 } },
+    { name: 'proposed lane behind the yellow pitch', behind: 'oldPitch', end: 'north', joins: 'cemetery-edge dirt road',
+      fenceGap: 1, gap: 0.5, w: 4.27, root: 1,
+      fence: { name: 'proposed lane fence (behind the north goal)', kind: 'chain', h: 1.8 } },
   ],
   // Low three-rail wooden fence between the metal fence and the road (a
   // gap with two heavy posts at x ≈ 10–13), continuing east to x ≈ 43.
