@@ -187,6 +187,28 @@ int main(int argc, char** argv) {
         cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
         NullTransport t;
         server::GameServer s{cfg, t};
+        // GAME_PHASE="code:team" (G4.58): every match starts from that phase
+        // of play (team 0 = home in possession); match 1 prints the set-up
+        // — each player's metres from his own goal line and across (+ left).
+        if (const char* gp = std::getenv("GAME_PHASE")) {
+            const std::string spec = gp;
+            const auto colon = spec.find(':');
+            const std::string code = spec.substr(0, colon);
+            const int team = colon == std::string::npos ? 0 : std::atoi(spec.c_str() + colon + 1);
+            for (std::size_t p = 0; p < cfg.phases.size(); ++p) {
+                if (cfg.phases[p].code != code) continue;
+                s.runPhase(static_cast<std::uint8_t>(team), p);
+                if (m == 0)
+                    for (std::uint8_t i = 0; i < s.world().playerCount(); ++i) {
+                        const auto& pl = s.world().player(i);
+                        const double x = pl.pos.x.toDouble(), y = pl.pos.y.toDouble();
+                        const bool home = pl.team == 0;
+                        std::printf("  %s slot %2d: %5.1f m from own goal, %+5.1f m across\n",
+                                    home ? names.team_home.c_str() : names.team_away.c_str(), i,
+                                    home ? x + 52.5 : 52.5 - x, home ? y : -y);
+                    }
+            }
+        }
         int pend_team = -1, pend_why = 0, pend_other = -1;
         int last_assist[2] = {ai::kWhyCount + 1, ai::kWhyCount + 1};
         bool shot_breakaway[2] = {false, false};
