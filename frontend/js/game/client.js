@@ -327,85 +327,142 @@
     'blind-side run': 'blind-side-run', 'run in behind': 'runs', 'outlet': 'outlet',
     'support': 'support', 'shoot': 'shot-selection',
   };
-  let brainMode = 'off', brainSlot = null, brainLegend = [], brainEntries = null;
-  const brainBar = document.createElement('div');
+  Object.assign(WHY_CONCEPT, {
+    'jockey side-on': 'side-on-jockey', 'turn and run with him': 'drop-step',
+    'meet the pass': 'meet-the-pass', 'hold shape': 'line-hold',
+  });
+  // G4.57 HUD — James: "needs to be see through and off to side. maybe ukies
+  // on one side and lh on other. we should be able to toggle players on and
+  // off." One see-through panel per team (home left, away right): a row per
+  // player — tick to draw his lines on the pitch, tap his name for the
+  // concept and rating behind the decision. Ticks are remembered on this
+  // device.
+  let brainOn = false, brainLegend = [], brainEntries = null, brainOpen = null;
+  const brainPick = new Set();
+  const BRAIN_KEY = 'fh-game-brain-picks';
+  try { (JSON.parse(localStorage.getItem(BRAIN_KEY) || '[]') || []).forEach((i) => brainPick.add(i)); } catch (_) {}
+  const savePicks = () => { try { localStorage.setItem(BRAIN_KEY, JSON.stringify([...brainPick])); } catch (_) {} };
+  const brainBar = document.createElement('button');
+  brainBar.type = 'button';
   brainBar.className = 'game-only';
-  brainBar.setAttribute('role', 'group');
-  brainBar.setAttribute('aria-label', 'Brain overlay');
   brainBar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);' +
-    'top:calc(env(safe-area-inset-top, 0px) + 30px);display:flex;gap:4px;z-index:20;' +
-    'background:rgba(10,14,20,.55);padding:4px;border-radius:16px;';
-  const brainPanel = document.createElement('div');
-  brainPanel.className = 'game-only';
-  brainPanel.hidden = true;
-  brainPanel.style.cssText = 'position:fixed;left:12px;top:calc(env(safe-area-inset-top, 0px) + 130px);' +
-    'width:250px;max-width:calc(100vw - 24px);background:rgba(10,14,20,.78);color:#fff;' +
-    'font:12px/1.4 system-ui,sans-serif;padding:8px 10px;border-radius:10px;z-index:20;';
-  document.body.append(brainBar, brainPanel);
-  function brainLabels() {
-    return [['off', 'Brain off'], ['one', 'One'],
-            ['home', (teams && teams.home) || 'Home'], ['away', (teams && teams.away) || 'Away'], ['all', 'Both']];
-  }
-  function paintBrainBar() {
-    brainBar.innerHTML = '';
-    for (const [mode, label] of brainLabels()) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = label;
-      b.setAttribute('aria-pressed', String(brainMode === mode));
-      b.style.cssText = 'border:0;border-radius:12px;padding:4px 10px;font:700 11px system-ui,sans-serif;cursor:pointer;' +
-        (brainMode === mode ? 'background:#ffcc00;color:#0b1c3d;' : 'background:transparent;color:#fff;');
-      b.onclick = () => setBrainMode(mode);
-      brainBar.appendChild(b);
-    }
-  }
-  function brainShown() {
+    'top:calc(env(safe-area-inset-top, 0px) + 30px);z-index:20;border:0;border-radius:14px;' +
+    'padding:5px 14px;font:700 11px system-ui,sans-serif;cursor:pointer;';
+  brainBar.onclick = () => setBrainOn(!brainOn);
+  const brainSides = [0, 1].map((team) => {
+    const el = document.createElement('div');
+    el.className = 'game-only';
+    el.hidden = true;
+    el.setAttribute('role', 'region');
+    el.style.cssText = `position:fixed;${team === 0 ? 'left' : 'right'}:max(8px, env(safe-area-inset-${team === 0 ? 'left' : 'right'}, 0px));` +
+      'top:calc(env(safe-area-inset-top, 0px) + 70px);width:min(210px, 44vw);max-height:calc(100vh - 170px);' +
+      'overflow:auto;background:rgba(8,12,18,.32);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);' +
+      'color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.9);font:11px/1.35 system-ui,sans-serif;' +
+      'border-radius:10px;z-index:20;padding:6px;';
+    document.body.appendChild(el);
+    return { el, collapsed: window.innerWidth < 700, rows: [] };
+  });
+  document.body.appendChild(brainBar);
+  function teamSlots(team) {
     const n = (hello && hello.slotCount) || roster.length || 22;
     const half = Math.floor(n / 2);
-    const set = new Set();
-    for (let i = 0; i < n; i++) {
-      if (brainMode === 'all' || (brainMode === 'home' && i < half) || (brainMode === 'away' && i >= half) ||
-          (brainMode === 'one' && i === brainSlot)) set.add(i);
-    }
-    return set;
-  }
-  function setBrainMode(mode) {
-    const was = brainMode;
-    brainMode = mode;
-    if (mode === 'one' && brainSlot === null)
-      brainSlot = renderer.carrierSlot !== undefined && renderer.carrierSlot !== null ? renderer.carrierSlot : 0;
-    if ((was === 'off') !== (mode === 'off')) net.brainWatch(mode !== 'off');
-    paintBrainBar();
-    paintBrain();
+    const out = [];
+    for (let i = team === 0 ? 0 : half; i < (team === 0 ? half : n); i++) out.push(i);
+    return out;
   }
   function slotName(i) {
     const r = roster[i];
     return r && r.name ? r.name : '#' + (i + 1);
   }
-  function paintBrain() {
-    renderer.setBrain(brainMode === 'off' ? null : { entries: brainEntries, legend: brainLegend, show: brainShown() });
-    brainPanel.hidden = brainMode !== 'one';
-    if (brainMode !== 'one') return;
-    const n = (hello && hello.slotCount) || roster.length || 22;
-    const e = brainEntries && brainEntries[brainSlot];
-    const why = e ? brainLegend[e.why] || '?' : '…';
-    const half = Math.floor(n / 2);
-    const team = brainSlot < half ? (teams && teams.home) : (teams && teams.away);
-    const concept = WHY_CONCEPT[why];
-    const ci = concept ? GameWire.CONCEPTS.indexOf(concept) : -1;
-    const rating = ci >= 0 && roster[brainSlot] ? roster[brainSlot].ratings[ci] : null;
-    const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-    brainPanel.innerHTML =
-      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">` +
-      `<button type="button" data-b="-1" aria-label="Previous player" style="border:0;border-radius:8px;padding:2px 8px;cursor:pointer;">‹</button>` +
-      `<strong style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(slotName(brainSlot))}</strong>` +
-      `<button type="button" data-b="1" aria-label="Next player" style="border:0;border-radius:8px;padding:2px 8px;cursor:pointer;">›</button></div>` +
-      `<div style="opacity:.75;">${esc(team || '')}</div>` +
-      `<div style="margin-top:6px;">Decision: <strong style="color:#ffcc00;">${esc(why)}</strong>${e && e.rung ? ' · rung ' + e.rung : ''}</div>` +
-      (e && e.other !== 255 ? `<div>Acting on: ${esc(slotName(e.other))}</div>` : '') +
-      (concept ? `<div>${esc(concept)}: ${rating === null ? '—' : rating}</div>` : '');
-    for (const b of brainPanel.querySelectorAll('[data-b]'))
-      b.onclick = () => { brainSlot = (brainSlot + Number(b.dataset.b) + n) % n; paintBrain(); };
+  function paintBrainBar() {
+    brainBar.textContent = brainOn ? 'Brain on' : 'Brain off';
+    brainBar.setAttribute('aria-pressed', String(brainOn));
+    brainBar.style.background = brainOn ? '#ffcc00' : 'rgba(10,14,20,.55)';
+    brainBar.style.color = brainOn ? '#0b1c3d' : '#fff';
+  }
+  function paintBrainSides() {   // structure: on roster / teams / toggles
+    const names = [(teams && teams.home) || 'Home', (teams && teams.away) || 'Away'];
+    brainSides.forEach((side, team) => {
+      side.el.hidden = !brainOn;
+      side.el.setAttribute('aria-label', names[team] + ' brains');
+      const slots = teamSlots(team);
+      const all = slots.every((i) => brainPick.has(i));
+      let h = `<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">` +
+        `<strong style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(names[team])}</strong>` +
+        `<button type="button" data-all="${team}" style="${pill()}">${all ? 'None' : 'All'}</button>` +
+        `<button type="button" data-fold="${team}" aria-expanded="${!side.collapsed}" aria-label="${side.collapsed ? 'Show' : 'Hide'} players" style="${pill()}">${side.collapsed ? '▸' : '▾'}</button></div>`;
+      if (!side.collapsed) for (const i of slots) {
+        h += `<div data-row="${i}" style="padding:2px 0;border-top:1px solid rgba(255,255,255,.12);">` +
+          `<div style="display:flex;align-items:center;gap:5px;">` +
+          `<input type="checkbox" id="bp-${i}" data-pick="${i}" ${brainPick.has(i) ? 'checked' : ''} aria-label="Show ${esc(slotName(i))} on the pitch" style="margin:0;width:14px;height:14px;min-width:0;min-height:0;">` +
+          `<button type="button" data-open="${i}" style="all:unset;cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(slotName(i))}</button></div>` +
+          `<div data-why="${i}" style="padding-left:19px;color:#ffcc00;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>` +
+          `<div data-det="${i}" style="padding-left:19px;opacity:.85;"${brainOpen === i ? '' : ' hidden'}></div></div>`;
+      }
+      side.el.innerHTML = h;
+    });
+    updateBrainRows();
+  }
+  function pill() {
+    return 'border:0;border-radius:8px;padding:1px 7px;font:700 10px system-ui,sans-serif;cursor:pointer;' +
+      'background:rgba(255,255,255,.18);color:#fff;min-width:0;min-height:0;';
+  }
+  function updateBrainRows() {   // text only, every BRAIN frame (~5 Hz)
+    if (!brainOn) return;
+    for (const side of brainSides) {
+      for (const el of side.el.querySelectorAll('[data-why]')) {
+        const i = Number(el.dataset.why);
+        const e = brainEntries && brainEntries[i];
+        const why = e ? brainLegend[e.why] || '?' : '…';
+        const other = e && e.other !== 255 ? ' → ' + slotName(e.other) : '';
+        el.textContent = why + other;
+      }
+      for (const el of side.el.querySelectorAll('[data-det]')) {
+        if (el.hidden) continue;
+        const i = Number(el.dataset.det);
+        const e = brainEntries && brainEntries[i];
+        const why = e ? brainLegend[e.why] || '' : '';
+        const concept = WHY_CONCEPT[why];
+        const ci = concept ? GameWire.CONCEPTS.indexOf(concept) : -1;
+        const rating = ci >= 0 && roster[i] ? roster[i].ratings[ci] : null;
+        el.textContent = (concept ? `${concept}: ${rating === null ? '—' : rating}` : 'no concept behind this one') +
+          (e && e.rung ? ` · rung ${e.rung}` : '');
+      }
+    }
+    renderer.setBrain({ entries: brainEntries, legend: brainLegend, show: brainPick });
+  }
+  for (const side of brainSides) {
+    side.el.addEventListener('click', (ev) => {
+      const t = ev.target;
+      if (t.dataset.all !== undefined) {
+        const slots = teamSlots(Number(t.dataset.all));
+        const all = slots.every((i) => brainPick.has(i));
+        for (const i of slots) all ? brainPick.delete(i) : brainPick.add(i);
+        savePicks(); paintBrainSides();
+      } else if (t.dataset.fold !== undefined) {
+        side.collapsed = !side.collapsed; paintBrainSides();
+      } else if (t.dataset.open !== undefined) {
+        const i = Number(t.dataset.open);
+        brainOpen = brainOpen === i ? null : i; paintBrainSides();
+      }
+    });
+    side.el.addEventListener('change', (ev) => {
+      const t = ev.target;
+      if (t.dataset.pick === undefined) return;
+      const i = Number(t.dataset.pick);
+      t.checked ? brainPick.add(i) : brainPick.delete(i);
+      savePicks(); paintBrainSides();
+    });
+  }
+  function setBrainOn(on) {
+    if (on === brainOn) return;
+    brainOn = on;
+    // First time on with nothing ticked: show everyone.
+    if (on && brainPick.size === 0) for (const t of [0, 1]) for (const i of teamSlots(t)) brainPick.add(i);
+    net.brainWatch(on);
+    paintBrainBar();
+    paintBrainSides();
+    if (!on) renderer.setBrain(null);
   }
   paintBrainBar();
 
@@ -505,18 +562,18 @@
     onRoster(r) {
       roster = r;
       applyIdentities();   // names may have changed (lineup / reload)
-      if (brainMode === 'one') paintBrain();
+      if (brainOn) paintBrainSides();
     },
     onBrain(entries) {
       brainEntries = entries;
-      if (brainMode !== 'off') paintBrain();
+      updateBrainRows();
     },
     onBrainLegend(names) {
       brainLegend = names;
     },
     onTeams(t) {
       teams = t;
-      paintBrainBar();
+      if (brainOn) paintBrainSides();
       // Names + position numbers over the players (mig 643): both teams'
       // slot numbers from the club API, names from ROSTER.
       for (const k of Object.keys(teamCache)) delete teamCache[k];
