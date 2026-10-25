@@ -319,7 +319,7 @@ json RsvpBoard::list(const std::string& sectionCode,
             SELECT rv.responded_at, rv.created_via, rv.response FROM fh_event_rsvps rv
              WHERE rv.person_id = p.id ORDER BY rv.responded_at DESC LIMIT 1) lr ON true
       LEFT JOIN LATERAL (
-            SELECT plm.months_overdue, plm.la_payment_status, lp.variant
+            SELECT fh_membership_months_overdue(plm.id) AS months_overdue, plm.la_payment_status, lp.variant   -- mig 690
               FROM person_la_memberships plm
               JOIN leagueapps_programs lp ON lp.program_id = plm.la_program_id
              WHERE plm.person_id = p.id AND plm.ended_at IS NULL

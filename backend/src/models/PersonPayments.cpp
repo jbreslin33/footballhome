@@ -689,7 +689,8 @@ PersonPayments::loadMembersForProgram(long long programId) {
         // sync from outstandingBalance (migration 270) — same source for
         // active AND inactive-tier members, unlike status/days_overdue
         // above which are locally-derived.
-        "       m.months_overdue           AS months_overdue,"
+        // less any Bank payment LA has not applied yet (mig 690)
+        "       fh_membership_months_overdue(m.id) AS months_overdue,"
         "       COALESCE(agg.total_paid,     0) AS total_paid,"        "       COALESCE(agg.total_refunded, 0) AS total_refunded,"
         "       COALESCE(agg.txn_count,      0) AS txn_count,"
         "       TO_CHAR(agg.first_paid_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS first_paid_iso,"
