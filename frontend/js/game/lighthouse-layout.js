@@ -230,36 +230,20 @@ window.LIGHTHOUSE_LAYOUT = {
       [97, -135.5], [119.8, -138.5]] },
     { name: 'dirt road, south-west spur', w: 5, pts: [[-110, -30], [-108.3, -37], [-104.5, -47.6]] },
   ],
-  // PROPOSED (James 10/24): a lane for wide trucks "right behind the
-  // current yellow pitch ... between that and tree roots" — a bypass when
-  // the tan road is blocked, or two-way traffic. Straight, parallel to the
-  // yellow (oldPitch) north goal line: fence fenceGap m behind the goal
-  // line, then gap, then the 14 ft lane (8.5 ft truck + mirrors), run on
-  // to the tan road at both ends. Trunks within root m of its edge are
-  // ringed red. The fence counts as an obstruction (10 ft). (The first
-  // draft rode the road's north side — that's the cemetery.) field.js
-  // draws it; 🚗 PROPOSED LANE pill.
-  // AVOID zones (James 10/24). 'sector' = annulus slice off a diamond's
-  // home plate (r in m, angles in degrees from home→2nd toward 1st base);
-  // 'band' = strip beside a pitch's touchline (from/to m past it). mode
-  // 'nogo' = a planner rule (pitch may not touch it); 'penalty' = the 🎯
-  // buttons score each m² in it as weight × a pond m² (pills show the %).
-  // Shallow right field: lidar wetness 10–12× the park's at 20–37 m out,
-  // 0–40° ("avoid the swampy area in shallow right field"). Rodeo lumps:
-  // the first 20 m past the yellow's rodeo touchline has 18–26 % more
-  // 10 cm contour per m² ("it gets hilly") — drawn as a penalty band for a
-  // while, then taken out (James 10/24: "take out the yellow safety line
-  // rectangle"); pitch-planner.js still rules how far past the yellow a
-  // pitch reaches. (Its band also covered the softball's flat shallow
-  // left/centre.)
-  avoidZones: [
-    { id: 'swamp_rf', name: 'swampy shallow right field', mode: 'nogo', kind: 'sector', diamond: 0,
-      r0: 20, r1: 37, a0: 0, a1: 40 },
-  ],
+  // PROPOSED (James 10/24): a lane for wide trucks — a bypass when the
+  // tan road is blocked, or two-way traffic — on the tan road's field
+  // side behind the yellow (oldPitch) pitch. It contours with the tree
+  // line there ("needs to contour with tree line and merge into tan road
+  // before and after trees"): inner edge root m outside the trunks, never
+  // within keep m of the yellow, reach = how far behind the pitch counts.
+  // w = 14 ft (8.5 ft truck + mirrors). Its fence (10 ft rule) runs off
+  // the lane's field edge. field.js draws it; 🚗 PROPOSED LANE pill.
+  // (Drafts: on the road's north side = the cemetery; then straight behind
+  // the goal line.)
   proposedLanes: [
-    { name: 'proposed lane behind the yellow pitch', behind: 'oldPitch', end: 'north', joins: 'cemetery-edge dirt road',
-      fenceGap: 1, gap: 0.5, w: 4.27, root: 1,
-      fence: { name: 'proposed lane fence (behind the north goal)', kind: 'chain', h: 1.8 } },
+    { name: 'proposed lane behind the yellow pitch', along: 'cemetery-edge dirt road', near: 'oldPitch', reach: 30,
+      gap: 0.5, w: 4.27, root: 1, keep: 1,
+      fence: { name: 'proposed lane fence (field side)', off: 0.3, kind: 'chain', h: 1.8 } },
   ],
   // Low three-rail wooden fence between the metal fence and the road (a
   // gap with two heavy posts at x ≈ 10–13), continuing east to x ≈ 43.

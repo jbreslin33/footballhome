@@ -592,86 +592,96 @@
     }
     for (const t of (L.tracks || [])) addRibbon(layers.dust[0], t.pts, t.w, layers.dust[2]);
     // Proposed lane (layout proposedLanes), James 10/24: "right behind the
-    // current yellow pitch ... between that and tree roots". A straight
-    // lane parallel to the yellow pitch's north goal line, ln.fenceGap m
-    // behind it a fence, then ln.gap, then the lane (ln.w wide), run on at
-    // both ends until it meets the tan road (a bypass for wide trucks).
-    // It can't bend into the pitch, so every trunk within ln.root m of its
-    // edge is ringed red (ln.blockers). See-through purple, dashed edges =
-    // not built yet (orange = water channels). The fence lands in L.fences
-    // (group 'proposed_lane') and pitch-planner.js makes it a 10 ft rule.
-    // AVOID zones (layout avoidZones): outline each, hatched red (no-go)
-    // or amber (penalty), each on its own layer 'avoid_<id>';
-    // pitch-planner.js turns z.pts into a rule or a score penalty.
-    for (const zn of (L.avoidZones || [])) {
-      if (zn.kind === 'sector') {
-        const dm = (L.diamonds || [])[zn.diamond || 0];
-        if (!dm) continue;
-        const b = dm.bearing * D2R, at = (a, r) => [dm.home[0] + Math.cos(b + a * D2R) * r, dm.home[1] + Math.sin(b + a * D2R) * r];
-        zn.pts = [];
-        for (let a = zn.a0; a <= zn.a1 + 1e-6; a += 4) zn.pts.push(at(a, zn.r1));
-        for (let a = zn.a1; a >= zn.a0 - 1e-6; a -= 4) zn.pts.push(at(a, zn.r0));
-      } else if (zn.kind === 'band') {
-        const pt = L[zn.pitch];
-        if (!pt) continue;
-        const a = pt.rotDeg * D2R, at = (u, v) => [pt.x + u * Math.cos(a) - v * Math.sin(a), pt.z + u * Math.sin(a) + v * Math.cos(a)];
-        const sg = zn.side === 'rodeo' ? -1 : 1, v0 = sg * (pt.width / 2 + zn.from), v1 = sg * (pt.width / 2 + zn.to), l = pt.length / 2;
-        zn.pts = [at(-l, v0), at(l, v0), at(l, v1), at(-l, v1)];
-      }
-      if (!zn.pts) continue;
-      into = 'avoid_' + zn.id;
-      const col = zn.mode === 'nogo' ? 0xff2233 : 0xffb000;
-      const fill = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(zn.pts.map(([x, z]) => new THREE.Vector2(x, -z)))),
-        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.18, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
-      fill.rotation.x = -Math.PI / 2;
-      fill.position.y = 0.3;
-      fill.renderOrder = 55;
-      site.add(fill);
-      const edge = new Merge();
-      addRibbon(edge, zn.pts.concat([zn.pts[0]]), 0.35, 0.31);
-      // Hatching: diagonal strokes 4 m apart, clipped to the zone.
-      const xs = zn.pts.map((p) => p[0]), zs = zn.pts.map((p) => p[1]);
-      const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
-      for (let k = x0 - (z1 - z0); k < x1; k += 4)
-        for (let t = 0; t < (z1 - z0); t += 1) {
-          const p0 = [k + t, z0 + t], p1 = [k + t + 1, z0 + t + 1];
-          if (inPoly(p0[0], p0[1], zn.pts) && inPoly(p1[0], p1[1], zn.pts)) addRibbon(edge, [p0, p1], 0.15, 0.31);
-        }
-      const em = edge.mesh(new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false,
-        depthTest: false, side: THREE.DoubleSide }));
-      em.renderOrder = 56;
-      site.add(em);
-    }
+    // current yellow pitch ... between that and tree roots", then "the
+    // purple trail needs to contour with tree line and merge into tan road
+    // before and after trees". It rides the tan road's field side: along
+    // the stretch behind ln.near (the yellow pitch) wherever trees stand
+    // there, its inner edge sits ln.root m outside the outermost trunk of
+    // the tree line (pushed past each trunk in turn), capped ln.keep m
+    // short of the yellow pitch; smoothed for a wide truck; where the
+    // trees stop it ramps back onto the road (offset 0) at both ends. A
+    // trunk the cap leaves inside the lane (+root) is ringed red. Its fence
+    // runs ln.fence.off m outside the lane's field edge where the lane has
+    // left the road; pitch-planner.js makes it a 10 ft rule. Purple,
+    // dashed edges, width written on it.
     into = 'proposed_lane';
     for (const ln of (L.proposedLanes || [])) {
-      const pt = L[ln.behind], road = (L.tracks || []).find((t) => t.name === ln.joins);
-      if (!pt || !road) continue;
-      const a = pt.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a);
-      const at = (u, v) => [pt.x + u * ca - v * sa, pt.z + u * sa + v * ca];
-      const sg = ln.end === 'south' ? 1 : -1, goal = sg * pt.length / 2;
-      const uFence = goal + sg * (ln.fenceGap || 1), uLane = uFence + sg * ((ln.gap || 0.5) + ln.w / 2);
-      // How far the lane edge is from the edge of any dirt road (the tan
-      // road or its south-west spur), to find where the lane meets it.
-      const roadGap = (p) => {
-        let d = 1e9;
-        for (const rd of (L.tracks || []))
-          for (let i = 0; i + 1 < rd.pts.length; i++) {
-            const [ax, az] = rd.pts[i], [bx, bz] = rd.pts[i + 1], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
-            const t = l2 ? Math.max(0, Math.min(1, ((p[0] - ax) * dx + (p[1] - az) * dz) / l2)) : 0;
-            d = Math.min(d, Math.hypot(p[0] - ax - t * dx, p[1] - az - t * dz) - rd.w / 2 - ln.w / 2);
-          }
-        return d;
+      const road = (L.tracks || []).find((t) => t.name === ln.along), pt = L[ln.near];
+      if (!road || !pt) continue;
+      const P = road.pts, S = [];
+      for (let i = 0; i + 1 < P.length; i++) {
+        const [ax, az] = P[i], [bx, bz] = P[i + 1], len = Math.hypot(bx - ax, bz - az);
+        const ux = (bx - ax) / len, uz = (bz - az) / len;
+        for (let t = 0; t < len; t += 2) S.push({ x: ax + ux * t, z: az + uz * t, ux, uz, nx: -uz, nz: ux });
+      }
+      const pa = pt.rotDeg * D2R, pc = Math.cos(pa), ps = Math.sin(pa);
+      const inPitch = (x, z) => { const u = (x - pt.x) * pc + (z - pt.z) * ps, v = -(x - pt.x) * ps + (z - pt.z) * pc;
+        return Math.abs(u) <= pt.length / 2 && Math.abs(v) <= pt.width / 2; };
+      // Per sample: how far the yellow is (field side), and its trunks.
+      const half = ln.w / 2 + (ln.root || 1), o0 = road.w / 2 + (ln.gap || 0.5) + ln.w / 2;
+      const info = S.map((q) => {
+        let toP = null;
+        for (let d = 0; d < 60; d += 0.25) if (inPitch(q.x + q.nx * d, q.z + q.nz * d)) { toP = d; break; }
+        const lat = [];
+        for (const t of TREES) {
+          const dx = t[0] - q.x, dz = t[1] - q.z, al = dx * q.ux + dz * q.uz, la = dx * q.nx + dz * q.nz;
+          if (Math.abs(al) < 3 && la > road.w / 2 - 1 && la < 30) lat.push(la);
+        }
+        return { toP, lat };
+      });
+      // The stretch: behind the pitch (within ln.reach m of it) and treed,
+      // grown out to where the trees stop.
+      const behind = info.map((f) => f.toP !== null && f.toP < (ln.reach || 30));
+      const treed = info.map((f) => f.lat.length > 0);
+      let i0 = behind.indexOf(true), i1 = behind.lastIndexOf(true);
+      if (i0 < 0) continue;
+      while (i0 > 0 && (treed[i0 - 1] || treed[i0 - 2])) i0--;
+      while (i1 < S.length - 1 && (treed[i1 + 1] || treed[i1 + 2])) i1++;
+      const cap = (i) => (info[i].toP !== null ? info[i].toP - ln.w / 2 - (ln.keep || 1) : 40);
+      const clear = (i, o) => {
+        for (let k = 0; k < 20; k++) {
+          const hit = info[i].lat.find((l) => Math.abs(l - o) < half);
+          if (hit === undefined) return o;
+          o = hit + half + 0.01;
+        }
+        return o;
       };
-      ln.joined = [];
-      const reach = (dir) => {   // run v outward from the touchline until the lane meets a road
-        for (let v = pt.width / 2; v < pt.width / 2 + 120; v += 0.5)
-          if (roadGap(at(uLane, dir * v)) <= 0) { ln.joined.push(true); return dir * v; }
-        ln.joined.push(false);
-        return dir * (pt.width / 2 + 5);
+      // No trunk inside the lane, ever (James 10/24: "it can go under
+      // canopy but not through a tree stalk"): free(i, o) = a lane centred
+      // o m off the road's centreline clears every trunk by root; best(i,
+      // t) = the free offset nearest t between the road (0) and the cap —
+      // 0 (on the road) when nothing fits.
+      const free = (i, o) => !info[i].lat.some((l) => Math.abs(l - o) < half);
+      const best = (i, t) => {
+        const hi = Math.max(0, cap(i));
+        for (let d = 0; d <= hi + 0.05; d += 0.1)
+          for (const o of [t - d, t + d]) if (o >= 0 && o <= hi && free(i, o)) return o;
+        return 0;
       };
-      const v0 = reach(-1), v1 = reach(1);
+      const want = S.map((_, i) => (i < i0 || i > i1 ? 0 : best(i, Math.min(cap(i), clear(i, o0)))));
+      // Smooth for a truck (±8 m mean), then put any sample whose band hit
+      // a trunk back on its nearest free offset; repeat until all clear.
+      let off = want.slice();
+      for (let pass = 0; pass < 12; pass++) {
+        const sm = off.map((_, i) => { const w = off.slice(Math.max(0, i - 4), i + 5); return w.reduce((p, q) => p + q, 0) / w.length; });
+        let hit = false;
+        off = sm.map((o, i) => {
+          if (i < i0 - 4 || i > i1 + 4) return 0;
+          if (i >= i0 && i <= i1 && !free(i, o)) { hit = true; return best(i, o); }
+          return o;
+        });
+        if (!hit && pass > 2) break;
+      }
+      // Ramp ends land on the road's centreline.
+      const j0 = Math.max(0, i0 - 8), j1 = Math.min(S.length - 1, i1 + 8);
+      for (let i = j0; i <= j1; i++) if (i < i0 || i > i1) off[i] = off[i] * Math.min(1, (i < i0 ? i - j0 : j1 - i) / 8);
+      // Exact last check along the polyline: a sample still too near a
+      // trunk drops to the nearest free offset with no smoothing.
+      const near = (i) => TREES.some((t) => Math.hypot(t[0] - (S[i].x + S[i].nx * off[i]), t[1] - (S[i].z + S[i].nz * off[i])) < half);
+      for (let k = 0; k < 3; k++) for (let i = j0; i <= j1; i++) if (near(i)) off[i] = best(i, off[i]);
       ln.pts = [];
-      for (let v = v0; v <= v1 + 1e-6; v += 2) ln.pts.push(at(uLane, Math.min(v, v1)));
+      for (let i = j0; i <= j1; i++) ln.pts.push([S[i].x + S[i].nx * off[i], S[i].z + S[i].nz * off[i]]);
+      ln.maxOffset = Math.max(...off);
       if (ln.pts.length < 2) continue;
       const m = new Merge();
       addRibbon(m, ln.pts, ln.w, 0.07);
@@ -682,20 +692,51 @@
       site.add(lane);
       const edgeM = new Merge();
       for (const sd of [-1, 1])
-        for (let v = v0; v < v1; v += 4)
-          addRibbon(edgeM, [at(uLane + sd * ln.w / 2, v), at(uLane + sd * ln.w / 2, Math.min(v1, v + 2))], 0.2, 0.08);
+        for (let i = 0; i + 1 < ln.pts.length; i += 2) {
+          const a2 = ln.pts[i], b2 = ln.pts[i + 1], dx = b2[0] - a2[0], dz = b2[1] - a2[1], l = Math.hypot(dx, dz) || 1;
+          const ox = -dz / l * ln.w / 2 * sd, oz = dx / l * ln.w / 2 * sd;
+          addRibbon(edgeM, [[a2[0] + ox, a2[1] + oz], [b2[0] + ox, b2[1] + oz]], 0.2, 0.08);
+        }
       const edges = edgeM.mesh(new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false }));
       edges.renderOrder = 58;
       site.add(edges);
-      // Trunks in the lane or within ln.root of its edge.
-      const lim = ln.w / 2 + (ln.root || 1);
-      ln.blockers = TREES.filter((t) => {
-        const dx = t[0] - pt.x, dz = t[1] - pt.z, u = dx * ca + dz * sa, v = -dx * sa + dz * ca;
-        return Math.abs(u - uLane) < lim && v > v0 - lim && v < v1 + lim;
-      }).map((t) => {
-        const dx = t[0] - pt.x, dz = t[1] - pt.z, u = dx * ca + dz * sa;
-        return { x: t[0], z: t[1], edge: Math.abs(u - uLane) - ln.w / 2 };
-      });
+      // Its width, written along it at the middle.
+      const mid = Math.floor(ln.pts.length / 2), ma = ln.pts[mid - 1], mb = ln.pts[mid + 1] || ln.pts[mid];
+      const cv = document.createElement('canvas');
+      cv.width = 1024; cv.height = 128;
+      const c2 = cv.getContext('2d'), txt = 'PROPOSED LANE · ' + (ln.w / 0.3048).toFixed(0) + ' ft (' + ln.w.toFixed(1) + ' m) wide';
+      c2.font = 'bold 70px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.lineWidth = 12; c2.strokeStyle = 'rgba(0,0,0,.85)'; c2.strokeText(txt, 512, 64);
+      c2.fillStyle = '#e2c2ff'; c2.fillText(txt, 512, 64);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(ln.w * 7, ln.w * 7 / 8),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false, depthTest: false }));
+      lab.rotation.x = -Math.PI / 2;
+      lab.rotation.z = -Math.atan2(mb[1] - ma[1], mb[0] - ma[0]);
+      lab.position.set(ln.pts[mid][0], 0.35, ln.pts[mid][1]);
+      lab.renderOrder = 59;
+      site.add(lab);
+      // Trunks the lane couldn't clear (in it or within root of its edge).
+      // Ones mapped on the tan road itself are left out: trucks already
+      // drive the road, so those are crowns detected over it, not stalks.
+      const onRoad = (t) => {
+        for (let i = 0; i + 1 < P.length; i++) {
+          const [ax, az] = P[i], [bx, bz] = P[i + 1], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+          const tt = l2 ? Math.max(0, Math.min(1, ((t[0] - ax) * dx + (t[1] - az) * dz) / l2)) : 0;
+          if (Math.hypot(t[0] - ax - tt * dx, t[1] - az - tt * dz) < road.w / 2) return true;
+        }
+        return false;
+      };
+      ln.blockers = [];
+      for (const t of TREES) {
+        if (onRoad(t)) continue;
+        let d = 1e9;
+        for (let i = 0; i + 1 < ln.pts.length; i++) {
+          const [ax, az] = ln.pts[i], [bx, bz] = ln.pts[i + 1], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+          const tt = l2 ? Math.max(0, Math.min(1, ((t[0] - ax) * dx + (t[1] - az) * dz) / l2)) : 0;
+          d = Math.min(d, Math.hypot(t[0] - ax - tt * dx, t[1] - az - tt * dz));
+        }
+        if (d < half) ln.blockers.push({ x: t[0], z: t[1], edge: d - ln.w / 2 });
+      }
       const ringM = new THREE.MeshBasicMaterial({ color: 0xff2233, depthTest: false, side: THREE.DoubleSide });
       for (const t of ln.blockers) {
         const r = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.6, 24), ringM);
@@ -705,10 +746,16 @@
         site.add(r);
       }
       if (ln.fence) {
+        // Along the lane's field edge where it has left the road.
         ln.fencePts = [];
-        for (let v = -pt.width / 2 - 2; v <= pt.width / 2 + 2 + 1e-6; v += 4) ln.fencePts.push(at(uFence, Math.min(v, pt.width / 2 + 2)));
-        (L.fences = L.fences || []).push({ name: ln.fence.name, group: 'proposed_lane', kind: ln.fence.kind || 'chain',
-                                           h: ln.fence.h || 1.8, pts: ln.fencePts });
+        for (let i = j0; i <= j1; i++) {
+          if (off[i] < road.w / 2 + ln.w / 2) continue;
+          const fo = off[i] + ln.w / 2 + (ln.fence.off || 0.3);
+          if ((i - j0) % 2 === 0) ln.fencePts.push([S[i].x + S[i].nx * fo, S[i].z + S[i].nz * fo]);
+        }
+        if (ln.fencePts.length > 1)
+          (L.fences = L.fences || []).push({ name: ln.fence.name, group: 'proposed_lane', kind: ln.fence.kind || 'chain',
+                                             h: ln.fence.h || 1.8, pts: ln.fencePts });
       }
     }
     into = 'fences';
