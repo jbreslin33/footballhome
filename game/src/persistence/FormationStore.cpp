@@ -64,9 +64,10 @@ std::vector<Phase> loadPhases(const DbConfig& cfg) {
         pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
                               " password=" + cfg.password + " connect_timeout=5"};
         pqxx::work tx{conn};
-        for (const auto& r : tx.exec("SELECT code, title, kind, ball_x_pct, ball_y_pct FROM game_phases ORDER BY sort_order, code"))
+        for (const auto& r : tx.exec("SELECT code, title, kind, ball_x_pct, ball_y_pct, coalesce(press_line_pct, -1) "
+                                     "FROM game_phases ORDER BY sort_order, code"))
             out.push_back(Phase{r[0].as<std::string>(), r[1].as<std::string>(), r[2].as<std::string>(),
-                                r[3].as<int>(), r[4].as<int>()});
+                                r[3].as<int>(), r[4].as<int>(), r[5].as<int>()});
     } catch (const std::exception& e) {
         std::fprintf(stderr, "fh-game: phases load failed: %s\n", e.what());
     }

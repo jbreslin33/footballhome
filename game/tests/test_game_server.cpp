@@ -457,7 +457,7 @@ FH_TEST(a_phase_of_play_sets_up_the_picture) {
     // G4.58: from the keeper = a dead ball at the team's own 6 m, theirs to
     // take; an open-play phase puts the ball at one of their feet.
     server::GameServer::Config cfg{.match_id = 7, .slot_count = 22};
-    cfg.phases = {{"keeper", "From the keeper", "keeper", 6, 0},
+    cfg.phases = {{"keeper", "From the keeper", "keeper", 6, 0, 20},
                   {"mid-block", "Into their mid-block", "open", 45, 0},
                   {"corner-left", "Corner, left", "corner", 99, 97}};
     FakeTransport t;
@@ -466,6 +466,12 @@ FH_TEST(a_phase_of_play_sets_up_the_picture) {
     FH_EXPECT_EQ(s.world().restartTeam(), 1);
     FH_EXPECT(s.world().ball().pos.x > Fixed64::fromInt(40));
     FH_EXPECT(!s.world().ball().owner.has_value());
+    // press_line 20: home defends this phase and sets up with its most
+    // advanced outfielder ~21 m from the away goal line (x ≈ +31.5).
+    Fixed64 front = Fixed64::fromInt(-1000);
+    for (std::uint8_t i = 0; i < 11; ++i)
+        if (!s.world().isKeeper(i) && s.world().player(i).pos.x > front) front = s.world().player(i).pos.x;
+    FH_EXPECT(front > Fixed64::fromInt(30) && front < Fixed64::fromInt(33));
     s.runPhase(0, 1);   // home on the ball near halfway
     FH_EXPECT(s.world().ball().owner.has_value());
     FH_EXPECT(*s.world().ball().owner < 11);

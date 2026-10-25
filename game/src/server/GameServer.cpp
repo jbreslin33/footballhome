@@ -466,6 +466,7 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
     if (ph.kind == "kickoff") { bx = Fixed64::zero(); by = Fixed64::zero(); }
     const math::Vec3 ball{bx, by, Fixed64::zero()};
     // Everyone into his shape for that ball, facing it.
+    std::vector<math::Vec2> at(n);
     for (std::uint8_t i = 0; i < n; ++i) {
         const bool home = i < per_team;
         const std::uint8_t k = home ? i : i - per_team;
@@ -479,9 +480,33 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
             if (home && a.x > -Fixed64::one()) a.x = -Fixed64::one();
             if (!home && a.x < Fixed64::one()) a.x = Fixed64::one();
         }
-        math::Vec2 face{ball.x - a.x, ball.y - a.y};
+        at[i] = a;
+    }
+    // How high the defending team starts (mig 696): its most advanced
+    // outfield line slides to press_line_pct up from our goal line; the
+    // rest of its shape comes with it; its keeper stays home.
+    if (ph.press_line_pct >= 0) {
+        const std::uint8_t def = team ^ 1;
+        auto from_our_goal = [&](Fixed64 x) { return x * sgn + hx; };
+        Fixed64 front = Fixed64::fromInt(1000);
+        for (std::uint8_t i = 0; i < n; ++i)
+            if ((i < per_team ? 0 : 1) == def && !world_.isKeeper(i) && from_our_goal(at[i].x) < front)
+                front = from_our_goal(at[i].x);
+        const Fixed64 shift = hx * Fixed64::fromFraction(ph.press_line_pct, 50) - front;
+        for (std::uint8_t i = 0; i < n; ++i) {
+            if ((i < per_team ? 0 : 1) != def || world_.isKeeper(i)) continue;
+            Fixed64 x = at[i].x + shift * sgn;
+            const Fixed64 lim = hx - Fixed64::fromInt(2);
+            if (x > lim) x = lim;
+            if (x < -lim) x = -lim;
+            at[i].x = x;
+        }
+    }
+    for (std::uint8_t i = 0; i < n; ++i) {
+        const bool home = i < per_team;
+        math::Vec2 face{ball.x - at[i].x, ball.y - at[i].y};
         if (face.x.raw == 0 && face.y.raw == 0) face = math::Vec2{home ? Fixed64::one() : -Fixed64::one(), Fixed64::zero()};
-        world_.placePlayer(i, math::Vec3{a.x, a.y, Fixed64::zero()}, math::normalized(face));
+        world_.placePlayer(i, math::Vec3{at[i].x, at[i].y, Fixed64::zero()}, math::normalized(face));
     }
     if (ph.kind == "keeper") {
         world_.setDeadBall(core::MatchEventType::GoalKick, team, ball);

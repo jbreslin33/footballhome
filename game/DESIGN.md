@@ -1851,6 +1851,11 @@ designing the game … coaching methodology is the most important."
   touch first (keeper = a goal-kick restart at the spot, corner, kick-off)
   or, for open play, the team's nearest outfielder on the spot with the
   ball (`World::giveBall`). Wire 1.9 PHASES 0x3E / RUN_PHASE 0x3F (admin).
+- **Where the defenders start** (mig 696, `press_line_pct`): the
+  defending team's most advanced outfield line slides to that % up from
+  the possessing team's goal line, its shape with it, its keeper home.
+  From the keeper = 20 (James: "set ukies in 4231 in our zone first off")
+  — their front four just outside our box against Lighthouse's 4-3-3.
 - **Client:** an admin bar under the Brain pill — pick a phase, ▶ either
   team. Deterministic engine: the same phase on the same seed replays
   exactly, so one change at a time shows its own effect.

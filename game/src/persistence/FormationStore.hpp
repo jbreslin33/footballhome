@@ -83,6 +83,9 @@ struct DemoPlayer {
 struct Phase {
     std::string code, title, kind;   // kind: keeper | open | kickoff | corner
     int x_pct = 50, y_pct = 0;
+    // The defending team's most advanced outfield line, % up from the
+    // possessing team's goal line; -1 = its natural shape (mig 696).
+    int press_line_pct = -1;
 };
 std::vector<Phase> loadPhases(const DbConfig& cfg);
 
