@@ -34,8 +34,9 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
 
         // Postgres expands positions_json so the daemon never parses JSON.
         const auto rows = tx.exec_params(
-            "SELECT (p->>'x')::int, (p->>'y')::int, p->>'label' "
-            "FROM formations f, jsonb_array_elements(f.positions_json) p "
+            "SELECT (p->>'x')::int, (p->>'y')::int, p->>'label', coalesce(r.number, 0) "
+            "FROM formations f CROSS JOIN LATERAL jsonb_array_elements(f.positions_json) p "
+            "LEFT JOIN formation_slot_roles r ON r.formation_code = f.code AND r.slot = (p->>'slot')::int "
             "WHERE f.code = $1 "
             "ORDER BY (p->>'slot')::int",
             code);
@@ -47,6 +48,7 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
             spec.positions.push_back(
                 mapClubPosition(row[0].as<int>(), row[1].as<int>(),
                                 row[2].as<std::string>() == "GK"));
+            spec.positions.back().number = static_cast<std::int16_t>(row[3].as<int>());
         }
         return spec;
     } catch (const std::exception& e) {
@@ -54,6 +56,20 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
                      code.c_str(), e.what());
         return std::nullopt;
     }
+}
+
+std::vector<std::pair<int, int>> loadDirectOpponents(const DbConfig& cfg) {
+    std::vector<std::pair<int, int>> out;
+    try {
+        pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
+                              " password=" + cfg.password + " connect_timeout=5"};
+        pqxx::work tx{conn};
+        for (const auto& r : tx.exec("SELECT number, opponent_number FROM game_direct_opponents ORDER BY 1, 2"))
+            out.emplace_back(r[0].as<int>(), r[1].as<int>());
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: direct opponents load failed: %s\n", e.what());
+    }
+    return out;
 }
 
 std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg) {

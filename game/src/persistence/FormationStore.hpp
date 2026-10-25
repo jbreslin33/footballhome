@@ -53,6 +53,10 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
 // capability, loudly logged.
 std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg);
 
+// G4.57: direct-opponent pairs by position number (game_direct_opponents):
+// (number, opponent_number) — our 9's are their 4 and 5, and so on.
+std::vector<std::pair<int, int>> loadDirectOpponents(const DbConfig& cfg);
+
 // Fictional demo rosters (migration 628; game/CONCEPTS.md §registry).
 struct DemoPlayer {
     std::string name;

@@ -43,7 +43,7 @@ enum class Why : std::uint8_t {
     Press, Chase, Delay, Libero, Mark, GiveAndGo, BlindSideRun, RunInBehind,
     Outlet, Support, Human, WaitForRunner, LapseDeep, LapseStepOut,
     LapseShort, LapseLong, HabitShort, HabitLong, HabitDeep, HabitStepOut,
-    MeetPass, KeepRunning, KeeperDive, SideOn, DropStep,
+    MeetPass, KeepRunning, KeeperDive, SideOn, DropStep, Unmark,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -54,6 +54,7 @@ inline constexpr const char* kWhyNames[] = {
     "lapse: short and simple", "lapse: hit it long",
     "likes it short", "likes it long", "likes to sit deep", "likes to step out",
     "meet the pass", "keep running", "keeper dive", "jockey side-on", "turn and run with him",
+    "lose your marker",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -83,6 +84,7 @@ public:
     // Defaults (zero) = the perfect-play baseline the goldens lock.
     // G4.33: the class-based concepts read their numbers from the club DB
     // (game_model_params); without it they keep their seeded defaults.
+    void setDirectPairs(std::vector<std::pair<int, int>> pairs) { direct_pairs_ = std::move(pairs); direct_.clear(); }
     void setModelParams(const core::ModelParams& p) {
         book_.configure(p);
         initiative_ = p.fixed("skill.tendency.initiative", 1000);
@@ -160,6 +162,7 @@ public:
 private:
     // The decision itself; ordersFor() adds where his body faces (G4.53).
     Orders decide(core::SlotIndex slot, const core::World& world) const;
+    void unmark(core::SlotIndex slot, const core::World& world, Orders& o) const;
 
     int attackSign(core::SlotIndex slot) const {
         return setup_.team_of_slot[slot] == 0 ? +1 : -1;
@@ -185,13 +188,17 @@ private:
     std::vector<core::ConceptRatings> ratings_;
     std::vector<core::ConceptRatings> habits_;
     std::vector<core::PresetOverlay> tendencies_;
-    // Man-marking matchups (G4.56) [Bielsa: each man takes his direct
-    // opponent; the free man (marking 0) takes nobody, the +1]: from the
-    // two formations' bases, theirs mirrored into ours (their most
-    // advanced meet our deepest), paired nearest-first. Per-second cache.
-    const std::vector<std::uint8_t>& matchups(std::uint64_t sec) const;
-    mutable std::vector<std::uint8_t> matchups_;
-    mutable std::uint64_t matchups_sec_ = ~std::uint64_t{0};
+    // Direct opponents (G4.56-57; James: "we call it a direct opponent and
+    // it's an important concept that goes beyond LH and Bielsa"): every
+    // marker's man from the two formations' bases — theirs mirrored into
+    // ours (their most advanced meet our deepest), paired nearest-first;
+    // a man who marks nobody (marking 0, the free +1) gets none. Man-
+    // markers follow him anywhere; zonal markers pick him up first in
+    // their zone. Per-second cache.
+    const std::vector<std::uint8_t>& directOpponents(const core::World& world, std::uint64_t sec) const;
+    mutable std::vector<std::uint8_t> direct_;
+    std::vector<std::pair<int, int>> direct_pairs_;
+    mutable std::uint64_t direct_sec_ = ~std::uint64_t{0};
     mutable FlightRead flight_;
     mutable std::uint64_t flight_tick_ = ~std::uint64_t{0};
     mutable std::int64_t flight_key_[3] = {0, 0, 0};

@@ -74,6 +74,8 @@ public:
         // G4.33: game-model numbers (game_model_params) for the Skill and
         // Concept classes; empty = their seeded defaults.
         core::ModelParams model_params;
+        // G4.57: direct-opponent pairs by position number (DB).
+        std::vector<std::pair<int, int>> direct_pairs;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);

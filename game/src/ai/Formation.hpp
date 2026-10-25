@@ -30,6 +30,10 @@ struct FormationSpec {
     struct Pos {
         math::Vec2 base;
         bool keeper = false;
+        // Traditional position number (G4.57: 2 RB … 9 striker; DB
+        // formation_slot_roles.number), 0 = unknown. Keys the direct-
+        // opponent pairs (game_direct_opponents).
+        std::int16_t number = 0;
     };
     std::vector<Pos> positions;
 

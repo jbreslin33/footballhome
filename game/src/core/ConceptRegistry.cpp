@@ -59,6 +59,9 @@ ConceptRegistry ConceptRegistry::builtin() {
     r.add(155, "side-on-jockey", levelRank("u14"), false);
     r.add(156, "drop-step", levelRank("u14"), false);
     r.add(157, "engage-or-contain", levelRank("u14"), false);
+    r.add(158, "mark-position", levelRank("u14"), false);
+    r.add(159, "lose-your-marker", levelRank("u10"), false);
+    r.add(160, "direct-opponent", levelRank("u10"), false);
     return r;
 }
 

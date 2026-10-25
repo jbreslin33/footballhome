@@ -23,6 +23,7 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     skills_ = core::SkillSet(cfg.model_params);   // G4.33: DB numbers
     world_.setLocomotion(core::Locomotion(cfg.model_params));   // G4.51
     brain_.setModelParams(cfg.model_params);
+    brain_.setDirectPairs(cfg.direct_pairs);
     world_.setLevel(0, cfg.level_home);
     world_.setLevel(1, cfg.level_away);
     world_.setMatchSeed(cfg.match_seed);

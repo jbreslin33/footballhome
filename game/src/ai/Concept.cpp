@@ -232,6 +232,22 @@ void LineHold::configure(const core::ModelParams& p) {
     drop_ = p.fixed(key("uncovered_drop_m"), 6000);
 }
 
+// ── MarkPosition / LoseYourMarker (G4.57) ───────────────────────────────
+void MarkPosition::configure(const core::ModelParams& p) {
+    near_ = p.fixed(key("near_m"), 10000);
+    far_ = p.fixed(key("far_m"), 30000);
+    tuck_ = p.fixed(key("tuck_share"), 350);
+}
+void LoseYourMarker::configure(const core::ModelParams& p) {
+    tight_ = p.fixed(key("tight_m"), 3000);
+    step_ = p.fixed(key("step_m"), 5000);
+    leash_ = p.fixed(key("leash_m"), 8000);
+}
+
+void DirectOpponent::configure(const core::ModelParams& p) {
+    zone_ = p.fixed(key("zone_m"), 12000);
+}
+
 // ── CoverShadow ─────────────────────────────────────────────────────────
 void CoverShadow::configure(const core::ModelParams& p) {
     deep_x_ = p.fixed(key("deep_x_m"), 15000);

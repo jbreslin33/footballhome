@@ -406,6 +406,59 @@ private:
     math::Fixed64 hold_, squeeze_, drop_;
 };
 
+// Where to stand on your man (G4.57, core, U-12→U-14) [US Soccer / FA
+// "ball, man, goal"; Bielsa man-orientation; James: "mark from behind or
+// cover shadow in front or tuck inside"]: always goal-side; the nearer his
+// man is to the ball (within near_m) the more he steps ball-side into the
+// passing line — the cover shadow in front, deny the pass; the further
+// (out to far_m) the more he tucks toward the ball, up to tuck share of
+// the way — the far-side marker helps inside and the team stays compact.
+// Lapse: a flat stand goal-side of the man.
+class MarkPosition : public Concept {
+public:
+    MarkPosition() : Concept("mark-position", 158) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 nearM() const { return near_; }
+    math::Fixed64 farM() const { return far_; }
+    math::Fixed64 tuck() const { return tuck_; }
+
+private:
+    math::Fixed64 near_, far_, tuck_;
+};
+
+// Lose your marker (G4.57, core, U-10) [James: "offense we unmark. in any
+// direction"; coaching: check away, create a yard]: our ball, he's off it
+// with an opponent within tight_m — step step_m to the spot (8 directions)
+// furthest from every opponent, staying within leash_m of his job.
+class LoseYourMarker : public Concept {
+public:
+    LoseYourMarker() : Concept("lose-your-marker", 159) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 tight() const { return tight_; }
+    math::Fixed64 step() const { return step_; }
+    math::Fixed64 leash() const { return leash_; }
+
+private:
+    math::Fixed64 tight_, step_, leash_;
+};
+
+// The direct opponent (160, G4.57, core, U-10) [James: "we call it a
+// direct opponent … a universal concept, it's just that the zonal systems
+// move in relation of their zone to mark and unmark"]: every player knows
+// his man (Brain::directOpponents — position-number pairs, else the
+// shape matchup). Man-markers (18) follow him anywhere; a zonal marker
+// picks him up first while he is in his zone (within zone_m of where his
+// zone puts him) and passes him on when he leaves. Lapse: nearest man.
+class DirectOpponent : public Concept {
+public:
+    DirectOpponent() : Concept("direct-opponent", 160) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 zone() const { return zone_; }
+
+private:
+    math::Fixed64 zone_;
+};
+
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
@@ -424,6 +477,9 @@ struct ConceptBook {
     EngageOrContain engage_or_contain;
     ShotSelection shot_selection;
     LineHold line_hold;
+    MarkPosition mark_position;
+    LoseYourMarker lose_your_marker;
+    DirectOpponent direct_opponent;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -443,6 +499,9 @@ struct ConceptBook {
         engage_or_contain.configure(p);
         shot_selection.configure(p);
         line_hold.configure(p);
+        mark_position.configure(p);
+        lose_your_marker.configure(p);
+        direct_opponent.configure(p);
     }
 };
 

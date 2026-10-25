@@ -1790,6 +1790,48 @@ just want each item real" / "no gate!"
   ids), so the daemon — and every match run since G4.53 — played the
   builtin curriculum. All G4.53-G4.54 numbers above were measured on it.
 
+### 8.53 G4.57 — the direct opponent: tether, where to stand, lose your marker
+
+James: "use lh tactic to tether to ukies … we can mark from behind or
+cover shadow in front or tuck inside. offense we unmark. in any
+direction" / "we call it a direct opponent and it's an important concept
+that goes beyond lh and bielsa" / "the 9's direct opponents are the 4 and
+5 and vice versa. that gives the -1, +1. 10:6, 7:2, 3:11, 8:8" / "a
+universal concept, it's just that the zonal systems move in relation of
+their zone to mark and unmark" / "there are kamikaze teams that press
+man to man across with no +1 or they derive the +1 in different areas
+like weak side".
+
+- **Position numbers** on formation slots (`formation_slot_roles.number`,
+  mig 694) and **`game_direct_opponents`** pairs by number (James's).
+  7 = LEFT winger, 11 = RIGHT winger here so 7:2 and 3:11 face each other —
+  for James to confirm. `Brain::directOpponents`: each marker takes the
+  nearest opponent his number is paired with (two of ours may share one —
+  the 4 and 5 on their 9; our 9 has their 4 and 5); unnumbered slots fall
+  back to the shape matchup (theirs mirrored into ours, nearest-first).
+  Measured matchups: LH 5 (libero, marking 0) → nobody (+1); LH 4 → their
+  9; LH 9 → the nearer of their 4/5 (−1); 10↔6, 6↔10, 8↔8, 7↔2, 3↔11.
+- **`direct-opponent` (160, core, U-10):** man-markers follow him
+  anywhere; a zonal marker picks him up first while he's within 12 m of
+  where the zone puts him, and passes him on when he leaves.
+- **`mark-position` (158, core, U-14):** always goal-side; near the ball
+  (< 10 m) step ball-side into the passing line — the cover shadow in
+  front; far from it (to 30 m) tuck up to 35% of the way toward the ball.
+  Lapse: flat behind the man.
+- **`lose-your-marker` (159, core, U-10):** our ball, an opponent within
+  3 m of a player holding shape / supporting / an outlet → step 5 m to the
+  spot (8 directions) furthest from every opponent, within 8 m of his job.
+  "lose your marker" in the HUD.
+- Measured (30): LH +1.43; marking share unchanged (LH 30%, Ukies 6% —
+  zonal defending is mostly positioning; the rest is ability rolls at
+  ~60); pass completion ~70% → ~66% (markers in the lanes, attackers off
+  their men); team length 32 / 28 m.
+- **Queued (James):** kamikaze man-to-man (every man marks, no +1 —
+  expressible today: nobody at marking 0); a weak-side +1 (the marker
+  whose man is furthest from the ball goes free to help); the Ukies'
+  rotations (10 drops, wingers invert, full-backs overlap) then back to
+  shape.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

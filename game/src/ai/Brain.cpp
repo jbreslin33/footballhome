@@ -386,11 +386,11 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
     return f;
 }
 
-const std::vector<std::uint8_t>& Brain::matchups(std::uint64_t sec) const {
-    if (matchups_sec_ == sec && !matchups_.empty()) return matchups_;
-    matchups_sec_ = sec;
+const std::vector<std::uint8_t>& Brain::directOpponents(const World& world, std::uint64_t sec) const {
+    if (direct_sec_ == sec && !direct_.empty()) return direct_;
+    direct_sec_ = sec;
     const std::size_t n = setup_.team_of_slot.size();
-    matchups_.assign(n, 255);
+    direct_.assign(n, 255);
     for (std::uint8_t team = 0; team < 2; ++team) {
         // Our markers and their outfielders, in our normalized frame.
         std::vector<std::uint8_t> ours, theirs;
@@ -403,11 +403,39 @@ const std::vector<std::uint8_t>& Brain::matchups(std::uint64_t sec) const {
                 theirs.push_back(static_cast<std::uint8_t>(s));
             }
         }
+        // By position number first (James: "the 9's direct opponents are
+        // the 4 and 5 and vice versa … 10:6, 7:2, 3:11, 8:8"): each marker
+        // takes the nearest of the opponents his number is paired with —
+        // two of ours may share one of theirs (the 4 and 5 on their 9; the
+        // free man, marking 0, isn't a marker). Unnumbered slots fall back
+        // to the shape matchup below.
+        std::vector<bool> numbered(ours.size(), false);
+        if (!direct_pairs_.empty()) {
+            auto num = [&](std::uint8_t s) { return spec_[setup_.team_of_slot[s]].positions[index_in_team_[s]].number; };
+            for (std::size_t i = 0; i < ours.size(); ++i) {
+                const int n = num(ours[i]);
+                if (n == 0) continue;
+                int pick = -1;
+                Fixed64 best{};
+                for (const std::uint8_t o : theirs) {
+                    const int m = num(o);
+                    bool paired = false;
+                    for (const auto& pr : direct_pairs_) paired = paired || (pr.first == n && pr.second == m);
+                    if (!paired) continue;
+                    const Fixed64 d = distSq(world.player(ours[i]).pos, world.player(o).pos);
+                    if (pick < 0 || d < best) { pick = o; best = d; }
+                }
+                if (pick >= 0) { direct_[ours[i]] = static_cast<std::uint8_t>(pick); numbered[i] = true; }
+            }
+        }
         auto mirrored = [&](std::uint8_t o) {   // their base → our frame
             const Vec2& b = spec_[setup_.team_of_slot[o]].positions[index_in_team_[o]].base;
             return Vec2{-Fixed64::one() - b.x, -b.y};
         };
-        std::vector<bool> used_o(theirs.size(), false), used_m(ours.size(), false);
+        std::vector<bool> used_o(theirs.size(), false), used_m(numbered);
+        for (std::size_t j = 0; j < theirs.size(); ++j)
+            for (std::size_t i = 0; i < ours.size(); ++i)
+                if (numbered[i] && direct_[ours[i]] == theirs[j]) used_o[j] = true;
         for (std::size_t round = 0; round < ours.size(); ++round) {
             int bm = -1, bo = -1;
             Fixed64 best{};
@@ -423,14 +451,15 @@ const std::vector<std::uint8_t>& Brain::matchups(std::uint64_t sec) const {
             }
             if (bm < 0) break;
             used_m[bm] = used_o[bo] = true;
-            matchups_[ours[bm]] = theirs[bo];
+            direct_[ours[bm]] = theirs[bo];
         }
     }
-    return matchups_;
+    return direct_;
 }
 
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     Orders o = decide(slot, world);
+    unmark(slot, world, o);
     if (o.move.face.x.raw != 0 || o.move.face.y.raw != 0) return o;
     const auto& ball = world.ball();
     const auto& me = world.player(slot);
@@ -455,6 +484,50 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     if (!short_move) return o;
     o.move.face = to_ball;
     return o;
+}
+
+// lose-your-marker (159, G4.57): our ball, he's off it holding his job
+// (shape / support / outlet) with an opponent tight on him → step to the
+// spot, of 8 around him, furthest from every opponent, within the leash of
+// where his job wants him.
+void Brain::unmark(SlotIndex slot, const World& world, Orders& o) const {
+    const auto& ball = world.ball();
+    if (!ball.owner || *ball.owner == slot || world.isKeeper(slot) || world.restartTeam() != 0xFF) return;
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    if (setup_.team_of_slot[*ball.owner] != team) return;
+    if (o.why != Why::Hold && o.why != Why::Support && o.why != Why::Outlet) return;
+    const int bit = book_.lose_your_marker.bit();
+    if (ratings_[slot][bit] <= 0) return;
+    const auto& L = book_.lose_your_marker;
+    const auto& me = world.player(slot);
+    auto nearest = [&](const Vec2& at) {
+        Fixed64 best = Fixed64::fromInt(1000);
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup_.team_of_slot[j] == team) continue;
+            const Fixed64 d2 = distSq(world.player(j).pos, Vec3{at.x, at.y, Fixed64::zero()});
+            if (d2 < best) best = d2;
+        }
+        return best;
+    };
+    const Vec2 here{me.pos.x, me.pos.y};
+    if (nearest(here) > L.tight() * L.tight()) return;
+    if (!applies(slot, bit, world.tickCount() / 30)) return;
+    static const Fixed64 k = Fixed64::fromFraction(7071, 10000);
+    const Vec2 dirs[8] = {{Fixed64::one(), {}}, {-Fixed64::one(), {}}, {{}, Fixed64::one()}, {{}, -Fixed64::one()},
+                          {k, k}, {k, -k}, {-k, k}, {-k, -k}};
+    Vec2 best = here;
+    Fixed64 best_d = nearest(here);
+    for (const Vec2& d : dirs) {
+        const Vec2 c{here.x + d.x * L.step(), here.y + d.y * L.step()};
+        if (math::fx_abs(c.x) > half_x_ - Fixed64::one() || math::fx_abs(c.y) > half_y_ - Fixed64::one()) continue;
+        if (distSq(Vec3{c.x, c.y, Fixed64::zero()}, Vec3{o.target.x, o.target.y, Fixed64::zero()}) > L.leash() * L.leash()) continue;
+        const Fixed64 nd = nearest(c);
+        if (nd > best_d) { best_d = nd; best = c; }
+    }
+    if (best.x == here.x && best.y == here.y) return;
+    o.move.move = seek(me.pos, best, Fixed64::fromFraction(1, 2));
+    o.target = best;
+    o.why = Why::Unmark;
 }
 
 Orders Brain::decide(SlotIndex slot, const World& world) const {
@@ -1527,14 +1600,24 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             applies(slot, 1, world.tickCount() / 30)) {
             bool marked[32] = {false};
             SlotIndex my_mark = 255;
-            // man-mark (18), G4.56: his DIRECT opponent from the formation
-            // matchup, followed anywhere (not just goal-side threats near
-            // the ball — the zonal hand-out below left a man-marking side
-            // marking 22% of the time). Lapse: the zonal hand-out.
+            // man-mark (18), G4.56: his DIRECT opponent, followed anywhere
+            // (not just goal-side threats near the ball — the zonal hand-out
+            // below left a man-marking side marking 22% of the time).
+            // Lapse: the zonal hand-out.
             const std::uint64_t sec = world.tickCount() / 30;
+            const std::uint8_t direct = directOpponents(world, sec)[slot];
             if (ratings_[slot][18] > 0 && applies(slot, 18, sec)) {
-                const std::uint8_t m = matchups(sec)[slot];
-                if (m != 255 && !(ball.owner && *ball.owner == m)) my_mark = m;
+                if (direct != 255 && !(ball.owner && *ball.owner == direct)) my_mark = direct;
+            }
+            // direct-opponent (160, G4.57): a zonal marker picks HIS man
+            // up first when he's a goal-side threat in range; else the
+            // nearest, as before. Lapse: nearest only.
+            const int dob = book_.direct_opponent.bit();
+            const bool knows_direct = ratings_[slot][dob] > 0 && applies(slot, dob, sec);
+            if (my_mark == 255 && knows_direct && direct != 255 && !(ball.owner && *ball.owner == direct)) {
+                const Fixed64 z = book_.direct_opponent.zone();
+                if (distSq(world.player(direct).pos, Vec3{anchor.x, anchor.y, Fixed64::zero()}) < z * z)
+                    my_mark = direct;   // he's in my zone: he's mine
             }
             for (SlotIndex d = 0; d < world.playerCount() && my_mark == 255; ++d) {
                 if (setup_.team_of_slot[d] != setup_.team_of_slot[slot])
@@ -1580,12 +1663,34 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 const Fixed64 gap =
                     Fixed64::fromFraction(3, 2) -
                     Fixed64::fromFraction(9, 10) * degree(slot, 18);
-                out.move.move = seek(
-                    me.pos,
-                    Vec2{mk.pos.x - dsgn * gap, mk.pos.y},
-                    Fixed64::fromFraction(1, 2));
+                Vec2 spot{mk.pos.x - dsgn * gap, mk.pos.y};   // from behind
+                // mark-position (158, G4.57): goal-side always; ball-side
+                // (cover shadow in front) when his man is near the ball;
+                // tucked toward the ball when he's far from it.
+                const int mp = book_.mark_position.bit();
+                if (ratings_[slot][mp] > 0 && applies(slot, mp, world.tickCount() / 30)) {
+                    const auto& P = book_.mark_position;
+                    const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
+                    const Vec2 to_goal = math::normalized(Vec2{own_goal.x - mk.pos.x, own_goal.y - mk.pos.y});
+                    const Vec2 bm{seen_ball.x - mk.pos.x, seen_ball.y - mk.pos.y};
+                    const Fixed64 d = math::length(bm);
+                    if (d < P.nearM() && d.raw > 0) {
+                        const Vec2 to_ball{bm.x / d, bm.y / d};
+                        const Vec2 dir = math::normalized(Vec2{to_goal.x + to_ball.x, to_goal.y + to_ball.y});
+                        spot = Vec2{mk.pos.x + dir.x * gap, mk.pos.y + dir.y * gap};
+                    } else {
+                        spot = Vec2{mk.pos.x + to_goal.x * gap, mk.pos.y + to_goal.y * gap};
+                        if (d > P.nearM()) {
+                            Fixed64 f = (d - P.nearM()) / (P.farM() - P.nearM());
+                            if (f > Fixed64::one()) f = Fixed64::one();
+                            const Fixed64 k = f * P.tuck();
+                            spot = Vec2{spot.x + (seen_ball.x - spot.x) * k, spot.y + (seen_ball.y - spot.y) * k};
+                        }
+                    }
+                }
+                out.move.move = seek(me.pos, spot, Fixed64::fromFraction(1, 2));
                 out.why = Why::Mark;
-                out.target = Vec2{mk.pos.x - dsgn * gap, mk.pos.y};
+                out.target = spot;
                 out.other = static_cast<std::int16_t>(my_mark);
                 return out;
             }
