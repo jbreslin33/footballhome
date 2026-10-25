@@ -886,6 +886,93 @@
     tap(addPill, () => addBox());
     itemsBody.appendChild(addPill);
 
+    // 🎯 OPTIMAL (James 10/24: "put a button that moves to optimal"): the
+    // driest legal spot for the selected pitch or box at its size, under
+    // the rules as the pills set them now, each rule plus a 1 ft margin so
+    // the chalk never lands on a limit; pitches 10 yd (+1 ft) apart, boxes
+    // off both pitches. HERE = within 20 m and 10° of where it is; ANYWHERE
+    // = the whole park, any angle (coarse grid, then refined around the
+    // best). Runs in slices so the page keeps drawing; then it moves there
+    // and saves like a drag.
+    const MARGIN = 1 * FT;
+    const optRow = mk('div', 'display:flex;gap:4px;');
+    const optHere = mk('button', itemPill + 'flex:1;border-color:#29a8ff;justify-content:center;', '🎯 OPTIMAL HERE');
+    const optAny = mk('button', itemPill + 'flex:1;border-color:#29a8ff;justify-content:center;', '🎯 OPTIMAL ANYWHERE');
+    optHere.title = 'Driest legal spot near where the selected one is (20 m, 10°)';
+    optAny.title = 'Driest legal spot anywhere in the park, any angle (a few seconds)';
+    optRow.append(optHere, optAny);
+    itemsBody.appendChild(optRow);
+    let optBusy = false;
+    async function optimise(anywhere) {
+      if (!on || optBusy) return;
+      optBusy = true;
+      const p = sel, btn = anywhere ? optAny : optHere, label0 = btn.textContent;
+      const L = p.size[0] * YD, W = p.size[1] * YD;
+      const rules = RULES.filter((r) => !INFO[r.n]).map((r) => (r.min > 0 ? Object.assign({}, r, { min: r.min + MARGIN }) : r));
+      const others = pitches.filter((q) => q !== p && q.R);
+      const ok = (x, z, rot) => {
+        const R = rect(x, z, rot * D2R, L, W), c = [x, z];
+        if (offences(rules, R, c).length) return false;
+        for (const q of others) {
+          const d = closest(R, q.R).d;
+          if (p.kind === 'box' ? d <= 0 : d < GAP + MARGIN) return false;
+        }
+        return true;
+      };
+      const score = (x, z, rot) => water(DATA.grid, x, z, rot * D2R, L, W, null).dens;
+      // One grid pass, yielding every ~40 ms.
+      const pass = async (cx, cz, cr, span, rspan, step, rstep, frac0, frac1) => {
+        let best = null, n = 0, t = performance.now();
+        const rs = [];
+        for (let r = cr - rspan; r <= cr + rspan + 1e-9; r += rstep) rs.push(r);
+        const total = rs.length;
+        for (let ri = 0; ri < rs.length; ri++) {
+          const r = rs[ri];
+          for (let x = cx - span; x <= cx + span + 1e-9; x += step)
+            for (let z = cz - span; z <= cz + span + 1e-9; z += step) {
+              if (!ok(x, z, r)) continue;
+              const d = score(x, z, r);
+              if (!best || d < best.d) best = { x, z, r, d };
+              if (++n % 50 === 0 && performance.now() - t > 40) {
+                btn.textContent = '🎯 searching ' + Math.round(100 * (frac0 + (frac1 - frac0) * ri / total)) + '%';
+                await new Promise((res) => setTimeout(res, 0));
+                t = performance.now();
+              }
+            }
+        }
+        return best;
+      };
+      try {
+        let b;
+        if (anywhere) {
+          // Coarse over the park (6 m, every 6° of half a turn — a pitch
+          // looks the same turned 180°), then 1 m / 1°, then 0.25 m / 0.5°.
+          b = await pass(0, -20, 90, 150, 90, 6, 6, 0, 0.8);
+          if (b) b = (await pass(b.x, b.z, b.r, 6, 6, 1, 1, 0.8, 0.95)) || b;
+          if (b) b = (await pass(b.x, b.z, b.r, 1, 1, 0.25, 0.5, 0.95, 1)) || b;
+        } else {
+          b = await pass(p.x, p.z, p.rot, 20, 10, 2, 2, 0, 0.6);
+          if (b) b = (await pass(b.x, b.z, b.r, 2, 2, 0.5, 0.5, 0.6, 0.9)) || b;
+          if (b) b = (await pass(b.x, b.z, b.r, 0.5, 0.5, 0.25, 0.25, 0.9, 1)) || b;
+        }
+        if (!b) {
+          btn.textContent = '✗ no legal spot';
+        } else {
+          const before = score(p.x, p.z, p.rot);
+          p.x = +b.x.toFixed(2); p.z = +b.z.toFixed(2); setRot(p, +b.r.toFixed(1));
+          update();   // saves like a drag
+          flyTo(p);
+          const gain = PARK_DENS ? Math.round(100 * (before - b.d) / PARK_DENS) : 0;
+          btn.textContent = '✓ moved' + (gain ? ' (' + (gain > 0 ? gain + '% of park drier' : 'already best') + ')' : '');
+        }
+      } finally {
+        setTimeout(() => { btn.textContent = label0; }, 2500);
+        optBusy = false;
+      }
+    }
+    tap(optHere, () => optimise(false));
+    tap(optAny, () => optimise(true));
+
     // 💾 SAVES (James 10/24: "we need to be able to save whole page as a
     // name. not individual fields. whole save and it goes as a version in
     // db"): every pitch and box, frozen under a name (migration 680,
