@@ -737,7 +737,14 @@
       const extra = [];
       for (const ln of (LAY.proposedLanes || []))
         if (ln.fencePts) extra.push({ k: 'poly', n: 'proposed_lane_fence', min: 10 * FT, pts: ln.fencePts });
-      RULES = DATA.rules.concat(extra);
+      // Every mapped trunk (James 10/24: "and over the trees lol"): the
+      // sweep's export only carried the 125 trunks near its candidates, so
+      // a pitch could sit on the other 518 unflagged. Same rule (trunk +
+      // its min), all of LIGHTHOUSE_TREES.
+      const T = window.LIGHTHOUSE_TREES || [];
+      const base = DATA.rules.map((r) => (r.n === 'trees' && T.length
+        ? Object.assign({}, r, { pts: T.map((t) => [t[0], t[1]]) }) : r));
+      RULES = base.concat(extra);
     }
     function evaluate(p) {
       const th = p.rot * D2R, L = p.size[0] * YD, W = p.size[1] * YD;
@@ -958,12 +965,13 @@
         if (!b) {
           btn.textContent = '✗ no legal spot';
         } else {
-          const before = score(p.x, p.z, p.rot);
           p.x = +b.x.toFixed(2); p.z = +b.z.toFixed(2); setRot(p, +b.r.toFixed(1));
           update();   // saves like a drag
           flyTo(p);
-          const gain = PARK_DENS ? Math.round(100 * (before - b.d) / PARK_DENS) : 0;
-          btn.textContent = '✓ moved' + (gain ? ' (' + (gain > 0 ? gain + '% of park drier' : 'already best') + ')' : '');
+          // Where it landed, vs the park (a red start can look drier — it
+          // was standing on trees or the cemetery — so no before/after).
+          const wv = waterVsPark(p);
+          btn.textContent = '✓ ' + (wv ? wv.txt : 'moved');
         }
       } finally {
         setTimeout(() => { btn.textContent = label0; }, 2500);
