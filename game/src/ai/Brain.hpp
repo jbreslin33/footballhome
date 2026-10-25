@@ -185,6 +185,13 @@ private:
     std::vector<core::ConceptRatings> ratings_;
     std::vector<core::ConceptRatings> habits_;
     std::vector<core::PresetOverlay> tendencies_;
+    // Man-marking matchups (G4.56) [Bielsa: each man takes his direct
+    // opponent; the free man (marking 0) takes nobody, the +1]: from the
+    // two formations' bases, theirs mirrored into ours (their most
+    // advanced meet our deepest), paired nearest-first. Per-second cache.
+    const std::vector<std::uint8_t>& matchups(std::uint64_t sec) const;
+    mutable std::vector<std::uint8_t> matchups_;
+    mutable std::uint64_t matchups_sec_ = ~std::uint64_t{0};
     mutable FlightRead flight_;
     mutable std::uint64_t flight_tick_ = ~std::uint64_t{0};
     mutable std::int64_t flight_key_[3] = {0, 0, 0};

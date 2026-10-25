@@ -206,6 +206,30 @@ void DropStep::configure(const core::ModelParams& p) {
 void EngageOrContain::configure(const core::ModelParams& p) {
     cover_ = p.fixed(key("cover_m"), 6000);
     touchline_ = p.fixed(key("touchline_m"), 6000);
+    danger_ = p.fixed(key("danger_m"), 25000);
+}
+
+// ── ShotSelection (G4.55) ───────────────────────────────────────────────
+void ShotSelection::configure(const core::ModelParams& p) {
+    scale_ = p.fixed(key("xg_scale"), 640);
+    decay_ = p.fixed(key("xg_decay_m"), 13500);
+    pressed_ = p.fixed(key("pressed_factor"), 700);
+    min_pressed_ = p.fixed(key("min_xg_pressed"), 50);
+    min_free_ = p.fixed(key("min_xg_free"), 120);
+    pass_better_ = p.fixed(key("pass_better"), 1500);
+}
+math::Fixed64 ShotSelection::xg(math::Fixed64 angle, math::Fixed64 dist, bool pressed) const {
+    math::Fixed64 x = scale_ * angle * math::fx_exp_neg(dist / decay_);
+    if (pressed) x = x * pressed_;
+    const math::Fixed64 cap = math::Fixed64::fromFraction(95, 100);
+    return x > cap ? cap : x;
+}
+
+// ── LineHold (G4.56) ────────────────────────────────────────────────────
+void LineHold::configure(const core::ModelParams& p) {
+    hold_ = p.fixed(key("hold_m"), 25000);
+    squeeze_ = p.fixed(key("squeeze_m"), 13000);
+    drop_ = p.fixed(key("uncovered_drop_m"), 6000);
 }
 
 // ── CoverShadow ─────────────────────────────────────────────────────────

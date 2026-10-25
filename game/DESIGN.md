@@ -35,12 +35,15 @@ small-sided scenarios (4v4, 2v1, coach-painted drills).
    clients (calibration, AI stand-ins, spectator, replay) all interoperate by
    speaking it. Clients can be built by anyone, any time, without server
    changes.
-5. **Realism by calibration, not vibes.** A headless calibration harness
-   simulates batches of matches and asserts statistics against real-world
-   anchors (~2.7 goals/game at top level, pass-completion % by level, shot
-   counts, possession splits). Once live, those assertions are CI gates: a
-   change that makes the game arcadey fails the build. Anti-FIFA by
-   construction.
+5. **Realism item by item, coached like a team.** Each thing a player does
+   is made as real as it can be, then measured and watched — James reads
+   the match as a coach, the harness (`fh-game-match`) prints the numbers
+   (line height, team length, shots, entries, pass outcomes). Overall
+   results (goals per game) are what fall out, never a target: a jump
+   means a hurdle was crossed and the next biggest problem is showing.
+   **No realism gate** (James 10/24: "no gate!") — measurements inform,
+   they never block a build. Determinism goldens and unit tests stay.
+   Anti-FIFA by construction: no tuned chance rates, no compressed clock.
 
 ## 3. Non-negotiables (carried from v1 — decisions, not code)
 
@@ -192,7 +195,7 @@ same DB registries and never touches the match engine.
 | **G1** | 3D ball: dribble, ground pass, lofted kick, bounce; goal detection; first determinism goldens | **Kickabout**: dribble and shoot on a goal; two humans pass | **done** (10/21) |
 | **G2** | Parameterized `MatchScenario`; formation anchoring; team possession state; utility-AI roles; calibration harness v0 (headless client, max-speed); standing 3v3 golden | **Playable 3v3 vs AI** — first real game | **done** (10/21) |
 | **G3** | 22 slots; GK behaviors; restarts (kickoff, throw-in, goal-kick, corner — no offside/fouls); score/clock/halves; player switching | **Full 11v11 vs AI in the browser — THE PROTOTYPE** | **done** (10/21) |
-| **G4** | Calibration CI gates live; level bands (youth→world cup) via attribute distributions + noise scaling; touch-control + camera polish | Realistic, level-aware 11v11 that fails CI if it goes arcadey | **in progress** (G4.1-G4.14; CI gate LIVE) |
+| **G4** | Calibration (measured, not gated since 10/24); level bands (youth→world cup) via attribute distributions + noise scaling; touch-control + camera polish | Realistic, level-aware 11v11, item by item | **in progress** |
 | **G5** | Manager mode v0: tactical intents live (subs, formation, tactic state); fast-forward; AI-vs-AI spectating | **Watch your lineup play your tactic, FM-style** | not started |
 | **G6+** | Drills as `MatchScenario` configs (2v1, 4v2 press…); coach-painted scenarios; replay viewer; desktop client; WASM offline | Teaching library + client family | not started |
 
@@ -1740,6 +1743,52 @@ after James marks the page.
   10-12); margin +1.70 ± 0.25; **shots unchanged (48 / 33)**. The 1v1
   wasn't what makes the shot flood. Next: shot selection — ~90% of shots
   come from outside the box. Ladder u10 16.2 / amateur 8.8 / world 5.5.
+
+### 8.52 G4.55-56 — hold the line, man-marking matchups, shots on what they're worth; no gate
+
+James: "what concepts are not being used that causes the players to drop
+so far back on defense … pushing up the lines. then for lighthouse it's
+the same to get to mark and -1 and +1" / "don't care about overall —
+just want each item real" / "no gate!"
+
+- **Why lines sank.** The back line stood 2 m goal-side of the deepest
+  ATTACKER — G4.4's rule, written "no offside law yet", never removed when
+  offside landed (G4.8) — and the hold distance only CAPPED a defender,
+  never brought him up. fh-game-match's new line instrument: back lines
+  16-22 m from their own goal (Ukies inside 20 m 67% of the time), the ball
+  33-35 m beyond them (real ~35-45 m and ~20-25 m).
+- **`line-hold` (9) rebuilt** (`ai::LineHold`, mig 692): the line SETS at
+  the ball − hold_m 25 (push-up squeezes by up to 13) on a covered ball,
+  6 m deeper on an uncovered one; an attacker beyond it is offside, not a
+  man to follow. Lapse: the old deepest-attacker rule with its 25 m floor.
+  Measured (60): lines 30 m (LH) / 25 m (Ukies), teams 29-32 m long, ball
+  24-27 m beyond; shots 34 / 19.
+- **Man-marking matchups** (`Brain::matchups`): man-markers take their
+  DIRECT opponent from the two formations (their shape mirrored into ours,
+  paired nearest-first; the free man takes nobody = the +1; their spare is
+  the −1) and follow him anywhere; the zonal hand-out only tracked
+  goal-side men near the ball. LH outfielders marking 22% → 30%; most of
+  the rest is the ability roll (~60 man-mark ability = loses his man ~40%
+  of seconds) — a rating question for James, not a tuning one.
+- **Shot selection (25) by worth** (`ai::ShotSelection`): an xG-like read
+  (visible angle × e^(−d/13.5) × 0.64, ×0.7 pressed; [FH] fit to rough
+  public anchors, source to pin; his decisions jitter his read): pressed,
+  shoot at 0.05+; free, need 0.12 or work it closer; a mate with a safe
+  pass and 1.5× the chance gets it. Shots outside the box ~90% → ~50%.
+  `engage-or-contain` gained "deny the shot": within 25 m of our goal he
+  closes the carrier down.
+- **Next biggest problem it exposes:** attacks CARRY into the box (world
+  mirror: ~100 carried entries, 55% → a shot, from ~11 m): defenders now
+  contain correctly but cannot win the ball — no body contact, no loose
+  touches. Taxonomy's #2 engine need (body contact, 118 items).
+- **The gate is gone.** `test_calibration_bands` deleted, the goals ceiling
+  in test_ai_match too. Its replacement (back-line height / team length
+  ranges) was shown to catch the deep line (semipro 21.7 m, world 17.7 m
+  failed) — and then dropped at James's word: measurements are read.
+- **Hotfix found on the way** (97861086): G4.53's builtin concepts made the
+  boot check REFUSE every DB curriculum (it compared the builtin's empty
+  ids), so the daemon — and every match run since G4.53 — played the
+  builtin curriculum. All G4.53-G4.54 numbers above were measured on it.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 
