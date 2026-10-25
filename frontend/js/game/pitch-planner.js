@@ -745,7 +745,7 @@
       handles.stem.scale.set(Math.max(0.01, ro - L / 2), hs, 1);
     }
     (function tick() {
-      if (on) { placeHandles(); if (probs.length) paintProblems(); }
+      if (on) { placeHandles(); if (probs.length) paintProblems(); paintDips(); }
       requestAnimationFrame(tick);
     })();
 
@@ -1167,6 +1167,7 @@
       placeHandles();
       paint();
       paintProblems();
+      paintDips();
     }
     // Leaving DESIGN: everything back on; client.js then sets its mode's
     // contours / painted pitch.
@@ -1190,7 +1191,8 @@
           (waterVsPark(p) ? ' · 💧 ' + waterVsPark(p).txt.replace(' than park', '') : '') +
           penaltyZones().map((zn) => {
             const f = zoneShare(p.x, p.z, p.rot, p.size[0] * YD, p.size[1] * YD, zn);
-            return f > 0.005 ? ' · ⛰ ' + Math.round(100 * f) + '% lumpy' : '';
+            const d = p.kind === 'box' ? null : dipPastYellow(p);
+            return f > 0.005 ? ' · ⛰ ' + (d ? (d.m / YD).toFixed(1) + ' yd past yellow, ' : '') + Math.round(100 * f) + '% lumpy' : '';
           }).join('') + ' · ' +
           (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : '');
     }
@@ -1380,6 +1382,70 @@
       for (; k < probs.length; k++) probs[k].bar.visible = probs[k].dot.visible = probs[k].lab.visible = false;
     }
 
+    // How far a pitch reaches past the yellow's rodeo-side touchline (James
+    // 10/24: "show me on 11v11 how far past the yellow does the new one go
+    // so i can see how far i dip into rodeo area which is hilly"): its
+    // deepest corner, measured square to that touchline. null when it
+    // doesn't cross it. Drawn as an amber ruler per pitch.
+    function dipPastYellow(p) {
+      const o = LAY.oldPitch;
+      if (!o || !p.R) return null;
+      const a = o.rotDeg * D2R, ca = Math.cos(a), sa = Math.sin(a), edge = -o.width / 2;
+      let best = null;
+      for (const q of p.R) {
+        const u = (q[0] - o.x) * ca + (q[1] - o.z) * sa, v = -(q[0] - o.x) * sa + (q[1] - o.z) * ca;
+        if (v < edge && (!best || v < best.v)) best = { v, u };
+      }
+      if (!best) return null;
+      const foot = [o.x + best.u * ca - edge * sa, o.z + best.u * sa + edge * ca];
+      const tip = [o.x + best.u * ca - best.v * sa, o.z + best.u * sa + best.v * ca];
+      return { m: edge - best.v, a: foot, b: tip };
+    }
+    const dips = {};
+    function paintDips() {
+      const site = renderer.field && renderer.field.site;
+      if (!site) return;
+      const hs = hSize();
+      for (const p of pitches) {
+        const d = on && show.pitches && show.avoid_rodeo_lumps !== false ? dipPastYellow(p) : null;
+        let m = dips[p.id];
+        if (!d) { if (m) m.bar.visible = m.lab.visible = false; continue; }
+        if (!m) {
+          const strip = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
+            new THREE.MeshBasicMaterial({ color: 0xffb000, depthTest: false, side: THREE.DoubleSide }));
+          strip.rotation.x = -Math.PI / 2;
+          strip.renderOrder = 63;
+          const bar = new THREE.Group();
+          bar.add(strip);
+          const cv = document.createElement('canvas');
+          cv.width = 512; cv.height = 128;
+          const tex = new THREE.CanvasTexture(cv);
+          const lab = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.25),
+            new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+          lab.rotation.x = -Math.PI / 2;
+          lab.renderOrder = 64;
+          site.add(bar, lab);
+          m = dips[p.id] = { bar, strip, lab, cv, tex, txt: null };
+        }
+        const txt = p.id + ': ' + (d.m / YD).toFixed(1) + ' yd past yellow';
+        if (m.txt !== txt) {
+          const c2 = m.cv.getContext('2d');
+          c2.clearRect(0, 0, 512, 128);
+          c2.font = 'bold 60px sans-serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+          c2.lineWidth = 12; c2.strokeStyle = 'rgba(0,0,0,.9)'; c2.strokeText(txt, 256, 64);
+          c2.fillStyle = '#ffd27a'; c2.fillText(txt, 256, 64);
+          m.tex.needsUpdate = true;
+          m.txt = txt;
+        }
+        const mx = (d.a[0] + d.b[0]) / 2, mz = (d.a[1] + d.b[1]) / 2;
+        m.bar.visible = m.lab.visible = true;
+        m.bar.position.set(mx, 0.78, mz);
+        m.bar.rotation.y = -Math.atan2(d.b[1] - d.a[1], d.b[0] - d.a[0]);
+        m.strip.scale.set(Math.max(0.01, d.m), Math.max(0.5, hs * 0.35), 1);
+        m.lab.position.set(mx, 0.82, mz);
+        m.lab.scale.set(LAB_W * hs * 1.4, LAB_W * hs * 1.4, 1);
+      }
+    }
     function update(noSave) {
       for (const p of all()) if (p.g) { p.g.position.x = p.x; p.g.position.z = p.z; p.g.rotation.y = -p.rot * D2R; }
       // Each pitch's 10 yd gap reads the other's rect: settle both, twice;
@@ -1390,6 +1456,7 @@
       paintGap();
       placeHandles();
       paintProblems();
+      paintDips();
       if (on && !noSave) saveState();
     }
 
@@ -1489,6 +1556,7 @@
         paintGap();
         placeHandles();
         paintProblems();
+        paintDips();
       }
       if (on) flyTo({ x: (pitches[0].x + pitches[1].x) / 2, z: (pitches[0].z + pitches[1].z) / 2,
                       size: [Math.hypot(pitches[0].x - pitches[1].x, pitches[0].z - pitches[1].z) / YD + 70, 0] });
