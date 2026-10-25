@@ -63,7 +63,7 @@
   // sweep's data.ranges / ⭐ BEST still avoid all of them until the
   // exporter is rerun.
   const INFO = { main_infield: true, softball_skin: true };
-  const FENCE_RULES = { softball_fences: ['fence_3B', 'backstop_1B'], rodeo_fences: ['rodeo'],
+  const FENCE_RULES = { softball_fences: ['fence_3B', 'backstop_1B'], rodeo_fences: ['rodeo'], avoid_swamp_rf: ['avoid_swamp_rf'],
                         proposed_lane: ['proposed_lane_fence'] };
   const SEVEN_SIZES = [[70, 35], [65, 35], [60, 35], [55, 35], [60, 30]];
   const NAMES = {
@@ -75,6 +75,7 @@
     playground: 'the playground fence', rail_fence_0: 'village rail fence',
     rail_fence_1: 'village rail fence (east)', dirt_road_0: 'cemetery dirt road',
     dirt_road_1: 'dirt road spur', other: 'the other pitch', proposed_lane_fence: 'proposed lane fence',
+    avoid_swamp_rf: 'the swampy shallow right field',
   };
 
   // ── geometry (field_planner_main.cpp) ────────────────────────────────
@@ -244,9 +245,11 @@
     ['handles', '✥ HANDLES'], ['problems', '⚠ PROBLEMS'], ['match', '🏟 MATCH'], ['paint', '🟨 TODAY\'S PITCH'], ['water', '💧 WATER'],
     ['contours', '〰 CONTOURS'], ['trees', '🌳 TREES'], ['buildings', '🏠 BUILDINGS'],
     ['softball_fences', '⛓ SOFTBALL FENCE'], ['rodeo_fences', '⛓ RODEO FENCE'], ['proposed_lane', '🚗 PROPOSED LANE'], ['channels', '🟠 WATER CHANNELS'],
+    ['avoid_swamp_rf', '🚫 SWAMP RF'], ['avoid_rodeo_lumps', '⛰ RODEO LUMPS'],
     ['props', '🐴 PROPS'], ['labels', '🔤 LABELS'], ['ground', '🟩 GROUND'],
   ];
-  const FIELD_LAYERS = ['trees', 'buildings', 'softball_fences', 'rodeo_fences', 'proposed_lane', 'channels', 'props', 'labels', 'ground'];
+  const FIELD_LAYERS = ['trees', 'buildings', 'softball_fences', 'rodeo_fences', 'proposed_lane', 'channels',
+                        'avoid_swamp_rf', 'avoid_rodeo_lumps', 'props', 'labels', 'ground'];
 
   function attach(renderer) {
     const DATA = window.LIGHTHOUSE_PLANNER;
@@ -648,6 +651,23 @@
       const r = p.ev.w.dens / PARK_DENS, d = Math.round(Math.abs(1 - r) * 100);
       return { r, txt: d === 0 ? 'same water as park' : d + '% ' + (r < 1 ? 'drier' : 'wetter') + ' than park' };
     };
+    // Share of a pitch inside each 'penalty' avoid zone (sampled every 2 m)
+    // — the ⛰ % on the pill; the 🎯 buttons add weight × 3 (a pond m²) ×
+    // that share to the water score while the zone's pill is on.
+    const penaltyZones = () => (LAY.avoidZones || []).filter((zn) => zn.pts && zn.mode === 'penalty' && show['avoid_' + zn.id] !== false);
+    function zoneShare(x, z, rot, L, W, zn) {
+      const th = rot * D2R, ca = Math.cos(th), sa = Math.sin(th), bb = zn.bb || (zn.bb = bbox(zn.pts));
+      let n = 0, k = 0;
+      for (let u = -L / 2 + 1; u < L / 2; u += 2)
+        for (let v = -W / 2 + 1; v < W / 2; v += 2) {
+          n++;
+          const px = x + u * ca - v * sa, pz = z + u * sa + v * ca;
+          if (px < bb[0] || px > bb[1] || pz < bb[2] || pz > bb[3]) continue;
+          if (inPoly([px, pz], zn.pts)) k++;
+        }
+      return n ? k / n : 0;
+    }
+    const penalty = (x, z, rot, L, W) => penaltyZones().reduce((t, zn) => t + (zn.weight || 0.5) * 3 * zoneShare(x, z, rot, L, W, zn), 0);
     function paintLabel(p) {
       const wv = waterVsPark(p), wt = wv ? '💧 ' + wv.txt : '';
       if (p.labWater === wt) return;
@@ -737,6 +757,9 @@
       const extra = [];
       for (const ln of (LAY.proposedLanes || []))
         if (ln.fencePts) extra.push({ k: 'poly', n: 'proposed_lane_fence', min: 10 * FT, pts: ln.fencePts });
+      // No-go avoid zones: must not touch (min a hair over 0 so overlap counts).
+      for (const zn of (LAY.avoidZones || []))
+        if (zn.pts && zn.mode === 'nogo') extra.push({ k: 'poly', c: 1, n: 'avoid_' + zn.id, min: 0.01, pts: zn.pts });
       // Every mapped trunk (James 10/24: "and over the trees lol"): the
       // sweep's export only carried the 125 trunks near its candidates, so
       // a pitch could sit on the other 518 unflagged. Same rule (trunk +
@@ -926,7 +949,7 @@
         }
         return true;
       };
-      const score = (x, z, rot) => water(DATA.grid, x, z, rot * D2R, L, W, null).dens;
+      const score = (x, z, rot) => water(DATA.grid, x, z, rot * D2R, L, W, null).dens + penalty(x, z, rot, L, W);
       // One grid pass, yielding every ~40 ms.
       const pass = async (cx, cz, cr, span, rspan, step, rstep, frac0, frac1) => {
         let best = null, n = 0, t = performance.now();
@@ -1164,7 +1187,11 @@
       b.innerHTML = '<span style="width:10px;height:10px;border-radius:50%;flex:none;background:' + hex + '"></span>' +
         (p === sel ? '▶ ' : '') + (p.kind === 'box' ? '🟧 ' : '📐 ') + title(p) + ' ' + p.size[0] + '×' + p.size[1] +
         (p.ev ? (p.ev.w.pct != null ? ' · dry ' + p.ev.w.pct.toFixed(0) + '%' : '') +
-          (waterVsPark(p) ? ' · 💧 ' + waterVsPark(p).txt.replace(' than park', '') : '') + ' · ' +
+          (waterVsPark(p) ? ' · 💧 ' + waterVsPark(p).txt.replace(' than park', '') : '') +
+          penaltyZones().map((zn) => {
+            const f = zoneShare(p.x, p.z, p.rot, p.size[0] * YD, p.size[1] * YD, zn);
+            return f > 0.005 ? ' · ⛰ ' + Math.round(100 * f) + '% lumpy' : '';
+          }).join('') + ' · ' +
           (p.ev.ok ? 'clear' : '✗ ' + label(p.ev.off[0].n)) : '');
     }
 

@@ -600,6 +600,48 @@
     // edge is ringed red (ln.blockers). See-through purple, dashed edges =
     // not built yet (orange = water channels). The fence lands in L.fences
     // (group 'proposed_lane') and pitch-planner.js makes it a 10 ft rule.
+    // AVOID zones (layout avoidZones): outline each, hatched red (no-go)
+    // or amber (penalty), each on its own layer 'avoid_<id>';
+    // pitch-planner.js turns z.pts into a rule or a score penalty.
+    for (const zn of (L.avoidZones || [])) {
+      if (zn.kind === 'sector') {
+        const dm = (L.diamonds || [])[zn.diamond || 0];
+        if (!dm) continue;
+        const b = dm.bearing * D2R, at = (a, r) => [dm.home[0] + Math.cos(b + a * D2R) * r, dm.home[1] + Math.sin(b + a * D2R) * r];
+        zn.pts = [];
+        for (let a = zn.a0; a <= zn.a1 + 1e-6; a += 4) zn.pts.push(at(a, zn.r1));
+        for (let a = zn.a1; a >= zn.a0 - 1e-6; a -= 4) zn.pts.push(at(a, zn.r0));
+      } else if (zn.kind === 'band') {
+        const pt = L[zn.pitch];
+        if (!pt) continue;
+        const a = pt.rotDeg * D2R, at = (u, v) => [pt.x + u * Math.cos(a) - v * Math.sin(a), pt.z + u * Math.sin(a) + v * Math.cos(a)];
+        const sg = zn.side === 'rodeo' ? -1 : 1, v0 = sg * (pt.width / 2 + zn.from), v1 = sg * (pt.width / 2 + zn.to), l = pt.length / 2;
+        zn.pts = [at(-l, v0), at(l, v0), at(l, v1), at(-l, v1)];
+      }
+      if (!zn.pts) continue;
+      into = 'avoid_' + zn.id;
+      const col = zn.mode === 'nogo' ? 0xff2233 : 0xffb000;
+      const fill = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(zn.pts.map(([x, z]) => new THREE.Vector2(x, -z)))),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.18, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
+      fill.rotation.x = -Math.PI / 2;
+      fill.position.y = 0.3;
+      fill.renderOrder = 55;
+      site.add(fill);
+      const edge = new Merge();
+      addRibbon(edge, zn.pts.concat([zn.pts[0]]), 0.35, 0.31);
+      // Hatching: diagonal strokes 4 m apart, clipped to the zone.
+      const xs = zn.pts.map((p) => p[0]), zs = zn.pts.map((p) => p[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+      for (let k = x0 - (z1 - z0); k < x1; k += 4)
+        for (let t = 0; t < (z1 - z0); t += 1) {
+          const p0 = [k + t, z0 + t], p1 = [k + t + 1, z0 + t + 1];
+          if (inPoly(p0[0], p0[1], zn.pts) && inPoly(p1[0], p1[1], zn.pts)) addRibbon(edge, [p0, p1], 0.15, 0.31);
+        }
+      const em = edge.mesh(new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false,
+        depthTest: false, side: THREE.DoubleSide }));
+      em.renderOrder = 56;
+      site.add(em);
+    }
     into = 'proposed_lane';
     for (const ln of (L.proposedLanes || [])) {
       const pt = L[ln.behind], road = (L.tracks || []).find((t) => t.name === ln.joins);

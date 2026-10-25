@@ -239,6 +239,22 @@ window.LIGHTHOUSE_LAYOUT = {
   // ringed red. The fence counts as an obstruction (10 ft). (The first
   // draft rode the road's north side — that's the cemetery.) field.js
   // draws it; 🚗 PROPOSED LANE pill.
+  // AVOID zones (James 10/24). 'sector' = annulus slice off a diamond's
+  // home plate (r in m, angles in degrees from home→2nd toward 1st base);
+  // 'band' = strip beside a pitch's touchline (from/to m past it). mode
+  // 'nogo' = a planner rule (pitch may not touch it); 'penalty' = the 🎯
+  // buttons score each m² in it as weight × a pond m² (pills show the %).
+  // Shallow right field: lidar wetness 10–12× the park's at 20–37 m out,
+  // 0–40° ("avoid the swampy area in shallow right field"). Rodeo lumps:
+  // the first 20 m past the yellow's rodeo touchline has 18–26 % more
+  // 10 cm contour per m² ("it gets hilly"); a full 115 yd only fits by
+  // edging into it, so it's a penalty, not a no-go.
+  avoidZones: [
+    { id: 'swamp_rf', name: 'swampy shallow right field', mode: 'nogo', kind: 'sector', diamond: 0,
+      r0: 20, r1: 37, a0: 0, a1: 40 },
+    { id: 'rodeo_lumps', name: 'lumpy ground past the yellow rodeo touchline', mode: 'penalty', weight: 0.5,
+      kind: 'band', pitch: 'oldPitch', side: 'rodeo', from: 0, to: 20 },
+  ],
   proposedLanes: [
     { name: 'proposed lane behind the yellow pitch', behind: 'oldPitch', end: 'north', joins: 'cemetery-edge dirt road',
       fenceGap: 1, gap: 0.5, w: 4.27, root: 1,
