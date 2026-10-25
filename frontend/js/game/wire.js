@@ -31,6 +31,8 @@
     BRAIN: 0x3B,          // G4.41: each player's decision, ~5 Hz to watchers
     BRAIN_WATCH: 0x3C,
     BRAIN_LEGEND: 0x3D,
+    PHASES: 0x3E,         // G4.58 (1.9): phase-of-play titles, on connect
+    RUN_PHASE: 0x3F,      // admin: u8 team | u8 phase
   };
 
   // G4.30 attribute order (PROTOCOL 0x37, append-only; G4.52 the body four).
@@ -228,6 +230,15 @@
     return envelope(FrameType.APPLY_PRESET, p);
   }
 
+  // 1.9 admin (G4.58): set up a phase of play for one team.
+  function encodeRunPhase(team, phaseId) {
+    const p = new ArrayBuffer(2);
+    const v = new DataView(p);
+    v.setUint8(0, team);
+    v.setUint8(1, phaseId);
+    return envelope(FrameType.RUN_PHASE, p);
+  }
+
   function encodePlayerSettings(slot, ratings) {
     const p = new ArrayBuffer(2 + ratings.length);
     const v = new DataView(p);
@@ -295,6 +306,7 @@
     decodeTeams,
     ATTRIBUTES,
     encodeApplyPreset,
+    encodeRunPhase,
     decodeRoster,
     decodePresets,
     decodeBrain,

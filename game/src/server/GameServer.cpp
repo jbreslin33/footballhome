@@ -224,6 +224,11 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
         transport_.send(id, encodeFrame(FrameType::Presets,
                                         encodePresets(pf)));
     }
+    if (!cfg_.phases.empty()) {  // G4.58 (1.9): the phase-of-play catalog
+        PresetsFrame phf;
+        for (const auto& ph : cfg_.phases) phf.names.push_back(ph.title);
+        transport_.send(id, encodeFrame(FrameType::Phases, encodePresets(phf)));
+    }
     {  // G4.41 (1.7): the brain overlay's decision names, index = why code.
         PresetsFrame lf;
         for (int i = 0; i < ai::kWhyCount; ++i) lf.names.push_back(ai::kWhyNames[i]);
@@ -421,6 +426,14 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             std::printf("fh-game: rosters reloaded from the club DB\n");
             return;
         }
+        case FrameType::RunPhase: {
+            // Admin-only (G4.58): a coach's restart for everyone watching.
+            // Same layout as APPLY_PRESET: u8 team | u8 phase.
+            if (!admins_.count(id)) return;
+            const auto rp = decodeApplyPreset(frame.payload);
+            if (rp) runPhase(rp->team, rp->preset_id);
+            return;
+        }
         case FrameType::ApplyPreset: {
             // Admin-only: switch one team to another game model in one tap
             // (mig 652; the wire still calls it a preset). Players keep
@@ -439,6 +452,59 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
         default:
             return;  // unknown/unexpected types ignored (PROTOCOL.md §9)
     }
+}
+
+void GameServer::runPhase(std::uint8_t team, std::size_t id) {
+    if (team > 1 || id >= cfg_.phases.size()) return;
+    const persistence::Phase& ph = cfg_.phases[id];
+    const std::uint8_t n = cfg_.slot_count, per_team = n / 2;
+    const Fixed64 hx = world_.pitchHalfX(), hy = Fixed64::fromInt(cfg_.pitch_half_y);
+    // The team in possession attacks +x (home) / −x (away).
+    const Fixed64 sgn = team == 0 ? Fixed64::one() : -Fixed64::one();
+    Fixed64 bx = (-hx + hx * Fixed64::fromFraction(ph.x_pct, 50)) * sgn;
+    Fixed64 by = hy * Fixed64::fromFraction(ph.y_pct, 100) * sgn;
+    if (ph.kind == "kickoff") { bx = Fixed64::zero(); by = Fixed64::zero(); }
+    const math::Vec3 ball{bx, by, Fixed64::zero()};
+    // Everyone into his shape for that ball, facing it.
+    for (std::uint8_t i = 0; i < n; ++i) {
+        const bool home = i < per_team;
+        const std::uint8_t k = home ? i : i - per_team;
+        const ai::FormationSpec& spec =
+            home ? (cfg_.formation_home.valid(per_team) ? cfg_.formation_home : ai::builtinFormation(per_team))
+                 : (cfg_.formation_away.valid(per_team) ? cfg_.formation_away : ai::builtinFormation(per_team));
+        const auto& pos = spec.positions[k];
+        math::Vec2 a = ai::anchorFor(pos.base, home ? 1 : -1, ball, hx, hy, pos.keeper);
+        // Kick-off: nobody over halfway.
+        if (ph.kind == "kickoff") {
+            if (home && a.x > -Fixed64::one()) a.x = -Fixed64::one();
+            if (!home && a.x < Fixed64::one()) a.x = Fixed64::one();
+        }
+        math::Vec2 face{ball.x - a.x, ball.y - a.y};
+        if (face.x.raw == 0 && face.y.raw == 0) face = math::Vec2{home ? Fixed64::one() : -Fixed64::one(), Fixed64::zero()};
+        world_.placePlayer(i, math::Vec3{a.x, a.y, Fixed64::zero()}, math::normalized(face));
+    }
+    if (ph.kind == "keeper") {
+        world_.setDeadBall(core::MatchEventType::GoalKick, team, ball);
+    } else if (ph.kind == "corner") {
+        world_.setDeadBall(core::MatchEventType::Corner, team, ball);
+    } else if (ph.kind == "kickoff") {
+        world_.setDeadBall(core::MatchEventType::Kickoff, team, ball);
+    } else {   // open play: the ball at the feet of our nearest outfielder
+        int best = -1;
+        Fixed64 bd{};
+        for (std::uint8_t i = 0; i < n; ++i) {
+            if ((i < per_team ? 0 : 1) != team || world_.isKeeper(i)) continue;
+            const auto& p = world_.player(i);
+            const Fixed64 d = (p.pos.x - bx) * (p.pos.x - bx) + (p.pos.y - by) * (p.pos.y - by);
+            if (best < 0 || d < bd) { best = i; bd = d; }
+        }
+        if (best >= 0) {
+            world_.placePlayer(static_cast<std::uint8_t>(best), ball,
+                               math::Vec2{sgn, Fixed64::zero()});
+            world_.giveBall(static_cast<std::uint8_t>(best));
+        }
+    }
+    std::fprintf(stderr, "fh-game: phase '%s' for %s\n", ph.code.c_str(), team == 0 ? "home" : "away");
 }
 
 net::Bytes GameServer::buildSnapshotFrame() const {

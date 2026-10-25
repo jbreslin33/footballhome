@@ -61,6 +61,8 @@ Frame types (u8):
 | 0x3B | BRAIN | s→c | the brain overlay (1.7, G4.41), ~5 Hz, only to clients that sent BRAIN_WATCH on: `u8 count`, then per slot `u8 why (BRAIN_LEGEND index) \| i16 target x dm \| i16 target y dm \| u8 other slot (255 none) \| u8 ladder rung (0 n/a)` |
 | 0x3C | BRAIN_WATCH | c→s | anyone (1.7): `u8 on` — start / stop the BRAIN feed for this client |
 | 0x3D | BRAIN_LEGEND | s→c | on connect (1.7): the decision names, PRESETS layout; a BRAIN entry's `why` indexes it |
+| 0x3E | PHASES | s→c | the phase-of-play catalog (1.9, G4.58), on connect: PRESETS layout, titles from `game_phases` (mig 695); index = phase id |
+| 0x3F | RUN_PHASE | c→s | admin (1.9): `u8 team \| u8 phase` (APPLY_PRESET layout) — all 22 placed in their organized shapes for the phase's ball, then the dead-ball restart (keeper / corner / kick-off) or the ball at the team's nearest outfielder (open play); unknown ids ignored |
 | TBD | … | | reserved; new types are additive within a major version |
 
 Snapshot payloads at 22 slots + 3D ball must be measured against the u16

@@ -51,6 +51,8 @@ void World::placePlayer(SlotIndex slot, const Vec3& pos, const Vec2& face) {
     players_[slot].pos = pos;
     players_[slot].vel = Vec3{};  // placed standing (G4.51: speed is state)
     players_[slot].dive_ticks = 0;
+    players_[slot].recovery_ticks = 0;   // a coach's restart: everyone on his feet
+    players_[slot].recovery_kind = 0;
     players_[slot].face = face;
 }
 
@@ -720,6 +722,18 @@ void World::tickFreeBall(std::vector<MatchEvent>& events) {
                      Vec3{ball_.pos.x, line_y, Fixed64::zero()}, events);
         return;
     }
+}
+
+void World::giveBall(SlotIndex slot) {
+    if (slot >= players_.size()) return;
+    const PlayerState& p = players_[slot];
+    ball_ = BallState{};
+    ball_.owner = slot;
+    ball_.pos = Vec3{p.pos.x + p.face.x * kBallCarryLead, p.pos.y + p.face.y * kBallCarryLead, Fixed64::zero()};
+    last_touch_team_ = p.team;
+    restart_team_ = 0xFF;
+    offside_mask_ = 0;
+    offside_team_ = 0xFF;
 }
 
 void World::awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events) {

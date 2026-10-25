@@ -77,6 +77,15 @@ struct DemoPlayer {
     // how much he likes a concept, apart from how well he does it.
     std::vector<std::pair<int, std::uint8_t>> tendencies;
 };
+// G4.58: a phase of play (game_phases): what restart, where the ball is —
+// x_pct up the pitch from the team in possession's own goal line (0-100),
+// y_pct across it (-100 right … +100 left, from that team's view).
+struct Phase {
+    std::string code, title, kind;   // kind: keeper | open | kickoff | corner
+    int x_pct = 50, y_pct = 0;
+};
+std::vector<Phase> loadPhases(const DbConfig& cfg);
+
 struct DemoTeam {
     std::string name;  // game_demo_teams.name (the TEAMS frame)
     std::string level_band;

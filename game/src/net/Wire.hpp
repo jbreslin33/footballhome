@@ -45,6 +45,8 @@ enum class FrameType : std::uint8_t {
     Brain          = 0x3B, // s→c: each player's decision (why / target / other), ~5 Hz to watchers (1.7)
     BrainWatch     = 0x3C, // c→s: switch the brain overlay feed on / off (1.7)
     BrainLegend    = 0x3D, // s→c: the decision names, on connect (1.7)
+    Phases         = 0x3E, // s→c: the phase-of-play catalog (game_phases titles), on connect (1.9)
+    RunPhase       = 0x3F, // c→s admin: set up a phase of play for one team: u8 team | u8 phase (1.9)
 };
 
 // Capability bits granted in HELLO (PROTOCOL.md §3).

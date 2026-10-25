@@ -174,6 +174,17 @@ private:
     void tickPossessionAndKicks(std::vector<MatchEvent>& events);
     void tickFreeBall(std::vector<MatchEvent>& events);
     void awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events);
+public:
+    // Phases of play (G4.58): a coach's restart. A dead ball only `team`
+    // may touch first (keeper's ball, corner, kick-off), or the ball live
+    // at one player's feet (open-play phases). Players are placed by the
+    // caller (placePlayer).
+    void setDeadBall(MatchEventType type, std::uint8_t team, const math::Vec3& spot) {
+        std::vector<MatchEvent> ev;
+        if (type == MatchEventType::Kickoff) awardKickoff(team, ev); else awardRestart(type, team, spot, ev);
+    }
+    void giveBall(SlotIndex slot);
+private:
     void awardRestart(MatchEventType type, std::uint8_t team,
                       const math::Vec3& spot, std::vector<MatchEvent>& events);
     void tickClock(std::vector<MatchEvent>& events);

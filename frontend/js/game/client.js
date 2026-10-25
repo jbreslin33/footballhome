@@ -466,6 +466,41 @@
   }
   paintBrainBar();
 
+  // ── Phases of play (G4.58, admin) — James: "lets have a restart from
+  // keeper option. for either team … the MOST organized a team will ever
+  // be" / "then mid block … final third … tap off and corners". Pick a
+  // phase, run it for a team: everyone sets up in shape, play goes on. ──
+  let phaseNames = [], isAdmin = false;
+  const phaseBar = document.createElement('div');
+  phaseBar.className = 'game-only';
+  phaseBar.hidden = true;
+  phaseBar.setAttribute('role', 'group');
+  phaseBar.setAttribute('aria-label', 'Phase of play');
+  phaseBar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);' +
+    'top:calc(env(safe-area-inset-top, 0px) + 60px);display:flex;gap:4px;align-items:center;z-index:20;' +
+    'background:rgba(10,14,20,.55);padding:3px 4px;border-radius:14px;font:700 11px system-ui,sans-serif;color:#fff;';
+  document.body.appendChild(phaseBar);
+  function paintPhaseBar() {
+    phaseBar.hidden = !isAdmin || phaseNames.length === 0;
+    if (phaseBar.hidden) return;
+    const names = [(teams && teams.home) || 'Home', (teams && teams.away) || 'Away'];
+    const short = (t) => (t.length > 14 ? t.split(' ')[0] : t);
+    const sel = phaseBar.querySelector('select');
+    const keep = sel ? sel.value : '0';
+    phaseBar.innerHTML =
+      `<select id="phase-pick" aria-label="Phase" style="font:700 11px system-ui,sans-serif;border-radius:10px;border:0;padding:3px 6px;min-height:0;">` +
+      phaseNames.map((n, i) => `<option value="${i}">${esc(n)}</option>`).join('') + `</select>` +
+      names.map((n, t) => `<button type="button" data-team="${t}" title="Run this phase with ${esc(n)} on the ball" ` +
+        `style="border:0;border-radius:10px;padding:3px 9px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;` +
+        `background:#ffcc00;color:#0b1c3d;">▶ ${esc(short(n))}</button>`).join('');
+    phaseBar.querySelector('select').value = keep;
+  }
+  phaseBar.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-team]');
+    if (!b) return;
+    net.runPhase(Number(b.dataset.team), Number(phaseBar.querySelector('select').value));
+  });
+
   const net = new GameNet({
     onHello(h) {
       hello = h;
@@ -474,6 +509,8 @@
         renderer.built = true;
       }
       // Admin capability (bit 3) shows the level pickers.
+      isAdmin = !!(h.capabilities & 8);
+      paintPhaseBar();
       if ((h.capabilities & 8) && editBtn) {
         editBtn.style.display = 'block';
         const flipEdit = () => {
@@ -568,12 +605,17 @@
       brainEntries = entries;
       updateBrainRows();
     },
+    onPhases(names) {
+      phaseNames = names;
+      paintPhaseBar();
+    },
     onBrainLegend(names) {
       brainLegend = names;
     },
     onTeams(t) {
       teams = t;
       if (brainOn) paintBrainSides();
+      paintPhaseBar();
       // Names + position numbers over the players (mig 643): both teams'
       // slot numbers from the club API, names from ROSTER.
       for (const k of Object.keys(teamCache)) delete teamCache[k];

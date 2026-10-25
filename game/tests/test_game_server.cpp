@@ -453,4 +453,28 @@ FH_TEST(brain_frame_round_trips) {
     FH_EXPECT(d->slots[0].other == 7 && d->slots[0].rung == 1 && d->slots[1].other == 255);
 }
 
+FH_TEST(a_phase_of_play_sets_up_the_picture) {
+    // G4.58: from the keeper = a dead ball at the team's own 6 m, theirs to
+    // take; an open-play phase puts the ball at one of their feet.
+    server::GameServer::Config cfg{.match_id = 7, .slot_count = 22};
+    cfg.phases = {{"keeper", "From the keeper", "keeper", 6, 0},
+                  {"mid-block", "Into their mid-block", "open", 45, 0},
+                  {"corner-left", "Corner, left", "corner", 99, 97}};
+    FakeTransport t;
+    server::GameServer s{cfg, t};
+    s.runPhase(1, 0);   // away keeper's ball: away defends +x
+    FH_EXPECT_EQ(s.world().restartTeam(), 1);
+    FH_EXPECT(s.world().ball().pos.x > Fixed64::fromInt(40));
+    FH_EXPECT(!s.world().ball().owner.has_value());
+    s.runPhase(0, 1);   // home on the ball near halfway
+    FH_EXPECT(s.world().ball().owner.has_value());
+    FH_EXPECT(*s.world().ball().owner < 11);
+    FH_EXPECT_EQ(s.world().restartTeam(), 0xFF);
+    s.runPhase(0, 2);   // home corner at the +x end, left (+y)
+    FH_EXPECT_EQ(s.world().restartTeam(), 0);
+    FH_EXPECT(s.world().ball().pos.x > Fixed64::fromInt(50) && s.world().ball().pos.y > Fixed64::fromInt(30));
+    s.runPhase(0, 9);   // unknown phase: ignored
+    FH_EXPECT_EQ(s.world().restartTeam(), 0);
+}
+
 FH_TEST_MAIN()

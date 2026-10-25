@@ -1832,6 +1832,45 @@ like weak side".
   rotations (10 drops, wingers invert, full-backs overlap) then back to
   shape.
 
+### 8.54 G4.58 — phases of play: the coach's restart
+
+James: "lets have a restart from keeper option. for either team. this is
+the MOST organized a team will ever be. we can start the learning process
+from there and work backward" / "then mid block … final third … tap off
+and special kicks like corners" / "we want to think like coaches when
+designing the game … coaching methodology is the most important."
+
+- **`game_phases`** (mig 695): a phase is a row — kind (keeper / open /
+  kickoff / corner), the ball's spot as % up the pitch from the team in
+  possession's own goal line and across it, a coaching point. Seeded: From
+  the keeper (6%), Into their mid-block (45%), In the final third (75%,
+  20% left), Kick-off, Corner left / right.
+- **`GameServer::runPhase(team, id)`**: all 22 placed at their formation
+  anchors for that ball (`ai::anchorFor`, facing it; nobody over halfway at
+  a kick-off), everyone on his feet; then the dead ball only `team` may
+  touch first (keeper = a goal-kick restart at the spot, corner, kick-off)
+  or, for open play, the team's nearest outfielder on the spot with the
+  ball (`World::giveBall`). Wire 1.9 PHASES 0x3E / RUN_PHASE 0x3F (admin).
+- **Client:** an admin bar under the Brain pill — pick a phase, ▶ either
+  team. Deterministic engine: the same phase on the same seed replays
+  exactly, so one change at a time shows its own effect.
+
+**The coaching roadmap (James: methodology is the design input)** — TODO:
+1. Phases as rows (done) → throw-ins, free kicks (direct / indirect,
+   walls), penalties, goal kicks short / long — each a `game_phases` row
+   plus its restart kind.
+2. **Freeze frame**: pause, step a tick, rewind (replay from the seed),
+   annotate — the coach's "stop, look at the picture".
+3. **Play-practice-play** in the harness: `fh-game-match` runs N of a
+   phase and reports how it went (time to cross halfway, turnovers,
+   entries, shots) — measure one phase, fix, re-measure.
+4. **Constraints and small-sided games**: conditions as rows (two-touch,
+   overloads 4v3, score only after a switch), 3v3 / 7v7 already run.
+5. **Set-piece routines** (taxonomy: 20 set-piece items) on top of the
+   corner / free-kick phases.
+6. Rotations for zonal teams (Ukies: 10 drops, wingers invert, full-backs
+   overlap), the weak-side +1, kamikaze man-to-man (§8.53 queue).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

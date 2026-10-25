@@ -76,12 +76,19 @@ public:
         core::ModelParams model_params;
         // G4.57: direct-opponent pairs by position number (DB).
         std::vector<std::pair<int, int>> direct_pairs;
+        // G4.58: phases of play (DB) for the admin RUN_PHASE frame.
+        std::vector<persistence::Phase> phases;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);
 
     // Advance one tick and broadcast one snapshot. The caller owns pacing.
     void tickOnce();
+    // G4.58: set up phase `id` (cfg.phases) for `team` in possession —
+    // all 22 placed in their organized shapes for that ball, then the
+    // restart (keeper's ball / corner / kick-off) or the ball at the feet
+    // of the team's nearest outfielder (open play). Coaching's phase of play.
+    void runPhase(std::uint8_t team, std::size_t id);
 
     const core::World& world() const noexcept { return world_; }
     // Each slot's decision on the last tick (the brain overlay's read;
