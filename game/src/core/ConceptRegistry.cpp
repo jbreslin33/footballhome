@@ -56,6 +56,9 @@ ConceptRegistry ConceptRegistry::builtin() {
     // meet-the-pass (153) at all.
     r.add(153, "meet-the-pass", levelRank("u10"), false);
     r.add(154, "face-the-play", levelRank("u10"), false);
+    r.add(155, "side-on-jockey", levelRank("u14"), false);
+    r.add(156, "drop-step", levelRank("u14"), false);
+    r.add(157, "engage-or-contain", levelRank("u14"), false);
     return r;
 }
 

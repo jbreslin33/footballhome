@@ -1713,6 +1713,34 @@ contact 118, team shape 116, ball at height 104, a readable/fakeable body
 ~/footballhome-notes/taxonomy-2026-10-24/. Kept items become queued rows
 after James marks the page.
 
+### 8.51 G4.54 — 1v1 defending: side-on, turn and run, when to step in
+
+- **Gait fixed.** G4.53 made 90° off his travel the SLOWEST way to move (a
+  square shuffle). A defender running side-on looks over his shoulder for
+  free (head turn, `physics.body.head_turn_deg` 60) and runs a crossover
+  with his hips open: full speed within 60°, side-on run 70 / 80 / 90% at
+  90°, backpedal 55 / 65 / 75% at 180° (agility; mig 689).
+- **Three lessons** from the knowledge sweep's biggest gap (sources:
+  FIFA Training Centre "Defending in 1v1", FA Boot Room 1v1 defending,
+  jockeying coaching sheets), all core from U-14:
+  - `side-on-jockey` (155): delaying, body turned 40° open toward the side
+    he shows. Lapse: square-on.
+  - `drop-step` (156): the carrier comes at goal ≥ 4.5 m/s within 4 m →
+    turn and run with him, 2 m ahead on his run, a metre goal-side.
+    Lapse: keeps backpedalling.
+  - `engage-or-contain` (157): the measured problem — the final-third
+    tally showed the nearest defender pressing 61-68% and delaying never,
+    because "organized" (more of us than them behind the ball) alone sent
+    him in. Now he steps in on a trigger: cover ARRIVED (a teammate
+    goal-side within 6 m of the carrier), the carrier's back to our goal,
+    or pinned within 6 m of the touchline. A loose touch is the missing
+    fourth trigger (no heavy touches in the engine yet). Lapse: dives in.
+- Measured (60, real matchup): nearest defender in the final third now
+  presses 27-37%, contains 30-32% (delay 8, side-on 10-14, turn-and-run
+  10-12); margin +1.70 ± 0.25; **shots unchanged (48 / 33)**. The 1v1
+  wasn't what makes the shot flood. Next: shot selection — ~90% of shots
+  come from outside the box. Ladder u10 16.2 / amateur 8.8 / world 5.5.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

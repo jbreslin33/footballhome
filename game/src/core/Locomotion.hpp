@@ -38,16 +38,19 @@ public:
                math::Fixed64::fromInt(4)) {}
     Body(math::Fixed64 tau, math::Fixed64 brake, math::Fixed64 turn,
          math::Fixed64 dribble, math::Fixed64 dive_speed)
-        : Body(tau, brake, turn, dribble, dive_speed, math::Fixed64::fromFraction(1, 2),
+        : Body(tau, brake, turn, dribble, dive_speed, math::Fixed64::fromFraction(8, 10),
                math::Fixed64::fromFraction(65, 100), math::Fixed64::fromInt(9)) {}
-    // G4.53: side / back = his top speed shuffling sideways / backpedalling,
-    // as shares of his forward top speed; yaw = how fast his body turns
-    // (rad/s) toward where he wants to face.
+    // G4.53/G4.54: run = his top speed side-on (hips open, crossover run —
+    // facing 90° off his travel), back = backpedalling, both as shares of
+    // his forward top speed; yaw = how fast his body turns (rad/s);
+    // head_cos = cos of how far he can look off his line at no cost (head
+    // and eyes turn, hips stay on the run).
     Body(math::Fixed64 tau, math::Fixed64 brake, math::Fixed64 turn,
-         math::Fixed64 dribble, math::Fixed64 dive_speed, math::Fixed64 side,
-         math::Fixed64 back, math::Fixed64 yaw)
+         math::Fixed64 dribble, math::Fixed64 dive_speed, math::Fixed64 run,
+         math::Fixed64 back, math::Fixed64 yaw,
+         math::Fixed64 head_cos = math::Fixed64::fromFraction(1, 2))
         : tau_(tau), brake_(brake), turn_(turn), dribble_(dribble), dive_speed_(dive_speed),
-          side_(side), back_(back), yaw_(yaw) {
+          side_(run), back_(back), yaw_(yaw), head_cos_(head_cos) {
         // lag() at every tick out to kLagTicks, once per body (fx_exp_neg
         // per read made the Brain's reach scans ~5x slower).
         for (int k = 0; k <= kLagTicks; ++k) {
@@ -65,13 +68,17 @@ public:
     math::Fixed64 back() const noexcept { return back_; }
     math::Fixed64 yaw() const noexcept { return yaw_; }
 
-    // Gait (G4.53): his top-speed share for moving along `dir` while facing
-    // `face` (both unit): 1 running forward, side() shuffling square,
-    // back() backpedalling — linear in the cosine between them.
+    // Gait (G4.54): his top-speed share for moving along `dir` while facing
+    // `face` (both unit), by the cosine c between them: full speed while
+    // he can just turn his head (c ≥ head_cos, ~60°); then his hips open —
+    // side() running side-on at 90°; back() backpedalling at 180°. Linear
+    // in c between those points. (G4.53 had 90° as the SLOWEST gait, a
+    // square shuffle; a defender running side-on crosses over instead.)
     math::Fixed64 gait(math::Vec2 face, math::Vec2 dir) const {
         const math::Fixed64 c = face.x * dir.x + face.y * dir.y;
-        return c.raw >= 0 ? side_ + (math::Fixed64::one() - side_) * c
-                          : side_ + (back_ - side_) * (-c);
+        if (c >= head_cos_) return math::Fixed64::one();
+        if (c.raw >= 0) return side_ + (math::Fixed64::one() - side_) * (c / head_cos_);
+        return side_ + (back_ - side_) * (-c);
     }
 
     // Body turn (G4.53): `face` rotated toward `want` by at most yaw()·dt.
@@ -136,7 +143,7 @@ private:
     }
 
     static constexpr int kLagTicks = 10 * kTickRate;
-    math::Fixed64 tau_, brake_, turn_, dribble_, dive_speed_, side_, back_, yaw_;
+    math::Fixed64 tau_, brake_, turn_, dribble_, dive_speed_, side_, back_, yaw_, head_cos_;
     math::Fixed64 lag_[kLagTicks + 1];
 };
 

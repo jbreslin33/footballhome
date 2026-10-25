@@ -403,7 +403,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     switch (o.why) {
         case Why::RunInBehind: case Why::BlindSideRun: case Why::KeepRunning:
         case Why::MeetPass: case Why::Chase: case Why::Press: case Why::Recover:
-        case Why::Human:
+        case Why::Human: case Why::DropStep:
             return o;   // these face where they're going
         default: break;
     }
@@ -1279,8 +1279,28 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         }
         const bool chases = race ? (race_first || (max_chasers > 1 && in_range && rank < max_chasers))
                                  : (in_range && rank < max_chasers);
+        // engage-or-contain (157, G4.54): cover behind him isn't enough —
+        // step in on a trigger (cover ARRIVED close, his back to our goal,
+        // pinned on the touchline); otherwise contain. Lapse: dives in.
+        bool engage = organized;
+        if (organized && ball.owner) {
+            const int ec = book_.engage_or_contain.bit();
+            if (ratings_[slot][ec] > 0 && applies(slot, ec, world.tickCount() / 30)) {
+                const auto& c = world.player(*ball.owner);
+                const Fixed64 cv = book_.engage_or_contain.cover();
+                bool cover_here = false;
+                for (SlotIndex j = 0; j < world.playerCount() && !cover_here; ++j) {
+                    if (j == slot || setup_.team_of_slot[j] != my_team) continue;
+                    const auto& m = world.player(j);
+                    cover_here = m.pos.x * dsgn < c.pos.x * dsgn && distSq(m.pos, c.pos) < cv * cv;
+                }
+                const bool back_to_goal = c.face.x * dsgn > Fixed64::zero();   // facing away from our goal
+                const bool pinned = math::fx_abs(c.pos.y) > half_y_ - book_.engage_or_contain.touchline();
+                engage = cover_here || back_to_goal || pinned;
+            }
+        }
         if (chases) {
-            if (!ball.owner || organized || undisciplined) {
+            if (!ball.owner || engage || undisciplined) {
                 // STEP / loose-ball race: through the ball (arrive radius
                 // far below capture radius — the harness's first catch);
                 // dive in when the carried ball is inside tackle reach.
@@ -1336,10 +1356,44 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             const Vec2 jockey{
                 seen_ball.x - dsgn * Fixed64::fromFraction(11, 5),
                 seen_ball.y + shade};
+            out.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
+            const std::uint64_t sec = world.tickCount() / 30;
+            // drop-step (156, G4.54): he's coming at speed — turn and run
+            // with him, goal-side on his line, instead of backpedalling.
+            if (ball.owner) {
+                const int ds = book_.drop_step.bit();
+                const auto& c = world.player(*ball.owner);
+                const Fixed64 goalward = -c.vel.x * dsgn;
+                const Fixed64 w = book_.drop_step.within();
+                if (ratings_[slot][ds] > 0 && goalward > book_.drop_step.carrierSpeed() &&
+                    distSq(me.pos, c.pos) < w * w && applies(slot, ds, sec)) {
+                    const Vec2 run = math::normalized(Vec2{c.vel.x, c.vel.y});
+                    const Fixed64 lead = book_.drop_step.lead();
+                    const Vec2 with{c.pos.x + run.x * lead - dsgn, c.pos.y + run.y * lead};
+                    out.move.move = seek(me.pos, with, Fixed64::fromFraction(1, 10));
+                    out.why = Why::DropStep;
+                    out.target = with;
+                    return out;
+                }
+            }
             out.move.move = seek(me.pos, jockey, Fixed64::fromFraction(3, 10));
             out.why = Why::Delay;
             out.target = jockey;
-            out.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
+            // side-on-jockey (155, G4.54): body turned open toward the
+            // side he shows (the touchline side the shade leaves open).
+            const int so = book_.side_on_jockey.bit();
+            if (ratings_[slot][so] > 0 && applies(slot, so, sec)) {
+                const Vec2 to_c{seen_ball.x - me.pos.x, seen_ball.y - me.pos.y};
+                if (to_c.x.raw != 0 || to_c.y.raw != 0) {
+                    const Fixed64 a = book_.side_on_jockey.stance();
+                    const Fixed64 ca = math::fx_cos(a), sa = math::fx_sin(a);
+                    const Vec2 l{to_c.x * ca - to_c.y * sa, to_c.x * sa + to_c.y * ca};
+                    const Vec2 r{to_c.x * ca + to_c.y * sa, -to_c.x * sa + to_c.y * ca};
+                    const bool up = seen_ball.y.raw >= 0;   // the touchline he shows
+                    out.move.face = (up ? l.y >= r.y : l.y <= r.y) ? l : r;
+                    out.why = Why::SideOn;
+                }
+            }
             return out;
         }
 

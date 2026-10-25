@@ -43,7 +43,7 @@ enum class Why : std::uint8_t {
     Press, Chase, Delay, Libero, Mark, GiveAndGo, BlindSideRun, RunInBehind,
     Outlet, Support, Human, WaitForRunner, LapseDeep, LapseStepOut,
     LapseShort, LapseLong, HabitShort, HabitLong, HabitDeep, HabitStepOut,
-    MeetPass, KeepRunning, KeeperDive,
+    MeetPass, KeepRunning, KeeperDive, SideOn, DropStep,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -53,7 +53,7 @@ inline constexpr const char* kWhyNames[] = {
     "lapse: sweeping too deep", "lapse: stepped out too high",
     "lapse: short and simple", "lapse: hit it long",
     "likes it short", "likes it long", "likes to sit deep", "likes to step out",
-    "meet the pass", "keep running", "keeper dive",
+    "meet the pass", "keep running", "keeper dive", "jockey side-on", "turn and run with him",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 

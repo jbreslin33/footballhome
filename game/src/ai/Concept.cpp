@@ -193,6 +193,21 @@ void FaceThePlay::configure(const core::ModelParams& p) {
     within_ = p.fixed(key("within_m"), 10000);
 }
 
+// ── SideOnJockey / DropStep (G4.54) ─────────────────────────────────────
+void SideOnJockey::configure(const core::ModelParams& p) {
+    stance_ = p.fixed(key("stance_deg"), 40000) * math::FX_PI / math::Fixed64::fromInt(180);
+}
+void DropStep::configure(const core::ModelParams& p) {
+    carrier_ = p.fixed(key("carrier_mps"), 4500);
+    within_ = p.fixed(key("within_m"), 4000);
+    lead_ = p.fixed(key("lead_m"), 2000);
+}
+
+void EngageOrContain::configure(const core::ModelParams& p) {
+    cover_ = p.fixed(key("cover_m"), 6000);
+    touchline_ = p.fixed(key("touchline_m"), 6000);
+}
+
 // ── CoverShadow ─────────────────────────────────────────────────────────
 void CoverShadow::configure(const core::ModelParams& p) {
     deep_x_ = p.fixed(key("deep_x_m"), 15000);

@@ -312,6 +312,56 @@ private:
     math::Fixed64 within_;
 };
 
+// Side-on, show him one way (G4.54, core, U-14) [FIFA Training Centre
+// "Defending in 1v1"; FA Boot Room 1v1 defending; St. Albert Soccer
+// jockeying points]: delaying, he stands side-on — body turned stance°
+// open toward the side he is showing the carrier — so a run that way is
+// his side-on crossover, not a square backpedal. Lapse: square-on.
+class SideOnJockey : public Concept {
+public:
+    SideOnJockey() : Concept("side-on-jockey", 155) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 stance() const { return stance_; }   // radians
+
+private:
+    math::Fixed64 stance_;
+};
+
+// Turn and run with him (G4.54, core, U-14) [drop step / hip turn —
+// St. Albert Soccer; FA Boot Room]: the carrier he's jockeying comes at
+// him at speed (goalward ≥ carrier_mps, within within_m) → drop-step and
+// run with him on the goal-side line, lead_m ahead along his run. No
+// backpedal holds a sprinting dribbler. Lapse: keeps backpedalling.
+class DropStep : public Concept {
+public:
+    DropStep() : Concept("drop-step", 156) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 carrierSpeed() const { return carrier_; }
+    math::Fixed64 within() const { return within_; }
+    math::Fixed64 lead() const { return lead_; }
+
+private:
+    math::Fixed64 carrier_, within_, lead_;
+};
+
+// When to step in (G4.54, core, U-14) [FIFA Training Centre
+// "Defending in 1v1"; FA Boot Room 1v1 defending]: with cover behind him a
+// defender used to step in on every carrier. The lesson: engage when cover
+// has ARRIVED (a teammate within cover_m of the carrier, goal-side), his
+// back is to our goal, or he's pinned within touchline_m of the line —
+// otherwise contain and delay. (A loose touch is the fourth trigger; the
+// engine has no heavy touches yet.) Lapse: dives in anyway.
+class EngageOrContain : public Concept {
+public:
+    EngageOrContain() : Concept("engage-or-contain", 157) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 cover() const { return cover_; }
+    math::Fixed64 touchline() const { return touchline_; }
+
+private:
+    math::Fixed64 cover_, touchline_;
+};
+
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
@@ -325,6 +375,9 @@ struct ConceptBook {
     DirectBall direct_ball;
     MeetThePass meet_the_pass;
     FaceThePlay face_the_play;
+    SideOnJockey side_on_jockey;
+    DropStep drop_step;
+    EngageOrContain engage_or_contain;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -339,6 +392,9 @@ struct ConceptBook {
         direct_ball.configure(p);
         meet_the_pass.configure(p);
         face_the_play.configure(p);
+        side_on_jockey.configure(p);
+        drop_step.configure(p);
+        engage_or_contain.configure(p);
     }
 };
 

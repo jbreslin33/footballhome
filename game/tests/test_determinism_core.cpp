@@ -35,7 +35,8 @@ namespace {
 //   G4.51 2026-10-24 locomotion law + dive  0x19531f520b02f94f
 //   G4.52 2026-10-24 per-player bodies      0x01a4b675f63d88f3
 //   G4.53 2026-10-24 facing + gaits         0xf4d9c32e33211d89
-constexpr std::uint64_t kGolden400TicksSeed42 = 0xf4d9c32e33211d89ULL;
+//   G4.54 2026-10-24 side-on run gait       0x8265738e898a13f9
+constexpr std::uint64_t kGolden400TicksSeed42 = 0x8265738e898a13f9ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};
