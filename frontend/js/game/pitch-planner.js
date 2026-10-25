@@ -964,6 +964,9 @@
     };
     for (const [k, t] of LAYERS) {
       const b = mk('button', lp, t);
+      if (k === 'water')   // its legend, in the map's own colours
+        b.innerHTML = '💧 WATER <span style="color:#1e5bff;text-shadow:0 0 2px #fff">■</span>pond ' +
+          '<span style="color:#00d5ff">■</span>runoff <span style="color:#ffb000">■</span>slow';
       layerPills[k] = b;
       tap(b, () => setLayer(k, !show[k]));
       layerBox.appendChild(b);
@@ -1022,6 +1025,8 @@
       for (const p of all()) if (p.cells) p.cells.visible = show.water;
       if (f) {
         if (f.setWater) f.setWater(show.water);
+        buildParkWater();
+        if (parkWater) parkWater.visible = show.water;
         if (f.setOldPitch) f.setOldPitch(show.paint);
         if (f.setContours) f.setContours(show.contours ? 'lidar' : 'off');
         if (f.setLayer) for (const k of FIELD_LAYERS) f.setLayer(k, show[k]);
@@ -1039,6 +1044,7 @@
       const f = renderer.field;
       if (f && f.setLayer) for (const k of FIELD_LAYERS) f.setLayer(k, true);
       if (f && f.setWater) f.setWater(false);
+      if (parkWater) parkWater.visible = false;
       for (const m of renderer.pitchParts || []) m.visible = true;
     }
     function paintPill(p) {
@@ -1270,6 +1276,36 @@
     // On by default: wait for the field, read the club's layout, build,
     // frame both pitches.
     const dbLoad = api('GET', '').catch(() => null);
+    // The park's whole water map on the grass when 💧 WATER is on (James
+    // 10/24: "not seeing water pond area" — pond/slow-drain only showed
+    // inside a pitch): one canvas texture, a pixel per lidar metre, same
+    // colours as the pitch cells.
+    let parkWater = null;
+    function buildParkWater() {
+      const G = DATA.grid, site = renderer.field && renderer.field.site;
+      if (!G || !site || parkWater) return;
+      const cv = document.createElement('canvas');
+      cv.width = G.nx; cv.height = G.nz;
+      const c2 = cv.getContext('2d'), img = c2.createImageData(G.nx, G.nz);
+      const RGB = [null, [30, 91, 255], [0, 213, 255], [255, 176, 0]];
+      for (let j = 0; j < G.nz; j++)
+        for (let i = 0; i < G.nx; i++) {
+          const k = G.cls.charCodeAt(j * G.nx + i) - 48, o = (j * G.nx + i) * 4;
+          if (!RGB[k]) continue;
+          img.data[o] = RGB[k][0]; img.data[o + 1] = RGB[k][1]; img.data[o + 2] = RGB[k][2];
+          img.data[o + 3] = k === 3 ? 120 : 170;
+        }
+      c2.putImageData(img, 0, 0);
+      const tex = new THREE.CanvasTexture(cv);
+      tex.magFilter = THREE.NearestFilter;
+      parkWater = new THREE.Mesh(new THREE.PlaneGeometry(G.nx, G.nz),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+      parkWater.rotation.x = -Math.PI / 2;   // canvas row j = site z0 + j
+      parkWater.position.set(G.x0 + G.nx / 2 - 0.5, 0.35, G.z0 + G.nz / 2 - 0.5);
+      parkWater.renderOrder = 40;
+      parkWater.visible = false;
+      site.add(parkWater);
+    }
     async function start() {
       if (!renderer.field || !renderer.field.site) { setTimeout(start, 300); return; }
       const db = await Promise.race([dbLoad, new Promise((r) => setTimeout(() => r(null), 5000))]);
