@@ -313,6 +313,19 @@ FH_TEST(blind_side_run_waits_onside_then_goes_behind_a_ball_watcher) {
     FH_EXPECT(!bs.target(ctx(w, 1, +1, ball, 90)).has_value());
 }
 
+FH_TEST(a_db_curriculum_fills_the_builtin_holes) {
+    // Hotfix: the boot check compares only ids the builtin names. A DB that
+    // fills its holes (31-152) is compatible; one that renames a wired id
+    // is not. (Comparing the holes refused every real DB for G4.53-G4.54.)
+    const core::ConceptRegistry wired = core::ConceptRegistry::builtin();
+    core::ConceptRegistry db = core::ConceptRegistry::builtin();
+    db.add(71, "offside-trap", 0);
+    db.add(150, "step-out", 0);
+    FH_EXPECT_EQ(db.firstRenumbered(wired), -1);
+    db.add(153, "not-meet-the-pass", 0);
+    FH_EXPECT_EQ(db.firstRenumbered(wired), 153);
+}
+
 FH_TEST(the_curriculum_grows_by_rows_past_32_concepts) {
     // Built in: the 31 wired concepts, ids = the old bits, plus the later
     // core lessons the harness must play (G4.53: 153 meet-the-pass, 154

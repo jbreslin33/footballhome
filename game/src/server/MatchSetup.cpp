@@ -24,14 +24,14 @@ void loadMatchFromDb(GameServer::Config& cfg, const persistence::DbConfig& db,
     // format and every saved rating keys on them).
     if (auto reg = persistence::loadConcepts(db)) {
         const core::ConceptRegistry wired = core::ConceptRegistry::builtin();
-        bool same = true;
-        for (int i = 0; i < wired.size(); ++i)
-            if (reg->name(i) != wired.name(i)) {
-                std::fprintf(stderr, "fh-game: game_concepts id %d is '%s', wired '%s' — REFUSED, builtin curriculum kept\n",
-                             i, reg->name(i).c_str(), wired.name(i).c_str());
-                same = false;
-            }
-        if (same) {
+        // Only ids the builtin NAMES are checked: its holes (31-152 since
+        // G4.53) are the DB's to fill. (Checking them refused every DB from
+        // G4.53 to G4.54 — the daemon ran the builtin curriculum.)
+        const int bad = reg->firstRenumbered(wired);
+        if (bad >= 0)
+            std::fprintf(stderr, "fh-game: game_concepts id %d is '%s', wired '%s' — REFUSED, builtin curriculum kept\n",
+                         bad, reg->name(bad).c_str(), wired.name(bad).c_str());
+        if (bad < 0) {
             say("fh-game: %d concept(s) in the curriculum (club DB)\n", reg->size());
             core::setConcepts(std::move(*reg));
         }

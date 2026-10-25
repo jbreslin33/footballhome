@@ -32,6 +32,13 @@ int levelRank(const std::string& level);
 class ConceptRegistry {
 public:
     // The 31 concepts that predate the table, in their wire order.
+    // The first id where this (a DB curriculum) renames a concept `wired`
+    // names, or -1 when compatible. Ids `wired` leaves empty are free.
+    int firstRenumbered(const ConceptRegistry& wired) const {
+        for (int i = 0; i < wired.size(); ++i)
+            if (!wired.name(i).empty() && name(i) != wired.name(i)) return i;
+        return -1;
+    }
     static ConceptRegistry builtin();
 
     // style = a chosen identity (default demand 0: only a game model asks
