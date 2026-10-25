@@ -355,7 +355,7 @@
     el.hidden = true;
     el.setAttribute('role', 'region');
     el.style.cssText = `position:fixed;${team === 0 ? 'left' : 'right'}:max(8px, env(safe-area-inset-${team === 0 ? 'left' : 'right'}, 0px));` +
-      'top:calc(env(safe-area-inset-top, 0px) + 70px);width:min(210px, 44vw);max-height:calc(100vh - 170px);' +
+      'top:calc(env(safe-area-inset-top, 0px) + 96px);width:min(210px, 44vw);max-height:calc(100vh - 200px);' +
       'overflow:auto;background:rgba(8,12,18,.32);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);' +
       'color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.9);font:11px/1.35 system-ui,sans-serif;' +
       'border-radius:10px;z-index:20;padding:6px;';
