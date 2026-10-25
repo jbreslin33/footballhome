@@ -386,6 +386,49 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
     return f;
 }
 
+const std::vector<std::uint8_t>& Brain::matchups(std::uint64_t sec) const {
+    if (matchups_sec_ == sec && !matchups_.empty()) return matchups_;
+    matchups_sec_ = sec;
+    const std::size_t n = setup_.team_of_slot.size();
+    matchups_.assign(n, 255);
+    for (std::uint8_t team = 0; team < 2; ++team) {
+        // Our markers and their outfielders, in our normalized frame.
+        std::vector<std::uint8_t> ours, theirs;
+        for (std::size_t s = 0; s < n; ++s) {
+            const auto& p = spec_[setup_.team_of_slot[s]].positions[index_in_team_[s]];
+            if (p.keeper) continue;
+            if (setup_.team_of_slot[s] == team) {
+                if (ratings_[s][1] > 0) ours.push_back(static_cast<std::uint8_t>(s));
+            } else {
+                theirs.push_back(static_cast<std::uint8_t>(s));
+            }
+        }
+        auto mirrored = [&](std::uint8_t o) {   // their base → our frame
+            const Vec2& b = spec_[setup_.team_of_slot[o]].positions[index_in_team_[o]].base;
+            return Vec2{-Fixed64::one() - b.x, -b.y};
+        };
+        std::vector<bool> used_o(theirs.size(), false), used_m(ours.size(), false);
+        for (std::size_t round = 0; round < ours.size(); ++round) {
+            int bm = -1, bo = -1;
+            Fixed64 best{};
+            for (std::size_t i = 0; i < ours.size(); ++i) {
+                if (used_m[i]) continue;
+                const Vec2& mb = spec_[team].positions[index_in_team_[ours[i]]].base;
+                for (std::size_t j = 0; j < theirs.size(); ++j) {
+                    if (used_o[j]) continue;
+                    const Vec2 t = mirrored(theirs[j]);
+                    const Fixed64 d = (mb.x - t.x) * (mb.x - t.x) + (mb.y - t.y) * (mb.y - t.y);
+                    if (bm < 0 || d < best) { bm = static_cast<int>(i); bo = static_cast<int>(j); best = d; }
+                }
+            }
+            if (bm < 0) break;
+            used_m[bm] = used_o[bo] = true;
+            matchups_[ours[bm]] = theirs[bo];
+        }
+    }
+    return matchups_;
+}
+
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     Orders o = decide(slot, world);
     if (o.move.face.x.raw != 0 || o.move.face.y.raw != 0) return o;
@@ -475,9 +518,25 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             math::lengthSquared(to_goal) < kShootRange * kShootRange;
         if (shoot_now && applies(slot, 25, world.tickCount() / 30) &&
             math::lengthSquared(to_goal) >= Fixed64::fromInt(64)) {
-            const Fixed64 bar = pressed ? Fixed64::fromFraction(18, 100)
-                                        : Fixed64::fromFraction(30, 100);
-            shoot_now = chanceQuality(world, setup_, slot, goal) >= bar;
+            // G4.55: what the chance is worth (his read wobbles with his
+            // decisions) against working it closer or a mate's better one.
+            const auto& sel = book_.shot_selection;
+            const Fixed64 mine = sel.xg(chanceQuality(world, setup_, slot, goal),
+                                        math::length(to_goal), pressed) * jitter;
+            shoot_now = mine >= (pressed ? sel.minPressed() : sel.minFree());
+            for (SlotIndex j = 0; j < world.playerCount() && shoot_now; ++j) {
+                if (j == slot || setup_.team_of_slot[j] != setup_.team_of_slot[slot] ||
+                    world.isKeeper(j))
+                    continue;
+                const auto& m = world.player(j);
+                const Vec2 mg{goal.x - m.pos.x, goal.y - m.pos.y};
+                if (math::lengthSquared(mg) > kShootRange * kShootRange) continue;
+                const Fixed64 theirs = sel.xg(chanceQuality(world, setup_, j, goal), math::length(mg), false);
+                if (theirs < mine * sel.passBetter()) continue;
+                const Vec2 from{me.pos.x, me.pos.y}, to{m.pos.x, m.pos.y};
+                if (passSafe(world, setup_, slot, j, from, to, core::kShortPassSpeed, Fixed64::one()))
+                    shoot_now = false;   // pass it — the pass branch below picks the man
+            }
         }
         if (shoot_now) {
             // Placement (G4.3b): aim inside the post AWAY from the
@@ -1033,21 +1092,32 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 const Fixed64 depth = world.player(j).pos.x * sgn;
                 if (depth < deepest) deepest = depth;
             }
+            // The line (G4.56, ai::LineHold): with the offside law in the
+            // game a back line holds a height off the BALL — covered ball:
+            // ball − hold (push-up squeezes it); uncovered: drop a few
+            // metres more. An attacker beyond it is offside, not a man to
+            // follow. Lapse (or not knowing line-hold): drop with the
+            // deepest attacker, 2 m goal-side of him — the pre-offside rule
+            // (G4.4) that sank every back line 16-22 m from its own goal.
             Fixed64 cover = deepest - Fixed64::fromInt(2);
-            // HOLD THE LINE: never drop more than 25 m behind the ball.
-            // Without this floor, a line-riding runner and a man-tracking
-            // back line retreat-spiral each other into the goalmouth
-            // (measured: 0 offsides, goals UP after the offside law
-            // landed). Holding makes the runner's timing problem real —
-            // beyond this line he's offside when the ball is struck.
-            if (ratings_[slot][9] > 0) {
-                // push_up (15) squeezes the hold distance: 25 m at 0 →
-                // 12 m at 100 — "the white line steps up" [James].
-                const Fixed64 dist =
-                    Fixed64::fromInt(25) -
-                    Fixed64::fromInt(13) * degree(slot, 15);
-                const Fixed64 hold = seen_ball.x * sgn - dist;
-                if (cover < hold) cover = hold;
+            bool holding_line = false;
+            const int lh = book_.line_hold.bit();
+            if (ratings_[slot][lh] > 0 && applies(slot, lh, world.tickCount() / 30)) {
+                const auto& L = book_.line_hold;
+                Fixed64 dist = L.hold() - L.squeeze() * degree(slot, 15);
+                ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                                  half_x_, degree(slot, lh)};
+                withFlight(cx);
+                if (!book_.line_step.covered(cx)) dist += L.uncoveredDrop();
+                cover = seen_ball.x * sgn - dist;
+                holding_line = true;
+            } else if (ratings_[slot][lh] > 0) {
+                // The lapse keeps G4.8's floor: never more than hold_m behind
+                // the ball (without it a line-riding runner and a tracking
+                // back line retreat-spiral into the goalmouth).
+                const Fixed64 floor_line = seen_ball.x * sgn -
+                    (book_.line_hold.hold() - book_.line_hold.squeeze() * degree(slot, 15));
+                if (cover < floor_line) cover = floor_line;
             }
             // line-step (bit 28, G4.33) [Sacchi palla coperta / scoperta;
             // James: "when ball is moving push up and stop as opp is
@@ -1062,7 +1132,10 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                     if (anchor.x * sgn < *line) anchor.x = *line * sgn;  // and STEP UP
                 }
             }
-            if (anchor.x * sgn > cover) anchor.x = cover * sgn;
+            // A held line SETS the back line's height (up as well as down);
+            // the lapse only caps it (G4.4's rule never brought a deep
+            // anchor up).
+            if (holding_line || anchor.x * sgn > cover) anchor.x = cover * sgn;
             // Never retreat into the goal itself.
             const Fixed64 floor_x = -(half_x_ - Fixed64::fromInt(4));
             if (anchor.x * sgn < floor_x) anchor.x = floor_x * sgn;
@@ -1296,7 +1369,10 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 }
                 const bool back_to_goal = c.face.x * dsgn > Fixed64::zero();   // facing away from our goal
                 const bool pinned = math::fx_abs(c.pos.y) > half_y_ - book_.engage_or_contain.touchline();
-                engage = cover_here || back_to_goal || pinned;
+                const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
+                const Fixed64 dz = book_.engage_or_contain.danger();
+                const bool in_range = distSq(c.pos, Vec3{own_goal.x, own_goal.y, Fixed64::zero()}) < dz * dz;
+                engage = cover_here || back_to_goal || pinned || in_range;
             }
         }
         if (chases) {
@@ -1451,7 +1527,16 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             applies(slot, 1, world.tickCount() / 30)) {
             bool marked[32] = {false};
             SlotIndex my_mark = 255;
-            for (SlotIndex d = 0; d < world.playerCount(); ++d) {
+            // man-mark (18), G4.56: his DIRECT opponent from the formation
+            // matchup, followed anywhere (not just goal-side threats near
+            // the ball — the zonal hand-out below left a man-marking side
+            // marking 22% of the time). Lapse: the zonal hand-out.
+            const std::uint64_t sec = world.tickCount() / 30;
+            if (ratings_[slot][18] > 0 && applies(slot, 18, sec)) {
+                const std::uint8_t m = matchups(sec)[slot];
+                if (m != 255 && !(ball.owner && *ball.owner == m)) my_mark = m;
+            }
+            for (SlotIndex d = 0; d < world.playerCount() && my_mark == 255; ++d) {
                 if (setup_.team_of_slot[d] != setup_.team_of_slot[slot])
                     continue;
                 // A teammate who doesn't mark (rating 0 — the free man,

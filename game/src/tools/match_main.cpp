@@ -175,6 +175,13 @@ int main(int argc, char** argv) {
     // (17.5 m past halfway), the nearest defender's reason and distance.
     long esc_ticks[2] = {0, 0}, esc_why[2][ai::kWhyCount] = {}, esc_near[2] = {0, 0};
     long entries[2] = {0, 0};
+    // Line height (G4.55): every live tick a team is out of possession, its
+    // back line (deepest outfielder) and front (most advanced) in metres
+    // from its own goal, and the ball's. Real: the line ~35-45 m out, the
+    // team ~30-35 m long, the line ~20-25 m behind the ball.
+    double ln_sum[2] = {0, 0}, front_sum[2] = {0, 0}, ball_sum[2] = {0, 0};
+    long ln_ticks[2] = {0, 0}, ln_deep[2] = {0, 0};
+    long oop_why[2][ai::kWhyCount] = {}, oop_n[2] = {0, 0};   // outfielders' reasons out of possession
     for (int m = 0; m < matches; ++m) {
         server::GameServer::Config cfg = base;
         cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
@@ -188,6 +195,25 @@ int main(int argc, char** argv) {
             const auto before = s.world().ball().owner;
             s.tickOnce();
             const auto& b = s.world().ball();
+            if (b.owner && s.world().restartTeam() == 0xFF) {
+                const int dt = s.world().player(*b.owner).team ^ 1;   // defending team
+                const double hx = 52.5;
+                auto from_goal = [&](double x) { return dt == 0 ? x + hx : hx - x; };
+                double deep = 1e9, front = -1e9;
+                for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                    const auto& d = s.world().player(j);
+                    if (d.team != dt || s.world().isKeeper(j)) continue;
+                    const double g = from_goal(d.pos.x.toDouble());
+                    if (g < deep) deep = g;
+                    if (g > front) front = g;
+                    ++oop_why[dt][static_cast<int>(s.lastOrders()[j].why)];
+                    ++oop_n[dt];
+                }
+                ln_sum[dt] += deep; front_sum[dt] += front - deep;
+                ball_sum[dt] += from_goal(b.pos.x.toDouble()) - deep;
+                ++ln_ticks[dt];
+                if (deep < 20.0) ++ln_deep[dt];
+            }
             if (b.owner) {
                 const auto& c = s.world().player(*b.owner);
                 const int ct = c.team;
@@ -280,6 +306,20 @@ int main(int argc, char** argv) {
                         t.kicks / n, 100.0 * t.mate / t.kicks, 100.0 * t.intended / t.kicks,
                         100.0 * t.lost / t.kicks, 100.0 * t.dead / t.kicks, 100.0 * t.offside / t.kicks);
         }
+    }
+    for (int team = 0; team < 2; ++team)
+        if (ln_ticks[team])
+            std::printf("\n%s out of possession: back line %.1f m from own goal (inside 20 m %.0f%% of the time), team %.1f m long, ball %.1f m beyond the line\n",
+                        team == 0 ? names.team_home.c_str() : names.team_away.c_str(),
+                        ln_sum[team] / ln_ticks[team], 100.0 * ln_deep[team] / ln_ticks[team],
+                        front_sum[team] / ln_ticks[team], ball_sum[team] / ln_ticks[team]);
+    for (int team = 0; team < 2; ++team) {
+        if (!oop_n[team]) continue;
+        std::printf("%s outfielders out of possession are doing:", team == 0 ? names.team_home.c_str() : names.team_away.c_str());
+        for (int w = 0; w < ai::kWhyCount; ++w)
+            if (oop_why[team][w] * 100 >= oop_n[team])   // 1%+
+                std::printf(" %s %.0f%% ·", ai::kWhyNames[w], 100.0 * oop_why[team][w] / oop_n[team]);
+        std::printf("\n");
     }
     for (int team = 0; team < 2; ++team) {
         std::printf("\n%s final-third entries %.1f/match, carrying %.0f s/match there, tight (<1.8 m) %.0f%%; nearest defender doing:\n",

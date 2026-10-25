@@ -357,9 +357,53 @@ public:
     void configure(const core::ModelParams& p) override;
     math::Fixed64 cover() const { return cover_; }
     math::Fixed64 touchline() const { return touchline_; }
+    // Deny the shot (FA "delay, deny, dictate"): inside this distance of
+    // our goal he closes the carrier down — containing there lets him shoot.
+    math::Fixed64 danger() const { return danger_; }
 
 private:
-    math::Fixed64 cover_, touchline_;
+    math::Fixed64 cover_, touchline_, danger_;
+};
+
+// Shot selection (25, G4.21 → G4.55): shoot on what the chance is WORTH
+// against what else he could do. His read of it is an xG-like estimate
+// [FH, fitted to rough public xG anchors: ~0.45 at 6 m, ~0.2 at the spot,
+// ~0.09 at the box edge, ~0.03 at 25 m, central and clear — source to pin]:
+//   xg = scale · visible-goal angle (halved per body in it) · e^(−d/decay),
+// × pressed_factor under pressure. Pressed, he shoots at min_pressed or
+// better; free, he needs min_free (else he works it closer); and a mate
+// with a safe pass whose chance is pass_better × his passes instead.
+class ShotSelection : public Concept {
+public:
+    ShotSelection() : Concept("shot-selection", 25) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 xg(math::Fixed64 angle_rad, math::Fixed64 dist, bool pressed) const;
+    math::Fixed64 minPressed() const { return min_pressed_; }
+    math::Fixed64 minFree() const { return min_free_; }
+    math::Fixed64 passBetter() const { return pass_better_; }
+
+private:
+    math::Fixed64 scale_, decay_, pressed_, min_pressed_, min_free_, pass_better_;
+};
+
+// Hold the line (9, core, U-10; G4.4 → G4.56) [Sacchi palla coperta /
+// scoperta; KNVB: pressure on the ball → squeeze, none → drop]: the back
+// line sets at the ball − hold_m (push-up squeezes it by up to squeeze_m)
+// while the ball is covered, and drops a further uncovered_drop_m when a
+// free carrier faces forward and can play in behind. An attacker beyond
+// the line is offside, not a man to follow. Lapse: drops with the deepest
+// attacker — the pre-offside rule every back line used until G4.56,
+// which sank lines 16-22 m from their own goal (real ~35-45 m).
+class LineHold : public Concept {
+public:
+    LineHold() : Concept("line-hold", 9) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 hold() const { return hold_; }
+    math::Fixed64 squeeze() const { return squeeze_; }
+    math::Fixed64 uncoveredDrop() const { return drop_; }
+
+private:
+    math::Fixed64 hold_, squeeze_, drop_;
 };
 
 struct ConceptBook {
@@ -378,6 +422,8 @@ struct ConceptBook {
     SideOnJockey side_on_jockey;
     DropStep drop_step;
     EngageOrContain engage_or_contain;
+    ShotSelection shot_selection;
+    LineHold line_hold;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -395,6 +441,8 @@ struct ConceptBook {
         side_on_jockey.configure(p);
         drop_step.configure(p);
         engage_or_contain.configure(p);
+        shot_selection.configure(p);
+        line_hold.configure(p);
     }
 };
 
