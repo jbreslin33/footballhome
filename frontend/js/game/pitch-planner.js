@@ -63,7 +63,8 @@
   // sweep's data.ranges / ⭐ BEST still avoid all of them until the
   // exporter is rerun.
   const INFO = { main_infield: true, softball_skin: true };
-  const FENCE_RULES = { softball_fences: ['fence_3B', 'backstop_1B'], rodeo_fences: ['rodeo'] };
+  const FENCE_RULES = { softball_fences: ['fence_3B', 'backstop_1B'], rodeo_fences: ['rodeo'],
+                        proposed_lane: ['proposed_lane_fence'] };
   const SEVEN_SIZES = [[70, 35], [65, 35], [60, 35], [55, 35], [60, 30]];
   const NAMES = {
     main_infield: 'main diamond infield', softball_skin: 'softball infield dirt',
@@ -73,7 +74,7 @@
     cemetery: 'the cemetery', cemetery_edge: 'the cemetery', barn: 'the barn (event hall)',
     playground: 'the playground fence', rail_fence_0: 'village rail fence',
     rail_fence_1: 'village rail fence (east)', dirt_road_0: 'cemetery dirt road',
-    dirt_road_1: 'dirt road spur', other: 'the other pitch',
+    dirt_road_1: 'dirt road spur', other: 'the other pitch', proposed_lane_fence: 'proposed lane fence',
   };
 
   // ── geometry (field_planner_main.cpp) ────────────────────────────────
@@ -242,10 +243,10 @@
     ['panel', '📋 PANEL'], ['pitches', '📐 PITCHES'], ['boxes', '🟧 PRACTICE'], ['ruler', '📏 GAP'],
     ['handles', '✥ HANDLES'], ['problems', '⚠ PROBLEMS'], ['match', '🏟 MATCH'], ['paint', '🟨 TODAY\'S PITCH'], ['water', '💧 WATER'],
     ['contours', '〰 CONTOURS'], ['trees', '🌳 TREES'], ['buildings', '🏠 BUILDINGS'],
-    ['softball_fences', '⛓ SOFTBALL FENCE'], ['rodeo_fences', '⛓ RODEO FENCE'],
+    ['softball_fences', '⛓ SOFTBALL FENCE'], ['rodeo_fences', '⛓ RODEO FENCE'], ['proposed_lane', '🚗 PROPOSED LANE'],
     ['props', '🐴 PROPS'], ['labels', '🔤 LABELS'], ['ground', '🟩 GROUND'],
   ];
-  const FIELD_LAYERS = ['trees', 'buildings', 'softball_fences', 'rodeo_fences', 'props', 'labels', 'ground'];
+  const FIELD_LAYERS = ['trees', 'buildings', 'softball_fences', 'rodeo_fences', 'proposed_lane', 'props', 'labels', 'ground'];
 
   function attach(renderer) {
     const DATA = window.LIGHTHOUSE_PLANNER;
@@ -728,12 +729,22 @@
       requestAnimationFrame(tick);
     })();
 
+    // The sweep's rules plus rules this page builds from the layout: the
+    // proposed lane's fence (field.js lays its line out), 10 ft like every
+    // fence. Filled once the field is built.
+    let RULES = DATA.rules;
+    function buildRules() {
+      const extra = [];
+      for (const ln of (LAY.proposedLanes || []))
+        if (ln.fencePts) extra.push({ k: 'poly', n: 'proposed_lane_fence', min: 10 * FT, pts: ln.fencePts });
+      RULES = DATA.rules.concat(extra);
+    }
     function evaluate(p) {
       const th = p.rot * D2R, L = p.size[0] * YD, W = p.size[1] * YD;
       const R = rect(p.x, p.z, th, L, W), c = [p.x, p.z];
       // Problems + things within NEAR of their limit (James 10/24: "show
       // distance from fences etc in feet. as we need 10 feet").
-      const found = offences(DATA.rules, R, c, NEAR);
+      const found = offences(RULES, R, c, NEAR);
       const off = found.filter((o) => !o.ok), near = found.filter((o) => o.ok);
       if (p.kind === 'box') {
         // Practice boxes stay off both pitches (touching is fine).
@@ -1030,6 +1041,7 @@
         if (f.setOldPitch) f.setOldPitch(show.paint);
         if (f.setContours) f.setContours(show.contours ? 'lidar' : 'off');
         if (f.setLayer) for (const k of FIELD_LAYERS) f.setLayer(k, show[k]);
+        if (f.setLayer) f.setLayer('proposed_lane_fences', show.proposed_lane);   // the lane's fence goes with it
       }
       renderer.showMatch = show.match;
       for (const m of renderer.pitchParts || []) m.visible = show.match;
@@ -1042,7 +1054,7 @@
     // contours / painted pitch.
     function resetLayers() {
       const f = renderer.field;
-      if (f && f.setLayer) for (const k of FIELD_LAYERS) f.setLayer(k, true);
+      if (f && f.setLayer) for (const k of FIELD_LAYERS.concat(['proposed_lane_fences'])) f.setLayer(k, true);
       if (f && f.setWater) f.setWater(false);
       if (parkWater) parkWater.visible = false;
       for (const m of renderer.pitchParts || []) m.visible = true;
@@ -1326,6 +1338,7 @@
         dbSaves = db.saves || [];
         paintSaves();
       }
+      buildRules();
       for (const p of all()) rebuild(p);
       buildPills();
       update();

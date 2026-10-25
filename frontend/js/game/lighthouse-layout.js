@@ -230,6 +230,18 @@ window.LIGHTHOUSE_LAYOUT = {
       [97, -135.5], [119.8, -138.5]] },
     { name: 'dirt road, south-west spur', w: 5, pts: [[-110, -30], [-108.3, -37], [-104.5, -47.6]] },
   ],
+  // PROPOSED (James 10/24): a lane along the tree line, under the canopy,
+  // beside the tan dirt road — a way round when the road is blocked, or
+  // two-way traffic — for wide trucks. Rides the road's north (tree-line)
+  // side: w = 14 ft (8.5 ft truck + mirrors + clearance), gap = strip
+  // between the road's edge and the lane, root = metres kept between the
+  // lane's edge and any trunk ("it can't go through a tree root"). A
+  // fence goes with it on the road's field side and counts as an
+  // obstruction (10 ft rule). field.js draws both (🚗 PROPOSED LANE pill).
+  proposedLanes: [
+    { name: 'proposed tree-line lane', along: 'cemetery-edge dirt road', side: 'north', gap: 0.5, w: 4.27, root: 1,
+      fence: { name: 'proposed lane fence (field side)', off: 0.3, kind: 'chain', h: 1.8 } },
+  ],
   // Low three-rail wooden fence between the metal fence and the road (a
   // gap with two heavy posts at x ≈ 10–13), continuing east to x ≈ 43.
   railFences: [
