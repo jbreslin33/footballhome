@@ -240,14 +240,23 @@ Response RsvpBoardController::handleRemind(const Request& request) {
     } catch (const std::exception& e) {
         return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
     }
-    long long personId = 0;
+    long long personId = 0, focusId = 0;
     std::string channel;
+    bool only = false;
     try {
         personId = body.value("person_id", 0LL);
         channel  = body.value("channel", std::string{});
+        // Event Center's No Response card (owner 2026-10-26: "easy buttons
+        // to remind for that specific event and others. but that event
+        // should be highlite"): fh_event_id names the event the message
+        // leads with and the link opens on, highlighted; only=true keeps
+        // the reminder to that one event.
+        focusId  = body.value("fh_event_id", 0LL);
+        only     = body.value("only", false);
     } catch (const std::exception&) {
-        return jsonError(HttpStatus::BAD_REQUEST, "person_id must be a number and channel a string");
+        return jsonError(HttpStatus::BAD_REQUEST, "person_id and fh_event_id must be numbers, channel a string, only a boolean");
     }
+    if (only && focusId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "only needs fh_event_id");
     std::transform(channel.begin(), channel.end(), channel.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     if (personId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "person_id required");
@@ -290,6 +299,28 @@ Response RsvpBoardController::handleRemind(const Request& request) {
             skip(HttpStatus::CONFLICT, "Nothing to remind — nothing left to answer this week.");
             continue;
         }
+        // The focus event leads when this player still owes it.  If not,
+        // "this one" has nothing to send; "all open" goes out unfocused.
+        std::string focusLine;
+        long long focusHere = focusId;
+        auto it = std::find_if(ctx.openEvents.begin(), ctx.openEvents.end(),
+                               [&](const RsvpBoard::OpenEvent& ev) { return ev.fhEventId == focusId && ev.playerId == personId; });
+        if (focusId > 0 && it == ctx.openEvents.end()) {
+            if (only) {
+                skip(HttpStatus::CONFLICT, "Nothing to remind — that event is answered, not released yet, or over.");
+                continue;
+            }
+            focusHere = 0;
+        }
+        if (focusHere > 0) {
+            focusLine = it->line.substr(0, it->line.find('\n'));   // a practice's notes ride below; not here
+            std::stable_partition(ctx.openEvents.begin(), ctx.openEvents.end(),
+                                  [&](const RsvpBoard::OpenEvent& ev) { return ev.fhEventId == focusId; });
+            if (only)
+                ctx.openEvents.erase(std::remove_if(ctx.openEvents.begin(), ctx.openEvents.end(),
+                                     [&](const RsvpBoard::OpenEvent& ev) { return ev.fhEventId != focusId; }),
+                                     ctx.openEvents.end());
+        }
 
         std::string senderName;
         {
@@ -308,6 +339,10 @@ Response RsvpBoardController::handleRemind(const Request& request) {
             const auto teams = model_->boardTeamsOf(covered, &sectionCode);
             const std::string url = model_->rollCallLink(sectionCode, teams, scope.userId);
             if (auto at = url.find("/rc/"); at != std::string::npos) landing = url.substr(at + 1);
+            // Opens on the focus event: alone (only), or first and
+            // highlighted above the rest of the week.
+            if (!landing.empty() && focusHere > 0)
+                landing += "?e=" + std::to_string(focusHere) + (only ? "" : "&more=1");
         }
         const auto minted = MagicLinkService::mint(ctx.recipientPersonId, channel, contact, scope.userId, 0, 0, landing);
 
@@ -395,12 +430,18 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         // (tier 'travel', mig 509) — owner 2026-10-02: "travel spots carry
         // extra responsibilty".  Empty otherwise, so its [[ ]] drops.
         const std::string travel = ctx.travelGame ? copy.render("rsvp_reminder", "travel", {}).body : std::string{};
+        // {focus}: the line naming the event this reminder leads with (mig
+        // 739) — tier focus_only for that event alone, focus_more when the
+        // rest of the week follows.  Empty without one, so its [[ ]] drops.
+        const std::string focus = focusLine.empty() ? std::string{}
+            : copy.render("rsvp_reminder", only || ctx.openEvents.size() == 1 ? "focus_only" : "focus_more",
+                          {{"event", focusLine}, {"more", std::to_string(ctx.openEvents.size() - 1)}}).body;
         const auto msg = copy.render("rsvp_reminder", multi ? "multi" : ctx.youth ? "parent" : "adult", {
             {"first", ctx.recipientFirstName}, {"child", ctx.playerFirstName},
             {"children", children}, {"per_child", perChildLines},
             {"events", events}, {"missing", missing}, {"deadline", deadline},
             {"link", minted.url}, {"sender", senderName},
-            {"fine_note", fineNote}, {"travel", travel}});
+            {"fine_note", fineNote}, {"travel", travel}, {"focus", focus}});
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363/542)");
 
@@ -661,21 +702,27 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
     }
 }
 
-// GET /reminders?match_id= — who has already been reminded about a game,
-// per channel.  Game Center's No Response cards dim a sent button with it.
+// GET /reminders?match_id= | ?fh_event_id= — who has already been reminded
+// about a game or practice, per channel.  Game Center's and Event Center's
+// No Response cards dim a sent button with it.
 Response RsvpBoardController::handleReminders(const Request& request) {
     Scope scope;
     Response error(HttpStatus::OK, "");
     if (!resolveScope(request, &scope, &error)) return error;
 
-    long long matchId = 0;
+    long long matchId = 0, fhEventId = 0;
     try { matchId = std::stoll(request.getQueryParam("match_id")); } catch (const std::exception&) {}
-    if (matchId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id required");
+    // Event Center names the calendar event itself (practices have no match).
+    try { fhEventId = std::stoll(request.getQueryParam("fh_event_id")); } catch (const std::exception&) {}
+    if (matchId <= 0 && fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id or fh_event_id required");
     try {
-        auto ev = Database::getInstance()->query(
-            "SELECT id FROM fh_events WHERE match_id = $1::int ORDER BY id LIMIT 1", {std::to_string(matchId)});
         json reminders = json::object();
-        if (!ev.empty()) reminders = model_->remindersForEvent(ev[0]["id"].as<long long>());
+        if (fhEventId > 0) reminders = model_->remindersForEvent(fhEventId);
+        else {
+            auto ev = Database::getInstance()->query(
+                "SELECT id FROM fh_events WHERE match_id = $1::int ORDER BY id LIMIT 1", {std::to_string(matchId)});
+            if (!ev.empty()) reminders = model_->remindersForEvent(ev[0]["id"].as<long long>());
+        }
         return jsonOut(HttpStatus::OK, {{"reminders", reminders}});
     } catch (const std::exception& e) {
         std::cerr << "RsvpBoardController::handleReminders: " << e.what() << std::endl;

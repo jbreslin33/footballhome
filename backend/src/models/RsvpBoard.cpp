@@ -814,7 +814,7 @@ std::vector<long long> RsvpBoard::boardTeamsOf(const std::vector<long long>& per
     return out;
 }
 
-json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen, long long fhEventId) {
+json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen, long long fhEventId, bool more) {
     auto* db = Database::getInstance();
     auto link = db->query(R"SQL(
         SELECT l.id, l.section_code, l.team_ids::text AS team_ids,
@@ -852,13 +852,18 @@ json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen, long long 
           JOIN teams t ON t.id = fet.team_id
          WHERE fet.team_id = ANY($1::bigint[])
            AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
-           AND CASE WHEN $2::bigint > 0
+           AND CASE WHEN $2::bigint > 0 AND NOT $3::boolean
                     -- One event's card (?e=): any kind, until it ends.
                     THEN fe.id = $2::bigint AND ge.ends_at > now()
+                    -- ?e=&more=1: that one, then every open released event
+                    -- of the teams, any kind (a reminder covers the week).
+                    WHEN $3::boolean
+                    THEN ge.ends_at > now() AND (fe.id = $2::bigint
+                         OR ge.starts_at < fh_event_window_end(t.club_id, t.club_section_id, ge.starts_at, fe.kind))
                     ELSE fe.kind IN ('match', 'intrasquad') AND ge.ends_at > now()
                      AND ge.starts_at < fh_event_window_end(t.club_id, t.club_section_id, ge.starts_at, fe.kind) END
-         GROUP BY fe.id ORDER BY min(t.board_sort_order), min(ge.starts_at))SQL",
-        {pgIntArray(teamIds), std::to_string(fhEventId > 0 ? fhEventId : 0)});
+         GROUP BY fe.id ORDER BY bool_or(fe.id = $2::bigint) DESC, min(t.board_sort_order), min(ge.starts_at))SQL",
+        {pgIntArray(teamIds), std::to_string(fhEventId > 0 ? fhEventId : 0), more && fhEventId > 0 ? "true" : "false"});
     // Every team on the link, so the teams layout can show one with no game.
     auto teamRows = db->query(
         "SELECT BTRIM(regexp_replace(COALESCE(t.label, t.name), '^[^[:alnum:]]+', '')) AS label "
@@ -869,6 +874,7 @@ json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen, long long 
                 {"team_list", teamList}, {"layout", L["layout"].c_str()},
                 {"names_for_none", namesForNone}, {"name_style", nameStyle}, {"games", json::array()}};
     if (fhEventId > 0) out["fh_event_id"] = fhEventId;
+    if (fhEventId > 0 && more) out["focus_id"] = fhEventId;
     for (const auto& g : games) {
         const long long eventId = g["id"].as<long long>();
         const auto rc = rollCall(section, eventId, teamIds, nameStyle);

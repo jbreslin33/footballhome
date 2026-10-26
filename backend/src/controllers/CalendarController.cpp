@@ -2056,6 +2056,7 @@ Response CalendarController::handleGetRollCallMe(const Request& request) {
     if (slug.empty() || slug.size() > 64) return jsonError(HttpStatus::BAD_REQUEST, "k required");
     long long eventId = 0;
     try { eventId = std::max(0LL, std::stoll(request.getQueryParam("e"))); } catch (...) {}
+    const bool more = eventId > 0 && request.getQueryParam("more") == "1";   // as the public card
     try {
         auto* db = Database::getInstance();
         auto rows = db->query(R"SQL(
@@ -2073,9 +2074,12 @@ Response CalendarController::handleGetRollCallMe(const Request& request) {
                 JOIN teams t ON t.id = fet.team_id
                WHERE fet.team_id = ANY(l.team_ids)
                  AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
-                 AND CASE WHEN $3::bigint > 0
+                 AND CASE WHEN $3::bigint > 0 AND NOT $4::boolean
                           -- One event's card (?e=): any kind, as the public card.
                           THEN fe.id = $3::bigint AND ge.ends_at > now()
+                          WHEN $4::boolean
+                          THEN ge.ends_at > now() AND (fe.id = $3::bigint
+                               OR ge.starts_at < fh_event_window_end(t.club_id, t.club_section_id, ge.starts_at, fe.kind))
                           ELSE fe.kind IN ('match', 'intrasquad') AND ge.ends_at > now()
                            AND ge.starts_at < fh_event_window_end(t.club_id, t.club_section_id, ge.starts_at, fe.kind) END
                GROUP BY fe.id
@@ -2091,7 +2095,7 @@ Response CalendarController::handleGetRollCallMe(const Request& request) {
                  -- the roll call an answer like any rostered one.
                  OR fh_event_invited(g.fh_event_id, f.id)
               LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = g.fh_event_id AND rv.person_id = f.id
-             ORDER BY g.starts_at, f.self DESC, f.fn)SQL", {slug, std::to_string(personId), std::to_string(eventId)});
+             ORDER BY g.starts_at, f.self DESC, f.fn)SQL", {slug, std::to_string(personId), std::to_string(eventId), more ? "true" : "false"});
         json games = json::object();
         std::string myFn;
         for (const auto& r : rows) {

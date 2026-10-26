@@ -124,6 +124,9 @@ class EventCenterScreen extends Screen {
     this.plan = undefined;
     this.cones = undefined;    // undefined = not loaded; null = no plan
     this.sideColors = null;   // Set of colour codes in play on this event
+    this.reminders = null;    // person_id → {sms, email, total} — who was reminded this week (mig 739)
+    this.remindNote = {};     // person_id → last send error, shown on their row
+    this.groupNote = '';      // the 📣 bar's result line (html)
     this.error = null;
     this.saving.clear();
     this.copied.clear();
@@ -132,8 +135,8 @@ class EventCenterScreen extends Screen {
       if (this.ev && (this.ev.kind === 'practice' || this.ev.kind === 'pickup'))
         this.carpoolPanel.load().then(() => this._render());
     };
-    if (this.ev) { this._loadAttendance(); loadCarpool(); }
-    else if (this.loadingId) this._loadEvent(this.loadingId).then(() => { if (this.ev) { this._loadAttendance(); loadCarpool(); } });
+    if (this.ev) { this._loadAttendance(); loadCarpool(); this._loadReminders(); }
+    else if (this.loadingId) this._loadEvent(this.loadingId).then(() => { if (this.ev) { this._loadAttendance(); loadCarpool(); this._loadReminders(); } });
     else this._loadEvents();
   }
 
@@ -258,6 +261,124 @@ class EventCenterScreen extends Screen {
     }
     this.loadingId = null;
     this._render();
+  }
+
+  // Who was already reminded this week, per channel (GET /api/rsvp-board/
+  // reminders, admins only — anyone else just gets no sent notes).
+  async _loadReminders() {
+    if (!this.ev) return;
+    try {
+      const data = await this._json(`/api/rsvp-board/reminders?fh_event_id=${this.ev.fh_event_id}`);
+      this.reminders = data.reminders || {};
+    } catch (_err) {
+      this.reminders = null;
+    }
+    this._render();
+  }
+
+  // ── No Response reminders (mig 739) ─────────────────────────────────
+  // Owner 2026-10-26: "whenever a player shows as no response we need easy
+  // buttons to remind for that specific event and others. but that event
+  // should be highlite".  The row's two pairs are the personal reminder
+  // #rsvps and Game Center send — "This one" for this event alone, "All
+  // open" for the player's whole week with this event named first; either
+  // way the link opens the roll call on this event, highlighted.  One
+  // message per parent (openSends), wording from message_templates.
+  async _remind(btn) {
+    const personId = Number(btn.dataset.personId);
+    const channel = btn.dataset.ecRemind === 'email' ? 'email' : 'sms';
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    delete this.remindNote[personId];
+    try {
+      const data = await this._json('/api/rsvp-board/remind', {
+        method: 'POST',
+        body: JSON.stringify({ person_id: personId, channel, fh_event_id: this.ev.fh_event_id, only: btn.dataset.only === '1' }),
+      });
+      this.openSends(data, channel);
+      await this._loadReminders();
+    } catch (err) {
+      this.remindNote[personId] = err.message;
+      btn.textContent = original;
+      btn.disabled = false;
+      this._render();
+    }
+  }
+
+  // 📣 One group message to every player still unanswered on this event —
+  // the group reminder Game Center's bar sends, named for this event.
+  // Carriers cap a group text around 10, so a bigger group is split into
+  // parts (parents of one kid never share a part, mig 682).
+  async _remindAll(btn) {
+    const channel = btn.dataset.ecRemindAll === 'email' ? 'email' : 'sms';
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+    try {
+      const data = await this._json('/api/rsvp-board/remind-event', {
+        method: 'POST',
+        body: JSON.stringify({ fh_event_id: this.ev.fh_event_id, scope: 'event', channel, role: 'player' }),
+      });
+      const contacts = data.contacts || [];
+      const skipped = data.no_contact
+        ? ` · ${data.no_contact} skipped (no ${channel === 'sms' ? 'mobile' : 'email'} on file)` : '';
+      if (channel === 'email') {
+        this.openGmailCompose(this.buildGmailComposeHref({ bcc: contacts.join(','), subject: data.subject, body: data.body }));
+        this.groupNote = this.escapeHtml(`✉ Email drafted to ${contacts.length} (BCC)${skipped}`);
+      } else {
+        const CHUNK_SIZE = 10;
+        const chunks = Screen.chunkContacts(contacts, data.kids, CHUNK_SIZE);
+        const hrefs = chunks.map(c => this.buildSmsComposeHref({ to: c.join(','), body: data.body }));
+        if (chunks.length === 1) {
+          (window.DesktopSms ? DesktopSms.open(hrefs[0]) : (window.location.href = hrefs[0]));
+          this.groupNote = this.escapeHtml(`💬 Group text drafted to ${contacts.length}${skipped}`);
+        } else {
+          this.groupNote = `Carriers cap a group text around ${CHUNK_SIZE} people — open each part: ` +
+            hrefs.map((h, i) => `<a href="${this.escapeHtml(h)}" class="ec-send" style="background:#38bdf8; text-decoration:none;">💬 Part ${i + 1}/${chunks.length} (${chunks[i].length})</a>`).join(' ')
+            + this.escapeHtml(skipped);
+        }
+      }
+      await this._loadReminders();
+    } catch (err) {
+      this.groupNote = `<span style="color:#f87171;">${this.escapeHtml(err.message)}</span>`;
+      btn.textContent = original;
+      btn.disabled = false;
+      this._render();
+    }
+  }
+
+  // "reminded Mon 6:40 PM ×2" — the newest send on either channel this week.
+  _remindedNote(personId) {
+    const r = this.reminders && this.reminders[String(personId)];
+    if (!r) return '';
+    const sends = [r.sms, r.email].filter(Boolean);
+    if (!sends.length) return '';
+    const latest = sends.reduce((a, b) => (String(a.sent_at) > String(b.sent_at) ? a : b));
+    const count = sends.reduce((n, x) => n + (x.count || 0), 0);
+    const d = new Date(latest.sent_at);
+    const time = isNaN(d) ? '' : `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+    const fill = (window.MessageCopy && MessageCopy.block('event_center', 'reminded', { time, count: count > 1 ? String(count) : '' }));
+    return fill || `reminded ${time}${count > 1 ? ` ×${count}` : ''}`;
+  }
+
+  // The row's buttons: This one 💬 ✉ · All open 💬 ✉, then the sent note.
+  _remindRowHtml(r) {
+    const name = r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '';
+    const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
+    const sentAny = !!this._remindedNote(r.person_id);
+    const btn = (channel, only) => `<button type="button" class="ec-send" data-ec-remind="${channel}" data-only="${only ? 1 : 0}"
+        data-person-id="${r.person_id}" title="${this.escapeHtml(cp(only ? 'remind_this_title' : 'remind_all_title', { name }) || '')}"
+        style="background:${only ? '#fbbf24' : '#38bdf8'};${sentAny ? ' opacity:0.55;' : ''}">${channel === 'sms' ? '💬' : '✉'}</button>`;
+    const label = (tier, fb) => `<span style="font-size:0.7rem; font-weight:800; opacity:0.75;">${this.escapeHtml(cp(tier) || fb)}</span>`;
+    const err = this.remindNote[r.person_id];
+    const note = err ? `<span style="color:#f87171;">${this.escapeHtml(err)}</span>` : this.escapeHtml(this._remindedNote(r.person_id));
+    return `<div style="flex-basis:100%; display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:2px 0 4px;">
+      ${label('remind_this', 'This one')} ${btn('sms', true)} ${btn('email', true)}
+      <span style="width:6px;"></span>
+      ${label('remind_all', 'All open')} ${btn('sms', false)} ${btn('email', false)}
+      <span style="font-size:0.72rem; opacity:0.8;">${note}</span>
+    </div>`;
   }
 
   async _loadAttendance() {
@@ -549,6 +670,8 @@ class EventCenterScreen extends Screen {
         return;
       }
       if ((el = t('[data-ec-practice-plan]'))) { this.navigation.goTo('practice-plan', {}); return; }
+      if ((el = t('[data-ec-remind]')))     { this._remind(el); return; }
+      if ((el = t('[data-ec-remind-all]'))) { this._remindAll(el); return; }
       if ((el = t('[data-ec-side]'))) { this._setSide(Number(el.dataset.personId), el.dataset.ecSide); return; }
       if ((el = t('[data-ec-side-color]'))) {
         const code = el.dataset.ecSideColor;
@@ -794,16 +917,29 @@ class EventCenterScreen extends Screen {
                style="margin-left:6px; padding:0 6px; border-radius:999px; background:rgba(245,158,11,0.18);
                       border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.62rem; font-weight:800;">🎟 INVITED</span>`
       : (r.is_coach ? `<span style="margin-left:6px; font-size:0.68rem; opacity:0.6;">coach</span>` : '');
-    const group = (label, list) => {
+    // remind: No Response rows carry the reminder buttons for whoever may
+    // mark the event (the send itself is club admins only, server-side),
+    // and only while it can still be answered.
+    const canRemind = !!(this.att && this.att.canMark) && !this._isPast(this.ev);
+    const group = (label, list, remind = false) => {
       if (!list.length) return '';
+      const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
+      const bar = remind && canRemind ? `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:6px 0 4px;">
+          <span style="font-size:0.78rem; font-weight:700;">${this.escapeHtml(cp('remind_group', { n: list.length }) || `📣 Remind all ${list.length} who haven't answered`)}</span>
+          <button type="button" class="ec-send" data-ec-remind-all="sms" style="background:#38bdf8;">💬</button>
+          <button type="button" class="ec-send" data-ec-remind-all="email" style="background:#38bdf8;">✉</button>
+          ${this.groupNote ? `<span style="font-size:0.72rem; flex-basis:100%;">${this.groupNote}</span>` : ''}
+        </div>` : '';
       return `<div class="ec-box">
         <div style="display:flex; justify-content:space-between; align-items:baseline;">
           <span class="ec-h">${label} (${list.length})</span>
           ${this.att ? `<span style="font-size:0.78rem; color:#22c55e; font-weight:700;">${present(list)} present</span>` : ''}
         </div>
-        ${list.map(r => `<div class="ec-row">
+        ${bar}
+        ${list.map(r => `<div class="ec-row" style="flex-wrap:wrap;">
             <span>${this.escapeHtml(nameOf(r))}${chipHtml(r)}</span>
             ${this._attendanceCell(r.person_id)}
+            ${remind && canRemind ? this._remindRowHtml(r) : ''}
           </div>`).join('')}
       </div>`;
     };
@@ -838,7 +974,7 @@ class EventCenterScreen extends Screen {
       ${group('Invited · Available', going.filter(r => r.is_callup))}
       ${group('⛔ Said going · Ineligible (dues)', goingAll.filter(r => r.dues_eligible === false))}
       ${group('Not going', players.filter(r => r.response === 'no'))}
-      ${group('No response', players.filter(r => r.response !== 'yes' && r.response !== 'no'))}
+      ${group('No response', players.filter(r => r.response !== 'yes' && r.response !== 'no'), true)}
       ${coachBox()}`;
   }
 

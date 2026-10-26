@@ -3634,7 +3634,7 @@ class GameCenterScreen extends Screen {
     const pid = Number(this._contactSheet.personId);
     const body = { person_id: pid, channel, ...(ids.length ? { recipient_person_ids: ids } : {}) };
     if (what === 'remind') {
-      const data = await this._postReminder('/api/rsvp-board/remind', body);
+      const data = await this._postReminder('/api/rsvp-board/remind', { ...body, fh_event_id: this._fhEventId() || 0 });
       await this._loadReminders();
       return data.sends || [data];
     }
@@ -3757,7 +3757,7 @@ class GameCenterScreen extends Screen {
         href = this.buildSmsComposeHref({ to: c.gap.phone, body: c.gap.body || '' });
         purpose = `reg_link:${this._fhEventId()}`;
       } else if (what === 'remind') {
-        const data = await this._postReminder('/api/rsvp-board/remind', { person_id: personId, channel: 'sms', ...only });
+        const data = await this._postReminder('/api/rsvp-board/remind', { person_id: personId, channel: 'sms', fh_event_id: this._fhEventId() || 0, ...only });
         href = data.sms_href; tokenId = data.token_id || 0; purpose = `remind:${this.matchId}`;
         await this._loadReminders();
       } else if (what === 'dues') {
@@ -4504,7 +4504,9 @@ class GameCenterScreen extends Screen {
     btn.disabled = true;
     btn.textContent = '⏳';
     try {
-      const data = await this._postReminder('/api/rsvp-board/remind', { person_id: Number(btn.dataset.personId), channel });
+      // fh_event_id: the message leads with this game and its link opens on
+      // it, highlighted, above the rest of the week (mig 739).
+      const data = await this._postReminder('/api/rsvp-board/remind', { person_id: Number(btn.dataset.personId), channel, fh_event_id: this._fhEventId() || 0 });
       this.openSends(data, channel);
       btn.textContent = original;
       await this._loadReminders();

@@ -403,7 +403,8 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
             // A base64url JWT is URL-safe as-is; no encoding needed.
             target = publicBaseUrl() + "/oauth-success?token=" + fh::crypto::signJwtHS256(payload.str()) + hashTarget;
             if (!landing.empty() && landing.find("..") == std::string::npos && landing.rfind("rc/", 0) == 0)
-                target = publicBaseUrl() + "/" + landing + "?token=" + fh::crypto::signJwtHS256(payload.str());
+                target = publicBaseUrl() + "/" + landing + (landing.find('?') == std::string::npos ? "?token=" : "&token=")
+                       + fh::crypto::signJwtHS256(payload.str());
         }
         (void)hasEvent;
         (void)chatEventId;

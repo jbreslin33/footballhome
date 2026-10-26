@@ -134,7 +134,10 @@ public:
     std::string rollCallLink(const std::string& sectionCode, std::vector<long long> teamIds, long long byUserId);
     // fhEventId > 0 (/rc/<slug>?e=<id>, the link a roll call send carries):
     // just that event, any kind — a practice's roll call shows the practice.
-    nlohmann::json rollCallCard(const std::string& slug, bool countOpen, long long fhEventId = 0);
+    // more (…?e=<id>&more=1, a reminder's "this one first" link): that event
+    // first and highlighted (focus_id), then every other open, released
+    // event of the link's teams, practices included.
+    nlohmann::json rollCallCard(const std::string& slug, bool countOpen, long long fhEventId = 0, bool more = false);
     // Board teams of these people (for the link a household's reminder carries).
     std::vector<long long> boardTeamsOf(const std::vector<long long>& personIds, std::string* sectionCode);
 
