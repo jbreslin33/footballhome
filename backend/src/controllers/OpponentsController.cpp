@@ -153,8 +153,13 @@ bool loadMatch(long long matchId, MatchInfo* mi) {
 json leagueJson(const MatchInfo& mi) {
     if (mi.league.empty()) return nullptr;
     auto* db = Database::getInstance();
+    // The game's tag ("Tri County") may not be the competition's label
+    // ("TCWSL"): gcal_league_aliases maps either spelling to the league.
+    static const std::string kSameLeague =
+        "(k.league_label ILIKE $1 OR k.league_id IN (SELECT l.id FROM leagues l JOIN gcal_league_aliases a "
+        "  ON a.organization_id = l.organization_id WHERE a.alias ILIKE $1))";
     auto body = db->query("SELECT DISTINCT c.id, c.name FROM club_competitions k JOIN clubs c ON c.id = k.club_id "
-                          " WHERE k.status = 'league' AND k.league_label ILIKE $1 ORDER BY c.id LIMIT 1", {mi.league});
+                          " WHERE k.status = 'league' AND " + kSameLeague + " ORDER BY c.id LIMIT 1", {mi.league});
     if (body.empty()) return nullptr;
     std::string age, sex = "Boys";
     { std::smatch m; static const std::regex re("U(\\d{1,2})"); if (std::regex_search(mi.teamLabel, m, re)) age = m[1].str();
@@ -162,9 +167,9 @@ json leagueJson(const MatchInfo& mi) {
     json out = {{"id", body[0]["id"].as<long long>()}, {"name", str(body[0], "name")}, {"label", mi.league}, {"age", age}, {"contacts", json::array()}};
     const std::string divRe = age.empty() ? std::string("") : "(U|Under )" + age + "\\M.*" + sex;
     for (const auto& r : db->query(std::string(kContactsSql) +
-            " AND c.club_id = $1::int AND (c.competition_id IS NULL OR EXISTS (SELECT 1 FROM club_competitions k WHERE k.id = c.competition_id AND k.status = 'league' "
-            "      AND k.league_label ILIKE $2 AND ($3 = '' OR k.division_label ~* $3)))"
-            " ORDER BY c.competition_id NULLS LAST, c.id", {std::to_string(body[0]["id"].as<long long>()), mi.league, divRe}))
+            " AND c.club_id = $2::int AND (c.competition_id IS NULL OR EXISTS (SELECT 1 FROM club_competitions k WHERE k.id = c.competition_id AND k.status = 'league' "
+            "      AND " + kSameLeague + " AND ($3 = '' OR k.division_label ~* $3)))"
+            " ORDER BY c.competition_id NULLS LAST, c.id", {mi.league, std::to_string(body[0]["id"].as<long long>()), divRe}))
         out["contacts"].push_back(contactJson(r));
     return out;
 }

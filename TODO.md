@@ -43,9 +43,9 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 - [x] 2026-10-24 FH Texter fallback (mig 673): Game Center ✉ CONTACT's club text and my-phone options merged into one "📲 Text" that picks its own route. Opted in → club number (Twilio). Not opted in → your phone via FH Texter, with the same personal game link / RSVP reminder / registration form. Phone offline, cap reached, STOP, or Blank → the copy & paste panel. The route is named under the option. Cards show 📱 sent → delivered → opened like club texts. One click per player, never a batch (owner's pick).
 
 - [ ] 2026-10-24 League contacts in Game Center: the 📇 panel only knows opponent clubs (club_contacts). Add league-level contacts so a Women's game can reach the league in one tap:
-  - Tri County (TCWSL, leagues.id 7): pull the league admin contact from https://www.tcwsl.com/.
+  - [x] 2026-10-26 Tri County: league office loaded like APSL/PPR (clubs 66 + club_competitions 156 status='league', DB only) — mailbox + 6 board members from tcwsl.com/V2/contact.shtml. leagueJson now resolves the game's tag through gcal_league_aliases, so 'Tri County'-tagged games find the TCWSL office.
+  - [ ] Gordon Dunlop: still needs his email from James (the 10/24 chat didn't survive) — then one club_contacts row on PPR (62) and one on TCWSL (66); the existing model is one row per league, so no new table needed.
   - Gordon Dunlop, ref assignor for Tri County AND PPR: email given by James 10/24 in chat; load it into the DB only, never git.
-  - Needs a home that isn't a club (one person can serve two leagues), shown on the game's league in the 📇 panel. Loaded by psql or the page, never in a migration file (contacts-in-DB rule).
 
 - [ ] 2026-10-24 Test with real sends (nothing sent yet): a two-parent family (Lina + Raynel get separate texts with their own links) and a tap-through on a new short sign-in link (footballhome.org/api/m/...). Only with James's go-ahead — the two-parent test messages real parents.
 - [ ] 2026-10-24 FH Texter 1.2: refuse/flag texts when the app lacks SMS permission instead of taking them and failing (1.1 does that after a reinstall until "Allow restricted settings" + SMS are re-granted). Needs another sideload (Samsung Auto Blocker off).
