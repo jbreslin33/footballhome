@@ -229,6 +229,8 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
         for (const auto& ph : cfg_.phases) phf.names.push_back(ph.title);
         transport_.send(id, encodeFrame(FrameType::Phases, encodePresets(phf)));
     }
+    // G4.61 (1.10): the sim speed, so a late joiner's clock runs at it.
+    transport_.send(id, encodeFrame(FrameType::Speed, encodeSpeed(SpeedFrame{speed_pct_})));
     {  // G4.41 (1.7): the brain overlay's decision names, index = why code.
         PresetsFrame lf;
         for (int i = 0; i < ai::kWhyCount; ++i) lf.names.push_back(ai::kWhyNames[i]);
@@ -424,6 +426,14 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             broadcastTeams();
             broadcastRoster();
             std::printf("fh-game: rosters reloaded from the club DB\n");
+            return;
+        }
+        case FrameType::Speed: {
+            // Admin-only (G4.61): one match, one clock — everyone watching
+            // runs at the speed the coach picks.
+            if (!admins_.count(id)) return;
+            const auto sp = decodeSpeed(frame.payload);
+            if (sp) setSpeedPct(sp->pct);
             return;
         }
         case FrameType::RunPhase: {
@@ -644,6 +654,22 @@ void GameServer::tickOnce() {
     for (const auto& [id, _] : clients_) transport_.send(id, frame);
     // The brain overlay at ~5 Hz, only to clients that switched it on.
     if (!brain_watchers_.empty() && world_.tickCount() % 6 == 0) sendBrain();
+}
+
+void GameServer::setSpeedPct(std::uint16_t pct) {
+    // 0 = paused; else 5 % (slow motion, ~1.5 ticks a second) .. 400 %.
+    if (pct > 0 && pct < 5) pct = 5;
+    if (pct > 400) pct = 400;
+    if (pct == speed_pct_) return;
+    speed_pct_ = pct;
+    const Bytes frame = encodeFrame(FrameType::Speed, encodeSpeed(SpeedFrame{speed_pct_}));
+    for (const auto& [id, _] : clients_) transport_.send(id, frame);
+}
+
+void GameServer::heartbeat() {
+    if (clients_.empty()) return;
+    const Bytes frame = buildSnapshotFrame();
+    for (const auto& [id, _] : clients_) transport_.send(id, frame);
 }
 
 void GameServer::sendBrain() {

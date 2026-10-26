@@ -32,7 +32,7 @@ enum class FrameType : std::uint8_t {
     Snapshot     = 0x20,
     Event        = 0x21,  // versioned match events; Goal is event 1 (G1)
     Claim        = 0x30,
-    // 0x31 SPEED reserved — ships with manager/admin clients.
+    Speed        = 0x31,  // c→s admin: set sim speed; s→c the current speed, on connect + change (1.10)
     MatchSettings = 0x32,  // admin: set team skill levels live (1.3)
     PlayerSettings = 0x33, // admin: set one slot's graded knowledge (1.4)
     Roster         = 0x34, // s→c: per-slot names + concept ratings (1.4)

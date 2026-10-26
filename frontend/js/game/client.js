@@ -502,7 +502,62 @@
     net.runPhase(Number(b.dataset.team), Number(phaseBar.querySelector('select').value));
   });
 
+  // ── Sim speed (G4.61, admin) — James: "slow mo … or speed up but with
+  // same physics … slow mo would allow me to really see the tactics and
+  // movements and help coach it". The server ticks slower or faster; each
+  // tick is the same tick. ⏸ pauses (the camera still moves: a freeze
+  // frame). Everyone watching sees the speed the coach picks. ──
+  const SPEEDS = [5, 10, 25, 50, 75, 100, 150, 200, 400];
+  let simSpeed = 100, resumeSpeed = 100;
+  const speedBar = document.createElement('div');
+  speedBar.className = 'game-only';
+  speedBar.hidden = true;
+  speedBar.setAttribute('role', 'group');
+  speedBar.setAttribute('aria-label', 'Game speed');
+  speedBar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);' +
+    'top:calc(env(safe-area-inset-top, 0px) + 92px);display:flex;gap:6px;align-items:center;z-index:20;' +
+    'background:rgba(10,14,20,.55);padding:3px 8px 3px 4px;border-radius:14px;font:700 11px system-ui,sans-serif;color:#fff;';
+  const spPill = 'border:0;border-radius:10px;padding:3px 9px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;';
+  speedBar.innerHTML =
+    `<button type="button" data-speed="pause" title="Pause / play" style="${spPill}background:#ffcc00;color:#0b1c3d;">⏸</button>` +
+    `<input type="range" min="0" max="${SPEEDS.length - 1}" step="1" value="${SPEEDS.indexOf(100)}" ` +
+    `aria-label="Speed" style="width:130px;min-height:0;accent-color:#ffcc00;">` +
+    `<span data-speed-label style="min-width:44px;text-align:right;">1×</span>` +
+    `<button type="button" data-speed="live" title="Back to live speed" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">1×</button>`;
+  document.body.appendChild(speedBar);
+  const speedRange = speedBar.querySelector('input');
+  const speedLabel = speedBar.querySelector('[data-speed-label]');
+  const fmtSpeed = (p) => (p === 0 ? 'paused' : (p / 100) + '×');
+  function paintSpeedBar() {
+    speedBar.hidden = !isAdmin;
+    speedLabel.textContent = fmtSpeed(simSpeed);
+    speedBar.querySelector('[data-speed="pause"]').textContent = simSpeed === 0 ? '▶' : '⏸';
+    if (simSpeed > 0) {
+      let k = 0;   // nearest stop
+      SPEEDS.forEach((s, i) => { if (Math.abs(s - simSpeed) < Math.abs(SPEEDS[k] - simSpeed)) k = i; });
+      speedRange.value = String(k);
+    }
+  }
+  speedRange.addEventListener('input', () => {
+    const p = SPEEDS[Number(speedRange.value)];
+    speedLabel.textContent = fmtSpeed(p);
+    net.setSpeed(p);
+  });
+  speedBar.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-speed]');
+    if (!b) return;
+    if (b.dataset.speed === 'live') net.setSpeed(100);
+    else if (simSpeed === 0) net.setSpeed(resumeSpeed || 100);
+    else { resumeSpeed = simSpeed; net.setSpeed(0); }
+  });
+
   const net = new GameNet({
+    onSpeed(pct) {
+      simSpeed = pct;
+      if (pct > 0) resumeSpeed = pct;
+      renderer.setSpeed(pct);
+      paintSpeedBar();
+    },
     onHello(h) {
       hello = h;
       if (!renderer.built) {        // reconnects reuse the scene
@@ -512,6 +567,7 @@
       // Admin capability (bit 3) shows the level pickers.
       isAdmin = !!(h.capabilities & 8);
       paintPhaseBar();
+      paintSpeedBar();
       if ((h.capabilities & 8) && editBtn) {
         editBtn.style.display = 'block';
         const flipEdit = () => {

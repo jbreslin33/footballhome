@@ -9,6 +9,11 @@
 // bursty, and arrival-based brackets caused visible jerk). We estimate
 // the offset between local clock and tick timeline as the minimum
 // observed (arrival - tick*dt), adapting slowly upward for clock drift.
+// Sim speed (G4.61): at s× the server ticks s times as often, so a tick
+// lasts 1000/(30·s) ms here, the timeline re-anchors on each change, the
+// delay stays ~133 ms of wall clock (4·s ticks, never under 1.5), and the
+// figures animate at s× — slow motion, the same football. Paused, the
+// picture holds and only the camera moves.
 
 (function () {
   'use strict';
@@ -100,6 +105,8 @@
       this.ballMesh = null;
       this.buffer = []; // [{tick, snap}] on the server tick timeline
       this.tickRate = 30;
+      this.speed = 1;            // G4.61: sim speed (1 = live, 0 = paused)
+      this.heldTick = null;
       this.timeOffset = null; // local ms ↔ tick-time ms estimate
       this.lastSnapshotAt = 0;
       this.lastFrameAt = 0;
@@ -245,10 +252,22 @@
       this.scene.add(this.ballMesh);
     }
 
+    // G4.61: the server's sim speed, % of real time (0 = paused).
+    setSpeed(pct) {
+      const s = pct / 100;
+      if (s === this.speed) return;
+      this.speed = s;
+      this.timeOffset = null;   // re-anchor the tick timeline at the new rate
+    }
+
     pushSnapshot(snap) {
       const now = performance.now();
       this.lastSnapshotAt = now;
-      const dt = 1000 / this.tickRate;
+      // Paused heartbeats repeat the frozen tick: keep the watchdog fed,
+      // the timeline untouched.
+      const last = this.buffer.length ? this.buffer[this.buffer.length - 1].tick : -1;
+      if (snap.tick === last) return;
+      const dt = 1000 / (this.tickRate * (this.speed || 1));
       const offset = now - snap.tick * dt;
       if (this.timeOffset === null || offset < this.timeOffset) {
         this.timeOffset = offset;       // fastest observed path wins
@@ -300,12 +319,18 @@
       if (this.camera.far !== far) { this.camera.far = far; this.camera.updateProjectionMatrix(); }
       const now = performance.now();
       const dt = this.lastFrameAt ? Math.min((now - this.lastFrameAt) / 1000, 0.1) : 0.016;
+      const simDt = dt * this.speed;   // figures move in sim time
       this.lastFrameAt = now;
       const n = this.buffer.length;
       let ballPos = null, me = null;
       if (n >= 1 && this.timeOffset !== null) {
-        const tdt = 1000 / this.tickRate;
-        const renderTick = (now - this.timeOffset) / tdt - INTERP_DELAY_TICKS;
+        const tdt = 1000 / (this.tickRate * (this.speed || 1));
+        const delay = Math.max(1.5, INTERP_DELAY_TICKS * this.speed);
+        let renderTick = (now - this.timeOffset) / tdt - delay;
+        // Paused: hold the last rendered tick (it would otherwise run on).
+        if (this.speed === 0 && this.heldTick !== null) renderTick = this.heldTick;
+        else if (this.speed === 0) this.heldTick = renderTick;
+        else this.heldTick = null;
         let a = this.buffer[0], b = this.buffer[n - 1];
         for (let i = n - 1; i > 0; i--) {
           if (this.buffer[i - 1].tick <= renderTick) {
@@ -345,7 +370,7 @@
           const vy = pa.vy + (pb.vy - pa.vy) * alpha;
           const f = this.figures[i];
           f.root.position.set(x, 0, y);
-          f.update(dt, { vx, vy, fx: pb.fx, fy: pb.fy, flags: pb.flags, ball: ballPos,
+          f.update(simDt, { vx, vy, fx: pb.fx, fy: pb.fy, flags: pb.flags, ball: ballPos,
                          hasBall: owner === i, me: { x, y } });
           if (owner === i) {
             this.carrierSlot = i;

@@ -479,4 +479,18 @@ std::optional<BrainWatchFrame> decodeBrainWatch(const Bytes& payload) {
     return f;
 }
 
+Bytes encodeSpeed(const SpeedFrame& f) {
+    Writer w;
+    w.u16(f.pct);
+    return std::move(w.out);
+}
+
+std::optional<SpeedFrame> decodeSpeed(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    SpeedFrame f;
+    f.pct = r.u16();
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
 }  // namespace fh::game::net

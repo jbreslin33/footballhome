@@ -483,6 +483,35 @@ FH_TEST(a_phase_of_play_sets_up_the_picture) {
     FH_EXPECT_EQ(s.world().restartTeam(), 0);
 }
 
+FH_TEST(admin_sets_the_sim_speed_everyone_hears_it) {
+    // G4.61: SPEED 0x31 — admin only, 0 pauses, clamped 5..400, told to
+    // every client (and to a late joiner on connect).
+    Rig r;
+    r.t.scriptConnect(100, "club");
+    r.t.scriptConnect(200);
+    FH_EXPECT_EQ(r.s.speedPct(), 100);
+    FH_EXPECT_EQ(framesOf(r.t.sent[200], FrameType::Speed).size(), 1u);   // on connect
+    r.t.scriptMessage(200, encodeFrame(FrameType::Speed, encodeSpeed(SpeedFrame{10})));
+    FH_EXPECT_EQ(r.s.speedPct(), 100);                                      // players can't
+    r.t.scriptMessage(100, encodeFrame(FrameType::Speed, encodeSpeed(SpeedFrame{10})));
+    FH_EXPECT_EQ(r.s.speedPct(), 10);
+    const auto told = framesOf(r.t.sent[200], FrameType::Speed);
+    FH_EXPECT_EQ(told.size(), 2u);
+    FH_EXPECT_EQ(decodeSpeed(told.back())->pct, 10);
+    r.t.scriptMessage(100, encodeFrame(FrameType::Speed, encodeSpeed(SpeedFrame{1})));
+    FH_EXPECT_EQ(r.s.speedPct(), 5);
+    r.t.scriptMessage(100, encodeFrame(FrameType::Speed, encodeSpeed(SpeedFrame{9000})));
+    FH_EXPECT_EQ(r.s.speedPct(), 400);
+    r.t.scriptMessage(100, encodeFrame(FrameType::Speed, encodeSpeed(SpeedFrame{0})));
+    FH_EXPECT_EQ(r.s.speedPct(), 0);
+    // Paused: a heartbeat sends the frozen picture without a tick.
+    const auto tick = r.s.world().tickCount();
+    const auto snaps = framesOf(r.t.sent[200], FrameType::Snapshot).size();
+    r.s.heartbeat();
+    FH_EXPECT_EQ(r.s.world().tickCount(), tick);
+    FH_EXPECT_EQ(framesOf(r.t.sent[200], FrameType::Snapshot).size(), snaps + 1);
+}
+
 FH_TEST(every_dead_ball_phase_gets_taken) {
     // G4.59: each dead-ball phase puts a taker on the ball, so the held
     // shapes release — before, a kick-off or corner froze all 22.

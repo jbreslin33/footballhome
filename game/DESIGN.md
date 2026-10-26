@@ -1877,7 +1877,7 @@ designing the game … coaching methodology is the most important."
 1. Phases as rows (done) → throw-ins, free kicks (direct / indirect,
    walls), penalties, goal kicks short / long — each a `game_phases` row
    plus its restart kind.
-2. **Freeze frame**: pause, step a tick, rewind (replay from the seed),
+2. **Freeze frame**: pause + slow motion (done, §8.57), step a tick, rewind (replay from the seed),
    annotate — the coach's "stop, look at the picture".
 3. **Play-practice-play** in the harness (built, §8.55): `fh-game-match` runs N of a
    phase and reports how it went (time to cross halfway, turnovers,
@@ -1985,6 +1985,26 @@ ball raises the goals because the final third was already broken — 44
 shots and 160 entries a match against real ~12 and ~45 (§8.22/§8.25): the
 attack that keeps it now reaches it more. That is the next biggest problem
 (the final third: "the first action is a shot or a loss, never a pass").
+
+### 8.57 G4.61 — slow motion, fast forward, pause: the coach's clock
+
+James: "can we have setting to do slow mo game lol or speed up but with
+same physics? like a slider or dial. slow mo would allow me to really see
+the tactics and movements and help coach it with you."
+
+The sim already lived in ticks (§4: pacing lives in the daemon, never in
+the World), so speed is only the wall-clock gap between ticks. Wire 1.10
+SPEED 0x31 (`u16 pct`, admin): 5-400 %, 0 = pause; the server tells every
+client on connect and on each change. `GameServer::speedPct/setSpeedPct/
+heartbeat`; the daemon paces `tick_period·100/pct` and waits on the
+socket, not a sleep, so a tap at 5 % (667 ms a tick) lands at once; paused,
+it sends the frozen snapshot every 200 ms. Client: a bar under the phase
+bar (admins) — ⏸/▶, slider 5 / 10 / 25 / 50 / 75 / 100 / 150 / 200 / 400 %,
+1×. The renderer's tick timeline runs at the new rate and re-anchors on a
+change; the delay stays ~133 ms of wall clock (4·s ticks, ≥ 1.5); figures
+animate in sim time (legs slow with the play); paused, the picture holds
+and the camera still orbits — the freeze frame of roadmap #2 (step and
+rewind still to come). Test `admin_sets_the_sim_speed_everyone_hears_it`.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

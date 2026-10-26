@@ -91,6 +91,15 @@ public:
     // of the team's nearest outfielder (open play). Coaching's phase of play.
     void runPhase(std::uint8_t team, std::size_t id);
 
+    // G4.61: sim speed, % of real time (0 = paused). The daemon's loop
+    // paces ticks by it; the physics per tick never changes. Admins set
+    // it live (SPEED 0x31); everyone watching is told.
+    std::uint16_t speedPct() const noexcept { return speed_pct_; }
+    void setSpeedPct(std::uint16_t pct);
+    // Paused: a snapshot of the frozen world without a tick, so clients'
+    // stale-socket watchdogs stay quiet.
+    void heartbeat();
+
     const core::World& world() const noexcept { return world_; }
     // Each slot's decision on the last tick (the brain overlay's read;
     // fh-game-match tallies pass outcomes by it).
@@ -117,6 +126,7 @@ private:
     std::unordered_map<std::uint8_t, ClientId> slot_owner_;
     // Current level ids (mutable via admin MATCH_SETTINGS).
     std::uint8_t level_id_[2] = {0, 0};
+    std::uint16_t speed_pct_ = 100;
     // Per-slot names + live concept RATINGS (served via ROSTER frames):
     // what each player PLAYS = min(his team model's demand, his ability).
     std::vector<std::string> slot_names_;

@@ -48,7 +48,7 @@ Frame types (u8):
 | 0x20 | SNAPSHOT | s→c | §6 |
 | 0x21 | EVENT | s→c | §7 |
 | 0x30 | CLAIM / RELEASE slot | c→s | take or drop control of a slot |
-| 0x31 | SPEED | c→s | manager/spectator: request sim speed (server-gated) |
+| 0x31 | SPEED | both | (1.10, G4.61) `u16 pct` — sim speed in percent of real time: 100 live, 5-400 slow motion to fast forward, 0 paused (1-4 clamp to 5, above 400 to 400). c→s admin only (one match, one clock); s→c on connect and to every client on each change. Only the wall-clock gap between ticks changes — the same ticks, the same physics. Paused, the server sends the frozen SNAPSHOT every 200 ms (same tick) so watchdogs stay quiet; clients render the tick timeline at 1000/(30·pct/100) ms per tick |
 | 0x33 | PLAYER_SETTINGS | c→s | admin: one slot's GRADED knowledge (1.4 superseded the 1.3 bitmask): `u8 slot \| u8 count \| u8 rating…` (0-100 per concept, by curriculum id — CONCEPTS frame 0x3A; extra trailing ratings ignored) |
 | 0x34 | ROSTER | s→c | per-slot knowledge + names (1.4 graded form), on connect and after changes: `u8 count`, then per slot `u8 rating_count \| u8 rating… \| u8 name_len \| name bytes` |
 | 0x32 | MATCH_SETTINGS | c→s | admin: set both teams' skill bands live (1.3): `u8 level_home \| u8 level_away` (band ids 0-6 = perfect/u10/u14/amateur/semipro/pro/world); non-admin senders are ignored |

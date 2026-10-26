@@ -48,6 +48,8 @@
             GameWire.CONCEPTS.splice(0, GameWire.CONCEPTS.length, ...names);
           } else if (f.type === GameWire.FrameType.BRAIN) {
             if (this.handlers.onBrain) this.handlers.onBrain(GameWire.decodeBrain(view, f.payloadAt));
+          } else if (f.type === GameWire.FrameType.SPEED) {
+            if (this.handlers.onSpeed) this.handlers.onSpeed(GameWire.decodeSpeed(view, f.payloadAt));
           } else if (f.type === GameWire.FrameType.PHASES) {
             if (this.handlers.onPhases) this.handlers.onPhases(GameWire.decodePresets(view, f.payloadAt));
           } else if (f.type === GameWire.FrameType.BRAIN_LEGEND) {
@@ -95,6 +97,9 @@
     }
     applyPreset(team, presetId) {
       this.send(GameWire.encodeApplyPreset(team, presetId));
+    }
+    setSpeed(pct) {
+      this.send(GameWire.encodeSpeed(pct));
     }
     runPhase(team, phaseId) {
       this.send(GameWire.encodeRunPhase(team, phaseId));

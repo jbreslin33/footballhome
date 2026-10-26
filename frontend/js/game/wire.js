@@ -19,6 +19,7 @@
     SNAPSHOT: 0x20,
     EVENT: 0x21,
     CLAIM: 0x30,
+    SPEED: 0x31,          // G4.61 (1.10): admin sets sim speed %; s→c the current speed
     MATCH_SETTINGS: 0x32,
     PLAYER_SETTINGS: 0x33,
     ROSTER: 0x34,
@@ -230,6 +231,17 @@
     return envelope(FrameType.APPLY_PRESET, p);
   }
 
+  // 1.10 (G4.61): sim speed in % of real time — 100 live, 5 slow motion,
+  // 400 fast forward, 0 paused. Same ticks either way.
+  function encodeSpeed(pct) {
+    const p = new ArrayBuffer(2);
+    new DataView(p).setUint16(0, pct, true);
+    return envelope(FrameType.SPEED, p);
+  }
+  function decodeSpeed(view, at) {
+    return view.getUint16(at, true);
+  }
+
   // 1.9 admin (G4.58): set up a phase of play for one team.
   function encodeRunPhase(team, phaseId) {
     const p = new ArrayBuffer(2);
@@ -307,6 +319,8 @@
     ATTRIBUTES,
     encodeApplyPreset,
     encodeRunPhase,
+    encodeSpeed,
+    decodeSpeed,
     decodeRoster,
     decodePresets,
     decodeBrain,

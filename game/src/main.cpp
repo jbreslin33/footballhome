@@ -5,7 +5,9 @@
 //   GAME_BIND_ADDRESS (default 0.0.0.0)   GAME_PORT (default 9200)
 //   GAME_MATCH_ID (default 1)             GAME_SLOT_COUNT (default 22)
 //   GAME_SPEED (default 1; 0 = headless max-speed — calibration/FM mode,
-//               DESIGN.md §4: pacing lives HERE, never inside the sim)
+//               DESIGN.md §4: pacing lives HERE, never inside the sim).
+//               An admin retunes it live (SPEED 0x31, G4.61): slow motion
+//               to 5 %, fast forward to 400 %, pause — the same ticks.
 //   JWT_SECRET (required — the club backend's shared HMAC secret)
 //
 // Wall-clock pacing deliberately uses std::chrono here, outside the sim
@@ -87,6 +89,7 @@ int main() {
     net::ws::WebSocketTransport transport{tcfg, &verifier};
 
     server::GameServer server{cfg, transport};
+    if (speed > 0) server.setSpeedPct(static_cast<std::uint16_t>(speed * 100));
 
     if (!transport.start()) {
         std::fprintf(stderr, "fh-game: failed to bind %s:%u\n",
@@ -107,13 +110,31 @@ int main() {
     for (;;) {
         // Drain the socket right up to the tick boundary, then advance.
         transport.poll(/*timeout_ms=*/0);
+        // Paused (G4.61): no ticks; a frozen snapshot every 200 ms keeps
+        // the clients' watchdogs quiet; the socket is drained meanwhile.
+        if (speed > 0 && server.speedPct() == 0) {
+            transport.poll(/*timeout_ms=*/200);
+            server.heartbeat();
+            next = clock::now();
+            continue;
+        }
         server.tickOnce();
 
         if (speed > 0) {
-            next += tick_period / speed;
+            // The live speed: the gap between ticks stretches (slow motion)
+            // or shrinks (fast forward); each tick is the same tick.
+            next += tick_period * 100 / server.speedPct();
             const auto now = clock::now();
             if (next > now) {
-                std::this_thread::sleep_until(next);
+                // Wait on the socket, not a sleep: at 5 % a tick is 667 ms
+                // away, and the coach's next tap must land now. A speed
+                // change re-times the next tick.
+                const std::uint16_t was = server.speedPct();
+                for (auto t = clock::now(); t < next; t = clock::now()) {
+                    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(next - t).count();
+                    transport.poll(static_cast<int>(ms > 0 ? ms : 1));
+                    if (server.speedPct() != was) { next = clock::now(); break; }
+                }
             } else {
                 next = now;  // fell behind — don't try to "catch up" with a burst
             }

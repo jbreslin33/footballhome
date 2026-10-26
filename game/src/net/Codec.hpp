@@ -216,4 +216,13 @@ struct BrainWatchFrame {
 Bytes encodeBrainWatch(const BrainWatchFrame& f);
 std::optional<BrainWatchFrame> decodeBrainWatch(const Bytes& payload);
 
+// 1.10 SPEED (G4.61): sim speed in percent of real time — 100 = live,
+// 5 = slow motion, 400 = fast forward, 0 = paused. The same ticks either
+// way: only the wall-clock gap between them changes.
+struct SpeedFrame {
+    std::uint16_t pct = 100;
+};
+Bytes encodeSpeed(const SpeedFrame& f);
+std::optional<SpeedFrame> decodeSpeed(const Bytes& payload);
+
 }  // namespace fh::game::net
