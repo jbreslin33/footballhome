@@ -44,7 +44,7 @@ enum class Why : std::uint8_t {
     Outlet, Support, Human, WaitForRunner, LapseDeep, LapseStepOut,
     LapseShort, LapseLong, HabitShort, HabitLong, HabitDeep, HabitStepOut,
     MeetPass, KeepRunning, KeeperDive, SideOn, DropStep, Unmark, PlayBack, Shield,
-    JumpPass, ShadowHelp,
+    JumpPass, ShadowHelp, PackMiddle, PressFullBack, LockDoor,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -56,7 +56,7 @@ inline constexpr const char* kWhyNames[] = {
     "likes it short", "likes it long", "likes to sit deep", "likes to step out",
     "meet the pass", "keep running", "keeper dive", "jockey side-on", "turn and run with him",
     "lose your marker", "play it back", "shield and turn",
-    "jump the pass", "shadow and help",
+    "jump the pass", "shadow and help", "pack the middle", "press the full-back", "lock the door",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -168,6 +168,11 @@ public:
     };
     const FlightRead& flightRead(const core::World& world) const;
 
+    // A slot's traditional position number (2 RB … 9 striker; 0 = unknown).
+    int numberOf(core::SlotIndex slot) const {
+        return spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]].number;
+    }
+
 private:
     // The decision itself; ordersFor() adds where his body faces (G4.53).
     Orders decide(core::SlotIndex slot, const core::World& world) const;
@@ -179,6 +184,10 @@ private:
     // spot that keeps your man in pressing distance, shadows another man's
     // lane (163) and has more men in pressing distance to help (164).
     bool jumpThePass(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
+    // G4.64 Lighthouse's plan (165-167): pack the middle, then on their pass
+    // to a full-back press him and lock the door on the return pass.
+    bool packAndTrap(core::SlotIndex slot, const core::World& world, int sign,
+                     const math::Vec2& ball, const math::Vec2& anchor, Orders& out) const;
     math::Vec2 oneSpot(core::SlotIndex slot, const core::World& world, core::SlotIndex man,
                        const math::Vec2& spot, const math::Vec2& passer, core::SlotIndex carrier,
                        bool shadow, bool help) const;

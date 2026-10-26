@@ -727,6 +727,190 @@ bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& ou
     return true;
 }
 
+// G4.64 Lighthouse's plan (165-167) [FH; James 10/26]: "we essentially
+// pack the middle then wait for the inevitable pass to full then we press."
+// While they build in their half the false 9 screens their midfield and the
+// wingers tuck in (ai::PackTheMiddle); their pass to a full-back is the
+// trigger — the winger whose man he is steps straight at him on the line to
+// their midfield (ai::PressTheFullBack), the far winger tucks further, and
+// the 9 locks the door on the return pass to the centre-back
+// (ai::LockTheDoor). A failed roll is the ordinary brain.
+bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2& B,
+                        const Vec2& anchor, Orders& out) const {
+    const auto& P = book_.pack_middle;
+    const int num = numberOf(slot);
+    const bool nine = num != 0 && num == P.falseNine();
+    const bool wing = P.isWinger(num);
+    if (!nine && !wing) return false;
+    const std::uint8_t my_team = setup_.team_of_slot[slot];
+    const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    if (B.x * dsgn < P.fromHalfway()) return false;   // their build-up only
+    const auto& ball = world.ball();
+    const auto& me = world.player(slot);
+    // We just lost it and he's near it: the counter-press comes first.
+    if (world.lastLosingTeam() == my_team && ratings_[slot][16] > 0 && world.restartTeam() == 0xFF &&
+        world.tickCount() - world.turnoverTick() < 10 + static_cast<std::uint64_t>(ratings_[slot][16]) &&
+        distSq(me.pos, Vec3{B.x, B.y, Fixed64::zero()}) < Fixed64::fromInt(400))
+        return false;
+    const std::uint64_t sec = world.tickCount() / 30;
+    // Who has it — or who their pass will reach first.
+    int R = -1;
+    if (ball.owner) {
+        if (setup_.team_of_slot[*ball.owner] == my_team) return false;
+        R = *ball.owner;
+    } else if (world.restartTeam() == 0xFF && world.lastTouchTeam() != my_team) {
+        const FlightRead& fr = flightRead(world);
+        const int t = fr.first[my_team ^ 1], u = fr.first[my_team];
+        if (fr.live && t >= 0 && (u < 0 || fr.tick[t] <= fr.tick[u])) R = t;
+    }
+    // Their centre-backs: the men our 9's number is paired with.
+    std::vector<SlotIndex> cbs;
+    for (SlotIndex o = 0; o < world.playerCount(); ++o) {
+        if (setup_.team_of_slot[o] == my_team || world.isKeeper(o)) continue;
+        const int on = numberOf(o);
+        for (const auto& pr : direct_pairs_)
+            if (pr.first == P.falseNine() && pr.second == on) { cbs.push_back(o); break; }
+    }
+    const auto& direct = directOpponents(world, sec);
+    auto isCb = [&](SlotIndex o) { return std::find(cbs.begin(), cbs.end(), o) != cbs.end(); };
+    auto wide = [&](int o) { return o >= 0 && math::fx_abs(world.player(static_cast<SlotIndex>(o)).pos.y) > P.centralWidth(); };
+    // The trigger: R is a full-back — a wide man who isn't a centre-back,
+    // or a winger's direct opponent. The ball-side winger (the nearer) goes.
+    int w = -1;
+    if (R >= 0 && !world.isKeeper(static_cast<SlotIndex>(R)) && !isCb(static_cast<SlotIndex>(R))) {
+        bool full_back = wide(R);
+        Fixed64 bd{};
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup_.team_of_slot[j] != my_team || !P.isWinger(numberOf(j))) continue;
+            full_back = full_back || direct[j] == R;
+            const Fixed64 d = distSq(world.player(j).pos, world.player(static_cast<SlotIndex>(R)).pos);
+            if (w < 0 || d < bd) { w = j; bd = d; }
+        }
+        if (!full_back) w = -1;
+    }
+    // Their midfield: the men our 6/8/10 mark (their direct opponents).
+    // centralNear = the one of them nearest a point, ahead of the ball from
+    // their view and not `skip`; -1 = none.
+    std::vector<SlotIndex> mids;
+    for (SlotIndex j = 0; j < world.playerCount(); ++j)
+        if (setup_.team_of_slot[j] == my_team && P.isMidfield(numberOf(j)) && direct[j] != 255 &&
+            std::find(mids.begin(), mids.end(), direct[j]) == mids.end())
+            mids.push_back(direct[j]);
+    auto centralNear = [&](const Vec2& at, int skip) {
+        int M = -1;
+        Fixed64 md{};
+        for (SlotIndex o : mids) {
+            if (o == R || o == skip) continue;
+            const auto& op = world.player(o);
+            if (math::fx_abs(op.pos.y) > P.centralWidth() || op.pos.x * dsgn >= B.x * dsgn) continue;
+            const Fixed64 d = distSq(op.pos, Vec3{at.x, at.y, Fixed64::zero()});
+            if (M < 0 || d < md) { M = o; md = d; }
+        }
+        return M;
+    };
+    // Screen a central man: screen_gap_m off him on the line from the ball.
+    auto screen = [&](int M, Fixed64 width, Why why) {
+        const auto& mp = world.player(static_cast<SlotIndex>(M)).pos;
+        const Vec2 to_ball = math::normalized(Vec2{B.x - mp.x, B.y - mp.y});
+        Vec2 t{mp.x + to_ball.x * P.screenGap(), mp.y + to_ball.y * P.screenGap()};
+        if (t.y > width) t.y = width;
+        if (t.y < -width) t.y = -width;
+        out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+        out.why = why;
+        out.target = t;
+        out.other = static_cast<std::int16_t>(M);
+        return true;
+    };
+    // A winger tucks in: he screens the central man nearest his tucked spot.
+    auto tuck = [&](Fixed64 width) {
+        Fixed64 y = anchor.y;
+        if (y > width) y = width;
+        if (y < -width) y = -width;
+        const Vec2 t0{anchor.x, y};
+        // Not the man the 9 screens (nearest the ball), nor the one the other
+        // winger, on the other side, is nearer.
+        const int nine_man = centralNear(B, -1);
+        int M = centralNear(t0, nine_man);
+        for (SlotIndex j = 0; j < world.playerCount() && M >= 0; ++j) {
+            if (j == slot || setup_.team_of_slot[j] != my_team || !P.isWinger(numberOf(j))) continue;
+            const auto& mp = world.player(static_cast<SlotIndex>(M)).pos;
+            if (distSq(world.player(j).pos, mp) < distSq(me.pos, mp)) {
+                const int alt = centralNear(t0, M);
+                if (alt >= 0 && alt != nine_man) M = alt;
+            }
+        }
+        if (M >= 0) return screen(M, width, Why::PackMiddle);
+        out.move.move = seek(me.pos, t0, Fixed64::fromFraction(1, 2));
+        out.why = Why::PackMiddle;
+        out.target = t0;
+        return true;
+    };
+    if (w >= 0) {
+        const auto& fb = world.player(static_cast<SlotIndex>(R));
+        const Vec2 F{fb.pos.x, fb.pos.y};
+        if (slot == w) {
+            const auto& T = book_.press_full_back;
+            if (ratings_[slot][T.bit()] == 0 || !applies(slot, T.bit(), sec)) return false;
+            if (ball.owner && distSq(me.pos, fb.pos) < T.handover() * T.handover()) return false;
+            // Straight at him, on the line to their nearest central man.
+            int M = -1;
+            Fixed64 md{};
+            for (SlotIndex o = 0; o < world.playerCount(); ++o) {
+                if (setup_.team_of_slot[o] == my_team || world.isKeeper(o) || o == R || isCb(o)) continue;
+                const auto& op = world.player(o);
+                if (math::fx_abs(op.pos.y) > P.centralWidth()) continue;
+                if (op.pos.x * dsgn > fb.pos.x * dsgn + T.shadowAhead()) continue;
+                const Fixed64 d = distSq(op.pos, fb.pos);
+                if (M < 0 || d < md) { M = o; md = d; }
+            }
+            Vec2 dir{-dsgn, Fixed64::zero()};   // no midfielder: goal-side of him
+            if (M >= 0) {
+                const auto& mp = world.player(static_cast<SlotIndex>(M)).pos;
+                dir = math::normalized(Vec2{mp.x - F.x, mp.y - F.y});
+            }
+            const Vec2 t{F.x + dir.x * T.stepGap(), F.y + dir.y * T.stepGap()};
+            out.move.move = seek(me.pos, t, Fixed64::fromFraction(3, 10));
+            out.why = Why::PressFullBack;
+            out.target = t;
+            out.other = static_cast<std::int16_t>(R);
+            return true;
+        }
+        if (wing) {   // the far winger: an extra midfielder
+            if (!applies(slot, P.bit(), sec)) return false;
+            return tuck(P.weakTuckWidth());
+        }
+        // The 9 locks the door.
+        const auto& L = book_.lock_door;
+        if (cbs.empty() || ratings_[slot][L.bit()] == 0 || !applies(slot, L.bit(), sec)) return false;
+        SlotIndex near = cbs[0];
+        for (SlotIndex c : cbs)
+            if (distSq(world.player(c).pos, fb.pos) < distSq(world.player(near).pos, fb.pos)) near = c;
+        const auto& cb = world.player(near).pos;
+        const Vec2 to_fb = math::normalized(Vec2{F.x - cb.x, F.y - cb.y});
+        Vec2 t{cb.x + to_fb.x * L.lockGap(), cb.y + to_fb.y * L.lockGap()};
+        for (SlotIndex c : cbs) {
+            if (c == near) continue;
+            const auto& far = world.player(c).pos;
+            const Vec2 to_far = math::normalized(Vec2{far.x - cb.x, far.y - cb.y});
+            t = Vec2{t.x + to_far.x * L.shade(), t.y + to_far.y * L.shade()};
+            break;
+        }
+        out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+        out.why = Why::LockDoor;
+        out.target = t;
+        out.other = static_cast<std::int16_t>(near);
+        return true;
+    }
+    // No trigger yet: pack the middle.
+    if (ratings_[slot][P.bit()] == 0 || !applies(slot, P.bit(), sec)) return false;
+    if (ball.owner && distSq(me.pos, ball.pos) < P.handover() * P.handover()) return false;
+    if (wing) return tuck(P.tuckWidth());
+    // The false 9 screens their nearest central man from the ball.
+    const int M = centralNear(B, -1);
+    if (M < 0) return false;
+    return screen(M, P.centralWidth(), Why::PackMiddle);
+}
+
 // The one spot (163/164, G4.63): from his marking spot, the candidate
 // that keeps his own man in pressing distance (the must) and scores most —
 // another man's lane from the carrier cut (163, a lane no teammate already
@@ -1564,6 +1748,9 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     // while they set it up — goal-side, then the one spot (163/164) — not
     // stand in shape for it. Bielsa's men are on theirs when the keeper
     // looks up; in shape, the goal kick found every Ukie 10-27 m free.
+    if (!ours && !mine.keeper &&
+        packAndTrap(slot, world, sign, Vec2{seen_ball.x, seen_ball.y}, anchor, out))
+        return out;
     if (!ours && opponents_restart && !mine.keeper && ratings_[slot][18] > 0 &&
         applies(slot, 18, world.tickCount() / 30)) {
         const std::uint64_t sec = world.tickCount() / 30;

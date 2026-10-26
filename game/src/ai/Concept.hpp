@@ -543,6 +543,76 @@ private:
     math::Fixed64 gap_, max_;
 };
 
+// Lighthouse's out-of-possession plan (G4.64, mig 730). James 10/26: "we
+// essentially pack the middle then wait for the inevitable pass to full
+// then we press." Three style lessons keyed to formation numbers (params,
+// not code): the false 9 and both wingers.
+//
+// Pack the middle (165) [FH; the narrow front three: Klopp]: while they
+// build in their half, the false 9 drops in front of their midfield —
+// screen_gap_m off the man of theirs nearest the ball that our 6/8/10 mark,
+// on the line from the ball — and both wingers tuck in to screen the others
+// (no wider than tuck_width_m): with the 6/8/10 man-marking that is 6 v 3, and their full-backs are left
+// open on purpose. On the trigger the far winger tucks on to
+// weak_tuck_width_m (an extra midfielder). Lapse: Bielsa's shape.
+class PackTheMiddle : public Concept {
+public:
+    PackTheMiddle() : Concept("pack-the-middle", 165) {}
+    void configure(const core::ModelParams& p) override;
+    int falseNine() const { return nine_; }
+    bool isWinger(int number) const { return number != 0 && (number == right_ || number == left_); }
+    // Our midfield (the man markers the pack helps): their men are the ones
+    // to screen.
+    bool isMidfield(int number) const { return number != 0 && (number == mid_[0] || number == mid_[1] || number == mid_[2]); }
+    math::Fixed64 tuckWidth() const { return tuck_; }
+    math::Fixed64 weakTuckWidth() const { return weak_tuck_; }
+    math::Fixed64 centralWidth() const { return central_; }
+    math::Fixed64 screenGap() const { return screen_; }
+    math::Fixed64 fromHalfway() const { return from_halfway_; }
+    math::Fixed64 handover() const { return handover_; }
+
+private:
+    int nine_ = 9, right_ = 7, left_ = 11, mid_[3] = {6, 8, 10};
+    math::Fixed64 tuck_, weak_tuck_, central_, screen_, from_halfway_, handover_;
+};
+
+// Press the full-back (166) [FH; the pass wide as the trigger: Rangnick,
+// Klopp]: their pass goes to a full-back — the winger whose direct
+// opponent he is steps STRAIGHT at him (James: "doesn't curve run") and
+// stands step_gap_m off him on the line to their nearest central man
+// (the 6/8/10, level with or ahead of the full-back by shadow_ahead_m), so
+// the ball back inside goes through his body. Inside handover_m of a
+// carrying full-back the normal press takes over. Lapse: the ordinary brain
+// (he marks or holds shape).
+class PressTheFullBack : public Concept {
+public:
+    PressTheFullBack() : Concept("press-the-full-back", 166) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 stepGap() const { return gap_; }
+    math::Fixed64 shadowAhead() const { return ahead_; }
+    math::Fixed64 handover() const { return handover_; }
+
+private:
+    math::Fixed64 gap_, ahead_, handover_;
+};
+
+// Lock the door (167) [FH — Lighthouse's own]: on the same trigger the
+// false 9 goes up to the centre-back nearest the ball, lock_gap_m off him
+// on the line to the full-back — no return pass — and shades shade_m
+// toward the far centre-back to put off the long switch. Their centre-
+// backs are the men the 9's number is paired with (game_direct_opponents).
+// Lapse: stays dropped.
+class LockTheDoor : public Concept {
+public:
+    LockTheDoor() : Concept("lock-the-door", 167) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 lockGap() const { return gap_; }
+    math::Fixed64 shade() const { return shade_; }
+
+private:
+    math::Fixed64 gap_, shade_;
+};
+
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
@@ -568,6 +638,9 @@ struct ConceptBook {
     JumpThePass jump_pass;
     ShadowSecondMan shadow_second;
     PressingDistance press_distance;
+    PackTheMiddle pack_middle;
+    PressTheFullBack press_full_back;
+    LockTheDoor lock_door;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -594,6 +667,9 @@ struct ConceptBook {
         jump_pass.configure(p);
         shadow_second.configure(p);
         press_distance.configure(p);
+        pack_middle.configure(p);
+        press_full_back.configure(p);
+        lock_door.configure(p);
     }
 };
 

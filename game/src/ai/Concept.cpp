@@ -272,6 +272,32 @@ void ShadowSecondMan::configure(const core::ModelParams& p) {
     weight_ = p.fixed(key("lane_weight"), 2000);
 }
 
+void PackTheMiddle::configure(const core::ModelParams& p) {
+    nine_ = p.integer(key("false_nine_number"), 9);
+    right_ = p.integer(key("right_wing_number"), 7);
+    left_ = p.integer(key("left_wing_number"), 11);
+    mid_[0] = p.integer(key("midfield_number_a"), 6);
+    mid_[1] = p.integer(key("midfield_number_b"), 8);
+    mid_[2] = p.integer(key("midfield_number_c"), 10);
+    tuck_ = p.fixed(key("tuck_width_m"), 14000);
+    weak_tuck_ = p.fixed(key("weak_tuck_width_m"), 7000);
+    central_ = p.fixed(key("central_width_m"), 18000);
+    screen_ = p.fixed(key("screen_gap_m"), 3000);
+    from_halfway_ = p.fixed(key("from_halfway_m"), 0);
+    handover_ = p.fixed(key("handover_m"), 4000);
+}
+
+void PressTheFullBack::configure(const core::ModelParams& p) {
+    gap_ = p.fixed(key("step_gap_m"), 1500);
+    ahead_ = p.fixed(key("shadow_ahead_m"), 2000);
+    handover_ = p.fixed(key("handover_m"), 3000);
+}
+
+void LockTheDoor::configure(const core::ModelParams& p) {
+    gap_ = p.fixed(key("lock_gap_m"), 3000);
+    shade_ = p.fixed(key("shade_m"), 2000);
+}
+
 void JumpThePass::configure(const core::ModelParams& p) {
     gap_ = p.fixed(key("arrive_gap_m"), 1000);
     max_ = p.fixed(key("jump_max_m"), 30000);

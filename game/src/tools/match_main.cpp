@@ -37,6 +37,7 @@
 #include "server/MatchSetup.hpp"
 
 #include <algorithm>
+#include <map>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -155,6 +156,7 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
     }
     const long cap = std::atol(envOr("GAME_PHASE_SECONDS", "30")) * core::kTickRate;
     const int trace = std::atoi(envOr("GAME_PHASE_TRACE", "0"));
+    const char* watch = envOr("GAME_PHASE_WATCH", "");
     const std::uint64_t seed0 = std::strtoull(envOr("GAME_MATCH_SEED", "1000"), nullptr, 10);
     const std::string& us = team == 0 ? names.team_home : names.team_away;
     const std::string& them = team == 0 ? names.team_away : names.team_home;
@@ -164,6 +166,11 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                                        "dead ball to them (out / offside)", "still ours at the cap"};
     long ends[EndCount] = {}, played = 0, halfway = 0, third = 0, shot = 0;
     long passes = 0;
+    // Where their build-up goes (G4.64), by the receiver's position number:
+    // full-back 2/3, centre-back 4/5, the middle 6/8/10, else. A full-back's
+    // pass back to a centre-back is the return pass the 9 locks out.
+    std::map<std::pair<int, int>, long> by_number;   // (passer, receiver) numbers
+    long to_fb = 0, to_cb = 0, to_mid = 0, to_else = 0, fb_to_cb = 0, fb_rx = 0, lost_after_fb = 0;
     // How each loss happened: taken off the carrier's foot, or the last
     // kick we made (by its reason) going to them.
     long lost_carry = 0, lost_kick[ai::kWhyCount + 1] = {}, losses = 0;
@@ -198,6 +205,7 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
         double deepest = 0.0, where = 0.0;
         bool got_half = false, got_third = false;
         long k = 0;
+        long fb_tick = -1000;
         int last_toucher = s.world().ball().last_kicker;
         int tracked = -1;
         for (; k < cap; ++k) {
@@ -250,6 +258,25 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
             last_toucher = b.last_kicker;
             // GAME_PHASE_TRACE=n: episode n, twice a second — who has it,
             // what he's doing, where, and how close the nearest opponent is.
+            // GAME_PHASE_WATCH=9,7,11: the defending side's men with those
+            // numbers on the traced episode — what each is doing, and where.
+            if (trace == m + 1 && k % (core::kTickRate / 2) == 0 && watch[0]) {
+                for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                    const auto& d = s.world().player(j);
+                    if (d.team == team) continue;
+                    const int num = s.brain().numberOf(j);
+                    bool want = false;
+                    for (const char* q = watch; *q;) {
+                        want = want || std::atoi(q) == num;
+                        while (*q && *q != ',') ++q;
+                        if (*q == ',') ++q;
+                    }
+                    if (want)
+                        std::printf("  t=%4.1f   watch #%d slot %d %-22s at %5.1f m, %+5.1f across\n", sec, num, j,
+                                    ai::kWhyNames[static_cast<int>(s.lastOrders()[j].why)],
+                                    from_goal(d.pos.x.toDouble()), team == 0 ? d.pos.y.toDouble() : -d.pos.y.toDouble());
+                }
+            }
             if (trace == m + 1 && k % (core::kTickRate / 2) == 0) {
                 if (b.owner) {
                     const auto& c = s.world().player(*b.owner);
@@ -311,6 +338,7 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                 where = g;
                 end = g < hx * 2 / 3 ? LostOwn : g < hx * 4 / 3 ? LostMid : LostFinal;
                 ++losses;
+                if (k - fb_tick <= 5 * core::kTickRate) ++lost_after_fb;
                 if (before && s.world().player(*before).team == team) ++lost_carry;
                 else if (last_kick >= 0) ++lost_kick[last_kick];
                 break;
@@ -328,7 +356,16 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                 if (std::sqrt(kx * kx + ky * ky) <= 25.0) touch_gap_short.push_back(near);
             }
             last_kick = -1;   // ours again: the kick reached a mate
-            if (last_ours >= 0 && *b.owner != last_ours) ++ep_passes;
+            if (last_ours >= 0 && *b.owner != last_ours) {
+                ++ep_passes;
+                const int rn = s.brain().numberOf(*b.owner), pn = s.brain().numberOf(static_cast<std::uint8_t>(last_ours));
+                const bool fb = rn == 2 || rn == 3;
+                ++by_number[{pn, rn}];
+                if (fb) { ++to_fb; ++fb_rx; fb_tick = k; }
+                else if (rn == 4 || rn == 5) { ++to_cb; if (pn == 2 || pn == 3) ++fb_to_cb; }
+                else if (rn == 6 || rn == 8 || rn == 10) ++to_mid;
+                else ++to_else;
+            }
             last_ours = *b.owner;
             if (g > deepest) deepest = g;
             if (!got_half && g > hx) { got_half = true; t_half.push_back(sec); }
@@ -357,6 +394,21 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
     std::printf("  got a shot         %5.1f%%\n", 100.0 * shot / n);
     std::printf("  kept the ball      %5.1f s (median episode)\n", median(kept_s));
     std::printf("  passes completed   %5.1f per episode; deepest ball %.1f m (median)\n", passes / n, median(depth_max));
+    {
+        const long all = to_fb + to_cb + to_mid + to_else;
+        if (all)
+            std::printf("  passes to: full-back %.0f%% · centre-back %.0f%% · the middle (6/8/10) %.0f%% · else %.0f%% (of %ld)\n"
+                        "  full-back back to a centre-back: %.2f per episode; lost within 5 s of a pass to a full-back: %.0f%% (of %ld)\n",
+                        100.0 * to_fb / all, 100.0 * to_cb / all, 100.0 * to_mid / all, 100.0 * to_else / all, all,
+                        fb_to_cb / n, fb_rx ? 100.0 * lost_after_fb / fb_rx : 0.0, fb_rx);
+        std::vector<std::pair<long, std::pair<int, int>>> top;
+        for (const auto& [k2, v] : by_number) top.push_back({v, k2});
+        std::sort(top.rbegin(), top.rend());
+        if (!top.empty()) std::printf("  commonest passes (by number):");
+        for (std::size_t i = 0; i < top.size() && i < 8; ++i)
+            std::printf(" %d→%d %ld", top[i].second.first, top[i].second.second, top[i].first);
+        if (!top.empty()) std::printf("\n");
+    }
     std::printf("  how it ended:\n");
     for (int e = 0; e < EndCount; ++e)
         if (ends[e]) std::printf("    %-36s %5.1f%%\n", end_names[e], 100.0 * ends[e] / n);

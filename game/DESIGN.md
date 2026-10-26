@@ -2128,6 +2128,65 @@ out. The phase harness places the defending side the same way. Harness
 (keeper:1, Ukies' goal kick): LH 9 starts at 87.5 m from his goal, was
 97.0. [FH]
 
+### 8.62 G4.64 — Lighthouse packs the middle, then presses the full-back (mig 730)
+
+James 10/26: "in bielsa he would … cover shadow the center backs 4 and 5.
+but our lh tactic is for him to … play a false 9 so in defense he will drop
+and assist the man markers in the lh midfield the 6 8 and 10. also our 7
+and 11 will assist the midfield as well by staying tight inside. this gives
+us a 6v3 in midfield … so they will pass to fb on either side. this is when
+our ball side 7 or 11 go after their direct opponent while cover shadowing
+middle. our weak side 7 or 11 tuck in further … and our 9 'locks the door'
+by now going up to the closest cb and not allow a return pass from fb to
+cb. he can play off a little and shade toward weakside cb" / "we
+essentially pack the middle then wait for the inevitable pass to full then
+we press" / "the ball side 7/11 doesn't curve run he just cover shadows
+their 6 8 10 … while stepping to direct op".
+
+Three style lessons (taught from amateur), asked for by the Lighthouse APSL
+team model only, keyed to position numbers held in game_model_params (no
+numbers in code): `pack-the-middle` (165), `press-the-full-back` (166),
+`lock-the-door` (167); `Brain::packAndTrap` plays them while the ball is in
+their half. Lighthouse's `cover-shadow` demand is now 0 (the 9 drops
+instead of running at the CB). Sources: the narrow front three showing the
+build-up wide is Klopp's Liverpool press [klopp] (their wingers curve the
+run; Lighthouse's step straight — the shadow on the midfield is the
+point); the pass wide as the trigger is Rangnick's [rangnick]; the false
+9's drop into a 6 v 3, the far winger as an extra midfielder and "lock the
+door" shaded to the far CB are Lighthouse's own [FH].
+
+- **Pack (no trigger):** their midfield = the men our 6/8/10 mark (direct
+  opponents). The 9 screens the one nearest the ball, `screen_gap_m` off
+  him on the line from the ball; each winger screens the one nearest his
+  tucked spot (not the 9's man, not the other winger's), no wider than
+  `tuck_width_m`. Their full-backs are left open on purpose.
+- **Trigger:** their ball at, or their pass reaching first, a full-back — a
+  wide man (`central_width_m`) who isn't a CB, or a winger's direct
+  opponent. The nearer winger steps straight at him, `step_gap_m` off him
+  on the line to their nearest midfielder (inside `handover_m` the normal
+  press/tackle takes over); the far winger screens no wider than
+  `weak_tuck_width_m`; the 9 goes `lock_gap_m` off the near CB toward the
+  full-back plus `shade_m` toward the far CB. Their CBs = the men our 9's
+  number is paired with (game_direct_opponents).
+- A failed roll on any of them is the ordinary brain (mark / shape). On a
+  dead ball the men packing start on their spots, like the markers (G4.63).
+
+Harness additions: `GAME_PHASE_WATCH=9,7,11` prints the defending side's
+men with those numbers on the traced episode; the phase report now says
+where the passes went by receiver number (full-back / CB / 6-8-10 / else),
+full-back→CB returns, losses within 5 s of a pass to a full-back, and the
+commonest passer→receiver pairs.
+
+Measured, keeper:1 (the Ukies from their keeper), 200 episodes, before →
+after: keeper→10 68 → 22 and keeper→8 38 → 18 passes; passes completed
+1.3 → 0.7 per episode; deepest ball 21 m → 6 m (median); they kick it long
+instead (lost in LH's third 42% → 62%, where the libero lives). The pass
+to a full-back stays rare (8-10% of passes): the Ukies' keeper goes long
+rather than wide, so press-the-full-back and lock-the-door fire about 1%
+of man-time; the trap waits on the opponent choosing the full-back. 30 full
+matches: margin +3.63 ± 0.53 (plan off) → +4.20 ± 0.45, within noise; pack
+the middle 6% of LH's out-of-possession man-time.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

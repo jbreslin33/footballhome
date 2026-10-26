@@ -105,6 +105,7 @@ public:
     // fh-game-match tallies pass outcomes by it).
     const std::vector<ai::Orders>& lastOrders() const noexcept { return last_orders_; }
     const std::vector<core::MatchEvent>& lastEvents() const noexcept { return last_events_; }
+    const ai::Brain& brain() const noexcept { return brain_; }
 
     // Exposed for tests.
     bool slotClaimedBy(std::uint8_t slot, ClientId client) const;
