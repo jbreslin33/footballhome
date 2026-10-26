@@ -75,6 +75,77 @@ class EventCenterScreen extends Screen {
       escapeHtml: (t) => this.escapeHtml(t),
     });
     this.cpError  = null;
+    this.rsvpNote = {};        // person_id → last override error, on their card
+    this.remindNote = {};      // person_id → last reminder error, on their card
+    this.relay = null;         // FH Texter {device, today, cap} — admins only
+    this.groupNote = '';       // the 📣 bar's result line (html)
+    this.folds    = new Map(); // 'noresponse' / 'notgoing' → open?  (kept across refreshes)
+  }
+
+  // Leaving the page stops the live refresh.
+  onExit() { this._stopLivePoll(); }
+
+  // ── Live refresh ────────────────────────────────────────────────────
+  // Answers land from phones while a coach has the page open (as Game
+  // Center's 15s poll): refetch the open event, repaint only when the
+  // RSVPs actually changed, so nothing jumps under a thumb.
+  _startLivePoll() {
+    this._stopLivePoll();
+    this._pollTimer = setInterval(() => this._pollLive(), 15000);
+    this._pollOnShow = () => { if (!document.hidden) this._pollLive(); };
+    document.addEventListener('visibilitychange', this._pollOnShow);
+  }
+
+  _stopLivePoll() {
+    if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+    if (this._pollOnShow) { document.removeEventListener('visibilitychange', this._pollOnShow); this._pollOnShow = null; }
+  }
+
+  async _pollLive() {
+    if (document.hidden || !this.ev || this.pill !== 'coming' || this._pollBusy) return;
+    const id = this.ev.fh_event_id;
+    this._pollBusy = true;
+    try {
+      const body = await this._json(`/api/calendar/events/${id}`);
+      if (!this.ev || this.ev.fh_event_id !== id || !body.event) return;
+      const key = (ev) => JSON.stringify((ev.rsvps || []).map(r => [r.person_id, r.response]));
+      if (key(body.event) !== key(this.ev)) {
+        this.ev = body.event;
+        this._render();
+      }
+    } catch (_err) {
+      // A missed beat is fine; the next one tries again.
+    } finally {
+      this._pollBusy = false;
+    }
+  }
+
+  // Club admins answer for a player (owner: Game Center's coach override,
+  // now on practices) — the same POST/DELETE /api/calendar/rsvp a player
+  // uses, with person_id; the row records who answered.  Tapping the lit
+  // answer clears it.
+  async _setRsvp(personId, response, active) {
+    const key = `rsvp:${personId}`;
+    if (this.saving.has(key)) return;
+    this.saving.add(key);
+    delete this.rsvpNote[personId];
+    this._render();
+    const id = this.ev.fh_event_id;
+    try {
+      if (active) {
+        await this._json('/api/calendar/rsvp', { method: 'DELETE', body: JSON.stringify({ fh_event_id: id, person_id: personId }) });
+      } else {
+        await this._json('/api/calendar/rsvp', { method: 'POST', body: JSON.stringify({ fh_event_id: id, person_id: personId, response }) });
+      }
+      const row = (this.ev.rsvps || []).find(r => r.person_id === personId);
+      if (row) row.response = active ? null : response;
+    } catch (err) {
+      this.rsvpNote[personId] = err.message;
+    } finally {
+      this.saving.delete(key);
+    }
+    this._render();
+    if (this.ev && this.ev.fh_event_id === id) this._loadEvent(id);
   }
 
   render() {
@@ -96,6 +167,8 @@ class EventCenterScreen extends Screen {
         .ec-send { font-size:0.8rem; font-weight:700; color:#0f172a; padding:4px 9px; border-radius:999px; border:none; cursor:pointer; }
         .ec-send[disabled] { opacity:0.5; }
         .ec-box { border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary); padding:12px; margin-bottom:var(--space-3); }
+        .ec-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:6px; }
+        .ec-card { border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary); padding:8px 10px; font-size:0.9rem; min-width:0; }
       </style>
       <div class="screen-header" style="flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn">← Back</button>
@@ -128,6 +201,8 @@ class EventCenterScreen extends Screen {
     this.remindNote = {};     // person_id → last send error, shown on their row
     this.groupNote = '';      // the 📣 bar's result line (html)
     this.error = null;
+    this.rsvpNote = {};
+    this.groupNote = '';
     this.saving.clear();
     this.copied.clear();
     this._render();
@@ -135,9 +210,14 @@ class EventCenterScreen extends Screen {
       if (this.ev && (this.ev.kind === 'practice' || this.ev.kind === 'pickup'))
         this.carpoolPanel.load().then(() => this._render());
     };
-    if (this.ev) { this._loadAttendance(); loadCarpool(); this._loadReminders(); }
-    else if (this.loadingId) this._loadEvent(this.loadingId).then(() => { if (this.ev) { this._loadAttendance(); loadCarpool(); this._loadReminders(); } });
+    // Groups / teams ride on the Who's Coming cards, so they load with it.
+    const loadSides = () => {
+      if (this.ev && (this.ev.kind === 'practice' || this.ev.kind === 'pickup')) this._loadSides();
+    };
+    if (this.ev) { this._loadAttendance(); loadCarpool(); this._loadReminders(); loadSides(); this._loadRelay(); }
+    else if (this.loadingId) this._loadEvent(this.loadingId).then(() => { if (this.ev) { this._loadAttendance(); loadCarpool(); this._loadReminders(); loadSides(); this._loadRelay(); } });
     else this._loadEvents();
+    if (this.ev || this.loadingId) this._startLivePoll(); else this._stopLivePoll();
   }
 
   // ── data ────────────────────────────────────────────────────────────
@@ -276,6 +356,50 @@ class EventCenterScreen extends Screen {
     this._render();
   }
 
+  // FH Texter (mig 667/673) — admins only; anyone else (403) just opens
+  // their own texting app.
+  async _loadRelay() {
+    try {
+      const st = await this._json('/api/phone-relay/status');
+      this.relay = { device: (st.devices || [])[0] || null, today: st.today || 0, cap: st.cap || 0 };
+    } catch (_err) {
+      this.relay = null;
+    }
+    this._render();
+  }
+
+  // A 💬 reminder goes from the owner's phone when FH Texter can take it
+  // (paired, online, under the day's cap) — Game Center's rule for an RSVP
+  // reminder (_textRoute; never the club number, which is for opted-in game
+  // links).  Otherwise the texting app opens with the message.
+  _relayUsable() {
+    const r = this.relay;
+    return !!(r && r.device && r.device.online && r.today < r.cap);
+  }
+
+  // One text per parent through FH Texter; a refusal (offline, cap, STOP)
+  // opens that text in the texting app instead, so nothing is lost.
+  async _sendViaRelay(personId, sends) {
+    for (const send of sends) {
+      if (!send.sms_href) continue;
+      const { to, body } = DesktopSms.parse(send.sms_href);
+      let ok = false;
+      try {
+        await this._json('/api/phone-relay/texts', {
+          method: 'POST',
+          body: JSON.stringify({ to: to[0] || '', body, for_person_id: personId,
+                                 purpose: `remind:event:${this.ev.fh_event_id}`, magic_link_token_id: send.token_id || 0 }),
+        });
+        ok = true;
+        if (this.relay) this.relay.today += 1;
+      } catch (err) {
+        this.remindNote[personId] = (window.MessageCopy && MessageCopy.block('event_center', 'relay_fell_back', { error: err.message }))
+          || `FH Texter could not send (${err.message}) — opened in your texting app`;
+      }
+      if (!ok) DesktopSms.open(send.sms_href);
+    }
+  }
+
   // ── No Response reminders (mig 739) ─────────────────────────────────
   // Owner 2026-10-26: "whenever a player shows as no response we need easy
   // buttons to remind for that specific event and others. but that event
@@ -296,7 +420,8 @@ class EventCenterScreen extends Screen {
         method: 'POST',
         body: JSON.stringify({ person_id: personId, channel, fh_event_id: this.ev.fh_event_id, only: btn.dataset.only === '1' }),
       });
-      this.openSends(data, channel);
+      if (channel === 'sms' && this._relayUsable() && window.DesktopSms) await this._sendViaRelay(personId, data.sends || [data]);
+      else this.openSends(data, channel);
       await this._loadReminders();
     } catch (err) {
       this.remindNote[personId] = err.message;
@@ -386,10 +511,11 @@ class EventCenterScreen extends Screen {
     try {
       const body = await this._json(`/api/calendar/events/${id}/attendance`);
       if (!this.ev || this.ev.fh_event_id !== id) return;
-      this.att = { canMark: !!body.can_mark, roster: new Map((body.roster || []).map(r => [r.person_id, r])) };
+      this.att = { canMark: !!body.can_mark, canSetRsvp: !!body.can_set_rsvp,
+                   roster: new Map((body.roster || []).map(r => [r.person_id, r])) };
     } catch (err) {
       console.error('[event-center] attendance load failed:', err);
-      this.att = { canMark: false, roster: new Map() };
+      this.att = { canMark: false, canSetRsvp: false, roster: new Map() };
     }
     this._render();
   }
@@ -616,6 +742,12 @@ class EventCenterScreen extends Screen {
 
   // ── events ──────────────────────────────────────────────────────────
   _wire() {
+    // A fold opened or closed by the coach stays that way (toggle does not
+    // bubble — listen in the capture phase).
+    this.element.addEventListener('toggle', (e) => {
+      const d = e.target.closest && e.target.closest('[data-ec-fold]');
+      if (d) this.folds.set(d.dataset.ecFold, d.open);
+    }, true);
     // The date input: pick any day directly.
     this.element.addEventListener('change', (e) => { const sel = e.target.closest('[data-ec-cones]'); if (sel) this._pickCones(sel.value); });
     this.element.addEventListener('change', (e) => {
@@ -671,6 +803,7 @@ class EventCenterScreen extends Screen {
       }
       if ((el = t('[data-ec-practice-plan]'))) { this.navigation.goTo('practice-plan', {}); return; }
       if ((el = t('[data-ec-remind]')))     { this._remind(el); return; }
+      if ((el = t('[data-ec-rsvp]')))       { this._setRsvp(Number(el.dataset.personId), el.dataset.ecRsvp, el.dataset.active === '1'); return; }
       if ((el = t('[data-ec-remind-all]'))) { this._remindAll(el); return; }
       if ((el = t('[data-ec-side]'))) { this._setSide(Number(el.dataset.personId), el.dataset.ecSide); return; }
       if ((el = t('[data-ec-side-color]'))) {
@@ -905,6 +1038,15 @@ class EventCenterScreen extends Screen {
     }).join('')}</span>`;
   }
 
+  // Who's Coming, laid out like Game Center's RSVP sections (owner
+  // 2026-10-26: "i like the rsvp situaiton in game center and want that for
+  // practice"): one card per player, Going first, then Not going and No
+  // response as folds that stay as the coach left them.  A card carries
+  // everything a coach does to that player here — the RSVP override (club
+  // admins, can_set_rsvp), the group swatches (practice groups / pickup
+  // teams take the place of a game's starters and bench), attendance
+  // P/A/L/E, and on No response the reminder buttons.  Coaches sit in
+  // their own box, never in a player count (owner 2026-10-06).
   _comingHtml() {
     const rsvps = Array.isArray(this.ev.rsvps) ? this.ev.rsvps : [];
     const nameOf = (r) => r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || 'Unknown';
@@ -917,48 +1059,127 @@ class EventCenterScreen extends Screen {
                style="margin-left:6px; padding:0 6px; border-radius:999px; background:rgba(245,158,11,0.18);
                       border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.62rem; font-weight:800;">🎟 INVITED</span>`
       : (r.is_coach ? `<span style="margin-left:6px; font-size:0.68rem; opacity:0.6;">coach</span>` : '');
-    // remind: No Response rows carry the reminder buttons for whoever may
-    // mark the event (the send itself is club admins only, server-side),
-    // and only while it can still be answered.
-    const canRemind = !!(this.att && this.att.canMark) && !this._isPast(this.ev);
-    const group = (label, list, remind = false) => {
-      if (!list.length) return '';
-      const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
-      const bar = remind && canRemind ? `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:6px 0 4px;">
-          <span style="font-size:0.78rem; font-weight:700;">${this.escapeHtml(cp('remind_group', { n: list.length }) || `📣 Remind all ${list.length} who haven't answered`)}</span>
-          <button type="button" class="ec-send" data-ec-remind-all="sms" style="background:#38bdf8;">💬</button>
-          <button type="button" class="ec-send" data-ec-remind-all="email" style="background:#38bdf8;">✉</button>
-          ${this.groupNote ? `<span style="font-size:0.72rem; flex-basis:100%;">${this.groupNote}</span>` : ''}
-        </div>` : '';
-      return `<div class="ec-box">
-        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-          <span class="ec-h">${label} (${list.length})</span>
-          ${this.att ? `<span style="font-size:0.78rem; color:#22c55e; font-weight:700;">${present(list)} present</span>` : ''}
-        </div>
-        ${bar}
-        ${list.map(r => `<div class="ec-row" style="flex-wrap:wrap;">
-            <span>${this.escapeHtml(nameOf(r))}${chipHtml(r)}</span>
-            ${this._attendanceCell(r.person_id)}
-            ${remind && canRemind ? this._remindRowHtml(r) : ''}
-          </div>`).join('')}
-      </div>`;
-    };
     if (!rsvps.length) {
       return `<div class="ec-box" style="opacity:0.7;">Nobody is on this event's list — tag a team on the calendar event.</div>`;
     }
+    const open = !this._isPast(this.ev);
+    // remind: No Response cards carry the reminder buttons for whoever may
+    // mark the event (the send itself is club admins only, server-side),
+    // and only while it can still be answered.
+    const canRemind = !!(this.att && this.att.canMark) && open;
+    const canSet = !!(this.att && this.att.canSetRsvp) && open;
+    const hasSides = this.ev.kind === 'practice' || this.ev.kind === 'pickup';
+    const sideOf = (pid) => {
+      const p = this.sides && !this.sides.failed && this.sides.players.find(x => x.person_id === pid);
+      return p ? p.squad_color : null;
+    };
+    const colorOf = (code) => (this.sides && this.sides.colors.find(c => c.code === code)) || null;
+    const swatch = (c, size = 14) => `<span style="display:inline-block; width:${size}px; height:${size}px; border-radius:50%;
+      background:${c.hex}; border:1px solid var(--border-color); vertical-align:middle;"></span>`;
+
+    // ✓ / ✗ — tap the lit one to clear the answer (DELETE /rsvp).
+    const rsvpBtns = (r) => {
+      if (!canSet) return '';
+      const busy = this.saving.has(`rsvp:${r.person_id}`);
+      const b = (resp, label, color) => {
+        const on = r.response === resp;
+        return `<button type="button" class="ec-att" data-ec-rsvp="${resp}" data-person-id="${r.person_id}" data-active="${on ? 1 : 0}"
+                  ${busy ? 'disabled' : ''} title="${on ? 'Tap to clear their answer' : (resp === 'yes' ? 'Set Going' : 'Set Not going')}"
+                  style="border:1px solid ${color}; background:${on ? color : 'transparent'}; color:${on ? '#fff' : color};">${label}</button>`;
+      };
+      return `<span style="display:inline-flex; gap:4px;">${b('yes', '✓', '#22c55e')}${b('no', '✗', '#ef4444')}</span>`;
+    };
+    // Group swatches: the colours in play, for whoever may edit sides.
+    const sideBtns = (r) => {
+      if (!hasSides || !this.sides || this.sides.failed) return '';
+      const mine = sideOf(r.person_id);
+      if (!this.sides.canEdit) {
+        const c = mine && colorOf(mine);
+        return c ? `<span title="${this.escapeHtml(c.label)}">${swatch(c)}</span>` : '';
+      }
+      const saving = this.saving.has(`side:${r.person_id}`);
+      return `<span style="display:inline-flex; gap:5px;">${this.sides.colors.filter(c => this.sideColors && this.sideColors.has(c.code)).map(c => {
+        const active = mine === c.code;
+        return `<button type="button" class="ec-att" data-ec-side="${c.code}" data-person-id="${r.person_id}"
+                  ${saving ? 'disabled' : ''} title="${this.escapeHtml(c.label)}${active ? ' — tap to clear' : ''}"
+                  style="background:${c.hex}; border:${active ? '3px solid var(--primary-color)' : '1px solid var(--border-color)'};
+                         opacity:${active || !mine ? 1 : 0.35};"></button>`;
+      }).join('')}</span>`;
+    };
+    const card = (r, { remind = false, sides = false } = {}) => {
+      const err = this.rsvpNote[r.person_id];
+      return `<div class="ec-card" data-person-row="${r.person_id}">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+          <span style="font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(nameOf(r))}${chipHtml(r)}</span>
+          ${rsvpBtns(r)}
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap;">
+          ${sides ? sideBtns(r) : '<span></span>'}
+          ${this._attendanceCell(r.person_id)}
+        </div>
+        ${err ? `<div style="font-size:0.72rem; color:#f87171; margin-top:4px;">${this.escapeHtml(err)}</div>` : ''}
+        ${remind && canRemind ? this._remindRowHtml(r) : ''}
+      </div>`;
+    };
+    const grid = (list, opts) => `<div class="ec-grid">${list.map(r => card(r, opts)).join('')}</div>`;
+    const head = (label, list) => `<div style="display:flex; justify-content:space-between; align-items:baseline; margin:var(--space-3) 0 6px;">
+        <span class="ec-h">${label} (${list.length})</span>
+        ${this.att ? `<span style="font-size:0.78rem; color:#22c55e; font-weight:700;">${present(list)} present</span>` : ''}
+      </div>`;
+    const section = (label, list, opts = {}) => list.length ? head(label, list) + (opts.top || '') + grid(list, opts) : '';
+    // Folds keep their open/closed state across the 15s refresh and a
+    // reminder's re-render (as Game Center's do).
+    const fold = (key, label, list, opts = {}) => {
+      if (!list.length) return '';
+      const isOpen = this.folds.has(key) ? this.folds.get(key) : !!opts.defaultOpen;
+      return `<details data-ec-fold="${key}" ${isOpen ? 'open' : ''} style="margin:var(--space-3) 0;">
+        <summary style="cursor:pointer;" class="ec-h">${label} (${list.length})${this.att ? ` · <span style="color:#22c55e;">${present(list)} present</span>` : ''}</summary>
+        ${opts.top || ''}${grid(list, opts)}
+      </details>`;
+    };
+
     // A yes from someone over the dues line (dues_eligible=false,
-    // migration 416) is kept but counted apart from Going.  Coaches sit in
-    // their own box with their own going / not / no-response lines and
-    // never inside a player group or count (owner 2026-10-06).
+    // migration 416) is kept but counted apart from Going.
     const coaches  = rsvps.filter(r => r && r.is_coach);
     const players  = rsvps.filter(r => r && !r.is_coach);
     const goingAll = players.filter(r => r.response === 'yes');
     const going    = goingAll.filter(r => r.dues_eligible !== false);
+    const noResp   = players.filter(r => r.response !== 'yes' && r.response !== 'no');
+    const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
+    const L = (tier, fb) => this.escapeHtml(cp(tier) || fb);
+
+    // Groups in play + who is on each, over the Going cards (the 🎽 pill
+    // keeps the full editor).
+    let groupsTop = '';
+    if (hasSides && this.sides && !this.sides.failed) {
+      const onSide = this.sides.colors.map(c => [c, going.filter(r => sideOf(r.person_id) === c.code)]).filter(([, l]) => l.length);
+      const chooser = this.sides.canEdit ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.72rem; font-weight:800; opacity:0.75;">${this.escapeHtml(cp(this.ev.kind === 'pickup' ? 'teams_in_play' : 'groups_in_play') || (this.ev.kind === 'pickup' ? 'Teams' : 'Groups'))}</span>
+          ${this.sides.colors.map(c => `<button type="button" class="ec-chip ${this.sideColors && this.sideColors.has(c.code) ? 'on' : ''}"
+              data-ec-side-color="${c.code}">${swatch(c, 10)} ${this.escapeHtml(c.label)}</button>`).join('')}
+        </div>` : '';
+      const summary = onSide.length ? `<div style="display:flex; gap:10px; flex-wrap:wrap; font-size:0.78rem; margin-bottom:6px;">
+          ${onSide.map(([c, l]) => `<span>${swatch(c, 10)} <b>${this.escapeHtml(c.label)}</b> ${l.length}</span>`).join('')}
+          <span style="opacity:0.6;">${going.length - onSide.reduce((n, [, l]) => n + l.length, 0)} unassigned</span>
+        </div>` : '';
+      groupsTop = chooser + summary;
+    }
+    const remindBar = canRemind && noResp.length ? `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:0 0 6px;">
+        <span style="font-size:0.78rem; font-weight:700;">${this.escapeHtml(cp('remind_group', { n: noResp.length }) || `📣 Remind all ${noResp.length} who haven't answered`)}</span>
+        <button type="button" class="ec-send" data-ec-remind-all="sms" style="background:#38bdf8;">💬</button>
+        <button type="button" class="ec-send" data-ec-remind-all="email" style="background:#38bdf8;">✉</button>
+        ${this.groupNote ? `<span style="font-size:0.72rem; flex-basis:100%;">${this.groupNote}</span>` : ''}
+        <span style="font-size:0.7rem; opacity:0.7; flex-basis:100%;">${this.escapeHtml(this._relayUsable()
+          ? (cp('text_via_relay', { device: this.relay.device.name || 'FH Texter', today: this.relay.today, cap: this.relay.cap })
+             || `💬 on a card texts from ${this.relay.device.name || 'FH Texter'} (${this.relay.today}/${this.relay.cap} today)`)
+          : (cp('text_via_app') || '💬 on a card opens your texting app'))}</span>
+      </div>` : '';
+
     const coachBox = () => {
       if (!coaches.length) return '';
       const part = (label, list) => list.length
         ? `<div class="ec-row"><span><b>${label}</b> ${list.map(r => this.escapeHtml(nameOf(r))).join(', ')}</span><span style="opacity:0.7;">${list.length}</span></div>` : '';
-      return `<div class="ec-box" style="border-style:dashed;">
+      return `<div class="ec-box" style="border-style:dashed; margin-top:var(--space-3);">
         <div style="display:flex; justify-content:space-between; align-items:baseline;">
           <span class="ec-h">Coaches (${coaches.length}) — not in the player counts</span>
           ${this.att ? `<span style="font-size:0.78rem; color:#22c55e; font-weight:700;">${present(coaches)} present</span>` : ''}
@@ -970,11 +1191,11 @@ class EventCenterScreen extends Screen {
       </div>`;
     };
     return `
-      ${group('Going', going.filter(r => !r.is_callup))}
-      ${group('Invited · Available', going.filter(r => r.is_callup))}
-      ${group('⛔ Said going · Ineligible (dues)', goingAll.filter(r => r.dues_eligible === false))}
-      ${group('Not going', players.filter(r => r.response === 'no'))}
-      ${group('No response', players.filter(r => r.response !== 'yes' && r.response !== 'no'), true)}
+      ${going.length ? section(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop }) : ''}
+      ${section(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true })}
+      ${section(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false))}
+      ${fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: true })}
+      ${fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no'))}
       ${coachBox()}`;
   }
 

@@ -2539,7 +2539,13 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
                 {"marked_at",  textOrNull(row, "marked_at")},
             });
         }
-        return jsonOk({{"fh_event_id", fhEventId}, {"can_mark", canMark}, {"roster", roster}});
+        // can_set_rsvp: a club admin may answer for anyone (POST /rsvp with
+        // person_id, resolveRsvpTarget) — Event Center's ✓/✗ override on
+        // a practice row shows only then.  Follows view-as like can_mark.
+        const bool canSetRsvp = !db->query(
+            "SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.person_id = $1::int LIMIT 1",
+            {std::to_string(personId)}).empty();
+        return jsonOk({{"fh_event_id", fhEventId}, {"can_mark", canMark}, {"can_set_rsvp", canSetRsvp}, {"roster", roster}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handleGetEventAttendance: "
                   << e.what() << std::endl;
