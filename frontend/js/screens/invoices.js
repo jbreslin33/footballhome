@@ -97,18 +97,20 @@ class InvoicesScreen extends Screen {
                         display:flex; flex-direction:column; gap:3px; background:var(--bg-primary); min-width:0; }
         .iv-cal .cell.out { opacity:0.32; background:transparent; }
         .iv-cal .dnum { font-size:0.7rem; font-weight:700; opacity:0.7; }
+        .iv-cal .iv-wd { display:none; }
+        @media (max-width: 720px) { .iv-cal .iv-wd { display:inline; } }
         .iv-chip { display:flex; gap:4px; align-items:center; border:1px solid var(--border-color); border-radius:6px;
                    padding:2px 5px; font-size:0.68rem; line-height:1.25; cursor:pointer; background:transparent;
                    color:var(--text-primary); text-align:left; min-width:0; }
-        .iv-chip > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .iv-chip > span { white-space:normal; overflow-wrap:anywhere; }
         .iv-chip.on { background:rgba(74,222,128,0.18); border-color:#4ade80; }
         .iv-chip.part { background:rgba(234,179,8,0.20); border-color:#eab308; }
         .iv-chip.off { border-color:#f87171; background:rgba(248,113,113,0.12); }
         .iv-chip.off .iv-chip-zone:first-child { text-decoration:line-through; opacity:0.6; }
         .iv-chip.todo { border-color:#f59e0b; }
         .iv-chip.ref { border-style:dashed; }
-        .iv-ev { display:flex; flex-direction:column; min-width:0; overflow:hidden; text-align:left; }
-        .iv-ev > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .iv-ev { display:flex; flex-direction:column; min-width:0; text-align:left; }
+        .iv-ev > span { white-space:normal; overflow-wrap:anywhere; }
         .iv-ev .pl { opacity:0.7; font-size:0.92em; }
         .iv-chip.ovl { box-shadow:inset 0 0 0 2px #f87171; }
         .iv-chip.exp { border-color:#60a5fa; background:rgba(96,165,250,0.14); }
@@ -117,7 +119,7 @@ class InvoicesScreen extends Screen {
         .iv-cal-add:hover { opacity:1; }
         .iv-chip-zone { border:none; background:transparent; color:inherit; cursor:pointer; padding:0; font-size:inherit;
                         display:flex; gap:4px; align-items:center; min-width:0; }
-        .iv-chip-zone > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .iv-chip-zone > span { white-space:normal; overflow-wrap:anywhere; }
         .iv-mk.on-part { background:#eab308; border-color:#eab308; color:#0b1c3d; opacity:1; }
         .iv-part-box { display:flex; gap:4px; align-items:center; border:1px solid #eab308; border-radius:6px;
                        padding:3px 5px; font-size:0.68rem; background:rgba(234,179,8,0.10); }
@@ -126,7 +128,16 @@ class InvoicesScreen extends Screen {
         .iv-cal-tot { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:flex-end; align-items:baseline;
                       padding:8px 4px 2px; font-size:0.85rem; }
         .iv-cal-tot b { font-size:1.05rem; }
-        @media (max-width: 720px) { .iv-cal .cell { min-height:56px; } .iv-chip { font-size:0.6rem; padding:2px 3px; } }
+        /* Every chip's whole text shows (owner 2026-10-26: "i need to be able to
+           read all text on cal items even if you need to extend them"): chips
+           wrap and cells grow; on a phone the week stacks one day per row. */
+        .iv-chip, .iv-chip-zone { align-items:flex-start; }
+        @media (max-width: 720px) {
+          .iv-cal { grid-template-columns:1fr; }
+          .iv-cal .hd, .iv-cal .cell.out { display:none; }
+          .iv-cal .cell { min-height:0; }
+          .iv-chip { font-size:0.8rem; padding:4px 6px; }
+        }
         .iv-total { display:flex; justify-content:flex-end; gap:12px; font-weight:800; font-size:1.1rem; padding:10px 0; }
         .iv-acts { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
         .iv-hint { font-size:0.8rem; opacity:0.7; margin-top:6px; }
@@ -1246,13 +1257,14 @@ class InvoicesScreen extends Screen {
       if (dd && !out) daysMoney += dd.money;
       const dnum = d.slice(8).replace(/^0/, '');
       const dlabel = (d === gridStart || dnum === '1') ? InvoicesScreen.dayLabel(d).replace(/^\w+ /, '') : dnum;
+      const wday = InvoicesScreen.dayLabel(d).split(' ')[0];
       const dbl = out ? 0 : (dblByDate.get(d) || 0);
       const sum = dd && !out && (dd.hours > 0 || Math.abs(dd.money) >= 0.005)
         ? `<div class="dsum">${dbl ? `<div style="color:#f87171;">⚠ ${InvoicesScreen.plain(Math.round(dbl * 100) / 100)}h ×2</div>` : ''}${dd.hours > 0 ? `${InvoicesScreen.plain(dd.hours)}h · ` : ''}${InvoicesScreen.money(dd.money)}</div>` : '';
       cells += `
         <div class="cell ${out ? 'out' : ''}">
           <div class="dnum" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>${esc(dlabel)}</span>
+            <span><span class="iv-wd">${esc(wday)} </span>${esc(dlabel)}</span>
             ${out || locked ? '' : `<button class="iv-cal-add" data-cal-add="${d}" title="${esc(this._copy('cal_add_tip') || 'Add an expense or hours on this day')}">＋</button>`}
           </div>
           ${out ? '' : (dd ? dd.chips.join('') : '')}
@@ -1537,7 +1549,10 @@ class InvoicesScreen extends Screen {
         const label = l.category !== lastCat ? (l.category_label || '') : '';
         lastCat = l.category;
         if (label) body += f(0, y, label, 10, 'r', COL.catR);
-        body += f(COL.desc, y, l.printed, 10, '', 233);
+        // A long line (instalment "k of N · $total total") shrinks to fit
+        // its column rather than run into the hours.
+        const len = String(l.printed || '').length;
+        body += f(COL.desc, y, l.printed, len > 44 ? Math.max(7, Math.round(10 * 44 / len * 10) / 10) : 10, '', 233);
         body += f(COL.hoursL, y, InvoicesScreen.plain(l.quantity), 10, 'c', COL.hoursW);
         body += f(COL.rateL, y, rateText(l), 10, 'c', COL.rateW);
         body += f(COL.amtR - 60, y, InvoicesScreen.money(l.amount), 10, 'r', 60);

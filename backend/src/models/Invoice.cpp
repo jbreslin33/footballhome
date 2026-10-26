@@ -10,6 +10,7 @@
 #include <iomanip>
 
 #include "../database/Database.h"
+#include "MessageCopy.h"
 
 using nlohmann::json;
 
@@ -31,6 +32,14 @@ std::string money2(double v) {
     return o.str();
 }
 double round2(double v) { return std::round(v * 100.0) / 100.0; }
+// "$1,588" / "$574.98" — thousands commas, cents only when there are any.
+std::string moneyShort(double v) {
+    const long long cents = std::llround(v * 100.0);
+    std::string whole = std::to_string(cents / 100);
+    for (int i = static_cast<int>(whole.size()) - 3; i > 0; i -= 3) whole.insert(static_cast<size_t>(i), ",");
+    char c[4]; std::snprintf(c, sizeof c, "%02lld", cents % 100);
+    return "$" + whole + (cents % 100 ? std::string(".") + c : std::string());
+}
 
 std::string s(const json& j, const char* key, const std::string& dflt = "") {
     if (!j.contains(key) || j[key].is_null()) return dflt;
@@ -264,6 +273,7 @@ json Invoice::get(long long invoiceId) {
                    {"email", str(bt[0], "email")}, {"email_label", str(bt[0], "email_label")}, {"email_to_name", str(bt[0], "email_to_name")}};
     }
     double total = 0;
+    MessageCopy planCopy;
     auto lines = db_->query(R"SQL(
         SELECT l.id, l.category, c.label AS category_label, l.description, l.quantity, l.rate, l.amount,
                l.plan_id, l.installment_no, l.sort_order, COALESCE(l.budget_line_id, p.budget_line_id) AS budget_line_id,
@@ -283,8 +293,14 @@ json Invoice::get(long long invoiceId) {
         total += amount;
         std::string printed = str(l, "description");
         if (!l["plan_id"].is_null() && !l["installment_no"].is_null()) {
-            printed += " " + std::to_string(l["installment_no"].as<int>()) + " of " + std::to_string(l["installment_count"].as<int>());
-            if (l["show_total"].as<bool>()) printed += " $" + money2(num(l, "plan_total"));
+            // Instalment k of N always says what it is a part of (mig 714;
+            // owner 2026-10-26: "top soil 3 of 4 at 397 … you need to put
+            // the increment and total … it looks like 4 payments of 397").
+            const std::string k = std::to_string(l["installment_no"].as<int>());
+            const std::string n = std::to_string(l["installment_count"].as<int>());
+            const auto r = planCopy.render("invoices", "plan_line",
+                {{"description", printed}, {"k", k}, {"n", n}, {"total", moneyShort(num(l, "plan_total"))}});
+            printed = r.ok() ? r.body : printed + " " + k + " of " + n + " · " + moneyShort(num(l, "plan_total")) + " total";
         }
         out["lines"].push_back({
             {"id", l["id"].as<long long>()}, {"category", str(l, "category")}, {"category_label", str(l, "category_label")},
