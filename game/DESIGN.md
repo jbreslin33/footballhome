@@ -1943,6 +1943,49 @@ go (2.2 per episode) but 31% (LH) / 49% (UK) of losses are a pass picked
 off. Next: the pressed carrier at halfway — shield / turn back / play it
 back before the hoof — then the receivers' movement to give him a pass.
 
+### 8.56 G4.60 — pressed with no pass: keep it; read the pass once
+
+James 10/26, on the §8.55 finding (59% of Lighthouse's mid-block losses a
+hoof from halfway): a closed-down player with nothing on shields and turns
+back, plays it back to a centre back or the keeper, and hoofs it only in
+his own third — "yes that is right".
+
+- **`keep-it-under-pressure`** (161, core, U-10, principle *Keep the
+  ball*; mig 700; `ai::KeepItUnderPressure`, `Brain::keepIt`): touch-tight
+  outside shooting range → **play it back** (Why "play it back": the open
+  teammate goal-side within `back_pass_max_m` 30, the one with most room)
+  → else **shield and turn** (Why "shield and turn": `shield_step_m` 3
+  away from the presser, leaning toward our goal, at `shield_speed_share`
+  0.5) → only within `own_third_m` 35 of our goal line the old clear. A
+  lapse (the per-second rating roll) is the old hoof. The back pass's lane
+  starts a lane-width out — first cut measured 0 back passes, because the
+  presser at his feet "blocked" every lane.
+- **Meet the pass is read once per pass** (bug, found by the harness's
+  new `GAME_PHASE_TRACE=n`, which prints episode n twice a second, every
+  kick with its target and the receiver's distance, and touches that don't
+  stick): the rating rolled every SECOND, so a semipro receiver met the
+  ball, "forgot" it the next second and walked back to his shape 2 m from
+  it. The roll is now keyed by the flight (kicker + heading; friction slows
+  a rolling ball but never turns it). [FH]
+- Goldens re-locked: 3v3 0xcdc53674630e2e7f, 11v11 0x8081ba3176dad103.
+
+Measured (200 episodes per phase; 20 x 90 min, same seeds):
+
+| | before | after |
+|---|---|---|
+| mid-block LH: passes / kept / clears of losses | 0.5 / 6.1 s / 59% | 1.1 / 8.1 s / 28% |
+| mid-block UK: passes | 1.3 | 2.1 |
+| keeper LH: passes / over halfway | 2.4 / 7.5% | 2.9 / 9.0% |
+| match: passes+recycles+back passes LH / UK | 333 / 535 | 482 / 711 |
+| match: LH shots / final-third entries | 37 / 140 | 44 / 160 |
+| match: goals LH – UK | 3.50 – 1.20 | 5.50 – 1.55 |
+
+Back passes ≈ 120 per team per match at 86-89% completion. Keeping the
+ball raises the goals because the final third was already broken — 44
+shots and 160 entries a match against real ~12 and ~45 (§8.22/§8.25): the
+attack that keeps it now reaches it more. That is the next biggest problem
+(the final third: "the first action is a shot or a loss, never a pass").
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

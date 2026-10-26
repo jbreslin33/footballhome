@@ -62,6 +62,7 @@ ConceptRegistry ConceptRegistry::builtin() {
     r.add(158, "mark-position", levelRank("u14"), false);
     r.add(159, "lose-your-marker", levelRank("u10"), false);
     r.add(160, "direct-opponent", levelRank("u10"), false);
+    r.add(161, "keep-it-under-pressure", levelRank("u10"), false);
     return r;
 }
 

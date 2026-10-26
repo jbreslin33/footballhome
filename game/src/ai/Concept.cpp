@@ -248,6 +248,13 @@ void DirectOpponent::configure(const core::ModelParams& p) {
     zone_ = p.fixed(key("zone_m"), 12000);
 }
 
+void KeepItUnderPressure::configure(const core::ModelParams& p) {
+    own_third_ = p.fixed(key("own_third_m"), 35000);
+    back_max_ = p.fixed(key("back_pass_max_m"), 30000);
+    step_ = p.fixed(key("shield_step_m"), 3000);
+    speed_ = p.fixed(key("shield_speed_share"), 500);
+}
+
 // ── CoverShadow ─────────────────────────────────────────────────────────
 void CoverShadow::configure(const core::ModelParams& p) {
     deep_x_ = p.fixed(key("deep_x_m"), 15000);

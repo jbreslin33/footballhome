@@ -43,7 +43,7 @@ enum class Why : std::uint8_t {
     Press, Chase, Delay, Libero, Mark, GiveAndGo, BlindSideRun, RunInBehind,
     Outlet, Support, Human, WaitForRunner, LapseDeep, LapseStepOut,
     LapseShort, LapseLong, HabitShort, HabitLong, HabitDeep, HabitStepOut,
-    MeetPass, KeepRunning, KeeperDive, SideOn, DropStep, Unmark,
+    MeetPass, KeepRunning, KeeperDive, SideOn, DropStep, Unmark, PlayBack, Shield,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -54,7 +54,7 @@ inline constexpr const char* kWhyNames[] = {
     "lapse: short and simple", "lapse: hit it long",
     "likes it short", "likes it long", "likes to sit deep", "likes to step out",
     "meet the pass", "keep running", "keeper dive", "jockey side-on", "turn and run with him",
-    "lose your marker",
+    "lose your marker", "play it back", "shield and turn",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -170,6 +170,7 @@ private:
     // The decision itself; ordersFor() adds where his body faces (G4.53).
     Orders decide(core::SlotIndex slot, const core::World& world) const;
     void unmark(core::SlotIndex slot, const core::World& world, Orders& o) const;
+    bool keepIt(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
 
     int attackSign(core::SlotIndex slot) const {
         return setup_.team_of_slot[slot] == 0 ? +1 : -1;

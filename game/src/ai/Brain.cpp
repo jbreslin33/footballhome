@@ -544,6 +544,95 @@ void Brain::unmark(SlotIndex slot, const World& world, Orders& o) const {
     o.why = Why::Unmark;
 }
 
+// keep-it-under-pressure (161, G4.60) [James 10/26; coaching: shield, if
+// you can't go forward go back]: the carrier is touch-tight with no pass
+// on. Outside his own third he never hoofs it: he plays it back — the
+// teammate goal-side of him within reach with an open lane, the one with
+// most room — or else shields, carrying it away from the presser and back
+// toward his own goal at a protecting pace. Inside his own third he may
+// still play it back; failing that the old clear stands. False = the
+// concept didn't apply (not touch-tight, not his, a lapse) — carry on.
+bool Brain::keepIt(SlotIndex slot, const World& world, int sign, Orders& out) const {
+    const int bit = book_.keep_it.bit();
+    if (ratings_[slot][bit] <= 0) return false;
+    const auto& K = book_.keep_it;
+    const auto& me = world.player(slot);
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 tight = Fixed64::fromFraction(6, 5);
+    int presser = -1;
+    Fixed64 room_me = Fixed64::fromInt(1000);
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup_.team_of_slot[j] == team) continue;
+        const Fixed64 d2 = distSq(me.pos, world.player(j).pos);
+        if (d2 < room_me) { room_me = d2; presser = j; }
+    }
+    if (presser < 0 || room_me >= tight * tight) return false;
+    // In shooting range the boot is a shot — that's not this lesson.
+    const Vec2 goal{half_x_ * sgn, Fixed64::zero()};
+    const Vec2 to_goal{goal.x - me.pos.x, goal.y - me.pos.y};
+    if (math::lengthSquared(to_goal) < kShootRange * kShootRange) return false;
+    if (!applies(slot, bit, world.tickCount() / 30)) return false;
+    // Play it back: goal-side of him, in reach, lane open — most room.
+    int best = -1;
+    Fixed64 best_room{}, best_dsq{};
+    for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+        if (i == slot || setup_.team_of_slot[i] != team) continue;
+        const auto& mate = world.player(i);
+        if (mate.pos.x * sgn >= me.pos.x * sgn) continue;
+        const Fixed64 dsq = distSq(me.pos, mate.pos);
+        if (dsq < kPassMin * kPassMin || dsq > K.backPassMax() * K.backPassMax()) continue;
+        // The lane starts a lane-width out: the presser at his feet is
+        // what he's escaping, not what blocks the pass — only a man in the
+        // way does.
+        const Vec2 b{mate.pos.x, mate.pos.y};
+        const Vec2 dir = math::normalized(Vec2{b.x - me.pos.x, b.y - me.pos.y});
+        const Vec2 a{me.pos.x + dir.x * kLaneWidth, me.pos.y + dir.y * kLaneWidth};
+        bool open = true;
+        Fixed64 room = Fixed64::fromInt(1000);
+        for (SlotIndex j = 0; j < world.playerCount() && open; ++j) {
+            if (setup_.team_of_slot[j] == team) continue;
+            const Vec2 o{world.player(j).pos.x, world.player(j).pos.y};
+            if (pointSegmentDistSq(o, a, b) <= kLaneWidth * kLaneWidth) open = false;
+            const Fixed64 r = distSq(world.player(j).pos, mate.pos);
+            if (r < room) room = r;
+        }
+        if (!open) continue;
+        if (best < 0 || room > best_room) { best = i; best_room = room; best_dsq = dsq; }
+    }
+    if (best >= 0) {
+        const Vec2 to{world.player(best).pos.x, world.player(best).pos.y};
+        out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+        out.action = best_dsq < kSoftPassRange * kSoftPassRange ? Action::ShortPass : Action::GroundKick;
+        out.why = Why::PlayBack;
+        out.target = to;
+        out.other = static_cast<std::int16_t>(best);
+        return true;
+    }
+    // In his own third the clear is still allowed (the caller's hoof).
+    if (me.pos.x * sgn < -half_x_ + K.ownThird()) return false;
+    // Shield and turn: away from the presser, leaning back toward our goal.
+    const auto& p = world.player(static_cast<SlotIndex>(presser));
+    Vec2 away{me.pos.x - p.pos.x, me.pos.y - p.pos.y};
+    if (away.x.raw == 0 && away.y.raw == 0) away = Vec2{-sgn, Fixed64::zero()};
+    away = math::normalized(away);
+    Vec2 dir{away.x - sgn, away.y};
+    if (dir.x.raw == 0 && dir.y.raw == 0) dir = away;
+    dir = math::normalized(dir);
+    Vec2 to{me.pos.x + dir.x * K.shieldStep(), me.pos.y + dir.y * K.shieldStep()};
+    const Fixed64 lx = half_x_ - Fixed64::one(), ly = half_y_ - Fixed64::one();
+    if (to.x > lx) to.x = lx;
+    if (to.x < -lx) to.x = -lx;
+    if (to.y > ly) to.y = ly;
+    if (to.y < -ly) to.y = -ly;
+    const Vec2 mv = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+    out.move.move = Vec2{mv.x * K.shieldSpeed(), mv.y * K.shieldSpeed()};
+    out.why = Why::Shield;
+    out.target = to;
+    out.other = static_cast<std::int16_t>(presser);
+    return true;
+}
+
 Orders Brain::decide(SlotIndex slot, const World& world) const {
     Orders out;
     const auto& ball = world.ball();
@@ -921,6 +1010,12 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         }
         const bool keeps_it =
             reads && me.pos.x * sgn > -half_x_ + Fixed64::fromInt(35);
+        // keep-it-under-pressure (161, G4.60): touch-tight with nothing
+        // on, play it back to the open man goal-side of him, else shield
+        // and turn away; only in his own third may he still kick it away.
+        // A lapse (or u-nothing) falls through to the hoof below.
+        if (pressed && !im_keeper && keepIt(slot, world, sign, out))
+            return out;
         if (pressed && !keeps_it) {
             bool touch_tight = false;
             for (SlotIndex i = 0; i < world.playerCount() && !touch_tight;
@@ -1115,8 +1210,21 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     const std::uint8_t my_team = setup_.team_of_slot[slot];
     const int meet = book_.meet_the_pass.bit();
     bool flight_ours = false;
+    // One read per PASS (G4.60), not per second: a per-second roll had a
+    // semipro receiver meet it, forget it the next second and walk back
+    // to his shape 2 m from the ball (traced in the phase harness). The
+    // flight is keyed by its kicker and heading — friction slows a rolling
+    // ball but never turns it — so a lapse is misjudging the pass when it
+    // is played, not abandoning the run.
+    auto flightKey = [&]() -> std::uint64_t {
+        const Fixed64 ax = math::fx_abs(ball.vel.x), ay = math::fx_abs(ball.vel.y);
+        const Fixed64 hi = ax > ay ? ax : ay, lo = ax > ay ? ay : ax;
+        const std::uint64_t ratio = hi.raw > 0 ? static_cast<std::uint64_t>(((lo * Fixed64::fromInt(16)) / hi).raw >> Fixed64::FRAC_BITS) : 0;
+        const std::uint64_t octant = (ball.vel.x.raw < 0 ? 1u : 0u) | (ball.vel.y.raw < 0 ? 2u : 0u) | (ax > ay ? 4u : 0u);
+        return (std::uint64_t{1} << 40) | (std::uint64_t{ball.last_kicker} << 16) | (octant << 8) | ratio;
+    };
     if (!ball.owner && world.restartTeam() == 0xFF && world.lastTouchTeam() == my_team &&
-        ratings_[slot][meet] > 0 && applies(slot, meet, world.tickCount() / 30)) {
+        ratings_[slot][meet] > 0 && applies(slot, meet, flightKey())) {
         const FlightRead& fr = flightRead(world);
         const int mine_first = fr.first[my_team], theirs = fr.first[my_team ^ 1];
         if (mine_first >= 0) {

@@ -459,6 +459,28 @@ private:
     math::Fixed64 zone_;
 };
 
+// Pressed with no pass: keep it (161, G4.60, core, U-10) [James 10/26:
+// "shield and turn back, play it back to a CB or the keeper, hoof only in
+// your own third"; coaching: shield, if you can't go forward go back]: a
+// touch-tight carrier with nothing on plays it back — the open teammate
+// goal-side of him within back_pass_max_m, the one with most room — or
+// else shields: body between man and ball, carrying shield_step_m away
+// from the presser and back toward his goal at shield_speed_share pace.
+// Only inside own_third_m of his own goal line may he kick it away.
+// Lapse: the hoof upfield from anywhere.
+class KeepItUnderPressure : public Concept {
+public:
+    KeepItUnderPressure() : Concept("keep-it-under-pressure", 161) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 ownThird() const { return own_third_; }
+    math::Fixed64 backPassMax() const { return back_max_; }
+    math::Fixed64 shieldStep() const { return step_; }
+    math::Fixed64 shieldSpeed() const { return speed_; }
+
+private:
+    math::Fixed64 own_third_, back_max_, step_, speed_;
+};
+
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
@@ -480,6 +502,7 @@ struct ConceptBook {
     MarkPosition mark_position;
     LoseYourMarker lose_your_marker;
     DirectOpponent direct_opponent;
+    KeepItUnderPressure keep_it;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -502,6 +525,7 @@ struct ConceptBook {
         mark_position.configure(p);
         lose_your_marker.configure(p);
         direct_opponent.configure(p);
+        keep_it.configure(p);
     }
 };
 
