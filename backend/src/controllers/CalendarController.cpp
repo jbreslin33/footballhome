@@ -2328,7 +2328,53 @@ Response CalendarController::handlePostRsvp(const Request& request) {
         } catch (const std::exception& e) {
             std::cerr << "CalendarController::handlePostRsvp opt-in ask: " << e.what() << std::endl;
         }
-        return jsonOk({{"rsvp", rsvp}, {"standby_dropped", standby}, {"sms_opt_in", optIn}});
+        // 📝 Going but not on the league's roster (mig 725): the same gap
+        // check Game Center runs (fh_event_registration_gaps); the player
+        // — only when answering for themselves — gets the league's form
+        // (or the "waiting on the league" words once they've submitted).
+        // Never fails the RSVP.
+        json regAsk = nullptr;
+        if (response == "yes" && targetPersonId == personId) {
+            try {
+                auto gap = db->query(
+                    "SELECT g.player_done, g.reason, e.league, COALESCE(e.opponent, '') AS opponent, "
+                    "       to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy FMMM/FMDD') AS when_label, "
+                    "       (SELECT cf.url FROM club_forms cf "
+                    "         WHERE cf.club_id = $2::int AND cf.is_active "
+                    "           AND cf.code = substring(m.body from '\\{form:([A-Za-z0-9_]+)\\}')) AS url "
+                    "  FROM fh_event_registration_gaps($1::bigint, $2::int) g "
+                    "  JOIN fh_events e ON e.id = $1::bigint "
+                    "  JOIN gcal_events ge ON ge.id = e.gcal_event_id "
+                    "  JOIN league_registration_forms lrf ON lrf.league_label = e.league "
+                    "  JOIN message_templates m ON m.id = lrf.message_template_id "
+                    " WHERE g.person_id = $3::int "
+                    "   AND fh_event_counts_as_player($1::bigint, $3::int)",   // a coach-player who picked Coaching isn't asked
+                    {std::to_string(fhEventId), std::to_string(WelcomeLog::kLighthouseClubId), std::to_string(personId)});
+                if (!gap.empty()) {
+                    const auto& g = gap[0];
+                    const bool waiting = g["player_done"].as<bool>();
+                    const std::string url = g["url"].is_null() ? "" : g["url"].c_str();
+                    if (waiting || !url.empty()) {
+                        const MessageCopy::Tokens tokens = {
+                            {"league", g["league"].c_str()}, {"opponent", g["opponent"].c_str()},
+                            {"when", g["when_label"].c_str()}};
+                        MessageCopy copy;
+                        json words = json::object();
+                        const std::string bodyTier = waiting ? "waiting_body"
+                            : (std::string(g["reason"].c_str()) == "calldown_cap_full" ? "calldown_body" : "body");
+                        words["title"] = copy.render("reg_ask", waiting ? "waiting_title" : "title", tokens).body;
+                        words["body"]  = copy.render("reg_ask", bodyTier, tokens).body;
+                        for (const char* tier : {"fill", "later", "ok"})
+                            words[tier] = copy.render("reg_ask", tier, tokens).body;
+                        regAsk = {{"fh_event_id", fhEventId}, {"waiting", waiting},
+                                  {"url", waiting ? json(nullptr) : json(url)}, {"copy", words}};
+                    }
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "CalendarController::handlePostRsvp reg ask: " << e.what() << std::endl;
+            }
+        }
+        return jsonOk({{"rsvp", rsvp}, {"standby_dropped", standby}, {"sms_opt_in", optIn}, {"reg_ask", regAsk}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handlePostRsvp: "
                   << e.what() << std::endl;

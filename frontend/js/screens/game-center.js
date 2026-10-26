@@ -2805,6 +2805,7 @@ class GameCenterScreen extends Screen {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       if (data.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(data.sms_opt_in);   // 📲 mig 647
+      if (data.reg_ask && window.RegAsk) RegAsk.show(data.reg_ask);   // 📝 mig 725
       const final = clearing ? null : ((data.rsvp && data.rsvp.response) || response);
       if (!personId) ev.my_rsvp = final;
       const rsvpPersonId = personId || (data.rsvp && data.rsvp.person_id) || data.person_id;
@@ -5638,6 +5639,7 @@ class GameCenterScreen extends Screen {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       if (data.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(data.sms_opt_in);   // 📲 mig 647
+      if (data.reg_ask && window.RegAsk) RegAsk.show(data.reg_ask);   // 📝 mig 725
       const again = await this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`);
       const body = await again.json().catch(() => null);
       if (body && body.success && body.data) {

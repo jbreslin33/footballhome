@@ -2471,6 +2471,7 @@ class MyScreen extends Screen {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
       if (body && body.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(body.sms_opt_in);   // 📲 mig 647
+      if (body && body.reg_ask && window.RegAsk) RegAsk.show(body.reg_ask);   // 📝 mig 725
       const r = body && body.rsvp;
       if (r) {
         if (!personId) {
@@ -2526,6 +2527,7 @@ class MyScreen extends Screen {
         body: JSON.stringify(payload),
       });
       if (body && body.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(body.sms_opt_in);   // 📲 mig 647
+      if (body && body.reg_ask && window.RegAsk) RegAsk.show(body.reg_ask);   // 📝 mig 725
       // Optimistic local mutation so the UI updates instantly.
       if (ev) {
         const rsvpPersonId  = (body && body.rsvp && body.rsvp.person_id) || personId;
