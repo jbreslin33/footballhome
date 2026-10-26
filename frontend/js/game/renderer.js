@@ -14,6 +14,10 @@
 // delay stays ~133 ms of wall clock (4·s ticks, never under 1.5), and the
 // figures animate at s× — slow motion, the same football. Paused, the
 // picture holds and only the camera moves.
+// Replay (G4.62): every snapshot also goes into a 2-minute history; in
+// replay the picture renders from it at the viewer's own tick — rewind,
+// scrub, step, slow motion — while the live match carries on unseen.
+// Viewer-side only: nothing is sent, so it can't disturb the match.
 
 (function () {
   'use strict';
@@ -106,6 +110,8 @@
       this.buffer = []; // [{tick, snap}] on the server tick timeline
       this.tickRate = 30;
       this.speed = 1;            // G4.61: sim speed (1 = live, 0 = paused)
+      this.history = [];         // G4.62: [{tick, snap}], 2 min of sim time
+      this.replay = null;        // G4.62: {tick, rate, playing} while replaying
       this.heldTick = null;
       this.timeOffset = null; // local ms ↔ tick-time ms estimate
       this.lastSnapshotAt = 0;
@@ -292,6 +298,8 @@
       }
       this.buffer.push({ tick: snap.tick, snap });
       if (this.buffer.length > 90) this.buffer.splice(0, 30);
+      this.history.push({ tick: snap.tick, snap });
+      if (this.history.length > 3600 + 300) this.history.splice(0, 300);
     }
 
     // Held players glow faint gold; the ACTIVE one glows bright.
@@ -319,27 +327,43 @@
       if (this.camera.far !== far) { this.camera.far = far; this.camera.updateProjectionMatrix(); }
       const now = performance.now();
       const dt = this.lastFrameAt ? Math.min((now - this.lastFrameAt) / 1000, 0.1) : 0.016;
-      const simDt = dt * this.speed;   // figures move in sim time
+      let simDt = dt * this.speed;   // figures move in sim time
       this.lastFrameAt = now;
-      const n = this.buffer.length;
+      const rp = this.replay;
+      const buf = rp ? this.history : this.buffer;
+      const n = buf.length;
       let ballPos = null, me = null;
-      if (n >= 1 && this.timeOffset !== null) {
-        const tdt = 1000 / (this.tickRate * (this.speed || 1));
-        const delay = Math.max(1.5, INTERP_DELAY_TICKS * this.speed);
-        let renderTick = (now - this.timeOffset) / tdt - delay;
-        // Paused: hold the last rendered tick (it would otherwise run on).
-        if (this.speed === 0 && this.heldTick !== null) renderTick = this.heldTick;
-        else if (this.speed === 0) this.heldTick = renderTick;
-        else this.heldTick = null;
-        let a = this.buffer[0], b = this.buffer[n - 1];
-        for (let i = n - 1; i > 0; i--) {
-          if (this.buffer[i - 1].tick <= renderTick) {
-            a = this.buffer[i - 1]; b = this.buffer[i]; break;
-          }
+      if (n >= 1 && (rp || this.timeOffset !== null)) {
+        let renderTick;
+        if (rp) {
+          // Replay: the viewer's own clock over the history.
+          if (rp.playing) rp.tick += dt * this.tickRate * rp.rate;
+          const first = buf[0].tick, last = buf[n - 1].tick;
+          if (rp.tick < first) rp.tick = first;
+          if (rp.tick >= last) { rp.tick = last; rp.playing = false; }
+          renderTick = rp.tick;
+          simDt = rp.playing ? dt * rp.rate : 0;
+        } else {
+          const tdt = 1000 / (this.tickRate * (this.speed || 1));
+          const delay = Math.max(1.5, INTERP_DELAY_TICKS * this.speed);
+          renderTick = (now - this.timeOffset) / tdt - delay;
+          // Paused: hold the last rendered tick (it would otherwise run on).
+          if (this.speed === 0 && this.heldTick !== null) renderTick = this.heldTick;
+          else if (this.speed === 0) this.heldTick = renderTick;
+          else this.heldTick = null;
         }
+        this.renderTick = renderTick;
+        // The bracketing pair (binary search: the history is 3,600 long).
+        let lo = 0, hi = n - 1;
+        while (hi - lo > 1) {
+          const mid = (lo + hi) >> 1;
+          if (buf[mid].tick <= renderTick) lo = mid; else hi = mid;
+        }
+        let a = buf[lo], b = buf[hi];
+        if (renderTick <= a.tick) b = a;
         const span = Math.max(b.tick - a.tick, 1);
         const alpha = Math.min(Math.max((renderTick - a.tick) / span, 0), 1);
-        while (this.kicks.length && this.kicks[0].tick <= renderTick) {
+        while (!rp && this.kicks.length && this.kicks[0].tick <= renderTick) {
           const k = this.kicks.shift();
           if (this.figures[k.slot]) this.figures[k.slot].kick();
         }
@@ -404,6 +428,23 @@
     // ── Brain overlay (G4.41, after [Buckland]'s Simple Soccer debug view):
     // for each shown player a label of what he decided, a line to where
     // he's going and a dashed line to the man he's acting on. ──
+    // G4.62 replay: start `ticksBack` before the newest snapshot, paused;
+    // stopReplay() goes back to live.
+    startReplay(ticksBack) {
+      const h = this.history;
+      if (!h.length) return;
+      const last = h[h.length - 1].tick;
+      this.replay = { tick: Math.max(h[0].tick, last - ticksBack), rate: 0.5, playing: false };
+    }
+    stopReplay() {
+      this.replay = null;
+      this.kicks = this.kicks.filter((k) => k.tick > (this.renderTick || 0));
+    }
+    historySpan() {
+      const h = this.history;
+      return h.length ? { first: h[0].tick, last: h[h.length - 1].tick } : null;
+    }
+
     setBrain(view) { this.brain = view; }   // { entries, legend, show: Set }
     drawBrain() {
       const v = this.brain;

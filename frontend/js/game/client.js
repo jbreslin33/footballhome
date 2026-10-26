@@ -520,8 +520,10 @@
   const spPill = 'border:0;border-radius:10px;padding:3px 9px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;';
   speedBar.innerHTML =
     `<button type="button" data-speed="pause" title="Pause / play" style="${spPill}background:#ffcc00;color:#0b1c3d;">⏸</button>` +
+    `<button type="button" data-speed="down" title="Slower" aria-label="Slower" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">−</button>` +
     `<input type="range" min="0" max="${SPEEDS.length - 1}" step="1" value="${SPEEDS.indexOf(100)}" ` +
-    `aria-label="Speed" style="width:130px;min-height:0;accent-color:#ffcc00;">` +
+    `aria-label="Speed" style="width:110px;min-height:0;accent-color:#ffcc00;">` +
+    `<button type="button" data-speed="up" title="Faster" aria-label="Faster" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">+</button>` +
     `<span data-speed-label style="min-width:44px;text-align:right;">1×</span>` +
     `<button type="button" data-speed="live" title="Back to live speed" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">1×</button>`;
   document.body.appendChild(speedBar);
@@ -547,9 +549,109 @@
     const b = ev.target.closest('[data-speed]');
     if (!b) return;
     if (b.dataset.speed === 'live') net.setSpeed(100);
-    else if (simSpeed === 0) net.setSpeed(resumeSpeed || 100);
+    else if (b.dataset.speed === 'down' || b.dataset.speed === 'up') {
+      // One stop along the slider (from the resume speed while paused).
+      const k = Number(speedRange.value) + (b.dataset.speed === 'up' ? 1 : -1);
+      if (k >= 0 && k < SPEEDS.length) net.setSpeed(SPEEDS[k]);
+    } else if (simSpeed === 0) net.setSpeed(resumeSpeed || 100);
     else { resumeSpeed = simSpeed; net.setSpeed(0); }
   });
+
+  // ── Replay (G4.62) — James: "not seeing replay or rewind more
+  // importantly" / "slider bar needs buttons on the side to increment".
+  // Viewer-side: the renderer keeps 2 minutes of snapshots; ⏪ Replay
+  // rewinds 10 s, paused. Scrub the timeline, step a frame (‹ ›) or a
+  // second (« »), play at ¼ / ½ / 1×, LIVE to return. The Brain HUD shows
+  // what each player was thinking at that moment. The match runs on. ──
+  const RATES = [0.1, 0.25, 0.5, 1];
+  const brainHist = [];   // [{tick, entries}] — the BRAIN feed, by the tick it arrived at
+  const replayBar = document.createElement('div');
+  replayBar.className = 'game-only';
+  replayBar.setAttribute('role', 'group');
+  replayBar.setAttribute('aria-label', 'Replay');
+  replayBar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;' +
+    'justify-content:center;gap:4px;align-items:center;z-index:20;max-width:calc(100vw - 32px);' +
+    'background:rgba(10,14,20,.55);padding:3px 6px;border-radius:14px;font:700 11px system-ui,sans-serif;color:#fff;';
+  const rpBtn = (key, label, title, bg) =>
+    `<button type="button" data-rp="${key}" title="${title}" aria-label="${title}" style="${spPill}` +
+    `background:${bg || 'rgba(255,255,255,.15)'};color:${bg ? '#0b1c3d' : '#fff'};">${label}</button>`;
+  document.body.appendChild(replayBar);
+  function paintReplayBar() {
+    replayBar.style.top = `calc(env(safe-area-inset-top, 0px) + ${isAdmin ? 124 : 60}px)`;
+    const rp = renderer.replay;
+    if (!rp) {
+      replayBar.innerHTML = rpBtn('start', '⏪ Replay', 'Rewind 10 seconds', '#ffcc00');
+      return;
+    }
+    replayBar.innerHTML =
+      rpBtn('play', rp.playing ? '⏸' : '▶', 'Play / pause the replay', '#ffcc00') +
+      rpBtn('back1s', '«', 'Back one second') + rpBtn('back1', '‹', 'Back one frame') +
+      `<input type="range" data-rp="scrub" aria-label="Replay position" style="width:150px;min-height:0;accent-color:#ffcc00;">` +
+      rpBtn('fwd1', '›', 'Forward one frame') + rpBtn('fwd1s', '»', 'Forward one second') +
+      `<span data-rp-label style="min-width:52px;text-align:right;"></span>` +
+      `<select data-rp="rate" aria-label="Replay speed" style="font:700 11px system-ui,sans-serif;border-radius:10px;border:0;padding:3px 4px;min-height:0;">` +
+      RATES.map((r) => `<option value="${r}"${r === rp.rate ? ' selected' : ''}>${r}×</option>`).join('') + `</select>` +
+      rpBtn('live', 'LIVE', 'Back to the live match', '#e33');
+    syncReplayBar();
+  }
+  // The timeline and the "−12.3 s" label follow the replay every frame.
+  function syncReplayBar() {
+    const rp = renderer.replay, span = renderer.historySpan();
+    if (!rp || !span) return;
+    const scrub = replayBar.querySelector('[data-rp="scrub"]');
+    if (scrub && document.activeElement !== scrub) {
+      scrub.min = span.first; scrub.max = span.last; scrub.step = 1;
+      scrub.value = Math.round(rp.tick);
+    }
+    const label = replayBar.querySelector('[data-rp-label]');
+    if (label) label.textContent = '−' + ((span.last - rp.tick) / 30).toFixed(1) + ' s';
+    const play = replayBar.querySelector('[data-rp="play"]');
+    if (play && play.textContent !== (rp.playing ? '⏸' : '▶')) play.textContent = rp.playing ? '⏸' : '▶';
+  }
+  function stepReplay(ticks) {
+    const rp = renderer.replay;
+    if (!rp) return;
+    rp.playing = false;
+    rp.tick = Math.round(rp.tick) + ticks;
+  }
+  replayBar.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-rp]');
+    if (!b) return;
+    const k = b.dataset.rp, rp = renderer.replay;
+    if (k === 'start') renderer.startReplay(10 * 30);
+    else if (k === 'live') { renderer.stopReplay(); brainEntries = brainHist.length ? brainHist[brainHist.length - 1].entries : null; updateBrainRows(); }
+    else if (k === 'play' && rp) {
+      const span = renderer.historySpan();
+      if (!rp.playing && span && rp.tick >= span.last) rp.tick = span.first;   // at the end: from the top
+      rp.playing = !rp.playing;
+    }
+    else if (k === 'back1') stepReplay(-1);
+    else if (k === 'fwd1') stepReplay(1);
+    else if (k === 'back1s') stepReplay(-30);
+    else if (k === 'fwd1s') stepReplay(30);
+    paintReplayBar();
+  });
+  replayBar.addEventListener('input', (ev) => {
+    const el = ev.target;
+    if (!renderer.replay) return;
+    if (el.dataset.rp === 'scrub') { renderer.replay.playing = false; renderer.replay.tick = Number(el.value); syncReplayBar(); }
+  });
+  replayBar.addEventListener('change', (ev) => {
+    if (ev.target.dataset.rp === 'rate' && renderer.replay) renderer.replay.rate = Number(ev.target.value);
+  });
+  paintReplayBar();
+  // In replay the HUD reads the brain feed as it was at the replayed tick.
+  let replayBrainAt = null;
+  function syncReplayBrain() {
+    const rp = renderer.replay;
+    if (!rp || !brainOn || !brainHist.length) return;
+    let e = null;
+    for (let i = brainHist.length - 1; i >= 0; i--) if (brainHist[i].tick <= rp.tick) { e = brainHist[i]; break; }
+    if (!e || e === replayBrainAt) return;
+    replayBrainAt = e;
+    brainEntries = e.entries;
+    updateBrainRows();
+  }
 
   const net = new GameNet({
     onSpeed(pct) {
@@ -568,6 +670,7 @@
       isAdmin = !!(h.capabilities & 8);
       paintPhaseBar();
       paintSpeedBar();
+      paintReplayBar();
       if ((h.capabilities & 8) && editBtn) {
         editBtn.style.display = 'block';
         const flipEdit = () => {
@@ -659,6 +762,10 @@
       if (brainOn) paintBrainSides();
     },
     onBrain(entries) {
+      const span = renderer.historySpan();
+      brainHist.push({ tick: span ? span.last : 0, entries });
+      if (brainHist.length > 800) brainHist.splice(0, 100);
+      if (renderer.replay) return;   // replay shows the past, not this
       brainEntries = entries;
       updateBrainRows();
     },
@@ -984,10 +1091,14 @@
     if (k === '+' || k === '=') zoomBy(0.85);
     if (k === '-' || k === '_') zoomBy(1 / 0.85);
     if (k >= '1' && k <= '6' && !e.repeat) renderer.rig.setMode(CAMS[+k - 1]);
+    // Replay frame steps: , and . (a second with shift: < and >).
+    if (renderer.replay && (k === ',' || k === '<')) stepReplay(k === '<' ? -30 : -1);
+    if (renderer.replay && (k === '.' || k === '>')) stepReplay(k === '>' ? 30 : 1);
   });
 
   function loop() {
     renderer.frame();
+    if (renderer.replay) { syncReplayBar(); syncReplayBrain(); }
     // Stale-socket watchdog: a dead TCP path can go minutes without a
     // close event. No snapshot for 4 s while "open" → force the close
     // path, which reconnects.

@@ -1877,7 +1877,7 @@ designing the game … coaching methodology is the most important."
 1. Phases as rows (done) → throw-ins, free kicks (direct / indirect,
    walls), penalties, goal kicks short / long — each a `game_phases` row
    plus its restart kind.
-2. **Freeze frame**: pause + slow motion (done, §8.57), step a tick, rewind (replay from the seed),
+2. **Freeze frame**: pause + slow motion (§8.57), viewer replay with frame steps (§8.59) done; server rewind (replay from a checkpoint),
    annotate — the coach's "stop, look at the picture".
 3. **Play-practice-play** in the harness (built, §8.55): `fh-game-match` runs N of a
    phase and reports how it went (time to cross halfway, turnovers,
@@ -2025,6 +2025,19 @@ should be above the 6,8(cdms) 9 should be inside half circle". CDMs 25.6 m
 not given — ~8 yd); the 9 at 48 m, in his half of the centre circle. 200
 episodes: lost in own third 45%, middle 24.5%, out to Lighthouse 21.5%;
 over halfway 6.5%, passes 2.5, kept 7.1 s.
+
+### 8.59 G4.62 — replay and rewind (viewer-side)
+
+James: "not seeing replay or rewind more importantly" / "slider bar needs
+buttons on the side to increment for replay and speed". The renderer keeps
+every snapshot for 2 minutes of sim time (3,600 ticks); ⏪ Replay (every
+viewer) rewinds 10 s, paused: a timeline to scrub, ‹ › one frame (1/30 s),
+« » one second (keys , . and < >), play at 0.1 / ¼ / ½ / 1×, LIVE back.
+The Brain HUD replays too — each BRAIN frame is kept with the tick it
+arrived at. Nothing goes to the server, so a coach rewinding never disturbs
+the match (it runs on underneath). The speed slider gained − / + steps.
+Still to come: server-side rewind-and-replay (restore a checkpoint and let
+the same seconds play again, or play them differently).
 
 ### v1 explicit non-goals (do not build before G4 closes)
 
