@@ -1202,7 +1202,10 @@ class InvoicesScreen extends Screen {
       // Time + place on the chip (owner 2026-10-26: "i need the times of
       // the event on the cal and the address … that will help me tell who
       // was sent to that event"); the full address rides the tooltip.
-      const at = i.at ? InvoicesScreen.shortTime(i.at) : '';
+      // From–till: the billed stint's own times when it has them, else the event's.
+      const from = (i.s && !i.s.flat && i.s.start) || (i.g && i.g.start) || i.at || '';
+      const till = (i.s && !i.s.flat && i.s.end) || (i.g && i.g.end) || '';
+      const at = from ? `${InvoicesScreen.shortTime(from)}${till ? `–${InvoicesScreen.shortTime(till)}` : ''}` : '';
       const place = i.g && i.g.location ? i.g.location.split(',')[0].trim() : '';
       const title = `${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}${i.g && i.g.location ? `\n📍 ${i.g.location}` : ''}`;
       const inner = `<span class="iv-ev"><span>${ICON[kind]} ${at ? `<b>${esc(at)}</b> ` : ''}${esc(label)}${esc(hrs)}</span>${place ? `<span class="pl">📍 ${esc(place)}</span>` : ''}</span>`;
