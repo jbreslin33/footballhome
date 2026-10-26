@@ -20,6 +20,9 @@ public:
     //   sent: [last 5 sent] } — every draft the contact is on (its own or
     //   as a recipient), each with recipients[]; null when no such contact.
     static nlohmann::json forContact(long long contactId);
+    // Unsent drafts going To any of these contacts — the panel's big
+    // ✉️ Open in Gmail buttons (owner 2026-10-26: "need a clear button").
+    static nlohmann::json unsentFor(const std::vector<long long>& contactIds);
     // Insert (id 0) or update an unsent draft → the saved draft, or null
     // when the id is unknown / already sent.  recipientIds (mig 726), when
     // given, replaces who it goes To; the draft's own contact always stays.

@@ -43,6 +43,17 @@ bool ContactDraftsController::gate(const Request& request, Response* error) {
 Response ContactDraftsController::handleList(const Request& request) {
     Response err; if (!gate(request, &err)) return err;
     try {
+        // ?contact_ids=1,2,3 → { drafts } unsent and going to any of them.
+        const std::string list = request.getQueryParam("contact_ids");
+        if (!list.empty()) {
+            std::vector<long long> ids; size_t p = 0;
+            while (p < list.size()) {
+                size_t e = list.find(',', p); if (e == std::string::npos) e = list.size();
+                try { ids.push_back(std::stoll(list.substr(p, e - p))); } catch (...) {}
+                p = e + 1;
+            }
+            return jsonOut(HttpStatus::OK, {{"drafts", ContactDrafts::unsentFor(ids)}});
+        }
         json out = ContactDrafts::forContact(q(request, "contact_id"));
         return out.is_null() ? jsonError(HttpStatus::NOT_FOUND, "No such contact.") : jsonOut(HttpStatus::OK, out);
     } catch (const std::exception& e) {

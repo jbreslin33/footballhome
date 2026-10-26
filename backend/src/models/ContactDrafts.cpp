@@ -9,7 +9,7 @@ namespace {
 std::string str(const pqxx::row& r, const char* c) { return r[c].is_null() ? std::string{} : std::string(r[c].c_str()); }
 
 constexpr const char* kDraftCols =
-    "d.id, d.contact_id, d.match_id, d.subject, d.body, "
+    "d.id, d.contact_id, d.match_id, d.subject, d.body, d.label, "
     // Everyone it goes To (mig 726), the draft's own contact first.
     "(SELECT COALESCE(json_agg(json_build_object('id', c.id, 'name', c.name, 'email', c.email) "
     "         ORDER BY (c.id = d.contact_id) DESC, c.name), '[]') "
@@ -20,7 +20,7 @@ constexpr const char* kDraftCols =
 json draftJson(const pqxx::row& r) {
     return {{"id", r["id"].as<long long>()}, {"contact_id", r["contact_id"].as<long long>()},
             {"match_id", r["match_id"].is_null() ? json(nullptr) : json(r["match_id"].as<long long>())},
-            {"subject", str(r, "subject")}, {"body", str(r, "body")},
+            {"subject", str(r, "subject")}, {"body", str(r, "body")}, {"label", str(r, "label")},
             {"recipients", json::parse(str(r, "recipients"))},
             {"updated_label", str(r, "updated_label")},
             {"sent_label", r["sent_label"].is_null() ? json(nullptr) : json(str(r, "sent_label"))}};
@@ -49,6 +49,19 @@ json ContactDrafts::forContact(long long contactId) {
                                    " WHERE d.sent_at IS NOT NULL AND (d.contact_id = $1::int OR EXISTS (SELECT 1 FROM contact_email_draft_recipients r "
                                    "        WHERE r.draft_id = d.id AND r.contact_id = $1::int)) ORDER BY d.sent_at DESC LIMIT 5", {cid}))
         out["sent"].push_back(draftJson(r));
+    return out;
+}
+
+json ContactDrafts::unsentFor(const std::vector<long long>& contactIds) {
+    json out = json::array();
+    if (contactIds.empty()) return out;
+    std::string ids = "{";
+    for (size_t i = 0; i < contactIds.size(); ++i) { if (i) ids += ','; ids += std::to_string(contactIds[i]); }
+    ids += "}";
+    for (const auto& r : Database::getInstance()->query(std::string("SELECT ") + kDraftCols + " FROM contact_email_drafts d "
+            " WHERE d.sent_at IS NULL AND EXISTS (SELECT 1 FROM contact_email_draft_recipients r WHERE r.draft_id = d.id AND r.contact_id = ANY($1::int[])) "
+            " ORDER BY d.updated_at DESC", {ids}))
+        out.push_back(draftJson(r));
     return out;
 }
 

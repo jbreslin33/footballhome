@@ -8,6 +8,7 @@
 // being involved", drafts kept until sent or deleted).  Club admins only.
 //
 //   GET    /api/contact-drafts?contact_id=   { contact, drafts[], sent[] }   (ContactDrafts::forContact)
+//   GET    /api/contact-drafts?contact_ids=1,2  { drafts[] } unsent, going to any of them — the big ✉️ buttons
 //   POST   /api/contact-drafts               { id?, contact_id, match_id?, subject, body, recipient_ids? } → { draft }
 //                                             recipient_ids (mig 726) replaces who it goes To; contact_id always stays
 //   DELETE /api/contact-drafts?id=

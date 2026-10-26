@@ -947,6 +947,8 @@ class GameCenterScreen extends Screen {
       if (oppSend && this.isCoach && !oppSend.disabled) { this._sendToOpponent(oppSend); return; }
       const oppSendAll = e.target.closest('[data-gc-opp-send-all]');
       if (oppSendAll && this.isCoach && !oppSendAll.disabled) { this._sendToOpponentAll(oppSendAll); return; }
+      const bigDraft = e.target.closest('[data-gc-draft-open]');
+      if (bigDraft && this.isCoach) { this._panelDraftOpen(bigDraft); return; }
       const draftBtn = e.target.closest('[data-gc-draft-toggle], [data-gc-draft-new], [data-gc-draft-edit], [data-gc-draft-cancel], [data-gc-draft-save], [data-gc-draft-send], [data-gc-draft-delete], [data-gc-draft-unrec]');
       if (draftBtn && this.isCoach && !draftBtn.disabled) { this._draftClick(draftBtn); return; }
       const oppAdd = e.target.closest('[data-gc-opp-add]');
@@ -2924,6 +2926,47 @@ class GameCenterScreen extends Screen {
     } catch (err) {
       this.oppContacts = null;
     }
+    await this._loadPanelDrafts();
+  }
+
+  // Unsent drafts going to anyone in this panel (mig 728) — each is one big
+  // ✉️ button at the top: one click = Gmail with message + everyone.
+  async _loadPanelDrafts() {
+    const o = this.oppContacts || {};
+    const ids = [...(((o.club || {}).contacts) || []), ...(((o.league || {}).contacts) || [])].map(c => c.id);
+    this._panelDrafts = [];
+    if (!ids.length) return;
+    try {
+      const res = await this.auth.fetch(`/api/contact-drafts?contact_ids=${ids.join(',')}`);
+      const data = await res.json().catch(() => ({}));
+      this._panelDrafts = res.ok ? (data.drafts || []) : [];
+    } catch (err) { this._panelDrafts = []; }
+  }
+
+  _panelDraftButtons() {
+    const esc = (t) => this.escapeHtml(t);
+    return (this._panelDrafts || []).map(d => {
+      const to = (d.recipients || []).map(r => r.name || r.email).join(', ');
+      const note = window.MessageCopy ? MessageCopy.block('contact_draft', 'big_button_note', { to }) : to;
+      return `
+        <div style="margin:4px 0 10px;">
+          <button class="btn btn-primary" data-gc-draft-open="${d.id}" style="width:100%; padding:10px 14px; font-size:0.95rem; font-weight:700;">✉️ ${esc(d.label || d.subject || 'Email')}</button>
+          <div style="font-size:0.66rem; opacity:0.7; margin-top:3px; line-height:1.35;">${esc(note)}</div>
+        </div>`;
+    }).join('');
+  }
+
+  // Gmail opens inside the click (no popup block), then it's logged as sent.
+  async _panelDraftOpen(btn) {
+    const d = (this._panelDrafts || []).find(x => x.id === Number(btn.dataset.gcDraftOpen));
+    if (!d) return;
+    const to = (d.recipients || []).map(r => r.email).filter(Boolean).join(',');
+    this.openGmailCompose(this.buildGmailComposeHref({ to, subject: d.subject, body: d.body }));
+    try {
+      await this._postReminder('/api/contact-drafts/sent', { id: d.id });
+      await this._loadPanelDrafts();
+      this._render();
+    } catch (err) { console.error('[game-center] mark draft sent failed:', err); }
   }
 
   _renderOpponentContactsPanel() {
@@ -2938,6 +2981,7 @@ class GameCenterScreen extends Screen {
           <div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${title}</div>
           ${club ? `<button class="btn btn-secondary" data-gc-opp-page="${club.id}" style="padding:2px 8px; font-size:0.66rem;">Opponents page ↗</button>` : ''}
         </div>
+        ${this._panelDraftButtons()}
         ${inner}
       </div>`;
     if (!club) {
@@ -3054,6 +3098,7 @@ class GameCenterScreen extends Screen {
   }
 
   async _draftsLoad(contactId) {
+    await this._loadPanelDrafts();
     try {
       const res = await this.auth.fetch(`/api/contact-drafts?contact_id=${contactId}`);
       const data = await res.json().catch(() => ({}));
