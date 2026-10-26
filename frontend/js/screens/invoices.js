@@ -110,6 +110,7 @@ class InvoicesScreen extends Screen {
         .iv-ev { display:flex; flex-direction:column; min-width:0; overflow:hidden; text-align:left; }
         .iv-ev > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .iv-ev .pl { opacity:0.7; font-size:0.92em; }
+        .iv-chip.ovl { box-shadow:inset 0 0 0 2px #f87171; }
         .iv-chip.exp { border-color:#60a5fa; background:rgba(96,165,250,0.14); }
         .iv-cal-add { border:none; background:transparent; color:var(--text-primary); cursor:pointer; padding:0 2px;
                       font-size:0.85rem; line-height:1; opacity:0.45; min-width:0; min-height:0; }
@@ -1184,7 +1185,51 @@ class InvoicesScreen extends Screen {
     const kindOf = (i) => i.g ? (i.g.kind === 'match' ? 'match' : i.g.kind === 'practice' ? 'practice' : 'claim')
                              : (i.s.gcal_event_id ? 'claim' : i.s.fh_event_id ? 'match' : 'manual');
     const ICON = { match: '⚽', practice: '🏃', claim: '🧾', manual: '⏱' };
-    for (const i of this._mergedPeriodItems()) {
+    const items = this._mergedPeriodItems();
+
+    // ⚠ Overlap (owner 2026-10-26: "check for overlap in time we give them
+    // green credit for. so we don't over invoice"): billed stints on the
+    // same day whose clock times cross.  A stint's window is its own
+    // from–till, else the event's start + its billed hours; flat hours
+    // with no time at all can't be placed and are left out.
+    const mins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? (+m[1]) * 60 + (+m[2]) : NaN; };
+    const ovl = new Map();          // item → labels it crosses
+    const dblByDate = new Map();    // date → hours billed twice
+    {
+      const spans = new Map();
+      for (const i of items) {
+        if (!i.s) continue;
+        const a = mins(!i.s.flat && i.s.start ? i.s.start : (i.g && i.g.start) || '');
+        if (!Number.isFinite(a)) continue;
+        const bRaw = !i.s.flat && i.s.end ? mins(i.s.end) : a + Number(i.s.hours || 0) * 60;
+        const b = Math.min(Number.isFinite(bRaw) && bRaw > a ? bRaw : a + Number(i.s.hours || 0) * 60, 24 * 60);
+        if (!(b > a)) continue;
+        const d = inWin(i.date);
+        if (!spans.has(d)) spans.set(d, []);
+        spans.get(d).push({ i, a, b });
+      }
+      for (const [d, list] of spans) {
+        list.sort((x, y) => x.a - y.a);
+        for (let x = 0; x < list.length; x++)
+          for (let y = x + 1; y < list.length && list[y].a < list[x].b; y++) {
+            const nm = (z) => (z.i.g ? (z.i.g.note || z.i.g.opponent) : (z.i.s.note || z.i.s.auto_note)) || 'Hours';
+            ovl.set(list[x].i, [...(ovl.get(list[x].i) || []), nm(list[y])]);
+            ovl.set(list[y].i, [...(ovl.get(list[y].i) || []), nm(list[x])]);
+          }
+        // Billed minutes minus the clock minutes they actually cover.
+        let union = 0, curA = -1, curB = -1;
+        for (const z of list) {
+          if (z.a >= curB) { if (curB > curA) union += curB - curA; curA = z.a; curB = z.b; }
+          else curB = Math.max(curB, z.b);
+        }
+        if (curB > curA) union += curB - curA;
+        const sum = list.reduce((t, z) => t + (z.b - z.a), 0);
+        if (sum - union > 0.5) dblByDate.set(d, (sum - union) / 60);
+      }
+    }
+    const dblHours = [...dblByDate.values()].reduce((t, h) => t + h, 0);
+
+    for (const i of items) {
       const kind = kindOf(i);
       const billed = !!i.s;
       const date = inWin(i.date);
@@ -1207,17 +1252,19 @@ class InvoicesScreen extends Screen {
       const till = (i.s && !i.s.flat && i.s.end) || (i.g && i.g.end) || '';
       const at = from ? `${InvoicesScreen.shortTime(from)}${till ? `–${InvoicesScreen.shortTime(till)}` : ''}` : '';
       const place = i.g && i.g.location ? i.g.location.split(',')[0].trim() : '';
-      const title = `${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}${i.g && i.g.location ? `\n📍 ${i.g.location}` : ''}`;
-      const inner = `<span class="iv-ev"><span>${ICON[kind]} ${at ? `<b>${esc(at)}</b> ` : ''}${esc(label)}${esc(hrs)}</span>${place ? `<span class="pl">📍 ${esc(place)}</span>` : ''}</span>`;
-      if (locked) put(date, `<span class="iv-chip ${state}" style="display:flex;" title="${esc(title)}">${inner}</span>`);
-      else if (!i.g && i.s) put(date, `<button class="iv-chip ${state}" data-edit-shift="${i.s.id}" title="${esc(title)}">${inner}</button>`);
+      const crosses = ovl.get(i);
+      const title = `${crosses ? `⚠ ${this._copy('cal_overlap_tip', { list: crosses.join(', ') }) || `Overlaps ${crosses.join(', ')} — the same hours billed twice`}\n` : ''}${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}${i.g && i.g.location ? `\n📍 ${i.g.location}` : ''}`;
+      const inner = `<span class="iv-ev"><span>${crosses ? '⚠ ' : ''}${ICON[kind]} ${at ? `<b>${esc(at)}</b> ` : ''}${esc(label)}${esc(hrs)}</span>${place ? `<span class="pl">📍 ${esc(place)}</span>` : ''}</span>`;
+      const cls = `${state}${crosses ? ' ovl' : ''}`;
+      if (locked) put(date, `<span class="iv-chip ${cls}" style="display:flex;" title="${esc(title)}">${inner}</span>`);
+      else if (!i.g && i.s) put(date, `<button class="iv-chip ${cls}" data-edit-shift="${i.s.id}" title="${esc(title)}">${inner}</button>`);
       else {
         // One tap cycles ✓ → ✗ → clear (owner 2026-10-20: "easier to turn
         // green or red"); ⋯ opens the details popup (RSVP, attendance,
         // part hours, ✏️) that the old list rows carried.
         const key = i.g.fh_event_id ? `f${i.g.fh_event_id}` : `g${i.g.gcal_event_id}`;
         const mkState = billed ? (partial ? 'part' : 'yes') : (i.g.declined ? 'no' : (i.g.rsvp === 'no' ? 'rsvpno' : ''));
-        put(date, `<span class="iv-chip ${state}" style="display:flex;">
+        put(date, `<span class="iv-chip ${cls}" style="display:flex;">
           <button class="iv-chip-zone" style="flex:1;" data-cal-cycle data-ev="${i.g.fh_event_id || ''}" data-gev="${i.g.gcal_event_id || ''}"
                   data-state="${mkState}" title="${esc(title)} — ${esc(this._copy('cycle_tip') || 'tap cycles: ✓ worked → ✗ not there → unanswered')}">${inner}</button>
           <button class="iv-chip-zone" data-cal-detail="${key}" title="${esc(this._copy('cal_detail_tip') || 'Details — RSVP, attendance, part hours, edit')}"
@@ -1289,8 +1336,9 @@ class InvoicesScreen extends Screen {
       if (dd && !out) daysMoney += dd.money;
       const dnum = d.slice(8).replace(/^0/, '');
       const dlabel = (d === gridStart || dnum === '1') ? InvoicesScreen.dayLabel(d).replace(/^\w+ /, '') : dnum;
+      const dbl = out ? 0 : (dblByDate.get(d) || 0);
       const sum = dd && !out && (dd.hours > 0 || Math.abs(dd.money) >= 0.005)
-        ? `<div class="dsum">${dd.hours > 0 ? `${InvoicesScreen.plain(dd.hours)}h · ` : ''}${InvoicesScreen.money(dd.money)}</div>` : '';
+        ? `<div class="dsum">${dbl ? `<div style="color:#f87171;">⚠ ${InvoicesScreen.plain(Math.round(dbl * 100) / 100)}h ×2</div>` : ''}${dd.hours > 0 ? `${InvoicesScreen.plain(dd.hours)}h · ` : ''}${InvoicesScreen.money(dd.money)}</div>` : '';
       cells += `
         <div class="cell ${out ? 'out' : ''}">
           <div class="dnum" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1325,6 +1373,8 @@ class InvoicesScreen extends Screen {
         <span>${esc(this._copy('cal_running_total') || 'Invoice so far')} <b>${InvoicesScreen.money(total)}</b></span>
       </div>
       <div class="iv-cal-tot" style="padding-top:0; font-size:0.75rem; opacity:0.75;">
+        ${dblHours > 0.005 ? `<span style="color:#f87171; opacity:1; font-weight:700;">${esc(this._copy('cal_overlap', { hours: InvoicesScreen.plain(Math.round(dblHours * 100) / 100), amount: InvoicesScreen.money(dblHours * rate) })
+          || `⚠ ${InvoicesScreen.plain(Math.round(dblHours * 100) / 100)} h billed twice (${InvoicesScreen.money(dblHours * rate)}) — overlapping times; ✏️ or ✗ one`)}</span>` : ''}
         ${off ? `<span style="color:#f87171; opacity:1; font-weight:700;">${esc(this._copy('cal_mismatch', { days: InvoicesScreen.money(daysMoney), total: InvoicesScreen.money(total) }) || `⚠ The days add up to ${InvoicesScreen.money(daysMoney)} but the invoice says ${InvoicesScreen.money(total)}`)}</span>` : ''}
         <span style="${nLines > InvoicesScreen.SHEET_ROWS ? 'color:#f59e0b;' : ''}">${esc(nLines > InvoicesScreen.SHEET_ROWS
           ? this._copy('sheet_fit', { n: nLines, max: InvoicesScreen.SHEET_ROWS })
