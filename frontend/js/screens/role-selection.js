@@ -78,19 +78,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <!-- 📋 Event Center (owner 2026-10-26) — one tile for the Game Center
+             and Attendance tiles it replaced: games, practices, pickup on
+             type pills (lib/event-kind-switch.js).  Copy: kind=event_center. -->
         <button class="btn btn-lg btn-primary" data-role="game-center" id="rs-game-center" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🏟️</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Game Center</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Pick a game — set the squad, starters &amp; bench, and the result</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="event-center" id="rs-event-center" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">📋</span>
           <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Attendance</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Pick a day, then the practice, pickup or game — take attendance, invite a player</div>
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('event_center', 'tile_title')) || 'Event Center'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('event_center', 'tile_sub')) || 'Games, practices and pickup — squads, who\'s coming, attendance, groups'}</div>
           </div>
         </button>
 
@@ -628,10 +623,10 @@ class RoleSelectionScreen extends Screen {
       }
       // A coach without an admin role still sets lineups, takes
       // attendance and reads the attendance report for their teams — show
-      // them the 🏟️ Game Center, 📋 Attendance, 👕 Uniforms & Kit and
+      // them the 📋 Event Center, 👕 Uniforms & Kit and
       // 📊 Reports tiles the admin levels get by default (Reports is
       // scoped server-side to the teams they coach).
-      for (const id of ['#rs-teams', '#rs-tactical', '#rs-game-center', '#rs-event-center', '#rs-kit', '#rs-reports']) {
+      for (const id of ['#rs-teams', '#rs-tactical', '#rs-game-center', '#rs-kit', '#rs-reports']) {
         const tile = this.element && this.element.querySelector(id);
         if (tile) tile.style.display = 'flex';
       }

@@ -522,8 +522,12 @@ class GameCenterScreen extends Screen {
     el.innerHTML = `
       <div class="screen-header" style="flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🏟️ Game Center</h1>
+        <h1 id="gc-title">🏟️ Game Center</h1>
         <p class="subtitle" id="gl-subtitle">Loading…</p>
+        <!-- Event Center's type pills (lib/event-kind-switch.js) — Games lit;
+             the other kinds open the event screen.  Staff doors only: the
+             #my player view stays a plain game page. -->
+        <div id="gc-kinds" style="display:contents;"></div>
         <!-- Flip to another game without going back to the list: one pill
              per posted club game (_renderGameSwitch).  Its own full-width
              row — the header is a flex row — scrolling sideways on a phone. -->
@@ -650,8 +654,22 @@ class GameCenterScreen extends Screen {
     this._scoreMsg = '';
     this._detailsMsg = '';
     this._wire();
+    this._paintKinds();
     this._bootstrap();
     this._startLivePoll();
+  }
+
+  // Games is one pill of Event Center (owner 2026-10-26).  The #my door
+  // (view:'player') keeps the plain Game Center title and no strip.
+  _paintKinds() {
+    const strip = this.find('#gc-kinds');
+    const title = this.find('#gc-title');
+    if (this.playerOnly || !window.EventKindSwitch) {
+      if (strip) strip.innerHTML = '';
+      return;
+    }
+    if (title) title.textContent = EventKindSwitch.title();
+    if (strip) strip.innerHTML = EventKindSwitch.html('match', (t) => this.escapeHtml(t));
   }
 
   // postType is the deep link ("open Game Center on the Match Result
@@ -876,6 +894,11 @@ class GameCenterScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
         this.navigation.goBack();
+        return;
+      }
+      const kind = e.target.closest('[data-event-kind]');
+      if (kind) {
+        if (kind.getAttribute('data-event-kind') !== 'match') EventKindSwitch.go(this.navigation, kind.getAttribute('data-event-kind'));
         return;
       }
       const flip = e.target.closest('[data-switch-game]');

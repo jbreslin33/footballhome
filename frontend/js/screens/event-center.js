@@ -40,9 +40,6 @@ class EventCenterScreen extends Screen {
   static get WHEN_PILLS() {
     return [['today', 'Today'], ['yesterday', 'Yesterday'], ['this-week', 'This week'], ['last-week', 'Last week']];
   }
-  static get KIND_PILLS() {
-    return [['all', 'All'], ['match', 'Games'], ['practice', 'Practices'], ['pickup', 'Pickup'], ['other', 'Other']];
-  }
   static get CATEGORY_LABELS() { return { mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls', staff: 'Staff' }; }
   static get ATTENDANCE() {
     return [
@@ -100,10 +97,12 @@ class EventCenterScreen extends Screen {
         .ec-send[disabled] { opacity:0.5; }
         .ec-box { border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary); padding:12px; margin-bottom:var(--space-3); }
       </style>
-      <div class="screen-header">
+      <div class="screen-header" style="flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1 id="ec-title">📋 Event Center</h1>
         <p class="subtitle" id="ec-sub"></p>
+        <!-- 🏟️ Games · 🏃 Practices · ⚽ Pickup · 📅 All (lib/event-kind-switch.js) -->
+        <div id="ec-kinds" style="display:contents;"></div>
       </div>
       <div id="ec-body" style="padding: var(--space-4); max-width: 900px; margin: 0 auto;"></div>
     `;
@@ -113,6 +112,9 @@ class EventCenterScreen extends Screen {
   }
 
   onEnter(params = {}) {
+    // A type pill (EventKindSwitch) lands on that kind's list for the week,
+    // the way Game Center shows the week's games.
+    if (params.kind) { this.kind = params.kind; this.when = 'this-week'; this.date = null; }
     this.ev = params.pick ? null : (params.event || null);
     this.loadingId = (!this.ev && !params.pick && params.fhEventId) ? Number(params.fhEventId) : null;
     this.pill = 'coming';
@@ -507,13 +509,22 @@ class EventCenterScreen extends Screen {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const t = (sel) => e.target.closest(sel);
       let el;
-      if ((el = t('[data-ec-kind]')))     { this.kind = el.dataset.ecKind; this._render(); return; }
+      if ((el = t('[data-event-kind]'))) {
+        const kind = el.dataset.eventKind;
+        // Games are Game Center's; the other kinds just refilter this list.
+        if (kind === 'match' || this.ev) EventKindSwitch.go(this.navigation, kind);
+        else { this.kind = kind; this._render(); }
+        return;
+      }
       if ((el = t('[data-ec-category]'))) { this.category = el.dataset.ecCategory; this._render(); return; }
       if ((el = t('[data-ec-when]')))     { this._setWhen(el.dataset.ecWhen); return; }
       if ((el = t('[data-ec-open]'))) {
         const ev = (this.events || []).find(x => x.fh_event_id === Number(el.dataset.ecOpen));
-        // A goTo, so Back returns to the list.
-        if (ev) this.navigation.goTo('attendance', { event: ev });
+        // A goTo, so Back returns to the list.  A linked game opens in
+        // Game Center — Event Center's page for games.
+        if (ev && ev.kind === 'match' && ev.match_id != null) {
+          this.navigation.goTo('game-center', { matchId: ev.match_id, title: EventLabels.title(ev), when: this._when(ev) });
+        } else if (ev) this.navigation.goTo('event-center', { event: ev });
         return;
       }
       if ((el = t('[data-ec-pill]'))) {
@@ -569,14 +580,20 @@ class EventCenterScreen extends Screen {
     const title = this.find('#ec-title');
     const sub = this.find('#ec-sub');
     if (!body) return;
+    const kinds = this.find('#ec-kinds');
+    if (kinds) {
+      const k = this.ev ? (['match', 'practice', 'pickup'].includes(this.ev.kind) ? this.ev.kind : 'all') : this.kind;
+      kinds.innerHTML = EventKindSwitch.html(EventKindSwitch.KINDS.includes(k) ? k : 'all', (t) => this.escapeHtml(t));
+    }
     if (this.ev) {
       title.textContent = `📋 ${EventLabels.title(this.ev)}`;
       sub.textContent = [this._when(this.ev), this.ev.location].filter(Boolean).join(' · ');
       body.innerHTML = this._eventHtml();
       return;
     }
-    title.textContent = '📋 Attendance';
-    sub.textContent = 'Pick a day, then the practice, pickup or game — take attendance, invite a player';
+    title.textContent = EventKindSwitch.title();
+    sub.textContent = (window.MessageCopy && MessageCopy.block('event_center', 'list_sub'))
+      || 'Pick a day, then the practice or pickup — who\'s coming, attendance, groups, invites';
     if (this.error)   { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     if (!this.events || this.loadingId) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     body.innerHTML = this._pickerHtml();
@@ -623,9 +640,6 @@ class EventCenterScreen extends Screen {
         ${EventCenterScreen.WHEN_PILLS.map(([k, label]) => chip('data-ec-when', k, label, this.when === k)).join('')}
         <input type="date" class="ec-chip ${this.when === 'date' ? 'on' : ''}" data-ec-date value="${dateValue}"
                aria-label="Go to a day" style="font-family:inherit;">
-      </div>
-      <div style="display:flex; gap:var(--space-1); flex-wrap:wrap;">
-        ${EventCenterScreen.KIND_PILLS.map(([k, label]) => chip('data-ec-kind', k, label, this.kind === k)).join('')}
       </div>
       ${list(this._rangeLabel(), listed, 'Nothing on the calendar for these days.')}`;
   }
