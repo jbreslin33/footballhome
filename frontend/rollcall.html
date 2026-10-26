@@ -36,7 +36,11 @@
     .col.go h3 { color: #4ade80; } .col.no h3 { color: #f87171; } .col.none h3 { color: #fbbf24; }
     .col.none { grid-column: 1 / -1; }
     .names { font-size: 15px; line-height: 1.6; }
-    .names span { display: inline-block; margin: 0 8px 0 0; white-space: nowrap; }
+    /* One name per line, numbered, so the list matches the count (owner 10/26). */
+    .names { counter-reset: n; }
+    .names span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .names span[class]::before { counter-increment: n; content: counter(n) ". "; opacity: 0.55; font-weight: 400; }
+    .names .me { display: block; width: fit-content; max-width: 100%; }
     .names .me { background: #fbbf24; color: #1f1300; border-radius: 6px; padding: 0 6px; font-weight: 700; }
     .count { font-size: 22px; font-weight: 800; color: #fbbf24; }
     .answer { margin-top: 12px; border-top: 1px dashed #334155; padding-top: 10px; }
@@ -116,7 +120,7 @@
       function namesHtml(list, mine) {
         if (!list || !list.length) return `<span style="opacity:0.5;">${esc(c('empty_list') || '—')}</span>`;
         const isMine = (n) => [...mine].some(m => m && (n === m || n.startsWith(m + ' ')));
-        return list.map(n => `<span class="${isMine(n) ? 'me' : ''}">${esc(n)}</span>`).join('');
+        return list.map(n => `<span class="${isMine(n) ? 'me' : 'nm'}">${esc(n)}</span>`).join('');
       }
       function render() {
         $('t-title').textContent = c('page_title') || 'Roll call';
