@@ -105,6 +105,9 @@ public:
     void placeBall(const BallState& b) { ball_ = b; }
     // Scenario setup: a player already on the move (a runner mid-run).
     void placeVelocity(SlotIndex slot, const math::Vec3& vel) { players_[slot].vel = vel; }
+    // A brain's picture, not gameplay (G4.66): in a COPY of the world, put
+    // a man where one player believes he is. Nothing else about him changes.
+    void seePlayerAt(SlotIndex slot, const math::Vec3& pos) { players_[slot].pos = pos; }
     void setTeam(SlotIndex slot, std::uint8_t team);
     void setKeeper(SlotIndex slot, bool keeper);
     // G4.51: the shared dive timings (mig 678); G4.52: each slot's Body.

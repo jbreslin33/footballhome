@@ -237,4 +237,23 @@ FH_TEST(teams_kits_round_trip) {
     FH_EXPECT(o.has_value() && o->home == "A" && o->kit[0][0] == -1);
 }
 
+// G4.41 + G4.66 (1.11): the brain overlay round-trips, vision block too;
+// a 1.7 frame (no vision block) still decodes.
+FH_TEST(brain_frame_round_trips_with_the_vision_block) {
+    BrainFrame f;
+    BrainEntry a; a.why = 3; a.target_dm_x = -120; a.target_dm_y = 45; a.other = 7; a.rung = 2;
+    a.look_ds = 14; a.unseen = 3;
+    BrainEntry b; b.why = 0;
+    f.slots = {a, b};
+    const Bytes wire = encodeBrain(f);
+    const auto back = decodeBrain(wire);
+    FH_EXPECT(back.has_value() && back->slots.size() == 2);
+    FH_EXPECT(back->slots[0].target_dm_x == -120 && back->slots[0].other == 7 && back->slots[0].rung == 2);
+    FH_EXPECT(back->slots[0].look_ds == 14 && back->slots[0].unseen == 3);
+    FH_EXPECT(back->slots[1].look_ds == 255 && back->slots[1].unseen == 0);
+    const Bytes old(wire.begin(), wire.begin() + 1 + 2 * 7);
+    const auto legacy = decodeBrain(old);
+    FH_EXPECT(legacy.has_value() && legacy->slots.size() == 2 && legacy->slots[0].look_ds == 255);
+}
+
 FH_TEST_MAIN()

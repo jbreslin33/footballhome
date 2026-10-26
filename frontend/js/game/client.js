@@ -409,6 +409,11 @@
     return 'border:0;border-radius:8px;padding:1px 7px;font:700 10px system-ui,sans-serif;cursor:pointer;' +
       'background:rgba(255,255,255,.18);color:#fff;min-width:0;min-height:0;';
   }
+  // G4.66 what he can see: how old his picture of the men behind him is.
+  function lookText(e) {
+    if (!e || e.look === undefined || e.look === 255) return '';
+    return e.unseen ? ` · 👀 ${(e.look / 10).toFixed(1)}s, ${e.unseen} behind` : ' · 👀 sees all';
+  }
   function updateBrainRows() {   // text only, every BRAIN frame (~5 Hz)
     if (!brainOn) return;
     for (const side of brainSides) {
@@ -417,7 +422,7 @@
         const e = brainEntries && brainEntries[i];
         const why = e ? brainLegend[e.why] || '?' : '…';
         const other = e && e.other !== 255 ? ' → ' + slotName(e.other) : '';
-        el.textContent = why + other;
+        el.textContent = why + other + lookText(e);
       }
       for (const el of side.el.querySelectorAll('[data-det]')) {
         if (el.hidden) continue;

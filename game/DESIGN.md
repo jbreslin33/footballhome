@@ -2287,6 +2287,60 @@ of before. Open: from a standing start a man covers ~5 m in 1.5 s (a pro
 ~5 m in 1 s), so every press — the winger on the full-back, our 2 on their
 7 — arrives late; that's the body model (Locomotion), a separate slice.
 
+### 8.64 G4.66 — what a player can see: the men behind him are as of his last look (mig 737)
+
+CONCEPTS.md queue NEXT #2 (James 10/26): "men BEHIND him are known only as
+of his last shoulder check; scanning becomes a rated skill. Foundation for"
+communication.
+
+- **The body (`physics.vision`, `ai::Vision`):** men within `view_half_deg`
+  100° of where he faces (PlayerState.face, the G4.53 body), and anyone
+  within `feel_m` 2 m, are seen as they are. Everyone else is where he WAS
+  at this player's last look — pos − vel × age, the same linear trick as
+  the ball's perception delay (G4.3; no history state, brains stay pure),
+  never older than `max_age_s` 3 s. A man who ran in behind him since is
+  still back where he started. `Brain::ordersFor` builds that picture as a
+  copy of the World (`World::seePlayerAt`) and decides on it; the flight
+  read and direct-opponent pairs are read from the true world first, so
+  their per-tick caches stay shared by all 22 brains. The perfect band
+  sees everything (every golden unchanged).
+- **The skill — two core concepts set how often he looks.** In possession
+  `scan-before-receive` (33, queued since mig 650, now wired; U-10), out of
+  possession `scan-defending` (171, new; U-14). A 1 looks every
+  `every_s_at1` 5 s, a 100 every `every_s_at100` 1.25 s (~0.8 a second —
+  [Jordet et al. 2013]: the best Premier League midfielders), straight
+  line between; each look is rolled like any concept (a miss = that look
+  skipped), each player on his own rhythm. 0 = never looks: only what's
+  in front of him. Plus the look while the pass is on its way to him (the
+  flight read's first man of the passing team), rolled per half second.
+- **No blind passes** (`blind_pass_s` 0.5 s): on the ball, a mate he can't
+  see is no option unless he looked within that. Found by measurement:
+  without it the carrier played balls to where men USED to be, and
+  completion fell 63% → 52% for both teams (carrier exempt: back to 64%).
+- **HUD:** the brain overlay (wire 1.11, a trailing vision block on BRAIN —
+  old clients ignore it) shows "👀 1.4s, 3 behind" per player in the side
+  list and "👀 1.4s" on the pitch label.
+
+30 full matches, same seeds, Lighthouse APSL vs Ukrainian Nationals:
+
+| | before | vision |
+|---|---|---|
+| margin | +4.13 ± 0.60 (6.20 – 2.07) | +2.57 ± 0.59 (5.00 – 2.43) |
+| pass to a mate, LH / UK | 62.7% / 63.2% | 65.8% / 64.2% |
+| recycles per match, LH / UK | 137 / 271 | 61 / 132 |
+| clearances per match, LH / UK | 77 / 52 | 101 / 77 |
+| Ukies shots / final-third entries | 17.7 / 73 | 29.3 / 90 |
+
+The carrier who can't see his support behind him no longer recycles to it
+— he clears or goes forward; Lighthouse's man-markers, facing the ball,
+lose a man who moves behind them between looks, and the Ukies get more
+into our third. Open: the stale picture keeps the man's CURRENT velocity
+(a stateless approximation — a true "as of then" needs position history);
+the harness runs ~2× slower (a World copy per brain per tick; ~110 µs a
+tick, far inside the 33 ms live budget). Next: communication — the call
+that refreshes a teammate's picture ("man on", "turn", the full-back's
+cover-shadow adjustment).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

@@ -66,6 +66,9 @@ ConceptRegistry ConceptRegistry::builtin() {
     r.add(162, "jump-the-pass", levelRank("amateur"), true);
     r.add(163, "shadow-second-man", levelRank("amateur"), true);
     r.add(164, "pressing-distance", levelRank("amateur"), true);
+    // G4.66 scanning: what a player knows of the men behind him.
+    r.add(33, "scan-before-receive", levelRank("u10"), false);
+    r.add(171, "scan-defending", levelRank("u14"), false);
     return r;
 }
 

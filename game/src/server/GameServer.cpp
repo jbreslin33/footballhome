@@ -716,6 +716,8 @@ void GameServer::sendBrain() {
         e.target_dm_y = dm(o.target.y);
         e.other = o.other >= 0 && o.other < 255 ? static_cast<std::uint8_t>(o.other) : 255;
         e.rung = o.rung;
+        e.look_ds = o.look_ds;
+        e.unseen = o.unseen;
         bf.slots.push_back(e);
     }
     const Bytes frame = encodeFrame(FrameType::Brain, encodeBrain(bf));

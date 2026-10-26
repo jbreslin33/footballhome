@@ -674,6 +674,51 @@ private:
     math::Fixed64 off_;
 };
 
+// Scanning (G4.66) [Jordet et al. 2013, visual exploratory activity in
+// Premier League midfielders: the best scan ~0.6-0.8 times a second; FA /
+// US Soccer "check your shoulder"]: what a player knows of the men BEHIND
+// him is only as fresh as his last look. A rating sets how often he looks
+// (every_s_at1 for a 1, every_s_at100 for a 100, straight line between);
+// each look is rolled like any concept, so a weak one skips some. 0 =
+// doesn't look at all: he knows what's in front of him and nothing else.
+class Scanning : public Concept {
+public:
+    using Concept::Concept;
+    void configure(const core::ModelParams& p) override;
+    // Ticks between looks at this rating (1-100).
+    std::int32_t everyTicks(std::uint8_t rating) const;
+
+private:
+    math::Fixed64 at1_, at100_;
+};
+// Scan before you receive (33, core, U-10) — in possession: the look over
+// the shoulder, and a fresh one while the pass is on its way to him.
+class ScanBeforeReceive : public Scanning {
+public:
+    ScanBeforeReceive() : Scanning("scan-before-receive", 33) {}
+};
+// Scan when defending (171, core, U-14) — out of possession: checking the
+// runner and his man behind him, not only watching the ball.
+class ScanDefending : public Scanning {
+public:
+    ScanDefending() : Scanning("scan-defending", 171) {}
+};
+
+// What a body can see (G4.66; physics.vision.*): men within view_half_deg
+// of where he faces are seen as they are; so is anyone within feel_m (heard,
+// felt). The rest are where they were at his last look — at most max_age_s
+// old. A human's useful field of view is roughly 180-200 degrees. On the
+// ball he never plays a mate he can't see unless his look is younger than
+// blind_pass_s.
+struct Vision {
+    math::Fixed64 cos_half;   // cos(view_half_deg)
+    math::Fixed64 feel;       // m
+    std::int32_t max_age_ticks = 90;
+    // On the ball he passes to a man he can't see only if he looked within this.
+    std::int32_t blind_pass_ticks = 15;
+    void configure(const core::ModelParams& p);
+};
+
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
@@ -705,6 +750,9 @@ struct ConceptBook {
     DefendYourMan defend_man;
     ShadowTheLine shadow_line;
     PlayOffLongBall play_off;
+    ScanBeforeReceive scan_receive;
+    ScanDefending scan_defend;
+    Vision vision;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -737,6 +785,9 @@ struct ConceptBook {
         defend_man.configure(p);
         shadow_line.configure(p);
         play_off.configure(p);
+        scan_receive.configure(p);
+        scan_defend.configure(p);
+        vision.configure(p);
     }
 };
 

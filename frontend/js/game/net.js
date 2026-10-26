@@ -47,7 +47,7 @@
             const names = GameWire.decodePresets(view, f.payloadAt);
             GameWire.CONCEPTS.splice(0, GameWire.CONCEPTS.length, ...names);
           } else if (f.type === GameWire.FrameType.BRAIN) {
-            if (this.handlers.onBrain) this.handlers.onBrain(GameWire.decodeBrain(view, f.payloadAt));
+            if (this.handlers.onBrain) this.handlers.onBrain(GameWire.decodeBrain(view, f.payloadAt, f.payloadLen));
           } else if (f.type === GameWire.FrameType.SPEED) {
             if (this.handlers.onSpeed) this.handlers.onSpeed(GameWire.decodeSpeed(view, f.payloadAt));
           } else if (f.type === GameWire.FrameType.PHASES) {

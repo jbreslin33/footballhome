@@ -484,6 +484,7 @@
         if (other) { set(part.act, p, other); part.act.computeLineDistances(); }
         let text = (v.legend && v.legend[e.why]) || '?';
         if (e.rung) text += ' · rung ' + e.rung;
+        if (e.unseen && e.look !== undefined && e.look !== 255) text += ' · 👀 ' + (e.look / 10).toFixed(1) + 's';
         if (text !== part.text) {
           if (part.sprite) { this.figures[i].root.remove(part.sprite); part.sprite.material.map.dispose(); part.sprite.material.dispose(); }
           const c = document.createElement('canvas');

@@ -329,17 +329,18 @@ FH_TEST(a_db_curriculum_fills_the_builtin_holes) {
 FH_TEST(the_curriculum_grows_by_rows_past_32_concepts) {
     // Built in: the 31 wired concepts, ids = the old bits, plus the later
     // core lessons the harness must play (G4.53: 153 meet-the-pass, 154
-    // face-the-play; G4.54: 155-157 1v1 defending; G4.57: 158-160 marking; G4.60: 161 keep it under pressure; G4.63: 162-164 the one-spot defender) — the ids between are holes.
+    // face-the-play; G4.54: 155-157 1v1 defending; G4.57: 158-160 marking; G4.60: 161 keep it under pressure; G4.63: 162-164 the one-spot defender; G4.66: 33 scan-before-receive, 171 scan-defending) — the ids between are holes.
     const core::ConceptRegistry b = core::ConceptRegistry::builtin();
-    FH_EXPECT(b.size() == 165 && b.find("pass-ladder") == 29 && b.name(30) == "blind-side-run");
+    FH_EXPECT(b.size() == 172 && b.find("pass-ladder") == 29 && b.name(30) == "blind-side-run");
     FH_EXPECT(b.find("meet-the-pass") == 153 && b.find("face-the-play") == 154 && b.name(60).empty());
     FH_EXPECT(b.find("rotation") == -1);
+    FH_EXPECT(b.find("scan-before-receive") == 33 && b.find("scan-defending") == 171);
     // A DB curriculum: the wired 31 plus lessons far past the old 32-bit cap,
     // with a hole — taught or not, every one has a rating slot.
     core::ConceptRegistry db = core::ConceptRegistry::builtin();
     db.add(40, "rotation", 0);                                  // style lesson, no class yet
     db.add(120, "first-touch-direction", core::levelRank("u14"));  // taught from U-14
-    FH_EXPECT(db.size() == 165 && db.find("first-touch-direction") == 120 && db.name(60).empty());
+    FH_EXPECT(db.size() == 172 && db.find("first-touch-direction") == 120 && db.name(60).empty());
     core::setConcepts(db);
     const auto u14 = core::defaultRatings(core::levelParams("u14"));
     const auto u10 = core::defaultRatings(core::levelParams("u10"));
@@ -381,6 +382,77 @@ FH_TEST(release_timing_holds_for_the_runner_then_lets_it_go) {
     g.w.placeVelocity(2, at(0, 0));
     const auto on = orders(100);
     FH_EXPECT(on.action != core::Action::None && on.why != ai::Why::WaitForRunner);
+}
+
+// G4.66 what a player can see: the men in front of him (his field of view)
+// and within feel_m are as they are; the men behind him are as of his last
+// look over the shoulder — how often he looks is his scanning rating.
+FH_TEST(a_player_sees_in_front_and_only_remembers_behind) {
+    core::World w = pitch();
+    ai::Brain brain{ai::TeamSetup::splitHalves(4), Fixed64::fromFraction(105, 2), Fixed64::fromInt(34)};
+    w.placePlayer(0, at(0, 0), kFacePlus);      // our man, facing +x
+    w.placePlayer(1, at(10, 0), kFacePlus);     // in front
+    w.placePlayer(2, at(-10, 0), kFaceMinus);   // straight behind
+    w.placePlayer(3, at(-1, 1), kFaceMinus);    // at his back, close enough to feel
+    FH_EXPECT(brain.inView(0, w, 1));
+    FH_EXPECT(!brain.inView(0, w, 2));
+    FH_EXPECT(brain.inView(0, w, 3));
+    w.placePlayer(2, at(-1, 10), kFaceMinus);   // ~96° off his face: the edge of the eye
+    FH_EXPECT(brain.inView(0, w, 2));
+    w.placePlayer(2, at(-10, 0), kFaceMinus);
+
+    core::BallState b;
+    b.pos = at(20, 0);
+    b.owner = 1;                                 // our ball
+    w.placeBall(b);
+    // Perfect play sees everything.
+    FH_EXPECT_EQ(brain.ordersFor(0, w).look_ds, 255);
+    // A real band: a player who never looks knows nothing fresh behind him.
+    const core::LevelParams pro = core::levelParams("pro");
+    brain.setLevels(pro, pro, 7);
+    core::ConceptRatings r{};
+    brain.setRatings(0, r);
+    const ai::Orders blind = brain.ordersFor(0, w);
+    FH_EXPECT_EQ(blind.look_ds, 30);             // physics.vision.max_age_s = 3 s
+    FH_EXPECT_EQ(blind.unseen, 1);               // the man straight behind him
+    FH_EXPECT_EQ(brain.lookAge(0, w), 90);
+    // Scanning at 100: a look at least every 1.25 s (37 ticks), on his own rhythm.
+    r[33] = 100;
+    brain.setRatings(0, r);
+    for (int k = 0; k < 40; ++k) {
+        FH_EXPECT(brain.lookAge(0, w) < 38);
+        w.tick();
+    }
+}
+
+// G4.66: on the ball he doesn't play a mate he can't see — unless he
+// looked just now. Same picture, the only open man straight behind him.
+FH_TEST(a_carrier_never_passes_blind_to_a_mate_behind_him) {
+    LadderRig g;
+    g.carry(0, 0);                                  // facing +x
+    g.w.placePlayer(1, at(-14, 0), kFacePlus);      // the only free mate, behind him
+    g.w.placePlayer(2, at(30, 30), kFacePlus);
+    g.w.placePlayer(3, at(30, -30), kFacePlus);
+    g.w.placePlayer(4, at(2, 1), kFaceMinus);       // pressed: a man on him
+    g.w.placePlayer(5, at(40, 0), kFaceMinus);
+    g.w.placePlayer(6, at(40, 20), kFaceMinus);
+    g.w.placePlayer(7, at(40, -20), kFaceMinus);
+    core::ConceptRatings r{};
+    r[24] = 100;                                   // he reads the pass
+    g.brain.setRatings(0, r);
+    auto passesBack = [&] {
+        const ai::Orders o = g.brain.ordersFor(0, g.w);
+        return o.action != core::Action::None && o.other == 1;
+    };
+    // Perfect play sees him and plays it back.
+    const bool sees = passesBack();
+    // A pro who never looks (scan rating 0): his picture is 3 s old — no pass.
+    const core::LevelParams pro = core::levelParams("pro");
+    g.brain.setLevels(pro, pro, 7);
+    g.brain.setRatings(0, r);
+    FH_EXPECT(g.brain.lookAge(0, g.w) > 15);
+    FH_EXPECT(!passesBack());
+    FH_EXPECT(sees);
 }
 
 FH_TEST_MAIN()

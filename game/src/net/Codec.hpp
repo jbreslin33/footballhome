@@ -203,6 +203,10 @@ struct BrainEntry {
     std::int16_t target_dm_x = 0, target_dm_y = 0;  // decimetres
     std::uint8_t other = 255;    // slot he's acting on (receiver / mark / carrier); 255 = none
     std::uint8_t rung = 0;       // pass-ladder rung (1-6), 0 = n/a
+    // 1.11 (G4.66), the trailing vision block: age of his picture behind
+    // him in tenths of a second (255 = sees everything) + men he can't see.
+    std::uint8_t look_ds = 255;
+    std::uint8_t unseen = 0;
 };
 struct BrainFrame {
     std::vector<BrainEntry> slots;

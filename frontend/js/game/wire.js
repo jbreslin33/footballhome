@@ -204,7 +204,7 @@
 
   // G4.41 (1.7): u8 count, per slot u8 why | i16 target x dm | i16 target
   // y dm | u8 other (255 none) | u8 ladder rung.
-  function decodeBrain(view, at) {
+  function decodeBrain(view, at, len) {
     const n = view.getUint8(at);
     const out = [];
     let p = at + 1;
@@ -213,6 +213,16 @@
                  ty: view.getInt16(p + 3, true) / 10, other: view.getUint8(p + 5),
                  rung: view.getUint8(p + 6) });
       p += 7;
+    }
+    // 1.11 (G4.66): the vision block — tenths of a second since his last
+    // look behind him (255 = sees everything) + men he can't see now.
+    const end = len === undefined ? view.byteLength : at + len;
+    if (p < end) {
+      const m = view.getUint8(p++);
+      for (let i = 0; i < m && p + 2 <= end && i < out.length; i++, p += 2) {
+        out[i].look = view.getUint8(p);
+        out[i].unseen = view.getUint8(p + 1);
+      }
     }
     return out;
   }

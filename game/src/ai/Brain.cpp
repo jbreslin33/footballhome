@@ -459,7 +459,91 @@ const std::vector<std::uint8_t>& Brain::directOpponents(const World& world, std:
     return direct_;
 }
 
+// What a player can see (G4.66). The men in front of him are where they
+// are; the men behind him are where they WERE at his last look over the
+// shoulder — approximated linearly as pos - vel * age, like the ball's
+// perception delay (no history state: brains stay pure). A man who ran in
+// behind him since is still back where he started. The flight read and the
+// direct-opponent pairs are shared by all 22 brains, so they are read from
+// the true world first (their caches then serve every picture this tick).
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
+    flightRead(world);
+    directOpponents(world, world.tickCount() / 30);
+    const bool perfect = levelOf(slot).isZero();
+    const std::int32_t age = perfect ? 0 : lookAge(slot, world);
+    if (age <= 0) {
+        Orders o = ordersSeen(slot, world);
+        o.look_ds = perfect ? 255 : 0;
+        return o;
+    }
+    const Fixed64 back = Fixed64::fromInt(age) * core::kTickDt;
+    World seen = world;
+    std::uint8_t unseen = 0;
+    // On the ball, a mate he can't see is no pass — unless he looked just
+    // now (he doesn't play a ball blind to where a man used to be).
+    const bool carrier = world.ball().owner && *world.ball().owner == slot;
+    const bool stale = age > book_.vision.blind_pass_ticks;
+    for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+        if (i == slot || inView(slot, world, i)) continue;
+        const auto& p = world.player(i);
+        seen.seePlayerAt(i, Vec3{p.pos.x - p.vel.x * back, p.pos.y - p.vel.y * back, p.pos.z});
+        ++unseen;
+        if (carrier && stale && i < 64 && setup_.team_of_slot[i] == setup_.team_of_slot[slot])
+            blind_ |= std::uint64_t{1} << i;
+    }
+    Orders o = ordersSeen(slot, seen);
+    blind_ = 0;
+    o.look_ds = static_cast<std::uint8_t>(age / 3 > 254 ? 254 : age / 3);
+    o.unseen = unseen;
+    return o;
+}
+
+std::int32_t Brain::lookAge(SlotIndex slot, const World& world) const {
+    const auto& ball = world.ball();
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const bool ours = ball.owner ? world.player(*ball.owner).team == team
+                                 : world.lastTouchTeam() == team;
+    const Scanning& scan = ours ? static_cast<const Scanning&>(book_.scan_receive)
+                                : static_cast<const Scanning&>(book_.scan_defend);
+    const int bit = scan.bit();
+    const std::uint8_t r = ratings_[slot][bit];
+    const std::int32_t max_age = book_.vision.max_age_ticks;
+    if (r == 0 || max_age <= 0) return max_age;
+    const std::uint64_t tick = world.tickCount();
+    // The pass is coming to me: a look while it travels (scan before you
+    // receive) — rolled per half second.
+    if (ours && !ball.owner && world.restartTeam() == 0xFF) {
+        const FlightRead& fr = flightRead(world);
+        if (fr.first[team] == slot && applies(slot, bit, tick / 15)) return 0;
+    }
+    // Otherwise a look every so often, each one rolled; his own rhythm
+    // (phase) so 22 heads don't turn on the same tick.
+    const std::int32_t every = scan.everyTicks(r);
+    const auto n = core::detNoise(match_seed_, 0, slot, 250);
+    const std::uint64_t phase =
+        static_cast<std::uint64_t>((((n + Fixed64::one()) * every) / 2).raw >> Fixed64::FRAC_BITS);
+    const std::uint64_t t = tick + phase;
+    std::int32_t age = static_cast<std::int32_t>(t % static_cast<std::uint64_t>(every));
+    if (!applies(slot, bit, t / static_cast<std::uint64_t>(every))) age += every;   // skipped that one
+    return age < max_age ? age : max_age;
+}
+
+bool Brain::inView(SlotIndex slot, const World& world, SlotIndex other) const {
+    const auto& me = world.player(slot);
+    const auto& him = world.player(other);
+    const Vec2 d{him.pos.x - me.pos.x, him.pos.y - me.pos.y};
+    const Fixed64 dd = math::lengthSquared(d);
+    const Fixed64 feel = book_.vision.feel;
+    if (dd <= feel * feel) return true;
+    const Fixed64 dp = math::dot(me.face, d);
+    const Fixed64 c = book_.vision.cos_half;
+    // dp >= c·|face|·|d|, squared to stay off the square root.
+    const Fixed64 rhs = c * c * math::lengthSquared(me.face) * dd;
+    if (c.raw >= 0) return dp.raw >= 0 && dp * dp >= rhs;
+    return dp.raw >= 0 || dp * dp <= rhs;
+}
+
+Orders Brain::ordersSeen(SlotIndex slot, const World& world) const {
     Orders o = ordersFaced(slot, world);
     // Their goal kick (Law 16): every one of us stays outside their penalty
     // area until the ball is kicked — the man-marker picks his CB up on the
@@ -600,7 +684,7 @@ bool Brain::keepIt(SlotIndex slot, const World& world, int sign, Orders& out) co
     int best = -1;
     Fixed64 best_room{}, best_dsq{};
     for (SlotIndex i = 0; i < world.playerCount(); ++i) {
-        if (i == slot || setup_.team_of_slot[i] != team) continue;
+        if (i == slot || setup_.team_of_slot[i] != team || blind(i)) continue;
         const auto& mate = world.player(i);
         if (mate.pos.x * sgn >= me.pos.x * sgn) continue;
         const Fixed64 dsq = distSq(me.pos, mate.pos);
@@ -1286,6 +1370,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         for (SlotIndex i = 0; i < world.playerCount(); ++i) {
             if (i == slot) continue;
             if (setup_.team_of_slot[i] != setup_.team_of_slot[slot]) continue;
+            if (blind(i)) continue;   // G4.66: can't see him
             const auto& mate = world.player(i);
             Vec2 b{mate.pos.x, mate.pos.y};
             // G4.36: a laddered passer never picks a man in an offside
@@ -1413,6 +1498,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             SlotIndex recycle_slot = 0;
             for (SlotIndex i = 0; i < world.playerCount(); ++i) {
                 if (i == slot) continue;
+                if (blind(i)) continue;   // G4.66
                 if (setup_.team_of_slot[i] != setup_.team_of_slot[slot])
                     continue;
                 const auto& mate = world.player(i);

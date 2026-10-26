@@ -574,4 +574,27 @@ bool ReleaseTiming::hold(const core::World& w, core::SlotIndex carrier, int sign
     return false;
 }
 
+// ── Scanning / Vision (G4.66) ───────────────────────────────────────────
+void Scanning::configure(const core::ModelParams& p) {
+    at1_ = p.fixed(key("every_s_at1"), 5000);
+    at100_ = p.fixed(key("every_s_at100"), 1250);
+}
+
+std::int32_t Scanning::everyTicks(std::uint8_t rating) const {
+    const int r = rating < 1 ? 1 : (rating > 100 ? 100 : rating);
+    const math::Fixed64 s = at1_ + (at100_ - at1_) * math::Fixed64::fromFraction(r - 1, 99);
+    const std::int32_t t = static_cast<std::int32_t>((s * math::Fixed64::fromInt(core::kTickRate)).raw >> math::Fixed64::FRAC_BITS);
+    return t < 1 ? 1 : t;
+}
+
+void Vision::configure(const core::ModelParams& p) {
+    cos_half = math::fx_cos(p.fixed("physics.vision.view_half_deg", 100000) * math::FX_PI /
+                            math::Fixed64::fromInt(180));
+    feel = p.fixed("physics.vision.feel_m", 2000);
+    const math::Fixed64 age = p.fixed("physics.vision.max_age_s", 3000);
+    max_age_ticks = static_cast<std::int32_t>((age * math::Fixed64::fromInt(core::kTickRate)).raw >> math::Fixed64::FRAC_BITS);
+    const math::Fixed64 blind = p.fixed("physics.vision.blind_pass_s", 500);
+    blind_pass_ticks = static_cast<std::int32_t>((blind * math::Fixed64::fromInt(core::kTickRate)).raw >> math::Fixed64::FRAC_BITS);
+}
+
 }  // namespace fh::game::ai

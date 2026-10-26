@@ -73,6 +73,12 @@ struct Orders {
     // An aimed LoftedKick's first-bounce distance (G4.48); 0 = the preset
     // chip (clearances, punts).
     std::uint8_t carry_m = 0;
+    // What he could see (G4.66, overlay only): his picture of the men
+    // behind him is this many tenths of a second old (0 = he just looked;
+    // 255 = sees everything — the perfect band); `unseen` = how many men
+    // he only knows from that look.
+    std::uint8_t look_ds = 255;
+    std::uint8_t unseen = 0;
 };
 
 class Brain {
@@ -180,7 +186,16 @@ public:
         return spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]].number;
     }
 
+    // What he can see (G4.66): ticks since his last look behind him, 0 =
+    // fresh (he just looked, or perfect play sees everything); at most
+    // physics.vision.max_age_s.
+    std::int32_t lookAge(core::SlotIndex slot, const core::World& world) const;
+    // Is `other` in front of slot (his field of view) or close enough to feel?
+    bool inView(core::SlotIndex slot, const core::World& world, core::SlotIndex other) const;
+
 private:
+    // ordersFor() on the world as slot sees it.
+    Orders ordersSeen(core::SlotIndex slot, const core::World& world) const;
     // The decision itself; ordersFor() adds where his body faces (G4.53).
     Orders decide(core::SlotIndex slot, const core::World& world) const;
     // ordersFor() before the laws of the restart are applied.
@@ -249,6 +264,10 @@ private:
     std::uint8_t hold_team_ = 0xFF;
     bool dead_ball_setup_ = false;
     mutable std::uint64_t direct_sec_ = ~std::uint64_t{0};
+    // G4.66: mates the carrier being decided can't see (and hasn't just
+    // looked at) — no pass to them. Set and cleared inside ordersFor().
+    mutable std::uint64_t blind_ = 0;
+    bool blind(core::SlotIndex i) const { return i < 64 && ((blind_ >> i) & 1u); }
     mutable FlightRead flight_;
     mutable std::uint64_t flight_tick_ = ~std::uint64_t{0};
     mutable std::int64_t flight_key_[3] = {0, 0, 0};

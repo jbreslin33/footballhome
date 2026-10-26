@@ -80,9 +80,9 @@ From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Conce
      anyway — our FB intercepts or sits off? (c) the 3 rules for every
      man-marker (8 on 8, 6 on 10, 10 on 6, CB on their 9), not only FB on
      winger?
-2. **What a player can see** — men BEHIND him are known only as of his
-   last shoulder check; scanning (`scan_before_receive` below, and a
-   defending scan) becomes a rated skill. Foundation for 3; changes every
+2. **BUILT G4.66 (mig 737, DESIGN §8.64)** — **What a player can see** — men BEHIND him are known only as of his
+   last shoulder check; scanning (`scan-before-receive` 33, and
+   `scan-defending` 171) becomes a rated skill. Foundation for 3; changes every
    player's perception, so measure full matches carefully.
 3. **Communication** — the `communication` attribute (mig 655, "not yet
    played by the engine") gets its first job. Three parts: KNOWING the
@@ -97,7 +97,7 @@ From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Conce
 
 **Individual, attacking** — `first_touch_direction` (touch into space, not
 underfoot), `shield_ball` (body between man and ball), `scan_before_receive`
-(shoulder checks → perception bonus for one tick), `half_turn_receive`
+(BUILT G4.66 — how often he looks behind him, plus a look while the pass comes), `half_turn_receive`
 (open body shape to play forward), `beat_man_1v1` (v1's Feint behavior,
 archived and tested).
 
