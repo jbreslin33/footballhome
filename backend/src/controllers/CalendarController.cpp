@@ -2220,14 +2220,16 @@ Response CalendarController::handlePostRsvp(const Request& request) {
         const std::string leaveIso  = response == "no" ? "" : isoOrEmpty("leave_at");
         auto row = db->query(
             "INSERT INTO fh_event_rsvps "
-            "    (fh_event_id, person_id, response, responded_at, created_via, arrive_at, leave_at, role_choice) "
+            "    (fh_event_id, person_id, response, responded_at, created_via, arrive_at, leave_at, role_choice, answered_by_person_id) "
             "VALUES ($1::bigint, $2::int, $3, now(), 'manual', "
             "        NULLIF($4, '')::timestamptz, NULLIF($5, '')::timestamptz, "
-            "        CASE WHEN fh_event_dual_role($1::bigint, $2::int) THEN NULLIF($8, '') END) "
+            "        CASE WHEN fh_event_dual_role($1::bigint, $2::int) THEN NULLIF($8, '') END, $10::int) "
             "ON CONFLICT (fh_event_id, person_id) DO UPDATE "
             "   SET response     = EXCLUDED.response, "
             "       responded_at = EXCLUDED.responded_at, "
             "       created_via  = EXCLUDED.created_via, "
+            // mig 729: who tapped it — the player, a parent, or an admin.
+            "       answered_by_person_id = EXCLUDED.answered_by_person_id, "
             "       arrive_at    = CASE WHEN $6::boolean THEN EXCLUDED.arrive_at ELSE fh_event_rsvps.arrive_at END, "
             "       leave_at     = CASE WHEN $7::boolean THEN EXCLUDED.leave_at  ELSE fh_event_rsvps.leave_at  END, "
             // mig 688: a dual-role person's hat — kept unless this write names one.
@@ -2244,7 +2246,8 @@ Response CalendarController::handlePostRsvp(const Request& request) {
              response,
              arriveIso, leaveIso,
              setArrive ? "true" : "false", setLeave ? "true" : "false",
-             roleChoice, setRoleChoice ? "true" : "false"});
+             roleChoice, setRoleChoice ? "true" : "false",
+             std::to_string(personId)});
 
         if (row.empty()) {
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR,
