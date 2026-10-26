@@ -112,6 +112,9 @@ class InvoicesScreen extends Screen {
         .iv-ev { display:flex; flex-direction:column; min-width:0; text-align:left; }
         .iv-ev > span { white-space:normal; overflow-wrap:anywhere; }
         .iv-ev .pl { opacity:0.7; font-size:0.92em; }
+        .iv-tag-w { display:inline-block; font-size:0.85em; font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
+                    padding:0 4px; border-radius:4px; background:rgba(74,222,128,0.25); white-space:nowrap; }
+        .iv-tag-w.ref { background:rgba(167,139,250,0.30); }
         .iv-chip.ovl { box-shadow:inset 0 0 0 2px #f87171; }
         .iv-chip.exp { border-color:#60a5fa; background:rgba(96,165,250,0.14); }
         .iv-cal-add { border:none; background:transparent; color:var(--text-primary); cursor:pointer; padding:0 2px;
@@ -1175,7 +1178,11 @@ class InvoicesScreen extends Screen {
           ? this._copy('cal_covered_tip', { was: i.s.auto_from || '' }) || `↔ Inside the event before it — its time is already paid there (calendar: ${i.s.auto_from || ''})`
           : this._copy('cal_trimmed_tip', { was: i.s.auto_from || '' }) || `↔ Starts when the event before it ends, so no hour is paid twice (calendar: ${i.s.auto_from || ''})`)}\n` : '';
       const title = `${settledTip}${crosses ? `⚠ ${this._copy('cal_overlap_tip', { list: crosses.join(', ') }) || `Overlaps ${crosses.join(', ')} — the same hours billed twice`}\n` : ''}${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}${i.g && i.g.location ? `\n📍 ${i.g.location}` : ''}`;
-      const inner = `<span class="iv-ev"><span>${crosses ? '⚠ ' : ''}${settled ? '↔ ' : ''}${ICON[kind]} ${at ? `<b>${esc(at)}</b> ` : ''}${esc(label)}${esc(hrs)}</span>${place ? `<span class="pl">📍 ${esc(place)}</span>` : ''}</span>`;
+      // A word for WHAT is being paid (owner 2026-10-26: "i having trouble
+      // telling being at game and paying refs for it … show 'coached'
+      // 'payed refs' as lables since on mine they show 2x per event").
+      const tag = kind === 'match' || kind === 'practice' ? (this._copy('cal_tag_coached') || 'Coached') : (this._copy('cal_tag_worked') || 'Worked');
+      const inner = `<span class="iv-ev"><span><span class="iv-tag-w">${esc(tag)}</span> ${crosses ? '⚠ ' : ''}${settled ? '↔ ' : ''}${ICON[kind]} ${at ? `<b>${esc(at)}</b> ` : ''}${esc(label)}${esc(hrs)}</span>${place ? `<span class="pl">📍 ${esc(place)}</span>` : ''}</span>`;
       const cls = `${state}${crosses ? ' ovl' : ''}`;
       if (locked) put(date, `<span class="iv-chip ${cls}" style="display:flex;" title="${esc(title)}">${inner}</span>`);
       else if (!i.g && i.s) put(date, `<button class="iv-chip ${cls}" data-edit-shift="${i.s.id}" title="${esc(title)}">${inner}</button>`);
@@ -1203,7 +1210,7 @@ class InvoicesScreen extends Screen {
       if (this.calKinds.ref === false) continue;
       const tag = `${r.source}:${r.ref_id}`;
       const amtSpan = `<span style="flex-shrink:0;">${InvoicesScreen.money(r.amount)}</span>`;
-      const inner = `🧑‍⚖️ <span>${esc(InvoicesScreen.refLabel(r.policy_label, r.opponent))}</span>`;
+      const inner = `<span class="iv-tag-w ref">${esc(this._copy('cal_tag_refs') || 'Paid refs')}</span> 🧑‍⚖️ <span>${esc(InvoicesScreen.refLabel(r.policy_label, r.opponent))}</span>`;
       const tip = `${r.policy_label} — ${r.opponent}${r.game_on !== r.day ? ` (${InvoicesScreen.dayLabel(r.game_on)})` : ''}`;
       if (locked) { put(r.day, `<span class="iv-chip ref on" style="display:flex;" title="${esc(tip)}">${inner}${amtSpan}</span>`); continue; }
       put(r.day, `<span class="iv-chip ref on" style="display:flex;">
@@ -1219,7 +1226,7 @@ class InvoicesScreen extends Screen {
         if (g.on_this || !g.game_on || g.game_on < gridStart || g.game_on > gridEnd) continue;
         const tag = `${g.source}:${g.ref_id}`;
         const amtSpan = `<span style="flex-shrink:0;">${InvoicesScreen.money(g.amount)}</span>`;
-        const inner = `🧑‍⚖️ <span>${esc(InvoicesScreen.refLabel(g.policy_label, g.opponent))}</span>${amtSpan}`;
+        const inner = `<span class="iv-tag-w ref">${esc(this._copy('cal_tag_refs') || 'Paid refs')}</span> 🧑‍⚖️ <span>${esc(InvoicesScreen.refLabel(g.policy_label, g.opponent))}</span>${amtSpan}`;
         if (g.in_gcal === false) {
           put(g.game_on, `<span class="iv-chip ref" style="opacity:0.45;" title="${esc(g.opponent)} — ${esc(this._copy('refs_not_on_gcal') || 'not on the calendar')}">${inner}</span>`);
         } else if (g.declined) {
