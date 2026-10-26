@@ -2006,6 +2006,18 @@ animate in sim time (legs slow with the play); paused, the picture holds
 and the camera still orbits — the freeze frame of roadmap #2 (step and
 rewind still to come). Test `admin_sets_the_sim_speed_everyone_hears_it`.
 
+### 8.58 The Ukies' own shape from the keeper (mig 705)
+
+James 10/26: "fix 1) Ukies from the keeper. their cdms should be outside
+the box" / "thier 7,11 and 10 should be then 8 to 10 yards past the cdmes
+and the 9 8 to 10 or near half line". The 4-2-3-1 had no 'in' rows, so it
+stood in its open-play shape squeezed onto a ball on its own 6-yard line —
+back four on the goal line, CDMs at 6.8 m. Now: keeper on the ball, CBs 7 m
+±19 and full-backs 30 m on the touchlines (Lighthouse's numbers), CDMs
+19 m ±8 (just outside the box), the 7 / 10 / 11 at 27 m in lanes 2 / 3 / 4,
+the 9 at 35.5 m. 200 episodes: lost in own third 70.5 → 53%, passes 2.5 →
+3.4, kept 7.4 → 9.4 s; out to Lighthouse 22% (was ~4%) — balls into touch.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
