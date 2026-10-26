@@ -59,7 +59,12 @@ const char* kGamesSql = R"SQL(
           -- a postponed game comes back as a fresh row when rescheduled.
           JOIN league_fixtures f ON f.source_id = s.id AND f.removed_at IS NULL AND f.status NOT IN ('cancelled', 'postponed')
          WHERE p.fixture_league_label IS NOT NULL
-           AND (f.home_club_id = $1::int OR ((NOT p.home_only OR $2::bool) AND f.away_club_id = $1::int))
+           -- Away games: projections ($2 false) follow home_only; the
+           -- invoice picker ($2 true) offers them unless bill_home_only
+           -- (mig 717: APSL refs are paid at home only).  "Home" is the
+           -- schedule's home side, never the venue (a rented turf still is).
+           AND (f.home_club_id = $1::int
+                OR (CASE WHEN $2::bool THEN NOT p.bill_home_only ELSE NOT p.home_only END AND f.away_club_id = $1::int))
     ), ev AS (
         SELECT p.id, 'event'::text, e.id::bigint, e.id, NULL::int,
                g.starts_at, COALESCE(NULLIF(e.opponent, ''), g.summary), 'scheduled'::text, true
@@ -68,7 +73,7 @@ const char* kGamesSql = R"SQL(
                           AND e.league = ANY (p.event_league_labels)
           JOIN gcal_events g ON g.id = e.gcal_event_id AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
          WHERE p.fixture_league_label IS NULL
-           AND (NOT p.home_only OR $2::bool OR COALESCE(e.is_home, false))
+           AND (CASE WHEN $2::bool THEN NOT p.bill_home_only ELSE NOT p.home_only END OR COALESCE(e.is_home, false))
            AND (p.age_band IS NULL OR g.summary ~* ('\m' || p.age_band || '\M'))
     ), games AS (SELECT * FROM fx UNION ALL SELECT * FROM ev)
     SELECT u.policy_id, p.label AS policy_label, p.kind, p.hours_per_game, p.club_section_id, p.per_game_usd, u.source, u.ref_id, u.status, u.in_gcal,
