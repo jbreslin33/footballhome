@@ -301,6 +301,21 @@ void LockTheDoor::configure(const core::ModelParams& p) {
     reach_ = p.fixed(key("reach_m"), 8000);
 }
 
+void DefendYourMan::configure(const core::ModelParams& p) {
+    gap_ = p.fixed(key("no_turn_gap_m"), 700);
+    within_ = p.fixed(key("no_turn_within_m"), 3000);
+}
+
+void ShadowTheLine::configure(const core::ModelParams& p) {
+    from_fb_ = p.fixed(key("from_fb_m"), 3000);
+    on_line_ = p.fixed(key("on_line_m"), 1500);
+    handover_ = p.fixed(key("handover_m"), 3000);
+}
+
+void PlayOffLongBall::configure(const core::ModelParams& p) {
+    off_ = p.fixed(key("off_m"), 7000);
+}
+
 void JumpThePass::configure(const core::ModelParams& p) {
     gap_ = p.fixed(key("arrive_gap_m"), 1000);
     max_ = p.fixed(key("jump_max_m"), 30000);

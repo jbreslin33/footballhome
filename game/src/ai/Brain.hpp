@@ -45,6 +45,7 @@ enum class Why : std::uint8_t {
     LapseShort, LapseLong, HabitShort, HabitLong, HabitDeep, HabitStepOut,
     MeetPass, KeepRunning, KeeperDive, SideOn, DropStep, Unmark, PlayBack, Shield,
     JumpPass, ShadowHelp, PackMiddle, PressFullBack, LockDoor,
+    Intercept, NoTurn, Contain, ShadowLine, PlayOff,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -57,6 +58,7 @@ inline constexpr const char* kWhyNames[] = {
     "meet the pass", "keep running", "keeper dive", "jockey side-on", "turn and run with him",
     "lose your marker", "play it back", "shield and turn",
     "jump the pass", "shadow and help", "pack the middle", "press the full-back", "lock the door",
+    "intercept", "no turn", "contain", "shadow the line", "play off for the long ball",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -193,6 +195,14 @@ private:
     // to a full-back press him and lock the door on the return pass.
     bool packAndTrap(core::SlotIndex slot, const core::World& world, int sign,
                      const math::Vec2& ball, const math::Vec2& anchor, Orders& out) const;
+    struct Trap {
+        int carrier = -1;                    // their man on the ball / first to their pass
+        int winger = -1;                     // our winger who goes (carrier is a full-back)
+        std::vector<core::SlotIndex> cbs;    // their centre-backs
+    };
+    Trap trapRead(const core::World& world, std::uint8_t my_team, const math::Vec2& ball) const;
+    int theirWinger(const core::World& world, std::uint8_t my_team, int sign, int full_back,
+                    const std::vector<core::SlotIndex>& cbs) const;
     math::Vec2 oneSpot(core::SlotIndex slot, const core::World& world, core::SlotIndex man,
                        const math::Vec2& spot, const math::Vec2& passer, core::SlotIndex carrier,
                        bool shadow, bool help) const;

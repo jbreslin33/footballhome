@@ -26,8 +26,10 @@ const Fixed64 kHX = Fixed64::fromFraction(105, 2);
 const Fixed64 kHY = Fixed64::fromInt(34);
 
 // Locked after the first green run (G2.6); placeholder 0 fails loudly.
-constexpr std::uint64_t kGolden3v3   = 0xcdc53674630e2e7fULL;
-constexpr std::uint64_t kGolden11v11 = 0x8081ba3176dad103ULL;
+// Re-locked G4.65 (2026-10-26): a marker never tucks or chains more than
+// max_off_man_m off his own man (mark-position cap, jump-the-pass chain).
+constexpr std::uint64_t kGolden3v3   = 0x730b6a1aee483223ULL;
+constexpr std::uint64_t kGolden11v11 = 0x1da787328a59831eULL;
 
 struct Rig {
     World world;
@@ -117,17 +119,22 @@ FH_TEST(players_clamped_to_pitch_apron) {
 
 FH_TEST(ai_match_flows_possession_and_stays_on_pitch) {
     Rig r{22};
-    r.run(30 * 60 * 3);  // 3 sim-minutes
-    // Somebody must have had the ball by now.
+    r.run(30 * 60 * 3 - 30);  // 3 sim-minutes, the last second checked tick by tick
+    // Somebody must be with the ball — within 10 m at some tick of the last
+    // second (one instant can catch a pass rolling between two men: G4.65's
+    // marking left the nearest man 10.0 m from a 9.6 m/s ball).
     bool someone_near_ball = false;
-    for (std::uint8_t i = 0; i < 22; ++i) {
-        const auto& p = r.world.player(i);
-        FH_EXPECT(math::fx_abs(p.pos.x) <= kHX + Fixed64::fromInt(2));
-        FH_EXPECT(math::fx_abs(p.pos.y) <= kHY + Fixed64::fromInt(2));
-        const Vec2 d{p.pos.x - r.world.ball().pos.x,
-                     p.pos.y - r.world.ball().pos.y};
-        if (math::lengthSquared(d) < Fixed64::fromInt(100))
-            someone_near_ball = true;
+    for (int t = 0; t < 30; ++t) {
+        r.run(1);
+        for (std::uint8_t i = 0; i < 22; ++i) {
+            const auto& p = r.world.player(i);
+            FH_EXPECT(math::fx_abs(p.pos.x) <= kHX + Fixed64::fromInt(2));
+            FH_EXPECT(math::fx_abs(p.pos.y) <= kHY + Fixed64::fromInt(2));
+            const Vec2 d{p.pos.x - r.world.ball().pos.x,
+                         p.pos.y - r.world.ball().pos.y};
+            if (math::lengthSquared(d) < Fixed64::fromInt(100))
+                someone_near_ball = true;
+        }
     }
     FH_EXPECT(someone_near_ball);
 }

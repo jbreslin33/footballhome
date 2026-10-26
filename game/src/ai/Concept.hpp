@@ -621,6 +621,59 @@ private:
     math::Fixed64 gap_, shade_, reach_;
 };
 
+// Defend your man (168) [James 10/26: "3 rules. #1 priority interception,
+// #2 no turn, #3 contain"; the coaching standard]: a marker's ladder on his
+// direct opponent. #1 the pass to him — get to it first if you can (the
+// flight read's race). #2 else arrive tight and goal-side as the ball does
+// (jump the pass), and while he has it with his back to our goal stay
+// no_turn_gap_m goal-side within no_turn_within_m — don't dive in, don't
+// let him turn. #3 he's turned: contain (delay / side-on). The HUD names
+// the rung. Lapse: the old pieces, unnamed (he may dive on a back-to-goal).
+class DefendYourMan : public Concept {
+public:
+    DefendYourMan() : Concept("defend-your-man", 168) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 noTurnGap() const { return gap_; }
+    math::Fixed64 noTurnWithin() const { return within_; }
+
+private:
+    math::Fixed64 gap_, within_;
+};
+
+// Shadow the line (169) [James 10/26 — Lighthouse's second tactic]: the
+// ball-side winger protects the midfield while the CB→FB pass travels
+// (pack), then goes to the closest point of the FUTURE pass line from the
+// full-back to their winger and traverses up it to from_fb_m off the full-
+// back, the line re-read every tick as their winger moves (he looks behind;
+// G4.65+ will make that a scan, and the full-back's call). Within on_line_m
+// of the line he is on it. Inside handover_m of a full-back on the ball the
+// normal press takes over. Lapse: press the full-back straight.
+class ShadowTheLine : public Concept {
+public:
+    ShadowTheLine() : Concept("shadow-the-line", 169) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 fromFullBack() const { return from_fb_; }
+    math::Fixed64 onLine() const { return on_line_; }
+    math::Fixed64 handover() const { return handover_; }
+
+private:
+    math::Fixed64 from_fb_, on_line_, handover_;
+};
+
+// Play off for the long ball (170) [James 10/26]: with our winger
+// shadowing the ground ball to their winger, our full-back doesn't play
+// tight — he stands off_m goal-side of his winger and guards the ball over
+// the top. Still his direct opponent; only how he marks changes.
+class PlayOffLongBall : public Concept {
+public:
+    PlayOffLongBall() : Concept("play-off-long-ball", 170) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 off() const { return off_; }
+
+private:
+    math::Fixed64 off_;
+};
+
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
@@ -649,6 +702,9 @@ struct ConceptBook {
     PackTheMiddle pack_middle;
     PressTheFullBack press_full_back;
     LockTheDoor lock_door;
+    DefendYourMan defend_man;
+    ShadowTheLine shadow_line;
+    PlayOffLongBall play_off;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -678,6 +734,9 @@ struct ConceptBook {
         pack_middle.configure(p);
         press_full_back.configure(p);
         lock_door.configure(p);
+        defend_man.configure(p);
+        shadow_line.configure(p);
+        play_off.configure(p);
     }
 };
 

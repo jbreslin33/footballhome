@@ -707,13 +707,19 @@ bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& ou
     };
     int jumper = -1, chain = -1, late = -1;
     Fixed64 best_chain{}, best_late{};
+    const Fixed64 dsgn_j = sign >= 0 ? Fixed64::one() : -Fixed64::one();
     for (SlotIndex j = 0; j < world.playerCount(); ++j) {
         if (setup_.team_of_slot[j] != my_team || world.isKeeper(j) || ratings_[j][jb] == 0) continue;
         const Fixed64 d = distSq(world.player(j).pos, at3);
         const bool mine = direct[j] == rcv;
         const bool fast = in_time(j);
         if (mine && fast) { jumper = j; break; }
-        if (fast && ratings_[j][pd] > 0 && (chain < 0 || d < best_chain)) { chain = j; best_chain = d; }
+        // The chain never leaves his own man free goal-side of the ball (James
+        // 10/26: "that looks really bad leaving their winger wide open" — our
+        // full-back jumped their full-back and their winger was free).
+        const bool own_man_behind = direct[j] != 255 &&
+            world.player(direct[j]).pos.x * dsgn_j < at.x * dsgn_j;
+        if (fast && !own_man_behind && ratings_[j][pd] > 0 && (chain < 0 || d < best_chain)) { chain = j; best_chain = d; }
         if (mine && d <= jmax * jmax && (late < 0 || d < best_late)) { late = j; best_late = d; }
     }
     if (jumper < 0) jumper = chain >= 0 ? chain : late;
@@ -724,9 +730,79 @@ bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& ou
     const Vec2 target{at.x + to_goal.x * g, at.y + to_goal.y * g};
     out.move.move = seek(world.player(slot).pos, target, Fixed64::fromFraction(1, 10));
     out.why = Why::JumpPass;
+    // Defend your man (168), rule #2: his own man — arrive so he can't turn.
+    const int dm = book_.defend_man.bit();
+    if (direct[slot] == rcv && ratings_[slot][dm] > 0 && applies(slot, dm, sec)) out.why = Why::NoTurn;
     out.target = target;
     out.other = static_cast<std::int16_t>(rcv);
     return true;
+}
+
+// The trap's read (G4.64), shared by the pack, the press and the full-back
+// who plays off: who has their ball (or who their pass reaches first), their
+// centre-backs (the men our false 9's number is paired with), and — when
+// that man is a full-back (wide and not a centre-back, or a winger's direct
+// opponent) — our nearer winger, the one who goes.
+Brain::Trap Brain::trapRead(const World& world, std::uint8_t my_team, const Vec2& B) const {
+    (void)B;
+    Trap t;
+    const auto& P = book_.pack_middle;
+    const auto& ball = world.ball();
+    if (ball.owner) {
+        if (setup_.team_of_slot[*ball.owner] != my_team) t.carrier = *ball.owner;
+    } else if (world.restartTeam() == 0xFF && world.lastTouchTeam() != my_team) {
+        const FlightRead& fr = flightRead(world);
+        const int a = fr.first[my_team ^ 1], u = fr.first[my_team];
+        if (fr.live && a >= 0 && (u < 0 || fr.tick[a] <= fr.tick[u])) t.carrier = a;
+    }
+    for (SlotIndex o = 0; o < world.playerCount(); ++o) {
+        if (setup_.team_of_slot[o] == my_team || world.isKeeper(o)) continue;
+        const int on = numberOf(o);
+        for (const auto& pr : direct_pairs_)
+            if (pr.first == P.falseNine() && pr.second == on) { t.cbs.push_back(o); break; }
+    }
+    const int R = t.carrier;
+    if (R < 0 || world.isKeeper(static_cast<SlotIndex>(R)) ||
+        std::find(t.cbs.begin(), t.cbs.end(), static_cast<SlotIndex>(R)) != t.cbs.end())
+        return t;
+    const auto& direct = directOpponents(world, world.tickCount() / 30);
+    bool full_back = math::fx_abs(world.player(static_cast<SlotIndex>(R)).pos.y) > P.centralWidth();
+    Fixed64 bd{};
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup_.team_of_slot[j] != my_team || !P.isWinger(numberOf(j))) continue;
+        full_back = full_back || direct[j] == R;
+        const Fixed64 d = distSq(world.player(j).pos, world.player(static_cast<SlotIndex>(R)).pos);
+        if (t.winger < 0 || d < bd) { t.winger = j; bd = d; }
+    }
+    if (!full_back) t.winger = -1;
+    return t;
+}
+
+// Their winger on the full-back's side (G4.64 tactic B, 169-170): their man
+// nearest the full-back R, ahead of him (toward our goal), who isn't a
+// centre-back or one of the men our midfield marks; -1 = none.
+int Brain::theirWinger(const World& world, std::uint8_t my_team, int sign, int R,
+                       const std::vector<SlotIndex>& cbs) const {
+    if (R < 0) return -1;
+    const auto& P = book_.pack_middle;
+    const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    const auto& direct = directOpponents(world, world.tickCount() / 30);
+    const auto& F = world.player(static_cast<SlotIndex>(R)).pos;
+    int W = -1;
+    Fixed64 wd{};
+    for (SlotIndex o = 0; o < world.playerCount(); ++o) {
+        if (setup_.team_of_slot[o] == my_team || world.isKeeper(o) || o == R) continue;
+        if (std::find(cbs.begin(), cbs.end(), o) != cbs.end()) continue;
+        bool mid = false;
+        for (SlotIndex j = 0; j < world.playerCount(); ++j)
+            mid = mid || (setup_.team_of_slot[j] == my_team && P.isMidfield(numberOf(j)) && direct[j] == o);
+        if (mid) continue;
+        const auto& op = world.player(o).pos;
+        if (op.x * dsgn >= F.x * dsgn) continue;   // not ahead of the full-back
+        const Fixed64 d = distSq(op, F);
+        if (W < 0 || d < wd) { W = o; wd = d; }
+    }
+    return W;
 }
 
 // G4.64 Lighthouse's plan (165-167) [FH; James 10/26]: "we essentially
@@ -755,41 +831,11 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
         distSq(me.pos, Vec3{B.x, B.y, Fixed64::zero()}) < Fixed64::fromInt(400))
         return false;
     const std::uint64_t sec = world.tickCount() / 30;
-    // Who has it — or who their pass will reach first.
-    int R = -1;
-    if (ball.owner) {
-        if (setup_.team_of_slot[*ball.owner] == my_team) return false;
-        R = *ball.owner;
-    } else if (world.restartTeam() == 0xFF && world.lastTouchTeam() != my_team) {
-        const FlightRead& fr = flightRead(world);
-        const int t = fr.first[my_team ^ 1], u = fr.first[my_team];
-        if (fr.live && t >= 0 && (u < 0 || fr.tick[t] <= fr.tick[u])) R = t;
-    }
-    // Their centre-backs: the men our 9's number is paired with.
-    std::vector<SlotIndex> cbs;
-    for (SlotIndex o = 0; o < world.playerCount(); ++o) {
-        if (setup_.team_of_slot[o] == my_team || world.isKeeper(o)) continue;
-        const int on = numberOf(o);
-        for (const auto& pr : direct_pairs_)
-            if (pr.first == P.falseNine() && pr.second == on) { cbs.push_back(o); break; }
-    }
+    const Trap tr = trapRead(world, my_team, B);
+    const int R = tr.carrier, w = tr.winger;
+    const std::vector<SlotIndex>& cbs = tr.cbs;
     const auto& direct = directOpponents(world, sec);
     auto isCb = [&](SlotIndex o) { return std::find(cbs.begin(), cbs.end(), o) != cbs.end(); };
-    auto wide = [&](int o) { return o >= 0 && math::fx_abs(world.player(static_cast<SlotIndex>(o)).pos.y) > P.centralWidth(); };
-    // The trigger: R is a full-back — a wide man who isn't a centre-back,
-    // or a winger's direct opponent. The ball-side winger (the nearer) goes.
-    int w = -1;
-    if (R >= 0 && !world.isKeeper(static_cast<SlotIndex>(R)) && !isCb(static_cast<SlotIndex>(R))) {
-        bool full_back = wide(R);
-        Fixed64 bd{};
-        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
-            if (setup_.team_of_slot[j] != my_team || !P.isWinger(numberOf(j))) continue;
-            full_back = full_back || direct[j] == R;
-            const Fixed64 d = distSq(world.player(j).pos, world.player(static_cast<SlotIndex>(R)).pos);
-            if (w < 0 || d < bd) { w = j; bd = d; }
-        }
-        if (!full_back) w = -1;
-    }
     // Their midfield: the men our 6/8/10 mark (their direct opponents).
     std::vector<SlotIndex> mids;
     for (SlotIndex j = 0; j < world.playerCount(); ++j)
@@ -869,6 +915,31 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
         const auto& fb = world.player(static_cast<SlotIndex>(R));
         const Vec2 F{fb.pos.x, fb.pos.y};
         if (slot == w) {
+            // Tactic B (169): shadow the line from the full-back to their
+            // winger — to its nearest point, then up it to the full-back.
+            const auto& S = book_.shadow_line;
+            if (ratings_[slot][S.bit()] > 0 && applies(slot, S.bit(), trig)) {
+                const int W = theirWinger(world, my_team, sign, R, cbs);
+                if (W >= 0 && !(ball.owner && distSq(me.pos, fb.pos) < S.handover() * S.handover())) {
+                    const auto& wp = world.player(static_cast<SlotIndex>(W)).pos;
+                    const Vec2 ab{wp.x - F.x, wp.y - F.y};
+                    const Fixed64 len = math::length(ab);
+                    if (len > S.fromFullBack() + Fixed64::one()) {
+                        const Vec2 u{ab.x / len, ab.y / len};
+                        Fixed64 t = dot(Vec2{me.pos.x - F.x, me.pos.y - F.y}, u);
+                        if (t < S.fromFullBack()) t = S.fromFullBack();
+                        if (t > len - Fixed64::one()) t = len - Fixed64::one();
+                        const Vec2 near{F.x + u.x * t, F.y + u.y * t};
+                        const bool on = distSq(me.pos, Vec3{near.x, near.y, Fixed64::zero()}) <= S.onLine() * S.onLine();
+                        const Vec2 tgt = on ? Vec2{F.x + u.x * S.fromFullBack(), F.y + u.y * S.fromFullBack()} : near;
+                        out.move.move = seek(me.pos, tgt, Fixed64::fromFraction(3, 10));
+                        out.why = Why::ShadowLine;
+                        out.target = tgt;
+                        out.other = static_cast<std::int16_t>(W);
+                        return true;
+                    }
+                }
+            }
             const auto& T = book_.press_full_back;
             if (ratings_[slot][T.bit()] == 0 || !applies(slot, T.bit(), trig)) return false;
             if (ball.owner && distSq(me.pos, fb.pos) < T.handover() * T.handover()) return false;
@@ -1950,6 +2021,28 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             }
         }
 
+        // Defend your man (168), rule #2 on the ball: my man has it with his
+        // back to our goal — tight and goal-side, don't dive, don't let him
+        // turn (a dive the traffic roll above already took stays a dive).
+        if (ball.owner) {
+            const int dm = book_.defend_man.bit();
+            const std::uint64_t dsec = world.tickCount() / 30;
+            const auto& c = world.player(*ball.owner);
+            const auto& D = book_.defend_man;
+            if (ratings_[slot][dm] > 0 && directOpponents(world, dsec)[slot] == *ball.owner &&
+                c.face.x * dsgn > Fixed64::zero() &&
+                distSq(me.pos, c.pos) < D.noTurnWithin() * D.noTurnWithin() && applies(slot, dm, dsec)) {
+                const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
+                const Vec2 to_goal = math::normalized(Vec2{own_goal.x - c.pos.x, own_goal.y - c.pos.y});
+                const Vec2 t{c.pos.x + to_goal.x * D.noTurnGap(), c.pos.y + to_goal.y * D.noTurnGap()};
+                out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 10));
+                out.why = Why::NoTurn;
+                out.target = t;
+                out.other = static_cast<std::int16_t>(*ball.owner);
+                return out;
+            }
+        }
+
         // recover_goal_side: I'm upfield of the ball (beaten) — the
         // coached run is to the COVER LINE between ball and goal, never
         // straight at the ball. Kids chase; defenders recover.
@@ -2057,6 +2150,16 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                     }
                 }
                 out.why = ball.owner ? Why::Press : Why::Chase;
+                // Defend your man (168), rule #1: first to the pass to my man.
+                if (race_first && !ball.owner) {
+                    const int dm = book_.defend_man.bit();
+                    const std::uint64_t dsec = world.tickCount() / 30;
+                    const FlightRead& fr = flightRead(world);
+                    const int their = fr.first[my_team ^ 1];
+                    if (their >= 0 && directOpponents(world, dsec)[slot] == their &&
+                        ratings_[slot][dm] > 0 && applies(slot, dm, dsec))
+                        out.why = Why::Intercept;
+                }
                 out.target = chase_to;
                 out.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
                 return out;
@@ -2099,6 +2202,13 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             }
             out.move.move = seek(me.pos, jockey, Fixed64::fromFraction(3, 10));
             out.why = Why::Delay;
+            // Defend your man (168), rule #3: he's turned on me — contain.
+            {
+                const int dm = book_.defend_man.bit();
+                if (ball.owner && ratings_[slot][dm] > 0 && directOpponents(world, sec)[slot] == *ball.owner &&
+                    applies(slot, dm, sec))
+                    out.why = Why::Contain;
+            }
             out.target = jockey;
             // side-on-jockey (155, G4.54): body turned open toward the
             // side he shows (the touchline side the shade leaves open).
@@ -2255,15 +2365,39 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                         if (d > P.nearM()) {
                             Fixed64 f = (d - P.nearM()) / (P.farM() - P.nearM());
                             if (f > Fixed64::one()) f = Fixed64::one();
-                            const Fixed64 k = f * P.tuck();
+                            Fixed64 k = f * P.tuck();
+                            // Never more than max_off_man_m off him (James 10/26:
+                            // a full-back tucked 18 m in left their winger open).
+                            const Fixed64 to_b = math::length(Vec2{seen_ball.x - spot.x, seen_ball.y - spot.y});
+                            const Fixed64 cap = book_.press_distance.maxOffMan();
+                            if (to_b * k > cap && to_b.raw > 0) k = cap / to_b;
                             spot = Vec2{spot.x + (seen_ball.x - spot.x) * k, spot.y + (seen_ball.y - spot.y) * k};
+                        }
+                    }
+                }
+                // Tactic B (170): our winger shadows the ground ball to my
+                // man — play off him, goal-side, for the long ball.
+                Why mark_why = Why::Mark;
+                bool played_off = false;
+                {
+                    const int po = book_.play_off.bit();
+                    if (ratings_[slot][po] > 0 && seen_ball.x * dsgn >= book_.pack_middle.fromHalfway()) {
+                        const Trap tr = trapRead(world, my_team, Vec2{seen_ball.x, seen_ball.y});
+                        if (tr.winger >= 0 && ratings_[tr.winger][book_.shadow_line.bit()] > 0 &&
+                            theirWinger(world, my_team, sign, tr.carrier, tr.cbs) == my_mark &&
+                            applies(slot, po, world.tickCount() / 30)) {
+                            const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
+                            const Vec2 to_goal = math::normalized(Vec2{own_goal.x - mk.pos.x, own_goal.y - mk.pos.y});
+                            const Fixed64 off = book_.play_off.off();
+                            spot = Vec2{mk.pos.x + to_goal.x * off, mk.pos.y + to_goal.y * off};
+                            mark_why = Why::PlayOff;
+                            played_off = true;
                         }
                     }
                 }
                 // the one spot (163/164, G4.63): his man in pressing distance,
                 // another's lane cut, more men in reach to help.
-                Why mark_why = Why::Mark;
-                if (ball.owner && *ball.owner != my_mark) {
+                if (!played_off && ball.owner && *ball.owner != my_mark) {
                     const int ss = book_.shadow_second.bit(), pd = book_.press_distance.bit();
                     const bool sh = ratings_[slot][ss] > 0 && applies(slot, ss, sec);
                     const bool hp = ratings_[slot][pd] > 0 && applies(slot, pd, sec);

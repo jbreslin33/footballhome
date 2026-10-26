@@ -60,7 +60,8 @@ From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Conce
 
 **NEXT — James 10/26, in this order** (after G4.64 / DESIGN §8.62):
 
-1. **Two Lighthouse tactics, picked in the HUD.** Same direct opponents
+1. **BUILT G4.65 (mig 734, DESIGN §8.63)** — answers to (a)-(c) assumed
+   as defaults there; James to confirm. **Two Lighthouse tactics, picked in the HUD.** Same direct opponents
    (2 on their 7, 3 on their 11 …); only HOW they mark differs. Two child
    models of Lighthouse APSL, switched live with the existing admin
    game-model dropdown (ApplyPreset — no new wire):

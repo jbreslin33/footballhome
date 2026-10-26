@@ -2241,6 +2241,52 @@ on 11, 2 on 7, 8 on 8, 6 on 10, 10 on 6, libero free, the 9 and wingers
 screening — their keeper kicks long almost every time (4 completed short
 passes in 200). 30 full matches +3.90 ± 0.39, within noise.
 
+### 8.63 G4.65 — Lighthouse's two tactics on the full-back / winger, picked in the HUD (mig 734)
+
+James 10/26: "the standard one … is 3 rules. #1 priority interception, #2
+no turn, #3 contain. there is another tactic where our winger does a cover
+shadow from their winger to fb … they go to the closest point of future
+line of pass from fb to winger. then traverse up to fb while looking behind
+… the standard thing for our fb there is to not play tight since ball to
+the ground is cover shadowed so they play off for long ball. can we have in
+the hud a way to pick the tactic? … they still always have a direct
+opponent to mark its just how they mark."
+
+- **Tactic A = the Lighthouse APSL model:** `defend-your-man` (168, asked
+  90) — the marker's ladder on his direct opponent, named in the HUD:
+  *intercept* (first to the pass to my man: the flight read's race), *no
+  turn* (jump the pass as his own man's defender; and while my man has it
+  with his back to our goal, `no_turn_gap_m` 0.7 m goal-side within
+  `no_turn_within_m` 3 m — no dive), *contain* (he's turned: the delay).
+- **Tactic B = child model "Lighthouse APSL — shadow the line":** adds
+  `shadow-the-line` (169): on the pass to their full-back the ball-side
+  winger goes to the nearest point of the full-back → their-winger line
+  (their winger = their man nearest the full-back, ahead of him, not a CB
+  and not one our midfield marks), then up it to `from_fb_m` 3 m off the
+  full-back, the line re-read every tick; and `play-off-long-ball` (170):
+  our full-back marks that winger `off_m` 7 m goal-side.
+- **The HUD:** the admin bar's game-model dropdown (ApplyPreset, mig 652)
+  lists every model; pick either Lighthouse model, Home/Away — no new wire.
+- Defaults where James hadn't said: the line follows their winger wherever
+  he goes; the 3 rules for every man-marker (CB on their 9, the 6/8/10).
+
+Found on the way — why their winger was open (both tactics): G4.57's
+mark-position tucked a marker toward the ball by a share of the distance
+(our 2 stood 18 m infield of their 7 with the ball 35 m away), and G4.63's
+jump-the-pass *chain* sent our 2 onto their full-back. Now the tuck is
+capped at `pressing-distance.max_off_man_m` (6 m) and the chain never takes
+a man whose own man is goal-side of the reception point. Goldens re-locked;
+the 3-minute flow test now checks the last second, not one tick (it caught
+a 9.6 m/s pass with the nearest man at 10.0 m).
+
+cb-build (the Ukies' CB on the ball), 200 episodes: their way out is now
+full-back → winger down the line (our 2 goal-side of him, ~5-6 m off on
+his first touch); the 9 locks the door (return passes ~0). 30 full
+matches: A +4.13 ± 0.60, B +3.90 ± 0.51 — within noise of each other and
+of before. Open: from a standing start a man covers ~5 m in 1.5 s (a pro
+~5 m in 1 s), so every press — the winger on the full-back, our 2 on their
+7 — arrives late; that's the body model (Locomotion), a separate slice.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
