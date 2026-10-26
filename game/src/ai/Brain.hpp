@@ -94,6 +94,11 @@ public:
         hold_team_ = team; hold_ = std::move(marks);
     }
     void clearRestartShape() { hold_.clear(); hold_team_ = 0xFF; }
+    // Setting up a dead ball (G4.64): a restart takes seconds, so every man
+    // who knows his job (rating > 0) gets to it — the consistency roll is for
+    // the live game. James 10/26: "talking ukies restart. our 10 should be on
+    // their 6!"
+    void setDeadBallSetup(bool on) { dead_ball_setup_ = on; }
     void setModelParams(const core::ModelParams& p) {
         book_.configure(p);
         initiative_ = p.fixed("skill.tendency.initiative", 1000);
@@ -232,6 +237,7 @@ private:
     std::vector<std::pair<int, int>> direct_pairs_;
     std::vector<std::pair<std::uint8_t, math::Vec2>> hold_;
     std::uint8_t hold_team_ = 0xFF;
+    bool dead_ball_setup_ = false;
     mutable std::uint64_t direct_sec_ = ~std::uint64_t{0};
     mutable FlightRead flight_;
     mutable std::uint64_t flight_tick_ = ~std::uint64_t{0};
@@ -243,7 +249,7 @@ private:
                  std::uint64_t tick) const {
         const std::uint8_t r = ratings_[slot][concept_idx];
         if (r == 0) return false;
-        if (r >= 100) return true;
+        if (r >= 100 || dead_ball_setup_) return true;
         const auto n = core::detNoise(match_seed_, tick, slot,
                                       static_cast<std::uint8_t>(32 + concept_idx));
         return (n + math::Fixed64::one()) <

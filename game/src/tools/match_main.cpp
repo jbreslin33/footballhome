@@ -271,10 +271,14 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                         while (*q && *q != ',') ++q;
                         if (*q == ',') ++q;
                     }
-                    if (want)
-                        std::printf("  t=%4.1f   watch #%d slot %d %-22s at %5.1f m, %+5.1f across\n", sec, num, j,
+                    if (want) {
+                        const int o = s.lastOrders()[j].other;
+                        std::printf("  t=%4.1f   watch #%d slot %d %-22s at %5.1f m, %+5.1f across", sec, num, j,
                                     ai::kWhyNames[static_cast<int>(s.lastOrders()[j].why)],
                                     from_goal(d.pos.x.toDouble()), team == 0 ? d.pos.y.toDouble() : -d.pos.y.toDouble());
+                        if (o >= 0) std::printf(" → their #%d (slot %d)", s.brain().numberOf(static_cast<std::uint8_t>(o)), o);
+                        std::printf("\n");
+                    }
                 }
             }
             if (trace == m + 1 && k % (core::kTickRate / 2) == 0) {

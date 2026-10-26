@@ -791,30 +791,18 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
         if (!full_back) w = -1;
     }
     // Their midfield: the men our 6/8/10 mark (their direct opponents).
-    // centralNear = the one of them nearest a point, ahead of the ball from
-    // their view and not `skip`; -1 = none.
     std::vector<SlotIndex> mids;
     for (SlotIndex j = 0; j < world.playerCount(); ++j)
         if (setup_.team_of_slot[j] == my_team && P.isMidfield(numberOf(j)) && direct[j] != 255 &&
             std::find(mids.begin(), mids.end(), direct[j]) == mids.end())
             mids.push_back(direct[j]);
-    auto centralNear = [&](const Vec2& at, int skip) {
-        int M = -1;
-        Fixed64 md{};
-        for (SlotIndex o : mids) {
-            if (o == R || o == skip) continue;
-            const auto& op = world.player(o);
-            if (math::fx_abs(op.pos.y) > P.centralWidth() || op.pos.x * dsgn >= B.x * dsgn) continue;
-            const Fixed64 d = distSq(op.pos, Vec3{at.x, at.y, Fixed64::zero()});
-            if (M < 0 || d < md) { M = o; md = d; }
-        }
-        return M;
-    };
     // Screen a central man: screen_gap_m off him on the line from the ball.
-    auto screen = [&](int M, Fixed64 width, Why why) {
+    auto screen = [&](int M, Fixed64 width, Why why, Fixed64 gap) {
         const auto& mp = world.player(static_cast<SlotIndex>(M)).pos;
         const Vec2 to_ball = math::normalized(Vec2{B.x - mp.x, B.y - mp.y});
-        Vec2 t{mp.x + to_ball.x * P.screenGap(), mp.y + to_ball.y * P.screenGap()};
+        const Fixed64 far = math::length(Vec2{B.x - mp.x, B.y - mp.y}) - Fixed64::fromInt(2);
+        if (gap > far) gap = far;   // never past the ball
+        Vec2 t{mp.x + to_ball.x * gap, mp.y + to_ball.y * gap};
         if (t.y > width) t.y = width;
         if (t.y < -width) t.y = -width;
         out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
@@ -823,36 +811,66 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
         out.other = static_cast<std::int16_t>(M);
         return true;
     };
-    // A winger tucks in: he screens the central man nearest his tucked spot.
+    // Who screens whom: each winger the man of their midfield on his side
+    // (the winger on the left of our shape the leftmost; a lone man goes to
+    // the winger on his side); the 9 floats onto the one nearest the ball
+    // that's left — or, with none left, the nearest of them all.
+    std::vector<SlotIndex> c;
+    for (SlotIndex o : mids) {
+        if (o == R) continue;
+        const auto& op = world.player(o);
+        if (math::fx_abs(op.pos.y) > P.centralWidth() || op.pos.x * dsgn >= B.x * dsgn) continue;
+        c.push_back(o);
+    }
+    std::sort(c.begin(), c.end(), [&](SlotIndex a, SlotIndex b) { return world.player(a).pos.y < world.player(b).pos.y; });
+    auto wingerMan = [&](SlotIndex wslot) {
+        const Fixed64 wy = spec_[my_team].positions[index_in_team_[wslot]].base.y;
+        bool high = true;   // the winger with the larger base y
+        for (SlotIndex j = 0; j < world.playerCount(); ++j)
+            if (j != wslot && setup_.team_of_slot[j] == my_team && P.isWinger(numberOf(j)) &&
+                spec_[my_team].positions[index_in_team_[j]].base.y > wy)
+                high = false;
+        if (c.size() >= 2) return static_cast<int>(high ? c.back() : c.front());
+        if (c.size() == 1 && (world.player(c[0]).pos.y.raw >= 0) == high) return static_cast<int>(c[0]);
+        return -1;
+    };
+    auto nineMan = [&]() {
+        std::vector<int> taken;
+        for (SlotIndex j = 0; j < world.playerCount(); ++j)
+            if (setup_.team_of_slot[j] == my_team && P.isWinger(numberOf(j))) taken.push_back(wingerMan(j));
+        int M = -1;
+        Fixed64 md{};
+        for (int pass = 0; pass < 2 && M < 0; ++pass)
+            for (SlotIndex o : c) {
+                if (pass == 0 && std::find(taken.begin(), taken.end(), static_cast<int>(o)) != taken.end()) continue;
+                const Fixed64 d = distSq(world.player(o).pos, Vec3{B.x, B.y, Fixed64::zero()});
+                if (M < 0 || d < md) { M = o; md = d; }
+            }
+        return M;
+    };
     auto tuck = [&](Fixed64 width) {
+        const int M = wingerMan(slot);
+        if (M >= 0) return screen(M, width, Why::PackMiddle, P.screenGap());
         Fixed64 y = anchor.y;
         if (y > width) y = width;
         if (y < -width) y = -width;
         const Vec2 t0{anchor.x, y};
-        // Not the man the 9 screens (nearest the ball), nor the one the other
-        // winger, on the other side, is nearer.
-        const int nine_man = centralNear(B, -1);
-        int M = centralNear(t0, nine_man);
-        for (SlotIndex j = 0; j < world.playerCount() && M >= 0; ++j) {
-            if (j == slot || setup_.team_of_slot[j] != my_team || !P.isWinger(numberOf(j))) continue;
-            const auto& mp = world.player(static_cast<SlotIndex>(M)).pos;
-            if (distSq(world.player(j).pos, mp) < distSq(me.pos, mp)) {
-                const int alt = centralNear(t0, M);
-                if (alt >= 0 && alt != nine_man) M = alt;
-            }
-        }
-        if (M >= 0) return screen(M, width, Why::PackMiddle);
         out.move.move = seek(me.pos, t0, Fixed64::fromFraction(1, 2));
         out.why = Why::PackMiddle;
         out.target = t0;
         return true;
     };
+    // One roll per their possession (pack) and per trigger (press, lock):
+    // a per-second roll flipped the wingers between the tuck and their
+    // full-back (the man we leave open on purpose).
+    const std::uint64_t poss = world.turnoverTick();
+    const std::uint64_t trig = poss * 64 + static_cast<std::uint64_t>(R < 0 ? 63 : R);
     if (w >= 0) {
         const auto& fb = world.player(static_cast<SlotIndex>(R));
         const Vec2 F{fb.pos.x, fb.pos.y};
         if (slot == w) {
             const auto& T = book_.press_full_back;
-            if (ratings_[slot][T.bit()] == 0 || !applies(slot, T.bit(), sec)) return false;
+            if (ratings_[slot][T.bit()] == 0 || !applies(slot, T.bit(), trig)) return false;
             if (ball.owner && distSq(me.pos, fb.pos) < T.handover() * T.handover()) return false;
             // Straight at him, on the line to their nearest central man.
             int M = -1;
@@ -878,12 +896,12 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
             return true;
         }
         if (wing) {   // the far winger: an extra midfielder
-            if (!applies(slot, P.bit(), sec)) return false;
+            if (!applies(slot, P.bit(), poss)) return false;
             return tuck(P.weakTuckWidth());
         }
         // The 9 locks the door.
         const auto& L = book_.lock_door;
-        if (cbs.empty() || ratings_[slot][L.bit()] == 0 || !applies(slot, L.bit(), sec)) return false;
+        if (cbs.empty() || ratings_[slot][L.bit()] == 0 || !applies(slot, L.bit(), trig)) return false;
         SlotIndex near = cbs[0];
         for (SlotIndex c : cbs)
             if (distSq(world.player(c).pos, fb.pos) < distSq(world.player(near).pos, fb.pos)) near = c;
@@ -904,13 +922,32 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
         return true;
     }
     // No trigger yet: pack the middle.
-    if (ratings_[slot][P.bit()] == 0 || !applies(slot, P.bit(), sec)) return false;
+    if (ratings_[slot][P.bit()] == 0 || !applies(slot, P.bit(), poss)) return false;
     if (ball.owner && distSq(me.pos, ball.pos) < P.handover() * P.handover()) return false;
     if (wing) return tuck(P.tuckWidth());
-    // The false 9 screens their nearest central man from the ball.
-    const int M = centralNear(B, -1);
+    // The false 9 floats: he screens the one the wingers leave, nearest the
+    // ball — but never further than lock-the-door's reach from the ball-side
+    // centre-back, so he can lock the door while the pass wide travels.
+    const int M = nineMan();
     if (M < 0) return false;
-    return screen(M, P.centralWidth(), Why::PackMiddle);
+    screen(M, P.centralWidth(), Why::PackMiddle, P.nineScreenGap());
+    const auto& L = book_.lock_door;
+    if (!cbs.empty() && ratings_[slot][L.bit()] > 0) {
+        SlotIndex bs = cbs[0];
+        for (SlotIndex c : cbs)
+            if (distSq(world.player(c).pos, Vec3{B.x, B.y, Fixed64::zero()}) <
+                distSq(world.player(bs).pos, Vec3{B.x, B.y, Fixed64::zero()}))
+                bs = c;
+        const auto& cb = world.player(bs).pos;
+        const Vec2 d{out.target.x - cb.x, out.target.y - cb.y};
+        const Fixed64 len = math::length(d);
+        if (len > L.reach()) {
+            const Fixed64 k = L.reach() / len;
+            out.target = Vec2{cb.x + d.x * k, cb.y + d.y * k};
+            out.move.move = seek(me.pos, out.target, Fixed64::fromFraction(1, 2));
+        }
+    }
+    return true;
 }
 
 // The one spot (163/164, G4.63): from his marking spot, the candidate

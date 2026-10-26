@@ -568,12 +568,15 @@ public:
     math::Fixed64 weakTuckWidth() const { return weak_tuck_; }
     math::Fixed64 centralWidth() const { return central_; }
     math::Fixed64 screenGap() const { return screen_; }
+    // The false 9 floats higher (nine_screen_gap_m): between their centre-
+    // backs and midfield, in reach to lock the door.
+    math::Fixed64 nineScreenGap() const { return nine_screen_; }
     math::Fixed64 fromHalfway() const { return from_halfway_; }
     math::Fixed64 handover() const { return handover_; }
 
 private:
     int nine_ = 9, right_ = 7, left_ = 11, mid_[3] = {6, 8, 10};
-    math::Fixed64 tuck_, weak_tuck_, central_, screen_, from_halfway_, handover_;
+    math::Fixed64 tuck_, weak_tuck_, central_, screen_, nine_screen_, from_halfway_, handover_;
 };
 
 // Press the full-back (166) [FH; the pass wide as the trigger: Rangnick,
@@ -608,9 +611,13 @@ public:
     void configure(const core::ModelParams& p) override;
     math::Fixed64 lockGap() const { return gap_; }
     math::Fixed64 shade() const { return shade_; }
+    // Before the trigger the 9 floats no further than this from the ball-
+    // side centre-back (James: "close enough to ball side cb to lock door
+    // on cb to fb transmission").
+    math::Fixed64 reach() const { return reach_; }
 
 private:
-    math::Fixed64 gap_, shade_;
+    math::Fixed64 gap_, shade_, reach_;
 };
 
 struct ConceptBook {

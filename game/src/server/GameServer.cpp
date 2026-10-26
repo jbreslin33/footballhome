@@ -582,8 +582,11 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
     // A dead ball takes seconds (G4.63): the defending side's men who
     // pick up theirs on it (man-markers: their mark, then the one spot;
     // G4.64 the packed middle) start there — twice, so the lane each takes sees his teammates'.
-    if (ph.kind != "open")
-        for (int pass = 0; pass < 2; ++pass)
+    // Seconds to set up (a phase's defence is set too): everyone who knows
+    // his job is on it (no roll).
+    brain_.setDeadBallSetup(true);
+    // Open play too: the phase starts with the defence already set (G4.64).
+    for (int pass = 0; pass < 2; ++pass)
             for (std::uint8_t i = 0; i < n; ++i) {
                 if ((i < per_team ? 0 : 1) == team || world_.isKeeper(i) || placed[i]) continue;
                 const ai::Orders o = brain_.ordersFor(i, world_);
@@ -594,6 +597,7 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
                 if (face.x.raw == 0 && face.y.raw == 0) face = math::Vec2{-sgn, Fixed64::zero()};
                 world_.placePlayer(i, math::Vec3{o.target.x, o.target.y, Fixed64::zero()}, math::normalized(face));
             }
+    brain_.setDeadBallSetup(false);
     // Their goal kick (Law 16): nobody of the defending side starts in the
     // kicker's penalty area — a shape or mark row inside it stands on the 18.
     if (ph.kind == "keeper") {

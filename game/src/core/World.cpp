@@ -743,6 +743,7 @@ void World::giveBall(SlotIndex slot) {
 void World::awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events) {
     ball_ = BallState{};  // centre spot, at rest, free of carriers
     restart_team_ = team;
+    last_touch_team_ = team;   // kicking off isn't winning the ball
     box_clear_team_ = 0xFF;
     offside_mask_ = 0;
     offside_team_ = 0xFF;
@@ -754,6 +755,9 @@ void World::awardRestart(MatchEventType type, std::uint8_t team,
     ball_ = BallState{};
     ball_.pos = spot;
     restart_team_ = team;
+    // The dead ball is theirs: taking it isn't a turnover (no counter-press
+    // on a goal kick — the old last toucher made it look like a lost ball).
+    last_touch_team_ = team;
     box_clear_team_ = type == MatchEventType::GoalKick ? static_cast<std::uint8_t>(team ^ 1) : 0xFF;
     offside_mask_ = 0;
     offside_team_ = 0xFF;

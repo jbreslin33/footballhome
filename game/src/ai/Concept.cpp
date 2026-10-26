@@ -283,6 +283,7 @@ void PackTheMiddle::configure(const core::ModelParams& p) {
     weak_tuck_ = p.fixed(key("weak_tuck_width_m"), 7000);
     central_ = p.fixed(key("central_width_m"), 18000);
     screen_ = p.fixed(key("screen_gap_m"), 3000);
+    nine_screen_ = p.fixed(key("nine_screen_gap_m"), 8000);
     from_halfway_ = p.fixed(key("from_halfway_m"), 0);
     handover_ = p.fixed(key("handover_m"), 4000);
 }
@@ -296,6 +297,7 @@ void PressTheFullBack::configure(const core::ModelParams& p) {
 void LockTheDoor::configure(const core::ModelParams& p) {
     gap_ = p.fixed(key("lock_gap_m"), 3000);
     shade_ = p.fixed(key("shade_m"), 2000);
+    reach_ = p.fixed(key("reach_m"), 8000);
 }
 
 void JumpThePass::configure(const core::ModelParams& p) {

@@ -2187,6 +2187,50 @@ of man-time; the trap waits on the opponent choosing the full-back. 30 full
 matches: margin +3.63 ± 0.53 (plan off) → +4.20 ± 0.45, within noise; pack
 the middle 6% of LH's out-of-possession man-time.
 
+**Same day, James on the Ukies' restart: "our 10 should be on their 6!" /
+"8 on 8, 6 on 10, our 9 floats, our 7 and 11 inside with help defense for
+midfield" / the 9 "helps mids then locks the door on pass to fb".** The
+pairs were right (game_direct_opponents); four fixes made the picture:
+- *Set-up has seconds* (`Brain::setDeadBallSetup`): while a phase is being
+  set up every man who knows his job (rating > 0) is on it — the
+  consistency roll is for the live game. The 10 had been rolling once at
+  placement and starting 18 m off their 6.
+- *A restart is not a turnover* (`World::awardRestart` / `awardKickoff`
+  set the last toucher to the restart team): the keeper taking the dead
+  ball counted as Lighthouse losing it, so their men counter-pressed a
+  goal kick — in full matches too.
+- *Who screens whom:* each winger takes the man of their midfield on his
+  side (leftmost / rightmost); the 9 floats onto the one left nearest the
+  ball, `nine_screen_gap_m` (8 m) off him toward the ball — higher, between
+  their centre-backs and midfield, in reach to lock the door.
+- *One roll per possession* (pack) and *per trigger* (press, lock): per-
+  second rolls flipped the wingers between the tuck and their full-back.
+  A failed roll is the old (Bielsa) job for that possession — he marks
+  his full-back.
+
+New phase `cb-build` (mig 733): the keeper shape with the ball at a split
+centre-back's feet, open play — the trap's own picture; open phases now
+start with the defence set too. 200 episodes, Ukies in possession, plan
+off → on: their passes to a full-back 6% → 37% (4→3 the commonest pass,
+111), into the middle 45% → 14%; but the full-back plays it back to the
+centre-back 0.01 → 0.29 per episode and they keep it longer (0.4 → 1.7
+passes; lost 26 → 33 m from their goal). The door isn't locked yet: their
+full-back stands high on the touchline (30 m, 33.5 across), the ball-side
+winger screening their midfield starts ~24 m from him and the 9 ~12-20 m
+from the centre-back, and from a standing start a man covers ~5 m in
+1.5 s — the 2-second return pass beats both. Semipro ability 68 also
+means a third of possessions a man forgets the plan.
+
+James: "7 protects midfield and adjusts to their 2 on the ball
+transmission. our 9 needs to stay close enough to ball side cb to lock door
+on cb to fb transmission." The winger already moves on the pass (the
+trigger reads the flight); the 9 now floats no further than
+`lock-the-door.reach_m` (8 m) from the centre-back nearest the ball. cb-build,
+200 episodes: full-back back to centre-back 58 → 24 (0.29 → 0.12 per
+episode); they lose it 37.7 m from their goal (was 33.2). Their escape now
+is down the line, full-back → winger (3→7, 26) — our full-back's job.
+30 full matches: margin +4.00 ± 0.44 (was +4.20 ± 0.45), within noise.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
