@@ -75,15 +75,13 @@ void InvoiceController::registerRoutes(Router& router, const std::string& prefix
     router.post(prefix + "/issuer",      [this](const Request& r) { return handleIssuer(r); });
     router.del (prefix + "/line",        [this](const Request& r) { return handleDeleteLine(r); });
     router.del (prefix + "/shift",       [this](const Request& r) { return handleDeleteShift(r); });
-    router.post(prefix + "/default",     [this](const Request& r) { return handleDefault(r); });
-    router.del (prefix + "/default",     [this](const Request& r) { return handleDeleteDefault(r); });
     router.del (prefix,                  [this](const Request& r) { return handleDelete(r); });
     router.get (prefix + "/public/:slug",[this](const Request& r) { return handlePublic(r); });
     // Param routes last so the static paths above win the prefix match.
     router.post(prefix + "/:id/update",  [this](const Request& r) { return handleUpdate(r); });
     router.post(prefix + "/:id/line",    [this](const Request& r) { return handleLine(r); });
     router.post(prefix + "/:id/shift",   [this](const Request& r) { return handleShift(r); });
-    router.post(prefix + "/:id/fill",    [this](const Request& r) { return handleFill(r); });
+    router.post(prefix + "/:id/resolve-overlaps", [this](const Request& r) { return handleResolveOverlaps(r); });
     router.get (prefix + "/:id/games",   [this](const Request& r) { return handleGames(r); });
     router.post(prefix + "/:id/games",   [this](const Request& r) { return handleAddGames(r); });
     router.post(prefix + "/:id/event-mark", [this](const Request& r) { return handleEventMark(r); });
@@ -207,6 +205,25 @@ Response InvoiceController::handleDeleteLine(const Request& request) {
     } catch (const std::exception& e) { return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
+// POST /api/invoices/:id/resolve-overlaps {date?} (mig 710) — owner: "if
+// there is over lap we can have a resolve button that makes sure it
+// doesn't overlap but gives credit for begin of 1st event and end of last
+// event in question".
+Response InvoiceController::handleResolveOverlaps(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const long long id = idFromPath(request.getPath());
+    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
+    try {
+        std::string err;
+        const int merged = model_->resolveOverlaps(id, body.value("date", ""), &err);
+        if (merged < 0) return jsonError(HttpStatus::BAD_REQUEST, err);
+        json out = model_->get(id);
+        out["resolved"] = merged;
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) { std::cerr << "[invoices resolve-overlaps] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
 Response InvoiceController::handleShift(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     const long long id = idFromPath(request.getPath());
@@ -226,45 +243,6 @@ Response InvoiceController::handleDeleteShift(const Request& request) {
     if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, "id is required");
     try {
         if (!model_->removeShift(id)) return jsonError(HttpStatus::NOT_FOUND, "no such day");
-        return jsonOut(HttpStatus::OK, {{"ok", true}});
-    } catch (const std::exception& e) { return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
-}
-
-Response InvoiceController::handleFill(const Request& request) {
-    Response denied; if (!gate(request, &denied)) return denied;
-    const long long id = idFromPath(request.getPath());
-    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
-    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
-    const bool force = body.contains("force") && body["force"].is_boolean() && body["force"].get<bool>();
-    try {
-        std::string err;
-        const int added = model_->applyDefaults(id, force, &err);
-        if (added <= 0 && !err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
-        json out = model_->get(id);
-        out["added"] = added;
-        return jsonOut(HttpStatus::OK, out);
-    } catch (const std::exception& e) { std::cerr << "[invoices fill] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
-}
-
-Response InvoiceController::handleDefault(const Request& request) {
-    Response denied; if (!gate(request, &denied)) return denied;
-    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
-    const long long issuerId = intField(body, "issuer_id");
-    if (issuerId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "issuer_id is required");
-    try {
-        std::string err;
-        const long long id = model_->upsertDefaultShift(issuerId, intField(body, "id"), body, &err);
-        if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
-        return jsonOut(HttpStatus::OK, {{"id", id}});
-    } catch (const std::exception& e) { std::cerr << "[invoices default] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
-}
-
-Response InvoiceController::handleDeleteDefault(const Request& request) {
-    Response denied; if (!gate(request, &denied)) return denied;
-    const long long id = queryId(request);
-    if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, "id is required");
-    try {
-        if (!model_->removeDefaultShift(id)) return jsonError(HttpStatus::NOT_FOUND, "no such default");
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) { return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }

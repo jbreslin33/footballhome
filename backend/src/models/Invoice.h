@@ -64,13 +64,12 @@ public:
     // note }.  The labor line's quantity / amount follow the stints.
     long long upsertShift(long long invoiceId, long long shiftId, const nlohmann::json& fields, std::string* error);
     bool removeShift(long long shiftId);
+    // ⚠ Resolve (mig 710): on `date` ("" = every day), each cluster of
+    // billed stints whose times cross is credited ONCE — the earliest
+    // stint runs first start → last end, the rest stay billed at 0 h
+    // ("covered").  Returns the clusters merged; -1 + error on failure.
+    int resolveOverlaps(long long invoiceId, const std::string& date, std::string* error);
 
-    // Weekly default (mig 470): { issuer_id, weekday 0-6, start, end, note }.
-    long long upsertDefaultShift(long long issuerId, long long id, const nlohmann::json& fields, std::string* error);
-    bool removeDefaultShift(long long id);
-    // Copy the issuer's usual week onto the invoice's period.  Only when the
-    // invoice has no days yet, unless force.  Returns days added.
-    int applyDefaults(long long invoiceId, bool force, std::string* error);
     // Events on the calendar in the invoice's period (mig 531, practices
     // since mig 569): every match and practice of a team the issuer
     // coaches, or whose coaching policy pays them (coach_issuer_id), with
@@ -78,10 +77,9 @@ public:
     // calendar length) and whether it is already a day row.
     nlohmann::json periodGames(long long invoiceId);
     // Add those events as day rows: the fh_event_ids given, or — with none
-    // and policyOnly — what a new invoice adds by itself: the policy-paid
-    // games, plus every RSVP-yes event when the issuer's days_source is
-    // 'events' (mig 569).  Already-added events are skipped.  Returns days
-    // added.
+    // and policyOnly — what a draft adds by itself: every event of the
+    // issuer's except an RSVP no or a stored ✗ (mig 712: events only, no
+    // usual week).  Already-added events are skipped.  Returns days added.
     int addGames(long long invoiceId, const std::vector<long long>& fhEventIds, bool policyOnly, std::string* error);
     // ✓ / ✗ / unanswered on one calendar row (mig 573): mark = worked
     // (bill it), no (off the sheet, remembered in invoice_event_declines)
@@ -111,8 +109,8 @@ private:
     // Labor line quantity = SUM(shift hours), amount = quantity × rate,
     // whenever the invoice has any shifts.
     void syncLabor(long long invoiceId);
+    void applyLeadIns(long long invoiceId);
     nlohmann::json openPlans(long long issuerId);
-    nlohmann::json defaultShifts(long long issuerId);
 
     Database* db_;
 };

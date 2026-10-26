@@ -18,9 +18,6 @@
 //   POST   /api/invoices/:id/line       { id?, category, description, quantity, rate, amount? }
 //   POST   /api/invoices/:id/shift      { id?, date, start, end, note }  hours by day (mig 469)
 //   DELETE /api/invoices/shift?id=      one day
-//   POST   /api/invoices/:id/fill       copy the issuer's weekly default onto the period ({ force? })
-//   POST   /api/invoices/default        { id?, issuer_id, day_index 0-13, start|end or hours, note }  the usual 2 weeks (mig 470/477)
-//   DELETE /api/invoices/default?id=
 //   DELETE /api/invoices/line?id=       one line
 //   POST   /api/invoices/plan           { issuer_id, invoice_id, category, description, total_amount, installment_count, show_total }
 //   DELETE /api/invoices/plan?id=       stop a plan (past lines keep their text)
@@ -46,7 +43,7 @@ private:
     Response handleDeleteLine(const Request& request);
     Response handleShift(const Request& request);
     Response handleDeleteShift(const Request& request);
-    Response handleFill(const Request& request);
+    Response handleResolveOverlaps(const Request& request);
     Response handleGames(const Request& request);      // GET  /:id/games  (mig 531)
     Response handleAddGames(const Request& request);   // POST /:id/games
     Response handleEventMark(const Request& request);  // POST /:id/event-mark (mig 573)
@@ -57,8 +54,6 @@ private:
     // The add path handleAddRefFees and the auto-add share: picks → the
     // ONE Referees line.  Returns the line id, 0 with *error on failure.
     long long addRefFeesTo(long long invoiceId, const nlohmann::json& picks, std::string* error);
-    Response handleDefault(const Request& request);
-    Response handleDeleteDefault(const Request& request);
     Response handlePlan(const Request& request);
     Response handleDeletePlan(const Request& request);
     Response handleIssuer(const Request& request);

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdio>
+#include <vector>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -179,7 +181,7 @@ json Invoice::board() {
     out["issuers"] = json::array();
     auto issuers = db_->query(R"SQL(
         SELECT i.id, i.person_id, i.file_slug, i.address, i.city_state_zip, i.phone, i.payable_to,
-               i.duty_description, i.hourly_rate, i.bills_expenses, i.days_source,
+               i.duty_description, i.hourly_rate, i.bills_expenses,
                BTRIM(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')) AS name
           FROM invoice_issuers i JOIN persons p ON p.id = i.person_id
          WHERE i.is_active ORDER BY i.sort_order, i.id)SQL");
@@ -191,10 +193,8 @@ json Invoice::board() {
             {"city_state_zip", str(r, "city_state_zip")}, {"phone", str(r, "phone")},
             {"payable_to", str(r, "payable_to")}, {"duty_description", str(r, "duty_description")},
             {"hourly_rate", numOrNull(r, "hourly_rate")}, {"bills_expenses", r["bills_expenses"].as<bool>()},
-            {"days_source", str(r, "days_source")},
             {"next_number", nextNumber(id, year)},
             {"open_plans", openPlans(id)},
-            {"default_shifts", defaultShifts(id)},
             {"invoices", json::array()},
         };
         auto invs = db_->query(R"SQL(
@@ -374,7 +374,7 @@ json Invoice::realityCheck(long long invoiceId) {
     // held against the calendar as it is now: a row whose event has been
     // cancelled or deleted comes off (the hours line resyncs), and a row
     // whose event moved is re-dated to the new start, keeping its length.
-    // Hand-typed rows and the usual week (no fh_event_id) are never
+    // Hand-typed rows (no fh_event_id) are never
     // touched; a final sheet is left exactly as it was sent.
     json out = {{"removed", 0}, {"moved", 0}, {"removed_notes", json::array()}, {"moved_notes", json::array()}};
     auto fin = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
@@ -427,14 +427,51 @@ json Invoice::realityCheck(long long invoiceId) {
          RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
     for (const auto& r : movedCal) out["moved_notes"].push_back(str(r, "note"));
     out["moved"] = static_cast<int>(moved.size() + movedCal.size());
-    if (out["removed"].get<int>() > 0) syncLabor(invoiceId);
     // Prefill on every open (owner 2026-10-12: "check all events and i
     // would uncheck. simple."): any period event still unanswered — no day
     // row, no ✗, no RSVP no — ✓s itself, so a draft is always the full
     // calendar minus what was unchecked.  Same for every issuer.
     std::string ignored;
     addGames(invoiceId, {}, true, &ignored);
+    // …and the youth lead-in (mig 712) settles on whatever is now billed.
+    syncLabor(invoiceId);
     return out;
+}
+
+// ⏱ Lead-in (mig 712; owner 2026-10-26: "auto give coaches for youth 30
+// minutes before start of 1st practice they attend that day"): of the
+// day's billed practices whose team's section has an invoice_lead_in_
+// policies row, the earliest starts that many minutes before its event;
+// the rest start on their event's time.  Only untouched stints move —
+// one starting on its event's time or its lead-in time — so a ✏️ edit,
+// a 🟡 flat partial or a merged ⚠ Resolve window stays as set.
+void Invoice::applyLeadIns(long long invoiceId) {
+    db_->query(R"SQL(
+        WITH ev AS (
+            SELECT s.id, s.work_date, s.start_at, (g.starts_at AT TIME ZONE 'America/New_York')::time AS ev_start, pol.minutes
+              FROM invoice_work_shifts s
+              JOIN fh_events e ON e.id = s.fh_event_id
+              JOIN gcal_events g ON g.id = e.gcal_event_id
+              JOIN LATERAL (
+                    SELECT MAX(p.minutes_before) AS minutes
+                      FROM invoice_lead_in_policies p
+                      JOIN fh_event_teams et ON et.fh_event_id = e.id
+                      JOIN teams t ON t.id = et.team_id AND t.club_section_id = p.club_section_id
+                     WHERE p.is_active AND p.event_kind = e.kind) pol ON pol.minutes IS NOT NULL
+             WHERE s.invoice_id = $1::int AND s.start_at IS NOT NULL AND s.end_at IS NOT NULL
+        ), ranked AS (
+            SELECT ev.*, ROW_NUMBER() OVER (PARTITION BY work_date ORDER BY ev_start, id) AS rn FROM ev
+        ), target AS (
+            SELECT id, ev_start, minutes,
+                   CASE WHEN rn = 1 AND ev_start >= make_interval(mins => minutes)::time
+                        THEN ev_start - make_interval(mins => minutes) ELSE ev_start END AS want
+              FROM ranked
+        )
+        UPDATE invoice_work_shifts s SET start_at = t.want
+          FROM target t
+         WHERE s.id = t.id AND s.start_at <> t.want AND s.end_at > t.want
+           AND (s.start_at = t.ev_start OR s.start_at = t.ev_start - make_interval(mins => t.minutes)))SQL",
+        {std::to_string(invoiceId)});
 }
 
 void Invoice::syncLabor(long long invoiceId) {
@@ -442,6 +479,7 @@ void Invoice::syncLabor(long long invoiceId) {
     // until Final is un-ticked (mig 478).
     auto fin = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
     if (fin.empty() || fin[0]["is_final"].as<bool>()) return;
+    applyLeadIns(invoiceId);
     db_->query(R"SQL(
         WITH h AS (
             SELECT COUNT(*) AS n, COALESCE(SUM(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0)), 0) AS hours
@@ -491,6 +529,60 @@ long long Invoice::upsertShift(long long invoiceId, long long shiftId, const jso
     }
 }
 
+int Invoice::resolveOverlaps(long long invoiceId, const std::string& date, std::string* error) {
+    auto fin = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
+    if (fin.empty()) { *error = "no such invoice"; return -1; }
+    if (fin[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return -1; }
+    if (!date.empty() && !isIsoDate(date)) { *error = "date must be YYYY-MM-DD"; return -1; }
+    // Each stint's window, as the 📅 calendar draws it: its own from–till,
+    // else its event's start + the billed hours.  Untimed flat hours with
+    // no event can't be placed and stay out of it.
+    auto rows = db_->query(R"SQL(
+        SELECT s.id, s.work_date::text AS d,
+               EXTRACT(EPOCH FROM COALESCE(s.start_at, (g.starts_at AT TIME ZONE 'America/New_York')::time)) / 60.0 AS a,
+               CASE WHEN s.end_at IS NOT NULL THEN EXTRACT(EPOCH FROM s.end_at) / 60.0 END AS b,
+               COALESCE(s.hours, 0) AS hours
+          FROM invoice_work_shifts s
+          LEFT JOIN fh_events e ON e.id = s.fh_event_id
+          LEFT JOIN gcal_events g ON g.id = COALESCE(e.gcal_event_id, s.gcal_event_id)
+         WHERE s.invoice_id = $1::int AND (NULLIF($2, '') IS NULL OR s.work_date = NULLIF($2, '')::date)
+         ORDER BY s.work_date, 3, s.id)SQL", {std::to_string(invoiceId), date});
+    struct Span { long long id; std::string d; double a, b; };
+    std::vector<Span> spans;
+    for (const auto& r : rows) {
+        if (r["a"].is_null()) continue;
+        const double a = r["a"].as<double>();
+        double b = r["b"].is_null() ? a + num(r, "hours") * 60.0 : r["b"].as<double>();
+        b = std::min(b, 24.0 * 60.0 - 1.0);   // the CHECK wants end > start; no wrap past midnight
+        if (b <= a) continue;
+        spans.push_back({r["id"].as<long long>(), str(r, "d"), a, b});
+    }
+    auto hhmm = [](double m) {
+        const int t = static_cast<int>(std::lround(m));
+        char buf[8]; std::snprintf(buf, sizeof buf, "%02d:%02d", t / 60, t % 60);
+        return std::string(buf);
+    };
+    int merged = 0;
+    for (size_t i = 0; i < spans.size();) {
+        // A cluster: consecutive spans (same day, sorted by start) that
+        // reach into the running window.
+        size_t j = i + 1;
+        double end = spans[i].b;
+        while (j < spans.size() && spans[j].d == spans[i].d && spans[j].a < end) { end = std::max(end, spans[j].b); ++j; }
+        if (j - i > 1) {
+            db_->query("UPDATE invoice_work_shifts SET start_at = $2::time, end_at = $3::time, hours = NULL WHERE id = $1::int",
+                       {std::to_string(spans[i].id), hhmm(spans[i].a), hhmm(end)});
+            for (size_t k = i + 1; k < j; ++k)
+                db_->query("UPDATE invoice_work_shifts SET start_at = NULL, end_at = NULL, hours = 0 WHERE id = $1::int",
+                           {std::to_string(spans[k].id)});
+            ++merged;
+        }
+        i = j;
+    }
+    if (merged) syncLabor(invoiceId);
+    return merged;
+}
+
 bool Invoice::removeShift(long long shiftId) {
     auto r = db_->query("DELETE FROM invoice_work_shifts WHERE id = $1::int RETURNING invoice_id", {std::to_string(shiftId)});
     if (r.empty()) return false;
@@ -530,7 +622,7 @@ long long Invoice::create(long long issuerId, const std::string& isoDate, std::s
 }
 
 long long Invoice::createNumbered(long long issuerId, int year, int number, const std::string& isoDate, std::string* error) {
-    auto iss = db_->query("SELECT duty_description, hourly_rate, days_source FROM invoice_issuers WHERE id = $1::int AND is_active", {std::to_string(issuerId)});
+    auto iss = db_->query("SELECT duty_description, hourly_rate FROM invoice_issuers WHERE id = $1::int AND is_active", {std::to_string(issuerId)});
     if (iss.empty()) { *error = "no such issuer"; return 0; }
     // Period from the year's policy (mig 472); the invoice is dated the day
     // after the period ends (a Friday) unless a date was given.  With no
@@ -568,12 +660,10 @@ long long Invoice::createNumbered(long long issuerId, int year, int number, cons
              p["budget_line_id"].is_null() ? std::string() : std::to_string(p["budget_line_id"].get<long long>())});
     }
 
-    // Where the day rows come from (days_source, mig 569): a 'week' issuer
-    // (James) gets the usual week (mig 470) + the policy-paid games (mig
-    // 531); an 'events' issuer (Luke, Anthony) gets their RSVP-yes practices
-    // and games instead — their real weeks swing with who covered what.
+    // The day rows are the issuer's calendar events, nothing else (mig 712;
+    // owner 2026-10-26: "only use gcal events" / "get rid of usual week
+    // completely").
     std::string ignored;
-    if (str(iss[0], "days_source") != "events") applyDefaults(id, false, &ignored);
     addGames(id, {}, true, &ignored);
     return id;
 }
@@ -707,17 +797,16 @@ json Invoice::periodGames(long long invoiceId) {
 
 int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEventIds, bool policyOnly, std::string* error) {
     auto inv = db_->query(
-        "SELECT v.is_final, i.days_source FROM invoices v JOIN invoice_issuers i ON i.id = v.issuer_id WHERE v.id = $1::int",
+        "SELECT v.is_final FROM invoices v WHERE v.id = $1::int",
         {std::to_string(invoiceId)});
     if (inv.empty()) { *error = "no such invoice"; return 0; }
     if (inv[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return 0; }
     // What a draft adds by itself (policyOnly, no ids) — owner 2026-10-12:
     // "for youth coaches only check off youth events for them and i can
     // uncheck. then for me check all events and i would uncheck. simple."
-    // An events issuer ✓s EVERY calendar row (coaches only ever see their
-    // own teams' events), except an explicit RSVP no (it shows ✗ by itself;
+    // Every issuer ✓s EVERY calendar row (coaches only ever see their own
+    // teams' events), except an explicit RSVP no (it shows ✗ by itself;
     // Anthony's 10/4 U8) and a stored ✗ — unchecking stays unchecked.
-    const bool fromEvents = str(inv[0], "days_source") == "events";
     int added = 0;
     for (const auto& g : periodGames(invoiceId)) {
         // An event row keys on its fh_event; a claimed calendar row (mig
@@ -725,9 +814,7 @@ int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEvent
         const long long fhEventId = g["fh_event_id"].is_number() ? g["fh_event_id"].get<long long>() : 0;
         const long long gcalEventId = g["gcal_event_id"].is_number() ? g["gcal_event_id"].get<long long>() : 0;
         if (g["added"].get<bool>()) continue;
-        const bool autoPick = fromEvents
-            ? (!g["declined"].get<bool>() && g["rsvp"] != "no")
-            : ((g["policy_pays"].get<bool>() || gcalEventId > 0) && g["rsvp"] != "no" && !g["declined"].get<bool>());
+        const bool autoPick = !g["declined"].get<bool>() && g["rsvp"] != "no";
         const bool picked = fhEventIds.empty() ? (policyOnly ? autoPick : true)
                                                : (fhEventId > 0 && std::find(fhEventIds.begin(), fhEventIds.end(), fhEventId) != fhEventIds.end());
         if (!picked) continue;
@@ -989,78 +1076,3 @@ bool Invoice::updateIssuer(long long issuerId, const json& f, std::string* error
     return true;
 }
 
-// ── weekly default (mig 470) ───────────────────────────────────────────────
-
-json Invoice::defaultShifts(long long issuerId) {
-    auto rows = db_->query(R"SQL(
-        SELECT id, day_index, to_char(start_at, 'HH24:MI') AS start_at, to_char(end_at, 'HH24:MI') AS end_at, note,
-               (hours IS NOT NULL) AS flat,
-               ROUND(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0), 2) AS hours
-          FROM invoice_default_shifts WHERE issuer_id = $1::int ORDER BY day_index, start_at NULLS LAST, id)SQL", {std::to_string(issuerId)});
-    json out = json::array();
-    for (const auto& r : rows) {
-        out.push_back({{"id", r["id"].as<long long>()}, {"day_index", r["day_index"].as<int>()}, {"start", str(r, "start_at")},
-                       {"end", str(r, "end_at")}, {"note", str(r, "note")}, {"hours", num(r, "hours")}, {"flat", r["flat"].as<bool>()}});
-    }
-    return out;
-}
-
-long long Invoice::upsertDefaultShift(long long issuerId, long long id, const json& f, std::string* error) {
-    std::string start = s(f, "start"), end = s(f, "end"), hours;
-    const std::string note = s(f, "note");
-    if (!hasNum(f, "day_index")) { *error = "day_index is required"; return 0; }
-    const int weekday = static_cast<int>(n(f, "day_index"));   // 0 = first Friday … 13 = closing Thursday
-    if (weekday < 0 || weekday > 13) { *error = "day_index must be 0-13"; return 0; }
-    const bool timed = !start.empty() && !end.empty();
-    if (!timed) {
-        if (!hasNum(f, "hours") || n(f, "hours") <= 0) { *error = "enter from and till, or the hours"; return 0; }
-        hours = money2(n(f, "hours")); start.clear(); end.clear();
-    }
-    try {
-        if (id > 0) {
-            auto r = db_->query(
-                "UPDATE invoice_default_shifts SET day_index = $3::int, start_at = NULLIF($4,'')::time, end_at = NULLIF($5,'')::time, "
-                "       hours = NULLIF($7,'')::numeric, note = NULLIF($6,'') "
-                "WHERE id = $1::int AND issuer_id = $2::int RETURNING id",
-                {std::to_string(id), std::to_string(issuerId), std::to_string(weekday), start, end, note, hours});
-            if (r.empty()) { *error = "no such default"; return 0; }
-            return id;
-        }
-        auto r = db_->query(
-            "INSERT INTO invoice_default_shifts (issuer_id, day_index, start_at, end_at, hours, note) "
-            "VALUES ($1::int, $2::int, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($6,'')::numeric, NULLIF($5,'')) RETURNING id",
-            {std::to_string(issuerId), std::to_string(weekday), start, end, note, hours});
-        if (r.empty()) { *error = "could not add"; return 0; }
-        return r[0]["id"].as<long long>();
-    } catch (const std::exception& e) {
-        *error = "till must be after from";
-        std::cerr << "[invoices default] " << e.what() << std::endl;
-        return 0;
-    }
-}
-
-bool Invoice::removeDefaultShift(long long id) {
-    auto r = db_->query("DELETE FROM invoice_default_shifts WHERE id = $1::int RETURNING id", {std::to_string(id)});
-    return !r.empty();
-}
-
-int Invoice::applyDefaults(long long invoiceId, bool force, std::string* error) {
-    auto inv = db_->query("SELECT issuer_id, period_start, period_end FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
-    if (inv.empty()) { *error = "no such invoice"; return 0; }
-    if (inv[0]["period_start"].is_null() || inv[0]["period_end"].is_null()) { *error = "set the period first"; return 0; }
-    if (!force) {
-        auto have = db_->query("SELECT 1 FROM invoice_work_shifts WHERE invoice_id = $1::int LIMIT 1", {std::to_string(invoiceId)});
-        if (!have.empty()) { *error = "this invoice already has days"; return 0; }
-    }
-    auto r = db_->query(R"SQL(
-        INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note)
-        SELECT $1::int, ($2::date + s.day_index)::date, s.start_at, s.end_at, s.hours, s.note
-          FROM invoice_default_shifts s
-         WHERE s.issuer_id = $4::int AND ($2::date + s.day_index) <= $3::date
-         ORDER BY s.day_index, s.start_at NULLS LAST
-        RETURNING id)SQL",
-        {std::to_string(invoiceId), inv[0]["period_start"].c_str(), inv[0]["period_end"].c_str(), inv[0]["issuer_id"].c_str()});
-    const int added = static_cast<int>(r.size());
-    if (added > 0) syncLabor(invoiceId);
-    return added;
-}
