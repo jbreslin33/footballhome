@@ -2018,6 +2018,14 @@ back four on the goal line, CDMs at 6.8 m. Now: keeper on the ball, CBs 7 m
 the 9 at 35.5 m. 200 episodes: lost in own third 70.5 → 53%, passes 2.5 →
 3.4, kept 7.4 → 9.4 s; out to Lighthouse 22% (was ~4%) — balls into touch.
 
+Second pass (mig 706), James: "cdms should be above penalty box by 10
+yards. then 7,11 should be pinned to sideline high up. near center line. 10
+should be above the 6,8(cdms) 9 should be inside half circle". CDMs 25.6 m
+±8; 7 / 11 on the touchlines (±33.5) at 49 m; the 10 at 33 m centre (gap
+not given — ~8 yd); the 9 at 48 m, in his half of the centre circle. 200
+episodes: lost in own third 45%, middle 24.5%, out to Lighthouse 21.5%;
+over halfway 6.5%, passes 2.5, kept 7.1 s.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
