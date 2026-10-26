@@ -947,7 +947,7 @@ class GameCenterScreen extends Screen {
       if (oppSend && this.isCoach && !oppSend.disabled) { this._sendToOpponent(oppSend); return; }
       const oppSendAll = e.target.closest('[data-gc-opp-send-all]');
       if (oppSendAll && this.isCoach && !oppSendAll.disabled) { this._sendToOpponentAll(oppSendAll); return; }
-      const draftBtn = e.target.closest('[data-gc-draft-toggle], [data-gc-draft-new], [data-gc-draft-edit], [data-gc-draft-cancel], [data-gc-draft-save], [data-gc-draft-send], [data-gc-draft-delete]');
+      const draftBtn = e.target.closest('[data-gc-draft-toggle], [data-gc-draft-new], [data-gc-draft-edit], [data-gc-draft-cancel], [data-gc-draft-save], [data-gc-draft-send], [data-gc-draft-delete], [data-gc-draft-unrec]');
       if (draftBtn && this.isCoach && !draftBtn.disabled) { this._draftClick(draftBtn); return; }
       const oppAdd = e.target.closest('[data-gc-opp-add]');
       if (oppAdd && this.isCoach) { this._oppAddOpen = !this._oppAddOpen; this._render(); return; }
@@ -1091,6 +1091,15 @@ class GameCenterScreen extends Screen {
       if (fold) { if (e.target.open) this._openFolds.add(fold); else this._openFolds.delete(fold); }
     }, true);
     this.element.addEventListener('change', (e) => {
+      // 📝 draft To: ＋ add (mig 726).
+      if (e.target.matches('[data-gc-draft-addrec]') && this._draftEdit) {
+        const id = Number(e.target.value); if (!id) return;
+        const o = this.oppContacts || {};
+        const c = [...(((o.club || {}).contacts) || []), ...(((o.league || {}).contacts) || [])].find(x => x.id === id);
+        this._draftReadForm();
+        if (c) this._draftEdit.recipients = [...(this._draftEdit.recipients || []), { id: c.id, name: c.name, email: c.email }];
+        this._render(); return;
+      }
       const cpBehalf = e.target.closest('[data-gc-cp-behalf]');
       if (cpBehalf) { this.carpoolPanel.behalf(cpBehalf.value); return; }
       const benchSelect = e.target.closest('[data-lineup-bench-order-select]');
@@ -3005,7 +3014,17 @@ class GameCenterScreen extends Screen {
     else if (d.error) inner = `<div style="font-size:0.72rem; color:#fca5a5;">${esc(d.error)}</div>`;
     else if (this._draftEdit) {
       const e = this._draftEdit;
+      // To (mig 726): the director stays; anyone else in this panel can be added.
+      const rec = e.recipients || [];
+      const o = this.oppContacts || {};
+      const pool = [...(((o.club || {}).contacts) || []), ...(((o.league || {}).contacts) || [])]
+        .filter(c => c.email && !rec.some(r => r.id === c.id));
       inner = `
+        <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center; font-size:0.7rem; margin-bottom:4px;">
+          <span style="opacity:0.7;">To:</span>
+          ${rec.map(r => `<span style="padding:2px 6px; border-radius:10px; border:1px solid var(--border-color);">${esc(r.name || r.email)}${r.id !== this._draftsFor ? ` <button data-gc-draft-unrec="${r.id}" style="border:0; background:none; color:inherit; cursor:pointer; padding:0 2px; min-width:0; min-height:0;">✕</button>` : ''}</span>`).join('')}
+          ${pool.length ? `<select data-gc-draft-addrec style="font-size:0.68rem; padding:2px 4px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); max-width:160px;"><option value="">＋ add</option>${pool.map(c => `<option value="${c.id}">${esc(c.name || c.email)}</option>`).join('')}</select>` : ''}
+        </div>
         <input data-gc-draft-subject value="${esc(e.subject)}" placeholder="Subject" style="${box}">
         <textarea data-gc-draft-body rows="8" style="${box} margin-top:4px; font-family:inherit; resize:vertical;">${esc(e.body)}</textarea>
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
@@ -3019,7 +3038,8 @@ class GameCenterScreen extends Screen {
       inner = `
         ${drafts.map(x => `
           <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:4px 0; border-top:1px dashed var(--border-color); font-size:0.72rem;">
-            <div style="flex:1; min-width:140px;"><b>${esc(x.subject || '(no subject)')}</b> <span style="opacity:0.6;">· draft, ${esc(x.updated_label)}</span></div>
+            <div style="flex:1; min-width:140px;"><b>${esc(x.subject || '(no subject)')}</b> <span style="opacity:0.6;">· draft, ${esc(x.updated_label)}</span>
+              ${(x.recipients || []).length > 1 ? `<div style="font-size:0.66rem; opacity:0.7;">To: ${esc(x.recipients.map(r => r.name || r.email).join(', '))}</div>` : ''}</div>
             <button class="btn btn-secondary" data-gc-draft-edit="${x.id}" style="padding:2px 8px; font-size:0.68rem;">Edit</button>
             <button class="btn btn-secondary" data-gc-draft-delete="${x.id}" style="padding:2px 8px; font-size:0.68rem;">🗑</button>
           </div>`).join('')}
@@ -3046,6 +3066,7 @@ class GameCenterScreen extends Screen {
   _draftNew(contactId) {
     const o = this.oppContacts || {}, lg = o.league || {};
     const k = (lg.contacts || []).find(x => x.id === contactId) || {};
+    const recipients = [{ id: contactId, name: k.name, email: k.email }];
     const me = (this.auth && this.auth.getUser && this.auth.getUser()) || {};
     const m = this.matchDetails || {};
     const tokens = {
@@ -3057,7 +3078,7 @@ class GameCenterScreen extends Screen {
     };
     const tier = this.matchId ? 'new_game' : 'new_plain';
     const r = (window.MessageCopy && MessageCopy.render('contact_draft', tier, tokens)) || {};
-    this._draftEdit = { id: 0, contactId, subject: r.subject || '', body: r.body || '' };
+    this._draftEdit = { id: 0, contactId, subject: r.subject || '', body: r.body || '', recipients };
   }
 
   _draftReadForm() {
@@ -3070,7 +3091,8 @@ class GameCenterScreen extends Screen {
   async _draftSave() {
     this._draftReadForm();
     const e = this._draftEdit;
-    const data = await this._postReminder('/api/contact-drafts', { id: e.id || 0, contact_id: this._draftsFor, match_id: this.matchId || 0, subject: e.subject, body: e.body });
+    const data = await this._postReminder('/api/contact-drafts', { id: e.id || 0, contact_id: e.contactId || this._draftsFor, match_id: this.matchId || 0, subject: e.subject, body: e.body,
+      recipient_ids: (e.recipients || []).map(r => r.id) });
     return data.draft;
   }
 
@@ -3087,10 +3109,15 @@ class GameCenterScreen extends Screen {
       if (btn.hasAttribute('data-gc-draft-new')) { this._draftNew(this._draftsFor); this._render(); return; }
       if (btn.dataset.gcDraftEdit) {
         const x = ((this._draftsData || {}).drafts || []).find(d => d.id === Number(btn.dataset.gcDraftEdit));
-        if (x) { this._draftEdit = { id: x.id, contactId: x.contact_id, subject: x.subject, body: x.body }; this._render(); }
+        if (x) { this._draftEdit = { id: x.id, contactId: x.contact_id, subject: x.subject, body: x.body, recipients: (x.recipients || []).slice() }; this._render(); }
         return;
       }
       if (btn.hasAttribute('data-gc-draft-cancel')) { this._draftEdit = null; this._render(); return; }
+      if (btn.dataset.gcDraftUnrec) {
+        this._draftReadForm();
+        this._draftEdit.recipients = (this._draftEdit.recipients || []).filter(r => r.id !== Number(btn.dataset.gcDraftUnrec));
+        this._render(); return;
+      }
       if (btn.hasAttribute('data-gc-draft-save')) {
         btn.disabled = true;
         await this._draftSave();

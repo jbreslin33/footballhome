@@ -8,9 +8,10 @@
 // being involved", drafts kept until sent or deleted).  Club admins only.
 //
 //   GET    /api/contact-drafts?contact_id=   { contact, drafts[], sent[] }   (ContactDrafts::forContact)
-//   POST   /api/contact-drafts               { id?, contact_id, match_id?, subject, body } → { draft }
+//   POST   /api/contact-drafts               { id?, contact_id, match_id?, subject, body, recipient_ids? } → { draft }
+//                                             recipient_ids (mig 726) replaces who it goes To; contact_id always stays
 //   DELETE /api/contact-drafts?id=
-//   POST   /api/contact-drafts/sent          { id } → { to }   the page opens Gmail with it filled in
+//   POST   /api/contact-drafts/sent          { id } → { to: "a,b" }   the page opens Gmail with it filled in
 class ContactDraftsController : public Controller {
 public:
     void registerRoutes(Router& router, const std::string& prefix) override;

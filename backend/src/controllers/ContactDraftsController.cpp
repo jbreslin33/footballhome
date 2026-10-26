@@ -56,7 +56,11 @@ Response ContactDraftsController::handleSave(const Request& request) {
     try {
         json b = request.getBody().empty() ? json::object() : json::parse(request.getBody());
         long long userId = bearerUserId(request); if (userId < 0) userId = 0;
-        json d = ContactDrafts::save(n(b, "id"), n(b, "contact_id"), n(b, "match_id"), s(b, "subject"), s(b, "body"), userId);
+        std::vector<long long> rec;
+        const bool hasRec = b.contains("recipient_ids") && b["recipient_ids"].is_array();
+        if (hasRec) for (const auto& v : b["recipient_ids"]) if (v.is_number_integer()) rec.push_back(v.get<long long>());
+        json d = ContactDrafts::save(n(b, "id"), n(b, "contact_id"), n(b, "match_id"), s(b, "subject"), s(b, "body"), userId,
+                                     hasRec ? &rec : nullptr);
         return d.is_null() ? jsonError(HttpStatus::NOT_FOUND, "Draft or contact not found (or already sent).") : jsonOut(HttpStatus::OK, {{"draft", d}});
     } catch (const std::exception& e) {
         std::cerr << "[contact-drafts] save: " << e.what() << std::endl;
