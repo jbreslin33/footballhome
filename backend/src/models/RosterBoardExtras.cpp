@@ -1,6 +1,8 @@
 #include "RosterBoardExtras.h"
 
+#include <functional>
 #include <iostream>
+#include <unordered_map>
 
 #include "../database/Database.h"
 
@@ -76,5 +78,43 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
         body["officialRosters"] = std::move(official);
     } catch (const std::exception& e) {
         std::cerr << "[" << logTag << "] official names attach failed: " << e.what() << std::endl;
+    }
+    // 🏦 A bank payment LeagueApps recorded but hasn't applied yet (mig
+    // 690) comes off the board's balance too — LA's raw
+    // outstandingBalance still counts it as owed until it settles.
+    // pendingBankUsd rides along so the card can say why.
+    try {
+        auto* db = Database::getInstance();
+        std::unordered_map<long long, double> pending;
+        for (const auto& r : db->query(
+            "SELECT m.la_registration_id, SUM(fh_membership_pending_bank_usd(m.id))::float8 AS usd "
+            "  FROM person_la_memberships m "
+            " WHERE m.ended_at IS NULL AND m.la_registration_id IS NOT NULL "
+            "   AND fh_membership_pending_bank_usd(m.id) > 0 "
+            " GROUP BY m.la_registration_id"))
+            pending[r["la_registration_id"].as<long long>()] = r["usd"].as<double>();
+        if (!pending.empty()) {
+            std::function<void(nlohmann::json&)> walk = [&](nlohmann::json& j) {
+                if (j.is_array()) { for (auto& e : j) walk(e); return; }
+                if (!j.is_object()) return;
+                const auto reg = j.find("registrationId");
+                const auto bal = j.find("outstandingBalance");
+                if (reg != j.end() && bal != j.end() && bal->is_number()) {
+                    long long id = 0;
+                    if (reg->is_number_integer()) id = reg->get<long long>();
+                    else if (reg->is_string()) { try { id = std::stoll(reg->get<std::string>()); } catch (...) {} }
+                    if (const auto it = pending.find(id); it != pending.end()) {
+                        const double raw = bal->get<double>();
+                        j["outstandingBalance"] = raw > it->second ? raw - it->second : 0.0;
+                        j["pendingBankUsd"] = it->second;
+                    }
+                    return;
+                }
+                for (auto& [k, v] : j.items()) walk(v);
+            };
+            walk(body);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[" << logTag << "] pending bank attach failed: " << e.what() << std::endl;
     }
 }

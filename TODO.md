@@ -50,7 +50,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 - [ ] 2026-10-24 Test with real sends (nothing sent yet): a two-parent family (Lina + Raynel get separate texts with their own links) and a tap-through on a new short sign-in link (footballhome.org/api/m/...). Only with James's go-ahead — the two-parent test messages real parents.
 - [ ] 2026-10-24 FH Texter 1.2: refuse/flag texts when the app lacks SMS permission instead of taking them and failing (1.1 does that after a reinstall until "Allow restricted settings" + SMS are re-granted). Needs another sideload (Samsung Auto Blocker off).
 - [x] 2026-10-24 Coaches aren't fined (mig 693): James, Luke, Victor, Sheldon, Ali, Walter cleared; regular players keep the full schedule.
-- [ ] 2026-10-24 Roster boards (#teams) still show LeagueApps' raw outstandingBalance, so a pending bank payment (mig 690) reads as owed there until LA applies it. Display only — no rule uses it.
+- [x] 2026-10-26 Roster boards (#teams) net a pending bank payment (mig 690) off LA's raw outstandingBalance: RosterBoardExtras::attach subtracts fh_membership_pending_bank_usd per registration on every board and adds pendingBankUsd (Jesueth's 10/20 $35 was the live case).
 - [ ] 2026-10-24 Our U10 (PPR U10 Boys Blue) vs Torresdale: the PPR sheet has two Torresdale U10 Blue teams (Wasps / Stingers) — confirm which one plays us so the right coach shows.
 
 - [x] 2026-10-26 CASA Instagram 📸 buttons (mig 699): club_social_handles; handle field on #casa-contacts cards, 📸 per team on #casa-scores + "Open all" for unscored games; terminal check = "check all casa scores from insta" (.claude/skills/casa-insta-scores, CASA Chrome profile w/ VPN).
