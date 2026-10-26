@@ -27,12 +27,18 @@ class InvoicesScreen extends Screen {
     this.error = null;
     this.flash = '';
     this.editIssuer = false;
-    this.showPlanForm = false;
     this.confirmDelete = 0;
     // 📅 Period calendar (owner 2026-10-20: "a calendar type thing …
     // calendar and pills to show hide things … running total of invoice
     // below it").  Which chip kinds are showing; remembered per browser.
-    this.calKinds = { match: true, practice: true, claim: true, ref: true };
+    this.calKinds = { match: true, practice: true, claim: true, ref: true, expense: true };
+    // The calendar IS the editor (mig 703; owner 2026-10-26: "i am
+    // proposing no line item section"): ＋ on a day, tap a 💵 chip, or the
+    // ⋯ of an event chip each open one popup.
+    this.addOn = '';          // ＋ day being added to (YYYY-MM-DD)
+    this.addMode = 'expense'; // expense | hours | plan
+    this.editLine = 0;        // 💵 line open in the popup
+    this.detailFor = null;    // event chip key (f123 / g456) open in the popup
     try { Object.assign(this.calKinds, JSON.parse(localStorage.getItem('invoices.calKinds') || '{}')); } catch (err) { /* private window */ }
   }
 
@@ -101,6 +107,10 @@ class InvoicesScreen extends Screen {
         .iv-chip.off .iv-chip-zone:first-child { text-decoration:line-through; opacity:0.6; }
         .iv-chip.todo { border-color:#f59e0b; }
         .iv-chip.ref { border-style:dashed; }
+        .iv-chip.exp { border-color:#60a5fa; background:rgba(96,165,250,0.14); }
+        .iv-cal-add { border:none; background:transparent; color:var(--text-primary); cursor:pointer; padding:0 2px;
+                      font-size:0.85rem; line-height:1; opacity:0.45; min-width:0; min-height:0; }
+        .iv-cal-add:hover { opacity:1; }
         .iv-chip-zone { border:none; background:transparent; color:inherit; cursor:pointer; padding:0; font-size:inherit;
                         display:flex; gap:4px; align-items:center; min-width:0; }
         .iv-chip-zone > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -255,10 +265,9 @@ class InvoicesScreen extends Screen {
       const res = await this.auth.fetch(`/api/invoices/${id}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      if (!this.inv || this.inv.id !== body.id) { this.editShift = 0; this.showAddDay = false; }
+      if (!this.inv || this.inv.id !== body.id) { this.editShift = 0; this.addOn = ''; this.editLine = 0; this.detailFor = null; }
       this.inv = body;
       this.issuerId = body.issuer_id;
-      this.showPlanForm = false;
       this.flash = '';
       // Reality check from gcal (owner 2026-10-12): the backend just held
       // this draft's days against the calendar — say what changed.
@@ -349,17 +358,6 @@ class InvoicesScreen extends Screen {
     } catch (err) { this._say(err.message, true); }
   }
 
-  async addRefFees() {
-    if (!this.inv) return;
-    const picks = [...this.element.querySelectorAll('[data-ref-game]:checked')].map(cb => { const [source, id] = cb.dataset.refGame.split(':'); return { source, ref_id: Number(id) }; });
-    if (!picks.length) { this._say('Tick at least one game.', true); return; }
-    try {
-      this.inv = await this._post(`/api/invoices/${this.inv.id}/ref-fees`, { games: picks });
-      await this.load();
-      this._loadRefGames();
-    } catch (err) { this._say(err.message, true); }
-  }
-
   // Budget lines a line can count toward (board.budget_lines, mig 490):
   // those of the line's category, plus whatever it already points at.
   _budgetSel(category, current, extra = '') {
@@ -373,48 +371,33 @@ class InvoicesScreen extends Screen {
     </select>`;
   }
 
-  async saveLine(lineId) {
+  // 💵 the line popup's Save — a new line on the ＋ day (editLine 0) or
+  // the open line.  Every line carries a day (mig 703).
+  async saveLine() {
     if (!this.inv) return;
-    const row = this.find(`[data-line-row="${lineId}"]`);
-    if (!row) return;
-    const line = (this.inv.lines || []).find(l => l.id === lineId);
-    const val = (sel) => { const el = row.querySelector(sel); return el ? el.value : ''; };
-    const qty = Number(val('[data-f="quantity"]')) || 0;
-    const rateRaw = val('[data-f="rate"]');
-    const rate = rateRaw === '' ? null : Number(rateRaw);
-    const amtRaw = val('[data-f="amount"]');
+    const v = (id) => (this.find(`#iv-ln-${id}`)?.value ?? '').trim();
+    const line = (this.inv.lines || []).find(l => l.id === this.editLine) || null;
+    const qty = v('qty') === '' ? 1 : Number(v('qty'));
+    const rate = v('rate') === '' ? null : Number(v('rate'));
+    const amt = v('amt') === '' ? null : Number(v('amt'));
     const payload = {
-      id: lineId,
-      category: val('[data-f="category"]') || (line ? line.category : 'other'),
-      description: line && line.plan_id ? line.description : (val('[data-f="description"]') || (line ? line.description : '')),
-      quantity: qty,
+      category: line && line.category === 'labor' ? 'labor' : (v('cat') || 'other'),
+      description: line && line.plan_id ? line.description : v('desc'),
+      quantity: Number.isFinite(qty) ? qty : 1,
+      date: v('date'),
     };
+    if (!payload.description) { this._say('Describe the line first.', true); return; }
     if (rate !== null && Number.isFinite(rate)) payload.rate = rate;
-    const bsel = row.querySelector('[data-f="budget_line_id"]');
+    if (amt !== null && Number.isFinite(amt)) payload.amount = amt;
+    else if (payload.rate != null) payload.amount = Math.round(payload.quantity * payload.rate * 100) / 100;
+    else { this._say('Enter the amount.', true); return; }
+    if (payload.rate == null && payload.quantity === 1) payload.rate = payload.amount;
+    const bsel = this.find('#iv-ln-budget');
     if (bsel) payload.budget_line_id = Number(bsel.value) || null;
-    // Amount follows qty × rate unless the amount box was edited to something else.
-    const computed = rate !== null && Number.isFinite(rate) ? Math.round(qty * rate * 100) / 100 : null;
-    const amt = amtRaw === '' ? null : Number(amtRaw);
-    if (amt !== null && Number.isFinite(amt) && (computed === null || Math.abs(amt - computed) > 0.004) && row.dataset.amountTouched === '1') payload.amount = amt;
-    else if (computed !== null) payload.amount = computed;
-    else if (amt !== null && Number.isFinite(amt)) payload.amount = amt;
+    if (line) payload.id = line.id;
     try {
       this.inv = await this._post(`/api/invoices/${this.inv.id}/line`, payload);
-      await this.load();
-    } catch (err) { this._say(err.message, true); }
-  }
-
-  async addLine() {
-    if (!this.inv) return;
-    const cat = this.find('#iv-new-cat')?.value || 'other';
-    const desc = (this.find('#iv-new-desc')?.value || '').trim();
-    const qty = Number(this.find('#iv-new-qty')?.value) || 1;
-    const rate = Number(this.find('#iv-new-rate')?.value);
-    if (!desc) { this._say('Describe the line first.', true); return; }
-    if (!Number.isFinite(rate)) { this._say('Enter the amount.', true); return; }
-    try {
-      const budget = Number(this.find('#iv-new-budget')?.value) || null;
-      this.inv = await this._post(`/api/invoices/${this.inv.id}/line`, { category: cat, description: desc, quantity: qty, rate, budget_line_id: budget });
+      this.editLine = 0; this.addOn = '';
       await this.load();
     } catch (err) { this._say(err.message, true); }
   }
@@ -423,6 +406,7 @@ class InvoicesScreen extends Screen {
     if (!this.inv) return;
     try {
       await this._delete(`/api/invoices/line?id=${lineId}`);
+      this.editLine = 0;
       await this.openInvoice(this.inv.id);
       await this.load();
     } catch (err) { this._say(err.message, true); }
@@ -443,7 +427,7 @@ class InvoicesScreen extends Screen {
     try {
       const body = await this._post('/api/invoices/plan', payload);
       if (body.invoice) this.inv = body.invoice;
-      this.showPlanForm = false;
+      this.addOn = '';
       await this.load();
     } catch (err) { this._say(err.message, true); }
   }
@@ -729,10 +713,21 @@ class InvoicesScreen extends Screen {
       if (e.target.closest('#iv-save-issuer')) { await this.saveIssuer(); return; }
       if (e.target.closest('#iv-close')) { this.inv = null; this._renderBody(); return; }
       if (e.target.closest('#iv-print')) { this.print(); return; }
-      if (e.target.closest('#iv-add-line')) { await this.addLine(); return; }
-      if (e.target.closest('#iv-refs-add')) { await this.addRefFees(); return; }
-      if (e.target.closest('#iv-plan-toggle')) { this.showPlanForm = !this.showPlanForm; this._renderBody(); return; }
       if (e.target.closest('#iv-plan-add')) { await this.addPlan(); return; }
+      // 📅 the calendar's popups (mig 703): ＋ on a day, a 💵 line, an
+      // event chip's ⋯ details.
+      const calAdd = e.target.closest('[data-cal-add]');
+      if (calAdd) { this.addOn = calAdd.dataset.calAdd; this.addMode = 'expense'; this.editLine = 0; this._renderBody(); this.find('#iv-ln-desc')?.focus(); return; }
+      const addMode = e.target.closest('[data-add-mode]');
+      if (addMode) { this.addMode = addMode.dataset.addMode; this._renderBody(); return; }
+      const edLine = e.target.closest('[data-edit-line]');
+      if (edLine) { this.editLine = Number(edLine.dataset.editLine); this.addOn = ''; this._renderBody(); return; }
+      if (e.target.closest('#iv-ln-save')) { await this.saveLine(); return; }
+      const calDetail = e.target.closest('[data-cal-detail]');
+      if (calDetail) { this.detailFor = calDetail.dataset.calDetail; this.partialFor = null; this._renderBody(); return; }
+      if (e.target.closest('[data-pop-close]') || e.target.id === 'iv-pop-bg') {
+        this.addOn = ''; this.editLine = 0; this.detailFor = null; this.partialFor = null; this._renderBody(); return;
+      }
       const em = e.target.closest('[data-email-invoice]');
       if (em) { await this.emailRow(Number(em.dataset.emailInvoice)); return; }
       const open = e.target.closest('[data-open]');
@@ -743,10 +738,9 @@ class InvoicesScreen extends Screen {
       if (rmLine) { await this.removeLine(Number(rmLine.dataset.deleteLine)); return; }
       const rmPlan = e.target.closest('[data-delete-plan]');
       if (rmPlan) { await this.removePlan(Number(rmPlan.dataset.deletePlan)); return; }
-      if (e.target.closest('#iv-addday')) { this.showAddDay = !this.showAddDay; this._renderBody(); return; }
       if (e.target.closest('#iv-nd-save')) { await this.addDayManual(); return; }
       const edt = e.target.closest('[data-edit-shift]');
-      if (edt) { const id = Number(edt.dataset.editShift); this.editShift = this.editShift === id ? 0 : id; this._renderBody(); return; }
+      if (edt) { const id = Number(edt.dataset.editShift); this.editShift = this.editShift === id ? 0 : id; this.detailFor = null; this._renderBody(); return; }
       if (e.target.closest('#iv-shift-close') || e.target.id === 'iv-shift-bg') { this.editShift = 0; this._renderBody(); return; }
       const mk = e.target.closest('[data-mk]');
       if (mk) { await this._markEvent(mk); return; }
@@ -821,24 +815,6 @@ class InvoicesScreen extends Screen {
       if (rmDef) { await this.removeDefault(Number(rmDef.dataset.deleteDefault)); return; }
     });
     el.addEventListener('change', async (e) => {
-      if (e.target.matches('[data-ref-game]')) {
-        // The button reads "n games, $x" for whatever is ticked.
-        const boxes = [...el.querySelectorAll('[data-ref-game]:checked')];
-        const amount = boxes.reduce((a, b) => a + Number(b.dataset.amount || 0), 0);
-        const btn = el.querySelector('#iv-refs-add');
-        if (btn) { btn.disabled = !boxes.length; btn.textContent = this._copy('refs_button', { n: boxes.length, amount: InvoicesScreen.money(amount) }) || `Add referees line — ${boxes.length}, ${InvoicesScreen.money(amount)}`; }
-        return;
-      }
-      const f = e.target.closest('[data-f]');
-      if (f) {
-        const row = f.closest('[data-line-row]');
-        if (row) {
-          if (f.dataset.f === 'amount') row.dataset.amountTouched = '1';
-          if (f.dataset.f === 'quantity' || f.dataset.f === 'rate') row.dataset.amountTouched = '0';
-          await this.saveLine(Number(row.dataset.lineRow));
-        }
-        return;
-      }
       // The row's own number / covers / due inputs (mig 569).
       const rf = e.target.closest('[data-row-f]');
       if (rf) {
@@ -863,10 +839,16 @@ class InvoicesScreen extends Screen {
       const df = e.target.closest('[data-df]');
       if (df) { await this.saveDefaultRow(df.closest('[data-default-row]'), df.dataset.df); return; }
     });
+    // 💵 popup: the amount follows units × each as they're typed.
+    el.addEventListener('input', (e) => {
+      if (!e.target.matches('#iv-ln-qty, #iv-ln-rate')) return;
+      const q = Number(this.find('#iv-ln-qty')?.value), r = this.find('#iv-ln-rate')?.value;
+      const amt = this.find('#iv-ln-amt');
+      if (amt && r !== '' && Number.isFinite(q) && Number.isFinite(Number(r))) amt.value = (Math.round(q * Number(r) * 100) / 100).toFixed(2);
+    });
     el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && e.target.closest('#iv-new-desc, #iv-new-qty, #iv-new-rate')) { e.preventDefault(); this.addLine(); }
+      if (e.key === 'Enter' && e.target.closest('#iv-ln-desc, #iv-ln-amt, #iv-ln-qty, #iv-ln-rate')) { e.preventDefault(); this.saveLine(); }
       if (e.key === 'Enter' && e.target.closest('[data-sf], [data-df]')) { e.preventDefault(); e.target.blur(); }
-      if (e.key === 'Enter' && e.target.closest('[data-f]')) { e.preventDefault(); e.target.blur(); }
     });
   }
 
@@ -943,6 +925,7 @@ class InvoicesScreen extends Screen {
       parts.push(this._renderEditor());
       parts.push(`<div class="iv-sec">Sheet</div><div class="inv-preview-wrap"><div class="inv-scale">${this._renderSheet(this.inv)}</div></div>`);
       parts.push(this._renderShiftModal());
+      parts.push(this._renderCalPopup());
     }
     body.innerHTML = parts.join('');
     this._fitPreview();
@@ -1086,30 +1069,6 @@ class InvoicesScreen extends Screen {
   _renderEditor() {
     const inv = this.inv;
     const esc = (t) => this.escapeHtml(t);
-    const cats = this.board.categories || [];
-    const catSel = (cur, extra = '') => `<select class="iv-in" ${extra}>${cats.map(c =>
-      `<option value="${esc(c.code)}" ${c.code === cur ? 'selected' : ''}>${esc(c.label || 'Hours')}</option>`).join('')}</select>`;
-    const lines = (inv.lines || []).map(l => {
-      const locked = !!l.plan_id;
-      return `
-        <div class="iv-row" data-line-row="${l.id}">
-          <div>${l.category === 'labor' ? '<span style="opacity:0.6; font-size:0.8rem;">Hours</span>' : catSel(l.category, 'data-f="category"')}</div>
-          <div class="desc">${locked
-            ? `<span>${esc(l.printed)}</span>`
-            : `<input class="iv-in" data-f="description" value="${esc(l.description)}">`}${
-            l.category === 'labor' ? '' : locked
-              ? (l.budget_line_id ? `<div style="font-size:0.75rem; opacity:0.7; margin-top:2px;">↳ ${esc(((this.board?.budget_lines || []).find(b => b.id === l.budget_line_id) || {}).label || 'planned expense')}</div>` : '')
-              : l.ref_games ? `<div style="font-size:0.75rem; opacity:0.7; margin-top:2px;">🧑‍⚖️ ${l.ref_games} game${l.ref_games === 1 ? '' : 's'} ticked off</div>`
-              : this._budgetSel(l.category, l.budget_line_id, 'data-f="budget_line_id"')}</div>
-          <div><input class="iv-in num" data-f="quantity" type="number" step="0.25" min="0" value="${l.quantity}" ${l.category === 'labor' && (inv.shifts || []).length ? 'disabled title="Adds up the days above"' : `title="${l.category === 'labor' ? 'Hours' : 'Units'}"`}></div>
-          <div><input class="iv-in num" data-f="rate" type="number" step="0.01" min="0" value="${l.rate == null ? '' : l.rate}" title="Rate"></div>
-          <div style="display:flex; gap:4px; align-items:center;">
-            <input class="iv-in num" data-f="amount" type="number" step="0.01" value="${l.amount}" title="Amount">
-            <button class="iv-btn danger sm" data-delete-line="${l.id}" title="Remove line">✕</button>
-          </div>
-        </div>`;
-    }).join('');
-    const expenses = !!inv.issuer?.bills_expenses;
     return `
       <div class="iv-sec" id="iv-editor">${esc(inv.title || `Invoice #${inv.number}`)}</div>
       <div class="iv-card">
@@ -1146,63 +1105,9 @@ class InvoicesScreen extends Screen {
         </div>
 
         <div class="iv-sec">${esc(this._copy('games_title') || 'Hours from the calendar')} — ${inv.period_start && inv.period_end ? `${esc(InvoicesScreen.dayLabel(inv.period_start))} to ${esc(InvoicesScreen.dayLabel(inv.period_end))}` : 'set the window above'}</div>
-        ${this._renderPeriodCalendar()}
-        ${inv.is_final ? '' : `<div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('games_hint'))}</div>`}
-        ${this._renderHoursBreakdown()}
-        <div class="iv-acts">
-          ${inv.is_final ? `<span class="iv-hint" style="margin:0;">Final — the sheet keeps its billed hours; un-tick Final to change them.</span>`
-                         : `<button id="iv-addday" class="iv-btn ghost sm">${esc(this._copy('day_add') || '➕ Hours without an event')}</button>`}
-        </div>
-        ${this.showAddDay && !inv.is_final ? `
-        <div class="iv-card" style="margin-top:6px;">
-          <div class="iv-grid" style="grid-template-columns:150px 110px 110px 80px 1fr auto; align-items:end;">
-            <div><div class="iv-lbl">Day</div><input class="iv-in" id="iv-nd-date" type="date" min="${esc(inv.period_start || '')}" max="${esc(inv.period_end || '')}"></div>
-            <div><div class="iv-lbl">From</div><input class="iv-in" id="iv-nd-start" type="time"></div>
-            <div><div class="iv-lbl">Till</div><input class="iv-in" id="iv-nd-end" type="time"></div>
-            <div><div class="iv-lbl">Hours</div><input class="iv-in num" id="iv-nd-hours" type="number" step="0.25" min="0"></div>
-            <div><div class="iv-lbl">Note</div><input class="iv-in" id="iv-nd-note" placeholder="what it was"></div>
-            <div><button id="iv-nd-save" class="iv-btn sm">Add</button></div>
-          </div>
-        </div>` : ''}
-
-        ${expenses ? `
-        <div class="iv-sec">Add a line</div>
-        <div class="iv-row" style="border-top:none;">
-          <div>${catSel('other', 'id="iv-new-cat"')}</div>
-          <div class="desc"><input class="iv-in" id="iv-new-desc" placeholder="Description">${this._budgetSel('__any__', null, 'id="iv-new-budget"')}</div>
-          <div><input class="iv-in num" id="iv-new-qty" type="number" step="1" min="0" value="1" title="Units"></div>
-          <div><input class="iv-in num" id="iv-new-rate" type="number" step="0.01" min="0" placeholder="0.00" title="Amount each"></div>
-          <div><button id="iv-add-line" class="iv-btn sm">Add</button></div>
-        </div>
-        <div class="iv-acts">
-          <button id="iv-plan-toggle" class="iv-btn ghost sm">${this.showPlanForm ? 'Cancel' : '➕ Instalment plan (k of N)'}</button>
-        </div>
-        ${this.showPlanForm ? `
-        <div class="iv-card" style="margin-top:8px;">
-          <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('plan_hint', { k: 1, n: 'N' }))}</div>
-          <div class="iv-grid" style="grid-template-columns:150px 1fr 120px 90px auto;">
-            <div><div class="iv-lbl">Section</div>${catSel('equipment', 'id="iv-plan-cat"')}</div>
-            <div><div class="iv-lbl">Description</div><input class="iv-in" id="iv-plan-desc" placeholder="Veo Subscription">${this._budgetSel('__any__', null, 'id="iv-plan-budget"')}</div>
-            <div><div class="iv-lbl">Total paid</div><input class="iv-in num" id="iv-plan-total" type="number" step="0.01" min="0" placeholder="862.92"></div>
-            <div><div class="iv-lbl">Over N</div><input class="iv-in num" id="iv-plan-count" type="number" step="1" min="1" value="4"></div>
-            <div><div class="iv-lbl">&nbsp;</div><label style="font-size:0.85rem; display:flex; gap:6px; align-items:center; height:36px;"><input type="checkbox" id="iv-plan-show"> print total</label></div>
-          </div>
-          <div class="iv-acts"><button id="iv-plan-add" class="iv-btn">Add plan + first instalment</button></div>
-        </div>` : ''}
-        ${inv.is_final ? '' : this._renderRefFees()}` : ''}
-        <!-- The one adding-up, at the very bottom: the lines as they print
-             (the labor line carries the summed hours) and the totals under
-             them (owner 2026-10-12: "only add 1x add bottom"). -->
-        <div style="margin-top:var(--space-3); padding-top:6px; border-top:2px solid var(--border-color);">
-          <div class="iv-row head"><div>Section</div><div class="desc">Description</div><div class="r">Hours / units</div><div class="r">Rate</div><div class="r">Amount</div></div>
-          ${lines}
-        </div>
-        ${(inv.lines || []).length > InvoicesScreen.SHEET_ROWS ? `<div class="iv-hint" style="color:#f59e0b;">${esc(this._copy('sheet_fit', { n: (inv.lines || []).length, max: InvoicesScreen.SHEET_ROWS }))}</div>`
-          : `<div class="iv-hint">${(inv.lines || []).length} of ${InvoicesScreen.SHEET_ROWS} rows on the sheet</div>`}
-        <div style="margin-top:8px; padding-top:10px; border-top:1px solid var(--border-color); text-align:right;">
-          <div style="font-weight:800;">${esc(this._copy('total_hours') || 'Total hours')} — ${InvoicesScreen.plain(inv.shift_hours || 0)} h</div>
-          <div style="font-weight:800; font-size:1.2rem; margin-top:2px;">TOTAL ${InvoicesScreen.money(inv.total)}</div>
-        </div>
+        ${inv.period_start && inv.period_end ? this._renderPeriodCalendar() : `<div class="iv-hint">Set the work-from and work-till dates first.</div>`}
+        ${inv.is_final ? `<div class="iv-hint">Final — the sheet keeps its billed hours; un-tick Final to change them.</div>`
+                       : `<div class="iv-hint" style="margin:6px 0 0;">${esc(this._copy('games_hint'))}</div>`}
       </div>`;
   }
 
@@ -1251,116 +1156,264 @@ class InvoicesScreen extends Screen {
     const inv = this.inv, esc = (t) => this.escapeHtml(t);
     if (!inv.period_start || !inv.period_end) return '';
     const locked = !!inv.is_final;
-    const rate = Number(inv.issuer?.hourly_rate || 0);
+    const laborLine = (inv.lines || []).find(l => l.category === 'labor');
+    const rate = Number(laborLine && laborLine.rate != null ? laborLine.rate : (inv.issuer?.hourly_rate || 0));
     const dow = (iso) => new Date(iso + 'T12:00:00').getDay();
     const gridStart = InvoicesScreen.addDays(inv.period_start, -dow(inv.period_start));
     const gridEnd   = InvoicesScreen.addDays(inv.period_end, 6 - dow(inv.period_end));
+    // Anything dated outside the window sits on its first day (mig 703:
+    // "if not sure we just put 1st date of invoice").
+    const inWin = (d) => (d && d >= inv.period_start && d <= inv.period_end) ? d : inv.period_start;
 
-    // Chips by date: merged period items (events + day rows) and the
-    // unbilled in-window ref fees.
+    // Every day adds up its own money (owner 2026-10-26: "this way we can
+    // add up each day still and give total too and category totals"):
+    // billed hours × rate + the lines and referee fees dated that day.
     const byDate = new Map();
-    const put = (date, html) => { if (!byDate.has(date)) byDate.set(date, { chips: [], hours: 0 }); byDate.get(date).chips.push(html); };
+    const day = (date) => { if (!byDate.has(date)) byDate.set(date, { chips: [], hours: 0, money: 0 }); return byDate.get(date); };
+    const put = (date, html) => day(date).chips.push(html);
     const kindOf = (i) => i.g ? (i.g.kind === 'match' ? 'match' : i.g.kind === 'practice' ? 'practice' : 'claim')
                              : (i.s.gcal_event_id ? 'claim' : i.s.fh_event_id ? 'match' : 'manual');
     const ICON = { match: '⚽', practice: '🏃', claim: '🧾', manual: '⏱' };
     for (const i of this._mergedPeriodItems()) {
       const kind = kindOf(i);
       const billed = !!i.s;
-      if (billed) { if (!byDate.has(i.date)) byDate.set(i.date, { chips: [], hours: 0 }); byDate.get(i.date).hours += Number(i.s.hours || 0); }
+      const date = inWin(i.date);
+      if (billed) { const d = day(date); d.hours += Number(i.s.hours || 0); d.money += Number(i.s.hours || 0) * rate; }
       if (kind !== 'manual' && this.calKinds[kind] === false) continue;
       // 🟡 partial (mig 621): billed flat BELOW the event's own hours.
       const partial = billed && i.g && i.s.flat && Number(i.s.hours) < Number(i.g.hours || 0) - 0.01;
       const state = billed ? (partial ? 'part' : 'on') : (i.g && (i.g.declined || i.g.rsvp === 'no')) ? 'off' : 'todo';
-      // Matches lead with the opponent; everything else reads like the
-      // breakdown list (the event's note), never a placeholder team label.
-      // auto_note (mig 624 round): a noteless day stint reads the names
-      // of the calendar events its window overlaps, never the generic
-      // duty title (owner: "each entry needs the real event name").
+      // Matches lead with the opponent; everything else reads the event's
+      // note, never a placeholder team label.  auto_note (mig 624 round):
+      // a noteless day stint reads the calendar events its window overlaps.
       const label = i.g ? (kind === 'match' ? (i.g.opponent || i.g.note || '') : (i.g.note || i.g.team_label || ''))
                         : (i.s.note || i.s.auto_note || inv.issuer?.duty_description || 'Hours');
       const hrs = billed ? ` · ${InvoicesScreen.plain(i.s.hours)}h` : '';
       const title = `${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}`;
       const inner = `${ICON[kind]} <span>${esc(label)}</span>${hrs ? `<span style="flex-shrink:0;">${esc(hrs)}</span>` : ''}`;
-      if (locked) put(i.date, `<span class="iv-chip ${state}" style="display:flex;" title="${esc(title)}">${inner}</span>`);
-      else if (!i.g && i.s) put(i.date, `<button class="iv-chip ${state}" data-edit-shift="${i.s.id}" title="${esc(title)}">${inner}</button>`);
+      if (locked) put(date, `<span class="iv-chip ${state}" style="display:flex;" title="${esc(title)}">${inner}</span>`);
+      else if (!i.g && i.s) put(date, `<button class="iv-chip ${state}" data-edit-shift="${i.s.id}" title="${esc(title)}">${inner}</button>`);
       else {
         // One tap cycles ✓ → ✗ → clear (owner 2026-10-20: "easier to turn
-        // green or red"); the 🟡 corner opens the partial-hours box.
+        // green or red"); ⋯ opens the details popup (RSVP, attendance,
+        // part hours, ✏️) that the old list rows carried.
         const key = i.g.fh_event_id ? `f${i.g.fh_event_id}` : `g${i.g.gcal_event_id}`;
         const mkState = billed ? (partial ? 'part' : 'yes') : (i.g.declined ? 'no' : (i.g.rsvp === 'no' ? 'rsvpno' : ''));
-        put(i.date, `<span class="iv-chip ${state}" style="display:flex;">
+        put(date, `<span class="iv-chip ${state}" style="display:flex;">
           <button class="iv-chip-zone" style="flex:1;" data-cal-cycle data-ev="${i.g.fh_event_id || ''}" data-gev="${i.g.gcal_event_id || ''}"
                   data-state="${mkState}" title="${esc(title)} — ${esc(this._copy('cycle_tip') || 'tap cycles: ✓ worked → ✗ not there → unanswered')}">${inner}</button>
-          <button class="iv-chip-zone" data-cal-part="${key}" data-ev="${i.g.fh_event_id || ''}" data-gev="${i.g.gcal_event_id || ''}"
-                  data-hrs="${Number(i.g.hours || 0)}" title="${esc(this._copy('partial_tip') || 'There for part of it — enter the hours worked')}"
-                  style="flex:0 0 auto; opacity:${state === 'part' ? 1 : 0.55};">🟡</button>
+          <button class="iv-chip-zone" data-cal-detail="${key}" title="${esc(this._copy('cal_detail_tip') || 'Details — RSVP, attendance, part hours, edit')}"
+                  style="flex:0 0 auto; padding:0 2px; font-weight:800;">⋯</button>
         </span>`);
-        if (this.partialFor === key) put(i.date, this._partialBoxHtml(key, i.g, i.s));
       }
     }
-    if (this.calKinds.ref !== false) {
+
+    // 🧑‍⚖️ billed fees on their game day (ref_items, mig 703); the
+    // unbilled / left-off ones from the picker feed (mig 624).
+    const refItemsByLine = new Map();
+    for (const r of (inv.ref_items || [])) {
+      refItemsByLine.set(r.line_id, (refItemsByLine.get(r.line_id) || 0) + Number(r.amount || 0));
+      day(r.day).money += Number(r.amount || 0);
+      if (this.calKinds.ref === false) continue;
+      const tag = `${r.source}:${r.ref_id}`;
+      const amtSpan = `<span style="flex-shrink:0;">${InvoicesScreen.money(r.amount)}</span>`;
+      const inner = `🧑‍⚖️ <span>${esc(r.opponent || r.policy_label)}</span>`;
+      const tip = `${r.policy_label} — ${r.opponent}${r.game_on !== r.day ? ` (${InvoicesScreen.dayLabel(r.game_on)})` : ''}`;
+      if (locked) { put(r.day, `<span class="iv-chip ref on" style="display:flex;" title="${esc(tip)}">${inner}${amtSpan}</span>`); continue; }
+      put(r.day, `<span class="iv-chip ref on" style="display:flex;">
+        <button class="iv-chip-zone" style="flex:1;" data-ref-off="${esc(tag)}" data-ref-game-on="${esc(r.game_on)}" data-ref-opp="${esc(r.opponent)}"
+                title="${esc(tip)} · ${esc(this._copy('ref_on_tip') || 'On the sheet — tap to leave this fee off the invoice')}">${inner}</button>
+        <button class="iv-chip-zone" data-ref-amt="${esc(tag)}" style="flex:0 0 auto;"
+                title="${esc(this._copy('ref_amt_tip') || "Edit this fee's amount")}">${amtSpan}</button>
+      </span>`);
+      if (this.refAmtFor === tag) put(r.day, this._refAmtBoxHtml(tag, { game_on: r.game_on, opponent: r.opponent }, r.amount));
+    }
+    if (this.calKinds.ref !== false && !locked) {
       for (const g of (this.refGames || [])) {
-        if (!g.game_on || g.game_on < gridStart || g.game_on > gridEnd) continue;
+        if (g.on_this || !g.game_on || g.game_on < gridStart || g.game_on > gridEnd) continue;
         const tag = `${g.source}:${g.ref_id}`;
-        const amt = g.on_this ? (g.paid_amount != null ? g.paid_amount : g.amount) : g.amount;
-        const inner = (zone) => `🧑‍⚖️ <span>${esc(g.opponent)}</span>${zone}`;
-        const amtSpan = `<span style="flex-shrink:0;">${InvoicesScreen.money(amt)}</span>`;
-        if (g.in_gcal === false || locked) {
-          put(g.game_on, `<span class="iv-chip ref ${g.on_this ? 'on' : ''}" style="opacity:0.45;" title="${esc(g.opponent)}${locked ? '' : ' — not on the calendar'}">${inner(amtSpan)}</span>`);
-        } else if (g.on_this) {
-          // 🧑‍⚖️ default ON (mig 624): main zone turns the fee red = off
-          // the sheet; the amount zone re-prices this one fee.
-          put(g.game_on, `<span class="iv-chip ref on" style="display:flex;">
-            <button class="iv-chip-zone" style="flex:1;" data-ref-off="${esc(tag)}" data-ref-game-on="${esc(g.game_on)}" data-ref-opp="${esc(g.opponent)}"
-                    title="${esc(g.policy_label)} — ${esc(g.opponent)} · ${esc(this._copy('ref_on_tip') || 'On the sheet — tap to leave this fee off the invoice')}">${inner('')}</button>
-            <button class="iv-chip-zone" data-ref-amt="${esc(tag)}" style="flex:0 0 auto;"
-                    title="${esc(this._copy('ref_amt_tip') || "Edit this fee's amount")}">${amtSpan}</button>
-          </span>`);
-          if (this.refAmtFor === tag) put(g.game_on, this._refAmtBoxHtml(tag, g, amt));
+        const amtSpan = `<span style="flex-shrink:0;">${InvoicesScreen.money(g.amount)}</span>`;
+        const inner = `🧑‍⚖️ <span>${esc(g.opponent)}</span>${amtSpan}`;
+        if (g.in_gcal === false) {
+          put(g.game_on, `<span class="iv-chip ref" style="opacity:0.45;" title="${esc(g.opponent)} — ${esc(this._copy('refs_not_on_gcal') || 'not on the calendar')}">${inner}</span>`);
         } else if (g.declined) {
           put(g.game_on, `<button class="iv-chip ref off" data-ref-on="${esc(tag)}" data-ref-game-on="${esc(g.game_on)}" data-ref-opp="${esc(g.opponent)}"
             title="${esc(g.policy_label)} — ${esc(g.opponent)} · ${esc(this._copy('ref_off_tip') || 'Left off the invoice — tap to put this fee back on')}">
-            <span style="text-decoration:line-through; opacity:0.6;">${inner(amtSpan)}</span></button>`);
+            <span style="text-decoration:line-through; opacity:0.6;">${inner}</span></button>`);
         } else {
-          const title = `${g.policy_label} — ${g.opponent} · ${esc(this._copy('cal_ref_tip') || 'tap to put this referee fee on the sheet')}`;
-          put(g.game_on, `<button class="iv-chip ref todo" data-cal-ref="${esc(tag)}" title="${esc(title)}">${inner(amtSpan)}</button>`);
+          put(g.game_on, `<button class="iv-chip ref todo" data-cal-ref="${esc(tag)}"
+            title="${esc(g.policy_label)} — ${esc(g.opponent)} · ${esc(this._copy('cal_ref_tip') || 'tap to put this referee fee on the sheet')}">${inner}</button>`);
         }
       }
+    }
+
+    // 💵 every other line on its day.  A referees line shows only what its
+    // per-game fees don't already cover (a hand-added one shows whole).
+    for (const l of (inv.lines || [])) {
+      if (l.category === 'labor') continue;
+      const amount = Number(l.amount || 0) - (l.category === 'referees' ? (refItemsByLine.get(l.id) || 0) : 0);
+      if (Math.abs(amount) < 0.005) continue;
+      day(l.day).money += amount;
+      if (this.calKinds.expense === false) continue;
+      const inner = `💵 <span>${esc(l.printed || l.description)}</span><span style="flex-shrink:0;">${InvoicesScreen.money(amount)}</span>`;
+      const tip = `${l.category_label || l.category} ${l.printed || l.description}`;
+      put(l.day, locked ? `<span class="iv-chip exp" style="display:flex;" title="${esc(tip)}">${inner}</span>`
+                        : `<button class="iv-chip exp" data-edit-line="${l.id}" title="${esc(tip)}">${inner}</button>`);
     }
 
     // Grid: Su–Sa header, then the period's weeks; out-of-window cells dim.
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     let cells = DAYS.map(d => `<div class="hd">${d}</div>`).join('');
+    let daysMoney = 0;
     for (let d = gridStart; d <= gridEnd; d = InvoicesScreen.addDays(d, 1)) {
       const out = d < inv.period_start || d > inv.period_end;
-      const day = byDate.get(d);
-      const hrs = day ? day.hours : 0;
+      const dd = byDate.get(d);
+      if (dd && !out) daysMoney += dd.money;
       const dnum = d.slice(8).replace(/^0/, '');
       const dlabel = (d === gridStart || dnum === '1') ? InvoicesScreen.dayLabel(d).replace(/^\w+ /, '') : dnum;
+      const sum = dd && !out && (dd.hours > 0 || Math.abs(dd.money) >= 0.005)
+        ? `<div class="dsum">${dd.hours > 0 ? `${InvoicesScreen.plain(dd.hours)}h · ` : ''}${InvoicesScreen.money(dd.money)}</div>` : '';
       cells += `
         <div class="cell ${out ? 'out' : ''}">
-          <div class="dnum">${esc(dlabel)}</div>
-          ${out ? '' : (day ? day.chips.join('') : '')}
-          ${hrs > 0 ? `<div class="dsum">${InvoicesScreen.plain(hrs)}h · ${InvoicesScreen.money(hrs * rate)}</div>` : ''}
+          <div class="dnum" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>${esc(dlabel)}</span>
+            ${out || locked ? '' : `<button class="iv-cal-add" data-cal-add="${d}" title="${esc(this._copy('cal_add_tip') || 'Add an expense or hours on this day')}">＋</button>`}
+          </div>
+          ${out ? '' : (dd ? dd.chips.join('') : '')}
+          ${sum}
         </div>`;
     }
 
-    // Show/hide pills + the running totals of the sheet as it stands.
-    const PILLS = [['match', '⚽ Games'], ['practice', '🏃 Practices'], ['claim', '🧾 Claims'], ['ref', '🧑‍⚖️ Ref fees']];
+    // Show/hide pills + the totals: per category, then the invoice.
+    const PILLS = [['match', '⚽ Games'], ['practice', '🏃 Practices'], ['claim', '🧾 Claims'], ['ref', '🧑‍⚖️ Ref fees'], ['expense', '💵 Expenses']];
     const pills = PILLS.map(([k, label]) =>
       `<button class="iv-pill ${this.calKinds[k] !== false ? 'on' : ''}" data-cal-pill="${k}" style="padding:4px 10px; font-size:0.78rem;">${esc(label)}</button>`).join('');
-    const sum = (pred) => (inv.lines || []).filter(pred).reduce((a, l) => a + Number(l.amount || 0), 0);
-    const labor = sum(l => l.category === 'labor');
-    const refs  = sum(l => l.category === 'referees');
-    const other = sum(l => l.category !== 'labor' && l.category !== 'referees');
+    const cats = new Map();
+    for (const l of (inv.lines || [])) {
+      const k = l.category === 'labor' ? 'labor' : l.category;
+      const c = cats.get(k) || { label: (l.category_label || l.category).replace(/:$/, ''), amount: 0 };
+      c.amount += Number(l.amount || 0); cats.set(k, c);
+    }
+    const labor = cats.get('labor');
+    const catSpans = [...cats.entries()].filter(([k]) => k !== 'labor')
+      .map(([, c]) => `<span>${esc(c.label)} ${InvoicesScreen.money(c.amount)}</span>`).join('');
+    const total = Number(inv.total || 0);
+    const off = Math.abs(daysMoney - total) >= 0.01;
+    const nLines = (inv.lines || []).length;
     const totals = `
       <div class="iv-cal-tot">
-        <span>${InvoicesScreen.plain(inv.shift_hours || 0)} h · ${InvoicesScreen.money(labor)} ${esc(inv.issuer?.duty_description || 'hours')}</span>
-        ${refs ? `<span>${InvoicesScreen.money(refs)} referees</span>` : ''}
-        ${other ? `<span>${InvoicesScreen.money(other)} other</span>` : ''}
-        <span>${esc(this._copy('cal_running_total') || 'Invoice so far')} <b>${InvoicesScreen.money(inv.total || 0)}</b></span>
+        <span>${InvoicesScreen.plain(inv.shift_hours || 0)} h · ${InvoicesScreen.money(labor ? labor.amount : 0)} ${esc(inv.issuer?.duty_description || 'hours')}</span>
+        ${catSpans}
+        <span>${esc(this._copy('cal_running_total') || 'Invoice so far')} <b>${InvoicesScreen.money(total)}</b></span>
+      </div>
+      <div class="iv-cal-tot" style="padding-top:0; font-size:0.75rem; opacity:0.75;">
+        ${off ? `<span style="color:#f87171; opacity:1; font-weight:700;">${esc(this._copy('cal_mismatch', { days: InvoicesScreen.money(daysMoney), total: InvoicesScreen.money(total) }) || `⚠ The days add up to ${InvoicesScreen.money(daysMoney)} but the invoice says ${InvoicesScreen.money(total)}`)}</span>` : ''}
+        <span style="${nLines > InvoicesScreen.SHEET_ROWS ? 'color:#f59e0b;' : ''}">${esc(nLines > InvoicesScreen.SHEET_ROWS
+          ? this._copy('sheet_fit', { n: nLines, max: InvoicesScreen.SHEET_ROWS })
+          : (this._copy('cal_rows', { n: nLines, max: InvoicesScreen.SHEET_ROWS }) || `${nLines} of ${InvoicesScreen.SHEET_ROWS} rows on the sheet`))}</span>
       </div>`;
     return `<div class="iv-pills" style="margin-top:4px;">${pills}</div><div class="iv-cal">${cells}</div>${totals}`;
+  }
+
+  // The 📅 calendar's one popup (mig 703): ＋ add on a day (expense /
+  // hours / instalment plan), a 💵 line to edit, or an event chip's ⋯.
+  _renderCalPopup() {
+    const inv = this.inv, esc = (t) => this.escapeHtml(t);
+    if (!inv || inv.is_final) return '';
+    const shell = (title, body) => `
+      <div class="iv-modal-bg" id="iv-pop-bg"><div class="iv-modal" style="max-width:620px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div style="font-weight:800;">${title}</div>
+          <button class="iv-btn ghost sm" data-pop-close>Close</button>
+        </div>
+        ${body}
+      </div></div>`;
+    const cats = (this.board?.categories || []).filter(c => c.code !== 'labor');
+    const catSel = (cur) => `<select class="iv-in" id="iv-ln-cat">${cats.map(c =>
+      `<option value="${esc(c.code)}" ${c.code === cur ? 'selected' : ''}>${esc((c.label || c.code).replace(/:$/, ''))}</option>`).join('')}</select>`;
+    const dateIn = (id, val) => `<input class="iv-in" id="${id}" type="date" value="${esc(val)}" min="${esc(inv.period_start)}" max="${esc(inv.period_end)}">`;
+    const lineForm = (l, date) => `
+      <div class="iv-grid" style="grid-template-columns:150px 1fr;">
+        <div><div class="iv-lbl">Day</div>${dateIn('iv-ln-date', date)}</div>
+        <div><div class="iv-lbl">Section</div>${l && l.category === 'labor' ? '<div style="padding:8px 0;">Hours</div>' : catSel(l ? l.category : 'other')}</div>
+        <div class="wide"><div class="iv-lbl">Description</div>${l && l.plan_id
+          ? `<div style="padding:8px 0;">${esc(l.printed)}</div>`
+          : `<input class="iv-in" id="iv-ln-desc" value="${esc(l ? l.description : '')}" placeholder="Seed for field">`}
+          ${l && l.ref_games ? `<div class="iv-hint">🧑‍⚖️ ${l.ref_games} game${l.ref_games === 1 ? '' : 's'} — those fees sit on their game days</div>`
+                             : this._budgetSel(l ? l.category : '__any__', l ? l.budget_line_id : null, 'id="iv-ln-budget"')}</div>
+      </div>
+      <div class="iv-grid" style="grid-template-columns:1fr 1fr 1fr;">
+        <div><div class="iv-lbl">Units</div><input class="iv-in num" id="iv-ln-qty" type="number" step="0.25" min="0" value="${l ? InvoicesScreen.plain(l.quantity) : 1}"></div>
+        <div><div class="iv-lbl">Each</div><input class="iv-in num" id="iv-ln-rate" type="number" step="0.01" min="0" value="${l && l.rate != null ? l.rate : ''}" placeholder="0.00"></div>
+        <div><div class="iv-lbl">Amount</div><input class="iv-in num" id="iv-ln-amt" type="number" step="0.01" value="${l ? Number(l.amount).toFixed(2) : ''}" placeholder="0.00"></div>
+      </div>
+      <div class="iv-hint">${esc(this._copy('cal_date_hint') || 'Not sure of the day? Leave it on the first day of the invoice.')}</div>
+      <div class="iv-acts">
+        <button class="iv-btn" id="iv-ln-save">${l ? 'Save' : 'Add'}</button>
+        ${l ? `<button class="iv-btn danger sm" data-delete-line="${l.id}">Remove from the invoice</button>` : ''}
+      </div>`;
+
+    if (this.editLine) {
+      const l = (inv.lines || []).find(x => x.id === this.editLine);
+      if (!l) return '';
+      return shell(`💵 ${esc(InvoicesScreen.dayLabel(l.day))} — ${esc(l.printed || l.description)}`, lineForm(l, l.line_date && l.line_date === l.day ? l.line_date : l.day));
+    }
+    if (this.addOn) {
+      const MODES = [['expense', '💵 Expense'], ['hours', '⏱ Hours without an event'], ['plan', '➕ Instalment plan (k of N)']];
+      const pills = `<div class="iv-pills" style="margin:8px 0;">${MODES.map(([k, label]) =>
+        `<button class="iv-pill ${this.addMode === k ? 'on' : ''}" data-add-mode="${k}" style="padding:4px 10px; font-size:0.8rem;">${esc(label)}</button>`).join('')}</div>`;
+      let body;
+      if (this.addMode === 'hours') {
+        body = `
+          <div class="iv-grid" style="grid-template-columns:150px 1fr 1fr 80px;">
+            <div><div class="iv-lbl">Day</div>${dateIn('iv-nd-date', this.addOn)}</div>
+            <div><div class="iv-lbl">From</div><input class="iv-in" id="iv-nd-start" type="time"></div>
+            <div><div class="iv-lbl">Till</div><input class="iv-in" id="iv-nd-end" type="time"></div>
+            <div><div class="iv-lbl">Hours</div><input class="iv-in num" id="iv-nd-hours" type="number" step="0.25" min="0"></div>
+            <div class="wide"><div class="iv-lbl">Note</div><input class="iv-in" id="iv-nd-note" placeholder="what it was"></div>
+          </div>
+          <div class="iv-acts"><button id="iv-nd-save" class="iv-btn">Add</button></div>`;
+      } else if (this.addMode === 'plan') {
+        body = `
+          <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('plan_hint', { k: 1, n: 'N' }))}</div>
+          <div class="iv-grid" style="grid-template-columns:1fr 1fr;">
+            <div><div class="iv-lbl">Section</div><select class="iv-in" id="iv-plan-cat">${cats.map(c =>
+              `<option value="${esc(c.code)}" ${c.code === 'equipment' ? 'selected' : ''}>${esc((c.label || c.code).replace(/:$/, ''))}</option>`).join('')}</select></div>
+            <div><div class="iv-lbl">Description</div><input class="iv-in" id="iv-plan-desc" placeholder="Veo Subscription">${this._budgetSel('__any__', null, 'id="iv-plan-budget"')}</div>
+            <div><div class="iv-lbl">Total paid</div><input class="iv-in num" id="iv-plan-total" type="number" step="0.01" min="0" placeholder="862.92"></div>
+            <div><div class="iv-lbl">Over N</div><input class="iv-in num" id="iv-plan-count" type="number" step="1" min="1" value="4"></div>
+            <div class="wide"><label style="font-size:0.85rem; display:flex; gap:6px; align-items:center;"><input type="checkbox" id="iv-plan-show"> print total</label></div>
+          </div>
+          <div class="iv-acts"><button id="iv-plan-add" class="iv-btn">Add plan + first instalment</button></div>`;
+      } else body = lineForm(null, this.addOn);
+      return shell(esc(this._copy('cal_add_title', { day: InvoicesScreen.dayLabel(this.addOn) }) || `Add to ${InvoicesScreen.dayLabel(this.addOn)}`), pills + body);
+    }
+    if (this.detailFor) {
+      const key = (x) => x.fh_event_id ? `f${x.fh_event_id}` : x.gcal_event_id ? `g${x.gcal_event_id}` : '';
+      const it = this._mergedPeriodItems().find(i => i.g && key(i.g) === this.detailFor);
+      if (!it) return '';
+      const { g, s } = it;
+      const partial = s && s.flat && Number(s.hours) < Number(g.hours || 0) - 0.01;
+      const state = s ? (partial ? 'part' : 'yes') : (g.declined || g.rsvp === 'no') ? 'no' : '';
+      const time = s && !s.flat ? `${s.start}–${s.end}` : `${g.start || ''}${g.end ? `–${g.end}` : ''}`;
+      const mk = (k, glyph, cls, tip) => `<button class="iv-mk ${cls}" style="width:auto; padding:0 12px; height:32px;" data-mk="${k}" data-ev="${g.fh_event_id || ''}" data-gev="${g.gcal_event_id || ''}" data-state="${state}" data-stored="${g.declined ? 1 : 0}" title="${esc(tip)}">${glyph}</button>`;
+      return shell(`${g.kind === 'match' ? '⚽' : g.kind === 'practice' ? '🏃' : '🧾'} ${esc(InvoicesScreen.dayLabel(it.date))} — ${esc(g.note || g.opponent || '')}`, `
+        <div style="display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; font-size:0.9rem; margin:8px 0;">
+          <span>${esc(time)}</span>
+          <span>${this._rsvpBadge(g)}</span>
+          <span>${this._attBadge(g)}</span>
+          ${g.policy_pays ? `<span style="font-size:0.8rem; opacity:0.7;">paid by policy</span>` : ''}
+          <span style="margin-left:auto; font-weight:800; ${state === 'part' ? 'color:#eab308;' : ''}">${s ? InvoicesScreen.plain(s.hours) : '0'} h</span>
+        </div>
+        <div class="iv-acts">
+          ${mk('yes', '✓ Worked', state === 'yes' ? 'on-yes' : '', this._copy('mark_yes_tip') || 'Worked this as coach — bill its hours')}
+          ${mk('part', '🟡 Part of it', state === 'part' ? 'on-part' : '', this._copy('partial_tip') || 'There for part of it — enter the hours worked')}
+          ${mk('no', '✗ Didn’t', state === 'no' ? 'on-no' : '', this._copy('mark_no_tip') || 'Did not work this')}
+          ${s ? `<button class="iv-btn ghost sm" data-edit-shift="${s.id}" title="Late or stayed on? Override the hours">✏️ Edit hours</button>` : ''}
+        </div>
+        ${this.partialFor === this.detailFor ? `<div style="margin-top:8px;">${this._partialBoxHtml(this.detailFor, g, s)}</div>` : ''}`);
+    }
+    return '';
   }
 
   // Every claimable / claimed thing in the period as one list: calendar
@@ -1381,81 +1434,6 @@ class InvoicesScreen extends Screen {
     for (const s of shifts) if (!key(s) || !evIds.has(key(s))) items.push({ date: s.date, at: (!s.flat && s.start) || '', g: null, s });
     items.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.at < b.at ? -1 : 1));
     return items;
-  }
-
-  _renderHoursBreakdown() {
-    const inv = this.inv, esc = (t) => this.escapeHtml(t);
-    if (!inv.period_start || !inv.period_end) return `<div class="iv-hint">Set the work-from and work-till dates first.</div>`;
-    const locked = !!inv.is_final;
-    const items = this._mergedPeriodItems();
-    if (!items.length) return `<div class="iv-hint">${esc(this._copy('games_empty') || 'Nothing in this period yet.')}</div>`;
-    const row = (i) => {
-      const { g, s } = i;
-      // One answer per event: ✓ worked, 🟡 there for part of it (mig 621,
-      // flat hours below the event's own), ✗ did not (an RSVP no answers
-      // itself), blank = still to answer.  Hours read 0 until ✓/🟡.
-      const partial = s && g && s.flat && Number(s.hours) < Number(g.hours || 0) - 0.01;
-      const state = s ? (partial ? 'part' : 'yes') : (g && (g.declined || g.rsvp === 'no')) ? 'no' : '';
-      const rowKey = g ? (g.fh_event_id ? `f${g.fh_event_id}` : `g${g.gcal_event_id}`) : '';
-      const time = s ? (s.flat ? '' : `${s.start}–${s.end}`) : `${g.start}${g.end ? `–${g.end}` : ''}`;
-      const label = g ? `${g.kind === 'match' ? '🏟 ' : ''}${esc(g.note)}${g.policy_pays ? ` <span style="font-size:0.72rem; opacity:0.7;">· paid by policy</span>` : ''}`
-                      : esc((s && (s.note || s.auto_note)) || inv.issuer?.duty_description || 'Hours');
-      const marks = locked
-        ? `<span style="width:96px; text-align:center;">${s ? (partial ? '🟡' : '✓') : ''}</span>`
-        : g ? `<span style="display:flex; gap:4px;">
-                 <button class="iv-mk ${state === 'yes' ? 'on-yes' : ''}" data-mk="yes" data-ev="${g.fh_event_id || ''}" data-gev="${g.gcal_event_id || ''}" data-state="${state}" title="${esc(this._copy('mark_yes_tip') || 'Worked this as coach — bill its hours')}">✓</button>
-                 <button class="iv-mk ${state === 'part' ? 'on-part' : ''}" data-mk="part" data-ev="${g.fh_event_id || ''}" data-gev="${g.gcal_event_id || ''}" data-state="${state}" title="${esc(this._copy('partial_tip') || 'There for part of it — enter the hours worked')}">🟡</button>
-                 <button class="iv-mk ${state === 'no' ? 'on-no' : ''}" data-mk="no" data-ev="${g.fh_event_id || ''}" data-gev="${g.gcal_event_id || ''}" data-state="${state}" data-stored="${g.declined ? 1 : 0}" title="${esc(this._copy('mark_no_tip') || 'Did not work this')}">✗</button>
-               </span>`
-          : `<span style="width:96px;"></span>`;
-      const partBox = !locked && rowKey && this.partialFor === rowKey ? this._partialBoxHtml(rowKey, g, s) : '';
-      return `
-        <div style="display:flex; gap:10px; align-items:center; padding:5px 0 5px 8px; border-top:1px solid var(--border-color); font-size:0.9rem; ${state === 'no' ? 'opacity:0.55;' : ''}">
-          ${marks}
-          <span style="flex:1;">${label}${partBox ? ` ${partBox}` : ''}</span>
-          <span style="width:68px; font-size:0.78rem;">${this._rsvpBadge(g)}</span>
-          <span style="width:76px; font-size:0.78rem;">${this._attBadge(g)}</span>
-          <span style="width:92px; text-align:right; opacity:0.85;">${esc(time)}</span>
-          <span style="width:50px; text-align:right; ${s ? 'font-weight:700;' : 'opacity:0.45;'} ${state === 'part' ? 'color:#eab308;' : ''}">${s ? InvoicesScreen.plain(s.hours) : '0'} h</span>
-          ${s && !locked ? `<button class="iv-btn ghost sm" data-edit-shift="${s.id}" title="Late or stayed on? Override the hours">✏️</button>` : `<span style="width:34px;"></span>`}
-        </div>`;
-    };
-    // Organizing headers only — a week line, then day-of-week lines, each
-    // practice or game one item beneath (owner 2026-10-12: "no need for
-    // headers unless its a date day of week. to organize … and organize
-    // separate 1 week from another").  No money sums here — the one
-    // adding-up of dollars is the totals block at the very bottom ("i
-    // don't want any adding of totals until the bottom") — but the hours
-    // DO close with their own total line (owner 2026-10-19: "manager of
-    // soccer duties should show total at end of hours").
-    let html = '';
-    let wk = 1;
-    for (let ws = inv.period_start; ws <= inv.period_end && wk < 10; ws = InvoicesScreen.addDays(ws, 7), wk++) {
-      const weRaw = InvoicesScreen.addDays(ws, 6);
-      const we = weRaw < inv.period_end ? weRaw : inv.period_end;
-      const inWeek = items.filter(i => i.date >= ws && i.date <= we);
-      if (!inWeek.length) continue;
-      html += `<div class="iv-sec" style="margin:14px 0 2px;">${esc(this._copy('week_label', { n: wk, from: InvoicesScreen.dayLabel(ws), till: InvoicesScreen.dayLabel(we) }) || `Week ${wk} · ${InvoicesScreen.dayLabel(ws)} – ${InvoicesScreen.dayLabel(we)}`)}</div>`;
-      let lastDate = '';
-      for (const i of inWeek) {
-        if (i.date !== lastDate) {
-          lastDate = i.date;
-          html += `<div style="font-size:0.78rem; font-weight:700; opacity:0.75; margin-top:6px;">${esc(InvoicesScreen.dayLabel(i.date))}</div>`;
-        }
-        html += row(i);
-      }
-    }
-    // An item outside the period's weeks (edited dates) still shows.
-    const stray = items.filter(i => i.date < inv.period_start || i.date > inv.period_end);
-    if (stray.length) html += stray.map(row).join('');
-    const duty = inv.issuer?.duty_description || 'Hours';
-    html += `
-      <div style="display:flex; gap:10px; align-items:center; padding:7px 0 2px 8px; border-top:2px solid var(--border-color); margin-top:8px; font-size:0.9rem; font-weight:800;">
-        <span style="flex:1; text-align:right;">${esc(this._copy('hours_total_line', { duty }) || `${duty} — total`)}</span>
-        <span style="width:50px; text-align:right;">${InvoicesScreen.plain(inv.shift_hours || 0)} h</span>
-        <span style="width:34px;"></span>
-      </div>`;
-    return html;
   }
 
   // ✏️ as a popup (owner 2026-10-12: "an edit button to edit the hours
@@ -1554,61 +1532,10 @@ class InvoicesScreen extends Screen {
     if (!payload.date) { this._say('Pick the day first.', true); return; }
     try {
       this.inv = await this._post(`/api/invoices/${this.inv.id}/shift`, payload);
-      this.showAddDay = false;
+      this.addOn = '';
       await this.load();
       this._loadGames();
     } catch (err) { this._say(err.message, true); }
-  }
-
-  // Referee fees to tick off on this draft (mig 490).  Games outside the
-  // sheet's covered dates sit apart under their own dimmed divider (owner
-  // 2026-10-12: "mark off expenses like refs that are outside the window
-  // of invoice as its confusing") — still tickable, since a missed fee is
-  // swept onto a later sheet.
-  _renderRefFees() {
-    const esc = (t) => this.escapeHtml(t);
-    const inv = this.inv;
-    const games = this.refGames || [];
-    const picked = [...(this.element?.querySelectorAll('[data-ref-game]:checked') || [])].map(cb => cb.dataset.refGame);
-    const inWindow = (g) => !inv?.period_start || !inv?.period_end || (g.game_on >= inv.period_start && g.game_on <= inv.period_end);
-    // A league-feed game with no matching calendar event is not tickable —
-    // the calendar is the record of what was worked, so it has to be added
-    // by hand if it is real (ADD A LINE).
-    const row = (g, out) => {
-      const offCal = g.in_gcal === false;
-      return `
-      <label style="display:flex; gap:10px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color); font-size:0.9rem; ${(out || offCal) ? 'opacity:0.5;' : g.played ? '' : 'opacity:0.65;'}">
-        ${offCal ? '<span style="width:13px;"></span>'
-                 : `<input type="checkbox" data-ref-game="${esc(g.source)}:${g.ref_id}" data-amount="${g.amount}" ${picked.includes(`${g.source}:${g.ref_id}`) ? 'checked' : ''}>`}
-        <span style="width:90px; font-weight:700;">${esc(g.date_label)}</span>
-        <span style="width:110px; opacity:0.8;">${esc(g.policy_label.replace(/^Parks & Rec /, ''))}</span>
-        <span style="flex:1;">${esc(g.opponent)}</span>
-        <span style="width:70px; text-align:right;">${InvoicesScreen.money(g.amount)}</span>
-        <span style="min-width:90px; text-align:right; font-size:0.78rem; opacity:0.7;">${offCal
-          ? esc(this._copy('refs_not_on_gcal') || 'not on the calendar — add manually')
-          : (g.played ? 'played' : 'upcoming')}</span>
-      </label>`;
-    };
-    const ins = games.filter(g => inWindow(g));
-    const outs = games.filter(g => !inWindow(g));
-    // Out-of-window games stay folded until needed (owner 2026-10-12:
-    // "leave before window and after not expanded but expandable in case
-    // we need to invoice it on the current one").
-    const rows = ins.map(g => row(g, false)).join('')
-      + (outs.length ? `
-        <details style="margin-top:10px;">
-          <summary class="iv-lbl" style="cursor:pointer; opacity:0.55; margin:0;">${esc(this._copy('refs_outside', {
-              from: InvoicesScreen.dayLabel(inv?.period_start), till: InvoicesScreen.dayLabel(inv?.period_end),
-            }) || `Outside this invoice's window (${InvoicesScreen.dayLabel(inv?.period_start)} – ${InvoicesScreen.dayLabel(inv?.period_end)}) — still unbilled`)} (${outs.length})</summary>
-          ${outs.map(g => row(g, true)).join('')}
-        </details>` : '');
-    return `
-      <div class="iv-sec">🧑‍⚖️ ${esc(this._copy('refs_title') || 'Referee fees')}</div>
-      <div class="iv-card">
-        <div class="iv-hint" style="margin:0 0 6px;">${esc(this._copy('refs_hint'))}</div>
-        ${rows || `<div class="iv-hint">${esc(this._copy('refs_empty') || 'No home games waiting to be invoiced.')}</div>`}
-        ${rows ? `<div class="iv-acts"><button id="iv-refs-add" class="iv-btn" disabled>${esc(this._copy('refs_button', { n: 0, amount: '$0.00' }))}</button></div>` : ''}
-      </div>`;
   }
 
   _renderSheet(inv) {

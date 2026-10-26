@@ -43,6 +43,11 @@ bool hasNum(const json& j, const char* key) {
     if (j[key].is_string()) { try { std::stod(j[key].get<std::string>()); return true; } catch (...) {} }
     return false;
 }
+bool isIsoDate(const std::string& d) {
+    if (d.size() != 10 || d[4] != '-' || d[7] != '-') return false;
+    for (size_t i = 0; i < d.size(); ++i) if (i != 4 && i != 7 && !std::isdigit(static_cast<unsigned char>(d[i]))) return false;
+    return true;
+}
 double n(const json& j, const char* key, double dflt = 0.0) {
     if (!hasNum(j, key)) return dflt;
     return j[key].is_number() ? j[key].get<double>() : std::stod(j[key].get<std::string>());
@@ -263,8 +268,12 @@ json Invoice::get(long long invoiceId) {
         SELECT l.id, l.category, c.label AS category_label, l.description, l.quantity, l.rate, l.amount,
                l.plan_id, l.installment_no, l.sort_order, COALESCE(l.budget_line_id, p.budget_line_id) AS budget_line_id,
                p.installment_count, p.total_amount AS plan_total, p.show_total,
-               (SELECT COUNT(*) FROM ref_fee_payments rp WHERE rp.invoice_line_id = l.id) AS ref_games
+               (SELECT COUNT(*) FROM ref_fee_payments rp WHERE rp.invoice_line_id = l.id) AS ref_games,
+               l.line_date::text AS line_date,
+               (CASE WHEN l.line_date BETWEEN v.period_start AND v.period_end THEN l.line_date
+                     ELSE COALESCE(v.period_start, v.invoice_date) END)::text AS day
           FROM invoice_lines l
+          JOIN invoices v ON v.id = l.invoice_id
           JOIN invoice_line_categories c ON c.code = l.category
           LEFT JOIN invoice_installment_plans p ON p.id = l.plan_id
          WHERE l.invoice_id = $1::int
@@ -287,9 +296,36 @@ json Invoice::get(long long invoiceId) {
             {"budget_line_id", l["budget_line_id"].is_null() ? json(nullptr) : json(l["budget_line_id"].as<long long>())},
             {"ref_games", l["ref_games"].as<long long>()},
             {"sort_order", l["sort_order"].as<int>()},
+            // Every line has a day (mig 703; owner 2026-10-26: "everything
+            // should have a date even if artificial"): its own line_date
+            // inside the window, else the window's first day.
+            {"line_date", str(l, "line_date")}, {"day", str(l, "day")},
         });
     }
     out["total"] = round2(total);
+
+    // Each billed referee fee on its game day (mig 703) — the 📅 calendar
+    // adds them up per day; a fee dated outside the window sits on its
+    // first day, like an undated line.
+    out["ref_items"] = json::array();
+    for (const auto& rp : db_->query(R"SQL(
+        SELECT rp.invoice_line_id, rp.amount_usd, COALESCE(rp.opponent, '') AS opponent, rp.game_on::text AS game_on,
+               (CASE WHEN rp.game_on BETWEEN v.period_start AND v.period_end THEN rp.game_on
+                     ELSE COALESCE(v.period_start, v.invoice_date) END)::text AS day,
+               CASE WHEN rp.league_fixture_id IS NOT NULL THEN 'fixture' ELSE 'event' END AS source,
+               COALESCE(rp.league_fixture_id, rp.fh_event_id, 0) AS ref_id, COALESCE(po.label, '') AS policy_label
+          FROM ref_fee_payments rp
+          JOIN invoice_lines l ON l.id = rp.invoice_line_id
+          JOIN invoices v ON v.id = l.invoice_id
+          LEFT JOIN ref_fee_policies po ON po.id = rp.policy_id
+         WHERE l.invoice_id = $1::int
+         ORDER BY rp.game_on, rp.id)SQL", {std::to_string(invoiceId)})) {
+        out["ref_items"].push_back({
+            {"line_id", rp["invoice_line_id"].as<long long>()}, {"amount", num(rp, "amount_usd")},
+            {"opponent", str(rp, "opponent")}, {"game_on", str(rp, "game_on")}, {"day", str(rp, "day")},
+            {"source", str(rp, "source")}, {"ref_id", rp["ref_id"].as<long long>()}, {"policy_label", str(rp, "policy_label")},
+        });
+    }
 
     // Hours by day (mig 469).
     out["shifts"] = json::array();
@@ -854,22 +890,28 @@ long long Invoice::upsertLine(long long invoiceId, long long lineId, const json&
     const bool hasBudget = f.contains("budget_line_id");
     const std::string budget = hasBudget && f["budget_line_id"].is_number() && f["budget_line_id"].get<long long>() > 0
                              ? std::to_string(f["budget_line_id"].get<long long>()) : std::string();
+    // The line's day on the 📅 calendar (mig 703): absent = leave as is on
+    // an update, "" = undated (shows on the window's first day).
+    const bool hasDate = f.contains("date") && f["date"].is_string();
+    const std::string date = hasDate ? f["date"].get<std::string>() : std::string();
+    if (!date.empty() && !isIsoDate(date)) { *error = "date must be YYYY-MM-DD"; return 0; }
     if (lineId > 0) {
         auto r = db_->query(
             "UPDATE invoice_lines SET category = $3, description = $4, quantity = $5::numeric, rate = NULLIF($6,'')::numeric, amount = $7::numeric, "
-            "       budget_line_id = CASE WHEN $8::bool THEN NULLIF($9,'')::int ELSE budget_line_id END "
+            "       budget_line_id = CASE WHEN $8::bool THEN NULLIF($9,'')::int ELSE budget_line_id END, "
+            "       line_date = CASE WHEN $10::bool THEN NULLIF($11,'')::date ELSE line_date END "
             "WHERE id = $1::int AND invoice_id = $2::int RETURNING id",
             {std::to_string(lineId), std::to_string(invoiceId), category, description, money2(qty), hasRate ? money2(rate) : "", money2(amount),
-             hasBudget ? "true" : "false", budget});
+             hasBudget ? "true" : "false", budget, hasDate ? "true" : "false", date});
         if (r.empty()) { *error = "no such line"; return 0; }
         db_->query("UPDATE invoices SET updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId)});
         return lineId;
     }
     auto r = db_->query(
-        "INSERT INTO invoice_lines (invoice_id, category, description, quantity, rate, amount, sort_order, budget_line_id) "
+        "INSERT INTO invoice_lines (invoice_id, category, description, quantity, rate, amount, sort_order, budget_line_id, line_date) "
         "VALUES ($1::int, $2, $3, $4::numeric, NULLIF($5,'')::numeric, $6::numeric, "
-        "        (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM invoice_lines WHERE invoice_id = $1::int), NULLIF($7,'')::int) RETURNING id",
-        {std::to_string(invoiceId), category, description, money2(qty), hasRate ? money2(rate) : "", money2(amount), budget});
+        "        (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM invoice_lines WHERE invoice_id = $1::int), NULLIF($7,'')::int, NULLIF($8,'')::date) RETURNING id",
+        {std::to_string(invoiceId), category, description, money2(qty), hasRate ? money2(rate) : "", money2(amount), budget, date});
     if (r.empty()) { *error = "could not add line"; return 0; }
     db_->query("UPDATE invoices SET updated_at = now() WHERE id = $1::int", {std::to_string(invoiceId)});
     return r[0]["id"].as<long long>();

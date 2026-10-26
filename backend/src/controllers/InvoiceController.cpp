@@ -445,12 +445,19 @@ Response InvoiceController::handleAddRefFees(const Request& request) {
     } catch (const std::exception& e) { std::cerr << "[invoices add ref-fees] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
+// The ONE picked Referees line is the one carrying ref_fee_payments — a
+// hand-added referees line (mig 701: Luke's "Youth games ref fees") has
+// none, and merging picks into it would let syncRefLine overwrite its
+// amount from payments alone.
+static const std::string kPickedRefLine =
+    "AND EXISTS (SELECT 1 FROM ref_fee_payments rp WHERE rp.invoice_line_id = l.id)";
+
 long long InvoiceController::addRefFeesTo(long long invoiceId, const json& picks, std::string* error) {
     json line = Expenses::refLineFor(WelcomeLog::kLighthouseClubId, picks);
     if (line["items"].empty()) { *error = "pick at least one game that is not invoiced yet"; return 0; }
     long long lineId = 0;
     auto existing = Database::getInstance()->query(
-        "SELECT id FROM invoice_lines WHERE invoice_id = $1::int AND category = 'referees' ORDER BY id LIMIT 1",
+        "SELECT id FROM invoice_lines l WHERE invoice_id = $1::int AND category = 'referees' " + kPickedRefLine + " ORDER BY id LIMIT 1",
         {std::to_string(invoiceId)});
     if (!existing.empty()) lineId = existing[0]["id"].as<long long>();
     else {
@@ -513,7 +520,7 @@ Response InvoiceController::handleRefFeeMark(const Request& request) {
         if (fin.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
         if (fin[0]["is_final"].as<bool>()) return jsonError(HttpStatus::BAD_REQUEST, "the invoice is final");
         const std::string match = (source == "fixture") ? "league_fixture_id" : "fh_event_id";
-        auto lineQ = db->query("SELECT id FROM invoice_lines WHERE invoice_id = $1::int AND category = 'referees' ORDER BY id LIMIT 1",
+        auto lineQ = db->query("SELECT id FROM invoice_lines l WHERE invoice_id = $1::int AND category = 'referees' " + kPickedRefLine + " ORDER BY id LIMIT 1",
                                {std::to_string(id)});
         // A fixture's id can drift when the league feed re-syncs, so the
         // payment row is found by id OR by (date, opponent) — the same
