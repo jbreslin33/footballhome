@@ -153,6 +153,10 @@ public:
     std::uint32_t matchClockTicks() const noexcept { return match_clock_; }
     // 0xFF = live ball; else the team awaiting a dead-ball first touch.
     std::uint8_t restartTeam() const noexcept { return restart_team_; }
+    // Goal kick (Law 16): the team that must stay OUT of the kicker's
+    // penalty area until the ball is kicked; 0xFF = none. Outlives
+    // restartTeam(), which clears when the keeper settles the ball.
+    std::uint8_t boxClearTeam() const noexcept { return box_clear_team_; }
     std::uint32_t offsideMask() const noexcept { return offside_mask_; }
     std::uint8_t offsideTeam() const noexcept { return offside_team_; }
     // Transition clock (G4.11): which team LOST the ball last, and when.
@@ -208,6 +212,7 @@ private:
     std::uint32_t half_length_ticks_ = 0;
     std::uint8_t  kickoff_team_ = 0;
     std::uint8_t  restart_team_ = 0xFF;   // 0xFF = live ball
+    std::uint8_t  box_clear_team_ = 0xFF; // goal kick: kept out of the box
     std::uint8_t  last_touch_team_ = 0;
     // Offside (G4.8): armed at every kick — flags teammates of the kicker
     // beyond the second-last opponent AND the ball, in the opponent half.

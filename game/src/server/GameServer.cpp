@@ -592,6 +592,17 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
                 if (face.x.raw == 0 && face.y.raw == 0) face = math::Vec2{-sgn, Fixed64::zero()};
                 world_.placePlayer(i, math::Vec3{o.target.x, o.target.y, Fixed64::zero()}, math::normalized(face));
             }
+    // Their goal kick (Law 16): nobody of the defending side starts in the
+    // kicker's penalty area — a shape or mark row inside it stands on the 18.
+    if (ph.kind == "keeper") {
+        const Fixed64 line = hx - Fixed64::fromFraction(35, 2), box_y = Fixed64::fromFraction(2116, 100);
+        for (std::uint8_t i = 0; i < n; ++i) {
+            if ((i < per_team ? 0 : 1) == team || world_.isKeeper(i)) continue;
+            const auto& p = world_.player(i);
+            if (-p.pos.x * sgn <= line || math::fx_abs(p.pos.y) >= box_y) continue;
+            world_.placePlayer(i, math::Vec3{-line * sgn, p.pos.y, Fixed64::zero()}, p.face);
+        }
+    }
     std::fprintf(stderr, "fh-game: phase '%s' for %s\n", ph.code.c_str(), team == 0 ? "home" : "away");
 }
 

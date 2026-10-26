@@ -2112,6 +2112,22 @@ failing for a whole second, the man ball-watching in shape. That is the
 LOOKS (stand in shape a second) is crude and is the next thing to make
 real. The final third (§8.56) is still broken: LH 46 shots, 165 entries.
 
+### 8.61 Law 16 — their goal kick: out of the box until it's kicked
+
+James: "its illegal on restart goal kick for lh 9 breslin to be where he
+is. they most all start from beyond 18." G4.63's man-markers picked up
+their man goal-side on the opponent's dead ball — for a goal kick that put
+LH's 9 on the split centre-back, 13 m from the Ukies' goal line, inside the
+box. Law 16: the opponents stay outside the penalty area until the ball is
+kicked. `World::boxClearTeam()` is set on a goal kick (the side that
+isn't kicking) and outlives `restartTeam()` — which clears when the keeper
+settles the ball — until the ball is kicked, tackled or a new restart is
+awarded. `Brain::ordersFor` applies it after every decision: a target
+inside the box (+1 m) moves to the 18 + 1 m line, a man already in walks
+out. The phase harness places the defending side the same way. Harness
+(keeper:1, Ukies' goal kick): LH 9 starts at 87.5 m from his goal, was
+97.0. [FH]
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

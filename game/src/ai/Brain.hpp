@@ -171,6 +171,8 @@ public:
 private:
     // The decision itself; ordersFor() adds where his body faces (G4.53).
     Orders decide(core::SlotIndex slot, const core::World& world) const;
+    // ordersFor() before the laws of the restart are applied.
+    Orders ordersFaced(core::SlotIndex slot, const core::World& world) const;
     void unmark(core::SlotIndex slot, const core::World& world, Orders& o) const;
     bool keepIt(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
     // G4.63 the one-spot defender: jump the pass to your man (162); one

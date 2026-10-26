@@ -458,6 +458,27 @@ const std::vector<std::uint8_t>& Brain::directOpponents(const World& world, std:
 }
 
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
+    Orders o = ordersFaced(slot, world);
+    // Their goal kick (Law 16): every one of us stays outside their penalty
+    // area until the ball is kicked — the man-marker picks his CB up on the
+    // 18, not goal-side of him in the box. Whoever's in it walks out.
+    if (world.boxClearTeam() != setup_.team_of_slot[slot] || world.isKeeper(slot)) return o;
+    const auto& ball = world.ball();
+    const auto& me = world.player(slot);
+    const Fixed64 end = ball.pos.x.raw < 0 ? -Fixed64::one() : Fixed64::one();   // the kicker's goal
+    const Fixed64 line = half_x_ - Fixed64::fromFraction(35, 2);                 // 16.5 m + a metre
+    const Fixed64 box_y = Fixed64::fromFraction(2116, 100);                      // 20.16 m + a metre
+    auto inside = [&](const Vec2& p) { return p.x * end > line && math::fx_abs(p.y) < box_y; };
+    const bool aimed = o.target.x.raw != 0 || o.target.y.raw != 0;
+    Vec2 t = aimed ? o.target : Vec2{me.pos.x, me.pos.y};
+    if (!inside(t) && !inside(Vec2{me.pos.x, me.pos.y})) return o;
+    if (inside(t)) t.x = line * end;
+    o.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+    o.target = t;
+    return o;
+}
+
+Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
     // A restart shape is held until the dead ball is played (G4.58).
     if (hold_team_ != 0xFF && world.restartTeam() == hold_team_ && !world.ball().owner) {
         for (const auto& [s, mark] : hold_) {

@@ -247,6 +247,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
             cp.recovery_kind = 2;
             ball_.contest_ticks = 0;
             last_touch_team_ = tackler.team;
+            box_clear_team_ = 0xFF;
             losing_team_ = cp.team;
             turnover_tick_ = clock_.tick();
             turnover_ball_x_ = ball_.pos.x;
@@ -373,6 +374,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                                  kLoftKickRise * power_scale};
             }
             ball_.owner.reset();
+            box_clear_team_ = 0xFF;  // kicked: the goal kick is in play
             ball_.kick_alive = kKickAliveTicks;
             ball_.last_kicker = kicker;
             ball_.kicker_lockout = kKickerLockoutTicks;
@@ -434,6 +436,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 turnover_tick_ = clock_.tick();
                 turnover_ball_x_ = ball_.pos.x;
                 ball_.owner = thief;
+                box_clear_team_ = 0xFF;
                 ball_.contest_ticks = 0;
             }
         } else {
@@ -732,6 +735,7 @@ void World::giveBall(SlotIndex slot) {
     ball_.pos = Vec3{p.pos.x + p.face.x * kBallCarryLead, p.pos.y + p.face.y * kBallCarryLead, Fixed64::zero()};
     last_touch_team_ = p.team;
     restart_team_ = 0xFF;
+    box_clear_team_ = 0xFF;
     offside_mask_ = 0;
     offside_team_ = 0xFF;
 }
@@ -739,6 +743,7 @@ void World::giveBall(SlotIndex slot) {
 void World::awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events) {
     ball_ = BallState{};  // centre spot, at rest, free of carriers
     restart_team_ = team;
+    box_clear_team_ = 0xFF;
     offside_mask_ = 0;
     offside_team_ = 0xFF;
     events.push_back({MatchEventType::Kickoff, team});
@@ -749,6 +754,7 @@ void World::awardRestart(MatchEventType type, std::uint8_t team,
     ball_ = BallState{};
     ball_.pos = spot;
     restart_team_ = team;
+    box_clear_team_ = type == MatchEventType::GoalKick ? static_cast<std::uint8_t>(team ^ 1) : 0xFF;
     offside_mask_ = 0;
     offside_team_ = 0xFF;
     events.push_back({type, team});
