@@ -495,7 +495,8 @@ Response RsvpBoardController::handleRollCall(const Request& request) {
         };
         const auto msg = copy.render("rsvp_roll_call", "body", {
             {"event", rc.line}, {"deadline", rc.deadline}, {"sender", senderName},
-            {"link", model_->rollCallLink(def->code, teamIds, scope.userId)},
+            // The event's own card (?e=): a practice's roll call opens on the practice.
+            {"link", model_->rollCallLink(def->code, teamIds, scope.userId) + "?e=" + std::to_string(fhEventId)},
             {"n_going", std::to_string(rc.going.size())},     {"going", join(rc.going)},
             {"n_not",   std::to_string(rc.notGoing.size())},  {"not_going", join(rc.notGoing)},
             {"n_none",  std::to_string(rc.noResponse.size())}, {"no_response", join(rc.noResponse)}});

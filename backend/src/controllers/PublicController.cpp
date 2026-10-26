@@ -948,7 +948,9 @@ Response PublicController::handleGetRollCall(const Request& request) {
     if (slug.empty() || slug.size() > 64) return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "no card"));
     try {
         RsvpBoard board;
-        nlohmann::json card = board.rollCallCard(slug, true);
+        long long eventId = 0;
+        try { eventId = std::stoll(request.getQueryParam("e")); } catch (...) {}
+        nlohmann::json card = board.rollCallCard(slug, true, eventId);
         if (card.is_null()) return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "no card"));
         return Response(HttpStatus::OK, createJSONResponse(true, "ok", card.dump()));
     } catch (const std::exception& e) {

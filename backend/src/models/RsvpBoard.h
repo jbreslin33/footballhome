@@ -132,7 +132,9 @@ public:
     // section's naming rules.  rollCallLink() finds or makes the slug and
     // returns the public URL; rollCallCard() is what /rc/<slug> renders.
     std::string rollCallLink(const std::string& sectionCode, std::vector<long long> teamIds, long long byUserId);
-    nlohmann::json rollCallCard(const std::string& slug, bool countOpen);
+    // fhEventId > 0 (/rc/<slug>?e=<id>, the link a roll call send carries):
+    // just that event, any kind — a practice's roll call shows the practice.
+    nlohmann::json rollCallCard(const std::string& slug, bool countOpen, long long fhEventId = 0);
     // Board teams of these people (for the link a household's reminder carries).
     std::vector<long long> boardTeamsOf(const std::vector<long long>& personIds, std::string* sectionCode);
 
