@@ -107,6 +107,9 @@ class InvoicesScreen extends Screen {
         .iv-chip.off .iv-chip-zone:first-child { text-decoration:line-through; opacity:0.6; }
         .iv-chip.todo { border-color:#f59e0b; }
         .iv-chip.ref { border-style:dashed; }
+        .iv-ev { display:flex; flex-direction:column; min-width:0; overflow:hidden; text-align:left; }
+        .iv-ev > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .iv-ev .pl { opacity:0.7; font-size:0.92em; }
         .iv-chip.exp { border-color:#60a5fa; background:rgba(96,165,250,0.14); }
         .iv-cal-add { border:none; background:transparent; color:var(--text-primary); cursor:pointer; padding:0 2px;
                       font-size:0.85rem; line-height:1; opacity:0.45; min-width:0; min-height:0; }
@@ -884,6 +887,13 @@ class InvoicesScreen extends Screen {
     if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return 0;
     return Math.round((b - a) / 60 * 100) / 100;
   }
+  // '18:30' → '6:30p', '10:00' → '10a' — fits a calendar chip.
+  static shortTime(hhmm) {
+    const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || ''));
+    if (!m) return '';
+    const h = +m[1], ap = h < 12 ? 'a' : 'p', h12 = h % 12 || 12;
+    return `${h12}${m[2] === '00' ? '' : `:${m[2]}`}${ap}`;
+  }
   static usDate(iso) {
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
     return m ? `${m[2]}/${m[3]}/${m[1]}` : String(iso || '');
@@ -1189,8 +1199,13 @@ class InvoicesScreen extends Screen {
       const label = i.g ? (kind === 'match' ? (i.g.opponent || i.g.note || '') : (i.g.note || i.g.team_label || ''))
                         : (i.s.note || i.s.auto_note || inv.issuer?.duty_description || 'Hours');
       const hrs = billed ? ` · ${InvoicesScreen.plain(i.s.hours)}h` : '';
-      const title = `${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}`;
-      const inner = `${ICON[kind]} <span>${esc(label)}</span>${hrs ? `<span style="flex-shrink:0;">${esc(hrs)}</span>` : ''}`;
+      // Time + place on the chip (owner 2026-10-26: "i need the times of
+      // the event on the cal and the address … that will help me tell who
+      // was sent to that event"); the full address rides the tooltip.
+      const at = i.at ? InvoicesScreen.shortTime(i.at) : '';
+      const place = i.g && i.g.location ? i.g.location.split(',')[0].trim() : '';
+      const title = `${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}${i.g && i.g.location ? `\n📍 ${i.g.location}` : ''}`;
+      const inner = `<span class="iv-ev"><span>${ICON[kind]} ${at ? `<b>${esc(at)}</b> ` : ''}${esc(label)}${esc(hrs)}</span>${place ? `<span class="pl">📍 ${esc(place)}</span>` : ''}</span>`;
       if (locked) put(date, `<span class="iv-chip ${state}" style="display:flex;" title="${esc(title)}">${inner}</span>`);
       else if (!i.g && i.s) put(date, `<button class="iv-chip ${state}" data-edit-shift="${i.s.id}" title="${esc(title)}">${inner}</button>`);
       else {
@@ -1400,6 +1415,7 @@ class InvoicesScreen extends Screen {
       return shell(`${g.kind === 'match' ? '⚽' : g.kind === 'practice' ? '🏃' : '🧾'} ${esc(InvoicesScreen.dayLabel(it.date))} — ${esc(g.note || g.opponent || '')}`, `
         <div style="display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; font-size:0.9rem; margin:8px 0;">
           <span>${esc(time)}</span>
+          ${g.location ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.location)}" target="_blank" rel="noopener">📍 ${esc(g.location)}</a>` : ''}
           <span>${this._rsvpBadge(g)}</span>
           <span>${this._attBadge(g)}</span>
           ${g.policy_pays ? `<span style="font-size:0.8rem; opacity:0.7;">paid by policy</span>` : ''}

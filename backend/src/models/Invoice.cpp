@@ -613,7 +613,9 @@ const char* kPeriodGamesSql = R"SQL(
                EXISTS (SELECT 1 FROM fh_event_teams fet
                          JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
                          JOIN coaches c ON c.id = tc.coach_id
-                        WHERE fet.fh_event_id = e.id AND c.person_id = (SELECT person_id FROM iss)) AS coaches_team
+                        WHERE fet.fh_event_id = e.id AND c.person_id = (SELECT person_id FROM iss)) AS coaches_team,
+               -- where it was: the calendar's address tells who was sent there
+               NULLIF(BTRIM(g.location), '') AS location
           FROM fh_events e
           JOIN gcal_events g ON g.id = e.gcal_event_id AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
           LEFT JOIN fh_event_rsvps r ON r.fh_event_id = e.id AND r.person_id = (SELECT person_id FROM iss)
@@ -633,7 +635,7 @@ const char* kPeriodGamesSql = R"SQL(
                NULL::boolean AS is_home, 'TBD'::text AS opponent, BTRIM(g.summary) AS summary,
                NULL::text AS rsvp, NULL::text AS attendance, NULL::text AS team_label,
                NULL::int AS policy_id, NULL::text AS policy_label, NULL::numeric AS hours_per_game,
-               NULL::int AS coach_issuer_id, true AS coaches_team
+               NULL::int AS coach_issuer_id, true AS coaches_team, NULLIF(BTRIM(g.location), '') AS location
           FROM gcal_events g
           JOIN invoice_issuer_event_claims cl
             ON cl.issuer_id = $2::int AND cl.is_active AND g.summary ~* cl.summary_pattern
@@ -658,7 +660,7 @@ const char* kPeriodGamesSql = R"SQL(
            -- time + interval wraps at midnight, so a crossing shows as end <= start
            CASE WHEN (m.start_at + (m.hours || ' hours')::interval) > m.start_at
                 THEN to_char(m.start_at + (m.hours || ' hours')::interval, 'HH24:MI') END AS end_at,
-           m.hours, m.opponent, m.is_home, m.team_label, m.policy_id, m.policy_label,
+           m.hours, m.opponent, m.is_home, m.team_label, m.policy_id, m.policy_label, m.location,
            (m.coach_issuer_id = $2::int) AS policy_pays,
            (m.starts_at < now()) AS played,
            CASE WHEN m.kind = 'match'
@@ -697,7 +699,7 @@ json Invoice::periodGames(long long invoiceId) {
                        {"team_label", str(r, "team_label")}, {"policy_label", str(r, "policy_label")},
                        {"policy_pays", !r["policy_pays"].is_null() && r["policy_pays"].as<bool>()},
                        {"played", r["played"].as<bool>()}, {"note", str(r, "note")}, {"added", r["added"].as<bool>()},
-                       {"declined", r["declined"].as<bool>()},
+                       {"declined", r["declined"].as<bool>()}, {"location", str(r, "location")},
                        {"overlaps", r["overlaps"].as<bool>()}});
     }
     return out;
