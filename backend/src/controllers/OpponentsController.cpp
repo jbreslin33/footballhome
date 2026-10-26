@@ -228,6 +228,7 @@ void OpponentsController::registerRoutes(Router& router, const std::string& pref
     router.get   (prefix + "/league-scores",      [this](const Request& r) { return handleLeagueScores(r); });
     router.post  (prefix + "/score-request",      [this](const Request& r) { return handleScoreRequest(r); });
     router.post  (prefix + "/score-contact",      [this](const Request& r) { return handleScoreContact(r); });
+    router.post  (prefix + "/club-social",        [this](const Request& r) { return handleClubSocial(r); });
     router.get   (prefix + "/for-match/:matchId", [this](const Request& r) { return handleForMatch(r); });
 }
 
@@ -490,14 +491,16 @@ Response OpponentsController::handleLeague(const Request& request) {
         for (const auto& r : db->query(R"SQL(
             SELECT k.id, k.club_id, c.name AS club_name, COALESCE(c.logo_url,'') AS logo_url, k.division_label, k.season, k.status,
                    k.lead_name, k.last_contacted, k.notes, k.home_field, k.external_url,
-                   (SELECT to_char(MAX(m.sent_at) AT TIME ZONE 'America/New_York', 'Mon DD') FROM club_contact_messages m WHERE m.club_id = k.club_id AND m.league_label = k.league_label) AS last_sent
+                   (SELECT to_char(MAX(m.sent_at) AT TIME ZONE 'America/New_York', 'Mon DD') FROM club_contact_messages m WHERE m.club_id = k.club_id AND m.league_label = k.league_label) AS last_sent,
+                   (SELECT h.handle FROM club_social_handles h WHERE h.club_id = k.club_id AND h.platform = 'instagram') AS instagram
               FROM club_competitions k JOIN clubs c ON c.id = k.club_id
              WHERE k.league_label = $1 AND k.status = 'opponent'
              ORDER BY k.season DESC, k.division_label, c.name)SQL", {label}))
             out["competitions"].push_back({{"id", r["id"].as<long long>()}, {"club_id", r["club_id"].as<long long>()}, {"club_name", str(r, "club_name")},
                                            {"logo_url", str(r, "logo_url")}, {"division_label", str(r, "division_label")}, {"season", str(r, "season")},
                                            {"status", str(r, "status")}, {"lead_name", nul(r, "lead_name")}, {"last_contacted", nul(r, "last_contacted")},
-                                           {"notes", nul(r, "notes")}, {"home_field", nul(r, "home_field")}, {"external_url", nul(r, "external_url")}, {"last_sent", nul(r, "last_sent")}});
+                                           {"notes", nul(r, "notes")}, {"home_field", nul(r, "home_field")}, {"external_url", nul(r, "external_url")}, {"last_sent", nul(r, "last_sent")},
+                                           {"instagram", nul(r, "instagram")}});
         for (const auto& r : db->query(std::string(kContactsSql) +
                 " AND c.club_id IN (SELECT club_id FROM club_competitions WHERE league_label = $1 AND status = 'opponent') ORDER BY c.club_id, c.competition_id NULLS FIRST, c.id", {label}))
             out["contacts"].push_back(contactJson(r));
@@ -624,7 +627,7 @@ Response OpponentsController::handleLeagueScores(const Request& request) {
         json pulls = LeagueFixtureSync::refreshLeague(label);
         json out = {{"league", leagueFor(label)}, {"label", label}, {"summary", fixturesSummary(label, pulls)},
                     {"waiting", json::array()}, {"recent", json::array()}, {"competitions", json::array()}, {"contacts", json::array()},
-                    {"asks", json::array()}, {"our_club_id", (long long)WelcomeLog::kLighthouseClubId}};
+                    {"asks", json::array()}, {"teams", json::array()}, {"our_club_id", (long long)WelcomeLog::kLighthouseClubId}};
         const auto fixture = [](const pqxx::row& r) {
             return json{{"id", r["id"].as<long long>()}, {"division_label", str(r, "division_label")}, {"status", str(r, "status")},
                         {"home_name", str(r, "home_name")}, {"away_name", str(r, "away_name")},
@@ -664,6 +667,21 @@ Response OpponentsController::handleLeagueScores(const Request& request) {
                                        {"competition_id", r["competition_id"].is_null() ? json(nullptr) : json(r["competition_id"].as<long long>())},
                                        {"name", nul(r, "name")}, {"role", nul(r, "role")}, {"phone", nul(r, "phone")}, {"email", nul(r, "email")},
                                        {"score_role", nul(r, "score_role")}});
+        // Every team on the league's schedule, by division, with its club's
+        // Instagram (mig 699) — the 📸 row on #casa-scores.
+        for (const auto& r : db->query(R"SQL(
+            SELECT t.division_label, t.club_id, MIN(t.name) AS name, h.handle AS instagram
+              FROM (SELECT f.division_label, f.home_club_id AS club_id, f.home_name AS name FROM league_fixtures f JOIN league_fixture_sources s ON s.id = f.source_id
+                     WHERE s.league_label = $1 AND s.is_active AND f.removed_at IS NULL
+                    UNION ALL
+                    SELECT f.division_label, f.away_club_id, f.away_name FROM league_fixtures f JOIN league_fixture_sources s ON s.id = f.source_id
+                     WHERE s.league_label = $1 AND s.is_active AND f.removed_at IS NULL) t
+              LEFT JOIN club_social_handles h ON h.club_id = t.club_id AND h.platform = 'instagram'
+             WHERE t.club_id IS NOT NULL
+             GROUP BY t.division_label, t.club_id, h.handle
+             ORDER BY t.division_label, MIN(t.name))SQL", {label}))
+            out["teams"].push_back({{"division_label", str(r, "division_label")}, {"club_id", r["club_id"].as<long long>()},
+                                    {"name", str(r, "name")}, {"instagram", nul(r, "instagram")}});
         // What was already asked, per game and person (latest per channel).
         for (const auto& r : db->query(R"SQL(
             SELECT m.league_fixture_id, m.contact_id, m.channel, (m.tier LIKE 'score_app%') AS app, COUNT(*) AS n,
@@ -756,4 +774,32 @@ Response OpponentsController::handleScoreContact(const Request& request) {
                        r[0]["competition_id"].is_null() ? std::string("0") : std::to_string(r[0]["competition_id"].as<long long>())});
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) { std::cerr << "[opponents score-contact] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
+}
+
+// One club's handle on a social platform (mig 699): the 📸 buttons open
+// instagram.com/<handle>.  An empty handle clears it; a pasted profile URL or
+// leading @ is trimmed to the bare handle.
+Response OpponentsController::handleClubSocial(const Request& request) {
+    Response denied; if (!adminGate(request, &denied)) return denied;
+    json b; Response err; if (!parseBody(request, &b, &err)) return err;
+    const long long clubId = n(b, "club_id");
+    std::string platform = s(b, "platform"); if (platform.empty()) platform = "instagram";
+    std::string handle = s(b, "handle");
+    const auto at = handle.find("instagram.com/");
+    if (at != std::string::npos) handle = handle.substr(at + 14);
+    handle = handle.substr(0, handle.find_first_of("/?#"));
+    while (!handle.empty() && (handle.front() == '@' || handle.front() == ' ')) handle.erase(0, 1);
+    while (!handle.empty() && handle.back() == ' ') handle.pop_back();
+    if (!clubId || platform != "instagram") return jsonError(HttpStatus::BAD_REQUEST, "club_id and platform (instagram) required");
+    try {
+        auto* db = Database::getInstance();
+        if (handle.empty()) db->query("DELETE FROM club_social_handles WHERE club_id = $1::int AND platform = $2", {std::to_string(clubId), platform});
+        else db->query("INSERT INTO club_social_handles (club_id, platform, handle) VALUES ($1::int, $2, $3) "
+                       "ON CONFLICT (club_id, platform) DO UPDATE SET handle = EXCLUDED.handle, updated_at = now()",
+                       {std::to_string(clubId), platform, handle});
+        return jsonOut(HttpStatus::OK, {{"ok", true}, {"handle", handle}});
+    } catch (const std::exception& e) {
+        std::cerr << "[opponents club-social] " << e.what() << std::endl;
+        return jsonError(HttpStatus::BAD_REQUEST, std::string(e.what()).find("check") != std::string::npos ? "That isn't an Instagram handle" : e.what());
+    }
 }

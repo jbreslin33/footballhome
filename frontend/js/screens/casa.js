@@ -13,11 +13,19 @@
 //   #casa-scores    games already played with no score on the league site
 //                   (mig 520): Text / Email per manager, logged per game.
 //
+// 📸 buttons (mig 699): each club's Instagram (club_social_handles), edited on
+// the contacts card; #casa-scores has a row of every team on the schedule plus
+// one per side of each game and "open all" for the unscored games.  Instagram
+// is blocked at home — the VPN runs in the CASA Chrome profile.  The terminal
+// check ("check all casa scores from insta") is .claude/skills/casa-insta-scores.
+//
 // Everything mails from the league's address (leagues.correspondence_email,
 // jbreslin@casasoccerleagues.com) — Gmail opens on that account (authuser),
 // not the club's.  Data = club_competitions / club_contacts (mig 483) through
 // GET /api/opponents/league?label=CASA; wording = message_templates kind 'casa'.
 // Club admins only.
+
+const casaInstaUrl = (handle) => `https://www.instagram.com/${encodeURIComponent(handle)}/`;
 
 class CasaHubScreen extends Screen {
   constructor(navigation, auth) { super(navigation, auth); this.data = null; }
@@ -192,6 +200,8 @@ class CasaContactsScreen extends Screen {
     root.addEventListener('change', async (e) => {
       const t = e.target;
       if (t.id === 'cs-tier') { this.tier = t.value; this._renderBody(); return; }
+      const ig = t.closest('[data-insta-club]');
+      if (ig) { try { await this._post('/api/opponents/club-social', { club_id: Number(ig.dataset.instaClub), platform: 'instagram', handle: t.value.trim() }); await this.load(); } catch (err) { this._say(err.message, true); } return; }
       const f = t.closest('[data-comp-field]');
       if (f) { try { await this._post('/api/opponents/competition', { id: Number(f.dataset.compId), [f.dataset.compField]: t.value.trim() }); await this.load(); } catch (err) { this._say(err.message, true); } }
     });
@@ -300,9 +310,11 @@ class CasaContactsScreen extends Screen {
           ${c.logo_url ? `<img src="${esc(c.logo_url)}" alt="">` : '<span style="width:36px; display:inline-block;"></span>'}
           <span class="nm">${esc(c.club_name)}</span>
           ${c.external_url ? `<a class="cs-tag" href="${esc(c.external_url)}" target="_blank" rel="noopener">league page ↗</a>` : ''}
+          ${c.instagram ? `<a class="cs-tag" href="${esc(casaInstaUrl(c.instagram))}" target="_blank" rel="noopener">${esc(this._copy('insta_open') || '📸 Instagram')}</a>` : ''}
           ${c.last_sent ? `<span class="cs-sent">last mail ${esc(c.last_sent)}</span>` : ''}
         </div>
-        <div class="cs-form" style="margin-top:6px;">${field('Last contacted', 'last_contacted', c.last_contacted, 'e.g. emailed 9/28')}${field('Home field', 'home_field', c.home_field)}${field('Notes', 'notes', c.notes)}</div>
+        <div class="cs-form" style="margin-top:6px;">${field('Last contacted', 'last_contacted', c.last_contacted, 'e.g. emailed 9/28')}${field('Home field', 'home_field', c.home_field)}${field('Notes', 'notes', c.notes)}
+          <div><div class="cs-lbl">${esc(this._copy('insta_handle') || 'Instagram')}</div><input class="cs-in" data-insta-club="${c.club_id}" value="${esc(c.instagram || '')}" placeholder="@handle or profile link"></div></div>
         <div style="margin-top:8px;">
           ${contacts.length ? contacts.map(row).join('') : `<div class="cs-hint">No contact yet — add a name, phone or email.</div>`}
           ${this.addContactFor === c.club_id ? this._contactForm(c, null) : `<button class="cs-btn sm ghost" data-add-contact="${c.club_id}" style="margin-top:6px;">＋ contact</button>`}
@@ -535,6 +547,9 @@ class CasaScoresScreen extends Screen {
         .cz-in { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 10px; border:1px solid var(--border-color); border-radius:10px; margin-bottom:4px; font-size:0.88rem; }
         .cz-notfinal { font-size:0.7rem; font-weight:800; padding:2px 7px; border-radius:6px; background:#f59e0b; color:#3b2f00; text-transform:uppercase; }
         .cz-score { font-weight:900; padding:1px 8px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border-color); white-space:nowrap; }
+        .cz-ig { display:inline-flex; align-items:center; gap:4px; padding:4px 9px; border-radius:999px; border:1px solid #d62976; color:var(--text-primary); text-decoration:none; font-size:0.78rem; font-weight:700; white-space:nowrap; }
+        .cz-ig.none { border-color:var(--border-color); opacity:0.45; }
+        .cz-igs { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 8px; }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
         <button class="btn btn-secondary" id="cz-back">← Back</button>
@@ -552,6 +567,7 @@ class CasaScoresScreen extends Screen {
       const more = t.closest('[data-more]'); if (more) { const k = more.dataset.more; if (this.more.has(k)) this.more.delete(k); else this.more.add(k); this._renderBody(); return; }
       if (t.closest('[data-go]')) { this.navigation.goTo(t.closest('[data-go]').dataset.go, { league: 'CASA' }); return; }
       if (t.closest('[data-refresh]')) { await this.load(); return; }
+      if (t.closest('[data-insta-all]')) { this._openAllInsta(); return; }
     });
     return div;
   }
@@ -589,6 +605,21 @@ class CasaScoresScreen extends Screen {
     const all = (this.data.contacts || []).filter(c => c.club_id === clubId && (!c.competition_id || (comp && c.competition_id === comp.id)));
     return { tagged: all.filter(c => c.score_role), others: all.filter(c => !c.score_role) };
   }
+  _insta(clubId) { const t = (this.data.teams || []).find(x => x.club_id === clubId && x.instagram); return t ? t.instagram : ''; }
+  _igLink(clubId, label) {
+    const esc = (t) => this.escapeHtml(t); const h = clubId ? this._insta(clubId) : '';
+    return h ? `<a class="cz-ig" href="${esc(casaInstaUrl(h))}" target="_blank" rel="noopener" title="@${esc(h)}">${esc(label)}</a>`
+             : `<span class="cz-ig none" title="No Instagram on file — add it on 📇 contacts">${esc(label)}</span>`;
+  }
+  // The unscored games' clubs (in the division picked), ours left out.
+  _waitingClubs() {
+    const ids = new Set();
+    for (const f of (this.data.waiting || []).filter(f => !this.division || f.division_label === this.division))
+      for (const id of [f.home_club_id, f.away_club_id]) if (id && id !== this.data.our_club_id) ids.add(id);
+    return [...ids];
+  }
+  _openAllInsta() { for (const id of this._waitingClubs()) { const h = this._insta(id); if (h) window.open(casaInstaUrl(h), '_blank', 'noopener'); } }
+
   _asks(fixtureId, contactId) { return (this.data.asks || []).filter(a => a.fixture_id === fixtureId && (contactId === undefined || a.contact_id === contactId)); }
 
   // One ask to one person or several: the server words and logs it, the
@@ -648,10 +679,29 @@ class CasaScoresScreen extends Screen {
         ${[['score_request', 'scores_pick_request', '🙋 Ask for the score'], ['score_app', 'scores_pick_app', '📲 Get the app & enter it']].map(([k, c, d]) => `<button class="cz-pill ${this.tier === k ? 'on' : ''}" data-tier="${k}">${k === 'score_app' ? '📲' : '🙋'} ${esc(this._copy(c) || d.slice(3))}</button>`).join('')}
       </div>
       <div class="cz-hint">${esc(this._copy('scores_hint'))}</div>
+      ${this._instaRow()}
       <div class="cz-sec">${esc(this._copy('scores_waiting') || 'Waiting on a score')} · ${w.length}</div>
       ${html || `<div class="cz-hint">${esc(this._copy('scores_none') || 'Nothing missing.')}</div>`}
       ${inHtml ? `<div class="cz-sec">${esc(this._copy('scores_in') || 'Scores in')} · ${r.length}</div>${inHtml}` : ''}`;
     this.flash = '';
+  }
+
+  // 📸 every team on the schedule, by division, plus open-all for the
+  // clubs still owing a score (mig 699).
+  _instaRow() {
+    const esc = (t) => this.escapeHtml(t);
+    const teams = (this.data.teams || []).filter(t => !this.division || t.division_label === this.division);
+    if (!teams.length) return '';
+    const divs = [...new Set(teams.map(t => t.division_label))];
+    const waiting = this._waitingClubs();
+    const withH = waiting.filter(id => this._insta(id));
+    const missing = waiting.filter(id => !this._insta(id)).map(id => (teams.find(t => t.club_id === id) || {}).name).filter(Boolean);
+    return `
+      <div class="cz-sec">📸 Instagram</div>
+      ${withH.length ? `<button class="cz-btn sm alt" data-insta-all>${esc(this._copy('insta_open_all', { n: withH.length }) || `📸 Open all ${withH.length}`)}</button>` : ''}
+      ${missing.length ? `<div class="cz-hint">${esc(this._copy('insta_missing', { clubs: missing.join(', ') }))}</div>` : ''}
+      <div class="cz-hint">${esc(this._copy('insta_popups'))}</div>
+      ${divs.map(d => `<div class="cz-hint" style="margin-bottom:0;"><b>${esc(d)}</b></div><div class="cz-igs">${teams.filter(t => t.division_label === d).map(t => this._igLink(t.club_id, t.name)).join('')}</div>`).join('')}`;
   }
 
   _game(f) {
@@ -672,7 +722,7 @@ class CasaScoresScreen extends Screen {
 
   _team(f, side, name, clubId) {
     const esc = (t) => this.escapeHtml(t);
-    const head = (extra = '') => `<div class="cz-team-h"><span class="side">${side}</span><span>${esc(name)}</span>${extra}</div>`;
+    const head = (extra = '') => `<div class="cz-team-h"><span class="side">${side}</span><span>${esc(name)}</span>${clubId ? this._igLink(clubId, '📸') : ''}${extra}</div>`;
     if (clubId === this.data.our_club_id) return `<div class="cz-team">${head()}<div class="cz-hint">${esc(this._copy('scores_ours') || 'Our team.')}</div></div>`;
     const { tagged, others } = clubId ? this._side(f, clubId) : { tagged: [], others: [] };
     const key = `${f.id}:${clubId}`;

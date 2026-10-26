@@ -33,6 +33,7 @@
 //                                             tier score_request (default) | score_app (enter it in the SportsEngine app, mig 522)
 //                                             one ask to one person or several; logged per contact against the game
 //   POST   /api/opponents/score-contact       { contact_id, score_role: main|manager|'' }   main is one per team
+//   POST   /api/opponents/club-social         { club_id, platform: instagram, handle }   '' clears (mig 699)
 //
 // The page is for club admins.  The per-game endpoints also open to the
 // coaches of either team in that game (canManageTeam), so a coach can
@@ -63,4 +64,5 @@ private:
     Response handleLeagueScores(const Request& request);
     Response handleScoreRequest(const Request& request);
     Response handleScoreContact(const Request& request);
+    Response handleClubSocial(const Request& request);
 };

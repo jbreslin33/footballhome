@@ -53,6 +53,9 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 - [ ] 2026-10-24 Roster boards (#teams) still show LeagueApps' raw outstandingBalance, so a pending bank payment (mig 690) reads as owed there until LA applies it. Display only — no rule uses it.
 - [ ] 2026-10-24 Our U10 (PPR U10 Boys Blue) vs Torresdale: the PPR sheet has two Torresdale U10 Blue teams (Wasps / Stingers) — confirm which one plays us so the right coach shows.
 
+- [x] 2026-10-26 CASA Instagram 📸 buttons (mig 699): club_social_handles; handle field on #casa-contacts cards, 📸 per team on #casa-scores + "Open all" for unscored games; terminal check = "check all casa scores from insta" (.claude/skills/casa-insta-scores, CASA Chrome profile w/ VPN).
+- [ ] 2026-10-26 Fill the CASA clubs' Instagram handles (0 saved so far) — every 📸 is greyed out and the insta check has nothing to open until they're in.
+
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`. Pending op note: after the next frontend deploy, `sudo podman rm -f footballhome_sim` (see the archive README).
 
 ## Done
