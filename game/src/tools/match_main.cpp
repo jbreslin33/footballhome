@@ -163,6 +163,10 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                                        "dead ball to them (out / offside)", "still ours at the cap"};
     long ends[EndCount] = {}, played = 0, halfway = 0, third = 0, shot = 0;
     long passes = 0;
+    // How each loss happened: taken off the carrier's foot, or the last
+    // kick we made (by its reason) going to them.
+    long lost_carry = 0, lost_kick[ai::kWhyCount + 1] = {}, losses = 0;
+    long kicks[ai::kWhyCount + 1] = {};
     std::vector<double> t_play, t_half, t_third, depth_max, lost_at;
     for (int m = 0; m < episodes; ++m) {
         server::GameServer::Config cfg = base;
@@ -184,7 +188,7 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
         // Dead-ball phases wait for the restart to be played; open play is live.
         bool live = s.world().restartTeam() == 0xFF;
         if (live) t_play.push_back(0.0);
-        int end = Kept, shots = 0, ep_passes = 0, last_ours = -1;
+        int end = Kept, shots = 0, ep_passes = 0, last_ours = -1, last_kick = -1;
         double deepest = 0.0, where = 0.0;
         bool got_half = false, got_third = false;
         long k = 0;
@@ -205,13 +209,24 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                 if (s.world().restartTeam() != team) { end = OutToThem; where = from_goal(b.pos.x.toDouble()); break; }
                 continue;   // our throw / corner: the phase goes on
             }
-            if (before && !b.owner && b.last_kicker == *before && s.world().player(*before).team == team &&
-                s.lastOrders()[*before].why == ai::Why::Shoot)
-                ++shots;
+            if (before && !b.owner && b.last_kicker == *before && s.world().player(*before).team == team) {
+                const ai::Orders& o = s.lastOrders()[*before];
+                last_kick = o.rung >= 1 && o.rung <= 2 ? ai::kWhyCount : static_cast<int>(o.why);
+                ++kicks[last_kick];
+                if (o.why == ai::Why::Shoot) ++shots;
+            }
             if (!b.owner) continue;
             const auto& c = s.world().player(*b.owner);
             const double g = from_goal(b.pos.x.toDouble());
-            if (c.team != team) { where = g; end = g < hx * 2 / 3 ? LostOwn : g < hx * 4 / 3 ? LostMid : LostFinal; break; }
+            if (c.team != team) {
+                where = g;
+                end = g < hx * 2 / 3 ? LostOwn : g < hx * 4 / 3 ? LostMid : LostFinal;
+                ++losses;
+                if (before && s.world().player(*before).team == team) ++lost_carry;
+                else if (last_kick >= 0) ++lost_kick[last_kick];
+                break;
+            }
+            last_kick = -1;   // ours again: the kick reached a mate
             if (last_ours >= 0 && *b.owner != last_ours) ++ep_passes;
             last_ours = *b.owner;
             if (g > deepest) deepest = g;
@@ -243,6 +258,16 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
     for (int e = 0; e < EndCount; ++e)
         if (ends[e]) std::printf("    %-36s %5.1f%%\n", end_names[e], 100.0 * ends[e] / n);
     if (!lost_at.empty()) std::printf("  lost it %.1f m from our goal (median)\n", median(lost_at));
+    if (losses) {
+        std::printf("  how the ball was lost (of %ld): taken off the carrier %.0f%%", losses, 100.0 * lost_carry / losses);
+        for (int w = 0; w <= ai::kWhyCount; ++w)
+            if (lost_kick[w])
+                std::printf(" · %s %.0f%%", w == ai::kWhyCount ? "in behind" : ai::kWhyNames[w], 100.0 * lost_kick[w] / losses);
+        std::printf("\n  kicks per episode:");
+        for (int w = 0; w <= ai::kWhyCount; ++w)
+            if (kicks[w]) std::printf(" %s %.2f", w == ai::kWhyCount ? "in behind" : ai::kWhyNames[w], kicks[w] / n);
+        std::printf("\n");
+    }
     return 0;
 }
 

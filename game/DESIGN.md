@@ -1932,8 +1932,16 @@ from the keeper, Lighthouse loses it in the middle third two times in three,
 and the Ukies (no 'in' restart rows yet, so their natural shape) lose it in
 their own third two times in three against Lighthouse's man-to-man press.
 In the final third the first action is a shot or a loss — never a pass.
-Next: read why the carrier doesn't pass under pressure (kick reasons per
-phase), fix that, re-run this table.
+The harness also says HOW each ball was lost (taken off the carrier, or
+our last kick by its reason) and kicks per episode by reason. Into the
+mid-block, Lighthouse: 59% of losses are a **clear** (the touch-tight
+hoof), 17% a recycle, 9% taken off the carrier, 5% a pass — 0.11 passes
+per episode. A pressed carrier keeps it only if he READS (safe_pass, rolled
+per second), so at semipro he hoofs from halfway about as often as not;
+underneath, he rarely has a pass on at all. From the keeper the passes do
+go (2.2 per episode) but 31% (LH) / 49% (UK) of losses are a pass picked
+off. Next: the pressed carrier at halfway — shield / turn back / play it
+back before the hoof — then the receivers' movement to give him a pass.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 
