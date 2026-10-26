@@ -45,6 +45,11 @@
     .count { font-size: 22px; font-weight: 800; color: #fbbf24; }
     .answer { margin: 0 0 12px; border-bottom: 1px dashed #334155; padding-bottom: 10px; }   /* under the event line (owner 10/26) */
     .answer h4 { margin: 0 0 6px; font-size: 13px; color: #cbd5e1; font-weight: 600; }
+    .st { font-weight: 800; font-size: 16px; border-radius: 10px; padding: 8px 10px; margin: 8px 0 4px; }
+    .st.yes { background: rgba(22,163,74,0.2); color: #4ade80; }
+    .st.no { background: rgba(220,38,38,0.18); color: #fca5a5; }
+    .st.none { background: rgba(251,191,36,0.2); color: #fbbf24; }
+    .st:empty { display: none; }
     .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
     .row .who { min-width: 70px; font-weight: 700; }
     button { font: inherit; font-weight: 700; border: 1px solid #475569; background: transparent; color: #e2e8f0; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
@@ -122,6 +127,11 @@
         const isMine = (n) => [...mine].some(m => m && (n === m || n.startsWith(m + ' ')));
         return list.map(n => `<span class="${isMine(n) ? 'me' : 'nm'}">${esc(n)}</span>`).join('');
       }
+      // Where this household row stands (mig 732): all set, or action needed.
+      function statusLine(t) {
+        const r = t.response === 'yes' ? 'yes' : t.response === 'no' ? 'no' : 'none';
+        return c(`status_${r}_${t.self ? 'self' : 'other'}`, { name: t.name });
+      }
       function render() {
         $('t-title').textContent = c('page_title') || 'Roll call';
         $('t-live').textContent = c('live_note');
@@ -148,8 +158,9 @@
               <div class="answer">
                 <h4>${esc(c('answer_title', { first: me.first_name || '' }))}</h4>
                 ${targets.map(t => `
+                  <div class="st ${t.response === 'yes' ? 'yes' : t.response === 'no' ? 'no' : 'none'}">${esc(statusLine(t))}</div>
                   <div class="row" data-ev="${g.fh_event_id}" data-pid="${t.person_id}">
-                    <span class="who">${esc(t.name)}</span>
+                    ${targets.length > 1 ? `<span class="who">${esc(t.name)}</span>` : ''}
                     <button class="go ${t.response === 'yes' ? 'on' : ''}" data-r="yes">${esc(c('btn_going') || '✅ Going')}</button>
                     <button class="no ${t.response === 'no' ? 'on' : ''}" data-r="no">${esc(c('btn_not') || '❌ Not going')}</button>
                     <span class="msg"></span>
