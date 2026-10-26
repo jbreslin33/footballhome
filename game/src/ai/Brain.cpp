@@ -6,6 +6,8 @@
 #include "core/Ball.hpp"
 #include "core/Levels.hpp"
 
+#include <algorithm>
+
 namespace fh::game::ai {
 
 using core::Action;
