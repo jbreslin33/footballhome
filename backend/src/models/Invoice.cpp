@@ -320,6 +320,29 @@ json Invoice::get(long long invoiceId) {
     }
     out["total"] = round2(total);
 
+    // The sheet as printed (owner 2026-10-26: "ref fees need to be
+    // rolled up in actual print of invoice so the 160 … gets added to the
+    // stuff from cal"): every referees line folds into ONE row — the
+    // picked-games line first, hand-added ones after, descriptions joined,
+    // amounts summed.  `lines` stays one entry per line for the calendar.
+    out["sheet_lines"] = json::array();
+    {
+        json refRow = nullptr;
+        for (const auto& l : out["lines"]) {
+            if (l["category"] != "referees") { out["sheet_lines"].push_back(l); continue; }
+            if (refRow.is_null()) { refRow = l; out["sheet_lines"].push_back(nullptr); continue; }
+            const bool picked = l["ref_games"].get<long long>() > 0 && refRow["ref_games"].get<long long>() == 0;
+            refRow["printed"] = picked ? l["printed"].get<std::string>() + " + " + refRow["printed"].get<std::string>()
+                                       : refRow["printed"].get<std::string>() + " + " + l["printed"].get<std::string>();
+            refRow["amount"] = round2(refRow["amount"].get<double>() + l["amount"].get<double>());
+            refRow["ref_games"] = refRow["ref_games"].get<long long>() + l["ref_games"].get<long long>();
+        }
+        if (!refRow.is_null()) {
+            refRow["quantity"] = 1; refRow["rate"] = refRow["amount"];
+            for (auto& r : out["sheet_lines"]) if (r.is_null()) { r = refRow; break; }
+        }
+    }
+
     // Each billed referee fee on its game day (mig 703) — the 📅 calendar
     // adds them up per day; a fee dated outside the window sits on its
     // first day, like an undated line.

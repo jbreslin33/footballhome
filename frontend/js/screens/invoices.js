@@ -1287,7 +1287,7 @@ class InvoicesScreen extends Screen {
       .map(([, c]) => `<span>${esc(c.label)} ${InvoicesScreen.money(c.amount)}</span>`).join('');
     const total = Number(inv.total || 0);
     const off = Math.abs(daysMoney - total) >= 0.01;
-    const nLines = (inv.lines || []).length;
+    const nLines = (inv.sheet_lines || inv.lines || []).length;
     const totals = `
       <div class="iv-cal-tot">
         <span>${InvoicesScreen.plain(inv.shift_hours || 0)} h · ${InvoicesScreen.money(labor ? labor.amount : 0)} ${esc(inv.issuer?.duty_description || 'hours')}</span>
@@ -1533,7 +1533,8 @@ class InvoicesScreen extends Screen {
     const esc = (t) => this.escapeHtml(t);
     const is = inv.issuer || {};
     const bt = inv.bill_to || {};
-    const lines = inv.lines || [];
+    // sheet_lines: the referees lines rolled into one printed row.
+    const lines = inv.sheet_lines || inv.lines || [];
     const f = (x, y, text, size = 10, cls = '', w = null) =>
       `<div class="sh-f ${cls}" style="left:${x}pt; top:${y}pt; font-size:${size}pt;${w != null ? ` width:${w}pt;` : ''}">${esc(text)}</div>`;
     // Table geometry from the template: 14 rows from y=359 to 607, columns at
@@ -1552,7 +1553,7 @@ class InvoicesScreen extends Screen {
         // A long line (instalment "k of N · $total total") shrinks to fit
         // its column rather than run into the hours.
         const len = String(l.printed || '').length;
-        body += f(COL.desc, y, l.printed, len > 44 ? Math.max(7, Math.round(10 * 44 / len * 10) / 10) : 10, '', 233);
+        body += f(COL.desc, y, l.printed, len > 44 ? Math.max(6, Math.round(10 * 44 / len * 10) / 10) : 10, '', 233);
         body += f(COL.hoursL, y, InvoicesScreen.plain(l.quantity), 10, 'c', COL.hoursW);
         body += f(COL.rateL, y, rateText(l), 10, 'c', COL.rateW);
         body += f(COL.amtR - 60, y, InvoicesScreen.money(l.amount), 10, 'r', 60);
