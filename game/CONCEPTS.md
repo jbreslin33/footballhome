@@ -58,6 +58,42 @@ From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Conce
 
 ## Build queue (planned; each lands with the behavior that consumes it)
 
+**NEXT — James 10/26, in this order** (after G4.64 / DESIGN §8.62):
+
+1. **Two Lighthouse tactics, picked in the HUD.** Same direct opponents
+   (2 on their 7, 3 on their 11 …); only HOW they mark differs. Two child
+   models of Lighthouse APSL, switched live with the existing admin
+   game-model dropdown (ApplyPreset — no new wire):
+   - *Standard* (default): **defend your man, 3 rules in priority** — #1
+     intercept, #2 no turn (arrive tight, goal-side, as the ball does), #3
+     contain. Today's pieces (jump-the-pass, mark-position, engage-or-
+     contain, side-on jockey) become one explicit ladder the HUD names.
+   - *Winger shadows the line*: our winger protects the midfield during
+     the CB→FB transmission (as now), then goes to the closest point of the
+     FUTURE FB→winger pass line and traverses up to the FB along it,
+     looking behind and adjusting the shadow as their winger moves. Our
+     full-back then plays OFF his winger (the ground ball is shadowed) and
+     guards the long ball — distance a DB param.
+   - Open questions for James: (a) their winger drops short — our winger
+     keeps the line or hands him to our FB? (b) the ball goes down the line
+     anyway — our FB intercepts or sits off? (c) the 3 rules for every
+     man-marker (8 on 8, 6 on 10, 10 on 6, CB on their 9), not only FB on
+     winger?
+2. **What a player can see** — men BEHIND him are known only as of his
+   last shoulder check; scanning (`scan_before_receive` below, and a
+   defending scan) becomes a rated skill. Foundation for 3; changes every
+   player's perception, so measure full matches carefully.
+3. **Communication** — the `communication` attribute (mig 655, "not yet
+   played by the engine") gets its first job. Three parts: KNOWING the
+   call (concepts per call: adjust-your-shadow, man on, line, time, turn,
+   squeeze — taught by level), SAYING it (the attribute rolls whether he
+   speaks up), HEARING it (the listener's picture refreshes after a short
+   delay, subject to his concentration). First call: the full-back tells
+   the winger to adjust his cover shadow (James: "the full back would
+   communicate to the winger the cover shadow adjustment"). HUD: a speech
+   tag over the talker + a line to who it was for; calls made vs. moments
+   he should have, per player.
+
 **Individual, attacking** — `first_touch_direction` (touch into space, not
 underfoot), `shield_ball` (body between man and ball), `scan_before_receive`
 (shoulder checks → perception bonus for one tick), `half_turn_receive`
