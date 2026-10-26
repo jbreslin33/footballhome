@@ -413,9 +413,15 @@ FH_TEST(a_player_sees_in_front_and_only_remembers_behind) {
     core::ConceptRatings r{};
     brain.setRatings(0, r);
     const ai::Orders blind = brain.ordersFor(0, w);
-    FH_EXPECT_EQ(blind.look_ds, 30);             // physics.vision.max_age_s = 3 s
+    FH_EXPECT_EQ(blind.look_ds, 254);            // never: as old as the HUD shows
     FH_EXPECT_EQ(blind.unseen, 1);               // the man straight behind him
-    FH_EXPECT_EQ(brain.lookAge(0, w), 90);
+    FH_EXPECT_EQ(brain.lookAge(0, w), 1800);
+    // A 1 barely looks: every 20 s; a 50 about every 2.4 s.
+    ai::ScanBeforeReceive scan;
+    scan.configure(core::ModelParams{});
+    FH_EXPECT_EQ(scan.everyTicks(1), 600);
+    FH_EXPECT(scan.everyTicks(50) > 60 && scan.everyTicks(50) < 80);
+    FH_EXPECT_EQ(scan.everyTicks(100), 37);
     // Scanning at 100: a look at least every 1.25 s (37 ticks), on his own rhythm.
     r[33] = 100;
     brain.setRatings(0, r);

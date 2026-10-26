@@ -476,7 +476,10 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         o.look_ds = perfect ? 255 : 0;
         return o;
     }
-    const Fixed64 back = Fixed64::fromInt(age) * core::kTickDt;
+    // Placed back along his run by at most max_age_s: the linear picture
+    // means nothing over long ages (the look itself can be older).
+    const std::int32_t reach = age < book_.vision.max_age_ticks ? age : book_.vision.max_age_ticks;
+    const Fixed64 back = Fixed64::fromInt(reach) * core::kTickDt;
     World seen = world;
     std::uint8_t unseen = 0;
     // On the ball, a mate he can't see is no pass — unless he looked just
@@ -507,8 +510,9 @@ std::int32_t Brain::lookAge(SlotIndex slot, const World& world) const {
                                 : static_cast<const Scanning&>(book_.scan_defend);
     const int bit = scan.bit();
     const std::uint8_t r = ratings_[slot][bit];
-    const std::int32_t max_age = book_.vision.max_age_ticks;
-    if (r == 0 || max_age <= 0) return max_age;
+    // 0 = he never looks: as old as a picture gets (a minute).
+    constexpr std::int32_t kNever = 60 * core::kTickRate;
+    if (r == 0) return kNever;
     const std::uint64_t tick = world.tickCount();
     // The pass is coming to me: a look while it travels (scan before you
     // receive) — rolled per half second.
@@ -525,7 +529,7 @@ std::int32_t Brain::lookAge(SlotIndex slot, const World& world) const {
     const std::uint64_t t = tick + phase;
     std::int32_t age = static_cast<std::int32_t>(t % static_cast<std::uint64_t>(every));
     if (!applies(slot, bit, t / static_cast<std::uint64_t>(every))) age += every;   // skipped that one
-    return age < max_age ? age : max_age;
+    return age;
 }
 
 bool Brain::inView(SlotIndex slot, const World& world, SlotIndex other) const {

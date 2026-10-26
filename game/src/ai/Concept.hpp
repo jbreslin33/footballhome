@@ -677,10 +677,11 @@ private:
 // Scanning (G4.66) [Jordet et al. 2013, visual exploratory activity in
 // Premier League midfielders: the best scan ~0.6-0.8 times a second; FA /
 // US Soccer "check your shoulder"]: what a player knows of the men BEHIND
-// him is only as fresh as his last look. A rating sets how often he looks
-// (every_s_at1 for a 1, every_s_at100 for a 100, straight line between);
-// each look is rolled like any concept, so a weak one skips some. 0 =
-// doesn't look at all: he knows what's in front of him and nothing else.
+// him is only as fresh as his last look. A rating sets how often he looks:
+// looks per second on a straight line from every_s_at1 (20 s — a 1 barely
+// looks) to every_s_at100 (1.25 s); each look is rolled like any concept,
+// so a weak one skips some. 0 = never looks: he knows what's in front of
+// him and nothing else.
 class Scanning : public Concept {
 public:
     using Concept::Concept;
@@ -706,8 +707,8 @@ public:
 
 // What a body can see (G4.66; physics.vision.*): men within view_half_deg
 // of where he faces are seen as they are; so is anyone within feel_m (heard,
-// felt). The rest are where they were at his last look — at most max_age_s
-// old. A human's useful field of view is roughly 180-200 degrees. On the
+// felt). The rest are where they were at his last look, placed back along
+// their run by at most max_age_s (the look itself can be older). A human's useful field of view is roughly 180-200 degrees. On the
 // ball he never plays a mate he can't see unless his look is younger than
 // blind_pass_s.
 struct Vision {

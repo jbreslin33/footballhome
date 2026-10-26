@@ -576,14 +576,17 @@ bool ReleaseTiming::hold(const core::World& w, core::SlotIndex carrier, int sign
 
 // ── Scanning / Vision (G4.66) ───────────────────────────────────────────
 void Scanning::configure(const core::ModelParams& p) {
-    at1_ = p.fixed(key("every_s_at1"), 5000);
+    at1_ = p.fixed(key("every_s_at1"), 20000);
     at100_ = p.fixed(key("every_s_at100"), 1250);
 }
 
 std::int32_t Scanning::everyTicks(std::uint8_t rating) const {
+    // Looks per second on a straight line from the 1 to the 100 (James
+    // 10/26: a 1 "should basically look less" — rarely, not every 5 s).
     const int r = rating < 1 ? 1 : (rating > 100 ? 100 : rating);
-    const math::Fixed64 s = at1_ + (at100_ - at1_) * math::Fixed64::fromFraction(r - 1, 99);
-    const std::int32_t t = static_cast<std::int32_t>((s * math::Fixed64::fromInt(core::kTickRate)).raw >> math::Fixed64::FRAC_BITS);
+    const math::Fixed64 f1 = math::Fixed64::one() / at1_, f100 = math::Fixed64::one() / at100_;
+    const math::Fixed64 f = f1 + (f100 - f1) * math::Fixed64::fromFraction(r - 1, 99);
+    const std::int32_t t = static_cast<std::int32_t>((math::Fixed64::fromInt(core::kTickRate) / f).raw >> math::Fixed64::FRAC_BITS);
     return t < 1 ? 1 : t;
 }
 

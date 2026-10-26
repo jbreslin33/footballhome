@@ -2298,7 +2298,8 @@ communication.
   within `feel_m` 2 m, are seen as they are. Everyone else is where he WAS
   at this player's last look — pos − vel × age, the same linear trick as
   the ball's perception delay (G4.3; no history state, brains stay pure),
-  never older than `max_age_s` 3 s. A man who ran in behind him since is
+  placed back along his run by at most `max_age_s` 3 s (the look itself
+  can be older — mig 740; 0-rated = never looks). A man who ran in behind him since is
   still back where he started. `Brain::ordersFor` builds that picture as a
   copy of the World (`World::seePlayerAt`) and decides on it; the flight
   read and direct-opponent pairs are read from the true world first, so
@@ -2307,9 +2308,11 @@ communication.
 - **The skill — two core concepts set how often he looks.** In possession
   `scan-before-receive` (33, queued since mig 650, now wired; U-10), out of
   possession `scan-defending` (171, new; U-14). A 1 looks every
-  `every_s_at1` 5 s, a 100 every `every_s_at100` 1.25 s (~0.8 a second —
-  [Jordet et al. 2013]: the best Premier League midfielders), straight
-  line between; each look is rolled like any concept (a miss = that look
+  `every_s_at1` 20 s (mig 740 — James: a 1 "should basically look less"
+  than the first cut's 5 s), a 100 every `every_s_at100` 1.25 s (~0.8 a
+  second — [Jordet et al. 2013]: the best Premier League midfielders),
+  looks per second on a straight line between (a 60 ≈ every 2 s, a 30 ≈
+  3.7 s); each look is rolled like any concept (a miss = that look
   skipped), each player on his own rhythm. 0 = never looks: only what's
   in front of him. Plus the look while the pass is on its way to him (the
   flight read's first man of the passing team), rolled per half second.
@@ -2330,6 +2333,10 @@ communication.
 | recycles per match, LH / UK | 137 / 271 | 61 / 132 |
 | clearances per match, LH / UK | 77 / 52 | 101 / 77 |
 | Ukies shots / final-third entries | 17.7 / 73 | 29.3 / 90 |
+
+Mig 740 (a 1 every 20 s, looks per second linear — so a mid-rated player
+looks MORE often than the first cut): +3.67 ± 0.50 (6.13 – 2.47); pass
+64% / 63%; recycles 68 / 145; clearances 98 / 81; Ukies shots 27, entries 89.
 
 The carrier who can't see his support behind him no longer recycles to it
 — he clears or goes forward; Lighthouse's man-markers, facing the ball,
