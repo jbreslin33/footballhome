@@ -20,6 +20,15 @@
 //
 // Each match uses seed base+m, so N matches are a fixed sample: the same
 // DB gives the same numbers, and any difference IS a change.
+//
+// Play-practice-play (G4.59, DESIGN §8.55): GAME_PHASE="code:team" turns
+// the run into N EPISODES of that phase of play instead of matches (team 0
+// = home in possession). Each episode sets the phase up, plays it, and ends
+// at the first of: a goal, the other team owning the ball, a dead ball given
+// to them, or GAME_PHASE_SECONDS (default 30) with the ball still ours.
+// The report is the coach's: did the restart get played, did we get over
+// halfway and into the final third, how long it took, did we shoot, and
+// where we lost it. Episode 1 prints the set-up.
 
 #include "ai/Brain.hpp"
 #include "core/Clock.hpp"
@@ -27,6 +36,7 @@
 #include "server/GameServer.hpp"
 #include "server/MatchSetup.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -121,6 +131,121 @@ struct PassTally {
     long kicks = 0, mate = 0, intended = 0, lost = 0, dead = 0, offside = 0;
 };
 
+double median(std::vector<double> v) {
+    if (v.empty()) return 0.0;
+    std::sort(v.begin(), v.end());
+    return v[v.size() / 2];
+}
+
+// GAME_PHASE episodes: the phase's own scoreboard, from the possessing
+// team's side. Distances are metres from that team's own goal line.
+int runPhaseEpisodes(const server::GameServer::Config& base, const server::MatchNames& names,
+                     const std::string& spec, int episodes) {
+    const auto colon = spec.find(':');
+    const std::string code = spec.substr(0, colon);
+    const int team = colon == std::string::npos ? 0 : std::atoi(spec.c_str() + colon + 1);
+    std::size_t phase = base.phases.size();
+    for (std::size_t p = 0; p < base.phases.size(); ++p)
+        if (base.phases[p].code == code) phase = p;
+    if (phase == base.phases.size() || team < 0 || team > 1) {
+        std::fprintf(stderr, "GAME_PHASE '%s': no such phase (or team not 0/1); phases:", spec.c_str());
+        for (const auto& ph : base.phases) std::fprintf(stderr, " %s", ph.code.c_str());
+        std::fprintf(stderr, "\n");
+        return 2;
+    }
+    const long cap = std::atol(envOr("GAME_PHASE_SECONDS", "30")) * core::kTickRate;
+    const std::uint64_t seed0 = std::strtoull(envOr("GAME_MATCH_SEED", "1000"), nullptr, 10);
+    const std::string& us = team == 0 ? names.team_home : names.team_away;
+    const std::string& them = team == 0 ? names.team_away : names.team_home;
+    enum End { Goal, Conceded, LostOwn, LostMid, LostFinal, OutToThem, Kept, EndCount };
+    const char* end_names[EndCount] = {"scored", "conceded (their counter)", "lost it in our third",
+                                       "lost it in the middle third", "lost it in their third",
+                                       "dead ball to them (out / offside)", "still ours at the cap"};
+    long ends[EndCount] = {}, played = 0, halfway = 0, third = 0, shot = 0;
+    long passes = 0;
+    std::vector<double> t_play, t_half, t_third, depth_max, lost_at;
+    for (int m = 0; m < episodes; ++m) {
+        server::GameServer::Config cfg = base;
+        cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
+        NullTransport t;
+        server::GameServer s{cfg, t};
+        s.runPhase(static_cast<std::uint8_t>(team), phase);
+        const double hx = s.world().pitchHalfX().toDouble();
+        auto from_goal = [&](double x) { return team == 0 ? x + hx : hx - x; };
+        if (m == 0)
+            for (std::uint8_t i = 0; i < s.world().playerCount(); ++i) {
+                const auto& pl = s.world().player(i);
+                const double x = pl.pos.x.toDouble(), y = pl.pos.y.toDouble();
+                const bool home = pl.team == 0;
+                std::printf("  %s slot %2d: %5.1f m from own goal, %+5.1f m across\n",
+                            home ? names.team_home.c_str() : names.team_away.c_str(), i,
+                            home ? x + hx : hx - x, home ? y : -y);
+            }
+        // Dead-ball phases wait for the restart to be played; open play is live.
+        bool live = s.world().restartTeam() == 0xFF;
+        if (live) t_play.push_back(0.0);
+        int end = Kept, shots = 0, ep_passes = 0, last_ours = -1;
+        double deepest = 0.0, where = 0.0;
+        bool got_half = false, got_third = false;
+        long k = 0;
+        for (; k < cap; ++k) {
+            const auto before = s.world().ball().owner;
+            s.tickOnce();
+            const auto& b = s.world().ball();
+            const double sec = (k + 1) / static_cast<double>(core::kTickRate);
+            bool done = false;
+            for (const auto& e : s.lastEvents())
+                if (e.type == core::MatchEventType::Goal) { end = e.team == team ? Goal : Conceded; done = true; }
+            if (done) break;
+            if (!live) {
+                if (s.world().restartTeam() != 0xFF) continue;
+                live = true;
+                t_play.push_back(sec);
+            } else if (s.world().restartTeam() != 0xFF) {
+                if (s.world().restartTeam() != team) { end = OutToThem; where = from_goal(b.pos.x.toDouble()); break; }
+                continue;   // our throw / corner: the phase goes on
+            }
+            if (before && !b.owner && b.last_kicker == *before && s.world().player(*before).team == team &&
+                s.lastOrders()[*before].why == ai::Why::Shoot)
+                ++shots;
+            if (!b.owner) continue;
+            const auto& c = s.world().player(*b.owner);
+            const double g = from_goal(b.pos.x.toDouble());
+            if (c.team != team) { where = g; end = g < hx * 2 / 3 ? LostOwn : g < hx * 4 / 3 ? LostMid : LostFinal; break; }
+            if (last_ours >= 0 && *b.owner != last_ours) ++ep_passes;
+            last_ours = *b.owner;
+            if (g > deepest) deepest = g;
+            if (!got_half && g > hx) { got_half = true; t_half.push_back(sec); }
+            if (!got_third && g > hx * 4 / 3) { got_third = true; t_third.push_back(sec); }
+        }
+        ++ends[end];
+        played += live;
+        halfway += got_half; third += got_third;
+        shot += shots > 0;
+        passes += ep_passes;
+        depth_max.push_back(deepest);
+        if (end >= LostOwn && end <= OutToThem) lost_at.push_back(where);
+        std::printf("episode %3d: %-34s %4.1f s | %2d passes | deepest %5.1f m", m + 1, end_names[end],
+                    k / static_cast<double>(core::kTickRate), ep_passes, deepest);
+        if (shots) std::printf(" | %d shot%s", shots, shots > 1 ? "s" : "");
+        if (end >= LostOwn && end <= OutToThem) std::printf(" | lost at %.1f m", where);
+        std::printf("\n");
+    }
+    const double n = episodes;
+    std::printf("\nPhase '%s', %s in possession against %s: %d episodes, cap %ld s\n", code.c_str(),
+                us.c_str(), them.c_str(), episodes, cap / core::kTickRate);
+    std::printf("  restart played     %5.1f%%  (median %.1f s)\n", 100.0 * played / n, median(t_play));
+    std::printf("  over halfway       %5.1f%%  (median %.1f s)\n", 100.0 * halfway / n, median(t_half));
+    std::printf("  into final third   %5.1f%%  (median %.1f s)\n", 100.0 * third / n, median(t_third));
+    std::printf("  got a shot         %5.1f%%\n", 100.0 * shot / n);
+    std::printf("  passes completed   %5.1f per episode; deepest ball %.1f m (median)\n", passes / n, median(depth_max));
+    std::printf("  how it ended:\n");
+    for (int e = 0; e < EndCount; ++e)
+        if (ends[e]) std::printf("    %-36s %5.1f%%\n", end_names[e], 100.0 * ends[e] / n);
+    if (!lost_at.empty()) std::printf("  lost it %.1f m from our goal (median)\n", median(lost_at));
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -160,6 +285,9 @@ int main(int argc, char** argv) {
     applyOverrides(base, argc > 3 ? argv[3] : "-", true);
     applyOverrides(base, argc > 4 ? argv[4] : "-", false);
 
+    if (const char* gp = std::getenv("GAME_PHASE"))
+        return runPhaseEpisodes(base, names, gp, matches);
+
     const long ticks = static_cast<long>(minutes) * 60 * core::kTickRate;
     const std::uint64_t seed0 = std::strtoull(envOr("GAME_MATCH_SEED", "1000"), nullptr, 10);
     int w = 0, d = 0, l = 0;
@@ -187,28 +315,6 @@ int main(int argc, char** argv) {
         cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
         NullTransport t;
         server::GameServer s{cfg, t};
-        // GAME_PHASE="code:team" (G4.58): every match starts from that phase
-        // of play (team 0 = home in possession); match 1 prints the set-up
-        // — each player's metres from his own goal line and across (+ left).
-        if (const char* gp = std::getenv("GAME_PHASE")) {
-            const std::string spec = gp;
-            const auto colon = spec.find(':');
-            const std::string code = spec.substr(0, colon);
-            const int team = colon == std::string::npos ? 0 : std::atoi(spec.c_str() + colon + 1);
-            for (std::size_t p = 0; p < cfg.phases.size(); ++p) {
-                if (cfg.phases[p].code != code) continue;
-                s.runPhase(static_cast<std::uint8_t>(team), p);
-                if (m == 0)
-                    for (std::uint8_t i = 0; i < s.world().playerCount(); ++i) {
-                        const auto& pl = s.world().player(i);
-                        const double x = pl.pos.x.toDouble(), y = pl.pos.y.toDouble();
-                        const bool home = pl.team == 0;
-                        std::printf("  %s slot %2d: %5.1f m from own goal, %+5.1f m across\n",
-                                    home ? names.team_home.c_str() : names.team_away.c_str(), i,
-                                    home ? x + 52.5 : 52.5 - x, home ? y : -y);
-                    }
-            }
-        }
         int pend_team = -1, pend_why = 0, pend_other = -1;
         int last_assist[2] = {ai::kWhyCount + 1, ai::kWhyCount + 1};
         bool shot_breakaway[2] = {false, false};

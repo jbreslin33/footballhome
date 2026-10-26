@@ -483,4 +483,22 @@ FH_TEST(a_phase_of_play_sets_up_the_picture) {
     FH_EXPECT_EQ(s.world().restartTeam(), 0);
 }
 
+FH_TEST(every_dead_ball_phase_gets_taken) {
+    // G4.59: each dead-ball phase puts a taker on the ball, so the held
+    // shapes release — before, a kick-off or corner froze all 22.
+    server::GameServer::Config cfg{.match_id = 7, .slot_count = 22};
+    cfg.phases = {{"keeper", "From the keeper", "keeper", 6, 0, 20},
+                  {"kickoff", "Kick-off", "kickoff", 50, 0},
+                  {"corner-left", "Corner, left", "corner", 99, 97}};
+    for (std::uint8_t team = 0; team < 2; ++team)
+        for (std::size_t p = 0; p < cfg.phases.size(); ++p) {
+            FakeTransport t;
+            server::GameServer s{cfg, t};
+            s.runPhase(team, p);
+            FH_EXPECT_EQ(s.world().restartTeam(), team);
+            for (int k = 0; k < 10 * 30 && s.world().restartTeam() != 0xFF; ++k) s.tickOnce();
+            FH_EXPECT_EQ(s.world().restartTeam(), 0xFF);
+        }
+}
+
 FH_TEST_MAIN()

@@ -523,7 +523,20 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
             at[i].x = x;
         }
     }
-    // The team in possession holds its restart shape until the ball is played.
+    // Every dead ball needs a taker (G4.59): the keeper for his goal kick,
+    // else the team's nearest outfielder, stood just behind the ball — the
+    // hold exempts whoever's mark is on the ball. Without one, a kick-off or
+    // corner held all 22 on their marks for ever.
+    if (ph.kind != "open") {
+        int taker = -1;
+        Fixed64 bd{};
+        for (std::uint8_t i = 0; i < n; ++i) {
+            if ((i < per_team ? 0 : 1) != team || world_.isKeeper(i) != (ph.kind == "keeper")) continue;
+            const Fixed64 d = (at[i].x - bx) * (at[i].x - bx) + (at[i].y - by) * (at[i].y - by);
+            if (taker < 0 || d < bd) { taker = i; bd = d; }
+        }
+        if (taker >= 0) at[taker] = math::Vec2{ball.x - sgn * Fixed64::fromFraction(1, 2), ball.y};
+    }
     // Both teams hold their restart shapes until the ball is played.
     std::vector<std::pair<std::uint8_t, math::Vec2>> marks;
     for (std::uint8_t i = 0; i < n; ++i)

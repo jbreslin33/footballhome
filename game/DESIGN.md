@@ -1879,7 +1879,7 @@ designing the game … coaching methodology is the most important."
    plus its restart kind.
 2. **Freeze frame**: pause, step a tick, rewind (replay from the seed),
    annotate — the coach's "stop, look at the picture".
-3. **Play-practice-play** in the harness: `fh-game-match` runs N of a
+3. **Play-practice-play** in the harness (built, §8.55): `fh-game-match` runs N of a
    phase and reports how it went (time to cross halfway, turnovers,
    entries, shots) — measure one phase, fix, re-measure.
 4. **Constraints and small-sided games**: conditions as rows (two-touch,
@@ -1888,6 +1888,52 @@ designing the game … coaching methodology is the most important."
    corner / free-kick phases.
 6. Rotations for zonal teams (Ukies: 10 drops, wingers invert, full-backs
    overlap), the weak-side +1, kamikaze man-to-man (§8.53 queue).
+
+### 8.55 G4.59 — play-practice-play: the phase harness (roadmap #3)
+
+`GAME_PHASE=code:team fh-game-match N` runs N **episodes** of one phase
+instead of N matches (seed base+n, so a fixed sample). An episode sets the
+phase up, plays it, and ends at the first of: a goal, the other team owning
+the ball, a dead ball given to them, or `GAME_PHASE_SECONDS` (default 30)
+with the ball still ours (our own throw or corner carries on). It reports
+the coach's questions from the possessing team's side: restart played, over
+halfway and into the final third (% and median time), shot, passes
+completed, deepest ball, and how it ended — lost in our / the middle /
+their third (and the median metres from our goal), out to them, scored,
+conceded. Episode 1 prints the set-up. 200 episodes ≈ 3 s. [FH]
+
+**The first run found a bug in G4.58:** a held restart shape exempts only
+the player whose mark is on the ball, and only Lighthouse's goal-kick rows
+put anyone there — kick-offs, corners and the Ukies' goal kick held all 22
+on their marks for ever (live ▶ froze the same way). `runPhase` now stands
+a taker 0.5 m behind every dead ball: the keeper for his goal kick, else
+the team's nearest outfielder. Test `every_dead_ball_phase_gets_taken`.
+
+**Baseline** (Lighthouse APSL vs Ukrainian Nationals, 200 episodes each,
+2026-10-26; LH = Lighthouse in possession, UK = the Ukies):
+
+| phase | over halfway | final third | shot | passes | lost own / mid / their third | out to them | scored |
+|---|---|---|---|---|---|---|---|
+| keeper LH | 7.5% | 3.0% | 2.0% | 2.4 | 10.5 / 67 / 20.5 | 1.5 | 0 |
+| keeper UK | 6.0% | 4.5% | 1.5% | 2.2 | 66.5 / 12 / 16.5 | 4.0 | 0 |
+| mid-block LH | (100) | 5.0% | 2.0% | 0.5 | 12 / 56.5 / 30.5 | 1.0 | 0 |
+| mid-block UK | (100) | 7.0% | 2.0% | 1.3 | 23.5 / 54 / 18.5 | 2.0 | 0.5 |
+| final-third LH | — | — | 49% | 0.0 | 0 / 0 / 87 | 9.5 | 3.5 |
+| final-third UK | — | — | 73.5% | 0.1 | 0 / 1.5 / 81 | 13.5 | 4.0 |
+| kickoff LH | 100 | 4.0% | 1.5% | 0.8 | 6 / 67.5 / 23.5 | 2.0 | 0 |
+| kickoff UK | 100 | 5.5% | 3.5% | 1.6 | 11.5 / 63.5 / 21 | 3.0 | 0.5 |
+| corner-left LH / UK | — | — | 8 / 19% | 0.2 / 0.8 | — | 23.5 / 19 | 0.5 / 2.0 |
+| corner-right LH / UK | — | — | 2.5 / 26.5% | 0.7 / 0.0 | — | 12 / 32 | 0.5 / 1.0 |
+
+What it says, biggest first: **no phase keeps the ball.** Possessions die
+within 2-3 passes; from the mid-block and kick-off, under one completed
+pass, so the man on the ball carries into the block and loses it. Building
+from the keeper, Lighthouse loses it in the middle third two times in three,
+and the Ukies (no 'in' restart rows yet, so their natural shape) lose it in
+their own third two times in three against Lighthouse's man-to-man press.
+In the final third the first action is a shot or a loss — never a pass.
+Next: read why the carrier doesn't pass under pressure (kick reasons per
+phase), fix that, re-run this table.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 
