@@ -2039,6 +2039,79 @@ the match (it runs on underneath). The speed slider gained − / + steps.
 Still to come: server-side rewind-and-replay (restore a checkpoint and let
 the same seconds play again, or play them differently).
 
+### 8.60 G4.63 — the one-spot defender (mig 723)
+
+James 10/26, Lighthouse defending the Ukies building from the keeper: the
+direct opponent goes after his man while the pass travels to him; the
+others cover-shadow players who aren't theirs; and stay within pressing
+distance of other men's direct opponents — "a player could be close enough
+to get to direct opponent during pass traversal, while also cover
+shadowing another opp from current ball carrier who is not their direct
+opp, while also being dense enough to get to 1 or more others direct
+opponents to help … on the way to being the ultimate defender". "These are
+critical concepts" / "they need to be in taxonomy and lh/bielsa system
+relies on them to be advanced" / "we could suck at it at first but the
+concepts need to be there and applied".
+
+Three STYLE lessons, taught from amateur (youth bands don't know them),
+asked by the Bielsa model (Lighthouse APSL inherits it), not by the Ukies'
+U.S. Soccer model [FH, after Bielsa-Leeds ch3, Rangnick, Klopp]:
+
+- **pressing-distance (164)** — `Brain::pressReach`: where his man would
+  RECEIVE a pass from the ball (he comes `meet_share` of his own run to
+  it, the ball covers the rest at `pass_speed_mps`) and how far the
+  defender runs in that time less `reaction_s` (his body's own law, from a
+  standing start), plus `contact_m`. The first cut judged distance to
+  where the man stood; he checked toward the ball and the jumper, starting
+  5 m behind, followed him at the same speed and arrived 5 m late.
+- **shadow-second-man (163)** — `Brain::oneSpot`: from his marking spot,
+  candidate spots (the nearest point of each other man's lane from the
+  carrier, halfway to it, a third and two thirds of the way to each other
+  man's reception point). A candidate must keep his own man in pressing
+  distance; it scores `lane_weight` per lane cut (a lane a teammate
+  already stands on is taken), `help_weight` per other man in pressing
+  distance (164), less `move_cost_per_m`. No better spot: the marking spot.
+  Why "shadow and help".
+- **jump-the-pass (162)** — `Brain::jumpThePass`: their pass in flight to
+  a man we won't beat to it (the flight read, G4.49): his defender goes,
+  facing his run, to arrive `arrive_gap_m` goal-side of the reception.
+  Who goes: his own defender if he gets there in time; else the nearest
+  teammate who does and knows 164 (the chain); else his own from within
+  `jump_max_m`, late. Why "jump the pass".
+
+**Their dead ball, man-markers pick up their men.** The trace showed the
+Ukies' keeper playing the goal kick at t = 0.07 s with every Lighthouse
+marker 10-27 m off his man — still in the zonal press-line shape. Now a
+man-marker (18), on their restart, takes his direct opponent goal-side and
+then the one spot; a phase's dead ball starts the defending side there
+(`GameServer::runPhase` asks the Brain twice, so the lanes see teammates).
+Zonal sides (man-mark 0) are unchanged — the goldens too.
+
+Phase harness, Ukies from the keeper (200 episodes; the harness gained the
+defenders' first-touch distance and their order shares):
+
+| | before | dead-ball marking | + 162-164 |
+|---|---|---|---|
+| lost it in their own third | 45% | 24.5% | 27% |
+| lost via keeper punt | 0% | 45% | 45% |
+| over halfway | 6.5% | 4.0% | 3.5% |
+| pressed within 2 m on a first touch after a ≤25 m pass | 6% | 6% | 13% |
+
+Full matches (20, Lighthouse v Ukies; before / dead-ball marking / +
+162-164): goals 5.50–1.55 / 4.30–2.00 / 6.35–1.85 (each ± ~0.6 SE: inside
+the noise of 20 matches), LH shots 44.1 / 41.9 / 46.6, Ukies pass
+completion 63.9% / 64.3% / 62.9%. Full matches barely move — open play
+rarely leaves a lane or a second man inside pressing distance of a man who
+must stay on his own. "Shadow and help" is 9% of Lighthouse's
+out-of-possession man-time, the jump about 2%.
+
+Known next: a third of Lighthouse's outfield man-time out of possession
+is "hold shape" — the marking roll (ability ~68 vs Bielsa's 90 demand)
+failing for a whole second, the man ball-watching in shape. That is the
+"suck at it" James expected, from the player data; how a failed mark
+LOOKS (stand in shape a second) is crude and is the next thing to make
+real. The final third (§8.56) is still broken: LH 46 shots, 165 entries.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

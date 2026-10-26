@@ -481,6 +481,68 @@ private:
     math::Fixed64 own_third_, back_max_, step_, speed_;
 };
 
+// The one-spot defender (G4.63, James 10/26: "a player could be close
+// enough to get to direct opponent during pass traversal, while also cover
+// shadowing another opp from current ball carrier who is not their direct
+// opp, while also being dense enough to get to 1 or more others' direct
+// opponents to help … on the way to being the ultimate defender") — three
+// style lessons a man-oriented press [Bielsa] asks for, each a job one body
+// can do at once:
+//
+// Pressing distance (164): close enough to a man to reach him while a pass
+// to him travels — reach him where he RECEIVES it: he comes to meet the
+// ball (meet_share of his own run), the ball covers the rest at
+// pass_speed, and the defender runs that long less his reaction (his
+// body's own law, from a standing start). The must: his own man stays in
+// it. The help: every other man in it too.
+class PressingDistance : public Concept {
+public:
+    PressingDistance() : Concept("pressing-distance", 164) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 passSpeed() const { return pass_speed_; }
+    math::Fixed64 reaction() const { return reaction_; }
+    math::Fixed64 contact() const { return contact_; }
+    math::Fixed64 helpWeight() const { return help_; }
+    math::Fixed64 moveCost() const { return cost_; }
+    math::Fixed64 meetShare() const { return meet_; }
+
+private:
+    math::Fixed64 pass_speed_, reaction_, contact_, help_, cost_, meet_;
+};
+
+// Cover-shadow a second man (163): stand on the line from their carrier to
+// a man who is NOT yours — the ground pass to him goes through your body —
+// while yours stays in pressing distance. A lane a teammate already stands
+// on is taken. Lapse: on his own man only.
+class ShadowSecondMan : public Concept {
+public:
+    ShadowSecondMan() : Concept("shadow-second-man", 163) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 fromPasser() const { return from_passer_; }
+    math::Fixed64 fromMan() const { return from_man_; }
+    math::Fixed64 laneWidth() const { return width_; }
+    math::Fixed64 laneWeight() const { return weight_; }
+
+private:
+    math::Fixed64 from_passer_, from_man_, width_, weight_;
+};
+
+// Jump the pass (162): their pass is travelling to a man — HIS defender
+// goes as the ball goes, to arrive goal-side (arrive_gap_m) as it does, so
+// the receiver can't turn. His defender is the one whose direct opponent
+// he is; out of reach (jump_max_m), the teammate in pressing distance of
+// him jumps instead — the chain. Lapse: holds his mark until the ball lands.
+class JumpThePass : public Concept {
+public:
+    JumpThePass() : Concept("jump-the-pass", 162) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 arriveGap() const { return gap_; }
+    math::Fixed64 jumpMax() const { return max_; }
+
+private:
+    math::Fixed64 gap_, max_;
+};
+
 struct ConceptBook {
     Libero libero;
     CoverShadow cover_shadow;
@@ -503,6 +565,9 @@ struct ConceptBook {
     LoseYourMarker lose_your_marker;
     DirectOpponent direct_opponent;
     KeepItUnderPressure keep_it;
+    JumpThePass jump_pass;
+    ShadowSecondMan shadow_second;
+    PressingDistance press_distance;
     ConceptBook() { configure(core::ModelParams{}); }
     void configure(const core::ModelParams& p) {
         libero.configure(p);
@@ -526,6 +591,9 @@ struct ConceptBook {
         lose_your_marker.configure(p);
         direct_opponent.configure(p);
         keep_it.configure(p);
+        jump_pass.configure(p);
+        shadow_second.configure(p);
+        press_distance.configure(p);
     }
 };
 

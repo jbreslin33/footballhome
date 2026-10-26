@@ -255,6 +255,28 @@ void KeepItUnderPressure::configure(const core::ModelParams& p) {
     speed_ = p.fixed(key("shield_speed_share"), 500);
 }
 
+// ── the one-spot defender (G4.63) ───────────────────────────────────────
+void PressingDistance::configure(const core::ModelParams& p) {
+    pass_speed_ = p.fixed(key("pass_speed_mps"), 14000);
+    reaction_ = p.fixed(key("reaction_s"), 300);
+    contact_ = p.fixed(key("contact_m"), 1500);
+    help_ = p.fixed(key("help_weight"), 1000);
+    cost_ = p.fixed(key("move_cost_per_m"), 100);
+    meet_ = p.fixed(key("meet_share"), 500);
+}
+
+void ShadowSecondMan::configure(const core::ModelParams& p) {
+    from_passer_ = p.fixed(key("lane_from_passer_m"), 4000);
+    from_man_ = p.fixed(key("lane_from_man_m"), 3000);
+    width_ = p.fixed(key("lane_width_m"), 1000);
+    weight_ = p.fixed(key("lane_weight"), 2000);
+}
+
+void JumpThePass::configure(const core::ModelParams& p) {
+    gap_ = p.fixed(key("arrive_gap_m"), 1000);
+    max_ = p.fixed(key("jump_max_m"), 30000);
+}
+
 // ── CoverShadow ─────────────────────────────────────────────────────────
 void CoverShadow::configure(const core::ModelParams& p) {
     deep_x_ = p.fixed(key("deep_x_m"), 15000);

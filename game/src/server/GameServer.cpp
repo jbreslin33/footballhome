@@ -579,6 +579,19 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
             world_.giveBall(static_cast<std::uint8_t>(best));
         }
     }
+    // A dead ball takes seconds (G4.63): the defending side's men who
+    // pick up theirs on it (man-markers: their mark, then the one spot)
+    // start there — twice, so the lane each takes sees his teammates'.
+    if (ph.kind != "open")
+        for (int pass = 0; pass < 2; ++pass)
+            for (std::uint8_t i = 0; i < n; ++i) {
+                if ((i < per_team ? 0 : 1) == team || world_.isKeeper(i) || placed[i]) continue;
+                const ai::Orders o = brain_.ordersFor(i, world_);
+                if (o.why != ai::Why::Mark && o.why != ai::Why::ShadowHelp) continue;
+                math::Vec2 face{ball.x - o.target.x, ball.y - o.target.y};
+                if (face.x.raw == 0 && face.y.raw == 0) face = math::Vec2{-sgn, Fixed64::zero()};
+                world_.placePlayer(i, math::Vec3{o.target.x, o.target.y, Fixed64::zero()}, math::normalized(face));
+            }
     std::fprintf(stderr, "fh-game: phase '%s' for %s\n", ph.code.c_str(), team == 0 ? "home" : "away");
 }
 

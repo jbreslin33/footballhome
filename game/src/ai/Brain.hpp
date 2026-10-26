@@ -44,6 +44,7 @@ enum class Why : std::uint8_t {
     Outlet, Support, Human, WaitForRunner, LapseDeep, LapseStepOut,
     LapseShort, LapseLong, HabitShort, HabitLong, HabitDeep, HabitStepOut,
     MeetPass, KeepRunning, KeeperDive, SideOn, DropStep, Unmark, PlayBack, Shield,
+    JumpPass, ShadowHelp,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -55,6 +56,7 @@ inline constexpr const char* kWhyNames[] = {
     "likes it short", "likes it long", "likes to sit deep", "likes to step out",
     "meet the pass", "keep running", "keeper dive", "jockey side-on", "turn and run with him",
     "lose your marker", "play it back", "shield and turn",
+    "jump the pass", "shadow and help",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -171,6 +173,17 @@ private:
     Orders decide(core::SlotIndex slot, const core::World& world) const;
     void unmark(core::SlotIndex slot, const core::World& world, Orders& o) const;
     bool keepIt(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
+    // G4.63 the one-spot defender: jump the pass to your man (162); one
+    // spot that keeps your man in pressing distance, shadows another man's
+    // lane (163) and has more men in pressing distance to help (164).
+    bool jumpThePass(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
+    math::Vec2 oneSpot(core::SlotIndex slot, const core::World& world, core::SlotIndex man,
+                       const math::Vec2& spot, const math::Vec2& passer, core::SlotIndex carrier,
+                       bool shadow, bool help) const;
+    // Pressing distance (164): where `man` receives a pass from `passer`
+    // (he comes to meet it) and how far slot runs before it arrives.
+    struct Reach { math::Vec2 at; math::Fixed64 run; };
+    Reach pressReach(core::SlotIndex slot, const core::World& world, const math::Vec2& passer, core::SlotIndex man) const;
 
     int attackSign(core::SlotIndex slot) const {
         return setup_.team_of_slot[slot] == 0 ? +1 : -1;

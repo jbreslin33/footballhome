@@ -489,7 +489,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     switch (o.why) {
         case Why::RunInBehind: case Why::BlindSideRun: case Why::KeepRunning:
         case Why::MeetPass: case Why::Chase: case Why::Press: case Why::Recover:
-        case Why::Human: case Why::DropStep:
+        case Why::Human: case Why::DropStep: case Why::JumpPass:
             return o;   // these face where they're going
         default: break;
     }
@@ -631,6 +631,165 @@ bool Brain::keepIt(SlotIndex slot, const World& world, int sign, Orders& out) co
     out.target = to;
     out.other = static_cast<std::int16_t>(presser);
     return true;
+}
+
+// G4.63 pressing distance (164): where `man` receives a pass from `passer`
+// — he comes meet_share of his own run toward it, the ball the rest at
+// pass_speed — and how far slot runs in that time less his reaction (his
+// body's own law, from a standing start), plus the contact distance.
+Brain::Reach Brain::pressReach(SlotIndex slot, const World& world, const Vec2& passer, SlotIndex man) const {
+    const auto& P = book_.press_distance;
+    const auto& m = world.player(man);
+    const Vec2 d{passer.x - m.pos.x, passer.y - m.pos.y};
+    const Fixed64 len = math::length(d);
+    if (len.raw == 0) return {Vec2{m.pos.x, m.pos.y}, P.contact()};
+    const Fixed64 t0 = len / P.passSpeed();
+    Fixed64 come = world.body(man).reach(Fixed64::zero(), m.max_speed, t0) * P.meetShare();
+    if (come > len / 2) come = len / 2;
+    const Vec2 at{m.pos.x + d.x / len * come, m.pos.y + d.y / len * come};
+    Fixed64 t = (len - come) / P.passSpeed() - P.reaction();
+    if (t < Fixed64::zero()) t = Fixed64::zero();
+    return {at, world.body(slot).reach(Fixed64::zero(), world.player(slot).max_speed, t) + P.contact()};
+}
+
+// Jump the pass (162, G4.63): their pass travelling to a man we won't beat
+// to it — his defender (direct opponent, within jump_max_m; else the
+// nearest teammate in pressing distance of the arrival, the chain) goes as
+// the ball goes, to arrive goal-side of where it lands.
+bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& out) const {
+    const auto& b = world.ball();
+    const std::uint8_t my_team = setup_.team_of_slot[slot];
+    if (b.owner || world.restartTeam() != 0xFF || world.lastTouchTeam() == my_team) return false;
+    const int jb = book_.jump_pass.bit();
+    if (ratings_[slot][jb] == 0 || world.isKeeper(slot)) return false;
+    const FlightRead& fr = flightRead(world);
+    if (!fr.live) return false;
+    const int rcv = fr.first[1 - my_team];
+    if (rcv < 0) return false;
+    const int ours = fr.first[my_team];
+    if (ours >= 0 && fr.tick[ours] <= fr.tick[rcv]) return false;   // we win it: the race
+    const Vec2 at = fr.at[rcv];
+    const Fixed64 t_arrive = core::kTickDt * Fixed64::fromInt(fr.tick[rcv]);
+    const std::uint64_t sec = world.tickCount() / 30;
+    const auto& direct = directOpponents(world, sec);
+    const Fixed64 jmax = book_.jump_pass.jumpMax();
+    // Who goes: his own defender if he gets there in time; else the
+    // nearest teammate who does, in pressing distance (the chain); else his
+    // own defender from further out (within jump_max_m), late.
+    const int pd = book_.press_distance.bit();
+    const Vec3 at3{at.x, at.y, Fixed64::zero()};
+    auto in_time = [&](SlotIndex j) {
+        const Fixed64 run = runToward(world, j, at, t_arrive) + book_.press_distance.contact();
+        return distSq(world.player(j).pos, at3) <= run * run;
+    };
+    int jumper = -1, chain = -1, late = -1;
+    Fixed64 best_chain{}, best_late{};
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup_.team_of_slot[j] != my_team || world.isKeeper(j) || ratings_[j][jb] == 0) continue;
+        const Fixed64 d = distSq(world.player(j).pos, at3);
+        const bool mine = direct[j] == rcv;
+        const bool fast = in_time(j);
+        if (mine && fast) { jumper = j; break; }
+        if (fast && ratings_[j][pd] > 0 && (chain < 0 || d < best_chain)) { chain = j; best_chain = d; }
+        if (mine && d <= jmax * jmax && (late < 0 || d < best_late)) { late = j; best_late = d; }
+    }
+    if (jumper < 0) jumper = chain >= 0 ? chain : late;
+    if (jumper != static_cast<int>(slot) || !applies(slot, jb, sec)) return false;
+    const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    const Vec2 to_goal = math::normalized(Vec2{-dsgn * half_x_ - at.x, -at.y});
+    const Fixed64 g = book_.jump_pass.arriveGap();
+    const Vec2 target{at.x + to_goal.x * g, at.y + to_goal.y * g};
+    out.move.move = seek(world.player(slot).pos, target, Fixed64::fromFraction(1, 10));
+    out.why = Why::JumpPass;
+    out.target = target;
+    out.other = static_cast<std::int16_t>(rcv);
+    return true;
+}
+
+// The one spot (163/164, G4.63): from his marking spot, the candidate
+// that keeps his own man in pressing distance (the must) and scores most —
+// another man's lane from the carrier cut (163, a lane no teammate already
+// stands on) and other men in pressing distance to help (164) — less a
+// cost per metre moved off the marking spot. None better: the marking spot.
+Vec2 Brain::oneSpot(SlotIndex slot, const World& world, SlotIndex man, const Vec2& spot,
+                    const Vec2& B, SlotIndex carrier, bool shadow, bool help) const {
+    const std::uint8_t my_team = setup_.team_of_slot[slot];
+    const auto& PD = book_.press_distance;
+    const auto& SS = book_.shadow_second;
+    struct Opp { Vec2 pos, meet; Fixed64 reach; Vec2 a, z; bool lane; bool keeper; };
+    Opp opp[32];
+    int n = 0;
+    const Reach rm = pressReach(slot, world, B, man);
+    const Vec2 M = rm.at;
+    const Fixed64 reach_m = rm.run;
+    for (SlotIndex o = 0; o < world.playerCount() && n < 32; ++o) {
+        if (setup_.team_of_slot[o] == my_team || o == carrier || o == man) continue;
+        Opp& x = opp[n++];
+        x.pos = Vec2{world.player(o).pos.x, world.player(o).pos.y};
+        x.keeper = world.isKeeper(o);
+        const Reach r = pressReach(slot, world, B, o);
+        x.meet = r.at;
+        x.reach = r.run;
+        // The lane: carrier → him, less the ends (that's pressing / marking).
+        const Vec2 d{x.pos.x - B.x, x.pos.y - B.y};
+        const Fixed64 len = math::length(d);
+        // At least a metre of lane left once both ends are off (a hair of
+        // one squared to 0 in fixed point and divided by it).
+        x.lane = shadow && len > SS.fromPasser() + SS.fromMan() + Fixed64::one();
+        if (!x.lane) continue;
+        const Vec2 u{d.x / len, d.y / len};
+        x.a = Vec2{B.x + u.x * SS.fromPasser(), B.y + u.y * SS.fromPasser()};
+        x.z = Vec2{x.pos.x - u.x * SS.fromMan(), x.pos.y - u.y * SS.fromMan()};
+        const Fixed64 w2 = SS.laneWidth() * SS.laneWidth();
+        for (SlotIndex j = 0; j < world.playerCount() && x.lane; ++j) {
+            if (j == slot || setup_.team_of_slot[j] != my_team) continue;
+            const Vec2 jp{world.player(j).pos.x, world.player(j).pos.y};
+            if (pointSegmentDistSq(jp, x.a, x.z) <= w2) x.lane = false;   // a teammate has it
+        }
+    }
+    auto score = [&](const Vec2& p) {
+        Fixed64 s = -PD.moveCost() * math::length(Vec2{p.x - spot.x, p.y - spot.y});
+        const Fixed64 w2 = SS.laneWidth() * SS.laneWidth();
+        for (int i = 0; i < n; ++i) {
+            const Opp& x = opp[i];
+            if (x.lane && pointSegmentDistSq(p, x.a, x.z) <= w2) s += SS.laneWeight();
+            if (help && !x.keeper) {
+                const Vec2 d{p.x - x.meet.x, p.y - x.meet.y};
+                if (math::lengthSquared(d) <= x.reach * x.reach) s += PD.helpWeight();
+            }
+        }
+        return s;
+    };
+    auto keeps_man = [&](const Vec2& p) {
+        const Vec2 d{p.x - M.x, p.y - M.y};
+        return math::lengthSquared(d) <= reach_m * reach_m;
+    };
+    Vec2 best = spot;
+    Fixed64 best_s = score(spot);
+    auto consider = [&](const Vec2& p) {
+        if (!keeps_man(p)) return;
+        const Fixed64 s = score(p);
+        if (s > best_s) { best = p; best_s = s; }
+    };
+    for (int i = 0; i < n; ++i) {
+        const Opp& x = opp[i];
+        if (x.lane) {   // the nearest point of his lane, and halfway to it
+            const Vec2 ab{x.z.x - x.a.x, x.z.y - x.a.y};
+            const Fixed64 ab2 = math::lengthSquared(ab);
+            Fixed64 t = ab2.raw > 0 ? dot(Vec2{spot.x - x.a.x, spot.y - x.a.y}, ab) / ab2 : Fixed64::zero();
+            if (t < Fixed64::zero()) t = Fixed64::zero();
+            if (t > Fixed64::one()) t = Fixed64::one();
+            const Vec2 l{x.a.x + ab.x * t, x.a.y + ab.y * t};
+            consider(l);
+            consider(Vec2{(l.x + spot.x) / 2, (l.y + spot.y) / 2});
+        }
+        if (help && !x.keeper) {   // a third and two thirds of the way to where he'd receive
+            const Vec2 d{x.meet.x - spot.x, x.meet.y - spot.y};
+            consider(Vec2{spot.x + d.x / 3, spot.y + d.y / 3});
+            consider(Vec2{spot.x + d.x * 2 / 3, spot.y + d.y * 2 / 3});
+        }
+    }
+    return best;
 }
 
 Orders Brain::decide(SlotIndex slot, const World& world) const {
@@ -1380,6 +1539,44 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     // advanced level delay is to gain superiority while transitioning to
     // defense; once you have marking and a free man, someone steps to
     // ball." Low-discipline sides skip the theory and dive straight in.
+    // Their dead ball (G4.63): a man-marker picks up his direct opponent
+    // while they set it up — goal-side, then the one spot (163/164) — not
+    // stand in shape for it. Bielsa's men are on theirs when the keeper
+    // looks up; in shape, the goal kick found every Ukie 10-27 m free.
+    if (!ours && opponents_restart && !mine.keeper && ratings_[slot][18] > 0 &&
+        applies(slot, 18, world.tickCount() / 30)) {
+        const std::uint64_t sec = world.tickCount() / 30;
+        const std::uint8_t direct = directOpponents(world, sec)[slot];
+        const Vec2 B{ball.pos.x, ball.pos.y};
+        // The taker is the man on the ball.
+        SlotIndex taker = 255;
+        Fixed64 td{};
+        for (SlotIndex o = 0; o < world.playerCount(); ++o) {
+            if (setup_.team_of_slot[o] == my_team) continue;
+            const Fixed64 d = distSq(world.player(o).pos, ball.pos);
+            if (taker == 255 || d < td) { taker = o; td = d; }
+        }
+        if (direct != 255 && direct != taker) {
+            const auto& mk = world.player(direct);
+            const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+            const Vec2 to_goal = math::normalized(Vec2{-dsgn * half_x_ - mk.pos.x, -mk.pos.y});
+            const Fixed64 gap = Fixed64::fromFraction(3, 2) - Fixed64::fromFraction(9, 10) * degree(slot, 18);
+            Vec2 spot{mk.pos.x + to_goal.x * gap, mk.pos.y + to_goal.y * gap};
+            Why why = Why::Mark;
+            const int ss = book_.shadow_second.bit(), pd = book_.press_distance.bit();
+            const bool sh = ratings_[slot][ss] > 0 && applies(slot, ss, sec);
+            const bool hp = ratings_[slot][pd] > 0 && applies(slot, pd, sec);
+            if (sh || hp) {
+                const Vec2 s2 = oneSpot(slot, world, direct, spot, B, taker, sh, hp);
+                if (s2.x != spot.x || s2.y != spot.y) { spot = s2; why = Why::ShadowHelp; }
+            }
+            out.move.move = seek(me.pos, spot, Fixed64::fromFraction(1, 2));
+            out.why = why;
+            out.target = spot;
+            out.other = static_cast<std::int16_t>(direct);
+            return out;
+        }
+    }
     if (!ours && !opponents_restart) {
         const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
         // cover_shadow (bit 27, G4.33) [Bielsa; James: "the lh 9 should
@@ -1395,6 +1592,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 return out;
             }
         }
+        if (jumpThePass(slot, world, sign, out)) return out;
         int mates_behind = 0, opps_behind = 0;
         for (SlotIndex j = 0; j < world.playerCount(); ++j) {
             const bool behind =
@@ -1810,8 +2008,21 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                         }
                     }
                 }
+                // the one spot (163/164, G4.63): his man in pressing distance,
+                // another's lane cut, more men in reach to help.
+                Why mark_why = Why::Mark;
+                if (ball.owner && *ball.owner != my_mark) {
+                    const int ss = book_.shadow_second.bit(), pd = book_.press_distance.bit();
+                    const bool sh = ratings_[slot][ss] > 0 && applies(slot, ss, sec);
+                    const bool hp = ratings_[slot][pd] > 0 && applies(slot, pd, sec);
+                    if (sh || hp) {
+                        const Vec2 B{world.player(*ball.owner).pos.x, world.player(*ball.owner).pos.y};
+                        const Vec2 s2 = oneSpot(slot, world, my_mark, spot, B, *ball.owner, sh, hp);
+                        if (s2.x != spot.x || s2.y != spot.y) { spot = s2; mark_why = Why::ShadowHelp; }
+                    }
+                }
                 out.move.move = seek(me.pos, spot, Fixed64::fromFraction(1, 2));
-                out.why = Why::Mark;
+                out.why = mark_why;
                 out.target = spot;
                 out.other = static_cast<std::int16_t>(my_mark);
                 return out;

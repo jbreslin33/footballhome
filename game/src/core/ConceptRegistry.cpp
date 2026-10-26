@@ -63,6 +63,9 @@ ConceptRegistry ConceptRegistry::builtin() {
     r.add(159, "lose-your-marker", levelRank("u10"), false);
     r.add(160, "direct-opponent", levelRank("u10"), false);
     r.add(161, "keep-it-under-pressure", levelRank("u10"), false);
+    r.add(162, "jump-the-pass", levelRank("amateur"), true);
+    r.add(163, "shadow-second-man", levelRank("amateur"), true);
+    r.add(164, "pressing-distance", levelRank("amateur"), true);
     return r;
 }
 

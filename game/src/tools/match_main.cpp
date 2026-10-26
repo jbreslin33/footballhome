@@ -169,6 +169,11 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
     long lost_carry = 0, lost_kick[ai::kWhyCount + 1] = {}, losses = 0;
     long kicks[ai::kWhyCount + 1] = {};
     std::vector<double> t_play, t_half, t_third, depth_max, lost_at, kept_s;
+    // The defending side (G4.63): how close the nearest defender is on each
+    // first touch, and seconds of each defender order per episode.
+    std::vector<double> touch_gap, touch_gap_short;
+    double kick_x = 0, kick_y = 0;
+    long d_why[ai::kWhyCount] = {}, d_ticks = 0;
     for (int m = 0; m < episodes; ++m) {
         server::GameServer::Config cfg = base;
         cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
@@ -215,6 +220,7 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
             if (before && !b.owner && b.last_kicker == *before && s.world().player(*before).team == team) {
                 const ai::Orders& o = s.lastOrders()[*before];
                 last_kick = o.rung >= 1 && o.rung <= 2 ? ai::kWhyCount : static_cast<int>(o.why);
+                kick_x = b.pos.x.toDouble(); kick_y = b.pos.y.toDouble();
                 if (trace == m + 1 && o.other >= 0) {
                     const auto& r = s.world().player(static_cast<std::uint8_t>(o.other));
                     const double dx = r.pos.x.toDouble() - b.pos.x.toDouble(), dy = r.pos.y.toDouble() - b.pos.y.toDouble();
@@ -223,6 +229,15 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                                 from_goal(r.pos.x.toDouble()), team == 0 ? r.pos.y.toDouble() : -r.pos.y.toDouble(),
                                 std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble()));
                     tracked = o.other;
+                    // Their men at the kick: what each is doing, how far from the receiver.
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == team) continue;
+                        const ai::Orders& dj = s.lastOrders()[j];
+                        const double ex = d.pos.x.toDouble() - r.pos.x.toDouble(), ey = d.pos.y.toDouble() - r.pos.y.toDouble();
+                        std::printf("           them slot %2d %-22s %5.1f m from the receiver%s\n", j, ai::kWhyNames[static_cast<int>(dj.why)],
+                                    std::sqrt(ex * ex + ey * ey), dj.other >= 0 ? (" → slot " + std::to_string(dj.other)).c_str() : "");
+                    }
                 }
                 ++kicks[last_kick];
                 if (o.why == ai::Why::Shoot) ++shots;
@@ -265,6 +280,17 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                         std::printf("  t=%4.1f   receiver slot %d %.1f m from the ball, %s\n", sec, tracked, std::sqrt(dx * dx + dy * dy),
                                     ai::kWhyNames[static_cast<int>(s.lastOrders()[tracked].why)]);
                     }
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
+                        if (s.lastOrders()[j].why == ai::Why::JumpPass) {
+                            const auto& d = s.world().player(j);
+                            const auto& o = s.lastOrders()[j];
+                            const auto& r = s.world().player(static_cast<std::uint8_t>(o.other));
+                            const double ex = d.pos.x.toDouble() - r.pos.x.toDouble(), ey = d.pos.y.toDouble() - r.pos.y.toDouble();
+                            const double tx = d.pos.x.toDouble() - o.target.x.toDouble(), ty = d.pos.y.toDouble() - o.target.y.toDouble();
+                            std::printf("  t=%4.1f   JUMP slot %d on slot %d: %.1f m from him, %.1f m from his spot, %.1f m/s\n", sec, j, o.other,
+                                        std::sqrt(ex * ex + ey * ey), std::sqrt(tx * tx + ty * ty),
+                                        std::sqrt(d.vel.x.toDouble() * d.vel.x.toDouble() + d.vel.y.toDouble() * d.vel.y.toDouble()));
+                        }
                     std::printf("  t=%4.1f ball loose at %5.1f m, %+5.1f across, %.1f m/s | ours: slot %d %.1f m %s | theirs: slot %d %.1f m %s\n",
                                 sec, from_goal(b.pos.x.toDouble()), team == 0 ? b.pos.y.toDouble() : -b.pos.y.toDouble(),
                                 std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble()),
@@ -272,6 +298,12 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                                 nb[1], nd[1], ai::kWhyNames[static_cast<int>(s.lastOrders()[nb[1]].why)]);
                 }
             }
+            if (live)
+                for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
+                    if (s.world().player(j).team != team && !s.world().isKeeper(j)) {
+                        ++d_why[static_cast<int>(s.lastOrders()[j].why)];
+                        ++d_ticks;
+                    }
             if (!b.owner) continue;
             const auto& c = s.world().player(*b.owner);
             const double g = from_goal(b.pos.x.toDouble());
@@ -282,6 +314,18 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                 if (before && s.world().player(*before).team == team) ++lost_carry;
                 else if (last_kick >= 0) ++lost_kick[last_kick];
                 break;
+            }
+            if (!before) {   // a first touch: how close is their nearest man?
+                double near = 1e9;
+                for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                    const auto& d = s.world().player(j);
+                    if (d.team == team) continue;
+                    const double dx = d.pos.x.toDouble() - c.pos.x.toDouble(), dy = d.pos.y.toDouble() - c.pos.y.toDouble();
+                    near = std::min(near, std::sqrt(dx * dx + dy * dy));
+                }
+                touch_gap.push_back(near);
+                const double kx = c.pos.x.toDouble() - kick_x, ky = c.pos.y.toDouble() - kick_y;
+                if (std::sqrt(kx * kx + ky * ky) <= 25.0) touch_gap_short.push_back(near);
             }
             last_kick = -1;   // ours again: the kick reached a mate
             if (last_ours >= 0 && *b.owner != last_ours) ++ep_passes;
@@ -325,6 +369,23 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
         std::printf("\n  kicks per episode:");
         for (int w = 0; w <= ai::kWhyCount; ++w)
             if (kicks[w]) std::printf(" %s %.2f", w == ai::kWhyCount ? "in behind" : ai::kWhyNames[w], kicks[w] / n);
+        std::printf("\n");
+    }
+    if (!touch_gap.empty()) {
+        long tight = 0;
+        for (double g : touch_gap) tight += g <= 2.0;
+        std::printf("  %s on our first touch: nearest man %.1f m (median), within 2 m %.0f%% (of %zu)\n", them.c_str(),
+                    median(touch_gap), 100.0 * tight / touch_gap.size(), touch_gap.size());
+        tight = 0;
+        for (double g : touch_gap_short) tight += g <= 2.0;
+        if (!touch_gap_short.empty())
+            std::printf("    after a pass of 25 m or less: nearest man %.1f m (median), within 2 m %.0f%% (of %zu)\n",
+                        median(touch_gap_short), 100.0 * tight / touch_gap_short.size(), touch_gap_short.size());
+    }
+    if (d_ticks) {
+        std::printf("  %s outfield orders (share of man-ticks):", them.c_str());
+        for (int w = 0; w < ai::kWhyCount; ++w)
+            if (d_why[w] * 1000 >= d_ticks) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * d_why[w] / d_ticks);
         std::printf("\n");
     }
     return 0;

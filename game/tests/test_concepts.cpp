@@ -329,9 +329,9 @@ FH_TEST(a_db_curriculum_fills_the_builtin_holes) {
 FH_TEST(the_curriculum_grows_by_rows_past_32_concepts) {
     // Built in: the 31 wired concepts, ids = the old bits, plus the later
     // core lessons the harness must play (G4.53: 153 meet-the-pass, 154
-    // face-the-play; G4.54: 155-157 1v1 defending; G4.57: 158-160 marking; G4.60: 161 keep it under pressure) — the ids between are holes.
+    // face-the-play; G4.54: 155-157 1v1 defending; G4.57: 158-160 marking; G4.60: 161 keep it under pressure; G4.63: 162-164 the one-spot defender) — the ids between are holes.
     const core::ConceptRegistry b = core::ConceptRegistry::builtin();
-    FH_EXPECT(b.size() == 162 && b.find("pass-ladder") == 29 && b.name(30) == "blind-side-run");
+    FH_EXPECT(b.size() == 165 && b.find("pass-ladder") == 29 && b.name(30) == "blind-side-run");
     FH_EXPECT(b.find("meet-the-pass") == 153 && b.find("face-the-play") == 154 && b.name(60).empty());
     FH_EXPECT(b.find("rotation") == -1);
     // A DB curriculum: the wired 31 plus lessons far past the old 32-bit cap,
@@ -339,7 +339,7 @@ FH_TEST(the_curriculum_grows_by_rows_past_32_concepts) {
     core::ConceptRegistry db = core::ConceptRegistry::builtin();
     db.add(40, "rotation", 0);                                  // style lesson, no class yet
     db.add(120, "first-touch-direction", core::levelRank("u14"));  // taught from U-14
-    FH_EXPECT(db.size() == 162 && db.find("first-touch-direction") == 120 && db.name(60).empty());
+    FH_EXPECT(db.size() == 165 && db.find("first-touch-direction") == 120 && db.name(60).empty());
     core::setConcepts(db);
     const auto u14 = core::defaultRatings(core::levelParams("u14"));
     const auto u10 = core::defaultRatings(core::levelParams("u10"));
