@@ -43,7 +43,6 @@ private:
     Response handleDeleteLine(const Request& request);
     Response handleShift(const Request& request);
     Response handleDeleteShift(const Request& request);
-    Response handleResolveOverlaps(const Request& request);
     Response handleGames(const Request& request);      // GET  /:id/games  (mig 531)
     Response handleAddGames(const Request& request);   // POST /:id/games
     Response handleEventMark(const Request& request);  // POST /:id/event-mark (mig 573)

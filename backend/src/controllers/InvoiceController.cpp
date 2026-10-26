@@ -81,7 +81,6 @@ void InvoiceController::registerRoutes(Router& router, const std::string& prefix
     router.post(prefix + "/:id/update",  [this](const Request& r) { return handleUpdate(r); });
     router.post(prefix + "/:id/line",    [this](const Request& r) { return handleLine(r); });
     router.post(prefix + "/:id/shift",   [this](const Request& r) { return handleShift(r); });
-    router.post(prefix + "/:id/resolve-overlaps", [this](const Request& r) { return handleResolveOverlaps(r); });
     router.get (prefix + "/:id/games",   [this](const Request& r) { return handleGames(r); });
     router.post(prefix + "/:id/games",   [this](const Request& r) { return handleAddGames(r); });
     router.post(prefix + "/:id/event-mark", [this](const Request& r) { return handleEventMark(r); });
@@ -203,25 +202,6 @@ Response InvoiceController::handleDeleteLine(const Request& request) {
         if (!model_->removeLine(id)) return jsonError(HttpStatus::NOT_FOUND, "no such line");
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) { return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
-}
-
-// POST /api/invoices/:id/resolve-overlaps {date?} (mig 710) — owner: "if
-// there is over lap we can have a resolve button that makes sure it
-// doesn't overlap but gives credit for begin of 1st event and end of last
-// event in question".
-Response InvoiceController::handleResolveOverlaps(const Request& request) {
-    Response denied; if (!gate(request, &denied)) return denied;
-    const long long id = idFromPath(request.getPath());
-    if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
-    json body; Response bad; if (!parseBody(request, &body, &bad)) return bad;
-    try {
-        std::string err;
-        const int merged = model_->resolveOverlaps(id, body.value("date", ""), &err);
-        if (merged < 0) return jsonError(HttpStatus::BAD_REQUEST, err);
-        json out = model_->get(id);
-        out["resolved"] = merged;
-        return jsonOut(HttpStatus::OK, out);
-    } catch (const std::exception& e) { std::cerr << "[invoices resolve-overlaps] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
 Response InvoiceController::handleShift(const Request& request) {

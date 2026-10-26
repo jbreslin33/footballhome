@@ -111,8 +111,6 @@ class InvoicesScreen extends Screen {
         .iv-ev > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .iv-ev .pl { opacity:0.7; font-size:0.92em; }
         .iv-chip.ovl { box-shadow:inset 0 0 0 2px #f87171; }
-        .iv-cal-resolve { border:1px solid #f87171; background:transparent; color:#f87171; border-radius:6px; cursor:pointer;
-                          font-size:0.62rem; font-weight:800; padding:1px 5px; min-width:0; min-height:0; }
         .iv-chip.exp { border-color:#60a5fa; background:rgba(96,165,250,0.14); }
         .iv-cal-add { border:none; background:transparent; color:var(--text-primary); cursor:pointer; padding:0 2px;
                       font-size:0.85rem; line-height:1; opacity:0.45; min-width:0; min-height:0; }
@@ -685,16 +683,6 @@ class InvoicesScreen extends Screen {
       const edLine = e.target.closest('[data-edit-line]');
       if (edLine) { this.editLine = Number(edLine.dataset.editLine); this.addOn = ''; this._renderBody(); return; }
       if (e.target.closest('#iv-ln-save')) { await this.saveLine(); return; }
-      // ⚠ Resolve (mig 710): one day ("data-cal-resolve=YYYY-MM-DD") or all ("").
-      const calResolve = e.target.closest('[data-cal-resolve]');
-      if (calResolve) {
-        try {
-          this.inv = await this._post(`/api/invoices/${this.inv.id}/resolve-overlaps`, { date: calResolve.dataset.calResolve || '' });
-          await this.load();
-          this._loadGames();
-        } catch (err) { this._say(err.message, true); }
-        return;
-      }
       const calDetail = e.target.closest('[data-cal-detail]');
       if (calDetail) { this.detailFor = calDetail.dataset.calDetail; this.partialFor = null; this._renderBody(); return; }
       if (e.target.closest('[data-pop-close]') || e.target.id === 'iv-pop-bg') {
@@ -1169,8 +1157,14 @@ class InvoicesScreen extends Screen {
       const at = from ? `${InvoicesScreen.shortTime(from)}${till ? `–${InvoicesScreen.shortTime(till)}` : ''}` : '';
       const place = i.g && i.g.location ? i.g.location.split(',')[0].trim() : '';
       const crosses = ovl.get(i);
-      const title = `${crosses ? `⚠ ${this._copy('cal_overlap_tip', { list: crosses.join(', ') }) || `Overlaps ${crosses.join(', ')} — the same hours billed twice`}\n` : ''}${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}${i.g && i.g.location ? `\n📍 ${i.g.location}` : ''}`;
-      const inner = `<span class="iv-ev"><span>${crosses ? '⚠ ' : ''}${ICON[kind]} ${at ? `<b>${esc(at)}</b> ` : ''}${esc(label)}${esc(hrs)}</span>${place ? `<span class="pl">📍 ${esc(place)}</span>` : ''}</span>`;
+      // ↔ settled (mig 713): the backend moved this stint so the day's
+      // hours run continuous, never twice; hover shows the calendar's own.
+      const settled = billed && i.s.auto_adjusted;
+      const settledTip = settled ? `${(covered
+          ? this._copy('cal_covered_tip', { was: i.s.auto_from || '' }) || `↔ Inside the event before it — its time is already paid there (calendar: ${i.s.auto_from || ''})`
+          : this._copy('cal_trimmed_tip', { was: i.s.auto_from || '' }) || `↔ Starts when the event before it ends, so no hour is paid twice (calendar: ${i.s.auto_from || ''})`)}\n` : '';
+      const title = `${settledTip}${crosses ? `⚠ ${this._copy('cal_overlap_tip', { list: crosses.join(', ') }) || `Overlaps ${crosses.join(', ')} — the same hours billed twice`}\n` : ''}${i.g ? i.g.note || label : label}${i.at ? ` · ${i.at}` : ''}${hrs}${i.g && i.g.location ? `\n📍 ${i.g.location}` : ''}`;
+      const inner = `<span class="iv-ev"><span>${crosses ? '⚠ ' : ''}${settled ? '↔ ' : ''}${ICON[kind]} ${at ? `<b>${esc(at)}</b> ` : ''}${esc(label)}${esc(hrs)}</span>${place ? `<span class="pl">📍 ${esc(place)}</span>` : ''}</span>`;
       const cls = `${state}${crosses ? ' ovl' : ''}`;
       if (locked) put(date, `<span class="iv-chip ${cls}" style="display:flex;" title="${esc(title)}">${inner}</span>`);
       else if (!i.g && i.s) put(date, `<button class="iv-chip ${cls}" data-edit-shift="${i.s.id}" title="${esc(title)}">${inner}</button>`);
@@ -1254,7 +1248,7 @@ class InvoicesScreen extends Screen {
       const dlabel = (d === gridStart || dnum === '1') ? InvoicesScreen.dayLabel(d).replace(/^\w+ /, '') : dnum;
       const dbl = out ? 0 : (dblByDate.get(d) || 0);
       const sum = dd && !out && (dd.hours > 0 || Math.abs(dd.money) >= 0.005)
-        ? `<div class="dsum">${dbl ? `<div style="color:#f87171;">⚠ ${InvoicesScreen.plain(Math.round(dbl * 100) / 100)}h ×2${locked ? '' : ` <button class="iv-cal-resolve" data-cal-resolve="${d}" title="${esc(this._copy('cal_resolve_tip') || "Pay this day's overlapping times once: first start to last end; the others stay ticked at 0 h")}">${esc(this._copy('cal_resolve') || 'Resolve')}</button>`}</div>` : ''}${dd.hours > 0 ? `${InvoicesScreen.plain(dd.hours)}h · ` : ''}${InvoicesScreen.money(dd.money)}</div>` : '';
+        ? `<div class="dsum">${dbl ? `<div style="color:#f87171;">⚠ ${InvoicesScreen.plain(Math.round(dbl * 100) / 100)}h ×2</div>` : ''}${dd.hours > 0 ? `${InvoicesScreen.plain(dd.hours)}h · ` : ''}${InvoicesScreen.money(dd.money)}</div>` : '';
       cells += `
         <div class="cell ${out ? 'out' : ''}">
           <div class="dnum" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1290,8 +1284,7 @@ class InvoicesScreen extends Screen {
       </div>
       <div class="iv-cal-tot" style="padding-top:0; font-size:0.75rem; opacity:0.75;">
         ${dblHours > 0.005 ? `<span style="color:#f87171; opacity:1; font-weight:700;">${esc(this._copy('cal_overlap', { hours: InvoicesScreen.plain(Math.round(dblHours * 100) / 100), amount: InvoicesScreen.money(dblHours * rate) })
-          || `⚠ ${InvoicesScreen.plain(Math.round(dblHours * 100) / 100)} h billed twice (${InvoicesScreen.money(dblHours * rate)}) — overlapping times; ✏️ or ✗ one`)}</span>
-          ${locked ? '' : `<button class="iv-btn danger sm" data-cal-resolve="" style="opacity:1;" title="${esc(this._copy('cal_resolve_tip') || '')}">${esc(this._copy('cal_resolve_all') || 'Resolve all — pay first start to last end once')}</button>`}` : ''}
+          || `⚠ ${InvoicesScreen.plain(Math.round(dblHours * 100) / 100)} h billed twice (${InvoicesScreen.money(dblHours * rate)}) — times that can't be placed; ✏️ or ✗ one`)}</span>` : ''}
         ${off ? `<span style="color:#f87171; opacity:1; font-weight:700;">${esc(this._copy('cal_mismatch', { days: InvoicesScreen.money(daysMoney), total: InvoicesScreen.money(total) }) || `⚠ The days add up to ${InvoicesScreen.money(daysMoney)} but the invoice says ${InvoicesScreen.money(total)}`)}</span>` : ''}
         <span style="${nLines > InvoicesScreen.SHEET_ROWS ? 'color:#f59e0b;' : ''}">${esc(nLines > InvoicesScreen.SHEET_ROWS
           ? this._copy('sheet_fit', { n: nLines, max: InvoicesScreen.SHEET_ROWS })

@@ -341,6 +341,8 @@ json Invoice::get(long long invoiceId) {
                to_char(s.start_at, 'HH24:MI') AS start_at, to_char(s.end_at, 'HH24:MI') AS end_at, s.note, s.fh_event_id, s.gcal_event_id,
                (s.hours IS NOT NULL) AS flat,
                ROUND(COALESCE(s.hours, EXTRACT(EPOCH FROM (s.end_at - s.start_at)) / 3600.0), 2) AS hours,
+               s.auto_adjusted, to_char(s.auto_from_start, 'HH24:MI') AS auto_from_start, to_char(s.auto_from_end, 'HH24:MI') AS auto_from_end,
+               s.auto_from_hours,
                CASE WHEN s.note IS NULL AND s.fh_event_id IS NULL AND s.gcal_event_id IS NULL THEN
                    (SELECT string_agg(DISTINCT BTRIM(g.summary), ' + ')
                       FROM gcal_events g
@@ -360,6 +362,11 @@ json Invoice::get(long long invoiceId) {
             {"start", str(sh, "start_at")}, {"end", str(sh, "end_at")}, {"note", str(sh, "note")}, {"hours", h},
             {"auto_note", str(sh, "auto_note")},
             {"flat", sh["flat"].as<bool>()},
+            {"auto_adjusted", sh["auto_adjusted"].as<bool>()},
+            {"auto_from", sh["auto_adjusted"].as<bool>()
+                ? (sh["auto_from_start"].is_null() ? json(money2(num(sh, "auto_from_hours")) + " h")
+                                                   : json(str(sh, "auto_from_start") + "–" + str(sh, "auto_from_end")))
+                : json(nullptr)},
             {"fh_event_id", sh["fh_event_id"].is_null() ? json(nullptr) : json(sh["fh_event_id"].as<long long>())},
             {"gcal_event_id", sh["gcal_event_id"].is_null() ? json(nullptr) : json(sh["gcal_event_id"].as<long long>())},
         });
@@ -379,6 +386,7 @@ json Invoice::realityCheck(long long invoiceId) {
     json out = {{"removed", 0}, {"moved", 0}, {"removed_notes", json::array()}, {"moved_notes", json::array()}};
     auto fin = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
     if (fin.empty() || fin[0]["is_final"].as<bool>()) return out;
+    restoreAutoAdjusted(invoiceId);   // re-date the real times; syncLabor re-settles below
     auto removed = db_->query(R"SQL(
         DELETE FROM invoice_work_shifts s
          USING fh_events e, gcal_events g
@@ -479,7 +487,11 @@ void Invoice::syncLabor(long long invoiceId) {
     // until Final is un-ticked (mig 478).
     auto fin = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
     if (fin.empty() || fin[0]["is_final"].as<bool>()) return;
+    // From the real times every time: undo the last settle, lay the youth
+    // lead-in, settle again (mig 713).
+    restoreAutoAdjusted(invoiceId);
     applyLeadIns(invoiceId);
+    settleOverlaps(invoiceId);
     db_->query(R"SQL(
         WITH h AS (
             SELECT COUNT(*) AS n, COALESCE(SUM(COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0)), 0) AS hours
@@ -507,7 +519,8 @@ long long Invoice::upsertShift(long long invoiceId, long long shiftId, const jso
         if (shiftId > 0) {
             auto r = db_->query(
                 "UPDATE invoice_work_shifts SET work_date = $3::date, start_at = NULLIF($4,'')::time, end_at = NULLIF($5,'')::time, "
-                "       hours = NULLIF($7,'')::numeric, note = NULLIF($6,'') "
+                "       hours = NULLIF($7,'')::numeric, note = NULLIF($6,''), "
+                "       auto_adjusted = false, auto_from_start = NULL, auto_from_end = NULL, auto_from_hours = NULL "
                 "WHERE id = $1::int AND invoice_id = $2::int RETURNING id",
                 {std::to_string(shiftId), std::to_string(invoiceId), date, start, end, note, hours});
             if (r.empty()) { *error = "no such day"; return 0; }
@@ -529,14 +542,25 @@ long long Invoice::upsertShift(long long invoiceId, long long shiftId, const jso
     }
 }
 
-int Invoice::resolveOverlaps(long long invoiceId, const std::string& date, std::string* error) {
-    auto fin = db_->query("SELECT is_final FROM invoices WHERE id = $1::int", {std::to_string(invoiceId)});
-    if (fin.empty()) { *error = "no such invoice"; return -1; }
-    if (fin[0]["is_final"].as<bool>()) { *error = "this invoice is final — un-tick Final first"; return -1; }
-    if (!date.empty() && !isIsoDate(date)) { *error = "date must be YYYY-MM-DD"; return -1; }
-    // Each stint's window, as the 📅 calendar draws it: its own from–till,
-    // else its event's start + the billed hours.  Untimed flat hours with
-    // no event can't be placed and stay out of it.
+// Put every auto-adjusted stint back to the times it had before the
+// settle moved it (mig 713), so the next settle starts from the truth.
+void Invoice::restoreAutoAdjusted(long long invoiceId) {
+    db_->query(R"SQL(
+        UPDATE invoice_work_shifts
+           SET start_at = auto_from_start, end_at = auto_from_end, hours = auto_from_hours,
+               auto_adjusted = false, auto_from_start = NULL, auto_from_end = NULL, auto_from_hours = NULL
+         WHERE invoice_id = $1::int AND auto_adjusted)SQL", {std::to_string(invoiceId)});
+}
+
+// ↔ Settle overlaps (mig 713; owner 2026-10-26: "figure it out with
+// continuos but no overlap … as the defualt").  Each day, in start order:
+// a stint that starts inside the running window starts where it ends
+// instead; one wholly inside it is "covered" — still ticked, flat 0 h.
+// The day reads as one continuous stretch, paid once.  A stint's window is
+// its own from–till, else its event's start + the billed hours; untimed
+// flat hours with no event can't be placed and are left alone.  Every
+// change remembers the stint's prior times (auto_from_*).
+void Invoice::settleOverlaps(long long invoiceId) {
     auto rows = db_->query(R"SQL(
         SELECT s.id, s.work_date::text AS d,
                EXTRACT(EPOCH FROM COALESCE(s.start_at, (g.starts_at AT TIME ZONE 'America/New_York')::time)) / 60.0 AS a,
@@ -545,42 +569,35 @@ int Invoice::resolveOverlaps(long long invoiceId, const std::string& date, std::
           FROM invoice_work_shifts s
           LEFT JOIN fh_events e ON e.id = s.fh_event_id
           LEFT JOIN gcal_events g ON g.id = COALESCE(e.gcal_event_id, s.gcal_event_id)
-         WHERE s.invoice_id = $1::int AND (NULLIF($2, '') IS NULL OR s.work_date = NULLIF($2, '')::date)
-         ORDER BY s.work_date, 3, s.id)SQL", {std::to_string(invoiceId), date});
-    struct Span { long long id; std::string d; double a, b; };
-    std::vector<Span> spans;
-    for (const auto& r : rows) {
-        if (r["a"].is_null()) continue;
-        const double a = r["a"].as<double>();
-        double b = r["b"].is_null() ? a + num(r, "hours") * 60.0 : r["b"].as<double>();
-        b = std::min(b, 24.0 * 60.0 - 1.0);   // the CHECK wants end > start; no wrap past midnight
-        if (b <= a) continue;
-        spans.push_back({r["id"].as<long long>(), str(r, "d"), a, b});
-    }
+         WHERE s.invoice_id = $1::int
+         ORDER BY s.work_date, 3, s.id)SQL", {std::to_string(invoiceId)});
     auto hhmm = [](double m) {
         const int t = static_cast<int>(std::lround(m));
         char buf[8]; std::snprintf(buf, sizeof buf, "%02d:%02d", t / 60, t % 60);
         return std::string(buf);
     };
-    int merged = 0;
-    for (size_t i = 0; i < spans.size();) {
-        // A cluster: consecutive spans (same day, sorted by start) that
-        // reach into the running window.
-        size_t j = i + 1;
-        double end = spans[i].b;
-        while (j < spans.size() && spans[j].d == spans[i].d && spans[j].a < end) { end = std::max(end, spans[j].b); ++j; }
-        if (j - i > 1) {
-            db_->query("UPDATE invoice_work_shifts SET start_at = $2::time, end_at = $3::time, hours = NULL WHERE id = $1::int",
-                       {std::to_string(spans[i].id), hhmm(spans[i].a), hhmm(end)});
-            for (size_t k = i + 1; k < j; ++k)
-                db_->query("UPDATE invoice_work_shifts SET start_at = NULL, end_at = NULL, hours = 0 WHERE id = $1::int",
-                           {std::to_string(spans[k].id)});
-            ++merged;
+    const std::string remember =
+        "auto_adjusted = true, auto_from_start = start_at, auto_from_end = end_at, auto_from_hours = hours";
+    std::string day;
+    double reach = -1;   // end of the running window on `day`
+    for (const auto& r : rows) {
+        if (r["a"].is_null()) continue;
+        const double a = r["a"].as<double>();
+        double b = r["b"].is_null() ? a + num(r, "hours") * 60.0 : r["b"].as<double>();
+        b = std::min(b, 24.0 * 60.0 - 1.0);   // the CHECK wants end > start; no wrap past midnight
+        if (b <= a) continue;                 // 0 h / unplaceable
+        const std::string d = str(r, "d");
+        if (d != day) { day = d; reach = -1; }
+        const std::string id = r["id"].c_str();
+        if (a >= reach) { reach = b; continue; }
+        if (b <= reach)
+            db_->query("UPDATE invoice_work_shifts SET " + remember + ", start_at = NULL, end_at = NULL, hours = 0 WHERE id = $1::int", {id});
+        else {
+            db_->query("UPDATE invoice_work_shifts SET " + remember + ", start_at = $2::time, end_at = $3::time, hours = NULL WHERE id = $1::int",
+                       {id, hhmm(reach), hhmm(b)});
+            reach = b;
         }
-        i = j;
     }
-    if (merged) syncLabor(invoiceId);
-    return merged;
 }
 
 bool Invoice::removeShift(long long shiftId) {
@@ -863,7 +880,8 @@ bool Invoice::markCalendarEvent(long long invoiceId, long long gcalEventId, cons
              timed ? str(g[0], "end_at") : std::string{}, timed ? std::string{} : money2(num(g[0], "hours")),
              str(g[0], "note"), ev});
         if (mark == "partial") {
-            db_->query("UPDATE invoice_work_shifts SET hours = $3::numeric, start_at = NULL, end_at = NULL "
+            db_->query("UPDATE invoice_work_shifts SET hours = $3::numeric, start_at = NULL, end_at = NULL, "
+                       "       auto_adjusted = false, auto_from_start = NULL, auto_from_end = NULL, auto_from_hours = NULL "
                        " WHERE invoice_id = $1::int AND gcal_event_id = $2::bigint", {inv_, ev, hours});
         }
         if (!r.empty() || mark == "partial") syncLabor(invoiceId);
@@ -899,7 +917,8 @@ bool Invoice::markEvent(long long invoiceId, long long fhEventId, const std::str
         addGames(invoiceId, {fhEventId}, false, error);
         if (!error->empty()) return false;
         if (mark == "partial") {
-            db_->query("UPDATE invoice_work_shifts SET hours = $3::numeric, start_at = NULL, end_at = NULL "
+            db_->query("UPDATE invoice_work_shifts SET hours = $3::numeric, start_at = NULL, end_at = NULL, "
+                       "       auto_adjusted = false, auto_from_start = NULL, auto_from_end = NULL, auto_from_hours = NULL "
                        " WHERE invoice_id = $1::int AND fh_event_id = $2::bigint", {inv_, ev, hours});
             syncLabor(invoiceId);
         }

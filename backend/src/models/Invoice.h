@@ -64,11 +64,6 @@ public:
     // note }.  The labor line's quantity / amount follow the stints.
     long long upsertShift(long long invoiceId, long long shiftId, const nlohmann::json& fields, std::string* error);
     bool removeShift(long long shiftId);
-    // ⚠ Resolve (mig 710): on `date` ("" = every day), each cluster of
-    // billed stints whose times cross is credited ONCE — the earliest
-    // stint runs first start → last end, the rest stay billed at 0 h
-    // ("covered").  Returns the clusters merged; -1 + error on failure.
-    int resolveOverlaps(long long invoiceId, const std::string& date, std::string* error);
 
     // Events on the calendar in the invoice's period (mig 531, practices
     // since mig 569): every match and practice of a team the issuer
@@ -110,6 +105,8 @@ private:
     // whenever the invoice has any shifts.
     void syncLabor(long long invoiceId);
     void applyLeadIns(long long invoiceId);
+    void restoreAutoAdjusted(long long invoiceId);
+    void settleOverlaps(long long invoiceId);
     nlohmann::json openPlans(long long issuerId);
 
     Database* db_;
