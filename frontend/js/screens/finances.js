@@ -113,7 +113,7 @@ class FinancesScreen extends Screen {
     const row = (s, isAll) => `
       <tr class="${isAll ? 'sum' : ''}">
         <td style="font-weight:700;">${isAll ? esc(this._ov('all_label') || 'All') : `${this._emoji(s.code)} ${esc(s.name)}`}</td>
-        <td>${s.members}</td><td style="${s.free ? '' : 'opacity:0.5;'}">${s.free}</td>
+        <td>${s.members}</td><td style="${s.free ? '' : 'opacity:0.5;'}">${s.free}</td><td style="${s.volunteers ? '' : 'opacity:0.5;'}">${s.volunteers || 0}</td>
         <td style="${tone(s.paid_up, '#86efac')}">${s.paid_up}</td><td style="${tone(s.behind, '#fbbf24')}">${s.behind}</td>
         <td style="${tone(s.blocked, '#fca5a5')}">${s.blocked}</td><td style="${tone(s.owed, '#fca5a5')}">${M(s.owed)}</td>
       </tr>`;

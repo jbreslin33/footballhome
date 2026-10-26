@@ -15,7 +15,9 @@
 //   members  open rows on the section's active membership program
 //   free     of those, la_payment_status NA_FREE (the women's program is
 //            free; a few men too) — they project $0
-//   paying   members − free
+//   volunteers  paying-status members on club_volunteers (mig 704) —
+//            they play without dues and project $0, like free
+//   paying   members − free − volunteers
 //   paid_up  paying members who owe $0                (current in dues)
 //   behind   owe something but under the dues line
 //   blocked  at or over the line (fh_dues_line_usd; cannot RSVP)

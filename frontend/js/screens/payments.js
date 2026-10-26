@@ -343,6 +343,7 @@ class PaymentsScreen extends Screen {
       { id: 'never',        label: '⚫ Never Paid',      count: c.never   || 0 },
       { id: 'behind',       label: '🟡 Behind',          count: c.behind  || 0 },
       { id: 'current',      label: '🟢 Paid Up',         count: c.current || 0 },
+      { id: 'volunteer',    label: this._volunteerLabel(), count: c.volunteer || 0 },
     ];
 
     // Category-row selection reflects the current tab; program-row
@@ -446,7 +447,7 @@ class PaymentsScreen extends Screen {
 
   // Counts used to label the status chips — summed over the tab's shards.
   _activeCounts() {
-    const combined = { current: 0, behind: 0, overdue: 0, never: 0, finalNotice: 0 };
+    const combined = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, finalNotice: 0 };
     for (const k of this._shardKeys()) {
       const d = this.membersByTab[k];
       if (!d || !d.counts) continue;
@@ -454,6 +455,7 @@ class PaymentsScreen extends Screen {
       combined.behind      += d.counts.behind      || 0;
       combined.overdue      += d.counts.overdue     || 0;
       combined.never       += d.counts.never       || 0;
+      combined.volunteer   += d.counts.volunteer   || 0;
       combined.finalNotice += d.counts.finalNotice || 0;
     }
     return combined;
@@ -486,7 +488,7 @@ class PaymentsScreen extends Screen {
       programName: this._shardLabel(keys),
       total:       0,
       inactiveCount: 0,
-      counts:      { current: 0, behind: 0, overdue: 0, never: 0 },
+      counts:      { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0 },
       members:     [],
       // Fields needed by _summarize().  Concatenating recentPayments
       // gives a naive "who paid recently across all programs" list;
@@ -499,7 +501,7 @@ class PaymentsScreen extends Screen {
     for (const d of shards) {
       out.total += (d.total || 0);
       out.inactiveCount += (d.inactiveCount || 0);
-      for (const k of ['current','behind','overdue','never']) {
+      for (const k of ['current','behind','overdue','never','volunteer']) {
         out.counts[k] += (d.counts?.[k] || 0);
       }
       if (Array.isArray(d.members)) out.members.push(...d.members);
@@ -715,6 +717,7 @@ class PaymentsScreen extends Screen {
       <div><span style="opacity:0.7;">🟡 Behind:</span> <span style="font-weight:700; color:#fbbf24;">${c.behind || 0}</span></div>
       <div><span style="opacity:0.7;">🔴 Overdue:</span> <span style="font-weight:700; color:#fca5a5;">${c.overdue || 0}</span></div>
       <div><span style="opacity:0.7;">⚫ Never paid:</span> <span style="font-weight:700; color:#e5e7eb;">${c.never || 0}</span></div>
+      <div><span style="opacity:0.7;">${this.escape(this._volunteerLabel())}:</span> <span style="font-weight:700; color:#93c5fd;">${c.volunteer || 0}</span></div>
       <div><span style="opacity:0.7;">🚫 Inactive:</span> <span style="font-weight:700; color:#c4b5fd;">${inactiveCount}</span></div>
       <div style="flex-basis:100%; height:0;"></div>
       <div><span style="opacity:0.7;">💰 Collected:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(fin.netCollected)}</span></div>
@@ -782,12 +785,13 @@ class PaymentsScreen extends Screen {
     //   • fg      — text/icon colour (readable on the tinted bar)
     //   • bg      — subtle tinted background for the bar itself
     //   • border  — accent line on the left edge
-    const statusOrder = ['overdue', 'never', 'behind', 'current'];
+    const statusOrder = ['overdue', 'never', 'behind', 'current', 'volunteer'];
     const statusMeta = {
       overdue: { icon:'🔴', label:'OVERDUE',    fg:'#7f1d1d', bg:'#fee2e2', border:'#dc2626' },
       never:   { icon:'⚫', label:'NEVER PAID', fg:'#1f2937', bg:'#e5e7eb', border:'#4b5563' },
       behind:  { icon:'🟡', label:'BEHIND',     fg:'#78350f', bg:'#fef3c7', border:'#d97706' },
       current: { icon:'🟢', label:'CURRENT',    fg:'#14532d', bg:'#dcfce7', border:'#16a34a' },
+      volunteer: { icon:'', label:this._volunteerLabel().toUpperCase(), fg:'#1e3a8a', bg:'#dbeafe', border:'#2563eb' },
     };
     const byStatus = {};
     for (const st of statusOrder) byStatus[st] = [];
@@ -1010,6 +1014,7 @@ class PaymentsScreen extends Screen {
   // full months); the operator never chooses it.
   // → {subject, body, standing, tier} or null.
   _paymentNotice(m, channel) {
+    if (m.status === 'volunteer') return null;   // volunteers pay no dues (mig 704)
     const standing = this._duesStanding(m);
     if (!standing) return null;
     const pauseAt = this._pauseAfterMonths();
@@ -1160,7 +1165,13 @@ class PaymentsScreen extends Screen {
     return `padding:6px 10px; border-radius:4px; text-decoration:none; background:${c.bg}; color:${c.fg}; border:1px solid ${c.border}; font-size:0.75rem; font-weight:700;`;
   }
 
+  // Volunteers (club_volunteers, mig 704) — wording from message_templates
+  // kind payments_overview.
+  _volunteerLabel() { return (window.MessageCopy && MessageCopy.has('payments_overview', 'volunteer_label')) ? MessageCopy.block('payments_overview', 'volunteer_label') : '🙋 Volunteer'; }
+  _volunteerNote()  { return (window.MessageCopy && MessageCopy.has('payments_overview', 'volunteer_note'))  ? MessageCopy.block('payments_overview', 'volunteer_note')  : ''; }
+
   renderMemberCard(m) {
+    const volunteer = m.status === 'volunteer';
     const badge = this.renderStatusBadge(m.status, m.daysOverdue);
     const name  = `${this.escape(m.firstName || '')} ${this.escape(m.lastName || '')}`.trim() || '—';
     const lastLine = m.lastPaidAt
@@ -1322,12 +1333,12 @@ class PaymentsScreen extends Screen {
           <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${prorateCell}${finesCells}${badge}</div>
         </div>
         ${finesDetail}
-        ${this.renderDueHero(m)}
+        ${volunteer ? `<div style="font-size:0.8rem; color:#93c5fd; background:#172554; border:1px solid #2563eb; border-radius:6px; padding:6px 10px;">${this.escape(this._volunteerNote())}</div>` : this.renderDueHero(m)}
         ${dobLine}
         ${contactLine}
         ${activityLine}
         <div style="font-size:0.8rem; opacity:0.85;">${lastLine}</div>
-        ${this.renderDueDateDropdown(m)}
+        ${volunteer ? '' : this.renderDueDateDropdown(m)}
         <div style="font-size:0.75rem; opacity:0.7;">
           Lifetime: ${this.fmtMoney(m.totalPaid || 0)}
           ${m.totalRefunded ? ` · refunded ${this.fmtMoney(m.totalRefunded)}` : ''}
@@ -1340,7 +1351,7 @@ class PaymentsScreen extends Screen {
           </div>
           ${recentHtml}
         </div>
-        <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtns.join('')}${pauseBtn}${flagBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: m.laUserId, firstName: m.firstName, fullName: `${m.firstName || ''} ${m.lastName || ''}`.trim() }, { returnTo: 'payments', size: 'md' }) : ''}</div>
+        <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtns.join('')}${volunteer ? '' : pauseBtn + flagBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: m.laUserId, firstName: m.firstName, fullName: `${m.firstName || ''} ${m.lastName || ''}`.trim() }, { returnTo: 'payments', size: 'md' }) : ''}</div>
       </div>
     `;
   }
@@ -1694,6 +1705,7 @@ class PaymentsScreen extends Screen {
     switch (status) {
       case 'current': icon='🟢'; label='Current'; bg='#052e1a'; fg='#86efac'; break;
       case 'behind':  icon='🟡'; label='Behind';  bg='#3a2e05'; fg='#fbbf24'; break;
+      case 'volunteer': icon=''; label=this.escape(this._volunteerLabel()); bg='#172554'; fg='#93c5fd'; break;
       case 'overdue':
         icon='🔴';
         label = days > 0 ? `Overdue · ${days}d` : 'Overdue';

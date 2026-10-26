@@ -302,12 +302,13 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
     //        red-badge warning strip.
     json members = json::array();
     json mismatches = json::array();
-    int cCurrent = 0, cBehind = 0, cOverdue = 0, cNever = 0, cFinalNotice = 0;
+    int cCurrent = 0, cBehind = 0, cOverdue = 0, cNever = 0, cVolunteer = 0, cFinalNotice = 0;
     for (const auto& m : rows) {
         if      (m.status == "current") ++cCurrent;
         else if (m.status == "behind")  ++cBehind;
         else if (m.status == "overdue") ++cOverdue;
         else if (m.status == "never")   ++cNever;
+        else if (m.status == "volunteer") ++cVolunteer;
 
         json row = json::object();
         row["personId"]         = m.personId;
@@ -635,6 +636,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         {"behind",      cBehind},
         {"overdue",     cOverdue},
         {"never",       cNever},
+        {"volunteer",   cVolunteer},
         {"finalNotice", cFinalNotice},
     };
     out["needsAttention"] = cNever + cOverdue;  // headline number for the badge

@@ -758,6 +758,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "       (m.next_due_at IS NOT NULL"
         "        AND date_trunc('month', dc.upcoming_due::timestamptz)"
         "            > date_trunc('month', m.next_due_at)) AS final_notice,"
+        "       fh_is_volunteer(m.person_id) AS volunteer,"
         "       TO_CHAR(dc.upcoming_due, 'YYYY-MM-DD') AS upcoming_due_iso"
         "  FROM person_la_memberships m"
         "  CROSS JOIN due_cycle dc"
@@ -820,6 +821,12 @@ PersonPayments::loadMembersForProgram(long long programId) {
         if (!r["days_overdue"].is_null())    m.daysOverdue   = r["days_overdue"].as<int>();
         if (!r["final_notice"].is_null())    m.finalNotice   = r["final_notice"].as<bool>();
         if (!r["upcoming_due_iso"].is_null()) m.upcomingDueAt = r["upcoming_due_iso"].c_str();
+        // Volunteers (club_volunteers, mig 704) play without dues: their
+        // own status, never a final notice, whatever LA's ledger says.
+        if (!r["volunteer"].is_null() && r["volunteer"].as<bool>()) {
+            m.status      = "volunteer";
+            m.finalNotice = false;
+        }
 
         if (!r["recent_txns"].is_null()) {
             try {
