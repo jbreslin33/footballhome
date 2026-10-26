@@ -850,6 +850,11 @@ class InvoicesScreen extends Screen {
     if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return 0;
     return Math.round((b - a) / 60 * 100) / 100;
   }
+  // A ref-fee chip's name: league/age shorthand + opponent ("U10 · Fishtown").
+  static refLabel(policy, opponent) {
+    const p = String(policy || '').replace(/^Parks & Rec /, '').trim();
+    return [p, opponent].filter(Boolean).join(' · ');
+  }
   // '18:30' → '6:30p', '10:00' → '10a' — fits a calendar chip.
   static shortTime(hhmm) {
     const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || ''));
@@ -1149,7 +1154,10 @@ class InvoicesScreen extends Screen {
       // Matches lead with the opponent; everything else reads the event's
       // note, never a placeholder team label.  auto_note (mig 624 round):
       // a noteless day stint reads the calendar events its window overlaps.
-      const label = i.g ? (kind === 'match' ? (i.g.opponent || i.g.note || '') : (i.g.note || i.g.team_label || ''))
+      // Say WHICH game (owner 2026-10-26: "we need to show what game or
+      // event it was. like liga 1, u10 etc"): a match reads its note —
+      // league/age + vs/at + opponent ("U10 at Fishtown", "Liga 1 vs …").
+      const label = i.g ? (i.g.note || i.g.opponent || i.g.team_label || '')
                         : (i.s.note || i.s.auto_note || inv.issuer?.duty_description || 'Hours');
       const hrs = covered ? ` · ${this._copy('cal_covered') || 'covered'}` : billed ? ` · ${InvoicesScreen.plain(i.s.hours)}h` : '';
       // Time + place on the chip (owner 2026-10-26: "i need the times of
@@ -1190,7 +1198,7 @@ class InvoicesScreen extends Screen {
       if (this.calKinds.ref === false) continue;
       const tag = `${r.source}:${r.ref_id}`;
       const amtSpan = `<span style="flex-shrink:0;">${InvoicesScreen.money(r.amount)}</span>`;
-      const inner = `🧑‍⚖️ <span>${esc(r.opponent || r.policy_label)}</span>`;
+      const inner = `🧑‍⚖️ <span>${esc(InvoicesScreen.refLabel(r.policy_label, r.opponent))}</span>`;
       const tip = `${r.policy_label} — ${r.opponent}${r.game_on !== r.day ? ` (${InvoicesScreen.dayLabel(r.game_on)})` : ''}`;
       if (locked) { put(r.day, `<span class="iv-chip ref on" style="display:flex;" title="${esc(tip)}">${inner}${amtSpan}</span>`); continue; }
       put(r.day, `<span class="iv-chip ref on" style="display:flex;">
@@ -1206,7 +1214,7 @@ class InvoicesScreen extends Screen {
         if (g.on_this || !g.game_on || g.game_on < gridStart || g.game_on > gridEnd) continue;
         const tag = `${g.source}:${g.ref_id}`;
         const amtSpan = `<span style="flex-shrink:0;">${InvoicesScreen.money(g.amount)}</span>`;
-        const inner = `🧑‍⚖️ <span>${esc(g.opponent)}</span>${amtSpan}`;
+        const inner = `🧑‍⚖️ <span>${esc(InvoicesScreen.refLabel(g.policy_label, g.opponent))}</span>${amtSpan}`;
         if (g.in_gcal === false) {
           put(g.game_on, `<span class="iv-chip ref" style="opacity:0.45;" title="${esc(g.opponent)} — ${esc(this._copy('refs_not_on_gcal') || 'not on the calendar')}">${inner}</span>`);
         } else if (g.declined) {
