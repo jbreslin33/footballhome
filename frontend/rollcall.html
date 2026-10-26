@@ -30,11 +30,11 @@
     .card { background: linear-gradient(160deg, #0b1c3d, #112a5c); border: 1px solid #1e3a8a; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
     .card h2 { margin: 0 0 2px; font-size: 19px; }
     .card .dl { font-size: 13px; color: #fcd34d; margin-bottom: 12px; }
-    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    /* Stacked full width — Going, Still to answer, Not going — so names fit a phone (owner 10/26). */
+    .cols { display: grid; grid-template-columns: 1fr; gap: 10px; }
     .col { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px; min-height: 60px; }
     .col h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
     .col.go h3 { color: #4ade80; } .col.no h3 { color: #f87171; } .col.none h3 { color: #fbbf24; }
-    .col.none { grid-column: 1 / -1; }
     .names { font-size: 15px; line-height: 1.6; }
     /* One name per line, numbered, so the list matches the count (owner 10/26). */
     .names { counter-reset: n; }
@@ -160,8 +160,8 @@
               ${g.deadline ? `<div class="dl">${esc(g.deadline)}</div>` : '<div class="dl"></div>'}
               <div class="cols">
                 <div class="col go"><h3>${esc(c('col_going') || 'Going')} · ${g.going.length}</h3><div class="names">${namesHtml(g.going, mine)}</div></div>
-                <div class="col no"><h3>${esc(c('col_not') || 'Not going')} · ${g.not_going.length}</h3><div class="names">${namesHtml(g.not_going, mine)}</div></div>
                 <div class="col none"><h3>${esc(c('col_none') || 'Still to answer')}${g.no_response ? ' · ' + g.no_response_count : ''}</h3>${noneHtml}</div>
+                <div class="col no"><h3>${esc(c('col_not') || 'Not going')} · ${g.not_going.length}</h3><div class="names">${namesHtml(g.not_going, mine)}</div></div>
               </div>
               ${answerHtml}
             </div>`;
