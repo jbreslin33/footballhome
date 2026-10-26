@@ -63,6 +63,7 @@
 #include "controllers/SmsOptInBoardController.h"
 #include "controllers/ContactsController.h"
 #include "controllers/LineupDraftController.h"
+#include "controllers/ContactDraftsController.h"
 #include "controllers/OfficialRosterController.h"
 #include "controllers/GameMessageController.h"
 #include "controllers/OpponentsController.h"
@@ -156,6 +157,7 @@ private:
     std::shared_ptr<SmsOptInBoardController> sms_opt_in_board_controller_;
     std::shared_ptr<ContactsController> contacts_controller_;
     std::shared_ptr<LineupDraftController> lineup_draft_controller_;
+    std::shared_ptr<ContactDraftsController> contact_drafts_controller_;
     std::shared_ptr<OfficialRosterController> official_roster_controller_;
     std::shared_ptr<GameMessageController> game_message_controller_;
     std::shared_ptr<OpponentsController> opponents_controller_;
@@ -258,6 +260,7 @@ public:
         sms_opt_in_board_controller_ = std::make_shared<SmsOptInBoardController>();
         contacts_controller_ = std::make_shared<ContactsController>();
         lineup_draft_controller_ = std::make_shared<LineupDraftController>();
+        contact_drafts_controller_ = std::make_shared<ContactDraftsController>();
         official_roster_controller_ = std::make_shared<OfficialRosterController>();
         game_message_controller_ = std::make_shared<GameMessageController>();
         opponents_controller_ = std::make_shared<OpponentsController>();
@@ -599,6 +602,8 @@ private:
         router_.useController("/api/contacts", contacts_controller_);
         // Lineup drafts next to the official lineup (mig 495).
         router_.useController("/api/lineup-drafts", lineup_draft_controller_);
+        // Email drafts to one contact — the league commissioner first (mig 724).
+        router_.useController("/api/contact-drafts", contact_drafts_controller_);
         // The league's own roster sheet, pulled fresh per game (mig 501).
         router_.useController("/api/official-roster", official_roster_controller_);
         // Who a message about one game reaches — the bulk ✉/💬 buttons on #game-center (mig 506).

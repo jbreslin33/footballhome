@@ -43,6 +43,7 @@ set(SOURCES
     src/models/PersonBilling.cpp
     src/models/DuesPolicy.cpp
     src/models/PayReminderLog.cpp
+    src/models/ContactDrafts.cpp
     src/models/PersonActivity.cpp
     src/models/PersonFines.cpp
     src/models/WelcomeLog.cpp
@@ -151,6 +152,7 @@ set(SOURCES
     src/controllers/SmsOptInBoardController.cpp
     src/controllers/ContactsController.cpp
     src/controllers/LineupDraftController.cpp
+    src/controllers/ContactDraftsController.cpp
     src/controllers/OfficialRosterController.cpp
     src/controllers/GameMessageController.cpp
     src/controllers/OpponentsController.cpp

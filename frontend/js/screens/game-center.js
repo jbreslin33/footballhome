@@ -739,7 +739,7 @@ class GameCenterScreen extends Screen {
     if (document.hidden || !this.matchId || !this.loaded || this.error || this._pollBusy) return;
     if (this._liveFpLast == null) return;   // no baseline yet — bootstrap sets it
     // Never refresh into an edit — catch up on a later tick instead.
-    if (this._saveTimer || this._jerseyDebounce || this.overlayOpen || this.announceEditing) return;
+    if (this._saveTimer || this._jerseyDebounce || this.overlayOpen || this.announceEditing || this._draftEdit) return;
     if (this._isDraftView()) return;
     if (document.getElementById('gc-swap-sheet')) return;
     const focused = document.activeElement;
@@ -947,6 +947,8 @@ class GameCenterScreen extends Screen {
       if (oppSend && this.isCoach && !oppSend.disabled) { this._sendToOpponent(oppSend); return; }
       const oppSendAll = e.target.closest('[data-gc-opp-send-all]');
       if (oppSendAll && this.isCoach && !oppSendAll.disabled) { this._sendToOpponentAll(oppSendAll); return; }
+      const draftBtn = e.target.closest('[data-gc-draft-toggle], [data-gc-draft-new], [data-gc-draft-edit], [data-gc-draft-cancel], [data-gc-draft-save], [data-gc-draft-send], [data-gc-draft-delete]');
+      if (draftBtn && this.isCoach && !draftBtn.disabled) { this._draftClick(draftBtn); return; }
       const oppAdd = e.target.closest('[data-gc-opp-add]');
       if (oppAdd && this.isCoach) { this._oppAddOpen = !this._oppAddOpen; this._render(); return; }
       const oppSave = e.target.closest('[data-gc-opp-save]');
@@ -1118,6 +1120,8 @@ class GameCenterScreen extends Screen {
     });
 
     this.element.addEventListener('input', (e) => {
+      // 📝 contact draft (mig 724): keep the text across re-renders.
+      if (e.target.matches('[data-gc-draft-subject], [data-gc-draft-body]')) { this._draftReadForm(); return; }
       if (e.target.id === 'gc-player-search') {
         this.filterText = e.target.value.toLowerCase();
         this._renderDetailsList();
@@ -2928,7 +2932,7 @@ class GameCenterScreen extends Screen {
       </div>`;
     if (!club) {
       const lg0 = o.league;
-      const lgBlock0 = lg0 && (lg0.contacts || []).length ? `<div style="margin-top:8px;"><div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${esc(copy('game_center_league', { league: lg0.name || lg0.label }) || `🏛 ${lg0.name || lg0.label} league directors`)}</div>${lg0.contacts.map(k => `<div style="font-size:0.72rem; padding:3px 0;"><b>${esc(k.name || '')}</b> <span style="opacity:0.65;">${esc(k.role || '')}</span> <span style="opacity:0.7;">${esc([k.phone, k.email].filter(Boolean).join(' · '))}</span> <button class="btn btn-secondary" data-gc-opp-send="sms" data-contact="${k.id}" ${k.phone ? '' : 'disabled'} style="padding:2px 6px; font-size:0.66rem;">💬</button> <button class="btn btn-primary" data-gc-opp-send="email" data-contact="${k.id}" ${k.email ? '' : 'disabled'} style="padding:2px 6px; font-size:0.66rem;">✉️</button></div>`).join('')}</div>` : '';
+      const lgBlock0 = lg0 && (lg0.contacts || []).length ? `<div style="margin-top:8px;"><div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${esc(copy('game_center_league', { league: lg0.name || lg0.label }) || `🏛 ${lg0.name || lg0.label} league directors`)}</div>${lg0.contacts.map(k => `<div style="font-size:0.72rem; padding:3px 0;"><b>${esc(k.name || '')}</b> <span style="opacity:0.65;">${esc(k.role || '')}</span> <span style="opacity:0.7;">${esc([k.phone, k.email].filter(Boolean).join(' · '))}</span> <button class="btn btn-secondary" data-gc-opp-send="sms" data-contact="${k.id}" ${k.phone ? '' : 'disabled'} style="padding:2px 6px; font-size:0.66rem;">💬</button> <button class="btn btn-primary" data-gc-opp-send="email" data-contact="${k.id}" ${k.email ? '' : 'disabled'} style="padding:2px 6px; font-size:0.66rem;">✉️</button> ${this._draftBtn(k)}</div>${this._draftsArea(k, lg0)}`).join('')}</div>` : '';
       return wrap('📇 Contact opponent', `<div style="font-size:0.72rem; opacity:0.75; line-height:1.4;">${esc(copy('game_center_none', { opponent: o.opponent_text || '?' }) || `No club matched to "${o.opponent_text || '?'}".`)}
         <button class="btn btn-secondary" data-gc-opp-page="0" style="padding:2px 8px; font-size:0.66rem; margin-left:6px;">Open Opponents</button></div>${lgBlock0}`);
     }
@@ -2947,7 +2951,7 @@ class GameCenterScreen extends Screen {
         ${emails.length > 1 ? `<button class="btn btn-primary" data-gc-opp-send-all="email" data-scope="${scope}" data-ids="${emails.join(',')}" style="padding:3px 8px; font-size:0.7rem;">${esc(copy('game_center_all_email') || '✉️ Email all')} (${emails.length})</button>` : ''}
       </div>`;
     };
-    const contactRows = (list) => list.map(k => `
+    const contactRows = (list, lgForDrafts = null) => list.map(k => `
       <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:5px 0; border-top:1px solid var(--border-color); font-size:0.76rem;">
         <div style="flex:1; min-width:140px;">
           <b>${esc(k.name || k.role || 'Team mailbox')}</b>${k.name && k.role ? ` <span style="opacity:0.65;">· ${esc(k.role)}</span>` : ''}
@@ -2956,13 +2960,14 @@ class GameCenterScreen extends Screen {
         </div>
         <button class="btn btn-secondary" data-gc-opp-send="sms" data-contact="${k.id}" ${k.phone ? '' : 'disabled'} style="padding:3px 8px; font-size:0.7rem;">💬 Text</button>
         <button class="btn btn-primary" data-gc-opp-send="email" data-contact="${k.id}" ${k.email ? '' : 'disabled'} style="padding:3px 8px; font-size:0.7rem;">✉️ Email</button>
-      </div>`).join('');
+        ${lgForDrafts ? this._draftBtn(k) : ''}
+      </div>${lgForDrafts ? this._draftsArea(k, lgForDrafts) : ''}`).join('');
     const rows = contactRows(club.contacts || []);
     const lg = o.league;
     const leagueBlock = lg && (lg.contacts || []).length ? `
       <div style="margin-top:10px; padding-top:6px; border-top:2px solid var(--border-color);">
         <div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${esc(copy('game_center_league', { league: lg.name || lg.label }) || `🏛 ${lg.name || lg.label} league directors`)}${lg.age ? ` <span style="opacity:0.6; font-weight:400;">· U${esc(lg.age)}</span>` : ''}</div>
-        ${contactRows(lg.contacts)}
+        ${contactRows(lg.contacts, lg)}
         ${allBtns(lg.contacts, 'league')}
       </div>` : '';
     const addForm = this._oppAddOpen ? `
@@ -2976,6 +2981,143 @@ class GameCenterScreen extends Screen {
       ${allBtns(club.contacts || [], 'club')}
       <div style="margin-top:6px;"><button class="btn btn-secondary" data-gc-opp-add style="padding:2px 8px; font-size:0.66rem;">${this._oppAddOpen ? 'Cancel' : '＋ contact'}</button></div>
       ${addForm}${leagueBlock}`);
+  }
+
+  // 📝 Drafts to one league contact (mig 724) — owner 2026-10-26: email the
+  // APSL commissioner our home-game times "without others being involved",
+  // drafts kept until sent or deleted.  Send opens Gmail filled in (same
+  // compose as every ✉️ button) and logs it; one-offs get deleted.
+  _draftBtn(k) {
+    if (!k.email) return '';
+    const open = this._draftsFor === k.id;
+    return `<button class="btn btn-secondary" data-gc-draft-toggle="${k.id}" style="padding:3px 8px; font-size:0.7rem;">${open ? '✕ Close' : '📝 Draft'}</button>`;
+  }
+
+  _draftsArea(k, lg) {
+    if (this._draftsFor !== k.id) return '';
+    const esc = (t) => this.escapeHtml(t);
+    const copy = (tier, tokens = {}) => window.MessageCopy ? MessageCopy.block('contact_draft', tier, tokens) : '';
+    const d = this._draftsData;
+    const box = 'font-size:0.74rem; padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); width:100%; box-sizing:border-box;';
+    let inner;
+    if (!d) inner = `<div style="font-size:0.72rem; opacity:0.7;">Loading…</div>`;
+    else if (d.error) inner = `<div style="font-size:0.72rem; color:#fca5a5;">${esc(d.error)}</div>`;
+    else if (this._draftEdit) {
+      const e = this._draftEdit;
+      inner = `
+        <input data-gc-draft-subject value="${esc(e.subject)}" placeholder="Subject" style="${box}">
+        <textarea data-gc-draft-body rows="8" style="${box} margin-top:4px; font-family:inherit; resize:vertical;">${esc(e.body)}</textarea>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+          <button class="btn btn-primary" data-gc-draft-send style="padding:3px 10px; font-size:0.72rem;">✉️ Send</button>
+          <button class="btn btn-secondary" data-gc-draft-save style="padding:3px 10px; font-size:0.72rem;">💾 Save draft</button>
+          <button class="btn btn-secondary" data-gc-draft-cancel style="padding:3px 10px; font-size:0.72rem;">Cancel</button>
+          ${e.id ? `<button class="btn btn-secondary" data-gc-draft-delete="${e.id}" style="padding:3px 10px; font-size:0.72rem; margin-left:auto;">🗑 Delete</button>` : ''}
+        </div>`;
+    } else {
+      const drafts = d.drafts || [], sent = d.sent || [];
+      inner = `
+        ${drafts.map(x => `
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:4px 0; border-top:1px dashed var(--border-color); font-size:0.72rem;">
+            <div style="flex:1; min-width:140px;"><b>${esc(x.subject || '(no subject)')}</b> <span style="opacity:0.6;">· draft, ${esc(x.updated_label)}</span></div>
+            <button class="btn btn-secondary" data-gc-draft-edit="${x.id}" style="padding:2px 8px; font-size:0.68rem;">Edit</button>
+            <button class="btn btn-secondary" data-gc-draft-delete="${x.id}" style="padding:2px 8px; font-size:0.68rem;">🗑</button>
+          </div>`).join('')}
+        <button class="btn btn-primary" data-gc-draft-new style="padding:3px 10px; font-size:0.72rem; margin-top:4px;">＋ New email</button>
+        ${sent.length ? `<div style="margin-top:6px; font-size:0.66rem; opacity:0.65;">${sent.map(x => `Sent ${esc(x.sent_label)}: ${esc(x.subject || '(no subject)')}`).join('<br>')}</div>` : ''}`;
+    }
+    return `
+      <div data-gc-drafts style="margin:2px 0 6px; padding:8px; border-radius:8px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.35);">
+        <div style="font-size:0.68rem; opacity:0.8; margin-bottom:6px; line-height:1.4;">${esc(copy('note', { name: k.name || k.email }))}</div>
+        ${inner}
+      </div>`;
+  }
+
+  async _draftsLoad(contactId) {
+    try {
+      const res = await this.auth.fetch(`/api/contact-drafts?contact_id=${contactId}`);
+      const data = await res.json().catch(() => ({}));
+      this._draftsData = res.ok ? data : { error: data.error || `HTTP ${res.status}` };
+    } catch (err) { this._draftsData = { error: err.message }; }
+    this._render();
+  }
+
+  // The prefilled subject/body for a new email: this game when we're on one.
+  _draftNew(contactId) {
+    const o = this.oppContacts || {}, lg = o.league || {};
+    const k = (lg.contacts || []).find(x => x.id === contactId) || {};
+    const me = (this.auth && this.auth.getUser && this.auth.getUser()) || {};
+    const m = this.matchDetails || {};
+    const tokens = {
+      first: String(k.name || '').split(/\s+/)[0] || 'there',
+      league: lg.label || lg.name || '',
+      matchup: m.home_team_name && m.away_team_name ? `${m.home_team_name} vs ${m.away_team_name}` : (this.title || ''),
+      date: this._whenLabel() || '',
+      sender: me.name || [me.first_name, me.last_name].filter(Boolean).join(' ') || '',
+    };
+    const tier = this.matchId ? 'new_game' : 'new_plain';
+    const r = (window.MessageCopy && MessageCopy.render('contact_draft', tier, tokens)) || {};
+    this._draftEdit = { id: 0, contactId, subject: r.subject || '', body: r.body || '' };
+  }
+
+  _draftReadForm() {
+    const el = this.element; if (!el || !this._draftEdit) return;
+    const su = el.querySelector('[data-gc-draft-subject]'), bo = el.querySelector('[data-gc-draft-body]');
+    if (su) this._draftEdit.subject = su.value;
+    if (bo) this._draftEdit.body = bo.value;
+  }
+
+  async _draftSave() {
+    this._draftReadForm();
+    const e = this._draftEdit;
+    const data = await this._postReminder('/api/contact-drafts', { id: e.id || 0, contact_id: this._draftsFor, match_id: this.matchId || 0, subject: e.subject, body: e.body });
+    return data.draft;
+  }
+
+  async _draftClick(btn) {
+    try {
+      if (btn.dataset.gcDraftToggle) {
+        const id = Number(btn.dataset.gcDraftToggle);
+        this._draftEdit = null; this._draftsData = null;
+        this._draftsFor = this._draftsFor === id ? null : id;
+        this._render();
+        if (this._draftsFor) await this._draftsLoad(id);
+        return;
+      }
+      if (btn.hasAttribute('data-gc-draft-new')) { this._draftNew(this._draftsFor); this._render(); return; }
+      if (btn.dataset.gcDraftEdit) {
+        const x = ((this._draftsData || {}).drafts || []).find(d => d.id === Number(btn.dataset.gcDraftEdit));
+        if (x) { this._draftEdit = { id: x.id, contactId: x.contact_id, subject: x.subject, body: x.body }; this._render(); }
+        return;
+      }
+      if (btn.hasAttribute('data-gc-draft-cancel')) { this._draftEdit = null; this._render(); return; }
+      if (btn.hasAttribute('data-gc-draft-save')) {
+        btn.disabled = true;
+        await this._draftSave();
+        this._draftEdit = null;
+        await this._draftsLoad(this._draftsFor);
+        return;
+      }
+      if (btn.hasAttribute('data-gc-draft-send')) {
+        btn.disabled = true;
+        const d = await this._draftSave();
+        const sent = await this._postReminder('/api/contact-drafts/sent', { id: d.id });
+        this.openGmailCompose(this.buildGmailComposeHref({ to: sent.to, subject: d.subject, body: d.body }));
+        this._draftEdit = null;
+        await this._draftsLoad(this._draftsFor);
+        return;
+      }
+      if (btn.dataset.gcDraftDelete) {
+        if (!confirm('Delete this draft?')) return;
+        const res = await this.auth.fetch(`/api/contact-drafts?id=${Number(btn.dataset.gcDraftDelete)}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        this._draftEdit = null;
+        await this._draftsLoad(this._draftsFor);
+      }
+    } catch (err) {
+      console.error('[game-center] contact draft failed:', err);
+      btn.disabled = false;
+      alert(`Could not do that: ${err.message}`);
+    }
   }
 
   // 🎟 Call-ups — the same club-pass invites the Event Center's Invites
