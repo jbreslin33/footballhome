@@ -43,7 +43,7 @@
     .names .me { display: block; width: fit-content; max-width: 100%; }
     .names .me { background: #fbbf24; color: #1f1300; border-radius: 6px; padding: 0 6px; font-weight: 700; }
     .count { font-size: 22px; font-weight: 800; color: #fbbf24; }
-    .answer { margin-top: 12px; border-top: 1px dashed #334155; padding-top: 10px; }
+    .answer { margin: 0 0 12px; border-bottom: 1px dashed #334155; padding-bottom: 10px; }   /* under the event line (owner 10/26) */
     .answer h4 { margin: 0 0 6px; font-size: 13px; color: #cbd5e1; font-weight: 600; }
     .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
     .row .who { min-width: 70px; font-weight: 700; }
@@ -158,12 +158,12 @@
             return `<div class="card">
               <h2>${esc(g.line)}</h2>
               ${g.deadline ? `<div class="dl">${esc(g.deadline)}</div>` : '<div class="dl"></div>'}
+              ${answerHtml}
               <div class="cols">
                 <div class="col go"><h3>${esc(c('col_going') || 'Going')} · ${g.going.length}</h3><div class="names">${namesHtml(g.going, mine)}</div></div>
                 <div class="col none"><h3>${esc(c('col_none') || 'Still to answer')}${g.no_response ? ' · ' + g.no_response_count : ''}</h3>${noneHtml}</div>
                 <div class="col no"><h3>${esc(c('col_not') || 'Not going')} · ${g.not_going.length}</h3><div class="names">${namesHtml(g.not_going, mine)}</div></div>
               </div>
-              ${answerHtml}
             </div>`;
           }).join('');
         }
