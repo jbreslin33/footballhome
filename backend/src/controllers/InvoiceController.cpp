@@ -56,6 +56,37 @@ long long queryId(const Request& request) {
     try { return std::stoll(request.getQueryParam("id")); } catch (...) { return 0; }
 }
 
+// A ref fee turned off (red chip) stays off by its game — date + opponent
+// (mig 722) — as well as by id: TeamPass re-issues a fixture's uid now and
+// then, the feed sync makes a new league_fixtures row, and an id-only
+// decline let auto-add put the game straight back (owner 2026-10-26: "why
+// did apsl refs come back").  Rows from before 722 learn their game the
+// first time their id still matches.
+class RefDeclines {
+public:
+    RefDeclines(Database* db, long long invoiceId) : db_(db), inv_(std::to_string(invoiceId)) {
+        for (const auto& r : db_->query("SELECT source, ref_id, game_on::text AS on, opponent FROM invoice_ref_declines WHERE invoice_id = $1::int", {inv_})) {
+            ids_.insert(std::string(r["source"].c_str()) + ":" + r["ref_id"].c_str());
+            if (!r["on"].is_null()) games_.insert(std::string(r["on"].c_str()) + "|" + r["opponent"].c_str());
+        }
+    }
+    bool has(const json& g) {
+        const std::string source = g["source"].get<std::string>(), refId = std::to_string(g["ref_id"].get<long long>());
+        const std::string game = g["game_on"].get<std::string>() + "|" + g["opponent"].get<std::string>();
+        if (games_.count(game)) return true;
+        if (!ids_.count(source + ":" + refId)) return false;
+        db_->query("UPDATE invoice_ref_declines SET game_on = $4::date, opponent = $5 "
+                   " WHERE invoice_id = $1::int AND source = $2 AND ref_id = $3::bigint AND game_on IS NULL",
+                   {inv_, source, refId, g["game_on"].get<std::string>(), g["opponent"].get<std::string>()});
+        games_.insert(game);
+        return true;
+    }
+private:
+    Database* db_;
+    std::string inv_;
+    std::set<std::string> ids_, games_;
+};
+
 }  // namespace
 
 InvoiceController::InvoiceController() : model_(std::make_unique<Invoice>()) {}
@@ -360,13 +391,12 @@ Response InvoiceController::handleRefFees(const Request& request) {
         // the ones declined off it, so chips can read green / red.
         long long invId = 0;
         try { invId = std::stoll(request.getQueryParam("invoice")); } catch (...) {}
-        std::set<long long> myLines; std::set<std::string> declined;
+        std::set<long long> myLines;
+        RefDeclines declined(Database::getInstance(), invId);
         if (invId > 0) {
             auto* db = Database::getInstance();
             for (const auto& r : db->query("SELECT id FROM invoice_lines WHERE invoice_id = $1::int AND category = 'referees'", {std::to_string(invId)}))
                 myLines.insert(r["id"].as<long long>());
-            for (const auto& r : db->query("SELECT source, ref_id FROM invoice_ref_declines WHERE invoice_id = $1::int", {std::to_string(invId)}))
-                declined.insert(std::string(r["source"].c_str()) + ":" + r["ref_id"].c_str());
         }
         json games = json::array();
         for (auto g : Expenses::games(WelcomeLog::kLighthouseClubId, true)) {
@@ -379,7 +409,7 @@ Response InvoiceController::handleRefFees(const Request& request) {
                 }
                 continue;   // billed elsewhere: never offered
             }
-            if (invId > 0) g["declined"] = declined.count(g["source"].get<std::string>() + ":" + std::to_string(g["ref_id"].get<long long>())) > 0;
+            if (invId > 0) g["declined"] = declined.has(g);
             games.push_back(g);
         }
         return jsonOut(HttpStatus::OK, {{"games", games}});
@@ -441,16 +471,14 @@ void InvoiceController::autoAddRefFees(long long invoiceId) {
         {std::to_string(invoiceId)});
     if (inv.empty() || !inv[0]["bills_expenses"].as<bool>()) return;
     const std::string ps = inv[0]["ps"].c_str(), pe = inv[0]["pe"].c_str();
-    std::set<std::string> declined;
-    for (const auto& r : db->query("SELECT source, ref_id FROM invoice_ref_declines WHERE invoice_id = $1::int", {std::to_string(invoiceId)}))
-        declined.insert(std::string(r["source"].c_str()) + ":" + r["ref_id"].c_str());
+    RefDeclines declined(db, invoiceId);
     json picks = json::array();
     for (const auto& g : Expenses::games(WelcomeLog::kLighthouseClubId, true)) {
         if (g["kind"] != "referee" || !g["invoiced"].is_null() || g["amount"].get<double>() <= 0) continue;
         if (!g["played"].get<bool>() || g["in_gcal"] == false) continue;
         const std::string on = g["game_on"].get<std::string>();
         if (on < ps || on > pe) continue;
-        if (declined.count(g["source"].get<std::string>() + ":" + std::to_string(g["ref_id"].get<long long>()))) continue;
+        if (declined.has(g)) continue;
         picks.push_back({{"source", g["source"]}, {"ref_id", g["ref_id"]}});
     }
     if (picks.empty()) return;
@@ -495,11 +523,13 @@ Response InvoiceController::handleRefFeeMark(const Request& request) {
                 if (left.empty()) db->query("DELETE FROM invoice_lines WHERE id = $1::int", {std::to_string(lineId)});
                 else Expenses::syncRefLine(lineId);
             }
-            db->query("INSERT INTO invoice_ref_declines (invoice_id, source, ref_id) VALUES ($1::int, $2, $3::bigint) ON CONFLICT DO NOTHING",
-                      {std::to_string(id), source, std::to_string(refId)});
+            db->query("INSERT INTO invoice_ref_declines (invoice_id, source, ref_id, game_on, opponent) "
+                      "VALUES ($1::int, $2, $3::bigint, NULLIF($4, '')::date, NULLIF($5, '')) ON CONFLICT DO NOTHING",
+                      {std::to_string(id), source, std::to_string(refId), gameOn, opponent});
         } else if (action == "on") {
-            db->query("DELETE FROM invoice_ref_declines WHERE invoice_id = $1::int AND source = $2 AND ref_id = $3::bigint",
-                      {std::to_string(id), source, std::to_string(refId)});
+            db->query("DELETE FROM invoice_ref_declines WHERE invoice_id = $1::int AND ((source = $2 AND ref_id = $3::bigint)"
+                      " OR (NULLIF($4, '') IS NOT NULL AND game_on = NULLIF($4, '')::date AND opponent = $5))",
+                      {std::to_string(id), source, std::to_string(refId), gameOn, opponent});
             std::string err;
             if (addRefFeesTo(id, json::array({json{{"source", source}, {"ref_id", refId}}}), &err) <= 0)
                 return jsonError(HttpStatus::BAD_REQUEST, err);
