@@ -505,9 +505,10 @@ public:
     math::Fixed64 helpWeight() const { return help_; }
     math::Fixed64 moveCost() const { return cost_; }
     math::Fixed64 meetShare() const { return meet_; }
+    math::Fixed64 maxOffMan() const { return max_off_; }
 
 private:
-    math::Fixed64 pass_speed_, reaction_, contact_, help_, cost_, meet_;
+    math::Fixed64 pass_speed_, reaction_, contact_, help_, cost_, meet_, max_off_;
 };
 
 // Cover-shadow a second man (163): stand on the line from their carrier to

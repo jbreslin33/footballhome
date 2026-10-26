@@ -1004,9 +1004,14 @@ Vec2 Brain::oneSpot(SlotIndex slot, const World& world, SlotIndex man, const Vec
         }
         return s;
     };
+    // And never more than max_off_man_m from where he'd mark him (James
+    // 10/26: "that looks really bad leaving their winger wide open
+    // unmarked" — reach on paper let a full-back stand 20 m off his winger).
+    const Fixed64 leash = PD.maxOffMan();
     auto keeps_man = [&](const Vec2& p) {
         const Vec2 d{p.x - M.x, p.y - M.y};
-        return math::lengthSquared(d) <= reach_m * reach_m;
+        const Vec2 e{p.x - spot.x, p.y - spot.y};
+        return math::lengthSquared(d) <= reach_m * reach_m && math::lengthSquared(e) <= leash * leash;
     };
     Vec2 best = spot;
     Fixed64 best_s = score(spot);

@@ -2231,6 +2231,16 @@ episode); they lose it 37.7 m from their goal (was 33.2). Their escape now
 is down the line, full-back → winger (3→7, 26) — our full-back's job.
 30 full matches: margin +4.00 ± 0.44 (was +4.20 ± 0.45), within noise.
 
+James: "that looks really bad leaving their winger wide open unmarked."
+On the Ukies' goal kick our 2 stood on their full-back's spot, 20 m off
+their 7: G4.63's one spot (`Brain::oneSpot`) scored the keeper→full-back
+lane and judged the 7 still "in pressing distance" for a 45 m ball. The one
+spot now never takes a marker more than `pressing-distance.max_off_man_m`
+(6 m) from where he'd mark his own man. The goal kick now: 4 on their 9, 3
+on 11, 2 on 7, 8 on 8, 6 on 10, 10 on 6, libero free, the 9 and wingers
+screening — their keeper kicks long almost every time (4 completed short
+passes in 200). 30 full matches +3.90 ± 0.39, within noise.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

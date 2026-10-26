@@ -32,3 +32,10 @@ INSERT INTO game_model_params (owner, code, param, value, unit, note)
 SELECT 'concept', 'lock-the-door', 'reach_m', 8, 'm',
        'Before the trigger the 9 floats no further than this from the ball-side centre-back: close enough to lock the door while the pass to the full-back travels.'
 WHERE NOT EXISTS (SELECT 1 FROM game_model_params WHERE owner = 'concept' AND code = 'lock-the-door' AND param = 'reach_m');
+
+-- James 10/26: "that looks really bad leaving their winger wide open
+-- unmarked" — the one spot (G4.63) moved a full-back 20 m off his winger.
+INSERT INTO game_model_params (owner, code, param, value, unit, note)
+SELECT 'concept', 'pressing-distance', 'max_off_man_m', 6, 'm',
+       'The one spot never takes a marker further than this from where he would mark his own man.'
+WHERE NOT EXISTS (SELECT 1 FROM game_model_params WHERE owner = 'concept' AND code = 'pressing-distance' AND param = 'max_off_man_m');

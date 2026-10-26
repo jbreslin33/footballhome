@@ -263,6 +263,7 @@ void PressingDistance::configure(const core::ModelParams& p) {
     help_ = p.fixed(key("help_weight"), 1000);
     cost_ = p.fixed(key("move_cost_per_m"), 100);
     meet_ = p.fixed(key("meet_share"), 500);
+    max_off_ = p.fixed(key("max_off_man_m"), 6000);
 }
 
 void ShadowSecondMan::configure(const core::ModelParams& p) {
