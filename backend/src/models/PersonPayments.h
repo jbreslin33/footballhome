@@ -138,7 +138,7 @@ public:
         bool        phoneSms   = false;    // can_receive_sms on the primary phone
         bool        phoneCall  = false;    // can_receive_calls on the primary phone
         std::string laRegisteredAt;        // ISO8601 of LA registration (drives prorate display)
-        std::string status;                // current / behind / overdue / never / volunteer (mig 704)
+        std::string status;                // current / behind / overdue / never / volunteer (mig 704) / injured (mig 715)
         double      totalPaid     = 0.0;   // lifetime positive money
         double      totalRefunded = 0.0;   // lifetime refund money (positive value)
         int         txnCount      = 0;     // lifetime positive-money count
