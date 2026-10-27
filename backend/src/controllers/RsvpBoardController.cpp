@@ -1020,7 +1020,7 @@ Response RsvpBoardController::handleSquadNoticeStatus(const Request& request) {
     }
 }
 
-// GET /text-marks?match_id= — Game Center's per-card club-text marks (mig
+// GET /text-marks?match_id= | ?fh_event_id= — the per-card club-text marks (mig
 // 647): the latest club-number text per player and kind (game_link /
 // reg_link) with its delivery state and first real open, plus who can be
 // texted from the club number at all (opted in — the parent for youth).
@@ -1029,14 +1029,20 @@ Response RsvpBoardController::handleTextMarks(const Request& request) {
     Response error(HttpStatus::OK, "");
     if (!resolveScope(request, &scope, &error)) return error;
 
-    long long matchId = 0;
+    // A game by match_id (Game Center), or any event by fh_event_id — the
+    // contact sheet every EventScreen shares (a practice has no match).
+    long long matchId = 0, fhEventIdParam = 0;
     try { matchId = std::stoll(request.getQueryParam("match_id")); } catch (const std::exception&) {}
-    if (matchId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id required");
+    try { fhEventIdParam = std::stoll(request.getQueryParam("fh_event_id")); } catch (const std::exception&) {}
+    if (matchId <= 0 && fhEventIdParam <= 0) return jsonError(HttpStatus::BAD_REQUEST, "match_id or fh_event_id required");
     try {
         auto* db = Database::getInstance();
-        auto ev = db->query("SELECT id FROM fh_events WHERE match_id = $1::int ORDER BY id LIMIT 1", {std::to_string(matchId)});
+        auto ev = matchId > 0
+            ? db->query("SELECT id, match_id FROM fh_events WHERE match_id = $1::int ORDER BY id LIMIT 1", {std::to_string(matchId)})
+            : db->query("SELECT id, match_id FROM fh_events WHERE id = $1::bigint", {std::to_string(fhEventIdParam)});
         if (ev.empty()) return jsonOut(HttpStatus::OK, {{"marks", json::object()}, {"opted_in", json::array()}});
         const std::string fhEventId = ev[0]["id"].c_str();
+        if (matchId <= 0 && !ev[0]["match_id"].is_null()) matchId = ev[0]["match_id"].as<long long>();
         json marks = json::object();
         for (const auto& r : db->query(
                 "SELECT person_id, kind, status, error_code, error_text, "

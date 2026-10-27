@@ -67,6 +67,8 @@ class EventCenterScreen extends Screen {
     if (params.kind) this.kind = params.kind;
     this.error = null;
     this._render();
+    // The DB copy (title, subtitle, not-posted, now line) — cached across screens.
+    if (window.MessageCopy) MessageCopy.load(this.auth).then(() => this._render()).catch(() => {});
     this._loadEvents();
   }
 
