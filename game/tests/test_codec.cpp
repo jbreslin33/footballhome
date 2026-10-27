@@ -224,12 +224,14 @@ FH_TEST(model_demands_trailer_round_trip) {
     f.demand = {75, 68};
     f.source = {3, 1};
     f.origin = {15, 16};
+    f.parent_demand = {75, 85};
     auto d = decodeModelDemands(encodeModelDemands(f));
     FH_EXPECT(d.has_value());
     FH_EXPECT_EQ(d->parent, 15);
     FH_EXPECT_EQ(d->origin.size(), 2u);
     FH_EXPECT_EQ(d->origin[0], 15);
     FH_EXPECT_EQ(d->source[0], 3);
+    FH_EXPECT_EQ(d->parent_demand[1], 85);
 }
 
 // G4.76 (1.15): concept numbers + 3-rule weights, and the edit frame.
@@ -248,6 +250,8 @@ FH_TEST(model_params_round_trip) {
     FH_EXPECT_EQ(d->entries[2].milli, -2500);
     FH_EXPECT_EQ(d->entries[0].origin, 14);
     FH_EXPECT_EQ(d->entries[1].unit, std::string("m"));
+    FH_EXPECT_EQ(d->parent_milli.size(), 3u);   // none set → kNoParent
+    FH_EXPECT_EQ(d->parent_milli[0], ModelParamsFrame::kNoParent);
 }
 
 FH_TEST(set_param_round_trip) {

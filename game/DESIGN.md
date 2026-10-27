@@ -2718,6 +2718,13 @@ said) all of the Semi pro standard"
   Wire: MODEL_PARAMS 0x43, SET_PARAM 0x44 (op 0 live, 1 undo, 2 save,
   3 inherit); keys `concept.<code>.<param>` / `ladder.<zone>.<rung>`,
   milli-units. APPLY_PRESET clears live numbers too.
+- **G4.77, own vs parent:** James 10/27 "so if a model inherits it lists
+  diff? … if -10 then its 60?" — no: a child's row REPLACES the parent's
+  value (not an offset; a parent change never shifts a number the child
+  chose, and offsets could leave 0-100). To make the difference readable
+  anyway, MODEL_DEMANDS and MODEL_PARAMS carry a second trailer (what the
+  parent plays, per concept / number) and the HUD tags an own or live
+  value with its difference: "own −25", tooltip "Semi Pro Standard plays 85".
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

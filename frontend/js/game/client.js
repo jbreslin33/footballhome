@@ -546,6 +546,7 @@
   document.body.appendChild(modelPanel);
   const chip = (on) => 'border:0;border-radius:10px;padding:2px 8px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;' +
     (on ? 'background:#ffcc00;color:#0b1c3d;' : 'background:rgba(255,255,255,.15);color:#fff;');
+  const signed = (v) => (v > 0 ? '+' + v : v < 0 ? '−' + Math.abs(v) : '=');   // vs the parent
   const modelName = (id) => id === 255 || id === undefined ? '' : (presets[id] || 'model #' + id);
   function paintModelPanel() {
     modelBtn.hidden = !isAdmin;
@@ -570,9 +571,13 @@
         const label = part[0] === 'ladder' ? `3 rules · ${ZONE[part[1]] || part[1]} · ${part[2].replace('_', ' ')}` :
           `${part[1]} · ${part.slice(2).join('.')}`;
         const from = modelName(e.origin);
-        const tag = src === 2 ? 'LIVE' : src === 1 ? 'own' : src === 3 ? from : 'global';
-        const tip = src === 2 ? 'Changed here, not saved' : src === 1 ? `Saved in ${model}` :
-          src === 3 ? `Inherited from ${from}` : 'The global number (game_model_params) — no model sets it';
+        // G4.77: an own / live value against what the parent plays.
+        const pv = e.parentMilli == null ? null : e.parentMilli / 1000;
+        const diff = pv === null || (src !== 1 && src !== 2) ? '' : signed(+(e.milli / 1000 - pv).toFixed(2));
+        const tag = (src === 2 ? 'LIVE' : src === 1 ? 'own' : src === 3 ? from : 'global') + (diff ? ' ' + diff : '');
+        const tip = (src === 2 ? 'Changed here, not saved' : src === 1 ? `Saved in ${model}` :
+          src === 3 ? `Inherited from ${from}` : 'The global number (game_model_params) — no model sets it') +
+          (pv !== null && (src === 1 || src === 2) ? ` · ${parent} plays ${pv}` : '');
         const v = e.milli / 1000;
         let act = '';
         if (src === 2) {
@@ -599,9 +604,12 @@
         if (modelFilter === 'live' && src !== 2) return;
         if (modelSearch && !c.includes(modelSearch)) return;
         const from = modelName(d.origin[i]);
-        const label = src === 2 ? 'LIVE' : src === 1 ? 'own' : src === 3 ? from : 'default';
-        const tip = src === 2 ? 'Changed here, not saved' : src === 1 ? `Saved in ${model}` :
-          src === 3 ? `Inherited from ${from}` : 'No model row (code default)';
+        const pd = d.parentDemand && d.parentDemand[i] !== undefined && d.parentDemand[i] !== 255 ? d.parentDemand[i] : null;
+        const diff = pd === null || (src !== 1 && src !== 2) ? '' : signed(d.demand[i] - pd);
+        const label = (src === 2 ? 'LIVE' : src === 1 ? 'own' : src === 3 ? from : 'default') + (diff ? ' ' + diff : '');
+        const tip = (src === 2 ? 'Changed here, not saved' : src === 1 ? `Saved in ${model}` :
+          src === 3 ? `Inherited from ${from}` : 'No model row (code default)') +
+          (pd !== null && (src === 1 || src === 2) ? ` · ${parent} plays ${pd}` : '');
         let act = '';
         if (src === 2) {
           act = `<button type="button" data-save="${i}" title="Save into ${esc(model)}" style="${chip(false)}">💾</button>` +

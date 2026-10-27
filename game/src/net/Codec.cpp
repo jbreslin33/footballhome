@@ -374,6 +374,8 @@ Bytes encodeModelDemands(const ModelDemandsFrame& f) {
     w.u8(f.parent);
     for (std::size_t i = 0; i < f.demand.size(); ++i)
         w.u8(i < f.origin.size() ? f.origin[i] : 255);
+    for (std::size_t i = 0; i < f.demand.size(); ++i)
+        w.u8(i < f.parent_demand.size() ? f.parent_demand[i] : 255);
     return std::move(w.out);
 }
 
@@ -391,6 +393,10 @@ std::optional<ModelDemandsFrame> decodeModelDemands(const Bytes& payload) {
     if (r.remaining() > 0) {   // 1.15 trailer
         f.parent = r.u8();
         for (std::uint8_t i = 0; i < n && r.ok; ++i) f.origin.push_back(r.u8());
+        if (!r.ok) return std::nullopt;
+    }
+    if (r.remaining() > 0) {   // G4.77 trailer
+        for (std::uint8_t i = 0; i < n && r.ok; ++i) f.parent_demand.push_back(r.u8());
         if (!r.ok) return std::nullopt;
     }
     return f;
@@ -448,6 +454,8 @@ Bytes encodeModelParams(const ModelParamsFrame& f) {
         w.u8(e.origin);
         putStr(w, e.unit);
     }
+    for (std::size_t i = 0; i < f.entries.size(); ++i)
+        putI32(w, i < f.parent_milli.size() ? f.parent_milli[i] : ModelParamsFrame::kNoParent);
     return std::move(w.out);
 }
 
@@ -466,6 +474,10 @@ std::optional<ModelParamsFrame> decodeModelParams(const Bytes& payload) {
         f.entries.push_back(std::move(e));
     }
     if (!r.ok) return std::nullopt;
+    if (r.remaining() > 0) {   // G4.77 trailer
+        for (std::uint16_t i = 0; i < n && r.ok; ++i) f.parent_milli.push_back(getI32(r));
+        if (!r.ok) return std::nullopt;
+    }
     return f;
 }
 

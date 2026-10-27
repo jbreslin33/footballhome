@@ -11,6 +11,7 @@
 #include "math/Fixed64.hpp"
 #include "net/Wire.hpp"
 
+#include <climits>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -181,6 +182,9 @@ struct ModelDemandsFrame {
     // model its value came from (255 = none). Absent from a 1.14 server.
     std::uint8_t parent = 255;
     std::vector<std::uint8_t> origin;
+    // Then (G4.77) per concept what the PARENT plays (255 = no parent), so
+    // the HUD can show a child's own value against it.
+    std::vector<std::uint8_t> parent_demand;
 };
 Bytes encodeModelDemands(const ModelDemandsFrame& f);
 std::optional<ModelDemandsFrame> decodeModelDemands(const Bytes& payload);
@@ -200,6 +204,9 @@ struct ModelParamEntry {
 struct ModelParamsFrame {
     std::uint8_t team = 0;
     std::vector<ModelParamEntry> entries;
+    // G4.77 trailer: per entry what the parent plays (kNoParent = none).
+    static constexpr std::int32_t kNoParent = INT32_MIN;
+    std::vector<std::int32_t> parent_milli;
 };
 Bytes encodeModelParams(const ModelParamsFrame& f);
 std::optional<ModelParamsFrame> decodeModelParams(const Bytes& payload);

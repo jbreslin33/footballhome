@@ -58,9 +58,9 @@
             if (this.handlers.onTeams)
               this.handlers.onTeams(GameWire.decodeTeams(view, f.payloadAt, f.payloadLen));
           } else if (f.type === GameWire.FrameType.MODEL_DEMANDS) {
-            if (this.handlers.onDemands) this.handlers.onDemands(GameWire.decodeModelDemands(view, f.payloadAt));
+            if (this.handlers.onDemands) this.handlers.onDemands(GameWire.decodeModelDemands(view, f.payloadAt, f.payloadLen));
           } else if (f.type === GameWire.FrameType.MODEL_PARAMS) {
-            if (this.handlers.onParams) this.handlers.onParams(GameWire.decodeModelParams(view, f.payloadAt));
+            if (this.handlers.onParams) this.handlers.onParams(GameWire.decodeModelParams(view, f.payloadAt, f.payloadLen));
           } else if (f.type === GameWire.FrameType.EVENT) {
             this.handlers.onEvent(GameWire.decodeEvent(view, f.payloadAt));
           }

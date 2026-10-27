@@ -222,7 +222,23 @@ void GameServer::sendParams(std::uint8_t team, ClientId to, bool all) {
             e.origin = origin(o);
             f.entries.push_back(std::move(e));
         }
+    // G4.77: what the parent plays, for the HUD's "own vs parent" read.
+    const persistence::GameModel* par = nullptr;
+    if (g && !g->parent.empty())
+        for (const auto& x : cfg_.models)
+            if (x.name == g->parent) par = &x;
+    for (int z = 0; z < 3; ++z)
+        for (int r = 0; r < 3; ++r) {
+            const int w = par ? par->ladder[z][r] : -1;
+            f.parent_milli.push_back(!par ? ModelParamsFrame::kNoParent : (w < 0 ? 100 : w) * 1000);
+        }
     for (const auto& info : cfg_.param_info) {
+        if (!par) { f.parent_milli.push_back(ModelParamsFrame::kNoParent); }
+        else {
+            const auto it = par->params.find(info.key);
+            f.parent_milli.push_back(static_cast<std::int32_t>(
+                it != par->params.end() ? it->second : cfg_.model_params.milli(info.key, 0)));
+        }
         ModelParamEntry e;
         e.key = info.key;
         e.unit = info.unit;
@@ -267,6 +283,10 @@ void GameServer::sendDemands(std::uint8_t team, ClientId to, bool all) {
         for (std::size_t p = 0; p < cfg_.models.size() && p < 255; ++p)
             if (!cfg_.models[m].parent.empty() && cfg_.models[p].name == cfg_.models[m].parent)
                 f.parent = static_cast<std::uint8_t>(p);
+    for (int i = 0; i < reg.size() && i < 255; ++i) {
+        const int pd = f.parent != 255 ? cfg_.models[f.parent].overlay[i] : -1;
+        f.parent_demand.push_back(static_cast<std::uint8_t>(pd < 0 ? 255 : (pd > 100 ? 100 : pd)));
+    }
     const Bytes frame = encodeFrame(FrameType::ModelDemands, encodeModelDemands(f));
     if (!all) { transport_.send(to, frame); return; }
     for (const auto& [id, _] : admins_) transport_.send(id, frame);

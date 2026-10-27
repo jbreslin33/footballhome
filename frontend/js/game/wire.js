@@ -252,7 +252,8 @@
 
   // 1.14 (G4.74): u8 team | u8 model (255 none) | u8 count | per concept
   // u8 demand | u8 source (0 default, 1 the model's row, 2 a live change).
-  function decodeModelDemands(view, at) {
+  function decodeModelDemands(view, at, len) {
+    const end = len === undefined ? view.byteLength : at + len;
     const team = view.getUint8(at), model = view.getUint8(at + 1), n = view.getUint8(at + 2);
     const demand = [], source = [];
     for (let i = 0; i < n; i++) {
@@ -264,11 +265,14 @@
     let parent = 255;
     const origin = [];
     let k = at + 3 + 2 * n;
-    if (k < view.byteLength) {
+    if (k < end) {
       parent = view.getUint8(k++);
-      for (let i = 0; i < n && k < view.byteLength; i++) origin.push(view.getUint8(k++));
+      for (let i = 0; i < n && k < end; i++) origin.push(view.getUint8(k++));
     }
-    return { team, model, demand, source, parent, origin };
+    // G4.77: what the parent plays per concept (255 = no parent).
+    const parentDemand = [];
+    for (let i = 0; i < n && k < end; i++) parentDemand.push(view.getUint8(k++));
+    return { team, model, demand, source, parent, origin, parentDemand };
   }
   function encodeSetDemand(team, conceptId, demand, save) {
     const p = new ArrayBuffer(3);
@@ -281,7 +285,8 @@
 
   // 1.15 (G4.76): numbers in milli-units; source 0 global row, 1 own,
   // 2 live, 3 inherited; origin = the model it came from (255 none).
-  function decodeModelParams(view, at) {
+  function decodeModelParams(view, at, len) {
+    const end = len === undefined ? view.byteLength : at + len;
     const team = view.getUint8(at), n = view.getUint16(at + 1, true);
     let p = at + 3;
     const str = () => {
@@ -296,6 +301,11 @@
       const milli = view.getInt32(p, true); p += 4;
       const source = view.getUint8(p++), origin = view.getUint8(p++);
       entries.push({ key, milli, source, origin, unit: str() });
+    }
+    // G4.77 trailer: what the parent plays per entry (INT32_MIN = none).
+    for (let i = 0; i < n && p + 4 <= end; i++) {
+      const v = view.getInt32(p, true); p += 4;
+      entries[i].parentMilli = v === -2147483648 ? null : v;
     }
     return { team, entries };
   }
