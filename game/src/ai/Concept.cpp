@@ -325,6 +325,7 @@ void ShadowTheLine::configure(const core::ModelParams& p) {
 
 void PlayOffLongBall::configure(const core::ModelParams& p) {
     off_ = p.fixed(key("off_m"), 7000);
+    ahead_ = p.fixed(key("ahead_of_line_m"), 0);
 }
 
 void JumpThePass::configure(const core::ModelParams& p) {

@@ -2501,6 +2501,25 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                             const Vec2 to_goal = math::normalized(Vec2{own_goal.x - mk.pos.x, own_goal.y - mk.pos.y});
                             const Fixed64 off = book_.play_off.off();
                             spot = Vec2{mk.pos.x + to_goal.x * off, mk.pos.y + to_goal.y * off};
+                            // He doesn't follow his winger up the field when
+                            // the winger drops short (James 10/27: "our fb is
+                            // already playing for long ball … to follow a
+                            // winger up the field is too much to ask") —
+                            // never further up than our highest centre-back
+                            // plus ahead_of_line_m; our winger keeps the shadow.
+                            bool line = false;
+                            Fixed64 top{};
+                            for (SlotIndex o = 0; o < world.playerCount(); ++o) {
+                                if (setup_.team_of_slot[o] != my_team || o == slot) continue;
+                                const int on = numberOf(o);
+                                if (on != 4 && on != 5) continue;
+                                const Fixed64 x = world.player(o).pos.x * dsgn;
+                                if (!line || x > top) { top = x; line = true; }
+                            }
+                            if (line) {
+                                const Fixed64 cap = top + book_.play_off.aheadOfLine();
+                                if (spot.x * dsgn > cap) spot.x = cap * dsgn;
+                            }
                             mark_why = Why::PlayOff;
                             played_off = true;
                         }

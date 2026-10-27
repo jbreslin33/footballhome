@@ -683,15 +683,18 @@ private:
 // Play off for the long ball (170) [James 10/26]: with our winger
 // shadowing the ground ball to their winger, our full-back doesn't play
 // tight — he stands off_m goal-side of his winger and guards the ball over
-// the top. Still his direct opponent; only how he marks changes.
+// the top. Still his direct opponent; only how he marks changes. When his
+// winger drops short he doesn't follow him up the field: never further up
+// than our highest centre-back plus ahead_of_line_m (James 10/27).
 class PlayOffLongBall : public Concept {
 public:
     PlayOffLongBall() : Concept("play-off-long-ball", 170) {}
     void configure(const core::ModelParams& p) override;
     math::Fixed64 off() const { return off_; }
+    math::Fixed64 aheadOfLine() const { return ahead_; }
 
 private:
-    math::Fixed64 off_;
+    math::Fixed64 off_, ahead_;
 };
 
 // Scanning (G4.66) [Jordet et al. 2013, visual exploratory activity in

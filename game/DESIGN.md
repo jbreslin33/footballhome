@@ -2269,6 +2269,16 @@ opponent to mark its just how they mark."
   lists every model; pick either Lighthouse model, Home/Away — no new wire.
 - Defaults where James hadn't said: the line follows their winger wherever
   he goes; the 3 rules for every man-marker (CB on their 9, the 6/8/10).
+- **(a) answered 10/27 (mig 745):** their winger drops short — our winger
+  keeps the shadow, and our full-back does NOT follow him up the field
+  (James: "our fb is already playing for long ball and 'off' coverage so to
+  follow a winger up the field is too much to ask"). Playing off, he stops
+  at our highest centre-back (4/5) plus `ahead_of_line_m` 0. cb-build:1
+  rarely springs it (passes to their full-back ~6%), so it barely moves
+  the drill. **(c) answered 10/27:** yes — the 3 rules are every coach's,
+  but each coach weights them differently by zone of the field, and the
+  player's level gates what he can do (a low-rated man can't intercept).
+  Not built yet: per-zone weights.
 
 Found on the way — why their winger was open (both tactics): G4.57's
 mark-position tucked a marker toward the ball by a share of the distance

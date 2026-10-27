@@ -75,6 +75,10 @@ From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Conce
      looking behind and adjusting the shadow as their winger moves. Our
      full-back then plays OFF his winger (the ground ball is shadowed) and
      guards the long ball — distance a DB param.
+   - (a) ANSWERED 10/27 (mig 745): our winger keeps the shadow, our FB
+     doesn't follow him up (holds our CB line). (c) ANSWERED 10/27: yes,
+     every coach — weighted by coach AND zone of the field, gated by the
+     player's level (per-zone weights not built). (b) re-asked.
    - Open questions for James: (a) their winger drops short — our winger
      keeps the line or hands him to our FB? (b) the ball goes down the line
      anyway — our FB intercepts or sits off? (c) the 3 rules for every
