@@ -77,6 +77,7 @@ class EventCenterScreen extends Screen {
     this.cpError  = null;
     this.rsvpNote = {};        // person_id → last override error, on their card
     this.remindNote = {};      // person_id → last reminder error, on their card
+    this.remindOk = {};        // person_id → "📱 Sent from …" after an FH Texter send
     this.relay = null;         // FH Texter {device, today, cap} — admins only
     this.groupNote = '';       // the 📣 bar's result line (html)
     this.folds    = new Map(); // 'noresponse' / 'notgoing' → open?  (kept across refreshes)
@@ -202,6 +203,7 @@ class EventCenterScreen extends Screen {
     this.groupNote = '';      // the 📣 bar's result line (html)
     this.error = null;
     this.rsvpNote = {};
+    this.remindOk = {};
     this.groupNote = '';
     this.saving.clear();
     this.copied.clear();
@@ -380,6 +382,7 @@ class EventCenterScreen extends Screen {
   // One text per parent through FH Texter; a refusal (offline, cap, STOP)
   // opens that text in the texting app instead, so nothing is lost.
   async _sendViaRelay(personId, sends) {
+    let sent = 0;
     for (const send of sends) {
       if (!send.sms_href) continue;
       const { to, body } = DesktopSms.parse(send.sms_href);
@@ -391,12 +394,21 @@ class EventCenterScreen extends Screen {
                                  purpose: `remind:event:${this.ev.fh_event_id}`, magic_link_token_id: send.token_id || 0 }),
         });
         ok = true;
+        sent += 1;
         if (this.relay) this.relay.today += 1;
       } catch (err) {
         this.remindNote[personId] = (window.MessageCopy && MessageCopy.block('event_center', 'relay_fell_back', { error: err.message }))
           || `FH Texter could not send (${err.message}) — opened in your texting app`;
       }
       if (!ok) DesktopSms.open(send.sms_href);
+    }
+    // No compose window opens on this route, so the card says it went —
+    // without it a coach taps again and the player gets it twice (owner
+    // 2026-10-26: "why is text for reminder not doing pop up").
+    if (sent) {
+      const device = (this.relay && this.relay.device && this.relay.device.name) || 'FH Texter';
+      this.remindOk[personId] = (window.MessageCopy && MessageCopy.block('event_center', 'relay_sent', { device, n: String(sent) }))
+        || `📱 Sent from ${device}${sent > 1 ? ` (${sent} texts)` : ''}`;
     }
   }
 
@@ -411,10 +423,14 @@ class EventCenterScreen extends Screen {
   async _remind(btn) {
     const personId = Number(btn.dataset.personId);
     const channel = btn.dataset.ecRemind === 'email' ? 'email' : 'sms';
-    const original = btn.textContent;
-    btn.disabled = true;
+    // One send per card at a time — every button on the card waits.
+    const key = `remind:${personId}`;
+    if (this.saving.has(key)) return;
+    this.saving.add(key);
+    btn.closest('[data-person-row]')?.querySelectorAll('[data-ec-remind]').forEach(b => { b.disabled = true; });
     btn.textContent = '⏳';
     delete this.remindNote[personId];
+    delete this.remindOk[personId];
     try {
       const data = await this._json('/api/rsvp-board/remind', {
         method: 'POST',
@@ -422,13 +438,11 @@ class EventCenterScreen extends Screen {
       });
       if (channel === 'sms' && this._relayUsable() && window.DesktopSms) await this._sendViaRelay(personId, data.sends || [data]);
       else this.openSends(data, channel);
-      await this._loadReminders();
     } catch (err) {
       this.remindNote[personId] = err.message;
-      btn.textContent = original;
-      btn.disabled = false;
-      this._render();
     }
+    this.saving.delete(key);
+    await this._loadReminders();   // repaints the card: buttons back, note shown
   }
 
   // 📣 One group message to every player still unanswered on this event —
@@ -493,11 +507,15 @@ class EventCenterScreen extends Screen {
     const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
     const sentAny = !!this._remindedNote(r.person_id);
     const btn = (channel, only) => `<button type="button" class="ec-send" data-ec-remind="${channel}" data-only="${only ? 1 : 0}"
-        data-person-id="${r.person_id}" title="${this.escapeHtml(cp(only ? 'remind_this_title' : 'remind_all_title', { name }) || '')}"
+        data-person-id="${r.person_id}" ${busy ? 'disabled' : ''} title="${this.escapeHtml(cp(only ? 'remind_this_title' : 'remind_all_title', { name }) || '')}"
         style="background:${only ? '#fbbf24' : '#38bdf8'};${sentAny ? ' opacity:0.55;' : ''}">${channel === 'sms' ? '💬' : '✉'}</button>`;
     const label = (tier, fb) => `<span style="font-size:0.7rem; font-weight:800; opacity:0.75;">${this.escapeHtml(cp(tier) || fb)}</span>`;
     const err = this.remindNote[r.person_id];
-    const note = err ? `<span style="color:#f87171;">${this.escapeHtml(err)}</span>` : this.escapeHtml(this._remindedNote(r.person_id));
+    const ok = this.remindOk[r.person_id];
+    const busy = this.saving.has(`remind:${r.person_id}`);
+    const note = err ? `<span style="color:#f87171;">${this.escapeHtml(err)}</span>`
+      : ok ? `<span style="color:#22c55e; font-weight:700;">${this.escapeHtml(ok)}</span>${this._remindedNote(r.person_id) ? ' · ' + this.escapeHtml(this._remindedNote(r.person_id)) : ''}`
+      : this.escapeHtml(this._remindedNote(r.person_id));
     return `<div style="flex-basis:100%; display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:2px 0 4px;">
       ${label('remind_this', 'This one')} ${btn('sms', true)} ${btn('email', true)}
       <span style="width:6px;"></span>
