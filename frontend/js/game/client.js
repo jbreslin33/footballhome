@@ -512,6 +512,105 @@
     net.runPhase(Number(b.dataset.team), Number(phaseBar.querySelector('select').value));
   });
 
+  // ── Game model (G4.74, admin) — James: "all concepts [are] valid and
+  // its a matter of focus in the game model … if not set by us it should go
+  // to a default" / "hud would be good to change mid game to see diff
+  // behavour". Each team's demand per concept: where it comes from (the
+  // default — core 100, style 0 — the model's own row, or a live change
+  // made here). A change is live at once and NOT saved; picking a model
+  // clears it. Collapsed by default. ──
+  const demands = [null, null];   // per team: { model, demand[], source[] }
+  let modelTeam = 0, modelOpen = false, modelFilter = 'model', modelSearch = '';
+  const modelBtn = document.createElement('button');
+  modelBtn.type = 'button';
+  modelBtn.className = 'game-only';
+  modelBtn.hidden = true;
+  modelBtn.textContent = '🎛 MODEL';
+  modelBtn.title = 'Game model: what each team asks of every concept — change it live';
+  // Beside EDIT in the admin row (left 212 + 64 + gap).
+  modelBtn.style.cssText = 'position:fixed;left:284px;top:44px;height:34px;z-index:20;border:0;border-radius:17px;' +
+    'padding:0 12px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;' +
+    'background:rgba(10,14,20,.55);color:#fff;';
+  document.body.appendChild(modelBtn);
+  const modelPanel = document.createElement('div');
+  modelPanel.className = 'game-only';
+  modelPanel.hidden = true;
+  modelPanel.style.cssText = 'position:fixed;left:12px;top:126px;' +
+    'width:min(380px, calc(100vw - 24px));max-height:55vh;display:flex;flex-direction:column;z-index:21;' +
+    'background:rgba(11,28,61,.95);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px;color:#f4f6fb;font:12px system-ui,sans-serif;';
+  document.body.appendChild(modelPanel);
+  const SOURCE = ['default', 'model', 'LIVE'];
+  const chip = (on) => 'border:0;border-radius:10px;padding:2px 8px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;' +
+    (on ? 'background:#ffcc00;color:#0b1c3d;' : 'background:rgba(255,255,255,.15);color:#fff;');
+  function paintModelPanel() {
+    modelBtn.hidden = !isAdmin;
+    modelBtn.style.background = modelOpen ? '#ffcc00' : 'rgba(10,14,20,.55)';
+    modelBtn.style.color = modelOpen ? '#0b1c3d' : '#fff';
+    modelPanel.hidden = !isAdmin || !modelOpen;
+    if (modelPanel.hidden) return;
+    const names = [(teams && teams.home) || 'Home', (teams && teams.away) || 'Away'];
+    const d = demands[modelTeam];
+    const model = d && d.model !== 255 ? (presets[d.model] || 'model #' + d.model) : 'no model';
+    let rows = '';
+    if (d) {
+      GameWire.CONCEPTS.forEach((c, i) => {
+        if (!c || i >= d.demand.length) return;
+        const src = d.source[i];
+        if (modelFilter === 'model' && src === 0) return;
+        if (modelFilter === 'live' && src !== 2) return;
+        if (modelSearch && !c.includes(modelSearch)) return;
+        rows += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">` +
+          `<span style="flex:0 0 132px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c)} (#${i})">${esc(c)}</span>` +
+          `<input type="range" min="0" max="100" value="${d.demand[i]}" data-cid="${i}" aria-label="${esc(c)} demand" style="flex:1;min-height:0;accent-color:#ffcc00;">` +
+          `<span data-val style="flex:0 0 24px;text-align:right;">${d.demand[i]}</span>` +
+          `<span style="flex:0 0 46px;font-size:10px;opacity:${src ? 1 : .6};color:${src === 2 ? '#ffcc00' : '#f4f6fb'};">${SOURCE[src]}</span>` +
+          (src === 2 ? `<button type="button" data-reset="${i}" title="Back to the model" style="${chip(false)}">↺</button>` : `<span style="flex:0 0 24px;"></span>`) +
+          `</div>`;
+      });
+    }
+    modelPanel.innerHTML =
+      `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">` +
+      names.map((n, t) => `<button type="button" data-mteam="${t}" style="${chip(t === modelTeam)}">${esc(n)}</button>`).join('') +
+      `<span style="flex:1;"></span><button type="button" data-mclose title="Collapse" style="${chip(false)}">✕</button></div>` +
+      `<div style="margin:4px 0;opacity:.85;">Plays <b>${esc(model)}</b> · live changes aren't saved</div>` +
+      `<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">` +
+      [['model', 'Model + live'], ['live', 'Live'], ['all', 'All']].map(([k, l]) =>
+        `<button type="button" data-mfilter="${k}" style="${chip(modelFilter === k)}">${l}</button>`).join('') +
+      `<input type="search" data-msearch placeholder="find a concept" value="${esc(modelSearch)}" ` +
+      `style="flex:1;min-width:0;min-height:0;border-radius:10px;border:0;padding:3px 8px;font:12px system-ui,sans-serif;"></div>` +
+      `<div style="overflow-y:auto;flex:1;">${rows || '<div style="opacity:.7;">Nothing here — try All.</div>'}</div>`;
+    shieldKeys(modelPanel);
+  }
+  modelBtn.addEventListener('click', () => {
+    modelOpen = !modelOpen;
+    if (modelOpen && editPanel) editPanel.style.display = 'none';   // same spot
+    paintModelPanel();
+  });
+  modelPanel.addEventListener('click', (ev) => {
+    const t = ev.target;
+    if (t.dataset.mteam !== undefined) { modelTeam = Number(t.dataset.mteam); paintModelPanel(); }
+    else if (t.dataset.mclose !== undefined) { modelOpen = false; paintModelPanel(); }
+    else if (t.dataset.mfilter) { modelFilter = t.dataset.mfilter; paintModelPanel(); }
+    else if (t.dataset.reset !== undefined) net.setDemand(modelTeam, Number(t.dataset.reset), 255);
+  });
+  modelPanel.addEventListener('input', (ev) => {
+    const t = ev.target;
+    if (t.dataset.msearch !== undefined) {
+      modelSearch = t.value.trim().toLowerCase();
+      paintModelPanel();
+      const s = modelPanel.querySelector('[data-msearch]');
+      s.focus();
+      s.setSelectionRange(s.value.length, s.value.length);
+    } else if (t.dataset.cid !== undefined) {
+      t.nextElementSibling.textContent = t.value;   // the number follows the drag
+    }
+  });
+  // Sent on release, not every pixel of the drag.
+  modelPanel.addEventListener('change', (ev) => {
+    const t = ev.target;
+    if (t.dataset.cid !== undefined) net.setDemand(modelTeam, Number(t.dataset.cid), Number(t.value));
+  });
+
   // ── Sim speed (G4.61, admin) — James: "slow mo … or speed up but with
   // same physics … slow mo would allow me to really see the tactics and
   // movements and help coach it". The server ticks slower or faster; each
@@ -681,6 +780,7 @@
       paintPhaseBar();
       paintSpeedBar();
       paintReplayBar();
+      paintModelPanel();
       if ((h.capabilities & 8) && editBtn) {
         editBtn.style.display = 'block';
         const flipEdit = () => {
@@ -801,6 +901,13 @@
         PlayerFigure.setKits(t.kits[0], t.kits[1]);
         for (const f of (renderer.figures || [])) f.build(f.home, f.keeper);
       }
+    },
+    onDemands(d) {   // G4.74
+      demands[d.team] = d;
+      // Don't repaint under a finger mid-drag; the next frame catches up.
+      const a = document.activeElement;
+      if (a && a.dataset && a.dataset.cid !== undefined && modelPanel.contains(a)) return;
+      paintModelPanel();
     },
     onPresets(names) {
       presets = names;

@@ -158,7 +158,9 @@ void GameServer::recomputeKnowledge(bool home) {
     core::PresetOverlay none;
     none.fill(-1);
     const int m = team_model_[home ? 0 : 1];
-    const core::PresetOverlay& demand = m >= 0 ? cfg_.models[m].overlay : none;
+    core::PresetOverlay demand = m >= 0 ? cfg_.models[m].overlay : none;
+    for (int i = 0; i < core::kMaxConcepts; ++i)   // G4.74 live changes win
+        if (live_demand_[home ? 0 : 1][i] >= 0) demand[i] = live_demand_[home ? 0 : 1][i];
     ai::Brain::Ladder ladder{};
     for (int z = 0; z < 3; ++z)
         for (int r = 0; r < 3; ++r) {
@@ -174,6 +176,25 @@ void GameServer::recomputeKnowledge(bool home) {
         brain_.setRatings(sl, concept_ratings_[sl]);
         brain_.setHabits(sl, ability_[sl]);
     }
+}
+
+void GameServer::sendDemands(std::uint8_t team, ClientId to, bool all) {
+    if (team > 1) return;
+    const core::ConceptRegistry& reg = core::concepts();
+    const int m = team_model_[team];
+    ModelDemandsFrame f;
+    f.team = team;
+    f.model = m >= 0 && m < 255 ? static_cast<std::uint8_t>(m) : 255;
+    for (int i = 0; i < reg.size() && i < 255; ++i) {
+        const int live = live_demand_[team][i];
+        const int row = m >= 0 ? cfg_.models[m].overlay[i] : -1;
+        const int d = live >= 0 ? live : (row >= 0 ? row : reg.defaultDemand(i));
+        f.demand.push_back(static_cast<std::uint8_t>(d > 100 ? 100 : d));
+        f.source.push_back(live >= 0 ? 2 : (row >= 0 ? 1 : 0));
+    }
+    const Bytes frame = encodeFrame(FrameType::ModelDemands, encodeModelDemands(f));
+    if (!all) { transport_.send(to, frame); return; }
+    for (const auto& [id, _] : admins_) transport_.send(id, frame);
 }
 
 void GameServer::broadcastRoster() {
@@ -245,6 +266,7 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
     }
     // G4.30: which teams are playing — the editor's key into the club API.
     sendTeams(id);
+    if (admin) { sendDemands(0, id); sendDemands(1, id); }   // G4.74
     broadcastRoster();  // names + knowledge for every client
 }
 
@@ -462,8 +484,24 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
                 return;
             // The team now plays that model: its demand, their ability.
             team_model_[ap->team] = ap->preset_id;
+            live_demand_[ap->team].fill(-1);
             recomputeKnowledge(ap->team == 0);
             broadcastRoster();
+            sendDemands(ap->team, 0, true);
+            return;
+        }
+        case FrameType::SetDemand: {
+            // Admin-only (G4.74): one concept's demand for one team, live,
+            // on top of its model — James: "change mid game to see diff
+            // behaviour". Not saved; 255 = back to the model / default.
+            if (!admins_.count(id)) return;
+            const auto sd = decodeSetDemand(frame.payload);
+            if (!sd || sd->team > 1 || sd->concept_id >= core::concepts().size()) return;
+            live_demand_[sd->team][sd->concept_id] =
+                sd->demand == 255 ? std::int16_t{-1} : static_cast<std::int16_t>(sd->demand > 100 ? 100 : sd->demand);
+            recomputeKnowledge(sd->team == 0);
+            broadcastRoster();
+            sendDemands(sd->team, 0, true);
             return;
         }
         default:

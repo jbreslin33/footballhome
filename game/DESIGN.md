@@ -2599,6 +2599,32 @@ never — their goal kick is a restart, and back passes to the keeper
 seldom come from these pictures). The phase report now prints rare orders
 too. 30 matches: +2.93 ± 0.54 (4.97 – 2.03) vs +2.77 — noise.
 
+### 8.72 G4.74 — the game model on the HUD: change any concept's demand live
+
+James 10/27: "did we agree that all concepts [are] valid and that its a
+matter of focus in the game model right? so where do we set those? if not
+set by us it should go to a default" / "should there be a screen or right
+on the hud but collapsable" / "hud would be good to change mid game to see
+diff behavour?"
+
+- **Yes, already the rule (mig 652):** a player plays min(his ability, his
+  team's demand); a concept the model doesn't set takes the default —
+  core 100 (as well as he knows it), style 0 (off: a coach's choice, e.g.
+  shadow-the-line, 3-rule marking). Models live in `game_model_concepts`
+  rows; a child model inherits its parent's.
+- **The HUD:** admin pill **🎛 MODEL** beside EDIT opens a collapsible
+  panel: Home / Away, the model the team plays, and every concept's demand
+  as a slider with its source — *default*, *model* (its own row), *LIVE*
+  (changed here; ↺ puts it back). Filters: Model + live (default view),
+  Live, All; a search box. A slider is sent on release; the team's
+  knowledge is recomputed at once (`GameServer::recomputeKnowledge`), so
+  behaviour changes mid-match. Live changes are NOT saved and picking a
+  model (the preset dropdown) clears them.
+- **Wire 1.14:** MODEL_DEMANDS 0x40 (s→c admin) and SET_DEMAND 0x41 (c→s
+  admin); codec round-trip tests.
+- Open: a "save to this model" button (writes `game_model_concepts`) if
+  James wants a change to stick.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

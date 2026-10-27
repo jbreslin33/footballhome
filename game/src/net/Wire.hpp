@@ -47,6 +47,8 @@ enum class FrameType : std::uint8_t {
     BrainLegend    = 0x3D, // s→c: the decision names, on connect (1.7)
     Phases         = 0x3E, // s→c: the phase-of-play catalog (game_phases titles), on connect (1.9)
     RunPhase       = 0x3F, // c→s admin: set up a phase of play for one team: u8 team | u8 phase (1.9)
+    ModelDemands   = 0x40, // s→c admin: one team's game-model demand per concept + its source (1.14, G4.74)
+    SetDemand      = 0x41, // c→s admin: one concept's demand for one team, live: u8 team | u8 concept | u8 demand (255 = back to the model) (1.14)
 };
 
 // Capability bits granted in HELLO (PROTOCOL.md §3).

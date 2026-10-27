@@ -57,6 +57,8 @@
           } else if (f.type === GameWire.FrameType.TEAMS) {
             if (this.handlers.onTeams)
               this.handlers.onTeams(GameWire.decodeTeams(view, f.payloadAt, f.payloadLen));
+          } else if (f.type === GameWire.FrameType.MODEL_DEMANDS) {
+            if (this.handlers.onDemands) this.handlers.onDemands(GameWire.decodeModelDemands(view, f.payloadAt));
           } else if (f.type === GameWire.FrameType.EVENT) {
             this.handlers.onEvent(GameWire.decodeEvent(view, f.payloadAt));
           }
@@ -103,6 +105,10 @@
     }
     runPhase(team, phaseId) {
       this.send(GameWire.encodeRunPhase(team, phaseId));
+    }
+    // G4.74: one concept's demand for one team, live (255 = back to the model).
+    setDemand(team, conceptId, demand) {
+      this.send(GameWire.encodeSetDemand(team, conceptId, demand));
     }
   }
 

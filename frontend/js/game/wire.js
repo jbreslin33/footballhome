@@ -34,6 +34,8 @@
     BRAIN_LEGEND: 0x3D,
     PHASES: 0x3E,         // G4.58 (1.9): phase-of-play titles, on connect
     RUN_PHASE: 0x3F,      // admin: u8 team | u8 phase
+    MODEL_DEMANDS: 0x40, // s→c admin: one team's demand per concept + source (1.14)
+    SET_DEMAND: 0x41,    // admin: u8 team | u8 concept | u8 demand (255 = back to the model)
   };
 
   // G4.30 attribute order (PROTOCOL 0x37, append-only; G4.52 the body four;
@@ -245,6 +247,26 @@
     return envelope(FrameType.BRAIN_WATCH, p);
   }
 
+  // 1.14 (G4.74): u8 team | u8 model (255 none) | u8 count | per concept
+  // u8 demand | u8 source (0 default, 1 the model's row, 2 a live change).
+  function decodeModelDemands(view, at) {
+    const team = view.getUint8(at), model = view.getUint8(at + 1), n = view.getUint8(at + 2);
+    const demand = [], source = [];
+    for (let i = 0; i < n; i++) {
+      demand.push(view.getUint8(at + 3 + 2 * i));
+      source.push(view.getUint8(at + 4 + 2 * i));
+    }
+    return { team, model, demand, source };
+  }
+  function encodeSetDemand(team, conceptId, demand) {
+    const p = new ArrayBuffer(3);
+    const v = new DataView(p);
+    v.setUint8(0, team);
+    v.setUint8(1, conceptId);
+    v.setUint8(2, demand);
+    return envelope(FrameType.SET_DEMAND, p);
+  }
+
   function encodeApplyPreset(team, presetId) {
     const p = new ArrayBuffer(2);
     const v = new DataView(p);
@@ -340,6 +362,8 @@
     decodeTeams,
     ATTRIBUTES,
     encodeApplyPreset,
+    decodeModelDemands,
+    encodeSetDemand,
     encodeRunPhase,
     encodeSpeed,
     decodeSpeed,

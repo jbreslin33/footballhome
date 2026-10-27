@@ -360,6 +360,52 @@ std::optional<ApplyPresetFrame> decodeApplyPreset(const Bytes& payload) {
     return f;
 }
 
+// ── MODEL_DEMANDS / SET_DEMAND (1.14, G4.74) ────────────────────────────
+
+Bytes encodeModelDemands(const ModelDemandsFrame& f) {
+    Writer w;
+    w.u8(f.team);
+    w.u8(f.model);
+    w.u8(static_cast<std::uint8_t>(f.demand.size()));
+    for (std::size_t i = 0; i < f.demand.size(); ++i) {
+        w.u8(f.demand[i]);
+        w.u8(i < f.source.size() ? f.source[i] : 0);
+    }
+    return std::move(w.out);
+}
+
+std::optional<ModelDemandsFrame> decodeModelDemands(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    ModelDemandsFrame f;
+    f.team = r.u8();
+    f.model = r.u8();
+    const std::uint8_t n = r.u8();
+    for (std::uint8_t i = 0; i < n && r.ok; ++i) {
+        f.demand.push_back(r.u8());
+        f.source.push_back(r.u8());
+    }
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
+Bytes encodeSetDemand(const SetDemandFrame& f) {
+    Writer w;
+    w.u8(f.team);
+    w.u8(f.concept_id);
+    w.u8(f.demand);
+    return std::move(w.out);
+}
+
+std::optional<SetDemandFrame> decodeSetDemand(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    SetDemandFrame f;
+    f.team = r.u8();
+    f.concept_id = r.u8();
+    f.demand = r.u8();
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
 // ── CLAIM ───────────────────────────────────────────────────────────────
 
 Bytes encodeClaim(const ClaimFrame& f) {

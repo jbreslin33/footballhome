@@ -63,6 +63,8 @@ Frame types (u8):
 | 0x3D | BRAIN_LEGEND | s→c | on connect (1.7): the decision names, PRESETS layout; a BRAIN entry's `why` indexes it |
 | 0x3E | PHASES | s→c | the phase-of-play catalog (1.9, G4.58), on connect: PRESETS layout, titles from `game_phases` (mig 695); index = phase id |
 | 0x3F | RUN_PHASE | c→s | admin (1.9): `u8 team \| u8 phase` (APPLY_PRESET layout) — all 22 placed in their organized shapes for the phase's ball, then the dead-ball restart (keeper / corner / kick-off) or the ball at the team's nearest outfielder (open play); unknown ids ignored |
+| 0x40 | MODEL_DEMANDS | s→c | admin (1.14, G4.74): one team's game-model demand per concept, on connect and after every change: `u8 team \| u8 model (PRESETS index; 255 none) \| u8 count`, then per concept id `u8 demand (0-100) \| u8 source (0 = the default: core 100, style 0; 1 = the model's own row; 2 = a live change)` |
+| 0x41 | SET_DEMAND | c→s | admin (1.14, G4.74): one concept's demand for one team, live on top of its model and not saved: `u8 team \| u8 concept id \| u8 demand (0-100; 255 = back to the model / default)`. APPLY_PRESET clears a team's live changes |
 | TBD | … | | reserved; new types are additive within a major version |
 
 Snapshot payloads at 22 slots + 3D ball must be measured against the u16

@@ -168,6 +168,23 @@ struct PresetsFrame {
 Bytes encodePresets(const PresetsFrame& f);
 std::optional<PresetsFrame> decodePresets(const Bytes& payload);
 
+// G4.74 (1.14): what one team's game model asks of each concept, live.
+// source: 0 = the default (core 100, style 0), 1 = the model's row, 2 = a
+// live change from the HUD (not saved).
+struct ModelDemandsFrame {
+    std::uint8_t team = 0;
+    std::uint8_t model = 255;              // PRESETS index; 255 = none
+    std::vector<std::uint8_t> demand;      // by concept id
+    std::vector<std::uint8_t> source;
+};
+Bytes encodeModelDemands(const ModelDemandsFrame& f);
+std::optional<ModelDemandsFrame> decodeModelDemands(const Bytes& payload);
+struct SetDemandFrame {
+    std::uint8_t team = 0, concept_id = 0, demand = 255;   // 255 = clear the live change
+};
+Bytes encodeSetDemand(const SetDemandFrame& f);
+std::optional<SetDemandFrame> decodeSetDemand(const Bytes& payload);
+
 struct ApplyPresetFrame {
     std::uint8_t team = 0;       // 0 home, 1 away
     std::uint8_t preset_id = 0;  // PRESETS index

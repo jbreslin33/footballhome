@@ -134,12 +134,19 @@ private:
     std::vector<core::ConceptRatings> concept_ratings_;
     std::vector<core::ConceptRatings> ability_;   // what each player KNOWS
     int team_model_[2] = {-1, -1};                // index into cfg_.models
+    // G4.74: live demand changes from the HUD on top of the model (-1 =
+    // the model / default); cleared when the team gets another model.
+    core::PresetOverlay live_demand_[2] = {filledOverlay(), filledOverlay()};
+    static core::PresetOverlay filledOverlay() { core::PresetOverlay o; o.fill(-1); return o; }
     void applyRosters();
     // Ability for one slot under a band: the band's defaults, then the
     // legacy mask, then the player's own rows.
     core::ConceptRatings buildAbility(std::uint8_t slot, const core::LevelParams& band) const;
     // Re-derive one team's played ratings from ability + its model.
     void recomputeKnowledge(bool home);
+    // G4.74: one team's demands (and where each comes from) to one admin,
+    // or (all) to every admin.
+    void sendDemands(std::uint8_t team, ClientId to, bool all = false);
     // G4.30: each rostered player's level = his team band bent by his
     // attributes (core::levelForPlayer), into World + Brain. Re-run after
     // every band change (MATCH_SETTINGS) — attributes are the roster's.

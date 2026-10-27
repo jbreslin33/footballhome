@@ -197,6 +197,33 @@ FH_TEST(apply_preset_round_trip) {
     FH_EXPECT_EQ(d->preset_id, 7);
 }
 
+// G4.74 (1.14): the HUD's game-model panel.
+FH_TEST(model_demands_round_trip) {
+    ModelDemandsFrame f;
+    f.team = 1;
+    f.model = 14;
+    f.demand = {100, 0, 90};
+    f.source = {0, 1, 2};
+    auto d = decodeModelDemands(encodeModelDemands(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->team, 1);
+    FH_EXPECT_EQ(d->model, 14);
+    FH_EXPECT_EQ(d->demand.size(), 3u);
+    FH_EXPECT_EQ(d->demand[2], 90);
+    FH_EXPECT_EQ(d->source[1], 1);
+}
+
+FH_TEST(set_demand_round_trip) {
+    SetDemandFrame f;
+    f.team = 0;
+    f.concept_id = 178;
+    f.demand = 255;
+    auto d = decodeSetDemand(encodeSetDemand(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->concept_id, 178);
+    FH_EXPECT_EQ(d->demand, 255);
+}
+
 FH_TEST(player_attributes_round_trip) {
     PlayerAttributesFrame f;
     f.slot = 13;
