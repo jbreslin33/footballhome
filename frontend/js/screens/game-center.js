@@ -2458,11 +2458,12 @@ class GameCenterScreen extends EventScreen {
       </div>`;
     };
 
-    const playerRow = (p, extra = '') => `
-      <div style="padding:6px var(--space-3); border-bottom:1px solid var(--border-color);">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-          <span style="font-size:0.9em; display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;">
-            <span ${this._eligNameTitle(p.id)}style="overflow-wrap:break-word; white-space:normal; ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}</span>
+    // A game's card (EventScreen.cardHtml): name + call-up / RSVP / dues /
+    // injury chips; bench order + zone buttons on the right; then position
+    // pills, the eligibility line, the contact line and whatever the
+    // section adds.
+    const playerRow = (p, extra = '') => ({
+      name: `<span ${this._eligNameTitle(p.id)}style="overflow-wrap:break-word; white-space:normal; ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}</span>
             ${p.callUp ? (() => {
               // Which kind of invitee (owner 2026-10-22): ⭐ Standing
               // Call-up = a team_auto_invites rider (Rhoden, Pena); ↔ Call
@@ -2485,14 +2486,10 @@ class GameCenterScreen extends EventScreen {
             })() : ''}
             ${this.isCoach && !p.callUp ? this._rsvpStatusPill(p.id) : ''}
             ${this._duesFlag(p)}
-            ${this.isCoach ? this._injuryChip(p.id) : ''}
-          </span>
-          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-            ${this.isCoach && this.zones.get(p.id) === 'bench' ? benchOrderControl(p) : ''}
-            ${this.isCoach ? zoneButtons(p.id) : ''}
-          </div>
-        </div>
-        ${this.isCoach ? positionPills(p) : ''}
+            ${this.isCoach ? this._injuryChip(p.id) : ''}`,
+      right: `${this.isCoach && this.zones.get(p.id) === 'bench' ? benchOrderControl(p) : ''}
+            ${this.isCoach ? zoneButtons(p.id) : ''}`,
+      body: `        ${this.isCoach ? positionPills(p) : ''}
         ${this.isCoach ? `
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:3px;">
             ${statsLine(p.id)}
@@ -2500,8 +2497,8 @@ class GameCenterScreen extends EventScreen {
           </div>
         ` : ''}
         ${this.isCoach && !String(extra).includes('data-gc-contact') ? this._contactLine(p.id) : ''}
-        ${extra}
-      </div>`;
+        ${extra}`,
+    });
 
     // Multiple player cards per line instead of one full-width row each
     // (owner directive: "like on teams screen, so there is less blank
@@ -2509,16 +2506,10 @@ class GameCenterScreen extends EventScreen {
     // Alternates/Going/collapsed Not-Going/No-Response) uses this same
     // auto-fill grid, each card wrapping playerRow's content in its own
     // bordered tile instead of a shared list divider.
-    const cardGrid = (players, extra = null) => players.length
-      ? `<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:6px;">
-          ${players.map(p => this._cardWrap(p, playerRow(p, extra ? extra(p) : ''))).join('')}
-        </div>`
-      : `<div style="padding:6px var(--space-3); opacity:0.6; font-size:0.85em;">None yet</div>`;
+    const cardGrid = (players, extra = null) =>
+      this.cardGridHtml(players.map(p => this._cardWrap(p, playerRow(p, extra ? extra(p) : ''))));
 
-    const gridSection = (label, players, extra = null) => `
-      <h2 style="margin: var(--space-3) 0 4px; font-size:0.85rem;">${label} (${players.length})</h2>
-      ${cardGrid(players, extra)}
-    `;
+    const gridSection = (label, players, extra = null) => this.cardSectionHtml(label, players.length, cardGrid(players, extra));
 
     // Not Going / No Response rolled up out of the way by default (owner
     // directive: "...have them rolled up so they are not in way") — a
@@ -2526,13 +2517,8 @@ class GameCenterScreen extends EventScreen {
     // key: which fold this is, so it stays open across the re-render a
     // REMIND tap triggers (owner 2026-10-22: "its still closing the no
     // response people and i need to open again").
-    const collapsedSection = (label, players, { top = '', extra = null, key = '' } = {}) => `
-      <details data-gc-fold="${key}" ${key && this._openFolds.has(key) ? 'open' : ''} style="margin: var(--space-3) 0;">
-        <summary style="cursor:pointer; font-size:0.85rem; font-weight:700; padding:4px 0;">${label} (${players.length})</summary>
-        ${players.length ? top : ''}
-        ${cardGrid(players, extra)}
-      </details>
-    `;
+    const collapsedSection = (label, players, { top = '', extra = null, key = '' } = {}) =>
+      this.cardFoldHtml('data-gc-fold', key, !!(key && this._openFolds.has(key)), label, players.length, cardGrid(players, extra), { top });
 
     // No Response gets reminders (owner 2026-09-19: "a group text/email
     // and individual buttons on the player cards for reminders for 'all'
@@ -3285,14 +3271,14 @@ class GameCenterScreen extends EventScreen {
     return this._regWarnCopy('not_on_roster', { status: g.status_label || 'no status' });
   }
 
-  // Every card in a section grid comes through here: a plain bordered
-  // tile, or — for a registration gap — the red pulsing one with the
-  // banner and the fix on top.
-  _cardWrap(p, inner) {
+  // Every card in a section grid comes through here — EventScreen's one
+  // player card (cardHtml), plain, or — for a registration gap — the red
+  // pulsing one with the banner and the fix on top.
+  _cardWrap(p, parts) {
     const personId = this._personIdFor(p.id);
     const g = this.isCoach && personId ? this._regGapFor(personId) : null;
-    const id = personId ? ` id="gc-card-${personId}"` : '';
-    if (!g) return `<div${id} style="border:1px solid var(--border-color); border-radius:6px; overflow:hidden;">${inner}</div>`;
+    const id = personId ? `gc-card-${personId}` : '';
+    if (!g) return this.cardHtml({ id, ...parts });
     this._ensureWarnStyles();
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
     const waiting = !!g.player_done;
@@ -3306,7 +3292,7 @@ class GameCenterScreen extends EventScreen {
           ${g.reason === 'calldown_cap_full' ? `<span style="font-weight:600; opacity:0.9;">${esc(this._regWarnCopy('calldown_alt'))}</span>` : ''}
         </div>` : ''}
       </div>`;
-    return `<div${id} class="${waiting ? 'gc-warn-wait' : 'gc-warn-alert'}" style="border-radius:6px; overflow:hidden;">${banner}${inner}</div>`;
+    return this.cardHtml({ id, ...parts, banner, cls: waiting ? 'gc-warn-wait' : 'gc-warn-alert' });
   }
 
   // The pulse lives in one stylesheet; reduced-motion users get a steady

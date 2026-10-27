@@ -194,8 +194,6 @@ class EventScreen extends Screen {
         .ec-send { font-size:0.8rem; font-weight:700; color:#0f172a; padding:4px 9px; border-radius:999px; border:none; cursor:pointer; }
         .ec-send[disabled] { opacity:0.5; }
         .ec-box { border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary); padding:12px; margin-bottom:var(--space-3); }
-        .ec-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:6px; }
-        .ec-card { border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary); padding:8px 10px; font-size:0.9rem; min-width:0; }
       </style>
       <div class="screen-header" style="flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn">← Back</button>
@@ -613,6 +611,67 @@ class EventScreen extends Screen {
     });
   }
 
+  // ── one player card ─────────────────────────────────────────────────
+  // Every EventScreen draws its people the same way (owner 2026-10-27:
+  // "same behaviour for practice and game except where we have to
+  // differ"): a card with the name and its chips on the left, the quick
+  // controls on the right, then the kind's own rows — a game's zone,
+  // position and eligibility lines, a practice's groups and attendance —
+  // in an auto-fill grid, under a section heading or inside a fold that
+  // stays as the coach left it.  The kinds fill the slots; the shape is
+  // here.
+  static ensureCardStyles() {
+    if (document.getElementById('ev-card-styles')) return;
+    const st = document.createElement('style');
+    st.id = 'ev-card-styles';
+    st.textContent = `
+      .ev-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:6px; }
+      .ev-card { border:1px solid var(--border-color); border-radius:8px; background:var(--bg-secondary); overflow:hidden; min-width:0; font-size:0.9rem; }
+      .ev-card-in { padding:7px 10px; }
+      .ev-card-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+      .ev-card-name { display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap; font-weight:700; overflow-wrap:anywhere; }
+      .ev-card-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+      .ev-sec { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:var(--space-3) 0 6px;
+                font-size:0.78rem; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; }
+      .ev-fold { margin:var(--space-3) 0; }
+      .ev-fold > summary { cursor:pointer; font-size:0.78rem; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; padding:4px 0; }
+      .ev-none { padding:6px 2px; opacity:0.6; font-size:0.85em; }`;
+    document.head.appendChild(st);
+  }
+
+  // One card.  name / right / body are html; banner sits over the card (a
+  // game's registration-gap warning), cls styles the whole card, attrs
+  // are extra attributes (data-person-row …).
+  cardHtml({ id = '', name = '', right = '', body = '', banner = '', cls = '', attrs = '' } = {}) {
+    EventScreen.ensureCardStyles();
+    return `<div${id ? ` id="${id}"` : ''} class="ev-card ${cls}" ${attrs}>${banner}<div class="ev-card-in">
+        <div class="ev-card-head"><span class="ev-card-name">${name}</span>${right ? `<span class="ev-card-right">${right}</span>` : ''}</div>
+        ${body}
+      </div></div>`;
+  }
+
+  cardGridHtml(cards, empty = 'None yet') {
+    EventScreen.ensureCardStyles();
+    return cards.length ? `<div class="ev-grid">${cards.join('')}</div>` : `<div class="ev-none">${empty}</div>`;
+  }
+
+  // A heading "Label (n)" with an aside on the right (a present count),
+  // then whatever sits over the cards, then the cards.
+  cardSectionHtml(label, n, grid, { aside = '', top = '' } = {}) {
+    EventScreen.ensureCardStyles();
+    return `<div class="ev-sec"><span>${label} (${n})</span>${aside ? `<span>${aside}</span>` : ''}</div>${top}${grid}`;
+  }
+
+  // The same, folded.  foldAttr/key name the fold so the screen can keep it
+  // open across a refresh; open is whether it is open now.
+  cardFoldHtml(foldAttr, key, open, label, n, grid, { aside = '', top = '' } = {}) {
+    EventScreen.ensureCardStyles();
+    return `<details class="ev-fold" ${foldAttr}="${key}" ${open ? 'open' : ''}>
+        <summary>${label} (${n})${aside ? ` · ${aside}` : ''}</summary>
+        ${n ? top : ''}${grid}
+      </details>`;
+  }
+
   // ── render ──────────────────────────────────────────────────────────
   _when(ev) { return EventLabels.when(ev); }
   _kindOf(ev) { return EventLabels.kindOf(ev); }
@@ -720,34 +779,28 @@ class EventScreen extends Screen {
     };
     const card = (r, { remind = false, sides = false } = {}) => {
       const err = this.rsvpNote[r.person_id];
-      return `<div class="ec-card" data-person-row="${r.person_id}">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-          <span style="font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(nameOf(r))}${chipHtml(r)}</span>
-          ${rsvpBtns(r)}
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap;">
-          ${sides ? this._cardSideHtml(r) : '<span></span>'}
-          ${this._attendanceCell(r.person_id)}
-        </div>
-        ${err ? `<div style="font-size:0.72rem; color:#f87171; margin-top:4px;">${this.escapeHtml(err)}</div>` : ''}
-        ${remind && canRemind ? this._remindRowHtml(r) : ''}
-      </div>`;
+      return this.cardHtml({
+        attrs: `data-person-row="${r.person_id}"`,
+        name: `<span style="min-width:0; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(nameOf(r))}</span>${chipHtml(r)}`,
+        right: rsvpBtns(r),
+        body: `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap;">
+            ${sides ? this._cardSideHtml(r) : '<span></span>'}
+            ${this._attendanceCell(r.person_id)}
+          </div>
+          ${err ? `<div style="font-size:0.72rem; color:#f87171; margin-top:4px;">${this.escapeHtml(err)}</div>` : ''}
+          ${remind && canRemind ? this._remindRowHtml(r) : ''}`,
+      });
     };
-    const grid = (list, opts) => `<div class="ec-grid">${list.map(r => card(r, opts)).join('')}</div>`;
-    const head = (label, list) => `<div style="display:flex; justify-content:space-between; align-items:baseline; margin:var(--space-3) 0 6px;">
-        <span class="ec-h">${label} (${list.length})</span>
-        ${this.att ? `<span style="font-size:0.78rem; color:#22c55e; font-weight:700;">${present(list)} present</span>` : ''}
-      </div>`;
-    const section = (label, list, opts = {}) => list.length ? head(label, list) + (opts.top || '') + grid(list, opts) : '';
+    const grid = (list, opts) => this.cardGridHtml(list.map(r => card(r, opts)));
+    const presentAside = (list) => this.att ? `<span style="color:#22c55e;">${present(list)} present</span>` : '';
+    const section = (label, list, opts = {}) => list.length
+      ? this.cardSectionHtml(label, list.length, grid(list, opts), { aside: presentAside(list), top: opts.top || '' }) : '';
     // Folds keep their open/closed state across the 15s refresh and a
     // reminder's re-render (as Game Center's do).
     const fold = (key, label, list, opts = {}) => {
       if (!list.length) return '';
       const isOpen = this.folds.has(key) ? this.folds.get(key) : !!opts.defaultOpen;
-      return `<details data-ec-fold="${key}" ${isOpen ? 'open' : ''} style="margin:var(--space-3) 0;">
-        <summary style="cursor:pointer;" class="ec-h">${label} (${list.length})${this.att ? ` · <span style="color:#22c55e;">${present(list)} present</span>` : ''}</summary>
-        ${opts.top || ''}${grid(list, opts)}
-      </details>`;
+      return this.cardFoldHtml('data-ec-fold', key, isOpen, label, list.length, grid(list, opts), { aside: presentAside(list), top: opts.top || '' });
     };
 
     // A yes from someone over the dues line (dues_eligible=false,
