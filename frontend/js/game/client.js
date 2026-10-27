@@ -522,7 +522,10 @@
   // it, so the parent's value comes back. A top-level model states every
   // concept, so it has nothing to fall back to. Collapsed by default. ──
   const demands = [null, null];   // per team: { model, demand[], source[], parent, origin[] }
-  let modelTeam = 0, modelOpen = false, modelFilter = 'all', modelSearch = '';
+  // G4.76: and its numbers — each concept's distances / times and the 3
+  // rules by third, saved into the model the same way.
+  const params = [null, null];    // per team: { entries: [{ key, milli, source, origin, unit }] }
+  let modelTeam = 0, modelOpen = false, modelFilter = 'all', modelSearch = '', modelView = 'demand';
   const modelBtn = document.createElement('button');
   modelBtn.type = 'button';
   modelBtn.className = 'game-only';
@@ -555,7 +558,39 @@
     const model = d && d.model !== 255 ? modelName(d.model) : 'no model';
     const parent = d ? modelName(d.parent) : '';
     let rows = '';
-    if (d) {
+    const pm = params[modelTeam];
+    if (modelView === 'numbers' && pm) {
+      const ZONE = { own: 'our third', middle: 'middle third', their: 'their third' };
+      pm.entries.forEach((e) => {
+        const src = e.source;
+        if (modelFilter === 'own' && src !== 1 && src !== 2) return;
+        if (modelFilter === 'live' && src !== 2) return;
+        if (modelSearch && !e.key.includes(modelSearch)) return;
+        const part = e.key.split('.');
+        const label = part[0] === 'ladder' ? `3 rules · ${ZONE[part[1]] || part[1]} · ${part[2].replace('_', ' ')}` :
+          `${part[1]} · ${part.slice(2).join('.')}`;
+        const from = modelName(e.origin);
+        const tag = src === 2 ? 'LIVE' : src === 1 ? 'own' : src === 3 ? from : 'global';
+        const tip = src === 2 ? 'Changed here, not saved' : src === 1 ? `Saved in ${model}` :
+          src === 3 ? `Inherited from ${from}` : 'The global number (game_model_params) — no model sets it';
+        const v = e.milli / 1000;
+        let act = '';
+        if (src === 2) {
+          act = `<button type="button" data-psave="${esc(e.key)}" title="Save into ${esc(model)}" style="${chip(false)}">💾</button>` +
+                `<button type="button" data-preset="${esc(e.key)}" title="Undo the live change" style="${chip(false)}">↺</button>`;
+        } else if (src === 1 && (d ? d.parent !== 255 : false)) {
+          act = `<button type="button" data-pinherit="${esc(e.key)}" title="Delete ${esc(model)}'s own value: back to ${esc(parent)}" style="${chip(false)}">↺</button>`;
+        }
+        rows += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">` +
+          `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(e.key)}">${esc(label)}</span>` +
+          `<input type="number" step="${e.unit === '%' ? 1 : 0.1}" value="${v}" data-pkey="${esc(e.key)}" aria-label="${esc(label)}" ` +
+          `style="flex:0 0 58px;min-height:0;border-radius:6px;border:0;padding:1px 4px;font:12px system-ui,sans-serif;">` +
+          `<span style="flex:0 0 22px;font-size:10px;opacity:.8;">${esc(e.unit)}</span>` +
+          `<span title="${esc(tip)}" style="flex:0 0 64px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:${src === 3 || src === 0 ? .6 : 1};color:${src === 2 ? '#ffcc00' : '#f4f6fb'};">${esc(tag)}</span>` +
+          `<span style="flex:0 0 52px;display:flex;gap:2px;justify-content:flex-end;">${act}</span>` +
+          `</div>`;
+      });
+    } else if (d && modelView === 'demand') {
       GameWire.CONCEPTS.forEach((c, i) => {
         if (!c || i >= d.demand.length) return;
         const src = d.source[i];
@@ -589,6 +624,9 @@
       names.map((n, t) => `<button type="button" data-mteam="${t}" style="${chip(t === modelTeam)}">${esc(n)}</button>`).join('') +
       `<span style="flex:1;"></span><button type="button" data-mclose title="Collapse" style="${chip(false)}">✕</button></div>` +
       `<div style="margin:4px 0;opacity:.85;">Plays <b>${esc(model)}</b>${line ? ' · ' + line : ''} · 💾 saves a live change</div>` +
+      `<div style="display:flex;gap:4px;margin-bottom:4px;">` +
+      [['demand', 'Demands'], ['numbers', 'Numbers']].map(([k, l]) =>
+        `<button type="button" data-mview="${k}" style="${chip(modelView === k)}">${l}</button>`).join('') + `</div>` +
       `<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">` +
       [['all', 'All'], ['own', 'Own + live'], ['live', 'Live']].map(([k, l]) =>
         `<button type="button" data-mfilter="${k}" style="${chip(modelFilter === k)}">${l}</button>`).join('') +
@@ -612,6 +650,12 @@
       const i = Number(t.dataset.save), d = demands[modelTeam];
       if (d) net.saveDemand(modelTeam, i, d.demand[i]);
     } else if (t.dataset.inherit !== undefined) net.saveDemand(modelTeam, Number(t.dataset.inherit), 255);
+    else if (t.dataset.mview) { modelView = t.dataset.mview; paintModelPanel(); }
+    else if (t.dataset.psave !== undefined) {
+      const pm = params[modelTeam], e = pm && pm.entries.find((x) => x.key === t.dataset.psave);
+      if (e) net.setParam(modelTeam, 2, e.milli, e.key);
+    } else if (t.dataset.preset !== undefined) net.setParam(modelTeam, 1, 0, t.dataset.preset);
+    else if (t.dataset.pinherit !== undefined) net.setParam(modelTeam, 3, 0, t.dataset.pinherit);
   });
   modelPanel.addEventListener('input', (ev) => {
     const t = ev.target;
@@ -629,6 +673,8 @@
   modelPanel.addEventListener('change', (ev) => {
     const t = ev.target;
     if (t.dataset.cid !== undefined) net.setDemand(modelTeam, Number(t.dataset.cid), Number(t.value));
+    else if (t.dataset.pkey !== undefined && t.value !== '' && Number.isFinite(Number(t.value)))
+      net.setParam(modelTeam, 0, Math.round(Number(t.value) * 1000), t.dataset.pkey);
   });
 
   // ── Sim speed (G4.61, admin) — James: "slow mo … or speed up but with
@@ -927,6 +973,12 @@
       // Don't repaint under a finger mid-drag; the next frame catches up.
       const a = document.activeElement;
       if (a && a.dataset && a.dataset.cid !== undefined && modelPanel.contains(a)) return;
+      paintModelPanel();
+    },
+    onParams(p) {   // G4.76
+      params[p.team] = p;
+      const a = document.activeElement;
+      if (a && a.dataset && a.dataset.pkey !== undefined && modelPanel.contains(a)) return;
       paintModelPanel();
     },
     onPresets(names) {

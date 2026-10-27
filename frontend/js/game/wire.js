@@ -37,6 +37,8 @@
     MODEL_DEMANDS: 0x40, // s→c admin: one team's demand per concept + source (1.14)
     SET_DEMAND: 0x41,    // admin: u8 team | u8 concept | u8 demand (255 = back to the model)
     SAVE_DEMAND: 0x42,   // admin: same layout, SAVED into the team's model (255 = inherit) (1.15)
+    MODEL_PARAMS: 0x43,  // s→c admin: a team's concept numbers + 3-rule weights (1.15)
+    SET_PARAM: 0x44,     // admin: u8 team | u8 op | i32 milli | str key (1.15)
   };
 
   // G4.30 attribute order (PROTOCOL 0x37, append-only; G4.52 the body four;
@@ -277,6 +279,39 @@
     return envelope(save ? FrameType.SAVE_DEMAND : FrameType.SET_DEMAND, p);
   }
 
+  // 1.15 (G4.76): numbers in milli-units; source 0 global row, 1 own,
+  // 2 live, 3 inherited; origin = the model it came from (255 none).
+  function decodeModelParams(view, at) {
+    const team = view.getUint8(at), n = view.getUint16(at + 1, true);
+    let p = at + 3;
+    const str = () => {
+      const len = view.getUint8(p); p += 1;
+      const s = utf8.decode(new Uint8Array(view.buffer, view.byteOffset + p, len));
+      p += len;
+      return s;
+    };
+    const entries = [];
+    for (let i = 0; i < n; i++) {
+      const key = str();
+      const milli = view.getInt32(p, true); p += 4;
+      const source = view.getUint8(p++), origin = view.getUint8(p++);
+      entries.push({ key, milli, source, origin, unit: str() });
+    }
+    return { team, entries };
+  }
+  // op: 0 live, 1 undo live, 2 save into the model, 3 inherit (delete own row).
+  function encodeSetParam(team, op, milli, key) {
+    const k = new TextEncoder().encode(key).slice(0, 80);
+    const p = new ArrayBuffer(7 + k.length);
+    const v = new DataView(p);
+    v.setUint8(0, team);
+    v.setUint8(1, op);
+    v.setInt32(2, milli, true);
+    v.setUint8(6, k.length);
+    new Uint8Array(p, 7).set(k);
+    return envelope(FrameType.SET_PARAM, p);
+  }
+
   function encodeApplyPreset(team, presetId) {
     const p = new ArrayBuffer(2);
     const v = new DataView(p);
@@ -373,6 +408,8 @@
     ATTRIBUTES,
     encodeApplyPreset,
     decodeModelDemands,
+    decodeModelParams,
+    encodeSetParam,
     encodeSetDemand,
     encodeRunPhase,
     encodeSpeed,

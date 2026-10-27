@@ -2705,6 +2705,19 @@ said) all of the Semi pro standard"
   every model inheriting it re-resolves at once; ↺ on a saved row of a
   child model deletes it (back to the parent); a top-level model has no ↺
   (it must state everything). Filters: All (default), Own + live, Live.
+- **Numbers too (the panel's Numbers view):** each concept number (151,
+  `game_model_params` owner concept whose code is a concept) and the nine
+  3-rule weights, with source *global* / *own* / inherited model / *LIVE*,
+  the same 💾 and ↺. Numbers are the one exception to "a top-level model
+  states everything": a number no model sets is the global
+  `game_model_params` row (a distance of 0 would be nonsense, and the
+  global row is the starting value every coach tunes from). Brain holds
+  one `ConceptBook` per team (`books_[2]`, `bookOf(slot)`; each method
+  reads his own team's), configured in `recomputeKnowledge` from global +
+  model chain + live; DB-identical books, so the goldens didn't move.
+  Wire: MODEL_PARAMS 0x43, SET_PARAM 0x44 (op 0 live, 1 undo, 2 save,
+  3 inherit); keys `concept.<code>.<param>` / `ladder.<zone>.<rung>`,
+  milli-units. APPLY_PRESET clears live numbers too.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

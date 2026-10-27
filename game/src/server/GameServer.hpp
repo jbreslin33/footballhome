@@ -28,6 +28,7 @@
 #include "net/INetworkTransport.hpp"
 
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <unordered_map>
 
@@ -74,6 +75,8 @@ public:
         // G4.33: game-model numbers (game_model_params) for the Skill and
         // Concept classes; empty = their seeded defaults.
         core::ModelParams model_params;
+        // G4.76: the concept numbers a model can set (HUD list, keys + units).
+        std::vector<persistence::ParamInfo> param_info;
         // G4.57: direct-opponent pairs by position number (DB).
         std::vector<std::pair<int, int>> direct_pairs;
         // G4.58: phases of play (DB) for the admin RUN_PHASE frame.
@@ -137,6 +140,9 @@ private:
     // G4.74: live demand changes from the HUD on top of the model (-1 =
     // the model / default); cleared when the team gets another model.
     core::PresetOverlay live_demand_[2] = {filledOverlay(), filledOverlay()};
+    // G4.76: live (unsaved) numbers per team, milli by key — "concept.<code>.
+    // <param>" or "ladder.<zone>.<rung>" (percent).
+    std::map<std::string, std::int64_t> live_params_[2];
     static core::PresetOverlay filledOverlay() { core::PresetOverlay o; o.fill(-1); return o; }
     void applyRosters();
     // Ability for one slot under a band: the band's defaults, then the
@@ -147,6 +153,9 @@ private:
     // G4.74: one team's demands (and where each comes from) to one admin,
     // or (all) to every admin.
     void sendDemands(std::uint8_t team, ClientId to, bool all = false);
+    // G4.76 (1.15): the team's concept numbers + 3-rule weights, to one
+    // admin or all of them.
+    void sendParams(std::uint8_t team, ClientId to, bool all = false);
     // G4.30: each rostered player's level = his team band bent by his
     // attributes (core::levelForPlayer), into World + Brain. Re-run after
     // every band change (MATCH_SETTINGS) — attributes are the roster's.

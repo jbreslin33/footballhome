@@ -322,7 +322,7 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
     // Each man starts after his reaction (+ his perception delay).
     Fixed64 react[64];
     for (SlotIndex i = 0; i < n && i < 64; ++i)
-        react[i] = book_.meet_the_pass.reaction() +
+        react[i] = bookOf(i).meet_the_pass.reaction() +
                    Fixed64::fromInt(levelOf(i).perception_delay_ticks) * core::kTickDt;
     const Fixed64 box_x = half_x_ - Fixed64::fromFraction(33, 2);   // 16.5 m
     const Fixed64 box_y = Fixed64::fromFraction(2016, 100);          // 20.16 m
@@ -330,7 +330,8 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
     const std::uint8_t flag_team = world.offsideTeam();
     Vec3 pos = b.pos, vel = b.vel;
     int open = n;
-    const int horizon = book_.meet_the_pass.horizonTicks();
+    const int horizon = std::max(books_[0].meet_the_pass.horizonTicks(),
+                                 books_[1].meet_the_pass.horizonTicks());
     for (int k = 0; k <= horizon && open > 0; ++k) {
         if (k > 0) {  // World::tickFreeBall, one tick
             if (pos.z.raw > 0 || vel.z.raw != 0) vel.z -= core::kGravity * core::kTickDt;
@@ -466,7 +467,8 @@ const std::vector<std::uint8_t>& Brain::directOpponents(const World& world, std:
 // behind him since is still back where he started. The flight read and the
 // direct-opponent pairs are shared by all 22 brains, so they are read from
 // the true world first (their caches then serve every picture this tick).
-const Call& Brain::callConcept(Why w) const {
+const Call& Brain::callConcept(Why w, std::uint8_t team) const {
+    const ConceptBook& book_ = books_[team > 1 ? 0 : team];
     switch (w) {
         case Why::CallManOn: return book_.call_man_on;
         case Why::CallTurn: return book_.call_turn;
@@ -487,17 +489,19 @@ bool Brain::says(SlotIndex slot, const Call& c, std::uint64_t sec) const {
 
 // HEARING: in voice range of the talker, and his concentration takes it in.
 bool Brain::hears(SlotIndex slot, const CallOut& c, const World& world) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     if (!c.made || c.talker < 0) return false;
     if (c.to == Orders::kBackLine ? !backLine(slot) : c.to != static_cast<int>(slot)) return false;
     const Fixed64 v = book_.vision.voice;
     if (distSq(world.player(slot).pos, world.player(static_cast<SlotIndex>(c.talker)).pos) > v * v) return false;
     const std::uint64_t sec = world.tickCount() / 30;
     const auto n = core::detNoise(match_seed_, sec, slot,
-                                  static_cast<std::uint8_t>(224 + (callConcept(c.why).bit() % 8)));
+                                  static_cast<std::uint8_t>(224 + (callConcept(c.why, setup_.team_of_slot[slot]).bit() % 8)));
     return (n + Fixed64::one()) < Fixed64::fromFraction(levelOf(slot).listen_pct, 50);
 }
 
 const std::vector<Brain::CallOut>& Brain::calls(std::uint8_t team, const World& world) const {
+    const ConceptBook& book_ = books_[team > 1 ? 0 : team];   // G4.76: his team's model
     const auto& b = world.ball();
     const std::int64_t key = b.pos.x.raw ^ (b.pos.y.raw << 1);
     std::vector<CallOut>& out = calls_[team & 1];
@@ -515,7 +519,7 @@ const std::vector<Brain::CallOut>& Brain::calls(std::uint8_t team, const World& 
         c.talker = talker;
         c.to = to;
         c.man = man;
-        c.made = says(static_cast<SlotIndex>(talker), callConcept(w), sec);
+        c.made = says(static_cast<SlotIndex>(talker), callConcept(w, team), sec);
         out.push_back(c);
     };
     if (ours) {
@@ -639,6 +643,7 @@ const std::vector<Brain::CallOut>& Brain::calls(std::uint8_t team, const World& 
 }
 
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     flightRead(world);
     directOpponents(world, world.tickCount() / 30);
     const bool perfect = levelOf(slot).isZero();
@@ -654,7 +659,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     for (const CallOut& c : cs) {
         if (!hears(slot, c, world)) continue;
         heard = c.why;
-        hear_ticks = static_cast<std::int32_t>((callConcept(c.why).hear() * Fixed64::fromInt(core::kTickRate)).raw >>
+        hear_ticks = static_cast<std::int32_t>((callConcept(c.why, setup_.team_of_slot[slot]).hear() * Fixed64::fromInt(core::kTickRate)).raw >>
                                                Fixed64::FRAC_BITS) + levelOf(slot).perception_delay_ticks;
         if (c.why == Why::CallSqueeze) told_squeeze_ = true;
         if (c.why == Why::CallLine) told_line_ = true;
@@ -712,6 +717,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
 }
 
 std::int32_t Brain::lookAge(SlotIndex slot, const World& world) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const auto& ball = world.ball();
     const std::uint8_t team = setup_.team_of_slot[slot];
     const bool ours = ball.owner ? world.player(*ball.owner).team == team
@@ -743,6 +749,7 @@ std::int32_t Brain::lookAge(SlotIndex slot, const World& world) const {
 }
 
 bool Brain::inView(SlotIndex slot, const World& world, SlotIndex other) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const auto& me = world.player(slot);
     const auto& him = world.player(other);
     const Vec2 d{him.pos.x - me.pos.x, him.pos.y - me.pos.y};
@@ -779,6 +786,7 @@ Orders Brain::ordersSeen(SlotIndex slot, const World& world) const {
 }
 
 Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     // A restart shape is held until the dead ball is played (G4.58).
     if (hold_team_ != 0xFF && world.restartTeam() == hold_team_ && !world.ball().owner) {
         for (const auto& [s, mark] : hold_) {
@@ -826,6 +834,7 @@ Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
 // spot, of 8 around him, furthest from every opponent, within the leash of
 // where his job wants him.
 void Brain::unmark(SlotIndex slot, const World& world, Orders& o) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const auto& ball = world.ball();
     if (!ball.owner || *ball.owner == slot || world.isKeeper(slot) || world.restartTeam() != 0xFF) return;
     const std::uint8_t team = setup_.team_of_slot[slot];
@@ -874,6 +883,7 @@ void Brain::unmark(SlotIndex slot, const World& world, Orders& o) const {
 // still play it back; failing that the old clear stands. False = the
 // concept didn't apply (not touch-tight, not his, a lapse) — carry on.
 bool Brain::keepIt(SlotIndex slot, const World& world, int sign, Orders& out) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const int bit = book_.keep_it.bit();
     if (ratings_[slot][bit] <= 0) return false;
     const auto& K = book_.keep_it;
@@ -959,6 +969,7 @@ bool Brain::keepIt(SlotIndex slot, const World& world, int sign, Orders& out) co
 // pass_speed — and how far slot runs in that time less his reaction (his
 // body's own law, from a standing start), plus the contact distance.
 Brain::Reach Brain::pressReach(SlotIndex slot, const World& world, const Vec2& passer, SlotIndex man) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const auto& P = book_.press_distance;
     const auto& m = world.player(man);
     const Vec2 d{passer.x - m.pos.x, passer.y - m.pos.y};
@@ -995,6 +1006,7 @@ bool Brain::rung(SlotIndex slot, Rung r, Fixed64 x, std::uint64_t sec) const {
 // keeper's ready to play (settle_s after he has it; a back pass: its flight
 // first). Can't hurry him: false — drop (the normal shape).
 bool Brain::hurryOrPounce(SlotIndex slot, const World& world, int sign, Orders& out) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const auto& b = world.ball();
     const std::uint8_t my_team = setup_.team_of_slot[slot];
     const std::uint64_t sec = world.tickCount() / 30;
@@ -1081,6 +1093,7 @@ bool Brain::hurryOrPounce(SlotIndex slot, const World& world, int sign, Orders& 
 // option). He goes whether or not he wins the race. On the ground: the 3
 // rules (jumpThePass).
 bool Brain::attackTheDrop(SlotIndex slot, const World& world, int sign, Orders& out) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const auto& b = world.ball();
     const std::uint8_t my_team = setup_.team_of_slot[slot];
     if (b.owner || world.restartTeam() != 0xFF || world.lastTouchTeam() == my_team) return false;
@@ -1109,6 +1122,7 @@ bool Brain::attackTheDrop(SlotIndex slot, const World& world, int sign, Orders& 
 }
 
 bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& out) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const auto& b = world.ball();
     const std::uint8_t my_team = setup_.team_of_slot[slot];
     if (b.owner || world.restartTeam() != 0xFF || world.lastTouchTeam() == my_team) return false;
@@ -1189,6 +1203,7 @@ bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& ou
 // that man is a full-back (wide and not a centre-back, or a winger's direct
 // opponent) — our nearer winger, the one who goes.
 Brain::Trap Brain::trapRead(const World& world, std::uint8_t my_team, const Vec2& B) const {
+    const ConceptBook& book_ = books_[my_team > 1 ? 0 : my_team];   // G4.76: his team's model
     (void)B;
     Trap t;
     const auto& P = book_.pack_middle;
@@ -1228,6 +1243,7 @@ Brain::Trap Brain::trapRead(const World& world, std::uint8_t my_team, const Vec2
 // centre-back or one of the men our midfield marks; -1 = none.
 int Brain::theirWinger(const World& world, std::uint8_t my_team, int sign, int R,
                        const std::vector<SlotIndex>& cbs) const {
+    const ConceptBook& book_ = books_[my_team > 1 ? 0 : my_team];   // G4.76: his team's model
     if (R < 0) return -1;
     const auto& P = book_.pack_middle;
     const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
@@ -1260,6 +1276,7 @@ int Brain::theirWinger(const World& world, std::uint8_t my_team, int sign, int R
 // (ai::LockTheDoor). A failed roll is the ordinary brain.
 bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2& B,
                         const Vec2& anchor, Orders& out) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const auto& P = book_.pack_middle;
     const int num = numberOf(slot);
     const bool nine = num != 0 && num == P.falseNine();
@@ -1540,6 +1557,7 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
 // cost per metre moved off the marking spot. None better: the marking spot.
 Vec2 Brain::oneSpot(SlotIndex slot, const World& world, SlotIndex man, const Vec2& spot,
                     const Vec2& B, SlotIndex carrier, bool shadow, bool help) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const std::uint8_t my_team = setup_.team_of_slot[slot];
     const auto& PD = book_.press_distance;
     const auto& SS = book_.shadow_second;
@@ -1625,6 +1643,7 @@ Vec2 Brain::oneSpot(SlotIndex slot, const World& world, SlotIndex man, const Vec
 }
 
 Orders Brain::decide(SlotIndex slot, const World& world) const {
+    const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     Orders out;
     const auto& ball = world.ball();
     const auto& me = world.player(slot);

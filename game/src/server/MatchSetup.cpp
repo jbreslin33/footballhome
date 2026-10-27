@@ -51,6 +51,7 @@ void loadMatchFromDb(GameServer::Config& cfg, const persistence::DbConfig& db,
     cfg.admin_user_ids = persistence::loadAdminUserIds(db);
     cfg.db = db;   // G4.32: admin RELOAD_ROSTERS re-reads the teams
     cfg.model_params = persistence::loadModelParams(db);   // G4.33
+    cfg.param_info = persistence::loadConceptParamInfo(db); // G4.76
     cfg.direct_pairs = persistence::loadDirectOpponents(db);   // G4.57
     cfg.phases = persistence::loadPhases(db);                  // G4.58
     cfg.phase_positions = persistence::loadPhasePositions(db); // mig 697

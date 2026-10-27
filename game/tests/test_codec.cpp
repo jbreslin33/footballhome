@@ -232,6 +232,37 @@ FH_TEST(model_demands_trailer_round_trip) {
     FH_EXPECT_EQ(d->source[0], 3);
 }
 
+// G4.76 (1.15): concept numbers + 3-rule weights, and the edit frame.
+FH_TEST(model_params_round_trip) {
+    ModelParamsFrame f;
+    f.team = 1;
+    f.entries.push_back({"ladder.own.intercept", "%", 50000, 1, 14});
+    f.entries.push_back({"concept.hurry-the-keeper.hurry_m", "m", 3000, 0, 255});
+    f.entries.push_back({"concept.x.neg", "m", -2500, 2, 255});
+    auto d = decodeModelParams(encodeModelParams(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->team, 1);
+    FH_EXPECT_EQ(d->entries.size(), 3u);
+    FH_EXPECT_EQ(d->entries[1].key, std::string("concept.hurry-the-keeper.hurry_m"));
+    FH_EXPECT_EQ(d->entries[0].milli, 50000);
+    FH_EXPECT_EQ(d->entries[2].milli, -2500);
+    FH_EXPECT_EQ(d->entries[0].origin, 14);
+    FH_EXPECT_EQ(d->entries[1].unit, std::string("m"));
+}
+
+FH_TEST(set_param_round_trip) {
+    SetParamFrame f;
+    f.team = 0;
+    f.op = 2;
+    f.milli = 2200;
+    f.key = "concept.defend-your-man.contain_gap_m";
+    auto d = decodeSetParam(encodeSetParam(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->op, 2);
+    FH_EXPECT_EQ(d->milli, 2200);
+    FH_EXPECT_EQ(d->key, f.key);
+}
+
 FH_TEST(set_demand_round_trip) {
     SetDemandFrame f;
     f.team = 0;

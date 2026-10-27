@@ -414,6 +414,81 @@ std::optional<SetDemandFrame> decodeSetDemand(const Bytes& payload) {
     return f;
 }
 
+namespace {
+void putStr(Writer& w, const std::string& s) {
+    const std::size_t len = s.size() > 80 ? 80 : s.size();
+    w.u8(static_cast<std::uint8_t>(len));
+    for (std::size_t i = 0; i < len; ++i) w.u8(static_cast<std::uint8_t>(s[i]));
+}
+std::string getStr(Reader& r) {
+    const std::uint8_t len = r.u8();
+    std::string s;
+    for (std::uint8_t i = 0; i < len && r.ok; ++i) s.push_back(static_cast<char>(r.u8()));
+    return s;
+}
+void putI32(Writer& w, std::int32_t v) {
+    const auto u = static_cast<std::uint32_t>(v);
+    w.u16(static_cast<std::uint16_t>(u));
+    w.u16(static_cast<std::uint16_t>(u >> 16));
+}
+std::int32_t getI32(Reader& r) {
+    const std::uint32_t lo = r.u16(), hi = r.u16();
+    return static_cast<std::int32_t>(lo | hi << 16);
+}
+}  // namespace
+
+Bytes encodeModelParams(const ModelParamsFrame& f) {
+    Writer w;
+    w.u8(f.team);
+    w.u16(static_cast<std::uint16_t>(f.entries.size()));
+    for (const auto& e : f.entries) {
+        putStr(w, e.key);
+        putI32(w, e.milli);
+        w.u8(e.source);
+        w.u8(e.origin);
+        putStr(w, e.unit);
+    }
+    return std::move(w.out);
+}
+
+std::optional<ModelParamsFrame> decodeModelParams(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    ModelParamsFrame f;
+    f.team = r.u8();
+    const std::uint16_t n = r.u16();
+    for (std::uint16_t i = 0; i < n && r.ok; ++i) {
+        ModelParamEntry e;
+        e.key = getStr(r);
+        e.milli = getI32(r);
+        e.source = r.u8();
+        e.origin = r.u8();
+        e.unit = getStr(r);
+        f.entries.push_back(std::move(e));
+    }
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
+Bytes encodeSetParam(const SetParamFrame& f) {
+    Writer w;
+    w.u8(f.team);
+    w.u8(f.op);
+    putI32(w, f.milli);
+    putStr(w, f.key);
+    return std::move(w.out);
+}
+
+std::optional<SetParamFrame> decodeSetParam(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    SetParamFrame f;
+    f.team = r.u8();
+    f.op = r.u8();
+    f.milli = getI32(r);
+    f.key = getStr(r);
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
 // ── CLAIM ───────────────────────────────────────────────────────────────
 
 Bytes encodeClaim(const ClaimFrame& f) {

@@ -11,6 +11,15 @@ namespace fh::game::server {
 using math::Fixed64;
 using namespace net;
 
+namespace {
+// G4.76: a 3-rule weight's key on the wire ("ladder.<zone>.<rung>").
+std::string ladderKey(int z, int r) {
+    static const char* const kZone[] = {"own", "middle", "their"};
+    static const char* const kRung[] = {"intercept", "no_turn", "contain"};
+    return std::string("ladder.") + kZone[z] + "." + kRung[r];
+}
+}  // namespace
+
 GameServer::GameServer(Config cfg, INetworkTransport& transport)
     : cfg_{cfg},
       transport_{transport},
@@ -166,13 +175,23 @@ void GameServer::recomputeKnowledge(bool home) {
     core::PresetOverlay demand = m >= 0 ? cfg_.models[m].overlay : none;
     for (int i = 0; i < core::kMaxConcepts; ++i)   // G4.74 live changes win
         if (live_demand_[home ? 0 : 1][i] >= 0) demand[i] = live_demand_[home ? 0 : 1][i];
+    const std::uint8_t team = home ? 0 : 1;
     ai::Brain::Ladder ladder{};
     for (int z = 0; z < 3; ++z)
         for (int r = 0; r < 3; ++r) {
-            const int w = m >= 0 ? cfg_.models[m].ladder[z][r] : -1;
-            ladder[z][r] = static_cast<std::uint8_t>(w < 0 ? 100 : w);
+            int w = m >= 0 ? cfg_.models[m].ladder[z][r] : -1;
+            const auto lv = live_params_[team].find(ladderKey(z, r));
+            if (lv != live_params_[team].end()) w = static_cast<int>(lv->second / 1000);
+            ladder[z][r] = static_cast<std::uint8_t>(w < 0 ? 100 : (w > 100 ? 100 : w));
         }
-    brain_.setLadder(home ? 0 : 1, ladder);
+    brain_.setLadder(team, ladder);
+    // G4.76: its concept numbers — the global rows, its model's, live.
+    core::ModelParams p = cfg_.model_params;
+    if (m >= 0)
+        for (const auto& [key, v] : cfg_.models[m].params) p.setMilli(key, v);
+    for (const auto& [key, v] : live_params_[team])
+        if (key.rfind("concept.", 0) == 0) p.setMilli(key, v);
+    brain_.setTeamModelParams(team, p);
     const std::uint8_t half = cfg_.slot_count / 2;
     const std::uint8_t from = home ? 0 : half;
     const std::uint8_t to = home ? half : cfg_.slot_count;
@@ -181,6 +200,50 @@ void GameServer::recomputeKnowledge(bool home) {
         brain_.setRatings(sl, concept_ratings_[sl]);
         brain_.setHabits(sl, ability_[sl]);
     }
+}
+
+void GameServer::sendParams(std::uint8_t team, ClientId to, bool all) {
+    if (team > 1) return;
+    const int m = team_model_[team];
+    const persistence::GameModel* g = m >= 0 ? &cfg_.models[m] : nullptr;
+    ModelParamsFrame f;
+    f.team = team;
+    auto origin = [](int o) { return static_cast<std::uint8_t>(o >= 0 && o < 255 ? o : 255); };
+    for (int z = 0; z < 3; ++z)
+        for (int r = 0; r < 3; ++r) {
+            ModelParamEntry e;
+            e.key = ladderKey(z, r);
+            e.unit = "%";
+            const auto lv = live_params_[team].find(e.key);
+            const int w = g ? g->ladder[z][r] : -1;
+            const int o = g ? g->ladder_origin[z][r] : -1;
+            if (lv != live_params_[team].end()) { e.milli = static_cast<std::int32_t>(lv->second); e.source = 2; }
+            else { e.milli = (w < 0 ? 100 : w) * 1000; e.source = w < 0 ? 0 : (o == m ? 1 : 3); }
+            e.origin = origin(o);
+            f.entries.push_back(std::move(e));
+        }
+    for (const auto& info : cfg_.param_info) {
+        ModelParamEntry e;
+        e.key = info.key;
+        e.unit = info.unit;
+        const auto lv = live_params_[team].find(e.key);
+        const bool own = g && g->params.count(e.key);
+        if (lv != live_params_[team].end()) {
+            e.milli = static_cast<std::int32_t>(lv->second);
+            e.source = 2;
+        } else if (own) {
+            e.milli = static_cast<std::int32_t>(g->params.at(e.key));
+            const int o = g->param_origin.at(e.key);
+            e.source = o == m ? 1 : 3;
+            e.origin = origin(o);
+        } else {
+            e.milli = static_cast<std::int32_t>(cfg_.model_params.milli(e.key, 0));
+        }
+        f.entries.push_back(std::move(e));
+    }
+    const Bytes frame = encodeFrame(FrameType::ModelParams, encodeModelParams(f));
+    if (!all) { transport_.send(to, frame); return; }
+    for (const auto& [id, _] : admins_) transport_.send(id, frame);
 }
 
 void GameServer::sendDemands(std::uint8_t team, ClientId to, bool all) {
@@ -278,7 +341,10 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
     }
     // G4.30: which teams are playing — the editor's key into the club API.
     sendTeams(id);
-    if (admin) { sendDemands(0, id); sendDemands(1, id); }   // G4.74
+    if (admin) {   // G4.74, G4.76
+        sendDemands(0, id); sendDemands(1, id);
+        sendParams(0, id); sendParams(1, id);
+    }
     broadcastRoster();  // names + knowledge for every client
 }
 
@@ -497,9 +563,11 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             // The team now plays that model: its demand, their ability.
             team_model_[ap->team] = ap->preset_id;
             live_demand_[ap->team].fill(-1);
+            live_params_[ap->team].clear();
             recomputeKnowledge(ap->team == 0);
             broadcastRoster();
             sendDemands(ap->team, 0, true);
+            sendParams(ap->team, 0, true);
             return;
         }
         case FrameType::SetDemand: {
@@ -539,6 +607,48 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             broadcastRoster();
             sendDemands(0, 0, true);
             sendDemands(1, 0, true);
+            return;
+        }
+        case FrameType::SetParam: {
+            // Admin-only (G4.76): one concept number or 3-rule weight for one
+            // team — live (op 0/1), or saved into its game model (op 2), or
+            // the model's own row deleted so the parent's applies (op 3; the
+            // DB refuses a top-level model's ladder cell).
+            if (!admins_.count(id)) return;
+            const auto sp = decodeSetParam(frame.payload);
+            if (!sp || sp->team > 1) return;
+            const bool ladder = sp->key.rfind("ladder.", 0) == 0;
+            bool known = false;
+            for (int z = 0; z < 3 && ladder; ++z)
+                for (int r = 0; r < 3; ++r) known = known || sp->key == ladderKey(z, r);
+            for (const auto& info : cfg_.param_info) known = known || info.key == sp->key;
+            if (!known) return;
+            const int m = team_model_[sp->team];
+            if (sp->op == 0) live_params_[sp->team][sp->key] = sp->milli;
+            else if (sp->op == 1) live_params_[sp->team].erase(sp->key);
+            else if ((sp->op == 2 || sp->op == 3) && m >= 0 && cfg_.db) {
+                auto& g = cfg_.models[m];
+                const std::optional<std::int64_t> v = sp->op == 2 ? std::optional<std::int64_t>{sp->milli} : std::nullopt;
+                if (persistence::saveModelParam(*cfg_.db, g.name, sp->key, v)) {
+                    if (ladder) {
+                        for (int z = 0; z < 3; ++z)
+                            for (int r = 0; r < 3; ++r)
+                                if (sp->key == ladderKey(z, r)) {
+                                    const std::int64_t w = v ? (*v + 500) / 1000 : -1;
+                                    g.own_ladder[z][r] = static_cast<std::int16_t>(w > 100 ? 100 : w);
+                                }
+                    } else if (v) {
+                        g.own_params[sp->key] = *v;
+                    } else {
+                        g.own_params.erase(sp->key);
+                    }
+                    persistence::resolveGameModels(cfg_.models);
+                    live_params_[sp->team].erase(sp->key);
+                }
+            }
+            for (int side = 0; side < 2; ++side) recomputeKnowledge(side == 0);
+            sendParams(0, 0, true);
+            sendParams(1, 0, true);
             return;
         }
         default:

@@ -188,6 +188,30 @@ struct SetDemandFrame {
     std::uint8_t team = 0, concept_id = 0, demand = 255;   // 255 = clear the live change
 };
 Bytes encodeSetDemand(const SetDemandFrame& f);
+// G4.76 (1.15): a team's numbers — each concept number ("concept.<code>.
+// <param>") and the 3 rules by third ("ladder.<zone>.<rung>", percent) —
+// milli-units, with where each comes from (0 the global row, 1 the model's
+// own, 2 live, 3 inherited) and the model it came from (255 none).
+struct ModelParamEntry {
+    std::string key, unit;
+    std::int32_t milli = 0;
+    std::uint8_t source = 0, origin = 255;
+};
+struct ModelParamsFrame {
+    std::uint8_t team = 0;
+    std::vector<ModelParamEntry> entries;
+};
+Bytes encodeModelParams(const ModelParamsFrame& f);
+std::optional<ModelParamsFrame> decodeModelParams(const Bytes& payload);
+// op: 0 live change, 1 undo the live change, 2 save into the team's model,
+// 3 delete the model's own row (inherit).
+struct SetParamFrame {
+    std::uint8_t team = 0, op = 0;
+    std::int32_t milli = 0;
+    std::string key;
+};
+Bytes encodeSetParam(const SetParamFrame& f);
+std::optional<SetParamFrame> decodeSetParam(const Bytes& payload);
 std::optional<SetDemandFrame> decodeSetDemand(const Bytes& payload);
 
 struct ApplyPresetFrame {

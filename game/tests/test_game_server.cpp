@@ -368,6 +368,14 @@ FH_TEST(a_team_model_inherits_its_school) {
     FH_EXPECT_EQ(ms[1].overlay[18], 40);
     FH_EXPECT_EQ(ms[1].overlay[19], 90);
     FH_EXPECT_EQ(ms[1].origin[19], 0);
+    // …and numbers ride the same chain.
+    ms[0].own_params["concept.a.b"] = 3000;
+    ms[1].own_params["concept.a.c"] = 7000;
+    persistence::resolveGameModels(ms);
+    FH_EXPECT_EQ(ms[1].params.at("concept.a.b"), 3000);
+    FH_EXPECT_EQ(ms[1].param_origin.at("concept.a.b"), 0);
+    FH_EXPECT_EQ(ms[1].param_origin.at("concept.a.c"), 1);
+    FH_EXPECT_EQ(ms[0].params.count("concept.a.c"), 0u);
 }
 
 FH_TEST(server_admin_applies_preset_to_one_team_only) {

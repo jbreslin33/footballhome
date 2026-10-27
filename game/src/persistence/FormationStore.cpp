@@ -285,6 +285,14 @@ std::vector<GameModel> loadGameModels(const DbConfig& cfg) {
             for (auto& g : out)
                 if (g.name == name) g.ladder[z][r] = static_cast<std::int16_t>(w);
         }
+        for (const auto& row : tx.exec(
+                 "SELECT m.name, 'concept.' || c.name || '.' || p.param, round(p.value * 1000)::bigint "
+                 "FROM game_model_concept_params p JOIN game_models m ON m.id = p.model_id "
+                 "JOIN game_concepts c ON c.id = p.concept_id")) {
+            const std::string name = row[0].as<std::string>();
+            for (auto& g : out)
+                if (g.name == name) g.own_params[row[1].as<std::string>()] = row[2].as<std::int64_t>();
+        }
         resolveGameModels(out);
         return out;
     } catch (const std::exception& e) {
@@ -304,6 +312,8 @@ void resolveGameModels(std::vector<GameModel>& models) {
         g.overlay = g.own;
         for (int z = 0; z < 3; ++z)
             for (int r = 0; r < 3; ++r) g.ladder[z][r] = g.own_ladder[z][r];
+        g.params = g.own_params;
+        g.param_origin.clear();
     }
     auto find = [&](const std::string& n) -> int {
         for (std::size_t k = 0; k < models.size(); ++k)
@@ -314,6 +324,10 @@ void resolveGameModels(std::vector<GameModel>& models) {
         GameModel& g = models[k];
         for (int i = 0; i < core::kMaxConcepts; ++i)
             g.origin[i] = g.own[i] >= 0 ? static_cast<std::int16_t>(k) : std::int16_t{-1};
+        for (int z = 0; z < 3; ++z)
+            for (int r = 0; r < 3; ++r)
+                g.ladder_origin[z][r] = g.own_ladder[z][r] >= 0 ? static_cast<std::int16_t>(k) : std::int16_t{-1};
+        for (const auto& [key, v] : g.own_params) g.param_origin[key] = static_cast<int>(k);
         std::string parent = g.parent;
         for (int depth = 0; depth < 16 && !parent.empty(); ++depth) {
             const int pi = find(parent);
@@ -326,7 +340,12 @@ void resolveGameModels(std::vector<GameModel>& models) {
                 }
             for (int z = 0; z < 3; ++z)
                 for (int r = 0; r < 3; ++r)
-                    if (g.ladder[z][r] < 0) g.ladder[z][r] = p.own_ladder[z][r];
+                    if (g.ladder[z][r] < 0 && p.own_ladder[z][r] >= 0) {
+                        g.ladder[z][r] = p.own_ladder[z][r];
+                        g.ladder_origin[z][r] = static_cast<std::int16_t>(pi);
+                    }
+            for (const auto& [key, v] : p.own_params)
+                if (g.params.emplace(key, v).second) g.param_origin[key] = pi;
             parent = p.parent;
         }
     }
@@ -362,6 +381,82 @@ bool saveModelDemand(const DbConfig& cfg, const std::string& model,
                      model.c_str(), concept_id, e.what());
         return false;
     }
+}
+
+bool saveModelParam(const DbConfig& cfg, const std::string& model,
+                    const std::string& key, std::optional<std::int64_t> milli) {
+    const auto a = key.find('.'), b = key.find('.', a + 1);
+    if (a == std::string::npos || b == std::string::npos) return false;
+    const std::string owner = key.substr(0, a), code = key.substr(a + 1, b - a - 1),
+                      param = key.substr(b + 1);
+    try {
+        const std::string conn_str =
+            "host=" + cfg.host + " dbname=" + cfg.dbname +
+            " user=" + cfg.user + " password=" + cfg.password +
+            " connect_timeout=5";
+        pqxx::connection conn{conn_str};
+        pqxx::work tx{conn};
+        const std::string value = milli ? std::to_string(*milli) : "0";
+        if (owner == "ladder") {
+            if (!milli)
+                tx.exec_params("DELETE FROM game_model_ladder WHERE zone = $2 AND rung = $3 "
+                               "AND model_id = (SELECT id FROM game_models WHERE name = $1)",
+                               model, code, param);
+            else
+                tx.exec_params(
+                    "INSERT INTO game_model_ladder (model_id, zone, rung, weight, note) "
+                    "SELECT id, $2, $3, LEAST(100, GREATEST(0, round($4::numeric / 1000)))::int, "
+                    "'Set in the game HUD, ' || to_char(now(), 'YYYY-MM-DD') "
+                    "FROM game_models WHERE name = $1 "
+                    "ON CONFLICT (model_id, zone, rung) DO UPDATE "
+                    "SET weight = EXCLUDED.weight, note = EXCLUDED.note",
+                    model, code, param, value);
+        } else if (owner == "concept") {
+            if (!milli)
+                tx.exec_params("DELETE FROM game_model_concept_params WHERE param = $3 "
+                               "AND model_id = (SELECT id FROM game_models WHERE name = $1) "
+                               "AND concept_id = (SELECT id FROM game_concepts WHERE name = $2)",
+                               model, code, param);
+            else
+                tx.exec_params(
+                    "INSERT INTO game_model_concept_params (model_id, concept_id, param, value, unit, citation) "
+                    "SELECT m.id, c.id, $3, $4::numeric / 1000, g.unit, "
+                    "'Set in the game HUD, ' || to_char(now(), 'YYYY-MM-DD') "
+                    "FROM game_models m, game_concepts c, game_model_params g "
+                    "WHERE m.name = $1 AND c.name = $2 AND g.owner = 'concept' AND g.code = $2 AND g.param = $3 "
+                    "ON CONFLICT (model_id, concept_id, param) DO UPDATE "
+                    "SET value = EXCLUDED.value, citation = EXCLUDED.citation",
+                    model, code, param, value);
+        } else {
+            return false;
+        }
+        tx.commit();
+        return true;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: save param %s/%s failed: %s\n",
+                     model.c_str(), key.c_str(), e.what());
+        return false;
+    }
+}
+
+std::vector<ParamInfo> loadConceptParamInfo(const DbConfig& cfg) {
+    std::vector<ParamInfo> out;
+    try {
+        const std::string conn_str =
+            "host=" + cfg.host + " dbname=" + cfg.dbname +
+            " user=" + cfg.user + " password=" + cfg.password +
+            " connect_timeout=5";
+        pqxx::connection conn{conn_str};
+        pqxx::work tx{conn};
+        for (const auto& r : tx.exec(
+                 "SELECT 'concept.' || g.code || '.' || g.param, g.unit FROM game_model_params g "
+                 "JOIN game_concepts c ON c.name = g.code "   // a model row needs a concept id
+                 "WHERE g.owner = 'concept' ORDER BY g.code, g.param"))
+            out.push_back({r[0].as<std::string>(), r[1].as<std::string>()});
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: concept param list failed: %s\n", e.what());
+    }
+    return out;
 }
 
 core::ModelParams loadModelParams(const DbConfig& cfg) {

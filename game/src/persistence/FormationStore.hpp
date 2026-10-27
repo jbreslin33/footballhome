@@ -25,6 +25,7 @@
 #include "core/ConceptRegistry.hpp"
 #include "core/ModelParams.hpp"
 
+#include <map>
 #include <optional>
 #include <string>
 
@@ -137,6 +138,13 @@ struct GameModel {
     core::PresetOverlay own;
     std::int16_t own_ladder[3][3] = {{-1, -1, -1}, {-1, -1, -1}, {-1, -1, -1}};
     std::array<std::int16_t, core::kMaxConcepts> origin;
+    std::int16_t ladder_origin[3][3] = {{-1, -1, -1}, {-1, -1, -1}, {-1, -1, -1}};
+    // G4.76: the model's own concept numbers (game_model_concept_params),
+    // milli-units keyed like game_model_params ("concept.<code>.<param>"),
+    // resolved through the parent chain the same way; a number nobody in
+    // the chain sets is the global game_model_params row.
+    std::map<std::string, std::int64_t> own_params, params;
+    std::map<std::string, int> param_origin;
     bool resolved = false;
 };
 std::vector<GameModel> loadGameModels(const DbConfig& cfg);
@@ -148,6 +156,16 @@ void resolveGameModels(std::vector<GameModel>& models);
 // the DB for a top-level model, which must state every concept).
 bool saveModelDemand(const DbConfig& cfg, const std::string& model,
                      int concept_id, int demand);
+// G4.76: one number into a model — "concept.<code>.<param>" →
+// game_model_concept_params, "ladder.<zone>.<rung>" → game_model_ladder
+// (milli; nullopt = delete the model's own row: inherit). False on failure
+// (a top-level model can't lose a ladder cell).
+bool saveModelParam(const DbConfig& cfg, const std::string& model,
+                    const std::string& key, std::optional<std::int64_t> milli);
+// Every concept number the HUD can tune: its key and unit (game_model_params,
+// owner 'concept'), in a stable order.
+struct ParamInfo { std::string key, unit; };
+std::vector<ParamInfo> loadConceptParamInfo(const DbConfig& cfg);
 
 // G4.33 (mig 642): every number the Skill / Concept classes use, keyed
 // "owner.code.param". Empty on any failure — the classes keep their

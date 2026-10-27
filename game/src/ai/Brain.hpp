@@ -127,8 +127,14 @@ public:
     // their 6!"
     void setDeadBallSetup(bool on) { dead_ball_setup_ = on; }
     void setModelParams(const core::ModelParams& p) {
-        book_.configure(p);
+        books_[0].configure(p);
+        books_[1].configure(p);
         initiative_ = p.fixed("skill.tendency.initiative", 1000);
+    }
+    // G4.76: one team's concept numbers — the global rows with its game
+    // model's own (game_model_concept_params) and the HUD's live changes.
+    void setTeamModelParams(std::uint8_t team, const core::ModelParams& p) {
+        if (team < 2) books_[team].configure(p);
     }
 
     // Per-player level (G4.30): the band bent by the player's attributes.
@@ -246,7 +252,7 @@ private:
     const std::vector<CallOut>& calls(std::uint8_t team, const core::World& world) const;
     bool says(core::SlotIndex slot, const ai::Call& c, std::uint64_t sec) const;
     bool hears(core::SlotIndex slot, const CallOut& c, const core::World& world) const;
-    const ai::Call& callConcept(Why w) const;
+    const ai::Call& callConcept(Why w, std::uint8_t team) const;
     bool backLine(core::SlotIndex slot) const { const int n = numberOf(slot); return n >= 2 && n <= 5; }
     // G4.64 Lighthouse's plan (165-167): pack the middle, then on their pass
     // to a full-back press him and lock the door on the return pass.
@@ -283,7 +289,12 @@ private:
     math::Fixed64 half_x_, half_y_;
     FormationSpec spec_[2];
     core::LevelParams level_[2];
-    ConceptBook book_;   // G4.33 class-based concepts
+    // G4.33 class-based concepts; G4.76 one book per team, so each team's
+    // game model can set its own numbers (game_model_concept_params).
+    ConceptBook books_[2];
+    const ConceptBook& bookOf(core::SlotIndex s) const {
+        return books_[s < setup_.team_of_slot.size() && setup_.team_of_slot[s] == 1 ? 1 : 0];
+    }
     // G4.30 per-player levels (perception, decisions, keeper reaction);
     // empty / unset = the team band.
     std::vector<core::LevelParams>  slot_level_;

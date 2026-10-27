@@ -59,6 +59,8 @@
               this.handlers.onTeams(GameWire.decodeTeams(view, f.payloadAt, f.payloadLen));
           } else if (f.type === GameWire.FrameType.MODEL_DEMANDS) {
             if (this.handlers.onDemands) this.handlers.onDemands(GameWire.decodeModelDemands(view, f.payloadAt));
+          } else if (f.type === GameWire.FrameType.MODEL_PARAMS) {
+            if (this.handlers.onParams) this.handlers.onParams(GameWire.decodeModelParams(view, f.payloadAt));
           } else if (f.type === GameWire.FrameType.EVENT) {
             this.handlers.onEvent(GameWire.decodeEvent(view, f.payloadAt));
           }
@@ -114,6 +116,11 @@
     // own row: inherit from its parent).
     saveDemand(team, conceptId, demand) {
       this.send(GameWire.encodeSetDemand(team, conceptId, demand, true));
+    }
+    // G4.76: a concept number / 3-rule weight (milli). op 0 live, 1 undo
+    // live, 2 save into the model, 3 inherit.
+    setParam(team, op, milli, key) {
+      this.send(GameWire.encodeSetParam(team, op, milli, key));
     }
   }
 
