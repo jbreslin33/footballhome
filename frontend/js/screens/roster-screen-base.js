@@ -568,70 +568,152 @@ class RosterScreenBase extends Screen {
             </span>`;
   }
 
-  // Column body split (owner 2026-10-27: "first who is on official
-  // league roster … then the random non official roster guys put in a
-  // section under the official guys called non roster players. run a
-  // count on each" → "your roster group should match 1 to 1 the official
-  // roster … same order they appear on official league roster" → "i need
-  // to be able to get into the card though … i can move them but not OFF
-  // that official roster").
-  //   OFFICIAL ROSTER — the league's own list (official_roster_names, the
-  //     🌐 mirror), one row per list name in the list's order.  A name
-  //     matched to a player in this column is his full card (everything
-  //     works but the remove — renderMoveDropdown drops it, and the mig
-  //     772 trigger refuses it server-side); a name with no FH person, or
-  //     whose person isn't on this team in FH, is a read-only row saying so.
-  //   NON ROSTER PLAYERS — this column's other players, board sort order.
-  // A column with no league list splits by the On Roster status instead.
+  // Column sections — two views of the same column, picked by the
+  // Players panel's Roster | Team pill (rosters.js; owner 2026-10-27:
+  // "there is a roster which is league and a team which is functional" …
+  // "planned drops stay in official, default roster").
+  //
+  // ROSTER (default) — the league side:
+  //   OFFICIAL ROSTER — the league's own list (the 🌐 mirror), one row per
+  //     list name in the list's order.  A name matched to a player in this
+  //     column is his full card (every control but remove — see
+  //     renderMoveDropdown + the mig 772 trigger); a planned drop
+  //     (roster_statuses.board_section 'drop') is flagged in place, never
+  //     split out, so the section stays 1:1 with the list.  A list name
+  //     with no FH person, or not on this team in FH, is a read-only row.
+  //     A column with no list uses the On Roster status instead.
+  //   PROPOSED ADDS — status board_section 'proposed', grouped by step.
+  //   NON ROSTER PLAYERS — the rest.
+  // TEAM — the functional side, by columnCategoryOf: PLAYS, ⭐ CALL-DOWNS
+  //   (standing invites riding in from other columns), ↔ CALL INS,
+  //   📄 NOT FUNCTIONAL (paper spots), 🩹 INJURED.
   // Every card keeps its true coach rank (#N) from the full column.
-  // Headings/notes are message_templates kind roster_sheet (mig 770/772).
-  renderRosterSplit(col, shown, renderList, data) {
-    if (!col || !col.teamId) return renderList(shown);
+  // Section copy is message_templates kind roster_sheet (migs 770–775).
+  // Read fresh each render so a cached board (Boys while Mens was shown)
+  // picks up a pill flip made elsewhere; _boardView covers private mode.
+  get boardView() {
+    let v = this._boardView;
+    try { v = localStorage.getItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY) || v; } catch (e) { /* private mode */ }
+    return v === 'team' ? 'team' : 'roster';
+  }
+
+  setBoardView(view) {
+    this._boardView = view === 'team' ? 'team' : 'roster';
+    try { localStorage.setItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY, this._boardView); } catch (e) { /* private mode */ }
+    if (this._data && typeof this.renderRoster === 'function') this.renderRoster(this._data);
+  }
+
+  static get BOARD_VIEW_STORAGE_KEY() { return 'fh.teams.boardView'; }
+
+  // ✅ active / 📄 paper / ↔ callin / 🩹 injured — the column pills'
+  // categories, also the Team view's sections.
+  columnCategoryOf(p) {
+    return p.inviteOnly === true ? (p.callIn === true ? 'callin' : 'paper')
+      : (RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : 'active');
+  }
+
+  renderColumnSections(col, shown, renderList, data, ridersHtml = '') {
+    if (!col || !col.teamId) return renderList(shown) + ridersHtml;
     const esc = RosterScreenBase.escapeHtml;
-    const copy = (tier) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || '';
+    const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || '';
     const bucket = (data && data.buckets && data.buckets[String(col.teamId)]) || shown;
-    const card = (p) => this.renderPlayer(p, data.columns, col, bucket.indexOf(p) + 1, bucket.length);
+    const sectionOf = (p) => {
+      const st = p && RosterScreenBase.rosterStatusByCode(p.rosterStatus);
+      return (st && st.boardSection) || null;
+    };
+    const dropChip = copy('board_planned_drop_chip') || '⬇ PLANNED DROP';
+    const card = (p) => {
+      const html = this.renderPlayer(p, data.columns, col, bucket.indexOf(p) + 1, bucket.length);
+      return sectionOf(p) === 'drop'
+        ? `<div style="border:2px solid #f97316; border-radius:9px; padding:2px;">
+             <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:#fdba74; padding:0 4px 2px;">${esc(dropChip)}</div>${html}</div>`
+        : html;
+    };
     const ordered = (list) => {
       const keep = new Set(list);
       return this.orderColumnPlayers(bucket).map(r => r.player).filter(p => keep.has(p));
     };
     // Section banner (owner 2026-10-27: "make the divider section more
     // clear") — a solid tinted bar with a left rule and a count badge, and
-    // a gap above it so the two sections never run together.
-    const head = (label, n, color, bg, first) => `<div style="display:flex; justify-content:space-between; align-items:center;
+    // a gap above it so sections never run together.
+    let firstHead = true;
+    const head = (label, n, color, bg, extra = '') => {
+      const top = firstHead ? '2px' : '14px';
+      firstHead = false;
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;
         font-size:0.8rem; font-weight:900; letter-spacing:0.06em; color:${color};
         background:${bg}; border:1px solid ${color}; border-left:5px solid ${color}; border-radius:4px;
-        padding:5px 8px; margin:${first ? '2px' : '14px'} 0 4px;">
-        <span>${esc(label)}</span>
+        padding:5px 8px; margin:${top} 0 4px;">
+        <span>${esc(label)}${extra ? `<span style="font-size:0.68rem; font-weight:800; color:#fdba74; margin-left:8px;">${esc(extra)}</span>` : ''}</span>
         <span style="background:${color}; color:#0f172a; border-radius:10px; padding:0 8px; font-size:0.78rem;">${n}</span></div>`;
+    };
+    const subHead = (label, n) => `<div style="font-size:0.68rem; font-weight:800; color:#cbd5e1; padding:4px 4px 0;">${esc(label)} · ${n}</div>`;
+    const section = (label, list, color, bg, always = false) => (list.length || always)
+      ? head(label, list.length, color, bg) + (list.length ? ordered(list).map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
+      : '';
+    const ridersCount = ridersHtml ? ((data.autoInvites && data.autoInvites[String(col.teamId)]) || []).length : 0;
+    const GREEN = ['#22c55e', 'rgba(34,197,94,0.14)'];
+    const AMBER = ['#f59e0b', 'rgba(245,158,11,0.14)'];
+    const BLUE  = ['#60a5fa', 'rgba(96,165,250,0.14)'];
+    const SLATE = ['#94a3b8', 'rgba(148,163,184,0.14)'];
+    const ROSE  = ['#fb7185', 'rgba(251,113,133,0.14)'];
+    const riders = ridersCount ? head(copy('board_calldowns_h') || '⭐ CALL-DOWNS', ridersCount, ...BLUE) + ridersHtml : '';
+
+    if (this.boardView === 'team') {
+      const cats = { active: [], callin: [], paper: [], injured: [] };
+      for (const p of shown) cats[this.columnCategoryOf(p)].push(p);
+      return section(copy('board_plays_h') || 'PLAYS', cats.active, ...GREEN, true)
+        + riders
+        + section(copy('board_callins_h') || '↔ CALL INS', cats.callin, ...BLUE)
+        + section(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, ...AMBER)
+        + section(copy('board_injured_h') || '🩹 INJURED', cats.injured, ...ROSE);
+    }
+
     const nameRow = (i, name, note) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
         padding:3px 6px; border-radius:4px; background:rgba(34,197,94,0.06);">
         <span style="opacity:0.55; min-width:1.6em; text-align:right;">${i + 1}</span>
         <span style="font-weight:700;">${esc(name)}</span>
         <span style="font-size:0.65rem; color:#f59e0b;">${esc(note)}</span></div>`;
+    const dropsNote = (n) => n ? (copy('board_planned_drops', { n }) || `${n} planned drop`) : '';
     const official = this.leagueListFor(col.teamId);
-    let officialHtml, others;
+    let officialHtml, rest;
     if (official) {
       const byPerson = new Map(bucket.map(p => [Number(p.personId), p]));
       const used = new Set();
-      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', official.names.length, '#22c55e', 'rgba(34,197,94,0.14)', true)
-        + official.names.map((n, i) => {
-          const id = official.personIds[i];
-          const p = id != null && byPerson.get(Number(id));
-          if (p && !used.has(p)) { used.add(p); return card(p); }
-          return nameRow(i, n, id == null
-            ? (copy('board_official_unmatched') || 'not in Football Home')
-            : (copy('board_official_off_team') || 'not on this team in Football Home'));
-        }).join('');
-      others = shown.filter(p => !used.has(p));
+      const rows = official.names.map((n, i) => {
+        const id = official.personIds[i];
+        const p = id != null && byPerson.get(Number(id));
+        if (p && !used.has(p)) { used.add(p); return card(p); }
+        return nameRow(i, n, id == null
+          ? (copy('board_official_unmatched') || 'not in Football Home')
+          : (copy('board_official_off_team') || 'not on this team in Football Home'));
+      }).join('');
+      const drops = Array.from(used).filter(p => sectionOf(p) === 'drop').length;
+      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', official.names.length, ...GREEN, dropsNote(drops)) + rows;
+      rest = shown.filter(p => !used.has(p));
     } else {
       const on = shown.filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus));
-      others = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
-      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', on.length, '#22c55e', 'rgba(34,197,94,0.14)', true)
+      const drops = on.filter(p => sectionOf(p) === 'drop').length;
+      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', on.length, ...GREEN, dropsNote(drops))
         + (on.length ? ordered(on).map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+      rest = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
+    }
+    // PROPOSED ADDS, one sub-group per paperwork step in pipeline order.
+    const proposed = rest.filter(p => sectionOf(p) === 'proposed');
+    const nonRoster = rest.filter(p => sectionOf(p) !== 'proposed');
+    let proposedHtml = '';
+    if (proposed.length) {
+      const steps = RosterScreenBase.ROSTER_STATUSES.filter(s => s.boardSection === 'proposed');
+      proposedHtml = head(copy('board_proposed_h') || 'PROPOSED ADDS', proposed.length, ...BLUE)
+        + steps.map(s => {
+          const list = proposed.filter(p => p.rosterStatus === s.code);
+          return list.length ? subHead(s.displayName || s.code, list.length) + ordered(list).map(card).join('') : '';
+        }).join('');
     }
     return officialHtml
-      + (others.length ? head(copy('board_non_roster_h') || 'NON ROSTER PLAYERS', others.length, '#f59e0b', 'rgba(245,158,11,0.14)', false) + ordered(others).map(card).join('') : '');
+      + proposedHtml
+      + section(copy('board_non_roster_h') || 'NON ROSTER PLAYERS', nonRoster, ...SLATE)
+      + riders;
   }
 
   // The league's own list for a team column — {names, personIds} from the
@@ -2006,8 +2088,7 @@ class RosterScreenBase extends Screen {
     const riders = (data.autoInvites && data.autoInvites[String(col.teamId)]) || [];
     // ↔ Call In (mig 637) is an invite-only row too, but its own
     // category — a same-level player, not a 📄 roster-filler.
-    const catOf = (p) => p.inviteOnly === true ? (p.callIn === true ? 'callin' : 'paper')
-      : (RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : 'active');
+    const catOf = (p) => this.columnCategoryOf(p);
     const cats = { active: [], paper: [], callin: [], injured: [] };
     for (const p of players) cats[catOf(p)].push(p);
     this.catOff = this.catOff || (() => { try { return JSON.parse(localStorage.getItem(RosterScreenBase.CAT_OFF_STORAGE_KEY) || '{}'); } catch (e) { return {}; } })();

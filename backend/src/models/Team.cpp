@@ -355,7 +355,7 @@ std::string Team::getRosterStatuses() {
         std::string sql =
             "SELECT rs.id, rs.code, rs.display_name, rs.description, "
             "       rs.show_in_rsvp, rs.show_in_official_roster, rs.sort_order, rs.is_active, "
-            "       rs.color_bg, rs.color_fg, rs.color_border, rs.counts_as_on_roster, "
+            "       rs.color_bg, rs.color_fg, rs.color_border, rs.counts_as_on_roster, rs.board_section, "
             "       COALESCE(json_agg(lrs.league_id ORDER BY lrs.league_id) "
             "                FILTER (WHERE lrs.league_id IS NOT NULL), '[]')::text AS league_ids "
             "  FROM roster_statuses rs "
@@ -388,6 +388,8 @@ std::string Team::getRosterStatuses() {
             json << "\"colorFg\":"     << colorField("color_fg")     << ",";
             json << "\"colorBorder\":" << colorField("color_border") << ",";
             json << "\"leagueIds\":"   << row["league_ids"].as<std::string>() << ",";
+            // #teams Roster-view section (mig 775): proposed / drop / null
+            json << "\"boardSection\":" << colorField("board_section") << ",";
             json << "\"sortOrder\":" << row["sort_order"].as<int>();
             json << "}";
             

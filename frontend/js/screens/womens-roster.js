@@ -320,7 +320,7 @@ class WomensRosterScreen extends RosterScreenBase {
 
     const body = (shown.length === 0 && !ridersHtml)
       ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
-      : this.renderRosterSplit(col, shown, renderList, data) + ridersHtml;
+      : this.renderColumnSections(col, shown, renderList, data, ridersHtml);
 
     return `
       <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:8px; border-top:3px solid #475569; min-width:${this.colBoxMinWidth()};">

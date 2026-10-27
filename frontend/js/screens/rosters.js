@@ -121,7 +121,7 @@ class RostersScreen extends Screen {
           </div>
         </section>
         <section class="rs-panel" style="flex: 1 1 480px; min-width: 0;">
-          <h2 class="rs-panel-title">👥 Teams</h2>
+          <h2 class="rs-panel-title" id="rs-teams-title">${(window.MessageCopy && MessageCopy.block('roster_sheet', 'board_panel_players')) || '👥 Players'}</h2>
           <div id="rs-teams-pills" style="margin-bottom: var(--space-2);"></div>
           <div id="rs-teams-caption" style="font-size:0.75rem; opacity:0.6; margin-bottom:var(--space-2);"></div>
           <div id="rs-teams-unassigned-note" style="margin-bottom:var(--space-2);"></div>
@@ -230,7 +230,31 @@ class RostersScreen extends Screen {
     const host = this.find('#rs-teams-pills');
     if (!host) return;
     if (!this._teamsFilterBar) this._teamsFilterBar = new FilterBar({ host });
+    // Roster | Team (owner 2026-10-27: "a pill for roster and one for
+    // teams") — the league side or the functional side of every column
+    // (RosterScreenBase.renderColumnSections). Remembered per browser;
+    // Roster is the default.
+    let boardView = 'roster';
+    try { boardView = localStorage.getItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY) === 'team' ? 'team' : 'roster'; } catch (e) { /* private mode */ }
+    const viewCopy = (tier, fallback) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || fallback;
     this._teamsFilterBar.setRows([
+      {
+        name:     'teams-view',
+        chips: [
+          { id: 'roster', label: viewCopy('board_view_roster', 'Roster') },
+          { id: 'team',   label: viewCopy('board_view_team', 'Team') },
+        ],
+        selected: boardView,
+        onSelect: (id) => {
+          if (id == null) return;
+          try { localStorage.setItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY, id); } catch (e) { /* private mode */ }
+          for (const child of this._mountedChildren) {
+            if (child && child.columnScope === 'teams' && typeof child.setBoardView === 'function') {
+              child.setBoardView(id);
+            }
+          }
+        },
+      },
       {
         name:     'teams-category',
         chips:    this._categoryChips(),
