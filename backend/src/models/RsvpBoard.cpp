@@ -959,6 +959,34 @@ json RsvpBoard::remindersForEvent(long long fhEventId) {
             {{"sent_at", row["sent_at"].c_str()}, {"count", row["n"].as<int>()}};
         out[row["person_id"].c_str()]["total"] = row["total"].as<int>();
     }
+    // relay: the newest RSVP reminder that went from the owner's phone
+    // (FH Texter, purpose remind:…) that week — what the phone reported
+    // back (queued / sent / delivered / failed + why) and when the link in
+    // it was first really opened (magic_link_opens, previews skipped).
+    // Owner 2026-10-26: "can it send back success?"
+    auto relay = Database::getInstance()->query(R"SQL(
+        WITH wk AS (
+          SELECT date_trunc('week', ge.starts_at AT TIME ZONE 'America/New_York') AS week_start
+            FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+           WHERE fe.id = $1::bigint
+        )
+        SELECT DISTINCT ON (t.for_person_id) t.for_person_id, t.status, t.error,
+               to_char(COALESCE(t.delivered_at, t.sent_at, t.created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
+               to_char((SELECT min(o.opened_at) FROM magic_link_opens o
+                         WHERE o.token_id = t.magic_link_token_id AND NOT o.is_preview) AT TIME ZONE 'UTC',
+                       'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS opened_at
+          FROM phone_relay_texts t, wk
+         WHERE t.purpose LIKE 'remind:%' AND t.for_person_id IS NOT NULL
+           AND date_trunc('week', t.created_at AT TIME ZONE 'America/New_York') = wk.week_start
+         ORDER BY t.for_person_id, t.id DESC)SQL",
+        {std::to_string(fhEventId)});
+    for (const auto& r : relay) {
+        out[r["for_person_id"].c_str()]["relay"] = {
+            {"status", r["status"].c_str()},
+            {"error", r["error"].is_null() ? json(nullptr) : json(r["error"].c_str())},
+            {"at", r["at"].c_str()},
+            {"opened_at", r["opened_at"].is_null() ? json(nullptr) : json(r["opened_at"].c_str())}};
+    }
     return out;
 }
 

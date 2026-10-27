@@ -114,6 +114,16 @@ class EventCenterScreen extends Screen {
         this.ev = body.event;
         this._render();
       }
+      // The phone's report on a reminder still on its way (or a link not
+      // opened yet) arrives on the same beat.
+      if (this.reminders) {
+        const before = JSON.stringify(this.reminders);
+        const data = await this._json(`/api/rsvp-board/reminders?fh_event_id=${id}`);
+        if (this.ev && this.ev.fh_event_id === id && JSON.stringify(data.reminders || {}) !== before) {
+          this.reminders = data.reminders || {};
+          this._render();
+        }
+      }
     } catch (_err) {
       // A missed beat is fine; the next one tries again.
     } finally {
@@ -501,6 +511,26 @@ class EventCenterScreen extends Screen {
     return fill || `reminded ${time}${count > 1 ? ` ×${count}` : ''}`;
   }
 
+  // What the phone reported back for the newest FH Texter reminder (owner
+  // 2026-10-26: "can it send back success?"): queued → sent → delivered,
+  // or failed with why, then when the link in it was first opened.
+  _relayStatusHtml(personId) {
+    const t = this.reminders && this.reminders[String(personId)] && this.reminders[String(personId)].relay;
+    if (!t) return '';
+    const when = (iso) => {
+      const x = new Date(iso);
+      return isNaN(x) ? '' : x.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    };
+    const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || fb;
+    const failed = t.status === 'failed';
+    const text = failed ? cp('relay_failed', { error: t.error || '?' }, `📱 FAILED — ${t.error || '?'}`)
+      : t.status === 'delivered' ? cp('relay_delivered', { time: when(t.at) }, `📱 delivered ${when(t.at)} ✓`)
+      : t.status === 'sent' ? cp('relay_sent_at', { time: when(t.at) }, `📱 sent ${when(t.at)}, waiting for delivery…`)
+      : cp('relay_queued', {}, '📱 queued on the phone…');
+    const opened = t.opened_at ? ` · ${this.escapeHtml(cp('relay_opened', { time: when(t.opened_at) }, `opened ${when(t.opened_at)} 👀`))}` : '';
+    return `<span style="font-weight:700; color:${failed ? '#ef4444' : t.status === 'delivered' ? '#22c55e' : '#fbbf24'};">${this.escapeHtml(text)}</span>${opened}`;
+  }
+
   // The row's buttons: This one 💬 ✉ · All open 💬 ✉, then the sent note.
   _remindRowHtml(r) {
     const name = r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '';
@@ -511,11 +541,14 @@ class EventCenterScreen extends Screen {
         style="background:${only ? '#fbbf24' : '#38bdf8'};${sentAny ? ' opacity:0.55;' : ''}">${channel === 'sms' ? '💬' : '✉'}</button>`;
     const label = (tier, fb) => `<span style="font-size:0.7rem; font-weight:800; opacity:0.75;">${this.escapeHtml(cp(tier) || fb)}</span>`;
     const err = this.remindNote[r.person_id];
-    const ok = this.remindOk[r.person_id];
     const busy = this.saving.has(`remind:${r.person_id}`);
+    const relay = this._relayStatusHtml(r.person_id);
+    const ok = this.remindOk[r.person_id];
+    const reminded = this.escapeHtml(this._remindedNote(r.person_id));
     const note = err ? `<span style="color:#f87171;">${this.escapeHtml(err)}</span>`
-      : ok ? `<span style="color:#22c55e; font-weight:700;">${this.escapeHtml(ok)}</span>${this._remindedNote(r.person_id) ? ' · ' + this.escapeHtml(this._remindedNote(r.person_id)) : ''}`
-      : this.escapeHtml(this._remindedNote(r.person_id));
+      : relay ? [relay, reminded].filter(Boolean).join(' · ')
+      : ok ? `<span style="color:#22c55e; font-weight:700;">${this.escapeHtml(ok)}</span>${reminded ? ' · ' + reminded : ''}`
+      : reminded;
     return `<div style="flex-basis:100%; display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:2px 0 4px;">
       ${label('remind_this', 'This one')} ${btn('sms', true)} ${btn('email', true)}
       <span style="width:6px;"></span>
