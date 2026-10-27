@@ -335,6 +335,16 @@ void PlayOffLongBall::configure(const core::ModelParams& p) {
     face_up_ = p.fixed(key("face_up_m"), 1500);
 }
 
+void HurryTheKeeper::configure(const core::ModelParams& p) {
+    hurry_ = p.fixed(key("hurry_m"), 3000);
+    settle_ = p.fixed(key("settle_s"), 1500);
+}
+
+void PressTheBadTouch::configure(const core::ModelParams& p) {
+    const math::Fixed64 w = p.fixed(key("window_s"), 1000);
+    window_ = static_cast<std::int32_t>((w * math::Fixed64::fromInt(core::kTickRate)).raw >> math::Fixed64::FRAC_BITS);
+}
+
 void Call::configure(const core::ModelParams& p) {
     hear_ = p.fixed(key("hear_s"), 500);
     reach_ = reach_param_ ? p.fixed(key(reach_param_), reach_milli_) : math::Fixed64::zero();

@@ -453,6 +453,7 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
         std::printf("  %s outfield orders (share of man-ticks):", them.c_str());
         for (int w = 0; w < ai::kWhyCount; ++w)
             if (d_why[w] * 1000 >= d_ticks) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * d_why[w] / d_ticks);
+            else if (d_why[w]) std::printf(" %s %.2f%%", ai::kWhyNames[w], 100.0 * d_why[w] / d_ticks);   // rare: still shown
         std::printf("\n");
     }
     for (int side = 0; side < 2; ++side) {

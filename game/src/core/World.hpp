@@ -165,6 +165,12 @@ public:
     // Transition clock (G4.11): which team LOST the ball last, and when.
     std::uint8_t lastLosingTeam() const noexcept { return losing_team_; }
     std::uint64_t turnoverTick() const noexcept { return turnover_tick_; }
+    // G4.73 (read by the brains; not hashed — derived, never fed back):
+    // the tick the ball's owner got it, and the last bad touch (a control
+    // bobble) — who and when (0xFF / 0 = none yet).
+    std::uint64_t ownedAtTick() const noexcept { return owned_at_tick_; }
+    std::uint8_t badTouchSlot() const noexcept { return bad_touch_slot_; }
+    std::uint64_t badTouchTick() const noexcept { return bad_touch_tick_; }
     // Where the ball was won (G4.18): a COUNTER starts from a deep win;
     // a recovered rebound in their box is a scramble, not a transition.
     math::Fixed64 turnoverBallX() const noexcept { return turnover_ball_x_; }
@@ -225,6 +231,9 @@ private:
     std::uint8_t  offside_team_ = 0xFF;  // kicking team while armed
     std::uint8_t  losing_team_ = 0xFF;
     std::uint64_t turnover_tick_ = 0;
+    std::uint64_t owned_at_tick_ = 0;
+    std::uint8_t bad_touch_slot_ = 0xFF;
+    std::uint64_t bad_touch_tick_ = 0;
     math::Fixed64 turnover_ball_x_{};
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped
     LevelParams   level_[2];

@@ -2569,6 +2569,36 @@ keeper still punts 97%. cb-build:1, 200 episodes, vs G4.71: over halfway
 +2.77 ± 0.45 (4.87 – 2.10) vs +2.20 ± 0.47 — noise, conceding 2.10 vs
 2.57.
 
+### 8.71 G4.73 — hurry the keeper (or drop); press the bad touch (mig 756)
+
+James 10/27: "in any system we will go after their keeper or press on bad
+touch etc or just drop. that is more of a game model thing" / "the norm is
+go after if you think you can hurry a pass. if not drop" / "if bad touch
+that is almost universal to press" / "can we get these in as concepts?"
+
+- **`hurry-the-keeper` (178, core, U-14):** their keeper on the ball in
+  open play, or their back pass going to him: our nearest outfielder goes
+  only if he can get within `hurry_m` 3 m before the keeper is ready —
+  `settle_s` 1.5 s after he has it (a back pass: its flight + settle). He
+  goes on the line to the keeper's nearest man. Can't make it: drop (the
+  normal shape). HUD "hurry the keeper".
+- **`press-the-bad-touch` (179, core, U-10):** one of theirs miscontrols it
+  (World's control bobble, now recorded: `World::badTouchSlot/Tick`) —
+  our nearest man goes for the loose ball for `window_s` 1 s. HUD "press
+  the bad touch".
+- **Their keeper is nobody's mark:** the zonal hand-out skipped nothing,
+  so a marker could pick the keeper (seen in a cb-build trace: our 10 "mark
+  tight → their #1"). Now he's hurried or left.
+- `World::ownedAtTick()` (when the owner got it) — not hashed, goldens
+  unchanged.
+- Both are core: default demand 100 for every model (a model can ask
+  less: an explicit row).
+
+Rare in the drills (bad touch 0.00% of man-ticks in cb-build:1; hurry
+never — their goal kick is a restart, and back passes to the keeper
+seldom come from these pictures). The phase report now prints rare orders
+too. 30 matches: +2.93 ± 0.54 (4.97 – 2.03) vs +2.77 — noise.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

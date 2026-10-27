@@ -49,6 +49,7 @@ enum class Why : std::uint8_t {
     Intercept, NoTurn, Contain, ShadowLine, PlayOff,
     MarkTight, ProtectMiddle, AttackDrop, RunBackDrop, CallShadow,
     CallManOn, CallTurn, CallTime, CallSqueeze, CallLine,
+    HurryKeeper, PressBadTouch,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -66,6 +67,7 @@ inline constexpr const char* kWhyNames[] = {
     "attack the ball in the air", "run back for the ball in the air",
     "call: adjust your shadow",
     "call: man on", "call: turn", "call: time", "call: squeeze", "call: line",
+    "hurry the keeper", "press the bad touch",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -233,6 +235,8 @@ private:
     // Play off (170, G4.69): their ball in the AIR for my man — read it on
     // the kick and attack the drop, receiving it facing their goal.
     bool attackTheDrop(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
+    // Hurry the keeper (178) / press the bad touch (179), G4.73.
+    bool hurryOrPounce(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
     // Communication (G4.70-71): the calls one team's moment asks for this
     // tick, read from the true world — who, to whom (Orders::kBackLine = the
     // back line), about which man (-1 = everyone behind him), and whether

@@ -783,6 +783,36 @@ public:
     CallLine() : Call("call-line", 177, "gap_m", 2000) {}
 };
 
+// Hurry the keeper (178, core, U-14) [James 10/27: "the norm is go after
+// if you think you can hurry a pass. if not drop"]: their keeper on the
+// ball (or their back pass to him): our nearest outfielder goes only if he
+// can get within hurry_m of him before he's ready to play — settle_s after
+// he has it (a back pass: its flight + settle_s). Else he drops: nobody
+// goes, nobody marks the keeper.
+class HurryTheKeeper : public Concept {
+public:
+    HurryTheKeeper() : Concept("hurry-the-keeper", 178) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 hurry() const { return hurry_; }
+    math::Fixed64 settle() const { return settle_; }
+
+private:
+    math::Fixed64 hurry_, settle_;
+};
+
+// Press the bad touch (179, core, U-10) [James 10/27: "if bad touch that
+// is almost universal to press"]: one of theirs miscontrols it (a bobble)
+// — our nearest man goes for the loose ball, for window_s after it.
+class PressTheBadTouch : public Concept {
+public:
+    PressTheBadTouch() : Concept("press-the-bad-touch", 179) {}
+    void configure(const core::ModelParams& p) override;
+    std::int32_t windowTicks() const { return window_; }
+
+private:
+    std::int32_t window_ = 30;
+};
+
 // Scanning (G4.66) [Jordet et al. 2013, visual exploratory activity in
 // Premier League midfielders: the best scan ~0.6-0.8 times a second; FA /
 // US Soccer "check your shoulder"]: what a player knows of the men BEHIND
@@ -869,6 +899,8 @@ struct ConceptBook {
     CallTime call_time;
     CallSqueeze call_squeeze;
     CallLine call_line;
+    HurryTheKeeper hurry_keeper;
+    PressTheBadTouch bad_touch;
     ScanBeforeReceive scan_receive;
     ScanDefending scan_defend;
     Vision vision;
@@ -911,6 +943,8 @@ struct ConceptBook {
         call_time.configure(p);
         call_squeeze.configure(p);
         call_line.configure(p);
+        hurry_keeper.configure(p);
+        bad_touch.configure(p);
         scan_receive.configure(p);
         scan_defend.configure(p);
         vision.configure(p);

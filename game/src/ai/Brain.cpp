@@ -989,6 +989,86 @@ bool Brain::rung(SlotIndex slot, Rung r, Fixed64 x, std::uint64_t sec) const {
     return (n + Fixed64::one()) < Fixed64::fromFraction(w, 50);
 }
 
+// Hurry the keeper / press the bad touch (178/179, G4.73). Only our
+// nearest outfielder goes — to the loose ball after their bad touch (for
+// window_s), or at their keeper when he can get within hurry_m before the
+// keeper's ready to play (settle_s after he has it; a back pass: its flight
+// first). Can't hurry him: false — drop (the normal shape).
+bool Brain::hurryOrPounce(SlotIndex slot, const World& world, int sign, Orders& out) const {
+    const auto& b = world.ball();
+    const std::uint8_t my_team = setup_.team_of_slot[slot];
+    const std::uint64_t sec = world.tickCount() / 30;
+    auto nearestOurs = [&](const Vec3& at) {
+        int best = -1;
+        Fixed64 bd{};
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup_.team_of_slot[j] != my_team || world.isKeeper(j)) continue;
+            const Fixed64 d = distSq(world.player(j).pos, at);
+            if (best < 0 || d < bd) { best = j; bd = d; }
+        }
+        return best;
+    };
+    const auto& me = world.player(slot);
+    // The bad touch: his ball is loose off his own touch.
+    const std::uint8_t bt = world.badTouchSlot();
+    const int bb = book_.bad_touch.bit();
+    if (!b.owner && bt != 0xFF && setup_.team_of_slot[bt] != my_team && b.last_kicker == bt &&
+        world.tickCount() - world.badTouchTick() <= static_cast<std::uint64_t>(book_.bad_touch.windowTicks()) &&
+        ratings_[slot][bb] > 0 && nearestOurs(b.pos) == static_cast<int>(slot) && applies(slot, bb, sec)) {
+        const Vec2 t{b.pos.x, b.pos.y};
+        out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 10));
+        out.why = Why::PressBadTouch;
+        out.target = t;
+        out.other = static_cast<std::int16_t>(bt);
+        return true;
+    }
+    // Their keeper: on the ball, or their back pass going to him.
+    const int hk = book_.hurry_keeper.bit();
+    if (ratings_[slot][hk] == 0) return false;
+    int K = -1;
+    Fixed64 ready{};
+    if (b.owner && setup_.team_of_slot[*b.owner] != my_team && world.isKeeper(*b.owner)) {
+        K = *b.owner;
+        const Fixed64 held = Fixed64::fromInt(static_cast<std::int32_t>(world.tickCount() - world.ownedAtTick())) * core::kTickDt;
+        ready = held < book_.hurry_keeper.settle() ? book_.hurry_keeper.settle() - held : Fixed64::zero();
+    } else if (!b.owner && world.lastTouchTeam() != my_team) {
+        const FlightRead& fr = flightRead(world);
+        const int r = fr.live ? fr.first[1 - my_team] : -1;
+        if (r >= 0 && world.isKeeper(static_cast<SlotIndex>(r)) && b.last_kicker != r) {
+            K = r;
+            ready = Fixed64::fromInt(fr.tick[r]) * core::kTickDt + book_.hurry_keeper.settle();
+        }
+    }
+    if (K < 0) return false;
+    const auto& kp = world.player(static_cast<SlotIndex>(K)).pos;
+    if (nearestOurs(kp) != static_cast<int>(slot) || !applies(slot, hk, sec)) return false;
+    const Vec2 at{kp.x, kp.y};
+    const Fixed64 need = math::length(Vec2{kp.x - me.pos.x, kp.y - me.pos.y}) - book_.hurry_keeper.hurry();
+    if (need > Fixed64::zero() && runToward(world, slot, at, ready) < need) return false;   // can't hurry him: drop
+    // Straight at him, on the line to his nearest outfielder: the easy
+    // pass goes through the man hurrying him.
+    int O = -1;
+    Fixed64 od{};
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup_.team_of_slot[j] == my_team || world.isKeeper(j)) continue;
+        const Fixed64 d = distSq(world.player(j).pos, kp);
+        if (O < 0 || d < od) { O = j; od = d; }
+    }
+    Vec2 dir{Fixed64::zero(), Fixed64::zero()};
+    if (O >= 0) {
+        const auto& op = world.player(static_cast<SlotIndex>(O)).pos;
+        dir = math::normalized(Vec2{op.x - kp.x, op.y - kp.y});
+    }
+    const Fixed64 g = Fixed64::fromFraction(3, 2);
+    const Vec2 t{kp.x + dir.x * g, kp.y + dir.y * g};
+    out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 10));
+    out.why = Why::HurryKeeper;
+    out.target = t;
+    out.other = static_cast<std::int16_t>(K);
+    (void)sign;
+    return true;
+}
+
 // Attack the drop (170, G4.69) [James 10/27: "our full back needs to be
 // agressive in reading the type of pass when he is in the off coverage
 // tactic. he does not 'wait' for ball to reach. he reads pass. in the air he
@@ -2297,6 +2377,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     // while they set it up — goal-side, then the one spot (163/164) — not
     // stand in shape for it. Bielsa's men are on theirs when the keeper
     // looks up; in shape, the goal kick found every Ukie 10-27 m free.
+    if (!ours && !opponents_restart && !mine.keeper && hurryOrPounce(slot, world, sign, out))
+        return out;
     if (!ours && !mine.keeper &&
         packAndTrap(slot, world, sign, Vec2{seen_ball.x, seen_ball.y}, anchor, out))
         return out;
@@ -2752,6 +2834,9 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                         continue;
                     if (o < 32 && marked[o]) continue;
                     if (o == *ball.owner) continue;
+                    // Their keeper is nobody's mark (G4.73): he's hurried
+                    // (178) or left (drop).
+                    if (world.isKeeper(o)) continue;
                     // Zonal marking only tracks goal-side threats; a
                     // man-oriented marker follows his man much higher.
                     const Fixed64 track_line =

@@ -254,6 +254,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
             const Fixed64 r2 = detNoise(match_seed_, clock_.tick(), i, 14);
             if ((r2 + Fixed64::one()) < Fixed64::fromFraction(7, 5)) {
                 ball_.owner = i;  // clean: 70% of won tackles
+                owned_at_tick_ = clock_.tick();
                 ball_.vel = Vec3{};
             } else {
                 // Squirt across the carrier→ball line; side by noise sign.
@@ -436,6 +437,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 turnover_tick_ = clock_.tick();
                 turnover_ball_x_ = ball_.pos.x;
                 ball_.owner = thief;
+                owned_at_tick_ = clock_.tick();
                 box_clear_team_ = 0xFF;
                 ball_.contest_ticks = 0;
             }
@@ -613,6 +615,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             ball_.pos.z = Fixed64::zero();
             ball_.last_kicker = best;
             ball_.kicker_lockout = kBobbleLockoutTicks;
+            bad_touch_slot_ = best;
+            bad_touch_tick_ = clock_.tick();
             last_touch_team_ = players_[best].team;
             return;  // still nobody's ball
         }
@@ -625,6 +629,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         turnover_ball_x_ = ball_.pos.x;
     }
     ball_.owner = best;
+    owned_at_tick_ = clock_.tick();
     ball_.vel = Vec3{};
     ball_.pos.z = Fixed64::zero();  // keepers bring a high ball down
     ball_.kick_alive = 0;
@@ -732,6 +737,7 @@ void World::giveBall(SlotIndex slot) {
     const PlayerState& p = players_[slot];
     ball_ = BallState{};
     ball_.owner = slot;
+    owned_at_tick_ = clock_.tick();
     ball_.pos = Vec3{p.pos.x + p.face.x * kBallCarryLead, p.pos.y + p.face.y * kBallCarryLead, Fixed64::zero()};
     last_touch_team_ = p.team;
     restart_team_ = 0xFF;
