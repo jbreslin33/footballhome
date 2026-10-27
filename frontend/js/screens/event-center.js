@@ -272,6 +272,7 @@ class EventCenterScreen extends Screen {
   _setWeek(date) {
     this.weekStart = EventCenterScreen.monday(date);
     this.events = null;
+    this.error = null;
     this._render();
     this._loadEvents();
   }
@@ -284,6 +285,7 @@ class EventCenterScreen extends Screen {
       const body = await this._json(`/api/calendar/upcoming?start=${encodeURIComponent(start.toISOString())}&days=7`);
       if (start !== this.weekStart) return;   // a newer week was asked for meanwhile
       this.events = Array.isArray(body.events) ? body.events : [];
+      this.error = null;
       // An open event is re-read from the fresh feed (its RSVP list moves
       // when an invite is sent or withdrawn).
       if (this.ev) {
@@ -773,6 +775,7 @@ class EventCenterScreen extends Screen {
         const kind = el.dataset.eventKind;
         // Games are Game Center's; the other kinds just refilter this list.
         if (this.ev) EventKindSwitch.go(this.navigation, kind);
+        else if (this.error) { this.kind = kind; this._setWeek(this.weekStart); }   // a failed load tries again
         else { this.kind = kind; this._render(); }
         return;
       }
