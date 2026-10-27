@@ -83,6 +83,9 @@ class App {
       dashboard: new DashboardScreen(this.navigation, this.auth),
       cupRosters: new CupRostersScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
+      // The EventScreen family (screens/event-screen.js): one opened event.
+      event: new EventScreen(this.navigation, this.auth),
+      practice: new PracticeScreen(this.navigation, this.auth),
       messages: new MessagesScreen(this.navigation, this.auth),
       rsvpEligibility: new RsvpEligibilityScreen(this.navigation, this.auth),
       lineups: new LineupsScreen(this.navigation, this.auth),
@@ -211,6 +214,11 @@ class App {
     // name stays registered so saved history / links still open it.
     this.screenManager.register('attendance', this.screens.eventCenter);
     this.screenManager.register('event-center', this.screens.eventCenter);
+    // One opened event (owner 2026-10-27: base class Event, Game / Practice
+    // children) — screens/event-screen.js and screens/practice.js; a game is
+    // Game Center's.  EventKindSwitch.open routes a tap by kind.
+    this.screenManager.register('event', this.screens.event);
+    this.screenManager.register('practice', this.screens.practice);
     this.screenManager.register('messages', this.screens.messages);
     this.screenManager.register('rsvp-eligibility', this.screens.rsvpEligibility);
     // Mens is the default; womens is the same screen with a gender param.

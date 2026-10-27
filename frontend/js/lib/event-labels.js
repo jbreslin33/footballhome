@@ -51,6 +51,21 @@ class EventLabels {
     return 'Event';
   }
 
+  // Which Event Center kind an event is: match / practice / pickup, else
+  // 'other' (a meeting, a camp…).
+  static kindOf(ev) { return ['match', 'practice', 'pickup'].includes(ev.kind) ? ev.kind : 'other'; }
+
+  // Over: its end (or start, when the calendar gives no end) has passed.
+  static isPast(ev) {
+    const end = new Date(ev.ends_at || ev.starts_at);
+    return !isNaN(end.getTime()) && end.getTime() < Date.now();
+  }
+
+  // "Tue, Oct 27 · 7:00 PM"
+  static when(ev) {
+    return [EventLabels.dateStr(ev.starts_at), EventLabels.timeStr(ev.starts_at)].filter(Boolean).join(' · ');
+  }
+
   static dateStr(iso) {
     if (!iso) return '';
     const d = new Date(iso);

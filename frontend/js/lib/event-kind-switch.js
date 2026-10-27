@@ -36,6 +36,20 @@ const EventKindSwitch = {
   go(navigation, kind) {
     navigation.goTo('event-center', { pick: true, kind });
   },
+
+  // Open one event on its own screen — the EventScreen family
+  // (screens/event-screen.js): a game in Game Center, a practice or a
+  // pickup in #practice, anything else in #event.
+  open(navigation, ev) {
+    if (!ev) return;
+    if (ev.kind === 'match' && ev.match_id != null) {
+      navigation.goTo('game-center', { matchId: ev.match_id, title: EventLabels.title(ev), when: EventLabels.when(ev) });
+    } else if (ev.kind === 'practice' || ev.kind === 'pickup') {
+      navigation.goTo('practice', { event: ev });
+    } else {
+      navigation.goTo('event', { event: ev });
+    }
+  },
 };
 
 window.EventKindSwitch = EventKindSwitch;

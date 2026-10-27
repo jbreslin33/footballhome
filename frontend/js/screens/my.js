@@ -349,7 +349,12 @@ class MyScreen extends Screen {
         const fhEventId = parseInt(eventCenterBtn.getAttribute('data-event-center'), 10);
         const ev = (this.events || []).find(x => x.fh_event_id === fhEventId)
                 || (this.oldEvents || []).find(x => x.fh_event_id === fhEventId);
-        if (ev) this.navigation.goTo('attendance', { event: ev });
+        // A practice / pickup opens #practice; a game opens the base #event
+        // screen, which marks a game's attendance until Game Center does.
+        if (ev) {
+          if (ev.kind === 'match') this.navigation.goTo('event', { event: ev });
+          else EventKindSwitch.open(this.navigation, ev);
+        }
         return;
       }
       // "Not Going" list show/hide (collapsed by default — can be a long
