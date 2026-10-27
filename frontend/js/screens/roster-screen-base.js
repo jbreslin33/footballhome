@@ -583,7 +583,8 @@ class RosterScreenBase extends Screen {
   //     with no FH person, or not on this team in FH, is a read-only row.
   //     A column with no list uses the On Roster status instead.
   //   PROPOSED ADDS — status board_section 'proposed', grouped by step.
-  //   NON ROSTER PLAYERS — the rest.
+  //   REMOVE — the planned drops again as name + official # rows.
+  //   Nothing else: non-roster players and call-downs are a Team thing.
   // TEAM — the functional side, by columnCategoryOf: PLAYS, ⭐ CALL-DOWNS
   //   (standing invites riding in from other columns), ↔ CALL INS,
   //   📄 NOT FUNCTIONAL (paper spots), 🩹 INJURED.
@@ -655,8 +656,8 @@ class RosterScreenBase extends Screen {
     const GREEN = ['#22c55e', 'rgba(34,197,94,0.14)'];
     const AMBER = ['#f59e0b', 'rgba(245,158,11,0.14)'];
     const BLUE  = ['#60a5fa', 'rgba(96,165,250,0.14)'];
-    const SLATE = ['#94a3b8', 'rgba(148,163,184,0.14)'];
     const ROSE  = ['#fb7185', 'rgba(251,113,133,0.14)'];
+    const ORANGE = ['#f97316', 'rgba(249,115,22,0.14)'];
     const riders = ridersCount ? head(copy('board_calldowns_h') || '⭐ CALL-DOWNS', ridersCount, ...BLUE) + ridersHtml : '';
 
     if (this.boardView === 'team') {
@@ -676,6 +677,7 @@ class RosterScreenBase extends Screen {
         <span style="font-size:0.65rem; color:#f59e0b;">${esc(note)}</span></div>`;
     const dropsNote = (n) => n ? (copy('board_planned_drops', { n }) || `${n} planned drop`) : '';
     const official = this.leagueListFor(col.teamId);
+    const dropList = [];   // [{ p, n }] — planned drops + their official #
     let officialHtml, rest;
     if (official) {
       const byPerson = new Map(bucket.map(p => [Number(p.personId), p]));
@@ -688,19 +690,21 @@ class RosterScreenBase extends Screen {
           ? (copy('board_official_unmatched') || 'not in Football Home')
           : (copy('board_official_off_team') || 'not on this team in Football Home'));
       }).join('');
-      const drops = Array.from(used).filter(p => sectionOf(p) === 'drop').length;
-      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', official.names.length, ...GREEN, dropsNote(drops)) + rows;
+      official.personIds.forEach((id, i) => {
+        const p = id != null && byPerson.get(Number(id));
+        if (p && sectionOf(p) === 'drop' && !dropList.some(d => d.p === p)) dropList.push({ p, n: i + 1 });
+      });
+      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', official.names.length, ...GREEN, dropsNote(dropList.length)) + rows;
       rest = shown.filter(p => !used.has(p));
     } else {
       const on = shown.filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus));
-      const drops = on.filter(p => sectionOf(p) === 'drop').length;
-      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', on.length, ...GREEN, dropsNote(drops))
+      ordered(on).forEach((p, i) => { if (sectionOf(p) === 'drop') dropList.push({ p, n: i + 1 }); });
+      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', on.length, ...GREEN, dropsNote(dropList.length))
         + (on.length ? ordered(on).map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
       rest = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
     }
     // PROPOSED ADDS, one sub-group per paperwork step in pipeline order.
     const proposed = rest.filter(p => sectionOf(p) === 'proposed');
-    const nonRoster = rest.filter(p => sectionOf(p) !== 'proposed');
     let proposedHtml = '';
     if (proposed.length) {
       const steps = RosterScreenBase.ROSTER_STATUSES.filter(s => s.boardSection === 'proposed');
@@ -710,10 +714,16 @@ class RosterScreenBase extends Screen {
           return list.length ? subHead(s.displayName || s.code, list.length) + ordered(list).map(card).join('') : '';
         }).join('');
     }
-    return officialHtml
-      + proposedHtml
-      + section(copy('board_non_roster_h') || 'NON ROSTER PLAYERS', nonRoster, ...SLATE)
-      + riders;
+    // REMOVE — the planned drops as a to-do list: name + official #,
+    // read-only (their cards stay in OFFICIAL ROSTER, 1:1 with the list).
+    const dropRows = dropList.map(({ p, n }) => nameRow(n - 1,
+      p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim(), '')).join('');
+    const removeHtml = dropList.length
+      ? head(copy('board_remove_h') || 'REMOVE', dropList.length, ...ORANGE) + dropRows : '';
+    // Owner 2026-10-27: "for rosters we only need official, proposed and
+    // remove … we dont need evan etc there for apsl, that is a team thing"
+    // — non-roster players and call-downs live on the Team pill only.
+    return officialHtml + proposedHtml + removeHtml;
   }
 
   // The league's own list for a team column — {names, personIds} from the
