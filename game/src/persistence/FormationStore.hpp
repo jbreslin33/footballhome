@@ -103,7 +103,8 @@ struct DemoTeam {
     std::string level_band;
     // Mig 652: the game model this team plays (game_models.name; was the
     // style preset, mig 631) — its DEMAND. Empty = none (core concepts
-    // asked in full, style concepts not at all).
+    // asked in full, style concepts not at all — DB-less boots only; since
+    // mig 762 every DB team names one, "Curriculum" when it has no coach).
     std::string game_model;
     std::int16_t quality = -1;   // mig 656: team strength from its record; -1 = the band
     // Mig 636: the club formation code this team plays (overrides
@@ -129,11 +130,24 @@ struct GameModel {
     // (zone 0 our third / 1 middle / 2 theirs; rung 0 intercept / 1 no turn /
     // 2 contain); -1 = inherit from the parent, 100 when nobody sets it.
     std::int16_t ladder[3][3] = {{-1, -1, -1}, {-1, -1, -1}, {-1, -1, -1}};
+    // G4.76 (mig 762): what the model's OWN rows say (before inheritance —
+    // what the HUD saves and clears), and which model each resolved demand
+    // came from (index into the models vector; -1 = nobody). Filled by
+    // resolveGameModels, so it can run again after a save.
+    core::PresetOverlay own;
+    std::int16_t own_ladder[3][3] = {{-1, -1, -1}, {-1, -1, -1}, {-1, -1, -1}};
+    std::array<std::int16_t, core::kMaxConcepts> origin;
+    bool resolved = false;
 };
 std::vector<GameModel> loadGameModels(const DbConfig& cfg);
 // Fold each model's parent chain into its overlay (own demand wins; a
 // cycle or a missing parent just stops the chain).
 void resolveGameModels(std::vector<GameModel>& models);
+// G4.76 (mig 762, the HUD's Save): write one model's own demand for one
+// concept (demand < 0 = delete the row: inherit from the parent; refused by
+// the DB for a top-level model, which must state every concept).
+bool saveModelDemand(const DbConfig& cfg, const std::string& model,
+                     int concept_id, int demand);
 
 // G4.33 (mig 642): every number the Skill / Concept classes use, keyed
 // "owner.code.param". Empty on any failure — the classes keep their

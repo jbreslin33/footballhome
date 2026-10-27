@@ -211,6 +211,25 @@ FH_TEST(model_demands_round_trip) {
     FH_EXPECT_EQ(d->demand.size(), 3u);
     FH_EXPECT_EQ(d->demand[2], 90);
     FH_EXPECT_EQ(d->source[1], 1);
+    FH_EXPECT_EQ(d->parent, 255);       // 1.15 trailer, absent → none
+    FH_EXPECT_EQ(d->origin[0], 255);
+}
+
+// G4.76 (1.15): which model each value came from, and the model's parent.
+FH_TEST(model_demands_trailer_round_trip) {
+    ModelDemandsFrame f;
+    f.team = 0;
+    f.model = 16;
+    f.parent = 15;
+    f.demand = {75, 68};
+    f.source = {3, 1};
+    f.origin = {15, 16};
+    auto d = decodeModelDemands(encodeModelDemands(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->parent, 15);
+    FH_EXPECT_EQ(d->origin.size(), 2u);
+    FH_EXPECT_EQ(d->origin[0], 15);
+    FH_EXPECT_EQ(d->source[0], 3);
 }
 
 FH_TEST(set_demand_round_trip) {

@@ -2622,8 +2622,7 @@ diff behavour?"
   model (the preset dropdown) clears them.
 - **Wire 1.14:** MODEL_DEMANDS 0x40 (s→c admin) and SET_DEMAND 0x41 (c→s
   admin); codec round-trip tests.
-- Open: a "save to this model" button (writes `game_model_concepts`) if
-  James wants a change to stick.
+- Save landed in G4.76 (§8.74).
 
 ### 8.73 G4.75 — beat the high line: the keeper reads it, or plays short (mig 757)
 
@@ -2657,6 +2656,55 @@ keeper:1, 200 episodes — Ukies (semipro) read it: over the high line 0.69
 a episode, short 0.33; with the read off (`away:beat-the-high-line=0`, the
 amateur / youth picture): short 1.07, over 0, and passes are 69% of their
 losses (45%). 30 matches: +2.43 ± 0.48 (4.87 – 2.43) — noise.
+
+### 8.74 G4.76 — the taxonomy, the game model, and both in the DB (mig 762, wire 1.15)
+
+James 10/27: "lets really define what the football taxonomy is and then
+what a game model is and how it will be stored in db normalized of course
+and be editalbe in hud right?" / "can we do the models in oop c++ or should
+they be in db" / "make a game model though called "Semi Pro Standard" this
+is the 4231 the ukies are running … make the ukies inherit (in db like you
+said) all of the Semi pro standard"
+
+- **The taxonomy is the dictionary, facts only:** moments (`game_moments`,
+  5) → principles (`game_principles`, a tree) → concepts (`game_concepts`,
+  family, moment, principle, taught-from level) + techniques, attributes,
+  roles, phases. Mig 762 drops `game_concepts.kind` (core/style): whether a
+  coach asks for a concept is the coach's call, and the C++ applied it as
+  a hidden default (core 100, style 0).
+- **The player** (ability) is separate: understands it (level / his own
+  `game_demo_player_concepts` row), sees it (scanning, anticipation),
+  executes it (techniques, attributes).
+- **A game model is a coach's answer, as data:** `game_models` (parent_id),
+  demand 0-100 per concept (`game_model_concepts`), per role
+  (`game_model_role_concepts`), the 3 rules by third (`game_model_ladder`),
+  numbers per concept (`game_model_concept_params`; global starting values
+  in `game_model_params`). A player plays min(ability, demand).
+- **Rule:** a top-level model (no parent) has a row for EVERY concept and
+  all nine ladder cells — deferred constraint triggers
+  (`fh_game_models_complete`) refuse a commit otherwise, so a migration
+  adding a concept must say what each top-level model asks. A child model
+  holds only its differences; no row = its parent's. Mig 762 wrote every
+  root's missing rows at the old code default (nothing changed on the
+  pitch); teams with no coach play **Curriculum** (every concept the club
+  teaches, nothing chosen), so `game_demo_teams.game_model` is NOT NULL.
+  `ConceptRegistry::defaultDemand` remains only for DB-less boots / tests.
+- **Models in the DB, behaviour in C++ OOP:** a C++ subclass per coach
+  would make every tweak a rebuild and the HUD unable to save. One
+  `GameModel` + `resolveGameModels` walks the parent chain; it keeps each
+  model's OWN rows (`own`, `own_ladder`) apart from the resolved values and
+  records each value's `origin`, so it re-resolves after a save.
+- **Semi Pro Standard** (new root, 4-2-3-1): the Ukies' model as it played
+  — U.S. Soccer U17+ plus their line-step 68, flattened, citations kept.
+  **Ukrainian Nationals** is now its child with no rows: verbatim for now,
+  their own changes go there.
+- **HUD (wire 1.15):** MODEL_DEMANDS gains a trailer (`u8 parent`, per
+  concept `u8 origin` model); sources are own / inherited (shows the parent
+  model's name) / LIVE. 💾 on a live change = SAVE_DEMAND 0x42 → upsert
+  into the team's own model (citation "Set in the game HUD, <date>"),
+  every model inheriting it re-resolves at once; ↺ on a saved row of a
+  child model deletes it (back to the parent); a top-level model has no ↺
+  (it must state everything). Filters: All (default), Own + live, Live.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

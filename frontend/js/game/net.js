@@ -110,6 +110,11 @@
     setDemand(team, conceptId, demand) {
       this.send(GameWire.encodeSetDemand(team, conceptId, demand));
     }
+    // G4.76: save it into the team's game model (255 = delete the model's
+    // own row: inherit from its parent).
+    saveDemand(team, conceptId, demand) {
+      this.send(GameWire.encodeSetDemand(team, conceptId, demand, true));
+    }
   }
 
   window.GameNet = GameNet;

@@ -119,7 +119,7 @@ void applyOverrides(server::GameServer::Config& cfg, const char* spec, bool home
             std::fprintf(stderr, "unknown override '%s'\n", item.c_str());
             std::exit(2);
         }
-        gm->overlay[id] = static_cast<std::int16_t>(std::atoi(item.c_str() + eq + 1));
+        gm->overlay[id] = gm->own[id] = static_cast<std::int16_t>(std::atoi(item.c_str() + eq + 1));
         std::printf("override: %s %s demand = %d\n", model.c_str(), item.substr(0, eq).c_str(), gm->overlay[id]);
         at = end + 1;
     }

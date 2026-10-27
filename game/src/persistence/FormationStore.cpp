@@ -294,24 +294,73 @@ std::vector<GameModel> loadGameModels(const DbConfig& cfg) {
 }
 
 void resolveGameModels(std::vector<GameModel>& models) {
-    const std::vector<GameModel> own = models;
-    auto find = [&](const std::string& n) -> const GameModel* {
-        for (const auto& g : own)
-            if (g.name == n) return &g;
-        return nullptr;
-    };
     for (auto& g : models) {
+        if (!g.resolved) {
+            g.own = g.overlay;
+            for (int z = 0; z < 3; ++z)
+                for (int r = 0; r < 3; ++r) g.own_ladder[z][r] = g.ladder[z][r];
+            g.resolved = true;
+        }
+        g.overlay = g.own;
+        for (int z = 0; z < 3; ++z)
+            for (int r = 0; r < 3; ++r) g.ladder[z][r] = g.own_ladder[z][r];
+    }
+    auto find = [&](const std::string& n) -> int {
+        for (std::size_t k = 0; k < models.size(); ++k)
+            if (models[k].name == n) return static_cast<int>(k);
+        return -1;
+    };
+    for (std::size_t k = 0; k < models.size(); ++k) {
+        GameModel& g = models[k];
+        for (int i = 0; i < core::kMaxConcepts; ++i)
+            g.origin[i] = g.own[i] >= 0 ? static_cast<std::int16_t>(k) : std::int16_t{-1};
         std::string parent = g.parent;
         for (int depth = 0; depth < 16 && !parent.empty(); ++depth) {
-            const GameModel* p = find(parent);
-            if (!p || p->name == g.name) break;
+            const int pi = find(parent);
+            if (pi < 0 || models[pi].name == g.name) break;
+            const GameModel& p = models[pi];
             for (int i = 0; i < core::kMaxConcepts; ++i)
-                if (g.overlay[i] < 0) g.overlay[i] = p->overlay[i];
+                if (g.overlay[i] < 0 && p.own[i] >= 0) {
+                    g.overlay[i] = p.own[i];
+                    g.origin[i] = static_cast<std::int16_t>(pi);
+                }
             for (int z = 0; z < 3; ++z)
                 for (int r = 0; r < 3; ++r)
-                    if (g.ladder[z][r] < 0) g.ladder[z][r] = p->ladder[z][r];
-            parent = p->parent;
+                    if (g.ladder[z][r] < 0) g.ladder[z][r] = p.own_ladder[z][r];
+            parent = p.parent;
         }
+    }
+}
+
+bool saveModelDemand(const DbConfig& cfg, const std::string& model,
+                     int concept_id, int demand) {
+    try {
+        const std::string conn_str =
+            "host=" + cfg.host + " dbname=" + cfg.dbname +
+            " user=" + cfg.user + " password=" + cfg.password +
+            " connect_timeout=5";
+        pqxx::connection conn{conn_str};
+        pqxx::work tx{conn};
+        if (demand < 0) {
+            tx.exec_params(
+                "DELETE FROM game_model_concepts WHERE concept_id = $2 "
+                "AND model_id = (SELECT id FROM game_models WHERE name = $1)",
+                model, concept_id);
+        } else {
+            tx.exec_params(
+                "INSERT INTO game_model_concepts (model_id, concept_id, demand, citation) "
+                "SELECT id, $2, $3, 'Set in the game HUD, ' || to_char(now(), 'YYYY-MM-DD') "
+                "FROM game_models WHERE name = $1 "
+                "ON CONFLICT (model_id, concept_id) DO UPDATE "
+                "SET demand = EXCLUDED.demand, citation = EXCLUDED.citation",
+                model, concept_id, demand > 100 ? 100 : demand);
+        }
+        tx.commit();
+        return true;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: save demand %s/%d failed: %s\n",
+                     model.c_str(), concept_id, e.what());
+        return false;
     }
 }
 
@@ -344,10 +393,12 @@ std::optional<core::ConceptRegistry> loadConcepts(const DbConfig& cfg) {
         pqxx::work tx{conn};
         core::ConceptRegistry reg;
         for (const auto& r : tx.exec(
-                 "SELECT id, name, COALESCE(taught_from, ''), kind = 'style' "
+                 "SELECT id, name, COALESCE(taught_from, '') "
                  "FROM game_concepts ORDER BY id"))
+            // Mig 762: no core/style in the dictionary — every DB model
+            // states its demand, so the registry's default never applies.
             reg.add(r[0].as<int>(), r[1].as<std::string>(),
-                    core::levelRank(r[2].as<std::string>()), r[3].as<bool>());
+                    core::levelRank(r[2].as<std::string>()));
         if (reg.size() == 0) return std::nullopt;
         for (const auto& r : tx.exec(
                  "SELECT concept_id, other_id FROM game_concept_links "

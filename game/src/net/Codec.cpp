@@ -371,6 +371,9 @@ Bytes encodeModelDemands(const ModelDemandsFrame& f) {
         w.u8(f.demand[i]);
         w.u8(i < f.source.size() ? f.source[i] : 0);
     }
+    w.u8(f.parent);
+    for (std::size_t i = 0; i < f.demand.size(); ++i)
+        w.u8(i < f.origin.size() ? f.origin[i] : 255);
     return std::move(w.out);
 }
 
@@ -385,6 +388,11 @@ std::optional<ModelDemandsFrame> decodeModelDemands(const Bytes& payload) {
         f.source.push_back(r.u8());
     }
     if (!r.ok) return std::nullopt;
+    if (r.remaining() > 0) {   // 1.15 trailer
+        f.parent = r.u8();
+        for (std::uint8_t i = 0; i < n && r.ok; ++i) f.origin.push_back(r.u8());
+        if (!r.ok) return std::nullopt;
+    }
     return f;
 }
 

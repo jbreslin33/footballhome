@@ -515,12 +515,14 @@
   // ── Game model (G4.74, admin) — James: "all concepts [are] valid and
   // its a matter of focus in the game model … if not set by us it should go
   // to a default" / "hud would be good to change mid game to see diff
-  // behavour". Each team's demand per concept: where it comes from (the
-  // default — core 100, style 0 — the model's own row, or a live change
-  // made here). A change is live at once and NOT saved; picking a model
-  // clears it. Collapsed by default. ──
-  const demands = [null, null];   // per team: { model, demand[], source[] }
-  let modelTeam = 0, modelOpen = false, modelFilter = 'model', modelSearch = '';
+  // behavour". Each team's demand per concept and where it comes from: the
+  // model's own row, inherited from a parent model, or a live change made
+  // here. G4.76 (mig 762): "editable in hud" — 💾 saves a live change into
+  // the team's model in the DB; ↺ on a saved row of a child model deletes
+  // it, so the parent's value comes back. A top-level model states every
+  // concept, so it has nothing to fall back to. Collapsed by default. ──
+  const demands = [null, null];   // per team: { model, demand[], source[], parent, origin[] }
+  let modelTeam = 0, modelOpen = false, modelFilter = 'all', modelSearch = '';
   const modelBtn = document.createElement('button');
   modelBtn.type = 'button';
   modelBtn.className = 'game-only';
@@ -539,9 +541,9 @@
     'width:min(380px, calc(100vw - 24px));max-height:55vh;display:flex;flex-direction:column;z-index:21;' +
     'background:rgba(11,28,61,.95);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px;color:#f4f6fb;font:12px system-ui,sans-serif;';
   document.body.appendChild(modelPanel);
-  const SOURCE = ['default', 'model', 'LIVE'];
   const chip = (on) => 'border:0;border-radius:10px;padding:2px 8px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;' +
     (on ? 'background:#ffcc00;color:#0b1c3d;' : 'background:rgba(255,255,255,.15);color:#fff;');
+  const modelName = (id) => id === 255 || id === undefined ? '' : (presets[id] || 'model #' + id);
   function paintModelPanel() {
     modelBtn.hidden = !isAdmin;
     modelBtn.style.background = modelOpen ? '#ffcc00' : 'rgba(10,14,20,.55)';
@@ -550,31 +552,45 @@
     if (modelPanel.hidden) return;
     const names = [(teams && teams.home) || 'Home', (teams && teams.away) || 'Away'];
     const d = demands[modelTeam];
-    const model = d && d.model !== 255 ? (presets[d.model] || 'model #' + d.model) : 'no model';
+    const model = d && d.model !== 255 ? modelName(d.model) : 'no model';
+    const parent = d ? modelName(d.parent) : '';
     let rows = '';
     if (d) {
       GameWire.CONCEPTS.forEach((c, i) => {
         if (!c || i >= d.demand.length) return;
         const src = d.source[i];
-        if (modelFilter === 'model' && src === 0) return;
+        // 'own' = what makes this model itself: its own rows + live changes.
+        if (modelFilter === 'own' && src !== 1 && src !== 2) return;
         if (modelFilter === 'live' && src !== 2) return;
         if (modelSearch && !c.includes(modelSearch)) return;
+        const from = modelName(d.origin[i]);
+        const label = src === 2 ? 'LIVE' : src === 1 ? 'own' : src === 3 ? from : 'default';
+        const tip = src === 2 ? 'Changed here, not saved' : src === 1 ? `Saved in ${model}` :
+          src === 3 ? `Inherited from ${from}` : 'No model row (code default)';
+        let act = '';
+        if (src === 2) {
+          act = `<button type="button" data-save="${i}" title="Save into ${esc(model)}" style="${chip(false)}">💾</button>` +
+                `<button type="button" data-reset="${i}" title="Undo the live change" style="${chip(false)}">↺</button>`;
+        } else if (src === 1 && d.parent !== 255) {
+          act = `<button type="button" data-inherit="${i}" title="Delete ${esc(model)}'s own value: back to ${esc(parent)}" style="${chip(false)}">↺</button>`;
+        }
         rows += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">` +
-          `<span style="flex:0 0 132px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c)} (#${i})">${esc(c)}</span>` +
-          `<input type="range" min="0" max="100" value="${d.demand[i]}" data-cid="${i}" aria-label="${esc(c)} demand" style="flex:1;min-height:0;accent-color:#ffcc00;">` +
+          `<span style="flex:0 0 124px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c)} (#${i})">${esc(c)}</span>` +
+          `<input type="range" min="0" max="100" value="${d.demand[i]}" data-cid="${i}" aria-label="${esc(c)} demand" style="flex:1;min-width:0;min-height:0;accent-color:#ffcc00;">` +
           `<span data-val style="flex:0 0 24px;text-align:right;">${d.demand[i]}</span>` +
-          `<span style="flex:0 0 46px;font-size:10px;opacity:${src ? 1 : .6};color:${src === 2 ? '#ffcc00' : '#f4f6fb'};">${SOURCE[src]}</span>` +
-          (src === 2 ? `<button type="button" data-reset="${i}" title="Back to the model" style="${chip(false)}">↺</button>` : `<span style="flex:0 0 24px;"></span>`) +
+          `<span title="${esc(tip)}" style="flex:0 0 64px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:${src === 3 ? .6 : 1};color:${src === 2 ? '#ffcc00' : '#f4f6fb'};">${esc(label)}</span>` +
+          `<span style="flex:0 0 52px;display:flex;gap:2px;justify-content:flex-end;">${act}</span>` +
           `</div>`;
       });
     }
+    const line = !d ? '' : parent ? `inherits from <b>${esc(parent)}</b>` : 'top-level: states every concept';
     modelPanel.innerHTML =
       `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">` +
       names.map((n, t) => `<button type="button" data-mteam="${t}" style="${chip(t === modelTeam)}">${esc(n)}</button>`).join('') +
       `<span style="flex:1;"></span><button type="button" data-mclose title="Collapse" style="${chip(false)}">✕</button></div>` +
-      `<div style="margin:4px 0;opacity:.85;">Plays <b>${esc(model)}</b> · live changes aren't saved</div>` +
+      `<div style="margin:4px 0;opacity:.85;">Plays <b>${esc(model)}</b>${line ? ' · ' + line : ''} · 💾 saves a live change</div>` +
       `<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">` +
-      [['model', 'Model + live'], ['live', 'Live'], ['all', 'All']].map(([k, l]) =>
+      [['all', 'All'], ['own', 'Own + live'], ['live', 'Live']].map(([k, l]) =>
         `<button type="button" data-mfilter="${k}" style="${chip(modelFilter === k)}">${l}</button>`).join('') +
       `<input type="search" data-msearch placeholder="find a concept" value="${esc(modelSearch)}" ` +
       `style="flex:1;min-width:0;min-height:0;border-radius:10px;border:0;padding:3px 8px;font:12px system-ui,sans-serif;"></div>` +
@@ -592,6 +608,10 @@
     else if (t.dataset.mclose !== undefined) { modelOpen = false; paintModelPanel(); }
     else if (t.dataset.mfilter) { modelFilter = t.dataset.mfilter; paintModelPanel(); }
     else if (t.dataset.reset !== undefined) net.setDemand(modelTeam, Number(t.dataset.reset), 255);
+    else if (t.dataset.save !== undefined) {
+      const i = Number(t.dataset.save), d = demands[modelTeam];
+      if (d) net.saveDemand(modelTeam, i, d.demand[i]);
+    } else if (t.dataset.inherit !== undefined) net.saveDemand(modelTeam, Number(t.dataset.inherit), 255);
   });
   modelPanel.addEventListener('input', (ev) => {
     const t = ev.target;

@@ -36,6 +36,7 @@
     RUN_PHASE: 0x3F,      // admin: u8 team | u8 phase
     MODEL_DEMANDS: 0x40, // s→c admin: one team's demand per concept + source (1.14)
     SET_DEMAND: 0x41,    // admin: u8 team | u8 concept | u8 demand (255 = back to the model)
+    SAVE_DEMAND: 0x42,   // admin: same layout, SAVED into the team's model (255 = inherit) (1.15)
   };
 
   // G4.30 attribute order (PROTOCOL 0x37, append-only; G4.52 the body four;
@@ -256,15 +257,24 @@
       demand.push(view.getUint8(at + 3 + 2 * i));
       source.push(view.getUint8(at + 4 + 2 * i));
     }
-    return { team, model, demand, source };
+    // 1.15 (G4.76) trailer: the model's parent (255 = top-level) and, per
+    // concept, the model its value came from (255 = none).
+    let parent = 255;
+    const origin = [];
+    let k = at + 3 + 2 * n;
+    if (k < view.byteLength) {
+      parent = view.getUint8(k++);
+      for (let i = 0; i < n && k < view.byteLength; i++) origin.push(view.getUint8(k++));
+    }
+    return { team, model, demand, source, parent, origin };
   }
-  function encodeSetDemand(team, conceptId, demand) {
+  function encodeSetDemand(team, conceptId, demand, save) {
     const p = new ArrayBuffer(3);
     const v = new DataView(p);
     v.setUint8(0, team);
     v.setUint8(1, conceptId);
     v.setUint8(2, demand);
-    return envelope(FrameType.SET_DEMAND, p);
+    return envelope(save ? FrameType.SAVE_DEMAND : FrameType.SET_DEMAND, p);
   }
 
   function encodeApplyPreset(team, presetId) {

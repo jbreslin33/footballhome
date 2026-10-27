@@ -358,6 +358,16 @@ FH_TEST(a_team_model_inherits_its_school) {
     FH_EXPECT_EQ(ms[1].overlay[28], 68);
     FH_EXPECT_EQ(ms[0].overlay[28], -1);   // the school is unchanged
     FH_EXPECT_EQ(ms[2].overlay[18], -1);
+    FH_EXPECT_EQ(ms[1].origin[18], 0);     // from the school
+    FH_EXPECT_EQ(ms[1].origin[19], 1);     // its own
+    // G4.76: a save to the school moves the team; clearing the team's own
+    // row hands the concept back to the school.
+    ms[0].own[18] = 40;
+    ms[1].own[19] = -1;
+    persistence::resolveGameModels(ms);
+    FH_EXPECT_EQ(ms[1].overlay[18], 40);
+    FH_EXPECT_EQ(ms[1].overlay[19], 90);
+    FH_EXPECT_EQ(ms[1].origin[19], 0);
 }
 
 FH_TEST(server_admin_applies_preset_to_one_team_only) {

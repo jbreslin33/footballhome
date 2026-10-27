@@ -20,6 +20,11 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
       brain_{ai::TeamSetup::splitHalves(cfg.slot_count),
              Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y),
              cfg.formation_home, cfg.formation_away} {
+    // G4.76: models built by hand (tests) come unresolved; loaded ones
+    // already are (and the harness's overrides sit on top — keep them).
+    bool unresolved = false;
+    for (const auto& g : cfg_.models) unresolved = unresolved || !g.resolved;
+    if (unresolved) persistence::resolveGameModels(cfg_.models);
     skills_ = core::SkillSet(cfg.model_params);   // G4.33: DB numbers
     world_.setLocomotion(core::Locomotion(cfg.model_params));   // G4.51
     brain_.setModelParams(cfg.model_params);
@@ -189,9 +194,16 @@ void GameServer::sendDemands(std::uint8_t team, ClientId to, bool all) {
         const int live = live_demand_[team][i];
         const int row = m >= 0 ? cfg_.models[m].overlay[i] : -1;
         const int d = live >= 0 ? live : (row >= 0 ? row : reg.defaultDemand(i));
+        const int from = m >= 0 ? cfg_.models[m].origin[i] : -1;
         f.demand.push_back(static_cast<std::uint8_t>(d > 100 ? 100 : d));
-        f.source.push_back(live >= 0 ? 2 : (row >= 0 ? 1 : 0));
+        // 2 live, 1 its own row, 3 inherited from a parent (G4.76), 0 none.
+        f.source.push_back(live >= 0 ? 2 : row < 0 ? 0 : from == m ? 1 : 3);
+        f.origin.push_back(from >= 0 && from < 255 ? static_cast<std::uint8_t>(from) : 255);
     }
+    if (m >= 0)
+        for (std::size_t p = 0; p < cfg_.models.size() && p < 255; ++p)
+            if (!cfg_.models[m].parent.empty() && cfg_.models[p].name == cfg_.models[m].parent)
+                f.parent = static_cast<std::uint8_t>(p);
     const Bytes frame = encodeFrame(FrameType::ModelDemands, encodeModelDemands(f));
     if (!all) { transport_.send(to, frame); return; }
     for (const auto& [id, _] : admins_) transport_.send(id, frame);
@@ -502,6 +514,31 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             recomputeKnowledge(sd->team == 0);
             broadcastRoster();
             sendDemands(sd->team, 0, true);
+            return;
+        }
+        case FrameType::SaveDemand: {
+            // Admin-only (G4.76, mig 762): write one concept's demand into
+            // the team's game model in the club DB — James: "editable in
+            // hud". 255 = delete the model's own row (inherit from its
+            // parent); a top-level model states every concept, so the DB
+            // refuses that. Every model that inherits it moves too.
+            if (!admins_.count(id) || !cfg_.db) return;
+            const auto sd = decodeSetDemand(frame.payload);
+            if (!sd || sd->team > 1 || sd->concept_id >= core::concepts().size()) return;
+            const int m = team_model_[sd->team];
+            if (m < 0) return;
+            auto& g = cfg_.models[m];
+            if (sd->demand == 255 && g.parent.empty()) return;
+            const int d = sd->demand == 255 ? -1 : (sd->demand > 100 ? 100 : sd->demand);
+            if (persistence::saveModelDemand(*cfg_.db, g.name, sd->concept_id, d)) {
+                g.own[sd->concept_id] = static_cast<std::int16_t>(d);
+                persistence::resolveGameModels(cfg_.models);
+                live_demand_[sd->team][sd->concept_id] = -1;
+            }
+            for (int side = 0; side < 2; ++side) recomputeKnowledge(side == 0);
+            broadcastRoster();
+            sendDemands(0, 0, true);
+            sendDemands(1, 0, true);
             return;
         }
         default:

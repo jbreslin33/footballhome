@@ -49,6 +49,7 @@ enum class FrameType : std::uint8_t {
     RunPhase       = 0x3F, // c→s admin: set up a phase of play for one team: u8 team | u8 phase (1.9)
     ModelDemands   = 0x40, // s→c admin: one team's game-model demand per concept + its source (1.14, G4.74)
     SetDemand      = 0x41, // c→s admin: one concept's demand for one team, live: u8 team | u8 concept | u8 demand (255 = back to the model) (1.14)
+    SaveDemand     = 0x42, // c→s admin: SAVE one concept's demand into the team's game model (DB): same layout; 255 = delete its own row, inherit (1.15, G4.76)
 };
 
 // Capability bits granted in HELLO (PROTOCOL.md §3).

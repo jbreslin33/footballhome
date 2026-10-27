@@ -176,6 +176,11 @@ struct ModelDemandsFrame {
     std::uint8_t model = 255;              // PRESETS index; 255 = none
     std::vector<std::uint8_t> demand;      // by concept id
     std::vector<std::uint8_t> source;
+    // 1.15 (G4.76) trailer: the model's parent (PRESETS index; 255 = a
+    // top-level model, which states every concept) and, per concept, the
+    // model its value came from (255 = none). Absent from a 1.14 server.
+    std::uint8_t parent = 255;
+    std::vector<std::uint8_t> origin;
 };
 Bytes encodeModelDemands(const ModelDemandsFrame& f);
 std::optional<ModelDemandsFrame> decodeModelDemands(const Bytes& payload);
