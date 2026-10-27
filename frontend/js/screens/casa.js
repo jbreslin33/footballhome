@@ -10,7 +10,9 @@
 //                   Results / All / Table pills; GET /api/opponents/league-fixtures
 //                   pulls the league's SportsEngine feed into league_fixtures on
 //                   every open, so it is current and survives the feed being down.
-//   #casa-scores    games already played with no score on the league site
+//   #casa-scores    pills (mig 759): Not scored (+ the Instagram auto-check
+//                   report) · Upcoming · Scored · Postponed · Whole season;
+//                   games already played with no score on the league site
 //                   (mig 520): Text / Email per manager, logged per game.
 //
 // 📸 buttons (mig 699): each club's Instagram (club_social_handles), edited on
@@ -504,8 +506,12 @@ class CasaScheduleScreen extends Screen {
 // rest of the club's contacts sit behind "more" and can be put on the card.
 // The Message pills pick what the buttons send: ask for the score (reply to
 // me) or get the SportsEngine app and enter it yourself (mig 522).
+//
+// Pills (mig 759, owner 2026-10-27): Not scored (the default — the chase,
+// plus the server's Instagram auto-check report) · Upcoming · Scored ·
+// Postponed · Whole season, all from the one season list.
 class CasaScoresScreen extends Screen {
-  constructor(navigation, auth) { super(navigation, auth); this.data = null; this.division = ''; this.tier = 'score_request'; this.more = new Set(); this.flash = ''; this.flashBad = false; }
+  constructor(navigation, auth) { super(navigation, auth); this.data = null; this.division = ''; this.view = 'waiting'; this.tier = 'score_request'; this.more = new Set(); this.flash = ''; this.flashBad = false; }
 
   render() {
     const div = document.createElement('div');
@@ -552,6 +558,22 @@ class CasaScoresScreen extends Screen {
         .cz-ig { display:inline-flex; align-items:center; gap:4px; padding:4px 9px; border-radius:999px; border:1px solid #d62976; color:var(--text-primary); text-decoration:none; font-size:0.78rem; font-weight:700; white-space:nowrap; }
         .cz-ig.none { border-color:var(--border-color); opacity:0.45; }
         .cz-igs { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 8px; }
+        .cz-views .cz-pill { font-size:0.95rem; }
+        .cz-report { border:1px solid var(--border-color); border-radius:12px; background:var(--bg-secondary); padding:10px 14px; margin:8px 0 12px; }
+        .cz-report h3 { margin:0 0 4px; font-size:1rem; }
+        .cz-report summary { cursor:pointer; font-weight:700; font-size:0.88rem; margin:8px 0 4px; }
+        .cz-runs { width:100%; border-collapse:collapse; font-size:0.8rem; }
+        .cz-runs th, .cz-runs td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border-color); vertical-align:top; }
+        .cz-runs th { opacity:0.6; font-weight:700; }
+        .cz-runs td.n { text-align:right; white-space:nowrap; }
+        .cz-runs .bad { color:var(--danger-color, #c0392b); }
+        .cz-post { display:flex; gap:8px; flex-wrap:wrap; align-items:baseline; padding:6px 0; border-bottom:1px solid var(--border-color); font-size:0.82rem; }
+        .cz-post .when { opacity:0.65; white-space:nowrap; }
+        .cz-post .hit { font-weight:800; }
+        .cz-post .note { flex-basis:100%; opacity:0.75; }
+        .cz-tag { font-size:0.72rem; font-weight:800; padding:2px 7px; border-radius:6px; border:1px solid var(--border-color); white-space:nowrap; }
+        .cz-tag.ok { border-color:#4ade80; }
+        .cz-tag.warn { border-color:#f59e0b; background:rgba(245,158,11,0.15); }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
         <button class="btn btn-secondary" id="cz-back">← Back</button>
@@ -563,6 +585,7 @@ class CasaScoresScreen extends Screen {
     div.addEventListener('click', async (e) => {
       const t = e.target;
       const d = t.closest('[data-division]'); if (d) { this.division = d.dataset.division; this._renderBody(); return; }
+      const v = t.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
       const pick = t.closest('[data-tier]'); if (pick) { this.tier = pick.dataset.tier; this._renderBody(); return; }
       const ask = t.closest('[data-ask]'); if (ask) { await this.ask(Number(ask.dataset.fixture), ask.dataset.contacts.split(',').map(Number), ask.dataset.ask, ask); return; }
       const role = t.closest('[data-score-role]'); if (role) { await this.setRole(Number(role.dataset.contact), role.dataset.scoreRole); return; }
@@ -648,44 +671,110 @@ class CasaScoresScreen extends Screen {
     catch (err) { this._say(err.message, true); }
   }
 
+  // Which pill a game falls under.
+  _kind(f) {
+    if (['postponed', 'cancelled', 'canceled', 'forfeit'].includes(f.status)) return 'off';
+    // The feed can carry a 0–0 placeholder on a game not played yet.
+    if (f.home_score !== null && f.away_score !== null && (f.due || f.status === 'completed')) return 'scored';
+    return f.due ? 'waiting' : 'upcoming';
+  }
+
   _renderBody() {
     const body = this.find('#cz-body'); if (!body || !this.data) return;
     const esc = (t) => this.escapeHtml(t);
     const sm = this.data.summary || {};
-    const waiting = this.data.waiting || [], recent = this.data.recent || [];
-    const divs = [...new Set([...waiting, ...recent].map(f => f.division_label).filter(Boolean))].sort();
-    const n = (d) => waiting.filter(f => !d || f.division_label === d).length;
-    const inScope = (f) => !this.division || f.division_label === this.division;
-    const w = waiting.filter(inScope), r = recent.filter(inScope);
+    const season = this.data.season || [];
+    const divs = [...new Set(season.map(f => f.division_label).filter(Boolean))].sort();
+    const inDiv = (f, d) => !d || f.division_label === d;
+    const ofView = (f, v) => v === 'all' || this._kind(f) === v;
+    const views = [['waiting', 'scores_pill_waiting', '🥅', 'Not scored'], ['upcoming', 'scores_pill_upcoming', '📅', 'Upcoming'],
+                   ['scored', 'scores_pill_scored', '✅', 'Scored'], ['off', 'scores_pill_off', '⏸', 'Postponed'], ['all', 'scores_pill_all', '🗓', 'Whole season']];
+    const nView = (v) => season.filter(f => inDiv(f, this.division) && ofView(f, v)).length;
+    const nDiv = (d) => season.filter(f => inDiv(f, d) && ofView(f, this.view)).length;
+    let list = season.filter(f => inDiv(f, this.division) && ofView(f, this.view));
+    if (this.view === 'scored') list = list.slice().reverse();   // newest result first
     let html = '', day = '';
-    for (const f of w) {
+    for (const f of list) {
       if (f.date_key !== day) { day = f.date_key; html += `<div class="cz-day">${esc(f.date_label)}</div>`; }
-      html += this._game(f);
+      html += this.view === 'waiting' ? this._game(f) : this._row(f);
     }
-    let inHtml = ''; day = '';
-    for (const f of r) {
-      if (f.date_key !== day) { day = f.date_key; inHtml += `<div class="cz-day">${esc(f.date_label)}</div>`; }
-      inHtml += `<div class="cz-in">${f.home_logo ? `<img src="${esc(f.home_logo)}" alt="" style="width:18px;height:18px;object-fit:contain;">` : ''}<b>${esc(f.home_name)}</b><span class="cz-score">${f.home_score} – ${f.away_score}</span><b>${esc(f.away_name)}</b>${f.away_logo ? `<img src="${esc(f.away_logo)}" alt="" style="width:18px;height:18px;object-fit:contain;">` : ''}${f.status !== 'completed' ? `<span class="cz-notfinal">${esc(this._copy('scores_not_final') || 'not final')}</span>` : ''}<span class="cz-meta">${esc(f.division_label || '')}</span></div>`;
-    }
+    const none = { waiting: this._copy('scores_none') || 'Nothing missing.', upcoming: this._copy('scores_upcoming_none') || 'No games left to play.',
+                   scored: this._copy('scores_none') || '', off: this._copy('scores_off_none') || 'Nothing postponed.', all: '' }[this.view];
+    const head = views.find(x => x[0] === this.view);
     body.innerHTML = `
       ${this.flash ? `<div class="cz-flash ${this.flashBad ? 'bad' : ''}">${esc(this.flash)}</div>` : ''}
       ${sm.fresh === false && sm.last_fetched_at ? `<div class="cz-stale">${esc(this._copy('schedule_stale', { when: sm.last_fetched_at }) || `Showing the list from ${sm.last_fetched_at}.`)}</div>` : ''}
+      <div class="cz-pills cz-views">
+        ${views.map(([k, c, icon, d]) => `<button class="cz-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${icon} ${esc(this._copy(c) || d)}<span class="n">${nView(k)}</span></button>`).join('')}
+      </div>
       <div class="cz-pills">
-        <button class="cz-pill ${!this.division ? 'on' : ''}" data-division="">All<span class="n">${n('')}</span></button>
-        ${divs.map(d => `<button class="cz-pill ${this.division === d ? 'on' : ''}" data-division="${esc(d)}">${esc(d)}<span class="n">${n(d)}</span></button>`).join('')}
+        <button class="cz-pill ${!this.division ? 'on' : ''}" data-division="">All<span class="n">${nDiv('')}</span></button>
+        ${divs.map(d => `<button class="cz-pill ${this.division === d ? 'on' : ''}" data-division="${esc(d)}">${esc(d)}<span class="n">${nDiv(d)}</span></button>`).join('')}
         <button class="cz-btn sm ghost" data-refresh>↻ Check again</button>
         <button class="cz-btn sm ghost" data-go="casa-contacts">📇 Edit contacts</button>
       </div>
+      ${this.view === 'waiting' ? `
+      ${this._report()}
       <div class="cz-pills">
         <span style="font-size:0.8rem; opacity:0.8;">Message:</span>
         ${[['score_request', 'scores_pick_request', '🙋 Ask for the score'], ['score_app', 'scores_pick_app', '📲 Get the app & enter it']].map(([k, c, d]) => `<button class="cz-pill ${this.tier === k ? 'on' : ''}" data-tier="${k}">${k === 'score_app' ? '📲' : '🙋'} ${esc(this._copy(c) || d.slice(3))}</button>`).join('')}
       </div>
-      <div class="cz-hint">${esc(this._copy('scores_hint'))}</div>
-      ${this._instaRow()}
-      <div class="cz-sec">${esc(this._copy('scores_waiting') || 'Waiting on a score')} · ${w.length}</div>
-      ${html || `<div class="cz-hint">${esc(this._copy('scores_none') || 'Nothing missing.')}</div>`}
-      ${inHtml ? `<div class="cz-sec">${esc(this._copy('scores_in') || 'Scores in')} · ${r.length}</div>${inHtml}` : ''}`;
+      <div class="cz-hint">${esc(this._copy('scores_hint'))}</div>` : ''}
+      <div class="cz-sec">${esc(this.view === 'waiting' ? (this._copy('scores_waiting') || 'Waiting on a score') : (this._copy(head[1]) || head[3]))} · ${list.length}</div>
+      ${html || `<div class="cz-hint">${esc(none)}</div>`}`;
     this.flash = '';
+  }
+
+  // One compact line: the score, or what the game is waiting on.
+  _row(f) {
+    const esc = (t) => this.escapeHtml(t);
+    const logo = (u) => u ? `<img src="${esc(u)}" alt="" style="width:18px;height:18px;object-fit:contain;">` : '';
+    const k = this._kind(f);
+    const mid = k === 'scored' ? `<span class="cz-score">${f.home_score} – ${f.away_score}</span>`
+              : k === 'off' ? `<span class="cz-notfinal">${esc(f.status)}</span>`
+              : k === 'waiting' ? `<span class="cz-notfinal">${esc(this._copy('scores_pill_waiting') || 'Not scored')}</span>`
+              : `<span style="opacity:0.6;">v</span>`;
+    const ig = k === 'scored' ? this._igCheck(f) : '';
+    return `<div class="cz-in">${logo(f.home_logo)}<b>${esc(f.home_name)}</b>${mid}<b>${esc(f.away_name)}</b>${logo(f.away_logo)}${k === 'scored' && f.status !== 'completed' ? `<span class="cz-notfinal">${esc(this._copy('scores_not_final') || 'not final')}</span>` : ''}${ig}<span class="cz-meta">${esc(f.time_label)} · ${esc(f.division_label || '')}</span></div>`;
+  }
+
+  // A scored game the auto-check also read: does Instagram agree with SportsEngine?
+  _igCheck(f) {
+    const esc = (t) => this.escapeHtml(t);
+    const finds = (this.data.insta_finds || []).filter(x => x.fixture_id === f.id);
+    if (!finds.length) return '';
+    const bad = finds.filter(x => x.home_score !== f.home_score || x.away_score !== f.away_score);
+    return bad.length
+      ? `<a class="cz-tag warn" href="${esc(bad[0].post_url)}" target="_blank" rel="noopener">📸 ${bad[0].home_score}–${bad[0].away_score} ${esc(this._copy('insta_differs_se', { home: f.home_score, away: f.away_score }) || '⚠ differs')}</a>`
+      : `<a class="cz-tag ok" href="${esc(finds[0].post_url)}" target="_blank" rel="noopener">📸 ${esc(this._copy('insta_matches_se') || '✓ matches SportsEngine')}</a>`;
+  }
+
+  // The server's Instagram auto-check (mig 749): status, last runs, every
+  // post read in the last 10 days and what it made of it (mig 759).
+  _report() {
+    const esc = (t) => this.escapeHtml(t);
+    const runs = this.data.insta_runs || [], posts = this.data.insta_posts || [];
+    const byId = new Map((this.data.season || []).map(f => [f.id, f]));
+    const last = runs.find(r => r.finished);
+    const runRows = runs.map(r => `<tr><td>${esc(r.started)}${r.finished ? '' : ' · running…'}</td><td class="n">${r.games_waiting}</td><td class="n">${r.clubs_checked}</td><td class="n">${r.posts_read}</td><td class="n">${r.scores_found}</td><td class="${r.problem ? 'bad' : ''}">${esc(r.problem || '—')}</td></tr>`).join('');
+    const postRows = posts.map(p => {
+      const f = p.fixture_id ? byId.get(p.fixture_id) : null;
+      const hit = f ? `<span class="hit">→ ${esc(f.home_name)} ${p.home_score} – ${p.away_score} ${esc(f.away_name)}</span> <span class="cz-tag">${esc(p.confidence)}</span>${this._kind(f) === 'scored' ? ' ' + this._igCheck(f) : ''}`
+                    : `<span style="opacity:0.6;">no score</span>`;
+      return `<div class="cz-post"><span class="when">${esc(p.posted)}</span><a href="${esc(p.post_url)}" target="_blank" rel="noopener">@${esc(p.handle)}</a>${hit}${p.note ? `<span class="note">${esc(p.note)}</span>` : ''}</div>`;
+    }).join('');
+    return `
+      <div class="cz-report">
+        <h3>${esc(this._copy('insta_report_title') || '🤖 Auto-check report')}</h3>
+        <div class="cz-hint">${esc(this._copy('insta_report_hint'))}</div>
+        ${last ? `<div class="cz-hint" style="opacity:0.9;">${esc(this._copy('insta_auto', { when: last.started, posts: last.posts_read, found: last.scores_found }))}</div>`
+               : `<div class="cz-hint">${esc(this._copy('insta_report_never') || 'The auto-check hasn\'t run yet.')}</div>`}
+        ${last && last.problem ? `<div class="cz-hint" style="color:var(--danger-color, #c0392b); opacity:1;">${esc(this._copy('insta_problem', { problem: last.problem }))}</div>` : ''}
+        ${runs.length ? `<details><summary>${esc(this._copy('insta_report_runs') || 'Last runs')} · ${runs.length}</summary>
+          <div style="overflow-x:auto;"><table class="cz-runs"><tr><th>Ran</th><th>Games</th><th>Clubs</th><th>Posts</th><th>Found</th><th>Problem</th></tr>${runRows}</table></div></details>` : ''}
+        <details><summary>${esc(this._copy('insta_report_posts', { n: posts.length }) || `Posts read · ${posts.length}`)}</summary>${postRows || '<div class="cz-hint">None yet.</div>'}</details>
+        ${this._instaRow()}
+      </div>`;
   }
 
   // 📸 every team on the schedule, by division, plus open-all for the
@@ -698,14 +787,11 @@ class CasaScoresScreen extends Screen {
     const waiting = this._waitingClubs();
     const withH = waiting.filter(id => this._insta(id));
     const missing = waiting.filter(id => !this._insta(id)).map(id => (teams.find(t => t.club_id === id) || {}).name).filter(Boolean);
-    const run = this.data.insta_run;
     return `
       <div class="cz-sec">📸 Instagram</div>
       ${withH.length ? `<button class="cz-btn sm alt" data-insta-all>${esc(this._copy('insta_open_all', { n: withH.length }) || `📸 Open all ${withH.length}`)}</button>` : ''}
       ${missing.length ? `<div class="cz-hint">${esc(this._copy('insta_missing', { clubs: missing.join(', ') }))}</div>` : ''}
       <div class="cz-hint">${esc(this._copy('insta_popups'))}</div>
-      ${run ? `<div class="cz-hint">${esc(this._copy('insta_auto', { when: run.started, posts: run.posts_read, found: run.scores_found }))}</div>` : ''}
-      ${run && run.problem ? `<div class="cz-hint" style="color:var(--danger-color, #c0392b);">${esc(this._copy('insta_problem', { problem: run.problem }))}</div>` : ''}
       ${divs.map(d => `<div class="cz-hint" style="margin-bottom:0;"><b>${esc(d)}</b></div><div class="cz-igs">${teams.filter(t => t.division_label === d).map(t => this._igLink(t.club_id, t.name)).join('')}</div>`).join('')}`;
   }
 

@@ -641,14 +641,16 @@ Response OpponentsController::handleLeagueScores(const Request& request) {
                         {"home_score", r["home_score"].is_null() ? json(nullptr) : json(r["home_score"].as<long long>())},
                         {"away_score", r["away_score"].is_null() ? json(nullptr) : json(r["away_score"].as<long long>())},
                         {"home_logo", str(r, "home_logo")}, {"away_logo", str(r, "away_logo")},
-                        {"date_key", str(r, "date_key")}, {"date_label", str(r, "date_label")}, {"time_label", str(r, "time_label")}};
+                        {"date_key", str(r, "date_key")}, {"date_label", str(r, "date_label")}, {"time_label", str(r, "time_label")},
+                        {"due", r["due"].as<bool>()}};
         };
         const std::string cols = R"SQL(
             SELECT f.id, f.division_label, f.status, f.home_name, f.away_name, f.home_club_id, f.away_club_id, f.home_score, f.away_score,
                    COALESCE(hc.logo_url,'') AS home_logo, COALESCE(ac.logo_url,'') AS away_logo,
                    to_char(f.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS date_key,
                    to_char(f.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS date_label,
-                   to_char(f.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time_label
+                   to_char(f.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time_label,
+                   (f.starts_at + make_interval(mins => s.score_due_after_minutes) < now()) AS due
               FROM league_fixtures f JOIN league_fixture_sources s ON s.id = f.source_id
               LEFT JOIN clubs hc ON hc.id = f.home_club_id LEFT JOIN clubs ac ON ac.id = f.away_club_id
              WHERE s.league_label = $1 AND s.is_active AND f.removed_at IS NULL AND s.score_due_after_minutes IS NOT NULL )SQL";
@@ -657,17 +659,44 @@ Response OpponentsController::handleLeagueScores(const Request& request) {
                 " AND f.status NOT IN ('postponed', 'cancelled', 'canceled', 'forfeit') AND (f.home_score IS NULL OR f.away_score IS NULL) "
                 " ORDER BY f.starts_at, f.division_label, f.id", {label}))
             out["waiting"].push_back(fixture(r));
-        // Scores the server read off the clubs' Instagram for the games still
-        // waiting, and its last run (mig 749, scripts/casa-insta-scores.js).
+        // Every game of the season — the pills (mig 759) split it into not
+        // scored / upcoming / scored / postponed / all on the client.
+        out["season"] = json::array();
+        for (const auto& r : db->query(cols + " ORDER BY f.starts_at, f.division_label, f.id", {label}))
+            out["season"].push_back(fixture(r));
+        // Scores the server read off the clubs' Instagram (mig 749,
+        // scripts/casa-insta-scores.js) — on the card while a game waits, and
+        // checked against SportsEngine in the report once it is scored.
         out["insta_finds"] = json::array();
         for (const auto& r : db->query(
                 "SELECT p.fixture_id, p.handle, p.post_url, p.home_score, p.away_score, p.confidence, p.note, "
                 "       to_char(p.posted_at AT TIME ZONE 'America/New_York', 'Dy FMHH12:MI AM') AS posted "
-                "  FROM casa_insta_posts p JOIN league_fixtures f ON f.id = p.fixture_id "
-                " WHERE f.home_score IS NULL OR f.away_score IS NULL ORDER BY p.posted_at"))
+                "  FROM casa_insta_posts p WHERE p.fixture_id IS NOT NULL ORDER BY p.posted_at"))
             out["insta_finds"].push_back({{"fixture_id", r["fixture_id"].as<long long>()}, {"handle", str(r, "handle")}, {"post_url", str(r, "post_url")},
                                           {"home_score", r["home_score"].as<long long>()}, {"away_score", r["away_score"].as<long long>()},
                                           {"confidence", str(r, "confidence")}, {"note", str(r, "note")}, {"posted", str(r, "posted")}});
+        // The auto-check report (mig 759): the last runs, and every post read
+        // in the last 10 days with what was made of it.
+        out["insta_runs"] = json::array();
+        for (const auto& r : db->query(
+                "SELECT to_char(started_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD FMHH12:MI AM') AS started, "
+                "       finished_at IS NOT NULL AS finished, games_waiting, clubs_checked, posts_read, scores_found, COALESCE(problem, '') AS problem "
+                "  FROM casa_insta_runs ORDER BY id DESC LIMIT 12"))
+            out["insta_runs"].push_back({{"started", str(r, "started")}, {"finished", r["finished"].as<bool>()},
+                                         {"games_waiting", r["games_waiting"].as<long long>()}, {"clubs_checked", r["clubs_checked"].as<long long>()},
+                                         {"posts_read", r["posts_read"].as<long long>()}, {"scores_found", r["scores_found"].as<long long>()},
+                                         {"problem", str(r, "problem")}});
+        out["insta_posts"] = json::array();
+        for (const auto& r : db->query(
+                "SELECT p.handle, p.post_url, p.fixture_id, p.home_score, p.away_score, COALESCE(p.confidence, '') AS confidence, COALESCE(p.note, '') AS note, "
+                "       to_char(p.posted_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS posted, "
+                "       to_char(p.read_at AT TIME ZONE 'America/New_York', 'Dy FMHH12:MI AM') AS read "
+                "  FROM casa_insta_posts p WHERE p.read_at > now() - interval '10 days' ORDER BY p.read_at DESC, p.posted_at DESC LIMIT 200"))
+            out["insta_posts"].push_back({{"handle", str(r, "handle")}, {"post_url", str(r, "post_url")},
+                                          {"fixture_id", r["fixture_id"].is_null() ? json(nullptr) : json(r["fixture_id"].as<long long>())},
+                                          {"home_score", r["home_score"].is_null() ? json(nullptr) : json(r["home_score"].as<long long>())},
+                                          {"away_score", r["away_score"].is_null() ? json(nullptr) : json(r["away_score"].as<long long>())},
+                                          {"confidence", str(r, "confidence")}, {"note", str(r, "note")}, {"posted", str(r, "posted")}, {"read", str(r, "read")}});
         out["insta_run"] = nullptr;
         for (const auto& r : db->query(
                 "SELECT to_char(started_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD FMHH12:MI AM') AS started, posts_read, scores_found, "
