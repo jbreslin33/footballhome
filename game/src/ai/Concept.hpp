@@ -594,10 +594,21 @@ public:
     math::Fixed64 nineScreenGap() const { return nine_screen_; }
     math::Fixed64 fromHalfway() const { return from_halfway_; }
     math::Fixed64 handover() const { return handover_; }
+    // G4.72 (James 10/27): the wingers are book-ends to our 8 and 10 —
+    // level with the one on their side, bookend_gap_m wider; the 9 stands in
+    // the box between their centre-backs and two deepest midfielders; on
+    // their restart our full-backs stand fb_off_m goal-side and fb_inside_m
+    // inside their winger.
+    bool isFullBack(int number) const { return number != 0 && (number == rb_ || number == lb_); }
+    bool isBookendMid(int number) const { return number != 0 && (number == mid_[1] || number == mid_[2]); }
+    math::Fixed64 bookendGap() const { return bookend_; }
+    math::Fixed64 fbOff() const { return fb_off_; }
+    math::Fixed64 fbInside() const { return fb_inside_; }
 
 private:
-    int nine_ = 9, right_ = 7, left_ = 11, mid_[3] = {6, 8, 10};
+    int nine_ = 9, right_ = 7, left_ = 11, mid_[3] = {6, 8, 10}, rb_ = 2, lb_ = 3;
     math::Fixed64 tuck_, weak_tuck_, central_, screen_, nine_screen_, from_halfway_, handover_;
+    math::Fixed64 bookend_, fb_off_, fb_inside_;
 };
 
 // Press the full-back (166) [FH; the pass wide as the trigger: Rangnick,

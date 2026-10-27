@@ -2538,6 +2538,37 @@ choice). 30 matches, calls off for both (exactly G4.68's +2.60 ± 0.56)
 vs on: +2.20 ± 0.47 (4.77 – 2.57) — noise; pass completion 65.0 / 63.4%
 vs 64.5 / 63.3%. Calls change little in this measure yet; watch them.
 
+### 8.70 G4.72 — Lighthouse on the Ukies' restart: the 9 in the box, wingers as book-ends, full-backs off (mig 755)
+
+James 10/27: "lh 2 & 3 still too close to 7 & 11 on restart. lh 9
+positioning makes no sense. he should be in middle of their 6 and 8 and
+able to cover shadow them. like in a box between ukies 4,5,6,8. lh 7 and
+11 should be book ends to lh 8,10."
+
+All in `Brain::packAndTrap` (pack-the-middle 165), so the live game and the
+phase setup place them the same way:
+
+- **The 9:** the middle of their two centre-backs and their two deepest
+  central midfielders (the 4, 5, 6, 8 box) — between the passer and both
+  6 and 8. The 8 m lock-the-door clamp no longer applies before the
+  trigger; on the pass to a full-back he still locks the door.
+- **The wingers:** level with our 8 or 10 (the one nearer his shape's
+  side), `bookend_gap_m` 6 m wider — a line of four, 7-8-10-11, instead of
+  screening their 6/8 from in front of our 8/10.
+- **The full-backs (2/3) on their restart** (their dead ball, or their
+  keeper on the ball): `fb_off_m` 10 m goal-side and `fb_inside_m` 5 m
+  inside their winger (HUD "play off for the long ball"). Before, with no
+  4-3-3 'out' rows, they stood on the formation shape pushed up to the
+  press line — 0.8 m from the Ukie wingers. In open play they mark as
+  before.
+
+keeper:1 setup: 7/8/10/11 at 26.5 m, ±13.9/±7.9 across; 9 at 17.5 m,
+centred; 2/3 at 59 m vs their wingers' 49 m, 28.5 vs 33.5 across. Their
+keeper still punts 97%. cb-build:1, 200 episodes, vs G4.71: over halfway
+8.0% (14.5%), final third 4.5% (8.5%), shots 2.0% (3.0%). 30 matches:
++2.77 ± 0.45 (4.87 – 2.10) vs +2.20 ± 0.47 — noise, conceding 2.10 vs
+2.57.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

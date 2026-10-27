@@ -298,6 +298,11 @@ void PackTheMiddle::configure(const core::ModelParams& p) {
     nine_screen_ = p.fixed(key("nine_screen_gap_m"), 8000);
     from_halfway_ = p.fixed(key("from_halfway_m"), 0);
     handover_ = p.fixed(key("handover_m"), 4000);
+    rb_ = p.integer(key("right_back_number"), 2);
+    lb_ = p.integer(key("left_back_number"), 3);
+    bookend_ = p.fixed(key("bookend_gap_m"), 6000);
+    fb_off_ = p.fixed(key("fb_off_m"), 10000);
+    fb_inside_ = p.fixed(key("fb_inside_m"), 5000);
 }
 
 void PressTheFullBack::configure(const core::ModelParams& p) {

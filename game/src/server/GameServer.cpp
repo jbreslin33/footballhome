@@ -599,7 +599,7 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
                 const ai::Orders o = brain_.ordersFor(i, world_);
                 if (o.why != ai::Why::Mark && o.why != ai::Why::MarkTight && o.why != ai::Why::ProtectMiddle &&
                     o.why != ai::Why::ShadowHelp && o.why != ai::Why::PackMiddle &&
-                    o.why != ai::Why::LockDoor)
+                    o.why != ai::Why::LockDoor && o.why != ai::Why::PlayOff)
                     continue;
                 math::Vec2 face{ball.x - o.target.x, ball.y - o.target.y};
                 if (face.x.raw == 0 && face.y.raw == 0) face = math::Vec2{-sgn, Fixed64::zero()};

@@ -1184,12 +1184,34 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
     const int num = numberOf(slot);
     const bool nine = num != 0 && num == P.falseNine();
     const bool wing = P.isWinger(num);
-    if (!nine && !wing) return false;
+    const bool fullback = P.isFullBack(num);
+    if (!nine && !wing && !fullback) return false;
     const std::uint8_t my_team = setup_.team_of_slot[slot];
     const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
     if (B.x * dsgn < P.fromHalfway()) return false;   // their build-up only
     const auto& ball = world.ball();
     const auto& me = world.player(slot);
+    if (fullback) {
+        // Their restart (G4.72, James 10/27: "lh 2 & 3 still too close to 7
+        // & 11 on restart"): the full-back stands off their winger — fb_off_m
+        // goal-side, fb_inside_m toward the middle — for the long ball.
+        const std::uint8_t rt = world.restartTeam();
+        const bool their_restart = rt != 0xFF && rt != my_team;
+        const bool their_keeper = ball.owner && setup_.team_of_slot[*ball.owner] != my_team && world.isKeeper(*ball.owner);
+        if (!(their_restart || their_keeper)) return false;
+        if (ratings_[slot][P.bit()] == 0 || !applies(slot, P.bit(), world.turnoverTick())) return false;
+        const int M = directOpponents(world, world.tickCount() / 30)[slot];
+        if (M == 255) return false;
+        const auto& mp = world.player(static_cast<SlotIndex>(M)).pos;
+        if (math::fx_abs(mp.y) <= P.centralWidth()) return false;   // not a winger
+        const Fixed64 in = mp.y.raw > 0 ? -Fixed64::one() : Fixed64::one();
+        const Vec2 t{mp.x - dsgn * P.fbOff(), mp.y + in * P.fbInside()};
+        out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+        out.why = Why::PlayOff;
+        out.target = t;
+        out.other = static_cast<std::int16_t>(M);
+        return true;
+    }
     // We just lost it and he's near it: the counter-press comes first.
     if (world.lastLosingTeam() == my_team && ratings_[slot][16] > 0 && world.restartTeam() == 0xFF &&
         world.tickCount() - world.turnoverTick() < 10 + static_cast<std::uint64_t>(ratings_[slot][16]) &&
@@ -1360,7 +1382,52 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
     // No trigger yet: pack the middle.
     if (ratings_[slot][P.bit()] == 0 || !applies(slot, P.bit(), poss)) return false;
     if (ball.owner && distSq(me.pos, ball.pos) < P.handover() * P.handover()) return false;
-    if (wing) return tuck(P.tuckWidth());
+    if (wing) {
+        // Book-ends (G4.72, James 10/27: "lh 7 and 11 should be book ends to
+        // lh 8,10"): level with our 8 or 10 on his side (the one nearer his
+        // shape's side of the pitch), bookend_gap_m wider.
+        int mid = -1, other = -1;
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup_.team_of_slot[j] != my_team || !P.isBookendMid(numberOf(j))) continue;
+            if (mid < 0) { mid = j; continue; }
+            const Fixed64 dj = math::fx_abs(world.player(j).pos.y - anchor.y);
+            const Fixed64 dm = math::fx_abs(world.player(static_cast<SlotIndex>(mid)).pos.y - anchor.y);
+            if (dj < dm) { other = mid; mid = j; } else other = j;
+        }
+        if (mid < 0 || other < 0) return tuck(P.tuckWidth());
+        const auto& m = world.player(static_cast<SlotIndex>(mid)).pos;
+        const auto& o = world.player(static_cast<SlotIndex>(other)).pos;
+        const Fixed64 outw = m.y >= o.y ? Fixed64::one() : -Fixed64::one();
+        const Vec2 t{m.x, m.y + outw * P.bookendGap()};
+        out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+        out.why = Why::PackMiddle;
+        out.target = t;
+        out.other = static_cast<std::int16_t>(mid);
+        return true;
+    }
+    // The 9 in the box (G4.72, James 10/27: "he should be in middle of their
+    // 6 and 8 and able to cover shadow them. like in a box between ukies
+    // 4,5,6,8"): the middle of their two centre-backs and their two deepest
+    // central midfielders.
+    {
+        std::vector<SlotIndex> deep = c;
+        std::sort(deep.begin(), deep.end(), [&](SlotIndex a, SlotIndex b) {
+            return world.player(a).pos.x * dsgn > world.player(b).pos.x * dsgn;   // nearest their goal first
+        });
+        if (cbs.size() >= 2 && deep.size() >= 2) {
+            Vec2 t{Fixed64::zero(), Fixed64::zero()};
+            for (SlotIndex o : {cbs[0], cbs[1], deep[0], deep[1]}) {
+                t.x += world.player(o).pos.x;
+                t.y += world.player(o).pos.y;
+            }
+            t = Vec2{t.x / Fixed64::fromInt(4), t.y / Fixed64::fromInt(4)};
+            out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+            out.why = Why::PackMiddle;
+            out.target = t;
+            out.other = static_cast<std::int16_t>(deep[0]);
+            return true;
+        }
+    }
     // The false 9 floats: he screens the one the wingers leave, nearest the
     // ball — but never further than lock-the-door's reach from the ball-side
     // centre-back, so he can lock the door while the pass wide travels.
