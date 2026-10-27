@@ -84,6 +84,9 @@ From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Conce
    last shoulder check; scanning (`scan-before-receive` 33, and
    `scan-defending` 171) becomes a rated skill. Foundation for 3; changes every
    player's perception, so measure full matches carefully.
+2b. **BUILT G4.67 (mig 743, DESIGN §8.65)** — mark by distance from the
+   ball (`near-tight-far-zone` 122): tight near it, off toward the middle
+   away from it (James 10/26). Lighthouse asks 90.
 3. **Communication** — the `communication` attribute (mig 655, "not yet
    played by the engine") gets its first job. Three parts: KNOWING the
    call (concepts per call: adjust-your-shadow, man on, line, time, turn,

@@ -2348,6 +2348,40 @@ tick, far inside the 33 ms live budget). Next: communication — the call
 that refreshes a teammate's picture ("man on", "turn", the full-back's
 cover-shadow adjustment).
 
+### 8.65 G4.67 — mark by distance from the ball: tight near it, protect the middle away from it (mig 743)
+
+James 10/26: "marking should be proximal to ball. so further away from
+ball the more you protect middle … closer to ball the more tight" / "that
+will make our fb play more central on build out by ukies".
+
+- **`near-tight-far-zone` (122)** — in the curriculum since the import
+  ("tight near the ball, zone away from it"), queued, taught from nowhere;
+  now wired, core, U-14 (`ai::NearTightFarZone`). His man within `near_m`
+  10 m of the ball: `tight_m` 1 m off him (or man-orientation's tighter
+  gap), goal-side and ball-side. At `far_m` 35 m or more: `loose_m` 6 m off
+  him, goal-side and toward the middle (inside). Gap and direction blend
+  on a straight line between. It replaces mark-position's spot when it
+  applies (rolled per second; a miss = mark-position, tuck toward the
+  ball); play-off-long-ball and the one spot still refine it after.
+- HUD names it: "mark tight (near the ball)" / "protect the middle (far
+  from the ball)".
+- **Lighthouse asks 90.** It inherited Bielsa's 20 (Bielsa marks tight
+  everywhere), which fired it one second in five; both Lighthouse tactics
+  inherit the 90. Every other U-14+ side plays it at its own quality (it's
+  core), the Ukies included.
+- cb-build trace: their CB on the ball, our #3 on their #11 out wide reads
+  "protect the middle", ~4 m inside him; tight again once the ball goes to
+  their full-back. loose_m (6 m, the same as G4.65's max_off_man_m) is the
+  dial for "more central".
+
+30 matches (same seeds) vs G4.66's +3.67 ± 0.50: +1.83 ± 0.51 with
+Lighthouse at Bielsa's 20; +1.83 ± 0.42 (4.83 – 3.00) at 90. The drop is
+mostly at the other end — Lighthouse scores 6.13 → 4.83 now the Ukies'
+markers are tight near the ball (they play it at their own quality);
+Lighthouse concedes 2.47 → 3.00. Pass completion 65% / 63%. Lighthouse
+out of possession: mark tight 6%, protect the middle 3%, plain mark 7%.
+Goldens re-locked.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

@@ -590,7 +590,8 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
             for (std::uint8_t i = 0; i < n; ++i) {
                 if ((i < per_team ? 0 : 1) == team || world_.isKeeper(i) || placed[i]) continue;
                 const ai::Orders o = brain_.ordersFor(i, world_);
-                if (o.why != ai::Why::Mark && o.why != ai::Why::ShadowHelp && o.why != ai::Why::PackMiddle &&
+                if (o.why != ai::Why::Mark && o.why != ai::Why::MarkTight && o.why != ai::Why::ProtectMiddle &&
+                    o.why != ai::Why::ShadowHelp && o.why != ai::Why::PackMiddle &&
                     o.why != ai::Why::LockDoor)
                     continue;
                 math::Vec2 face{ball.x - o.target.x, ball.y - o.target.y};

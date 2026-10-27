@@ -46,6 +46,7 @@ enum class Why : std::uint8_t {
     MeetPass, KeepRunning, KeeperDive, SideOn, DropStep, Unmark, PlayBack, Shield,
     JumpPass, ShadowHelp, PackMiddle, PressFullBack, LockDoor,
     Intercept, NoTurn, Contain, ShadowLine, PlayOff,
+    MarkTight, ProtectMiddle,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -59,6 +60,7 @@ inline constexpr const char* kWhyNames[] = {
     "lose your marker", "play it back", "shield and turn",
     "jump the pass", "shadow and help", "pack the middle", "press the full-back", "lock the door",
     "intercept", "no turn", "contain", "shadow the line", "play off for the long ball",
+    "mark tight (near the ball)", "protect the middle (far from the ball)",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 

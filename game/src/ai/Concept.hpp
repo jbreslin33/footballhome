@@ -426,6 +426,26 @@ private:
     math::Fixed64 near_, far_, tuck_;
 };
 
+// Mark by distance from the ball (122, core, U-14) [James 10/26: "marking
+// should be proximal to ball. so further away from ball the more you
+// protect middle … closer to ball the more tight"; the coaching guideline
+// "tight near the ball, zone away from it"]: his man within near_m of the
+// ball → tight_m off him, goal-side and ball-side; out at far_m → loose_m
+// off him, goal-side and toward the middle. Gap and direction blend on a
+// straight line between. Our full-back drops inside while their centre-
+// backs build. Lapse: mark-position's spot.
+class NearTightFarZone : public Concept {
+public:
+    NearTightFarZone() : Concept("near-tight-far-zone", 122) {}
+    void configure(const core::ModelParams& p) override;
+    // 0 = his man next to the ball … 1 = far from it.
+    math::Fixed64 farShare(math::Fixed64 ball_to_man) const;
+    math::Fixed64 gap(math::Fixed64 far_share) const { return tight_ + (loose_ - tight_) * far_share; }
+
+private:
+    math::Fixed64 near_, far_, tight_, loose_;
+};
+
 // Lose your marker (G4.57, core, U-10) [James: "offense we unmark. in any
 // direction"; coaching: check away, create a yard]: our ball, he's off it
 // with an opponent within tight_m — step step_m to the spot (8 directions)
@@ -739,6 +759,7 @@ struct ConceptBook {
     ShotSelection shot_selection;
     LineHold line_hold;
     MarkPosition mark_position;
+    NearTightFarZone near_tight;
     LoseYourMarker lose_your_marker;
     DirectOpponent direct_opponent;
     KeepItUnderPressure keep_it;
@@ -774,6 +795,7 @@ struct ConceptBook {
         shot_selection.configure(p);
         line_hold.configure(p);
         mark_position.configure(p);
+        near_tight.configure(p);
         lose_your_marker.configure(p);
         direct_opponent.configure(p);
         keep_it.configure(p);

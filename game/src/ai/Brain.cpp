@@ -2465,9 +2465,30 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                         }
                     }
                 }
+                // near-tight-far-zone (122, G4.67): the nearer his man is to
+                // the ball the tighter (goal-side, ball-side); the further,
+                // the more off him toward the middle (goal-side, inside).
+                Why mark_why = Why::Mark;
+                const int nt = book_.near_tight.bit();
+                if (ratings_[slot][nt] > 0 && applies(slot, nt, world.tickCount() / 30)) {
+                    const auto& N = book_.near_tight;
+                    const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
+                    const Vec2 to_goal = math::normalized(Vec2{own_goal.x - mk.pos.x, own_goal.y - mk.pos.y});
+                    const Vec2 bm{seen_ball.x - mk.pos.x, seen_ball.y - mk.pos.y};
+                    const Fixed64 f = N.farShare(math::length(bm));
+                    const Vec2 to_ball = math::normalized(bm);
+                    const Fixed64 in = mk.pos.y.raw > 0 ? -Fixed64::one() : (mk.pos.y.raw < 0 ? Fixed64::one() : Fixed64::zero());
+                    const Vec2 near_dir = math::normalized(Vec2{to_goal.x + to_ball.x, to_goal.y + to_ball.y});
+                    const Vec2 mid_dir = math::normalized(Vec2{to_goal.x, to_goal.y + in});
+                    const Fixed64 g = Fixed64::one() - f;
+                    const Vec2 dir = math::normalized(Vec2{near_dir.x * g + mid_dir.x * f, near_dir.y * g + mid_dir.y * f});
+                    Fixed64 off = N.gap(f);
+                    if (f.raw == 0 && gap < off) off = gap;   // man-orientation's tighter gap
+                    spot = Vec2{mk.pos.x + dir.x * off, mk.pos.y + dir.y * off};
+                    mark_why = f * 2 < Fixed64::one() ? Why::MarkTight : Why::ProtectMiddle;
+                }
                 // Tactic B (170): our winger shadows the ground ball to my
                 // man — play off him, goal-side, for the long ball.
-                Why mark_why = Why::Mark;
                 bool played_off = false;
                 {
                     const int po = book_.play_off.bit();

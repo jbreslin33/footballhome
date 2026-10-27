@@ -332,6 +332,7 @@
     'meet the pass': 'meet-the-pass', 'hold shape': 'line-hold',
     'play it back': 'keep-it-under-pressure', 'shield and turn': 'keep-it-under-pressure',
     'jump the pass': 'jump-the-pass', 'shadow and help': 'shadow-second-man',
+    'mark tight (near the ball)': 'near-tight-far-zone', 'protect the middle (far from the ball)': 'near-tight-far-zone',
   });
   // G4.57 HUD — James: "needs to be see through and off to side. maybe ukies
   // on one side and lh on other. we should be able to toggle players on and

@@ -461,4 +461,18 @@ FH_TEST(a_carrier_never_passes_blind_to_a_mate_behind_him) {
     FH_EXPECT(sees);
 }
 
+// G4.67 near-tight-far-zone (122): the gap to his man grows with the
+// ball's distance from him — 1 m next to the ball, 6 m from 35 m away.
+FH_TEST(marking_is_tight_near_the_ball_and_off_toward_the_middle_far_from_it) {
+    ai::NearTightFarZone n;
+    n.configure(core::ModelParams{});
+    FH_EXPECT_EQ(n.bit(), 122);
+    FH_EXPECT(n.farShare(Fixed64::fromInt(5)).raw == 0);
+    FH_EXPECT(n.gap(n.farShare(Fixed64::fromInt(5))) == Fixed64::one());
+    FH_EXPECT(n.farShare(Fixed64::fromInt(50)) == Fixed64::one());
+    FH_EXPECT(n.gap(Fixed64::one()) == Fixed64::fromInt(6));
+    const Fixed64 mid = n.gap(n.farShare(Fixed64::fromFraction(45, 2)));   // halfway: 3.5 m
+    FH_EXPECT(mid > Fixed64::fromFraction(34, 10) && mid < Fixed64::fromFraction(36, 10));
+}
+
 FH_TEST_MAIN()

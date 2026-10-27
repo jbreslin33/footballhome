@@ -238,6 +238,17 @@ void MarkPosition::configure(const core::ModelParams& p) {
     far_ = p.fixed(key("far_m"), 30000);
     tuck_ = p.fixed(key("tuck_share"), 350);
 }
+void NearTightFarZone::configure(const core::ModelParams& p) {
+    near_ = p.fixed(key("near_m"), 10000);
+    far_ = p.fixed(key("far_m"), 35000);
+    tight_ = p.fixed(key("tight_m"), 1000);
+    loose_ = p.fixed(key("loose_m"), 6000);
+}
+math::Fixed64 NearTightFarZone::farShare(math::Fixed64 d) const {
+    if (d <= near_ || far_ <= near_) return math::Fixed64::zero();
+    if (d >= far_) return math::Fixed64::one();
+    return (d - near_) / (far_ - near_);
+}
 void LoseYourMarker::configure(const core::ModelParams& p) {
     tight_ = p.fixed(key("tight_m"), 3000);
     step_ = p.fixed(key("step_m"), 5000);

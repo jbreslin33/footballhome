@@ -69,6 +69,8 @@ ConceptRegistry ConceptRegistry::builtin() {
     // G4.66 scanning: what a player knows of the men behind him.
     r.add(33, "scan-before-receive", levelRank("u10"), false);
     r.add(171, "scan-defending", levelRank("u14"), false);
+    // G4.67: tight near the ball, protect the middle away from it.
+    r.add(122, "near-tight-far-zone", levelRank("u14"), false);
     return r;
 }
 
