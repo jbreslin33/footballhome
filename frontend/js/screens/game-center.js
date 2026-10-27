@@ -110,12 +110,16 @@
 // matchId also falls back to navigation.context.match.id, which is how
 // #game-day-roster's own callers have always passed it.
 //
-// Zone caps: bench max 9. Starters are capped by the position pills
-// themselves — there are exactly `fieldSize` of them (see FIELD_SIZES),
-// so a starter slot is freed in the same stroke as it's filled.
-// Alternate and the starter/bench-eligible flags (lineupRole, separate
-// from zone) are unlimited.
-const ZONE_CAPS = { bench: 9 };
+// Zone caps: bench = the match-day squad minus the starters (mig 760:
+// teams.matchday_squad_size, NULL = field_size + 9 → 20 for 11v11), sent
+// by the lineup GET as benchCap; 9 is only the fallback before it loads.
+// A full bench offers "extend to an N-man squad — this game only"
+// (_extendSquad), stored on match_lineup_metadata.squad_size.  Starters
+// are capped by the position pills themselves — there are exactly
+// `fieldSize` of them (see FIELD_SIZES), so a starter slot is freed in
+// the same stroke as it's filled.  Alternate and the starter/bench-
+// eligible flags (lineupRole, separate from zone) are unlimited.
+const DEFAULT_BENCH_CAP = 9;
 
 // Game formats, keyed by teams.field_size (players per side, migration
 // 322 — U8/U10 7v7, U12 9v9, adults 11v11). Each carries its formation
@@ -1230,6 +1234,10 @@ class GameCenterScreen extends EventScreen {
       this._loadPostStates();
       this.fieldSize = FIELD_SIZES[lineupData.data.fieldSize] ? Number(lineupData.data.fieldSize) : DEFAULT_FIELD_SIZE;
       this.everyonePlays = lineupData.data.everyonePlays === true;
+      this.benchCap      = Number.isInteger(lineupData.data.benchCap) ? lineupData.data.benchCap : DEFAULT_BENCH_CAP;
+      this.squadSize     = Number(lineupData.data.squadSize) || (this.fieldSize + this.benchCap);
+      this.teamSquadSize = Number(lineupData.data.teamSquadSize) || this.squadSize;
+      this._pendingSquadSize = 0;
       // The saved shape (formations.code via match_lineup_metadata) when the
       // page can draw it for this field size; else the size's default.
       this.formations = Array.isArray(lineupData.data.formations) ? lineupData.data.formations : [];
@@ -1444,16 +1452,13 @@ class GameCenterScreen extends EventScreen {
         const hit = this._callDownCapHit(playerId);
         if (hit) { this._toast(`League rule: only ${hit.max} call-downs from ${hit.from_team} in the squad — use Alt for the extra.`); return; }
       }
-      const cap = ZONE_CAPS[zone];
-      if (cap != null) {
-        const countInZone = [...this.zones.values()].filter(z => z === zone).length;
-        if (countInZone >= cap) {
-          // Full: pick who to swap with (2026-09-26).  The toast is the
-          // fallback while the copy rows have not landed.
-          if (zone === 'bench' && this._openBenchSheet(playerId)) return;
-          this._toast(`Bench is full (${cap} max)`);
-          return;
-        }
+      if (zone === 'bench' && this._benchFull(playerId)) {
+        // Full: swap with someone or extend the squad for this game
+        // (2026-09-26 / mig 760).  The toast is the fallback while the
+        // copy rows have not landed.
+        if (this._openBenchSheet(playerId)) return;
+        this._toast(`Bench is full (${this._benchCapNow()} max)`);
+        return;
       }
       this.zones.set(playerId, zone);
     }
@@ -1588,6 +1593,31 @@ class GameCenterScreen extends EventScreen {
     return n + 1;
   }
 
+  // Match-day squad (mig 760).  The bench is full when it already holds
+  // benchCap players other than `playerId`.
+  _benchCapNow() { return Number.isInteger(this.benchCap) ? this.benchCap : DEFAULT_BENCH_CAP; }
+
+  _benchFull(playerId) {
+    if (this.zones.get(playerId) === 'bench') return false;
+    return [...this.zones.values()].filter(z => z === 'bench').length >= this._benchCapNow();
+  }
+
+  _squadTokens() {
+    return { cap: this._benchCapNow(), squad: this.squadSize, next: this.squadSize + 1, team_squad: this.teamSquadSize };
+  }
+
+  // "Extend to an N-man squad — this game only": one more bench spot on
+  // this game; the next save carries squadSize and the server stores it
+  // on match_lineup_metadata.squad_size.  Official lineup only — a
+  // personal draft has no cap to extend.
+  _canExtendSquad() { return this.isCoach && !this._isDraftView(); }
+
+  _extendSquad() {
+    this.squadSize += 1;
+    this.benchCap = this._benchCapNow() + 1;
+    this._pendingSquadSize = this.squadSize;
+  }
+
   _swapCopy(tier, tokens) {
     return window.MessageCopy ? MessageCopy.block('lineup_swap', tier, tokens) : '';
   }
@@ -1610,13 +1640,14 @@ class GameCenterScreen extends EventScreen {
     const other  = this.roster.find(p => p.id === holderId);
     const pos    = this.positionList.find(x => x.id === positionId);
     if (!player || !other || !pos) return false;
-    const tk = { player: player.name, other: other.name, position: pos.name, number: pos.sortOrder, cap: ZONE_CAPS.bench };
+    const tk = { player: player.name, other: other.name, position: pos.name, number: pos.sortOrder, ...this._squadTokens() };
     const title = this._swapCopy('position_title', tk);
     if (!title) return false;   // copy not loaded → caller keeps the old path
 
     const mine = this._placementOf(playerId);
-    const benchFull = mine.zone !== 'bench'
-      && [...this.zones.values()].filter(z => z === 'bench').length >= ZONE_CAPS.bench;
+    // {other} heads to the bench, so it is full when it already holds the cap.
+    const benchFull = mine.zone !== 'bench' && this._benchFull(holderId);
+    const canExtend = benchFull && this._canExtendSquad();
     const rows = [];
     rows.push({
       label: mine.zone ? this._swapCopy('swap', { ...tk, spot: this._spotText(mine) }) : this._swapCopy('swap_off', tk),
@@ -1626,9 +1657,10 @@ class GameCenterScreen extends EventScreen {
     if (mine.zone !== 'bench') {
       rows.push({
         label: this._swapCopy('to_bench', tk),
-        note: benchFull ? this._swapCopy('bench_full', tk) : '',
-        disabled: benchFull,
+        note: canExtend ? this._swapCopy('to_bench_extend', tk) : benchFull ? this._swapCopy('bench_full', tk) : '',
+        disabled: benchFull && !canExtend,
         run: () => {
+          if (benchFull) this._extendSquad();
           this._applyPlacement(holderId, { zone: 'bench', positionId: null, benchOrder: this._nextBenchOrder(playerId) });
           this._applyPlacement(playerId, { zone: 'starter', positionId, benchOrder: null });
         },
@@ -1651,7 +1683,7 @@ class GameCenterScreen extends EventScreen {
   _openBenchSheet(playerId) {
     const player = this.roster.find(p => p.id === playerId);
     if (!player) return false;
-    const tk = { player: player.name, cap: ZONE_CAPS.bench };
+    const tk = { player: player.name, ...this._squadTokens() };
     const title = this._swapCopy('bench_title', tk);
     if (!title) return false;
     const mine = this._placementOf(playerId);
@@ -1665,6 +1697,18 @@ class GameCenterScreen extends EventScreen {
         run: () => this._swapPlayers(playerId, id),
       };
     });
+    // Or keep everyone: one more bench spot, this game only (mig 760).
+    const extendLabel = this._canExtendSquad() ? this._swapCopy('extend', tk) : '';
+    if (extendLabel) {
+      rows.unshift({
+        label: extendLabel,
+        note: this._swapCopy('extend_note', tk),
+        run: () => {
+          this._extendSquad();
+          this._applyPlacement(playerId, { zone: 'bench', positionId: null, benchOrder: this._nextBenchOrder(playerId) });
+        },
+      });
+    }
     this._openSwapSheet({ title, sub: this._swapCopy('bench_sub', tk), rows });
     return true;
   }
@@ -1683,8 +1727,7 @@ class GameCenterScreen extends EventScreen {
     if (!title) return false;
 
     const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
-    const benchFull = mine.zone !== 'bench'
-      && [...this.zones.values()].filter(z => z === 'bench').length >= ZONE_CAPS.bench;
+    const benchFull = this._benchFull(playerId);
 
     const grid = startingPositions.map(pos => {
       const holderId = slotToPlayerId.get(pos.id);
@@ -1706,7 +1749,7 @@ class GameCenterScreen extends EventScreen {
       { label: copy('bench'), note: mine.zone === 'bench' ? current : '', disabled: mine.zone === 'bench',
         run: () => {
           if (benchFull) {   // hands off to the bench picker, which saves itself
-            if (!this._openBenchSheet(playerId)) this._toast(`Bench is full (${ZONE_CAPS.bench} max)`);
+            if (!this._openBenchSheet(playerId)) this._toast(`Bench is full (${this._benchCapNow()} max)`);
             return false;
           }
           this._applyPlacement(playerId, { zone: 'bench', positionId: null, benchOrder: this._nextBenchOrder(playerId) });
@@ -1995,6 +2038,8 @@ class GameCenterScreen extends EventScreen {
       else if (zone === 'alternate') alternates.push({ playerId });
     }
     const payload = { starters, bench, alternates, formationId: this._formationId(), rosterSize: 0 };
+    // A bench extended this game (mig 760) rides the official save.
+    if (this._pendingSquadSize && !this._isDraftView()) payload.squadSize = this._pendingSquadSize;
     this._savingLineup = true;   // the live poll stands down while a PUT is in flight
     const officialSave = !this._isDraftView();
     if (officialSave) { this._dbState = 'saving'; this._paintDbStrip(); }
@@ -2020,6 +2065,7 @@ class GameCenterScreen extends EventScreen {
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Save failed');
       this.official = this._snapshot();
+      if (payload.squadSize && payload.squadSize === this._pendingSquadSize) this._pendingSquadSize = 0;
       // DB confirmed the save: its stamp becomes the "last change".
       if (data.data && data.data.savedAt) this.lineupChangedAt = data.data.savedAt;
       this._dbSyncAt = new Date();
@@ -2315,7 +2361,8 @@ class GameCenterScreen extends EventScreen {
     const everyone = this.everyonePlays;
     const tallyText = everyone
       ? this._copyLe('count', { n: byZone.starter.length, shape: this._everyoneShape(byZone.starter.length).join('-') })
-      : `Starting ${byZone.starter.length}/${this.fieldSize} · Bench ${byZone.bench.length} · Alt ${byZone.alternate.length}`;
+      : `Starting ${byZone.starter.length}/${this.fieldSize} · Bench ${byZone.bench.length}/${this._benchCapNow()} · Alt ${byZone.alternate.length}`
+        + (this.squadSize > this.teamSquadSize && this._swapCopy('extended_strip', {}) ? ` · ${this._swapCopy('extended_strip', this._squadTokens())}` : '');
     const lineupControlsHtml = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 12px; flex-wrap:wrap; gap:8px;">
         <span style="display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;">

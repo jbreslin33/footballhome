@@ -458,6 +458,21 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         json << "\"fieldSize\":" << (fieldSizeForResponse.empty() ? "null" : fieldSizeForResponse) << ",";
         json << "\"everyonePlays\":" << (everyonePlays ? "true" : "false") << ",";
         {
+            // Match-day squad (mig 760): the team's limit, this game's
+            // (extended) limit, and the bench cap that leaves after the
+            // starters. Game Center caps Bench with benchCap and offers
+            // "extend for this game only" when it is full.
+            auto sq = db_->query(
+                "SELECT ts.squad_size AS team_squad, fh_match_squad_size($1::int) AS squad, "
+                "       fh_match_bench_cap($1::int) AS bench_cap "
+                "  FROM fh_match_team_squad($1::int) ts", {matchId});
+            if (!sq.empty()) {
+                json << "\"teamSquadSize\":" << sq[0]["team_squad"].c_str() << ",";
+                json << "\"squadSize\":" << sq[0]["squad"].c_str() << ",";
+                json << "\"benchCap\":" << sq[0]["bench_cap"].c_str() << ",";
+            }
+        }
+        {
             // "{35,120}" -> "[35,120]" — rosterTeamIdsArray is a Postgres
             // array literal of plain ints, safe to reuse verbatim as JSON.
             std::string rosterTeamIdsJson = rosterTeamIdsArray;
@@ -605,8 +620,29 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
             if (starterCount > 11) {
                 return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Starting XI cannot exceed 11 players"));
             }
-            if (benchCount > 9) {
-                return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Bench cannot exceed 9 players"));
+            // Bench cap = squad size − field size (mig 760). A save may
+            // carry squadSize: the coach said yes to "extend to N-man for
+            // this game only" — store it on this game's metadata first.
+            int squadSize = parseJsonInt(body, "squadSize", 0);
+            if (squadSize > 0) {
+                if (squadSize > 60) {
+                    return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Squad size cannot exceed 60"));
+                }
+                db_->query(R"(
+                    INSERT INTO match_lineup_metadata (match_id, team_id, roster_size, squad_size, created_by_user_id, updated_at)
+                    VALUES ($1::int, $2::int, 0, $3::int, $4::int, CURRENT_TIMESTAMP)
+                    ON CONFLICT (match_id, team_id) DO UPDATE SET
+                        squad_size = GREATEST(EXCLUDED.squad_size, COALESCE(match_lineup_metadata.squad_size, 0)),
+                        updated_at = CURRENT_TIMESTAMP
+                )", {matchId, teamId, std::to_string(squadSize), userId});
+            }
+            auto capRow = db_->query("SELECT fh_match_bench_cap($1::int) AS cap, fh_match_squad_size($1::int) AS squad", {matchId});
+            const int benchCap = capRow.empty() ? 9 : capRow[0]["cap"].as<int>();
+            if (benchCount > benchCap) {
+                return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false,
+                    "Bench cannot exceed " + std::to_string(benchCap) + " players ("
+                    + std::string(capRow.empty() ? "20" : capRow[0]["squad"].c_str())
+                    + "-man squad) — extend the squad for this game first"));
             }
         }
 
