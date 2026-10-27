@@ -891,10 +891,19 @@ class EventCenterScreen extends Screen {
       (this.kind === 'all' || this._kindOf(ev) === this.kind) &&
       (this.category === 'all' || ev.category === this.category))
       .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
+    // "4:30 – 6:00 PM" (both halves' AM/PM when they differ); start alone
+    // when the calendar gives no end.
     const time = (ev) => {
-      const d = new Date(ev.starts_at);
-      return isNaN(d) ? '' : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const a = new Date(ev.starts_at), b = new Date(ev.ends_at);
+      if (isNaN(a)) return '';
+      const hm = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      if (isNaN(b) || b <= a) return hm(a);
+      const [ta, pa] = hm(a).split(' '), [tb, pb] = hm(b).split(' ');
+      return pa === pb ? `${ta} – ${tb} ${pb}` : `${hm(a)} – ${hm(b)}`;
     };
+    // The venue: the location's first part ("The Lighthouse Community
+    // Center"), the full address on hover.
+    const place = (ev) => String(ev.location || '').split(',')[0].trim();
     const posted = (ev) => {
       if (!ev.schedule_window_end || !ev.starts_at) return true;
       const end = new Date(ev.schedule_window_end), t = new Date(ev.starts_at);
@@ -910,6 +919,7 @@ class EventCenterScreen extends Screen {
       return `<button type="button" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}" data-ec-open="${ev.fh_event_id}">
         <span style="font-size:0.75rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
         <span style="font-weight:700;">${this.escapeHtml(EventLabels.title(ev))}</span>
+        ${place(ev) ? `<span style="font-size:0.72rem; opacity:0.85;" title="${this.escapeHtml(ev.location)}">📍 ${this.escapeHtml(place(ev))}</span>` : ''}
         ${teams ? `<span style="font-size:0.72rem; opacity:0.7;">${this.escapeHtml(teams)}</span>` : ''}
         <span style="font-size:0.72rem; opacity:0.85;">${this.escapeHtml([`${going} going`, ineligible ? `⛔ ${ineligible} ineligible` : ''].filter(Boolean).join(' · '))}</span>
         ${posted(ev) ? '' : `<span style="font-size:0.7rem; color:#f59e0b;">${this.escapeHtml(cp('not_posted', {}, 'not posted yet'))}</span>`}
