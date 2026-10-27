@@ -445,23 +445,23 @@ Response MensRosterController::handleOfficialRosterRefresh(const Request& reques
                 tx->exec_params("INSERT INTO official_roster_names (source_id, full_name, sort_order) VALUES ($1, $2, $3)",
                                 sourceIdNum, pulled.names[i], static_cast<int>(i));
             // 🟢 On Roster is granted by the league's list (2026-10-21):
-            // EXACT normalized name match only — fuzzy drift stays human
-            // via the 🌐 panel — and only UPGRADES paperwork states;
+            // the person the insert trigger matched (exact name, per-team
+            // name or alias row — mig 769; fuzzy drift stays human via the
+            // 🌐 panel) — and only UPGRADES paperwork states;
             // suspended / possible_drop / an existing on_roster are
             // never touched, and absence never auto-revokes.
             tx->exec_params(R"SQL(
                 UPDATE team_persons tp
                    SET roster_status_id = (SELECT id FROM roster_statuses WHERE code = 'on_roster')
-                  FROM persons p
-                 WHERE tp.person_id = p.id AND tp.team_id = $1 AND tp.removed_at IS NULL
+                 WHERE tp.team_id = $1 AND tp.removed_at IS NULL
                    AND (tp.roster_status_id IS NULL OR tp.roster_status_id IN
                          (SELECT id FROM roster_statuses WHERE code IN
                            ('not_on_roster','awaiting_approval','needs_itc','submitted_itc',
                             'needs_transfer','awaiting_transfer','awaiting_roster_spot',
                             'needs_docs','has_docs')))
-                   AND lower(regexp_replace(BTRIM(CONCAT_WS(' ', p.first_name, p.last_name)), '\s+', ' ', 'g')) IN (
-                         SELECT lower(regexp_replace(BTRIM(n.full_name), '\s+', ' ', 'g'))
-                           FROM official_roster_names n WHERE n.source_id = $2))SQL",
+                   AND tp.person_id IN (
+                         SELECT n.person_id FROM official_roster_names n
+                          WHERE n.source_id = $2 AND n.person_id IS NOT NULL))SQL",
                 teamId, sourceIdNum);
         }
         db->commit(tx);
