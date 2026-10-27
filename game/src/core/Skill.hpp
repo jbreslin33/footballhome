@@ -284,7 +284,7 @@ public:
         skills_.emplace_back(new Communication());
         skills_.emplace_back(new Concentration());
         for (auto& s : skills_) s->configure(p);
-        for (BodySkill* g : {&side_, &back_, &yaw_}) g->configure(p);
+        for (BodySkill* g : {&side_, &back_, &yaw_, &brake_tau_}) g->configure(p);
         // How far he looks off his line at no cost — anatomy, shared.
         const math::Fixed64 head = p.fixed("physics.body.head_turn_deg", 60000);
         head_cos_ = math::fx_cos(head * math::FX_PI / math::Fixed64::fromInt(180));
@@ -305,7 +305,8 @@ public:
         return Body(accel_->value(a.acceleration), decel_->value(a.deceleration),
                     agility_->value(a.agility), dribbling_->value(a.dribbling),
                     gk_->diveSpeed(a.goalkeeping), side_.value(a.agility),
-                    back_.value(a.agility), yaw_.value(a.agility), head_cos_);
+                    back_.value(a.agility), yaw_.value(a.agility), head_cos_,
+                    brake_tau_.value(a.deceleration));
     }
     const std::vector<std::unique_ptr<Skill>>& skills() const { return skills_; }
 
@@ -318,6 +319,9 @@ private:
     // (crossover) and backpedal top speed as shares of his forward top
     // speed, yaw in rad/s (≈ 400 / 520 / 630 °/s).
     BodySkill side_{"agility", "run_share", 700, 800, 900};
+    // G4.80: how fast his braking bites (s) — a sprinting player's speed
+    // falls on this, not on his sprint τ: 0.5 / 0.35 / 0.25 s.
+    BodySkill brake_tau_{"deceleration", "brake_tau_s", 500, 350, 250};
     math::Fixed64 head_cos_ = math::Fixed64::fromFraction(1, 2);
     BodySkill back_{"agility", "back_share", 550, 650, 750};
     BodySkill yaw_{"agility", "yaw_rads", 7000, 9000, 11000};

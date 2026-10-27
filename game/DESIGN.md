@@ -2785,6 +2785,84 @@ James 10/27: "4. yes make moveemnte realistic!" (open since G4.52,
   pressure on the ball in and around the box) is the biggest realism gap
   and is next.
 
+### 8.77 G4.80 — semi-pros stay on their position; the named ways off it; braking to arrive (mig 771)
+
+James 10/27: "guys are just over running the ball and look like the are on
+skates lol" and "semi pro players also don't bunch up like we are seeing.
+they are 'lazy' unlike little kids. unless they are told to rotate or its
+in ther profile or game model they tend to stay tethered to position.
+there are exceptions a winger droppping down a mid checking in. a full
+making an overlap.. put them in"
+
+- **Tethered (Levels.hpp `shape_pull_pct`):** the ball pull on every
+  anchor was `swarm_pct` at every band (semi-pro 12%). It is now its own
+  field, defaulting to the swarm; semi-pro, pro and world set it to 0.
+  The swarm still sets their dive eagerness and chaser count. Brain-side,
+  not hashed.
+- **The block moves up with its own ball (`possessionX`):** formation
+  bases are the kick-off shape in our own half, and `anchorFor` slides
+  them only 25% of the ball's x (capped 14 m), which is a defending slide.
+  With the swarm pull gone, nothing brought a semi-pro side up the pitch.
+  In possession the shape keeps its lines' spacing × `ours_depth_k` 1.4
+  around the team's middle, and the middle stands at `ours_slope` 0.45 ×
+  the ball's x + `ours_offset_m` 2 [FH; team centroids move in phase with
+  the ball — Frencken, Lemmink, Delleman & Visscher 2011]. Ball on their
+  18: centre-backs about halfway, the front three on their line.
+- **G4.80b, the shape's phase is the team's possession:** the harness
+  found hold-shape targets jumping ~24 m in one tick, mid-possession.
+  `ours` was keyed on the owner, so every one of our passes whose
+  meet-the-pass read didn't fire flipped the whole team to its defending
+  block and line for the flight, and back on the touch. Men 12 m off
+  their spot chased a target that wouldn't stay put: that was the skating.
+  Now `shape_ours` = ours, or a loose ball in open play we touched last.
+  Dead balls keep their own shapes. The chasers and the press still read
+  `ours`.
+- **The named ways off a position** (each a core concept every top-level
+  model states, per mig 762; demand 60, Lighthouse 80, Bielsa/Gasperini
+  overlap 90, Curriculum 100). These go by formation number, and his side
+  is his base's:
+  - *overlap (41, now wired, taught from amateur):* our 7/11 on my side
+    has it at least `infield_m` 8 inside the touchline, no more than
+    `from_halfway_m` 5 short of halfway, ahead of me → the full-back (2/3)
+    runs `ahead_m` 8 beyond him, `wide_m` 4 in from the line.
+  - *winger-come-short (182, amateur):* our ball in our half on my side,
+    me `gap_m` 18+ beyond it → come back on my line to `ahead_m` 10 in
+    front of it.
+  - *mid-check-in (183, u14):* a 6/8/10 marked (`tight_m` 4) with the ball
+    `far_m` 14+ behind him, and no mate already showing → show `show_m` 8
+    from the carrier on the line between them.
+- **Brake to arrive (`brakeToArrive`):** seek's arrive radius (1.5 m) was
+  sized before momentum and real top speeds; at 8.4 m/s a man needs ~8 m
+  to stop, so runs went past their spot and came back. He now runs no
+  faster than v ≤ √(v_end² + 2·b·d), with b = `arrive_decel_mps2` 4.5
+  [Reynolds 1999 "arrive"; Harper, Carling & Kiely 2019: high-intensity
+  decelerations past −3 m/s², maxima −5 to −8]. v_end is 0 to a spot and
+  `arrive_through_mps` 3 to a ball he's running onto. Runs beyond the line,
+  tackles and dives are exempt.
+- **Braking on its own τ (Locomotion.hpp `brake_tau`):** slowing down isn't
+  the sprint law run backwards; a player plants and brakes harder than he
+  accelerates. Along his line a wish below his speed now relaxes on
+  `brake_tau` (skill deceleration: 0.5 / 0.35 / 0.25 s at 0 / 50 / 100)
+  instead of τ. At 50, 8 m/s comes to a stop in ~1.3 s and ~5 m (it was
+  a ~9 m glide). Default brake_tau = 0.3 τ for bodies without the skill.
+- **The legs (players.js):** strides follow the direction he moves, not
+  the way he faces, so a man backpedalling or shuffling side-on while he
+  watches the ball steps sideways instead of striding forward under a
+  sliding body.
+- **Harness lines (fh-game-match):** the crowd (outfielders within 10 m of
+  the ball) and the outfield's width × length, with and without the ball;
+  distance off his position (a holder against the spot he holds) with the
+  reasons; possession spells and the hold-shape gap in a spell's first
+  5 s vs after; ran-past-his-target player-seconds.
+
+10 matches LH APSL v Ukies (G4.79 → G4.80 → G4.80b): shots a team 72 / 55
+→ 48 / 47 → 42 / 47; final-third entries 188 / 133 → 117 / 119 → 118 /
+124; goals a match 18.0 → 17.2 → 12.9; possession spells 849 → 695 a
+match. A holder settled in possession is 8.2 m from his spot (was 12.5).
+Within 10 m of the ball: 1.7 with it, 3.0 without. Still far from real
+(~12 shots a team, ~2.7 goals, ~200-300 possessions): the defending block
+stays next.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

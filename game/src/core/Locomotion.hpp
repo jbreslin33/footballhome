@@ -48,9 +48,11 @@ public:
     Body(math::Fixed64 tau, math::Fixed64 brake, math::Fixed64 turn,
          math::Fixed64 dribble, math::Fixed64 dive_speed, math::Fixed64 run,
          math::Fixed64 back, math::Fixed64 yaw,
-         math::Fixed64 head_cos = math::Fixed64::fromFraction(1, 2))
+         math::Fixed64 head_cos = math::Fixed64::fromFraction(1, 2),
+         math::Fixed64 brake_tau = math::Fixed64::zero())
         : tau_(tau), brake_(brake), turn_(turn), dribble_(dribble), dive_speed_(dive_speed),
-          side_(run), back_(back), yaw_(yaw), head_cos_(head_cos) {
+          side_(run), back_(back), yaw_(yaw), head_cos_(head_cos),
+          brake_tau_(brake_tau.raw > 0 ? brake_tau : tau * math::Fixed64::fromFraction(3, 10)) {
         // lag() at every tick out to kLagTicks, once per body (fx_exp_neg
         // per read made the Brain's reach scans ~5x slower).
         for (int k = 0; k <= kLagTicks; ++k) {
@@ -60,6 +62,7 @@ public:
     }
 
     math::Fixed64 tau() const noexcept { return tau_; }
+    math::Fixed64 brakeTau() const noexcept { return brake_tau_; }
     math::Fixed64 brake() const noexcept { return brake_; }
     math::Fixed64 turn() const noexcept { return turn_; }
     math::Fixed64 dribble() const noexcept { return dribble_; }
@@ -105,6 +108,13 @@ public:
             const math::Vec2 u{v.x / speed, v.y / speed};
             math::Fixed64 along = a.x * u.x + a.y * u.y;
             math::Vec2 side{a.x - u.x * along, a.y - u.y * along};
+            // G4.80: slowing down is not the sprint law run backwards — a
+            // player plants and brakes far harder than he accelerates
+            // [Harper, Carling & Kiely 2019: decelerations out-number and
+            // out-load accelerations in team sport]. Along his line, a
+            // wish below his speed relaxes on brake_tau (~0.35 s), not τ
+            // (~1.1 s, the skater's glide: 8 m/s eased to a stop over ~9 m).
+            if (along.raw < 0) along = along * tau_ / brake_tau_;
             if (along < -brake_) along = -brake_;
             side = capped(side, turn_);
             a = math::Vec2{u.x * along + side.x, u.y * along + side.y};
@@ -143,7 +153,7 @@ private:
     }
 
     static constexpr int kLagTicks = 10 * kTickRate;
-    math::Fixed64 tau_, brake_, turn_, dribble_, dive_speed_, side_, back_, yaw_, head_cos_;
+    math::Fixed64 tau_, brake_, turn_, dribble_, dive_speed_, side_, back_, yaw_, head_cos_, brake_tau_;
     math::Fixed64 lag_[kLagTicks + 1];
 };
 

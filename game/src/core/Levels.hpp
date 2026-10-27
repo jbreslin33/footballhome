@@ -74,6 +74,16 @@ struct LevelParams {
                tackle_success_pct == 0 && keeper_reaction_ticks == 0 &&
                keeper_fumble_pct == 0;
     }
+    // (Last field: band() fills the ones above by position.)
+    // Ball pull on the SHAPE (G4.80): percent every anchor slides toward the
+    // ball. -1 = swarm_pct (the kids' amoeba). From semi-pro up it is 0:
+    // James 10/27, "semi pro players also don't bunch up … they are 'lazy'
+    // unlike little kids. unless they are told to rotate or its in their
+    // profile or game model they tend to stay tethered to position." The
+    // swarm still sets their dive eagerness and chaser count. Brain-side
+    // (not hashed, like keeper_reaction_ticks).
+    std::int32_t shape_pull_pct = -1;
+    std::int32_t shapePull() const { return shape_pull_pct >= 0 ? shape_pull_pct : swarm_pct; }
 };
 
 // Stable wire ids for the bands (PROTOCOL.md §5 MATCH_SETTINGS; append-only).
@@ -106,9 +116,9 @@ inline LevelParams levelParams(std::string_view name) {
     if (name == "u10")     return band({18, 18, 25, 60, 6, 30, 80, 45, 80}, 30, 20, 40);  // amoeba
     if (name == "u14")     return band({12, 13, 18, 40, 8, 35, 55, 15, 28}, 40, 40, 55);
     if (name == "amateur") return band({7, 6, 10, 25, 10, 42, 30, 12, 22}, 45, 55, 70);  // Sunday
-    if (name == "semipro") return band({4, 3, 6, 12, 13, 50, 12, 11, 8}, 50, 70, 80);
-    if (name == "pro")     return band({2, 2, 3, 5, 16, 60, 4, 10, 5}, 55, 85, 90);
-    if (name == "world")   return band({1, 1, 2, 2, 18, 65, 0, 9, 2}, 60, 95, 95);
+    if (name == "semipro") { LevelParams p = band({4, 3, 6, 12, 13, 50, 12, 11, 8}, 50, 70, 80); p.shape_pull_pct = 0; return p; }
+    if (name == "pro") { LevelParams p = band({2, 2, 3, 5, 16, 60, 4, 10, 5}, 55, 85, 90); p.shape_pull_pct = 0; return p; }
+    if (name == "world") { LevelParams p = band({1, 1, 2, 2, 18, 65, 0, 9, 2}, 60, 95, 95); p.shape_pull_pct = 0; return p; }
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 

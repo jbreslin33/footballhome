@@ -50,7 +50,7 @@ enum class Why : std::uint8_t {
     MarkTight, ProtectMiddle, AttackDrop, RunBackDrop, CallShadow,
     CallManOn, CallTurn, CallTime, CallSqueeze, CallLine,
     HurryKeeper, PressBadTouch, OverHighLine, KeeperShort,
-    FalseNineDrop,
+    FalseNineDrop, Overlap, ComeShort, CheckIn,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -71,6 +71,7 @@ inline constexpr const char* kWhyNames[] = {
     "hurry the keeper", "press the bad touch",
     "over the high line", "keeper: short and simple",
     "false 9: drop in",
+    "overlap", "winger: come short", "check in",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -132,6 +133,11 @@ public:
         books_[0].configure(p);
         books_[1].configure(p);
         initiative_ = p.fixed("skill.tendency.initiative", 1000);
+        arrive_decel_ = p.fixed("physics.body.arrive_decel_mps2", 4500);
+        arrive_through_ = p.fixed("physics.body.arrive_through_mps", 3000);
+        shape_slope_ = p.fixed("physics.shape.ours_slope", 450);
+        shape_offset_ = p.fixed("physics.shape.ours_offset_m", 2000);
+        shape_depth_ = p.fixed("physics.shape.ours_depth_k", 1400);
     }
     // G4.76: one team's concept numbers — the global rows with its game
     // model's own (game_model_concept_params) and the HUD's live changes.
@@ -202,6 +208,9 @@ public:
 
     // Orders for ONE slot given the current world. Pure + deterministic.
     Orders ordersFor(core::SlotIndex slot, const core::World& world) const;
+    // His formation spot shifted with the ball (harness, G4.80): where his
+    // position alone would put him — no duty, no concept.
+    math::Vec2 shapeAnchor(core::SlotIndex slot, const core::World& world) const;
 
     // The flight read (G4.49): for a free live ball, where and when each
     // player can first take it — the ball's own path walked tick by tick
@@ -235,6 +244,9 @@ private:
     Orders decide(core::SlotIndex slot, const core::World& world) const;
     // ordersFor() before the laws of the restart are applied.
     Orders ordersFaced(core::SlotIndex slot, const core::World& world) const;
+    // G4.80: brake to arrive — his run toward his own target is capped at
+    // the speed he can still stop (or, on the ball, slow to a touch) from.
+    void brakeToArrive(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void unmark(core::SlotIndex slot, const core::World& world, Orders& o) const;
     bool keepIt(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
     // G4.63 the one-spot defender: jump the pass to your man (162); one
@@ -338,6 +350,16 @@ private:
     mutable std::uint64_t flight_tick_ = ~std::uint64_t{0};
     mutable std::int64_t flight_key_[3] = {0, 0, 0};
     math::Fixed64 initiative_ = math::Fixed64::one();
+    // G4.80: the deceleration a player plans his arrival on (m/s²), and the
+    // speed he still has on reaching a ball he's running onto (m/s).
+    math::Fixed64 arrive_decel_ = math::Fixed64::fromFraction(9, 2);
+    math::Fixed64 arrive_through_ = math::Fixed64::fromInt(3);
+    // G4.80: in possession the shape's middle stands at slope × the ball's
+    // x + offset (m, attack direction), its lines' spacing × depth.
+    math::Fixed64 shape_slope_ = math::Fixed64::fromFraction(45, 100);
+    math::Fixed64 shape_offset_ = math::Fixed64::fromInt(2);
+    math::Fixed64 shape_depth_ = math::Fixed64::fromFraction(14, 10);
+    math::Fixed64 possessionX(core::SlotIndex slot, math::Fixed64 ball_x) const;
     // Graded application: does slot APPLY concept (bit index) this tick?
     // Consistency roll — deterministic noise vs the rating.
     bool applies(core::SlotIndex slot, int concept_idx,

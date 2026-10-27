@@ -30,8 +30,11 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // max_off_man_m off his own man (mark-position cap, jump-the-pass chain).
 // Re-locked G4.67 (2026-10-26): near-tight-far-zone — tight near the ball,
 // off toward the middle far from it.
-constexpr std::uint64_t kGolden3v3   = 0xb81509d83e7cbe91ULL;
-constexpr std::uint64_t kGolden11v11 = 0x10fc455470342e31ULL;
+// Re-locked G4.80 (2026-10-27): brake to arrive, braking on its own τ,
+// semi-pro shape pull 0, the block moves up with its own ball; the
+// shape keeps its phase while our own pass is in the air (G4.80b).
+constexpr std::uint64_t kGolden3v3   = 0xced14868c2faa8eaULL;
+constexpr std::uint64_t kGolden11v11 = 0x5b8e7388d26808f1ULL;
 
 struct Rig {
     World world;

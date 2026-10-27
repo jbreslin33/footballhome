@@ -46,6 +46,7 @@ std::uint64_t canonicalHash(const World& world) {
         const Body& body = world.body(i);   // G4.52: his own locomotion
         mixFixed(h, body.tau());
         mixFixed(h, body.brake());
+        mixFixed(h, body.brakeTau());
         mixFixed(h, body.turn());
         mixFixed(h, body.dribble());
         mixFixed(h, body.diveSpeed());

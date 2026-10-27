@@ -698,6 +698,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     if ((heard == Why::CallTurn || heard == Why::CallTime) && hear_ticks < age) age = hear_ticks;
     if (age <= 0) {
         Orders o = ordersSeen(slot, world);
+        brakeToArrive(slot, world, o);
         o.look_ds = perfect ? 255 : 0;
         tag(o);
         return o;
@@ -726,6 +727,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             blind_ |= std::uint64_t{1} << i;
     }
     Orders o = ordersSeen(slot, seen);
+    brakeToArrive(slot, world, o);
     blind_ = 0;
     o.look_ds = static_cast<std::uint8_t>(age / 3 > 254 ? 254 : age / 3);
     o.unseen = unseen;
@@ -800,6 +802,94 @@ Orders Brain::ordersSeen(SlotIndex slot, const World& world) const {
     o.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
     o.target = t;
     return o;
+}
+
+// Brake to arrive (G4.80). seek() ramps the wish down only inside its
+// arrive radius (1.5 m, sized when the World moved at |desire| × top in
+// one tick); with momentum (G4.51) and real top speeds (G4.79) a man at
+// 8.4 m/s needs ~8 m to stop, so every run ran PAST its spot and came back
+// — James 10/27: "guys are just over running the ball and look like they
+// are on skates". The arrival law [Reynolds 1999, "arrive"; FH: on the
+// player's own stopping distance]: he runs no faster than he can still
+// slow from, v ≤ √(v_end² + 2·b·d), b = arrive_decel (a hard but
+// comfortable deceleration — soccer high-intensity decelerations run past
+// −3 m/s², maxima −5 to −8 [Harper, Carling & Kiely 2019]). v_end = 0 to a
+// spot; arrive_through to a ball he's running onto (he meets it moving,
+// under control). Runs beyond the line keep going — that's their point.
+void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
+    switch (o.why) {
+        case Why::RunInBehind: case Why::BlindSideRun: case Why::KeepRunning:
+        case Why::GiveAndGo: case Why::Human: case Why::Tackle: case Why::KeeperDive:
+            return;
+        default: break;
+    }
+    const auto& me = world.player(slot);
+    if (world.ball().owner && *world.ball().owner == slot) return;
+    if (o.target.x.raw == 0 && o.target.y.raw == 0) return;
+    const Fixed64 m2 = math::lengthSquared(o.move.move);
+    if (m2.raw == 0 || me.max_speed.raw <= 0) return;
+    const Vec2 d{o.target.x - me.pos.x, o.target.y - me.pos.y};
+    const Fixed64 dist = math::length(d);
+    if (dist.raw == 0) return;
+    const Fixed64 mlen = math::fx_sqrt(m2);
+    // Only when he's actually running AT the target (a pass's target is the
+    // receiver; a jockey's is the man).
+    if (math::dot(o.move.move, d) < mlen * dist * Fixed64::fromFraction(9, 10)) return;
+    Fixed64 v_end = Fixed64::zero();
+    switch (o.why) {
+        case Why::Chase: case Why::MeetPass: case Why::CounterPress: case Why::Press:
+        case Why::Intercept: case Why::JumpPass: case Why::PressBadTouch: case Why::HurryKeeper:
+        case Why::AttackDrop: case Why::RunBackDrop: case Why::KeeperSweep:
+            v_end = arrive_through_;
+            break;
+        default: break;
+    }
+    const Fixed64 v_ok = math::fx_sqrt(v_end * v_end + Fixed64::fromInt(2) * arrive_decel_ * dist);
+    const Fixed64 k = v_ok / me.max_speed;
+    if (k >= mlen) return;
+    o.move.move = Vec2{o.move.move.x * k / mlen, o.move.move.y * k / mlen};
+}
+
+math::Vec2 Brain::shapeAnchor(SlotIndex slot, const World& world) const {
+    const FormationSpec::Pos& mine =
+        spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]];
+    Vec2 a = anchorFor(mine.base, attackSign(slot), world.ball().pos, half_x_, half_y_, mine.keeper);
+    const auto& b = world.ball();
+    if (!mine.keeper && b.owner && setup_.team_of_slot[*b.owner] == setup_.team_of_slot[slot])
+        a.x = possessionX(slot, b.pos.x);
+    return a;
+}
+
+// The block moves up with its own ball (G4.80). A formation's bases are
+// its KICK-OFF shape, drawn in our own half (4-3-3: centre-backs 43 m from
+// halfway, the 9 at 16 m), and anchorFor slides them only 25% of the
+// ball's x, capped at 14 m — a defending block's slide (the line and
+// compactness rules below set where a defending team stands). With the ball
+// nothing else moved the shape: an attack on their 18 had our 9 on
+// halfway and our wingers 15-30 m behind it, and the kids' swarm pull was
+// all that brought a semi-pro side up (shape pull 0 since G4.80). In
+// possession now the shape keeps its lines' spacing, stretched depth_k
+// round the team's middle, and the middle stands at slope × the ball's x
+// + offset_m (attack direction) [FH; team centroids move in phase with
+// the ball — Frencken, Lemmink, Delleman & Visscher 2011]: ball on their
+// 18 → centre-backs about halfway, the front three on their line; ball on
+// our 18 → centre-backs at our box, the 9 near halfway; ~38 m from back
+// line to front.
+Fixed64 Brain::possessionX(SlotIndex slot, Fixed64 ball_x) const {
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const auto& ps = spec_[team].positions;
+    Fixed64 sum = Fixed64::zero();
+    int n = 0;
+    for (const auto& q : ps)
+        if (!q.keeper) { sum += q.base.x; ++n; }
+    const Fixed64 middle = n ? sum / Fixed64::fromInt(n) : Fixed64::zero();
+    const Fixed64 sg = attackSign(slot) >= 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 base = ps[index_in_team_[slot]].base.x;
+    Fixed64 x = ball_x * sg * shape_slope_ + shape_offset_ + (base - middle) * half_x_ * shape_depth_;
+    const Fixed64 lim = half_x_ - Fixed64::fromInt(3);
+    if (x > lim) x = lim;
+    if (x < -lim) x = -lim;
+    return x * sg;
 }
 
 Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
@@ -2349,6 +2439,18 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     }
     const bool ours =
         (ball.owner && setup_.team_of_slot[*ball.owner] == my_team) || flight_ours;
+    // The SHAPE's phase is the team's possession, not this tick's owner
+    // (G4.80b): our own pass in the air is still our ball until they take
+    // it. Keyed on the owner alone, every pass whose meet-the-pass read
+    // didn't fire flipped the whole team to its defending block and line
+    // for the flight and back on the touch — hold-shape targets jumped
+    // ~24 m in one tick, mid-possession, and men 12 m off their spot
+    // chased them at full speed (the "skates").
+    // Open play only: a dead ball keeps its own shapes (kick-off halves,
+    // G4.58 restart holds).
+    const bool shape_ours = ours ||
+        (!ball.owner && world.restartTeam() == 0xFF && world.lastTouchTeam() == my_team);
+    if (shape_ours && !mine.keeper) anchor.x = possessionX(slot, seen_ball.x);
 
     // Our ball in flight: a runner ahead of it keeps running — stopping to
     // watch it was the run that never got the ball in behind. Not a man
@@ -2379,7 +2481,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     //   3. Cover man: the second-closest defender sits on the ball→goal
     //      line ~7 m goal-side of the ball — a beaten press is met by
     //      cover, not a breakaway.
-    if (!ours && !mine.keeper) {
+    if (!shape_ours && !mine.keeper) {
         const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
         // My goal is at -sgn * half_x. "Deep" = small x*sgn.
         // 1. Compactness cap: anchor_x*sgn <= ball_x*sgn + 10.
@@ -2471,8 +2573,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     // ── swarm (G4.4, James's law #2): low-discipline levels collapse
     // toward the ball in BOTH phases — crowding their own attack and
     // accidentally barricading their goal. Keepers exempt.
-    if (lv.swarm_pct > 0 && !mine.keeper) {
-        const Fixed64 f = Fixed64::fromFraction(lv.swarm_pct, 100);
+    if (lv.shapePull() > 0 && !mine.keeper) {
+        const Fixed64 f = Fixed64::fromFraction(lv.shapePull(), 100);
         anchor = Vec2{anchor.x + (seen_ball.x - anchor.x) * f,
                       anchor.y + (seen_ball.y - anchor.y) * f};
     }
@@ -3155,6 +3257,76 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                     const Vec2 t{dx * sgn2, carrier.pos.y * Fixed64::fromFraction(1, 4)};
                     out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
                     out.why = Why::FalseNineDrop;
+                    out.target = t;
+                    out.other = static_cast<std::int16_t>(*ball.owner);
+                    return out;
+                }
+            }
+        }
+
+        // The named ways off a position (G4.80, Concept.hpp): otherwise a
+        // semi-pro holds his spot. By the traditional numbers (formation
+        // roles): full-backs 2 / 3, wingers 7 / 11, midfielders 6 / 8 / 10;
+        // his side is his base's.
+        {
+            const std::uint64_t sec = world.tickCount() / 30;
+            const int num = mine.number;
+            const bool fullback = num == 2 || num == 3, winger = num == 7 || num == 11;
+            const bool mid = num == 6 || num == 8 || num == 10;
+            const Fixed64 side = mine.base.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+            const auto& cpos = spec_[setup_.team_of_slot[*ball.owner]].positions[index_in_team_[*ball.owner]];
+            const auto& cb = cpos.base;
+            const Fixed64 cx = carrier.pos.x * sgn2, mx = me.pos.x * sgn2;
+            // Overlap (41): our wide man on my side has it infield, at or past
+            // halfway; I'm the full-back behind him.
+            const auto& OV = book_.overlap;
+            if (fullback && ratings_[slot][OV.bit()] > 0 &&
+                (cpos.number == 7 || cpos.number == 11) && (cb.y.raw >= 0) == (side.raw > 0) &&
+                cx >= -OV.fromHalfway() && cx > mx &&
+                carrier.pos.y * side < half_y_ - OV.infield() && applies(slot, OV.bit(), sec)) {
+                Fixed64 tx = cx + OV.ahead();
+                const Fixed64 cap = half_x_ - Fixed64::fromInt(6);
+                if (tx > cap) tx = cap;
+                const Vec2 t{tx * sgn2, side * (half_y_ - OV.wide())};
+                out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+                out.why = Why::Overlap;
+                out.target = t;
+                out.other = static_cast<std::int16_t>(*ball.owner);
+                return out;
+            }
+            // The winger comes short (182): our ball deep (own half) on my
+            // side, me gap_m or more beyond it.
+            const auto& CS = book_.come_short;
+            if (winger && ratings_[slot][CS.bit()] > 0 &&
+                cx < Fixed64::zero() && carrier.pos.y * side > Fixed64::zero() &&
+                mx - cx >= CS.gap() && applies(slot, CS.bit(), sec)) {
+                const Vec2 t{(cx + CS.ahead()) * sgn2, anchor.y};
+                out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+                out.why = Why::ComeShort;
+                out.target = t;
+                out.other = static_cast<std::int16_t>(*ball.owner);
+                return out;
+            }
+            // The midfielder checks in (183): marked, the ball far_m+ behind
+            // him — show for it show_m from the ball, on the line between.
+            const auto& CI = book_.check_in;
+            if (mid && ratings_[slot][CI.bit()] > 0 &&
+                cx < mx && distSq(me.pos, carrier.pos) >= CI.far() * CI.far()) {
+                bool marked = false, shown = false;
+                const Fixed64 t2 = CI.tight() * CI.tight();
+                const Fixed64 s2 = (CI.show() + Fixed64::fromInt(3)) * (CI.show() + Fixed64::fromInt(3));
+                for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                    if (j == slot || j == *ball.owner) continue;
+                    const bool mate = setup_.team_of_slot[j] == setup_.team_of_slot[slot];
+                    if (!mate && distSq(world.player(j).pos, me.pos) < t2) marked = true;
+                    if (mate && !world.isKeeper(j) && distSq(world.player(j).pos, carrier.pos) < s2) shown = true;
+                }
+                if (marked && !shown && applies(slot, CI.bit(), sec)) {
+                    const Vec2 d{me.pos.x - carrier.pos.x, me.pos.y - carrier.pos.y};
+                    const Fixed64 len = math::length(d);
+                    const Vec2 t{carrier.pos.x + d.x * CI.show() / len, carrier.pos.y + d.y * CI.show() / len};
+                    out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+                    out.why = Why::CheckIn;
                     out.target = t;
                     out.other = static_cast<std::int16_t>(*ball.owner);
                     return out;

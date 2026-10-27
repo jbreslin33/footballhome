@@ -869,6 +869,60 @@ private:
     math::Fixed64 drop_, space_, from_line_;
 };
 
+// The named ways off a position (G4.80) [James 10/27: "semi pro players
+// also don't bunch up … unless they are told to rotate or its in their
+// profile or game model they tend to stay tethered to position. there are
+// exceptions a winger droppping down a mid checking in. a full making an
+// overlap.. put them in"]. Each is the ONE reason that man leaves his spot,
+// asked for by a game model, known from a level (game_concepts).
+//
+// Overlap (41) [Bielsa-Leeds f52; FA/US Soccer "overlap"]: our wide man has
+// it infield of the touchline, level with or past halfway — the full-back
+// on his side runs around the outside of him to ahead_m beyond him,
+// wide_m in from the touchline.
+class Overlap : public Concept {
+public:
+    Overlap() : Concept("overlap", 41) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 ahead() const { return ahead_; }
+    math::Fixed64 wide() const { return wide_; }
+    math::Fixed64 infield() const { return infield_; }
+    math::Fixed64 fromHalfway() const { return from_halfway_; }
+
+private:
+    math::Fixed64 ahead_, wide_, infield_, from_halfway_;
+};
+// The winger comes short (182) [FH/James; the wide outlet in build-up]: our
+// ball deep on his side (own half) and he is gap_m (18) or more beyond it — he
+// drops to ahead_m in front of the ball, on his line, to give the full-back
+// or centre-back a pass.
+class ComeShort : public Concept {
+public:
+    ComeShort() : Concept("winger-come-short", 182) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 ahead() const { return ahead_; }
+    math::Fixed64 gap() const { return gap_; }
+
+private:
+    math::Fixed64 ahead_, gap_;
+};
+// The midfielder checks in (183) [US Soccer / FA "check to the ball";
+// game_techniques run-check]: a man is on him (within tight_m) and the ball
+// is far_m or more away, behind him — he comes to show_m from the ball on
+// the line between them, so the carrier has him and his marker must follow
+// or let him turn.
+class CheckIn : public Concept {
+public:
+    CheckIn() : Concept("mid-check-in", 183) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 show() const { return show_; }
+    math::Fixed64 far() const { return far_; }
+    math::Fixed64 tight() const { return tight_; }
+
+private:
+    math::Fixed64 show_, far_, tight_;
+};
+
 // Scanning (G4.66) [Jordet et al. 2013, visual exploratory activity in
 // Premier League midfielders: the best scan ~0.6-0.8 times a second; FA /
 // US Soccer "check your shoulder"]: what a player knows of the men BEHIND
@@ -959,6 +1013,9 @@ struct ConceptBook {
     PressTheBadTouch bad_touch;
     BeatTheHighLine high_line;
     FalseNine false_nine;
+    Overlap overlap;
+    ComeShort come_short;
+    CheckIn check_in;
     ScanBeforeReceive scan_receive;
     ScanDefending scan_defend;
     Vision vision;
@@ -1005,6 +1062,9 @@ struct ConceptBook {
         bad_touch.configure(p);
         high_line.configure(p);
         false_nine.configure(p);
+        overlap.configure(p);
+        come_short.configure(p);
+        check_in.configure(p);
         scan_receive.configure(p);
         scan_defend.configure(p);
         vision.configure(p);

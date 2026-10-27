@@ -363,6 +363,24 @@ void FalseNine::configure(const core::ModelParams& p) {
     from_line_ = p.fixed(key("from_line_m"), 25000);
 }
 
+void Overlap::configure(const core::ModelParams& p) {
+    ahead_ = p.fixed(key("ahead_m"), 8000);
+    wide_ = p.fixed(key("wide_m"), 4000);
+    infield_ = p.fixed(key("infield_m"), 8000);
+    from_halfway_ = p.fixed(key("from_halfway_m"), 5000);
+}
+
+void ComeShort::configure(const core::ModelParams& p) {
+    ahead_ = p.fixed(key("ahead_m"), 10000);
+    gap_ = p.fixed(key("gap_m"), 18000);
+}
+
+void CheckIn::configure(const core::ModelParams& p) {
+    show_ = p.fixed(key("show_m"), 8000);
+    far_ = p.fixed(key("far_m"), 14000);
+    tight_ = p.fixed(key("tight_m"), 4000);
+}
+
 void Call::configure(const core::ModelParams& p) {
     hear_ = p.fixed(key("hear_s"), 500);
     reach_ = reach_param_ ? p.fixed(key(reach_param_), reach_milli_) : math::Fixed64::zero();

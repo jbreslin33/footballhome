@@ -535,6 +535,23 @@ int main(int argc, char** argv) {
     double ln_sum[2] = {0, 0}, front_sum[2] = {0, 0}, ball_sum[2] = {0, 0};
     long ln_ticks[2] = {0, 0}, ln_deep[2] = {0, 0};
     long oop_why[2][ai::kWhyCount] = {}, oop_n[2] = {0, 0};   // outfielders' reasons out of possession
+    // G4.80: the crowd (outfielders within 10 m of the ball, carrier
+    // excluded) and the spread (outfield width x length), by team, with the
+    // ball [0] and without [1]; overruns = player-ticks moving > 2.5 m/s
+    // AWAY from his own target while within 2.5 m of it (ran past it).
+    double crowd_sum[2][2] = {}, wide_sum[2][2] = {}, long_sum[2][2] = {};
+    long crowd_ticks[2][2] = {}, overrun[2] = {0, 0}, overrun_why[2][ai::kWhyCount] = {};
+    // Off his position: outfielder-ticks > 10 m from his ball-shifted
+    // formation spot, by why, with [0] / without [1] the ball.
+    long off_ticks[2][2] = {}, off_n[2][2] = {}, off_why[2][2][ai::kWhyCount] = {};
+    double off_sum[2][2] = {};
+    long ip_why[2][ai::kWhyCount] = {}, ip_n[2] = {0, 0};   // outfielders' reasons in possession (off the ball)
+    // Possession spells (a team's ball, from winning it to losing it), and
+    // a man holding shape's gap to the spot he holds, in the first 5 s of
+    // his team's spell [0] or after [1] — lag behind a shape that moved.
+    long spells = 0, spell_ticks = 0;
+    double hold_gap[2] = {0, 0};
+    long hold_n[2] = {0, 0};
     for (int m = 0; m < matches; ++m) {
         server::GameServer::Config cfg = base;
         cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
@@ -544,6 +561,8 @@ int main(int argc, char** argv) {
         int last_assist[2] = {ai::kWhyCount + 1, ai::kWhyCount + 1};
         bool shot_breakaway[2] = {false, false};
         bool in_third[2] = {false, false};
+        int spell_team = -1;
+        long spell_start = 0;
         for (long k = 0; k < ticks; ++k) {
             const auto before = s.world().ball().owner;
             s.tickOnce();
@@ -566,6 +585,57 @@ int main(int argc, char** argv) {
                 ball_sum[dt] += from_goal(b.pos.x.toDouble()) - deep;
                 ++ln_ticks[dt];
                 if (deep < 20.0) ++ln_deep[dt];
+            }
+            if (b.owner && s.world().restartTeam() == 0xFF) {
+                const int ot = s.world().player(*b.owner).team;
+                if (ot != spell_team) {
+                    if (spell_team >= 0) { ++spells; spell_ticks += k - spell_start; }
+                    spell_team = ot;
+                    spell_start = k;
+                }
+                for (int team = 0; team < 2; ++team) {
+                    int near = 0;
+                    double y0 = 1e9, y1 = -1e9, x0 = 1e9, x1 = -1e9;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team != team || s.world().isKeeper(j)) continue;
+                        const double x = d.pos.x.toDouble(), y = d.pos.y.toDouble();
+                        y0 = std::min(y0, y); y1 = std::max(y1, y); x0 = std::min(x0, x); x1 = std::max(x1, x);
+                        if (j == *b.owner) continue;
+                        const double dx = x - b.pos.x.toDouble(), dy = y - b.pos.y.toDouble();
+                        if (dx * dx + dy * dy < 100.0) ++near;
+                    }
+                    const int w = team == ot ? 0 : 1;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team != team || s.world().isKeeper(j) || j == *b.owner) continue;
+                        // A man holding shape is measured against the spot he
+                        // holds (width and balance included); the rest
+                        // against the ball-shifted formation spot.
+                        const ai::Orders& oj = s.lastOrders()[j];
+                        const math::Vec2 an = oj.why == ai::Why::Hold ? oj.target : s.brain().shapeAnchor(j, s.world());
+                        const double ax = an.x.toDouble() - d.pos.x.toDouble(), ay = an.y.toDouble() - d.pos.y.toDouble();
+                        const double dd = std::sqrt(ax * ax + ay * ay);
+                        off_sum[team][w] += dd; ++off_n[team][w];
+                        if (w == 0) { ++ip_why[team][static_cast<int>(oj.why)]; ++ip_n[team]; }
+                        if (oj.why == ai::Why::Hold) {
+                            const int settled = k - spell_start >= 5 * 30 ? 1 : 0;
+                            hold_gap[settled] += dd; ++hold_n[settled];
+                        }
+                        if (dd > 10.0) { ++off_ticks[team][w]; ++off_why[team][w][static_cast<int>(oj.why)]; }
+                    }
+                    crowd_sum[team][w] += near; wide_sum[team][w] += y1 - y0; long_sum[team][w] += x1 - x0;
+                    ++crowd_ticks[team][w];
+                }
+            }
+            for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                const auto& d = s.world().player(j);
+                const ai::Orders& o = s.lastOrders()[j];
+                const double tx = o.target.x.toDouble() - d.pos.x.toDouble(), ty = o.target.y.toDouble() - d.pos.y.toDouble();
+                const double vx = d.vel.x.toDouble(), vy = d.vel.y.toDouble();
+                if ((o.target.x.raw != 0 || o.target.y.raw != 0) && tx * tx + ty * ty < 6.25 &&
+                    vx * vx + vy * vy > 6.25 && tx * vx + ty * vy < 0)
+                    { ++overrun[d.team]; ++overrun_why[d.team][static_cast<int>(o.why)]; }
             }
             if (b.owner) {
                 const auto& c = s.world().player(*b.owner);
@@ -666,6 +736,41 @@ int main(int argc, char** argv) {
                         team == 0 ? names.team_home.c_str() : names.team_away.c_str(),
                         ln_sum[team] / ln_ticks[team], 100.0 * ln_deep[team] / ln_ticks[team],
                         front_sum[team] / ln_ticks[team], ball_sum[team] / ln_ticks[team]);
+    if (spells)
+        std::printf("Possession spells: %.0f a match, %.1f s long on average; a man holding shape is %.1f m from his spot in a spell's first 5 s, %.1f m after (%.0f%% of holding ticks are in the first 5 s)\n",
+                    double(spells) / matches, spell_ticks / 30.0 / spells,
+                    hold_n[0] ? hold_gap[0] / hold_n[0] : 0.0, hold_n[1] ? hold_gap[1] / hold_n[1] : 0.0,
+                    100.0 * hold_n[0] / std::max(1L, hold_n[0] + hold_n[1]));
+    for (int team = 0; team < 2; ++team) {
+        const char* tn = team == 0 ? names.team_home.c_str() : names.team_away.c_str();
+        for (int w = 0; w < 2; ++w)
+            if (crowd_ticks[team][w])
+                std::printf("%s %s: %.2f outfielders within 10 m of the ball, outfield %.1f m wide x %.1f m long\n", tn,
+                            w == 0 ? "with the ball" : "without it", crowd_sum[team][w] / crowd_ticks[team][w],
+                            wide_sum[team][w] / crowd_ticks[team][w], long_sum[team][w] / crowd_ticks[team][w]);
+        for (int w = 0; w < 2; ++w) {
+            if (!off_n[team][w]) continue;
+            std::printf("%s %s: %.1f m from his position on average, > 10 m off it %.0f%% of the time:", tn,
+                        w == 0 ? "with the ball" : "without it", off_sum[team][w] / off_n[team][w],
+                        100.0 * off_ticks[team][w] / off_n[team][w]);
+            for (int k = 0; k < ai::kWhyCount; ++k)
+                if (off_why[team][w][k] * 20 >= off_ticks[team][w] && off_ticks[team][w])
+                    std::printf(" %s %.0f%%", ai::kWhyNames[k], 100.0 * off_why[team][w][k] / off_ticks[team][w]);
+            std::printf("\n");
+        }
+        if (ip_n[team]) {
+            std::printf("%s outfielders off the ball in possession are doing:", tn);
+            for (int k = 0; k < ai::kWhyCount; ++k)
+                if (ip_why[team][k] * 1000 >= ip_n[team])
+                    std::printf(" %s %.1f%%", ai::kWhyNames[k], 100.0 * ip_why[team][k] / ip_n[team]);
+            std::printf("\n");
+        }
+        std::printf("%s ran past his own target %.0f player-seconds a match:", tn, overrun[team] / 30.0 / matches);
+        for (int w = 0; w < ai::kWhyCount; ++w)
+            if (overrun_why[team][w] * 20 >= overrun[team] && overrun[team])
+                std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * overrun_why[team][w] / overrun[team]);
+        std::printf("\n");
+    }
     for (int team = 0; team < 2; ++team) {
         if (!oop_n[team]) continue;
         std::printf("%s outfielders out of possession are doing:", team == 0 ? names.team_home.c_str() : names.team_away.c_str());

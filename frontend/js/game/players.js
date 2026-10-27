@@ -238,10 +238,19 @@
       const p = this.phase * TAU;
       const swing = (0.15 + 0.75 * run) * (1 - 0.3 * W.dribble);
       const moving = s > 0.3 ? 1 : 0;
+      // G4.80: the legs step the way he MOVES, not the way he faces — a
+      // man backpedalling or shuffling side-on while he watches the ball
+      // had forward strides under a body sliding sideways (James 10/27:
+      // "look like they are on skates"). rel = travel off the body's line.
+      const rel = speed > 0.3 ? wrap(Math.atan2(vx, vy) - this.yaw) : 0;
+      this.fwd = ease(this.fwd ?? 1, Math.cos(rel), 10, dt);   // eased as
+      this.lat = ease(this.lat ?? 0, Math.sin(rel), 10, dt);   // components: no wrap
+      const fwd = this.fwd, lat = this.lat;
       for (let i = 0; i < 2; i++) {
         const leg = this.legs[i];
         const lp = p + i * Math.PI;
-        leg.hip.rotation.set(-Math.sin(lp) * swing * moving, 0, 0);
+        leg.hip.rotation.set(-Math.sin(lp) * swing * moving * fwd, 0,
+                             Math.sin(lp) * swing * 0.7 * moving * lat);
         leg.knee.rotation.x = moving
           ? Math.max(0, -Math.cos(lp)) * (0.4 + 1.1 * run) + 0.08
           : 0.05;
