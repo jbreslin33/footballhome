@@ -1092,16 +1092,18 @@ class GameCenterScreen extends EventScreen {
       // grid show and bench and alt and unassign button").  Before that
       // the tap unassigned them outright (2026-08-22); that is still the
       // fallback while the copy rows have not loaded.
-      const moveStarter = e.target.closest('[data-lineup-remove-starter]');
-      if (moveStarter && this.isCoach) {
-        const playerId = Number(moveStarter.getAttribute('data-lineup-remove-starter'));
-        if (!this._openMoveSheet(playerId)) this._setPosition(playerId, null);
-        return;
-      }
+      // A bench name first: a 2nd/3rd under a starter (mig 763) sits
+      // INSIDE the starter's chip, so it must win over the chip.
       const moveBench = e.target.closest('[data-lineup-remove-bench]');
       if (moveBench && this.isCoach) {
         const playerId = Number(moveBench.getAttribute('data-lineup-remove-bench'));
         if (!this._openMoveSheet(playerId)) this._toggleZone(playerId, 'bench');
+        return;
+      }
+      const moveStarter = e.target.closest('[data-lineup-remove-starter]');
+      if (moveStarter && this.isCoach) {
+        const playerId = Number(moveStarter.getAttribute('data-lineup-remove-starter'));
+        if (!this._openMoveSheet(playerId)) this._setPosition(playerId, null);
         return;
       }
       // 1-11 position pills (2026-08-22, owner directive) — a slot
