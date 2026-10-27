@@ -571,48 +571,75 @@ class RosterScreenBase extends Screen {
   // Column body split (owner 2026-10-27: "first who is on official
   // league roster … then the random non official roster guys put in a
   // section under the official guys called non roster players. run a
-  // count on each" — then: "your roster group should match 1 to 1 the
-  // official roster … same order they appear on official league roster.
-  // this should not be editable").
+  // count on each" → "your roster group should match 1 to 1 the official
+  // roster … same order they appear on official league roster" → "i need
+  // to be able to get into the card though … i can move them but not OFF
+  // that official roster").
   //   OFFICIAL ROSTER — the league's own list (official_roster_names, the
-  //     🌐 mirror) verbatim: its names, its order, read-only rows.  A name
-  //     the match trigger tied to no FH person says so.
-  //   NON ROSTER PLAYERS — this column's FH players not on that list,
-  //     as the usual editable cards.
-  // A column with no league list falls back to the On Roster status
-  // (the "✓ N on roster" test) for the split.  Headings are
-  // message_templates kind roster_sheet (mig 770).
+  //     🌐 mirror), one row per list name in the list's order.  A name
+  //     matched to a player in this column is his full card (everything
+  //     works but the remove — renderMoveDropdown drops it, and the mig
+  //     772 trigger refuses it server-side); a name with no FH person, or
+  //     whose person isn't on this team in FH, is a read-only row saying so.
+  //   NON ROSTER PLAYERS — this column's other players, board sort order.
+  // A column with no league list splits by the On Roster status instead.
+  // Every card keeps its true coach rank (#N) from the full column.
+  // Headings/notes are message_templates kind roster_sheet (mig 770/772).
   renderRosterSplit(col, shown, renderList, data) {
     if (!col || !col.teamId) return renderList(shown);
     const esc = RosterScreenBase.escapeHtml;
     const copy = (tier) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || '';
+    const bucket = (data && data.buckets && data.buckets[String(col.teamId)]) || shown;
+    const card = (p) => this.renderPlayer(p, data.columns, col, bucket.indexOf(p) + 1, bucket.length);
+    const ordered = (list) => {
+      const keep = new Set(list);
+      return this.orderColumnPlayers(bucket).map(r => r.player).filter(p => keep.has(p));
+    };
     const head = (label, n, color) => `<div style="display:flex; justify-content:space-between; align-items:baseline;
         font-size:0.7rem; font-weight:800; letter-spacing:0.04em; color:${color};
         border-bottom:1px solid ${color}; padding:2px 2px 1px; margin-top:2px;">
         <span>${esc(label)}</span><span>${n}</span></div>`;
-    const official = (data && data.officialRosters && data.officialRosters[String(col.teamId)]) || null;
-    const names = (official && official.names) || [];
+    const nameRow = (i, name, note) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
+        padding:3px 6px; border-radius:4px; background:rgba(34,197,94,0.06);">
+        <span style="opacity:0.55; min-width:1.6em; text-align:right;">${i + 1}</span>
+        <span style="font-weight:700;">${esc(name)}</span>
+        <span style="font-size:0.65rem; color:#f59e0b;">${esc(note)}</span></div>`;
+    const official = this.leagueListFor(col.teamId);
     let officialHtml, others;
-    if (names.length) {
-      const ids = official.personIds || [];
-      const onList = new Set(ids.filter(id => id != null).map(Number));
-      others = shown.filter(p => !(p && onList.has(Number(p.personId))));
-      const unmatched = copy('board_official_unmatched') || 'not in Football Home';
-      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', names.length, '#22c55e')
-        + names.map((n, i) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
-              padding:3px 6px; border-radius:4px; background:rgba(34,197,94,0.06);">
-              <span style="opacity:0.55; min-width:1.6em; text-align:right;">${i + 1}</span>
-              <span style="font-weight:700;">${esc(n)}</span>
-              ${ids[i] == null ? `<span style="font-size:0.65rem; color:#f59e0b;">${esc(unmatched)}</span>` : ''}
-            </div>`).join('');
+    if (official) {
+      const byPerson = new Map(bucket.map(p => [Number(p.personId), p]));
+      const used = new Set();
+      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', official.names.length, '#22c55e')
+        + official.names.map((n, i) => {
+          const id = official.personIds[i];
+          const p = id != null && byPerson.get(Number(id));
+          if (p && !used.has(p)) { used.add(p); return card(p); }
+          return nameRow(i, n, id == null
+            ? (copy('board_official_unmatched') || 'not in Football Home')
+            : (copy('board_official_off_team') || 'not on this team in Football Home'));
+        }).join('');
+      others = shown.filter(p => !used.has(p));
     } else {
       const on = shown.filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus));
       others = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
       officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', on.length, '#22c55e')
-        + (on.length ? renderList(on) : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+        + (on.length ? ordered(on).map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
     }
     return officialHtml
-      + (others.length ? head(copy('board_non_roster_h') || 'NON ROSTER PLAYERS', others.length, '#94a3b8') + renderList(others) : '');
+      + (others.length ? head(copy('board_non_roster_h') || 'NON ROSTER PLAYERS', others.length, '#94a3b8') + ordered(others).map(card).join('') : '');
+  }
+
+  // The league's own list for a team column — {names, personIds} from the
+  // 🌐 mirror, or null when the team has none (or an upload not yet read).
+  leagueListFor(teamId) {
+    const o = this._data && this._data.officialRosters && this._data.officialRosters[String(teamId)];
+    return (o && (o.names || []).length) ? { names: o.names, personIds: o.personIds || [] } : null;
+  }
+
+  // On the league's own list for this team → only the league takes him off.
+  onLeagueList(teamId, personId) {
+    const l = teamId && personId ? this.leagueListFor(teamId) : null;
+    return !!(l && l.personIds.some(id => id != null && Number(id) === Number(personId)));
   }
 
   // Subs can go negative (owner 2026-09-05: "11v11 with 11 on roster is
@@ -990,8 +1017,11 @@ class RosterScreenBase extends Screen {
     teamTargets.sort((a, b) =>
       String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: 'base' }));
 
+    // On the league's own list for this team: no Unassigned/remove —
+    // "i can move them but not OFF that official roster" (2026-10-27).
+    const listLocked = this.onLeagueList(currentTeamId, player.personId);
     const targets = [
-      { id: 0, label: 'Unassigned', short: 'Unassigned' },
+      ...(listLocked ? [] : [{ id: 0, label: 'Unassigned', short: 'Unassigned' }]),
       ...teamTargets,
     ];
     // appearance:none/min-height:0 strip the native OS button-chrome
