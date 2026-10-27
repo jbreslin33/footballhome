@@ -168,6 +168,9 @@ class EventCenterScreen extends Screen {
                    border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); }
         .ec-chip.on { background:var(--primary-color); color:#fff; border-color:transparent; }
         .ec-pick { display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; padding:10px 12px; }
+        .ec-now { display:flex; align-items:center; gap:8px; color:#ef4444; font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; }
+        .ec-now::before, .ec-now::after { content:''; flex:1; height:2px; background:#ef4444; }
+        .ec-past { display:flex; flex-direction:column; opacity:0.55; }
         .ec-h { font-size:0.72rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; opacity:0.75; }
         .ec-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 0;
                   border-bottom:1px solid var(--border-color); font-size:0.9rem; }
@@ -932,10 +935,27 @@ class EventCenterScreen extends Screen {
         <span style="font-size:0.75rem; opacity:0.65;">${this.escapeHtml([teams, `${going} going`, ineligible ? `⛔ ${ineligible} ineligible` : ''].filter(Boolean).join(' · '))}</span>
       </button>`;
     };
+    // The now line (mig 748): drawn where the clock falls when these days
+    // include it — above the first event not yet over, so one in progress
+    // sits below it.  Events already over are dimmed above it.
+    const { start, days } = this._range();
+    const rangeEnd = new Date(start); rangeEnd.setDate(rangeEnd.getDate() + days);
+    const nowShown = Date.now() >= start.getTime() && Date.now() < rangeEnd.getTime();
+    const nowLine = () => {
+      const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const label = (window.MessageCopy && MessageCopy.block('event_center', 'now_line', { time })) || `Now · ${time}`;
+      return `<div class="ec-now"><span>${this.escapeHtml(label)}</span></div>`;
+    };
+    const rows = (evs) => {
+      const cut = nowShown ? evs.findIndex(ev => !this._isPast(ev)) : -1;
+      const at = !nowShown ? -1 : cut === -1 ? evs.length : cut;
+      return evs.map((ev, i) => (i === at ? nowLine() : '') + (this._isPast(ev) ? `<div class="ec-past">${row(ev)}</div>` : row(ev))).join('')
+        + (at === evs.length ? nowLine() : '');
+    };
     const list = (label, evs, empty) => `
       <div class="ec-h" style="margin:var(--space-3) 0 var(--space-1);">${label} (${evs.length})</div>
       ${evs.length
-        ? `<div style="display:flex; flex-direction:column; gap:8px;">${evs.map(row).join('')}</div>`
+        ? `<div style="display:flex; flex-direction:column; gap:8px;">${rows(evs)}</div>`
         : `<div style="font-size:0.85rem; opacity:0.6;">${empty}</div>`}`;
 
     return `
