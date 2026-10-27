@@ -47,7 +47,7 @@ enum class Why : std::uint8_t {
     MeetPass, KeepRunning, KeeperDive, SideOn, DropStep, Unmark, PlayBack, Shield,
     JumpPass, ShadowHelp, PackMiddle, PressFullBack, LockDoor,
     Intercept, NoTurn, Contain, ShadowLine, PlayOff,
-    MarkTight, ProtectMiddle,
+    MarkTight, ProtectMiddle, AttackDrop, RunBackDrop,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -62,6 +62,7 @@ inline constexpr const char* kWhyNames[] = {
     "jump the pass", "shadow and help", "pack the middle", "press the full-back", "lock the door",
     "intercept", "no turn", "contain", "shadow the line", "play off for the long ball",
     "mark tight (near the ball)", "protect the middle (far from the ball)",
+    "attack the ball in the air", "run back for the ball in the air",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -217,6 +218,9 @@ private:
     // spot that keeps your man in pressing distance, shadows another man's
     // lane (163) and has more men in pressing distance to help (164).
     bool jumpThePass(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
+    // Play off (170, G4.69): their ball in the AIR for my man — read it on
+    // the kick and attack the drop, receiving it facing their goal.
+    bool attackTheDrop(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
     // G4.64 Lighthouse's plan (165-167): pack the middle, then on their pass
     // to a full-back press him and lock the door on the return pass.
     bool packAndTrap(core::SlotIndex slot, const core::World& world, int sign,

@@ -2433,6 +2433,31 @@ even level of player to be able to lets say intercept."
 the team's model; GAME_TEAM_HOME takes a TEAM name (a model name there
 loads no squad — that run reads −1.80 and means nothing).
 
+### 8.67 G4.69 — playing off, the full-back attacks the ball in the air (mig 752)
+
+James 10/27: "our full back needs to be agressive in reading the type of
+pass when he is in the off coverage tactic. he does not 'wait' for ball to
+reach. he reads pass. in the air he chases it and trys to recive facing
+their goal to play forward. its bad to be running backwards toward own goal
+but that is 2nd option. but if on ground he does normal intercept, no turn,
+contain."
+
+- **`Brain::attackTheDrop`** (play-off-long-ball 170), ahead of jump-the-
+  pass: their pass in the air (above control height, or rising) whose first
+  man to it (the flight read) is his direct opponent — he goes on the kick,
+  to `face_up_m` 1.5 m past his own first point on its flight, along its
+  path, so it comes onto him facing their goal. He goes whether or not he
+  wins the race (no intercept weight, no contain). HUD: *attack the ball in
+  the air*; when that spot is behind him, *run back for the ball in the
+  air* — the second option.
+- On the ground nothing changes: the 3 rules (§8.66).
+
+cb-build:1 (tactic B): it fires — under 0.5% of Lighthouse's man-ticks,
+because the Ukies seldom loft it to the winger from there. 30 matches,
+tactic B: +2.77 ± 0.52 (5.43 – 2.67), vs +2.20 ± 0.48 — noise. Not
+measured: how many of their aerial balls to the winger our full-back now
+wins; the harness has no counter for it yet.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

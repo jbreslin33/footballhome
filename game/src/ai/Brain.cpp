@@ -779,6 +779,45 @@ bool Brain::rung(SlotIndex slot, Rung r, Fixed64 x, std::uint64_t sec) const {
     return (n + Fixed64::one()) < Fixed64::fromFraction(w, 50);
 }
 
+// Attack the drop (170, G4.69) [James 10/27: "our full back needs to be
+// agressive in reading the type of pass when he is in the off coverage
+// tactic. he does not 'wait' for ball to reach. he reads pass. in the air he
+// chases it and trys to recive facing their goal to play forward. its bad to
+// be running backwards toward own goal but that is 2nd option. but if on
+// ground he does normal intercept, no turn, contain"]: playing off, their
+// ball in the air whose first man to it is my man — go now, to face_up_m
+// past where I can first take it along its path, so it comes onto me facing
+// their goal; if that's back toward our goal, run back for it (second
+// option). He goes whether or not he wins the race. On the ground: the 3
+// rules (jumpThePass).
+bool Brain::attackTheDrop(SlotIndex slot, const World& world, int sign, Orders& out) const {
+    const auto& b = world.ball();
+    const std::uint8_t my_team = setup_.team_of_slot[slot];
+    if (b.owner || world.restartTeam() != 0xFF || world.lastTouchTeam() == my_team) return false;
+    const int po = book_.play_off.bit();
+    if (ratings_[slot][po] == 0 || world.isKeeper(slot)) return false;
+    if (!(b.pos.z > core::kBallControlRadius || b.vel.z.raw > 0)) return false;   // on the ground
+    const FlightRead& fr = flightRead(world);
+    if (!fr.live) return false;
+    const int rcv = fr.first[1 - my_team];
+    if (rcv < 0) return false;
+    const std::uint64_t sec = world.tickCount() / 30;
+    if (directOpponents(world, sec)[slot] != rcv || !applies(slot, po, sec)) return false;
+    // Where I take it: my own first point on its flight, else his.
+    const bool reach = fr.tick[slot] >= 0;
+    const Vec2 at = reach ? fr.at[slot] : fr.at[rcv];
+    const Vec2 path = math::normalized(Vec2{b.vel.x, b.vel.y});
+    const Fixed64 f = book_.play_off.faceUp();
+    const Vec2 target{at.x + path.x * f, at.y + path.y * f};
+    const auto& me = world.player(slot);
+    const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
+    out.why = target.x * dsgn < me.pos.x * dsgn - Fixed64::one() ? Why::RunBackDrop : Why::AttackDrop;
+    out.target = target;
+    out.other = static_cast<std::int16_t>(rcv);
+    return true;
+}
+
 bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& out) const {
     const auto& b = world.ball();
     const std::uint8_t my_team = setup_.team_of_slot[slot];
@@ -2033,6 +2072,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 return out;
             }
         }
+        if (attackTheDrop(slot, world, sign, out)) return out;
         if (jumpThePass(slot, world, sign, out)) return out;
         int mates_behind = 0, opps_behind = 0;
         for (SlotIndex j = 0; j < world.playerCount(); ++j) {
