@@ -4,6 +4,7 @@
   "description": "Football Home - Team management application",
   "scripts": {},
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
     "csv-parse": "^6.1.0",
     "dotenv": "^16.0.0",
     "google-spreadsheet": "^4.1.2",

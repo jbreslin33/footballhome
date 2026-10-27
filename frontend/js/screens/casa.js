@@ -529,6 +529,8 @@ class CasaScoresScreen extends Screen {
         .cz-top b { font-size:1rem; }
         .cz-meta { font-size:0.78rem; opacity:0.7; margin-left:auto; white-space:nowrap; }
         .cz-asked { font-size:0.78rem; opacity:0.75; margin-top:2px; }
+        .cz-found { display:inline-block; margin-top:4px; padding:3px 9px; border-radius:8px; border:1px solid #d62976; color:var(--text-primary); text-decoration:none; font-size:0.8rem; font-weight:700; }
+        .cz-found.medium, .cz-found.low { border-style:dashed; font-weight:600; }
         .cz-team { margin-top:10px; padding-top:8px; border-top:1px solid var(--border-color); }
         .cz-team-h { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.82rem; font-weight:800; }
         .cz-team-h .side { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; opacity:0.6; }
@@ -696,11 +698,14 @@ class CasaScoresScreen extends Screen {
     const waiting = this._waitingClubs();
     const withH = waiting.filter(id => this._insta(id));
     const missing = waiting.filter(id => !this._insta(id)).map(id => (teams.find(t => t.club_id === id) || {}).name).filter(Boolean);
+    const run = this.data.insta_run;
     return `
       <div class="cz-sec">📸 Instagram</div>
       ${withH.length ? `<button class="cz-btn sm alt" data-insta-all>${esc(this._copy('insta_open_all', { n: withH.length }) || `📸 Open all ${withH.length}`)}</button>` : ''}
       ${missing.length ? `<div class="cz-hint">${esc(this._copy('insta_missing', { clubs: missing.join(', ') }))}</div>` : ''}
       <div class="cz-hint">${esc(this._copy('insta_popups'))}</div>
+      ${run ? `<div class="cz-hint">${esc(this._copy('insta_auto', { when: run.started, posts: run.posts_read, found: run.scores_found }))}</div>` : ''}
+      ${run && run.problem ? `<div class="cz-hint" style="color:var(--danger-color, #c0392b);">${esc(this._copy('insta_problem', { problem: run.problem }))}</div>` : ''}
       ${divs.map(d => `<div class="cz-hint" style="margin-bottom:0;"><b>${esc(d)}</b></div><div class="cz-igs">${teams.filter(t => t.division_label === d).map(t => this._igLink(t.club_id, t.name)).join('')}</div>`).join('')}`;
   }
 
@@ -715,6 +720,7 @@ class CasaScoresScreen extends Screen {
         <div class="cz-top">${logo(f.home_logo)}<b>${esc(f.home_name)}</b><span style="opacity:0.6;">v</span><b>${esc(f.away_name)}</b>${logo(f.away_logo)}
           <span class="cz-meta">${esc(f.time_label)} · ${esc(f.division_label || '')}${f.status !== 'scheduled' ? ` · ${esc(f.status)}` : ''}</span></div>
         ${total ? `<div class="cz-asked">${esc(this._copy('scores_asked', { n: total, when: last.last }) || `Asked ${total}× · last ${last.last}`)}</div>` : ''}
+        ${(this.data.insta_finds || []).filter(x => x.fixture_id === f.id).map(x => `<div><a class="cz-found ${esc(x.confidence)}" href="${esc(x.post_url)}" target="_blank" rel="noopener" title="${esc(x.note)}">${esc(this._copy('insta_found', { handle: x.handle, home: x.home_score, away: x.away_score, when: x.posted }) || `📸 @${x.handle} posted ${x.home_score} – ${x.away_score}`)}</a></div>`).join('')}
         ${this._team(f, 'Home', f.home_name, f.home_club_id)}
         ${this._team(f, 'Away', f.away_name, f.away_club_id)}
       </div>`;

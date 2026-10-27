@@ -657,6 +657,23 @@ Response OpponentsController::handleLeagueScores(const Request& request) {
                 " AND f.status NOT IN ('postponed', 'cancelled', 'canceled', 'forfeit') AND (f.home_score IS NULL OR f.away_score IS NULL) "
                 " ORDER BY f.starts_at, f.division_label, f.id", {label}))
             out["waiting"].push_back(fixture(r));
+        // Scores the server read off the clubs' Instagram for the games still
+        // waiting, and its last run (mig 749, scripts/casa-insta-scores.js).
+        out["insta_finds"] = json::array();
+        for (const auto& r : db->query(
+                "SELECT p.fixture_id, p.handle, p.post_url, p.home_score, p.away_score, p.confidence, p.note, "
+                "       to_char(p.posted_at AT TIME ZONE 'America/New_York', 'Dy FMHH12:MI AM') AS posted "
+                "  FROM casa_insta_posts p JOIN league_fixtures f ON f.id = p.fixture_id "
+                " WHERE f.home_score IS NULL OR f.away_score IS NULL ORDER BY p.posted_at"))
+            out["insta_finds"].push_back({{"fixture_id", r["fixture_id"].as<long long>()}, {"handle", str(r, "handle")}, {"post_url", str(r, "post_url")},
+                                          {"home_score", r["home_score"].as<long long>()}, {"away_score", r["away_score"].as<long long>()},
+                                          {"confidence", str(r, "confidence")}, {"note", str(r, "note")}, {"posted", str(r, "posted")}});
+        out["insta_run"] = nullptr;
+        for (const auto& r : db->query(
+                "SELECT to_char(started_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD FMHH12:MI AM') AS started, posts_read, scores_found, "
+                "       COALESCE(problem, '') AS problem FROM casa_insta_runs WHERE finished_at IS NOT NULL ORDER BY id DESC LIMIT 1"))
+            out["insta_run"] = {{"started", str(r, "started")}, {"posts_read", r["posts_read"].as<long long>()},
+                                {"scores_found", r["scores_found"].as<long long>()}, {"problem", str(r, "problem")}};
         for (const auto& r : db->query(cols +
                 " AND f.home_score IS NOT NULL AND f.away_score IS NOT NULL AND f.starts_at > now() - interval '15 days' "
                 " ORDER BY f.starts_at DESC, f.division_label, f.id", {label}))

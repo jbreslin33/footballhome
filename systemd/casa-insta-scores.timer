@@ -1,0 +1,19 @@
+[Unit]
+Description=Football Home — CASA Instagram score check (Sun 6 PM & 11:59 PM, Mon 6 AM, noon Mon–Sat)
+Documentation=file:///srv/footballhome/scripts/casa-insta-scores.js
+Requires=casa-insta-scores.service
+
+[Timer]
+# Owner 2026-10-27: "sunday run it at 6pm sunday, 11:59pm sunday, 6am monday,
+# 12pm monday. then each weekday and sat 12pm each day."  Server local time.
+OnCalendar=Sun *-*-* 18:00:00
+OnCalendar=Sun *-*-* 23:59:00
+OnCalendar=Mon *-*-* 06:00:00
+OnCalendar=Mon..Sat *-*-* 12:00:00
+Unit=casa-insta-scores.service
+# Missed while the box was off → run once on boot; the post log means a
+# catch-up run never re-reads a post.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

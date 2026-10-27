@@ -18,6 +18,8 @@
 #
 #   * backup-db              — daily 3am DB dump + rotation + git push
 #   * refresh-instagram-token — 1st/20th 3:30am IG long-lived token refresh
+#   * casa-insta-scores      — CASA scores off club Instagram pages (mig 749):
+#                              Sun 6pm + 11:59pm, Mon 6am, noon Mon–Sat
 #
 # backup-db also pushes each dump to the jbreslin33/footballhome-backups
 # GitHub repo, cloned to /srv/footballhome-backups. That clone doesn't
@@ -53,7 +55,8 @@ fi
 
 SRC="$REPO_ROOT/systemd"
 for f in backup-db.service backup-db.timer \
-         refresh-instagram-token.service refresh-instagram-token.timer; do
+         refresh-instagram-token.service refresh-instagram-token.timer \
+         casa-insta-scores.service casa-insta-scores.timer; do
   if [ ! -f "$SRC/$f" ]; then
     print_error "setup-jobs: $f missing in $SRC"
     exit 1
@@ -82,6 +85,10 @@ sudo install -m 0644 "$SRC/refresh-instagram-token.service" \
 sudo install -m 0644 "$SRC/refresh-instagram-token.timer" \
      /etc/systemd/system/refresh-instagram-token.timer
 
+print_status "Installing casa-insta-scores.service + timer..."
+sudo install -m 0644 "$SRC/casa-insta-scores.service" /etc/systemd/system/casa-insta-scores.service
+sudo install -m 0644 "$SRC/casa-insta-scores.timer"   /etc/systemd/system/casa-insta-scores.timer
+
 print_status "Reloading systemd..."
 sudo systemctl daemon-reload
 
@@ -89,6 +96,8 @@ print_status "Enabling + starting backup-db.timer..."
 sudo systemctl enable --now backup-db.timer
 print_status "Enabling + starting refresh-instagram-token.timer..."
 sudo systemctl enable --now refresh-instagram-token.timer
+print_status "Enabling + starting casa-insta-scores.timer..."
+sudo systemctl enable --now casa-insta-scores.timer
 
 print_success "backup-db + refresh-instagram-token timers installed."
 print_status  "Verify: sudo systemctl list-timers | grep -E 'backup-db|refresh-instagram'"

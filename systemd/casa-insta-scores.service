@@ -1,0 +1,25 @@
+[Unit]
+Description=Football Home — CASA scores read off the clubs' Instagram (mig 749)
+Documentation=file:///srv/footballhome/scripts/casa-insta-scores.js
+After=network-online.target
+Wants=network-online.target
+After=podman.service
+
+[Service]
+Type=oneshot
+User=jbreslin
+Group=jbreslin
+WorkingDirectory=/srv/footballhome
+# Reads the unscored CASA games, opens those clubs' public Instagram pages
+# in headless Chrome (logged out), asks Claude about each new post in the
+# game window, and writes casa_insta_runs / casa_insta_posts. Exits at once
+# when no game is waiting, without touching Instagram.
+ExecStart=/usr/bin/node /srv/footballhome/scripts/casa-insta-scores.js
+StandardOutput=journal
+StandardError=journal
+# A busy Monday is ~10 clubs × a few posts at 5 s apart — well under 30 min.
+TimeoutStartSec=1800s
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

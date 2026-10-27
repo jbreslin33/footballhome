@@ -29,8 +29,15 @@ the list looks stale, open that page first (or say so in the report).
 
 ## 2. The browser: the CASA Chrome profile
 
-Instagram is blocked on the home network. The VPN runs only in James's **CASA**
-Chrome profile (virtual desktop 3, "c"). Load the claude-in-chrome tools in one
+The server already checks on a schedule (mig 749: `scripts/casa-insta-scores.js`,
+`casa-insta-scores.timer` — Sun 6 PM & 11:59 PM, Mon 6 AM, noon Mon–Sat); its
+finds sit in `casa_insta_posts` and show on `#casa-scores`. Look there first —
+this manual check is for when that run reports a problem or James wants eyes on it.
+For a terminal run without Chrome: `node scripts/casa-insta-scores.js --test=<fixture id>`
+(reads and prints, writes nothing).
+
+The manual browser is James's **CASA** Chrome profile (virtual desktop 3, "c"),
+VPN on. Load the claude-in-chrome tools in one
 ToolSearch, `list_connected_browsers`, `select_browser` the CASA one, then
 `tabs_context_mcp` and work in a new tab. If the CASA profile isn't connected,
 or instagram.com won't load (VPN down), stop and tell James. Don't retry in a
