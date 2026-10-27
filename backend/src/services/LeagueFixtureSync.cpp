@@ -152,6 +152,10 @@ std::vector<FixtureRow> parseIcs(const std::string& raw) {
 
 LeagueFixtureSync::Result LeagueFixtureSync::refreshSource(long long sourceId, const std::string& programId, const std::string& system) {
     Result out;
+    // GotSport and TeamSnap turn the server away (mig 758): those sources
+    // are read in Chrome and loaded by scripts/official-schedule-load.js,
+    // so a server refresh leaves their rows and fetch stamp alone.
+    if (system == "gotsport" || system == "teamsnap") { out.note = "read in Chrome, not by the server"; return out; }
     auto* db = Database::getInstance();
     const std::string sid = std::to_string(sourceId);
     std::string runStart;
