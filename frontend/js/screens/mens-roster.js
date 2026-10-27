@@ -470,7 +470,7 @@ class MensRosterScreen extends RosterScreenBase {
 
     const body = (shown.length === 0 && !ridersHtml)
       ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
-      : renderList(shown) + ridersHtml;
+      : this.renderRosterSplit(col, shown, renderList, data) + ridersHtml;
 
     // Column-header financial roll-up ("⚠ N OVERDUE") was removed
     // 2026-07-14 — belongs on the /payments screen, not here.  The

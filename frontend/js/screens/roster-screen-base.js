@@ -568,6 +568,53 @@ class RosterScreenBase extends Screen {
             </span>`;
   }
 
+  // Column body split (owner 2026-10-27: "first who is on official
+  // league roster … then the random non official roster guys put in a
+  // section under the official guys called non roster players. run a
+  // count on each" — then: "your roster group should match 1 to 1 the
+  // official roster … same order they appear on official league roster.
+  // this should not be editable").
+  //   OFFICIAL ROSTER — the league's own list (official_roster_names, the
+  //     🌐 mirror) verbatim: its names, its order, read-only rows.  A name
+  //     the match trigger tied to no FH person says so.
+  //   NON ROSTER PLAYERS — this column's FH players not on that list,
+  //     as the usual editable cards.
+  // A column with no league list falls back to the On Roster status
+  // (the "✓ N on roster" test) for the split.  Headings are
+  // message_templates kind roster_sheet (mig 770).
+  renderRosterSplit(col, shown, renderList, data) {
+    if (!col || !col.teamId) return renderList(shown);
+    const esc = RosterScreenBase.escapeHtml;
+    const copy = (tier) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || '';
+    const head = (label, n, color) => `<div style="display:flex; justify-content:space-between; align-items:baseline;
+        font-size:0.7rem; font-weight:800; letter-spacing:0.04em; color:${color};
+        border-bottom:1px solid ${color}; padding:2px 2px 1px; margin-top:2px;">
+        <span>${esc(label)}</span><span>${n}</span></div>`;
+    const official = (data && data.officialRosters && data.officialRosters[String(col.teamId)]) || null;
+    const names = (official && official.names) || [];
+    let officialHtml, others;
+    if (names.length) {
+      const ids = official.personIds || [];
+      const onList = new Set(ids.filter(id => id != null).map(Number));
+      others = shown.filter(p => !(p && onList.has(Number(p.personId))));
+      const unmatched = copy('board_official_unmatched') || 'not in Football Home';
+      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', names.length, '#22c55e')
+        + names.map((n, i) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
+              padding:3px 6px; border-radius:4px; background:rgba(34,197,94,0.06);">
+              <span style="opacity:0.55; min-width:1.6em; text-align:right;">${i + 1}</span>
+              <span style="font-weight:700;">${esc(n)}</span>
+              ${ids[i] == null ? `<span style="font-size:0.65rem; color:#f59e0b;">${esc(unmatched)}</span>` : ''}
+            </div>`).join('');
+    } else {
+      const on = shown.filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus));
+      others = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
+      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', on.length, '#22c55e')
+        + (on.length ? renderList(on) : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+    }
+    return officialHtml
+      + (others.length ? head(copy('board_non_roster_h') || 'NON ROSTER PLAYERS', others.length, '#94a3b8') + renderList(others) : '');
+  }
+
   // Subs can go negative (owner 2026-09-05: "11v11 with 11 on roster is
   // 0 but 10 on roster is -1 subs") — a short roster is exactly what the
   // coach needs to see, so it's shown in red rather than clamped.
@@ -815,6 +862,8 @@ class RosterScreenBase extends Screen {
         throw new Error(text.slice(0, 200));
       }
       select.querySelectorAll('option').forEach(o => { o.defaultSelected = o.selected; });
+      // the card may change section (official ↔ non roster)
+      if (typeof this.load === 'function') this.load({ quiet: true });
     } catch (err) {
       select.value = prevValue;
       this.applyRosterStatusStyle(select);

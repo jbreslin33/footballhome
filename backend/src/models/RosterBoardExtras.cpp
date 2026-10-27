@@ -59,7 +59,7 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
             // LEFT JOIN: a source with no pull yet (mig 622 seeded the
             // Reserves row empty) still gets its pill — Roster (0) —
             // so the board's auto-pull can give it its first names.
-            "SELECT s.team_id, s.league_label, s.system, n.full_name, "
+            "SELECT s.team_id, s.league_label, s.system, n.full_name, n.person_id, "
             "       to_char(max(n.pulled_at) OVER (PARTITION BY s.id) AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI am') AS pulled_label "
             "  FROM official_roster_sources s "
             "  LEFT JOIN official_roster_names n ON n.source_id = s.id "
@@ -72,8 +72,15 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
                                  // re-pull online on every board load; club_file
                                  // is an upload with nothing to fetch.
                                  {"system", r["system"].is_null() ? "" : r["system"].c_str()},
-                                 {"names", nlohmann::json::array()}};
-            if (!r["full_name"].is_null()) official[tid]["names"].push_back(r["full_name"].c_str());
+                                 {"names", nlohmann::json::array()},
+                                 // parallel to names: the FH person the
+                                 // match trigger found (null = league-only)
+                                 {"personIds", nlohmann::json::array()}};
+            if (!r["full_name"].is_null()) {
+                official[tid]["names"].push_back(r["full_name"].c_str());
+                official[tid]["personIds"].push_back(r["person_id"].is_null() ? nlohmann::json(nullptr)
+                                                                              : nlohmann::json(r["person_id"].as<long long>()));
+            }
         }
         body["officialRosters"] = std::move(official);
     } catch (const std::exception& e) {
