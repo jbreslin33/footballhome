@@ -595,10 +595,15 @@ class RosterScreenBase extends Screen {
       const keep = new Set(list);
       return this.orderColumnPlayers(bucket).map(r => r.player).filter(p => keep.has(p));
     };
-    const head = (label, n, color) => `<div style="display:flex; justify-content:space-between; align-items:baseline;
-        font-size:0.7rem; font-weight:800; letter-spacing:0.04em; color:${color};
-        border-bottom:1px solid ${color}; padding:2px 2px 1px; margin-top:2px;">
-        <span>${esc(label)}</span><span>${n}</span></div>`;
+    // Section banner (owner 2026-10-27: "make the divider section more
+    // clear") — a solid tinted bar with a left rule and a count badge, and
+    // a gap above it so the two sections never run together.
+    const head = (label, n, color, bg, first) => `<div style="display:flex; justify-content:space-between; align-items:center;
+        font-size:0.8rem; font-weight:900; letter-spacing:0.06em; color:${color};
+        background:${bg}; border:1px solid ${color}; border-left:5px solid ${color}; border-radius:4px;
+        padding:5px 8px; margin:${first ? '2px' : '14px'} 0 4px;">
+        <span>${esc(label)}</span>
+        <span style="background:${color}; color:#0f172a; border-radius:10px; padding:0 8px; font-size:0.78rem;">${n}</span></div>`;
     const nameRow = (i, name, note) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
         padding:3px 6px; border-radius:4px; background:rgba(34,197,94,0.06);">
         <span style="opacity:0.55; min-width:1.6em; text-align:right;">${i + 1}</span>
@@ -609,7 +614,7 @@ class RosterScreenBase extends Screen {
     if (official) {
       const byPerson = new Map(bucket.map(p => [Number(p.personId), p]));
       const used = new Set();
-      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', official.names.length, '#22c55e')
+      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', official.names.length, '#22c55e', 'rgba(34,197,94,0.14)', true)
         + official.names.map((n, i) => {
           const id = official.personIds[i];
           const p = id != null && byPerson.get(Number(id));
@@ -622,11 +627,11 @@ class RosterScreenBase extends Screen {
     } else {
       const on = shown.filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus));
       others = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
-      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', on.length, '#22c55e')
+      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', on.length, '#22c55e', 'rgba(34,197,94,0.14)', true)
         + (on.length ? ordered(on).map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
     }
     return officialHtml
-      + (others.length ? head(copy('board_non_roster_h') || 'NON ROSTER PLAYERS', others.length, '#94a3b8') + ordered(others).map(card).join('') : '');
+      + (others.length ? head(copy('board_non_roster_h') || 'NON ROSTER PLAYERS', others.length, '#f59e0b', 'rgba(245,158,11,0.14)', false) + ordered(others).map(card).join('') : '');
   }
 
   // The league's own list for a team column — {names, personIds} from the
