@@ -43,7 +43,7 @@ const EventKindSwitch = {
   open(navigation, ev) {
     if (!ev) return;
     if (ev.kind === 'match' && ev.match_id != null) {
-      navigation.goTo('game-center', { matchId: ev.match_id, title: EventLabels.title(ev), when: EventLabels.when(ev) });
+      navigation.goTo('game-center', { event: ev });
     } else if (ev.kind === 'practice' || ev.kind === 'pickup') {
       navigation.goTo('practice', { event: ev });
     } else {

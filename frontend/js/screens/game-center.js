@@ -239,7 +239,13 @@ const POST_PILLS = [
 // works in, and it's the team sheet a player opens the page to read.
 const DEFAULT_PILL = 'starters_bench';
 
-class GameCenterScreen extends Screen {
+// The game child of EventScreen (screens/event-screen.js — owner 2026-10-27:
+// "base class is event … then game or practice child").  Opened by its event
+// ({ event }, via EventKindSwitch.open) like every other kind; the match id
+// it keys its lineup on comes from that event.  Inherits the live-refresh
+// timer and the pill-row hook (pills()); keeps its own player cards, RSVP
+// and invite tools until they fold into the base.
+class GameCenterScreen extends EventScreen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.matchId   = null;
@@ -607,6 +613,14 @@ class GameCenterScreen extends Screen {
 
   onEnter(params = {}) {
     this._openFolds = this._openFolds || new Set();   // No Response / Not Going folds held open
+    // The event door (EventKindSwitch.open): the match id, title and time
+    // come from the event; the event itself is this.ev, as on every
+    // EventScreen.  Older doors pass matchId alone — the feed fills this.ev.
+    if (params.event && params.event.match_id != null) {
+      params = { ...params, matchId: params.event.match_id,
+                 title: params.title || EventLabels.title(params.event), when: params.when || EventLabels.when(params.event) };
+    }
+    this.ev = params.event || null;
     if (params.resume) {
       const r = params.resume;
       this._openFolds = new Set(Array.isArray(r.folds) ? r.folds : []);
@@ -724,19 +738,8 @@ class GameCenterScreen extends Screen {
   // edit — a pending autosave, the details overlay, the swap sheet, a
   // draft view, or any focused field postpones it to a later tick rather
   // than re-rendering the DOM out from under the coach.
-  _startLivePoll() {
-    this._stopLivePoll();
-    this._pollTimer = setInterval(() => this._pollLive(), 15000);
-    // Coming back to the tab checks immediately instead of waiting out
-    // the remainder of the interval.
-    this._pollOnShow = () => { if (!document.hidden) this._pollLive(); };
-    document.addEventListener('visibilitychange', this._pollOnShow);
-  }
-
-  _stopLivePoll() {
-    if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
-    if (this._pollOnShow) { document.removeEventListener('visibilitychange', this._pollOnShow); this._pollOnShow = null; }
-  }
+  // _startLivePoll / _stopLivePoll: EventScreen's 15 s timer, which calls
+  // the _pollLive below.
 
   // One string per game state: lineup zones + roster RSVPs + call-up
   // answers. Only these fields — anything volatile (stats, timestamps)
@@ -2094,6 +2097,7 @@ class GameCenterScreen extends Screen {
   _applyFeed() {
     if (!this._feedGames) { this.games = null; this.pickerGames = null; return; }
     this.games = this._feedGames;
+    if (this.matchId != null) this.ev = this.games.find(g => g.match_id === this.matchId) || this.ev;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     this.pickerGames = this.games.filter(ev => new Date(ev.starts_at) >= today);
   }
@@ -2124,7 +2128,7 @@ class GameCenterScreen extends Screen {
     this.onExit();   // timers, beam animation, social card — as if we had left
     const social = this.find('#gc-social');
     if (social) social.innerHTML = '';
-    this.onEnter({ matchId, title: this._gameLabel(ev), when: this._gameWhen(ev),
+    this.onEnter({ event: ev, matchId, title: this._gameLabel(ev), when: this._gameWhen(ev),
                    view: this.view || undefined, postType: this.pill });
   }
 
@@ -5171,6 +5175,10 @@ class GameCenterScreen extends Screen {
   // already gone out for this game — "✅ Posted" or "📅 <when>" — so a
   // coach sees at a glance which posts are still owed. Drafts get no
   // mark: opening a pill creates one, so it would say nothing.
+  // EventScreen's pill hook: a game's four moments (POST_PILLS), titles
+  // from the DB copy.
+  pills(_ev) { return POST_PILLS.map(p => ({ ...p, title: this._pillTitle(p.key) })); }
+
   _socialPillsHtml() {
     // The shared big row (lib/event-pills.js) — a practice draws the same one.
     const mark = (p) => {
@@ -5184,7 +5192,7 @@ class GameCenterScreen extends Screen {
       }
       return '';
     };
-    return EventPills.buttons(POST_PILLS.map(p => ({ ...p, title: this._pillTitle(p.key) })), this.pill,
+    return EventPills.buttons(this.pills(this.ev), this.pill,
       { attr: 'data-gc-social-pill', escapeHtml: (t) => this.escapeHtml(t), mark });
   }
 
