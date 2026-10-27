@@ -485,11 +485,13 @@
         const other = e.other !== 255 && this.figures[e.other] ? this.figures[e.other].root.position : null;
         part.act.visible = !!other;
         if (other) { set(part.act, p, other); part.act.computeLineDistances(); }
-        const to = e.callTo !== undefined && e.callTo !== 255 && this.figures[e.callTo] ? this.figures[e.callTo].root.position : null;
+        // 254 = to the whole back line (no one line to draw).
+        const calling = e.callTo !== undefined && e.callTo !== 255;
+        const to = calling && this.figures[e.callTo] ? this.figures[e.callTo].root.position : null;
         part.talk.visible = !!to;
         if (to) { set(part.talk, p, to); part.talk.computeLineDistances(); }
         let text = (v.legend && v.legend[e.why]) || '?';
-        if (to) text = '📣 ' + ((v.legend && v.legend[e.call]) || 'call');
+        if (calling) text = '📣 ' + ((v.legend && v.legend[e.call]) || 'call');
         if (e.rung) text += ' · rung ' + e.rung;
         if (e.unseen && e.look !== undefined && e.look !== 255) text += ' · 👀 ' + (e.look / 10).toFixed(1) + 's';
         if (text !== part.text) {

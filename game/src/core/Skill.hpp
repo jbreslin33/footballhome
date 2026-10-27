@@ -241,6 +241,24 @@ private:
     std::int32_t at0_ = 0, at100_ = 200;
 };
 
+// Concentration (G4.71) [USYS U-14/U-16: concentration]: the share of calls
+// made to him that he hears — same scale as Communication.
+class Concentration : public Skill {
+public:
+    Concentration() : Skill("concentration") {}
+    void configure(const ModelParams& p) override {
+        at0_ = p.integer(key("at0_pct"), 0);
+        at100_ = p.integer(key("at100_pct"), 200);
+    }
+    void apply(LevelParams& o, const LevelParams& b, int r) const override {
+        const std::int32_t v = scaled(b.listen_pct, r, at0_, at100_);
+        o.listen_pct = v > 100 ? 100 : v;
+    }
+
+private:
+    std::int32_t at0_ = 0, at100_ = 200;
+};
+
 // The registry, in game_attributes order (= PlayerAttributes / wire 0x37).
 class SkillSet {
 public:
@@ -264,6 +282,7 @@ public:
         skills_.emplace_back(agility_);
         skills_.emplace_back(dribbling_);
         skills_.emplace_back(new Communication());
+        skills_.emplace_back(new Concentration());
         for (auto& s : skills_) s->configure(p);
         for (BodySkill* g : {&side_, &back_, &yaw_}) g->configure(p);
         // How far he looks off his line at no cost — anatomy, shared.

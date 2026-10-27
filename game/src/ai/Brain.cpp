@@ -466,66 +466,222 @@ const std::vector<std::uint8_t>& Brain::directOpponents(const World& world, std:
 // behind him since is still back where he started. The flight read and the
 // direct-opponent pairs are shared by all 22 brains, so they are read from
 // the true world first (their caches then serve every picture this tick).
-Brain::ShadowCall Brain::shadowCall(std::uint8_t team, const World& world) const {
-    ShadowCall c;
-    const auto& b = world.ball();
-    if (world.restartTeam() != 0xFF) return c;
-    const bool theirs = b.owner ? world.player(*b.owner).team != team : world.lastTouchTeam() != team;
-    if (!theirs) return c;
-    const Trap tr = trapRead(world, team, Vec2{b.pos.x, b.pos.y});
-    if (tr.winger < 0 || ratings_[tr.winger][book_.shadow_line.bit()] == 0) return c;
-    const SlotIndex w = static_cast<SlotIndex>(tr.winger);
-    const int sign = attackSign(w);
-    const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
-    if (b.pos.x * dsgn < book_.pack_middle.fromHalfway()) return c;
-    const int M = theirWinger(world, team, sign, tr.carrier, tr.cbs);
-    if (M < 0) return c;
-    const SlotIndex m = static_cast<SlotIndex>(M);
-    const std::uint64_t sec = world.tickCount() / 30;
-    const auto& direct = directOpponents(world, sec);
-    const int po = book_.play_off.bit();
-    for (SlotIndex f = 0; f < world.playerCount(); ++f) {
-        if (setup_.team_of_slot[f] != team || f == w || direct[f] != m || ratings_[f][po] == 0) continue;
-        if (levelOf(w).isZero() || inView(w, world, m) || !inView(f, world, m)) return c;
-        c.talker = f;
-        c.to = w;
-        c.man = M;
-        c.due = true;
-        const int cs = book_.call_shadow.bit();
-        if (ratings_[f][cs] > 0 && applies(f, cs, sec)) {
-            const auto n = core::detNoise(match_seed_, sec, f, 235);
-            c.made = (n + Fixed64::one()) < Fixed64::fromFraction(levelOf(f).speak_pct, 50);
-        }
-        return c;
+const Call& Brain::callConcept(Why w) const {
+    switch (w) {
+        case Why::CallManOn: return book_.call_man_on;
+        case Why::CallTurn: return book_.call_turn;
+        case Why::CallTime: return book_.call_time;
+        case Why::CallSqueeze: return book_.call_squeeze;
+        case Why::CallLine: return book_.call_line;
+        default: return book_.call_shadow;
     }
-    return c;
+}
+
+// SAYING: he knows the call and his communication lets it out this second.
+bool Brain::says(SlotIndex slot, const Call& c, std::uint64_t sec) const {
+    const int bit = c.bit();
+    if (ratings_[slot][bit] == 0 || !applies(slot, bit, sec)) return false;
+    const auto n = core::detNoise(match_seed_, sec, slot, static_cast<std::uint8_t>(216 + (bit % 8)));
+    return (n + Fixed64::one()) < Fixed64::fromFraction(levelOf(slot).speak_pct, 50);
+}
+
+// HEARING: in voice range of the talker, and his concentration takes it in.
+bool Brain::hears(SlotIndex slot, const CallOut& c, const World& world) const {
+    if (!c.made || c.talker < 0) return false;
+    if (c.to == Orders::kBackLine ? !backLine(slot) : c.to != static_cast<int>(slot)) return false;
+    const Fixed64 v = book_.vision.voice;
+    if (distSq(world.player(slot).pos, world.player(static_cast<SlotIndex>(c.talker)).pos) > v * v) return false;
+    const std::uint64_t sec = world.tickCount() / 30;
+    const auto n = core::detNoise(match_seed_, sec, slot,
+                                  static_cast<std::uint8_t>(224 + (callConcept(c.why).bit() % 8)));
+    return (n + Fixed64::one()) < Fixed64::fromFraction(levelOf(slot).listen_pct, 50);
+}
+
+const std::vector<Brain::CallOut>& Brain::calls(std::uint8_t team, const World& world) const {
+    const auto& b = world.ball();
+    const std::int64_t key = b.pos.x.raw ^ (b.pos.y.raw << 1);
+    std::vector<CallOut>& out = calls_[team & 1];
+    if (calls_tick_[team & 1] == world.tickCount() && calls_key_[team & 1] == key) return out;
+    calls_tick_[team & 1] = world.tickCount();
+    calls_key_[team & 1] = key;
+    out.clear();
+    if (world.restartTeam() != 0xFF) return out;
+    const std::uint64_t sec = world.tickCount() / 30;
+    const Fixed64 voice = book_.vision.voice;
+    const bool ours = b.owner ? world.player(*b.owner).team == team : world.lastTouchTeam() == team;
+    auto add = [&](Why w, int talker, int to, int man) {
+        CallOut c;
+        c.why = w;
+        c.talker = talker;
+        c.to = to;
+        c.man = man;
+        c.made = says(static_cast<SlotIndex>(talker), callConcept(w), sec);
+        out.push_back(c);
+    };
+    if (ours) {
+        // Man on / turn / time: about our man on the ball, or the one the
+        // pass is going to.
+        int T = b.owner ? static_cast<int>(*b.owner) : -1;
+        if (T < 0) {
+            const FlightRead& fr = flightRead(world);
+            if (fr.live) T = fr.first[team];
+        }
+        if (T < 0 || world.isKeeper(static_cast<SlotIndex>(T)) || levelOf(static_cast<SlotIndex>(T)).isZero()) return out;
+        const SlotIndex t = static_cast<SlotIndex>(T);
+        const auto& tp = world.player(t);
+        int O = -1;
+        Fixed64 od{};
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup_.team_of_slot[j] == team) continue;
+            const Fixed64 d = distSq(world.player(j).pos, tp.pos);
+            if (O < 0 || d < od) { O = j; od = d; }
+        }
+        if (O < 0) return out;
+        const SlotIndex o = static_cast<SlotIndex>(O);
+        Why w = Why::Hold;
+        const Fixed64 near = book_.call_man_on.reach();
+        if (od <= near * near && !inView(t, world, o)) {
+            w = Why::CallManOn;
+        } else {
+            const Fixed64 free = book_.call_turn.reach();
+            if (od > free * free && lookAge(t, world) > book_.vision.blind_pass_ticks) {
+                const Fixed64 dsgn = attackSign(t) >= 0 ? Fixed64::one() : -Fixed64::one();
+                w = tp.face.x * dsgn < Fixed64::zero() ? Why::CallTurn : Why::CallTime;
+            }
+        }
+        if (w == Why::Hold) return out;
+        // The talker: the nearest mate in voice range who can see him (and,
+        // for man on, the man).
+        int F = -1;
+        Fixed64 fd{};
+        for (SlotIndex f = 0; f < world.playerCount(); ++f) {
+            if (setup_.team_of_slot[f] != team || f == t) continue;
+            const Fixed64 d = distSq(world.player(f).pos, tp.pos);
+            if (d > voice * voice || !inView(f, world, t)) continue;
+            if (w == Why::CallManOn && !inView(f, world, o)) continue;
+            if (F < 0 || d < fd) { F = f; fd = d; }
+        }
+        if (F >= 0) add(w, F, T, w == Why::CallManOn ? O : -1);
+        return out;
+    }
+
+    // Their ball. Adjust your shadow (172, G4.70): the full-back playing off
+    // sees their winger; our winger shadowing the line has him behind him.
+    {
+        const Trap tr = trapRead(world, team, Vec2{b.pos.x, b.pos.y});
+        if (tr.winger >= 0 && ratings_[tr.winger][book_.shadow_line.bit()] > 0) {
+            const SlotIndex w = static_cast<SlotIndex>(tr.winger);
+            const int sign = attackSign(w);
+            const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+            const int M = b.pos.x * dsgn < book_.pack_middle.fromHalfway()
+                              ? -1 : theirWinger(world, team, sign, tr.carrier, tr.cbs);
+            if (M >= 0) {
+                const SlotIndex m = static_cast<SlotIndex>(M);
+                const auto& direct = directOpponents(world, sec);
+                const int po = book_.play_off.bit();
+                for (SlotIndex f = 0; f < world.playerCount(); ++f) {
+                    if (setup_.team_of_slot[f] != team || f == w || direct[f] != m || ratings_[f][po] == 0) continue;
+                    if (!levelOf(w).isZero() && !inView(w, world, m) && inView(f, world, m))
+                        add(Why::CallShadow, f, w, M);
+                    break;
+                }
+            }
+        }
+    }
+    // Squeeze / line (176/177): the keeper organises the back line.
+    int K = -1;
+    for (SlotIndex k = 0; k < world.playerCount(); ++k)
+        if (setup_.team_of_slot[k] == team && world.isKeeper(k)) { K = k; break; }
+    if (K < 0) return out;
+    const SlotIndex k = static_cast<SlotIndex>(K);
+    const int sign = attackSign(k);
+    const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    ConceptContext cx{world, k, sign, Vec2{b.pos.x, b.pos.y}, half_x_, degree(k, 28)};
+    if (!b.owner) {
+        const FlightRead& fr = flightRead(world);
+        const int a0 = fr.first[0], a1 = fr.first[1];
+        const int win = a0 < 0 ? a1 : (a1 < 0 || fr.tick[a0] <= fr.tick[a1] ? a0 : a1);
+        if (win >= 0) { cx.flight_first = setup_.team_of_slot[win]; cx.flight_at = fr.at[win]; }
+    }
+    // The back line's height (its highest man) and anyone a metre or more
+    // under a step he should take / gap_m off the line with their man
+    // onside off him.
+    Fixed64 top{};
+    bool any = false;
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup_.team_of_slot[j] != team || !backLine(j)) continue;
+        const Fixed64 x = world.player(j).pos.x * sgn;
+        if (!any || x > top) { top = x; any = true; }
+    }
+    if (!any) return out;
+    if (auto line = book_.line_step.stepLine(cx)) {
+        bool under = false;
+        for (SlotIndex j = 0; j < world.playerCount(); ++j)
+            if (setup_.team_of_slot[j] == team && backLine(j) &&
+                world.player(j).pos.x * sgn < *line - Fixed64::one()) under = true;
+        if (under) add(Why::CallSqueeze, K, Orders::kBackLine, -1);
+        return out;
+    }
+    const Fixed64 gap = book_.call_line.reach();
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup_.team_of_slot[j] != team || !backLine(j)) continue;
+        const Fixed64 x = world.player(j).pos.x * sgn;
+        if (x > top - gap) continue;
+        bool onside = false;   // one of theirs between him and the line
+        for (SlotIndex a = 0; a < world.playerCount(); ++a) {
+            if (setup_.team_of_slot[a] == team || world.isKeeper(a)) continue;
+            const Fixed64 ax = world.player(a).pos.x * sgn;
+            onside = onside || (ax < top && ax > x);
+        }
+        if (onside) { add(Why::CallLine, K, Orders::kBackLine, -1); break; }
+    }
+    return out;
 }
 
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     flightRead(world);
     directOpponents(world, world.tickCount() / 30);
     const bool perfect = levelOf(slot).isZero();
-    const std::int32_t age = perfect ? 0 : lookAge(slot, world);
-    // Communication (G4.70): the call to our shadowing winger — the talker
-    // carries it on his orders; the listener hears it.
-    const ShadowCall call = shadowCall(setup_.team_of_slot[slot], world);
+    const std::int32_t age0 = perfect ? 0 : lookAge(slot, world);
+    // Communication (G4.70-71): the talker carries his call on his orders;
+    // a listener who hears one gets its effect — a fresher picture (one man,
+    // or everyone behind him) or the back line's order.
+    const std::vector<CallOut>& cs = calls(setup_.team_of_slot[slot], world);
+    Why heard = Why::Hold;
+    int heard_man = -1;
+    std::int32_t hear_ticks = 0;
+    told_squeeze_ = told_line_ = false;
+    for (const CallOut& c : cs) {
+        if (!hears(slot, c, world)) continue;
+        heard = c.why;
+        hear_ticks = static_cast<std::int32_t>((callConcept(c.why).hear() * Fixed64::fromInt(core::kTickRate)).raw >>
+                                               Fixed64::FRAC_BITS) + levelOf(slot).perception_delay_ticks;
+        if (c.why == Why::CallSqueeze) told_squeeze_ = true;
+        if (c.why == Why::CallLine) told_line_ = true;
+        heard_man = c.man;
+        break;
+    }
     auto tag = [&](Orders& o) {
-        if (call.talker != static_cast<int>(slot)) return;
-        o.call_due = call.due;
-        if (call.made) { o.call = Why::CallShadow; o.call_to = static_cast<std::int16_t>(call.to); }
+        told_squeeze_ = told_line_ = false;
+        o.heard = heard;
+        for (const CallOut& c : cs) {
+            if (c.talker != static_cast<int>(slot)) continue;
+            o.due = c.why;
+            if (c.made) { o.call = c.why; o.call_to = static_cast<std::int16_t>(c.to); }
+            break;
+        }
     };
+    // Turn / time: everyone behind him is as fresh as the call.
+    std::int32_t age = age0;
+    if ((heard == Why::CallTurn || heard == Why::CallTime) && hear_ticks < age) age = hear_ticks;
     if (age <= 0) {
         Orders o = ordersSeen(slot, world);
         o.look_ds = perfect ? 255 : 0;
         tag(o);
         return o;
     }
-    // Heard: his picture of the man the call is about is only hear_s (+ his
-    // own perception delay) old.
-    const bool heard = call.made && call.to == static_cast<int>(slot);
-    const std::int32_t hear_ticks =
-        static_cast<std::int32_t>((book_.call_shadow.hear() * Fixed64::fromInt(core::kTickRate)).raw >> Fixed64::FRAC_BITS) +
-        levelOf(slot).perception_delay_ticks;
+    // Shadow / man on: that one man.
+    const bool one_man = (heard == Why::CallShadow || heard == Why::CallManOn) && heard_man >= 0;
     // Placed back along his run by at most max_age_s: the linear picture
     // means nothing over long ages (the look itself can be older).
     const std::int32_t reach = age < book_.vision.max_age_ticks ? age : book_.vision.max_age_ticks;
@@ -540,7 +696,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         if (i == slot || inView(slot, world, i)) continue;
         const auto& p = world.player(i);
         Fixed64 bk = back;
-        if (heard && static_cast<int>(i) == call.man && hear_ticks < reach)
+        if (one_man && static_cast<int>(i) == heard_man && hear_ticks < reach)
             bk = Fixed64::fromInt(hear_ticks) * core::kTickDt;
         seen.seePlayerAt(i, Vec3{p.pos.x - p.vel.x * bk, p.pos.y - p.vel.y * bk, p.pos.z});
         ++unseen;
@@ -1987,7 +2143,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             Fixed64 cover = deepest - Fixed64::fromInt(2);
             bool holding_line = false;
             const int lh = book_.line_hold.bit();
-            if (ratings_[slot][lh] > 0 && applies(slot, lh, world.tickCount() / 30)) {
+            if (ratings_[slot][lh] > 0 && (applies(slot, lh, world.tickCount() / 30) || told_line_)) {
                 const auto& L = book_.line_hold;
                 Fixed64 dist = L.hold() - L.squeeze() * degree(slot, 15);
                 ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
@@ -2008,7 +2164,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             // James: "when ball is moving push up and stop as opp is
             // receiving and can play long. push up if opp is turned toward
             // their own goal with ball"] — ai::LineStep.
-            if (ratings_[slot][28] > 0 && applies(slot, 28, world.tickCount() / 30)) {
+            if (ratings_[slot][28] > 0 && (applies(slot, 28, world.tickCount() / 30) || told_squeeze_)) {
                 ConceptContext cx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
                                         half_x_, degree(slot, 28)};
                 withFlight(cx);

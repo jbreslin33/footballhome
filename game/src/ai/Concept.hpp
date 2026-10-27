@@ -709,14 +709,67 @@ private:
 // (his communication: LevelParams::speak_pct), and the winger HEARS it —
 // his picture of that man is then only hear_s (+ his own perception delay)
 // old. Rolled per second, per call.
-class CallAdjustShadow : public Concept {
+//
+// G4.71 (James 10/27: "we need whether he listens to communicaiton. really
+// for all players. same with the other calls"): every call is a Call — a
+// concept to KNOW it, the talker's communication to SAY it, the listener's
+// concentration (LevelParams::listen_pct) to HEAR it — and hear_s, how old
+// the listener's picture is once he has. `reach()` is the call's own
+// distance (man on: how close the man is; turn/time: how free he is; line:
+// how far off the line), 0 where it has none.
+class Call : public Concept {
 public:
-    CallAdjustShadow() : Concept("call-adjust-shadow", 172) {}
+    Call(const char* name, int id, const char* reach_param = nullptr, std::int64_t reach_milli = 0)
+        : Concept(name, id), reach_param_(reach_param), reach_milli_(reach_milli) {}
     void configure(const core::ModelParams& p) override;
     math::Fixed64 hear() const { return hear_; }
+    math::Fixed64 reach() const { return reach_; }
 
 private:
-    math::Fixed64 hear_;
+    const char* reach_param_;
+    std::int64_t reach_milli_;
+    math::Fixed64 hear_, reach_;
+};
+class CallAdjustShadow : public Call {
+public:
+    CallAdjustShadow() : Call("call-adjust-shadow", 172) {}
+};
+// Man on (173, core, U-10) [FA / US Soccer: the first call a kid learns]:
+// a man is closing on our man on the ball (or about to receive), within
+// near_m, and he can't see him; a teammate who can see both tells him.
+// Heard: he knows where that man is — he shields, plays it back, or plays
+// first time instead of turning into him.
+class CallManOn : public Call {
+public:
+    CallManOn() : Call("call-man-on", 173, "near_m", 5000) {}
+};
+// Turn (174, core, U-10): our man on the ball (or receiving) with his back
+// to their goal, nobody within free_m, and he hasn't looked — "turn!".
+// Heard: his picture behind him is fresh — he sees he's free and turns.
+class CallTurn : public Call {
+public:
+    CallTurn() : Call("call-turn", 174, "free_m", 7000) {}
+};
+// Time (175, core, U-12): the same, facing their goal — "time!": you're
+// free, take a touch, look up. Heard: his picture behind is fresh.
+class CallTime : public Call {
+public:
+    CallTime() : Call("call-time", 175, "free_m", 7000) {}
+};
+// Squeeze (176, core, U-14) [Sacchi: the back line steps up together on a
+// covered ball]: the keeper (the man who sees the whole line) calls the
+// step when the ball is covered. Heard: a back-line man who knows line-step
+// steps up even when his own read missed it.
+class CallSqueeze : public Call {
+public:
+    CallSqueeze() : Call("call-squeeze", 176) {}
+};
+// Line (177, core, U-14): a back-line man has dropped gap_m or more off the
+// line, playing their men onside — the keeper calls "line!". Heard: one who
+// knows line-hold holds the line even when his own read lapsed.
+class CallLine : public Call {
+public:
+    CallLine() : Call("call-line", 177, "gap_m", 2000) {}
 };
 
 // Scanning (G4.66) [Jordet et al. 2013, visual exploratory activity in
@@ -762,6 +815,8 @@ struct Vision {
     std::int32_t max_age_ticks = 90;
     // On the ball he passes to a man he can't see only if he looked within this.
     std::int32_t blind_pass_ticks = 15;
+    // A call carries this far (G4.71); further, nobody hears it.
+    math::Fixed64 voice;
     void configure(const core::ModelParams& p);
 };
 
@@ -798,6 +853,11 @@ struct ConceptBook {
     ShadowTheLine shadow_line;
     PlayOffLongBall play_off;
     CallAdjustShadow call_shadow;
+    CallManOn call_man_on;
+    CallTurn call_turn;
+    CallTime call_time;
+    CallSqueeze call_squeeze;
+    CallLine call_line;
     ScanBeforeReceive scan_receive;
     ScanDefending scan_defend;
     Vision vision;
@@ -835,6 +895,11 @@ struct ConceptBook {
         shadow_line.configure(p);
         play_off.configure(p);
         call_shadow.configure(p);
+        call_man_on.configure(p);
+        call_turn.configure(p);
+        call_time.configure(p);
+        call_squeeze.configure(p);
+        call_line.configure(p);
         scan_receive.configure(p);
         scan_defend.configure(p);
         vision.configure(p);

@@ -181,7 +181,9 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
     std::vector<double> touch_gap, touch_gap_short;
     double kick_x = 0, kick_y = 0;
     long d_why[ai::kWhyCount] = {}, d_ticks = 0;
-    long call_due = 0, call_made = 0;   // G4.70: man-ticks a call was due / made
+    // G4.70-71 calls, [0 = us, 1 = them][why]: man-ticks a call was due to a
+    // talker / he made it / a listener heard one.
+    long call_due[2][ai::kWhyCount] = {}, call_made[2][ai::kWhyCount] = {}, call_heard[2][ai::kWhyCount] = {};
     for (int m = 0; m < episodes; ++m) {
         server::GameServer::Config cfg = base;
         cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
@@ -335,9 +337,15 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                     if (s.world().player(j).team != team && !s.world().isKeeper(j)) {
                         ++d_why[static_cast<int>(s.lastOrders()[j].why)];
                         ++d_ticks;
-                        call_due += s.lastOrders()[j].call_due;
-                        call_made += s.lastOrders()[j].call_to >= 0;
                     }
+            if (live)
+                for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                    const ai::Orders& o = s.lastOrders()[j];
+                    const int side = s.world().player(j).team == team ? 0 : 1;
+                    if (o.due != ai::Why::Hold) ++call_due[side][static_cast<int>(o.due)];
+                    if (o.call_to >= 0) ++call_made[side][static_cast<int>(o.call)];
+                    if (o.heard != ai::Why::Hold) ++call_heard[side][static_cast<int>(o.heard)];
+                }
             if (!b.owner) continue;
             const auto& c = s.world().player(*b.owner);
             const double g = from_goal(b.pos.x.toDouble());
@@ -447,9 +455,18 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
             if (d_why[w] * 1000 >= d_ticks) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * d_why[w] / d_ticks);
         std::printf("\n");
     }
-    if (call_due)
-        std::printf("  %s calls (adjust your shadow): made %.0f%% of the %.1f s per episode one was due\n",
-                    them.c_str(), 100.0 * call_made / call_due, call_due / 30.0 / n);
+    for (int side = 0; side < 2; ++side) {
+        bool head = false;
+        for (int w = 0; w < ai::kWhyCount; ++w) {
+            if (!call_due[side][w]) continue;
+            if (!head) std::printf("  %s calls:", (side == 0 ? us : them).c_str());
+            head = true;
+            std::printf(" | %s: due %.1f s/ep, made %.0f%%, heard by %.2f per call", ai::kWhyNames[w] + 6,
+                        call_due[side][w] / 30.0 / n, 100.0 * call_made[side][w] / call_due[side][w],
+                        call_made[side][w] ? static_cast<double>(call_heard[side][w]) / call_made[side][w] : 0.0);
+        }
+        if (head) std::printf("\n");
+    }
     return 0;
 }
 

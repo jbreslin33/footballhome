@@ -2492,6 +2492,52 @@ full-back lost within 5 s 52% vs 57%). 30 matches, tactic B with the call:
 Lighthouse scoring more, so not claimed for the call. Next calls (taught
 by level): man on, turn, time, line, squeeze.
 
+### 8.69 G4.71 — every player listens (or doesn't); man on, turn, time, squeeze, line (mig 754)
+
+James 10/27: "yes we need whether he listens to communicaiton. really for
+all players. same with the other calls."
+
+- **HEARING for everyone:** the `concentration` attribute (mig 655, now
+  wired, the 14th; wire 0x37 1.13) → `LevelParams::listen_pct`, rolled per
+  listener per second per call: by level u10 40 · u14 55 · amateur 70 ·
+  semipro 80 · pro 90 · world 95 ([FH] starting numbers); rating bends it
+  like communication. And `physics.voice.range_m` 40: further from the
+  talker, nobody hears it.
+- **One machine for every call (`ai::Call`, `Brain::calls/says/hears`):**
+  per team per tick, which calls the moment asks for, who's due to make
+  each (`Orders::due`), whether he does (`call`/`call_to`), and whether
+  each listener takes it in (`Orders::heard`). All stateless.
+- **The calls** (all core — every side plays them at its own quality):
+  - *man on* (173, U-10): our man on the ball / receiving has a man within
+    `near_m` 5 m he can't see; the nearest mate in voice range who sees
+    both calls it. Heard: that man is `hear_s` 0.3 s old in his picture —
+    he shields / plays it back off the real threat (G4.60's keep-it).
+  - *turn* (174, U-10) / *time* (175, U-14): nobody within `free_m` 7 m,
+    and his look is stale (> blind_pass_s); back to their goal = turn,
+    facing up = time. Heard: everyone behind him is `hear_s` 0.5 s old —
+    he sees he's free, and his blind-pass gate opens.
+  - *squeeze* (176, U-14): the keeper, when line-step reads a covered
+    ball and a back-line man is a metre or more under the step. Heard: a
+    back-line man (2-5) who knows line-step steps even if his own roll
+    missed.
+  - *line* (177, U-14): the keeper, when a back-line man is `gap_m` 2 m or
+    more under the line's highest man with one of theirs between them.
+    Heard: one who knows line-hold holds it even if his own roll lapsed.
+  - *adjust your shadow* (172, G4.70) now runs on the same machine.
+- **HUD:** wire 1.13 `to` 254 = the back line ("📣 call: squeeze → back
+  line", no line drawn).
+- **Harness:** the phase report prints per team, per call: seconds due per
+  episode, % made, listeners who heard it per call made.
+
+cb-build:1, 200 episodes: Ukies (on the ball) man on due 1.3 s/ep, made
+67%, heard by 0.81; turn 0.7 s, 67%, 0.80; time 0.4 s, 61%, 0.74.
+Lighthouse squeeze 3.0 s, 66%, heard by 0.81 of 4; line 2.1 s, 65%, 0.45
+— the keeper is past voice range when the line is up near halfway. Open:
+a centre-back as second organiser (who talks for the line is a coach's
+choice). 30 matches, calls off for both (exactly G4.68's +2.60 ± 0.56)
+vs on: +2.20 ± 0.47 (4.77 – 2.57) — noise; pass completion 65.0 / 63.4%
+vs 64.5 / 63.3%. Calls change little in this measure yet; watch them.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

@@ -330,8 +330,9 @@ void PlayOffLongBall::configure(const core::ModelParams& p) {
     face_up_ = p.fixed(key("face_up_m"), 1500);
 }
 
-void CallAdjustShadow::configure(const core::ModelParams& p) {
+void Call::configure(const core::ModelParams& p) {
     hear_ = p.fixed(key("hear_s"), 500);
+    reach_ = reach_param_ ? p.fixed(key(reach_param_), reach_milli_) : math::Fixed64::zero();
 }
 
 void JumpThePass::configure(const core::ModelParams& p) {
@@ -616,6 +617,7 @@ void Vision::configure(const core::ModelParams& p) {
     max_age_ticks = static_cast<std::int32_t>((age * math::Fixed64::fromInt(core::kTickRate)).raw >> math::Fixed64::FRAC_BITS);
     const math::Fixed64 blind = p.fixed("physics.vision.blind_pass_s", 500);
     blind_pass_ticks = static_cast<std::int32_t>((blind * math::Fixed64::fromInt(core::kTickRate)).raw >> math::Fixed64::FRAC_BITS);
+    voice = p.fixed("physics.voice.range_m", 40000);
 }
 
 }  // namespace fh::game::ai

@@ -48,6 +48,7 @@ enum class Why : std::uint8_t {
     JumpPass, ShadowHelp, PackMiddle, PressFullBack, LockDoor,
     Intercept, NoTurn, Contain, ShadowLine, PlayOff,
     MarkTight, ProtectMiddle, AttackDrop, RunBackDrop, CallShadow,
+    CallManOn, CallTurn, CallTime, CallSqueeze, CallLine,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -64,6 +65,7 @@ inline constexpr const char* kWhyNames[] = {
     "mark tight (near the ball)", "protect the middle (far from the ball)",
     "attack the ball in the air", "run back for the ball in the air",
     "call: adjust your shadow",
+    "call: man on", "call: turn", "call: time", "call: squeeze", "call: line",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -84,11 +86,15 @@ struct Orders {
     // he only knows from that look.
     std::uint8_t look_ds = 255;
     std::uint8_t unseen = 0;
-    // A call he's making (G4.70, overlay + harness): what (a Why name),
-    // to whom (-1 none); `call_due` = the moment was there, said or not.
+    // A call he's making (G4.70-71, overlay + harness): what (a Why name),
+    // to whom (-1 none, kBackLine = the back line); `due` = the call the
+    // moment asked of him, said or not (Hold = none); `heard` = a call he
+    // heard this tick (Hold = none).
+    static constexpr std::int16_t kBackLine = 254;
     Why call = Why::Hold;
     std::int16_t call_to = -1;
-    bool call_due = false;
+    Why due = Why::Hold;
+    Why heard = Why::Hold;
 };
 
 class Brain {
@@ -227,12 +233,16 @@ private:
     // Play off (170, G4.69): their ball in the AIR for my man — read it on
     // the kick and attack the drop, receiving it facing their goal.
     bool attackTheDrop(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
-    // The full-back's call to the shadowing winger (172, G4.70), read from
-    // the true world for one team: due = the moment is there (his man is
-    // behind our winger, out of his sight, and in the full-back's); made =
-    // he knows it and says it this second.
-    struct ShadowCall { int talker = -1, to = -1, man = -1; bool due = false, made = false; };
-    ShadowCall shadowCall(std::uint8_t team, const core::World& world) const;
+    // Communication (G4.70-71): the calls one team's moment asks for this
+    // tick, read from the true world — who, to whom (Orders::kBackLine = the
+    // back line), about which man (-1 = everyone behind him), and whether
+    // he says it (knows the call × his communication). Cached per tick.
+    struct CallOut { Why why = Why::Hold; int talker = -1, to = -1, man = -1; bool made = false; };
+    const std::vector<CallOut>& calls(std::uint8_t team, const core::World& world) const;
+    bool says(core::SlotIndex slot, const ai::Call& c, std::uint64_t sec) const;
+    bool hears(core::SlotIndex slot, const CallOut& c, const core::World& world) const;
+    const ai::Call& callConcept(Why w) const;
+    bool backLine(core::SlotIndex slot) const { const int n = numberOf(slot); return n >= 2 && n <= 5; }
     // G4.64 Lighthouse's plan (165-167): pack the middle, then on their pass
     // to a full-back press him and lock the door on the return pass.
     bool packAndTrap(core::SlotIndex slot, const core::World& world, int sign,
@@ -299,6 +309,12 @@ private:
     // G4.66: mates the carrier being decided can't see (and hasn't just
     // looked at) — no pass to them. Set and cleared inside ordersFor().
     mutable std::uint64_t blind_ = 0;
+    // The calls cache (one entry per team) and what a back-line man was
+    // told this tick (consumed by ordersSeen's line code).
+    mutable std::uint64_t calls_tick_[2] = {~0ull, ~0ull};
+    mutable std::int64_t calls_key_[2] = {0, 0};
+    mutable std::vector<CallOut> calls_[2];
+    mutable bool told_squeeze_ = false, told_line_ = false;
     bool blind(core::SlotIndex i) const { return i < 64 && ((blind_ >> i) & 1u); }
     mutable FlightRead flight_;
     mutable std::uint64_t flight_tick_ = ~std::uint64_t{0};
