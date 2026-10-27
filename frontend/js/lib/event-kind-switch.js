@@ -3,7 +3,8 @@
 // Owner 2026-10-26: "instead of game center it could be event center … all
 // in one with pills".  Event Center is one page to the coach: a game opens
 // Game Center (screens/game-center.js, match-keyed), every other kind opens
-// the event screen (screens/event-center.js, fh_event-keyed).  Both draw
+// the event screen (screens/event-center.js, fh_event-keyed), and every
+// pill fills Event Center's week calendar with its kind.  Both draw
 // this strip at the top, so flipping type is one tap whichever is showing.
 // Labels are DB copy: message_templates kind='event_center' (mig 738).
 const EventKindSwitch = {
@@ -29,11 +30,11 @@ const EventKindSwitch = {
     </div>`;
   },
 
-  // A tap on the strip.  Games = Game Center's own entry (it lands on the
-  // next game); anything else = the event list filtered to that kind.
+  // A tap on the strip: Event Center's week calendar filled with that kind
+  // (owner 2026-10-27: "cal with pills to populate cal") — games too; a
+  // game tapped there opens Game Center.
   go(navigation, kind) {
-    if (kind === 'match') navigation.goTo('game-center', { pick: true });
-    else navigation.goTo('event-center', { pick: true, kind });
+    navigation.goTo('event-center', { pick: true, kind });
   },
 };
 

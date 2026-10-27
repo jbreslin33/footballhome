@@ -493,9 +493,9 @@ class RoleSelectionScreen extends Screen {
       // #fines (mig 534): the Men's fines by month and player.
       this.navigation.goTo('fines');
     } else if (role === 'game-center') {
-      // Not a role — the game picker (owner 2026-09-17: top level, for
-      // admins and coaches, to set lineups).
-      this.navigation.goTo('game-center', { pick: true });
+      // Not a role — the 📋 Event Center tile: the week calendar, every
+      // kind (owner 2026-10-27); a game tapped there opens Game Center.
+      this.navigation.goTo('event-center', { pick: true, kind: 'all' });
     } else if (role === 'event-center') {
       // Not a role — the attendance picker: attendance + invites for any
       // event (moved off #my, owner 2026-09-17: staff tools get dedicated

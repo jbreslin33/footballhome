@@ -528,11 +528,6 @@ class GameCenterScreen extends Screen {
              the other kinds open the event screen.  Staff doors only: the
              #my player view stays a plain game page. -->
         <div id="gc-kinds" style="display:contents;"></div>
-        <!-- Flip to another game without going back to the list: one pill
-             per posted club game (_renderGameSwitch).  Its own full-width
-             row — the header is a flex row — scrolling sideways on a phone. -->
-        <div id="gc-game-switch" role="tablist" aria-label="Switch game" hidden
-             style="flex:1 0 100%; min-width:0; display:flex; gap:6px; overflow-x:auto;"></div>
       </div>
       <!-- Three stacked regions. #gl-head (pills, the card, that post's
            tools, the Post button) and #gl-body (lineup editor) are
@@ -898,11 +893,9 @@ class GameCenterScreen extends Screen {
       }
       const kind = e.target.closest('[data-event-kind]');
       if (kind) {
-        if (kind.getAttribute('data-event-kind') !== 'match') EventKindSwitch.go(this.navigation, kind.getAttribute('data-event-kind'));
+        EventKindSwitch.go(this.navigation, kind.getAttribute('data-event-kind'));
         return;
       }
-      const flip = e.target.closest('[data-switch-game]');
-      if (flip) { this._switchGame(Number(flip.getAttribute('data-switch-game'))); return; }
       // Lineup version bar (Official | My draft | … | Compare) and Make official are buttons: click, not change.
       const viewBtn = e.target.closest('[data-lineup-view]');
       if (viewBtn) { this._applyView(viewBtn.getAttribute('data-lineup-view')); return; }
@@ -1195,9 +1188,6 @@ class GameCenterScreen extends Screen {
       return;
     }
     if (sub) sub.textContent = [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
-    // The switcher is up on enter — from the last feed, or just this game
-    // until the list lands; nothing waits on it.
-    this._renderGameSwitch();
     this._loadGames();
     // Copy rows (dues flag, migration 416) — cached across screens.
     if (window.MessageCopy) MessageCopy.load(this.auth).catch(() => {});
@@ -2056,7 +2046,7 @@ class GameCenterScreen extends Screen {
   async _loadGames() {
     // Flipping pills re-enters the screen each time; a feed this fresh is
     // not worth fetching again.
-    if (this._feedGames && Date.now() - this._feedAt < 60000) { this._renderGameSwitch(); return; }
+    if (this._feedGames && Date.now() - this._feedAt < 60000) return;
     try {
       // From this week's Monday, so the switcher keeps the games already
       // played this week; the picker itself only lists what is still to come.
@@ -2080,7 +2070,6 @@ class GameCenterScreen extends Screen {
     if (!this.matchId && this._enterNextGame()) return;
     if (!this.matchId) this._render();
     this._paintMyAvailability();
-    this._renderGameSwitch();
   }
 
   // The top-level tile lands on a game, not a list — owner 2026-09-18: "it
@@ -2125,46 +2114,6 @@ class GameCenterScreen extends Screen {
     const fallback = this._weekStart(new Date()); fallback.setDate(fallback.getDate() + 7);
     const winEnd = ev.schedule_window_end ? new Date(ev.schedule_window_end) : fallback;
     return !isNaN(t) && t <= winEnd;
-  }
-
-  // The header's game pills: the posted club games — this week's, plus
-  // whatever the release window has opened early — in kickoff order, this
-  // game lit.  Owner 2026-09-18: "pills instead of drop down to cycle
-  // through quicker".  Hidden on the picker and when there is nothing else
-  // to flip to; before the list is in, this game's pill stands alone.
-  _renderGameSwitch() {
-    const strip = this.find('#gc-game-switch');
-    if (!strip) return;
-    const games = (this.games || []).filter(ev => ev.match_id != null
-      && (ev.match_id === this.matchId || this._isPosted(ev)));
-    if (!this.matchId || (this.games && !games.some(ev => ev.match_id !== this.matchId))) {
-      strip.hidden = true;
-      strip.style.display = 'none';
-      return;
-    }
-    const pill = (id, top, bottom, active) => `<button type="button" role="tab" aria-selected="${active}"
-      ${id != null ? `data-switch-game="${id}"` : ''} class="btn ${active ? 'btn-primary' : 'btn-secondary'}"
-      style="flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:1px;
-             font-size:0.72rem; line-height:1.25; padding:6px 10px; white-space:nowrap;">
-        <span style="font-weight:700;">${this.escapeHtml(top)}</span>
-        <span style="opacity:0.85;">${this.escapeHtml(bottom)}</span></button>`;
-    const short = (ev) => {
-      const d = new Date(ev.starts_at);
-      return isNaN(d) ? '' : `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-    };
-    // Board labels on top ("🏆 APSL"), kickoff and opponent under them.
-    const teamsOf = (ev) => (Array.isArray(ev.teams) ? ev.teams : [])
-      .map(t => t.label || t.name).filter(Boolean).join(' + ') || 'Game';
-    const vsOf = (ev) => ev.opponent ? `${ev.is_home === false ? '@' : 'vs'} ${ev.opponent}` : '';
-    const known = games.some(ev => ev.match_id === this.matchId);
-    strip.innerHTML =
-      (known ? '' : pill(null, this.title || 'This game', this.when || '', true)) +
-      games.map(ev => pill(ev.match_id, teamsOf(ev), [short(ev), vsOf(ev)].filter(Boolean).join(' · '),
-                           ev.match_id === this.matchId)).join('');
-    strip.hidden = false;
-    strip.style.display = 'flex';
-    const lit = strip.querySelector('[aria-selected="true"]');
-    if (lit && lit.scrollIntoView) lit.scrollIntoView({ block: 'nearest', inline: 'center' });
   }
 
   // Same page, another game: keep the pill and the door we came in by, and
