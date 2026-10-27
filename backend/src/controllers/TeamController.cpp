@@ -461,7 +461,12 @@ Response TeamController::handleSetRosterStatusForPerson(const Request& request) 
             // accessible online official roster").  The 🌐 pull sets it
             // on an exact name match; everything else stays manual —
             // including moving someone OFF On Roster.
-            if (code == "on_roster") {
+            // ...except back to On Roster for a man the list already has
+            // (Dropping → changed our mind, mig 777).
+            if (code == "on_roster" && !db_->query(
+                    "SELECT 1 WHERE fh_on_league_list($1::int, $2::int)", {team_id, person_id}).empty()) {
+                // allowed — he is on the league's list
+            } else if (code == "on_roster") {
                 pqxx::result online = db_->query(
                     "SELECT 1 FROM official_roster_sources s "
                     " WHERE s.team_id = $1::int AND s.is_active "
@@ -472,6 +477,33 @@ Response TeamController::handleSetRosterStatusForPerson(const Request& request) 
                 }
             }
             statusId = allowed[0]["id"].as<std::string>();
+        }
+
+        // Roster moves (mig 777, owner 2026-10-27: "not out of 'official'
+        // except to put them in 'dropping' col and then pending drop").
+        // On the league's own list → On Roster / Dropping / Pending Drop
+        // only; the league takes him off, the 🌐 pull clears him.  Not on
+        // a list the team has → no drop lane (nothing to drop).
+        {
+            pqxx::result lane = db_->query(
+                "SELECT fh_on_league_list($1::int, $2::int) AS on_list, "
+                "       EXISTS (SELECT 1 FROM official_roster_sources s JOIN official_roster_names n ON n.source_id = s.id "
+                "                WHERE s.team_id = $1::int AND s.is_active) AS has_list, "
+                "       rs.board_section, COALESCE(rs.counts_as_on_roster, false) AS counts "
+                "  FROM (SELECT 1) one LEFT JOIN roster_statuses rs ON rs.code = NULLIF($3, '')",
+                {team_id, person_id, hasCode ? code : std::string()});
+            const bool onList  = lane[0]["on_list"].as<bool>();
+            const bool hasList = lane[0]["has_list"].as<bool>();
+            const std::string section = lane[0]["board_section"].is_null() ? "" : lane[0]["board_section"].c_str();
+            const bool dropLane = section == "drop" || section == "pending_drop";
+            if (onList && !(lane[0]["counts"].as<bool>() || dropLane)) {
+                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false,
+                    "He is on the league's own roster for this team — move him to Dropping or Pending Drop; the league takes him off."));
+            }
+            if (!onList && hasList && dropLane) {
+                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false,
+                    "He is not on the league's roster for this team — there is nothing to drop."));
+            }
         }
 
         pqxx::result result = db_->query(

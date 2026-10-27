@@ -582,10 +582,14 @@ class RosterScreenBase extends Screen {
   //     split out, so the section stays 1:1 with the list.  A list name
   //     with no FH person, or not on this team in FH, is a read-only row.
   //     A column with no list uses the On Roster status instead.
-  //   PROPOSED ADDS — status board_section 'proposed', grouped by step.
-  //   REMOVE — the planned drops again as name + official # rows.
+  //   PROPOSED ADDS / PENDING ADD — board_section proposed / pending_add
+  //     (a step we owe / submitted), each grouped by step.
+  //   DROPPING / PENDING DROP — board_section drop / pending_drop, as name
+  //     + official # rows (their cards stay in OFFICIAL, flagged).
   //   Nothing else: non-roster players and call-downs are a Team thing.
-  // TEAM — the functional side, by columnCategoryOf: PLAYS, ⭐ CALL-DOWNS
+  //   The card's status dropdown is the move control (mig 777).
+  // TEAM — the functional (RSVP) side, by columnCategoryOf; each card
+  //   wears a 📋 chip per official roster he is on: PLAYS, ⭐ CALL-DOWNS
   //   (standing invites riding in from other columns), ↔ CALL INS,
   //   📄 NOT FUNCTIONAL (paper spots), 🩹 INJURED.
   // Every card keeps its true coach rank (#N) from the full column.
@@ -622,12 +626,26 @@ class RosterScreenBase extends Screen {
       const st = p && RosterScreenBase.rosterStatusByCode(p.rosterStatus);
       return (st && st.boardSection) || null;
     };
-    const dropChip = copy('board_planned_drop_chip') || '⬇ PLANNED DROP';
+    const laneFlag = {
+      drop:         [copy('board_planned_drop_chip') || '⬇ DROPPING', '#f97316', '#fdba74'],
+      pending_drop: [copy('board_pending_drop_chip') || '⏳ PENDING DROP', '#dc2626', '#fca5a5'],
+    };
+    // Team pill (owner 2026-10-27: "team pill should show on their card what
+    // official rosters they are on with labels") — one 📋 chip per column
+    // whose league list has him.
+    const listChips = (p) => (data.columns || []).filter(c => c.teamId && this.onLeagueList(c.teamId, p.personId))
+      .map(c => `<span title="On the league's official roster for ${esc(c.label || '')}"
+          style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
+                 background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">📋 ${esc(RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()))}</span>`).join(' ');
     const card = (p) => {
-      const html = this.renderPlayer(p, data.columns, col, bucket.indexOf(p) + 1, bucket.length);
-      return sectionOf(p) === 'drop'
-        ? `<div style="border:2px solid #f97316; border-radius:9px; padding:2px;">
-             <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:#fdba74; padding:0 4px 2px;">${esc(dropChip)}</div>${html}</div>`
+      const rank = bucket.indexOf(p) + 1;
+      const chips = this.boardView === 'team' ? listChips(p) : '';
+      const html = this.renderPlayer(chips ? { ...p, nameChipHtml: (p.nameChipHtml || '') + chips } : p,
+        data.columns, col, rank, bucket.length);
+      const flag = this.boardView === 'roster' && laneFlag[sectionOf(p)];
+      return flag
+        ? `<div style="border:2px solid ${flag[1]}; border-radius:9px; padding:2px;">
+             <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:${flag[2]}; padding:0 4px 2px;">${esc(flag[0])}</div>${html}</div>`
         : html;
     };
     const ordered = (list) => {
@@ -658,6 +676,7 @@ class RosterScreenBase extends Screen {
     const BLUE  = ['#60a5fa', 'rgba(96,165,250,0.14)'];
     const ROSE  = ['#fb7185', 'rgba(251,113,133,0.14)'];
     const ORANGE = ['#f97316', 'rgba(249,115,22,0.14)'];
+    const RED    = ['#ef4444', 'rgba(239,68,68,0.14)'];
     const riders = ridersCount ? head(copy('board_calldowns_h') || '⭐ CALL-DOWNS', ridersCount, ...BLUE) + ridersHtml : '';
 
     if (this.boardView === 'team') {
@@ -675,55 +694,59 @@ class RosterScreenBase extends Screen {
         <span style="opacity:0.55; min-width:1.6em; text-align:right;">${i + 1}</span>
         <span style="font-weight:700;">${esc(name)}</span>
         <span style="font-size:0.65rem; color:#f59e0b;">${esc(note)}</span></div>`;
-    const dropsNote = (n) => n ? (copy('board_planned_drops', { n }) || `${n} planned drop`) : '';
     const official = this.leagueListFor(col.teamId);
-    const dropList = [];   // [{ p, n }] — planned drops + their official #
-    let officialHtml, rest;
+    const lanes = { drop: [], pending_drop: [] };   // [{ p, n }] — + their official #
+    const addLane = (p, n) => { const l = lanes[sectionOf(p)]; if (l && !l.some(d => d.p === p)) l.push({ p, n }); };
+    let rows, officialCount, rest;
     if (official) {
       const byPerson = new Map(bucket.map(p => [Number(p.personId), p]));
       const used = new Set();
-      const rows = official.names.map((n, i) => {
+      rows = official.names.map((n, i) => {
         const id = official.personIds[i];
         const p = id != null && byPerson.get(Number(id));
-        if (p && !used.has(p)) { used.add(p); return card(p); }
+        if (p && !used.has(p)) { used.add(p); addLane(p, i + 1); return card(p); }
         return nameRow(i, n, id == null
           ? (copy('board_official_unmatched') || 'not in Football Home')
           : (copy('board_official_off_team') || 'not on this team in Football Home'));
       }).join('');
-      official.personIds.forEach((id, i) => {
-        const p = id != null && byPerson.get(Number(id));
-        if (p && sectionOf(p) === 'drop' && !dropList.some(d => d.p === p)) dropList.push({ p, n: i + 1 });
-      });
-      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', official.names.length, ...GREEN, dropsNote(dropList.length)) + rows;
+      officialCount = official.names.length;
       rest = shown.filter(p => !used.has(p));
     } else {
-      const on = shown.filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus));
-      ordered(on).forEach((p, i) => { if (sectionOf(p) === 'drop') dropList.push({ p, n: i + 1 }); });
-      officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', on.length, ...GREEN, dropsNote(dropList.length))
-        + (on.length ? ordered(on).map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+      const on = ordered(shown.filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
+      on.forEach((p, i) => addLane(p, i + 1));
+      rows = on.length ? on.map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>';
+      officialCount = on.length;
       rest = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
     }
-    // PROPOSED ADDS, one sub-group per paperwork step in pipeline order.
-    const proposed = rest.filter(p => sectionOf(p) === 'proposed');
-    let proposedHtml = '';
-    if (proposed.length) {
-      const steps = RosterScreenBase.ROSTER_STATUSES.filter(s => s.boardSection === 'proposed');
-      proposedHtml = head(copy('board_proposed_h') || 'PROPOSED ADDS', proposed.length, ...BLUE)
-        + steps.map(s => {
-          const list = proposed.filter(p => p.rosterStatus === s.code);
-          return list.length ? subHead(s.displayName || s.code, list.length) + ordered(list).map(card).join('') : '';
+    const extra = [
+      lanes.drop.length ? (copy('board_planned_drops', { n: lanes.drop.length }) || `${lanes.drop.length} dropping`) : '',
+      lanes.pending_drop.length ? (copy('board_pending_drops', { n: lanes.pending_drop.length }) || `${lanes.pending_drop.length} pending drop`) : '',
+    ].filter(Boolean).join(' · ');
+    const officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', officialCount, ...GREEN, extra) + rows;
+    // An add lane, one sub-group per paperwork step in pipeline order.
+    const addSection = (lane, label, colors) => {
+      const list = rest.filter(p => sectionOf(p) === lane);
+      if (!list.length) return '';
+      return head(label, list.length, ...colors)
+        + RosterScreenBase.ROSTER_STATUSES.filter(st => st.boardSection === lane).map(st => {
+          const sub = list.filter(p => p.rosterStatus === st.code);
+          return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(card).join('') : '';
         }).join('');
-    }
-    // REMOVE — the planned drops as a to-do list: name + official #,
-    // read-only (their cards stay in OFFICIAL ROSTER, 1:1 with the list).
-    const dropRows = dropList.map(({ p, n }) => nameRow(n - 1,
-      p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim(), '')).join('');
-    const removeHtml = dropList.length
-      ? head(copy('board_remove_h') || 'REMOVE', dropList.length, ...ORANGE) + dropRows : '';
-    // Owner 2026-10-27: "for rosters we only need official, proposed and
-    // remove … we dont need evan etc there for apsl, that is a team thing"
-    // — non-roster players and call-downs live on the Team pill only.
-    return officialHtml + proposedHtml + removeHtml;
+    };
+    // A drop lane — name + official # rows; the cards stay in OFFICIAL
+    // ROSTER (1:1 with the list), the dropdown there moves them.
+    const nameOf = (p) => p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim();
+    const dropSection = (lane, label, colors) => lanes[lane].length
+      ? head(label, lanes[lane].length, ...colors) + lanes[lane].map(({ p, n }) => nameRow(n - 1, nameOf(p), '')).join('')
+      : '';
+    // Owner 2026-10-27: the Roster pill is "basically a way for me to
+    // organize moves" — OFFICIAL, the add lanes, the drop lanes; nothing
+    // else (non-roster players and call-downs are a Team-pill thing).
+    return officialHtml
+      + addSection('proposed', copy('board_proposed_h') || 'PROPOSED ADDS', BLUE)
+      + addSection('pending_add', copy('board_pending_add_h') || 'PENDING ADD', AMBER)
+      + dropSection('drop', copy('board_dropping_h') || 'DROPPING', ORANGE)
+      + dropSection('pending_drop', copy('board_pending_drop_h') || 'PENDING DROP', RED);
   }
 
   // The league's own list for a team column — {names, personIds} from the
@@ -920,16 +943,30 @@ class RosterScreenBase extends Screen {
     // player OFF On Roster stays manual; the selected value still shows).
     const onlineRoster = Array.isArray(this._data && this._data.onlineRosterTeams)
       && this._data.onlineRosterTeams.includes(col.teamId);
+    // Roster moves (mig 777, owner 2026-10-27: "not out of 'official'
+    // except to put them in 'dropping' col and then pending drop"): a man
+    // on this team's league list moves only between On Roster, Dropping
+    // and Pending Drop (no blank either); one off a list the team has
+    // gets no drop lane.  TeamController enforces the same rule.
+    const onList  = this.onLeagueList(col.teamId, player.personId);
+    const hasList = !!this.leagueListFor(col.teamId);
+    const dropLane = (st) => st.boardSection === 'drop' || st.boardSection === 'pending_drop';
+    const offLane = (st) => onList ? !(st.countsAsOnRoster || dropLane(st)) : (hasList && dropLane(st));
     const opts = options.map(s => {
-      const locked = onlineRoster && s.code === 'on_roster' && current !== 'on_roster';
-      return `<option value="${esc(s.code)}" ${locked ? 'disabled' : ''}
-        title="${esc(locked ? "Granted by the league's own list — pull 🌐 Roster" : (s.description || ''))}"
-        ${current === s.code ? 'selected' : ''}>${esc(s.displayName || s.code)}${locked ? ' (via 🌐)' : ''}</option>`;
+      const viaPull = onlineRoster && s.code === 'on_roster' && current !== 'on_roster' && !onList;
+      const laneOff = !viaPull && offLane(s) && s.code !== current;
+      const tip = viaPull ? "Granted by the league's own list — pull 🌐 Roster"
+        : laneOff ? (onList ? "On the league's list — only Dropping / Pending Drop; the league takes him off"
+                            : "Not on the league's list — nothing to drop")
+        : (s.description || '');
+      return `<option value="${esc(s.code)}" ${viaPull || laneOff ? 'disabled' : ''}
+        title="${esc(tip)}"
+        ${current === s.code ? 'selected' : ''}>${esc(s.displayName || s.code)}${viaPull ? ' (via 🌐)' : ''}</option>`;
     }).join('\n         ');
     return `<select class="mr-status-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
                title="${esc(title)}"
                style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.rosterStatusStyle(current)} ${RosterScreenBase.SELECT_WIDTH_STYLE}">
-         <option value="" ${!current ? 'selected' : ''}>Status: —</option>
+         <option value="" ${!current ? 'selected' : ''} ${onList && current ? 'disabled' : ''}>Status: —</option>
          ${opts}
        </select>${this.renderHealthControl(player)}`;
   }

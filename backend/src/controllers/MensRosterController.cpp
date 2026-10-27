@@ -447,7 +447,7 @@ Response MensRosterController::handleOfficialRosterRefresh(const Request& reques
             // 🟢 On Roster is granted by the league's list (2026-10-21):
             // the person the insert trigger matched (exact name, per-team
             // name or alias row — mig 769; fuzzy drift stays human via the
-            // 🌐 panel) — and only UPGRADES paperwork states;
+            // 🌐 panel) — and only UPGRADES the add lanes (mig 777);
             // suspended / possible_drop / an existing on_roster are
             // never touched, and absence never auto-revokes.
             tx->exec_params(R"SQL(
@@ -455,11 +455,22 @@ Response MensRosterController::handleOfficialRosterRefresh(const Request& reques
                    SET roster_status_id = (SELECT id FROM roster_statuses WHERE code = 'on_roster')
                  WHERE tp.team_id = $1 AND tp.removed_at IS NULL
                    AND (tp.roster_status_id IS NULL OR tp.roster_status_id IN
-                         (SELECT id FROM roster_statuses WHERE code IN
-                           ('not_on_roster','awaiting_approval','needs_itc','submitted_itc',
-                            'needs_transfer','awaiting_transfer','awaiting_roster_spot',
-                            'needs_docs','has_docs')))
+                         (SELECT id FROM roster_statuses
+                           WHERE code = 'not_on_roster' OR board_section IN ('proposed', 'pending_add')))
                    AND tp.person_id IN (
+                         SELECT n.person_id FROM official_roster_names n
+                          WHERE n.source_id = $2 AND n.person_id IS NOT NULL))SQL",
+                teamId, sourceIdNum);
+            // ⏳ The league took him off (mig 777): a Dropping / Pending
+            // Drop player the fresh list no longer has is done — cleared
+            // to Not on Roster (he stays on the FH team; the Team pill
+            // still has him).  Only drop lanes ever auto-clear.
+            tx->exec_params(R"SQL(
+                UPDATE team_persons tp
+                   SET roster_status_id = (SELECT id FROM roster_statuses WHERE code = 'not_on_roster')
+                 WHERE tp.team_id = $1 AND tp.removed_at IS NULL
+                   AND tp.roster_status_id IN (SELECT id FROM roster_statuses WHERE board_section IN ('drop', 'pending_drop'))
+                   AND tp.person_id NOT IN (
                          SELECT n.person_id FROM official_roster_names n
                           WHERE n.source_id = $2 AND n.person_id IS NOT NULL))SQL",
                 teamId, sourceIdNum);
