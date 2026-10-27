@@ -417,7 +417,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
 
         std::string query = R"(
             SELECT ml.player_id, ml.is_starter, ml.position_id,
-                   ml.slot_number, ml.zone,
+                   ml.slot_number, ml.zone, ml.shares_position_id, ml.share_order,
                    fh_team_first_name(ml.team_id, pe.id, pe.first_name) AS first_name,
                    fh_team_last_name(ml.team_id, pe.id, pe.last_name)   AS last_name,
                    pos.abbreviation as position
@@ -433,7 +433,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         
         // Also get metadata
         pqxx::result metaResult = db_->query(
-            "SELECT m.formation_id, m.roster_size, m.notes, f.code AS formation_code "
+            "SELECT m.formation_id, m.roster_size, m.notes, m.split_squad, f.code AS formation_code "
             "  FROM match_lineup_metadata m LEFT JOIN formations f ON f.id = m.formation_id WHERE m.match_id = $1",
             {matchId}
         );
@@ -507,8 +507,9 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
             json << "\"formationCode\":" << (metaResult[0]["formation_code"].is_null() ? "null" : "\"" + escapeJson(metaResult[0]["formation_code"].c_str()) + "\"") << ",";
             json << "\"rosterSize\":" << metaResult[0]["roster_size"].c_str() << ",";
             json << "\"notes\":" << (metaResult[0]["notes"].is_null() ? "null" : "\"" + escapeJson(metaResult[0]["notes"].c_str()) + "\"") << ",";
+            json << "\"splitSquad\":" << (metaResult[0]["split_squad"].as<bool>() ? "true" : "false") << ",";
         } else {
-            json << "\"formationId\":null,\"formationCode\":null,\"rosterSize\":20,\"notes\":null,";
+            json << "\"formationId\":null,\"formationCode\":null,\"rosterSize\":20,\"notes\":null,\"splitSquad\":false,";
         }
         
         json << "\"lineup\":[";
@@ -524,6 +525,9 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
             json << "\"positionId\":" << (row["position_id"].is_null() ? "null" : row["position_id"].c_str()) << ",";
             json << "\"slotNumber\":" << (row["slot_number"].is_null() ? "null" : row["slot_number"].c_str()) << ",";
             json << "\"zone\":\"" << (row["zone"].is_null() ? "not_selected" : row["zone"].c_str()) << "\",";
+            // A bench player sharing a starting position (mig 763).
+            json << "\"sharesPositionId\":" << (row["shares_position_id"].is_null() ? "null" : row["shares_position_id"].c_str()) << ",";
+            json << "\"shareOrder\":" << (row["share_order"].is_null() ? "null" : row["share_order"].c_str()) << ",";
             json << "\"position\":" << (row["position"].is_null() ? "null" : "\"" + std::string(row["position"].c_str()) + "\"") << ",";
             json << "\"firstName\":\"" << escapeJson(row["first_name"].c_str()) << "\",";
             json << "\"lastName\":\"" << escapeJson(row["last_name"].c_str()) << "\"";
@@ -726,6 +730,19 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
             }
         }
         
+        // Split squad (mig 763): only when the save carries the flag.
+        {
+            static const std::regex splitPattern(R"("splitSquad"\s*:\s*(true|false))");
+            std::smatch m;
+            if (std::regex_search(body, m, splitPattern)) {
+                db_->query(R"(
+                    INSERT INTO match_lineup_metadata (match_id, team_id, roster_size, split_squad, created_by_user_id, updated_at)
+                    VALUES ($1::int, $2::int, 0, $3::boolean, $4::int, CURRENT_TIMESTAMP)
+                    ON CONFLICT (match_id, team_id) DO UPDATE SET split_squad = EXCLUDED.split_squad, updated_at = CURRENT_TIMESTAMP
+                )", {matchId, teamId, m[1].str(), userId});
+            }
+        }
+
         // Sub-cards pass-on needs the zones this save replaces: snapshot
         // person → zone before the wipe (players hop match_lineups rows
         // by player_id; jobs live on person_id).
@@ -799,15 +816,23 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
                 std::string objStr = (*it)[0].str();
                 std::string playerId = (*it)[1].str();
 
-                std::smatch slotMatch;
+                std::smatch slotMatch, shareMatch, orderMatch;
                 std::string slotStr = std::regex_search(objStr, slotMatch, slotPattern) ? slotMatch[1].str() : "";
+                // Sharing a starting position (mig 763): which one, and
+                // in what order (2 = next in after the starter).
+                static const std::regex sharePattern(R"("sharesPositionId"\s*:\s*(\d+))");
+                static const std::regex orderPattern(R"("shareOrder"\s*:\s*(\d+))");
+                std::string shareStr = std::regex_search(objStr, shareMatch, sharePattern) ? shareMatch[1].str() : "";
+                std::string orderStr = std::regex_search(objStr, orderMatch, orderPattern) ? orderMatch[1].str() : "";
+                if (shareStr.empty() || orderStr.empty() || std::stoi(orderStr) < 2) { shareStr.clear(); orderStr.clear(); }
 
                 db_->query(
-                    "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, slot_number, zone) "
-                    "VALUES ($1, $2, $3, false, NULLIF($4,'')::int, 'bench') "
+                    "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, slot_number, zone, shares_position_id, share_order) "
+                    "VALUES ($1, $2, $3, false, NULLIF($4,'')::int, 'bench', NULLIF($5,'')::int, NULLIF($6,'')::smallint) "
                     "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = false, "
-                    "slot_number = EXCLUDED.slot_number, zone = 'bench'",
-                    {matchId, playerId, teamId, slotStr}
+                    "slot_number = EXCLUDED.slot_number, zone = 'bench', "
+                    "shares_position_id = EXCLUDED.shares_position_id, share_order = EXCLUDED.share_order",
+                    {matchId, playerId, teamId, slotStr, shareStr, orderStr}
                 );
                 insertedCount++;
             }

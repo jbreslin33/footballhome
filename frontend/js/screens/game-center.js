@@ -305,6 +305,12 @@ class GameCenterScreen extends EventScreen {
     // Lineup View's Bench section always shows alphabetical regardless
     // (see _renderPlayerView), so this never becomes a fairness dispute.
     this.benchOrder    = new Map(); // playerId:Number -> order:Number (1-based)
+    // Shared positions (mig 763): a bench player who comes on for a
+    // starting position — playerId -> { pos, order } (order 2 = next in
+    // after the starter).  splitSquad = draw starters as Squad A and
+    // every 2nd as Squad B.
+    this.shares        = new Map();
+    this.splitSquad    = false;
     // Availability/RSVP pills in the Current Lineup card are opt-in
     // (2026-08-22, owner directive: "toggle off 'stats' like
     // availability and attendance... at top for current lineup and
@@ -749,7 +755,7 @@ class GameCenterScreen extends EventScreen {
   // answers. Only these fields — anything volatile (stats, timestamps)
   // would make every poll look like a change.
   _liveFp(lineupRows, statsRows, invites) {
-    const l = (lineupRows || []).map(r => [Number(r.playerId), r.zone || null, r.positionId ?? null, r.slotNumber ?? null]).sort((a, b) => a[0] - b[0]);
+    const l = (lineupRows || []).map(r => [Number(r.playerId), r.zone || null, r.positionId ?? null, r.slotNumber ?? null, r.sharesPositionId ?? null, r.shareOrder ?? null]).sort((a, b) => a[0] - b[0]);
     const s = (statsRows || []).map(r => [Number(r.playerId), r.gameRsvp ?? null]).sort((a, b) => a[0] - b[0]);
     const i = ((invites && invites.invites) || []).map(v => [Number(v.person_id), v.response ?? null]).sort((a, b) => a[0] - b[0]);
     return JSON.stringify([l, s, i]);
@@ -850,6 +856,7 @@ class GameCenterScreen extends EventScreen {
     this.zones = new Map();
     this.positions = new Map();
     this.benchOrder = new Map();
+    this.shares = new Map();
     for (const row of (data.lineup || [])) {
       if (row.zone && row.zone !== 'not_selected') {
         this.zones.set(Number(row.playerId), row.zone);
@@ -860,7 +867,11 @@ class GameCenterScreen extends EventScreen {
       if (row.zone === 'bench' && row.slotNumber != null) {
         this.benchOrder.set(Number(row.playerId), Number(row.slotNumber));
       }
+      if (row.zone === 'bench' && row.sharesPositionId != null && row.shareOrder != null) {
+        this.shares.set(Number(row.playerId), { pos: Number(row.sharesPositionId), order: Number(row.shareOrder) });
+      }
     }
+    if (data.splitSquad !== undefined) this.splitSquad = !!data.splitSquad;
     this.official = this._snapshot();
     this.stats = new Map();
     for (const row of (data.rosterStats || [])) {
@@ -1067,6 +1078,9 @@ class GameCenterScreen extends EventScreen {
         this._toggleZone(playerId, zone);
         return;
       }
+      if (e.target.closest('[data-gc-split]') && this.isCoach) { this._toggleSplitSquad(); return; }
+      const fillBtn = e.target.closest('[data-gc-split-fill]');
+      if (fillBtn && this.isCoach) { this._fillSecondSpots(); this._render(); this._scheduleSave(); return; }
       const statsToggle = e.target.closest('#gl-stats-toggle');
       if (statsToggle && this.isCoach) {
         this.showLineupStats = !this.showLineupStats;
@@ -1262,6 +1276,8 @@ class GameCenterScreen extends EventScreen {
       this.zones = new Map();
       this.positions = new Map();
       this.benchOrder = new Map();
+      this.shares = new Map();
+      this.splitSquad = !!lineupData.data.splitSquad;
       for (const row of (lineupData.data.lineup || [])) {
         if (row.zone && row.zone !== 'not_selected') {
           this.zones.set(Number(row.playerId), row.zone);
@@ -1271,6 +1287,9 @@ class GameCenterScreen extends EventScreen {
         }
         if (row.zone === 'bench' && row.slotNumber != null) {
           this.benchOrder.set(Number(row.playerId), Number(row.slotNumber));
+        }
+        if (row.zone === 'bench' && row.sharesPositionId != null && row.shareOrder != null) {
+          this.shares.set(Number(row.playerId), { pos: Number(row.sharesPositionId), order: Number(row.shareOrder) });
         }
       }
       this.realIsCoach = this.isCoach;
@@ -1473,6 +1492,7 @@ class GameCenterScreen extends EventScreen {
       }
     } else {
       this.benchOrder.delete(playerId);
+      this.shares.delete(playerId);
     }
     this._render();
     this._scheduleSave();
@@ -1512,6 +1532,7 @@ class GameCenterScreen extends EventScreen {
     if (positionId == null) {
       this.zones.delete(playerId);
       this.positions.delete(playerId);
+      this.shares.delete(playerId);
       this._render();
       this._scheduleSave();
       return;
@@ -1531,6 +1552,7 @@ class GameCenterScreen extends EventScreen {
     this.zones.set(playerId, 'starter');
     this.positions.set(playerId, positionId);
     this.benchOrder.delete(playerId);   // a promoted bench player's slot number is meaningless now
+    this.shares.delete(playerId);
     this._render();
     this._scheduleSave();
   }
@@ -1566,6 +1588,7 @@ class GameCenterScreen extends EventScreen {
       zone: this.zones.get(playerId) ?? null,
       positionId: this.positions.get(playerId) ?? null,
       benchOrder: this.benchOrder.get(playerId) ?? null,
+      share: this.shares.get(playerId) ? { ...this.shares.get(playerId) } : null,
     };
   }
 
@@ -1573,10 +1596,12 @@ class GameCenterScreen extends EventScreen {
     this.zones.delete(playerId);
     this.positions.delete(playerId);
     this.benchOrder.delete(playerId);
+    this.shares.delete(playerId);
     if (!pl || !pl.zone) return;
     this.zones.set(playerId, pl.zone);
     if (pl.zone === 'starter' && pl.positionId != null) this.positions.set(playerId, pl.positionId);
     if (pl.zone === 'bench' && pl.benchOrder != null) this.benchOrder.set(playerId, pl.benchOrder);
+    if (pl.zone === 'bench' && pl.share) this.shares.set(playerId, { ...pl.share });
   }
 
   _swapPlayers(aId, bId) {
@@ -1584,6 +1609,92 @@ class GameCenterScreen extends EventScreen {
     const b = this._placementOf(bId);
     this._applyPlacement(aId, b);
     this._applyPlacement(bId, a);
+  }
+
+  // ── Shared positions (mig 763, owner 2026-10-27: "each position has x
+  // players you can put in") ──────────────────────────────────────────
+  // The starter is 1st; the bench players sharing the spot are 2nd, 3rd …
+  // in share order.  They stay zone 'bench' — only the drawing differs.
+
+  _sharersOf(positionId) {
+    return [...this.shares.entries()].filter(([, sh]) => sh.pos === positionId)
+      .sort((a, b) => a[1].order - b[1].order).map(([pid]) => pid);
+  }
+
+  // Shares only live on the bench, and orders run 2, 3, … with no gaps.
+  _normShares() {
+    for (const pid of [...this.shares.keys()]) if (this.zones.get(pid) !== 'bench') this.shares.delete(pid);
+    const byPos = new Map();
+    for (const [pid, sh] of this.shares.entries()) { if (!byPos.has(sh.pos)) byPos.set(sh.pos, []); byPos.get(sh.pos).push([pid, sh.order]); }
+    for (const [pos, list] of byPos) list.sort((a, b) => a[1] - b[1]).forEach(([pid], i) => this.shares.set(pid, { pos, order: i + 2 }));
+  }
+
+  _nth(n) { const v = n % 100; return n + (v >= 11 && v <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th')); }
+
+  // {playerId} joins {positionId} as its next sharer — onto the bench first
+  // if they are not there.  false when the bench is full and can't extend.
+  _sharePosition(playerId, positionId) {
+    if (this.zones.get(playerId) !== 'bench') {
+      if (this._benchFull(playerId)) {
+        if (!this._canExtendSquad()) return false;
+        this._extendSquad();
+      }
+      this._applyPlacement(playerId, { zone: 'bench', positionId: null, benchOrder: this._nextBenchOrder(playerId) });
+    }
+    this.shares.set(playerId, { pos: positionId, order: 1000 });
+    this._normShares();
+    return true;
+  }
+
+  // One up the order at their position (3rd → 2nd).
+  _shareUp(playerId) {
+    const sh = this.shares.get(playerId); if (!sh || sh.order <= 2) return;
+    const list = this._sharersOf(sh.pos); const i = list.indexOf(playerId);
+    [list[i - 1], list[i]] = [list[i], list[i - 1]];
+    list.forEach((pid, k) => this.shares.set(pid, { pos: sh.pos, order: k + 2 }));
+  }
+
+  // Under the controls while split squad is on: how it works, the spots
+  // still without a 2nd, and a one-tap fill from the free bench.
+  _splitNoteHtml() {
+    if (!this.splitSquad || this.everyonePlays) return '';
+    const esc = (t) => this.escapeHtml(t);
+    const open = this._openSecondSpots();
+    const free = [...this.zones.entries()].filter(([pid, z]) => z === 'bench' && !this.shares.has(pid)).length;
+    const n = Math.min(open.length, free);
+    return `<div style="font-size:0.75rem; opacity:0.85; margin:-4px 0 10px; display:flex; flex-direction:column; gap:4px;">
+      <span>${esc(this._copySplit('hint'))}</span>
+      ${open.length ? `<span style="color:#fbbf24;">${esc(this._copySplit('unpaired', { positions: open.map(p => p.sortOrder).join(', ') }))}</span>` : ''}
+      ${n ? `<span><button type="button" data-gc-split-fill class="btn btn-secondary" style="font-size:0.72rem; padding:3px 9px;">${esc(this._copySplit('fill', { n }))}</button></span>` : ''}
+    </div>`;
+  }
+
+  _copySplit(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('lineup_split', tier, tokens) : ''; }
+
+  // Split squad on: every position still without a 2nd takes the next
+  // unpaired bench player (bench order, outfield first, keeper last).
+  _toggleSplitSquad() {
+    this.splitSquad = !this.splitSquad;
+    if (this.splitSquad) this._fillSecondSpots();
+    this._render();
+    this._scheduleSave();
+  }
+
+  _openSecondSpots() {
+    const { startingPositions } = this._slotMaps();
+    const isGk = (pos) => (pos.abbreviation || '').toUpperCase() === 'GK';
+    return startingPositions.filter(pos => !this._sharersOf(pos.id).length)
+      .sort((a, b) => (isGk(a) - isGk(b)) || (a.sortOrder - b.sortOrder));
+  }
+
+  _fillSecondSpots() {
+    const free = [...this.zones.entries()].filter(([pid, z]) => z === 'bench' && !this.shares.has(pid)).map(([pid]) => pid)
+      .sort((a, b) => (this.benchOrder.get(a) ?? Infinity) - (this.benchOrder.get(b) ?? Infinity));
+    for (const pos of this._openSecondSpots()) {
+      const pid = free.shift(); if (pid == null) break;
+      this.shares.set(pid, { pos: pos.id, order: 2 });
+    }
+    this._normShares();
   }
 
   // Bench slot for a newcomer: after everyone already there.
@@ -1629,6 +1740,11 @@ class GameCenterScreen extends EventScreen {
       const pos = this.positionList.find(x => x.id === pl.positionId);
       return this._swapCopy('spot_position', { number: pos?.sortOrder ?? '', position: pos?.name ?? '' });
     }
+    if (pl.zone === 'bench' && pl.share) {
+      const pos = this.positionList.find(x => x.id === pl.share.pos);
+      const t = this._swapCopy('spot_share', { nth: this._nth(pl.share.order), position: pos?.name || '' });
+      if (t) return t;
+    }
     if (pl.zone === 'bench') return this._swapCopy('spot_bench', { n: pl.benchOrder ?? this._nextBenchOrder() });
     if (pl.zone === 'alternate') return this._swapCopy('spot_alt', {});
     return this._swapCopy('spot_off', {});
@@ -1673,6 +1789,22 @@ class GameCenterScreen extends EventScreen {
           this._applyPlacement(holderId, { zone: 'alternate', positionId: null, benchOrder: null });
           this._applyPlacement(playerId, { zone: 'starter', positionId, benchOrder: null });
         },
+      });
+    }
+    // Or share it (mig 763): {player} comes on for {other} — or, already
+    // sharing it, stops.
+    if (mine.share && mine.share.pos === positionId) {
+      const label = this._swapCopy('unshare', tk);
+      if (label) rows.push({ label, run: () => { this.shares.delete(playerId); } });
+    } else {
+      const nth = this._nth(this._sharersOf(positionId).length + 2);
+      const label = this._swapCopy('share', { ...tk, nth });
+      const shareFull = mine.zone !== 'bench' && this._benchFull(playerId) && !this._canExtendSquad();
+      if (label) rows.push({
+        label,
+        note: shareFull ? this._swapCopy('bench_full', tk) : mine.zone !== 'bench' ? this._swapCopy('share_note', tk) : '',
+        disabled: shareFull,
+        run: () => { this._sharePosition(playerId, positionId); },
       });
     }
     this._openSwapSheet({ title, sub: this._swapCopy('position_sub', tk), rows });
@@ -1759,6 +1891,27 @@ class GameCenterScreen extends EventScreen {
       { label: copy('unassign'), note: !mine.zone ? current : '', disabled: !mine.zone,
         run: () => { this._applyPlacement(playerId, null); } },
     ];
+    // Swap with the starter, from either side (mig 765): a sharer swaps
+    // with the position's starter; a starter with each of its sharers.
+    const swapRow = (subId, starterId, posId) => {
+      const sub = this.roster.find(p => p.id === subId), st = this.roster.find(p => p.id === starterId);
+      const pos = this.positionList.find(x => x.id === posId);
+      const sh = this.shares.get(subId);
+      const label = sub && st && sh ? copy('share_swap', { player: sub.name, other: st.name, position: pos?.name || '', nth: this._nth(sh.order) }) : '';
+      return label ? { label, run: () => { this._swapPlayers(subId, starterId); } } : null;
+    };
+    const swaps = mine.share
+      ? [this._holderOf(mine.share.pos) != null ? swapRow(playerId, this._holderOf(mine.share.pos), mine.share.pos) : null]
+      : mine.zone === 'starter' && mine.positionId != null ? this._sharersOf(mine.positionId).map(id => swapRow(id, playerId, mine.positionId)) : [];
+    // Sharing a position (mig 763): move up one, or stop sharing.
+    if (mine.share) {
+      const pos = this.positionList.find(x => x.id === mine.share.pos);
+      if (mine.share.order > 2 && copy('share_up', { ...tk, nth: this._nth(mine.share.order - 1) }))
+        rows.unshift({ label: copy('share_up', { ...tk, nth: this._nth(mine.share.order - 1) }), run: () => { this._shareUp(playerId); } });
+      const un = this._swapCopy('unshare', { player: player.name, position: pos?.name || '' });
+      if (un) rows.unshift({ label: un, run: () => { this.shares.delete(playerId); } });
+    }
+    rows.unshift(...swaps.filter(Boolean));
     this._openSwapSheet({ title, sub: copy('sub'), gridLabel: copy('grid'), grid, rows });
     return true;
   }
@@ -1868,24 +2021,26 @@ class GameCenterScreen extends EventScreen {
 
   // ── lineup drafts (mig 495) ──────────────────────────────────────────
   _copyLd(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('lineup_drafts', tier, tokens) : ''; }
-  _snapshot() { return { zones: new Map(this.zones), positions: new Map(this.positions), benchOrder: new Map(this.benchOrder), formation: this.formation }; }
-  _restore(snap) { this.zones = new Map(snap.zones); this.positions = new Map(snap.positions); this.benchOrder = new Map(snap.benchOrder); this.formation = snap.formation; }
+  _snapshot() { return { zones: new Map(this.zones), positions: new Map(this.positions), benchOrder: new Map(this.benchOrder), shares: new Map(this.shares), splitSquad: !!this.splitSquad, formation: this.formation }; }
+  _restore(snap) { this.zones = new Map(snap.zones); this.positions = new Map(snap.positions); this.benchOrder = new Map(snap.benchOrder); this.shares = new Map(snap.shares || []); this.splitSquad = !!snap.splitSquad; this.formation = snap.formation; }
   _isDraftView() { return String(this.lineupView).startsWith('draft:'); }
   _viewPersonId() { return this._isDraftView() ? Number(this.lineupView.slice(6)) : null; }
   _draftFor(personId) { return (this.drafts || []).find(d => Number(d.authorPersonId) === Number(personId)) || null; }
   _mapsFromRows(rows) {
-    const snap = { zones: new Map(), positions: new Map(), benchOrder: new Map(), formation: this._fieldSpec().defaultFormation };
+    const snap = { zones: new Map(), positions: new Map(), benchOrder: new Map(), shares: new Map(), formation: this._fieldSpec().defaultFormation };
     for (const row of rows || []) {
       if (row.zone) snap.zones.set(Number(row.playerId), row.zone);
       if (row.zone === 'starter' && row.positionId != null) snap.positions.set(Number(row.playerId), Number(row.positionId));
       if (row.zone === 'bench' && row.slotNumber != null) snap.benchOrder.set(Number(row.playerId), Number(row.slotNumber));
+      if (row.zone === 'bench' && row.sharesPositionId != null && row.shareOrder != null) snap.shares.set(Number(row.playerId), { pos: Number(row.sharesPositionId), order: Number(row.shareOrder) });
     }
     return snap;
   }
   _rowsFromMaps() {
     const rows = [];
     for (const [playerId, zone] of this.zones.entries())
-      rows.push({ playerId, zone, positionId: zone === 'starter' ? (this.positions.get(playerId) ?? null) : null, slotNumber: zone === 'bench' ? (this.benchOrder.get(playerId) ?? null) : null });
+      rows.push({ playerId, zone, positionId: zone === 'starter' ? (this.positions.get(playerId) ?? null) : null, slotNumber: zone === 'bench' ? (this.benchOrder.get(playerId) ?? null) : null,
+                  sharesPositionId: zone === 'bench' ? (this.shares.get(playerId)?.pos ?? null) : null, shareOrder: zone === 'bench' ? (this.shares.get(playerId)?.order ?? null) : null });
     return rows;
   }
 
@@ -2006,6 +2161,7 @@ class GameCenterScreen extends EventScreen {
   }
 
   _scheduleSave() {
+    this._normShares();
     if (this._saveTimer) clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => {
       this._saveTimer = null;
@@ -2033,11 +2189,13 @@ class GameCenterScreen extends EventScreen {
       }
       else if (zone === 'bench') {
         const order = this.benchOrder.get(playerId) ?? null;
-        bench.push({ playerId, ...(order != null ? { slotNumber: order } : {}) });
+        const share = this.shares.get(playerId);
+        bench.push({ playerId, ...(order != null ? { slotNumber: order } : {}), ...(share ? { sharesPositionId: share.pos, shareOrder: share.order } : {}) });
       }
       else if (zone === 'alternate') alternates.push({ playerId });
     }
     const payload = { starters, bench, alternates, formationId: this._formationId(), rosterSize: 0 };
+    if (!this._isDraftView()) payload.splitSquad = !!this.splitSquad;   // mig 763
     // A bench extended this game (mig 760) rides the official save.
     if (this._pendingSquadSize && !this._isDraftView()) payload.squadSize = this._pendingSquadSize;
     this._savingLineup = true;   // the live poll stands down while a PUT is in flight
@@ -2377,8 +2535,11 @@ class GameCenterScreen extends EventScreen {
           <button type="button" id="gl-stats-toggle" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 10px;">
             ${this.showLineupStats ? 'Hide' : 'Show'} Availability
           </button>
+          ${!everyone && this._copySplit('button_on') ? `<button type="button" data-gc-split class="btn ${this.splitSquad ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.72rem; padding:4px 10px;">
+            ${this.escapeHtml(this._copySplit(this.splitSquad ? 'button_off' : 'button_on'))}</button>` : ''}
         </div>
-      </div>`;
+      </div>
+      ${this._splitNoteHtml()}`;
 
 
     // Bench/Alt only now — Starting XI goes through the 1-11 position
@@ -2401,13 +2562,19 @@ class GameCenterScreen extends EventScreen {
           const occupantId = slotToPlayerId.get(pos.id);
           const isMine = occupantId === p.id;
           const takenByOther = occupantId != null && !isMine;
+          const share = this.shares.get(p.id);
+          const sharesThis = share && share.pos === pos.id;
           const style = isMine
             ? 'background:#22c55e; color:#052e16; border:1px solid #22c55e; cursor:pointer;'
+            : sharesThis
+              ? 'background:#422006; color:#fbbf24; border:1px solid #f59e0b; cursor:pointer;'
             : takenByOther
               ? 'background:#1e293b; color:#64748b; border:1px solid #334155; cursor:pointer;'
               : 'background:#334155; color:#fff; border:1px solid #475569; cursor:pointer;';
-          const title = takenByOther
-            ? `${pos.name} — currently ${rosterById.get(occupantId)?.name || 'taken'}, tap to swap or move them`
+          const title = sharesThis
+            ? `${this._nth(share.order)} at ${pos.name} — tap to change`
+            : takenByOther
+            ? `${pos.name} — currently ${rosterById.get(occupantId)?.name || 'taken'}, tap to swap, share or move them`
             : pos.name;
           return `<button type="button" data-lineup-position-btn="${pos.id}" data-player-id="${p.id}"
             title="${this.escapeHtml(title)}"
@@ -5053,6 +5220,9 @@ class GameCenterScreen extends EventScreen {
         const tokens = row.map(pos => {
           const occupant = rosterById.get(slotToPlayerId.get(pos.id));
           const token = { number: pos.sortOrder, name: occupant ? occupant.name : '' };
+          // The bench players sharing this spot, 2nd first (mig 763).
+          const subs = this._sharersOf(pos.id).map(id => rosterById.get(id)).filter(Boolean);
+          if (subs.length) token.subs = subs.map(r => ({ name: r.name, moveId: editing ? r.id : null, style: live ? this._eligNameStyle(r.id) : '' }));
           if (wideIds.has(pos.id)) token.wide = true;
           if (live && occupant) token.nameStyle = this._eligNameStyle(occupant.id, { onPitch: true });
           if (editing && occupant) {
@@ -5071,7 +5241,12 @@ class GameCenterScreen extends EventScreen {
       });
     }
     const title = this.everyonePlays ? this._copyLe('title') : '';
-    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title };
+    // Sharers sit under their starter on the pitch, not in the bench list;
+    // split squad colours Squad B and adds the swap times (mig 763).
+    const sharedIds = pitch && !this.everyonePlays ? new Set([...this.shares.keys()].map(String)) : new Set();
+    const split = this.splitSquad && !this.everyonePlays && pitch
+      ? { band: this._copySplit('band'), times: this._copySplit('times') } : null;
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from

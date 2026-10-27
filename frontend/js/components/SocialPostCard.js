@@ -1859,6 +1859,13 @@ class SocialPostCard {
   // for the five-row shapes so the bench still fits under it.
   buildImagePitch(bench, crestSrc) {
     const pitch = this.rosterData.pitch;
+    // Shared positions (Game Center, mig 763): a sharer is drawn under
+    // its starter, so it leaves the substitutes list; split squad paints
+    // every 2nd as Squad B and prints the swap times.
+    const split = this.rosterData.split || null;
+    const shared = this.rosterData.sharedIds || new Set();
+    const benchAll = bench;
+    bench = bench.filter(p => !shared.has(String(p.playerId)));
     // Rows with chips in them: the halfway row (null) and a midline
     // shape's empty spacer row take no chip height, so neither counts
     // toward the one-notch-down sizing.
@@ -1874,6 +1881,7 @@ class SocialPostCard {
       <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;${extra}display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
         <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
         <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;${t.name && t.nameStyle ? t.nameStyle : ''}">${t.name ? this.escapeHtml(t.name) : '—'}</div>
+        ${(t.subs || []).map((sub, k) => `<div ${sub.moveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(sub.moveId))}" title="Move ${this.escapeHtml(sub.name)}" ` : ''}style="font-size:${nameSize - 3}px;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;max-width:100%;${sub.style || ''}color:${split && k === 0 ? '#fdba74' : 'rgba(255,255,255,0.8)'};${sub.moveId != null ? 'cursor:pointer;' : ''}"><span style="opacity:0.7;font-size:0.85em;">${k + 2}</span> ${this.escapeHtml(sub.name)}</div>`).join('')}
         ${t.badgeHtml || ''}
       </div>`;
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
@@ -1914,8 +1922,13 @@ class SocialPostCard {
     // Game Center's live card heads the band with the totals, so a
     // lineup one short says "10 STARTERS" (squadCounts); the post only
     // names the substitutes.
-    const counts = this.squadCounts(pitch.flat().filter(t => t && t.name).length, bench.length);
+    const counts = this.squadCounts(pitch.flat().filter(t => t && t.name).length, benchAll.length);
     const bandLabel = counts ? `${counts.starters} · ${counts.subs}` : 'SUBSTITUTES';
+    const splitHtml = split ? `
+      <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
+        <span style="font-size:13px;letter-spacing:3px;font-weight:700;"><span style="color:#f5d442;">${this.escapeHtml((split.band || '').split('·')[0].trim())}</span>${(split.band || '').includes('·') ? ` · <span style="color:#fdba74;">${this.escapeHtml(split.band.split('·').slice(1).join('·').trim())}</span>` : ''}</span>
+        ${split.times ? `<div style="font-size:14px;font-weight:600;line-height:1.3;color:rgba(255,255,255,0.9);margin-top:2px;">${this.escapeHtml(split.times)}</div>` : ''}
+      </div>` : '';
     const benchHtml = (bench.length || counts) ? `
       <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
         <span style="font-size:13px;letter-spacing:3px;color:#f5d442;font-weight:700;">${bandLabel}</span>
@@ -1925,6 +1938,7 @@ class SocialPostCard {
       <div style="flex:1;min-height:0;align-self:stretch;margin:0 -28px;padding:10px 6px;box-sizing:border-box;background:#15803d;border-top:2px solid rgba(255,255,255,0.35);border-bottom:2px solid rgba(255,255,255,0.35);display:flex;flex-direction:column;justify-content:space-between;">
         ${pitch.map(row => row ? pitchRow(row) : halfway).join('')}
       </div>
+      ${splitHtml}
       ${benchHtml}
     `;
   }

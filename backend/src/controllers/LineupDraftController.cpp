@@ -74,10 +74,12 @@ Response LineupDraftController::handleGet(const Request& request) {
               FROM match_lineup_drafts d JOIN persons p ON p.id = d.author_person_id LEFT JOIN formations f ON f.id = d.formation_id
              WHERE d.match_id = $1::int ORDER BY p.last_name, p.first_name)SQL", {mid})) {
             json rows = json::array();
-            for (const auto& r : db->query("SELECT player_id, zone, position_id, slot_number FROM match_lineup_draft_rows WHERE draft_id = $1::int ORDER BY zone, slot_number, player_id", {std::string(d["id"].c_str())}))
+            for (const auto& r : db->query("SELECT player_id, zone, position_id, slot_number, shares_position_id, share_order FROM match_lineup_draft_rows WHERE draft_id = $1::int ORDER BY zone, slot_number, player_id", {std::string(d["id"].c_str())}))
                 rows.push_back({{"playerId", r["player_id"].as<long long>()}, {"zone", str(r, "zone")},
                                 {"positionId", r["position_id"].is_null() ? json(nullptr) : json(r["position_id"].as<long long>())},
-                                {"slotNumber", r["slot_number"].is_null() ? json(nullptr) : json(r["slot_number"].as<long long>())}});
+                                {"slotNumber", r["slot_number"].is_null() ? json(nullptr) : json(r["slot_number"].as<long long>())},
+                                {"sharesPositionId", r["shares_position_id"].is_null() ? json(nullptr) : json(r["shares_position_id"].as<long long>())},
+                                {"shareOrder", r["share_order"].is_null() ? json(nullptr) : json(r["share_order"].as<long long>())}});
             const long long author = d["author_person_id"].as<long long>();
             out["drafts"].push_back({{"id", d["id"].as<long long>()}, {"authorPersonId", author}, {"authorName", str(d, "name")}, {"firstName", str(d, "first_name")},
                                      {"mine", author == a.personId}, {"formationCode", d["formation_code"].is_null() ? json(nullptr) : json(str(d, "formation_code"))},
@@ -118,9 +120,15 @@ Response LineupDraftController::handlePutMine(const Request& request) {
                 const long long playerId = r["playerId"].is_number() ? r["playerId"].get<long long>() : std::stoll(r["playerId"].get<std::string>());
                 const std::string pos = r.contains("positionId") && r["positionId"].is_number() ? std::to_string(r["positionId"].get<long long>()) : "";
                 const std::string slot = r.contains("slotNumber") && r["slotNumber"].is_number() ? std::to_string(r["slotNumber"].get<long long>()) : "";
-                db->query("INSERT INTO match_lineup_draft_rows (draft_id, player_id, zone, position_id, slot_number) VALUES ($1::int, $2::int, $3, NULLIF($4,'')::int, NULLIF($5,'')::int) "
-                          "ON CONFLICT (draft_id, player_id) DO UPDATE SET zone = EXCLUDED.zone, position_id = EXCLUDED.position_id, slot_number = EXCLUDED.slot_number",
-                          {did, std::to_string(playerId), zone, pos, slot});
+                // A bench player sharing a starting position (mig 763).
+                const bool shares = r.contains("sharesPositionId") && r["sharesPositionId"].is_number() && r.contains("shareOrder") && r["shareOrder"].is_number() && r["shareOrder"].get<long long>() >= 2;
+                const std::string share = shares ? std::to_string(r["sharesPositionId"].get<long long>()) : "";
+                const std::string order = shares ? std::to_string(r["shareOrder"].get<long long>()) : "";
+                db->query("INSERT INTO match_lineup_draft_rows (draft_id, player_id, zone, position_id, slot_number, shares_position_id, share_order) "
+                          "VALUES ($1::int, $2::int, $3, NULLIF($4,'')::int, NULLIF($5,'')::int, NULLIF($6,'')::int, NULLIF($7,'')::smallint) "
+                          "ON CONFLICT (draft_id, player_id) DO UPDATE SET zone = EXCLUDED.zone, position_id = EXCLUDED.position_id, slot_number = EXCLUDED.slot_number, "
+                          "shares_position_id = EXCLUDED.shares_position_id, share_order = EXCLUDED.share_order",
+                          {did, std::to_string(playerId), zone, pos, slot, share, order});
             }
         };
         put(body.value("starters", json::array()), "starter");
