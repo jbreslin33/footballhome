@@ -351,6 +351,16 @@ void BeatTheHighLine::configure(const core::ModelParams& p) {
     high_ = p.fixed(key("high_m"), 30000);
     behind_ = p.fixed(key("behind_m"), 8000);
     keeper_short_ = p.fixed(key("keeper_short_m"), 25000);
+    pass_min_ = p.fixed(key("pass_min_m"), 20000);
+    runner_from_line_ = p.fixed(key("runner_from_line_m"), 12000);
+    runner_speed_ = p.fixed(key("runner_speed_mps"), 3000);
+    race_ = p.fixed(key("race_m"), 3000);
+}
+
+void FalseNine::configure(const core::ModelParams& p) {
+    drop_ = p.fixed(key("drop_m"), 14000);
+    space_ = p.fixed(key("space_m"), 20000);
+    from_line_ = p.fixed(key("from_line_m"), 25000);
 }
 
 void Call::configure(const core::ModelParams& p) {

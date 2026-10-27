@@ -618,12 +618,29 @@ const std::vector<Brain::CallOut>& Brain::calls(std::uint8_t team, const World& 
         if (!any || x > top) { top = x; any = true; }
     }
     if (!any) return out;
+    // Who organises (G4.78) [James 10/27: "all players should communicate"]:
+    // the keeper while his voice reaches the whole back line; when it's up
+    // and out of his range, the back-liner who talks the most (his
+    // communication), the more central on a tie.
+    int O = K;
+    for (SlotIndex j = 0; j < world.playerCount(); ++j)
+        if (setup_.team_of_slot[j] == team && backLine(j) &&
+            distSq(world.player(j).pos, world.player(k).pos) > voice * voice) { O = -1; break; }
+    if (O < 0) {
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup_.team_of_slot[j] != team || !backLine(j)) continue;
+            if (O < 0) { O = j; continue; }
+            const int a = levelOf(j).speak_pct, c = levelOf(static_cast<SlotIndex>(O)).speak_pct;
+            if (a > c || (a == c && math::fx_abs(world.player(j).pos.y) <
+                                        math::fx_abs(world.player(static_cast<SlotIndex>(O)).pos.y))) O = j;
+        }
+    }
     if (auto line = book_.line_step.stepLine(cx)) {
         bool under = false;
         for (SlotIndex j = 0; j < world.playerCount(); ++j)
             if (setup_.team_of_slot[j] == team && backLine(j) &&
                 world.player(j).pos.x * sgn < *line - Fixed64::one()) under = true;
-        if (under) add(Why::CallSqueeze, K, Orders::kBackLine, -1);
+        if (under) add(Why::CallSqueeze, O, Orders::kBackLine, -1);
         return out;
     }
     const Fixed64 gap = book_.call_line.reach();
@@ -637,7 +654,7 @@ const std::vector<Brain::CallOut>& Brain::calls(std::uint8_t team, const World& 
             const Fixed64 ax = world.player(a).pos.x * sgn;
             onside = onside || (ax < top && ax > x);
         }
-        if (onside) { add(Why::CallLine, K, Orders::kBackLine, -1); break; }
+        if (onside) { add(Why::CallLine, O, Orders::kBackLine, -1); break; }
     }
     return out;
 }
@@ -1791,38 +1808,60 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                                   : core::kGroundKickSpeed;
             return passSafe(world, setup_, slot, recv, a, b, v, safe_reach);
         };
+        // Over their line (180; G4.75 keeper, G4.78 everyone): the runner
+        // onside within runner_from_line_m of their last man, already going
+        // forward at runner_speed_mps, and race_m nearer the drop (behind_m
+        // past their line, his channel) than any of theirs, keeper too —
+        // PERCEIVING the race is half the concept (G4.75 shipped without it:
+        // 16-19 keeper balls a match, 91% theirs). The ball travels
+        // pass_min_m+ and is in his range. Fills `out` and says yes, or no.
+        auto overTheLine = [&](Fixed64 room) -> bool {
+            const auto& H = book_.high_line;
+            if (half_x_ - their_line < room) return false;
+            Fixed64 drop = their_line + H.behind();
+            if (drop > half_x_ - Fixed64::fromInt(6)) drop = half_x_ - Fixed64::fromInt(6);
+            const Fixed64 reach = rangeFor(lv, Fixed64::fromInt(60));
+            int run = -1;
+            Fixed64 rx{};
+            Vec2 to{};
+            for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                if (j == slot || setup_.team_of_slot[j] != setup_.team_of_slot[slot] || world.isKeeper(j)) continue;
+                const auto& rp = world.player(j);
+                const Fixed64 x = rp.pos.x * sgn;
+                if (x > their_line || x < their_line - H.runnerFromLine()) continue;   // offside / too deep
+                if (rp.vel.x * sgn < H.runnerSpeed()) continue;                       // his run isn't on
+                const Vec2 t{drop * sgn, rp.pos.y};
+                const Fixed64 dsq = distSq(me.pos, Vec3{t.x, t.y, Fixed64::zero()});
+                if (dsq < H.passMin() * H.passMin() || dsq > reach * reach) continue;
+                const Fixed64 rd = math::length(Vec2{rp.pos.x - t.x, rp.pos.y - t.y});
+                bool wins = true;
+                for (SlotIndex o = 0; o < world.playerCount() && wins; ++o) {
+                    if (setup_.team_of_slot[o] == setup_.team_of_slot[slot]) continue;
+                    const auto& op = world.player(o).pos;
+                    wins = math::length(Vec2{op.x - t.x, op.y - t.y}) > rd + H.race();
+                }
+                if (wins && (run < 0 || x > rx)) { run = j; rx = x; to = t; }
+            }
+            if (run < 0) return false;
+            out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+            out.action = Action::LoftedKick;
+            out.carry_m = aimedCarry(me.pos, to, reach);
+            out.why = Why::OverHighLine;
+            out.target = to;
+            out.other = static_cast<std::int16_t>(run);
+            return true;
+        };
         // The keeper's distribution (G4.75): does he READ their high line
-        // (180)? Read and seen high: over it, into the space behind their
-        // last man toward our most advanced. Not read (amateurs and kids
-        // never; a semipro at his quality): the short, simple ball to an
-        // open man, any direction — long only when nobody's open (below).
+        // (180)? Read, seen high and a runner winning the race: over it.
+        // Otherwise (not read — amateurs and kids never; a semipro at his
+        // quality — or not on): the short, simple ball to an open man, any
+        // direction — long only when nobody's open (below).
         if (im_keeper) {
             const auto& H = book_.high_line;
             const std::uint64_t ksec = world.tickCount() / 30;
             const bool reads_line = ratings_[slot][H.bit()] > 0 && applies(slot, H.bit(), ksec);
-            if (reads_line) {
-                if (half_x_ - their_line >= H.high()) {   // their last man, off their goal line
-                    int fwd = -1;
-                    Fixed64 fx{};
-                    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
-                        if (j == slot || setup_.team_of_slot[j] != setup_.team_of_slot[slot]) continue;
-                        const Fixed64 x = world.player(j).pos.x * sgn;
-                        if (fwd < 0 || x > fx) { fwd = j; fx = x; }
-                    }
-                    if (fwd >= 0) {
-                        Fixed64 drop = their_line + H.behind();
-                        if (drop > half_x_ - Fixed64::fromInt(6)) drop = half_x_ - Fixed64::fromInt(6);
-                        const Vec2 to{drop * sgn, world.player(static_cast<SlotIndex>(fwd)).pos.y};
-                        out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
-                        out.action = Action::LoftedKick;
-                        out.carry_m = aimedCarry(me.pos, to, rangeFor(lv, Fixed64::fromInt(60)));
-                        out.why = Why::OverHighLine;
-                        out.target = to;
-                        out.other = static_cast<std::int16_t>(fwd);
-                        return out;
-                    }
-                }
-            } else {
+            if (reads_line && overTheLine(H.high())) return out;
+            {   // not on (or not read): the short, simple ball
                 const ConceptContext pcx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
                                          half_x_, degree(slot, book_.short_simple.bit())};
                 if (const auto r = book_.short_simple.pick(pcx, lane_open, H.keeperShort())) {
@@ -1836,6 +1875,19 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                     return out;
                 }
             }
+        }
+        // Everyone reads it (G4.78) [James 10/27: "everyone including false
+        // 9 dropping in and taking care of it to send long ball like harry
+        // kane"]: an outfield passer with time (not pressed) puts it over the
+        // same way. The false 9 (181) doesn't need the line high: space_m of
+        // grass behind it will do.
+        if (!im_keeper && !pressed) {
+            const auto& F9 = book_.false_nine;
+            const std::uint64_t osec = world.tickCount() / 30;
+            const bool nine = ratings_[slot][F9.bit()] > 0 && applies(slot, F9.bit(), osec);
+            const bool reads_line = nine || (ratings_[slot][book_.high_line.bit()] > 0 &&
+                                             applies(slot, book_.high_line.bit(), osec));
+            if (reads_line && overTheLine(nine ? F9.space() : book_.high_line.high())) return out;
         }
         // pass_ladder (bit 29, G4.35) [Bielsa-Leeds ch4] — ai::PassLadder:
         // a laddered passer ranks receivers by rung (behind their line
@@ -3078,6 +3130,35 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 out.target = *t;
                 out.other = static_cast<std::int16_t>(*ball.owner);
                 return out;
+            }
+        }
+
+        // The false 9 drops in (181, G4.78) [Kane]: our ball still
+        // from_line_m or more short of their back line — the 9 comes off it
+        // to drop_m in front of it, central, ahead of the ball, to take it
+        // and turn. With him gone the most advanced man is a winger, so the
+        // run in behind below is now HIS.
+        {
+            const auto& F9 = book_.false_nine;
+            const int num = spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]].number;
+            if (num == 9 && ratings_[slot][F9.bit()] > 0 && applies(slot, F9.bit(), world.tickCount() / 30)) {
+                Fixed64 line9 = Fixed64::fromInt(-1000);
+                for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                    if (setup_.team_of_slot[j] == setup_.team_of_slot[slot] || world.isKeeper(j)) continue;
+                    const Fixed64 d = world.player(j).pos.x * sgn2;
+                    if (d > line9) line9 = d;
+                }
+                const Fixed64 cp = carrier.pos.x * sgn2;
+                if (line9 - cp >= F9.fromLine()) {
+                    Fixed64 dx = line9 - F9.drop();
+                    if (dx < cp + Fixed64::fromInt(6)) dx = cp + Fixed64::fromInt(6);
+                    const Vec2 t{dx * sgn2, carrier.pos.y * Fixed64::fromFraction(1, 4)};
+                    out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+                    out.why = Why::FalseNineDrop;
+                    out.target = t;
+                    out.other = static_cast<std::int16_t>(*ball.owner);
+                    return out;
+                }
             }
         }
 

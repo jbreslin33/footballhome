@@ -50,6 +50,7 @@ enum class Why : std::uint8_t {
     MarkTight, ProtectMiddle, AttackDrop, RunBackDrop, CallShadow,
     CallManOn, CallTurn, CallTime, CallSqueeze, CallLine,
     HurryKeeper, PressBadTouch, OverHighLine, KeeperShort,
+    FalseNineDrop,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -69,6 +70,7 @@ inline constexpr const char* kWhyNames[] = {
     "call: man on", "call: turn", "call: time", "call: squeeze", "call: line",
     "hurry the keeper", "press the bad touch",
     "over the high line", "keeper: short and simple",
+    "false 9: drop in",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 

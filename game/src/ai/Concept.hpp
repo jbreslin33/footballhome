@@ -832,9 +832,41 @@ public:
     math::Fixed64 high() const { return high_; }
     math::Fixed64 behind() const { return behind_; }
     math::Fixed64 keeperShort() const { return keeper_short_; }
+    // G4.78, outfield passers: the ball must travel at least pass_min_m,
+    // to a runner no more than runner_from_line_m short of their line.
+    math::Fixed64 passMin() const { return pass_min_; }
+    math::Fixed64 runnerFromLine() const { return runner_from_line_; }
+    // …already running forward at runner_speed_mps, and race_m nearer the
+    // drop than any of theirs.
+    math::Fixed64 runnerSpeed() const { return runner_speed_; }
+    math::Fixed64 race() const { return race_; }
 
 private:
-    math::Fixed64 high_, behind_, keeper_short_;
+    math::Fixed64 high_, behind_, keeper_short_, pass_min_, runner_from_line_,
+                  runner_speed_, race_;
+};
+
+// The false 9 who drops in and sends it long (181, G4.78) [James 10/27:
+// "everyone including false 9 dropping in and taking care of it to send
+// long ball like harry kane … that is how our 9 should play when Luke
+// Breslin is in"; Kane at Spurs/Bayern: drops off the line into the space
+// in front of their back four, takes it, turns and hits the runner in
+// behind]. A role skill: nobody knows it by default (the player's own
+// row), a game model asks for it. Off the ball, our ball short of their
+// half: the 9 drops to drop_m in front of their back line, central. On
+// it: he looks for the runner in behind even when their line isn't
+// "high" — space_m of grass behind their last man is enough (the centre-
+// back who followed him left it).
+class FalseNine : public Concept {
+public:
+    FalseNine() : Concept("false-nine-drop", 181) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 drop() const { return drop_; }
+    math::Fixed64 space() const { return space_; }
+    math::Fixed64 fromLine() const { return from_line_; }
+
+private:
+    math::Fixed64 drop_, space_, from_line_;
 };
 
 // Scanning (G4.66) [Jordet et al. 2013, visual exploratory activity in
@@ -926,6 +958,7 @@ struct ConceptBook {
     HurryTheKeeper hurry_keeper;
     PressTheBadTouch bad_touch;
     BeatTheHighLine high_line;
+    FalseNine false_nine;
     ScanBeforeReceive scan_receive;
     ScanDefending scan_defend;
     Vision vision;
@@ -971,6 +1004,7 @@ struct ConceptBook {
         hurry_keeper.configure(p);
         bad_touch.configure(p);
         high_line.configure(p);
+        false_nine.configure(p);
         scan_receive.configure(p);
         scan_defend.configure(p);
         vision.configure(p);

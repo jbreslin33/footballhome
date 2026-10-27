@@ -2726,6 +2726,41 @@ said) all of the Semi pro standard"
   parent plays, per concept / number) and the HUD tags an own or live
   value with its difference: "own −25", tooltip "Semi Pro Standard plays 85".
 
+### 8.75 G4.78 — everyone talks, everyone reads the high line, the false 9 drops in (mig 764)
+
+James 10/27: "1) all players should communicate so yes. 3) yes everyone
+including false 9 dropping in and taking care of it to send long ball like
+harry kane. (that should be in lh game model as that is how our 9 should
+play when Luke Breslin is in)"
+
+- **The organiser:** man on / turn / time already came from whichever
+  mate was nearest; squeeze and line were the keeper's only. Now the keeper
+  calls them while his voice (`physics.voice.range_m` 40) reaches the
+  whole back line; when the line is up and out of his range, the
+  back-liner who talks the most (his `speak_pct`, from communication)
+  organises, the more central on a tie.
+- **Everyone reads the high line (180):** one helper, `overTheLine`, for
+  the keeper and any outfield passer with time (not pressed). New: the
+  PERCEIVING half — the runner is onside within `runner_from_line_m` 12 of
+  their last man, already going forward at `runner_speed_mps` 3, and
+  `race_m` 3 nearer the drop (behind_m past their line, his channel) than
+  any of theirs, keeper included; the ball travels `pass_min_m` 20+ and is
+  in the passer's range. **Bug found:** G4.75's keeper had no race check —
+  16-19 balls a match over the line, 91% to them (the +2.43 headline hid
+  it). Now a keeper who reads it but sees no race on plays short.
+- **false-nine-drop (181, role skill, taught_from NULL):** off the ball,
+  our ball `from_line_m` 25+ short of their back line → the number 9
+  drops to `drop_m` 14 in front of it, central, ahead of the ball (HUD
+  "false 9: drop in"); the most advanced man is now a winger, so the run
+  in behind becomes his. On the ball the 9 goes over their line when
+  `space_m` 20 of grass is behind it (no high line needed). Asked by the
+  Lighthouse and Lighthouse APSL models (90), 0 everywhere else; known by
+  Luke Breslin (his row, 70) — so it's how OUR 9 plays when Luke is in.
+
+10 matches LH APSL v Ukies: over the line 0.5 / 1.5 a match (was 16-19),
+60% / 27% reach our man; keepers short 30 / 43 a match; margin +2.90 ±
+1.23. cb-build:0 trace: Luke drops on our centre-back's ball.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
