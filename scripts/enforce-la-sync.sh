@@ -169,10 +169,28 @@
 #                     reminderContext() passes section '' so the girl CTE
 #                     is never consulted there.
 #
+#   RosterBoardExtras
+#                   — attach()'s pending-bank netting (mig 690, commit
+#                     30780b40) reads person_la_memberships to take a bank
+#                     payment LA recorded but hasn't applied off the
+#                     board's outstandingBalance.  Audited 2026-10-27: its
+#                     only callers are
+#                       * MensRosterController::handleGet   (laGet(static, {mens}))
+#                       * BoysRosterController::handleGet   (laGet(static, {boys, girls}))
+#                       * WomensRosterController::handleGet (laGet(static, {womens}))
+#                     — each calls attach() on the body its laGet-synced
+#                     model just built, so the sync has run by the time
+#                     this query fires.  A leaf helper of pre-synced
+#                     handlers, like PickupMembership.  Give attach() a
+#                     caller that is not laGet-synced and this entry
+#                     becomes a lie — migrate the caller, don't widen the
+#                     list.  (Added because 30780b40 landed without an
+#                     entry and `make deploy` refused to run.)
+#
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard|WelcomeMessage)|backend/src/core/Controller|backend/src/controllers/MyController)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard|WelcomeMessage|RosterBoardExtras)|backend/src/core/Controller|backend/src/controllers/MyController)'
 
 set -euo pipefail
 
