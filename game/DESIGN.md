@@ -2273,12 +2273,18 @@ opponent to mark its just how they mark."
   keeps the shadow, and our full-back does NOT follow him up the field
   (James: "our fb is already playing for long ball and 'off' coverage so to
   follow a winger up the field is too much to ask"). Playing off, he stops
-  at our highest centre-back (4/5) plus `ahead_of_line_m` 0. cb-build:1
+  at our highest centre-back (4/5) plus `ahead_of_line_m` — 5 m since mig
+  747 (James: "our fb can step its just that he is gonna have trouble
+  getting tight so he stil relys on cover shadow from our winger" — playing
+  off keeps him in reach to help, and chasing gains nothing for our
+  transition). cb-build:1
   rarely springs it (passes to their full-back ~6%), so it barely moves
   the drill. **(c) answered 10/27:** yes — the 3 rules are every coach's,
   but each coach weights them differently by zone of the field, and the
   player's level gates what he can do (a low-rated man can't intercept).
-  Not built yet: per-zone weights.
+  Per-zone weights built in G4.68 (§8.66). **(b) answered 10/27:** the
+  ball reaches their winger anyway — our full-back drops "play off" and
+  plays his 3 rules on him as his direct opponent; most likely contain.
 
 Found on the way — why their winger was open (both tactics): G4.57's
 mark-position tucked a marker toward the ball by a share of the distance
@@ -2391,6 +2397,41 @@ markers are tight near the ball (they play it at their own quality);
 Lighthouse concedes 2.47 → 3.00. Pass completion 65% / 63%. Lighthouse
 out of possession: mark tight 6%, protect the middle 3%, plain mark 7%.
 Goldens re-locked.
+
+### 8.66 G4.68 — the 3 rules weighted by coach and third; late = contain (mig 747)
+
+James 10/27, on (b): "the w is his do (direct opponent) so he reads the
+pass (ball) and player. so he resumes normal marking concept. intercept, no
+turn, contain. its just most likely he is looking at contain but depends."
+On (c): "a general rule for bielsa but i would say all coaches. but its
+calibrated for the 3 differently depending on coach and part of field. and
+even level of player to be able to lets say intercept."
+
+- **Late = contain.** Jump-the-pass sent a man's own defender who couldn't
+  get there in time (the "late" pick, within `jump_max_m`) at the reception
+  point anyway — he arrived as the man turned. With defend-your-man on he
+  now runs to `contain_gap_m` 2.2 m goal-side of where it lands and the HUD
+  says *contain*; in time, it's still *no turn*.
+- **`game_model_ladder`** (model, zone own/middle/their, rung intercept/
+  no_turn/contain, weight 0-100): how often a coach's marker plays each
+  rule in each third when it's on, rolled per second after the concept's
+  own roll (`Brain::rung`, zone = the third of the reception point / the
+  ball). Child models inherit row by row; missing = 100 (no change). A miss
+  drops a rung: no interception → he arrives so his man can't turn (he'd
+  have won the race); no "no turn" → contain. Contain's weight only names
+  the rung today (its miss is the same delay move) — it gets a real miss
+  when a coach asks for one. The player's level still gates everything:
+  min(ability, demand) on defend-your-man, and the flight-read race decides
+  whether he CAN intercept.
+- **Lighthouse APSL** (both tactics): own-third intercept 50 — a missed
+  interception there is a man through on goal. Everything else 100.
+  Starting numbers; James sets the rest.
+
+30 matches, same seeds, vs G4.67's +1.83 ± 0.42: tactic A +2.60 ± 0.56
+(5.20 – 2.60), tactic B (`home:shadow-the-line=90,play-off-long-ball=90`)
++2.20 ± 0.48 — within noise. Harness note: a tactic is a demand override on
+the team's model; GAME_TEAM_HOME takes a TEAM name (a model name there
+loads no squad — that run reads −1.80 and means nothing).
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

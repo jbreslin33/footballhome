@@ -20,6 +20,7 @@
 #include "ai/Formation.hpp"
 #include "core/World.hpp"
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -152,6 +153,14 @@ public:
         if (habits_.size() <= slot) habits_.resize(slot + 1u, core::ConceptRatings{});
         habits_[slot] = r;
     }
+    // The coach's weights on defend-your-man's 3 rules by third of the
+    // pitch (G4.68, mig 747; 0-100, 100 = always when it's on): [zone][rung],
+    // zone 0 = our third, 1 = middle, 2 = theirs.
+    enum Rung : std::uint8_t { kIntercept = 0, kNoTurn = 1, kContain = 2 };
+    using Ladder = std::array<std::array<std::uint8_t, 3>, 3>;
+    void setLadder(std::uint8_t team, const Ladder& w) {
+        if (team < 2) ladder_[team] = w;
+    }
     // His TENDENCIES (G4.47, mig 669; -1 = none): how much he LIKES a
     // concept, apart from how well he does it — weights his lapses and
     // makes him try a liked neighbour on his own initiative.
@@ -249,6 +258,11 @@ private:
     std::vector<core::LevelParams>  slot_level_;
     std::vector<std::uint8_t>       slot_level_set_;
     std::uint64_t match_seed_ = 0;
+    // Does slot play this rung of the ladder at x (his team's third of it)?
+    // Rolled per second, after the concept's own roll.
+    bool rung(core::SlotIndex slot, Rung r, math::Fixed64 x, std::uint64_t sec) const;
+    Ladder ladder_[2] = {{{{100, 100, 100}, {100, 100, 100}, {100, 100, 100}}},
+                         {{{100, 100, 100}, {100, 100, 100}, {100, 100, 100}}}};
     std::vector<core::ConceptRatings> ratings_;
     std::vector<core::ConceptRatings> habits_;
     std::vector<core::PresetOverlay> tendencies_;

@@ -270,6 +270,19 @@ std::vector<GameModel> loadGameModels(const DbConfig& cfg) {
             for (auto& g : out)
                 if (g.name == name) g.overlay[id] = static_cast<std::int16_t>(d);
         }
+        for (const auto& row : tx.exec(
+                 "SELECT m.name, l.zone, l.rung, l.weight FROM game_model_ladder l "
+                 "JOIN game_models m ON m.id = l.model_id")) {
+            const std::string name = row[0].as<std::string>();
+            const auto zs = row[1].as<std::string>(), rs = row[2].as<std::string>();
+            const int z = zs == "own" ? 0 : zs == "middle" ? 1 : zs == "their" ? 2 : -1;
+            const int r = rs == "intercept" ? 0 : rs == "no_turn" ? 1 : rs == "contain" ? 2 : -1;
+            if (z < 0 || r < 0) continue;
+            int w = row[3].as<int>();
+            w = w < 0 ? 0 : (w > 100 ? 100 : w);
+            for (auto& g : out)
+                if (g.name == name) g.ladder[z][r] = static_cast<std::int16_t>(w);
+        }
         resolveGameModels(out);
         return out;
     } catch (const std::exception& e) {
@@ -292,6 +305,9 @@ void resolveGameModels(std::vector<GameModel>& models) {
             if (!p || p->name == g.name) break;
             for (int i = 0; i < core::kMaxConcepts; ++i)
                 if (g.overlay[i] < 0) g.overlay[i] = p->overlay[i];
+            for (int z = 0; z < 3; ++z)
+                for (int r = 0; r < 3; ++r)
+                    if (g.ladder[z][r] < 0) g.ladder[z][r] = p->ladder[z][r];
             parent = p->parent;
         }
     }

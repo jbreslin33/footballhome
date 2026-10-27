@@ -125,6 +125,10 @@ struct GameModel {
     std::string name;
     std::string parent;           // "" = none
     core::PresetOverlay overlay;  // by curriculum id (game_concepts)
+    // G4.68 (mig 747): defend-your-man's 3 rules by third, [zone][rung]
+    // (zone 0 our third / 1 middle / 2 theirs; rung 0 intercept / 1 no turn /
+    // 2 contain); -1 = inherit from the parent, 100 when nobody sets it.
+    std::int16_t ladder[3][3] = {{-1, -1, -1}, {-1, -1, -1}, {-1, -1, -1}};
 };
 std::vector<GameModel> loadGameModels(const DbConfig& cfg);
 // Fold each model's parent chain into its overlay (own demand wins; a

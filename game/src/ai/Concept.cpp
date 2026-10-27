@@ -315,6 +315,7 @@ void LockTheDoor::configure(const core::ModelParams& p) {
 void DefendYourMan::configure(const core::ModelParams& p) {
     gap_ = p.fixed(key("no_turn_gap_m"), 700);
     within_ = p.fixed(key("no_turn_within_m"), 3000);
+    contain_ = p.fixed(key("contain_gap_m"), 2200);
 }
 
 void ShadowTheLine::configure(const core::ModelParams& p) {

@@ -767,6 +767,18 @@ Brain::Reach Brain::pressReach(SlotIndex slot, const World& world, const Vec2& p
 // to it — his defender (direct opponent, within jump_max_m; else the
 // nearest teammate in pressing distance of the arrival, the chain) goes as
 // the ball goes, to arrive goal-side of where it lands.
+bool Brain::rung(SlotIndex slot, Rung r, Fixed64 x, std::uint64_t sec) const {
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const Fixed64 u = team == 0 ? x : -x;   // + = toward their goal
+    const Fixed64 third = half_x_ * Fixed64::fromFraction(1, 3);
+    const int zone = u < -third ? 0 : (u > third ? 2 : 1);
+    const std::uint8_t w = ladder_[team & 1][zone][r];
+    if (w >= 100) return true;
+    if (w == 0) return false;
+    const auto n = core::detNoise(match_seed_, sec, slot, static_cast<std::uint8_t>(236 + r));
+    return (n + Fixed64::one()) < Fixed64::fromFraction(w, 50);
+}
+
 bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& out) const {
     const auto& b = world.ball();
     const std::uint8_t my_team = setup_.team_of_slot[slot];
@@ -778,11 +790,20 @@ bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& ou
     const int rcv = fr.first[1 - my_team];
     if (rcv < 0) return false;
     const int ours = fr.first[my_team];
-    if (ours >= 0 && fr.tick[ours] <= fr.tick[rcv]) return false;   // we win it: the race
     const Vec2 at = fr.at[rcv];
     const Fixed64 t_arrive = core::kTickDt * Fixed64::fromInt(fr.tick[rcv]);
     const std::uint64_t sec = world.tickCount() / 30;
     const auto& direct = directOpponents(world, sec);
+    const int dm = book_.defend_man.bit();
+    // We win it: the race — unless it's his own man's defender and his coach
+    // doesn't go for the interception in this third (rule #1's weight): then
+    // he arrives so the man can't turn instead.
+    if (ours >= 0 && fr.tick[ours] <= fr.tick[rcv]) {
+        const SlotIndex o = static_cast<SlotIndex>(ours);
+        if (!(direct[o] == rcv && ratings_[o][dm] > 0 && applies(o, dm, sec) &&
+              !rung(o, kIntercept, at.x, sec)))
+            return false;
+    }
     const Fixed64 jmax = book_.jump_pass.jumpMax();
     // Who goes: his own defender if he gets there in time; else the
     // nearest teammate who does, in pressing distance (the chain); else his
@@ -810,17 +831,24 @@ bool Brain::jumpThePass(SlotIndex slot, const World& world, int sign, Orders& ou
         if (fast && !own_man_behind && ratings_[j][pd] > 0 && (chain < 0 || d < best_chain)) { chain = j; best_chain = d; }
         if (mine && d <= jmax * jmax && (late < 0 || d < best_late)) { late = j; best_late = d; }
     }
+    const bool is_late = jumper < 0 && chain < 0;
     if (jumper < 0) jumper = chain >= 0 ? chain : late;
     if (jumper != static_cast<int>(slot) || !applies(slot, jb, sec)) return false;
     const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
     const Vec2 to_goal = math::normalized(Vec2{-dsgn * half_x_ - at.x, -at.y});
-    const Fixed64 g = book_.jump_pass.arriveGap();
+    const bool ladder = direct[slot] == rcv && ratings_[slot][dm] > 0 && applies(slot, dm, sec);
+    // Defend your man (168): his own man, and he can't get there tight in
+    // time — or his coach doesn't ask for it in this third — rule #3,
+    // contain: arrive contain_gap_m goal-side of where it lands, don't dive
+    // in late (James 10/27: "he reads the pass and player … most likely he
+    // is looking at contain but depends").
+    const bool contain = ladder && (is_late || !rung(slot, kNoTurn, at.x, sec));
+    const Fixed64 g = contain ? book_.defend_man.containGap() : book_.jump_pass.arriveGap();
     const Vec2 target{at.x + to_goal.x * g, at.y + to_goal.y * g};
     out.move.move = seek(world.player(slot).pos, target, Fixed64::fromFraction(1, 10));
     out.why = Why::JumpPass;
-    // Defend your man (168), rule #2: his own man — arrive so he can't turn.
-    const int dm = book_.defend_man.bit();
-    if (direct[slot] == rcv && ratings_[slot][dm] > 0 && applies(slot, dm, sec)) out.why = Why::NoTurn;
+    // Rule #2: in time — arrive so he can't turn.
+    if (ladder) out.why = contain ? Why::Contain : Why::NoTurn;
     out.target = target;
     out.other = static_cast<std::int16_t>(rcv);
     return true;
@@ -2121,7 +2149,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             const auto& D = book_.defend_man;
             if (ratings_[slot][dm] > 0 && directOpponents(world, dsec)[slot] == *ball.owner &&
                 c.face.x * dsgn > Fixed64::zero() &&
-                distSq(me.pos, c.pos) < D.noTurnWithin() * D.noTurnWithin() && applies(slot, dm, dsec)) {
+                distSq(me.pos, c.pos) < D.noTurnWithin() * D.noTurnWithin() && applies(slot, dm, dsec) &&
+                rung(slot, kNoTurn, c.pos.x, dsec)) {
                 const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
                 const Vec2 to_goal = math::normalized(Vec2{own_goal.x - c.pos.x, own_goal.y - c.pos.y});
                 const Vec2 t{c.pos.x + to_goal.x * D.noTurnGap(), c.pos.y + to_goal.y * D.noTurnGap()};
@@ -2296,7 +2325,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             {
                 const int dm = book_.defend_man.bit();
                 if (ball.owner && ratings_[slot][dm] > 0 && directOpponents(world, sec)[slot] == *ball.owner &&
-                    applies(slot, dm, sec))
+                    applies(slot, dm, sec) && rung(slot, kContain, seen_ball.x, sec))
                     out.why = Why::Contain;
             }
             out.target = jockey;

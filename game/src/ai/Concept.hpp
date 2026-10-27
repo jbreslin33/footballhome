@@ -647,7 +647,8 @@ private:
 // flight read's race). #2 else arrive tight and goal-side as the ball does
 // (jump the pass), and while he has it with his back to our goal stay
 // no_turn_gap_m goal-side within no_turn_within_m — don't dive in, don't
-// let him turn. #3 he's turned: contain (delay / side-on). The HUD names
+// let him turn. #3 he's turned, or the pass to him lands before I can get
+// tight: contain (delay / side-on; contain_gap_m off). The HUD names
 // the rung. Lapse: the old pieces, unnamed (he may dive on a back-to-goal).
 class DefendYourMan : public Concept {
 public:
@@ -655,9 +656,10 @@ public:
     void configure(const core::ModelParams& p) override;
     math::Fixed64 noTurnGap() const { return gap_; }
     math::Fixed64 noTurnWithin() const { return within_; }
+    math::Fixed64 containGap() const { return contain_; }
 
 private:
-    math::Fixed64 gap_, within_;
+    math::Fixed64 gap_, within_, contain_;
 };
 
 // Shadow the line (169) [James 10/26 — Lighthouse's second tactic]: the

@@ -159,6 +159,13 @@ void GameServer::recomputeKnowledge(bool home) {
     none.fill(-1);
     const int m = team_model_[home ? 0 : 1];
     const core::PresetOverlay& demand = m >= 0 ? cfg_.models[m].overlay : none;
+    ai::Brain::Ladder ladder{};
+    for (int z = 0; z < 3; ++z)
+        for (int r = 0; r < 3; ++r) {
+            const int w = m >= 0 ? cfg_.models[m].ladder[z][r] : -1;
+            ladder[z][r] = static_cast<std::uint8_t>(w < 0 ? 100 : w);
+        }
+    brain_.setLadder(home ? 0 : 1, ladder);
     const std::uint8_t half = cfg_.slot_count / 2;
     const std::uint8_t from = home ? 0 : half;
     const std::uint8_t to = home ? half : cfg_.slot_count;
