@@ -207,6 +207,10 @@ struct BrainEntry {
     // him in tenths of a second (255 = sees everything) + men he can't see.
     std::uint8_t look_ds = 255;
     std::uint8_t unseen = 0;
+    // 1.12 (G4.70), the trailing call block: the call he's making (a
+    // BRAIN_LEGEND index, 255 none) and to whom (255 none).
+    std::uint8_t call = 255;
+    std::uint8_t call_to = 255;
 };
 struct BrainFrame {
     std::vector<BrainEntry> slots;

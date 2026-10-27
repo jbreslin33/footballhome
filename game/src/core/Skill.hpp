@@ -222,6 +222,25 @@ private:
     BodySkill dive_{"goalkeeping", "dive_mps", 3000, 4000, 5000};
 };
 
+// Communication (G4.70) [FFA: communication is a "constant"; USYS U-10/12/
+// 16]: the share of due calls he actually makes — 0 at a 0 rating, the
+// band's at 50, double it (capped at 100) at 100.
+class Communication : public Skill {
+public:
+    Communication() : Skill("communication") {}
+    void configure(const ModelParams& p) override {
+        at0_ = p.integer(key("at0_pct"), 0);
+        at100_ = p.integer(key("at100_pct"), 200);
+    }
+    void apply(LevelParams& o, const LevelParams& b, int r) const override {
+        const std::int32_t v = scaled(b.speak_pct, r, at0_, at100_);
+        o.speak_pct = v > 100 ? 100 : v;
+    }
+
+private:
+    std::int32_t at0_ = 0, at100_ = 200;
+};
+
 // The registry, in game_attributes order (= PlayerAttributes / wire 0x37).
 class SkillSet {
 public:
@@ -244,6 +263,7 @@ public:
         skills_.emplace_back(decel_);
         skills_.emplace_back(agility_);
         skills_.emplace_back(dribbling_);
+        skills_.emplace_back(new Communication());
         for (auto& s : skills_) s->configure(p);
         for (BodySkill* g : {&side_, &back_, &yaw_}) g->configure(p);
         // How far he looks off his line at no cost — anatomy, shared.

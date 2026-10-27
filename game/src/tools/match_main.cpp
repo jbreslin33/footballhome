@@ -181,6 +181,7 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
     std::vector<double> touch_gap, touch_gap_short;
     double kick_x = 0, kick_y = 0;
     long d_why[ai::kWhyCount] = {}, d_ticks = 0;
+    long call_due = 0, call_made = 0;   // G4.70: man-ticks a call was due / made
     for (int m = 0; m < episodes; ++m) {
         server::GameServer::Config cfg = base;
         cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
@@ -334,6 +335,8 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                     if (s.world().player(j).team != team && !s.world().isKeeper(j)) {
                         ++d_why[static_cast<int>(s.lastOrders()[j].why)];
                         ++d_ticks;
+                        call_due += s.lastOrders()[j].call_due;
+                        call_made += s.lastOrders()[j].call_to >= 0;
                     }
             if (!b.owner) continue;
             const auto& c = s.world().player(*b.owner);
@@ -444,6 +447,9 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
             if (d_why[w] * 1000 >= d_ticks) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * d_why[w] / d_ticks);
         std::printf("\n");
     }
+    if (call_due)
+        std::printf("  %s calls (adjust your shadow): made %.0f%% of the %.1f s per episode one was due\n",
+                    them.c_str(), 100.0 * call_made / call_due, call_due / 30.0 / n);
     return 0;
 }
 

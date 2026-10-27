@@ -466,16 +466,66 @@ const std::vector<std::uint8_t>& Brain::directOpponents(const World& world, std:
 // behind him since is still back where he started. The flight read and the
 // direct-opponent pairs are shared by all 22 brains, so they are read from
 // the true world first (their caches then serve every picture this tick).
+Brain::ShadowCall Brain::shadowCall(std::uint8_t team, const World& world) const {
+    ShadowCall c;
+    const auto& b = world.ball();
+    if (world.restartTeam() != 0xFF) return c;
+    const bool theirs = b.owner ? world.player(*b.owner).team != team : world.lastTouchTeam() != team;
+    if (!theirs) return c;
+    const Trap tr = trapRead(world, team, Vec2{b.pos.x, b.pos.y});
+    if (tr.winger < 0 || ratings_[tr.winger][book_.shadow_line.bit()] == 0) return c;
+    const SlotIndex w = static_cast<SlotIndex>(tr.winger);
+    const int sign = attackSign(w);
+    const Fixed64 dsgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    if (b.pos.x * dsgn < book_.pack_middle.fromHalfway()) return c;
+    const int M = theirWinger(world, team, sign, tr.carrier, tr.cbs);
+    if (M < 0) return c;
+    const SlotIndex m = static_cast<SlotIndex>(M);
+    const std::uint64_t sec = world.tickCount() / 30;
+    const auto& direct = directOpponents(world, sec);
+    const int po = book_.play_off.bit();
+    for (SlotIndex f = 0; f < world.playerCount(); ++f) {
+        if (setup_.team_of_slot[f] != team || f == w || direct[f] != m || ratings_[f][po] == 0) continue;
+        if (levelOf(w).isZero() || inView(w, world, m) || !inView(f, world, m)) return c;
+        c.talker = f;
+        c.to = w;
+        c.man = M;
+        c.due = true;
+        const int cs = book_.call_shadow.bit();
+        if (ratings_[f][cs] > 0 && applies(f, cs, sec)) {
+            const auto n = core::detNoise(match_seed_, sec, f, 235);
+            c.made = (n + Fixed64::one()) < Fixed64::fromFraction(levelOf(f).speak_pct, 50);
+        }
+        return c;
+    }
+    return c;
+}
+
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     flightRead(world);
     directOpponents(world, world.tickCount() / 30);
     const bool perfect = levelOf(slot).isZero();
     const std::int32_t age = perfect ? 0 : lookAge(slot, world);
+    // Communication (G4.70): the call to our shadowing winger — the talker
+    // carries it on his orders; the listener hears it.
+    const ShadowCall call = shadowCall(setup_.team_of_slot[slot], world);
+    auto tag = [&](Orders& o) {
+        if (call.talker != static_cast<int>(slot)) return;
+        o.call_due = call.due;
+        if (call.made) { o.call = Why::CallShadow; o.call_to = static_cast<std::int16_t>(call.to); }
+    };
     if (age <= 0) {
         Orders o = ordersSeen(slot, world);
         o.look_ds = perfect ? 255 : 0;
+        tag(o);
         return o;
     }
+    // Heard: his picture of the man the call is about is only hear_s (+ his
+    // own perception delay) old.
+    const bool heard = call.made && call.to == static_cast<int>(slot);
+    const std::int32_t hear_ticks =
+        static_cast<std::int32_t>((book_.call_shadow.hear() * Fixed64::fromInt(core::kTickRate)).raw >> Fixed64::FRAC_BITS) +
+        levelOf(slot).perception_delay_ticks;
     // Placed back along his run by at most max_age_s: the linear picture
     // means nothing over long ages (the look itself can be older).
     const std::int32_t reach = age < book_.vision.max_age_ticks ? age : book_.vision.max_age_ticks;
@@ -489,7 +539,10 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     for (SlotIndex i = 0; i < world.playerCount(); ++i) {
         if (i == slot || inView(slot, world, i)) continue;
         const auto& p = world.player(i);
-        seen.seePlayerAt(i, Vec3{p.pos.x - p.vel.x * back, p.pos.y - p.vel.y * back, p.pos.z});
+        Fixed64 bk = back;
+        if (heard && static_cast<int>(i) == call.man && hear_ticks < reach)
+            bk = Fixed64::fromInt(hear_ticks) * core::kTickDt;
+        seen.seePlayerAt(i, Vec3{p.pos.x - p.vel.x * bk, p.pos.y - p.vel.y * bk, p.pos.z});
         ++unseen;
         if (carrier && stale && i < 64 && setup_.team_of_slot[i] == setup_.team_of_slot[slot])
             blind_ |= std::uint64_t{1} << i;
@@ -498,6 +551,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     blind_ = 0;
     o.look_ds = static_cast<std::uint8_t>(age / 3 > 254 ? 254 : age / 3);
     o.unseen = unseen;
+    tag(o);
     return o;
 }
 

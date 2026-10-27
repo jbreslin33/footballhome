@@ -93,7 +93,8 @@ From G4.33 concepts are CLASSES (`ai::Concept` and subclasses, game/src/ai/Conce
 2b. **BUILT G4.67 (mig 743, DESIGN §8.65)** — mark by distance from the
    ball (`near-tight-far-zone` 122): tight near it, off toward the middle
    away from it (James 10/26). Lighthouse asks 90.
-3. **Communication** — the `communication` attribute (mig 655, "not yet
+3. **FIRST CALL BUILT G4.70 (mig 753, DESIGN §8.68)** — "adjust your
+   shadow"; next calls queued. **Communication** — the `communication` attribute (mig 655, "not yet
    played by the engine") gets its first job. Three parts: KNOWING the
    call (concepts per call: adjust-your-shadow, man on, line, time, turn,
    squeeze — taught by level), SAYING it (the attribute rolls whether he

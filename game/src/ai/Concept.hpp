@@ -702,6 +702,23 @@ private:
     math::Fixed64 off_, ahead_, face_up_;
 };
 
+// Call: adjust your shadow (172, G4.70) [James 10/26: "the full back
+// would communicate to the winger the cover shadow adjustment"]: our
+// full-back playing off sees their winger; our winger shadowing the line
+// has him behind him. The full-back KNOWS the call (this rating), SAYS it
+// (his communication: LevelParams::speak_pct), and the winger HEARS it —
+// his picture of that man is then only hear_s (+ his own perception delay)
+// old. Rolled per second, per call.
+class CallAdjustShadow : public Concept {
+public:
+    CallAdjustShadow() : Concept("call-adjust-shadow", 172) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 hear() const { return hear_; }
+
+private:
+    math::Fixed64 hear_;
+};
+
 // Scanning (G4.66) [Jordet et al. 2013, visual exploratory activity in
 // Premier League midfielders: the best scan ~0.6-0.8 times a second; FA /
 // US Soccer "check your shoulder"]: what a player knows of the men BEHIND
@@ -780,6 +797,7 @@ struct ConceptBook {
     DefendYourMan defend_man;
     ShadowTheLine shadow_line;
     PlayOffLongBall play_off;
+    CallAdjustShadow call_shadow;
     ScanBeforeReceive scan_receive;
     ScanDefending scan_defend;
     Vision vision;
@@ -816,6 +834,7 @@ struct ConceptBook {
         defend_man.configure(p);
         shadow_line.configure(p);
         play_off.configure(p);
+        call_shadow.configure(p);
         scan_receive.configure(p);
         scan_defend.configure(p);
         vision.configure(p);

@@ -451,6 +451,12 @@ Bytes encodeBrain(const BrainFrame& f) {
         w.u8(e.look_ds);
         w.u8(e.unseen);
     }
+    // 1.12: the call block trails the vision block.
+    w.u8(static_cast<std::uint8_t>(f.slots.size()));
+    for (const BrainEntry& e : f.slots) {
+        w.u8(e.call);
+        w.u8(e.call_to);
+    }
     return std::move(w.out);
 }
 
@@ -473,6 +479,14 @@ std::optional<BrainFrame> decodeBrain(const Bytes& payload) {
         for (std::uint8_t i = 0; i < m && r.ok; ++i) {
             const std::uint8_t look = r.u8(), unseen = r.u8();
             if (r.ok && i < f.slots.size()) { f.slots[i].look_ds = look; f.slots[i].unseen = unseen; }
+        }
+        if (!r.ok) return std::nullopt;
+    }
+    if (r.remaining() > 0) {   // 1.12 call block
+        const std::uint8_t m = r.u8();
+        for (std::uint8_t i = 0; i < m && r.ok; ++i) {
+            const std::uint8_t call = r.u8(), to = r.u8();
+            if (r.ok && i < f.slots.size()) { f.slots[i].call = call; f.slots[i].call_to = to; }
         }
         if (!r.ok) return std::nullopt;
     }

@@ -2458,6 +2458,40 @@ tactic B: +2.77 ± 0.52 (5.43 – 2.67), vs +2.20 ± 0.48 — noise. Not
 measured: how many of their aerial balls to the winger our full-back now
 wins; the harness has no counter for it yet.
 
+### 8.68 G4.70 — communication, the first call: "adjust your shadow" (mig 753)
+
+CONCEPTS.md queue #3 (James 10/26: "the full back would communicate to the
+winger the cover shadow adjustment"). Three parts, all stateless like the
+look (§8.64):
+
+- **KNOWING — `call-adjust-shadow` (172, style, amateur):** a concept per
+  call. Lighthouse's tactic B asks 90.
+- **SAYING — the `communication` attribute (mig 655, now wired):**
+  `LevelParams::speak_pct`, the % of due calls he makes, rolled per second:
+  by level u10 20 · u14 40 · amateur 55 · semipro 70 · pro 85 · world 95
+  ([FH] starting numbers); his rating bends it (`core::Communication`: 0 →
+  none, 50 → his level's, 100 → double, capped at every call). The 13th
+  attribute — PlayerAttributes, wire 0x37 (append-only), the HUD editor.
+- **HEARING — `Brain::shadowCall`:** the call is due when their pass is
+  going to their full-back in our half (the trap's read), our winger is
+  rated to shadow the line, the full-back playing off their winger SEES
+  him, and our winger DOESN'T (he's behind him). Made = knows × says. Our
+  winger then sees that one man as of `hear_s` 0.5 s + his own perception
+  delay ago instead of his last look — the call refreshes his picture.
+  Concentration (does he listen) isn't an engine attribute yet.
+- **HUD (wire 1.12):** a trailing call block on BRAIN (`u8 call` legend
+  index, `u8 to`); the pitch label reads "📣 call: adjust your shadow" with
+  a white dashed line to the winger; the side list adds "· 📣 … → <name>".
+- **Harness:** the phase report prints calls made / seconds due.
+
+cb-build:1, 200 episodes, tactic B: a call is due ~0.5 s an episode, made
+46% of it (the call's 90 × Lighthouse's amateur-level speak). The drill
+can't tell call-on from call-off (shots 2.0% vs 1.5%; passes to their
+full-back lost within 5 s 52% vs 57%). 30 matches, tactic B with the call:
++3.93 ± 0.59 (6.03 – 2.10) vs +2.77 ± 0.52 without — ~1.5 SE, mostly
+Lighthouse scoring more, so not claimed for the call. Next calls (taught
+by level): man on, turn, time, line, squeeze.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

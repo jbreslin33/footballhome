@@ -726,6 +726,10 @@ void GameServer::sendBrain() {
         e.rung = o.rung;
         e.look_ds = o.look_ds;
         e.unseen = o.unseen;
+        if (o.call_to >= 0 && o.call_to < 255) {
+            e.call = static_cast<std::uint8_t>(o.call);
+            e.call_to = static_cast<std::uint8_t>(o.call_to);
+        }
         bf.slots.push_back(e);
     }
     const Bytes frame = encodeFrame(FrameType::Brain, encodeBrain(bf));

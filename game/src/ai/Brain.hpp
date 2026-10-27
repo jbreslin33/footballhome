@@ -47,7 +47,7 @@ enum class Why : std::uint8_t {
     MeetPass, KeepRunning, KeeperDive, SideOn, DropStep, Unmark, PlayBack, Shield,
     JumpPass, ShadowHelp, PackMiddle, PressFullBack, LockDoor,
     Intercept, NoTurn, Contain, ShadowLine, PlayOff,
-    MarkTight, ProtectMiddle, AttackDrop, RunBackDrop,
+    MarkTight, ProtectMiddle, AttackDrop, RunBackDrop, CallShadow,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -63,6 +63,7 @@ inline constexpr const char* kWhyNames[] = {
     "intercept", "no turn", "contain", "shadow the line", "play off for the long ball",
     "mark tight (near the ball)", "protect the middle (far from the ball)",
     "attack the ball in the air", "run back for the ball in the air",
+    "call: adjust your shadow",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -83,6 +84,11 @@ struct Orders {
     // he only knows from that look.
     std::uint8_t look_ds = 255;
     std::uint8_t unseen = 0;
+    // A call he's making (G4.70, overlay + harness): what (a Why name),
+    // to whom (-1 none); `call_due` = the moment was there, said or not.
+    Why call = Why::Hold;
+    std::int16_t call_to = -1;
+    bool call_due = false;
 };
 
 class Brain {
@@ -221,6 +227,12 @@ private:
     // Play off (170, G4.69): their ball in the AIR for my man — read it on
     // the kick and attack the drop, receiving it facing their goal.
     bool attackTheDrop(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
+    // The full-back's call to the shadowing winger (172, G4.70), read from
+    // the true world for one team: due = the moment is there (his man is
+    // behind our winger, out of his sight, and in the full-back's); made =
+    // he knows it and says it this second.
+    struct ShadowCall { int talker = -1, to = -1, man = -1; bool due = false, made = false; };
+    ShadowCall shadowCall(std::uint8_t team, const core::World& world) const;
     // G4.64 Lighthouse's plan (165-167): pack the middle, then on their pass
     // to a full-back press him and lock the door on the return pass.
     bool packAndTrap(core::SlotIndex slot, const core::World& world, int sign,

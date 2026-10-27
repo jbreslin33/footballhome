@@ -464,10 +464,13 @@
                                      new THREE.LineDashedMaterial({ color: 0xffcc00, dashSize: 0.6, gapSize: 0.4, depthTest: false, transparent: true }));
           const dot = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.4, 20), new THREE.MeshBasicMaterial({ color: col, depthTest: false, side: THREE.DoubleSide }));
           dot.rotation.x = -Math.PI / 2;
-          go.renderOrder = act.renderOrder = dot.renderOrder = 60;
-          group.add(go, act, dot);
+          // G4.70: a call — a white line from the talker to who it's for.
+          const talk = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+                                      new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.3, gapSize: 0.3, depthTest: false, transparent: true }));
+          go.renderOrder = act.renderOrder = dot.renderOrder = talk.renderOrder = 60;
+          group.add(go, act, dot, talk);
           this.scene.add(group);
-          part = this.brainParts[i] = { group, go, act, dot, text: null, sprite: null };
+          part = this.brainParts[i] = { group, go, act, dot, talk, text: null, sprite: null };
         }
         part.group.visible = true;
         const e = v.entries[i];
@@ -482,7 +485,11 @@
         const other = e.other !== 255 && this.figures[e.other] ? this.figures[e.other].root.position : null;
         part.act.visible = !!other;
         if (other) { set(part.act, p, other); part.act.computeLineDistances(); }
+        const to = e.callTo !== undefined && e.callTo !== 255 && this.figures[e.callTo] ? this.figures[e.callTo].root.position : null;
+        part.talk.visible = !!to;
+        if (to) { set(part.talk, p, to); part.talk.computeLineDistances(); }
         let text = (v.legend && v.legend[e.why]) || '?';
+        if (to) text = '📣 ' + ((v.legend && v.legend[e.call]) || 'call');
         if (e.rung) text += ' · rung ' + e.rung;
         if (e.unseen && e.look !== undefined && e.look !== 255) text += ' · 👀 ' + (e.look / 10).toFixed(1) + 's';
         if (text !== part.text) {

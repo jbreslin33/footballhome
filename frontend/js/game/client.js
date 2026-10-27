@@ -423,7 +423,10 @@
         const e = brainEntries && brainEntries[i];
         const why = e ? brainLegend[e.why] || '?' : '…';
         const other = e && e.other !== 255 ? ' → ' + slotName(e.other) : '';
-        el.textContent = why + other + lookText(e);
+        // G4.70: a call he's making, and to whom.
+        const call = e && e.callTo !== undefined && e.callTo !== 255
+          ? ` · 📣 ${brainLegend[e.call] || 'call'} → ${slotName(e.callTo)}` : '';
+        el.textContent = why + other + call + lookText(e);
       }
       for (const el of side.el.querySelectorAll('[data-det]')) {
         if (el.hidden) continue;

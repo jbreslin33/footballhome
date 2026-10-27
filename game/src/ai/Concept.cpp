@@ -330,6 +330,10 @@ void PlayOffLongBall::configure(const core::ModelParams& p) {
     face_up_ = p.fixed(key("face_up_m"), 1500);
 }
 
+void CallAdjustShadow::configure(const core::ModelParams& p) {
+    hear_ = p.fixed(key("hear_s"), 500);
+}
+
 void JumpThePass::configure(const core::ModelParams& p) {
     gap_ = p.fixed(key("arrive_gap_m"), 1000);
     max_ = p.fixed(key("jump_max_m"), 30000);

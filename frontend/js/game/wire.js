@@ -36,10 +36,12 @@
     RUN_PHASE: 0x3F,      // admin: u8 team | u8 phase
   };
 
-  // G4.30 attribute order (PROTOCOL 0x37, append-only; G4.52 the body four).
+  // G4.30 attribute order (PROTOCOL 0x37, append-only; G4.52 the body four;
+  // G4.70 communication).
   const ATTRIBUTES = ['pace', 'passing', 'shooting', 'first_touch', 'tackling',
                       'anticipation', 'decisions', 'goalkeeping',
-                      'acceleration', 'deceleration', 'agility', 'dribbling'];
+                      'acceleration', 'deceleration', 'agility', 'dribbling',
+                      'communication'];
   const utf8 = new TextDecoder();
 
   // Built-in curriculum (ids 0-30); the server's CONCEPTS frame (0x3A,
@@ -222,6 +224,16 @@
       for (let i = 0; i < m && p + 2 <= end && i < out.length; i++, p += 2) {
         out[i].look = view.getUint8(p);
         out[i].unseen = view.getUint8(p + 1);
+      }
+      p = at + 1 + 7 * n + 1 + 2 * m;
+    }
+    // 1.12 (G4.70): the call block — the call he's making (legend index,
+    // 255 none) and to whom (slot, 255 none).
+    if (p < end) {
+      const m = view.getUint8(p++);
+      for (let i = 0; i < m && p + 2 <= end && i < out.length; i++, p += 2) {
+        out[i].call = view.getUint8(p);
+        out[i].callTo = view.getUint8(p + 1);
       }
     }
     return out;

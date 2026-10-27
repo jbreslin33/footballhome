@@ -62,6 +62,8 @@ struct LevelParams {
     // Kick range (G4.48): the longest aimed loft this level can carry, in
     // metres; 0 = no cap. A U-10 can't hit a 40 m ball. World-side.
     std::int32_t kick_range_m = 0;
+    // G4.70: how often he says what he sees (a call), % per second it's due.
+    std::int32_t speak_pct = 0;
 
     bool isZero() const noexcept {
         return perception_delay_ticks == 0 && kick_angle_err_deg == 0 &&
@@ -90,13 +92,19 @@ inline std::uint8_t levelId(std::string_view name) {
 // ERAS join these bands when concepts/recognitions land in G4.2b+).
 // Numbers are first-pass; the calibration harness tunes them.
 inline LevelParams levelParams(std::string_view name) {
-    auto band = [](LevelParams p, std::int32_t range_m) { p.kick_range_m = range_m; return p; };
-    if (name == "u10")     return band({18, 18, 25, 60, 6, 30, 80, 45, 80}, 30);  // amoeba
-    if (name == "u14")     return band({12, 13, 18, 40, 8, 35, 55, 15, 28}, 40);
-    if (name == "amateur") return band({7, 6, 10, 25, 10, 42, 30, 12, 22}, 45);  // Sunday
-    if (name == "semipro") return band({4, 3, 6, 12, 13, 50, 12, 11, 8}, 50);
-    if (name == "pro")     return band({2, 2, 3, 5, 16, 60, 4, 10, 5}, 55);
-    if (name == "world")   return band({1, 1, 2, 2, 18, 65, 0, 9, 2}, 60);
+    // range_m: kick range (G4.48); speak: % he makes a call that's due (G4.70
+    // — [FH] starting numbers: kids go quiet, a pro back line never stops).
+    auto band = [](LevelParams p, std::int32_t range_m, std::int32_t speak) {
+        p.kick_range_m = range_m;
+        p.speak_pct = speak;
+        return p;
+    };
+    if (name == "u10")     return band({18, 18, 25, 60, 6, 30, 80, 45, 80}, 30, 20);  // amoeba
+    if (name == "u14")     return band({12, 13, 18, 40, 8, 35, 55, 15, 28}, 40, 40);
+    if (name == "amateur") return band({7, 6, 10, 25, 10, 42, 30, 12, 22}, 45, 55);  // Sunday
+    if (name == "semipro") return band({4, 3, 6, 12, 13, 50, 12, 11, 8}, 50, 70);
+    if (name == "pro")     return band({2, 2, 3, 5, 16, 60, 4, 10, 5}, 55, 85);
+    if (name == "world")   return band({1, 1, 2, 2, 18, 65, 0, 9, 2}, 60, 95);
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 
@@ -119,16 +127,17 @@ struct PlayerAttributes {
     std::int16_t deceleration = -1;  // braking limit
     std::int16_t agility = -1;       // turning / cutting limit
     std::int16_t dribbling = -1;     // top speed with the ball, as a share
+    std::int16_t communication = -1; // how often he makes a call (G4.70)
 };
 
 // Wire / registry order (game_attributes.sort_order; PROTOCOL 0x37).
 // Append-only: the wire carries this order (0x37 is count-prefixed).
-inline constexpr int kAttributeCount = 12;
+inline constexpr int kAttributeCount = 13;
 inline std::int16_t* attributeAt(PlayerAttributes& a, int i) {
     std::int16_t* f[kAttributeCount] = {&a.pace, &a.passing, &a.shooting, &a.first_touch,
                                         &a.tackling, &a.anticipation, &a.decisions,
                                         &a.goalkeeping, &a.acceleration, &a.deceleration,
-                                        &a.agility, &a.dribbling};
+                                        &a.agility, &a.dribbling, &a.communication};
     return i >= 0 && i < kAttributeCount ? f[i] : nullptr;
 }
 
