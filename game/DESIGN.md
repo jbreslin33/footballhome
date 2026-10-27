@@ -2625,6 +2625,39 @@ diff behavour?"
 - Open: a "save to this model" button (writes `game_model_concepts`) if
   James wants a change to stick.
 
+### 8.73 G4.75 — beat the high line: the keeper reads it, or plays short (mig 757)
+
+James 10/27: "why does ukie keeper go deep every time lol. its high line i
+get it. but that is what a pro player would do. semi pro and amateur and
+youth are dumber lol." / "high line go over top number 1 is a concept but
+players should be rated on understanding it, percieving it, ability to
+carry it out, etc"
+
+Why 97%: the keeper never CHOSE long. His pass search only takes men 3 m+
+further forward (split centre-backs level with him never qualify; our 8/10
+sit in the lanes to their 6/8), so every goal kick fell through to the
+punt — at every level.
+
+- **`beat-the-high-line` (180, core, taught from semipro):** their last
+  outfield man `high_m` 30 m+ off his goal line → a lofted ball `behind_m`
+  8 m past him toward our most advanced man (HUD "over the high line").
+  The three ratings James named are the three layers: UNDERSTANDING = this
+  concept (amateur / youth 0; semipro at its quality 68; pro 82; world 92;
+  a model's demand caps it), PERCEIVING = his picture (scanning,
+  anticipation: where he THINKS their line is), CARRYING IT OUT = the
+  lofted kick (passing error, kick range).
+- **Not read** (doesn't know it, or his roll misses): the keeper's short,
+  simple ball to the nearest open man within `keeper_short_m` 25 m, any
+  direction (HUD "keeper: short and simple"); the old forward-pass search
+  and the punt only when nobody is open.
+- First wired for the keeper; the same read for an outfield passer is next
+  if James wants it.
+
+keeper:1, 200 episodes — Ukies (semipro) read it: over the high line 0.69
+a episode, short 0.33; with the read off (`away:beat-the-high-line=0`, the
+amateur / youth picture): short 1.07, over 0, and passes are 69% of their
+losses (45%). 30 matches: +2.43 ± 0.48 (4.87 – 2.43) — noise.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

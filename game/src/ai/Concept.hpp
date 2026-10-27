@@ -253,7 +253,9 @@ public:
     ShortSimple() : Concept("short-simple", 151) {}
     void configure(const core::ModelParams& p) override;
     using LaneOpen = std::function<bool(const math::Vec2&, const math::Vec2&)>;
-    std::optional<core::SlotIndex> pick(const ConceptContext& c, const LaneOpen& open) const;
+    // max_m overridable (the keeper's short ball reaches a split centre-back).
+    std::optional<core::SlotIndex> pick(const ConceptContext& c, const LaneOpen& open,
+                                        std::optional<math::Fixed64> max_m = std::nullopt) const;
 
 private:
     math::Fixed64 min_, max_, back_;
@@ -813,6 +815,28 @@ private:
     std::int32_t window_ = 30;
 };
 
+// Beat the high line (180, core, semipro) [James 10/27: "high line go over
+// top number 1 is a concept but players should be rated on understanding
+// it, percieving it, ability to carry it out"]: their last defender stands
+// high_m or more off their goal line — go over it, into the space behind_m
+// past him, toward our most advanced man. UNDERSTANDING = this rating
+// (taught from semipro: amateurs and kids don't read it; a semipro does at
+// his quality); PERCEIVING = his picture (scanning + anticipation decide
+// where he thinks their line is); CARRYING IT OUT = the lofted kick (his
+// passing error and range). First wired for the keeper's distribution:
+// without the read he plays the short, simple ball to an open man.
+class BeatTheHighLine : public Concept {
+public:
+    BeatTheHighLine() : Concept("beat-the-high-line", 180) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 high() const { return high_; }
+    math::Fixed64 behind() const { return behind_; }
+    math::Fixed64 keeperShort() const { return keeper_short_; }
+
+private:
+    math::Fixed64 high_, behind_, keeper_short_;
+};
+
 // Scanning (G4.66) [Jordet et al. 2013, visual exploratory activity in
 // Premier League midfielders: the best scan ~0.6-0.8 times a second; FA /
 // US Soccer "check your shoulder"]: what a player knows of the men BEHIND
@@ -901,6 +925,7 @@ struct ConceptBook {
     CallLine call_line;
     HurryTheKeeper hurry_keeper;
     PressTheBadTouch bad_touch;
+    BeatTheHighLine high_line;
     ScanBeforeReceive scan_receive;
     ScanDefending scan_defend;
     Vision vision;
@@ -945,6 +970,7 @@ struct ConceptBook {
         call_line.configure(p);
         hurry_keeper.configure(p);
         bad_touch.configure(p);
+        high_line.configure(p);
         scan_receive.configure(p);
         scan_defend.configure(p);
         vision.configure(p);

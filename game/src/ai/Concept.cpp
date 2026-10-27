@@ -137,12 +137,14 @@ void ShortSimple::configure(const core::ModelParams& p) {
     back_ = p.fixed(key("back_m"), 5000);
 }
 
-std::optional<core::SlotIndex> ShortSimple::pick(const ConceptContext& c, const LaneOpen& open) const {
+std::optional<core::SlotIndex> ShortSimple::pick(const ConceptContext& c, const LaneOpen& open,
+                                                 std::optional<Fixed64> max_m) const {
     const auto& w = c.world;
     const auto& me = w.player(c.slot);
     const Fixed64 s = c.sign >= 0 ? Fixed64::one() : -Fixed64::one();
     std::optional<core::SlotIndex> best;
-    Fixed64 best_d2 = max_ * max_;
+    const Fixed64 mx = max_m ? *max_m : max_;
+    Fixed64 best_d2 = mx * mx;
     for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
         const auto& m = w.player(j);
         if (j == c.slot || m.team != me.team) continue;
@@ -343,6 +345,12 @@ void HurryTheKeeper::configure(const core::ModelParams& p) {
 void PressTheBadTouch::configure(const core::ModelParams& p) {
     const math::Fixed64 w = p.fixed(key("window_s"), 1000);
     window_ = static_cast<std::int32_t>((w * math::Fixed64::fromInt(core::kTickRate)).raw >> math::Fixed64::FRAC_BITS);
+}
+
+void BeatTheHighLine::configure(const core::ModelParams& p) {
+    high_ = p.fixed(key("high_m"), 30000);
+    behind_ = p.fixed(key("behind_m"), 8000);
+    keeper_short_ = p.fixed(key("keeper_short_m"), 25000);
 }
 
 void Call::configure(const core::ModelParams& p) {

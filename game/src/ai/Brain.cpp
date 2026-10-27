@@ -1772,6 +1772,52 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                                   : core::kGroundKickSpeed;
             return passSafe(world, setup_, slot, recv, a, b, v, safe_reach);
         };
+        // The keeper's distribution (G4.75): does he READ their high line
+        // (180)? Read and seen high: over it, into the space behind their
+        // last man toward our most advanced. Not read (amateurs and kids
+        // never; a semipro at his quality): the short, simple ball to an
+        // open man, any direction — long only when nobody's open (below).
+        if (im_keeper) {
+            const auto& H = book_.high_line;
+            const std::uint64_t ksec = world.tickCount() / 30;
+            const bool reads_line = ratings_[slot][H.bit()] > 0 && applies(slot, H.bit(), ksec);
+            if (reads_line) {
+                if (half_x_ - their_line >= H.high()) {   // their last man, off their goal line
+                    int fwd = -1;
+                    Fixed64 fx{};
+                    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                        if (j == slot || setup_.team_of_slot[j] != setup_.team_of_slot[slot]) continue;
+                        const Fixed64 x = world.player(j).pos.x * sgn;
+                        if (fwd < 0 || x > fx) { fwd = j; fx = x; }
+                    }
+                    if (fwd >= 0) {
+                        Fixed64 drop = their_line + H.behind();
+                        if (drop > half_x_ - Fixed64::fromInt(6)) drop = half_x_ - Fixed64::fromInt(6);
+                        const Vec2 to{drop * sgn, world.player(static_cast<SlotIndex>(fwd)).pos.y};
+                        out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+                        out.action = Action::LoftedKick;
+                        out.carry_m = aimedCarry(me.pos, to, rangeFor(lv, Fixed64::fromInt(60)));
+                        out.why = Why::OverHighLine;
+                        out.target = to;
+                        out.other = static_cast<std::int16_t>(fwd);
+                        return out;
+                    }
+                }
+            } else {
+                const ConceptContext pcx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                                         half_x_, degree(slot, book_.short_simple.bit())};
+                if (const auto r = book_.short_simple.pick(pcx, lane_open, H.keeperShort())) {
+                    const Vec2 to{world.player(*r).pos.x, world.player(*r).pos.y};
+                    out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+                    out.action = distSq(me.pos, Vec3{to.x, to.y, Fixed64::zero()}) < kSoftPassRange * kSoftPassRange
+                                     ? Action::ShortPass : Action::GroundKick;
+                    out.why = Why::KeeperShort;
+                    out.target = to;
+                    out.other = static_cast<std::int16_t>(*r);
+                    return out;
+                }
+            }
+        }
         // pass_ladder (bit 29, G4.35) [Bielsa-Leeds ch4] — ai::PassLadder:
         // a laddered passer ranks receivers by rung (behind their line
         // first, central before wide) instead of raw progress, and plays
