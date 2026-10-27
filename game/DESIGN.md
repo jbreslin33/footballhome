@@ -2761,6 +2761,30 @@ play when Luke Breslin is in)"
 60% / 27% reach our man; keepers short 30 / 43 a match; margin +2.90 ±
 1.23. cb-build:0 trace: Luke drops on our centre-back's ball.
 
+### 8.76 G4.79 — realistic top speeds and acceleration (mig 766)
+
+James 10/27: "4. yes make moveemnte realistic!" (open since G4.52,
+"acceleration too slow").
+
+- The law was right (mono-exponential sprint, τ — §8.49); the numbers were
+  not. Pace 50 ran 6.4 m/s and pace 100 7.4 (23-27 km/h); our sides (pace
+  61) topped out at 6.6 m/s. Real maximal sprint speeds [Mendez-Villanueva
+  et al. 2011 by age: ~U13 7.1, U15 7.9, U17 8.4, U18 8.6 m/s; Haugen et al.
+  2014 by level; Premier League tracking: match top speeds 32-34 km/h, the
+  fastest 36-37]: amateur ~7.5-8, semi-pro ~8.3-8.8, pro ~9-9.5, elite 10+.
+- **Pace** now 0 → 6.0, 50 → 8.0, 100 → 10.0 m/s: Lighthouse / Ukies run
+  8.4 m/s (30 km/h). **τ** 1.4 / 1.1 / 0.85 s at 0 / 50 / 100 (soccer
+  force-velocity profiles V0/F0 ≈ 1.0-1.3 s [Samozino/Morin; Jiménez-Reyes
+  2018]): first acceleration ~7.5 m/s², 10 m in ~2.0 s from standing.
+  Unrated sides' `max_speed_cms` ×1.35 (U10 6.2, U14 7.5, amateur 7.9,
+  semi-pro 8.5, world 9.2 m/s average).
+- **What it exposed** (10 matches LH APSL v Ukies, before → after): shots a
+  match 45 / 32 → 72 / 55 (real ~12 a team), final-third entries 145 / 97
+  → 188 / 133 (real ~40-50), goals 5.9-3.0 → 11.6-6.4 (real ~2.7 a
+  match). Movement is now realistic; the defending block (compactness,
+  pressure on the ball in and around the box) is the biggest realism gap
+  and is next.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
