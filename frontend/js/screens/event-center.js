@@ -54,7 +54,7 @@ class EventCenterScreen extends Screen {
     this.kind     = 'all';
     this.category = 'all';
     this.weekStart = EventCenterScreen.monday(new Date());   // the calendar's Monday, kept across visits
-    this.pill     = 'coming';  // coming | sides | plan | cones | invites
+    this.pill     = 'players'; // players (+ invites) | sides | plan (+ cones)
     this.att      = null;      // {canMark, roster: Map(person_id -> {status})}
     this.invites  = null;      // {invites, candidates} | {error}
     this.saving   = new Set(); // "att:<pid>" / "inv:<pid>" in flight
@@ -98,7 +98,7 @@ class EventCenterScreen extends Screen {
   }
 
   async _pollLive() {
-    if (document.hidden || !this.ev || this.pill !== 'coming' || this._pollBusy) return;
+    if (document.hidden || !this.ev || this.pill !== 'players' || this._pollBusy) return;
     const id = this.ev.fh_event_id;
     this._pollBusy = true;
     try {
@@ -205,7 +205,7 @@ class EventCenterScreen extends Screen {
     if (params.kind) this.kind = params.kind;
     this.ev = params.pick ? null : (params.event || null);
     this.loadingId = (!this.ev && !params.pick && params.fhEventId) ? Number(params.fhEventId) : null;
-    this.pill = 'coming';
+    this.pill = 'players';
     this.att = null;
     this.invites = null;
     this.sides = null;        // { canEdit, colors, players }
@@ -522,6 +522,8 @@ class EventCenterScreen extends Screen {
       if (!this.ev || this.ev.fh_event_id !== id) return;
       this.att = { canMark: !!body.can_mark, canSetRsvp: !!body.can_set_rsvp,
                    roster: new Map((body.roster || []).map(r => [r.person_id, r])) };
+      // 🎟 Invites sit under All Players — load them with it.
+      if (this.pill === 'players' && this._canInvite() && !this.invites) this._loadInvites();
     } catch (err) {
       console.error('[event-center] attendance load failed:', err);
       this.att = { canMark: false, canSetRsvp: false, roster: new Map() };
@@ -798,10 +800,10 @@ class EventCenterScreen extends Screen {
       }
       if ((el = t('[data-ec-pill]'))) {
         this.pill = el.dataset.ecPill;
-        if (this.pill === 'invites' && !this.invites) this._loadInvites();
+        if (this.pill === 'players' && this._canInvite() && !this.invites) this._loadInvites();
         if (this.pill === 'sides' && !this.sides) this._loadSides();
         if (this.pill === 'plan' && this.plan === undefined) this._loadPlan();
-        if (this.pill === 'cones' && this.cones === undefined) this._loadCones();
+        if (this.pill === 'plan' && this.cones === undefined) this._loadCones();
         this._render();
         return;
       }
@@ -966,37 +968,47 @@ class EventCenterScreen extends Screen {
       <div class="ec-week">${days.map(day).join('')}</div>`;
   }
 
+  // The big pill row (lib/event-pills.js — Game Center's row): a practice
+  // is 👥 All Players · 🎽 Groups · 📝 Practice Plan, a pickup the same with
+  // 🎽 Teams (owner 2026-10-27: "same behaviour for practice and game
+  // except where we have to differ").  🎟 Invites ride inside All Players,
+  // 🔶 Cones inside the Practice Plan.  Any other kind is just its players.
+  // Titles are DB copy (event_center pill_players/pill_groups/pill_teams/
+  // pill_plan, mig 751).
+  _pills(ev) {
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    const pills = [{ key: 'players', icon: '👥', title: cp('pill_players', 'All Players'), accent: '#3b82f6' }];
+    if (ev.kind === 'practice' || ev.kind === 'pickup') {
+      pills.push(ev.kind === 'pickup'
+        ? { key: 'sides', icon: '🎽', title: cp('pill_teams', 'Teams'), accent: '#8b5cf6' }
+        : { key: 'sides', icon: '🎽', title: cp('pill_groups', 'Groups'), accent: '#8b5cf6' });
+      pills.push({ key: 'plan', icon: '📝', title: cp('pill_plan', 'Practice Plan'), accent: '#22c55e' });
+    }
+    return pills;
+  }
+
+  // Invites are for an event still to come, by whoever may mark it.
+  _canInvite() { return !!(this.att && this.att.canMark) && !this._isPast(this.ev); }
+
   _eventHtml() {
     const ev = this.ev;
     const canMark = !!(this.att && this.att.canMark);
-    const pills = [['coming', "Who's Coming & Attendance"]];
-    // Sides for a pickup, groups for a practice — a game's squad and
-    // starters are Game Center's.
-    if (ev.kind === 'pickup')   pills.push(['sides', '🎽 Teams']);
-    if (ev.kind === 'practice') pills.push(['sides', '🎽 Groups']);
-    if (ev.kind === 'practice' || ev.kind === 'pickup') pills.push(['plan', '📝 Session Plan']);
-    // Cone setups (mig 559): the field layout for this session.
-    if (ev.kind === 'practice' || ev.kind === 'pickup') pills.push(['cones', (window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones']);
-    // Invites are for an event still to come, by whoever may mark it.
-    if (canMark && !this._isPast(ev)) pills.push(['invites', '🎟 Invites']);
-    if (!pills.some(([k]) => k === this.pill)) this.pill = 'coming';
+    const pills = this._pills(ev);
+    if (!pills.some(p => p.key === this.pill)) this.pill = 'players';
+    const section = (label, html) => `<div class="ec-h" style="margin:var(--space-4) 0 var(--space-2);">${label}</div>${html}`;
 
     return `
-      <div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-3);">
-        ${pills.map(([k, label]) =>
-          `<button type="button" class="ec-chip ${this.pill === k ? 'on' : ''}" data-ec-pill="${k}">${label}</button>`).join('')}
-        <span style="flex:1;"></span>
-        ${ev.kind === 'match' && ev.match_id != null
-          ? `<button type="button" class="btn btn-secondary" data-ec-game-center style="padding:4px 12px; font-size:0.85rem;">🏟️ Game Center</button>` : ''}
-      </div>
+      ${pills.length > 1 ? EventPills.row(pills, this.pill, { attr: 'data-ec-pill', escapeHtml: (t) => this.escapeHtml(t), label: 'Event' }) : ''}
+      ${ev.kind === 'match' && ev.match_id != null
+        ? `<div style="text-align:right; margin-bottom:var(--space-2);"><button type="button" class="btn btn-secondary" data-ec-game-center style="padding:4px 12px; font-size:0.85rem;">🏟️ Game Center</button></div>` : ''}
       ${this.att && !canMark ? `<div style="font-size:0.8rem; opacity:0.7; margin-bottom:var(--space-2);">
         Read-only — attendance and invites are for this event's coaches and club admins.</div>` : ''}
-      ${this.pill === 'invites' ? this._invitesHtml()
-        : this.pill === 'sides' ? this._sidesHtml()
+      ${this.pill === 'sides' ? this._sidesHtml()
         : this.pill === 'plan' ? this._planHtml()
-        : this.pill === 'cones' ? this._conesHtml() : this._comingHtml()}
+            + section((window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones', this._conesHtml())
+        : this._comingHtml() + (this._canInvite() ? section('🎟 Invites', this._invitesHtml()) : '')}
       ${this.cpError ? `<div style="font-size:0.75rem; color:#f59e0b; margin-top:6px;">${this.escapeHtml(this.cpError)}</div>` : ''}
-      ${this.pill === 'coming' && (ev.kind === 'practice' || ev.kind === 'pickup') ? this.carpoolPanel.html() : ''}`;
+      ${this.pill === 'players' && (ev.kind === 'practice' || ev.kind === 'pickup') ? this.carpoolPanel.html() : ''}`;
   }
 
   // The practice plan attached to this event, read-only — sessions in order,

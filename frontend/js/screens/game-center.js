@@ -5172,27 +5172,20 @@ class GameCenterScreen extends Screen {
   // coach sees at a glance which posts are still owed. Drafts get no
   // mark: opening a pill creates one, so it would say nothing.
   _socialPillsHtml() {
-    const picked = this.pill;
-    return POST_PILLS.map(p => {
-      const on = p.key === picked;
+    // The shared big row (lib/event-pills.js) — a practice draws the same one.
+    const mark = (p) => {
       const state = this.postStates[p.key];
-      let mark = '';
-      if (state && state.status === 'posted') mark = '✅ Posted';
-      else if (state && state.status === 'scheduled') {
+      if (state && state.status === 'posted') return '✅ Posted';
+      if (state && state.status === 'scheduled') {
         const d = state.scheduled_at ? new Date(state.scheduled_at) : null;
-        mark = d && !isNaN(d)
+        return d && !isNaN(d)
           ? `📅 ${d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
           : '📅 Scheduled';
       }
-      return `
-        <button type="button" data-gc-social-pill="${p.key}" role="tab" aria-selected="${on}"
-                style="flex:1 1 0; min-width:104px; font-size:0.72rem; font-weight:700; line-height:1.25; padding:6px 8px; white-space:nowrap;
-                       border-radius:8px; cursor:pointer; color:#fff; border:2px solid ${on ? p.accent : '#475569'};
-                       background:${on ? p.accent : '#0f172a'};">
-          ${p.icon} ${this.escapeHtml(this._pillTitle(p.key))}
-          ${mark ? `<br><span data-gc-social-mark style="font-size:0.64rem; font-weight:600; opacity:0.95;">${this.escapeHtml(mark)}</span>` : ''}
-        </button>`;
-    }).join('');
+      return '';
+    };
+    return EventPills.buttons(POST_PILLS.map(p => ({ ...p, title: this._pillTitle(p.key) })), this.pill,
+      { attr: 'data-gc-social-pill', escapeHtml: (t) => this.escapeHtml(t), mark });
   }
 
   // Just the strip — never the card under it, which holds a caption the
