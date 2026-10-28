@@ -5522,10 +5522,13 @@ class GameCenterScreen extends EventScreen {
     const [bg, fg] = st.colour;
     const pillText = this._eligCopy('pill_' + st.state, tokens);
     if (!pillText) return '';   // no copy row → nothing to say (never hard-code it)
-    // Week rule (mig 562): its own explainer — all days held, a day
-    // missing (bar lowered), or two+ missing (no practices needed).
+    // Week rule (migs 562/804/805): its own explainer — a weekday game
+    // this week (none needed), practice days − 3, or none needed.
+    // neededReason (mig 806) names the rule fh_starter_needed applied.
     const rule = s.weekMode
-      ? this._eligCopy(st.needed === 0 ? 'rule_week_zero' : (Number(s.missedDays) > 0 ? 'rule_week_reduced' : 'rule_week'), tokens)
+      ? this._eligCopy(s.neededReason === 'weekday_game' ? 'rule_week_weekday_game'
+          : st.needed === 0 ? 'rule_week_zero'
+          : (s.neededReason !== 'days' && Number(s.missedDays) > 0) ? 'rule_week_reduced' : 'rule_week', tokens)
       : this._eligCopy(s.extended ? 'rule_extended' : 'rule', tokens);
     const legend = this._eligCopy('legend');
     // The second criterion: the game's own RSVP in by its deadline (mig 507).

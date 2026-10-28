@@ -235,11 +235,12 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                     WHERE fe.match_id = $1::int
                     LIMIT 1
                 ),
-                -- needed comes from fh_starter_needed (mig 562): the policy
-                -- number, or — men's week rule — lowered one per typical
-                -- practice day (Tue–Sat) of the game week with no session.
+                -- needed comes from fh_starter_needed — the one place the
+                -- rule lives: the policy number, or the men's week rule
+                -- (Mon–Sat practice days − 3; 0 in a week with a weekday
+                -- game — migs 562/804/805) — plus the reason it applied.
                 pol AS (
-                    SELECT n.needed, n.base_needed, n.typical_days, n.held_days, n.missed_days, n.week_mode,
+                    SELECT n.needed, n.base_needed, n.typical_days, n.held_days, n.missed_days, n.week_mode, n.reason,
                            (SELECT COALESCE(p.lookback_count, 5) FROM fh_starter_policy($2::int[], $1::int) p) AS lookback
                     FROM match_event me
                     CROSS JOIN LATERAL fh_starter_needed($2::int[], me.starts_at, $1::int) n
@@ -269,6 +270,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                        (SELECT typical_days FROM pol) AS typical_days,
                        (SELECT held_days FROM pol) AS held_days,
                        (SELECT missed_days FROM pol) AS missed_days,
+                       (SELECT reason FROM pol) AS needed_reason,
                        (SELECT count(*) FROM win) AS window_total,
                        (SELECT count(*) FROM win WHERE win.starts_at < now()) AS recent_total,
                        -- Week mode counts DAYS, not sessions (mig 562): two
@@ -390,6 +392,8 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 statsJson << "\"typicalDays\":" << (row["typical_days"].is_null() ? "null" : row["typical_days"].c_str()) << ",";
                 statsJson << "\"heldDays\":" << (row["held_days"].is_null() ? "null" : row["held_days"].c_str()) << ",";
                 statsJson << "\"missedDays\":" << (row["missed_days"].is_null() ? "null" : row["missed_days"].c_str()) << ",";
+                // Which rule set `needed` (mig 806): weekday_game | days | missed | policy.
+                statsJson << "\"neededReason\":\"" << (row["needed_reason"].is_null() ? "" : row["needed_reason"].c_str()) << "\",";
                 const std::string rsvpTiming = row["rsvp_timing"].is_null() ? "" : row["rsvp_timing"].c_str();
                 statsJson << "\"eligible\":" << (attended >= needed && rsvpTiming != "late" ? "true" : "false") << ",";
                 // Dues alternate (mig 613) is private — the coach sees every
