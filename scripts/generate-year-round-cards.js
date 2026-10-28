@@ -30,28 +30,32 @@ h1{font-size:112px;font-weight:900;line-height:.95;margin-top:14px;text-shadow:0
 .her{margin-top:16px;font-size:22px;font-weight:800;letter-spacing:1.5px;color:#f5d442;line-height:1.35}
 .pills{display:flex;justify-content:center;gap:14px;margin-top:14px}.pill{background:rgba(245,212,66,.18);border:2px solid rgba(245,212,66,.55);color:#f5d442;padding:12px 26px;border-radius:999px;font-size:22px;font-weight:800;letter-spacing:1px}
 .cta{margin-top:24px;background:#f5d442;color:#0a1628;border-radius:16px;padding:16px 24px;text-align:center}.cta .top{font-size:18px;font-weight:800;letter-spacing:3px}.cta .bot{font-size:28px;font-weight:900;margin-top:4px}
-.yr{margin-top:20px;text-align:center;font-size:20px;font-weight:900;letter-spacing:6px;color:#f5d442}.seasons{display:flex;justify-content:center;gap:12px;margin-top:10px}.s{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:12px 6px;text-align:center}.s .i{font-size:34px}.s .l{font-size:19px;font-weight:900;letter-spacing:2px;margin-top:4px}.s .d{font-size:15px;opacity:.85;margin-top:2px}.s.now{background:rgba(245,212,66,.2);border:2px solid #f5d442}.s.now .l{color:#f5d442}
+.yr{margin-top:20px;text-align:center;font-size:20px;font-weight:900;letter-spacing:6px;color:#f5d442}.seasons{display:flex;justify-content:center;gap:12px;margin-top:10px}.s{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:10px 6px;text-align:center;display:flex;flex-direction:column;justify-content:center}.s .i{font-size:30px}.s .l{font-size:19px;font-weight:900;letter-spacing:2px;margin-top:4px}.s .d{font-size:15px;opacity:.85;margin-top:2px}.s.now{background:rgba(245,212,66,.2);border:2px solid #f5d442}.s.now .l{color:#f5d442}
+.acts{display:flex;justify-content:center;gap:12px;margin-top:12px}.act{flex:1;background:rgba(245,212,66,.14);border:2px solid rgba(245,212,66,.5);border-radius:14px;padding:12px 6px;text-align:center;font-size:22px;font-weight:900;letter-spacing:1px;color:#f5d442}.act .i{margin-right:8px}
 .venue{position:absolute;bottom:44px;left:60px;right:60px;background:rgba(255,255,255,.1);border:3px solid rgba(245,212,66,.65);border-radius:20px;padding:16px 20px;text-align:center}
 .venue .n{font-size:44px;font-weight:900;color:#f5d442}.venue .ad{font-size:30px;font-weight:700;margin-top:8px}`;
 const card = (o) => `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body><div class="card"><div class="pattern"></div><div class="gb t"></div>
 <div class="header"><img src="${crest}"><div><div class="club">LIGHTHOUSE 1893 SC</div><div class="since">EST. ${o.est} · PHILADELPHIA</div></div>${o.badge}</div>
 <div class="hero"><div class="kicker">${o.kicker}</div><h1>${o.h1}</h1><div class="sub">${o.sub}</div><div class="her">${o.her}</div></div>
 <div class="pills">${o.pills.map(p=>`<div class="pill">${p}</div>`).join('')}</div>
-<div class="yr">FULL-YEAR PROGRAM</div><div class="seasons">${o.seasons.map(([i,l,d,n])=>`<div class="s${n?" now":""}"><div class="i">${i}</div><div class="l">${l}</div><div class="d">${d}</div></div>`).join("")}</div>
+<div class="yr">FULL-YEAR PROGRAM</div><div class="seasons">${o.seasons.map(([i,l,d])=>`<div class="s"><div class="i">${i}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:""}</div>`).join("")}</div><div class="acts">${ACTS.map(([i,l])=>`<div class="act"><span class="i">${i}</span>${l}</div>`).join("")}</div>
 <div class="venue"><div class="n">LIGHTHOUSE SPORTS COMPLEX</div><div class="ad">199 East Erie Avenue · Philadelphia, PA</div></div>
 <div class="gb b"></div></div></body></html>`;
+// What the club does in every season — its own row, not per season
+// (owner 2026-10-28: "League Games, Training, Tournaments in its own cube").
+const ACTS = [['⚽','LEAGUE GAMES'],['🎯','TRAINING'],['🏆','TOURNAMENTS']];
 const ball = '<div class="ballc">⚽</div>';
 const cards = {
  'youth-year-round-ad': {est:'1897', badge:`<div class="badge"><img src="${ppr}"></div>`, kicker:'Boys & Girls · Grades K–9', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join now · <strong>All skill levels welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:['BOYS','GIRLS'],
-   seasons:[['🍂','FALL','Outdoor league'],['❄️','WINTER','Indoor'],['🌸','SPRING','Outdoor league'],['☀️','SUMMER','Training']]},
+   seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
  // Free organic post (owner 2026-10-28): every program on one card,
  // "registration links in bio" — not an ad, posted from #promotional-posts.
  'club-year-round-post': {est:'1893', badge:ball, kicker:'Registration Open', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Registration links <strong>in bio</strong>', her:"America's oldest active ⚽ club", pills:['MEN 16+','WOMEN 18+','BOYS &amp; GIRLS K–9'],
-   seasons:[['🍂','FALL','League games'],['❄️','WINTER','Indoor'],['🌸','SPRING','League games'],['☀️','SUMMER','Training']]},
+   seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
  'mens-year-round-ad': {est:'1893', badge:ball, kicker:"Men's Club · Join Now", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'<strong>APSL &amp; CASA Liga 1</strong> · Open to new players', her:"America's oldest active ⚽ club", pills:['MEN'],
-   seasons:[['🍂','FALL','League games'],['❄️','WINTER','Indoor training'],['🌸','SPRING','League games'],['☀️','SUMMER','Training']]},
+   seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
  'womens-year-round-ad': {est:'1895', badge:ball, kicker:"Women's Club · Join Now", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'<strong>Tri County Womens League</strong> · Open to new players', her:"Philadelphia's oldest non-profit ⚽ club", pills:['WOMEN'],
-   seasons:[['🍂','FALL','League games'],['❄️','WINTER','Indoor training'],['🌸','SPRING','League games'],['☀️','SUMMER','Training']]},
+   seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
 };
 (async()=>{const b=await puppeteer.launch({headless:'new',args:['--no-sandbox']});const pg=await b.newPage();await pg.setViewport({width:1080,height:1080});
 for(const [k,o] of Object.entries(cards)){const pg=await b.newPage();await pg.setViewport({width:1080,height:1080});await pg.setContent(card(o),{waitUntil:'load'});await pg.screenshot({path:path.join(OUT,k+'.png')});console.log(k)}
