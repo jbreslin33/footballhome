@@ -29,6 +29,7 @@ h1{font-size:112px;font-weight:900;line-height:.95;margin-top:14px;text-shadow:0
 .sub{font-size:36px;font-weight:700;margin-top:22px}.sub strong{color:#f5d442}
 .her{margin-top:16px;font-size:22px;font-weight:800;letter-spacing:1.5px;color:#f5d442;line-height:1.35}
 .pills{display:flex;justify-content:center;gap:14px;margin-top:14px}.pill{background:rgba(245,212,66,.18);border:2px solid rgba(245,212,66,.55);color:#f5d442;padding:12px 26px;border-radius:999px;font-size:22px;font-weight:800;letter-spacing:1px}
+.pills.tight{gap:10px}.pills.tight .pill{padding:10px 16px;font-size:18px;white-space:nowrap;letter-spacing:.5px}.pill.price{background:#f5d442;border-color:#f5d442;color:#0a1628;font-weight:900}
 .cta{margin-top:24px;background:#f5d442;color:#0a1628;border-radius:16px;padding:16px 24px;text-align:center}.cta .top{font-size:18px;font-weight:800;letter-spacing:3px}.cta .bot{font-size:28px;font-weight:900;margin-top:4px}
 .yr{margin-top:20px;text-align:center;font-size:20px;font-weight:900;letter-spacing:6px;color:#f5d442}.seasons{display:flex;justify-content:center;gap:12px;margin-top:10px}.s{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:10px 6px;text-align:center;display:flex;flex-direction:column;justify-content:center}.s .i{font-size:30px}.s .l{font-size:19px;font-weight:900;letter-spacing:2px;margin-top:4px}.s .d{font-size:15px;opacity:.85;margin-top:2px}.s.now{background:rgba(245,212,66,.2);border:2px solid #f5d442}.s.now .l{color:#f5d442}
 .acts{display:flex;justify-content:center;gap:12px;margin-top:12px}.act{flex:1;background:rgba(245,212,66,.14);border:2px solid rgba(245,212,66,.5);border-radius:14px;padding:12px 6px;text-align:center;font-size:22px;font-weight:900;letter-spacing:1px;color:#f5d442}.act .i{margin-right:8px}
@@ -37,13 +38,16 @@ h1{font-size:112px;font-weight:900;line-height:.95;margin-top:14px;text-shadow:0
 const card = (o) => `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body><div class="card"><div class="pattern"></div><div class="gb t"></div>
 <div class="header"><img src="${crest}"><div><div class="club">LIGHTHOUSE 1893 SC</div><div class="since">EST. ${o.est} · PHILADELPHIA</div></div>${o.badge}</div>
 <div class="hero"><div class="kicker">${o.kicker}</div><h1>${o.h1}</h1><div class="sub">${o.sub}</div><div class="her">${o.her}</div></div>
-<div class="pills">${o.pills.map(p=>`<div class="pill">${p}</div>`).join('')}</div>
+<div class="pills${o.pills.length>2?' tight':''}">${o.pills.map(p=>`<div class="pill">${p}</div>`).join('')}<div class="pill price">${PRICE}</div></div>
 <div class="yr">FULL-YEAR PROGRAM</div><div class="seasons">${o.seasons.map(([i,l,d])=>`<div class="s"><div class="i">${i}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:""}</div>`).join("")}</div><div class="acts">${ACTS.map(([i,l])=>`<div class="act"><span class="i">${i}</span>${l}</div>`).join("")}</div>
 <div class="venue"><div class="n">LIGHTHOUSE SPORTS COMPLEX</div><div class="ad">199 East Erie Avenue · Philadelphia, PA</div></div>
 <div class="gb b"></div></div></body></html>`;
 // What the club does in every season — its own row, not per season
 // (owner 2026-10-28: "League Games, Training, Tournaments in its own cube").
 const ACTS = [['⚽','LEAGUE GAMES'],['🎯','TRAINING'],['🏆','TOURNAMENTS']];
+// Cost up front (owner 2026-10-28: "$35/month uniform included") — the
+// club-wide dues_policies rate; captions carry it via mig 789.
+const PRICE = '$35/MONTH · UNIFORM INCLUDED';
 const ball = '<div class="ballc">⚽</div>';
 const cards = {
  'youth-year-round-ad': {est:'1897', badge:`<div class="badge"><img src="${ppr}"></div>`, kicker:'Boys & Girls · Grades K–9', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join now · <strong>All skill levels welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:['BOYS','GIRLS'],

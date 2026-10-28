@@ -748,9 +748,13 @@ class LeadsScreen extends Screen {
       // so their close/register links resolve unchanged (the combined youth
       // label carries both the boys and girls membership links).
       '1742374770183944': 'Youth (Grades 1–6)',   // first draft, archived unrun
-      '1765217041432039': 'Youth (Grades 1–6)',   // live: Grades K–9 rebuild (mig 783)
-      '1112525488303663': "Men's Club",
-      '1140646368374686': "Women's Club",
+      '1765217041432039': 'Youth (Grades 1–6)',   // Grades K–9 rebuild (mig 783), archived
+      '1112525488303663': "Men's Club",           // archived unrun
+      '1140646368374686': "Women's Club",         // archived unrun
+      // $35/month, uniform included forms (mig 789) — the live ones
+      '1104907468985240': 'Youth (Grades 1–6)',
+      '2156338988574123': "Men's Club",
+      '1105264069085795': "Women's Club",
     };
     return map[formId] || null;
   }
