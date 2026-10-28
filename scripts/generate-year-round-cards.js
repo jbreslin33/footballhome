@@ -33,6 +33,7 @@ const css = `*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height
 .club{font-size:30px;font-weight:900;letter-spacing:2px}.since{font-size:18px;color:#f5d442;font-weight:700;letter-spacing:4px}
 .badge{margin-left:auto;height:110px;width:110px;border-radius:50%;border:4px solid #f5d442;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}.badge img{height:96px}
 .badges{margin-left:auto;display:flex;gap:12px}.badges .badge{margin-left:0}.badge img.wide{height:auto;width:92px}.header:has(.badges.sm){gap:18px}.header:has(.badges.sm) .club{font-size:25px;white-space:nowrap}.header:has(.badges.sm) .since{font-size:15px;letter-spacing:3px;white-space:nowrap}.strip{display:flex;justify-content:space-between;margin-top:18px}.strip .badge{margin-left:0;height:96px;width:96px;border-width:3px}.strip .badge img{height:80px}.strip .badge img.wide{height:auto;width:80px}
+.card.post .header{justify-content:center}
 .card.post h1{font-size:90px;white-space:nowrap;margin-top:18px}.card.post h1 .ball{font-size:76px;vertical-align:6px}
 .card.post .strip .badge img.wide{height:auto}
 .badges.sm{gap:8px}.badges.sm .badge{height:84px;width:84px;border-width:3px}.badges.sm .badge img{height:70px}.badges.sm .badge img.wide{height:auto;width:70px}
