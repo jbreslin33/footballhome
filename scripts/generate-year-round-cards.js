@@ -41,8 +41,8 @@ const card = (o) => `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${c
 <div class="gb b"></div></div></body></html>`;
 const ball = '<div class="ballc">⚽</div>';
 const cards = {
- 'youth-year-round-ad': {est:'1897', badge:`<div class="badge"><img src="${ppr}"></div>`, kicker:'Boys & Girls · Join Now', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join any time · <strong>All skill levels welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:['BOYS','GIRLS'],
-   seasons:[['🍂','FALL','Outdoor league'],['❄️','WINTER','PPR indoor'],['🌸','SPRING','Outdoor league'],['☀️','SUMMER','Training']]},
+ 'youth-year-round-ad': {est:'1897', badge:`<div class="badge"><img src="${ppr}"></div>`, kicker:'Boys & Girls · Grades K–9', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join now · <strong>All skill levels welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:['BOYS','GIRLS'],
+   seasons:[['🍂','FALL','Outdoor league'],['❄️','WINTER','Indoor'],['🌸','SPRING','Outdoor league'],['☀️','SUMMER','Training']]},
  'mens-year-round-ad': {est:'1893', badge:ball, kicker:"Men's Club · Join Now", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'<strong>APSL &amp; CASA Liga 1</strong> · Open to new players', her:"America's oldest active ⚽ club", pills:['MEN'],
    seasons:[['🍂','FALL','League games'],['❄️','WINTER','Indoor training'],['🌸','SPRING','League games'],['☀️','SUMMER','Training']]},
  'womens-year-round-ad': {est:'1895', badge:ball, kicker:"Women's Club · Join Now", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'<strong>Tri County Womens League</strong> · Open to new players', her:"Philadelphia's oldest non-profit ⚽ club", pills:['WOMEN'],

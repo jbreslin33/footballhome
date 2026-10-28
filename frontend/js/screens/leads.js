@@ -747,7 +747,8 @@ class LeadsScreen extends Screen {
       // {youth,mens,womens}-year-round — filed under the existing funnels
       // so their close/register links resolve unchanged (the combined youth
       // label carries both the boys and girls membership links).
-      '1742374770183944': 'Youth (Grades 1–6)',
+      '1742374770183944': 'Youth (Grades 1–6)',   // first draft, archived unrun
+      '1765217041432039': 'Youth (Grades 1–6)',   // live: Grades K–9 rebuild (mig 783)
       '1112525488303663': "Men's Club",
       '1140646368374686': "Women's Club",
     };
