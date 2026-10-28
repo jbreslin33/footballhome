@@ -50,11 +50,11 @@ h1{font-size:112px;font-weight:900;line-height:.95;margin-top:14px;text-shadow:0
 .venue{position:absolute;bottom:44px;left:60px;right:60px;background:rgba(255,255,255,.1);border:3px solid rgba(245,212,66,.65);border-radius:20px;padding:16px 20px;text-align:center}
 .venue .n{font-size:44px;font-weight:900;color:#f5d442}.venue .ad{font-size:30px;font-weight:700;margin-top:8px}`;
 const card = (o) => `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body><div class="card${o.strip ? ' post' : ''}"><div class="pattern"></div><div class="gb t"></div>
-<div class="header"><img src="${crest}"><div><div class="club">LIGHTHOUSE 1893 SC</div><div class="since">EST. ${o.est} · PHILADELPHIA</div></div>${o.badge}</div>${o.strip || ''}
+<div class="header"><img src="${crest}"><div><div class="club">LIGHTHOUSE 1893 SC</div><div class="since">EST. ${o.est} · PHILADELPHIA</div></div>${o.badge}</div>
 <div class="hero"><div class="kicker">${o.kicker}</div><h1>${o.h1}</h1><div class="sub">${o.sub}</div><div class="her">${o.her}</div></div>
 <div class="pills${o.pills.length>2?' tight':''}">${o.pills.map(p=>`<div class="pill">${p}</div>`).join('')}<div class="pill price">${PRICE}</div></div>
 <div class="yr">FULL-YEAR PROGRAM</div><div class="seasons">${o.seasons.map(([i,l,d])=>`<div class="s"><div class="i">${i}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:""}</div>`).join("")}</div><div class="acts">${ACTS.map(([i,l])=>`<div class="act"><span class="i">${i}</span>${l}</div>`).join("")}</div>
-<div class="venue"><div class="n">LIGHTHOUSE SPORTS COMPLEX</div><div class="ad">199 East Erie Avenue · Philadelphia, PA</div></div>
+${o.strip || ''}<div class="venue"><div class="n">LIGHTHOUSE SPORTS COMPLEX</div><div class="ad">199 East Erie Avenue · Philadelphia, PA</div></div>
 <div class="gb b"></div></div></body></html>`;
 // Header badges (owner 2026-10-28): youth ICSL + EPYSA + PPR; women EPSA +
 // Tri County; men APSL + CASA + EPSA + US Soccer (FIFA left off).
