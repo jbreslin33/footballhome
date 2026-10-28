@@ -62,15 +62,15 @@ const ACTS = [['⚽','LEAGUE GAMES'],['🎯','TRAINING'],['🏆','TOURNAMENTS']]
 const PRICE = '$35/MONTH · UNIFORM INCLUDED';
 const ball = '<div class="ballc">⚽</div>';
 const cards = {
- 'youth-year-round-ad': {est:'1897', badge:badges([[icsl, 1], [epysa], [ppr]]), kicker:'Boys & Girls · Grades K–9', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Open Enrollment · <strong>All Skill Levels Welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:[],
+ 'youth-year-round-ad': {est:'1897', badge:badges([[icsl, 1], [epysa], [ppr]]), kicker:'Boys & Girls · Grades K–9', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:[],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
  // Free organic post (owner 2026-10-28): every program on one card,
  // "registration links in bio" — not an ad, posted from #promotional-posts.
- 'club-year-round-post': {est:'1893', badge:badges([]), kicker:'Registration links in bio', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Open Enrollment · <strong>All Skill Levels Welcome</strong>', her:"America's oldest active ⚽ club", pills:['MEN 16+','WOMEN 18+','BOYS &amp; GIRLS K–9'],
+ 'club-year-round-post': {est:'1893', badge:badges([]), kicker:'Registration links in bio', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"America's oldest active ⚽ club", pills:['MEN 16+','WOMEN 18+','BOYS &amp; GIRLS K–9'],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
- 'mens-year-round-ad': {est:'1893', badge:badges([[L('apsl.png')], [L('casa.png')], [L('epsa.png'), 1]]), kicker:"Men's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Open Enrollment · <strong>All Skill Levels Welcome</strong>', her:"America's oldest active ⚽ club", pills:[],
+ 'mens-year-round-ad': {est:'1893', badge:badges([[L('apsl.png')], [L('casa.png')], [L('epsa.png'), 1]]), kicker:"Men's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"America's oldest active ⚽ club", pills:[],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
- 'womens-year-round-ad': {est:'1895', badge:badges([[L('epsa.png'), 1], [L('tcwsl.png')]]), kicker:"Women's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Open Enrollment · <strong>All Skill Levels Welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:[],
+ 'womens-year-round-ad': {est:'1895', badge:badges([[L('epsa.png'), 1], [L('tcwsl.png')]]), kicker:"Women's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:[],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
 };
 (async()=>{const b=await puppeteer.launch({headless:'new',args:['--no-sandbox']});const pg=await b.newPage();await pg.setViewport({width:1080,height:1080});
