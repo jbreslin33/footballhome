@@ -209,8 +209,14 @@ def measure(events, T):
         if ts:
             T.add("own3_shot_spell")
     for e in ev:
-        if e["type"]["name"] == "Own Goal Against":
+        n = e["type"]["name"]
+        if n == "Own Goal Against":
             T.add("goals")
+        elif n == "Interception":   # G4.82: kept = Won / Success In Play
+            kept = e["interception"]["outcome"]["name"] in ("Won", "Success In Play")
+            T.add("int_kept" if kept else "int_lost")
+        elif n == "Miscontrol":
+            T.add("miscontrol")
 
 
 def main():
@@ -259,6 +265,8 @@ def main():
             "own_third_loss_shot_spell_pct": pct("own3_shot_spell", T.get("own3_losses")),
         },
     }
+    out["metrics"]["interceptions_kept_per_team_match"] = round(T.get("int_kept") / tm, 2)
+    out["metrics"]["bad_touches_per_team_match"] = round((T.get("miscontrol") + T.get("int_lost")) / tm, 2)
     for c in ("pass", "clear", "shot", "bad_touch", "on_ball", "other"):
         out["metrics"][f"spell_end_{c}_pct"] = round(100.0 * T.get("end_" + c) / max(1, T.get("ends")), 1)
     for k, names in (("shot_age", ("lt5s", "5_10s", "10_20s", "20s_plus")),

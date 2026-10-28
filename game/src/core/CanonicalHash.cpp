@@ -90,6 +90,8 @@ std::uint64_t canonicalHash(const World& world) {
         // determinism golden stays byte-identical.
         if (lv.keeper_fumble_pct != 0)
             mix(h, static_cast<std::uint64_t>(lv.keeper_fumble_pct));
+        if (lv.intercept_control_pct != 0)   // G4.82, same rule
+            mix(h, static_cast<std::uint64_t>(lv.intercept_control_pct));
     }
     // G4.30 per-player levels: mixed only for slots that have one, so
     // every band-only golden stays byte-identical.

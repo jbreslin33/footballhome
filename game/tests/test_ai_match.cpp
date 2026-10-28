@@ -37,8 +37,10 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // let it run, half a second through the passer's mates), ground passes are
 // weighted to arrive at 6 m/s and led into a moving man's path, and a
 // receiver who misses the read steps onto its line instead of holding shape.
-constexpr std::uint64_t kGolden3v3   = 0x613f0afcad66b62dULL;
-constexpr std::uint64_t kGolden11v11 = 0xdcdb9711b569f1bdULL;
+// Re-locked G4.82 (2026-10-28): the led pass is re-read before it's
+// struck (unsafe led = the ball he checked).
+constexpr std::uint64_t kGolden3v3   = 0x2d2064da1784219aULL;
+constexpr std::uint64_t kGolden11v11 = 0x7891047d731c6223ULL;
 
 struct Rig {
     World world;

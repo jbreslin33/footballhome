@@ -599,10 +599,21 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             squirm = (r2 + Fixed64::one()) < Fixed64::fromFraction(2, 3);
         }
     }
-    if (lv.control_speed_mps > 0 || fumbled) {
+    // Reaction touch (G4.82): an outfielder stepping across THEIR kick while
+    // it still travels (3 m/s+) keeps it intercept_control_pct of the time;
+    // otherwise it comes off him loose — it was 100% clean, and passes were
+    // cut out 124-132 times a team a match against a pro 11.7 (of which
+    // 62% kept).
+    bool reaction = false;
+    if (!keeper_[best] && lv.intercept_control_pct > 0 && lv.intercept_control_pct < 100 &&
+        last_touch_team_ != players_[best].team && planar_speed_sq >= Fixed64::fromInt(9)) {
+        const Fixed64 r = detNoise(match_seed_, clock_.tick(), best, 16);
+        reaction = (r + Fixed64::one()) >= Fixed64::fromFraction(lv.intercept_control_pct, 50);
+    }
+    if (lv.control_speed_mps > 0 || fumbled || reaction) {
         Fixed64 ctrl = Fixed64::fromInt(lv.control_speed_mps);
         if (keeper_[best]) ctrl += kKeeperHandsBonus;
-        if (fumbled || planar_speed_sq > ctrl * ctrl) {
+        if (fumbled || reaction || planar_speed_sq > ctrl * ctrl) {
             const Fixed64 n =
                 detNoise(match_seed_, clock_.tick(), best, 5);
             const Fixed64 ang = n * Fixed64::fromFraction(71, 4068) *

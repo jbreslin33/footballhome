@@ -580,6 +580,15 @@ int main(int argc, char** argv) {
     // How each spell ended (G4.82), by the LOSING team: 0 pass, 1 clear (or
     // punt), 2 shot, 3 bad touch, 4 on the ball (tackled / stolen).
     long end_cause[2][5] = {}, ends[2] = {0, 0};
+    // A pass the other side took: cut out while still travelling (>= 3 m/s
+    // the tick before — StatsBomb's Interception) or picked up slower (a
+    // recovery), by the team that TOOK it; and every bobble (bad touch).
+    long cut[2] = {0, 0}, picked[2] = {0, 0}, bobbles[2] = {0, 0};
+    // ...each interception: how far the man moved from where he stood at the
+    // kick (< 1 m = he was in the lane), how long the pass had flown, and
+    // the pass's kind (by its why).
+    long pred_all[3] = {}, pred_cut[3] = {}, pred_why[ai::kWhyCount + 1][3] = {};   // passes (any kind) by the flight read at kick+1, and the cut ones
+    long cut_moved[4] = {}, cut_time[4] = {}, cut_n = 0, cut_by_why[ai::kWhyCount + 1] = {}, cut_why_taker[ai::kWhyCount] = {};
     double hold_gap[2] = {0, 0};
     long hold_n[2] = {0, 0};
     for (int m = 0; m < matches; ++m) {
@@ -595,6 +604,11 @@ int main(int argc, char** argv) {
         long spell_start = 0;
         int rx_slot = -1, rx_behind = 0;
         int lk_to[2] = {-1, -1};
+        double prev_ball_v = 0;
+        std::vector<math::Vec2> kick_at;   // everyone's spot at the last kick
+        long kick_tick = 0;
+        int kick_pred = -1;   // flight read one tick after the kick: 0 ours first, 1 theirs first, 2 nobody
+        std::uint64_t prev_bad = 0;
         // GAME_TRACE_LOST=n: print the first n own-third lost kicks (match 1).
         static const int trace_lost = std::atoi(envOr("GAME_TRACE_LOST", "0"));
         int traced = 0;
@@ -852,6 +866,17 @@ int main(int argc, char** argv) {
                         tf_tick = -1;
                     } else {
                         ++t.lost;
+                        ++(prev_ball_v >= 3.0 ? cut : picked)[pend_team ^ 1];
+                        if (prev_ball_v >= 3.0 && kick_at.size() == s.world().playerCount()) {
+                            const int j = *b.owner;
+                            const double mx = s.world().player(j).pos.x.toDouble() - kick_at[j].x.toDouble(),
+                                         my = s.world().player(j).pos.y.toDouble() - kick_at[j].y.toDouble();
+                            const double mv = std::sqrt(mx * mx + my * my), ft = (k - kick_tick) / 30.0;
+                            ++cut_moved[mv < 1 ? 0 : mv < 3 ? 1 : mv < 6 ? 2 : 3];
+                            ++cut_time[ft < 0.5 ? 0 : ft < 1 ? 1 : ft < 2 ? 2 : 3];
+                            if (kick_pred >= 0) ++pred_cut[kick_pred];
+                            ++cut_by_why[pend_why]; ++cut_why_taker[static_cast<int>(s.lastOrders()[j].why)]; ++cut_n;
+                        }
                         if (pf_bucket >= 0) ++fr_lost[pend_team][pf_bucket];
                         if (tf_tick >= 0) {
                             const auto& rv = s.world().player(tf_to);
@@ -866,6 +891,18 @@ int main(int argc, char** argv) {
                     pend_team = -1;
                 }
             }
+            if (s.world().badTouchTick() != prev_bad && s.world().badTouchSlot() < s.world().playerCount()) {
+                prev_bad = s.world().badTouchTick();
+                ++bobbles[s.world().player(s.world().badTouchSlot()).team];
+            }
+            if (pend_team >= 0 && k == kick_tick + 1) {
+                const auto& fr = s.brain().flightRead(s.world());
+                const int us = fr.first[pend_team], them = fr.first[pend_team ^ 1];
+                kick_pred = !fr.live ? 2 : (them >= 0 && (us < 0 || fr.tick[them] < fr.tick[us])) ? 1 : (us >= 0 ? 0 : 2);
+                ++pred_all[kick_pred];
+                ++pred_why[pend_why][kick_pred];
+            }
+            prev_ball_v = std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble());
             if (before && !b.owner && b.last_kicker == *before &&
                 s.world().restartTeam() == 0xFF) {
                 const ai::Orders& o = s.lastOrders()[*before];
@@ -919,6 +956,9 @@ int main(int argc, char** argv) {
                     if (st == spell_team) ++won_at[st][won_x < 35 ? 0 : won_x < 52.5 ? 1 : won_x < 70 ? 2 : 3];
                 }
                 pend_why = o.rung >= 1 && o.rung <= 2 ? ai::kWhyCount : static_cast<int>(o.why);
+                kick_at.clear(); kick_tick = k;
+                for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
+                    kick_at.push_back(math::Vec2{s.world().player(j).pos.x, s.world().player(j).pos.y});
                 pend_other = o.other;
                 pf_bucket = -1;
                 if (o.other >= 0 && o.other < s.world().playerCount() && o.why != ai::Why::Shoot &&
@@ -1126,6 +1166,8 @@ int main(int argc, char** argv) {
             for (int i = 0; i < 4; ++i)
                 both(std::string(pre[h]) + sfx[h][i] + "_pct", 100.0 * hist[h][0][i] / std::max(1L, shot_n[0]),
                      100.0 * hist[h][1][i] / std::max(1L, shot_n[1]));
+        both("interceptions_kept_per_team_match", cut[0] / nm, cut[1] / nm);
+        both("bad_touches_per_team_match", bobbles[0] / nm, bobbles[1] / nm);
         const char* endc[5] = {"pass", "clear", "shot", "bad_touch", "on_ball"};
         for (int i = 0; i < 5; ++i)
             both(std::string("spell_end_") + endc[i] + "_pct", 100.0 * end_cause[0][i] / std::max(1L, ends[0]),
@@ -1134,6 +1176,32 @@ int main(int argc, char** argv) {
         for (int i = 0; i < 4; ++i)
             both(std::string("op_shot_began_") + began[i] + "_pct", 100.0 * won_at[0][i] / std::max(1L, shot_n[0]),
                  100.0 * won_at[1][i] / std::max(1L, shot_n[1]));
+        std::printf("\nPasses the other side took — cut out while travelling (interceptions) %.1f / %.1f, picked up slower %.1f / %.1f; bad touches %.1f / %.1f a team a match\n",
+                    cut[0] / nm, cut[1] / nm, picked[0] / nm, picked[1] / nm, bobbles[0] / nm, bobbles[1] / nm);
+        if (cut_n) {
+            std::printf("  each interception: the man had moved <1 m %.0f%% · 1-3 %.0f%% · 3-6 %.0f%% · 6+ %.0f%% since the kick; the ball had flown <0.5 s %.0f%% · 0.5-1 %.0f%% · 1-2 %.0f%% · 2+ %.0f%%\n  the pass:",
+                        100.0 * cut_moved[0] / cut_n, 100.0 * cut_moved[1] / cut_n, 100.0 * cut_moved[2] / cut_n, 100.0 * cut_moved[3] / cut_n,
+                        100.0 * cut_time[0] / cut_n, 100.0 * cut_time[1] / cut_n, 100.0 * cut_time[2] / cut_n, 100.0 * cut_time[3] / cut_n);
+            for (int w = 0; w <= ai::kWhyCount; ++w)
+                if (cut_by_why[w] * 25 >= cut_n)
+                    std::printf(" %s %.0f%%", w == ai::kWhyCount ? "in behind" : ai::kWhyNames[w], 100.0 * cut_by_why[w] / cut_n);
+            std::printf("\n  the flight read one tick after the kick said: ours first %.0f%% · THEIRS first %.0f%% · nobody %.0f%% (all kicks: %.0f / %.0f / %.0f%%)",
+                        100.0 * pred_cut[0] / cut_n, 100.0 * pred_cut[1] / cut_n, 100.0 * pred_cut[2] / cut_n,
+                        100.0 * pred_all[0] / std::max(1L, pred_all[0] + pred_all[1] + pred_all[2]),
+                        100.0 * pred_all[1] / std::max(1L, pred_all[0] + pred_all[1] + pred_all[2]),
+                        100.0 * pred_all[2] / std::max(1L, pred_all[0] + pred_all[1] + pred_all[2]));
+            std::printf("\n  kicks the flight read gave to THEM at the kick, by kind (share of that kind, a team a match):");
+            for (int w = 0; w <= ai::kWhyCount; ++w) {
+                const long n = pred_why[w][0] + pred_why[w][1] + pred_why[w][2];
+                if (n < 5 * matches || w == static_cast<int>(ai::Why::Shoot)) continue;
+                std::printf("\n    %-28s %3.0f%%  %5.1f", w == ai::kWhyCount ? "in behind (rungs 1-2)" : ai::kWhyNames[w], 100.0 * pred_why[w][1] / n,
+                            pred_why[w][1] / 2.0 / matches);
+            }
+            std::printf("\n  the man who took it was doing:");
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (cut_why_taker[w] * 25 >= cut_n) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * cut_why_taker[w] / cut_n);
+            std::printf("\n");
+        }
         std::printf("\nPRO REFERENCE — %s, %s %s, %d matches (semi-pro sits on the worse side of it)\n",
                     bench[0].source.c_str(), bench[0].competition.c_str(), bench[0].season.c_str(), bench[0].matches);
         std::printf("  %-76s %9s %9s %9s\n", "", names.team_home.substr(0, 9).c_str(), names.team_away.substr(0, 9).c_str(), "pro");

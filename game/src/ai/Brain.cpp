@@ -716,8 +716,14 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                         if (at.y > half_y_) at.y = half_y_;
                         if (at.y < -half_y_) at.y = -half_y_;
                     }
-                    o.target = at;
-                    o.move.move = seek(p, at, Fixed64::fromFraction(1, 10));
+                    // The led ball is the one he strikes, so it's the one he
+                    // reads (G4.82): unsafe led, he plays the ball he checked.
+                    const Vec2 from{p.x, p.y};
+                    if (passSafe(world, setup_, slot, o.pass_to, from, at,
+                                 core::weightedPassSpeed(math::length(Vec2{at.x - p.x, at.y - p.y})), Fixed64::one())) {
+                        o.target = at;
+                        o.move.move = seek(p, at, Fixed64::fromFraction(1, 10));
+                    }
                 }
                 const Fixed64 d = math::length(Vec2{o.target.x - p.x, o.target.y - p.y});
                 const std::int64_t m = (d + Fixed64::fromFraction(1, 2)).raw >> Fixed64::FRAC_BITS;

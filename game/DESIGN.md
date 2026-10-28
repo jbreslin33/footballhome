@@ -2989,6 +2989,47 @@ What it says: the gap is POSSESSION, not the shot. Pro teams keep the ball
 passing, receiving, the man on the ball under pressure — and the shots'
 anatomy should follow; the defending block's share is what's left after.
 
+### 8.80 G4.82 — ball-keeping: how possessions end, interceptions (migs 785, 787)
+
+James 10/28: "commit and deploy and conintyue" — §8.79's gap is
+possession. New reference rows and harness lines:
+
+- **How a spell ends** (mig 785; pro = the losing side's last on-ball
+  event): pro 55% a lost pass, 1% clearance, 13% shot, 11% bad touch, 15%
+  beaten on the ball. The game's SHARES were already pro-like (56-62% pass,
+  11-18% clearance, 11% shot, ~0% bad touch, 14-16% on the ball) — the gap
+  is the RATE: everything 5.6× as often.
+- **Interceptions** (mig 787): pro 11.7 a team a match, 7.2 kept (62%);
+  bad touches 18.7 (miscontrols + interceptions that came off the man).
+  The game: passes cut out 124-132 a team a match, every one clean.
+  Each interception's anatomy (how far the man moved since the kick, the
+  flight time, the pass's kind, what he was doing) and — the decisive line
+  — what the flight read (G4.49) said ONE TICK after the kick: half the
+  cut-out passes were predictably theirs when struck. By kind: ordinary
+  passes 19%, recycles 18%, pass-ladder balls 30%, lapse long balls 31%.
+
+Fixes:
+
+- **The reaction touch** (World, `LevelParams::intercept_control_pct`):
+  an outfielder meeting THEIR kick while it still travels (3 m/s+) keeps
+  it that share of the time; otherwise it comes off him loose (the bobble
+  path, ±60°). Pro 62% MEASURED; u10 30, u14 40, amateur 48, semipro 55,
+  world 68 are FH estimates down the ladder. Hashed when set.
+- **The led pass is the one he reads** (Brain, ordersFor): G4.81's lead
+  into a moving man's path was applied AFTER passSafe — the ball struck
+  wasn't the ball checked. The led target is re-read; unsafe, he plays the
+  ball he checked. Predictably-theirs ordinary passes 19 → 12%, recycles
+  18 → 6%, ladder 30 → 15%.
+
+10 matches LH APSL v Ukies, G4.81 → G4.82: shots 40 / 47 → 34 / 36 a team,
+goals 14.7 → 11.7, spells 679 → 637, own-third losses 53 / 59 → 44 / 54,
+clean interceptions ~128 → 79 / 83 a team, completion 64 / 69 → 68 / 72%.
+With mastery 50 (§8.78, still off): shots 24 / 27, goals 7.6, spells 431,
+own-third losses 36 / 36, interceptions 59 / 64 — the 12% of ordinary
+passes still predictably lost are mostly the safe-pass read's per-second
+lapse (40% of seconds at quality 60: a blind pass). Still far: shots
+from a 20 s+ spell 2-5% (pro 72%).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

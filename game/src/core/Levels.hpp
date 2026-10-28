@@ -66,6 +66,13 @@ struct LevelParams {
     std::int32_t speak_pct = 0;
     // G4.71: how often he hears a call made to him, %.
     std::int32_t listen_pct = 0;
+    // G4.82: stepping across THEIR pass while it's still travelling is a
+    // reaction touch, not a trap — percent he keeps (controls); the rest
+    // deflect loose. 0 = always clean (perfect). Pro 62% MEASURED
+    // (StatsBomb PL 2015/16: interceptions Won + Success In Play, 7.2 of
+    // 11.7 a team a match); the other bands are FH estimates down the
+    // ladder. World-side: hashed when set.
+    std::int32_t intercept_control_pct = 0;
 
     bool isZero() const noexcept {
         return perception_delay_ticks == 0 && kick_angle_err_deg == 0 &&
@@ -107,18 +114,20 @@ inline LevelParams levelParams(std::string_view name) {
     // range_m: kick range (G4.48); speak: % he makes a call that's due (G4.70);
     // listen: % he hears one made to him (G4.71) — [FH] starting numbers:
     // kids go quiet and drift off, a pro back line never stops talking.
-    auto band = [](LevelParams p, std::int32_t range_m, std::int32_t speak, std::int32_t listen) {
+    auto band = [](LevelParams p, std::int32_t range_m, std::int32_t speak, std::int32_t listen,
+                   std::int32_t intercept) {
         p.kick_range_m = range_m;
         p.speak_pct = speak;
         p.listen_pct = listen;
+        p.intercept_control_pct = intercept;
         return p;
     };
-    if (name == "u10")     return band({18, 18, 25, 60, 6, 30, 80, 45, 80}, 30, 20, 40);  // amoeba
-    if (name == "u14")     return band({12, 13, 18, 40, 8, 35, 55, 15, 28}, 40, 40, 55);
-    if (name == "amateur") return band({7, 6, 10, 25, 10, 42, 30, 12, 22}, 45, 55, 70);  // Sunday
-    if (name == "semipro") { LevelParams p = band({4, 3, 6, 12, 13, 50, 12, 11, 8}, 50, 70, 80); p.shape_pull_pct = 0; return p; }
-    if (name == "pro") { LevelParams p = band({2, 2, 3, 5, 16, 60, 4, 10, 5}, 55, 85, 90); p.shape_pull_pct = 0; return p; }
-    if (name == "world") { LevelParams p = band({1, 1, 2, 2, 18, 65, 0, 9, 2}, 60, 95, 95); p.shape_pull_pct = 0; return p; }
+    if (name == "u10")     return band({18, 18, 25, 60, 6, 30, 80, 45, 80}, 30, 20, 40, 30);  // amoeba
+    if (name == "u14")     return band({12, 13, 18, 40, 8, 35, 55, 15, 28}, 40, 40, 55, 40);
+    if (name == "amateur") return band({7, 6, 10, 25, 10, 42, 30, 12, 22}, 45, 55, 70, 48);  // Sunday
+    if (name == "semipro") { LevelParams p = band({4, 3, 6, 12, 13, 50, 12, 11, 8}, 50, 70, 80, 55); p.shape_pull_pct = 0; return p; }
+    if (name == "pro") { LevelParams p = band({2, 2, 3, 5, 16, 60, 4, 10, 5}, 55, 85, 90, 62); p.shape_pull_pct = 0; return p; }
+    if (name == "world") { LevelParams p = band({1, 1, 2, 2, 18, 65, 0, 9, 2}, 60, 95, 95, 68); p.shape_pull_pct = 0; return p; }
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 
