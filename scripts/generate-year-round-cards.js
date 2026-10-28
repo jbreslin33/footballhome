@@ -20,7 +20,10 @@ const epysa = uri(R + '/leagues/epysa.png');
 const L = f => uri(R + '/leagues/' + f);
 // League/federation badges in the header, left → right.  Wide marks get
 // class wide so they fill the circle across instead of shrinking.
-const badges = (list, sm) => `<div class="badges${sm ? ' sm' : ''}">${list.map(([src, wide]) => `<div class="badge"><img${wide ? ' class="wide"' : ''} src="${src}"></div>`).join('')}</div>`;
+// Every card closes on US Soccer + FIFA (owner 2026-10-28: "for all we
+// should have us soccer, fifa").
+const FED = [[uri(R + '/leagues/ussoccer.png')], [uri(R + '/leagues/fifa.png'), 1]];
+const badges = (list) => `<div class="badges${list.length + FED.length > 3 ? ' sm' : ''}">${[...list, ...FED].map(([src, wide]) => `<div class="badge"><img${wide ? ' class="wide"' : ''} src="${src}"></div>`).join('')}</div>`;
 const OUT = path.join(R, 'posts');
 const css = `*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;color:#fff}
 .card{width:1080px;height:1080px;position:relative;background:radial-gradient(ellipse at 30% 20%,#1a3a8a 0%,#0d2247 45%,#060f25 100%);padding:60px}
@@ -29,7 +32,7 @@ const css = `*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height
 .header{display:flex;align-items:center;gap:24px;margin-top:8px}.header img{height:130px}
 .club{font-size:30px;font-weight:900;letter-spacing:2px}.since{font-size:18px;color:#f5d442;font-weight:700;letter-spacing:4px}
 .badge{margin-left:auto;height:110px;width:110px;border-radius:50%;border:4px solid #f5d442;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}.badge img{height:96px}
-.badges{margin-left:auto;display:flex;gap:12px}.badges .badge{margin-left:0}.badge img.wide{height:auto;width:92px}.badges.sm{gap:10px}.badges.sm .badge{height:96px;width:96px}.badges.sm .badge img{height:80px}.badges.sm .badge img.wide{height:auto;width:80px}
+.badges{margin-left:auto;display:flex;gap:12px}.badges .badge{margin-left:0}.badge img.wide{height:auto;width:92px}.header:has(.badges.sm){gap:18px}.header:has(.badges.sm) .club{font-size:25px;white-space:nowrap}.header:has(.badges.sm) .since{font-size:15px;letter-spacing:3px;white-space:nowrap}.badges.sm{gap:8px}.badges.sm .badge{height:84px;width:84px;border-width:3px}.badges.sm .badge img{height:70px}.badges.sm .badge img.wide{height:auto;width:70px}
 .ballc{margin-left:auto;width:110px;height:110px;border-radius:50%;background:#0d2247;border:4px solid #f5d442;display:flex;align-items:center;justify-content:center;font-size:64px}
 .hero{margin-top:26px;text-align:center}.kicker{font-size:28px;letter-spacing:14px;color:#f5d442;font-weight:800;text-transform:uppercase}
 h1{font-size:112px;font-weight:900;line-height:.95;margin-top:14px;text-shadow:0 6px 24px rgba(0,0,0,.55)}h1 .a{color:#f5d442}
@@ -65,7 +68,7 @@ const cards = {
  // "registration links in bio" — not an ad, posted from #promotional-posts.
  'club-year-round-post': {est:'1893', badge:ball, kicker:'Registration Open', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Registration links <strong>in bio</strong>', her:"America's oldest active ⚽ club", pills:['MEN 16+','WOMEN 18+','BOYS &amp; GIRLS K–9'],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
- 'mens-year-round-ad': {est:'1893', badge:badges([[L('apsl.png')], [L('casa.png')], [L('epsa.png'), 1], [L('ussoccer.png')]], 1), kicker:"Men's Club · Join Now", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'<strong>APSL &amp; CASA Liga 1</strong> · Open to new players', her:"America's oldest active ⚽ club", pills:['MEN'],
+ 'mens-year-round-ad': {est:'1893', badge:badges([[L('apsl.png')], [L('casa.png')], [L('epsa.png'), 1]]), kicker:"Men's Club · Join Now", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'<strong>APSL &amp; CASA Liga 1</strong> · Open to new players', her:"America's oldest active ⚽ club", pills:['MEN'],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
  'womens-year-round-ad': {est:'1895', badge:badges([[L('epsa.png'), 1], [L('tcwsl.png')]]), kicker:"Women's Club · Join Now", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'<strong>Tri County Womens League</strong> · Open to new players', her:"Philadelphia's oldest non-profit ⚽ club", pills:['WOMEN'],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
