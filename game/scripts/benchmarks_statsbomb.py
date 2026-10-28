@@ -67,6 +67,30 @@ def t_of(e):
     return (e["period"] - 1) * 45 * 60 + int(h) * 3600 + int(m) * 60 + float(s)
 
 
+def end_cause(e):
+    """How a spell ended, from the losing side's last on-ball event: a pass
+    that didn't reach a mate (picked off or out), a clearance, a shot, a bad
+    touch, beaten on the ball (dispossessed / lost duel incl. aerial / failed
+    dribble),
+    or other (keeper, foul, ...)."""
+    if e is None:
+        return "other"
+    n = e["type"]["name"]
+    if n == "Pass":
+        return "pass" if "outcome" in e["pass"] else "other"
+    if n == "Ball Receipt*":   # the pass's failed receipt — still a lost pass
+        return "pass" if "outcome" in e.get("ball_receipt", {}) else "other"
+    if n == "Shot":
+        return "shot"
+    if n == "Clearance":
+        return "clear"
+    if n == "Miscontrol":
+        return "bad_touch"
+    if n in ("Dispossessed", "Duel", "Dribble"):
+        return "on_ball"
+    return "other"
+
+
 def bucket(x, edges):
     for i, b in enumerate(edges):
         if x < b:
@@ -105,6 +129,20 @@ def measure(events, T):
     if spells and spells[-1][3] is None:
         spells[-1][3] = t_of(ev[-1])
     T.add("spells", max(0, len(spells) - 1))
+    # How each spell ended (G4.82): the losing side's last on-ball event.
+    last = {}
+    for e in ev:
+        if e["team"]["id"] == e["possession_team"]["id"] and e["type"]["name"] in ON_BALL:
+            last[e["possession"]] = e
+    poss_of = {}
+    for e in ev:
+        poss_of.setdefault(e["possession"], e["possession_team"]["id"])
+    order = sorted(poss_of)
+    for a, b in zip(order, order[1:]):
+        if poss_of[a] == poss_of[b]:
+            continue
+        T.add("ends")
+        T.add("end_" + end_cause(last.get(a)))
     for s in spells[1:]:
         T.add("spell_s", s[3] - s[1])
         T.add("spell_n")
@@ -221,6 +259,8 @@ def main():
             "own_third_loss_shot_spell_pct": pct("own3_shot_spell", T.get("own3_losses")),
         },
     }
+    for c in ("pass", "clear", "shot", "bad_touch", "on_ball", "other"):
+        out["metrics"][f"spell_end_{c}_pct"] = round(100.0 * T.get("end_" + c) / max(1, T.get("ends")), 1)
     for k, names in (("shot_age", ("lt5s", "5_10s", "10_20s", "20s_plus")),
                      ("shot_goalside", ("0_2", "3_4", "5_6", "7_plus")),
                      ("shot_dist", ("lt11m", "11_18m", "18_25m", "25m_plus")),

@@ -577,6 +577,9 @@ int main(int argc, char** argv) {
     // An own-third loss the winners shoot from — inside 10 s / that spell
     // (benchmark own_third_loss_shot_*), counted on the LOSING team.
     long own3_shot10[2] = {0, 0}, own3_shot_spell[2] = {0, 0};
+    // How each spell ended (G4.82), by the LOSING team: 0 pass, 1 clear (or
+    // punt), 2 shot, 3 bad touch, 4 on the ball (tackled / stolen).
+    long end_cause[2][5] = {}, ends[2] = {0, 0};
     double hold_gap[2] = {0, 0};
     long hold_n[2] = {0, 0};
     for (int m = 0; m < matches; ++m) {
@@ -695,6 +698,18 @@ int main(int argc, char** argv) {
                         ++rest_hist[spell_team][behind]; ++rest_n[spell_team];
                         const int lt = spell_team;
                         const double own_d = lt == 0 ? 52.5 + b.pos.x.toDouble() : 52.5 - b.pos.x.toDouble();
+                        {
+                            int c = 4;
+                            if (lk_tick[lt] >= spell_start) {
+                                const auto w = static_cast<ai::Why>(lk_why[lt]);
+                                c = w == ai::Why::Shoot ? 2 : (w == ai::Why::Clear || w == ai::Why::KeeperPunt) ? 1 : 0;
+                            } else if (s.world().badTouchSlot() < s.world().playerCount() &&
+                                       s.world().player(s.world().badTouchSlot()).team == lt &&
+                                       static_cast<long>(s.world().badTouchTick()) >= spell_start) {
+                                c = 3;
+                            }
+                            ++end_cause[lt][c]; ++ends[lt];
+                        }
                         o3_team = -1;
                         if (own_d < 35) {
                             o3_team = lt ^ 1; o3_tick = k; o3_10 = o3_any = false;
@@ -1111,6 +1126,10 @@ int main(int argc, char** argv) {
             for (int i = 0; i < 4; ++i)
                 both(std::string(pre[h]) + sfx[h][i] + "_pct", 100.0 * hist[h][0][i] / std::max(1L, shot_n[0]),
                      100.0 * hist[h][1][i] / std::max(1L, shot_n[1]));
+        const char* endc[5] = {"pass", "clear", "shot", "bad_touch", "on_ball"};
+        for (int i = 0; i < 5; ++i)
+            both(std::string("spell_end_") + endc[i] + "_pct", 100.0 * end_cause[0][i] / std::max(1L, ends[0]),
+                 100.0 * end_cause[1][i] / std::max(1L, ends[1]));
         const char* began[4] = {"lt35m", "35_52m", "52_70m", "70m_plus"};
         for (int i = 0; i < 4; ++i)
             both(std::string("op_shot_began_") + began[i] + "_pct", 100.0 * won_at[0][i] / std::max(1L, shot_n[0]),
