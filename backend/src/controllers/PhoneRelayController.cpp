@@ -211,10 +211,16 @@ Response PhoneRelayController::handleQueue(const Request& request) {
     if (text.empty() || text.size() > 1600) return jsonError(HttpStatus::BAD_REQUEST, "The message is empty or too long.");
     try {
         auto* db = Database::getInstance();
-        // Only numbers on someone in the club's records, never a typed-in one.
+        // Only numbers on someone in the club's records, never a typed-in one:
+        // a person, or an active club contact — the other teams' coaches and
+        // league offices on #opponents / Game Center 📇 (owner 2026-10-28).
         auto owner = db->query(
-            "SELECT pp.person_id FROM person_phones pp "
-            " WHERE right(regexp_replace(COALESCE(pp.phone_number, ''), '[^0-9]', '', 'g'), 10) = $1 LIMIT 1",
+            "SELECT 1 FROM person_phones pp "
+            " WHERE right(regexp_replace(COALESCE(pp.phone_number, ''), '[^0-9]', '', 'g'), 10) = $1 "
+            "UNION ALL "
+            "SELECT 1 FROM club_contacts cc "
+            " WHERE cc.is_active AND right(regexp_replace(COALESCE(cc.phone, ''), '[^0-9]', '', 'g'), 10) = $1 "
+            "LIMIT 1",
             {digits});
         if (owner.empty())
             return jsonError(HttpStatus::FORBIDDEN, "That number isn't on anyone in the club's records.");
