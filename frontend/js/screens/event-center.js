@@ -243,7 +243,9 @@ class EventCenterScreen extends Screen {
       const notGoing = players.filter(r => r.response === 'no').length;
       const noResp = players.filter(r => r.response !== 'yes' && r.response !== 'no').length;
       const isGame = ev.kind === 'match';
-      const badges = (isGame ? primaries(ev) : teamsOf(ev)).map(t => badge(t, isGame)).join(' ');
+      // A game shows ONE badge — the squad its line names (owner 2026-10-28:
+      // "just apsl is fine" on a game tagged APSL + APSL Reserves).
+      const badges = (isGame ? primaries(ev).slice(0, 1) : teamsOf(ev)).map(t => badge(t, isGame)).join(' ');
       const count = (tier, n, fb, color) => `<span style="color:${color}; font-weight:700;">${this.escapeHtml(cp(tier, { n }, fb))}</span>`;
       return `<button type="button" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}" data-ec-open="${ev.fh_event_id}">
         ${badges ? `<span style="display:flex; flex-wrap:wrap; gap:4px;">${badges}</span>` : ''}
