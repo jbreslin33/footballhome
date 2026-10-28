@@ -54,14 +54,16 @@ const card = (o) => `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${c
 <div class="header"><img src="${crest}"><div><div class="club">LIGHTHOUSE 1893 SC</div><div class="since">EST. ${o.est} · PHILADELPHIA</div></div>${o.badge}</div>
 <div class="hero"><div class="kicker">${o.kicker}</div><h1>${o.h1}</h1><div class="sub">${o.sub}</div><div class="her">${o.her}</div></div>
 <div class="pills${o.pills.length>2?' tight':''}">${o.pills.map(p=>`<div class="pill">${p}</div>`).join('')}<div class="pill price">${PRICE}</div></div>
-<div class="yr">FULL-YEAR PROGRAM</div><div class="seasons">${o.seasons.map(([i,l,d])=>`<div class="s"><div class="i">${i}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:""}</div>`).join("")}</div><div class="acts">${ACTS.map(([i,l])=>`<div class="act"><span class="i">${i}</span>${l}</div>`).join("")}</div>
+<div class="yr">FULL-YEAR PROGRAM</div><div class="seasons">${o.seasons.map(([i,l,d])=>`<div class="s"><div class="i">${i}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:""}</div>`).join("")}</div><div class="acts">${ACTS.map(l=>`<div class="act">${l}</div>`).join("")}</div>
 ${o.strip || ''}<div class="venue"><div class="n">LIGHTHOUSE SPORTS COMPLEX</div><div class="ad">199 East Erie Avenue · Philadelphia, PA</div></div>
 <div class="gb b"></div></div></body></html>`;
 // Header badges (owner 2026-10-28): youth ICSL + EPYSA + PPR; women EPSA +
 // Tri County; men APSL + CASA + EPSA + US Soccer (FIFA left off).
 // What the club does in every season — its own row, not per season
 // (owner 2026-10-28: "League Games, Training, Tournaments in its own cube").
-const ACTS = [['⚽','LEAGUE GAMES'],['🎯','TRAINING'],['🏆','TOURNAMENTS']];
+// Text only (owner 2026-10-28: "don't like target for training" — the
+// season tiles carry the icons).
+const ACTS = ['LEAGUE GAMES','TRAINING','TOURNAMENTS'];
 // Cost up front (owner 2026-10-28: "$35/month uniform included") — the
 // club-wide dues_policies rate; captions carry it via mig 789.
 const PRICE = '$35/MONTH · UNIFORM INCLUDED';
