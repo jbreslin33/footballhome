@@ -50,7 +50,12 @@ class AdPreviewScreen extends Screen {
 
     try {
       const res = await this.auth.fetch('/api/ads/preview');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        // The backend passes Meta's own message through (e.g. the ad
+        // account's rate limit) — show it, not a bare status code.
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
       const ads = await res.json();
 
       this.find('#ap-loading').style.display = 'none';
