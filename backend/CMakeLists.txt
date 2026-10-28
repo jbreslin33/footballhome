@@ -131,6 +131,7 @@ set(SOURCES
     src/controllers/RsvpBoardController.cpp
     src/controllers/PersonHealthController.cpp
     src/controllers/JobsController.cpp
+    src/controllers/AwardsController.cpp
     src/controllers/KitBoardController.cpp
     src/controllers/FieldPlanController.cpp
     src/controllers/PhoneRelayController.cpp

@@ -97,6 +97,15 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <!-- 🏅 Awards (mig 800): All-Stars to the league director, club awards. Copy: kind=awards. -->
+        <button class="btn btn-lg btn-primary" data-role="awards" id="rs-awards" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🏅</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('awards', 'tile_title')) || 'Awards'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('awards', 'tile_sub')) || 'All-Stars to the league, Most Improved, Most Dedicated — per team, per season'}</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="reports" id="rs-reports" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">📊</span>
           <div style="flex: 1; text-align: left;">
@@ -503,6 +512,9 @@ class RoleSelectionScreen extends Screen {
       this.navigation.goTo('attendance', { pick: true });
     } else if (role === 'kit') {
       this.navigation.goTo('kit');
+    } else if (role === 'awards') {
+      // Not a role — #awards (mig 800).
+      this.navigation.goTo('awards');
     } else if (role === 'jobs') {
       // Not a role — event jobs (mig 625): auto-assigned, default-done.
       this.navigation.goTo('jobs');
