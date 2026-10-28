@@ -147,11 +147,12 @@ class AdPreviewScreen extends Screen {
     }
 
     const pills = [
-      { key: 'all', label: 'Queue', color: 'var(--text-secondary, #6b7280)' },
+      { key: 'all', label: 'Pending approval', color: 'var(--text-secondary, #6b7280)' },
       ...bucketOrder.filter(b => counts[b]).map(b => ({ key: b, ...bucketMeta[b] })),
-      ...(counts.hidden ? [{ key: 'hidden', label: '🙈 Hidden', color: '#6b7280' }] : []),
     ];
 
+    // One status in the queue → the pills only repeat the queue count.
+    if (pills.length <= 2) { pillsEl.style.display = 'none'; this.filter = 'all'; return; }
     pillsEl.style.display = 'flex';
     pillsEl.innerHTML = pills.map(p => {
       const active = this.filter === p.key;
@@ -172,19 +173,46 @@ class AdPreviewScreen extends Screen {
     }).join('');
   }
 
+  // Two sections (owner 2026-10-28: "pending approval … put an archive
+  // section and dump the others in there"):
+  //   📋 Pending approval — ads not in ad_preview_hidden, one Instagram
+  //             preview each (Facebook view one tap away);
+  //   🗂 Archive — collapsed text rows with a Restore button, no mockups.
+  // "Archive" here is FH's view only (ad_preview_hidden) — nothing is
+  // archived on Meta.
   renderList() {
     const list = this.find('#ap-list');
     if (!list) return;
 
-    const filtered = this.filter === 'hidden'
-      ? this.allAds.filter(ad => ad.hidden)
-      : this.allAds.filter(ad => !ad.hidden
-          && (this.filter === 'all' || this.classify(ad).bucket === this.filter));
+    const queue = this.allAds.filter(ad => !ad.hidden
+      && (this.filter === 'all' || this.classify(ad).bucket === this.filter));
+    const rest = this.allAds.filter(ad => ad.hidden);
+
+    const esc = t => String(t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const restRows = rest.map(ad => {
+      const { label, color } = this.classify(ad);
+      const when = ad.created_time ? new Date(ad.created_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+      return `
+        <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border-color);">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(ad.name)}</div>
+            <div style="font-size:0.75rem; opacity:0.6;"><span style="color:${color};">${label}</span>${when ? ' · ' + when : ''}</div>
+          </div>
+          <button type="button" class="ap-hide btn btn-secondary" data-id="${ad.id}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;">↩ Restore</button>
+        </div>`;
+    }).join('');
 
     list.style.display = 'flex';
-    list.innerHTML = filtered.length
-      ? filtered.map(ad => this.renderAdCard(ad)).join('')
-      : `<div style="text-align:center; padding: var(--space-6); opacity:0.6;">No ads in this category.</div>`;
+    list.innerHTML = `
+      <h2 style="margin:0; font-size:1.1rem; max-width:400px; width:100%; margin-inline:auto;">📋 Pending approval <span style="opacity:0.5; font-weight:500;">${queue.length}</span></h2>
+      ${queue.length
+        ? queue.map(ad => this.renderAdCard(ad)).join('')
+        : `<div style="text-align:center; padding: var(--space-4); opacity:0.6;">Nothing pending approval.</div>`}
+      ${rest.length ? `
+      <details style="max-width:400px; margin:0 auto; width:100%;">
+        <summary style="cursor:pointer; font-weight:600; opacity:0.8;">🗂 Archive <span style="opacity:0.6;">${rest.length}</span></summary>
+        <div style="margin-top:8px;">${restRows}</div>
+      </details>` : ''}`;
     this.loadImages(list);
   }
 
@@ -202,7 +230,6 @@ class AdPreviewScreen extends Screen {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       ad.hidden = hidden;
-      if (this.filter === 'hidden' && !this.allAds.some(a => a.hidden)) this.filter = 'all';
       this.renderPills();
       this.renderList();
     } catch (err) {
@@ -366,11 +393,14 @@ class AdPreviewScreen extends Screen {
             ${isNew ? '<span style="font-size:0.65rem; font-weight:700; color:#fff; background:#3b82f6; padding:1px 7px; border-radius:999px; letter-spacing:.03em;">NEW</span>' : ''}
             ${createdLabel ? `<span style="font-size:0.7rem; opacity:0.45; white-space:nowrap;">${createdLabel}</span>` : ''}
           </div>
-          <button type="button" class="ap-hide btn btn-secondary" data-id="${ad.id}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;">${ad.hidden ? '👁 Unhide' : '🙈 Hide'}</button>
+          <button type="button" class="ap-hide btn btn-secondary" data-id="${ad.id}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;">🗂 Archive</button>
         </div>
         <div style="font-weight:700; font-size:0.95rem; margin-bottom: var(--space-3);">${ad.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
-        ${facebookMockup}
         ${instagramMockup}
+        <details style="margin-top: var(--space-3);">
+          <summary style="cursor:pointer; font-size:0.8rem; opacity:0.7;">📘 Facebook view</summary>
+          <div style="margin-top: var(--space-2);">${facebookMockup}</div>
+        </details>
       </div>
     `;
   }
