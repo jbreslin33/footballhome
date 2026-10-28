@@ -23,6 +23,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
       intents_(player_count),
       actions_(player_count, Action::None),
       carry_m_(player_count, 0),
+      pass_to_(player_count, 0xFF),
       bodies_(player_count),
       keeper_(player_count, false),
       half_x_{pitch_half_x},
@@ -39,11 +40,13 @@ void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
     intents_[slot] = intent;
 }
 
-void World::setAction(SlotIndex slot, Action action, std::uint8_t carry_m) {
+void World::setAction(SlotIndex slot, Action action, std::uint8_t carry_m,
+                      std::uint8_t pass_to) {
     if (slot >= actions_.size()) return;
     if (action == Action::None) return;  // only non-None latches
     actions_[slot] = action;
     carry_m_[slot] = carry_m;
+    pass_to_[slot] = pass_to;
 }
 
 void World::placePlayer(SlotIndex slot, const Vec3& pos, const Vec2& face) {
@@ -340,7 +343,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                              100);
             }
             if (act == Action::GroundKick) {
-                const Fixed64 v = kGroundKickSpeed * power_scale;
+                const Fixed64 v = (carry_m_[kicker] > 0 ? weightedPassSpeed(Fixed64::fromInt(carry_m_[kicker]))
+                                                        : kGroundKickSpeed) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (act == Action::Shot) {
                 // Strike power is a SKILL (G4.14): a level's hardest shot
@@ -357,7 +361,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 const Fixed64 v = top * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (act == Action::ShortPass) {
-                const Fixed64 v = kShortPassSpeed * power_scale;
+                const Fixed64 v = (carry_m_[kicker] > 0 ? weightedPassSpeed(Fixed64::fromInt(carry_m_[kicker]))
+                                                        : kShortPassSpeed) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (carry_m_[kicker] > 0) {
                 // Aimed loft (G4.48): no drag, so the first bounce lands at
@@ -379,6 +384,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             ball_.kick_alive = kKickAliveTicks;
             ball_.last_kicker = kicker;
             ball_.kicker_lockout = kKickerLockoutTicks;
+            ball_.pass_to = pass_to_[kicker];
             last_touch_team_ = players_[kicker].team;
 
             // Arm offside (G4.8). Second-last OPPONENT line (keeper
@@ -501,6 +507,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             ball_.vel = Vec3{(v.x * c - v.y * sn) * keep,
                              (v.x * sn + v.y * c) * keep, Fixed64::zero()};
             ball_.last_kicker = blocker;
+            ball_.pass_to = 0xFF;
             ball_.kicker_lockout = kBobbleLockoutTicks;
             ball_.kick_alive = kKickAliveTicks;
             last_touch_team_ = players_[blocker].team;
@@ -519,6 +526,14 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     for (SlotIndex i = 0; i < players_.size(); ++i) {
         if (ball_.kicker_lockout > 0 && i == ball_.last_kicker)
             continue;  // you can't receive your own kick for half a second
+        // A pass to a man (G4.81): for that same half second the passer's
+        // other mates let it through — he steps over it or out of its way,
+        // as the body block already assumes for shots. Traced: the man
+        // beside the passer took 1 in 5 of the passes meant for someone
+        // 10 m+ free, 0.1-0.3 s after the kick.
+        if (ball_.kicker_lockout > 0 && ball_.pass_to != 0xFF && i != ball_.pass_to &&
+            ball_.last_kicker < players_.size() && players_[i].team == players_[ball_.last_kicker].team)
+            continue;
         // Dead-ball restriction (G3.2): only the awarded team may take a
         // restart's first touch.
         if (restart_team_ != 0xFF && players_[i].team != restart_team_)
@@ -614,6 +629,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             ball_.vel = Vec3{defl.x, defl.y, Fixed64::zero()};
             ball_.pos.z = Fixed64::zero();
             ball_.last_kicker = best;
+            ball_.pass_to = 0xFF;
             ball_.kicker_lockout = kBobbleLockoutTicks;
             bad_touch_slot_ = best;
             bad_touch_tick_ = clock_.tick();
@@ -801,6 +817,7 @@ std::vector<MatchEvent> World::tick() {
     // for everyone else, so a stale tap can't fire ticks later.
     for (auto& a : actions_) a = Action::None;
     for (auto& c : carry_m_) c = 0;
+    for (auto& p : pass_to_) p = 0xFF;
     clock_.advance();
     return events;
 }

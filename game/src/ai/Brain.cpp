@@ -685,6 +685,45 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     }
     auto tag = [&](Orders& o) {
         told_squeeze_ = told_line_ = false;
+        // A kick to a mate (G4.81): name him on the ball, and weight a
+        // ground pass to the spot it's aimed at.
+        if (o.action == core::Action::ShortPass || o.action == core::Action::GroundKick ||
+            o.action == core::Action::LoftedKick) {
+            if (o.other >= 0 && o.other < static_cast<int>(world.playerCount()) && o.other != static_cast<int>(slot) &&
+                setup_.team_of_slot[o.other] == setup_.team_of_slot[slot])
+                o.pass_to = static_cast<std::uint8_t>(o.other);
+            if (o.pass_to != 0xFF && o.carry_m == 0 && o.action != core::Action::LoftedKick) {
+                const auto& p = world.player(slot).pos;
+                // Into his path: a ball at his feet goes to where he'll be
+                // when it gets there (flight time of the weighted pass,
+                // Simpson on 1/v — speed falls linearly with distance), at
+                // most lead_max 10 m on. A moving man was passed where he
+                // stood: 4-8 m/s off, 2.5 s later he was 10-15 m away.
+                const auto& mate = world.player(o.pass_to);
+                if (distSq(mate.pos, Vec3{o.target.x, o.target.y, Fixed64::zero()}) < Fixed64::one()) {
+                    Vec2 at{mate.pos.x, mate.pos.y};
+                    for (int k = 0; k < 2; ++k) {
+                        const Fixed64 d = math::length(Vec2{at.x - p.x, at.y - p.y});
+                        const Fixed64 v0 = core::weightedPassSpeed(d), va = core::kPassArriveSpeed;
+                        const Fixed64 vm = (v0 + va) / 2;
+                        const Fixed64 t = d / 6 * (Fixed64::one() / v0 + Fixed64::fromInt(4) / vm + Fixed64::one() / va);
+                        Vec2 lead{mate.vel.x * t, mate.vel.y * t};
+                        const Fixed64 ll = math::length(lead), cap = Fixed64::fromInt(10);
+                        if (ll > cap) lead = Vec2{lead.x * cap / ll, lead.y * cap / ll};
+                        at = Vec2{mate.pos.x + lead.x, mate.pos.y + lead.y};
+                        if (at.x > half_x_) at.x = half_x_;
+                        if (at.x < -half_x_) at.x = -half_x_;
+                        if (at.y > half_y_) at.y = half_y_;
+                        if (at.y < -half_y_) at.y = -half_y_;
+                    }
+                    o.target = at;
+                    o.move.move = seek(p, at, Fixed64::fromFraction(1, 10));
+                }
+                const Fixed64 d = math::length(Vec2{o.target.x - p.x, o.target.y - p.y});
+                const std::int64_t m = (d + Fixed64::fromFraction(1, 2)).raw >> Fixed64::FRAC_BITS;
+                o.carry_m = static_cast<std::uint8_t>(m < 1 ? 1 : (m > 255 ? 255 : m));
+            }
+        }
         o.heard = heard;
         for (const CallOut& c : cs) {
             if (c.talker != static_cast<int>(slot)) continue;
@@ -1827,7 +1866,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 const Fixed64 theirs = sel.xg(chanceQuality(world, setup_, j, goal), math::length(mg), false);
                 if (theirs < mine * sel.passBetter()) continue;
                 const Vec2 from{me.pos.x, me.pos.y}, to{m.pos.x, m.pos.y};
-                if (passSafe(world, setup_, slot, j, from, to, core::kShortPassSpeed, Fixed64::one()))
+                if (passSafe(world, setup_, slot, j, from, to,
+                             core::weightedPassSpeed(math::length(Vec2{to.x - from.x, to.y - from.y})), Fixed64::one()))
                     shoot_now = false;   // pass it — the pass branch below picks the man
             }
         }
@@ -1893,9 +1933,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         auto safe = [&](SlotIndex recv, const Vec2& a, const Vec2& b,
                         Fixed64 dsq, bool lofted) {
             if (!reads || lofted) return true;
-            const Fixed64 v = dsq < kSoftPassRange * kSoftPassRange
-                                  ? core::kShortPassSpeed
-                                  : core::kGroundKickSpeed;
+            const Fixed64 v = core::weightedPassSpeed(math::fx_sqrt(dsq));   // G4.81: as he'll strike it
             return passSafe(world, setup_, slot, recv, a, b, v, safe_reach);
         };
         // Over their line (180; G4.75 keeper, G4.78 everyone): the runner
@@ -2423,18 +2461,59 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         const std::uint64_t octant = (ball.vel.x.raw < 0 ? 1u : 0u) | (ball.vel.y.raw < 0 ? 2u : 0u) | (ax > ay ? 4u : 0u);
         return (std::uint64_t{1} << 40) | (std::uint64_t{ball.last_kicker} << 16) | (octant << 8) | ratio;
     };
+    // The pass is FOR somebody (G4.81): the man the passer played it to
+    // (ball().pass_to — read off the passer the way a player reads "that's
+    // mine") meets it; the rest LET IT RUN unless he can't get there before
+    // them, when our first man rescues it. Before, only the mate the flight
+    // read put first went: 41-47% of passes lost in our own third had
+    // another mate "first", the man it was played to held his shape and ran
+    // off it with his moving possession spot, and teammates stepped across
+    // passes meant for someone else (fh-game-match, LH APSL v Ukies).
     if (!ball.owner && world.restartTeam() == 0xFF && world.lastTouchTeam() == my_team &&
-        ratings_[slot][meet] > 0 && applies(slot, meet, flightKey())) {
-        const FlightRead& fr = flightRead(world);
-        const int mine_first = fr.first[my_team], theirs = fr.first[my_team ^ 1];
-        if (mine_first >= 0) {
-            flight_ours = theirs < 0 || fr.tick[mine_first] < fr.tick[theirs];
-            if (mine_first == slot) {
-                out.move.move = seek(me.pos, fr.at[slot], Fixed64::fromFraction(1, 10));
+        ratings_[slot][meet] > 0) {
+        const int to = ball.pass_to < world.playerCount() && setup_.team_of_slot[ball.pass_to] == my_team
+                           ? static_cast<int>(ball.pass_to) : -1;
+        const bool for_me = to == static_cast<int>(slot);
+        if (applies(slot, meet, flightKey())) {
+            const FlightRead& fr = flightRead(world);
+            const int mine_first = fr.first[my_team], theirs = fr.first[my_team ^ 1];
+            if (mine_first >= 0) {
+                flight_ours = theirs < 0 || fr.tick[mine_first] < fr.tick[theirs];
+                const bool his = to >= 0 && !for_me && fr.tick[to] >= 0 &&
+                                 (theirs < 0 || fr.tick[to] <= fr.tick[theirs]);   // let it run
+                if ((mine_first == slot && !his) || (for_me && fr.tick[slot] >= 0)) {
+                    out.move.move = seek(me.pos, fr.at[slot], Fixed64::fromFraction(1, 10));
+                    out.why = Why::MeetPass;
+                    out.target = fr.at[slot];
+                    return out;
+                }
+            }
+            if (for_me) {   // can't reach it inside the read: come to it
+                const Vec2 to{ball.pos.x, ball.pos.y};
+                out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
                 out.why = Why::MeetPass;
-                out.target = fr.at[slot];
+                out.target = to;
                 return out;
             }
+        } else if (for_me) {
+            // The lapse: he lets it come to him — steps onto its line and
+            // waits there instead of coming to meet it ("come to the
+            // ball!"), so they get the extra second to nip in. Waiting where
+            // he stood let the ball roll past 2-3 m off him (traced).
+            const Vec2 v{ball.vel.x, ball.vel.y};
+            const Fixed64 sp = math::length(v);
+            Vec2 to{me.pos.x, me.pos.y};
+            if (sp > Fixed64::fromFraction(1, 2)) {
+                const Vec2 dir{v.x / sp, v.y / sp};
+                const Fixed64 along = math::dot(Vec2{me.pos.x - ball.pos.x, me.pos.y - ball.pos.y}, dir);
+                if (along > Fixed64::zero()) to = Vec2{ball.pos.x + dir.x * along, ball.pos.y + dir.y * along};
+                else to = Vec2{ball.pos.x, ball.pos.y};   // it's past him: go to it
+            }
+            out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+            out.move.face = Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y};
+            out.why = Why::WaitPass;
+            out.target = to;
+            return out;
         }
     }
     const bool ours =

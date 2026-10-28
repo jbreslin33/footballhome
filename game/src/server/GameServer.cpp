@@ -150,7 +150,8 @@ core::ConceptRatings GameServer::buildAbility(std::uint8_t sl, const core::Level
     // Mig 656: his own quality, else his team's, else the band's.
     const int quality = k < team.players.size() && team.players[k].quality >= 0
                             ? team.players[k].quality : team.quality;
-    core::ConceptRatings r = core::defaultAbility(band, quality);
+    core::ConceptRatings r = core::defaultAbility(
+        band, quality, cfg_.model_params.integer("ability.mastery.lapse_kept_pct", 100));
     if (k >= team.players.size()) return r;
     const auto& p = team.players[k];
     // Legacy mask override → that player's known set at a strong personal
@@ -876,7 +877,7 @@ void GameServer::tickOnce() {
         const ai::Orders o = brain_.ordersFor(slot, world_);
         last_orders_[slot] = o;
         world_.setIntent(slot, o.move);
-        if (o.action != core::Action::None) world_.setAction(slot, o.action, o.carry_m);
+        if (o.action != core::Action::None) world_.setAction(slot, o.action, o.carry_m, o.passTo());
     }
 
     last_events_ = world_.tick();

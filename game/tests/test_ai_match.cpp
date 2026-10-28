@@ -33,8 +33,12 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G4.80 (2026-10-27): brake to arrive, braking on its own τ,
 // semi-pro shape pull 0, the block moves up with its own ball; the
 // shape keeps its phase while our own pass is in the air (G4.80b).
-constexpr std::uint64_t kGolden3v3   = 0xced14868c2faa8eaULL;
-constexpr std::uint64_t kGolden11v11 = 0x5b8e7388d26808f1ULL;
+// Re-locked G4.81 (2026-10-28): a pass names the man it's for (the rest
+// let it run, half a second through the passer's mates), ground passes are
+// weighted to arrive at 6 m/s and led into a moving man's path, and a
+// receiver who misses the read steps onto its line instead of holding shape.
+constexpr std::uint64_t kGolden3v3   = 0x613f0afcad66b62dULL;
+constexpr std::uint64_t kGolden11v11 = 0xdcdb9711b569f1bdULL;
 
 struct Rig {
     World world;

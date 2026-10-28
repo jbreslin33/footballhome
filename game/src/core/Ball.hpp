@@ -90,6 +90,22 @@ inline const math::Fixed64 kBallCarryLead = math::Fixed64::fromFraction(2, 5);
 // Kick powers (m/s). Preset in G1; pass_power attributes arrive G2.
 inline const math::Fixed64 kGroundKickSpeed = math::Fixed64::fromInt(14);
 inline const math::Fixed64 kShortPassSpeed   = math::Fixed64::fromInt(8);
+// A WEIGHTED ground pass (G4.81): struck so it reaches the man d metres
+// away at kPassArriveSpeed — a firm ball to feet. Under the roll decay a
+// rolling ball loses (1 − decay)·30 ≈ 0.39 m/s per metre it travels, so
+// v0 = arrive + 0.39·d, capped at the outfield capture speed. The preset
+// 14 / 8 m/s ignored distance: a 25 m pass took 3.5 s and arrived at
+// 3.7 m/s, a 13 m one 2.6 s — defenders had 3-5 s to get there, and 16-26%
+// of passes to a man 10 m+ free were lost (fh-game-match). A real 20-30 m
+// ground pass is struck ~15-20 m/s and takes ~1.5-2 s.
+inline const math::Fixed64 kPassArriveSpeed = math::Fixed64::fromInt(6);
+inline math::Fixed64 weightedPassSpeed(math::Fixed64 d) {
+    const math::Fixed64 per_m =
+        (math::Fixed64::one() - kBallRollDecayPerTick) * math::Fixed64::fromInt(30);
+    math::Fixed64 v = kPassArriveSpeed + per_m * d;
+    const math::Fixed64 cap = math::Fixed64::fromInt(20);
+    return v > cap ? cap : v;
+}
 // A struck shot. 18 m/s: inside the outfield capture cap (20), so a body
 // in the way blocks it (usually as a bobble, via control limits); keeper
 // hands (cap 26) handle it cleanly. 24 was measured to produce uncatchable
@@ -126,6 +142,7 @@ struct BallState {
     std::uint8_t last_kicker = 0xFF;    // slot that last kicked it
     int kicker_lockout = 0;             // ticks last_kicker may not recapture
     int contest_ticks = 0;              // consecutive ticks an opponent is touch-tight
+    std::uint8_t pass_to = 0xFF;        // the mate the last kick was played to (G4.81)
 };
 
 }  // namespace fh::game::core

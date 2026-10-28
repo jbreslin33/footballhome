@@ -95,7 +95,11 @@ public:
     // carry_m (G4.48) — a LoftedKick aimed to first bounce this many
     // metres away (power from the flight law, kLoftLaunchRatio); 0 = the
     // preset 12 + 6 m/s chip. Other actions ignore it.
-    void setAction(SlotIndex slot, Action action, std::uint8_t carry_m = 0);
+    // carry_m on a ShortPass / GroundKick (G4.81): weighted to arrive at a
+    // man that far away (core::weightedPassSpeed); 0 = the preset speed.
+    // pass_to: the mate it is played to (ball().pass_to), 0xFF = nobody.
+    void setAction(SlotIndex slot, Action action, std::uint8_t carry_m = 0,
+                   std::uint8_t pass_to = 0xFF);
 
     // Spawn/reset placement (scenario setup, not gameplay). `face` is the
     // initial kick/carry direction (toward the opponent goal).
@@ -206,6 +210,7 @@ private:
     std::vector<MoveIntent>  intents_;
     std::vector<Action>      actions_;
     std::vector<std::uint8_t> carry_m_;   // latched with the action (G4.48)
+    std::vector<std::uint8_t> pass_to_;   // latched with the action (G4.81)
     std::vector<bool>        keeper_;
     Locomotion loco_;
     std::vector<Body> bodies_;

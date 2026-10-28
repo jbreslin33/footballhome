@@ -2863,6 +2863,132 @@ Within 10 m of the ball: 1.7 with it, 3.0 without. Still far from real
 (~12 shots a team, ~2.7 goals, ~200-300 possessions): the defending block
 stays next.
 
+### 8.78 G4.81 — where the shots come from; a pass to a man reaches him
+
+James 10/28: "go ahead with the defending block" (G4.80's NEXT). Measured
+first. New fh-game-match lines (all printed per team): shot anatomy (the
+spell's age, defenders goal-side of the shooter when he shot and when he
+got it, his carry, where the spell began), rest defence at each
+turnover, how a team loses the ball within 35 m of its own goal, every
+pass to a picked man by how free he was, and two tracers —
+`GAME_TRACE_LOST=n` (own-third losses) and `GAME_TRACE_FREE=n` (+
+`GAME_TRACE_FREE_TICKS=1`: the flight every 0.2 s) for passes to a man
+10 m+ free that went wrong.
+
+What it showed (10 matches LH APSL v Ukies, G4.80): 53-62% of shots came
+from a ball won within 35 m of the goal it attacks, 56-62% within 5 s of
+winning it, the shooter taking it with 0-2 defenders goal-side 58-62% of
+the time and shooting within 3 m. At the turnover the losing side had
+7-10 men behind the ball. So the settled block was rarely carved open:
+the defending side gave the ball away in its own third ~60 times a match
+(real ~10-15) and the other side shot at once. And that was passing: an
+ordinary pass reached the man it was played to 37 / 42% of the time;
+passes to a man with nobody within 10 m reached him 40-49% and were LOST
+16-26% (a free man gets ~95% in life). The traces:
+
+- **The receiver ran off it.** Only the mate the flight read put first
+  (G4.49) met the pass; 41-47% of the time that was somebody else, and
+  the man it was for held his shape — whose possession spot (G4.80) moves
+  upfield — so 0.3 s after the kick he was "hold shape" 54-62% of the
+  time, 10-15 m off the ball when they took it.
+- **Teammates took passes meant for someone else**, the man beside the
+  passer 0.1-0.3 s after the kick, the World's capture taking any ball
+  within 0.5 m.
+- **Passes were slow.** Every ground pass went at a preset 14 m/s (8 for
+  short ones) whatever the distance: a 25 m pass took 3.5 s, a 13 m one
+  2.6 s — 3-5 s for a defender to close.
+- **Passes went where a moving man had been** (4-8 m/s, 2.5 s of flight).
+
+The fixes:
+
+- **The pass is for somebody** (`BallState.pass_to`, set from the
+  passer's `Orders.pass_to`; FH original). He meets it (MeetPass) even
+  when another mate would get there first; the rest LET IT RUN unless he
+  can't beat them to it (then our first man rescues it). For the kick's
+  half-second lockout the passer's other mates don't capture it — they
+  step over it or out of its way, as the body block (G4.25) already
+  assumes for shots. A deflection or a touch clears it.
+- **His lapse** (meet-the-pass rolled and missed): he lets it come to
+  him — steps onto its line and waits ("come to the ball!" is the coach's
+  call) — Why "lapse: lets it come to him". Waiting where he stood was
+  tried and was worse (the ball rolled past 2-3 m off him).
+- **Weighted passes** (`core::weightedPassSpeed`): a ground pass to a
+  man is struck to arrive at `kPassArriveSpeed` 6 m/s; under the roll
+  decay a ball loses 0.39 m/s per metre, so v0 = 6 + 0.39·d, capped at
+  the 20 m/s capture speed (25 m → 15.8 m/s, 2.5 s). The passer's safety
+  read (passSafe [Buckland]) walks the same speed.
+- **Into his path:** a ball aimed at his feet goes where he'll be when it
+  arrives (flight time by Simpson's rule on 1/v), at most 10 m on.
+- **Tried and dropped:** a control reach of 0.9 m (was 0.5) — defenders
+  reach passes as much as receivers do; shots went to 77 a team.
+
+10 matches each, G4.80 → G4.81: pass reaches the man it was played to
+37 / 42% → 60 / 63%, lost 35 / 27% → 26 / 23%; free (10 m+) passes 40-49%
+→ 57-62%, lost 16-26% → 11-15%; own-third losses 59 / 62 → 53 / 59 a
+match; shots 42 / 47 → 40 / 47. Without the weight and lead: 48 / 52
+shots, 51 / 58% to the man — they earn their place.
+
+**Mastery (built, OFF until James says):** `core::defaultAbility` takes
+`ability.mastery.lapse_kept_pct` (a game_model_params row; absent = 100 =
+every concept at his quality, as before). Each band a player stands above
+the band a concept is taught at keeps that share of his misses — at 50 a
+60-quality semipro meets the pass (taught u10) 95 times in 100 and plays
+the semipro-taught concepts at 60. FH original: fundamentals from his u10
+years don't lapse like last season's. Per-player ability rows (mig 639)
+are untouched. At 50 on top of G4.81: shots 36 / 42, goals 11.9 a match
+(14.7 without), spells 627 (679).
+
+Still far from real (~12 shots a team, ~2.7 goals, ~250 possessions):
+shots still mostly come off an own-third turnover against 0-2 men
+goal-side. Next: the passes still lost to a man 2-5 m off the receiver
+(28-33%), and the keeper's short ball and the lapse short ball, which
+check the lane only (passSafe never runs on them) — 30% of own-third
+losses between them.
+
+### 8.79 G4.81b — pro reference numbers in the DB (mig 782)
+
+James 10/28: "can we actaully look at pro data and get it into db and then
+we can work off it and referecne it?" — "whatever pro data is semi pro is
+worse of course". Until now "real" in these notes was figures from memory
+(the "~10-15 own-third giveaways" of §8.78 was one, and it was wrong).
+
+- **Source:** StatsBomb Open Data [StatsBomb] (github.com/statsbomb/
+  open-data — event data, free with attribution), Premier League 2015/16,
+  all 380 matches. Shots carry a freeze frame of the players, so
+  "defenders goal-side of the shooter" is measured, not guessed.
+- **Measured by** `game/scripts/benchmarks_statsbomb.py <comp> <season>`
+  (run with `python3 -I`; downloads ~1.2 GB, keeps nothing unless given a
+  cache dir) with the harness's own definitions, written into
+  `game_benchmark_metrics` (code, label, unit, definition — 33 measures)
+  and `game_benchmarks` (source, level, competition, season, matches,
+  value). Another league or season = rerun and add rows; a semi-pro source,
+  if one ever exists, = level 'semipro'.
+- **fh-game-match prints PRO REFERENCE** at the end of every match run:
+  each measure, home, away, pro.
+- **Definitions differ in one place:** a StatsBomb possession needs
+  control; the harness counts every change of the ball's owner, so a
+  touch-and-lose is a spell there and not here. It inflates the game's
+  spell and own-third-loss counts somewhat — not by 5-25×.
+
+Pro (a team a match unless noted): 12.9 shots, 2.5 goals a match (no
+penalties), 378 open-play passes at 79% (ground passes 91%), 121 spells a
+match of 47 s, 44 final-third entries, 2.1 balls lost within 35 m of their
+own goal (12.5% shot at inside 10 s). Open-play shots: 72% come 20 s+
+into the spell and 58% from a spell begun 70 m+ from goal; 0-2 defenders
+goal-side 28%, 7+ 24%; 16% from 25 m+.
+
+G4.81 against it (10 matches LH APSL v Ukies): 40 / 47 shots, 14.7 goals,
+548 / 674 passes at 64 / 69%, 679 spells of 6.8 s, 53 / 59 own-third
+losses (33-41% shot at inside 10 s); 98% of shots inside 20 s of the spell,
+54-56% from a spell begun inside 35 m, 62-73% against 0-2 men goal-side,
+none from 25 m+.
+
+What it says: the gap is POSSESSION, not the shot. Pro teams keep the ball
+47 s at a time and score from build-up; ours turn it over every 7 s
+(5.6× the spells) and score from the turnover. Fix the ball-keeping —
+passing, receiving, the man on the ball under pressure — and the shots'
+anatomy should follow; the defending block's share is what's left after.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

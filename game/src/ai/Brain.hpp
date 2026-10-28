@@ -51,6 +51,7 @@ enum class Why : std::uint8_t {
     CallManOn, CallTurn, CallTime, CallSqueeze, CallLine,
     HurryKeeper, PressBadTouch, OverHighLine, KeeperShort,
     FalseNineDrop, Overlap, ComeShort, CheckIn,
+    WaitPass,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -72,6 +73,7 @@ inline constexpr const char* kWhyNames[] = {
     "over the high line", "keeper: short and simple",
     "false 9: drop in",
     "overlap", "winger: come short", "check in",
+    "lapse: lets it come to him",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -86,6 +88,11 @@ struct Orders {
     // An aimed LoftedKick's first-bounce distance (G4.48); 0 = the preset
     // chip (clearances, punts).
     std::uint8_t carry_m = 0;
+    // A kick played to a mate (G4.81): who (World ball().pass_to — the man
+    // who meets it, the rest let it run); 0xFF = nobody. Filled with a
+    // ground pass's weight (carry_m = metres to the target) in ordersFor.
+    std::uint8_t pass_to = 0xFF;
+    std::uint8_t passTo() const { return pass_to; }
     // What he could see (G4.66, overlay only): his picture of the men
     // behind him is this many tenths of a second old (0 = he just looked;
     // 255 = sees everything — the perfect band); `unseen` = how many men

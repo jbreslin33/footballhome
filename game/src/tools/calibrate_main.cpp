@@ -248,7 +248,7 @@ int main(int argc, char** argv) {
                     was_moving[s] = moving;
                 }
                 world.setIntent(s, o.move);
-                if (o.action != core::Action::None) world.setAction(s, o.action, o.carry_m);
+                if (o.action != core::Action::None) world.setAction(s, o.action, o.carry_m, o.passTo());
                 if (o.action != core::Action::None && world.ball().owner &&
                     *world.ball().owner == s) {
                     last_kick_kind[s & 31] =

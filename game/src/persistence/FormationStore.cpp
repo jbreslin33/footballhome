@@ -506,4 +506,30 @@ std::optional<core::ConceptRegistry> loadConcepts(const DbConfig& cfg) {
     }
 }
 
+std::vector<Benchmark> loadBenchmarks(const DbConfig& cfg, const std::string& level) {
+    try {
+        const std::string conn_str =
+            "host=" + cfg.host + " dbname=" + cfg.dbname +
+            " user=" + cfg.user + " password=" + cfg.password +
+            " connect_timeout=5";
+        pqxx::connection conn{conn_str};
+        pqxx::work tx{conn};
+        std::vector<Benchmark> out;
+        for (const auto& r : tx.exec_params(
+                 "SELECT b.metric, m.label, m.unit, b.competition, b.season, s.title, b.matches, b.value::float8 "
+                 "FROM game_benchmarks b JOIN game_benchmark_metrics m ON m.code = b.metric "
+                 "JOIN game_sources s ON s.id = b.source_id WHERE b.level = $1 ORDER BY b.id", level)) {
+            Benchmark b;
+            b.metric = r[0].as<std::string>(); b.label = r[1].as<std::string>(); b.unit = r[2].as<std::string>();
+            b.competition = r[3].as<std::string>(); b.season = r[4].as<std::string>(); b.source = r[5].as<std::string>();
+            b.matches = r[6].as<int>(); b.value = r[7].as<double>();
+            out.push_back(std::move(b));
+        }
+        return out;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: benchmark load failed: %s\n", e.what());
+        return {};
+    }
+}
+
 }  // namespace fh::game::persistence

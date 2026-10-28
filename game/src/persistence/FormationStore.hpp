@@ -176,4 +176,14 @@ core::ModelParams loadModelParams(const DbConfig& cfg);
 // level it is a default from. Empty on any failure (keep builtin()).
 std::optional<core::ConceptRegistry> loadConcepts(const DbConfig& cfg);
 
+// G4.81b (mig 782): real-football reference values at a level band
+// (game_benchmarks × game_benchmark_metrics), for the harness to print
+// beside its own numbers. Empty on any failure.
+struct Benchmark {
+    std::string metric, label, unit, competition, season, source;
+    int matches = 0;
+    double value = 0;
+};
+std::vector<Benchmark> loadBenchmarks(const DbConfig& cfg, const std::string& level);
+
 }  // namespace fh::game::persistence

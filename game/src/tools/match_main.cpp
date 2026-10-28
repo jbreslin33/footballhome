@@ -34,6 +34,7 @@
 #include "core/Clock.hpp"
 #include "net/INetworkTransport.hpp"
 #include "server/GameServer.hpp"
+#include "persistence/FormationStore.hpp"
 #include "server/MatchSetup.hpp"
 
 #include <algorithm>
@@ -550,6 +551,32 @@ int main(int argc, char** argv) {
     // a man holding shape's gap to the spot he holds, in the first 5 s of
     // his team's spell [0] or after [1] — lag behind a shape that moved.
     long spells = 0, spell_ticks = 0;
+    // Shot anatomy (G4.81): each shot by the spell's age when it was hit
+    // (transition < 10 s vs settled), the defending outfielders goal-side
+    // of the ball, its distance, the nearest defender. Rest defence: at
+    // each change of possession, the LOSING team's outfielders goal-side
+    // of the ball. Real: most shots come from settled attacks against
+    // 6-9 men behind the ball; a counter faces 3-4.
+    long shot_age[2][4] = {}, shot_behind[2][4] = {}, shot_dist[2][4] = {}, shot_near[2][4] = {};
+    long shot_n[2] = {0, 0}, rest_hist[2][12] = {}, rest_n[2] = {0, 0};
+    // ...and the shooter's own touch: defenders goal-side of him when he GOT
+    // it (beaten by the ball to him vs by his carry), the metres he carried,
+    // where his team won the ball (m from the goal it attacks).
+    long recv_behind[2][4] = {}, carry_m[2][4] = {}, won_at[2][4] = {};
+    // How a team loses the ball within 35 m of its OWN goal: the why of its
+    // last kick in that spell (+ kick metres, ball height), or dispossessed
+    // on the ball (no kick), and how long it had held it.
+    long own3_lost[2][ai::kWhyCount + 1] = {}, own3_n[2] = {0, 0}, own3_age[2][4] = {};
+    double own3_kick_m[2] = {0, 0}; long own3_kicks[2] = {0, 0};
+    long own3_rwhy[2][ai::kWhyCount] = {}, own3_rn[2] = {0, 0};
+    double own3_rgap[2] = {0, 0}, own3_igap[2] = {0, 0};
+    long own3_first[2][5] = {};
+    // Every pass to a picked man (not shots/clears/punts), by how free he was
+    // at the kick (his nearest opponent): played / to him / lost.
+    long fr_n[2][4] = {}, fr_got[2][4] = {}, fr_lost[2][4] = {};
+    // An own-third loss the winners shoot from — inside 10 s / that spell
+    // (benchmark own_third_loss_shot_*), counted on the LOSING team.
+    long own3_shot10[2] = {0, 0}, own3_shot_spell[2] = {0, 0};
     double hold_gap[2] = {0, 0};
     long hold_n[2] = {0, 0};
     for (int m = 0; m < matches; ++m) {
@@ -563,10 +590,79 @@ int main(int argc, char** argv) {
         bool in_third[2] = {false, false};
         int spell_team = -1;
         long spell_start = 0;
+        int rx_slot = -1, rx_behind = 0;
+        int lk_to[2] = {-1, -1};
+        // GAME_TRACE_LOST=n: print the first n own-third lost kicks (match 1).
+        static const int trace_lost = std::atoi(envOr("GAME_TRACE_LOST", "0"));
+        int traced = 0;
+        int lk_rwhy10[2] = {-1, -1}, lk_first10[2] = {-9, -9};
+        int pf_bucket = -1;
+        int o3_team = -1; long o3_tick = 0; bool o3_10 = false, o3_any = false;   // the spell an own-third loss started
+        // GAME_TRACE_FREE=n: the first n passes to a man 10 m+ free that went
+        // wrong (match 1): the kick, then who touched it.
+        static const int trace_free = std::atoi(envOr("GAME_TRACE_FREE", "0"));
+        int tf_done = 0; long tf_tick = -1; int tf_to = -1, tf_team = -1; double tf_len = 0;
+        std::string tf_line;
+        std::vector<std::string> tf_ticks;   // GAME_TRACE_FREE_TICKS=1: the flight, every 6 ticks
+        static const bool tf_verbose = std::atoi(envOr("GAME_TRACE_FREE_TICKS", "0")) != 0;
+        std::vector<math::Vec2> lk_snap[2];
+        double lk_tx[2] = {0, 0}, lk_ty[2] = {0, 0}, lk_vx[2] = {0, 0}, lk_vy[2] = {0, 0};
+        int lk_why[2] = {-1, -1}; long lk_tick[2] = {-1, -1}; double lk_x[2] = {0, 0}, lk_y[2] = {0, 0};
+        double rx_x = 0, rx_y = 0, won_x = 0;
+        auto goalSide = [&](int team, double x) {   // opponents of `team` goal-side of x
+            int n = 0;
+            for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                const auto& d = s.world().player(j);
+                if (d.team == team || s.world().isKeeper(j)) continue;
+                if (team == 0 ? d.pos.x.toDouble() > x : d.pos.x.toDouble() < x) ++n;
+            }
+            return n;
+        };
         for (long k = 0; k < ticks; ++k) {
             const auto before = s.world().ball().owner;
             s.tickOnce();
             const auto& b = s.world().ball();
+            if (b.owner && (!before || *before != *b.owner)) {
+                const auto& r = s.world().player(*b.owner);
+                rx_slot = *b.owner; rx_x = r.pos.x.toDouble(); rx_y = r.pos.y.toDouble();
+                rx_behind = goalSide(r.team, rx_x);
+                lk_tick[r.team] = -1;   // a mate got it: the kick wasn't lost
+            }
+            if (tf_verbose && tf_tick >= 0 && (k - tf_tick) % 6 == 0) {
+                const auto& w = s.world();
+                auto who = [&](int j) {
+                    char t[160];
+                    const auto& d = w.player(j);
+                    const double bx = d.pos.x.toDouble() - b.pos.x.toDouble(), by = d.pos.y.toDouble() - b.pos.y.toDouble();
+                    std::snprintf(t, sizeof t, "#%d %.1fm v%.1f %s", j, std::sqrt(bx * bx + by * by),
+                                  std::sqrt(d.vel.x.toDouble() * d.vel.x.toDouble() + d.vel.y.toDouble() * d.vel.y.toDouble()),
+                                  ai::kWhyNames[static_cast<int>(s.lastOrders()[j].why)]);
+                    return std::string(t);
+                };
+                int nm = -1, no = -1; double dm = 1e9, dop = 1e9;
+                for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+                    if (j == tf_to) continue;
+                    const auto& d = w.player(j);
+                    const double bx = d.pos.x.toDouble() - b.pos.x.toDouble(), by = d.pos.y.toDouble() - b.pos.y.toDouble();
+                    const double dd = bx * bx + by * by;
+                    if (d.team == tf_team) { if (dd < dm) { dm = dd; nm = j; } }
+                    else if (dd < dop) { dop = dd; no = j; }
+                }
+                char t[600];
+                std::snprintf(t, sizeof t, "   +%.1fs ball %.0f,%.0f %.1f m/s | for %s | mate %s | opp %s", (k - tf_tick) / 30.0,
+                              b.pos.x.toDouble(), b.pos.y.toDouble(),
+                              std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble()),
+                              who(tf_to).c_str(), nm >= 0 ? who(nm).c_str() : "-", no >= 0 ? who(no).c_str() : "-");
+                tf_ticks.push_back(t);
+            }
+            for (int tm = 0; tm < 2; ++tm)
+                if (lk_tick[tm] >= 0 && k - lk_tick[tm] == 10 && lk_to[tm] >= 0 && lk_to[tm] < s.world().playerCount())
+                {
+                    lk_rwhy10[tm] = static_cast<int>(s.lastOrders()[lk_to[tm]].why);
+                    const auto& fr = s.brain().flightRead(s.world());
+                    const int f = fr.live ? fr.first[tm] : -8;
+                    lk_first10[tm] = f == lk_to[tm] ? 0 : f < 0 ? (f == -8 ? 4 : 1) : f == s.world().ball().last_kicker ? 2 : 3;
+                }
             if (b.owner && s.world().restartTeam() == 0xFF) {
                 const int dt = s.world().player(*b.owner).team ^ 1;   // defending team
                 const double hx = 52.5;
@@ -589,9 +685,59 @@ int main(int argc, char** argv) {
             if (b.owner && s.world().restartTeam() == 0xFF) {
                 const int ot = s.world().player(*b.owner).team;
                 if (ot != spell_team) {
+                    if (spell_team >= 0) {
+                        int behind = 0;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            const auto& d = s.world().player(j);
+                            if (d.team != spell_team || s.world().isKeeper(j)) continue;
+                            if (spell_team == 0 ? d.pos.x < b.pos.x : d.pos.x > b.pos.x) ++behind;
+                        }
+                        ++rest_hist[spell_team][behind]; ++rest_n[spell_team];
+                        const int lt = spell_team;
+                        const double own_d = lt == 0 ? 52.5 + b.pos.x.toDouble() : 52.5 - b.pos.x.toDouble();
+                        o3_team = -1;
+                        if (own_d < 35) {
+                            o3_team = lt ^ 1; o3_tick = k; o3_10 = o3_any = false;
+                            ++own3_n[lt];
+                            const bool kicked = lk_tick[lt] >= spell_start;
+                            ++own3_lost[lt][kicked ? lk_why[lt] : ai::kWhyCount];
+                            const double age = (k - spell_start) / 30.0;
+                            ++own3_age[lt][age < 1 ? 0 : age < 3 ? 1 : age < 8 ? 2 : 3];
+                            if (kicked) {
+                                const double dx = b.pos.x.toDouble() - lk_x[lt], dy = b.pos.y.toDouble() - lk_y[lt];
+                                own3_kick_m[lt] += std::sqrt(dx * dx + dy * dy); ++own3_kicks[lt];
+                                if (trace_lost && m == 0 && traced < trace_lost && !lk_snap[lt].empty()) {
+                                    ++traced;
+                                    const int ic = *b.owner;
+                                    const double ax = lk_tx[lt] - lk_x[lt], ay = lk_ty[lt] - lk_y[lt];
+                                    const double aim = std::atan2(ay, ax) * 57.3, went = std::atan2(lk_vy[lt], lk_vx[lt]) * 57.3;
+                                    auto P = [&](int j) { return std::to_string(int(lk_snap[lt][j].x.toDouble())) + "," + std::to_string(int(lk_snap[lt][j].y.toDouble())); };
+                                    std::printf("LOST t=%.1fs team%d %s from %d,%d aim %d,%d (%.0f m) | aimed %.0f° went %.0f° at %.1f m/s | taken after %.1f s at %d,%d | for #%d was at %s now %s (+0.3 s: %s) | taker #%d was at %s (%s)\n",
+                                        k / 30.0, lt, ai::kWhyNames[lk_why[lt]], int(lk_x[lt]), int(lk_y[lt]), int(lk_tx[lt]), int(lk_ty[lt]), std::sqrt(ax * ax + ay * ay),
+                                        aim, went, std::sqrt(lk_vx[lt] * lk_vx[lt] + lk_vy[lt] * lk_vy[lt]), (k - lk_tick[lt]) / 30.0,
+                                        int(b.pos.x.toDouble()), int(b.pos.y.toDouble()),
+                                        lk_to[lt], lk_to[lt] >= 0 ? P(lk_to[lt]).c_str() : "-",
+                                        lk_to[lt] >= 0 ? (std::to_string(int(s.world().player(lk_to[lt]).pos.x.toDouble())) + "," + std::to_string(int(s.world().player(lk_to[lt]).pos.y.toDouble()))).c_str() : "-",
+                                        lk_rwhy10[lt] >= 0 ? ai::kWhyNames[lk_rwhy10[lt]] : "-",
+                                        ic, P(ic).c_str(), ai::kWhyNames[static_cast<int>(s.lastOrders()[ic].why)]);
+                                }
+                                if (lk_to[lt] >= 0 && lk_to[lt] < s.world().playerCount()) {
+                                    const auto& rv = s.world().player(lk_to[lt]);
+                                    if (rv.team == lt) {
+                                        if (lk_rwhy10[lt] >= 0) { ++own3_rwhy[lt][lk_rwhy10[lt]]; ++own3_rn[lt]; ++own3_first[lt][lk_first10[lt]]; }
+                                        const double rx = rv.pos.x.toDouble() - b.pos.x.toDouble(), ry = rv.pos.y.toDouble() - b.pos.y.toDouble();
+                                        own3_rgap[lt] += std::sqrt(rx * rx + ry * ry);
+                                        const double ix = rv.pos.x.toDouble() - lk_x[lt], iy = rv.pos.y.toDouble() - lk_y[lt];
+                                        own3_igap[lt] += std::sqrt(ix * ix + iy * iy);
+                                    }
+                                }
+                            }
+                        }
+                    }
                     if (spell_team >= 0) { ++spells; spell_ticks += k - spell_start; }
                     spell_team = ot;
                     spell_start = k;
+                    won_x = ot == 0 ? 52.5 - b.pos.x.toDouble() : 52.5 + b.pos.x.toDouble();
                 }
                 for (int team = 0; team < 2; ++team) {
                     int near = 0;
@@ -670,6 +816,7 @@ int main(int argc, char** argv) {
                 PassTally& t = tally[pend_team][pend_why];
                 if (s.world().restartTeam() != 0xFF) {
                     ++t.dead;
+                    tf_tick = -1;
                     for (const auto& e : s.lastEvents())
                         if (e.type == core::MatchEventType::Offside) ++t.offside;
                     pend_team = -1;
@@ -678,8 +825,28 @@ int main(int argc, char** argv) {
                         if (pend_why != static_cast<int>(ai::Why::Shoot)) last_assist[pend_team] = pend_why;
                         ++t.mate;
                         if (*b.owner == pend_other) ++t.intended;
+                        if (pf_bucket >= 0 && *b.owner == pend_other) ++fr_got[pend_team][pf_bucket];
+                        if (tf_tick >= 0 && *b.owner != pend_other) {
+                            const auto& rv = s.world().player(tf_to);
+                            const double gx = rv.pos.x.toDouble() - b.pos.x.toDouble(), gy = rv.pos.y.toDouble() - b.pos.y.toDouble();
+                            std::printf("%s || MATE #%d took it after %.1f s; #%d %.1f m from it, doing %s\n", tf_line.c_str(), *b.owner, (k - tf_tick) / 30.0,
+                                        tf_to, std::sqrt(gx * gx + gy * gy), ai::kWhyNames[static_cast<int>(s.lastOrders()[tf_to].why)]);
+                            for (const auto& l : tf_ticks) std::printf("%s\n", l.c_str());
+                            ++tf_done;
+                        }
+                        tf_tick = -1;
                     } else {
                         ++t.lost;
+                        if (pf_bucket >= 0) ++fr_lost[pend_team][pf_bucket];
+                        if (tf_tick >= 0) {
+                            const auto& rv = s.world().player(tf_to);
+                            const double gx = rv.pos.x.toDouble() - b.pos.x.toDouble(), gy = rv.pos.y.toDouble() - b.pos.y.toDouble();
+                            std::printf("%s || LOST to #%d after %.1f s; #%d %.1f m from it, doing %s\n", tf_line.c_str(), *b.owner, (k - tf_tick) / 30.0,
+                                        tf_to, std::sqrt(gx * gx + gy * gy), ai::kWhyNames[static_cast<int>(s.lastOrders()[tf_to].why)]);
+                            for (const auto& l : tf_ticks) std::printf("%s\n", l.c_str());
+                            ++tf_done;
+                        }
+                        tf_tick = -1;
                     }
                     pend_team = -1;
                 }
@@ -688,6 +855,15 @@ int main(int argc, char** argv) {
                 s.world().restartTeam() == 0xFF) {
                 const ai::Orders& o = s.lastOrders()[*before];
                 pend_team = s.world().player(*before).team;
+                lk_why[pend_team] = static_cast<int>(o.why); lk_tick[pend_team] = k; lk_to[pend_team] = o.other; lk_rwhy10[pend_team] = -1;
+                lk_x[pend_team] = s.world().player(*before).pos.x.toDouble(); lk_y[pend_team] = s.world().player(*before).pos.y.toDouble();
+                if (trace_lost && m == 0) {
+                    lk_snap[pend_team].clear();
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
+                        lk_snap[pend_team].push_back(math::Vec2{s.world().player(j).pos.x, s.world().player(j).pos.y});
+                    lk_tx[pend_team] = o.target.x.toDouble(); lk_ty[pend_team] = o.target.y.toDouble();
+                    lk_vx[pend_team] = b.vel.x.toDouble(); lk_vy[pend_team] = b.vel.y.toDouble();
+                }
                 if (o.why == ai::Why::Shoot) {
                     const auto& sh = s.world().player(*before);
                     bool alone = true;
@@ -697,9 +873,64 @@ int main(int argc, char** argv) {
                         if (sh.team == 0 ? d.pos.x > sh.pos.x : d.pos.x < sh.pos.x) alone = false;
                     }
                     shot_breakaway[pend_team] = alone;
+                    const int st = sh.team;
+                    if (o3_team == st && spell_team == st) {
+                        if (!o3_10 && k - o3_tick <= 300) { ++own3_shot10[st ^ 1]; o3_10 = true; }
+                        if (!o3_any) { ++own3_shot_spell[st ^ 1]; o3_any = true; }
+                    }
+                    const double age = st == spell_team ? (k - spell_start) / 30.0 : 0.0;
+                    int behind = 0;
+                    double near = 1e9;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == st || s.world().isKeeper(j)) continue;
+                        if (st == 0 ? d.pos.x > sh.pos.x : d.pos.x < sh.pos.x) ++behind;
+                        const double dx = d.pos.x.toDouble() - sh.pos.x.toDouble(), dy = d.pos.y.toDouble() - sh.pos.y.toDouble();
+                        near = std::min(near, std::sqrt(dx * dx + dy * dy));
+                    }
+                    const double gx = (st == 0 ? 52.5 : -52.5) - sh.pos.x.toDouble(), gy = sh.pos.y.toDouble();
+                    const double dist = std::sqrt(gx * gx + gy * gy);
+                    ++shot_n[st];
+                    ++shot_age[st][age < 5 ? 0 : age < 10 ? 1 : age < 20 ? 2 : 3];
+                    ++shot_behind[st][behind <= 2 ? 0 : behind <= 4 ? 1 : behind <= 6 ? 2 : 3];
+                    ++shot_dist[st][dist < 11 ? 0 : dist < 18 ? 1 : dist < 25 ? 2 : 3];
+                    ++shot_near[st][near < 1.5 ? 0 : near < 3 ? 1 : near < 6 ? 2 : 3];
+                    if (rx_slot == *before) {
+                        const double cx = sh.pos.x.toDouble() - rx_x, cy = sh.pos.y.toDouble() - rx_y;
+                        const double cm = std::sqrt(cx * cx + cy * cy);
+                        ++recv_behind[st][rx_behind <= 2 ? 0 : rx_behind <= 4 ? 1 : rx_behind <= 6 ? 2 : 3];
+                        ++carry_m[st][cm < 3 ? 0 : cm < 10 ? 1 : cm < 25 ? 2 : 3];
+                    }
+                    if (st == spell_team) ++won_at[st][won_x < 35 ? 0 : won_x < 52.5 ? 1 : won_x < 70 ? 2 : 3];
                 }
                 pend_why = o.rung >= 1 && o.rung <= 2 ? ai::kWhyCount : static_cast<int>(o.why);
                 pend_other = o.other;
+                pf_bucket = -1;
+                if (o.other >= 0 && o.other < s.world().playerCount() && o.why != ai::Why::Shoot &&
+                    s.world().player(o.other).team == pend_team) {
+                    const auto& rv = s.world().player(o.other);
+                    double nd = 1e9;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == pend_team) continue;
+                        const double dx = d.pos.x.toDouble() - rv.pos.x.toDouble(), dy = d.pos.y.toDouble() - rv.pos.y.toDouble();
+                        nd = std::min(nd, std::sqrt(dx * dx + dy * dy));
+                    }
+                    pf_bucket = nd < 2 ? 0 : nd < 5 ? 1 : nd < 10 ? 2 : 3;
+                    ++fr_n[pend_team][pf_bucket];
+                    if (trace_free && m == 0 && pf_bucket == 3 && tf_done < trace_free) {
+                        const auto& ps = s.world().player(*before);
+                        const double ax = rv.pos.x.toDouble() - ps.pos.x.toDouble(), ay = rv.pos.y.toDouble() - ps.pos.y.toDouble();
+                        const double tx = o.target.x.toDouble() - ps.pos.x.toDouble(), ty = o.target.y.toDouble() - ps.pos.y.toDouble();
+                        char buf[400];
+                        std::snprintf(buf, sizeof buf, "FREE t=%.1fs team%d %s #%d->#%d | man %.0f m away, aimed %.0f m, ball %.1f m/s z-vel %.1f | man moving %.1f,%.1f",
+                                      k / 30.0, pend_team, ai::kWhyNames[static_cast<int>(o.why)], *before, o.other, std::sqrt(ax * ax + ay * ay),
+                                      std::sqrt(tx * tx + ty * ty), std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble()),
+                                      b.vel.z.toDouble(), rv.vel.x.toDouble(), rv.vel.y.toDouble());
+                        tf_line = buf; tf_tick = k; tf_to = o.other; tf_team = pend_team; tf_len = std::sqrt(ax * ax + ay * ay);
+                        tf_ticks.clear();
+                    }
+                }
                 ++tally[pend_team][pend_why].kicks;
             }
         }
@@ -789,6 +1020,52 @@ int main(int argc, char** argv) {
                 std::printf("  %-28s %4.0f%%\n", ai::kWhyNames[w], 100.0 * esc_why[team][w] / esc_ticks[team]);
     }
     for (int team = 0; team < 2; ++team) {
+        if (!shot_n[team]) continue;
+        const char* tn = team == 0 ? names.team_home.c_str() : names.team_away.c_str();
+        auto pc = [&](const long* h, int i) { return 100.0 * h[i] / shot_n[team]; };
+        std::printf("\n%s shots %.1f/match — spell age <5 s %.0f%% · 5-10 %.0f%% · 10-20 %.0f%% · 20+ %.0f%%\n", tn,
+                    double(shot_n[team]) / matches, pc(shot_age[team], 0), pc(shot_age[team], 1), pc(shot_age[team], 2), pc(shot_age[team], 3));
+        std::printf("  defenders goal-side of the shooter 0-2 %.0f%% · 3-4 %.0f%% · 5-6 %.0f%% · 7+ %.0f%%\n",
+                    pc(shot_behind[team], 0), pc(shot_behind[team], 1), pc(shot_behind[team], 2), pc(shot_behind[team], 3));
+        std::printf("  distance <11 m %.0f%% · 11-18 %.0f%% · 18-25 %.0f%% · 25+ %.0f%%; nearest defender <1.5 m %.0f%% · 1.5-3 %.0f%% · 3-6 %.0f%% · 6+ %.0f%%\n",
+                    pc(shot_dist[team], 0), pc(shot_dist[team], 1), pc(shot_dist[team], 2), pc(shot_dist[team], 3),
+                    pc(shot_near[team], 0), pc(shot_near[team], 1), pc(shot_near[team], 2), pc(shot_near[team], 3));
+        std::printf("  defenders goal-side when the shooter GOT it 0-2 %.0f%% · 3-4 %.0f%% · 5-6 %.0f%% · 7+ %.0f%%; he carried <3 m %.0f%% · 3-10 %.0f%% · 10-25 %.0f%% · 25+ %.0f%%\n",
+                    pc(recv_behind[team], 0), pc(recv_behind[team], 1), pc(recv_behind[team], 2), pc(recv_behind[team], 3),
+                    pc(carry_m[team], 0), pc(carry_m[team], 1), pc(carry_m[team], 2), pc(carry_m[team], 3));
+        std::printf("  the spell began <35 m from the goal it attacks %.0f%% · 35-52 %.0f%% · 52-70 %.0f%% · 70+ %.0f%%\n",
+                    pc(won_at[team], 0), pc(won_at[team], 1), pc(won_at[team], 2), pc(won_at[team], 3));
+        std::printf("  passes to a picked man by his nearest opponent at the kick — played/match, to him, lost:");
+        { const char* bn[4] = {"<2 m", "2-5 m", "5-10 m", "10+ m"};
+          for (int i = 0; i < 4; ++i) if (fr_n[team][i])
+              std::printf(" | %s %.0f, %.0f%%, %.0f%%", bn[i], double(fr_n[team][i]) / matches, 100.0 * fr_got[team][i] / fr_n[team][i], 100.0 * fr_lost[team][i] / fr_n[team][i]); }
+        std::printf("\n");
+        if (own3_n[team]) {
+            std::printf("  loses it within 35 m of its OWN goal %.1f/match (held <1 s %.0f%% · 1-3 %.0f%% · 3-8 %.0f%% · 8+ %.0f%%), kicks travel %.1f m before they take it:",
+                        double(own3_n[team]) / matches, 100.0 * own3_age[team][0] / own3_n[team], 100.0 * own3_age[team][1] / own3_n[team],
+                        100.0 * own3_age[team][2] / own3_n[team], 100.0 * own3_age[team][3] / own3_n[team],
+                        own3_kicks[team] ? own3_kick_m[team] / own3_kicks[team] : 0.0);
+            for (int w = 0; w <= ai::kWhyCount; ++w)
+                if (own3_lost[team][w] * 25 >= own3_n[team])
+                    std::printf(" %s %.0f%%", w == ai::kWhyCount ? "(on the ball: dispossessed)" : ai::kWhyNames[w], 100.0 * own3_lost[team][w] / own3_n[team]);
+            std::printf("\n");
+            if (own3_rn[team]) {
+                std::printf("    the man it was for: %.1f m from where they took it (%.1f m from the passer); 0.3 s after the kick he was doing:", own3_rgap[team] / own3_rn[team], own3_igap[team] / own3_rn[team]);
+                for (int w = 0; w < ai::kWhyCount; ++w)
+                    if (own3_rwhy[team][w] * 20 >= own3_rn[team])
+                        std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * own3_rwhy[team][w] / own3_rn[team]);
+                std::printf("\n      our first man to it (flight read, +0.3 s): the receiver %.0f%% · nobody %.0f%% · the passer %.0f%% · another mate %.0f%% · (not live) %.0f%%\n",
+                    100.0 * own3_first[team][0] / own3_rn[team], 100.0 * own3_first[team][1] / own3_rn[team], 100.0 * own3_first[team][2] / own3_rn[team],
+                    100.0 * own3_first[team][3] / own3_rn[team], 100.0 * own3_first[team][4] / own3_rn[team]);
+            }
+        }
+        if (rest_n[team]) {
+            std::printf("  when it LOSES the ball, outfielders goal-side of it:");
+            for (int i = 0; i <= 10; ++i) std::printf(" %d:%.0f%%", i, 100.0 * rest_hist[team][i] / rest_n[team]);
+            std::printf("\n");
+        }
+    }
+    for (int team = 0; team < 2; ++team) {
         std::printf("\n%s goals per match by the last pass before them (breakaways %.2f):\n",
                     team == 0 ? names.team_home.c_str() : names.team_away.c_str(),
                     static_cast<double>(breakaways[team]) / matches);
@@ -797,6 +1074,58 @@ int main(int argc, char** argv) {
             const char* n = w == ai::kWhyCount ? "in behind (rungs 1-2)"
                           : w == ai::kWhyCount + 1 ? "(no pass: won it / carried)" : ai::kWhyNames[w];
             std::printf("  %-28s %5.2f\n", n, static_cast<double>(assist[team][w]) / matches);
+        }
+    }
+    // G4.81b: the pro reference (mig 782 — game_benchmarks, level 'pro') beside
+    // the same measures here. Semi-pro sits on the worse side of pro.
+    const auto bench = persistence::loadBenchmarks(db, "pro");
+    if (!bench.empty()) {
+        std::map<std::string, std::pair<double, double>> sim;   // per team (home, away); NaN = no line here
+        const double nm = matches, nan = std::nan("");
+        auto both = [&](const std::string& k, double h, double a) { sim[k] = {h, a}; };
+        auto one = [&](const std::string& k, double v) { sim[k] = {v, nan}; };
+        double pk[2] = {0, 0}, pm[2] = {0, 0};
+        for (int team = 0; team < 2; ++team)
+            for (int w = 0; w <= ai::kWhyCount; ++w) {
+                if (w == static_cast<int>(ai::Why::Shoot) || w == static_cast<int>(ai::Why::Clear) ||
+                    w == static_cast<int>(ai::Why::KeeperPunt)) continue;
+                pk[team] += tally[team][w].kicks; pm[team] += tally[team][w].mate;
+            }
+        both("shots_per_team_match", shot_n[0] / nm, shot_n[1] / nm);
+        both("shots_open_play_per_team_match", shot_n[0] / nm, shot_n[1] / nm);
+        one("goals_per_match", (gh + ga) / nm);
+        one("goals_open_play_per_match", (gh + ga) / nm);
+        both("open_play_passes_per_team_match", pk[0] / nm, pk[1] / nm);
+        both("open_play_pass_completion_pct", 100 * pm[0] / std::max(1.0, pk[0]), 100 * pm[1] / std::max(1.0, pk[1]));
+        one("spells_per_match", spells / nm);
+        one("spell_length_s", spells ? spell_ticks / 30.0 / spells : nan);
+        both("final_third_entries_per_team_match", entries[0] / nm, entries[1] / nm);
+        both("own_third_losses_per_team_match", own3_n[0] / nm, own3_n[1] / nm);
+        both("own_third_loss_shot_10s_pct", 100.0 * own3_shot10[0] / std::max(1L, own3_n[0]), 100.0 * own3_shot10[1] / std::max(1L, own3_n[1]));
+        both("own_third_loss_shot_spell_pct", 100.0 * own3_shot_spell[0] / std::max(1L, own3_n[0]), 100.0 * own3_shot_spell[1] / std::max(1L, own3_n[1]));
+        const char* sfx[4][4] = {{"lt5s", "5_10s", "10_20s", "20s_plus"}, {"0_2", "3_4", "5_6", "7_plus"},
+                                 {"lt11m", "11_18m", "18_25m", "25m_plus"}, {"lt1_5m", "1_5_3m", "3_6m", "6m_plus"}};
+        const char* pre[4] = {"op_shot_age_", "op_shot_goalside_", "op_shot_dist_", "op_shot_near_"};
+        const long (*hist[4])[4] = {shot_age, shot_behind, shot_dist, shot_near};
+        for (int h = 0; h < 4; ++h)
+            for (int i = 0; i < 4; ++i)
+                both(std::string(pre[h]) + sfx[h][i] + "_pct", 100.0 * hist[h][0][i] / std::max(1L, shot_n[0]),
+                     100.0 * hist[h][1][i] / std::max(1L, shot_n[1]));
+        const char* began[4] = {"lt35m", "35_52m", "52_70m", "70m_plus"};
+        for (int i = 0; i < 4; ++i)
+            both(std::string("op_shot_began_") + began[i] + "_pct", 100.0 * won_at[0][i] / std::max(1L, shot_n[0]),
+                 100.0 * won_at[1][i] / std::max(1L, shot_n[1]));
+        std::printf("\nPRO REFERENCE — %s, %s %s, %d matches (semi-pro sits on the worse side of it)\n",
+                    bench[0].source.c_str(), bench[0].competition.c_str(), bench[0].season.c_str(), bench[0].matches);
+        std::printf("  %-76s %9s %9s %9s\n", "", names.team_home.substr(0, 9).c_str(), names.team_away.substr(0, 9).c_str(), "pro");
+        for (const auto& b : bench) {
+            const auto it = sim.find(b.metric);
+            if (it == sim.end()) continue;
+            const std::string lab = b.label + " (" + b.unit + ")";
+            if (std::isnan(it->second.second))
+                std::printf("  %-76s %9.1f %9s %9.1f\n", lab.c_str(), it->second.first, "", b.value);
+            else
+                std::printf("  %-76s %9.1f %9.1f %9.1f\n", lab.c_str(), it->second.first, it->second.second, b.value);
         }
     }
     return 0;
