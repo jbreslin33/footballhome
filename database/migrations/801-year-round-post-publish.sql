@@ -1,4 +1,4 @@
--- 800 (2026-10-28) — publish the free year-round club post (owner: "post
+-- 801 (2026-10-28; renumbered from 800 — another session took it) — publish the free year-round club post (owner: "post
 -- it").  Scheduled for now; SocialController's scheduler publishes it to
 -- Instagram on its next minute tick (publishPromoById).
 UPDATE promotional_posts
