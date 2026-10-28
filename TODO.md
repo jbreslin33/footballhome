@@ -38,7 +38,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 - [x] 2026-10-24 Youth opponent contacts: PPR team-contacts sheet (#files, club_files 52) loaded into club_contacts — 53 coaches across Torresdale, Fishtown, RUSC, Parkwood, Bridesburg, KSC, West Philly, Samuel, East Falls, Academy (RUSC and Samuel added as clubs). DB-only; Game Center 📇 shows them on youth games.
 - [x] 2026-10-23 Postmark working: the web login was the older account (server 20960000) whose approval form had never been submitted — submitted, approved instantly, DKIM + Return-Path verified; app switched to its token (env), Gmail delivery confirmed, Basic plan 10k/mo $15. The 9/24 account (21029573) stays pending and unused.
 - [x] 2026-10-16 Newspaper book recapture: all 95 full-res pages in archive/newspapers-fullres; build_book4.py made print/brian-in-the-papers.pdf (full page + zoomed inset) and the pure-clippings PDF. (TODO line was stale until 10/24.)
-- [ ] 2026-10-22 Seasonal chore: APSL TeamPass team id changes each season — re-point the 🖨 roster scraper + 🌐 mirror when the new season's pages go up.
+- [x] 2026-10-28 Seasonal chore checked: 2026/27 (started Sept) already wired — official_roster_sources APSL + Reserves = TeamPass 165430, Liga 1 = CASA sheet, all pulling OK 10/27. NEXT due Sept 2027: APSL TeamPass team id changes each season — re-point the 🖨 roster scraper + 🌐 mirror (new 2027/28 source rows).
 
 - [x] 2026-10-24 FH Texter fallback (mig 673): Game Center ✉ CONTACT's club text and my-phone options merged into one "📲 Text" that picks its own route. Opted in → club number (Twilio). Not opted in → your phone via FH Texter, with the same personal game link / RSVP reminder / registration form. Phone offline, cap reached, STOP, or Blank → the copy & paste panel. The route is named under the option. Cards show 📱 sent → delivered → opened like club texts. One click per player, never a batch (owner's pick).
 
@@ -47,14 +47,13 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
   - [x] 2026-10-26 Gordon Dunlop (Referee Assignor) loaded on PPR (62) and TCWSL (66) league offices — club_contacts 201/202, DB only.
   - Gordon Dunlop, ref assignor for Tri County AND PPR: email given by James 10/24 in chat; load it into the DB only, never git.
 
-- [ ] 2026-10-24 Test with real sends (nothing sent yet): a two-parent family (Lina + Raynel get separate texts with their own links) and a tap-through on a new short sign-in link (footballhome.org/api/m/...). Only with James's go-ahead — the two-parent test messages real parents.
-- [ ] 2026-10-24 FH Texter 1.2: refuse/flag texts when the app lacks SMS permission instead of taking them and failing (1.1 does that after a reinstall until "Allow restricted settings" + SMS are re-granted). Needs another sideload (Samsung Auto Blocker off).
+- [x] 2026-10-28 Real sends verified: two-parent family — Lina + Raynel each got their own FH Texter text with their own link for Angel (10/24, twice, all delivered; phone_relay_texts 4–7). Short sign-in links (footballhome.org/api/m/...): 19 sent, 3 tapped through to a sign-in (latest 10/27).
 - [x] 2026-10-24 Coaches aren't fined (mig 693): James, Luke, Victor, Sheldon, Ali, Walter cleared; regular players keep the full schedule.
 - [x] 2026-10-26 Roster boards (#teams) net a pending bank payment (mig 690) off LA's raw outstandingBalance: RosterBoardExtras::attach subtracts fh_membership_pending_bank_usd per registration on every board and adds pendingBankUsd (Jesueth's 10/20 $35 was the live case).
 - [x] 2026-10-27 Our U10 (PPR U10 Boys Blue) vs Torresdale: GotSport (event 57473) has us playing BOTH — Strikers 9/19 + 10/25, Wasps 10/3 (L 1-6) + 11/8 home. The PPR sheet's "Stingers" (Patrick Gaghan, club_contacts 145) = GotSport's "Strikers"; Wasps = Alex Hughes-Taylor (144). Next Torresdale game is the Wasps, 11/8.
 
 - [x] 2026-10-26 CASA Instagram 📸 buttons (mig 699): club_social_handles; handle field on #casa-contacts cards, 📸 per team on #casa-scores + "Open all" for unscored games; terminal check = "check all casa scores from insta" (.claude/skills/casa-insta-scores, CASA Chrome profile w/ VPN).
-- [ ] 2026-10-26 CASA Instagram handles: 8 of 14 saved (mig 731). Still missing: Desert Hawks, Nomads FC, Persepolis FC, Philadelphia Lions, Phoenix, Phoenix SCM — web search turns up nothing; needs a signed-in Instagram search (CASA profile) or ask the clubs. Paste on #casa-contacts.
+- [x] 2026-10-27 CASA Instagram handles: all 14 saved (8 via mig 731 on 10/26, the last six on 10/27 from James: Desert Hawks, Nomads FC, Persepolis FC, Philadelphia Lions, Phoenix + Phoenix SCM — the two Phoenix clubs share phoenixsc_official).
 
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`. Pending op note: after the next frontend deploy, `sudo podman rm -f footballhome_sim` (see the archive README).
 
