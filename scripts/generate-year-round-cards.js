@@ -15,6 +15,8 @@ const R = path.resolve(__dirname, '..', 'frontend', 'images');
 const uri = p => 'data:image/' + (p.endsWith('.png') ? 'png' : 'jpeg') + ';base64,' + fs.readFileSync(p).toString('base64');
 const crest = uri(R + '/teams/logos/lighthouse-1893.png');
 const ppr = uri(R + '/leagues/phila-parks-rec.jpg');
+const icsl = uri(R + '/leagues/icsl.png');
+const epysa = uri(R + '/leagues/epysa.png');
 const OUT = path.join(R, 'posts');
 const css = `*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height:1080px;overflow:hidden;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;color:#fff}
 .card{width:1080px;height:1080px;position:relative;background:radial-gradient(ellipse at 30% 20%,#1a3a8a 0%,#0d2247 45%,#060f25 100%);padding:60px}
@@ -23,6 +25,7 @@ const css = `*{margin:0;padding:0;box-sizing:border-box}body{width:1080px;height
 .header{display:flex;align-items:center;gap:24px;margin-top:8px}.header img{height:130px}
 .club{font-size:30px;font-weight:900;letter-spacing:2px}.since{font-size:18px;color:#f5d442;font-weight:700;letter-spacing:4px}
 .badge{margin-left:auto;height:110px;width:110px;border-radius:50%;border:4px solid #f5d442;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}.badge img{height:96px}
+.badges{margin-left:auto;display:flex;gap:12px}.badges .badge{margin-left:0}.badge img.wide{height:auto;width:92px}
 .ballc{margin-left:auto;width:110px;height:110px;border-radius:50%;background:#0d2247;border:4px solid #f5d442;display:flex;align-items:center;justify-content:center;font-size:64px}
 .hero{margin-top:26px;text-align:center}.kicker{font-size:28px;letter-spacing:14px;color:#f5d442;font-weight:800;text-transform:uppercase}
 h1{font-size:112px;font-weight:900;line-height:.95;margin-top:14px;text-shadow:0 6px 24px rgba(0,0,0,.55)}h1 .a{color:#f5d442}
@@ -42,6 +45,7 @@ const card = (o) => `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${c
 <div class="yr">FULL-YEAR PROGRAM</div><div class="seasons">${o.seasons.map(([i,l,d])=>`<div class="s"><div class="i">${i}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:""}</div>`).join("")}</div><div class="acts">${ACTS.map(([i,l])=>`<div class="act"><span class="i">${i}</span>${l}</div>`).join("")}</div>
 <div class="venue"><div class="n">LIGHTHOUSE SPORTS COMPLEX</div><div class="ad">199 East Erie Avenue · Philadelphia, PA</div></div>
 <div class="gb b"></div></div></body></html>`;
+// Youth header (owner 2026-10-28): Inter-County (ICSL) + EPYSA beside PPR.
 // What the club does in every season — its own row, not per season
 // (owner 2026-10-28: "League Games, Training, Tournaments in its own cube").
 const ACTS = [['⚽','LEAGUE GAMES'],['🎯','TRAINING'],['🏆','TOURNAMENTS']];
@@ -50,7 +54,7 @@ const ACTS = [['⚽','LEAGUE GAMES'],['🎯','TRAINING'],['🏆','TOURNAMENTS']]
 const PRICE = '$35/MONTH · UNIFORM INCLUDED';
 const ball = '<div class="ballc">⚽</div>';
 const cards = {
- 'youth-year-round-ad': {est:'1897', badge:`<div class="badge"><img src="${ppr}"></div>`, kicker:'Boys & Girls · Grades K–9', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join now · <strong>All skill levels welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:['BOYS','GIRLS'],
+ 'youth-year-round-ad': {est:'1897', badge:`<div class="badges"><div class="badge"><img class="wide" src="${icsl}"></div><div class="badge"><img src="${epysa}"></div><div class="badge"><img src="${ppr}"></div></div>`, kicker:'Boys & Girls · Grades K–9', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join now · <strong>All skill levels welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:['BOYS','GIRLS'],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
  // Free organic post (owner 2026-10-28): every program on one card,
  // "registration links in bio" — not an ad, posted from #promotional-posts.
