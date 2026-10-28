@@ -317,10 +317,11 @@ const ADS = {
     leadForm: YEAR_ROUND_FORM,
     targeting: {
       geo_locations: YEAR_ROUND_GEO,
-      // Parents of grades-1–6 kids: 25–44 brought 389 of the youth ad's
-      // 449 leads at ~$3.75 each (owner 2026-10-28: "parents for youth").
+      // Parents of 1st–9th graders (PPR indoor runs to U15 ≈ 9th grade).
+      // 25–44 brought 389 of the old youth ad's 449 leads at ~$3.75 each;
+      // 45–54 was as cheap ($3.64) and has the older kids' parents.
       age_min: 25,
-      age_max: 45,
+      age_max: 50,
       locales: [6, 24],
       publisher_platforms: ['facebook', 'instagram'],
       facebook_positions: ['feed'],
