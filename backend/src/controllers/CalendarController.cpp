@@ -806,6 +806,17 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 COALESCE(fe.kind, 'other') AS kind,
                 fe.category,
                 fe.is_home,
+                -- A game on a field WE prep (facilities.field_prep, mig 780):
+                -- the setup to lay out — the biggest tagged team's
+                -- field_formats.home_setup (U8/U10 7v7 → "7v7"; 9v9 and
+                -- 11v11 → "11v11").  NULL anywhere else, home or away.
+                (SELECT ff.home_setup
+                   FROM facilities f
+                   JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
+                   JOIN teams t ON t.id = fet.team_id
+                   JOIN field_formats ff ON ff.players_per_side = t.field_size
+                  WHERE fe.kind = 'match' AND f.id = fe.facility_id AND f.field_prep
+                  ORDER BY t.field_size DESC LIMIT 1) AS home_setup,
                 fe.match_id,
                 fe.opponent,
                 -- Opponent crest: gcal_opponent_aliases (migration 258)
@@ -1680,6 +1691,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["kind"]              = row["kind"].c_str();
             ev["category"]          = textOrNull(row, "category");
             ev["is_home"]           = boolOrNull(row, "is_home");
+            ev["home_setup"]        = textOrNull(row, "home_setup");
             ev["match_id"]          = longLongOrNull(row, "match_id");
             ev["opponent"]          = textOrNull(row, "opponent");
             ev["opponent_logo_url"] = textOrNull(row, "opponent_logo_url");

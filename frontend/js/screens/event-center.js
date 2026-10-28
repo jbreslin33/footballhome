@@ -251,7 +251,8 @@ class EventCenterScreen extends Screen {
         ${badges ? `<span style="display:flex; flex-wrap:wrap; gap:4px;">${badges}</span>` : ''}
         <span style="font-size:0.8rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
         <span style="font-weight:700;">${this.escapeHtml(line(ev))}</span>
-        ${ev.location ? `<span style="font-size:0.72rem; opacity:0.85;">📍 ${this.escapeHtml(ev.location)}</span>` : ''}
+        ${EventLabels.homeSetup(ev) ? `<span>${EventLabels.homeSetupBadge(ev, (t) => this.escapeHtml(t))}</span>`
+          : ev.location ? `<span style="font-size:0.72rem; opacity:0.85;">📍 ${this.escapeHtml(ev.location)}</span>` : ''}
         <span style="display:flex; flex-wrap:wrap; gap:2px 8px; font-size:0.75rem;">
           ${count('tile_going', going, `✓ ${going} going`, '#16a34a')}
           ${count('tile_noresp', noResp, `– ${noResp} no response`, '#eab308')}

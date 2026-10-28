@@ -51,6 +51,21 @@ class EventLabels {
     return 'Event';
   }
 
+  // A game on the field we prep (mig 780: facilities.field_prep) →
+  // "HOME-7v7" / "HOME-11v11", said in place of the address; '' anywhere
+  // else, home or away.
+  static homeSetup(ev) {
+    if (!ev || !ev.home_setup) return '';
+    return (window.MessageCopy && MessageCopy.block('event_center', 'home_setup', { setup: ev.home_setup }))
+      || `HOME-${ev.home_setup}`;
+  }
+
+  // The banner: green, bold, impossible to miss.
+  static homeSetupBadge(ev, esc) {
+    const t = EventLabels.homeSetup(ev);
+    return t ? `<span style="display:inline-block; background:#16a34a; color:#fff; border-radius:6px; padding:2px 8px; font-weight:900; letter-spacing:0.03em;">🏟 ${esc(t)}</span>` : '';
+  }
+
   // Which Event Center kind an event is: match / practice / pickup, else
   // 'other' (a meeting, a camp…).
   static kindOf(ev) { return ['match', 'practice', 'pickup'].includes(ev.kind) ? ev.kind : 'other'; }

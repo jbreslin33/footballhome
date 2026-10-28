@@ -540,6 +540,8 @@ class GameCenterScreen extends EventScreen {
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1 id="gc-title">🏟️ Game Center</h1>
         <p class="subtitle" id="gl-subtitle">Loading…</p>
+        <!-- HOME-7v7 / HOME-11v11 when the game is on the field we prep (mig 780). -->
+        <div id="gc-home-setup"></div>
         <!-- Event Center's type pills (lib/event-kind-switch.js) — Games lit;
              the other kinds open the event screen.  Staff doors only: the
              #my player view stays a plain game page. -->
@@ -2362,7 +2364,7 @@ class GameCenterScreen extends EventScreen {
         return `<button type="button" class="btn btn-secondary" data-pick-game="${i}" ${linked ? '' : 'disabled'}
                         style="display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; padding:10px 12px;">
           <span style="font-weight:700;">${this.escapeHtml(this._gameLabel(ev))}</span>
-          <span style="font-size:0.8rem; opacity:0.8;">${this.escapeHtml([this._gameWhen(ev), ev.location].filter(Boolean).join(' · '))}</span>
+          <span style="font-size:0.8rem; opacity:0.8;">${this.escapeHtml([this._gameWhen(ev), EventLabels.homeSetup(ev) || ev.location].filter(Boolean).join(' · '))}</span>
           ${linked ? '' : '<span style="font-size:0.72rem; color:#f59e0b;">Not linked to a team yet</span>'}
         </button>`;
       }).join('')}
@@ -2373,6 +2375,8 @@ class GameCenterScreen extends EventScreen {
     const box = this.find('#gl-body');
     const head = this.find('#gl-head');
     if (!box || !head) return;
+    const setup = this.find('#gc-home-setup');
+    if (setup) setup.innerHTML = this.matchId ? EventLabels.homeSetupBadge(this.ev, (t) => this.escapeHtml(t)) : '';
 
     if (this.error || (!this.matchId && this.games) || !this.loaded) {
       head.innerHTML = '';
