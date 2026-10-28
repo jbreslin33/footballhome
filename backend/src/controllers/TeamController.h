@@ -17,6 +17,7 @@ private:
     Response handleGetAllTeams(const Request& request);
     Response handleGetRoster(const Request& request);
     Response handleGetRosterStatuses(const Request& request);
+    Response handleGetTerms(const Request& request);
     Response handleGetDivisionStandings(const Request& request);
     Response handleUpdateRosterMember(const Request& request);
     Response handleRemoveRosterMember(const Request& request);

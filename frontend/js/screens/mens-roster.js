@@ -344,7 +344,7 @@ class MensRosterScreen extends RosterScreenBase {
     const cols = this.columnScope === 'unassigned'
       ? allCols.filter(c => c.isUnassigned)
       : this.columnScope === 'teams'
-        ? allCols.filter(c => !c.isUnassigned)
+        ? allCols.filter(c => !c.isUnassigned && this.inTerm(c))   // + the season pill (mig 795)
         : allCols;
 
     // Team-focus pills (2026-08-21): click a team's chip to isolate its

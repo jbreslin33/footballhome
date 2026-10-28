@@ -161,7 +161,7 @@ class RostersScreen extends Screen {
     this.clubName = params?.clubName ?? 'Lighthouse';
 
     this.teamsIncludeInactive = false;
-    await this._ensureCoachedTeamIds();
+    await Promise.all([this._ensureCoachedTeamIds(), this._loadTerms()]);
     this._buildUnassignedPills();
     this._buildTeamsPills();
     this._mountUnassignedPanel();
@@ -187,6 +187,27 @@ class RostersScreen extends Screen {
       console.error('[rosters] failed to load coached team ids:', err);
       this.navigation.context.coachedTeamIds = [];
     }
+  }
+
+  // Season pills (mig 795): Fall · Winter · Spring · Summer from
+  // year_terms, the current one lit on first open; which teams play in
+  // which from team_terms.  Loaded once — a failed load leaves the row
+  // off and every team showing.
+  async _loadTerms() {
+    if (this.termInfo) return;
+    try {
+      const res = await this.auth.fetch('/api/teams/terms');
+      if (!res.ok) return;
+      const body = await res.json();
+      this.termInfo = body?.data || null;
+      if (this.termInfo && this.teamsTerm === undefined) this.teamsTerm = this.termInfo.current || null;
+    } catch (err) {
+      console.error('[rosters] failed to load seasons:', err);
+    }
+  }
+
+  _termForChildren() {
+    return this.termInfo && this.teamsTerm ? { term: this.teamsTerm, teams: this.termInfo.teams || {} } : null;
   }
 
   // ScreenManager's lifecycle hook is `onExit` (not `onLeave`).  We
@@ -266,6 +287,21 @@ class RostersScreen extends Screen {
           this._mountTeamsPanel();
         },
       },
+      ...(this.termInfo && (this.termInfo.terms || []).length ? [{
+        // Season (mig 795): only the lit term's teams; tap the lit pill
+        // again to show every team.
+        name:     'teams-season',
+        chips:    this.termInfo.terms.map(t => ({ id: t.code, label: t.label })),
+        selected: this.teamsTerm || null,
+        onSelect: (id) => {
+          this.teamsTerm = id || null;
+          for (const child of this._mountedChildren) {
+            if (child && child.columnScope === 'teams' && typeof child.setTerm === 'function') {
+              child.setTerm(this._termForChildren());
+            }
+          }
+        },
+      }] : []),
       {
         // is_active is the source of truth for "does this team show" —
         // independent of the category pill above, so it's its own row
@@ -390,6 +426,7 @@ class RostersScreen extends Screen {
       child.includeInactive = this.teamsIncludeInactive;
     }
     child._sortOrder = this.teamsSort || 'alpha';   // the A–Z / Rank pill
+    child._term = this._termForChildren();          // the season pill (mig 795)
     // Mens/Boys/Girls/Womens each compute an LA-driven Unassigned count
     // server-side (data.unassignedCount) — mirror it here so the Teams
     // panel shows a "not yet on a team" note without reaching into the

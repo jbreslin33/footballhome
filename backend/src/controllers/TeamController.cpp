@@ -20,6 +20,12 @@ void TeamController::registerRoutes(Router& router, const std::string& prefix) {
         return this->handleGetRosterStatuses(request);
     });
     
+    // Season pills on #teams (mig 795): the four terms, the current one,
+    // and each mapped team's terms.
+    router.get(prefix + "/terms", [this](const Request& request) {
+        return this->handleGetTerms(request);
+    });
+
     // Get team roster
     router.get(prefix + "/:teamId/roster", [this](const Request& request) {
         return this->handleGetRoster(request);
@@ -143,6 +149,28 @@ Response TeamController::handleGetRosterStatuses(const Request& request) {
         std::cerr << "❌ TeamController::handleGetRosterStatuses error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve roster statuses");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+// GET /api/teams/terms → { terms: [{code,label}], current, teams: {teamId: [code…]} }
+// A team missing from `teams` has no team_terms rows and shows under
+// every pill (mig 795).
+Response TeamController::handleGetTerms(const Request& request) {
+    (void)request;
+    try {
+        auto rows = db_->query(
+            "SELECT json_build_object("
+            "  'terms',   (SELECT COALESCE(json_agg(json_build_object('code', code, 'label', label) ORDER BY sort_order), '[]') FROM year_terms),"
+            "  'current', fh_current_term(),"
+            "  'teams',   (SELECT COALESCE(json_object_agg(team_id, terms), '{}') FROM ("
+            "                SELECT team_id, json_agg(term ORDER BY term) AS terms FROM team_terms GROUP BY team_id) x)"
+            ")::text AS body");
+        std::ostringstream json;
+        json << "{\"success\":true,\"data\":" << rows[0]["body"].c_str() << "}";
+        return Response(HttpStatus::OK, json.str());
+    } catch (const std::exception& e) {
+        std::cerr << "❌ TeamController::handleGetTerms error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to load seasons"));
     }
 }
 

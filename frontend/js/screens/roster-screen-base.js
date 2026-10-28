@@ -1299,6 +1299,22 @@ class RosterScreenBase extends Screen {
   // default: "there is no way to change rank".
   get sortOrder() { return this._sortOrder || 'alpha'; }
 
+  // Season pill (RostersScreen host, mig 795): the host hands over the lit
+  // term's team map — { term, teams: { teamId: [term…] } } — or null for
+  // every team.  A team with no term rows shows under every pill.
+  setTerm(termInfo) {
+    this._term = termInfo || null;
+    this.teamFocusId = null;   // a focused column may not be in the new season
+    if (this._data && typeof this.renderRoster === 'function') this.renderRoster(this._data);
+  }
+
+  inTerm(col) {
+    const t = this._term;
+    if (!t || !t.term || !col || col.isUnassigned) return true;
+    const terms = t.teams && t.teams[String(col.teamId)];
+    return !terms || terms.includes(t.term);
+  }
+
   setSortOrder(value) {
     const next = value === 'rank' ? 'rank' : 'alpha';
     if (next === this.sortOrder) return Promise.resolve();
