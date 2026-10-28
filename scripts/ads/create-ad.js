@@ -305,18 +305,22 @@ const ADS = {
   // scripts/generate-year-round-cards.js.  Lead forms reuse the proven
   // best_time question; the leads page files each form under an existing
   // funnel label (formLabel) so the close/register links resolve as before.
+  // $3/day each (owner 2026-10-28: "270 a month i can handle") — shift money
+  // between the three by results rather than raising the total.
   'youth-year-round': {
     name:    'Lighthouse Youth — Soccer All Year Round (Boys & Girls)',
     imageUrl: 'https://footballhome.org/images/posts/youth-year-round-ad.png',
     ctaUrl:   'https://www.lighthouse1893.org/',
     ctaCaption: 'lighthouse1893.org',
     ctaType: 'LEARN_MORE',
-    defaultBudget: 10,
+    defaultBudget: 3,
     leadForm: YEAR_ROUND_FORM,
     targeting: {
       geo_locations: YEAR_ROUND_GEO,
+      // Parents of grades-1–6 kids: 25–44 brought 389 of the youth ad's
+      // 449 leads at ~$3.75 each (owner 2026-10-28: "parents for youth").
       age_min: 25,
-      age_max: 55,
+      age_max: 45,
       locales: [6, 24],
       publisher_platforms: ['facebook', 'instagram'],
       facebook_positions: ['feed'],
@@ -328,12 +332,14 @@ const ADS = {
     imageUrl: 'https://footballhome.org/images/posts/mens-year-round-ad.png',
     ctaProgram: { category: 'men', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=year_round_2026&utm_content=mens-year-round' },
     ctaType: 'SIGN_UP',
-    defaultBudget: 10,
+    defaultBudget: 3,
     leadForm: YEAR_ROUND_FORM,
     targeting: {
       geo_locations: YEAR_ROUND_GEO,
+      // 18–23 (owner 2026-10-28): older men don't stick with the practice
+      // regimen.  ~90K homes in the 5 mi — plenty at $3/day.
       age_min: 18,
-      age_max: 40,
+      age_max: 23,
       genders: [1],
       publisher_platforms: ['facebook', 'instagram'],
       facebook_positions: ['feed'],
@@ -345,12 +351,12 @@ const ADS = {
     imageUrl: 'https://footballhome.org/images/posts/womens-year-round-ad.png',
     ctaProgram: { category: 'women', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=year_round_2026&utm_content=womens-year-round' },
     ctaType: 'SIGN_UP',
-    defaultBudget: 10,
+    defaultBudget: 3,
     leadForm: YEAR_ROUND_FORM,
     targeting: {
       geo_locations: YEAR_ROUND_GEO,
-      age_min: 18,
-      age_max: 50,
+      age_min: 18,   // owner 2026-10-28: women 18–30
+      age_max: 30,
       genders: [2],
       publisher_platforms: ['facebook', 'instagram'],
       facebook_positions: ['feed'],
