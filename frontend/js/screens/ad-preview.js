@@ -30,6 +30,8 @@ class AdPreviewScreen extends Screen {
 
     this.element.addEventListener('click', e => {
       if (e.target.closest('.back-btn')) this.navigation.goBack();
+      const hideBtn = e.target.closest('.ap-hide');
+      if (hideBtn) { this.toggleHidden(hideBtn.dataset.id); return; }
       const pill = e.target.closest('.ap-pill');
       if (pill) {
         this.filter = pill.dataset.status;
@@ -135,15 +137,19 @@ class AdPreviewScreen extends Screen {
     };
     const bucketOrder = ['ACTIVE', 'PAUSED', 'PENDING', 'ISSUES', 'ARCHIVED', 'OTHER'];
 
-    const counts = { all: this.allAds.length };
-    for (const ad of this.allAds) {
+    // Hidden ads (ad_preview_hidden, mig 802) are out of the queue: they
+    // count only toward their own "Hidden" pill.
+    const queue = this.allAds.filter(ad => !ad.hidden);
+    const counts = { all: queue.length, hidden: this.allAds.length - queue.length };
+    for (const ad of queue) {
       const b = this.classify(ad).bucket;
       counts[b] = (counts[b] || 0) + 1;
     }
 
     const pills = [
-      { key: 'all', label: 'All', color: 'var(--text-secondary, #6b7280)' },
+      { key: 'all', label: 'Queue', color: 'var(--text-secondary, #6b7280)' },
       ...bucketOrder.filter(b => counts[b]).map(b => ({ key: b, ...bucketMeta[b] })),
+      ...(counts.hidden ? [{ key: 'hidden', label: '🙈 Hidden', color: '#6b7280' }] : []),
     ];
 
     pillsEl.style.display = 'flex';
@@ -170,15 +176,38 @@ class AdPreviewScreen extends Screen {
     const list = this.find('#ap-list');
     if (!list) return;
 
-    const filtered = this.filter === 'all'
-      ? this.allAds
-      : this.allAds.filter(ad => this.classify(ad).bucket === this.filter);
+    const filtered = this.filter === 'hidden'
+      ? this.allAds.filter(ad => ad.hidden)
+      : this.allAds.filter(ad => !ad.hidden
+          && (this.filter === 'all' || this.classify(ad).bucket === this.filter));
 
     list.style.display = 'flex';
     list.innerHTML = filtered.length
       ? filtered.map(ad => this.renderAdCard(ad)).join('')
       : `<div style="text-align:center; padding: var(--space-6); opacity:0.6;">No ads in this category.</div>`;
     this.loadImages(list);
+  }
+
+  // Hide / unhide one ad from the queue — an FH view preference only,
+  // nothing goes to Meta (PUT /api/ads/:adId/hidden).
+  async toggleHidden(id) {
+    const ad = this.allAds.find(a => a.id === id);
+    if (!ad) return;
+    const hidden = !ad.hidden;
+    try {
+      const res = await this.auth.fetch(`/api/ads/${id}/hidden`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hidden }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      ad.hidden = hidden;
+      if (this.filter === 'hidden' && !this.allAds.some(a => a.hidden)) this.filter = 'all';
+      this.renderPills();
+      this.renderList();
+    } catch (err) {
+      console.error('[AdPreview] hide toggle failed', err);
+    }
   }
 
   // Ad images come through /api/ads/:adId/image, not fbcdn directly —
@@ -337,8 +366,9 @@ class AdPreviewScreen extends Screen {
             ${isNew ? '<span style="font-size:0.65rem; font-weight:700; color:#fff; background:#3b82f6; padding:1px 7px; border-radius:999px; letter-spacing:.03em;">NEW</span>' : ''}
             ${createdLabel ? `<span style="font-size:0.7rem; opacity:0.45; white-space:nowrap;">${createdLabel}</span>` : ''}
           </div>
-          <span style="font-size:0.7rem; opacity:0.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:45%;" title="${ad.name}">${ad.name}</span>
+          <button type="button" class="ap-hide btn btn-secondary" data-id="${ad.id}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;">${ad.hidden ? '👁 Unhide' : '🙈 Hide'}</button>
         </div>
+        <div style="font-weight:700; font-size:0.95rem; margin-bottom: var(--space-3);">${ad.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
         ${facebookMockup}
         ${instagramMockup}
       </div>

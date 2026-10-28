@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "../core/HttpClient.h"
+#include "../database/Database.h"
 #include "../services/MetaAdsService.h"
 #include "../third_party/json.hpp"
 
@@ -153,6 +154,7 @@ struct PreviewAd {
     std::string imageUrl;
     std::string cta;
     std::string link;
+    bool hidden = false;   // ad_preview_hidden row — out of the review queue (mig 802)
 };
 
 // Build a single preview row from Meta's `data[i]`.
@@ -209,6 +211,7 @@ std::string serializePreviewAd(const PreviewAd& a) {
       << ",\"image_url\":"    << jsStrOrNull(a.imageUrl)
       << ",\"cta\":"          << jsStrOrNull(a.cta)
       << ",\"link\":"         << jsStrOrNull(a.link)
+      << ",\"hidden\":"       << jsBool(a.hidden)
       << '}';
     return o.str();
 }
@@ -586,6 +589,8 @@ void AdsController::registerRoutes(Router& router, const std::string& prefix) {
         [this](const Request& r) { return handleAdPreviewIframe(r); });
     router.get(prefix + "/:adId/image",
         [this](const Request& r) { return handleAdImage(r); });
+    router.put(prefix + "/:adId/hidden",
+        [this](const Request& r) { return handleSetHidden(r); });
 }
 
 
@@ -612,6 +617,19 @@ Response AdsController::handlePreviewList(const Request& request) {
         std::vector<PreviewAd> ads;
         ads.reserve(raw.size());
         for (const auto& ad : raw) ads.push_back(projectPreview(ad, hashToUrl));
+
+        // Ads taken out of the review queue (mig 802).  A DB hiccup shows
+        // everything rather than failing the page.
+        try {
+            std::unordered_set<std::string> hiddenIds;
+            for (const auto& row : Database::getInstance()->query(
+                     "SELECT meta_ad_id FROM ad_preview_hidden")) {
+                hiddenIds.insert(row["meta_ad_id"].c_str());
+            }
+            for (auto& a : ads) a.hidden = hiddenIds.count(a.id) > 0;
+        } catch (const std::exception& e) {
+            std::cerr << "ad_preview_hidden read failed: " << e.what() << std::endl;
+        }
 
         // Sort: PAUSED, ACTIVE, OTHER; then newest created_time first.
         // stable_sort to mirror JS Array.sort (ES2019+ stable).
@@ -1083,5 +1101,56 @@ Response AdsController::handleAdImage(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "Error fetching ad image: " << e.what() << std::endl;
         return errJson(HttpStatus::BAD_GATEWAY, e.what());
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// PUT /api/ads/:adId/hidden  {"hidden": true|false}
+// ────────────────────────────────────────────────────────────────────────────
+// Takes an ad out of (or back into) #ad-preview's review queue.  Purely an
+// FH view preference — nothing is sent to Meta.
+Response AdsController::handleSetHidden(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    std::string p = request.getPath();
+    auto qm = p.find('?');
+    if (qm != std::string::npos) p = p.substr(0, qm);
+    std::string adId;
+    const std::string marker = "/api/ads/";
+    auto pos = p.find(marker);
+    if (pos != std::string::npos) {
+        auto start = pos + marker.size();
+        auto slash = p.find('/', start);
+        if (slash != std::string::npos) adId = p.substr(start, slash - start);
+    }
+    if (adId.empty() || adId.find_first_not_of("0123456789") != std::string::npos) {
+        return errJson(HttpStatus::BAD_REQUEST, "Bad ad id");
+    }
+
+    bool hidden = true;
+    try {
+        auto body = json::parse(request.getBody());
+        if (body.contains("hidden") && body["hidden"].is_boolean()) hidden = body["hidden"].get<bool>();
+    } catch (...) {
+        return errJson(HttpStatus::BAD_REQUEST, "Body must be {\"hidden\": true|false}");
+    }
+
+    try {
+        auto db = Database::getInstance();
+        if (hidden) {
+            const long long uid = bearerUserId(request);
+            db->query("INSERT INTO ad_preview_hidden (meta_ad_id, hidden_by_user_id) "
+                      "VALUES ($1, NULLIF($2, '0')::int) ON CONFLICT (meta_ad_id) DO NOTHING",
+                      {adId, std::to_string(uid)});
+        } else {
+            db->query("DELETE FROM ad_preview_hidden WHERE meta_ad_id = $1", {adId});
+        }
+        Response r(HttpStatus::OK, std::string("{\"id\":") + jsStr(adId)
+                                   + ",\"hidden\":" + jsBool(hidden) + "}");
+        r.setHeader("Content-Type", "application/json");
+        return r;
+    } catch (const std::exception& e) {
+        std::cerr << "ad_preview_hidden write failed: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save");
     }
 }

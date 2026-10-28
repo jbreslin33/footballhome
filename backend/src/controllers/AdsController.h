@@ -43,6 +43,7 @@ private:
     Response handleSpendBreakdown(const Request& request);
     Response handleAdPreviewIframe(const Request& request);
     Response handleAdImage(const Request& request);
+    Response handleSetHidden(const Request& request);
 
     // Pulled out so all four handlers share one auth gate.
 
