@@ -59,6 +59,17 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Done
 
+- [x] 2026-10-27 #teams Players panel (migs 769–777): Roster | Team pills. Roster pill = the league's OFFICIAL ROSTER 1:1 in its order (full player cards, manual remove blocked server-side) + PROPOSED adds; league moves staged PROPOSED → PENDING ADD → OFFICIAL and OFFICIAL → DROPPING → PENDING DROP. Team pill = plays / paper / injured / call-downs. CASA pull grants On Roster by matched person (Liga 1 32 → 35); APSL list aliases for 4 spellings (migs 773/774).
+- [x] 2026-10-27 Event Center = one Mon–Sun week calendar (migs 748, 750): type pills fill it, tap opens the event by kind, red NOW line, tiles show time + venue. OOP: EventScreen base → PracticeScreen + GameCenterScreen; one shared player card and CONTACT sheet, so practice cards text/email/call like game cards; practice opens on the big pill row (All Players · Groups · Practice Plan, mig 751).
+- [x] 2026-10-26 Event Center slices (migs 738–744): Games · Practices · Pickup · All pills; No Response reminders (this event or all open); practice Who's Coming as RSVP cards; FH Texter sent → delivered / failed / opened on each card.
+- [x] 2026-10-27 #casa-scores pills (mig 759): Not scored (+ auto-check report) · Upcoming · Scored · Postponed · Whole season; Instagram scores read headless on the server on a timer (mig 749).
+- [x] 2026-10-27 Official league schedules for every team in league_fixtures, checked against the calendar (mig 758).
+- [x] 2026-10-27 Game Center: bench cap = team's match-day squad, full bench offers "extend, this game only" (mig 760); several players per position + 👥 split squad A/B (migs 763, 765); CASA list decides the ⚠ registration gap, a sub's name taps itself (migs 767, 768).
+- [x] 2026-10-26 Roll call card (/rc/<slug>?e=<id>) opens on its own event; Going / Not going under the event line; "all set" / "Action needed" status (mig 732); numbered one-per-line names.
+- [x] 2026-10-26 Every RSVP records who tapped it (mig 729, answered_by_person_id). Going but not on the league roster → registration-form popup (mig 725).
+- [x] 2026-10-26 Game Center 📇 email drafts to league contacts (migs 724/726/728): multi-recipient To list, big Open in Gmail button.
+- [x] 2026-10-26 #invoices: APSL ref fees listed like every league (mig 718 undoes 717); turned-off ref fees stay off when the feed re-issues a game (mig 722); James's 2026.21/.22 sheet lines (migs 719–721, 735, 736).
+
 - [x] 2026-10-21 On Roster is GRANTED, never typed, on online-mirror teams (APSL/Reserves/Liga 1): the 🌐 pull auto-sets it on an EXACT normalized name match (upgrades paperwork states only; suspended/possible_drop and absences never touched — revoke stays manual via the drift panel). Manual grant blocked server-side + the dropdown shows "On Roster (via 🌐)" disabled; moving someone OFF stays manual. Youth (file-based rosters) keep full manual control.
 
 - [x] 2026-10-21 #teams 👀 Sees games pill (every column, all sections): the ONE list a team's game invites reach automatically — active roster + 🩹 injured (excused, still see games) + ⭐ standing invites; 📄 paper spots excluded; call-up-gated teams count only ⭐ rows (Reserves reads 0, honestly). Panel lists the names. Name decided: “Sees games” (not “Functional”/“Active” — Active misses riders and lies on gated teams).
