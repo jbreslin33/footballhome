@@ -378,7 +378,8 @@ Response OpponentsController::handleAlias(const Request& request) {
 // from Game Center), log it, hand back the compose hrefs — the same shape
 // /api/rsvp-board/remind returns, so the buttons behave identically.
 Response OpponentsController::handleGroupToContacts(const Request& request, const std::vector<long long>& ids, long long matchId,
-                                                     const std::string& channel, const std::string& tier, const std::string& kind, const std::string& leagueLabel) {
+                                                     const std::string& channel, const std::string& tier, const std::string& kind, const std::string& leagueLabel,
+                                                     const std::string& message) {
     Response err;
     if (channel != "email" && channel != "sms") return jsonError(HttpStatus::BAD_REQUEST, "channel (email|sms) required");
     if (matchId) { if (!matchGate(request, matchId, &err)) return err; }
@@ -406,7 +407,7 @@ Response OpponentsController::handleGroupToContacts(const Request& request, cons
                                       {"date", mi.date.empty() ? "our next game" : mi.date}, {"time", mi.time.empty() ? "kick-off" : mi.time},
                                       {"venue", mi.venue.empty() ? "the field" : mi.venue}, {"home_away", mi.id ? (mi.isHome ? "vs" : "at") : "vs"},
                                       {"sender", sender.empty() ? "Lighthouse 1893 SC" : sender}, {"from_email", fromEmail},
-                                      {"league", league.is_null() ? "" : league.value("name", "")}, {"division", ""}};
+                                      {"league", league.is_null() ? "" : league.value("name", "")}, {"division", ""}, {"message", message}};
         auto r = copy.render(kind, tier, tokens);
         if (!r.ok()) return jsonError(HttpStatus::BAD_REQUEST, "no message template '" + tier + "'");
         std::string joined; for (size_t i = 0; i < addresses.size(); ++i) { if (i) joined += ','; joined += addresses[i]; }
@@ -429,13 +430,18 @@ Response OpponentsController::handleMessage(const Request& request) {
     const std::string channel = s(b, "channel"); std::string tier = s(b, "tier"); if (tier.empty()) tier = "general";
     std::string kind = s(b, "kind"); if (kind != "casa") kind = "opponent";
     const std::string leagueLabel = s(b, "league_label");
+    // ✍️ Write your own (mig 803): the typed text fills {message} in the
+    // 'custom' template — greeting and sign-off stay DB copy.
+    const std::string message = s(b, "message");
+    if (tier == "custom" && message.find_first_not_of(" \t\r\n") == std::string::npos)
+        return jsonError(HttpStatus::BAD_REQUEST, "Type your message first");
     // Owner 2026-10-09: "buttons to text or email them individually or
     // group" — contact_ids[] composes ONE message to everyone listed (BCC
     // for email, one group thread for text) and logs a row per contact.
     std::vector<long long> groupIds;
     if (b.contains("contact_ids") && b["contact_ids"].is_array())
         for (const auto& v : b["contact_ids"]) { if (v.is_number_integer()) groupIds.push_back(v.get<long long>()); else if (v.is_string()) { try { groupIds.push_back(std::stoll(v.get<std::string>())); } catch (...) {} } }
-    if (!groupIds.empty()) return handleGroupToContacts(request, groupIds, matchId, channel, tier, kind, leagueLabel);
+    if (!groupIds.empty()) return handleGroupToContacts(request, groupIds, matchId, channel, tier, kind, leagueLabel, message);
     if (!contactId || (channel != "email" && channel != "sms")) return jsonError(HttpStatus::BAD_REQUEST, "contact_id and channel (email|sms) required");
     if (matchId) { if (!matchGate(request, matchId, &err)) return err; }
     else if (!adminGate(request, &err)) return err;
@@ -465,7 +471,7 @@ Response OpponentsController::handleMessage(const Request& request) {
                                       {"date", mi.date.empty() ? "our next game" : mi.date}, {"time", mi.time.empty() ? "kick-off" : mi.time},
                                       {"venue", mi.venue.empty() ? "the field" : mi.venue}, {"home_away", mi.id ? (mi.isHome ? "vs" : "at") : "vs"},
                                       {"sender", sender.empty() ? "Lighthouse 1893 SC" : sender}, {"from_email", fromEmail},
-                                      {"league", league.is_null() ? "" : league.value("name", "")}, {"division", division}};
+                                      {"league", league.is_null() ? "" : league.value("name", "")}, {"division", division}, {"message", message}};
         auto r = copy.render(kind, tier, tokens);
         if (!r.ok()) return jsonError(HttpStatus::BAD_REQUEST, "no message template '" + tier + "'");
         db->query("INSERT INTO club_contact_messages (club_id, contact_id, match_id, channel, contact, tier, sent_by_user_id, sender_email, league_label) "

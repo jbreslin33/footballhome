@@ -768,6 +768,7 @@ class GameCenterScreen extends EventScreen {
     if (this._liveFpLast == null) return;   // no baseline yet — bootstrap sets it
     // Never refresh into an edit — catch up on a later tick instead.
     if (this._saveTimer || this._jerseyDebounce || this.overlayOpen || this.announceEditing || this._draftEdit) return;
+    if (document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-gc-opp-msg]')) return;
     if (this._isDraftView()) return;
     if (document.getElementById('gc-swap-sheet')) return;
     const focused = document.activeElement;
@@ -1165,6 +1166,8 @@ class GameCenterScreen extends EventScreen {
         this._renderDetailsList();
         return;
       }
+      // The opponent Message dropdown: ✍️ Write your own opens its box.
+      if (e.target.matches('[data-gc-opp-tier]')) { this._oppTier = e.target.value; this._render(); return; }
       if (e.target.id === 'gc-list-filter') {
         this.listFilter = e.target.value;
         this._renderDetailsList();
@@ -1174,6 +1177,8 @@ class GameCenterScreen extends EventScreen {
     this.element.addEventListener('input', (e) => {
       // 📝 contact draft (mig 724): keep the text across re-renders.
       if (e.target.matches('[data-gc-draft-subject], [data-gc-draft-body]')) { this._draftReadForm(); return; }
+      // ✍️ Write your own (mig 803): keep the typed text across re-renders.
+      if (e.target.matches('[data-gc-opp-msg]')) { this._oppMsg = e.target.value; return; }
       if (e.target.id === 'gc-player-search') {
         this.filterText = e.target.value.toLowerCase();
         this._renderDetailsList();
@@ -3213,6 +3218,8 @@ class GameCenterScreen extends EventScreen {
       </div>` : '';
     return wrap(esc(copy('game_center_title', { club: club.name }) || `📇 Contact ${club.name}`), `
       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:0.7rem; opacity:0.85;">Message: ${tierSel}</div>
+      ${(this._oppTier || 'confirm') === 'custom' ? `<textarea data-gc-opp-msg rows="4" placeholder="${esc(copy('custom_placeholder') || 'Type your message')}"
+          style="width:100%; box-sizing:border-box; margin-top:6px; font-size:0.76rem; font-family:inherit; padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); resize:vertical;">${esc(this._oppMsg || '')}</textarea>` : ''}
       ${rows || `<div style="font-size:0.72rem; opacity:0.75; margin-top:4px;">${esc(copy('no_contacts') || 'No contact yet — add a name, phone or email.')}</div>`}
       ${allBtns(club.contacts || [], 'club')}
       <div style="margin-top:6px;"><button class="btn btn-secondary" data-gc-opp-add style="padding:2px 8px; font-size:0.66rem;">${this._oppAddOpen ? 'Cancel' : '＋ contact'}</button></div>
@@ -4277,7 +4284,7 @@ class GameCenterScreen extends EventScreen {
     this._oppTier = sel ? sel.value : (this._oppTier || 'confirm');
     const original = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
     try {
-      const data = await this._postReminder('/api/opponents/message', { contact_id: contactId, channel, tier: this._oppTier, match_id: this.matchId });
+      const data = await this._postReminder('/api/opponents/message', { contact_id: contactId, channel, tier: this._oppTier, match_id: this.matchId, message: this._oppMsg || '' });
       const k = [...(((this.oppContacts || {}).club || {}).contacts || []), ...(((this.oppContacts || {}).league || {}).contacts || [])].find(x => x.id === contactId);
       if (k) { k.last_sent_at = 'just now'; k.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
@@ -4298,7 +4305,7 @@ class GameCenterScreen extends EventScreen {
     this._oppTier = sel ? sel.value : (this._oppTier || 'confirm');
     const original = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
     try {
-      const data = await this._postReminder('/api/opponents/message', { contact_ids: ids, channel, tier: this._oppTier, match_id: this.matchId });
+      const data = await this._postReminder('/api/opponents/message', { contact_ids: ids, channel, tier: this._oppTier, match_id: this.matchId, message: this._oppMsg || '' });
       const all = [...(((this.oppContacts || {}).club || {}).contacts || []), ...(((this.oppContacts || {}).league || {}).contacts || [])];
       for (const k of all) if (ids.includes(k.id)) { k.last_sent_at = 'just now'; k.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);

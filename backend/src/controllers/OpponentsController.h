@@ -57,7 +57,7 @@ private:
     Response handleMessage(const Request& request);
     // contact_ids[] on /message (2026-10-09): one compose to everyone listed, a log row each.
     Response handleGroupToContacts(const Request& request, const std::vector<long long>& ids, long long matchId,
-                                   const std::string& channel, const std::string& tier, const std::string& kind, const std::string& leagueLabel);
+                                   const std::string& channel, const std::string& tier, const std::string& kind, const std::string& leagueLabel, const std::string& message);
     Response handleLeague(const Request& request);
     Response handleGroupMessage(const Request& request);
     Response handleLeagueFixtures(const Request& request);

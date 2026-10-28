@@ -189,7 +189,12 @@ class OpponentsScreen extends Screen {
     });
     root.addEventListener('change', async (e) => {
       const t = e.target;
-      if (t.id === 'op-tier') { this.tier = t.value; return; }
+      if (t.id === 'op-tier') {
+        const wasCustom = this.tier === 'custom';
+        this.tier = t.value;
+        if (wasCustom !== (this.tier === 'custom')) this._renderBody();   // ✍️ Write your own opens / closes its box
+        return;
+      }
       if (t.id === 'op-search') { this.search = t.value.trim().toLowerCase(); this._renderBody(); return; }
       const f = t.closest('[data-comp-field]');
       if (f) {
@@ -199,13 +204,14 @@ class OpponentsScreen extends Screen {
     });
     root.addEventListener('input', (e) => {
       if (e.target.id === 'op-search') { this.search = e.target.value.trim().toLowerCase(); this._renderCards(); }
+      if (e.target.id === 'op-msg') this.customMessage = e.target.value;   // ✍️ Write your own (mig 803)
     });
   }
 
   async sendMessage(contactId, channel, btn) {
     const orig = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
     try {
-      const data = await this._post('/api/opponents/message', { contact_id: contactId, channel, tier: this.tier });
+      const data = await this._post('/api/opponents/message', { contact_id: contactId, channel, tier: this.tier, message: this.customMessage || '' });
       const c = (this.board?.contacts || []).find(x => x.id === contactId);
       if (c) { c.last_sent_at = 'just now'; c.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
@@ -262,6 +268,8 @@ class OpponentsScreen extends Screen {
         <label style="font-size:0.8rem; opacity:0.8;">Message:</label>
         <select class="op-in" id="op-tier" style="max-width:220px;">${tiers.map(t => `<option value="${esc(t.tier)}" ${t.tier === this.tier ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}</select>
       </div>
+      ${this.tier === 'custom' ? `<textarea class="op-in" id="op-msg" rows="4" placeholder="${esc(this._copy('custom_placeholder') || 'Type your message')}"
+          style="width:100%; box-sizing:border-box; margin-bottom:8px; font-family:inherit; resize:vertical;">${esc(this.customMessage || '')}</textarea>` : ''}
       <div id="op-cards"></div>`;
     this._renderDivisions();
     this._renderCards();
