@@ -1186,6 +1186,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                             'name',            t.name,
                             'label',           t.label,
                             'short_label',     t.short_label,
+                            -- The team's own colour — Event Center's tile badge (mig 778).
+                            'color',           t.color,
                             'gender_category', t.gender_category,
                             'logo_url',        t.logo_url,
                             -- The RSVP group the team trains in

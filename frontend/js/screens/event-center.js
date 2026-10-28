@@ -207,27 +207,55 @@ class EventCenterScreen extends Screen {
       const [ta, pa] = hm(a).split(' '), [tb, pb] = hm(b).split(' ');
       return pa === pb ? `${ta} – ${tb} ${pb}` : `${hm(a)} – ${hm(b)}`;
     };
-    // The venue: the location's first part ("The Lighthouse Community
-    // Center"), the full address on hover.
-    const place = (ev) => String(ev.location || '').split(',')[0].trim();
     const posted = (ev) => {
       if (!ev.schedule_window_end || !ev.starts_at) return true;
       const end = new Date(ev.schedule_window_end), t = new Date(ev.starts_at);
       return isNaN(end) || isNaN(t) || t <= end;
     };
 
+    // WHO is playing, up top (mig 778): a game's own team(s) — the
+    // primary squads the fixture is for — as big badges in the team's
+    // label + colour; a practice's tagged teams as small chips.
+    const teamsOf = (ev) => (Array.isArray(ev.teams) ? ev.teams : []).filter(t => t && (t.label || t.name));
+    const primaries = (ev) => { const ts = teamsOf(ev), p = ts.filter(t => t.is_primary); return p.length ? p : ts; };
+    const plain = (label) => String(label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();   // "⚽ U8 Travel" → "U8 Travel"
+    const badge = (t, big) => {
+      const c = t.color || 'var(--primary-color)';
+      return `<span style="display:inline-block; background:${this.escapeHtml(c)}; color:#fff; border-radius:6px; font-weight:800;
+                ${big ? 'font-size:0.95rem; padding:3px 8px;' : 'font-size:0.68rem; padding:1px 6px;'}">${this.escapeHtml(big ? (t.label || t.name) : (t.short_label || t.label || t.name))}</span>`;
+    };
+    const line = (ev) => {
+      const team = primaries(ev)[0];
+      if (ev.kind === 'match' && team) {
+        const opponent = ev.opponent || EventLabels.parseDescTags(ev.description).opponent || 'TBD';
+        return cp('tile_vs', { team: plain(team.label || team.name), opponent }, `${plain(team.label || team.name)} vs ${opponent}`);
+      }
+      return EventLabels.title(ev);
+    };
+
     const tile = (ev) => {
-      const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-      // Eligible yeses only — a yes from over the dues line is counted apart (migration 416).
-      const going = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach && r.dues_eligible !== false).length;
-      const ineligible = rsvps.filter(r => r && r.response === 'yes' && !r.is_coach && r.dues_eligible === false).length;
-      const teams = (Array.isArray(ev.teams) ? ev.teams : []).map(t => t && t.name).filter(Boolean).join(' + ');
+      // Players only — coaches never in a player total (owner 2026-10-06).
+      // The feed's roster already honours call-up gates and paper spots;
+      // a yes from over the dues line (migration 416) is counted apart.
+      const players = (Array.isArray(ev.rsvps) ? ev.rsvps : []).filter(r => r && !r.is_coach);
+      const going = players.filter(r => r.response === 'yes' && r.dues_eligible !== false).length;
+      const ineligible = players.filter(r => r.response === 'yes' && r.dues_eligible === false).length;
+      const notGoing = players.filter(r => r.response === 'no').length;
+      const noResp = players.filter(r => r.response !== 'yes' && r.response !== 'no').length;
+      const isGame = ev.kind === 'match';
+      const badges = (isGame ? primaries(ev) : teamsOf(ev)).map(t => badge(t, isGame)).join(' ');
+      const count = (tier, n, fb, color) => `<span style="color:${color}; font-weight:700;">${this.escapeHtml(cp(tier, { n }, fb))}</span>`;
       return `<button type="button" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}" data-ec-open="${ev.fh_event_id}">
-        <span style="font-size:0.75rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
-        <span style="font-weight:700;">${this.escapeHtml(EventLabels.title(ev))}</span>
-        ${place(ev) ? `<span style="font-size:0.72rem; opacity:0.85;" title="${this.escapeHtml(ev.location)}">📍 ${this.escapeHtml(place(ev))}</span>` : ''}
-        ${teams ? `<span style="font-size:0.72rem; opacity:0.7;">${this.escapeHtml(teams)}</span>` : ''}
-        <span style="font-size:0.72rem; opacity:0.85;">${this.escapeHtml([`${going} going`, ineligible ? `⛔ ${ineligible} ineligible` : ''].filter(Boolean).join(' · '))}</span>
+        ${badges ? `<span style="display:flex; flex-wrap:wrap; gap:4px;">${badges}</span>` : ''}
+        <span style="font-size:0.8rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
+        <span style="font-weight:700;">${this.escapeHtml(line(ev))}</span>
+        ${ev.location ? `<span style="font-size:0.72rem; opacity:0.85;">📍 ${this.escapeHtml(ev.location)}</span>` : ''}
+        <span style="display:flex; flex-wrap:wrap; gap:2px 8px; font-size:0.75rem;">
+          ${count('tile_going', going, `✓ ${going} going`, '#16a34a')}
+          ${count('tile_noresp', noResp, `– ${noResp} no response`, '#eab308')}
+          ${count('tile_notgoing', notGoing, `✗ ${notGoing} not going`, '#dc2626')}
+          ${ineligible ? count('tile_ineligible', ineligible, `⛔ ${ineligible} ineligible`, '#dc2626') : ''}
+        </span>
         ${posted(ev) ? '' : `<span style="font-size:0.7rem; color:#f59e0b;">${this.escapeHtml(cp('not_posted', {}, 'not posted yet'))}</span>`}
       </button>`;
     };
