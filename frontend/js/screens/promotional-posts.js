@@ -794,7 +794,7 @@ class PromotionalPostsScreen extends Screen {
           ${p.image_url ? `<div style="text-align:center;margin-bottom:12px;"><img src="${this.esc(p.image_url)}" style="max-width:100%;height:auto;border-radius:8px;border:2px solid var(--border-color);"></div>` : ''}
 
           ${p.caption ? `
-          <details style="margin-bottom: 12px;">
+          <details open style="margin-bottom: 12px;">
             <summary style="cursor: pointer; font-weight: 600; opacity: 0.8;">📝 Caption</summary>
             <p style="white-space: pre-wrap; opacity: 0.85; margin-top: 8px; padding: 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 0.9rem;">${this.esc(p.caption)}</p>
           </details>` : ''}
