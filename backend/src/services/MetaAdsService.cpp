@@ -349,6 +349,37 @@ json MetaAdsService::fetchAdsSpendBreakdown(const std::string& datePreset) {
 // ────────────────────────────────────────────────────────────────────────────
 // /api/ads/:adId/preview backend
 // ────────────────────────────────────────────────────────────────────────────
+std::string MetaAdsService::fetchAdImageUrl(const std::string& adId) {
+    ensureConfigured();
+    if (token_.empty()) {
+        throw std::runtime_error("Missing META_ADS_TOKEN on server.");
+    }
+
+    const std::string url = graphUrl(adId)
+        + "?fields=" + HttpClient::urlEncode("creative{image_url}")
+        + "&access_token=" + token_;
+
+    auto resp = http_->get(url);
+    if (!resp.error.empty()) {
+        throw std::runtime_error(std::string{"Meta API: "} + resp.error);
+    }
+    json parsed;
+    try { parsed = json::parse(resp.body); }
+    catch (const std::exception& e) {
+        throw std::runtime_error(std::string{"Meta returned malformed JSON: "} + e.what());
+    }
+    if (parsed.contains("error") && parsed["error"].is_object()) {
+        throw MetaApiError(std::string{"Meta API: "}
+            + parsed["error"].value("message", "unknown error"));
+    }
+    if (parsed.contains("creative") && parsed["creative"].is_object()
+        && parsed["creative"].contains("image_url")
+        && parsed["creative"]["image_url"].is_string()) {
+        return parsed["creative"]["image_url"].get<std::string>();
+    }
+    return std::string{};
+}
+
 std::string MetaAdsService::fetchPreviewIframeSrc(const std::string& adId,
                                                   const std::string& adFormat) {
     ensureConfigured();

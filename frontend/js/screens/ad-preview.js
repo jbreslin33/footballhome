@@ -173,6 +173,27 @@ class AdPreviewScreen extends Screen {
     list.innerHTML = filtered.length
       ? filtered.map(ad => this.renderAdCard(ad)).join('')
       : `<div style="text-align:center; padding: var(--space-6); opacity:0.6;">No ads in this category.</div>`;
+    this.loadImages(list);
+  }
+
+  // Ad images come through /api/ads/:adId/image, not fbcdn directly —
+  // tracker blockers refuse fbcdn on a third-party page. Blob urls are
+  // cached per ad so pill switches don't refetch.
+  loadImages(list) {
+    this.imageUrls = this.imageUrls || {};
+    list.querySelectorAll('img[data-ad-image]').forEach(async (img) => {
+      const id = img.dataset.adImage;
+      try {
+        if (!this.imageUrls[id]) {
+          const res = await this.auth.fetch(`/api/ads/${id}/image`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          this.imageUrls[id] = URL.createObjectURL(await res.blob());
+        }
+        img.src = this.imageUrls[id];
+      } catch (err) {
+        img.onerror();
+      }
+    });
   }
 
   renderAdCard(ad) {
@@ -204,7 +225,7 @@ class AdPreviewScreen extends Screen {
 
     const imageBlock = ad.image_url
       ? `<div style="width:100%; aspect-ratio:1/1; overflow:hidden; background:#f0f2f5;">
-           <img src="${ad.image_url}" alt="Ad image"
+           <img data-ad-image="${ad.id}" alt="Ad image"
              style="width:100%; height:100%; object-fit:cover; display:block;"
              onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=&quot;display:flex;align-items:center;justify-content:center;height:200px;opacity:0.4;font-size:14px;&quot;>Image unavailable</div>';"
            />

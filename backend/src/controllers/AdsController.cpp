@@ -584,6 +584,8 @@ void AdsController::registerRoutes(Router& router, const std::string& prefix) {
     // Param routes registered last so static paths win the prefix match.
     router.get(prefix + "/:adId/preview",
         [this](const Request& r) { return handleAdPreviewIframe(r); });
+    router.get(prefix + "/:adId/image",
+        [this](const Request& r) { return handleAdImage(r); });
 }
 
 
@@ -1034,5 +1036,52 @@ Response AdsController::handleAdPreviewIframe(const Request& request) {
         else if (msg.find("no preview body") != std::string::npos)   code = 404;
         else if (msg.find("Could not extract") != std::string::npos) code = 500;
         return htmlError(code, msg, adId, adFmt);
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/ads/:adId/image — the creative image's bytes, proxied
+// ────────────────────────────────────────────────────────────────────────────
+// #ad-preview drew <img src="fbcdn…"> straight from Meta; browsers with
+// tracker blocking (Brave, Firefox strict, uBlock) refuse fbcdn on a
+// third-party page → "Image unavailable".  The server looks the url up by
+// ad id itself (never a client-supplied url) and returns the bytes.
+Response AdsController::handleAdImage(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    std::string p = request.getPath();
+    auto qm = p.find('?');
+    if (qm != std::string::npos) p = p.substr(0, qm);
+    std::string adId;
+    const std::string marker = "/api/ads/";
+    auto pos = p.find(marker);
+    if (pos != std::string::npos) {
+        auto start = pos + marker.size();
+        auto slash = p.find('/', start);
+        if (slash != std::string::npos) adId = p.substr(start, slash - start);
+    }
+    if (adId.empty() || adId.find_first_not_of("0123456789") != std::string::npos) {
+        return errJson(HttpStatus::BAD_REQUEST, "Bad ad id");
+    }
+
+    try {
+        const std::string url = MetaAdsService::getInstance().fetchAdImageUrl(adId);
+        if (url.rfind("https://", 0) != 0
+            || url.find(".fbcdn.net/") == std::string::npos) {
+            return errJson(HttpStatus::NOT_FOUND, "Ad has no image");
+        }
+        HttpClient client;
+        auto img = client.get(url);
+        if (!img.error.empty() || img.status != 200 || img.body.empty()) {
+            return errJson(HttpStatus::BAD_GATEWAY, "Image fetch failed");
+        }
+        const bool png = img.body.rfind("\x89PNG", 0) == 0;
+        Response r(HttpStatus::OK, img.body);
+        r.setHeader("Content-Type", png ? "image/png" : "image/jpeg");
+        r.setHeader("Cache-Control", "private, max-age=3600");
+        return r;
+    } catch (const std::exception& e) {
+        std::cerr << "Error fetching ad image: " << e.what() << std::endl;
+        return errJson(HttpStatus::BAD_GATEWAY, e.what());
     }
 }

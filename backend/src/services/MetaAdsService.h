@@ -97,6 +97,12 @@ public:
     std::string fetchPreviewIframeSrc(const std::string& adId,
                                       const std::string& adFormat);
 
+    // GET /v21.0/<adId>?fields=creative{image_url} — the creative's
+    // signed fbcdn image url ("" when the ad has none).  Throws on graph
+    // error.  /api/ads/:adId/image proxies its bytes so the browser never
+    // loads fbcdn directly (tracker blockers strip it on third-party pages).
+    std::string fetchAdImageUrl(const std::string& adId);
+
     // Helper: empty-on-unset means the service is unusable.
     bool hasToken();
 
