@@ -8,6 +8,7 @@
 //
 // Usage: node scripts/generate-year-round-cards.js
 //   → frontend/images/posts/{youth,mens,womens}-year-round-ad.png
+//     + club-year-round-post.png (the free all-programs post)
 const puppeteer = require('puppeteer');
 const fs = require('fs'), path = require('path');
 const R = path.resolve(__dirname, '..', 'frontend', 'images');
@@ -43,6 +44,10 @@ const ball = '<div class="ballc">⚽</div>';
 const cards = {
  'youth-year-round-ad': {est:'1897', badge:`<div class="badge"><img src="${ppr}"></div>`, kicker:'Boys & Girls · Grades K–9', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join now · <strong>All skill levels welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:['BOYS','GIRLS'],
    seasons:[['🍂','FALL','Outdoor league'],['❄️','WINTER','Indoor'],['🌸','SPRING','Outdoor league'],['☀️','SUMMER','Training']]},
+ // Free organic post (owner 2026-10-28): every program on one card,
+ // "registration links in bio" — not an ad, posted from #promotional-posts.
+ 'club-year-round-post': {est:'1893', badge:ball, kicker:'Registration Open', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Registration links <strong>in bio</strong>', her:"America's oldest active ⚽ club", pills:['MEN 16+','WOMEN 18+','BOYS &amp; GIRLS K–9'],
+   seasons:[['🍂','FALL','League games'],['❄️','WINTER','Indoor'],['🌸','SPRING','League games'],['☀️','SUMMER','Training']]},
  'mens-year-round-ad': {est:'1893', badge:ball, kicker:"Men's Club · Join Now", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'<strong>APSL &amp; CASA Liga 1</strong> · Open to new players', her:"America's oldest active ⚽ club", pills:['MEN'],
    seasons:[['🍂','FALL','League games'],['❄️','WINTER','Indoor training'],['🌸','SPRING','League games'],['☀️','SUMMER','Training']]},
  'womens-year-round-ad': {est:'1895', badge:ball, kicker:"Women's Club · Join Now", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'<strong>Tri County Womens League</strong> · Open to new players', her:"Philadelphia's oldest non-profit ⚽ club", pills:['WOMEN'],
