@@ -22,6 +22,42 @@ const PAGE_ID       = process.env.META_PAGE_ID;
 const ACCESS_TOKEN  = process.env.META_ADS_TOKEN;
 const API           = 'https://graph.facebook.com/v21.0';
 
+// Geo shared by the year-round ads: HOMES within 5 miles of the complex
+// (owner 2026-10-28: "our most long term players will be local … keeping
+// the radius of ad target small is key").  Same as club-wide.
+const YEAR_ROUND_GEO = {
+  custom_locations: [{
+    latitude:  40.0071,
+    longitude: -75.1306,
+    radius:    5,
+    distance_unit: 'mile',
+    address_string: '199 East Erie Avenue, Philadelphia, PA 19140',
+  }],
+  location_types: ['home'],
+};
+
+// Lead form shared by the year-round ads: name/email/phone + best time.
+const YEAR_ROUND_FORM = {
+  questions: [
+    { type: 'FULL_NAME' },
+    { type: 'EMAIL' },
+    { type: 'PHONE' },
+    {
+      type: 'CUSTOM',
+      key: 'best_time',
+      label: 'Best time for a coach to reach you?',
+      options: [
+        { key: 'morning',   value: 'Morning (8am–12pm)' },
+        { key: 'afternoon', value: 'Afternoon (12pm–5pm)' },
+        { key: 'evening',   value: 'Evening (5pm–9pm)' },
+        { key: 'anytime',   value: 'Anytime' },
+      ],
+    },
+  ],
+  context_card:   { style: 'LIST_STYLE' },
+  thank_you_page: { button_type: 'VIEW_WEBSITE' },
+};
+
 // ── Ad definitions (image + CTA + targeting + form fields per ad) ─────
 // No wording here (owner 2026-09-17: "all messages in db"): each ad's
 // caption, its lead form's intro card and thank-you page are
@@ -256,6 +292,66 @@ const ADS = {
       age_max: 55,
       // No gender filter — the ad covers men's, women's, boys and girls.
       locales: [6, 24],
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
+  // Year-round player ads (owner 2026-10-28) — three ads, not one: in the
+  // club-wide ad Meta spent on parents (39 of 53 leads) and the adult
+  // programs starved (Men 11 leads / 0 sign-ups, Women 3).  Boys and Girls
+  // stay together — the pooled youth ad signed families at ~$54 each vs
+  // ~$78 Boys alone, ~$155 Girls alone.  Images:
+  // scripts/generate-year-round-cards.js.  Lead forms reuse the proven
+  // best_time question; the leads page files each form under an existing
+  // funnel label (formLabel) so the close/register links resolve as before.
+  'youth-year-round': {
+    name:    'Lighthouse Youth — Soccer All Year Round (Boys & Girls)',
+    imageUrl: 'https://footballhome.org/images/posts/youth-year-round-ad.png',
+    ctaUrl:   'https://www.lighthouse1893.org/',
+    ctaCaption: 'lighthouse1893.org',
+    ctaType: 'LEARN_MORE',
+    defaultBudget: 10,
+    leadForm: YEAR_ROUND_FORM,
+    targeting: {
+      geo_locations: YEAR_ROUND_GEO,
+      age_min: 25,
+      age_max: 55,
+      locales: [6, 24],
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
+  'mens-year-round': {
+    name:    'Lighthouse Mens Club — Soccer All Year Round',
+    imageUrl: 'https://footballhome.org/images/posts/mens-year-round-ad.png',
+    ctaProgram: { category: 'men', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=year_round_2026&utm_content=mens-year-round' },
+    ctaType: 'SIGN_UP',
+    defaultBudget: 10,
+    leadForm: YEAR_ROUND_FORM,
+    targeting: {
+      geo_locations: YEAR_ROUND_GEO,
+      age_min: 18,
+      age_max: 40,
+      genders: [1],
+      publisher_platforms: ['facebook', 'instagram'],
+      facebook_positions: ['feed'],
+      instagram_positions: ['stream', 'explore'],
+    },
+  },
+  'womens-year-round': {
+    name:    "Lighthouse Women's Club 1895 — Soccer All Year Round",
+    imageUrl: 'https://footballhome.org/images/posts/womens-year-round-ad.png',
+    ctaProgram: { category: 'women', utm: 'utm_source=meta&utm_medium=cpc&utm_campaign=year_round_2026&utm_content=womens-year-round' },
+    ctaType: 'SIGN_UP',
+    defaultBudget: 10,
+    leadForm: YEAR_ROUND_FORM,
+    targeting: {
+      geo_locations: YEAR_ROUND_GEO,
+      age_min: 18,
+      age_max: 50,
+      genders: [2],
       publisher_platforms: ['facebook', 'instagram'],
       facebook_positions: ['feed'],
       instagram_positions: ['stream', 'explore'],

@@ -743,6 +743,13 @@ class LeadsScreen extends Screen {
       // TRYOUTS", committed-players framing) replacing the 7/4 version
       // above, which is now paused. New lead form ID, same funnel label.
       '1063284936304533': 'APSL Trials',
+      // Year-round ads created 2026-10-28 via scripts/ads/create-ad.js
+      // {youth,mens,womens}-year-round — filed under the existing funnels
+      // so their close/register links resolve unchanged (the combined youth
+      // label carries both the boys and girls membership links).
+      '1742374770183944': 'Youth (Grades 1–6)',
+      '1112525488303663': "Men's Club",
+      '1140646368374686': "Women's Club",
     };
     return map[formId] || null;
   }
