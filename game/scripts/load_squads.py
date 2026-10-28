@@ -248,6 +248,9 @@ def main():
     run_sql("\n".join(s))
     print(f"qualities: Lighthouse APSL {q_lh_apsl}, Lighthouse Liga 1 {q_lh_liga1}, Ukies {q_ukies}")
     print(f"Lighthouse squad {len(in_squad)} (rostered), Ukies squad {len(uk)} (APSL roster)")
+    # G4.83: the attributes and quality written above are the OLD formula;
+    # every player's sheet (age, history, d100 rolls, tier) is rolled after.
+    print('NOW: game/build/fh-game-roll --write "Lighthouse APSL" "Ukrainian Nationals"  (re-rolls the sheets this overwrote)')
 
 
 if __name__ == "__main__":

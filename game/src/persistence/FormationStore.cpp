@@ -158,7 +158,8 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
         const int team_id = team[0][0].as<int>();
         const auto rows = tx.exec_params(
             "SELECT shirt, name, max_speed_cms, concept_mask, "
-            "       COALESCE(position, ''), COALESCE(description, ''), quality "
+            "       COALESCE(position, ''), COALESCE(description, ''), quality, "
+            "       age, start_age, COALESCE(years_off, 0) "   // mig 793 sheet
             "FROM game_demo_players WHERE team_id = $1 "
             // Mig 641: the lineup, not the shirts, decides who starts —
             // index = formation slot (1-11), then the bench by shirt.
@@ -174,6 +175,9 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg,
             p.position = r[4].as<std::string>();
             p.description = r[5].as<std::string>();
             if (!r[6].is_null()) p.quality = r[6].as<std::int16_t>();
+            if (!r[7].is_null()) p.age = r[7].as<std::int16_t>();
+            if (!r[8].is_null()) p.start_age = r[8].as<std::int16_t>();
+            p.years_off = r[9].as<std::int16_t>();
             out.players.push_back(std::move(p));
         }
         // Mig 636 attributes, by registry code (unknown codes = rows for

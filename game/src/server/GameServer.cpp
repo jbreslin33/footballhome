@@ -2,6 +2,8 @@
 
 #include "server/GameServer.hpp"
 
+#include "core/PlayerSheet.hpp"
+
 #include "net/Wire.hpp"
 
 #include <cstdio>
@@ -150,10 +152,20 @@ core::ConceptRatings GameServer::buildAbility(std::uint8_t sl, const core::Level
     // Mig 656: his own quality, else his team's, else the band's.
     const int quality = k < team.players.size() && team.players[k].quality >= 0
                             ? team.players[k].quality : team.quality;
-    core::ConceptRatings r = core::defaultAbility(
-        band, quality, cfg_.model_params.integer("ability.mastery.lapse_kept_pct", 100));
+    core::ConceptRatings r = core::defaultAbility(band, quality);
     if (k >= team.players.size()) return r;
     const auto& p = team.players[k];
+    // G4.83: a player with a sheet (mig 793) plays each concept he knows at
+    // its mastery for HIM — his years on it since the age it's taught —
+    // not one flat number: a u10 basic is near-automatic for a 25-year-old,
+    // last season's idea lapses at his quality.
+    if (p.age > 0 && p.start_age >= 0) {
+        const core::SheetRules rules = core::SheetRules::fromParams(cfg_.model_params);
+        const core::PlayerSheet sheet = core::PlayerSheet::restore(p.age, p.start_age, p.years_off, quality);
+        const int n = core::concepts().size();
+        for (int c = 0; c < n; ++c)
+            if (r[c] > 0) r[c] = static_cast<std::uint8_t>(sheet.conceptAbility(core::concepts().taughtFrom(c), rules));
+    }
     // Legacy mask override → that player's known set at a strong personal
     // quality (85): Old Gio knows EVERYTHING well. (The mask only ever
     // covered ids 0-31.)

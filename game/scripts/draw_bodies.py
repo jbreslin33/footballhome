@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """game/scripts/draw_bodies.py — every player's own body (G4.52).
 
+SUPERSEDED (G4.83, mig 793): bodies are rolled on each player's character
+sheet by fh-game-roll (core::PlayerGenerator) — a d100 per attribute with
+the same leans and position shapes, now DB rows. Running this would
+overwrite those rolls, so it refuses; it stays for the history below.
+
 James: "all players should have different rates of acceleration and speed"
 / "its easy to do individual even if they are all random at first off a
 norm" / "use a bell curve". Until someone rates them, each player's
@@ -95,4 +100,5 @@ def main():
 
 
 if __name__ == "__main__":
+    sys.exit("draw_bodies.py is superseded by fh-game-roll (G4.83): game/build/fh-game-roll --write <team> ...")
     main()

@@ -209,27 +209,17 @@ inline int levelRankOf(const LevelParams& lv) {
 // U-10s don't do delay theory AT ALL; a semipro knows it all at 68.
 // quality (0-100, mig 656) replaces the band's number for a player whose
 // teams' records rate him; which concepts he knows stays the band's.
-// Mastery (G4.81, mig 779): a concept he has played for years lapses less
-// than one he learned last season — each band he stands above the one it
-// is taught at keeps lapse_kept_pct of the misses (50: a 60-quality
-// semipro meets the pass 95 times in 100 — taught at u10, three bands
-// down — and plays the semipro-taught concepts at 60). 100 = off, every
-// concept at his quality (the G4.38-80 behaviour).
-inline ConceptRatings defaultAbility(const LevelParams& lv, int quality = -1,
-                                     int lapse_kept_pct = 100) {
+// Mastery (how automatic a concept is for HIM) is his sheet's: core::
+// PlayerSheet::conceptAbility (G4.83), applied over this in GameServer.
+inline ConceptRatings defaultAbility(const LevelParams& lv, int quality = -1) {
     static constexpr std::uint8_t kQuality[] = {0, 12, 30, 50, 68, 82, 92, 100};
     const int rank = levelRankOf(lv);
     const std::uint8_t q = quality >= 0 && quality <= 100 ? static_cast<std::uint8_t>(quality) : kQuality[rank];
-    if (lapse_kept_pct < 0) lapse_kept_pct = 0;
-    if (lapse_kept_pct > 100) lapse_kept_pct = 100;
     ConceptRatings r{};
     const ConceptRegistry& reg = concepts();
     for (int i = 0; i < reg.size(); ++i) {
         const int from = reg.taughtFrom(i);
-        if (from <= 0 || rank < from) { r[i] = 0; continue; }
-        int miss = 100 - q;
-        for (int b = from; b < rank && b < 7; ++b) miss = miss * lapse_kept_pct / 100;
-        r[i] = static_cast<std::uint8_t>(100 - miss);
+        r[i] = (from > 0 && rank >= from) ? q : 0;
     }
     return r;
 }

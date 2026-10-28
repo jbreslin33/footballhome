@@ -77,6 +77,9 @@ struct DemoPlayer {
     // Mig 669 (G4.47): his TENDENCIES — (concept id, 0-100; 50 = neutral):
     // how much he likes a concept, apart from how well he does it.
     std::vector<std::pair<int, std::uint8_t>> tendencies;
+    // Mig 793 (G4.83): his sheet's life — age, when he started, years out;
+    // -1 = no sheet (the band's flat ability).
+    std::int16_t age = -1, start_age = -1, years_off = 0;
 };
 // G4.58: a phase of play (game_phases): what restart, where the ball is —
 // x_pct up the pitch from the team in possession's own goal line (0-100),

@@ -3030,6 +3030,61 @@ passes still predictably lost are mostly the safe-pass read's per-second
 lapse (40% of seconds at quality 60: a blind pass). Still far: shots
 from a 20 s+ spell 2-5% (pro 72%).
 
+### 8.81 G4.83 — every player has a character sheet (migs 793-794)
+
+James 10/28: "use dungeons and dragons type rolls to assign experience to
+current players and playing history and ability scores" — "why not 1d100
+lol? then mod it based on experienmce level adn level they are at now" —
+"apply to all and diff between starters, bench and deep bench should be
+significant at this level" — "we beasically have a generate player function
+right but with paramenters?" — "do we have a 'player class' in c++ to handle
+all this?" — "yes build it that way". It replaces §8.78's level-gap
+mastery (built, never switched on): mastery is now HIS, from his years.
+
+- **`core::PlayerSheet`** (the player class): age (real or rolled), start
+  age, years out, lineup tier, his history stage by stage, every d100, the
+  14 attributes, `conceptAbility(taught_rank)`. **`core::PlayerGenerator::
+  generate(facts, team mean)` / `generateTeam`** rolls it. Facts = what the
+  club DB knows (`persistence::loadSheetFacts`): team quality (records), a
+  real age (persons.birth_date), his tier and positions (the club team's
+  match_lineups), hand edits. REAL DATA WINS — the dice fill the rest.
+  Deterministic: his seed (person id, else team/shirt) + a channel per
+  roll → detNoise. FH original; D&D 5e character creation re-expressed on
+  a percentile [D&D].
+- **Attribute** = (centre − spread) + 2·spread·d100/100 (his rank at his
+  level; centre = team quality for what's learned, 60 for the body) + tier
+  (starter +10 / bench 0 / deep −10, every attribute) + experience on the
+  learned ones (0.3 a weighted year above his team's mean, ±6) + position
+  profile (game_sheet_position_profile, his real lineup spots) − 1.5 a year
+  past 30 on pace and acceleration. A body roll leans on another's
+  (acceleration 0.6 on pace, …). An outfielder's goalkeeping is 25. A
+  hand-edited rating is never touched.
+- **Tier** (mig 794): starts 35%+ of the club team's lineup matches =
+  starter, in the squad 25%+ = bench, else deep bench (Lighthouse APSL:
+  11 / 21 / 15). No lineups (the Ukies): the boot XI, the next seven, the
+  rest. Quality (the concept dial) = team quality + tier.
+- **History** (game_sheet_tables, d100 each): start age 3 + 1d6; youth
+  (rec / travel / premier / pro academy) to 14; high school to 18; college
+  (none / club / D3 / D2 / D1) to 22; adult (amateur / semi-pro / pro) to
+  now; years out (injury / work). Each stage's weight makes his weighted
+  experience years; a man with no birth date rolls his age on the age
+  table. FH estimates of a US amateur path, for James to set.
+- **Concepts** (GameServer::buildAbility): every concept he knows plays at
+  100 − (100 − quality) × ½^(years on it / 5), years on it = his playing
+  years since the age it's taught (u10 8, u14 12, amateur 18, semipro 20).
+  A 25-year-old who started at 6, quality 60: u10 basics 96, amateur ideas
+  85, the semipro one 80.
+- **Tool** `fh-game-roll [--write] <team> ...` (prints the sheets; writes
+  in one transaction). Tables game_demo_player_history / _rolls keep why
+  he has each number. draw_bodies.py now refuses (superseded);
+  load_squads.py says to re-roll after it.
+
+Rolled 10/28: Lighthouse APSL 47 (real ages, mean 25), Ukies 30 (rolled
+ages, mean 27); mean passing by tier 74 / 60 / 47 and 80 / 67 / 62. 10
+matches: shots 34 / 36 → 30 / 30 a team, goals 11.7 → 10.0, spells 637 →
+522, own-third losses 44 / 54 → 43 / 43. Passes cut out and kept 76 / 84
+(pro 7.2) is still the biggest gap.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
