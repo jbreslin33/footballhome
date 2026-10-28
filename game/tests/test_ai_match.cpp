@@ -39,8 +39,10 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // receiver who misses the read steps onto its line instead of holding shape.
 // Re-locked G4.82 (2026-10-28): the led pass is re-read before it's
 // struck (unsafe led = the ball he checked).
-constexpr std::uint64_t kGolden3v3   = 0x2d2064da1784219aULL;
-constexpr std::uint64_t kGolden11v11 = 0x7891047d731c6223ULL;
+// Re-locked G4.84 (2026-10-28): firm passes (arrive 9 m/s) and a race to a
+// moving ball brakes to arrive ON TIME.
+constexpr std::uint64_t kGolden3v3   = 0x97ac7ba3fd25182fULL;
+constexpr std::uint64_t kGolden11v11 = 0x17306360eb8f22b2ULL;
 
 struct Rig {
     World world;

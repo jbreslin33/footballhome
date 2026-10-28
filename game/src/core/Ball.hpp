@@ -98,7 +98,12 @@ inline const math::Fixed64 kShortPassSpeed   = math::Fixed64::fromInt(8);
 // 3.7 m/s, a 13 m one 2.6 s — defenders had 3-5 s to get there, and 16-26%
 // of passes to a man 10 m+ free were lost (fh-game-match). A real 20-30 m
 // ground pass is struck ~15-20 m/s and takes ~1.5-2 s.
-inline const math::Fixed64 kPassArriveSpeed = math::Fixed64::fromInt(6);
+// G4.84: 9, not 6 — a firm ball. At 6 a 15 m pass left at 12 m/s and a
+// 25 m one at 16: defenders cut out 72-84 a team a match (pro 7.2). At 9
+// (15 / 19 m/s — side-foot passes run ~12-20 m/s in kicking studies) 48-54,
+// shots 29 -> 20 a team, spells 515 -> 365; at 12 bad touches rose (the
+// semipro control speed is 13) and it all went back up. 10 matches each.
+inline const math::Fixed64 kPassArriveSpeed = math::Fixed64::fromInt(9);
 inline math::Fixed64 weightedPassSpeed(math::Fixed64 d) {
     const math::Fixed64 per_m =
         (math::Fixed64::one() - kBallRollDecayPerTick) * math::Fixed64::fromInt(30);

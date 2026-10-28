@@ -587,7 +587,10 @@ int main(int argc, char** argv) {
     // ...each interception: how far the man moved from where he stood at the
     // kick (< 1 m = he was in the lane), how long the pass had flown, and
     // the pass's kind (by its why).
-    long pred_all[3] = {}, pred_cut[3] = {}, pred_why[ai::kWhyCount + 1][3] = {};   // passes (any kind) by the flight read at kick+1, and the cut ones
+    long pred_all[3] = {}, pred_cut[3] = {}, pred_why[ai::kWhyCount + 1][3] = {};
+    // Cut passes the flight read gave to US: was the cutter their predicted
+    // first man; our predicted man's job 0.3 s in; the margin we had (ticks).
+    long po_n = 0, po_cutter_pred = 0, po_us_why[ai::kWhyCount] = {}, po_margin[4] = {};   // passes (any kind) by the flight read at kick+1, and the cut ones
     long cut_moved[4] = {}, cut_time[4] = {}, cut_n = 0, cut_by_why[ai::kWhyCount + 1] = {}, cut_why_taker[ai::kWhyCount] = {};
     double hold_gap[2] = {0, 0};
     long hold_n[2] = {0, 0};
@@ -607,7 +610,12 @@ int main(int argc, char** argv) {
         double prev_ball_v = 0;
         std::vector<math::Vec2> kick_at;   // everyone's spot at the last kick
         long kick_tick = 0;
-        int kick_pred = -1;   // flight read one tick after the kick: 0 ours first, 1 theirs first, 2 nobody
+        int kick_pred = -1;
+        int pred_us = -1, pred_them = -1, pred_margin = 0, pred_us_why = -1;   // at kick+1 / +10
+        // GAME_TRACE_FLIP=n: passes the read gave to us that they cut (match 1).
+        static const int trace_flip = std::atoi(envOr("GAME_TRACE_FLIP", "0"));
+        int flips = 0;
+        std::vector<std::string> flip_lines;   // flight read one tick after the kick: 0 ours first, 1 theirs first, 2 nobody
         std::uint64_t prev_bad = 0;
         // GAME_TRACE_LOST=n: print the first n own-third lost kicks (match 1).
         static const int trace_lost = std::atoi(envOr("GAME_TRACE_LOST", "0"));
@@ -875,6 +883,19 @@ int main(int argc, char** argv) {
                             ++cut_moved[mv < 1 ? 0 : mv < 3 ? 1 : mv < 6 ? 2 : 3];
                             ++cut_time[ft < 0.5 ? 0 : ft < 1 ? 1 : ft < 2 ? 2 : 3];
                             if (kick_pred >= 0) ++pred_cut[kick_pred];
+                            if (kick_pred == 0 && trace_flip && m == 0 && flips < trace_flip) {
+                                ++flips;
+                                std::printf("FLIP t=%.1fs team%d %s, predicted ours #%d by %.1f s; cut by #%d (their predicted #%d) after %.1f s\n",
+                                            k / 30.0, pend_team, pend_why == ai::kWhyCount ? "in behind" : ai::kWhyNames[pend_why], pred_us,
+                                            pred_margin / 30.0, j, pred_them, (k - kick_tick) / 30.0);
+                                for (const auto& l : flip_lines) std::printf("%s\n", l.c_str());
+                            }
+                            if (kick_pred == 0) {
+                                ++po_n;
+                                po_cutter_pred += j == pred_them;
+                                if (pred_us_why >= 0) ++po_us_why[pred_us_why];
+                                ++po_margin[pred_margin < 6 ? 0 : pred_margin < 15 ? 1 : pred_margin < 30 ? 2 : 3];
+                            }
                             ++cut_by_why[pend_why]; ++cut_why_taker[static_cast<int>(s.lastOrders()[j].why)]; ++cut_n;
                         }
                         if (pf_bucket >= 0) ++fr_lost[pend_team][pf_bucket];
@@ -899,9 +920,41 @@ int main(int argc, char** argv) {
                 const auto& fr = s.brain().flightRead(s.world());
                 const int us = fr.first[pend_team], them = fr.first[pend_team ^ 1];
                 kick_pred = !fr.live ? 2 : (them >= 0 && (us < 0 || fr.tick[them] < fr.tick[us])) ? 1 : (us >= 0 ? 0 : 2);
+                pred_us = us; pred_them = them; pred_us_why = -1;
+                pred_margin = (us >= 0 && them >= 0) ? fr.tick[them] - fr.tick[us] : 999;
                 ++pred_all[kick_pred];
                 ++pred_why[pend_why][kick_pred];
             }
+            if (trace_flip && m == 0 && flips < trace_flip && pend_team >= 0 && kick_pred == 0 && k > kick_tick && (k - kick_tick) % 6 == 1) {
+                const auto& fr = s.brain().flightRead(s.world());
+                const auto& w = s.world();
+                auto who = [&](int j) {
+                    if (j < 0) return std::string("-");
+                    const auto& d = w.player(j);
+                    const double bx = d.pos.x.toDouble() - b.pos.x.toDouble(), by = d.pos.y.toDouble() - b.pos.y.toDouble();
+                    char t[200];
+                    const ai::Orders& oj = s.lastOrders()[j];
+                    const double tx = oj.target.x.toDouble() - d.pos.x.toDouble(), ty = oj.target.y.toDouble() - d.pos.y.toDouble();
+                    const double ax = fr.live && fr.tick[j] >= 0 ? fr.at[j].x.toDouble() - b.pos.x.toDouble() : 0,
+                                 ay = fr.live && fr.tick[j] >= 0 ? fr.at[j].y.toDouble() - b.pos.y.toDouble() : 0;
+                    std::snprintf(t, sizeof t, "#%d %.1fm v%.1f [vel %.1f,%.1f wish %.2f,%.2f face %.2f,%.2f to target %.1f,%.1f] %s, read +%.1fs (target %.1fm off him, meet point %.1fm up the ball's path, wish %.2f)", j, std::sqrt(bx * bx + by * by),
+                                  std::sqrt(d.vel.x.toDouble() * d.vel.x.toDouble() + d.vel.y.toDouble() * d.vel.y.toDouble()),
+                                  d.vel.x.toDouble(), d.vel.y.toDouble(), oj.move.move.x.toDouble(), oj.move.move.y.toDouble(),
+                                  d.face.x.toDouble(), d.face.y.toDouble(), tx, ty,
+                                  ai::kWhyNames[static_cast<int>(oj.why)],
+                                  fr.live && fr.tick[j] >= 0 ? fr.tick[j] / 30.0 : -1.0, std::sqrt(tx * tx + ty * ty), std::sqrt(ax * ax + ay * ay),
+                                  std::sqrt(oj.move.move.x.toDouble() * oj.move.move.x.toDouble() + oj.move.move.y.toDouble() * oj.move.move.y.toDouble()));
+                    return std::string(t);
+                };
+                char t[600];
+                std::snprintf(t, sizeof t, "   +%.1fs ball %.1f m/s z%.1f | ours %s | their first %s", (k - kick_tick) / 30.0,
+                              std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble()), b.pos.z.toDouble(),
+                              who(pred_us).c_str(), who(fr.live ? fr.first[pend_team ^ 1] : -1).c_str());
+                flip_lines.push_back(t);
+            }
+            if (pend_team >= 0 && k == kick_tick + 1) flip_lines.clear();
+            if (pend_team >= 0 && k == kick_tick + 10 && pred_us >= 0)
+                pred_us_why = static_cast<int>(s.lastOrders()[pred_us].why);
             prev_ball_v = std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble());
             if (before && !b.owner && b.last_kicker == *before &&
                 s.world().restartTeam() == 0xFF) {
@@ -1190,6 +1243,13 @@ int main(int argc, char** argv) {
                         100.0 * pred_all[0] / std::max(1L, pred_all[0] + pred_all[1] + pred_all[2]),
                         100.0 * pred_all[1] / std::max(1L, pred_all[0] + pred_all[1] + pred_all[2]),
                         100.0 * pred_all[2] / std::max(1L, pred_all[0] + pred_all[1] + pred_all[2]));
+            if (po_n) {
+                std::printf("\n  cut passes the read gave to US (%ld): the cutter was their predicted man %.0f%%; we were ahead by <0.2 s %.0f%% · 0.2-0.5 %.0f%% · 0.5-1 %.0f%% · 1+ / unchallenged %.0f%%; our man 0.3 s in:",
+                            po_n, 100.0 * po_cutter_pred / po_n, 100.0 * po_margin[0] / po_n, 100.0 * po_margin[1] / po_n,
+                            100.0 * po_margin[2] / po_n, 100.0 * po_margin[3] / po_n);
+                for (int w = 0; w < ai::kWhyCount; ++w)
+                    if (po_us_why[w] * 20 >= po_n) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * po_us_why[w] / po_n);
+            }
             std::printf("\n  kicks the flight read gave to THEM at the kick, by kind (share of that kind, a team a match):");
             for (int w = 0; w <= ai::kWhyCount; ++w) {
                 const long n = pred_why[w][0] + pred_why[w][1] + pred_why[w][2];

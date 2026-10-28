@@ -889,7 +889,27 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
             break;
         default: break;
     }
-    const Fixed64 v_ok = math::fx_sqrt(v_end * v_end + Fixed64::fromInt(2) * arrive_decel_ * dist);
+    Fixed64 v_ok = math::fx_sqrt(v_end * v_end + Fixed64::fromInt(2) * arrive_decel_ * dist);
+    // A race to a MOVING ball (G4.84): arrive ON TIME, not just under
+    // control. His target is where the flight read says he and the ball
+    // meet, fr.tick ticks from now — so he runs at least dist / that time
+    // (+10%). Braked on distance alone he was late, the next read picked a
+    // nearer, later point, he braked again: receivers stood and waited (5.2
+    // → 1.4 m/s traced) while the defender the read had beaten stepped in
+    // front — 53% of the passes cut out were OURS by the read at the kick.
+    // Not braking at all ran him past the spot before the ball came.
+    switch (o.why) {
+        case Why::MeetPass: case Why::Intercept: case Why::JumpPass: case Why::Chase: {
+            if (world.ball().owner || world.restartTeam() != 0xFF) break;
+            const FlightRead& fr = flightRead(world);
+            if (!fr.live || slot >= fr.tick.size() || fr.tick[slot] <= 0) break;
+            const Fixed64 t = Fixed64::fromInt(fr.tick[slot]) * core::kTickDt;
+            const Fixed64 need = dist / t * Fixed64::fromFraction(11, 10);
+            if (need > v_ok) v_ok = need;
+            break;
+        }
+        default: break;
+    }
     const Fixed64 k = v_ok / me.max_speed;
     if (k >= mlen) return;
     o.move.move = Vec2{o.move.move.x * k / mlen, o.move.move.y * k / mlen};

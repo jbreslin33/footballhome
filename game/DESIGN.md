@@ -3085,6 +3085,33 @@ matches: shots 34 / 36 → 30 / 30 a team, goals 11.7 → 10.0, spells 637 →
 522, own-third losses 44 / 54 → 43 / 43. Passes cut out and kept 76 / 84
 (pro 7.2) is still the biggest gap.
 
+### 8.82 G4.84 — the receiver arrives on time; a firm pass
+
+James 10/28: "continue". 53% of the passes cut out were OURS by the flight
+read one tick after the kick (harness: `GAME_TRACE_FLIP=n`, every 0.2 s of
+the flight — our predicted man and their first man, distance, speed, wish,
+target). The traces: the receiver braked to "arrive" (G4.80) at the
+earliest point he could reach — reachable only flat out — so he was late,
+the next read picked a nearer point, he braked again (5.2 → 1.4 m/s) and
+the defender stepped in front.
+
+- **On time** (Brain::brakeToArrive): a race to a moving ball (meet the
+  pass, intercept, jump the pass, chase) runs at least distance ÷ the read's
+  time to the meeting point (+10%). Not braking at all ran men past the
+  spot (worse: spells 644); this one is within noise of G4.83 but the
+  physics is right.
+- **A firm pass** (`kPassArriveSpeed` 6 → 9 m/s): interceptions kept 72 /
+  84 → 48 / 54 a team a match, shots 29 → 20, goals 8.7 → 6.4, spells 515 →
+  365, own-third losses 42 → 27. At 12 bad touches rose and it all went
+  back up.
+- **Tried and dropped:** charging the read for turning (half the time to
+  kill his sideways speed — worse, spells 573: it hits the defenders' reads
+  and the passers' choices too); a passer's time margin on passSafe (0.3 s
+  worse, 0.5 s no better — refused passes became dribbles and long balls).
+
+Still the gap: interceptions 48-54 (pro 7.2), shots 20 (12.9), spells 365
+(121), shots 20 s+ into a spell 4% (72%).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
