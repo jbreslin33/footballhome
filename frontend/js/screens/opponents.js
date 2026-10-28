@@ -84,6 +84,11 @@ class OpponentsScreen extends Screen {
 
   onEnter(params = {}) {
     this.focusClub = Number(params.clubId || 0) || 0;
+    // Opened from a game (Game Center 📇 → Opponents page): messages are
+    // about THAT game — date, time, venue filled — and default to the
+    // game confirmation instead of the blank note (owner 2026-10-28).
+    this.matchId = Number(params.matchId || 0) || 0;
+    this.tier = this.matchId ? 'confirm' : 'general';
     this.load();
   }
 
@@ -211,7 +216,7 @@ class OpponentsScreen extends Screen {
   async sendMessage(contactId, channel, btn) {
     const orig = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
     try {
-      const data = await this._post('/api/opponents/message', { contact_id: contactId, channel, tier: this.tier, message: this.customMessage || '' });
+      const data = await this._post('/api/opponents/message', { contact_id: contactId, channel, tier: this.tier, message: this.customMessage || '', ...(this.matchId ? { match_id: this.matchId } : {}) });
       const c = (this.board?.contacts || []).find(x => x.id === contactId);
       if (c) { c.last_sent_at = 'just now'; c.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);

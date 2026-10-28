@@ -653,7 +653,11 @@ class GameCenterScreen extends EventScreen {
     // match an earlier screen left in the navigation context.
     const rawMatchId = params.pick ? null
       : (params.matchId != null ? params.matchId : ctxMatch?.id);
-    this.matchId = rawMatchId != null ? Number(rawMatchId) : null;
+    const nextMatchId = rawMatchId != null ? Number(rawMatchId) : null;
+    // Another game: the 📇 opponent message starts back on that game's
+    // confirmation, not whatever the last game was left on (mig 803).
+    if (nextMatchId !== this.matchId) { this._oppTier = 'confirm'; this._oppMsg = ''; }
+    this.matchId = nextMatchId;
     this.title   = params.pick ? '' : (params.title || ctxMatch?.title || '');
     this.when    = params.when || '';
     // params.view === 'player' — the #my door.  Owner 2026-09-17: "the my
@@ -1001,7 +1005,7 @@ class GameCenterScreen extends EventScreen {
       const rosterOpen = e.target.closest('[data-gc-roster-open]');
       if (rosterOpen && !rosterOpen.disabled) { this._printOfficialRoster(false); return; }
       const oppPage = e.target.closest('[data-gc-opp-page]');
-      if (oppPage) { this.navigation.goTo('opponents', { clubId: Number(oppPage.dataset.gcOppPage) || 0 }); return; }
+      if (oppPage) { this.navigation.goTo('opponents', { clubId: Number(oppPage.dataset.gcOppPage) || 0, matchId: Number(this.matchId) || 0 }); return; }
       // 🚗 Carpool (mig 601) — everyone on the game, not just coaches.
       const cpBtn = e.target.closest('[data-gc-cp]');
       if (cpBtn && !cpBtn.disabled) { this._carpoolClick(cpBtn); return; }
