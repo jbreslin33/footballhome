@@ -15,9 +15,10 @@ void Officials::configure(const ModelParams& p) {
     noise_[0] = p.fixed("official.assistant.noise_m_at0", 1000);
     noise_[1] = p.fixed("official.assistant.noise_m_at50", 500);
     noise_[2] = p.fixed("official.assistant.noise_m_at100", 200);
-    slack_[0] = p.fixed("official.assistant.slack_m_at0", 2500);
-    slack_[1] = p.fixed("official.assistant.slack_m_at50", 1200);
-    slack_[2] = p.fixed("official.assistant.slack_m_at100", 300);
+    lag_[0] = p.fixed("official.assistant.lag_s_at0", 600);
+    lag_[1] = p.fixed("official.assistant.lag_s_at50", 300);
+    lag_[2] = p.fixed("official.assistant.lag_s_at100", 100);
+    track_s_ = p.fixed("official.assistant.track_s", 500);
     touchline_off_ = p.fixed("official.assistant.touchline_off_m", 1000);
     diagonal_share_ = p.fixed("official.referee.diagonal_y_share", 600);
     ball_pull_ = p.fixed("official.referee.ball_pull", 500);
@@ -51,7 +52,8 @@ void Officials::place(Fixed64 half_x, Fixed64 half_y) {
 }
 
 // Where each stands (game_ref_positionings).
-Vec2 Officials::spotFor(int i, const World& w) const {
+Vec2 Officials::spotFor(int i, const World& w, Vec2* line_vel) const {
+    if (line_vel) *line_vel = Vec2{};
     const Fixed64 hx = w.pitchHalfX(), hy = w.pitchHalfY();
     const auto& b = w.ball();
     if (i == 0) {
@@ -68,25 +70,32 @@ Vec2 Officials::spotFor(int i, const World& w) const {
         const Fixed64 yd = -diagonal_share_ * hy * b.pos.x / hx;
         return Vec2{x, yd + (b.pos.y - yd) * ball_pull_};
     }
-    // ar-second-last-defender [IFAB guidelines]: on his touchline, level
+    // ar-second-last-defender [IFAB guidelines]: on his touchline, LEVEL
     // with the second-last defender of the team defending his half, or the
     // ball if it is nearer the goal line; at halfway when the line is in
-    // the other half. Plus his slack beyond it (positioning; ARs mostly
-    // stand beyond the last defender — Oudejans et al. 2000).
+    // the other half. He aims at the line as he read it his lag ago
+    // (positioning, G4.90) — so he trails a moving line and the body law
+    // does the rest. Measured, assistants sit ~1 m off the second-last
+    // defender [Gonçalves et al. 2021], aligned (< 0.2 m) 14% of the time,
+    // trailing ~53%, leading ~33% [Mallo et al. 2012]. G4.88 aimed him a
+    // positioning slack BEYOND the line (Oudejans's "mostly beyond" is a
+    // share, not a distance): mean +2 m, a third of kicks 3 m+.
     const Fixed64 s = i == 1 ? Fixed64::one() : -Fixed64::one();
     const std::uint8_t defending = i == 1 ? 1 : 0;   // team 0 defends −x
-    Fixed64 d1 = Fixed64::fromInt(-1000), d2 = d1;
+    const Fixed64 lag = byRating(ratings_[i].positioning, lag_[0], lag_[1], lag_[2]);
+    Fixed64 d1 = Fixed64::fromInt(-1000), d2 = d1, v1{}, v2{};
     for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
         if (w.player(j).team != defending) continue;
-        const Fixed64 depth = w.player(j).pos.x * s;
-        if (depth > d1) { d2 = d1; d1 = depth; }
-        else if (depth > d2) { d2 = depth; }
+        const auto& q = w.player(j);
+        const Fixed64 depth = (q.pos.x - q.vel.x * lag) * s;
+        if (depth > d1) { d2 = d1; v2 = v1; d1 = depth; v1 = q.vel.x; }
+        else if (depth > d2) { d2 = depth; v2 = q.vel.x; }
     }
-    Fixed64 line = d2;
+    Fixed64 line = d2, lv = v2;
     const Fixed64 ball_depth = b.pos.x * s;
-    if (ball_depth > line) line = ball_depth;
+    if (ball_depth > line) { line = ball_depth; lv = b.vel.x; }
+    if (line_vel) *line_vel = Vec2{lv, Fixed64::zero()};
     if (line < Fixed64::zero()) line = Fixed64::zero();
-    line += byRating(ratings_[i].positioning, slack_[0], slack_[1], slack_[2]);
     if (line > hx) line = hx;
     return Vec2{line * s, s * (hy + touchline_off_)};
 }
@@ -94,7 +103,8 @@ Vec2 Officials::spotFor(int i, const World& w) const {
 void Officials::tick(const World& w) {
     for (int i = 0; i < kOfficialCount; ++i) {
         OfficialState& o = state_[i];
-        const Vec2 spot = spotFor(i, w);
+        Vec2 line_vel{};
+        const Vec2 spot = spotFor(i, w, &line_vel);
         const Vec2 d{spot.x - o.pos.x, spot.y - o.pos.y};
         const Fixed64 dist = math::length(d);
         // He faces the field (assistants, IFAB) or the ball (the referee).
@@ -103,7 +113,17 @@ void Officials::tick(const World& w) {
         if (face.x.raw != 0 || face.y.raw != 0)
             o.face = body_[i].turnToward(o.face, math::normalized(face), kTickDt);
         Vec2 wanted{};
-        if (dist > Fixed64::fromFraction(1, 5)) {
+        if (i != 0) {
+            // An assistant SHADOWS the line (G4.90; ar-side-steps): he moves
+            // at its speed and closes the gap over track_s — walking to the
+            // spot with an ease-in, he was always arriving: 29% of kicks 3 m+
+            // short of a moving line, 25% 3 m+ beyond, 17% within 1 m.
+            Vec2 v{line_vel.x + d.x / track_s_, line_vel.y + d.y / track_s_};
+            const Fixed64 sp = math::length(v);
+            const Fixed64 cap = top_[i] * body_[i].gait(o.face, sp.raw > 0 ? Vec2{v.x / sp, v.y / sp} : o.face);
+            if (sp > cap) v = Vec2{v.x * cap / sp, v.y * cap / sp};
+            wanted = v;
+        } else if (dist > Fixed64::fromFraction(1, 5)) {
             const Vec2 u{d.x / dist, d.y / dist};
             // Full speed until 3 m out, then easing in [FH].
             Fixed64 k = dist / Fixed64::fromInt(3);
@@ -170,7 +190,13 @@ OffsideCall Officials::judgeOffsidePosition(const World& w, std::uint8_t kicker)
     if (second < 0) return c;
     const auto& dp = w.player(static_cast<std::uint8_t>(second));
     const Vec3& a = state_[ar].pos;
-    c.off_line_m = (a.x - dp.pos.x) * os;
+    // vs the line he is to hold (G4.90): the second-last defender, or the
+    // ball if nearer the goal line, or halfway — not the defender alone
+    // (level with the ball read as metres "beyond").
+    Fixed64 hold = dp.pos.x * os;
+    if (w.ball().pos.x * os > hold) hold = w.ball().pos.x * os;
+    if (hold < Fixed64::zero()) hold = Fixed64::zero();
+    c.off_line_m = a.x * os - hold;
     const Vec2 dl{dp.pos.x + dp.vel.x * flash_lag_s_, dp.pos.y + dp.vel.y * flash_lag_s_};
     const Fixed64 noise = byRating(ratings_[ar].offside_judgement, noise_[0], noise_[1], noise_[2]);
     const Fixed64 ball_depth = w.ball().pos.x * os;

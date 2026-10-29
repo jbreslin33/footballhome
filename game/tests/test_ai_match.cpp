@@ -49,9 +49,10 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G4.88 (2026-10-29): the officials are bodies on the pitch
 // (hashed) and the assistant's offside call stands.
 // G4.87 + G4.88 together:
-constexpr std::uint64_t kGolden3v3   = 0x91be7b61e65e92efULL;
+// G4.90: the assistant shadows the line, aiming level (no slack beyond).
+constexpr std::uint64_t kGolden3v3   = 0x50ebed164208f04dULL;
 // G4.89: Law 11 on every pass (no ball to a man read offside).
-constexpr std::uint64_t kGolden11v11 = 0x3c957be38dd2b398ULL;
+constexpr std::uint64_t kGolden11v11 = 0xdd1114faa77546a2ULL;
 
 struct Rig {
     World world;

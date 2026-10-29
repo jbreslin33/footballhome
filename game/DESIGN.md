@@ -3350,6 +3350,36 @@ James 10/29: "do we have offsides lol" → offside next, "yes".
   with the second-last defender), judging tight calls from a bad angle
   [Oudejans 2000].
 
+### 8.88 G4.90 — the assistant holds the line: level, shadowing it (mig 826)
+
+James 10/29: "continue" (the assistant).
+
+- **Measured, real assistants** [Gonçalves 2021] sit ~1 m off the
+  second-last defender; aligned (< 0.2 m) 14% of the time, trailing ~53%,
+  leading ~33%; 20-26% of offside decisions wrong (Mallo et al. 2012,
+  Oudejans et al. 2005, as cited there — not read directly: verified =
+  false).
+- **Aim level** (IFAB), not beyond: G4.88's positioning "slack" put him
+  1.2 m beyond the line at 50 by design (Oudejans 2000's "mostly beyond" is
+  a share, not a distance). Positioning now sets the age of his read of the
+  line (`official.assistant.lag_s_at*` 0.6 / 0.3 / 0.1 s) — he trails a
+  moving line.
+- **He shadows it** (`ar-side-steps`, now wired): his wanted velocity is
+  the line's velocity plus the gap closed over `track_s` (0.5 s), capped by
+  his gait. Walking to a spot with an ease-in he was always arriving: 29%
+  of kicks 3 m+ short, 25% 3 m+ beyond, 17% within 1 m.
+- **The measure** (`OffsideCall::off_line_m`) is now vs the line he is to
+  hold — the second-last defender, the ball if nearer the goal line, or
+  halfway — not the defender alone (level with the ball read as "beyond").
+- 5 matches: short of the line 49% (3 m+ 25%), within 1 m 29%, beyond 20%,
+  mean −1.2 m — trailing like Mallo's assistants, wider. Per offside
+  situation he's wrong ~23% (86 wrong flags + 62 missed of ~633), inside
+  the published 20-26%; whistles 35 → 31 a match, still 75% for onside men.
+- **Next mole — the volume:** ~630 kicks a match have a man in or near an
+  offside position (the pro calls 2 a team). Our attackers live on the
+  line; a real one comes back onside when the ball isn't on (the
+  taxonomy's run-curved-onside, run-off-shoulder).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
@@ -3411,6 +3441,10 @@ teaching rows only.)
 - [Oudejans 2000] Oudejans, Verheijen, Bakker, Gerrits, Steinbrückner &
   Beek, *Errors in judging 'offside' in football*, Nature 404:33 — the
   assistant's viewing angle (G4.88).
+- [Gonçalves 2021] Gonçalves, Coutinho, Travassos, Brito & Figueiredo,
+  *Match analysis of soccer refereeing using spatiotemporal data: a case
+  study*, Sensors 21(7):2541 — assistant ~1 m off the line; cites Mallo et
+  al. 2012 (alignment 14%, trail ~53% / lead ~33%) (G4.90).
 - [Helsen 2006] Helsen, Gilis & Weston, *Errors in judging "offside" in
   association football: test of the optical error versus the perceptual
   flash-lag hypothesis*, J Sports Sci 24:521-528 — flash-lag, most errors

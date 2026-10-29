@@ -90,7 +90,9 @@ public:
     math::Fixed64 maxSpeed(int i) const { return top_[i]; }
 
 private:
-    math::Vec2 spotFor(int i, const World& w) const;
+    // Where official i should stand; line_vel = the line's velocity there
+    // (assistants), for shadowing it.
+    math::Vec2 spotFor(int i, const World& w, math::Vec2* line_vel = nullptr) const;
     static math::Fixed64 byRating(std::int16_t r, math::Fixed64 at0, math::Fixed64 at50, math::Fixed64 at100);
 
     std::array<OfficialState, kOfficialCount> state_{};
@@ -101,8 +103,11 @@ private:
     math::Fixed64 flash_lag_s_ = math::Fixed64::fromFraction(8, 100);
     math::Fixed64 noise_[3] = {math::Fixed64::one(), math::Fixed64::fromFraction(1, 2),
                                math::Fixed64::fromFraction(1, 5)};
-    math::Fixed64 slack_[3] = {math::Fixed64::fromFraction(5, 2), math::Fixed64::fromFraction(6, 5),
-                               math::Fixed64::fromFraction(3, 10)};
+    // How stale his read of the line is (s), by positioning (G4.90).
+    // An assistant closes his gap to the line over this long (s), G4.90.
+    math::Fixed64 track_s_ = math::Fixed64::fromFraction(1, 2);
+    math::Fixed64 lag_[3] = {math::Fixed64::fromFraction(6, 10), math::Fixed64::fromFraction(3, 10),
+                             math::Fixed64::fromFraction(1, 10)};
     math::Fixed64 touchline_off_ = math::Fixed64::one();
     math::Fixed64 diagonal_share_ = math::Fixed64::fromFraction(6, 10);
     math::Fixed64 ball_pull_ = math::Fixed64::fromFraction(1, 2);
