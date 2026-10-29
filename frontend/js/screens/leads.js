@@ -109,7 +109,7 @@ class LeadsScreen extends Screen {
       </div>
 
       <div style="padding: var(--space-4);">
-        <div id="leads-sync-banner" style="margin-bottom: var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
+        <div id="leads-sync-banner" style="margin-bottom: var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
           <span id="leads-sync-icon" style="font-size: 16px;">⏳</span>
           <span id="leads-sync-status" style="flex:1; min-width: 200px;">Syncing latest leads from Meta…</span>
           <span id="leads-sync-time" style="padding:3px 10px; border-radius:9999px; font-size:12px; font-weight:500; background:transparent; color:#94a3b8; border:1px solid #94a3b8; white-space:nowrap;">Last sync: —</span>
