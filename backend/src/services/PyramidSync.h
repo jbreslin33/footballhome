@@ -46,6 +46,11 @@ public:
     // A team's staff + roster from its league page, when a day old (mig 856).
     static void teamPeople(int teamId);
 
+    // A conference's main city: {name, geometry} (OSM boundary, fetched once)
+    // or null (mig 860); and a point-in-(Multi)Polygon test (lon, lat).
+    static nlohmann::json cityOutline(int confId);
+    static bool inside(const nlohmann::json& geom, double lon, double lat);
+
     // One source.  Returns {source_id, ok, teams, note}.  Never throws.
     static nlohmann::json refreshSource(int sourceId);
 };

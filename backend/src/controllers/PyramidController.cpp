@@ -1,5 +1,6 @@
 #include "PyramidController.h"
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 
@@ -207,10 +208,41 @@ Response PyramidController::handleTerritory(const Request& request) {
                                                 {"population", r["population"].as<long long>()}}},
                                 {"geometry", json::parse(str(r, "geometry"), nullptr, false)}});
         }
+        // The main city (mig 860): its outline, its collar counties, and the
+        // conference's APSL teams in three rings — inside the city limits;
+        // in a core or bordering (collar) county; further out.
+        json city = PyramidSync::cityOutline(std::stoi(conf));
+        if (city.is_object()) {
+            auto* db = Database::getInstance();
+            auto ring = db->query(R"SQL(
+                WITH m AS (SELECT core_fips FROM pyramid_main_cities WHERE competition_id = $1::int),
+                     zone AS (SELECT unnest(core_fips) AS fips FROM m
+                              UNION SELECT n.neighbour FROM pyramid_county_neighbours n, m WHERE n.fips = ANY (m.core_fips))
+                SELECT k.fips, k.geometry::text AS g, k.fips = ANY ((SELECT core_fips FROM m)) AS core
+                  FROM zone JOIN pyramid_counties k ON k.fips = zone.fips)SQL", {conf});
+            std::vector<json> zoneGeoms;
+            json collar = json::array();
+            for (const auto& r : ring) {
+                zoneGeoms.push_back(json::parse(str(r, "g"), nullptr, false));
+                if (!r["core"].as<bool>()) collar.push_back(str(r, "fips"));
+            }
+            json inCity = json::array(), inCollar = json::array(), further = json::array();
+            for (const auto& t : db->query(
+                     "SELECT t.name, tc.lat, tc.lon FROM pyramid_team_conference tc JOIN pyramid_teams t ON t.id = tc.team_id "
+                     " WHERE tc.conference_id = $1::int ORDER BY t.name", {conf})) {
+                const double lat = t["lat"].as<double>(), lon = t["lon"].as<double>();
+                if (!city["geometry"].is_null() && PyramidSync::inside(city["geometry"], lon, lat)) inCity.push_back(str(t, "name"));
+                else if (std::any_of(zoneGeoms.begin(), zoneGeoms.end(), [&](const json& g) { return PyramidSync::inside(g, lon, lat); })) inCollar.push_back(str(t, "name"));
+                else further.push_back(str(t, "name"));
+            }
+            city["collar_fips"] = collar;
+            city["rings"] = {{"city", inCity}, {"collar", inCollar}, {"further", further}};
+        }
         return jsonOut(HttpStatus::OK, {{"conference_id", std::stoi(conf)}, {"population", population},
                                         {"counties", features.size()},
                                         {"geojson", {{"type", "FeatureCollection"}, {"features", features}}},
-                                        {"travel", PyramidSync::conferenceTravel(std::stoi(conf))}});
+                                        {"travel", PyramidSync::conferenceTravel(std::stoi(conf))},
+                                        {"city", city}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] territory: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());

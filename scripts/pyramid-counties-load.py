@@ -19,6 +19,8 @@ Writes SQL for psql on stdout (upsert by FIPS):
     | sudo podman exec -i footballhome_db psql -U footballhome_user -d footballhome -v ON_ERROR_STOP=1 -1
 
 A county's centre = the area-weighted centroid of its largest polygon.
+Neighbours (mig 860): two counties whose outlines share a border vertex
+→ pyramid_county_neighbours (a main city's collar counties).
 """
 import csv
 import json
@@ -73,6 +75,7 @@ def main(geo_path, pop_path, pop2020_path=None):
     with open(geo_path, encoding='utf-8') as f:
         features = json.load(f)['features']
     n = 0
+    vertex_owners = {}
     for ft in features:
         p = ft['properties']
         fips = p['STATE'] + p['COUNTY']
@@ -81,12 +84,27 @@ def main(geo_path, pop_path, pop2020_path=None):
             continue
         name, people = pop.get(fips) or older.get(fips) or (f"{p['NAME']} {p.get('LSAD', '')}".strip(), 0)
         lat, lon = centre(ft['geometry'])
+        g = ft['geometry']
+        for poly in (g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]):
+            for ring in poly:
+                for x, y in ring:
+                    vertex_owners.setdefault((round(x, 4), round(y, 4)), set()).add(fips)
         print('INSERT INTO pyramid_counties (fips, name, state, population, lat, lon, geometry) VALUES '
               f"({q(fips)}, {q(name)}, {q(st)}, {people}, {lat:.7f}, {lon:.7f}, {q(json.dumps(ft['geometry'], separators=(',', ':')))}::jsonb) "
               'ON CONFLICT (fips) DO UPDATE SET name = EXCLUDED.name, state = EXCLUDED.state, population = EXCLUDED.population, '
               'lat = EXCLUDED.lat, lon = EXCLUDED.lon, geometry = EXCLUDED.geometry;')
         n += 1
-    print(f'-- {n} counties', file=sys.stderr)
+    pairs = set()
+    for owners in vertex_owners.values():
+        if len(owners) > 1:
+            for a in owners:
+                for b in owners:
+                    if a != b:
+                        pairs.add((a, b))
+    print('DELETE FROM pyramid_county_neighbours;')
+    for a, b in sorted(pairs):
+        print(f'INSERT INTO pyramid_county_neighbours (fips, neighbour) VALUES ({q(a)}, {q(b)}) ON CONFLICT DO NOTHING;')
+    print(f'-- {n} counties, {len(pairs) // 2} borders', file=sys.stderr)
 
 
 if __name__ == '__main__':

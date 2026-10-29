@@ -32,8 +32,11 @@
 //              with only its OUTER border outlined; the HUD gives the
 //              population inside, and Sunday (no traffic) drive times: the
 //              two furthest clubs, the shortest trip — the derby (mig
-//              857) — the average if all play all, and the median (mig 854).  The
-// conference pills choose which conferences' clubs are on the map.
+//              857) — the average if all play all, and the median (mig 854); and
+//              the main city (mig 860) — its city limits outlined, its collar
+//              counties dashed, the APSL teams counted in the city / the
+//              collar / further out.
+// The conference pills choose which conferences' clubs are on the map.
 //
 // Nothing hides anything (owner 2026-10-29: "use arrows to bubble as its
 // covering each other up. so it needs to auto adjust so its all visible"):
@@ -359,6 +362,18 @@ class PyramidMapView {
     }
     const edges = [...seen.values()].filter((e) => e.n === 1).map((e) => [[e.a[1], e.a[0]], [e.b[1], e.b[0]]]);
     L.polyline(edges, { renderer: this.terrRenderer, interactive: false, color: '#facc15', weight: 2, opacity: 0.95 }).addTo(this.terrLayer);
+    // The main city (mig 860): its city-limits outline, and its collar
+    // counties dashed.
+    if (t.city) {
+      const collar = new Set(t.city.collar_fips || []);
+      const collarFeatures = (t.geojson.features || []).filter((f) => collar.has(f.properties.fips));
+      if (collarFeatures.length)
+        L.geoJSON({ type: 'FeatureCollection', features: collarFeatures }, { renderer: this.terrRenderer, interactive: false,
+          style: { color: '#7dd3fc', weight: 1.5, dashArray: '5 5', fill: false, opacity: 0.8 } }).addTo(this.terrLayer);
+      if (t.city.geometry)
+        L.geoJSON(t.city.geometry, { renderer: this.terrRenderer, interactive: false,
+          style: { color: '#22d3ee', weight: 2.5, fillColor: '#22d3ee', fillOpacity: 0.1 } }).addTo(this.terrLayer);
+    }
     if (stats) {
       const esc = (x) => this._esc(x);
       const time = (m) => { const h = Math.floor(m / 60), r = Math.round(m % 60); return h ? `${h}h ${String(r).padStart(2, '0')}m` : `${r}m`; };
@@ -371,6 +386,11 @@ class PyramidMapView {
           + `<br>${esc(this._copy('map_avg', { time: time(t.travel.avg_minutes), pairs: t.travel.pairs }))}`
           + (t.travel.median_minutes != null ? `<br>${esc(this._copy('map_median', { time: time(t.travel.median_minutes) }))}` : '');
       } else html += `<br>${esc(this._copy('map_no_travel'))}`;
+      if (t.city && t.city.rings) {
+        const r = t.city.rings;
+        const tip = [`${t.city.name}: ${r.city.join(', ')}`, `collar: ${r.collar.join(', ')}`, `further: ${r.further.join(', ')}`].join('\n');
+        html += `<br><span title="${esc(tip)}" style="color:#67e8f9;">${esc(this._copy('map_rings', { city: t.city.name, city_n: r.city.length, collar_n: r.collar.length, far_n: r.further.length }))}</span>`;
+      }
       stats.innerHTML = html;
       this._relayout();
     }

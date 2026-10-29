@@ -34,7 +34,8 @@
 //
 //   GET /api/pyramid/territory?conf=<id> → { population, counties, geojson,
 //     travel: {max_minutes, from, to, avg_minutes, median_minutes, min_minutes, min_from,
-//              min_to, pairs} | null }  (migs 852, 854, 857)
+//              min_to, pairs} | null,
+//     city: {name, geometry, collar_fips, rings: {city, collar, further}} | null }  (mig 860)
 //   GET /api/pyramid/club?id= → the club card: {id, name, founded, logo_url,
 //     teams: [{league, division, pos, record, zone, venue, staff, roster}]}  (mig 856)
 //   POST /api/pyramid/club {club_id, founded} — club admins

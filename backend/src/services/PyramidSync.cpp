@@ -512,9 +512,22 @@ void PyramidSync::geocodePending() {
                 auto geo = CarpoolRouting::geocode(addr);
                 std::this_thread::sleep_for(std::chrono::milliseconds(1100));
                 std::string note = "nominatim";
-                // A venue Nominatim can't place as written (a park name, a
-                // number range) → its town + zip: drop the street part.
                 const size_t comma = addr.find(',');
+                // A street Nominatim can't place as written ("2926-2968 South
+                // 10th St.", "5847R Elmwood Ave") → the same street with no
+                // house number: a few blocks off at worst, never the middle
+                // of town (two clubs stacked on a town centre read as a 0m
+                // derby).
+                if (!geo && comma != std::string::npos) {
+                    const std::string street = addr.substr(0, comma);
+                    const size_t sp = street.find(' ');
+                    if (sp != std::string::npos && std::isdigit((unsigned char)street[0])) {
+                        geo = CarpoolRouting::geocode(street.substr(sp + 1) + addr.substr(comma));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+                        note = "nominatim (street)";
+                    }
+                }
+                // Still nothing (a park name, a bad street) → its town + zip.
                 if (!geo && comma != std::string::npos) {
                     geo = CarpoolRouting::geocode(addr.substr(comma + 1));
                     std::this_thread::sleep_for(std::chrono::milliseconds(1100));
@@ -754,6 +767,61 @@ void PyramidSync::teamPeople(int teamId) {
                   {std::to_string(teamId), people.dump()});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] team people " << teamId << ": " << e.what() << std::endl;
+    }
+}
+
+// Is (x = lon, y = lat) inside a GeoJSON Polygon / MultiPolygon? Even-odd
+// ray casting over every ring, so holes come out right.
+bool PyramidSync::inside(const json& geom, double x, double y) {
+    if (!geom.is_object() || !geom.contains("coordinates")) return false;
+    const std::string type = geom.value("type", "");
+    std::vector<const json*> polys;
+    if (type == "Polygon") polys.push_back(&geom["coordinates"]);
+    else if (type == "MultiPolygon") for (const auto& p : geom["coordinates"]) polys.push_back(&p);
+    for (const json* poly : polys) {
+        bool in = false;
+        for (const auto& ring : *poly) {
+            const size_t n = ring.size();
+            for (size_t i = 0, j = n - 1; i < n; j = i++) {
+                const double xi = ring[i][0].get<double>(), yi = ring[i][1].get<double>();
+                const double xj = ring[j][0].get<double>(), yj = ring[j][1].get<double>();
+                if (((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) in = !in;
+            }
+        }
+        if (in) return true;
+    }
+    return false;
+}
+
+// A conference's main city outline (mig 860): OpenStreetMap's boundary for
+// pyramid_main_cities.query, fetched once (simplified) and kept; a miss is
+// noted and retried a week later.
+json PyramidSync::cityOutline(int confId) {
+    auto* db = Database::getInstance();
+    try {
+        auto r = db->query("SELECT name, query, geometry::text AS g, fetched_at IS NULL OR (geometry IS NULL AND fetched_at < now() - interval '7 days') AS due "
+                           "  FROM pyramid_main_cities WHERE competition_id = $1::int", {std::to_string(confId)});
+        if (r.empty()) return nullptr;
+        if (r[0]["due"].as<bool>()) {
+            HttpClient http;
+            http.setTotalTimeoutSec(20);
+            auto resp = http.get("https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=us&polygon_geojson=1&polygon_threshold=0.0005&q="
+                                     + HttpClient::urlEncode(r[0]["query"].c_str()),
+                                 {{"User-Agent", "FootballHome/1.0 (footballhome.org)"}, {"Accept", "application/json"}});
+            json body = resp.ok() ? json::parse(resp.body, nullptr, false) : json(json::value_t::discarded);
+            json geom;
+            if (body.is_array())
+                for (const auto& hit : body)
+                    if (hit.contains("geojson") && (hit["geojson"].value("type", "") == "Polygon" || hit["geojson"].value("type", "") == "MultiPolygon")) { geom = hit["geojson"]; break; }
+            db->query("UPDATE pyramid_main_cities SET geometry = NULLIF($2, '')::jsonb, fetched_at = now(), fetch_note = $3 WHERE competition_id = $1::int",
+                      {std::to_string(confId), geom.is_null() ? "" : geom.dump(), geom.is_null() ? "no boundary found (HTTP " + std::to_string(resp.status) + ")" : "openstreetmap"});
+            r = db->query("SELECT name, query, geometry::text AS g FROM pyramid_main_cities WHERE competition_id = $1::int", {std::to_string(confId)});
+        }
+        if (r[0]["g"].is_null()) return {{"name", r[0]["name"].c_str()}, {"geometry", nullptr}};
+        return {{"name", r[0]["name"].c_str()}, {"geometry", json::parse(r[0]["g"].c_str(), nullptr, false)}};
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] city " << confId << ": " << e.what() << std::endl;
+        return nullptr;
     }
 }
 

@@ -217,6 +217,29 @@ Views only draw it:
   colour fixed by conference order; former conferences fold into one grey
   series), a numbers table, then other leagues' seasons (Cosmo).
 
+### Main cities (mig 860)
+
+Owner: "all of the conferences have a city as its center of mass … border
+that city and show how many teams … in the city proper … collar counties
+… further removed." `pyramid_main_cities` (per conference: name, the
+OpenStreetMap query for its city-limits boundary — fetched once into
+`geometry` by `PyramidSync::cityOutline` — and `core_fips`, the county or
+counties it sits in: Boston/Suffolk, Hartford, Philadelphia, New York/5
+boroughs, Washington DC, Detroit/Wayne, Atlanta/Fulton+DeKalb, Dallas).
+Collar = counties bordering a core county (`pyramid_county_neighbours`, from
+the county shapes' shared vertices — the loader). `GET
+/api/pyramid/territory` adds `city: {name, geometry, collar_fips, rings}`:
+the conference's APSL teams inside the city limits / in a core or collar
+county / further out (point-in-polygon, `PyramidSync::inside`). The map
+outlines the city (cyan) and dashes the collar; the HUD line reads e.g.
+"Philadelphia: 4 in the city · 7 in the collar counties · 5 further out"
+(hover lists them).
+
+Geocoding a ground: full address → the street without its house number
+("2926-2968 South 10th St." fails as written) → town + zip. Town-level
+points stack clubs on a town centre (a false 0m derby), so the street step
+matters.
+
 ### The club card (mig 856)
 
 Owner: "clubs need to be selectable on map or standings etc. and hud should
