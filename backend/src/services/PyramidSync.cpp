@@ -209,12 +209,18 @@ public:
             if (did == "0" || !divs.contains(did)) continue;
             const std::string name = t.value("name", "");
             if (name.empty()) continue;
-            std::string club;
+            std::string club, clubLogo;
             if (t.contains("club_id") && t["club_id"].is_number()) {
                 const std::string cid = std::to_string(t["club_id"].get<long long>());
-                if (clubs.contains(cid)) club = clubs[cid].value("name", "");
+                if (clubs.contains(cid)) {
+                    club = clubs[cid].value("name", "");
+                    // The club's crest (mig 856): a media path on TeamPass's CDN.
+                    const json& lg = clubs[cid].contains("logo") ? clubs[cid]["logo"] : json();
+                    if (lg.is_string() && !lg.get<std::string>().empty()) clubLogo = "https://cdn.teampass.com/mediacontent" + lg.get<std::string>();
+                }
             }
             json row = {{"ext_id", tid}, {"name", name}, {"club", club}};
+            if (!clubLogo.empty()) row["club_logo"] = clubLogo;
             venueOf(tid, row);
             std::vector<int> sv;
             auto it = byTeam.find(tid);
@@ -661,6 +667,84 @@ json PyramidSync::conferenceTravel(int confId) {
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] travel " << confId << ": " << e.what() << std::endl;
         return nullptr;
+    }
+}
+
+// A team's staff + active roster (mig 856), read from its page on the
+// league's site (pyramid_sources.team_page, '{id}' = the team's feed id)
+// when it is more than a day old — only when its club card opens.  TeamPass
+// pages: staff = li.coach-row ("<b>Manager:</b> Name"); roster = the
+// TableRoster rows (name, "added: date", goals, assists).  A failed read
+// keeps what was there.
+void PyramidSync::teamPeople(int teamId) {
+    auto* db = Database::getInstance();
+    try {
+        auto r = db->query(
+            "SELECT t.external_id, s.team_page FROM pyramid_teams t "
+            "  JOIN pyramid_divisions d ON d.id = t.division_id JOIN pyramid_sources s ON s.id = d.source_id "
+            " WHERE t.id = $1::int AND s.team_page IS NOT NULL "
+            "   AND (t.people_fetched_at IS NULL OR t.people_fetched_at < now() - interval '24 hours')",
+            {std::to_string(teamId)});
+        if (r.empty()) return;
+        std::string url = r[0]["team_page"].c_str();
+        const std::string ext = r[0]["external_id"].c_str();
+        if (ext.find_first_not_of("0123456789") != std::string::npos) return;   // only a numeric team id
+        url.replace(url.find("{id}"), 4, ext);
+        HttpClient http;
+        http.setTotalTimeoutSec(30);
+        http.setProxy(proxyUrl());
+        auto resp = http.get(url, {{"User-Agent", "Mozilla/5.0"}});
+        if (!resp.ok()) { std::cerr << "[pyramid] team page " << teamId << ": HTTP " << resp.status << std::endl; return; }
+        const std::string& s = resp.body;
+        json people = json::array();
+        // Staff.
+        int sort = 0;
+        for (size_t p = 0; (p = s.find("coach-row", p)) != std::string::npos;) {
+            const size_t end = s.find("</li>", p);
+            if (end == std::string::npos) break;
+            const std::string li = s.substr(p, end - p);
+            p = end;
+            const size_t b = li.find("<b>"), be = li.find("</b>");
+            if (b == std::string::npos || be == std::string::npos) continue;
+            std::string role = stripTags(li.substr(b + 3, be - b - 3));
+            if (!role.empty() && role.back() == ':') role.pop_back();
+            const std::string name = stripTags(li.substr(be + 4));
+            if (!name.empty()) people.push_back({{"kind", "staff"}, {"sort", ++sort}, {"name", name}, {"role", role}});
+        }
+        // Roster.
+        sort = 0;
+        const size_t tbl = s.find("TableRoster");
+        const size_t tblEnd = tbl == std::string::npos ? std::string::npos : s.find("</table>", tbl);
+        if (tbl != std::string::npos && tblEnd != std::string::npos) {
+            const std::string table = s.substr(tbl, tblEnd - tbl);
+            for (size_t p = 0; (p = table.find("<tr class=\"TableRow", p)) != std::string::npos;) {
+                const size_t end = table.find("</tr>", p);
+                if (end == std::string::npos) break;
+                const auto cells = cellsOf(table.substr(p, end - p));
+                p = end;
+                if (cells.size() < 2) continue;
+                std::string text = stripTags(cells[1]), added;
+                const size_t a = text.find("added:");
+                if (a != std::string::npos) { added = squeeze(text.substr(a + 6)); text = squeeze(text.substr(0, a)); }
+                if (text.empty()) continue;
+                json row = {{"kind", "player"}, {"sort", ++sort}, {"name", text}, {"added", added}};
+                if (cells.size() > 2 && !stripTags(cells[2]).empty()) row["goals"] = toInt(stripTags(cells[2]));
+                if (cells.size() > 3 && !stripTags(cells[3]).empty()) row["assists"] = toInt(stripTags(cells[3]));
+                people.push_back(row);
+            }
+        }
+        if (people.empty()) { db->query("UPDATE pyramid_teams SET people_fetched_at = now() WHERE id = $1::int", {std::to_string(teamId)}); return; }
+        db->query(R"SQL(
+            WITH del AS (DELETE FROM pyramid_team_people WHERE team_id = $1::int RETURNING 1),
+            ins AS (INSERT INTO pyramid_team_people (team_id, kind, sort, name, role, goals, assists, added_on)
+                    SELECT $1::int, x.kind, x.sort, x.name, x.role, x.goals, x.assists, x.added
+                      FROM jsonb_to_recordset($2::jsonb) AS x(kind text, sort int, name text, role text, goals int, assists int, added text)
+                     WHERE (SELECT count(*) FROM del) >= 0
+                    RETURNING 1)
+            UPDATE pyramid_teams SET people_fetched_at = now() WHERE id = $1::int AND (SELECT count(*) FROM ins) >= 0)SQL",
+                  {std::to_string(teamId), people.dump()});
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] team people " << teamId << ": " << e.what() << std::endl;
     }
 }
 

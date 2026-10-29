@@ -55,7 +55,7 @@ constexpr const char* kCompetitionsSql = R"SQL(
 
 constexpr const char* kTablesSql = R"SQL(
     SELECT td.competition_id, td.id AS division_id, td.name AS division, td.counted,
-           tt.id AS team_id, tt.position, tt.name, pc.name AS club,
+           tt.id AS team_id, tt.position, tt.name, pc.name AS club, pc.id AS club_id,
            tt.played, tt.wins, tt.draws, tt.losses,
            tt.goals_for, tt.goals_against, tt.goal_diff, tt.points
       FROM td
@@ -180,6 +180,8 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
     router.get(prefix, [this](const Request& r) { return handleGet(r); });
     router.get(prefix + "/roots", [this](const Request& r) { return handleRoots(r); });
     router.get(prefix + "/territory", [this](const Request& r) { return handleTerritory(r); });
+    router.get(prefix + "/club", [this](const Request& r) { return handleClub(r); });
+    router.post(prefix + "/club", [this](const Request& r) { return handleClubSave(r); });
     router.post(prefix + "/zone-rules", [this](const Request& r) { return handleZoneRules(r); });
 }
 
@@ -211,6 +213,89 @@ Response PyramidController::handleTerritory(const Request& request) {
                                         {"travel", PyramidSync::conferenceTravel(std::stoi(conf))}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] territory: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /api/pyramid/club?id=<pyramid club> (mig 856) — the club card: crest,
+// year established, and per live team its table, place, record, effective
+// zone, home ground, staff and roster (the roster read from the league's
+// team page when a day old — PyramidSync::teamPeople).
+Response PyramidController::handleClub(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    const std::string id = request.getQueryParam("id");
+    if (id.empty() || id.find_first_not_of("0123456789") != std::string::npos) return jsonError(HttpStatus::BAD_REQUEST, "id required");
+    try {
+        auto* db = Database::getInstance();
+        auto c = db->query("SELECT id, name, founded, logo_url FROM pyramid_clubs WHERE id = $1::int", {id});
+        if (c.empty()) return jsonError(HttpStatus::NOT_FOUND, "No such club");
+        auto teams = db->query(R"SQL(
+            SELECT t.id, t.name, t.position, t.played, t.wins, t.draws, t.losses, t.points,
+                   d.name AS division, coalesce(cm.short_name, cm.name) AS league, cm.kind,
+                   v.name AS venue_name, v.address AS venue, s.team_page IS NOT NULL AS has_page,
+                   to_char(t.people_fetched_at AT TIME ZONE 'America/New_York', 'Dy FMMM/FMDD FMHH12:MI AM') AS people_at,
+                   (SELECT z.label FROM pyramid_zones_effective z
+                     WHERE z.division_id = d.id AND t.position BETWEEN z.from_pos AND z.to_pos LIMIT 1) AS zone,
+                   (SELECT k.color FROM pyramid_zones_effective z JOIN pyramid_zone_kinds k ON k.code = z.kind
+                     WHERE z.division_id = d.id AND t.position BETWEEN z.from_pos AND z.to_pos LIMIT 1) AS zone_color
+              FROM pyramid_teams t
+              JOIN pyramid_divisions d ON d.id = t.division_id AND d.removed_at IS NULL
+              JOIN pyramid_competitions cm ON cm.id = d.competition_id
+              JOIN pyramid_sources s ON s.id = d.source_id
+              LEFT JOIN pyramid_venues v ON v.id = t.venue_id
+             WHERE t.pyramid_club_id = $1::int AND t.removed_at IS NULL
+             ORDER BY (cm.kind = 'conference') DESC, cm.sort_order, d.name)SQL", {id});
+        json out = json::array();
+        for (const auto& t : teams) {
+            const int tid = num(t, "id");
+            if (t["has_page"].as<bool>()) PyramidSync::teamPeople(tid);
+            json staff = json::array(), roster = json::array();
+            for (const auto& p : db->query("SELECT kind, name, role, goals, assists, added_on FROM pyramid_team_people "
+                                           " WHERE team_id = $1::int ORDER BY kind, sort", {std::to_string(tid)})) {
+                if (str(p, "kind") == "staff") staff.push_back({{"name", str(p, "name")}, {"role", str(p, "role")}});
+                else roster.push_back({{"name", str(p, "name")}, {"goals", intOrNull(p, "goals")}, {"assists", intOrNull(p, "assists")},
+                                       {"added", strOrNull(p, "added_on")}});
+            }
+            auto at = db->query("SELECT to_char(people_fetched_at AT TIME ZONE 'America/New_York', 'Dy FMMM/FMDD FMHH12:MI AM') AS at "
+                                "  FROM pyramid_teams WHERE id = $1::int", {std::to_string(tid)});
+            out.push_back({{"id", tid}, {"name", str(t, "name")}, {"league", str(t, "league")}, {"division", str(t, "division")},
+                           {"apsl", str(t, "kind") == "conference"}, {"pos", intOrNull(t, "position")},
+                           {"gp", num(t, "played")}, {"w", num(t, "wins")}, {"d", num(t, "draws")}, {"l", num(t, "losses")},
+                           {"pts", num(t, "points")}, {"zone", strOrNull(t, "zone")}, {"zone_color", strOrNull(t, "zone_color")},
+                           {"venue_name", strOrNull(t, "venue_name")}, {"venue", strOrNull(t, "venue")},
+                           {"roster_published", t["has_page"].as<bool>()},
+                           {"people_at", at.empty() ? json(nullptr) : strOrNull(at[0], "at")},
+                           {"staff", staff}, {"roster", roster}});
+        }
+        return jsonOut(HttpStatus::OK, {{"id", num(c[0], "id")}, {"name", str(c[0], "name")},
+                                        {"founded", intOrNull(c[0], "founded")}, {"logo_url", strOrNull(c[0], "logo_url")},
+                                        {"teams", out}});
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] club: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /api/pyramid/club {club_id, founded} — the year established (club
+// admins; null clears it).
+Response PyramidController::handleClubSave(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    if (!requireAdminLevel(request, {"club", "super"})) return jsonError(denialStatus(request), "Club admins only");
+    try {
+        json body = json::parse(request.getBody().empty() ? "{}" : request.getBody(), nullptr, false);
+        if (body.is_discarded() || !body.is_object() || !body.contains("club_id") || !body["club_id"].is_number())
+            return jsonError(HttpStatus::BAD_REQUEST, "club_id required");
+        std::string founded;
+        if (body.contains("founded") && body["founded"].is_number()) {
+            const int y = body["founded"].get<int>();
+            if (y < 1800 || y > 2100) return jsonError(HttpStatus::BAD_REQUEST, "a year between 1800 and 2100");
+            founded = std::to_string(y);
+        }
+        Database::getInstance()->query("UPDATE pyramid_clubs SET founded = NULLIF($2, '')::smallint WHERE id = $1::int",
+                                       {std::to_string(body["club_id"].get<int>()), founded});
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] club save: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
@@ -332,6 +417,7 @@ Response PyramidController::handleGet(const Request& request) {
             }
             divisions[at[div]]["teams"].push_back({
                 {"id", num(r, "team_id")}, {"pos", intOrNull(r, "position")}, {"name", str(r, "name")}, {"club", str(r, "club")},
+                {"club_id", num(r, "club_id")},
                 {"gp", num(r, "played")}, {"w", num(r, "wins")}, {"d", num(r, "draws")}, {"l", num(r, "losses")},
                 {"gf", num(r, "goals_for")}, {"ga", num(r, "goals_against")}, {"gd", num(r, "goal_diff")},
                 {"pts", num(r, "points")}});

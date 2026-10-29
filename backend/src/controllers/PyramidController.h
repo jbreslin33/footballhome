@@ -20,7 +20,7 @@
 //                                [{kind, from, to, until}] = this table's own
 //                                (until = its expiry, mig 836),
 //                              targets: "where its teams go" | null}],
-//                     teams: [{id, pos, name, club, gp, w, d, l, gf, ga, gd, pts}] }],
+//                     teams: [{id, pos, name, club, club_id, gp, w, d, l, gf, ga, gd, pts}] }],
 //       links: [{ lower: division id, upper_division: id | null,
 //                 upper_competition: id | null, promotes, relegates }],
 //       zone_kinds: [{code, label, moves, color}],
@@ -34,6 +34,9 @@
 //
 //   GET /api/pyramid/territory?conf=<id> → { population, counties, geojson,
 //     travel: {max_minutes, from, to, avg_minutes, median_minutes, pairs} | null }  (migs 852, 854)
+//   GET /api/pyramid/club?id= → the club card: {id, name, founded, logo_url,
+//     teams: [{league, division, pos, record, zone, venue, staff, roster}]}  (mig 856)
+//   POST /api/pyramid/club {club_id, founded} — club admins
 //   GET /api/pyramid/roots → { roots: [{slug, name, short_name, logo_url}] }
 //     the picker tile's crest; reads only.
 //   POST /api/pyramid/zone-rules {division_id, direction, mode: default|none|custom,
@@ -52,4 +55,6 @@ private:
     Response handleZoneRules(const Request& request);
     Response handleRoots(const Request& request);
     Response handleTerritory(const Request& request);
+    Response handleClub(const Request& request);
+    Response handleClubSave(const Request& request);
 };

@@ -43,6 +43,9 @@ public:
     // (migs 852, 854).
     static nlohmann::json conferenceTravel(int confId);
 
+    // A team's staff + roster from its league page, when a day old (mig 856).
+    static void teamPeople(int teamId);
+
     // One source.  Returns {source_id, ok, teams, note}.  Never throws.
     static nlohmann::json refreshSource(int sourceId);
 };

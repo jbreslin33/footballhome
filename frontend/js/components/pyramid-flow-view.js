@@ -58,7 +58,7 @@ class PyramidFlowView {
       const tip = z ? (z.targets ? this._copy('moves_to', { zone: z.label, targets: z.targets }) : z.label) : '';
       return `
       <tr class="${z ? 'z' : ''}${(opts.club && t.club === opts.club) || (opts.find && t.name.toLowerCase().includes(opts.find)) ? ' mine' : ''}" data-pos="${t.pos == null ? '' : esc(t.pos)}"${z ? ` style="--zc:${esc(z.color)}" title="${esc(tip)}"` : ''}>
-        <td>${t.pos == null ? '' : esc(t.pos)}</td><td class="tm">${esc(t.name)}</td>
+        <td>${t.pos == null ? '' : esc(t.pos)}</td><td class="tm"${t.club_id ? ` data-club="${t.club_id}" title="${esc(this._copy('card_hint'))}"` : ''}>${esc(t.name)}</td>
         <td>${t.gp}</td>${opts.full ? `<td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf}</td><td>${t.ga}</td>` : ''}<td>${t.gd > 0 ? '+' : ''}${t.gd}</td><td><b>${t.pts}</b></td>
       </tr>`;
     }).join('');

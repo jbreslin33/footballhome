@@ -203,6 +203,23 @@ Views only draw it:
   colour fixed by conference order; former conferences fold into one grey
   series), a numbers table, then other leagues' seasons (Cosmo).
 
+### The club card (mig 856)
+
+Owner: "clubs need to be selectable on map or standings etc. and hud should
+show info. rosters, home field etc … year established etc." One component
+(`js/components/pyramid-club-card.js`) opened from every view: a team's name
+in any table (`data-club` on the name cell — flow chart, presentation, club
+pathway, standings) or a team's dot on the map (the card then sits in the
+map's stage, so it comes along into full screen). `GET /api/pyramid/club?id=`
+→ crest (`pyramid_clubs.logo_url`, from the TeamPass feed's clubs), year
+established (`pyramid_clubs.founded` — no feed has it; ✏️ on the card →
+`POST /api/pyramid/club`, club admins), and per live team its league ·
+table, place, record, effective zone, home ground, staff and roster.
+Staff + roster come from the team's page on the league's site
+(`pyramid_sources.team_page`, TeamPass: APSL, Cosmo, ADASL), read by
+`PyramidSync::teamPeople` only when a card opens and the copy is a day old
+→ `pyramid_team_people`. Leagues without published rosters say so.
+
 ### Seasons (mig 847)
 
 TeamPass feeds serve any past season (`?season=<id>`, listed in

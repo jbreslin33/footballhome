@@ -82,8 +82,7 @@ class PyramidMapView {
       .mp-label { background:#1d4ed8; color:#fff; font-weight:800; font-size:12px; padding:3px 9px; border-radius:999px;
                   border:2px solid #93c5fd; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.5); cursor:pointer; transform:translate(-50%, -50%); display:inline-block; }
       .mp-label.on { background:#facc15; color:#111827; border-color:#fff; }
-      .leaflet-popup-content { font-size:0.82rem; line-height:1.35; }
-      .leaflet-popup-content b { font-size:0.9rem; }`;
+`;
   }
 
   // Leaflet once per page, on first use.
@@ -170,12 +169,9 @@ class PyramidMapView {
           radius: apsl ? 7 : 5, color: p.approx ? '#64748b' : '#0b1220', weight: 1.5, dashArray: p.approx ? '3 3' : null,
           fillColor: color, fillOpacity: p.approx ? 0.35 : 0.9,
         }).addTo(this.map);
-        const pl = model.place(team.id);
-        const where = p.approx ? `<i>${this._esc(this._copy('map_at_league'))}</i>` : this._esc([pl && pl.venue_name, pl && pl.venue].filter(Boolean).join(' · '));
-        const table = `${model.label(model.comp(division.competition_id))} · ${division.name}`;
         m.bindTooltip(this._esc(team.name));
-        m.bindPopup(`<b>${this._esc(this._copy('map_club', { club: team.name }))}</b><br>${where}<br>${this._esc(table)}${team.club && team.club !== team.name ? `<br><i>${this._esc(team.club)}</i>` : ''}`);
-        m.on('click', () => this.select(col.conf.id, false));
+        // A team's dot → its club card, in the map's stage (mig 856).
+        m.on('click', () => this.screen.openClub(team.club_id, this.root.querySelector('.mp-stage')));
         const name = L.marker([p.lat, p.lon], {
           icon: L.divIcon({ className: '', html: `<span class="mp-name">${this._esc(team.name)}</span>`, iconSize: null }),
           interactive: false, keyboard: false, opacity: 0,

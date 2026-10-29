@@ -231,6 +231,9 @@ class PyramidPresentView {
   }
 
   _click(target) {
+    // A team's name → its club card (mig 856), not a zone follow.
+    const club = target.closest('[data-club]');
+    if (club) { this.screen.openClub(Number(club.dataset.club)); return; }
     this.free = true;
     const row = target.closest('tr.z');
     const tbl = target.closest('[data-div]');

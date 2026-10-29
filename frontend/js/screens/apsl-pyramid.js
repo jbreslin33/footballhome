@@ -17,6 +17,7 @@ class ApslPyramidScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.data = null; this.model = null; this.err = ''; this.loading = false;
+    this.clubCard = new PyramidClubCard(this);   // mig 856
     this.on = null;              // Set of conference ids shown; null = all
     // View pills (owner 2026-10-29: "flowchart versions (this one), then one
     // for map of usa, etc. even if they are not implemented just put them
@@ -60,6 +61,7 @@ class ApslPyramidScreen extends Screen {
         ${PyramidPathView.css()}
         ${PyramidTablesView.css()}
         ${PyramidGrowthView.css()}
+        ${PyramidClubCard.css()}
         .fc-none { text-align:center; font-size:0.8rem; opacity:0.55; margin-top:14px; }
         .ap-warn { color:#fca5a5; }
         .ap-editor-bg { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; }
@@ -88,6 +90,9 @@ class ApslPyramidScreen extends Screen {
     div.querySelector('#ap-back').addEventListener('click', () => this.navigation.goBack());
     div.querySelector('#ap-refresh').addEventListener('click', () => this.load(true));
     div.querySelector('#ap-body').addEventListener('click', (e) => {
+      // A team's name anywhere → its club card (mig 856).
+      const club = e.target.closest('[data-club]');
+      if (club && !e.target.closest('.pz-vp')) { this.openClub(Number(club.dataset.club)); return; }
       const vp = e.target.closest('[data-view]');
       if (vp) {
         const v = this.views.find((x) => x.code === vp.dataset.view);
@@ -123,7 +128,11 @@ class ApslPyramidScreen extends Screen {
     this.load(false);
   }
 
-  onExit() { window.removeEventListener('resize', this._onResize); this._viewCall('unmount'); }
+  onExit() { window.removeEventListener('resize', this._onResize); this._viewCall('unmount'); this.clubCard.close(); }
+
+  // The club card (mig 856): host = an element to sit in (the map's stage),
+  // else it floats over the screen.
+  openClub(clubId, host) { if (clubId) this.clubCard.open(clubId, host); }
 
   _impl() { return (this.views.find((v) => v.code === this.view) || this.views[0]).impl; }
   _shown() { return this.model ? this.model.conferences().filter((c) => this._isOn(c.id)) : []; }
