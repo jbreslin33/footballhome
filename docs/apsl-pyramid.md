@@ -12,8 +12,15 @@ apslsoccer.com/APSL/Affilates/ (tier 2). `parent_id` = what a node feeds.
 The affiliates page does not say which conference each feeds; the parent was
 read off the affiliate's region (CASA PA/NJ → Delaware River, Cosmo + LISFL →
 Metropolitan, CASA MA → Mayflower, MMSL → Mid-Atlantic, MIPSL → Mitten,
-ADASL → Terminus). Constitution, Trinity and Mid-Atlantic's Old Dominion side
-list no affiliate. States: `pyramid_competition_states`.
+ADASL → Terminus). Since mig 864 it is read off where the teams play
+(owner: "use home field to infer what conference"): `pyramid_feeder_conference_votes`
+— each feeder team at a located ground votes for the conference of the
+nearest APSL team's ground; a feeder votes only when half its teams are
+located. Parent = the top vote (not the four CASA Select regions, which the
+owner named as Delaware River feeders); the top table also links into any
+conference a fifth of its teams are nearest (Central Jersey Liga 1 →
+Metropolitan, 4 of 19). Constitution, Trinity and Mid-Atlantic's Old
+Dominion side list no affiliate. States: `pyramid_competition_states`.
 
 ## Live tables
 
