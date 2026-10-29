@@ -696,7 +696,6 @@ class RosterScreenBase extends Screen {
 
     const nameRow = (i, name, note, red = false) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
         padding:3px 6px; border-radius:4px; ${red ? 'background:rgba(239,68,68,0.16); border:1px solid #ef4444;' : 'background:rgba(34,197,94,0.06);'}">
-        <span style="opacity:0.55; min-width:1.6em; text-align:right;">${i + 1}</span>
         <span style="font-weight:700;">${esc(name)}</span>
         <span style="font-size:0.65rem; color:${red ? '#fca5a5' : '#f59e0b'}; font-weight:${red ? 800 : 400};">${esc(note)}</span></div>`;
     const nameOf = (p) => p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim();
@@ -820,7 +819,7 @@ class RosterScreenBase extends Screen {
       const colors = over > 0 ? RED : BLUE;
       const overNote = over > 0 ? (copy('board_projected_over', { n: over, max: maxRoster }) || `${over} over the ${maxRoster} max`) : '';
       const kept = listRows.filter(r => !outNums.has(r.n));
-      const body = kept.map((r, i) => nameRow(i, r.name, `#${r.n}`)).join('')
+      const body = kept.map((r, i) => nameRow(i, r.name, '')).join('')
         + ordered(adds).map((p, i) => nameRow(kept.length + i, nameOf(p),
             copy('board_projected_add', { step: stepName(p.rosterStatus) }) || `+ ${stepName(p.rosterStatus)}`)).join('');
       return `<details><summary style="list-style:none; cursor:pointer;">${head(copy('board_projected_h') || 'PROJECTED ROSTER', projected, ...colors, overNote)}</summary>${body}</details>`;
@@ -1613,26 +1612,10 @@ class RosterScreenBase extends Screen {
     borderColor = RosterScreenBase.NEUTRAL_CARD_BORDER,
     canMove = false,
   }) {
-    const posChip = position
-      ? `<span style="font-size:0.72rem; line-height:1.2; color:#fff; font-weight:800; letter-spacing:0.02em; white-space:nowrap;">#${position}</span>`
-      : '';
-    // Slot picker (2026-08-21) — alternative to drag-reorder ("drag sucks,
-    // it fails if you don't drag it just right" — user). Picking a number
-    // jumps this card to that slot; the reorder POST (same endpoint drag
-    // already uses) rewrites everyone else's rank around it. Real,
-    // coached columns only — same gate as drag (canMove + col.teamId) —
-    // and only worth showing once there's more than one card to reorder
-    // against.
+    // No #N on the card (owner 2026-10-29: "the numbers in teams page need
+    // to go … they serve no purpose now and its confusing") — the Roster
+    // pill orders by the league list; Rank mode still reorders by drag.
     const rankEditable = this.sortOrder === 'rank';
-    const posControl = (canMove && col && col.teamId && position && totalInColumn > 1)
-      ? `<select class="roster-position-select" data-user-id="${player.leagueAppsUserId}" data-team-id="${col.teamId}" data-person-id="${player.personId || ''}" data-rank="${position}"
-                 title="Move ${this.escape(player.firstName || 'player')} to a specific slot — everyone else shifts to make room"
-                 style="font-size:0.68rem; font-weight:800; letter-spacing:0.02em; padding:0 1px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff;">
-           ${Array.from({ length: totalInColumn }, (_, i) => i + 1)
-             .map(n => `<option value="${n}" ${n === position ? 'selected' : ''}>#${n}</option>`)
-             .join('')}
-         </select>`
-      : posChip;
     // US-Soccer age group (U10, U23, ...) — every roster (youth AND adult,
     // ahead of future U19/U23/Over-30 division work on the mens/womens
     // side).
@@ -1756,7 +1739,6 @@ class RosterScreenBase extends Screen {
     return `
       <div id="${cardId}" class="${cardClass}" data-roster-card ${dragAttrs} ${laUidAttr}
            style="${cardBaseStyle} display:flex; flex-direction:row; align-items:center; gap:4px; flex-wrap:${isScroll ? 'nowrap' : 'wrap'}; row-gap:1px;">
-        ${posControl}
         <strong style="font-size:0.72rem; line-height:1.2; ${nameStyle}">${fullName}</strong>
         ${player.nameChipHtml || ''}
         ${ageChip}
