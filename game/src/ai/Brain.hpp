@@ -255,6 +255,11 @@ public:
     bool passSafe(const core::World& world, core::SlotIndex passer, core::SlotIndex receiver,
                   const math::Vec2& from, const math::Vec2& to, math::Fixed64 speed,
                   math::Fixed64 reach) const;
+    // ...the loft he's about to hit, carry_m to `at` (G4.86b).
+    bool loftSafe(const core::World& world, core::SlotIndex passer, const math::Vec2& from,
+                  const math::Vec2& at, std::uint8_t carry_m, math::Fixed64 reach) const;
+    bool raceSafe(const core::World& world, core::SlotIndex passer, const math::Vec3& pos,
+                  const math::Vec3& vel, math::Fixed64 reach) const;
 
     // A slot's traditional position number (2 RB … 9 striker; 0 = unknown).
     int numberOf(core::SlotIndex slot) const {

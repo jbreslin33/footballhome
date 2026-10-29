@@ -396,9 +396,30 @@ bool Brain::passSafe(const World& world, SlotIndex passer, SlotIndex receiver,
     const Vec2 ab{to.x - from.x, to.y - from.y};
     const Fixed64 len = math::length(ab);
     if (len.raw == 0) return true;
+    return raceSafe(world, passer, Vec3{from.x, from.y, Fixed64::zero()},
+                    Vec3{ab.x / len * speed, ab.y / len * speed, Fixed64::zero()}, reach);
+}
+
+// A loft he's about to hit (G4.86b): the same race on the ball as the World
+// launches it (core::loftLaunchSpeed — up at the launch ratio, no drag),
+// out of reach until it comes down. "It flies over the block" was never
+// read: read balls in behind on the ground were 5% theirs at the kick,
+// lofted ones 30%.
+bool Brain::loftSafe(const World& world, SlotIndex passer, const Vec2& from, const Vec2& at,
+                     std::uint8_t carry_m, Fixed64 reach) const {
+    const Vec2 ab{at.x - from.x, at.y - from.y};
+    const Fixed64 len = math::length(ab);
+    if (len.raw == 0) return true;
+    const Fixed64 v = core::loftLaunchSpeed(Fixed64::fromInt(carry_m));
+    return raceSafe(world, passer, Vec3{from.x, from.y, Fixed64::zero()},
+                    Vec3{ab.x / len * v, ab.y / len * v, v * core::kLoftLaunchRatio}, reach);
+}
+
+bool Brain::raceSafe(const World& world, SlotIndex passer, const Vec3& pos, const Vec3& vel,
+                     Fixed64 reach) const {
     RaceBall rb;
-    rb.pos = Vec3{from.x, from.y, Fixed64::zero()};
-    rb.vel = Vec3{ab.x / len * speed, ab.y / len * speed, Fixed64::zero()};
+    rb.pos = pos;
+    rb.vel = vel;
     rb.kicker = passer;
     rb.lockout = core::kKickerLockoutTicks;
     rb.ours = setup_.team_of_slot[passer];
@@ -1980,7 +2001,11 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         };
         auto safe = [&](SlotIndex recv, const Vec2& a, const Vec2& b,
                         Fixed64 dsq, bool lofted) {
-            if (!reads || lofted) return true;
+            if (!reads) return true;
+            if (lofted) {   // G4.86b: the loft he'll hit, dropped where loftTo drops it
+                const Loft lf = loftTo(world.player(recv), me.pos, rangeFor(lv, book_.direct_ball.maxRange()));
+                return loftSafe(world, slot, a, lf.at, lf.carry_m, safe_reach);
+            }
             const Fixed64 v = core::weightedPassSpeed(math::fx_sqrt(dsq));   // G4.81: as he'll strike it
             return passSafe(world, slot, recv, a, b, v, safe_reach);
         };

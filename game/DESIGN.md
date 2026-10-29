@@ -3193,16 +3193,25 @@ whack a mole".
   `since` 0, his own lockout, live offside flags off, `opp_margin` = his
   caution − the control radius, stop at the first man). Safe = ours first,
   ties to them. flightRead is the same race on the ball in the air, cached.
-- **What's left is what he saw:** read balls in behind are still 24%
-  theirs — he decides on the world as he perceives it (perception delay,
-  G4.66 vision: a man behind him is where he last looked). That is
-  scanning (awareness techniques scan-pre-reception / scan-on-ball), the
-  next mole, not this slice.
+- **Not what he saw — the loft (G4.86b):** read balls in behind were still
+  24% theirs. Scanning was the guess; measured, their man was IN the
+  passer's view 89% of the time. Split by the kick: read ground balls 5%
+  theirs, read LOFTS 30% — a loft was never raced ("it flies over the
+  block"). Now `Brain::loftSafe` races the loft he'll hit (loftTo's drop,
+  `core::loftLaunchSpeed` — one formula for the World that strikes it and
+  the Brain that reads it): out of reach until it comes down, then the same
+  race. Read balls in behind 24% → 8% theirs (lofts 30 → 6%); balls in
+  behind theirs at the kick 29 → 18 a team a match. passSafe / loftSafe →
+  `raceSafe`. Harness: read balls in behind by ground / lofted, their man
+  in the passer's view, his look age.
 
-20 matches LH v Ukies, G4.85 → G4.86 (pro): completion 77 → 76% (79), spells
-497 → 532 (121), interceptions 37 / 61 → 49 / 66 (7.2), shots 43 / 40 → 44 /
-42 (12.9), goals 14.4 → 12.8 (2.5); balls in behind theirs at the kick 30%
-→ 28%.
+20 matches LH v Ukies, G4.85 → G4.86 → G4.86b (pro): completion 77 → 76 →
+76% (79), spells 497 → 532 → 528 (121), interceptions 37 / 61 → 49 / 66 → 47
+/ 67 (7.2), shots 43 / 40 → 44 / 42 → 45 / 42 (12.9), goals 14.4 → 12.8 →
+11.8 (2.5). Next moles: unread passes (35% of balls in behind theirs —
+the safe-pass roll, a lapse), "hit it long" lapses 46% theirs (21 a match),
+and a loft lands at its launch speed (no drag: a 30 m ball arrives at 17
+m/s, over every control speed) — ball physics.
 
 ### v1 explicit non-goals (do not build before G4 closes)
 

@@ -597,6 +597,7 @@ int main(int argc, char** argv) {
     // before the spot, at it (±3 m), or after it ran on.
     long ib_n = 0, ib_err[4] = {}, ib_where[3] = {}, ib_all_read[2] = {}, ib_theirs_read[2] = {};
     bool kick_read = false;
+    long ib_seen[2] = {}, ib_age[4] = {}, ib_loft_all[2] = {}, ib_loft_theirs[2] = {};   // read & theirs: their man in the passer's view at the kick; the passer's look age
     // ...each interception: how far the man moved from where he stood at the
     // kick (< 1 m = he was in the lane), how long the pass had flown, and
     // the pass's kind (by its why).
@@ -627,6 +628,7 @@ int main(int argc, char** argv) {
         std::vector<math::Vec2> kick_at;   // everyone's spot at the last kick
         long kick_tick = 0;
         math::Vec2 kick_aim{}, kick_from{};
+        int kick_passer = -1;
         int kick_pred = -1;
         int pred_us = -1, pred_them = -1, pred_margin = 0, pred_us_why = -1;   // at kick+1 / +10
         // GAME_TRACE_FLIP=n: passes the read gave to us that they cut (match 1).
@@ -970,6 +972,16 @@ int main(int argc, char** argv) {
                 if (pend_why == ai::kWhyCount) {
                     ++ib_all_read[kick_read];
                     if (kick_pred == 1) ++ib_theirs_read[kick_read];
+                    if (kick_read) {
+                        const bool loft = s.world().ball().pos.z.raw > 0 || s.world().ball().vel.z.raw != 0;
+                        ++ib_loft_all[loft];
+                        if (kick_pred == 1) ++ib_loft_theirs[loft];
+                    }
+                    if (kick_pred == 1 && kick_read && them >= 0 && kick_passer >= 0) {
+                        ++ib_seen[s.brain().inView(static_cast<core::SlotIndex>(kick_passer), s.world(), static_cast<core::SlotIndex>(them)) ? 1 : 0];
+                        const int a = s.brain().lookAge(static_cast<core::SlotIndex>(kick_passer), s.world());
+                        ++ib_age[a <= 0 ? 0 : a < 15 ? 1 : a < 45 ? 2 : 3];
+                    }
                 }
                 if (pend_why == ai::kWhyCount && kick_pred == 1 && fr.live) {
                     const double ax = kick_aim.x.toDouble() - kick_from.x.toDouble(), ay = kick_aim.y.toDouble() - kick_from.y.toDouble();
@@ -1076,7 +1088,7 @@ int main(int argc, char** argv) {
                     if (st == spell_team) ++won_at[st][won_x < 35 ? 0 : won_x < 52.5 ? 1 : won_x < 70 ? 2 : 3];
                 }
                 pend_why = o.rung >= 1 && o.rung <= 2 ? ai::kWhyCount : static_cast<int>(o.why);
-                kick_read = o.read; kick_aim = o.target; kick_from = math::Vec2{s.world().ball().pos.x, s.world().ball().pos.y};
+                kick_passer = *before; kick_read = o.read; kick_aim = o.target; kick_from = math::Vec2{s.world().ball().pos.x, s.world().ball().pos.y};
                 kick_at.clear(); kick_tick = k;
                 for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
                     kick_at.push_back(math::Vec2{s.world().player(j).pos.x, s.world().player(j).pos.y});
@@ -1310,6 +1322,15 @@ int main(int argc, char** argv) {
             std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",
                         ib_all_read[1] / nm, 100.0 * ib_theirs_read[1] / std::max(1L, ib_all_read[1]),
                         ib_all_read[0] / nm, 100.0 * ib_theirs_read[0] / std::max(1L, ib_all_read[0]));
+        if (ib_loft_all[0] + ib_loft_all[1])
+            std::printf("  read balls in behind: on the ground %.1f a match, theirs %.0f%% · lofted %.1f, theirs %.0f%%\n",
+                        ib_loft_all[0] / nm, 100.0 * ib_loft_theirs[0] / std::max(1L, ib_loft_all[0]),
+                        ib_loft_all[1] / nm, 100.0 * ib_loft_theirs[1] / std::max(1L, ib_loft_all[1]));
+        if (ib_seen[0] + ib_seen[1]) {
+            const double t = ib_seen[0] + ib_seen[1];
+            std::printf("  read balls in behind theirs: their man IN the passer's view %.0f%% · behind him %.0f%%; passer's last look 0 / <0.5 / 0.5-1.5 / 1.5+ s ago %.0f / %.0f / %.0f / %.0f%%\n",
+                        100 * ib_seen[1] / t, 100 * ib_seen[0] / t, 100 * ib_age[0] / t, 100 * ib_age[1] / t, 100 * ib_age[2] / t, 100 * ib_age[3] / t);
+        }
         if (ib_n)
             std::printf("  balls in behind theirs at the kick: %.1f a match; strike off his aim <2 / 2-5 / 5-10 / 10+ deg %.0f / %.0f / %.0f / %.0f%%; their man meets it before the spot %.0f%% · at it (±3 m) %.0f%% · after it ran on %.0f%%\n",
                         ib_n / nm, 100.0 * ib_err[0] / ib_n, 100.0 * ib_err[1] / ib_n, 100.0 * ib_err[2] / ib_n, 100.0 * ib_err[3] / ib_n,

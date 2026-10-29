@@ -372,8 +372,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 const std::int32_t cap = lv.kick_range_m;
                 const Fixed64 d = Fixed64::fromInt(
                     cap > 0 && carry_m_[kicker] > cap ? cap : carry_m_[kicker]);
-                const Fixed64 v =
-                    math::fx_sqrt(kGravity * d / (kLoftLaunchRatio * 2)) * power_scale;
+                const Fixed64 v = loftLaunchSpeed(d) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, v * kLoftLaunchRatio};
             } else {
                 const Fixed64 v = kLoftKickSpeed * power_scale;
