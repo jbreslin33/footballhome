@@ -89,6 +89,7 @@ class WomensRosterScreen extends RosterScreenBase {
       const coachSel = e.target.closest('[data-coach-status], [data-coach-role]');
 
       if (coachSel) return this.onCoachSelectChange(coachSel);
+      if (this.onTeamStatusChange(e.target)) return;      // Team dropdown + injury dates (2026-10-29)
       if (this.onHealthControlChange(e.target)) return;   // health dropdown + dates (migration 510)
       const posSelect = e.target.closest('.roster-position-select');
       if (posSelect) return this.onPositionSelectChange(posSelect);
@@ -404,7 +405,11 @@ class WomensRosterScreen extends RosterScreenBase {
     // Roster Role + Official Roster Status dropdowns (2026-08-22) — see
     // RosterScreenBase.renderRoleSelect / renderStatusSelect for the doc.
     const roleSelect   = this.renderRoleSelect(p, col, canMove);
-    const statusSelect = this.renderStatusSelect(p, col, canMove);
+    // Roster dropdown (league paperwork) + Team dropdown (his role here:
+    // Plays / 📄 Paper spot / ↔ Call-in / 🩹 injured) — every board, owner
+    // 2026-10-29; see RosterScreenBase.renderTeamStatusSelect.
+    const statusSelect = this.renderStatusSelect(p, col, canMove, { withHealth: false })
+      + this.renderTeamStatusSelect(p, col, canMove);
 
     // 👤 VIEW button — dedicated drill-down into the universal
     // PersonScreen, same shared component every other roster uses.
