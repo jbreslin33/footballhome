@@ -88,6 +88,16 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
             }
         }
         body["officialRosters"] = std::move(official);
+        // League eligibility rules between those lists (mig 820): per team,
+        // {requires: [teamId…], excludes: [teamId…]} — the board checks the
+        // lists above against each other and flags ⚠ INELIGIBLE.
+        nlohmann::json rules = nlohmann::json::object();
+        for (const auto& r : db->query("SELECT team_id, other_team_id, rule FROM roster_team_rules ORDER BY 1, 2")) {
+            const std::string tid = r["team_id"].c_str();
+            if (!rules.contains(tid)) rules[tid] = {{"requires", nlohmann::json::array()}, {"excludes", nlohmann::json::array()}};
+            rules[tid][r["rule"].c_str()].push_back(r["other_team_id"].as<long long>());
+        }
+        body["rosterRules"] = std::move(rules);
     } catch (const std::exception& e) {
         std::cerr << "[" << logTag << "] official names attach failed: " << e.what() << std::endl;
     }

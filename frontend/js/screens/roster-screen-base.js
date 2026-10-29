@@ -701,6 +701,35 @@ class RosterScreenBase extends Screen {
         <span style="font-size:0.65rem; color:${red ? '#fca5a5' : '#f59e0b'}; font-weight:${red ? 800 : 400};">${esc(note)}</span></div>`;
     const nameOf = (p) => p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim();
     const official = this.leagueListFor(col.teamId);
+    // League eligibility rules (mig 820, owner 2026-10-29: "so we can fix it
+    // before league gets on us") — roster_team_rules rows checked against
+    // the league lists we mirror.  requires: only players on ONE OF those
+    // teams' lists (Reserves ← Liga 1); excludes: never also on that list
+    // (APSL ✕ Reserves, flagged on APSL's column).  A rule whose other list
+    // is not mirrored is not checked.
+    const rules = (data.rosterRules || {})[String(col.teamId)] || { requires: [], excludes: [] };
+    const listIds = (tid) => { const l = this.leagueListFor(tid); return l ? new Set(l.personIds.filter(x => x != null).map(Number)) : null; };
+    const teamLabel = (tid) => {
+      const c = (data.columns || []).find(x => Number(x.teamId) === Number(tid));
+      return c ? RosterScreenBase.dropClubName(String(c.label || c.shortLabel || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()) : `Team ${tid}`;
+    };
+    const reqSets = rules.requires.map(listIds).filter(Boolean);
+    const reqSet  = reqSets.length ? new Set(reqSets.flatMap(x => [...x])) : null;
+    const reqNames = rules.requires.map(teamLabel).join(' / ');
+    const exclSets = rules.excludes.map(tid => ({ tid, ids: listIds(tid) })).filter(x => x.ids);
+    const ruleWhy = (pid) => {
+      if (pid == null || pid === '') return '';
+      const id = Number(pid);
+      if (reqSet && !reqSet.has(id)) return copy('board_rule_requires', { teams: reqNames }) || `⚠ not on the ${reqNames} roster`;
+      const ex = exclSets.find(x => x.ids.has(id));
+      if (!ex) return '';
+      const t = teamLabel(ex.tid);
+      return copy('board_rule_excludes', { team: t }) || `⚠ also on the ${t} roster — can't be on both`;
+    };
+    const whyWrap = (why, html) => `<div style="border:2px solid #ef4444; border-radius:9px; padding:2px;">
+        <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.03em; color:#fca5a5; padding:0 4px 2px;">${esc(why)}</div>${html}</div>`;
+    const ruleCard = (p) => { const why = ruleWhy(p.personId); return why ? whyWrap(why, card(p)) : card(p); };
+    const inelRows = [];   // [{ n, html }] — list players breaking a rule
     const lanes = { drop: [], pending_drop: [] };   // [{ p, name, n, note }] — + their official #
     const addLane = (p, n) => { const l = lanes[sectionOf(p)]; if (l && !l.some(d => d.p === p)) l.push({ p, name: nameOf(p), n, note: '' }); };
     // Cut (owner 2026-10-29: "in section at bottom so they still count on
@@ -723,9 +752,13 @@ class RosterScreenBase extends Screen {
           const inLane = !!lanes[sectionOf(p)];   // a drop already in motion wins over the cut flag
           if (inLane) addLane(p, i + 1);
           else if (cut) { addCut(i + 1, card(p)); return ''; }
+          const why = ruleWhy(id);
+          if (why) { inelRows.push({ n: i + 1, html: whyWrap(why, card(p)) }); return ''; }
           return card(p);
         }
         if (cut) { addCut(i + 1, nameRow(i, n, cutFlag[0], true)); return ''; }
+        const why = ruleWhy(id);
+        if (why) { inelRows.push({ n: i + 1, html: nameRow(i, n, why, true) }); return ''; }
         return nameRow(i, n, id == null
           ? (copy('board_official_unmatched') || 'not in Football Home')
           : (copy('board_official_off_team') || 'not on this team in Football Home'));
@@ -748,6 +781,7 @@ class RosterScreenBase extends Screen {
     const maxRoster = Number(col.maxRoster) || 0;
     const over = maxRoster > 0 ? projected - maxRoster : 0;
     const extra = [
+      inelRows.length ? (copy('board_ineligible_banner', { n: inelRows.length }) || `${inelRows.length} ineligible`) : '',
       cutRows.length ? (copy('board_cuts', { n: cutRows.length }) || `${cutRows.length} cut`) : '',
       lanes.drop.length ? (copy('board_planned_drops', { n: lanes.drop.length }) || `${lanes.drop.length} dropping`) : '',
       lanes.pending_drop.length ? (copy('board_pending_drops', { n: lanes.pending_drop.length }) || `${lanes.pending_drop.length} pending drop`) : '',
@@ -757,7 +791,11 @@ class RosterScreenBase extends Screen {
       ? head(copy('board_cut_h') || '✂ CUT — still on the official roster, needs to be dropped', cutRows.length, ...RED)
         + cutRows.map(r => r.html).join('')
       : '';
-    const officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', officialCount, ...GREEN, extra) + rows + cutHtml;
+    const inelHtml = inelRows.length
+      ? head(copy('board_ineligible_h') || '⚠ INELIGIBLE — league rule, fix before the league does', inelRows.length, ...RED)
+        + inelRows.map(r => r.html).join('')
+      : '';
+    const officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', officialCount, ...GREEN, extra) + rows + inelHtml + cutHtml;
     // An add lane, one sub-group per paperwork step in pipeline order.
     const addSection = (lane, label, colors) => {
       const list = rest.filter(p => sectionOf(p) === lane);
@@ -765,7 +803,7 @@ class RosterScreenBase extends Screen {
       return head(label, list.length, ...colors)
         + RosterScreenBase.ROSTER_STATUSES.filter(st => st.boardSection === lane).map(st => {
           const sub = list.filter(p => p.rosterStatus === st.code);
-          return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(card).join('') : '';
+          return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(ruleCard).join('') : '';
         }).join('');
     };
     // A drop lane — name + official # rows; the cards stay in OFFICIAL
@@ -793,14 +831,53 @@ class RosterScreenBase extends Screen {
     // Roster clears him; ↔ call-ins only play here when invited, so never.
     // Only on a team that keeps a league roster (a list, or anyone On
     // Roster) — an intramural column would list everybody.
+    // Never someone a rule bars from this list (on a list this team
+    // excludes, or one that excludes this team).
+    // A man already headed onto that list (a PROPOSED / PENDING ADD there)
+    // counts too — Somi, proposed for APSL, is not a Reserves add.
+    const barred = new Set();
+    const bar = (tid) => {
+      (listIds(tid) || []).forEach(id => barred.add(id));
+      ((data.buckets && data.buckets[String(tid)]) || []).forEach(p => {
+        if (['proposed', 'pending_add'].includes(sectionOf(p))) barred.add(Number(p.personId));
+      });
+    };
+    rules.excludes.forEach(bar);
+    Object.entries(data.rosterRules || {}).forEach(([tid, r]) => {
+      if ((r.excludes || []).map(Number).includes(Number(col.teamId))) bar(tid);
+    });
     const needsAdd = officialCount > 0
-      ? rest.filter(p => !p.rosterStatus && !(p.inviteOnly === true && p.callIn === true))
+      ? rest.filter(p => !p.rosterStatus && !(p.inviteOnly === true && p.callIn === true) && !barred.has(Number(p.personId)))
       : [];
+    // …plus a requires team's list players who are not here at all yet
+    // (owner: on Liga 1 but not added to Reserves → NEEDS ADD).
+    const listedHere = new Set(official ? official.personIds.filter(x => x != null).map(Number) : []);
+    const inBucket = new Set(bucket.map(p => Number(p.personId)));
+    const seen = new Set();
+    const fromLists = [];
+    rules.requires.forEach(tid => {
+      const l = this.leagueListFor(tid);
+      if (!l) return;
+      const theirs = new Map(((data.buckets && data.buckets[String(tid)]) || []).map(p => [Number(p.personId), p]));
+      l.personIds.forEach((pid, i) => {
+        const id = pid == null ? null : Number(pid);
+        if (id == null || listedHere.has(id) || inBucket.has(id) || barred.has(id) || seen.has(id)) return;
+        seen.add(id);
+        const p = theirs.get(id);
+        fromLists.push({ name: p ? nameOf(p) : l.names[i], team: teamLabel(tid) });
+      });
+    });
+    const needsAddHtml = (needsAdd.length || fromLists.length)
+      ? head(copy('board_needs_add_h') || 'NEEDS ADD — on the team, not on the official roster', needsAdd.length + fromLists.length, ...AMBER)
+        + ordered(needsAdd).map(ruleCard).join('')
+        + fromLists.map((r, k) => nameRow(needsAdd.length + k, r.name,
+            copy('board_needs_add_from', { team: r.team }) || `on the ${r.team} roster — not added here`)).join('')
+      : '';
     // Owner 2026-10-27: the Roster pill is "basically a way for me to
     // organize moves" — OFFICIAL, the add lanes, the drop lanes; nothing
     // else (non-roster players and call-downs are a Team-pill thing).
     return officialHtml
-      + section(copy('board_needs_add_h') || 'NEEDS ADD — on the team, not on the official roster', needsAdd, ...AMBER)
+      + needsAddHtml
       + addSection('proposed', copy('board_proposed_h') || 'PROPOSED ADDS', BLUE)
       + addSection('pending_add', copy('board_pending_add_h') || 'PENDING ADD', AMBER)
       + dropSection('drop', copy('board_dropping_h') || 'DROPPING', ORANGE)
