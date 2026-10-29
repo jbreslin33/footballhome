@@ -85,6 +85,7 @@ struct Orders {
     math::Vec2 target{};          // where he's going / aiming
     std::int16_t other = -1;      // the pass receiver, marked man, pressed carrier
     std::uint8_t rung = 0;        // pass-ladder rung of a laddered pass (1-6)
+    bool read = false;            // the passer read the interceptors for it (safe_pass, G4.86)
     // An aimed LoftedKick's first-bounce distance (G4.48); 0 = the preset
     // chip (clearances, punts).
     std::uint8_t carry_m = 0;
@@ -231,6 +232,29 @@ public:
         int first[2] = {-1, -1};           // each team's first man to it
     };
     const FlightRead& flightRead(const core::World& world) const;
+    // The race itself (G4.86) — ONE model of "who gets to this ball first",
+    // for the ball in the air (flightRead) and for the ball a passer is about
+    // to strike (passSafe): the path from pos/vel; each man after his own
+    // reaction + perception, less `since` (ticks the flight has already
+    // flown); `ours` (the passing team) only where the ball has come down to
+    // his control speed; opponents `opp_margin` m more reach (a passer's
+    // caution). first_only: stop at the first tick anyone can take it.
+    struct RaceBall {
+        math::Vec3 pos, vel;
+        std::int64_t since = 0;            // ticks since the flight began
+        core::SlotIndex kicker = 0xFF;
+        int lockout = 0;                   // the kicker's own lockout ticks left
+        std::uint8_t ours = 0xFF;          // the team whose ball it is
+        bool offside = true;               // honour the live offside flags
+        math::Fixed64 opp_margin{};
+        bool first_only = false;
+    };
+    void race(const core::World& world, const RaceBall& rb, FlightRead& f) const;
+    // A passer's read [Buckland] (G4.19, G4.86): the race on the pass he's
+    // about to strike — safe when one of ours is first, ties to them.
+    bool passSafe(const core::World& world, core::SlotIndex passer, core::SlotIndex receiver,
+                  const math::Vec2& from, const math::Vec2& to, math::Fixed64 speed,
+                  math::Fixed64 reach) const;
 
     // A slot's traditional position number (2 RB … 9 striker; 0 = unknown).
     int numberOf(core::SlotIndex slot) const {
@@ -354,6 +378,7 @@ private:
     mutable bool told_squeeze_ = false, told_line_ = false;
     bool blind(core::SlotIndex i) const { return i < 64 && ((blind_ >> i) & 1u); }
     mutable FlightRead flight_;
+    mutable FlightRead pass_race_;   // passSafe's scratch (G4.86)
     mutable std::uint64_t flight_tick_ = ~std::uint64_t{0};
     mutable std::int64_t flight_key_[3] = {0, 0, 0};
     math::Fixed64 initiative_ = math::Fixed64::one();

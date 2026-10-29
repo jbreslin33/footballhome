@@ -38,6 +38,7 @@
 #include "server/MatchSetup.hpp"
 
 #include <algorithm>
+#include <array>
 #include <map>
 #include <cmath>
 #include <cstdio>
@@ -587,6 +588,15 @@ int main(int argc, char** argv) {
     // ...each bad touch (G4.85): whose ball it was (the pass meant for him /
     // another of ours / theirs — a reaction touch) × its speed the tick before.
     long bt_kind[3][4] = {};
+    // ...the defender's side of it (G4.86): every touch on THEIR moving ball
+    // (3 m/s+), kept or off him, by his job and his own speed (<2 / 2-4 / 4-6
+    // / 6+ m/s) — is the reaction touch a lunge or a man who was set?
+    long rt_n[2][ai::kWhyCount] = {}, rt_sp[2][4] = {}, rt_rel[2][4] = {};
+    // ...balls in behind the read gave to THEM at the kick (G4.86): how far
+    // the strike went off his aim, and where their man meets it — in the lane
+    // before the spot, at it (±3 m), or after it ran on.
+    long ib_n = 0, ib_err[4] = {}, ib_where[3] = {}, ib_all_read[2] = {}, ib_theirs_read[2] = {};
+    bool kick_read = false;
     // ...each interception: how far the man moved from where he stood at the
     // kick (< 1 m = he was in the lane), how long the pass had flown, and
     // the pass's kind (by its why).
@@ -612,8 +622,11 @@ int main(int argc, char** argv) {
         int lk_to[2] = {-1, -1};
         double prev_ball_v = 0;
         int prev_ltt = -1, prev_pass_to = -1;
+        double prev_bvx = 0, prev_bvy = 0;
+        std::vector<std::array<double, 2>> prev_ov(64, {0.0, 0.0});   // everyone's velocity last tick
         std::vector<math::Vec2> kick_at;   // everyone's spot at the last kick
         long kick_tick = 0;
+        math::Vec2 kick_aim{}, kick_from{};
         int kick_pred = -1;
         int pred_us = -1, pred_them = -1, pred_margin = 0, pred_us_why = -1;   // at kick+1 / +10
         // GAME_TRACE_FLIP=n: passes the read gave to us that they cut (match 1).
@@ -887,6 +900,15 @@ int main(int argc, char** argv) {
                         if (sb_int) ++(prev_ball_v >= 3.0 ? cut : picked)[pend_team ^ 1];
                         if (sb_int && prev_ball_v >= 3.0 && kick_at.size() == s.world().playerCount()) {
                             const int j = *b.owner;
+                            {
+                                const auto& d = s.world().player(j);
+                                const double v = std::sqrt(prev_ov[j][0] * prev_ov[j][0] + prev_ov[j][1] * prev_ov[j][1]);
+                                const double rx = prev_bvx - prev_ov[j][0], ry = prev_bvy - prev_ov[j][1], rel = std::sqrt(rx * rx + ry * ry);
+                                (void)d;
+                                ++rt_n[0][static_cast<int>(s.lastOrders()[j].why)];
+                                ++rt_sp[0][v < 2 ? 0 : v < 4 ? 1 : v < 6 ? 2 : 3];
+                                ++rt_rel[0][rel < 6 ? 0 : rel < 9 ? 1 : rel < 12 ? 2 : 3];
+                            }
                             const double mx = s.world().player(j).pos.x.toDouble() - kick_at[j].x.toDouble(),
                                          my = s.world().player(j).pos.y.toDouble() - kick_at[j].y.toDouble();
                             const double mv = std::sqrt(mx * mx + my * my), ft = (k - kick_tick) / 30.0;
@@ -928,6 +950,14 @@ int main(int argc, char** argv) {
                 const int bs = s.world().badTouchSlot();
                 const int kind = prev_ltt != s.world().player(bs).team ? 2 : (prev_pass_to == bs ? 0 : 1);
                 ++bt_kind[kind][prev_ball_v < 9 ? 0 : prev_ball_v < 12 ? 1 : prev_ball_v < 15 ? 2 : 3];
+                if (kind == 2 && prev_ball_v >= 3.0) {
+                    const auto& d = s.world().player(bs);
+                    const double v = std::sqrt(d.vel.x.toDouble() * d.vel.x.toDouble() + d.vel.y.toDouble() * d.vel.y.toDouble());
+                    const double rx = prev_bvx - d.vel.x.toDouble(), ry = prev_bvy - d.vel.y.toDouble(), rel = std::sqrt(rx * rx + ry * ry);
+                    ++rt_n[1][static_cast<int>(s.lastOrders()[bs].why)];
+                    ++rt_sp[1][v < 2 ? 0 : v < 4 ? 1 : v < 6 ? 2 : 3];
+                    ++rt_rel[1][rel < 6 ? 0 : rel < 9 ? 1 : rel < 12 ? 2 : 3];
+                }
             }
             if (pend_team >= 0 && k == kick_tick + 1) {
                 const auto& fr = s.brain().flightRead(s.world());
@@ -937,6 +967,25 @@ int main(int argc, char** argv) {
                 pred_margin = (us >= 0 && them >= 0) ? fr.tick[them] - fr.tick[us] : 999;
                 ++pred_all[kick_pred];
                 ++pred_why[pend_why][kick_pred];
+                if (pend_why == ai::kWhyCount) {
+                    ++ib_all_read[kick_read];
+                    if (kick_pred == 1) ++ib_theirs_read[kick_read];
+                }
+                if (pend_why == ai::kWhyCount && kick_pred == 1 && fr.live) {
+                    const double ax = kick_aim.x.toDouble() - kick_from.x.toDouble(), ay = kick_aim.y.toDouble() - kick_from.y.toDouble();
+                    const double bvx = s.world().ball().vel.x.toDouble(), bvy = s.world().ball().vel.y.toDouble();
+                    const double al = std::sqrt(ax * ax + ay * ay), bl = std::sqrt(bvx * bvx + bvy * bvy);
+                    if (al > 1 && bl > 0.1) {
+                        double c = (ax * bvx + ay * bvy) / (al * bl);
+                        c = c > 1 ? 1 : (c < -1 ? -1 : c);
+                        const double deg = std::acos(c) * 57.2958;
+                        ++ib_n;
+                        ++ib_err[deg < 2 ? 0 : deg < 5 ? 1 : deg < 10 ? 2 : 3];
+                        const double mx = fr.at[them].x.toDouble() - kick_from.x.toDouble(), my = fr.at[them].y.toDouble() - kick_from.y.toDouble();
+                        const double along = std::sqrt(mx * mx + my * my);
+                        ++ib_where[along < al - 3 ? 0 : along <= al + 3 ? 1 : 2];
+                    }
+                }
             }
             if (trace_flip && m == 0 && flips < trace_flip && pend_team >= 0 && kick_pred == 0 && k > kick_tick && (k - kick_tick) % 6 == 1) {
                 const auto& fr = s.brain().flightRead(s.world());
@@ -970,6 +1019,9 @@ int main(int argc, char** argv) {
                 pred_us_why = static_cast<int>(s.lastOrders()[pred_us].why);
             prev_ball_v = std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble());
             prev_ltt = s.world().lastTouchTeam();
+            prev_bvx = b.vel.x.toDouble(); prev_bvy = b.vel.y.toDouble();
+            for (std::uint8_t j = 0; j < s.world().playerCount() && j < 64; ++j)
+                prev_ov[j] = {s.world().player(j).vel.x.toDouble(), s.world().player(j).vel.y.toDouble()};
             prev_pass_to = b.owner ? -1 : static_cast<int>(b.pass_to);
             if (before && !b.owner && b.last_kicker == *before &&
                 s.world().restartTeam() == 0xFF) {
@@ -1024,6 +1076,7 @@ int main(int argc, char** argv) {
                     if (st == spell_team) ++won_at[st][won_x < 35 ? 0 : won_x < 52.5 ? 1 : won_x < 70 ? 2 : 3];
                 }
                 pend_why = o.rung >= 1 && o.rung <= 2 ? ai::kWhyCount : static_cast<int>(o.why);
+                kick_read = o.read; kick_aim = o.target; kick_from = math::Vec2{s.world().ball().pos.x, s.world().ball().pos.y};
                 kick_at.clear(); kick_tick = k;
                 for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
                     kick_at.push_back(math::Vec2{s.world().player(j).pos.x, s.world().player(j).pos.y});
@@ -1252,6 +1305,26 @@ int main(int argc, char** argv) {
             for (int q = 0; q < 3; ++q)
                 std::printf(" %s %.1f / %.1f / %.1f / %.1f%s", kn[q], bt_kind[q][0] / nm, bt_kind[q][1] / nm,
                             bt_kind[q][2] / nm, bt_kind[q][3] / nm, q < 2 ? " ·" : "\n");
+        }
+        if (ib_all_read[0] + ib_all_read[1])
+            std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",
+                        ib_all_read[1] / nm, 100.0 * ib_theirs_read[1] / std::max(1L, ib_all_read[1]),
+                        ib_all_read[0] / nm, 100.0 * ib_theirs_read[0] / std::max(1L, ib_all_read[0]));
+        if (ib_n)
+            std::printf("  balls in behind theirs at the kick: %.1f a match; strike off his aim <2 / 2-5 / 5-10 / 10+ deg %.0f / %.0f / %.0f / %.0f%%; their man meets it before the spot %.0f%% · at it (±3 m) %.0f%% · after it ran on %.0f%%\n",
+                        ib_n / nm, 100.0 * ib_err[0] / ib_n, 100.0 * ib_err[1] / ib_n, 100.0 * ib_err[2] / ib_n, 100.0 * ib_err[3] / ib_n,
+                        100.0 * ib_where[0] / ib_n, 100.0 * ib_where[1] / ib_n, 100.0 * ib_where[2] / ib_n);
+        for (int q = 0; q < 2; ++q) {
+            long tot = 0;
+            for (int w = 0; w < ai::kWhyCount; ++w) tot += rt_n[q][w];
+            if (!tot) continue;
+            std::printf("  their moving ball %s: %.1f a match; his speed <2 / 2-4 / 4-6 / 6+ m/s %.0f / %.0f / %.0f / %.0f%%; ball speed relative to him <6 / 6-9 / 9-12 / 12+ %.0f / %.0f / %.0f / %.0f%%; doing:",
+                        q ? "came off him" : "kept (clean)", tot / nm,
+                        100.0 * rt_sp[q][0] / tot, 100.0 * rt_sp[q][1] / tot, 100.0 * rt_sp[q][2] / tot, 100.0 * rt_sp[q][3] / tot,
+                        100.0 * rt_rel[q][0] / tot, 100.0 * rt_rel[q][1] / tot, 100.0 * rt_rel[q][2] / tot, 100.0 * rt_rel[q][3] / tot);
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (rt_n[q][w] * 25 >= tot) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * rt_n[q][w] / tot);
+            std::printf("\n");
         }
         if (cut_n) {
             std::printf("  each interception: the man had moved <1 m %.0f%% · 1-3 %.0f%% · 3-6 %.0f%% · 6+ %.0f%% since the kick; the ball had flown <0.5 s %.0f%% · 0.5-1 %.0f%% · 1-2 %.0f%% · 2+ %.0f%%\n  the pass:",

@@ -3164,6 +3164,46 @@ to the end. Still the gap, biggest first: reaction touches by defenders on
 slow balls (< 9 m/s: 39 a match come off him), shots 20 s+ into a spell 3-5%
 (72%).
 
+### 8.84 G4.86 — one race: the passer reads the ball the way it will fly
+
+James 10/29: "yes" (ship G4.85, take the next mole) — and "its ok to have
+odd scores if the particular behaviour is correct … a bit of a game of
+whack a mole".
+
+- **Defenders touch their ball 10× too often:** 223 touches a match on the
+  other side's moving ball (kept 109, off him 114 — the reaction roll is
+  ~50/50 at every speed and job; pro interceptions ≈ 23 a match). The roll
+  isn't the mole; the passes are. Harness lines: every touch on their
+  moving ball, kept or off, by his job, speed and the ball's speed relative
+  to him; balls in behind theirs at the kick — strike off his aim, where
+  their man meets it; balls in behind by whether the passer read them
+  (`Orders::read`).
+- Balls in behind the read gave to THEM at the kick: the strike was true
+  (76% < 2° off his aim) and their man met it AT the spot (72%) — the choice
+  was wrong, not the kick. Read ones 23% theirs, unread 36%.
+- **Ground means ground:** the safety read skipped a ball past their line as
+  "lofted", but whether he lofts it was a separate over-the-top roll later;
+  it failed and he drove an unread ground ball through the block. Now one
+  roll (`over_top`) decides both.
+- **One race, two users (Brain::race):** passSafe was its own walk of the
+  pass — no perception delay, stopped as the ball reached the spot (a ball
+  into space got there before the runner and rolled on), knew nothing of
+  the receiver's touch (G4.85). It now runs the flight read's race on the
+  ball he's about to strike (`RaceBall`: from his feet, his weighted speed,
+  `since` 0, his own lockout, live offside flags off, `opp_margin` = his
+  caution − the control radius, stop at the first man). Safe = ours first,
+  ties to them. flightRead is the same race on the ball in the air, cached.
+- **What's left is what he saw:** read balls in behind are still 24%
+  theirs — he decides on the world as he perceives it (perception delay,
+  G4.66 vision: a man behind him is where he last looked). That is
+  scanning (awareness techniques scan-pre-reception / scan-on-ball), the
+  next mole, not this slice.
+
+20 matches LH v Ukies, G4.85 → G4.86 (pro): completion 77 → 76% (79), spells
+497 → 532 (121), interceptions 37 / 61 → 49 / 66 (7.2), shots 43 / 40 → 44 /
+42 (12.9), goals 14.4 → 12.8 (2.5); balls in behind theirs at the kick 30%
+→ 28%.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

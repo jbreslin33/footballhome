@@ -161,53 +161,6 @@ Fixed64 chanceQuality(const World& world, const TeamSetup& setup,
     return q;
 }
 
-// Pass safety [Buckland] (G4.19): the PASSER runs the interceptor's own
-// closing-speed math. Walk the ground pass's friction path (3-tick
-// strides) until it reaches the receiver; the pass is unsafe if any
-// opponent can reach a point on it by the time the ball does —
-// his locomotion reach over (t - HIS reaction, G4.85; was a flat 0.2 s)
-// + reach (G4.51; was max_speed x (t - reaction)) — BEFORE the receiver,
-// stepping to meet it, gets there first (opponents checked first per stride: ties go
-// to the defender, the cautious read). The static 2 m corridor alone let
-// G4.14's earliest-reach defenders read every pass: world matches
-// measured 2,230 balls collected by the other side (2.2 s possessions).
-bool passSafe(const World& world, const TeamSetup& setup, SlotIndex passer,
-              SlotIndex receiver, const Vec2& from, const Vec2& to,
-              Fixed64 speed, Fixed64 reach) {
-    const Vec2 ab{to.x - from.x, to.y - from.y};
-    const Fixed64 len = math::length(ab);
-    if (len.raw == 0) return true;
-    const Vec2 dir{ab.x / len, ab.y / len};
-    auto react = [&](SlotIndex j, Fixed64 t) {
-        const Fixed64 r = world.body(j).reaction();
-        return t > r ? t - r : Fixed64::zero();
-    };
-    Vec2 pos = from;
-    Fixed64 s = speed, travelled = Fixed64::zero(), t = Fixed64::zero();
-    for (int stride = 0; stride < 30; ++stride) {  // 90 ticks = 3 s
-        for (int k = 0; k < 3; ++k) {
-            const Fixed64 step = s * core::kTickDt;
-            pos = Vec2{pos.x + dir.x * step, pos.y + dir.y * step};
-            travelled += step;
-            s = s * core::kBallRollDecayPerTick;
-        }
-        t += core::kTickDt * Fixed64::fromInt(3);
-        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
-            if (setup.team_of_slot[j] == setup.team_of_slot[passer])
-                continue;
-            const auto& o = world.player(j);
-            const Vec2 d{o.pos.x - pos.x, o.pos.y - pos.y};
-            const Fixed64 run = runToward(world, j, pos, react(j, t)) + reach;
-            if (math::lengthSquared(d) <= run * run) return false;
-        }
-        const auto& r = world.player(receiver);
-        const Vec2 dr{r.pos.x - pos.x, r.pos.y - pos.y};
-        const Fixed64 rrun = runToward(world, receiver, pos, react(receiver, t)) + reach;
-        if (math::lengthSquared(dr) <= rrun * rrun) return true;
-        if (travelled >= len) return true;  // arrived at the receiver
-    }
-    return false;  // dies short of the receiver
-}
 
 // Aimed loft (G4.48): where to drop a lofted pass for a moving mate — his
 // spot after the ball's flight (2·r·v / g at the carry that reaches it,
@@ -313,12 +266,30 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
     flight_key_[1] = b.pos.y.raw;
     flight_key_[2] = b.vel.x.raw;
     FlightRead& f = flight_;
+    f.live = !b.owner && world.restartTeam() == 0xFF;
+    if (!f.live) {
+        f.tick.assign(world.playerCount(), -1);
+        f.at.assign(world.playerCount(), Vec2{});
+        f.first[0] = f.first[1] = -1;
+        return f;
+    }
+    RaceBall rb;
+    rb.pos = b.pos;
+    rb.vel = b.vel;
+    rb.since = static_cast<std::int64_t>(world.tickCount() - world.flightTick());
+    rb.kicker = b.last_kicker;
+    rb.lockout = b.kicker_lockout;
+    rb.ours = world.lastTouchTeam();
+    race(world, rb, f);
+    f.live = true;
+    return f;
+}
+
+void Brain::race(const World& world, const RaceBall& rb, FlightRead& f) const {
     const SlotIndex n = world.playerCount();
     f.tick.assign(n, -1);
     f.at.assign(n, Vec2{});
     f.first[0] = f.first[1] = -1;
-    f.live = !b.owner && world.restartTeam() == 0xFF;
-    if (!f.live) return f;
 
     // Each man starts after HIS reaction (G4.85, the reaction attribute — was
     // one flat meet-the-pass number) + his perception delay, counted once
@@ -327,8 +298,7 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
     // "can't get there" (his whole reaction again before he may move) and
     // fell back to chasing where the ball was: it rolled past him 0.8 m off
     // and their man took it (GAME_TRACE_FLIP).
-    const Fixed64 since = Fixed64::fromInt(static_cast<std::int64_t>(
-                              world.tickCount() - world.flightTick())) * core::kTickDt;
+    const Fixed64 since = Fixed64::fromInt(rb.since) * core::kTickDt;
     Fixed64 react[64];
     for (SlotIndex i = 0; i < n && i < 64; ++i) {
         const Fixed64 full = world.body(i).reaction() +
@@ -337,9 +307,9 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
     }
     const Fixed64 box_x = half_x_ - Fixed64::fromFraction(33, 2);   // 16.5 m
     const Fixed64 box_y = Fixed64::fromFraction(2016, 100);          // 20.16 m
-    const std::uint32_t flagged = world.offsideMask();
-    const std::uint8_t flag_team = world.offsideTeam();
-    Vec3 pos = b.pos, vel = b.vel;
+    const std::uint32_t flagged = rb.offside ? world.offsideMask() : 0u;
+    const std::uint8_t flag_team = rb.offside ? world.offsideTeam() : std::uint8_t{0xFF};
+    Vec3 pos = rb.pos, vel = rb.vel;
     int open = n;
     const int horizon = std::max(books_[0].meet_the_pass.horizonTicks(),
                                  books_[1].meet_the_pass.horizonTicks());
@@ -370,7 +340,7 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
         const Fixed64 t = core::kTickDt * Fixed64::fromInt(k);
         for (SlotIndex i = 0; i < n && i < 64; ++i) {
             if (f.tick[i] >= 0) continue;
-            if (i == b.last_kicker && k < b.kicker_lockout) continue;
+            if (i == rb.kicker && k < rb.lockout) continue;
             const auto& p = world.player(i);
             // A man in an offside position leaves it (the flag decides).
             if (flag_team != 0xFF && p.team == flag_team && ((flagged >> (i & 31)) & 1u)) continue;
@@ -383,7 +353,7 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
             // early and hot it came off him (traced: 53 bad touches a match
             // at 15 m/s+ on passes meant for him once the read stopped
             // re-charging the reaction).
-            if (!gk && p.team == world.lastTouchTeam()) {
+            if (!gk && p.team == rb.ours) {
                 const std::int32_t c = levelOf(i).control_speed_mps;
                 if (c > 0 && sp2 > Fixed64::fromInt(c) * Fixed64::fromInt(c)) continue;
             }
@@ -393,20 +363,52 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
             }
             const Fixed64 rt = t > react[i] ? t - react[i] : Fixed64::zero();
             const Fixed64 run = runToward(world, i, Vec2{pos.x, pos.y}, rt) +
-                                (gk ? core::kKeeperReach : core::kBallControlRadius);
+                                (gk ? core::kKeeperReach : core::kBallControlRadius) +
+                                (p.team != rb.ours ? rb.opp_margin : Fixed64::zero());
             if (distSq(p.pos, pos) <= run * run) {
                 f.tick[i] = static_cast<std::int16_t>(k);
                 f.at[i] = Vec2{pos.x, pos.y};
                 --open;
             }
         }
+        if (rb.first_only && open < static_cast<int>(n)) break;
     }
     for (SlotIndex i = 0; i < n; ++i) {
         if (f.tick[i] < 0) continue;
         int& first = f.first[setup_.team_of_slot[i]];
         if (first < 0 || f.tick[i] < f.tick[first]) first = i;
     }
-    return f;
+}
+
+// Pass safety [Buckland] (G4.19): the PASSER runs the interceptors' own
+// race — since G4.86 the very race the flight read runs on the ball in the
+// air (Brain::race), on the ground pass he's about to strike: each man's
+// own reaction and perception from the kick, his body's reach, our men only
+// where the ball has slowed to their touch, the passer's own caution as
+// `reach` m (G4.51: 1 m, 0.6 at verticality 100) on every opponent. Safe
+// when one of ours is first; ties go to the defender. Two models of the
+// same race disagreed: balls in behind the passer had read were 23% theirs
+// by the flight read one tick after the kick (the old walk stopped at the
+// spot and knew nothing of the receiver's touch).
+bool Brain::passSafe(const World& world, SlotIndex passer, SlotIndex receiver,
+                     const Vec2& from, const Vec2& to, Fixed64 speed, Fixed64 reach) const {
+    (void)receiver;
+    const Vec2 ab{to.x - from.x, to.y - from.y};
+    const Fixed64 len = math::length(ab);
+    if (len.raw == 0) return true;
+    RaceBall rb;
+    rb.pos = Vec3{from.x, from.y, Fixed64::zero()};
+    rb.vel = Vec3{ab.x / len * speed, ab.y / len * speed, Fixed64::zero()};
+    rb.kicker = passer;
+    rb.lockout = core::kKickerLockoutTicks;
+    rb.ours = setup_.team_of_slot[passer];
+    rb.offside = false;
+    rb.opp_margin = reach > core::kBallControlRadius ? reach - core::kBallControlRadius : Fixed64::zero();
+    rb.first_only = true;
+    FlightRead& f = pass_race_;
+    race(world, rb, f);
+    const int mine = f.first[rb.ours], theirs = f.first[rb.ours ^ 1];
+    return mine >= 0 && (theirs < 0 || f.tick[mine] < f.tick[theirs]);
 }
 
 const std::vector<std::uint8_t>& Brain::directOpponents(const World& world, std::uint64_t sec) const {
@@ -739,7 +741,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                     // The led ball is the one he strikes, so it's the one he
                     // reads (G4.82): unsafe led, he plays the ball he checked.
                     const Vec2 from{p.x, p.y};
-                    if (passSafe(world, setup_, slot, o.pass_to, from, at,
+                    if (passSafe(world, slot, o.pass_to, from, at,
                                  core::weightedPassSpeed(math::length(Vec2{at.x - p.x, at.y - p.y})), Fixed64::one())) {
                         o.target = at;
                         o.move.move = seek(p, at, Fixed64::fromFraction(1, 10));
@@ -1912,7 +1914,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 const Fixed64 theirs = sel.xg(chanceQuality(world, setup_, j, goal), math::length(mg), false);
                 if (theirs < mine * sel.passBetter()) continue;
                 const Vec2 from{me.pos.x, me.pos.y}, to{m.pos.x, m.pos.y};
-                if (passSafe(world, setup_, slot, j, from, to,
+                if (passSafe(world, slot, j, from, to,
                              core::weightedPassSpeed(math::length(Vec2{to.x - from.x, to.y - from.y})), Fixed64::one()))
                     shoot_now = false;   // pass it — the pass branch below picks the man
             }
@@ -1980,7 +1982,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                         Fixed64 dsq, bool lofted) {
             if (!reads || lofted) return true;
             const Fixed64 v = core::weightedPassSpeed(math::fx_sqrt(dsq));   // G4.81: as he'll strike it
-            return passSafe(world, setup_, slot, recv, a, b, v, safe_reach);
+            return passSafe(world, slot, recv, a, b, v, safe_reach);
         };
         // Over their line (180; G4.75 keeper, G4.78 everyone): the runner
         // onside within runner_from_line_m of their last man, already going
@@ -2080,6 +2082,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                                                : PassLadder::Lines{};
         const bool holding = release &&
             book_.release_timing.hold(world, slot, sign, lines, book_.pass_ladder);
+        // over_the_top (bit 6): this tick's roll, the one the kick below uses.
+        const bool over_top = ratings_[slot][6] > 0 && applies(slot, 6, world.tickCount());
         int best_rung = 0;
         bool have_target = false;
         Fixed64 best_progress{};
@@ -2109,8 +2113,12 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             // Lane check: any opponent near the carrier→mate segment?
             const Vec2 a{me.pos.x, me.pos.y};
             if (!lane_open(a, b)) continue;
-            const bool lofted = progress > their_line &&
-                                ratings_[slot][6] > 0 &&
+            // Only a ball he WILL loft skips the ground read (G4.86): the
+            // over-the-top roll below decides the kick, and when it failed
+            // he drove an unread ground ball through the block — 29% of
+            // the balls in behind (34 a team a match) were theirs at the
+            // kick by the flight read.
+            const bool lofted = progress > their_line && over_top &&
                                 dsq > kSoftPassRange * kSoftPassRange;
             if (!safe(i, a, b, dsq, lofted)) continue;
             const int r = ladder ? book_.pass_ladder.rung(progress, b.y, lines) : 0;
@@ -2184,7 +2192,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             // would have to thread. Disciplined sides only (a U-10
             // doesn't know this ball exists).
             const bool beyond_line = best_progress > their_line;
-            if (beyond_line && applies(slot, 6, world.tickCount()) &&
+            if (beyond_line && over_top &&
                 target_dist_sq > kSoftPassRange * kSoftPassRange) {
                 out.action = Action::LoftedKick;  // over the top
                 // Dropped into his run (G4.48): the preset chip bounced on
@@ -2200,6 +2208,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             }
             out.why = out.action == Action::LoftedKick ? Why::OverTop : (ladder_fires ? Why::PassLadder : Why::Pass);
             out.rung = static_cast<std::uint8_t>(best_rung);
+            out.read = reads;
             out.target = target;
             out.other = static_cast<std::int16_t>(target_slot);
             return out;
