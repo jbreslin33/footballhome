@@ -156,7 +156,14 @@ Views only draw it:
   slot on a ring of candidates around its spot (never over another bubble or
   the zoom buttons; an off-screen conference sits on the edge in its
   direction) with a leader line + ring back to the spot; dots sharing one
-  point fan out in a ring.
+  point fan out in a ring. Mig 850 (owner: "map full screen and the data as
+  hud … overlay over map … transparency … slider"): the map fills the page
+  (⛶ = browser full screen of `.mp-stage`, HUD and overlay included); the
+  totals, dot legend, hint and located count float as a HUD; a conference
+  opens its chart as an overlay (`.mp-ov`) with a see-through slider
+  (remembered, `apsl-pyramid-map-ov`), ✕ / Esc to close; the fly-to frames
+  the clubs in the part of the map the overlay leaves uncovered; bubbles
+  keep clear of the HUD and the overlay.
 - `js/components/pyramid-path-view.js` — `PyramidPathView` (mig 845): pick a
   club (search box over the model's clubs); each of its teams' routes up the
   promoting links (`PyramidModel.upRoutes` / `routeSteps`) drawn top-down with
