@@ -731,6 +731,22 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     }
     auto tag = [&](Orders& o) {
         told_squeeze_ = told_line_ = false;
+        // One touch when pressed (G4.95b; pass-one-touch, recv-first-time):
+        // still in his control touch (G4.92) with a man on him, a ground pass
+        // to a mate goes first time — the lay-off, the wall pass back.
+        // Without it a pressed receiver could only wait out his touch: 75% of
+        // own-third dispossessions came inside it.
+        if ((o.action == core::Action::ShortPass || o.action == core::Action::GroundKick) &&
+            o.other >= 0 && world.ball().owner && *world.ball().owner == slot &&
+            world.tickCount() < world.controlUntilTick()) {
+            for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                if (setup_.team_of_slot[j] == setup_.team_of_slot[slot]) continue;
+                if (distSq(world.player(j).pos, world.player(slot).pos) < kPressureRadius * kPressureRadius) {
+                    o.first_time = true;
+                    break;
+                }
+            }
+        }
         // A kick to a mate (G4.81): name him on the ball, and weight a
         // ground pass to the spot it's aimed at.
         if (o.action == core::Action::ShortPass || o.action == core::Action::GroundKick ||

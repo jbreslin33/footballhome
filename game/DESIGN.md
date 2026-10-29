@@ -3483,6 +3483,34 @@ James 10/29: "1 then move to all" — after the churn, the dropping ball.
   / 67, spells 513 → 564, shots 55 / 51 → 64 / 60 a team.
 - **Next mole: shots** — 60+ a team a match against a pro 12.9.
 
+### 8.93 G4.95 — first time: the clearance, and one touch when pressed (mig 848)
+
+James 10/29: "yes" — shots next.
+
+- **Where the shots come from:** 60+ a team a match (pro 12.9); 66-93% with
+  0-2 defenders goal-side of the shooter (pro 28%); 24-33% from spells that
+  began inside 35 m of goal (pro 5%) — own-third losses 34 a team a match
+  (pro 2.1), 44% of them dispossessions. New harness line (own-third
+  dispossessions): 70-74% within 0.5 s of getting it, 74% still inside his
+  control touch (G4.92), the taker counter-pressing 69%, the carrier trying
+  to clear 29% / dribble 33%. The control touch had no way out.
+- **G4.95a, the clearance first time** (def-clear-foot): `Orders::
+  first_time` (Why::Clear) → `World::setAction` lets the kick go inside his
+  touch, at 1.5× the strike error [FH]. Clearances 28 → 48 a match,
+  dispossessions 17 → 14.5.
+- **Tried and dropped:** making passSafe demand the receiver have TIME (no
+  opponent within tackle reach of the spot before his touch settles) —
+  fewer passes looked safe, carriers fell back to dribbles and hoofs: own-
+  third losses 38 → 41, shots 57 → 64. It was standing in for the missing
+  behaviour below.
+- **G4.95b, one touch when pressed** (pass-one-touch, recv-first-time):
+  still in his control touch with a man within 2.5 m, a ground pass to a
+  mate goes first time (the lay-off, the wall pass). Dispossessions 14.5 →
+  5.4 a match, own-third losses 38 / 31 → 28 / 26, spells 548 → 441, shots
+  57 / 59 → 46 / 47, goals 10.9 → 7.9.
+- **Next mole:** still 66-92% of shots with 0-2 defenders goal-side (pro
+  28%) — the defending block isn't goal-side when the shot comes.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
