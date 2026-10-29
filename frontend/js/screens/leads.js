@@ -372,7 +372,8 @@ class LeadsScreen extends Screen {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (data.ok === false) throw new Error(data.error || 'unknown error');
-        const n = (data.active_form_ids || []).length;
+        this._liveFormIds = data.active_form_ids || [];
+        const n = this._liveFormIds.length;
         this._appendLog(`Ad status OK: ${n} form(s) currently active on Meta (${Date.now() - start}ms).`, 'ok');
       } catch (err) {
         this._appendLog(`Ad status refresh FAILED: ${err.message} — Active/Inactive split may be stale.`, 'warn');
@@ -569,14 +570,18 @@ class LeadsScreen extends Screen {
       formLabel: this.formLabel.bind(this),
       activeStatus,
       hiddenFunnels: hidden,
-      alwaysShow: [
-        'U23 Men',
-        'Youth (Grades 1–6)',
-        'Boys Club (Grades 1–6)',
-        'Girls Club (Grades 1–6)',
-        'Boys Club (U11/U12)',
-        'Girls Club (U11/U12)',
-      ],
+      // Live ads: one pill per live ad's category, even before its first
+      // lead. Past ads / All keep the standing funnel list.
+      alwaysShow: this._formStatus === 'active'
+        ? [...new Set((this._liveFormIds || []).map(id => this.formLabel(id)).filter(Boolean))]
+        : [
+            'U23 Men',
+            'Youth (Grades 1–6)',
+            'Boys Club (Grades 1–6)',
+            'Girls Club (Grades 1–6)',
+            'Boys Club (U11/U12)',
+            'Girls Club (U11/U12)',
+          ],
     });
 
     const { columns, visible, grouped, groupedFiltered, statusCounts, visibleLeadCount, statusTabs, hidden: resolvedHidden } = board;
