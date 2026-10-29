@@ -586,7 +586,8 @@ class RosterScreenBase extends Screen {
   //     (a step we owe / submitted), each grouped by step.
   //   DROPPING / PENDING DROP — board_section drop / pending_drop, as name
   //     + official # rows (their cards stay in OFFICIAL, flagged).
-  //   Nothing else: non-roster players and call-downs are a Team thing.
+  //   NEEDS ADD — on the team, off the list, no step yet (2026-10-29).
+  //   Nothing else: call-ins and call-downs are a Team thing.
   //   The card's status dropdown is the move control (mig 777).
   // TEAM — the functional (RSVP) side, by columnCategoryOf; each card
   //   wears a 📋 chip per official roster he is on: PLAYS, ⭐ CALL-DOWNS
@@ -786,10 +787,20 @@ class RosterScreenBase extends Screen {
             copy('board_projected_add', { step: stepName(p.rosterStatus) }) || `+ ${stepName(p.rosterStatus)}`)).join('');
       return `<details><summary style="list-style:none; cursor:pointer;">${head(copy('board_projected_h') || 'PROJECTED ROSTER', projected, ...colors, overNote)}</summary>${body}</details>`;
     };
+    // NEEDS ADD (owner 2026-10-29) — on this team in FH, not on its
+    // official roster, no roster step yet: the moves nobody has started.
+    // Derived, never typed: a step moves him to PROPOSED ADDS, Not on
+    // Roster clears him; ↔ call-ins only play here when invited, so never.
+    // Only on a team that keeps a league roster (a list, or anyone On
+    // Roster) — an intramural column would list everybody.
+    const needsAdd = officialCount > 0
+      ? rest.filter(p => !p.rosterStatus && !(p.inviteOnly === true && p.callIn === true))
+      : [];
     // Owner 2026-10-27: the Roster pill is "basically a way for me to
     // organize moves" — OFFICIAL, the add lanes, the drop lanes; nothing
     // else (non-roster players and call-downs are a Team-pill thing).
     return officialHtml
+      + section(copy('board_needs_add_h') || 'NEEDS ADD — on the team, not on the official roster', needsAdd, ...AMBER)
       + addSection('proposed', copy('board_proposed_h') || 'PROPOSED ADDS', BLUE)
       + addSection('pending_add', copy('board_pending_add_h') || 'PENDING ADD', AMBER)
       + dropSection('drop', copy('board_dropping_h') || 'DROPPING', ORANGE)
