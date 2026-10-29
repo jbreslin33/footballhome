@@ -3559,6 +3559,48 @@ closest cb to ball."
   rest: his pack roll lapsing for that possession); driving — cover shadow
   0 → 55%.
 
+### 8.96 G4.98 — the passer and the ball behind their line (mig 867)
+
+James 10/29: "yes" — take the passer (§8.94's next mole).
+
+- **A fair pro number first.** The 2.04 through balls (§8.94) are a narrow
+  event tag — a ball split between defenders for a runner. The harness's
+  question is plainer: a pass 3 m+ forward aimed past their last outfield
+  man at the kick. StatsBomb's 360 freeze frames put the same question to
+  the pro (`game/scripts/benchmarks_statsbomb_360.py`: the pass ends beyond
+  the deepest outfield opponent in its frame, 4+ of them in view, its end in
+  the visible area — broadcast frames can hide a deeper man, so not exact):
+  **Euro 2020 26.7 / World Cup 2022 25.7 a team a match, 62% completed**;
+  34-36% lofted, 28-31% from the passer's own half, 15-17% under pressure,
+  past the line <2 / 2-5 / 5-10 / 10+ m 31-33 / 34 / 24-25 / 9%. The game:
+  **144 / 199**, 70-73% completed, 71% lofted, 51% from his own half, 54%
+  dropped 5-10 m past the line. By kind: the ladder's in behind ~80 a team,
+  over the high line 36 / 91, the hit-it-long lapse 13 / 17. New harness
+  lines: the same measure (any pass), by kind; the passer of a ladder ball
+  in behind (pressed, held, where, how deep).
+- **The ladder led any man moving forward** (G4.36's lead point): a man
+  drifting at 1-2 m/s near their line had his lead past it — rung 1.
+  `PassLadder::running`: only a man running at their goal at `run_mps` (4,
+  release-timing's bar for a run worth waiting for) is led; slower, he gets
+  it to his feet. Ladder in behind 109 → 87 a team a match.
+- **"A high line" was any line 30 m+ off its goal** (G4.75). Where a pro
+  line sits (new benchmark, the deepest outfield man in view, passer in his
+  own half): median 49.0 / 50.0 m, quartiles 40 and 61 m — 30 m is deeper
+  than 9 in 10 of them, and both sides here sit 33-36 m, so every line was
+  high. `beat-the-high-line.high_m` 30 → 49, the pro median. Over the high
+  line 37 / 91 → 21 / 57 a match (the Ukies' rest is mostly the false 9's
+  space read, G4.78, which never asked the line's height).
+- 10 matches, both: past their last outfielder 144 / 199 → 114 / 143 a team
+  a match (78 / 77% to a mate); spells 505 → 446; passes 715 / 920 → 678 /
+  830; goals 11.3 → 10.4; shots 53 / 55 → 49 / 65 (the Ukies up); Lighthouse
+  W5 D1 L4 → W8 D0 L2. Goldens unmoved.
+- **Next mole:** still 4-5x the pro. The rest is the ladder's ball to a real
+  runner (~62 a team, 80%+ arriving — the read is right, the space is
+  there): the back line doesn't drop on a free passer the way a pro line
+  denies the space (pro: 62% arrive), and a laddered passer plays rung 1
+  every time it's on. Then the false 9's space read (43 a match for the
+  Ukies).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

@@ -191,11 +191,14 @@ public:
     // Where to play a moving receiver from `from`: as far along his run as
     // he gets while the ball travels (reaction + distance / pass speed).
     math::Vec2 leadPoint(const core::PlayerState& p, const math::Vec3& from) const;
+    // Is he RUNNING at their goal (G4.98)? Only a run is led into the space
+    // behind; a man drifting forward is played to his feet.
+    bool running(const core::PlayerState& p, math::Fixed64 sign) const;
     // Is (rung a, progress a) a better target than (rung b, progress b)?
     static bool better(int ra, math::Fixed64 pa, int rb, math::Fixed64 pb);
 
 private:
-    math::Fixed64 pocket_depth_, central_half_width_, fire_span_, lead_s_, pass_speed_;
+    math::Fixed64 pocket_depth_, central_half_width_, fire_span_, lead_s_, pass_speed_, run_speed_;
     int fire_min_ = 2;
 };
 

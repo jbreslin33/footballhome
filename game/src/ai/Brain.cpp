@@ -2310,7 +2310,9 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             // position, and plays an onside runner into the space he is
             // running into (rungs 1-2 are a ball into space) [Bielsa-Leeds].
             if (!onside(i)) continue;   // G4.89: every pass, not just the ladder's
-            if (ladder) {
+            // G4.98: only a man RUNNING at their goal is led — the lead of a
+            // man drifting forward put ~80 balls a team a match "in behind".
+            if (ladder && book_.pass_ladder.running(mate, sgn)) {
                 const Vec2 lead = book_.pass_ladder.leadPoint(mate, me.pos);
                 if (lead.x * sgn > lines.back && lead.x * sgn > b.x * sgn) b = lead;
             }

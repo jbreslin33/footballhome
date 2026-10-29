@@ -614,6 +614,16 @@ int main(int argc, char** argv) {
     // "lh 9 is supposed to sit and cover shadow"): his job, split by whether
     // the centre-back is driving forward (2 m/s+ toward our goal).
     long n9_n[2] = {}, n9_job[2][ai::kWhyCount] = {}, n9_near[2] = {};
+    // The passer of a ball in behind (G4.98): at the kick — his nearest
+    // opponent, how long he'd had it, where he stood, how far past their
+    // last outfielder he aimed it, ladder fire or plain gain.
+    long pb_n = 0, pb_near[3] = {}, pb_held[4] = {}, pb_zone[3] = {}, pb_depth[4] = {}, pb_fire = 0, pb_loft = 0;
+    // Every pass aimed past their last outfield man at the kick, 3 m+ forward
+    // (G4.98) — the pro's question from the 360 freeze frames
+    // (benchmarks_statsbomb_360.py): per team, reached a mate, lofted, from
+    // his own half, his nearest opponent inside 2.5 m, how far past the line.
+    long bl_n[2] = {}, bl_mate[2] = {}, bl_why[2][ai::kWhyCount + 1] = {}, bl_loft = 0, bl_own = 0, bl_pressed = 0, bl_depth[4] = {};
+    bool pend_bl = false;
     long bh_n = 0, bh_gap[4] = {}, bh_dv[4] = {}, bh_job[ai::kWhyCount] = {}, bh_face_back = 0;
     long dp_n = 0, dp_held[4] = {}, dp_in_touch = 0, dp_carrier[ai::kWhyCount] = {}, dp_taker[ai::kWhyCount] = {};
     long tob_n = 0, tob_b[4] = {}; double tob_s = 0; long got_tick[64] = {};
@@ -946,6 +956,7 @@ int main(int argc, char** argv) {
                     if (s.world().player(*b.owner).team == pend_team) {
                         if (pend_why != static_cast<int>(ai::Why::Shoot)) last_assist[pend_team] = pend_why;
                         ++t.mate;
+                        if (pend_bl) ++bl_mate[pend_team];
                         if (*b.owner == pend_other) ++t.intended;
                         if (pf_bucket >= 0 && *b.owner == pend_other) ++fr_got[pend_team][pf_bucket];
                         if (tf_tick >= 0 && *b.owner != pend_other) {
@@ -1206,6 +1217,52 @@ int main(int argc, char** argv) {
                     if (st == spell_team) ++won_at[st][won_x < 35 ? 0 : won_x < 52.5 ? 1 : won_x < 70 ? 2 : 3];
                 }
                 pend_why = o.rung >= 1 && o.rung <= 2 ? ai::kWhyCount : static_cast<int>(o.why);
+                pend_bl = false;
+                if (o.why != ai::Why::Shoot && o.why != ai::Why::Clear && o.why != ai::Why::KeeperPunt &&
+                    o.other >= 0 && o.other < s.world().playerCount() &&
+                    s.world().player(static_cast<std::uint8_t>(o.other)).team == pend_team) {
+                    const auto& ps = s.world().player(*before);
+                    const double sg = ps.team == 0 ? 1.0 : -1.0;
+                    double near = 1e9, back = -1e9;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == ps.team) continue;
+                        const double dx = d.pos.x.toDouble() - ps.pos.x.toDouble(), dy = d.pos.y.toDouble() - ps.pos.y.toDouble();
+                        near = std::min(near, std::sqrt(dx * dx + dy * dy));
+                        if (!s.world().isKeeper(j)) back = std::max(back, d.pos.x.toDouble() * sg);
+                    }
+                    const double tx = o.target.x.toDouble() * sg, px = ps.pos.x.toDouble() * sg;
+                    if (tx - px >= 3 && tx > back) {
+                        pend_bl = true;
+                        ++bl_n[pend_team];
+                        ++bl_why[pend_team][pend_why];
+                        bl_loft += o.action == core::Action::LoftedKick;
+                        bl_own += px < 0;
+                        bl_pressed += near < 2.5;
+                        ++bl_depth[tx - back < 2 ? 0 : tx - back < 5 ? 1 : tx - back < 10 ? 2 : 3];
+                    }
+                }
+                if (pend_why == ai::kWhyCount && *before < 64) {
+                    const auto& ps = s.world().player(*before);
+                    const double sg = ps.team == 0 ? 1.0 : -1.0;
+                    double near = 1e9, back = -1e9;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == ps.team) continue;
+                        const double dx = d.pos.x.toDouble() - ps.pos.x.toDouble(), dy = d.pos.y.toDouble() - ps.pos.y.toDouble();
+                        near = std::min(near, std::sqrt(dx * dx + dy * dy));
+                        if (!s.world().isKeeper(j)) back = std::max(back, d.pos.x.toDouble() * sg);
+                    }
+                    const double held = (k - got_tick[*before]) / 30.0, px = ps.pos.x.toDouble() * sg + 52.5;
+                    const double depth = o.target.x.toDouble() * sg - back;
+                    ++pb_n;
+                    ++pb_near[near < 2.5 ? 0 : near < 5 ? 1 : 2];
+                    ++pb_held[held < 0.5 ? 0 : held < 1 ? 1 : held < 2 ? 2 : 3];
+                    ++pb_zone[px < 52.5 ? 0 : px < 70 ? 1 : 2];
+                    ++pb_depth[depth < 2 ? 0 : depth < 5 ? 1 : depth < 10 ? 2 : 3];
+                    pb_fire += o.why == ai::Why::PassLadder;
+                    pb_loft += o.action == core::Action::LoftedKick;
+                }
                 if (o.other >= 0 && o.why != ai::Why::Shoot && o.other < s.world().playerCount() &&
                     s.world().player(static_cast<std::uint8_t>(o.other)).team == pend_team && *before < 64) {
                     const double d = (k - got_tick[*before]) / 30.0;
@@ -1461,6 +1518,15 @@ int main(int argc, char** argv) {
                 pk[team] += tally[team][w].kicks; pm[team] += tally[team][w].mate;
             }
         both("shots_per_team_match", shot_n[0] / nm, shot_n[1] / nm);
+        both("behind_line_passes_per_team_match", bl_n[0] / nm, bl_n[1] / nm);   // G4.98
+        both("behind_line_completion_pct", 100.0 * bl_mate[0] / std::max(1L, bl_n[0]), 100.0 * bl_mate[1] / std::max(1L, bl_n[1]));
+        if (const long bt = bl_n[0] + bl_n[1]) {
+            one("behind_line_lofted_pct", 100.0 * bl_loft / bt);
+            one("behind_line_own_half_pct", 100.0 * bl_own / bt);
+            one("behind_line_pressed_pct", 100.0 * bl_pressed / bt);
+            const char* dk[4] = {"behind_line_depth_lt2m_pct", "behind_line_depth_2_5m_pct", "behind_line_depth_5_10m_pct", "behind_line_depth_10m_plus_pct"};
+            for (int q = 0; q < 4; ++q) one(dk[q], 100.0 * bl_depth[q] / bt);
+        }
         both("offsides_per_team_match", off_called[0] / nm, off_called[1] / nm);   // G4.88
         if (tob_n) {   // G4.92: time on the ball (one number for both sides)
             one("time_on_ball_s", tob_s / tob_n);
@@ -1526,6 +1592,27 @@ int main(int argc, char** argv) {
             for (int w = 0; w < ai::kWhyCount; ++w)
                 if (n9_job[dv][w] * 25 >= n9_n[dv]) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * n9_job[dv][w] / n9_n[dv]);
             std::printf("\n");
+        }
+        if (bl_n[0] + bl_n[1]) {
+            const long bt = bl_n[0] + bl_n[1];
+            std::printf("  passes aimed past their last outfielder, 3 m+ forward (%.1f / %.1f a team a match, to a mate %.0f / %.0f%%): lofted %.0f%% · from his own half %.0f%% · nearest opponent <2.5 m %.0f%% · past the line <2 / 2-5 / 5-10 / 10+ m %.0f / %.0f / %.0f / %.0f%%\n",
+                        bl_n[0] / nm, bl_n[1] / nm, 100.0 * bl_mate[0] / std::max(1L, bl_n[0]), 100.0 * bl_mate[1] / std::max(1L, bl_n[1]),
+                        100.0 * bl_loft / bt, 100.0 * bl_own / bt, 100.0 * bl_pressed / bt,
+                        100.0 * bl_depth[0] / bt, 100.0 * bl_depth[1] / bt, 100.0 * bl_depth[2] / bt, 100.0 * bl_depth[3] / bt);
+            for (int tm = 0; tm < 2; ++tm) {
+                std::printf("    %s by kind, a match:", tm == 0 ? "home" : "away");
+                for (int w = 0; w <= ai::kWhyCount; ++w)
+                    if (bl_why[tm][w] * 25 >= bl_n[tm]) std::printf(" %s %.1f", w == ai::kWhyCount ? "in behind (ladder 1-2)" : ai::kWhyNames[w], bl_why[tm][w] / nm);
+                std::printf("\n");
+            }
+        }
+        if (pb_n) {
+            std::printf("  balls in behind (%.1f a match), the passer at the kick: nearest opponent <2.5 / 2.5-5 / 5+ m %.0f / %.0f / %.0f%%; had it <0.5 / 0.5-1 / 1-2 / 2+ s %.0f / %.0f / %.0f / %.0f%%; from his own half / to 70 m / the final third %.0f / %.0f / %.0f%%; aimed past their last outfielder <2 / 2-5 / 5-10 / 10+ m %.0f / %.0f / %.0f / %.0f%%; ladder fire %.0f%% · lofted %.0f%%\n",
+                        pb_n / nm, 100.0 * pb_near[0] / pb_n, 100.0 * pb_near[1] / pb_n, 100.0 * pb_near[2] / pb_n,
+                        100.0 * pb_held[0] / pb_n, 100.0 * pb_held[1] / pb_n, 100.0 * pb_held[2] / pb_n, 100.0 * pb_held[3] / pb_n,
+                        100.0 * pb_zone[0] / pb_n, 100.0 * pb_zone[1] / pb_n, 100.0 * pb_zone[2] / pb_n,
+                        100.0 * pb_depth[0] / pb_n, 100.0 * pb_depth[1] / pb_n, 100.0 * pb_depth[2] / pb_n, 100.0 * pb_depth[3] / pb_n,
+                        100.0 * pb_fire / pb_n, 100.0 * pb_loft / pb_n);
         }
         if (bh_n) {
             std::printf("  balls in behind (%.1f a match), at the kick: runner to his nearest defender <2 / 2-4 / 4-8 / 8+ m %.0f / %.0f / %.0f / %.0f%%; runner faster toward goal by <2 / 2-4 / 4-6 / 6+ m/s %.0f / %.0f / %.0f / %.0f%%; defender already turned %.0f%%\n    the defender was doing:",
@@ -1635,7 +1722,9 @@ int main(int argc, char** argv) {
         for (const auto& b : bench) {
             const auto it = sim.find(b.metric);
             if (it == sim.end()) continue;
-            const std::string lab = b.label + " (" + b.unit + ")";
+            std::string lab = b.label + " (" + b.unit + ")";
+            if (b.competition != bench[0].competition)   // G4.98: a second source's row says whose
+                lab = b.label + ", " + b.competition + " " + b.season + " (" + b.unit + ")";
             if (std::isnan(it->second.second))
                 std::printf("  %-76s %9.1f %9s %9.1f\n", lab.c_str(), it->second.first, "", b.value);
             else

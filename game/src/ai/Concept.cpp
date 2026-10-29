@@ -503,6 +503,7 @@ void PassLadder::configure(const core::ModelParams& p) {
     fire_span_ = p.fixed(key("fire_rung_span"), 2000);
     lead_s_ = p.fixed(key("lead_s"), 300);
     pass_speed_ = p.fixed(key("lead_pass_speed_mps"), 12000);
+    run_speed_ = p.fixed(key("run_mps"), 4000);
 }
 
 PassLadder::Lines PassLadder::lines(const core::World& w, core::SlotIndex passer, int sign) const {
@@ -543,6 +544,10 @@ bool PassLadder::offsidePosition(Fixed64 progress, Fixed64 ball_progress, const 
 Vec2 PassLadder::leadPoint(const core::PlayerState& p, const math::Vec3& from) const {
     const Fixed64 t = lead_s_ + math::length(Vec2{p.pos.x - from.x, p.pos.y - from.y}) / pass_speed_;
     return Vec2{p.pos.x + p.vel.x * t, p.pos.y + p.vel.y * t};
+}
+
+bool PassLadder::running(const core::PlayerState& p, Fixed64 sign) const {
+    return p.vel.x * sign >= run_speed_;
 }
 
 bool PassLadder::better(int ra, Fixed64 pa, int rb, Fixed64 pb) {
