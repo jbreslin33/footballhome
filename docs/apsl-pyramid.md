@@ -269,6 +269,15 @@ Staff + roster come from the team's page on the league's site
 `PyramidSync::teamPeople` only when a card opens and the copy is a day old
 → `pyramid_team_people`. Leagues without published rosters say so.
 
+On the map (mig 866; owner: "we need to be able to select a club on the
+map! … and it should show data in hud on that club"): a club is picked from
+its dot (nearest within 16px), its name beside the dot, or a team in the
+conference overlay's tables (`openClub` hands it to `PyramidMapView.pickClub`
+while the map is showing). The picked club's dots ring yellow and its names
+show in yellow at any zoom; the card renders inside the map's **Club** HUD
+(left, under the Conference HUD, down to the map key). ✕ or Esc lets it go;
+Esc again closes the conference.
+
 ### Seasons (mig 847)
 
 TeamPass feeds serve any past season (`?season=<id>`, listed in
