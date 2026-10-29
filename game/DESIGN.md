@@ -3465,6 +3465,24 @@ James 10/29: "1 then move to all" — the possession churn first.
   second, almost nothing past 2 s (pro 26%). A pro with time takes a touch
   forward, waits for the run, turns: the carrier's choice to keep it.
 
+### 8.92 G4.94 — a dropping ball on the thigh or chest (mig 843)
+
+James 10/29: "1 then move to all" — after the churn, the dropping ball.
+
+- An outfielder could touch a ball only below 0.5 m, at his ground control
+  speed: a loft landing at 9-16 m/s (G4.87) was his only once it reached his
+  knees, and mostly came off him. Now (`core::kOutfieldReachZ`, 1.5 m) he
+  takes it up to the chest; above his feet it is a cushion
+  (`core::controlSpeedAt`: 1.2 × his control speed) — the taxonomy's
+  recv-thigh / recv-chest, now wired. [FH] anatomy and scale. One rule for
+  the World's capture and the Brain's race (the read agrees). Headers are
+  still not played.
+- 10 matches: bad touches on the pass meant for him at 12-15 m/s 5.5 → 1.3
+  a match; the long ball reaches a mate 59-64 → 63-69% (likes it long 64 →
+  72%); but defenders take it at the chest too — interceptions 41 / 58 → 45
+  / 67, spells 513 → 564, shots 55 / 51 → 64 / 60 a team.
+- **Next mole: shots** — 60+ a team a match against a pro 12.9.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

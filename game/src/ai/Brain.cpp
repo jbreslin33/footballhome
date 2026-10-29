@@ -347,7 +347,7 @@ void Brain::race(const World& world, const RaceBall& rb, FlightRead& f) const {
             // A man in an offside position leaves it (the flag decides).
             if (flag_team != 0xFF && p.team == flag_team && ((flagged >> (i & 31)) & 1u)) continue;
             const bool gk = world.isKeeper(i);
-            if (pos.z > (gk ? core::kKeeperReachZ : core::kBallControlRadius)) continue;
+            if (pos.z > (gk ? core::kKeeperReachZ : core::kOutfieldReachZ)) continue;   // G4.94
             const Fixed64 cap = gk ? core::kCaptureMaxSpeed + core::kKeeperHandsBonus : core::kCaptureMaxSpeed;
             if (sp2 > cap * cap) continue;
             // Our own ball (G4.85): he takes it where it has come down to a
@@ -357,7 +357,8 @@ void Brain::race(const World& world, const RaceBall& rb, FlightRead& f) const {
             // re-charging the reaction).
             if (!gk && p.team == rb.ours) {
                 const std::int32_t c = levelOf(i).control_speed_mps;
-                if (c > 0 && sp2 > Fixed64::fromInt(c) * Fixed64::fromInt(c)) continue;
+                const Fixed64 cs = core::controlSpeedAt(Fixed64::fromInt(c), pos.z);   // G4.94
+                if (c > 0 && sp2 > cs * cs) continue;
             }
             if (gk) {  // hands only in his own box
                 const bool own_end = setup_.team_of_slot[i] == 0 ? pos.x < -box_x : pos.x > box_x;

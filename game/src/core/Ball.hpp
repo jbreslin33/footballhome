@@ -57,6 +57,22 @@ inline const math::Fixed64 kBounceDeadSpeed = math::Fixed64::fromFraction(1, 2);
 // is picked up.
 inline const math::Fixed64 kBallControlRadius = math::Fixed64::fromFraction(1, 2);
 
+// Receiving a dropping ball (G4.94; game_techniques recv-thigh, recv-chest,
+// taught u14): an outfielder takes a ball up to chest height, not only at
+// his feet — above kBallControlRadius it is a thigh or chest cushion, which
+// holds a faster ball than a trap underfoot: kCushionControlScale × his
+// control speed. Above the chest it is a header (not a control; not yet
+// played). Before, only a ball below 0.5 m could be touched at all, at the
+// ground control speed — a loft came down at 9-16 m/s (G4.87) to a man who
+// could take it only once it had dropped to his knees. Anatomy and the
+// cushion's scale are [FH] estimates. One rule for the World's capture and
+// the Brain's race.
+inline const math::Fixed64 kOutfieldReachZ = math::Fixed64::fromFraction(3, 2);
+inline const math::Fixed64 kCushionControlScale = math::Fixed64::fromFraction(6, 5);
+inline math::Fixed64 controlSpeedAt(math::Fixed64 ctrl, math::Fixed64 z) {
+    return z > kBallControlRadius ? ctrl * kCushionControlScale : ctrl;
+}
+
 // A free ball faster than this (m/s) cannot be captured. 20 covers every
 // current kick, which makes receiving AND intercepting the same mechanic:
 // stand on the ball's path, the ball is yours (soccer, in one rule). The

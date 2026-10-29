@@ -546,7 +546,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             continue;
         const bool gk = keeper_[i];
         const Fixed64 reach = gk ? kKeeperReach : kBallControlRadius;
-        const Fixed64 reach_z = gk ? kKeeperReachZ : kBallControlRadius;
+        const Fixed64 reach_z = gk ? kKeeperReachZ : kOutfieldReachZ;   // G4.94: to the chest
         if (ball_.pos.z > reach_z) continue;
         // Hard cap: nobody touches a ball above the engine capture cap
         // (keepers get a hands bonus on top).
@@ -629,6 +629,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     if (lv.control_speed_mps > 0 || fumbled || reaction) {
         Fixed64 ctrl = Fixed64::fromInt(lv.control_speed_mps);
         if (keeper_[best]) ctrl += kKeeperHandsBonus;
+        else ctrl = controlSpeedAt(ctrl, ball_.pos.z);   // G4.94: a thigh / chest cushion
         if (fumbled || reaction || planar_speed_sq > ctrl * ctrl) {
             const Fixed64 n =
                 detNoise(match_seed_, clock_.tick(), best, 5);
