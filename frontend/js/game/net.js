@@ -37,7 +37,7 @@
               GameWire.decodeSnapshot(view, f.payloadAt)
             );
           } else if (f.type === GameWire.FrameType.ROSTER) {
-            this.handlers.onRoster(GameWire.decodeRoster(view, f.payloadAt));
+            this.handlers.onRoster(GameWire.decodeRoster(view, f.payloadAt, f.payloadLen));
           } else if (f.type === GameWire.FrameType.PRESETS) {
             if (this.handlers.onPresets)
               this.handlers.onPresets(GameWire.decodePresets(view, f.payloadAt));

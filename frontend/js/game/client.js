@@ -81,8 +81,10 @@
     figs.forEach((f, i) => {
       const side = i < perTeam ? 0 : 1;
       const k = side ? i - perTeam : i;
+      // 1.17: the engine's own position number first (no sign-in needed),
+      // then the club API's, then slot order.
       const nums = idTeams && idTeams[side] && idTeams[side].numbers;
-      const n = (nums && nums[k]) || (k + 1);
+      const n = (roster[i] && roster[i].number) || (nums && nums[k]) || (k + 1);
       f.setIdentity(n, roster[i] && roster[i].name);
     });
   }

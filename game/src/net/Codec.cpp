@@ -318,6 +318,10 @@ Bytes encodeRoster(const RosterFrame& f) {
         for (std::size_t i = 0; i < len; ++i)
             w.u8(static_cast<std::uint8_t>(e.name[i]));
     }
+    if (!f.numbers.empty()) {   // 1.17 trailer
+        w.u8(static_cast<std::uint8_t>(f.numbers.size()));
+        for (std::uint8_t v : f.numbers) w.u8(v);
+    }
     return std::move(w.out);
 }
 
@@ -334,6 +338,10 @@ std::optional<RosterFrame> decodeRoster(const Bytes& payload) {
         for (std::uint8_t k = 0; k < len; ++k)
             e.name.push_back(static_cast<char>(r.u8()));
         f.slots.push_back(std::move(e));
+    }
+    if (r.ok && r.remaining() > 0) {   // 1.17 trailer
+        const std::uint8_t c = r.u8();
+        for (std::uint8_t k = 0; k < c && r.ok; ++k) f.numbers.push_back(r.u8());
     }
     if (!r.ok) return std::nullopt;
     return f;

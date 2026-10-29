@@ -370,4 +370,21 @@ FH_TEST(brain_frame_round_trips_with_the_vision_block) {
     FH_EXPECT(legacy.has_value() && legacy->slots.size() == 2 && legacy->slots[0].look_ds == 255);
 }
 
+// 1.17: ROSTER carries each slot's position number; a 1.16 frame (no
+// trailer) still decodes, with none.
+FH_TEST(roster_position_numbers_round_trip) {
+    RosterFrame f;
+    RosterEntry a; a.name = "Luke"; a.ratings = {50, 60};
+    RosterEntry b; b.name = "Gio"; b.ratings = {70, 80};
+    f.slots = {a, b};
+    f.numbers = {10, 6};
+    const Bytes wire = encodeRoster(f);
+    const auto back = decodeRoster(wire);
+    FH_EXPECT(back.has_value() && back->slots.size() == 2 && back->numbers.size() == 2);
+    FH_EXPECT(back->numbers[0] == 10 && back->numbers[1] == 6 && back->slots[1].name == "Gio");
+    const Bytes old(wire.begin(), wire.end() - 3);
+    const auto legacy = decodeRoster(old);
+    FH_EXPECT(legacy.has_value() && legacy->slots.size() == 2 && legacy->numbers.empty());
+}
+
 FH_TEST_MAIN()

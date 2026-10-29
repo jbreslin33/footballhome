@@ -152,8 +152,9 @@
     return { tick, players, ball, match, officials };
   }
 
-  function decodeRoster(view, at) {
-    // 1.4: graded knowledge — per slot a rating byte array + name.
+  function decodeRoster(view, at, payloadLen) {
+    // 1.4: graded knowledge — per slot a rating byte array + name; 1.17
+    // trailer: each slot's position number (9 = the striker).
     const n = view.getUint8(at);
     let p = at + 1;
     const slots = [];
@@ -166,6 +167,10 @@
       const name = utf8.decode(new Uint8Array(view.buffer, view.byteOffset + p, len));
       p += len;
       slots.push({ ratings, name });
+    }
+    if (payloadLen != null && p < at + payloadLen) {
+      const c = view.getUint8(p); p += 1;
+      for (let i = 0; i < c && i < slots.length; i++) slots[i].number = view.getUint8(p + i) || null;
     }
     return slots;
   }

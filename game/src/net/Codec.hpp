@@ -167,6 +167,10 @@ struct RosterEntry {
 };
 struct RosterFrame {
     std::vector<RosterEntry> slots;
+    // 1.17 trailer: each slot's position number (2 RB … 9 striker, 10 the
+    // 10; 0 = unknown), from the formation the engine plays — so the HUD
+    // shows the 10 vs the 6 without the club API (which needs a sign-in).
+    std::vector<std::uint8_t> numbers;
 };
 Bytes encodeRoster(const RosterFrame& f);
 std::optional<RosterFrame> decodeRoster(const Bytes& payload);

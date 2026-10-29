@@ -334,6 +334,7 @@ void GameServer::broadcastRoster() {
         e.ratings.assign(concept_ratings_[i].begin(),
                          concept_ratings_[i].begin() + core::concepts().size());
         rf.slots.push_back(std::move(e));
+        rf.numbers.push_back(static_cast<std::uint8_t>(brain_.numberOf(i)));   // 1.17
     }
     const Bytes frame = encodeFrame(FrameType::Roster, encodeRoster(rf));
     for (const auto& [cid, _] : clients_) transport_.send(cid, frame);
