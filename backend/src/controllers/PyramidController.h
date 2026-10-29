@@ -33,7 +33,8 @@
 // zone's teams go is the pyramid_zone_moves view over pyramid_links.
 //
 //   GET /api/pyramid/territory?conf=<id> → { population, counties, geojson,
-//     travel: {max_minutes, from, to, avg_minutes, median_minutes, pairs} | null }  (migs 852, 854)
+//     travel: {max_minutes, from, to, avg_minutes, median_minutes, min_minutes, min_from,
+//              min_to, pairs} | null }  (migs 852, 854, 857)
 //   GET /api/pyramid/club?id= → the club card: {id, name, founded, logo_url,
 //     teams: [{league, division, pos, record, zone, venue, staff, roster}]}  (mig 856)
 //   POST /api/pyramid/club {club_id, founded} — club admins

@@ -31,8 +31,8 @@
 //              /api/pyramid/territory draws the picked one's counties, tinted,
 //              with only its OUTER border outlined; the HUD gives the
 //              population inside, and Sunday (no traffic) drive times: the
-//              two furthest clubs, the average if all play all, and the
-//              median trip (mig 854).  The
+//              two furthest clubs, the shortest trip — the derby (mig
+//              857) — the average if all play all, and the median (mig 854).  The
 // conference pills choose which conferences' clubs are on the map.
 //
 // Nothing hides anything (owner 2026-10-29: "use arrows to bubble as its
@@ -79,6 +79,8 @@ class PyramidMapView {
       .mp-ov-head input[type=range] { width:120px; }
       .mp-ov-head button { min-height:0; min-width:0; padding:2px 10px; }
       .mp-ov-body { overflow:auto; padding:10px; flex:1; }
+      .mp-pin { pointer-events:none !important; overflow:visible; }
+      .mp-pin .mp-label { pointer-events:auto; }
       .mp-label { background:#1d4ed8; color:#fff; font-weight:800; font-size:12px; padding:3px 9px; border-radius:999px;
                   border:2px solid #93c5fd; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.5); cursor:pointer; transform:translate(-50%, -50%); display:inline-block; }
       .mp-label.on { background:#facc15; color:#111827; border-color:#fff; }
@@ -166,17 +168,15 @@ class PyramidMapView {
         const apsl = model.divisionTier(division.id) === 'apsl';
         const color = apsl ? '#3b82f6' : '#14b8a6';
         const m = L.circleMarker([p.lat, p.lon], {
+          interactive: false,
           radius: apsl ? 7 : 5, color: p.approx ? '#64748b' : '#0b1220', weight: 1.5, dashArray: p.approx ? '3 3' : null,
           fillColor: color, fillOpacity: p.approx ? 0.35 : 0.9,
         }).addTo(this.map);
-        m.bindTooltip(this._esc(team.name));
-        // A team's dot → its club card, in the map's stage (mig 856).
-        m.on('click', () => this.screen.openClub(team.club_id, this.root.querySelector('.mp-stage')));
         const name = L.marker([p.lat, p.lon], {
           icon: L.divIcon({ className: '', html: `<span class="mp-name">${this._esc(team.name)}</span>`, iconSize: null }),
           interactive: false, keyboard: false, opacity: 0,
         }).addTo(this.map);
-        this.dots.push({ m, name, label: team.name, conf: col.conf.id, apsl, approx: p.approx, r: apsl ? 7 : 5,
+        this.dots.push({ m, name, label: team.name, clubId: team.club_id, conf: col.conf.id, apsl, approx: p.approx, r: apsl ? 7 : 5,
                          at: L.latLng(p.lat, p.lon), key: `${p.lat.toFixed(4)},${p.lon.toFixed(4)}` });
       }
     }
@@ -187,7 +187,9 @@ class PyramidMapView {
       const at = pts.length ? [pts.reduce((a, p) => a + p.lat, 0) / pts.length, pts.reduce((a, p) => a + p.lon, 0) / pts.length]
         : (col.conf.lat != null ? [col.conf.lat, col.conf.lon] : null);
       if (!at) continue;
-      const icon = L.divIcon({ className: '', html: `<span class="mp-label" data-conf-label="${col.conf.id}">${this._esc(model.label(col.conf))}</span>`, iconSize: null });
+      // A zero-size marker box: only the visible bubble takes clicks (a
+      // content-sized box hung down-right of it and swallowed dots' clicks).
+      const icon = L.divIcon({ className: 'mp-pin', html: `<span class="mp-label" data-conf-label="${col.conf.id}">${this._esc(model.label(col.conf))}</span>`, iconSize: [0, 0] });
       const anchor = L.latLng(at[0], at[1]);
       const line = L.polyline([anchor, anchor], { color: '#93c5fd', weight: 1.5, opacity: 0.85, interactive: false }).addTo(this.map);
       const ring = L.circleMarker(anchor, { radius: 5, color: '#93c5fd', weight: 2, fill: false, interactive: false }).addTo(this.map);
@@ -203,6 +205,21 @@ class PyramidMapView {
     this.terrLayer = L.layerGroup().addTo(this.map);
     this.terrCache = this.terrCache || new Map();
     this.map.on('zoomend moveend', () => this._relayout());
+    // Picking a team: the dots don't take clicks themselves (5–7px circles,
+    // fanned rings overlap); the map finds the NEAREST dot within 16px of
+    // the pointer — that one's club card opens (mig 856), its name shows on
+    // hover and the cursor turns to a pointer.
+    const tip = L.tooltip({ direction: 'top', offset: [0, -8] });
+    this.map.on('mousemove', (e) => {
+      const d = this._nearestDot(e.containerPoint);
+      this.map.getContainer().style.cursor = d ? 'pointer' : '';
+      if (d) tip.setLatLng(d.m.getLatLng()).setContent(this._esc(d.label)).addTo(this.map); else tip.remove();
+    });
+    this.map.on('mouseout', () => { tip.remove(); this.map.getContainer().style.cursor = ''; });
+    this.map.on('click', (e) => {
+      const d = this._nearestDot(e.containerPoint);
+      if (d) this.screen.openClub(d.clubId, this.root.querySelector('.mp-stage'));
+    });
     this._bindHud(root);
     const count = root.querySelector('.mp-hud-count');
     if (count) count.textContent = this._copy('map_located', { located, clubs: seen.size });
@@ -210,6 +227,16 @@ class PyramidMapView {
     if (this.sel && this.columns.some((c) => c.conf.id === this.sel)) this.select(this.sel, false, true);
     else { this.sel = null; this._fitAll(); this._panel(); }
     requestAnimationFrame(() => this._relayout());
+  }
+
+  _nearestDot(pt, within = 16) {
+    let best = null, bd = within;
+    for (const d of this.dots || []) {
+      const q = this.map.latLngToContainerPoint(d.m.getLatLng());
+      const dist = Math.hypot(q.x - pt.x, q.y - pt.y);
+      if (dist <= bd) { bd = dist; best = d; }
+    }
+    return best;
   }
 
   // ── keep everything visible ───────────────────────────────────────────
@@ -348,6 +375,7 @@ class PyramidMapView {
         + esc(this._copy('map_pop', { pop: Number(t.population).toLocaleString() }));
       if (t.travel) {
         html += `<br>${esc(this._copy('map_far', { a: t.travel.from, b: t.travel.to, time: time(t.travel.max_minutes) }))}`
+          + (t.travel.min_minutes != null ? `<br>${esc(this._copy('map_short', { a: t.travel.min_from, b: t.travel.min_to, time: time(t.travel.min_minutes) }))}` : '')
           + `<br>${esc(this._copy('map_avg', { time: time(t.travel.avg_minutes), pairs: t.travel.pairs }))}`
           + (t.travel.median_minutes != null ? `<br>${esc(this._copy('map_median', { time: time(t.travel.median_minutes) }))}` : '');
       } else html += `<br>${esc(this._copy('map_no_travel'))}`;

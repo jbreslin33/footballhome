@@ -39,8 +39,8 @@ public:
     static void storeSeasons(int sourceId, const std::string& locator, const nlohmann::json& body);
 
     // A conference's Sunday (no-traffic) drive times among its APSL clubs:
-    // {max_minutes, from, to, avg_minutes, median_minutes, pairs} or null
-    // (migs 852, 854).
+    // {max_minutes, from, to, avg_minutes, median_minutes, min_minutes,
+    // min_from, min_to, pairs} or null (migs 852, 854, 857).
     static nlohmann::json conferenceTravel(int confId);
 
     // A team's staff + roster from its league page, when a day old (mig 856).
