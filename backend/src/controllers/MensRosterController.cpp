@@ -487,9 +487,11 @@ Response MensRosterController::handleOfficialRosterRefresh(const Request& reques
 }
 
 // POST /api/mens-roster/invite-only — 📄 paper spot toggle (mig 619):
-// {leagueAppsUserId, teamId, inviteOnly}.  The row keeps the roster place
-// but grants nothing on games; the card wears a loud 📄 label so nobody
-// is turned "off" silently.  Alias-aware (person_la_user_ids, mig 602).
+// {leagueAppsUserId | personId, teamId, inviteOnly, callIn?}.  The row
+// keeps the roster place but grants nothing on games; the card wears a
+// loud 📄 label so nobody is turned "off" silently.  Alias-aware
+// (person_la_user_ids, mig 602).  callIn (mig 637) is set by the card's
+// Team dropdown (2026-10-29); omitted, a full-roster flip still ends it.
 Response MensRosterController::handleInviteOnly(const Request& request) {
     if (!requireBearer(request)) {
         return errorResponse(HttpStatus::UNAUTHORIZED, "Unauthorized");
@@ -497,13 +499,17 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
     json body;
     try { body = json::parse(request.getBody()); }
     catch (const std::exception&) { return badRequest("Invalid JSON body"); }
-    long long userId = 0, teamIdLL = 0;
-    if (!readInt(body, "leagueAppsUserId", userId) ||
-        !readInt(body, "teamId", teamIdLL) || userId <= 0 || teamIdLL <= 0) {
-        return badRequest("leagueAppsUserId and teamId required");
+    long long userId = 0, personId = 0, teamIdLL = 0;
+    readInt(body, "leagueAppsUserId", userId);
+    readInt(body, "personId", personId);
+    if (!readInt(body, "teamId", teamIdLL) || teamIdLL <= 0 || (userId <= 0 && personId <= 0)) {
+        return badRequest("leagueAppsUserId or personId, and teamId required");
     }
     const int teamId = static_cast<int>(teamIdLL);
     const bool inviteOnly = readBool(body, "inviteOnly", false);
+    // "" = keep the current call-in (only while still invite-only).
+    const std::string callIn = body.contains("callIn") && body["callIn"].is_boolean()
+        ? (body["callIn"].get<bool>() ? "true" : "false") : "";
     if (!canManageTeam(request, teamId)) {
         return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
     }
@@ -516,19 +522,23 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
             // 2026-10-21.
             // Turning a spot back to full roster also ends a ↔ call-in
             // (mig 637: call_in only means anything with invite_only).
-            "UPDATE team_persons tp SET invite_only = $3::bool, call_in = tp.call_in AND $3::bool "
+            "UPDATE team_persons tp SET invite_only = $3::bool, "
+            "       call_in = $3::bool AND COALESCE(NULLIF($5, '')::bool, tp.call_in) "
             "  FROM persons p "
             " WHERE tp.person_id = p.id AND tp.team_id = $2::int AND tp.removed_at IS NULL "
-            "   AND (p.la_user_id = $1::text "
+            "   AND (p.id = $4::int "
+            "        OR p.la_user_id = NULLIF($1, '') "
             "        OR EXISTS (SELECT 1 FROM person_la_user_ids a "
-            "                    WHERE a.person_id = p.id AND a.la_user_id = $1::text)) "
-            "RETURNING tp.person_id",
-            {std::to_string(userId), std::to_string(teamId), inviteOnly ? "true" : "false"});
+            "                    WHERE a.person_id = p.id AND a.la_user_id = NULLIF($1, ''))) "
+            "RETURNING tp.person_id, tp.call_in",
+            {userId > 0 ? std::to_string(userId) : "", std::to_string(teamId), inviteOnly ? "true" : "false",
+             std::to_string(personId), callIn});
         if (rows.empty()) return notFound("No assignment exists for that player on that team");
         std::ostringstream out;
         out << "{\"leagueAppsUserId\":" << userId
             << ",\"teamId\":"           << teamId
             << ",\"inviteOnly\":"       << (inviteOnly ? "true" : "false")
+            << ",\"callIn\":"           << (rows[0]["call_in"].as<bool>() ? "true" : "false")
             << "}";
         return Response(HttpStatus::OK, out.str());
     } catch (const std::exception& e) {

@@ -970,7 +970,7 @@ class RosterScreenBase extends Screen {
     strip.innerHTML = this.rosterStatusTalliesHtml({ teamId, leagueId: Number(strip.dataset.leagueId) || 0 }, codes);
   }
 
-  renderStatusSelect(player, col, canMove) {
+  renderStatusSelect(player, col, canMove, { withHealth = true } = {}) {
     if (!(canMove && col && col.teamId && player.personId)) return '';
     const esc     = RosterScreenBase.escapeHtml;
     const current = player.rosterStatus || '';
@@ -1016,7 +1016,104 @@ class RosterScreenBase extends Screen {
                style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${this.rosterStatusStyle(current)} ${RosterScreenBase.SELECT_WIDTH_STYLE}">
          <option value="" ${!current ? 'selected' : ''} ${onList && current ? 'disabled' : ''}>Status: —</option>
          ${opts}
-       </select>${this.renderHealthControl(player)}`;
+       </select>${withHealth ? this.renderHealthControl(player) : ''}`;
+  }
+
+  // TEAM dropdown (owner 2026-10-29: "a drop down for roster status and
+  // another drop down for team status") — his role on THIS team, beside
+  // the Roster dropdown (league paperwork); the two are independent.
+  //   ✅ Plays / 📄 Paper spot / ↔ Call-in — team_persons.invite_only +
+  //     call_in (migs 619/637), per team.
+  //   🩹 each injured health status — per PERSON ("injured everywhere"),
+  //     the same /api/person-health write as the ⋯ health control; its
+  //     since / back-on dates show underneath while injured.
+  // Words: message_templates kind roster_sheet team_status_* (mig 814).
+  renderTeamStatusSelect(player, col, canMove) {
+    if (!(col && col.teamId && player.personId)) return '';
+    const esc  = RosterScreenBase.escapeHtml;
+    const copy = (tier) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || '';
+    const H    = RosterScreenBase.HEALTH;
+    const injury = H.people[player.personId] || null;
+    const teamCode = player.inviteOnly === true ? (player.callIn === true ? 'callin' : 'paper') : 'plays';
+    const current  = injury ? injury.code : teamCode;
+    const COLORS = {
+      plays:  ['#22c55e', 'rgba(34,197,94,0.18)', '#bbf7d0'],
+      paper:  ['#f59e0b', 'rgba(245,158,11,0.22)', '#fcd34d'],
+      callin: ['#a78bfa', 'rgba(167,139,250,0.22)', '#ddd6fe'],
+    };
+    const opts = [
+      { code: 'plays',  label: copy('team_status_plays')  || '✅ Plays' },
+      { code: 'paper',  label: copy('team_status_paper')  || '📄 Paper spot' },
+      { code: 'callin', label: copy('team_status_callin') || '↔ Call-in' },
+      ...H.statuses.filter(st => st.isInjured).map(st => ({ code: st.code, label: (st.icon ? st.icon + ' ' : '') + st.displayName })),
+    ];
+    const style = injury ? this.healthStyle(current)
+      : `background:${COLORS[teamCode][1]}; color:${COLORS[teamCode][2]}; border:1px solid ${COLORS[teamCode][0]};`;
+    const selectStyle = `font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; ${style} ${RosterScreenBase.SELECT_WIDTH_STYLE}`;
+    const label = (opts.find(o => o.code === current) || opts[0]).label;
+    if (!canMove) return `<span title="${esc(copy('team_status_title'))}" style="${selectStyle}">${esc(label)}</span>`;
+    const dateRow = (cls, text, value, bounds) =>
+      `<label class="mr-health-dates" style="display:${injury ? 'flex' : 'none'}; flex-direction:column; gap:1px; font-size:0.58rem; font-weight:700; color:#cbd5e1;">
+         ${esc(text || '')}
+         <input type="date" class="${cls}" value="${esc(value || '')}" ${bounds}
+                style="font-size:0.65rem; padding:0 2px; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; color-scheme:dark;">
+       </label>`;
+    return `<span class="mr-team-status" data-person-id="${player.personId}" data-team-id="${col.teamId}"
+                  data-team-code="${teamCode}" style="display:flex; flex-direction:column; gap:3px;">
+         <select class="mr-team-status-select" title="${esc(copy('team_status_title'))}" style="${selectStyle}">
+           ${opts.map(o => `<option value="${esc(o.code)}" ${o.code === current ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+         </select>
+         ${dateRow('mr-health-since', H.copy.since_label, injury && injury.since, `max="${RosterScreenBase.clubDay()}"`)}
+         ${dateRow('mr-health-until', H.copy.until_label, injury && injury.until, `min="${RosterScreenBase.clubDay(1)}"`)}
+       </span>`;
+  }
+
+  // The screens' delegated change listeners call this; true = handled.
+  // A team code writes invite_only/call_in (and ends an injury — picking
+  // Plays says he is back); an injury code writes the person's health.
+  onTeamStatusChange(target) {
+    const wrap = target && target.closest && target.closest('.mr-team-status');
+    if (!wrap) return false;
+    this.saveTeamStatus(wrap);
+    return true;
+  }
+
+  async saveTeamStatus(wrap) {
+    const H = RosterScreenBase.HEALTH;
+    const personId = parseInt(wrap.dataset.personId, 10);
+    const teamId   = parseInt(wrap.dataset.teamId, 10);
+    const value    = wrap.querySelector('.mr-team-status-select').value;
+    const injury   = H.statuses.find(st => st.isInjured && st.code === value);
+    const put = async (url, method, body) => {
+      const res = await this.auth.fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    };
+    wrap.querySelectorAll('select, input').forEach(el => { el.disabled = true; });
+    try {
+      if (injury) {
+        const body = { person_id: personId, status: injury.code };
+        const since = wrap.querySelector('.mr-health-since').value;
+        const until = wrap.querySelector('.mr-health-until').value;
+        if (since) body.since = since;
+        if (until) body.until = until;
+        const data = await put('/api/person-health', 'PUT', body);
+        if (data.health) H.people[personId] = data.health; else delete H.people[personId];
+      } else {
+        if (value !== wrap.dataset.teamCode) {
+          await put('/api/mens-roster/invite-only', 'POST',
+            { personId, teamId, inviteOnly: value !== 'plays', callIn: value === 'callin' });
+        }
+        if (H.people[personId]) {
+          const healthy = H.statuses.find(st => !st.isInjured);
+          if (healthy) { await put('/api/person-health', 'PUT', { person_id: personId, status: healthy.code }); delete H.people[personId]; }
+        }
+      }
+    } catch (err) {
+      alert(`Could not save team status: ${err.message}`);
+    }
+    if (typeof this.load === 'function') await this.load({ quiet: true });
   }
 
   // Optimistic: flip the select's own state immediately, roll back only
