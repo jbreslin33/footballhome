@@ -22,4 +22,9 @@ public:
     // caps out at 16 bind params and the active-form count can exceed
     // that.
     static void replaceActive(const std::vector<std::string>& formIds);
+
+    // Every form_id with a live ad right now -- the Meta leads sync pulls
+    // these on top of META_LEAD_FORM_IDS so a newly launched ad's form is
+    // backfilled without an env edit.
+    static std::vector<std::string> activeIds();
 };

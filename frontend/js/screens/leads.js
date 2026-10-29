@@ -118,8 +118,9 @@ class LeadsScreen extends Screen {
         </div>
         <div id="leads-sync-log" style="display:block; margin: 0 0 var(--space-3) 0; max-height: 220px; overflow-y: auto; padding: 8px 10px; border-radius: 6px; background: #0f172a; color: #cbd5e1; border: 1px solid #1e293b; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.4;"></div>
         <div id="leads-form-status-pills" style="display:flex; gap:var(--space-2); margin-bottom:var(--space-3);">
-          <button type="button" class="form-status-pill" data-form-status="active">🟢 Active</button>
-          <button type="button" class="form-status-pill" data-form-status="inactive">⚪ Inactive</button>
+          <button type="button" class="form-status-pill" data-form-status="active">📣 Live ads</button>
+          <button type="button" class="form-status-pill" data-form-status="inactive">⚪ Past ads</button>
+          <button type="button" class="form-status-pill" data-form-status="all">All</button>
         </div>
         <div id="leads-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading leads…</div>
         <div id="leads-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
@@ -135,10 +136,10 @@ class LeadsScreen extends Screen {
     this.clubId   = params?.clubId;
     this.clubName = params?.clubName;
 
-    // Active/Inactive pill above the board — filters which Meta lead
-    // forms are shown by whether they currently have a live ad running.
-    // Always defaults to Active on screen entry (not persisted) so a
-    // coach who last looked at Inactive doesn't land there again and
+    // Live ads / Past ads / All pill above the board — filters which Meta
+    // lead forms are shown by whether they currently have a live ad
+    // running. Always defaults to Live ads on screen entry (not persisted)
+    // so a coach who last looked at Past ads doesn't land there again and
     // miss new leads.
     this._formStatus = 'active';
 
@@ -181,7 +182,7 @@ class LeadsScreen extends Screen {
     });
   }
 
-  // Switching the Active/Inactive pill is a pure DB re-read filtered by
+  // Switching the Live ads / Past ads / All pill is a pure DB re-read filtered by
   // lead_forms (already kept fresh by the live Meta pull that runs at
   // the top of loadLeads()) — no Meta round-trip here, so it's fast and
   // doesn't disturb the sync banner/log.
@@ -597,16 +598,19 @@ class LeadsScreen extends Screen {
           </button>`;
         }).join('')}
       </div>
-      <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; margin-bottom:var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
-        <span style="opacity:0.7; font-size:0.8rem; font-weight:600;">Show:</span>
+      <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-3);">
         ${columns.length === 0 ? `<span style="opacity:0.6; font-size:0.8rem;">No leads yet.</span>` : ''}
         ${columns.map(label => {
           const color = FUNNEL_COLORS[label] || DEFAULT_COLOR;
+          const shown = !hidden.has(label);
           return `
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; cursor:pointer; user-select:none; padding:2px 6px; border-radius:4px; border-left:3px solid ${color};">
-            <input type="checkbox" class="col-toggle" data-col="${label}" ${hidden.has(label) ? '' : 'checked'} style="cursor:pointer;">
-            ${label} <span style="opacity:0.55;">(${groupedFiltered[label].length}${groupedFiltered[label].length !== grouped[label].length ? `/${grouped[label].length}` : ''})</span>
-          </label>`;
+          <button type="button" class="col-toggle" data-col="${label}" aria-pressed="${shown}"
+                  style="padding:6px 12px; font-size:0.85rem; font-weight:600; border-radius:999px; cursor:pointer;
+                         background:${shown ? color : 'var(--bg-secondary)'}; color:${shown ? '#fff' : 'inherit'};
+                         border:1px solid ${color}; opacity:${shown ? 1 : 0.6};">
+            ${label}
+            <span style="opacity:0.75; font-weight:500; margin-left:4px;">(${groupedFiltered[label].length}${groupedFiltered[label].length !== grouped[label].length ? `/${grouped[label].length}` : ''})</span>
+          </button>`;
         }).join('')}
       </div>
       <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">
@@ -616,7 +620,7 @@ class LeadsScreen extends Screen {
       ${columns.length === 0 ? `
         <div style="text-align:center; padding:var(--space-6); opacity:0.6;">No leads yet.</div>
       ` : visible.length === 0 ? `
-        <div style="text-align:center; padding:var(--space-6); opacity:0.5;">All columns hidden — check a box above to show leads.</div>
+        <div style="text-align:center; padding:var(--space-6); opacity:0.5;">All categories hidden — tap a pill above to show leads.</div>
       ` : visibleLeadCount === 0 ? `
         <div style="text-align:center; padding:var(--space-6); opacity:0.5;">No leads in this tab. Try a different status above.</div>
       ` : `
@@ -646,11 +650,11 @@ class LeadsScreen extends Screen {
       });
     });
 
-    // Wire checkbox toggles → persist + re-render with cached data
-    container.querySelectorAll('.col-toggle').forEach(cb => {
-      cb.addEventListener('change', () => {
-        const col = cb.getAttribute('data-col');
-        if (cb.checked) hidden.delete(col); else hidden.add(col);
+    // Wire category pill toggles → persist + re-render with cached data
+    container.querySelectorAll('.col-toggle').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const col = pill.getAttribute('data-col');
+        if (hidden.has(col)) hidden.delete(col); else hidden.add(col);
         try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hidden])); } catch {}
         this.renderLeads(this._leads || leads);
       });

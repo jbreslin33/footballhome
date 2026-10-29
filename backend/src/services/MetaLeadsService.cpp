@@ -1,5 +1,6 @@
 #include "MetaLeadsService.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
@@ -7,6 +8,7 @@
 
 #include "../core/HttpClient.h"
 #include "../models/Lead.h"
+#include "../models/LeadForm.h"
 #include "../third_party/json.hpp"
 
 namespace {
@@ -208,7 +210,19 @@ MetaLeadsService::SyncResult MetaLeadsService::syncAll(bool force) {
 
     const long long start = nowMs();
     SyncResult out;
-    out.formsTotal = static_cast<int>(formIds_.size());
+
+    // Configured forms + every form a live ad points at (lead_forms), so a
+    // new ad's leads backfill even when the webhook drops one.
+    std::vector<std::string> formIds = formIds_;
+    try {
+        for (const auto& id : LeadForm::activeIds()) {
+            if (std::find(formIds.begin(), formIds.end(), id) == formIds.end())
+                formIds.push_back(id);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Meta leads sync: live-ad forms unreadable: " << e.what() << std::endl;
+    }
+    out.formsTotal = static_cast<int>(formIds.size());
 
     if (!force && (start - lastSyncAtMs_) < syncTtlMs_) {
         out.skippedByTtl  = true;
@@ -216,7 +230,7 @@ MetaLeadsService::SyncResult MetaLeadsService::syncAll(bool force) {
         return out;
     }
 
-    for (const auto& formId : formIds_) {
+    for (const auto& formId : formIds) {
         try {
             out.syncedRows += syncForm(formId);
         } catch (const std::exception& e) {

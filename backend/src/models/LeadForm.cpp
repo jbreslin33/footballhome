@@ -29,3 +29,11 @@ void LeadForm::replaceActive(const std::vector<std::string>& formIds) {
 
     db->query(sql.str());
 }
+
+std::vector<std::string> LeadForm::activeIds() {
+    auto rs = Database::getInstance()->query("SELECT form_id FROM lead_forms ORDER BY form_id");
+    std::vector<std::string> out;
+    out.reserve(rs.size());
+    for (const auto& row : rs) out.push_back(row["form_id"].c_str());
+    return out;
+}
