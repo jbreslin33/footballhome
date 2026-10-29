@@ -618,6 +618,123 @@ class RosterScreenBase extends Screen {
       : (RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : 'active');
   }
 
+  // ＋ from LA (TODO "Adds, split by pill", 2026-10-29) — Team pill =
+  // "is he one of ours?": pick a section LeagueApps registrant who is not
+  // on this team and put him on it through the board's own additive
+  // assign (null = this board has none, no button).  Proposing him to the
+  // LEAGUE is the Roster pill's job (NEEDS ADD → PROPOSED, mig 817).
+  assignEndpoint() { return null; }
+
+  renderFromLaPicker(col) {
+    if (!this.assignEndpoint() || !this._canEditCoachesFor(col)) return '';
+    const esc = RosterScreenBase.escapeHtml;
+    const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || '';
+    this._wireFromLa();
+    return `<details class="rb-from-la" data-team-id="${col.teamId}" style="margin:2px 0 4px;">
+        <summary style="cursor:pointer; list-style:none; display:inline-block; font-size:0.75rem; font-weight:800;
+          padding:3px 10px; border-radius:6px; border:1px solid #22c55e; color:#bbf7d0; background:rgba(34,197,94,0.12);">${esc(copy('board_from_la_btn') || '＋ from LA')}</summary>
+        <div class="rb-from-la-body" style="margin-top:4px; padding:6px; border:1px solid #334155; border-radius:6px; background:#0f172a;"></div>
+      </details>`;
+  }
+
+  // Everyone in the section's LeagueApps payload (Unassigned + every team
+  // bucket), one per person, minus this team's own players.
+  fromLaCandidates(teamId) {
+    const data = this._data || {};
+    const buckets = data.buckets || {};
+    const label = (tid) => {
+      const c = (data.columns || []).find(x => String(x.teamId) === String(tid));
+      return c ? RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()) : '';
+    };
+    const key = (p) => p.personId ? `p${p.personId}` : `u${p.leagueAppsUserId}`;
+    const mine = new Set((buckets[String(teamId)] || []).map(key));
+    const byKey = new Map();
+    const take = (p, tid) => {
+      if (!p || !p.leagueAppsUserId || mine.has(key(p))) return;
+      const k = key(p);
+      if (!byKey.has(k)) byKey.set(k, { p, teams: [] });
+      const t = tid != null && label(tid);
+      if (t && !byKey.get(k).teams.includes(t)) byKey.get(k).teams.push(t);
+    };
+    (data.unassigned || []).forEach(p => take(p, null));
+    for (const [tid, list] of Object.entries(buckets)) (list || []).forEach(p => take(p, tid));
+    const nameOf = (p) => p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim();
+    return [...byKey.values()].map(x => ({ ...x, name: nameOf(x.p) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  _fillFromLa(details, query = '') {
+    const esc = RosterScreenBase.escapeHtml;
+    const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || '';
+    const body = details.querySelector('.rb-from-la-body');
+    const teamId = details.dataset.teamId;
+    const q = query.trim().toLowerCase();
+    const all = this.fromLaCandidates(teamId);
+    const list = q ? all.filter(x => x.name.toLowerCase().includes(q)) : all;
+    const rows = list.map(x => `<button type="button" class="rb-from-la-pick" data-team-id="${teamId}"
+        data-user-id="${x.p.leagueAppsUserId}" data-person-id="${x.p.personId || ''}"
+        style="display:flex; justify-content:space-between; gap:8px; width:100%; min-height:0; text-align:left;
+               font-size:0.8rem; padding:4px 6px; margin:1px 0; border:1px solid #1e293b; border-radius:4px;
+               background:#111827; color:#e2e8f0; cursor:pointer;">
+        <span style="font-weight:700;">${esc(x.name)}</span>
+        <span style="font-size:0.68rem; opacity:0.7;">${esc(x.teams.length
+          ? (copy('board_from_la_on', { teams: x.teams.join(', ') }) || `on ${x.teams.join(', ')}`)
+          : (copy('board_from_la_free') || 'no team'))}</span></button>`).join('');
+    const search = body.querySelector('.rb-from-la-q');
+    if (!search) {
+      body.innerHTML = `<input class="rb-from-la-q" type="search" placeholder="${esc(copy('board_from_la_search') || 'Search a name')}"
+          style="width:100%; box-sizing:border-box; font-size:0.8rem; padding:4px 6px; margin-bottom:4px;">
+        <div class="rb-from-la-list" style="max-height:260px; overflow-y:auto;"></div>`;
+    }
+    body.querySelector('.rb-from-la-list').innerHTML = rows
+      || `<div style="opacity:0.6; font-size:0.8rem;">${esc(copy('board_from_la_none') || 'Every LA registrant is already on this team')}</div>`;
+  }
+
+  _wireFromLa() {
+    const el = this.element;
+    if (!el || el._rbFromLaWired) return;
+    el._rbFromLaWired = true;
+    // toggle doesn't bubble — capture it; the list is built on open.
+    el.addEventListener('toggle', (e) => {
+      const d = e.target;
+      if (d && d.classList && d.classList.contains('rb-from-la') && d.open) {
+        this._fillFromLa(d);
+        const q = d.querySelector('.rb-from-la-q');
+        if (q) q.focus();
+      }
+    }, true);
+    el.addEventListener('input', (e) => {
+      const q = e.target.closest && e.target.closest('.rb-from-la-q');
+      if (q) this._fillFromLa(q.closest('.rb-from-la'), q.value);
+    });
+    el.addEventListener('click', (e) => {
+      const btn = e.target.closest && e.target.closest('.rb-from-la-pick');
+      if (btn && el.contains(btn)) { e.preventDefault(); e.stopPropagation(); this.onFromLaPick(btn); }
+    });
+  }
+
+  async onFromLaPick(btn) {
+    const leagueAppsUserId = parseInt(btn.dataset.userId, 10);
+    const personId = parseInt(btn.dataset.personId, 10) || undefined;
+    const teamId = parseInt(btn.dataset.teamId, 10);
+    if (!leagueAppsUserId || !teamId) return;
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+    try {
+      const res = await this.auth.fetch(this.assignEndpoint(), {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ leagueAppsUserId, personId, teamId, action: 'add' }),
+      });
+      if (!res.ok) throw new Error((await res.text()).slice(0, 200));
+      await this.load({ quiet: true });
+    } catch (err) {
+      btn.disabled = false;
+      btn.style.opacity = '';
+      alert(`Could not add to the team: ${err.message}`);
+    }
+  }
+
   renderColumnSections(col, shown, renderList, data, ridersHtml = '') {
     if (!col || !col.teamId) return renderList(shown) + ridersHtml;
     const esc = RosterScreenBase.escapeHtml;
@@ -687,7 +804,8 @@ class RosterScreenBase extends Screen {
     if (this.boardView === 'team') {
       const cats = { active: [], callin: [], paper: [], injured: [] };
       for (const p of shown) cats[this.columnCategoryOf(p)].push(p);
-      return section(copy('board_plays_h') || 'PLAYS', cats.active, ...GREEN, true)
+      return this.renderFromLaPicker(col)
+        + section(copy('board_plays_h') || 'PLAYS', cats.active, ...GREEN, true)
         + riders
         + section(copy('board_callins_h') || '↔ CALL INS', cats.callin, ...BLUE)
         + section(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, ...AMBER)

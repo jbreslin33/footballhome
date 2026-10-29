@@ -1120,6 +1120,8 @@ class BoysRosterScreen extends RosterScreenBase {
     }
   }
 
+  assignEndpoint() { return '/api/boys-roster/assign'; }   // ＋ from LA on the Team pill
+
   async onPillClick(btn) {
     const userId = parseInt(btn.dataset.userId, 10);
     const teamId = parseInt(btn.dataset.teamId, 10);
