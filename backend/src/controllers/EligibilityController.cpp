@@ -1039,7 +1039,11 @@ Response EligibilityController::handleGetEventSquads(const Request& request) {
             "       pl.id AS player_id, "
             "       fh_team_first_name(tp.team_id, pe.id, pe.first_name) AS first_name, "
             "       fh_team_last_name(tp.team_id, pe.id, pe.last_name)   AS last_name, "
-            "       tp.team_id, tp.jersey_number, "
+            "       tp.team_id, "
+            // the #kit board's shirt number (person_uniform_numbers)
+            "       COALESCE((SELECT n.jersey_number FROM person_uniform_numbers n "
+            "                  WHERE n.uniform_set_id = team_uniform_set_id(tp.team_id) AND n.person_id = pe.id), "
+            "                tp.jersey_number::text) AS jersey_number, "
             "       ml.squad_color "
             "FROM team_persons tp "
             "JOIN persons pe ON pe.id = tp.person_id "

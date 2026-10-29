@@ -98,6 +98,18 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
             rules[tid][r["rule"].c_str()].push_back(r["other_team_id"].as<long long>());
         }
         body["rosterRules"] = std::move(rules);
+        // Shirt numbers (2026-10-29, owner: "they can be replaced with their
+        // jersey numbers") — the #kit board's numbers (person_uniform_numbers,
+        // one pool per uniform set): per team, {personId: "7"}.  The card
+        // shows #7 (or a bare # to fill in), edited through PUT /api/kit/number.
+        nlohmann::json kit = nlohmann::json::object();
+        for (const auto& r : db->query(
+            "SELECT tp.team_id, tp.person_id, n.jersey_number FROM team_persons tp "
+            "  JOIN person_uniform_numbers n ON n.uniform_set_id = team_uniform_set_id(tp.team_id) AND n.person_id = tp.person_id "
+            " WHERE tp.removed_at IS NULL")) {
+            kit[r["team_id"].c_str()][r["person_id"].c_str()] = r["jersey_number"].c_str();
+        }
+        body["kitNumbers"] = std::move(kit);
     } catch (const std::exception& e) {
         std::cerr << "[" << logTag << "] official names attach failed: " << e.what() << std::endl;
     }

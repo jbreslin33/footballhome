@@ -1158,6 +1158,37 @@ class RosterScreenBase extends Screen {
   // The screens' delegated change listeners call this; true = handled.
   // A team code writes invite_only/call_in (and ends an injury — picking
   // Plays says he is back); an injury code writes the person's health.
+  // The card's shirt-number box changed → PUT /api/kit/number (the #kit
+  // board's write: one number per person per uniform set, no duplicates).
+  // Returns true when the event was ours.
+  onJerseyChange(target) {
+    const input = target && target.closest && target.closest('.roster-jersey-input');
+    if (!input) return false;
+    const teamId = Number(input.dataset.teamId), personId = Number(input.dataset.personId);
+    const value = input.value.trim();
+    const prev = input.defaultValue;
+    input.disabled = true;
+    (async () => {
+      try {
+        const res = await this.auth.fetch('/api/kit/number', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ team_id: teamId, person_id: personId, jersey_number: value || null }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+        const saved = body.jersey_number || '';
+        input.value = input.defaultValue = saved;
+        const K = (this._data.kitNumbers = this._data.kitNumbers || {});
+        const t = (K[String(teamId)] = K[String(teamId)] || {});
+        if (saved) t[String(personId)] = saved; else delete t[String(personId)];
+      } catch (err) {
+        input.value = prev;
+        alert(`Could not save the number: ${err.message}`);
+      } finally { input.disabled = false; }
+    })();
+    return true;
+  }
+
   onTeamStatusChange(target) {
     const wrap = target && target.closest && target.closest('.mr-team-status');
     if (!wrap) return false;
@@ -1612,10 +1643,19 @@ class RosterScreenBase extends Screen {
     borderColor = RosterScreenBase.NEUTRAL_CARD_BORDER,
     canMove = false,
   }) {
-    // No #N on the card (owner 2026-10-29: "the numbers in teams page need
-    // to go … they serve no purpose now and its confusing") — the Roster
-    // pill orders by the league list; Rank mode still reorders by drag.
+    // The card's # is his SHIRT number (owner 2026-10-29: "they can be
+    // replaced with their jersey numbers … leave ability to edit jersey
+    // number … if blank just show #") — the #kit board's number for this
+    // team's uniform set (data.kitNumbers), never the old coach rank.
+    // Editable where the card is (canMove); saved by onJerseyChange.
     const rankEditable = this.sortOrder === 'rank';
+    const shirt = (col && col.teamId && player.personId && this._data && this._data.kitNumbers
+      && (this._data.kitNumbers[String(col.teamId)] || {})[String(player.personId)]) || '';
+    const jerseyChip = (canMove && col && col.teamId && player.personId)
+      ? `<span style="font-size:0.72rem; line-height:1.2; color:#fff; font-weight:800; white-space:nowrap;">#<input class="roster-jersey-input" inputmode="numeric" maxlength="3"
+           value="${this.escape(shirt)}" data-team-id="${col.teamId}" data-person-id="${player.personId}" title="Shirt number — same as the #kit board"
+           style="width:2.2em; min-width:0; min-height:0; padding:0 2px; font-size:0.7rem; font-weight:800; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff;"></span>`
+      : `<span style="font-size:0.72rem; line-height:1.2; color:#fff; font-weight:800; white-space:nowrap;">#${this.escape(shirt)}</span>`;
     // US-Soccer age group (U10, U23, ...) — every roster (youth AND adult,
     // ahead of future U19/U23/Over-30 division work on the mens/womens
     // side).
@@ -1739,6 +1779,7 @@ class RosterScreenBase extends Screen {
     return `
       <div id="${cardId}" class="${cardClass}" data-roster-card ${dragAttrs} ${laUidAttr}
            style="${cardBaseStyle} display:flex; flex-direction:row; align-items:center; gap:4px; flex-wrap:${isScroll ? 'nowrap' : 'wrap'}; row-gap:1px;">
+        ${jerseyChip}
         <strong style="font-size:0.72rem; line-height:1.2; ${nameStyle}">${fullName}</strong>
         ${player.nameChipHtml || ''}
         ${ageChip}

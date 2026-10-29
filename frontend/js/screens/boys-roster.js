@@ -118,6 +118,7 @@ class BoysRosterScreen extends RosterScreenBase {
 
       if (coachSel) return this.onCoachSelectChange(coachSel);
       if (this.onTeamStatusChange(e.target)) return;      // Team dropdown + injury dates (2026-10-29)
+      if (this.onJerseyChange(e.target)) return;          // shirt number (#kit)
       if (this.onHealthControlChange(e.target)) return;   // health dropdown + dates (migration 510)
       const posSelect = e.target.closest('.roster-position-select');
       if (posSelect) return this.onPositionSelectChange(posSelect);
