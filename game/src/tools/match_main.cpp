@@ -600,6 +600,10 @@ int main(int argc, char** argv) {
     long ow_n = 0, ow_why[ai::kWhyCount + 1] = {}, ow_intended = 0, ow_job[ai::kWhyCount] = {}, ow_depth[4] = {};
     // Men standing in an offside position at a kick (G4.91): by job, by how
     // far past, how long he has been there; and the kicks with one.
+    // Passes to a mate by his gap to the law's line at the kick (G4.92): 3 m+
+    // onside / 1-3 onside / within 1 m onside / within 1 m offside / 1 m+
+    // offside — and how many of each the assistant flagged.
+    long tg_n[5] = {}, tg_flag[5] = {}, tg_all = 0;
     long op_men = 0, op_kicks = 0, op_all_kicks = 0, op_job[ai::kWhyCount] = {}, op_depth[4] = {}, op_age[4] = {};
     long off_called[2] = {}, off_wrong = 0, off_missed = 0, flag_wrong = 0, flag_missed = 0, flag_kicks = 0;
     long ar_off[5] = {};
@@ -1177,6 +1181,21 @@ int main(int argc, char** argv) {
                 ++tally[pend_team][pend_why].kicks;
                 const core::OffsideCall& oc = s.world().lastOffsideCall();
                 ++op_all_kicks;
+                if (pend_other >= 0 && pend_other < s.world().playerCount() && pend_why != static_cast<int>(ai::Why::Shoot) &&
+                    s.world().player(static_cast<std::uint8_t>(pend_other)).team == pend_team) {
+                    const double sg = pend_team == 0 ? 1.0 : -1.0;
+                    double l1 = -1e9, l2 = -1e9;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        if (s.world().player(j).team == pend_team) continue;
+                        const double x = s.world().player(j).pos.x.toDouble() * sg;
+                        if (x > l1) { l2 = l1; l1 = x; } else if (x > l2) l2 = x;
+                    }
+                    double line = std::max(l2, std::max(b.pos.x.toDouble() * sg, 0.0));
+                    const double gap = s.world().player(static_cast<std::uint8_t>(pend_other)).pos.x.toDouble() * sg - line;
+                    const int q = gap < -3 ? 0 : gap < -1 ? 1 : gap <= 0 ? 2 : gap <= 1 ? 3 : 4;
+                    ++tg_all; ++tg_n[q];
+                    if (pend_other < 32 && ((oc.called >> pend_other) & 1u)) ++tg_flag[q];
+                }
                 if (oc.truth) {
                     ++op_kicks;
                     const double sg = pend_team == 0 ? 1.0 : -1.0;
@@ -1429,6 +1448,12 @@ int main(int argc, char** argv) {
             std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",
                         ib_all_read[1] / nm, 100.0 * ib_theirs_read[1] / std::max(1L, ib_all_read[1]),
                         ib_all_read[0] / nm, 100.0 * ib_theirs_read[0] / std::max(1L, ib_all_read[0]));
+        if (tg_all) {
+            const char* nm5[5] = {"3 m+ onside", "1-3 m onside", "within 1 m onside", "within 1 m offside", "1 m+ offside"};
+            std::printf("  passes to a mate by his gap to the line at the kick (%.1f a match):", tg_all / nm);
+            for (int q = 0; q < 5; ++q)
+                std::printf(" %s %.1f (flagged %.0f%%)%s", nm5[q], tg_n[q] / nm, 100.0 * tg_flag[q] / std::max(1L, tg_n[q]), q < 4 ? " ·" : "\n");
+        }
         if (op_men) {
             std::printf("  men standing offside at a kick: %.1f a match on %.0f%% of kicks; past the line <1 / 1-3 / 3-8 / 8+ m %.0f / %.0f / %.0f / %.0f%%; there for <1 / 1-3 / 3-8 / 8+ s %.0f / %.0f / %.0f / %.0f%%\n    doing:",
                         op_men / nm, 100.0 * op_kicks / std::max(1L, op_all_kicks),
