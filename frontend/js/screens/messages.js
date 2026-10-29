@@ -51,7 +51,7 @@ class MessagesScreen extends Screen {
       'U23 Women', 'Tri County Women', "Women's Club",
       'Boys Club (Grades 1–6)', 'Boys Club (K-12)', 'Boys Club (U11/U12)',
       'Girls Club (Grades 1–6)', 'Girls Club (K-12)', 'Girls Club (U11/U12)',
-      'Youth (Grades 1–6)',
+      'Youth (Grades K–9)', 'Youth (Grades 1–6)',
     ];
 
     this._selected = this._funnels[0];
@@ -189,6 +189,7 @@ class MessagesScreen extends Screen {
       "Men's Club":              '#1d4ed8',
       "Women's Club":            '#be185d',
       'APSL / Liga 1':           '#f59e0b',
+      'Youth (Grades K–9)':      '#c9a14a',
       'Youth (Grades 1–6)':      '#c9a14a',
       'Boys Club (Grades 1–6)':  '#0e7490',
       'Boys Club (K-12)':        '#0e7490',

@@ -16,7 +16,7 @@ class LeadsBoardModel {
       'Brazil Men', 'U23 Men', 'PR Men', "Men's Club",
       'U23 Women', 'Tri County Women', "Women's Club",
       'APSL / Liga 1',
-      'Youth (Grades 1–6)',
+      'Youth (Grades K–9)', 'Youth (Grades 1–6)',
       'Boys Club (Grades 1–6)', 'Boys Club (K-12)', 'Boys Club (U11/U12)',
       'Girls Club (Grades 1–6)', 'Girls Club (K-12)', 'Girls Club (U11/U12)',
     ];
@@ -542,6 +542,7 @@ class LeadsScreen extends Screen {
       'APSL / Liga 1':           '#f59e0b',
       'APSL Trials':             '#f59e0b',
       'LIGA 1 Trials':           '#f59e0b',
+      'Youth (Grades K–9)':      '#c9a14a',
       'Youth (Grades 1–6)':      '#c9a14a',
       'Boys Club (Grades 1–6)':  '#0e7490',
       'Boys Club (K-12)':        '#0e7490',
@@ -576,6 +577,7 @@ class LeadsScreen extends Screen {
         ? [...new Set((this._liveFormIds || []).map(id => this.formLabel(id)).filter(Boolean))]
         : [
             'U23 Men',
+            'Youth (Grades K–9)',
             'Youth (Grades 1–6)',
             'Boys Club (Grades 1–6)',
             'Girls Club (Grades 1–6)',
@@ -757,11 +759,11 @@ class LeadsScreen extends Screen {
       // so their close/register links resolve unchanged (the combined youth
       // label carries both the boys and girls membership links).
       '1742374770183944': 'Youth (Grades 1–6)',   // first draft, archived unrun
-      '1765217041432039': 'Youth (Grades 1–6)',   // Grades K–9 rebuild (mig 783), archived
+      '1765217041432039': 'Youth (Grades K–9)',   // Grades K–9 rebuild (mig 783), archived
       '1112525488303663': "Men's Club",           // archived unrun
       '1140646368374686': "Women's Club",         // archived unrun
       // $35/month, uniform included forms (mig 789) — the live ones
-      '1104907468985240': 'Youth (Grades 1–6)',
+      '1104907468985240': 'Youth (Grades K–9)',   // live (mig 816 label)
       '2156338988574123': "Men's Club",
       '1105264069085795': "Women's Club",
     };
@@ -1344,10 +1346,16 @@ class LeadsScreen extends Screen {
     const lastCallAt  = lead.last_call_at  || null;
     const callN       = Number(lead.call_count || 0);
 
+    // When the lead came in (owner 2026-10-29: "leads need to show
+    // timestamp of when they came in") — club time, plus how long ago.
     const inAgo = lead.created_at ? agoShort(lead.created_at) : '';
+    const inAt = lead.created_at
+      ? new Date(lead.created_at).toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short',
+          month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+      : '';
     const timeStrip = inAgo ? `
-      <span style="font-size:0.7rem; opacity:0.6; font-variant-numeric:tabular-nums;">
-        in ${inAgo}
+      <span title="Came in ${inAt}" style="font-size:0.7rem; opacity:0.75; font-variant-numeric:tabular-nums; text-align:right;">
+        ${inAt} · ${inAgo} ago
       </span>` : '';
 
     // Unified last-contact badge — computes the single most recent
@@ -1622,6 +1630,7 @@ class LeadsScreen extends Screen {
       'Girls Club (Grades 1–6)':   'girls',
       'Girls Club (K-12)':         'girls',
       'Girls Club (U11/U12)':      'girls',
+      'Youth (Grades K–9)':        'boys',   // combined form, both links
       'Youth (Grades 1–6)':        'boys',   // legacy combined form
     };
     const isCombinedU23PR = funnelLabel === 'U23 Men + PR';
@@ -1631,7 +1640,7 @@ class LeadsScreen extends Screen {
     const isWomensClub = /women/i.test(funnelLabel || '');
     // Legacy combined youth funnel — the only funnel where the form
     // doesn't pre-identify gender, so its messages carry BOTH links.
-    const isLegacyYouth = funnelLabel === 'Youth (Grades 1–6)';
+    const isLegacyYouth = funnelLabel === 'Youth (Grades 1–6)' || funnelLabel === 'Youth (Grades K–9)';
 
     // Every word a lead reads is a message_templates row (migration 369);
     // nothing below is copy.  A row is looked up by kind under the most
