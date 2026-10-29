@@ -7,10 +7,15 @@ Inputs (public data, downloaded by hand — not kept in git):
                     (https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json)
   pop.csv           Census county population estimates
                     (https://www2.census.gov/programs-surveys/popest/datasets/2020-2023/counties/totals/co-est2023-alldata.csv)
+  pop2020.csv       optional: the 2010–2020 estimates, used for a county the
+                    newer file no longer lists — Connecticut's 8 counties
+                    became 9 planning regions in 2022 (new FIPS) while the
+                    shapes keep the counties; a few others were renamed
+                    (https://www2.census.gov/programs-surveys/popest/datasets/2010-2020/counties/totals/co-est2020-alldata.csv)
 
 Writes SQL for psql on stdout (upsert by FIPS):
 
-  python3 -I scripts/pyramid-counties-load.py counties.geojson pop.csv \\
+  python3 -I scripts/pyramid-counties-load.py counties.geojson pop.csv [pop2020.csv] \\
     | sudo podman exec -i footballhome_db psql -U footballhome_user -d footballhome -v ON_ERROR_STOP=1 -1
 
 A county's centre = the area-weighted centroid of its largest polygon.
@@ -53,12 +58,18 @@ def q(s):
     return "'" + str(s).replace("'", "''") + "'"
 
 
-def main(geo_path, pop_path):
-    pop = {}
-    with open(pop_path, newline='', encoding='latin-1') as f:
+def read_pop(path, column):
+    out = {}
+    with open(path, newline='', encoding='latin-1') as f:
         for row in csv.DictReader(f):
             if row['SUMLEV'] == '050':
-                pop[row['STATE'] + row['COUNTY']] = (row['CTYNAME'], int(row['POPESTIMATE2023']))
+                out[row['STATE'] + row['COUNTY']] = (row['CTYNAME'], int(row[column]))
+    return out
+
+
+def main(geo_path, pop_path, pop2020_path=None):
+    pop = read_pop(pop_path, 'POPESTIMATE2023')
+    older = read_pop(pop2020_path, 'POPESTIMATE2020') if pop2020_path else {}
     with open(geo_path, encoding='utf-8') as f:
         features = json.load(f)['features']
     n = 0
@@ -68,7 +79,7 @@ def main(geo_path, pop_path):
         st = STATES.get(p['STATE'])
         if not st or not ft.get('geometry'):
             continue
-        name, people = pop.get(fips, (f"{p['NAME']} {p.get('LSAD', '')}".strip(), 0))
+        name, people = pop.get(fips) or older.get(fips) or (f"{p['NAME']} {p.get('LSAD', '')}".strip(), 0)
         lat, lon = centre(ft['geometry'])
         print('INSERT INTO pyramid_counties (fips, name, state, population, lat, lon, geometry) VALUES '
               f"({q(fips)}, {q(name)}, {q(st)}, {people}, {lat:.7f}, {lon:.7f}, {q(json.dumps(ft['geometry'], separators=(',', ':')))}::jsonb) "
@@ -79,4 +90,4 @@ def main(geo_path, pop_path):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
