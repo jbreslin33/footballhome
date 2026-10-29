@@ -74,5 +74,12 @@ private:
     // PersonScreen's cross-domain "add to roster" panel, which needs the
     // assignable-team list without paying for a full board fetch.
     Response handleColumns(const Request& request);
+    // GET  /api/mens-roster/league-moves — every move owed on a league list
+    //      that has someone to ask (fh_league_moves, mig 829), grouped per
+    //      list with its contact — the #apsl ✉️ commissioner email.
+    // POST /api/mens-roster/league-moves/sent {sourceId, moves:[{personId, move}]}
+    //      — the email went: log each ask and move live cards on.
+    Response handleLeagueMoves(const Request& request);
+    Response handleLeagueMovesSent(const Request& request);
 
 };

@@ -192,6 +192,101 @@ void MensRosterController::registerRoutes(Router& router, const std::string& pre
     router.get(prefix + "/columns", [this](const Request& req) {
         return this->handleColumns(req);
     });
+    router.get(prefix + "/league-moves", [this](const Request& req) {
+        return this->handleLeagueMoves(req);
+    });
+    router.post(prefix + "/league-moves/sent", [this](const Request& req) {
+        return this->handleLeagueMovesSent(req);
+    });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/mens-roster/league-moves (mig 829)
+// ────────────────────────────────────────────────────────────────────────────
+Response MensRosterController::handleLeagueMoves(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
+        return errorResponse(denialStatus(request), "Unauthorized");
+    }
+    try {
+        auto db = Database::getInstance();
+        json lists = json::array();
+        for (const auto& r : db->query(
+                "SELECT s.id, s.team_id, s.league_label, COALESCE(t.name, '') AS team_name, "
+                "       k.id AS contact_id, COALESCE(k.name, '') AS contact_name, COALESCE(k.email, '') AS contact_email "
+                "  FROM official_roster_sources s JOIN club_contacts k ON k.id = s.request_contact_id "
+                "  LEFT JOIN teams t ON t.id = s.team_id "
+                " WHERE s.is_active ORDER BY s.id")) {
+            lists.push_back({{"sourceId", r["id"].as<long long>()}, {"teamId", r["team_id"].as<long long>()},
+                             {"league", r["league_label"].is_null() ? "" : r["league_label"].c_str()},
+                             {"teamName", r["team_name"].c_str()},
+                             {"contact", {{"id", r["contact_id"].as<long long>()}, {"name", r["contact_name"].c_str()},
+                                          {"email", r["contact_email"].c_str()}}},
+                             {"moves", json::array()}});
+        }
+        for (const auto& r : db->query(
+                "SELECT source_id, person_id, full_name, official_no, move, reason, "
+                "       to_char(requested_at AT TIME ZONE 'America/New_York', 'Mon FMDD') AS asked "
+                "  FROM fh_league_moves()")) {
+            for (auto& l : lists) {
+                if (l["sourceId"].get<long long>() != r["source_id"].as<long long>()) continue;
+                l["moves"].push_back({{"personId", r["person_id"].as<long long>()}, {"name", r["full_name"].c_str()},
+                                      {"officialNo", r["official_no"].is_null() ? json(nullptr) : json(r["official_no"].as<int>())},
+                                      {"move", r["move"].c_str()}, {"reason", r["reason"].c_str()},
+                                      {"askedOn", r["asked"].is_null() ? json(nullptr) : json(r["asked"].c_str())}});
+            }
+        }
+        return Response(HttpStatus::OK, json{{"lists", lists}}.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "MensRosterController::handleLeagueMoves error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to load league moves: ") + e.what());
+    }
+}
+
+// POST /api/mens-roster/league-moves/sent — only moves fh_league_moves still
+// owes are logged; a live card moves to its status's league_request_sent
+// status (Dropping → Pending Drop, Has Docs → Awaiting Approval).
+Response MensRosterController::handleLeagueMovesSent(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super"})) {
+        return errorResponse(denialStatus(request), "Unauthorized");
+    }
+    json body;
+    try { body = json::parse(request.getBody()); }
+    catch (const std::exception&) { return badRequest("Invalid JSON body"); }
+    long long sourceId = 0;
+    if (!readInt(body, "sourceId", sourceId) || sourceId <= 0 || !body.contains("moves") || !body["moves"].is_array()) {
+        return badRequest("sourceId and moves[] required");
+    }
+    try {
+        auto db = Database::getInstance();
+        const std::string uid = std::to_string(bearerUserId(request));
+        int logged = 0;
+        for (const auto& m : body["moves"]) {
+            if (!m.is_object() || !m.contains("personId") || !m["personId"].is_number_integer()) continue;
+            const std::string pid = std::to_string(m["personId"].get<long long>());
+            const std::string move = m.value("move", "");
+            auto rows = db->query(
+                "WITH owed AS ("
+                "  SELECT f.source_id, f.team_id, f.person_id, f.move, s.request_contact_id "
+                "    FROM fh_league_moves() f JOIN official_roster_sources s ON s.id = f.source_id "
+                "   WHERE f.source_id = $1::int AND f.person_id = $2::int AND f.move = $3 AND f.requested_at IS NULL), "
+                "logged AS ("
+                "  INSERT INTO league_move_requests (source_id, person_id, move, contact_id, requested_by_user_id) "
+                "  SELECT source_id, person_id, move, request_contact_id, NULLIF($4, '0')::int FROM owed RETURNING id), "
+                "moved AS ("
+                "  UPDATE team_persons tp SET roster_status_id = rs.league_request_sent_status_id "
+                "    FROM owed o, roster_statuses rs "
+                "   WHERE tp.team_id = o.team_id AND tp.person_id = o.person_id AND tp.removed_at IS NULL "
+                "     AND rs.id = tp.roster_status_id AND rs.league_request = o.move "
+                "     AND rs.league_request_sent_status_id IS NOT NULL RETURNING tp.id) "
+                "SELECT (SELECT count(*) FROM logged) AS n",
+                {std::to_string(sourceId), pid, move, uid});
+            logged += rows.empty() ? 0 : rows[0]["n"].as<int>();
+        }
+        return Response(HttpStatus::OK, json{{"logged", logged}}.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "MensRosterController::handleLeagueMovesSent error: " << e.what() << std::endl;
+        return internalErr(std::string("Failed to log league moves: ") + e.what());
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
