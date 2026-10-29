@@ -3537,6 +3537,28 @@ James 10/29: "continue" — the block isn't goal-side at the shot.
   the pro's 2: the pass ladder plays rung 1-2 whenever the read says it's
   safe.
 
+### 8.95 G4.97 — the 9 leaves their centre-backs alone unless one drives (mig 858)
+
+James 10/29: "lh 9 is supposed to sit and cover shadow mid fielders of
+ukies. he is not activated to go after 4 and 5 of ukies unless they drive
+forward or the ball is played to the ukie fb then he closes the door on the
+closest cb to ball."
+
+- **Measured** (new harness line: the home 9 while their 4/5 has it): not
+  driving — packing the middle 41%, but counter-pressing the centre-back
+  28% (packAndTrap let "we just lost it and he's near it" come first, and
+  handed over to the ordinary press inside handover_m); driving at us — no
+  trigger at all (pack 24%, counter-press 18%, recover 17%).
+- **packAndTrap, the 9:** their centre-back on the ball and NOT driving is
+  no trigger — no counter-press, no handover; he stays in his box between
+  their 4, 5, 6, 8 (G4.72). DRIVING (toward our goal at `cb_drive_mps` 2+):
+  he presses him `cb_press_gap_m` (2) off him on the line to his nearest
+  central man — the cover shadow (Why::CoverShadow). The ball to their
+  full-back: he locks the door on the nearest centre-back (unchanged).
+- 10 matches: not driving — pack 41 → 59%, counter-press 28 → 10% (the
+  rest: his pack roll lapsing for that possession); driving — cover shadow
+  0 → 55%.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

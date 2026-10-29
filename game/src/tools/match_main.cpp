@@ -610,6 +610,10 @@ int main(int argc, char** argv) {
     // his control touch, what he and the man who took it were doing.
     // Balls in behind (G4.96): at the kick, the runner's and his nearest
     // defender's speed toward goal, the gap between them, the defender's job.
+    // The home 9 while their centre-back (4/5) has it (G4.97, James 10/29:
+    // "lh 9 is supposed to sit and cover shadow"): his job, split by whether
+    // the centre-back is driving forward (2 m/s+ toward our goal).
+    long n9_n[2] = {}, n9_job[2][ai::kWhyCount] = {}, n9_near[2] = {};
     long bh_n = 0, bh_gap[4] = {}, bh_dv[4] = {}, bh_job[ai::kWhyCount] = {}, bh_face_back = 0;
     long dp_n = 0, dp_held[4] = {}, dp_in_touch = 0, dp_carrier[ai::kWhyCount] = {}, dp_taker[ai::kWhyCount] = {};
     long tob_n = 0, tob_b[4] = {}; double tob_s = 0; long got_tick[64] = {};
@@ -1116,6 +1120,20 @@ int main(int argc, char** argv) {
             prev_ltt = s.world().lastTouchTeam();
             prev_bvx = b.vel.x.toDouble(); prev_bvy = b.vel.y.toDouble();
             prev_ctrl_until = s.world().controlUntilTick();
+            if (b.owner && s.world().player(*b.owner).team == 1 && s.world().restartTeam() == 0xFF) {
+                const int cn = s.brain().numberOf(*b.owner);
+                if (cn == 4 || cn == 5) {
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        if (s.world().player(j).team != 0 || s.brain().numberOf(j) != 9) continue;
+                        const auto& cbp = s.world().player(*b.owner);
+                        const int drive = cbp.vel.x.toDouble() < -2.0 ? 1 : 0;   // team 1 attacks -x
+                        ++n9_n[drive];
+                        ++n9_job[drive][static_cast<int>(s.lastOrders()[j].why)];
+                        const double dx = s.world().player(j).pos.x.toDouble() - cbp.pos.x.toDouble(), dy = s.world().player(j).pos.y.toDouble() - cbp.pos.y.toDouble();
+                        n9_near[drive] += dx * dx + dy * dy < 9.0;
+                    }
+                }
+            }
             for (std::uint8_t j = 0; j < s.world().playerCount() && j < 64; ++j) prev_why[j] = static_cast<int>(s.lastOrders()[j].why);
             for (std::uint8_t tm = 0; tm < 2; ++tm) {   // who stands offside right now, each side
                 const double sg = tm == 0 ? 1.0 : -1.0;
@@ -1501,6 +1519,14 @@ int main(int argc, char** argv) {
             std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",
                         ib_all_read[1] / nm, 100.0 * ib_theirs_read[1] / std::max(1L, ib_all_read[1]),
                         ib_all_read[0] / nm, 100.0 * ib_theirs_read[0] / std::max(1L, ib_all_read[0]));
+        for (int dv = 0; dv < 2; ++dv) {
+            if (!n9_n[dv]) continue;
+            std::printf("  home 9 while their centre-back has it %s (%.0f s a match): within 3 m of him %.0f%%; doing:",
+                        dv ? "DRIVING forward" : "not driving", n9_n[dv] / 30.0 / nm, 100.0 * n9_near[dv] / n9_n[dv]);
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (n9_job[dv][w] * 25 >= n9_n[dv]) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * n9_job[dv][w] / n9_n[dv]);
+            std::printf("\n");
+        }
         if (bh_n) {
             std::printf("  balls in behind (%.1f a match), at the kick: runner to his nearest defender <2 / 2-4 / 4-8 / 8+ m %.0f / %.0f / %.0f / %.0f%%; runner faster toward goal by <2 / 2-4 / 4-6 / 6+ m/s %.0f / %.0f / %.0f / %.0f%%; defender already turned %.0f%%\n    the defender was doing:",
                         bh_n / nm, 100.0 * bh_gap[0] / bh_n, 100.0 * bh_gap[1] / bh_n, 100.0 * bh_gap[2] / bh_n, 100.0 * bh_gap[3] / bh_n,

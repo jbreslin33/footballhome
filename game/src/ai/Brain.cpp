@@ -1654,8 +1654,51 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
         out.other = static_cast<std::int16_t>(M);
         return true;
     }
-    // We just lost it and he's near it: the counter-press comes first.
-    if (world.lastLosingTeam() == my_team && ratings_[slot][16] > 0 && world.restartTeam() == 0xFF &&
+    // The 9 and their centre-backs (G4.97, James 10/29: "lh 9 is supposed to
+    // sit and cover shadow mid fielders of ukies. he is not activated to go
+    // after 4 and 5 of ukies unless they drive forward or the ball is played
+    // to the ukie fb then he closes the door on the closest cb to ball"):
+    // a centre-back on the ball, not driving, is no trigger — not the
+    // counter-press, not the handover to the ordinary press (measured: 28%
+    // of that time he was counter-pressing the centre-back); driving at us,
+    // the 9 presses him with the cover shadow on his nearest central man.
+    bool cb_on_ball = false, cb_driving = false;
+    if (nine && ball.owner && setup_.team_of_slot[*ball.owner] != my_team && world.restartTeam() == 0xFF) {
+        const Trap t0 = trapRead(world, my_team, B);
+        if (std::find(t0.cbs.begin(), t0.cbs.end(), *ball.owner) != t0.cbs.end()) {
+            cb_on_ball = true;
+            cb_driving = -world.player(*ball.owner).vel.x * dsgn >= P.cbDrive();
+        }
+    }
+    if (cb_on_ball && cb_driving) {
+        const SlotIndex cb = *ball.owner;
+        const auto& cp = world.player(cb).pos;
+        const Trap t1 = trapRead(world, my_team, B);
+        int M = -1;
+        Fixed64 md{};
+        for (SlotIndex o = 0; o < world.playerCount(); ++o) {
+            if (setup_.team_of_slot[o] == my_team || world.isKeeper(o) || o == cb ||
+                std::find(t1.cbs.begin(), t1.cbs.end(), o) != t1.cbs.end()) continue;
+            if (math::fx_abs(world.player(o).pos.y) > P.centralWidth()) continue;
+            const Fixed64 d = distSq(world.player(o).pos, cp);
+            if (M < 0 || d < md) { M = o; md = d; }
+        }
+        Vec2 dir{-dsgn, Fixed64::zero()};   // no central man: goal-side of him
+        if (M >= 0) {
+            const auto& mp = world.player(static_cast<SlotIndex>(M)).pos;
+            dir = math::normalized(Vec2{mp.x - cp.x, mp.y - cp.y});
+        }
+        const Vec2 t{cp.x + dir.x * P.cbPressGap(), cp.y + dir.y * P.cbPressGap()};
+        out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 10));
+        out.why = Why::CoverShadow;
+        out.target = t;
+        out.other = static_cast<std::int16_t>(cb);
+        return true;
+    }
+    // We just lost it and he's near it: the counter-press comes first —
+    // except the 9 on a centre-back who isn't driving (G4.97).
+    if (!(cb_on_ball && !cb_driving) &&
+        world.lastLosingTeam() == my_team && ratings_[slot][16] > 0 && world.restartTeam() == 0xFF &&
         world.tickCount() - world.turnoverTick() < 10 + static_cast<std::uint64_t>(ratings_[slot][16]) &&
         distSq(me.pos, Vec3{B.x, B.y, Fixed64::zero()}) < Fixed64::fromInt(400))
         return false;
@@ -1823,7 +1866,7 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
     }
     // No trigger yet: pack the middle.
     if (ratings_[slot][P.bit()] == 0 || !applies(slot, P.bit(), poss)) return false;
-    if (ball.owner && distSq(me.pos, ball.pos) < P.handover() * P.handover()) return false;
+    if (ball.owner && !cb_on_ball && distSq(me.pos, ball.pos) < P.handover() * P.handover()) return false;
     if (wing) {
         // Book-ends (G4.72, James 10/27: "lh 7 and 11 should be book ends to
         // lh 8,10"): level with our 8 or 10 on his side (the one nearer his

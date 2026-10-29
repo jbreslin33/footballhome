@@ -609,9 +609,16 @@ public:
     math::Fixed64 bookendGap() const { return bookend_; }
     math::Fixed64 fbOff() const { return fb_off_; }
     math::Fixed64 fbInside() const { return fb_inside_; }
+    // G4.97 (James 10/29: "he is not activated to go after 4 and 5 of ukies
+    // unless they drive forward"): a centre-back carrying toward our goal at
+    // cb_drive_mps+ is driving — the 9 presses him, cb_press_gap_m off him on
+    // the line to his nearest central man (the cover shadow).
+    math::Fixed64 cbDrive() const { return cb_drive_; }
+    math::Fixed64 cbPressGap() const { return cb_press_gap_; }
 
 private:
     int nine_ = 9, right_ = 7, left_ = 11, mid_[3] = {6, 8, 10}, rb_ = 2, lb_ = 3;
+    math::Fixed64 cb_drive_, cb_press_gap_;
     math::Fixed64 tuck_, weak_tuck_, central_, screen_, nine_screen_, from_halfway_, handover_;
     math::Fixed64 bookend_, fb_off_, fb_inside_;
 };
