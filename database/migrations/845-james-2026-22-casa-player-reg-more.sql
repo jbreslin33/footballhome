@@ -1,4 +1,4 @@
--- 841: owner 2026-10-29: "add 25.80 more for casa player reg".  Same sheet
+-- 845: owner 2026-10-29: "add 25.80 more for casa player reg".  Same sheet
 -- as migs 839/840 (James's 2026.22, 10/23–11/5).  Its own Registrations row
 -- beside mig 779's $97.22 so each charge stays traceable.  Skipped if
 -- already there or the sheet is final.
