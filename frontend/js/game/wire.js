@@ -131,8 +131,25 @@
         players[i].fx = view.getInt8(p + 2 * i) / 127;
         players[i].fy = view.getInt8(p + 2 * i + 1) / 127;
       }
+      p += 2 * count;
     }
-    return { tick, players, ball, match };
+    // Officials (1.16 tail, G4.93): u8 count, then per official i64 x |
+    // i64 y | i8 face x | i8 face y | u8 flags (bit0 = flag up) — the
+    // referee (0) and the assistants (1 on +y, 2 on -y). Not player slots.
+    let officials = null;
+    if (p + 1 <= view.byteLength) {
+      const n = view.getUint8(p); p += 1;
+      if (p + 19 * n <= view.byteLength) {
+        officials = new Array(n);
+        for (let i = 0; i < n; i++) {
+          officials[i] = { x: fx(view, p), y: fx(view, p + 8),
+                           fx: view.getInt8(p + 16) / 127, fy: view.getInt8(p + 17) / 127,
+                           flags: view.getUint8(p + 18) };
+          p += 19;
+        }
+      }
+    }
+    return { tick, players, ball, match, officials };
   }
 
   function decodeRoster(view, at) {

@@ -893,6 +893,19 @@ net::Bytes GameServer::buildSnapshotFrame() const {
     s.restart_team = world_.restartTeam();
     s.level_home = level_id_[0];
     s.level_away = level_id_[1];
+    // 1.16 (G4.93): the officials, and the assistant's flag for
+    // kFlagUpTicks after his offside call is whistled.
+    const core::Officials& offs = world_.officials();
+    for (int i = 0; i < core::kOfficialCount; ++i) {
+        const core::OfficialState& o = offs.official(i);
+        net::OfficialSnap os;
+        os.pos_x = o.pos.x;
+        os.pos_y = o.pos.y;
+        os.face_x = static_cast<std::int8_t>((o.face.x * Fixed64::fromInt(127)).raw >> Fixed64::FRAC_BITS);
+        os.face_y = static_cast<std::int8_t>((o.face.y * Fixed64::fromInt(127)).raw >> Fixed64::FRAC_BITS);
+        os.flags = (flag_official_ == i && world_.tickCount() < flag_until_tick_) ? 1 : 0;
+        s.officials.push_back(os);
+    }
     return encodeFrame(FrameType::Snapshot, encodeSnapshot(s));
 }
 
@@ -915,6 +928,11 @@ void GameServer::tickOnce() {
     last_events_ = world_.tick();
     if (world_.restartTeam() == 0xFF) brain_.clearRestartShape();   // played: shape released
     const auto& match_events = last_events_;
+    for (const core::MatchEvent& e : match_events)
+        if (e.type == core::MatchEventType::Offside) {   // G4.93: his flag goes up
+            flag_official_ = world_.lastOffsideCall().assistant;
+            flag_until_tick_ = world_.tickCount() + kFlagUpTicks;
+        }
     if (clients_.empty()) return;  // headless idle: nothing to fan out
 
     for (const core::MatchEvent& e : match_events) {

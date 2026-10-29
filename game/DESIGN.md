@@ -3412,6 +3412,33 @@ James 10/29: "yes" (attackers come back onside).
   The volume is the question: how many balls a match are played to a man
   within a metre of the line, against the pro.
 
+### 8.90 G4.93 — the officials on the HUD (wire 1.16)
+
+James 10/29: "1 then move to all" (the possession mole first, then the rest
+— this is "draw the officials on the HUD"). G4.88 put a referee and two
+assistants on the pitch as bodies (core::Officials) but the client never
+saw them.
+
+- **Wire (1.16, append-only):** SNAPSHOT gains an officials tail after the
+  1.8 facing — `u8 count`, per official `i64 x | i64 y | i8 face_x | i8
+  face_y | u8 flags`; flags bit0 = flag up (PROTOCOL §6). Not player
+  slots: nothing else on the wire indexes them. Old clients ignore the
+  tail; a new client against an old server draws no officials.
+- **Flag up:** GameServer raises the flag of the assistant whose call
+  (`World::lastOffsideCall().assistant`) was whistled, for 45 ticks
+  (1.5 s) after the Offside event — presentation only, not World state
+  (the canonical hash and every golden are unchanged).
+- **Client:** `wire.js` decodes the tail; `PlayerFigure` takes
+  `{ official, flag }` — black kit with yellow trim, no number; an
+  assistant carries a yellow-and-red flag in his right hand and raises it
+  straight up (an eased overlay like the others) while the bit is set.
+  `GameRenderer` adds the three figures beside the 22 (not in `figures`,
+  not raycast targets), interpolated like the players, with velocity from
+  the snapshot-to-snapshot move (the wire carries none for officials).
+- Tests: codec `snapshot_officials_tail_round_trips` (a 1.15 frame still
+  decodes with none); server `server_snapshot_carries_the_officials`. Not
+  yet checked in a browser.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

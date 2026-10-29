@@ -20,6 +20,8 @@
     away:   { shirt: 0xeef1f6, trim: 0x14326e, shorts: 0x14326e, socks: 0xeef1f6, boots: 0xc8102e },
     homeGk: { shirt: 0x2e9e44, trim: 0x111111, shorts: 0x111111, socks: 0x2e9e44, boots: 0x111111 },
     awayGk: { shirt: 0xff8a1f, trim: 0x111111, shorts: 0x111111, socks: 0xff8a1f, boots: 0x111111 },
+    // G4.93: the match officials — black with yellow trim, no number.
+    official: { shirt: 0x111111, trim: 0xffd400, shorts: 0x111111, socks: 0x111111, boots: 0x111111 },
   };
   const SKIN = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0x5c3a1e, 0xffdbac, 0xa1665e];
   const HAIR = [0x2b1b10, 0x111111, 0x6b4423, 0xb8860b, 0x3d2817, 0x8a8a8a];
@@ -64,9 +66,14 @@
   }
 
   class PlayerFigure {
-    constructor(slot, home, keeper) {
+    // opts.official (G4.93): a referee / assistant — his own kit, no number;
+    // opts.flag: an assistant, carrying the flag he raises (setFlag).
+    constructor(slot, home, keeper, opts) {
       this.slot = slot;
       this.home = home;
+      this.official = !!(opts && opts.official);
+      this.carriesFlag = !!(opts && opts.flag);
+      this.flagUp = false;
       this.root = new THREE.Group();      // ground position + facing (yaw)
       this.root.userData.slot = slot;
       this.yaw = home ? Math.PI / 2 : -Math.PI / 2;  // face the opponent goal
@@ -87,7 +94,7 @@
     }
 
     buildBody(home, keeper) {
-      const kit = KIT[(home ? 'home' : 'away') + (keeper ? 'Gk' : '')];
+      const kit = this.official ? KIT.official : KIT[(home ? 'home' : 'away') + (keeper ? 'Gk' : '')];
       this.kit = kit;
       this.keeper = keeper;
       const skin = SKIN[(this.slot * 7) % SKIN.length];
@@ -114,9 +121,12 @@
       const collar = mesh(g('collar', () => new THREE.TorusGeometry(0.07, 0.022, 6, 14)),
                           mat(kit.trim), 0.52);
       collar.rotation.x = Math.PI / 2;
-      const plate = numberDecal(this.number || this.slot % 11 + 1, kit);
-      plate.position.y = 0.3;
-      chest.add(torso, collar, plate);
+      chest.add(torso, collar);
+      if (!this.official) {
+        const plate = numberDecal(this.number || this.slot % 11 + 1, kit);
+        plate.position.y = 0.3;
+        chest.add(plate);
+      }
 
       const neck = new THREE.Group();
       neck.position.y = 0.55;
@@ -151,6 +161,21 @@
                           mat(keeper ? 0xf2f2f2 : skin), -0.26);
         if (keeper) hand.scale.set(1.4, 1.4, 1.2);
         elbow.add(fore, hand);
+        // The assistant's flag in his right hand (G4.93): a stick and a
+        // yellow cloth with a red band, held down until he raises it.
+        if (this.carriesFlag && side === 1) {
+          const stick = mesh(g('flagstick', () => new THREE.CylinderGeometry(0.012, 0.012, 0.5, 6)),
+                             mat(0x222222), -0.3);
+          const cloth = new THREE.Mesh(g('flagcloth', () => new THREE.PlaneGeometry(0.3, 0.22)),
+            new THREE.MeshBasicMaterial({ color: 0xffd400, side: THREE.DoubleSide }));
+          cloth.position.set(0, -0.45, 0.15);
+          cloth.rotation.y = Math.PI / 2;
+          const band = new THREE.Mesh(g('flagband', () => new THREE.PlaneGeometry(0.3, 0.07)),
+            new THREE.MeshBasicMaterial({ color: 0xd2232a, side: THREE.DoubleSide }));
+          band.position.set(0.001, -0.42, 0.15);
+          band.rotation.y = Math.PI / 2;
+          elbow.add(stick, cloth, band);
+        }
         sh.add(upper, sleeve, elbow);
         return { sh, elbow, side };
       });
@@ -188,6 +213,7 @@
     setGlow() {}
 
     kick() { this.kickT = 0.38; }
+    setFlag(up) { this.flagUp = !!up; }   // G4.93: an assistant's flag
     celebrate() { this.celebrateT = 3.5; }
 
     // ctx: { vx, vy, flags, ball:{x,y,z}|null, hasBall, me:{x,y} }
@@ -230,6 +256,7 @@
       W.jump = ease(W.jump, bz > 1.3 && bz < 2.6 && bd < 1.4 ? 1 : 0, 12, dt);
       if (this.celebrateT > 0) this.celebrateT -= dt;
       W.cele = ease(W.cele, this.celebrateT > 0 ? 1 : 0, 5, dt);
+      W.flag = ease(W.flag || 0, this.carriesFlag && this.flagUp ? 1 : 0, 9, dt);
 
       // ── locomotion: the stride ───────────────────────────────────────
       // Dribbling: quicker, shorter steps — the ball is in the stride.
@@ -366,6 +393,13 @@
           a.elbow.rotation.x += (-0.3 - a.elbow.rotation.x) * w;
         }
         this.neck.rotation.x += (-0.35 - this.neck.rotation.x) * w;
+      }
+      // Flag up (G4.93): the assistant's right arm straight up, still.
+      if (W.flag > 0.01) {
+        const w = W.flag, a = A[1];
+        a.sh.rotation.x += (-3.0 - a.sh.rotation.x) * w;
+        a.sh.rotation.z += (0.1 - a.sh.rotation.z) * w;
+        a.elbow.rotation.x *= 1 - w;
       }
     }
   }

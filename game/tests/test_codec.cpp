@@ -135,7 +135,8 @@ FH_TEST(snapshot_truncated_player_list_fails) {
     // 2-byte levels, 1.8's 2-byte facing per player) AND into the last
     // player record. (Missing/partial tails alone are tolerated; the
     // PLAYER array is 1.0 structure and must be whole.)
-    p.resize(p.size() - 2 * 3 - 25 - 6 - 4);
+    // (1.16 adds a 1-byte officials count, empty here.)
+    p.resize(p.size() - 1 - 2 * 3 - 25 - 6 - 4);
     FH_EXPECT(!decodeSnapshot(p).has_value());
 }
 
@@ -153,6 +154,38 @@ FH_TEST(snapshot_ball_record_round_trips) {
     FH_EXPECT_EQ(d->ball.pos_x.raw, s.ball.pos_x.raw);
     FH_EXPECT_EQ(d->ball.pos_z.raw, s.ball.pos_z.raw);
     FH_EXPECT_EQ(d->ball.owner, 11);
+}
+
+FH_TEST(snapshot_officials_tail_round_trips) {
+    // 1.16 (G4.93): the referee and two assistants after the facing tail.
+    SnapshotFrame s;
+    s.tick = 3;
+    s.players.resize(22);
+    for (int i = 0; i < 3; ++i) {
+        OfficialSnap o;
+        o.pos_x = Fixed64::fromFraction(10 * i + 1, 4);
+        o.pos_y = -Fixed64::fromInt(35 * (i == 2 ? 1 : 0)) + Fixed64::fromInt(35 * (i == 1 ? 1 : 0));
+        o.face_x = static_cast<std::int8_t>(i == 0 ? 127 : 0);
+        o.face_y = static_cast<std::int8_t>(i == 1 ? -127 : (i == 2 ? 127 : 0));
+        o.flags = i == 1 ? 1 : 0;
+        s.officials.push_back(o);
+    }
+    const Bytes payload = encodeSnapshot(s);
+    auto d = decodeSnapshot(payload);
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->officials.size(), 3u);
+    FH_EXPECT_EQ(d->officials[2].pos_x.raw, s.officials[2].pos_x.raw);
+    FH_EXPECT_EQ(d->officials[1].pos_y.raw, Fixed64::fromInt(35).raw);
+    FH_EXPECT_EQ(d->officials[1].face_y, -127);
+    FH_EXPECT_EQ(d->officials[1].flags, 1);
+    FH_EXPECT_EQ(d->officials[0].flags, 0);
+    // A 1.15 snapshot (no officials tail) still decodes, with none.
+    Bytes old = payload;
+    old.resize(old.size() - 1 - 3 * 19);
+    auto o = decodeSnapshot(old);
+    FH_EXPECT(o.has_value());
+    FH_EXPECT_EQ(o->officials.size(), 0u);
+    FH_EXPECT_EQ(o->players.size(), 22u);
 }
 
 FH_TEST(event_round_trip) {

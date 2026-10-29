@@ -201,6 +201,23 @@ FH_TEST(server_snapshot_flags_mark_claimed_slots) {
     FH_EXPECT_EQ(s->players[0].flags, 0);
 }
 
+FH_TEST(server_snapshot_carries_the_officials) {
+    // 1.16 (G4.93): the referee and both assistants ride the snapshot,
+    // the assistants out on their touchlines, no flag up at kick-off.
+    Rig r;
+    r.t.scriptConnect(100);
+    r.s.tickOnce();
+    const auto& frames = r.t.sent[100];
+    std::size_t consumed = 0;
+    auto f = decodeFrame(frames.back().data(), frames.back().size(), consumed);
+    auto s = decodeSnapshot(f->payload);
+    FH_EXPECT(s.has_value());
+    FH_EXPECT_EQ(s->officials.size(), 3u);
+    FH_EXPECT(s->officials[1].pos_y.raw > 0);
+    FH_EXPECT(s->officials[2].pos_y.raw < 0);
+    FH_EXPECT_EQ(s->officials[1].flags, 0);
+}
+
 FH_TEST(server_disconnect_releases_slots) {
     Rig r;
     r.t.scriptConnect(100);
