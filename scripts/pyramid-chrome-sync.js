@@ -49,7 +49,7 @@ function readRootSoccer() {
       let sib = el.previousElementSibling;
       while (sib && !name) {
         const h = sib.matches('h1,h2,h3,h4,h5,h6') ? sib : sib.querySelector('h1,h2,h3,h4,h5,h6');
-        if (h) name = h.innerText.trim();
+        if (h) name = h.textContent.trim();
         sib = sib.previousElementSibling;
       }
     }

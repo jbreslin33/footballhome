@@ -11,7 +11,6 @@
 
 #include "../core/HttpClient.h"
 #include "../database/Database.h"
-#include "LeagueFixtureSync.h"
 
 using json = nlohmann::json;
 
@@ -117,8 +116,15 @@ public:
         for (const auto& [key, t] : totals.items())
             if (t.contains("team_id")) byTeam[std::to_string(t["team_id"].get<long long>())] = t;
 
+        // The current season's name, for its zone rules (promotion_rules
+        // carry past seasons too).
+        std::string season;
+        if (body.contains("seasons") && body["seasons"].is_object())
+            for (const auto& [sid, sv] : body["seasons"].items()) season = sv.value("name", season);
+
         struct Row { json team; std::vector<int> sortVals; std::string name; };
-        std::map<std::string, std::vector<Row>> perDiv;
+        std::map<std::string, std::vector<Row>> perDiv;     // key: division id, or "<id>:<group>"
+        std::map<std::string, std::string> divName;         // key → table name as the rules name it
         for (const auto& [tid, t] : body["teams"].items()) {
             if (!t.contains("division_id") || !t["division_id"].is_number()) continue;
             const std::string did = std::to_string(t["division_id"].get<long long>());
@@ -140,11 +146,18 @@ public:
                 const json vals = x.contains("sort_values") && x["sort_values"].is_object() ? x["sort_values"] : json::object();
                 for (const auto& k : sortKeys) sv.push_back(toInt(vals, k.c_str()));
             }
-            perDiv[did].push_back({row, sv, name});
+            // A conference played in groups (Delaware River A/B): each
+            // group is its own table, named as the league's rules name it.
+            const std::string group = t.contains("conference") && t["conference"].is_string() ? t["conference"].get<std::string>() : "";
+            const std::string key = group.empty() ? did : did + ":" + group;
+            divName[key] = divs[did].value("name", did) + (group.empty() ? "" : " - " + group);
+            perDiv[key].push_back({row, sv, name});
         }
 
+        const json rules = st.contains("promotion_rules") && st["promotion_rules"].is_array() ? st["promotion_rules"] : json::array();
         json out = json::array();
-        for (auto& [did, rows] : perDiv) {
+        for (auto& [key, rows] : perDiv) {
+            const std::string did = key.substr(0, key.find(':'));
             // The league's own tie-break order (sort_keys, all descending);
             // teams with no game yet sit below, by name.
             std::stable_sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
@@ -155,9 +168,25 @@ public:
             json teams = json::array();
             int pos = 0;
             for (auto& r : rows) { r.team["pos"] = ++pos; teams.push_back(r.team); }
-            out.push_back({{"ext_id", did}, {"name", divs[did].value("name", did)},
+            // The league office's marks for this table this season: edge
+            // "top" counts places from 1st, "bottom" from last.
+            json zones = json::array();
+            const int n = (int)rows.size();
+            for (const auto& rule : rules) {
+                if (rule.value("season_pattern", "") != season || rule.value("division_pattern", "") != divName[key]) continue;
+                if (!rule.contains("marks") || !rule["marks"].is_array()) continue;
+                for (const auto& m : rule["marks"]) {
+                    int from = toInt(m, "from"), to = toInt(m, "to");
+                    if (from < 1 || to < from) continue;
+                    if (m.value("edge", "top") == "bottom") { const int a = n - to + 1, b = n - from + 1; from = a; to = b; }
+                    if (from < 1 || to > n) continue;
+                    zones.push_back({{"kind", m.value("type", "")}, {"from", from}, {"to", to}, {"label", m.value("label", "")},
+                                     {"color", m.value("color", "")}});
+                }
+            }
+            out.push_back({{"ext_id", key}, {"name", divName[key]},
                            {"sort", divs[did].contains("display_order") && divs[did]["display_order"].is_number() ? divs[did]["display_order"].get<int>() : 0},
-                           {"teams", teams}});
+                           {"zones", zones}, {"teams", teams}});
         }
         if (out.empty()) note = "feed listed no divisions";
         return out;
@@ -265,46 +294,85 @@ public:
     }
 };
 
+// A SportsEngine season (CASA Select regions): no standings endpoint, so
+// the table is computed from the season's games — every event names its
+// two teams (principals, with their division) and, once played, the score.
+// 3 for a win, 1 for a draw; rank by points, goal difference, goals for.
+class SportsEngineReader : public PyramidReader {
+public:
+    json read(const std::string& locator, std::string& note) override {
+        struct Team { std::string name, division, divisionId; int gp = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0; };
+        std::map<std::string, Team> teams;    // season-team id → totals
+        HttpClient http;
+        http.setTotalTimeoutSec(30);
+        int totalPages = 1;
+        for (int page = 1; page <= totalPages && page <= 30; ++page) {
+            auto resp = http.get("https://se-api.sportsengine.com/v3/microsites/events?page=" + std::to_string(page) +
+                                 "&per_page=100&program_id=" + HttpClient::urlEncode(locator), {{"Accept", "application/json"}});
+            if (!resp.ok()) { note = "HTTP " + std::to_string(resp.status) + (resp.error.empty() ? "" : " " + resp.error); return json::array(); }
+            json body = json::parse(resp.body, nullptr, false);
+            if (body.is_discarded() || !body.contains("result") || !body["result"].is_array()) { note = "unexpected feed shape"; return json::array(); }
+            try { totalPages = body["metadata"]["pagination"].value("totalPages", 1); } catch (...) {}
+            for (const auto& ev : body["result"]) {
+                if (ev.value("status", "") == "cancelled" || !ev.contains("principals") || !ev["principals"].is_array()) continue;
+                for (const auto& p : ev["principals"]) {
+                    if (!p.contains("extended_attributes") || !p["extended_attributes"].is_object()) continue;
+                    const json& ea = p["extended_attributes"];
+                    const std::string id = p.value("principal_originator_id", "");
+                    if (id.empty() || ea.value("division_name", "").empty() || ea.value("outside_team", false)) continue;
+                    Team& t = teams[id];
+                    t.name = ea.value("name", t.name);
+                    t.division = ea.value("division_name", t.division);
+                    t.divisionId = ea.value("division_id", t.divisionId);
+                }
+                if (!ev.contains("game_details") || !ev["game_details"].is_object()) continue;
+                const json& g = ev["game_details"];
+                if (g.value("status", "") != "completed" || !g.contains("team_1") || !g.contains("team_2")) continue;
+                const json& a = g["team_1"];
+                const json& b = g["team_2"];
+                const std::string ida = a.value("originator_id", ""), idb = b.value("originator_id", "");
+                const std::string sa = a.contains("score") && a["score"].is_string() ? a["score"].get<std::string>() : "";
+                const std::string sb = b.contains("score") && b["score"].is_string() ? b["score"].get<std::string>() : "";
+                if (sa.empty() || sb.empty() || !teams.count(ida) || !teams.count(idb)) continue;
+                const int ga = toInt(sa), gb = toInt(sb);
+                Team& ta = teams[ida];
+                Team& tb = teams[idb];
+                ta.gp++; tb.gp++; ta.gf += ga; ta.ga += gb; tb.gf += gb; tb.ga += ga;
+                if (ga > gb) { ta.w++; tb.l++; } else if (ga < gb) { tb.w++; ta.l++; } else { ta.d++; tb.d++; }
+            }
+        }
+        std::map<std::string, std::vector<std::pair<std::string, Team>>> perDiv;
+        std::map<std::string, std::string> divName;
+        for (auto& [id, t] : teams) { perDiv[t.divisionId].push_back({id, t}); divName[t.divisionId] = t.division; }
+        json out = json::array();
+        for (auto& [did, rows] : perDiv) {
+            auto pts = [](const Team& t) { return 3 * t.w + t.d; };
+            std::stable_sort(rows.begin(), rows.end(), [&](const auto& x, const auto& y) {
+                const Team& a = x.second; const Team& b = y.second;
+                if (pts(a) != pts(b)) return pts(a) > pts(b);
+                if (a.gf - a.ga != b.gf - b.ga) return a.gf - a.ga > b.gf - b.ga;
+                if (a.gf != b.gf) return a.gf > b.gf;
+                return a.name < b.name;
+            });
+            json list = json::array();
+            int pos = 0;
+            for (const auto& [id, t] : rows)
+                list.push_back({{"ext_id", id}, {"name", t.name}, {"pos", ++pos}, {"gp", t.gp}, {"w", t.w}, {"d", t.d},
+                                {"l", t.l}, {"gf", t.gf}, {"ga", t.ga}, {"pts", pts(t)}});
+            out.push_back({{"ext_id", did}, {"name", divName[did]}, {"sort", 0}, {"teams", list}});
+        }
+        if (out.empty()) note = "season listed no teams";
+        return out;
+    }
+};
+
 std::unique_ptr<PyramidReader> readerFor(const std::string& system) {
     if (system == "teampass_json")   return std::make_unique<TeamPassJsonReader>();
     if (system == "teampass_tables") return std::make_unique<TeamPassTablesReader>();
     if (system == "demosphere")      return std::make_unique<DemosphereReader>();
+    if (system == "sportsengine")    return std::make_unique<SportsEngineReader>();
     return nullptr;
 }
-
-// Standings from the scored fixtures of one league_fixture_sources row,
-// built and loaded in one statement: 3 for a win, 1 for a draw; rank by
-// points, goal difference, goals for.  Our clubs row names the club when
-// the fixture carries one.
-constexpr const char* kFixtureStandingsSql = R"SQL(
-    WITH g AS (
-        SELECT f.division_label AS d, f.home_name AS t, hc.name AS club, f.home_score AS gf, f.away_score AS ga
-          FROM league_fixtures f LEFT JOIN clubs hc ON hc.id = f.home_club_id
-         WHERE f.source_id = $1::int AND f.removed_at IS NULL AND f.status <> 'cancelled'
-        UNION ALL
-        SELECT f.division_label, f.away_name, ac.name, f.away_score, f.home_score
-          FROM league_fixtures f LEFT JOIN clubs ac ON ac.id = f.away_club_id
-         WHERE f.source_id = $1::int AND f.removed_at IS NULL AND f.status <> 'cancelled'),
-    s AS (
-        SELECT coalesce(d, 'League') AS d, t, max(club) AS club,
-               count(gf) FILTER (WHERE ga IS NOT NULL)          AS gp,
-               count(*)  FILTER (WHERE gf > ga)                 AS w,
-               count(*)  FILTER (WHERE gf = ga)                 AS dr,
-               count(*)  FILTER (WHERE gf < ga)                 AS l,
-               coalesce(sum(gf) FILTER (WHERE ga IS NOT NULL), 0) AS gf,
-               coalesce(sum(ga) FILTER (WHERE gf IS NOT NULL), 0) AS ga
-          FROM g GROUP BY 1, 2),
-    r AS (
-        SELECT s.*, 3 * w + dr AS pts,
-               row_number() OVER (PARTITION BY d ORDER BY 3 * w + dr DESC, gf - ga DESC, gf DESC, t) AS pos
-          FROM s)
-    SELECT fh_pyramid_load($2::int, (
-        SELECT jsonb_agg(jsonb_build_object('ext_id', d, 'name', d, 'sort', rn, 'teams', teams))
-          FROM (SELECT d, row_number() OVER (ORDER BY d) AS rn,
-                       jsonb_agg(jsonb_build_object('ext_id', t, 'name', t, 'club', club, 'pos', pos,
-                                                    'gp', gp, 'w', w, 'd', dr, 'l', l, 'gf', gf, 'ga', ga, 'pts', pts)
-                                 ORDER BY pos) AS teams
-                  FROM r GROUP BY d) x)) AS teams)SQL";
 
 void stampFailure(int sourceId, const std::string& note) {
     try {
@@ -323,23 +391,10 @@ json PyramidSync::refreshSource(int sourceId) {
     auto* db = Database::getInstance();
     std::string note;
     try {
-        auto rows = db->query(
-            "SELECT s.system, s.locator, fs.league_label FROM pyramid_sources s "
-            "  LEFT JOIN league_fixture_sources fs ON s.system = 'league_fixtures' AND fs.id::text = s.locator "
-            " WHERE s.id = $1::int",
-            {std::to_string(sourceId)});
+        auto rows = db->query("SELECT system, locator FROM pyramid_sources WHERE id = $1::int", {std::to_string(sourceId)});
         if (rows.empty()) { result["note"] = "no such source"; return result; }
         const std::string system = rows[0]["system"].c_str();
         const std::string locator = rows[0]["locator"].c_str();
-
-        if (system == "league_fixtures") {
-            // Fresh fixtures first (the CASA hub's own refresh).
-            if (!rows[0]["league_label"].is_null()) LeagueFixtureSync::refreshLeague(rows[0]["league_label"].c_str());
-            auto r = db->query(kFixtureStandingsSql, {locator, std::to_string(sourceId)});
-            result["ok"] = true;
-            result["teams"] = r.empty() || r[0][0].is_null() ? 0 : r[0][0].as<int>();
-            return result;
-        }
 
         auto reader = readerFor(system);
         if (!reader) { result["note"] = "read on the host (" + system + ")"; return result; }

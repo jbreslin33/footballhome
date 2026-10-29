@@ -14,8 +14,12 @@
 //   teampass_json    TeamPass Jumbotron feed (scraper proxy): whole league
 //   teampass_tables  a TeamPass /<site>/Tables/ page (scraper proxy)
 //   demosphere       Demosphere standings page; data rides in it as JSON
-//   league_fixtures  computed in SQL from the scored fixtures we already sync
+//   sportsengine     a SportsEngine season; the table computed from its games
 //   root_soccer      browser-only — skipped here, read on the host
+//
+// Mig 823: a TeamPass conference played in groups becomes one table per
+// group, and each table carries the league office's zones (playoff /
+// relegation spots) from the same feed.
 //
 // refreshIfStale() runs from PyramidController on page load, the same
 // on-open pattern as the CASA fixtures and #film.  A failed read leaves the
