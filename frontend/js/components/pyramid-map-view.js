@@ -24,12 +24,14 @@
 //              for the picked conference) — placed like the bubbles: a free
 //              side of the dot or not at all; picked conference first,
 //              then APSL clubs, then feeders.
-//   territory  a spot belongs to the conference of its NEAREST located club
-//              (where conferences meet, the border is the halfway line
-//              between their clubs) within the hull around that conference's
-//              clubs widened ~20 km (on an open side it stops just past the
-//              outermost clubs).  The picked conference's territory is
-//              outlined and tinted (a canvas pane under the dots, per view).  The
+//   territory  counties (mig 852, owner: "its really based on metro size …
+//              pretend your making the conferences from scratch based off
+//              population and distance"): a county is the conference's whose
+//              nearest APSL club is closest, within ~an hour's drive — GET
+//              /api/pyramid/territory draws the picked one's counties, tinted,
+//              with only its OUTER border outlined; the HUD gives the
+//              population inside, and Sunday (no traffic) drive times: the
+//              two furthest clubs, and the average if all play all.  The
 // conference pills choose which conferences' clubs are on the map.
 //
 // Nothing hides anything (owner 2026-10-29: "use arrows to bubble as its
@@ -61,6 +63,9 @@ class PyramidMapView {
       .mp-hud-legend { left:10px; bottom:30px; display:flex; flex-direction:column; gap:3px; }
       .mp-hud-legend i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; }
       .mp-hud-count { right:10px; bottom:30px; opacity:0.9; }
+      .mp-hud-stats { left:56px; top:10px; max-width:360px; line-height:1.45; }
+      .mp-hud-stats[hidden] { display:none; }
+      .mp-hud-stats b { font-size:0.9rem; }
       .mp-hud-hint { left:50%; bottom:30px; transform:translateX(-50%); opacity:0.75; font-size:0.74rem; }
       .mp-ov { position:absolute; z-index:1200; top:56px; right:12px; bottom:12px; width:min(820px, calc(100% - 24px)); display:flex; flex-direction:column;
                background:rgba(11,18,32,0.92); border:1px solid rgba(148,163,184,0.35); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
@@ -116,6 +121,7 @@ class PyramidMapView {
         </div>
         <div class="mp-hud mp-hud-hint">${esc(this._copy('map_hint'))}</div>
         <div class="mp-hud mp-hud-count"></div>
+        <div class="mp-hud mp-hud-stats" hidden></div>
         <div class="mp-ov" hidden style="opacity:${alpha}">
           <div class="mp-ov-head">
             <h3></h3>
@@ -188,12 +194,13 @@ class PyramidMapView {
       mk.on('click', () => this.select(col.conf.id, true));
       this.labels.set(col.conf.id, { mk, anchor, line, ring });
     }
-    // The territory canvas: its own pane, under the dots and bubbles.
+    // The territory layer: its own pane, under the dots and bubbles.
     const pane = this.map.createPane('mp-territory');
     pane.style.zIndex = 350;
     pane.style.pointerEvents = 'none';
-    this.canvas = L.DomUtil.create('canvas', '', pane);
-    this.map.on('zoomstart', () => { this.canvas.style.display = 'none'; });
+    this.terrRenderer = L.svg({ pane: 'mp-territory' });
+    this.terrLayer = L.layerGroup().addTo(this.map);
+    this.terrCache = this.terrCache || new Map();
     this.map.on('zoomend moveend', () => this._relayout());
     this._bindHud(root);
     const count = root.querySelector('.mp-hud-count');
@@ -262,7 +269,6 @@ class PyramidMapView {
       p.l.line.setLatLngs([p.l.anchor, at]);
     }
     this._placeNames(placed, inside);
-    this._drawTerritory();
   }
 
   // Club names: from zoom 7 (or the picked conference), each on the first
@@ -295,97 +301,58 @@ class PyramidMapView {
     }
   }
 
-  // The picked conference's territory (owner: "borders especially in
-  // northeast need to be on edge of other conf. in isolated conferences just
-  // draw it at or near the furthest teams"): a 4px cell is the conference's
-  // when (1) its nearest located club is one of the conference's — so where
-  // conferences meet, the border is the halfway line between their clubs —
-  // and (2) it lies within the hull around the conference's clubs, widened
-  // ~20 km — so on an open side it stops just past the outermost clubs.
-  _drawTerritory() {
-    const map = this.map, cv = this.canvas;
-    if (!map || !cv) return;
-    const size = map.getSize();
-    L.DomUtil.setPosition(cv, map.containerPointToLayerPoint([0, 0]));
-    cv.width = size.x; cv.height = size.y;
-    cv.style.display = '';
-    const g = cv.getContext('2d');
-    g.clearRect(0, 0, size.x, size.y);
-    if (!this.sel) return;
-    const pts = (this.dots || []).filter((d) => !d.approx).map((d) => {
-      const c = map.latLngToContainerPoint(d.at);
-      return { x: c.x, y: c.y, mine: d.conf === this.sel };
-    });
-    const mine = pts.filter((p) => p.mine);
-    if (!mine.length) return;
-    // ~20 km in screen pixels at the map's centre.
-    const ctr = map.getCenter();
-    const pxKm = map.latLngToContainerPoint(ctr).distanceTo(map.latLngToContainerPoint([ctr.lat, ctr.lng + 1])) / (111.32 * Math.cos(ctr.lat * Math.PI / 180));
-    const margin = Math.max(6, 20 * pxKm);
-    const hull = PyramidMapView.hull(mine);
-    const cell = 4, W = Math.ceil(size.x / cell), H = Math.ceil(size.y / cell);
-    const grid = new Uint8Array(W * H);   // 1 = this conference's territory
-    for (let j = 0; j < H; j++) {
-      const y = j * cell + cell / 2;
-      for (let i = 0; i < W; i++) {
-        const x = i * cell + cell / 2;
-        let best = Infinity, isMine = false;
-        for (const p of pts) {
-          const d2 = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
-          if (d2 < best) { best = d2; isMine = p.mine; }
+  // The picked conference's ground: its counties (fetched once per
+  // conference), tinted, with only the OUTER border outlined — an edge two
+  // of its counties share is inside; one drawn once is the border.  The HUD
+  // chip gives population and Sunday drive times.
+  async _showTerritory() {
+    const L = window.L;
+    if (!this.map || !this.terrLayer) return;
+    this.terrLayer.clearLayers();
+    const stats = this.root.querySelector('.mp-hud-stats');
+    const conf = this.sel;
+    if (!conf) { if (stats) stats.hidden = true; return; }
+    let t = this.terrCache.get(conf);
+    if (!t) {
+      try {
+        const res = await this.screen.auth.fetch(`/api/pyramid/territory?conf=${conf}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        t = await res.json();
+        this.terrCache.set(conf, t);
+      } catch (e) { console.warn('territory', e); return; }
+    }
+    if (this.sel !== conf || !this.map) return;
+    L.geoJSON(t.geojson, { renderer: this.terrRenderer, interactive: false,
+      style: { stroke: false, fillColor: '#facc15', fillOpacity: 0.13 } }).addTo(this.terrLayer);
+    const seen = new Map();
+    const k = (p) => `${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+    for (const f of t.geojson.features || []) {
+      const g = f.geometry || {};
+      const polys = g.type === 'MultiPolygon' ? g.coordinates : g.type === 'Polygon' ? [g.coordinates] : [];
+      for (const poly of polys) for (const ring of poly)
+        for (let i = 0; i + 1 < ring.length; i++) {
+          const a = ring[i], b = ring[i + 1];
+          const key = k(a) < k(b) ? `${k(a)}|${k(b)}` : `${k(b)}|${k(a)}`;
+          const e = seen.get(key);
+          if (e) e.n++; else seen.set(key, { n: 1, a, b });
         }
-        if (isMine && PyramidMapView.hullDistance(hull, x, y) <= margin) grid[j * W + i] = 1;
-      }
     }
-    g.fillStyle = 'rgba(250, 204, 21, 0.13)';
-    g.beginPath();
-    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (grid[j * W + i] === 1) g.rect(i * cell, j * cell, cell, cell);
-    g.fill();
-    g.strokeStyle = '#facc15';
-    g.lineWidth = 2;
-    g.beginPath();
-    const at = (i, j) => (i < 0 || j < 0 || i >= W || j >= H ? 0 : grid[j * W + i]);
-    for (let j = 0; j < H; j++) {
-      for (let i = 0; i < W; i++) {
-        if (grid[j * W + i] !== 1) continue;
-        const x = i * cell, y = j * cell;
-        if (at(i - 1, j) !== 1) { g.moveTo(x, y); g.lineTo(x, y + cell); }
-        if (at(i + 1, j) !== 1) { g.moveTo(x + cell, y); g.lineTo(x + cell, y + cell); }
-        if (at(i, j - 1) !== 1) { g.moveTo(x, y); g.lineTo(x + cell, y); }
-        if (at(i, j + 1) !== 1) { g.moveTo(x, y + cell); g.lineTo(x + cell, y + cell); }
-      }
+    const edges = [...seen.values()].filter((e) => e.n === 1).map((e) => [[e.a[1], e.a[0]], [e.b[1], e.b[0]]]);
+    L.polyline(edges, { renderer: this.terrRenderer, interactive: false, color: '#facc15', weight: 2, opacity: 0.95 }).addTo(this.terrLayer);
+    if (stats) {
+      const esc = (x) => this._esc(x);
+      const time = (m) => { const h = Math.floor(m / 60), r = Math.round(m % 60); return h ? `${h}h ${String(r).padStart(2, '0')}m` : `${r}m`; };
+      const conference = this.columns.find((c) => c.conf.id === conf);
+      let html = `<b>${esc(conference ? this.model.label(conference.conf) : '')}</b> · ${esc(this._copy('map_counties', { counties: t.counties }))}<br>`
+        + esc(this._copy('map_pop', { pop: Number(t.population).toLocaleString() }));
+      if (t.travel) {
+        html += `<br>${esc(this._copy('map_far', { a: t.travel.from, b: t.travel.to, time: time(t.travel.max_minutes) }))}`
+          + `<br>${esc(this._copy('map_avg', { time: time(t.travel.avg_minutes), pairs: t.travel.pairs }))}`;
+      } else html += `<br>${esc(this._copy('map_no_travel'))}`;
+      stats.innerHTML = html;
+      stats.hidden = false;
+      this._relayout();
     }
-    g.stroke();
-  }
-
-  // Convex hull (Andrew's monotone chain) of screen points, counter-clockwise.
-  static hull(points) {
-    const p = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
-    if (p.length < 3) return p;
-    const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-    const lower = [], upper = [];
-    for (const q of p) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop(); lower.push(q); }
-    for (const q of [...p].reverse()) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop(); upper.push(q); }
-    return lower.slice(0, -1).concat(upper.slice(0, -1));
-  }
-
-  // Distance from (x, y) to the hull: 0 inside, else to its nearest edge
-  // (a 1- or 2-point hull is a point / a segment).
-  static hullDistance(h, x, y) {
-    const seg = (a, b) => {
-      const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
-      const t = L2 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L2)) : 0;
-      return Math.hypot(x - (a.x + t * dx), y - (a.y + t * dy));
-    };
-    if (h.length === 1) return Math.hypot(x - h[0].x, y - h[0].y);
-    if (h.length === 2) return seg(h[0], h[1]);
-    let inside = true, best = Infinity;
-    for (let k = 0; k < h.length; k++) {
-      const a = h[k], b = h[(k + 1) % h.length];
-      if ((b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x) < 0) inside = false;
-      best = Math.min(best, seg(a, b));
-    }
-    return inside ? 0 : best;
   }
 
   _fitAll() { if (this.all && this.all.length) this.map.fitBounds(this.all, { padding: [30, 30] }); else this.map.setView([39.5, -86], 5); }
@@ -409,6 +376,7 @@ class PyramidMapView {
     }
     this._panel();
     this._relayout();
+    this._showTerritory();
   }
 
   // The picked conference's pyramid, as an overlay on the map.
@@ -429,6 +397,7 @@ class PyramidMapView {
     this.root.querySelectorAll('[data-conf-label]').forEach((el) => el.classList.remove('on'));
     this._panel();
     this._relayout();
+    this._showTerritory();
   }
 
   _bindHud(root) {

@@ -593,6 +593,71 @@ void PyramidSync::storeSeasons(int sourceId, const std::string& locator, const j
     }
 }
 
+// A conference's Sunday drive times (mig 852): OSRM's table service — road
+// times with no traffic modelled — among its located APSL clubs, in one
+// call: the furthest pair and the average over every pair (all play all).
+// Cached in pyramid_conference_travel per club set; null when OSRM can't
+// answer.
+json PyramidSync::conferenceTravel(int confId) {
+    auto* db = Database::getInstance();
+    try {
+        auto clubs = db->query("SELECT club_id, lat, lon FROM pyramid_club_conference WHERE conference_id = $1::int ORDER BY club_id",
+                               {std::to_string(confId)});
+        if (clubs.size() < 2) return nullptr;
+        std::string set, coords;
+        std::vector<int> ids;
+        for (const auto& r : clubs) {
+            ids.push_back(r["club_id"].as<int>());
+            set += (set.empty() ? "" : ",") + std::string(r["club_id"].c_str());
+            coords += (coords.empty() ? "" : ";") + std::string(r["lon"].c_str()) + "," + r["lat"].c_str();
+        }
+        auto cached = db->query("SELECT 1 FROM pyramid_conference_travel WHERE competition_id = $1::int AND club_set = $2",
+                                {std::to_string(confId), set});
+        if (cached.empty()) {
+            HttpClient http;
+            http.setTotalTimeoutSec(30);
+            auto resp = http.get("https://router.project-osrm.org/table/v1/driving/" + coords + "?annotations=duration",
+                                 {{"User-Agent", "FootballHome/1.0 (footballhome.org)"}});
+            json body = resp.ok() ? json::parse(resp.body, nullptr, false) : json(json::value_t::discarded);
+            if (body.is_discarded() || !body.contains("durations") || !body["durations"].is_array()) {
+                std::cerr << "[pyramid] travel " << confId << ": OSRM " << resp.status << std::endl;
+                return nullptr;
+            }
+            const json& d = body["durations"];
+            const size_t n = ids.size();
+            double maxS = -1, sum = 0;
+            int pairs = 0, a = 0, b = 0;
+            for (size_t i = 0; i < n; ++i)
+                for (size_t j = i + 1; j < n; ++j) {
+                    if (!d[i][j].is_number() || !d[j][i].is_number()) continue;
+                    const double s2 = (d[i][j].get<double>() + d[j][i].get<double>()) / 2;   // each way, averaged
+                    sum += s2; ++pairs;
+                    if (s2 > maxS) { maxS = s2; a = ids[i]; b = ids[j]; }
+                }
+            if (!pairs) return nullptr;
+            db->query("INSERT INTO pyramid_conference_travel (competition_id, club_set, max_minutes, from_club_id, to_club_id, avg_minutes, pairs, computed_at) "
+                      "VALUES ($1::int, $2, $3::numeric, $4::int, $5::int, $6::numeric, $7::int, now()) "
+                      "ON CONFLICT (competition_id) DO UPDATE SET club_set = EXCLUDED.club_set, max_minutes = EXCLUDED.max_minutes, "
+                      "  from_club_id = EXCLUDED.from_club_id, to_club_id = EXCLUDED.to_club_id, avg_minutes = EXCLUDED.avg_minutes, "
+                      "  pairs = EXCLUDED.pairs, computed_at = now()",
+                      {std::to_string(confId), set, std::to_string(maxS / 60), std::to_string(a), std::to_string(b),
+                       std::to_string(sum / pairs / 60), std::to_string(pairs)});
+        }
+        auto r = db->query(
+            "SELECT t.max_minutes, t.avg_minutes, t.pairs, fa.name AS a, fb.name AS b "
+            "  FROM pyramid_conference_travel t "
+            "  LEFT JOIN pyramid_clubs fa ON fa.id = t.from_club_id LEFT JOIN pyramid_clubs fb ON fb.id = t.to_club_id "
+            " WHERE t.competition_id = $1::int", {std::to_string(confId)});
+        if (r.empty()) return nullptr;
+        return {{"max_minutes", r[0]["max_minutes"].as<double>()}, {"avg_minutes", r[0]["avg_minutes"].as<double>()},
+                {"pairs", r[0]["pairs"].as<int>()}, {"from", r[0]["a"].is_null() ? "" : r[0]["a"].c_str()},
+                {"to", r[0]["b"].is_null() ? "" : r[0]["b"].c_str()}};
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] travel " << confId << ": " << e.what() << std::endl;
+        return nullptr;
+    }
+}
+
 json PyramidSync::refreshSource(int sourceId) {
     json result = {{"source_id", sourceId}, {"ok", false}, {"teams", 0}, {"note", ""}};
     auto* db = Database::getInstance();

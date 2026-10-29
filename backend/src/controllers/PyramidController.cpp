@@ -173,7 +173,40 @@ PyramidController::PyramidController() {}
 void PyramidController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix, [this](const Request& r) { return handleGet(r); });
     router.get(prefix + "/roots", [this](const Request& r) { return handleRoots(r); });
+    router.get(prefix + "/territory", [this](const Request& r) { return handleTerritory(r); });
     router.post(prefix + "/zone-rules", [this](const Request& r) { return handleZoneRules(r); });
+}
+
+// GET /api/pyramid/territory?conf=<id> (mig 852) — a conference's ground:
+// its counties (pyramid_county_conference: nearest APSL club within reach,
+// or a county override) as GeoJSON, the population inside, and its Sunday
+// drive times (PyramidSync::conferenceTravel).
+Response PyramidController::handleTerritory(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    const std::string conf = request.getQueryParam("conf");
+    if (conf.empty() || conf.find_first_not_of("0123456789") != std::string::npos) return jsonError(HttpStatus::BAD_REQUEST, "conf required");
+    try {
+        auto rows = Database::getInstance()->query(
+            "SELECT k.fips, k.name, k.state, k.population, k.geometry::text AS geometry "
+            "  FROM pyramid_county_conference cc JOIN pyramid_counties k ON k.fips = cc.fips "
+            " WHERE cc.conference_id = $1::int ORDER BY k.fips", {conf});
+        json features = json::array();
+        long long population = 0;
+        for (const auto& r : rows) {
+            population += r["population"].as<long long>();
+            features.push_back({{"type", "Feature"},
+                                {"properties", {{"fips", str(r, "fips")}, {"name", str(r, "name")}, {"state", str(r, "state")},
+                                                {"population", r["population"].as<long long>()}}},
+                                {"geometry", json::parse(str(r, "geometry"), nullptr, false)}});
+        }
+        return jsonOut(HttpStatus::OK, {{"conference_id", std::stoi(conf)}, {"population", population},
+                                        {"counties", features.size()},
+                                        {"geojson", {{"type", "FeatureCollection"}, {"features", features}}},
+                                        {"travel", PyramidSync::conferenceTravel(std::stoi(conf))}});
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] territory: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
 }
 
 // GET /api/pyramid/roots — each pyramid's root league with its crest, for

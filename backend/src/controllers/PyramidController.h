@@ -31,6 +31,8 @@
 // Mig 827: zone meaning and colour are pyramid_zone_kinds rows; where a
 // zone's teams go is the pyramid_zone_moves view over pyramid_links.
 //
+//   GET /api/pyramid/territory?conf=<id> → { population, counties, geojson,
+//     travel: {max_minutes, from, to, avg_minutes, pairs} | null }  (mig 852)
 //   GET /api/pyramid/roots → { roots: [{slug, name, short_name, logo_url}] }
 //     the picker tile's crest; reads only.
 //   POST /api/pyramid/zone-rules {division_id, direction, mode: default|none|custom,
@@ -48,4 +50,5 @@ private:
     Response handleGet(const Request& request);
     Response handleZoneRules(const Request& request);
     Response handleRoots(const Request& request);
+    Response handleTerritory(const Request& request);
 };

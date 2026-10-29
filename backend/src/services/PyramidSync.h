@@ -38,6 +38,10 @@ public:
     // one from `body` (the feed just read), each past one fetched once.
     static void storeSeasons(int sourceId, const std::string& locator, const nlohmann::json& body);
 
+    // A conference's Sunday (no-traffic) drive times among its APSL clubs:
+    // {max_minutes, from, to, avg_minutes, pairs} or null (mig 852).
+    static nlohmann::json conferenceTravel(int confId);
+
     // One source.  Returns {source_id, ok, teams, note}.  Never throws.
     static nlohmann::json refreshSource(int sourceId);
 };

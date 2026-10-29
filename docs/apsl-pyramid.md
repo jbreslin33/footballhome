@@ -166,16 +166,25 @@ Views only draw it:
   keep clear of the HUD and the overlay. Club names beside the dots from
   zoom 7 (always for the picked conference), each on a free side of its dot
   or hidden (picked conference first, then APSL, then feeders). The picked
-  conference's territory (owner: "base it off teams in other conferences
-  around it to infer map borders … borders especially in northeast need to
-  be on edge of other conf. in isolated conferences just draw it at or near
-  the furthest teams"): a 4px cell is the conference's when its nearest
-  located club is one of the conference's (where conferences meet, the
-  halfway line between their clubs) AND it lies within the convex hull of
-  the conference's clubs widened ~20 km (an open side stops just past the
-  outermost clubs) — tinted + outlined in yellow on a canvas pane under the
-  dots, redrawn per view. Next idea (owner: "its really based on metro
-  size"): counties + Census metro areas instead of pixels.
+  conference's territory (mig 852, owner: "its really based on metro size
+  … pretend your making the conferences from scratch based off population
+  and distance"): COUNTIES — a county belongs to the conference whose
+  nearest APSL club (`pyramid_club_conference`: only the conferences' own
+  clubs draw borders, so a feeder feeding two conferences never moves one)
+  is within `pyramid_territory_policy.reach_km` (100, ~an hour's drive) of
+  the county's centre; nearer wins, so neighbours meet along county lines;
+  a county no club reaches is open ground. `pyramid_county_overrides` sets
+  one by hand. `GET /api/pyramid/territory?conf=` returns the counties as
+  GeoJSON (drawn tinted, only the OUTER border outlined — an edge two of its
+  counties share is inside), the population inside, and Sunday drive times
+  (OSRM table — free-flow, no traffic — among the conference's APSL clubs:
+  the furthest pair + the average over every pair; cached per club set in
+  `pyramid_conference_travel`). HUD chip top-left.
+
+  County data (not in git): `scripts/pyramid-counties-load.py` reads the
+  Census county shapes (plotly's geojson-counties-fips.json) + Census
+  county population estimates (co-est2023-alldata.csv) and upserts
+  `pyramid_counties` — re-run when a new estimate year lands.
 - `js/components/pyramid-path-view.js` — `PyramidPathView` (mig 845): pick a
   club (search box over the model's clubs); each of its teams' routes up the
   promoting links (`PyramidModel.upRoutes` / `routeSteps`) drawn top-down with
