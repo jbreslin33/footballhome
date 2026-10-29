@@ -60,6 +60,7 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
             // Reserves row empty) still gets its pill — Roster (0) —
             // so the board's auto-pull can give it its first names.
             "SELECT s.team_id, s.league_label, s.system, n.full_name, n.person_id, "
+            "       n.person_id IS NOT NULL AND NOT fh_in_leagueapps(n.person_id) AS cut, "
             "       to_char(max(n.pulled_at) OVER (PARTITION BY s.id) AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI am') AS pulled_label "
             "  FROM official_roster_sources s "
             "  LEFT JOIN official_roster_names n ON n.source_id = s.id "
@@ -75,11 +76,15 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
                                  {"names", nlohmann::json::array()},
                                  // parallel to names: the FH person the
                                  // match trigger found (null = league-only)
-                                 {"personIds", nlohmann::json::array()}};
+                                 {"personIds", nlohmann::json::array()},
+                                 // parallel: on the list with no live LA
+                                 // membership = cut, still owed a drop (mig 807)
+                                 {"cut", nlohmann::json::array()}};
             if (!r["full_name"].is_null()) {
                 official[tid]["names"].push_back(r["full_name"].c_str());
                 official[tid]["personIds"].push_back(r["person_id"].is_null() ? nlohmann::json(nullptr)
                                                                               : nlohmann::json(r["person_id"].as<long long>()));
+                official[tid]["cut"].push_back(!r["cut"].is_null() && r["cut"].as<bool>());
             }
         }
         body["officialRosters"] = std::move(official);

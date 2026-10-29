@@ -637,12 +637,15 @@ class RosterScreenBase extends Screen {
       .map(c => `<span title="On the league's official roster for ${esc(c.label || '')}"
           style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
                  background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">📋 ${esc(RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()))}</span>`).join(' ');
-    const card = (p) => {
+    // Cut (mig 807): on the league list with no live LeagueApps membership
+    // — still official (counts, keeps his #) until the league drops him.
+    const cutFlag = [copy('board_official_cut') || '✂ not in LeagueApps — needs to be dropped', '#ef4444', '#fca5a5'];
+    const card = (p, cut = false) => {
       const rank = bucket.indexOf(p) + 1;
       const chips = this.boardView === 'team' ? listChips(p) : '';
       const html = this.renderPlayer(chips ? { ...p, nameChipHtml: (p.nameChipHtml || '') + chips } : p,
         data.columns, col, rank, bucket.length);
-      const flag = this.boardView === 'roster' && laneFlag[sectionOf(p)];
+      const flag = this.boardView === 'roster' && (laneFlag[sectionOf(p)] || (cut && cutFlag));
       return flag
         ? `<div style="border:2px solid ${flag[1]}; border-radius:9px; padding:2px;">
              <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:${flag[2]}; padding:0 4px 2px;">${esc(flag[0])}</div>${html}</div>`
@@ -689,14 +692,17 @@ class RosterScreenBase extends Screen {
         + section(copy('board_injured_h') || '🩹 INJURED', cats.injured, ...ROSE);
     }
 
-    const nameRow = (i, name, note) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
-        padding:3px 6px; border-radius:4px; background:rgba(34,197,94,0.06);">
+    const nameRow = (i, name, note, red = false) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
+        padding:3px 6px; border-radius:4px; ${red ? 'background:rgba(239,68,68,0.16); border:1px solid #ef4444;' : 'background:rgba(34,197,94,0.06);'}">
         <span style="opacity:0.55; min-width:1.6em; text-align:right;">${i + 1}</span>
         <span style="font-weight:700;">${esc(name)}</span>
-        <span style="font-size:0.65rem; color:#f59e0b;">${esc(note)}</span></div>`;
+        <span style="font-size:0.65rem; color:${red ? '#fca5a5' : '#f59e0b'}; font-weight:${red ? 800 : 400};">${esc(note)}</span></div>`;
+    const nameOf = (p) => p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim();
     const official = this.leagueListFor(col.teamId);
-    const lanes = { drop: [], pending_drop: [] };   // [{ p, n }] — + their official #
-    const addLane = (p, n) => { const l = lanes[sectionOf(p)]; if (l && !l.some(d => d.p === p)) l.push({ p, n }); };
+    const lanes = { drop: [], pending_drop: [] };   // [{ p, name, n, note }] — + their official #
+    const addLane = (p, n) => { const l = lanes[sectionOf(p)]; if (l && !l.some(d => d.p === p)) l.push({ p, name: nameOf(p), n, note: '' }); };
+    let cuts = 0;
+    const addCut = (p, name, n) => { cuts++; lanes.drop.push({ p, name, n, note: copy('board_cut_note') || '✂ cut — not in LeagueApps' }); };
     let rows, officialCount, rest;
     if (official) {
       const byPerson = new Map(bucket.map(p => [Number(p.personId), p]));
@@ -704,7 +710,14 @@ class RosterScreenBase extends Screen {
       rows = official.names.map((n, i) => {
         const id = official.personIds[i];
         const p = id != null && byPerson.get(Number(id));
-        if (p && !used.has(p)) { used.add(p); addLane(p, i + 1); return card(p); }
+        const cut = official.cut[i] === true;
+        if (p && !used.has(p)) {
+          used.add(p);
+          const inLane = !!lanes[sectionOf(p)];   // a drop already in motion wins over the cut flag
+          if (inLane) addLane(p, i + 1); else if (cut) addCut(p, nameOf(p), i + 1);
+          return card(p, cut && !inLane);
+        }
+        if (cut) { addCut(null, n, i + 1); return nameRow(i, n, cutFlag[0], true); }
         return nameRow(i, n, id == null
           ? (copy('board_official_unmatched') || 'not in Football Home')
           : (copy('board_official_off_team') || 'not on this team in Football Home'));
@@ -719,7 +732,8 @@ class RosterScreenBase extends Screen {
       rest = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
     }
     const extra = [
-      lanes.drop.length ? (copy('board_planned_drops', { n: lanes.drop.length }) || `${lanes.drop.length} dropping`) : '',
+      cuts ? (copy('board_cuts', { n: cuts }) || `${cuts} cut`) : '',
+      lanes.drop.length - cuts ? (copy('board_planned_drops', { n: lanes.drop.length - cuts }) || `${lanes.drop.length - cuts} dropping`) : '',
       lanes.pending_drop.length ? (copy('board_pending_drops', { n: lanes.pending_drop.length }) || `${lanes.pending_drop.length} pending drop`) : '',
     ].filter(Boolean).join(' · ');
     const officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', officialCount, ...GREEN, extra) + rows;
@@ -735,9 +749,8 @@ class RosterScreenBase extends Screen {
     };
     // A drop lane — name + official # rows; the cards stay in OFFICIAL
     // ROSTER (1:1 with the list), the dropdown there moves them.
-    const nameOf = (p) => p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim();
     const dropSection = (lane, label, colors) => lanes[lane].length
-      ? head(label, lanes[lane].length, ...colors) + lanes[lane].map(({ p, n }) => nameRow(n - 1, nameOf(p), '')).join('')
+      ? head(label, lanes[lane].length, ...colors) + lanes[lane].map(({ name, n, note }) => nameRow(n - 1, name, note, !!note)).join('')
       : '';
     // Owner 2026-10-27: the Roster pill is "basically a way for me to
     // organize moves" — OFFICIAL, the add lanes, the drop lanes; nothing
@@ -753,7 +766,7 @@ class RosterScreenBase extends Screen {
   // 🌐 mirror, or null when the team has none (or an upload not yet read).
   leagueListFor(teamId) {
     const o = this._data && this._data.officialRosters && this._data.officialRosters[String(teamId)];
-    return (o && (o.names || []).length) ? { names: o.names, personIds: o.personIds || [] } : null;
+    return (o && (o.names || []).length) ? { names: o.names, personIds: o.personIds || [], cut: o.cut || [] } : null;
   }
 
   // On the league's own list for this team → only the league takes him off.
