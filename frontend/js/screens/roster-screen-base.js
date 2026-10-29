@@ -703,6 +703,7 @@ class RosterScreenBase extends Screen {
     const addLane = (p, n) => { const l = lanes[sectionOf(p)]; if (l && !l.some(d => d.p === p)) l.push({ p, name: nameOf(p), n, note: '' }); };
     let cuts = 0;
     const addCut = (p, name, n) => { cuts++; lanes.drop.push({ p, name, n, note: copy('board_cut_note') || '✂ cut — not in LeagueApps' }); };
+    const listRows = [];   // every OFFICIAL row {name, n} — the projected list's source
     let rows, officialCount, rest;
     if (official) {
       const byPerson = new Map(bucket.map(p => [Number(p.personId), p]));
@@ -711,6 +712,7 @@ class RosterScreenBase extends Screen {
         const id = official.personIds[i];
         const p = id != null && byPerson.get(Number(id));
         const cut = official.cut[i] === true;
+        listRows.push({ name: p && !used.has(p) ? nameOf(p) : n, n: i + 1 });
         if (p && !used.has(p)) {
           used.add(p);
           const inLane = !!lanes[sectionOf(p)];   // a drop already in motion wins over the cut flag
@@ -726,15 +728,24 @@ class RosterScreenBase extends Screen {
       rest = shown.filter(p => !used.has(p));
     } else {
       const on = ordered(shown.filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
-      on.forEach((p, i) => addLane(p, i + 1));
+      on.forEach((p, i) => { addLane(p, i + 1); listRows.push({ name: nameOf(p), n: i + 1 }); });
       rows = on.length ? on.map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>';
       officialCount = on.length;
       rest = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
     }
+    // PROJECTED (mig 809) = OFFICIAL − every drop lane (cuts included) +
+    // both add lanes; over teams.max_roster turns it red.
+    const outNums = new Set([...lanes.drop, ...lanes.pending_drop].map(d => d.n));
+    const adds = rest.filter(p => sectionOf(p) === 'proposed' || sectionOf(p) === 'pending_add');
+    const projected = officialCount - outNums.size + adds.length;
+    const moves = outNums.size + adds.length > 0;
+    const maxRoster = Number(col.maxRoster) || 0;
+    const over = maxRoster > 0 ? projected - maxRoster : 0;
     const extra = [
       cuts ? (copy('board_cuts', { n: cuts }) || `${cuts} cut`) : '',
       lanes.drop.length - cuts ? (copy('board_planned_drops', { n: lanes.drop.length - cuts }) || `${lanes.drop.length - cuts} dropping`) : '',
       lanes.pending_drop.length ? (copy('board_pending_drops', { n: lanes.pending_drop.length }) || `${lanes.pending_drop.length} pending drop`) : '',
+      moves ? (copy('board_projected_banner', { n: projected }) || `→ ${projected} projected`) : '',
     ].filter(Boolean).join(' · ');
     const officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', officialCount, ...GREEN, extra) + rows;
     // An add lane, one sub-group per paperwork step in pipeline order.
@@ -752,6 +763,20 @@ class RosterScreenBase extends Screen {
     const dropSection = (lane, label, colors) => lanes[lane].length
       ? head(label, lanes[lane].length, ...colors) + lanes[lane].map(({ name, n, note }) => nameRow(n - 1, name, note, !!note)).join('')
       : '';
+    // PROJECTED ROSTER — the list once the moves land: OFFICIAL minus the
+    // drop lanes (their # shown, so the league list is easy to cross off),
+    // then the adds with their step.  Collapsed; only when there are moves.
+    const stepName = (code) => { const st = RosterScreenBase.rosterStatusByCode(code); return (st && st.displayName) || code || ''; };
+    const projectedSection = () => {
+      if (!moves) return '';
+      const colors = over > 0 ? RED : BLUE;
+      const overNote = over > 0 ? (copy('board_projected_over', { n: over, max: maxRoster }) || `${over} over the ${maxRoster} max`) : '';
+      const kept = listRows.filter(r => !outNums.has(r.n));
+      const body = kept.map((r, i) => nameRow(i, r.name, `#${r.n}`)).join('')
+        + ordered(adds).map((p, i) => nameRow(kept.length + i, nameOf(p),
+            copy('board_projected_add', { step: stepName(p.rosterStatus) }) || `+ ${stepName(p.rosterStatus)}`)).join('');
+      return `<details><summary style="list-style:none; cursor:pointer;">${head(copy('board_projected_h') || 'PROJECTED ROSTER', projected, ...colors, overNote)}</summary>${body}</details>`;
+    };
     // Owner 2026-10-27: the Roster pill is "basically a way for me to
     // organize moves" — OFFICIAL, the add lanes, the drop lanes; nothing
     // else (non-roster players and call-downs are a Team-pill thing).
@@ -759,7 +784,8 @@ class RosterScreenBase extends Screen {
       + addSection('proposed', copy('board_proposed_h') || 'PROPOSED ADDS', BLUE)
       + addSection('pending_add', copy('board_pending_add_h') || 'PENDING ADD', AMBER)
       + dropSection('drop', copy('board_dropping_h') || 'DROPPING', ORANGE)
-      + dropSection('pending_drop', copy('board_pending_drop_h') || 'PENDING DROP', RED);
+      + dropSection('pending_drop', copy('board_pending_drop_h') || 'PENDING DROP', RED)
+      + projectedSection();
   }
 
   // The league's own list for a team column — {names, personIds} from the
