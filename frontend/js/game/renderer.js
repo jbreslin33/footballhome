@@ -231,6 +231,15 @@
         this.scene.add(f.root);
 
       }
+      // The officials (G4.93, snapshot 1.16 tail): the referee and two
+      // assistants with flags. Hidden until a snapshot carries them (an
+      // older server sends none). Not in this.figures — not player slots.
+      this.officials = [0, 1, 2].map((i) => {
+        const f = new PlayerFigure(100 + i, true, false, { official: true, flag: i > 0 });
+        f.root.visible = false;
+        this.scene.add(f.root);
+        return f;
+      });
 
       this.ring = new THREE.Mesh(
         new THREE.RingGeometry(0.55, 0.75, 32),
@@ -383,6 +392,23 @@
           }
           m.position.set(x, 0.22 + z, y);
           ballPos = { x, y, z };
+        }
+        // Officials: interpolated like the players; their velocity is the
+        // snapshot-to-snapshot move (the wire carries no officials' velocity).
+        if (this.officials && a.snap.officials && b.snap.officials) {
+          const oc = Math.min(this.officials.length, a.snap.officials.length, b.snap.officials.length);
+          const per = (this.tickRate || 30) / span;
+          for (let i = 0; i < oc; i++) {
+            const oa = a.snap.officials[i], ob = b.snap.officials[i];
+            const x = oa.x + (ob.x - oa.x) * alpha;
+            const y = oa.y + (ob.y - oa.y) * alpha;
+            const f = this.officials[i];
+            f.root.visible = true;
+            f.root.position.set(x, 0, y);
+            f.setFlag(ob.flags & 1);
+            f.update(simDt, { vx: (ob.x - oa.x) * per, vy: (ob.y - oa.y) * per, fx: ob.fx, fy: ob.fy,
+                              flags: 0, ball: ballPos, hasBall: false, me: { x, y } });
+          }
         }
         const owner = b.snap.ball ? b.snap.ball.owner : NO_OWNER;
         const count = Math.min(this.figures.length, b.snap.players.length);

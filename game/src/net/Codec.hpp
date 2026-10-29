@@ -63,6 +63,14 @@ struct BallSnap {
     std::uint8_t  owner = 0xFF;  // slot carrying the ball; 0xFF = free
 };
 
+// 1.16 tail (G4.93): a match official — the referee (0) and the two
+// assistants (1 = +y touchline, 2 = -y). Not a player slot.
+struct OfficialSnap {
+    math::Fixed64 pos_x{}, pos_y{};
+    std::int8_t   face_x = 127, face_y = 0;   // unit vector ×127
+    std::uint8_t  flags = 0;                  // bit0 = flag up (an assistant who just called offside)
+};
+
 struct SnapshotFrame {
     std::uint64_t tick = 0;
     std::vector<PlayerSnap> players;
@@ -78,6 +86,8 @@ struct SnapshotFrame {
     // Appended in 1.3: current level-band ids (core::kLevelNames).
     std::uint8_t  level_home = 0;
     std::uint8_t  level_away = 0;
+    // Appended in 1.16 (after the 1.8 facing): the officials.
+    std::vector<OfficialSnap> officials;
 };
 
 struct EventFrame {

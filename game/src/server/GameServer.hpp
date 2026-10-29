@@ -172,6 +172,10 @@ private:
     // G4.41 brain overlay: each slot's last decision, and who's watching.
     std::vector<ai::Orders> last_orders_;
     std::vector<core::MatchEvent> last_events_;   // the last tick's (tools read them)
+    // G4.93: which official's flag is up (OfficialRole index, -1 none), till when.
+    static constexpr std::uint64_t kFlagUpTicks = 45;   // 1.5 s
+    int flag_official_ = -1;
+    std::uint64_t flag_until_tick_ = 0;
     std::unordered_map<ClientId, bool> brain_watchers_;
     void sendBrain();
     // Connected clients, for snapshot fan-out. Keyed map (not vector) so

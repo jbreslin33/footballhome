@@ -144,7 +144,18 @@ levels (appended in 1.3):
   u8 level_home_id | u8 level_away_id
 facing (appended in 1.8, G4.53):
   per player: i8 face_x | i8 face_y   (unit vector × 127)
+officials (appended in 1.16, G4.93):
+  u8 official_count |
+  per official: i64 pos_x | i64 pos_y | i8 face_x | i8 face_y | u8 flags
 ```
+
+- Officials (1.16): index 0 the referee, 1 the assistant on the +y
+  touchline (judges the +x half), 2 the assistant on −y (the −x half) —
+  `core::Officials`, NOT player slots (BRAIN, ROSTER, CLAIM etc. never
+  index them). `flags` bit0 = flag up: an assistant whose offside call was
+  whistled, for 1.5 s after it; the rest reserved. 19 B each, 58 B for the
+  crew. A 1.15 decoder ignores the tail (§9); a 1.16 decoder of a 1.15
+  frame gets no officials and draws none.
 
 - Players are planar (DESIGN.md §4), so player records carry **no z** —
   that's ~8 bytes × 22 players × 30 Hz saved. The ball record (added in G1,

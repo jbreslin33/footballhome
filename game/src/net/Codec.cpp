@@ -182,6 +182,14 @@ Bytes encodeSnapshot(const SnapshotFrame& f) {
         w.u8(static_cast<std::uint8_t>(p.face_x));
         w.u8(static_cast<std::uint8_t>(p.face_y));
     }
+    // 1.16 tail: u8 count | per official i64 x | i64 y | i8 face_x | i8 face_y | u8 flags.
+    w.u8(static_cast<std::uint8_t>(f.officials.size()));
+    for (const OfficialSnap& o : f.officials) {
+        w.fx(o.pos_x); w.fx(o.pos_y);
+        w.u8(static_cast<std::uint8_t>(o.face_x));
+        w.u8(static_cast<std::uint8_t>(o.face_y));
+        w.u8(o.flags);
+    }
     return std::move(w.out);
 }
 
@@ -224,6 +232,20 @@ std::optional<SnapshotFrame> decodeSnapshot(const Bytes& payload) {
         for (PlayerSnap& p : f.players) {
             p.face_x = static_cast<std::int8_t>(r.u8());
             p.face_y = static_cast<std::int8_t>(r.u8());
+        }
+    }
+    if (r.at + 1 <= payload.size()) {  // 1.16 tail: the officials
+        const std::uint8_t n = r.u8();
+        if (r.at + std::size_t{19} * n <= payload.size()) {
+            f.officials.reserve(n);
+            for (std::uint8_t i = 0; i < n; ++i) {
+                OfficialSnap o;
+                o.pos_x = r.fx(); o.pos_y = r.fx();
+                o.face_x = static_cast<std::int8_t>(r.u8());
+                o.face_y = static_cast<std::int8_t>(r.u8());
+                o.flags = r.u8();
+                f.officials.push_back(o);
+            }
         }
     }
     return f;
