@@ -40,6 +40,7 @@ class PyramidFlowView {
       .fc-tbl tr.z td { background:color-mix(in srgb, var(--zc) 20%, transparent); }
       .fc-tbl tr.mine td { font-weight:800; outline:2px solid #e0e7ff; outline-offset:-2px; }
       .fc-legend { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; font-size:0.75rem; opacity:0.85; margin:-4px 0 12px; }
+      .fc-legend-hud { position:fixed; max-width:min(560px, calc(100% - 20px)); }
       .fc-legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
       .fc-edit { position:absolute; top:3px; right:4px; background:none; border:0; color:inherit; opacity:0.45; cursor:pointer; font-size:0.75rem; padding:2px; min-height:0; min-width:0; }
       .fc-edit:hover { opacity:1; }`;
@@ -129,7 +130,7 @@ class PyramidFlowView {
   html(model, confs) {
     const legend = this.legendHtml(model);
     return `
-      ${legend ? `<div class="fc-legend">${legend}</div>` : ''}
+      ${legend ? this.screen.hud('legend', this._copy('hud_legend'), `<div class="fc-legend" style="margin:0; justify-content:flex-start;">${legend}</div>`, 'hud-bl', 'fc-legend-hud') : ''}
       <div class="fc-scroll">${this.chartHtml(model, confs)}</div>`;
   }
 

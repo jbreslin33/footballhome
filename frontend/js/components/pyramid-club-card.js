@@ -21,7 +21,7 @@ class PyramidClubCard {
       .cc-card { z-index:1300; background:rgba(11,18,32,0.95); border:1px solid rgba(148,163,184,0.35); border-radius:12px;
                  box-shadow:0 8px 30px rgba(0,0,0,0.55); display:flex; flex-direction:column; color:#e5e7eb; }
       .cc-card.float { position:fixed; right:16px; top:84px; bottom:16px; width:min(400px, calc(100vw - 32px)); }
-      .cc-card.in-map { position:absolute; left:12px; top:96px; bottom:12px; width:min(380px, calc(100% - 24px)); }
+      .cc-card.in-map { position:absolute; left:10px; top:10px; bottom:10px; width:min(380px, calc(100% - 24px)); }
       .cc-head { display:flex; gap:10px; align-items:center; padding:10px 12px; border-bottom:1px solid rgba(148,163,184,0.2); }
       .cc-head img { width:44px; height:44px; object-fit:contain; background:#fff; border-radius:8px; padding:2px; }
       .cc-head .nm { flex:1; min-width:0; }

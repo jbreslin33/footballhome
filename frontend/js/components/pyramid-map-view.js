@@ -44,6 +44,7 @@
 class PyramidMapView {
   constructor(screen, flow) {
     this.screen = screen; this.flow = flow;
+    this.fill = true;   // a canvas: fills the stage, writing in HUDs
     this.map = null; this.sel = null;
   }
 
@@ -53,21 +54,12 @@ class PyramidMapView {
   static css() {
     return `
       .mp-map .leaflet-tile-pane { filter:invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
-      .mp-stage { position:relative; height:calc(100vh - 210px); min-height:480px; border-radius:12px; overflow:hidden; border:1px solid var(--border-color, #374151); }
-      .mp-stage:fullscreen { height:100vh; border-radius:0; border:0; }
+      .mp-stage { position:absolute; inset:0; overflow:hidden; }
       .mp-map { position:absolute; inset:0; background:#0b1220; }
-      .mp-hud { position:absolute; z-index:1100; background:rgba(11,18,32,0.78); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.25);
-                border-radius:10px; padding:6px 10px; font-size:0.8rem; color:#e5e7eb; }
-      .mp-hud-top { top:10px; left:50%; transform:translateX(-50%); display:flex; gap:12px; align-items:center; white-space:nowrap; max-width:calc(100% - 140px); }
-      .mp-hud-top .tot { font-weight:800; font-size:0.95rem; overflow:hidden; text-overflow:ellipsis; }
-      .mp-hud-top button { min-height:0; padding:3px 10px; font-size:0.78rem; }
-      .mp-hud-legend { left:10px; bottom:30px; display:flex; flex-direction:column; gap:3px; }
-      .mp-hud-legend i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; }
-      .mp-hud-count { right:10px; bottom:30px; opacity:0.9; }
-      .mp-hud-stats { left:56px; top:10px; max-width:360px; line-height:1.45; }
-      .mp-hud-stats[hidden] { display:none; }
+      .mp-hud-stats { max-width:360px; line-height:1.45; }
       .mp-hud-stats b { font-size:0.9rem; }
-      .mp-hud-hint { left:50%; bottom:30px; transform:translateX(-50%); opacity:0.75; font-size:0.74rem; }
+      .mp-key span { display:block; }
+      .mp-key i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; }
       .mp-ov { position:absolute; z-index:1200; top:56px; right:12px; bottom:12px; width:min(820px, calc(100% - 24px)); display:flex; flex-direction:column;
                background:rgba(11,18,32,0.92); border:1px solid rgba(148,163,184,0.35); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
       .mp-ov[hidden] { display:none; }
@@ -112,18 +104,15 @@ class PyramidMapView {
     return `
       <div class="mp-stage">
         <div class="mp-map"></div>
-        <div class="mp-hud mp-hud-top">
-          <span class="tot">${esc(this._copy('totals', model.totals))}</span>
-          <button class="btn btn-secondary" data-mp="full">${esc(this._copy('map_full'))}</button>
-        </div>
-        <div class="mp-hud mp-hud-legend">
-          <span><i style="background:#3b82f6"></i>${esc(this._copy('map_dot_apsl'))}</span>
-          <span><i style="background:#14b8a6"></i>${esc(this._copy('map_dot_feeder'))}</span>
-          <span><i style="background:rgba(20,184,166,0.35); outline:1px dashed #64748b"></i>${esc(this._copy('map_dot_approx'))}</span>
-        </div>
-        <div class="mp-hud mp-hud-hint">${esc(this._copy('map_hint'))}</div>
-        <div class="mp-hud mp-hud-count"></div>
-        <div class="mp-hud mp-hud-stats" hidden></div>
+        ${this.screen.hud('map-key', this._copy('hud_map'), `
+          <div class="mp-key">
+            <span><i style="background:#3b82f6"></i>${esc(this._copy('map_dot_apsl'))}</span>
+            <span><i style="background:#14b8a6"></i>${esc(this._copy('map_dot_feeder'))}</span>
+            <span><i style="background:rgba(20,184,166,0.35); outline:1px dashed #64748b"></i>${esc(this._copy('map_dot_approx'))}</span>
+          </div>
+          <div class="mp-hud-count" style="margin-top:4px; opacity:0.85;"></div>
+          <div style="margin-top:2px; opacity:0.7;">${esc(this._copy('map_hint'))}</div>`, 'hud-bl')}
+        ${this.screen.hud('map-stats', this._copy('hud_stats'), `<div class="mp-hud-stats">${esc(this._copy('map_pick'))}</div>`, 'hud-tl')}
         <div class="mp-ov" hidden style="opacity:${alpha}">
           <div class="mp-ov-head">
             <h3></h3>
@@ -144,7 +133,8 @@ class PyramidMapView {
     if (!root.isConnected) return;
     if (this.map) { this.map.remove(); this.map = null; }
     const L = window.L;
-    this.map = L.map(root.querySelector('.mp-map'), { zoomSnap: 0.25, attributionControl: true });
+    this.map = L.map(root.querySelector('.mp-map'), { zoomSnap: 0.25, attributionControl: true, zoomControl: false });
+    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18, attribution: this._esc(this._copy('map_attribution')),
     }).addTo(this.map);
@@ -262,10 +252,12 @@ class PyramidMapView {
     // in its direction.  A leader line runs from the bubble to the spot.
     const size = map.getSize();
     const pad = 4;
-    const placed = [{ x: 30, y: 50, w: 60, h: 100 }];   // the zoom buttons
-    // …and the HUD pieces / open overlay floating on the map.
+    const placed = [];
+    // The zoom buttons, every HUD (the screen's too), the open overlay and a
+    // club card: bubbles and names keep clear of them all.
     const box = map.getContainer().getBoundingClientRect();
-    (this.root ? [...this.root.querySelectorAll('.mp-hud, .mp-ov:not([hidden])')] : []).forEach((el) => {
+    const scope = this.screen.element || this.root;
+    (scope ? [...scope.querySelectorAll('.leaflet-control-zoom, .ap-hud, .mp-ov:not([hidden]), .cc-card')] : []).forEach((el) => {
       const r = el.getBoundingClientRect();
       if (r.width) placed.push({ x: r.left - box.left + r.width / 2, y: r.top - box.top + r.height / 2, w: r.width + 8, h: r.height + 8 });
     });
@@ -339,7 +331,7 @@ class PyramidMapView {
     this.terrLayer.clearLayers();
     const stats = this.root.querySelector('.mp-hud-stats');
     const conf = this.sel;
-    if (!conf) { if (stats) stats.hidden = true; return; }
+    if (!conf) { if (stats) stats.textContent = this._copy('map_pick'); return; }
     let t = this.terrCache.get(conf);
     if (!t) {
       try {
@@ -380,7 +372,6 @@ class PyramidMapView {
           + (t.travel.median_minutes != null ? `<br>${esc(this._copy('map_median', { time: time(t.travel.median_minutes) }))}` : '');
       } else html += `<br>${esc(this._copy('map_no_travel'))}`;
       stats.innerHTML = html;
-      stats.hidden = false;
       this._relayout();
     }
   }
@@ -419,7 +410,18 @@ class PyramidMapView {
     const body = ov.querySelector('.mp-ov-body');
     body.innerHTML = this.flow.chartHtml(this.model, [col.conf]);
     ov.hidden = false;
+    this._fitOverlay();
     requestAnimationFrame(() => this.flow.drawArrows(body.querySelector('.fc-chart'), this.model, [col.conf]));
+  }
+
+  // The overlay starts just under the screen's main HUD, whatever its
+  // height (its pills wrap with the window; collapsed it is one line).
+  _fitOverlay() {
+    const ov = this.root && this.root.querySelector('.mp-ov');
+    const main = this.screen.element && this.screen.element.querySelector('.ap-hud-main');
+    if (!ov || !main) return;
+    const top = main.getBoundingClientRect().bottom - this.root.querySelector('.mp-stage').getBoundingClientRect().top + 8;
+    ov.style.top = `${Math.max(12, Math.round(top))}px`;
   }
 
   _close() {
@@ -441,24 +443,18 @@ class PyramidMapView {
           try { localStorage.setItem('apsl-pyramid-map-ov', String(this.alpha)); } catch (_) { /* private mode */ }
         });
       } else if (a === 'close') el.addEventListener('click', () => this._close());
-      else if (a === 'full') el.addEventListener('click', () => {
-        if (document.fullscreenElement) document.exitFullscreen(); else if (stage.requestFullscreen) stage.requestFullscreen();
-      });
     });
     // Keep Leaflet's own drag / wheel off the HUD and overlay.
-    root.querySelectorAll('.mp-hud, .mp-ov').forEach((el) => { window.L.DomEvent.disableClickPropagation(el); window.L.DomEvent.disableScrollPropagation(el); });
+    root.querySelectorAll('.ap-hud, .mp-ov').forEach((el) => { window.L.DomEvent.disableClickPropagation(el); window.L.DomEvent.disableScrollPropagation(el); });
     this._onKey = (e) => { if (e.key === 'Escape' && this.sel && !document.fullscreenElement) this._close(); };
-    this._onFull = () => {
-      const b = root.querySelector('[data-mp="full"]');
-      if (b) b.textContent = this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full');
-      setTimeout(() => { if (this.map) { this.map.invalidateSize(); this._relayout(); this._panel(); } }, 150);
-    };
+    this._onFull = () => setTimeout(() => { if (this.map) { this.map.invalidateSize(); this._relayout(); this._panel(); } }, 150);
     document.addEventListener('keydown', this._onKey);
     document.addEventListener('fullscreenchange', this._onFull);
   }
 
   onResize() {
     if (this.map) { this.map.invalidateSize(); this._relayout(); }
+    this._fitOverlay();
     const col = this.sel && this.columns && this.columns.find((c) => c.conf.id === this.sel);
     const chart = this.root && this.root.querySelector('.mp-ov .fc-chart');
     if (col && chart) this.flow.drawArrows(chart, this.model, [col.conf]);

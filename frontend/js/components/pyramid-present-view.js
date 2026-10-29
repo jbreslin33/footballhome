@@ -16,6 +16,7 @@
 class PyramidPresentView {
   constructor(screen, flow) {
     this.screen = screen; this.flow = flow;
+    this.fill = true;   // a canvas: fills the stage, writing in HUDs
     this.cam = { x: 0, y: 0, s: 1 };
     this.steps = []; this.step = 0; this.timer = null;
     this.free = false;   // true once the viewer clicks / drags / zooms off the tour
@@ -31,9 +32,8 @@ class PyramidPresentView {
       .pz-bar { display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap; margin-bottom:8px; }
       .pz-bar button { min-height:0; padding:5px 12px; font-size:0.85rem; }
       .pz-cap { flex-basis:100%; text-align:center; font-weight:800; font-size:1rem; min-height:1.3em; }
-      .pz-vp { position:relative; height:calc(100vh - 290px); min-height:420px; overflow:hidden; border:1px solid var(--border-color, #374151);
-               border-radius:12px; background:radial-gradient(circle at 50% 30%, #172554 0%, #0b1220 70%); touch-action:none; cursor:grab; user-select:none; }
-      .pz-vp:fullscreen { height:100vh; border-radius:0; }
+      .pz-vp { position:absolute; inset:0; overflow:hidden;
+               background:radial-gradient(circle at 50% 30%, #172554 0%, #0b1220 70%); touch-action:none; cursor:grab; user-select:none; }
       .pz-vp.dragging { cursor:grabbing; }
       .pz-stage { position:absolute; left:0; top:0; transform-origin:0 0; will-change:transform; }
       .pz-stage .fc-chart { margin:0; padding:24px; }
@@ -49,18 +49,19 @@ class PyramidPresentView {
   html(model, confs) {
     const esc = (t) => this._esc(t);
     const legend = this.flow.legendHtml(model);
-    return `
+    const bar = `
       <div class="pz-bar">
         <button class="btn btn-secondary" data-pz="prev">◀</button>
         <button class="btn btn-primary" data-pz="play">${esc(this._copy('present_play'))}</button>
         <button class="btn btn-secondary" data-pz="next">▶</button>
         <button class="btn btn-secondary" data-pz="fit">${esc(this._copy('present_fit'))}</button>
-        <button class="btn btn-secondary" data-pz="full">${esc(this._copy('present_full'))}</button>
         <div class="pz-cap"></div>
       </div>
-      ${legend ? `<div class="fc-legend">${legend}</div>` : ''}
-      <div class="pz-vp"><div class="pz-stage">${this.flow.chartHtml(model, confs)}</div></div>
+      ${legend ? `<div class="fc-legend" style="margin:4px 0;">${legend}</div>` : ''}
       <div class="pz-hint">${esc(this._copy('present_hint'))}</div>`;
+    return `
+      <div class="pz-vp"><div class="pz-stage">${this.flow.chartHtml(model, confs)}</div></div>
+      ${this.screen.hud('present', this._copy('view_present'), bar, 'hud-bc')}`;
   }
 
   mount(root, model, confs) {
@@ -179,7 +180,6 @@ class PyramidPresentView {
       else if (a === 'next') { this._stop(); this.go(this.step + 1); }
       else if (a === 'play') this._toggle();
       else if (a === 'fit') { this._stop(); this.go(0); }
-      else if (a === 'full') { if (document.fullscreenElement) document.exitFullscreen(); else if (vp.requestFullscreen) vp.requestFullscreen(); }
     }));
     vp.addEventListener('wheel', (e) => {
       e.preventDefault();

@@ -128,6 +128,20 @@ via `competitions[].logo_url` and `GET /api/pyramid/roots`). View pills:
 Flow chart (built) · USA map · Club pathway · Standings · Growth by season
 (greyed until built — `views[].built` in the screen).
 
+## Full screen + HUDs (mig 859)
+
+Owner: "all screens should be full screen with all writing etc in a hud …
+the huds should be collapsable." The page is a full-window stage
+(`.ap-stage`, over the app bar); ⛶ in the main HUD takes the whole stage
+into the browser's full screen, every view. The main HUD (← back, crest,
+title, ⟳, ⛶, totals, view + conference pills) floats top-centre; each view's
+writing is a HUD panel made by `screen.hud(key, title, body, pos)` — flow
+legend, presentation toolbar, map key, conference stats. ▾ / ▸ collapses any
+HUD to its title, remembered (`localStorage apsl-hud-<key>`). Canvas views
+(map, presentation — `fill: true`) fill the stage edge to edge; the others
+scroll under the HUDs. The map's zoom moved bottom-right; bubbles and names
+keep clear of every HUD; the conference overlay starts under the main HUD.
+
 ## Views draw from ONE model (mig 842)
 
 Owner 2026-10-29: "make sure they all draw from same source these are just

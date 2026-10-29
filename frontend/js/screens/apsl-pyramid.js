@@ -52,6 +52,26 @@ class ApslPyramidScreen extends Screen {
         .ap-pills { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-bottom:var(--space-3); }
         .ap-pill { padding:5px 14px; border-radius:999px; border:1px solid var(--border-color, #374151); background:transparent; color:inherit; font-weight:700; font-size:0.85rem; cursor:pointer; min-height:0; min-width:0; }
         .ap-pill.on { background:var(--primary-color, #2563eb); border-color:var(--primary-color, #2563eb); color:#fff; }
+        .ap-stage { position:fixed; inset:0; z-index:1000; background:var(--bg-color, #0b1220); overflow:hidden; }
+        .ap-stage #ap-body { position:absolute; inset:0; overflow:auto; padding:150px 16px 24px; }
+        .ap-stage.hud-min #ap-body { padding-top:56px; }
+        .ap-stage #ap-body.flush { padding:0; overflow:hidden; }
+        .ap-stage #ap-body.flush #ap-view { position:absolute; inset:0; }
+        .ap-hud { position:absolute; z-index:1100; background:rgba(11,18,32,0.84); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.3);
+                  border-radius:12px; color:#e5e7eb; font-size:0.8rem; box-shadow:0 4px 18px rgba(0,0,0,0.4); max-width:calc(100% - 20px); }
+        .ap-hud-head { display:flex; align-items:center; gap:8px; padding:4px 6px 4px 10px; font-weight:800; white-space:nowrap; }
+        .ap-hud-head .t { flex:1; overflow:hidden; text-overflow:ellipsis; }
+        .ap-hud-head button { min-height:0; min-width:0; padding:1px 8px; font-size:0.78rem; }
+        .ap-hud-body { padding:2px 10px 8px; }
+        .ap-hud.collapsed .ap-hud-body { display:none; }
+        .ap-hud-main { top:8px; left:50%; transform:translateX(-50%); width:max-content; max-width:min(1000px, calc(100% - 20px)); z-index:1250; }
+        .ap-hud-main .ap-hud-head img { height:26px; width:auto; }
+        .ap-hud-main .ap-totals { margin:2px 0 6px; font-size:0.95rem; }
+        .ap-hud-main .ap-pills { margin-bottom:6px; }
+        .hud-tl { top:10px; left:10px; }
+        .hud-bl { bottom:10px; left:10px; }
+        .hud-br { bottom:10px; right:10px; }
+        .hud-bc { bottom:10px; left:50%; transform:translateX(-50%); }
         .ap-views { margin-bottom:8px; }
         .ap-views .ap-pill { font-size:0.9rem; padding:6px 16px; }
         .ap-pill:disabled { opacity:0.35; cursor:not-allowed; }
@@ -77,19 +97,36 @@ class ApslPyramidScreen extends Screen {
         .ap-editor .btns { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
         .ap-editor .err { color:#fca5a5; font-size:0.82rem; }
       </style>
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="ap-back">← Back</button>
-        <img id="ap-crest" alt="" style="height:52px; width:auto; display:none;">
-        <div style="flex:1; min-width:0;"><h1 style="margin:0;" id="ap-title"></h1><div id="ap-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
-        <button class="btn btn-secondary" id="ap-refresh" style="padding:4px 12px; font-size:0.85rem;">🔄</button>
-      </div>
-      <div class="screen-content" style="max-width:1400px; margin:0 auto;">
-        <div id="ap-body"><div class="loading">Loading…</div></div>
+      <div class="ap-stage">
+        <div id="ap-body"><div class="loading" style="padding-top:60px;">Loading…</div></div>
+        <div class="ap-hud ap-hud-main${this._hudCollapsed('main') ? ' collapsed' : ''}" data-hud="main">
+          <div class="ap-hud-head">
+            <button class="btn btn-secondary" id="ap-back">←</button>
+            <img id="ap-crest" alt="" style="display:none;">
+            <span class="t" id="ap-title"></span>
+            <button class="btn btn-secondary" id="ap-refresh" title="↻">⟳</button>
+            <button class="btn btn-secondary" id="ap-full"></button>
+            <button class="btn btn-secondary" data-hud-toggle>${this._hudCollapsed('main') ? '▸' : '▾'}</button>
+          </div>
+          <div class="ap-hud-body" id="ap-hud-main"></div>
+        </div>
       </div>`;
     this.element = div;
     div.querySelector('#ap-back').addEventListener('click', () => this.navigation.goBack());
     div.querySelector('#ap-refresh').addEventListener('click', () => this.load(true));
-    div.querySelector('#ap-body').addEventListener('click', (e) => {
+    // Full screen = the whole pyramid stage, every view (owner: "all screens
+    // should be full screen with all writing etc in a hud").
+    div.querySelector('#ap-full').addEventListener('click', () => {
+      const stage = div.querySelector('.ap-stage');
+      if (document.fullscreenElement) document.exitFullscreen(); else if (stage.requestFullscreen) stage.requestFullscreen();
+    });
+    this._onFullLabel = () => { const b = div.querySelector('#ap-full'); if (b) b.textContent = this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶'; };
+    document.addEventListener('fullscreenchange', this._onFullLabel);
+    div.querySelector('.ap-stage').addEventListener('click', (e) => {
+      // ▾ / ▸ on any HUD: collapse to its title, remembered (owner: "the
+      // huds should be collapsable").
+      const tg = e.target.closest('[data-hud-toggle]');
+      if (tg) { this._toggleHud(tg.closest('[data-hud]')); return; }
       // A team's name anywhere → its club card (mig 856).
       const club = e.target.closest('[data-club]');
       if (club && !e.target.closest('.pz-vp')) { this.openClub(Number(club.dataset.club)); return; }
@@ -111,7 +148,7 @@ class ApslPyramidScreen extends Screen {
       const act = e.target.closest('[data-ed]');
       if (act) this._editorAction(act);
     });
-    div.querySelector('#ap-body').addEventListener('change', (e) => {
+    div.querySelector('.ap-stage').addEventListener('change', (e) => {
       if (e.target.closest('.ap-editor')) this._editorRead();
     });
     return div;
@@ -122,13 +159,41 @@ class ApslPyramidScreen extends Screen {
     const copyReady = window.MessageCopy ? MessageCopy.load(this.auth) : Promise.resolve();
     Promise.resolve(copyReady).then(() => {
       const t = this.find('#ap-title'); if (t && this._copy('title')) t.textContent = this._copy('title');
-      const s = this.find('#ap-sub'); if (s) s.textContent = this._copy('subtitle');
+      this._onFullLabel();
       if (this.data) this._renderBody();
     });
     this.load(false);
   }
 
-  onExit() { window.removeEventListener('resize', this._onResize); this._viewCall('unmount'); this.clubCard.close(); }
+  onExit() {
+    window.removeEventListener('resize', this._onResize);
+    this._viewCall('unmount');
+    this.clubCard.close();
+    if (document.fullscreenElement) document.exitFullscreen();
+  }
+
+  // ── collapsible HUDs ─────────────────────────────────────────────────
+  _hudCollapsed(key) { try { return localStorage.getItem(`apsl-hud-${key}`) === '1'; } catch (_) { return false; } }
+  _toggleHud(el) {
+    if (!el) return;
+    const key = el.dataset.hud;
+    const now = !el.classList.contains('collapsed');
+    el.classList.toggle('collapsed', now);
+    const b = el.querySelector('[data-hud-toggle]');
+    if (b) b.textContent = now ? '▸' : '▾';
+    try { localStorage.setItem(`apsl-hud-${key}`, now ? '1' : '0'); } catch (_) { /* private mode */ }
+    if (key === 'main') this.find('.ap-stage').classList.toggle('hud-min', now);
+    this._viewCall('onResize');
+  }
+  // A view's HUD panel: title + ▾/▸ + body; pos = hud-tl / hud-bl / hud-br / hud-bc.
+  hud(key, title, body, pos = 'hud-bl', extra = '') {
+    const c = this._hudCollapsed(key);
+    return `
+      <div class="ap-hud ${pos}${c ? ' collapsed' : ''} ${extra}" data-hud="${key}">
+        <div class="ap-hud-head"><span class="t">${this.escapeHtml(title || '')}</span><button class="btn btn-secondary" data-hud-toggle>${c ? '▸' : '▾'}</button></div>
+        <div class="ap-hud-body">${body}</div>
+      </div>`;
+  }
 
   // The club card (mig 856): host = an element to sit in (the map's stage),
   // else it floats over the screen.
@@ -189,11 +254,15 @@ class ApslPyramidScreen extends Screen {
       .join('');
     const shown = this._shown();
     const views = this.views.map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}"${v.built ? '' : ` disabled title="${esc(this._copy('view_soon'))}"`}>${esc(this._copy(v.tier))}</button>`).join('');
-    el.innerHTML = `
-      <div class="ap-totals">${esc(this._copy('totals', this.model.totals))}</div>
+    const main = this.find('#ap-hud-main');
+    if (main) main.innerHTML = `
+      <div class="ap-totals">${esc(this._copy('totals', this.model.totals))}${this.loading ? ' · ⟳' : ''}</div>
       <div class="ap-pills ap-views">${views}</div>
-      <div class="ap-pills">${pills}</div>
-      ${this.loading ? '<div class="loading" style="text-align:center;">Refreshing…</div>' : ''}
+      <div class="ap-pills" style="margin-bottom:0;">${pills}</div>`;
+    this.find('.ap-stage').classList.toggle('hud-min', this._hudCollapsed('main'));
+    // A view that is a canvas (map, presentation) fills the stage edge to edge.
+    el.classList.toggle('flush', !!this._impl().fill);
+    el.innerHTML = `
       <div id="ap-view">${shown.length ? this._impl().html(this.model, shown) : `<div class="fc-none">${esc(this._copy('none_on'))}</div>`}</div>
       ${this.edit ? this._editorHtml() : ''}`;
     if (shown.length) requestAnimationFrame(() => this._viewCall('mount'));
