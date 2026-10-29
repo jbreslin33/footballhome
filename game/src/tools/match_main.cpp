@@ -604,6 +604,9 @@ int main(int argc, char** argv) {
     // onside / 1-3 onside / within 1 m onside / within 1 m offside / 1 m+
     // offside — and how many of each the assistant flagged.
     long tg_n[5] = {}, tg_flag[5] = {}, tg_all = 0;
+    // Time on the ball before a pass (G4.92; benchmark time_on_ball_s):
+    // from his first touch of it to the kick, passes to a mate only.
+    long tob_n = 0, tob_b[4] = {}; double tob_s = 0; long got_tick[64] = {};
     long op_men = 0, op_kicks = 0, op_all_kicks = 0, op_job[ai::kWhyCount] = {}, op_depth[4] = {}, op_age[4] = {};
     long off_called[2] = {}, off_wrong = 0, off_missed = 0, flag_wrong = 0, flag_missed = 0, flag_kicks = 0;
     long ar_off[5] = {};
@@ -686,6 +689,7 @@ int main(int argc, char** argv) {
             s.tickOnce();
             const auto& b = s.world().ball();
             if (b.owner && (!before || *before != *b.owner)) {
+                if (*b.owner < 64) got_tick[*b.owner] = k;
                 const auto& r = s.world().player(*b.owner);
                 rx_slot = *b.owner; rx_x = r.pos.x.toDouble(); rx_y = r.pos.y.toDouble();
                 rx_behind = goalSide(r.team, rx_x);
@@ -1145,6 +1149,11 @@ int main(int argc, char** argv) {
                     if (st == spell_team) ++won_at[st][won_x < 35 ? 0 : won_x < 52.5 ? 1 : won_x < 70 ? 2 : 3];
                 }
                 pend_why = o.rung >= 1 && o.rung <= 2 ? ai::kWhyCount : static_cast<int>(o.why);
+                if (o.other >= 0 && o.why != ai::Why::Shoot && o.other < s.world().playerCount() &&
+                    s.world().player(static_cast<std::uint8_t>(o.other)).team == pend_team && *before < 64) {
+                    const double d = (k - got_tick[*before]) / 30.0;
+                    ++tob_n; tob_s += d; ++tob_b[d < 1 ? 0 : d < 2 ? 1 : d < 4 ? 2 : 3];
+                }
                 kick_passer = *before; kick_read = o.read; kick_aim = o.target; kick_from = math::Vec2{s.world().ball().pos.x, s.world().ball().pos.y};
                 kick_at.clear(); kick_tick = k;
                 for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
@@ -1396,6 +1405,11 @@ int main(int argc, char** argv) {
             }
         both("shots_per_team_match", shot_n[0] / nm, shot_n[1] / nm);
         both("offsides_per_team_match", off_called[0] / nm, off_called[1] / nm);   // G4.88
+        if (tob_n) {   // G4.92: time on the ball (one number for both sides)
+            one("time_on_ball_s", tob_s / tob_n);
+            const char* tk[4] = {"time_on_ball_lt1s_pct", "time_on_ball_1_2s_pct", "time_on_ball_2_4s_pct", "time_on_ball_4s_plus_pct"};
+            for (int q = 0; q < 4; ++q) one(tk[q], 100.0 * tob_b[q] / tob_n);
+        }
         both("shots_open_play_per_team_match", shot_n[0] / nm, shot_n[1] / nm);
         one("goals_per_match", (gh + ga) / nm);
         one("goals_open_play_per_match", (gh + ga) / nm);
@@ -1448,6 +1462,9 @@ int main(int argc, char** argv) {
             std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",
                         ib_all_read[1] / nm, 100.0 * ib_theirs_read[1] / std::max(1L, ib_all_read[1]),
                         ib_all_read[0] / nm, 100.0 * ib_theirs_read[0] / std::max(1L, ib_all_read[0]));
+        if (tob_n)
+            std::printf("  time on the ball before a pass: %.2f s; <1 / 1-2 / 2-4 / 4+ s %.0f / %.0f / %.0f / %.0f%% (pro: the PRO REFERENCE table)\n",
+                        tob_s / tob_n, 100.0 * tob_b[0] / tob_n, 100.0 * tob_b[1] / tob_n, 100.0 * tob_b[2] / tob_n, 100.0 * tob_b[3] / tob_n);
         if (tg_all) {
             const char* nm5[5] = {"3 m+ onside", "1-3 m onside", "within 1 m onside", "within 1 m offside", "1 m+ offside"};
             std::printf("  passes to a mate by his gap to the line at the kick (%.1f a match):", tg_all / nm);

@@ -3439,6 +3439,32 @@ saw them.
   decodes with none); server `server_snapshot_carries_the_officials`. Not
   yet checked in a browser.
 
+### 8.91 G4.92 — the control touch: he plays it once he has it (mig 841)
+
+James 10/29: "1 then move to all" — the possession churn first.
+
+- **Measured:** 840 passes a team a match (pro 378) at completion 80% (pro
+  79%), 505 spells (121): the ball changes hands four times as often at the
+  same accuracy. Time on the ball before a pass (new benchmark, mig 841;
+  `benchmarks_statsbomb.py`: Ball Receipt → the same player's next
+  open-play Pass, same possession): **pro 1.47 s, 46% inside 1 s** /
+  game 0.32 s, 89% inside 1 s. The World stopped a taken ball dead and the
+  Brain kicked it the next tick: everything one-touch at 30 Hz.
+- **The control touch** (World): after he takes it — a capture, a won
+  tackle, a steal — no kick until `controlUntilTick()`: his level's
+  `control_settle_ms` + `control_per_mps_ms` (25) × the m/s it came in at,
+  the settle scaled by his first_touch (×1.5 at 0 … ×0.5 at 100,
+  `skill.first_touch.settle_at*_pct`). Bands [FH]: u10 700, u14 600,
+  amateur 500, semipro 400, pro 350, world 300 ms; 0 at the perfect level
+  (goldens unmoved). A placed restart ball needs none. Hashed when set.
+- 10 matches: time on the ball 0.32 → 0.73 s (<1 s 89 → 83%); passes 774 /
+  914 → 693 / 819 a team; interceptions 55 / 65 → 41 / 58; lost ON the
+  ball 14 / 8 → 24 / 20% of spell ends (pro 15) — men caught in their
+  touch; spells 505 → 513.
+- **Next mole:** he releases the instant he CAN — 83% still inside a
+  second, almost nothing past 2 s (pro 26%). A pro with time takes a touch
+  forward, waits for the run, turns: the carrier's choice to keep it.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

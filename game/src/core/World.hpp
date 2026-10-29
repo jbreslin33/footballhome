@@ -196,6 +196,8 @@ public:
     // G4.85: the tick the free ball's current flight began — a kick, a
     // poke off a tackle, a body block or a bobble (what everyone reacts to).
     std::uint64_t flightTick() const noexcept { return flight_tick_; }
+    // G4.92: the owner can't kick before this tick — his control touch.
+    std::uint64_t controlUntilTick() const noexcept { return control_until_tick_; }
     // Where the ball was won (G4.18): a COUNTER starts from a deep win;
     // a recovered rebound in their box is a scramble, not a transition.
     math::Fixed64 turnoverBallX() const noexcept { return turnover_ball_x_; }
@@ -266,6 +268,8 @@ private:
     std::uint8_t bad_touch_slot_ = 0xFF;
     std::uint64_t bad_touch_tick_ = 0;
     std::uint64_t flight_tick_ = 0;
+    std::uint64_t control_until_tick_ = 0;
+    void settleControl(SlotIndex slot, math::Fixed64 speed);   // G4.92: no kick before (his control touch)
     math::Fixed64 turnover_ball_x_{};
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped
     LevelParams   level_[2];

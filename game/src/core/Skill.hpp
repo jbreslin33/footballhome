@@ -110,13 +110,18 @@ public:
     void configure(const ModelParams& p) override {
         at0_ = p.integer(key("at0_pct"), 75);
         at100_ = p.integer(key("at100_pct"), 125);
+        settle_at0_ = p.integer(key("settle_at0_pct"), 150);
+        settle_at100_ = p.integer(key("settle_at100_pct"), 50);
     }
     void apply(LevelParams& o, const LevelParams& b, int r) const override {
         o.control_speed_mps = scaled(b.control_speed_mps, r, at0_, at100_);
+        // G4.92: a soft touch settles it sooner.
+        o.control_settle_ms = scaled(b.control_settle_ms, r, settle_at0_, settle_at100_);
     }
 
 private:
     std::int32_t at0_ = 75, at100_ = 125;
+    std::int32_t settle_at0_ = 150, settle_at100_ = 50;
 };
 
 class Tackling : public Skill {

@@ -73,13 +73,22 @@ struct LevelParams {
     // 11.7 a team a match); the other bands are FH estimates down the
     // ladder. World-side: hashed when set.
     std::int32_t intercept_control_pct = 0;
+    // G4.92: the control touch — after he takes a ball he can't play it for
+    // control_settle_ms + control_per_mps_ms per m/s it arrived at (scaled
+    // by his first_touch). 0 = plays it the tick it arrives (perfect). The
+    // game passed 0.32 s after receiving against a pro 1.47 s (StatsBomb PL
+    // 2015/16, Ball Receipt → Pass), 89% inside a second (pro 46%): a ball
+    // stopped dead the instant it was taken, kicked the next tick.
+    // World-side: hashed when set.
+    std::int32_t control_settle_ms = 0;
+    std::int32_t control_per_mps_ms = 0;
 
     bool isZero() const noexcept {
         return perception_delay_ticks == 0 && kick_angle_err_deg == 0 &&
                kick_power_err_pct == 0 && decision_jitter_pct == 0 &&
                control_speed_mps == 0 && swarm_pct == 0 &&
                tackle_success_pct == 0 && keeper_reaction_ticks == 0 &&
-               keeper_fumble_pct == 0;
+               keeper_fumble_pct == 0 && control_settle_ms == 0;
     }
     // (Last field: band() fills the ones above by position.)
     // Ball pull on the SHAPE (G4.80): percent every anchor slides toward the
@@ -114,20 +123,25 @@ inline LevelParams levelParams(std::string_view name) {
     // range_m: kick range (G4.48); speak: % he makes a call that's due (G4.70);
     // listen: % he hears one made to him (G4.71) — [FH] starting numbers:
     // kids go quiet and drift off, a pro back line never stops talking.
+    // settle_ms: the control touch (G4.92) [FH estimates down the ladder,
+    // + 25 ms per m/s the ball arrived at; checked against the pro's 1.47 s
+    // receipt-to-pass — which also holds the time he CHOOSES to keep it].
     auto band = [](LevelParams p, std::int32_t range_m, std::int32_t speak, std::int32_t listen,
-                   std::int32_t intercept) {
+                   std::int32_t intercept, std::int32_t settle_ms) {
         p.kick_range_m = range_m;
         p.speak_pct = speak;
         p.listen_pct = listen;
         p.intercept_control_pct = intercept;
+        p.control_settle_ms = settle_ms;
+        p.control_per_mps_ms = 25;
         return p;
     };
-    if (name == "u10")     return band({18, 18, 25, 60, 6, 30, 80, 45, 80}, 30, 20, 40, 30);  // amoeba
-    if (name == "u14")     return band({12, 13, 18, 40, 8, 35, 55, 15, 28}, 40, 40, 55, 40);
-    if (name == "amateur") return band({7, 6, 10, 25, 10, 42, 30, 12, 22}, 45, 55, 70, 48);  // Sunday
-    if (name == "semipro") { LevelParams p = band({4, 3, 6, 12, 13, 50, 12, 11, 8}, 50, 70, 80, 55); p.shape_pull_pct = 0; return p; }
-    if (name == "pro") { LevelParams p = band({2, 2, 3, 5, 16, 60, 4, 10, 5}, 55, 85, 90, 62); p.shape_pull_pct = 0; return p; }
-    if (name == "world") { LevelParams p = band({1, 1, 2, 2, 18, 65, 0, 9, 2}, 60, 95, 95, 68); p.shape_pull_pct = 0; return p; }
+    if (name == "u10")     return band({18, 18, 25, 60, 6, 30, 80, 45, 80}, 30, 20, 40, 30, 700);  // amoeba
+    if (name == "u14")     return band({12, 13, 18, 40, 8, 35, 55, 15, 28}, 40, 40, 55, 40, 600);
+    if (name == "amateur") return band({7, 6, 10, 25, 10, 42, 30, 12, 22}, 45, 55, 70, 48, 500);  // Sunday
+    if (name == "semipro") { LevelParams p = band({4, 3, 6, 12, 13, 50, 12, 11, 8}, 50, 70, 80, 55, 400); p.shape_pull_pct = 0; return p; }
+    if (name == "pro") { LevelParams p = band({2, 2, 3, 5, 16, 60, 4, 10, 5}, 55, 85, 90, 62, 350); p.shape_pull_pct = 0; return p; }
+    if (name == "world") { LevelParams p = band({1, 1, 2, 2, 18, 65, 0, 9, 2}, 60, 95, 95, 68, 300); p.shape_pull_pct = 0; return p; }
     return {};  // "perfect" and anything unknown: the zero baseline
 }
 

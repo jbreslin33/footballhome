@@ -261,6 +261,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
             if ((r2 + Fixed64::one()) < Fixed64::fromFraction(7, 5)) {
                 ball_.owner = i;  // clean: 70% of won tackles
                 owned_at_tick_ = clock_.tick();
+                settleControl(i, Fixed64::zero());
                 ball_.vel = Vec3{};
             } else {
                 // Squirt across the carrier→ball line; side by noise sign.
@@ -296,7 +297,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         // the carry point of the PREVIOUS tick (feels like a real release).
         const SlotIndex kicker = *ball_.owner;
         const Action act = actions_[kicker];
-        if (act != Action::None && players_[kicker].recovery_ticks == 0) {
+        if (act != Action::None && players_[kicker].recovery_ticks == 0 &&
+            clock_.tick() >= control_until_tick_) {   // G4.92: controlled first
             actions_[kicker] = Action::None;
             // Direction: live desire when pushing a direction, else facing.
             Vec2 desire = intents_[*ball_.owner].move;
@@ -445,6 +447,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 turnover_ball_x_ = ball_.pos.x;
                 ball_.owner = thief;
                 owned_at_tick_ = clock_.tick();
+                settleControl(thief, Fixed64::zero());
                 box_clear_team_ = 0xFF;
                 ball_.contest_ticks = 0;
             }
@@ -671,6 +674,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     }
     ball_.owner = best;
     owned_at_tick_ = clock_.tick();
+    settleControl(best, math::fx_sqrt(planar_speed_sq));
     ball_.vel = Vec3{};
     ball_.pos.z = Fixed64::zero();  // keepers bring a high ball down
     ball_.kick_alive = 0;
@@ -775,12 +779,23 @@ void World::tickFreeBall(std::vector<MatchEvent>& events) {
     }
 }
 
+// G4.92: his control touch — control_settle_ms + per m/s the ball came in
+// at, his first_touch already in his level; 0 at the perfect level.
+void World::settleControl(SlotIndex slot, Fixed64 speed) {
+    const LevelParams& cl = levelOf(slot);
+    if (cl.control_settle_ms <= 0) { control_until_tick_ = 0; return; }
+    const std::int64_t sp_mps = speed.raw >> Fixed64::FRAC_BITS;
+    const std::int64_t ms = cl.control_settle_ms + cl.control_per_mps_ms * sp_mps;
+    control_until_tick_ = clock_.tick() + static_cast<std::uint64_t>((ms * kTickRate + 999) / 1000);
+}
+
 void World::giveBall(SlotIndex slot) {
     if (slot >= players_.size()) return;
     const PlayerState& p = players_[slot];
     ball_ = BallState{};
     ball_.owner = slot;
     owned_at_tick_ = clock_.tick();
+    control_until_tick_ = 0;   // a placed ball: nothing to control
     ball_.pos = Vec3{p.pos.x + p.face.x * kBallCarryLead, p.pos.y + p.face.y * kBallCarryLead, Fixed64::zero()};
     last_touch_team_ = p.team;
     restart_team_ = 0xFF;

@@ -102,7 +102,12 @@ std::uint64_t canonicalHash(const World& world) {
             mix(h, static_cast<std::uint64_t>(lv.keeper_fumble_pct));
         if (lv.intercept_control_pct != 0)   // G4.82, same rule
             mix(h, static_cast<std::uint64_t>(lv.intercept_control_pct));
+        if (lv.control_settle_ms != 0) {     // G4.92, same rule
+            mix(h, static_cast<std::uint64_t>(lv.control_settle_ms));
+            mix(h, static_cast<std::uint64_t>(lv.control_per_mps_ms));
+        }
     }
+    if (world.controlUntilTick() != 0) mix(h, world.controlUntilTick());   // G4.92
     // G4.30 per-player levels: mixed only for slots that have one, so
     // every band-only golden stays byte-identical.
     for (SlotIndex s = 0; s < world.playerCount(); ++s) {

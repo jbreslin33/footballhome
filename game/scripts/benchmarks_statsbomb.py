@@ -208,6 +208,26 @@ def measure(events, T):
             T.add("own3_shot10")
         if ts:
             T.add("own3_shot_spell")
+    # G4.92: time on the ball — from a player's Ball Receipt to his next
+    # open-play Pass in the same possession (carries in between count).
+    got = {}
+    for e in ev:
+        n = e["type"]["name"]
+        pl = e.get("player", {}).get("id")
+        if pl is None:
+            continue
+        if n == "Ball Receipt*" and "ball_receipt" not in e:   # a clean receipt (no outcome = received)
+            got[pl] = (t_of(e), e.get("possession"))
+        elif n == "Pass" and e["pass"].get("type", {}).get("name") is None:
+            r = got.pop(pl, None)
+            if r is not None and r[1] == e.get("possession"):
+                d = t_of(e) - r[0]
+                if 0 <= d < 30:
+                    T.add("tob_n")
+                    T.add("tob_s", d)
+                    T.add("tob_%d" % bucket(d, (1, 2, 4)))
+        elif n not in ("Carry", "Pressure", "Duel", "Dribble", "Ball Receipt*"):
+            got.pop(pl, None)
     for e in ev:
         n = e["type"]["name"]
         if n == "Own Goal Against":
@@ -271,6 +291,10 @@ def main():
     }
     out["metrics"]["interceptions_kept_per_team_match"] = round(T.get("int_kept") / tm, 2)
     out["metrics"]["offsides_per_team_match"] = round(T.get("offsides") / tm, 2)   # G4.88
+    tn = max(1, T.get("tob_n"))   # G4.92: time on the ball before a pass
+    out["metrics"]["time_on_ball_s"] = round(T.get("tob_s") / tn, 2)
+    for i, n in enumerate(("lt1s", "1_2s", "2_4s", "4s_plus")):
+        out["metrics"][f"time_on_ball_{n}_pct"] = round(100.0 * T.get(f"tob_{i}") / tn, 1)
     out["metrics"]["bad_touches_per_team_match"] = round((T.get("miscontrol") + T.get("int_lost")) / tm, 2)
     for c in ("pass", "clear", "shot", "bad_touch", "on_ball", "other"):
         out["metrics"][f"spell_end_{c}_pct"] = round(100.0 * T.get("end_" + c) / max(1, T.get("ends")), 1)
