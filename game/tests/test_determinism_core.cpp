@@ -38,7 +38,8 @@ namespace {
 //   G4.54 2026-10-24 side-on run gait       0x8265738e898a13f9
 //   G4.80 2026-10-27 braking on brake_tau   0xcc37dec56712afa5
 //   G4.85 2026-10-29 reaction in the body   0x86e09a1d63a55e25
-constexpr std::uint64_t kGolden400TicksSeed42 = 0x86e09a1d63a55e25ULL;
+//   G4.88 2026-10-29 officials in the state 0xc6b8cef6689f2b0e
+constexpr std::uint64_t kGolden400TicksSeed42 = 0xc6b8cef6689f2b0eULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

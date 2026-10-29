@@ -591,6 +591,13 @@ int main(int argc, char** argv) {
     // ...the defender's side of it (G4.86): every touch on THEIR moving ball
     // (3 m/s+), kept or off him, by his job and his own speed (<2 / 2-4 / 4-6
     // / 6+ m/s) — is the reaction touch a lunge or a man who was set?
+    // The officials (G4.88): offsides whistled against each team; whistles for
+    // an onside man and offside touches nobody flagged (World counters); men
+    // flagged wrong / missed at each kick into their half; where the judging
+    // assistant stood off level with the line (+ = beyond it).
+    long off_called[2] = {}, off_wrong = 0, off_missed = 0, flag_wrong = 0, flag_missed = 0, flag_kicks = 0;
+    long ar_off[5] = {};
+    double ar_off_sum = 0;
     long rt_n[2][ai::kWhyCount] = {}, rt_sp[2][4] = {}, rt_rel[2][4] = {};
     // ...balls in behind the read gave to THEM at the kick (G4.86): how far
     // the strike went off his aim, and where their man meets it — in the lane
@@ -859,6 +866,8 @@ int main(int argc, char** argv) {
                     if (best < 1.8 * 1.8) ++esc_near[ct];
                 }
             }
+            for (const auto& e : s.lastEvents())
+                if (e.type == core::MatchEventType::Offside) ++off_called[e.team ^ 1];
             for (const auto& e : s.lastEvents()) {
                 if (e.type != core::MatchEventType::Goal) continue;
                 ++assist[e.team][last_assist[e.team]];
@@ -1120,8 +1129,19 @@ int main(int argc, char** argv) {
                     }
                 }
                 ++tally[pend_team][pend_why].kicks;
+                const core::OffsideCall& oc = s.world().lastOffsideCall();
+                if (oc.assistant >= 0 && (oc.called | oc.truth)) {
+                    ++flag_kicks;
+                    flag_wrong += __builtin_popcount(oc.called & ~oc.truth);
+                    flag_missed += __builtin_popcount(oc.truth & ~oc.called);
+                    const double off = oc.off_line_m.toDouble();
+                    ar_off_sum += off;
+                    ++ar_off[off < -3 ? 0 : off < -1 ? 1 : off <= 1 ? 2 : off <= 3 ? 3 : 4];
+                }
             }
         }
+        off_wrong += s.world().wrongOffsideWhistles();
+        off_missed += s.world().missedOffsides();
         const int h = s.world().score(0), a = s.world().score(1);
         gh += h; ga += a;
         margins.push_back(h - a);
@@ -1280,6 +1300,7 @@ int main(int argc, char** argv) {
                 pk[team] += tally[team][w].kicks; pm[team] += tally[team][w].mate;
             }
         both("shots_per_team_match", shot_n[0] / nm, shot_n[1] / nm);
+        both("offsides_per_team_match", off_called[0] / nm, off_called[1] / nm);   // G4.88
         both("shots_open_play_per_team_match", shot_n[0] / nm, shot_n[1] / nm);
         one("goals_per_match", (gh + ga) / nm);
         one("goals_open_play_per_match", (gh + ga) / nm);
@@ -1317,6 +1338,16 @@ int main(int argc, char** argv) {
             for (int q = 0; q < 3; ++q)
                 std::printf(" %s %.1f / %.1f / %.1f / %.1f%s", kn[q], bt_kind[q][0] / nm, bt_kind[q][1] / nm,
                             bt_kind[q][2] / nm, bt_kind[q][3] / nm, q < 2 ? " ·" : "\n");
+        }
+        {
+            const long calls = off_called[0] + off_called[1];
+            std::printf("\nOfficials (the assistant's call stands): offsides %.1f / %.1f a team a match; whistles for an onside man %.1f a match (%.0f%% of the calls), offside touches nobody flagged %.1f a match\n",
+                        off_called[0] / nm, off_called[1] / nm, off_wrong / nm, 100.0 * off_wrong / std::max(1L, calls), off_missed / nm);
+            if (flag_kicks)
+                std::printf("  kicks with a flag or a man offside: %.1f a match — men flagged wrongly %.1f, offside men missed %.1f a match; the assistant stood (vs level with the line) 3+ m short %.0f%% · 1-3 short %.0f%% · within 1 m %.0f%% · 1-3 beyond %.0f%% · 3+ beyond %.0f%%, mean %+.1f m\n",
+                            flag_kicks / nm, flag_wrong / nm, flag_missed / nm,
+                            100.0 * ar_off[0] / flag_kicks, 100.0 * ar_off[1] / flag_kicks, 100.0 * ar_off[2] / flag_kicks,
+                            100.0 * ar_off[3] / flag_kicks, 100.0 * ar_off[4] / flag_kicks, ar_off_sum / flag_kicks);
         }
         if (ib_all_read[0] + ib_all_read[1])
             std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",

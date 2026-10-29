@@ -10,6 +10,7 @@
 
 #include "core/Ball.hpp"
 #include "core/Locomotion.hpp"
+#include "core/Officials.hpp"
 #include "core/Levels.hpp"
 #include "core/Clock.hpp"
 #include "core/Intent.hpp"
@@ -164,8 +165,21 @@ public:
     // penalty area until the ball is kicked; 0xFF = none. Outlives
     // restartTeam(), which clears when the keeper settles the ball.
     std::uint8_t boxClearTeam() const noexcept { return box_clear_team_; }
+    // Offside (G4.8; G4.88): offsideMask() is the TRUTH — who is in an
+    // offside position (the players know, and the brains read it); the
+    // whistle follows the assistant's call, calledOffsideMask().
     std::uint32_t offsideMask() const noexcept { return offside_mask_; }
+    std::uint32_t calledOffsideMask() const noexcept { return called_mask_; }
     std::uint8_t offsideTeam() const noexcept { return offside_team_; }
+    // The officials (G4.88): bodies on the pitch, not player slots.
+    Officials& officials() noexcept { return officials_; }
+    const Officials& officials() const noexcept { return officials_; }
+    // The assistant's last offside judgement, and the calls that went wrong
+    // against the truth (harness only; derived, not hashed): whistles for a
+    // man who was onside, and touches by an offside man nobody flagged.
+    const OffsideCall& lastOffsideCall() const noexcept { return last_call_; }
+    std::uint32_t wrongOffsideWhistles() const noexcept { return wrong_whistles_; }
+    std::uint32_t missedOffsides() const noexcept { return missed_offsides_; }
     // Transition clock (G4.11): which team LOST the ball last, and when.
     std::uint8_t lastLosingTeam() const noexcept { return losing_team_; }
     std::uint64_t turnoverTick() const noexcept { return turnover_tick_; }
@@ -236,7 +250,11 @@ private:
     // First same-team touch by a flagged player = whistle. Cleared by any
     // opponent touch, dead ball, or goal.
     std::uint32_t offside_mask_ = 0;
+    std::uint32_t called_mask_ = 0;      // the assistant's flags (G4.88)
     std::uint8_t  offside_team_ = 0xFF;  // kicking team while armed
+    Officials     officials_;
+    OffsideCall   last_call_;
+    std::uint32_t wrong_whistles_ = 0, missed_offsides_ = 0;
     std::uint8_t  losing_team_ = 0xFF;
     std::uint64_t turnover_tick_ = 0;
     std::uint64_t owned_at_tick_ = 0;

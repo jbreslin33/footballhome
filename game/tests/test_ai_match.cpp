@@ -45,8 +45,10 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // body), charged once from the kick; our ball is met at a pace he can hold.
 // Re-locked G4.86 (2026-10-29): passSafe runs the flight read's own race;
 // a ball he reads as ground is one he won't loft; G4.86b a loft is raced too.
-constexpr std::uint64_t kGolden3v3   = 0x39236e92ace09b15ULL;
-constexpr std::uint64_t kGolden11v11 = 0xd60332b1b2c5a09eULL;
+// Re-locked G4.88 (2026-10-29): the officials are bodies on the pitch
+// (hashed) and the assistant's offside call stands.
+constexpr std::uint64_t kGolden3v3   = 0xed1aca5dad83de71ULL;
+constexpr std::uint64_t kGolden11v11 = 0x20a9461d058adf7fULL;
 
 struct Rig {
     World world;

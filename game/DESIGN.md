@@ -3213,12 +3213,84 @@ the safe-pass roll, a lapse), "hit it long" lapses 46% theirs (21 a match),
 and a loft lands at its launch speed (no drag: a 30 m ball arrives at 17
 m/s, over every control speed) — ball physics.
 
+### 8.86 G4.88 — the AI referee: his own taxonomy; the assistant's offside call stands (mig 822)
+
+James 10/29: "do we have offsides lol" — "we need an ai ref. that has its
+own taxonomy of what he sees adn understands". Until now the World WAS the
+referee: exact positions at the instant of every kick, never wrong.
+
+- **The referee's taxonomy (mig 822, normalized, beside the players'):**
+  `game_ref_laws` (IFAB Laws 5, 6, 9, 11, 12, 13, 14 — wired / partial /
+  teaching) → `game_ref_judgements` (cue → call, made_by referee /
+  assistant / world) → `game_ref_perceptions` (what he must SEE;
+  `game_ref_judgement_perceptions`) and `game_ref_positionings` (where he
+  stands); a `_sources` table each (IFAB Laws, IFAB Practical Guidelines,
+  [Oudejans 2000], [Helsen 2006], all verified). The officials:
+  `game_official_crews` (by level) → `game_officials` (referee,
+  assistant_1, assistant_2) → `game_official_ratings` over
+  `game_ref_attributes` (pace, acceleration, positioning, offside_judgement
+  wired; foul_recognition, game_management teaching). A match is run by the
+  crew of the home team's level (semi-pro ~50, pro ~75 — [FH]).
+- **Wired:** offside-position (the assistant), offside-involved-playing
+  (the flagged man plays the ball → IFK, the G4.8 whistle), ball-out-of-play
+  (made_by `world`: still exact). **Teaching only** (fouls and cards stay a
+  v1 non-goal): interfering with an opponent, careless/reckless/excessive
+  force, handball, advantage, penalty offences, cautions / sending-offs.
+- **The officials are bodies (core::Officials):** three `core::Body`s from
+  their own pace/acceleration (SkillSet::body, the players' law), moved
+  after the players each tick, hashed, NOT in the player slots (the wire,
+  the clients and the brains still see 22). Positioning rows:
+  ar-second-last-defender — assistant 1 on the +y touchline judging the +x
+  half, assistant 2 on −y and −x; level with the second-last defender of
+  the team defending his half, or the ball if nearer the goal line, at
+  halfway when the line is in the other half; facing the field (so a
+  sideways run is his side-on gait); plus his slack beyond the line
+  (positioning: 2.5 / 1.2 / 0.3 m at 0 / 50 / 100 [FH] — ARs mostly stand
+  beyond it, [Oudejans 2000] 179 of 200). referee-wide-diagonal — on the
+  diagonal away from each half's assistant, pulled half-way to the ball's
+  y, 8 m behind the ball [FH].
+- **The call (Officials::judgeOffsidePosition):** at the kick, the
+  assistant covering the half the attack goes into judges each attacker
+  from where he stands: kick-moment-and-line — every moving man seen
+  flash_lag_s (0.08 s [FH magnitude; direction Helsen 2006]) along his run;
+  line-from-his-angle — "level" is his line of sight through the
+  second-last defender, true when he stands level with it, from beyond it a
+  far-side attacker projects ahead (wrong flag), a near-side one behind
+  (missed) [Oudejans 2000]; ± noise by his offside_judgement (1.0 / 0.5 /
+  0.2 m [FH]). The ball and halfway parts of the law he reads exactly. HIS
+  call (`World::calledOffsideMask`) is what the whistle follows;
+  `offsideMask()` stays the truth — what the players know and the brains
+  read. Unit test: test_officials (level AR true; 4 m beyond flags a level
+  far-side man).
+- **Harness:** offsides a team a match; whistles for an onside man and
+  offside touches nobody flagged (World counters); men flagged wrongly /
+  missed at each kick; where the assistant stood vs level with the line.
+  `benchmarks_statsbomb.py` now counts offsides (Offside events + passes
+  with outcome Pass Offside) and the metric row is in; the PL value lands
+  on the next rerun of the script (~1.1 GB of events, not run here).
+
+20 matches LH APSL v Ukies, G4.86b (World as referee) → G4.88 (the
+semi-pro crew): offsides 13.2 / 16.7 → 23.9 / 24.9 a team a match;
+whistles for an onside man 15.9 a match = 33% of the calls (Helsen 2006:
+~26% wrong at the 2002 World Cup — a semi-pro crew sits worse); offside
+touches nobody flagged 2.1 a match. At the kicks with a flag or a man
+offside the assistant stood 3+ m beyond the line 34% of the time, 1-3 m
+beyond 19%, within 1 m 22%, short of it 25% (mean +2.1 m: his slack plus
+a 45-pace body chasing the line). Totals moved with the extra stoppages:
+spells 528 → 614, interceptions 47 / 67 → 56 / 76, goals 11.8 → 13.4.
+Next: the pro offside number (rerun the script), how far beyond the line
+real assistants stand (Oudejans's 179/200 is a share, not a distance), and
+the officials on the HUD (an append-only frame).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
 intents), weather, crowd, licensed anything, client-side prediction.
 (Offside was on this list until G4.8, when the harness measured the exact
 1860s goal-hanging problem the law exists to solve — amended by evidence.)
+(G4.88: the match OFFICIALS are in — bodies, positioning, the assistant's
+offside call. Fouls and cards are still out: in the referee's taxonomy as
+teaching rows only.)
 
 ## 9. Documentation & attribution (standing convention)
 
@@ -3260,5 +3332,15 @@ intents), weather, crowd, licensed anything, client-side prediction.
 - [Sheppard-Young 2006] Sheppard & Young, *Agility literature review:
   classifications, training and testing*, J Sports Sci 24(9):919-932 —
   agility responds to a stimulus (G4.85 reaction).
+- [IFAB] *Laws of the Game 2025/26* (Laws 5, 6, 9, 11-14) and the
+  *Practical Guidelines for Match Officials* (positioning, movement and
+  teamwork) — the referee's taxonomy (G4.88).
+- [Oudejans 2000] Oudejans, Verheijen, Bakker, Gerrits, Steinbrückner &
+  Beek, *Errors in judging 'offside' in football*, Nature 404:33 — the
+  assistant's viewing angle (G4.88).
+- [Helsen 2006] Helsen, Gilis & Weston, *Errors in judging "offside" in
+  association football: test of the optical error versus the perceptual
+  flash-lag hypothesis*, J Sports Sci 24:521-528 — flash-lag, most errors
+  flags (G4.88).
 - Mine all of these for AI design; re-express in fixed point. Never port
   floats.

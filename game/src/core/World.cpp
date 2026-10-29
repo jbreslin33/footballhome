@@ -30,6 +30,9 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
       half_y_{pitch_half_y},
       half_length_ticks_{half_length_ticks} {
     for (auto& p : players_) p.max_speed = max_speed;
+    for (int i = 0; i < kOfficialCount; ++i)
+        officials_.setOfficial(static_cast<OfficialRole>(i), OfficialRatings{}, Body{}, max_speed);
+    officials_.place(pitch_half_x, pitch_half_y);
     // The opening kickoff belongs to home; the ball starts dead on the
     // spot so an away player can't poach it before "the whistle".
     restart_team_ = 0;
@@ -399,17 +402,13 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 if (depth > d1) { d2 = d1; d1 = depth; }
                 else if (depth > d2) { d2 = depth; }
             }
-            offside_mask_ = 0;
+            (void)d1; (void)d2;
+            // G4.88: the assistant judges it from where he stands; the truth
+            // is kept beside his call (core::Officials).
+            last_call_ = officials_.judgeOffsidePosition(*this, kicker);
             offside_team_ = kt;
-            const Fixed64 ball_depth = ball_.pos.x * os;
-            for (SlotIndex j = 0; j < players_.size(); ++j) {
-                if (players_[j].team != kt || j == kicker) continue;
-                const Fixed64 depth = players_[j].pos.x * os;
-                if (depth > d2 && depth > ball_depth &&
-                    depth > Fixed64::zero()) {
-                    offside_mask_ |= (1u << (j & 31));
-                }
-            }
+            offside_mask_ = last_call_.truth;
+            called_mask_ = last_call_.called;
             return;  // free-ball physics integrates it this same tick
         }
 
@@ -516,6 +515,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             if (offside_team_ != 0xFF &&
                 players_[blocker].team != offside_team_) {
                 offside_mask_ = 0;
+                called_mask_ = 0;
                 offside_team_ = 0xFF;
             }
             return;
@@ -565,17 +565,27 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     // first touch is caught — indirect free kick (dead ball) where he
     // touched it. Any opponent touch disarms the flags instead.
     if (offside_team_ != 0xFF) {
+        const bool in_position = offside_mask_ & (1u << (best & 31));
         if (players_[best].team != offside_team_) {
             offside_mask_ = 0;
+            called_mask_ = 0;
             offside_team_ = 0xFF;
-        } else if (offside_mask_ & (1u << (best & 31))) {
+        } else if (called_mask_ & (1u << (best & 31))) {
+            // The assistant's flag stands (G4.88), right or wrong.
+            if (!in_position) ++wrong_whistles_;
             const std::uint8_t awarded = offside_team_ == 0 ? 1 : 0;
             offside_mask_ = 0;
+            called_mask_ = 0;
             offside_team_ = 0xFF;
             awardRestart(MatchEventType::Offside, awarded,
                          Vec3{ball_.pos.x, ball_.pos.y, Fixed64::zero()},
                          *pending_events_);
             return;
+        } else if (in_position) {
+            ++missed_offsides_;   // he played on: nobody flagged him
+            offside_mask_ = 0;
+            called_mask_ = 0;
+            offside_team_ = 0xFF;
         }
     }
 
@@ -773,6 +783,7 @@ void World::giveBall(SlotIndex slot) {
     restart_team_ = 0xFF;
     box_clear_team_ = 0xFF;
     offside_mask_ = 0;
+    called_mask_ = 0;
     offside_team_ = 0xFF;
 }
 
@@ -782,6 +793,7 @@ void World::awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events) {
     last_touch_team_ = team;   // kicking off isn't winning the ball
     box_clear_team_ = 0xFF;
     offside_mask_ = 0;
+    called_mask_ = 0;
     offside_team_ = 0xFF;
     events.push_back({MatchEventType::Kickoff, team});
 }
@@ -796,6 +808,7 @@ void World::awardRestart(MatchEventType type, std::uint8_t team,
     last_touch_team_ = team;
     box_clear_team_ = type == MatchEventType::GoalKick ? static_cast<std::uint8_t>(team ^ 1) : 0xFF;
     offside_mask_ = 0;
+    called_mask_ = 0;
     offside_team_ = 0xFF;
     events.push_back({type, team});
 }
@@ -823,6 +836,7 @@ std::vector<MatchEvent> World::tick() {
     std::vector<MatchEvent> events;
     tickDives();
     tickPlayers();
+    officials_.tick(*this);   // G4.88: the crew moves after the players
     tickTackles(events);
     tickPossessionAndKicks(events);
     tickFreeBall(events);

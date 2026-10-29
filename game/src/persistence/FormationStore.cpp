@@ -104,6 +104,33 @@ std::vector<std::pair<int, int>> loadDirectOpponents(const DbConfig& cfg) {
     return out;
 }
 
+std::vector<CrewMember> loadCrew(const DbConfig& cfg, const std::string& level) {
+    std::vector<CrewMember> out;
+    try {
+        pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
+                              " password=" + cfg.password + " connect_timeout=5"};
+        pqxx::work tx{conn};
+        const auto rows = tx.exec_params(
+            "SELECT o.id, o.role, o.name FROM game_officials o JOIN game_official_crews c ON c.id = o.crew_id "
+            "WHERE c.level = COALESCE((SELECT level FROM game_official_crews WHERE level = $1 LIMIT 1), 'semipro') "
+            "ORDER BY c.id, o.role LIMIT 3",
+            level);
+        for (const auto& r : rows) {
+            CrewMember m;
+            const std::string role = r[1].as<std::string>();
+            m.role = role == "referee" ? 0 : role == "assistant_1" ? 1 : 2;
+            m.name = r[2].as<std::string>();
+            for (const auto& a : tx.exec_params(
+                     "SELECT attribute, rating FROM game_official_ratings WHERE official_id = $1", r[0].as<int>()))
+                m.ratings[a[0].as<std::string>()] = a[1].as<int>();
+            out.push_back(std::move(m));
+        }
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: officials load failed (a 50-rated crew): %s\n", e.what());
+    }
+    return out;
+}
+
 std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg) {
     try {
         const std::string conn_str =

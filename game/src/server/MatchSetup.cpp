@@ -91,6 +91,9 @@ void loadMatchFromDb(GameServer::Config& cfg, const persistence::DbConfig& db,
                         roster->formation_code.c_str());
         }
     }
+    // G4.88: the officials — the crew of the home team's level.
+    cfg.crew = persistence::loadCrew(db, cfg.roster_home.level_band.empty() ? "semipro" : cfg.roster_home.level_band);
+    say("fh-game: %zu official(s)\n", cfg.crew.size());
     // Game models (mig 652): schools, federations, formations, teams.
     cfg.models = persistence::loadGameModels(db);
     say("fh-game: %zu admin user(s), %zu game model(s) loaded\n",
