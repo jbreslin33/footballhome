@@ -637,15 +637,16 @@ class RosterScreenBase extends Screen {
       .map(c => `<span title="On the league's official roster for ${esc(c.label || '')}"
           style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
                  background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">📋 ${esc(RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()))}</span>`).join(' ');
-    // Cut (mig 807): on the league list with no live LeagueApps membership
-    // — still official (counts, keeps his #) until the league drops him.
+    // Cut (migs 807/810): on the league list with no live playing LeagueApps
+    // membership — still official (counts, keeps his #) until the league
+    // drops him; listed in the red ✂ CUT block at the foot of OFFICIAL.
     const cutFlag = [copy('board_official_cut') || '✂ not in LeagueApps — needs to be dropped', '#ef4444', '#fca5a5'];
-    const card = (p, cut = false) => {
+    const card = (p) => {
       const rank = bucket.indexOf(p) + 1;
       const chips = this.boardView === 'team' ? listChips(p) : '';
       const html = this.renderPlayer(chips ? { ...p, nameChipHtml: (p.nameChipHtml || '') + chips } : p,
         data.columns, col, rank, bucket.length);
-      const flag = this.boardView === 'roster' && (laneFlag[sectionOf(p)] || (cut && cutFlag));
+      const flag = this.boardView === 'roster' && laneFlag[sectionOf(p)];
       return flag
         ? `<div style="border:2px solid ${flag[1]}; border-radius:9px; padding:2px;">
              <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:${flag[2]}; padding:0 4px 2px;">${esc(flag[0])}</div>${html}</div>`
@@ -701,8 +702,11 @@ class RosterScreenBase extends Screen {
     const official = this.leagueListFor(col.teamId);
     const lanes = { drop: [], pending_drop: [] };   // [{ p, name, n, note }] — + their official #
     const addLane = (p, n) => { const l = lanes[sectionOf(p)]; if (l && !l.some(d => d.p === p)) l.push({ p, name: nameOf(p), n, note: '' }); };
-    let cuts = 0;
-    const addCut = (p, name, n) => { cuts++; lanes.drop.push({ p, name, n, note: copy('board_cut_note') || '✂ cut — not in LeagueApps' }); };
+    // Cut (owner 2026-10-29: "in section at bottom so they still count on
+    // official roster total wise but should be in a red section") — pulled
+    // out of the list order into a red ✂ CUT block that closes OFFICIAL.
+    const cutRows = [];   // [{ n, html }] — + their official #
+    const addCut = (n, html) => cutRows.push({ n, html });
     const listRows = [];   // every OFFICIAL row {name, n} — the projected list's source
     let rows, officialCount, rest;
     if (official) {
@@ -716,10 +720,11 @@ class RosterScreenBase extends Screen {
         if (p && !used.has(p)) {
           used.add(p);
           const inLane = !!lanes[sectionOf(p)];   // a drop already in motion wins over the cut flag
-          if (inLane) addLane(p, i + 1); else if (cut) addCut(p, nameOf(p), i + 1);
-          return card(p, cut && !inLane);
+          if (inLane) addLane(p, i + 1);
+          else if (cut) { addCut(i + 1, card(p)); return ''; }
+          return card(p);
         }
-        if (cut) { addCut(null, n, i + 1); return nameRow(i, n, cutFlag[0], true); }
+        if (cut) { addCut(i + 1, nameRow(i, n, cutFlag[0], true)); return ''; }
         return nameRow(i, n, id == null
           ? (copy('board_official_unmatched') || 'not in Football Home')
           : (copy('board_official_off_team') || 'not on this team in Football Home'));
@@ -735,19 +740,23 @@ class RosterScreenBase extends Screen {
     }
     // PROJECTED (mig 809) = OFFICIAL − every drop lane (cuts included) +
     // both add lanes; over teams.max_roster turns it red.
-    const outNums = new Set([...lanes.drop, ...lanes.pending_drop].map(d => d.n));
+    const outNums = new Set([...lanes.drop, ...lanes.pending_drop, ...cutRows].map(d => d.n));
     const adds = rest.filter(p => sectionOf(p) === 'proposed' || sectionOf(p) === 'pending_add');
     const projected = officialCount - outNums.size + adds.length;
     const moves = outNums.size + adds.length > 0;
     const maxRoster = Number(col.maxRoster) || 0;
     const over = maxRoster > 0 ? projected - maxRoster : 0;
     const extra = [
-      cuts ? (copy('board_cuts', { n: cuts }) || `${cuts} cut`) : '',
-      lanes.drop.length - cuts ? (copy('board_planned_drops', { n: lanes.drop.length - cuts }) || `${lanes.drop.length - cuts} dropping`) : '',
+      cutRows.length ? (copy('board_cuts', { n: cutRows.length }) || `${cutRows.length} cut`) : '',
+      lanes.drop.length ? (copy('board_planned_drops', { n: lanes.drop.length }) || `${lanes.drop.length} dropping`) : '',
       lanes.pending_drop.length ? (copy('board_pending_drops', { n: lanes.pending_drop.length }) || `${lanes.pending_drop.length} pending drop`) : '',
       moves ? (copy('board_projected_banner', { n: projected }) || `→ ${projected} projected`) : '',
     ].filter(Boolean).join(' · ');
-    const officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', officialCount, ...GREEN, extra) + rows;
+    const cutHtml = cutRows.length
+      ? head(copy('board_cut_h') || '✂ CUT — still on the official roster, needs to be dropped', cutRows.length, ...RED)
+        + cutRows.map(r => r.html).join('')
+      : '';
+    const officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', officialCount, ...GREEN, extra) + rows + cutHtml;
     // An add lane, one sub-group per paperwork step in pipeline order.
     const addSection = (lane, label, colors) => {
       const list = rest.filter(p => sectionOf(p) === lane);
