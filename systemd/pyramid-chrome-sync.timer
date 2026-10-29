@@ -1,0 +1,15 @@
+[Unit]
+Description=Football Home — #apsl pyramid browser-only tables (hourly)
+Documentation=file:///srv/footballhome/scripts/pyramid-chrome-sync.js
+Requires=pyramid-chrome-sync.service
+
+[Timer]
+# Hourly, the same freshness the backend gives the other leagues on page
+# open (max_age_minutes 60); the script skips a source read more recently.
+OnCalendar=hourly
+RandomizedDelaySec=300
+Unit=pyramid-chrome-sync.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

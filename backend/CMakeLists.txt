@@ -87,6 +87,7 @@ set(SOURCES
     src/services/LeagueAppsService.cpp
     src/services/LaProgramSync.cpp
     src/services/FilmSync.cpp
+    src/services/PyramidSync.cpp
     src/services/LeagueFixtureSync.cpp
     src/services/TeamPassRoster.cpp
     src/services/GoogleSheetRoster.cpp
@@ -142,6 +143,7 @@ set(SOURCES
     src/controllers/InvoiceController.cpp
     src/controllers/FinancesController.cpp
     src/controllers/FilmController.cpp
+    src/controllers/PyramidController.cpp
     src/controllers/CarpoolController.cpp
     src/controllers/TacticalLiveController.cpp
     src/services/CarpoolRouting.cpp

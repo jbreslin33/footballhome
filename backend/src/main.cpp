@@ -54,6 +54,7 @@
 #include "controllers/InvoiceController.h"
 #include "controllers/FinancesController.h"
 #include "controllers/FilmController.h"
+#include "controllers/PyramidController.h"
 #include "controllers/CarpoolController.h"
 #include "controllers/TacticalLiveController.h"
 #include "controllers/FinesController.h"
@@ -149,6 +150,7 @@ private:
     std::shared_ptr<InvoiceController> invoice_controller_;
     std::shared_ptr<FinancesController> finances_controller_;
     std::shared_ptr<FilmController> film_controller_;
+    std::shared_ptr<PyramidController> pyramid_controller_;
     std::shared_ptr<CarpoolController> carpool_controller_;
     std::shared_ptr<TacticalLiveController> tactical_live_controller_;
     std::shared_ptr<FinesController> fines_controller_;
@@ -253,6 +255,7 @@ public:
         invoice_controller_ = std::make_shared<InvoiceController>();
         finances_controller_ = std::make_shared<FinancesController>();
         film_controller_ = std::make_shared<FilmController>();
+        pyramid_controller_ = std::make_shared<PyramidController>();
         carpool_controller_ = std::make_shared<CarpoolController>();
         tactical_live_controller_ = std::make_shared<TacticalLiveController>();
         fines_controller_ = std::make_shared<FinesController>();
@@ -594,6 +597,8 @@ private:
         // #film (mig 599): the league's game-film sheet, read-only, fuzzily
         // matched to games.
         router_.useController("/api/film", film_controller_);
+        // #apsl (mig 819): the APSL pyramid — conferences, Tier 2 affiliates, live tables, totals.
+        router_.useController("/api/pyramid", pyramid_controller_);
         router_.useController("/api/schedule-links", schedule_links_controller_);
         // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
         router_.useController("/api/dashboard", dashboard_controller_);

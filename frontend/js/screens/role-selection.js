@@ -208,6 +208,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="apsl" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🔺</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('apsl_pyramid', 'tile_title')) || 'APSL Pyramid'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('apsl_pyramid', 'tile_sub')) || ''}</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="opponents" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">📇</span>
           <div style="flex: 1; text-align: left;">
@@ -479,7 +487,7 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (!['calendar', 'reports', 'rsvps', 'security', 'logos', 'files', 'invoices', 'opponents', 'casa', 'game-center', 'event-center', 'kit', 'teams', 'tactical', 'league-schedules'].includes(role)) this.navigation.context.role = role;
+    if (!['calendar', 'reports', 'rsvps', 'security', 'logos', 'files', 'invoices', 'opponents', 'casa', 'game-center', 'event-center', 'kit', 'teams', 'tactical', 'league-schedules', 'apsl'].includes(role)) this.navigation.context.role = role;
     
     if (role === 'admin') {
       // Admin role - go directly to level selection
@@ -533,6 +541,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'casa') {
       // Not a role — the CASA commissioner hub (mig 486).
       this.navigation.goTo('casa');
+    } else if (role === 'apsl') {
+      // Not a role — the APSL pyramid (mig 819).
+      this.navigation.goTo('apsl');
     } else if (role === 'opponents') {
       // Not a role — opponent contacts (mig 483).
       this.navigation.goTo('opponents');

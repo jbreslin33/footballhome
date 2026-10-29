@@ -1,0 +1,23 @@
+[Unit]
+Description=Football Home — #apsl pyramid tables that only render in a browser (mig 819)
+Documentation=file:///srv/footballhome/scripts/pyramid-chrome-sync.js
+After=network-online.target
+Wants=network-online.target
+After=podman.service
+
+[Service]
+Type=oneshot
+User=jbreslin
+Group=jbreslin
+WorkingDirectory=/srv/footballhome
+# Opens each due browser-only pyramid source (Michigan Premier, Root
+# Soccer) in headless Chrome and loads its tables through fh_pyramid_load().
+# Exits at once when nothing is due (pyramid_sources.max_age_minutes).
+ExecStart=/usr/bin/node /srv/footballhome/scripts/pyramid-chrome-sync.js
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=600s
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
