@@ -87,7 +87,6 @@ class ApslPyramidScreen extends Screen {
         <button class="btn btn-secondary" id="ap-refresh" style="padding:4px 12px; font-size:0.85rem;">🔄</button>
       </div>
       <div class="screen-content" style="max-width:1400px; margin:0 auto;">
-        <div id="ap-moves"></div>
         <div id="ap-body"><div class="loading">Loading…</div></div>
       </div>`;
     this.element = div;
@@ -116,11 +115,6 @@ class ApslPyramidScreen extends Screen {
       if (this.data) this._renderBody();
     });
     this.load(false);
-    // ✉️ roster moves for the commissioner (mig 829, league-moves-mail.js)
-    if (window.LeagueMovesMail) {
-      this._moves = this._moves || new LeagueMovesMail(this, this.find('#ap-moves'));
-      this._moves.load();
-    }
   }
 
   onExit() { window.removeEventListener('resize', this._onResize); }

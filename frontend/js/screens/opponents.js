@@ -84,6 +84,8 @@ class OpponentsScreen extends Screen {
 
   onEnter(params = {}) {
     this.focusClub = Number(params.clubId || 0) || 0;
+    // Opened from a league section's tile (#apsl, mig 833): that league's pill.
+    if (params.league) { this.league = params.league; this.division = ''; }
     // Opened from a game (Game Center 📇 → Opponents page): messages are
     // about THAT game — date, time, venue filled — and default to the
     // game confirmation instead of the blank note (owner 2026-10-28).

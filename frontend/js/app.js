@@ -81,6 +81,8 @@ class App {
       finances: new FinancesScreen(this.navigation, this.auth),
       fines: new FinesScreen(this.navigation, this.auth),
       film: new FilmScreen(this.navigation, this.auth),
+      apslHub: new ApslHubScreen(this.navigation, this.auth),
+      apslMessages: new ApslMessagesScreen(this.navigation, this.auth),
       apslPyramid: new ApslPyramidScreen(this.navigation, this.auth),
       dashboard: new DashboardScreen(this.navigation, this.auth),
       cupRosters: new CupRostersScreen(this.navigation, this.auth),
@@ -208,8 +210,11 @@ class App {
     this.screenManager.register('fines', this.screens.fines);
     // #film (mig 599): the league's game-film sheet, read-only, matched to games.
     this.screenManager.register('film', this.screens.film);
-    // #apsl (mig 819): the APSL pyramid — conferences, Tier 2 feeders, live tables, totals.
-    this.screenManager.register('apsl', this.screens.apslPyramid);
+    // APSL section (#apsl hub → #apsl-messages, #apsl-pyramid), mig 833 — like #casa.
+    this.screenManager.register('apsl', this.screens.apslHub);
+    this.screenManager.register('apsl-messages', this.screens.apslMessages);
+    // #apsl-pyramid (mig 819): the APSL pyramid — conferences, Tier 2 feeders, live tables, totals.
+    this.screenManager.register('apsl-pyramid', this.screens.apslPyramid);
     // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
     this.screenManager.register('dashboard', this.screens.dashboard);
     // #cup-rosters (mig 556): the USASA / EPSA player pool sheet from the men's rosters.

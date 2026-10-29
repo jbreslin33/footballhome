@@ -1,5 +1,5 @@
 // league-moves-mail.js — ✉️ the roster-moves email to a league's
-// commissioner (mig 829), shown on #apsl.  Owner 2026-10-29: "need email
+// commissioner (mig 829), shown on #apsl-messages (mig 833).  Owner 2026-10-29: "need email
 // in apsl for commish to make the rosters moves from roster. this email
 // should also appear there if there are moves to make. so on load of that
 // apsl page you should check roster page right?"
@@ -76,6 +76,7 @@ class LeagueMovesMail {
   render() {
     const esc = (t) => this.screen.escapeHtml(t == null ? '' : String(t));
     const groups = this.groups();
+    if (typeof this.onRender === 'function') this.onRender(groups.length > 0);
     if (!groups.length) { this.el.innerHTML = ''; return; }
     const u = (this.screen.auth.getUser && this.screen.auth.getUser()) || {};
     const sender = u.name || u.fullName || [u.first_name || u.firstName, u.last_name || u.lastName].filter(Boolean).join(' ');
