@@ -376,6 +376,13 @@ void ComeShort::configure(const core::ModelParams& p) {
     gap_ = p.fixed(key("gap_m"), 18000);
 }
 
+void TrackTheRunner::configure(const core::ModelParams& p) {
+    near_ = p.fixed(key("near_m"), 8000);
+    run_ = p.fixed(key("run_mps"), 4000);
+    lead_ = p.fixed(key("lead_s"), 400);
+    side_ = p.fixed(key("goal_side_m"), 1500);
+}
+
 void StayOnside::configure(const core::ModelParams& p) {
     margin_ = p.fixed(key("margin_m"), 500);
 }

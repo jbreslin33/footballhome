@@ -51,7 +51,7 @@ enum class Why : std::uint8_t {
     CallManOn, CallTurn, CallTime, CallSqueeze, CallLine,
     HurryKeeper, PressBadTouch, OverHighLine, KeeperShort,
     FalseNineDrop, Overlap, ComeShort, CheckIn,
-    WaitPass, StayOnside,
+    WaitPass, StayOnside, TrackRunner,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -75,6 +75,7 @@ inline constexpr const char* kWhyNames[] = {
     "overlap", "winger: come short", "check in",
     "lapse: lets it come to him",
     "stay onside",
+    "track the runner",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -224,6 +225,9 @@ public:
     // stay-onside (184, G4.91): our ball, off the ball — a target past their
     // offside line comes back onto it, less margin_m (rolled per second).
     void stayOnside(core::SlotIndex slot, const core::World& world, Orders& o) const;
+    // track-the-runner (121, G4.96): their carrier is free to play it in
+    // behind and a runner near him goes — go with him, goal-side.
+    void trackRunner(core::SlotIndex slot, const core::World& world, Orders& o) const;
     math::Vec2 shapeAnchor(core::SlotIndex slot, const core::World& world) const;
 
     // The flight read (G4.49): for a free live ball, where and when each

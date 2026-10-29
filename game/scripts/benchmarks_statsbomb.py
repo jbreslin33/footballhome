@@ -167,6 +167,10 @@ def measure(events, T):
                     T.add("passes_complete")
                     if e["location"][0] < 80 <= p["end_location"][0]:
                         T.add("final_third_entries")
+                if p.get("technique", {}).get("name") == "Through Ball" or p.get("through_ball"):   # G4.96
+                    T.add("through_balls")
+                    if "outcome" not in p:
+                        T.add("through_balls_complete")
                 if p.get("height", {}).get("name") == "Ground Pass":
                     T.add("ground_passes")
                     if "outcome" not in p:
@@ -291,6 +295,8 @@ def main():
     }
     out["metrics"]["interceptions_kept_per_team_match"] = round(T.get("int_kept") / tm, 2)
     out["metrics"]["offsides_per_team_match"] = round(T.get("offsides") / tm, 2)   # G4.88
+    out["metrics"]["through_balls_per_team_match"] = round(T.get("through_balls") / tm, 2)   # G4.96
+    out["metrics"]["through_ball_completion_pct"] = pct("through_balls_complete", T.get("through_balls"))
     tn = max(1, T.get("tob_n"))   # G4.92: time on the ball before a pass
     out["metrics"]["time_on_ball_s"] = round(T.get("tob_s") / tn, 2)
     for i, n in enumerate(("lt1s", "1_2s", "2_4s", "4s_plus")):

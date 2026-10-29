@@ -929,6 +929,27 @@ public:
 private:
     math::Fixed64 margin_;
 };
+// Track the runner (121, wired G4.96) [US Soccer / FA "track runners", "don't
+// let him run off you"; game_techniques def-track-runner]: their carrier is
+// FREE (the ball uncovered — line-step's read) and an onside runner within
+// near_m of you goes for our goal at run_mps or more: go with him — to
+// goal_side_m goal-side of where he'll be lead_s on — instead of holding the
+// line's height. The nearest of us to him goes; an offside runner is left.
+// Measured before it: 199 balls in behind a match against a pro 2 a team
+// (StatsBomb through balls, 34% completed), ~78% reaching the runner; the
+// nearest defender holding shape 22%, 8 m+ off him a third of the time.
+class TrackTheRunner : public Concept {
+public:
+    TrackTheRunner() : Concept("track-the-runner", 121) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 near() const { return near_; }
+    math::Fixed64 runSpeed() const { return run_; }
+    math::Fixed64 lead() const { return lead_; }
+    math::Fixed64 goalSide() const { return side_; }
+
+private:
+    math::Fixed64 near_, run_, lead_, side_;
+};
 class CheckIn : public Concept {
 public:
     CheckIn() : Concept("mid-check-in", 183) {}
@@ -1035,6 +1056,7 @@ struct ConceptBook {
     ComeShort come_short;
     CheckIn check_in;
     StayOnside stay_onside;
+    TrackTheRunner track_runner;
     ScanBeforeReceive scan_receive;
     ScanDefending scan_defend;
     Vision vision;
@@ -1085,6 +1107,7 @@ struct ConceptBook {
         come_short.configure(p);
         check_in.configure(p);
         stay_onside.configure(p);
+        track_runner.configure(p);
         scan_receive.configure(p);
         scan_defend.configure(p);
         vision.configure(p);

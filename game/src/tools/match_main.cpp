@@ -608,6 +608,9 @@ int main(int argc, char** argv) {
     // from his first touch of it to the kick, passes to a mate only.
     // Own-third dispossessions (G4.95): how long he'd had it, was he still in
     // his control touch, what he and the man who took it were doing.
+    // Balls in behind (G4.96): at the kick, the runner's and his nearest
+    // defender's speed toward goal, the gap between them, the defender's job.
+    long bh_n = 0, bh_gap[4] = {}, bh_dv[4] = {}, bh_job[ai::kWhyCount] = {}, bh_face_back = 0;
     long dp_n = 0, dp_held[4] = {}, dp_in_touch = 0, dp_carrier[ai::kWhyCount] = {}, dp_taker[ai::kWhyCount] = {};
     long tob_n = 0, tob_b[4] = {}; double tob_s = 0; long got_tick[64] = {};
     long op_men = 0, op_kicks = 0, op_all_kicks = 0, op_job[ai::kWhyCount] = {}, op_depth[4] = {}, op_age[4] = {};
@@ -1028,6 +1031,27 @@ int main(int argc, char** argv) {
                 pred_margin = (us >= 0 && them >= 0) ? fr.tick[them] - fr.tick[us] : 999;
                 ++pred_all[kick_pred];
                 ++pred_why[pend_why][kick_pred];
+                if (pend_why == ai::kWhyCount && pend_other >= 0 && pend_other < s.world().playerCount()) {
+                    const auto& rv = s.world().player(static_cast<std::uint8_t>(pend_other));
+                    const double sg = pend_team == 0 ? 1.0 : -1.0;
+                    int dj = -1; double dd = 1e9;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == pend_team || s.world().isKeeper(j)) continue;
+                        const double dx = d.pos.x.toDouble() - rv.pos.x.toDouble(), dy = d.pos.y.toDouble() - rv.pos.y.toDouble();
+                        if (dx * dx + dy * dy < dd) { dd = dx * dx + dy * dy; dj = j; }
+                    }
+                    if (dj >= 0) {
+                        const auto& d = s.world().player(static_cast<std::uint8_t>(dj));
+                        ++bh_n;
+                        const double g = std::sqrt(dd);
+                        ++bh_gap[g < 2 ? 0 : g < 4 ? 1 : g < 8 ? 2 : 3];
+                        const double dv = (rv.vel.x.toDouble() - d.vel.x.toDouble()) * sg;   // runner faster toward goal by
+                        ++bh_dv[dv < 2 ? 0 : dv < 4 ? 1 : dv < 6 ? 2 : 3];
+                        ++bh_job[static_cast<int>(s.lastOrders()[dj].why)];
+                        bh_face_back += d.face.x.toDouble() * sg > 0.3;   // facing his own goal (the way the runner goes)
+                    }
+                }
                 if (pend_why == ai::kWhyCount) {
                     ++ib_all_read[kick_read];
                     if (kick_pred == 1) ++ib_theirs_read[kick_read];
@@ -1477,6 +1501,14 @@ int main(int argc, char** argv) {
             std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",
                         ib_all_read[1] / nm, 100.0 * ib_theirs_read[1] / std::max(1L, ib_all_read[1]),
                         ib_all_read[0] / nm, 100.0 * ib_theirs_read[0] / std::max(1L, ib_all_read[0]));
+        if (bh_n) {
+            std::printf("  balls in behind (%.1f a match), at the kick: runner to his nearest defender <2 / 2-4 / 4-8 / 8+ m %.0f / %.0f / %.0f / %.0f%%; runner faster toward goal by <2 / 2-4 / 4-6 / 6+ m/s %.0f / %.0f / %.0f / %.0f%%; defender already turned %.0f%%\n    the defender was doing:",
+                        bh_n / nm, 100.0 * bh_gap[0] / bh_n, 100.0 * bh_gap[1] / bh_n, 100.0 * bh_gap[2] / bh_n, 100.0 * bh_gap[3] / bh_n,
+                        100.0 * bh_dv[0] / bh_n, 100.0 * bh_dv[1] / bh_n, 100.0 * bh_dv[2] / bh_n, 100.0 * bh_dv[3] / bh_n, 100.0 * bh_face_back / bh_n);
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (bh_job[w] * 25 >= bh_n) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * bh_job[w] / bh_n);
+            std::printf("\n");
+        }
         if (dp_n) {
             std::printf("  dispossessed in his own third (%.1f a match): had it <0.5 / 0.5-1 / 1-3 / 3+ s %.0f / %.0f / %.0f / %.0f%%; still in his control touch %.0f%%\n    he was doing:",
                         dp_n / nm, 100.0 * dp_held[0] / dp_n, 100.0 * dp_held[1] / dp_n, 100.0 * dp_held[2] / dp_n, 100.0 * dp_held[3] / dp_n, 100.0 * dp_in_touch / dp_n);

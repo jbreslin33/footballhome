@@ -977,6 +977,67 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
     o.move.move = Vec2{o.move.move.x * k / mlen, o.move.move.y * k / mlen};
 }
 
+void Brain::trackRunner(SlotIndex slot, const World& world, Orders& o) const {
+    const ConceptBook& book_ = bookOf(slot);
+    const auto& ball = world.ball();
+    if (!ball.owner || world.restartTeam() != 0xFF || world.isKeeper(slot)) return;
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    if (setup_.team_of_slot[*ball.owner] == team) return;
+    switch (o.why) {   // engaging the ball comes first
+        case Why::Press: case Why::Tackle: case Why::Contain: case Why::SideOn: case Why::DropStep:
+        case Why::JumpPass: case Why::Intercept: case Why::CounterPress: case Why::HurryKeeper:
+        case Why::PressBadTouch: case Why::Chase: case Why::NoTurn: case Why::Delay:
+            return;
+        default: break;
+    }
+    const auto& T = book_.track_runner;
+    const int bit = T.bit();
+    if (ratings_[slot][bit] == 0 || !applies(slot, bit, world.tickCount() / 30)) return;
+    const int sign = attackSign(slot);
+    ConceptContext cx{world, slot, sign, Vec2{ball.pos.x, ball.pos.y}, half_x_, degree(slot, bit)};
+    if (book_.line_step.covered(cx)) return;   // their carrier can't play it in behind
+    const Fixed64 sg = sign >= 0 ? Fixed64::one() : -Fixed64::one();
+    // Toward OUR goal is −sg along x. Their offside line = our second-last man.
+    Fixed64 d1 = Fixed64::fromInt(-1000), d2 = d1;   // our depth toward our goal
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup_.team_of_slot[j] != team) continue;
+        const Fixed64 dep = -world.player(j).pos.x * sg;
+        if (dep > d1) { d2 = d1; d1 = dep; } else if (dep > d2) d2 = dep;
+    }
+    const auto& me = world.player(slot);
+    int runner = -1;
+    Fixed64 best = T.near() * T.near();
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup_.team_of_slot[j] == team || j == *ball.owner || world.isKeeper(j)) continue;
+        const auto& r = world.player(j);
+        if (-r.vel.x * sg < T.runSpeed()) continue;                       // not going
+        if (-r.pos.x * sg > d2 + Fixed64::fromFraction(1, 2)) continue;   // offside: leave him
+        if (-r.pos.x * sg < d2 - T.near()) continue;   // not yet at our line: a run in midfield is the shape's
+        const Fixed64 dsq = distSq(me.pos, r.pos);
+        if (dsq > best) continue;
+        bool nearest = true;   // the nearest of us to him goes
+        for (SlotIndex k = 0; k < world.playerCount() && nearest; ++k)
+            if (k != slot && setup_.team_of_slot[k] == team && !world.isKeeper(k) &&
+                distSq(world.player(k).pos, r.pos) < dsq)
+                nearest = false;
+        if (!nearest) continue;
+        best = dsq;
+        runner = j;
+    }
+    if (runner < 0) return;
+    const auto& r = world.player(static_cast<SlotIndex>(runner));
+    const Vec2 ahead{r.pos.x + r.vel.x * T.lead(), r.pos.y + r.vel.y * T.lead()};
+    const Vec2 goal{-sg * half_x_, Fixed64::zero()};
+    const Vec2 tg{goal.x - ahead.x, goal.y - ahead.y};
+    const Fixed64 tl = math::length(tg);
+    Vec2 t = ahead;
+    if (tl.raw > 0) t = Vec2{ahead.x + tg.x * T.goalSide() / tl, ahead.y + tg.y * T.goalSide() / tl};
+    o.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+    o.target = t;
+    o.other = static_cast<std::int16_t>(runner);
+    o.why = Why::TrackRunner;
+}
+
 void Brain::stayOnside(SlotIndex slot, const World& world, Orders& o) const {
     const ConceptBook& book_ = bookOf(slot);
     const auto& ball = world.ball();
@@ -1086,6 +1147,7 @@ Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
     Orders o = decide(slot, world);
     unmark(slot, world, o);
     stayOnside(slot, world, o);
+    trackRunner(slot, world, o);
     if (o.move.face.x.raw != 0 || o.move.face.y.raw != 0) return o;
     const auto& ball = world.ball();
     const auto& me = world.player(slot);
@@ -1101,7 +1163,7 @@ Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
     switch (o.why) {
         case Why::RunInBehind: case Why::BlindSideRun: case Why::KeepRunning:
         case Why::MeetPass: case Why::Chase: case Why::Press: case Why::Recover:
-        case Why::Human: case Why::DropStep: case Why::JumpPass:
+        case Why::Human: case Why::DropStep: case Why::JumpPass: case Why::TrackRunner:
             return o;   // these face where they're going
         default: break;
     }

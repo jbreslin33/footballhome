@@ -3511,6 +3511,32 @@ James 10/29: "yes" — shots next.
 - **Next mole:** still 66-92% of shots with 0-2 defenders goal-side (pro
   28%) — the defending block isn't goal-side when the shot comes.
 
+### 8.94 G4.96 — track the runner (concept 121 wired, mig 849); the pro's through balls
+
+James 10/29: "continue" — the block isn't goal-side at the shot.
+
+- **Where the goals come from:** balls in behind (ladder rungs 1-2) — 1.9
+  and 1.0 goals a match, breakaways 1.6 / 2.7. **Pro (new benchmark, mig
+  849; StatsBomb PL 2015/16, Pass technique Through Ball): 2.04 a team a
+  match, 33.7% completed.** The game: ~100 a team, ~80% to the runner.
+  Harness line (balls in behind, at the kick): the runner's nearest
+  defender 8 m+ off a third of the time, the runner 4 m/s+ faster toward
+  goal a quarter, the defender holding shape 22% — but already turned 60%.
+- **Track the runner** (121, 'queued' in the taxonomy since the start —
+  wired, not duplicated): `Brain::trackRunner`, after the decision — their
+  carrier FREE (line-step's covered read says no), an onside runner within
+  near_m (8) of the nearest of us, at our line (within near_m of breaking
+  it), going for our goal at 4 m/s+: go with him, 1.5 m goal-side of where
+  he'll be 0.4 s on, facing where he goes. def-track-runner wired.
+- **Tried:** the first cut tracked ANY forward runner (midfield runs too) —
+  worse: balls in behind 200 → 236, shots 46 → 55, spells 441 → 536 (with
+  demand 0 the run returned exactly to the baseline). Limited to runners
+  breaking our line: shots 46 / 47 → 49 / 50, balls in behind ~205 — about
+  neutral. The defender is already turned and still loses the race.
+- **Next mole: the passer.** ~100 balls in behind a team a match against
+  the pro's 2: the pass ladder plays rung 1-2 whenever the read says it's
+  safe.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
