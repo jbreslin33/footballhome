@@ -11,6 +11,13 @@
 // it (or a dot) and the camera flies there and THAT conference's pyramid —
 // the same chart PyramidFlowView draws — appears under the map.  The
 // conference pills choose which conferences' clubs are on the map.
+//
+// Nothing hides anything (owner 2026-10-29: "use arrows to bubble as its
+// covering each other up. so it needs to auto adjust so its all visible"):
+// after every zoom / pan, _relayout() works in screen pixels — conference
+// bubbles are pushed apart until none overlap and point back to their spot
+// with a leader line ending in a ring; dots sharing one point (a shared
+// ground, or a league's point) fan out in a small ring around it.
 class PyramidMapView {
   constructor(screen, flow) {
     this.screen = screen; this.flow = flow;
@@ -78,6 +85,7 @@ class PyramidMapView {
     this.columns = L2.columns;
     const seen = new Set();
     const all = [];
+    this.dots = [];
     let located = 0;
     for (const col of this.columns) {
       for (const club of model.columnClubs(col)) {
@@ -97,6 +105,7 @@ class PyramidMapView {
         m.bindTooltip(this._esc(club.name));
         m.bindPopup(`<b>${this._esc(this._copy('map_club', { club: club.name }))}</b><br>${where}<br>${model.clubTables(club).map((t) => this._esc(t)).join('<br>')}`);
         m.on('click', () => { const col = this.columns.find((c) => model.columnClubs(c).some((x) => x.id === club.id)); if (col) this.select(col.conf.id, false); });
+        this.dots.push({ m, at: L.latLng(p.lat, p.lon), key: `${p.lat.toFixed(4)},${p.lon.toFixed(4)}` });
       }
     }
     // A label per conference at its clubs' middle (else its own point).
@@ -107,15 +116,73 @@ class PyramidMapView {
         : (col.conf.lat != null ? [col.conf.lat, col.conf.lon] : null);
       if (!at) continue;
       const icon = L.divIcon({ className: '', html: `<span class="mp-label" data-conf-label="${col.conf.id}">${this._esc(model.label(col.conf))}</span>`, iconSize: null });
-      const mk = L.marker(at, { icon, zIndexOffset: 1000 }).addTo(this.map);
+      const anchor = L.latLng(at[0], at[1]);
+      const line = L.polyline([anchor, anchor], { color: '#93c5fd', weight: 1.5, opacity: 0.85, interactive: false }).addTo(this.map);
+      const ring = L.circleMarker(anchor, { radius: 5, color: '#93c5fd', weight: 2, fill: false, interactive: false }).addTo(this.map);
+      const mk = L.marker(anchor, { icon, zIndexOffset: 1000 }).addTo(this.map);
       mk.on('click', () => this.select(col.conf.id, true));
-      this.labels.set(col.conf.id, mk);
+      this.labels.set(col.conf.id, { mk, anchor, line, ring });
     }
+    this.map.on('zoomend moveend', () => this._relayout());
     const count = root.querySelector('.mp-count');
     if (count) count.textContent = this._copy('map_located', { located, clubs: seen.size });
     this.all = all;
     if (this.sel && this.columns.some((c) => c.conf.id === this.sel)) this.select(this.sel, false, true);
     else { this.sel = null; this._fitAll(); this._panel(); }
+    requestAnimationFrame(() => this._relayout());
+  }
+
+  // ── keep everything visible ───────────────────────────────────────────
+  _relayout() {
+    if (!this.map) return;
+    const map = this.map;
+    // Dots sharing a point fan out in a ring (golden-angle spiral when many).
+    const groups = new Map();
+    for (const d of this.dots || []) { if (!groups.has(d.key)) groups.set(d.key, []); groups.get(d.key).push(d); }
+    for (const list of groups.values()) {
+      if (list.length === 1) { list[0].m.setLatLng(list[0].at); continue; }
+      const c = map.latLngToContainerPoint(list[0].at);
+      list.forEach((d, i) => {
+        const r = list.length <= 8 ? 11 : 6 * Math.sqrt(i + 1);
+        const a = list.length <= 8 ? (2 * Math.PI * i) / list.length : i * 2.39996;
+        d.m.setLatLng(map.containerPointToLatLng([c.x + r * Math.cos(a), c.y + r * Math.sin(a)]));
+      });
+    }
+    // Conference bubbles: each takes the first free slot on a ring of
+    // candidate spots around its point (above, below, diagonals, further
+    // out) — never over another bubble or the zoom buttons, always inside
+    // the map.  A conference off-screen starts from the nearest edge point
+    // in its direction.  A leader line runs from the bubble to the spot.
+    const size = map.getSize();
+    const pad = 4;
+    const placed = [{ x: 30, y: 50, w: 60, h: 100 }];   // the zoom buttons
+    const hit = (p) => placed.some((q) => Math.abs(p.x - q.x) < (p.w + q.w) / 2 && Math.abs(p.y - q.y) < (p.h + q.h) / 2);
+    const inside = (p) => p.x - p.w / 2 >= pad && p.x + p.w / 2 <= size.x - pad && p.y - p.h / 2 >= pad && p.y + p.h / 2 <= size.y - pad;
+    const ring = [[0, -1], [0, 1], [1, -1], [-1, -1], [1, 1], [-1, 1], [1, 0], [-1, 0]];
+    const items = [...(this.labels || new Map()).values()].map((l) => {
+      const el = l.mk.getElement() && l.mk.getElement().querySelector('.mp-label');
+      const a = map.latLngToContainerPoint(l.anchor);
+      return { l, a, w: (el ? el.offsetWidth : 90) + 8, h: (el ? el.offsetHeight : 22) + 6 };
+    }).sort((p, q) => p.a.y - q.a.y || p.a.x - q.a.x);
+    for (const p of items) {
+      const cx = Math.min(Math.max(p.a.x, p.w / 2 + pad), size.x - p.w / 2 - pad);
+      const cy = Math.min(Math.max(p.a.y, p.h / 2 + pad), size.y - p.h / 2 - pad);
+      let best = null;
+      for (let k = 1; k <= 12 && !best; k++) {
+        for (const [dx, dy] of ring) {
+          const c = { x: cx + dx * (p.w / 2 + 14) * k * 0.8, y: cy + dy * (p.h + 10) * k * 0.9, w: p.w, h: p.h };
+          if (inside(c) && !hit(c)) { best = c; break; }
+        }
+      }
+      best = best || { x: cx, y: cy, w: p.w, h: p.h };
+      placed.push(best);
+      p.x = best.x; p.y = best.y;
+    }
+    for (const p of items) {
+      const at = map.containerPointToLatLng([p.x, p.y]);
+      p.l.mk.setLatLng(at);
+      p.l.line.setLatLngs([p.l.anchor, at]);
+    }
   }
 
   _fitAll() { if (this.all && this.all.length) this.map.fitBounds(this.all, { padding: [30, 30] }); else this.map.setView([39.5, -86], 5); }
@@ -144,7 +211,7 @@ class PyramidMapView {
   }
 
   onResize() {
-    if (this.map) this.map.invalidateSize();
+    if (this.map) { this.map.invalidateSize(); this._relayout(); }
     const col = this.sel && this.columns && this.columns.find((c) => c.conf.id === this.sel);
     const chart = this.root && this.root.querySelector('.mp-panel .fc-chart');
     if (col && chart) this.flow.drawArrows(chart, this.model, [col.conf]);

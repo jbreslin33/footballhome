@@ -150,7 +150,13 @@ Views only draw it:
   feeder-only; a club whose league publishes no address sits at its
   league's point, dimmed + dashed. A label per conference: tap it → fly
   there, and that conference's chart (the same `flow.chartHtml`) appears
-  under the map.
+  under the map. Nothing covers anything (owner: "use arrows to bubble as
+  its covering each other up … auto adjust so its all visible"): after every
+  zoom/pan `_relayout()` places each conference bubble in the first free
+  slot on a ring of candidates around its spot (never over another bubble or
+  the zoom buttons; an off-screen conference sits on the edge in its
+  direction) with a leader line + ring back to the spot; dots sharing one
+  point fan out in a ring.
 - `js/components/pyramid-path-view.js` — `PyramidPathView` (mig 845): pick a
   club (search box over the model's clubs); each of its teams' routes up the
   promoting links (`PyramidModel.upRoutes` / `routeSteps`) drawn top-down with
