@@ -18,6 +18,9 @@ class PyramidModel {
     this.kinds = this.data.zone_kinds || [];
     this.totals = this.data.totals || {};
     this.clubs = this.data.clubs || [];
+    // Where each team plays (mig 855): its own ground, not its club's.
+    this.places = this.data.places || [];
+    this._place = new Map(this.places.map((p) => [p.team_id, p]));
     this.seasons = this.data.seasons || [];
     this._comp = new Map(this.competitions.map((c) => [c.id, c]));
     this._div = new Map(this.divisions.map((d) => [d.id, d]));
@@ -76,35 +79,32 @@ class PyramidModel {
     };
   }
 
-  // ── clubs on the map (mig 844) ───────────────────────────────────────
-  // A club's point: its home ground when geocoded, else the point of the
-  // league of its first table (approx = true — the league publishes no
-  // address).  null = nowhere to put it yet.
-  clubPoint(club) {
-    if (club.lat != null && club.lon != null) return { lat: club.lat, lon: club.lon, approx: false };
-    for (const id of club.divisions || []) {
-      const d = this.division(id);
-      const p = d && this.compPoint(d.competition_id);
-      if (p) return { ...p, approx: true };
-    }
-    return null;
+  // ── where teams play (migs 844, 855) ─────────────────────────────────
+  place(teamId) { return this._place.get(teamId) || null; }
+
+  // A team's point: its ground when geocoded, else its league's point
+  // (approx = true — the league publishes no address).  null = nowhere yet.
+  teamPoint(teamId, divisionId) {
+    const p = this.place(teamId);
+    if (p && p.lat != null && p.lon != null) return { lat: p.lat, lon: p.lon, approx: false };
+    const d = this.division(divisionId);
+    const c = d && this.compPoint(d.competition_id);
+    return c ? { ...c, approx: true } : null;
   }
 
-  // A league's point: the middle of its clubs that have a home ground,
-  // else its geocoded region (pyramid_competitions.lat/lon).
+  // A league's point: the middle of its teams' grounds, else its geocoded
+  // region (pyramid_competitions.lat/lon).
   compPoint(compId) {
     if (!this._compPoints) {
       this._compPoints = new Map();
       const sums = new Map();
-      for (const club of this.clubs) {
-        if (club.lat == null || club.lon == null) continue;
-        for (const id of club.divisions || []) {
-          const d = this.division(id);
-          if (!d) continue;
-          const a = sums.get(d.competition_id) || { lat: 0, lon: 0, n: 0 };
-          a.lat += club.lat; a.lon += club.lon; a.n += 1;
-          sums.set(d.competition_id, a);
-        }
+      for (const p of this.places) {
+        if (p.lat == null || p.lon == null) continue;
+        const d = this.division(p.division_id);
+        if (!d) continue;
+        const a = sums.get(d.competition_id) || { lat: 0, lon: 0, n: 0 };
+        a.lat += p.lat; a.lon += p.lon; a.n += 1;
+        sums.set(d.competition_id, a);
       }
       for (const [id, a] of sums) this._compPoints.set(id, { lat: a.lat / a.n, lon: a.lon / a.n });
     }
@@ -113,22 +113,19 @@ class PyramidModel {
     return c && c.lat != null && c.lon != null ? { lat: c.lat, lon: c.lon } : null;
   }
 
-  // 'apsl' when the club has a team in an APSL conference table, else 'feeder'.
-  clubTier(club) {
-    return (club.divisions || []).some((id) => { const d = this.division(id); const c = d && this.comp(d.competition_id); return c && c.kind === 'conference'; })
-      ? 'apsl' : 'feeder';
+  // 'apsl' for a team in an APSL conference table, else 'feeder'.
+  divisionTier(divisionId) {
+    const d = this.division(divisionId);
+    const c = d && this.comp(d.competition_id);
+    return c && c.kind === 'conference' ? 'apsl' : 'feeder';
   }
 
-  // The clubs of one conference column: its own tables + every feeder.
-  columnClubs(col) {
-    const ids = new Set([...col.top, ...col.reach].map((d) => d.id));
-    return this.clubs.filter((c) => (c.divisions || []).some((id) => ids.has(id)));
-  }
-
-  // "League · table" names of a club's teams (the map popup).
-  clubTables(club) {
-    return (club.divisions || []).map((id) => this.division(id)).filter(Boolean)
-      .map((d) => `${this.label(this.comp(d.competition_id))} · ${d.name}`);
+  // The teams of one conference column — its own tables + every feeder —
+  // as {team, division}.
+  columnTeams(col) {
+    const out = [];
+    for (const d of [...col.top, ...col.reach]) for (const t of d.teams || []) out.push({ team: t, division: d });
+    return out;
   }
 
   // ── a club's way up (Club pathway view) ──────────────────────────────

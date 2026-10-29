@@ -486,7 +486,7 @@ void stampFailure(int sourceId, const std::string& note) {
 
 } // namespace
 
-// Clubs' home grounds, then league region points, one Nominatim lookup a
+// Teams' home grounds (pyramid_venues, mig 855), then league region points, one Nominatim lookup a
 // second (their usage policy), on a background thread so a page load never
 // waits on it.  A miss stamps geocoded_at with a note and is not asked again
 // until the address changes (the loader clears it).
@@ -500,9 +500,9 @@ void PyramidSync::geocodePending() {
                       {id, geo ? std::to_string(geo->lat) : "", geo ? std::to_string(geo->lon) : "", note});
         };
         try {
-            for (const auto& r : db->query("SELECT id, venue_address FROM pyramid_clubs "
-                                           " WHERE venue_address IS NOT NULL AND geocoded_at IS NULL ORDER BY id LIMIT 200")) {
-                const std::string addr = r["venue_address"].c_str();
+            for (const auto& r : db->query("SELECT id, address FROM pyramid_venues "
+                                           " WHERE geocoded_at IS NULL ORDER BY id LIMIT 200")) {
+                const std::string addr = r["address"].c_str();
                 auto geo = CarpoolRouting::geocode(addr);
                 std::this_thread::sleep_for(std::chrono::milliseconds(1100));
                 std::string note = "nominatim";
@@ -514,7 +514,7 @@ void PyramidSync::geocodePending() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1100));
                     note = "nominatim (town)";
                 }
-                stamp("pyramid_clubs", r["id"].c_str(), geo, geo ? note : "no match: " + addr.substr(0, 80));
+                stamp("pyramid_venues", r["id"].c_str(), geo, geo ? note : "no match: " + addr.substr(0, 80));
             }
             // A league's region ("Detroit Metro Area" + MI → "Detroit, MI");
             // a region Nominatim can't place falls back to its first state.
@@ -594,24 +594,26 @@ void PyramidSync::storeSeasons(int sourceId, const std::string& locator, const j
 }
 
 // A conference's Sunday drive times (mig 852): OSRM's table service — road
-// times with no traffic modelled — among its located APSL clubs, in one
-// call: the furthest pair and the average over every pair (all play all).
-// Cached in pyramid_conference_travel per club set; null when OSRM can't
+// times with no traffic modelled — among its APSL teams' grounds (mig 855), in one
+// call: the furthest pair, the average over every pair (all play all) and
+// the median pair (mig 854).
+// Cached in pyramid_conference_travel per team set; null when OSRM can't
 // answer.
 json PyramidSync::conferenceTravel(int confId) {
     auto* db = Database::getInstance();
     try {
-        auto clubs = db->query("SELECT club_id, lat, lon FROM pyramid_club_conference WHERE conference_id = $1::int ORDER BY club_id",
+        auto teams = db->query("SELECT team_id, lat, lon FROM pyramid_team_conference WHERE conference_id = $1::int ORDER BY team_id",
                                {std::to_string(confId)});
-        if (clubs.size() < 2) return nullptr;
+        if (teams.size() < 2) return nullptr;
         std::string set, coords;
         std::vector<int> ids;
-        for (const auto& r : clubs) {
-            ids.push_back(r["club_id"].as<int>());
-            set += (set.empty() ? "" : ",") + std::string(r["club_id"].c_str());
+        for (const auto& r : teams) {
+            ids.push_back(r["team_id"].as<int>());
+            set += (set.empty() ? "" : ",") + std::string(r["team_id"].c_str());
             coords += (coords.empty() ? "" : ";") + std::string(r["lon"].c_str()) + "," + r["lat"].c_str();
         }
-        auto cached = db->query("SELECT 1 FROM pyramid_conference_travel WHERE competition_id = $1::int AND club_set = $2",
+        auto cached = db->query("SELECT 1 FROM pyramid_conference_travel WHERE competition_id = $1::int AND team_set = $2 "
+                                "AND median_minutes IS NOT NULL",
                                 {std::to_string(confId), set});
         if (cached.empty()) {
             HttpClient http;
@@ -627,29 +629,33 @@ json PyramidSync::conferenceTravel(int confId) {
             const size_t n = ids.size();
             double maxS = -1, sum = 0;
             int pairs = 0, a = 0, b = 0;
+            std::vector<double> all;
             for (size_t i = 0; i < n; ++i)
                 for (size_t j = i + 1; j < n; ++j) {
                     if (!d[i][j].is_number() || !d[j][i].is_number()) continue;
                     const double s2 = (d[i][j].get<double>() + d[j][i].get<double>()) / 2;   // each way, averaged
-                    sum += s2; ++pairs;
+                    sum += s2; ++pairs; all.push_back(s2);
                     if (s2 > maxS) { maxS = s2; a = ids[i]; b = ids[j]; }
                 }
             if (!pairs) return nullptr;
-            db->query("INSERT INTO pyramid_conference_travel (competition_id, club_set, max_minutes, from_club_id, to_club_id, avg_minutes, pairs, computed_at) "
-                      "VALUES ($1::int, $2, $3::numeric, $4::int, $5::int, $6::numeric, $7::int, now()) "
-                      "ON CONFLICT (competition_id) DO UPDATE SET club_set = EXCLUDED.club_set, max_minutes = EXCLUDED.max_minutes, "
-                      "  from_club_id = EXCLUDED.from_club_id, to_club_id = EXCLUDED.to_club_id, avg_minutes = EXCLUDED.avg_minutes, "
-                      "  pairs = EXCLUDED.pairs, computed_at = now()",
+            std::sort(all.begin(), all.end());
+            const double median = all.size() % 2 ? all[all.size() / 2] : (all[all.size() / 2 - 1] + all[all.size() / 2]) / 2;
+            db->query("INSERT INTO pyramid_conference_travel (competition_id, team_set, max_minutes, from_team_id, to_team_id, avg_minutes, median_minutes, pairs, computed_at) "
+                      "VALUES ($1::int, $2, $3::numeric, $4::int, $5::int, $6::numeric, $7::numeric, $8::int, now()) "
+                      "ON CONFLICT (competition_id) DO UPDATE SET team_set = EXCLUDED.team_set, max_minutes = EXCLUDED.max_minutes, "
+                      "  from_team_id = EXCLUDED.from_team_id, to_team_id = EXCLUDED.to_team_id, avg_minutes = EXCLUDED.avg_minutes, "
+                      "  median_minutes = EXCLUDED.median_minutes, pairs = EXCLUDED.pairs, computed_at = now()",
                       {std::to_string(confId), set, std::to_string(maxS / 60), std::to_string(a), std::to_string(b),
-                       std::to_string(sum / pairs / 60), std::to_string(pairs)});
+                       std::to_string(sum / pairs / 60), std::to_string(median / 60), std::to_string(pairs)});
         }
         auto r = db->query(
-            "SELECT t.max_minutes, t.avg_minutes, t.pairs, fa.name AS a, fb.name AS b "
+            "SELECT t.max_minutes, t.avg_minutes, t.median_minutes, t.pairs, fa.name AS a, fb.name AS b "
             "  FROM pyramid_conference_travel t "
-            "  LEFT JOIN pyramid_clubs fa ON fa.id = t.from_club_id LEFT JOIN pyramid_clubs fb ON fb.id = t.to_club_id "
+            "  LEFT JOIN pyramid_teams fa ON fa.id = t.from_team_id LEFT JOIN pyramid_teams fb ON fb.id = t.to_team_id "
             " WHERE t.competition_id = $1::int", {std::to_string(confId)});
         if (r.empty()) return nullptr;
         return {{"max_minutes", r[0]["max_minutes"].as<double>()}, {"avg_minutes", r[0]["avg_minutes"].as<double>()},
+                {"median_minutes", r[0]["median_minutes"].is_null() ? json(nullptr) : json(r[0]["median_minutes"].as<double>())},
                 {"pairs", r[0]["pairs"].as<int>()}, {"from", r[0]["a"].is_null() ? "" : r[0]["a"].c_str()},
                 {"to", r[0]["b"].is_null() ? "" : r[0]["b"].c_str()}};
     } catch (const std::exception& e) {

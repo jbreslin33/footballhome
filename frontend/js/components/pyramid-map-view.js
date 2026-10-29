@@ -31,7 +31,8 @@
 //              /api/pyramid/territory draws the picked one's counties, tinted,
 //              with only its OUTER border outlined; the HUD gives the
 //              population inside, and Sunday (no traffic) drive times: the
-//              two furthest clubs, and the average if all play all.  The
+//              two furthest clubs, the average if all play all, and the
+//              median trip (mig 854).  The
 // conference pills choose which conferences' clubs are on the map.
 //
 // Nothing hides anything (owner 2026-10-29: "use arrows to bubble as its
@@ -153,36 +154,40 @@ class PyramidMapView {
     const all = [];
     this.dots = [];
     let located = 0;
+    // A dot per TEAM at its own ground (mig 855: Oaklyn's APSL side and its
+    // Liga 1 side play at different fields).
     for (const col of this.columns) {
-      for (const club of model.columnClubs(col)) {
-        if (seen.has(club.id)) continue;
-        seen.add(club.id);
-        const p = model.clubPoint(club);
+      for (const { team, division } of model.columnTeams(col)) {
+        if (seen.has(team.id)) continue;
+        seen.add(team.id);
+        const p = model.teamPoint(team.id, division.id);
         if (!p) continue;
         if (!p.approx) located++;
         all.push([p.lat, p.lon]);
-        const apsl = model.clubTier(club) === 'apsl';
+        const apsl = model.divisionTier(division.id) === 'apsl';
         const color = apsl ? '#3b82f6' : '#14b8a6';
         const m = L.circleMarker([p.lat, p.lon], {
           radius: apsl ? 7 : 5, color: p.approx ? '#64748b' : '#0b1220', weight: 1.5, dashArray: p.approx ? '3 3' : null,
           fillColor: color, fillOpacity: p.approx ? 0.35 : 0.9,
         }).addTo(this.map);
-        const where = p.approx ? `<i>${this._esc(this._copy('map_at_league'))}</i>` : this._esc([club.venue_name, club.venue].filter(Boolean).join(' · '));
-        m.bindTooltip(this._esc(club.name));
-        m.bindPopup(`<b>${this._esc(this._copy('map_club', { club: club.name }))}</b><br>${where}<br>${model.clubTables(club).map((t) => this._esc(t)).join('<br>')}`);
-        m.on('click', () => { const col = this.columns.find((c) => model.columnClubs(c).some((x) => x.id === club.id)); if (col) this.select(col.conf.id, false); });
+        const pl = model.place(team.id);
+        const where = p.approx ? `<i>${this._esc(this._copy('map_at_league'))}</i>` : this._esc([pl && pl.venue_name, pl && pl.venue].filter(Boolean).join(' · '));
+        const table = `${model.label(model.comp(division.competition_id))} · ${division.name}`;
+        m.bindTooltip(this._esc(team.name));
+        m.bindPopup(`<b>${this._esc(this._copy('map_club', { club: team.name }))}</b><br>${where}<br>${this._esc(table)}${team.club && team.club !== team.name ? `<br><i>${this._esc(team.club)}</i>` : ''}`);
+        m.on('click', () => this.select(col.conf.id, false));
         const name = L.marker([p.lat, p.lon], {
-          icon: L.divIcon({ className: '', html: `<span class="mp-name">${this._esc(club.name)}</span>`, iconSize: null }),
+          icon: L.divIcon({ className: '', html: `<span class="mp-name">${this._esc(team.name)}</span>`, iconSize: null }),
           interactive: false, keyboard: false, opacity: 0,
         }).addTo(this.map);
-        this.dots.push({ m, name, club, conf: col.conf.id, apsl, approx: p.approx, r: apsl ? 7 : 5,
+        this.dots.push({ m, name, label: team.name, conf: col.conf.id, apsl, approx: p.approx, r: apsl ? 7 : 5,
                          at: L.latLng(p.lat, p.lon), key: `${p.lat.toFixed(4)},${p.lon.toFixed(4)}` });
       }
     }
     // A label per conference at its clubs' middle (else its own point).
     this.labels = new Map();
     for (const col of this.columns) {
-      const pts = model.columnClubs(col).map((c) => model.clubPoint(c)).filter((p) => p && !p.approx);
+      const pts = model.columnTeams(col).map(({ team, division }) => model.teamPoint(team.id, division.id)).filter((p) => p && !p.approx);
       const at = pts.length ? [pts.reduce((a, p) => a + p.lat, 0) / pts.length, pts.reduce((a, p) => a + p.lon, 0) / pts.length]
         : (col.conf.lat != null ? [col.conf.lat, col.conf.lon] : null);
       if (!at) continue;
@@ -277,7 +282,7 @@ class PyramidMapView {
     const map = this.map;
     const zoom = map.getZoom();
     const order = [...(this.dots || [])].sort((a, b) =>
-      ((b.conf === this.sel) - (a.conf === this.sel)) || (b.apsl - a.apsl) || a.club.name.localeCompare(b.club.name));
+      ((b.conf === this.sel) - (a.conf === this.sel)) || (b.apsl - a.apsl) || a.label.localeCompare(b.label));
     const hit = (p) => placed.some((q) => Math.abs(p.x - q.x) < (p.w + q.w) / 2 && Math.abs(p.y - q.y) < (p.h + q.h) / 2);
     for (const d of this.dots || []) d.name.setOpacity(0);
     for (const d of order) {
@@ -286,7 +291,7 @@ class PyramidMapView {
       const c = map.latLngToContainerPoint(at);
       const el = d.name.getElement() && d.name.getElement().querySelector('.mp-name');
       // The rendered box, plus a 3px margin all round.
-      const w = (el ? el.offsetWidth : d.club.name.length * 6) + 6, h = (el ? el.offsetHeight : 14) + 6;
+      const w = (el ? el.offsetWidth : d.label.length * 6) + 6, h = (el ? el.offsetHeight : 14) + 6;
       const gap = d.r + 3;
       // right, left, above, below the dot (the box's centre → the marker's
       // anchor is its left edge, vertically centred).
@@ -347,7 +352,8 @@ class PyramidMapView {
         + esc(this._copy('map_pop', { pop: Number(t.population).toLocaleString() }));
       if (t.travel) {
         html += `<br>${esc(this._copy('map_far', { a: t.travel.from, b: t.travel.to, time: time(t.travel.max_minutes) }))}`
-          + `<br>${esc(this._copy('map_avg', { time: time(t.travel.avg_minutes), pairs: t.travel.pairs }))}`;
+          + `<br>${esc(this._copy('map_avg', { time: time(t.travel.avg_minutes), pairs: t.travel.pairs }))}`
+          + (t.travel.median_minutes != null ? `<br>${esc(this._copy('map_median', { time: time(t.travel.median_minutes) }))}` : '');
       } else html += `<br>${esc(this._copy('map_no_travel'))}`;
       stats.innerHTML = html;
       stats.hidden = false;
@@ -363,7 +369,7 @@ class PyramidMapView {
     if (!col) return;
     this.sel = confId;
     this.root.querySelectorAll('[data-conf-label]').forEach((el) => el.classList.toggle('on', Number(el.dataset.confLabel) === confId));
-    const pts = this.model.columnClubs(col).map((c) => this.model.clubPoint(c)).filter(Boolean).map((p) => [p.lat, p.lon]);
+    const pts = this.model.columnTeams(col).map(({ team, division }) => this.model.teamPoint(team.id, division.id)).filter(Boolean).map((p) => [p.lat, p.lon]);
     if (pts.length && (fly || instant)) {
       // Frame the clubs in the part of the map the overlay leaves uncovered
       // (unless the overlay takes nearly the whole width — a phone).

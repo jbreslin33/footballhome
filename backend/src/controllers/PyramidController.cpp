@@ -55,7 +55,7 @@ constexpr const char* kCompetitionsSql = R"SQL(
 
 constexpr const char* kTablesSql = R"SQL(
     SELECT td.competition_id, td.id AS division_id, td.name AS division, td.counted,
-           tt.position, tt.name, pc.name AS club,
+           tt.id AS team_id, tt.position, tt.name, pc.name AS club,
            tt.played, tt.wins, tt.draws, tt.losses,
            tt.goals_for, tt.goals_against, tt.goal_diff, tt.points
       FROM td
@@ -114,14 +114,20 @@ constexpr const char* kReplaceOverridesSql = R"SQL(
     SELECT d.source_id, d.name, $2, x.kind, x.f, x.t, (SELECT max(expires_on) FROM del), $4
       FROM d, jsonb_to_recordset($3::jsonb) AS x(kind text, f int, t int))SQL";
 
-// Every club playing in the tree, with its home ground (mig 844, the map)
-// and the tables it has a team in.
+// Every club playing in the tree and the tables it has a team in.
 constexpr const char* kClubsSql = R"SQL(
-    SELECT pc.id, pc.name, pc.lat, pc.lon, pc.venue_name, pc.venue_address,
-           string_agg(DISTINCT tt.division_id::text, ',') AS divisions
+    SELECT pc.id, pc.name, string_agg(DISTINCT tt.division_id::text, ',') AS divisions
       FROM tt JOIN pyramid_clubs pc ON pc.id = tt.pyramid_club_id
      GROUP BY pc.id
      ORDER BY pc.name)SQL";
+
+// Where each team plays (mig 855): its ground — the venue of most of the
+// games it hosts — when the feed names one.
+constexpr const char* kPlacesSql = R"SQL(
+    SELECT tt.id AS team_id, tt.pyramid_club_id AS club_id, tt.division_id, tt.name,
+           v.name AS venue_name, v.address, v.lat, v.lon
+      FROM tt JOIN pyramid_venues v ON v.id = tt.venue_id
+     ORDER BY tt.id)SQL";
 
 // Each league's seasons (mig 847, Growth by season): sides per competition
 // (distinct clubs), and distinct clubs outside the root league's own tables
@@ -325,7 +331,7 @@ Response PyramidController::handleGet(const Request& request) {
                                      {"overrides", {{"up", nullptr}, {"stay", nullptr}, {"down", nullptr}}}, {"teams", json::array()}});
             }
             divisions[at[div]]["teams"].push_back({
-                {"pos", intOrNull(r, "position")}, {"name", str(r, "name")}, {"club", str(r, "club")},
+                {"id", num(r, "team_id")}, {"pos", intOrNull(r, "position")}, {"name", str(r, "name")}, {"club", str(r, "club")},
                 {"gp", num(r, "played")}, {"w", num(r, "wins")}, {"d", num(r, "draws")}, {"l", num(r, "losses")},
                 {"gf", num(r, "goals_for")}, {"ga", num(r, "goals_against")}, {"gd", num(r, "goal_diff")},
                 {"pts", num(r, "points")}});
@@ -365,12 +371,14 @@ Response PyramidController::handleGet(const Request& request) {
                 if (c == std::string::npos) break;
                 p = c + 1;
             }
-            clubs.push_back({{"id", num(r, "id")}, {"name", str(r, "name")},
-                             {"lat", r["lat"].is_null() ? json(nullptr) : json(r["lat"].as<double>())},
-                             {"lon", r["lon"].is_null() ? json(nullptr) : json(r["lon"].as<double>())},
-                             {"venue_name", strOrNull(r, "venue_name")}, {"venue", strOrNull(r, "venue_address")},
-                             {"divisions", ids}});
+            clubs.push_back({{"id", num(r, "id")}, {"name", str(r, "name")}, {"divisions", ids}});
         }
+        json places = json::array();
+        for (const auto& r : db->query(cte + kPlacesSql, {root}))
+            places.push_back({{"team_id", num(r, "team_id")}, {"club_id", num(r, "club_id")}, {"division_id", num(r, "division_id")},
+                              {"name", str(r, "name")}, {"venue_name", strOrNull(r, "venue_name")}, {"venue", strOrNull(r, "address")},
+                              {"lat", r["lat"].is_null() ? json(nullptr) : json(r["lat"].as<double>())},
+                              {"lon", r["lon"].is_null() ? json(nullptr) : json(r["lon"].as<double>())}});
 
         json seasons = json::array();
         for (const auto& r : db->query(cte + kSeasonsSql, {root})) {
@@ -390,7 +398,7 @@ Response PyramidController::handleGet(const Request& request) {
             {"totals", {{"leagues", num(tot[0], "leagues")}, {"clubs", num(tot[0], "clubs")},
                         {"teams", num(tot[0], "teams")}, {"states", num(tot[0], "states")}}},
             {"competitions", competitions}, {"divisions", divisions}, {"links", links}, {"zone_kinds", kinds},
-            {"clubs", clubs}, {"seasons", seasons}});
+            {"clubs", clubs}, {"places", places}, {"seasons", seasons}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());

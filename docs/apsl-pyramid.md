@@ -169,17 +169,19 @@ Views only draw it:
   conference's territory (mig 852, owner: "its really based on metro size
   … pretend your making the conferences from scratch based off population
   and distance"): COUNTIES — a county belongs to the conference whose
-  nearest APSL club (`pyramid_club_conference`: only the conferences' own
-  clubs draw borders, so a feeder feeding two conferences never moves one)
+  nearest APSL team's ground (`pyramid_team_conference`: only the
+  conferences' own teams draw borders, so a feeder feeding two conferences
+  never moves one)
   is within `pyramid_territory_policy.reach_km` (100, ~an hour's drive) of
   the county's centre; nearer wins, so neighbours meet along county lines;
   a county no club reaches is open ground. `pyramid_county_overrides` sets
   one by hand. `GET /api/pyramid/territory?conf=` returns the counties as
   GeoJSON (drawn tinted, only the OUTER border outlined — an edge two of its
   counties share is inside), the population inside, and Sunday drive times
-  (OSRM table — free-flow, no traffic — among the conference's APSL clubs:
-  the furthest pair + the average over every pair; cached per club set in
-  `pyramid_conference_travel`). HUD chip top-left.
+  (OSRM table — free-flow, no traffic — among the conference's APSL teams'
+  grounds: the furthest pair, the average over every pair and the median
+  (mig 854); cached per team set in `pyramid_conference_travel`). HUD chip
+  top-left.
 
   County data (not in git): `scripts/pyramid-counties-load.py` reads the
   Census county shapes (plotly's geojson-counties-fips.json) + Census
@@ -200,6 +202,37 @@ Views only draw it:
   eight-slot categorical set, validated on the app's dark surface #111827,
   colour fixed by conference order; former conferences fold into one grey
   series), a numbers table, then other leagues' seasons (Cosmo).
+
+### Seasons (mig 847)
+
+TeamPass feeds serve any past season (`?season=<id>`, listed in
+`standings.season_list`). `PyramidSync::storeSeasons` re-counts the current
+season from the feed just read and fetches each past season ONCE on a
+background thread → `fh_pyramid_season_load` → `pyramid_seasons` +
+`pyramid_season_divisions` (teams + the feed's club ids, tied to a
+competition by feed id or by name). A conference that no longer exists is an
+inactive `pyramid_competitions` row (Northeast, 2022–24, split into Mayflower
++ Constitution). A conference's size per season = DISTINCT clubs (Fall +
+Spring tables list the same sides); a league's teams = team entries.
+APSL: 36 → 39 → 46 → 76 → 81 sides (2022/23 → 2026/27).
+
+### Where teams play (migs 844, 855)
+
+Owner: "use home field for teams of most common home field in there
+schedule! oaklyn has 2 teams apsl and liga 1 and at diff sites for each."
+A ground belongs to a TEAM: `pyramid_teams.venue_id` → `pyramid_venues`
+(one row per address, geocoded once however many teams share it). The feeds
+name it: TeamPass — the location of most games the team hosts (game → field
+→ location); SportsEngine — its home games' address; refreshed every read.
+`PyramidSync::geocodePending()` geocodes new venues on a background thread,
+one Nominatim call a second (`CarpoolRouting::geocode`, public): the full
+address, else its town + zip ('nominatim (town)'); a miss is stamped. A
+league's point (`PyramidModel.compPoint`) = the middle of its teams'
+grounds, else its geocoded region. Map: a dot per team at its ground (Oaklyn
+APSL at Camden Athletic Complex, Oaklyn Liga 1 at Northeast High School);
+territories + drive times use the APSL teams' grounds
+(`pyramid_team_conference`). 10/29: 146 grounds, 144 placed; Trinity's
+median drive is 0m because 6 of its 8 APSL teams share The Highlands School.
 
 ### Seasons (mig 847)
 

@@ -20,11 +20,12 @@
 //                                [{kind, from, to, until}] = this table's own
 //                                (until = its expiry, mig 836),
 //                              targets: "where its teams go" | null}],
-//                     teams: [{pos, name, club, gp, w, d, l, gf, ga, gd, pts}] }],
+//                     teams: [{id, pos, name, club, gp, w, d, l, gf, ga, gd, pts}] }],
 //       links: [{ lower: division id, upper_division: id | null,
 //                 upper_competition: id | null, promotes, relegates }],
 //       zone_kinds: [{code, label, moves, color}],
-//       clubs: [{id, name, lat, lon, venue_name, venue, divisions: [ids]}],  (mig 844)
+//       clubs: [{id, name, divisions: [ids]}],
+//       places: [{team_id, club_id, division_id, name, venue_name, venue, lat, lon}],  (mig 855: a team's ground)
 //       seasons: [{league_id, name, current, games, clubs, teams,
 //                  by_competition: [{competition_id, teams, kind, active, name}]}] }  (mig 847)
 //
@@ -32,7 +33,7 @@
 // zone's teams go is the pyramid_zone_moves view over pyramid_links.
 //
 //   GET /api/pyramid/territory?conf=<id> → { population, counties, geojson,
-//     travel: {max_minutes, from, to, avg_minutes, pairs} | null }  (mig 852)
+//     travel: {max_minutes, from, to, avg_minutes, median_minutes, pairs} | null }  (migs 852, 854)
 //   GET /api/pyramid/roots → { roots: [{slug, name, short_name, logo_url}] }
 //     the picker tile's crest; reads only.
 //   POST /api/pyramid/zone-rules {division_id, direction, mode: default|none|custom,

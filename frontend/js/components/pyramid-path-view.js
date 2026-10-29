@@ -67,9 +67,11 @@ class PyramidPathView {
 
   _clubHtml(model, club) {
     const esc = (t) => this._esc(t);
-    const p = model.clubPoint(club);
-    const venue = [club.venue_name, club.venue].filter(Boolean).join(' · ');
+    // Each team plays at its own ground (mig 855) — named with the team.
     const teams = (club.divisions || []).map((id) => model.division(id)).filter(Boolean).map((d) => {
+      const team = (d.teams || []).find((t) => t.club === club.name);
+      const pl = team && model.place(team.id);
+      const venue = pl ? [pl.venue_name, pl.venue].filter(Boolean).join(' · ') : this._copy('map_at_league');
       const routes = model.upRoutes(d.id);
       const steps = routes.map((r) => model.routeSteps(r)).filter((n) => n != null);
       const best = steps.length ? Math.min(...steps) : null;
@@ -81,11 +83,10 @@ class PyramidPathView {
       // Top of the pyramid first: each route reversed, arrows pointing up.
       const cols = routes.map((r) => `
         <div class="pt-route">${[...r].reverse().map((n) => this._nodeHtml(model, n, club)).join('<div class="pt-up"></div>')}</div>`).join('');
-      return `<div class="pt-team"><h3>${esc(head)}</h3><div class="pt-routes">${cols}</div></div>`;
+      return `<div class="pt-team"><h3>${esc(head)}</h3><div class="pt-venue">${esc(venue)}</div><div class="pt-routes">${cols}</div></div>`;
     }).join('');
     return `
       <h2 class="pt-club">${esc(club.name)}</h2>
-      <div class="pt-venue">${esc(venue || (p && p.approx ? this._copy('map_at_league') : ''))}</div>
       ${teams}`;
   }
 
