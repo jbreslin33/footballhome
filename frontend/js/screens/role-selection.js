@@ -209,7 +209,7 @@ class RoleSelectionScreen extends Screen {
         </button>
 
         <button class="btn btn-lg btn-primary" data-role="apsl" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🔺</span>
+          <img class="apsl-crest" alt="" style="height: 2.4rem; width: 2rem; object-fit: contain; visibility: hidden;">
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('apsl_pyramid', 'tile_title')) || 'APSL Pyramid'}</div>
             <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('apsl_pyramid', 'tile_sub')) || ''}</div>
@@ -370,6 +370,22 @@ class RoleSelectionScreen extends Screen {
     // CSS `display: none` for non-admins, but we also short-circuit
     // the fetch to keep server logs clean.
     this._maybeLoadViewAsPicker();
+    this._loadApslCrest();
+  }
+
+  // The APSL Pyramid tile's crest (mig 819): organizations.logo_url via
+  // GET /api/pyramid/roots — owner 2026-10-29: "use apsl logo … on button
+  // in main fh screen".  Admin tile only; no crest → the slot stays empty.
+  async _loadApslCrest() {
+    const img = this.element && this.element.querySelector('.apsl-crest');
+    if (!img || img.offsetParent === null) return;
+    try {
+      const res = await this.auth.fetch('/api/pyramid/roots');
+      if (!res.ok) return;
+      const body = await res.json();
+      const root = (body.roots || []).find((r) => r.slug === 'apsl');
+      if (root && root.logo_url) { img.src = root.logo_url; img.style.visibility = 'visible'; }
+    } catch (_) { /* tile keeps its empty slot */ }
   }
 
   async _maybeLoadViewAsPicker() {

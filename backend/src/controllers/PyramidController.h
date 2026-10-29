@@ -11,15 +11,16 @@
 //   GET /api/pyramid[?root=apsl][&refresh=1]
 //     { root_id, totals: {leagues, clubs, teams, states},
 //       competitions: [{ id, parent_id, kind, tier, name, short_name, region,
-//                        website_url, standings_url, states: [..],
+//                        website_url, standings_url, logo_url, states: [..],
 //                        source: {system, ok, read_at, ok_at, note} | null }],
 //       divisions: [{ id, competition_id, name, counts,
 //                     zones: [{kind, from, to, label, color, moves: up|down|null,
 //                              origin: default|override|source,
-//                     overrides: {up, down} — null = defaults, [] = none,
-//                                [{kind, from, to}] = this table's own,
+//                     overrides: {up, down, stay} — null = defaults, [] = none,
+//                                [{kind, from, to, until}] = this table's own
+//                                (until = its expiry, mig 836),
 //                              targets: "where its teams go" | null}],
-//                     teams: [{pos, name, club, ours, gp, w, d, l, gf, ga, gd, pts}] }],
+//                     teams: [{pos, name, club, gp, w, d, l, gf, ga, gd, pts}] }],
 //       links: [{ lower: division id, upper_division: id | null,
 //                 upper_competition: id | null, promotes, relegates }],
 //       zone_kinds: [{code, label, moves, color}] }
@@ -27,6 +28,8 @@
 // Mig 827: zone meaning and colour are pyramid_zone_kinds rows; where a
 // zone's teams go is the pyramid_zone_moves view over pyramid_links.
 //
+//   GET /api/pyramid/roots → { roots: [{slug, name, short_name, logo_url}] }
+//     the picker tile's crest; reads only.
 //   POST /api/pyramid/zone-rules {division_id, direction, mode: default|none|custom,
 //                                 zones: [{kind, from, to}]}   — club admins
 //     replaces that table's override rows for that direction (mig 828).
@@ -41,4 +44,5 @@ public:
 private:
     Response handleGet(const Request& request);
     Response handleZoneRules(const Request& request);
+    Response handleRoots(const Request& request);
 };

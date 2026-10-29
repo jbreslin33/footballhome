@@ -4,7 +4,6 @@
 #include <map>
 
 #include "../database/Database.h"
-#include "../models/WelcomeLog.h"
 #include "../services/PyramidSync.h"
 #include "../third_party/json.hpp"
 
@@ -38,7 +37,7 @@ constexpr const char* kTreeCte = R"SQL(
 
 constexpr const char* kCompetitionsSql = R"SQL(
     SELECT tr.id, tr.parent_id, tr.kind, tr.tier, tr.name, tr.short_name, tr.region,
-           tr.website_url, tr.standings_url,
+           tr.website_url, tr.standings_url, o.logo_url,
            (SELECT string_agg(s.state_code, ',' ORDER BY s.state_code)
               FROM pyramid_competition_states s WHERE s.competition_id = tr.id) AS states,
            ps.system, ps.last_fetch_ok,
@@ -46,13 +45,17 @@ constexpr const char* kCompetitionsSql = R"SQL(
            to_char(ps.last_ok_at AT TIME ZONE 'America/New_York', 'Dy FMMM/FMDD FMHH12:MI AM') AS ok_at,
            ps.last_fetch_note
       FROM tr
+      -- The crest is the league's organization's (organizations.logo_url,
+      -- the same column LeagueCrest reads).
+      LEFT JOIN leagues lg ON lg.id = tr.league_id
+      LEFT JOIN organizations o ON o.id = lg.organization_id
       LEFT JOIN LATERAL (SELECT * FROM pyramid_sources s WHERE s.competition_id = tr.id AND s.is_active
                           ORDER BY s.id LIMIT 1) ps ON true
      ORDER BY tr.tier, tr.sort_order, tr.name)SQL";
 
 constexpr const char* kTablesSql = R"SQL(
     SELECT td.competition_id, td.id AS division_id, td.name AS division, td.counted,
-           tt.position, tt.name, pc.name AS club, pc.club_id AS fh_club_id,
+           tt.position, tt.name, pc.name AS club,
            tt.played, tt.wins, tt.draws, tt.losses,
            tt.goals_for, tt.goals_against, tt.goal_diff, tt.points
       FROM td
@@ -91,22 +94,25 @@ constexpr const char* kLinksSql = R"SQL(
 
 // A table's own override rows (mig 828) — what the ✏️ editor opens on.
 constexpr const char* kOverridesSql = R"SQL(
-    SELECT td.id AS division_id, r.direction, r.kind, r.from_pos, r.to_pos
+    SELECT td.id AS division_id, r.direction, r.kind, r.from_pos, r.to_pos,
+           to_char(r.expires_on, 'FMMM/FMDD/YYYY') AS until
       FROM pyramid_zone_rules r JOIN td ON td.source_id = r.source_id AND td.name = r.division
+     WHERE r.expires_on IS NULL OR r.expires_on >= current_date
      ORDER BY td.id, r.direction, r.from_pos NULLS FIRST)SQL";
 
 // Replace one table's override rows for one direction, atomically: the
 // delete and the insert are one statement.  An empty list = back to the
-// defaults; [{kind: null}] = "none that way".
+// defaults; [{kind: null}] = "none that way".  The new rows keep the
+// replaced rows' expires_on (mig 836: a this-season-only exception stays
+// this-season-only when edited).
 constexpr const char* kReplaceOverridesSql = R"SQL(
     WITH d AS (SELECT source_id, name FROM pyramid_divisions WHERE id = $1::int AND removed_at IS NULL),
     del AS (DELETE FROM pyramid_zone_rules r USING d
              WHERE r.source_id = d.source_id AND r.division = d.name AND r.direction = $2
-            RETURNING r.id)
-    INSERT INTO pyramid_zone_rules (source_id, division, direction, kind, from_pos, to_pos, note)
-    SELECT d.source_id, d.name, $2, x.kind, x.f, x.t, $4
-      FROM d, jsonb_to_recordset($3::jsonb) AS x(kind text, f int, t int)
-     WHERE (SELECT count(*) FROM del) >= 0)SQL";
+            RETURNING r.expires_on)
+    INSERT INTO pyramid_zone_rules (source_id, division, direction, kind, from_pos, to_pos, expires_on, note)
+    SELECT d.source_id, d.name, $2, x.kind, x.f, x.t, (SELECT max(expires_on) FROM del), $4
+      FROM d, jsonb_to_recordset($3::jsonb) AS x(kind text, f int, t int))SQL";
 
 // Leagues: APSL + its affiliates, one per league row (CASA Select's four
 // regions are one league).
@@ -124,10 +130,32 @@ PyramidController::PyramidController() {}
 
 void PyramidController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix, [this](const Request& r) { return handleGet(r); });
+    router.get(prefix + "/roots", [this](const Request& r) { return handleRoots(r); });
     router.post(prefix + "/zone-rules", [this](const Request& r) { return handleZoneRules(r); });
 }
 
-// POST /api/pyramid/zone-rules  {division_id, direction: up|down,
+// GET /api/pyramid/roots — each pyramid's root league with its crest, for
+// the picker tile (owner 2026-10-29: "use apsl logo at top of page and on
+// button in main fh screen").  Reads only; never re-reads a source.
+Response PyramidController::handleRoots(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    try {
+        json roots = json::array();
+        for (const auto& r : Database::getInstance()->query(
+                 "SELECT c.slug, c.name, c.short_name, o.logo_url FROM pyramid_competitions c "
+                 "  LEFT JOIN leagues lg ON lg.id = c.league_id "
+                 "  LEFT JOIN organizations o ON o.id = lg.organization_id "
+                 " WHERE c.slug IS NOT NULL AND c.parent_id IS NULL AND c.is_active ORDER BY c.sort_order, c.id"))
+            roots.push_back({{"slug", str(r, "slug")}, {"name", str(r, "name")},
+                             {"short_name", strOrNull(r, "short_name")}, {"logo_url", strOrNull(r, "logo_url")}});
+        return jsonOut(HttpStatus::OK, {{"roots", roots}});
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] roots: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /api/pyramid/zone-rules  {division_id, direction: up|down|stay,
 //   mode: default|none|custom, zones: [{kind, from, to}]}
 // Owner 2026-10-29: "that should be default for all divisions conferences
 // etc. but then those that differ we can edit over time."
@@ -140,8 +168,9 @@ Response PyramidController::handleZoneRules(const Request& request) {
         const int divisionId = body.value("division_id", 0);
         const std::string direction = body.value("direction", "");
         const std::string mode = body.value("mode", "");
-        if (divisionId <= 0 || (direction != "up" && direction != "down") || (mode != "default" && mode != "none" && mode != "custom"))
-            return jsonError(HttpStatus::BAD_REQUEST, "division_id, direction (up|down) and mode (default|none|custom) required");
+        if (divisionId <= 0 || (direction != "up" && direction != "down" && direction != "stay")
+            || (mode != "default" && mode != "none" && mode != "custom"))
+            return jsonError(HttpStatus::BAD_REQUEST, "division_id, direction (up|down|stay) and mode (default|none|custom) required");
 
         auto* db = Database::getInstance();
         json rows = json::array();
@@ -153,8 +182,9 @@ Response PyramidController::handleZoneRules(const Request& request) {
                 const std::string kind = z.value("kind", "");
                 const int from = z.value("from", 0), to = z.value("to", 0);
                 if (from < 1 || to < from) return jsonError(HttpStatus::BAD_REQUEST, "places must run from >= 1 to >= from");
-                // The kind must move the way this direction does.
-                auto k = db->query("SELECT 1 FROM pyramid_zone_kinds WHERE code = $1 AND moves = $2", {kind, direction});
+                // The kind must move the way this direction does ('stay' =
+                // a kind that moves nowhere, e.g. playoff — mig 835).
+                auto k = db->query("SELECT 1 FROM pyramid_zone_kinds WHERE code = $1 AND coalesce(moves, 'stay') = $2", {kind, direction});
                 if (k.empty()) return jsonError(HttpStatus::BAD_REQUEST, "'" + kind + "' is not a " + direction + " zone");
                 rows.push_back({{"kind", kind}, {"f", from}, {"t", to}});
             }
@@ -203,7 +233,7 @@ Response PyramidController::handleGet(const Request& request) {
                                     {"kind", str(r, "kind")}, {"tier", num(r, "tier")}, {"name", str(r, "name")},
                                     {"short_name", strOrNull(r, "short_name")}, {"region", strOrNull(r, "region")},
                                     {"website_url", strOrNull(r, "website_url")}, {"standings_url", strOrNull(r, "standings_url")},
-                                    {"states", states}, {"source", source}});
+                                    {"logo_url", strOrNull(r, "logo_url")}, {"states", states}, {"source", source}});
         }
 
         json divisions = json::array();
@@ -214,11 +244,10 @@ Response PyramidController::handleGet(const Request& request) {
                 at[div] = divisions.size();
                 divisions.push_back({{"id", div}, {"competition_id", num(r, "competition_id")}, {"name", str(r, "division")},
                                      {"counts", r["counted"].as<bool>()}, {"zones", json::array()},
-                                     {"overrides", {{"up", nullptr}, {"down", nullptr}}}, {"teams", json::array()}});
+                                     {"overrides", {{"up", nullptr}, {"stay", nullptr}, {"down", nullptr}}}, {"teams", json::array()}});
             }
             divisions[at[div]]["teams"].push_back({
                 {"pos", intOrNull(r, "position")}, {"name", str(r, "name")}, {"club", str(r, "club")},
-                {"ours", !r["fh_club_id"].is_null() && r["fh_club_id"].as<int>() == WelcomeLog::kLighthouseClubId},
                 {"gp", num(r, "played")}, {"w", num(r, "wins")}, {"d", num(r, "draws")}, {"l", num(r, "losses")},
                 {"gf", num(r, "goals_for")}, {"ga", num(r, "goals_against")}, {"gd", num(r, "goal_diff")},
                 {"pts", num(r, "points")}});
@@ -238,7 +267,8 @@ Response PyramidController::handleGet(const Request& request) {
             if (it == at.end()) continue;
             json& o = divisions[it->second]["overrides"][str(r, "direction")];
             if (o.is_null()) o = json::array();
-            if (!r["kind"].is_null()) o.push_back({{"kind", str(r, "kind")}, {"from", num(r, "from_pos")}, {"to", num(r, "to_pos")}});
+            if (!r["kind"].is_null()) o.push_back({{"kind", str(r, "kind")}, {"from", num(r, "from_pos")}, {"to", num(r, "to_pos")},
+                                                   {"until", strOrNull(r, "until")}});
         }
 
         json links = json::array();

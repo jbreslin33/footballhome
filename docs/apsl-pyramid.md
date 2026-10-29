@@ -83,10 +83,10 @@ leagues connected by arrows like a flow chart."
 - `pyramid_zone_rules` (mig 828): DEFAULT spots for every table (owner:
   "that should be default for all divisions conferences etc. but then those
   that differ we can edit over time") — down: 12th relegation, 11th
-  relegation playoff (a spot past the table's end doesn't exist); up (a
-  table with a promoting link): one feeder into its upper level → 1st auto
-  promotion + 2nd–5th promotion playoff, two or more → 1st auto promotion
-  playoff. A feeder = a league's table with its groups counted once. A row
+  relegation playoff (a spot past the table's end doesn't exist); up (any
+  table with a promoting link): 1st auto promotion, 2nd–5th promotion
+  playoff (mig 834, owner: "do same for all feeders all over" — mig 828's
+  feeder-count split dropped). A row
   naming a table OVERRIDES that direction for it; kind NULL = none that way.
   `pyramid_zones_effective` = rule zones + the source's marks for what the
   rules don't decide (APSL's playoff places). Edited on the page: ✏️ on any
@@ -106,6 +106,48 @@ leagues connected by arrows like a flow chart."
   the rows below under the conference it feeds; a shared table sits once
   with a link to each. Arrows = an SVG overlay measured from the laid-out
   boxes: head up = promotes, head down = relegates.
+
+Rule directions (mig 835): `up`, `down`, and `stay` (places whose teams
+don't move to another table — a playoff). `applies_to` picks the tables a
+default is for: `all` (down: 11th relegation playoff, 12th relegation),
+`feeder` (has a promoting link up: 1st auto promotion, 2nd–5th promotion
+playoff) or `top` (nothing above — the APSL conferences: 1st–4th playoff).
+`expires_on` (mig 836) ends a row after a date: Delaware River Group A / B
+2026/27 only — 1st–2nd playoff, 7th relegation playoff, 8th relegation.
+The ✏️ editor has all three sections; an edit keeps the rows' expiry.
+
+Route (mig 833, another session): `#apsl` is the APSL hub; the pyramid is
+`#apsl-pyramid` (hub tile "Pyramid & tables").
+
+Colours (mig 832, owner): auto promotion green, any promotion playoff
+yellow, relegation playoff orange, relegation red, everything else white —
+`pyramid_zone_kinds.color`; a kind a feed introduces comes in white.
+
+Header + picker tile carry the root league's crest (`organizations.logo_url`
+via `competitions[].logo_url` and `GET /api/pyramid/roots`). View pills:
+Flow chart (built) · USA map · Club pathway · Standings · Growth by season
+(greyed until built — `views[].built` in the screen).
+
+## Views draw from ONE model (mig 842)
+
+Owner 2026-10-29: "make sure they all draw from same source these are just
+views."  `js/lib/pyramid-model.js` (`PyramidModel`) is built once from
+`GET /api/pyramid` and owns everything derived: the layout (conference
+columns, feeder levels, which table sits where), the links/arrows, zones and
+their colours, counts, titles, and where a zone's teams go (`moveTargets`).
+Views only draw it:
+
+- `js/components/pyramid-flow-view.js` — `PyramidFlowView`, the flow chart.
+- `js/components/pyramid-present-view.js` — `PyramidPresentView`, Prezi-style:
+  the SAME chart (`flow.chartHtml`) on a zoomable stage. Click a box → fly to
+  it; click a coloured row → follow it to where those teams go; wheel/pinch
+  zoom, drag pan; ◀ ▶ / Play tour = overview, then each conference and its
+  feeder levels in the model's order; full screen; far out = zone bands only.
+- Map / Club pathway / Standings / Growth: pills greyed until built — each
+  will be another view class over the same model.
+
+The screen (`apsl-pyramid.js`) holds the model, the conference + view pills
+and the ✏️ editor; it never lays anything out itself.
 
 Phase 2: map view — APSL venues carry street addresses in the TeamPass feed
 (`locations`), to geocode once and store.
