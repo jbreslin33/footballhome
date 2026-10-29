@@ -41,8 +41,10 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // struck (unsafe led = the ball he checked).
 // Re-locked G4.84 (2026-10-28): firm passes (arrive 9 m/s) and a race to a
 // moving ball brakes to arrive ON TIME.
-constexpr std::uint64_t kGolden3v3   = 0x97ac7ba3fd25182fULL;
-constexpr std::uint64_t kGolden11v11 = 0x17306360eb8f22b2ULL;
+// Re-locked G4.85 (2026-10-29): reaction is each player's own (hashed in his
+// body), charged once from the kick; our ball is met at a pace he can hold.
+constexpr std::uint64_t kGolden3v3   = 0x9754d51d49f39b82ULL;
+constexpr std::uint64_t kGolden11v11 = 0x48a5e96ddd7c1f9cULL;
 
 struct Rig {
     World world;

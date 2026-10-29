@@ -15,7 +15,7 @@ namespace {
 constexpr const char* kAttributeCodes[kAttributeCount] = {
     "pace", "passing", "shooting", "first_touch", "tackling", "anticipation", "decisions",
     "goalkeeping", "acceleration", "deceleration", "agility", "dribbling", "communication",
-    "concentration"};
+    "concentration", "reaction"};
 constexpr int kGoalkeeping = 7;
 
 // Roll channels (detNoise): one per question asked of the dice.
@@ -54,8 +54,8 @@ int positionGroupOf(const std::string& a) {
 }
 
 bool learnedAttribute(int i) {
-    // pace, acceleration, deceleration, agility: the body.
-    return !(i == 0 || i == 8 || i == 9 || i == 10);
+    // pace, acceleration, deceleration, agility, reaction (G4.85): the body.
+    return !(i == 0 || i == 8 || i == 9 || i == 10 || i == 14);
 }
 
 SheetRules::SheetRules() {

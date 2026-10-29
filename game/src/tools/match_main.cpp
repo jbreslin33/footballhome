@@ -584,6 +584,9 @@ int main(int argc, char** argv) {
     // the tick before — StatsBomb's Interception) or picked up slower (a
     // recovery), by the team that TOOK it; and every bobble (bad touch).
     long cut[2] = {0, 0}, picked[2] = {0, 0}, bobbles[2] = {0, 0};
+    // ...each bad touch (G4.85): whose ball it was (the pass meant for him /
+    // another of ours / theirs — a reaction touch) × its speed the tick before.
+    long bt_kind[3][4] = {};
     // ...each interception: how far the man moved from where he stood at the
     // kick (< 1 m = he was in the lane), how long the pass had flown, and
     // the pass's kind (by its why).
@@ -608,6 +611,7 @@ int main(int argc, char** argv) {
         int rx_slot = -1, rx_behind = 0;
         int lk_to[2] = {-1, -1};
         double prev_ball_v = 0;
+        int prev_ltt = -1, prev_pass_to = -1;
         std::vector<math::Vec2> kick_at;   // everyone's spot at the last kick
         long kick_tick = 0;
         int kick_pred = -1;
@@ -874,8 +878,14 @@ int main(int argc, char** argv) {
                         tf_tick = -1;
                     } else {
                         ++t.lost;
-                        ++(prev_ball_v >= 3.0 ? cut : picked)[pend_team ^ 1];
-                        if (prev_ball_v >= 3.0 && kick_at.size() == s.world().playerCount()) {
+                        // StatsBomb's Interception (G4.85): an OUTFIELDER cutting
+                        // out a pass — a blocked or saved shot is a Block /
+                        // Goal Keeper event, a keeper's claim a Goal Keeper one.
+                        // Counted with them, 23% of the "interceptions" were
+                        // shots and a quarter keepers'.
+                        const bool sb_int = pend_why != static_cast<int>(ai::Why::Shoot) && !s.world().isKeeper(*b.owner);
+                        if (sb_int) ++(prev_ball_v >= 3.0 ? cut : picked)[pend_team ^ 1];
+                        if (sb_int && prev_ball_v >= 3.0 && kick_at.size() == s.world().playerCount()) {
                             const int j = *b.owner;
                             const double mx = s.world().player(j).pos.x.toDouble() - kick_at[j].x.toDouble(),
                                          my = s.world().player(j).pos.y.toDouble() - kick_at[j].y.toDouble();
@@ -915,6 +925,9 @@ int main(int argc, char** argv) {
             if (s.world().badTouchTick() != prev_bad && s.world().badTouchSlot() < s.world().playerCount()) {
                 prev_bad = s.world().badTouchTick();
                 ++bobbles[s.world().player(s.world().badTouchSlot()).team];
+                const int bs = s.world().badTouchSlot();
+                const int kind = prev_ltt != s.world().player(bs).team ? 2 : (prev_pass_to == bs ? 0 : 1);
+                ++bt_kind[kind][prev_ball_v < 9 ? 0 : prev_ball_v < 12 ? 1 : prev_ball_v < 15 ? 2 : 3];
             }
             if (pend_team >= 0 && k == kick_tick + 1) {
                 const auto& fr = s.brain().flightRead(s.world());
@@ -956,6 +969,8 @@ int main(int argc, char** argv) {
             if (pend_team >= 0 && k == kick_tick + 10 && pred_us >= 0)
                 pred_us_why = static_cast<int>(s.lastOrders()[pred_us].why);
             prev_ball_v = std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble());
+            prev_ltt = s.world().lastTouchTeam();
+            prev_pass_to = b.owner ? -1 : static_cast<int>(b.pass_to);
             if (before && !b.owner && b.last_kicker == *before &&
                 s.world().restartTeam() == 0xFF) {
                 const ai::Orders& o = s.lastOrders()[*before];
@@ -1231,6 +1246,13 @@ int main(int argc, char** argv) {
                  100.0 * won_at[1][i] / std::max(1L, shot_n[1]));
         std::printf("\nPasses the other side took — cut out while travelling (interceptions) %.1f / %.1f, picked up slower %.1f / %.1f; bad touches %.1f / %.1f a team a match\n",
                     cut[0] / nm, cut[1] / nm, picked[0] / nm, picked[1] / nm, bobbles[0] / nm, bobbles[1] / nm);
+        {
+            const char* kn[3] = {"the pass meant for him", "another of ours", "theirs (a reaction touch)"};
+            std::printf("  bad touches a match by whose ball, at <9 / 9-12 / 12-15 / 15+ m/s:");
+            for (int q = 0; q < 3; ++q)
+                std::printf(" %s %.1f / %.1f / %.1f / %.1f%s", kn[q], bt_kind[q][0] / nm, bt_kind[q][1] / nm,
+                            bt_kind[q][2] / nm, bt_kind[q][3] / nm, q < 2 ? " ·" : "\n");
+        }
         if (cut_n) {
             std::printf("  each interception: the man had moved <1 m %.0f%% · 1-3 %.0f%% · 3-6 %.0f%% · 6+ %.0f%% since the kick; the ball had flown <0.5 s %.0f%% · 0.5-1 %.0f%% · 1-2 %.0f%% · 2+ %.0f%%\n  the pass:",
                         100.0 * cut_moved[0] / cut_n, 100.0 * cut_moved[1] / cut_n, 100.0 * cut_moved[2] / cut_n, 100.0 * cut_moved[3] / cut_n,

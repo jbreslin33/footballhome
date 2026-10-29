@@ -185,7 +185,6 @@ std::optional<core::SlotIndex> DirectBall::pick(const ConceptContext& c) const {
 
 // ── MeetThePass (G4.49) ─────────────────────────────────────────────────
 void MeetThePass::configure(const core::ModelParams& p) {
-    reaction_ = p.fixed(key("reaction_s"), 200);
     keep_running_ = p.fixed(key("keep_running_mps"), 3000);
     horizon_ticks_ = p.integer(key("horizon_ticks"), 90);
 }

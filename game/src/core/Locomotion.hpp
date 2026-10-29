@@ -49,10 +49,12 @@ public:
          math::Fixed64 dribble, math::Fixed64 dive_speed, math::Fixed64 run,
          math::Fixed64 back, math::Fixed64 yaw,
          math::Fixed64 head_cos = math::Fixed64::fromFraction(1, 2),
-         math::Fixed64 brake_tau = math::Fixed64::zero())
+         math::Fixed64 brake_tau = math::Fixed64::zero(),
+         math::Fixed64 reaction = math::Fixed64::fromFraction(1, 5))
         : tau_(tau), brake_(brake), turn_(turn), dribble_(dribble), dive_speed_(dive_speed),
           side_(run), back_(back), yaw_(yaw), head_cos_(head_cos),
-          brake_tau_(brake_tau.raw > 0 ? brake_tau : tau * math::Fixed64::fromFraction(3, 10)) {
+          brake_tau_(brake_tau.raw > 0 ? brake_tau : tau * math::Fixed64::fromFraction(3, 10)),
+          reaction_(reaction) {
         // lag() at every tick out to kLagTicks, once per body (fx_exp_neg
         // per read made the Brain's reach scans ~5x slower).
         for (int k = 0; k <= kLagTicks; ++k) {
@@ -70,6 +72,8 @@ public:
     math::Fixed64 side() const noexcept { return side_; }
     math::Fixed64 back() const noexcept { return back_; }
     math::Fixed64 yaw() const noexcept { return yaw_; }
+    // G4.85: the time he takes to move on the kick (s) — his reaction.
+    math::Fixed64 reaction() const noexcept { return reaction_; }
 
     // Gait (G4.54): his top-speed share for moving along `dir` while facing
     // `face` (both unit), by the cosine c between them: full speed while
@@ -153,7 +157,7 @@ private:
     }
 
     static constexpr int kLagTicks = 10 * kTickRate;
-    math::Fixed64 tau_, brake_, turn_, dribble_, dive_speed_, side_, back_, yaw_, head_cos_, brake_tau_;
+    math::Fixed64 tau_, brake_, turn_, dribble_, dive_speed_, side_, back_, yaw_, head_cos_, brake_tau_, reaction_;
     math::Fixed64 lag_[kLagTicks + 1];
 };
 

@@ -266,6 +266,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
                 Vec2 n = cl.raw == 0 ? Vec2{Fixed64::zero(), Fixed64::one()}
                                      : Vec2{-cb.y / cl, cb.x / cl};
                 if (r2.raw & 1) n = Vec2{-n.x, -n.y};
+                flight_tick_ = clock_.tick();
                 ball_.owner.reset();
                 ball_.vel = Vec3{n.x * kTacklePokeSpeed,
                                  n.y * kTacklePokeSpeed, Fixed64::zero()};
@@ -381,6 +382,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             }
             ball_.owner.reset();
             box_clear_team_ = 0xFF;  // kicked: the goal kick is in play
+            flight_tick_ = clock_.tick();
             ball_.kick_alive = kKickAliveTicks;
             ball_.last_kicker = kicker;
             ball_.kicker_lockout = kKickerLockoutTicks;
@@ -508,6 +510,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                              (v.x * sn + v.y * c) * keep, Fixed64::zero()};
             ball_.last_kicker = blocker;
             ball_.pass_to = 0xFF;
+            flight_tick_ = clock_.tick();
             ball_.kicker_lockout = kBobbleLockoutTicks;
             ball_.kick_alive = kKickAliveTicks;
             last_touch_team_ = players_[blocker].team;
@@ -644,6 +647,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             ball_.kicker_lockout = kBobbleLockoutTicks;
             bad_touch_slot_ = best;
             bad_touch_tick_ = clock_.tick();
+            flight_tick_ = clock_.tick();
             last_touch_team_ = players_[best].team;
             return;  // still nobody's ball
         }

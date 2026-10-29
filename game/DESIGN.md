@@ -3112,6 +3112,58 @@ the defender stepped in front.
 Still the gap: interceptions 48-54 (pro 7.2), shots 20 (12.9), spells 365
 (121), shots 20 s+ into a spell 4% (72%).
 
+### 8.83 G4.85 — movement in the taxonomy; reaction is his own, charged once (mig 812)
+
+James 10/29: "lets continue" — then "our taxonomy should cover player
+movement" / "lets do it. we can always adjust later".
+
+- **The bug** (GAME_TRACE_FLIP): the flight read charged every man his
+  whole reaction AGAIN on every read of the flight. A receiver 3 m from a
+  ball rolling at him, already running onto it, read as "can't get there",
+  fell back to running at where the ball was, and it rolled past him 0.8 m
+  off. Now the reaction counts once, from the tick the flight began
+  (`World::flightTick()`: a kick, a tackle's poke, a body block, a bobble).
+- **Met hot, it bobbled:** fixed alone, receivers met passes early at 12-15+
+  m/s, over their control speed (semipro 13, ×0.75-1.25 by first touch):
+  53 bad touches a match at 15 m/s+ on passes meant for him (was 5). A man
+  knows his touch — the read now offers OUR men only points where our ball
+  has come down to his control speed (`move-controllable-pace`); 53 → 10.
+- **Reaction is the player's** (`reaction`, 'teaching' since mig 653, now
+  wired): `core::Body::reaction()` from the Reaction skill, 0.30 / 0.20 /
+  0.15 s at 0 / 50 / 100 (`skill.reaction.reaction_s_at*`; FH estimates, 50
+  = the old flat `concept.meet-the-pass.reaction_s`, retired). The flight
+  read and passSafe (was a hard 0.2 s) both use HIS. A body attribute
+  (rolled on the body base, never learned); attribute 15 on wire 0x37
+  (append-only), hashed in the body (goldens re-locked). Rolled with
+  `fh-game-roll --write`: means 60 / 59.
+- **The taxonomy covers movement** (mig 812): technique family `movement`
+  — HOW the body moves; movement-off-the-ball stays WHERE he runs. Groups:
+  ready and react, start and stop, change direction, gaits, adjust to the
+  ball, jump and land; 20 techniques, 13 wired to the engine (Body τ,
+  braking, turning, yaw, gaits, brakeToArrive, the flight read), linked to
+  meet-the-pass, intercept, jump-the-pass, drop-step, side-on-jockey,
+  jockey-angle, recover. Sources: [Bloomfield 2007] for the movement types
+  and directions, [Sheppard-Young 2006] for agility = change of velocity or
+  direction in response to a stimulus.
+- **Harness, StatsBomb's Interception:** an OUTFIELDER cutting out a pass.
+  Blocked or saved shots (23% of what we counted) and keeper claims (about
+  a quarter) were in it: the G4.84 baseline is 32 / 42 a team, not 48 /
+  54. New line: bad touches by whose ball (meant for him / another of ours
+  / theirs, a reaction touch) × speed.
+- **The baseline moved under us:** today's club lineup (a squad of 11
+  matches) re-tiered Lighthouse on the re-roll (two bench → starter, a few
+  ±1 ratings) and the OLD code on that data: spells 365 → 534, goals 6.4 →
+  10.2. Numbers below are old vs new code on today's data.
+
+20 matches LH APSL v Ukies, old → new code (pro): completion 71 / 72 → 77
+/ 77% (79), spells 573 → 497 (121), interceptions 46 / 68 → 37 / 61 (7.2),
+own-third losses 42 / 51 → 32 / 34 (2.1), bad touches 67 / 75 → 54 / 71
+(18.7) — closer on all of them — but shots 35 / 36 → 43 / 40 (12.9) and
+goals 10.8 → 14.4 (2.5): our ball now reaches its man, so more attacks get
+to the end. Still the gap, biggest first: reaction touches by defenders on
+slow balls (< 9 m/s: 39 a match come off him), shots 20 s+ into a spell 3-5%
+(72%).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
@@ -3153,5 +3205,11 @@ intents), weather, crowd, licensed anything, client-side prediction.
   11v11 AI in readable C++; role/mentality structure.
 - Buckland, *Programming Game AI by Example* — Simple Soccer: support-spot
   scoring, state-driven team play.
+- [Bloomfield 2007] Bloomfield, Polman & O'Donoghue, *Physical demands of
+  different positions in FA Premier League soccer*, J Sports Sci Med
+  6:63-70 — the Bloomfield Movement Classification (G4.85 movement family).
+- [Sheppard-Young 2006] Sheppard & Young, *Agility literature review:
+  classifications, training and testing*, J Sports Sci 24(9):919-932 —
+  agility responds to a stimulus (G4.85 reaction).
 - Mine all of these for AI design; re-express in fixed point. Never port
   floats.

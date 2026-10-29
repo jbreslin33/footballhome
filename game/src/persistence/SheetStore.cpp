@@ -26,7 +26,7 @@ int attributeIndex(const std::string& code) {
     static const char* codes[core::kAttributeCount] = {
         "pace", "passing", "shooting", "first_touch", "tackling", "anticipation", "decisions",
         "goalkeeping", "acceleration", "deceleration", "agility", "dribbling", "communication",
-        "concentration"};
+        "concentration", "reaction"};
     for (int i = 0; i < core::kAttributeCount; ++i)
         if (code == codes[i]) return i;
     return -1;
@@ -156,7 +156,7 @@ bool saveSheets(const DbConfig& cfg, const SheetTeam& team, const std::vector<co
     static const char* codes[core::kAttributeCount] = {
         "pace", "passing", "shooting", "first_touch", "tackling", "anticipation", "decisions",
         "goalkeeping", "acceleration", "deceleration", "agility", "dribbling", "communication",
-        "concentration"};
+        "concentration", "reaction"};
     try {
         pqxx::connection conn{connStr(cfg)};
         pqxx::work tx{conn};

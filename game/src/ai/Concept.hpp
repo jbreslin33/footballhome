@@ -288,13 +288,13 @@ class MeetThePass : public Concept {
 public:
     MeetThePass() : Concept("meet-the-pass", 153) {}
     void configure(const core::ModelParams& p) override;
-    math::Fixed64 reaction() const { return reaction_; }
+    // (Its reaction is the player's own since G4.85: core::Body::reaction.)
     int horizonTicks() const { return horizon_ticks_; }
     // A runner ahead of our ball in flight keeps going at least this fast.
     math::Fixed64 keepRunningSpeed() const { return keep_running_; }
 
 private:
-    math::Fixed64 reaction_, keep_running_;
+    math::Fixed64 keep_running_;
     int horizon_ticks_ = 90;
 };
 

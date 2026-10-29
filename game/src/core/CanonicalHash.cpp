@@ -53,6 +53,7 @@ std::uint64_t canonicalHash(const World& world) {
         mixFixed(h, body.side());
         mixFixed(h, body.back());
         mixFixed(h, body.yaw());
+        mixFixed(h, body.reaction());
         mixFixed(h, p.max_speed);
     }
     // Ball joined the state surface in G1.1 (golden re-locked then, once).

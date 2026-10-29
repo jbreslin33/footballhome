@@ -165,9 +165,9 @@ Fixed64 chanceQuality(const World& world, const TeamSetup& setup,
 // closing-speed math. Walk the ground pass's friction path (3-tick
 // strides) until it reaches the receiver; the pass is unsafe if any
 // opponent can reach a point on it by the time the ball does —
-// his locomotion reach over (t - reaction) + reach (G4.51; was
-// max_speed x (t - reaction)) — BEFORE the receiver, stepping to
-// meet it, gets there first (opponents checked first per stride: ties go
+// his locomotion reach over (t - HIS reaction, G4.85; was a flat 0.2 s)
+// + reach (G4.51; was max_speed x (t - reaction)) — BEFORE the receiver,
+// stepping to meet it, gets there first (opponents checked first per stride: ties go
 // to the defender, the cautious read). The static 2 m corridor alone let
 // G4.14's earliest-reach defenders read every pass: world matches
 // measured 2,230 balls collected by the other side (2.2 s possessions).
@@ -178,7 +178,10 @@ bool passSafe(const World& world, const TeamSetup& setup, SlotIndex passer,
     const Fixed64 len = math::length(ab);
     if (len.raw == 0) return true;
     const Vec2 dir{ab.x / len, ab.y / len};
-    const Fixed64 reaction = Fixed64::fromFraction(1, 5);  // 0.2 s
+    auto react = [&](SlotIndex j, Fixed64 t) {
+        const Fixed64 r = world.body(j).reaction();
+        return t > r ? t - r : Fixed64::zero();
+    };
     Vec2 pos = from;
     Fixed64 s = speed, travelled = Fixed64::zero(), t = Fixed64::zero();
     for (int stride = 0; stride < 30; ++stride) {  // 90 ticks = 3 s
@@ -189,19 +192,17 @@ bool passSafe(const World& world, const TeamSetup& setup, SlotIndex passer,
             s = s * core::kBallRollDecayPerTick;
         }
         t += core::kTickDt * Fixed64::fromInt(3);
-        const Fixed64 react_t =
-            t > reaction ? t - reaction : Fixed64::zero();
         for (SlotIndex j = 0; j < world.playerCount(); ++j) {
             if (setup.team_of_slot[j] == setup.team_of_slot[passer])
                 continue;
             const auto& o = world.player(j);
             const Vec2 d{o.pos.x - pos.x, o.pos.y - pos.y};
-            const Fixed64 run = runToward(world, j, pos, react_t) + reach;
+            const Fixed64 run = runToward(world, j, pos, react(j, t)) + reach;
             if (math::lengthSquared(d) <= run * run) return false;
         }
         const auto& r = world.player(receiver);
         const Vec2 dr{r.pos.x - pos.x, r.pos.y - pos.y};
-        const Fixed64 rrun = runToward(world, receiver, pos, react_t) + reach;
+        const Fixed64 rrun = runToward(world, receiver, pos, react(receiver, t)) + reach;
         if (math::lengthSquared(dr) <= rrun * rrun) return true;
         if (travelled >= len) return true;  // arrived at the receiver
     }
@@ -319,11 +320,21 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
     f.live = !b.owner && world.restartTeam() == 0xFF;
     if (!f.live) return f;
 
-    // Each man starts after his reaction (+ his perception delay).
+    // Each man starts after HIS reaction (G4.85, the reaction attribute — was
+    // one flat meet-the-pass number) + his perception delay, counted once
+    // from when the flight BEGAN. Charged afresh on every read, a receiver
+    // 3 m from a ball rolling at him, already running onto it, read as
+    // "can't get there" (his whole reaction again before he may move) and
+    // fell back to chasing where the ball was: it rolled past him 0.8 m off
+    // and their man took it (GAME_TRACE_FLIP).
+    const Fixed64 since = Fixed64::fromInt(static_cast<std::int64_t>(
+                              world.tickCount() - world.flightTick())) * core::kTickDt;
     Fixed64 react[64];
-    for (SlotIndex i = 0; i < n && i < 64; ++i)
-        react[i] = bookOf(i).meet_the_pass.reaction() +
-                   Fixed64::fromInt(levelOf(i).perception_delay_ticks) * core::kTickDt;
+    for (SlotIndex i = 0; i < n && i < 64; ++i) {
+        const Fixed64 full = world.body(i).reaction() +
+                             Fixed64::fromInt(levelOf(i).perception_delay_ticks) * core::kTickDt;
+        react[i] = full > since ? full - since : Fixed64::zero();
+    }
     const Fixed64 box_x = half_x_ - Fixed64::fromFraction(33, 2);   // 16.5 m
     const Fixed64 box_y = Fixed64::fromFraction(2016, 100);          // 20.16 m
     const std::uint32_t flagged = world.offsideMask();
@@ -367,6 +378,15 @@ const Brain::FlightRead& Brain::flightRead(const World& world) const {
             if (pos.z > (gk ? core::kKeeperReachZ : core::kBallControlRadius)) continue;
             const Fixed64 cap = gk ? core::kCaptureMaxSpeed + core::kKeeperHandsBonus : core::kCaptureMaxSpeed;
             if (sp2 > cap * cap) continue;
+            // Our own ball (G4.85): he takes it where it has come down to a
+            // pace his first touch can hold — a man knows his touch. Met
+            // early and hot it came off him (traced: 53 bad touches a match
+            // at 15 m/s+ on passes meant for him once the read stopped
+            // re-charging the reaction).
+            if (!gk && p.team == world.lastTouchTeam()) {
+                const std::int32_t c = levelOf(i).control_speed_mps;
+                if (c > 0 && sp2 > Fixed64::fromInt(c) * Fixed64::fromInt(c)) continue;
+            }
             if (gk) {  // hands only in his own box
                 const bool own_end = setup_.team_of_slot[i] == 0 ? pos.x < -box_x : pos.x > box_x;
                 if (!own_end || math::fx_abs(pos.y) > box_y) continue;

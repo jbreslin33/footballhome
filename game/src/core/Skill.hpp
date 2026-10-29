@@ -193,6 +193,14 @@ class Deceleration : public BodySkill {
 public:
     Deceleration() : BodySkill("deceleration", "brake_mps2", 5000, 7000, 9000) {}
 };
+// G4.85 [Sheppard & Young 2006: agility responds to a STIMULUS]: the time he
+// takes to move on the kick — 0.30 / 0.20 / 0.15 s (FH estimates; 50 = the
+// old flat meet-the-pass reaction_s). The flight read and the pass-safety
+// read charge it once, from the moment the flight began.
+class Reaction : public BodySkill {
+public:
+    Reaction() : BodySkill("reaction", "reaction_s", 300, 200, 150) {}
+};
 // His turning / cutting limit (sideways acceleration): 4 / 6 / 8 m/s².
 class Agility : public BodySkill {
 public:
@@ -283,6 +291,8 @@ public:
         skills_.emplace_back(dribbling_);
         skills_.emplace_back(new Communication());
         skills_.emplace_back(new Concentration());
+        reaction_ = new Reaction();
+        skills_.emplace_back(reaction_);
         for (auto& s : skills_) s->configure(p);
         for (BodySkill* g : {&side_, &back_, &yaw_, &brake_tau_}) g->configure(p);
         // How far he looks off his line at no cost — anatomy, shared.
@@ -306,7 +316,7 @@ public:
                     agility_->value(a.agility), dribbling_->value(a.dribbling),
                     gk_->diveSpeed(a.goalkeeping), side_.value(a.agility),
                     back_.value(a.agility), yaw_.value(a.agility), head_cos_,
-                    brake_tau_.value(a.deceleration));
+                    brake_tau_.value(a.deceleration), reaction_->value(a.reaction));
     }
     const std::vector<std::unique_ptr<Skill>>& skills() const { return skills_; }
 
@@ -315,6 +325,7 @@ private:
     Pace* pace_ = nullptr;
     Goalkeeping* gk_ = nullptr;
     BodySkill *accel_ = nullptr, *decel_ = nullptr, *agility_ = nullptr, *dribbling_ = nullptr;
+    BodySkill* reaction_ = nullptr;
     // G4.53/54: his gaits and body turn, also from agility — side-on run
     // (crossover) and backpedal top speed as shares of his forward top
     // speed, yaw in rad/s (≈ 400 / 520 / 630 °/s).

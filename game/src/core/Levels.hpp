@@ -152,17 +152,18 @@ struct PlayerAttributes {
     std::int16_t dribbling = -1;     // top speed with the ball, as a share
     std::int16_t communication = -1; // how often he makes a call (G4.70)
     std::int16_t concentration = -1; // how often he hears one (G4.71)
+    std::int16_t reaction = -1;      // time to move on the kick (G4.85, Body)
 };
 
 // Wire / registry order (game_attributes.sort_order; PROTOCOL 0x37).
 // Append-only: the wire carries this order (0x37 is count-prefixed).
-inline constexpr int kAttributeCount = 14;
+inline constexpr int kAttributeCount = 15;
 inline std::int16_t* attributeAt(PlayerAttributes& a, int i) {
     std::int16_t* f[kAttributeCount] = {&a.pace, &a.passing, &a.shooting, &a.first_touch,
                                         &a.tackling, &a.anticipation, &a.decisions,
                                         &a.goalkeeping, &a.acceleration, &a.deceleration,
                                         &a.agility, &a.dribbling, &a.communication,
-                                        &a.concentration};
+                                        &a.concentration, &a.reaction};
     return i >= 0 && i < kAttributeCount ? f[i] : nullptr;
 }
 
