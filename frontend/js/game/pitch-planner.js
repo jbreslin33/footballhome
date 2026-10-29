@@ -246,8 +246,18 @@
     ['contours', '〰 CONTOURS'], ['trees', '🌳 TREES'], ['buildings', '🏠 BUILDINGS'],
     ['softball_fences', '⛓ SOFTBALL FENCE'], ['rodeo_fences', '⛓ RODEO FENCE'], ['proposed_lane', '🚗 PROPOSED LANE'], ['channels', '🟠 WATER CHANNELS'],
     ['avoid_swamp_rf', '🚫 SWAMP RF'],
-    ['props', '🐴 PROPS'], ['labels', '🔤 LABELS'], ['ground', '🟩 GROUND'],
+    ['props', '🐴 PROPS'], ['labels', '🔤 LABELS'], ['ground', '🟩 GROUND'], ['map', '🛰 MAP'],
   ];
+  // 🛰 MAP (James 10/29: "toggle to overlay map … slider for diff levels of
+  // transparency"): Esri World Imagery (no key; James picked it over Google,
+  // which needs a Maps Platform key) stitched from zoom-19 tiles round the
+  // site origin into one texture, laid in site metres over the ground and
+  // under the pitches. Same lon/lat → metre factors as build_lighthouse_site.py.
+  const MAP_TILE = (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+  const MAP_ZOOM = 19;
+  const MAP_RADIUS_M = 320;
+  const MAP_Y = 0.3;   // above the ground layers, below the pitches (0.6)
+  const MAP_CREDIT = 'Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community';
   const FIELD_LAYERS = ['trees', 'buildings', 'softball_fences', 'rodeo_fences', 'proposed_lane', 'channels',
                         'avoid_swamp_rf', 'props', 'labels', 'ground'];
 
@@ -296,7 +306,8 @@
     });
     const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
     const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
-    const show = Object.assign(Object.fromEntries(LAYERS.map(([k]) => [k, k !== 'panel'])), readJSON(LAYER_KEY) || {});
+    const show = Object.assign(Object.fromEntries(LAYERS.map(([k]) => [k, k !== 'panel' && k !== 'map'])),
+      { map_opacity: 60 }, readJSON(LAYER_KEY) || {});
     // The built-in default: cyan for the 11v11, the 7v7 on its ⭐ BEST spot.
     const builtinDefault = { pitches: snapshot().pitches };   // leaves boxes alone
     // Put pitches (and, when given, boxes) where a snapshot says.
@@ -1148,6 +1159,24 @@
       tap(b, () => setLayer(k, !show[k]));
       layerBox.appendChild(b);
       paintLayerPill(k);
+      if (k === 'map') {   // its see-through slider: 0 = clear, 100 = solid photo
+        const wrap = mk('label', 'display:inline-flex;align-items:center;gap:4px;font:600 10px system-ui,sans-serif;color:#c8ccd4;');
+        const slider = mk('input', 'width:90px;min-height:0;margin:0;accent-color:#ffd24d;');
+        slider.type = 'range'; slider.min = '0'; slider.max = '100'; slider.step = '5';
+        slider.value = String(show.map_opacity);
+        slider.title = 'How solid the map is';
+        const pct = mk('span', 'min-width:2.6em;font-variant-numeric:tabular-nums;', `${show.map_opacity}%`);
+        slider.addEventListener('input', () => {
+          show.map_opacity = Number(slider.value);
+          pct.textContent = `${show.map_opacity}%`;
+          if (mapMesh) mapMesh.material.opacity = show.map_opacity / 100;
+          if (!show.map) setLayer('map', true);
+          else writeJSON(LAYER_KEY, show);
+        });
+        for (const ev of ['pointerdown', 'touchstart', 'mousedown']) slider.addEventListener(ev, (e) => e.stopPropagation());
+        wrap.append(slider, pct);
+        layerBox.appendChild(wrap);
+      }
     }
     for (const [t, v] of [['ALL ON', true], ['ALL OFF', false]]) {
       const b = mk('button', lp + 'background:rgba(255,255,255,.12);color:#f4f6fb;', t);
@@ -1209,6 +1238,9 @@
         if (f.setLayer) for (const k of FIELD_LAYERS) f.setLayer(k, show[k]);
         if (f.setLayer) f.setLayer('proposed_lane_fences', show.proposed_lane);   // the lane's fence goes with it
       }
+      if (show.map) buildMap();
+      if (mapMesh) mapMesh.visible = show.map;
+      mapCredit.style.display = show.map ? 'block' : 'none';
       renderer.showMatch = show.match;
       for (const m of renderer.pitchParts || []) m.visible = show.match;
       paintGap();
@@ -1224,7 +1256,59 @@
       if (f && f.setLayer) for (const k of FIELD_LAYERS.concat(['proposed_lane_fences'])) f.setLayer(k, true);
       if (f && f.setWater) f.setWater(false);
       if (parkWater) parkWater.visible = false;
+      if (mapMesh) mapMesh.visible = false;
+      mapCredit.style.display = 'none';
       for (const m of renderer.pitchParts || []) m.visible = true;
+    }
+    // 🛰 MAP — built once, on first show: every tile round the origin onto
+    // one canvas, then a plane spanning exactly those tiles' corners.
+    let mapMesh = null;
+    const mapCredit = mk('div', 'position:fixed;right:6px;bottom:calc(env(safe-area-inset-bottom, 0px) + 4px);z-index:30;' +
+      'display:none;padding:1px 5px;border-radius:4px;background:rgba(10,14,20,.6);color:#c8ccd4;font:500 9px system-ui,sans-serif;' +
+      'pointer-events:none;', MAP_CREDIT);
+    document.body.appendChild(mapCredit);
+    function buildMap() {
+      const f = renderer.field;
+      const O = window.LIGHTHOUSE_SITE && window.LIGHTHOUSE_SITE.origin;
+      if (mapMesh || !f || !f.site || !O) return;
+      const n = 2 ** MAP_ZOOM;
+      const D = Math.PI / 180;
+      const kx = 111320 * Math.cos(O.lat * D);
+      const kz = 110540;
+      const tx = (lon) => (lon + 180) / 360 * n;
+      const ty = (lat) => (1 - Math.log(Math.tan(lat * D) + 1 / Math.cos(lat * D)) / Math.PI) / 2 * n;
+      const lonOf = (x) => x / n * 360 - 180;
+      const latOf = (y) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) / D;
+      const dLon = MAP_RADIUS_M / kx;
+      const dLat = MAP_RADIUS_M / kz;
+      const x0 = Math.floor(tx(O.lon - dLon)), x1 = Math.floor(tx(O.lon + dLon));
+      const y0 = Math.floor(ty(O.lat + dLat)), y1 = Math.floor(ty(O.lat - dLat));
+      const cols = x1 - x0 + 1, rows = y1 - y0 + 1;
+      const canvas = document.createElement('canvas');
+      canvas.width = cols * 256;
+      canvas.height = rows * 256;
+      const ctx = canvas.getContext('2d');
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.anisotropy = 8;
+      // Site metres of the stitched image's edges (west/east, north/south).
+      const west = (lonOf(x0) - O.lon) * kx, east = (lonOf(x1 + 1) - O.lon) * kx;
+      const north = -(latOf(y0) - O.lat) * kz, south = -(latOf(y1 + 1) - O.lat) * kz;
+      mapMesh = new THREE.Mesh(new THREE.PlaneGeometry(east - west, south - north),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: show.map_opacity / 100,
+          depthWrite: false, side: THREE.DoubleSide }));
+      mapMesh.rotation.x = -Math.PI / 2;   // plane +y → north (−z); canvas top row is north
+      mapMesh.position.set((west + east) / 2, MAP_Y, (north + south) / 2);
+      mapMesh.renderOrder = 1;
+      mapMesh.visible = show.map;
+      f.site.add(mapMesh);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => { ctx.drawImage(img, c * 256, r * 256); tex.needsUpdate = true; };
+          img.src = MAP_TILE(MAP_ZOOM, x0 + c, y0 + r);
+        }
+      }
     }
     function paintPill(p) {
       const b = pills[p.id];
