@@ -11,7 +11,7 @@
 //   GET /api/pyramid[?root=apsl][&refresh=1]
 //     { root_id, totals: {leagues, clubs, teams, states},
 //       competitions: [{ id, parent_id, kind, tier, name, short_name, region,
-//                        website_url, standings_url, logo_url, states: [..],
+//                        website_url, standings_url, logo_url, lat, lon, states: [..],
 //                        source: {system, ok, read_at, ok_at, note} | null }],
 //       divisions: [{ id, competition_id, name, counts,
 //                     zones: [{kind, from, to, label, color, moves: up|down|null,
@@ -23,7 +23,8 @@
 //                     teams: [{pos, name, club, gp, w, d, l, gf, ga, gd, pts}] }],
 //       links: [{ lower: division id, upper_division: id | null,
 //                 upper_competition: id | null, promotes, relegates }],
-//       zone_kinds: [{code, label, moves, color}] }
+//       zone_kinds: [{code, label, moves, color}],
+//       clubs: [{id, name, lat, lon, venue_name, venue, divisions: [ids]}] }  (mig 844)
 //
 // Mig 827: zone meaning and colour are pyramid_zone_kinds rows; where a
 // zone's teams go is the pyramid_zone_moves view over pyramid_links.

@@ -143,11 +143,36 @@ Views only draw it:
   it; click a coloured row → follow it to where those teams go; wheel/pinch
   zoom, drag pan; ◀ ▶ / Play tour = overview, then each conference and its
   feeder levels in the model's order; full screen; far out = zone bands only.
-- Map / Club pathway / Standings / Growth: pills greyed until built — each
-  will be another view class over the same model.
+- `js/components/pyramid-map-view.js` — `PyramidMapView` (mig 844): a dark US
+  map (Leaflet 1.9.4 vendored in `frontend/vendor/leaflet/`, SRI-checked,
+  loaded only when the view opens; OpenStreetMap tiles darkened in CSS) with
+  a dot per club at its home ground — blue = has an APSL team, teal =
+  feeder-only; a club whose league publishes no address sits at its
+  league's point, dimmed + dashed. A label per conference: tap it → fly
+  there, and that conference's chart (the same `flow.chartHtml`) appears
+  under the map.
+- `js/components/pyramid-path-view.js` — `PyramidPathView` (mig 845): pick a
+  club (search box over the model's clubs); each of its teams' routes up the
+  promoting links (`PyramidModel.upRoutes` / `routeSteps`) drawn top-down with
+  the flow chart's tables, the club's rows outlined; two ways up = two routes
+  side by side; "N step(s) up to the APSL". The pick is remembered.
+- Standings / Growth: pills greyed until built — each will be another view
+  class over the same model.
+
+### Where clubs are (mig 844)
+
+`pyramid_clubs.venue_name / venue_address` = the club's home ground as its
+league's feed names it: TeamPass — the location of most games the team hosts
+(game → field → location); SportsEngine — the address of its home games. The
+first venue a club is given sticks. `PyramidSync::geocodePending()` geocodes
+on a background thread after a refresh, one Nominatim call a second
+(`CarpoolRouting::geocode`, made public): the full address, else its town +
+zip (`geocode_note` 'nominatim (town)'); a miss is stamped and not re-asked
+until the address changes. A league's point (`PyramidModel.compPoint`) = the
+middle of its placed clubs, else its geocoded region. First run 10/29: 128
+exact, 50 town, 2 misses (typos in the feed), 81 with no published address
+(ADASL, LISFL, MIPSL leagues).
 
 The screen (`apsl-pyramid.js`) holds the model, the conference + view pills
 and the ✏️ editor; it never lays anything out itself.
 
-Phase 2: map view — APSL venues carry street addresses in the TeamPass feed
-(`locations`), to geocode once and store.

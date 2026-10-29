@@ -30,6 +30,10 @@ public:
     // (force = all of them).  One refresh at a time; a second caller skips.
     static void refreshIfStale(bool force = false);
 
+    // Geocode clubs' home grounds and league region points not tried yet,
+    // on a background thread (one at a time; Nominatim's 1 request/second).
+    static void geocodePending();
+
     // One source.  Returns {source_id, ok, teams, note}.  Never throws.
     static nlohmann::json refreshSource(int sourceId);
 };

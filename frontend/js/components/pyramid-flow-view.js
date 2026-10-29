@@ -38,6 +38,7 @@ class PyramidFlowView {
       .fc-tbl td.tm, .fc-tbl th.tm { text-align:left; white-space:normal; width:100%; }
       .fc-tbl tr.z td:first-child { box-shadow:inset 4px 0 var(--zc); }
       .fc-tbl tr.z td { background:color-mix(in srgb, var(--zc) 20%, transparent); }
+      .fc-tbl tr.mine td { font-weight:800; outline:2px solid #e0e7ff; outline-offset:-2px; }
       .fc-legend { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; font-size:0.75rem; opacity:0.85; margin:-4px 0 12px; }
       .fc-legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
       .fc-edit { position:absolute; top:3px; right:4px; background:none; border:0; color:inherit; opacity:0.45; cursor:pointer; font-size:0.75rem; padding:2px; min-height:0; min-width:0; }
@@ -45,7 +46,8 @@ class PyramidFlowView {
   }
 
   // ── pieces ───────────────────────────────────────────────────────────
-  tableHtml(model, d, title, cls, note) {
+  // opts.club: a club name whose rows are marked (the Club pathway view).
+  tableHtml(model, d, title, cls, note, opts = {}) {
     const esc = (t) => this._esc(t);
     const cols = (this._copy('table_head') || '').split(/\s+/).filter(Boolean);
     const head = cols.map((c, i) => `<th${i === 1 ? ' class="tm"' : ''}>${esc(c === '-' ? '' : c)}</th>`).join('');
@@ -53,7 +55,7 @@ class PyramidFlowView {
       const z = model.zoneOf(d, t.pos);
       const tip = z ? (z.targets ? this._copy('moves_to', { zone: z.label, targets: z.targets }) : z.label) : '';
       return `
-      <tr class="${z ? 'z' : ''}" data-pos="${t.pos == null ? '' : esc(t.pos)}"${z ? ` style="--zc:${esc(z.color)}" title="${esc(tip)}"` : ''}>
+      <tr class="${z ? 'z' : ''}${opts.club && t.club === opts.club ? ' mine' : ''}" data-pos="${t.pos == null ? '' : esc(t.pos)}"${z ? ` style="--zc:${esc(z.color)}" title="${esc(tip)}"` : ''}>
         <td>${t.pos == null ? '' : esc(t.pos)}</td><td class="tm">${esc(t.name)}</td>
         <td>${t.gp}</td><td>${t.gd > 0 ? '+' : ''}${t.gd}</td><td><b>${t.pts}</b></td>
       </tr>`;

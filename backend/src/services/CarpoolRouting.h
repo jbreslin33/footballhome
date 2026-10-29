@@ -38,6 +38,8 @@ public:
     // is never re-asked.
     static std::optional<std::string> reverseGeocode(const LatLon& at);
 
-private:
+    // A US address → a point (Nominatim /search, one outbound call at a
+    // time).  Public since mig 844: the #apsl-pyramid map geocodes clubs'
+    // home grounds with it too (PyramidSync::geocodePending).
     static std::optional<LatLon> geocode(const std::string& address);
 };

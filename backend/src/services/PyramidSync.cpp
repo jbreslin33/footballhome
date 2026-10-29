@@ -1,6 +1,9 @@
 #include "PyramidSync.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <thread>
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
@@ -11,12 +14,14 @@
 
 #include "../core/HttpClient.h"
 #include "../database/Database.h"
+#include "CarpoolRouting.h"
 
 using json = nlohmann::json;
 
 namespace {
 
 std::mutex gRefreshMutex;
+std::atomic<bool> gGeocoding{false};
 
 std::string proxyUrl() {
     const char* env = std::getenv("TEAMPASS_PROXY_URL");
@@ -111,6 +116,44 @@ public:
         if (st.contains("sort_keys") && st["sort_keys"].is_array())
             for (const auto& k : st["sort_keys"]) if (k.is_number()) sortKeys.push_back(std::to_string(k.get<long long>()));
 
+        // team_id → its home ground: the location of most of the games it
+        // hosts (t1 = home), as "street, city, ST zip" (mig 844, the map).
+        const json fields = body.contains("fields") && body["fields"].is_object() ? body["fields"] : json::object();
+        const json locs = body.contains("locations") && body["locations"].is_object() ? body["locations"] : json::object();
+        std::map<std::string, std::map<std::string, int>> hosted;
+        if (body.contains("games") && body["games"].is_array())
+            for (const auto& g : body["games"]) {
+                if (!g.contains("t1") || !g["t1"].is_number() || !g.contains("f") || !g["f"].is_number()) continue;
+                const std::string fid = std::to_string(g["f"].get<long long>());
+                if (!fields.contains(fid) || !fields[fid].contains("location_id")) continue;
+                const json& lid = fields[fid]["location_id"];
+                if (!lid.is_number()) continue;
+                hosted[std::to_string(g["t1"].get<long long>())][std::to_string(lid.get<long long>())]++;
+            }
+        auto venueOf = [&](const std::string& tid, json& row) {
+            auto it = hosted.find(tid);
+            if (it == hosted.end()) return;
+            const auto best = std::max_element(it->second.begin(), it->second.end(),
+                                               [](const auto& a, const auto& b) { return a.second < b.second; });
+            if (!locs.contains(best->first)) return;
+            const json& l = locs[best->first];
+            // Any of these may be a number (zip) or null in the feed.
+            auto field = [&l](const char* k) -> std::string {
+                if (!l.contains(k) || l[k].is_null()) return {};
+                if (l[k].is_string()) return squeeze(l[k].get<std::string>());
+                if (l[k].is_number_integer()) return std::to_string(l[k].get<long long>());
+                return {};
+            };
+            std::string addr = field("address1");
+            const std::string city = field("city"), st = field("state"), zip = field("zip");
+            if (!city.empty()) addr += (addr.empty() ? "" : ", ") + city;
+            if (!st.empty()) addr += (addr.empty() ? "" : ", ") + st;
+            if (!zip.empty()) addr += " " + zip;
+            if (city.empty() && zip.empty()) return;
+            row["venue_name"] = field("name");
+            row["venue_address"] = addr;
+        };
+
         // team_id → its totals row (the feed carries the current season only).
         std::map<std::string, json> byTeam;
         for (const auto& [key, t] : totals.items())
@@ -137,6 +180,7 @@ public:
                 if (clubs.contains(cid)) club = clubs[cid].value("name", "");
             }
             json row = {{"ext_id", tid}, {"name", name}, {"club", club}};
+            venueOf(tid, row);
             std::vector<int> sv;
             auto it = byTeam.find(tid);
             if (it != byTeam.end()) {
@@ -301,7 +345,8 @@ public:
 class SportsEngineReader : public PyramidReader {
 public:
     json read(const std::string& locator, std::string& note) override {
-        struct Team { std::string name, division, divisionId; int gp = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0; };
+        struct Team { std::string name, division, divisionId; int gp = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0;
+                      std::map<std::string, int> homes; std::map<std::string, std::string> homeName; };
         std::map<std::string, Team> teams;    // season-team id → totals
         HttpClient http;
         http.setTotalTimeoutSec(30);
@@ -327,6 +372,17 @@ public:
                 }
                 if (!ev.contains("game_details") || !ev["game_details"].is_object()) continue;
                 const json& g = ev["game_details"];
+                // The home side's ground: where it hosts (mig 844, the map).
+                const std::string where = ev.contains("location_address") && ev["location_address"].is_string() ? ev["location_address"].get<std::string>() : "";
+                if (!where.empty())
+                    for (const char* side : {"team_1", "team_2"})
+                        if (g.contains(side) && g[side].is_object() && g[side].value("is_home_team", false)) {
+                            const std::string hid = g[side].value("originator_id", "");
+                            if (teams.count(hid)) {
+                                teams[hid].homes[where]++;
+                                if (ev.contains("location_name") && ev["location_name"].is_string()) teams[hid].homeName[where] = ev["location_name"].get<std::string>();
+                            }
+                        }
                 if (g.value("status", "") != "completed" || !g.contains("team_1") || !g.contains("team_2")) continue;
                 const json& a = g["team_1"];
                 const json& b = g["team_2"];
@@ -356,9 +412,18 @@ public:
             });
             json list = json::array();
             int pos = 0;
-            for (const auto& [id, t] : rows)
-                list.push_back({{"ext_id", id}, {"name", t.name}, {"pos", ++pos}, {"gp", t.gp}, {"w", t.w}, {"d", t.d},
-                                {"l", t.l}, {"gf", t.gf}, {"ga", t.ga}, {"pts", pts(t)}});
+            for (const auto& [id, t] : rows) {
+                json row = {{"ext_id", id}, {"name", t.name}, {"pos", ++pos}, {"gp", t.gp}, {"w", t.w}, {"d", t.d},
+                            {"l", t.l}, {"gf", t.gf}, {"ga", t.ga}, {"pts", pts(t)}};
+                if (!t.homes.empty()) {
+                    const auto best = std::max_element(t.homes.begin(), t.homes.end(),
+                                                       [](const auto& a, const auto& b) { return a.second < b.second; });
+                    row["venue_address"] = best->first;
+                    auto n = t.homeName.find(best->first);
+                    if (n != t.homeName.end()) row["venue_name"] = n->second;
+                }
+                list.push_back(row);
+            }
             out.push_back({{"ext_id", did}, {"name", divName[did]}, {"sort", 0}, {"teams", list}});
         }
         if (out.empty()) note = "season listed no teams";
@@ -385,6 +450,66 @@ void stampFailure(int sourceId, const std::string& note) {
 }
 
 } // namespace
+
+// Clubs' home grounds, then league region points, one Nominatim lookup a
+// second (their usage policy), on a background thread so a page load never
+// waits on it.  A miss stamps geocoded_at with a note and is not asked again
+// until the address changes (the loader clears it).
+void PyramidSync::geocodePending() {
+    bool expected = false;
+    if (!gGeocoding.compare_exchange_strong(expected, true)) return;
+    std::thread([] {
+        auto* db = Database::getInstance();
+        auto stamp = [&](const char* table, const std::string& id, const std::optional<LatLon>& geo, const std::string& note) {
+            db->query(std::string("UPDATE ") + table + " SET lat = NULLIF($2, '')::numeric, lon = NULLIF($3, '')::numeric, geocoded_at = now(), geocode_note = $4 WHERE id = $1::int",
+                      {id, geo ? std::to_string(geo->lat) : "", geo ? std::to_string(geo->lon) : "", note});
+        };
+        try {
+            for (const auto& r : db->query("SELECT id, venue_address FROM pyramid_clubs "
+                                           " WHERE venue_address IS NOT NULL AND geocoded_at IS NULL ORDER BY id LIMIT 200")) {
+                const std::string addr = r["venue_address"].c_str();
+                auto geo = CarpoolRouting::geocode(addr);
+                std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+                std::string note = "nominatim";
+                // A venue Nominatim can't place as written (a park name, a
+                // number range) → its town + zip: drop the street part.
+                const size_t comma = addr.find(',');
+                if (!geo && comma != std::string::npos) {
+                    geo = CarpoolRouting::geocode(addr.substr(comma + 1));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+                    note = "nominatim (town)";
+                }
+                stamp("pyramid_clubs", r["id"].c_str(), geo, geo ? note : "no match: " + addr.substr(0, 80));
+            }
+            // A league's region ("Detroit Metro Area" + MI → "Detroit, MI");
+            // a region Nominatim can't place falls back to its first state.
+            for (const auto& r : db->query(
+                     "SELECT c.id, coalesce(c.region, '') AS region, "
+                     "       (SELECT min(s.state_code) FROM pyramid_competition_states s WHERE s.competition_id = c.id) AS st "
+                     "  FROM pyramid_competitions c WHERE c.geocoded_at IS NULL AND c.kind IN ('conference', 'affiliate')")) {
+                std::string region = r["region"].c_str();
+                const std::string st = r["st"].is_null() ? "" : r["st"].c_str();
+                for (const char* drop : {" Metro Area", " Metro"}) {
+                    const size_t p = region.find(drop);
+                    if (p != std::string::npos) region.erase(p, std::string(drop).size());
+                }
+                std::optional<LatLon> geo;
+                if (!region.empty() && region.find('&') == std::string::npos && region.find('/') == std::string::npos) {
+                    geo = CarpoolRouting::geocode(region + (st.empty() ? "" : ", " + st));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+                }
+                if (!geo && !st.empty()) {
+                    geo = CarpoolRouting::geocode(st + ", USA");
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+                }
+                stamp("pyramid_competitions", r["id"].c_str(), geo, geo ? "nominatim" : "no match: " + region);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[pyramid] geocode: " << e.what() << std::endl;
+        }
+        gGeocoding = false;
+    }).detach();
+}
 
 json PyramidSync::refreshSource(int sourceId) {
     json result = {{"source_id", sourceId}, {"ok", false}, {"teams", 0}, {"note", ""}};
@@ -429,6 +554,7 @@ void PyramidSync::refreshIfStale(bool force) {
             json res = refreshSource(r["id"].as<int>());
             std::cerr << "[pyramid] " << res.dump() << std::endl;
         }
+        geocodePending();
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] " << e.what() << std::endl;
     }
