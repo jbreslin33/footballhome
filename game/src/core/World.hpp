@@ -9,6 +9,7 @@
 #pragma once
 
 #include "core/Ball.hpp"
+#include "core/BallFlight.hpp"
 #include "core/Locomotion.hpp"
 #include "core/Levels.hpp"
 #include "core/Clock.hpp"
@@ -117,6 +118,9 @@ public:
     // G4.51: the shared dive timings (mig 678); G4.52: each slot's Body.
     void setLocomotion(const Locomotion& l) { loco_ = l; }
     const Locomotion& locomotion() const noexcept { return loco_; }
+    // G4.87: how the ball flies (air drag) — the one law World and Brain share.
+    void setBallFlight(const BallFlight& f) { ball_flight_ = f; }
+    const BallFlight& ballFlight() const noexcept { return ball_flight_; }
     void setBody(SlotIndex slot, const Body& b) {
         if (slot < bodies_.size()) bodies_[slot] = b;
     }
@@ -216,6 +220,7 @@ private:
     std::vector<std::uint8_t> pass_to_;   // latched with the action (G4.81)
     std::vector<bool>        keeper_;
     Locomotion loco_;
+    BallFlight ball_flight_;
     std::vector<Body> bodies_;
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};

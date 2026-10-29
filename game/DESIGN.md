@@ -3213,6 +3213,44 @@ the safe-pass roll, a lapse), "hit it long" lapses 46% theirs (21 a match),
 and a loft lands at its launch speed (no drag: a 30 m ball arrives at 17
 m/s, over every control speed) — ball physics.
 
+### 8.85 G4.87 — the ball feels the air (mig 821)
+
+James 10/29: "can we open 2 agents. one for what you were already doing" —
+the mole ranked first after G4.86b: a ball in the air felt only gravity, so
+a 30 m loft came down at the 17 m/s it was struck, over every control speed.
+
+- **The law** [Goff-Carré 2009]: drag F_D = ½ ρ A v² C_D against the
+  velocity, as an acceleration a = −k·|v|·v, k = ρ·(π d²/4)·C_D / (2m) ≈
+  0.0105 / m with their measured numbers — ρ 1.2 kg/m³, d 0.218 m, m 0.424
+  kg, C_D 0.2 (no-spin launches at ~18 m/s; 0.17 at 19.4). Airborne only:
+  on the ground the roll decay [v1] already is the rolling loss. Not
+  modelled yet: spin / Magnus, and the drag crisis (below Re ≈ 2.2-3.0 ×
+  10⁵, ~15-21 m/s, C_D roughly doubles — Asai et al. 2007).
+- **One object, two users** (`core::BallFlight`, the G4.86 rule): the World
+  steps it every airborne tick (tickFreeBall) and strikes the aimed loft at
+  its `launchSpeed(carry)`; the Brain's race steps the same law
+  (Brain::race), `loftTo` leads the mate by its `flightTime(carry)` (was 2rv
+  / g) and `loftSafe` races the loft at the same launch speed. The aimed
+  loft has no closed form with drag: for every carry 1-255 m the launch
+  speed is found by bisection on the tick law itself, once, at construction
+  (tables shared, not copied with the World). `core::loftLaunchSpeed`
+  (vacuum) is gone. Numbers: `physics.ball.*` (mig 821); k in the hash.
+- **Lofts, with drag** (test_ball): 10 m struck 10.4 m/s (vacuum 9.9), lands
+  9.3 after 1.03 s; 30 m struck 19.5 (17.2), lands 13.9 after 1.83 s; 50 m
+  struck 27.4 (22.1), lands 15.6 after 2.47 s.
+
+20 matches LH v Ukies, G4.86b → G4.87 (pro): lofts now come down where
+they're aimed — over the high line to the picked man 45 / 40 → 64 / 55%,
+dead (out or offside) 37 / 50 → 18 / 36%; "hit it long" theirs at the kick
+46 → 37%; completion 76 / 76 → 77 / 78% (79). But interceptions 47 / 67 →
+54 / 72 (7.2), shots 45 / 42 → 53 / 44 (12.9), goals 11.8 → 14.2 (2.5),
+spells 528 → 548 (121): more lofts stay in play and get contested. Next
+mole: a loft still lands at 9-16 m/s (30 m: 13.9) and the receiver must
+take it under his ground control speed (semipro 13) — a dropping ball is
+taken with a cushion (thigh / chest / instep, the receiving-bouncing-and-
+aerial techniques), so aerial control wants its own number, not the ground
+one; then the drag crisis (C_D doubles below ~15-21 m/s).
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
@@ -3260,5 +3298,10 @@ intents), weather, crowd, licensed anything, client-side prediction.
 - [Sheppard-Young 2006] Sheppard & Young, *Agility literature review:
   classifications, training and testing*, J Sports Sci 24(9):919-932 —
   agility responds to a stimulus (G4.85 reaction).
+- [Goff-Carré 2009] Goff & Carré, *Trajectory analysis of a soccer ball*,
+  Am J Phys 77(11):1020-1027 — drag law and C_D 0.2 (G4.87 BallFlight).
+- [Asai 2007] Asai, Seo, Kobayashi & Sakashita, *Fundamental aerodynamics
+  of the soccer ball*, Sports Engineering 10(2):101-109 — the drag crisis
+  (not yet modelled).
 - Mine all of these for AI design; re-express in fixed point. Never port
   floats.

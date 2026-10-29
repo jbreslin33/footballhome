@@ -57,6 +57,7 @@ std::uint64_t canonicalHash(const World& world) {
         mixFixed(h, p.max_speed);
     }
     // Ball joined the state surface in G1.1 (golden re-locked then, once).
+    mixFixed(h, world.ballFlight().k());   // G4.87: the air it flies through
     const BallState& b = world.ball();
     mixFixed(h, b.pos.x); mixFixed(h, b.pos.y); mixFixed(h, b.pos.z);
     mixFixed(h, b.vel.x); mixFixed(h, b.vel.y); mixFixed(h, b.vel.z);

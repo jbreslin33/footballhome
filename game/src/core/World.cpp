@@ -366,13 +366,14 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                                                         : kShortPassSpeed) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (carry_m_[kicker] > 0) {
-                // Aimed loft (G4.48): no drag, so the first bounce lands at
-                // v² · 2r / g with rise = r · v — solve for v. The power
-                // error scales both, so a 10% miss is ~21% of the carry.
+                // Aimed loft (G4.48): the launch speed (rise = r · v) whose
+                // first bounce lands carry_m away — solved WITH air drag
+                // since G4.87 (core::BallFlight). The power error scales
+                // both, so a 10% miss is ~20% of the carry.
                 const std::int32_t cap = lv.kick_range_m;
                 const Fixed64 d = Fixed64::fromInt(
                     cap > 0 && carry_m_[kicker] > cap ? cap : carry_m_[kicker]);
-                const Fixed64 v = loftLaunchSpeed(d) * power_scale;
+                const Fixed64 v = ball_flight_.launchSpeed(d) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, v * kLoftLaunchRatio};
             } else {
                 const Fixed64 v = kLoftKickSpeed * power_scale;
@@ -673,9 +674,11 @@ void World::tickFreeBall(std::vector<MatchEvent>& events) {
     if (ball_.owner) return;
     if (ball_.kicker_lockout > 0) --ball_.kicker_lockout;
 
-    // Vertical: gravity while airborne, bounce on impact.
+    // Vertical: drag (G4.87, core::BallFlight) and gravity while airborne,
+    // bounce on impact.
     const bool airborne = ball_.pos.z.raw > 0 || ball_.vel.z.raw != 0;
     if (airborne) {
+        ball_flight_.step(ball_.vel);
         ball_.vel.z -= kGravity * kTickDt;
     }
 

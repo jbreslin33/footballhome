@@ -171,16 +171,15 @@ struct Loft {
     Vec2 at;
     std::uint8_t carry_m;
 };
-Loft loftTo(const core::PlayerState& mate, const Vec3& from, Fixed64 max_m) {
+Loft loftTo(const core::BallFlight& flight, const core::PlayerState& mate, const Vec3& from, Fixed64 max_m) {
     Vec2 at{mate.pos.x, mate.pos.y};
     Fixed64 d{};
     for (int k = 0; k < 3; ++k) {
         d = math::length(Vec2{at.x - from.x, at.y - from.y});
         if (d > max_m) d = max_m;
         if (d < Fixed64::one()) d = Fixed64::one();
-        const Fixed64 two_r = core::kLoftLaunchRatio * 2;
-        const Fixed64 v = math::fx_sqrt(core::kGravity * d / two_r);
-        const Fixed64 t = two_r * v / core::kGravity;
+        // Its time in the air, with drag (G4.87; was 2·r·v / g).
+        const Fixed64 t = flight.flightTime(d);
         at = Vec2{mate.pos.x + mate.vel.x * t, mate.pos.y + mate.vel.y * t};
     }
     const std::int64_t m = (d + Fixed64::fromFraction(1, 2)).raw >> Fixed64::FRAC_BITS;
@@ -315,7 +314,10 @@ void Brain::race(const World& world, const RaceBall& rb, FlightRead& f) const {
                                  books_[1].meet_the_pass.horizonTicks());
     for (int k = 0; k <= horizon && open > 0; ++k) {
         if (k > 0) {  // World::tickFreeBall, one tick
-            if (pos.z.raw > 0 || vel.z.raw != 0) vel.z -= core::kGravity * core::kTickDt;
+            if (pos.z.raw > 0 || vel.z.raw != 0) {
+                world.ballFlight().step(vel);   // G4.87: the World's own law
+                vel.z -= core::kGravity * core::kTickDt;
+            }
             pos += vel * core::kTickDt;
             if (pos.z.raw < 0) {
                 pos.z = Fixed64::zero();
@@ -401,7 +403,7 @@ bool Brain::passSafe(const World& world, SlotIndex passer, SlotIndex receiver,
 }
 
 // A loft he's about to hit (G4.86b): the same race on the ball as the World
-// launches it (core::loftLaunchSpeed — up at the launch ratio, no drag),
+// launches it (core::BallFlight — up at the launch ratio, with drag, G4.87),
 // out of reach until it comes down. "It flies over the block" was never
 // read: read balls in behind on the ground were 5% theirs at the kick,
 // lofted ones 30%.
@@ -410,7 +412,7 @@ bool Brain::loftSafe(const World& world, SlotIndex passer, const Vec2& from, con
     const Vec2 ab{at.x - from.x, at.y - from.y};
     const Fixed64 len = math::length(ab);
     if (len.raw == 0) return true;
-    const Fixed64 v = core::loftLaunchSpeed(Fixed64::fromInt(carry_m));
+    const Fixed64 v = world.ballFlight().launchSpeed(Fixed64::fromInt(carry_m));
     return raceSafe(world, passer, Vec3{from.x, from.y, Fixed64::zero()},
                     Vec3{ab.x / len * v, ab.y / len * v, v * core::kLoftLaunchRatio}, reach);
 }
@@ -2003,7 +2005,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                         Fixed64 dsq, bool lofted) {
             if (!reads) return true;
             if (lofted) {   // G4.86b: the loft he'll hit, dropped where loftTo drops it
-                const Loft lf = loftTo(world.player(recv), me.pos, rangeFor(lv, book_.direct_ball.maxRange()));
+                const Loft lf = loftTo(world.ballFlight(), world.player(recv), me.pos, rangeFor(lv, book_.direct_ball.maxRange()));
                 return loftSafe(world, slot, a, lf.at, lf.carry_m, safe_reach);
             }
             const Fixed64 v = core::weightedPassSpeed(math::fx_sqrt(dsq));   // G4.81: as he'll strike it
@@ -2171,7 +2173,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 Vec2 to{world.player(*r).pos.x, world.player(*r).pos.y};
                 if (longball) {
                     // Dropped where he'll be (G4.48), not hit at where he is.
-                    const Loft lf = loftTo(world.player(*r), me.pos, rangeFor(lv, book_.direct_ball.maxRange()));
+                    const Loft lf = loftTo(world.ballFlight(), world.player(*r), me.pos, rangeFor(lv, book_.direct_ball.maxRange()));
                     to = lf.at;
                     out.carry_m = lf.carry_m;
                 }
@@ -2222,7 +2224,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 out.action = Action::LoftedKick;  // over the top
                 // Dropped into his run (G4.48): the preset chip bounced on
                 // ~45 m past a 20 m runner.
-                const Loft lf = loftTo(world.player(target_slot), me.pos, rangeFor(lv, book_.direct_ball.maxRange()));
+                const Loft lf = loftTo(world.ballFlight(), world.player(target_slot), me.pos, rangeFor(lv, book_.direct_ball.maxRange()));
                 target = lf.at;
                 out.carry_m = lf.carry_m;
                 out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));

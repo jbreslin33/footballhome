@@ -6,8 +6,10 @@
 // surface the server drives.
 
 #include "test_harness.hpp"
+#include "core/BallFlight.hpp"
 #include "core/CanonicalHash.hpp"
 #include "core/World.hpp"
+#include "math/FixedMath.hpp"
 
 #include <cstdio>
 
@@ -233,6 +235,35 @@ FH_TEST(ball_determinism_two_runs_identical) {
     FH_EXPECT_EQ(a, b);
     std::printf("ball sequence hash: 0x%016llx\n",
                 static_cast<unsigned long long>(a));
+}
+
+// G4.87 air drag [Goff & Carré 2009]: the solved launch lands the loft at its
+// carry; drag makes it a harder strike than the drag-free v = sqrt(g·d/2r)
+// and it comes down slower than it went up.
+FH_TEST(ball_flight_drag_loft_lands_at_carry) {
+    const BallFlight f;
+    FH_EXPECT_GT(f.k(), Fixed64::fromFraction(9, 1000));    // ≈ 0.0105 / m
+    FH_EXPECT_LT(f.k(), Fixed64::fromFraction(12, 1000));
+    for (int c : {10, 30, 50}) {
+        const Fixed64 v = f.launchSpeed(Fixed64::fromInt(c));
+        const Fixed64 vacuum = fx_sqrt(kGravity * Fixed64::fromInt(c));   // 2r = 1
+        FH_EXPECT_GT(v, vacuum);
+        Vec3 vel{v, Fixed64::zero(), v * kLoftLaunchRatio}, pos{};
+        int ticks = 0;
+        while (ticks < 600) {
+            f.step(vel);
+            vel.z -= kGravity * kTickDt;
+            pos += vel * kTickDt;
+            ++ticks;
+            if (pos.z.raw < 0) break;
+        }
+        const Fixed64 miss = fx_abs(pos.x - Fixed64::fromInt(c));
+        FH_EXPECT_LT(miss, Fixed64::fromFraction(1, 2));
+        FH_EXPECT_LT(vel.x, v);   // horizontal speed lost to the air
+        FH_EXPECT_EQ(Fixed64::fromInt(ticks) * kTickDt, f.flightTime(Fixed64::fromInt(c)));
+        std::printf("loft %d m: strike %.1f m/s (vacuum %.1f), lands at %.1f m/s after %.2f s\n", c, v.toDouble(),
+                    vacuum.toDouble(), vel.x.toDouble(), f.flightTime(Fixed64::fromInt(c)).toDouble());
+    }
 }
 
 FH_TEST_MAIN()

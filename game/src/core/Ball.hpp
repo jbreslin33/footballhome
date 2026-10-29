@@ -16,7 +16,6 @@
 #pragma once
 
 #include "math/Fixed64.hpp"
-#include "math/FixedMath.hpp"
 #include "math/Vec3.hpp"
 
 #include <cstdint>
@@ -124,12 +123,8 @@ inline const math::Fixed64 kLoftKickRise    = math::Fixed64::fromInt(6);
 // ~27° launch; a 40 m ball leaves at ~22 m/s and peaks at ~5 m — a driven
 // long pass, not a skied hoof.
 inline const math::Fixed64 kLoftLaunchRatio = math::Fixed64::fromFraction(1, 2);
-// An aimed loft's launch speed (G4.48): no drag, so the first bounce lands
-// at v² · 2r / g with rise = r · v — solved for v. One formula for the World
-// that strikes it and the Brain that reads it (G4.86b).
-inline math::Fixed64 loftLaunchSpeed(math::Fixed64 carry_m) {
-    return math::fx_sqrt(kGravity * carry_m / (kLoftLaunchRatio * 2));
-}
+// An aimed loft's launch speed and flight time: core::BallFlight (G4.87,
+// solved with air drag; was v² · 2r / g, G4.48/G4.86b).
 
 // ── state ───────────────────────────────────────────────────────────────
 

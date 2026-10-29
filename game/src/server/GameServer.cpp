@@ -38,6 +38,7 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     if (unresolved) persistence::resolveGameModels(cfg_.models);
     skills_ = core::SkillSet(cfg.model_params);   // G4.33: DB numbers
     world_.setLocomotion(core::Locomotion(cfg.model_params));   // G4.51
+    world_.setBallFlight(core::BallFlight(cfg.model_params));   // G4.87
     brain_.setModelParams(cfg.model_params);
     brain_.setDirectPairs(cfg.direct_pairs);
     world_.setLevel(0, cfg.level_home);
