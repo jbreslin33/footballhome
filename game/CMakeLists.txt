@@ -32,6 +32,7 @@ target_include_directories(game_math PUBLIC src)
 # ── game_core — world, tick loop, canonical hash (G0.2) ────────────────
 add_library(game_core STATIC
   src/core/World.cpp
+  src/core/Officials.cpp
   src/core/CanonicalHash.cpp
   src/core/ConceptRegistry.cpp
   src/core/PlayerSheet.cpp
@@ -137,6 +138,7 @@ game_test(test_game_server)
 game_test(test_player_attributes)
 game_test(test_concepts)
 game_test(test_player_sheet)
+game_test(test_officials)
 # No realism gate (James 10/24: "no gate!"): realism is measured and read —
 # fh-game-match prints line height, team length, shots, entries — never a
 # test that blocks a build.

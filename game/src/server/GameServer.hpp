@@ -82,6 +82,8 @@ public:
         // G4.58: phases of play (DB) for the admin RUN_PHASE frame.
         std::vector<persistence::Phase> phases;
         std::vector<persistence::PhasePosition> phase_positions;
+        // G4.88 (mig 822): the match officials — empty = a 50-rated crew.
+        std::vector<persistence::CrewMember> crew;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);

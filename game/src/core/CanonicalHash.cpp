@@ -56,6 +56,14 @@ std::uint64_t canonicalHash(const World& world) {
         mixFixed(h, body.reaction());
         mixFixed(h, p.max_speed);
     }
+    // The officials (G4.88): where they stand decides offside calls.
+    for (int i = 0; i < kOfficialCount; ++i) {
+        const OfficialState& o = world.officials().official(i);
+        mixFixed(h, o.pos.x);
+        mixFixed(h, o.pos.y);
+        mixFixed(h, o.vel.x);
+        mixFixed(h, o.vel.y);
+    }
     // Ball joined the state surface in G1.1 (golden re-locked then, once).
     mixFixed(h, world.ballFlight().k());   // G4.87: the air it flies through
     const BallState& b = world.ball();

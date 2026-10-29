@@ -39,7 +39,8 @@ namespace {
 //   G4.80 2026-10-27 braking on brake_tau   0xcc37dec56712afa5
 //   G4.85 2026-10-29 reaction in the body   0x86e09a1d63a55e25
 //   G4.87 2026-10-29 air drag (BallFlight)  0xbfe63c836cfc5293
-constexpr std::uint64_t kGolden400TicksSeed42 = 0xbfe63c836cfc5293ULL;
+//   G4.88 2026-10-29 officials in the state (on G4.87) 0xb5e960d175a84ed0
+constexpr std::uint64_t kGolden400TicksSeed42 = 0xb5e960d175a84ed0ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

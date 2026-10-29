@@ -49,6 +49,25 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     level_id_[1] = cfg.level_away_id;
     applyRosters();
     applySlotLevels();
+    // The officials (G4.88): each with his own body and numbers.
+    world_.officials().configure(cfg.model_params);
+    for (const auto& m : cfg.crew) {
+        auto rating = [&](const char* code) -> std::int16_t {
+            const auto it = m.ratings.find(code);
+            return it == m.ratings.end() ? std::int16_t{-1} : static_cast<std::int16_t>(it->second);
+        };
+        core::PlayerAttributes a;
+        a.pace = rating("pace");
+        a.acceleration = rating("acceleration");
+        core::OfficialRatings r;
+        r.pace = a.pace;
+        r.acceleration = a.acceleration;
+        r.positioning = rating("positioning");
+        r.offside_judgement = rating("offside_judgement");
+        const std::int32_t cms = skills_.speedCms(a.pace >= 0 ? a.pace : std::int16_t{50});
+        world_.officials().setOfficial(static_cast<core::OfficialRole>(m.role), r, skills_.body(a),
+                                       Fixed64::fromFraction(cms, 100));
+    }
     transport_.setOnConnect(
         [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
     transport_.setOnDisconnect([this](ClientId id) { onDisconnect(id); });

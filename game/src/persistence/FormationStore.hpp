@@ -92,6 +92,16 @@ struct Phase {
     int press_line_pct = -1;
 };
 std::vector<Phase> loadPhases(const DbConfig& cfg);
+
+// The match officials (G4.88, mig 822): the crew of `level` (the home
+// team's band; falls back to semipro), each man's role and own ratings
+// (game_official_ratings). Empty = the World's 50-rated crew.
+struct CrewMember {
+    int role = 0;                       // core::OfficialRole
+    std::string name;
+    std::map<std::string, int> ratings; // game_ref_attributes code → 0-100
+};
+std::vector<CrewMember> loadCrew(const DbConfig& cfg, const std::string& level);
 // Restart shapes (mig 697): where the team in possession stands for a
 // phase, per formation and position number, in metres (depth from its own
 // goal line, width + = left from its view).
