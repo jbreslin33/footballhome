@@ -248,9 +248,11 @@ FH_TEST(laddered_passer_skips_offside_and_leads_the_central_runner) {
     g.w.placePlayer(5, at(20, -15), kFaceMinus);
     g.w.placePlayer(6, at(5, -25), kFaceMinus);
     g.w.placePlayer(7, at(5, -10), kFaceMinus);
-    // Without the ladder: most progress — the man standing offside.
+    // Without the ladder: most progress — but never the man standing
+    // offside (G4.89: Law 11 on every pass, not only the ladder's).
     const ai::Orders plain = g.orders(0);
-    FH_EXPECT(plain.action == core::Action::GroundKick && plain.move.move.y < Fixed64::zero());
+    FH_EXPECT(plain.action == core::Action::GroundKick && plain.other != 3 &&
+              plain.move.move.y >= Fixed64::zero());
     // With it: the ball into the space ahead of the central runner
     // (straight up the pitch), not the offside man, not the wide run.
     const ai::Orders lad = g.orders(100);

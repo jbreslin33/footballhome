@@ -46,6 +46,9 @@ struct ConceptContext {
     // first (-1 = none / the ball is owned) and where.
     int flight_first = -1;
     math::Vec2 flight_at{};
+    // A mate he may play to (G4.89: not in an offside position as he reads
+    // it); empty = anyone.
+    std::function<bool(core::SlotIndex)> eligible{};
 };
 
 class Concept {

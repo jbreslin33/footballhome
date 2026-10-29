@@ -1968,6 +1968,17 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         // goal; deterministic tie-break by slot order (iteration order).
         const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
         const Fixed64 my_progress = me.pos.x * sgn;
+        // Law 11 on every pass he picks (G4.89): never to a man he reads in
+        // an offside position — beyond their second-last man (keeper
+        // counts), the ball and halfway, on HIS picture of the line (the
+        // world as he sees it). Only the pass ladder asked (G4.36): the
+        // offside whistle caught the man it was played to 90% of the time,
+        // 56% of them 3 m+ past the line at the kick — off recycles, the
+        // long-ball lapse, the plain pass, the keeper's short ball.
+        const PassLadder::Lines law_lines = book_.pass_ladder.lines(world, slot, sign);
+        auto onside = [&](SlotIndex j) {
+            return !PassLadder::offsidePosition(world.player(j).pos.x * sgn, my_progress, law_lines);
+        };
         Fixed64 their_line = Fixed64::fromInt(-1000);  // in x*sgn
         for (SlotIndex j = 0; j < world.playerCount(); ++j) {
             if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
@@ -2065,8 +2076,9 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             const bool reads_line = ratings_[slot][H.bit()] > 0 && applies(slot, H.bit(), ksec);
             if (reads_line && overTheLine(H.high())) return out;
             {   // not on (or not read): the short, simple ball
-                const ConceptContext pcx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
-                                         half_x_, degree(slot, book_.short_simple.bit())};
+                ConceptContext pcx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                                   half_x_, degree(slot, book_.short_simple.bit())};
+                pcx.eligible = onside;
                 if (const auto r = book_.short_simple.pick(pcx, lane_open, H.keeperShort())) {
                     const Vec2 to{world.player(*r).pos.x, world.player(*r).pos.y};
                     out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
@@ -2126,9 +2138,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             // G4.36: a laddered passer never picks a man in an offside
             // position, and plays an onside runner into the space he is
             // running into (rungs 1-2 are a ball into space) [Bielsa-Leeds].
+            if (!onside(i)) continue;   // G4.89: every pass, not just the ladder's
             if (ladder) {
-                if (PassLadder::offsidePosition(mate.pos.x * sgn, my_progress, lines))
-                    continue;
                 const Vec2 lead = book_.pass_ladder.leadPoint(mate, me.pos);
                 if (lead.x * sgn > lines.back && lead.x * sgn > b.x * sgn) b = lead;
             }
@@ -2164,8 +2175,9 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
 
         // G4.47 pass habits / lapses: he plays HIS ball, now.
         if (pass_choice == book_.short_simple.bit() || pass_choice == book_.direct_ball.bit()) {
-            const ConceptContext pcx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
-                                     half_x_, degree(slot, pass_choice)};
+            ConceptContext pcx{world, slot, sign, Vec2{seen_ball.x, seen_ball.y},
+                               half_x_, degree(slot, pass_choice)};
+            pcx.eligible = onside;
             const bool liked = ratings_[slot][29] == 0 || applies(slot, 29, world.tickCount() / 30);
             const bool longball = pass_choice == book_.direct_ball.bit();
             const auto r = longball ? book_.direct_ball.pick(pcx) : book_.short_simple.pick(pcx, lane_open);
@@ -2260,6 +2272,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 const Fixed64 dsq = distSq(me.pos, mate.pos);
                 if (dsq < kPassMin * kPassMin || dsq > kPassMax * kPassMax)
                     continue;
+                if (!onside(i)) continue;   // G4.89
                 const Vec2 a{me.pos.x, me.pos.y};
                 const Vec2 b{mate.pos.x, mate.pos.y};
                 if (!lane_open(a, b) || !safe(i, a, b, dsq, false)) continue;

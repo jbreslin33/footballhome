@@ -148,6 +148,7 @@ std::optional<core::SlotIndex> ShortSimple::pick(const ConceptContext& c, const 
     for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
         const auto& m = w.player(j);
         if (j == c.slot || m.team != me.team) continue;
+        if (c.eligible && !c.eligible(j)) continue;
         if ((m.pos.x - me.pos.x) * s < -back_) continue;
         const Fixed64 d2 = dist2(m.pos, me.pos);
         if (d2 < min_ * min_ || d2 > best_d2) continue;
@@ -173,6 +174,7 @@ std::optional<core::SlotIndex> DirectBall::pick(const ConceptContext& c) const {
     for (core::SlotIndex j = 0; j < w.playerCount(); ++j) {
         const auto& m = w.player(j);
         if (j == c.slot || m.team != me.team || w.isKeeper(j)) continue;
+        if (c.eligible && !c.eligible(j)) continue;
         const Fixed64 x = m.pos.x * s;
         if (x < best_x) continue;
         const Fixed64 d2 = dist2(m.pos, me.pos);

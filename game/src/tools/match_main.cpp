@@ -595,6 +595,9 @@ int main(int argc, char** argv) {
     // an onside man and offside touches nobody flagged (World counters); men
     // flagged wrong / missed at each kick into their half; where the judging
     // assistant stood off level with the line (+ = beyond it).
+    // Each offside whistle (G4.89): the kick it came off, was he the man it
+    // was played to, his job at the kick, how far past the line he stood.
+    long ow_n = 0, ow_why[ai::kWhyCount + 1] = {}, ow_intended = 0, ow_job[ai::kWhyCount] = {}, ow_depth[4] = {};
     long off_called[2] = {}, off_wrong = 0, off_missed = 0, flag_wrong = 0, flag_missed = 0, flag_kicks = 0;
     long ar_off[5] = {};
     double ar_off_sum = 0;
@@ -636,6 +639,7 @@ int main(int argc, char** argv) {
         long kick_tick = 0;
         math::Vec2 kick_aim{}, kick_from{};
         int kick_passer = -1;
+        std::vector<int> kick_job;   // everyone's job at the last kick
         int kick_pred = -1;
         int pred_us = -1, pred_them = -1, pred_margin = 0, pred_us_why = -1;   // at kick+1 / +10
         // GAME_TRACE_FLIP=n: passes the read gave to us that they cut (match 1).
@@ -882,8 +886,29 @@ int main(int argc, char** argv) {
                 if (s.world().restartTeam() != 0xFF) {
                     ++t.dead;
                     tf_tick = -1;
-                    for (const auto& e : s.lastEvents())
-                        if (e.type == core::MatchEventType::Offside) ++t.offside;
+                    for (const auto& e : s.lastEvents()) {
+                        if (e.type != core::MatchEventType::Offside) continue;
+                        ++t.offside;
+                        if (kick_at.size() != s.world().playerCount() || kick_job.size() != kick_at.size()) continue;
+                        int who = -1; double bd = 1e9;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            if (s.world().player(j).team != pend_team) continue;
+                            const double dx = s.world().player(j).pos.x.toDouble() - b.pos.x.toDouble(), dy = s.world().player(j).pos.y.toDouble() - b.pos.y.toDouble();
+                            if (dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; who = j; }
+                        }
+                        if (who < 0) continue;
+                        // Their second-last man at the kick (keeper counts), in our attack direction.
+                        const double sg = pend_team == 0 ? 1.0 : -1.0;
+                        double l1 = -1e9, l2 = -1e9;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            if (s.world().player(j).team == pend_team) continue;
+                            const double x = kick_at[j].x.toDouble() * sg;
+                            if (x > l1) { l2 = l1; l1 = x; } else if (x > l2) l2 = x;
+                        }
+                        const double past = kick_at[who].x.toDouble() * sg - l2;
+                        ++ow_n; ++ow_why[pend_why]; ow_intended += who == pend_other; ++ow_job[kick_job[who]];
+                        ++ow_depth[past < 0 ? 0 : past < 1 ? 1 : past < 3 ? 2 : 3];
+                    }
                     pend_team = -1;
                 } else if (b.owner) {
                     if (s.world().player(*b.owner).team == pend_team) {
@@ -1101,6 +1126,8 @@ int main(int argc, char** argv) {
                 kick_at.clear(); kick_tick = k;
                 for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
                     kick_at.push_back(math::Vec2{s.world().player(j).pos.x, s.world().player(j).pos.y});
+                kick_job.assign(s.world().playerCount(), 0);
+                for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) kick_job[j] = static_cast<int>(s.lastOrders()[j].why);
                 pend_other = o.other;
                 pf_bucket = -1;
                 if (o.other >= 0 && o.other < s.world().playerCount() && o.why != ai::Why::Shoot &&
@@ -1353,6 +1380,16 @@ int main(int argc, char** argv) {
             std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",
                         ib_all_read[1] / nm, 100.0 * ib_theirs_read[1] / std::max(1L, ib_all_read[1]),
                         ib_all_read[0] / nm, 100.0 * ib_theirs_read[0] / std::max(1L, ib_all_read[0]));
+        if (ow_n) {
+            std::printf("  each offside whistle (%.1f a match): the man it was played to %.0f%%; past their second-last man at the kick: not (onside) %.0f%% · <1 m %.0f%% · 1-3 m %.0f%% · 3+ m %.0f%%\n    off the kick:",
+                        ow_n / nm, 100.0 * ow_intended / ow_n, 100.0 * ow_depth[0] / ow_n, 100.0 * ow_depth[1] / ow_n, 100.0 * ow_depth[2] / ow_n, 100.0 * ow_depth[3] / ow_n);
+            for (int w = 0; w <= ai::kWhyCount; ++w)
+                if (ow_why[w] * 25 >= ow_n) std::printf(" %s %.0f%%", w == ai::kWhyCount ? "in behind" : ai::kWhyNames[w], 100.0 * ow_why[w] / ow_n);
+            std::printf("\n    he was doing at the kick:");
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (ow_job[w] * 25 >= ow_n) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * ow_job[w] / ow_n);
+            std::printf("\n");
+        }
         if (ib_loft_all[0] + ib_loft_all[1])
             std::printf("  read balls in behind: on the ground %.1f a match, theirs %.0f%% · lofted %.1f, theirs %.0f%%\n",
                         ib_loft_all[0] / nm, 100.0 * ib_loft_theirs[0] / std::max(1L, ib_loft_all[0]),

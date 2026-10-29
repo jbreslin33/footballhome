@@ -3320,6 +3320,36 @@ Next: the pro offside number (rerun the script), how far beyond the line
 real assistants stand (Oudejans's 179/200 is a share, not a distance), and
 the officials on the HUD (an append-only frame).
 
+### 8.87 G4.89 — Law 11 on every pass; the pro offside number (mig 825)
+
+James 10/29: "do we have offsides lol" → offside next, "yes".
+
+- **The pro number** (mig 825): Premier League 2015/16, StatsBomb Open
+  Data, 380 matches — **1.96 offsides a team a match** (Offside events +
+  passes with outcome Pass Offside; `benchmarks_statsbomb.py 2 27`). The
+  game: 28 / 24.
+- **Each whistle, measured** (new harness line: the kick it came off, was he
+  the man it was played to, his job at the kick, how far past their
+  second-last man): the man it was played to 90%; 56% of them 3 m+ past the
+  line at the kick, off recycles (16%), the long-ball lapse (20%), plain
+  passes, the keeper's short ball. Only the pass ladder asked the law
+  (G4.36).
+- **Every pass asks it now:** one check (`onside`, PassLadder::
+  offsidePosition on `PassLadder::lines` — beyond their second-last man,
+  keeper counted, the ball and halfway) on the world as the passer SEES it,
+  for the plain pass, the ladder, recycles and the concept pickers
+  (ShortSimple / DirectBall through `ConceptContext::eligible`: lapses
+  included — a lapse is the wrong KIND of ball, not a blind eye to the
+  law). A back pass can't be offside, so play-back doesn't ask.
+- 10 matches LH v Ukies: whistles 52.6 → 34.9 a match; for a man really
+  offside ~37 → ~9; completion 77 / 78 → 79 / 81% (pro 79); goals 11.0 →
+  10.0.
+- **Next mole — the assistant:** 75% of the whistles left are for ONSIDE
+  men (26 a match): balls now go to runners timed on the line, and our
+  assistant stands on average 2 m beyond it (33% of kicks 3 m+; IFAB: level
+  with the second-last defender), judging tight calls from a bad angle
+  [Oudejans 2000].
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical
