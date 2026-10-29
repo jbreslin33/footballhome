@@ -24,12 +24,11 @@ list no affiliate. States: `pyramid_competition_states`.
 | `teampass_json` | APSL (3841, every conference), Cosmo (3840) | backend, scraper proxy |
 | `teampass_tables` | ADASL `/adasl/Tables/` | backend, scraper proxy |
 | `demosphere` | LISFL (data rides in the page as JSON; URL carries the season) | backend |
-| `sportsengine` | CASA Select Philadelphia, Lancaster, North Jersey, Central Jersey — standings computed from each season's games (mig 823) | backend |
+| `sportsengine` | CASA Select Philadelphia, Lancaster, North Jersey, Central Jersey (mig 823); CASA MA (mig 862: "Open 11v11 Divisions", 1 Primera … 5 Quinta, Primera → Mayflower) — standings computed from each season's games; the program id is the season page's `tab_schedule?page_node_id=` program, new each season | backend |
 | `root_soccer` | MIPSL — rows stream in lazy Next.js chunks, browser only | `scripts/pyramid-chrome-sync.js` (hourly timer) |
 
-No source yet: CASA MA (SportsEngine — find its season page's program id,
-as for the other CASA regions), MMSL (no public tables found). Those show as
-"tables not mirrored yet" boxes.
+No source yet: MMSL (no public tables found) — shown as a "tables not
+mirrored yet" box.
 
 APSL's one feed covers all conferences: `pyramid_feed_divisions` maps the
 feed's division ids to conference nodes (Mid-Atlantic = Chesapeake + Old
@@ -287,19 +286,6 @@ APSL at Camden Athletic Complex, Oaklyn Liga 1 at Northeast High School);
 territories + drive times use the APSL teams' grounds
 (`pyramid_team_conference`). 10/29: 146 grounds, 144 placed; Trinity's
 median drive is 0m because 6 of its 8 APSL teams share The Highlands School.
-
-### Seasons (mig 847)
-
-TeamPass feeds serve any past season (`?season=<id>`, listed in
-`standings.season_list`). `PyramidSync::storeSeasons` re-counts the current
-season from the feed just read and fetches each past season ONCE on a
-background thread → `fh_pyramid_season_load` → `pyramid_seasons` +
-`pyramid_season_divisions` (teams + the feed's club ids, tied to a
-competition by feed id or by name). A conference that no longer exists is an
-inactive `pyramid_competitions` row (Northeast, 2022–24, split into Mayflower
-+ Constitution). A conference's size per season = DISTINCT clubs (Fall +
-Spring tables list the same sides); a league's teams = team entries.
-APSL: 36 → 39 → 46 → 76 → 81 sides (2022/23 → 2026/27).
 
 ### Where clubs are (mig 844)
 
