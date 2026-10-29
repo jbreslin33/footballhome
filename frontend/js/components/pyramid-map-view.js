@@ -24,11 +24,12 @@
 //              for the picked conference) — placed like the bubbles: a free
 //              side of the dot or not at all; picked conference first,
 //              then APSL clubs, then feeders.
-//   territory  every spot on screen belongs to the conference of its
-//              NEAREST located club, so a border falls halfway between a
-//              conference's clubs and its neighbours'; it reaches ~50 km from
-//              a club.  The picked conference's territory is outlined and
-//              tinted (a canvas pane under the dots, redrawn per view).  The
+//   territory  a spot belongs to the conference of its NEAREST located club
+//              (where conferences meet, the border is the halfway line
+//              between their clubs) within the hull around that conference's
+//              clubs widened ~20 km (on an open side it stops just past the
+//              outermost clubs).  The picked conference's territory is
+//              outlined and tinted (a canvas pane under the dots, per view).  The
 // conference pills choose which conferences' clubs are on the map.
 //
 // Nothing hides anything (owner 2026-10-29: "use arrows to bubble as its
@@ -294,8 +295,13 @@ class PyramidMapView {
     }
   }
 
-  // The picked conference's territory: nearest located club wins each 4px
-  // cell, out to ~50 km; its cells are tinted and its edge outlined.
+  // The picked conference's territory (owner: "borders especially in
+  // northeast need to be on edge of other conf. in isolated conferences just
+  // draw it at or near the furthest teams"): a 4px cell is the conference's
+  // when (1) its nearest located club is one of the conference's — so where
+  // conferences meet, the border is the halfway line between their clubs —
+  // and (2) it lies within the hull around the conference's clubs, widened
+  // ~20 km — so on an open side it stops just past the outermost clubs.
   _drawTerritory() {
     const map = this.map, cv = this.canvas;
     if (!map || !cv) return;
@@ -310,23 +316,25 @@ class PyramidMapView {
       const c = map.latLngToContainerPoint(d.at);
       return { x: c.x, y: c.y, mine: d.conf === this.sel };
     });
-    if (!pts.some((p) => p.mine)) return;
-    // ~50 km in screen pixels at the map's centre.
+    const mine = pts.filter((p) => p.mine);
+    if (!mine.length) return;
+    // ~20 km in screen pixels at the map's centre.
     const ctr = map.getCenter();
     const pxKm = map.latLngToContainerPoint(ctr).distanceTo(map.latLngToContainerPoint([ctr.lat, ctr.lng + 1])) / (111.32 * Math.cos(ctr.lat * Math.PI / 180));
-    const R2 = Math.pow(Math.max(6, 50 * pxKm), 2);
+    const margin = Math.max(6, 20 * pxKm);
+    const hull = PyramidMapView.hull(mine);
     const cell = 4, W = Math.ceil(size.x / cell), H = Math.ceil(size.y / cell);
-    const grid = new Uint8Array(W * H);   // 0 none · 1 this conference · 2 another
+    const grid = new Uint8Array(W * H);   // 1 = this conference's territory
     for (let j = 0; j < H; j++) {
       const y = j * cell + cell / 2;
       for (let i = 0; i < W; i++) {
         const x = i * cell + cell / 2;
-        let best = Infinity, mine = false;
+        let best = Infinity, isMine = false;
         for (const p of pts) {
           const d2 = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
-          if (d2 < best) { best = d2; mine = p.mine; }
+          if (d2 < best) { best = d2; isMine = p.mine; }
         }
-        grid[j * W + i] = best > R2 ? 0 : (mine ? 1 : 2);
+        if (isMine && PyramidMapView.hullDistance(hull, x, y) <= margin) grid[j * W + i] = 1;
       }
     }
     g.fillStyle = 'rgba(250, 204, 21, 0.13)';
@@ -348,6 +356,36 @@ class PyramidMapView {
       }
     }
     g.stroke();
+  }
+
+  // Convex hull (Andrew's monotone chain) of screen points, counter-clockwise.
+  static hull(points) {
+    const p = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+    if (p.length < 3) return p;
+    const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const lower = [], upper = [];
+    for (const q of p) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop(); lower.push(q); }
+    for (const q of [...p].reverse()) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop(); upper.push(q); }
+    return lower.slice(0, -1).concat(upper.slice(0, -1));
+  }
+
+  // Distance from (x, y) to the hull: 0 inside, else to its nearest edge
+  // (a 1- or 2-point hull is a point / a segment).
+  static hullDistance(h, x, y) {
+    const seg = (a, b) => {
+      const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+      const t = L2 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L2)) : 0;
+      return Math.hypot(x - (a.x + t * dx), y - (a.y + t * dy));
+    };
+    if (h.length === 1) return Math.hypot(x - h[0].x, y - h[0].y);
+    if (h.length === 2) return seg(h[0], h[1]);
+    let inside = true, best = Infinity;
+    for (let k = 0; k < h.length; k++) {
+      const a = h[k], b = h[(k + 1) % h.length];
+      if ((b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x) < 0) inside = false;
+      best = Math.min(best, seg(a, b));
+    }
+    return inside ? 0 : best;
   }
 
   _fitAll() { if (this.all && this.all.length) this.map.fitBounds(this.all, { padding: [30, 30] }); else this.map.setView([39.5, -86], 5); }

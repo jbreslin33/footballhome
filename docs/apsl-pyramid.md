@@ -167,9 +167,15 @@ Views only draw it:
   zoom 7 (always for the picked conference), each on a free side of its dot
   or hidden (picked conference first, then APSL, then feeders). The picked
   conference's territory (owner: "base it off teams in other conferences
-  around it to infer map borders"): every 4px cell belongs to the conference
-  of its nearest located club, out to ~50 km — tinted + outlined in yellow
-  on a canvas pane under the dots, redrawn per view.
+  around it to infer map borders … borders especially in northeast need to
+  be on edge of other conf. in isolated conferences just draw it at or near
+  the furthest teams"): a 4px cell is the conference's when its nearest
+  located club is one of the conference's (where conferences meet, the
+  halfway line between their clubs) AND it lies within the convex hull of
+  the conference's clubs widened ~20 km (an open side stops just past the
+  outermost clubs) — tinted + outlined in yellow on a canvas pane under the
+  dots, redrawn per view. Next idea (owner: "its really based on metro
+  size"): counties + Census metro areas instead of pixels.
 - `js/components/pyramid-path-view.js` — `PyramidPathView` (mig 845): pick a
   club (search box over the model's clubs); each of its teams' routes up the
   promoting links (`PyramidModel.upRoutes` / `routeSteps`) drawn top-down with
