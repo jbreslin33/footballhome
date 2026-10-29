@@ -3380,6 +3380,38 @@ James 10/29: "continue" (the assistant).
   line; a real one comes back onside when the ball isn't on (the
   taxonomy's run-curved-onside, run-off-shoulder).
 
+### 8.89 G4.91 — stay onside: on the last defender's shoulder (concept 184, mig 830)
+
+James 10/29: "yes" (attackers come back onside).
+
+- **Measured** (harness: men standing in an offside position at a kick, by
+  job, depth and how long; `GAME_TRACE_OFFSIDE_MEN=n` prints the 8 m+ ones):
+  1,075-1,120 a match, on a third of kicks; 41-43% 8 m+ past the line,
+  74% 3 m+. Holding shape 35%, the run in behind 32%, give and go 12%,
+  blind-side run 10%. No concept said "stay onside" — runs (5) and
+  blind-side-run (30) only of their own run.
+- **Concept 184 `stay-onside`** (taught u14, in possession, ip-shape;
+  IFAB Law 11.1; techniques run-off-shoulder, run-curved-onside; every root
+  model asks 90, Curriculum 100): `Brain::stayOnside`, after the decision
+  and unmark — any target past their offside line (second-last man, keeper
+  counted; the ball; halfway) comes back onto it, `margin_m` 0.5 short; a
+  man past it with no target walks back (`Why::StayOnside`). Rolled per
+  second at his rating: a lapse leaves him there.
+- **Our ball in flight too:** with only the ball-at-feet case it moved
+  nothing — the traces had every deep offside man running ON at ~8 m/s
+  while our pass travelled (G4.49 keep running), 11-24 m past. The next
+  pass is the one he's judged on: during our flight he holds the line too,
+  except the man it's for and the man going for it (meet / chase / jump /
+  wait / the ball in the air).
+- 10 matches: men offside at a kick 1,120 → 488 a match (8 m+ 43 → 17%);
+  whistles 32 → 25 a match; goals 11.8 → 9.6; interceptions 60 / 74 → 55 /
+  65 a team. Pro offsides 1.96 a team; we're at 13 / 12.
+- **Next mole:** 78% of the whistles left (20 a match) are the assistant
+  flagging ONSIDE receivers — runners now ride the line, so the tight call
+  is every ball in behind, and ~23% of those go wrong (the published rate).
+  The volume is the question: how many balls a match are played to a man
+  within a metre of the line, against the pro.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

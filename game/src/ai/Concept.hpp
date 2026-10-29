@@ -914,6 +914,21 @@ private:
 // is far_m or more away, behind him — he comes to show_m from the ball on
 // the line between them, so the carrier has him and his marker must follow
 // or let him turn.
+// Stay onside (184, G4.91) [IFAB Law 11; "play on the shoulder of the last
+// defender" — game_techniques run-off-shoulder]: our ball and he's off it —
+// wherever his job sends him, not past their offside line (their second-last
+// man, keeper counted, the ball, halfway): onto it, margin_m short. Measured
+// before it: 1,075 men a match stood offside at a kick, 74% of them 3 m+
+// past — the shape (35%) and the run in behind (32%) left them there.
+class StayOnside : public Concept {
+public:
+    StayOnside() : Concept("stay-onside", 184) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 margin() const { return margin_; }
+
+private:
+    math::Fixed64 margin_;
+};
 class CheckIn : public Concept {
 public:
     CheckIn() : Concept("mid-check-in", 183) {}
@@ -1019,6 +1034,7 @@ struct ConceptBook {
     Overlap overlap;
     ComeShort come_short;
     CheckIn check_in;
+    StayOnside stay_onside;
     ScanBeforeReceive scan_receive;
     ScanDefending scan_defend;
     Vision vision;
@@ -1068,6 +1084,7 @@ struct ConceptBook {
         overlap.configure(p);
         come_short.configure(p);
         check_in.configure(p);
+        stay_onside.configure(p);
         scan_receive.configure(p);
         scan_defend.configure(p);
         vision.configure(p);

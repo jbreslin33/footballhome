@@ -376,6 +376,10 @@ void ComeShort::configure(const core::ModelParams& p) {
     gap_ = p.fixed(key("gap_m"), 18000);
 }
 
+void StayOnside::configure(const core::ModelParams& p) {
+    margin_ = p.fixed(key("margin_m"), 500);
+}
+
 void CheckIn::configure(const core::ModelParams& p) {
     show_ = p.fixed(key("show_m"), 8000);
     far_ = p.fixed(key("far_m"), 14000);

@@ -598,6 +598,9 @@ int main(int argc, char** argv) {
     // Each offside whistle (G4.89): the kick it came off, was he the man it
     // was played to, his job at the kick, how far past the line he stood.
     long ow_n = 0, ow_why[ai::kWhyCount + 1] = {}, ow_intended = 0, ow_job[ai::kWhyCount] = {}, ow_depth[4] = {};
+    // Men standing in an offside position at a kick (G4.91): by job, by how
+    // far past, how long he has been there; and the kicks with one.
+    long op_men = 0, op_kicks = 0, op_all_kicks = 0, op_job[ai::kWhyCount] = {}, op_depth[4] = {}, op_age[4] = {};
     long off_called[2] = {}, off_wrong = 0, off_missed = 0, flag_wrong = 0, flag_missed = 0, flag_kicks = 0;
     long ar_off[5] = {};
     double ar_off_sum = 0;
@@ -639,6 +642,7 @@ int main(int argc, char** argv) {
         long kick_tick = 0;
         math::Vec2 kick_aim{}, kick_from{};
         int kick_passer = -1;
+        std::vector<long> off_since(64, 0);   // the tick each man last stood onside (G4.91)
         std::vector<int> kick_job;   // everyone's job at the last kick
         int kick_pred = -1;
         int pred_us = -1, pred_them = -1, pred_margin = 0, pred_us_why = -1;   // at kick+1 / +10
@@ -1066,6 +1070,21 @@ int main(int argc, char** argv) {
             prev_ball_v = std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble());
             prev_ltt = s.world().lastTouchTeam();
             prev_bvx = b.vel.x.toDouble(); prev_bvy = b.vel.y.toDouble();
+            for (std::uint8_t tm = 0; tm < 2; ++tm) {   // who stands offside right now, each side
+                const double sg = tm == 0 ? 1.0 : -1.0;
+                double l1 = -1e9, l2 = -1e9;
+                for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                    if (s.world().player(j).team == tm) continue;
+                    const double x = s.world().player(j).pos.x.toDouble() * sg;
+                    if (x > l1) { l2 = l1; l1 = x; } else if (x > l2) l2 = x;
+                }
+                const double bx = b.pos.x.toDouble() * sg;
+                for (std::uint8_t j = 0; j < s.world().playerCount() && j < 64; ++j) {
+                    if (s.world().player(j).team != tm) continue;
+                    const double x = s.world().player(j).pos.x.toDouble() * sg;
+                    if (!(x > l2 && x > bx && x > 0)) off_since[j] = k;
+                }
+            }
             for (std::uint8_t j = 0; j < s.world().playerCount() && j < 64; ++j)
                 prev_ov[j] = {s.world().player(j).vel.x.toDouble(), s.world().player(j).vel.y.toDouble()};
             prev_pass_to = b.owner ? -1 : static_cast<int>(b.pass_to);
@@ -1157,6 +1176,36 @@ int main(int argc, char** argv) {
                 }
                 ++tally[pend_team][pend_why].kicks;
                 const core::OffsideCall& oc = s.world().lastOffsideCall();
+                ++op_all_kicks;
+                if (oc.truth) {
+                    ++op_kicks;
+                    const double sg = pend_team == 0 ? 1.0 : -1.0;
+                    double l1 = -1e9, l2 = -1e9;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        if (s.world().player(j).team == pend_team) continue;
+                        const double x = s.world().player(j).pos.x.toDouble() * sg;
+                        if (x > l1) { l2 = l1; l1 = x; } else if (x > l2) l2 = x;
+                    }
+                    for (std::uint8_t j = 0; j < s.world().playerCount() && j < 32; ++j) {
+                        if (!((oc.truth >> j) & 1u)) continue;
+                        ++op_men;
+                        ++op_job[static_cast<int>(s.lastOrders()[j].why)];
+                        const double past = s.world().player(j).pos.x.toDouble() * sg - l2;
+                        static int dbg = std::atoi(envOr("GAME_TRACE_OFFSIDE_MEN", "0"));
+                        if (dbg > 0 && m == 0 && past >= 8) {
+                            --dbg;
+                            const auto& pj = s.world().player(j);
+                            const auto& oj = s.lastOrders()[j];
+                            std::printf("OFFMAN t=%.1fs team%d #%d %s past %.1f m | x %.1f line %.1f ball %.1f (owner %d) | target x %.1f | vel x %.1f | since onside %.1f s\n",
+                                        k / 30.0, pend_team, j, ai::kWhyNames[static_cast<int>(oj.why)], past, pj.pos.x.toDouble() * sg, l2,
+                                        b.pos.x.toDouble() * sg, b.owner ? static_cast<int>(*b.owner) : -1, oj.target.x.toDouble() * sg,
+                                        pj.vel.x.toDouble() * sg, (k - off_since[j]) / 30.0);
+                        }
+                        ++op_depth[past < 1 ? 0 : past < 3 ? 1 : past < 8 ? 2 : 3];
+                        const double age = (k - off_since[j]) / 30.0;
+                        ++op_age[age < 1 ? 0 : age < 3 ? 1 : age < 8 ? 2 : 3];
+                    }
+                }
                 if (oc.assistant >= 0 && (oc.called | oc.truth)) {
                     ++flag_kicks;
                     flag_wrong += __builtin_popcount(oc.called & ~oc.truth);
@@ -1380,6 +1429,15 @@ int main(int argc, char** argv) {
             std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",
                         ib_all_read[1] / nm, 100.0 * ib_theirs_read[1] / std::max(1L, ib_all_read[1]),
                         ib_all_read[0] / nm, 100.0 * ib_theirs_read[0] / std::max(1L, ib_all_read[0]));
+        if (op_men) {
+            std::printf("  men standing offside at a kick: %.1f a match on %.0f%% of kicks; past the line <1 / 1-3 / 3-8 / 8+ m %.0f / %.0f / %.0f / %.0f%%; there for <1 / 1-3 / 3-8 / 8+ s %.0f / %.0f / %.0f / %.0f%%\n    doing:",
+                        op_men / nm, 100.0 * op_kicks / std::max(1L, op_all_kicks),
+                        100.0 * op_depth[0] / op_men, 100.0 * op_depth[1] / op_men, 100.0 * op_depth[2] / op_men, 100.0 * op_depth[3] / op_men,
+                        100.0 * op_age[0] / op_men, 100.0 * op_age[1] / op_men, 100.0 * op_age[2] / op_men, 100.0 * op_age[3] / op_men);
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (op_job[w] * 25 >= op_men) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * op_job[w] / op_men);
+            std::printf("\n");
+        }
         if (ow_n) {
             std::printf("  each offside whistle (%.1f a match): the man it was played to %.0f%%; past their second-last man at the kick: not (onside) %.0f%% · <1 m %.0f%% · 1-3 m %.0f%% · 3+ m %.0f%%\n    off the kick:",
                         ow_n / nm, 100.0 * ow_intended / ow_n, 100.0 * ow_depth[0] / ow_n, 100.0 * ow_depth[1] / ow_n, 100.0 * ow_depth[2] / ow_n, 100.0 * ow_depth[3] / ow_n);

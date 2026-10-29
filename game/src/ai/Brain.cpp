@@ -960,6 +960,54 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
     o.move.move = Vec2{o.move.move.x * k / mlen, o.move.move.y * k / mlen};
 }
 
+void Brain::stayOnside(SlotIndex slot, const World& world, Orders& o) const {
+    const ConceptBook& book_ = bookOf(slot);
+    const auto& ball = world.ball();
+    if (world.restartTeam() != 0xFF || world.isKeeper(slot)) return;
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    if (ball.owner) {
+        if (*ball.owner == slot || setup_.team_of_slot[*ball.owner] != team) return;
+    } else {
+        // Our ball in flight too (G4.91): the next pass is the one he'll be
+        // judged on. Traced: offside men at a kick were running ON at 8 m/s
+        // while our pass travelled ("keep running"), 11-24 m past the line.
+        // The man it's for, and the man going for it, chase it.
+        if (world.lastTouchTeam() != team || ball.pass_to == slot) return;
+        switch (o.why) {
+            case Why::MeetPass: case Why::Chase: case Why::JumpPass: case Why::WaitPass:
+            case Why::AttackDrop: case Why::RunBackDrop:
+                return;
+            default: break;
+        }
+    }
+    const int bit = book_.stay_onside.bit();
+    if (ratings_[slot][bit] == 0 || !applies(slot, bit, world.tickCount() / 30)) return;
+    const Fixed64 sg = attackSign(slot) >= 0 ? Fixed64::one() : -Fixed64::one();
+    // The law's line as he sees it: their second-last man (keeper counts),
+    // the ball, halfway — and margin_m short of it.
+    Fixed64 d1 = Fixed64::fromInt(-1000), d2 = d1;
+    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+        if (setup_.team_of_slot[j] == team) continue;
+        const Fixed64 x = world.player(j).pos.x * sg;
+        if (x > d1) { d2 = d1; d1 = x; } else if (x > d2) d2 = x;
+    }
+    Fixed64 line = d2;
+    if (ball.pos.x * sg > line) line = ball.pos.x * sg;
+    if (line < Fixed64::zero()) line = Fixed64::zero();
+    const Fixed64 hold = line - book_.stay_onside.margin();
+    const auto& me = world.player(slot);
+    const bool has_target = o.target.x.raw != 0 || o.target.y.raw != 0;
+    const bool target_past = has_target && o.target.x * sg > hold;
+    const bool me_past = me.pos.x * sg > hold;
+    // A target already onside is him on his way back: leave it.
+    if (!target_past && !(me_past && !has_target)) return;
+    Vec2 t = (o.target.x.raw != 0 || o.target.y.raw != 0) ? o.target : Vec2{me.pos.x, me.pos.y};
+    if (t.x * sg > hold) t.x = hold * sg;
+    o.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+    o.target = t;
+    if (me_past) o.why = Why::StayOnside;   // coming back: the job is the line now
+}
+
 math::Vec2 Brain::shapeAnchor(SlotIndex slot, const World& world) const {
     const FormationSpec::Pos& mine =
         spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]];
@@ -1020,6 +1068,7 @@ Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
     }
     Orders o = decide(slot, world);
     unmark(slot, world, o);
+    stayOnside(slot, world, o);
     if (o.move.face.x.raw != 0 || o.move.face.y.raw != 0) return o;
     const auto& ball = world.ball();
     const auto& me = world.player(slot);
