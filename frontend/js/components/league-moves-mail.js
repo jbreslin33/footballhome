@@ -90,7 +90,8 @@ class LeagueMovesMail {
       const mail = window.MessageCopy && MessageCopy.render('league_moves', 'email',
         { contact_first: first, moves: blocks, sender });
       const href = mail && this.screen.buildGmailComposeHref({ to: c.email, subject: mail.subject, body: mail.body });
-      const why = (m) => m.move === 'add' ? '' : this.copy(m.reason === 'cut' ? 'reason_cut' : 'reason_drop');
+      const why = (m) => this.copy(m.move === 'add' ? (m.reason === 'needs_add' ? 'reason_needs_add' : 'reason_proposed')
+        : (m.reason === 'cut' ? 'reason_cut' : 'reason_drop'));
       const row = (m) => `<div style="display:flex; gap:8px; align-items:baseline; font-size:0.85rem; padding:2px 0;">
           <b style="min-width:3.4em; color:${m.move === 'add' ? '#86efac' : '#fca5a5'};">${m.move === 'add' ? 'ADD' : 'DROP'}</b>
           <span style="font-weight:700;">${esc(m.name)}</span>
