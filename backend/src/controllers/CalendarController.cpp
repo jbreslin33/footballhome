@@ -483,7 +483,7 @@ std::optional<Response> resolveRsvpTarget(Database* db,
         "            AND tp.removed_at IS NULL "
         // Call-up-gated team (mig 605): rostered-but-uninvited may not
         // RSVP; the fh_event_invited branch below is their door.
-        "            AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only "
+        "            AND fh_roster_row_grants(tp.team_id, tp.invite_only, $1::bigint) "
         "            AND NOT EXISTS ("
         "                SELECT 1 FROM rsvp_suspensions s "
         "                WHERE s.person_id = tp.person_id "
@@ -980,7 +980,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                     -- Call-up-gated team (mig 605): roster
                                     -- membership grants players nothing; an
                                     -- invite (below) is the only way in.
-                                    AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
+                                    AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                                     AND NOT EXISTS (
                                         SELECT 1 FROM rsvp_suspensions s
                                         WHERE s.person_id = tp.person_id
@@ -1027,7 +1027,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                     AND tp.removed_at IS NULL
                                     -- Call-up-gated team (mig 605): see
                                     -- `eligible` above — invite-only.
-                                    AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
+                                    AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                                     AND NOT EXISTS (
                                         SELECT 1 FROM rsvp_suspensions s
                                         WHERE s.person_id = tp.person_id
@@ -1069,7 +1069,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     WHEN EXISTS (
                         SELECT 1 FROM fh_event_teams fet
                         JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
-                                            AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
+                                            AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                         WHERE fet.fh_event_id = fe.id AND tp.person_id = $1::int
                     ) THEN 'player'
                     WHEN fh_event_invited(fe.id, $1::int) THEN 'invited'
@@ -1108,7 +1108,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         FROM fh_event_teams fet
                         JOIN team_persons tp ON tp.team_id = fet.team_id
                                             AND tp.removed_at IS NULL
-                                            AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
+                                            AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                         JOIN persons child ON child.id = tp.person_id
                         WHERE fet.fh_event_id = fe.id
                           AND fh_is_guardian($1::int, child.id)
@@ -1147,7 +1147,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         FROM fh_event_teams fet
                         JOIN team_persons tp ON tp.team_id = fet.team_id
                                             AND tp.removed_at IS NULL
-                                            AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
+                                            AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                         JOIN persons child ON child.id = tp.person_id
                         WHERE fet.fh_event_id = fe.id
                           AND fh_is_guardian($1::int, child.id)
@@ -1402,7 +1402,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                            -- who's-going list shows invitees
                                                            -- (their own UNION branch), never
                                                            -- the whole gated roster.
-                                                           AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
+                                                           AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                                                         JOIN persons p ON p.id = tp.person_id
                                                         LEFT JOIN fh_event_rsvps er
                                                             ON er.fh_event_id = fe.id
@@ -1544,7 +1544,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                       WHERE tp.team_id = fet.team_id
                                         AND tp.person_id = $1::int
                                         AND tp.removed_at IS NULL
-                                        AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
+                                        AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                                         AND NOT EXISTS (
                                             SELECT 1 FROM rsvp_suspensions s
                                             WHERE s.person_id = tp.person_id
@@ -2103,7 +2103,7 @@ Response CalendarController::handleGetRollCallMe(const Request& request) {
               JOIN fam f ON EXISTS (
                      SELECT 1 FROM fh_event_teams fet
                      JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.person_id = f.id AND tp.removed_at IS NULL
-                                         AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
+                                         AND fh_roster_row_grants(tp.team_id, tp.invite_only, g.fh_event_id)
                     WHERE fet.fh_event_id = g.fh_event_id)
                  -- Call-up-gated teams (mig 605): an invited player owes
                  -- the roll call an answer like any rostered one.
