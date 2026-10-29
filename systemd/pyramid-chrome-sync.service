@@ -12,7 +12,7 @@ Group=jbreslin
 WorkingDirectory=/srv/footballhome
 # Opens each due browser-only pyramid source (Michigan Premier, Root
 # Soccer) in headless Chrome and loads its tables through fh_pyramid_load().
-# Exits at once when nothing is due (pyramid_sources.max_age_minutes).
+# Exits at once when nothing is due (fh_pyramid_source_due, mig 865).
 ExecStart=/usr/bin/node /srv/footballhome/scripts/pyramid-chrome-sync.js
 StandardOutput=journal
 StandardError=journal

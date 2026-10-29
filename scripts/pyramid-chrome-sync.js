@@ -11,7 +11,7 @@
 // stamps last_fetch_ok / last_fetch_note on the source.
 //
 //   node scripts/pyramid-chrome-sync.js          # every due source
-//   node scripts/pyramid-chrome-sync.js --all    # ignore max_age_minutes
+//   node scripts/pyramid-chrome-sync.js --all    # ignore the weekly rule (mig 865)
 //   node scripts/pyramid-chrome-sync.js --dry    # print what it read, write nothing
 
 require('dotenv').config({ path: __dirname + '/../env' });
@@ -74,7 +74,7 @@ async function main() {
   const { rows: sources } = await pool.query(`
     SELECT id, system, locator FROM pyramid_sources
      WHERE is_active AND system = ANY($1::text[])
-       AND ($2::boolean OR last_fetched_at IS NULL OR last_fetched_at < now() - make_interval(mins => max_age_minutes))
+       AND ($2::boolean OR fh_pyramid_source_due(id))
      ORDER BY id`, [BROWSER_SYSTEMS, ALL]);
   if (!sources.length) { console.log('[pyramid-chrome] nothing due'); return; }
 

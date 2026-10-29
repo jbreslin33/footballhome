@@ -32,7 +32,7 @@ Dominion side list no affiliate. States: `pyramid_competition_states`.
 | `teampass_tables` | ADASL `/adasl/Tables/` | backend, scraper proxy |
 | `demosphere` | LISFL (data rides in the page as JSON; URL carries the season) | backend |
 | `sportsengine` | CASA Select Philadelphia, Lancaster, North Jersey, Central Jersey (mig 823); CASA MA (mig 862: "Open 11v11 Divisions", 1 Primera … 5 Quinta, Primera → Mayflower) — standings computed from each season's games; the program id is the season page's `tab_schedule?page_node_id=` program, new each season | backend |
-| `root_soccer` | MIPSL — rows stream in lazy Next.js chunks, browser only | `scripts/pyramid-chrome-sync.js` (hourly timer) |
+| `root_soccer` | MIPSL — rows stream in lazy Next.js chunks, browser only | `scripts/pyramid-chrome-sync.js` (timer Mon + Tue 6 AM) |
 
 No source yet: MMSL (no public tables found) — shown as a "tables not
 mirrored yet" box.
@@ -45,9 +45,15 @@ Both writers go through **`fh_pyramid_load(source_id, divisions jsonb)`**:
 upsert, retire what the read no longer lists, link clubs, stamp the source.
 A read with no teams raises, so a broken parse never wipes a table.
 
-The backend re-reads sources older than `max_age_minutes` on every
-`GET /api/pyramid` (same on-open pattern as CASA fixtures and #film);
-`?refresh=1` re-reads all.
+Once a week (mig 865; owner: "would that get us blocked lol … 1x per week
+on mondays … if we don't get them all then try again tuesday"). On every
+`GET /api/pyramid` the backend reads the sources `fh_pyramid_source_due()`
+says are due: no good read since the week began (`pyramid_refresh_policy`:
+Monday, America/New_York) and either no try yet this week or a try left
+(`attempts_per_week` 2) and none today. So Monday's first page open reads
+everything; a failure tries again the next day; then it waits for Monday.
+A trigger counts tries (`week_of` / `week_tries`) whoever reads.
+`?refresh=1` (and the script's `--all`) re-reads all.
 
 ## Counting
 

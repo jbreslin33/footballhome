@@ -26,8 +26,8 @@
 // previous tables and stamps last_fetch_ok / last_fetch_note on the source.
 class PyramidSync {
 public:
-    // Every active, server-readable source older than its max_age_minutes
-    // (force = all of them).  One refresh at a time; a second caller skips.
+    // Every active, server-readable source fh_pyramid_source_due() calls
+    // due — weekly, Monday + a Tuesday retry (mig 865; force = all of them).  One refresh at a time; a second caller skips.
     static void refreshIfStale(bool force = false);
 
     // Geocode clubs' home grounds and league region points not tried yet,

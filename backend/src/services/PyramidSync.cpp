@@ -862,8 +862,7 @@ void PyramidSync::refreshIfStale(bool force) {
     try {
         auto due = Database::getInstance()->query(
             "SELECT id FROM pyramid_sources WHERE is_active AND system <> 'root_soccer' "
-            "  AND ($1::boolean OR last_fetched_at IS NULL "
-            "       OR last_fetched_at < now() - make_interval(mins => max_age_minutes)) ORDER BY id",
+            "  AND ($1::boolean OR fh_pyramid_source_due(id)) ORDER BY id",
             {force ? "true" : "false"});
         for (const auto& r : due) {
             json res = refreshSource(r["id"].as<int>());

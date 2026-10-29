@@ -1,12 +1,14 @@
 [Unit]
-Description=Football Home — #apsl pyramid browser-only tables (hourly)
+Description=Football Home — #apsl pyramid browser-only tables (weekly: Monday, Tuesday retry)
 Documentation=file:///srv/footballhome/scripts/pyramid-chrome-sync.js
 Requires=pyramid-chrome-sync.service
 
 [Timer]
-# Hourly, the same freshness the backend gives the other leagues on page
-# open (max_age_minutes 60); the script skips a source read more recently.
-OnCalendar=hourly
+# Monday, and Tuesday for a Monday that failed — the same weekly rule the
+# backend gives the other leagues (fh_pyramid_source_due, mig 865); the
+# script exits at once when nothing is due, so Tuesday is a no-op after a
+# good Monday.
+OnCalendar=Mon,Tue *-*-* 06:00:00 America/New_York
 RandomizedDelaySec=300
 Unit=pyramid-chrome-sync.service
 Persistent=true
