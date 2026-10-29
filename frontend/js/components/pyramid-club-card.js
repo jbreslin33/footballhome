@@ -9,7 +9,9 @@
 // team its league · table, place, record, zone, home ground, staff and
 // roster (read from the league's team page when a day old).  On the map the
 // card sits in the map's own stage (so it comes along into full screen);
-// elsewhere it floats over the page.
+// elsewhere it floats over the page.  Mig 866 (owner: "it should show data
+// in hud on that club"): on the map it renders inside the map's Club HUD
+// (host `[data-cc-host=hud]`) and tells the map when it closes.
 class PyramidClubCard {
   constructor(screen) { this.screen = screen; this.el = null; this.data = null; this.editing = false; }
 
@@ -22,6 +24,9 @@ class PyramidClubCard {
                  box-shadow:0 8px 30px rgba(0,0,0,0.55); display:flex; flex-direction:column; color:#e5e7eb; }
       .cc-card.float { position:fixed; right:16px; top:84px; bottom:16px; width:min(400px, calc(100vw - 32px)); }
       .cc-card.in-map { position:absolute; left:10px; top:10px; bottom:10px; width:min(380px, calc(100% - 24px)); }
+      .cc-card.in-hud { position:static; background:none; border:0; border-radius:0; box-shadow:none; }
+      .cc-card.in-hud .cc-head { padding:4px 0 8px; }
+      .cc-card.in-hud .cc-body { overflow:visible; padding:4px 0 0; }
       .cc-head { display:flex; gap:10px; align-items:center; padding:10px 12px; border-bottom:1px solid rgba(148,163,184,0.2); }
       .cc-head img { width:44px; height:44px; object-fit:contain; background:#fff; border-radius:8px; padding:2px; }
       .cc-head .nm { flex:1; min-width:0; }
@@ -46,12 +51,15 @@ class PyramidClubCard {
       [data-club].tm:hover { text-decoration:underline; }`;
   }
 
-  // host: an element to sit in (the map's stage), else the screen itself.
-  async open(clubId, host) {
-    this.close();
-    const inMap = !!(host && host.classList.contains('mp-stage'));
+  // host: an element to sit in (the map's Club HUD, or its stage), else the
+  // screen itself.  onClose: called when the card is closed (not replaced).
+  async open(clubId, host, onClose) {
+    this.close(true);
+    this.onClose = onClose || null;
+    const inHud = !!(host && host.dataset.ccHost === 'hud');
+    const inMap = inHud || !!(host && host.classList.contains('mp-stage'));
     this.el = document.createElement('div');
-    this.el.className = `cc-card ${inMap ? 'in-map' : 'float'}`;
+    this.el.className = `cc-card ${inHud ? 'in-hud' : inMap ? 'in-map' : 'float'}`;
     this.el.innerHTML = '<div class="cc-body"><div class="loading">Loading…</div></div>';
     (host || this.screen.element).appendChild(this.el);
     if (window.L && inMap) { window.L.DomEvent.disableClickPropagation(this.el); window.L.DomEvent.disableScrollPropagation(this.el); }
@@ -69,7 +77,12 @@ class PyramidClubCard {
     }
   }
 
-  close() { if (this.el) { this.el.remove(); this.el = null; } this.data = null; }
+  close(replacing = false) {
+    if (this.el) { this.el.remove(); this.el = null; }
+    this.data = null;
+    const cb = this.onClose; this.onClose = null;
+    if (cb && !replacing) cb();
+  }
 
   _render() {
     const esc = (t) => this._esc(t);

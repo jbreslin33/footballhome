@@ -218,7 +218,7 @@ Response PyramidController::handleTerritory(const Request& request) {
                 WITH m AS (SELECT core_fips FROM pyramid_main_cities WHERE competition_id = $1::int),
                      zone AS (SELECT unnest(core_fips) AS fips FROM m
                               UNION SELECT n.neighbour FROM pyramid_county_neighbours n, m WHERE n.fips = ANY (m.core_fips))
-                SELECT k.fips, k.geometry::text AS g, k.fips = ANY ((SELECT core_fips FROM m)) AS core
+                SELECT k.fips, k.geometry::text AS g, k.fips = ANY ((SELECT core_fips FROM m)::text[]) AS core
                   FROM zone JOIN pyramid_counties k ON k.fips = zone.fips)SQL", {conf});
             std::vector<json> zoneGeoms;
             json collar = json::array();

@@ -44,6 +44,13 @@
 // bubbles are pushed apart until none overlap and point back to their spot
 // with a leader line ending in a ring; dots sharing one point (a shared
 // ground, or a league's point) fan out in a small ring around it.
+//
+// Picking a club (mig 866; owner: "we need to be able to select a club on
+// the map! … and it should show data in hud on that club"): a dot, a club's
+// name beside it, or a team in the conference overlay's tables.  The club's
+// dots ring yellow and its names show (yellow) at any zoom; its card (mig
+// 856) is the Club HUD on the left, under the Conference HUD.  ✕ or Esc
+// lets it go (Esc again closes the conference).
 class PyramidMapView {
   constructor(screen, flow) {
     this.screen = screen; this.flow = flow;
@@ -68,6 +75,11 @@ class PyramidMapView {
       .mp-ov[hidden] { display:none; }
       .mp-name { color:#f8fafc; font-size:11px; font-weight:600; white-space:nowrap; text-shadow:0 0 3px #0b1220, 0 0 3px #0b1220, 0 0 2px #0b1220;
                  transform:translate(0, -50%); display:inline-block; pointer-events:none; }
+      .mp-name.shown { pointer-events:auto; cursor:pointer; }
+      .mp-name.shown:hover { text-decoration:underline; }
+      .mp-name.on { color:#facc15; font-size:12px; font-weight:800; }
+      .hud-club { left:10px; width:min(380px, calc(100% - 24px)); overflow:auto; }
+      .hud-club:not(.has-club) { display:none; }
       .mp-ov-head { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid rgba(148,163,184,0.2); }
       .mp-ov-head h3 { margin:0; flex:1; font-size:1rem; }
       .mp-ov-head label { font-size:0.75rem; opacity:0.85; display:flex; align-items:center; gap:6px; }
@@ -116,6 +128,7 @@ class PyramidMapView {
           <div class="mp-hud-count" style="margin-top:4px; opacity:0.85;"></div>
           <div style="margin-top:2px; opacity:0.7;">${esc(this._copy('map_hint'))}</div>`, 'hud-bl')}
         ${this.screen.hud('map-stats', this._copy('hud_stats'), `<div class="mp-hud-stats">${esc(this._copy('map_pick'))}</div>`, 'hud-tl')}
+        ${this.screen.hud('map-club', this._copy('hud_club'), '<div data-cc-host="hud"></div>', '', 'hud-club')}
         <div class="mp-ov" hidden style="opacity:${alpha}">
           <div class="mp-ov-head">
             <h3></h3>
@@ -166,7 +179,7 @@ class PyramidMapView {
           fillColor: color, fillOpacity: p.approx ? 0.35 : 0.9,
         }).addTo(this.map);
         const name = L.marker([p.lat, p.lon], {
-          icon: L.divIcon({ className: '', html: `<span class="mp-name">${this._esc(team.name)}</span>`, iconSize: null }),
+          icon: L.divIcon({ className: '', html: `<span class="mp-name" data-map-club="${team.club_id}">${this._esc(team.name)}</span>`, iconSize: null }),
           interactive: false, keyboard: false, opacity: 0,
         }).addTo(this.map);
         this.dots.push({ m, name, label: team.name, clubId: team.club_id, conf: col.conf.id, apsl, approx: p.approx, r: apsl ? 7 : 5,
@@ -200,8 +213,8 @@ class PyramidMapView {
     this.map.on('zoomend moveend', () => this._relayout());
     // Picking a team: the dots don't take clicks themselves (5–7px circles,
     // fanned rings overlap); the map finds the NEAREST dot within 16px of
-    // the pointer — that one's club card opens (mig 856), its name shows on
-    // hover and the cursor turns to a pointer.
+    // the pointer — its name shows on hover and the cursor turns to a
+    // pointer.  A club's shown name is a target too (mig 866).
     const tip = L.tooltip({ direction: 'top', offset: [0, -8] });
     this.map.on('mousemove', (e) => {
       const d = this._nearestDot(e.containerPoint);
@@ -210,8 +223,10 @@ class PyramidMapView {
     });
     this.map.on('mouseout', () => { tip.remove(); this.map.getContainer().style.cursor = ''; });
     this.map.on('click', (e) => {
+      const nm = e.originalEvent && e.originalEvent.target.closest && e.originalEvent.target.closest('[data-map-club]');
+      if (nm) { this.pickClub(Number(nm.dataset.mapClub), false); return; }
       const d = this._nearestDot(e.containerPoint);
-      if (d) this.screen.openClub(d.clubId, this.root.querySelector('.mp-stage'));
+      if (d) this.pickClub(d.clubId, false);
     });
     this._bindHud(root);
     const count = root.querySelector('.mp-hud-count');
@@ -219,6 +234,7 @@ class PyramidMapView {
     this.all = all;
     if (this.sel && this.columns.some((c) => c.conf.id === this.sel)) this.select(this.sel, false, true);
     else { this.sel = null; this._fitAll(); this._panel(); }
+    if (this.club) { const c = this.club; this.club = null; this.pickClub(c, false); }
     requestAnimationFrame(() => this._relayout());
   }
 
@@ -299,12 +315,18 @@ class PyramidMapView {
   _placeNames(placed, inside) {
     const map = this.map;
     const zoom = map.getZoom();
+    const mine = (d) => this.club != null && d.clubId === this.club;
     const order = [...(this.dots || [])].sort((a, b) =>
-      ((b.conf === this.sel) - (a.conf === this.sel)) || (b.apsl - a.apsl) || a.label.localeCompare(b.label));
+      (mine(b) - mine(a)) || ((b.conf === this.sel) - (a.conf === this.sel)) || (b.apsl - a.apsl) || a.label.localeCompare(b.label));
+    const nameEl = (d) => d.name.getElement() && d.name.getElement().querySelector('.mp-name');
     const hit = (p) => placed.some((q) => Math.abs(p.x - q.x) < (p.w + q.w) / 2 && Math.abs(p.y - q.y) < (p.h + q.h) / 2);
-    for (const d of this.dots || []) d.name.setOpacity(0);
+    for (const d of this.dots || []) {
+      d.name.setOpacity(0);
+      const el = nameEl(d);
+      if (el) { el.classList.remove('shown'); el.classList.toggle('on', mine(d)); }
+    }
     for (const d of order) {
-      if (zoom < 7 && d.conf !== this.sel) continue;
+      if (zoom < 7 && d.conf !== this.sel && !mine(d)) continue;
       const at = d.m.getLatLng();
       const c = map.latLngToContainerPoint(at);
       const el = d.name.getElement() && d.name.getElement().querySelector('.mp-name');
@@ -319,6 +341,7 @@ class PyramidMapView {
         placed.push(box);
         d.name.setLatLng(map.containerPointToLatLng([bx - w / 2 + 2, by]));
         d.name.setOpacity(1);
+        if (el) el.classList.add('shown');
         break;
       }
     }
@@ -452,6 +475,59 @@ class PyramidMapView {
     this._showTerritory();
   }
 
+  // Pick a club: its dots ring yellow, its names show, its card fills the
+  // Club HUD.  fly: from the overlay's tables — bring its grounds into view.
+  pickClub(clubId, fly = false) {
+    if (!this.map || !clubId) return;
+    this.club = clubId;
+    const hud = this.root.querySelector('.hud-club');
+    hud.classList.add('has-club');
+    this._fitClubHud();
+    this.screen.clubCard.open(clubId, hud.querySelector('[data-cc-host]'), () => this._dropClub());
+    this._styleDots();
+    const pts = (this.dots || []).filter((d) => d.clubId === clubId).map((d) => d.at);
+    if (fly && pts.length) {
+      const w = this.map.getSize().x, ovW = this.sel ? Math.min(820, w - 24) + 24 : 0;
+      const opts = w - ovW > 260 ? { paddingTopLeft: [420, 80], paddingBottomRight: [ovW + 40, 60], maxZoom: 11 } : { padding: [40, 40], maxZoom: 11 };
+      this.map.flyToBounds(pts, { ...opts, duration: 1.0 });
+    }
+    this._relayout();
+  }
+
+  _dropClub() {
+    this.club = null;
+    const hud = this.root && this.root.querySelector('.hud-club');
+    if (hud) hud.classList.remove('has-club');
+    this._styleDots();
+    this._relayout();
+  }
+
+  _styleDots() {
+    for (const d of this.dots || []) {
+      const on = this.club != null && d.clubId === this.club;
+      d.m.setStyle(on
+        ? { color: '#facc15', weight: 3, dashArray: null }
+        : { color: d.approx ? '#64748b' : '#0b1220', weight: 1.5, dashArray: d.approx ? '3 3' : null });
+      d.m.setRadius(on ? d.r + 2 : d.r);
+      if (on) d.m.bringToFront();
+    }
+  }
+
+  // The Club HUD: under the Conference HUD, down to the map key (or the
+  // bottom when the key is collapsed out of the way).
+  _fitClubHud() {
+    const hud = this.root && this.root.querySelector('.hud-club');
+    const stage = this.root && this.root.querySelector('.mp-stage');
+    if (!hud || !stage) return;
+    const s = stage.getBoundingClientRect();
+    const stats = this.root.querySelector('[data-hud="map-stats"]');
+    const key = this.root.querySelector('[data-hud="map-key"]');
+    const top = stats ? stats.getBoundingClientRect().bottom - s.top + 8 : 10;
+    const bottom = key ? s.bottom - key.getBoundingClientRect().top + 8 : 10;
+    hud.style.top = `${Math.round(top)}px`;
+    hud.style.maxHeight = `${Math.max(160, Math.round(s.height - top - bottom))}px`;
+  }
+
   _bindHud(root) {
     const stage = root.querySelector('.mp-stage');
     root.querySelectorAll('[data-mp]').forEach((el) => {
@@ -466,8 +542,11 @@ class PyramidMapView {
     });
     // Keep Leaflet's own drag / wheel off the HUD and overlay.
     root.querySelectorAll('.ap-hud, .mp-ov').forEach((el) => { window.L.DomEvent.disableClickPropagation(el); window.L.DomEvent.disableScrollPropagation(el); });
-    this._onKey = (e) => { if (e.key === 'Escape' && this.sel && !document.fullscreenElement) this._close(); };
-    this._onFull = () => setTimeout(() => { if (this.map) { this.map.invalidateSize(); this._relayout(); this._panel(); } }, 150);
+    this._onKey = (e) => {
+      if (e.key !== 'Escape' || document.fullscreenElement) return;
+      if (this.club != null) this.screen.clubCard.close(); else if (this.sel) this._close();
+    };
+    this._onFull = () => setTimeout(() => { if (this.map) { this.map.invalidateSize(); this._relayout(); this._panel(); this._fitClubHud(); } }, 150);
     document.addEventListener('keydown', this._onKey);
     document.addEventListener('fullscreenchange', this._onFull);
   }
@@ -475,6 +554,7 @@ class PyramidMapView {
   onResize() {
     if (this.map) { this.map.invalidateSize(); this._relayout(); }
     this._fitOverlay();
+    this._fitClubHud();
     const col = this.sel && this.columns && this.columns.find((c) => c.conf.id === this.sel);
     const chart = this.root && this.root.querySelector('.mp-ov .fc-chart');
     if (col && chart) this.flow.drawArrows(chart, this.model, [col.conf]);
@@ -483,6 +563,7 @@ class PyramidMapView {
   unmount() {
     if (this._onKey) document.removeEventListener('keydown', this._onKey);
     if (this._onFull) document.removeEventListener('fullscreenchange', this._onFull);
+    if (this.club != null) this.screen.clubCard.close();
     if (this.map) { this.map.remove(); this.map = null; }
   }
 }

@@ -197,7 +197,14 @@ class ApslPyramidScreen extends Screen {
 
   // The club card (mig 856): host = an element to sit in (the map's stage),
   // else it floats over the screen.
-  openClub(clubId, host) { if (clubId) this.clubCard.open(clubId, host); }
+  // On the map the map picks it (mig 866): its dots light up and the card
+  // is the map's Club HUD — from a dot, a name or the overlay's tables.
+  openClub(clubId, host) {
+    if (!clubId) return;
+    const impl = this._impl();
+    if (impl && impl.pickClub && impl.map) { impl.pickClub(clubId, !host); return; }
+    this.clubCard.open(clubId, host);
+  }
 
   _impl() { return (this.views.find((v) => v.code === this.view) || this.views[0]).impl; }
   _shown() { return this.model ? this.model.conferences().filter((c) => this._isOn(c.id)) : []; }
