@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/setup/setup-base.sh — curl, make, build-essential
+# scripts/setup/setup-base.sh — curl, make, build-essential, vm.swappiness
 set -e
 source "$(dirname "$0")/_lib.sh"
 
@@ -31,4 +31,20 @@ if ! command -v make &> /dev/null; then
   print_success "make installed"
 else
   print_success "make already installed"
+fi
+
+# Keep the backend + postgres in RAM: at the default swappiness (60) the
+# kernel swaps idle app memory out even with GBs free, and on a spinning
+# disk every request then waits on swap-ins ("loading" on every screen,
+# 2026-10-29).
+if [ "$OS_TYPE" = "Linux" ]; then
+  SWAPPINESS_CONF=/etc/sysctl.d/99-swappiness.conf
+  if [ "$(cat /proc/sys/vm/swappiness)" != "10" ] || [ ! -f "$SWAPPINESS_CONF" ]; then
+    print_status "Setting vm.swappiness=10..."
+    echo 'vm.swappiness=10' | sudo tee "$SWAPPINESS_CONF" > /dev/null
+    sudo sysctl -q -p "$SWAPPINESS_CONF"
+    print_success "vm.swappiness=10"
+  else
+    print_success "vm.swappiness already 10"
+  fi
 fi
