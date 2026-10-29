@@ -15,7 +15,20 @@
 // over map … transparency … slider"): the map fills the page (⛶ = the
 // browser's full screen); totals, the dot legend and the located count float
 // on it as a HUD; the overlay has a see-through slider (remembered) and
-// closes with ✕ / Esc.  All of it lives inside the full-screen element.  The
+// closes with ✕ / Esc.  All of it lives inside the full-screen element.
+//
+// Owner 2026-10-29: "we need team names on the dots. we need a line drawn
+// around the conference when picked and the conference highlighted. base it
+// off teams in other conferences around it to infer map borders."
+//   names      each club's name beside its dot when zoomed in (and always
+//              for the picked conference) — placed like the bubbles: a free
+//              side of the dot or not at all; picked conference first,
+//              then APSL clubs, then feeders.
+//   territory  every spot on screen belongs to the conference of its
+//              NEAREST located club, so a border falls halfway between a
+//              conference's clubs and its neighbours'; it reaches ~50 km from
+//              a club.  The picked conference's territory is outlined and
+//              tinted (a canvas pane under the dots, redrawn per view).  The
 // conference pills choose which conferences' clubs are on the map.
 //
 // Nothing hides anything (owner 2026-10-29: "use arrows to bubble as its
@@ -51,6 +64,8 @@ class PyramidMapView {
       .mp-ov { position:absolute; z-index:1200; top:56px; right:12px; bottom:12px; width:min(820px, calc(100% - 24px)); display:flex; flex-direction:column;
                background:rgba(11,18,32,0.92); border:1px solid rgba(148,163,184,0.35); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
       .mp-ov[hidden] { display:none; }
+      .mp-name { color:#f8fafc; font-size:11px; font-weight:600; white-space:nowrap; text-shadow:0 0 3px #0b1220, 0 0 3px #0b1220, 0 0 2px #0b1220;
+                 transform:translate(0, -50%); display:inline-block; pointer-events:none; }
       .mp-ov-head { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid rgba(148,163,184,0.2); }
       .mp-ov-head h3 { margin:0; flex:1; font-size:1rem; }
       .mp-ov-head label { font-size:0.75rem; opacity:0.85; display:flex; align-items:center; gap:6px; }
@@ -149,7 +164,12 @@ class PyramidMapView {
         m.bindTooltip(this._esc(club.name));
         m.bindPopup(`<b>${this._esc(this._copy('map_club', { club: club.name }))}</b><br>${where}<br>${model.clubTables(club).map((t) => this._esc(t)).join('<br>')}`);
         m.on('click', () => { const col = this.columns.find((c) => model.columnClubs(c).some((x) => x.id === club.id)); if (col) this.select(col.conf.id, false); });
-        this.dots.push({ m, at: L.latLng(p.lat, p.lon), key: `${p.lat.toFixed(4)},${p.lon.toFixed(4)}` });
+        const name = L.marker([p.lat, p.lon], {
+          icon: L.divIcon({ className: '', html: `<span class="mp-name">${this._esc(club.name)}</span>`, iconSize: null }),
+          interactive: false, keyboard: false, opacity: 0,
+        }).addTo(this.map);
+        this.dots.push({ m, name, club, conf: col.conf.id, apsl, approx: p.approx, r: apsl ? 7 : 5,
+                         at: L.latLng(p.lat, p.lon), key: `${p.lat.toFixed(4)},${p.lon.toFixed(4)}` });
       }
     }
     // A label per conference at its clubs' middle (else its own point).
@@ -167,6 +187,12 @@ class PyramidMapView {
       mk.on('click', () => this.select(col.conf.id, true));
       this.labels.set(col.conf.id, { mk, anchor, line, ring });
     }
+    // The territory canvas: its own pane, under the dots and bubbles.
+    const pane = this.map.createPane('mp-territory');
+    pane.style.zIndex = 350;
+    pane.style.pointerEvents = 'none';
+    this.canvas = L.DomUtil.create('canvas', '', pane);
+    this.map.on('zoomstart', () => { this.canvas.style.display = 'none'; });
     this.map.on('zoomend moveend', () => this._relayout());
     this._bindHud(root);
     const count = root.querySelector('.mp-hud-count');
@@ -234,6 +260,94 @@ class PyramidMapView {
       p.l.mk.setLatLng(at);
       p.l.line.setLatLngs([p.l.anchor, at]);
     }
+    this._placeNames(placed, inside);
+    this._drawTerritory();
+  }
+
+  // Club names: from zoom 7 (or the picked conference), each on the first
+  // free side of its dot, never over a bubble, the HUD or another name.
+  _placeNames(placed, inside) {
+    const map = this.map;
+    const zoom = map.getZoom();
+    const order = [...(this.dots || [])].sort((a, b) =>
+      ((b.conf === this.sel) - (a.conf === this.sel)) || (b.apsl - a.apsl) || a.club.name.localeCompare(b.club.name));
+    const hit = (p) => placed.some((q) => Math.abs(p.x - q.x) < (p.w + q.w) / 2 && Math.abs(p.y - q.y) < (p.h + q.h) / 2);
+    for (const d of this.dots || []) d.name.setOpacity(0);
+    for (const d of order) {
+      if (zoom < 7 && d.conf !== this.sel) continue;
+      const at = d.m.getLatLng();
+      const c = map.latLngToContainerPoint(at);
+      const el = d.name.getElement() && d.name.getElement().querySelector('.mp-name');
+      // The rendered box, plus a 3px margin all round.
+      const w = (el ? el.offsetWidth : d.club.name.length * 6) + 6, h = (el ? el.offsetHeight : 14) + 6;
+      const gap = d.r + 3;
+      // right, left, above, below the dot (the box's centre → the marker's
+      // anchor is its left edge, vertically centred).
+      for (const [bx, by] of [[c.x + gap + w / 2, c.y], [c.x - gap - w / 2, c.y], [c.x, c.y - gap - h / 2], [c.x, c.y + gap + h / 2]]) {
+        const box = { x: bx, y: by, w, h };
+        if (!inside(box) || hit(box)) continue;
+        placed.push(box);
+        d.name.setLatLng(map.containerPointToLatLng([bx - w / 2 + 2, by]));
+        d.name.setOpacity(1);
+        break;
+      }
+    }
+  }
+
+  // The picked conference's territory: nearest located club wins each 4px
+  // cell, out to ~50 km; its cells are tinted and its edge outlined.
+  _drawTerritory() {
+    const map = this.map, cv = this.canvas;
+    if (!map || !cv) return;
+    const size = map.getSize();
+    L.DomUtil.setPosition(cv, map.containerPointToLayerPoint([0, 0]));
+    cv.width = size.x; cv.height = size.y;
+    cv.style.display = '';
+    const g = cv.getContext('2d');
+    g.clearRect(0, 0, size.x, size.y);
+    if (!this.sel) return;
+    const pts = (this.dots || []).filter((d) => !d.approx).map((d) => {
+      const c = map.latLngToContainerPoint(d.at);
+      return { x: c.x, y: c.y, mine: d.conf === this.sel };
+    });
+    if (!pts.some((p) => p.mine)) return;
+    // ~50 km in screen pixels at the map's centre.
+    const ctr = map.getCenter();
+    const pxKm = map.latLngToContainerPoint(ctr).distanceTo(map.latLngToContainerPoint([ctr.lat, ctr.lng + 1])) / (111.32 * Math.cos(ctr.lat * Math.PI / 180));
+    const R2 = Math.pow(Math.max(6, 50 * pxKm), 2);
+    const cell = 4, W = Math.ceil(size.x / cell), H = Math.ceil(size.y / cell);
+    const grid = new Uint8Array(W * H);   // 0 none · 1 this conference · 2 another
+    for (let j = 0; j < H; j++) {
+      const y = j * cell + cell / 2;
+      for (let i = 0; i < W; i++) {
+        const x = i * cell + cell / 2;
+        let best = Infinity, mine = false;
+        for (const p of pts) {
+          const d2 = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
+          if (d2 < best) { best = d2; mine = p.mine; }
+        }
+        grid[j * W + i] = best > R2 ? 0 : (mine ? 1 : 2);
+      }
+    }
+    g.fillStyle = 'rgba(250, 204, 21, 0.13)';
+    g.beginPath();
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) if (grid[j * W + i] === 1) g.rect(i * cell, j * cell, cell, cell);
+    g.fill();
+    g.strokeStyle = '#facc15';
+    g.lineWidth = 2;
+    g.beginPath();
+    const at = (i, j) => (i < 0 || j < 0 || i >= W || j >= H ? 0 : grid[j * W + i]);
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        if (grid[j * W + i] !== 1) continue;
+        const x = i * cell, y = j * cell;
+        if (at(i - 1, j) !== 1) { g.moveTo(x, y); g.lineTo(x, y + cell); }
+        if (at(i + 1, j) !== 1) { g.moveTo(x + cell, y); g.lineTo(x + cell, y + cell); }
+        if (at(i, j - 1) !== 1) { g.moveTo(x, y); g.lineTo(x + cell, y); }
+        if (at(i, j + 1) !== 1) { g.moveTo(x, y + cell); g.lineTo(x + cell, y + cell); }
+      }
+    }
+    g.stroke();
   }
 
   _fitAll() { if (this.all && this.all.length) this.map.fitBounds(this.all, { padding: [30, 30] }); else this.map.setView([39.5, -86], 5); }
@@ -256,6 +370,7 @@ class PyramidMapView {
       else this.map.flyToBounds(pts, { ...opts, duration: 1.4 });
     }
     this._panel();
+    this._relayout();
   }
 
   // The picked conference's pyramid, as an overlay on the map.
@@ -275,6 +390,7 @@ class PyramidMapView {
     this.sel = null;
     this.root.querySelectorAll('[data-conf-label]').forEach((el) => el.classList.remove('on'));
     this._panel();
+    this._relayout();
   }
 
   _bindHud(root) {

@@ -163,7 +163,13 @@ Views only draw it:
   opens its chart as an overlay (`.mp-ov`) with a see-through slider
   (remembered, `apsl-pyramid-map-ov`), ✕ / Esc to close; the fly-to frames
   the clubs in the part of the map the overlay leaves uncovered; bubbles
-  keep clear of the HUD and the overlay.
+  keep clear of the HUD and the overlay. Club names beside the dots from
+  zoom 7 (always for the picked conference), each on a free side of its dot
+  or hidden (picked conference first, then APSL, then feeders). The picked
+  conference's territory (owner: "base it off teams in other conferences
+  around it to infer map borders"): every 4px cell belongs to the conference
+  of its nearest located club, out to ~50 km — tinted + outlined in yellow
+  on a canvas pane under the dots, redrawn per view.
 - `js/components/pyramid-path-view.js` — `PyramidPathView` (mig 845): pick a
   club (search box over the model's clubs); each of its teams' routes up the
   promoting links (`PyramidModel.upRoutes` / `routeSteps`) drawn top-down with
