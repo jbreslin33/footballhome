@@ -755,7 +755,14 @@ class RosterScreenBase extends Screen {
           if (why) { inelRows.push({ n: i + 1, html: whyWrap(why, card(p)) }); return ''; }
           return card(p);
         }
-        if (cut) { addCut(i + 1, nameRow(i, n, cutFlag[0], true)); return ''; }
+        if (cut) {
+          // drop already asked (mig 861) — no card to move to Pending Drop
+          const asked = official.dropAsked[i];
+          addCut(i + 1, nameRow(i, n, asked
+            ? (copy('board_official_cut_asked', { date: asked }) || `⏳ ✂ drop asked ${asked} — waiting on the league`)
+            : cutFlag[0], true));
+          return '';
+        }
         const why = ruleWhy(id);
         if (why) { inelRows.push({ n: i + 1, html: nameRow(i, n, why, true) }); return ''; }
         return nameRow(i, n, id == null
@@ -888,7 +895,7 @@ class RosterScreenBase extends Screen {
   // 🌐 mirror, or null when the team has none (or an upload not yet read).
   leagueListFor(teamId) {
     const o = this._data && this._data.officialRosters && this._data.officialRosters[String(teamId)];
-    return (o && (o.names || []).length) ? { names: o.names, personIds: o.personIds || [], cut: o.cut || [] } : null;
+    return (o && (o.names || []).length) ? { names: o.names, personIds: o.personIds || [], cut: o.cut || [], dropAsked: o.dropAsked || [] } : null;
   }
 
   // On the league's own list for this team → only the league takes him off.

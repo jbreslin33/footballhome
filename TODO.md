@@ -59,8 +59,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 - [ ] #teams cleanup, Roster pill (the league side). Lanes from mig 777 (PROPOSED → PENDING ADD → OFFICIAL, OFFICIAL → DROPPING → PENDING DROP). Still open:
   - [ ] **Adds, split by pill.** Roster side DONE 10/29: NEEDS ADD block (on the team, not on the official list, no step yet; a step → PROPOSED ADDS, mig 817) + the #apsl roster-moves email asks for proposed/needs-add players (mig 837). Still open: Team pill "＋ from LA" — pick section LA registrants not on this team and put them on it (reuse the card's /api/mens-roster/assign add).
-  - [ ] **Mark a cut's drop as submitted.** A cut player whose team row was swept (no playing membership) has no roster status to move to PENDING DROP once we tell the league — needs a "drop submitted" mark on the list name. Probably covered by the #apsl roster-moves email's ✓ Sent (league_move_requests, mig 829) — verify a statusless cut gets the mark, then tick.
-  - [ ] Cut players off the Team pill: confirm a non-playing (pickup/inactive) membership doesn't keep a cut man showing as PLAYS (mig 810 changed what "cut" means).
+  - [x] 2026-10-29 **Mark a cut's drop as submitted** (mig 861): a swept cut's list row reads "⏳ ✂ drop asked <date> — waiting on the league" once the #apsl roster-moves email's ✓ Sent logs it (league_move_requests → officialRosters.dropAsked). Cuts with a live card already move to Pending Drop.
+  - [x] 2026-10-29 Cut players off the Team pill — checked live: all 5 cuts (Reserves: Ando Andre, Djosonde Anathol, Dylan Moreno, Nicholson Pennant, Shahzaib Samuel) hold a pickup-only membership and NO team row; no men's team has a live row without a playing membership.
   - [ ] Check teams.max_roster = 35 is the real league cap for APSL, Reserves and Liga 1 (Projected goes red past it).
   - [ ] Youth (file-based rosters): flag only, no auto-clear.
   - Not built on purpose: per-player dismiss of the cut flag — wait for a real case.
