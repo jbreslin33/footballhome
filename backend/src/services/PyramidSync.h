@@ -34,6 +34,10 @@ public:
     // on a background thread (one at a time; Nominatim's 1 request/second).
     static void geocodePending();
 
+    // A TeamPass league's seasons (mig 847, Growth by season): the current
+    // one from `body` (the feed just read), each past one fetched once.
+    static void storeSeasons(int sourceId, const std::string& locator, const nlohmann::json& body);
+
     // One source.  Returns {source_id, ok, teams, note}.  Never throws.
     static nlohmann::json refreshSource(int sourceId);
 };

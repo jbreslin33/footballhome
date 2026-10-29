@@ -7,12 +7,12 @@
 // The screen holds ONE PyramidModel (js/lib/pyramid-model.js), built from
 // GET /api/pyramid, plus what every view shares: the conference pills (All
 // + each toggles), the view pills, and the ✏️ promotion/relegation editor.
-// A view only draws the model: PyramidFlowView (flow chart) and
+// A view only draws the model: PyramidFlowView (flow chart),
 // PyramidPresentView (Prezi-style canvas over the same chart), PyramidMapView
 // (clubs on a USA map, a conference's chart under it), PyramidPathView (a
-// club's routes up the pyramid); the rest of
-// the view pills show greyed until built.  Wording: message_templates kind
-// 'apsl_pyramid'.
+// club's routes up the pyramid), PyramidTablesView (every table, full
+// columns), PyramidGrowthView (the league's seasons).  A view pill not built
+// yet shows greyed.  Wording: message_templates kind 'apsl_pyramid'.
 class ApslPyramidScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -27,8 +27,8 @@ class ApslPyramidScreen extends Screen {
       { code: 'present', tier: 'view_present', built: true, impl: new PyramidPresentView(this, flow) },
       { code: 'map', tier: 'view_map', built: true, impl: new PyramidMapView(this, flow) },
       { code: 'path', tier: 'view_path', built: true, impl: new PyramidPathView(this, flow) },
-      { code: 'tables', tier: 'view_tables', built: false },
-      { code: 'growth', tier: 'view_growth', built: false },
+      { code: 'tables', tier: 'view_tables', built: true, impl: new PyramidTablesView(this, flow) },
+      { code: 'growth', tier: 'view_growth', built: true, impl: new PyramidGrowthView(this) },
     ];
     this.view = 'flow';
     try {
@@ -58,6 +58,8 @@ class ApslPyramidScreen extends Screen {
         ${PyramidPresentView.css()}
         ${PyramidMapView.css()}
         ${PyramidPathView.css()}
+        ${PyramidTablesView.css()}
+        ${PyramidGrowthView.css()}
         .fc-none { text-align:center; font-size:0.8rem; opacity:0.55; margin-top:14px; }
         .ap-warn { color:#fca5a5; }
         .ap-editor-bg { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; }

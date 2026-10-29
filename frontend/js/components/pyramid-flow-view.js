@@ -46,18 +46,20 @@ class PyramidFlowView {
   }
 
   // ── pieces ───────────────────────────────────────────────────────────
-  // opts.club: a club name whose rows are marked (the Club pathway view).
+  // opts.club: a club name whose rows are marked (the Club pathway view);
+  // opts.full: every column — W D L GF GA too (the Standings view);
+  // opts.find: lower-case text; rows whose team contains it are marked.
   tableHtml(model, d, title, cls, note, opts = {}) {
     const esc = (t) => this._esc(t);
-    const cols = (this._copy('table_head') || '').split(/\s+/).filter(Boolean);
+    const cols = (this._copy(opts.full ? 'table_head_full' : 'table_head') || '').split(/\s+/).filter(Boolean);
     const head = cols.map((c, i) => `<th${i === 1 ? ' class="tm"' : ''}>${esc(c === '-' ? '' : c)}</th>`).join('');
     const rows = (d.teams || []).map((t) => {
       const z = model.zoneOf(d, t.pos);
       const tip = z ? (z.targets ? this._copy('moves_to', { zone: z.label, targets: z.targets }) : z.label) : '';
       return `
-      <tr class="${z ? 'z' : ''}${opts.club && t.club === opts.club ? ' mine' : ''}" data-pos="${t.pos == null ? '' : esc(t.pos)}"${z ? ` style="--zc:${esc(z.color)}" title="${esc(tip)}"` : ''}>
+      <tr class="${z ? 'z' : ''}${(opts.club && t.club === opts.club) || (opts.find && t.name.toLowerCase().includes(opts.find)) ? ' mine' : ''}" data-pos="${t.pos == null ? '' : esc(t.pos)}"${z ? ` style="--zc:${esc(z.color)}" title="${esc(tip)}"` : ''}>
         <td>${t.pos == null ? '' : esc(t.pos)}</td><td class="tm">${esc(t.name)}</td>
-        <td>${t.gp}</td><td>${t.gd > 0 ? '+' : ''}${t.gd}</td><td><b>${t.pts}</b></td>
+        <td>${t.gp}</td>${opts.full ? `<td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf}</td><td>${t.ga}</td>` : ''}<td>${t.gd > 0 ? '+' : ''}${t.gd}</td><td><b>${t.pts}</b></td>
       </tr>`;
     }).join('');
     return `

@@ -18,6 +18,7 @@ class PyramidModel {
     this.kinds = this.data.zone_kinds || [];
     this.totals = this.data.totals || {};
     this.clubs = this.data.clubs || [];
+    this.seasons = this.data.seasons || [];
     this._comp = new Map(this.competitions.map((c) => [c.id, c]));
     this._div = new Map(this.divisions.map((d) => [d.id, d]));
     this._compOrder = new Map(this.competitions.map((c, i) => [c.id, i]));
@@ -162,6 +163,29 @@ class PyramidModel {
   clubByName(name) {
     const k = String(name || '').trim().toLowerCase();
     return this.clubs.find((c) => c.name.toLowerCase() === k) || null;
+  }
+
+  // ── seasons (Growth by season, mig 847) ──────────────────────────────
+  // A league's seasons, oldest first, each with teams per competition.
+  leagueSeasons(leagueId) {
+    return this.seasons.filter((x) => x.league_id === leagueId).sort((a, b) => a.name.localeCompare(b.name));
+  }
+  seasonTeams(season, compId) {
+    const e = (season.by_competition || []).find((x) => x.competition_id === compId);
+    return e ? e.teams : 0;
+  }
+  // Sides that season in conferences that no longer exist (Northeast…).
+  seasonFormer(season) {
+    return (season.by_competition || []).filter((x) => x.kind === 'conference' && !x.active).reduce((a, x) => a + x.teams, 0);
+  }
+  seasonFormerNames(season) {
+    return (season.by_competition || []).filter((x) => x.kind === 'conference' && !x.active).map((x) => x.name);
+  }
+
+  // Leagues other than the root that have past seasons stored.
+  leaguesWithSeasons() {
+    const root = this.root();
+    return [...new Set(this.seasons.map((x) => x.league_id))].filter((id) => !root || id !== root.id).map((id) => this.comp(id)).filter(Boolean);
   }
 
   // ── layout: conferences on one row, feeder levels below ──────────────

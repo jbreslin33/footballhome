@@ -123,6 +123,39 @@ constexpr const char* kClubsSql = R"SQL(
      GROUP BY pc.id
      ORDER BY pc.name)SQL";
 
+// Each league's seasons (mig 847, Growth by season): sides per competition
+// (distinct clubs), and distinct clubs outside the root league's own tables
+// (the APSL cups re-list conference clubs).  A former conference (inactive
+// row, e.g. Northeast) comes with its name.
+constexpr const char* kSeasonsSql = R"SQL(
+    SELECT ps.id, ps.source_id, src.competition_id AS league_id, ps.name, ps.is_current, ps.games,
+           -- A competition's size that season = its DISTINCT clubs: a
+           -- conference played Fall + Spring lists the same sides twice.
+           (SELECT json_agg(json_build_object('competition_id', x.cid, 'teams', x.teams, 'kind', x.kind,
+                                              'active', x.is_active, 'name', x.short))
+              FROM (SELECT sd.competition_id AS cid, c.kind, c.is_active, coalesce(c.short_name, c.name) AS short,
+                           count(DISTINCT k)::int AS teams
+                      FROM pyramid_season_divisions sd
+                      JOIN pyramid_competitions c ON c.id = sd.competition_id
+                      CROSS JOIN LATERAL unnest(sd.club_keys) AS k
+                     WHERE sd.season_id = ps.id
+                     GROUP BY 1, 2, 3, 4) x)::text AS by_comp,
+           (SELECT count(DISTINCT k)
+              FROM pyramid_season_divisions sd
+              JOIN pyramid_competitions c ON c.id = sd.competition_id
+              CROSS JOIN LATERAL unnest(sd.club_keys) AS k
+             WHERE sd.season_id = ps.id AND c.kind <> 'league') AS clubs,
+           -- Teams = team entries (a club's first team, reserves, …), the
+           -- same rule outside the root league's own tables.
+           (SELECT coalesce(sum(sd.teams), 0)::int
+              FROM pyramid_season_divisions sd
+              JOIN pyramid_competitions c ON c.id = sd.competition_id
+             WHERE sd.season_id = ps.id AND c.kind <> 'league') AS teams
+      FROM pyramid_seasons ps
+      JOIN pyramid_sources src ON src.id = ps.source_id
+      JOIN tr ON tr.id = src.competition_id
+     ORDER BY src.competition_id, ps.name)SQL";
+
 // Leagues: APSL + its affiliates, one per league row (CASA Select's four
 // regions are one league).
 constexpr const char* kTotalsSql = R"SQL(
@@ -306,6 +339,15 @@ Response PyramidController::handleGet(const Request& request) {
                              {"divisions", ids}});
         }
 
+        json seasons = json::array();
+        for (const auto& r : db->query(cte + kSeasonsSql, {root})) {
+            json byComp = json::parse(r["by_comp"].is_null() ? "[]" : r["by_comp"].c_str(), nullptr, false);
+            seasons.push_back({{"league_id", num(r, "league_id")}, {"name", str(r, "name")},
+                               {"current", r["is_current"].as<bool>()}, {"games", num(r, "games")},
+                               {"clubs", num(r, "clubs")}, {"teams", num(r, "teams")},
+                               {"by_competition", byComp.is_discarded() ? json::array() : byComp}});
+        }
+
         json kinds = json::array();
         for (const auto& r : db->query("SELECT code, label, moves, color FROM pyramid_zone_kinds ORDER BY sort_order, code"))
             kinds.push_back({{"code", str(r, "code")}, {"label", str(r, "label")}, {"moves", strOrNull(r, "moves")}, {"color", str(r, "color")}});
@@ -315,7 +357,7 @@ Response PyramidController::handleGet(const Request& request) {
             {"totals", {{"leagues", num(tot[0], "leagues")}, {"clubs", num(tot[0], "clubs")},
                         {"teams", num(tot[0], "teams")}, {"states", num(tot[0], "states")}}},
             {"competitions", competitions}, {"divisions", divisions}, {"links", links}, {"zone_kinds", kinds},
-            {"clubs", clubs}});
+            {"clubs", clubs}, {"seasons", seasons}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());

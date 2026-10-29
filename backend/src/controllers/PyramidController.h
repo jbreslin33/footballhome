@@ -24,7 +24,9 @@
 //       links: [{ lower: division id, upper_division: id | null,
 //                 upper_competition: id | null, promotes, relegates }],
 //       zone_kinds: [{code, label, moves, color}],
-//       clubs: [{id, name, lat, lon, venue_name, venue, divisions: [ids]}] }  (mig 844)
+//       clubs: [{id, name, lat, lon, venue_name, venue, divisions: [ids]}],  (mig 844)
+//       seasons: [{league_id, name, current, games, clubs, teams,
+//                  by_competition: [{competition_id, teams, kind, active, name}]}] }  (mig 847)
 //
 // Mig 827: zone meaning and colour are pyramid_zone_kinds rows; where a
 // zone's teams go is the pyramid_zone_moves view over pyramid_links.

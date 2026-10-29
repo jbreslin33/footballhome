@@ -156,8 +156,29 @@ Views only draw it:
   promoting links (`PyramidModel.upRoutes` / `routeSteps`) drawn top-down with
   the flow chart's tables, the club's rows outlined; two ways up = two routes
   side by side; "N step(s) up to the APSL". The pick is remembered.
-- Standings / Growth: pills greyed until built — each will be another view
-  class over the same model.
+- `js/components/pyramid-tables-view.js` — `PyramidTablesView` (mig 846):
+  every table in the flow chart's order with full columns (the shared
+  `tableHtml`, `opts.full`), then each conference's leagues' unlinked tables
+  ("other tables"), then the root's cups; a find box narrows to a team's
+  tables and marks its rows.
+- `js/components/pyramid-growth-view.js` — `PyramidGrowthView` (mig 847):
+  APSL sides by season, stacked by conference (the dataviz skill's
+  eight-slot categorical set, validated on the app's dark surface #111827,
+  colour fixed by conference order; former conferences fold into one grey
+  series), a numbers table, then other leagues' seasons (Cosmo).
+
+### Seasons (mig 847)
+
+TeamPass feeds serve any past season (`?season=<id>`, listed in
+`standings.season_list`). `PyramidSync::storeSeasons` re-counts the current
+season from the feed just read and fetches each past season ONCE on a
+background thread → `fh_pyramid_season_load` → `pyramid_seasons` +
+`pyramid_season_divisions` (teams + the feed's club ids, tied to a
+competition by feed id or by name). A conference that no longer exists is an
+inactive `pyramid_competitions` row (Northeast, 2022–24, split into Mayflower
++ Constitution). A conference's size per season = DISTINCT clubs (Fall +
+Spring tables list the same sides); a league's teams = team entries.
+APSL: 36 → 39 → 46 → 76 → 81 sides (2022/23 → 2026/27).
 
 ### Where clubs are (mig 844)
 

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <set>
 #include <thread>
 #include <cctype>
 #include <cstdlib>
@@ -98,16 +99,50 @@ public:
 // and the league's own computed totals (standings.team_totals).
 class TeamPassJsonReader : public PyramidReader {
 public:
-    json read(const std::string& locator, std::string& note) override {
+    // One season's feed (empty seasonId = the current one); a discarded json
+    // + note when it can't be read.
+    static json fetch(const std::string& locator, const std::string& seasonId, std::string& note) {
         HttpClient http;
         http.setTotalTimeoutSec(60);
         http.setProxy(proxyUrl());
-        auto resp = http.get("https://alta.teampass.com/App/Jumbotron/data/" + HttpClient::urlEncode(locator) + "?format=2A",
+        auto resp = http.get("https://alta.teampass.com/App/Jumbotron/data/" + HttpClient::urlEncode(locator) + "?format=2A"
+                                 + (seasonId.empty() ? "" : "&season=" + HttpClient::urlEncode(seasonId)),
                              {{"Accept", "application/json"}});
-        if (!resp.ok()) { note = "HTTP " + std::to_string(resp.status) + (resp.error.empty() ? "" : " " + resp.error); return json::array(); }
+        if (!resp.ok()) { note = "HTTP " + std::to_string(resp.status) + (resp.error.empty() ? "" : " " + resp.error); return json(json::value_t::discarded); }
         json body = json::parse(resp.body, nullptr, false);
         if (body.is_discarded() || !body.contains("teams") || !body["teams"].is_object()
-            || !body.contains("divisions") || !body["divisions"].is_object()) { note = "unexpected feed shape"; return json::array(); }
+            || !body.contains("divisions") || !body["divisions"].is_object()) { note = "unexpected feed shape"; return json(json::value_t::discarded); }
+        return body;
+    }
+
+    // A feed's season, counted (mig 847, Growth by season): its id and name,
+    // games, and per division its teams and the feed ids of their clubs.
+    static json seasonSummary(const json& body, bool current) {
+        json season = {{"current", current}, {"games", body.contains("games") && body["games"].is_array() ? (int)body["games"].size() : 0}};
+        if (body.contains("seasons") && body["seasons"].is_object())
+            for (const auto& [sid, sv] : body["seasons"].items()) { season["ext_id"] = sid; season["name"] = sv.value("name", sid); }
+        std::map<std::string, std::pair<int, std::set<std::string>>> per;
+        for (const auto& [tid, t] : body["teams"].items()) {
+            if (!t.contains("division_id") || !t["division_id"].is_number()) continue;
+            const std::string did = std::to_string(t["division_id"].get<long long>());
+            if (did == "0" || !body["divisions"].contains(did)) continue;
+            auto& e = per[did];
+            e.first++;
+            if (t.contains("club_id") && t["club_id"].is_number()) e.second.insert(std::to_string(t["club_id"].get<long long>()));
+        }
+        json divisions = json::array();
+        for (const auto& [did, e] : per)
+            divisions.push_back({{"ext_id", did}, {"name", body["divisions"][did].value("name", did)}, {"teams", e.first},
+                                 {"clubs", json(std::vector<std::string>(e.second.begin(), e.second.end()))}});
+        season["divisions"] = divisions;
+        return season;
+    }
+
+    json body;   // the feed read() last parsed — its season is counted after the load
+
+    json read(const std::string& locator, std::string& note) override {
+        body = fetch(locator, "", note);
+        if (body.is_discarded()) return json::array();
         const json& divs = body["divisions"];
         const json clubs = body.contains("clubs") && body["clubs"].is_object() ? body["clubs"] : json::object();
         const json st = body.contains("standings") && body["standings"].is_object() ? body["standings"] : json::object();
@@ -511,6 +546,53 @@ void PyramidSync::geocodePending() {
     }).detach();
 }
 
+// Growth by season (mig 847): the current season re-counted from the feed
+// just read; every past season in its season_list read ONCE (it can't
+// change), in the background.  A failure here never fails the table read.
+void PyramidSync::storeSeasons(int sourceId, const std::string& locator, const json& body) {
+    auto* db = Database::getInstance();
+    try {
+        db->query("SELECT fh_pyramid_season_load($1::int, $2::jsonb)",
+                  {std::to_string(sourceId), TeamPassJsonReader::seasonSummary(body, true).dump()});
+        const json st = body.contains("standings") && body["standings"].is_object() ? body["standings"] : json::object();
+        if (!st.contains("season_list") || !st["season_list"].is_array()) return;
+        std::vector<std::string> missing;
+        for (const auto& s : st["season_list"]) {
+            if (!s.contains("id") || !s["id"].is_number()) continue;
+            const std::string sid = std::to_string(s["id"].get<long long>());
+            if (db->query("SELECT 1 FROM pyramid_seasons WHERE source_id = $1::int AND external_id = $2",
+                          {std::to_string(sourceId), sid}).empty()) missing.push_back(sid);
+        }
+        if (missing.empty()) return;
+        // Past seasons on a background thread — a page load never waits on
+        // them; one batch per league at a time.
+        static std::mutex inFlightMutex;
+        static std::set<int> inFlight;
+        {
+            std::lock_guard<std::mutex> lock(inFlightMutex);
+            if (!inFlight.insert(sourceId).second) return;
+        }
+        std::thread([sourceId, locator, missing] {
+            auto* db = Database::getInstance();
+            for (const auto& sid : missing) {
+                try {
+                    std::string note;
+                    json past = TeamPassJsonReader::fetch(locator, sid, note);
+                    if (past.is_discarded()) { std::cerr << "[pyramid] season " << sid << ": " << note << std::endl; continue; }
+                    db->query("SELECT fh_pyramid_season_load($1::int, $2::jsonb)",
+                              {std::to_string(sourceId), TeamPassJsonReader::seasonSummary(past, false).dump()});
+                } catch (const std::exception& e) {
+                    std::cerr << "[pyramid] season " << sid << ", source " << sourceId << ": " << e.what() << std::endl;
+                }
+            }
+            std::lock_guard<std::mutex> lock(inFlightMutex);
+            inFlight.erase(sourceId);
+        }).detach();
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] seasons, source " << sourceId << ": " << e.what() << std::endl;
+    }
+}
+
 json PyramidSync::refreshSource(int sourceId) {
     json result = {{"source_id", sourceId}, {"ok", false}, {"teams", 0}, {"note", ""}};
     auto* db = Database::getInstance();
@@ -532,6 +614,7 @@ json PyramidSync::refreshSource(int sourceId) {
         auto r = db->query("SELECT fh_pyramid_load($1::int, $2::jsonb)", {std::to_string(sourceId), divisions.dump()});
         result["ok"] = true;
         result["teams"] = r.empty() ? 0 : r[0][0].as<int>();
+        if (system == "teampass_json") storeSeasons(sourceId, locator, static_cast<TeamPassJsonReader*>(reader.get())->body);
     } catch (const std::exception& e) {
         note = e.what();
         std::cerr << "[pyramid] source " << sourceId << ": " << note << std::endl;
