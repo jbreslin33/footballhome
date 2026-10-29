@@ -922,7 +922,7 @@ void GameServer::tickOnce() {
         const ai::Orders o = brain_.ordersFor(slot, world_);
         last_orders_[slot] = o;
         world_.setIntent(slot, o.move);
-        if (o.action != core::Action::None) world_.setAction(slot, o.action, o.carry_m, o.passTo());
+        if (o.action != core::Action::None) world_.setAction(slot, o.action, o.carry_m, o.passTo(), o.first_time);
     }
 
     last_events_ = world_.tick();

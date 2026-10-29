@@ -23,6 +23,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
       intents_(player_count),
       actions_(player_count, Action::None),
       carry_m_(player_count, 0),
+      first_time_(player_count, 0),
       pass_to_(player_count, 0xFF),
       bodies_(player_count),
       keeper_(player_count, false),
@@ -44,11 +45,12 @@ void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
 }
 
 void World::setAction(SlotIndex slot, Action action, std::uint8_t carry_m,
-                      std::uint8_t pass_to) {
+                      std::uint8_t pass_to, bool first_time) {
     if (slot >= actions_.size()) return;
     if (action == Action::None) return;  // only non-None latches
     actions_[slot] = action;
     carry_m_[slot] = carry_m;
+    first_time_[slot] = first_time ? 1 : 0;
     pass_to_[slot] = pass_to;
 }
 
@@ -297,8 +299,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         // the carry point of the PREVIOUS tick (feels like a real release).
         const SlotIndex kicker = *ball_.owner;
         const Action act = actions_[kicker];
+        // G4.92: controlled first — unless he hits it first time (G4.95).
+        const bool first_time = first_time_[kicker] != 0 && clock_.tick() < control_until_tick_;
         if (act != Action::None && players_[kicker].recovery_ticks == 0 &&
-            clock_.tick() >= control_until_tick_) {   // G4.92: controlled first
+            (clock_.tick() >= control_until_tick_ || first_time_[kicker] != 0)) {
             actions_[kicker] = Action::None;
             // Direction: live desire when pushing a direction, else facing.
             Vec2 desire = intents_[*ball_.owner].move;
@@ -327,6 +331,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                     kind_scale = Fixed64::fromFraction(1, 2);
                 else if (act == Action::LoftedKick)
                     kind_scale = Fixed64::fromFraction(5, 4);
+                if (first_time) kind_scale = kind_scale * Fixed64::fromFraction(3, 2);   // G4.95 [FH]
                 // Shooting is HARD at any level: a flat +5 degrees of
                 // match-pressure error on shots, on top of level error.
                 // (18 m/s strikes at 1-degree error converted like

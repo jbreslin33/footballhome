@@ -90,6 +90,8 @@ struct Orders {
     // An aimed LoftedKick's first-bounce distance (G4.48); 0 = the preset
     // chip (clearances, punts).
     std::uint8_t carry_m = 0;
+    // G4.95: hit it first time, no control touch (a clearance).
+    bool first_time = false;
     // A kick played to a mate (G4.81): who (World ball().pass_to — the man
     // who meets it, the rest let it run); 0xFF = nobody. Filled with a
     // ground pass's weight (carry_m = metres to the target) in ordersFor.

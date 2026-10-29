@@ -100,8 +100,10 @@ public:
     // carry_m on a ShortPass / GroundKick (G4.81): weighted to arrive at a
     // man that far away (core::weightedPassSpeed); 0 = the preset speed.
     // pass_to: the mate it is played to (ball().pass_to), 0xFF = nobody.
+    // first_time (G4.95): a kick he hits without taking a touch first — a
+    // clearance — goes inside his control touch, at 1.5x the strike error.
     void setAction(SlotIndex slot, Action action, std::uint8_t carry_m = 0,
-                   std::uint8_t pass_to = 0xFF);
+                   std::uint8_t pass_to = 0xFF, bool first_time = false);
 
     // Spawn/reset placement (scenario setup, not gameplay). `face` is the
     // initial kick/carry direction (toward the opponent goal).
@@ -233,6 +235,7 @@ private:
     std::vector<MoveIntent>  intents_;
     std::vector<Action>      actions_;
     std::vector<std::uint8_t> carry_m_;   // latched with the action (G4.48)
+    std::vector<std::uint8_t> first_time_; // latched with the action (G4.95)
     std::vector<std::uint8_t> pass_to_;   // latched with the action (G4.81)
     std::vector<bool>        keeper_;
     Locomotion loco_;

@@ -2448,6 +2448,10 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             }
         }
         out.why = out.action == Action::Shot ? Why::Shoot : (out.action == Action::LoftedKick ? Why::Clear : (holding ? Why::WaitForRunner : Why::Dribble));
+        // A clearance is hit first time (G4.95; def-clear-foot): no touch to
+        // set it — dispossessed in his own third, 74% were still in their
+        // control touch, 29% of them trying to clear.
+        out.first_time = out.why == Why::Clear;
         out.target = goal;
         return out;
     }

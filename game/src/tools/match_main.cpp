@@ -606,6 +606,9 @@ int main(int argc, char** argv) {
     long tg_n[5] = {}, tg_flag[5] = {}, tg_all = 0;
     // Time on the ball before a pass (G4.92; benchmark time_on_ball_s):
     // from his first touch of it to the kick, passes to a mate only.
+    // Own-third dispossessions (G4.95): how long he'd had it, was he still in
+    // his control touch, what he and the man who took it were doing.
+    long dp_n = 0, dp_held[4] = {}, dp_in_touch = 0, dp_carrier[ai::kWhyCount] = {}, dp_taker[ai::kWhyCount] = {};
     long tob_n = 0, tob_b[4] = {}; double tob_s = 0; long got_tick[64] = {};
     long op_men = 0, op_kicks = 0, op_all_kicks = 0, op_job[ai::kWhyCount] = {}, op_depth[4] = {}, op_age[4] = {};
     long off_called[2] = {}, off_wrong = 0, off_missed = 0, flag_wrong = 0, flag_missed = 0, flag_kicks = 0;
@@ -644,6 +647,8 @@ int main(int argc, char** argv) {
         double prev_ball_v = 0;
         int prev_ltt = -1, prev_pass_to = -1;
         double prev_bvx = 0, prev_bvy = 0;
+        std::uint64_t prev_ctrl_until = 0;
+        std::vector<int> prev_why(64, 0);
         std::vector<std::array<double, 2>> prev_ov(64, {0.0, 0.0});   // everyone's velocity last tick
         std::vector<math::Vec2> kick_at;   // everyone's spot at the last kick
         long kick_tick = 0;
@@ -780,6 +785,14 @@ int main(int argc, char** argv) {
                             ++own3_n[lt];
                             const bool kicked = lk_tick[lt] >= spell_start;
                             ++own3_lost[lt][kicked ? lk_why[lt] : ai::kWhyCount];
+                            if (!kicked && before && s.world().player(*before).team == lt && *before < 64) {
+                                ++dp_n;
+                                const double h = (k - got_tick[*before]) / 30.0;
+                                ++dp_held[h < 0.5 ? 0 : h < 1 ? 1 : h < 3 ? 2 : 3];
+                                dp_in_touch += static_cast<std::uint64_t>(k) < prev_ctrl_until;
+                                ++dp_carrier[prev_why[*before]];
+                                ++dp_taker[static_cast<int>(s.lastOrders()[*b.owner].why)];
+                            }
                             const double age = (k - spell_start) / 30.0;
                             ++own3_age[lt][age < 1 ? 0 : age < 3 ? 1 : age < 8 ? 2 : 3];
                             if (kicked) {
@@ -1078,6 +1091,8 @@ int main(int argc, char** argv) {
             prev_ball_v = std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble());
             prev_ltt = s.world().lastTouchTeam();
             prev_bvx = b.vel.x.toDouble(); prev_bvy = b.vel.y.toDouble();
+            prev_ctrl_until = s.world().controlUntilTick();
+            for (std::uint8_t j = 0; j < s.world().playerCount() && j < 64; ++j) prev_why[j] = static_cast<int>(s.lastOrders()[j].why);
             for (std::uint8_t tm = 0; tm < 2; ++tm) {   // who stands offside right now, each side
                 const double sg = tm == 0 ? 1.0 : -1.0;
                 double l1 = -1e9, l2 = -1e9;
@@ -1462,6 +1477,16 @@ int main(int argc, char** argv) {
             std::printf("  balls in behind by the passer's read: READ %.1f a match, theirs at the kick %.0f%% · NOT read %.1f, theirs %.0f%%\n",
                         ib_all_read[1] / nm, 100.0 * ib_theirs_read[1] / std::max(1L, ib_all_read[1]),
                         ib_all_read[0] / nm, 100.0 * ib_theirs_read[0] / std::max(1L, ib_all_read[0]));
+        if (dp_n) {
+            std::printf("  dispossessed in his own third (%.1f a match): had it <0.5 / 0.5-1 / 1-3 / 3+ s %.0f / %.0f / %.0f / %.0f%%; still in his control touch %.0f%%\n    he was doing:",
+                        dp_n / nm, 100.0 * dp_held[0] / dp_n, 100.0 * dp_held[1] / dp_n, 100.0 * dp_held[2] / dp_n, 100.0 * dp_held[3] / dp_n, 100.0 * dp_in_touch / dp_n);
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (dp_carrier[w] * 25 >= dp_n) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * dp_carrier[w] / dp_n);
+            std::printf("\n    the man who took it:");
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (dp_taker[w] * 25 >= dp_n) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * dp_taker[w] / dp_n);
+            std::printf("\n");
+        }
         if (tob_n)
             std::printf("  time on the ball before a pass: %.2f s; <1 / 1-2 / 2-4 / 4+ s %.0f / %.0f / %.0f / %.0f%% (pro: the PRO REFERENCE table)\n",
                         tob_s / tob_n, 100.0 * tob_b[0] / tob_n, 100.0 * tob_b[1] / tob_n, 100.0 * tob_b[2] / tob_n, 100.0 * tob_b[3] / tob_n);
