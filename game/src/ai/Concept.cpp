@@ -303,6 +303,9 @@ void PackTheMiddle::configure(const core::ModelParams& p) {
     handover_ = p.fixed(key("handover_m"), 4000);
     cb_drive_ = p.fixed(key("cb_drive_mps"), 2000);
     cb_press_gap_ = p.fixed(key("cb_press_gap_m"), 2000);
+    nine_check_in_ = p.fixed(key("nine_check_in_mps"), 2000);
+    nine_double_gap_ = p.fixed(key("nine_double_gap_m"), 2000);
+    nine_double_reach_ = p.fixed(key("nine_double_reach_m"), 12000);
     rb_ = p.integer(key("right_back_number"), 2);
     lb_ = p.integer(key("left_back_number"), 3);
     bookend_ = p.fixed(key("bookend_gap_m"), 6000);

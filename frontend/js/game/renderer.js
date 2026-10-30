@@ -249,6 +249,12 @@
       this.ring.position.y = 0.02;
       this.ring.visible = false;
       this.scene.add(this.ring);
+      this.watchRing = this.ring.clone();
+      this.watchRing.material = this.ring.material.clone();
+      this.watchRing.material.color.set(0x00e5ff);
+      this.watchRing.visible = false;
+      this.scene.add(this.watchRing);
+      this.watchSlot = null;
 
       // Ball: classic white with dark panels, a touch over regulation size
       // so it reads at broadcast distance; spins as it rolls.
@@ -312,6 +318,13 @@
     }
 
     // Held players glow faint gold; the ACTIVE one glows bright.
+    // The one player the camera watches (null = none). Watching claims
+    // nothing: the AI keeps playing him.
+    setWatchSlot(slot) {
+      this.watchSlot = slot;
+      if (this.rig) this.rig.watchYaw = undefined;
+    }
+
     setMySlots(slots, activeSlot) {
       this.mySlots = slots;
       this.activeSlot = activeSlot;
@@ -341,7 +354,7 @@
       const rp = this.replay;
       const buf = rp ? this.history : this.buffer;
       const n = buf.length;
-      let ballPos = null, me = null;
+      let ballPos = null, me = null, watch = null;
       if (n >= 1 && (rp || this.timeOffset !== null)) {
         let renderTick;
         if (rp) {
@@ -426,6 +439,13 @@
             this.carrierSlot = i;
             this.lastOwnerPos = { x, y, team: i < this.halfN ? 0 : 1, yaw: f.yaw };
           }
+          if (i === this.watchSlot) {
+            watch = { x, y, team: i < this.halfN ? 0 : 1, yaw: f.yaw };
+            if (this.watchRing) {
+              this.watchRing.position.x = x;
+              this.watchRing.position.z = y;
+            }
+          }
           if (i === this.activeSlot) {
             me = { x, y, team: i < this.halfN ? 0 : 1, yaw: f.yaw };
             this.ring.position.x = x;
@@ -435,11 +455,11 @@
       }
       // No controlled player: "the man" is whoever has the ball.
       if (!me && this.lastOwnerPos) me = this.lastOwnerPos;
-      this.rig.update(dt, { ball: ballPos, me, hx: this.hx, hy: this.hy });
+      this.rig.update(dt, { ball: ballPos, me, watch, hx: this.hx, hy: this.hy });
       if (this.field) this.field.update(this.camera, now / 1000);
       // First person: hide your own body (the camera is in his head).
-      const firstSlot = this.activeSlot !== null && this.activeSlot !== undefined
-        ? this.activeSlot : this.carrierSlot;
+      const firstSlot = this.watchSlot !== null && this.watchSlot !== undefined ? this.watchSlot
+        : this.activeSlot !== null && this.activeSlot !== undefined ? this.activeSlot : this.carrierSlot;
       // showMatch false (non-GAME modes, client.js): the complex without
       // the match — no players, no ball.
       const showMatch = this.showMatch !== false;
@@ -447,6 +467,7 @@
         f.root.visible = showMatch && !(this.rig.mode === 'first' && f.slot === firstSlot);
       if (this.ballMesh) this.ballMesh.visible = showMatch;
       if (this.ring && !showMatch) this.ring.visible = false;
+      if (this.watchRing) this.watchRing.visible = showMatch && this.watchSlot !== null && this.watchSlot !== undefined;
       this.drawBrain();
       this.renderer.render(this.scene, this.camera);
     }

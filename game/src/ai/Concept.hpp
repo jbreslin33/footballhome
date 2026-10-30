@@ -617,11 +617,18 @@ public:
     // cb_drive_mps+ is driving — the 9 presses him, cb_press_gap_m off him on
     // the line to his nearest central man (the cover shadow).
     math::Fixed64 cbDrive() const { return cb_drive_; }
+    // G4.99 (James 10/30: "double mark them checking in"): a central man
+    // coming toward the ball at nine_check_in_mps+, within nine_double_reach_m
+    // of the 9's box, gets the 9 nine_double_gap_m off him on the ball's line.
+    math::Fixed64 nineCheckIn() const { return nine_check_in_; }
+    math::Fixed64 nineDoubleGap() const { return nine_double_gap_; }
+    math::Fixed64 nineDoubleReach() const { return nine_double_reach_; }
     math::Fixed64 cbPressGap() const { return cb_press_gap_; }
 
 private:
     int nine_ = 9, right_ = 7, left_ = 11, mid_[3] = {6, 8, 10}, rb_ = 2, lb_ = 3;
     math::Fixed64 cb_drive_, cb_press_gap_;
+    math::Fixed64 nine_check_in_, nine_double_gap_, nine_double_reach_;
     math::Fixed64 tuck_, weak_tuck_, central_, screen_, nine_screen_, from_halfway_, handover_;
     math::Fixed64 bookend_, fb_off_, fb_inside_;
 };

@@ -1662,13 +1662,24 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
     // counter-press, not the handover to the ordinary press (measured: 28%
     // of that time he was counter-pressing the centre-back); driving at us,
     // the 9 presses him with the cover shadow on his nearest central man.
-    bool cb_on_ball = false, cb_driving = false;
-    if (nine && ball.owner && setup_.team_of_slot[*ball.owner] != my_team && world.restartTeam() == 0xFF) {
+    // G4.99 (James 10/30: "lh 9 is still going after cb of ukies. he is
+    // supposed to chill"): their keeper or a centre-back on the ball, or the
+    // ball going to one, or their restart, is QUIET for the 9 — a lapse of the
+    // pack is not the ordinary brain (his direct opponents ARE their 4 and 5,
+    // so it marked or chased them), he just stands in the box.
+    bool cb_on_ball = false, cb_driving = false, quiet = false;
+    if (nine && ratings_[slot][P.bit()] > 0) {
         const Trap t0 = trapRead(world, my_team, B);
-        if (std::find(t0.cbs.begin(), t0.cbs.end(), *ball.owner) != t0.cbs.end()) {
+        const std::uint8_t rt = world.restartTeam();
+        const bool to_cb = t0.carrier >= 0 &&
+            std::find(t0.cbs.begin(), t0.cbs.end(), static_cast<SlotIndex>(t0.carrier)) != t0.cbs.end();
+        if (to_cb && rt == 0xFF) {
             cb_on_ball = true;
-            cb_driving = -world.player(*ball.owner).vel.x * dsgn >= P.cbDrive();
+            cb_driving = ball.owner && -world.player(*ball.owner).vel.x * dsgn >= P.cbDrive();
         }
+        quiet = (rt != 0xFF && rt != my_team) ||
+                (t0.carrier >= 0 && world.isKeeper(static_cast<SlotIndex>(t0.carrier))) ||
+                (cb_on_ball && !cb_driving);
     }
     if (cb_on_ball && cb_driving) {
         const SlotIndex cb = *ball.owner;
@@ -1696,8 +1707,8 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
         return true;
     }
     // We just lost it and he's near it: the counter-press comes first —
-    // except the 9 on a centre-back who isn't driving (G4.97).
-    if (!(cb_on_ball && !cb_driving) &&
+    // except the 9 while it's quiet (G4.97, G4.99).
+    if (!quiet &&
         world.lastLosingTeam() == my_team && ratings_[slot][16] > 0 && world.restartTeam() == 0xFF &&
         world.tickCount() - world.turnoverTick() < 10 + static_cast<std::uint64_t>(ratings_[slot][16]) &&
         distSq(me.pos, Vec3{B.x, B.y, Fixed64::zero()}) < Fixed64::fromInt(400))
@@ -1751,20 +1762,6 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
         if (c.size() >= 2) return static_cast<int>(high ? c.back() : c.front());
         if (c.size() == 1 && (world.player(c[0]).pos.y.raw >= 0) == high) return static_cast<int>(c[0]);
         return -1;
-    };
-    auto nineMan = [&]() {
-        std::vector<int> taken;
-        for (SlotIndex j = 0; j < world.playerCount(); ++j)
-            if (setup_.team_of_slot[j] == my_team && P.isWinger(numberOf(j))) taken.push_back(wingerMan(j));
-        int M = -1;
-        Fixed64 md{};
-        for (int pass = 0; pass < 2 && M < 0; ++pass)
-            for (SlotIndex o : c) {
-                if (pass == 0 && std::find(taken.begin(), taken.end(), static_cast<int>(o)) != taken.end()) continue;
-                const Fixed64 d = distSq(world.player(o).pos, Vec3{B.x, B.y, Fixed64::zero()});
-                if (M < 0 || d < md) { M = o; md = d; }
-            }
-        return M;
     };
     auto tuck = [&](Fixed64 width) {
         const int M = wingerMan(slot);
@@ -1865,8 +1862,9 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
         return true;
     }
     // No trigger yet: pack the middle.
-    if (ratings_[slot][P.bit()] == 0 || !applies(slot, P.bit(), poss)) return false;
-    if (ball.owner && !cb_on_ball && distSq(me.pos, ball.pos) < P.handover() * P.handover()) return false;
+    const bool pack = ratings_[slot][P.bit()] > 0 && applies(slot, P.bit(), poss);
+    if (!pack && !nine) return false;   // the 9's lapse stands in the box, not on his direct opponent
+    if (ball.owner && !quiet && distSq(me.pos, ball.pos) < P.handover() * P.handover()) return false;
     if (wing) {
         // Book-ends (G4.72, James 10/27: "lh 7 and 11 should be book ends to
         // lh 8,10"): level with our 8 or 10 on his side (the one nearer his
@@ -1893,7 +1891,14 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
     // The 9 in the box (G4.72, James 10/27: "he should be in middle of their
     // 6 and 8 and able to cover shadow them. like in a box between ukies
     // 4,5,6,8"): the middle of their two centre-backs and their two deepest
-    // central midfielders.
+    // central midfielders. A lapse stands there; on it (G4.99, James 10/30:
+    // "chill and help cover shadow ukiies 6,8,10 or even double mark them
+    // checking in") he shadows the one nearest the ball from inside it —
+    // nine_screen_gap_m off him on the line from the ball — and a man
+    // checking in toward the ball within nine_double_reach_m gets him tight,
+    // nine_double_gap_m off him on that line: the double with the man who
+    // marks him.
+    Vec2 box = anchor;
     {
         std::vector<SlotIndex> deep = c;
         std::sort(deep.begin(), deep.end(), [&](SlotIndex a, SlotIndex b) {
@@ -1905,20 +1910,41 @@ bool Brain::packAndTrap(SlotIndex slot, const World& world, int sign, const Vec2
                 t.x += world.player(o).pos.x;
                 t.y += world.player(o).pos.y;
             }
-            t = Vec2{t.x / Fixed64::fromInt(4), t.y / Fixed64::fromInt(4)};
-            out.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
-            out.why = Why::PackMiddle;
-            out.target = t;
-            out.other = static_cast<std::int16_t>(deep[0]);
-            return true;
+            box = Vec2{t.x / Fixed64::fromInt(4), t.y / Fixed64::fromInt(4)};
         }
     }
-    // The false 9 floats: he screens the one the wingers leave, nearest the
-    // ball — but never further than lock-the-door's reach from the ball-side
+    if (!pack) {
+        out.move.move = seek(me.pos, box, Fixed64::fromFraction(1, 2));
+        out.why = Why::Hold;
+        out.target = box;
+        return true;
+    }
+    int M = -1;
+    Fixed64 md{};
+    for (SlotIndex o : c) {
+        const Fixed64 d = distSq(world.player(o).pos, Vec3{B.x, B.y, Fixed64::zero()});
+        if (M < 0 || d < md) { M = o; md = d; }
+    }
+    int D = -1;
+    Fixed64 dd{};
+    for (SlotIndex o : c) {
+        const auto& op = world.player(o);
+        const Vec2 to_ball = math::normalized(Vec2{B.x - op.pos.x, B.y - op.pos.y});
+        if (op.vel.x * to_ball.x + op.vel.y * to_ball.y < P.nineCheckIn()) continue;
+        const Fixed64 d = math::lengthSquared(Vec2{op.pos.x - box.x, op.pos.y - box.y});
+        if (d > P.nineDoubleReach() * P.nineDoubleReach()) continue;
+        if (D < 0 || d < dd) { D = o; dd = d; }
+    }
+    if (M < 0) {   // nobody central on the far side of the ball: the box
+        out.move.move = seek(me.pos, box, Fixed64::fromFraction(1, 2));
+        out.why = Why::PackMiddle;
+        out.target = box;
+        return true;
+    }
+    // Never further than lock-the-door's reach from the ball-side
     // centre-back, so he can lock the door while the pass wide travels.
-    const int M = nineMan();
-    if (M < 0) return false;
-    screen(M, P.centralWidth(), Why::PackMiddle, P.nineScreenGap());
+    if (D >= 0) screen(D, P.centralWidth(), Why::DoubleCheckIn, P.nineDoubleGap());
+    else screen(M, P.centralWidth(), Why::PackMiddle, P.nineScreenGap());
     const auto& L = book_.lock_door;
     if (!cbs.empty() && ratings_[slot][L.bit()] > 0) {
         SlotIndex bs = cbs[0];

@@ -183,6 +183,11 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
     std::vector<double> touch_gap, touch_gap_short;
     double kick_x = 0, kick_y = 0;
     long d_why[ai::kWhyCount] = {}, d_ticks = 0;
+    // Their 9 while we build (G4.99, James 10/30: "lh 9 is still going after
+    // cb of ukies"): his job, by who has the ball or who it's going to —
+    // keeper, centre-back 4/5, the middle 6/8/10, full-back 2/3 — in our half.
+    const char* const nine_names[4] = {"keeper", "centre-back", "the middle", "full-back"};
+    long nine_n[4] = {}, nine_job[4][ai::kWhyCount] = {}, nine_on[4] = {}, nine_cb[4] = {}, nine_cb_job[4][ai::kWhyCount] = {};
     // G4.70-71 calls, [0 = us, 1 = them][why]: man-ticks a call was due to a
     // talker / he made it / a listener heard one.
     long call_due[2][ai::kWhyCount] = {}, call_made[2][ai::kWhyCount] = {}, call_heard[2][ai::kWhyCount] = {};
@@ -261,6 +266,33 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                             ai::kWhyNames[static_cast<int>(s.lastOrders()[b.last_kicker].why)],
                             std::sqrt(b.vel.x.toDouble() * b.vel.x.toDouble() + b.vel.y.toDouble() * b.vel.y.toDouble()));
             last_toucher = b.last_kicker;
+            {
+                int who = b.owner ? *b.owner : s.lastOrders()[b.last_kicker].other;
+                const int wn = who >= 0 ? s.brain().numberOf(static_cast<std::uint8_t>(who)) : 0;
+                const int zone = s.world().isKeeper(static_cast<std::uint8_t>(who < 0 ? 0 : who)) ? 0
+                               : wn == 4 || wn == 5 ? 1 : wn == 6 || wn == 8 || wn == 10 ? 2 : wn == 2 || wn == 3 ? 3 : -1;
+                if (who >= 0 && zone >= 0 && s.world().player(static_cast<std::uint8_t>(who)).team == team &&
+                    from_goal(b.pos.x.toDouble()) < hx)
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == team || s.brain().numberOf(j) != 9) continue;
+                        auto gap = [&](std::uint8_t o) {
+                            const auto& p = s.world().player(o);
+                            return std::hypot(d.pos.x.toDouble() - p.pos.x.toDouble(), d.pos.y.toDouble() - p.pos.y.toDouble());
+                        };
+                        ++nine_n[zone];
+                        ++nine_job[zone][static_cast<int>(s.lastOrders()[j].why)];
+                        if (gap(static_cast<std::uint8_t>(who)) < 3.0) ++nine_on[zone];
+                        for (std::uint8_t o = 0; o < s.world().playerCount(); ++o) {
+                            const int on = s.brain().numberOf(o);
+                            if (s.world().player(o).team == team && (on == 4 || on == 5) && gap(o) < 3.0) {
+                                ++nine_cb[zone];
+                                ++nine_cb_job[zone][static_cast<int>(s.lastOrders()[j].why)];
+                                break;
+                            }
+                        }
+                    }
+            }
             // GAME_PHASE_TRACE=n: episode n, twice a second — who has it,
             // what he's doing, where, and how close the nearest opponent is.
             // GAME_PHASE_WATCH=9,7,11: the defending side's men with those
@@ -452,6 +484,20 @@ int runPhaseEpisodes(const server::GameServer::Config& base, const server::Match
                         median(touch_gap_short), 100.0 * tight / touch_gap_short.size(), touch_gap_short.size());
     }
     if (d_ticks) {
+        for (int z = 0; z < 4; ++z) {
+            if (!nine_n[z]) continue;
+            std::printf("  their 9, ball with %-11s %5.1f s/ep: on him %2.0f%%, within 3 m of a CB %2.0f%%; doing:", nine_names[z],
+                        static_cast<double>(nine_n[z]) / core::kTickRate / std::max(1, episodes),
+                        100.0 * nine_on[z] / nine_n[z], 100.0 * nine_cb[z] / nine_n[z]);
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (nine_job[z][w] * 100 >= nine_n[z] * 4)
+                    std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * nine_job[z][w] / nine_n[z]);
+            std::printf(" | by a CB:");
+            for (int w = 0; w < ai::kWhyCount; ++w)
+                if (nine_cb[z] && nine_cb_job[z][w] * 100 >= nine_cb[z] * 10)
+                    std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * nine_cb_job[z][w] / nine_cb[z]);
+            std::printf("\n");
+        }
         std::printf("  %s outfield orders (share of man-ticks):", them.c_str());
         for (int w = 0; w < ai::kWhyCount; ++w)
             if (d_why[w] * 1000 >= d_ticks) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * d_why[w] / d_ticks);

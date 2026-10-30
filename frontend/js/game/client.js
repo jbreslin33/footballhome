@@ -343,6 +343,7 @@
   // concept and rating behind the decision. Ticks are remembered on this
   // device.
   let brainOn = false, brainLegend = [], brainEntries = null, brainOpen = null;
+  let watchPicking = false;
   const brainPick = new Set();
   const BRAIN_KEY = 'fh-game-brain-picks';
   try { (JSON.parse(localStorage.getItem(BRAIN_KEY) || '[]') || []).forEach((i) => brainPick.add(i)); } catch (_) {}
@@ -945,6 +946,7 @@
     onRoster(r) {
       roster = r;
       applyIdentities();   // names may have changed (lineup / reload)
+      paintWatchList();
       if (brainOn) paintBrainSides();
     },
     onBrain(entries) {
@@ -964,13 +966,14 @@
     },
     onTeams(t) {
       teams = t;
+      paintWatchList();
       if (brainOn) paintBrainSides();
       paintPhaseBar();
       // Names + position numbers over the players (mig 643): both teams'
       // slot numbers from the club API, names from ROSTER.
       for (const k of Object.keys(teamCache)) delete teamCache[k];
       Promise.all([loadTeam(t.home, true), loadTeam(t.away, true)])
-        .then(([h, a]) => { idTeams = [h, a]; applyIdentities(); })
+        .then(([h, a]) => { idTeams = [h, a]; applyIdentities(); paintWatchList(); })
         .catch(() => { idTeams = null; applyIdentities(); });
       // The teams' own kits (mig 639): recolour and rebuild the figures.
       if (t.kits && (t.kits[0] || t.kits[1])) {
@@ -1039,6 +1042,10 @@
     if (slot === null) return;
     if (editMode) {           // admin edit screen: inspect, don't claim
       openEditPanel(slot);
+      return;
+    }
+    if (watchPicking) {       // WATCH: the camera takes him, nobody claims him
+      setWatch(slot);
       return;
     }
     if (!mySlots.has(slot)) {
@@ -1140,6 +1147,68 @@
       e.preventDefault(); e.stopPropagation(); toggleFollow();
     });
   }
+  // WATCH (James, 10/30: "start focusing on individual players … focus on 1
+  // player at a time with cam too"): the list or a tap on the pitch puts the
+  // camera on one man without claiming him — a moving man is hard to hit, so
+  // the list is the sure way. [ and ] step through them, 7 is the camera.
+  const watchBar = document.createElement('div');
+  watchBar.className = 'game-only';
+  watchBar.style.cssText = 'position:fixed;right:12px;top:284px;width:150px;z-index:20;' +
+    'display:flex;flex-direction:column;gap:4px;';
+  const watchSel = document.createElement('select');
+  watchSel.setAttribute('aria-label', 'Watch one player');
+  watchSel.style.cssText = 'width:100%;height:34px;border-radius:10px;border:0;padding:0 6px;' +
+    'font:700 11px system-ui,sans-serif;background:rgba(10,14,20,.7);color:#fff;';
+  const watchTap = document.createElement('button');
+  watchTap.type = 'button';
+  watchTap.textContent = 'TAP TO WATCH';
+  watchTap.style.cssText = 'height:30px;border:0;border-radius:10px;cursor:pointer;' +
+    'font:700 10px system-ui,sans-serif;background:rgba(10,14,20,.55);color:#fff;';
+  watchBar.append(watchSel, watchTap);
+  shieldKeys(watchBar);
+  document.body.appendChild(watchBar);
+  function paintWatchList() {
+    const names = [(teams && teams.home) || 'Home', (teams && teams.away) || 'Away'];
+    const was = watchSel.value;
+    let h = '<option value="">Watch a player…</option>';
+    [0, 1].forEach((team) => {
+      h += `<optgroup label="${esc(names[team])}">`;
+      for (const i of teamSlots(team)) {
+        const k = i - teamSlots(team)[0];
+        const nums = idTeams && idTeams[team] && idTeams[team].numbers;
+        const n = (roster[i] && roster[i].number) || (nums && nums[k]);
+        const num = n ? '#' + n + ' ' : '';
+        h += `<option value="${i}">${esc(num + slotName(i))}</option>`;
+      }
+      h += '</optgroup>';
+    });
+    watchSel.innerHTML = h;
+    watchSel.value = was;
+  }
+  function setWatch(slot) {
+    watchPicking = false;
+    paintWatchTap();
+    renderer.setWatchSlot(slot);
+    watchSel.value = slot === null ? '' : String(slot);
+    if (slot !== null) renderer.rig.setMode('watch');
+    else if (renderer.rig.mode === 'watch') renderer.rig.setMode('broadcast');
+  }
+  function paintWatchTap() {
+    watchTap.style.background = watchPicking ? '#00e5ff' : 'rgba(10,14,20,.55)';
+    watchTap.style.color = watchPicking ? '#0b1c3d' : '#fff';
+  }
+  watchSel.addEventListener('change', () => {
+    setWatch(watchSel.value === '' ? null : Number(watchSel.value));
+    watchSel.blur();   // or WASD and the digit keys go to the list
+  });
+  watchTap.addEventListener('click', () => { watchPicking = !watchPicking; paintWatchTap(); });
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== '[' && e.key !== ']') return;
+    const n = (hello && hello.slotCount) || roster.length || 22;
+    const cur = renderer.watchSlot;
+    const step = e.key === ']' ? 1 : -1;
+    setWatch(cur === null ? (step > 0 ? 0 : n - 1) : (cur + step + n) % n);
+  });
   // Zoom: +/− buttons (hold repeats), + / − / = keys; wheel and pinch
   // are handled by the rig itself. 1–6 pick a camera directly.
   const zoomBy = (f) => renderer.rig.zoom(f);
@@ -1280,7 +1349,7 @@
     }
   }
   applyMode();
-  const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];
+  const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit', 'watch'];
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'c' && !e.repeat) renderer.rig.cycle();
@@ -1289,7 +1358,7 @@
     if (k === 'v' && !e.repeat) toggleFollow();
     if (k === '+' || k === '=') zoomBy(0.85);
     if (k === '-' || k === '_') zoomBy(1 / 0.85);
-    if (k >= '1' && k <= '6' && !e.repeat) renderer.rig.setMode(CAMS[+k - 1]);
+    if (k >= '1' && k <= '7' && !e.repeat) renderer.rig.setMode(CAMS[+k - 1]);
     // Replay frame steps: , and . (a second with shift: < and >).
     if (renderer.replay && (k === ',' || k === '<')) stepReplay(k === '<' ? -30 : -1);
     if (renderer.replay && (k === '.' || k === '>')) stepReplay(k === '>' ? 30 : 1);

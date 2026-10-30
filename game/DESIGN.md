@@ -3601,6 +3601,48 @@ James 10/29: "yes" — take the passer (§8.94's next mole).
   every time it's on. Then the false 9's space read (43 a match for the
   Ukies).
 
+### 8.97 G4.99 — the 9 chills in the box; WATCH one player (mig 869)
+
+James 10/30: "on from the keeper lh 9 is still going after cb of ukies. he is
+supposed to chill and help cover shadow ukiies 6,8,10 or even double mark them
+checking in. then as soon as ball is struck he goes to mark the ball side cb to
+stop back pass. i wan to start focusing on individual players and fix the
+behaviour so we become more realistic. neeed to be able to focus on 1 player at
+a time with cam too".
+
+- **Measured** (new phase-harness line: their 9 by who has the ball — keeper,
+  centre-back, the middle, full-back — on him, within 3 m of a CB, his jobs).
+  Two doors to the centre-back: the pack roll lapsing for a whole possession
+  fell to the ordinary brain, where his direct opponents ARE their 4 and 5
+  (mark, chase, contain, jockey: jockeying 8-12%); and "driving" at 2 m/s was
+  a man taking a touch (cover shadow 27% with a CB on the ball).
+- **Quiet:** their restart, or their keeper or a centre-back with the ball or
+  the ball going to him (the trap's flight read, so it holds from the strike),
+  not driving. Quiet, nothing sends him at them: no counter-press, no handover.
+  `cb_drive_mps` 2 → 4. **The 9's lapse stands in the box** (hold shape) —
+  a lapse is the wrong spot, not a chase.
+- **On it:** he shadows the central man nearest the ball, `nine_screen_gap_m`
+  off him on the ball's line; a man coming toward the ball at
+  `nine_check_in_mps` (2) within `nine_double_reach_m` (12) of the box gets
+  him `nine_double_gap_m` (2) off, Why::DoubleCheckIn ("double the man
+  checking in"). Still inside lock-the-door's reach of the ball-side
+  centre-back. The door itself is unchanged: on the strike to the full-back.
+- **Also fixed:** the driving-CB press had no rating check, so any team's 9
+  ran it; now pack-the-middle's rating gates all of it.
+- 100 keeper episodes, CB on the ball: cover shadow (the drive press) 27 → 6%,
+  jockey 8% → under 4%, pack 58 → 70%, hold (lapse) under 4% → 18%; ball to the full-back:
+  lock the door 71 → 72%. With the middle on it he is within 3 m of a CB 22%
+  (was 11%): pack 73%, double 14% — near one, not on one (on the man with the
+  ball 1%).
+- 10 matches against G4.98: past their last outfielder 114 / 143 → 130 / 165,
+  spells 446 → 506, goals 10.4 → 10.5, shots 49 / 65 → 53 / 66, Lighthouse
+  W8 D0 L2 → W4 D3 L3 (margin +0.9 ± 1.06). Correct behaviour, ships anyway:
+  an unpressed centre-back has longer to pick his pass.
+- **WATCH** (client, camera mode 7): a list by team, `[` `]`, or TAP TO WATCH
+  puts the camera on one man without claiming him — behind him on the far side
+  from the ball, cyan ring; 3RD and 1ST ride him too. Checked in Chrome against
+  the running daemon.
+
 ### v1 explicit non-goals (do not build before G4 closes)
 
 Fouls/cards, stamina, substitutions-as-rule (subs arrive with G5 tactical

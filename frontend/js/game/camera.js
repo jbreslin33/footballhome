@@ -10,6 +10,9 @@
 //   1ST   — first person: at his eye line, looking where he faces
 //   TOP   — overhead tactical
 //   FREE  — drag to orbit anywhere
+//   WATCH — one player (James, 10/30 "focus on 1 player at a time with cam
+//           too"): behind him on the far side from the ball, so the frame
+//           holds him and what he's reading. 3RD and 1ST ride him too.
 // FOLLOW OFF (button or V; James, 10/22 "option to stop ball follow ... so
 // i can move cam"): the camera stops tracking the ball and stays where you
 // put it — one-finger / left drag PANS across the ground, right- or
@@ -23,9 +26,9 @@
 (function () {
   'use strict';
 
-  const MODES = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit'];
+  const MODES = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit', 'watch'];
   const LABEL = { broadcast: 'TV', ball: 'BALL', third: '3RD', first: '1ST',
-                  top: 'TOP', orbit: 'FREE' };
+                  top: 'TOP', orbit: 'FREE', watch: 'WATCH' };
   const wrap = (a) => ((a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 
   class CameraRig {
@@ -153,10 +156,11 @@
       this.user.pitch = Math.min(1.5, Math.max(0.04, this.user.pitch + dy * 0.004));
     }
 
-    // ctx: { ball:{x,y,z}, me:{x,y,team,yaw}|null }
+    // ctx: { ball:{x,y,z}, me:{x,y,team,yaw}|null, watch:{x,y,team,yaw}|null }
     update(dt, ctx) {
       const b = ctx.ball || { x: 0, y: 0, z: 0 };
-      const m = ctx.me;
+      const w = ctx.watch;
+      const m = w || ctx.me;
       const Z = this.zoomMul;
       let goal, tx = b.x, tz = b.y, ty = 0;
       // The ball's heading (for the chase cam).
@@ -204,6 +208,21 @@
             return;
           }
           goal = { yaw: this.cur.yaw, pitch: 0.4, dist: 30 * Z };
+          break;
+        case 'watch':
+          if (w) {
+            // Eased on the ball's bearing, or a pass flips the frame.
+            const dx = b.x - w.x, dz = b.y - w.y;
+            const far = Math.hypot(dx, dz);
+            if (far > 3) this.watchYaw = Math.atan2(-dx, -dz);
+            const yaw = this.watchYaw !== undefined ? this.watchYaw : this.cur.yaw;
+            // Aim a little toward the ball, out to 8 m.
+            const lead = Math.min(8, far * 0.3) / Math.max(far, 1);
+            tx = w.x + dx * lead; tz = w.y + dz * lead; ty = 1;
+            goal = { yaw, pitch: 0.42, dist: 22 * Z };
+          } else {
+            goal = { yaw: this.cur.yaw, pitch: 0.4, dist: 30 * Z };
+          }
           break;
         case 'top':
           tx = b.x * 0.35; tz = 0;
