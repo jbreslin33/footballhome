@@ -970,8 +970,12 @@ class RosterScreenBase extends Screen {
     Object.entries(data.rosterRules || {}).forEach(([tid, r]) => {
       if ((r.excludes || []).map(Number).includes(Number(col.teamId))) bar(tid);
     });
+    // A youth file list grants nothing, so a hand-set On Roster the file
+    // doesn't carry reads here too instead of vanishing (mig 868).
+    const staleOnFile = (p) => !!(official && official.fromFile) && !lanes[sectionOf(p)]
+      && RosterScreenBase.countsAsOnRoster(p.rosterStatus);
     const needsAdd = officialCount > 0
-      ? rest.filter(p => !p.rosterStatus && !(p.inviteOnly === true && p.callIn === true) && !barred.has(Number(p.personId)))
+      ? rest.filter(p => (!p.rosterStatus || staleOnFile(p)) && !(p.inviteOnly === true && p.callIn === true) && !barred.has(Number(p.personId)))
       : [];
     // …plus a requires team's list players who are not here at all yet
     // (owner: on Liga 1 but not added to Reserves → NEEDS ADD).
@@ -1013,13 +1017,20 @@ class RosterScreenBase extends Screen {
   // 🌐 mirror, or null when the team has none (or an upload not yet read).
   leagueListFor(teamId) {
     const o = this._data && this._data.officialRosters && this._data.officialRosters[String(teamId)];
-    return (o && (o.names || []).length) ? { names: o.names, personIds: o.personIds || [], cut: o.cut || [], dropAsked: o.dropAsked || [] } : null;
+    return (o && (o.names || []).length) ? { names: o.names, personIds: o.personIds || [], cut: o.cut || [], dropAsked: o.dropAsked || [], fromFile: o.system === 'club_file' } : null;
   }
 
-  // On the league's own list for this team → only the league takes him off.
+  // On the league's own list for this team.
   onLeagueList(teamId, personId) {
     const l = teamId && personId ? this.leagueListFor(teamId) : null;
     return !!(l && l.personIds.some(id => id != null && Number(id) === Number(personId)));
+  }
+
+  // On an ONLINE list → only the league takes him off.  A youth file list
+  // flags, never locks (mig 868; fh_on_league_list is the server half).
+  leagueListLocks(teamId, personId) {
+    const l = teamId ? this.leagueListFor(teamId) : null;
+    return !!(l && !l.fromFile && this.onLeagueList(teamId, personId));
   }
 
   // Subs can go negative (owner 2026-09-05: "11v11 with 11 on roster is
@@ -1207,9 +1218,11 @@ class RosterScreenBase extends Screen {
     // except to put them in 'dropping' col and then pending drop"): a man
     // on this team's league list moves only between On Roster, Dropping
     // and Pending Drop (no blank either); one off a list the team has
-    // gets no drop lane.  TeamController enforces the same rule.
-    const onList  = this.onLeagueList(col.teamId, player.personId);
-    const hasList = !!this.leagueListFor(col.teamId);
+    // gets no drop lane.  TeamController enforces the same rule.  A youth
+    // file list locks nothing (mig 868).
+    const onList  = this.leagueListLocks(col.teamId, player.personId);
+    const list    = this.leagueListFor(col.teamId);
+    const hasList = !!list && !list.fromFile;
     const dropLane = (st) => st.boardSection === 'drop' || st.boardSection === 'pending_drop';
     const offLane = (st) => onList ? !(st.countsAsOnRoster || dropLane(st)) : (hasList && dropLane(st));
     const opts = options.map(s => {
@@ -1541,7 +1554,7 @@ class RosterScreenBase extends Screen {
 
     // On the league's own list for this team: no Unassigned/remove —
     // "i can move them but not OFF that official roster" (2026-10-27).
-    const listLocked = this.onLeagueList(currentTeamId, player.personId);
+    const listLocked = this.leagueListLocks(currentTeamId, player.personId);
     const targets = [
       ...(listLocked ? [] : [{ id: 0, label: 'Unassigned', short: 'Unassigned' }]),
       ...teamTargets,

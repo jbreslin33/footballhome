@@ -516,7 +516,7 @@ Response TeamController::handleSetRosterStatusForPerson(const Request& request) 
             pqxx::result lane = db_->query(
                 "SELECT fh_on_league_list($1::int, $2::int) AS on_list, "
                 "       EXISTS (SELECT 1 FROM official_roster_sources s JOIN official_roster_names n ON n.source_id = s.id "
-                "                WHERE s.team_id = $1::int AND s.is_active) AS has_list, "
+                "                WHERE s.team_id = $1::int AND s.is_active AND s.system <> 'club_file') AS has_list, "
                 "       rs.board_section, COALESCE(rs.counts_as_on_roster, false) AS counts "
                 "  FROM (SELECT 1) one LEFT JOIN roster_statuses rs ON rs.code = NULLIF($3, '')",
                 {team_id, person_id, hasCode ? code : std::string()});
