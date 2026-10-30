@@ -164,6 +164,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="in-house-proposal" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🏠</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('in_house_proposal', 'tile_title')) || 'In-House Proposal'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('in_house_proposal', 'tile_sub')) || ''}</div>
+          </div>
+        </button>
+
         <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Money</div>
 
         <button class="btn btn-lg btn-primary" data-role="financial" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
@@ -529,6 +537,8 @@ class RoleSelectionScreen extends Screen {
       this.navigation.goTo('finances');
     } else if (role === 'cash-flow') {
       this.navigation.goTo('cash-flow');
+    } else if (role === 'in-house-proposal') {
+      this.navigation.goTo('in-house-proposal');
     } else if (role === 'dashboard') {
       // #dashboard (mig 548): the admin front page.
       this.navigation.goTo('dashboard');

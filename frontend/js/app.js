@@ -80,6 +80,7 @@ class App {
       casaScores: new CasaScoresScreen(this.navigation, this.auth),
       finances: new FinancesScreen(this.navigation, this.auth),
       cashFlow: new CashFlowScreen(this.navigation, this.auth),
+      inHouseProposal: new InHouseProposalScreen(this.navigation, this.auth),
       fines: new FinesScreen(this.navigation, this.auth),
       film: new FilmScreen(this.navigation, this.auth),
       apslHub: new ApslHubScreen(this.navigation, this.auth),
@@ -209,6 +210,8 @@ class App {
     this.screenManager.register('finances', this.screens.finances);
     // #cash-flow (mig 882): soccer money in from LeagueApps against invoices out.
     this.screenManager.register('cash-flow', this.screens.cashFlow);
+    // #in-house-proposal (mig 900): the case for youth in-house.
+    this.screenManager.register('in-house-proposal', this.screens.inHouseProposal);
     // #fines (mig 534): the Men's fines by month and player, on their own page.
     this.screenManager.register('fines', this.screens.fines);
     // #film (mig 599): the league's game-film sheet, read-only, matched to games.
