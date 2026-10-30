@@ -86,8 +86,11 @@ class EventScreen extends Screen {
     if (key === 'players' && this._canInvite() && !this.invites) this._loadInvites();
   }
 
-  // The event is in hand — the kind's own first loads.
-  onEventLoaded() {}
+  // The event is in hand — the kind's own first loads.  A game opened here
+  // (the #my staff door) still gets its ✉️ draft buttons.
+  onEventLoaded() {
+    if (this.ev.kind === 'match' && this.ev.match_id != null) this._loadGameDrafts();
+  }
 
   // A click the base did not handle (the target finder, the event).
   onClick(_t, _e) { return false; }
@@ -218,6 +221,8 @@ class EventScreen extends Screen {
     this.reminders = null;    // person_id → {sms, email, total} — who was reminded this week (mig 739)
     this.remindNote = {};     // person_id → last send error, shown on their row
     this.groupNote = '';      // the 📣 bar's result line (html)
+    this.oppContacts = null;  // this game's 📇 people, for its ✉️ drafts
+    this._panelDrafts = [];
     this.error = null;
     this.rsvpNote = {};
     this.remindOk = {};
@@ -269,6 +274,59 @@ class EventScreen extends Screen {
     }
     this.loadingId = null;
     this._render();
+  }
+
+  // The people on this game's 📇 panel, then the drafts going to them.
+  async _loadGameDrafts() {
+    try {
+      const res = await this.auth.fetch(`/api/opponents/for-match/${this.ev.match_id}`);
+      this.oppContacts = res.ok ? await res.json() : null;
+    } catch (err) {
+      this.oppContacts = null;
+    }
+    await this._loadPanelDrafts();
+    this._render();
+  }
+
+  // Unsent drafts going to anyone in this panel (mig 728) — each is one big
+  // ✉️ button: one click = Gmail with message + everyone.
+  async _loadPanelDrafts() {
+    const o = this.oppContacts || {};
+    const ids = [...(((o.club || {}).contacts) || []), ...(((o.league || {}).contacts) || [])].map(c => c.id);
+    this._panelDrafts = [];
+    if (!ids.length) return;
+    try {
+      const res = await this.auth.fetch(`/api/contact-drafts?contact_ids=${ids.join(',')}`);
+      const data = await res.json().catch(() => ({}));
+      this._panelDrafts = res.ok ? (data.drafts || []) : [];
+    } catch (err) { this._panelDrafts = []; }
+  }
+
+  // attr: the click attribute of the screen drawing them.
+  _panelDraftButtons(attr) {
+    const esc = (t) => this.escapeHtml(t);
+    return (this._panelDrafts || []).map(d => {
+      const to = (d.recipients || []).map(r => r.name || r.email).join(', ');
+      const note = window.MessageCopy ? MessageCopy.block('contact_draft', 'big_button_note', { to }) : to;
+      return `
+        <div style="margin:4px 0 10px;">
+          <button class="btn btn-primary" ${attr}="${d.id}" style="width:100%; padding:10px 14px; font-size:0.95rem; font-weight:700;">✉️ ${esc(d.label || d.subject || 'Email')}</button>
+          <div style="font-size:0.66rem; opacity:0.7; margin-top:3px; line-height:1.35;">${esc(note)}</div>
+        </div>`;
+    }).join('');
+  }
+
+  // Gmail opens inside the click (no popup block), then it's logged as sent.
+  async _panelDraftOpen(id) {
+    const d = (this._panelDrafts || []).find(x => x.id === id);
+    if (!d) return;
+    const to = (d.recipients || []).map(r => r.email).filter(Boolean).join(',');
+    this.openGmailCompose(this.buildGmailComposeHref({ to, subject: d.subject, body: d.body }));
+    try {
+      await this._postReminder('/api/contact-drafts/sent', { id: d.id });
+      await this._loadPanelDrafts();
+      this._render();
+    } catch (err) { console.error('[event] mark draft sent failed:', err); }
   }
 
   // Who was already reminded this week, per channel (GET /api/rsvp-board/
@@ -922,6 +980,7 @@ class EventScreen extends Screen {
         return;
       }
       if ((el = t('[data-ec-game-center]'))) { EventKindSwitch.open(this.navigation, this.ev); return; }
+      if ((el = t('[data-ec-draft-open]'))) { this._panelDraftOpen(Number(el.dataset.ecDraftOpen)); return; }
       if ((el = t('[data-ec-att]'))) {
         this._markAttendance(Number(el.dataset.personId), el.dataset.ecAtt, el.dataset.active === '1');
         return;
@@ -1034,6 +1093,7 @@ class EventScreen extends Screen {
     if (!pills.some(p => p.key === this.pill)) this.pill = 'players';
     return `
       ${pills.length > 1 ? EventPills.row(pills, this.pill, { attr: 'data-ec-pill', escapeHtml: (t) => this.escapeHtml(t), label: 'Event' }) : ''}
+      ${this._panelDraftButtons('data-ec-draft-open')}
       ${ev.kind === 'match' && ev.match_id != null
         ? `<div style="text-align:right; margin-bottom:var(--space-2);"><button type="button" class="btn btn-secondary" data-ec-game-center style="padding:4px 12px; font-size:0.85rem;">🏟️ Game Center</button></div>` : ''}
       ${this.att && !canMark ? `<div style="font-size:0.8rem; opacity:0.7; margin-bottom:var(--space-2);">
