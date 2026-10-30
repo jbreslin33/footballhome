@@ -3,9 +3,9 @@
 // Behind us: what LeagueApps actually paid (person_payments, the programs
 // la_soccer_programs.counts_in names, after fees, less refunds) against every
 // invoice by invoice date, from cash_flow_policies.starts_on.
-// Ahead: dues × members, the projection #finances prints. Money out is only
-// ever an invoice, so the months ahead carry the drafts already made and no
-// budget estimates.
+// Ahead: dues × members, the projection #finances prints. Money out is the
+// owner's plan from CashFlow::build: coach pay off the calendar, referee fees
+// to cash_flow_policies.refs_through, and the cash_flow_planned rows.
 //
 //   GET /api/finances/cash-flow   CashFlow::build — the actuals
 //   GET /api/finances/summary     PaymentsOverview — dues ahead, owed now
@@ -90,7 +90,7 @@ class CashFlowScreen extends Screen {
     const rows = past.map(ym => row(ym, 'past', Number(byYm.get(ym).net || 0), invoiced(byYm.get(ym)), invoiced(byYm.get(ym))));
     rows.push(row(nowYm, 'now', Number(byYm.get(nowYm)?.net || 0), invoiced(byYm.get(nowYm)), invoiced(byYm.get(nowYm))));
     for (const ym of (this.expenses.months || []).filter(m => m > nowYm)) {
-      rows.push(row(ym, 'ahead', monthlyIn, invoiced(byYm.get(ym)), invoiced(byYm.get(ym))));
+      rows.push(row(ym, 'ahead', monthlyIn, Number((this.flow.ahead_out || {})[ym] || 0), 0));
     }
     return rows;
   }
@@ -130,10 +130,7 @@ class CashFlowScreen extends Screen {
       <div class="cf-pills">${reports.map(([k, l]) => `<button class="cf-pill ${this.report === k ? 'on' : ''}" data-report="${k}">${esc(l)}</button>`).join('')}</div>
       <div class="cf-strip">
         ${card(this._copy('card_since', { date: startDate }) || 'Since invoices began', add(since, 'in'), add(since, 'onInvoices'))}
-        <div class="cf-card">
-          <div class="cf-title">${esc(this._copy('card_ahead', { n: ahead.length }) || 'Projected')}</div>
-          <div class="cf-big cf-in">${M(add(ahead, 'in'))}</div>
-        </div>
+        ${card(this._copy('card_ahead', { n: ahead.length }) || 'Projected', add(ahead, 'in'), add(ahead, 'out'))}
         <div class="cf-card">
           <div class="cf-title">${esc(this._copy('card_owed') || 'Owed to the club now')}</div>
           <div class="cf-big">${M((this.summary.all || {}).owed)}</div>
@@ -142,7 +139,7 @@ class CashFlowScreen extends Screen {
       <div class="cf-card">
         <div class="cf-title">${esc(this._copy('months_title') || 'Month by month')}</div>
         <div class="cf-note">${esc(this._copy('months_note', { date: startDate }))}</div>
-        <div class="cf-note">${esc(this._copy('ahead_note', { rate: M(rate), fee }))}</div>
+        <div class="cf-note">${esc(this._copy('ahead_note', { rate: M(rate), fee, through: this._date(flow.refs_through) }))}</div>
         <div style="overflow-x:auto;"><table class="cf-table">
           <thead><tr><th>${esc(this._copy('month') || 'Month')}</th><th>${esc(this._copy('in') || 'In')}</th><th>${esc(this._copy('out') || 'Out')}</th><th>${esc(this._copy('net') || 'Net')}</th><th>${esc(this._copy('running') || 'Running')}</th></tr></thead>
           <tbody>${rows.map(r => `
@@ -150,9 +147,8 @@ class CashFlowScreen extends Screen {
               <td>${esc(this._month(r.ym))}${tag(r)}</td>
               <td class="cf-in">${r.in ? M(r.in) : '<span class="cf-dim">–</span>'}</td>
               <td class="cf-out">${r.out ? M(r.out) : '<span class="cf-dim">–</span>'}</td>
-              ${r.kind === 'ahead' ? '<td class="cf-dim">–</td><td class="cf-dim">–</td>' : `
               <td class="${this._sign(r.net)}" style="font-weight:700;">${M(r.net)}</td>
-              <td class="${this._sign(r.run)}">${M(r.run)}</td>`}
+              <td class="${this._sign(r.run)}">${M(r.run)}</td>
             </tr>`).join('')}</tbody>
         </table></div>
       </div>
