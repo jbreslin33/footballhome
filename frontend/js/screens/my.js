@@ -1903,11 +1903,15 @@ class MyScreen extends Screen {
     const evNoKey   = `${ev.fh_event_id}:me:no`;
     const evYesSaving = this.eventSaving.has(evYesKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
     const evNoSaving  = this.eventSaving.has(evNoKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
-    const ownButtonsHtml = (!isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(null))) || `
+    const ownDuesPill = !isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(null));
+    const ownButtonsHtml = ownDuesPill || `
       ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
                  `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
       ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
-                 `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}${per === 'yes' ? this._roleChoiceHtml(ev) : ''}`;
+                 `data-ev-btn="no" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}`;
+    // Its own line under the buttons' row: beside them in a narrow week
+    // column it squeezed the card's title to one letter wide.
+    const ownRoleChoiceHtml = !ownDuesPill && per === 'yes' ? this._roleChoiceHtml(ev) : '';
 
     const dateStr = this._eventDateStr(ev.starts_at);
     const timeStr = this._eventTimeStr(ev.starts_at);
@@ -2095,6 +2099,7 @@ class MyScreen extends Screen {
             ${soloChild ? childButtonsHtml(soloChild) : (!stacked && showOwnRsvpRow ? ownButtonsHtml : '')}
           </div>
         </div>
+        ${!soloChild && !stacked && showOwnRsvpRow ? ownRoleChoiceHtml : ''}
         ${soloChild && soloChild.callup ? `<div style="font-size:0.58rem; line-height:1.25; opacity:0.8; margin-top:2px;">🎟 INVITED — the coach invited ${this.escapeHtml(String(soloChild.name || '').split(' ')[0])} to play up in this game${soloChild.callup_from ? ` (from ${this.escapeHtml(soloChild.callup_from)})` : ''}. Please answer so the coach knows if they are available.</div>` : ''}
         ${(() => {
           // 💰 Dues alternate (migs 613–615) on the game card itself (owner:
@@ -2127,6 +2132,7 @@ class MyScreen extends Screen {
                 </div>
                 <div style="display:flex; gap:3px; flex-shrink:0;">${ownButtonsHtml}</div>
               </div>
+              ${ownRoleChoiceHtml}
               ${per === 'yes' && !isPast ? this._rsvpTimesHtml(ev, null) : ''}
             ` : ''}
             ${guardianRowsHtml}
