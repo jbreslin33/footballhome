@@ -2293,6 +2293,23 @@ class RosterScreenBase extends Screen {
     return 'this board';
   }
 
+  // Board total for the lit Roster | Team pill (mig 905): each person once,
+  // however many columns they sit in.  Roster counts On Roster only, except
+  // on a board whose Roster pill lists everyone.
+  renderBoardTotal(data, cols) {
+    const everyone = this.boardView === 'team' || this.rosterPillShowsEveryone();
+    const people = new Set();
+    for (const c of (cols || [])) {
+      if (c.isUnassigned) continue;
+      for (const p of ((data.buckets || {})[String(c.teamId)] || [])) {
+        if (everyone || RosterScreenBase.countsAsOnRoster(p.rosterStatus)) people.add(p.personId);
+      }
+    }
+    const n = people.size;
+    const copy = (window.MessageCopy && MessageCopy.block('roster_sheet', 'board_total', { n })) || `${n} players`;
+    return `<span data-board-total style="font-size:0.85rem; font-weight:700;">${copy}</span>`;
+  }
+
   // Board-wide pair: every player in this panel's columns, deduped by
   // person (a player sitting in two team columns is one recipient, and
   // siblings sharing a parent collapse to one number/address).
@@ -2405,6 +2422,9 @@ class RosterScreenBase extends Screen {
   // `${teamId}:${cat}` and team ids are club-unique, so boards can't
   // collide — and mens' pills keep their pre-lift saved prefs.
   static get CAT_OFF_STORAGE_KEY() { return 'mensRoster.catOff'; }
+
+  // Boys + Girls boards override: the Roster pill lists every player.
+  rosterPillShowsEveryone() { return false; }
 
   // The shared delegated-click hooks. Each board's click listener calls
   // this first; true = handled, stop there.

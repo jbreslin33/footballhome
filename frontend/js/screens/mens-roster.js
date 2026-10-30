@@ -387,6 +387,7 @@ class MensRosterScreen extends RosterScreenBase {
               ${c.label} <span style="opacity:${active ? '0.85' : '0.55'};">${cap}</span>
             </button>`;
         }).join('')}
+        ${this.renderBoardTotal(data, cols)}
         ${this.renderViewModePills()}
         ${this.renderBoardMessageButtons(data, cols)}
       </div>

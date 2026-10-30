@@ -286,6 +286,8 @@ class BoysRosterScreen extends RosterScreenBase {
   // fetch, so every column, count and the banner agree.
   keepPlayer(p) { return true; }
 
+  rosterPillShowsEveryone() { return true; }
+
   applyPlayerFilter(data) {
     if (!data) return data;
     const keep = (list) => (Array.isArray(list) ? list : []).filter(p => this.keepPlayer(p));
@@ -427,6 +429,7 @@ class BoysRosterScreen extends RosterScreenBase {
               ${c.label} <span style="opacity:${active ? '0.85' : '0.55'};">${cap}</span>
             </button>`;
         }).join('')}
+        ${this.renderBoardTotal(data, cols)}
         ${this.renderViewModePills()}
         ${this.renderBoardMessageButtons(data, cols)}
       </div>
