@@ -288,8 +288,9 @@ class EventScreen extends Screen {
     this._render();
   }
 
-  // Unsent drafts going to anyone in this panel (mig 728) — each is one big
-  // ✉️ button: one click = Gmail with message + everyone.
+  // This game's drafts going to anyone in this panel (mig 728) — each is one
+  // big ✉️ button: one click = Gmail with message + everyone.  A draft saved
+  // without a game shows on any game of its people.
   async _loadPanelDrafts() {
     const o = this.oppContacts || {};
     const ids = [...(((o.club || {}).contacts) || []), ...(((o.league || {}).contacts) || [])].map(c => c.id);
@@ -298,7 +299,8 @@ class EventScreen extends Screen {
     try {
       const res = await this.auth.fetch(`/api/contact-drafts?contact_ids=${ids.join(',')}`);
       const data = await res.json().catch(() => ({}));
-      this._panelDrafts = res.ok ? (data.drafts || []) : [];
+      const game = Number(this.matchId || (this.ev && this.ev.match_id));
+      this._panelDrafts = (res.ok ? (data.drafts || []) : []).filter(d => !d.match_id || d.match_id === game);
     } catch (err) { this._panelDrafts = []; }
   }
 
@@ -316,17 +318,13 @@ class EventScreen extends Screen {
     }).join('');
   }
 
-  // Gmail opens inside the click (no popup block), then it's logged as sent.
-  async _panelDraftOpen(id) {
+  // Gmail opens inside the click (no popup block).  The button stays: a click
+  // can't tell whether it was sent (owner 2026-10-30).
+  _panelDraftOpen(id) {
     const d = (this._panelDrafts || []).find(x => x.id === id);
     if (!d) return;
     const to = (d.recipients || []).map(r => r.email).filter(Boolean).join(',');
     this.openGmailCompose(this.buildGmailComposeHref({ to, subject: d.subject, body: d.body }));
-    try {
-      await this._postReminder('/api/contact-drafts/sent', { id: d.id });
-      await this._loadPanelDrafts();
-      this._render();
-    } catch (err) { console.error('[event] mark draft sent failed:', err); }
   }
 
   // Who was already reminded this week, per channel (GET /api/rsvp-board/

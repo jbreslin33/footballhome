@@ -1,6 +1,6 @@
 // ✉️ draft buttons on a game opened on the plain #event screen (the #my
-// staff door): the same mig 728 buttons Game Center draws.  One click opens
-// Gmail with everyone, then marks the draft sent and the button goes.
+// staff door): the same mig 728 buttons Game Center draws.  A button belongs
+// to its game, and a click opens Gmail with everyone and leaves it in place.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -22,14 +22,18 @@ function load() {
   return w;
 }
 
-test('a game shows its draft button, and a click opens Gmail then marks it sent', async () => {
+test('only this game\'s drafts show, and a click opens Gmail and keeps the button', async () => {
   const w = load();
-  const draft = { id: 7, label: 'Cancel it', subject: 'S', body: 'B', recipients: [{ name: 'A', email: 'a@x.org' }, { name: 'B', email: 'b@x.org' }] };
-  let sent = false;
+  const recipients = [{ name: 'A', email: 'a@x.org' }, { name: 'B', email: 'b@x.org' }];
+  const drafts = [
+    { id: 7, match_id: 9, label: 'Cancel it', subject: 'S', body: 'B', recipients },
+    { id: 8, match_id: 10, label: 'Another game', subject: 'S', body: 'B', recipients },
+    { id: 9, match_id: null, label: 'No game', subject: 'S', body: 'B', recipients },
+  ];
   const auth = { fetch: async (url) => ({
     ok: true,
     json: async () => (url.includes('for-match') ? { club: { contacts: [{ id: 1 }] }, league: { contacts: [{ id: 2 }] } }
-      : { drafts: sent ? [] : [draft] }),
+      : { drafts }),
   }) };
   const s = new w.EventScreen({}, auth);
   s.ev = { kind: 'match', match_id: 9 };
@@ -37,14 +41,15 @@ test('a game shows its draft button, and a click opens Gmail then marks it sent'
   await s._loadGameDrafts();
   const html = s._panelDraftButtons('data-ec-draft-open');
   assert.match(html, /data-ec-draft-open="7"/);
-  assert.match(html, /✉️ Cancel it/);
+  assert.match(html, /data-ec-draft-open="9"/);
+  assert.doesNotMatch(html, /data-ec-draft-open="8"/);
 
   let href = '';
   s.openGmailCompose = (h) => { href = h; };
-  s._postReminder = async (p, b) => { assert.equal(p, '/api/contact-drafts/sent'); assert.equal(b.id, 7); sent = true; return {}; };
+  s._postReminder = async () => { assert.fail('a click must not mark a draft sent'); };
   await s._panelDraftOpen(7);
   assert.match(decodeURIComponent(href), /a@x\.org,b@x\.org/);
-  assert.equal(s._panelDraftButtons('data-ec-draft-open'), '');
+  assert.equal(s._panelDraftButtons('data-ec-draft-open'), html);
 });
 
 test('a practice never looks for drafts', () => {
