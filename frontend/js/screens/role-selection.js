@@ -182,6 +182,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="cash-flow" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">💵</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('cash_flow', 'tile_title')) || 'Money In & Out'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('cash_flow', 'tile_sub')) || 'LeagueApps money in against invoices out'}</div>
+          </div>
+        </button>
+
         <button class="btn btn-lg btn-primary" data-role="fines" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">💸</span>
           <div style="flex: 1; text-align: left;">
@@ -519,6 +527,8 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'finances') {
       // #finances (mig 490): summary, revenue and expense projections.
       this.navigation.goTo('finances');
+    } else if (role === 'cash-flow') {
+      this.navigation.goTo('cash-flow');
     } else if (role === 'dashboard') {
       // #dashboard (mig 548): the admin front page.
       this.navigation.goTo('dashboard');

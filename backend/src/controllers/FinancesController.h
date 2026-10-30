@@ -15,6 +15,8 @@
 //                                list; pulls every league feed the referee
 //                                policies read (CASA SportsEngine, APSL iCal)
 //                                before computing
+//   GET /api/finances/cash-flow  CashFlow: soccer money in from LeagueApps
+//                                against invoices out (#cash-flow, mig 882)
 class FinancesController : public Controller {
 public:
     FinancesController();
@@ -24,4 +26,5 @@ private:
     bool gate(const Request& request, Response* error);
     Response handleSummary(const Request& request);
     Response handleExpenses(const Request& request);
+    Response handleCashFlow(const Request& request);
 };

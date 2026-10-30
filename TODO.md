@@ -69,7 +69,11 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`.
 
+- [ ] Tie invoice lines to budget lines ("counts toward" on #invoices): none ever have been, so #finances still projects league dues, kits and facilities already invoiced ($11,539 on 10/30; #cash-flow warns until it is gone).
+
 ## Done
+
+- [x] 2026-10-30 #cash-flow Money In & Out (mig 882): soccer money in from LeagueApps (person_payments, la_soccer_programs names the soccer programs) against every invoice, month by month, with the #finances projections ahead. Starts at the first invoice carrying expenses (8/14/2026), read from the invoices; earlier months have no money out on file (mig 883). Out is invoices only, budget estimates off the page (mig 885). From 10/1 and only the 8 soccer programs, a dispute LeagueApps posted twice counted once (mig 887).
 
 - [x] 2026-10-29 #apsl hub like #casa: ✉️ Commissioner & messages — roster-moves email to the APSL commissioner (cuts, drops, proposed + needs-add adds from the #teams Roster pill), shown only while something is unasked; ✓ Sent logs the ask and moves cards to Pending Drop / Awaiting Approval (migs 829, 837). Never asks to add a hurt player (mig 853).
 - [x] 2026-10-29 #apsl-pyramid: 8 conferences + 8 Tier 2 affiliates over one PyramidModel — flow chart, Presentation, USA map (territories, club cards, drive times, city/collar counts), Club pathway, Standings, Growth; full screen with collapsible HUDs (migs 819–860).

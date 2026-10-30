@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "../database/Database.h"
+#include "../models/CashFlow.h"
 #include "../models/Expenses.h"
 #include "../models/PaymentsOverview.h"
 #include "../models/WelcomeLog.h"
@@ -40,6 +41,13 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
     laGet(router, prefix + "/summary", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
         [this](const Request& r, const LaSyncMap&) { return handleSummary(r); });
     router.get(prefix + "/expenses", [this](const Request& r) { return handleExpenses(r); });
+    router.get(prefix + "/cash-flow", [this](const Request& r) { return handleCashFlow(r); });
+}
+
+Response FinancesController::handleCashFlow(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try { return jsonOut(HttpStatus::OK, CashFlow::build(WelcomeLog::kLighthouseClubId)); }
+    catch (const std::exception& e) { std::cerr << "[finances cash-flow] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load money in and out"); }
 }
 
 Response FinancesController::handleSummary(const Request& request) {
