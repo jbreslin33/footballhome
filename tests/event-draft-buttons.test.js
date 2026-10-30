@@ -52,6 +52,18 @@ test('only this game\'s drafts show, and a click opens Gmail and keeps the butto
   assert.equal(s._panelDraftButtons('data-ec-draft-open'), html);
 });
 
+test('a draft with no subject is a text to the panel phones', async () => {
+  const w = load();
+  let opened = '';
+  w.DesktopSms = { open: (h) => { opened = h; } };
+  const s = new w.EventScreen({}, {});
+  s.oppContacts = { club: { contacts: [{ id: 1, phone: '215-555-0100' }] } };
+  s._panelDrafts = [{ id: 7, subject: '', label: 'Text him', body: 'Hello there', recipients: [{ id: 1, name: 'A', email: 'a@x.org' }] }];
+  assert.match(s._panelDraftButtons('data-ec-draft-open'), /💬 Text him/);
+  await s._panelDraftOpen(7);
+  assert.match(opened, /^sms:215-555-0100\?body=Hello/);
+});
+
 test('a practice never looks for drafts', () => {
   const w = load();
   let called = false;

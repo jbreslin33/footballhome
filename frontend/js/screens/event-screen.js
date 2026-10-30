@@ -309,10 +309,10 @@ class EventScreen extends Screen {
     const esc = (t) => this.escapeHtml(t);
     return (this._panelDrafts || []).map(d => {
       const to = (d.recipients || []).map(r => r.name || r.email).join(', ');
-      const note = window.MessageCopy ? MessageCopy.block('contact_draft', 'big_button_note', { to }) : to;
+      const note = window.MessageCopy ? MessageCopy.block('contact_draft', d.subject ? 'big_button_note' : 'big_button_note_text', { to }) : to;
       return `
         <div style="margin:4px 0 10px;">
-          <button class="btn btn-primary" ${attr}="${d.id}" style="width:100%; padding:10px 14px; font-size:0.95rem; font-weight:700;">✉️ ${esc(d.label || d.subject || 'Email')}</button>
+          <button class="btn btn-primary" ${attr}="${d.id}" style="width:100%; padding:10px 14px; font-size:0.95rem; font-weight:700;">${d.subject ? '✉️' : '💬'} ${esc(d.label || d.subject || 'Email')}</button>
           <div style="font-size:0.66rem; opacity:0.7; margin-top:3px; line-height:1.35;">${esc(note)}</div>
         </div>`;
     }).join('');
@@ -323,8 +323,20 @@ class EventScreen extends Screen {
   _panelDraftOpen(id) {
     const d = (this._panelDrafts || []).find(x => x.id === id);
     if (!d) return;
+    if (!d.subject) { this._panelDraftText(d); return; }
     const to = (d.recipients || []).map(r => r.email).filter(Boolean).join(',');
     this.openGmailCompose(this.buildGmailComposeHref({ to, subject: d.subject, body: d.body }));
+  }
+
+  // A draft with no subject is a text (mig 916): the phones come from the
+  // panel's contacts.
+  _panelDraftText(d) {
+    const o = this.oppContacts || {};
+    const people = [...(((o.club || {}).contacts) || []), ...(((o.league || {}).contacts) || [])];
+    const to = (d.recipients || []).map(r => (people.find(p => p.id === r.id) || {}).phone).filter(Boolean).join(',');
+    const href = this.buildSmsComposeHref({ to, body: d.body });
+    if (!href) return;
+    if (window.DesktopSms) DesktopSms.open(href); else window.location.href = href;
   }
 
   // Who was already reminded this week, per channel (GET /api/rsvp-board/
