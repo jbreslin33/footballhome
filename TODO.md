@@ -65,6 +65,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
   - [x] 2026-10-30 Youth (file-based rosters): flag only, no auto-clear (mig 868). The U8/U10/U12 PDFs' 38 names are in official_roster_names (scripts/youth-roster-names.py, by hand after a new upload; DB only, 3 U12 misspellings aliased), so those columns show OFFICIAL, the ✂ cut flag (0 today) and NEEDS ADD, which also catches a hand-set On Roster the file doesn't carry (one U10 player today). A file list never locks: manual remove and status moves stay open, and the Game Center ⚠ strip and #apsl email ignore file lists.
   - Not built on purpose: per-player dismiss of the cut flag — wait for a real case.
 
+- [ ] Sync LeagueApps event registrants (Nightmare in East 10/30, program 5148876) so families can get soccer sign-up info later. Decide first: who may be messaged (Postmark + the 10DLC consent rule), and whether a Lighthouse-wide event's parents count as opted in. Program isn't in leagueapps_programs (its category check only knows men/women/boys/girls); keep it out of memberships, or fh_in_leagueapps() and rosters get touched.
+
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`.
 
 ## Done
