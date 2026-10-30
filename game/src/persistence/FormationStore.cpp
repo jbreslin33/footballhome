@@ -34,7 +34,7 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
 
         // Postgres expands positions_json so the daemon never parses JSON.
         const auto rows = tx.exec_params(
-            "SELECT (p->>'x')::int, (p->>'y')::int, p->>'label', coalesce(r.number, 0) "
+            "SELECT (p->>'x')::int, (p->>'y')::int, p->>'label', coalesce(r.number, 0), coalesce(r.role, '') "
             "FROM formations f CROSS JOIN LATERAL jsonb_array_elements(f.positions_json) p "
             "LEFT JOIN formation_slot_roles r ON r.formation_code = f.code AND r.slot = (p->>'slot')::int "
             "WHERE f.code = $1 "
@@ -49,6 +49,7 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
                 mapClubPosition(row[0].as<int>(), row[1].as<int>(),
                                 row[2].as<std::string>() == "GK"));
             spec.positions.back().number = static_cast<std::int16_t>(row[3].as<int>());
+            spec.positions.back().role = row[4].as<std::string>();
         }
         return spec;
     } catch (const std::exception& e) {
@@ -325,6 +326,15 @@ std::vector<GameModel> loadGameModels(const DbConfig& cfg) {
             for (auto& g : out)
                 if (g.name == name) g.own_params[row[1].as<std::string>()] = row[2].as<std::int64_t>();
         }
+        for (const auto& row : tx.exec(
+                 "SELECT m.name, rc.role, rc.concept_id, rc.demand FROM game_model_role_concepts rc "
+                 "JOIN game_models m ON m.id = rc.model_id")) {
+            const std::string name = row[0].as<std::string>();
+            const int id = row[2].as<int>();
+            if (id < 0 || id >= core::kMaxConcepts) continue;
+            for (auto& g : out)
+                if (g.name == name) g.own_roles[row[1].as<std::string>()][id] = row[3].as<int>();
+        }
         resolveGameModels(out);
         return out;
     } catch (const std::exception& e) {
@@ -346,6 +356,7 @@ void resolveGameModels(std::vector<GameModel>& models) {
             for (int r = 0; r < 3; ++r) g.ladder[z][r] = g.own_ladder[z][r];
         g.params = g.own_params;
         g.param_origin.clear();
+        g.roles = g.own_roles;
     }
     auto find = [&](const std::string& n) -> int {
         for (std::size_t k = 0; k < models.size(); ++k)
@@ -378,6 +389,8 @@ void resolveGameModels(std::vector<GameModel>& models) {
                     }
             for (const auto& [key, v] : p.own_params)
                 if (g.params.emplace(key, v).second) g.param_origin[key] = pi;
+            for (const auto& [role, demands] : p.own_roles)
+                for (const auto& [id, d] : demands) g.roles[role].emplace(id, d);
             parent = p.parent;
         }
     }

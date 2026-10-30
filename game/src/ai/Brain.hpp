@@ -51,7 +51,7 @@ enum class Why : std::uint8_t {
     CallManOn, CallTurn, CallTime, CallSqueeze, CallLine,
     HurryKeeper, PressBadTouch, OverHighLine, KeeperShort,
     FalseNineDrop, Overlap, ComeShort, CheckIn,
-    WaitPass, StayOnside, TrackRunner, DoubleCheckIn,
+    WaitPass, StayOnside, TrackRunner, DoubleCheckIn, PreventiveMark, PopOut,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -77,6 +77,7 @@ inline constexpr const char* kWhyNames[] = {
     "stay onside",
     "track the runner",
     "double the man checking in",
+    "preventive marking", "pop out wide",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -277,6 +278,11 @@ public:
         return spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]].number;
     }
 
+    // His direct opponent (255 = none), for the harness.
+    std::uint8_t directOpponentOf(core::SlotIndex slot, const core::World& world) const {
+        return directOpponents(world, world.tickCount() / 30)[slot];
+    }
+
     // What he can see (G4.66): ticks since his last look behind him, 0 =
     // fresh (he just looked, or perfect play sees everything); at most
     // physics.vision.max_age_s.
@@ -295,6 +301,7 @@ private:
     // the speed he can still stop (or, on the ball, slow to a touch) from.
     void brakeToArrive(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void unmark(core::SlotIndex slot, const core::World& world, Orders& o) const;
+    void restDefense(core::SlotIndex slot, const core::World& world, Orders& o) const;
     bool keepIt(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
     // G4.63 the one-spot defender: jump the pass to your man (162); one
     // spot that keeps your man in pressing distance, shadows another man's

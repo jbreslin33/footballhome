@@ -457,7 +457,10 @@ private:
 // Lose your marker (G4.57, core, U-10) [James: "offense we unmark. in any
 // direction"; coaching: check away, create a yard]: our ball, he's off it
 // with an opponent within tight_m — step step_m to the spot (8 directions)
-// furthest from every opponent, staying within leash_m of his job.
+// furthest from every opponent, staying within leash_m of his job. In a
+// preventive-marking side the front five go forward first, then sideways,
+// then back (G5.0): the first of those giving free_m of room. A model
+// with wide_first sends its full-backs toward the touchline first.
 class LoseYourMarker : public Concept {
 public:
     LoseYourMarker() : Concept("lose-your-marker", 159) {}
@@ -465,9 +468,61 @@ public:
     math::Fixed64 tight() const { return tight_; }
     math::Fixed64 step() const { return step_; }
     math::Fixed64 leash() const { return leash_; }
+    math::Fixed64 free() const { return free_; }
+    bool wideFirst() const { return wide_first_; }
 
 private:
-    math::Fixed64 tight_, step_, leash_;
+    math::Fixed64 tight_, step_, leash_, free_;
+    bool wide_first_ = false;
+};
+
+// Rest defence by preventive marking (70, G5.0) [James 10/30: "intelligent
+// direct opponent unmarking"; It. marcature preventive, FH wiring]: while
+// we attack, the men this model leaves behind the ball (demand by position)
+// stand gap_m goal-side of their direct opponent once the ball is past him,
+// on his line to our goal. gap_m 0 = the model doesn't play it. The rest
+// keep the width: the 7 and 11 unmark no further in than wing_band_m from
+// the touchline; an 8 or 10 on the ball's side pops out to wide_m off the
+// touchline when no mate holds that channel within reach_m along the field.
+class RestDefense : public Concept {
+public:
+    RestDefense() : Concept("rest-defense", 70) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 gap() const { return gap_; }
+    math::Fixed64 wingBand() const { return wing_band_; }
+    math::Fixed64 wide() const { return wide_; }
+    math::Fixed64 reach() const { return reach_; }
+
+private:
+    math::Fixed64 gap_, wing_band_, wide_, reach_;
+};
+
+// Open ball, closed ball (185, G5.0) [James 10/30; standard coaching read,
+// FH wiring]: before he moves off the ball he reads the man on it. OPEN:
+// nobody within pressure_m and he is facing forward, so he can play it —
+// go forward. CLOSED: pressed, or his back to their goal — check in toward
+// the ball, then sideways, and only then forward. Lapse: goes anyway.
+class OpenClosedBall : public Concept {
+public:
+    OpenClosedBall() : Concept("open-closed-ball", 185) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 pressure() const { return pressure_; }
+
+private:
+    math::Fixed64 pressure_;
+};
+
+// Take the lane your winger leaves (55, G5.0) [James 10/30: "2 and 3 to
+// unmark NOT wide of do"; BL ch1, ch9]: in a preventive-marking side the
+// full-back is never wider than his direct opponent, inside_m inside him.
+class InvertedFullBack : public Concept {
+public:
+    InvertedFullBack() : Concept("inverted-fullback", 55) {}
+    void configure(const core::ModelParams& p) override;
+    math::Fixed64 inside() const { return inside_; }
+
+private:
+    math::Fixed64 inside_;
 };
 
 // The direct opponent (160, G4.57, core, U-10) [James: "we call it a
@@ -1048,6 +1103,9 @@ struct ConceptBook {
     MarkPosition mark_position;
     NearTightFarZone near_tight;
     LoseYourMarker lose_your_marker;
+    RestDefense rest_defense;
+    OpenClosedBall open_closed;
+    InvertedFullBack inverted_fullback;
     DirectOpponent direct_opponent;
     KeepItUnderPressure keep_it;
     JumpThePass jump_pass;
@@ -1099,6 +1157,9 @@ struct ConceptBook {
         mark_position.configure(p);
         near_tight.configure(p);
         lose_your_marker.configure(p);
+        rest_defense.configure(p);
+        open_closed.configure(p);
+        inverted_fullback.configure(p);
         direct_opponent.configure(p);
         keep_it.configure(p);
         jump_pass.configure(p);

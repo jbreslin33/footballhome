@@ -19,6 +19,7 @@
 #include "math/Vec3.hpp"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace fh::game::ai {
@@ -34,6 +35,9 @@ struct FormationSpec {
         // formation_slot_roles.number), 0 = unknown. Keys the direct-
         // opponent pairs (game_direct_opponents).
         std::int16_t number = 0;
+        // Its role (DB formation_slot_roles.role, "" = unknown) — keys a
+        // game model's demand per position (game_model_role_concepts).
+        std::string role;
     };
     std::vector<Pos> positions;
 

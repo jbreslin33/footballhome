@@ -228,8 +228,18 @@ void GameServer::recomputeKnowledge(bool home) {
     const std::uint8_t half = cfg_.slot_count / 2;
     const std::uint8_t from = home ? 0 : half;
     const std::uint8_t to = home ? half : cfg_.slot_count;
+    const ai::FormationSpec& formation = home ? cfg_.formation_home : cfg_.formation_away;
     for (std::uint8_t sl = from; sl < to; ++sl) {
-        concept_ratings_[sl] = core::effectiveRatings(ability_[sl], demand);
+        // G5.0: his position's own demand over the team's; live changes win.
+        core::PresetOverlay his = demand;
+        const std::size_t idx = sl - from;
+        if (m >= 0 && idx < formation.positions.size()) {
+            const auto role = cfg_.models[m].roles.find(formation.positions[idx].role);
+            if (role != cfg_.models[m].roles.end())
+                for (const auto& [id, d] : role->second)
+                    if (live_demand_[team][id] < 0) his[id] = static_cast<std::int16_t>(d);
+        }
+        concept_ratings_[sl] = core::effectiveRatings(ability_[sl], his);
         brain_.setRatings(sl, concept_ratings_[sl]);
         brain_.setHabits(sl, ability_[sl]);
     }

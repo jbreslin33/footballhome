@@ -158,6 +158,10 @@ struct GameModel {
     // the chain sets is the global game_model_params row.
     std::map<std::string, std::int64_t> own_params, params;
     std::map<std::string, int> param_origin;
+    // G5.0 (mig 886): the model's demand per POSITION over its team demand
+    // (game_model_role_concepts): role → concept id → demand. Inherited
+    // through the parent chain like the numbers.
+    std::map<std::string, std::map<int, int>> own_roles, roles;
     bool resolved = false;
 };
 std::vector<GameModel> loadGameModels(const DbConfig& cfg);

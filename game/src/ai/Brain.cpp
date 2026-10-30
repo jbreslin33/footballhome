@@ -1145,6 +1145,7 @@ Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
         }
     }
     Orders o = decide(slot, world);
+    restDefense(slot, world, o);
     unmark(slot, world, o);
     stayOnside(slot, world, o);
     trackRunner(slot, world, o);
@@ -1172,6 +1173,71 @@ Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
     if (!short_move) return o;
     o.move.face = to_ball;
     return o;
+}
+
+// rest-defense (70, G5.0): preventive marking. Our ball, a man this model
+// keeps behind it holding his job: once the ball is past his direct
+// opponent he stands goal-side of him on his line to our goal; before that
+// he keeps his job. A full-back is never wider than his man (55), lapse or
+// not. The men
+// the model sends on get no demand: of those, an 8 or 10 fills the wide
+// channel on the ball's side when nobody holds it. Which way they unmark is
+// the read in unmark() (open-closed-ball, 185).
+void Brain::restDefense(SlotIndex slot, const World& world, Orders& o) const {
+    const ConceptBook& book_ = bookOf(slot);
+    const auto& R = book_.rest_defense;
+    if (R.gap().raw <= 0) return;
+    const auto& ball = world.ball();
+    if ((ball.owner && *ball.owner == slot) || world.isKeeper(slot) || world.restartTeam() != 0xFF) return;
+    // Our ball includes our pass in flight: a rule that stops while it
+    // travels walks the full-back back out on every pass.
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const bool ours = ball.owner ? setup_.team_of_slot[*ball.owner] == team : world.lastTouchTeam() == team;
+    if (!ours) return;
+    if (o.why != Why::Hold && o.why != Why::Support && o.why != Why::Outlet) return;
+    const std::uint64_t sec = world.tickCount() / 30;
+    const auto& me = world.player(slot);
+    const int num = numberOf(slot);
+    if (ratings_[slot][R.bit()] <= 0) {
+        if ((num != 8 && num != 10) || ratings_[slot][13] <= 0) return;
+        const Fixed64 side = ball.pos.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+        if (me.pos.y * side <= Fixed64::zero() || !applies(slot, 13, sec)) return;
+        const Fixed64 channel = half_y_ - R.wingBand();
+        for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+            if (i == slot || setup_.team_of_slot[i] != team) continue;
+            const auto& p = world.player(i).pos;
+            if (p.y * side >= channel && math::fx_abs(p.x - me.pos.x) <= R.reach()) return;
+        }
+        const Vec2 t{o.target.x, side * (half_y_ - R.wide())};
+        o.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+        o.target = t;
+        o.why = Why::PopOut;
+        return;
+    }
+    const std::uint8_t direct = directOpponents(world, sec)[slot];
+    if (direct == 255) return;
+    const auto& man = world.player(direct).pos;
+    const Fixed64 sgn = attackSign(slot) >= 0 ? Fixed64::one() : -Fixed64::one();
+    Vec2 t = o.target;
+    // Read once a possession, or a lapse walks him out and back every second.
+    const bool past = (ball.pos.x - man.x) * sgn >= Fixed64::zero() &&
+                      applies(slot, R.bit(), world.turnoverTick());
+    if (past) {
+        const Vec2 to_goal{-sgn * half_x_ - man.x, -man.y};
+        const Fixed64 len = math::length(to_goal);
+        if (len.raw > 0) t = Vec2{man.x + to_goal.x * R.gap() / len, man.y + to_goal.y * R.gap() / len};
+    }
+    const auto& I = book_.inverted_fullback;
+    if ((num == 2 || num == 3) && ratings_[slot][I.bit()] > 0) {
+        const Fixed64 side = man.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+        Fixed64 lim = man.y * side - I.inside();
+        if (lim.raw < 0) lim = Fixed64::zero();
+        if (t.y * side > lim) t.y = side * lim;
+    }
+    if (t.x == o.target.x && t.y == o.target.y) return;
+    o.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+    o.target = t;
+    if (past) { o.why = Why::PreventiveMark; o.other = static_cast<std::int16_t>(direct); }
 }
 
 // lose-your-marker (159, G4.57): our ball, he's off it holding his job
@@ -1204,14 +1270,60 @@ void Brain::unmark(SlotIndex slot, const World& world, Orders& o) const {
     static const Fixed64 k = Fixed64::fromFraction(7071, 10000);
     const Vec2 dirs[8] = {{Fixed64::one(), {}}, {-Fixed64::one(), {}}, {{}, Fixed64::one()}, {{}, -Fixed64::one()},
                           {k, k}, {k, -k}, {-k, k}, {-k, -k}};
+    // G5.0 preventive marking: the front five go forward, sideways, then
+    // back; the 7 and 11 keep the width; a full-back never goes wider than
+    // his man (rest-defense, inverted-fullback).
+    const auto& R = book_.rest_defense;
+    const bool preventive = R.gap().raw > 0;
+    const bool forward_first = preventive && ratings_[slot][R.bit()] <= 0;
+    const int num = numberOf(slot);
+    const bool winger = preventive && (num == 7 || num == 11);
+    const Fixed64 sgn = attackSign(slot) >= 0 ? Fixed64::one() : -Fixed64::one();
+    Fixed64 fb_lim = half_y_;
+    Fixed64 fb_side = Fixed64::zero();
+    if (preventive && (num == 2 || num == 3) && ratings_[slot][book_.inverted_fullback.bit()] > 0) {
+        const std::uint8_t direct = directOpponents(world, world.tickCount() / 30)[slot];
+        if (direct != 255) {
+            const Fixed64 man_y = world.player(direct).pos.y;
+            fb_side = man_y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+            fb_lim = man_y * fb_side - book_.inverted_fullback.inside();
+            if (fb_lim.raw < 0) fb_lim = Fixed64::zero();
+        }
+    }
+    // open-closed-ball (185): a closed ball turns his order round — toward
+    // the man on it first. Lapse or never taught: he goes forward anyway.
+    bool closed = false;
+    Vec2 to_ball{};
+    if (forward_first) {
+        const auto& C = book_.open_closed;
+        const auto& carrier = world.player(*ball.owner);
+        const Vec2 at{carrier.pos.x, carrier.pos.y};
+        if (ratings_[slot][C.bit()] > 0 && applies(slot, C.bit(), world.tickCount() / 30))
+            closed = nearest(at) <= C.pressure() * C.pressure() || carrier.face.x * sgn < Fixed64::zero();
+        to_ball = Vec2{carrier.pos.x - here.x, carrier.pos.y - here.y};
+    }
+    // wide_first (a model's choice, the Ukies): the 2 and 3 look for the
+    // touchline first, the other way round from preventive marking.
+    const bool wide_first = L.wideFirst() && (num == 2 || num == 3) && !preventive;
+    const Fixed64 touchline = me.pos.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
     Vec2 best = here;
     Fixed64 best_d = nearest(here);
-    for (const Vec2& d : dirs) {
-        const Vec2 c{here.x + d.x * L.step(), here.y + d.y * L.step()};
-        if (math::fx_abs(c.x) > half_x_ - Fixed64::one() || math::fx_abs(c.y) > half_y_ - Fixed64::one()) continue;
-        if (distSq(Vec3{c.x, c.y, Fixed64::zero()}, Vec3{o.target.x, o.target.y, Fixed64::zero()}) > L.leash() * L.leash()) continue;
-        const Fixed64 nd = nearest(c);
-        if (nd > best_d) { best_d = nd; best = c; }
+    for (int tier = 0; tier < (forward_first ? 3 : wide_first ? 2 : 1); ++tier) {
+        for (const Vec2& d : dirs) {
+            if (wide_first && (d.y * touchline > Fixed64::zero() ? 0 : 1) != tier) continue;
+            if (forward_first) {
+                const Fixed64 ahead = closed ? dot(d, to_ball) : d.x * sgn;
+                if ((ahead.raw > 0 ? 0 : ahead.raw == 0 ? 1 : 2) != tier) continue;
+            }
+            const Vec2 c{here.x + d.x * L.step(), here.y + d.y * L.step()};
+            if (math::fx_abs(c.x) > half_x_ - Fixed64::one() || math::fx_abs(c.y) > half_y_ - Fixed64::one()) continue;
+            if (distSq(Vec3{c.x, c.y, Fixed64::zero()}, Vec3{o.target.x, o.target.y, Fixed64::zero()}) > L.leash() * L.leash()) continue;
+            if (winger && math::fx_abs(c.y) < half_y_ - R.wingBand() && math::fx_abs(c.y) < math::fx_abs(here.y)) continue;
+            if (fb_side.raw != 0 && c.y * fb_side > fb_lim) continue;
+            const Fixed64 nd = nearest(c);
+            if (nd > best_d) { best_d = nd; best = c; }
+        }
+        if ((forward_first || wide_first) && best_d >= L.free() * L.free()) break;
     }
     if (best.x == here.x && best.y == here.y) return;
     o.move.move = seek(me.pos, best, Fixed64::fromFraction(1, 2));

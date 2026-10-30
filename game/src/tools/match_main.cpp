@@ -555,6 +555,9 @@ int main(int argc, char** argv) {
             at = end + 1;
         }
     }
+    // Try a team on another of its tactics (a model name) without changing
+    // what the team plays.
+    if (const char* gm = std::getenv("GAME_MODEL_HOME")) base.roster_home.game_model = gm;
     applyOverrides(base, argc > 3 ? argv[3] : "-", true);
     applyOverrides(base, argc > 4 ? argv[4] : "-", false);
 
@@ -594,6 +597,9 @@ int main(int argc, char** argv) {
     long off_ticks[2][2] = {}, off_n[2][2] = {}, off_why[2][2][ai::kWhyCount] = {};
     double off_sum[2][2] = {};
     long ip_why[2][ai::kWhyCount] = {}, ip_n[2] = {0, 0};   // outfielders' reasons in possession (off the ball)
+    // G5.0 rest defence: full-backs wider than their man; the back five
+    // goal-side of him with the ball past him.
+    long fb_n[2] = {}, fb_wide[2] = {}, fb_wide3[2] = {}, back_n[2] = {}, back_goal_side[2] = {}, fb_wide_why[2][ai::kWhyCount] = {};
     // Possession spells (a team's ball, from winning it to losing it), and
     // a man holding shape's gap to the spot he holds, in the first 5 s of
     // his team's spell [0] or after [1] — lag behind a shape that moved.
@@ -919,6 +925,24 @@ int main(int argc, char** argv) {
                         const double dd = std::sqrt(ax * ax + ay * ay);
                         off_sum[team][w] += dd; ++off_n[team][w];
                         if (w == 0) { ++ip_why[team][static_cast<int>(oj.why)]; ++ip_n[team]; }
+                        const int jn = s.brain().numberOf(j);
+                        const std::uint8_t man = s.brain().directOpponentOf(j, s.world());
+                        if (w == 0 && man != 255 && (jn == 2 || jn == 3 || jn == 4 || jn == 5 || jn == 6)) {
+                            const auto& mp = s.world().player(man).pos;
+                            const double sg = team == 0 ? 1.0 : -1.0;
+                            if (jn <= 3) {
+                                ++fb_n[team];
+                                if (std::fabs(d.pos.y.toDouble()) > std::fabs(mp.y.toDouble())) {
+                                    ++fb_wide[team];
+                                    if (std::fabs(d.pos.y.toDouble()) > std::fabs(mp.y.toDouble()) + 3.0) ++fb_wide3[team];
+                                    ++fb_wide_why[team][static_cast<int>(oj.why)];
+                                }
+                            }
+                            if ((b.pos.x.toDouble() - mp.x.toDouble()) * sg >= 0) {
+                                ++back_n[team];
+                                if ((mp.x.toDouble() - d.pos.x.toDouble()) * sg > 0) ++back_goal_side[team];
+                            }
+                        }
                         if (oj.why == ai::Why::Hold) {
                             const int settled = k - spell_start >= 5 * 30 ? 1 : 0;
                             hold_gap[settled] += dd; ++hold_n[settled];
@@ -1459,6 +1483,16 @@ int main(int argc, char** argv) {
             for (int k = 0; k < ai::kWhyCount; ++k)
                 if (off_why[team][w][k] * 20 >= off_ticks[team][w] && off_ticks[team][w])
                     std::printf(" %s %.0f%%", ai::kWhyNames[k], 100.0 * off_why[team][w][k] / off_ticks[team][w]);
+            std::printf("\n");
+        }
+        if (fb_n[team] && back_n[team])
+            std::printf("%s rest defence: full-backs wider than their man %.0f%% of the time (3 m+ wider %.0f%%); back five goal-side of him with the ball past him %.0f%%\n",
+                        tn, 100.0 * fb_wide[team] / fb_n[team], 100.0 * fb_wide3[team] / fb_n[team], 100.0 * back_goal_side[team] / back_n[team]);
+        if (fb_wide[team]) {
+            std::printf("%s full-backs wider than their man are doing:", tn);
+            for (int k = 0; k < ai::kWhyCount; ++k)
+                if (fb_wide_why[team][k] * 50 >= fb_wide[team])
+                    std::printf(" %s %.0f%%", ai::kWhyNames[k], 100.0 * fb_wide_why[team][k] / fb_wide[team]);
             std::printf("\n");
         }
         if (ip_n[team]) {

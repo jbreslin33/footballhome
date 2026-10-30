@@ -3714,3 +3714,39 @@ teaching rows only.)
   flags (G4.88).
 - Mine all of these for AI design; re-express in fixed point. Never port
   floats.
+
+### 8.98 G5.0 — preventive marking, position by position (mig 886)
+
+James 10/30: "intelligent direct opponent unmarking"; "2 and 3 to unmark NOT
+wide of do"; "closed ball, open ball"; "ukies should look to get 2,3 wide
+during unmark". The football name is preventive marking (marcature preventive),
+how rest defence is done [standard coaching, FH wiring].
+
+- **Demand by position**: `game_model_role_concepts` is read at last
+  (FormationSpec::Pos::role, GameModel::roles through the parent chain, applied
+  per slot in recomputeKnowledge; live HUD changes still win).
+- **rest-defense (70), wired**: `gap_m` 0 globally, 3 in the model "Lighthouse
+  APSL — preventive marking", so no other model moves. The men with demand (4,
+  5, 6, 2, 3) stand gap_m goal-side of their direct opponent, on his line to our
+  goal, once the ball is past him. Read once a possession: a per-second lapse
+  walked them out and back. Our pass in flight counts as our ball.
+- **inverted-fullback (55), wired**: never wider than his man, inside_m inside
+  him, lapse or not, in the job and in unmark. No overlap, no spread_wide
+  (role demand 0).
+- **open-closed-ball (185), new**: nothing in the taxonomy said it. Open
+  (nobody within pressure_m, facing forward): forward, sideways, back. Closed:
+  toward the ball first. Lapse: forward anyway. The 7 and 11 unmark no further in
+  than wing_band_m; an 8 or 10 pops out when nobody holds the ball-side channel.
+- **wide_first** on lose-your-marker: the Ukies' full-backs look for the
+  touchline first.
+- **Flank bug**: y is not mirrored for the away team, so 2:7, 3:11, 7:2 and 11:3
+  paired men on opposite touchlines (our 3 marked a man the pitch width away).
+  Pairs now 2:11, 3:7, 7:3, 11:2. `Brain::directOpponents`' mirrored() still
+  assumes a y mirror the game doesn't have; only the unnumbered fallback uses it.
+
+Measured, 10 matches LH v Ukies, scratch DB: without the tactic W2 D3 L5, goals
+6.8-7.3, shots 64/67, spells 539; with it W8 D1 L1, goals 5.9-2.7, shots 53/49,
+spells 432. Full-backs wider than their man 81% (3 m+ 71%) → 34% (3 m+ 12%), the
+rest mostly on their way there (give and go is not clamped). Back five goal-side
+with the ball past him 79 → 88%. Next mole: read the back five (`past`) by
+how many they leave up, not all five always.

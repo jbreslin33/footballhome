@@ -70,7 +70,7 @@ FormationSpec builtinFormation(std::uint8_t n) {
     const auto bases = formationBases(n);
     spec.positions.reserve(bases.size());
     for (std::size_t i = 0; i < bases.size(); ++i) {
-        spec.positions.push_back({bases[i], n >= 5 && i == 0});
+        spec.positions.push_back({bases[i], n >= 5 && i == 0, 0, {}});
     }
     return spec;
 }

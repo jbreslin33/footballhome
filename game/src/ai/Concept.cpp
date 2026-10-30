@@ -256,6 +256,23 @@ void LoseYourMarker::configure(const core::ModelParams& p) {
     tight_ = p.fixed(key("tight_m"), 3000);
     step_ = p.fixed(key("step_m"), 5000);
     leash_ = p.fixed(key("leash_m"), 8000);
+    free_ = p.fixed(key("free_m"), 4000);
+    wide_first_ = p.integer(key("wide_first"), 0) > 0;
+}
+
+void RestDefense::configure(const core::ModelParams& p) {
+    gap_ = p.fixed(key("gap_m"), 0);
+    wing_band_ = p.fixed(key("wing_band_m"), 16000);
+    wide_ = p.fixed(key("wide_m"), 6000);
+    reach_ = p.fixed(key("reach_m"), 15000);
+}
+
+void OpenClosedBall::configure(const core::ModelParams& p) {
+    pressure_ = p.fixed(key("pressure_m"), 3000);
+}
+
+void InvertedFullBack::configure(const core::ModelParams& p) {
+    inside_ = p.fixed(key("inside_m"), 2000);
 }
 
 void DirectOpponent::configure(const core::ModelParams& p) {
