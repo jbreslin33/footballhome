@@ -4,6 +4,37 @@ Owner 2026-10-29: "i want to build an apsl pyramid. with multiple views with
 its feeder leagues and standings live … we want to show how big the apsl and
 feeder system is. show keep club/team totals too."
 
+## Public (mig 870)
+
+Owner 2026-10-30: "make it public u can leave staff and rosters". Share
+`https://footballhome.org/#apsl-pyramid`: no login, every view, club cards
+with staff and rosters.
+
+- `GET /api/pyramid`, `/territory` and `/club` answer anyone. `/roots` (the
+  picker tile's crest) still needs a login.
+- Club admins only: the ✏️ editors (`POST /zone-rules`, `POST /club`) and ⟳
+  (`?refresh=1` re-reads every league site; anyone else's is ignored). The
+  page hides them with `.ap-readonly`; a visitor gets no ← either.
+- Logged out, `MessageCopy` loads from `/api/public/program-copy`, which
+  serves `is_public` rows only. **A new `apsl_pyramid` row must be
+  `is_public = true`, or its label is blank for visitors.**
+- A visitor opening a card can trigger a team-page read through the scraper
+  proxy, as a login could: at most once a day per team (`teamPeople`).
+- The route is in `routePublic` (`app.js`) for logged-out visitors; signed
+  in, `start()` opens it as a normal screen. The tiles on `#role-selection`
+  and `#apsl` are still admin only.
+
+## Map underneath (mig 871)
+
+Owner 2026-10-30: "the map is pretty bare can we have option of satelite
+etc". `pyramid_map_layers` = a row per map, pills in the USA map's key HUD,
+the viewer's pick remembered in the browser: Dark (OpenStreetMap darkened in
+CSS, `darken`), Streets (OpenStreetMap), Satellite (Esri World Imagery, with
+Esri's place names as `overlay_url`), Terrain (OpenTopoMap). New map = a new
+row. The tiles are free, no key, and their servers' terms apply: each row
+carries the credit Leaflet shows, and OpenStreetMap's policy is against
+heavy traffic.
+
 ## Tree
 
 `pyramid_competitions` — APSL (root, `slug = 'apsl'`) → its conferences

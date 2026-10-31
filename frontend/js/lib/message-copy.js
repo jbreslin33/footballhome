@@ -29,7 +29,12 @@ class MessageCopy {
     if (!MessageCopy._promise) {
       MessageCopy._promise = (async () => {
         try {
-          const res = await auth.fetch('/api/messages/templates/copy');
+          // A visitor (the public #apsl-pyramid, mig 870) gets the is_public
+          // rows; not kept, so a sign-in loads the full set.
+          const signedIn = auth.isLoggedIn();
+          const res = signedIn ? await auth.fetch('/api/messages/templates/copy')
+                               : await fetch('/api/public/program-copy');
+          if (!signedIn) MessageCopy._promise = null;
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const payload = await res.json();
           const data = (payload && payload.data) || {};

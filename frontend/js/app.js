@@ -290,6 +290,13 @@ class App {
         return true;
       }
 
+      // The APSL pyramid is public (mig 870).  Signed in, it stays a normal
+      // screen with its back stack — start() below opens it.
+      if (hash === '#apsl-pyramid' && !this.auth.isLoggedIn()) {
+        this.screenManager.show('apsl-pyramid', {});
+        return true;
+      }
+
       // footballhome.org/<slug> — a club / league page (mig 632).  Only
       // with no hash, so /lighthouse#info/youth etc. still reach the hash
       // routes above and the app.  A ?token= landing (/oauth-success) is a
@@ -348,6 +355,10 @@ class App {
       if (game) {
         this.navigation.context.role = this.navigation.context.role || 'player';
         this.navigation.goTo('game-center', { matchId: Number(game[1]), postType: game[2] || null });
+        return;
+      }
+      if (window.location.hash === '#apsl-pyramid') {
+        this.navigation.goTo('apsl-pyramid');
         return;
       }
       // Back within minutes of leaving (a REMIND text, an email) — the

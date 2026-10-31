@@ -2,9 +2,8 @@
 // PyramidModel.  Owner 2026-10-29: "ok next view usa map"; first ask: "map
 // form — you jump round the usa and it shows you the pyramid."
 //
-// A dark US map (Leaflet, vendored in frontend/vendor/leaflet, loaded only
-// when this view opens; OpenStreetMap tiles, darkened in CSS — CARTO's dark
-// tiles now want an API key) with a dot per club at its home
+// A US map (Leaflet, vendored in frontend/vendor/leaflet, loaded only when
+// this view opens) with a dot per club at its home
 // ground — blue for a club with an APSL team, teal for a feeder-only club;
 // a club whose league publishes no address sits at its league's point,
 // dimmed and dashed.  Each conference has a label at its clubs' middle; tap
@@ -37,6 +36,10 @@
 //              counties dashed, the APSL teams counted in the city / the
 //              collar / further out.
 // The conference pills choose which conferences' clubs are on the map.
+// Mig 871 (owner: "the map is pretty bare can we have option of satelite
+// etc"): the map underneath is a pill in the key HUD — pyramid_map_layers
+// rows (Dark = OpenStreetMap darkened in CSS; CARTO's dark tiles now want an
+// API key), the viewer's pick remembered.
 //
 // Nothing hides anything (owner 2026-10-29: "use arrows to bubble as its
 // covering each other up. so it needs to auto adjust so its all visible"):
@@ -63,10 +66,11 @@ class PyramidMapView {
 
   static css() {
     return `
-      .mp-map .leaflet-tile-pane { filter:invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
+      .mp-map.mp-dark .leaflet-tile-pane { filter:invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
       .mp-stage { position:absolute; inset:0; overflow:hidden; }
       .mp-map { position:absolute; inset:0; background:#0b1220; }
       .mp-hud-stats { max-width:360px; line-height:1.45; }
+      .mp-layers { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
       .mp-hud-stats b { font-size:0.9rem; }
       .mp-key span { display:block; }
       .mp-key i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; }
@@ -120,6 +124,7 @@ class PyramidMapView {
       <div class="mp-stage">
         <div class="mp-map"></div>
         ${this.screen.hud('map-key', this._copy('hud_map'), `
+          <div class="mp-layers">${(model.data.map_layers || []).map((l) => `<button class="ap-pill" data-mp="layer" data-code="${esc(l.code)}">${esc(l.label)}</button>`).join('')}</div>
           <div class="mp-key">
             <span><i style="background:#3b82f6"></i>${esc(this._copy('map_dot_apsl'))}</span>
             <span><i style="background:#14b8a6"></i>${esc(this._copy('map_dot_feeder'))}</span>
@@ -151,9 +156,9 @@ class PyramidMapView {
     const L = window.L;
     this.map = L.map(root.querySelector('.mp-map'), { zoomSnap: 0.25, attributionControl: true, zoomControl: false });
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18, attribution: this._esc(this._copy('map_attribution')),
-    }).addTo(this.map);
+    let picked = null;
+    try { picked = localStorage.getItem('apsl-pyramid-map-layer'); } catch (_) { /* private mode */ }
+    this._setLayer(picked);
 
     const L2 = model.layout(confs);
     this.columns = L2.columns;
@@ -528,6 +533,20 @@ class PyramidMapView {
     hud.style.maxHeight = `${Math.max(160, Math.round(s.height - top - bottom))}px`;
   }
 
+  // The map underneath: this code's pyramid_map_layers row, else the default.
+  _setLayer(code) {
+    const layers = this.model.data.map_layers || [];
+    const row = layers.find((l) => l.code === code) || layers.find((l) => l.is_default);
+    if (!row) return;
+    (this.tiles || []).forEach((t) => t.remove());
+    const L = window.L;
+    this.tiles = [L.tileLayer(row.tile_url, { maxZoom: row.max_zoom, attribution: this._esc(row.attribution) })];
+    if (row.overlay_url) this.tiles.push(L.tileLayer(row.overlay_url, { maxZoom: row.max_zoom }));
+    this.tiles.forEach((t) => t.addTo(this.map));
+    this.root.querySelector('.mp-map').classList.toggle('mp-dark', row.darken);
+    this.root.querySelectorAll('[data-mp="layer"]').forEach((b) => b.classList.toggle('on', b.dataset.code === row.code));
+  }
+
   _bindHud(root) {
     const stage = root.querySelector('.mp-stage');
     root.querySelectorAll('[data-mp]').forEach((el) => {
@@ -537,6 +556,11 @@ class PyramidMapView {
           this.alpha = Number(el.value);
           root.querySelector('.mp-ov').style.opacity = this.alpha;
           try { localStorage.setItem('apsl-pyramid-map-ov', String(this.alpha)); } catch (_) { /* private mode */ }
+        });
+      } else if (a === 'layer') {
+        el.addEventListener('click', () => {
+          this._setLayer(el.dataset.code);
+          try { localStorage.setItem('apsl-pyramid-map-layer', el.dataset.code); } catch (_) { /* private mode */ }
         });
       } else if (a === 'close') el.addEventListener('click', () => this._close());
     });

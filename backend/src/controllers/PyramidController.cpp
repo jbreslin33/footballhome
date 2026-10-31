@@ -191,7 +191,6 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
 // or a county override) as GeoJSON, the population inside, and its Sunday
 // drive times (PyramidSync::conferenceTravel).
 Response PyramidController::handleTerritory(const Request& request) {
-    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
     const std::string conf = request.getQueryParam("conf");
     if (conf.empty() || conf.find_first_not_of("0123456789") != std::string::npos) return jsonError(HttpStatus::BAD_REQUEST, "conf required");
     try {
@@ -254,7 +253,6 @@ Response PyramidController::handleTerritory(const Request& request) {
 // zone, home ground, staff and roster (the roster read from the league's
 // team page when a day old — PyramidSync::teamPeople).
 Response PyramidController::handleClub(const Request& request) {
-    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
     const std::string id = request.getQueryParam("id");
     if (id.empty() || id.find_first_not_of("0123456789") != std::string::npos) return jsonError(HttpStatus::BAD_REQUEST, "id required");
     try {
@@ -398,12 +396,12 @@ Response PyramidController::handleZoneRules(const Request& request) {
     }
 }
 
+// Public (mig 870); ?refresh=1 re-reads every league site, so club admins only.
 Response PyramidController::handleGet(const Request& request) {
-    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
     try {
         std::string root = request.getQueryParam("root");
         if (root.empty()) root = "apsl";
-        PyramidSync::refreshIfStale(request.getQueryParam("refresh") == "1");
+        PyramidSync::refreshIfStale(request.getQueryParam("refresh") == "1" && requireAdminLevel(request, {"club", "super"}));
 
         auto* db = Database::getInstance();
         const std::string cte = kTreeCte;
@@ -511,12 +509,21 @@ Response PyramidController::handleGet(const Request& request) {
         for (const auto& r : db->query("SELECT code, label, moves, color FROM pyramid_zone_kinds ORDER BY sort_order, code"))
             kinds.push_back({{"code", str(r, "code")}, {"label", str(r, "label")}, {"moves", strOrNull(r, "moves")}, {"color", str(r, "color")}});
 
+        json mapLayers = json::array();
+        for (const auto& r : db->query("SELECT code, label, tile_url, overlay_url, attribution, max_zoom, darken, is_default "
+                                       "  FROM pyramid_map_layers ORDER BY sort_order")) {
+            mapLayers.push_back({{"code", str(r, "code")}, {"label", str(r, "label")}, {"tile_url", str(r, "tile_url")},
+                                 {"overlay_url", strOrNull(r, "overlay_url")}, {"attribution", str(r, "attribution")},
+                                 {"max_zoom", num(r, "max_zoom")}, {"darken", r["darken"].as<bool>()},
+                                 {"is_default", r["is_default"].as<bool>()}});
+        }
+
         return jsonOut(HttpStatus::OK, {
             {"root_id", num(tot[0], "root_id")},
             {"totals", {{"leagues", num(tot[0], "leagues")}, {"clubs", num(tot[0], "clubs")},
                         {"teams", num(tot[0], "teams")}, {"states", num(tot[0], "states")}}},
             {"competitions", competitions}, {"divisions", divisions}, {"links", links}, {"zone_kinds", kinds},
-            {"clubs", clubs}, {"places", places}, {"seasons", seasons}});
+            {"clubs", clubs}, {"places", places}, {"seasons", seasons}, {"map_layers", mapLayers}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());

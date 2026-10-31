@@ -8,8 +8,10 @@
 // conference shown in a container with relegation and playoff spots in red and green. then under it are the
 // feeder leagues connected by arrows like a flow chart."
 //
+//   Public since mig 870: GET /api/pyramid, /territory, /club need no login;
+//   refresh=1 and the POSTs are club admins.
 //   GET /api/pyramid[?root=apsl][&refresh=1]
-//     { root_id, totals: {leagues, clubs, teams, states},
+//     { root_id, totals: {leagues, clubs, teams, states}, map_layers (mig 871),
 //       competitions: [{ id, parent_id, kind, tier, name, short_name, region,
 //                        website_url, standings_url, logo_url, lat, lon, states: [..],
 //                        source: {system, ok, read_at, ok_at, note} | null }],

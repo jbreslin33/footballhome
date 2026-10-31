@@ -51,6 +51,7 @@ class ApslPyramidScreen extends Screen {
         .ap-totals { text-align:center; font-size:1.2rem; font-weight:800; margin:var(--space-2) 0 var(--space-3); }
         .ap-pills { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-bottom:var(--space-3); }
         .ap-pill { padding:5px 14px; border-radius:999px; border:1px solid var(--border-color, #374151); background:transparent; color:inherit; font-weight:700; font-size:0.85rem; cursor:pointer; min-height:0; min-width:0; }
+        .ap-readonly .fc-edit, .ap-readonly [data-cc="edit"], .ap-readonly #ap-refresh { display:none; }
         .ap-pill.on { background:var(--primary-color, #2563eb); border-color:var(--primary-color, #2563eb); color:#fff; }
         .ap-stage { position:fixed; inset:0; z-index:1000; background:var(--bg-color, #0b1220); overflow:hidden; }
         .ap-stage #ap-body { position:absolute; inset:0; overflow:auto; padding:150px 16px 24px; }
@@ -155,6 +156,11 @@ class ApslPyramidScreen extends Screen {
   }
 
   onEnter() {
+    // Public page (mig 870): editing and ⟳ are club admin; a visitor has no
+    // screen to go back to.
+    const user = this.auth.getUser();
+    this.element.classList.toggle('ap-readonly', !(user && ['club', 'super'].includes(user.role)));
+    this.find('#ap-back').style.display = this.auth.isLoggedIn() ? '' : 'none';
     window.addEventListener('resize', this._onResize);
     const copyReady = window.MessageCopy ? MessageCopy.load(this.auth) : Promise.resolve();
     Promise.resolve(copyReady).then(() => {
