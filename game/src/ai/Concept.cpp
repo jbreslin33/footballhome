@@ -220,6 +220,24 @@ void ShotSelection::configure(const core::ModelParams& p) {
     min_pressed_ = p.fixed(key("min_xg_pressed"), 50);
     min_free_ = p.fixed(key("min_xg_free"), 120);
     pass_better_ = p.fixed(key("pass_better"), 1500);
+    measured_ = false;
+    for (int b = 0; b < kBands; ++b)
+        for (int c = 0; c < 2; ++c)
+            for (int pr = 0; pr < 2; ++pr) {
+                const std::string name = "rate_b" + std::to_string(b) + (c ? "_central" : "_wide") +
+                                         (pr ? "_pressed" : "_free");
+                const std::string k = key(name.c_str());
+                const std::int64_t m = p.milli(k, -1);
+                if (m >= 0) measured_ = true;
+                rates_[b][c][pr] = m >= 0 ? math::Fixed64::fromFraction(static_cast<std::int32_t>(m), 1000)
+                                          : math::Fixed64::zero();
+            }
+}
+math::Fixed64 ShotSelection::rate(math::Fixed64 dist, bool central, bool pressed) const {
+    static constexpr int kTop[kBands] = {6, 11, 16, 22, 30, 45};
+    for (int b = 0; b < kBands; ++b)
+        if (dist < math::Fixed64::fromInt(kTop[b])) return rates_[b][central ? 1 : 0][pressed ? 1 : 0];
+    return math::Fixed64::zero();
 }
 math::Fixed64 ShotSelection::xg(math::Fixed64 angle, math::Fixed64 dist, bool pressed) const {
     math::Fixed64 x = scale_ * angle * math::fx_exp_neg(dist / decay_);
@@ -265,6 +283,24 @@ void RestDefense::configure(const core::ModelParams& p) {
     wing_band_ = p.fixed(key("wing_band_m"), 16000);
     wide_ = p.fixed(key("wide_m"), 6000);
     reach_ = p.fixed(key("reach_m"), 15000);
+}
+
+void SettleInPossession::configure(const core::ModelParams& p) {
+    ahead_min_ = static_cast<int>(p.integer(key("ahead_min"), 5));
+    until_ = p.fixed(key("until_m"), 20000);
+}
+
+bool SettleInPossession::stretched(const core::World& w, core::SlotIndex carrier, int sign) const {
+    const math::Fixed64 sg = sign >= 0 ? math::Fixed64::one() : -math::Fixed64::one();
+    const auto& me = w.player(carrier);
+    const math::Fixed64 at = me.pos.x * sg;
+    if (w.pitchHalfX() - at <= until_) return false;   // at their box, nobody's ahead of it
+    int ahead = 0;
+    for (core::SlotIndex i = 0; i < w.playerCount(); ++i) {
+        if (i == carrier || w.player(i).team != me.team || w.isKeeper(i)) continue;
+        if (w.player(i).pos.x * sg > at) ++ahead;
+    }
+    return ahead < ahead_min_;
 }
 
 void OpenClosedBall::configure(const core::ModelParams& p) {
@@ -517,6 +553,21 @@ std::optional<Fixed64> LineStep::stepLine(const ConceptContext& c) const {
 
 // ── PassLadder ──────────────────────────────────────────────────────────
 void PassLadder::configure(const core::ModelParams& p) {
+    dir_reach_ = p.fixed(key("dir_forward_reach"), 1000);
+    clear_share_[0][1] = p.fixed(key("clear_box_central"), 0);
+    clear_share_[0][0] = p.fixed(key("clear_box_wide"), 0);
+    clear_share_[1][1] = p.fixed(key("clear_out_central"), 0);
+    clear_share_[1][0] = p.fixed(key("clear_out_wide"), 0);
+    dir_on_ = false;
+    for (int t = 0; t < 3; ++t)
+        for (int pr = 0; pr < 2; ++pr) {
+            const std::string tail = pr ? "_pressed" : "";
+            const std::string sq = "dir_t" + std::to_string(t) + "_square" + tail, bk = "dir_t" + std::to_string(t) + "_back" + tail;
+            const std::int64_t a = p.milli(key(sq.c_str()), -1), b = p.milli(key(bk.c_str()), -1);
+            if (a >= 0 && b >= 0) dir_on_ = true;
+            dir_square_[t][pr] = a >= 0 ? math::Fixed64::fromFraction(static_cast<std::int32_t>(a), 1000) : math::Fixed64::zero();
+            dir_back_[t][pr] = b >= 0 ? math::Fixed64::fromFraction(static_cast<std::int32_t>(b), 1000) : math::Fixed64::zero();
+        }
     pocket_depth_ = p.fixed(key("pocket_depth_m"), 10000);
     central_half_width_ = p.fixed(key("central_half_width_m"), 20000);
     fire_min_ = p.integer(key("fire_rung_min"), 2);

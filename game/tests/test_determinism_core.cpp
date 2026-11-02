@@ -41,7 +41,8 @@ namespace {
 //   G4.87 2026-10-29 air drag (BallFlight)  0xbfe63c836cfc5293
 //   G4.88 2026-10-29 officials in the state (on G4.87) 0xb5e960d175a84ed0
 //   G4.90 2026-10-29 assistant shadows level 0x6428149331d5d8b1
-constexpr std::uint64_t kGolden400TicksSeed42 = 0x6428149331d5d8b1ULL;
+//   G5.2 2026-10-31 ball out called, held restarts 0x43320399541f4254
+constexpr std::uint64_t kGolden400TicksSeed42 = 0x43320399541f4254ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

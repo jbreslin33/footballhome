@@ -176,6 +176,16 @@ private:
     static constexpr std::uint64_t kFlagUpTicks = 45;   // 1.5 s
     int flag_official_ = -1;
     std::uint64_t flag_until_tick_ = 0;
+    // G5.2: the signal for a ball out — who gave it, what (OfficialSnap bits
+    // 1-3), until the ball is played or kSignalTicks. The referee repeats it.
+    static constexpr std::uint64_t kSignalTicks = 150;   // 5 s
+    static constexpr std::uint64_t kHumanRestartTicks = 300;   // 10 s [FH]
+    int signal_official_ = -1;
+    std::uint8_t signal_code_ = 0;
+    std::uint64_t signal_until_tick_ = 0;
+    // A phase's mark for one slot (game_phase_positions), if it has a row.
+    bool phaseMark(const std::string& code, std::uint8_t team, std::uint8_t slot, math::Vec2& at) const;
+    void holdCornerShape(std::uint8_t team);
     std::unordered_map<ClientId, bool> brain_watchers_;
     void sendBrain();
     // Connected clients, for snapshot fan-out. Keyed map (not vector) so

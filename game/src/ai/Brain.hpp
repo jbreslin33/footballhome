@@ -51,7 +51,8 @@ enum class Why : std::uint8_t {
     CallManOn, CallTurn, CallTime, CallSqueeze, CallLine,
     HurryKeeper, PressBadTouch, OverHighLine, KeeperShort,
     FalseNineDrop, Overlap, ComeShort, CheckIn,
-    WaitPass, StayOnside, TrackRunner, DoubleCheckIn, PreventiveMark, PopOut,
+    WaitPass, StayOnside, TrackRunner, DoubleCheckIn, PreventiveMark, PopOut, Settle,
+    TakeRestart, ThrowIn, CornerKick, LawDistance,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -78,6 +79,8 @@ inline constexpr const char* kWhyNames[] = {
     "track the runner",
     "double the man checking in",
     "preventive marking", "pop out wide",
+    "settle: walk it",
+    "take the restart", "throw-in", "corner", "the law's distance",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -152,6 +155,22 @@ public:
         shape_slope_ = p.fixed("physics.shape.ours_slope", 450);
         shape_offset_ = p.fixed("physics.shape.ours_offset_m", 2000);
         shape_depth_ = p.fixed("physics.shape.ours_depth_k", 1400);
+        // G5.2 (mig 922): taking a restart.
+        auto ticks = [&](const char* key, std::int64_t milli) {
+            return static_cast<std::int32_t>((p.fixed(key, milli) * math::Fixed64::fromInt(core::kTickRate)).raw >>
+                                             math::Fixed64::FRAC_BITS);
+        };
+        restart_play_.throw_look_ticks = ticks("physics.restart.throw_look_s", 1000);
+        restart_play_.throw_wait_ticks = ticks("physics.restart.throw_wait_s", 4000);
+        restart_play_.corner_look_ticks = ticks("physics.restart.corner_look_s", 1500);
+        restart_play_.keeper_wait_ticks = ticks("physics.restart.keeper_wait_s", 3000);
+        restart_play_.throw_min_m = p.fixed("physics.restart.throw_min_m", 4000);
+        restart_play_.throw_room_m = p.fixed("physics.restart.throw_room_m", 10000);
+        restart_play_.throw_free_m = p.fixed("physics.restart.throw_free_m", 3000);
+        restart_play_.throw_gain = p.fixed("physics.restart.throw_gain", 300);
+        restart_play_.keeper_long_m = p.fixed("physics.restart.keeper_long_m", 55000);
+        restart_play_.throw_law_m = p.fixed("physics.restart.throw_law_m", 2000);
+        restart_play_.kick_law_m = p.fixed("physics.restart.kick_law_m", 9150);
     }
     // G4.76: one team's concept numbers — the global rows with its game
     // model's own (game_model_concept_params) and the HUD's live changes.
@@ -297,6 +316,20 @@ private:
     Orders decide(core::SlotIndex slot, const core::World& world) const;
     // ordersFor() before the laws of the restart are applied.
     Orders ordersFaced(core::SlotIndex slot, const core::World& world) const;
+    // The dead ball (G5.2): who takes a throw, goal kick or corner; his
+    // walk to it and what he does with it; the law's distance for the rest.
+    struct RestartPlay {
+        std::int32_t throw_look_ticks = 30, throw_wait_ticks = 120, corner_look_ticks = 45, keeper_wait_ticks = 90;
+        math::Fixed64 throw_min_m = math::Fixed64::fromInt(4), throw_room_m = math::Fixed64::fromInt(10),
+                      throw_free_m = math::Fixed64::fromInt(3), throw_gain = math::Fixed64::fromFraction(3, 10),
+                      keeper_long_m = math::Fixed64::fromInt(55), throw_law_m = math::Fixed64::fromInt(2),
+                      kick_law_m = math::Fixed64::fromFraction(915, 100);
+    } restart_play_;
+    int restartTaker(const core::World& world, std::uint8_t team) const;
+    bool takeRestart(core::SlotIndex slot, const core::World& world, Orders& out) const;
+    bool playThrow(core::SlotIndex slot, const core::World& world, Orders& out) const;
+    bool playCorner(core::SlotIndex slot, const core::World& world, Orders& out) const;
+    void keepLawDistance(core::SlotIndex slot, const core::World& world, Orders& o) const;
     // G4.80: brake to arrive — his run toward his own target is capped at
     // the speed he can still stop (or, on the ball, slow to a touch) from.
     void brakeToArrive(core::SlotIndex slot, const core::World& world, Orders& o) const;

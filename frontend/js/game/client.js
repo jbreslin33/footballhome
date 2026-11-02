@@ -37,6 +37,37 @@
                         4: 'Corner', 5: 'Kickoff', 6: 'Half time',
                         7: 'FULL TIME', 10: 'Offside' };
 
+  // The referee's whistle (G5.2), synthesised: a pip for a restart, a longer
+  // blast for a goal or the end of a half. Browsers only open audio after a
+  // tap or a key, so the first events of a page may be silent.
+  let audio = null;
+  function openAudio() {
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+    } catch (e) { audio = null; }
+  }
+  window.addEventListener('pointerdown', openAudio);
+  window.addEventListener('keydown', openAudio);
+  function whistle(seconds) {
+    if (!audio || audio.state !== 'running') return;
+    const t = audio.currentTime;
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.05, t + 0.01);
+    gain.gain.setValueAtTime(0.05, t + seconds - 0.03);
+    gain.gain.linearRampToValueAtTime(0, t + seconds);
+    gain.connect(audio.destination);
+    [2650, 2790].forEach((hz) => {
+      const o = audio.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = hz;
+      o.connect(gain);
+      o.start(t);
+      o.stop(t + seconds);
+    });
+  }
+
   function toast(text, ms) {
     statusEl.textContent = text;
     if (toastTimer) clearTimeout(toastTimer);
@@ -1010,6 +1041,7 @@
       // Tackles (8/9) fire dozens of times a match — not toast-worthy.
       if (!EVENT_NAMES[ev.eventType]) return;
       const name = EVENT_NAMES[ev.eventType];
+      whistle(ev.eventType === 1 || ev.eventType === 6 || ev.eventType === 7 ? 0.5 : 0.14);   // G5.2
       if (ev.eventType === 1) {
         renderer.goalFlash();
         renderer.celebrate(ev.team);

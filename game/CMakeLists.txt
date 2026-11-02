@@ -139,6 +139,8 @@ game_test(test_player_attributes)
 game_test(test_concepts)
 game_test(test_player_sheet)
 game_test(test_officials)
+game_test(test_restarts)
+game_test(test_aerial)
 # No realism gate (James 10/24: "no gate!"): realism is measured and read —
 # fh-game-match prints line height, team length, shots, entries — never a
 # test that blocks a build.

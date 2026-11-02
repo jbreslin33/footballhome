@@ -126,6 +126,24 @@ FH_TEST(pass_habits_pick_short_and_simple_or_long) {
     FH_EXPECT(direct.pick(ctx(w, 0, +1, Vec2{}, 100)) == core::SlotIndex{1});
 }
 
+FH_TEST(settle_reads_men_ahead_of_the_ball_until_their_box) {
+    core::World w = pitch();
+    core::ModelParams p;
+    p.setMilli("concept.settle-in-possession.ahead_min", 1000);
+    ai::SettleInPossession s;
+    s.configure(p);
+    w.placePlayer(0, at(10, 0), kFacePlus);    // on the ball
+    w.placePlayer(1, at(0, 5), kFacePlus);     // behind him: nobody ahead
+    w.placePlayer(2, at(30, 0), kFaceMinus);   // theirs never count
+    w.placePlayer(3, at(40, 0), kFaceMinus);
+    FH_EXPECT(s.stretched(w, 0, 1));
+    w.placePlayer(1, at(15, 5), kFacePlus);    // a mate ahead: not stretched
+    FH_EXPECT(!s.stretched(w, 0, 1));
+    w.placePlayer(1, at(0, 5), kFacePlus);
+    w.placePlayer(0, at(40, 0), kFacePlus);    // 12.5 m out, inside until_m
+    FH_EXPECT(!s.stretched(w, 0, 1));
+}
+
 FH_TEST(cover_shadow_stands_on_the_lane_to_the_receiver) {
     auto w = pitch();
     w.placePlayer(0, at(10, 10), kFacePlus);    // our 9

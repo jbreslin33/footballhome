@@ -56,6 +56,12 @@ inline const math::Fixed64 kBounceDeadSpeed = math::Fixed64::fromFraction(1, 2);
 // [v1] capture radius (m): a slow free ball within this of a player's feet
 // is picked up.
 inline const math::Fixed64 kBallControlRadius = math::Fixed64::fromFraction(1, 2);
+// Law 9: out when the WHOLE ball is over the line — its radius past it
+// (size 5, mig 821 ball.diameter_m 0.218).
+inline const math::Fixed64 kBallRadius = math::Fixed64::fromFraction(109, 1000);
+// Law 15 (G5.2): the ball leaves from behind and over the head — held here,
+// released here.
+inline const math::Fixed64 kThrowHeight = math::Fixed64::fromInt(2);
 
 // Receiving a dropping ball (G4.94; game_techniques recv-thigh, recv-chest,
 // taught u14): an outfielder takes a ball up to chest height, not only at

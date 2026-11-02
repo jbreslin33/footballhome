@@ -98,8 +98,20 @@ void World::tickPlayers() {
             continue;
         }
         Vec2 desire = intents_[i].move;
+        // G5.4: holding it he takes it along, he doesn't run at goal. A real
+        // carry is ~5 m and gains 2-3 m (PL 2015/16). Off without carry_share.
+        if (carry_share_.raw > 0 && ball_.owner && *ball_.owner == i && clock_.tick() < hold_until_tick_)
+            desire = Vec2{desire.x * carry_share_, desire.y * carry_share_};
         if (math::lengthSquared(desire) > Fixed64::one()) {
             desire = desire.normalized();  // hostile overlong vector buys nothing
+        }
+        // G5.2: the man taking a throw, goal kick or corner stands on his
+        // spot until he's played it; the move is only his aim.
+        if (heldRestart() && ball_.owner && *ball_.owner == i) {
+            if (intents_[i].face.x.raw == 0 && intents_[i].face.y.raw == 0 &&
+                (desire.x.raw != 0 || desire.y.raw != 0))
+                p.face = math::normalized(desire);
+            desire = Vec2{};
         }
         // Locomotion (G4.51): velocity relaxes toward the wanted one
         // (Locomotion.hpp) — no more 0 → top speed in a tick, no free
@@ -195,7 +207,9 @@ void World::tickDives() {
         PlayerState& p = players_[i];
         if (!keeper_[i] || p.recovery_ticks > 0 || p.dive_ticks > 0) continue;
         if (ball_.owner && *ball_.owner == i) continue;
-        const Vec2 desire = intents_[i].move;
+        Vec2 desire = intents_[i].move;
+        if (carry_share_.raw > 0 && ball_.owner && *ball_.owner == i && clock_.tick() < hold_until_tick_)
+            desire = Vec2{desire.x * carry_share_, desire.y * carry_share_};
         if (desire.x.raw == 0 && desire.y.raw == 0) continue;
         const Vec2 dir = math::normalized(desire);
         const Fixed64 dive = bodies_[i].diveSpeed();
@@ -218,7 +232,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
         if (ball_.owner && *ball_.owner == i) continue;  // you HAVE it
 
         const bool opponents_ball =
-            ball_.owner &&
+            !heldRestart() && ball_.owner &&
             players_[*ball_.owner].team != tackler.team;
         const Vec2 d{ball_.pos.x - tackler.pos.x,
                      ball_.pos.y - tackler.pos.y};
@@ -254,7 +268,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
             cp.recovery_ticks = kDispossessedRecovery;
             cp.recovery_kind = 2;
             ball_.contest_ticks = 0;
-            last_touch_team_ = tackler.team;
+            touchedBy(tackler.team, true);
             box_clear_team_ = 0xFF;
             losing_team_ = cp.team;
             turnover_tick_ = clock_.tick();
@@ -301,7 +315,19 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         const Action act = actions_[kicker];
         // G4.92: controlled first — unless he hits it first time (G4.95).
         const bool first_time = first_time_[kicker] != 0 && clock_.tick() < control_until_tick_;
-        if (act != Action::None && players_[kicker].recovery_ticks == 0 &&
+        // G5.4: a man with time keeps it for the hold he drew on receipt. A
+        // shot, a first-time hit, a keeper or a presser nearby ends that.
+        bool hold_it = hold_on_ && clock_.tick() < hold_until_tick_ && act != Action::Shot &&
+                       first_time_[kicker] == 0 && !isKeeper(kicker);
+        for (SlotIndex i = 0; i < players_.size() && hold_it; ++i) {
+            if (players_[i].team == players_[kicker].team) continue;
+            const Vec2 d{players_[i].pos.x - o.pos.x, players_[i].pos.y - o.pos.y};
+            // Near his own goal any presser ends it: holding there just gets him robbed.
+            const Fixed64 own_d = players_[kicker].team == 0 ? half_x_ + o.pos.x : half_x_ - o.pos.x;
+            const Fixed64 r = own_d < Fixed64::fromInt(35) ? Fixed64::fromFraction(5, 2) : hold_press_m_;
+            if (math::lengthSquared(d) < r * r) hold_it = false;
+        }
+        if (act != Action::None && players_[kicker].recovery_ticks == 0 && !hold_it &&
             (clock_.tick() >= control_until_tick_ || first_time_[kicker] != 0)) {
             actions_[kicker] = Action::None;
             // Direction: live desire when pushing a direction, else facing.
@@ -353,7 +379,19 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                                                                 : lv.kick_power_err_pct,
                              100);
             }
-            if (act == Action::GroundKick) {
+            // Law 15 (G5.2): whatever he pressed, it's a throw — from behind
+            // and over his head, on the touchline, onto the pitch, at the
+            // range of an arm.
+            const bool held = heldRestart();
+            const MatchEventType kind = restart_kind_;
+            if (held && kind == MatchEventType::ThrowIn) {
+                Fixed64 d = carry_m_[kicker] > 0 ? Fixed64::fromInt(carry_m_[kicker]) : Fixed64::fromInt(12);
+                if (d > officials_.throwMaxM()) d = officials_.throwMaxM();
+                const Fixed64 v = ball_flight_.launchSpeed(d) * power_scale;
+                if (dir.y * restart_spot_.y > Fixed64::zero()) dir.y = -dir.y;
+                ball_.pos = Vec3{restart_spot_.x, restart_spot_.y, kThrowHeight};
+                ball_.vel = Vec3{dir.x * v, dir.y * v, v * kLoftLaunchRatio};
+            } else if (act == Action::GroundKick) {
                 const Fixed64 v = (carry_m_[kicker] > 0 ? weightedPassSpeed(Fixed64::fromInt(carry_m_[kicker]))
                                                         : kGroundKickSpeed) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
@@ -397,7 +435,16 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             ball_.last_kicker = kicker;
             ball_.kicker_lockout = kKickerLockoutTicks;
             ball_.pass_to = pass_to_[kicker];
-            last_touch_team_ = players_[kicker].team;
+            touchedBy(players_[kicker].team, false);
+            if (held) {
+                restart_team_ = 0xFF;   // played: the dead ball is live
+                // Law 11.3: no offside offence from a throw-in, goal kick
+                // or corner. Until G5.2 all three armed the flag.
+                offside_mask_ = 0;
+                called_mask_ = 0;
+                offside_team_ = 0xFF;
+                return;
+            }
 
             // Arm offside (G4.8). Second-last OPPONENT line (keeper
             // counts), the ball, and the halfway line all per the law.
@@ -420,10 +467,29 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             return;  // free-ball physics integrates it this same tick
         }
 
+        // G5.2: a held restart isn't carried. A corner or goal kick sits on
+        // its spot; a throw is in his hands over his head, on the line.
+        if (heldRestart()) {
+            ball_.pos = restart_spot_;
+            if (restart_kind_ == MatchEventType::ThrowIn) ball_.pos.z = kThrowHeight;
+            ball_.vel = Vec3{};
+            return;
+        }
+
         // Glue [v1]: ball rides at the owner's feet, ahead of facing.
         ball_.pos = Vec3{o.pos.x + o.face.x * kBallCarryLead,
                          o.pos.y + o.face.y * kBallCarryLead, Fixed64::zero()};
         ball_.vel = o.vel;
+
+        // Law 9 (G5.2): carried over a line it's out like any other ball —
+        // a dribbler used to stay in play 2 m off the grass, on the apron.
+        if (math::fx_abs(ball_.pos.x) > half_x_ + kBallRadius ||
+            math::fx_abs(ball_.pos.y) > half_y_ + kBallRadius) {
+            last_touch_team_ = o.team;
+            ball_.owner.reset();
+            ball_.contest_ticks = 0;
+            return;   // tickFreeBall sees it over the line this same tick
+        }
 
         // Touch-to-steal contest [v1]: an opponent touch-tight on the
         // carried ball for kStealTicks takes it (nearest wins, lower slot
@@ -461,6 +527,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         }
         return;
     }
+
+    // G5.2: nobody touches a ball that's out (bodies on the apron included),
+    // or a dead ball before the referee has it ready.
+    if (out_stage_ != 0 || (restart_team_ != 0xFF && clock_.tick() < restart_ready_tick_)) return;
 
     // ── first-touch capture [v1 rules] + touch quality + keeper hands ──
     // Nearest in-radius player wins (lower slot breaks ties). Keepers
@@ -520,7 +590,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             flight_tick_ = clock_.tick();
             ball_.kicker_lockout = kBobbleLockoutTicks;
             ball_.kick_alive = kKickAliveTicks;
-            last_touch_team_ = players_[blocker].team;
+            touchedBy(players_[blocker].team, true);
             if (offside_team_ != 0xFF &&
                 players_[blocker].team != offside_team_) {
                 offside_mask_ = 0;
@@ -534,7 +604,11 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     bool found = false;
     Fixed64 best_sq{};
     SlotIndex best = 0;
-    for (SlotIndex i = 0; i < players_.size(); ++i) {
+    // G5.3: a ball at head height goes to whoever wins it in the air.
+    bool duel = false;
+    const int header = aerialWinner(duel);
+    if (header >= 0) { found = true; best = static_cast<SlotIndex>(header); }
+    for (SlotIndex i = 0; header < 0 && i < players_.size(); ++i) {
         if (ball_.kicker_lockout > 0 && i == ball_.last_kicker)
             continue;  // you can't receive your own kick for half a second
         // A pass to a man (G4.81): for that same half second the passer's
@@ -562,6 +636,13 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                      players_[i].pos.y - ball_.pos.y};
         const Fixed64 dsq = math::lengthSquared(d);
         if (dsq > reach * reach) continue;
+        // G5.4 experiment (§8.102): the share of their moving passes an
+        // outfielder in reach actually takes. Off without physics.tempo.cut_share.
+        if (cut_share_.raw > 0 && !gk && ball_.last_kicker != 0xFF && ball_.last_kicker < players_.size() &&
+            players_[ball_.last_kicker].team != players_[i].team &&
+            planar_speed_sq > Fixed64::fromInt(9) &&
+            (detNoise(match_seed_, clock_.tick() / 15, i, 24) + Fixed64::one()) * Fixed64::fromFraction(1, 2) >= cut_share_)
+            continue;
         if (!found || dsq < best_sq) {
             found = true;
             best_sq = dsq;
@@ -597,6 +678,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             offside_team_ = 0xFF;
         }
     }
+
+    if (header >= 0) { headIt(best, duel); return; }
 
     // Touch quality: a ball faster than the toucher's control level
     // bobbles — deflects onward at reduced speed in a noise-rotated
@@ -667,7 +750,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             bad_touch_slot_ = best;
             bad_touch_tick_ = clock_.tick();
             flight_tick_ = clock_.tick();
-            last_touch_team_ = players_[best].team;
+            touchedBy(players_[best].team, true);
             return;  // still nobody's ball
         }
     }
@@ -686,8 +769,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     ball_.kick_alive = 0;
     ball_.kicker_lockout = 0;
     ball_.contest_ticks = 0;
-    last_touch_team_ = players_[best].team;
-    restart_team_ = 0xFF;  // the dead ball is live again
+    touchedBy(players_[best].team, false);
+    // A kick-off or free kick is live at the first touch; a throw, goal kick
+    // or corner when he plays it (G5.2).
+    if (!heldRestart()) restart_team_ = 0xFF;
 }
 
 void World::tickFreeBall(std::vector<MatchEvent>& events) {
@@ -730,64 +815,231 @@ void World::tickFreeBall(std::vector<MatchEvent>& events) {
         }
     }
 
-    // ── end lines: goal, corner, or goal kick (G3.2) ────────────────────
-    const bool in_mouth_y = math::fx_abs(ball_.pos.y) <= kGoalHalfWidth;
-    const bool under_bar  = ball_.pos.z <= kGoalHeight;
-    const Fixed64 corner_y =
-        ball_.pos.y.raw >= 0 ? half_y_ - Fixed64::one() : -half_y_ + Fixed64::one();
-    if (ball_.pos.x > half_x_) {
-        if (in_mouth_y && under_bar) {
-            ++score_[0];
-            events.push_back({MatchEventType::Goal, 0});
-            awardKickoff(1, events);  // conceders restart
-            return;
-        }
-        // Over the +x end line: home attacks here. Last touch decides.
-        if (last_touch_team_ == 1) {  // defender touched out → corner
-            awardRestart(MatchEventType::Corner, 0,
-                         Vec3{half_x_ - Fixed64::one(), corner_y,
-                              Fixed64::zero()}, events);
-        } else {                       // attacker out → goal kick
-            awardRestart(MatchEventType::GoalKick, 1,
-                         Vec3{half_x_ - Fixed64::fromInt(6), Fixed64::zero(),
-                              Fixed64::zero()}, events);
-        }
+    // G5.2: over a line, play has stopped: the ball runs on, the call comes.
+    if (out_stage_ != 0) {
+        tickBallOut(events);
         return;
     }
-    if (ball_.pos.x < -half_x_) {
-        if (in_mouth_y && under_bar) {
-            ++score_[1];
-            events.push_back({MatchEventType::Goal, 1});
-            awardKickoff(0, events);
-            return;
-        }
-        if (last_touch_team_ == 0) {
-            awardRestart(MatchEventType::Corner, 1,
-                         Vec3{-half_x_ + Fixed64::one(), corner_y,
-                              Fixed64::zero()}, events);
-        } else {
-            awardRestart(MatchEventType::GoalKick, 0,
-                         Vec3{-half_x_ + Fixed64::fromInt(6), Fixed64::zero(),
-                              Fixed64::zero()}, events);
-        }
-        return;
-    }
+    crossedLine(events);
+}
 
-    // ── side lines: throw-in to the team that didn't touch it out ──────
-    // (A throw-in is a kick in v0 — no hands/thrower animation yet.)
-    if (ball_.pos.y > half_y_ || ball_.pos.y < -half_y_) {
-        const Fixed64 line_y =
-            ball_.pos.y.raw > 0 ? half_y_ : -half_y_;
-        awardRestart(MatchEventType::ThrowIn,
-                     last_touch_team_ == 0 ? 1 : 0,
-                     Vec3{ball_.pos.x, line_y, Fixed64::zero()}, events);
+// Law 9 + Law 10 (G3.2, the whole ball since G5.2): a goal now; anything else
+// stops play and waits for the official.
+bool World::crossedLine(std::vector<MatchEvent>& events) {
+    const Fixed64 gx = half_x_ + kBallRadius, gy = half_y_ + kBallRadius;
+    if (math::fx_abs(ball_.pos.x) > gx) {
+        const std::uint8_t scorer = ball_.pos.x.raw > 0 ? 0 : 1;
+        if (math::fx_abs(ball_.pos.y) <= kGoalHalfWidth && ball_.pos.z <= kGoalHeight) {
+            ++score_[scorer];
+            events.push_back({MatchEventType::Goal, scorer});
+            awardKickoff(scorer ^ 1, events);  // conceders restart
+            return true;
+        }
+        ballOut(true);
+        return true;
+    }
+    if (math::fx_abs(ball_.pos.y) > gy) {
+        ballOut(false);
+        return true;
+    }
+    return false;
+}
+
+void World::ballOut(bool end_line) {
+    out_stage_ = 1;
+    out_end_line_ = end_line;
+    out_crossed_ = Vec2{ball_.pos.x, ball_.pos.y};
+    out_tick_ = clock_.tick();
+    out_due_tick_ = out_tick_ + officials_.callTicks();
+    ball_.pass_to = 0xFF;
+    offside_mask_ = 0;
+    called_mask_ = 0;
+    offside_team_ = 0xFF;
+}
+
+// The official's call, then the ball back to its spot (G5.2).
+void World::tickBallOut(std::vector<MatchEvent>& events) {
+    if (clock_.tick() < out_due_tick_) return;
+    if (out_stage_ == 2) {
+        ball_ = BallState{};
+        ball_.pos = restart_spot_;
+        out_stage_ = 0;
         return;
     }
+    const bool deflected = deflected_from_ != 0xFF &&
+                           clock_.tick() - deflected_tick_ <= officials_.deflectionTicks();
+    last_out_ = officials_.judgeOutOfPlay(*this, out_crossed_, out_end_line_, deflected, deflected_at_,
+                                          last_touch_team_, deflected_from_);
+    if (last_out_.called != last_out_.truth) ++wrong_out_;
+    const std::uint8_t last = last_out_.called;
+    const std::uint8_t other = last ^ 1;
+    Vec3 spot{};
+    MatchEventType type = MatchEventType::ThrowIn;
+    std::uint8_t award = other;
+    std::uint32_t ready = officials_.readyTicksThrow();
+    if (out_end_line_) {
+        const Fixed64 end = out_crossed_.x.raw > 0 ? Fixed64::one() : -Fixed64::one();
+        const Fixed64 ys = out_crossed_.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+        const std::uint8_t defenders = out_crossed_.x.raw > 0 ? 1 : 0;   // team 1 defends +x
+        if (last == defenders) {
+            // Law 17: in the corner arc nearest where it went out.
+            type = MatchEventType::Corner;
+            award = defenders ^ 1;
+            ready = officials_.readyTicksCorner();
+            const Fixed64 in = Fixed64::fromFraction(1, 2);
+            spot = Vec3{end * (half_x_ - in), ys * (half_y_ - in), Fixed64::zero()};
+        } else {
+            // Law 16: anywhere in the goal area; keepers set it on the side
+            // it went out.
+            type = MatchEventType::GoalKick;
+            award = defenders;
+            ready = officials_.readyTicksGoalKick();
+            spot = Vec3{end * (half_x_ - Fixed64::fromInt(5)), ys * Fixed64::fromInt(6), Fixed64::zero()};
+        }
+    } else {
+        // Law 15: where it crossed the touchline.
+        const Fixed64 ys = out_crossed_.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+        spot = Vec3{out_crossed_.x, ys * half_y_, Fixed64::zero()};
+    }
+    setRestart(type, award, spot, events);
+    restart_ready_tick_ = out_tick_ + ready;
+    out_stage_ = 2;
+    out_due_tick_ = clock_.tick() + officials_.retrieveTicks();
+}
+
+void World::configureAerial(const ModelParams& p) {
+    aerial_radius_ = p.fixed("physics.aerial.radius_m", 0);
+    aerial_min_z_ = p.fixed("physics.aerial.min_z_m", 1000);
+    aerial_duel_slope_ = p.fixed("physics.aerial.duel_slope", 600);
+    aerial_goal_range_ = p.fixed("physics.aerial.goal_range_m", 14000);
+    aerial_own_range_ = p.fixed("physics.aerial.own_range_m", 35000);
+    aerial_goal_speed_ = p.fixed("physics.aerial.goal_speed_mps", 14000);
+    aerial_clear_speed_ = p.fixed("physics.aerial.clear_speed_mps", 16000);
+    aerial_nod_keep_ = p.fixed("physics.aerial.nod_keep", 500);
+    aerial_goal_err_ = p.fixed("physics.aerial.goal_err_deg", 45000);
+    aerial_goal_err_duel_ = p.fixed("physics.aerial.goal_err_duel_deg", 80000);
+    aerial_clear_err_ = p.fixed("physics.aerial.clear_err_deg", 40000);
+}
+
+void World::configureTempo(const ModelParams& p) {
+    hold_under1_ = p.fixed("physics.tempo.hold_under1", 0);
+    hold_under2_ = p.fixed("physics.tempo.hold_under2", 0);
+    hold_under4_ = p.fixed("physics.tempo.hold_under4", 0);
+    hold_press_m_ = p.fixed("physics.tempo.press_m", 2500);
+    cut_share_ = p.fixed("physics.tempo.cut_share", 0);
+    carry_share_ = p.fixed("physics.tempo.carry_share", 0);
+    hold_on_ = hold_under1_.raw > 0 && hold_under2_ > hold_under1_ && hold_under4_ > hold_under2_;
+}
+
+// G5.3: the nearest man of each team under a ball at head height. Both there:
+// a duel. One alone heads it only above his chest and only where a header is
+// a decision: at their goal, or away from his own.
+int World::aerialWinner(bool& duel) const {
+    if (aerial_radius_.raw == 0 || ball_.owner || restart_team_ != 0xFF) return -1;
+    if (ball_.pos.z < aerial_min_z_ || ball_.vel.z.raw >= 0) return -1;   // it's coming down
+    int who[2] = {-1, -1};
+    Fixed64 bd[2] = {};
+    const Fixed64 rr = aerial_radius_ * aerial_radius_;
+    for (SlotIndex i = 0; i < players_.size(); ++i) {
+        if (keeper_[i] || (ball_.kicker_lockout > 0 && i == ball_.last_kicker)) continue;
+        if (ball_.pos.z > bodies_[i].headReach()) continue;   // over his head
+        const Vec2 d{players_[i].pos.x - ball_.pos.x, players_[i].pos.y - ball_.pos.y};
+        const Fixed64 q = math::lengthSquared(d);
+        if (q > rr) continue;
+        const int t = players_[i].team;
+        if (who[t] < 0 || q < bd[t]) { who[t] = i; bd[t] = q; }
+    }
+    if (who[0] >= 0 && who[1] >= 0) {
+        duel = true;
+        const Fixed64 r = detNoise(match_seed_, clock_.tick(), static_cast<SlotIndex>(who[0]), 21);
+        // 50-50 between equals; each point of his aerial share over the
+        // other man's is duel_slope points of chance, capped short of sure.
+        Fixed64 pct = Fixed64::fromInt(50) +
+                      (bodies_[who[0]].aerial() - bodies_[who[1]].aerial()) * aerial_duel_slope_;
+        if (pct < Fixed64::fromInt(5)) pct = Fixed64::fromInt(5);
+        if (pct > Fixed64::fromInt(95)) pct = Fixed64::fromInt(95);
+        return (r + Fixed64::one()) * Fixed64::fromInt(50) < pct ? who[0] : who[1];
+    }
+    const int lone = who[0] >= 0 ? who[0] : who[1];
+    if (lone < 0 || ball_.pos.z <= kOutfieldReachZ) return -1;
+    return (headRangeOfGoal(players_[lone].team) || headRangeOfOwn(players_[lone].team)) ? lone : -1;
+}
+
+// G5.3: straight-line distance to the goal he attacks; depth alone had a man
+// on the touchline heading "at goal".
+bool World::headRangeOfGoal(std::uint8_t team) const {
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    const Vec2 d{sg * half_x_ - ball_.pos.x, ball_.pos.y};
+    return math::lengthSquared(d) <= aerial_goal_range_ * aerial_goal_range_;
+}
+bool World::headRangeOfOwn(std::uint8_t team) const {
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    return half_x_ + ball_.pos.x * sg <= aerial_own_range_;
+}
+
+// techniques 202 header-attacking, 240 def-header-clear (G5.3).
+void World::headIt(SlotIndex slot, bool duel) {
+    if (duel) ++aerial_duels_; else ++aerial_lone_;
+    const auto& p = players_[slot];
+    const Fixed64 sg = p.team == 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 n = detNoise(match_seed_, clock_.tick(), slot, 22);
+    const Fixed64 rad = Fixed64::fromFraction(71, 4068);
+    Vec2 dir{};
+    Fixed64 speed{}, err{}, up{};
+    if (headRangeOfGoal(p.team)) {
+        dir = math::normalized(Vec2{sg * half_x_ - ball_.pos.x, -ball_.pos.y});
+        speed = aerial_goal_speed_;
+        err = duel ? aerial_goal_err_duel_ : aerial_goal_err_;
+        up = Fixed64::zero();
+        ++headers_at_goal_[p.team];
+    } else if (headRangeOfOwn(p.team)) {
+        dir = math::normalized(Vec2{ball_.pos.x + sg * half_x_, ball_.pos.y});
+        speed = aerial_clear_speed_;
+        err = aerial_clear_err_;
+        up = speed * kLoftLaunchRatio;
+        ++headers_clear_[p.team];
+    } else {
+        dir = math::normalized(Vec2{ball_.vel.x, ball_.vel.y});
+        speed = math::length(Vec2{ball_.vel.x, ball_.vel.y}) * aerial_nod_keep_;
+        err = aerial_clear_err_;
+    }
+    const Fixed64 ang = n * rad * err;
+    const Fixed64 c = math::fx_cos(ang), sn = math::fx_sin(ang);
+    ball_.vel = Vec3{(dir.x * c - dir.y * sn) * speed, (dir.x * sn + dir.y * c) * speed, up};
+    ball_.last_kicker = slot;
+    ball_.pass_to = 0xFF;
+    ball_.kicker_lockout = kBobbleLockoutTicks;
+    ball_.kick_alive = kKickAliveTicks;
+    flight_tick_ = clock_.tick();
+    touchedBy(p.team, duel);
+}
+
+void World::touchedBy(std::uint8_t team, bool deflection) {
+    if (deflection && team != last_touch_team_) {
+        deflected_from_ = last_touch_team_;
+        deflected_at_ = Vec2{ball_.pos.x, ball_.pos.y};
+        deflected_tick_ = clock_.tick();
+    } else if (!deflection) {
+        deflected_from_ = 0xFF;   // a clean touch: nothing to misread
+    }
+    last_touch_team_ = team;
 }
 
 // G4.92: his control touch — control_settle_ms + per m/s the ball came in
 // at, his first_touch already in his level; 0 at the perfect level.
 void World::settleControl(SlotIndex slot, Fixed64 speed) {
+    if (hold_on_) {
+        // G5.4: draw his time on the ball from the real spread: under 1 s,
+        // 1-2, 2-4, then 4-8 s, flat inside each (StatsBomb PL 2015/16,
+        // Ball Receipt to Pass; the flat slices are [FH]).
+        const Fixed64 u = (detNoise(match_seed_, clock_.tick(), slot, 23) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        Fixed64 s;
+        if (u < hold_under1_) s = u / hold_under1_;
+        else if (u < hold_under2_) s = Fixed64::one() + (u - hold_under1_) / (hold_under2_ - hold_under1_);
+        else if (u < hold_under4_) s = Fixed64::fromInt(2) + Fixed64::fromInt(2) * (u - hold_under2_) / (hold_under4_ - hold_under2_);
+        else s = Fixed64::fromInt(4) + Fixed64::fromInt(4) * (u - hold_under4_) / (Fixed64::one() - hold_under4_);
+        hold_until_tick_ = clock_.tick() + static_cast<std::uint64_t>((s * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS);
+    }
     const LevelParams& cl = levelOf(slot);
     if (cl.control_settle_ms <= 0) { control_until_tick_ = 0; return; }
     const std::int64_t sp_mps = speed.raw >> Fixed64::FRAC_BITS;
@@ -802,9 +1054,11 @@ void World::giveBall(SlotIndex slot) {
     ball_.owner = slot;
     owned_at_tick_ = clock_.tick();
     control_until_tick_ = 0;   // a placed ball: nothing to control
+    hold_until_tick_ = 0;
     ball_.pos = Vec3{p.pos.x + p.face.x * kBallCarryLead, p.pos.y + p.face.y * kBallCarryLead, Fixed64::zero()};
     last_touch_team_ = p.team;
     restart_team_ = 0xFF;
+    out_stage_ = 0;
     box_clear_team_ = 0xFF;
     offside_mask_ = 0;
     called_mask_ = 0;
@@ -814,6 +1068,10 @@ void World::giveBall(SlotIndex slot) {
 void World::awardKickoff(std::uint8_t team, std::vector<MatchEvent>& events) {
     ball_ = BallState{};  // centre spot, at rest, free of carriers
     restart_team_ = team;
+    restart_kind_ = MatchEventType::Kickoff;
+    restart_ready_tick_ = 0;
+    out_stage_ = 0;
+    deflected_from_ = 0xFF;
     last_touch_team_ = team;   // kicking off isn't winning the ball
     box_clear_team_ = 0xFF;
     offside_mask_ = 0;
@@ -826,7 +1084,17 @@ void World::awardRestart(MatchEventType type, std::uint8_t team,
                          const Vec3& spot, std::vector<MatchEvent>& events) {
     ball_ = BallState{};
     ball_.pos = spot;
+    out_stage_ = 0;
+    setRestart(type, team, spot, events);
+    restart_ready_tick_ = 0;
+}
+
+void World::setRestart(MatchEventType type, std::uint8_t team, const Vec3& spot,
+                       std::vector<MatchEvent>& events) {
     restart_team_ = team;
+    restart_kind_ = type;
+    restart_spot_ = spot;
+    deflected_from_ = 0xFF;
     // The dead ball is theirs: taking it isn't a turnover (no counter-press
     // on a goal kick — the old last toucher made it look like a lost ball).
     last_touch_team_ = team;

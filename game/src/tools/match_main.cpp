@@ -579,6 +579,12 @@ int main(int argc, char** argv) {
     // (17.5 m past halfway), the nearest defender's reason and distance.
     long esc_ticks[2] = {0, 0}, esc_why[2][ai::kWhyCount] = {}, esc_near[2] = {0, 0};
     long entries[2] = {0, 0};
+    double carrier_near[6] = {};     // G5.4: <2, 2-5, 5-10, 10+, sum m, n
+    long conv_shots[5] = {}, conv_goals[5] = {};  // G5.4
+    int conv_bin[2] = {0, 0};
+    long conv_k[2] = {-100000, -100000};
+    int st_team = -1, st_cand = -1, st_cand_slot = -1; long st_cand_tick = 0, st_start = 0, st_spells = 0, st_ticks = 0, st_high[2] = {0, 0}; double st_cand_x = 0;  // G5.4
+    double pass_dir[3][2][6] = {};   // G5.4: third, pressed: n, fwd, square, back, gain, dist
     // Line height (G4.55): every live tick a team is out of possession, its
     // back line (deepest outfielder) and front (most advanced) in metres
     // from its own goal, and the ball's. Real: the line ~35-45 m out, the
@@ -600,6 +606,19 @@ int main(int argc, char** argv) {
     // G5.0 rest defence: full-backs wider than their man; the back five
     // goal-side of him with the ball past him.
     long fb_n[2] = {}, fb_wide[2] = {}, fb_wide3[2] = {}, back_n[2] = {}, back_goal_side[2] = {}, fb_wide_why[2][ai::kWhyCount] = {};
+    // G5.1 how many they leave up: with the ball in their half, by how many
+    // of their outfielders it is past [up]: ticks, our outfielders behind
+    // the ball, and our back five marking (PreventiveMark).
+    long up_ticks[2][8] = {}, up_behind[2][8] = {}, up_marks[2][8] = {}, up_short[2][8] = {};
+    // ... and by where the ball is (metres from halfway, the pro script's
+    // zones): mates ahead of the ball, the same count the freeze frames give.
+    long zn_ticks[2][3] = {}, zn_ahead[2][3] = {}, num_ahead[2][12] = {}, num_n[2][12] = {};
+    // Each number against the ball and the spot his orders want, by zone;
+    // and the deepest of their outfielders against the ball.
+    double zn_x[2][3][12] = {}, zn_tx[2][3][12] = {}, zn_line[2][3] = {};
+    long zn_xn[2][3][12] = {};
+    // ... by how old the spell is: does the team get there given time?
+    long age_ticks[2][3][4] = {}, age_ahead[2][3][4] = {};
     // Possession spells (a team's ball, from winning it to losing it), and
     // a man holding shape's gap to the spot he holds, in the first 5 s of
     // his team's spell [0] or after [1] — lag behind a shape that moved.
@@ -681,6 +700,22 @@ int main(int argc, char** argv) {
     long tob_n = 0, tob_b[4] = {}; double tob_s = 0; long got_tick[64] = {};
     long op_men = 0, op_kicks = 0, op_all_kicks = 0, op_job[ai::kWhyCount] = {}, op_depth[4] = {}, op_age[4] = {};
     long off_called[2] = {}, off_wrong = 0, off_missed = 0, flag_wrong = 0, flag_missed = 0, flag_kicks = 0;
+    // G5.2: restarts — per kind (0 throw, 1 goal kick, 2 corner): how many per
+    // team, seconds dead (ball over the line → played), kept / shot within 10 s.
+    long rs_goal[3] = {};
+    long rs_n[3][2] = {}, rs_kept[3] = {}, rs_shot[3] = {}, rs_called_by[3] = {}, rs_deflect = 0;
+    std::vector<double> rs_dead[3], rs_len[3];
+    int rs_open = -1, rs_team = 0, rs_watch = -1, rs_watch_team = 0, rs_keep_check = -1;
+    int rs_last = -1, rs_last_team = 0, rs_trace = 0, rs_trace_n = 0;
+    long rs_last_tick = 0;
+    int rs_headers_at_kick = 0;
+    int air_seen[2] = {};
+    long air_tick[2] = {-1, -1}, air_scored[2] = {};   // G5.3
+    long air_duels = 0, air_lone = 0, air_goal[2] = {}, air_clear[2] = {};   // G5.3
+    bool rs_traced_owner = false;
+    const int trace_corner = std::atoi(envOr("GAME_TRACE_CORNER", "0"));
+    double rs_dead_s = 0, rs_start_x = 0, rs_start_y = 0;
+    long rs_played_tick = -1, rs_tick = 0, rs_wrong_total = 0, rs_dead_ticks = 0, rs_ticks = 0;
     long ar_off[5] = {};
     double ar_off_sum = 0;
     long rt_n[2][ai::kWhyCount] = {}, rt_sp[2][4] = {}, rt_rel[2][4] = {};
@@ -913,6 +948,43 @@ int main(int argc, char** argv) {
                         if (dx * dx + dy * dy < 100.0) ++near;
                     }
                     const int w = team == ot ? 0 : 1;
+                    if (w == 0 && (b.pos.x.toDouble() * (team == 0 ? 1.0 : -1.0)) > 0) {
+                        const double sg = team == 0 ? 1.0 : -1.0;
+                        int up = 0, behind = 0, marks = 0;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            const auto& d = s.world().player(j);
+                            if (s.world().isKeeper(j)) continue;
+                            const bool goal_side = (b.pos.x.toDouble() - d.pos.x.toDouble()) * sg > 0;
+                            if (d.team != team) { if (goal_side) ++up; continue; }
+                            if (goal_side && j != *b.owner) ++behind;
+                            const int nn = s.brain().numberOf(j);
+                            if (nn >= 0 && nn < 12 && j != *b.owner) { ++num_n[team][nn]; if (!goal_side) ++num_ahead[team][nn]; }
+                            if (s.lastOrders()[j].why == ai::Why::PreventiveMark) ++marks;
+                        }
+                        // Pro zones in yards: 60-80, 80-100, 100-120 of 120.
+                        const double from_goal = s.world().pitchHalfX().toDouble() - b.pos.x.toDouble() * sg;
+                        const int zn = from_goal > 35 ? 0 : from_goal > 17.5 ? 1 : 2;
+                        ++zn_ticks[team][zn]; zn_ahead[team][zn] += 9 - behind;
+                        const double age_s = (k - spell_start) / 30.0;
+                        const int ag = age_s < 5 ? 0 : age_s < 15 ? 1 : age_s < 30 ? 2 : 3;
+                        ++age_ticks[team][zn][ag]; age_ahead[team][zn][ag] += 9 - behind;
+                        double deepest = 1e9;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            const auto& d = s.world().player(j);
+                            if (s.world().isKeeper(j)) continue;
+                            const double rel = (d.pos.x.toDouble() - b.pos.x.toDouble()) * sg;
+                            if (d.team != team) { deepest = std::min(deepest, -rel); continue; }
+                            if (j == *b.owner) continue;
+                            const int nn = s.brain().numberOf(j);
+                            if (nn < 0 || nn >= 12) continue;
+                            zn_x[team][zn][nn] += rel; ++zn_xn[team][zn][nn];
+                            zn_tx[team][zn][nn] += (s.lastOrders()[j].target.x.toDouble() - b.pos.x.toDouble()) * sg;
+                        }
+                        zn_line[team][zn] += -deepest;
+                        const int u = std::min(up, 7);
+                        ++up_ticks[team][u]; up_behind[team][u] += behind; up_marks[team][u] += marks;
+                        if (behind <= up) ++up_short[team][u];
+                    }
                     for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
                         const auto& d = s.world().player(j);
                         if (d.team != team || s.world().isKeeper(j) || j == *b.owner) continue;
@@ -966,7 +1038,39 @@ int main(int argc, char** argv) {
                 const auto& c = s.world().player(*b.owner);
                 const int ct = c.team;
                 const bool third = (ct == 0 ? c.pos.x.toDouble() : -c.pos.x.toDouble()) > 17.5;
-                if (third && !in_third[ct]) ++entries[ct];
+                // G5.4: as the benchmark counts it: the same team kept it
+                // across the line by a carry or a completed pass. A ball won
+                // inside the third is not an entry (it counted as one, which
+                // inflated this number in a game full of turnovers).
+                {   // G5.4 (mig 923 rows): the carrier's nearest opponent, every 5th tick.
+                    if (k % 5 == 0) {
+                        double nn = 1e9;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            const auto& q = s.world().player(j);
+                            if (q.team == ct) continue;
+                            const double dx = q.pos.x.toDouble() - c.pos.x.toDouble(), dy = q.pos.y.toDouble() - c.pos.y.toDouble();
+                            nn = std::min(nn, std::sqrt(dx * dx + dy * dy));
+                        }
+                        carrier_near[nn < 2 ? 0 : nn < 5 ? 1 : nn < 10 ? 2 : 3] += 1;
+                        carrier_near[4] += nn;
+                        carrier_near[5] += 1;
+                    }
+                }
+                {   // G5.4: a spell as StatsBomb counts one: the other side has it
+                    // only once it keeps it 1 s or completes a pass.
+                    if (ct == st_team) st_cand = -1;
+                    else if (st_cand != ct) { st_cand = ct; st_cand_tick = k; st_cand_slot = *b.owner; st_cand_x = c.pos.x.toDouble(); }
+                    else if (k - st_cand_tick >= 30 || *b.owner != st_cand_slot) {
+                        if (st_team >= 0 && st_cand_tick >= st_start) { ++st_spells; st_ticks += st_cand_tick - st_start; }
+                        if ((ct == 0 ? 52.5 - st_cand_x : 52.5 + st_cand_x) < 35) ++st_high[ct];
+                        st_team = ct; st_start = st_cand_tick; st_cand = -1;
+                    }
+                }
+                static int ent_team = -1;
+                static bool ent_third = false;
+                if (third && ent_team == ct && !ent_third) ++entries[ct];
+                ent_team = ct;
+                ent_third = third;
                 in_third[ct] = third;
                 in_third[ct ^ 1] = false;
                 if (third) {
@@ -984,9 +1088,122 @@ int main(int argc, char** argv) {
             }
             for (const auto& e : s.lastEvents())
                 if (e.type == core::MatchEventType::Offside) ++off_called[e.team ^ 1];
+            {   // G5.2: the restart ledger
+                ++rs_tick;
+                for (int t = 0; t < 2; ++t) {   // G5.3: a header at goal, and whether it goes in
+                    const int h = s.world().headersAtGoal(t);
+                    if (h > air_seen[t]) {
+                        air_tick[t] = rs_tick;
+                        const auto& w = s.world();
+                        const auto& bb = w.ball();
+                        static const int trace_h = std::atoi(envOr("GAME_TRACE_HEADER", "0"));
+                        static int traced = 0;
+                        if (traced < trace_h) {
+                            ++traced;
+                            for (std::uint8_t j = 0; j < w.playerCount(); ++j)
+                                if (w.isKeeper(j) && w.player(j).team != t)
+                                    std::printf("header t%d from (%.1f,%.1f,%.1f) v (%.1f,%.1f,%.1f) keeper (%.1f,%.1f) dive %d\n", t, bb.pos.x.toDouble(), bb.pos.y.toDouble(), bb.pos.z.toDouble(),
+                                                bb.vel.x.toDouble(), bb.vel.y.toDouble(), bb.vel.z.toDouble(), w.player(j).pos.x.toDouble(), w.player(j).pos.y.toDouble(), (int)w.player(j).dive_ticks);
+                        }
+                    }
+                    air_seen[t] = h;
+                }
+                ++rs_ticks;
+                if (s.world().outStage() != 0 || s.world().restartTeam() != 0xFF) ++rs_dead_ticks;
+                for (const auto& e : s.lastEvents()) {
+                    const int k = e.type == core::MatchEventType::ThrowIn ? 0 : e.type == core::MatchEventType::GoalKick ? 1
+                                  : e.type == core::MatchEventType::Corner ? 2 : -1;
+                    if (k < 0) continue;
+                    ++rs_n[k][e.team];
+                    rs_open = k;
+                    rs_team = e.team;
+                    rs_dead_s = (s.world().tickCount() - s.world().outTick()) / static_cast<double>(core::kTickRate);
+                    const auto& c = s.world().lastOutCall();
+                    if (c.official == 0) ++rs_called_by[0]; else ++rs_called_by[1];
+                    if (c.deflection) ++rs_deflect;
+                }
+                if (rs_open >= 0 && s.world().restartTeam() == 0xFF) {
+                    rs_dead[rs_open].push_back((s.world().tickCount() - s.world().outTick()) / static_cast<double>(core::kTickRate));
+                    rs_start_x = s.world().ball().pos.x.toDouble();
+                    rs_start_y = s.world().ball().pos.y.toDouble();
+                    rs_watch = rs_open;
+                    rs_watch_team = rs_team;
+                    rs_played_tick = rs_tick;
+                    rs_keep_check = 1;
+                    rs_open = -1;
+                    rs_last = rs_watch; rs_last_team = rs_team; rs_last_tick = rs_tick;
+                    if (rs_last == 2 && rs_trace_n < trace_corner) {   // GAME_TRACE_CORNER=n
+                        rs_trace = 1; ++rs_trace_n;
+                        const auto& w = s.world();
+                        const auto& o = s.lastOrders();
+                        std::printf("corner %d team %d kick from (%.0f,%.0f) aim (%.1f,%.1f) to %d\n", rs_trace_n, rs_team,
+                                    rs_start_x, rs_start_y, w.ball().last_kicker < w.playerCount() ? o[w.ball().last_kicker].target.x.toDouble() : 0.0,
+                                    w.ball().last_kicker < w.playerCount() ? o[w.ball().last_kicker].target.y.toDouble() : 0.0, (int)w.ball().pass_to);
+                        for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+                            const auto& q = w.player(j);
+                            if (std::fabs(q.pos.x.toDouble()) < 25 || w.isKeeper(j))
+                                std::printf("   %s%d t%d (%.1f,%.1f)\n", w.isKeeper(j) ? "GK " : "", j, q.team, q.pos.x.toDouble(), q.pos.y.toDouble());
+                        }
+                    }
+                }
+                if (rs_trace && rs_tick != rs_last_tick) {
+                    const auto& w = s.world();
+                    const auto& bb = w.ball();
+                    const long age = rs_tick - rs_last_tick;
+                    if (age % 15 == 0 || (bb.owner && !rs_traced_owner)) {
+                        double near = 99; int nearj = -1;
+                        for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+                            if (w.player(j).team == rs_last_team) continue;
+                            const double dx = w.player(j).pos.x.toDouble() - bb.pos.x.toDouble(), dy = w.player(j).pos.y.toDouble() - bb.pos.y.toDouble();
+                            const double d = std::sqrt(dx * dx + dy * dy);
+                            if (d < near) { near = d; nearj = j; }
+                        }
+                        std::printf("   +%.1fs ball (%.1f,%.1f,%.1f) v %.1f owner %d t%d nearest-opp %d %.1f m\n", age / 30.0, bb.pos.x.toDouble(), bb.pos.y.toDouble(),
+                                    bb.pos.z.toDouble(), std::sqrt(bb.vel.x.toDouble() * bb.vel.x.toDouble() + bb.vel.y.toDouble() * bb.vel.y.toDouble()),
+                                    bb.owner ? (int)*bb.owner : -1, bb.owner ? (int)w.player(*bb.owner).team : -1, nearj, near);
+                        rs_traced_owner = bb.owner.has_value();
+                    }
+                    if (bb.owner) { if (s.lastOrders()[*bb.owner].action == core::Action::Shot) std::printf("   SHOT by %d\n", (int)*bb.owner); }
+                    for (const auto& e : s.lastEvents()) if (e.type == core::MatchEventType::Goal) std::printf("   GOAL team %d\n", (int)e.team);
+                    if (age > 8 * core::kTickRate) { rs_trace = 0; rs_traced_owner = false; }
+                }
+                if (rs_watch >= 0) {
+                    const long age = rs_tick - rs_played_tick;
+                    const auto& bb = s.world().ball();
+                    if (rs_keep_check == 1 && bb.owner) {
+                        const bool mine = s.world().player(*bb.owner).team == rs_watch_team;
+                        if (mine) ++rs_kept[rs_watch];
+                        const double dx = bb.pos.x.toDouble() - rs_start_x, dy = bb.pos.y.toDouble() - rs_start_y;
+                        rs_len[rs_watch].push_back(std::sqrt(dx * dx + dy * dy));
+                        rs_keep_check = 0;
+                    }
+                    const int headed = s.world().headersAtGoal(rs_watch_team);   // G5.3: a header is a shot
+                    if (age == 0) rs_headers_at_kick = headed;
+                    if (headed > rs_headers_at_kick ||
+                        (bb.owner && s.world().player(*bb.owner).team == rs_watch_team &&
+                         s.lastOrders()[*bb.owner].action == core::Action::Shot)) {
+                        ++rs_shot[rs_watch];
+                        rs_watch = -1;
+                    } else if (age > 10 * core::kTickRate) {
+                        rs_watch = -1;
+                    }
+                }
+            }
             for (const auto& e : s.lastEvents()) {
                 if (e.type != core::MatchEventType::Goal) continue;
+                if (k - conv_k[e.team] < 120) ++conv_goals[conv_bin[e.team]];   // G5.4
+                if (std::getenv("GAME_TRACE_GOAL")) {   // G5.4
+                    double kx = 0, ky = 0;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
+                        if (s.world().isKeeper(j) && s.world().player(j).team != e.team) { kx = s.world().player(j).pos.x.toDouble(); ky = s.world().player(j).pos.y.toDouble(); }
+                    std::printf("goal t%d min %.1f; last shot %ld ticks ago from bin %d; last kick why %s at (%.0f,%.0f); keeper (%.1f,%.1f); ball (%.1f,%.1f,%.1f)\n",
+                                (int)e.team, k / 1800.0, k - conv_k[e.team], conv_bin[e.team], ai::kWhyNames[lk_why[e.team]], lk_x[e.team], lk_y[e.team], kx, ky,
+                                s.world().ball().pos.x.toDouble(), s.world().ball().pos.y.toDouble(), s.world().ball().pos.z.toDouble());
+                }
                 ++assist[e.team][last_assist[e.team]];
+                // G5.2: by the kick's own clock; the shot closes rs_watch before its goal lands.
+                if (rs_last >= 0 && e.team == rs_last_team && rs_tick - rs_last_tick <= 10 * core::kTickRate) ++rs_goal[rs_last];
+                if (air_tick[e.team] >= 0 && rs_tick - air_tick[e.team] <= 2 * core::kTickRate) ++air_scored[e.team];   // G5.3
                 if (shot_breakaway[e.team]) ++breakaways[e.team];
             }
             if (b.owner) {  // a change of possession resets the move
@@ -1240,6 +1457,27 @@ int main(int argc, char** argv) {
                 pend_team = s.world().player(*before).team;
                 lk_why[pend_team] = static_cast<int>(o.why); lk_tick[pend_team] = k; lk_to[pend_team] = o.other; lk_rwhy10[pend_team] = -1;
                 lk_x[pend_team] = s.world().player(*before).pos.x.toDouble(); lk_y[pend_team] = s.world().player(*before).pos.y.toDouble();
+                // G5.4 (§8.102): passes by third and pressure, as
+                // benchmarks_statsbomb_direction.py measures them.
+                if (o.why != ai::Why::Shoot && o.why != ai::Why::Clear && o.why != ai::Why::KeeperPunt &&
+                    !s.world().isKeeper(*before) && (o.target.x.raw != 0 || o.target.y.raw != 0)) {
+                    const auto& pk = s.world().player(*before);
+                    const double sg2 = pk.team == 0 ? 1.0 : -1.0;
+                    const double x0 = pk.pos.x.toDouble() * sg2, y0 = pk.pos.y.toDouble();
+                    const double x1 = o.target.x.toDouble() * sg2, y1 = o.target.y.toDouble();
+                    const int z = x0 + 52.5 < 35 ? 0 : x0 + 52.5 < 70 ? 1 : 2;
+                    bool pr = false;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& q = s.world().player(j);
+                        if (q.team == pk.team) continue;
+                        const double dx = q.pos.x.toDouble() - pk.pos.x.toDouble(), dy = q.pos.y.toDouble() - pk.pos.y.toDouble();
+                        if (dx * dx + dy * dy < 6.25) pr = true;
+                    }
+                    const double g = x1 - x0;
+                    double* t = pass_dir[z][pr ? 1 : 0];
+                    t[0] += 1; t[g >= 3 ? 1 : g <= -3 ? 3 : 2] += 1; t[4] += g;
+                    t[5] += std::sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+                }
                 if (trace_lost && m == 0) {
                     lk_snap[pend_team].clear();
                     for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
@@ -1249,6 +1487,13 @@ int main(int argc, char** argv) {
                 }
                 if (o.why == ai::Why::Shoot) {
                     const auto& sh = s.world().player(*before);
+                    {   // G5.4: goals per shot by distance, like with like.
+                        const double gx = (sh.team == 0 ? 52.5 : -52.5) - sh.pos.x.toDouble(), gy = sh.pos.y.toDouble();
+                        const double sd = std::sqrt(gx * gx + gy * gy);
+                        conv_bin[sh.team] = sd < 11 ? 0 : sd < 16 ? 1 : sd < 22 ? 2 : sd < 30 ? 3 : 4;
+                        conv_k[sh.team] = k;
+                        ++conv_shots[conv_bin[sh.team]];
+                    }
                     bool alone = true;
                     for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
                         const auto& d = s.world().player(j);
@@ -1429,6 +1674,10 @@ int main(int argc, char** argv) {
             }
         }
         off_wrong += s.world().wrongOffsideWhistles();
+        rs_wrong_total += s.world().wrongOutCalls();
+        air_seen[0] = air_seen[1] = 0;
+        air_duels += s.world().aerialDuels(); air_lone += s.world().aerialLone();
+        for (int t = 0; t < 2; ++t) { air_goal[t] += s.world().headersAtGoal(t); air_clear[t] += s.world().headersClear(t); }
         off_missed += s.world().missedOffsides();
         const int h = s.world().score(0), a = s.world().score(1);
         gh += h; ga += a;
@@ -1488,6 +1737,40 @@ int main(int argc, char** argv) {
         if (fb_n[team] && back_n[team])
             std::printf("%s rest defence: full-backs wider than their man %.0f%% of the time (3 m+ wider %.0f%%); back five goal-side of him with the ball past him %.0f%%\n",
                         tn, 100.0 * fb_wide[team] / fb_n[team], 100.0 * fb_wide3[team] / fb_n[team], 100.0 * back_goal_side[team] / back_n[team]);
+        {
+            long all = 0;
+            for (int u = 0; u < 8; ++u) all += up_ticks[team][u];
+            if (all) {
+                std::printf("%s rest defence by men they leave up (ball in their half):", tn);
+                for (int u = 0; u < 8; ++u)
+                    if (up_ticks[team][u] * 50 >= all)
+                        std::printf(" [%d up %.0f%%: %.1f behind, %.1f marking, no spare %.0f%%]", u,
+                                    100.0 * up_ticks[team][u] / all, double(up_behind[team][u]) / up_ticks[team][u],
+                                    double(up_marks[team][u]) / up_ticks[team][u], 100.0 * up_short[team][u] / up_ticks[team][u]);
+                std::printf("\n");
+                std::printf("%s mates ahead of the ball, by zone:", tn);
+                for (int z = 0; z < 3; ++z)
+                    if (zn_ticks[team][z])
+                        std::printf(" %.2f (%.0f%%)", double(zn_ahead[team][z]) / zn_ticks[team][z], 100.0 * zn_ticks[team][z] / all);
+                for (int z = 0; z < 3; ++z) {
+                    if (!zn_ticks[team][z]) continue;
+                    std::printf("\n  %s zone %d, metres ahead of the ball (their last man %+.1f), at / wants:", tn, z, zn_line[team][z] / zn_ticks[team][z]);
+                    for (int k = 2; k < 12; ++k)
+                        if (zn_xn[team][z][k]) std::printf(" %d:%+.0f/%+.0f", k, zn_x[team][z][k] / zn_xn[team][z][k], zn_tx[team][z][k] / zn_xn[team][z][k]);
+                }
+                std::printf("\n");
+                for (int z = 0; z < 3; ++z) {
+                    std::printf("  %s zone %d, mates ahead by spell age <5 / 5-15 / 15-30 / 30+ s:", tn, z);
+                    for (int g = 0; g < 4; ++g)
+                        if (age_ticks[team][z][g]) std::printf(" %.2f (%.0f%%)", double(age_ahead[team][z][g]) / age_ticks[team][z][g], 100.0 * age_ticks[team][z][g] / zn_ticks[team][z]);
+                    std::printf("\n");
+                }
+                std::printf("; by number, ahead of it:");
+                for (int k = 2; k < 12; ++k)
+                    if (num_n[team][k]) std::printf(" %d:%.0f%%", k, 100.0 * num_ahead[team][k] / num_n[team][k]);
+                std::printf("\n");
+            }
+        }
         if (fb_wide[team]) {
             std::printf("%s full-backs wider than their man are doing:", tn);
             for (int k = 0; k < ai::kWhyCount; ++k)
@@ -1597,7 +1880,7 @@ int main(int argc, char** argv) {
                     w == static_cast<int>(ai::Why::KeeperPunt)) continue;
                 pk[team] += tally[team][w].kicks; pm[team] += tally[team][w].mate;
             }
-        both("shots_per_team_match", shot_n[0] / nm, shot_n[1] / nm);
+        both("shots_per_team_match", (shot_n[0] + air_goal[0]) / nm, (shot_n[1] + air_goal[1]) / nm);   // a header at goal is a shot (G5.3)
         both("behind_line_passes_per_team_match", bl_n[0] / nm, bl_n[1] / nm);   // G4.98
         both("behind_line_completion_pct", 100.0 * bl_mate[0] / std::max(1L, bl_n[0]), 100.0 * bl_mate[1] / std::max(1L, bl_n[1]));
         if (const long bt = bl_n[0] + bl_n[1]) {
@@ -1608,12 +1891,27 @@ int main(int argc, char** argv) {
             for (int q = 0; q < 4; ++q) one(dk[q], 100.0 * bl_depth[q] / bt);
         }
         both("offsides_per_team_match", off_called[0] / nm, off_called[1] / nm);   // G4.88
+        // G5.2: the restarts.
+        {
+            const char* key[3] = {"throw_ins", "goal_kicks", "corners"};
+            for (int q = 0; q < 3; ++q) {
+                const std::string kk = key[q];
+                const long tn = rs_n[q][0] + rs_n[q][1];
+                both(kk + "_per_team_match", rs_n[q][0] / nm, rs_n[q][1] / nm);
+                if (!rs_dead[q].empty()) one(kk + "_dead_median_s", median(rs_dead[q]));
+                if (!rs_len[q].empty()) one(kk + "_length_median_m", median(rs_len[q]));
+                if (tn) {
+                    one(kk + "_completion_pct", 100.0 * rs_kept[q] / tn);
+                    one(kk + "_shot_10s_pct", 100.0 * rs_shot[q] / tn);
+                }
+            }
+        }
         if (tob_n) {   // G4.92: time on the ball (one number for both sides)
             one("time_on_ball_s", tob_s / tob_n);
             const char* tk[4] = {"time_on_ball_lt1s_pct", "time_on_ball_1_2s_pct", "time_on_ball_2_4s_pct", "time_on_ball_4s_plus_pct"};
             for (int q = 0; q < 4; ++q) one(tk[q], 100.0 * tob_b[q] / tob_n);
         }
-        both("shots_open_play_per_team_match", shot_n[0] / nm, shot_n[1] / nm);
+        both("shots_open_play_per_team_match", (shot_n[0] + air_goal[0]) / nm, (shot_n[1] + air_goal[1]) / nm);
         one("goals_per_match", (gh + ga) / nm);
         one("goals_open_play_per_match", (gh + ga) / nm);
         both("open_play_passes_per_team_match", pk[0] / nm, pk[1] / nm);
@@ -1795,6 +2093,40 @@ int main(int argc, char** argv) {
             for (int w = 0; w < ai::kWhyCount; ++w)
                 if (cut_why_taker[w] * 25 >= cut_n) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * cut_why_taker[w] / cut_n);
             std::printf("\n");
+        }
+        {
+            const long tn = rs_n[0][0] + rs_n[0][1] + rs_n[1][0] + rs_n[1][1] + rs_n[2][0] + rs_n[2][1];
+            if (carrier_near[5] > 0)
+                std::printf("\nCARRIER'S NEAREST OPPONENT (G5.4): mean %.1f m; <2 m %.0f%% · 2-5 %.0f%% · 5-10 %.0f%% · 10+ %.0f%% (pro tracking 4.4-5.3 m; 18-22 / 31-33 / 27-31 / 17-24)\n",
+                            carrier_near[4] / carrier_near[5], 100 * carrier_near[0] / carrier_near[5], 100 * carrier_near[1] / carrier_near[5],
+                            100 * carrier_near[2] / carrier_near[5], 100 * carrier_near[3] / carrier_near[5]);
+            if (st_spells)
+                std::printf("\nSPELLS AS STATSBOMB COUNTS THEM (G5.4): %.1f a match (pro 120.7), %.1f s long (pro 46.7, dead time included in both); won within 35 m of the goal attacked %.1f / %.1f a team (pro 2.1)\n",
+                            static_cast<double>(st_spells) / matches, st_ticks / 30.0 / st_spells, static_cast<double>(st_high[0]) / matches, static_cast<double>(st_high[1]) / matches);
+            std::printf("\nCONVERSION BY DISTANCE (G5.4), goals per shot: ");
+            { static const char* nm[5] = {"<11 m", "11-16", "16-22", "22-30", "30+"};
+              for (int i = 0; i < 5; ++i) if (conv_shots[i]) std::printf("%s %.1f%% of %ld · ", nm[i], 100.0 * conv_goals[i] / conv_shots[i], conv_shots[i]); }
+            std::printf("\n");
+            std::printf("\nPASSES BY THIRD (G5.4), a team a match: third pressed n fwd%% square%% back%% gain dist\n");
+            for (int z = 0; z < 3; ++z)
+                for (int pr = 0; pr < 2; ++pr) {
+                    const double* t = pass_dir[z][pr];
+                    if (t[0] > 0)
+                        std::printf("  %s %s %6.1f %5.1f %5.1f %5.1f %5.1f %5.1f\n", z == 0 ? "own  " : z == 1 ? "mid  " : "final", pr ? "yes" : "no ",
+                                    t[0] / matches / 2, 100 * t[1] / t[0], 100 * t[2] / t[0], 100 * t[3] / t[0], t[4] / t[0], t[5] / t[0]);
+                }
+            std::printf("\nIN THE AIR (G5.3) a match: duels %.1f, alone %.1f; headers at goal %.1f / %.1f, in %.2f / %.2f, away %.1f / %.1f\n",
+                        air_duels / static_cast<double>(matches), air_lone / static_cast<double>(matches),
+                        air_goal[0] / static_cast<double>(matches), air_goal[1] / static_cast<double>(matches),
+                        air_scored[0] / static_cast<double>(matches), air_scored[1] / static_cast<double>(matches),
+                        air_clear[0] / static_cast<double>(matches), air_clear[1] / static_cast<double>(matches));
+            std::printf("\nRESTARTS (G5.2) a match: throw-ins %.1f, goal kicks %.1f, corners %.1f; called by assistants %.0f%%, referee %.0f%%; off a man %.1f; given the wrong way %.2f; ball dead %.0f%% of the time; longest wait %.0f s; goals within 10 s of one: throw %.2f, goal kick %.2f, corner %.2f\n",
+                        (rs_n[0][0] + rs_n[0][1]) / static_cast<double>(matches), (rs_n[1][0] + rs_n[1][1]) / static_cast<double>(matches),
+                        (rs_n[2][0] + rs_n[2][1]) / static_cast<double>(matches), 100.0 * rs_called_by[1] / std::max(1L, tn),
+                        100.0 * rs_called_by[0] / std::max(1L, tn), rs_deflect / static_cast<double>(matches),
+                        rs_wrong_total / static_cast<double>(matches), 100.0 * rs_dead_ticks / std::max(1L, rs_ticks),
+                        std::max({rs_dead[0].empty() ? 0.0 : *std::max_element(rs_dead[0].begin(), rs_dead[0].end()), rs_dead[1].empty() ? 0.0 : *std::max_element(rs_dead[1].begin(), rs_dead[1].end()), rs_dead[2].empty() ? 0.0 : *std::max_element(rs_dead[2].begin(), rs_dead[2].end())}),
+                        rs_goal[0] / static_cast<double>(matches), rs_goal[1] / static_cast<double>(matches), rs_goal[2] / static_cast<double>(matches));
         }
         std::printf("\nPRO REFERENCE — %s, %s %s, %d matches (semi-pro sits on the worse side of it)\n",
                     bench[0].source.c_str(), bench[0].competition.c_str(), bench[0].season.c_str(), bench[0].matches);

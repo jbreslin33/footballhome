@@ -23,6 +23,19 @@ void Officials::configure(const ModelParams& p) {
     diagonal_share_ = p.fixed("official.referee.diagonal_y_share", 600);
     ball_pull_ = p.fixed("official.referee.ball_pull", 500);
     behind_ = p.fixed("official.referee.behind_m", 8000);
+    auto ticks = [&](const char* key, std::int64_t milli) {
+        const Fixed64 s = p.fixed(key, milli) * Fixed64::fromInt(kTickRate);
+        return static_cast<std::uint32_t>(s.raw >> Fixed64::FRAC_BITS);
+    };
+    call_ticks_ = ticks("official.restart.call_s", 400);
+    retrieve_ticks_ = ticks("official.restart.retrieve_s", 1500);
+    ready_ticks_[0] = ticks("official.restart.throw_in_s", 8400);
+    ready_ticks_[1] = ticks("official.restart.goal_kick_s", 21800);
+    ready_ticks_[2] = ticks("official.restart.corner_s", 21200);
+    deflection_ticks_ = ticks("official.restart.deflection_s", 1000);
+    wrong_pct_per_10m_ = p.fixed("official.restart.wrong_pct_per_10m", 5000);
+    wrong_pct_max_ = p.fixed("official.restart.wrong_pct_max", 30000);
+    throw_max_m_ = p.fixed("official.restart.throw_max_m", 28000);
 }
 
 void Officials::setOfficial(OfficialRole role, const OfficialRatings& r, const Body& body,
@@ -135,6 +148,32 @@ void Officials::tick(const World& w) {
         o.vel = Vec3{v.x, v.y, Fixed64::zero()};
         o.pos += o.vel * kTickDt;
     }
+}
+
+int Officials::officialFor(const Vec2& crossed, bool end_line) {
+    if (end_line) return crossed.x.raw >= 0 ? 1 : 2;
+    if (crossed.y.raw >= 0) return crossed.x.raw >= 0 ? 1 : 0;
+    return crossed.x.raw <= 0 ? 2 : 0;
+}
+
+OutCall Officials::judgeOutOfPlay(const World& w, const Vec2& crossed, bool end_line, bool deflected,
+                                  const Vec2& touch_at, std::uint8_t last, std::uint8_t other) const {
+    OutCall c;
+    c.official = officialFor(crossed, end_line);
+    c.truth = last;
+    c.called = last;
+    c.deflection = deflected;
+    const OfficialState& o = state_[c.official];
+    c.dist_m = math::length(Vec2{touch_at.x - o.pos.x, touch_at.y - o.pos.y});
+    if (!deflected || other > 1) return c;
+    // A touch off a man: the further he is from it, the likelier he gives it
+    // the wrong way (ball-off-a-man, FH numbers: no published rate found).
+    Fixed64 pct = wrong_pct_per_10m_ * c.dist_m / Fixed64::fromInt(10);
+    if (pct > wrong_pct_max_) pct = wrong_pct_max_;
+    const Fixed64 r = (detNoise(w.matchSeed(), w.tickCount(), static_cast<std::uint8_t>(c.official + 100), 20) +
+                       Fixed64::one()) * Fixed64::fromInt(50);
+    if (r < pct) c.called = other;
+    return c;
 }
 
 std::uint32_t Officials::offsidePositionTruth(const World& w, std::uint8_t kicker) {

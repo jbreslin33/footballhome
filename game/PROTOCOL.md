@@ -54,7 +54,7 @@ Frame types (u8):
 | 0x32 | MATCH_SETTINGS | c→s | admin: set both teams' skill bands live (1.3): `u8 level_home \| u8 level_away` (band ids 0-6 = perfect/u10/u14/amateur/semipro/pro/world); non-admin senders are ignored |
 | 0x35 | PRESETS | s→c | style-preset catalog (1.4), on connect: `u8 count`, then per preset `u8 name_len \| name bytes`; a preset's wire id IS its index in this list. Rows come from `game_models` (mig 652; were `game_style_presets`, mig 630); vectors stay server-side |
 | 0x36 | APPLY_PRESET | c→s | admin: paint one team's identity in one tap (1.4): `u8 team (0 home / 1 away) \| u8 preset_id (PRESETS index)`. Since 1.6 the team PLAYS that game model: its demand against each player's ability (min of the two); server answers with a fresh ROSTER |
-| 0x37 | PLAYER_ATTRIBUTES | c→s | admin (1.5, G4.30): one slot's attributes, live: `u8 slot \| u8 count \| u8 rating…` in this append-only order: pace, passing, shooting, first_touch, tackling, anticipation, decisions, goalkeeping, then (G4.52, 1.8) acceleration, deceleration, agility, dribbling, then (G4.70, 1.12) communication, then (G4.71, 1.13) concentration, then (G4.85) reaction — a shorter frame leaves the rest unchanged; 255 = unrated (the band / a 50-rated body). The editor saves the same values to the club DB (`/api/game/player`), which the daemon reads at boot |
+| 0x37 | PLAYER_ATTRIBUTES | c→s | admin (1.5, G4.30): one slot's attributes, live: `u8 slot \| u8 count \| u8 rating…` in this append-only order: pace, passing, shooting, first_touch, tackling, anticipation, decisions, goalkeeping, then (G4.52, 1.8) acceleration, deceleration, agility, dribbling, then (G4.70, 1.12) communication, then (G4.71, 1.13) concentration, then (G4.85) reaction, then (G5.3) jumping_reach, strength — a shorter frame leaves the rest unchanged; 255 = unrated (the band / a 50-rated body). The editor saves the same values to the club DB (`/api/game/player`), which the daemon reads at boot |
 | 0x38 | TEAMS | s→c | the two teams playing (1.5, G4.30), on connect: `u8 len \| home name (UTF-8) \| u8 len \| away name` — game_demo_teams names, the editor's key into `/api/game/roster` |
 | 0x39 | RELOAD_ROSTERS | c→s | admin (1.5, G4.32): empty payload — re-read both teams (lineup, attributes, roles, kits) from the club DB after the page saved them; answers with fresh TEAMS + ROSTER. Formations are not reloaded |
 | 0x3A | CONCEPTS | s→c | the curriculum (1.6, G4.37), on connect: same layout as PRESETS — `u8 count`, then per concept id `u8 name_len \| name bytes` (a hole = empty name). Rows come from `game_concepts` (mig 650); it replaces the client's built-in list, and ROSTER / PLAYER_SETTINGS rating vectors are indexed by these ids (`rating_count` = this count) |
@@ -160,10 +160,14 @@ officials (appended in 1.16, G4.93):
 - Players are planar (DESIGN.md §4), so player records carry **no z** —
   that's ~8 bytes × 22 players × 30 Hz saved. The ball record (added in G1,
   appended after the player array) carries x, y, z + velocity + owner slot.
+- Officials `flags` bits 1-3 (G5.2, additive): the signal for a ball out, on
+  the official who called it and the referee: 0 none; 1 / 2 throw-in, attack
+  toward +x / -x; 3 / 4 goal kick at the +x / -x end; 5 / 6 corner at the +x /
+  -x end. Down when the ball is played or after 5 s.
 - `flags`: bit0 = human-controlled; bit1 = goalkeeper; bit2 = down in
   a tackle (sliding / recovering); bit3 = dispossessed, off balance
-  (all 1.4 additive, 2026-10-22 — older clients ignore them); the rest
-  reserved.
+  (all 1.4 additive, 2026-10-22 — older clients ignore them); bit4 = taking
+  a throw-in, ball in both hands overhead (G5.2, additive); the rest reserved.
 - 22 players ≈ 730 B/frame ≈ 22 KB/s at 30 Hz — comfortably inside the u16
   envelope and the phone budget. Delta-encoding is a later optimization,
   never a v1 requirement.

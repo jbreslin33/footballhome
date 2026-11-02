@@ -51,6 +51,8 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     applySlotLevels();
     // The officials (G4.88): each with his own body and numbers.
     world_.officials().configure(cfg.model_params);
+    world_.configureAerial(cfg.model_params);   // G5.3
+    world_.configureTempo(cfg.model_params);    // G5.4
     for (const auto& m : cfg.crew) {
         auto rating = [&](const char* code) -> std::int16_t {
             const auto it = m.ratings.find(code);
@@ -720,6 +722,44 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
     }
 }
 
+bool GameServer::phaseMark(const std::string& code, std::uint8_t team, std::uint8_t slot, math::Vec2& at) const {
+    const std::uint8_t per_team = cfg_.slot_count / 2;
+    const bool home = slot < per_team;
+    const std::uint8_t k = home ? slot : slot - per_team;
+    const ai::FormationSpec& spec =
+        home ? (cfg_.formation_home.valid(per_team) ? cfg_.formation_home : ai::builtinFormation(per_team))
+             : (cfg_.formation_away.valid(per_team) ? cfg_.formation_away : ai::builtinFormation(per_team));
+    const auto& pos = spec.positions[k];
+    if (pos.number <= 0) return false;
+    const bool in = (home ? 0 : 1) == team;
+    const Fixed64 own = home ? Fixed64::one() : -Fixed64::one();   // its attack direction
+    const std::string& fcode = home ? cfg_.roster_home.formation_code : cfg_.roster_away.formation_code;
+    for (const auto& pp : cfg_.phase_positions) {
+        if (pp.phase != code || pp.formation != fcode || pp.number != pos.number ||
+            pp.side != (in ? "in" : "out"))
+            continue;
+        const Fixed64 depth = Fixed64::fromFraction(pp.depth_cm, 100);
+        const Fixed64 width = Fixed64::fromFraction(pp.width_cm, 100);
+        at = math::Vec2{(-world_.pitchHalfX() + depth) * own, width * own};
+        return true;
+    }
+    return false;
+}
+
+// A live corner (G5.2) stands in the phase's rows (corner-left / -right, mig
+// 922), both teams, until it's taken. Goal kicks stay brain-only (G4.72).
+void GameServer::holdCornerShape(std::uint8_t team) {
+    const bool home_attacks = team == 0;
+    const bool left = (world_.restartSpot().y.raw > 0) == home_attacks;
+    const std::string code = left ? "corner-left" : "corner-right";
+    std::vector<std::pair<std::uint8_t, math::Vec2>> marks;
+    for (std::uint8_t i = 0; i < cfg_.slot_count; ++i) {
+        math::Vec2 a{};
+        if (phaseMark(code, team, i, a)) marks.emplace_back(i, a);
+    }
+    if (!marks.empty()) brain_.setRestartShape(team, std::move(marks));
+}
+
 void GameServer::runPhase(std::uint8_t team, std::size_t id) {
     if (team > 1 || id >= cfg_.phases.size()) return;
     const persistence::Phase& ph = cfg_.phases[id];
@@ -751,22 +791,7 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
         // formation's rows for this phase say, by position number — side
         // 'in' for the team in possession, 'out' for the defenders. Depth is
         // from the team's OWN goal line, width + = left from its view.
-        placed[i] = false;
-        if (pos.number > 0) {
-            const bool in = (home ? 0 : 1) == team;
-            const Fixed64 own = home ? Fixed64::one() : -Fixed64::one();   // its attack direction
-            const std::string& fcode = home ? cfg_.roster_home.formation_code : cfg_.roster_away.formation_code;
-            for (const auto& pp : cfg_.phase_positions) {
-                if (pp.phase != ph.code || pp.formation != fcode || pp.number != pos.number ||
-                    pp.side != (in ? "in" : "out"))
-                    continue;
-                const Fixed64 depth = Fixed64::fromFraction(pp.depth_cm, 100);
-                const Fixed64 width = Fixed64::fromFraction(pp.width_cm, 100);
-                a = math::Vec2{(-hx + depth) * own, width * own};
-                placed[i] = true;
-                break;
-            }
-        }
+        placed[i] = phaseMark(ph.code, team, i, a);
         at[i] = a;
     }
     // How high the defending team starts (mig 696): its most advanced
@@ -889,7 +914,8 @@ net::Bytes GameServer::buildSnapshotFrame() const {
         // so the client can animate slides and stumbles).
         snap.flags = static_cast<std::uint8_t>(
             (slot_owner_.count(i) ? 1 : 0) | (world_.isKeeper(i) ? 2 : 0) |
-            (p.recovery_kind == 1 ? 4 : 0) | (p.recovery_kind == 2 ? 8 : 0));
+            (p.recovery_kind == 1 ? 4 : 0) | (p.recovery_kind == 2 ? 8 : 0) |
+            (world_.takingThrow(i) ? 16 : 0));   // bit4 (G5.2): ball in both hands, overhead
         s.players.push_back(snap);
     }
     const core::BallState& b = world_.ball();
@@ -915,6 +941,9 @@ net::Bytes GameServer::buildSnapshotFrame() const {
         os.face_x = static_cast<std::int8_t>((o.face.x * Fixed64::fromInt(127)).raw >> Fixed64::FRAC_BITS);
         os.face_y = static_cast<std::int8_t>((o.face.y * Fixed64::fromInt(127)).raw >> Fixed64::FRAC_BITS);
         os.flags = (flag_official_ == i && world_.tickCount() < flag_until_tick_) ? 1 : 0;
+        // Bits 1-3 (G5.2): the signal for a ball out, the caller and the referee.
+        if ((signal_official_ == i || (signal_official_ >= 0 && i == 0)) && world_.tickCount() < signal_until_tick_)
+            os.flags |= static_cast<std::uint8_t>(signal_code_ << 1);
         s.officials.push_back(os);
     }
     return encodeFrame(FrameType::Snapshot, encodeSnapshot(s));
@@ -925,7 +954,11 @@ void GameServer::tickOnce() {
     // released slot reverts to its brain next tick).
     if (last_orders_.size() != cfg_.slot_count) last_orders_.assign(cfg_.slot_count, ai::Orders{});
     for (std::uint8_t slot = 0; slot < cfg_.slot_count; ++slot) {
-        if (slot_owner_.count(slot)) {
+        // G5.2: a held restart can't wait on a human who's walked away — past
+        // kHumanRestartTicks the brain takes it for him.
+        const bool stalled = world_.heldRestart() && world_.outStage() == 0 &&
+                             world_.tickCount() > world_.restartReadyTick() + kHumanRestartTicks;
+        if (slot_owner_.count(slot) && !stalled) {
             last_orders_[slot] = ai::Orders{};
             last_orders_[slot].why = ai::Why::Human;
             continue;
@@ -937,12 +970,28 @@ void GameServer::tickOnce() {
     }
 
     last_events_ = world_.tick();
-    if (world_.restartTeam() == 0xFF) brain_.clearRestartShape();   // played: shape released
+    if (world_.restartTeam() == 0xFF) {
+        brain_.clearRestartShape();   // played: shape released
+        signal_until_tick_ = 0;       // and the arm comes down
+    }
     const auto& match_events = last_events_;
     for (const core::MatchEvent& e : match_events)
         if (e.type == core::MatchEventType::Offside) {   // G4.93: his flag goes up
             flag_official_ = world_.lastOffsideCall().assistant;
             flag_until_tick_ = world_.tickCount() + kFlagUpTicks;
+        } else if (e.type == core::MatchEventType::ThrowIn || e.type == core::MatchEventType::GoalKick ||
+                   e.type == core::MatchEventType::Corner) {
+            // G5.2: who called it, and his arm: 1/2 throw, attack toward +x /
+            // -x; 3/4 goal kick, at the goal area on the +x / -x end; 5/6
+            // corner, at the corner arc on the +x / -x end.
+            signal_official_ = world_.lastOutCall().official;
+            signal_until_tick_ = world_.tickCount() + kSignalTicks;
+            const bool plus = e.type == core::MatchEventType::ThrowIn ? e.team == 0
+                                                                     : world_.restartSpot().x.raw > 0;
+            const std::uint8_t base = e.type == core::MatchEventType::ThrowIn ? 1
+                                      : e.type == core::MatchEventType::GoalKick ? 3 : 5;
+            signal_code_ = static_cast<std::uint8_t>(base + (plus ? 0 : 1));
+            if (e.type == core::MatchEventType::Corner) holdCornerShape(e.team);
         }
     if (clients_.empty()) return;  // headless idle: nothing to fan out
 

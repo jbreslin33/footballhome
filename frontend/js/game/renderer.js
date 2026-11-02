@@ -419,6 +419,7 @@
             f.root.visible = true;
             f.root.position.set(x, 0, y);
             f.setFlag(ob.flags & 1);
+            f.setSignal((ob.flags >> 1) & 7);   // G5.2: the call on a ball out
             f.update(simDt, { vx: (ob.x - oa.x) * per, vy: (ob.y - oa.y) * per, fx: ob.fx, fy: ob.fy,
                               flags: 0, ball: ballPos, hasBall: false, me: { x, y } });
           }

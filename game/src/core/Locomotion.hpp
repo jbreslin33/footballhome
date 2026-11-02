@@ -50,11 +50,13 @@ public:
          math::Fixed64 back, math::Fixed64 yaw,
          math::Fixed64 head_cos = math::Fixed64::fromFraction(1, 2),
          math::Fixed64 brake_tau = math::Fixed64::zero(),
-         math::Fixed64 reaction = math::Fixed64::fromFraction(1, 5))
+         math::Fixed64 reaction = math::Fixed64::fromFraction(1, 5),
+         math::Fixed64 head_reach = math::Fixed64::fromFraction(13, 5),
+         math::Fixed64 aerial = math::Fixed64::fromInt(50))
         : tau_(tau), brake_(brake), turn_(turn), dribble_(dribble), dive_speed_(dive_speed),
           side_(run), back_(back), yaw_(yaw), head_cos_(head_cos),
           brake_tau_(brake_tau.raw > 0 ? brake_tau : tau * math::Fixed64::fromFraction(3, 10)),
-          reaction_(reaction) {
+          reaction_(reaction), head_reach_(head_reach), aerial_(aerial) {
         // lag() at every tick out to kLagTicks, once per body (fx_exp_neg
         // per read made the Brain's reach scans ~5x slower).
         for (int k = 0; k <= kLagTicks; ++k) {
@@ -69,6 +71,9 @@ public:
     math::Fixed64 turn() const noexcept { return turn_; }
     math::Fixed64 dribble() const noexcept { return dribble_; }
     math::Fixed64 diveSpeed() const noexcept { return dive_speed_; }
+    // G5.3: the top of his header (m), and his share in an aerial duel, 0-100.
+    math::Fixed64 headReach() const noexcept { return head_reach_; }
+    math::Fixed64 aerial() const noexcept { return aerial_; }
     math::Fixed64 side() const noexcept { return side_; }
     math::Fixed64 back() const noexcept { return back_; }
     math::Fixed64 yaw() const noexcept { return yaw_; }
@@ -158,6 +163,7 @@ private:
 
     static constexpr int kLagTicks = 10 * kTickRate;
     math::Fixed64 tau_, brake_, turn_, dribble_, dive_speed_, side_, back_, yaw_, head_cos_, brake_tau_, reaction_;
+    math::Fixed64 head_reach_ = math::Fixed64::fromFraction(13, 5), aerial_ = math::Fixed64::fromInt(50);
     math::Fixed64 lag_[kLagTicks + 1];
 };
 

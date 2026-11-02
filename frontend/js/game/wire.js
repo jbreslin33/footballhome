@@ -42,11 +42,12 @@
   };
 
   // G4.30 attribute order (PROTOCOL 0x37, append-only; G4.52 the body four;
-  // G4.70 communication, G4.71 concentration, G4.85 reaction).
+  // G4.70 communication, G4.71 concentration, G4.85 reaction, G5.3 the air two).
   const ATTRIBUTES = ['pace', 'passing', 'shooting', 'first_touch', 'tackling',
                       'anticipation', 'decisions', 'goalkeeping',
                       'acceleration', 'deceleration', 'agility', 'dribbling',
-                      'communication', 'concentration', 'reaction'];
+                      'communication', 'concentration', 'reaction',
+                      'jumping_reach', 'strength'];
   const utf8 = new TextDecoder();
 
   // Built-in curriculum (ids 0-30); the server's CONCEPTS frame (0x3A,

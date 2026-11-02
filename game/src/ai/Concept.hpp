@@ -172,6 +172,15 @@ private:
 // position and plays an onside runner where he will be (leadPoint).
 class PassLadder : public Concept {
 public:
+    // G5.4 (§8.102): a man with time doesn't only look forward. Real share
+    // of his passes that go square or back, by third (PL 2015/16). No rows = off.
+    bool measuredDirection() const { return dir_on_; }
+    // G5.4: the real share of pressed releases near his own goal that are
+    // clearances. depth: 0 = inside 18 m of it, 1 = 18-35 m. No rows = off.
+    math::Fixed64 clearShare(int depth, bool central) const { return clear_share_[depth][central ? 1 : 0]; }
+    math::Fixed64 forwardReach() const { return dir_reach_; }   // lane safety on a forward ball
+    math::Fixed64 squareShare(int third, bool pressed) const { return dir_square_[third][pressed ? 1 : 0]; }
+    math::Fixed64 backShare(int third, bool pressed) const { return dir_back_[third][pressed ? 1 : 0]; }
     PassLadder() : Concept("pass-ladder", 29) {}
     void configure(const core::ModelParams& p) override;
     // Their lines, as x · sign (toward the goal we attack).
@@ -198,6 +207,10 @@ public:
     static bool better(int ra, math::Fixed64 pa, int rb, math::Fixed64 pb);
 
 private:
+    bool dir_on_ = false;
+    math::Fixed64 clear_share_[2][2] = {};
+    math::Fixed64 dir_reach_ = math::Fixed64::one();
+    math::Fixed64 dir_square_[3][2] = {}, dir_back_[3][2] = {};
     math::Fixed64 pocket_depth_, central_half_width_, fire_span_, lead_s_, pass_speed_, run_speed_;
     int fire_min_ = 2;
 };
@@ -389,9 +402,16 @@ public:
     math::Fixed64 minPressed() const { return min_pressed_; }
     math::Fixed64 minFree() const { return min_free_; }
     math::Fixed64 passBetter() const { return pass_better_; }
+    // G5.4 (§8.102): the real rate a player releases the ball with a shot
+    // from this spot (StatsBomb PL 2015/16, 380 matches). No rows = off.
+    bool measured() const { return measured_; }
+    math::Fixed64 rate(math::Fixed64 dist, bool central, bool pressed) const;
 
 private:
     math::Fixed64 scale_, decay_, pressed_, min_pressed_, min_free_, pass_better_;
+    static constexpr int kBands = 6;   // to 6, 11, 16, 22, 30, 45 m
+    bool measured_ = false;
+    math::Fixed64 rates_[kBands][2][2] = {};
 };
 
 // Hold the line (9, core, U-10; G4.4 → G4.56) [Sacchi palla coperta /
@@ -495,6 +515,25 @@ public:
 
 private:
     math::Fixed64 gap_, wing_band_, wide_, reach_;
+};
+
+// Settle in possession (89, G5.1) [Guardiola ~15 passes to organise;
+// U.S. Soccer U17+ "minimum 5 ahead of the ball"; pro numbers from
+// benchmarks_statsbomb_rest.py]: on the ball, not pressed, fewer than
+// ahead_min mates ahead of it and more than until_m from their goal, the
+// team is stretched. He doesn't play the ball in behind; he plays what's in
+// front of their line or walks it, so the team comes up. counter-or-keep
+// (140) is the way out: in the counter window the deep ball still goes.
+// Read once a possession per man; a lapse forces it.
+class SettleInPossession : public Concept {
+public:
+    SettleInPossession() : Concept("settle-in-possession", 89) {}
+    void configure(const core::ModelParams& p) override;
+    bool stretched(const core::World& w, core::SlotIndex carrier, int sign) const;
+
+private:
+    int ahead_min_ = 5;
+    math::Fixed64 until_;
 };
 
 // Open ball, closed ball (185, G5.0) [James 10/30; standard coaching read,
@@ -1105,6 +1144,7 @@ struct ConceptBook {
     LoseYourMarker lose_your_marker;
     RestDefense rest_defense;
     OpenClosedBall open_closed;
+    SettleInPossession settle;
     InvertedFullBack inverted_fullback;
     DirectOpponent direct_opponent;
     KeepItUnderPressure keep_it;
@@ -1159,6 +1199,7 @@ struct ConceptBook {
         lose_your_marker.configure(p);
         rest_defense.configure(p);
         open_closed.configure(p);
+        settle.configure(p);
         inverted_fullback.configure(p);
         direct_opponent.configure(p);
         keep_it.configure(p);

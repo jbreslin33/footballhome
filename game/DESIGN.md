@@ -3750,3 +3750,392 @@ spells 432. Full-backs wider than their man 81% (3 m+ 71%) → 34% (3 m+ 12%), t
 rest mostly on their way there (give and go is not clamped). Back five goal-side
 with the ball past him 79 → 88%. Next mole: read the back five (`past`) by
 how many they leave up, not all five always.
+
+### 8.99 G5.1 — settle in possession: the team comes up before the ball goes (mig 919)
+
+James 10/31: "continue" — §8.98's next mole, the back five by how many they
+leave up. Measured first, and that isn't the mole: marking already scales
+with men left up (0.5 men at 1 up, 3.0 at 7+), because `past` is per man. The
+number that matters is the one nobody had looked at.
+
+- **The pro number:** `game/scripts/benchmarks_statsbomb_rest.py`, StatsBomb
+  360 freeze frames of open-play passes whose visible area reaches the goal
+  attacked. Mates ahead of the ball, half to 40 yd out / 40-20 yd / last 20 yd:
+  **Euro 2020 5.29 / 3.63 / 1.48, World Cup 2022 5.23 / 3.72 / 1.42**. Frames
+  miss men, and the filter favours a forward camera, so read it as a bound.
+  Per pass; the harness is per tick with the ball held.
+- **The game:** 1.84 / 0.93 / 0.32 (Ukies 1.96 / 0.65 / 0.21). New harness
+  lines: rest defence by men left up, mates ahead by zone, each number's spot
+  against the ball and what his orders want, mates ahead by spell age.
+- **Not the shape, or not first:** `ours_slope` 0.45 → 0.65 with offset 2 → 6
+  (the fit to the pro zones) moved them only 1.84 → 1.95 and put balls in
+  behind up 35%. By spell age, past halfway: 1.6 (<5 s), 1.8 (5-15 s), 3.4
+  (15-30 s), 3.7 (30+ s), and 91% of the time there is under 15 s. The team
+  gets up given time; the ball doesn't give it any.
+- **settle-in-possession (89), wired:** on the ball, not pressed, fewer than
+  `ahead_min` 5 mates ahead (U.S. Soccer U17+ "minimum 5 ahead of the ball")
+  and more than `until_m` 20 from their goal: no ball in behind, no over the
+  line, plays what's in front of their line or walks it (Why::Settle). Read
+  once a possession per man; a lapse forces it. Demand 80 for Lighthouse APSL
+  and Semi Pro Standard; Bielsa's school row stays 20.
+- **counter-or-keep (140), wired:** in the counter window the deep ball still
+  goes.
+- Both rows had no `taught_from`, so nobody knew them and demand did nothing
+  (the first A/B matched to the digit). Mind that on any queued concept.
+
+10 matches LH v Ukies, scratch DB, same seeds, off → on: shots 53 / 49 → 31 /
+23 (pro 12.9), goals 8.6 → 5.4 (pro 2.5), passes aimed past their last man 110 /
+152 → 87 / 137 (pro ~26), Lighthouse breakaway goals 3.5 → 1.6, Lighthouse W8
+D1 L1 → W5 D2 L3. `ahead_min` 3 was a half measure: shots 40 / 29, goals 9.9.
+Mates ahead 2.17 / 1.16 / 0.32. Goldens unmoved: rating 0 without the DB row.
+
+**Next mole:** spells did not lengthen (10.2 s, pro 46.7; 417 a match, pro 121)
+and time on the ball did not move (0.63 s, pro 1.47). He stops forcing the ball
+in behind but still plays forward in front of the line at once, or gets it
+taken: 8+ of 10 passes inside 1 s. Then the shape, which still tops out under
+pro with time (3.7 against 5.3).
+
+### 8.100 G5.2 — the ball out is the officials' call (mig 922)
+
+James: "we need out of bounds with throw ins. we need goal kicks and corner
+kicks. refs should call them."
+
+G3 had all three, as a silent teleport. The World decided on the tick, the ball
+jumped, and the first touch made it live. A throw was a foot kick, a corner sat
+1 m in, a goal kick sat outside the goal area, a carried ball never went out
+(the owner kept it on the 2 m apron), offside was armed on all three (Law 11.3
+forbids it), an opponent could steal from a taker, nobody kept any distance,
+and `corner-left` / `corner-right` had no position rows.
+
+**The sequence (World + core::Officials):** the whole ball over the line (Law 9;
+goals too) stops play and the ball runs on, untouchable → `call_s` later the
+official whose line it is calls it (each assistant his own touchline in his
+half and his goal line; the far half of a touchline is the referee's, the
+diagonal's other end) → the event fires, `retrieve_s` later the ball is on its
+Law spot → the taker walks there → at `restartReadyTick()` he can touch it → it
+stays dead until he PLAYS it (`heldRestart()`): he can't walk, can't be tackled
+or robbed. Kick-offs and free kicks are still live at the first touch.
+
+**The call can be wrong (judgement ball-out-last-touch):** a clean ball never;
+a ball off a man (bobble, block, tackle, within `deflection_s`) goes the wrong
+way at `wrong_pct_per_10m` per 10 m from the touch, capped. FH numbers: no
+published rate found. The World keeps the truth; the line itself is still exact.
+
+**The law on the pitch:** throw from the crossing point, in the hands overhead
+(z 2 m), any kick button is a throw, `throw_max_m` 28 (pro p90), onto the pitch.
+Corner in the arc, goal kick in the goal area on the side it went out. No
+offside from any of the three. Brain::keepLawDistance: 2 m from a throw, 9.15 m
+from a corner or free kick; Law 16's box stays Brain::ordersSeen's.
+
+**Takers (Brain::takeRestart):** the keeper for a goal kick (his own concepts,
+then long after `keeper_wait_s`); the man whose corner mark is on the ball; else
+the nearest outfielder. Throw: most room plus a little ground gained, raced with
+loftSafe, waits up to `throw_wait_s`. Corner: the freest man attacking the box,
+else the penalty spot. Live corners stand in the phase rows, both teams
+(GameServer::holdCornerShape); first numbers [FH], a coach's to change. Live
+goal kicks stay brain-only (G4.72). A human who walks off a restart loses it to
+the brain after 10 s past ready.
+
+**Client:** thrower's hands overhead (player flags bit4); the caller and the
+referee point (official flags bits 1-3: up for a throw, level at the goal area,
+down at the arc); whistle synthesised in client.js, pip for a restart, longer
+for a goal or a half.
+
+Pro numbers: `scripts/benchmarks_statsbomb_restarts.py`, 60 PL 2015/16 matches,
+seeded sample [StatsBomb Open Data]. Goal kicks predate the 2019 law.
+
+10 matches LH v Ukies, scratch DB (919 + 922), per match unless "team":
+
+| | game | pro |
+|---|---|---|
+| throw-ins a team | 47.5 / 19.7 | 23.1 |
+| goal kicks a team | 5.3 / 10.9 | 8.5 |
+| corners a team | 3.0 / 0.7 | 5.7 |
+| dead median s: throw / goal kick / corner | 9.9 / 22.1 / 23.2 | 13.1 / 27.4 / 27.0 |
+| throw length m, reaches a mate | 19.5, 95% | 15.4, 82% |
+| goal kick length m, reaches a mate | 9.6, 97% | 60.1, 49% |
+| corner length m, reaches a mate | 39.9, 76% | 34.4, 42% |
+| corner: shot within 10 s | 65% | 31% |
+
+Called by assistants 62%, referee 38%. Ball dead 22% of the time. Longest wait
+23 s. Off a man 0.2 a match, wrong calls 0.00: the wrong-call path works (test)
+but hardly ever runs, because almost nothing goes out off a defender.
+
+**Open (answered in §8.101):** goals 5.4 → 8.7 and shots 31 / 23 → 35 / 25
+against §8.99. This section said it wasn't the restarts: 0.30 goals a match
+within 10 s of a throw, none of a corner or goal kick. **That count was wrong:**
+the watch closed on the shot, before its goal landed. It was the corners.
+
+**Next mole:** corners 3.7 a match against 11.4, with balls off a man 0.2 a
+match. Blocks, parries and clearances should be putting it behind. Then throws
+too safe (95%), corners with no aerial contest (no headers: reach stops at
+1.5 m, the cross is taken on the way down), and no short corners. Concepts 146
+throw-in-retain, 147 long-throw, 148 press-their-throw, 142-145 corners stay
+teaching rows.
+
+### 8.101 G5.3 — the ball in the air is contested (mig 929)
+
+§8.100's open question, goals 5.4 → 8.7, had an answer in a table already
+printed: 1.6 goals a match with a corner as the last pass, off 3.7 corners.
+The restart line said 0.00 because its watch closed on the shot, before the
+goal landed. Counted off the kick's own clock it reads 1.5.
+
+**Why (GAME_TRACE_CORNER=n):** nobody could touch a ball above 1.5 m and the
+nearest man under it simply had it, so the delivery to the freest man was a free
+control 8.5 m out, a marker 0.6-1 m away doing nothing, and a shot.
+
+**The rule (World::aerialWinner, headIt):** a ball in open play, coming down,
+from `min_z_m` 1 m to the top of a man's header, within `radius_m` 1 m of him.
+Keepers are out of it (their hands are unchanged). Both teams there: a duel,
+50-50 between equals, `duel_slope` 0.6 points of chance per point of aerial
+share, held to 5-95. One team there: he heads it only above his chest, and only
+at their goal (`goal_range_m` 14, straight-line) or away from his own
+(`own_range_m` 35); otherwise it drops to him as before. At goal it goes 14 m/s,
+45° of error alone, 80° with a man on him (fit to the pro 28.7% on target). Away
+it goes lofted, 16 m/s, 40°. In between it glances on at half speed. Wired:
+techniques 202 header-attacking, 240 def-header-clear. The Brain doesn't know
+yet: it reads a ball as reachable to 1.5 m, doesn't choose where a header goes,
+and nobody attacks a cross on purpose.
+
+**The two attributes that now play:** `jumping_reach` (top of his header 2.3 /
+2.6 / 2.9 m) and `strength`; his aerial share is their mean. Both physical on
+the sheet, appended to the attribute order (17, wire 0x37 append), with position
+offsets from CB +10 / +8 to W -5 / -5. Unrolled = 50, the coin flip.
+
+Off without the `radius_m` row, so the goldens run unchanged.
+
+**The first cut was wrong, and the wrong table said it was right.** It read
+"goals with a corner as the last pass: 0.1", but a header isn't a completed pass,
+so header goals left that table; the corner still gave 1.3 goals a match. The
+trace (GAME_TRACE_HEADER=n) showed `goal_range_m` measured depth only, so men on
+the touchline headed "at goal", and men beside the kicker nodded rising balls.
+Read "goals within 10 s of a corner" and "headers in", not the last-pass table.
+
+Pro: `game/scripts/benchmarks_statsbomb_aerial.py`, the 60 PL 2015/16 matches of
+the restarts sample [StatsBomb Open Data]. Not yet in game_benchmarks.
+
+10 matches LH v Ukies, scratch DB (919 + 922 + 929), rolled sheets:
+
+| | before | G5.3 | pro |
+|---|---|---|---|
+| goals a match | 8.7 | 5.0 | 2.5 |
+| goals within 10 s of a corner | ~1.5 (2-match trace) | 0.20 | 0.22 |
+| goals per corner | ~40% | 7% | 1.9% |
+| headed shots a team | none | 1.9 / 0.4 | 2.3 |
+| headed goals a match | none | 0.30 | 0.42 |
+| headed clearances a team | none | 15.4 / 16.9 | 16.1 |
+| aerial duels a match | none | 22 | ~44 |
+| shots a team | 34.6 / 24.6 | 34.4 / 21.3 | 12.9 |
+| corner: a shot within 10 s | 65% | 57% | 31% (43% by play pattern) |
+
+SE on a 10-match goal figure is near 1, and the re-roll also moved 12 of 231
+pace / passing / tackling rows because the sheet reads today's lineups. Margin
+went from +2.70 to 0.00 ± 0.49: Lighthouse was living on corners. Shots did not
+fall, and the goals fell only partly from corners: the rest of the 3.7 is
+unexplained and may be noise or the re-roll.
+
+**Next mole:** throw-ins 56.4 / 21.8 a team (pro 23.1) and corners 2.0 / 0.8
+(pro 5.7): the ball goes over the touchline far too often and over the goal line
+off a defender hardly ever. Then aerial duels at half the pro count, the keeper
+claiming a cross (technique 266 gk-claim-cross), and the owed tracking lines
+(mig 923).
+
+### 8.102 G5.4 — pro only, from the data (migs 933, 934, 941, 942, 949, 951; IN PROGRESS, scratch DB only)
+
+James 11/2: "pro only with Actual pro teams and player abilities", "lets re
+model based on the data", "we can rip out whatever". Judge the game on real
+sides against the numbers from those same matches, and replace hand rules
+with measured rates. Semi-pro and youth are parked; rip-out not done yet.
+
+**The league.** `scripts/load_pl1516.py` builds all 20 2015/16 Premier League
+teams from StatsBomb Open Data (380 matches, free with attribution): usual
+shape, usual XI + 7, abilities by rank inside the position group, rates shrunk
+to the group mean. Passing is judged against the pass (league rate by length,
+zone, height, pressure). The table reproduces (Leicester 81, Villa 17). Names
+reach the DB only, never git. The 50 centre and 12-point spread are [FH] until
+an FM export gives the spread by position. Pace, acceleration, deceleration,
+agility, reaction, strength, communication and concentration have no event
+source and stay unrated (the band); unrated top speed is 9.2 m/s [FH].
+
+**The map (mig 933).** Every concept tied to what can test it: 118 events, 53
+tracking, 15 nothing free. A first pass from the cues, nothing measured yet.
+
+**Shooting (mig 934).** `benchmarks_statsbomb_decisions.py` measures the share
+of open-play releases that are shots, by distance, central or wide, pressed or
+free. ShotSelection rolls those rates when the rows exist (per spot per 3 s);
+the range fallback and the touch-tight "the boot IS a shot" are off with them.
+
+**What the tests showed (Leicester v Arsenal, 4-10 matches, thin):**
+
+| Setup | Shots a team | Goals |
+|---|---|---|
+| Curriculum, old rule | 68 / 72 | 12.0 |
+| Curriculum, real rates | 65 / 72 | 11.7 |
+| Ukies model, old rule | 30 / 31 | 8.5 |
+| Ukies model, real rates | 36 / 39 | 8.2 |
+| Lighthouse model, real rates | 44 / 40 | 8.2 |
+| Curriculum, all rates zero (1 match) | 0 / 0 | 117 |
+| Pro (2015/16) | 12.9 | 2.5 |
+
+The pro band and the ratings are not the cause (semipro band 74 / 79 shots;
+ratings removed 29 / 29). Real rates did NOT bring shots down: the choice is
+not the fault. With shooting off, carriers walked it in 117 times: the fault
+is upstream, far too many men reach scoring spots and nobody, keeper included,
+stops a carrier there. Curriculum doubles it. **Next:** measure the game's box
+touches and final-third entries against the same 380 matches, then rebuild the
+defending the data says is missing (mapped concepts: duel, keeper, press).
+
+**Later on 11/2 (Leicester v Arsenal, Semi Pro Standard model, 4-6 matches each,
+thin). Three of my causes were wrong, so the order matters:**
+
+| Test | Passes a team | Spells | Cut out, a team | Entries | Shots a team | Goals |
+|---|---|---|---|---|---|---|
+| Real shot rates | 751 / 767 | 395 | 63 | 115 / 125 (old count) | 36 / 39 | 8.2 |
+| + real time on the ball, press ends hold at 2.5 m (mig 941) | 705 / 702 | 375 | 60 | 108 / 121 (old count) | 36 / 41 | 8.2 |
+| + cut_share 0.1 (experiment, no rows) | 613 / 677 | 276 | 7.4 | 107 / 120 (old count) | 38 / 37 | 10.2 |
+| + hold ends only at 1 m | 593 / 603 | 301 | 7.5 | 95 / 95 | 36 / 38 | 7.0 |
+| Pro (2015/16) | 378 | 121 | 7.2 | 44 | 12.9 | 2.5 |
+
+Interceptions hit pro exactly and shots did not move: the cut-out rate cleans up
+spells and own-third losses, it does not cause the goals. Holding the ball cut
+passes by a fifth and did not cut entries or shots: a man holding it carries
+toward goal (`seek(goal)`), so time on the ball became metres upfield.
+
+The harness counted an entry on any ball won inside the third. Fixed in
+match_main: same team across the line, as the benchmark counts. Corrected
+rates: entries 95 v 44, shots per entry 0.38 v 0.29, goals per shot 9.6% v 9.7%.
+**So finishing is right and the game gets forward twice as often as it should.**
+
+**Next:** measure where real passes and carries go by zone (forward, square,
+back; how far), and replace the carrier's run at goal and the forward-first
+pass choice with those rates. Also open: Villa beat City (1W 1D 4L for City),
+so team strength is not coming through; the ratings span only 47-54 by team.
+cut_share is an experiment, not yet a decision.
+
+**The carry (same day).** Real carries are short: ~5 m, gaining 2-3 m, 30%
+forward (`benchmarks_statsbomb_direction.py`). A man holding it ran at goal at
+full speed. Scaling his run while he holds it was the first real move:
+
+| carry_share (with cut_share 0.1, press_m 1) | Shots a team | Goals | Entries | Passes |
+|---|---|---|---|---|
+| off | 36 / 38 | 7.0 | 95 / 95 | 593 / 603 |
+| 0.35 | 23 / 22 | 5.8 | 88 / 85 | 657 / 647 |
+| 0.15 | 20 / 22 | 4.8 | 78 / 81 | 631 / 668 |
+| Pro | 12.9 | 2.5 | 44 | 378 |
+
+4 matches each, so rough. carry_share, cut_share and press_m are fits, kept in
+mig 941 as [FH]. Still wrong: passes twice pro at 89% complete (pro 79), time on
+the ball 1.0 s (pro 1.5), spells 317 (pro 121), corners ~1 (pro 5.7).
+
+**Pass direction (mig 942).** A man with time only passed if a forward ball was
+on (80% forward in midfield, pro 55%), so he carried until closed down, then
+played it back. Unpressed, his hold over, he now rolls the real square and back
+shares for his third, to the open mate nearest 16 m [FH]; forward stays with the
+ladder. An early reading that defenders stood too close was wrong: the carrier's
+nearest opponent is 5.7 m with bands 21 / 33 / 29 / 17%, on pro tracking (4.4-5.3
+m; 18-22 / 31-33 / 27-31 / 17-24). The 64% v 20% "pressed" gap compared 2.5 m in
+the game with StatsBomb's own pressure tag: not the same measure.
+
+| 4 matches each | Shots a team | Goals | Entries | Passes | Spells |
+|---|---|---|---|---|---|
+| Leicester v Arsenal | 17 / 15 | 4.2 | 67 / 62 | 674 / 666 | 291 |
+| Man City v Villa | 16 / 17 | 5.2 | 57 / 75 | 648 / 708 | 307 |
+| Pro | 12.9 | 2.5 | 44 | 378 | 121 |
+
+Unpressed midfield passes now 55 / 14 / 31 (pro 55 / 18 / 27). Overshot: unpressed
+final-third passes go back 58-63% (pro 30), because the ladder rarely fires a
+forward ball there. Goals per shot rose to 13-16% (pro 9.7), so chance quality is
+now the gap. Passes still twice pro at 90% complete, and losses near own goal 15-20
+(pro 2.1). City still don't beat Villa: team strength is untouched.
+
+**Pressed and final-third passes (mig 942 extended).** The direction rates now
+cover pressed men, and forward is picked here when pressed or in the final third.
+Shots 16 / 13 and 16 / 12, goals 3.5 and 5.8; City beat Villa 4 of 4 (thin). Pass
+direction barely moved under pressure (55-76% back, pro ~31): the forward roll
+finds no candidate and falls through to the old logic. Loosening the lane check
+(`dir_forward_reach`, no row, default 1) changed little, and 0.5 and 0.2 are the
+same because the margin clamps to zero below the control radius: safety is not
+the block. In the final third only 0.43 mates stand ahead of the ball, so the
+likely gap is bodies, not choice. No real number for that yet: measure mates
+ahead by zone from tracking next.
+
+Team shape on tracking: in possession 47.5 x 33.8 m (pro 42.5-47 x 34-36) is
+right. Out of possession 35.5 wide is right, 25-26 m long is short (pro 29.6-32.9).
+Real completion by direction, by third (60 matches): forward 66 / 73 / 63%,
+square 82 / 87 / 59%, back 99 / 97 / 92%. Game 90% overall, so real players take
+on far more failing forward balls than the game does.
+
+**Bodies ahead of the ball (mig 949).** The harness's last zone is the final 17.5
+m, not the final third. Real mates ahead of the ball, Euro 2020 360 frames (24
+matches, visible men only, so a minimum): 4.3 / 3.3 / 1.3 by zone; game 3.4 / 1.4
+/ 0.45. The team's middle followed only 45% of the ball's x. At 0.9: 3.8 / 2.6 /
+1.5, offsides 1.5 a team in the 4-match run (pro 2.0). A fit, not a measurement.
+
+**32 matches (8 each, 4 fixtures), the first sample big enough to trust:**
+
+| Fixture | Stronger side W-D-L | Shots a team | Goals |
+|---|---|---|---|
+| Leicester v Arsenal | 3-2-3 | 16 / 17 | 4.4 |
+| Man City v Villa | 1-2-5 | 16 / 17 | 5.4 |
+| Spurs v Norwich | 3-2-3 | 15 / 19 | 6.0 |
+| Chelsea v Sunderland | 4-0-4 | 18 / 17 | 6.2 |
+| Pro | | 12.9 | 2.5 |
+
+Average 5.3 goals, 16.9 shots, 15.7% goals per shot (pro 9.7), entries 55 (44),
+passes 620 at 88% (378 at 79), spells 282 (121), own-end losses 21 (2.1), corners
+3.5 (5.7), throw-ins 40 (23), offsides 3.5 (2.0). City's 4-0 in the earlier run was
+noise: the league's better sides win 11 of 32, lose 15: **no team strength at all.**
+Next: why shots go in so often, then why ability doesn't decide matches.
+
+**Conversion by distance (24 matches, 3 fixtures; `CONVERSION BY DISTANCE` line).**
+
+| From | Game goals per shot | Pro |
+|---|---|---|
+| Under 11 m | 33% (63 of 191) | 18.6% |
+| 11-16 m | 13% | 11.5% |
+| 16-22 m | 6.5% | 4.6% |
+| 22-30 m | 5.7% | 2.2% |
+
+The excess is mostly close range, and most of that one fixture: Chelsea v Sunderland
+53% under 11 m, the other two 21-22%. Keeper ratings there are mid-table (61, 62).
+A 1-11 traced goal by goal is no loop: ordinary shots. Real keepers stand 1.2-2.4 m
+off the line and 0.4-0.6 m from the shot line (`benchmarks_statsbomb_keeper.py`);
+ours stands ~2.6 m off (line at 52.5, keeper at 49.9), so narrow-angle is not the
+fix. Open: real shots from under 11 m are 36-82% headers, which score less; the
+game's are nearly all feet. Not yet tested.
+
+**Measures that do not compare.** A game spell starts on any change of owner;
+StatsBomb's possession survives a brief touch. So spells (282 v 121), spell length,
+"spell began near goal" (48% v 5%) and own-third losses (21 v 2.1) overstate the gap
+by an unknown amount. Fix the harness's spell before judging any of them.
+
+**Spells as StatsBomb counts them.** The harness now also counts a spell only
+once the other side keeps it 1 s or completes a pass (`SPELLS AS STATSBOMB`): 243
+a match, 23 s (pro 121, 47 s, pro with dead time). Won within 35 m of the goal
+attacked stayed 23 a team (pro 2.1): that gap was real. The conversion line counts
+kicked shots only, so its pro column is feet: 25.2 / 12.6 / 4.6 / 2.0% by distance.
+Real close shots are 53% headers at 12.8%, feet 25.2%. The game's real gap there was
+share: 33% of its foot shots came from under 11 m, pro 16%.
+
+**Clearing it (mig 951).** Pressed near his own goal a real outfielder clears: 93%
+central in the box, 45% wide, 40 / 30% out to 35 m, and loses it under 9%. Ours
+were robbed, 68% of them 1-3 s after taking it, held there by the G5.4 hold. He now
+rolls those rates, hit first time, and near his goal any presser ends the hold.
+
+| 32 matches, 4 fixtures | Before | After | Pro |
+|---|---|---|---|
+| Goals | 5.3 (4.4-6.2) | 4.0 (3.9-4.1) | 2.5 |
+| Shots a team | 16.9 | 14.8 | 12.9 |
+| Won near goal, a team | 23 | 16.5 | 2.1 |
+| Better side W-D-L | 11-6-15 | 17-6-9 | |
+| Foot shots under 11 m, goal % | 34 | 33 | 25.2 |
+| Entries | 55 | 61 | 44 |
+| Passes | 620 at 88% | 615 at 88% | 378 at 79% |
+| Spells (StatsBomb count) | 244 | 232 | 121 |
+| Corners | 3.5 | 1.9 | 5.7 |
+| Throw-ins | 40 | 42 | 23 |
+| Offsides | 3.5 | 3.8 | 2.0 |
+
+Corners fell by half: clearances now go long and wide, and where they go out is
+wrong. Next: where real clearances land, why the ball goes out over the touchline
+twice too often, then team strength with the physical columns filled.

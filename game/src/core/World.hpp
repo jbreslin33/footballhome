@@ -128,6 +128,14 @@ public:
         if (slot < bodies_.size()) bodies_[slot] = b;
     }
     const Body& body(SlotIndex slot) const { return bodies_[slot]; }
+    // G5.3: the ball in the air is contested. Off until the DB sets a radius.
+    void configureAerial(const ModelParams& p);
+    // G5.4 (§8.102): real time on the ball. Off unless the rows exist.
+    void configureTempo(const ModelParams& p);
+    int aerialDuels() const { return aerial_duels_; }
+    int aerialLone() const { return aerial_lone_; }
+    int headersAtGoal(int team) const { return headers_at_goal_[team]; }
+    int headersClear(int team) const { return headers_clear_[team]; }
     void setMaxSpeed(SlotIndex slot, math::Fixed64 v) {
         if (slot < players_.size()) players_[slot].max_speed = v;
     }
@@ -171,6 +179,28 @@ public:
     // penalty area until the ball is kicked; 0xFF = none. Outlives
     // restartTeam(), which clears when the keeper settles the ball.
     std::uint8_t boxClearTeam() const noexcept { return box_clear_team_; }
+    // The dead ball (G5.2). What the restart is and where it is taken (valid
+    // while restartTeam() is set); a throw-in, goal kick or corner stays dead
+    // until the taker PLAYS it — heldRestart() — not when he reaches it.
+    MatchEventType restartKind() const noexcept { return restart_kind_; }
+    const math::Vec3& restartSpot() const noexcept { return restart_spot_; }
+    std::uint64_t restartReadyTick() const noexcept { return restart_ready_tick_; }
+    bool heldRestart() const noexcept {
+        return restart_team_ != 0xFF && (restart_kind_ == MatchEventType::ThrowIn ||
+                                         restart_kind_ == MatchEventType::GoalKick ||
+                                         restart_kind_ == MatchEventType::Corner);
+    }
+    bool takingThrow(SlotIndex slot) const noexcept {
+        return heldRestart() && restart_kind_ == MatchEventType::ThrowIn && ball_.owner && *ball_.owner == slot;
+    }
+    // 0 = in play (or dead at its spot); 1 = over the line, the call to come;
+    // 2 = called, the ball not yet back at its spot.
+    std::uint8_t outStage() const noexcept { return out_stage_; }
+    std::uint64_t outTick() const noexcept { return out_tick_; }
+    // The official's last out-of-play call, and the ones he gave the wrong
+    // way (harness only; derived, not hashed).
+    const OutCall& lastOutCall() const noexcept { return last_out_; }
+    std::uint32_t wrongOutCalls() const noexcept { return wrong_out_; }
     // Offside (G4.8; G4.88): offsideMask() is the TRUTH — who is in an
     // offside position (the players know, and the brains read it); the
     // whistle follows the assistant's call, calledOffsideMask().
@@ -200,6 +230,7 @@ public:
     std::uint64_t flightTick() const noexcept { return flight_tick_; }
     // G4.92: the owner can't kick before this tick — his control touch.
     std::uint64_t controlUntilTick() const noexcept { return control_until_tick_; }
+    std::uint64_t holdUntilTick() const noexcept { return hold_until_tick_; }
     // Where the ball was won (G4.18): a COUNTER starts from a deep win;
     // a recovered rebound in their box is a scramble, not a transition.
     math::Fixed64 turnoverBallX() const noexcept { return turnover_ball_x_; }
@@ -229,6 +260,13 @@ public:
 private:
     void awardRestart(MatchEventType type, std::uint8_t team,
                       const math::Vec3& spot, std::vector<MatchEvent>& events);
+    void setRestart(MatchEventType type, std::uint8_t team, const math::Vec3& spot,
+                    std::vector<MatchEvent>& events);
+    // Law 9 (G5.2): the ball over a line — play stops, the call comes.
+    bool crossedLine(std::vector<MatchEvent>& events);
+    void ballOut(bool end_line);
+    void tickBallOut(std::vector<MatchEvent>& events);
+    void touchedBy(std::uint8_t team, bool deflection);
     void tickClock(std::vector<MatchEvent>& events);
 
     std::vector<PlayerState> players_;
@@ -241,6 +279,14 @@ private:
     Locomotion loco_;
     BallFlight ball_flight_;
     std::vector<Body> bodies_;
+    // G5.3: who heads it, or -1. Fills `duel` when both teams went up for it.
+    int aerialWinner(bool& duel) const;
+    void headIt(SlotIndex slot, bool duel);
+    bool headRangeOfGoal(std::uint8_t team) const;
+    bool headRangeOfOwn(std::uint8_t team) const;
+    math::Fixed64 aerial_radius_{}, aerial_min_z_{}, aerial_duel_slope_{}, aerial_goal_range_{}, aerial_own_range_{};
+    math::Fixed64 aerial_goal_speed_{}, aerial_clear_speed_{}, aerial_nod_keep_{}, aerial_goal_err_{}, aerial_goal_err_duel_{}, aerial_clear_err_{};
+    int aerial_duels_ = 0, aerial_lone_ = 0, headers_at_goal_[2] = {}, headers_clear_[2] = {};
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};
     Clock clock_;
@@ -253,6 +299,19 @@ private:
     std::uint32_t half_length_ticks_ = 0;
     std::uint8_t  kickoff_team_ = 0;
     std::uint8_t  restart_team_ = 0xFF;   // 0xFF = live ball
+    MatchEventType restart_kind_ = MatchEventType::Kickoff;   // G5.2
+    math::Vec3    restart_spot_{};
+    std::uint64_t restart_ready_tick_ = 0;
+    std::uint8_t  out_stage_ = 0;
+    bool          out_end_line_ = false;
+    math::Vec2    out_crossed_{};
+    std::uint64_t out_tick_ = 0, out_due_tick_ = 0;
+    // The last touch off a man (G5.2): whose it was before, where, when.
+    std::uint8_t  deflected_from_ = 0xFF;
+    math::Vec2    deflected_at_{};
+    std::uint64_t deflected_tick_ = 0;
+    OutCall       last_out_{};
+    std::uint32_t wrong_out_ = 0;
     std::uint8_t  box_clear_team_ = 0xFF; // goal kick: kept out of the box
     std::uint8_t  last_touch_team_ = 0;
     // Offside (G4.8): armed at every kick — flags teammates of the kicker
@@ -272,6 +331,9 @@ private:
     std::uint64_t bad_touch_tick_ = 0;
     std::uint64_t flight_tick_ = 0;
     std::uint64_t control_until_tick_ = 0;
+    std::uint64_t hold_until_tick_ = 0;       // G5.4: unpressed, he keeps it until here
+    bool hold_on_ = false;
+    math::Fixed64 hold_under1_, hold_under2_, hold_under4_, hold_press_m_, cut_share_, carry_share_;
     void settleControl(SlotIndex slot, math::Fixed64 speed);   // G4.92: no kick before (his control touch)
     math::Fixed64 turnover_ball_x_{};
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped

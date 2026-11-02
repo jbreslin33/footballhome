@@ -890,8 +890,196 @@ bool Brain::inView(SlotIndex slot, const World& world, SlotIndex other) const {
     return dp.raw >= 0 || dp * dp <= rhs;
 }
 
+// The taker (G5.2): the keeper for his goal kick; the man whose restart mark
+// is on the ball (a corner's shape names him); else the nearest outfielder.
+int Brain::restartTaker(const World& world, std::uint8_t team) const {
+    const Vec3& sp = world.restartSpot();
+    if (world.restartKind() == core::MatchEventType::GoalKick) {
+        for (SlotIndex i = 0; i < world.playerCount(); ++i)
+            if (setup_.team_of_slot[i] == team && world.isKeeper(i)) return i;
+    }
+    if (hold_team_ == team)
+        for (const auto& [s, mark] : hold_)
+            if (setup_.team_of_slot[s] == team &&
+                distSq(Vec3{mark.x, mark.y, Fixed64::zero()}, sp) < Fixed64::fromInt(9))
+                return s;
+    int best = -1;
+    Fixed64 bd{};
+    for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+        if (setup_.team_of_slot[i] != team || world.isKeeper(i)) continue;
+        const Fixed64 d = distSq(world.player(i).pos, sp);
+        if (best < 0 || d < bd) { best = i; bd = d; }
+    }
+    return best;
+}
+
+bool Brain::takeRestart(SlotIndex slot, const World& world, Orders& out) const {
+    if (!world.heldRestart() || world.restartTeam() != setup_.team_of_slot[slot]) return false;
+    if (restartTaker(world, world.restartTeam()) != slot) return false;
+    const auto& me = world.player(slot);
+    const auto& ball = world.ball();
+    if (ball.owner && *ball.owner == slot) {
+        switch (world.restartKind()) {
+            case core::MatchEventType::ThrowIn: return playThrow(slot, world, out);
+            case core::MatchEventType::Corner:  return playCorner(slot, world, out);
+            default: break;
+        }
+        // Goal kick: the keeper's own ball (his concepts choose it, G4.58);
+        // he doesn't stand on it for ever if they find nothing.
+        out = decide(slot, world);
+        const std::uint64_t waited = world.tickCount() - world.ownedAtTick();
+        if (out.action == Action::None && waited >= static_cast<std::uint64_t>(restart_play_.keeper_wait_ticks)) {
+            const Fixed64 sg = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();
+            const Vec2 target{me.pos.x + sg * restart_play_.keeper_long_m, me.pos.y};
+            out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
+            out.action = Action::LoftedKick;
+            out.carry_m = aimedCarry(me.pos, target, rangeFor(world.levelOf(slot), restart_play_.keeper_long_m));
+            out.why = Why::KeeperPunt;
+            out.target = target;
+        }
+        return true;
+    }
+    // Walk to it: behind the line for a throw, behind the ball for a kick,
+    // onto it once the referee has it ready.
+    const Vec3& sp = world.restartSpot();
+    Vec2 aim{Fixed64::zero(), Fixed64::zero()};
+    if (world.restartKind() == core::MatchEventType::ThrowIn) aim = Vec2{sp.x, Fixed64::zero()};
+    if (world.restartKind() == core::MatchEventType::Corner)
+        aim = Vec2{sp.x, Fixed64::zero()};
+    const Vec2 back = math::normalized(Vec2{sp.x - aim.x, sp.y - aim.y});
+    const bool ready = world.outStage() == 0 && world.tickCount() >= world.restartReadyTick();
+    const Fixed64 off = ready ? Fixed64::fromFraction(1, 4) : Fixed64::fromFraction(3, 4);
+    const Vec2 stand{sp.x + back.x * off, sp.y + back.y * off};
+    out.move.move = seek(me.pos, stand, Fixed64::fromInt(1), Fixed64::fromFraction(1, 20));
+    out.move.face = Vec2{-back.x, -back.y};
+    out.why = Why::TakeRestart;
+    out.target = stand;
+    return true;
+}
+
+// Law 15 (G5.2): a throw goes to a mate within an arm's range, on the mate
+// with the most room and a bit of ground gained; he waits for one to come
+// free, as long as a thrower can. Pro: 82% complete, median 15 m (StatsBomb
+// PL 2015/16 sample, mig 922).
+bool Brain::playThrow(SlotIndex slot, const World& world, Orders& out) const {
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    const Vec2 from{world.restartSpot().x, world.restartSpot().y};
+    const Vec2 infield{Fixed64::zero(), world.restartSpot().y.raw > 0 ? -Fixed64::one() : Fixed64::one()};
+    out.move.face = infield;
+    out.why = Why::ThrowIn;
+    const std::uint64_t waited = world.tickCount() - world.ownedAtTick();
+    if (waited < static_cast<std::uint64_t>(restart_play_.throw_look_ticks)) return true;
+    const Fixed64 reach = world.officials().throwMaxM();
+    int best = -1;
+    Fixed64 bs{}, bfree{};
+    Vec2 bat{};
+    for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+        if (i == slot || setup_.team_of_slot[i] != team || world.isKeeper(i)) continue;
+        const auto& m = world.player(i);
+        const Vec2 at{m.pos.x, m.pos.y};
+        const Fixed64 d = math::length(Vec2{at.x - from.x, at.y - from.y});
+        if (d < restart_play_.throw_min_m || d > reach) continue;
+        Fixed64 free = restart_play_.throw_room_m;
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup_.team_of_slot[j] == team) continue;
+            const Fixed64 q = math::length(Vec2{world.player(j).pos.x - at.x, world.player(j).pos.y - at.y});
+            if (q < free) free = q;
+        }
+        Fixed64 gained = (at.x - from.x) * sg;
+        if (gained > restart_play_.throw_room_m) gained = restart_play_.throw_room_m;
+        if (gained < -restart_play_.throw_room_m) gained = -restart_play_.throw_room_m;
+        Fixed64 score = free + gained * restart_play_.throw_gain;
+        const std::uint8_t carry = aimedCarry(Vec3{from.x, from.y, Fixed64::zero()}, at, reach);
+        if (!loftSafe(world, slot, from, at, carry, Fixed64::fromFraction(1, 2))) score -= restart_play_.throw_room_m;
+        if (best < 0 || score > bs) { best = i; bs = score; bfree = free; bat = at; }
+    }
+    const bool late = waited >= static_cast<std::uint64_t>(restart_play_.throw_wait_ticks);
+    if (best < 0 || (bfree < restart_play_.throw_free_m && !late)) {
+        if (!late) return true;
+        // Nobody in range: down the line.
+        bat = Vec2{from.x + sg * restart_play_.throw_room_m, from.y + infield.y * Fixed64::fromInt(3)};
+    }
+    out.move.move = math::normalized(Vec2{bat.x - from.x, bat.y - from.y});
+    out.action = Action::LoftedKick;
+    out.carry_m = aimedCarry(Vec3{from.x, from.y, Fixed64::zero()}, bat, reach);
+    if (best >= 0) out.pass_to = static_cast<std::uint8_t>(best);
+    out.other = static_cast<std::int16_t>(best);
+    out.target = bat;
+    return true;
+}
+
+// Law 17 (G5.2): delivered into the box, on the freest man attacking it,
+// else the penalty spot. Pro: median 34 m, 42% complete, 31% a shot within
+// 10 s (StatsBomb PL 2015/16 sample, mig 922).
+bool Brain::playCorner(SlotIndex slot, const World& world, Orders& out) const {
+    const auto& me = world.player(slot);
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const Vec3& sp = world.restartSpot();
+    const Fixed64 end = sp.x.raw > 0 ? Fixed64::one() : -Fixed64::one();
+    out.move.face = Vec2{-end, sp.y.raw > 0 ? -Fixed64::one() : Fixed64::one()};
+    out.why = Why::CornerKick;
+    if (world.tickCount() - world.ownedAtTick() < static_cast<std::uint64_t>(restart_play_.corner_look_ticks))
+        return true;
+    Vec2 at{end * (half_x_ - Fixed64::fromInt(11)), Fixed64::zero()};
+    int best = -1;
+    Fixed64 bf{};
+    for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+        if (i == slot || setup_.team_of_slot[i] != team || world.isKeeper(i)) continue;
+        const auto& m = world.player(i);
+        const Fixed64 depth = half_x_ - m.pos.x * end;
+        if (depth < Fixed64::fromInt(3) || depth > Fixed64::fromInt(14) ||
+            math::fx_abs(m.pos.y) > Fixed64::fromInt(12))
+            continue;
+        Fixed64 free = Fixed64::fromInt(100);
+        for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+            if (setup_.team_of_slot[j] == team) continue;
+            const Fixed64 q = math::length(Vec2{world.player(j).pos.x - m.pos.x, world.player(j).pos.y - m.pos.y});
+            if (q < free) free = q;
+        }
+        if (best < 0 || free > bf) { best = i; bf = free; at = Vec2{m.pos.x, m.pos.y}; }
+    }
+    out.move.move = math::normalized(Vec2{at.x - sp.x, at.y - sp.y});
+    out.action = Action::LoftedKick;
+    out.carry_m = aimedCarry(me.pos, at, rangeFor(world.levelOf(slot), Fixed64::fromInt(60)));
+    if (best >= 0) out.pass_to = static_cast<std::uint8_t>(best);
+    out.other = static_cast<std::int16_t>(best);
+    out.target = at;
+    return true;
+}
+
+// Their dead ball (G5.2): Law 15 two metres from the throw, Law 17 / Law 13
+// the 9.15 m of a corner or free kick. His walk stops at the distance; if
+// he's inside it, he backs off.
+void Brain::keepLawDistance(SlotIndex slot, const World& world, Orders& o) const {
+    const std::uint8_t rt = world.restartTeam();
+    if (rt == 0xFF || rt == setup_.team_of_slot[slot]) return;
+    Fixed64 r{};
+    const core::MatchEventType k = world.restartKind();
+    if (k == core::MatchEventType::ThrowIn) r = restart_play_.throw_law_m;
+    else if (k == core::MatchEventType::Corner || k == core::MatchEventType::Offside) r = restart_play_.kick_law_m;
+    else return;
+    const auto& me = world.player(slot);
+    const Vec3& sp = world.restartSpot();
+    const bool aimed = o.target.x.raw != 0 || o.target.y.raw != 0;
+    Vec2 t = aimed ? o.target : Vec2{me.pos.x, me.pos.y};
+    const Vec2 ds{t.x - sp.x, t.y - sp.y};
+    const Vec2 dm{me.pos.x - sp.x, me.pos.y - sp.y};
+    const Fixed64 rr = r * r;
+    if (math::lengthSquared(ds) >= rr && math::lengthSquared(dm) >= rr) return;
+    Vec2 u = math::lengthSquared(ds) >= rr ? ds : dm;
+    if (u.x.raw == 0 && u.y.raw == 0) u = Vec2{-sp.x, -sp.y};
+    u = math::normalized(u);
+    t = Vec2{sp.x + u.x * r, sp.y + u.y * r};
+    o.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+    o.action = Action::None;
+    o.target = t;
+    o.why = Why::LawDistance;
+}
+
 Orders Brain::ordersSeen(SlotIndex slot, const World& world) const {
     Orders o = ordersFaced(slot, world);
+    keepLawDistance(slot, world, o);
     // Their goal kick (Law 16): every one of us stays outside their penalty
     // area until the ball is kicked — the man-marker picks his CB up on the
     // 18, not goal-side of him in the box. Whoever's in it walks out.
@@ -1130,8 +1318,14 @@ Fixed64 Brain::possessionX(SlotIndex slot, Fixed64 ball_x) const {
 
 Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
     const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
-    // A restart shape is held until the dead ball is played (G4.58).
-    if (hold_team_ != 0xFF && world.restartTeam() == hold_team_ && !world.ball().owner) {
+    // G5.2: the man taking a throw, goal kick or corner.
+    {
+        Orders t;
+        if (takeRestart(slot, world, t)) return t;
+    }
+    // A restart shape is held until the dead ball is played (G4.58) — by
+    // the taker's kick, not his reaching it (G5.2).
+    if (hold_team_ != 0xFF && world.restartTeam() == hold_team_) {
         for (const auto& [s, mark] : hold_) {
             if (s != slot) continue;
             const auto& b = world.ball().pos;
@@ -2228,7 +2422,28 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         bool shoot_now =
             !im_keeper &&
             math::lengthSquared(to_goal) < kShootRange * kShootRange;
-        if (shoot_now && applies(slot, 25, world.tickCount() / 30) &&
+        // G5.4 (§8.102): where the real rates are loaded, the choice is the
+        // rate a pro shoots from this spot, pressed or not. One roll per
+        // spot per 3 s, so holding it there isn't a fresh chance every tick
+        // (real time on the ball is ~1.5-3 s). No range fallback: a man who
+        // loses the roll passes or carries like anybody else [FH roll;
+        // rates StatsBomb PL 2015/16].
+        const bool measured_shot = book_.shot_selection.measured();
+        if (measured_shot) {
+            shoot_now = false;
+            if (!im_keeper) {
+                const auto& sel = book_.shot_selection;
+                const Fixed64 d = math::length(to_goal);
+                const Fixed64 wide_limit = Fixed64::fromFraction(1416, 100);
+                const bool central = to_goal.y <= wide_limit && Fixed64::zero() - to_goal.y <= wide_limit;
+                const Fixed64 r = sel.rate(d, central, pressed);
+                const std::uint64_t spot = static_cast<std::uint64_t>(d.raw >> (Fixed64::FRAC_BITS + 2)) * 4 +
+                                           (central ? 2u : 0u) + (pressed ? 1u : 0u);
+                const Fixed64 n = core::detNoise(match_seed_, (world.tickCount() / 90) * 64 + spot, slot, 200);
+                shoot_now = (n + Fixed64::one()) * Fixed64::fromFraction(1, 2) < r;
+            }
+        }
+        if (shoot_now && !measured_shot && applies(slot, 25, world.tickCount() / 30) &&
             math::lengthSquared(to_goal) >= Fixed64::fromInt(64)) {
             // G4.55: what the chance is worth (his read wobbles with his
             // decisions) against working it closer or a mate's better one.
@@ -2271,6 +2486,98 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             out.why = Why::Shoot;
             out.target = Vec2{goal.x, aim_y};
             return out;
+        }
+
+        // G5.4 (§8.102): pressed near his own goal a real defender clears it
+        // (93% in the box centrally, 45% wide, 30-40% out to 35 m), rolled
+        // once on the ball, hit first time up the emptier side.
+        if (!im_keeper && pressed) {
+            const Fixed64 clr_sgn = Fixed64::fromInt(sign >= 0 ? 1 : -1);
+            const Fixed64 own_d = me.pos.x * clr_sgn + half_x_;
+            if (own_d < Fixed64::fromInt(35)) {
+                const Fixed64 wide_limit = Fixed64::fromFraction(1416, 100);
+                const bool central = me.pos.y <= wide_limit && Fixed64::zero() - me.pos.y <= wide_limit;
+                const Fixed64 share = book_.pass_ladder.clearShare(own_d < Fixed64::fromInt(18) ? 0 : 1, central);
+                const Fixed64 u = (core::detNoise(match_seed_, world.ownedAtTick(), slot, 202) + Fixed64::one()) *
+                                  Fixed64::fromFraction(1, 2);
+                if (u < share) {
+                    const Fixed64 cx = me.pos.x + clr_sgn * Fixed64::fromInt(20);
+                    const Fixed64 cy = half_y_ * Fixed64::fromFraction(3, 5);
+                    int crowd[2] = {0, 0};
+                    const Vec2 ch[2] = {Vec2{cx, Fixed64::zero() - cy}, Vec2{cx, cy}};
+                    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                        if (setup_.team_of_slot[j] == setup_.team_of_slot[slot]) continue;
+                        for (int c = 0; c < 2; ++c) {
+                            const Vec2 d{world.player(j).pos.x - ch[c].x, world.player(j).pos.y - ch[c].y};
+                            if (math::lengthSquared(d) < Fixed64::fromInt(225)) ++crowd[c];
+                        }
+                    }
+                    Fixed64 ax = me.pos.x * clr_sgn + Fixed64::fromInt(35);
+                    if (ax > half_x_ - Fixed64::fromInt(30)) ax = half_x_ - Fixed64::fromInt(30);
+                    const Fixed64 ay = half_y_ * Fixed64::fromFraction(7, 20);
+                    const Vec2 to{ax * clr_sgn, crowd[0] <= crowd[1] ? Fixed64::zero() - ay : ay};
+                    out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+                    out.action = Action::LoftedKick;
+                    out.carry_m = aimedCarry(me.pos, to, rangeFor(levelOf(slot), Fixed64::fromInt(50)));
+                    out.why = Why::Clear;
+                    out.first_time = true;
+                    out.target = to;
+                    return out;
+                }
+            }
+        }
+
+        // G5.4 (§8.102): a man with time, his hold over, passes square or
+        // back at the real share for this third, to the open mate nearest a
+        // real pass's length. Forward stays with the ladder below.
+        if (!im_keeper && book_.pass_ladder.measuredDirection() &&
+            world.tickCount() >= world.holdUntilTick()) {
+            const Fixed64 dir_sgn = Fixed64::fromInt(sign >= 0 ? 1 : -1);
+            const Fixed64 from_own = me.pos.x * dir_sgn + half_x_;
+            const Fixed64 third_len = half_x_ * Fixed64::fromFraction(2, 3);
+            const int third = from_own < third_len ? 0 : from_own < third_len * Fixed64::fromInt(2) ? 1 : 2;
+            const Fixed64 u = (core::detNoise(match_seed_, world.ownedAtTick(), slot, 201) + Fixed64::one()) *
+                              Fixed64::fromFraction(1, 2);
+            const Fixed64 sq = book_.pass_ladder.squareShare(third, pressed), bk = book_.pass_ladder.backShare(third, pressed);
+            const int want = u < bk ? 2 : u < bk + sq ? 1 : 0;   // 2 back, 1 square, 0 forward
+            // Forward stays with the ladder where it works: a free man outside
+            // the final third. Elsewhere it rarely fires, so pick the ball here.
+            if (want != 0 || pressed || third == 2) {
+                const Fixed64 onside = book_.pass_ladder.lines(world, slot, sign).offside;
+                const Fixed64 three = Fixed64::fromInt(3), ideal = Fixed64::fromInt(16);
+                const Vec2 from{me.pos.x, me.pos.y};
+                bool have = false;
+                Fixed64 best = Fixed64::zero();
+                SlotIndex who = 0;
+                Vec2 to{};
+                Fixed64 to_dsq = Fixed64::zero();
+                for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                    if (j == slot || setup_.team_of_slot[j] != setup_.team_of_slot[slot]) continue;
+                    const auto& mate = world.player(j);
+                    const Fixed64 gain = (mate.pos.x - me.pos.x) * dir_sgn;
+                    if (want == 0 ? (gain < three || mate.pos.x * dir_sgn > onside)
+                                  : want == 1 ? (gain >= three || gain <= Fixed64::zero() - three)
+                                              : gain > Fixed64::zero() - three)
+                        continue;
+                    const Vec2 t{mate.pos.x, mate.pos.y};
+                    const Fixed64 dsq = distSq(me.pos, Vec3{t.x, t.y, Fixed64::zero()});
+                    if (dsq < kPassMin * kPassMin || dsq > kPassMax * kPassMax) continue;
+                    const Fixed64 len = math::length(Vec2{t.x - from.x, t.y - from.y});
+                    if (!passSafe(world, slot, j, from, t, core::weightedPassSpeed(len),
+                                  want == 0 ? book_.pass_ladder.forwardReach() : Fixed64::one()))
+                        continue;
+                    const Fixed64 off = len > ideal ? len - ideal : ideal - len;
+                    if (!have || off < best) { have = true; best = off; who = j; to = t; to_dsq = dsq; }
+                }
+                if (have) {
+                    out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+                    out.action = to_dsq < kSoftPassRange * kSoftPassRange ? Action::ShortPass : Action::GroundKick;
+                    out.why = want == 0 ? Why::Pass : Why::Recycle;
+                    out.target = to;
+                    out.other = static_cast<std::int16_t>(who);
+                    return out;
+                }
+            }
         }
 
         // Best forward receiver with an open lane. Progress = x toward MY
@@ -2405,7 +2712,14 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         // kane"]: an outfield passer with time (not pressed) puts it over the
         // same way. The false 9 (181) doesn't need the line high: space_m of
         // grass behind it will do.
-        if (!im_keeper && !pressed) {
+        // settle-in-possession (89, G5.1): the team is stretched, so no ball
+        // in behind: what's in front of their line, or walk it while they
+        // come up. A real counter still goes (counter-or-keep, 140).
+        const bool settling = !im_keeper && !pressed && ratings_[slot][book_.settle.bit()] > 0 &&
+            book_.settle.stretched(world, slot, sign) &&
+            applies(slot, book_.settle.bit(), world.turnoverTick()) &&
+            !(ratings_[slot][140] > 0 && inCounterWindow(slot, world));
+        if (!im_keeper && !pressed && !settling) {
             const auto& F9 = book_.false_nine;
             const std::uint64_t osec = world.tickCount() / 30;
             const bool nine = ratings_[slot][F9.bit()] > 0 && applies(slot, F9.bit(), osec);
@@ -2426,8 +2740,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         // unpressed carrier holds for a teammate about to break the line.
         const bool release = ratings_[slot][60] > 0 && !pressed && !im_keeper &&
                              applies(slot, 60, world.tickCount() / 30);
-        const auto lines = (ladder || release) ? book_.pass_ladder.lines(world, slot, sign)
-                                               : PassLadder::Lines{};
+        const auto lines = (ladder || release || settling) ? book_.pass_ladder.lines(world, slot, sign)
+                                                           : PassLadder::Lines{};
         const bool holding = release &&
             book_.release_timing.hold(world, slot, sign, lines, book_.pass_ladder);
         // over_the_top (bit 6): this tick's roll, the one the kick below uses.
@@ -2456,6 +2770,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             }
             const Fixed64 progress = b.x * sgn;
             if (progress < my_progress + Fixed64::fromInt(3)) continue;
+            if (settling && progress > lines.back) continue;
             const Fixed64 dsq = distSq(me.pos, Vec3{b.x, b.y, Fixed64::zero()});
             if (dsq < kPassMin * kPassMin || dsq > kPassMax * kPassMax)
                 continue;
@@ -2648,7 +2963,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         out.move.move = seek(me.pos, goal, kArriveRadius);
         // Holding for a runner (release_timing): slow the ball down — a
         // walking carry keeps it, a sprint into the block loses it.
-        if (holding) {
+        if (holding || settling) {
             const Fixed64 walk = Fixed64::fromFraction(35, 100);
             out.move.move = Vec2{out.move.move.x * walk, out.move.move.y * walk};
         }
@@ -2678,7 +2993,10 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             // "clears" (G4.23 goal anatomy, read pre-tick).
             if (touch_tight) {
                 if (math::lengthSquared(to_goal) < kShootRange * kShootRange) {
-                    out.action = Action::Shot;
+                    // G5.4 (§8.102): with real rates loaded the shot was
+                    // already rolled above. A tight man here plays on or
+                    // loses it, as a pro does (29-35% lost in this zone).
+                    if (!book_.shot_selection.measured()) out.action = Action::Shot;
                 } else {
                     const Fixed64 cx = me.pos.x + sgn * Fixed64::fromInt(20);
                     const Fixed64 cy = half_y_ * Fixed64::fromFraction(3, 5);
@@ -2708,7 +3026,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 }
             }
         }
-        out.why = out.action == Action::Shot ? Why::Shoot : (out.action == Action::LoftedKick ? Why::Clear : (holding ? Why::WaitForRunner : Why::Dribble));
+        out.why = out.action == Action::Shot ? Why::Shoot : (out.action == Action::LoftedKick ? Why::Clear : (holding ? Why::WaitForRunner : (settling ? Why::Settle : Why::Dribble)));
         // A clearance is hit first time (G4.95; def-clear-foot): no touch to
         // set it — dispossessed in his own third, 74% were still in their
         // control touch, 29% of them trying to clear.

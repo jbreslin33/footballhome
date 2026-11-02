@@ -80,6 +80,12 @@ std::uint64_t canonicalHash(const World& world) {
     mix(h, world.period());
     mix(h, world.matchClockTicks());
     mix(h, world.restartTeam());
+    // The dead ball (G5.2).
+    mix(h, static_cast<std::uint64_t>(world.restartKind()));
+    mix(h, world.restartReadyTick());
+    mixFixed(h, world.restartSpot().x);
+    mixFixed(h, world.restartSpot().y);
+    mix(h, world.outStage());
     mix(h, world.offsideMask());
     mix(h, world.offsideTeam());
     mix(h, world.lastLosingTeam());

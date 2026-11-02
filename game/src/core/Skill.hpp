@@ -206,6 +206,20 @@ class Reaction : public BodySkill {
 public:
     Reaction() : BodySkill("reaction", "reaction_s", 300, 200, 150) {}
 };
+// G5.3: the top of his header — 2.3 / 2.6 / 2.9 m, standing head height plus
+// his jump (FH estimates; 50 = a 1.8 m man clearing about 0.8 m with the ball
+// on his forehead, arms and run-up counted).
+class JumpingReach : public BodySkill {
+public:
+    JumpingReach() : BodySkill("jumping_reach", "head_reach_m", 2300, 2600, 2900) {}
+};
+// G5.3: strength plays only in the air so far; half of his aerial share.
+class Strength : public Skill {
+public:
+    Strength() : Skill("strength") {}
+    void apply(LevelParams&, const LevelParams&, int) const override {}
+    int rating(std::int16_t r) const { return r < 0 ? 50 : r > 100 ? 100 : r; }
+};
 // His turning / cutting limit (sideways acceleration): 4 / 6 / 8 m/s².
 class Agility : public BodySkill {
 public:
@@ -298,6 +312,10 @@ public:
         skills_.emplace_back(new Concentration());
         reaction_ = new Reaction();
         skills_.emplace_back(reaction_);
+        jump_ = new JumpingReach();
+        strength_ = new Strength();
+        skills_.emplace_back(jump_);
+        skills_.emplace_back(strength_);
         for (auto& s : skills_) s->configure(p);
         for (BodySkill* g : {&side_, &back_, &yaw_, &brake_tau_}) g->configure(p);
         // How far he looks off his line at no cost — anatomy, shared.
@@ -321,7 +339,10 @@ public:
                     agility_->value(a.agility), dribbling_->value(a.dribbling),
                     gk_->diveSpeed(a.goalkeeping), side_.value(a.agility),
                     back_.value(a.agility), yaw_.value(a.agility), head_cos_,
-                    brake_tau_.value(a.deceleration), reaction_->value(a.reaction));
+                    brake_tau_.value(a.deceleration), reaction_->value(a.reaction),
+                    jump_->value(a.jumping_reach),
+                    math::Fixed64::fromInt((strength_->rating(a.jumping_reach) +
+                                            strength_->rating(a.strength)) / 2));
     }
     const std::vector<std::unique_ptr<Skill>>& skills() const { return skills_; }
 
@@ -331,6 +352,8 @@ private:
     Goalkeeping* gk_ = nullptr;
     BodySkill *accel_ = nullptr, *decel_ = nullptr, *agility_ = nullptr, *dribbling_ = nullptr;
     BodySkill* reaction_ = nullptr;
+    BodySkill* jump_ = nullptr;
+    Strength* strength_ = nullptr;
     // G4.53/54: his gaits and body turn, also from agility — side-on run
     // (crossover) and backpedal top speed as shares of his forward top
     // speed, yaw in rad/s (≈ 400 / 520 / 630 °/s).

@@ -61,6 +61,17 @@ struct OffsideCall {
     math::Fixed64 off_line_m{}; // how far he stood from level with the line (+ = beyond it)
 };
 
+// The call on a ball out of play (G5.2, judgement ball-out-last-touch): the
+// whole ball over a line is plain to see; WHO touched it last is not, when it
+// came off a man. The World keeps the truth beside the call, for the harness.
+struct OutCall {
+    int official = -1;              // who called it (OfficialRole)
+    std::uint8_t truth = 0xFF;      // the team that really touched it last
+    std::uint8_t called = 0xFF;     // the team he says touched it last
+    bool deflection = false;        // it came off a man just before it went out
+    math::Fixed64 dist_m{};         // how far he was from that touch
+};
+
 class Officials {
 public:
     void configure(const ModelParams& p);
@@ -84,6 +95,23 @@ public:
     OffsideCall judgeOffsidePosition(const World& w, std::uint8_t kicker) const;
     // The law exactly — the truth the World keeps for the harness.
     static std::uint32_t offsidePositionTruth(const World& w, std::uint8_t kicker);
+
+    // Law 9, Law 6 (G5.2): whose line it is — each assistant calls his own
+    // touchline in his half and his goal line; the far half of a touchline
+    // is the referee's, the diagonal's other end.
+    static int officialFor(const math::Vec2& crossed, bool end_line);
+    // His call on who touched it last, from where he stands now. `other` =
+    // the team that touched it before; a clean ball out is never wrong.
+    OutCall judgeOutOfPlay(const World& w, const math::Vec2& crossed, bool end_line, bool deflected,
+                           const math::Vec2& touch_at, std::uint8_t last, std::uint8_t other) const;
+    // The dead ball's clock (G5.2, owner 'official', row 'restart'), ticks.
+    std::uint32_t callTicks() const { return call_ticks_; }
+    std::uint32_t retrieveTicks() const { return retrieve_ticks_; }
+    std::uint32_t readyTicksThrow() const { return ready_ticks_[0]; }
+    std::uint32_t readyTicksGoalKick() const { return ready_ticks_[1]; }
+    std::uint32_t readyTicksCorner() const { return ready_ticks_[2]; }
+    std::uint32_t deflectionTicks() const { return deflection_ticks_; }
+    math::Fixed64 throwMaxM() const { return throw_max_m_; }
 
     const OfficialState& official(int i) const { return state_[i]; }
     const Body& body(int i) const { return body_[i]; }
@@ -112,6 +140,14 @@ private:
     math::Fixed64 diagonal_share_ = math::Fixed64::fromFraction(6, 10);
     math::Fixed64 ball_pull_ = math::Fixed64::fromFraction(1, 2);
     math::Fixed64 behind_ = math::Fixed64::fromInt(8);
+    // G5.2 (mig 922). Restart times = StatsBomb PL 2015/16 lower quartile of
+    // the dead time (the taker's own seconds come on top); call + fetch FH.
+    std::uint32_t call_ticks_ = 12, retrieve_ticks_ = 45;
+    std::uint32_t ready_ticks_[3] = {252, 654, 636};   // throw, goal kick, corner
+    std::uint32_t deflection_ticks_ = 30;
+    math::Fixed64 wrong_pct_per_10m_ = math::Fixed64::fromInt(5);
+    math::Fixed64 wrong_pct_max_ = math::Fixed64::fromInt(30);
+    math::Fixed64 throw_max_m_ = math::Fixed64::fromInt(28);
 };
 
 }  // namespace fh::game::core

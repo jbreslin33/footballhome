@@ -214,6 +214,15 @@
 
     kick() { this.kickT = 0.38; }
     setFlag(up) { this.flagUp = !!up; }   // G4.93: an assistant's flag
+    // G5.2: an official's signal for a ball out (OfficialSnap bits 1-3):
+    // 1/2 throw, up toward the attack (+x / -x); 3/4 goal kick, level at the
+    // goal area; 5/6 corner, down at the corner arc.
+    setSignal(code) {
+      if (!code) { this.signal = null; return; }
+      const dir = code % 2 === 1 ? 1 : -1;
+      const up = code <= 2 ? 0.8 : code <= 4 ? 0.1 : -0.5;
+      this.signal = new THREE.Vector3(dir, up, 0).normalize();
+    }
     celebrate() { this.celebrateT = 3.5; }
 
     // ctx: { vx, vy, flags, ball:{x,y,z}|null, hasBall, me:{x,y} }
@@ -257,6 +266,8 @@
       if (this.celebrateT > 0) this.celebrateT -= dt;
       W.cele = ease(W.cele, this.celebrateT > 0 ? 1 : 0, 5, dt);
       W.flag = ease(W.flag || 0, this.carriesFlag && this.flagUp ? 1 : 0, 9, dt);
+      W.signal = ease(W.signal || 0, this.signal ? 1 : 0, 9, dt);       // G5.2
+      W.throwIn = ease(W.throwIn || 0, flags & 16 ? 1 : 0, 10, dt);     // G5.2
 
       // ── locomotion: the stride ───────────────────────────────────────
       // Dribbling: quicker, shorter steps — the ball is in the stride.
@@ -400,6 +411,25 @@
         a.sh.rotation.x += (-3.0 - a.sh.rotation.x) * w;
         a.sh.rotation.z += (0.1 - a.sh.rotation.z) * w;
         a.elbow.rotation.x *= 1 - w;
+      }
+      // Taking a throw (G5.2): both hands on the ball, over his head.
+      if (W.throwIn > 0.01) {
+        const w = W.throwIn;
+        for (const a of A) {
+          a.sh.rotation.x += (-3.0 - a.sh.rotation.x) * w;
+          a.sh.rotation.z += (a.side * -0.12 - a.sh.rotation.z) * w;
+          a.elbow.rotation.x += (-0.5 - a.elbow.rotation.x) * w;
+        }
+      }
+      // An official's signal (G5.2): his right arm points along the world
+      // direction, whichever way he's facing.
+      if (W.signal > 0.01 && this.signal) {
+        const a = A[1];
+        const q = a.sh.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+        const local = this.signal.clone().applyQuaternion(q);
+        const aim = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), local);
+        a.sh.quaternion.slerp(aim, W.signal);
+        a.elbow.rotation.x *= 1 - W.signal;
       }
     }
   }
