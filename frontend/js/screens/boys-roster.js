@@ -465,6 +465,7 @@ class BoysRosterScreen extends RosterScreenBase {
   }
 
   renderColumn(col, data) {
+    if (col.isUnassigned && this.boardView === 'roster') return this.renderMemberStacks(col, data);
     // Data source: Unassigned pulls from data.unassigned (no active team
     // rows); every real column pulls from data.buckets keyed by teamId.
     const players = col.isUnassigned

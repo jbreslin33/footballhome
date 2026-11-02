@@ -113,7 +113,7 @@ class RostersScreen extends Screen {
       </div>
       <div style="padding: var(--space-3) var(--space-2); display:flex; gap: var(--space-4); align-items:flex-start; flex-wrap:wrap;">
         <section class="rs-panel" style="flex: 0 0 340px; max-width: 100%;">
-          <h2 class="rs-panel-title">📦 Unassigned</h2>
+          <h2 class="rs-panel-title" id="rs-left-title">📦 Unassigned</h2>
           <div id="rs-unassigned-pills" style="margin-bottom: var(--space-2);"></div>
           <div id="rs-unassigned-caption" style="font-size:0.75rem; opacity:0.6; margin-bottom:var(--space-2);"></div>
           <div id="rs-unassigned-body" style="min-height: 120px;">
@@ -230,6 +230,20 @@ class RostersScreen extends Screen {
     ];
   }
 
+  _setLeftPanelTitle() {
+    const title = this.find('#rs-left-title');
+    if (!title) return;
+    let view = 'roster';
+    try { view = localStorage.getItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY) === 'team' ? 'team' : 'roster'; } catch (e) { /* private mode */ }
+    title.textContent = view === 'roster'
+      ? ((window.MessageCopy && MessageCopy.block('roster_sheet', 'board_members_title')) || '👤 Members, not on a roster')
+      : '📦 Unassigned';
+    const sub = this.find('#rs-subtitle');
+    if (sub) sub.textContent = view === 'roster'
+      ? ((window.MessageCopy && MessageCopy.block('roster_sheet', 'board_members_subtitle')) || 'Members on no roster on the left, league rosters on the right — filter each side independently')
+      : 'Unassigned on the left, team rosters on the right — filter each side independently';
+  }
+
   _buildUnassignedPills() {
     const host = this.find('#rs-unassigned-pills');
     if (!host) return;
@@ -269,11 +283,12 @@ class RostersScreen extends Screen {
         onSelect: (id) => {
           if (id == null) return;
           try { localStorage.setItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY, id); } catch (e) { /* private mode */ }
+          // Both panels: the left one is the member stacks on Roster,
+          // Unassigned on Team.
           for (const child of this._mountedChildren) {
-            if (child && child.columnScope === 'teams' && typeof child.setBoardView === 'function') {
-              child.setBoardView(id);
-            }
+            if (child && typeof child.setBoardView === 'function') child.setBoardView(id);
           }
+          this._setLeftPanelTitle();
         },
       },
       {
@@ -395,6 +410,7 @@ class RostersScreen extends Screen {
   _mountUnassignedPanel() {
     const host = this.find('#rs-unassigned-body');
     if (!host) return;
+    this._setLeftPanelTitle();
     const caption = this.find('#rs-unassigned-caption');
     if (caption) caption.textContent = this._captionForPill(this.unassignedPill);
 

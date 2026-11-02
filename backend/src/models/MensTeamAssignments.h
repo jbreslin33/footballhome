@@ -39,6 +39,9 @@ public:
         // ↔ Call In (team_persons.call_in, mig 637): an invite-only row
         // for a same-level player — its own category, never 📄 Paper.
         bool callIn = false;
+        // Team pill Practice Squad / Inactive (squad_statuses.code); empty =
+        // his group comes from inviteOnly + callIn.
+        std::string squadStatus;
         // Coach-defined ability rank within the team (1..N).  nullopt =
         // "no rank yet" — sort falls back to alphabetical (see
         // MensRoster.cpp comparator).  Written by

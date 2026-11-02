@@ -551,7 +551,7 @@ Response MensRosterController::handleOfficialRosterRefresh(const Request& reques
                  WHERE tp.team_id = $1 AND tp.removed_at IS NULL
                    AND (tp.roster_status_id IS NULL OR tp.roster_status_id IN
                          (SELECT id FROM roster_statuses
-                           WHERE code = 'not_on_roster' OR board_section IN ('proposed', 'pending_add')))
+                           WHERE code = 'not_on_roster' OR board_section IN ('proposed', 'pending_add', 'no_room')))
                    AND tp.person_id IN (
                          SELECT n.person_id FROM official_roster_names n
                           WHERE n.source_id = $2 AND n.person_id IS NOT NULL))SQL",
@@ -605,11 +605,20 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
     // "" = keep the current call-in (only while still invite-only).
     const std::string callIn = body.contains("callIn") && body["callIn"].is_boolean()
         ? (body["callIn"].get<bool>() ? "true" : "false") : "";
+    // Team pill Practice Squad / Inactive (squad_statuses.code); absent or ""
+    // clears it.  Both need inviteOnly, which carries the no-game-grants rules.
+    const std::string squadStatus = body.contains("squadStatus") && body["squadStatus"].is_string()
+        ? body["squadStatus"].get<std::string>() : "";
+    if (!squadStatus.empty() && !inviteOnly) return badRequest("squadStatus needs inviteOnly");
     if (!canManageTeam(request, teamId)) {
         return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
     }
     try {
         auto db = Database::getInstance();
+        if (!squadStatus.empty()
+            && db->query("SELECT 1 FROM squad_statuses WHERE code = $1 AND is_active", {squadStatus}).empty()) {
+            return badRequest("Unknown squadStatus");
+        }
         auto rows = db->query(
             // la_user_id is TEXT on persons AND person_la_user_ids —
             // comparing either to $1::bigint made every 📄 toggle 500
@@ -618,7 +627,8 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
             // Turning a spot back to full roster also ends a ↔ call-in
             // (mig 637: call_in only means anything with invite_only).
             "UPDATE team_persons tp SET invite_only = $3::bool, "
-            "       call_in = $3::bool AND COALESCE(NULLIF($5, '')::bool, tp.call_in) "
+            "       call_in = $3::bool AND COALESCE(NULLIF($5, '')::bool, tp.call_in), "
+            "       squad_status_id = (SELECT id FROM squad_statuses WHERE code = NULLIF($6, '')) "
             "  FROM persons p "
             " WHERE tp.person_id = p.id AND tp.team_id = $2::int AND tp.removed_at IS NULL "
             "   AND (p.id = $4::int "
@@ -627,7 +637,7 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
             "                    WHERE a.person_id = p.id AND a.la_user_id = NULLIF($1, ''))) "
             "RETURNING tp.person_id, tp.call_in",
             {userId > 0 ? std::to_string(userId) : "", std::to_string(teamId), inviteOnly ? "true" : "false",
-             std::to_string(personId), callIn});
+             std::to_string(personId), callIn, squadStatus});
         if (rows.empty()) return notFound("No assignment exists for that player on that team");
         std::ostringstream out;
         out << "{\"leagueAppsUserId\":" << userId

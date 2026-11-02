@@ -55,7 +55,7 @@ const char* kBaseCtes = R"SQL(
       -- check per (person x event) row, and a function call there
       -- (fh_event_posted walks weeks internally) piled queries into
       -- minutes on 10/21.  Pure arithmetic per row only.
-      SELECT DISTINCT t.id, t.name, t.label, t.board_sort_order,
+      SELECT DISTINCT t.id, t.name, t.label, t.board_sort_order, t.games_need_roster,
              fh_schedule_window_end(t.club_id, t.club_section_id, now()) AS window_end,
              pol.weekday_game_notice_days AS notice_days,
              COALESCE(pol.time_zone, 'America/New_York') AS tzname
@@ -76,12 +76,17 @@ const char* kBaseCtes = R"SQL(
       -- (rank 1), and club staff (mig 430, rank 3) for every board team of
       -- their club.  role_rank picks the label on an event a dual-role
       -- person reaches more than one way — coaching beats playing.
-      SELECT tp.person_id, tp.team_id, tp.joined_at, 2 AS role_rank
+      SELECT tp.person_id, tp.team_id, tp.joined_at, 2 AS role_rank, tp.invite_only AS practice_only
         FROM team_persons tp
         JOIN tm ON tm.id = tp.team_id
         LEFT JOIN roster_statuses rs ON rs.id = tp.roster_status_id
+        LEFT JOIN squad_statuses ss ON ss.id = tp.squad_status_id
        WHERE tp.removed_at IS NULL
-         AND NOT tp.invite_only   -- 📄 paper spot (mig 619): owes no answer
+         -- 📄 paper spot (mig 619): owes no answer.  A youth player not On
+         -- Roster still owes practices (mig 899).  A Team pill group decides
+         -- for itself: Practice Squad owes practices, Inactive owes nothing.
+         AND CASE WHEN ss.id IS NOT NULL THEN ss.owes_practice_rsvps
+                  ELSE NOT tp.invite_only OR tm.games_need_roster END
          AND COALESCE(rs.show_in_rsvp, true)
          AND ($4::int = 0 OR tp.person_id = $4::int)
          -- Girls play on boys teams (club_sections.schedule_section_id), so
@@ -91,14 +96,14 @@ const char* kBaseCtes = R"SQL(
          -- (owner 2026-09-24: "there should be 11 players on team right?").
          AND ($1 <> 'G' OR EXISTS (SELECT 1 FROM girl g WHERE g.person_id = tp.person_id))
       UNION ALL
-      SELECT c.person_id, tc.team_id, tc.started_at, 1
+      SELECT c.person_id, tc.team_id, tc.started_at, 1, false
         FROM team_coaches tc
         JOIN coaches c ON c.id = tc.coach_id
         JOIN tm ON tm.id = tc.team_id
        WHERE tc.ended_at IS NULL
          AND ($4::int = 0 OR c.person_id = $4::int)
       UNION ALL
-      SELECT cs.person_id, tm.id, cs.started_at, 3
+      SELECT cs.person_id, tm.id, cs.started_at, 3, false
         FROM club_staff cs
         JOIN teams t ON t.club_id = cs.club_id
         JOIN tm ON tm.id = t.id
@@ -132,6 +137,7 @@ const char* kBaseCtes = R"SQL(
          -- its games — only invited ones do (next branch).  The coach and
          -- staff hats (role_rank 1/3) keep every game.
          AND NOT (r.role_rank = 2 AND fh_team_callup_only(r.team_id))
+         AND NOT (r.practice_only AND fe.kind <> 'practice')
          AND NOT EXISTS (SELECT 1 FROM rsvp_suspensions s
                           WHERE s.person_id = r.person_id
                             AND (s.team_id IS NULL OR s.team_id = r.team_id)

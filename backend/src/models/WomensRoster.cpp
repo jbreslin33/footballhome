@@ -465,6 +465,7 @@ WomensRoster::Result WomensRoster::run(bool includeAll,
                 row["onRoster"]       = cell ? cell->onRoster : false;
                 row["inviteOnly"]     = cell ? cell->inviteOnly : false;   // 📄 paper spot (mig 619)
                 row["callIn"]         = cell ? cell->callIn : false;       // ↔ call-in (mig 637)
+                row["squadStatus"]    = cell ? cell->squadStatus : std::string();   // Team pill Practice Squad / Inactive
                 row["coachSortOrder"] = (cell && cell->coachSortOrder)
                     ? json(*cell->coachSortOrder)
                     : json(nullptr);

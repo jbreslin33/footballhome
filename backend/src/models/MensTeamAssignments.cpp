@@ -57,7 +57,8 @@ MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
     const auto rows = db_->query(
         "SELECT p.la_user_id AS leagueapps_user_id, "
         "       tp.team_id, tp.on_roster, tp.invite_only, tp.call_in, tp.coach_sort_order, lr.name AS lineup_role, "
-        "       rs.code AS roster_status "
+        "       rs.code AS roster_status, "
+        "       (SELECT ss.code FROM squad_statuses ss WHERE ss.id = tp.squad_status_id) AS squad_status "
         "  FROM team_persons tp "
         "  JOIN teams t ON t.id = tp.team_id "
         "   AND t.gender_category = $1 "
@@ -75,6 +76,7 @@ MensTeamAssignments::ByUser MensTeamAssignments::loadAll() {
         c.onRoster = !row["on_roster"].is_null() && row["on_roster"].as<bool>();
         c.inviteOnly = !row["invite_only"].is_null() && row["invite_only"].as<bool>();
         c.callIn = !row["call_in"].is_null() && row["call_in"].as<bool>();
+        if (!row["squad_status"].is_null()) c.squadStatus = row["squad_status"].c_str();
         if (!row["coach_sort_order"].is_null()) {
             c.coachSortOrder = row["coach_sort_order"].as<int>();
         }
@@ -93,7 +95,8 @@ std::vector<MensTeamAssignments::Cell> MensTeamAssignments::cellsForPerson(long 
     std::vector<Cell> out;
     const auto rows = db_->query(
         "SELECT tp.team_id, tp.on_roster, tp.invite_only, tp.call_in, tp.coach_sort_order, lr.name AS lineup_role, "
-        "       rs.code AS roster_status "
+        "       rs.code AS roster_status, "
+        "       (SELECT ss.code FROM squad_statuses ss WHERE ss.id = tp.squad_status_id) AS squad_status "
         "  FROM team_persons tp "
         "  JOIN teams t ON t.id = tp.team_id "
         "   AND t.gender_category = $1 "
@@ -111,6 +114,7 @@ std::vector<MensTeamAssignments::Cell> MensTeamAssignments::cellsForPerson(long 
         c.onRoster = !row["on_roster"].is_null() && row["on_roster"].as<bool>();
         c.inviteOnly = !row["invite_only"].is_null() && row["invite_only"].as<bool>();
         c.callIn = !row["call_in"].is_null() && row["call_in"].as<bool>();
+        if (!row["squad_status"].is_null()) c.squadStatus = row["squad_status"].c_str();
         if (!row["coach_sort_order"].is_null()) {
             c.coachSortOrder = row["coach_sort_order"].as<int>();
         }

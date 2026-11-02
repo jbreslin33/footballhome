@@ -574,7 +574,7 @@ class RosterScreenBase extends Screen {
   // "planned drops stay in official, default roster").
   //
   // ROSTER (default) — the league side:
-  //   OFFICIAL ROSTER — the league's own list (the 🌐 mirror), one row per
+  //   ON ROSTER — the league's own list (the 🌐 mirror), one row per
   //     list name in the list's order.  A name matched to a player in this
   //     column is his full card (every control but remove — see
   //     renderMoveDropdown + the mig 772 trigger); a planned drop
@@ -582,17 +582,18 @@ class RosterScreenBase extends Screen {
   //     split out, so the section stays 1:1 with the list.  A list name
   //     with no FH person, or not on this team in FH, is a read-only row.
   //     A column with no list uses the On Roster status instead.
-  //   PROPOSED ADDS / PENDING ADD — board_section proposed / pending_add
-  //     (a step we owe / submitted), each grouped by step.
-  //   DROPPING / PENDING DROP — board_section drop / pending_drop, as name
-  //     + official # rows (their cards stay in OFFICIAL, flagged).
-  //   NEEDS ADD — on the team, off the list, no step yet (2026-10-29).
-  //   Nothing else: call-ins and call-downs are a Team thing.
+  //   NEEDS ADD — board_section proposed + pending_add: only players
+  //     someone picked (owner 2026-11-02), grouped by step.
+  //   NEEDS DROP — board_section drop + pending_drop, as name + official #
+  //     rows (their cards stay in ON ROSTER, flagged).
+  //   Nothing else: a member on no list sits in the team-free left column
+  //   (renderMemberStacks), so a column never implies he belongs to it.
   //   The card's status dropdown is the move control (mig 777).
   // TEAM — the functional (RSVP) side, by columnCategoryOf; each card
   //   wears a 📋 chip per official roster he is on: PLAYS, ⭐ CALL-DOWNS
   //   (standing invites riding in from other columns), ↔ CALL INS,
-  //   📄 NOT FUNCTIONAL (paper spots), 🩹 INJURED.
+  //   PRACTICE SQUAD, 📄 NOT FUNCTIONAL (paper spots), 🩹 INJURED,
+  //   💤 INACTIVE.
   // Every card keeps its true coach rank (#N) from the full column.
   // Section copy is message_templates kind roster_sheet (migs 770–775).
   // Read fresh each render so a cached board (Boys while Mens was shown)
@@ -611,9 +612,11 @@ class RosterScreenBase extends Screen {
 
   static get BOARD_VIEW_STORAGE_KEY() { return 'fh.teams.boardView'; }
 
-  // ✅ active / 📄 paper / ↔ callin / 🩹 injured — the column pills'
-  // categories, also the Team view's sections.
+  // ✅ active / 📄 paper / ↔ callin / 🩹 injured / practice_squad / inactive —
+  // the column pills' categories, also the Team view's sections.  An injured
+  // player stays in INJURED whatever his squad group.
   columnCategoryOf(p) {
+    if (p.squadStatus) return RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : p.squadStatus;
     return p.inviteOnly === true ? (p.callIn === true ? 'callin' : 'paper')
       : (RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : 'active');
   }
@@ -755,13 +758,25 @@ class RosterScreenBase extends Screen {
       .map(c => `<span title="On the league's official roster for ${esc(c.label || '')}"
           style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
                  background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">📋 ${esc(RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()))}</span>`).join(' ');
+    // Roster pill: he's on this list but also on a team here whose list
+    // doesn't have him, a gap the left column can't show because he is on
+    // a roster.  Skipped when he's already headed there, it's only a
+    // call-in or paper row, or a league rule bars him from that list.
+    const listGapChips = (p) => {
+      if (!this.onLeagueList(col.teamId, p.personId)) return '';
+      return this.listGapTeams(p.personId, data, col.teamId)
+        .map(c => { const team = RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim());
+          return `<span style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
+                 background:rgba(245,158,11,0.16); border:1px solid #f59e0b; color:#fcd34d;">${esc(copy('board_also_on_team', { team }) || `⚠ also on ${team} team, not its list`)}</span>`; })
+        .join('');
+    };
     // Cut (migs 807/810): on the league list with no live playing LeagueApps
     // membership — still official (counts, keeps his #) until the league
     // drops him; listed in the red ✂ CUT block at the foot of OFFICIAL.
     const cutFlag = [copy('board_official_cut') || '✂ not in LeagueApps — needs to be dropped', '#ef4444', '#fca5a5'];
     const card = (p) => {
       const rank = bucket.indexOf(p) + 1;
-      const chips = this.boardView === 'team' ? listChips(p) : '';
+      const chips = this.boardView === 'team' ? listChips(p) : listGapChips(p);
       const html = this.renderPlayer(chips ? { ...p, nameChipHtml: (p.nameChipHtml || '') + chips } : p,
         data.columns, col, rank, bucket.length);
       const flag = this.boardView === 'roster' && laneFlag[sectionOf(p)];
@@ -797,19 +812,22 @@ class RosterScreenBase extends Screen {
     const AMBER = ['#f59e0b', 'rgba(245,158,11,0.14)'];
     const BLUE  = ['#60a5fa', 'rgba(96,165,250,0.14)'];
     const ROSE  = ['#fb7185', 'rgba(251,113,133,0.14)'];
+    const GREY  = ['#94a3b8', 'rgba(148,163,184,0.14)'];
     const ORANGE = ['#f97316', 'rgba(249,115,22,0.14)'];
     const RED    = ['#ef4444', 'rgba(239,68,68,0.14)'];
     const riders = ridersCount ? head(copy('board_calldowns_h') || '⭐ CALL-DOWNS', ridersCount, ...BLUE) + ridersHtml : '';
 
     if (this.boardView === 'team') {
-      const cats = { active: [], callin: [], paper: [], injured: [] };
+      const cats = { active: [], callin: [], paper: [], injured: [], practice_squad: [], inactive: [] };
       for (const p of shown) cats[this.columnCategoryOf(p)].push(p);
       return this.renderFromLaPicker(col)
         + section(copy('board_plays_h') || 'PLAYS', cats.active, ...GREEN, true)
         + riders
         + section(copy('board_callins_h') || '↔ CALL INS', cats.callin, ...BLUE)
+        + section(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, ...BLUE)
         + section(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, ...AMBER)
-        + section(copy('board_injured_h') || '🩹 INJURED', cats.injured, ...ROSE);
+        + section(copy('board_injured_h') || '🩹 INJURED', cats.injured, ...ROSE)
+        + section(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, ...GREY);
     }
 
     const nameRow = (i, name, note, red = false) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
@@ -919,22 +937,27 @@ class RosterScreenBase extends Screen {
       ? head(copy('board_ineligible_h') || '⚠ INELIGIBLE — league rule, fix before the league does', inelRows.length, ...RED)
         + inelRows.map(r => r.html).join('')
       : '';
-    const officialHtml = head(copy('board_official_h') || 'OFFICIAL ROSTER', officialCount, ...GREEN, extra) + rows + inelHtml + cutHtml;
-    // An add lane, one sub-group per paperwork step in pipeline order.
-    const addSection = (lane, label, colors) => {
-      const list = rest.filter(p => sectionOf(p) === lane);
+    const officialHtml = head(copy('board_official_h') || 'ON ROSTER', officialCount, ...GREEN, extra) + rows + inelHtml + cutHtml;
+    // NEEDS ADD — one sub-group per paperwork step, in pipeline order.
+    const needsAddSection = () => {
+      const list = rest.filter(p => ['proposed', 'pending_add'].includes(sectionOf(p)));
       if (!list.length) return '';
-      return head(label, list.length, ...colors)
-        + RosterScreenBase.ROSTER_STATUSES.filter(st => st.boardSection === lane).map(st => {
+      return head(copy('board_needs_add_h') || 'NEEDS ADD', list.length, ...BLUE)
+        + RosterScreenBase.ROSTER_STATUSES.filter(st => ['proposed', 'pending_add'].includes(st.boardSection)).map(st => {
           const sub = list.filter(p => p.rosterStatus === st.code);
           return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(ruleCard).join('') : '';
         }).join('');
     };
-    // A drop lane — name + official # rows; the cards stay in OFFICIAL
-    // ROSTER (1:1 with the list), the dropdown there moves them.
-    const dropSection = (lane, label, colors) => lanes[lane].length
-      ? head(label, lanes[lane].length, ...colors) + lanes[lane].map(({ name, n, note }) => nameRow(n - 1, name, note, !!note)).join('')
-      : '';
+    // NEEDS DROP — name + official # rows; the cards stay in ON ROSTER
+    // (1:1 with the list), the dropdown there moves them.  A drop already
+    // asked of the league says so.
+    const needsDropSection = () => {
+      const asked = copy('board_pending_drop_chip') || '⏳ PENDING DROP';
+      const list = [...lanes.drop, ...lanes.pending_drop.map(d => ({ ...d, note: asked }))];
+      return list.length
+        ? head(copy('board_dropping_h') || 'NEEDS DROP', list.length, ...ORANGE) + list.map(({ name, n, note }) => nameRow(n - 1, name, note)).join('')
+        : '';
+    };
     // PROJECTED ROSTER — the list once the moves land: OFFICIAL minus the
     // drop lanes (their # shown, so the league list is easy to cross off),
     // then the adds with their step.  Collapsed; only when there are moves.
@@ -949,68 +972,101 @@ class RosterScreenBase extends Screen {
             copy('board_projected_add', { step: stepName(p.rosterStatus) }) || `+ ${stepName(p.rosterStatus)}`)).join('');
       return `<details><summary style="list-style:none; cursor:pointer;">${head(copy('board_projected_h') || 'PROJECTED ROSTER', projected, ...colors, overNote)}</summary>${body}</details>`;
     };
-    // NEEDS ADD (owner 2026-10-29) — on this team in FH, not on its
-    // official roster, no roster step yet: the moves nobody has started.
-    // Derived, never typed: a step moves him to PROPOSED ADDS, Not on
-    // Roster clears him; ↔ call-ins only play here when invited, so never.
-    // Only on a team that keeps a league roster (a list, or anyone On
-    // Roster) — an intramural column would list everybody.
-    // Never someone a rule bars from this list (on a list this team
-    // excludes, or one that excludes this team).
-    // A man already headed onto that list (a PROPOSED / PENDING ADD there)
-    // counts too — Somi, proposed for APSL, is not a Reserves add.
-    const barred = new Set();
-    const bar = (tid) => {
-      (listIds(tid) || []).forEach(id => barred.add(id));
-      ((data.buckets && data.buckets[String(tid)]) || []).forEach(p => {
-        if (['proposed', 'pending_add'].includes(sectionOf(p))) barred.add(Number(p.personId));
-      });
+    // League only (owner 2026-11-02: "roster should just be roster
+    // functions"); who plays or trains is the Team pill's job.
+    return officialHtml + needsAddSection() + needsDropSection() + projectedSection();
+  }
+
+  // Columns whose league list is missing a player who plays there (see
+  // listGapChips).  A team with no list has nothing to be missing from.
+  listGapTeams(personId, data, exceptTeamId) {
+    const id = Number(personId);
+    const rules = data.rosterRules || {};
+    const barred = (a, b) => ((rules[String(a)] || {}).excludes || []).map(Number).includes(Number(b));
+    return (data.columns || []).filter(c => {
+      if (!c.teamId || Number(c.teamId) === Number(exceptTeamId)) return false;
+      if (!this.leagueListFor(c.teamId) || this.onLeagueList(c.teamId, id)) return false;
+      if (barred(c.teamId, exceptTeamId) || barred(exceptTeamId, c.teamId)) return false;
+      const row = ((data.buckets || {})[String(c.teamId)] || []).find(p => Number(p.personId) === id);
+      if (!row || row.inviteOnly === true) return false;
+      const st = RosterScreenBase.rosterStatusByCode(row.rosterStatus);
+      return !(st && ['proposed', 'pending_add'].includes(st.boardSection));
+    });
+  }
+
+  // Members on no league list, once each, whatever teams they sit on: the
+  // Roster pill's left column.  A team with no list goes by On Roster status.
+  // Anyone headed onto a list is that team's NEEDS ADD instead.
+  membersOffRosters(data) {
+    const cols = (data.columns || []).filter(c => c.teamId);
+    const people = new Map();
+    const keyOf = (p) => p.personId != null ? `p${p.personId}` : `u${p.leagueAppsUserId}`;
+    const entry = (p) => {
+      const k = keyOf(p);
+      if (!people.has(k)) people.set(k, { p, rows: [] });
+      return people.get(k);
     };
-    rules.excludes.forEach(bar);
-    Object.entries(data.rosterRules || {}).forEach(([tid, r]) => {
-      if ((r.excludes || []).map(Number).includes(Number(col.teamId))) bar(tid);
-    });
-    // A youth file list grants nothing, so a hand-set On Roster the file
-    // doesn't carry reads here too instead of vanishing (mig 868).
-    const staleOnFile = (p) => !!(official && official.fromFile) && !lanes[sectionOf(p)]
-      && RosterScreenBase.countsAsOnRoster(p.rosterStatus);
-    const needsAdd = officialCount > 0
-      ? rest.filter(p => (!p.rosterStatus || staleOnFile(p)) && !(p.inviteOnly === true && p.callIn === true) && !barred.has(Number(p.personId)))
-      : [];
-    // …plus a requires team's list players who are not here at all yet
-    // (owner: on Liga 1 but not added to Reserves → NEEDS ADD).
-    const listedHere = new Set(official ? official.personIds.filter(x => x != null).map(Number) : []);
-    const inBucket = new Set(bucket.map(p => Number(p.personId)));
-    const seen = new Set();
-    const fromLists = [];
-    rules.requires.forEach(tid => {
-      const l = this.leagueListFor(tid);
-      if (!l) return;
-      const theirs = new Map(((data.buckets && data.buckets[String(tid)]) || []).map(p => [Number(p.personId), p]));
-      l.personIds.forEach((pid, i) => {
-        const id = pid == null ? null : Number(pid);
-        if (id == null || listedHere.has(id) || inBucket.has(id) || barred.has(id) || seen.has(id)) return;
-        seen.add(id);
-        const p = theirs.get(id);
-        fromLists.push({ name: p ? nameOf(p) : l.names[i], team: teamLabel(tid) });
-      });
-    });
-    const needsAddHtml = (needsAdd.length || fromLists.length)
-      ? head(copy('board_needs_add_h') || 'NEEDS ADD — on the team, not on the official roster', needsAdd.length + fromLists.length, ...AMBER)
-        + ordered(needsAdd).map(ruleCard).join('')
-        + fromLists.map((r, k) => nameRow(needsAdd.length + k, r.name,
-            copy('board_needs_add_from', { team: r.team }) || `on the ${r.team} roster — not added here`)).join('')
+    for (const p of (data.unassigned || [])) entry(p);
+    for (const c of cols) {
+      for (const p of ((data.buckets || {})[String(c.teamId)] || [])) entry(p).rows.push({ col: c, p });
+    }
+    const section = (p) => {
+      const st = RosterScreenBase.rosterStatusByCode(p.rosterStatus);
+      return (st && st.boardSection) || null;
+    };
+    const stacks = { onboard: [], notOnRoster: [], noRoom: [] };
+    for (const e of people.values()) {
+      const listed = cols.some(c => this.onLeagueList(c.teamId, e.p.personId));
+      const held = e.rows.some(r => ['proposed', 'pending_add'].includes(section(r.p))
+        || (!this.leagueListFor(r.col.teamId) && RosterScreenBase.countsAsOnRoster(r.p.rosterStatus)));
+      if (listed || held) continue;
+      if (e.rows.some(r => section(r.p) === 'no_room')) stacks.noRoom.push(e);
+      else if (e.p.welcome && e.p.welcome.due) stacks.onboard.push(e);
+      else stacks.notOnRoster.push(e);
+    }
+    const name = (e) => e.p.fullName || `${e.p.firstName || ''} ${e.p.lastName || ''}`.trim();
+    Object.values(stacks).forEach(list => list.sort((a, b) => name(a).localeCompare(name(b))));
+    return stacks;
+  }
+
+  // The left column on the Roster pill (owner 2026-11-02): one team-free
+  // list, stacked.  Each card works on his first team; further teams get
+  // their own status dropdown under it so he can be picked for any of them.
+  renderMemberStacks(col, data) {
+    const esc = RosterScreenBase.escapeHtml;
+    const copy = (tier) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || '';
+    const stacks = this.membersOffRosters(data);
+    const label = (c) => RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim());
+    const card = (e, i, n) => {
+      const tags = e.rows.map(r => {
+        const st = RosterScreenBase.rosterStatusByCode(r.p.rosterStatus);
+        const text = label(r.col) + (st && st.boardSection === 'no_room' ? `: ${st.displayName}` : '');
+        return `<span style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
+          background:rgba(96,165,250,0.16); border:1px solid #60a5fa; color:#bfdbfe;">${esc(text)}</span>`;
+      }).join('');
+      const home = e.rows[0];
+      const p = home ? home.p : e.p;
+      const html = this.renderPlayer({ ...p, nameChipHtml: (p.nameChipHtml || '') + tags }, data.columns, home ? home.col : col, i + 1, n);
+      const more = e.rows.slice(1).map(r => {
+        const select = this.renderStatusSelect(r.p, r.col, this._canEditCoachesFor(r.col), { withHealth: false });
+        return select ? `<div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#cbd5e1; padding:0 6px;">${esc(label(r.col))} ${select}</div>` : '';
+      }).join('');
+      return html + more;
+    };
+    const stack = (title, list, color, bg) => list.length
+      ? `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:0.8rem; font-weight:900;
+           letter-spacing:0.06em; color:${color}; background:${bg}; border:1px solid ${color}; border-left:5px solid ${color};
+           border-radius:4px; padding:5px 8px; margin:8px 0 4px;">
+           <span>${esc(title)}</span>
+           <span style="background:${color}; color:#0f172a; border-radius:10px; padding:0 8px; font-size:0.78rem;">${list.length}</span></div>`
+        + list.map((e, i) => card(e, i, list.length)).join('')
       : '';
-    // Owner 2026-10-27: the Roster pill is "basically a way for me to
-    // organize moves" — OFFICIAL, the add lanes, the drop lanes; nothing
-    // else (non-roster players and call-downs are a Team-pill thing).
-    return officialHtml
-      + needsAddHtml
-      + addSection('proposed', copy('board_proposed_h') || 'PROPOSED ADDS', BLUE)
-      + addSection('pending_add', copy('board_pending_add_h') || 'PENDING ADD', AMBER)
-      + dropSection('drop', copy('board_dropping_h') || 'DROPPING', ORANGE)
-      + dropSection('pending_drop', copy('board_pending_drop_h') || 'PENDING DROP', RED)
-      + projectedSection();
+    const body = stack(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', stacks.onboard, '#e879f9', 'rgba(232,121,249,0.14)')
+      + stack(copy('board_not_on_roster_h') || 'NOT ON ROSTER', stacks.notOnRoster, '#f59e0b', 'rgba(245,158,11,0.14)')
+      + stack(copy('board_no_room_h') || 'NO ROOM', stacks.noRoom, '#60a5fa', 'rgba(96,165,250,0.14)');
+    return `<div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:6px; border-top:3px solid #475569; min-width:${this.colBoxMinWidth()};">
+        <div style="display:flex; flex-direction:column; gap:6px; min-height:8px;">${body || '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'}</div>
+      </div>`;
   }
 
   // The league's own list for a team column — {names, personIds} from the
@@ -1259,17 +1315,21 @@ class RosterScreenBase extends Screen {
     const copy = (tier) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || '';
     const H    = RosterScreenBase.HEALTH;
     const injury = H.people[player.personId] || null;
-    const teamCode = player.inviteOnly === true ? (player.callIn === true ? 'callin' : 'paper') : 'plays';
+    const teamCode = player.squadStatus || (player.inviteOnly === true ? (player.callIn === true ? 'callin' : 'paper') : 'plays');
     const current  = injury ? injury.code : teamCode;
     const COLORS = {
       plays:  ['#22c55e', 'rgba(34,197,94,0.18)', '#bbf7d0'],
       paper:  ['#f59e0b', 'rgba(245,158,11,0.22)', '#fcd34d'],
       callin: ['#a78bfa', 'rgba(167,139,250,0.22)', '#ddd6fe'],
+      practice_squad: ['#60a5fa', 'rgba(96,165,250,0.22)', '#bfdbfe'],
+      inactive:       ['#94a3b8', 'rgba(148,163,184,0.22)', '#e2e8f0'],
     };
     const opts = [
       { code: 'plays',  label: copy('team_status_plays')  || '✅ Plays' },
+      { code: 'practice_squad', label: copy('team_status_practice_squad') || 'Practice Squad' },
       { code: 'paper',  label: copy('team_status_paper')  || '📄 Paper spot' },
       { code: 'callin', label: copy('team_status_callin') || '↔ Call-in' },
+      { code: 'inactive', label: copy('team_status_inactive') || '💤 Inactive' },
       ...H.statuses.filter(st => st.isInjured).map(st => ({ code: st.code, label: (st.icon ? st.icon + ' ' : '') + st.displayName })),
     ];
     const style = injury ? this.healthStyle(current)
@@ -1359,7 +1419,8 @@ class RosterScreenBase extends Screen {
       } else {
         if (value !== wrap.dataset.teamCode) {
           await put('/api/mens-roster/invite-only', 'POST',
-            { personId, teamId, inviteOnly: value !== 'plays', callIn: value === 'callin' });
+            { personId, teamId, inviteOnly: value !== 'plays', callIn: value === 'callin',
+              squadStatus: ['practice_squad', 'inactive'].includes(value) ? value : '' });
         }
         if (H.people[personId]) {
           const healthy = H.statuses.find(st => !st.isInjured);
@@ -1370,6 +1431,7 @@ class RosterScreenBase extends Screen {
       alert(`Could not save team status: ${err.message}`);
     }
     if (typeof this.load === 'function') await this.load({ quiet: true });
+    if (typeof this.onMembershipChanged === 'function') this.onMembershipChanged();
   }
 
   // Optimistic: flip the select's own state immediately, roll back only
@@ -1424,8 +1486,9 @@ class RosterScreenBase extends Screen {
         throw new Error(text.slice(0, 200));
       }
       select.querySelectorAll('option').forEach(o => { o.defaultSelected = o.selected; });
-      // the card may change section (official ↔ non roster)
+      // the card may change section, or cross between the panels
       if (typeof this.load === 'function') this.load({ quiet: true });
+      if (typeof this.onMembershipChanged === 'function') this.onMembershipChanged();
     } catch (err) {
       select.value = prevValue;
       this.applyRosterStatusStyle(select);
@@ -2026,6 +2089,69 @@ class RosterScreenBase extends Screen {
     return smsBtn + emailBtn;
   }
 
+  // ── One CONTACT button (owner 2026-11-02) ──────────────────────────
+  //
+  // "should be one contact button. get rid of links and they go in
+  // contact popup": the card's ⋯ menu carries one button; everything else
+  // lives in the shared ContactPopup (components/contact-popup.js).
+  // Boards hand it recipients and their board's own messages.  Fuchsia
+  // while a welcome is owed, and the welcome is then the preselected
+  // message.  Only for people with a phone or email.
+  renderContactButton(p, { recipients, messages, vcard = null, title = '' }) {
+    if (!window.ContactPopup) return '';
+    const people = (recipients || []).filter(r => r.personId && (r.phone || r.email));
+    if (!people.length) return '';
+    const due = !!(p.welcome && p.welcome.due);
+    const list = [...messages, ContactPopup.signInMessage(), this.welcomeMessage(p)];
+    return ContactPopup.button({
+      key: `teams:${this.constructor.name}:${p.personId}`,
+      screen: this,
+      recipients: people,
+      messages: list,
+      defaultKey: due ? 'welcome' : list[0].key,
+      flagged: due,
+      title,
+      vcard,
+    });
+  }
+
+  // A compose-link preset (message_templates row) as a popup message.
+  presetMessage(preset) {
+    return { key: `reg:${preset.label}`, label: preset.label, subject: preset.subject, body: preset.body };
+  }
+
+  async _mintHref(url, payload, channel) {
+    const res = await this.auth.fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error((await res.text()).slice(0, 200) || `HTTP ${res.status}`);
+    const data = await res.json();
+    const href = channel === 'email' ? (data.gmail_href || data.mailto_href) : data.sms_href;
+    if (!href) throw new Error('No message came back');
+    return { ...data, href };
+  }
+
+  // Recipient may be a parent; the card's player is named in the copy.
+  welcomeMessage(p) {
+    const needsDocs = !!p.welcomeNeedsDocs;
+    return {
+      key: 'welcome',
+      label: MessageCopy.block('contact_popup', 'msg_welcome') || '👋 Welcome',
+      resolve: (r, channel) => this._mintHref('/api/welcomes', {
+        person_id: r.personId,
+        player_person_id: r.personId !== p.personId ? p.personId : null,
+        channel,
+        contact: channel === 'email' ? r.email : r.phone,
+        needs_docs: needsDocs,
+      }, channel),
+      onSent: (data) => {
+        if (data && data.welcome) p.welcome = data.welcome;
+        document.querySelectorAll(`[data-contact-popup="teams:${this.constructor.name}:${p.personId}"]`)
+          .forEach(b => { b.style.background = '#334155'; });
+      },
+    };
+  }
+
   // ── Per-card WELCOME buttons (owner 2026-09-06) ─────────────────────
   //
   // "We need a welcome to Lighthouse email after they sign up … a button
@@ -2055,78 +2181,6 @@ class RosterScreenBase extends Screen {
     const contactPhone = contact.phone || null;
     const contactEmail = contact.email || null;
     if (!contactPhone && !contactEmail) return '';
-  // ── One CONTACT button (owner 2026-11-02) ──────────────────────────
-  //
-  // "should be one contact button. get rid of links and they go in
-  // contact popup": the card's ⋯ menu carries one button; everything else
-  // lives in the shared ContactPopup (components/contact-popup.js).
-  // Boards hand it recipients and their board's own messages.  Fuchsia
-  // while a welcome is owed, and the welcome is then the preselected
-  // message.  Only for people with a phone or email.
-  renderContactButton(p, { recipients, messages, vcard = null, title = '' }) {
-    if (!window.ContactPopup) return '';
-    const people = (recipients || []).filter(r => r.personId && (r.phone || r.email));
-    if (!people.length) return '';
-    const due = !!(p.welcome && p.welcome.due);
-    const list = [...messages, this.signInMessage(), this.welcomeMessage(p)];
-    return ContactPopup.button({
-      key: `teams:${this.constructor.name}:${p.personId}`,
-      screen: this,
-      recipients: people,
-      messages: list,
-      defaultKey: due ? 'welcome' : list[0].key,
-      flagged: due,
-      title,
-      vcard,
-    });
-  }
-
-  // A compose-link preset (message_templates row) as a popup message.
-  presetMessage(preset) {
-    return { key: `reg:${preset.label}`, label: preset.label, subject: preset.subject, body: preset.body };
-  }
-
-  async _mintHref(url, payload, channel) {
-    const res = await this.auth.fetch(url, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error((await res.text()).slice(0, 200) || `HTTP ${res.status}`);
-    const data = await res.json();
-    const href = channel === 'email' ? (data.gmail_href || data.mailto_href) : data.sms_href;
-    if (!href) throw new Error('No message came back');
-    return { ...data, href };
-  }
-
-  signInMessage() {
-    return {
-      key: 'signin',
-      label: MessageCopy.block('contact_popup', 'msg_signin') || '🔗 Sign-in link',
-      resolve: (r, channel) => this._mintHref('/api/auth/magic-link/mint',
-        { person_id: r.personId, channel, contact: channel === 'email' ? r.email : r.phone }, channel),
-    };
-  }
-
-  // Recipient may be a parent; the card's player is named in the copy.
-  welcomeMessage(p) {
-    const needsDocs = !!p.welcomeNeedsDocs;
-    return {
-      key: 'welcome',
-      label: MessageCopy.block('contact_popup', 'msg_welcome') || '👋 Welcome',
-      resolve: (r, channel) => this._mintHref('/api/welcomes', {
-        person_id: r.personId,
-        player_person_id: r.personId !== p.personId ? p.personId : null,
-        channel,
-        contact: channel === 'email' ? r.email : r.phone,
-        needs_docs: needsDocs,
-      }, channel),
-      onSent: (data) => {
-        if (data && data.welcome) p.welcome = data.welcome;
-        document.querySelectorAll(`[data-contact-popup="teams:${this.constructor.name}:${p.personId}"]`)
-          .forEach(b => { b.style.background = '#334155'; });
-      },
-    };
-  }
-
 
     const w    = (p && p.welcome) || {};
     const due  = !!w.due;
@@ -2377,7 +2431,11 @@ class RosterScreenBase extends Screen {
         if (everyone || RosterScreenBase.countsAsOnRoster(p.rosterStatus)) people.add(p.personId);
       }
     }
-    const n = people.size;
+    let n = people.size;
+    // The left column on the Roster pill counts its stacks.
+    if (this.columnScope === 'unassigned' && this.boardView === 'roster') {
+      n = Object.values(this.membersOffRosters(data)).reduce((sum, list) => sum + list.length, 0);
+    }
     const copy = (window.MessageCopy && MessageCopy.block('roster_sheet', 'board_total', { n })) || `${n} players`;
     return `<span data-board-total style="font-size:0.85rem; font-weight:700;">${copy}</span>`;
   }
@@ -2638,7 +2696,7 @@ class RosterScreenBase extends Screen {
     // ↔ Call In (mig 637) is an invite-only row too, but its own
     // category — a same-level player, not a 📄 roster-filler.
     const catOf = (p) => this.columnCategoryOf(p);
-    const cats = { active: [], paper: [], callin: [], injured: [] };
+    const cats = { active: [], paper: [], callin: [], injured: [], practice_squad: [], inactive: [] };
     for (const p of players) cats[catOf(p)].push(p);
     this.catOff = this.catOff || (() => { try { return JSON.parse(localStorage.getItem(RosterScreenBase.CAT_OFF_STORAGE_KEY) || '{}'); } catch (e) { return {}; } })();
     const off = (cat) => !!this.catOff[`${col.teamId}:${cat}`];
@@ -2728,7 +2786,9 @@ class RosterScreenBase extends Screen {
         ${catPill('active', '✅', 'Active', cats.active.length + riders.length, '#4ade80')}
         ${catPill('paper', '📄', 'Paper', cats.paper.length, '#f59e0b')}
         ${catPill('callin', '', MessageCopy.block('invite_chip', 'cat_call_in') || '↔ Call In', cats.callin.length, '#a78bfa')}
+        ${catPill('practice_squad', '', MessageCopy.block('roster_sheet', 'team_status_practice_squad') || 'Practice Squad', cats.practice_squad.length, '#60a5fa')}
         ${catPill('injured', '🩹', 'Injured', cats.injured.length, '#f87171')}
+        ${catPill('inactive', '', MessageCopy.block('roster_sheet', 'team_status_inactive') || '💤 Inactive', cats.inactive.length, '#94a3b8')}
         ${official ? (() => {
           // Pull state on the pill itself (owner 2026-10-21): 🟡 amber
           // while this load's pull runs, green ✓ + stamp once fresh names

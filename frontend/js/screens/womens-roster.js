@@ -291,6 +291,7 @@ class WomensRosterScreen extends RosterScreenBase {
   }
 
   renderColumn(col, data) {
+    if (col.isUnassigned && this.boardView === 'roster') return this.renderMemberStacks(col, data);
     const players = col.isUnassigned
       ? (data.unassigned || [])
       : (data.buckets[String(col.teamId)] || []);
