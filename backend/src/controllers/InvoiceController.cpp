@@ -1,4 +1,5 @@
 #include "InvoiceController.h"
+#include <algorithm>
 
 #include <iostream>
 #include <set>
@@ -127,6 +128,10 @@ bool InvoiceController::gate(const Request& request, Response* error) {
 Response InvoiceController::handleBoard(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     try {
+        // Owner 2026-11-02: "canceled events should not be in invoice": the
+        // list's totals come off the calendar as it is now, not as it was at
+        // the last open.
+        for (long long draft : model_->openDraftIds()) checkAgainstCalendar(draft);
         json out = model_->board();
         // Planned expenses a line can count toward (mig 490, #finances).
         out["budget_lines"] = Expenses::openBudgetLines(WelcomeLog::kLighthouseClubId);
@@ -158,19 +163,21 @@ Response InvoiceController::handleNew(const Request& request) {
     } catch (const std::exception& e) { std::cerr << "[invoices new] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
 
+// Reality check against gcal on every load (owner 2026-10-12, 2026-11-02): a
+// draft's day rows follow the calendar — cancelled events come off, moved ones
+// are re-dated — and default-on ref fees (mig 624) land on the sheet.
+json InvoiceController::checkAgainstCalendar(long long invoiceId) {
+    json reality = model_->realityCheck(invoiceId);
+    try { autoAddRefFees(invoiceId); } catch (const std::exception& e) { std::cerr << "[invoices auto ref-fees] " << e.what() << std::endl; }
+    return reality;
+}
+
 Response InvoiceController::handleGet(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     const long long id = idFromPath(request.getPath());
     if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
     try {
-        // Reality check against gcal on every open (owner 2026-10-12): a
-        // draft's day rows follow the calendar — cancelled events come off,
-        // moved ones are re-dated.  Admin path only; the public link never
-        // writes.
-        json reality = model_->realityCheck(id);
-        // 🧑‍⚖️ default-on ref fees (mig 624): the same open-time reconcile
-        // puts the period's played fees on the sheet unless declined.
-        try { autoAddRefFees(id); } catch (const std::exception& e) { std::cerr << "[invoices auto ref-fees] " << e.what() << std::endl; }
+        json reality = checkAgainstCalendar(id);
         json inv = model_->get(id);
         if (inv.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
         if (reality["removed"].get<int>() > 0 || reality["moved"].get<int>() > 0) inv["reality"] = reality;
@@ -189,7 +196,17 @@ Response InvoiceController::handlePublic(const Request& request) {
     const auto q = slug.find('?'); if (q != std::string::npos) slug = slug.substr(0, q);
     const auto sl = slug.find('/'); if (sl != std::string::npos) slug = slug.substr(0, sl);
     try {
-        json inv = model_->getPublic(slug);
+        const long long id = model_->idForSlug(slug);
+        if (id <= 0) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
+        // Same check as the admin open (owner 2026-11-02: "invoice needs to
+        // check that each time it loads"): this link is what gets sent.  A
+        // final sheet, or an older one that may already have gone out, stays
+        // as it is.
+        try {
+            const auto open = model_->openDraftIds();
+            if (std::find(open.begin(), open.end(), id) != open.end()) checkAgainstCalendar(id);
+        } catch (const std::exception& e) { std::cerr << "[invoices public check] " << e.what() << std::endl; }
+        json inv = model_->get(id);
         if (inv.empty()) return jsonError(HttpStatus::NOT_FOUND, "no such invoice");
         // Nothing the viewer should not have: the sheet fields only.
         inv.erase("public_slug"); inv.erase("link_url"); inv.erase("note");

@@ -454,7 +454,16 @@ json Invoice::realityCheck(long long invoiceId) {
          WHERE s.invoice_id = $1::int AND e.id = s.fh_event_id
            AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
            AND (s.work_date <> (g.starts_at AT TIME ZONE 'America/New_York')::date
-                OR (s.start_at IS NOT NULL AND s.start_at <> (g.starts_at AT TIME ZONE 'America/New_York')::time))
+                OR (s.start_at IS NOT NULL AND s.start_at <> (g.starts_at AT TIME ZONE 'America/New_York')::time
+                    -- A youth lead-in (mig 712) is not a move: "moving" it back
+                    -- kept the length, the lead-in then added 30 minutes again,
+                    -- and the row grew on every load.
+                    AND s.start_at IS DISTINCT FROM (g.starts_at AT TIME ZONE 'America/New_York')::time - make_interval(mins => (
+                        SELECT MAX(p.minutes_before)::int
+                          FROM invoice_lead_in_policies p
+                          JOIN fh_event_teams et ON et.fh_event_id = e.id
+                          JOIN teams t ON t.id = et.team_id AND t.club_section_id = p.club_section_id
+                         WHERE p.is_active AND p.event_kind = e.kind))))
            AND (s.start_at IS NULL
                 OR (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) > (g.starts_at AT TIME ZONE 'America/New_York')::time)
          RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
@@ -482,6 +491,15 @@ json Invoice::realityCheck(long long invoiceId) {
     addGames(invoiceId, {}, true, &ignored);
     // …and the youth lead-in (mig 712) settles on whatever is now billed.
     syncLabor(invoiceId);
+    // syncLabor leaves the hours line alone on a sheet with no day rows (old
+    // sheets typed their hours by hand), so when the check took the last row
+    // off, the line would keep billing the cancelled event.
+    if (out["removed"].get<int>() > 0)
+        db_->query(R"SQL(
+            UPDATE invoice_lines l SET quantity = 0, amount = 0
+             WHERE l.invoice_id = $1::int AND l.category = 'labor' AND l.rate IS NOT NULL
+               AND NOT EXISTS (SELECT 1 FROM invoice_work_shifts s WHERE s.invoice_id = l.invoice_id))SQL",
+            {std::to_string(invoiceId)});
     return out;
 }
 
@@ -655,12 +673,21 @@ bool Invoice::removeShift(long long shiftId) {
     return true;
 }
 
-json Invoice::getPublic(const std::string& slug) {
-    if (slug.size() != 36) return json::object();
-    for (char c : slug) if (!(std::isxdigit(static_cast<unsigned char>(c)) || c == '-')) return json::object();
+long long Invoice::idForSlug(const std::string& slug) {
+    if (slug.size() != 36) return 0;
+    for (char c : slug) if (!(std::isxdigit(static_cast<unsigned char>(c)) || c == '-')) return 0;
     auto rows = db_->query("SELECT id FROM invoices WHERE public_slug = $1::uuid", {slug});
-    if (rows.empty()) return json::object();
-    return get(rows[0]["id"].as<long long>());
+    return rows.empty() ? 0 : rows[0]["id"].as<long long>();
+}
+
+// The drafts the #invoices list checks on every load: the sheets still being
+// worked plus the one due.  Older unticked sheets may already have gone out,
+// so their totals only change when someone opens them.
+std::vector<long long> Invoice::openDraftIds() {
+    std::vector<long long> ids;
+    for (const auto& r : db_->query("SELECT id FROM invoices WHERE NOT is_final AND period_end >= CURRENT_DATE - 7 ORDER BY id"))
+        ids.push_back(r["id"].as<long long>());
+    return ids;
 }
 
 long long Invoice::issuerOf(long long invoiceId) {

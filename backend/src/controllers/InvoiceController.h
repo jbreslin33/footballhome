@@ -50,6 +50,7 @@ private:
     // Ref fees default ONTO a draft (mig 624) — every open adds the
     // period's played, in-gcal, unbilled fees, minus the declined ones.
     void autoAddRefFees(long long invoiceId);
+    nlohmann::json checkAgainstCalendar(long long invoiceId);
     // The add path handleAddRefFees and the auto-add share: picks → the
     // ONE Referees line.  Returns the line id, 0 with *error on failure.
     long long addRefFeesTo(long long invoiceId, const nlohmann::json& picks, std::string* error);

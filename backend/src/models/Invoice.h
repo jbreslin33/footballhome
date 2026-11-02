@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 #include "../third_party/json.hpp"
 
 class Database;
@@ -30,8 +31,10 @@ public:
     // One sheet: header, lines in print order, total, file name.  Empty
     // object when missing.
     nlohmann::json get(long long invoiceId);
-    // The same sheet by its public slug (mig 480); empty when unknown.
-    nlohmann::json getPublic(const std::string& slug);
+    // The invoice behind a public slug (mig 480); 0 when unknown.
+    long long idForSlug(const std::string& slug);
+    // Unsent sheets the #invoices list checks on every load.
+    std::vector<long long> openDraftIds();
 
     // New draft for the issuer: next number (see nextNumber), today's date
     // unless given, the hours line at the issuer's rate, and one line per
