@@ -4,6 +4,7 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Bugs / fixes
 
+- [x] 2026-11-02 #my event cards: address cut off on the card front (one no-wrap line, nearly nothing left in the week columns). Full address now on its own wrapping line on the front, in the opened card and on the not-yet-open cards, each a link to Google Maps (MyScreen._venueLink, EventLabels.mapsUrl). No fh_event lacked a location. Other screens unchanged.
 - [ ] Fix or examine who is able to RSVP to what.
 - [ ] One Contact button on #teams replacing the WELCOME text link, and expand Contact to handle welcome, reg links etc. everywhere. (Preferred over just making the WELCOME link work like the other text links.)
 - [x] 2026-10-22 Home lands on #role-selection for everyone (admins went to #dashboard since 10/9). Dashboard kept as the first "Run the week" tile on the picker. navigation.js home().

@@ -1093,7 +1093,7 @@ class MyScreen extends Screen {
         </div>
         <div style="min-width:0; flex:1; font-size:0.74rem; line-height:1.3;">
           <div style="font-weight:800;">${this.escapeHtml(EventLabels.title(ev))}</div>
-          ${ev.location ? `<div style="opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(ev.location)}</div>`
+          ${ev.location ? `<div style="overflow-wrap:anywhere;">${this._venueLink(ev.location)}</div>`
                         : (ev.hangout_link ? `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><a href="${this.escapeHtml(ev.hangout_link)}" target="_blank" rel="noopener" style="color:#6ee7b7; font-weight:700; text-decoration:none;">📹 Google Meet</a></div>` : '')}
           ${times ? `<div style="opacity:0.7;">${this.escapeHtml(times)}</div>` : ''}
           ${opensText ? `<div style="margin-top:2px; font-size:0.64rem; font-weight:700; color:#93c5fd;">${this.escapeHtml(opensText)}</div>` : ''}
@@ -2067,7 +2067,7 @@ class MyScreen extends Screen {
           <div style="margin-top:5px; padding-top:5px; border-top:1px solid rgba(255,255,255,0.08); display:grid; gap:3px; font-size:0.62rem; line-height:1.3;">
             <div style="opacity:0.85;">${this.escapeHtml(detailLines.join(' • '))}</div>
             ${arrivalKickoffLine ? `<div style="opacity:0.85;">${this.escapeHtml(arrivalKickoffLine)}</div>` : ''}
-            ${venue ? `<div style="opacity:0.75;">📍 ${this.escapeHtml(venue)}</div>` : ''}
+            ${venue ? `<div style="overflow-wrap:anywhere;">${this._venueLink(venue)}</div>` : ''}
             ${meetLink ? `<div><a href="${this.escapeHtml(meetLink)}" target="_blank" rel="noopener"
                    style="display:inline-block; padding:4px 10px; border-radius:6px; background:#065f46;
                           color:#d1fae5; font-size:0.66rem; font-weight:700; text-decoration:none;">📹 Join Google Meet</a></div>` : ''}
@@ -2093,7 +2093,8 @@ class MyScreen extends Screen {
             <div style="font-size:0.7rem; line-height:1.3; white-space:normal; overflow-wrap:break-word;">
               ${rolePillHtml}${teamPillsInline}<b>${this.escapeHtml(arrival ? `Arrive ${arrival}` : timeStr)}</b> · ${this.escapeHtml(title)}
             </div>
-            <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${venue ? `📍 ${this.escapeHtml(venue)} · ` : (meetLink ? `<a href="${this.escapeHtml(meetLink)}" target="_blank" rel="noopener" style="color:#6ee7b7; font-weight:700; text-decoration:none;">📹 Google Meet</a> · ` : '')}${compactMeta}</div>
+            ${venue ? `<div style="font-size:0.6rem; line-height:1.25; overflow-wrap:anywhere;">${this._venueLink(venue)}</div>` : ''}
+            <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${!venue && meetLink ? `<a href="${this.escapeHtml(meetLink)}" target="_blank" rel="noopener" style="color:#6ee7b7; font-weight:700; text-decoration:none;">📹 Google Meet</a> · ` : ''}${compactMeta}</div>
           </div>
           <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
             ${soloChild ? childButtonsHtml(soloChild) : (!stacked && showOwnRsvpRow ? ownButtonsHtml : '')}
@@ -2296,6 +2297,13 @@ class MyScreen extends Screen {
   // Leave times on the answer count, which is also how a clash is solved.
   // Events at the same place never clash.  An unknown drive time only
   // clashes when the two actually overlap.
+
+  // The whole address, tappable: opens Google Maps (the app on a phone).
+  // A link, so the card's tap-to-expand leaves it alone.
+  _venueLink(location) {
+    return `<a href="${this.escapeHtml(EventLabels.mapsUrl(location))}" target="_blank" rel="noopener"
+              style="color:#93c5fd; text-decoration:underline;">📍 ${this.escapeHtml(location)}</a>`;
+  }
 
   _nyLabel(ms) { return new Date(ms).toLocaleTimeString('en-US', { timeZone: MyScreen.NY, hour: 'numeric', minute: '2-digit' }); }
 

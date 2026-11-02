@@ -88,6 +88,10 @@ class EventLabels {
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
+  static mapsUrl(location) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+  }
+
   static timeStr(iso) {
     if (!iso) return '';
     const d = new Date(iso);
