@@ -5,6 +5,8 @@
 
 #include "../core/Crypto.h"
 #include "../database/Database.h"
+#include "../models/MessageCopy.h"
+#include "../services/TwilioService.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -95,6 +97,8 @@ void PhoneRelayController::registerRoutes(Router& router, const std::string& pre
     router.get (prefix + "/status",        [this](const Request& r) { return handleStatus(r); });
     router.post(prefix + "/pair-code",     [this](const Request& r) { return handlePairCode(r); });
     router.post(prefix + "/texts",         [this](const Request& r) { return handleQueue(r); });
+    router.get (prefix + "/contact-state", [this](const Request& r) { return handleContactState(r); });
+    router.post(prefix + "/club-text",     [this](const Request& r) { return handleClubText(r); });
     router.get (prefix + "/texts/:id",     [this](const Request& r) { return handleTextStatus(r); });
     router.post(prefix + "/device/pair",   [this](const Request& r) { return handleDevicePair(r); });
     router.post(prefix + "/device/next",   [this](const Request& r) { return handleDeviceNext(r); });
@@ -187,6 +191,80 @@ Response PhoneRelayController::handlePairCode(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "PhoneRelayController::handlePairCode: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not make a pairing code");
+    }
+}
+
+// True when this number replied STOP and has not opted back in.
+static bool isStopped(const std::string& digits) {
+    return !Database::getInstance()->query(
+        "SELECT 1 FROM sms_opt_outs o WHERE o.phone_digits = $1 "
+        "   AND NOT EXISTS (SELECT 1 FROM sms_opt_ins i WHERE i.phone_digits = $1 AND i.consented_at > o.received_at) LIMIT 1",
+        {digits}).empty();
+}
+
+static bool isOptedIn(long long personId) {
+    auto r = Database::getInstance()->query(
+        "SELECT fh_sms_consented_at($1::int) IS NOT NULL AS ok", {std::to_string(personId)});
+    return !r.empty() && r[0]["ok"].as<bool>();
+}
+
+// GET /contact-state?person_id=&to= — which texting routes the Contact
+// popup may offer: 'in' (opted in), 'stopped', or 'none'.
+Response PhoneRelayController::handleContactState(const Request& request) {
+    long long senderId = 0;
+    Response err(HttpStatus::OK, "");
+    if (!requireSender(request, &senderId, &err)) return err;
+    long long personId = 0;
+    try { personId = std::stoll(request.getQueryParam("person_id")); } catch (...) {}
+    if (personId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "person_id is required.");
+    try {
+        const std::string digits = tenDigits(request.getQueryParam("to"));
+        const std::string consent = (!digits.empty() && isStopped(digits)) ? "stopped"
+                                  : isOptedIn(personId) ? "in" : "none";
+        return jsonOut(HttpStatus::OK, {{"consent", consent}});
+    } catch (const std::exception& e) {
+        std::cerr << "PhoneRelayController::handleContactState: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not read their text settings");
+    }
+}
+
+// POST /club-text {person_id, to, body, for_person_id?, purpose?} — one
+// text from the club number, from the Contact popup.  Opted-in people
+// only, never after a STOP, only to a number on that person; brand first
+// and opt-out last, as the A2P campaign promises.
+Response PhoneRelayController::handleClubText(const Request& request) {
+    long long senderId = 0;
+    Response err(HttpStatus::OK, "");
+    if (!requireSender(request, &senderId, &err)) return err;
+    json body;
+    if (!parseBody(request, &body, &err)) return err;
+    const long long personId = num(body, "person_id");
+    const long long forPersonId = num(body, "for_person_id");
+    const std::string rawTo = str(body, "to");
+    const std::string text = str(body, "body");
+    const std::string purpose = str(body, "purpose");
+    const std::string digits = tenDigits(rawTo);
+    if (personId <= 0 || digits.empty()) return jsonError(HttpStatus::BAD_REQUEST, "Not a US mobile number.");
+    if (text.empty() || text.size() > 1500) return jsonError(HttpStatus::BAD_REQUEST, "The message is empty or too long.");
+    try {
+        auto owned = Database::getInstance()->query(
+            "SELECT 1 FROM person_phones pp WHERE pp.person_id = $1::int "
+            "   AND right(regexp_replace(COALESCE(pp.phone_number, ''), '[^0-9]', '', 'g'), 10) = $2 LIMIT 1",
+            {std::to_string(personId), digits});
+        if (owned.empty()) return jsonError(HttpStatus::FORBIDDEN, "That number isn't on this person.");
+        if (isStopped(digits)) return jsonError(HttpStatus::CONFLICT, "They replied STOP — call them instead.", "stopped");
+        if (!isOptedIn(personId)) return jsonError(HttpStatus::CONFLICT, "They haven't opted in to club texts.", "not_opted_in");
+        MessageCopy copy;
+        const auto pre  = copy.render("club_sms", "prefix", {});
+        const auto foot = copy.render("club_sms", "footer", {});
+        const auto sent = TwilioService::getInstance().sendSms(
+            TwilioService::normalizeUs(digits), pre.body + text + foot.body,
+            purpose.empty() ? "contact" : purpose, forPersonId > 0 ? forPersonId : personId, 0);
+        if (!sent.ok) return jsonError(HttpStatus::BAD_GATEWAY, "The club text did not go out: " + sent.error);
+        return jsonOut(HttpStatus::CREATED, {{"sent", true}, {"sid", sent.sid}});
+    } catch (const std::exception& e) {
+        std::cerr << "PhoneRelayController::handleClubText: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not send the club text");
     }
 }
 

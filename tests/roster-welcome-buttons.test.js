@@ -102,3 +102,47 @@ test('status dropdown offers Needs Docs and Has Docs, and Has Docs is green', ()
   assert.match(html, /<option value="has_docs"[^>]*\sselected/);
   assert.match(html, /background:#059669/);
 });
+
+function loadPopup() {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'js', 'components', 'contact-popup.js'), 'utf8');
+  const ctx = { console, window: {}, document: { addEventListener() {} }, localStorage: { getItem: () => '' } };
+  vm.createContext(ctx);
+  vm.runInContext(src, ctx);
+  return ctx.window.ContactPopup;
+}
+
+test('one CONTACT button, fuchsia while flagged', () => {
+  const cp = loadPopup();
+  const html = cp.button({ key: 'k', title: 'Contact Ana', flagged: true });
+  assert.equal((html.match(/CONTACT/g) || []).length, 1);
+  assert.match(html, /data-contact-popup="k"/);
+  assert.match(html, /background:#c026d3/);
+});
+
+const relay = { devices: [{ online: true }], today: 0, cap: 30 };
+
+test('send types default club, then FH Texter, then regular text, then email', () => {
+  const cp = loadPopup();
+  const r = { personId: 1, phone: '2155551212', email: 'a@b.c' };
+  assert.equal(cp.defaultVia(cp.routes({ relay, consent: { 1: 'in' } }, r)), 'club');
+  assert.equal(cp.defaultVia(cp.routes({ relay, consent: { 1: 'none' } }, r)), 'relay');
+  assert.equal(cp.defaultVia(cp.routes({ relay: null, consent: {} }, r)), 'text');
+  assert.equal(cp.defaultVia(cp.routes({ relay: null, consent: {} }, { personId: 1, email: 'a@b.c' })), 'email');
+});
+
+test('a STOP blocks both club text and FH Texter, not email or the texting app', () => {
+  const cp = loadPopup();
+  const list = cp.routes({ relay, consent: { 1: 'stopped' } }, { personId: 1, phone: '2155551212', email: 'a@b.c' });
+  const why = Object.fromEntries(list.map(v => [v.key, !!v.why]));
+  assert.equal(why.club, true);
+  assert.equal(why.relay, true);
+  assert.equal(why.email, false);
+  assert.equal(why.text, false);
+});
+
+test('club text is not offered to viewers who get no contact state', () => {
+  const cp = loadPopup();
+  const list = cp.routes({ relay: null, consent: {} }, { personId: 1, phone: '2155551212' });
+  assert.equal(list.some(v => v.key === 'club'), false);
+  assert.equal(list.some(v => v.key === 'relay'), false);
+});

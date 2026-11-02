@@ -665,47 +665,7 @@ class BoysRosterScreen extends RosterScreenBase {
     // 💬/✉ pair the Men's Liga1/APSL Reg nudges draw — label and copy
     // come from the message_templates row, so the ⋯ menu on #teams shows
     // both channels whenever the parent has that contact detail.
-    const docsBtn = (this.docsPreset && BoysRosterScreen.playerNeedsDocs(p, col))
-      ? this.renderRegistrationButtons(p, [this.docsPreset], { phone: contactPhone, email: contactEmail })
-      : '';
-    // 🔗 Magic sign-in link buttons (owner 2026-09-05) — universal across
-    // all four boards via RosterScreenBase.renderMagicLinkButtons. Youth
-    // board: the PARENT is who signs in and RSVPs, so the token is minted
-    // for p.parentPersonId (carried by /api/boys-roster since 2026-09-05)
-    // and sent to the parent's contact. Falls back to the child's own
-    // persons.id only when no parent row is linked yet.
-    const linkBtns = this.renderMagicLinkButtons(p, {
-      personId: p.parentPersonId || p.personId,
-      phone: contactPhone,
-      email: contactEmail,
-    });
-    // 👋 WELCOME buttons (owner 2026-09-06) — universal via
-    // RosterScreenBase.renderWelcomeButtons.  Recipient is the PARENT
-    // (same person the sign-in link is minted for); the child is named
-    // in the copy.  Amber while a welcome is owed (p.welcome.due).
-    // needsDocs: a player already sitting in a travel column gets one
-    // extra paragraph in the welcome asking for the birth certificate +
-    // headshot upload (owner 2026-09-06) — same rule as the 📄 DOCS
-    // button, so rec / in-house / Unassigned families never see it.
-    const welcomeBtns = this.renderWelcomeButtons(p, {
-      personId: p.parentPersonId || p.personId,
-      playerPersonId: p.parentPersonId ? p.personId : null,
-      phone: contactPhone,
-      email: contactEmail,
-      needsDocs: BoysRosterScreen.playerNeedsDocs(p, col),
-    });
-
-    // Every other parent (mig 682 — divorced parents each sign in and get
-    // their own welcome): the same two button sets, named, to their own
-    // number / email.
     const otherParents = (p.guardians || []).filter(g => g.personId !== (p.parentPersonId || null));
-    const otherParentBtns = otherParents.map(g => `
-      <div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin-top:4px;">
-        <span style="font-size:0.7rem; font-weight:800; opacity:0.75;">${this.escapeHtml(g.firstName || '')}</span>
-        ${this.renderMagicLinkButtons(p, { personId: g.personId, phone: g.phone, email: g.email })}
-        ${this.renderWelcomeButtons(p, { personId: g.personId, playerPersonId: p.personId, phone: g.phone, email: g.email,
-                                         needsDocs: BoysRosterScreen.playerNeedsDocs(p, col) })}
-      </div>`).join('');
 
     let delinqBtns = '';
     // Prorate context (2026-07-09) — mirror mens-roster: if the youth
@@ -809,10 +769,9 @@ class BoysRosterScreen extends RosterScreenBase {
     }
 
     // ---- Contact popover -----------------------------------------------
-    // One CONTACT button collapses EMAIL / SMS / CALL into a native
-    // <details> popover.  Only the methods the player actually has
-    // contact data for are rendered inside.  Uses <details>/<summary>
-    // so there's no JS listener wiring, no click-outside tracking.
+    // EMAIL / SMS / CALL / SAVE are the first group of the one CONTACT
+    // popup.  Only the methods the parent actually
+    // has contact data for are rendered.
     const contactBase = btnBase + ' border:none; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
     // 👤 SAVE (2026-07-05) — data-URL vCard so tapping opens the native
     // "Add Contact" sheet on iOS/Android (or downloads a .vcf on
@@ -831,20 +790,6 @@ class BoysRosterScreen extends RosterScreenBase {
         })
       : null;
     const vcardFilename = ((contactName && contactName !== 'there' ? contactName : (p.fullName || `${p.firstName || 'player'}_${p.lastName || ''}`)).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
-    const contactItems = [
-      emailHref ? `<a href="${emailHref}" target="_blank" rel="noopener noreferrer" title="${this.escape(contactEmail)}" style="${contactBase} background:#334155; color:#fff;">✉ EMAIL</a>` : '',
-      smsHref   ? `<a href="${smsHref}"   title="Text ${this.escape(this.formatPhone(contactPhone))}"       style="${contactBase} background:#334155; color:#fff;">💬 SMS</a>` : '',
-      telHref   ? `<a href="${telHref}"   title="Call ${this.escape(this.formatPhone(contactPhone))}"       style="${contactBase} background:#334155; color:#fff;">📞 CALL</a>` : '',
-      vcardHref ? `<a href="${vcardHref}" download="${this.escape(vcardFilename)}" title="Save ${this.escape(contactFirst || p.firstName || 'contact')} to your phone contacts" style="${contactBase} background:#334155; color:#fff;">👤 SAVE</a>` : '',
-    ].filter(Boolean);
-    const contactBtns = contactItems.length > 0 ? `
-      <details class="br-contact" style="position:relative; display:inline-block;">
-        <summary style="${btnBase} background:#334155; color:#fff; border:none; cursor:pointer; list-style:none; user-select:none;"
-                 title="Contact ${this.escape(contactFirst || 'parent')}${p.firstName ? ` (${this.escape(p.firstName)}'s parent)` : ''}">📇 CONTACT</summary>
-        <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155;">
-          ${contactItems.join('')}
-        </div>
-      </details>` : '';
 
     const duesLabel = this.renderDuesLabel(p);
     const billingBadge = window.BillingBadge ? window.BillingBadge.render(p) : '';
@@ -883,7 +828,21 @@ class BoysRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: `${docsBtn}${profileBtn}${linkBtns}${welcomeBtns}${otherParentBtns}`,
+      viewButtonHtml: profileBtn + this.renderContactButton(
+        Object.assign(p, { welcomeNeedsDocs: BoysRosterScreen.playerNeedsDocs(p, col) }), {
+          // Each parent separately (mig 682); the first is the one the
+          // card's contact details already belong to.
+          recipients: [
+            { personId: p.parentPersonId || p.personId, name: contactName, phone: contactPhone, email: contactEmail, forPersonId: p.personId },
+            ...otherParents.map(g => ({ personId: g.personId, name: g.firstName || '', phone: g.phone, email: g.email, forPersonId: p.personId })),
+          ],
+          messages: [
+            { key: 'hello', label: MessageCopy.block('contact_popup', 'msg_hello') || '💬 Message', subject: emailSubject, body: emailBody, smsBody },
+            ...((this.docsPreset && BoysRosterScreen.playerNeedsDocs(p, col)) ? [this.presetMessage(this.docsPreset)] : []),
+          ],
+          vcard: vcardHref ? { href: vcardHref, filename: vcardFilename } : null,
+          title: `Contact ${contactFirst || 'parent'}${p.firstName ? ` (${p.firstName}'s parent)` : ''}`,
+        }),
       borderColor: cardBorder,
       canMove,
     });

@@ -31,6 +31,8 @@ private:
     Response handleStatus(const Request& request);
     Response handlePairCode(const Request& request);
     Response handleQueue(const Request& request);
+    Response handleContactState(const Request& request);
+    Response handleClubText(const Request& request);
     Response handleTextStatus(const Request& request);
     Response handleDevicePair(const Request& request);
     Response handleDeviceNext(const Request& request);

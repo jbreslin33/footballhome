@@ -635,30 +635,6 @@ class MensRosterScreen extends RosterScreenBase {
       // chrome, so it didn't need this — this button did).
       btnBaseStyle: 'font-size:0.68rem; padding:0 6px; line-height:1.2; appearance:none; -webkit-appearance:none; min-height:0; box-sizing:border-box; margin:0; display:flex; align-items:center; justify-content:center;',
     });
-    // 📋 Registration-link buttons (owner 2026-08-31) — one SMS+EMAIL
-    // pair per message_templates kind='registration' row (migration
-    // 356), so every card can nudge the player to fill out a league form.
-    const regBtns = this.renderRegistrationButtons(p, this.registrationPresets, {
-      phone: contactPhone,
-      email: contactEmail,
-    });
-    // 🔗 Magic sign-in link buttons (owner 2026-09-05) — universal across
-    // all four boards via RosterScreenBase.renderMagicLinkButtons. Adult
-    // board: the player is the person who signs in.
-    const linkBtns = this.renderMagicLinkButtons(p, {
-      personId: p.personId,
-      phone: contactPhone,
-      email: contactEmail,
-    });
-    // 👋 WELCOME buttons (owner 2026-09-06) — universal via
-    // RosterScreenBase.renderWelcomeButtons; replaces the old untracked
-    // 👋 WELCOME link that lived in the CONTACT popover.  Adult board:
-    // the player receives it.  Amber while a welcome is owed.
-    const welcomeBtns = this.renderWelcomeButtons(p, {
-      personId: p.personId,
-      phone: contactPhone,
-      email: contactEmail,
-    });
     let delinqBtns = '';
     // Prorate context (2026-07-09) — if the player is a mid-cycle
     // signup who hasn't yet paid the full $35 for the partial cycle,
@@ -813,12 +789,9 @@ class MensRosterScreen extends RosterScreenBase {
       : null;
 
     // ---- Contact popover -----------------------------------------------
-    // One CONTACT button collapses EMAIL / SMS / CALL / SAVE and the
-    // two INVITE actions into a native <details> popover.  (WELCOME moved
-    // out to the card's button strip 2026-09-06 — see renderWelcomeButtons.)  Only the
-    // methods the player actually has contact data for are rendered
-    // inside.  Uses <details>/<summary> so there's no JS listener
-    // wiring, no click-outside tracking.
+    // EMAIL / SMS / CALL / SAVE and the two INVITE actions are the first
+    // group of the one CONTACT popup.  Only the
+    // methods the player actually has contact data for are rendered.
     const contactBase = btnBase + ' border:none; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
     // 👤 SAVE (2026-07-05) — data-URL vCard so tapping opens the native
     // "Add Contact" sheet on iOS/Android (or downloads a .vcf on
@@ -834,22 +807,6 @@ class MensRosterScreen extends RosterScreenBase {
         })
       : null;
     const vcardFilename = ((contactName || `${p.firstName || 'player'}_${p.lastName || ''}`).trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
-    const contactItems = [
-      emailHref       ? `<a href="${emailHref}"       target="_blank" rel="noopener noreferrer" title="${this.escape(contactEmail)}"                                            style="${contactBase} background:#334155; color:#fff;">✉ EMAIL</a>` : '',
-      smsHref         ? `<a href="${smsHref}"                                                   title="Text ${this.escape(this.formatPhone(contactPhone))}"                    style="${contactBase} background:#334155; color:#fff;">💬 SMS</a>` : '',
-      telHref         ? `<a href="${telHref}"                                                   title="Call ${this.escape(this.formatPhone(contactPhone))}"                    style="${contactBase} background:#334155; color:#fff;">📞 CALL</a>` : '',
-      vcardHref       ? `<a href="${vcardHref}"       download="${this.escape(vcardFilename)}" title="Save ${this.escape(contactName)} to your phone contacts" style="${contactBase} background:#334155; color:#fff;">👤 SAVE</a>` : '',
-      inviteSmsHref   ? `<a href="${inviteSmsHref}"                                            title="Text ${this.escape(this.formatPhone(contactPhone))} an invite to footballhome.org" style="${contactBase} background:#334155; color:#fff;">💬 INVITE (SMS)</a>` : '',
-      inviteEmailHref ? `<a href="${inviteEmailHref}" target="_blank" rel="noopener noreferrer" title="Email ${this.escape(contactEmail)} an invite to footballhome.org"      style="${contactBase} background:#334155; color:#fff;">✉ INVITE (email)</a>` : '',
-    ].filter(Boolean);
-    const contactBtns = contactItems.length > 0 ? `
-      <details class="mr-contact" style="position:relative; display:inline-block;">
-        <summary style="${btnBase} background:#334155; color:#fff; border:none; cursor:pointer; list-style:none; user-select:none;"
-                 title="Contact ${this.escape(contactName)}">📇 CONTACT</summary>
-        <div style="position:absolute; top:100%; left:0; z-index:20; margin-top:2px; display:flex; flex-direction:column; gap:2px; background:#0f172a; padding:3px; border-radius:4px; box-shadow:0 4px 12px rgba(0,0,0,0.45); border:1px solid #334155;">
-          ${contactItems.join('')}
-        </div>
-      </details>` : '';
 
 
     // Under-16 warning (2026-08-02, user directive): league rules allow
@@ -914,7 +871,17 @@ class MensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn + regBtns + linkBtns + welcomeBtns,
+      viewButtonHtml: profileBtn + this.renderContactButton(p, {
+        recipients: [{ personId: p.personId, name: contactName, phone: contactPhone, email: contactEmail }],
+        messages: [
+          { key: 'hello', label: MessageCopy.block('contact_popup', 'msg_hello') || '💬 Message', subject, body: emailBody, smsBody },
+          ...(this.registrationPresets || []).filter(Boolean).map(x => this.presetMessage(x)),
+          ...(inviteCopy ? [{ key: 'invite', label: MessageCopy.block('contact_popup', 'msg_invite') || '📣 Invite to Football Home',
+                              subject: inviteEmailSubject, body: inviteEmailBody, smsBody: inviteSmsBody }] : []),
+        ],
+        vcard: vcardHref ? { href: vcardHref, filename: vcardFilename } : null,
+        title: `Contact ${contactName}`,
+      }),
       borderColor: cardBorder,
       canMove,
     });

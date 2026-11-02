@@ -2055,6 +2055,78 @@ class RosterScreenBase extends Screen {
     const contactPhone = contact.phone || null;
     const contactEmail = contact.email || null;
     if (!contactPhone && !contactEmail) return '';
+  // ── One CONTACT button (owner 2026-11-02) ──────────────────────────
+  //
+  // "should be one contact button. get rid of links and they go in
+  // contact popup": the card's ⋯ menu carries one button; everything else
+  // lives in the shared ContactPopup (components/contact-popup.js).
+  // Boards hand it recipients and their board's own messages.  Fuchsia
+  // while a welcome is owed, and the welcome is then the preselected
+  // message.  Only for people with a phone or email.
+  renderContactButton(p, { recipients, messages, vcard = null, title = '' }) {
+    if (!window.ContactPopup) return '';
+    const people = (recipients || []).filter(r => r.personId && (r.phone || r.email));
+    if (!people.length) return '';
+    const due = !!(p.welcome && p.welcome.due);
+    const list = [...messages, this.signInMessage(), this.welcomeMessage(p)];
+    return ContactPopup.button({
+      key: `teams:${this.constructor.name}:${p.personId}`,
+      screen: this,
+      recipients: people,
+      messages: list,
+      defaultKey: due ? 'welcome' : list[0].key,
+      flagged: due,
+      title,
+      vcard,
+    });
+  }
+
+  // A compose-link preset (message_templates row) as a popup message.
+  presetMessage(preset) {
+    return { key: `reg:${preset.label}`, label: preset.label, subject: preset.subject, body: preset.body };
+  }
+
+  async _mintHref(url, payload, channel) {
+    const res = await this.auth.fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error((await res.text()).slice(0, 200) || `HTTP ${res.status}`);
+    const data = await res.json();
+    const href = channel === 'email' ? (data.gmail_href || data.mailto_href) : data.sms_href;
+    if (!href) throw new Error('No message came back');
+    return { ...data, href };
+  }
+
+  signInMessage() {
+    return {
+      key: 'signin',
+      label: MessageCopy.block('contact_popup', 'msg_signin') || '🔗 Sign-in link',
+      resolve: (r, channel) => this._mintHref('/api/auth/magic-link/mint',
+        { person_id: r.personId, channel, contact: channel === 'email' ? r.email : r.phone }, channel),
+    };
+  }
+
+  // Recipient may be a parent; the card's player is named in the copy.
+  welcomeMessage(p) {
+    const needsDocs = !!p.welcomeNeedsDocs;
+    return {
+      key: 'welcome',
+      label: MessageCopy.block('contact_popup', 'msg_welcome') || '👋 Welcome',
+      resolve: (r, channel) => this._mintHref('/api/welcomes', {
+        person_id: r.personId,
+        player_person_id: r.personId !== p.personId ? p.personId : null,
+        channel,
+        contact: channel === 'email' ? r.email : r.phone,
+        needs_docs: needsDocs,
+      }, channel),
+      onSent: (data) => {
+        if (data && data.welcome) p.welcome = data.welcome;
+        document.querySelectorAll(`[data-contact-popup="teams:${this.constructor.name}:${p.personId}"]`)
+          .forEach(b => { b.style.background = '#334155'; });
+      },
+    };
+  }
+
 
     const w    = (p && p.welcome) || {};
     const due  = !!w.due;
