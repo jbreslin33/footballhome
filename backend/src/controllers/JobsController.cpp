@@ -81,13 +81,15 @@ std::vector<std::pair<int, std::string>> goingPool(long long eventId) {
 struct Def { int id; std::string slug, title, description; int needed; bool toggleable; bool off; };
 
 // The event's job set: its kind's definitions, league-scoped rows only
-// for their league (the APSL game-day set), with per-event toggles.
+// for their league (the APSL game-day set), setting-scoped rows only
+// indoors or only outdoors (fh_event_job_setting, mig 931), with
+// per-event toggles.
 std::vector<Def> defsFor(long long eventId, std::string* kindOut) {
     auto* db = Database::getInstance();
-    auto ev = db->query("SELECT kind, COALESCE(league, '') AS league FROM fh_events WHERE id = $1::bigint",
-                        {std::to_string(eventId)});
+    auto ev = db->query("SELECT kind, COALESCE(league, '') AS league, fh_event_has_jobs(id) AS has_jobs "
+                        "  FROM fh_events WHERE id = $1::bigint", {std::to_string(eventId)});
     std::vector<Def> defs;
-    if (ev.empty()) return defs;
+    if (ev.empty() || !ev[0]["has_jobs"].as<bool>()) return defs;   // youth: coaches tell them (mig 932)
     const std::string kind = str(ev[0], "kind"), league = str(ev[0], "league");
     if (kindOut) *kindOut = kind;
     for (const auto& r : db->query(R"SQL(
@@ -97,6 +99,7 @@ std::vector<Def> defsFor(long long eventId, std::string* kindOut) {
           FROM job_definitions d
          WHERE d.is_active AND d.event_kind = $2
            AND (d.league_label IS NULL OR d.league_label = $3)
+           AND (d.setting IS NULL OR d.setting = fh_event_job_setting($1::bigint))
          ORDER BY d.sort_order, d.id)SQL",
         {std::to_string(eventId), kind, league}))
         defs.push_back({r["id"].as<int>(), str(r, "slug"), str(r, "title"), str(r, "description"),
@@ -142,7 +145,7 @@ bool JobsController::gate(const Request& request, Response* error) {
 //   3. gaps fill with (a) players without a job yet, done-this-before
 //      first, then fewest jobs in the last 60 days; (b) if still short,
 //      players already holding one job, same ranking;
-//   4. a filled player with no home in this SET (kind+league) adopts the
+//   4. a filled player with no home in this SET (kind+league+setting) adopts the
 //      job as their home — stickiness, cross-training only via absence.
 void JobsController::ensureAssignments(long long eventId) {
     auto* db = Database::getInstance();
@@ -162,6 +165,11 @@ void JobsController::ensureAssignments(long long eventId) {
     db->query("DELETE FROM job_assignments ja USING event_job_offs o "
               " WHERE ja.fh_event_id = $1::bigint AND o.fh_event_id = ja.fh_event_id "
               "   AND o.job_definition_id = ja.job_definition_id", {std::to_string(eventId)});
+    // Moved indoors or outdoors → the other setting's jobs carry nobody.
+    db->query("DELETE FROM job_assignments ja USING job_definitions d "
+              " WHERE ja.fh_event_id = $1::bigint AND d.id = ja.job_definition_id "
+              "   AND d.setting IS NOT NULL AND d.setting <> fh_event_job_setting($1::bigint)",
+              {std::to_string(eventId)});
 
     // "Sub cards: 1 guy who STARTS ON BENCH."  When this game has a
     // lineup with a bench and has not kicked off, the sub-cards job is
@@ -232,6 +240,7 @@ void JobsController::ensureAssignments(long long eventId) {
           JOIN job_definitions d ON d.id = h.job_definition_id
           JOIN fh_events e ON e.id = $1::bigint
          WHERE d.event_kind = e.kind AND (d.league_label IS NULL OR d.league_label = COALESCE(e.league, ''))
+           AND (d.setting IS NULL OR d.setting = fh_event_job_setting(e.id))
          ORDER BY h.created_at)SQL", {std::to_string(eventId)})) {
         const int pid = r["person_id"].as<int>();
         if (!inPool.count(pid)) continue;
@@ -328,6 +337,7 @@ Response JobsController::handleBoard(const Request& request) {
               JOIN gcal_events g ON g.id = e.gcal_event_id AND g.deleted_at IS NULL
                                 AND g.status IS DISTINCT FROM 'cancelled'
              WHERE e.kind IN ('match', 'practice')
+               AND fh_event_has_jobs(e.id)
                AND (g.starts_at AT TIME ZONE 'America/New_York')::date
                    BETWEEN COALESCE(NULLIF($1, '')::date, CURRENT_DATE - 3)
                        AND COALESCE(NULLIF($1, '')::date, CURRENT_DATE - 3) + $2::int

@@ -4,6 +4,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Bugs / fixes
 
+- [ ] Fix or examine who is able to RSVP to what.
+- [ ] One Contact button on #teams replacing the WELCOME text link, and expand Contact to handle welcome, reg links etc. everywhere. (Preferred over just making the WELCOME link work like the other text links.)
 - [x] 2026-10-22 Home lands on #role-selection for everyone (admins went to #dashboard since 10/9). Dashboard kept as the first "Run the week" tile on the picker. navigation.js home().
 
 - [x] 2026-10-22 Game Center Instagram card 4:5 crop: confirmed by the math — Instagram crops feed posts taller than 4:5, and the roster card (540×700) and long post_game lineups (500+rows×23) exceeded it, losing the header and sponsor footer. Fix: the card now WIDENS to exactly 4:5 when content pushes it past (540 stays the floor; squarer cards untouched); game-center live card + beam follow built.width. Backend untouched — video already fits to the overlay's ffprobed size.

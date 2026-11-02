@@ -949,6 +949,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                       JOIN persons jp ON jp.id = ja.person_id
                      WHERE ja.fh_event_id = fe.id
                        AND (ja.person_id = $1::int OR fh_is_guardian($1::int, jp.id))
+                       AND (d.setting IS NULL OR d.setting = fh_event_job_setting(fe.id))
                        AND NOT EXISTS (
                              SELECT 1 FROM event_job_offs o
                               WHERE o.fh_event_id = ja.fh_event_id
