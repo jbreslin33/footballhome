@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 
 #include "../database/Database.h"
 #include "../models/CashFlow.h"
@@ -42,12 +43,35 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
         [this](const Request& r, const LaSyncMap&) { return handleSummary(r); });
     router.get(prefix + "/expenses", [this](const Request& r) { return handleExpenses(r); });
     router.get(prefix + "/cash-flow", [this](const Request& r) { return handleCashFlow(r); });
+    router.post(prefix + "/budget-lines/:id", [this](const Request& r) { return handleBudgetLine(r); });
 }
 
 Response FinancesController::handleCashFlow(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     try { return jsonOut(HttpStatus::OK, CashFlow::build(WelcomeLog::kLighthouseClubId)); }
     catch (const std::exception& e) { std::cerr << "[finances cash-flow] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load money in and out"); }
+}
+
+Response FinancesController::handleBudgetLine(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try {
+        const json body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+        std::optional<double> amount; std::optional<bool> settled;
+        if (body.contains("amount")) {
+            if (!body["amount"].is_number() || body["amount"].get<double>() < 0 || body["amount"].get<double>() >= 100000000)
+                return jsonError(HttpStatus::BAD_REQUEST, "Enter an amount in dollars.");
+            amount = body["amount"].get<double>();
+        }
+        if (body.contains("settled")) {
+            if (!body["settled"].is_boolean()) return jsonError(HttpStatus::BAD_REQUEST, "settled must be true or false.");
+            settled = body["settled"].get<bool>();
+        }
+        if (!amount && !settled) return jsonError(HttpStatus::BAD_REQUEST, "Nothing to change.");
+        const std::string path = request.getPath();
+        if (!Expenses::updateBudgetLine(WelcomeLog::kLighthouseClubId, std::stoi(path.substr(path.rfind('/') + 1)), amount, settled))
+            return jsonError(HttpStatus::NOT_FOUND, "Budget line not found.");
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) { std::cerr << "[finances budget line] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not change that budget line."); }
 }
 
 Response FinancesController::handleSummary(const Request& request) {

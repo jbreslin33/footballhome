@@ -138,6 +138,9 @@ const char* kBaseCtes = R"SQL(
          -- staff hats (role_rank 1/3) keep every game.
          AND NOT (r.role_rank = 2 AND fh_team_callup_only(r.team_id))
          AND NOT (r.practice_only AND fe.kind <> 'practice')
+         -- A coach owes only the practices on their schedule (mig 955).
+         AND NOT (r.role_rank = 1 AND fe.kind = 'practice'
+                  AND fh_coach_off_schedule(r.person_id, r.team_id, fe.id))
          AND NOT EXISTS (SELECT 1 FROM rsvp_suspensions s
                           WHERE s.person_id = r.person_id
                             AND (s.team_id IS NULL OR s.team_id = r.team_id)
@@ -847,7 +850,7 @@ json RsvpBoard::rollCallCard(const std::string& slug, bool countOpen, long long 
     // The released, still-open games of these teams.
     // The released, still-open games of these teams — with the team(s)
     // of the link each one belongs to, so the teams layout (mig 546) can
-    // group them (U6 Intramural, U8 Intramural, U8 Travel …).
+    // group them (U6 In-House, U8 In-House, U8 Travel …).
     auto games = db->query(R"SQL(
         SELECT fe.id, min(ge.starts_at) AS starts_at,
                string_agg(DISTINCT BTRIM(regexp_replace(COALESCE(t.label, t.name), '^[^[:alnum:]]+', '')), ' · ') AS team_labels,

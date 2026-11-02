@@ -221,34 +221,6 @@ class YouthRosterScreen extends Screen {
   }
 
   renderPlayer(p) {
-    const btn = 'padding:0 5px; font-size:0.6rem; font-weight:800; letter-spacing:0.02em; border-radius:3px; line-height:1.2; white-space:nowrap; border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:3px;';
-
-    // CONTACT openers — message_templates kind 'contact_email' /
-    // 'contact_sms', tier 'parent_coach' (migration 367).
-    const contactTokens = { first: p.parentFirstName || '', child: p.firstName || '' };
-    const contactCopy = MessageCopy.render('contact_email', 'parent_coach', contactTokens) || { subject: '', body: '' };
-    const subject   = contactCopy.subject;
-    const emailBody = contactCopy.body;
-    const smsBody   = MessageCopy.block('contact_sms', 'parent_coach', contactTokens);
-
-    const emailHref = p.parentEmail
-      ? `https://mail.google.com/mail/?${new URLSearchParams({
-          view:     'cm',
-          fs:       '1',
-          authuser: MessageCopy.outreachEmail,
-          to:       p.parentEmail,
-          su:       subject,
-          body:     emailBody,
-        }).toString()}`
-      : null;
-    // sms: URI with both ?body= and &body= — iOS uses &, Android uses ?
-    const smsHref = p.parentPhone
-      ? `sms:${p.parentPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(smsBody))}`
-      : null;
-    const telHref = p.parentPhone ? `tel:${p.parentPhone}` : null;
-
-    const formattedPhone = this.formatPhone(p.parentPhone);
-
     const ageGroup = p.ageGroup ? `${p.ageGroup}` : (p.birthYear ? `b.${p.birthYear}` : '?');
     const birthYear = p.birthYear || '?';
     const genderIcon = p.gender === 'Female' ? '♀' : '♂';
@@ -260,16 +232,6 @@ class YouthRosterScreen extends Screen {
         ? p.birthDate
         : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
     }
-
-    const emailBtn = emailHref ? `
-      <a href="${emailHref}" target="_blank" rel="noopener noreferrer"
-         style="${btn} background:#3b82f6; color:#fff;">✉</a>` : '';
-    const smsBtn = smsHref ? `
-      <a href="${smsHref}"
-         style="${btn} background:#10b981; color:#fff;">💬</a>` : '';
-    const telBtn = telHref ? `
-      <a href="${telHref}"
-         style="${btn} background:#6366f1; color:#fff;">📞</a>` : '';
 
     // 👤 Save (2026-07-05) — data-URL vCard so tapping opens the
     // native "Add Contact" sheet on iOS/Android (or downloads a .vcf
@@ -292,11 +254,6 @@ class YouthRosterScreen extends Screen {
         })
       : null;
     const vcardFilename = ((parentFull || parentFirst || 'parent').trim().replace(/\s+/g, '_') || 'contact') + '.vcf';
-    const vcardBtn = vcardHref ? `
-      <a href="${vcardHref}" download="${this.escape(vcardFilename)}"
-         title="Save ${this.escape(parentFull || 'parent')} to your phone contacts"
-         style="${btn} background:#0ea5e9; color:#fff;">👤 Save</a>` : '';
-
     // 💸 PAY (2026-07-05) — parent SMS with payment reminder + LeagueApps
     // dashboard link.  Mirrors the mens-roster PAY button but simpler:
     // youth payload doesn't carry daysOverdue yet, so we can't do the
@@ -311,25 +268,31 @@ class YouthRosterScreen extends Screen {
     // admin work).  Same shape as the boys-roster board.
     const isOverdue = (p.outstandingBalance != null && p.outstandingBalance > 0)
       || (p.paymentStatus && p.paymentStatus !== 'PAID');
-    let payBtn = '';
-    if (isOverdue && p.parentPhone && MessageCopy.has('dues_sms', 'parent_past_due')) {
-      const amountNum = (p.outstandingBalance > 0)
-        ? p.outstandingBalance
-        : (p.nextBillAmount > 0 ? p.nextBillAmount : null);
-      // Wording: message_templates kind 'dues_sms', tier
-      // 'parent_past_due' (migration 367); an unknown amount falls
-      // back to the kind='fallback' word for {amount}.
-      const payBody = MessageCopy.block('dues_sms', 'parent_past_due', {
-        first:  p.parentFirstName || '',
-        child:  p.firstName || '',
-        amount: amountNum != null ? `$${amountNum}` : '',
-      });
-      const payHref = `sms:${p.parentPhone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(payBody))}`;
-      payBtn = `
-      <a href="${payHref}"
-         title="Text ${this.escape(formattedPhone)} a payment reminder with LeagueApps link"
-         style="${btn} background:#059669; color:#fff;">💸 Pay</a>`;
-    }
+    // The parent is who gets reached: the opener and, when behind, the
+    // dues reminder (message_templates 'dues_sms', tier 'parent_past_due',
+    // an unknown amount takes the kind='fallback' word).  Dues stay off
+    // the club number, as on #payments.
+    const amountNum = (p.outstandingBalance > 0)
+      ? p.outstandingBalance
+      : (p.nextBillAmount > 0 ? p.nextBillAmount : null);
+    const payBody = isOverdue && MessageCopy.has('dues_sms', 'parent_past_due')
+      ? MessageCopy.block('dues_sms', 'parent_past_due', {
+          first:  p.parentFirstName || '',
+          child:  p.firstName || '',
+          amount: amountNum != null ? `$${amountNum}` : '',
+        })
+      : '';
+    const hello = ContactPopup.helloMessage('parent_coach', p.parentFirstName || '', { child: p.firstName || '' }) || ContactPopup.blankMessage();
+    const messages = [
+      ...(payBody ? [{ key: 'dues', label: MessageCopy.block('contact_popup', 'msg_dues', {}) || '💸 Dues', subject: hello.subject, body: payBody, noClub: true }] : []),
+      hello,
+    ];
+    const contactBtn = (p.parentPhone || p.parentEmail) ? ContactPopup.button({
+      key: `youth:${p.id || p.fullName}`, screen: this, flagged: !!payBody,
+      recipients: [{ personId: null, name: parentFull || 'Parent', phone: p.parentPhone || '', email: p.parentEmail || '' }],
+      messages, defaultKey: messages[0].key,
+      vcard: vcardHref ? { href: vcardHref, filename: vcardFilename } : null,
+    }) : '';
 
     const duesColor = (p.paymentStatus && p.paymentStatus.toUpperCase() === 'PAID') || (!p.outstandingBalance || p.outstandingBalance <= 0)
       ? '#22c55e'
@@ -347,6 +310,7 @@ class YouthRosterScreen extends Screen {
           <div style="font-weight:600; font-size:0.76rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${this.escape(p.fullName) || '(no name)'}</div>
           ${dobPretty ? `<span style="font-size:0.68rem; opacity:0.75; white-space:nowrap;">${this.escape(dobPretty)}</span>` : ''}
           ${duesLabel}
+          ${contactBtn}
           ${window.PersonActions ? window.PersonActions.buttonsHtml(p, { returnTo: 'youth-roster', showEdit: false }) : ''}
         </div>
       </div>

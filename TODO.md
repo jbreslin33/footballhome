@@ -4,9 +4,11 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 ## Bugs / fixes
 
+- [x] 2026-11-02 #coach-schedule (migs 955, 956): admins set each coach's practice days per section; a coach sees and RSVPs only to those practices on #my, and the Coaches section and reminders follow (fh_coach_off_schedule). Games unchanged. Youth: Ali Fri; Luke, Anthony, Sheldon, Victor every practice; Joseph call in by invite; James has no row, so every practice.
 - [x] 2026-11-02 #my event cards: address cut off on the card front (one no-wrap line, nearly nothing left in the week columns). Full address now on its own wrapping line on the front, in the opened card and on the not-yet-open cards, each a link to Google Maps (MyScreen._venueLink, EventLabels.mapsUrl). No fh_event lacked a location. Other screens unchanged.
 - [ ] Fix or examine who is able to RSVP to what.
 - [ ] One Contact button on #teams replacing the WELCOME text link, and expand Contact to handle welcome, reg links etc. everywhere. (Preferred over just making the WELCOME link work like the other text links.)
+
 - [x] 2026-10-22 Home lands on #role-selection for everyone (admins went to #dashboard since 10/9). Dashboard kept as the first "Run the week" tile on the picker. navigation.js home().
 
 - [x] 2026-10-22 Game Center Instagram card 4:5 crop: confirmed by the math — Instagram crops feed posts taller than 4:5, and the roster card (540×700) and long post_game lineups (500+rows×23) exceeded it, losing the header and sponsor footer. Fix: the card now WIDENS to exactly 4:5 when content pushes it past (540 stays the floor; squarer cards untouched); game-center live card + beam follow built.width. Backend untouched — video already fits to the overlay's ffprobed size.
@@ -72,11 +74,11 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`.
 
-- [ ] Tie invoice lines to budget lines ("counts toward" on #invoices): none ever have been, so #finances still projects league dues, kits and facilities already invoiced ($11,539 on 10/30; #cash-flow warns until it is gone).
+- [ ] Tie invoice lines to budget lines ("counts toward" on #invoices): none ever have been, so #finances still projects league dues, kits and facilities already invoiced ($11,539 on 10/30). #finances → Expenses → 🧾 Budget lines now edits each estimate and ✓ settles a finished bill (mig 921); what's left is proposing the invoice-to-budget matches for James to approve.
 
 ## Done
 
-- [x] 2026-10-30 #cash-flow Money In & Out (mig 882): soccer money in from LeagueApps (person_payments, la_soccer_programs names the soccer programs) against every invoice, month by month, with the #finances projections ahead. Starts at the first invoice carrying expenses (8/14/2026), read from the invoices; earlier months have no money out on file (mig 883). Out is invoices only, budget estimates off the page (mig 885). From 10/1 and only the 8 soccer programs, a dispute LeagueApps posted twice counted once (mig 887). Months ahead: coach pay off the calendar, home referee fees through November, planned items (migs 888–896).
+- [x] 2026-10-30 #cash-flow Money In & Out (mig 882): soccer money in from LeagueApps (person_payments, la_soccer_programs names the soccer programs) against every invoice, month by month, with the #finances projections ahead. Starts at the first invoice carrying expenses (8/14/2026), read from the invoices; earlier months have no money out on file (mig 883). Out is invoices only, budget estimates off the page (mig 885). From 10/1 and only the 8 soccer programs, a dispute LeagueApps posted twice counted once (mig 887). Months ahead: coach pay off the calendar, home referee fees through November, planned items (migs 888–896). Pills show one club or league, each month opens to its lines, spread items read x, y of z (migs 897, 906).
 
 - [x] 2026-10-29 #apsl hub like #casa: ✉️ Commissioner & messages — roster-moves email to the APSL commissioner (cuts, drops, proposed + needs-add adds from the #teams Roster pill), shown only while something is unasked; ✓ Sent logs the ask and moves cards to Pending Drop / Awaiting Approval (migs 829, 837). Never asks to add a hurt player (mig 853).
 - [x] 2026-10-29 #apsl-pyramid: 8 conferences + 8 Tier 2 affiliates over one PyramidModel — flow chart, Presentation, USA map (territories, club cards, drive times, city/collar counts), Club pathway, Standings, Growth; full screen with collapsible HUDs (migs 819–860).

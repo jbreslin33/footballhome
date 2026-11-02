@@ -437,7 +437,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         
         // Also get metadata
         pqxx::result metaResult = db_->query(
-            "SELECT m.formation_id, m.roster_size, m.notes, m.split_squad, f.code AS formation_code "
+            "SELECT m.formation_id, m.roster_size, m.notes, m.split_squad, m.matchup_id, f.code AS formation_code "
             "  FROM match_lineup_metadata m LEFT JOIN formations f ON f.id = m.formation_id WHERE m.match_id = $1",
             {matchId}
         );
@@ -454,6 +454,19 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
             }
         }
         formationsJson << "]";
+
+        // Match opponent (mig 912): their shape → our shape + who takes whom.
+        std::ostringstream matchupsJson;
+        matchupsJson << "[";
+        {
+            bool first = true;
+            for (const auto& m : db_->query("SELECT x.id, x.opponent_code, x.note, f.code FROM formation_matchups x JOIN formations f ON f.id = x.formation_id ORDER BY x.sort_order, x.id")) {
+                matchupsJson << (first ? "" : ",") << "{\"id\":" << m["id"].c_str() << ",\"opponentCode\":\"" << escapeJson(m["opponent_code"].c_str())
+                             << "\",\"code\":\"" << escapeJson(m["code"].c_str()) << "\",\"note\":\"" << escapeJson(m["note"].c_str()) << "\"}";
+                first = false;
+            }
+        }
+        matchupsJson << "]";
         
         std::ostringstream json;
         json << "{\"success\":true,\"data\":{\"matchId\":" << matchId << ",";
@@ -506,14 +519,16 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
 
         // Metadata
         json << "\"formations\":" << formationsJson.str() << ",";
+        json << "\"formationMatchups\":" << matchupsJson.str() << ",";
         if (!metaResult.empty()) {
+            json << "\"matchupId\":" << (metaResult[0]["matchup_id"].is_null() ? "null" : metaResult[0]["matchup_id"].c_str()) << ",";
             json << "\"formationId\":" << (metaResult[0]["formation_id"].is_null() ? "null" : metaResult[0]["formation_id"].c_str()) << ",";
             json << "\"formationCode\":" << (metaResult[0]["formation_code"].is_null() ? "null" : "\"" + escapeJson(metaResult[0]["formation_code"].c_str()) + "\"") << ",";
             json << "\"rosterSize\":" << metaResult[0]["roster_size"].c_str() << ",";
             json << "\"notes\":" << (metaResult[0]["notes"].is_null() ? "null" : "\"" + escapeJson(metaResult[0]["notes"].c_str()) + "\"") << ",";
             json << "\"splitSquad\":" << (metaResult[0]["split_squad"].as<bool>() ? "true" : "false") << ",";
         } else {
-            json << "\"formationId\":null,\"formationCode\":null,\"rosterSize\":20,\"notes\":null,\"splitSquad\":false,";
+            json << "\"matchupId\":null,\"formationId\":null,\"formationCode\":null,\"rosterSize\":20,\"notes\":null,\"splitSquad\":false,";
         }
         
         json << "\"lineup\":[";
@@ -734,6 +749,19 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
             }
         }
         
+        // Match opponent (mig 912): only when the save carries it; null = none.
+        {
+            static const std::regex matchupPattern(R"("matchupId"\s*:\s*(\d+|null))");
+            std::smatch m;
+            if (std::regex_search(body, m, matchupPattern)) {
+                db_->query(R"(
+                    INSERT INTO match_lineup_metadata (match_id, team_id, roster_size, matchup_id, created_by_user_id, updated_at)
+                    VALUES ($1::int, $2::int, 0, NULLIF($3, 'null')::int, $4::int, CURRENT_TIMESTAMP)
+                    ON CONFLICT (match_id, team_id) DO UPDATE SET matchup_id = EXCLUDED.matchup_id, updated_at = CURRENT_TIMESTAMP
+                )", {matchId, teamId, m[1].str(), userId});
+            }
+        }
+
         // Split squad (mig 763): only when the save carries the flag.
         {
             static const std::regex splitPattern(R"("splitSquad"\s*:\s*(true|false))");

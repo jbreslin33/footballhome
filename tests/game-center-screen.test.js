@@ -74,6 +74,9 @@ function loadGameCenter() {
   `, sandbox);
 
   vm.runInContext(read('screen-base.js'), sandbox);
+  vm.runInContext(read('lib/event-labels.js'), sandbox);
+  vm.runInContext(read('lib/event-pills.js'), sandbox);
+  vm.runInContext(read('screens/event-screen.js'), sandbox);
   vm.runInContext(read('screens/game-center.js'), sandbox);
   // `class X {}` at top level is lexical, not a property of globalThis —
   // pull the binding out by evaluating its name in the same context.
@@ -548,4 +551,65 @@ test('Instagram pills mark what is already posted or scheduled', () => {
   assert.equal((html.match(/data-gc-social-mark/g) || []).length, 2, 'drafts carry no mark');
   assert.ok(html.includes('✅ Posted'));
   assert.ok(html.includes('📅 Sep 20'));
+});
+
+// Match opponent (mig 912): pick their shape, get ours with the libero.
+function mountMatchups() {
+  const mounted = mountScreen({ isCoach: true, role: 'club' });
+  const { screen, sandbox } = mounted;
+  sandbox.MessageCopy = { block: (kind, tier, t = {}) => (tier === 'none' ? 'Match opponent…' : `vs ${t.opponent} -> ${t.ours}`) };
+  screen.lineupView = 'official';
+  screen.official = screen._snapshot();
+  screen.formations = [{ id: 2, code: '4-4-2' }, { id: 7, code: '2-3-2-3' }];
+  screen.matchups = [{ id: 1, opponentCode: '4-2-3-1', code: '2-3-2-3', note: '5 is the libero.' }];
+  return mounted;
+}
+const pickSelect = (screen, sandbox, selector, value) => {
+  const select = screen.element.querySelector(selector);
+  select.value = value;
+  select.dispatchEvent(new sandbox.Event('change', { bubbles: true }));
+};
+
+test('every 11v11 shape draws each shirt 1 to 11 once', () => {
+  const { sandbox } = loadGameCenter();
+  const formations = vm.runInContext('FIELD_SIZES[11].formations', sandbox);
+  for (const [code, tpl] of Object.entries(formations)) {
+    assert.deepEqual(Array.from(tpl.rows.flat()).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], code);
+  }
+  assert.equal(formations['2-3-2-3'].rows.slice(1).map(r => r.length).join('-'), '2-3-2-3');
+});
+
+test('picking the opponent shape sets our formation, shows the marking note and saves both', async () => {
+  const { screen, sandbox, calls } = mountMatchups();
+  screen._render();
+  pickSelect(screen, sandbox, '[data-lineup-matchup-select]', '1');
+  await new Promise(r => setTimeout(r));
+  assert.equal(screen.formation, '2-3-2-3');
+  assert.match(screen.element.textContent, /5 is the libero/);
+  const put = calls.filter(c => c.method === 'PUT').pop();
+  assert.equal(put.body.matchupId, 1);
+  assert.equal(put.body.formationId, 7);
+});
+
+test('choosing a formation by hand drops the match', async () => {
+  const { screen, sandbox, calls } = mountMatchups();
+  screen.matchupId = 1;
+  screen.formation = '2-3-2-3';
+  screen._render();
+  pickSelect(screen, sandbox, '[data-lineup-formation-select]', '4-4-2');
+  await new Promise(r => setTimeout(r));
+  assert.equal(screen.matchupId, null);
+  assert.ok(!/5 is the libero/.test(screen.element.textContent));
+  assert.equal(calls.filter(c => c.method === 'PUT').pop().body.matchupId, null);
+});
+
+test('match opponent is offered only to an editor, on a format that can draw it', () => {
+  const { screen } = mountMatchups();
+  screen.fieldSize = 7;
+  screen._render();
+  assert.equal(screen.element.querySelector('[data-lineup-matchup-select]'), null);
+  screen.fieldSize = 11;
+  screen.isCoach = false;
+  screen._render();
+  assert.equal(screen.element.querySelector('[data-lineup-matchup-select]'), null);
 });

@@ -297,10 +297,15 @@ class DashboardScreen extends Screen {
         `<span class="${g.everyone_plays || starters >= need ? 'ok' : 'warn'}">${this.escapeHtml(lineup)}</span>`,
         wrong ? `<span class="bad">${this.escapeHtml(this._t('gc_not_going', '{n} in lineup not going', { n: wrong }))}</span>` : '',
       ].filter(Boolean).join(' · ');
-      // Contact lines: a person with 💬 (sms:) and ✉ (mailto:) links —
-      // texting beats calling on match day (owner 2026-10-16: "text email
-      // for opponent coaches and our coaches! to message them").
-      const person = (c) => `${this.escapeHtml(c.name || '')}${c.role ? ` <span style="opacity:0.6;">(${this.escapeHtml(c.role)})</span>` : ''}${c.phone ? ` · <a href="sms:${this.escapeHtml(String(c.phone).replace(/[^+\d]/g, ''))}" style="color:#bfdbfe;">💬 ${this.escapeHtml(c.phone)}</a>` : ''}${c.email ? ` · <a href="mailto:${this.escapeHtml(c.email)}" style="color:#bfdbfe;">✉ ${this.escapeHtml(c.email)}</a>` : ''}`;
+      // Contact lines: a name and its Contact button (owner 2026-10-16:
+      // "text email for opponent coaches and our coaches! to message them";
+      // owner 2026-11-02: one Contact button).  Keyed by game + name, as
+      // these rows carry no id.
+      const person = (c) => `${this.escapeHtml(c.name || '')}${c.role ? ` <span style="opacity:0.6;">(${this.escapeHtml(c.role)})</span>` : ''}${(c.phone || c.email) ? ` ${ContactPopup.button({
+        key: `dash:${g.id || g.fh_event_id || g.match_id || ''}:${c.name || c.phone || c.email}`, screen: this,
+        recipients: [{ personId: null, name: c.name || '', phone: c.phone || '', email: c.email || '' }],
+        messages: [ContactPopup.blankMessage()],
+      })}` : ''}`;
       const contacts = (g.contacts || []).length ? g.contacts.map(person).join(' · ')
         : `<span style="opacity:0.6;">${this.escapeHtml(this._t('gc_contact_none', 'no opponent contact on file'))}${g.opponent_club ? '' : ''}</span>`;
       // Head coach first, three at most — a youth travel team carries many

@@ -114,13 +114,15 @@ class ApslMessagesScreen extends Screen {
       contacts = (body.contacts || []).filter(c => office.has(c.club_id));
     } catch (err) { el.innerHTML = `<div class="error-message">${esc(err.message)}</div>`; return; }
     const row = (c) => {
-      const mail = c.email && this.buildGmailComposeHref({ to: c.email });
-      const sms = c.phone && this.buildSmsComposeHref({ to: c.phone });
+      const contact = (c.email || c.phone) ? ContactPopup.button({
+        key: `apsl-office:${c.id}`, screen: this, big: true,
+        recipients: [{ personId: null, name: c.name || '', phone: c.phone || '', email: c.email || '' }],
+        messages: [ContactPopup.blankMessage()],
+      }) : '';
       return `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 0; border-top:1px solid var(--border-color);">
           <div style="flex:1; min-width:160px;"><b>${esc(c.name)}</b> <small style="opacity:0.65;">${esc(c.role)}</small>
             <div style="font-size:0.8rem; opacity:0.75; overflow-wrap:anywhere;">${esc([c.email, c.phone].filter(Boolean).join(' · '))}</div></div>
-          ${mail ? `<a class="btn btn-primary" href="${esc(mail)}" target="_blank" rel="noopener" style="padding:5px 12px;">✉️</a>` : ''}
-          ${sms ? `<a class="btn btn-secondary" href="${esc(sms)}" style="padding:5px 12px;">💬</a>` : ''}
+          <div style="flex:none;">${contact}</div>
         </div>`;
     };
     el.innerHTML = `

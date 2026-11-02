@@ -147,15 +147,15 @@
 #                     laGet() — this allowlist entry only covers the
 #                     chat gate.
 #
-#   WelcomeMessage  — the no-team intramural guess (mig 409, commit
+#   WelcomeMessage  — the no-team in-house guess (mig 409, commit
 #                     5eb2c1db) reads person_la_memberships only to pick
-#                     WHICH intramural side to prefer (boys vs girls) for
+#                     WHICH in-house side to prefer (boys vs girls) for
 #                     a youth with no live team.  Audited 2026-10-19: its
 #                     only caller is WelcomeController::handleCreate
 #                     (plain router.post — the WELCOME button), clicked
 #                     from roster boards whose render just ran laGet(),
 #                     plus LaSyncScheduler's 5-minute cadence; a stale
-#                     row at worst prefers the wrong section's intramural
+#                     row at worst prefers the wrong section's in-house
 #                     team in the guess the admin reviews before sending.
 #                     Same weaker-bar rationale as MyController's chat
 #                     gate: nothing payment- or eligibility-sensitive is

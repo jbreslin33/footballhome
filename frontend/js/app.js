@@ -65,6 +65,7 @@ class App {
       rsvps: new RsvpBoardScreen(this.navigation, this.auth),
       kit: new KitBoardScreen(this.navigation, this.auth),
       jobs: new JobsScreen(this.navigation, this.auth),
+      coachSchedule: new CoachScheduleScreen(this.navigation, this.auth),
       awards: new AwardsScreen(this.navigation, this.auth),
       texts: new SmsOptInBoardScreen(this.navigation, this.auth),
       contacts: new ContactsScreen(this.navigation, this.auth),
@@ -181,6 +182,8 @@ class App {
     this.screenManager.register('rsvps', this.screens.rsvps);
     // Jobs (#jobs, mig 625) — auto-assigned event jobs, default-done. See screens/jobs.js.
     this.screenManager.register('jobs', this.screens.jobs);
+    // Coach Schedule (#coach-schedule, mig 955) — the days each coach RSVPs to.
+    this.screenManager.register('coach-schedule', this.screens.coachSchedule);
     // Awards (#awards, mig 800) — All-Stars to the league director + club awards. See screens/awards.js.
     this.screenManager.register('awards', this.screens.awards);
     // Uniforms & Kit (#kit) — uniform numbers + kit handed out. See screens/kit.js.

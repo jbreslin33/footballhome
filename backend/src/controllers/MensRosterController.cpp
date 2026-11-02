@@ -1162,9 +1162,8 @@ namespace {
 const int kEligibilityTeams[] = {
     35, 120, 909,                  // mens — Liga 2 deleted (302), Practice deleted (309)
     901,                           // women — Tri County
-    912, 913, 914,                 // boys travel     — U8/U10/U12
-    931, 935, 936, 937, 934, 932   // boys intramural — U6/U8/U10/U12/U16/U19
-};                                 // (migration 306; U13 933 deleted there)
+    912, 913, 914, 932             // youth — U8/U10/U12/U19 (mig 899)
+};
 
 bool isEligibilityTeamId(int teamId) {
     for (int t : kEligibilityTeams) if (t == teamId) return true;

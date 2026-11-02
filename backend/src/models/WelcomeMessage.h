@@ -22,14 +22,14 @@ class Database;
 //               club_forms (migration 365).
 //
 // Which block is used is decided by those facts, not by section: a men's
-// player with practices left gets the list, an intramural child welcomed
+// player with practices left gets the list, an in-house child welcomed
 // on a Friday gets "nothing left this week … posts Sunday".
 class WelcomeMessage {
 public:
     struct Facts {
         bool        onTeam = false;
         // Not on a team yet, but young enough to assume one: the club's
-        // intramural side for the child's age band (owner 2026-09-23:
+        // in-house side for the child's age band (owner 2026-09-23:
         // "if a new player is not on a team assume intramural and send
         // them that schedule").  Its events/schedule fill the blocks and
         // welcome_assumed_team names it.  "" when nothing fits.

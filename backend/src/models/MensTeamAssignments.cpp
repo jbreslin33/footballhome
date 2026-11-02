@@ -213,7 +213,7 @@ std::vector<int> MensTeamAssignments::addAssignmentForPerson(long long personId,
 
     if (restored.empty()) {
         // Docs status travels with the child (owner 2026-09-06, migration
-        // 340): a player marked Needs Docs / Has Docs on an intramural
+        // 340): a player marked Needs Docs / Has Docs on an in-house
         // team keeps that status on the new row when moved up, so the
         // coach is never asked to chase documents already in hand.  Any
         // other status is team-specific and starts blank as before.

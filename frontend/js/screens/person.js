@@ -320,11 +320,6 @@ class PersonScreen extends Screen {
         this._linkScraped(Number(linkBtn.getAttribute('data-link-scraped')), linkBtn);
         return;
       }
-      const magicBtn = e.target.closest('[data-magic-link]');
-      if (magicBtn && !magicBtn.disabled) {
-        e.preventDefault();
-        this._mintMagicLink(magicBtn);
-      }
     });
 
     return div;
@@ -447,6 +442,8 @@ class PersonScreen extends Screen {
   _render(data) {
     const p = data.person || {};
     const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || '(unnamed)';
+    this._personName = name;
+    this._personFirst = p.firstName || '';
 
     this._personId = data.personId || null;
     this._rsvpElig = new Set(
@@ -482,19 +479,14 @@ class PersonScreen extends Screen {
       { id: 120, short: 'Liga 1', label: 'Liga 1',   color: '#0891b2', category: 'men' },
       { id: 909, short: 'Pickup', label: 'Pickup',   color: '#10b981', category: 'men' },
       { id: 901, short: 'Tri Co', label: 'Tri County Women', color: '#db2777', category: 'women' },
-      { id: 912, short: 'U8 T',  label: 'U8 Travel',      color: '#16a34a', category: 'boys' },
-      { id: 913, short: 'U10 T', label: 'U10 Travel',     color: '#0891b2', category: 'boys' },
-      { id: 914, short: 'U12 T', label: 'U12 Travel',     color: '#7c3aed', category: 'boys' },
-      { id: 931, short: 'U6 I',  label: 'U6 Intramural',  color: '#ca8a04', category: 'boys' },
-      { id: 935, short: 'U8 I',  label: 'U8 Intramural',  color: '#65a30d', category: 'boys' },
-      { id: 936, short: 'U10 I', label: 'U10 Intramural', color: '#0e7490', category: 'boys' },
-      { id: 937, short: 'U12 I', label: 'U12 Intramural', color: '#a855f7', category: 'boys' },
-      { id: 934, short: 'U16 I', label: 'U16 Intramural', color: '#4f46e5', category: 'boys' },
-      { id: 932, short: 'U19 I', label: 'U19 Intramural', color: '#be123c', category: 'boys' },
+      { id: 912, short: 'U8', label: 'U8', color: '#16a34a', category: 'boys' },
+      { id: 913, short: 'U10', label: 'U10', color: '#0891b2', category: 'boys' },
+      { id: 914, short: 'U12', label: 'U12', color: '#7c3aed', category: 'boys' },
+      { id: 932, short: 'U19', label: 'U19', color: '#be123c', category: 'boys' },
       // Phantom pool ids 918-923 dropped with the group model
       // (migration 250) — see rsvp-eligibility.js note.
       // 2026-08-25: boys split into Travel (the existing squads) and
-      // Intramural (everyone else), migration 306. U13 deleted there.
+      // In-House (everyone else), migration 306. U13 deleted there.
       // 2026-08-25: Liga 2 (121) deleted with the club's other retired
       // teams (migration 302); U13/U16 added (migration 301).
       // 2026-08-12: consolidated to the real teams (migration 275/276) —
@@ -582,8 +574,7 @@ class PersonScreen extends Screen {
               ${e.isVerified ? 'verified' : 'unverified'}
             </span>
             <span class="ps-row-value">
-              <a href="mailto:${encodeURIComponent(e.email)}">${this._escape(e.email)}</a>
-              ${this._magicLinkBtn('email', e.email)}
+              ${this._escape(e.email)}
             </span>
           </div>`).join('')}</div>`;
 
@@ -596,70 +587,31 @@ class PersonScreen extends Screen {
               ${ph.canReceiveSms ? 'sms ok' : 'no sms'}
             </span>
             <span class="ps-row-value">
-              <a href="tel:${encodeURIComponent(ph.phone)}">${this._escape(ph.phone)}</a>
-              ${this._magicLinkBtn('sms', ph.phone)}
+              ${this._escape(ph.phone)}
             </span>
           </div>`).join('')}</div>`;
 
-    this.element.querySelector('#ps-emails-wrap').innerHTML = emailsHtml;
+    this.element.querySelector('#ps-emails-wrap').innerHTML = this._contactButton(emails, phones) + emailsHtml;
     this.element.querySelector('#ps-phones-wrap').innerHTML = phonesHtml;
   }
 
-  // ── Magic sign-in link (owner 2026-09-05) ────────────────────────────
-  //
-  // One "LINK" button beside every email/phone on file. Mints a
-  // person-only magic link for THIS person (no event scope — verify lands
-  // on #calendar and sets the one-year sliding cookie) and opens the
-  // Gmail-compose / sms: href in the admin's own client. Same endpoint
-  // and flow as RosterScreenBase.renderMagicLinkButtons, which is what
-  // the four roster boards use; this is the one-off surface for people
-  // who aren't on a board (or whose board contact is stale).
-  _magicLinkBtn(channel, contact) {
-    if (!this._personId || !contact) return '';
-    const icon  = channel === 'email' ? '✉' : '💬';
-    const verb  = channel === 'email' ? 'Email' : 'Text';
-    return `<button type="button" class="btn btn-secondary btn-sm"
-              data-magic-link="${channel}"
-              data-contact="${this._escape(contact)}"
-              title="${verb} a sign-in link to ${this._escape(contact)} (no password; signs them in for a year)"
-              style="margin-left: var(--space-2); padding: 0 6px; font-size: 0.7rem; line-height: 1.4;">${icon} LINK</button>`;
-  }
-
-  async _mintMagicLink(btn) {
-    const channel  = String(btn.getAttribute('data-magic-link') || '');
-    const contact  = String(btn.getAttribute('data-contact') || '').trim();
-    const personId = Number(this._personId);
-    if (!channel || !contact || !personId) return;
-    const orig = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '⏳';
-    try {
-      const res = await this.auth.fetch('/api/auth/magic-link/mint', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ person_id: personId, channel, contact }),
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt.slice(0, 200) || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      if (channel === 'email') {
-        const href = data.gmail_href || data.mailto_href;
-        if (!href) throw new Error('No email href returned');
-        window.open(href, '_blank', 'noopener');
-      } else {
-        const href = data.sms_href;
-        if (!href) throw new Error('No SMS href returned');
-        window.location.href = href;
-      }
-      btn.innerHTML = '✓';
-    } catch (err) {
-      console.error('magic link mint failed:', err);
-      alert(`Could not generate sign-in link: ${err.message}`);
-    } finally {
-      setTimeout(() => { btn.disabled = false; btn.innerHTML = orig; }, 1500);
-    }
+  // One CONTACT button (owner 2026-11-02): this person's primary email and
+  // best texting number, through the shared ContactPopup.
+  _contactButton(emails, phones) {
+    if (!window.ContactPopup || !this._personId) return '';
+    const email = emails.find(e => e.isPrimary) || emails[0] || null;
+    const phone = phones.find(p => p.isPrimary && p.canReceiveSms) || phones.find(p => p.canReceiveSms) || phones[0] || null;
+    if (!email && !phone) return '';
+    const name = this._personName || '';
+    const hello = ContactPopup.helloMessage('adult', this._personFirst);
+    return `<div style="margin-bottom:8px;">${ContactPopup.button({
+      key: `person:${this._personId}`,
+      screen: this,
+      recipients: [{ personId: this._personId, name, phone: phone ? phone.phone : null, email: email ? email.email : null,
+                     noText: !!phone && !phone.canReceiveSms }],
+      messages: [...(hello ? [hello] : []), ContactPopup.signInMessage()],
+      title: `Contact ${name}`,
+    })}</div>`;
   }
 
   _renderAccountCard(account) {

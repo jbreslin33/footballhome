@@ -24,7 +24,7 @@ std::string tidy(std::string s) {
 //
 // tm        the player's live teams, each with its released-window end —
 //           the same visibility rule #my applies.
-// guess     none of those, but a youth birth date: the intramural team
+// guess     none of those, but a youth birth date: the in-house team
 //           for the age band, so the welcome carries a real schedule
 //           (the admin adds the child to a team right after).
 // sq        tm, or guess when tm is empty — what ev/rel read from.
@@ -37,22 +37,24 @@ std::string tidy(std::string s) {
 // rel       when the first still-closed week opens for their section.
 constexpr const char* kFactsSql = R"SQL(
 WITH tm AS (
-  SELECT DISTINCT t.id, t.club_id, t.club_section_id,
+  SELECT DISTINCT t.id, t.club_id, t.club_section_id, tp.invite_only AS practice_only,
          fh_schedule_window_end(t.club_id, t.club_section_id, now()) AS window_end
     FROM team_persons tp
     JOIN teams t ON t.id = tp.team_id
    WHERE tp.person_id = $1::int AND tp.removed_at IS NULL AND t.is_active
      -- Call-up-gated team (mig 605): its fixtures are invite-only, so the
      -- welcome text must not promise them.
-     AND NOT fh_team_callup_only(tp.team_id) AND NOT tp.invite_only
+     AND NOT fh_team_callup_only(tp.team_id)
+     -- A youth player not On Roster is on the team for practices (mig 899).
+     AND (NOT tp.invite_only OR t.games_need_roster)
      AND NOT EXISTS (SELECT 1 FROM rsvp_suspensions s
                       WHERE s.person_id = tp.person_id
                         AND (s.team_id IS NULL OR s.team_id = tp.team_id)
                         AND s.starts_at <= now()
                         AND (s.ends_at IS NULL OR s.ends_at > now()))
 ), guess AS (
-  -- No live team, but a youth birth date: assume the club's intramural
-  -- side for the age band (smallest U-age that fits the single age, the
+  -- No live team, but a youth birth date: assume the club's youth team
+  -- for the age band (smallest U-age that fits the single age, the
   -- season year as YouthAgeGroups::defaultSeasonEndYear).  Same section
   -- as the child's LA programme when it fields one, else any — girls
   -- play on the boys squads while the girls programme grows.
@@ -68,7 +70,8 @@ WITH tm AS (
        ORDER BY m.la_registered_at DESC NULLS LAST, m.id DESC LIMIT 1) la
     JOIN teams t ON t.club_id = $2::int AND t.is_active
                 AND t.gender_category IN ('boys', 'girls')
-                AND t.name ~* 'intramural'
+                AND t.name ~ '^U[0-9]+$'
+                AND EXISTS (SELECT 1 FROM team_terms tt WHERE tt.team_id = t.id AND tt.term = fh_current_term())
    WHERE p.id = $1::int AND p.birth_date IS NOT NULL
      AND NOT EXISTS (SELECT 1 FROM tm)
      AND fh_team_age(t.id) >= fh_youth_single_age(p.birth_date,
@@ -77,9 +80,9 @@ WITH tm AS (
    ORDER BY (t.gender_category = la.category) DESC, fh_team_age(t.id), t.id
    LIMIT 1
 ), sq AS (
-  SELECT id, club_id, club_section_id, window_end FROM tm
+  SELECT id, club_id, club_section_id, window_end, practice_only FROM tm
   UNION ALL
-  SELECT id, club_id, club_section_id, window_end FROM guess
+  SELECT id, club_id, club_section_id, window_end, true FROM guess
 ), ev AS (
   SELECT fe.id, k.player_label, k.weekly_pattern, fe.opponent, fe.is_home,
          ge.starts_at,
@@ -92,6 +95,7 @@ WITH tm AS (
     JOIN gcal_events ge ON ge.id = fe.gcal_event_id
    WHERE ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
      AND ge.ends_at > now() AND ge.starts_at < now() + interval '28 days'
+     AND (NOT sq.practice_only OR fe.kind = 'practice')
    GROUP BY fe.id, k.player_label, k.weekly_pattern, fe.opponent, fe.is_home, ge.starts_at
 ), upcoming AS (
   SELECT string_agg('• ' || to_char(local_start, 'Dy Mon FMDD, FMHH12:MI AM') || ' — ' || player_label
@@ -180,7 +184,7 @@ WelcomeMessage::Rendered WelcomeMessage::render(const std::string& channel, bool
     const auto skeleton = tpls.find(channel == "email" ? "welcome" : "welcome_sms");
     if (skeleton == tpls.end()) return {};
 
-    // An assumed intramural team reads like a real one — its events and
+    // An assumed team reads like a real one — its events and
     // usual week fill the blocks — with welcome_assumed_team on top
     // saying so.  Only a player on nothing, with nothing to assume, gets
     // the bare "not on a team yet".

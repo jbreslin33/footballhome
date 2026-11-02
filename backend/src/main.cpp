@@ -43,6 +43,7 @@
 #include "controllers/RsvpBoardController.h"
 #include "controllers/PersonHealthController.h"
 #include "controllers/JobsController.h"
+#include "controllers/CoachScheduleController.h"
 #include "controllers/AwardsController.h"
 #include "controllers/KitBoardController.h"
 #include "controllers/FieldPlanController.h"
@@ -139,6 +140,7 @@ private:
     std::shared_ptr<RsvpBoardController> rsvp_board_controller_;
     std::shared_ptr<PersonHealthController> person_health_controller_;
     std::shared_ptr<JobsController> jobs_controller_;
+    std::shared_ptr<CoachScheduleController> coach_schedule_controller_;
     std::shared_ptr<AwardsController> awards_controller_;
     std::shared_ptr<KitBoardController> kit_board_controller_;
     std::shared_ptr<FieldPlanController> field_plan_controller_;
@@ -244,6 +246,7 @@ public:
         rsvp_board_controller_ = std::make_shared<RsvpBoardController>();
         person_health_controller_ = std::make_shared<PersonHealthController>();
         jobs_controller_ = std::make_shared<JobsController>();
+        coach_schedule_controller_ = std::make_shared<CoachScheduleController>();
         awards_controller_ = std::make_shared<AwardsController>();
         kit_board_controller_ = std::make_shared<KitBoardController>();
         field_plan_controller_ = std::make_shared<FieldPlanController>();
@@ -576,6 +579,8 @@ private:
         router_.useController("/api/person-health", person_health_controller_);
         // #jobs (mig 625): auto-assigned event jobs, sticky homes, default-done check-off.
         router_.useController("/api/jobs", jobs_controller_);
+        // #coach-schedule (mig 955): the days each coach covers.
+        router_.useController("/api/coach-schedule", coach_schedule_controller_);
         // #awards (mig 800): All-Stars to the league director + club awards per team, per season.
         router_.useController("/api/awards", awards_controller_);
         // #kit board (owner 2026-09-18): uniform numbers + kit handed out (mig 373).

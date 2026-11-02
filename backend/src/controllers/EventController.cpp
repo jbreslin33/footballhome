@@ -40,7 +40,7 @@ std::string leagueCrestPlaceholder(const char* team_alias) {
 }
 
 // A team's own crest, else the crest of the club it belongs to — our
-// youth / intramural / women's sides have no badge of their own and wear
+// youth / in-house / women's sides have no badge of their own and wear
 // the club's (clubs.logo_url, migration 376, owner 2026-09-18: "for game
 // center we need lighthouse logo for our teams").
 std::string teamCrest(const char* team_alias) {

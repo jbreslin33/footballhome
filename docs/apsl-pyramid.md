@@ -62,11 +62,8 @@ Dominion side list no affiliate. States: `pyramid_competition_states`.
 | `teampass_json` | APSL (3841, every conference), Cosmo (3840) | backend, scraper proxy |
 | `teampass_tables` | ADASL `/adasl/Tables/` | backend, scraper proxy |
 | `demosphere` | LISFL (data rides in the page as JSON; URL carries the season) | backend |
-| `sportsengine` | CASA Select Philadelphia, Lancaster, North Jersey, Central Jersey (mig 823); CASA MA (mig 862: "Open 11v11 Divisions", 1 Primera … 5 Quinta, Primera → Mayflower) — standings computed from each season's games; the program id is the season page's `tab_schedule?page_node_id=` program, new each season | backend |
+| `sportsengine` | CASA Select Philadelphia, Lancaster, North Jersey, Central Jersey (mig 823); CASA MA (mig 862: "Open 11v11 Divisions", 1 Primera … 5 Quinta, Primera → Mayflower); MMSL (mig 920: Fall 2026, Baltimore Metro + Capital Beltway → Mid-Atlantic; the feed's "Captial Beltway" is fixed by a `pyramid_division_names` row) — standings computed from each season's games; the program id is the season page's `tab_schedule?page_node_id=` program, new each season | backend |
 | `root_soccer` | MIPSL — rows stream in lazy Next.js chunks, browser only | `scripts/pyramid-chrome-sync.js` (timer Mon + Tue 6 AM) |
-
-No source yet: MMSL (no public tables found) — shown as a "tables not
-mirrored yet" box.
 
 APSL's one feed covers all conferences: `pyramid_feed_divisions` maps the
 feed's division ids to conference nodes (Mid-Atlantic = Chesapeake + Old
@@ -329,7 +326,10 @@ schedule! oaklyn has 2 teams apsl and liga 1 and at diff sites for each."
 A ground belongs to a TEAM: `pyramid_teams.venue_id` → `pyramid_venues`
 (one row per address, geocoded once however many teams share it). The feeds
 name it: TeamPass — the location of most games the team hosts (game → field
-→ location); SportsEngine — its home games' address; refreshed every read.
+→ location); SportsEngine — its home games' address; Demosphere (LISFL) —
+the field complex it hosts at most on its team page, the address from that
+complex's page (`PyramidSync::demosphereGrounds`, background, one request a
+second); refreshed every read.
 `PyramidSync::geocodePending()` geocodes new venues on a background thread,
 one Nominatim call a second (`CarpoolRouting::geocode`, public): the full
 address, else its town + zip ('nominatim (town)'); a miss is stamped. A

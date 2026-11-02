@@ -46,6 +46,7 @@ class FinancesScreen extends Screen {
         .fn-game { display:flex; gap:10px; align-items:center; padding:3px 0; border-bottom:1px solid var(--border-color, #374151); }
         .fn-game .d { width:90px; font-weight:700; } .fn-game .o { flex:1; }
         .fn-warn { color:#fbbf24; font-weight:700; }
+        .fn-amt { width:90px; text-align:right; padding:3px 6px; border:1px solid var(--border-color, #374151); border-radius:4px; background:transparent; color:var(--text-primary); font:inherit; }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
         <button class="btn btn-secondary" id="fn-back">← Back</button>
@@ -60,6 +61,15 @@ class FinancesScreen extends Screen {
     div.addEventListener('click', (e) => {
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
+    });
+    div.addEventListener('change', (e) => {
+      const row = e.target.closest('[data-budget-line]'); if (!row) return;
+      if (e.target.matches('[data-budget-settled]')) this._saveBudgetLine(row.dataset.budgetLine, { settled: e.target.checked });
+      if (e.target.matches('[data-budget-amount]')) {
+        const amount = Number(e.target.value);
+        if (e.target.value.trim() !== '' && amount >= 0) this._saveBudgetLine(row.dataset.budgetLine, { amount });
+        else this._renderBody();
+      }
     });
     return div;
   }
@@ -80,6 +90,20 @@ class FinancesScreen extends Screen {
       if (!s.ok) throw new Error(sj.error || `HTTP ${s.status}`);
       if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
       this.summary = sj; this.expenses = xj;
+    } catch (err) { this.err = err.message; }
+    this._renderBody();
+  }
+
+  // A budget line's estimate or ✓ Settled (mig 921), then the grid again.
+  async _saveBudgetLine(id, change) {
+    try {
+      const res = await this.auth.fetch(`/api/finances/budget-lines/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(change) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      const x = await this.auth.fetch('/api/finances/expenses');
+      const xj = await x.json().catch(() => ({}));
+      if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
+      this.expenses = xj;
     } catch (err) { this.err = err.message; }
     this._renderBody();
   }
@@ -194,7 +218,7 @@ class FinancesScreen extends Screen {
         hints: [`${p.hours_per_game} h × ${FinancesScreen.money2(p.rate_per_hour)}/h = ${FinancesScreen.money2(p.rate)} per game, home and away${p.coach ? `, paid to ${p.coach}` : ''}`] })),
       ...(x.ref_fees || []).filter(p => p.kind !== 'coaching').map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
       ...(x.budget || []).map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
-        hints: [`${b.label}: ${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}`] })),
+        hints: [`${b.label}: ${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}${b.settled ? ` · ${this._copy('budget_settled_hint', { amount: FinancesScreen.money2(b.invoiced + b.paid_before) })}` : ''}`] })),
     ];
     const cats = new Map();
     for (const r of raw) {
@@ -249,6 +273,33 @@ class FinancesScreen extends Screen {
         <div class="fn-title">${esc(this._copy('refs_title') || 'Home games')}</div>
         <div class="fn-note">${esc(this._copy('refs_note'))}</div>
         <div class="fn-games">${list || '<div class="fn-dim">No games on the schedules yet.</div>'}</div>
+      </div>
+      ${this._budgetHtml()}`;
+  }
+
+  // ── Budget lines: edit the estimate, ✓ when the bill is finished (mig 921) ──
+  _budgetHtml() {
+    const esc = (t) => this.escapeHtml(t), M2 = FinancesScreen.money2;
+    const lines = this.expenses.budget || [];
+    if (!lines.length) return '';
+    const cols = (this._copy('budget_columns') || '').split('|').map(c => c.trim());
+    const per = (b) => b.amount_per === 'member' ? this._copy('budget_per_member', { units: b.units }) : b.amount_per === 'week' ? this._copy('budget_per_week', { units: b.units }) : '';
+    const rows = lines.map(b => `
+      <tr data-budget-line="${b.id}" class="${b.settled ? 'fn-dim' : ''}">
+        <td style="white-space:normal;">${esc(b.label)}${b.is_assumed ? '*' : ''}${b.section ? ` <span class="fn-dim">· ${esc(b.section)}</span>` : ''}</td>
+        <td><input class="fn-amt" data-budget-amount type="number" min="0" step="0.01" value="${Number(b.amount).toFixed(2)}" aria-label="${esc(cols[1] || '')}"><span class="fn-tick">${esc(per(b))}</span></td>
+        <td>${b.invoiced ? M2(b.invoiced) : '<span class="fn-dim">–</span>'}</td>
+        <td class="fn-out">${b.remaining ? M2(b.remaining) : '<span class="fn-dim">–</span>'}</td>
+        <td><input type="checkbox" data-budget-settled ${b.settled ? 'checked' : ''} aria-label="${esc(cols[4] || '')}"></td>
+      </tr>`).join('');
+    return `
+      <div class="fn-card">
+        <div class="fn-title">${esc(this._copy('budget_title'))}</div>
+        <div class="fn-note">${esc(this._copy('budget_note'))}</div>
+        <div style="overflow-x:auto;"><table class="fn-table" style="min-width:560px;">
+          <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
       </div>`;
   }
 }

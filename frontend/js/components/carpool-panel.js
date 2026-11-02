@@ -110,7 +110,11 @@ class CarpoolPanel {
     if (!cp) return '';
     const esc = (t) => this._esc(t);
     const me = Number(cp.viewerPersonId);
-    const smsBtn = (phone, label) => phone ? `<a href="sms:${esc(phone)}" style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; border:1px solid var(--border-color); color:inherit; text-decoration:none; font-size:0.66rem;">💬 ${esc(label || phone)}</a>` : '';
+    const smsBtn = (person, rowId) => person.phone ? ContactPopup.button({
+      key: `carpool:${rowId}:${person.personId}`, label: `💬 ${person.name || person.phone}`,
+      recipients: [{ personId: person.personId, name: person.name || '', phone: person.phone }],
+      messages: [ContactPopup.blankMessage()],
+    }) : '';
     const act = (action, id, cls, label) => `<button class="btn ${cls}" data-gc-cp="${action}" data-cp-id="${id}" ${this.busy ? 'disabled' : ''} style="padding:3px 10px; font-size:0.7rem; font-weight:700;">${label}</button>`;
 
     const rows = (cp.requests || []).map(r => {
@@ -149,8 +153,8 @@ class CarpoolPanel {
           ${this.optionsFor === r.id && !driver ? this._optionPicker(r) : ''}
           <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:3px; font-size:0.66rem; opacity:0.9;">
             <span style="opacity:0.7;">${esc(this._copy('asked_by', { name: r.requestedBy.name }) || `Asked by ${r.requestedBy.name}`)}</span>
-            ${!mineReq ? smsBtn(r.requestedBy.phone, r.requestedBy.name) : ''}
-            ${driver && !iDrive ? smsBtn(driver.phone, driver.name) : ''}
+            ${!mineReq ? smsBtn(r.requestedBy, r.id) : ''}
+            ${driver && !iDrive ? smsBtn(driver, r.id) : ''}
           </div>
         </div>`;
     }).join('');

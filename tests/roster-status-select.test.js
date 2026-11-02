@@ -56,7 +56,7 @@ test('a Parks & Rec column offers the docs steps and no ITC', () => {
   assert.match(html, /background:#be123c; color:#ffffff; border:1px solid #fb7185/, 'colour comes from the row, not a JS map');
 });
 
-test('an intramural column is the short docs-only list', () => {
+test('an in-house column is the short docs-only list', () => {
   const { screen } = withFixture();
   const html = screen.renderStatusSelect({ personId: 7 }, { teamId: 935, leagueId: INTERNAL }, true);
   assert.deepEqual(optionCodes(html), ['', 'needs_docs']);

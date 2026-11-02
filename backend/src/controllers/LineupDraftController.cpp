@@ -70,7 +70,7 @@ Response LineupDraftController::handleGet(const Request& request) {
             out["drafters"].push_back({{"personId", r["id"].as<long long>()}, {"name", str(r, "name")}, {"firstName", str(r, "first_name")}, {"mine", r["id"].as<long long>() == a.personId}});
         for (const auto& d : db->query(R"SQL(
             SELECT d.id, d.author_person_id, p.first_name || ' ' || p.last_name AS name, p.first_name,
-                   f.code AS formation_code, to_char(d.updated_at AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI AM') AS updated_label
+                   d.matchup_id, f.code AS formation_code, to_char(d.updated_at AT TIME ZONE 'America/New_York', 'Mon FMDD, FMHH12:MI AM') AS updated_label
               FROM match_lineup_drafts d JOIN persons p ON p.id = d.author_person_id LEFT JOIN formations f ON f.id = d.formation_id
              WHERE d.match_id = $1::int ORDER BY p.last_name, p.first_name)SQL", {mid})) {
             json rows = json::array();
@@ -83,6 +83,7 @@ Response LineupDraftController::handleGet(const Request& request) {
             const long long author = d["author_person_id"].as<long long>();
             out["drafts"].push_back({{"id", d["id"].as<long long>()}, {"authorPersonId", author}, {"authorName", str(d, "name")}, {"firstName", str(d, "first_name")},
                                      {"mine", author == a.personId}, {"formationCode", d["formation_code"].is_null() ? json(nullptr) : json(str(d, "formation_code"))},
+                                     {"matchupId", d["matchup_id"].is_null() ? json(nullptr) : json(d["matchup_id"].as<long long>())},
                                      {"updatedAt", str(d, "updated_label")}, {"rows", rows}});
         }
         return jsonOut(HttpStatus::OK, out);
@@ -102,15 +103,17 @@ Response LineupDraftController::handlePutMine(const Request& request) {
         auto* db = Database::getInstance();
         const std::string mid = std::to_string(matchId), pid = std::to_string(a.personId);
         const long long formationId = body.value("formationId", 0LL);
+        // Match opponent (mig 912): the draft's own pick, null = none.
+        const std::string matchupId = body.contains("matchupId") && body["matchupId"].is_number() ? std::to_string(body["matchupId"].get<long long>()) : "";
         // First team of the game, for the record.
         std::string teamId;
         { auto t = db->query("SELECT (array_remove(ARRAY[m.home_team_id, m.away_team_id], NULL))[1] AS t FROM matches m WHERE m.id = $1::int", {mid}); if (!t.empty()) teamId = str(t[0], "t"); }
         auto up = db->query(R"SQL(
-            INSERT INTO match_lineup_drafts (match_id, team_id, author_person_id, formation_id, updated_at)
-            VALUES ($1::int, NULLIF($2,'')::int, $3::int, NULLIF($4,'0')::int, now())
+            INSERT INTO match_lineup_drafts (match_id, team_id, author_person_id, formation_id, matchup_id, updated_at)
+            VALUES ($1::int, NULLIF($2,'')::int, $3::int, NULLIF($4,'0')::int, NULLIF($5,'')::int, now())
             ON CONFLICT (match_id, author_person_id) DO UPDATE SET
-                formation_id = COALESCE(NULLIF($4,'0')::int, match_lineup_drafts.formation_id), updated_at = now()
-            RETURNING id)SQL", {mid, teamId, pid, std::to_string(formationId)});
+                formation_id = COALESCE(NULLIF($4,'0')::int, match_lineup_drafts.formation_id), matchup_id = EXCLUDED.matchup_id, updated_at = now()
+            RETURNING id)SQL", {mid, teamId, pid, std::to_string(formationId), matchupId});
         const std::string did = std::string(up[0]["id"].c_str());
         db->query("DELETE FROM match_lineup_draft_rows WHERE draft_id = $1::int", {did});
         auto put = [&](const json& arr, const char* zone) {

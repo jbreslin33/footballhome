@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <string>
 #include "../third_party/json.hpp"
 
@@ -29,7 +30,9 @@
 //                 ahead in the period (paint, mig 491).  Invoice lines / instalment plans
 //                 that count toward the line reduce what is still to come;
 //                 the remainder lands in the line's start month (never
-//                 earlier than the current month) or is spread evenly.
+//                 earlier than the current month) or is spread evenly.  A
+//                 settled line (mig 921) has no remainder: what was invoiced
+//                 is its true cost.
 //
 // Everything is per club section (Mens / Womens / Boys / Girls) so #finances
 // can roll up per section and overall like the revenue side.
@@ -50,8 +53,12 @@ public:
     static nlohmann::json projection(int clubId);
 
     // Budget lines an invoice line can count toward: { id, label, category,
-    // section, total, invoiced, remaining }.
+    // section, total, invoiced, settled, remaining }.
     static nlohmann::json openBudgetLines(int clubId);
+
+    // #finances edits (mig 921): the estimate and/or the ✓ Settled tick.
+    // False when the line is not this club's.
+    static bool updateBudgetLine(int clubId, int lineId, const std::optional<double>& amount, const std::optional<bool>& settled);
 
     // The Referees line for a set of games ({source, ref_id} each):
     // { description, quantity, amount, items: [{policy_id, source, ref_id,

@@ -174,10 +174,6 @@ class PaymentsScreen extends Screen {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
       const viewBtn = e.target.closest('.pay-view');
       if (viewBtn) return this.switchView(viewBtn.dataset.view);
-      // ✉️ / 💬 dues notice: let the href open, log the send to
-      // pay_reminder_log and bump this channel's tally on the row.
-      const notice = e.target.closest('.pay-notice-log');
-      if (notice) { this._logPayNotice(notice); return; }
       const openLa = e.target.closest('[data-open-la-user]');
       if (openLa) {
         const uid = openLa.getAttribute('data-open-la-user');
@@ -1228,52 +1224,47 @@ class PaymentsScreen extends Screen {
                         font-size:0.75rem; font-weight:700;">🔗 Open in LA</button>`
       : '';
 
-    // Contact action buttons — Gmail compose / sms: / tel:.  SMS + Call
-    // only appear when the phone row is flagged to receive that channel.
-    // Email opens Gmail's compose URL (not mailto:) so the operator's
-    // Gmail tab handles it — matches the Members screen pattern.
-    const contactBtns = [];
-    if (m.email) {
-      // One button: subject + body come from message_templates kind
-      // 'payment_notice_email', tier by months behind (migration 399).
-      // The subject leads with the real LA club name ({club}), not
-      // "Football Home" — members pay Lighthouse dues, so an FH-branded
-      // subject reads as spam and gets ignored.
-      const copy = this._paymentNotice(m, 'email');
-      if (copy) {
-        const gmailUrl = this.buildGmailComposeHref({ to: m.email, subject: copy.subject, body: copy.body });
-        contactBtns.push(
-          `<a href="${gmailUrl}" target="_blank" rel="noopener"
-               class="pay-notice-log" data-la-user-id="${m.laUserId || ''}" data-method="email"
-               data-tier="${copy.tier}" data-amount="${this.escape(String(copy.standing.amountNum ?? ''))}"
-               data-days-overdue="${Number.isFinite(m.daysOverdue) ? m.daysOverdue : ''}"
-               title="${this.escape(this._paymentNoticeTitle(copy, 'email'))}"
-               style="${this._paymentNoticeStyle(copy.tier)}">${copy.label}</a>`
-        );
-      }
-    }
-    const phoneDigits = m.phone ? this.digits(m.phone) : '';
-    if (phoneDigits && m.phoneSms !== false) {
-      const textCopy = this._paymentNotice(m, 'sms');
-      if (textCopy) {
-        contactBtns.push(
-          `<a href="sms:${phoneDigits}?body=${encodeURIComponent(Screen.withSmsLinkHint(textCopy.body))}"
-               class="pay-notice-log" data-la-user-id="${m.laUserId || ''}" data-method="sms"
-               data-tier="${textCopy.tier}" data-amount="${this.escape(String(textCopy.standing.amountNum ?? ''))}"
-               data-days-overdue="${Number.isFinite(m.daysOverdue) ? m.daysOverdue : ''}"
-               title="${this.escape(this._paymentNoticeTitle(textCopy, 'sms'))}"
-               style="${this._paymentNoticeStyle(textCopy.tier)}">${textCopy.label}</a>`
-        );
-      }
-    }
-    if (phoneDigits && m.phoneCall !== false) {
-      contactBtns.push(
-        `<a href="tel:${phoneDigits}"
-             style="padding:6px 10px; border-radius:4px; text-decoration:none;
-                    background:#1f2937; color:#e5e7eb; border:1px solid #4b5563;
-                    font-size:0.75rem; font-weight:700;">📞 Call</a>`
-      );
-    }
+    // One CONTACT button (owner 2026-11-02).  The dues notice is the
+    // preselected message: subject + words from message_templates kind
+    // 'payment_notice_*', tier by months behind (mig 399); the subject
+    // leads with the real LA club name ({club}), not "Football Home" —
+    // members pay Lighthouse dues.  Every send still lands in
+    // pay_reminder_log.  Never from the club number.
+    const emailNotice = m.email ? this._paymentNotice(m, 'email') : null;
+    const textNotice  = (m.phone && m.phoneSms !== false) ? this._paymentNotice(m, 'sms') : null;
+    const anyNotice   = emailNotice || textNotice;
+    const hello = window.ContactPopup ? ContactPopup.helloMessage('adult', m.firstName) : null;
+    const contactMessages = [
+      ...(anyNotice ? [{
+        key: 'dues',
+        label: anyNotice.label,
+        subject: emailNotice ? emailNotice.subject : '',
+        body: emailNotice ? emailNotice.body : textNotice.body,
+        smsBody: textNotice ? textNotice.body : '',
+        noClub: true,
+        onSent: (_data, via) => {
+          const method = via === 'email' ? 'email' : 'sms';
+          const c = method === 'email' ? emailNotice : textNotice;
+          if (c) this._logPayNotice({ dataset: {
+            laUserId: String(m.laUserId || ''), method, tier: c.tier,
+            amount: String(c.standing.amountNum ?? ''),
+            daysOverdue: Number.isFinite(m.daysOverdue) ? String(m.daysOverdue) : '',
+          } });
+        },
+      }] : []),
+      ...(hello ? [hello] : []),
+    ];
+    const contactBtn = (window.ContactPopup && contactMessages.length && (m.email || m.phone))
+      ? ContactPopup.button({
+          key: `payments:${m._tab || this.tab}:${m.laUserId || m.personId}`,
+          screen: this,
+          recipients: [{ personId: m.personId, name: `${m.firstName || ''} ${m.lastName || ''}`.trim(), phone: m.phone || null, email: m.email || null,
+                         noText: m.phoneSms === false, noCall: m.phoneCall === false }],
+          messages: contactMessages,
+          flagged: !!anyNotice,
+          title: anyNotice ? this._paymentNoticeTitle(anyNotice, emailNotice ? 'email' : 'sms') : '',
+        })
+      : '';
 
     // Flag-for-Charge button — disabled+badged if a pending flag already
     // exists for this LA user on this program.
@@ -1359,7 +1350,7 @@ class PaymentsScreen extends Screen {
           </div>
           ${recentHtml}
         </div>
-        <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtns.join('')}${duesFree ? '' : pauseBtn + flagBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: m.laUserId, firstName: m.firstName, fullName: `${m.firstName || ''} ${m.lastName || ''}`.trim() }, { returnTo: 'payments', size: 'md' }) : ''}</div>
+        <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtn}${duesFree ? '' : pauseBtn + flagBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: m.laUserId, firstName: m.firstName, fullName: `${m.firstName || ''} ${m.lastName || ''}`.trim() }, { returnTo: 'payments', size: 'md' }) : ''}</div>
       </div>
     `;
   }

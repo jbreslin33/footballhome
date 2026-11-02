@@ -107,7 +107,7 @@ Response RosterSheetController::handleSheet(const Request& request) {
         json team = {{"id", teamId}, {"label", str(tr, "label")}, {"age", age},
                      {"roster_title", str(tr, "roster_title")}, {"club_name", str(tr, "club_name")}, {"team_name", str(tr, "team_name").empty() ? str(tr, "label") : str(tr, "team_name")},
                      {"association", str(tr, "association")}, {"season_label", str(tr, "season_label")}, {"official_label", str(tr, "official_label")},
-                     {"level", str(tr, "level").empty() ? (tr["is_travel"].is_null() ? "" : (tr["is_travel"].as<bool>() ? "Travel" : "Intramural")) : str(tr, "level")},
+                     {"level", str(tr, "level")},
                      {"gender", str(tr, "gender_label").empty() ? (str(tr, "gender_category") == "boys" ? "Male" : str(tr, "gender_category") == "girls" ? "Female" : "") : str(tr, "gender_label")},
                      {"external_team_id", str(tr, "external_team_id")}, {"division", str(tr, "division")}, {"color", str(tr, "color")}};
 

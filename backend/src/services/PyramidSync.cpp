@@ -825,6 +825,90 @@ json PyramidSync::cityOutline(int confId) {
     }
 }
 
+// Demosphere's standings name no grounds (LISFL).  A team's page
+// lists its games, home side first, with a link to each game's field complex,
+// and that page holds the address.  The ground is the complex it hosts at
+// most, reading on when one has no address.  One request a second on a
+// background thread: a page load never waits, and a failure never fails the
+// table read — a team keeps the ground it had.
+void PyramidSync::demosphereGrounds(int sourceId, const std::string& locator) {
+    const size_t st = locator.find("/standings/");
+    const size_t slash = locator.rfind('/');
+    const size_t dot = locator.rfind(".html");
+    const size_t host = locator.find('/', locator.find("://") + 3);
+    if (st == std::string::npos || dot == std::string::npos || host == std::string::npos) return;
+    const std::string origin = locator.substr(0, host);
+    const std::string base = locator.substr(0, st);
+    const std::string season = locator.substr(slash + 1, dot - slash - 1);
+
+    static std::atomic<bool> running{false};
+    if (running.exchange(true)) return;
+    std::thread([sourceId, origin, base, season] {
+        auto attr = [](const std::string& s, const std::string& name) {
+            const size_t p = s.find(name + "=\"");
+            if (p == std::string::npos) return std::string();
+            const size_t from = p + name.size() + 2;
+            return s.substr(from, s.find('"', from) - from);
+        };
+        HttpClient http;
+        http.setTotalTimeoutSec(30);
+        auto page = [&http](const std::string& url) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            auto resp = http.get(url, {{"User-Agent", "Mozilla/5.0"}});
+            return resp.ok() ? resp.body : std::string();
+        };
+        struct Ground { std::string address, name; };
+        std::map<std::string, Ground> grounds;    // complex link → what it says
+        try {
+            auto* db = Database::getInstance();
+            auto teams = db->query("SELECT t.id, t.external_id AS tm, d.external_id AS tg FROM pyramid_teams t "
+                                   "  JOIN pyramid_divisions d ON d.id = t.division_id "
+                                   " WHERE d.source_id = $1::int AND d.removed_at IS NULL AND t.removed_at IS NULL "
+                                   " ORDER BY t.id", {std::to_string(sourceId)});
+            for (const auto& t : teams) {
+                const std::string tm = t["tm"].c_str();
+                const std::string html = page(base + "/teams/" + season + "/" + tm + "-" + t["tg"].c_str() + "/TEAM.html");
+                std::map<std::string, int> hosted;
+                for (size_t p = html.find("<tr class=\"GameRow"); p != std::string::npos; p = html.find("<tr class=\"GameRow", p + 1)) {
+                    const std::string row = html.substr(p, html.find("</tr>", p) - p);
+                    const size_t fac = row.find("class=\"facility\"");
+                    if (attr(row, "team1key") != tm || fac == std::string::npos) continue;
+                    const std::string link = attr(row.substr(fac), "href");
+                    if (!link.empty()) hosted[decodeEntities(link)]++;
+                }
+                std::vector<std::pair<std::string, int>> ranked(hosted.begin(), hosted.end());
+                std::stable_sort(ranked.begin(), ranked.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
+                for (const auto& [link, games] : ranked) {
+                    if (!grounds.count(link)) {
+                        const std::string fp = page(origin + link);
+                        Ground g;
+                        const size_t m = fp.find("/maps/dir//");
+                        if (m != std::string::npos) {
+                            g.address = fp.substr(m + 11, fp.find('"', m) - m - 11);
+                            std::replace(g.address.begin(), g.address.end(), '+', ' ');
+                            g.address = squeeze(decodeEntities(g.address));
+                        }
+                        const size_t h = fp.find("<h1 class=\"dii-hdr\">");
+                        if (h != std::string::npos) g.name = stripTags(fp.substr(h + 20, fp.find("</h1>", h) - h - 20));
+                        grounds[link] = g;
+                    }
+                    const Ground& g = grounds[link];
+                    if (g.address.empty()) continue;
+                    auto v = db->query("INSERT INTO pyramid_venues (address, name) VALUES ($1, NULLIF($2, '')) "
+                                       "ON CONFLICT (address) DO UPDATE SET name = coalesce(EXCLUDED.name, pyramid_venues.name) "
+                                       "RETURNING id", {g.address, g.name});
+                    db->query("UPDATE pyramid_teams SET venue_id = $1::int WHERE id = $2::int", {v[0][0].c_str(), t["id"].c_str()});
+                    break;
+                }
+            }
+            geocodePending();
+        } catch (const std::exception& e) {
+            std::cerr << "[pyramid] grounds, source " << sourceId << ": " << e.what() << std::endl;
+        }
+        running = false;
+    }).detach();
+}
+
 json PyramidSync::refreshSource(int sourceId) {
     json result = {{"source_id", sourceId}, {"ok", false}, {"teams", 0}, {"note", ""}};
     auto* db = Database::getInstance();
@@ -847,6 +931,7 @@ json PyramidSync::refreshSource(int sourceId) {
         result["ok"] = true;
         result["teams"] = r.empty() ? 0 : r[0][0].as<int>();
         if (system == "teampass_json") storeSeasons(sourceId, locator, static_cast<TeamPassJsonReader*>(reader.get())->body);
+        if (system == "demosphere") demosphereGrounds(sourceId, locator);
     } catch (const std::exception& e) {
         note = e.what();
         std::cerr << "[pyramid] source " << sourceId << ": " << note << std::endl;

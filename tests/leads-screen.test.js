@@ -32,6 +32,7 @@ function loadLeadsSandbox() {
       setItem() {},
     },
     Screen: class {},
+    ContactPopup: { calls: [], button(cfg) { this.calls.push(cfg); return '<contact/>'; } },
   };
 
   vm.createContext(context);
@@ -210,28 +211,54 @@ test('save contact keeps the blob so a retry can share without an await', async 
   assert.equal(calls.fetches[0], '/api/leads/7/vcard?kind=youth-pair');
 });
 
-test('every contactable lead card carries a save-to-contacts button', () => {
-  const LeadsScreen = loadLeadsScreenClass();
-  const screen = new LeadsScreen();
+test('a lead card has one Contact button that opens on the right message and logs every touch', async () => {
+  const ctx = loadLeadsSandbox();
+  const screen = new ctx.LeadsScreen();
   screen.formLabel = () => '';
   screen.formatPhoneNumber = (p) => p;
-  screen.buildMailHref = () => 'mailto:x';
-  screen.buildSmsHref = () => 'sms:x';
-  screen.buildMailHrefForSnippet = () => 'mailto:x';
-  screen.buildSmsHrefForSnippet = () => 'sms:x';
+  screen.auth = { getUser: () => ({ first_name: 'Mike' }) };
+  screen._proBold = (s) => String(s);
+  screen._nextPractice = () => ({ label: 'Thu, Jul 23' });
+  const touches = [];
+  screen.logLeadTouch = (...a) => touches.push(a);
+  const saves = [];
+  screen.saveLeadContact = async (...a) => saves.push(a);
 
-  const adult = screen.renderLead({ id: 3, name: 'Jane Doe', phone: '5551234567' }, "Men's Club");
-  assert.match(adult, /data-channel="vcard"/);
-  assert.match(adult, /data-kind="self"/);
+  const adult = screen.renderLead({ id: 3, name: 'Jane Doe', phone: '5551234567', status: 'new' }, "Men's Club");
+  assert.match(adult, /<contact\/>/);
+  assert.doesNotMatch(adult, /contact-btn|href="sms:|href="tel:|Close · |Info · /);
+  const cfg = ctx.ContactPopup.calls.at(-1);
+  assert.equal(cfg.defaultKey, 'first-touch');
+  assert.equal(cfg.flagged, true);
+  assert.equal(cfg.recipients[0].personId, null);
+  assert.ok(['first-touch', 'close', 'more-info'].every(k => cfg.messages.some(m => m.key === k)));
+  assert.ok(!cfg.messages.some(m => m.key === 'la-program-description' || m.key === 'fh-set-availability'));
 
-  // Youth funnels save a pair — parent card plus player placeholder.
-  const youth = screen.renderLead({ id: 4, name: 'Sam Ray', email: 's@x.com' }, 'Youth Boys Club');
-  assert.match(youth, /data-kind="youth-pair"/);
-  assert.match(youth, /Save \(2\)/);
+  // A send logs what actually went: the edited words on the right channel.
+  cfg.messages.find(m => m.key === 'close').onSent(null, 'relay', 'my words');
+  assert.deepEqual([...touches[0]], [3, 'text', 'close', 'my words']);
+  cfg.messages[0].onSent(null, 'email', 'hello');
+  assert.deepEqual([...touches[1]], [3, 'email', 'first-touch', 'hello']);
+  cfg.onCall();
+  assert.deepEqual([...touches[2]], [3, 'call', 'call', '']);
+  await cfg.onSave();
+  assert.deepEqual([...saves[0]], [3, 'self']);
 
-  // A name with no phone and no email makes a useless address-book row.
-  const empty = screen.renderLead({ id: 5, name: 'No Contact' }, "Men's Club");
-  assert.doesNotMatch(empty, /data-channel="vcard"/);
+  // Already touched = the close that answers a YES; signed up = welcome.
+  screen.renderLead({ id: 6, name: 'A', phone: '5551234567', text_count: 1, status: 'responded' }, "Men's Club");
+  assert.equal(ctx.ContactPopup.calls.at(-1).defaultKey, 'close');
+  screen.renderLead({ id: 7, name: 'A', phone: '5551234567', text_count: 1, status: 'signedup' }, "Men's Club");
+  assert.equal(ctx.ContactPopup.calls.at(-1).defaultKey, 'welcome');
+
+  // Youth funnels save a pair: parent card plus player placeholder.
+  screen.renderLead({ id: 4, name: 'Sam Ray', email: 's@x.com' }, 'Youth Boys Club');
+  await ctx.ContactPopup.calls.at(-1).onSave();
+  assert.deepEqual([...saves[1]], [4, 'youth-pair']);
+
+  // No phone and no email: nothing to contact them on.
+  const before = ctx.ContactPopup.calls.length;
+  assert.doesNotMatch(screen.renderLead({ id: 5, name: 'No Contact' }, "Men's Club"), /<contact\/>/);
+  assert.equal(ctx.ContactPopup.calls.length, before);
 });
 
 
@@ -428,9 +455,7 @@ test('without the DB copy a lead card offers no touch-1 message and no reply chi
   screen.buildGmailComposeHref = () => 'gmail:compose';
 
   const lead = { name: 'Ana Lopez', phone: '2155550100', email: 'a@example.com' };
-  assert.equal(screen.buildSmsHref(lead, 'PR Men'), null);
-  assert.equal(screen.buildMailHref(lead, 'PR Men'), null);
-  assert.equal(screen.buildWhatsAppHref(lead, 'PR Men'), null);
+  assert.equal(screen.contactButton(lead, 'PR Men', false), '');
   const ids = screen.messageSnippets('PR Men').map(s => s.id);
   assert.equal(ids.join(), 'la-program-description');
 });

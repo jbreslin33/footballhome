@@ -256,12 +256,11 @@ class BoysRosterScreen extends RosterScreenBase {
   // own phone/email are a fallback for records that omit them.
   // ── "Docs" reminder preset (owner 2026-08-27) ──────────────────────
   //
-  // Only U8/U10/U12 Intramural get this button. The other intramural
-  // columns (U6/U16/U19) deliberately do not — the owner named these
-  // three. Matched on the column label because there is no
+  // Only U8/U10/U12 get this button — the owner named these three.
+  // Matched on the column label because there is no
   // "needs-documents" flag on `teams`; if this list grows, a boolean
   // column there beats extending this regex.
-  static DOCS_TEAM_RE = /^U(8|10|12)\s+Intramural$/i;
+  static DOCS_TEAM_RE = /^U(8|10|12)$/i;
 
   // Per-player docs rule (owner 2026-09-06, migration 340): the roster
   // status dropdown now carries Needs Docs / Has Docs.
@@ -269,7 +268,7 @@ class BoysRosterScreen extends RosterScreenBase {
   //   has_docs / on_roster… → never ask again
   //   blank status          → fall back to the column rule below, so the
   //                           families already being chased in the
-  //                           intramural columns keep their button
+  //                           in-house columns keep their button
   //                           until the coach marks them.
   static playerNeedsDocs(p, col) {
     const st = (p && p.rosterStatus) || '';
@@ -293,12 +292,13 @@ class BoysRosterScreen extends RosterScreenBase {
     const keep = (list) => (Array.isArray(list) ? list : []).filter(p => this.keepPlayer(p));
     data.unassigned = keep(data.unassigned);
     data.unassignedCount = data.unassigned.length;
-    let total = data.unassigned.length;
+    // A kid sits on a fall and a winter team (mig 907): count them once.
+    const people = new Set(data.unassigned.map(p => p.personId));
     for (const k of Object.keys(data.buckets || {})) {
       data.buckets[k] = keep(data.buckets[k]);
-      total += data.buckets[k].length;
+      data.buckets[k].forEach(p => people.add(p.personId));
     }
-    if (typeof data.total === 'number') data.total = total;
+    if (typeof data.total === 'number') data.total = people.size;
     return data;
   }
 

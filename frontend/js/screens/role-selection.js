@@ -97,6 +97,14 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
 
+        <button class="btn btn-lg btn-primary" data-role="coach-schedule" id="rs-coach-schedule" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3); width: 100%; text-align: left;">
+          <span style="font-size: 2rem;">🗓️</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('coach_schedule', 'tile_title')) || 'Coach Schedule'}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('coach_schedule', 'tile_sub')) || "Set each coach's practice days"}</div>
+          </div>
+        </button>
+
         <!-- 🏅 Awards (mig 800): All-Stars to the league director, club awards. Copy: kind=awards. -->
         <button class="btn btn-lg btn-primary" data-role="awards" id="rs-awards" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">🏅</span>
@@ -559,6 +567,9 @@ class RoleSelectionScreen extends Screen {
     } else if (role === 'awards') {
       // Not a role — #awards (mig 800).
       this.navigation.goTo('awards');
+    } else if (role === 'coach-schedule') {
+      // Not a role — the days each coach covers (mig 955).
+      this.navigation.goTo('coach-schedule');
     } else if (role === 'jobs') {
       // Not a role — event jobs (mig 625): auto-assigned, default-done.
       this.navigation.goTo('jobs');

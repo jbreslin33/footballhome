@@ -38,6 +38,10 @@ public:
     // one from `body` (the feed just read), each past one fetched once.
     static void storeSeasons(int sourceId, const std::string& locator, const nlohmann::json& body);
 
+    // A Demosphere league's home grounds: each team's most-hosted field
+    // complex, read off its team page on a background thread.
+    static void demosphereGrounds(int sourceId, const std::string& locator);
+
     // A conference's Sunday (no-traffic) drive times among its APSL clubs:
     // {max_minutes, from, to, avg_minutes, median_minutes, min_minutes,
     // min_from, min_to, pairs} or null (migs 852, 854, 857).

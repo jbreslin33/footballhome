@@ -209,18 +209,19 @@ static bool isOptedIn(long long personId) {
 }
 
 // GET /contact-state?person_id=&to= — which texting routes the Contact
-// popup may offer: 'in' (opted in), 'stopped', or 'none'.
+// popup may offer: 'in' (opted in), 'stopped', or 'none'.  A lead is not a
+// person yet: person_id 0 answers for the number alone, never 'in'.
 Response PhoneRelayController::handleContactState(const Request& request) {
     long long senderId = 0;
     Response err(HttpStatus::OK, "");
     if (!requireSender(request, &senderId, &err)) return err;
     long long personId = 0;
     try { personId = std::stoll(request.getQueryParam("person_id")); } catch (...) {}
-    if (personId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "person_id is required.");
+    const std::string digits = tenDigits(request.getQueryParam("to"));
+    if (personId <= 0 && digits.empty()) return jsonError(HttpStatus::BAD_REQUEST, "person_id or to is required.");
     try {
-        const std::string digits = tenDigits(request.getQueryParam("to"));
         const std::string consent = (!digits.empty() && isStopped(digits)) ? "stopped"
-                                  : isOptedIn(personId) ? "in" : "none";
+                                  : (personId > 0 && isOptedIn(personId)) ? "in" : "none";
         return jsonOut(HttpStatus::OK, {{"consent", consent}});
     } catch (const std::exception& e) {
         std::cerr << "PhoneRelayController::handleContactState: " << e.what() << std::endl;
@@ -290,14 +291,18 @@ Response PhoneRelayController::handleQueue(const Request& request) {
     try {
         auto* db = Database::getInstance();
         // Only numbers on someone in the club's records, never a typed-in one:
-        // a person, or an active club contact — the other teams' coaches and
-        // league offices on #opponents / Game Center 📇 (owner 2026-10-28).
+        // a person, an active club contact — the other teams' coaches and
+        // league offices on #opponents / Game Center 📇 (owner 2026-10-28) —
+        // or a lead who gave it on a form (#leads, owner 2026-11-02).
         auto owner = db->query(
             "SELECT 1 FROM person_phones pp "
             " WHERE right(regexp_replace(COALESCE(pp.phone_number, ''), '[^0-9]', '', 'g'), 10) = $1 "
             "UNION ALL "
             "SELECT 1 FROM club_contacts cc "
             " WHERE cc.is_active AND right(regexp_replace(COALESCE(cc.phone, ''), '[^0-9]', '', 'g'), 10) = $1 "
+            "UNION ALL "
+            "SELECT 1 FROM leads l "
+            " WHERE right(regexp_replace(COALESCE(l.phone, ''), '[^0-9]', '', 'g'), 10) = $1 "
             "LIMIT 1",
             {digits});
         if (owner.empty())

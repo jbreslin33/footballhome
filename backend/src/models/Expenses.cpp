@@ -208,7 +208,7 @@ json Expenses::projection(int clubId) {
     // ── budget lines ──
     for (const auto& b : db->query(R"SQL(
         SELECT b.id, b.label, b.group_label, c.label AS category_label, b.category, b.club_section_id, b.amount_usd, b.amount_per, b.paid_before_usd,
-               b.period_start::text AS ps, b.period_end::text AS pe, b.spread, b.is_assumed, b.note,
+               b.period_start::text AS ps, b.period_end::text AS pe, b.spread, b.is_assumed, b.note, b.settled_at IS NOT NULL AS settled,
                CASE WHEN b.amount_per = 'member' THEN (
                    SELECT COUNT(DISTINCT m.person_id) FROM person_la_memberships m
                      JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
@@ -237,7 +237,9 @@ json Expenses::projection(int clubId) {
                              {"invoice_id", l["invoice_id"].as<long long>()}, {"invoice_label", str(l, "invoice_label")}, {"on", str(l, "on_date")}});
         }
         const double paidBefore = num(b, "paid_before_usd");
-        const double remaining = std::max(0.0, round2(total - paidBefore - invoiced));
+        // Settled (mig 921): the bill is finished, so nothing is left to come.
+        const bool settled = b["settled"].as<bool>();
+        const double remaining = settled ? 0.0 : std::max(0.0, round2(total - paidBefore - invoiced));
         const std::string ps = str(b, "ps"), pe = str(b, "pe"); widen(monthOf(pe));
         if (remaining > 0) {
             const int startIdx = std::max(nowIdx, monthIndex(monthOf(ps))), endIdx = std::max(startIdx, monthIndex(monthOf(pe)));
@@ -250,7 +252,7 @@ json Expenses::projection(int clubId) {
         out["budget"].push_back({{"id", bid}, {"label", str(b, "label")}, {"group_label", str(b, "group_label")}, {"category", str(b, "category")}, {"category_label", str(b, "category_label")},
                                  {"section_id", sectionId ? json(sectionId) : json(nullptr)}, {"section", sectionName.count(sectionId) ? sectionName[sectionId] : ""},
                                  {"amount", num(b, "amount_usd")}, {"amount_per", str(b, "amount_per")}, {"units", units}, {"total", total},
-                                 {"paid_before", paidBefore}, {"invoiced", round2(invoiced)}, {"remaining", remaining}, {"period_start", ps}, {"period_end", pe},
+                                 {"paid_before", paidBefore}, {"invoiced", round2(invoiced)}, {"remaining", remaining}, {"settled", settled}, {"period_start", ps}, {"period_end", pe},
                                  {"spread", str(b, "spread")}, {"is_assumed", b["is_assumed"].as<bool>()}, {"note", str(b, "note")},
                                  {"lines", lines}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
     }
@@ -334,7 +336,7 @@ json Expenses::projection(int clubId) {
 json Expenses::openBudgetLines(int clubId) {
     json out = json::array();
     for (const auto& b : Database::getInstance()->query(R"SQL(
-        SELECT b.id, b.label, b.category, s.name AS section, b.period_start::text AS ps, b.period_end::text AS pe, b.amount_per, b.amount_usd, b.paid_before_usd,
+        SELECT b.id, b.label, b.category, s.name AS section, b.period_start::text AS ps, b.period_end::text AS pe, b.amount_per, b.amount_usd, b.paid_before_usd, b.settled_at IS NOT NULL AS settled,
                CASE WHEN b.amount_per = 'member' THEN (
                    SELECT COUNT(DISTINCT m.person_id) FROM person_la_memberships m
                      JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
@@ -348,12 +350,25 @@ json Expenses::openBudgetLines(int clubId) {
          WHERE b.club_id = $1::int AND b.is_active
          ORDER BY b.period_end < CURRENT_DATE, b.sort_order, b.id)SQL", {std::to_string(clubId)})) {
         const double total = round2(num(b, "amount_usd") * b["units"].as<long long>());
+        const bool settled = b["settled"].as<bool>();
         out.push_back({{"id", b["id"].as<long long>()}, {"label", str(b, "label")}, {"category", str(b, "category")}, {"section", str(b, "section")},
                        {"period_start", str(b, "ps")}, {"period_end", str(b, "pe")}, {"total", total}, {"paid_before", num(b, "paid_before_usd")},
-                       {"invoiced", round2(num(b, "invoiced"))},
-                       {"remaining", std::max(0.0, round2(total - num(b, "paid_before_usd") - num(b, "invoiced")))}});
+                       {"invoiced", round2(num(b, "invoiced"))}, {"settled", settled},
+                       {"remaining", settled ? 0.0 : std::max(0.0, round2(total - num(b, "paid_before_usd") - num(b, "invoiced")))}});
     }
     return out;
+}
+
+bool Expenses::updateBudgetLine(int clubId, int lineId, const std::optional<double>& amount, const std::optional<bool>& settled) {
+    auto* db = Database::getInstance();
+    const std::string club = std::to_string(clubId), id = std::to_string(lineId);
+    bool found = false;
+    // A person setting the amount replaces the assumption, so the * goes.
+    if (amount) found = !db->query("UPDATE budget_lines SET amount_usd = $1::numeric, is_assumed = false WHERE id = $2::int AND club_id = $3::int RETURNING id",
+                                   {std::to_string(*amount), id, club}).empty();
+    if (settled) found = !db->query("UPDATE budget_lines SET settled_at = CASE WHEN $1::boolean THEN COALESCE(settled_at, now()) END WHERE id = $2::int AND club_id = $3::int RETURNING id",
+                                    {*settled ? "true" : "false", id, club}).empty();
+    return found;
 }
 
 json Expenses::refLineFor(int clubId, const json& picks) {

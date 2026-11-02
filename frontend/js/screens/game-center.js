@@ -154,7 +154,9 @@ const FIELD_SIZES = {
       // attacking mids (10 left), 6 def mid, 3 LB, 5 LCB, 4 RCB, 2 RB".
       // Drawn as a triangle so the 6 sits behind the 8 and 10.
       '4-3-3':   { rows: [[1], [3, 5, 4, 2], [6], [10, 8], [11, 9, 7]] },
-      '3-5-2':   { counts: [1, 3, 5, 2] },
+      // Numbered for Match opponent (mig 912): the back three is 5-6-4 so
+      // the 6 can be the libero.
+      '3-5-2':   { rows: [[1], [5, 6, 4], [3, 11, 8, 7, 2], [10, 9]] },
       // Owner: "for the 4231 the 8 and 6 are the cdms left to right and
       // the rest are same as 433" — 10 is the central attacking mid.
       '4-2-3-1': { rows: [[1], [3, 5, 4, 2], [8, 6], [11, 10, 7], [9]] },
@@ -180,6 +182,13 @@ const FIELD_SIZES = {
       // _pitchRows) nudges the 8 up toward the logo (owner: "push 8 up
       // a little in the 3313").
       '3-3-1-3': { rows: [[1], [5, 6, 4], [8], [3, 2], [10], [11, 9, 7]], wideIds: [3, 2], midlineRow: 3, lifts: { 2: 12 } },
+      // Match opponent (mig 912, formation_matchups): their shape flipped,
+      // a libero added behind and one off our front line. Owner: "if we
+      // play vs 4231 that actually looks like a 2323".
+      '2-3-2-3': { rows: [[1], [5, 4], [3, 6, 2], [10, 8], [11, 9, 7]] },
+      '2-4-1-3': { rows: [[1], [5, 4], [3, 6, 8, 2], [10], [11, 9, 7]] },
+      '3-3-4':   { rows: [[1], [5, 6, 4], [3, 8, 2], [11, 10, 9, 7]] },
+      '2-4-4':   { rows: [[1], [5, 4], [3, 6, 8, 2], [11, 10, 9, 7]] },
     },
   },
   9: {
@@ -326,6 +335,8 @@ class GameCenterScreen extends EventScreen {
     // shape on a pitch, purely for the TV-style visual. Reset to the
     // format's default once fieldSize is known (_bootstrap).
     this.formation = FIELD_SIZES[DEFAULT_FIELD_SIZE].defaultFormation;
+    this.matchups = [];      // formation_matchups rows (mig 912)
+    this.matchupId = null;   // the pick for this game, null = none
     // Which of the four game moments is on screen (POST_PILLS above).
     // Supersedes the old two-way subView toggle ('lineup' | 'gameday'),
     // which was itself already collapsing two screens into one — those
@@ -1161,8 +1172,18 @@ class GameCenterScreen extends EventScreen {
       const formationSelect = e.target.closest('[data-lineup-formation-select]');
       if (formationSelect && this.isCoach) {
         this.formation = formationSelect.value;
+        this.matchupId = null;   // a shape picked by hand is no longer the match
         this._render();
         this._saveLineup();   // the shape is part of the lineup (match_lineup_metadata.formation_id)
+        return;
+      }
+      const matchupSelect = e.target.closest('[data-lineup-matchup-select]');
+      if (matchupSelect && this.isCoach) {
+        const m = this._matchup(Number(matchupSelect.value));
+        this.matchupId = m ? m.id : null;
+        if (m) this.formation = m.code;
+        this._render();
+        this._saveLineup();
         return;
       }
       if (e.target.id === 'gc-rsvp-filter') {
@@ -1270,6 +1291,9 @@ class GameCenterScreen extends EventScreen {
       this.formations = Array.isArray(lineupData.data.formations) ? lineupData.data.formations : [];
       const savedCode = lineupData.data.formationCode;
       this.formation = savedCode && this._fieldSpec().formations[savedCode] ? savedCode : this._fieldSpec().defaultFormation;
+      // Match opponent (mig 912): their shape → our shape + who takes whom.
+      this.matchups = Array.isArray(lineupData.data.formationMatchups) ? lineupData.data.formationMatchups : [];
+      this.matchupId = lineupData.data.matchupId || null;
       this.matchStartsAt = lineupData.data.matchStartsAt || null;
       // DB-truth status strip (mig 626): when the lineup last changed
       // (server's stamp, shown to players too) and when WE last synced.
@@ -2034,8 +2058,8 @@ class GameCenterScreen extends EventScreen {
 
   // ── lineup drafts (mig 495) ──────────────────────────────────────────
   _copyLd(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('lineup_drafts', tier, tokens) : ''; }
-  _snapshot() { return { zones: new Map(this.zones), positions: new Map(this.positions), benchOrder: new Map(this.benchOrder), shares: new Map(this.shares), splitSquad: !!this.splitSquad, formation: this.formation }; }
-  _restore(snap) { this.zones = new Map(snap.zones); this.positions = new Map(snap.positions); this.benchOrder = new Map(snap.benchOrder); this.shares = new Map(snap.shares || []); this.splitSquad = !!snap.splitSquad; this.formation = snap.formation; }
+  _snapshot() { return { zones: new Map(this.zones), positions: new Map(this.positions), benchOrder: new Map(this.benchOrder), shares: new Map(this.shares), splitSquad: !!this.splitSquad, formation: this.formation, matchupId: this.matchupId || null }; }
+  _restore(snap) { this.zones = new Map(snap.zones); this.positions = new Map(snap.positions); this.benchOrder = new Map(snap.benchOrder); this.shares = new Map(snap.shares || []); this.splitSquad = !!snap.splitSquad; this.formation = snap.formation; this.matchupId = snap.matchupId || null; }
   _isDraftView() { return String(this.lineupView).startsWith('draft:'); }
   _viewPersonId() { return this._isDraftView() ? Number(this.lineupView.slice(6)) : null; }
   _draftFor(personId) { return (this.drafts || []).find(d => Number(d.authorPersonId) === Number(personId)) || null; }
@@ -2086,6 +2110,7 @@ class GameCenterScreen extends EventScreen {
       const d = this._draftFor(pid);
       const snap = this._mapsFromRows(d ? d.rows : []);
       if (d && d.formationCode && this._fieldSpec().formations[d.formationCode]) snap.formation = d.formationCode;
+      snap.matchupId = d ? d.matchupId : null;
       this._restore(snap);
       this.isCoach = pid === this.viewerPersonId;   // the author edits, everyone else reads
       if (this.isCoach) this.viewMode = 'coach';
@@ -2207,7 +2232,7 @@ class GameCenterScreen extends EventScreen {
       }
       else if (zone === 'alternate') alternates.push({ playerId });
     }
-    const payload = { starters, bench, alternates, formationId: this._formationId(), rosterSize: 0 };
+    const payload = { starters, bench, alternates, formationId: this._formationId(), matchupId: this.matchupId || null, rosterSize: 0 };
     if (!this._isDraftView()) payload.splitSquad = !!this.splitSquad;   // mig 763
     // A bench extended this game (mig 760) rides the official save.
     if (this._pendingSquadSize && !this._isDraftView()) payload.squadSize = this._pendingSquadSize;
@@ -2224,8 +2249,8 @@ class GameCenterScreen extends EventScreen {
         const me = this.drafters.find(p => Number(p.personId) === this.viewerPersonId) || {};
         const d = this._draftFor(this.viewerPersonId);
         const rows = this._rowsFromMaps();
-        if (d) { d.rows = rows; d.formationCode = this.formation; }
-        else this.drafts.push({ id: data.draftId, authorPersonId: this.viewerPersonId, authorName: me.name || '', firstName: me.firstName || '', mine: true, formationCode: this.formation, updatedAt: '', rows });
+        if (d) { d.rows = rows; d.formationCode = this.formation; d.matchupId = this.matchupId || null; }
+        else this.drafts.push({ id: data.draftId, authorPersonId: this.viewerPersonId, authorName: me.name || '', firstName: me.firstName || '', mine: true, formationCode: this.formation, matchupId: this.matchupId || null, updatedAt: '', rows });
         return;
       }
       const res = await this.auth.fetch(`/api/eligibility/lineup/${this.matchId}`, {
@@ -2547,6 +2572,7 @@ class GameCenterScreen extends EventScreen {
                   style="font-size:0.72rem; font-weight:700; padding:4px 6px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
             ${Object.keys(this._fieldSpec().formations).map(f => `<option value="${f}" ${f === this.formation ? 'selected' : ''}>${f}</option>`).join('')}
           </select>
+          ${this._matchupSelectHtml(everyone)}
           <button type="button" id="gl-stats-toggle" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 10px;">
             ${this.showLineupStats ? 'Hide' : 'Show'} Availability
           </button>
@@ -2554,7 +2580,8 @@ class GameCenterScreen extends EventScreen {
             ${this.escapeHtml(this._copySplit(this.splitSquad ? 'button_off' : 'button_on'))}</button>` : ''}
         </div>
       </div>
-      ${this._splitNoteHtml()}`;
+      ${this._splitNoteHtml()}
+      ${this._matchupNoteHtml(everyone)}`;
 
 
     // Bench/Alt only now — Starting XI goes through the 1-11 position
@@ -3046,7 +3073,7 @@ class GameCenterScreen extends EventScreen {
   // player should have contact info on card. going, not going call up
   // etc").  Same rows the bulk-message buttons use (/api/game-message
   // recipients, mig 506): the parent's contact for youth, hence the
-  // (parent) tag.  sms:/mailto: so a coach can tap to reach one player
+  // (parent) tag.  The Contact popup lets a coach reach one player
   // off-script; the REMIND/GAME LINK buttons stay the tracked, DB-copy
   // path.  Admin/coach endpoint — anyone else has no gameRecipients and
   // gets no line.
@@ -3054,16 +3081,15 @@ class GameCenterScreen extends EventScreen {
     const personId = this._personIdFor(playerId);
     const r = personId && (this.gameRecipients || []).find(x => Number(x.personId) === personId);
     if (!r || (!r.phone && !r.email)) return '';
-    const esc = (t) => this.escapeHtml(t);
-    // Blank compose, not a template (owner 2026-10-16: "also one that is
-    // blank so i can send quick message") — the device's own messaging /
-    // mail app opens with just the recipient filled in.
-    const btn = (href, label, title) => `<a href="${esc(href)}" title="${esc(title)}"
-      style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px;
-             border:1px solid var(--border-color); color:inherit; text-decoration:none; overflow-wrap:anywhere;">${label}</a>`;
+    // Blank by default (owner 2026-10-16: "also one that is blank so i can
+    // send quick message"); the popup carries every send type.
+    const contact = ContactPopup.button({
+      key: `gc-player:${personId}`, screen: this,
+      recipients: [{ personId, name: r.name || '', phone: r.phone || '', email: r.email || '' }],
+      messages: [ContactPopup.blankMessage(), ContactPopup.signInMessage()],
+    });
     return `<div style="font-size:0.66rem; opacity:0.9; margin-top:4px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-      ${r.phone ? btn(`sms:${r.phone}`, `💬 ${esc(r.phone)}`, 'Blank text — your own words, nothing pre-written') : ''}
-      ${r.email ? btn(`mailto:${r.email}`, `✉ ${esc(r.email)}`, 'Blank email — your own words, nothing pre-written') : ''}
+      ${contact}
       ${r.viaParent ? `<span style="opacity:0.7;">(parent)</span>` : ''}
     </div>`;
   }
@@ -5236,6 +5262,33 @@ class GameCenterScreen extends EventScreen {
     const slotIds = this._fieldSpec().slotIds;
     const startingPositions = this.positionList.filter(pos => slotIds.has(pos.id));
     return { rosterById, slotToPlayerId, startingPositions };
+  }
+
+  // Match opponent (mig 912): the rows this format can draw, and the pick.
+  _matchupOptions() { return (this.matchups || []).filter(m => this._fieldSpec().formations[m.code]); }
+  _matchup(id) { return this._matchupOptions().find(m => m.id === id) || null; }
+  _copyMatchup(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('lineup_matchup', tier, tokens) : ''; }
+
+  _matchupSelectHtml(everyone) {
+    const options = this._matchupOptions();
+    if (everyone || !this.isCoach || !options.length || !this._copyMatchup('none')) return '';
+    const esc = (t) => this.escapeHtml(t);
+    return `<select data-lineup-matchup-select title="${esc(this._copyMatchup('none'))}"
+                  style="font-size:0.72rem; font-weight:700; padding:4px 6px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
+            <option value="">${esc(this._copyMatchup('none'))}</option>
+            ${options.map(m => `<option value="${m.id}" ${m.id === this.matchupId ? 'selected' : ''}>${esc(this._copyMatchup('option', { opponent: m.opponentCode, ours: m.code }))}</option>`).join('')}
+          </select>`;
+  }
+
+  // Who takes whom. Under the toolbar, never on the graphic: it's the plan,
+  // and the graphic is the post.
+  _matchupNoteHtml(everyone) {
+    const m = everyone ? null : this._matchup(this.matchupId);
+    if (!m) return '';
+    const esc = (t) => this.escapeHtml(t);
+    return `<div style="margin:-4px 0 12px; font-size:0.74rem; line-height:1.4;">
+      <b>${esc(this._copyMatchup('note_title', { opponent: m.opponentCode, ours: m.code }))}</b><br>${esc(m.note)}
+    </div>`;
   }
 
   // The FIELD_SIZES entry for this match's format (see fieldSize).

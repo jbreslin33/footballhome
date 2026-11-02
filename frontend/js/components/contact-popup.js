@@ -9,14 +9,22 @@
 //
 // config = {
 //   key:        stable string, redraws overwrite,
-//   screen:     the Screen, for its compose-link builders,
-//   recipients: [{ personId, name, phone, email, forPersonId }],
-//   messages:   [{ key, label, subject, body, smsBody, resolve, onSent }],
-//   defaultKey, flagged (draw the button fuchsia), title,
-//   vcard:      { href, filename }
+//   screen:     the Screen, for its compose-link builders (optional),
+//   recipients: [{ personId, name, phone, email, forPersonId, noText, noCall }],
+//   messages:   [{ key, label, subject, body, smsBody, resolve, onSent, noClub, beforeEmail }],
+//   defaultKey, flagged (draw the button fuchsia), big (full-size button),
+//   label (button words, when a row has several people), title,
+//   vcard:      { href, filename }, or onSave(recipient) when the screen builds it,
+//   onCall(recipient): runs as the dialer opens, for the screen's tracking
 // }
 // resolve(recipient, 'email'|'sms') → { href, ... } is for words the
-// server builds at send time (sign-in link, welcome).
+// server builds at send time (sign-in link, welcome).  onSent(resolved,
+// via, words) runs after a send, for the screen's own tracking.  noClub
+// keeps a message off the club number (dues notices).  beforeEmail(words)
+// runs in the click's own tick, just before Gmail opens, for work the
+// browser only allows there (the clipboard).  A recipient with no
+// personId (a lead) still gets email and texts; the club number stays off
+// until they are a person who opted in.
 //
 // Words: message_templates kind contact_popup (read through MessageCopy).
 (function () {
@@ -35,15 +43,18 @@
 
   function button(cfg) {
     registry.set(cfg.key, cfg);
+    const size = cfg.big ? 'flex:1; font-size:0.82rem; padding:7px 10px; border-radius:6px;'
+                         : 'font-size:0.68rem; padding:2px 6px; border-radius:3px;';
     return `<button type="button" data-contact-popup="${esc(cfg.key)}" title="${esc(cfg.title || '')}"
-      style="font-size:0.68rem; font-weight:800; line-height:1.2; padding:2px 6px; border-radius:3px; border:none; cursor:pointer; color:#fff;
-             white-space:nowrap; background:${cfg.flagged ? '#c026d3' : '#334155'};">📇 ${esc(t('button', {}, 'CONTACT'))}</button>`;
+      style="${size} font-weight:800; line-height:1.2; border:none; cursor:pointer; color:#fff;
+             white-space:nowrap; background:${cfg.flagged ? '#c026d3' : '#334155'};">📇 ${esc(cfg.label || t('button', {}, 'CONTACT'))}</button>`;
   }
 
   // The FH Texter + club number state for one recipient.  A 403/404 means
   // this viewer does not get that route, never that the popup fails.
+  const consentKey = (r) => r.personId || `phone:${r.phone || ''}`;
   async function loadRoutes(st, r) {
-    const key = r.personId;
+    const key = consentKey(r);
     if (st.relayLoaded === undefined) {
       st.relayLoaded = true;
       try {
@@ -51,19 +62,20 @@
         st.relay = res.ok ? await res.json() : null;
       } catch (_e) { st.relay = null; }
     }
-    if (key && r.phone && !(key in st.consent)) {
+    if (r.phone && !(key in st.consent)) {
       try {
-        const res = await authFetch(`/api/phone-relay/contact-state?person_id=${encodeURIComponent(key)}&to=${encodeURIComponent(r.phone)}`);
+        const res = await authFetch(`/api/phone-relay/contact-state?person_id=${encodeURIComponent(r.personId || 0)}&to=${encodeURIComponent(r.phone)}`);
         st.consent[key] = res.ok ? (await res.json()).consent : null;
       } catch (_e) { st.consent[key] = null; }
     }
   }
 
-  function routes(st, r) {
+  function routes(st, r, m) {
     const dev = st.relay && (st.relay.devices || [])[0];
-    const consent = st.consent[r.personId];
+    const consent = st.consent[consentKey(r)];
     const stopped = consent === 'stopped';
-    const noPhone = r.phone ? '' : t('why_no_phone', {}, 'No mobile number on file');
+    const noPhone = !r.phone ? t('why_no_phone', {}, 'No mobile number on file')
+                  : r.noText ? t('why_no_text', {}, 'This number does not take texts') : '';
     const list = [{ key: 'email', label: t('via_email', {}, '✉ Email'),
                     why: r.email ? '' : t('why_no_email', {}, 'No email on file') }];
     if (st.relay) {
@@ -74,7 +86,7 @@
            : st.relay.today >= st.relay.cap ? t('why_cap', {}, "Today's limit is used") : '') });
     }
     list.push({ key: 'text', label: t('via_text', {}, '💬 Regular text'), why: noPhone });
-    if (consent) {
+    if (consent && !(m && m.noClub)) {
       list.push({ key: 'club', label: t('via_club', {}, '🏢 Club text'),
         why: noPhone || (stopped ? t('why_stopped', {}, 'They replied STOP')
            : consent !== 'in' ? t('why_not_opted_in', {}, 'Not opted in to club texts') : '') });
@@ -128,9 +140,9 @@
   function draw(st, el) {
     const { cfg } = st;
     const r = recipient(st);
-    const list = routes(st, r);
-    if (!st.via || (list.find(v => v.key === st.via) || { why: 'x' }).why) st.via = defaultVia(list);
     const m = message(st);
+    const list = routes(st, r, m);
+    if (!st.via || (list.find(v => v.key === st.via) || { why: 'x' }).why) st.via = defaultVia(list);
     const b = 'border:none; border-radius:8px; padding:7px 12px; font-weight:800; cursor:pointer; color:#fff; background:#334155; text-decoration:none; font-size:0.85rem;';
     const head = (s) => `<div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.6; margin-top:12px;">${esc(s)}</div>`;
     const radio = (group, key, label, on, why) => `
@@ -142,8 +154,10 @@
     const body = m && m.resolve
       ? `<div style="font-size:0.82rem; opacity:0.8; padding:8px 10px; border-radius:8px; background:#1e293b;">${esc(t('built_on_send', {}, 'Written when you send, with their own sign-in link.'))}</div>`
       : `<textarea data-cp-body rows="5" style="width:100%; box-sizing:border-box; font:inherit; font-size:0.85rem; padding:8px 10px; border-radius:8px; border:1px solid #334155; background:#1e293b; color:#f8fafc; resize:vertical;">${esc(wordsFor(st))}</textarea>`;
-    const tel = r.phone ? `<a href="tel:${esc(r.phone)}" style="${b}">${esc(t('call', {}, '📞 Call'))}</a>` : '';
-    const save = cfg.vcard && cfg.vcard.href && st.who === 0
+    const tel = (r.phone && !r.noCall) ? `<a href="tel:${esc(String(r.phone).replace(/[^\d+]/g, ''))}" data-cp-call style="${b}">${esc(t('call', {}, '📞 Call'))}</a>` : '';
+    const save = cfg.onSave
+      ? `<button type="button" data-cp-save style="${b}">${esc(t('save', {}, '👤 Save contact'))}</button>`
+      : cfg.vcard && cfg.vcard.href && st.who === 0
       ? `<a href="${esc(cfg.vcard.href)}" download="${esc(cfg.vcard.filename || 'contact.vcf')}" style="${b}">${esc(t('save', {}, '👤 Save contact'))}</a>` : '';
     el.innerHTML = `
       <div style="width:100%; max-width:480px; max-height:90vh; overflow:auto; margin:12px; padding:16px 18px; border-radius:14px; background:#0f172a; color:#f8fafc; border:1px solid #334155; font-size:0.9rem; box-sizing:border-box;">
@@ -175,6 +189,8 @@
   function onClick(e, st, el) {
     if (e.target === el || e.target.closest('[data-cp-close]')) { el.remove(); return; }
     if (e.target.closest('[data-cp-send]') && !st.busy) send(st, el);
+    if (e.target.closest('[data-cp-call]') && st.cfg.onCall) st.cfg.onCall(recipient(st));
+    if (e.target.closest('[data-cp-save]') && st.cfg.onSave) st.cfg.onSave(recipient(st));
   }
 
   async function send(st, el) {
@@ -185,7 +201,7 @@
     const say = (note, bad) => { st.note = note; st.noteBad = !!bad; };
     st.busy = true; say(t('sending', {}, 'Sending…')); draw(st, el);
     try {
-      const screen = st.cfg.screen;
+      const screen = st.cfg.screen || Screen.prototype;
       let href, resolved = null;
       if (m.resolve) {
         resolved = await m.resolve(r, via === 'email' ? 'email' : 'sms');
@@ -195,8 +211,10 @@
       } else {
         href = screen.buildSmsComposeHref({ to: r.phone, body: Screen.withSmsLinkHint(wordsFor(st)) });
       }
+      const words = wordsFor(st);
       if (via === 'email') {
-        window.open(href, '_blank', 'noopener');
+        if (m.beforeEmail) m.beforeEmail(words);
+        screen.openGmailCompose(href);
         say(t('opened_email', {}, '✓ Email opened'));
       } else if (via === 'text') {
         if (window.DesktopSms) DesktopSms.open(href); else window.location.href = href;
@@ -212,7 +230,7 @@
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         say(via === 'club' ? t('sent_club', {}, '✓ Sent from the club number') : t('sent_relay', {}, '✓ Sent to your phone to send'));
       }
-      if (m.onSent) m.onSent(resolved);
+      if (m.onSent) m.onSent(resolved, via, words);
     } catch (err) {
       say(`⚠ ${err.message}`, true);
     }
@@ -231,5 +249,36 @@
     open(cfg);
   }, true);
 
-  window.ContactPopup = { button, open, routes, defaultVia };
+  // The plain hello every screen offers (contact_email / contact_sms).
+  function helloMessage(tier, first, tokens = {}) {
+    const fill = { first: first || '', ...tokens };
+    const copy = window.MessageCopy && MessageCopy.render('contact_email', tier, fill);
+    if (!copy) return null;
+    return { key: 'hello', label: t('msg_hello', {}, '💬 Message'), subject: copy.subject, body: copy.body,
+             smsBody: MessageCopy.block('contact_sms', tier, fill) };
+  }
+
+  // Nothing pre-written: the sender's own words.
+  function blankMessage() {
+    return { key: 'blank', label: t('msg_blank', {}, '✏️ Blank'), subject: '', body: '' };
+  }
+
+  // A sign-in link for this recipient, written when it is sent.
+  function signInMessage() {
+    return {
+      key: 'signin',
+      label: t('msg_signin', {}, '🔗 Sign-in link'),
+      resolve: async (r, channel) => {
+        const res = await authFetch('/api/auth/magic-link/mint', { method: 'POST', body: JSON.stringify({
+          person_id: r.personId, channel, contact: channel === 'email' ? r.email : r.phone }) });
+        if (!res.ok) throw new Error((await res.text()).slice(0, 200) || `HTTP ${res.status}`);
+        const data = await res.json();
+        const href = channel === 'email' ? (data.gmail_href || data.mailto_href) : data.sms_href;
+        if (!href) throw new Error('No message came back');
+        return { ...data, href };
+      },
+    };
+  }
+
+  window.ContactPopup = { button, open, routes, defaultVia, helloMessage, blankMessage, signInMessage };
 })();

@@ -1693,13 +1693,11 @@ class LineupsScreen extends Screen {
       `;
     };
 
-    // Tappable mailto / tel links for quick contact.
-    const emailHTML = p.email
-      ? `<a href="mailto:${encodeURIComponent(p.email)}" style="color:#3b82f6; text-decoration:none;">${this._escape(p.email)}</a>`
-      : null;
-    const phoneHTML = p.phone
-      ? `<a href="tel:${encodeURIComponent(p.phone)}" style="color:#3b82f6; text-decoration:none;">${this._escape(p.phone)}</a>`
-      : null;
+    const contactBtn = (p.email || p.phone) ? ContactPopup.button({
+      key: `lineups-la:${p.personId}`, screen: this,
+      recipients: [{ personId: p.personId, name, phone: p.phone || '', email: p.email || '' }],
+      messages: [ContactPopup.helloMessage('adult', p.firstName) || ContactPopup.blankMessage(), ContactPopup.signInMessage()],
+    }) : '';
 
     this._closeCardModal();
     const overlay = document.createElement('div');
@@ -1745,9 +1743,9 @@ class LineupsScreen extends Screen {
         <div style="padding: var(--space-3) var(--space-4); display:flex; flex-direction:column; gap: var(--space-3);">
 
           <div style="display:flex; flex-direction:column; gap: 6px;">
-            <div style="font-size:0.72em; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Contact</div>
-            ${row('Email', emailHTML, { html: true, alwaysShow: true })}
-            ${row('Phone', phoneHTML, { html: true, alwaysShow: true })}
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72em; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Contact ${contactBtn}</div>
+            ${row('Email', p.email, { alwaysShow: true })}
+            ${row('Phone', p.phone, { alwaysShow: true })}
           </div>
 
           <div style="display:flex; flex-direction:column; gap: 6px;">

@@ -377,10 +377,11 @@ class InvoicesScreen extends Screen {
   }
 
   // Budget lines a line can count toward (board.budget_lines, mig 490):
-  // those of the line's category, plus whatever it already points at.
+  // those of the line's category, plus whatever it already points at.  A
+  // settled line (mig 921) takes nothing new, but a line on it keeps it.
   _budgetSel(category, current, extra = '') {
     const esc = (t) => this.escapeHtml(t);
-    const all = (this.board && this.board.budget_lines) || [];
+    const all = ((this.board && this.board.budget_lines) || []).filter(b => !b.settled || b.id === current);
     const opts = category === '__any__' ? all : all.filter(b => b.category === category || b.id === current);
     if (!opts.length && !current) return '';
     return `<select class="iv-in" style="margin-top:3px; font-size:0.78rem; opacity:0.85;" title="${esc(this._copy('budget_label') || 'Counts toward')}" ${extra}>

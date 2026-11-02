@@ -997,6 +997,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                   WHERE tc.team_id = fet.team_id
                                     AND tc.ended_at IS NULL
                                     AND co.person_id = $1::int
+                                    AND NOT fh_coach_off_schedule(co.person_id, tc.team_id, fe.id)   -- mig 955
                               )
                           )
                     )
@@ -1044,6 +1045,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                   WHERE tc.team_id = fet.team_id
                                     AND tc.ended_at IS NULL
                                     AND co.person_id = $1::int
+                                    AND NOT fh_coach_off_schedule(co.person_id, tc.team_id, fe.id)   -- mig 955
                               )
                           )
                     )
@@ -1066,6 +1068,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
                         JOIN coaches co ON co.id = tc.coach_id
                         WHERE fet.fh_event_id = fe.id AND co.person_id = $1::int
+                          AND NOT fh_coach_off_schedule(co.person_id, tc.team_id, fe.id)
                     ) THEN 'coach'
                     WHEN EXISTS (
                         SELECT 1 FROM fh_event_teams fet
@@ -1454,6 +1457,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                             ON er.fh_event_id = fe.id
                                                          AND er.person_id   = p.id
                                                      WHERE fet.fh_event_id = fe.id
+                                    AND NOT fh_coach_off_schedule(p.id, tc.team_id, fe.id)   -- mig 955
 
                                                         UNION ALL
 
@@ -1561,6 +1565,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                       WHERE tc.team_id = fet.team_id
                                         AND tc.ended_at IS NULL
                                         AND co.person_id = $1::int
+                                        AND NOT fh_coach_off_schedule(co.person_id, tc.team_id, fe.id)   -- mig 955
                                   )
                               )
                         )
@@ -2528,6 +2533,7 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
             "          JOIN coaches co ON co.id = tc.coach_id "
             "          JOIN persons p ON p.id = co.person_id "
             "         WHERE fet.fh_event_id = $1::bigint "
+            "          AND NOT fh_coach_off_schedule(p.id, tc.team_id, fet.fh_event_id) "
             "        UNION ALL "
             // Invited call-ups / play-downs (migration 355) show up for check-in too.
             "        SELECT p.id, p.first_name, p.last_name, false "
@@ -2849,6 +2855,7 @@ Response CalendarController::handleGetEventSides(const Request& request) {
                       JOIN coaches co ON co.id = tc.coach_id
                       JOIN persons p ON p.id = co.person_id
                      WHERE fet.fh_event_id = $1::bigint
+                       AND NOT fh_coach_off_schedule(p.id, tc.team_id, fet.fh_event_id)
                     UNION ALL
                     SELECT p.id, p.first_name, p.last_name, false
                       FROM fh_event_invites i

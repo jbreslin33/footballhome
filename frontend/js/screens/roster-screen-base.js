@@ -213,7 +213,7 @@ class RosterScreenBase extends Screen {
   //     its team's league uses (league_roster_statuses, migration 342 —
   //     owner 2026-09-07 "lets do per league"). Adult leagues carry the
   //     ITC / transfer wait, Parks & Rec carries the birth-certificate
-  //     docs steps, intramural carries only the docs steps.
+  //     docs steps, in-house carries only the docs steps.
   // Keyed by personId (not leagueAppsUserId) — same LA-userId-drift
   // immunity as the reorder/move endpoints; see
   // TeamController::handleSetLineupRoleForPerson /
@@ -1132,6 +1132,7 @@ class RosterScreenBase extends Screen {
   // 🖨 Roster sheet) prints the coaches whose status counts as on roster.
   renderCoachesStrip(col) {
     if (!col || !col.teamId) return '';
+    this.bindCoachesToggle();
     const teamId = Number(col.teamId);
     if (!this._coaches) this._coaches = new Map();
     if (!this._coaches.has(teamId)) { this._coaches.set(teamId, null); this._loadCoaches(teamId); }
@@ -1179,7 +1180,25 @@ class RosterScreenBase extends Screen {
       return `<div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-size:0.68rem; padding:1px 0;">
         <span style="font-weight:700;">${esc(c.first_name)} ${esc(c.last_name)}</span>${role}${chip}${menu}</div>`;
     }).join('');
-    return `<div style="font-size:0.62rem; font-weight:700; letter-spacing:0.03em; opacity:0.7;">${esc(copy('coaches_h') || 'COACHES')}</div>${rows}`;
+    return `<details data-coaches-toggle ${RosterScreenBase.coachesMinimized() ? '' : 'open'}>
+      <summary style="cursor:pointer; font-size:0.62rem; font-weight:700; letter-spacing:0.03em; opacity:0.7;">${esc(copy('coaches_h') || 'COACHES')} (${coaches.length})</summary>
+      ${rows}</details>`;
+  }
+  // Minimized on one column = minimized on all, remembered per browser
+  // (owner 2026-10-30: "they should able to be minimized").
+  static coachesMinimized() {
+    try { return localStorage.getItem('roster.coachesMin') === '1'; } catch (e) { return false; }
+  }
+  bindCoachesToggle() {
+    if (!this.element || this._coachesToggleBound === this.element) return;
+    this._coachesToggleBound = this.element;
+    // toggle does not bubble, so capture it.
+    this.element.addEventListener('toggle', (e) => {
+      if (!e.target.matches || !e.target.matches('[data-coaches-toggle]')) return;
+      const open = e.target.open;
+      try { localStorage.setItem('roster.coachesMin', open ? '0' : '1'); } catch (err) { /* private window */ }
+      this.element.querySelectorAll('[data-coaches-toggle]').forEach(d => { d.open = open; });
+    }, true);
   }
   // Who may set a coach's status / role: a club admin, or a coach of that team.
   _canEditCoachesFor(col) {

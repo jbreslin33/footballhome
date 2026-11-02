@@ -80,8 +80,8 @@ test('playerNeedsDocs: needs_docs asks, has_docs never asks, blank falls back to
   vm.createContext(ctx);
   vm.runInContext(src + '\nthis.BoysRosterScreen = BoysRosterScreen;', ctx);
   const B = ctx.BoysRosterScreen;
-  const intra  = { label: 'U10 Intramural', teamId: 1 };
-  const travel = { label: 'U10 Travel', teamId: 2 };
+  const intra  = { label: 'U10', teamId: 1 };
+  const travel = { label: 'U19', teamId: 2 };
   assert.equal(B.playerNeedsDocs({ rosterStatus: 'needs_docs' }, travel), true);
   assert.equal(B.playerNeedsDocs({ rosterStatus: 'has_docs' }, intra), false);
   assert.equal(B.playerNeedsDocs({ rosterStatus: 'on_roster' }, intra), false);
@@ -145,4 +145,14 @@ test('club text is not offered to viewers who get no contact state', () => {
   const list = cp.routes({ relay: null, consent: {} }, { personId: 1, phone: '2155551212' });
   assert.equal(list.some(v => v.key === 'club'), false);
   assert.equal(list.some(v => v.key === 'relay'), false);
+});
+
+test('a noClub message never offers the club number, and a no-text number blocks every text route', () => {
+  const cp = loadPopup();
+  const r = { personId: 1, phone: '2155551212', email: 'a@b.c' };
+  const dues = cp.routes({ relay, consent: { 1: 'in' } }, r, { noClub: true });
+  assert.equal(dues.some(v => v.key === 'club'), false);
+  assert.equal(cp.defaultVia(dues), 'relay');
+  const noText = cp.routes({ relay, consent: {} }, { ...r, noText: true });
+  assert.equal(cp.defaultVia(noText), 'email');
 });

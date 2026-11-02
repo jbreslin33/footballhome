@@ -667,13 +667,6 @@ class LeadsScreen extends Screen {
       });
     });
 
-    // Wire contact action buttons (email / save vCard).  SMS / WhatsApp
-    // / snippet copy buttons are no longer rendered on this screen —
-    // copy snippets live on the Messages screen.
-    container.querySelectorAll('.contact-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => this.onContactClick(e));
-    });
-
     // Wire signed-up / undo buttons.  Confirm before clearing so a
     // misclick doesn't wipe a valid conversion record.
     container.querySelectorAll('.convert-btn').forEach(btn => {
@@ -1221,23 +1214,6 @@ class LeadsScreen extends Screen {
     const label    = this.leadFunnelLabel(lead, columnLabel);
     const hasEmail = !!lead.email;
     const hasPhone = !!lead.phone;
-    const mailHref         = hasEmail ? this.buildMailHref(lead, label) : null;
-    const smsHref          = hasPhone ? this.buildSmsHref (lead, label) : null;
-    // Follow-up chip hrefs — one per (template × channel) combination.
-    // Email variants use buildMailHrefForSnippet (Gmail compose w/ body
-    // pre-filled); text variants use buildSmsHrefForSnippet (sms: URI
-    // w/ snip.smsBody pre-filled).  Order matters below — we render
-    // the chip only when the corresponding channel exists on the lead.
-    const closeMailHref    = hasEmail ? this.buildMailHrefForSnippet(lead, label, 'close')     : null;
-    const closeSmsHref     = hasPhone ? this.buildSmsHrefForSnippet (lead, label, 'close')     : null;
-    const moreInfoMailHref = hasEmail ? this.buildMailHrefForSnippet(lead, label, 'more-info') : null;
-    const moreInfoSmsHref  = hasPhone ? this.buildSmsHrefForSnippet (lead, label, 'more-info') : null;
-    // Call button is a plain tel: URI — no template body, no clipboard,
-    // just fire the dialer.  We still POST a `call` contact row so we
-    // know a dial was attempted (see onContactClick channel='call' branch).
-    const callHref         = hasPhone
-      ? `tel:${(lead.phone || '').replace(/[^\d+]/g, '')}`
-      : null;
     const formattedPhone = this.formatPhoneNumber(lead.phone || '');
     const memberBadge = lead.member_status === 'active'
       ? `<div style="margin-top:6px; font-size:0.73rem; font-weight:700; color:#0f766e; background:rgba(20,184,166,0.12); border:1px solid rgba(20,184,166,0.25); border-radius:999px; padding:3px 8px; display:inline-flex; align-items:center; gap:5px;">● Already a member</div>`
@@ -1423,97 +1399,14 @@ class LeadsScreen extends Screen {
         ${touchParts.join(' · ')}
       </div>` : '';
 
-    // Action buttons — two conceptual rows that wrap freely.
-    //
-    // Row 1 (primary — Row 1 is where 90% of the daily clicks land):
-    //   Email  → touch-1 outreach (data-template="first-touch")
-    //   Text   → touch-1 outreach (data-template="first-touch")
-    //   Call   → dial + log a call touch (data-template="call")
-    //   Save   → vCard to the phone's contacts (data-channel="vcard")
-    //   Edit   → open lifecycle modal
-    //
-    // Row 2 (follow-ups — chips for template × channel combinations):
-    //   Close · Email → send close reply via email  (data-template="close")
-    //   Close · Text  → send close reply via text
-    //   Info · Email  → send more-info via email    (data-template="more-info")
-    //   Info · Text   → send more-info via text
-    //
-    // EVERY contact-btn carries data-channel + data-template so
-    // onContactClick can POST /api/leads/:id/contact with the correct
-    // (channel, template) pair and update the last-contact badge on
-    // the next render.
+    // One Contact button (owner 2026-11-02): every outreach, follow-up,
+    // call and save lives in the popup, and Edit stays beside it.
     const btnStyle = 'flex:1; padding:6px 8px; font-size:0.75rem; font-weight:600; border-radius:6px; border:none; cursor:pointer; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; min-width:76px;';
-
-    const emailBtn = hasEmail && mailHref ? `
-      <a href="${mailHref}" class="contact-btn"
-         target="_blank" rel="noopener noreferrer"
-         data-lead-id="${lead.id}" data-channel="email" data-template="first-touch"
-         style="${btnStyle} background:#3b82f6; color:#fff;">Email</a>` : '';
-    const textBtn = hasPhone && smsHref ? `
-      <a href="${smsHref}" class="contact-btn"
-         data-lead-id="${lead.id}" data-channel="text" data-template="first-touch"
-         style="${btnStyle} background:#16a34a; color:#fff;">Text</a>` : '';
-    // Call button — tel: URI fires the native dialer on mobile / OS
-    // handler on desktop.  onContactClick's channel='call' branch
-    // POSTs a `call` contact row (empty message_body, template='call')
-    // then lets the tel: link's default action proceed so the dial
-    // actually happens.  data-template="call" so the last-contact
-    // badge can render "Last: 📞 call · 1m ago".
-    const callBtn = hasPhone ? `
-      <a href="${callHref}" class="contact-btn"
-         data-lead-id="${lead.id}" data-channel="call" data-template="call"
-         title="Dial ${formattedPhone} and log a call touch"
-         style="${btnStyle} background:#eab308; color:#111;">Call</a>` : '';
-    // Save-to-contacts, on the card itself (owner 2026-08-26: "on leads
-    // page i need to be able to click a button and add player to
-    // contacts on my android phone but for others apple too"). It
-    // existed before, but only inside the Edit modal — two taps and a
-    // scroll away from the row you are actually looking at, which is not
-    // where you are when a lead is on the phone with you.
-    //
-    // Youth funnels save a pair (parent card + player placeholder), same
-    // isParentFunnel rule the modal uses — the backend's 'youth-pair' kind.
-    // Skipped when the lead has neither phone nor email: a vCard with
-    // just a name is not worth a row in anyone's address book.
-    const isYouthLead = this.isParentFunnel(label);
-    const saveBtn = (hasPhone || hasEmail) ? `
-      <a href="javascript:void(0)" class="contact-btn"
-         data-lead-id="${lead.id}" data-channel="vcard" data-kind="${isYouthLead ? 'youth-pair' : 'self'}"
-         title="Add ${(lead.name || 'this lead').replace(/"/g, '&quot;')} to your phone's contacts${isYouthLead ? ' (parent + player placeholder)' : ''}"
-         style="${btnStyle} background:#0d9488; color:#fff;">Save${isYouthLead ? ' (2)' : ''}</a>` : '';
+    const contactBtn = this.contactButton(lead, label, ['new', 'needs_recontact'].includes(visualStatus));
     const editBtn = `
       <a href="javascript:void(0)" class="edit-btn"
          data-lead-id="${lead.id}"
          style="${btnStyle} background:var(--bg-tertiary, #374151); color:#fff;">Edit</a>`;
-
-    // Row 2 chips.  Purple = close (locking in a YES reply); teal =
-    // more-info (answering a "tell me more" question).  Second word
-    // (Email / Text) denotes the channel so the coach can pattern-match
-    // at a glance which combination they're firing.  Same button width
-    // across the row via flex:1 + min-width, no emoji glyphs (which
-    // rendered at inconsistent widths and made the row look ragged).
-    const closeMailBtn = hasEmail && closeMailHref ? `
-      <a href="${closeMailHref}" class="contact-btn"
-         target="_blank" rel="noopener noreferrer"
-         data-lead-id="${lead.id}" data-channel="email" data-template="close" data-snippet="close"
-         title="Reply to a YES — email w/ register link"
-         style="${btnStyle} background:#7c3aed; color:#fff;">Close · Email</a>` : '';
-    const closeSmsBtn = hasPhone && closeSmsHref ? `
-      <a href="${closeSmsHref}" class="contact-btn"
-         data-lead-id="${lead.id}" data-channel="text" data-template="close" data-snippet="close"
-         title="Reply to a YES — text w/ register link"
-         style="${btnStyle} background:#7c3aed; color:#fff;">Close · Text</a>` : '';
-    const moreInfoMailBtn = hasEmail && moreInfoMailHref ? `
-      <a href="${moreInfoMailHref}" class="contact-btn"
-         target="_blank" rel="noopener noreferrer"
-         data-lead-id="${lead.id}" data-channel="email" data-template="more-info" data-snippet="more-info"
-         title="Send full program description — email"
-         style="${btnStyle} background:#0891b2; color:#fff;">Info · Email</a>` : '';
-    const moreInfoSmsBtn = hasPhone && moreInfoSmsHref ? `
-      <a href="${moreInfoSmsHref}" class="contact-btn"
-         data-lead-id="${lead.id}" data-channel="text" data-template="more-info" data-snippet="more-info"
-         title="Send full program description — text"
-         style="${btnStyle} background:#0891b2; color:#fff;">Info · Text</a>` : '';
 
     return `
       <div class="lead-card" data-lead-id="${lead.id}"
@@ -1531,10 +1424,76 @@ class LeadsScreen extends Screen {
         ${programBadge}
         ${lastContactBadge}
         ${touchesLine}
-        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${emailBtn}${textBtn}${callBtn}${saveBtn}${editBtn}</div>
-        <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">${closeMailBtn}${closeSmsBtn}${moreInfoMailBtn}${moreInfoSmsBtn}</div>
+        <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">${contactBtn}${editBtn}</div>
       </div>
     `;
+  }
+
+  // The lead's Contact popup.  Leads are not persons, so it takes the
+  // lead's own phone and email, and the club number stays off until they
+  // are a person who opted in.  What the lead sees first follows the card:
+  // never touched = touch 1, signed up = welcome, anything else = the
+  // close that answers a YES.  Every send and call logs a touch.
+  contactButton(lead, label, flagged) {
+    if (!lead.email && !lead.phone) return '';
+    const first = this.messageTemplate(label);
+    const contacted = Number(lead.email_count || 0) + Number(lead.text_count || 0) + Number(lead.call_count || 0) > 0;
+    const log = (key) => (_resolved, via, words) => {
+      this.logLeadTouch(lead.id, via === 'email' ? 'email' : 'text', key, words);
+    };
+    const rich = (words) => this.copyRichEmail(words, lead.email);
+    const messages = [];
+    if (first.email || first.sms) {
+      messages.push({ key: 'first-touch', label: MessageCopy.block('contact_popup', 'msg_first_touch', {}) || 'Touch 1',
+                      subject: this.fillTemplate(first.subject, lead), body: this.fillTemplate(first.email, lead),
+                      smsBody: this.fillTemplate(first.sms, lead), onSent: log('first-touch'), beforeEmail: rich });
+    }
+    for (const snip of this.messageSnippets(label) || []) {
+      if (!['close', 'followup', 'soft', 'info'].includes(snip.tier)) continue;
+      const subject = snip.subject || ('Re: ' + (first.subject || ''));
+      messages.push({ key: snip.id, label: snip.label, subject: this.fillTemplate(subject, lead),
+                      body: this.fillTemplate(snip.body, lead),
+                      smsBody: this.fillTemplate(snip.smsBody || snip.body, lead),
+                      onSent: log(snip.id), beforeEmail: rich });
+    }
+    if (!messages.length) return '';
+    const want = (lead.status === 'signedup') ? 'welcome' : contacted ? 'close' : 'first-touch';
+    const youth = this.isParentFunnel(label);
+    return ContactPopup.button({
+      key: `lead:${lead.id}`,
+      screen: this,
+      big: true,
+      flagged,
+      recipients: [{ personId: null, name: lead.name || '', phone: lead.phone || '', email: lead.email || '' }],
+      messages,
+      defaultKey: messages.some(m => m.key === want) ? want : messages[0].key,
+      onCall: () => this.logLeadTouch(lead.id, 'call', 'call', ''),
+      onSave: () => this.saveLeadContact(lead.id, youth ? 'youth-pair' : 'self')
+        .catch((err) => alert(`Failed to save contact: ${err.message}`)),
+    });
+  }
+
+  // Gmail's compose window pre-fills the body as plain text and will not
+  // show a URL as a link, so the linked version waits on the clipboard for
+  // a Ctrl+A, Ctrl+V.  Runs in the click's own tick: the browser only
+  // allows the write while this tab has focus, and Gmail is about to take
+  // it.
+  copyRichEmail(words, email) {
+    if (!words) return;
+    const html = this.toLinkifiedHtml(words);
+    let copied = Promise.resolve(false);
+    try {
+      if (navigator.clipboard && window.ClipboardItem && navigator.clipboard.write) {
+        const item = new ClipboardItem({
+          'text/plain': new Blob([words], { type: 'text/plain' }),
+          'text/html':  new Blob([html],  { type: 'text/html' }),
+        });
+        copied = navigator.clipboard.write([item]).then(() => true).catch(() => false);
+      } else if (navigator.clipboard?.writeText) {
+        copied = navigator.clipboard.writeText(words).then(() => true).catch(() => false);
+      }
+    } catch { /* clipboard blocked; Gmail still opens */ }
+    copied.then((ok) => this._showEmailPasteBanner(ok, email || ''));
   }
 
   // ── Message templates ────────────────────────────────────────────────
@@ -2049,86 +2008,6 @@ class LeadsScreen extends Screen {
     });
   }
 
-
-  buildSmsHref(lead, label) {
-    const t = this.messageTemplate(label);
-    if (!t.sms) return null;   // no copy, no button
-    const body = this.fillTemplate(t.sms, lead);
-    // sms: URI with both ?body= and &body= — iOS uses &, Android uses ?
-    const phone = (lead.phone || '').replace(/[^\d+]/g, '');
-    return `sms:${phone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(body))}`;
-  }
-
-  // SMS variant of buildMailHrefForSnippet — pre-fills the phone's
-  // Messages app with a snippet's `smsBody` (or `body` as a fallback,
-  // so snippets that only defined the email variant still work at all,
-  // just not as pretty).  Powers the 📨 Close 💬 and ℹ Info 💬 chips.
-  buildSmsHrefForSnippet(lead, label, snippetId) {
-    const snippets = this.messageSnippets(label) || [];
-    const snip = snippets.find(s => s.id === snippetId);
-    if (!snip || !lead.phone) return '';
-    const raw = snip.smsBody || snip.body || '';
-    const body = this.fillTemplate(raw, lead);
-    const phone = (lead.phone || '').replace(/[^\d+]/g, '');
-    return `sms:${phone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(body))}`;
-  }
-
-  // wa.me URL — opens WhatsApp web/app with the chat pre-filled.
-  // Phone must be international, digits only (no +, no dashes).  If the
-  // captured number has no country code (US 10-digit), default to +1
-  // since that's our biggest segment; lead-captured Brazil/PR numbers
-  // typically already carry the country code from Meta.
-  buildWhatsAppHref(lead, label) {
-    const t    = this.messageTemplate(label);
-    if (!t.sms) return null;   // no copy, no button
-    const body = this.fillTemplate(t.sms, lead);  // SMS template reads fine in WA too
-    let digits = (lead.phone || '').replace(/\D/g, '');
-    if (digits.length === 10) digits = '1' + digits;  // assume US if bare
-    return `https://wa.me/${digits}?text=${encodeURIComponent(body)}`;
-  }
-
-  buildMailHref(lead, label) {
-    const t = this.messageTemplate(label);
-    if (!t.email) return null;   // no copy, no button
-    const subject = this.fillTemplate(t.subject, lead);
-    const body    = this.fillTemplate(t.email,   lead);
-    // Delegate to Screen.buildGmailComposeHref (screen-base.js) instead
-    // of hand-building the mail.google.com?view=cm URL here — on
-    // Android, tapping that URL gets intercepted by the installed Gmail
-    // app, whose own deep-link parser drops the view=cm compose trigger
-    // and lands on the plain inbox instead of a pre-filled compose
-    // (reported 2026-08-31: "on mobile it still goes to just gmail").
-    // The shared helper already solves this by returning a mailto: URI
-    // on Android, which Android routes straight to Gmail's compose
-    // (ACTION_SENDTO) intent — same fix every other Gmail-compose button
-    // in the app (mens-roster INVITE/WELCOME) already relies on.
-    return this.buildGmailComposeHref({ to: lead.email, subject, body });
-  }
-
-  // Touch-2 (or any snippet) variant of buildMailHref — pre-fills Gmail
-  // compose with the snippet's body and a sensible follow-up subject so
-  // a single click on the lead card opens a ready-to-send email.
-  //
-  // Subject precedence:
-  //   1. snippet.subject (broadcasts set this explicitly)
-  //   2. fallback: 'Re: ' + the touch-1 club title — keeps the visual
-  //      thread with the original outreach even though Gmail can't
-  //      actually merge it into the existing thread (no In-Reply-To
-  //      header is possible from a compose link).
-  //
-  // Body is the personalized snippet body — same flow as the existing
-  // copy chip on the Messages page, just one-click instead of two.
-  buildMailHrefForSnippet(lead, label, snippetId) {
-    const snippets = this.messageSnippets(label) || [];
-    const snip = snippets.find(s => s.id === snippetId);
-    if (!snip || !lead.email) return '';
-    const body = this.fillTemplate(snip.body, lead);
-    const subjectRaw = snip.subject
-      || ('Re: ' + (this.messageTemplate(label).subject || ''));
-    const subject = this.fillTemplate(subjectRaw, lead);
-    // See buildMailHref above — same Android Gmail-app compose fix.
-    return this.buildGmailComposeHref({ to: lead.email, subject, body });
-  }
 
   // Mark-signed-up / undo handler.  POSTs (or DELETEs) to
   // /api/leads/:id/mark-converted, then patches the in-memory lead
@@ -2689,117 +2568,10 @@ class LeadsScreen extends Screen {
     return 'downloaded';
   }
 
-  async onContactClick(e) {
-    const btn      = e.currentTarget;
-    const leadId   = btn.getAttribute('data-lead-id');
-    const channel  = btn.getAttribute('data-channel');
-
-    if (channel === 'vcard') {
-      e.preventDefault();
-      const kind = btn.getAttribute('data-kind') || 'self';
-      try {
-        await this.saveLeadContact(leadId, kind);
-      } catch (err) {
-        alert(`Failed to save contact: ${err.message}`);
-      }
-      return;
-    }
-
-    // text/email/call — intercept so we can:
-    //   1. (email only) write the rich-HTML body to the clipboard —
-    //      Gmail compose pre-fills body= as PLAIN TEXT and won't
-    //      linkify the URL in the editor.  Ctrl+A then Ctrl+V swaps
-    //      in the <a>-tagged version with a clickable link.
-    //   2. (email only) open Gmail compose ourselves AFTER the
-    //      clipboard write resolves — letting the link's default
-    //      navigation fire steals focus and may cancel the pending
-    //      clipboard write.
-    //   3. (call) skip clipboard/Gmail entirely — just POST the touch
-    //      then let the tel: link's default action fire the dialer.
-    //   4. (text) pre-fill the sms: URI with the snippet's smsBody
-    //      (or the touch-1 SMS template if no snippet) — the OS
-    //      Messages app opens the compose sheet w/ text ready.
-    //   5. always POST the touch to /contact w/ (channel, template,
-    //      body) + bump the cached counts so the card re-renders
-    //      immediately with fresh badge + status pill.
-    if (channel === 'email') e.preventDefault();
-    // Read the template the coach clicked (first-touch / close /
-    // more-info / call).  Fall back to first-touch when a legacy
-    // button (no data-template) fires so the DB row still gets a
-    // non-NULL value.
-    const template = btn.getAttribute('data-template') || 'first-touch';
+  // Log one outreach.  The server fans a send out to every lead sharing
+  // the email or phone; the cached rows flip so the card updates at once.
+  async logLeadTouch(leadId, channel, template, body) {
     try {
-      const lead       = (this._leads || []).find(l => String(l.id) === String(leadId));
-      const label      = lead ? this.leadFunnelLabel(lead) : '';
-      const snippetId  = btn.getAttribute('data-snippet');
-      let   body;
-      if (channel === 'call') {
-        // Call channel — no message body, just an intent-to-dial log.
-        body = '';
-      } else if (snippetId) {
-        // Snippet chip click — look up the snippet's body, fall back
-        // to '' if missing.  For text channel we prefer smsBody
-        // (shorter, plain-text formatting); email uses the rich body.
-        const snippets = this.messageSnippets(label);
-        const snip     = snippets.find(s => s.id === snippetId);
-        if (snip) {
-          const raw = (channel === 'text' && snip.smsBody) ? snip.smsBody : snip.body;
-          body = this.fillTemplate(raw, lead || {});
-        } else {
-          body = '';
-        }
-      } else {
-        const tmpl = this.messageTemplate(label);
-        body = channel === 'text'
-          ? this.fillTemplate(tmpl.sms,   lead || {})
-          : this.fillTemplate(tmpl.email, lead || {});
-      }
-      // Email: copy rich HTML to clipboard AND open Gmail compose, both
-      // fired in this same synchronous tick (before any `await` below
-      // suspends the handler).  Previously the clipboard write was
-      // `await`ed first and window.open() only ran once it resolved —
-      // that pushed the navigation outside the click's user-activation
-      // window, so browsers stopped honoring the compose URL and just
-      // surfaced Gmail's already-open tab at its last (inbox) location
-      // instead of the pre-filled compose view.  clipboard.write() only
-      // needs to be *called* while this tab still has focus to succeed
-      // (it validates focus at call time, not at resolution), so kicking
-      // it off without awaiting first — right before window.open() —
-      // keeps both the paste-ready clipboard and the compose window.
-      if (channel === 'email' && body) {
-        const html = this.toLinkifiedHtml(body);
-        let clipboardPromise = Promise.resolve(false);
-        try {
-          if (navigator.clipboard && window.ClipboardItem && navigator.clipboard.write) {
-            const item = new ClipboardItem({
-              'text/plain': new Blob([body], { type: 'text/plain' }),
-              'text/html':  new Blob([html], { type: 'text/html' }),
-            });
-            clipboardPromise = navigator.clipboard.write([item]).then(() => true).catch(() => false);
-          } else if (navigator.clipboard?.writeText) {
-            clipboardPromise = navigator.clipboard.writeText(body).then(() => true).catch(() => false);
-          }
-        } catch { /* clipboard blocked — fall through; Gmail still opens */ }
-
-        // Open Gmail now, still inside the click's synchronous handler.
-        // We use the precomputed href (already on the <a>) so
-        // To/Subject/Body all pre-fill.  The plain-text body is the
-        // failsafe: if the coach forgets to paste, Gmail still linkifies
-        // recognizable URLs on send.  Route through Screen's
-        // openGmailCompose rather than a bare window.open() — on
-        // Android the href is a mailto: URI (see buildMailHref), which
-        // needs window.location.href to hand off to the Gmail app; only
-        // the desktop mail.google.com URL wants window.open().
-        const href = btn.getAttribute('href');
-        if (href) this.openGmailCompose(href);
-
-        // Show a sticky banner explaining the paste step once we know
-        // whether the copy actually succeeded.  Lives near the top of
-        // the screen so it's visible when the coach Alt-Tabs back from
-        // Gmail.
-        const copied = await clipboardPromise;
-        this._showEmailPasteBanner(copied, lead?.email || '');
-      }
       const res = await this.auth.fetch(`/api/leads/${leadId}/contact`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2823,39 +2595,37 @@ class LeadsScreen extends Screen {
         }
       } catch { /* non-JSON or empty body — fall through */ }
 
-      if (channel === 'email' || channel === 'text' || channel === 'call') {
-        const nowIso = new Date().toISOString();
-        for (const aid of affectedIds) {
-          const target = (this._leads || []).find(l => String(l.id) === String(aid));
-          if (!target) continue;
-          if (channel === 'email') {
-            target.email_count       = Number(target.email_count || 0) + 1;
-            target.last_email_at     = nowIso;
-            target.last_email_template = template;
-          } else if (channel === 'text') {
-            target.text_count        = Number(target.text_count || 0) + 1;
-            target.last_text_at      = nowIso;
-            target.last_text_template = template;
-          } else {
-            target.call_count        = Number(target.call_count || 0) + 1;
-            target.last_call_at      = nowIso;
-            target.last_call_template = template;
-          }
-          // Bump status to 'responded' if the lead was 'new' so the pill
-          // flips colors immediately.  (Server-derived status takes over
-          // on next refresh — this just keeps the optimistic render in
-          // sync with the persisted row.)
-          if (target.status === 'new' && !target.status_override) {
-            target.status = 'responded';
-          }
-          // Fresh touch — lead is no longer stale.  Clear the optimistic
-          // staleness flag so a "Needs recontact" card flips back to the
-          // yellow "Emailed/Texted" bucket immediately instead of staying
-          // orange until the next server refresh.
-          target.needs_followup = false;
+      const nowIso = new Date().toISOString();
+      for (const aid of affectedIds) {
+        const target = (this._leads || []).find(l => String(l.id) === String(aid));
+        if (!target) continue;
+        if (channel === 'email') {
+          target.email_count       = Number(target.email_count || 0) + 1;
+          target.last_email_at     = nowIso;
+          target.last_email_template = template;
+        } else if (channel === 'text') {
+          target.text_count        = Number(target.text_count || 0) + 1;
+          target.last_text_at      = nowIso;
+          target.last_text_template = template;
+        } else {
+          target.call_count        = Number(target.call_count || 0) + 1;
+          target.last_call_at      = nowIso;
+          target.last_call_template = template;
         }
-        this.renderLeads(this._leads);
+        // Bump status to 'responded' if the lead was 'new' so the pill
+        // flips colors immediately.  (Server-derived status takes over
+        // on next refresh — this just keeps the optimistic render in
+        // sync with the persisted row.)
+        if (target.status === 'new' && !target.status_override) {
+          target.status = 'responded';
+        }
+        // Fresh touch — lead is no longer stale.  Clear the optimistic
+        // staleness flag so a "Needs recontact" card flips back to the
+        // yellow "Emailed/Texted" bucket immediately instead of staying
+        // orange until the next server refresh.
+        target.needs_followup = false;
       }
+      this.renderLeads(this._leads);
     } catch {}
   }
 

@@ -1229,53 +1229,44 @@ class MembersScreen extends Screen {
   // taps the button, native mail/messages app opens with the body
   // pre-filled, admin can edit before send.
   _onboardingSection(m) {
-    const email  = (m.email || '').trim();
-    const phoneD = this._phoneDigits(m.phone || '');
-    const canEmail = !!email;
-    const canText  = !!phoneD && m.phone_sms !== false;
+    // One CONTACT button (owner 2026-11-02); onboarding is the preselected
+    // message until they have signed in and been active.
+    const onboarded = m.has_fh_account && m.days_since_activity != null;
+    const first = (m.first_name || '').trim();
+    const copy = onboarded ? null
+      : MessageCopy.render('onboarding', m.has_fh_account ? 'has_account' : 'no_account', { first });
+    const step = !m.has_fh_account ? 'Sign in with Google' : 'First visit — set your availability';
+    const hello = window.ContactPopup ? ContactPopup.helloMessage('adult', first) : null;
+    const messages = [
+      ...(copy ? [{ key: 'onboarding', label: `📣 ${step}`, subject: copy.subject, body: copy.body }] : []),
+      ...(hello ? [hello] : []),
+      ...(window.ContactPopup ? [ContactPopup.signInMessage()] : []),
+    ];
+    const email = (m.email || '').trim();
+    const phone = (m.phone || '').trim();
+    const contactBtn = (window.ContactPopup && m.person_id && (email || phone))
+      ? ContactPopup.button({
+          key: `members:${m.person_id}`,
+          screen: this,
+          recipients: [{ personId: m.person_id, name: `${first} ${(m.last_name || '').trim()}`.trim(), phone: phone || null, email: email || null,
+                         noText: m.phone_sms === false }],
+          messages,
+          flagged: !!copy,
+          title: copy ? step : '',
+        })
+      : '';
 
-    // ✅ Onboarded → single green pill, no buttons.
-    if (m.has_fh_account && m.days_since_activity != null) {
-      return `<div style="display:inline-flex; align-items:center; gap:4px;
-                          align-self:flex-start; padding:2px 8px; border-radius:999px;
-                          font-size:0.7rem; font-weight:700;
-                          background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;">
-                ✅ Onboarded
+    // ✅ Onboarded → green pill beside the button.
+    if (onboarded) {
+      return `<div style="display:inline-flex; align-items:center; gap:6px; align-self:flex-start;">
+                <span style="padding:2px 8px; border-radius:999px; font-size:0.7rem; font-weight:700;
+                             background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;">✅ Onboarded</span>
+                ${contactBtn}
               </div>`;
     }
+    if (!copy) return contactBtn;
 
-    // Pick copy by state — message_templates kind 'onboarding', tier
-    // 'no_account' | 'has_account' (migration 367).
-    const step = !m.has_fh_account ? 'Sign in with Google' : 'First visit — set your availability';
-    const copy = MessageCopy.render('onboarding', m.has_fh_account ? 'has_account' : 'no_account',
-                                    { first: (m.first_name || '').trim() });
-    if (!copy) return '';
-    const { subject, body } = copy;
-
-    // Gmail compose — not mailto: — so the operator's Gmail tab
-    // handles it instead of Apple Mail.
-    const gmailUrl = this.buildGmailComposeHref({ to: email, subject, body });
-
-    const buttons = [];
-    if (canEmail) {
-      buttons.push(
-        `<a href="${gmailUrl}"
-            target="_blank" rel="noopener"
-            style="padding:4px 10px; border-radius:4px; text-decoration:none;
-                   background:#0b3a2e; color:#a7f3d0; border:1px solid #10b981;
-                   font-size:0.7rem; font-weight:700;">✉️ Email</a>`
-      );
-    }
-    if (canText) {
-      buttons.push(
-        `<a href="sms:${phoneD}?body=${encodeURIComponent(Screen.withSmsLinkHint(body))}"
-            style="padding:4px 10px; border-radius:4px; text-decoration:none;
-                   background:#3a2e05; color:#fde68a; border:1px solid #d97706;
-                   font-size:0.7rem; font-weight:700;">💬 Text</a>`
-      );
-    }
-
-    const noContactHint = buttons.length ? '' :
+    const noContactHint = contactBtn ? '' :
       `<div style="font-size:0.7rem; opacity:0.65;">
          (no email/phone on file — reach out in person)
        </div>`;
@@ -1291,7 +1282,7 @@ class MembersScreen extends Screen {
                     letter-spacing:0.05em; text-transform:uppercase;">
           📣 Onboarding — ${this._esc(step)}
         </div>
-        ${buttons.length ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">${buttons.join('')}</div>` : ''}
+        ${contactBtn ? `<div>${contactBtn}</div>` : ''}
         ${noContactHint}
       </div>
     `;
