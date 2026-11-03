@@ -354,6 +354,15 @@ class App {
       // #game-center/<matchId>/<pill>, and a magic link lands on the same
       // hash — opens that game in the player view, like the #my door.
       // Everything else resumes at role selection.
+      // One opened event, any kind — #event/<fh_event_id>/<pill>
+      // (EventKindSwitch.hash, owner 2026-11-03): fetch it and open it by
+      // kind, as a calendar tap does.  Home if it's gone or not visible.
+      const evLink = EventKindSwitch.parseHash(window.location.hash);
+      if (evLink) {
+        EventKindSwitch.openById(this.navigation, this.auth, evLink.fhEventId, evLink.pill)
+          .catch((err) => { console.warn('[app] event link failed:', err); this.navigation.goTo(this.navigation.home()); });
+        return;
+      }
       const game = (window.location.hash || '').match(/^#game-center\/(\d+)(?:\/([a-z_]+))?$/);
       if (game) {
         this.navigation.context.role = this.navigation.context.role || 'player';

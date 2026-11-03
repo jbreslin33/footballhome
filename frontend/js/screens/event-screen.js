@@ -218,7 +218,7 @@ class EventScreen extends Screen {
   onEnter(params = {}) {
     this.ev = params.event || null;
     this.loadingId = (!this.ev && params.fhEventId) ? Number(params.fhEventId) : null;
-    this.pill = 'players';
+    this.pill = params.pill || 'players';   // render() falls back when the kind has no such pill
     this.att = null;
     this.invites = null;
     this.reminders = null;    // person_id → {sms, email, total} — who was reminded this week (mig 739)
@@ -248,13 +248,17 @@ class EventScreen extends Screen {
       this._loadJobs();
       this.onEventLoaded();
     };
-    if (this.ev) loadAll();
+    if (this.ev) { loadAll(); this.syncHash(); }
     else if (this.loadingId) this._loadEvent(this.loadingId).then(loadAll);
     this._startLivePoll();
   }
 
   // Per-visit state a child keeps (cleared on every enter).
   resetKind() {}
+
+  // #event/<fh_event_id>/<pill> — one URL shape for every kind
+  // (EventKindSwitch.hash).  Game Center lights its own pill set.
+  syncHash() { EventKindSwitch.syncHash(this.navigation, this.ev, this.pill); }
 
   // ── data ────────────────────────────────────────────────────────────
   async _json(url, options = {}) {
@@ -273,7 +277,7 @@ class EventScreen extends Screen {
   async _loadEvent(id) {
     try {
       const body = await this._json(`/api/calendar/events/${id}`);
-      if (this.ev ? this.ev.fh_event_id === id : this.loadingId === id) this.ev = body.event;
+      if (this.ev ? this.ev.fh_event_id === id : this.loadingId === id) { this.ev = body.event; this.syncHash(); }
     } catch (err) {
       console.error('[event] event load failed:', err);
       if (!this.ev) this.error = 'Could not load that event.';
@@ -1042,6 +1046,7 @@ class EventScreen extends Screen {
         this.pill = el.dataset.ecPill;
         this.onPill(this.pill);
         this._render();
+        this.syncHash();
         return;
       }
       if ((el = t('[data-ec-game-center]'))) { EventKindSwitch.open(this.navigation, this.ev); return; }

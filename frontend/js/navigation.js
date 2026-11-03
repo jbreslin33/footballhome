@@ -99,6 +99,12 @@ class NavigationStateMachine {
     // `entity`), fold it into the hash so the visible URL actually
     // reflects what's on screen instead of always reading the same bare
     // `#state` for every sub-view.
+    // An opened event is #event/<id>/<pill> whichever screen draws it
+    // (lib/event-kind-switch.js).
+    if (params && params.event && window.EventKindSwitch && EventKindSwitch.SCREENS.includes(state)) {
+      const h = EventKindSwitch.hash(params.event, params.pill || params.postType);
+      if (h) return h;
+    }
     return params && params.entity ? `#${state}/${params.entity}` : `#${state}`;
   }
 

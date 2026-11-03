@@ -39,16 +39,53 @@ const EventKindSwitch = {
 
   // Open one event on its own screen — the EventScreen family
   // (screens/event-screen.js): a game in Game Center, a practice or a
-  // pickup in #practice, anything else in #event.
-  open(navigation, ev) {
+  // pickup in #practice, anything else in #event.  pill = the big pill to
+  // light (the URL's last part); the screen falls back to its default.
+  open(navigation, ev, pill) {
     if (!ev) return;
+    const params = pill ? { event: ev, pill } : { event: ev };
     if (ev.kind === 'match' && ev.match_id != null) {
-      navigation.goTo('game-center', { event: ev });
+      navigation.goTo('game-center', params);
     } else if (ev.kind === 'practice' || ev.kind === 'pickup') {
-      navigation.goTo('practice', { event: ev });
+      navigation.goTo('practice', params);
     } else {
-      navigation.goTo('event', { event: ev });
+      navigation.goTo('event', params);
     }
+  },
+
+  // ONE URL for an opened event, whatever its kind (owner 2026-11-03:
+  // "games seem to have id in url but practice does not … the urls are
+  // random in design"): #event/<fh_event_id>/<pill>.  The kind decides
+  // which screen draws it, never the URL.
+  SCREENS: ['event', 'practice', 'game-center'],
+  hash(ev, pill) {
+    if (!ev || ev.fh_event_id == null) return null;
+    return `#event/${ev.fh_event_id}${pill ? '/' + pill : ''}`;
+  },
+  parseHash(hash) {
+    const m = String(hash || '').match(/^#event\/(\d+)(?:\/([a-z_]+))?$/);
+    return m ? { fhEventId: Number(m[1]), pill: m[2] || null } : null;
+  },
+
+  // The URL kept honest after a pill tap or a late event load —
+  // replaceState, so Back still means "leave this event", not "undo my
+  // last pill".  Only while one of the event screens is showing.
+  syncHash(navigation, ev, pill) {
+    const h = EventKindSwitch.hash(ev, pill);
+    if (!h || !navigation || !EventKindSwitch.SCREENS.includes(navigation.currentState)) return;
+    if (window.location.hash === h) return;
+    try { window.history.replaceState(window.history.state, '', h); }
+    catch (err) { console.warn('[event] hash sync failed (non-fatal):', err); }
+  },
+
+  // A cold start on #event/<id>/<pill> (a reload, a pasted link): fetch
+  // the event, then open it by kind like a calendar tap.
+  async openById(navigation, auth, fhEventId, pill) {
+    const res = await auth.fetch(`/api/calendar/events/${fhEventId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = await res.json();
+    if (!body || !body.event) throw new Error('no event');
+    EventKindSwitch.open(navigation, body.event, pill);
   },
 };
 

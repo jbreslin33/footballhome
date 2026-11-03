@@ -723,22 +723,21 @@ class GameCenterScreen extends EventScreen {
   // its new name. Anything unrecognized lands on the default rather
   // than rendering a blank body.
   _resolvePill(params) {
+    // #event/<id>/<pill> (EventKindSwitch) names it pill; older doors postType.
+    if (params.pill && POST_PILLS.some(p => p.key === params.pill)) return params.pill;
     if (params.postType && POST_PILLS.some(p => p.key === params.postType)) return params.postType;
     if (params.mode === 'gameday') return 'lineup';
     return DEFAULT_PILL;
   }
 
-  // Switching pills is a sub-view change, not a navigation, so this is
-  // replaceState rather than a goTo: the URL stays honest
-  // (#game-center/<matchId>/<pill>) without stacking one history entry
-  // per pill tap, which would turn Back into "undo my last four taps"
-  // instead of "leave this game". Deliberately does NOT go through
-  // navigation.js — that router only knows #state and #state/<entity>,
-  // and this is cosmetic anyway (app.js:start always resumes an
-  // authenticated session at role-selection, so no hash is deep-linked
-  // on reload).
+  // Switching pills is a sub-view change, not a navigation: the URL is
+  // the one every opened event has, #event/<fh_event_id>/<pill>
+  // (EventKindSwitch.syncHash — replaceState, so Back still leaves the
+  // game).  A game the feed hasn't matched to its event yet keeps the
+  // old #game-center/<matchId>/<pill>, which app.js still opens.
   _syncHash() {
     if (!this.matchId) return;
+    if (this.ev && this.ev.fh_event_id != null) { EventKindSwitch.syncHash(this.navigation, this.ev, this.pill); return; }
     try {
       window.history.replaceState(window.history.state, '', `#game-center/${this.matchId}/${this.pill}`);
     } catch (err) {
@@ -2358,7 +2357,12 @@ class GameCenterScreen extends EventScreen {
   _applyFeed() {
     if (!this._feedGames) { this.games = null; this.pickerGames = null; return; }
     this.games = this._feedGames;
-    if (this.matchId != null) this.ev = this.games.find(g => g.match_id === this.matchId) || this.ev;
+    if (this.matchId != null) {
+      this.ev = this.games.find(g => g.match_id === this.matchId) || this.ev;
+      // A matchId-only door (old #game-center/<id> links): the event is
+      // known now, so the URL becomes #event/<fh_event_id>/<pill>.
+      this._syncHash();
+    }
     const today = new Date(); today.setHours(0, 0, 0, 0);
     this.pickerGames = this.games.filter(ev => new Date(ev.starts_at) >= today);
   }
