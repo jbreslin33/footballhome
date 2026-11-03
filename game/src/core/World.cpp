@@ -13,6 +13,8 @@ namespace {
 // Goal mouth: 7.32 m wide, 2.44 m high (laws of the game).
 const Fixed64 kGoalHalfWidth = Fixed64::fromFraction(732, 200);  // 3.66
 const Fixed64 kGoalHeight    = Fixed64::fromFraction(244, 100);  // 2.44
+const Fixed64 kPenaltyDepth     = Fixed64::fromFraction(33, 2);     // 16.5 (Law 1)
+const Fixed64 kPenaltyHalfWidth = Fixed64::fromFraction(2016, 100); // 20.16
 
 }  // namespace
 
@@ -639,7 +641,13 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             continue;
         const bool gk = keeper_[i];
         // G5.5 (§8.103): the man a pass is for, set for it, reaches out a leg.
+        // G5.11 (§8.108): their ball in our box, a defender sticks a leg out.
+        const bool box_def = box_reach_m_.raw > 0 && !gk && ball_.last_kicker < players_.size() &&
+                             players_[ball_.last_kicker].team != players_[i].team &&
+                             (players_[i].team == 0 ? ball_.pos.x <= -half_x_ + kPenaltyDepth : ball_.pos.x >= half_x_ - kPenaltyDepth) &&
+                             math::fx_abs(ball_.pos.y) <= kPenaltyHalfWidth;
         const Fixed64 reach = gk ? kKeeperReach
+                              : box_def ? box_reach_m_
                               : (i == ball_.pass_to && stretch_m_.raw > 0 && players_[i].team == last_touch_team_ ? stretch_m_ : kBallControlRadius);
         const Fixed64 reach_z = gk ? kKeeperReachZ : kOutfieldReachZ;   // G4.94: to the chest
         if (ball_.pos.z > reach_z) continue;
@@ -654,10 +662,20 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         if (dsq > reach * reach) continue;
         // G5.4 experiment (§8.102): the share of their moving passes an
         // outfielder in reach actually takes. Off without physics.tempo.cut_share.
-        if (cut_share_.raw > 0 && !gk && ball_.last_kicker != 0xFF && ball_.last_kicker < players_.size() &&
+        // G5.11 (§8.108): inside his own penalty area a defender plays every
+        // ball he can reach — real low crosses are cut out ~70% (StatsBomb PL
+        // 2015/16), where cut_share's midfield rate let the box's men stand
+        // 0.5 m off a slow ball and watch it go by. cut_share_box (no row =
+        // cut_share) is the share there; team 0 defends -x.
+        Fixed64 share = cut_share_;
+        if (cut_share_box_.raw > 0 &&
+            (players_[i].team == 0 ? ball_.pos.x <= -half_x_ + kPenaltyDepth : ball_.pos.x >= half_x_ - kPenaltyDepth) &&
+            math::fx_abs(ball_.pos.y) <= kPenaltyHalfWidth)
+            share = cut_share_box_;
+        if (share.raw > 0 && share < Fixed64::one() && !gk && ball_.last_kicker != 0xFF && ball_.last_kicker < players_.size() &&
             players_[ball_.last_kicker].team != players_[i].team &&
             planar_speed_sq > Fixed64::fromInt(9) &&
-            (detNoise(match_seed_, clock_.tick() / 15, i, 24) + Fixed64::one()) * Fixed64::fromFraction(1, 2) >= cut_share_)
+            (detNoise(match_seed_, clock_.tick() / 15, i, 24) + Fixed64::one()) * Fixed64::fromFraction(1, 2) >= share)
             continue;
         if (!found || dsq < best_sq) {
             found = true;
@@ -946,6 +964,8 @@ void World::configureTempo(const ModelParams& p) {
     hold_under4_ = p.fixed("physics.tempo.hold_under4", 0);
     hold_press_m_ = p.fixed("physics.tempo.press_m", 2500);
     cut_share_ = p.fixed("physics.tempo.cut_share", 0);
+    cut_share_box_ = p.fixed("physics.tempo.cut_share_box", 0);   // G5.11
+    box_reach_m_ = p.fixed("physics.tempo.box_reach_m", 0);       // G5.11
     stretch_m_ = p.fixed("physics.tempo.stretch_m", 0);
     carry_share_ = p.fixed("physics.tempo.carry_share", 0);
     hold_on_ = hold_under1_.raw > 0 && hold_under2_ > hold_under1_ && hold_under4_ > hold_under2_;

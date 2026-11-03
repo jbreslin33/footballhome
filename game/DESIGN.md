@@ -4595,3 +4595,53 @@ The box has nearly real defenders now and they still don't win the ball.
 defender, keeper; head or foot) and what follows, real (StatsBomb: the next on-ball
 event after a cross, 40% clearance) v game; the aerial duel and keeper claim on a
 lofted ball into the box. Nothing in §8.107 ships until crosses are as hard as real.
+
+### 8.108 G5.11 — what a cross meets (IN PROGRESS; no migration, all off)
+
+Real first touch after an open-play cross (StatsBomb PL 2015/16, 380 matches, 11.5
+crosses a team; the first on-ball event after an incomplete cross, any team; scratch
+`crfirst.py`, to fold into `benchmarks_statsbomb_cross.py`):
+
+| Share of the cross's kind | Attacker | Defender, head | Defender, foot / recovery | Keeper | Out |
+|---|---|---|---|---|---|
+| High (68%) | 27% | ~33% (headed clearance 25%, attacker lost the duel 8%) | ~20% | 8.5% | 9.5% |
+| Low (32%) | 29% | 2% | ~66% (clearance 35%, recovery 12%, interception 7%, pass 5%) | 3% | 2.5% |
+
+The game (G5.9-G5.10 all on, 32 matches, the four PL fixtures, match_main `CROSS FIRST
+TOUCH`; a header = the ball above 1.5 m the tick before):
+
+| Run | Low: attacker / defence / keeper / out | High: attacker foot+head / defender head / defender foot / keeper / out | Goals | Shots a team |
+|---|---|---|---|---|
+| G5.10 (B0) | 52 / 17 / 5 / 26 | 40+9 / 15 / 15 / 6 / 15 | 4.5 | 13.0 |
+| + `cut_share_box` 1 (B1) | 41 / 40 / 5 / 14 | 25+11 / 14 / 27 / 5 / 19 | 4.3 | 12.0 |
+| + `box_reach_m` 1 (B2) | 20 / 65 / 4 / 10 | 20+5 / 8 / 48 / 5 / 15 | 3.5 | 12.0 |
+| + `read_header` 1 (B3) | 25 / 62 / 4 / 10 | 15+8 / 17 / 34 / 7 / 19 | 3.9 | 11.4 |
+| + aerial radius 1.5 (B4) | 23 / 60 / 1 / 16 | 15+7 / 17 / 39 / 5 / 19 | 3.6 | 12.1 |
+| Pro | 29 / 68 / 3 / 2.5 | 27 / 33 / 20 / 8.5 / 9.5 | 2.5 | 12.9 |
+
+**The low cross went through the box's men.** Per cross, the nearest defender to the
+ball's flight below 1.5 m (`CF DIAG`): in B0, 37 low crosses that reached an attacker
+or went out passed within 0.5 m of a defender, inside his control radius, at a
+controllable speed. The cause is G5.4's `physics.tempo.cut_share` 0.1 (mig 941, a fit
+for midfield interceptions): an outfielder in reach takes only a tenth of their moving
+passes, in his own six-yard box too. Two [FH] params, both off without a row:
+
+- `physics.tempo.cut_share_box`: the share inside his own penalty area (1 = every
+  ball he can reach; no row = `cut_share`). Coaching: in the box, play the ball.
+- `physics.tempo.box_reach_m`: his reach there for their ball (a leg out, a block),
+  in place of the 0.5 m control radius. 1 m fitted: B1's remaining misses were 0.5-1 m.
+
+Both together put low crosses at pro (attacker 20-25% v 29, defence 62-65% v 68) and
+goals 4.5 → 3.5-3.9 (pro 2.5), shots flat.
+
+**The high cross is won when it drops, not in the air.** `concept.meet-the-pass.
+read_header` (the flight read takes the head-height point of a dropping ball, within
+`physics.aerial.radius_m`; committed 460e8e2c) doubles defenders' headers, 8 → 17%,
+but real is ~33%, and defenders still win 34-39% on the ground (real 20%). A 1.5 m
+aerial radius changes nothing, so reach is not the limit: the defender isn't under the
+ball at head height when it gets there.
+
+**Next (the mole):** where the defenders are when a high cross comes down to 2.4 m —
+distance to the drop point and to the attacker they are marking, real (DFL tracking
+at the frame of a cross's first touch) v game. Then the cross count: 3.3-4.3 a team
+v 11.5 real. Nothing in §8.107-8.108 ships until high crosses are as hard as real.

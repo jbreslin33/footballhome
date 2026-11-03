@@ -61,6 +61,7 @@ long g_aw_n[128]; double g_aw_y[128], g_aw_t[128];   // attackers on the far sid
 long g_lw_n[128]; double g_lw_y[128], g_lw_t[128];   // G5.7 diag: ball |y| 24+, by why
 long g_blocks[2];
 // G5.11: a cross's first touch — [high?][0 ours foot, 1 ours head, 2 theirs foot, 3 theirs head, 4 keeper, 5 out]
+long g_cf_md[2][6][6]; double g_cf_min = 1e9, g_cf_minv = 0;   // G5.11 diag: nearest opponent to a cross's flight (below 1.5 m), by outcome
 long g_cf[2][6], g_cf_n[2]; int g_cf_on = 0, g_cf_team = -1, g_cf_kicker = -1, g_cf_high = 0; double g_cf_z = 0;
 long g_bpw[128];
 long g_dw_n[128]; double g_dw_tl[128], g_dw_ttl[128];   // four deepest defenders' jobs, ball wide 18-30
@@ -853,7 +854,19 @@ int main(int argc, char** argv) {
                         cat = s.world().isKeeper(static_cast<std::uint8_t>(who)) ? 4 : (q.team == g_cf_team ? (head ? 1 : 0) : (head ? 3 : 2));
                     }
                 }
-                if (cat >= 0) { ++g_cf[g_cf_high][cat]; g_cf_on = 0; }
+                if (cat < 0 && bb.pos.z.toDouble() < 1.5)
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        if (s.world().player(j).team == g_cf_team || s.world().isKeeper(j)) continue;
+                        const double dd = std::hypot(s.world().player(j).pos.x.toDouble() - bb.pos.x.toDouble(), s.world().player(j).pos.y.toDouble() - bb.pos.y.toDouble());
+                        if (dd < g_cf_min) { g_cf_min = dd; g_cf_minv = std::hypot(bb.vel.x.toDouble(), bb.vel.y.toDouble()); }
+                    }
+                if (cat >= 0) {
+                    ++g_cf[g_cf_high][cat]; g_cf_on = 0;
+                    const int bin = g_cf_min < 0.5 ? 0 : g_cf_min < 1.0 ? 1 : g_cf_min < 1.5 ? 2 : g_cf_min < 2.5 ? 3 : g_cf_min < 5 ? 4 : 5;
+                    ++g_cf_md[g_cf_high][cat][bin];
+                    if (std::getenv("GAME_TRACE_CF") && g_cf_min < 2.5) std::printf("CF %s cat %d nearest opp %.2f m at %.1f m/s\n", g_cf_high ? "high" : "low", cat, g_cf_min, g_cf_minv);
+                    g_cf_min = 1e9;
+                }
                 g_cf_z = bb.pos.z.toDouble();
             }
             if (b.owner && (!before || *before != *b.owner)) {
@@ -2439,6 +2452,12 @@ int main(int argc, char** argv) {
                         std::printf("CROSS FIRST TOUCH %s (%.1f a team): ours foot %.0f%%, ours head %.0f%%, theirs foot %.0f%%, theirs head %.0f%%, keeper %.0f%%, out %.0f%%\n",
                                     h ? "high" : "low", g_cf_n[h] / (2.0 * nm), 100.0 * g_cf[h][0] / g_cf_n[h], 100.0 * g_cf[h][1] / g_cf_n[h], 100.0 * g_cf[h][2] / g_cf_n[h],
                                     100.0 * g_cf[h][3] / g_cf_n[h], 100.0 * g_cf[h][4] / g_cf_n[h], 100.0 * g_cf[h][5] / g_cf_n[h]);
+            if (q == 0)
+                for (int h = 1; h >= 0; --h)
+                    for (int c = 0; c < 6; ++c)
+                        if (g_cf[h][c])
+                            std::printf("  CF DIAG %s cat %d: nearest opp under 1.5 m high <0.5 %ld, 0.5-1 %ld, 1-1.5 %ld, 1.5-2.5 %ld, 2.5-5 %ld, 5+ %ld\n", h ? "high" : "low", c,
+                                        g_cf_md[h][c][0], g_cf_md[h][c][1], g_cf_md[h][c][2], g_cf_md[h][c][3], g_cf_md[h][c][4], g_cf_md[h][c][5]);
             if (q == 0) std::printf("INTO THE CROSSING ZONE a team: carried %.2f, passed %.2f (from wide %.2f)\n", g_xin_carry / (2.0 * nm), g_xin_pass / (2.0 * nm), g_xin_pass_wide / (2.0 * nm));
             std::printf("OUT BY %s:", rk[q]);
                 for (int c = 0; c < 8; ++c) std::printf(" %s %.2f", ck[c], oc_n[q][c] / (2.0 * nm));
