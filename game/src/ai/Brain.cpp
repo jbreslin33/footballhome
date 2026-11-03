@@ -383,6 +383,58 @@ void Brain::race(const World& world, const RaceBall& rb, FlightRead& f) const {
     }
 }
 
+// Get in line with the ball (G5.5, §8.103) [FH; coaching: "get your body behind
+// it"]: the man a rolling pass is for picks the first spot on its real path he
+// reaches early_s ahead of the ball, his body on it, not the first he can only
+// just touch. The race's spot has no margin: traced, 75% of ground passes that
+// ran into touch went within 2 m of him at 10 m/s, he on the line at the kick,
+// walking up it to a spot he then missed, or braking short, or still turning out
+// of a run. False = no such spot, or the ball isn't rolling yet.
+bool Brain::getInLine(SlotIndex slot, const World& world, Vec2& at) const {
+    const ConceptBook& book_ = bookOf(slot);
+    const Fixed64 early = book_.meet_the_pass.earlyS();
+    if (early.raw <= 0) return false;
+    const auto& b = world.ball();
+    if (b.pos.z.raw != 0 || b.vel.z.raw != 0) return false;
+    const auto& p = world.player(slot);
+    const Fixed64 since = Fixed64::fromInt(static_cast<std::int64_t>(world.tickCount() - world.flightTick())) * core::kTickDt;
+    const Fixed64 full = world.body(slot).reaction() +
+                         Fixed64::fromInt(levelOf(slot).perception_delay_ticks) * core::kTickDt;
+    const Fixed64 react = full > since ? full - since : Fixed64::zero();
+    const std::int32_t c = levelOf(slot).control_speed_mps;
+    const Fixed64 cs = Fixed64::fromInt(c);
+    Vec2 pos{b.pos.x, b.pos.y}, vel{b.vel.x, b.vel.y};
+    // On the line first, then along it: until his body is on its line he takes
+    // no spot short of the foot of his perpendicular, or the spot keeps sliding
+    // toward the ball and he runs beside it (traced: half the misses 0.5-1 m off).
+    const Fixed64 sp = math::length(vel);
+    if (sp.raw == 0) return false;
+    const Vec2 dir{vel.x / sp, vel.y / sp};
+    const Vec2 rel{p.pos.x - pos.x, p.pos.y - pos.y};
+    const Fixed64 foot = math::dot(rel, dir);
+    const Fixed64 off = math::fx_abs(rel.x * dir.y - rel.y * dir.x);
+    const bool on_line = off < book_.meet_the_pass.onLineM();
+    const int horizon = book_.meet_the_pass.horizonTicks();
+    for (int k = 1; k <= horizon; ++k) {
+        pos.x += vel.x * core::kTickDt;
+        pos.y += vel.y * core::kTickDt;
+        vel.x = vel.x * core::kBallRollDecayPerTick;
+        vel.y = vel.y * core::kBallRollDecayPerTick;
+        if (math::fx_abs(pos.x) > half_x_ || math::fx_abs(pos.y) > half_y_) return false;
+        if (k % 3 != 0) continue;
+        if (c > 0 && vel.x * vel.x + vel.y * vel.y > cs * cs) continue;   // not yet at a pace he can hold
+        if (!on_line && math::dot(Vec2{pos.x - b.pos.x, pos.y - b.pos.y}, dir) < foot) continue;
+        const Fixed64 t = core::kTickDt * Fixed64::fromInt(k) - react - early;
+        if (t < Fixed64::zero()) continue;
+        const Fixed64 r = runToward(world, slot, pos, t);
+        if (distSq(p.pos, Vec3{pos.x, pos.y, Fixed64::zero()}) <= r * r) {
+            at = pos;
+            return true;
+        }
+    }
+    return false;
+}
+
 // Pass safety [Buckland] (G4.19): the PASSER runs the interceptors' own
 // race — since G4.86 the very race the flight read runs on the ball in the
 // air (Brain::race), on the ground pass he's about to strike: each man's
@@ -1140,6 +1192,38 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
         default: break;
     }
     Fixed64 v_ok = math::fx_sqrt(v_end * v_end + Fixed64::fromInt(2) * arrive_decel_ * dist);
+    // G5.5 (§8.103): adjusting his shape he goes only as fast as the gap asks,
+    // closing it in shape_tau_s. Off the ball real men spend 3.3% of the time
+    // over 5 m/s (DFL tracking); ours 47.5%, 58% of that holding shape, and a
+    // man running at the kick can't take the ball.
+    // G5.10 (§8.108): not with their ball inside shape_danger_m of our goal —
+    // there a man getting back into his shape goes at the defending pace
+    // (the block that walked back was 9 m behind its spots with the ball wide
+    // 18-30 m out, the offside line 4-5 m too high, the box empty).
+    bool danger = false;
+    if (shape_danger_.raw > 0 && o.why == Why::Hold) {
+        const auto& b = world.ball();
+        const std::uint8_t team = setup_.team_of_slot[slot];
+        const bool theirs = b.owner ? setup_.team_of_slot[*b.owner] != team : world.lastTouchTeam() != team;
+        const Fixed64 sg = attackSign(slot) >= 0 ? Fixed64::one() : -Fixed64::one();
+        danger = theirs && b.pos.x * sg + half_x_ < shape_danger_;
+    }
+    if (o.why == Why::Hold && shape_tau_.raw > 0 && !danger) {
+        const Fixed64 ease = dist / shape_tau_;
+        if (ease < v_ok) v_ok = ease;
+    }
+    // A team shifts as a block at a jog and accepts the lag: most of what was
+    // left over 5 m/s was a man 15 m+ off his target (§8.103).
+    if (shape_max_.raw > 0 && o.why == Why::Hold && !danger && shape_max_ < v_ok) v_ok = shape_max_;
+    if (danger && shape_danger_sprint_ == 0 && defend_max_.raw > 0 && defend_max_ < v_ok) v_ok = defend_max_;
+    if (defend_max_.raw > 0 && defend_max_ < v_ok) {
+        switch (o.why) {
+            case Why::Recover: case Why::Mark: case Why::MarkTight: case Why::ProtectMiddle:
+                v_ok = defend_max_;
+                break;
+            default: break;
+        }
+    }
     // A race to a MOVING ball (G4.84): arrive ON TIME, not just under
     // control. His target is where the flight read says he and the ball
     // meet, fr.tick ticks from now — so he runs at least dist / that time
@@ -1163,6 +1247,40 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
     const Fixed64 k = v_ok / me.max_speed;
     if (k >= mlen) return;
     o.move.move = Vec2{o.move.move.x * k / mlen, o.move.move.y * k / mlen};
+}
+
+// Defend the cross (125, G5.9, §8.107) [coaching: "win the box on crosses" —
+// the back line drops in, near post owned, everyone goal-side]: their ball
+// wide (|y| 14 m+) within within_m of our goal line, a back-line man (base at
+// or behind -55%) whose job isn't the ball (press, tackle, jockey, delay)
+// stands no further than depth_m off our line and width_m off the middle.
+// Real (DFL tracking, ball wide inside 18 m): 4.0 defenders in the box, the
+// deepest 9.1 m and the next 11.0 m off the line; the game had 2.4. No row = off.
+void Brain::defendTheCross(SlotIndex slot, const World& world, Orders& o) const {
+    if (dtc_within_.raw <= 0) return;
+    const auto& b = world.ball();
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    if (!b.owner || setup_.team_of_slot[*b.owner] == team || world.restartTeam() != 0xFF) return;
+    const FormationSpec::Pos& mine = spec_[team].positions[index_in_team_[slot]];
+    if (mine.keeper || mine.base.x > Fixed64::fromFraction(-55, 100)) return;
+    switch (o.why) {
+        case Why::Press: case Why::Tackle: case Why::SideOn: case Why::Delay: case Why::Contain:
+        case Why::CounterPress: case Why::Chase: case Why::DropStep: case Why::Intercept: case Why::JumpPass:
+            return;
+        default: break;
+    }
+    const Fixed64 sg = attackSign(slot) >= 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 from_line = b.pos.x * sg + half_x_;
+    if (from_line >= dtc_within_ || math::fx_abs(b.pos.y) < Fixed64::fromInt(14)) return;
+    Vec2 t = (o.target.x.raw != 0 || o.target.y.raw != 0) ? o.target : Vec2{world.player(slot).pos.x, world.player(slot).pos.y};
+    const Fixed64 cap_x = -half_x_ + dtc_depth_;   // in our frame
+    bool moved = false;
+    if (t.x * sg > cap_x) { t.x = cap_x * sg; moved = true; }
+    if (t.y > dtc_width_) { t.y = dtc_width_; moved = true; }
+    if (t.y < -dtc_width_) { t.y = -dtc_width_; moved = true; }
+    if (!moved) return;
+    o.move.move = seek(world.player(slot).pos, t, Fixed64::fromFraction(1, 2));
+    o.target = t;
 }
 
 void Brain::trackRunner(SlotIndex slot, const World& world, Orders& o) const {
@@ -1279,8 +1397,11 @@ math::Vec2 Brain::shapeAnchor(SlotIndex slot, const World& world) const {
         spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]];
     Vec2 a = anchorFor(mine.base, attackSign(slot), world.ball().pos, half_x_, half_y_, mine.keeper);
     const auto& b = world.ball();
-    if (!mine.keeper && b.owner && setup_.team_of_slot[*b.owner] == setup_.team_of_slot[slot])
+    if (!mine.keeper && b.owner && setup_.team_of_slot[*b.owner] == setup_.team_of_slot[slot]) {
         a.x = possessionX(slot, b.pos.x);
+        a.y = possessionY(mine.base, b.pos.y, a.y);
+    } else if (!mine.keeper && b.owner)
+        a.y = defendingY(mine.base, b.pos.y, a.y);
     return a;
 }
 
@@ -1343,6 +1464,7 @@ Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
     unmark(slot, world, o);
     stayOnside(slot, world, o);
     trackRunner(slot, world, o);
+    defendTheCross(slot, world, o);
     if (o.move.face.x.raw != 0 || o.move.face.y.raw != 0) return o;
     const auto& ball = world.ball();
     const auto& me = world.player(slot);
@@ -1533,7 +1655,7 @@ void Brain::unmark(SlotIndex slot, const World& world, Orders& o) const {
 // toward his own goal at a protecting pace. Inside his own third he may
 // still play it back; failing that the old clear stands. False = the
 // concept didn't apply (not touch-tight, not his, a lapse) — carry on.
-bool Brain::keepIt(SlotIndex slot, const World& world, int sign, Orders& out) const {
+bool Brain::keepIt(SlotIndex slot, const World& world, int sign, Orders& out, bool shield_own_third) const {
     const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     const int bit = book_.keep_it.bit();
     if (ratings_[slot][bit] <= 0) return false;
@@ -1592,7 +1714,7 @@ bool Brain::keepIt(SlotIndex slot, const World& world, int sign, Orders& out) co
         return true;
     }
     // In his own third the clear is still allowed (the caller's hoof).
-    if (me.pos.x * sgn < -half_x_ + K.ownThird()) return false;
+    if (!shield_own_third && me.pos.x * sgn < -half_x_ + K.ownThird()) return false;
     // Shield and turn: away from the presser, leaning back toward our goal.
     const auto& p = world.player(static_cast<SlotIndex>(presser));
     Vec2 away{me.pos.x - p.pos.x, me.pos.y - p.pos.y};
@@ -2491,13 +2613,30 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         // G5.4 (§8.102): pressed near his own goal a real defender clears it
         // (93% in the box centrally, 45% wide, 30-40% out to 35 m), rolled
         // once on the ball, hit first time up the emptier side.
-        if (!im_keeper && pressed) {
+        // G5.8 (§8.106): those rates were read off StatsBomb's under-pressure
+        // flag, which every clearance carries; with clear-the-danger's rows
+        // the roll is the 360 rate for his zone and the nearest man's
+        // distance instead, for every release, still once on the ball.
+        const auto& ctd = book_.clear_the_danger;
+        if (!im_keeper && (pressed || ctd.measured())) {
             const Fixed64 clr_sgn = Fixed64::fromInt(sign >= 0 ? 1 : -1);
             const Fixed64 own_d = me.pos.x * clr_sgn + half_x_;
-            if (own_d < Fixed64::fromInt(35)) {
+            if (own_d < Fixed64::fromInt(35) || ctd.measured()) {
                 const Fixed64 wide_limit = Fixed64::fromFraction(1416, 100);
                 const bool central = me.pos.y <= wide_limit && Fixed64::zero() - me.pos.y <= wide_limit;
-                const Fixed64 share = book_.pass_ladder.clearShare(own_d < Fixed64::fromInt(18) ? 0 : 1, central);
+                Fixed64 share{};
+                if (ctd.measured()) {
+                    Fixed64 nearest_sq = Fixed64::fromInt(10000);
+                    for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                        if (setup_.team_of_slot[j] == setup_.team_of_slot[slot] || world.isKeeper(j)) continue;
+                        const Fixed64 d2 = distSq(me.pos, world.player(j).pos);
+                        if (d2 < nearest_sq) nearest_sq = d2;
+                    }
+                    share = ctd.rate(ClearTheDanger::zone(own_d, math::fx_abs(me.pos.y)),
+                                     ClearTheDanger::near(math::fx_sqrt(nearest_sq)));
+                } else {
+                    share = book_.pass_ladder.clearShare(own_d < Fixed64::fromInt(18) ? 0 : 1, central);
+                }
                 const Fixed64 u = (core::detNoise(match_seed_, world.ownedAtTick(), slot, 202) + Fixed64::one()) *
                                   Fixed64::fromFraction(1, 2);
                 if (u < share) {
@@ -2515,7 +2654,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                     Fixed64 ax = me.pos.x * clr_sgn + Fixed64::fromInt(35);
                     if (ax > half_x_ - Fixed64::fromInt(30)) ax = half_x_ - Fixed64::fromInt(30);
                     const Fixed64 ay = half_y_ * Fixed64::fromFraction(7, 20);
-                    const Vec2 to{ax * clr_sgn, crowd[0] <= crowd[1] ? Fixed64::zero() - ay : ay};
+                    Vec2 to{ax * clr_sgn, crowd[0] <= crowd[1] ? Fixed64::zero() - ay : ay};
+                    to = clearUpTheLine(me.pos, to);
                     out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
                     out.action = Action::LoftedKick;
                     out.carry_m = aimedCarry(me.pos, to, rangeFor(levelOf(slot), Fixed64::fromInt(50)));
@@ -2523,6 +2663,67 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                     out.first_time = true;
                     out.target = to;
                     return out;
+                }
+            }
+        }
+
+        // G5.9 (§8.107): near their line, wide or in the half-space, a pro
+        // crosses at the real rate for the spot, rolled once on the ball:
+        // in the air (or driven low, low_share) to the mate with the most
+        // room in the box, else to the spot crosses land on. [FH roll and
+        // aim; rates StatsBomb PL 2015/16]
+        {
+            const auto& X = book_.cross;
+            if (X.measured() && !im_keeper) {
+                const Fixed64 csg = Fixed64::fromInt(sign >= 0 ? 1 : -1);
+                const Fixed64 to_line = half_x_ - me.pos.x * csg;
+                const int cd = CrossIt::depth(to_line);
+                const int cw = CrossIt::width(math::fx_abs(me.pos.y));
+                if (cd >= 0) {
+                    const Fixed64 u = (core::detNoise(match_seed_, world.ownedAtTick(), slot, 204) + Fixed64::one()) *
+                                      Fixed64::fromFraction(1, 2);
+                    if (u < X.rate(cd, cw)) {
+                        const std::uint8_t team = setup_.team_of_slot[slot];
+                        int best = -1;
+                        Fixed64 best_room{};
+                        for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+                            if (i == slot || setup_.team_of_slot[i] != team || world.isKeeper(i)) continue;
+                            const auto& m = world.player(i);
+                            const Fixed64 mx = half_x_ - m.pos.x * csg;
+                            if (mx < X.boxNearM() || mx > X.boxFarM() || math::fx_abs(m.pos.y) > X.boxYM()) continue;
+                            Fixed64 room = Fixed64::fromInt(10000);
+                            for (SlotIndex j = 0; j < world.playerCount(); ++j) {
+                                if (setup_.team_of_slot[j] == team) continue;
+                                const Fixed64 r = distSq(world.player(j).pos, m.pos);
+                                if (r < room) room = r;
+                            }
+                            if (best < 0 || room > best_room) { best = i; best_room = room; }
+                        }
+                        Vec2 to = best >= 0 ? Vec2{world.player(best).pos.x, world.player(best).pos.y}
+                                            : Vec2{(half_x_ - X.spotM()) * csg, Fixed64::zero()};
+                        // A cross is played into an area, not onto a man's head:
+                        // aim_spread_m either way in x and y around it. [FH]
+                        if (X.spreadM().raw > 0) {
+                            to.x += core::detNoise(match_seed_, world.ownedAtTick(), slot, 207) * X.spreadM();
+                            to.y += core::detNoise(match_seed_, world.ownedAtTick(), slot, 208) * X.spreadM();
+                        }
+                        const Fixed64 u2 = (core::detNoise(match_seed_, world.ownedAtTick(), slot, 205) + Fixed64::one()) *
+                                           Fixed64::fromFraction(1, 2);
+                        const Fixed64 dist = math::length(Vec2{to.x - me.pos.x, to.y - me.pos.y});
+                        out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
+                        if (u2 < X.lowShare()) {
+                            out.action = Action::GroundKick;
+                            const std::int64_t cm = (dist + Fixed64::fromFraction(1, 2)).raw >> Fixed64::FRAC_BITS;
+                            out.carry_m = static_cast<std::uint8_t>(cm < 1 ? 1 : (cm > 255 ? 255 : cm));
+                        } else {
+                            out.action = Action::LoftedKick;
+                            out.carry_m = aimedCarry(me.pos, to, rangeFor(lv, Fixed64::fromInt(50)));
+                        }
+                        out.why = Why::Cross;
+                        out.target = to;
+                        if (best >= 0) out.other = static_cast<std::int16_t>(best);
+                        return out;
+                    }
                 }
             }
         }
@@ -2961,6 +3162,30 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         // 858 of world's 989 lost kicks per match (G4.19 A/B: without
         // it, possessions 5.1 s → 12.2 s).
         out.move.move = seek(me.pos, goal, kArriveRadius);
+        // G5.9 (§8.107): a wide man drives at the real angles — down the
+        // line most, inside or cutting in the rest — not always at the goal.
+        {
+            const auto& D = book_.drive_the_line;
+            const Fixed64 ay = math::fx_abs(me.pos.y);
+            const Fixed64 to_line = half_x_ - me.pos.x * sgn;
+            if (D.measured() && !im_keeper && ay >= Fixed64::fromInt(14) && to_line < D.withinM()) {
+                const int row = ay >= Fixed64::fromInt(24) ? 0 : 1;
+                const Fixed64 u = (core::detNoise(match_seed_, world.ownedAtTick(), slot, 206) + Fixed64::one()) *
+                                  Fixed64::fromFraction(1, 2);
+                Fixed64 deg = D.angleFor(row, u);
+                if (to_line < Fixed64::fromInt(4) && deg < Fixed64::fromInt(50)) deg = Fixed64::fromInt(90);   // at the byline: in along it
+                const Fixed64 a = deg * Fixed64::fromFraction(71, 4068);
+                const Fixed64 inward = me.pos.y.raw > 0 ? -Fixed64::one() : Fixed64::one();
+                const Vec2 dir{sgn * math::fx_cos(a), inward * math::fx_sin(a)};
+                Vec2 to{me.pos.x + dir.x * Fixed64::fromInt(10), me.pos.y + dir.y * Fixed64::fromInt(10)};
+                const Fixed64 lx = half_x_ - Fixed64::fromInt(1), ly = half_y_ - Fixed64::fromInt(1);
+                if (to.x > lx) to.x = lx;
+                if (to.x < -lx) to.x = -lx;
+                if (to.y > ly) to.y = ly;
+                if (to.y < -ly) to.y = -ly;
+                out.move.move = seek(me.pos, to, kArriveRadius);
+            }
+        }
         // Holding for a runner (release_timing): slow the ball down — a
         // walking carry keeps it, a sprint into the block loses it.
         if (holding || settling) {
@@ -2973,9 +3198,15 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         // on, play it back to the open man goal-side of him, else shield
         // and turn away; only in his own third may he still kick it away.
         // A lapse (or u-nothing) falls through to the hoof below.
-        if (pressed && !im_keeper && keepIt(slot, world, sign, out))
+        // G5.8 (§8.106): with clear-the-danger's rows the clearance was
+        // rolled once on the ball above; here a touch-tight man keeps it
+        // (plays back or shields), in his own third too, never a late hoof.
+        const bool clear_now = false;
+        if (ctd.measured() && !im_keeper) {
+            if (keepIt(slot, world, sign, out, true)) return out;
+        } else if (!ctd.measured() && pressed && !im_keeper && keepIt(slot, world, sign, out))
             return out;
-        if (pressed && !keeps_it) {
+        if (clear_now || (!ctd.measured() && pressed && !keeps_it)) {
             bool touch_tight = false;
             for (SlotIndex i = 0; i < world.playerCount() && !touch_tight;
                  ++i) {
@@ -2991,8 +3222,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             // loft-along-desire chipped the keeper from every pressed
             // attack: 33 of 36 HEAD amateur goals were these uncounted
             // "clears" (G4.23 goal anatomy, read pre-tick).
-            if (touch_tight) {
-                if (math::lengthSquared(to_goal) < kShootRange * kShootRange) {
+            if (touch_tight || clear_now) {
+                if (!clear_now && math::lengthSquared(to_goal) < kShootRange * kShootRange) {
                     // G5.4 (§8.102): with real rates loaded the shot was
                     // already rolled above. A tight man here plays on or
                     // loses it, as a pro does (29-35% lost in this zone).
@@ -3019,7 +3250,8 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                     Fixed64 ax = me.pos.x * sgn + Fixed64::fromInt(35);
                     if (ax > half_x_ - Fixed64::fromInt(30)) ax = half_x_ - Fixed64::fromInt(30);
                     const Fixed64 ay = half_y_ * Fixed64::fromFraction(7, 20);
-                    const Vec2 to{ax * sgn, crowd[0] <= crowd[1] ? -ay : ay};
+                    Vec2 to{ax * sgn, crowd[0] <= crowd[1] ? -ay : ay};
+                    to = clearUpTheLine(me.pos, to);
                     out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 10));
                     out.action = Action::LoftedKick;
                     out.carry_m = aimedCarry(me.pos, to, rangeFor(lv, Fixed64::fromInt(50)));
@@ -3202,6 +3434,14 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         const int to = ball.pass_to < world.playerCount() && setup_.team_of_slot[ball.pass_to] == my_team
                            ? static_cast<int>(ball.pass_to) : -1;
         const bool for_me = to == static_cast<int>(slot);
+        Vec2 in_line{};
+        if (for_me && getInLine(slot, world, in_line)) {
+            out.move.move = seek(me.pos, in_line, Fixed64::fromFraction(1, 10));
+            out.move.face = Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y};
+            out.why = Why::MeetPass;
+            out.target = in_line;
+            return out;
+        }
         if (applies(slot, meet, flightKey())) {
             const FlightRead& fr = flightRead(world);
             const int mine_first = fr.first[my_team], theirs = fr.first[my_team ^ 1];
@@ -3257,7 +3497,10 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     // G4.58 restart holds).
     const bool shape_ours = ours ||
         (!ball.owner && world.restartTeam() == 0xFF && world.lastTouchTeam() == my_team);
-    if (shape_ours && !mine.keeper) anchor.x = possessionX(slot, seen_ball.x);
+    if (shape_ours && !mine.keeper) {
+        anchor.x = possessionX(slot, seen_ball.x);
+        anchor.y = possessionY(mine.base, seen_ball.y, anchor.y);
+    } else if (!mine.keeper) anchor.y = defendingY(mine.base, seen_ball.y, anchor.y);
 
     // Our ball in flight: a runner ahead of it keeps running — stopping to
     // watch it was the run that never got the ball in behind. Not a man
@@ -3598,6 +3841,22 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             anchor.x * dsgn < seen_ball.x * dsgn &&
             me.pos.x * dsgn > seen_ball.x * dsgn + Fixed64::one() &&
             teamCloserCount(slot, world, seen_ball) >= 1) {
+            // G5.6 (§8.104): to his shape, not the ball. Pressure-cover:
+            // the cover man's anchor IS the cover line (above); everyone else
+            // beaten runs back to his own spot goal-side. All of them aiming
+            // 6 m in front of the ball put a side 25 m off its shape and made
+            // recovery 37% of all running over 5 m/s, 81% of it 15 m+ off.
+            if (recover_to_shape_ > 0) {
+                out.move.move = seek(me.pos, anchor, Fixed64::fromFraction(1, 2));
+                // Read the danger: only with the ball inside sprint_within_m of
+                // our goal is it a recovery sprint; further out a beaten man
+                // just gets back into his shape at its pace (hold shape).
+                const Fixed64 to_own = math::length(Vec2{seen_ball.x + dsgn * half_x_, seen_ball.y});
+                const bool danger = recover_sprint_within_.raw <= 0 || to_own < recover_sprint_within_;
+                out.why = danger ? Why::Recover : Why::Hold;
+                out.target = anchor;
+                return out;
+            }
             const Vec2 own_goal{-dsgn * half_x_, Fixed64::zero()};
             const Vec2 tg{own_goal.x - seen_ball.x, own_goal.y - seen_ball.y};
             const Fixed64 len = math::length(tg);
@@ -4141,6 +4400,43 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
             }
         }
 
+        // ── attack the box (cross-zone-runs, 100, G5.9 §8.107) [coaching:
+        // "three runners, three zones" — near post, far post, penalty spot]:
+        // our ball wide (|y| 14 m+) within 18 m of their line, the three
+        // most advanced men go; 18-30 m out, the most advanced one. Real
+        // (DFL tracking, ball wide inside 18 m): 2.2 attackers in the box,
+        // 1.1 in the 3-13 m central zone; the game had 1.3 and 0.25.
+        if (box_runners_near_ > 0 || box_runners_far_ > 0) {
+            const Fixed64 tl = half_x_ - carrier.pos.x * sgn2;
+            const Fixed64 by = carrier.pos.y;
+            const Fixed64 aby = math::fx_abs(by);
+            const std::int64_t want = aby < Fixed64::fromInt(14) ? 0
+                                      : tl < Fixed64::fromInt(18) ? box_runners_near_
+                                      : tl < Fixed64::fromInt(30) ? box_runners_far_ : 0;
+            if (want > 0) {
+                int rank = 0;
+                const Fixed64 my_prog = me.pos.x * sgn2;
+                for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+                    if (i == slot || i == *ball.owner || world.isKeeper(i)) continue;
+                    if (setup_.team_of_slot[i] != setup_.team_of_slot[slot]) continue;
+                    const Fixed64 pr = world.player(i).pos.x * sgn2;
+                    if (pr > my_prog || (pr == my_prog && i < slot)) ++rank;
+                }
+                if (rank < want) {
+                    const Fixed64 side = by.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+                    // rank 0 near post, 1 far post, 2 the penalty spot
+                    const Fixed64 zx = rank == 0 ? Fixed64::fromInt(5) : rank == 1 ? Fixed64::fromInt(6) : Fixed64::fromInt(11);
+                    const Fixed64 zy = rank == 0 ? side * Fixed64::fromInt(3) : rank == 1 ? -side * Fixed64::fromInt(4) : Fixed64::zero();
+                    const Vec2 to{(half_x_ - zx) * sgn2, zy};
+                    out.move.move = seek(me.pos, to, Fixed64::fromFraction(1, 2));
+                    out.why = Why::AttackBox;
+                    out.target = to;
+                    out.other = static_cast<std::int16_t>(*ball.owner);
+                    return out;
+                }
+            }
+        }
+
         // ── run in behind (G4.8): the most ADVANCED disciplined attacker
         // attacks the space beyond their last outfield defender — the
         // run that makes the over-the-top ball a weapon and drags their
@@ -4251,10 +4547,29 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     // offense is what stops goals" — so the coached attack UN-bunches.
     // In possession, wide-based players hold real width, stretching the
     // defense laterally regardless of the ball-shift pull.
-    if (ours && ratings_[slot][13] > 0 &&
+    // G5.7 (§8.105, concept.width.far_one): with the ball on the far side
+    // only the highest wide man holds width there, at far_wide_m at most;
+    // the rest take their shifted spot. [FH; DFL tracking: ball wide, real
+    // sides keep one man wide on the far side (-16.6 m), the next at -7.5 m;
+    // every wide man holding width put two on the far touchline.]
+    bool far_free = false;
+    Fixed64 far_wide = Fixed64::zero();
+    if (ours && width_far_one_ && math::fx_abs(seen_ball.y) > Fixed64::fromInt(15) &&
+        (seen_ball.y.raw > 0) != (mine.base.y.raw > 0) &&
         math::fx_abs(mine.base.y) > Fixed64::fromFraction(40, 100)) {
-        const Fixed64 wide = Fixed64::fromInt(10) +
-                             Fixed64::fromInt(16) * degree(slot, 13);
+        const auto& ps = spec_[my_team].positions;
+        const Fixed64 my_x = mine.base.x;
+        for (const auto& q : ps)
+            if (!q.keeper && (q.base.y.raw > 0) == (mine.base.y.raw > 0) &&
+                math::fx_abs(q.base.y) > Fixed64::fromFraction(40, 100) && q.base.x > my_x)
+                far_free = true;   // a higher man holds the width
+        far_wide = width_far_m_;
+    }
+    if (ours && ratings_[slot][13] > 0 && !far_free &&
+        math::fx_abs(mine.base.y) > Fixed64::fromFraction(40, 100)) {
+        Fixed64 wide = Fixed64::fromInt(10) +
+                       Fixed64::fromInt(16) * degree(slot, 13);
+        if (far_wide.raw > 0 && wide > far_wide) wide = far_wide;
         if (mine.base.y.raw >= 0) {
             if (anchor.y < wide) anchor.y = wide;
         } else {

@@ -51,6 +51,25 @@ using namespace fh::game;
 
 namespace {
 
+long g_hold_tv[2][5], g_hold_tv_n[2]; double g_hold_tv_sum[2];   // G5.6 diag
+long g_blk_sp[5], g_blk_n; double g_blk_v, g_blk_xx, g_blk_yy, g_blk_mx, g_blk_my, g_blk_lx;
+// G5.7: where the block without the ball STANDS by ball position (5 Hz), as
+// benchmarks_tracking_shift.py reads DFL: 15 m bins of ball depth from its
+// own goal line → back line / middle / top man; 10 m bins of |ball y| → middle y.
+long g_rk_n, g_ra_n; double g_rk[10], g_rk_far, g_ra[10];   // G5.7: ranked y, ball wide
+long g_aw_n[128]; double g_aw_y[128], g_aw_t[128];   // attackers on the far side (y < -10), ball wide
+long g_lw_n[128]; double g_lw_y[128], g_lw_t[128];   // G5.7 diag: ball |y| 24+, by why
+long g_blocks[2];
+long g_bpw[128];
+long g_dw_n[128]; double g_dw_tl[128], g_dw_ttl[128];   // four deepest defenders' jobs, ball wide 18-30
+long g_ab_n, g_dl_n; double g_ab_gap, g_ab_v, g_ab_tl, g_ab_ttl, g_dl_gap, g_dl_v, g_dl_tl, g_dl_ttl;   // G5.9 diag: runners / back line   // G5.9 diag: jobs of the 3 most advanced attackers, ball wide 0-18
+double g_bp_l1[2], g_bp_l2[2];
+long g_bp_n[2], g_bp_tgt0[2]; double g_bp_box[2], g_bp_tgt[2], g_bp_dbox[2];   // G5.9 box presence, ball wide 0-18 / 18-30
+int g_cr_on = 0, g_cr_team = -1; long g_cr_tick = 0; double g_cr_pz = 0; int g_cr_traced = 0;   // G5.9 cross trace
+long g_xin_carry, g_xin_pass, g_xin_pass_wide;   // G5.9: arrivals in the crossing zone (18 m off their line, |y| 14+)   // G5.9: body blocks by the blocking team
+long g_lv_n[7], g_ly_n[4]; double g_lv_line[7], g_lv_mid[7], g_lv_top[7], g_ly_mid[4], g_ly_ball[4];
+double g_hold_num[12]; long g_hold_num_n[12], g_hold_num_fast[12];
+
 const char* envOr(const char* name, const char* fallback) {
     const char* v = std::getenv(name);
     return v && *v ? v : fallback;
@@ -704,6 +723,29 @@ int main(int argc, char** argv) {
     // team, seconds dead (ball over the line → played), kept / shot within 10 s.
     long rs_goal[3] = {};
     long rs_n[3][2] = {}, rs_kept[3] = {}, rs_shot[3] = {}, rs_called_by[3] = {}, rs_deflect = 0;
+    // G5.5 (§8.103): what put it out, as benchmarks_statsbomb_out.py counts it.
+    // 0 ground pass, 1 air pass, 2 clearance, 3 shot, 4 keeper kick, 5 keeper
+    // touch, 6 outfield touch (block, tackle, poke), 7 carried out.
+    long oc_n[3][8] = {}, oc_clear_kicks = 0;
+    // G5.8: clearances by where they're struck (0 box, 1 own third, 2 beyond ×
+    // 0 centre |y|<12, 1 mid, 2 wide 24+), as clr.py reads StatsBomb.
+    long oc_cz_n[3][3] = {}, oc_cz_throw[3][3] = {}, oc_cz_corner[3][3] = {};
+    int oc_cz = -1;
+    long rel_n[4] = {}, rel_clear[4] = {};
+    long xz_n[4][3] = {}, xz_cross[4][3] = {};   // G5.9: releases by m off their line (0-6, 6-18, 18-30, 30+) x width   // G5.8: foot releases by zone (box, own3, mid, final 3rd)
+    int oc_kicker = -1, oc_cat = -1;
+    long oc_owned_tick = -100, oc_kick_tick = 0;
+    double oc_from[2] = {}, oc_to[2] = {}, oc_speed = 0;
+    int oc_other = -1, oc_near_why = -1;
+    std::vector<std::string> oc_log;
+    double oc_near = 1e9, oc_near_v = 0, oc_near_z = 0, oc_near_run = 0;
+    long oc_near_hist[6] = {}, oc_rx_n[5] = {}, oc_rx_out[5] = {}, oc_rx_lead_n = 0, oc_dead_cat[8] = {};
+    int oc_rx_bin = -1;
+    long oc_rx_why[ai::kWhyCount + 1] = {}, oc_sp_t[3] = {}, oc_sp_why[ai::kWhyCount + 1] = {};
+    int oc_prev_why[64] = {};
+    long oc_sp_gap[ai::kWhyCount + 1][4] = {}, oc_sp_side[2] = {};
+    double oc_sp_v = 0;
+    double oc_rx_lead = 0;
     std::vector<double> rs_dead[3], rs_len[3];
     int rs_open = -1, rs_team = 0, rs_watch = -1, rs_watch_team = 0, rs_keep_check = -1;
     int rs_last = -1, rs_last_team = 0, rs_trace = 0, rs_trace_n = 0;
@@ -935,6 +977,198 @@ int main(int argc, char** argv) {
                     spell_start = k;
                     won_x = ot == 0 ? 52.5 - b.pos.x.toDouble() : 52.5 + b.pos.x.toDouble();
                 }
+                // G5.6 (§8.104): the block without the ball over 1 s, as
+                // benchmarks_tracking_shift.py reads DFL: its middle's speed
+                // and slope on the ball, its back line's slope.
+                if (g_cr_on) {
+                    const auto& bb = s.world().ball();
+                    const double z = bb.pos.z.toDouble();
+                    auto nearest = [&](int team) {
+                        double best = 1e9;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            const auto& q = s.world().player(j);
+                            if (q.team != team) continue;
+                            best = std::min(best, std::hypot(q.pos.x.toDouble() - bb.pos.x.toDouble(), q.pos.y.toDouble() - bb.pos.y.toDouble()));
+                        }
+                        return best;
+                    };
+                    if ((g_cr_pz > 2.4 && z <= 2.4) || (g_cr_pz > 0.3 && z <= 0.3))
+                        std::printf("   +%.1fs ball (%.1f,%.1f) z %.1f: nearest mate %.1f m, opp %.1f m\n", (k - g_cr_tick) / 30.0, bb.pos.x.toDouble(), bb.pos.y.toDouble(), z,
+                                    nearest(g_cr_team), nearest(1 - g_cr_team));
+                    g_cr_pz = z;
+                    if (bb.owner || s.world().outStage() != 0 || k - g_cr_tick > 150) {
+                        std::printf("   +%.1fs end: %s\n", (k - g_cr_tick) / 30.0,
+                                    bb.owner ? (s.world().player(*bb.owner).team == g_cr_team ? "ours" : "theirs") : s.world().outStage() ? "out" : "loose 5s");
+                        g_cr_on = 0;
+                    } else if (bb.last_kicker != 0xFF && k - g_cr_tick > 2 && bb.kick_alive == core::kKickAliveTicks) {
+                        std::printf("   +%.1fs touched by %d (t%d)%s\n", (k - g_cr_tick) / 30.0, bb.last_kicker, s.world().player(bb.last_kicker).team, z > 1.5 ? " in the air" : "");
+                        g_cr_on = 0;
+                    }
+                }
+                {   // G5.9: how the ball reaches the crossing zone (benchmarks: arrive)
+                    static int po = -1; static bool pin = false; static double pfy = 0;
+                    const auto& bb = s.world().ball();
+                    if (bb.owner) {
+                        const int ow = *bb.owner;
+                        const auto& q = s.world().player(static_cast<std::uint8_t>(ow));
+                        const double sg = q.team == 0 ? 1.0 : -1.0, hx = s.world().pitchHalfX().toDouble();
+                        const bool in = hx - q.pos.x.toDouble() * sg < 18 && std::fabs(q.pos.y.toDouble()) >= 14 && !s.world().isKeeper(static_cast<std::uint8_t>(ow));
+                        if (ow == po && in && !pin) ++g_xin_carry;
+                        if (ow != po && in && po >= 0 && s.world().player(static_cast<std::uint8_t>(po)).team == q.team && !pin) {
+                            ++g_xin_pass;
+                            if (pfy >= 14) ++g_xin_pass_wide;
+                        }
+                        po = ow; pin = in; pfy = std::fabs(q.pos.y.toDouble());
+                    }
+                }
+                if (k % 6 == 0 && spell_team >= 0) {
+                    const int a = spell_team;
+                    const double sg = a == 0 ? 1.0 : -1.0, hx = s.world().pitchHalfX().toDouble();
+                    const double tl = hx - b.pos.x.toDouble() * sg, ay = std::fabs(b.pos.y.toDouble());
+                    if (ay >= 14 && tl < 30) {
+                        const int kk = tl < 18 ? 0 : 1;
+                        int box = 0, tgt = 0, dbox = 0;
+                        double l1 = 1e9, l2 = 1e9;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            if (s.world().isKeeper(j)) continue;
+                            const auto& q = s.world().player(j);
+                            const double ptl = hx - q.pos.x.toDouble() * sg, py = std::fabs(q.pos.y.toDouble());
+                            const bool inbox = ptl < 16.5 && py < 20.16;
+                            if (q.team == a) { box += inbox; tgt += ptl >= 3 && ptl <= 13 && py < 10; }
+                            else {
+                                dbox += inbox;
+                                if (ptl < l1) { l2 = l1; l1 = ptl; } else if (ptl < l2) l2 = ptl;
+                            }
+                        }
+                        if (kk == 1)
+                            for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                                if (s.world().isKeeper(j)) continue;
+                                const auto& q = s.world().player(j);
+                                if (q.team == a) continue;
+                                const double ptl = hx - q.pos.x.toDouble() * sg;
+                                int deeper = 0;
+                                for (std::uint8_t m = 0; m < s.world().playerCount(); ++m)
+                                    if (s.world().player(m).team == q.team && !s.world().isKeeper(m) &&
+                                        hx - s.world().player(m).pos.x.toDouble() * sg > ptl) ++deeper;
+                                if (deeper < 6) continue;
+                                const ai::Orders& o = s.lastOrders()[j];
+                                const int w = std::min(127, (int)o.why);
+                                ++g_dw_n[w]; g_dw_tl[w] += ptl; g_dw_ttl[w] += hx - o.target.x.toDouble() * sg;
+                            }
+                        if (kk == 0)
+                            for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                                if (s.world().isKeeper(j)) continue;
+                                const auto& q = s.world().player(j);
+                                const ai::Orders& o = s.lastOrders()[j];
+                                const double gx = o.target.x.toDouble() - q.pos.x.toDouble(), gy = o.target.y.toDouble() - q.pos.y.toDouble();
+                                const double gap = std::hypot(gx, gy), v = std::hypot(q.vel.x.toDouble(), q.vel.y.toDouble());
+                                const double ptl = hx - q.pos.x.toDouble() * sg, ttl = hx - o.target.x.toDouble() * sg;
+                                if (q.team == a && o.why == ai::Why::AttackBox) { ++g_ab_n; g_ab_gap += gap; g_ab_v += v; g_ab_tl += ptl; g_ab_ttl += ttl; }
+                                if (q.team != a) {
+                                    // the defenders' four deepest by position stand in for the back line
+                                    int deeper = 0;
+                                    for (std::uint8_t m = 0; m < s.world().playerCount(); ++m)
+                                        if (s.world().player(m).team == q.team && !s.world().isKeeper(m) &&
+                                            hx - s.world().player(m).pos.x.toDouble() * sg > ptl) ++deeper;
+                                    if (deeper >= 6) { ++g_dl_n; g_dl_gap += gap; g_dl_v += v; g_dl_tl += ptl; g_dl_ttl += ttl; }
+                                }
+                            }
+                        if (kk == 0) {
+                            std::vector<std::pair<double, int>> adv;
+                            for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                                const auto& q = s.world().player(j);
+                                if (q.team != a || s.world().isKeeper(j) || (b.owner && *b.owner == j)) continue;
+                                adv.push_back({-q.pos.x.toDouble() * sg, j});
+                            }
+                            std::sort(adv.begin(), adv.end());
+                            for (int r = 0; r < 3 && r < (int)adv.size(); ++r) ++g_bpw[std::min(127, (int)s.lastOrders()[adv[r].second].why)];
+                            static int dbg = 0;
+                            if (std::getenv("GAME_DBG_BOX") && dbg < 6 && adv.size() && s.lastOrders()[adv[0].second].why == ai::Why::HurryKeeper) {
+                                ++dbg;
+                                std::printf("DBG spell %d ball (%.1f,%.1f) owner %d ownerteam %d lasttouch %d; adv0 slot %d team %d at (%.1f,%.1f)\n", a, b.pos.x.toDouble(), b.pos.y.toDouble(),
+                                            b.owner ? (int)*b.owner : -1, b.owner ? (int)s.world().player(*b.owner).team : -1, (int)s.world().lastTouchTeam(), adv[0].second,
+                                            (int)s.world().player(adv[0].second).team, s.world().player(adv[0].second).pos.x.toDouble(), s.world().player(adv[0].second).pos.y.toDouble());
+                            }
+                        }
+                        g_bp_l1[kk] += l1; g_bp_l2[kk] += l2;
+                        ++g_bp_n[kk]; g_bp_box[kk] += box; g_bp_tgt[kk] += tgt; g_bp_dbox[kk] += dbox; g_bp_tgt0[kk] += tgt == 0;
+                    }
+                }
+                if (k % 6 == 0 && spell_team >= 0) {
+                    const int d = 1 - spell_team;
+                    const double sg = d == 0 ? 1.0 : -1.0, hx = s.world().pitchHalfX().toDouble();
+                    double mid = 0, my = 0, line = 1e9, top = -1e9; int n = 0, na = 0;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& q = s.world().player(j);
+                        if (s.world().isKeeper(j)) continue;
+                        if (q.team != d) { ++na; continue; }
+                        const double x = q.pos.x.toDouble() * sg;
+                        mid += x; my += q.pos.y.toDouble(); ++n;
+                        line = std::min(line, x); top = std::max(top, x);
+                    }
+                    if (n >= 9 && na >= 9) {
+                        const double bd = b.pos.x.toDouble() * sg + hx, by = b.pos.y.toDouble();
+                        const int kb = std::max(0, std::min(6, int(bd / 15)));
+                        ++g_lv_n[kb]; g_lv_line[kb] += line + hx; g_lv_mid[kb] += mid / n + hx; g_lv_top[kb] += top + hx;
+                        const double ay = std::fabs(by), sy = by >= 0 ? 1.0 : -1.0;
+                        const int ky = std::min(3, int(ay / 10));
+                        ++g_ly_n[ky]; g_ly_mid[ky] += sy * my / n; g_ly_ball[ky] += ay;
+                        if (ay >= 24 && n == 10) {
+                            double ys[10], as[11]; int r = 0, ra = 0; double far = 1e9;
+                            for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                                const auto& q = s.world().player(j);
+                                if (s.world().isKeeper(j)) continue;
+                                if (q.team == d) ys[r++] = sy * q.pos.y.toDouble();
+                                else { far = std::min(far, sy * q.pos.y.toDouble()); if (ra < 11) as[ra++] = sy * q.pos.y.toDouble(); }
+                            }
+                            if (ra == 10) {
+                                std::sort(as, as + 10);
+                                for (int i = 0; i < 10; ++i) g_ra[i] += as[i];
+                                ++g_ra_n;
+                            }
+                            std::sort(ys, ys + 10);
+                            for (int i = 0; i < 10; ++i) g_rk[i] += ys[i];
+                            ++g_rk_n; g_rk_far += far;
+                        }
+                        if (ay >= 24)
+                            for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                                const auto& q = s.world().player(j);
+                                if (s.world().isKeeper(j)) continue;
+                                const ai::Orders& o = s.lastOrders()[j];
+                                if (q.team != d) {
+                                    if (sy * q.pos.y.toDouble() < -10) {
+                                        const int w = std::min(127, static_cast<int>(o.why));
+                                        ++g_aw_n[w]; g_aw_y[w] += sy * q.pos.y.toDouble(); g_aw_t[w] += sy * o.target.y.toDouble();
+                                    }
+                                    continue;
+                                }
+                                const int w = std::min(127, static_cast<int>(o.why));
+                                ++g_lw_n[w]; g_lw_y[w] += sy * q.pos.y.toDouble(); g_lw_t[w] += sy * o.target.y.toDouble();
+                            }
+                    }
+                }
+                if (k % 30 == 0 && spell_team >= 0) {
+                    static long sk = -999; static double sbx, sby, scx, scy, sl; static int st = -1;
+                    const int d = 1 - spell_team;
+                    const double sg = d == 0 ? 1.0 : -1.0;
+                    double cx = 0, cy = 0, line = 1e9; int n = 0;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        const auto& q = s.world().player(j);
+                        if (q.team != d || s.world().isKeeper(j)) continue;
+                        cx += q.pos.x.toDouble(); cy += q.pos.y.toDouble(); ++n;
+                        line = std::min(line, q.pos.x.toDouble() * sg);
+                    }
+                    cx /= n; cy /= n;
+                    const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
+                    if (sk == k - 30 && st == spell_team && spell_start <= k - 30) {
+                        const double mx = cx - scx, my = cy - scy, bdx = bx - sbx, bdy = by - sby;
+                        const double v = std::sqrt(mx * mx + my * my);
+                        ++g_blk_sp[v < 0.5 ? 0 : v < 1 ? 1 : v < 2 ? 2 : v < 4 ? 3 : 4]; ++g_blk_n; g_blk_v += v;
+                        g_blk_xx += bdx * bdx; g_blk_yy += bdy * bdy; g_blk_mx += mx * bdx; g_blk_my += my * bdy;
+                        g_blk_lx += (line - sl) * sg * bdx;
+                    }
+                    sk = k; sbx = bx; sby = by; scx = cx; scy = cy; sl = line; st = spell_team;
+                }
                 for (int team = 0; team < 2; ++team) {
                     int near = 0;
                     double y0 = 1e9, y1 = -1e9, x0 = 1e9, x1 = -1e9;
@@ -996,6 +1230,25 @@ int main(int argc, char** argv) {
                         const double ax = an.x.toDouble() - d.pos.x.toDouble(), ay = an.y.toDouble() - d.pos.y.toDouble();
                         const double dd = std::sqrt(ax * ax + ay * ay);
                         off_sum[team][w] += dd; ++off_n[team][w];
+                        // G5.6 (§8.104): how fast the spot a man holds slides, over 1 s.
+                        if (k % 30 == 0) {
+                            static double px[32], py[32]; static long pk[32];
+                            if (oj.why == ai::Why::Hold) {
+                                if (pk[j] == static_cast<long>(k) - 30) {
+                                    const double mx = oj.target.x.toDouble() - px[j], my = oj.target.y.toDouble() - py[j];
+                                    const double v = std::sqrt(mx * mx + my * my);
+                                    const int bin = v < 0.5 ? 0 : v < 1 ? 1 : v < 2 ? 2 : v < 4 ? 3 : 4;
+                                    ++g_hold_tv[w][bin]; g_hold_tv_sum[w] += v; ++g_hold_tv_n[w];
+                                    int nb = 0;   // depth rank among his outfielders, 0 = deepest
+                                    { const double sgj = d.team == 0 ? 1.0 : -1.0;
+                                      for (std::uint8_t q = 0; q < s.world().playerCount(); ++q)
+                                          if (q != j && s.world().player(q).team == d.team && !s.world().isKeeper(q) &&
+                                              s.world().player(q).pos.x.toDouble() * sgj < d.pos.x.toDouble() * sgj) ++nb; }
+                                    if (w == 1 && nb >= 0 && nb < 12) { g_hold_num[nb] += v; ++g_hold_num_n[nb]; if (v >= 4) ++g_hold_num_fast[nb]; }
+                                }
+                                px[j] = oj.target.x.toDouble(); py[j] = oj.target.y.toDouble(); pk[j] = static_cast<long>(k);
+                            } else pk[j] = -999;
+                        }
                         if (w == 0) { ++ip_why[team][static_cast<int>(oj.why)]; ++ip_n[team]; }
                         const int jn = s.brain().numberOf(j);
                         const std::uint8_t man = s.brain().directOpponentOf(j, s.world());
@@ -1090,6 +1343,44 @@ int main(int argc, char** argv) {
                 if (e.type == core::MatchEventType::Offside) ++off_called[e.team ^ 1];
             {   // G5.2: the restart ledger
                 ++rs_tick;
+                // G5.5: all outfielders off the ball, by speed; why he's moving at 5+.
+                for (std::uint8_t j = 0; j < s.world().playerCount() && j < 64; ++j) {
+                    const int wy = static_cast<int>(s.lastOrders()[j].why);
+                    oc_prev_why[j] = wy;
+                    if (s.world().isKeeper(j) || (s.world().ball().owner && *s.world().ball().owner == j)) continue;
+                    const double v = std::hypot(s.world().player(j).vel.x.toDouble(), s.world().player(j).vel.y.toDouble());
+                    ++oc_sp_t[v < 2 ? 0 : v < 5 ? 1 : 2];
+                    oc_sp_v += v;
+                    if (v >= 5) {
+                        ++oc_sp_why[wy];
+                        const auto& so = s.lastOrders()[j];
+                        const auto& sp = s.world().player(j);
+                        const double gap = std::hypot(so.target.x.toDouble() - sp.pos.x.toDouble(), so.target.y.toDouble() - sp.pos.y.toDouble());
+                        const bool ours = (s.world().ball().owner && s.world().player(*s.world().ball().owner).team == sp.team) || (!s.world().ball().owner && s.world().lastTouchTeam() == sp.team);
+                        ++oc_sp_gap[wy][gap < 3 ? 0 : gap < 8 ? 1 : gap < 15 ? 2 : 3];
+                        ++oc_sp_side[ours ? 0 : 1];
+                    }
+                }
+                if (s.world().ball().owner) oc_owned_tick = static_cast<long>(s.world().tickCount());
+                else if (oc_other >= 0 && oc_other < s.world().playerCount() && s.world().outStage() == 0) {
+                    const auto& rc = s.world().player(static_cast<std::uint8_t>(oc_other));
+                    const auto& bb = s.world().ball();
+                    const double dd = std::hypot(rc.pos.x.toDouble() - bb.pos.x.toDouble(), rc.pos.y.toDouble() - bb.pos.y.toDouble());
+                    if (std::getenv("GAME_TRACE_OUT") && oc_log.size() < 400) {
+                        char ln[220];
+                        const auto& ro = s.lastOrders()[oc_other];
+                        std::snprintf(ln, sizeof ln, "      t%3zu ball (%.2f,%.2f) v %.1f | he (%.2f,%.2f) v (%.1f,%.1f) d %.2f %s -> (%.1f,%.1f)", oc_log.size(),
+                                      bb.pos.x.toDouble(), bb.pos.y.toDouble(), std::hypot(bb.vel.x.toDouble(), bb.vel.y.toDouble()),
+                                      rc.pos.x.toDouble(), rc.pos.y.toDouble(), rc.vel.x.toDouble(), rc.vel.y.toDouble(), dd,
+                                      ai::kWhyNames[static_cast<int>(ro.why)], ro.target.x.toDouble(), ro.target.y.toDouble());
+                        oc_log.emplace_back(ln);
+                    }
+                    if (dd < oc_near) {
+                        oc_near = dd; oc_near_v = std::hypot(bb.vel.x.toDouble(), bb.vel.y.toDouble()); oc_near_z = bb.pos.z.toDouble();
+                        oc_near_why = static_cast<int>(s.lastOrders()[oc_other].why);
+                        oc_near_run = std::hypot(rc.vel.x.toDouble(), rc.vel.y.toDouble());
+                    }
+                }
                 for (int t = 0; t < 2; ++t) {   // G5.3: a header at goal, and whether it goes in
                     const int h = s.world().headersAtGoal(t);
                     if (h > air_seen[t]) {
@@ -1115,6 +1406,44 @@ int main(int argc, char** argv) {
                                   : e.type == core::MatchEventType::Corner ? 2 : -1;
                     if (k < 0) continue;
                     ++rs_n[k][e.team];
+                    {   // G5.5: the last thing that touched it
+                        const auto& bl = s.world().ball();
+                        const int lk = bl.last_kicker;
+                        const int cat = s.world().outTick() - oc_owned_tick <= 2 ? 7
+                                        : lk == oc_kicker && oc_cat >= 0 ? oc_cat
+                                        : lk < s.world().playerCount() && s.world().isKeeper(static_cast<std::uint8_t>(lk)) ? 5 : 6;
+                        ++oc_n[k][cat];
+                        if (lk == oc_kicker && oc_cat >= 0) ++oc_dead_cat[oc_cat];
+                        if (cat == 2 && oc_cz >= 0) {
+                            if (k == 0) ++oc_cz_throw[oc_cz / 3][oc_cz % 3];
+                            if (k == 2) ++oc_cz_corner[oc_cz / 3][oc_cz % 3];
+                        }
+                        if (k == 0 && cat == 0 && oc_rx_bin >= 0) ++oc_rx_out[oc_rx_bin];
+                        if (k == 0 && cat == 0) {
+                            const int nb = oc_near < 0.5 ? 0 : oc_near < 1 ? 1 : oc_near < 2 ? 2 : oc_near < 4 ? 3 : oc_near < 8 ? 4 : 5;
+                            ++oc_near_hist[nb];
+                        }
+                        // GAME_TRACE_OUT=n: the first n balls out by a kick.
+                        static const int trace_out = [] { const char* v = std::getenv("GAME_TRACE_OUT"); return v ? std::atoi(v) : 0; }();
+                        static int trace_out_n = 0;
+                        if (lk == oc_kicker && trace_out_n < trace_out && lk < s.world().playerCount()) {
+                            ++trace_out_n;
+                            const auto& ko = s.lastOrders()[lk];
+                            const auto& kp = s.world().player(static_cast<std::uint8_t>(lk));
+                            std::printf("OUT k=%d cat=%d why(now)=%s kicked t-%.1fs from (%.1f,%.1f) to (%.1f,%.1f) other=%d out at (%.1f,%.1f) out-lag %.1fs\n", k, cat,
+                                        ai::kWhyNames[static_cast<int>(ko.why)], (static_cast<long>(s.world().outTick()) - oc_kick_tick) / 30.0,
+                                        oc_from[0], oc_from[1], oc_to[0], oc_to[1], oc_other, bl.pos.x.toDouble(), bl.pos.y.toDouble(),
+                                        (static_cast<long>(s.world().tickCount()) - static_cast<long>(s.world().outTick())) / 30.0);
+                            if (oc_other >= 0 && oc_other < s.world().playerCount())
+                                for (std::size_t q = 0; cat == 0 && q < oc_log.size(); q += (q + 12 < oc_log.size() ? 3 : 1)) std::printf("%s\n", oc_log[q].c_str());
+                            if (oc_other >= 0 && oc_other < s.world().playerCount())
+                                std::printf("    NEAR %.2f m, ball %.1f m/s z %.2f, he %s at %.1f m/s\n", oc_near, oc_near_v, oc_near_z,
+                                            oc_near_why >= 0 ? ai::kWhyNames[oc_near_why] : "-", oc_near_run);
+                            if (oc_other >= 0 && oc_other < s.world().playerCount())
+                                std::printf("    receiver now at (%.1f,%.1f); kick speed %.1f\n", s.world().player(static_cast<std::uint8_t>(oc_other)).pos.x.toDouble(),
+                                            s.world().player(static_cast<std::uint8_t>(oc_other)).pos.y.toDouble(), oc_speed);
+                        }
+                    }
                     rs_open = k;
                     rs_team = e.team;
                     rs_dead_s = (s.world().tickCount() - s.world().outTick()) / static_cast<double>(core::kTickRate);
@@ -1457,6 +1786,65 @@ int main(int argc, char** argv) {
                 pend_team = s.world().player(*before).team;
                 lk_why[pend_team] = static_cast<int>(o.why); lk_tick[pend_team] = k; lk_to[pend_team] = o.other; lk_rwhy10[pend_team] = -1;
                 lk_x[pend_team] = s.world().player(*before).pos.x.toDouble(); lk_y[pend_team] = s.world().player(*before).pos.y.toDouble();
+                oc_kicker = *before;
+                {
+                    static const int trace_cr = std::atoi(envOr("GAME_TRACE_CROSS", "0"));
+                    if (o.why == ai::Why::Cross && g_cr_traced < trace_cr) {
+                        ++g_cr_traced; g_cr_on = 1; g_cr_team = s.world().player(*before).team; g_cr_tick = k; g_cr_pz = 0;
+                        const auto& kp = s.world().player(*before);
+                        std::printf("CROSS t%d from (%.1f,%.1f) to (%.1f,%.1f) for %d carry %d act %d ball v (%.1f,%.1f,%.1f)\n", g_cr_team, kp.pos.x.toDouble(), kp.pos.y.toDouble(),
+                                    o.target.x.toDouble(), o.target.y.toDouble(), o.other, (int)o.carry_m, (int)o.action, b.vel.x.toDouble(), b.vel.y.toDouble(), b.vel.z.toDouble());
+                    }
+                }
+                oc_kick_tick = static_cast<long>(s.world().tickCount());
+                oc_from[0] = s.world().player(*before).pos.x.toDouble(); oc_from[1] = s.world().player(*before).pos.y.toDouble();
+                oc_to[0] = o.target.x.toDouble(); oc_to[1] = o.target.y.toDouble();
+                oc_other = o.other;
+                oc_near = 1e9; oc_near_why = -1; oc_log.clear();
+                oc_rx_bin = -1;
+                if (oc_cat == 0 && oc_other >= 0 && oc_other < s.world().playerCount()) {
+                    // G5.5: the receiver at the kick. 0 under 2 m/s, 1 2-5 m/s, then
+                    // 5+: 2 toward the passer, 3 across the ball's path, 4 away.
+                    const auto& rk = s.world().player(static_cast<std::uint8_t>(oc_other));
+                    const double vx = rk.vel.x.toDouble(), vy = rk.vel.y.toDouble(), v = std::hypot(vx, vy);
+                    const double dx = oc_to[0] - oc_from[0], dy = oc_to[1] - oc_from[1], dl = std::max(0.1, std::hypot(dx, dy));
+                    const double along = v > 0.01 ? (vx * dx + vy * dy) / (v * dl) : 0;
+                    oc_rx_bin = v < 2 ? 0 : v < 5 ? 1 : along < -0.5 ? 2 : along > 0.5 ? 4 : 3;
+                    ++oc_rx_n[oc_rx_bin];
+                    if (std::hypot(vx, vy) >= 5) ++oc_rx_why[static_cast<int>(oc_prev_why[oc_other])];
+                    oc_rx_lead += std::hypot(oc_to[0] - rk.pos.x.toDouble(), oc_to[1] - rk.pos.y.toDouble());
+                    ++oc_rx_lead_n;
+                }
+                oc_speed = std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble());
+                oc_cat = o.why == ai::Why::Shoot ? 3 : s.world().isKeeper(*before) ? 4 : o.why == ai::Why::Clear ? 2
+                       : o.action == core::Action::LoftedKick ? 1 : 0;
+                if (o.why != ai::Why::Shoot && !s.world().isKeeper(*before)) {
+                    const auto& rp = s.world().player(*before);
+                    const double sg = rp.team == 0 ? 1.0 : -1.0, hx = s.world().pitchHalfX().toDouble();
+                    const double x0 = rp.pos.x.toDouble() * sg + hx, y0 = std::fabs(rp.pos.y.toDouble());
+                    const int z = (x0 < 16.5 && y0 < 20.16) ? 0 : x0 < 35 ? 1 : x0 < 70 ? 2 : 3;
+                    ++rel_n[z];
+                    if (oc_cat == 2) ++rel_clear[z];
+                    {
+                        const double tl = hx - rp.pos.x.toDouble() * sg;
+                        const int xd = tl < 6 ? 0 : tl < 18 ? 1 : tl < 30 ? 2 : 3;
+                        const int xw = y0 >= 24 ? 0 : y0 >= 14 ? 1 : 2;
+                        ++xz_n[xd][xw];
+                        if (o.why == ai::Why::Cross) ++xz_cross[xd][xw];
+                    }
+                }
+                if (oc_cat == 2) {
+                    ++oc_clear_kicks;
+                    const auto& ck = s.world().player(*before);
+                    const double sg = ck.team == 0 ? 1.0 : -1.0, hx = s.world().pitchHalfX().toDouble();
+                    const double x0 = ck.pos.x.toDouble() * sg + hx, y0 = std::fabs(ck.pos.y.toDouble());
+                    const int zx = (x0 < 16.5 && y0 < 20.16) ? 0 : x0 < 35 ? 1 : 2;
+                    const int zy = y0 >= 24 ? 2 : y0 >= 12 ? 1 : 0;
+                    oc_cz = zx * 3 + zy;
+                    ++oc_cz_n[zx][zy];
+                } else {
+                    oc_cz = -1;
+                }
                 // G5.4 (§8.102): passes by third and pressure, as
                 // benchmarks_statsbomb_direction.py measures them.
                 if (o.why != ai::Why::Shoot && o.why != ai::Why::Clear && o.why != ai::Why::KeeperPunt &&
@@ -1676,6 +2064,7 @@ int main(int argc, char** argv) {
         off_wrong += s.world().wrongOffsideWhistles();
         rs_wrong_total += s.world().wrongOutCalls();
         air_seen[0] = air_seen[1] = 0;
+        for (int t = 0; t < 2; ++t) g_blocks[t] += s.world().bodyBlocks(t);
         air_duels += s.world().aerialDuels(); air_lone += s.world().aerialLone();
         for (int t = 0; t < 2; ++t) { air_goal[t] += s.world().headersAtGoal(t); air_clear[t] += s.world().headersClear(t); }
         off_missed += s.world().missedOffsides();
@@ -1712,6 +2101,60 @@ int main(int argc, char** argv) {
                         team == 0 ? names.team_home.c_str() : names.team_away.c_str(),
                         ln_sum[team] / ln_ticks[team], 100.0 * ln_deep[team] / ln_ticks[team],
                         front_sum[team] / ln_ticks[team], ball_sum[team] / ln_ticks[team]);
+    for (int w = 0; w < 2; ++w)
+        if (g_hold_tv_n[w])
+            std::printf("HOLD SPOT SLIDES %s: mean %.2f m/s; under 0.5 %.0f%%, 0.5-1 %.0f%%, 1-2 %.0f%%, 2-4 %.0f%%, 4+ %.0f%%\n",
+                        w == 0 ? "with the ball" : "without it", g_hold_tv_sum[w] / g_hold_tv_n[w],
+                        100.0 * g_hold_tv[w][0] / g_hold_tv_n[w], 100.0 * g_hold_tv[w][1] / g_hold_tv_n[w],
+                        100.0 * g_hold_tv[w][2] / g_hold_tv_n[w], 100.0 * g_hold_tv[w][3] / g_hold_tv_n[w],
+                        100.0 * g_hold_tv[w][4] / g_hold_tv_n[w]);
+    if (g_blk_n)
+        std::printf("BLOCK WITHOUT THE BALL over 1 s: middle mean %.2f m/s; under 0.5 %.0f%%, 0.5-1 %.0f%%, 1-2 %.0f%%, 2-4 %.0f%%, 4+ %.0f%%; slope on the ball: middle x %.2f, y %.2f; back line x %.2f\n",
+                    g_blk_v / g_blk_n, 100.0 * g_blk_sp[0] / g_blk_n, 100.0 * g_blk_sp[1] / g_blk_n, 100.0 * g_blk_sp[2] / g_blk_n,
+                    100.0 * g_blk_sp[3] / g_blk_n, 100.0 * g_blk_sp[4] / g_blk_n, g_blk_mx / g_blk_xx, g_blk_my / g_blk_yy, g_blk_lx / g_blk_xx);
+    {
+        long tot = 0;
+        for (long v : g_lv_n) tot += v;
+        if (tot) {
+            std::printf("BLOCK STANDS, ball m from its own goal: back line / middle / top man, m from the same line\n");
+            for (int kb = 0; kb < 7; ++kb)
+                if (g_lv_n[kb])
+                    std::printf("  ball %3d-%3d: %5.1f / %5.1f / %5.1f  (%.0f%%)\n", 15 * kb, 15 * kb + 15, g_lv_line[kb] / g_lv_n[kb],
+                                g_lv_mid[kb] / g_lv_n[kb], g_lv_top[kb] / g_lv_n[kb], 100.0 * g_lv_n[kb] / tot);
+            long wn = 0;
+            for (long v : g_lw_n) wn += v;
+            std::printf("BLOCK STANDS across, ball |y| 24+, by job (share, man y, target y toward the ball):");
+            for (int w = 0; w < 128 && w < ai::kWhyCount; ++w)
+                if (g_lw_n[w] * 100 >= wn)
+                    std::printf(" %s %.0f%% %.1f %.1f;", ai::kWhyNames[w], 100.0 * g_lw_n[w] / wn, g_lw_y[w] / g_lw_n[w], g_lw_t[w] / g_lw_n[w]);
+            std::printf("\n");
+            if (g_rk_n) {
+                std::printf("BLOCK STANDS across, ball |y| 24+, 10 defenders' y toward the ball, far to near:");
+                for (int i = 0; i < 10; ++i) std::printf(" %.1f", g_rk[i] / g_rk_n);
+                std::printf("; far-most attacker %.1f\n", g_rk_far / g_rk_n);
+                if (g_ra_n) {
+                    std::printf("BLOCK STANDS across, ball |y| 24+, 10 attackers' y toward the ball, far to near:");
+                    for (int i = 0; i < 10; ++i) std::printf(" %.1f", g_ra[i] / g_ra_n);
+                    std::printf("\n");
+                }
+            }
+            long an = 0;
+            for (long v : g_aw_n) an += v;
+            std::printf("ATTACK far side (y < -10), ball |y| 24+, by job (share, man y, target y):");
+            for (int w = 0; w < 128 && w < ai::kWhyCount; ++w)
+                if (g_aw_n[w] * 50 >= an)
+                    std::printf(" %s %.0f%% %.1f %.1f;", ai::kWhyNames[w], 100.0 * g_aw_n[w] / an, g_aw_y[w] / g_aw_n[w], g_aw_t[w] / g_aw_n[w]);
+            std::printf("\n");
+            std::printf("BLOCK STANDS across, by the ball's |y|:");
+            for (int ky = 0; ky < 4; ++ky)
+                if (g_ly_n[ky]) std::printf(" ball %.1f middle %.1f;", g_ly_ball[ky] / g_ly_n[ky], g_ly_mid[ky] / g_ly_n[ky]);
+            std::printf("\n");
+        }
+    }
+    std::printf("HOLD SPOT SLIDES without it by depth rank, 0 = deepest (m/s, share 4+):");
+    for (int nb = 0; nb < 12; ++nb)
+        if (g_hold_num_n[nb]) std::printf(" #%d %.1f %.0f%%", nb, g_hold_num[nb] / g_hold_num_n[nb], 100.0 * g_hold_num_fast[nb] / g_hold_num_n[nb]);
+    std::printf("\n");
     if (spells)
         std::printf("Possession spells: %.0f a match, %.1f s long on average; a man holding shape is %.1f m from his spot in a spell's first 5 s, %.1f m after (%.0f%% of holding ticks are in the first 5 s)\n",
                     double(spells) / matches, spell_ticks / 30.0 / spells,
@@ -1871,8 +2314,9 @@ int main(int argc, char** argv) {
     if (!bench.empty()) {
         std::map<std::string, std::pair<double, double>> sim;   // per team (home, away); NaN = no line here
         const double nm = matches, nan = std::nan("");
-        auto both = [&](const std::string& k, double h, double a) { sim[k] = {h, a}; };
-        auto one = [&](const std::string& k, double v) { sim[k] = {v, nan}; };
+        const bool dump_sim = std::getenv("GAME_DUMP_SIM") != nullptr;   // one line per measure, for scripts
+        auto both = [&](const std::string& k, double h, double a) { sim[k] = {h, a}; if (dump_sim) std::printf("SIM %s %.3f %.3f\n", k.c_str(), h, a); };
+        auto one = [&](const std::string& k, double v) { sim[k] = {v, nan}; if (dump_sim) std::printf("SIM %s %.3f %.3f\n", k.c_str(), v, v); };
         double pk[2] = {0, 0}, pm[2] = {0, 0};
         for (int team = 0; team < 2; ++team)
             for (int w = 0; w <= ai::kWhyCount; ++w) {
@@ -1891,6 +2335,99 @@ int main(int argc, char** argv) {
             for (int q = 0; q < 4; ++q) one(dk[q], 100.0 * bl_depth[q] / bt);
         }
         both("offsides_per_team_match", off_called[0] / nm, off_called[1] / nm);   // G4.88
+        {   // G5.5 (§8.103): how it went out, per team-match
+            const char* rk[3] = {"throw", "goal_kick", "corner"};
+            const char* ck[8] = {"pass_ground", "pass_air", "clearance", "shot", "keeper_kick", "keeper_touch", "touch", "carried"};
+            for (int q = 0; q < 3; ++q) {
+                for (int c = 0; c < 8; ++c) one(std::string("out_") + rk[q] + "_" + ck[c], oc_n[q][c] / (2.0 * nm));
+                if (q == 0) {
+                const char* zxn[3] = {"box", "own3", "mid+"}; const char* zyn[3] = {"centre", "mid", "wide"};
+                const char* rz[4] = {"box", "own3", "mid", "fin3"};
+                std::printf("RELEASES BY ZONE (a team, clearance share):");
+                for (int a = 0; a < 4; ++a)
+                    if (rel_n[a]) std::printf(" %s %.1f %.1f%%;", rz[a], rel_n[a] / (2.0 * nm), 100.0 * rel_clear[a] / rel_n[a]);
+                std::printf("\n");
+                {
+                    const char* dn[4] = {"0-6", "6-18", "18-30", "30+"}; const char* wn[3] = {"wide", "half", "centre"};
+                    std::printf("RELEASES BY CROSS ZONE (m off their line, a team, cross share):");
+                    for (int a = 0; a < 4; ++a)
+                        for (int c = 0; c < 3; ++c)
+                            if (xz_n[a][c]) std::printf(" %s %s %.1f %.0f%%;", dn[a], wn[c], xz_n[a][c] / (2.0 * nm), 100.0 * xz_cross[a][c] / xz_n[a][c]);
+                    std::printf("\n");
+                }
+                std::printf("CLEARANCES BY ZONE (a team, throw %%, corner %%):");
+                for (int a = 0; a < 3; ++a)
+                    for (int c = 0; c < 3; ++c)
+                        if (oc_cz_n[a][c])
+                            std::printf(" %s %s %.1f %.0f%% %.0f%%;", zxn[a], zyn[c], oc_cz_n[a][c] / (2.0 * nm),
+                                        100.0 * oc_cz_throw[a][c] / oc_cz_n[a][c], 100.0 * oc_cz_corner[a][c] / oc_cz_n[a][c]);
+                std::printf("\n");
+            }
+            if (q == 0) std::printf("BODY BLOCKS a team: %.1f\n", (g_blocks[0] + g_blocks[1]) / (2.0 * nm));
+            if (q == 0)
+                for (int kk = 0; kk < 2; ++kk)
+                    if (g_bp_n[kk])
+                        std::printf("BOX PRESENCE, ball %s m off their line |y| 14+: attackers in the box %.2f, in 3-13 m x |y|<10 %.2f (none %.0f%%), defenders in the box %.2f; deepest defender %.1f m, next %.1f m off the line\n",
+                                    kk ? "18-30" : "0-18", g_bp_box[kk] / g_bp_n[kk], g_bp_tgt[kk] / g_bp_n[kk], 100.0 * g_bp_tgt0[kk] / g_bp_n[kk], g_bp_dbox[kk] / g_bp_n[kk],
+                                    g_bp_l1[kk] / g_bp_n[kk], g_bp_l2[kk] / g_bp_n[kk]);
+            if (q == 0) {
+                long tn = 0; for (long v : g_bpw) tn += v;
+                std::printf("BOX PRESENCE jobs of the 3 most advanced, ball wide 0-18:");
+                for (int w = 0; w < 128 && w < ai::kWhyCount; ++w) if (g_bpw[w] * 50 >= tn) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_bpw[w] / std::max(1L, tn));
+                std::printf("\n");
+            }
+            if (q == 0) {
+                long tn = 0; for (long v : g_dw_n) tn += v;
+                std::printf("BOX DIAG ball wide 18-30: four deepest defenders by job (share, at m, target m off the line):");
+                for (int w = 0; w < 128 && w < ai::kWhyCount; ++w)
+                    if (g_dw_n[w] * 50 >= tn && tn) std::printf(" %s %.0f%% %.1f %.1f;", ai::kWhyNames[w], 100.0 * g_dw_n[w] / tn, g_dw_tl[w] / g_dw_n[w], g_dw_ttl[w] / g_dw_n[w]);
+                std::printf("\n");
+            }
+            if (q == 0 && g_ab_n && g_dl_n)
+                std::printf("BOX DIAG ball wide 0-18: attack-the-box men %.2f a frame, %.1f m from target, %.1f m/s, at %.1f m off the line, target %.1f; four deepest defenders %.1f m from target, %.1f m/s, at %.1f m, target %.1f\n",
+                            double(g_ab_n) / std::max(1L, g_bp_n[0]), g_ab_gap / g_ab_n, g_ab_v / g_ab_n, g_ab_tl / g_ab_n, g_ab_ttl / g_ab_n,
+                            g_dl_gap / g_dl_n, g_dl_v / g_dl_n, g_dl_tl / g_dl_n, g_dl_ttl / g_dl_n);
+            if (q == 0) std::printf("INTO THE CROSSING ZONE a team: carried %.2f, passed %.2f (from wide %.2f)\n", g_xin_carry / (2.0 * nm), g_xin_pass / (2.0 * nm), g_xin_pass_wide / (2.0 * nm));
+            std::printf("OUT BY %s:", rk[q]);
+                for (int c = 0; c < 8; ++c) std::printf(" %s %.2f", ck[c], oc_n[q][c] / (2.0 * nm));
+                std::printf("\n");
+            }
+            std::printf("GROUND PASS OUT, nearest the receiver got m: <0.5 %ld, 0.5-1 %ld, 1-2 %ld, 2-4 %ld, 4-8 %ld, 8+ %ld\n", oc_near_hist[0], oc_near_hist[1], oc_near_hist[2], oc_near_hist[3], oc_near_hist[4], oc_near_hist[5]);
+            {
+                const char* rn[5] = {"under 2 m/s", "2-5 m/s", "5+ toward the passer", "5+ across", "5+ away"};
+                long tot = 0;
+                for (int q = 0; q < 5; ++q) tot += oc_rx_n[q];
+                for (int q = 0; q < 5; ++q)
+                    std::printf("RECEIVER AT THE KICK %s: %.1f%% of ground passes, %.2f%% into touch\n", rn[q], 100.0 * oc_rx_n[q] / std::max(1L, tot), 100.0 * oc_rx_out[q] / std::max(1L, oc_rx_n[q]));
+                std::printf("AIM: target %.2f m from the man at the kick; balls dead last kicked as clearance %ld\n", oc_rx_lead / std::max(1L, oc_rx_lead_n), oc_dead_cat[2]);
+            }
+            {
+                const long st = std::max(1L, oc_sp_t[0] + oc_sp_t[1] + oc_sp_t[2]);
+                std::printf("OFF THE BALL SPEED under 2 %.1f%%, 2-5 %.1f%%, 5+ %.1f%%; mean %.2f m/s = %.1f km in 96 min\n", 100.0 * oc_sp_t[0] / st, 100.0 * oc_sp_t[1] / st, 100.0 * oc_sp_t[2] / st,
+                            oc_sp_v / st, oc_sp_v / st * 96 * 60 / 1000);
+                std::vector<std::pair<long, int>> rw, sw;
+                long rt = 0;
+                for (int q = 0; q < ai::kWhyCount; ++q) { rt += oc_rx_why[q]; if (oc_rx_why[q]) rw.push_back({oc_rx_why[q], q}); if (oc_sp_why[q]) sw.push_back({oc_sp_why[q], q}); }
+                std::sort(rw.rbegin(), rw.rend()); std::sort(sw.rbegin(), sw.rend());
+                std::printf("RECEIVER 5+ WAS:");
+                for (std::size_t q = 0; q < rw.size() && q < 9; ++q) std::printf(" %s %.0f%%,", ai::kWhyNames[rw[q].second], 100.0 * rw[q].first / std::max(1L, rt));
+                std::printf("\nALL 5+ WERE:");
+                for (std::size_t q = 0; q < sw.size() && q < 9; ++q) std::printf(" %s %.0f%%,", ai::kWhyNames[sw[q].second], 100.0 * sw[q].first / std::max(1L, oc_sp_t[2]));
+                std::printf("\n5+ IN POSSESSION %.0f%%, OUT %.0f%%\n", 100.0 * oc_sp_side[0] / std::max(1L, oc_sp_side[0] + oc_sp_side[1]), 100.0 * oc_sp_side[1] / std::max(1L, oc_sp_side[0] + oc_sp_side[1]));
+                for (std::size_t q = 0; q < sw.size() && q < 7; ++q) {
+                    const long* g = oc_sp_gap[sw[q].second];
+                    const long t = std::max(1L, g[0] + g[1] + g[2] + g[3]);
+                    std::printf("GAP %s: under 3 m %.0f%%, 3-8 %.0f%%, 8-15 %.0f%%, 15+ %.0f%%\n", ai::kWhyNames[sw[q].second], 100.0 * g[0] / t, 100.0 * g[1] / t, 100.0 * g[2] / t, 100.0 * g[3] / t);
+                }
+            }
+            std::printf("CLEARANCES %.1f a team, to a throw-in %.1f%%, to a corner %.1f%%\n", oc_clear_kicks / (2.0 * nm),
+                        100.0 * oc_n[0][2] / std::max(1L, oc_clear_kicks), 100.0 * oc_n[2][2] / std::max(1L, oc_clear_kicks));
+            one("clearances_per_team_match", oc_clear_kicks / (2.0 * nm));
+            if (oc_clear_kicks) {
+                one("clearance_to_throw_pct", 100.0 * oc_n[0][2] / oc_clear_kicks);
+                one("clearance_to_corner_pct", 100.0 * oc_n[2][2] / oc_clear_kicks);
+            }
+        }
         // G5.2: the restarts.
         {
             const char* key[3] = {"throw_ins", "goal_kicks", "corners"};

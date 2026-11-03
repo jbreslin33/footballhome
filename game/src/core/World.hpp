@@ -136,6 +136,7 @@ public:
     int aerialLone() const { return aerial_lone_; }
     int headersAtGoal(int team) const { return headers_at_goal_[team]; }
     int headersClear(int team) const { return headers_clear_[team]; }
+    int bodyBlocks(int team) const { return body_blocks_[team]; }   // G5.9: by the blocking team
     void setMaxSpeed(SlotIndex slot, math::Fixed64 v) {
         if (slot < players_.size()) players_[slot].max_speed = v;
     }
@@ -285,8 +286,8 @@ private:
     bool headRangeOfGoal(std::uint8_t team) const;
     bool headRangeOfOwn(std::uint8_t team) const;
     math::Fixed64 aerial_radius_{}, aerial_min_z_{}, aerial_duel_slope_{}, aerial_goal_range_{}, aerial_own_range_{};
-    math::Fixed64 aerial_goal_speed_{}, aerial_clear_speed_{}, aerial_nod_keep_{}, aerial_goal_err_{}, aerial_goal_err_duel_{}, aerial_clear_err_{};
-    int aerial_duels_ = 0, aerial_lone_ = 0, headers_at_goal_[2] = {}, headers_clear_[2] = {};
+    math::Fixed64 aerial_goal_speed_{}, aerial_clear_speed_{}, aerial_nod_keep_{}, aerial_goal_err_{}, aerial_goal_err_duel_{}, aerial_clear_err_{}, clear_err_{}, block_turn_{}, block_keep_{};
+    int aerial_duels_ = 0, aerial_lone_ = 0, headers_at_goal_[2] = {}, headers_clear_[2] = {}, body_blocks_[2] = {};
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};
     Clock clock_;
@@ -333,7 +334,7 @@ private:
     std::uint64_t control_until_tick_ = 0;
     std::uint64_t hold_until_tick_ = 0;       // G5.4: unpressed, he keeps it until here
     bool hold_on_ = false;
-    math::Fixed64 hold_under1_, hold_under2_, hold_under4_, hold_press_m_, cut_share_, carry_share_;
+    math::Fixed64 hold_under1_, hold_under2_, hold_under4_, hold_press_m_, cut_share_, carry_share_, stretch_m_;
     void settleControl(SlotIndex slot, math::Fixed64 speed);   // G4.92: no kick before (his control touch)
     math::Fixed64 turnover_ball_x_{};
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped

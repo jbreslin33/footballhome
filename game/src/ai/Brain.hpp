@@ -53,6 +53,7 @@ enum class Why : std::uint8_t {
     FalseNineDrop, Overlap, ComeShort, CheckIn,
     WaitPass, StayOnside, TrackRunner, DoubleCheckIn, PreventiveMark, PopOut, Settle,
     TakeRestart, ThrowIn, CornerKick, LawDistance,
+    Cross, AttackBox,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "pass ladder", "over the top", "recycle", "keeper punt", "dribble", "clear",
@@ -81,6 +82,7 @@ inline constexpr const char* kWhyNames[] = {
     "preventive marking", "pop out wide",
     "settle: walk it",
     "take the restart", "throw-in", "corner", "the law's distance",
+    "cross", "attack the box",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -151,10 +153,31 @@ public:
         books_[1].configure(p);
         initiative_ = p.fixed("skill.tendency.initiative", 1000);
         arrive_decel_ = p.fixed("physics.body.arrive_decel_mps2", 4500);
+        shape_tau_ = p.fixed("physics.body.shape_tau_s", 0);
+        shape_max_ = p.fixed("physics.body.shape_max_mps", 0);
+        defend_max_ = p.fixed("physics.body.defend_max_mps", 0);
+        shape_danger_ = p.fixed("physics.body.shape_danger_m", 0);
+        shape_danger_sprint_ = p.integer("physics.body.shape_danger_sprint", 0);
+        recover_to_shape_ = p.integer("concept.recover-goal-side.to_shape", 0);
+        recover_sprint_within_ = p.fixed("concept.recover-goal-side.sprint_within_m", 0);
         arrive_through_ = p.fixed("physics.body.arrive_through_mps", 3000);
         shape_slope_ = p.fixed("physics.shape.ours_slope", 450);
         shape_offset_ = p.fixed("physics.shape.ours_offset_m", 2000);
         shape_depth_ = p.fixed("physics.shape.ours_depth_k", 1400);
+        // G5.7 (§8.105): without the ball the block slides across this share
+        // of the ball's y, capped; no row = anchorFor's built-in 0.3 / 10 m.
+        theirs_shift_y_ = p.fixed("physics.shape.theirs_shift_y", 0);
+        ours_shift_y_ = p.fixed("physics.shape.ours_shift_y", 0);
+        ours_cap_y_ = p.fixed("physics.shape.ours_cap_y_m", 0);
+        clear_touch_from_ = p.fixed("concept.clear-the-danger.touch_from_y_m", 0);
+        dtc_within_ = p.fixed("concept.defend-the-cross.within_m", 0);
+        dtc_depth_ = p.fixed("concept.defend-the-cross.depth_m", 12000);
+        dtc_width_ = p.fixed("concept.defend-the-cross.width_m", 18000);
+        box_runners_near_ = p.integer("concept.cross-zone-runs.runners_0_18", 0);
+        box_runners_far_ = p.integer("concept.cross-zone-runs.runners_18_30", 0);
+        width_far_one_ = p.integer("concept.width.far_one", 0);
+        width_far_m_ = p.fixed("concept.width.far_wide_m", 0);
+        theirs_cap_y_ = p.fixed("physics.shape.theirs_cap_y_m", 0);
         // G5.2 (mig 922): taking a restart.
         auto ticks = [&](const char* key, std::int64_t milli) {
             return static_cast<std::int32_t>((p.fixed(key, milli) * math::Fixed64::fromInt(core::kTickRate)).raw >>
@@ -249,6 +272,8 @@ public:
     // track-the-runner (121, G4.96): their carrier is free to play it in
     // behind and a runner near him goes — go with him, goal-side.
     void trackRunner(core::SlotIndex slot, const core::World& world, Orders& o) const;
+    // G5.9 (§8.107): their ball wide near our goal, the back line gets into the box.
+    void defendTheCross(core::SlotIndex slot, const core::World& world, Orders& o) const;
     math::Vec2 shapeAnchor(core::SlotIndex slot, const core::World& world) const;
 
     // The flight read (G4.49): for a free live ball, where and when each
@@ -283,6 +308,7 @@ public:
     void race(const core::World& world, const RaceBall& rb, FlightRead& f) const;
     // A passer's read [Buckland] (G4.19, G4.86): the race on the pass he's
     // about to strike — safe when one of ours is first, ties to them.
+    bool getInLine(core::SlotIndex slot, const core::World& world, math::Vec2& at) const;   // G5.5
     bool passSafe(const core::World& world, core::SlotIndex passer, core::SlotIndex receiver,
                   const math::Vec2& from, const math::Vec2& to, math::Fixed64 speed,
                   math::Fixed64 reach) const;
@@ -335,7 +361,7 @@ private:
     void brakeToArrive(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void unmark(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void restDefense(core::SlotIndex slot, const core::World& world, Orders& o) const;
-    bool keepIt(core::SlotIndex slot, const core::World& world, int sign, Orders& out) const;
+    bool keepIt(core::SlotIndex slot, const core::World& world, int sign, Orders& out, bool shield_own_third = false) const;
     // G4.63 the one-spot defender: jump the pass to your man (162); one
     // spot that keeps your man in pressing distance, shadows another man's
     // lane (163) and has more men in pressing distance to help (164).
@@ -441,12 +467,57 @@ private:
     // G4.80: the deceleration a player plans his arrival on (m/s²), and the
     // speed he still has on reaching a ball he's running onto (m/s).
     math::Fixed64 arrive_decel_ = math::Fixed64::fromFraction(9, 2);
+    math::Fixed64 shape_tau_, shape_max_, defend_max_;
+    math::Fixed64 recover_sprint_within_;   // 0 = always a sprint
+    int recover_to_shape_ = 0;   // G5.6 (§8.104): beaten men recover to their spot
     math::Fixed64 arrive_through_ = math::Fixed64::fromInt(3);
     // G4.80: in possession the shape's middle stands at slope × the ball's
     // x + offset (m, attack direction), its lines' spacing × depth.
     math::Fixed64 shape_slope_ = math::Fixed64::fromFraction(45, 100);
     math::Fixed64 shape_offset_ = math::Fixed64::fromInt(2);
     math::Fixed64 shape_depth_ = math::Fixed64::fromFraction(14, 10);
+    math::Fixed64 shape_danger_{};
+    std::int64_t shape_danger_sprint_ = 0;   // 1 = no cap there at all   // G5.10: within this of our goal, their ball, shape at the defending pace
+    math::Fixed64 theirs_shift_y_{}, theirs_cap_y_{}, ours_shift_y_{}, ours_cap_y_{};
+    // G5.8 (§8.106): struck this far or more from the middle (|y|), a
+    // clearance goes up his own touchline, not back across to the middle
+    // ("if in doubt, put it out"). 0 = off.
+    math::Fixed64 clear_touch_from_{};
+    // G5.9 (§8.107): runners into the box with our ball wide near their line.
+    std::int64_t box_runners_near_ = 0, box_runners_far_ = 0;
+    math::Fixed64 dtc_within_{}, dtc_depth_{}, dtc_width_{};
+    math::Vec2 clearUpTheLine(const math::Vec3& at, math::Vec2 to) const {
+        if (clear_touch_from_.raw <= 0) return to;
+        const math::Fixed64 ay = at.y.raw < 0 ? math::Fixed64::zero() - at.y : at.y;
+        if (ay < clear_touch_from_) return to;
+        to.y = at.y.raw < 0 ? math::Fixed64::zero() - half_y_ : half_y_;
+        return to;
+    }
+    std::int64_t width_far_one_ = 0;   // G5.7: far side, one man holds width
+    math::Fixed64 width_far_m_{};
+    // The defending block's slide across (G5.7): anchor y from the base and
+    // the ball's y with theirs_shift_y_ / theirs_cap_y_; unchanged without rows.
+    math::Fixed64 defendingY(const math::Vec2& base, math::Fixed64 ball_y, math::Fixed64 y) const {
+        return slideY(base, ball_y, y, theirs_shift_y_, theirs_cap_y_);
+    }
+    // ...and the side in possession (ours_shift_y_ / ours_cap_y_).
+    math::Fixed64 possessionY(const math::Vec2& base, math::Fixed64 ball_y, math::Fixed64 y) const {
+        return slideY(base, ball_y, y, ours_shift_y_, ours_cap_y_);
+    }
+    math::Fixed64 slideY(const math::Vec2& base, math::Fixed64 ball_y, math::Fixed64 y,
+                         math::Fixed64 shift, math::Fixed64 cap) const {
+        if (shift.raw <= 0) return y;
+        math::Fixed64 s = ball_y * shift;
+        if (cap.raw > 0) {
+            if (s > cap) s = cap;
+            if (s < -cap) s = -cap;
+        }
+        math::Fixed64 v = base.y * half_y_ + s;
+        const math::Fixed64 lim = half_y_ - math::Fixed64::fromInt(2);
+        if (v > lim) v = lim;
+        if (v < -lim) v = -lim;
+        return v;
+    }
     math::Fixed64 possessionX(core::SlotIndex slot, math::Fixed64 ball_x) const;
     // Graded application: does slot APPLY concept (bit index) this tick?
     // Consistency roll — deterministic noise vs the rating.

@@ -4139,3 +4139,459 @@ rolls those rates, hit first time, and near his goal any presser ends the hold.
 Corners fell by half: clearances now go long and wide, and where they go out is
 wrong. Next: where real clearances land, why the ball goes out over the touchline
 twice too often, then team strength with the physical columns filled.
+
+### 8.103 G5.5 — get in line with the ball; walk your shape (mig 958; scratch DB only)
+
+Asked where clearances land and why the ball goes out so often.
+`scripts/benchmarks_statsbomb_out.py` (380 matches, StatsBomb Open Data, free with
+attribution) names the last on-ball event before each restart, and match_main now
+counts the same (`OUT BY`, `CLEARANCES`, `GROUND PASS OUT`). A keeper who only
+faced a shot touched nothing, so it counts as the shot.
+
+| A team a match | Pro | Game |
+|---|---|---|
+| Throw-ins | 23.1 | 41.8 |
+| from a ground pass | 1.4 | 30.8 |
+| from an air pass | 5.9 | 1.5 |
+| from a clearance | 4.7 | 0.0 |
+| carried out (pro: Dribble, 1.3; not the same event) | 1.3 | 5.7 |
+| Corners | 5.4 | 2.0 |
+| Clearances | 28.4 | 55.1 |
+| Share of clearances to a throw-in, corner | 16.5, 4.8% | 0, 0% |
+
+**The excess is ground passes the receiver misses.** Real ground passes go out
+0.4-0.7% of the time up to 30 m; ours 7-10%. Of 126 traced, 94 passed within 2 m of
+him at about 10 m/s, he moving 2-4 m/s. Three of my causes were wrong again: a
+touchline problem (no, the ball just carries on past him), a control-speed gate
+(no, a mid player holds 16 m/s), braking onto a wait spot (no: `wait_through`
+changed nothing and came out). Traces showed a man on the line at the kick walking
+up it to the first spot he could only just reach, then missing it.
+
+**Get in line.** The man a rolling pass is for takes the first spot he reaches
+`early_s` ahead of the ball, body on it, and takes no spot short of the foot of his
+perpendicular until within `on_line_m` of the line (`Brain::getInLine`,
+`concept.meet-the-pass.early_s` 0.25, `on_line_m` 0.25, both [FH] fits, mig 958; no
+row = off, goldens held).
+
+| 32 matches, 4 fixtures | Off | early_s 0.25 | + stretch_m 0.9 | Pro |
+|---|---|---|---|---|
+| Pass completion | 88.0% | 80.0% | 91.5% | 79 |
+| Passes a team | 611 | 539 | 671 | 378 |
+| Entries | 61 | 50 | 71 | 44 |
+| Throw-ins | 41.8 | 38.6 | 26.9 | 23.1 |
+| Corners | 2.0 | 1.5 | 1.5 | 5.4 |
+| Shots a team | 14.5 | 14.3 | 16.7 | 12.9 |
+| Goals | 3.7 | 4.5 | 4.4 | 2.5 |
+| Home (stronger) W-D-L | 13-5-14 | 16-6-10 | 15-7-10 | |
+
+early_s moves completion, passes and entries toward pro. Goals rose 0.8; 32 matches
+can't say if that is real. It did NOT fix the ball out: 39 throw-ins, half the
+remaining misses 0.5-1 m off him. `physics.tempo.stretch_m` (the intended man's
+reach, no row, off) took throw-ins to 27 by making passing too easy: an experiment
+like cut_share, not a decision.
+
+**Doubts.** Off here is 13-5-14 and 3.7 goals; §8.102 printed 17-6-9 and 4.0 for
+what should be the same build. Not traced. Home wins ran 11-16 of 32 across these
+runs, so "better sides win" is not established: don't lean on §8.102's 17-6-9.
+Clearances out read 0 while the kick table says 1-3% dead: the count may be wrong,
+check before believing "never out".
+
+**The real cause: men run far too much.** A pass to a man standing still went into
+touch 1-2% of the time, to one running across it 8-10%. The passer leads a moving man
+on his straight line, or plays the spot he left. Two fixes from that end failed and
+came out: the passer checking the man can get there (`passer_reads`, fired too rarely
+to matter; passes 532, throw-ins 36.6) and charging his sideways speed in the reach
+(`charge_turn`: throw-ins back to 41.8, completion 74.6). Then measured the man himself
+(`scripts/benchmarks_tracking_receiver.py`, DFL open data, 7 matches, 3,833 completed
+flat open-play passes; a sample of 2 matches for all-time speed):
+
+| | Real | Game, off | shape_tau_s 4 |
+|---|---|---|---|
+| Receiver at the kick under 2 m/s | 37.9% | 17.4% | 37.3% |
+| 2-5 m/s | 52.3% | 37.5% | 43.2% |
+| 5+ m/s | 9.8% | 45.1% | 19.6% |
+| All the time under 2 m/s | 69.4% | 20.6% | 33.5% |
+| All the time 2-5 m/s | 27.3% | 31.9% | 40.0% |
+| All the time 5+ m/s | 3.3% | 47.5% | 26.3% |
+
+Not like for like: real receivers are of completed passes only (the event names no
+receiver otherwise) with event clocks good to a few tenths; real all-time speed has
+keepers, on-ball men and dead time in; game all-time is outfielders off the ball. None
+of that closes a 14x gap. 58% of the game's 5+ running was plain "hold shape": every
+shift of his spot and he ran at it.
+
+**Walk your shape.** Holding shape he closes the gap in `physics.body.shape_tau_s` 4
+s ([FH] fit, mig 958; no row = off), so the speed is what the gap asks.
+
+| 32 matches, 4 fixtures, early_s on | tau off | tau 3 | tau 4 | Pro |
+|---|---|---|---|---|
+| Goals | 4.5 | 3.3 | **2.9** | 2.5 |
+| Shots a team | 14.3 | 13.0 | **12.7** | 12.9 |
+| Throw-ins | 38.6 | 22.8 | **19.4** | 23.1 |
+| from a ground pass | 28.5 | 15.4 | 12.3 | 1.4 |
+| Offsides | 3.2 | 2.6 | 3.0 | 2.0 |
+| Entries | 50 | 60 | 57 | 44 |
+| Pass completion | 80.0% | 85.3% | 86.6% | 79 |
+| Passes a team | 539 | 617 | 643 | 378 |
+| Corners | 1.5 | 0.6 | 0.5 | 5.4 |
+| Goal kicks | 4.6 | 3.6 | 3.3 | 8.3 |
+| Time on the ball | 1.0 | 0.9 | 0.9 | 1.5 |
+| Home (stronger) W-D-L | 16-6-10 | 19-8-5 | 14-12-6 | |
+
+Tau 4 over 3: it is the number the receiver and goal lines fit best, and throw-ins
+under pro leave room for the air passes and clearances that still never go out.
+
+Shots, goals and throw-ins came to pro through one change to how men move, with no
+shooting, keeper or finishing rule touched. It costs passing: men standing still are
+easy to find, so completion and passes went the wrong way. Corners and goal kicks fell
+further from pro. Better sides did not lose a fixture on margin in tau 4 (City v Villa
+-0.25 is the one miss, 3-2-3), but 32 matches swung 11-19 home wins today, so that is
+a lead, not a result.
+
+**The jog and the sprint.** With tau 4 what stayed over 5 m/s was mostly men far off
+their target: hold shape 88% at 15 m+, recover goal-side 72%, two thirds out of
+possession. So `shape_max_mps` 4.5 and `defend_max_mps` 6 ([FH] fits, mig 958; no row =
+off; defend = recover, mark, mark tight, protect the middle).
+
+| 32 matches, 4 fixtures | tau 4 | + shape 4.5 | + defend 5 | + defend 6 (kept) | Real |
+|---|---|---|---|---|---|
+| Time at 5+ m/s | 26.3% | 19.7% | 6.0% | 12.6% | 3.3% |
+| under 2 m/s | 33.5% | 35.0% | 38.9% | 37.2% | 69.4% |
+| Receivers at 5+ | 19.6% | 17.0% | 15.6% | 15.8% | 9.8% |
+| Km a man in 96 min | | | | 16.5 | 10.0 |
+| Goals | 2.9 | 3.3 | 3.3 | 3.4 | 2.5 |
+| Shots a team | 12.7 | 13.6 | 15.8 | 15.8 | 12.9 |
+| Entries | 57 | 56 | 63 | 60 | 44 |
+| Home W-D-L | 14-12-6 | 7-11-14 | 14-7-11 | 15-6-11 | |
+
+Defend 5 is a cap right at the line it is measured by, so its 6.0% is close to true by
+construction; defend 6 leaves a sprint possible and the 5+ share measured. Km is the
+number no cap can fake: the real figure is all players at all times (10.0 from 2
+matches), the game's outfielders off the ball, so the true gap is a little smaller. Kept
+under "correct behaviour first": movement is upstream of everything, but shots and goals
+went the wrong way, because defenders now arrive late rather than leave early.
+
+**Next (the mole):** men still stand 39% of the time against 69% and cover 16.5 km.
+Recover goal-side is 37% of what's left at 5+: it fires too often. A defender should
+already be there, so read the danger earlier instead of running later; that should
+give back the shots. Then passing too easy, corners, goal kicks, clearances, air passes,
+time on the ball, team strength.
+
+
+### 8.104 G5.6 — recover to your shape, sprint only in danger (mig 959; scratch DB only)
+
+§8.103's next mole: recover goal-side was 37% of all running over 5 m/s, 81% of
+it 15 m+ from its target. Cause in the code: every beaten man aimed at the same
+point 6 m in front of the ball, so a side piled in behind the ball and sat 25 m
+off its shape. The cover man (second to the ball) already holds the ball-goal
+line 7 m goal-side (§G4.4 rule 3), so the recovery run doubled him.
+
+**Recover to shape** (`concept.recover-goal-side.to_shape`, switch, mig 959; no
+row = off, goldens held): beaten, he runs to his own anchor, already goal-side
+of the ball. Coaching: pressure-cover-balance, "get back into your shape", not
+"get to the ball". [FH]
+
+**Read the danger** (`sprint_within_m` 40, [FH] fit, mig 959): it is a recovery
+sprint (Why::Recover, defend cap) only with the ball inside 40 m of our goal;
+further out the same run is hold shape, at the shape's pace (§8.103 tau and
+cap). A midfielder beaten 70 m from goal jogs back.
+
+64 matches (4 fixtures × 8, seeds 1000+ and 5000+), pooled:
+
+| | Off (§8.103 kept) | To shape | + danger 40 m (kept) | Pro |
+|---|---|---|---|---|
+| Goals | 3.1 | 3.45 | 3.6 | 2.5 |
+| Shots a team | 15.2 | 14.1 | 14.6 | 12.9 |
+| Passes a team | 636 | 659 | 659 | 378 |
+| Entries | 62 | 58 | 63 | 44 |
+| Throw-ins | 18.4 | 18.5 | 18.1 | 23.1 |
+| Home W-D-L | 28-13-23 | 27-17-20 | 36-9-19 | |
+| Off the ball 5+ m/s (seeds 5000+) | 12.8% | 12.1% | 9.5% | 6.3% (see below) |
+| Recover share of 5+ running | 37% | 33% | 19% | |
+
+The goal columns are noise: on the first seeds goals ran 3.4 / 2.9 / 4.0, on the
+second 2.8 / 4.0 / 3.2, the order reversed. Movement numbers agree to a tenth
+across all four fixtures and both seed sets. Kept on correct behaviour, not on
+goals.
+
+**§8.103 compared the wrong things.** Its "real" speeds (69% under 2 m/s, 10.0
+km) were all players, all the time, dead time in; the game's were outfielders
+off the ball, in play. Like for like (`scripts/benchmarks_tracking_shift.py`,
+DFL, 7 matches, outfielders off the ball, both sides, in play, 0.2 s steps):
+
+| In play, off the ball | Real | Game (kept) |
+|---|---|---|
+| under 2 m/s | 45.4% | 40.1% |
+| 2-5 m/s | 48.3% | 50.5% |
+| 5+ m/s | 6.3% | 9.4% |
+| Mean, as km in 96 min | 2.49 m/s, 14.3 | 2.72 m/s, 15.7 |
+
+So the game runs about 10% too much, not 65%; §8.103's "men run far too much"
+was mostly the comparison. shape_tau_s, the caps and this change still hold on
+their own receiver and sprint numbers.
+
+**What is wrong is where the block goes.** The same script, the side without the
+ball over 1 s windows (game: `BLOCK WITHOUT THE BALL`, possession spells only):
+
+| Without the ball, 1 s | Real | Game |
+|---|---|---|
+| Middle moves, mean | 2.32 m/s | 2.28 m/s |
+| Middle on the ball's x (slope) | 0.21 | 0.44 |
+| Middle on the ball's y | 0.14 | 0.06 |
+| Back line on the ball's x | 0.22 | 0.43 |
+
+The real block slides across with the ball and gives ground slowly; ours runs
+up and down twice as hard and hardly shifts across. Suspects, not traced: the
+back line's height is set off the ball (ball − hold, line-hold §G4.56), the
+compactness cap (ball + 10) moves 1:1 with it, and marking follows men, not the
+ball (kShiftY 0.3 should give about 0.3 across). The spot a man holding shape is
+told to stand on slides 5.4 m/s without the ball (32% over 4 m/s, every line
+alike), 2.2 with it (`HOLD SPOT SLIDES`), so he can't stay on it under the 4.5
+cap.
+
+**Next (the mole):** the block's slope on the ball, from the data above. Then
+passing too easy, corners, goal kicks, air passes, time on the ball.
+
+
+### 8.105 G5.7 — slide across with the ball; one man wide on the far side (mig 976; scratch DB only)
+
+§8.104's mole was the block's slope on the ball. First measured where it STANDS,
+not only how fast it follows (`benchmarks_tracking_shift.py` now bins it; match_main
+prints `BLOCK STANDS`, same definitions: side without the ball, outfielders, 5 Hz).
+
+**Up and down is already right.** Ball metres from the defending side's own goal →
+back line / middle, metres from the same line:
+
+| Ball | 0-15 | 15-30 | 30-45 | 45-60 | 60-75 | 75-90 | 90-105 |
+|---|---|---|---|---|---|---|---|
+| Real back line | 7.8 | 16.2 | 24.8 | 32.8 | 39.7 | 45.5 | 50.5 |
+| Game back line | 11.7 | 21.1 | 28.6 | 34.7 | 41.3 | 50.1 | 58.3 |
+| Real middle | 19.3 | 27.8 | 37.0 | 45.6 | 53.5 | 61.3 | 69.4 |
+| Game middle | 22.9 | 30.5 | 38.0 | 44.6 | 52.5 | 63.5 | 74.4 |
+| Real share of time | 6% | 11% | 15% | 19% | 21% | 16% | 12% |
+| Game share of time | 1% | 8% | 21% | 32% | 26% | 8% | 4% |
+
+Within a few metres everywhere, so §8.104's 1 s slope (0.41 v 0.21) is about how
+quickly the block reacts, not where it ends up. The last row is a separate problem:
+our ball lives in midfield and rarely reaches either end (goal kicks, corners).
+
+**Across is wrong.** The middle's y toward the ball's side, by the ball's |y|: real
+2.1 / 6.0 / 9.8 / 12.4, game 1.0 / 3.5 / 4.9 / 7.0. With the ball wide (|y| 24+), the
+ten defenders' y toward the ball, far touchline to near, and the ten attackers':
+
+| | far | | | | | | | | | near |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Real defenders | -10.0 | -3.6 | 2.1 | 6.2 | 10.2 | 14.3 | 17.7 | 21.2 | 25.2 | 28.4 |
+| Game defenders | -15.4 | -10.7 | -1.5 | 1.5 | 4.7 | 8.7 | 12.0 | 16.4 | 21.9 | 26.2 |
+| Real attackers | -16.6 | -7.5 | -1.1 | 3.8 | 8.8 | 13.4 | 17.6 | 22.0 | 26.6 | 31.1 |
+| Game attackers | -20.7 | -17.3 | -2.3 | -0.2 | 4.6 | 9.9 | 13.0 | 17.8 | 24.6 | 28.7 |
+
+By job, ball wide: the far-side attackers were 95% hold shape with targets at -22.7.
+The cause is `width` (bit 13, spread_wide): every wide-based man in possession holds
+10 + 16 × degree m of width on his own side, wherever the ball is, so the far
+full-back and the far winger both sat on the far touchline. The defenders marking
+them (protect the middle, 18% of men, at -2.1) stayed wide with them. Below that,
+anchorFor slides every shape 0.3 of the ball's y, capped at 10 m, in both phases.
+
+**One man wide on the far side** (`concept.width.far_one`, switch): ball 15 m+ to the
+other side, only the highest wide man on my side holds the width; the rest take
+their shifted spot. Coaching: the far winger keeps the pitch big for the switch,
+the far full-back comes inside for balance and rest defence. [FH]
+
+**Slide as a block** (`physics.shape.ours_shift_y` / `ours_cap_y_m` with the ball,
+`theirs_shift_y` / `theirs_cap_y_m` without; 0.6 and 20 m, [FH] fits to the profile
+above; no rows = anchorFor's 0.3 / 10 m, goldens held). Defending, Brain applies it
+only with their ball; GameServer's HUD anchors keep the built-in slide.
+
+| 32 matches each, 4 fixtures | Off (§8.104 kept) | far_one | + slide 0.45/16 | + slide 0.6/20 (kept) | + loose_m 9 | Real |
+|---|---|---|---|---|---|---|
+| Middle y, ball \|y\| 30+ | 7.0 | 7.1 | 8.8 | 10.7 | 11.0 | 12.4 |
+| Far two defenders | -15.4, -10.7 | -14.8, -10.6 | -13.8, -9.2 | -12.2, -7.1 | -11.5, -6.6 | -10.0, -3.6 |
+| Far two attackers | -20.7, -17.3 | -19.0, -15.0 | -17.9, -13.3 | -16.7, -10.9 | | -16.6, -7.5 |
+
+Two seed sets (1000+, 5000+) agree on these to a few tenths. `near-tight-far-zone
+loose_m` 9 (the far marker further off his man) moved the far defenders half a metre
+and was left out.
+
+| 64 matches pooled (seeds 1000+, 5000+) | Off | Kept | Pro |
+|---|---|---|---|
+| Goals | 3.6 | 2.95 | 2.5 |
+| Shots a team | 14.6 | 14.0 | 12.9 |
+| Passes a team | 659 | 642 | 378 |
+| Pass completion | 87.0% | 85.9% | 79 |
+| Entries | 63 | 58 | 44 |
+| Throw-ins | 18.1 | 21.3 | 23.1 |
+| Corners | 0.4 | 0.35 | 5.4 |
+| Goal kicks | 3.9 | 3.7 | 8.3 |
+| Home (stronger) W-D-L | 36-9-19 | 27-14-23 | |
+
+Every column moved toward pro except corners and goal kicks (flat). Kept on correct
+behaviour. **Doubt:** the stronger side won 9 fewer of 64. Earlier runs swung 11-19
+home wins in 32 on their own, so it may be noise; watch it, don't tune for it.
+
+**Next (the mole):** the ball never reaches either end — 5% of the defending side's
+time with the ball inside 15 m of either goal line against 18% real; corners 0.35 v
+5.4, goal kicks 3.7 v 8.3. Then the far two defenders (still 2-3.5 m wide), the block's
+1 s reaction, passing too easy.
+
+
+### 8.106 G5.8 — clear at the real rate, keep it otherwise; a clearance is hurried (mig 989; scratch DB only)
+
+§8.105's mole: the ball never reaches either end, corners 0.35 v 5.4, goal kicks
+3.7 v 8.3. First suspect, from §8.103's doubt: clearances never go out. The count
+was right (dead 1.8-3.8%, mostly offsides). `benchmarks_statsbomb_clear.py` and
+match_main's `RELEASES BY ZONE` / `CLEARANCES BY ZONE` found two faults.
+
+**Far too many clearances.** Foot clearances as a share of foot releases (open-play
+passes + clearances, no keepers). StatsBomb flags EVERY clearance under_pressure
+(0 unflagged in 380 matches), so mig 951's pressed shares (93% in the box, 30-40%
+to 35 m) were read off a tag the clearance itself sets. The 360 freeze frames (115
+matches) give the nearest opponent instead:
+
+| Nearest opponent | under 1.2 m | 1.2-3 | 3-6 | 6+ | all | Game before |
+|---|---|---|---|---|---|---|
+| Own box | 53.5% | 44.4% | 36.0% | 13.4% | 35.4% | 37% |
+| Own third, outside the box | 6.9% | 5.4% | 2.0% | 0.4% | 2.8% | 28% |
+| Midfield | 1.0% | 0.5% | 0.2% | 0 | 0.3% | 1.9% |
+| Their third | 0.1% | 0 | 0 | 0 | 0 | 2.4% |
+
+Even touch-tight in his own third a pro clears 7% of the time. Ours hoofed whenever
+touch-tight with no back pass (G4.60 keep-it allowed it there), plus 951's roll.
+
+**Clear the danger** (`concept.clear-the-danger.rate_*`, 16 rows, mig 989; no rows =
+951's roll and the touch-tight hoof, goldens held): rolled once on the ball, before
+any pass, for every release, as the data counts it. Losing it, a touch-tight man
+keeps it: plays back or shields (keep-it's shield, now in his own third too). [FH
+roll; rates StatsBomb 360]
+
+**A clearance is aimed like a pass.** It finds a mate 41-45% (real foot 23.5%) and
+went out 0.4% (real 29%: wide, 49% into touch). Two fixes: `physics.kick.clear_err_deg`
+40 (a hurried boot, the headed clearance's number, World::step on a first-time loft)
+and `concept.clear-the-danger.touch_from_y_m` 24 (struck that far off the middle it
+goes up his own touchline — "if in doubt, put it out"). Both [FH].
+
+| 64 matches pooled (seeds 1000+, 5000+) | §8.105 | + rates | + error 40, touch (kept) | Pro |
+|---|---|---|---|---|
+| Foot clearances a team | 57.7 | 18.6 | 18.4 | 12.7 |
+| Clearance to a mate | 43% | | 40% | 23.5% |
+| Clearance out (throw, corner) | 0.4% | | 15-20%, 0 | 23.3%, 5.7% |
+| Throw-ins | 21.3 | 22.6 | 28.1 | 23.1 |
+| Corners | 0.35 | 0.7 | 0.65 | 5.4 |
+| Goal kicks | 3.7 | 3.3 | 3.65 | 8.3 |
+| Passes a team | 642 | 712 | 694 | 378 |
+| Entries | 58 | 50 | 47 | 44 |
+| Goals | 2.95 | 3.5 | 3.35 | 2.5 |
+| Shots a team | 14.0 | 13.6 | 13.9 | 12.9 |
+| Home (stronger) W-D-L | 27-14-23 | 39-11-14 | 28-13-23 | |
+
+Release shares by zone now match the 360 table on both seed sets (box 35-41%, own
+third 3.4-4.6%, midfield 0.4-0.7%, their third 0-0.2%). Throw-ins overshoot pro
+because ground passes still go out 11 a team (pro 1.4, §8.103), not clearances.
+Passes rose: men keep it rather than hoof it, and passing was already too easy.
+Home wins swung 27 → 39 → 28 across changes that touch 18 kicks a team: noise.
+
+**Not modelled: the clearance behind.** 8.7% of real box clearances become corners.
+A forward aim with 40° either side can't go behind its own line; the real ones are
+slices, blocks and deflections.
+
+**Next (the mole):** corners and goal kicks — slices and blocks behind (clearances,
+blocked shots, deflected crosses) and shots wide; then ground passes out, passing
+too easy, the far two defenders, the block's 1 s reaction.
+
+
+### 8.107 G5.9 — the cross, the wide carry, the box (IN PROGRESS; no migration, all off)
+
+§8.106's mole: corners 0.65 v 5.4, goal kicks 3.65 v 8.3. Real sources
+(`benchmarks_statsbomb_out.py`): corners from clearances 1.38 a team, blocks 1.34,
+shots 0.92, keeper saves 0.60; goal kicks from shots 4.28, air passes 2.18. The
+game's body block (G4.25) only stops balls above capture speed (2.0 a team v ~19
+real blocks) and always sends them back within ±60°, where real blocked passes turn
+every way (26% under 45°, 31% back) and go behind 10.7% of the time — now
+`physics.block.turn_deg` / `keep` (defaults 60 / 0.3 = G4.25), not yet changed.
+
+**The game had no cross.** No branch, no Why. Real (`benchmarks_statsbomb_cross.py
+crosses`): 11.5 a team, 68% in the air, landing 7.5 m off the line around the middle,
+28% completed, 40% cleared next; the cross share of passes by where struck:
+
+| m off their line | wide 24+ | half-space 14-24 | centre |
+|---|---|---|---|
+| 0-6 | 32% | 54% | 51% |
+| 6-18 | 25% | 31% | 1% |
+| 18-30 | 10% | 6% | 0 |
+
+Built, all off without rows:
+- **Cross it in** (`concept.cross`, 186): rolled once on the ball at those rates, in
+  the air (or driven low, `low_share` 0.32) to the mate with most room 3-13 m off
+  their line inside 10 m of the middle, else the 7.5 m spot. `Why::Cross`.
+- **Drive down the line** (`concept.drive-the-line`, 187): the no-pass carry from wide
+  goes at goal every time (about 30° in from the flank). Real wide carries
+  (`carries`): down the line 31-36%, out 5-21%, in 20-50° ~15%, in 50°+ ~15%, back
+  30%. Rolled once on the ball at the forward shares.
+- **Attack the box** (`cross-zone-runs`, 100): ball wide within 18 m of their line,
+  the three most advanced go near post, far post, penalty spot; 18-30 m, one.
+  `Why::AttackBox`.
+- **Defend the cross** (`defend-the-cross`, 125): their ball wide inside our 18 m, a
+  back-line man not on the ball stands within `depth_m` 12 of our line and `width_m`
+  18 of the middle.
+
+How the ball gets into the crossing zone (18 m off their line, |y| 14+), and who is
+in the box with it there (`benchmarks_tracking_box.py`, DFL; match_main `INTO THE
+CROSSING ZONE`, `BOX PRESENCE`):
+
+| A team | Real | Game | + cross, drive, runs |
+|---|---|---|---|
+| Carried in | 8.8 | 1.4 | 2.1-2.8 |
+| Passed in (from wide) | 12.9 (8.5) | 1.25 (1.0) | 1.7-2.4 (1.0-1.4) |
+| Crosses | 11.5 | 0 | 3.6-5.2 |
+| Attackers in the box, ball wide 0-18 | 2.18 | 1.33 | 1.0-1.3 |
+| ... in the 3-13 m target zone (none) | 1.10 (46%) | 0.25 (84%) | 0.2-0.45 (74-88%) |
+| Defenders in the box | 4.04 | 2.73 | 2.2-2.6 |
+| Deepest / next defender, m off the line | 9.1 / 11.0 | | 10.7 / 13.8 |
+
+64 matches with cross, drive and runs (no defend): goals 3.35 → **5.2** on both seed
+sets (5.1, 5.3), shots flat at 13.3, goal kicks 3.65 → 4.9, corners flat. Crosses
+alone gave 0.39 goals a team, one per 10 crosses — real is far fewer — because the
+cross finds a mate 36-64% (real 28%): our box has 2.4 defenders, not 4.
+
+**Why not shipped.** Defend the cross fires (traced: the back four's targets sit 4 m
+off the line, mostly recover goal-side), but the men don't get there: 4 matches with
+it put the deepest defender at 12.4 m, not lower. They arrive late, not to the wrong
+place — the open question. Attackers likewise run (attack the box 86% of the three
+most advanced) and still aren't in the target zone. The ball is in the crossing zone
+too briefly for runs that take seconds; real sides are already in the box.
+
+**Next (the mole):** why men don't get into the box in time, both sides — time the
+ball spends wide near goal (real v game), how long before a cross real attackers
+are in the box, and whether the shape's pace caps (§8.103) or offside hold them.
+Then ship cross + drive + runs + defend together, then blocks, then corners.
+
+**G5.10 (same section): the late box is the shape's walking pace.** With the ball
+wide 18-30 m out, the four deepest defenders were 52% hold shape, standing at 22.3 m
+off the line with their spots at 12.9 — 9 m behind — and 17% recovering from 33.6 m.
+The spots were right; §8.103's shape pace (tau 4 s, 4.5 m/s cap) walked them there.
+`physics.body.shape_danger_m` (their ball inside it of our goal, hold shape skips the
+tau and cap) with `shape_danger_sprint` 1 (no cap at all there; 0 = the 6 m/s defend
+cap, which closed only half the gap). Both [FH], off without rows.
+
+| Ball wide | Real | Off | danger 40, defend cap | danger 40, sprint |
+|---|---|---|---|---|
+| 18-30 m: deepest / next defender | 16.9 / 18.3 | 21.0 / 23.8 | 19.1 / 21.6 | 15.1 / 18.1 |
+| 18-30 m: defenders in the box | 1.61 | 0.63 | 0.95 | 1.51 |
+| 0-18 m: deepest / next | 9.1 / 11.0 | 10.7 / 13.8 | 10.6 / 13.5 | 7.5 / 10.7 |
+| 0-18 m: defenders in the box | 4.04 | 2.51 | 2.61 | 3.10 |
+
+All of G5.9-G5.10 on (cross, drive, runs 3 / 2, defend the cross 18 m, danger 40
+sprint), 64 matches: goals 4.6 (cross alone 5.2, none 3.35, pro 2.5), shots 13.0,
+corners 1.15 (0.65), goal kicks 4.6 (3.65; pro 8.3), throw-ins 28.9; defenders in
+the box 3.0-3.3 and the line 8.5 / 10.7-11.2 m, near real; attackers in the box
+1.1-1.2 (real 2.2), the target zone 0.4-0.46 (real 1.1). Off-ball time at 5+ m/s 8.9%
+→ 12.2% (real 6.3%), 16.0 → 16.75 km: the sprint back costs it.
+
+Crosses still find a mate 42-45% (real 28%) and goals stay ~2 over pro. Not the aim:
+`concept.cross.aim_spread_m` 5 (the cross played into an area) moved it 45 → 42%.
+The box has nearly real defenders now and they still don't win the ball.
+
+**Next (the mole):** what a cross meets — who wins it at its first touch (attacker,
+defender, keeper; head or foot) and what follows, real (StatsBomb: the next on-ball
+event after a cross, 40% clearance) v game; the aerial duel and keeper claim on a
+lofted ball into the box. Nothing in §8.107 ships until crosses are as hard as real.

@@ -309,11 +309,18 @@ public:
     void configure(const core::ModelParams& p) override;
     // (Its reaction is the player's own since G4.85: core::Body::reaction.)
     int horizonTicks() const { return horizon_ticks_; }
+    // G5.5 (§8.103): seconds ahead of the ball the man it's for wants to be on
+    // its line. 0 (no row) = off, he takes the first spot he can just reach.
+    math::Fixed64 earlyS() const { return early_s_; }
+    // Inside this far of its line he counts as on it and comes along it.
+    math::Fixed64 onLineM() const { return on_line_m_; }
     // A runner ahead of our ball in flight keeps going at least this fast.
     math::Fixed64 keepRunningSpeed() const { return keep_running_; }
 
 private:
     math::Fixed64 keep_running_;
+    math::Fixed64 early_s_;
+    math::Fixed64 on_line_m_;
     int horizon_ticks_ = 90;
 };
 
@@ -412,6 +419,76 @@ private:
     static constexpr int kBands = 6;   // to 6, 11, 16, 22, 30, 45 m
     bool measured_ = false;
     math::Fixed64 rates_[kBands][2][2] = {};
+};
+
+// Clear the danger (128, G5.8, §8.106): the real rate a player releases
+// the ball with a clearance (foot, not a keeper) by where he is — 0 his own
+// box, 1 the rest of his own third (to 35 m), 2 midfield (to 70 m), 3 their
+// third — and how near the nearest outfield opponent is (0 under 1.2 m,
+// 1 to 3 m, 2 to 6 m, 3 beyond). StatsBomb 360 freeze frames, 115 matches.
+// No rows = off: the touch-tight hoof stands. With rows, a man who loses
+// the roll keeps it (plays back or shields), in his own third too.
+class ClearTheDanger : public Concept {
+public:
+    ClearTheDanger() : Concept("clear-the-danger", 128) {}
+    void configure(const core::ModelParams& p) override;
+    bool measured() const { return measured_; }
+    math::Fixed64 rate(int zone, int near) const { return rates_[zone][near]; }
+    static int zone(math::Fixed64 from_own_line, math::Fixed64 abs_y);
+    static int near(math::Fixed64 nearest_m);
+
+private:
+    bool measured_ = false;
+    math::Fixed64 rates_[4][4] = {};
+};
+
+// Cross it in (186, G5.9, §8.107): the real rate a player releases the ball
+// with a cross by where he is — metres off their goal line (0 under 6, 1 to
+// 18, 2 to 30) and off the middle (0 wide 24 m+, 1 half-space 14-24, 2
+// central) — StatsBomb PL 2015/16; low_share of them driven low, the rest in
+// the air, aimed at the mate with most room in the box (to_m off their line,
+// within box_y_m of the middle), else at spot_m off the line. No rows = off.
+class CrossIt : public Concept {
+public:
+    CrossIt() : Concept("cross", 186) {}
+    void configure(const core::ModelParams& p) override;
+    bool measured() const { return measured_; }
+    // -1 = no band (too deep or no rate).
+    static int depth(math::Fixed64 to_their_line);
+    static int width(math::Fixed64 abs_y);
+    math::Fixed64 rate(int d, int w) const { return rates_[d][w]; }
+    math::Fixed64 lowShare() const { return low_; }
+    math::Fixed64 boxNearM() const { return near_; }
+    math::Fixed64 boxFarM() const { return far_; }
+    math::Fixed64 boxYM() const { return box_y_; }
+    math::Fixed64 spotM() const { return spot_; }
+    math::Fixed64 spreadM() const { return spread_; }
+
+private:
+    bool measured_ = false;
+    math::Fixed64 rates_[3][3] = {};
+    math::Fixed64 low_, near_, far_, box_y_, spot_, spread_;
+};
+
+// Drive down the line (187, G5.9, §8.107): a wide carrier (|y| 14 m+) inside
+// within_m of their goal line takes his carry, rolled once on the ball, at
+// the real shares of forward carries (StatsBomb PL 2015/16, carries 3 m+,
+// back carries left out): straight down the line, out toward the touchline
+// (out_deg), inside (in_deg) or cutting in (cut_deg). Row 0 = wide 24 m+,
+// row 1 = half-space 14-24 m. No rows = off: he carries at the goal.
+class DriveTheLine : public Concept {
+public:
+    DriveTheLine() : Concept("drive-the-line", 187) {}
+    void configure(const core::ModelParams& p) override;
+    bool measured() const { return measured_; }
+    // The carry's angle off straight down the line, + = inside, in degrees.
+    math::Fixed64 angleFor(int row, math::Fixed64 u) const;
+    math::Fixed64 withinM() const { return within_; }
+
+private:
+    bool measured_ = false;
+    math::Fixed64 share_[2][4] = {};   // line, out, in, cut
+    math::Fixed64 out_, in_, cut_, within_;
 };
 
 // Hold the line (9, core, U-10; G4.4 → G4.56) [Sacchi palla coperta /
@@ -1138,6 +1215,9 @@ struct ConceptBook {
     DropStep drop_step;
     EngageOrContain engage_or_contain;
     ShotSelection shot_selection;
+    ClearTheDanger clear_the_danger;
+    CrossIt cross;
+    DriveTheLine drive_the_line;
     LineHold line_hold;
     MarkPosition mark_position;
     NearTightFarZone near_tight;
@@ -1193,6 +1273,9 @@ struct ConceptBook {
         drop_step.configure(p);
         engage_or_contain.configure(p);
         shot_selection.configure(p);
+        clear_the_danger.configure(p);
+        cross.configure(p);
+        drive_the_line.configure(p);
         line_hold.configure(p);
         mark_position.configure(p);
         near_tight.configure(p);

@@ -189,6 +189,8 @@ std::optional<core::SlotIndex> DirectBall::pick(const ConceptContext& c) const {
 void MeetThePass::configure(const core::ModelParams& p) {
     keep_running_ = p.fixed(key("keep_running_mps"), 3000);
     horizon_ticks_ = p.integer(key("horizon_ticks"), 90);
+    early_s_ = p.fixed(key("early_s"), 0);
+    on_line_m_ = p.fixed(key("on_line_m"), 250);
 }
 
 // ── FaceThePlay (G4.53) ─────────────────────────────────────────────────
@@ -244,6 +246,90 @@ math::Fixed64 ShotSelection::xg(math::Fixed64 angle, math::Fixed64 dist, bool pr
     if (pressed) x = x * pressed_;
     const math::Fixed64 cap = math::Fixed64::fromFraction(95, 100);
     return x > cap ? cap : x;
+}
+
+// ── ClearTheDanger (G5.8) ───────────────────────────────────────────────
+void ClearTheDanger::configure(const core::ModelParams& p) {
+    static const char* kZone[4] = {"box", "own3", "mid", "fin3"};
+    static const char* kNear[4] = {"lt1_2", "1_2_3", "3_6", "6p"};
+    measured_ = false;
+    for (int z = 0; z < 4; ++z)
+        for (int n = 0; n < 4; ++n) {
+            const std::string name = std::string("rate_") + kZone[z] + "_" + kNear[n];
+            const std::int64_t m = p.milli(key(name.c_str()), -1);
+            if (m >= 0) measured_ = true;
+            rates_[z][n] = m >= 0 ? math::Fixed64::fromFraction(static_cast<std::int32_t>(m), 1000) : math::Fixed64::zero();
+        }
+}
+int ClearTheDanger::zone(math::Fixed64 x, math::Fixed64 ay) {
+    if (x < math::Fixed64::fromFraction(165, 10) && ay < math::Fixed64::fromFraction(2016, 100)) return 0;
+    if (x < math::Fixed64::fromInt(35)) return 1;
+    if (x < math::Fixed64::fromInt(70)) return 2;
+    return 3;
+}
+int ClearTheDanger::near(math::Fixed64 d) {
+    if (d < math::Fixed64::fromFraction(6, 5)) return 0;
+    if (d < math::Fixed64::fromInt(3)) return 1;
+    if (d < math::Fixed64::fromInt(6)) return 2;
+    return 3;
+}
+
+// ── CrossIt (G5.9) ──────────────────────────────────────────────────────
+void CrossIt::configure(const core::ModelParams& p) {
+    static const char* kD[3] = {"0_6", "6_18", "18_30"};
+    static const char* kW[3] = {"wide", "half", "centre"};
+    measured_ = false;
+    for (int d = 0; d < 3; ++d)
+        for (int w = 0; w < 3; ++w) {
+            const std::string name = std::string("rate_") + kD[d] + "_" + kW[w];
+            const std::int64_t m = p.milli(key(name.c_str()), -1);
+            if (m >= 0) measured_ = true;
+            rates_[d][w] = m >= 0 ? math::Fixed64::fromFraction(static_cast<std::int32_t>(m), 1000) : math::Fixed64::zero();
+        }
+    low_ = p.fixed(key("low_share"), 320);
+    near_ = p.fixed(key("to_near_m"), 3000);
+    far_ = p.fixed(key("to_far_m"), 13000);
+    box_y_ = p.fixed(key("box_y_m"), 10000);
+    spot_ = p.fixed(key("spot_m"), 7500);
+    spread_ = p.fixed(key("aim_spread_m"), 0);
+}
+int CrossIt::depth(math::Fixed64 x) {
+    if (x < math::Fixed64::fromInt(6)) return 0;
+    if (x < math::Fixed64::fromInt(18)) return 1;
+    if (x < math::Fixed64::fromInt(30)) return 2;
+    return -1;
+}
+int CrossIt::width(math::Fixed64 ay) {
+    if (ay >= math::Fixed64::fromInt(24)) return 0;
+    if (ay >= math::Fixed64::fromInt(14)) return 1;
+    return 2;
+}
+
+// ── DriveTheLine (G5.9) ─────────────────────────────────────────────────
+void DriveTheLine::configure(const core::ModelParams& p) {
+    static const char* kRow[2] = {"wide", "half"};
+    static const char* kWay[4] = {"line", "out", "in", "cut"};
+    measured_ = false;
+    for (int r = 0; r < 2; ++r)
+        for (int w = 0; w < 4; ++w) {
+            const std::string name = std::string(kRow[r]) + "_" + kWay[w];
+            const std::int64_t m = p.milli(key(name.c_str()), -1);
+            if (m >= 0) measured_ = true;
+            share_[r][w] = m >= 0 ? math::Fixed64::fromFraction(static_cast<std::int32_t>(m), 1000) : math::Fixed64::zero();
+        }
+    out_ = p.fixed(key("out_deg"), 30000);
+    in_ = p.fixed(key("in_deg"), 35000);
+    cut_ = p.fixed(key("cut_deg"), 65000);
+    within_ = p.fixed(key("within_m"), 55000);
+}
+math::Fixed64 DriveTheLine::angleFor(int row, math::Fixed64 u) const {
+    math::Fixed64 acc = share_[row][0];
+    if (u < acc) return math::Fixed64::zero();
+    acc += share_[row][1];
+    if (u < acc) return math::Fixed64::zero() - out_;
+    acc += share_[row][2];
+    if (u < acc) return in_;
+    return cut_;
 }
 
 // ── LineHold (G4.56) ────────────────────────────────────────────────────

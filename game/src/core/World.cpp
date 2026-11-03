@@ -379,6 +379,16 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                                                                 : lv.kick_power_err_pct,
                              100);
             }
+            // G5.8 (§8.106): a clearance (first time, lofted) is hurried and
+            // hit for safety, not placed: physics.kick.clear_err_deg either
+            // side of the aim, like a headed clearance. No row = off. [FH fit
+            // to StatsBomb PL 2015/16 clearance outcomes]
+            if (clear_err_.raw > 0 && act == Action::LoftedKick && first_time_[kicker] != 0 && !isKeeper(kicker)) {
+                const Fixed64 n3 = detNoise(match_seed_, clock_.tick(), kicker, 24);
+                const Fixed64 ang = n3 * clear_err_ * Fixed64::fromFraction(71, 4068);
+                const Fixed64 c = math::fx_cos(ang), sn = math::fx_sin(ang);
+                dir = Vec2{dir.x * c - dir.y * sn, dir.x * sn + dir.y * c};
+            }
             // Law 15 (G5.2): whatever he pressed, it's a throw — from behind
             // and over his head, on the touchline, onto the pitch, at the
             // range of an arm.
@@ -577,12 +587,16 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         }
         if (hit) {
             const Fixed64 n = detNoise(match_seed_, clock_.tick(), blocker, 15);
-            const Fixed64 ang = n * Fixed64::fromFraction(71, 4068) *
-                                Fixed64::fromInt(60);
+            // G5.9 (§8.107): off a body the ball goes every way — real
+            // blocked passes turned under 45° 26%, back over 135° 31%
+            // (StatsBomb PL 2015/16) — so turn_deg either side of straight
+            // back; the 60 / 0.3 defaults are G4.25's.
+            const Fixed64 ang = n * Fixed64::fromFraction(71, 4068) * block_turn_;
             const Fixed64 c = math::fx_cos(ang);
             const Fixed64 sn = math::fx_sin(ang);
             const Vec2 v{-ball_.vel.x, -ball_.vel.y};
-            const Fixed64 keep = Fixed64::fromFraction(3, 10);
+            const Fixed64 keep = block_keep_;
+            ++body_blocks_[players_[blocker].team];
             ball_.vel = Vec3{(v.x * c - v.y * sn) * keep,
                              (v.x * sn + v.y * c) * keep, Fixed64::zero()};
             ball_.last_kicker = blocker;
@@ -624,7 +638,9 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         if (restart_team_ != 0xFF && players_[i].team != restart_team_)
             continue;
         const bool gk = keeper_[i];
-        const Fixed64 reach = gk ? kKeeperReach : kBallControlRadius;
+        // G5.5 (§8.103): the man a pass is for, set for it, reaches out a leg.
+        const Fixed64 reach = gk ? kKeeperReach
+                              : (i == ball_.pass_to && stretch_m_.raw > 0 && players_[i].team == last_touch_team_ ? stretch_m_ : kBallControlRadius);
         const Fixed64 reach_z = gk ? kKeeperReachZ : kOutfieldReachZ;   // G4.94: to the chest
         if (ball_.pos.z > reach_z) continue;
         // Hard cap: nobody touches a ball above the engine capture cap
@@ -919,6 +935,9 @@ void World::configureAerial(const ModelParams& p) {
     aerial_goal_err_ = p.fixed("physics.aerial.goal_err_deg", 45000);
     aerial_goal_err_duel_ = p.fixed("physics.aerial.goal_err_duel_deg", 80000);
     aerial_clear_err_ = p.fixed("physics.aerial.clear_err_deg", 40000);
+    clear_err_ = p.fixed("physics.kick.clear_err_deg", 0);
+    block_turn_ = p.fixed("physics.block.turn_deg", 60000);
+    block_keep_ = p.fixed("physics.block.keep", 300);
 }
 
 void World::configureTempo(const ModelParams& p) {
@@ -927,6 +946,7 @@ void World::configureTempo(const ModelParams& p) {
     hold_under4_ = p.fixed("physics.tempo.hold_under4", 0);
     hold_press_m_ = p.fixed("physics.tempo.press_m", 2500);
     cut_share_ = p.fixed("physics.tempo.cut_share", 0);
+    stretch_m_ = p.fixed("physics.tempo.stretch_m", 0);
     carry_share_ = p.fixed("physics.tempo.carry_share", 0);
     hold_on_ = hold_under1_.raw > 0 && hold_under2_ > hold_under1_ && hold_under4_ > hold_under2_;
 }
