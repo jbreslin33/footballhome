@@ -818,9 +818,18 @@ class RosterScreenBase extends Screen {
     const riders = ridersCount ? head(copy('board_calldowns_h') || '⭐ CALL-DOWNS', ridersCount, ...BLUE) + ridersHtml : '';
 
     if (this.boardView === 'team') {
-      const cats = { active: [], callin: [], paper: [], injured: [], practice_squad: [], inactive: [] };
-      for (const p of shown) cats[this.columnCategoryOf(p)].push(p);
+      const cats = { onboard: [], active: [], callin: [], paper: [], injured: [], practice_squad: [], inactive: [] };
+      // NEEDS ONBOARD (owner 2026-11-03): never answered an RSVP himself
+      // (standing defaults and admin answers don't count) and not 💤
+      // Inactive or 🩹 Injured — he leaves the moment he answers once.
+      // Known from PersonStanding (admins); anyone else sees no section.
+      const needsOnboard = (p) => !!(window.PersonStanding && typeof PersonStanding.answered === 'function' && PersonStanding.answered(p.personId) === false);
+      for (const p of shown) {
+        const cat = this.columnCategoryOf(p);
+        cats[cat !== 'injured' && cat !== 'inactive' && needsOnboard(p) ? 'onboard' : cat].push(p);
+      }
       return this.renderFromLaPicker(col)
+        + section(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard, '#e879f9', 'rgba(232,121,249,0.14)')
         + section(copy('board_plays_h') || 'PLAYS', cats.active, ...GREEN, true)
         + riders
         + section(copy('board_callins_h') || '↔ CALL INS', cats.callin, ...BLUE)
@@ -940,10 +949,13 @@ class RosterScreenBase extends Screen {
     const officialHtml = head(copy('board_official_h') || 'ON ROSTER', officialCount, ...GREEN, extra) + rows + inelHtml + cutHtml;
     // NEEDS ADD — one sub-group per paperwork step, in pipeline order.
     const needsAddSection = () => {
-      const list = rest.filter(p => ['proposed', 'pending_add'].includes(sectionOf(p)));
+      // NO ROOM (awaiting a roster spot) is an add waiting for space — its
+      // own step at the foot (owner 2026-11-03), never in PROJECTED.
+      const steps = ['proposed', 'pending_add', 'no_room'];
+      const list = rest.filter(p => steps.includes(sectionOf(p)));
       if (!list.length) return '';
       return head(copy('board_needs_add_h') || 'NEEDS ADD', list.length, ...BLUE)
-        + RosterScreenBase.ROSTER_STATUSES.filter(st => ['proposed', 'pending_add'].includes(st.boardSection)).map(st => {
+        + RosterScreenBase.ROSTER_STATUSES.filter(st => steps.includes(st.boardSection)).map(st => {
           const sub = list.filter(p => p.rosterStatus === st.code);
           return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(ruleCard).join('') : '';
         }).join('');
@@ -990,7 +1002,7 @@ class RosterScreenBase extends Screen {
       const row = ((data.buckets || {})[String(c.teamId)] || []).find(p => Number(p.personId) === id);
       if (!row || row.inviteOnly === true) return false;
       const st = RosterScreenBase.rosterStatusByCode(row.rosterStatus);
-      return !(st && ['proposed', 'pending_add'].includes(st.boardSection));
+      return !(st && ['proposed', 'pending_add', 'no_room'].includes(st.boardSection));
     });
   }
 
@@ -1017,12 +1029,13 @@ class RosterScreenBase extends Screen {
     const stacks = { onboard: [], notOnRoster: [], noRoom: [] };
     for (const e of people.values()) {
       const listed = cols.some(c => this.onLeagueList(c.teamId, e.p.personId));
-      const held = e.rows.some(r => ['proposed', 'pending_add'].includes(section(r.p))
+      // Roster pill = league only (owner 2026-11-03): a NO ROOM add sits in
+      // his team's NEEDS ADD; onboarding is the Team pill's; everyone else
+      // left is simply NOT ON ROSTER.
+      const held = e.rows.some(r => ['proposed', 'pending_add', 'no_room'].includes(section(r.p))
         || (!this.leagueListFor(r.col.teamId) && RosterScreenBase.countsAsOnRoster(r.p.rosterStatus)));
       if (listed || held) continue;
-      if (e.rows.some(r => section(r.p) === 'no_room')) stacks.noRoom.push(e);
-      else if (e.p.welcome && e.p.welcome.due) stacks.onboard.push(e);
-      else stacks.notOnRoster.push(e);
+      stacks.notOnRoster.push(e);
     }
     const name = (e) => e.p.fullName || `${e.p.firstName || ''} ${e.p.lastName || ''}`.trim();
     Object.values(stacks).forEach(list => list.sort((a, b) => name(a).localeCompare(name(b))));
@@ -1853,7 +1866,14 @@ class RosterScreenBase extends Screen {
     if (this._standingChipTimer || !window.PersonStanding) return;
     this._standingChipTimer = setTimeout(() => {
       this._standingChipTimer = null;
-      PersonStanding.fillChips(this.auth, this.element).catch(() => {});
+      PersonStanding.fillChips(this.auth, this.element).then(() => {
+        // NEEDS ONBOARD (Team pill) sorts by who has ever answered — known
+        // only now; paint the board once more the first time it lands.
+        if (this.boardView === 'team' && !this._onboardPainted && this._data && typeof this.renderRoster === 'function') {
+          this._onboardPainted = true;
+          this.renderRoster(this._data);
+        }
+      }).catch(() => {});
     }, 50);
   }
 
@@ -2015,7 +2035,7 @@ class RosterScreenBase extends Screen {
         ${player.nameChipHtml || ''}
         ${ageChip}
         ${duesLabel}
-        ${window.PersonStanding && player.personId ? `<span data-standing-chip="${player.personId}" style="display:inline-flex; gap:3px; align-items:center;">${PersonStanding.chip(player.personId)}</span>` : ''}
+        ${window.PersonStanding && player.personId ? `<span data-standing-chip="${player.personId}" data-standing-inactive="${this.boardView === 'roster' ? '0' : '1'}" style="display:inline-flex; gap:3px; align-items:center;">${PersonStanding.chip(player.personId, { inactive: this.boardView !== 'roster' })}</span>` : ''}
         ${statusChip}
         ${this.renderHealthChip(player)}
         ${activeTeamsBadge}
