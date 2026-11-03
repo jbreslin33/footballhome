@@ -256,7 +256,10 @@
     if (!cfg) return;
     e.preventDefault();
     e.stopPropagation();
-    b.closest('details[open]')?.removeAttribute('open');
+    // Fold the ⋯ menu the button sat in (#teams cards) — never a section
+    // fold like No response (owner 11/3: "i hate that you close what i had
+    // open when i do contact").
+    b.closest('details.roster-move-details[open]')?.removeAttribute('open');
     open(cfg);
   }, true);
 
