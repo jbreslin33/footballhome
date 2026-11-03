@@ -1412,6 +1412,14 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                             ON er.fh_event_id = fe.id
                                                          AND er.person_id   = p.id
                                                      WHERE fet.fh_event_id = fe.id
+                                                       -- 💤 Inactive on this team (mig 945,
+                                                       -- owes_practice_rsvps = false): not asked,
+                                                       -- so never in No response — listed only
+                                                       -- once he answers (owner 2026-11-03).
+                                                       AND (er.response IS NOT NULL
+                                                            OR NOT EXISTS (SELECT 1 FROM squad_statuses ss
+                                                                            WHERE ss.id = tp.squad_status_id
+                                                                              AND NOT ss.owes_practice_rsvps))
 
                                                         UNION ALL
 
