@@ -78,7 +78,7 @@ class EventScreen extends Screen {
   pillHtml(key) {
     const section = (label, html) => `<div class="ec-h" style="margin:var(--space-4) 0 var(--space-2);">${label}</div>${html}`;
     if (key !== 'players') return '';
-    return this._comingHtml() + (this._canInvite() ? section('🎟 Invites', this._invitesHtml()) : '')
+    return this._comingHtml() + this._jobsHtml() + (this._canInvite() ? section('🎟 Invites', this._invitesHtml()) : '')
       + (this.hasCarpool() ? this.carpoolPanel.html() : '');
   }
 
@@ -134,6 +134,8 @@ class EventScreen extends Screen {
       if (key(body.event) !== key(this.ev)) {
         this.ev = body.event;
         this._render();
+        // A late yes / no re-runs the job fill — show the new holders.
+        if (this.jobs) this._loadJobs();
       }
       // The phone's report on a reminder still on its way (or a link not
       // opened yet) arrives on the same beat.
@@ -224,6 +226,7 @@ class EventScreen extends Screen {
     this.groupNote = '';      // the 📣 bar's result line (html)
     this.coachGroupNote = '';
     this.oppContacts = null;  // this game's 📇 people, for its ✉️ drafts
+    this.jobs = null;         // 🧹 /api/jobs/event body (staff only; mig 978) — null until loaded / when refused
     this._panelDrafts = [];
     this.error = null;
     this.rsvpNote = {};
@@ -242,6 +245,7 @@ class EventScreen extends Screen {
       this._loadReminders();
       this._loadRelay();
       this._loadTextMarks().then(() => this._render());
+      this._loadJobs();
       this.onEventLoaded();
     };
     if (this.ev) loadAll();
@@ -276,6 +280,52 @@ class EventScreen extends Screen {
     }
     this.loadingId = null;
     this._render();
+  }
+
+  // 🧹 This event's jobs and who holds them — the #jobs board's own call,
+  // which runs the auto-fill first.  Club admins and coaches only (the API
+  // answers 403 otherwise); a refusal just leaves the section out.
+  async _loadJobs() {
+    if (!this.ev) return;
+    const id = this.ev.fh_event_id;
+    try {
+      const body = await this._json(`/api/jobs/event/${id}`);
+      if (this.ev && this.ev.fh_event_id === id) { this.jobs = body; this._render(); }
+    } catch (_err) {
+      if (this.ev && this.ev.fh_event_id === id) this.jobs = null;
+    }
+  }
+
+  // One card per job: holders by name, open spots, a switched-off job
+  // dimmed.  Editing (assign, flag, toggle) stays on #jobs.
+  _jobsHtml() {
+    const jobs = this.jobs && Array.isArray(this.jobs.jobs) ? this.jobs.jobs : [];
+    if (!jobs.length) return '';
+    const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || fb;
+    const esc = (t) => this.escapeHtml(t);
+    const live = jobs.filter(j => !j.off);
+    const needed = live.reduce((n, j) => n + (j.needed || 0), 0);
+    const filled = live.reduce((n, j) => n + Math.min((j.assignments || []).length, j.needed || 0), 0);
+    const cards = jobs.map(j => {
+      const held = j.assignments || [];
+      const open = j.off ? 0 : Math.max(0, (j.needed || 0) - held.length);
+      const rows = held.map(a => `<div style="font-size:0.85rem;">${esc(a.name)}${a.not_done
+          ? ` <span style="color:#f87171; font-size:0.72rem;">⚠ ${esc(cp('jobs_not_done', {}, 'not done'))}</span>` : ''}</div>`)
+        .concat(Array.from({ length: open }, () =>
+          `<div style="font-size:0.85rem; opacity:0.5; font-style:italic;">${esc(cp('jobs_open_slot', {}, 'Open'))}</div>`))
+        .join('');
+      return this.cardHtml({
+        name: esc(j.title),
+        right: j.off ? '' : `<span style="font-size:0.75rem; opacity:0.75;">${held.length}/${j.needed}</span>`,
+        body: `<div style="font-size:0.72rem; opacity:0.7; margin:2px 0 4px;">${esc(j.description || '')}</div>`
+            + (j.off ? `<div style="font-size:0.8rem; opacity:0.7;">${esc(cp('jobs_off', {}, 'Off for this event'))}</div>` : rows),
+        attrs: j.off ? 'style="opacity:0.55;"' : '',
+      });
+    });
+    const aside = `<span style="font-size:0.78rem;">${esc(cp('jobs_filled', { filled: String(filled), needed: String(needed) }, `${filled} of ${needed} filled`))}</span>`;
+    const top = `<div style="text-align:right; margin:0 0 6px;"><button type="button" class="btn btn-secondary" data-ec-jobs
+        style="padding:4px 12px; font-size:0.8rem;">${esc(cp('jobs_edit', {}, '✏️ Edit on Jobs board'))}</button></div>`;
+    return this.cardSectionHtml(esc(cp('sec_jobs', {}, '🧹 Jobs')), jobs.length, this.cardGridHtml(cards), { aside, top });
   }
 
   // The people on this game's 📇 panel, then the drafts going to them.
@@ -995,6 +1045,7 @@ class EventScreen extends Screen {
         return;
       }
       if ((el = t('[data-ec-game-center]'))) { EventKindSwitch.open(this.navigation, this.ev); return; }
+      if ((el = t('[data-ec-jobs]'))) { this.navigation.goTo('jobs', { eventId: this.ev.fh_event_id }); return; }
       if ((el = t('[data-ec-draft-open]'))) { this._panelDraftOpen(Number(el.dataset.ecDraftOpen)); return; }
       if ((el = t('[data-ec-att]'))) {
         this._markAttendance(Number(el.dataset.personId), el.dataset.ecAtt, el.dataset.active === '1');
