@@ -60,6 +60,8 @@ long g_rk_n, g_ra_n; double g_rk[10], g_rk_far, g_ra[10];   // G5.7: ranked y, b
 long g_aw_n[128]; double g_aw_y[128], g_aw_t[128];   // attackers on the far side (y < -10), ball wide
 long g_lw_n[128]; double g_lw_y[128], g_lw_t[128];   // G5.7 diag: ball |y| 24+, by why
 long g_blocks[2];
+// G5.11: a cross's first touch — [high?][0 ours foot, 1 ours head, 2 theirs foot, 3 theirs head, 4 keeper, 5 out]
+long g_cf[2][6], g_cf_n[2]; int g_cf_on = 0, g_cf_team = -1, g_cf_kicker = -1, g_cf_high = 0; double g_cf_z = 0;
 long g_bpw[128];
 long g_dw_n[128]; double g_dw_tl[128], g_dw_ttl[128];   // four deepest defenders' jobs, ball wide 18-30
 long g_ab_n, g_dl_n; double g_ab_gap, g_ab_v, g_ab_tl, g_ab_ttl, g_dl_gap, g_dl_v, g_dl_tl, g_dl_ttl;   // G5.9 diag: runners / back line   // G5.9 diag: jobs of the 3 most advanced attackers, ball wide 0-18
@@ -839,6 +841,21 @@ int main(int argc, char** argv) {
             const auto before = s.world().ball().owner;
             s.tickOnce();
             const auto& b = s.world().ball();
+            if (g_cf_on) {
+                const auto& bb = s.world().ball();
+                int cat = -1;
+                if (s.world().outStage() != 0) cat = 5;
+                else {
+                    int who = bb.owner ? (int)*bb.owner : (bb.last_kicker != g_cf_kicker ? (int)bb.last_kicker : -1);
+                    if (who >= 0 && who < s.world().playerCount()) {
+                        const auto& q = s.world().player(static_cast<std::uint8_t>(who));
+                        const bool head = g_cf_z > 1.5;
+                        cat = s.world().isKeeper(static_cast<std::uint8_t>(who)) ? 4 : (q.team == g_cf_team ? (head ? 1 : 0) : (head ? 3 : 2));
+                    }
+                }
+                if (cat >= 0) { ++g_cf[g_cf_high][cat]; g_cf_on = 0; }
+                g_cf_z = bb.pos.z.toDouble();
+            }
             if (b.owner && (!before || *before != *b.owner)) {
                 if (*b.owner < 64) got_tick[*b.owner] = k;
                 const auto& r = s.world().player(*b.owner);
@@ -980,6 +997,31 @@ int main(int argc, char** argv) {
                 // G5.6 (§8.104): the block without the ball over 1 s, as
                 // benchmarks_tracking_shift.py reads DFL: its middle's speed
                 // and slope on the ball, its back line's slope.
+                if (g_cr_on) {
+                    const auto& bb = s.world().ball();
+                    const double z = bb.pos.z.toDouble();
+                    auto nearest = [&](int team) {
+                        double best = 1e9;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            const auto& q = s.world().player(j);
+                            if (q.team != team) continue;
+                            best = std::min(best, std::hypot(q.pos.x.toDouble() - bb.pos.x.toDouble(), q.pos.y.toDouble() - bb.pos.y.toDouble()));
+                        }
+                        return best;
+                    };
+                    if ((g_cr_pz > 2.4 && z <= 2.4) || (g_cr_pz > 0.3 && z <= 0.3))
+                        std::printf("   +%.1fs ball (%.1f,%.1f) z %.1f: nearest mate %.1f m, opp %.1f m\n", (k - g_cr_tick) / 30.0, bb.pos.x.toDouble(), bb.pos.y.toDouble(), z,
+                                    nearest(g_cr_team), nearest(1 - g_cr_team));
+                    g_cr_pz = z;
+                    if (bb.owner || s.world().outStage() != 0 || k - g_cr_tick > 150) {
+                        std::printf("   +%.1fs end: %s\n", (k - g_cr_tick) / 30.0,
+                                    bb.owner ? (s.world().player(*bb.owner).team == g_cr_team ? "ours" : "theirs") : s.world().outStage() ? "out" : "loose 5s");
+                        g_cr_on = 0;
+                    } else if (bb.last_kicker != 0xFF && k - g_cr_tick > 2 && bb.kick_alive == core::kKickAliveTicks) {
+                        std::printf("   +%.1fs touched by %d (t%d)%s\n", (k - g_cr_tick) / 30.0, bb.last_kicker, s.world().player(bb.last_kicker).team, z > 1.5 ? " in the air" : "");
+                        g_cr_on = 0;
+                    }
+                }
                 if (g_cr_on) {
                     const auto& bb = s.world().ball();
                     const double z = bb.pos.z.toDouble();
@@ -1787,6 +1829,10 @@ int main(int argc, char** argv) {
                 lk_why[pend_team] = static_cast<int>(o.why); lk_tick[pend_team] = k; lk_to[pend_team] = o.other; lk_rwhy10[pend_team] = -1;
                 lk_x[pend_team] = s.world().player(*before).pos.x.toDouble(); lk_y[pend_team] = s.world().player(*before).pos.y.toDouble();
                 oc_kicker = *before;
+                if (o.why == ai::Why::Cross) {
+                    g_cf_on = 1; g_cf_team = s.world().player(*before).team; g_cf_kicker = *before;
+                    g_cf_high = o.action == core::Action::LoftedKick ? 1 : 0; ++g_cf_n[g_cf_high];
+                }
                 {
                     static const int trace_cr = std::atoi(envOr("GAME_TRACE_CROSS", "0"));
                     if (o.why == ai::Why::Cross && g_cr_traced < trace_cr) {
@@ -2387,6 +2433,12 @@ int main(int argc, char** argv) {
                 std::printf("BOX DIAG ball wide 0-18: attack-the-box men %.2f a frame, %.1f m from target, %.1f m/s, at %.1f m off the line, target %.1f; four deepest defenders %.1f m from target, %.1f m/s, at %.1f m, target %.1f\n",
                             double(g_ab_n) / std::max(1L, g_bp_n[0]), g_ab_gap / g_ab_n, g_ab_v / g_ab_n, g_ab_tl / g_ab_n, g_ab_ttl / g_ab_n,
                             g_dl_gap / g_dl_n, g_dl_v / g_dl_n, g_dl_tl / g_dl_n, g_dl_ttl / g_dl_n);
+            if (q == 0)
+                for (int h = 1; h >= 0; --h)
+                    if (g_cf_n[h])
+                        std::printf("CROSS FIRST TOUCH %s (%.1f a team): ours foot %.0f%%, ours head %.0f%%, theirs foot %.0f%%, theirs head %.0f%%, keeper %.0f%%, out %.0f%%\n",
+                                    h ? "high" : "low", g_cf_n[h] / (2.0 * nm), 100.0 * g_cf[h][0] / g_cf_n[h], 100.0 * g_cf[h][1] / g_cf_n[h], 100.0 * g_cf[h][2] / g_cf_n[h],
+                                    100.0 * g_cf[h][3] / g_cf_n[h], 100.0 * g_cf[h][4] / g_cf_n[h], 100.0 * g_cf[h][5] / g_cf_n[h]);
             if (q == 0) std::printf("INTO THE CROSSING ZONE a team: carried %.2f, passed %.2f (from wide %.2f)\n", g_xin_carry / (2.0 * nm), g_xin_pass / (2.0 * nm), g_xin_pass_wide / (2.0 * nm));
             std::printf("OUT BY %s:", rk[q]);
                 for (int c = 0; c < 8; ++c) std::printf(" %s %.2f", ck[c], oc_n[q][c] / (2.0 * nm));

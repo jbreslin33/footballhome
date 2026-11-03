@@ -157,6 +157,10 @@ public:
         shape_max_ = p.fixed("physics.body.shape_max_mps", 0);
         defend_max_ = p.fixed("physics.body.defend_max_mps", 0);
         shape_danger_ = p.fixed("physics.body.shape_danger_m", 0);
+        read_header_ = p.integer("concept.meet-the-pass.read_header", 0);
+        aerial_radius_ = p.fixed("physics.aerial.radius_m", 0);
+        aerial_min_z_ = p.fixed("physics.aerial.min_z_m", 1000);
+        if (aerial_radius_.raw <= 0) read_header_ = 0;
         shape_danger_sprint_ = p.integer("physics.body.shape_danger_sprint", 0);
         recover_to_shape_ = p.integer("concept.recover-goal-side.to_shape", 0);
         recover_sprint_within_ = p.fixed("concept.recover-goal-side.sprint_within_m", 0);
@@ -477,6 +481,8 @@ private:
     math::Fixed64 shape_offset_ = math::Fixed64::fromInt(2);
     math::Fixed64 shape_depth_ = math::Fixed64::fromFraction(14, 10);
     math::Fixed64 shape_danger_{};
+    std::int64_t read_header_ = 0;   // G5.11: the flight read sees the head-height point
+    math::Fixed64 aerial_radius_{}, aerial_min_z_{};
     std::int64_t shape_danger_sprint_ = 0;   // 1 = no cap there at all   // G5.10: within this of our goal, their ball, shape at the defending pace
     math::Fixed64 theirs_shift_y_{}, theirs_cap_y_{}, ours_shift_y_{}, ours_cap_y_{};
     // G5.8 (§8.106): struck this far or more from the middle (|y|), a

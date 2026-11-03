@@ -347,15 +347,23 @@ void Brain::race(const World& world, const RaceBall& rb, FlightRead& f) const {
             // A man in an offside position leaves it (the flag decides).
             if (flag_team != 0xFF && p.team == flag_team && ((flagged >> (i & 31)) & 1u)) continue;
             const bool gk = world.isKeeper(i);
-            if (pos.z > (gk ? core::kKeeperReachZ : core::kOutfieldReachZ)) continue;   // G4.94
+            // G5.11 (§8.108): an outfielder reads the HEAD-height point of a
+            // ball coming down too (World::aerialWinner's window: min_z up to
+            // his head, within the aerial radius, any speed) — reading only to
+            // his chest sent every man to where a cross had already dropped
+            // past heading, and none was ever headed (real: 25% of high
+            // crosses end in a defender's headed clearance). No row = off.
+            const bool header = read_header_ && !gk && vel.z.raw < 0 && pos.z > core::kOutfieldReachZ &&
+                                pos.z >= aerial_min_z_ && pos.z <= world.body(i).headReach();
+            if (!header && pos.z > (gk ? core::kKeeperReachZ : core::kOutfieldReachZ)) continue;   // G4.94
             const Fixed64 cap = gk ? core::kCaptureMaxSpeed + core::kKeeperHandsBonus : core::kCaptureMaxSpeed;
-            if (sp2 > cap * cap) continue;
+            if (!header && sp2 > cap * cap) continue;
             // Our own ball (G4.85): he takes it where it has come down to a
             // pace his first touch can hold — a man knows his touch. Met
             // early and hot it came off him (traced: 53 bad touches a match
             // at 15 m/s+ on passes meant for him once the read stopped
             // re-charging the reaction).
-            if (!gk && p.team == rb.ours) {
+            if (!header && !gk && p.team == rb.ours) {
                 const std::int32_t c = levelOf(i).control_speed_mps;
                 const Fixed64 cs = core::controlSpeedAt(Fixed64::fromInt(c), pos.z);   // G4.94
                 if (c > 0 && sp2 > cs * cs) continue;
@@ -366,9 +374,10 @@ void Brain::race(const World& world, const RaceBall& rb, FlightRead& f) const {
             }
             const Fixed64 rt = t > react[i] ? t - react[i] : Fixed64::zero();
             const Fixed64 run = runToward(world, i, Vec2{pos.x, pos.y}, rt) +
-                                (gk ? core::kKeeperReach : core::kBallControlRadius) +
+                                (gk ? core::kKeeperReach : header ? aerial_radius_ : core::kBallControlRadius) +
                                 (p.team != rb.ours ? rb.opp_margin : Fixed64::zero());
-            if (distSq(p.pos, pos) <= run * run) {
+            const Fixed64 gap_sq = header ? math::lengthSquared(Vec2{p.pos.x - pos.x, p.pos.y - pos.y}) : distSq(p.pos, pos);
+            if (gap_sq <= run * run) {
                 f.tick[i] = static_cast<std::int16_t>(k);
                 f.at[i] = Vec2{pos.x, pos.y};
                 --open;
