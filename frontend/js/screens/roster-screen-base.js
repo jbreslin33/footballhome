@@ -1847,6 +1847,16 @@ class RosterScreenBase extends Screen {
   // strip on the right that spans the card's full height, using the
   // vertical space row 2 leaves next to it instead of staying
   // thin-and-cramped within row 1 alone.
+  // 👻 Last-RSVP chips (PersonStanding, owner 11/3): cards draw what is
+  // cached; one fill per render burst loads the rest and paints them.
+  _scheduleStandingChips() {
+    if (this._standingChipTimer || !window.PersonStanding) return;
+    this._standingChipTimer = setTimeout(() => {
+      this._standingChipTimer = null;
+      PersonStanding.fillChips(this.auth, this.element).catch(() => {});
+    }, 50);
+  }
+
   renderCompactCard({
     player,
     col,
@@ -1941,6 +1951,7 @@ class RosterScreenBase extends Screen {
     // the card's min-content contribution — the very number fit-content()
     // sizes the column from. flex:0 0 auto keeps the name at its natural
     // width and makes the column widen to hold it.
+    this._scheduleStandingChips();
     const isScroll = this.viewMode === 'scroll';
     // Same min-width story as colBoxMinWidth(), one level down: every
     // wrapper between the grid track and the name has to keep its
@@ -2004,6 +2015,7 @@ class RosterScreenBase extends Screen {
         ${player.nameChipHtml || ''}
         ${ageChip}
         ${duesLabel}
+        ${window.PersonStanding && player.personId ? `<span data-standing-chip="${player.personId}" style="display:inline-flex; gap:3px; align-items:center;">${PersonStanding.chip(player.personId)}</span>` : ''}
         ${statusChip}
         ${this.renderHealthChip(player)}
         ${activeTeamsBadge}

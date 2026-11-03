@@ -136,6 +136,7 @@ class EventScreen extends Screen {
         this._render();
         // A late yes / no re-runs the job fill — show the new holders.
         if (this.jobs) this._loadJobs();
+        this._loadStanding();
       }
       // The phone's report on a reminder still on its way (or a link not
       // opened yet) arrives on the same beat.
@@ -248,6 +249,7 @@ class EventScreen extends Screen {
       this._loadRelay();
       this._loadTextMarks().then(() => this._render());
       this._loadJobs();
+      this._loadStanding();
       this.onEventLoaded();
     };
     if (this.ev) { loadAll(); this.syncHash(); }
@@ -286,6 +288,13 @@ class EventScreen extends Screen {
     }
     this.loadingId = null;
     this._render();
+  }
+
+  // 👻 Last RSVP + dues standing on every card (PersonStanding, 11/3).
+  _loadStanding() {
+    if (!window.PersonStanding || !this.ev) return;
+    const ids = (this.ev.rsvps || []).map(r => r.person_id);
+    PersonStanding.load(this.auth, ids).then(() => this._render()).catch(() => {});
   }
 
   // 🧹 This event's jobs and who holds them — the #jobs board's own call,
@@ -1291,6 +1300,7 @@ class EventScreen extends Screen {
             ${this._attendanceCell(r.person_id)}
           </div>
           ${err ? `<div style="font-size:0.72rem; color:#f87171; margin-top:4px;">${this.escapeHtml(err)}</div>` : ''}
+          ${window.PersonStanding ? PersonStanding.html(r.person_id) : ''}
           ${canContact ? this._contactLineHtml(r, remind && canRemind) : ''}`,
       });
     };

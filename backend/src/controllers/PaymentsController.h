@@ -57,4 +57,7 @@ private:
     // Operator override: POST /api/payments/members/:regId/next-due.
     Response handleSetNextDue(const Request& request);
     Response handleOverview(const Request& request);
+    // GET /api/payments/standing?person_ids=1,2,3 — the 👻 ghost trail and
+    // dues standing every player card shows (owner 2026-11-03).
+    Response handleStanding(const Request& request);
 };

@@ -1438,6 +1438,10 @@ class GameCenterScreen extends EventScreen {
       this._liveFpLast = this._liveFp(lineupData.data.lineup, lineupData.data.rosterStats, this.invites);
       this._syncHash();
       this._render();
+      // 👻 Last RSVP + dues standing on every card (PersonStanding, 11/3).
+      if (window.PersonStanding && this.isCoach) {
+        PersonStanding.load(this.auth, (this.players || []).map(x => x.personId)).then(() => this._render()).catch(() => {});
+      }
       if (this.isCoach) this._pullLeagueList();
     } catch (err) {
       console.error('[game-lineup] load failed:', err);
@@ -2785,6 +2789,7 @@ class GameCenterScreen extends EventScreen {
             ${roleButtons(p)}
           </div>
         ` : ''}
+        ${this.isCoach && window.PersonStanding ? PersonStanding.html(this._personIdFor(p.id)) : ''}
         ${this.isCoach && !String(extra).includes('data-gc-contact') ? this._contactLine(p.id) : ''}
         ${extra}`,
     });

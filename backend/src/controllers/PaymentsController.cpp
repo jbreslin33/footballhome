@@ -15,6 +15,7 @@
 #include "../models/PersonFines.h"
 #include "../models/PaymentsOverview.h"
 #include "../models/WelcomeLog.h"
+#include "../database/Database.h"
 #include "../services/LaProgramSync.h"
 #include "../third_party/json.hpp"
 
@@ -139,6 +140,15 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleGetMembersForProgram("girls", girlsProgramId_, girlsInactiveProgramId_, sync);
         });
+
+    // GET /api/payments/standing?person_ids=1,2,3 — one line per player card
+    // (owner 2026-11-03: "need last rsvp on all cards so i know if a player
+    // is ghost lol and dues standing").  Reads the DB as the last sync left
+    // it (cards render often; Membership → Sync now refreshes); no LA call.
+    router.get(prefix + "/standing", [this](const Request& req) {
+        if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
+        return this->handleStanding(req);
+    });
 
     // POST /api/payments/members/:regId/next-due
     // Write-only endpoint (operator override).  No LA-derived RENDER on
@@ -723,6 +733,83 @@ Response PaymentsController::handleOverview(const Request&) {
         return Response(HttpStatus::OK, PaymentsOverview::build(WelcomeLog::kLighthouseClubId).dump());
     } catch (const std::exception& e) {
         std::cerr << "[payments overview] " << e.what() << std::endl;
+        return internalErr(e.what());
+    }
+}
+
+// Per person: the RSVP / attendance trail (PersonActivity, the #payments
+// card's line) and the dues standing — balance (fh_dues_balance_usd: $0
+// for volunteers / dues-waiving injuries), why it is free, months behind
+// at the policy's monthly rate, and whether they hold a live membership.
+Response PaymentsController::handleStanding(const Request& request) {
+    std::vector<int> pids;
+    {
+        std::stringstream ss(request.getQueryParam("person_ids"));
+        std::string tok;
+        while (std::getline(ss, tok, ',')) {
+            try { const int v = std::stoi(tok); if (v > 0) pids.push_back(v); } catch (...) {}
+        }
+    }
+    if (pids.empty()) return Response(HttpStatus::OK, json{{"people", json::object()}}.dump());
+    if (pids.size() > 1500) return badRequest("too many person_ids");
+    try {
+        std::string arr = "{";
+        for (size_t i = 0; i < pids.size(); ++i) arr += (i ? "," : "") + std::to_string(pids[i]);
+        arr += "}";
+
+        json people = json::object();
+        auto* db = Database::getInstance();
+        for (const auto& r : db->query(R"SQL(
+            SELECT p.id,
+                   fh_dues_balance_usd(p.id)::float8 AS balance,
+                   COALESCE(fh_dues_free_reason(p.id), '') AS free_reason,
+                   EXISTS (SELECT 1 FROM person_la_memberships m
+                             JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
+                            WHERE m.person_id = p.id AND m.ended_at IS NULL
+                              AND lp.variant IN ('active', 'inactive')) AS member,
+                   (SELECT d.monthly_dues_usd::float8 FROM dues_policies d
+                     WHERE d.club_id = $2::int AND d.club_section_id IS NULL AND d.effective_from <= now()
+                     ORDER BY d.effective_from DESC LIMIT 1) AS monthly
+              FROM persons p
+             WHERE p.id = ANY($1::int[]))SQL", {arr, std::to_string(WelcomeLog::kLighthouseClubId)})) {
+            const double bal = r["balance"].is_null() ? 0.0 : r["balance"].as<double>();
+            const double monthly = r["monthly"].is_null() ? 0.0 : r["monthly"].as<double>();
+            people[r["id"].c_str()] = {
+                {"dues", {{"balance", bal},
+                          {"free_reason", r["free_reason"].c_str()},
+                          {"member", r["member"].as<bool>()},
+                          {"months_behind", (monthly > 0 && bal > 0) ? (int)std::ceil(bal / monthly - 1e-9) : 0}}},
+                {"activity", nullptr}};
+        }
+
+        const int windowDays = 30;
+        PersonActivity activity;
+        const PersonActivity::Map trail = activity.latestFor(pids, windowDays);
+        auto refJson = [](const PersonActivity::EventRef& e) -> json {
+            if (!e.present()) return json(nullptr);
+            return json{{"status",       e.status},
+                        {"at",           e.atIso.empty()         ? json(nullptr) : json(e.atIso)},
+                        {"eventKind",    e.eventKind.empty()     ? json(nullptr) : json(e.eventKind)},
+                        {"eventStartAt", e.eventStartIso.empty() ? json(nullptr) : json(e.eventStartIso)},
+                        {"opponent",     e.opponent.empty()      ? json(nullptr) : json(e.opponent)}};
+        };
+        for (auto it = people.begin(); it != people.end(); ++it) {
+            json a = {{"windowDays", windowDays}, {"lastRsvp", nullptr}, {"lastAttended", nullptr}, {"lastMarked", nullptr},
+                      {"rsvpYes30", 0}, {"rsvpNo30", 0}, {"attended30", 0}, {"absent30", 0}};
+            auto t = trail.find(std::stoi(it.key()));
+            if (t != trail.end()) {
+                const auto& s = t->second;
+                a["lastRsvp"] = refJson(s.lastRsvp);
+                a["lastAttended"] = refJson(s.lastAttended);
+                a["lastMarked"] = refJson(s.lastMarked);
+                a["rsvpYes30"] = s.rsvpYes30; a["rsvpNo30"] = s.rsvpNo30;
+                a["attended30"] = s.attended30; a["absent30"] = s.absent30;
+            }
+            it.value()["activity"] = std::move(a);
+        }
+        return Response(HttpStatus::OK, json{{"people", people}}.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "[payments standing] " << e.what() << std::endl;
         return internalErr(e.what());
     }
 }
