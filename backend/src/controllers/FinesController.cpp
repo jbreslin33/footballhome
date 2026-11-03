@@ -108,6 +108,8 @@ Response FinesController::handleDecide(const Request& request) {
 //   people: [{ person_id, name, la_user_id, section, teams, total, fines,
 //              months: [{ month, label, current, total, items, posting }] }]  highest total first
 //   rules:  [{ section, kind, label, amount, since }]
+//   waivers: [{ waiver_id, person_id, name, la_user_id, from, until, reason,
+//               total, fines, by_month: { <ym>: amount } }]   (mig 997)
 Response FinesController::handleBoard(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     int months = 6;
@@ -201,7 +203,37 @@ Response FinesController::handleBoard(const Request& request) {
         std::sort(rules.begin(), rules.end(), [](const json& a, const json& b) {
             return a["section"].get<std::string>() != b["section"].get<std::string>() ? a["section"] < b["section"] : a["sort_order"] < b["sort_order"]; });
 
-        return jsonOk({{"months", monthsOut}, {"people", people}, {"rules", rules}, {"months_back", months}});
+        // Waivers (mig 997): every unreversed stretch that touches the window,
+        // with what it took to $0 per month.  An open stretch while he is
+        // still inactive shows $0 — invite-only spots owe nothing anyway.
+        json waivers = json::array();
+        const std::string winStart = "((date_trunc('month', (now() AT TIME ZONE 'America/New_York')::date)::date - interval '"
+                                     + std::to_string(months - 1) + " months')::timestamp AT TIME ZONE 'America/New_York')";
+        for (const auto& w : db->query(
+                "SELECT w.id, w.person_id, COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'') AS name,"
+                "       p.la_user_id::text AS la_user_id, w.reason,"
+                "       to_char(w.waived_from AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS wfrom,"
+                "       to_char(w.waived_until AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS wuntil,"
+                "       COALESCE((SELECT json_object_agg(ym, amt)::text FROM ("
+                "           SELECT to_char(f.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM') AS ym, sum(f.amount_usd) AS amt"
+                "             FROM fh_person_waived_fines(ARRAY[w.person_id], " + winStart + ") f"
+                "            WHERE f.waiver_id = w.id GROUP BY 1) m), '{}') AS by_month,"
+                "       (SELECT count(*) FROM fh_person_waived_fines(ARRAY[w.person_id], " + winStart + ") f WHERE f.waiver_id = w.id) AS n"
+                "  FROM fine_waivers w JOIN persons p ON p.id = w.person_id"
+                " WHERE w.reversed_at IS NULL AND (w.waived_until IS NULL OR w.waived_until >= " + winStart + ")"
+                " ORDER BY w.waived_until IS NOT NULL, p.last_name, p.first_name")) {
+            json byMonth = json::parse(w["by_month"].c_str());
+            double t = 0;
+            for (auto& [k, v] : byMonth.items()) { v = std::atof(v.dump().c_str()); t += v.get<double>(); }
+            waivers.push_back({{"waiver_id", w["id"].as<int>()}, {"person_id", w["person_id"].as<int>()},
+                               {"name", str(w, "name")},
+                               {"la_user_id", w["la_user_id"].is_null() ? json(nullptr) : json(str(w, "la_user_id"))},
+                               {"reason", str(w, "reason")}, {"from", str(w, "wfrom")},
+                               {"until", w["wuntil"].is_null() ? json(nullptr) : json(str(w, "wuntil"))},
+                               {"total", t}, {"fines", w["n"].as<int>()}, {"by_month", byMonth}});
+        }
+
+        return jsonOk({{"months", monthsOut}, {"people", people}, {"rules", rules}, {"waivers", waivers}, {"months_back", months}});
     } catch (const std::exception& e) {
         std::cerr << "[fines] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());

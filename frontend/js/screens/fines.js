@@ -239,6 +239,25 @@ class FinesScreen extends Screen {
         ${!Object.keys(byKind).some(k => k.startsWith('no_show')) ? `<div class="fi-note" style="margin-top:8px;">${this.escapeHtml(this._copy('no_shows_note'))}</div>` : ''}
       </div>` : '';
 
-    el.innerHTML = `${this._disputesHtml()}${stats}<div class="fi-card">${table}</div>${rules}`;
+    // 💤 Waived (mig 997): inactive players, out of the ranking above; what
+    // their waiver took to $0 in the picked months.
+    const waivers = (d.waivers || []).map(w => ({ ...w,
+      picked: Object.entries(w.by_month || {}).filter(([ym]) => pickedKeys.has(ym)).reduce((a, [, v]) => a + (Number(v) || 0), 0) }));
+    const waived = waivers.length ? `
+      <div class="fi-card">
+        <div class="fi-title">${this.escapeHtml(this._copy('waived_title') || '💤 Waived')}</div>
+        <div class="fi-note">${this.escapeHtml(this._copy('waived_note'))}</div>
+        <table class="fi-table">
+          ${waivers.map(w => `<tr>
+            <td><button class="fi-name" data-fi-person="${this.escapeHtml(w.la_user_id || '')}" title="Open ${this.escapeHtml(w.name)}">${this.escapeHtml(w.name)}</button></td>
+            <td style="text-align:left; opacity:0.75;">${this.escapeHtml(w.until
+              ? this._copy('waived_closed', { from: this._md(w.from), until: this._md(w.until) })
+              : this._copy('waived_open', { from: this._md(w.from) }))}</td>
+            <td><s style="opacity:0.7;">${FinesScreen.money(w.picked)}</s> → <b>$0</b></td>
+          </tr>`).join('')}
+        </table>
+      </div>` : '';
+
+    el.innerHTML = `${this._disputesHtml()}${stats}<div class="fi-card">${table}</div>${waived}${rules}`;
   }
 }
