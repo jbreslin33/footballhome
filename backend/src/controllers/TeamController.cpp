@@ -152,7 +152,8 @@ Response TeamController::handleGetRosterStatuses(const Request& request) {
     }
 }
 
-// GET /api/teams/terms → { terms: [{code,label}], current, teams: {teamId: [code…]} }
+// GET /api/teams/terms → { terms: [{code,label}], current, teams: {teamId: [code…]},
+//                          frozen: {teamId: [code…]} (mig 1006) }
 // A team missing from `teams` has no team_terms rows and shows under
 // every pill (mig 795).
 Response TeamController::handleGetTerms(const Request& request) {
@@ -163,7 +164,11 @@ Response TeamController::handleGetTerms(const Request& request) {
             "  'terms',   (SELECT COALESCE(json_agg(json_build_object('code', code, 'label', label) ORDER BY sort_order), '[]') FROM year_terms),"
             "  'current', fh_current_term(),"
             "  'teams',   (SELECT COALESCE(json_object_agg(team_id, terms), '{}') FROM ("
-            "                SELECT team_id, json_agg(term ORDER BY term) AS terms FROM team_terms GROUP BY team_id) x)"
+            "                SELECT team_id, json_agg(term ORDER BY term) AS terms FROM team_terms GROUP BY team_id) x),"
+            // Seasons a team's league roster is frozen in (mig 1006): no
+            // NEEDS ADD / NEEDS DROP on the Roster pill.
+            "  'frozen',  (SELECT COALESCE(json_object_agg(team_id, terms), '{}') FROM ("
+            "                SELECT team_id, json_agg(term ORDER BY term) AS terms FROM team_terms WHERE roster_frozen GROUP BY team_id) f)"
             ")::text AS body");
         std::ostringstream json;
         json << "{\"success\":true,\"data\":" << rows[0]["body"].c_str() << "}";

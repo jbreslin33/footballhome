@@ -779,7 +779,7 @@ class RosterScreenBase extends Screen {
       const chips = this.boardView === 'team' ? listChips(p) : listGapChips(p);
       const html = this.renderPlayer(chips ? { ...p, nameChipHtml: (p.nameChipHtml || '') + chips } : p,
         data.columns, col, rank, bucket.length);
-      const flag = this.boardView === 'roster' && laneFlag[sectionOf(p)];
+      const flag = this.boardView === 'roster' && !this.rosterFrozen(col.teamId) && laneFlag[sectionOf(p)];
       return flag
         ? `<div style="border:2px solid ${flag[1]}; border-radius:9px; padding:2px;">
              <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:${flag[2]}; padding:0 4px 2px;">${esc(flag[0])}</div>${html}</div>`
@@ -926,17 +926,19 @@ class RosterScreenBase extends Screen {
     // PROJECTED (mig 809) = OFFICIAL − every drop lane (cuts included) +
     // both add lanes; over teams.max_roster turns it red.
     const outNums = new Set([...lanes.drop, ...lanes.pending_drop, ...cutRows].map(d => d.n));
-    const adds = rest.filter(p => sectionOf(p) === 'proposed' || sectionOf(p) === 'pending_add');
+    const adds = rest.filter(p => (sectionOf(p) === 'proposed' || sectionOf(p) === 'pending_add') && !RosterScreenBase.HEALTH.people[p.personId]);
     const projected = officialCount - outNums.size + adds.length;
     const moves = outNums.size + adds.length > 0;
     const maxRoster = Number(col.maxRoster) || 0;
     const over = maxRoster > 0 ? projected - maxRoster : 0;
+    // A frozen roster (mig 1006) makes no moves — no dropping / projected.
+    const live = !this.rosterFrozen(col.teamId);
     const extra = [
       inelRows.length ? (copy('board_ineligible_banner', { n: inelRows.length }) || `${inelRows.length} ineligible`) : '',
       cutRows.length ? (copy('board_cuts', { n: cutRows.length }) || `${cutRows.length} cut`) : '',
-      lanes.drop.length ? (copy('board_planned_drops', { n: lanes.drop.length }) || `${lanes.drop.length} dropping`) : '',
-      lanes.pending_drop.length ? (copy('board_pending_drops', { n: lanes.pending_drop.length }) || `${lanes.pending_drop.length} pending drop`) : '',
-      moves ? (copy('board_projected_banner', { n: projected }) || `→ ${projected} projected`) : '',
+      live && lanes.drop.length ? (copy('board_planned_drops', { n: lanes.drop.length }) || `${lanes.drop.length} dropping`) : '',
+      live && lanes.pending_drop.length ? (copy('board_pending_drops', { n: lanes.pending_drop.length }) || `${lanes.pending_drop.length} pending drop`) : '',
+      live && moves ? (copy('board_projected_banner', { n: projected }) || `→ ${projected} projected`) : '',
     ].filter(Boolean).join(' · ');
     const cutHtml = cutRows.length
       ? head(copy('board_cut_h') || '✂ CUT — still on the official roster, needs to be dropped', cutRows.length, ...RED)
@@ -952,7 +954,9 @@ class RosterScreenBase extends Screen {
       // NO ROOM (awaiting a roster spot) is an add waiting for space — its
       // own step at the foot (owner 2026-11-03), never in PROJECTED.
       const steps = ['proposed', 'pending_add', 'no_room'];
-      const list = rest.filter(p => steps.includes(sectionOf(p)));
+      // 🩹 Injured: no add while hurt (owner 11/3, Mars Milligan) — he
+      // waits in NOT ON ROSTER and comes back here when the injury ends.
+      const list = rest.filter(p => steps.includes(sectionOf(p)) && !RosterScreenBase.HEALTH.people[p.personId]);
       if (!list.length) return '';
       return head(copy('board_needs_add_h') || 'NEEDS ADD', list.length, ...BLUE)
         + RosterScreenBase.ROSTER_STATUSES.filter(st => steps.includes(st.boardSection)).map(st => {
@@ -985,8 +989,18 @@ class RosterScreenBase extends Screen {
       return `<details><summary style="list-style:none; cursor:pointer;">${head(copy('board_projected_h') || 'PROJECTED ROSTER', projected, ...colors, overNote)}</summary>${body}</details>`;
     };
     // League only (owner 2026-11-02: "roster should just be roster
-    // functions"); who plays or trains is the Team pill's job.
+    // functions"); who plays or trains is the Team pill's job.  A roster
+    // frozen this season (team_terms.roster_frozen, mig 1006 — youth in
+    // fall) has no moves to make: ON ROSTER only.
+    if (this.rosterFrozen(col.teamId)) return officialHtml;
     return officialHtml + needsAddSection() + needsDropSection() + projectedSection();
+  }
+
+  // This team's league roster is frozen under the lit season pill
+  // (team_terms.roster_frozen, mig 1006 — youth in fall): no add / drop lanes.
+  rosterFrozen(teamId) {
+    const t = this._term;
+    return !!(t && t.term && ((t.frozen || {})[String(teamId)] || []).includes(t.term));
   }
 
   // Columns whose league list is missing a player who plays there (see
@@ -1032,7 +1046,8 @@ class RosterScreenBase extends Screen {
       // Roster pill = league only (owner 2026-11-03): a NO ROOM add sits in
       // his team's NEEDS ADD; onboarding is the Team pill's; everyone else
       // left is simply NOT ON ROSTER.
-      const held = e.rows.some(r => ['proposed', 'pending_add', 'no_room'].includes(section(r.p))
+      const hurt = !!RosterScreenBase.HEALTH.people[e.p.personId];   // 🩹 no add while injured
+      const held = e.rows.some(r => (['proposed', 'pending_add', 'no_room'].includes(section(r.p)) && !this.rosterFrozen(r.col.teamId) && !hurt)
         || (!this.leagueListFor(r.col.teamId) && RosterScreenBase.countsAsOnRoster(r.p.rosterStatus)));
       if (listed || held) continue;
       stacks.notOnRoster.push(e);
@@ -1804,7 +1819,11 @@ class RosterScreenBase extends Screen {
     if (this._data && typeof this.renderRoster === 'function') this.renderRoster(this._data);
   }
 
+  // Every board's team-column filter: the season pill (mig 795) and, on
+  // the Roster pill, only teams that keep a league roster
+  // (teams.league_roster, mig 1007 — youth U19 has none; owner 11/3).
   inTerm(col) {
+    if (col && !col.isUnassigned && this.boardView === 'roster' && col.leagueRoster === false) return false;
     const t = this._term;
     if (!t || !t.term || !col || col.isUnassigned) return true;
     const terms = t.teams && t.teams[String(col.teamId)];

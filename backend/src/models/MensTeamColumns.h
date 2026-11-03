@@ -38,6 +38,9 @@ public:
         // which roster statuses the column's dropdown offers.
         int         leagueId     = 0;
         std::string leagueName;
+        // teams.league_roster (mig 1007): false = no league roster, so the
+        // #teams Roster pill leaves the column out (youth U19).
+        bool        leagueRoster = true;
     };
 
     // domain param scopes every query.  Default 'mens' keeps existing

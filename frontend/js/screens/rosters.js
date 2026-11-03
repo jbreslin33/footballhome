@@ -207,7 +207,7 @@ class RostersScreen extends Screen {
   }
 
   _termForChildren() {
-    return this.termInfo && this.teamsTerm ? { term: this.teamsTerm, teams: this.termInfo.teams || {} } : null;
+    return this.termInfo && this.teamsTerm ? { term: this.teamsTerm, teams: this.termInfo.teams || {}, frozen: this.termInfo.frozen || {} } : null;
   }
 
   // ScreenManager's lifecycle hook is `onExit` (not `onLeave`).  We

@@ -1268,6 +1268,7 @@ MensRoster::Result MensRoster::run(bool includeAll,
         col["color"]         = c.color.empty() ? json(nullptr) : json(c.color);
         col["mutexGroup"]    = c.mutexGroup.empty() ? json(nullptr) : json(c.mutexGroup);
         col["maxRoster"]     = c.hasMaxRoster ? json(c.maxRoster) : json(nullptr);
+        col["leagueRoster"]  = c.leagueRoster;
         col["fieldSize"]     = c.hasFieldSize ? json(c.fieldSize) : json(nullptr);
         col["leagueId"]      = c.leagueId ? json(c.leagueId) : json(nullptr);
         col["leagueName"]    = c.leagueName.empty() ? json(nullptr) : json(c.leagueName);
