@@ -790,6 +790,7 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
         col["mutexGroup"]    = c.mutexGroup.empty() ? json(nullptr) : json(c.mutexGroup);
         col["maxRoster"]     = c.hasMaxRoster ? json(c.maxRoster) : json(nullptr);
         col["leagueRoster"]  = c.leagueRoster;
+        col["teamPillFoldInto"] = c.teamPillFoldInto ? json(c.teamPillFoldInto) : json(nullptr);
         col["fieldSize"]     = c.hasFieldSize ? json(c.fieldSize) : json(nullptr);
         col["leagueId"]      = c.leagueId ? json(c.leagueId) : json(nullptr);
         col["leagueName"]    = c.leagueName.empty() ? json(nullptr) : json(c.leagueName);

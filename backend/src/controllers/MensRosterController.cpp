@@ -639,6 +639,26 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
             {userId > 0 ? std::to_string(userId) : "", std::to_string(teamId), inviteOnly ? "true" : "false",
              std::to_string(personId), callIn, squadStatus});
         if (rows.empty()) return notFound("No assignment exists for that player on that team");
+        // Practice Squad / Inactive is one per man per section (mig 1009):
+        // the person row is the truth and its trigger carries it to all his
+        // teams in this team's section.  Any other pick on any team ends it.
+        // Runs after the row UPDATE so a 📄/↔ pick here keeps its
+        // invite_only (the delete trigger only touches rows still squadded).
+        const std::string pid = rows[0]["person_id"].c_str();
+        if (!squadStatus.empty()) {
+            db->query(
+                "INSERT INTO person_section_squad_statuses (person_id, club_section_id, squad_status_id) "
+                "SELECT $1::int, t.club_section_id, ss.id FROM teams t, squad_statuses ss "
+                " WHERE t.id = $2::int AND t.club_section_id IS NOT NULL AND ss.code = $3 "
+                "ON CONFLICT (person_id, club_section_id) "
+                "DO UPDATE SET squad_status_id = EXCLUDED.squad_status_id, set_at = now()",
+                {pid, std::to_string(teamId), squadStatus});
+        } else {
+            db->query(
+                "DELETE FROM person_section_squad_statuses s USING teams t "
+                " WHERE t.id = $2::int AND s.club_section_id = t.club_section_id AND s.person_id = $1::int",
+                {pid, std::to_string(teamId)});
+        }
         std::ostringstream out;
         out << "{\"leagueAppsUserId\":" << userId
             << ",\"teamId\":"           << teamId

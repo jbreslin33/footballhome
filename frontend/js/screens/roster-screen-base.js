@@ -774,9 +774,9 @@ class RosterScreenBase extends Screen {
     // membership — still official (counts, keeps his #) until the league
     // drops him; listed in the red ✂ CUT block at the foot of OFFICIAL.
     const cutFlag = [copy('board_official_cut') || '✂ not in LeagueApps — needs to be dropped', '#ef4444', '#fca5a5'];
-    const card = (p) => {
+    const card = (p, extraChip = '') => {
       const rank = bucket.indexOf(p) + 1;
-      const chips = this.boardView === 'team' ? listChips(p) : listGapChips(p);
+      const chips = (this.boardView === 'team' ? listChips(p) : listGapChips(p)) + extraChip;
       const html = this.renderPlayer(chips ? { ...p, nameChipHtml: (p.nameChipHtml || '') + chips } : p,
         data.columns, col, rank, bucket.length);
       const flag = this.boardView === 'roster' && !this.rosterFrozen(col.teamId) && laneFlag[sectionOf(p)];
@@ -828,9 +828,40 @@ class RosterScreenBase extends Screen {
         const cat = this.columnCategoryOf(p);
         cats[cat !== 'injured' && cat !== 'inactive' && needsOnboard(p) ? 'onboard' : cat].push(p);
       }
+      // ACTIVE splits by the column's league list (mig 1010, owner 11/3:
+      // "we may even want a player to be able to rsvp if not on roster
+      // because if he does then maybe we add him"): 📋 on the list, then
+      // ⚠ WANTS IN — still RSVPs, his Going is the signal to add him.
+      const listName = (c) => RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim());
+      const wantsChip = (c) => `<span style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
+          background:rgba(245,158,11,0.16); border:1px solid #f59e0b; color:#fcd34d;">${esc(copy('board_wants_in_chip', { list: listName(c) }) || `⚠ not on ${listName(c)} list`)}</span>`;
+      const splitByList = (list, c, cardFn) => {
+        if (!this.leagueListFor(c.teamId)) return list.map(cardFn).join('');
+        const on = list.filter(p => this.onLeagueList(c.teamId, p.personId));
+        const off = list.filter(p => !this.onLeagueList(c.teamId, p.personId));
+        return (on.length ? subHead(copy('board_listed_sub', { list: listName(c) }) || `📋 On the ${listName(c)} list`, on.length) + on.map(cardFn).join('') : '')
+          + (off.length ? subHead(copy('board_wants_in_sub', { list: listName(c) }) || `⚠ Wants in · not on the ${listName(c)} list`, off.length)
+              + off.map(p => cardFn(p, wantsChip(c))).join('') : '');
+      };
+      const activeHtml = head(copy('board_plays_h') || 'ACTIVE', cats.active.length, ...GREEN)
+        + (cats.active.length ? splitByList(ordered(cats.active), col, (p, x) => card(p, x)) : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+      // ⭐ CALL-UP POOL: men of a team folded into this column
+      // (teams.team_pill_fold_into_id — APSL Reserves → APSL) who are not
+      // on this team.  Their cards act on the folded team's row.
+      const mine = new Set(bucket.map(p => Number(p.personId)).filter(Boolean));
+      const poolHtml = (data.columns || []).filter(c => Number(c.teamPillFoldInto) === Number(col.teamId)).map(child => {
+        const cb = (data.buckets && data.buckets[String(child.teamId)]) || [];
+        const pool = this.orderColumnPlayers(cb).map(r => r.player).filter(p => !mine.has(Number(p.personId)));
+        if (!pool.length) return '';
+        const poolCard = (p, x = '') => this.renderPlayer(
+          { ...p, nameChipHtml: (p.nameChipHtml || '') + listChips(p) + x }, data.columns, child, cb.indexOf(p) + 1, cb.length);
+        return head(copy('board_callup_pool_h') || '⭐ CALL-UP POOL · asked when called up', pool.length, ...BLUE)
+          + splitByList(pool, child, poolCard);
+      }).join('');
       return this.renderFromLaPicker(col)
         + section(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard, '#e879f9', 'rgba(232,121,249,0.14)')
-        + section(copy('board_plays_h') || 'PLAYS', cats.active, ...GREEN, true)
+        + activeHtml
+        + poolHtml
         + riders
         + section(copy('board_callins_h') || '↔ CALL INS', cats.callin, ...BLUE)
         + section(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, ...BLUE)
@@ -1824,6 +1855,9 @@ class RosterScreenBase extends Screen {
   // (teams.league_roster, mig 1007 — youth U19 has none; owner 11/3).
   inTerm(col) {
     if (col && !col.isUnassigned && this.boardView === 'roster' && col.leagueRoster === false) return false;
+    // Team pill (mig 1010): a folded team (APSL Reserves) is no column of
+    // its own — its men show as the CALL-UP POOL inside the parent column.
+    if (col && !col.isUnassigned && this.boardView === 'team' && col.teamPillFoldInto) return false;
     const t = this._term;
     if (!t || !t.term || !col || col.isUnassigned) return true;
     const terms = t.teams && t.teams[String(col.teamId)];

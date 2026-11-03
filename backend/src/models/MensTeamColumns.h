@@ -41,6 +41,9 @@ public:
         // teams.league_roster (mig 1007): false = no league roster, so the
         // #teams Roster pill leaves the column out (youth U19).
         bool        leagueRoster = true;
+        // teams.team_pill_fold_into_id (mig 1010): the Team pill shows this
+        // team's men as that team's CALL-UP POOL, not as a column. 0 = none.
+        int         teamPillFoldInto = 0;
     };
 
     // domain param scopes every query.  Default 'mens' keeps existing
