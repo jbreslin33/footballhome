@@ -3573,9 +3573,12 @@ class GameCenterScreen extends EventScreen {
       const body = await res.json().catch(() => null);
       this.regGaps = res.ok && body ? (body.gaps || []) : null;
       this.leagueList = res.ok && body ? (body.league_list || null) : null;
+      // Every list the check reads (mig 1011: APSL Active + Reserve).
+      this.leagueLists = res.ok && body ? (body.league_lists || (body.league_list ? [body.league_list] : [])) : [];
     } catch (err) {
       this.regGaps = null;
       this.leagueList = null;
+      this.leagueLists = [];
     }
   }
 
@@ -3586,45 +3589,54 @@ class GameCenterScreen extends EventScreen {
   // strip says so in red — "we need to make sure we show that it failed".
   async _pullLeagueList() {
     const id = this._fhEventId();
-    const list = this.leagueList;
-    if (!id || !list || !list.team_id || this._leagueListPulledFor === id) return;
+    const lists = (this.leagueLists || []).filter(l => l && l.team_id);
+    if (!id || !lists.length || this._leagueListPulledFor === id) return;
     this._leagueListPulledFor = id;
     this._leagueListState = 'pulling';
     this._leagueListError = null;
+    this._leagueListFailed = null;
     this._render();
-    try {
-      const res = await this.auth.fetch('/api/mens-roster/official-roster-refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId: list.team_id }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok || body.error || !(body.names || []).length)
-        throw new Error(body.error || body.message || `no names parsed (HTTP ${res.status})`);
-      this._leagueListState = 'ok';
-    } catch (err) {
-      this._leagueListState = 'fail';
-      this._leagueListError = err.message;
+    // One at a time — never parallel TeamPass pulls (one account, its
+    // sessions race).  APSL's two lists share one TeamPass page.
+    for (const list of lists) {
+      try {
+        const res = await this.auth.fetch('/api/mens-roster/official-roster-refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamId: list.team_id }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || body.error || !(body.names || []).length)
+          throw new Error(body.error || body.message || `no names parsed (HTTP ${res.status})`);
+      } catch (err) {
+        this._leagueListState = 'fail';
+        this._leagueListError = err.message;
+        this._leagueListFailed = list.source_id;
+        break;
+      }
     }
+    if (this._leagueListState !== 'fail') this._leagueListState = 'ok';
     if (this._fhEventId() !== id) return;
     await this._loadRegGaps();
     this._render();
   }
 
-  // The league list's state line for the strip: 🟡 pulling, ✓ checked,
-  // or ⚠ failed / never pulled — the last two in red.
+  // The league lists' state line for the strip: 🟡 pulling, ✓ checked,
+  // or ⚠ failed / never pulled — the last two in red, naming the list.
   _leagueListLine() {
-    const list = this.leagueList;
-    if (!list) return null;
+    const lists = (this.leagueLists && this.leagueLists.length) ? this.leagueLists : (this.leagueList ? [this.leagueList] : []);
+    if (!lists.length) return null;
     const copy = (tier, tokens) => (window.MessageCopy ? MessageCopy.block('reg_gap', tier, tokens) : '') || '';
     const when = (iso) => iso ? new Date(iso).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : '';
-    const league = list.league || '';
-    if (this._leagueListState === 'pulling') return { bad: false, text: copy('list_pulling', { league }) };
-    if (!list.names_pulled_at) return { bad: true, text: copy('list_never', { league }) };
-    const failed = this._leagueListState === 'fail' || list.ok === false;
-    if (failed) return { bad: true, text: copy('list_failed', { league, time: when(list.names_pulled_at),
-                                                                note: this._leagueListError || list.note || '?' }) };
-    return { bad: false, text: copy('list_ok', { league, time: when(list.fetched_at), n: list.names }) };
+    const all = lists.map(l => l.league || '').filter(Boolean).join(' + ');
+    if (this._leagueListState === 'pulling') return { bad: false, text: copy('list_pulling', { league: all }) };
+    const never = lists.find(l => !l.names_pulled_at);
+    if (never) return { bad: true, text: copy('list_never', { league: never.league || '' }) };
+    const failed = lists.find(l => (this._leagueListState === 'fail' && l.source_id === this._leagueListFailed) || l.ok === false);
+    if (failed) return { bad: true, text: copy('list_failed', { league: failed.league || '', time: when(failed.names_pulled_at),
+                                                                note: (failed.source_id === this._leagueListFailed && this._leagueListError) || failed.note || '?' }) };
+    const oldest = lists.map(l => l.fetched_at).filter(Boolean).sort()[0];
+    return { bad: false, text: copy('list_ok', { league: all, time: when(oldest), n: lists.reduce((a, l) => a + (Number(l.names) || 0), 0) }) };
   }
 
   // ---- Can't-play warnings (mig 661) ----

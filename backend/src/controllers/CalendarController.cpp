@@ -3259,13 +3259,16 @@ Response CalendarController::handleGetRegistrationGaps(const Request& request) {
         }
         // The league's own list the check ran on (mig 645) — Game Center
         // re-pulls it on open and says loudly when the pull failed.
+        // Every list (mig 1011: APSL = Active + Reserve); league_list stays
+        // the first one for older readers.
         json list = nullptr;
+        json lists = json::array();
         for (const auto& r : db->query(
                 "SELECT source_id, team_id, league_label, system, last_fetch_ok, last_fetch_note, names, matched, "
                 "       to_char(last_fetched_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS last_fetched_at, "
                 "       to_char(names_pulled_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS names_pulled_at "
                 "  FROM fh_event_league_list($1::bigint)", {std::to_string(fhEventId)})) {
-            list = {{"source_id",       r["source_id"].as<long long>()},
+            json one = {{"source_id",       r["source_id"].as<long long>()},
                     {"team_id",         r["team_id"].as<long long>()},
                     {"league",          textOrNull(r, "league_label")},
                     {"system",          textOrNull(r, "system")},
@@ -3275,8 +3278,10 @@ Response CalendarController::handleGetRegistrationGaps(const Request& request) {
                     {"names_pulled_at", textOrNull(r, "names_pulled_at")},
                     {"names",           r["names"].as<long long>()},
                     {"matched",         r["matched"].as<long long>()}};
+            if (list.is_null()) list = one;
+            lists.push_back(std::move(one));
         }
-        return jsonOk({{"gaps", rows}, {"league_list", list}});
+        return jsonOk({{"gaps", rows}, {"league_list", list}, {"league_lists", lists}});
     } catch (const std::exception& e) {
         std::cerr << "[registration-gaps] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
