@@ -44,6 +44,9 @@ public:
         // teams.team_pill_fold_into_id (mig 1010): the Team pill shows this
         // team's men as that team's CALL-UP POOL, not as a column. 0 = none.
         int         teamPillFoldInto = 0;
+        // Match-day squad (mig 760): teams.matchday_squad_size, NULL =
+        // field_size + 9 (20 for 11v11). 0 = unknown format.
+        int         matchdaySquad = 0;
     };
 
     // domain param scopes every query.  Default 'mens' keeps existing

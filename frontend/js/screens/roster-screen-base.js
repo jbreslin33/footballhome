@@ -815,7 +815,16 @@ class RosterScreenBase extends Screen {
     const GREY  = ['#94a3b8', 'rgba(148,163,184,0.14)'];
     const ORANGE = ['#f97316', 'rgba(249,115,22,0.14)'];
     const RED    = ['#ef4444', 'rgba(239,68,68,0.14)'];
-    const riders = ridersCount ? head(copy('board_calldowns_h') || '⭐ CALL-DOWNS', ridersCount, ...BLUE) + ridersHtml : '';
+    // Direction (owner 11/3: "call downs belong in liga 1 … apsl col should
+    // be call ups"): the board runs top-down by board_sort_order (APSL →
+    // Reserves → Liga 1), so a rider from a team lower on the board is
+    // coming UP; from higher up, coming DOWN.
+    const riderList = (data.autoInvites && data.autoInvites[String(col.teamId)]) || [];
+    const sortOf = (tid) => { const c = (data.columns || []).find(x => Number(x.teamId) === Number(tid)); return c ? Number(c.sortOrder) : null; };
+    const ridersUp = riderList.length > 0 && riderList.every(r => sortOf(r.fromTeamId) != null && sortOf(r.fromTeamId) > Number(col.sortOrder));
+    const riders = ridersCount ? head(ridersUp ? (copy('board_callups_h') || '⭐ CALL-UPS · every game') : (copy('board_calldowns_h') || '⭐ CALL-DOWNS'),
+      ridersCount, ...BLUE) + ridersHtml : '';
+    const riderIds = new Set(riderList.map(r => Number(r.personId)));
 
     if (this.boardView === 'team') {
       const cats = { onboard: [], active: [], callin: [], paper: [], injured: [], practice_squad: [], inactive: [] };
@@ -851,18 +860,38 @@ class RosterScreenBase extends Screen {
       const mine = new Set(bucket.map(p => Number(p.personId)).filter(Boolean));
       const poolHtml = (data.columns || []).filter(c => Number(c.teamPillFoldInto) === Number(col.teamId)).map(child => {
         const cb = (data.buckets && data.buckets[String(child.teamId)]) || [];
-        const pool = this.orderColumnPlayers(cb).map(r => r.player).filter(p => !mine.has(Number(p.personId)));
+        const pool = this.orderColumnPlayers(cb).map(r => r.player)
+          .filter(p => !mine.has(Number(p.personId)) && !riderIds.has(Number(p.personId)));   // standing call-ups list above
         if (!pool.length) return '';
         const poolCard = (p, x = '') => this.renderPlayer(
           { ...p, nameChipHtml: (p.nameChipHtml || '') + listChips(p) + x }, data.columns, child, cb.indexOf(p) + 1, cb.length);
         return head(copy('board_callup_pool_h') || '⭐ CALL-UP POOL · asked when called up', pool.length, ...BLUE)
           + splitByList(pool, child, poolCard);
       }).join('');
+      // 👀 Sees every game (owner 11/3: "we always bring 20 so this list
+      // needs to be at least 20") — who is asked to RSVP with no one
+      // lifting a finger: full spots not injured (ACTIVE + NEEDS ONBOARD)
+      // plus standing call-ups/downs, against the match-day squad
+      // (teams.matchday_squad_size, NULL = field + 9).  Red when short.
+      const H = RosterScreenBase.HEALTH;
+      const autoIds = new Set(bucket.filter(p => this.columnCategoryOf(p) === 'active').map(p => Number(p.personId)));
+      riderList.forEach(r => { if (!H.people[r.personId]) autoIds.add(Number(r.personId)); });
+      const target = Number(col.matchdaySquad) || 0;
+      const seesN = autoIds.size;
+      const seesHtml = target ? (() => {
+        const short = Math.max(0, target - seesN);
+        const [c, bg] = short ? ['#ef4444', 'rgba(239,68,68,0.16)'] : ['#22c55e', 'rgba(34,197,94,0.10)'];
+        const text = short
+          ? (copy('board_sees_short', { n: seesN, target, short }) || `👀 Sees every game: ${seesN} / ${target} · ⚠ ${short} short — call up or add to the team`)
+          : (copy('board_sees_ok', { n: seesN, target }) || `👀 Sees every game: ${seesN} / ${target}`);
+        return `<div style="font-size:0.78rem; font-weight:800; color:${c}; background:${bg}; border:1px solid ${c}; border-radius:4px; padding:4px 8px; margin:2px 0 4px;">${esc(text)}</div>`;
+      })() : '';
       return this.renderFromLaPicker(col)
+        + seesHtml
         + section(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard, '#e879f9', 'rgba(232,121,249,0.14)')
         + activeHtml
-        + poolHtml
         + riders
+        + poolHtml
         + section(copy('board_callins_h') || '↔ CALL INS', cats.callin, ...BLUE)
         + section(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, ...BLUE)
         + section(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, ...AMBER)

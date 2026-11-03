@@ -16,7 +16,7 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
         auto* db = Database::getInstance();
         nlohmann::json autoInv = nlohmann::json::object();
         for (const auto& r : db->query(
-            "SELECT a.team_id, a.person_id, "
+            "SELECT a.team_id, a.person_id, a.from_team_id, "
             "       NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), '') AS name, "
             "       ft.name AS from_team "
             "  FROM team_auto_invites a "
@@ -28,7 +28,8 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
             autoInv[tid].push_back({
                 {"personId", r["person_id"].as<long long>()},
                 {"name", r["name"].is_null() ? "" : r["name"].c_str()},
-                {"fromTeam", r["from_team"].is_null() ? "" : r["from_team"].c_str()}});
+                {"fromTeam", r["from_team"].is_null() ? "" : r["from_team"].c_str()},
+                {"fromTeamId", r["from_team_id"].is_null() ? nlohmann::json(nullptr) : nlohmann::json(r["from_team_id"].as<long long>())}});
         }
         body["autoInvites"] = std::move(autoInv);
         // Call-up-gated teams (mig 605): roster rows grant no games

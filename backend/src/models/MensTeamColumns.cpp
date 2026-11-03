@@ -23,6 +23,7 @@ MensTeamColumns::Column rowToColumn(const pqxx::row& row) {
     c.leagueName   = row["league_name"].is_null() ? std::string{} : row["league_name"].c_str();
     c.leagueRoster = row["league_roster"].is_null() ? true : row["league_roster"].as<bool>();
     c.teamPillFoldInto = row["team_pill_fold_into_id"].is_null() ? 0 : row["team_pill_fold_into_id"].as<int>();
+    c.matchdaySquad = row["matchday_squad"].is_null() ? 0 : row["matchday_squad"].as<int>();
     return c;
 }
 
@@ -45,7 +46,7 @@ std::vector<MensTeamColumns::Column> MensTeamColumns::loadAll(bool includeInacti
     const std::string sql =
         "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
         "       t.short_label, t.board_sort_order AS sort_order, "
-        "       t.color, t.mutex_group, t.max_roster, t.field_size, t.league_roster, t.team_pill_fold_into_id, "
+        "       t.color, t.mutex_group, t.max_roster, t.field_size, t.league_roster, t.team_pill_fold_into_id, COALESCE(t.matchday_squad_size, t.field_size + 9) AS matchday_squad, "
         "       l.id AS league_id, l.name AS league_name "
         "  FROM teams t "
         "  LEFT JOIN divisions d ON d.id = t.division_id "
@@ -65,7 +66,7 @@ std::optional<MensTeamColumns::Column> MensTeamColumns::findByTeamId(int teamId)
     const auto rows = db_->query(
         "SELECT t.id, t.id AS team_id, COALESCE(t.label, t.name) AS label, "
         "       t.short_label, t.board_sort_order AS sort_order, "
-        "       t.color, t.mutex_group, t.max_roster, t.field_size, t.league_roster, t.team_pill_fold_into_id, "
+        "       t.color, t.mutex_group, t.max_roster, t.field_size, t.league_roster, t.team_pill_fold_into_id, COALESCE(t.matchday_squad_size, t.field_size + 9) AS matchday_squad, "
         "       l.id AS league_id, l.name AS league_name "
         "  FROM teams t "
         "  LEFT JOIN divisions d ON d.id = t.division_id "
