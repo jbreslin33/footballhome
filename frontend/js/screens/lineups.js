@@ -1696,7 +1696,9 @@ class LineupsScreen extends Screen {
     const contactBtn = (p.email || p.phone) ? ContactPopup.button({
       key: `lineups-la:${p.personId}`, screen: this,
       recipients: [{ personId: p.personId, name, phone: p.phone || '', email: p.email || '' }],
-      messages: [ContactPopup.helloMessage('adult', p.firstName) || ContactPopup.blankMessage(), ContactPopup.signInMessage()],
+      messages: window.SectionContact
+        ? SectionContact.messages(this.gender, { screen: this, playerId: p.personId, first: p.firstName || '' })
+        : [ContactPopup.blankMessage(), ContactPopup.signInMessage()],
     }) : '';
 
     this._closeCardModal();

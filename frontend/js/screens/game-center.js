@@ -975,9 +975,9 @@ class GameCenterScreen extends EventScreen {
         return;
       }
       const fixReg = e.target.closest('[data-gc-fix-reg]');
-      if (fixReg && this.isCoach) { this._openContactSheet(Number(fixReg.dataset.gcFixReg), 'reg'); return; }
+      if (fixReg && this.isCoach) { this._gcContactOpen(Number(fixReg.dataset.gcFixReg), 'reg'); return; }
       const duesNote = e.target.closest('[data-gc-dues-note]');
-      if (duesNote && this.isCoach) { this._openContactSheet(Number(duesNote.dataset.gcDuesNote), 'dues'); return; }
+      if (duesNote && this.isCoach) { this._gcContactOpen(Number(duesNote.dataset.gcDuesNote), 'dues'); return; }
       const jump = e.target.closest('[data-gc-jump]');
       if (jump) {
         const card = this.element.querySelector(`#gc-card-${jump.dataset.gcJump}`);
@@ -2887,8 +2887,7 @@ class GameCenterScreen extends EventScreen {
         <div data-gc-contact style="margin-top:5px;">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
             <span style="font-size:0.68rem; font-weight:800;">${this.escapeHtml(badge)}</span>
-            <button type="button" data-gc-contact-open="${personId}"
-              style="padding:4px 12px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.72rem; color:#fff; background:#0284c7;">${this.escapeHtml(cm('button') || '✉ CONTACT')}${regOn ? ' ⚠' : ''}</button>
+            ${this._gcContactButton(personId)}
           </div>
           <div data-gc-squad-note style="font-size:0.66rem; opacity:0.85; min-height:1.3em; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${status || '&nbsp;'}</div>
         </div>`;
@@ -3114,26 +3113,121 @@ class GameCenterScreen extends EventScreen {
   // gets no line.
   _contactLine(playerId) {
     const personId = this._personIdFor(playerId);
-    const r = personId && (this.gameRecipients || []).find(x => Number(x.personId) === personId);
-    if (!r || (!r.phone && !r.email)) return '';
-    // The section's one list (components/section-contact.js, owner
-    // 2026-11-03: "all contact pop ups … consistent within men or boys or
-    // girls") — the same popup #teams and Event Center draw.
-    const pl = (this.players || []).find(x => Number(x.personId) === personId) || {};
-    const contact = ContactPopup.button({
-      key: `gc-player:${personId}`, screen: this,
-      recipients: [{ personId, name: r.name || '', phone: r.phone || '', email: r.email || '', forPersonId: personId }],
-      messages: window.SectionContact
-        ? SectionContact.messages(this.ev && this.ev.category, {
-            screen: this, playerId: personId, first: pl.firstName || '',
-            parentFirst: r.viaParent ? String(r.name || '').split(' ')[0] : '',
-          })
-        : [ContactPopup.blankMessage(), ContactPopup.signInMessage()],
-    });
+    const btn = personId ? this._gcContactButton(personId) : '';
+    if (!btn) return '';
+    const r = (this.gameRecipients || []).find(x => Number(x.personId) === personId);
     return `<div style="font-size:0.66rem; opacity:0.9; margin-top:4px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-      ${contact}
-      ${r.viaParent ? `<span style="opacity:0.7;">(parent)</span>` : ''}
+      ${btn}
+      ${r && r.viaParent ? `<span style="opacity:0.7;">(parent)</span>` : ''}
     </div>`;
+  }
+
+  // ── The one 📇 Contact popup for a player (owner 2026-11-03: "no more
+  // ways outside of contact button to contact. contact popup is all
+  // inclusive" + "consistent within men or boys or girls") ────────────
+  // This game's own messages lead — the registration form on a gap, the
+  // dues note for a dues alternate, the RSVP reminder when they owe an
+  // answer, the personal game link — then the section's list
+  // (components/section-contact.js), the same one #teams and Event Center
+  // offer.  Every per-card way in (the card button, the registration
+  // banner's fix, the dues chip, the registration strip) opens this.
+  _gcContactCfg(personId, defaultKey = null) {
+    if (!window.ContactPopup || !window.SectionContact || !personId) return null;
+    const pl = (this.players || []).find(x => Number(x.personId) === personId) || {};
+    const st = (this.textMarks && this.textMarks.people && this.textMarks.people[String(personId)]) || null;
+    const gr = (this.gameRecipients || []).find(x => Number(x.personId) === personId) || null;
+    // Every parent separately when the contact states are known (admins,
+    // mig 682); else the game's recipient row (coaches).
+    const recipients = (st && Array.isArray(st.recipients) && st.recipients.length
+      ? st.recipients.map(x => ({ personId: x.recipient_person_id || personId, rid: x.recipient_person_id || null,
+                                  name: x.recipient_name || pl.name || '', phone: x.phone || null, email: x.email || null, forPersonId: personId }))
+      : gr ? [{ personId, rid: null, name: gr.name || '', phone: gr.phone || null, email: gr.email || null, forPersonId: personId }] : [])
+      .filter(x => x.phone || x.email);
+    if (!recipients.length) return null;
+
+    const only = (rc) => (rc.rid ? { recipient_person_ids: [rc.rid] } : {});
+    const hrefOf = (data, channel) => {
+      const x = (data.sends && data.sends[0]) || data;
+      const href = channel === 'email' ? (x.gmail_href || x.mailto_href) : x.sms_href;
+      if (!href) throw new Error('No message came back');
+      return { ...x, href };
+    };
+    const flushLineup = async () => { if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; await this._saveLineup(); } };
+    const refreshMarks = () => this._loadTextMarks().then(() => this._render());
+
+    const gap = this._regGapFor(personId);
+    const regOn = !!(gap && !gap.player_done);
+    const duesAlt = !!(pl.playerId != null && this.stats.get(Number(pl.playerId))?.duesAlternate);
+    const noResp = !!(pl.playerId != null && this._noRespIds && (this._noRespIds.has(pl.playerId) || this._noRespIds.has(Number(pl.playerId)) || this._noRespIds.has(String(pl.playerId))));
+    const ctx = [];
+    if (regOn) ctx.push({
+      key: 'reg', label: this._cm('what_reg', { form: gap.form_label || '' }) || '📝 Registration form',
+      subject: gap.subject || '', body: gap.body || '', purpose: `reg_link:${this._fhEventId()}`,
+      sendClub: async () => this._clubSend(`/api/calendar/events/${this._fhEventId()}/registration-gaps/text`, { person_id: personId }),
+      onSent: refreshMarks,
+    });
+    if (duesAlt) ctx.push({
+      key: 'dues', label: this._cm('what_dues') || '💰 Dues note', noClub: true, purpose: `dues:${this.matchId}`,
+      resolve: async (rc, channel) => hrefOf(await this._postReminder('/api/rsvp-board/dues-note',
+        { match_id: Number(this.matchId), person_id: personId, channel, ...only(rc) }), channel),
+    });
+    if (noResp) ctx.push({
+      key: 'remind', label: this._cm('what_remind') || '📣 RSVP reminder', noClub: true, purpose: `remind:${this.matchId}`,
+      resolve: async (rc, channel) => hrefOf(await this._postReminder('/api/rsvp-board/remind',
+        { person_id: personId, channel, fh_event_id: this._fhEventId() || 0, ...only(rc) }), channel),
+      onSent: () => this._loadReminders().then(() => this._render()),
+    });
+    ctx.push({
+      key: 'game', label: this._cm('what_game') || '🏟 Game link', purpose: `game_link:${this.matchId}`,
+      resolve: async (rc, channel) => {
+        await flushLineup();
+        const data = await this._postReminder('/api/rsvp-board/squad-notice', { match_id: Number(this.matchId), person_id: personId, channel, ...only(rc) });
+        this.squadNotice = data.status || this.squadNotice;
+        return hrefOf(data, channel);
+      },
+      sendClub: async (rc) => {
+        await flushLineup();
+        const data = await this._clubSend('/api/rsvp-board/squad-notice', { match_id: Number(this.matchId), person_id: personId, channel: 'club_sms', ...only(rc) });
+        if (data.status) this.squadNotice = data.status;
+      },
+      onSent: refreshMarks,
+    });
+
+    const parentRow = recipients.find(x => x.rid && x.rid !== personId);
+    return {
+      key: `gc-player:${personId}`, screen: this, recipients,
+      messages: SectionContact.messages(this.ev && this.ev.category, {
+        screen: this, playerId: personId, first: pl.firstName || '',
+        parentFirst: parentRow ? String(parentRow.name || '').split(' ')[0]
+                   : (gr && gr.viaParent ? String(gr.name || '').split(' ')[0] : ''),
+        context: ctx,
+      }),
+      defaultKey: defaultKey || ctx[0].key,
+      flagged: regOn || duesAlt || noResp,
+      title: `Contact ${pl.name || [pl.firstName, pl.lastName].filter(Boolean).join(' ')}`,
+    };
+  }
+
+  _gcContactButton(personId, extra = {}) {
+    const cfg = this._gcContactCfg(personId);
+    return cfg ? ContactPopup.button({ ...cfg, ...extra }) : '';
+  }
+
+  _gcContactOpen(personId, defaultKey) {
+    const cfg = this._gcContactCfg(personId, defaultKey);
+    if (cfg) ContactPopup.open(cfg);
+  }
+
+  // A tracked club-number send (game link / registration form): the
+  // server writes the delivery mark the card reads.
+  async _clubSend(url, payload) {
+    const res = await this.auth.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) {
+      const why = data.error || data.message || `HTTP ${res.status}`;
+      throw new Error(why === 'not_opted_in' ? ((window.MessageCopy && MessageCopy.block('text_mark', 'no_consent')) || why) : why);
+    }
+    return data;
   }
 
   // Who is injured right now (person_injuries, migration 510) — set on
@@ -3774,13 +3868,11 @@ class GameCenterScreen extends EventScreen {
   // 💬/✉ registration link pair for one gap — the strip and the card
   // share it.  The message is the league form's DB copy, filled server-side.
   _regGapButtons(g) {
-    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
-    const btn = 'padding:2px 8px; border-radius:6px; font-size:0.76rem; font-weight:700; text-decoration:none; white-space:nowrap;';
-    const sms = g.phone ? this.buildSmsComposeHref({ to: g.phone, body: g.body || '' }) : null;
-    const mail = g.email ? this.buildGmailComposeHref({ to: g.email, subject: g.subject || '', body: g.body || '' }) : null;
-    return `${sms ? `<a href="${sms}" title="Text ${esc(g.phone)} — ${esc(g.form_label)}" style="${btn} background:#334155; color:#fff;">💬 ${esc(g.form_label)}</a>` : ''}
-      ${mail ? `<a href="${mail}" target="_blank" rel="noopener noreferrer" title="Email ${esc(g.email)} — ${esc(g.form_label)}" style="${btn} background:#334155; color:#fff;">✉ ${esc(g.form_label)}</a>` : ''}
-      ${!sms && !mail ? '<span style="font-size:0.74rem; opacity:0.5;">no phone or email on file</span>' : ''}`;
+    // The one 📇 Contact popup, opening on the registration form (owner
+    // 2026-11-03: no ways to contact outside the Contact button).
+    const cfg = this._gcContactCfg(g.person_id, 'reg');
+    return cfg ? ContactPopup.button({ ...cfg, key: `gc-reg:${g.person_id}` })
+      : '<span style="font-size:0.74rem; opacity:0.5;">no phone or email on file</span>';
   }
 
   // Why this person is a gap: the league-list reasons (mig 645) name the

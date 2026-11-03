@@ -460,6 +460,11 @@ class PersonScreen extends Screen {
 
     // Header card.
     this._renderHeaderCard(data);
+    // The section the 📇 Contact popup offers (SectionContact): the
+    // person's live LA membership, else any.
+    const mems = data.memberships || [];
+    const live = mems.find(m => !m.ended_at && !m.endedAt) || mems[0] || null;
+    this._personSection = live ? live.category : '';
     this._renderContactCard(data.contact || { emails: [], phones: [] });
     this._renderAccountCard(data.account || null);
     this._renderMembershipsCard(data.memberships || []);
@@ -603,13 +608,15 @@ class PersonScreen extends Screen {
     const phone = phones.find(p => p.isPrimary && p.canReceiveSms) || phones.find(p => p.canReceiveSms) || phones[0] || null;
     if (!email && !phone) return '';
     const name = this._personName || '';
-    const hello = ContactPopup.helloMessage('adult', this._personFirst);
     return `<div style="margin-bottom:8px;">${ContactPopup.button({
       key: `person:${this._personId}`,
       screen: this,
       recipients: [{ personId: this._personId, name, phone: phone ? phone.phone : null, email: email ? email.email : null,
                      noText: !!phone && !phone.canReceiveSms }],
-      messages: [...(hello ? [hello] : []), ContactPopup.signInMessage()],
+      // The section's one list (components/section-contact.js, 11/3).
+      messages: window.SectionContact
+        ? SectionContact.messages(this._personSection, { screen: this, playerId: this._personId, first: this._personFirst })
+        : [ContactPopup.signInMessage()],
       title: `Contact ${name}`,
     })}</div>`;
   }

@@ -282,11 +282,12 @@ class YouthRosterScreen extends Screen {
           amount: amountNum != null ? `$${amountNum}` : '',
         })
       : '';
-    const hello = ContactPopup.helloMessage('parent_coach', p.parentFirstName || '', { child: p.firstName || '' }) || ContactPopup.blankMessage();
-    const messages = [
-      ...(payBody ? [{ key: 'dues', label: MessageCopy.block('contact_popup', 'msg_dues', {}) || '💸 Dues', subject: hello.subject, body: payBody, noClub: true }] : []),
-      hello,
-    ];
+    // The section's one list after the dues note (section-contact.js, 11/3).
+    const hello = ContactPopup.helloMessage('parent', p.parentFirstName || '', { child: p.firstName || '' });
+    const dues = payBody ? [{ key: 'dues', label: MessageCopy.block('contact_popup', 'msg_dues', {}) || '💸 Dues', subject: hello ? hello.subject : '', body: payBody, noClub: true }] : [];
+    const messages = window.SectionContact
+      ? SectionContact.messages('boys', { screen: this, first: p.firstName || '', parentFirst: p.parentFirstName || '', context: dues })
+      : [...dues, hello || ContactPopup.blankMessage()];
     const contactBtn = (p.parentPhone || p.parentEmail) ? ContactPopup.button({
       key: `youth:${p.id || p.fullName}`, screen: this, flagged: !!payBody,
       recipients: [{ personId: null, name: parentFull || 'Parent', phone: p.parentPhone || '', email: p.parentEmail || '' }],

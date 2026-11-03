@@ -656,8 +656,9 @@ class PaymentsScreen extends Screen {
     this.membersErrorByTab[key] = null;
     try {
       const copyReady = MessageCopy.load(this.auth); // payment notice wording (migration 367), in parallel
+      const formsReady = window.SectionContact ? SectionContact.load(this.auth) : Promise.resolve(); // 📇 section forms
       const res = await this.auth.fetch(`/api/payments/${key}/members`);
-      await copyReady;
+      await Promise.all([copyReady, formsReady]);
       if (!res.ok) {
         const body = await res.text();
         throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
@@ -1233,8 +1234,7 @@ class PaymentsScreen extends Screen {
     const emailNotice = m.email ? this._paymentNotice(m, 'email') : null;
     const textNotice  = (m.phone && m.phoneSms !== false) ? this._paymentNotice(m, 'sms') : null;
     const anyNotice   = emailNotice || textNotice;
-    const hello = window.ContactPopup ? ContactPopup.helloMessage('adult', m.firstName) : null;
-    const contactMessages = [
+    const contactContext = [
       ...(anyNotice ? [{
         key: 'dues',
         label: anyNotice.label,
@@ -1252,8 +1252,11 @@ class PaymentsScreen extends Screen {
           } });
         },
       }] : []),
-      ...(hello ? [hello] : []),
     ];
+    // The section's one list after the dues notice (section-contact.js, 11/3).
+    const contactMessages = window.SectionContact
+      ? SectionContact.messages(m._tab || this.tab, { screen: this, playerId: m.personId, first: m.firstName || '', context: contactContext })
+      : contactContext;
     const contactBtn = (window.ContactPopup && contactMessages.length && (m.email || m.phone))
       ? ContactPopup.button({
           key: `payments:${m._tab || this.tab}:${m.laUserId || m.personId}`,

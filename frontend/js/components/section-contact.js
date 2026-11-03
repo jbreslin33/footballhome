@@ -84,6 +84,9 @@
   function messages(rawSection, ctx = {}) {
     const section = sectionOf(rawSection);
     const first = ctx.first || '';
+    // Forms not fetched yet → start it (cached); screens that await load()
+    // first never miss them.
+    if (REG_CATEGORY[section] && !regRows(section).length && ctx.screen && ctx.screen.auth) load(ctx.screen.auth);
     const list = [...(ctx.context || [])];
 
     const hello = isYouth(section)
@@ -102,7 +105,9 @@
       if (reg) list.push({ key: 'register', label: cp('msg_register', '📝 Register'), subject: reg.subject, body: reg.body });
     }
 
-    list.push(ContactPopup.signInMessage());
+    // Sign-in and welcome are minted for a person — none for a contact
+    // FH has no person row for (the youth-roster parent from LA).
+    if (ctx.playerId) list.push(ContactPopup.signInMessage());
     if (ctx.screen && ctx.playerId) list.push(welcomeMessage(ctx.screen, ctx.playerId, { needsDocs: ctx.needsDocs, onSent: ctx.onWelcomeSent }));
     list.push(ContactPopup.blankMessage());
 

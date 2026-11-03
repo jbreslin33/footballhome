@@ -20,7 +20,10 @@
 // resolve(recipient, 'email'|'sms') → { href, ... } is for words the
 // server builds at send time (sign-in link, welcome).  onSent(resolved,
 // via, words) runs after a send, for the screen's own tracking.  noClub
-// keeps a message off the club number (dues notices).  beforeEmail(words)
+// keeps a message off the club number (dues notices).  purpose names a
+// FH Texter / club send for the screen's delivery marks (game_link:<id>);
+// sendClub(recipient) replaces the generic club text with the screen's
+// own tracked one (a game link from the club number).  beforeEmail(words)
 // runs in the click's own tick, just before Gmail opens, for work the
 // browser only allows there (the clipboard).  A recipient with no
 // personId (a lead) still gets email and texts; the club number stays off
@@ -203,7 +206,9 @@
     try {
       const screen = st.cfg.screen || Screen.prototype;
       let href, resolved = null;
-      if (m.resolve) {
+      if (via === 'club' && m.sendClub) {
+        href = '';
+      } else if (m.resolve) {
         resolved = await m.resolve(r, via === 'email' ? 'email' : 'sms');
         href = resolved.href;
       } else if (via === 'email') {
@@ -220,14 +225,20 @@
         if (window.DesktopSms) DesktopSms.open(href); else window.location.href = href;
         say(t('opened_text', {}, '✓ Text opened'));
       } else {
-        const body = DesktopSms.parse(href).body;
-        const url = via === 'club' ? '/api/phone-relay/club-text' : '/api/phone-relay/texts';
-        const payload = via === 'club'
-          ? { person_id: r.personId, to: r.phone, body, for_person_id: r.forPersonId || r.personId, purpose: `contact:${m.key}` }
-          : { to: r.phone, body, for_person_id: r.forPersonId || r.personId, purpose: `contact:${m.key}` };
-        const res = await authFetch(url, { method: 'POST', body: JSON.stringify(payload) });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        const purpose = m.purpose || `contact:${m.key}`;
+        if (via === 'club' && m.sendClub) {
+          await m.sendClub(r);          // the screen's own tracked club send (a game link)
+        } else {
+          const body = DesktopSms.parse(href).body;
+          const url = via === 'club' ? '/api/phone-relay/club-text' : '/api/phone-relay/texts';
+          const tokenId = resolved && (resolved.token_id || resolved.tokenId);
+          const payload = via === 'club'
+            ? { person_id: r.personId, to: r.phone, body, for_person_id: r.forPersonId || r.personId, purpose }
+            : { to: r.phone, body, for_person_id: r.forPersonId || r.personId, purpose, ...(tokenId ? { magic_link_token_id: tokenId } : {}) };
+          const res = await authFetch(url, { method: 'POST', body: JSON.stringify(payload) });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        }
         say(via === 'club' ? t('sent_club', {}, '✓ Sent from the club number') : t('sent_relay', {}, '✓ Sent to your phone to send'));
       }
       if (m.onSent) m.onSent(resolved, via, words);
