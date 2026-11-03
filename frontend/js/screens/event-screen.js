@@ -1266,7 +1266,12 @@ class EventScreen extends Screen {
     const players  = rsvps.filter(r => r && !r.is_coach);
     const goingAll = players.filter(r => r.response === 'yes');
     const going    = goingAll.filter(r => r.dues_eligible !== false);
-    const noResp   = players.filter(r => r.response !== 'yes' && r.response !== 'no');
+    // 🩹 An open injury answers for them (mig 510, as on #my): no answer of
+    // their own → the Injured group, never No response, so Remind all
+    // skips them (mig 984).  An explicit answer still wins the grouping.
+    const unanswered = players.filter(r => r.response !== 'yes' && r.response !== 'no');
+    const injured  = unanswered.filter(r => r.injury);
+    const noResp   = unanswered.filter(r => !r.injury);
     const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
     const L = (tier, fb) => this.escapeHtml(cp(tier) || fb);
 
@@ -1308,6 +1313,7 @@ class EventScreen extends Screen {
       ${section(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false))}
       ${fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: true })}
       ${fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no'))}
+      ${fold('injured', L('sec_injured', '🩹 Injured'), injured)}
       ${coachSection()}`;
   }
 

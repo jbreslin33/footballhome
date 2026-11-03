@@ -2498,6 +2498,15 @@ class GameCenterScreen extends EventScreen {
     unassignedGoing.sort(byStarterRank);
     unassignedNotGoing.sort(byStarterRank);
     unassignedNoResponse.sort(byStarterRank);
+    // 🩹 An open injury answers for them (mig 510, as on #my and the event
+    // screen): no answer → the Injured group, never No Response, so the
+    // REMIND bar skips them (mig 984).  Coaches load health; others see none.
+    const unassignedInjured = unassignedNoResponse.filter(p => this._isInjured(p.id));
+    if (unassignedInjured.length) {
+      const hurt = new Set(unassignedInjured.map(p => p.id));
+      unassignedNoResponse.splice(0, unassignedNoResponse.length, ...unassignedNoResponse.filter(p => !hurt.has(p.id)));
+    }
+    const injuredLabel = (window.MessageCopy && MessageCopy.block('event_center', 'sec_injured')) || '🩹 Injured';
 
     // Coach ↔ Player view toggle (2026-08-22, owner directive: "only need
     // 1 Lineup button on screen" — coach previews exactly what players
@@ -2935,6 +2944,7 @@ class GameCenterScreen extends EventScreen {
         gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter, canMessage ? squadCard : null),
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
+        collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }),
         this._renderCallupSection(),
       ].join(''));
       return;
@@ -2951,6 +2961,7 @@ class GameCenterScreen extends EventScreen {
       this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible, canMessage ? squadCard : null) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
+      this.isCoach ? collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }) : '',
       this.isCoach ? this._renderCallupSection() : '',
     ].join(''));
   }
@@ -3127,6 +3138,12 @@ class GameCenterScreen extends EventScreen {
     } catch (err) {
       console.warn('[game-center] health unavailable:', err);
     }
+  }
+
+  _isInjured(playerId) {
+    const personId = this._personIdFor(playerId);
+    const mine = personId && this.health && this.health.people[personId];
+    return !!(mine && mine.label);
   }
 
   _injuryChip(playerId) {
