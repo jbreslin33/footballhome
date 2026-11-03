@@ -44,8 +44,9 @@ bool loadViewer(long long userId, long long eventId, Viewer* out) {
     if (rows.empty() || rows[0]["person_id"].is_null()) return false;
     out->personId = rows[0]["person_id"].as<long long>();
     const bool admin = rows[0]["is_admin"].as<bool>();
-    out->canEdit = admin || rows[0]["editor"].as<bool>();
-    out->canRead = out->canEdit || rows[0]["reader"].as<bool>();
+    // Editing is the match_plan_editors list alone (mig 991) — no admin pass.
+    out->canEdit = rows[0]["editor"].as<bool>();
+    out->canRead = out->canEdit || admin || rows[0]["reader"].as<bool>();
     return true;
 }
 
@@ -255,7 +256,7 @@ Response MatchPlanController::handleSave(const Request& request) {
     Viewer v; Response error(HttpStatus::OK, "");
     try {
         if (!gate(bearerUserId(request), eventId, &v, &error)) return error;
-        if (!v.canEdit) return jsonError(HttpStatus::FORBIDDEN, "Coaches edit the match plan.");
+        if (!v.canEdit) return jsonError(HttpStatus::FORBIDDEN, "Only the match plan editors change it.");
         json body;
         try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
         catch (const std::exception& e) { return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what()); }

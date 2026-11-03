@@ -33,8 +33,8 @@
 //        The viewer's own checklist tick for this game.
 //
 // Readers: everyone on the game, their parents, its coaches, club staff,
-// club/super admins (fh_match_plan_reader).  Editors: its coaches, club
-// staff, club/super admins (fh_match_plan_editor).  A signed-in outsider
+// club/super admins (fh_match_plan_reader).  Editors: the people on
+// match_plan_editors only (mig 991, owner 11/3: "only me can edit").  A signed-in outsider
 // gets 403, never 401 (the SPA logs out on 401).
 class MatchPlanController : public Controller {
 public:
