@@ -57,6 +57,7 @@
 #include "controllers/FilmController.h"
 #include "controllers/PyramidController.h"
 #include "controllers/CarpoolController.h"
+#include "controllers/MatchPlanController.h"
 #include "controllers/TacticalLiveController.h"
 #include "controllers/FinesController.h"
 #include "controllers/ScheduleLinksController.h"
@@ -154,6 +155,7 @@ private:
     std::shared_ptr<FilmController> film_controller_;
     std::shared_ptr<PyramidController> pyramid_controller_;
     std::shared_ptr<CarpoolController> carpool_controller_;
+    std::shared_ptr<MatchPlanController> match_plan_controller_;
     std::shared_ptr<TacticalLiveController> tactical_live_controller_;
     std::shared_ptr<FinesController> fines_controller_;
     std::shared_ptr<ScheduleLinksController> schedule_links_controller_;
@@ -260,6 +262,7 @@ public:
         film_controller_ = std::make_shared<FilmController>();
         pyramid_controller_ = std::make_shared<PyramidController>();
         carpool_controller_ = std::make_shared<CarpoolController>();
+        match_plan_controller_ = std::make_shared<MatchPlanController>();
         tactical_live_controller_ = std::make_shared<TacticalLiveController>();
         fines_controller_ = std::make_shared<FinesController>();
         schedule_links_controller_ = std::make_shared<ScheduleLinksController>();
@@ -624,6 +627,8 @@ private:
         // Who a message about one game reaches — the bulk ✉/💬 buttons on #game-center (mig 506).
         router_.useController("/api/game-message", game_message_controller_);
         router_.useController("/api/carpool", carpool_controller_);
+        // 🎯 Match plan on #game-center: match-day timeline, set pieces, tactics (mig 966).
+        router_.useController("/api/match-plan", match_plan_controller_);
         router_.useController("/api/tactical-live", tactical_live_controller_);
         router_.useController("/api/opponents", opponents_controller_);
         // Schedule release window (migration 334): when next week posts,

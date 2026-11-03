@@ -387,6 +387,15 @@ class GameCenterScreen extends EventScreen {
       toast: (m) => this._toast(m),
       escapeHtml: (t) => this.escapeHtml(t),
     });
+    // 🎯 Match plan (mig 966) — the match-day timeline from getting there to
+    // kickoff, set pieces, tactics (components/match-plan-panel.js).
+    this.matchPlanPanel = new MatchPlanPanel(this.auth, {
+      fhEventId: () => this._fhEventId(),
+      rerender: () => this._render(),
+      toast: (m) => this._toast(m),
+      escapeHtml: (t) => this.escapeHtml(t),
+      squad: () => this._matchPlanSquad(),
+    });
     this._rosterPull = null;     // {busy} | {error} while / after a pull
     this._oppAddOpen = false;
     this.overlayOpen = false;
@@ -927,6 +936,8 @@ class GameCenterScreen extends EventScreen {
         this.navigation.goBack();
         return;
       }
+      const mpBtn = e.target.closest('[data-mp-save]');
+      if (mpBtn) { this.matchPlanPanel.click(mpBtn); return; }
       const kind = e.target.closest('[data-event-kind]');
       if (kind) {
         EventKindSwitch.go(this.navigation, kind.getAttribute('data-event-kind'));
@@ -1148,8 +1159,11 @@ class GameCenterScreen extends EventScreen {
       if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-gc-inv-details')) this._invOpen = e.target.open;
       const fold = e.target && e.target.getAttribute && e.target.getAttribute('data-gc-fold');
       if (fold) { if (e.target.open) this._openFolds.add(fold); else this._openFolds.delete(fold); }
+      if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-mp-fold')) this.matchPlanPanel.toggle(e.target);
     }, true);
     this.element.addEventListener('change', (e) => {
+      // 🎯 Match plan picks and checklist ticks (mig 966).
+      if (e.target.matches('[data-mp-pick], [data-mp-tick]')) { this.matchPlanPanel.input(e.target); return; }
       // 📝 draft To: ＋ add (mig 726).
       if (e.target.matches('[data-gc-draft-addrec]') && this._draftEdit) {
         const id = Number(e.target.value); if (!id) return;
@@ -1200,6 +1214,8 @@ class GameCenterScreen extends EventScreen {
     });
 
     this.element.addEventListener('input', (e) => {
+      // 🎯 Match plan tactics notes: kept across re-renders (mig 966).
+      if (e.target.matches('[data-mp-tactics]')) { this.matchPlanPanel.input(e.target); return; }
       // 📝 contact draft (mig 724): keep the text across re-renders.
       if (e.target.matches('[data-gc-draft-subject], [data-gc-draft-body]')) { this._draftReadForm(); return; }
       // ✍️ Write your own (mig 803): keep the typed text across re-renders.
@@ -1376,6 +1392,8 @@ class GameCenterScreen extends EventScreen {
       const officialRosterPromise = this._loadOfficialRoster();
       // 🚗 Carpool is for everyone on the game, parents included (mig 601).
       const carpoolPromise = this._loadCarpool();
+      // 🎯 Match plan is for everyone on the game too (mig 966).
+      const matchPlanPromise = this.matchPlanPanel.load();
 
       const [rosterResults, detailsData] = await Promise.all([
         Promise.all(rosterTeamIds.map(id =>
@@ -1384,6 +1402,7 @@ class GameCenterScreen extends EventScreen {
         remindersPromise,
         officialRosterPromise,
         carpoolPromise,
+        matchPlanPromise,
       ]);
 
       // A player on two of the game's teams keeps the first team's row.
@@ -4078,6 +4097,37 @@ class GameCenterScreen extends EventScreen {
     return this.carpoolPanel ? this.carpoolPanel.html() : '';
   }
 
+  // What the 🎯 Match plan needs from the lineup (MatchPlanPanel host
+  // contract): starters by position number (positions.sort_order — the
+  // 1-11 pills), the bench in the coach's order (first = the next best not
+  // starting), the rest of the roster, the shape and the match-up.  The
+  // panel only shows on the official view (_pillToolsHtml), so the editor
+  // state IS the official lineup here.
+  _matchPlanSquad() {
+    const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
+    const person = (id) => { const r = rosterById.get(id); return r ? { id: r.id, name: r.name } : null; };
+    const byNumber = new Map();
+    for (const pos of startingPositions) {
+      const pid = slotToPlayerId.get(pos.id);
+      const p = pid != null ? person(pid) : null;
+      if (p && pos.sortOrder != null) byNumber.set(Number(pos.sortOrder), p);
+    }
+    const bench = this.roster.filter(r => this.zones.get(r.id) === 'bench')
+      .sort((a, b) => (this.benchOrder.get(a.id) ?? Infinity) - (this.benchOrder.get(b.id) ?? Infinity))
+      .map(r => ({ id: r.id, name: r.name }));
+    const used = new Set([...byNumber.values(), ...bench].map(p => p.id));
+    const others = this.roster.filter(r => !used.has(r.id)).map(r => ({ id: r.id, name: r.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const m = this.everyonePlays ? null : this._matchup(this.matchupId);
+    return {
+      byNumber, bench, others,
+      formation: this.everyonePlays ? '' : (this.formation || ''),
+      matchup: m ? this._copyMatchup('option', { opponent: m.opponentCode, ours: m.code }) : '',
+      viewerPersonId: this.viewerPersonId != null ? Number(this.viewerPersonId) : (this.myPlayerId != null ? Number(this.myPlayerId) : null),
+      coachView: !!this.realIsCoach && this.viewMode !== 'player',
+    };
+  }
+
   async _carpoolClick(btn) {
     await this.carpoolPanel.click(btn, this.element);
   }
@@ -5071,7 +5121,8 @@ class GameCenterScreen extends EventScreen {
   // isCoach, so a player gets nothing here.
   _pillToolsHtml(pill, byZone) {
     let html = '';
-    if (pill === 'game_day') html = this._renderGameDetailsPanel() + this._renderCarpoolPanel() + this._renderOpponentContactsPanel();
+    // 🎯 Match plan (mig 966) leads the Game day and squad pills.
+    if (pill === 'game_day') html = this.matchPlanPanel.html() + this._renderGameDetailsPanel() + this._renderCarpoolPanel() + this._renderOpponentContactsPanel();
     else if (pill === 'post_game') html = this._renderScorePanel();
     else if (pill === 'lineup' && this.isCoach) {
       const squadCount = byZone.starter.length + byZone.bench.length;
@@ -5088,7 +5139,7 @@ class GameCenterScreen extends EventScreen {
     // pill — that's where a coach actually is on match day (owner
     // 2026-10-16: "need contacts on game center of opponents with email
     // and text buttons!!!!").
-    if (pill === 'lineup' || pill === 'starters_bench') html += this._renderGameMessagePanel() + this._renderCarpoolPanel() + this._renderOpponentContactsPanel() + this._renderOfficialRosterPanel() + this._renderRosterSheetPanel();
+    if (pill === 'lineup' || pill === 'starters_bench') html += this.matchPlanPanel.html() + this._renderGameMessagePanel() + this._renderCarpoolPanel() + this._renderOpponentContactsPanel() + this._renderOfficialRosterPanel() + this._renderRosterSheetPanel();
     return html ? `<div style="max-width:540px; margin:10px auto 0;">${html}</div>` : '';
   }
 
