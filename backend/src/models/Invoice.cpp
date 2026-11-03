@@ -787,6 +787,10 @@ const char* kPeriodGamesSql = R"SQL(
                          JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
                          JOIN coaches c ON c.id = tc.coach_id
                         WHERE fet.fh_event_id = e.id AND c.person_id = (SELECT person_id FROM iss)) AS coaches_team,
+               -- ticked by itself only when it is what this coach is paid for by default (mig 987/993,
+               -- owner: "my coaching should only be mens practice and apsl and liga 1 games … youth
+               -- hours go to youth as me coaching youth. it will happen sometimes")
+               fh_coach_paid_for((SELECT id FROM iss), e.id, e.kind) AS by_default,
                -- where it was: the calendar's address tells who was sent there
                NULLIF(BTRIM(g.location), '') AS location
           FROM fh_events e
@@ -808,7 +812,7 @@ const char* kPeriodGamesSql = R"SQL(
                NULL::boolean AS is_home, 'TBD'::text AS opponent, BTRIM(g.summary) AS summary,
                NULL::text AS rsvp, NULL::text AS attendance, NULL::text AS team_label,
                NULL::int AS policy_id, NULL::text AS policy_label, NULL::numeric AS hours_per_game,
-               NULL::int AS coach_issuer_id, true AS coaches_team, NULLIF(BTRIM(g.location), '') AS location
+               NULL::int AS coach_issuer_id, true AS coaches_team, true AS by_default, NULLIF(BTRIM(g.location), '') AS location
           FROM gcal_events g
           JOIN invoice_issuer_event_claims cl
             ON cl.issuer_id = $2::int AND cl.is_active AND g.summary ~* cl.summary_pattern
@@ -833,7 +837,7 @@ const char* kPeriodGamesSql = R"SQL(
            -- time + interval wraps at midnight, so a crossing shows as end <= start
            CASE WHEN (m.start_at + (m.hours || ' hours')::interval) > m.start_at
                 THEN to_char(m.start_at + (m.hours || ' hours')::interval, 'HH24:MI') END AS end_at,
-           m.hours, m.opponent, m.is_home, m.team_label, m.policy_id, m.policy_label, m.location,
+           m.hours, m.opponent, m.is_home, m.team_label, m.policy_id, m.policy_label, m.location, m.by_default,
            (m.coach_issuer_id = $2::int) AS policy_pays,
            (m.starts_at < now()) AS played,
            CASE WHEN m.kind = 'match'
@@ -873,7 +877,7 @@ json Invoice::periodGames(long long invoiceId) {
                        {"policy_pays", !r["policy_pays"].is_null() && r["policy_pays"].as<bool>()},
                        {"played", r["played"].as<bool>()}, {"note", str(r, "note")}, {"added", r["added"].as<bool>()},
                        {"declined", r["declined"].as<bool>()}, {"location", str(r, "location")},
-                       {"overlaps", r["overlaps"].as<bool>()}});
+                       {"overlaps", r["overlaps"].as<bool>()}, {"by_default", r["by_default"].as<bool>()}});
     }
     return out;
 }
@@ -897,7 +901,7 @@ int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEvent
         const long long fhEventId = g["fh_event_id"].is_number() ? g["fh_event_id"].get<long long>() : 0;
         const long long gcalEventId = g["gcal_event_id"].is_number() ? g["gcal_event_id"].get<long long>() : 0;
         if (g["added"].get<bool>()) continue;
-        const bool autoPick = !g["declined"].get<bool>() && g["rsvp"] != "no";
+        const bool autoPick = !g["declined"].get<bool>() && g["rsvp"] != "no" && g["by_default"].get<bool>();
         const bool picked = fhEventIds.empty() ? (policyOnly ? autoPick : true)
                                                : (fhEventId > 0 && std::find(fhEventIds.begin(), fhEventIds.end(), fhEventId) != fhEventIds.end());
         if (!picked) continue;

@@ -5,6 +5,8 @@
 //
 //   Summary    per section + All: members, free, paid up, behind, blocked,
 //              owed — GET /api/finances/summary (LeagueApps synced first)
+//   Money in & out  (mig 977) MoneyView: Who pills (All › section › team)
+//              × Money pills (All / In / Out) over the budget year
 //   Revenue    dues × members per month and year, two reports: every paying
 //              member, and only members current in dues
 //   Expenses   the cash-flow grid from this month forward: money in (dues
@@ -15,7 +17,7 @@
 // Wording: message_templates kind 'payments_overview' (summary / revenue)
 // and 'finances' (page, pills, cash flow).
 class FinancesScreen extends Screen {
-  constructor(navigation, auth) { super(navigation, auth); this.summary = null; this.expenses = null; this.view = 'summary'; this.err = ''; this.expanded = new Set(); }
+  constructor(navigation, auth) { super(navigation, auth); this.summary = null; this.expenses = null; this.view = 'summary'; this.err = ''; this.expanded = new Set(); this.money = null; this.scope = 'all'; }
 
   render() {
     const div = document.createElement('div');
@@ -46,6 +48,7 @@ class FinancesScreen extends Screen {
         .fn-game { display:flex; gap:10px; align-items:center; padding:3px 0; border-bottom:1px solid var(--border-color, #374151); }
         .fn-game .d { width:90px; font-weight:700; } .fn-game .o { flex:1; }
         .fn-warn { color:#fbbf24; font-weight:700; }
+        ${window.MoneyView ? MoneyView.css() : ''}
         .fn-amt { width:90px; text-align:right; padding:3px 6px; border:1px solid var(--border-color, #374151); border-radius:4px; background:transparent; color:var(--text-primary); font:inherit; }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
@@ -53,13 +56,16 @@ class FinancesScreen extends Screen {
         <div style="flex:1;"><h1 style="margin:0;" id="fn-title">📈 Finances</h1><div id="fn-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
       </div>
       <div class="screen-content" style="max-width:1400px; margin:0 auto;">
+        <div id="fn-who"></div>
         <div class="fn-pills" id="fn-pills"></div>
         <div id="fn-body"><div class="loading">Loading…</div></div>
       </div>`;
     this.element = div;
     div.querySelector('#fn-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => {
+      const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; if (this.money) this.money.scope = this.scope; this._renderBody(); return; }
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
+      if (this.view === 'money' && this.money && this.money.handleClick(e)) { this._renderBody(); return; }
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
     });
     div.addEventListener('change', (e) => {
@@ -85,11 +91,14 @@ class FinancesScreen extends Screen {
       const title = this.find('#fn-title'); if (title) title.textContent = this._copy('title') || '📈 Finances';
       const sub = this.find('#fn-sub'); if (sub) sub.textContent = this._copy('subtitle');
       this._renderPills();
-      const [s, x] = await Promise.all([this.auth.fetch('/api/finances/summary'), this.auth.fetch('/api/finances/expenses')]);
-      const sj = await s.json().catch(() => ({})), xj = await x.json().catch(() => ({}));
+      const [s, x, f] = await Promise.all(['summary', 'expenses', 'cash-flow'].map(p => this.auth.fetch(`/api/finances/${p}`)));
+      const sj = await s.json().catch(() => ({})), xj = await x.json().catch(() => ({})), fj = await f.json().catch(() => ({}));
       if (!s.ok) throw new Error(sj.error || `HTTP ${s.status}`);
       if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
-      this.summary = sj; this.expenses = xj;
+      if (!f.ok) throw new Error(fj.error || `HTTP ${f.status}`);
+      this.summary = sj; this.expenses = xj; this.flow = fj;
+      // Money in & out (mig 977) shares the three loads.
+      if (window.MoneyView) { this.money = this.money || new MoneyView(this); Object.assign(this.money, { flow: fj, summary: sj, expenses: xj, scope: this.scope }); }
     } catch (err) { this.err = err.message; }
     this._renderBody();
   }
@@ -103,20 +112,39 @@ class FinancesScreen extends Screen {
       const x = await this.auth.fetch('/api/finances/expenses');
       const xj = await x.json().catch(() => ({}));
       if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
-      this.expenses = xj;
+      this.expenses = xj; if (this.money) this.money.expenses = xj;
     } catch (err) { this.err = err.message; }
     this._renderBody();
   }
 
+  // The Who pills (mig 986): every view below follows them — owner: "could we
+  // just do pills and not diff pages … more control with pills".
+  _inScope() { return window.MoneyView && this.flow ? MoneyView.inScopeOf(this.flow.scopes, this.scope) : null; }
+  _scopeOk(code) { const set = this._inScope(); return !set || set.has(code || 'club'); }
+  // Summary / Revenue rows: the sections when All, else the teams under the pill and their total.
+  _units() {
+    const ov = this.summary || {};
+    if (!this._inScope()) return { rows: (ov.sections || []).map(s => ({ ...s, title: `${this._emoji(s.code)} ${s.name}` })), total: ov.all || {} };
+    const rows = (ov.teams || []).filter(t => this._scopeOk(t.scope)).map(t => ({ ...t, title: `${this._emoji(t.code)} ${t.label}` }));
+    const keys = ['members', 'free', 'volunteers', 'injured', 'paying', 'paid_up', 'behind', 'blocked', 'owed'];
+    const total = {}; for (const k of keys) total[k] = rows.reduce((a, r) => a + Number(r[k] || 0), 0);
+    total.projections = {};
+    for (const p of ['all_members', 'current_dues']) total.projections[p] = ['count', 'monthly', 'yearly'].reduce((o, k) => (o[k] = rows.reduce((a, r) => a + Number(((r.projections || {})[p] || {})[k] || 0), 0), o), {});
+    return { rows, total };
+  }
+
   _renderPills() {
+    const who = this.find('#fn-who');
+    if (who) who.innerHTML = window.MoneyView && this.flow ? MoneyView.whoPillsHtml(this.flow.scopes || [], this.scope, (t) => this.escapeHtml(t), (window.MessageCopy && MessageCopy.block('cash_flow', 'pill_all')) || 'All') : '';
     const el = this.find('#fn-pills'); if (!el) return;
-    const pills = [['summary', this._copy('pill_summary') || 'Summary'], ['revenue', this._copy('pill_revenue') || 'Revenue'], ['expenses', this._copy('pill_expenses') || 'Expenses']];
+    const pills = [['summary', this._copy('pill_summary') || 'Summary'], ['money', this._copy('pill_money') || 'Money in & out'], ['revenue', this._copy('pill_revenue') || 'Revenue'], ['expenses', this._copy('pill_expenses') || 'Expenses']];
     el.innerHTML = pills.map(([k, l]) => `<button class="fn-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${this.escapeHtml(l)}</button>`).join('');
   }
 
   _renderBody() {
     this._renderPills();
     const body = this.find('#fn-body'); if (!body) return;
+    if (this.view === 'money' && !this.err) { body.innerHTML = this.money && this.money.ready() ? this.money.html({ who: false }) : '<div class="loading">Loading…</div>'; return; }
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
     body.innerHTML = this.view === 'summary' ? this._summaryHtml() : this.view === 'revenue' ? this._revenueHtml() : this._expensesHtml();
@@ -131,12 +159,12 @@ class FinancesScreen extends Screen {
   // ── Summary: raw totals per section then All ──
   _summaryHtml() {
     const esc = (t) => this.escapeHtml(t), M = FinancesScreen.money2, ov = this.summary;
-    const sections = ov.sections || [], all = ov.all || {};
+    const sections = ov.sections || [], { rows: units, total: all } = this._units();
     const line = sections.length ? FinancesScreen.money0(sections[0].line) : '';
     const tone = (n, color) => n ? `color:${color}; font-weight:700;` : 'opacity:0.5;';
     const row = (s, isAll) => `
       <tr class="${isAll ? 'sum' : ''}">
-        <td style="font-weight:700;">${isAll ? esc(this._ov('all_label') || 'All') : `${this._emoji(s.code)} ${esc(s.name)}`}</td>
+        <td style="font-weight:700;">${isAll ? esc(this._ov('all_label') || 'All') : esc(s.title)}</td>
         <td>${s.members}</td><td style="${s.free ? '' : 'opacity:0.5;'}">${s.free}</td><td style="${s.volunteers ? '' : 'opacity:0.5;'}">${s.volunteers || 0}</td><td style="${s.injured ? '' : 'opacity:0.5;'}">${s.injured || 0}</td>
         <td style="${tone(s.paid_up, '#86efac')}">${s.paid_up}</td><td style="${tone(s.behind, '#fbbf24')}">${s.behind}</td>
         <td style="${tone(s.blocked, '#fca5a5')}">${s.blocked}</td><td style="${tone(s.owed, '#fca5a5')}">${M(s.owed)}</td>
@@ -147,7 +175,7 @@ class FinancesScreen extends Screen {
         <div class="fn-note">${esc(this._ov('summary_note', { line }))}</div>
         <div style="overflow-x:auto;"><table class="fn-table" style="min-width:520px;">
           <thead><tr><th></th>${this._cols('summary_columns').map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-          <tbody>${sections.map(s => row(s, false)).join('')}${row(all, true)}</tbody>
+          <tbody>${units.map(s => row(s, false)).join('')}${row(all, true)}</tbody>
         </table></div>
       </div>`;
   }
@@ -155,12 +183,12 @@ class FinancesScreen extends Screen {
   // ── Revenue: dues × members, two reports, per month and per year ──
   _revenueHtml() {
     const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2, ov = this.summary;
-    const sections = ov.sections || [], all = ov.all || {};
+    const { rows: units, total: all } = this._units();
     const pCols = this._cols('projections_columns');
     const reports = [['all_members', this._ov('row_all_members') || 'All current members'], ['current_dues', this._ov('row_current_dues') || 'Members current in dues']];
     const row = (s, isAll) => `
       <tr class="${isAll ? 'sum' : ''}">
-        <td style="font-weight:700;">${isAll ? esc(this._ov('all_label') || 'All') : `${this._emoji(s.code)} ${esc(s.name)}`}</td>
+        <td style="font-weight:700;">${isAll ? esc(this._ov('all_label') || 'All') : esc(s.title)}</td>
         <td style="opacity:0.7;">${isAll ? '' : M2(s.rate)}</td>
         ${reports.map(([k]) => { const p = (s.projections || {})[k] || {}; return `<td class="fn-dim">${p.count ?? 0}</td><td class="fn-in" style="font-weight:700;">${M0(p.monthly)}</td><td class="fn-in">${M0(p.yearly)}</td>`; }).join('')}
       </tr>`;
@@ -173,7 +201,7 @@ class FinancesScreen extends Screen {
             <tr><th></th><th></th>${reports.map(([, l]) => `<th colspan="3" style="text-align:center; border-bottom:1px solid var(--border-color, #374151);">${esc(l)}</th>`).join('')}</tr>
             <tr><th></th><th>${esc(pCols[0] || 'Rate')}</th>${reports.map(() => `<th>#</th><th>${esc(pCols[1] || 'Per month')}</th><th>${esc(pCols[2] || 'Per year')}</th>`).join('')}</tr>
           </thead>
-          <tbody>${sections.map(s => row(s, false)).join('')}${row(all, true)}</tbody>
+          <tbody>${units.map(s => row(s, false)).join('')}${row(all, true)}</tbody>
         </table></div>
       </div>`;
   }
@@ -189,14 +217,22 @@ class FinancesScreen extends Screen {
     const sum = (byMonth, key) => months.reduce((a, ym) => a + Number((byMonth[ym] || {})[key] || 0), 0);
 
     // Money in: dues from members current in dues, flat per month, per section.
-    const inRows = (ov.sections || []).map(s => {
-      const m = Number(((s.projections || {}).current_dues || {}).monthly || 0);
-      return { label: this._copy('row_dues', { section: s.name }) || `Dues — ${s.name}`, emoji: this._emoji(s.code), monthly: m };
-    }).filter(r => r.monthly > 0);
-    const inTotal = inRows.reduce((a, r) => a + r.monthly, 0);
+    // Money in: past months = the dues LeagueApps actually paid for the row
+    // (flow items, mig 977); this month on = members current in dues × rate.
+    const scopes = (this.flow || {}).scopes || [];
+    const actualDues = (set, ym) => ((this.flow || {}).items || []).filter(i => i.dir === 'in' && i.category === 'dues' && !i.ahead && i.ym === ym && set.has(i.scope)).reduce((a, i) => a + Number(i.amount), 0);
+    const inRows = this._units().rows.map(s => {
+      const m = Number(((s.projections || {}).current_dues || {}).monthly || 0), name = s.label || s.name;
+      const sec = s.scope ? null : (scopes.find(x => x.section_code === s.code) || {}).code;
+      const set = s.scope ? new Set([s.scope]) : (window.MoneyView && sec ? MoneyView.inScopeOf(scopes, sec) : new Set());
+      const by = {}; for (const ym of months) by[ym] = ym < nowYm ? actualDues(set, ym) : m;
+      return { label: this._copy('row_dues', { section: name }) || `Dues — ${name}`, emoji: this._emoji(s.code), by };
+    }).filter(r => Object.values(r.by).some(v => v));
+    const inBy = {}; for (const ym of months) inBy[ym] = inRows.reduce((a, r) => a + r.by[ym], 0);
+    const inTotal = months.reduce((a, ym) => a + inBy[ym], 0);
     let html = `<tr class="group"><td colspan="${months.length + 2}">${esc(this._copy('row_in') || 'Money in')}</td></tr>`;
-    for (const r of inRows) html += `<tr><td>${r.emoji} ${esc(r.label)}</td>${months.map(ym => cell(ym, r.monthly, 0, 'fn-in')).join('')}<td class="fn-in">${M0(r.monthly * months.length)}</td></tr>`;
-    html += `<tr class="sum"><td>${esc(this._copy('row_in') || 'Money in')}</td>${months.map(ym => cell(ym, inTotal, 0, 'fn-in')).join('')}<td class="fn-in">${M0(inTotal * months.length)}</td></tr>`;
+    for (const r of inRows) html += `<tr><td>${r.emoji} ${esc(r.label)}</td>${months.map(ym => cell(ym, r.by[ym], 0, 'fn-in')).join('')}<td class="fn-in">${M0(months.reduce((a, ym) => a + r.by[ym], 0))}</td></tr>`;
+    html += `<tr class="sum"><td>${esc(this._copy('row_in') || 'Money in')}</td>${months.map(ym => cell(ym, inBy[ym], 0, 'fn-in')).join('')}<td class="fn-in">${M0(inTotal)}</td></tr>`;
 
     // Money out, rolled up by major category (invoice_line_categories, mig
     // 493): one row per category with monthly totals; tap to expand into
@@ -209,15 +245,15 @@ class FinancesScreen extends Screen {
     const raw = [
       // Coaching (mig 494): each coach's usual week, then hours per game by league.
       // A per-game coach (pay_basis games, mig 497) projects under Game hours; their row is what they invoiced.
-      ...(x.coaching_usual || []).map(u => u.pay_basis === 'games'
+      ...(x.coaching_usual || []).filter(u => this._scopeOk(u.scope || 'club')).map(u => u.pay_basis === 'games'
         ? ({ cat: 'labor', key: `usual:${u.issuer_id}`, keyLabel: this._copy('games_invoiced', { name: u.name }) || `Games invoiced — ${u.name}`, assumed: false, by: u.by_month || {},
              hints: [`paid per game at ${FinancesScreen.money2(u.rate)}/h — projected under Game hours`] })
         : ({ cat: 'labor', key: `usual:${u.issuer_id}`, keyLabel: this._copy('usual_hours', { name: u.name }) || `Usual hours — ${u.name}`, assumed: false, by: u.by_month || {},
              hints: [`${u.weekly_hours} h a week × ${FinancesScreen.money2(u.rate)}/h`] })),
-      ...(x.ref_fees || []).filter(p => p.kind === 'coaching').map(p => ({ cat: 'labor', key: `game:${p.label}`, keyLabel: `Game hours — ${p.label}${p.coach ? ` · ${p.coach}` : ''}`, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {},
+      ...(x.ref_fees || []).filter(p => p.kind === 'coaching' && this._scopeOk(p.scope)).map(p => ({ cat: 'labor', key: `game:${p.label}`, keyLabel: `Game hours — ${p.label}${p.coach ? ` · ${p.coach}` : ''}`, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {},
         hints: [`${p.hours_per_game} h × ${FinancesScreen.money2(p.rate_per_hour)}/h = ${FinancesScreen.money2(p.rate)} per game, home and away${p.coach ? `, paid to ${p.coach}` : ''}`] })),
-      ...(x.ref_fees || []).filter(p => p.kind !== 'coaching').map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
-      ...(x.budget || []).map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
+      ...(x.ref_fees || []).filter(p => p.kind !== 'coaching' && this._scopeOk(p.scope)).map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
+      ...(x.budget || []).filter(b => this._scopeOk(b.scope)).map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
         hints: [`${b.label}: ${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}${b.settled ? ` · ${this._copy('budget_settled_hint', { amount: FinancesScreen.money2(b.invoiced + b.paid_before) })}` : ''}`] })),
     ];
     const cats = new Map();
@@ -243,11 +279,11 @@ class FinancesScreen extends Screen {
     for (const r of outRows) html += `<tr class="${r.kind} ${r.open ? 'open' : ''}" ${r.kind === 'cat' ? `data-cat="${esc(r.code)}"` : ''}><td title="${esc(r.hint)}">${r.emoji ? r.emoji + ' ' : ''}${esc(r.label)}</td>${months.map(ym => cell(ym, (r.by[ym] || {}).projected, (r.by[ym] || {}).invoiced, 'fn-out')).join('')}<td class="fn-out">${M0(sum(r.by, 'projected'))}</td></tr>`;
     const outTotal = sum(outBy, 'projected');
     html += `<tr class="sum"><td>${esc(this._copy('row_out') || 'Money out')}</td>${months.map(ym => cell(ym, outBy[ym]?.projected, outBy[ym]?.invoiced, 'fn-out')).join('')}<td class="fn-out">${M0(outTotal)}</td></tr>`;
-    const net = (ym) => inTotal - Number(outBy[ym]?.projected || 0);
-    html += `<tr class="sum"><td>${esc(this._copy('row_net') || 'Net')}</td>${months.map(ym => `<td class="${ym === nowYm ? 'now' : ''}" style="font-weight:800; color:${net(ym) < 0 ? '#fca5a5' : '#86efac'};">${M0(net(ym))}</td>`).join('')}<td style="font-weight:800; color:${inTotal * months.length - outTotal < 0 ? '#fca5a5' : '#86efac'};">${M0(inTotal * months.length - outTotal)}</td></tr>`;
+    const net = (ym) => inBy[ym] - Number(outBy[ym]?.projected || 0) - (ym < nowYm ? Number(outBy[ym]?.invoiced || 0) : 0);
+    html += `<tr class="sum"><td>${esc(this._copy('row_net') || 'Net')}</td>${months.map(ym => `<td class="${ym === nowYm ? 'now' : ''}" style="font-weight:800; color:${net(ym) < 0 ? '#fca5a5' : '#86efac'};">${M0(net(ym))}</td>`).join('')}<td style="font-weight:800; color:${months.reduce((a, ym) => a + net(ym), 0) < 0 ? '#fca5a5' : '#86efac'};">${M0(months.reduce((a, ym) => a + net(ym), 0))}</td></tr>`;
 
     // Referee games: what the projection is made of, and what is ticked.
-    const games = (x.games || []).filter(g => g.kind !== 'coaching');
+    const games = (x.games || []).filter(g => g.kind !== 'coaching' && this._scopeOk(g.scope));
     const byPolicy = new Map();
     for (const g of games) { if (!byPolicy.has(g.policy_label)) byPolicy.set(g.policy_label, []); byPolicy.get(g.policy_label).push(g); }
     let list = '';
@@ -280,7 +316,7 @@ class FinancesScreen extends Screen {
   // ── Budget lines: edit the estimate, ✓ when the bill is finished (mig 921) ──
   _budgetHtml() {
     const esc = (t) => this.escapeHtml(t), M2 = FinancesScreen.money2;
-    const lines = this.expenses.budget || [];
+    const lines = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope));
     if (!lines.length) return '';
     const cols = (this._copy('budget_columns') || '').split('|').map(c => c.trim());
     const per = (b) => b.amount_per === 'member' ? this._copy('budget_per_member', { units: b.units }) : b.amount_per === 'week' ? this._copy('budget_per_week', { units: b.units }) : '';

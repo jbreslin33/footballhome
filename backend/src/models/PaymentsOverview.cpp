@@ -61,6 +61,47 @@ json PaymentsOverview::build(int clubId) {
         allMembers += members; allFree += free; allVolunteers += volunteers; allInjured += injured; allPaying += paying; allPaidUp += paidUp; allBehind += behind; allBlocked += blocked;
         allOwed += owed; allMonthlyAll += monthlyAll; allMonthlyCur += monthlyCur;
     }
+    // The same counts per team (mig 986, owner: "on summary if i could break
+    // down by pills for just apsl"): each member once, on the team their dues
+    // count for (cash_flow_dues_scope, migs 973/975/977); no team = the section.
+    out["teams"] = json::array();
+    for (const auto& r : db->query(R"SQL(
+        WITH sec AS (
+            SELECT s.id, s.code, CASE s.code WHEN 'M' THEN 'men' WHEN 'W' THEN 'women' WHEN 'B' THEN 'boys' WHEN 'G' THEN 'girls' END AS category,
+                   fh_monthly_dues_usd($1::int, s.id) AS rate, fh_dues_line_usd($1::int, s.id) AS line
+              FROM club_sections s
+        ), mem AS (
+            SELECT DISTINCT ON (lp.category, m.person_id) lp.category, m.person_id, m.la_payment_status,
+                   fh_dues_free_reason(m.person_id) AS free_reason, fh_dues_balance_usd(m.person_id) AS owed,
+                   cash_flow_dues_scope(m.person_id, lp.category, now()) AS scope
+              FROM person_la_memberships m JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
+             WHERE m.ended_at IS NULL AND lp.variant = 'active'
+             ORDER BY lp.category, m.person_id, m.la_registered_at DESC NULLS LAST
+        )
+        SELECT mem.scope, sec.code, sec.rate, sec.line, sc.label, sc.sort_order,
+               COUNT(*) AS members,
+               COUNT(*) FILTER (WHERE mem.la_payment_status = 'NA_FREE') AS free,
+               COUNT(*) FILTER (WHERE mem.la_payment_status <> 'NA_FREE' AND mem.free_reason = 'volunteer') AS volunteers,
+               COUNT(*) FILTER (WHERE mem.la_payment_status <> 'NA_FREE' AND mem.free_reason = 'injured') AS injured,
+               COUNT(*) FILTER (WHERE mem.la_payment_status <> 'NA_FREE' AND mem.free_reason IS NULL) AS paying,
+               COUNT(*) FILTER (WHERE mem.la_payment_status <> 'NA_FREE' AND mem.free_reason IS NULL AND mem.owed = 0) AS paid_up,
+               COUNT(*) FILTER (WHERE mem.owed > 0 AND mem.owed < sec.line) AS behind,
+               COUNT(*) FILTER (WHERE mem.owed >= sec.line) AS blocked,
+               COALESCE(SUM(mem.owed), 0) AS owed
+          FROM mem JOIN sec ON sec.category = mem.category LEFT JOIN cash_flow_scopes sc ON sc.code = mem.scope
+         GROUP BY mem.scope, sec.code, sec.rate, sec.line, sc.label, sc.sort_order
+         ORDER BY sc.sort_order NULLS LAST, mem.scope)SQL", {club})) {
+        const double rate = r["rate"].is_null() ? 0.0 : r["rate"].as<double>();
+        const double paying = r["paying"].as<double>(), paidUp = r["paid_up"].as<double>();
+        out["teams"].push_back({
+            {"scope", std::string(r["scope"].c_str())}, {"label", r["label"].is_null() ? std::string(r["scope"].c_str()) : std::string(r["label"].c_str())},
+            {"code", std::string(r["code"].c_str())}, {"rate", rate}, {"line", r["line"].is_null() ? 0.0 : r["line"].as<double>()},
+            {"members", r["members"].as<long long>()}, {"free", r["free"].as<long long>()}, {"volunteers", r["volunteers"].as<long long>()},
+            {"injured", r["injured"].as<long long>()}, {"paying", (long long)paying}, {"paid_up", (long long)paidUp},
+            {"behind", r["behind"].as<long long>()}, {"blocked", r["blocked"].as<long long>()}, {"owed", r["owed"].as<double>()},
+            {"projections", {{"all_members", {{"count", (long long)paying}, {"monthly", paying * rate}, {"yearly", paying * rate * 12}}},
+                             {"current_dues", {{"count", (long long)paidUp}, {"monthly", paidUp * rate}, {"yearly", paidUp * rate * 12}}}}}});
+    }
     out["all"] = {{"members", (long long)allMembers}, {"free", (long long)allFree}, {"volunteers", (long long)allVolunteers}, {"injured", (long long)allInjured}, {"paying", (long long)allPaying},
                   {"paid_up", (long long)allPaidUp}, {"behind", (long long)allBehind}, {"blocked", (long long)allBlocked}, {"owed", allOwed},
                   {"projections", {{"all_members", {{"count", (long long)allPaying}, {"monthly", allMonthlyAll}, {"yearly", allMonthlyAll * 12}}},

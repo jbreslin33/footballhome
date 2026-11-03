@@ -67,6 +67,9 @@
 #                         (laGet(dynamic, {mens, boys, girls}))
 #                     So every caller pre-syncs.  Allowlisted for the
 #                     same reason as Team/PersonPayments.
+#   CashFlow        — dues ahead per team (mig 977) counts today's members;
+#                     its only caller, GET /api/finances/cash-flow, is a
+#                     laGet route over the four membership programs.
 #   Lead            — Lead::listAll()'s member_status column reads
 #                     person_la_memberships to flag leads who already
 #                     joined.  Its only caller, LeadsController::handleList,
@@ -190,7 +193,7 @@
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard|WelcomeMessage|RosterBoardExtras)|backend/src/core/Controller|backend/src/controllers/MyController)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard|WelcomeMessage|RosterBoardExtras|CashFlow)|backend/src/core/Controller|backend/src/controllers/MyController)'
 
 set -euo pipefail
 

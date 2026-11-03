@@ -76,7 +76,7 @@ const char* kGamesSql = R"SQL(
            AND (CASE WHEN $2::bool THEN NOT p.bill_home_only ELSE NOT p.home_only END OR COALESCE(e.is_home, false))
            AND (p.age_band IS NULL OR g.summary ~* ('\m' || p.age_band || '\M'))
     ), games AS (SELECT * FROM fx UNION ALL SELECT * FROM ev)
-    SELECT u.policy_id, p.label AS policy_label, p.kind, p.hours_per_game, p.club_section_id, p.per_game_usd, u.source, u.ref_id, u.status, u.in_gcal,
+    SELECT u.policy_id, cash_flow_policy_scope(u.policy_id) AS scope, p.label AS policy_label, p.kind, p.hours_per_game, p.club_section_id, p.per_game_usd, u.source, u.ref_id, u.status, u.in_gcal,
            to_char(u.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS game_on,
            to_char(u.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD') AS date_label,
            u.opponent, (u.starts_at < now() AND u.status <> 'postponed') AS played,
@@ -93,7 +93,7 @@ const char* kGamesSql = R"SQL(
      ORDER BY u.starts_at, p.sort_order, u.ref_id)SQL";
 
 json gameJson(const pqxx::row& r) {
-    json g = {{"policy_id", r["policy_id"].as<long long>()}, {"policy_label", str(r, "policy_label")}, {"kind", str(r, "kind")},
+    json g = {{"policy_id", r["policy_id"].as<long long>()}, {"scope", str(r, "scope")}, {"policy_label", str(r, "policy_label")}, {"kind", str(r, "kind")},
               {"hours", r["hours_per_game"].is_null() ? json(nullptr) : json(num(r, "hours_per_game"))},
               {"section_id", r["club_section_id"].is_null() ? json(nullptr) : json(r["club_section_id"].as<long long>())},
               {"source", str(r, "source")}, {"ref_id", r["ref_id"].as<long long>()}, {"status", str(r, "status")},
@@ -130,9 +130,19 @@ json Expenses::projection(int clubId) {
         const std::string pm = monthIndex(ym) < nowIdx ? monthAt(nowIdx) : ym;
         m[pm].projected += proj; m[ym].invoiced += inv; };
     int minIdx = nowIdx, maxIdx = nowIdx;
+    // The grid shows the whole budget year (mig 969, owner 2026-11-03: "why does
+    // it not start at aug 1"): Aug → Jul, past months with what was invoiced.
+    int yearEndIdx = -1; std::string yearStart;
+    {
+        auto y = db->query("SELECT to_char(starts_on, 'YYYY-MM') AS s, to_char(ends_on, 'YYYY-MM') AS e FROM budget_years "
+                           " WHERE club_id = $1::int AND (now() AT TIME ZONE 'America/New_York')::date BETWEEN starts_on AND ends_on", {club});
+        if (!y.empty()) { minIdx = std::min(minIdx, monthIndex(y[0]["s"].c_str())); yearEndIdx = monthIndex(y[0]["e"].c_str()); maxIdx = std::max(maxIdx, yearEndIdx); }
+        if (!y.empty()) yearStart = y[0]["s"].c_str();
+    }
     auto widen = [&](const std::string& ym) { int i = monthIndex(ym); maxIdx = std::max(maxIdx, i); };
 
     json out = {{"today", today}, {"ref_fees", json::array()}, {"budget", json::array()}, {"sections", json::array()}, {"all", json::object()}};
+    out["year_start"] = yearStart.empty() ? json(nullptr) : json(yearStart);
     std::map<long long, Months> bySection; std::map<long long, std::string> sectionName; Months all;
     for (const auto& r : db->query("SELECT id, name FROM club_sections ORDER BY sort_order, id")) sectionName[r["id"].as<long long>()] = str(r, "name");
     auto roll = [&](long long sectionId, const Months& m) { for (const auto& [ym, c] : m) { add(bySection[sectionId], ym, c.projected, c.invoiced); add(all, ym, c.projected, c.invoiced); } };
@@ -143,6 +153,7 @@ json Expenses::projection(int clubId) {
     std::map<long long, std::vector<json>> gamesByPolicy;
     for (const auto& r : db->query(kGamesSql, {club, "false"})) gamesByPolicy[r["policy_id"].as<long long>()].push_back(gameJson(r));
     for (const auto& p : db->query("SELECT p.id, p.label, p.group_label, p.kind, p.hours_per_game, p.rate_per_hour, p.club_section_id, p.per_game_usd, p.home_only, p.note, "
+                                   "       cash_flow_policy_scope(p.id) AS scope, "
                                    "       ci.id AS coach_issuer_id, ci.payable_to AS coach "
                                    "  FROM ref_fee_policies p LEFT JOIN invoice_issuers ci ON ci.id = p.coach_issuer_id "
                                    " WHERE p.club_id = $1::int AND p.is_active ORDER BY p.kind, p.sort_order, p.id", {club})) {
@@ -196,7 +207,7 @@ json Expenses::projection(int clubId) {
             if (g["invoiced"].is_null()) add(m, ym, rate, 0); else add(m, ym, 0, g["invoiced"]["amount"].get<double>());
         }
         roll(sectionId, m);
-        out["ref_fees"].push_back({{"policy_id", pid}, {"label", str(p, "label")}, {"group_label", str(p, "group_label")}, {"kind", str(p, "kind")},
+        out["ref_fees"].push_back({{"policy_id", pid}, {"scope", str(p, "scope")}, {"label", str(p, "label")}, {"group_label", str(p, "group_label")}, {"kind", str(p, "kind")},
                                    {"hours_per_game", p["hours_per_game"].is_null() ? json(nullptr) : json(num(p, "hours_per_game"))},
                                    {"rate_per_hour", p["rate_per_hour"].is_null() ? json(nullptr) : json(num(p, "rate_per_hour"))},
                                    {"section_id", sectionId ? json(sectionId) : json(nullptr)},
@@ -209,6 +220,7 @@ json Expenses::projection(int clubId) {
     for (const auto& b : db->query(R"SQL(
         SELECT b.id, b.label, b.group_label, c.label AS category_label, b.category, b.club_section_id, b.amount_usd, b.amount_per, b.paid_before_usd,
                b.period_start::text AS ps, b.period_end::text AS pe, b.spread, b.is_assumed, b.note, b.settled_at IS NOT NULL AS settled,
+               cash_flow_budget_line_scope(b.id) AS scope,
                CASE WHEN b.amount_per = 'member' THEN (
                    SELECT COUNT(DISTINCT m.person_id) FROM person_la_memberships m
                      JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
@@ -249,7 +261,7 @@ json Expenses::projection(int clubId) {
             } else add(m, monthAt(startIdx), remaining, 0);
         }
         roll(sectionId, m);
-        out["budget"].push_back({{"id", bid}, {"label", str(b, "label")}, {"group_label", str(b, "group_label")}, {"category", str(b, "category")}, {"category_label", str(b, "category_label")},
+        out["budget"].push_back({{"id", bid}, {"scope", str(b, "scope")}, {"label", str(b, "label")}, {"group_label", str(b, "group_label")}, {"category", str(b, "category")}, {"category_label", str(b, "category_label")},
                                  {"section_id", sectionId ? json(sectionId) : json(nullptr)}, {"section", sectionName.count(sectionId) ? sectionName[sectionId] : ""},
                                  {"amount", num(b, "amount_usd")}, {"amount_per", str(b, "amount_per")}, {"units", units}, {"total", total},
                                  {"paid_before", paidBefore}, {"invoiced", round2(invoiced)}, {"remaining", remaining}, {"settled", settled}, {"period_start", ps}, {"period_end", pe},
@@ -291,7 +303,7 @@ json Expenses::projection(int clubId) {
             for (const auto& l : db->query("SELECT to_char(i.invoice_date, 'YYYY-MM') AS ym, SUM(l.amount) AS amt FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id "
                                            " WHERE i.issuer_id = $1::int AND l.category = 'labor' GROUP BY 1", {std::to_string(iid)}))
                 add(inv, str(l, "ym"), 0, num(l, "amt"));
-            out["coaching_usual"].push_back({{"issuer_id", iid}, {"name", str(u, "name")}, {"rate", num(u, "hourly_rate")}, {"weekly_hours", num(u, "weekly_hours")},
+            out["coaching_usual"].push_back({{"issuer_id", iid}, {"scope", std::string(db->query("SELECT cash_flow_issuer_scope($1::int) AS s", {std::to_string(iid)})[0]["s"].c_str())}, {"name", str(u, "name")}, {"rate", num(u, "hourly_rate")}, {"weekly_hours", num(u, "weekly_hours")},
                                              {"by_month", monthsJson(inv)}, {"_inv", true}});
             entry = &out["coaching_usual"].back();
         }
@@ -312,7 +324,7 @@ json Expenses::projection(int clubId) {
         for (const auto& l : db->query("SELECT to_char(i.invoice_date, 'YYYY-MM') AS ym, SUM(l.amount) AS amt FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id "
                                        " WHERE i.issuer_id = $1::int AND l.category = 'labor' GROUP BY 1", {std::to_string(iid)}))
             add(inv, str(l, "ym"), 0, num(l, "amt"));
-        out["coaching_usual"].push_back({{"issuer_id", iid}, {"name", str(u, "name")}, {"rate", num(u, "hourly_rate")}, {"weekly_hours", 0.0}, {"pay_basis", "games"},
+        out["coaching_usual"].push_back({{"issuer_id", iid}, {"scope", std::string(db->query("SELECT cash_flow_issuer_scope($1::int) AS s", {std::to_string(iid)})[0]["s"].c_str())}, {"name", str(u, "name")}, {"rate", num(u, "hourly_rate")}, {"weekly_hours", 0.0}, {"pay_basis", "games"},
                                          {"by_month", monthsJson(inv)}, {"_inv", true}});
     }
     for (auto& e : out["coaching_usual"]) {
@@ -322,6 +334,7 @@ json Expenses::projection(int clubId) {
         e["totals"] = {{"projected", round2(p)}, {"invoiced", round2(i)}};
     }
 
+    if (yearEndIdx >= 0) maxIdx = std::min(maxIdx, yearEndIdx);   // next year's lines wait for next year's grid
     json months = json::array(); for (int i = minIdx; i <= maxIdx; i++) months.push_back(monthAt(i));
     out["months"] = months;
     for (const auto& [sid, name] : sectionName) {

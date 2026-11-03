@@ -74,7 +74,9 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`.
 
-- [ ] Tie invoice lines to budget lines ("counts toward" on #invoices): none ever have been, so #finances still projects league dues, kits and facilities already invoiced ($11,539 on 10/30). #finances → Expenses → 🧾 Budget lines now edits each estimate and ✓ settles a finished bill (mig 921); what's left is proposing the invoice-to-budget matches for James to approve.
+- [x] 2026-11-03 Tie invoice lines to budget lines (mig 965): league fee rate card (league_fees, every fee with its source URL + quote) and team_season_entries over seasons; budget lines rebuilt from it (PPR Fall/Indoor, ICSL Spring, cups, Grassroots Cup) and linked via budget_line_fees; APSL plan, Liga 1 11/6 payment, PPR plan + assignor, field paint tied. Liga 1 + PPR refs every game (home or away), PPR Indoor + ICSL ref policies added.
+  - [ ] Step 2 (C++): Expenses::projection derives budget amounts from budget_line_fees × league_fees instead of budget_lines.amount_usd; move coach-pay rows (kind=coaching) out of ref_fee_policies.
+  - [ ] Owner to supply: Tri County dues/ref amounts; whether the Aug "Liga 1 payment plan" $250.20 sits inside the $769.69 paid before; which section the non-youth uniform lines count toward; PPR Fall $1,200 plan vs bylaws $1,450.
 
 ## Done
 

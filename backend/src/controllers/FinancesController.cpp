@@ -42,7 +42,10 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
     laGet(router, prefix + "/summary", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
         [this](const Request& r, const LaSyncMap&) { return handleSummary(r); });
     router.get(prefix + "/expenses", [this](const Request& r) { return handleExpenses(r); });
-    router.get(prefix + "/cash-flow", [this](const Request& r) { return handleCashFlow(r); });
+    // Cash flow splits dues ahead by team from today's members (mig 977), so
+    // it syncs the same four programs first.
+    laGet(router, prefix + "/cash-flow", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
+        [this](const Request& r, const LaSyncMap&) { return handleCashFlow(r); });
     router.post(prefix + "/budget-lines/:id", [this](const Request& r) { return handleBudgetLine(r); });
 }
 
