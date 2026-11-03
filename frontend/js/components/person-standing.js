@@ -48,18 +48,25 @@
   const pill = (text, title, bg, fg, border) =>
     `<span title="${esc(title)}" style="padding:0 6px; border-radius:999px; background:${bg}; color:${fg}; border:1px solid ${border}; font-weight:800; white-space:nowrap;">${esc(text)}</span>`;
 
+  const inactivePill = () => pill(t('inactive', {}, '💤 INACTIVE'),
+    t('inactive_tip', {}, 'Inactive — still billed monthly, no fines, no RSVP reminders'), '#1e293b', '#cbd5e1', '#64748b');
+
   function html(personId) {
     const hit = cache.get(Number(personId));
     if (!hit || !hit.data) return '';
     const { activity: a, dues: d } = hit.data;
     const bits = [];
+    // 💤 Inactive (mig 945): leads the line; ghost / no-show say nothing
+    // about someone who isn't meant to come.
+    if (hit.data.inactive) bits.push(inactivePill());
 
     if (a) {
       const days = a.windowDays || 30;
       const heard = a.lastRsvp || a.lastMarked;
       const ghost = heard && !(a.attended30 > 0) && !(a.rsvpYes30 > 0);
       const noShow = heard && !ghost && !(a.attended30 > 0) && (a.absent30 > 0);
-      if (ghost) bits.push(pill(t('ghost', {}, '👻 GHOST'), t('ghost_tip', { days }, `No present/late mark and no yes RSVP in the last ${days} days`), '#3a1f1f', '#fca5a5', '#b91c1c'));
+      if (hit.data.inactive) { /* 💤 already says it */ }
+      else if (ghost) bits.push(pill(t('ghost', {}, '👻 GHOST'), t('ghost_tip', { days }, `No present/late mark and no yes RSVP in the last ${days} days`), '#3a1f1f', '#fca5a5', '#b91c1c'));
       else if (noShow) bits.push(pill(t('no_show', {}, '🙈 NO-SHOW'), t('no_show_tip', { days }, `Says yes but only absent marks in the last ${days} days`), '#3a2e05', '#fbbf24', '#d97706'));
       const r = a.lastRsvp;
       if (r) {
@@ -87,7 +94,11 @@
 
   // The one-line #teams card's chip: 👻 / 🙈 when it applies, else the
   // last RSVP's date (dues already ride on that card).
-  function chip(personId) {
+  // opts.inactive = false on #teams' Roster pill (owner 11/3: "we don't do
+  // inactive on roster page") — that view is league paperwork only.
+  function chip(personId, opts = {}) {
+    const showInactive = opts.inactive !== false;
+    const small = (html) => html.replace('style="padding:0 6px;', 'style="font-size:0.6rem; line-height:1.3; padding:0 4px;');
     const hit = cache.get(Number(personId));
     if (!hit || !hit.data || !hit.data.activity) return '';
     const a = hit.data.activity;
@@ -98,9 +109,17 @@
     const last = a.lastRsvp ? md(a.lastRsvp.eventStartAt || a.lastRsvp.at) : '';
     const lastTxt = last ? t('chip_last', { date: last }, `🗓${last}`) : t('chip_never', {}, '🗓—');
     const lastTip = a.lastRsvp ? t('last_rsvp_tip', { date: md(a.lastRsvp.at) }, `Last RSVP ${a.lastRsvp.status} · answered ${md(a.lastRsvp.at)}`) : t('no_rsvp', {}, '🗓 No RSVP ever');
-    const flag = ghost ? pill(t('ghost', {}, '👻 GHOST'), t('ghost_tip', { days }, `No present/late mark and no yes RSVP in the last ${days} days`), '#3a1f1f', '#fca5a5', '#b91c1c')
+    const flag = hit.data.inactive ? (showInactive ? small(inactivePill()) : '')
+               : ghost ? pill(t('ghost', {}, '👻 GHOST'), t('ghost_tip', { days }, `No present/late mark and no yes RSVP in the last ${days} days`), '#3a1f1f', '#fca5a5', '#b91c1c')
                : noShow ? pill(t('no_show', {}, '🙈 NO-SHOW'), t('no_show_tip', { days }, `Says yes but only absent marks in the last ${days} days`), '#3a2e05', '#fbbf24', '#d97706') : '';
-    return `${flag}<span title="${esc(lastTip)}" style="font-size:0.6rem; opacity:0.8; white-space:nowrap;">${esc(lastTxt)}</span>`;
+    return `${small(flag)}<span title="${esc(lastTip)}" style="font-size:0.6rem; opacity:0.8; white-space:nowrap;">${esc(lastTxt)}</span>`;
+  }
+
+  // Has he (or his parent) ever answered an RSVP himself?  true / false,
+  // or null while unknown (not loaded, or a viewer without access).
+  function answered(personId) {
+    const hit = cache.get(Number(personId));
+    return hit && hit.data && typeof hit.data.answered === 'boolean' ? hit.data.answered : null;
   }
 
   // Fill every [data-standing-chip] under root once its ids are loaded —
@@ -110,8 +129,8 @@
     const els = [...root.querySelectorAll('[data-standing-chip]')];
     if (!els.length) return;
     await load(auth, els.map(e => e.dataset.standingChip));
-    els.forEach(e => { e.innerHTML = chip(e.dataset.standingChip); });
+    els.forEach(e => { e.innerHTML = chip(e.dataset.standingChip, { inactive: e.dataset.standingInactive !== '0' }); });
   }
 
-  window.PersonStanding = { load, html, chip, fillChips };
+  window.PersonStanding = { load, html, chip, fillChips, answered };
 })();

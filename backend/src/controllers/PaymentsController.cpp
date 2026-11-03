@@ -769,7 +769,19 @@ Response PaymentsController::handleStanding(const Request& request) {
                               AND lp.variant IN ('active', 'inactive')) AS member,
                    (SELECT d.monthly_dues_usd::float8 FROM dues_policies d
                      WHERE d.club_id = $2::int AND d.club_section_id IS NULL AND d.effective_from <= now()
-                     ORDER BY d.effective_from DESC LIMIT 1) AS monthly
+                     ORDER BY d.effective_from DESC LIMIT 1) AS monthly,
+                   -- 💤 Inactive (Team pill, mig 945): 💤 on some live spot
+                   -- and playing on none — billed, never fined or reminded.
+                   (EXISTS (SELECT 1 FROM team_persons tp JOIN squad_statuses ss ON ss.id = tp.squad_status_id
+                             WHERE tp.person_id = p.id AND tp.removed_at IS NULL AND ss.code = 'inactive')
+                    AND NOT EXISTS (SELECT 1 FROM team_persons tp
+                                     WHERE tp.person_id = p.id AND tp.removed_at IS NULL
+                                       AND tp.squad_status_id IS NULL AND NOT tp.invite_only)) AS inactive,
+                   -- NEEDS ONBOARD on #teams' Team pill (owner 2026-11-03): has he
+                   -- (or his parent) ever answered an RSVP himself?  Standing
+                   -- defaults and admin overrides don't count.
+                   EXISTS (SELECT 1 FROM fh_event_rsvps r
+                            WHERE r.person_id = p.id AND r.created_via = 'manual') AS answered
               FROM persons p
              WHERE p.id = ANY($1::int[]))SQL", {arr, std::to_string(WelcomeLog::kLighthouseClubId)})) {
             const double bal = r["balance"].is_null() ? 0.0 : r["balance"].as<double>();
@@ -779,6 +791,8 @@ Response PaymentsController::handleStanding(const Request& request) {
                           {"free_reason", r["free_reason"].c_str()},
                           {"member", r["member"].as<bool>()},
                           {"months_behind", (monthly > 0 && bal > 0) ? (int)std::ceil(bal / monthly - 1e-9) : 0}}},
+                {"inactive", r["inactive"].as<bool>()},
+                {"answered", r["answered"].as<bool>()},
                 {"activity", nullptr}};
         }
 

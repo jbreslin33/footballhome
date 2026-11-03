@@ -837,7 +837,7 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
                 const auto msg = copy.render("squad_notice", who->zone + (parent ? "_parent" : "_adult"), {
                     {"first", who->recipientFirstName}, {"child", who->playerFirstName},
                     {"event", ctx.shortEvent}, {"when", when}, {"urgent", urgentFor(who->zone)},
-                    {"where", ctx.where}, {"arrival", ctx.arrival},
+                    {"where", ctx.where}, {"arrival", ctx.arrival}, {"note", ctx.note},
                     {"link", minted.url}, {"sender", senderName}});
                 if (!msg.ok())
                     return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 384/593)");
@@ -887,7 +887,7 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
                                + std::to_string(matchId) + "/starters_bench";
         const auto msg = copy.render("squad_notice", youth ? "group_parent" : "group_adult",
             {{"event", ctx.shortEvent}, {"when", when}, {"urgent", urgentFor("group")},
-             {"where", ctx.where}, {"arrival", ctx.arrival},
+             {"where", ctx.where}, {"arrival", ctx.arrival}, {"note", ctx.note},
              {"link", link}, {"sender", senderName}});
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "squad_notice template missing (migration 383)");

@@ -1428,7 +1428,8 @@ class GameCenterScreen extends EventScreen {
           const pid = Number(p.id);
           if (byId.has(pid)) continue; // already merged from an earlier team
           byId.set(pid, { id: pid, name: p.name || '(unnamed)', lastName: p.lastName || '', lineupRole: p.lineupRole || null, teamId: fromTeamId, jerseyNumber: p.jerseyNumber || null,
-                          duesEligible: p.duesEligible !== false });   // migration 416: under the dues line
+                          duesEligible: p.duesEligible !== false,   // migration 416: under the dues line
+                          squadStatus: p.squadStatus || null });     // 💤 inactive → own fold (mig 945)
         }
       }
       this.roster = [...byId.values()];
@@ -2519,6 +2520,18 @@ class GameCenterScreen extends EventScreen {
       unassignedNoResponse.splice(0, unassignedNoResponse.length, ...unassignedNoResponse.filter(p => !hurt.has(p.id)));
     }
     const injuredLabel = (window.MessageCopy && MessageCopy.block('event_center', 'sec_injured')) || '🩹 Injured';
+    // 💤 Inactive (Team pill, mig 945; owner 2026-11-03: "show in sep section
+    // on all screens … so i don't bother with them"): billed, never fined or
+    // reminded.  Out of No Response / Not Going (so the REMIND bar skips
+    // them) into their own closed fold.  A yes brings him back (trigger),
+    // so a Going card never reads inactive.
+    const isInactive = (p) => !p.callUp && p.squadStatus === 'inactive';
+    const unassignedInactive = [...unassignedNoResponse, ...unassignedNotGoing].filter(isInactive).sort(this._byLastName);
+    if (unassignedInactive.length) {
+      for (const list of [unassignedNoResponse, unassignedNotGoing])
+        list.splice(0, list.length, ...list.filter(p => !isInactive(p)));
+    }
+    const inactiveLabel = (window.MessageCopy && MessageCopy.block('event_center', 'sec_inactive')) || '💤 Inactive';
 
     // Coach ↔ Player view toggle (2026-08-22, owner directive: "only need
     // 1 Lineup button on screen" — coach previews exactly what players
@@ -2957,6 +2970,7 @@ class GameCenterScreen extends EventScreen {
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
         collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }),
+        collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive' }),
         this._renderCallupSection(),
       ].join(''));
       return;
@@ -2974,6 +2988,7 @@ class GameCenterScreen extends EventScreen {
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }) : '',
+      this.isCoach ? collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive' }) : '',
       this.isCoach ? this._renderCallupSection() : '',
     ].join(''));
   }

@@ -1016,7 +1016,9 @@ RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
                to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS time,
                CASE (ge.starts_at AT TIME ZONE 'America/New_York')::date - (now() AT TIME ZONE 'America/New_York')::date
                     WHEN 0 THEN 'today' WHEN 1 THEN 'tomorrow'
-                    ELSE to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy') END AS day
+                    ELSE to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy') END AS day,
+               -- A one-game special line on its Game reminder (mig 1003).
+               COALESCE((SELECT BTRIM(n.body) FROM event_reminder_notes n WHERE n.fh_event_id = fe.id), '') AS note
           FROM fh_events fe
           JOIN gcal_events ge ON ge.id = fe.gcal_event_id
          WHERE fe.match_id = $1::int
@@ -1030,6 +1032,7 @@ RsvpBoard::SquadNoticeContext RsvpBoard::squadNoticeContext(long long matchId) {
     ctx.time       = ev[0]["time"].c_str();
     ctx.day        = ev[0]["day"].c_str();
     ctx.soon       = ctx.day == "today" || ctx.day == "tomorrow";
+    ctx.note       = ev[0]["note"].c_str();
 
     auto rows = db->query(R"SQL(
         SELECT p.id AS person_id, mr.recipient_person_id,

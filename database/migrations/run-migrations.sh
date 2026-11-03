@@ -43,7 +43,8 @@ echo "📋 Checking migrations..."
 APPLIED=0
 SKIPPED=0
 
-for migration in "$SCRIPT_DIR"/[0-9]*.sql; do
+# Numeric order (sort -V), so 1000-*.sql runs after 999-*.sql, not before 101-*.sql.
+for migration in $(ls "$SCRIPT_DIR"/[0-9]*.sql | sort -t/ -k1 -V); do
     [ -f "$migration" ] || continue
     filename=$(basename "$migration")
 

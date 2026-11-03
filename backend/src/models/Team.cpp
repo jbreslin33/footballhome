@@ -142,7 +142,8 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  pos.name as position, "
             "  (r.removed_at IS NULL) as is_active, "
             "  DATE(r.joined_at) as joined_date, "
-            "  lr.name as lineup_role "
+            "  lr.name as lineup_role, "
+            "  (SELECT ss.code FROM squad_statuses ss WHERE ss.id = r.squad_status_id) AS squad_status "  // 💤 Team pill, mig 945
             "FROM team_persons r "
             "JOIN persons pe ON pe.id = r.person_id "
             "JOIN players pl ON pl.person_id = pe.id "
@@ -196,6 +197,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             json << "\"joinedDate\":\"" << joined_date << "\",";
             json << "\"lineupRole\":" << (row["lineup_role"].is_null() ? "null" : "\"" + row["lineup_role"].as<std::string>() + "\"") << ",";
             json << "\"duesEligible\":" << (row["dues_eligible"].is_null() || row["dues_eligible"].as<bool>() ? "true" : "false") << ",";
+            json << "\"squadStatus\":" << (row["squad_status"].is_null() ? "null" : "\"" + escapeJSON(row["squad_status"].as<std::string>()) + "\"") << ",";
             json << "\"roleType\":\"PLAYER\"";
             json << "}";
             

@@ -16,7 +16,9 @@
 //   mens   → every "Men's Club" registration row (Liga 1 / APSL reg) and
 //            📣 Invite to Football Home
 //   womens → 📝 Register
-//   boys / girls → the "Youth Travel" 📄 docs reminder
+//   boys / girls → the "Youth Travel" rows: 📄 docs reminder, then
+//            ⚽ Boys AND ⚽ Girls registration (mig 998) — both on every
+//            youth card, for when the kid's gender isn't known
 //
 // All words are message_templates rows (MessageCopy, and kind
 // 'registration' through RosterScreenBase.loadCardTemplates).  Call

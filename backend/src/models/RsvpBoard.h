@@ -181,6 +181,7 @@ public:
         std::string time;
         std::string day;                     // "today" | "tomorrow" | "Sat"
         bool        soon = false;            // today or tomorrow
+        std::string note;                    // event_reminder_notes (mig 1003), "" when none
         std::vector<SquadRecipient> recipients;
     };
     SquadNoticeContext squadNoticeContext(long long matchId);

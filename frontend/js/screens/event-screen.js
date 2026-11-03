@@ -1269,7 +1269,14 @@ class EventScreen extends Screen {
   // own section with the same cards and reminders, never in a player count
   // (owner 2026-10-06, 2026-11-02).
   _comingHtml() {
-    const rsvps = Array.isArray(this.ev.rsvps) ? this.ev.rsvps : [];
+    // 💤 Inactive (mig 945; owner 2026-11-03: "show in sep section on all
+    // screens including event center so i don't bother with them"): their
+    // own closed fold, never No response / Not going / a reminder.  The
+    // server keeps them out of rsvps except a practice answer of theirs.
+    const inactive = Array.isArray(this.ev.inactive) ? this.ev.inactive : [];
+    const inactiveIds = new Set(inactive.map(r => r.person_id));
+    const rsvps = (Array.isArray(this.ev.rsvps) ? this.ev.rsvps : [])
+      .filter(r => r && (r.is_coach || r.response === 'yes' || !inactiveIds.has(r.person_id)));
     const nameOf = (r) => r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || 'Unknown';
     const present = (list) => list.filter(r => {
       const e = this.att && this.att.roster.get(r.person_id);
@@ -1280,7 +1287,7 @@ class EventScreen extends Screen {
                style="margin-left:6px; padding:0 6px; border-radius:999px; background:rgba(245,158,11,0.18);
                       border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.62rem; font-weight:800;">🎟 INVITED</span>`
       : (r.is_coach ? `<span style="margin-left:6px; font-size:0.68rem; opacity:0.6;">coach</span>` : '');
-    if (!rsvps.length) {
+    if (!rsvps.length && !inactive.length) {
       return `<div class="ec-box" style="opacity:0.7;">Nobody is on this event's list — tag a team on the calendar event.</div>`;
     }
     const open = !this._isPast(this.ev);
@@ -1384,6 +1391,7 @@ class EventScreen extends Screen {
       ${fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: true })}
       ${fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no'))}
       ${fold('injured', L('sec_injured', '🩹 Injured'), injured)}
+      ${fold('inactive', L('sec_inactive', '💤 Inactive'), inactive)}
       ${coachSection()}`;
   }
 

@@ -1569,6 +1569,40 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                         WHERE roster.is_pickup_only = false
                                              OR roster.response = 'yes'
                 ), '[]'::jsonb) AS rsvps_json,
+                -- 💤 Inactive (mig 945 squad status; owner 2026-11-03: "show in
+                -- sep section on all screens including event center so i
+                -- don't bother with them").  Everyone 💤 on every team this
+                -- event is tagged with (no live non-inactive spot there, no
+                -- invite), who hasn't said yes — a yes brings him back
+                -- (fh_inactive_back_on_yes).  Kept out of rsvps_json so no
+                -- count or reminder ever sees them; screens list them in
+                -- their own fold and drop them from their other groups.
+                COALESCE((
+                    SELECT jsonb_agg(jsonb_build_object(
+                               'person_id',  p.id,
+                               'first_name', p.first_name,
+                               'last_name',  p.last_name,
+                               'name',       NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
+                               'response',   er.response,
+                               'parent_person_id', p.parent_person_id)
+                           ORDER BY p.last_name, p.first_name, p.id)
+                      FROM persons p
+                      LEFT JOIN fh_event_rsvps er ON er.fh_event_id = fe.id AND er.person_id = p.id
+                     WHERE p.id IN (SELECT tp.person_id
+                                      FROM fh_event_teams fet
+                                      JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
+                                      JOIN squad_statuses ss ON ss.id = tp.squad_status_id AND ss.code = 'inactive'
+                                     WHERE fet.fh_event_id = fe.id)
+                       AND NOT EXISTS (SELECT 1
+                                         FROM fh_event_teams fet
+                                         JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
+                                         LEFT JOIN squad_statuses ss ON ss.id = tp.squad_status_id
+                                        WHERE fet.fh_event_id = fe.id AND tp.person_id = p.id
+                                          AND ss.code IS DISTINCT FROM 'inactive')
+                       AND NOT EXISTS (SELECT 1 FROM fh_event_invites i
+                                        WHERE i.fh_event_id = fe.id AND i.person_id = p.id AND i.revoked_at IS NULL)
+                       AND er.response IS DISTINCT FROM 'yes'
+                ), '[]'::jsonb) AS inactive_json,
                 CASE
                     WHEN $1::int = 0 OR fe.id IS NULL THEN NULL
                     ELSE (
@@ -1865,6 +1899,12 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         for (auto& r : ev["rsvps"]) { r.erase("phone"); r.erase("email"); }
                     }
                 } catch (...) {}
+            }
+            // 💤 Inactive players on this event's teams (names only) — same
+            // signed-in gate as the who's-coming list.
+            ev["inactive"] = json::array();
+            if (personId > 0) {
+                try { ev["inactive"] = json::parse(row["inactive_json"].c_str()); } catch (...) {}
             }
             events.push_back(std::move(ev));
         }
