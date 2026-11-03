@@ -834,10 +834,10 @@ class RosterScreenBase extends Screen {
       const needsOnboard = (p) => !!(window.PersonStanding && typeof PersonStanding.answered === 'function' && PersonStanding.answered(p.personId) === false);
       for (const p of shown) {
         const cat = this.columnCategoryOf(p);
-        // Only men this team actually asks (full spot or practice squad) —
-        // a 📄 paper / ↔ call-in spot sees nothing by default, so it can't
-        // need onboarding here (Armando Pena, APSL paper + Liga 1, 11/3).
-        cats[(cat === 'active' || cat === 'practice_squad') && needsOnboard(p) ? 'onboard' : cat].push(p);
+        // Every man who never answered, whatever his spot (owner 11/3: "any
+        // player with no rsvp ever needs to be in needs onboard") — only
+        // 💤 Inactive and 🩹 Injured keep their own group.
+        cats[cat !== 'injured' && cat !== 'inactive' && needsOnboard(p) ? 'onboard' : cat].push(p);
       }
       // ACTIVE splits by the column's league list (mig 1010, owner 11/3:
       // "we may even want a player to be able to rsvp if not on roster
