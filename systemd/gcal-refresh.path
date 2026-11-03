@@ -1,0 +1,22 @@
+# Football Home — pull Google Calendar the moment a screen asks (owner
+# 2026-11-03: "fire in background and load from db").  #my, Event Center
+# and Game Center POST /api/calendar/gcal-refresh on open (fire-and-forget,
+# at most once a minute); the backend rewrites
+# database/data/run/gcal-sync.request and this path unit starts
+# gcal-refresh.service.  The system gcal-sync.timer (every 5 min) stays as
+# the safety net.
+#
+# A USER unit — install as jbreslin, no sudo (the user has Linger=yes):
+#   mkdir -p ~/.config/systemd/user
+#   cp /srv/footballhome/systemd/gcal-refresh.* ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now gcal-refresh.path
+[Unit]
+Description=Football Home — Google Calendar pull on request
+
+[Path]
+PathChanged=/srv/footballhome/database/data/run/gcal-sync.request
+Unit=gcal-refresh.service
+
+[Install]
+WantedBy=default.target

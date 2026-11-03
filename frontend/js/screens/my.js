@@ -173,6 +173,19 @@ class MyScreen extends Screen {
   onEnter(_params) {
     this._wire();
     this._bootstrap();
+    // Pull Google Calendar in the background (GcalRefresh, 11/3); the page
+    // renders from the DB as always and repaints only if the pull changed it.
+    if (window.GcalRefresh) GcalRefresh.ping(this.auth, () => this._refreshFromGcal());
+  }
+
+  async _refreshFromGcal() {
+    if (!Array.isArray(this.events)) return;
+    const up = await this._fetch('/api/calendar/upcoming?days=14');
+    const next = up.events || [];
+    if (JSON.stringify(next) === JSON.stringify(this.events)) return;
+    this.events = next;
+    this.dues = up.dues || this.dues;
+    this._renderEvents();
   }
 
   onExit() {

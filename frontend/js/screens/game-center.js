@@ -1262,6 +1262,9 @@ class GameCenterScreen extends EventScreen {
     // Copy rows (dues flag, migration 416) — cached across screens.
     if (window.MessageCopy) MessageCopy.load(this.auth).catch(() => {});
     if (window.SectionContact) SectionContact.load(this.auth).catch(() => {});
+    // Pull Google Calendar in the background (GcalRefresh, 11/3) — this
+    // render stays on the DB; the next open / live poll has the pull.
+    if (window.GcalRefresh) GcalRefresh.ping(this.auth);
 
     try {
       const [lineupRes, positionsRes, matchRes, postTypesRes] = await Promise.all([

@@ -255,6 +255,20 @@ class EventScreen extends Screen {
     if (this.ev) { loadAll(); this.syncHash(); }
     else if (this.loadingId) this._loadEvent(this.loadingId).then(loadAll);
     this._startLivePoll();
+    // Pull Google Calendar in the background (GcalRefresh, 11/3): the event
+    // shows from the DB now and repaints only if the pull moved or renamed it.
+    if (window.GcalRefresh) GcalRefresh.ping(this.auth, () => this._refreshFromGcal());
+  }
+
+  async _refreshFromGcal() {
+    if (!this.ev || !this.ev.fh_event_id) return;
+    const id = this.ev.fh_event_id;
+    const body = await this._json(`/api/calendar/events/${id}`);
+    if (!body.event || !this.ev || this.ev.fh_event_id !== id) return;
+    const key = (e) => JSON.stringify([e.title, e.starts_at, e.ends_at, e.location, e.description, e.kind]);
+    if (key(body.event) === key(this.ev)) return;
+    this.ev = body.event;
+    this._render();
   }
 
   // Per-visit state a child keeps (cleared on every enter).

@@ -70,6 +70,9 @@ class EventCenterScreen extends Screen {
     // The DB copy (title, subtitle, not-posted, now line) — cached across screens.
     if (window.MessageCopy) MessageCopy.load(this.auth).then(() => this._render()).catch(() => {});
     this._loadEvents();
+    // Pull Google Calendar in the background (GcalRefresh, 11/3) — the week
+    // shows from the DB now and reloads once the pull has landed.
+    if (window.GcalRefresh) GcalRefresh.ping(this.auth, () => this._loadEvents());
   }
 
   // ── data ────────────────────────────────────────────────────────────

@@ -1,0 +1,16 @@
+# Runs the same two scripts as the system gcal-sync.service, on request
+# (see gcal-refresh.path).  Skipped while the 5-minute timer's run is going
+# — it is pulling the same changes already.  Incremental sync + classify is
+# ~1.2 s of work; the rest is node start-up.  A USER unit (install notes in
+# gcal-refresh.path).
+[Unit]
+Description=Football Home — Google Calendar pull on request (mirror + classifier)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/footballhome
+ExecCondition=/bin/sh -c '! systemctl is-active --quiet gcal-sync.service'
+ExecStart=/usr/bin/flock -w 60 /tmp/footballhome-gcal-refresh.lock /usr/bin/node /srv/footballhome/scripts/gcal-sync.js
+ExecStart=/usr/bin/flock -w 60 /tmp/footballhome-gcal-refresh.lock /usr/bin/node /srv/footballhome/scripts/gcal-classify.js
+TimeoutStartSec=180s
+Nice=10

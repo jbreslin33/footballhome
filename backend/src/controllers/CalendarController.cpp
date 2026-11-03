@@ -13,6 +13,9 @@
 #include "../third_party/json.hpp"
 
 #include <algorithm>
+#include <ctime>
+#include <chrono>
+#include <mutex>
 #include <cctype>
 #include <cstdio>
 #include <exception>
@@ -544,6 +547,35 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
 
     router.get(prefix + "/calendar/upcoming", [this](const Request& req) {
         return this->handleGetUpcoming(req);
+    });
+    // POST /api/calendar/gcal-refresh — ask the host to pull Google Calendar
+    // now (owner 2026-11-03: "i don't want to slow the load down … fire in
+    // background and load from db").  #my, Event Center and Game Center
+    // call it fire-and-forget on open and keep rendering from the DB.  It
+    // only touches database/data/run/gcal-sync.request; the host's user
+    // systemd gcal-refresh.path sees the change and runs gcal-sync.js +
+    // gcal-classify.js (scripts/systemd/).  At most once a minute however
+    // many screens open; any signed-in person may ask.
+    router.post(prefix + "/calendar/gcal-refresh", [this](const Request& req) {
+        if (resolveOptionalPersonId(req) <= 0) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
+        static std::mutex mu;
+        static std::chrono::steady_clock::time_point last{};
+        bool queued = false;
+        {
+            std::lock_guard<std::mutex> lock(mu);
+            const auto now = std::chrono::steady_clock::now();
+            if (last.time_since_epoch().count() == 0 || now - last >= std::chrono::seconds(60)) {
+                if (FILE* f = std::fopen("/app/database/data/run/gcal-sync.request", "w")) {
+                    std::fprintf(f, "%lld\n", (long long)std::time(nullptr));
+                    std::fclose(f);
+                    last = now;
+                    queued = true;
+                } else {
+                    std::cerr << "[gcal-refresh] cannot write the request file" << std::endl;
+                }
+            }
+        }
+        return jsonOk({{"queued", queued}});
     });
     router.post(prefix + "/calendar/rsvp", [this](const Request& req) {
         return this->handlePostRsvp(req);
