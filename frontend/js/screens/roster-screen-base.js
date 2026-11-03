@@ -824,7 +824,6 @@ class RosterScreenBase extends Screen {
     const ridersUp = riderList.length > 0 && riderList.every(r => sortOf(r.fromTeamId) != null && sortOf(r.fromTeamId) > Number(col.sortOrder));
     const riders = ridersCount ? head(ridersUp ? (copy('board_callups_h') || '⭐ CALL-UPS · every game') : (copy('board_calldowns_h') || '⭐ CALL-DOWNS'),
       ridersCount, ...BLUE) + ridersHtml : '';
-    const riderIds = new Set(riderList.map(r => Number(r.personId)));
 
     if (this.boardView === 'team') {
       const cats = { onboard: [], active: [], callin: [], paper: [], injured: [], practice_squad: [], inactive: [] };
@@ -864,20 +863,11 @@ class RosterScreenBase extends Screen {
       };
       const activeHtml = head(copy('board_plays_h') || 'ACTIVE', cats.active.length, ...GREEN)
         + (cats.active.length ? splitByList(ordered(cats.active), col, (p, x) => card(p, x)) : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
-      // ⭐ CALL-UP POOL: men of a team folded into this column
-      // (teams.team_pill_fold_into_id — APSL Reserves → APSL) who are not
-      // on this team.  Their cards act on the folded team's row.
-      const mine = new Set(bucket.map(p => Number(p.personId)).filter(Boolean));
-      const poolHtml = (data.columns || []).filter(c => Number(c.teamPillFoldInto) === Number(col.teamId)).map(child => {
-        const cb = (data.buckets && data.buckets[String(child.teamId)]) || [];
-        const pool = this.orderColumnPlayers(cb).map(r => r.player)
-          .filter(p => !mine.has(Number(p.personId)) && !riderIds.has(Number(p.personId)));   // standing call-ups list above
-        if (!pool.length) return '';
-        const poolCard = (p, x = '') => this.renderPlayer(
-          { ...p, nameChipHtml: (p.nameChipHtml || '') + listChips(p) + x }, data.columns, child, cb.indexOf(p) + 1, cb.length);
-        return head(copy('board_callup_pool_h') || '⭐ CALL-UP POOL · asked when called up', pool.length, ...BLUE)
-          + splitByList(pool, child, poolCard);
-      }).join('');
+      // ⭐ CALL-UP POOL is gone until the owner names who is in it (11/3:
+      // "take all out of call up pool until i tell you who to put in
+      // there … its obvious who is in pool if they are on APSL official
+      // or reserve official (shown with label on their card)").  A folded
+      // team's men show in whatever other column has them, with 📋 chips.
       // 👀 Sees every game (owner 11/3: "we always bring 20 so this list
       // needs to be at least 20") — who is asked to RSVP with no one
       // lifting a finger: full spots not injured (ACTIVE + NEEDS ONBOARD)
@@ -901,7 +891,6 @@ class RosterScreenBase extends Screen {
         + section(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard, '#e879f9', 'rgba(232,121,249,0.14)')
         + activeHtml
         + riders
-        + poolHtml
         + section(copy('board_callins_h') || '↔ CALL INS', cats.callin, ...BLUE)
         + section(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, ...BLUE)
         + section(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, ...AMBER)
