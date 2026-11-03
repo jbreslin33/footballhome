@@ -2695,20 +2695,31 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                         const std::uint8_t team = setup_.team_of_slot[slot];
                         int best = -1;
                         Fixed64 best_room{};
+                        // G5.11 (§8.108): read every man lead_s on along his run —
+                        // the ball goes where the runner arrives (0 = where he is).
+                        const Fixed64 lead = X.leadS();
+                        auto ahead = [&](SlotIndex k) {
+                            const auto& q = world.player(k);
+                            return Vec2{q.pos.x + q.vel.x * lead, q.pos.y + q.vel.y * lead};
+                        };
+                        Vec2 best_at{};
                         for (SlotIndex i = 0; i < world.playerCount(); ++i) {
                             if (i == slot || setup_.team_of_slot[i] != team || world.isKeeper(i)) continue;
-                            const auto& m = world.player(i);
-                            const Fixed64 mx = half_x_ - m.pos.x * csg;
-                            if (mx < X.boxNearM() || mx > X.boxFarM() || math::fx_abs(m.pos.y) > X.boxYM()) continue;
+                            const Vec2 at = ahead(i);
+                            const Fixed64 mx = half_x_ - at.x * csg;
+                            if (mx < X.boxNearM() || mx > X.boxFarM() || math::fx_abs(at.y) > X.boxYM()) continue;
                             Fixed64 room = Fixed64::fromInt(10000);
                             for (SlotIndex j = 0; j < world.playerCount(); ++j) {
                                 if (setup_.team_of_slot[j] == team) continue;
-                                const Fixed64 r = distSq(world.player(j).pos, m.pos);
+                                const Vec2 o = ahead(j);
+                                const Fixed64 r = math::lengthSquared(Vec2{o.x - at.x, o.y - at.y});
                                 if (r < room) room = r;
                             }
-                            if (best < 0 || room > best_room) { best = i; best_room = room; }
+                            if (best < 0 || room > best_room) { best = i; best_room = room; best_at = at; }
                         }
-                        Vec2 to = best >= 0 ? Vec2{world.player(best).pos.x, world.player(best).pos.y}
+                        // ...and only with a man to find, when need_mate is set.
+                        if (best >= 0 || !X.needMate()) {
+                        Vec2 to = best >= 0 ? best_at
                                             : Vec2{(half_x_ - X.spotM()) * csg, Fixed64::zero()};
                         // A cross is played into an area, not onto a man's head:
                         // aim_spread_m either way in x and y around it. [FH]
@@ -2727,11 +2738,18 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                         } else {
                             out.action = Action::LoftedKick;
                             out.carry_m = aimedCarry(me.pos, to, rangeFor(lv, Fixed64::fromInt(50)));
+                            if (X.meetZM().raw > 0) {
+                                const int c = world.ballFlight().carryToMeet(dist, X.meetZM());
+                                const Fixed64 cap = rangeFor(lv, Fixed64::fromInt(50));
+                                const int cmax = static_cast<int>(cap.raw >> Fixed64::FRAC_BITS);
+                                out.carry_m = static_cast<std::uint8_t>(std::max(1, std::min({c, cmax, 255})));
+                            }
                         }
                         out.why = Why::Cross;
                         out.target = to;
                         if (best >= 0) out.other = static_cast<std::int16_t>(best);
                         return out;
+                        }
                     }
                 }
             }

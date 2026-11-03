@@ -69,6 +69,30 @@ public:
     // ...and how long it is in the air until that bounce (s).
     math::Fixed64 flightTime(math::Fixed64 carry_m) const { return lookup(tables_->time, carry_m); }
 
+    // G5.11 (§8.108): a loft of carry_m, coming down, passes height h this far
+    // along the ground (its bounce point if it never rises over h).
+    math::Fixed64 descendDist(math::Fixed64 carry_m, math::Fixed64 h) const {
+        math::Vec3 vel{launchSpeed(carry_m), math::Fixed64::zero(), launchSpeed(carry_m) * kLoftLaunchRatio};
+        math::Vec3 pos{};
+        for (int ticks = 0; ticks < 600; ++ticks) {
+            step(vel);
+            vel.z -= kGravity * kTickDt;
+            pos += vel * kTickDt;
+            if (pos.z.raw < 0 || (vel.z.raw < 0 && pos.z <= h)) break;
+        }
+        return pos.x;
+    }
+    // ...and the shortest whole carry (1-255) whose descent passes h at d or
+    // beyond: the cross that meets a head there instead of bouncing at his feet.
+    int carryToMeet(math::Fixed64 d, math::Fixed64 h) const {
+        int lo = 1, hi = kMaxCarry;
+        while (lo < hi) {
+            const int mid = (lo + hi) / 2;
+            if (descendDist(math::Fixed64::fromInt(mid), h) < d) lo = mid + 1; else hi = mid;
+        }
+        return lo;
+    }
+
 private:
     struct Tables {
         std::array<math::Fixed64, kMaxCarry + 1> speed{}, time{};

@@ -463,11 +463,20 @@ public:
     math::Fixed64 boxYM() const { return box_y_; }
     math::Fixed64 spotM() const { return spot_; }
     math::Fixed64 spreadM() const { return spread_; }
+    // G5.11 (§8.108): the cross is played where the runner will be — every
+    // man (ours and theirs) read lead_s ahead on his run. 0 = where he is.
+    math::Fixed64 leadS() const { return lead_; }
+    // ...and in the air it comes down through meet_z_m at him, not at his
+    // feet (0 = the old bounce on the spot).
+    math::Fixed64 meetZM() const { return meet_z_; }
+    // ...and only with a man to find (1): nobody in the zone, no cross.
+    bool needMate() const { return need_mate_; }
 
 private:
     bool measured_ = false;
     math::Fixed64 rates_[3][3] = {};
-    math::Fixed64 low_, near_, far_, box_y_, spot_, spread_;
+    math::Fixed64 low_, near_, far_, box_y_, spot_, spread_, lead_, meet_z_;
+    bool need_mate_ = false;
 };
 
 // Drive down the line (187, G5.9, §8.107): a wide carrier (|y| 14 m+) inside

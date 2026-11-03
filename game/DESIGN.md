@@ -4645,3 +4645,36 @@ ball at head height when it gets there.
 distance to the drop point and to the attacker they are marking, real (DFL tracking
 at the frame of a cross's first touch) v game. Then the cross count: 3.3-4.3 a team
 v 11.5 real. Nothing in §8.107-8.108 ships until high crosses are as hard as real.
+
+**G5.11 continued (same section): the high cross comes down where nobody is.**
+Where the men are when a high open-play cross first comes down through 2.4 m inside
+the box (`benchmarks_tracking_drop.py`, DFL, 22 crosses in 7 matches, thin;
+match_main `HIGH CROSS FIRST DROP`):
+
+| Nearest to the ball | Real | B3 (box rules + header read) | + lead 1.2, meet 2.0 (M1) | + need mate (N1) |
+|---|---|---|---|---|
+| Defender, median (4 m+) | 2.2 m (14%) | 3.5-6.6 m (41-75%) | 5.0-6.9 m (53-72%) | 3.1-5.3 m (38-71%) |
+| Attacker, median (4 m+) | 3.2 m (45%) | 8.4-18.1 m (65-94%) | 10.9-14.0 m (60-84%) | 1.2-2.0 m (0-14%) |
+
+Two faults in the cross itself, both [FH] params on `concept.cross`, off without rows:
+
+- **It was aimed to bounce on the target**, so it passed head height 4-7 m short of
+  him (traced: every lofted cross). `meet_z_m`: struck so its descent passes that
+  height at the target — `BallFlight::carryToMeet`, the same tick law with drag.
+  2.0 m puts the drop on the aim (median under 1.5 m off it).
+- **It was aimed at where the man stood.** `lead_s`: every man, ours and theirs, read
+  that far along his run when picking the mate with most room and aiming at him.
+
+With both (M1): attackers' headers on high crosses 8 → 19%, defenders' 17 → 7%, out
+25% (real 9.5%), goals 3.5. But 70% of high crosses still have no mate in the 3-13 m
+zone even read 1.2 s ahead, and go to the empty 7.5 m spot. `need_mate` 1 (no man
+to find, no cross) puts the attacker on the drop (1.2-2.0 m) and halves the crosses
+to 1.8 a team (real 11.5): a real crosser has men to find. Box presence with the ball
+wide 0-18 m: attackers 0.84-1.04 (real 2.18), in the target zone 0.25-0.30 (1.10),
+defenders 2.2-2.6 (4.04).
+
+**Next (the mole):** the box is empty, both sides, when the ball is wide near their
+line — §8.107's open question, now the one blocking the cross. Who should be in it
+(real: which positions, DFL by role) and why ours aren't (their jobs at that moment,
+the pace caps, offside). Then need_mate, the cross count, and defenders marking the
+cross's target.

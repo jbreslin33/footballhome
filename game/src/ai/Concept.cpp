@@ -292,6 +292,9 @@ void CrossIt::configure(const core::ModelParams& p) {
     box_y_ = p.fixed(key("box_y_m"), 10000);
     spot_ = p.fixed(key("spot_m"), 7500);
     spread_ = p.fixed(key("aim_spread_m"), 0);
+    lead_ = p.fixed(key("lead_s"), 0);   // G5.11
+    meet_z_ = p.fixed(key("meet_z_m"), 0);   // G5.11
+    need_mate_ = p.integer(key("need_mate"), 0) != 0;   // G5.11
 }
 int CrossIt::depth(math::Fixed64 x) {
     if (x < math::Fixed64::fromInt(6)) return 0;

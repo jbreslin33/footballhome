@@ -61,6 +61,8 @@ long g_aw_n[128]; double g_aw_y[128], g_aw_t[128];   // attackers on the far sid
 long g_lw_n[128]; double g_lw_y[128], g_lw_t[128];   // G5.7 diag: ball |y| 24+, by why
 long g_blocks[2];
 // G5.11: a cross's first touch — [high?][0 ours foot, 1 ours head, 2 theirs foot, 3 theirs head, 4 keeper, 5 out]
+double g_cx_tx, g_cx_ty, g_cx_kx, g_cx_ky; long g_cx_until = -1, g_cx_n, g_cx_bin[2][4]; std::vector<double> g_cx_d[2];   // G5.11: the same, first drop after a high open-play cross (4 s)
+long g_dr_n, g_dr_bin[2][4], g_dr_why[128], g_dr_go[5]; double g_dr_go_d = 0; long g_dr_tg[4], g_dr_sp[3]; double g_dr_pz = 0; std::vector<double> g_dr_d[2];   // G5.11: a ball dropping through 2.4 m in a box — nearest defender [0] / attacker [1]
 long g_cf_md[2][6][6]; double g_cf_min = 1e9, g_cf_minv = 0;   // G5.11 diag: nearest opponent to a cross's flight (below 1.5 m), by outcome
 long g_cf[2][6], g_cf_n[2]; int g_cf_on = 0, g_cf_team = -1, g_cf_kicker = -1, g_cf_high = 0; double g_cf_z = 0;
 long g_bpw[128];
@@ -842,6 +844,48 @@ int main(int argc, char** argv) {
             const auto before = s.world().ball().owner;
             s.tickOnce();
             const auto& b = s.world().ball();
+            {   // G5.11 (§8.108): the drop — benchmarks: drop (DFL)
+                const auto& bb = s.world().ball();
+                const double bx = bb.pos.x.toDouble(), by = bb.pos.y.toDouble(), bz = bb.pos.z.toDouble();
+                const double hx = s.world().pitchHalfX().toDouble();
+                if (s.world().outStage() == 0 && g_dr_pz > 2.4 && bz <= 2.4 && std::fabs(by) < 20.16 && std::fabs(bx) > hx - 16.5) {
+                    const int dteam = bx < 0 ? 0 : 1;   // team 0 defends -x
+                    double nd[2] = {1e9, 1e9}, go = 1e9, gtg = 0, gsp = 0; int ndw = 0;
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        if (s.world().isKeeper(j)) continue;
+                        const auto& q = s.world().player(j);
+                        const double dd = std::hypot(q.pos.x.toDouble() - bx, q.pos.y.toDouble() - by);
+                        const int r = q.team == dteam ? 0 : 1;
+                        if (r == 0 && dd < nd[0]) ndw = std::min(127, (int)s.lastOrders()[j].why);
+                        if (r == 0) {
+                            const auto w = s.lastOrders()[j].why;
+                            if ((w == ai::Why::MeetPass || w == ai::Why::Chase || w == ai::Why::JumpPass || w == ai::Why::AttackDrop || w == ai::Why::RunBackDrop) && dd < go) {
+                                go = dd;
+                                const auto& tg = s.lastOrders()[j].target;
+                                gtg = std::hypot(tg.x.toDouble() - bx, tg.y.toDouble() - by);
+                                gsp = std::hypot(q.vel.x.toDouble(), q.vel.y.toDouble());
+                            }
+                        }
+                        nd[r] = std::min(nd[r], dd);
+                    }
+                    ++g_dr_why[ndw];
+                    ++g_dr_go[go < 1 ? 0 : go < 2 ? 1 : go < 4 ? 2 : go < 1e8 ? 3 : 4];
+                    if (go < 1e8) { g_dr_go_d += go; ++g_dr_tg[gtg < 1 ? 0 : gtg < 2 ? 1 : gtg < 4 ? 2 : 3]; ++g_dr_sp[gsp < 2 ? 0 : gsp < 5 ? 1 : 2]; }
+                    if (k <= g_cx_until) {
+                        g_cx_until = -1; ++g_cx_n;
+                        if (std::getenv("GAME_TRACE_CX"))
+                            std::printf("CX from (%.1f,%.1f) aim (%.1f,%.1f) drop (%.1f,%.1f) aim-to-drop %.1f m; kick-to-aim %.1f kick-to-drop %.1f; nearest def %.1f att %.1f\n", g_cx_kx, g_cx_ky, g_cx_tx, g_cx_ty, bx, by,
+                                        std::hypot(bx - g_cx_tx, by - g_cx_ty), std::hypot(g_cx_tx - g_cx_kx, g_cx_ty - g_cx_ky), std::hypot(bx - g_cx_kx, by - g_cx_ky), nd[0], nd[1]);
+                        for (int r = 0; r < 2; ++r) { g_cx_d[r].push_back(nd[r]); ++g_cx_bin[r][nd[r] < 1 ? 0 : nd[r] < 2 ? 1 : nd[r] < 4 ? 2 : 3]; }
+                    }
+                    ++g_dr_n;
+                    for (int r = 0; r < 2; ++r) {
+                        g_dr_d[r].push_back(nd[r]);
+                        ++g_dr_bin[r][nd[r] < 1 ? 0 : nd[r] < 2 ? 1 : nd[r] < 4 ? 2 : 3];
+                    }
+                }
+                g_dr_pz = bz;
+            }
             if (g_cf_on) {
                 const auto& bb = s.world().ball();
                 int cat = -1;
@@ -1845,6 +1889,10 @@ int main(int argc, char** argv) {
                 if (o.why == ai::Why::Cross) {
                     g_cf_on = 1; g_cf_team = s.world().player(*before).team; g_cf_kicker = *before;
                     g_cf_high = o.action == core::Action::LoftedKick ? 1 : 0; ++g_cf_n[g_cf_high];
+                    if (g_cf_high) {
+                        g_cx_until = k + 120; g_cx_tx = o.target.x.toDouble(); g_cx_ty = o.target.y.toDouble();
+                        g_cx_kx = s.world().player(*before).pos.x.toDouble(); g_cx_ky = s.world().player(*before).pos.y.toDouble();
+                    }
                 }
                 {
                     static const int trace_cr = std::atoi(envOr("GAME_TRACE_CROSS", "0"));
@@ -2458,6 +2506,31 @@ int main(int argc, char** argv) {
                         if (g_cf[h][c])
                             std::printf("  CF DIAG %s cat %d: nearest opp under 1.5 m high <0.5 %ld, 0.5-1 %ld, 1-1.5 %ld, 1.5-2.5 %ld, 2.5-5 %ld, 5+ %ld\n", h ? "high" : "low", c,
                                         g_cf_md[h][c][0], g_cf_md[h][c][1], g_cf_md[h][c][2], g_cf_md[h][c][3], g_cf_md[h][c][4], g_cf_md[h][c][5]);
+            if (q == 0 && g_dr_n) {
+                std::printf("  DROP DIAG nearest defender's job:");
+                for (int w = 0; w < 128; ++w) if (g_dr_why[w] * 25 >= g_dr_n) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_dr_why[w] / g_dr_n);
+                std::printf("\n  DROP DIAG a defender going for the ball: <1 %.0f%% 1-2 %.0f%% 2-4 %.0f%% 4+ %.0f%% nobody %.0f%%\n", 100.0 * g_dr_go[0] / g_dr_n, 100.0 * g_dr_go[1] / g_dr_n,
+                            100.0 * g_dr_go[2] / g_dr_n, 100.0 * g_dr_go[3] / g_dr_n, 100.0 * g_dr_go[4] / g_dr_n);
+                {
+                    const long gn = std::max(1L, g_dr_tg[0] + g_dr_tg[1] + g_dr_tg[2] + g_dr_tg[3]);
+                    std::printf("  DROP DIAG his target from the ball: <1 %.0f%% 1-2 %.0f%% 2-4 %.0f%% 4+ %.0f%%; his speed <2 %.0f%% 2-5 %.0f%% 5+ %.0f%%\n", 100.0 * g_dr_tg[0] / gn, 100.0 * g_dr_tg[1] / gn,
+                                100.0 * g_dr_tg[2] / gn, 100.0 * g_dr_tg[3] / gn, 100.0 * g_dr_sp[0] / gn, 100.0 * g_dr_sp[1] / gn, 100.0 * g_dr_sp[2] / gn);
+                }
+                if (g_cx_n) {
+                    std::printf("HIGH CROSS FIRST DROP THROUGH 2.4 M IN THE BOX (%.1f a team):", g_cx_n / (2.0 * nm));
+                    for (int r = 0; r < 2; ++r) {
+                        auto v = g_cx_d[r]; std::sort(v.begin(), v.end());
+                        std::printf(" %s median %.1f m <1 %.0f%% 1-2 %.0f%% 2-4 %.0f%% 4+ %.0f%%%s", r ? "attacker" : "defender", v[v.size() / 2],
+                                    100.0 * g_cx_bin[r][0] / g_cx_n, 100.0 * g_cx_bin[r][1] / g_cx_n, 100.0 * g_cx_bin[r][2] / g_cx_n, 100.0 * g_cx_bin[r][3] / g_cx_n, r ? "\n" : ";");
+                    }
+                }
+                std::printf("DROP THROUGH 2.4 M IN A BOX (%.1f a team):", g_dr_n / (2.0 * nm));
+                for (int r = 0; r < 2; ++r) {
+                    auto v = g_dr_d[r]; std::sort(v.begin(), v.end());
+                    std::printf(" %s median %.1f m <1 %.0f%% 1-2 %.0f%% 2-4 %.0f%% 4+ %.0f%%%s", r ? "attacker" : "defender", v[v.size() / 2],
+                                100.0 * g_dr_bin[r][0] / g_dr_n, 100.0 * g_dr_bin[r][1] / g_dr_n, 100.0 * g_dr_bin[r][2] / g_dr_n, 100.0 * g_dr_bin[r][3] / g_dr_n, r ? "\n" : ";");
+                }
+            }
             if (q == 0) std::printf("INTO THE CROSSING ZONE a team: carried %.2f, passed %.2f (from wide %.2f)\n", g_xin_carry / (2.0 * nm), g_xin_pass / (2.0 * nm), g_xin_pass_wide / (2.0 * nm));
             std::printf("OUT BY %s:", rk[q]);
                 for (int c = 0; c < 8; ++c) std::printf(" %s %.2f", ck[c], oc_n[q][c] / (2.0 * nm));
