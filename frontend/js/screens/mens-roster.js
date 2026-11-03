@@ -874,12 +874,7 @@ class MensRosterScreen extends RosterScreenBase {
       statusSelectHtml: statusSelect,
       viewButtonHtml: profileBtn + this.renderContactButton(p, {
         recipients: [{ personId: p.personId, name: contactName, phone: contactPhone, email: contactEmail }],
-        messages: [
-          { key: 'hello', label: MessageCopy.block('contact_popup', 'msg_hello') || '💬 Message', subject, body: emailBody, smsBody },
-          ...(this.registrationPresets || []).filter(Boolean).map(x => this.presetMessage(x)),
-          ...(inviteCopy ? [{ key: 'invite', label: MessageCopy.block('contact_popup', 'msg_invite') || '📣 Invite to Football Home',
-                              subject: inviteEmailSubject, body: inviteEmailBody, smsBody: inviteSmsBody }] : []),
-        ],
+        section: 'mens',
         vcard: vcardHref ? { href: vcardHref, filename: vcardFilename } : null,
         title: `Contact ${contactName}`,
       }),

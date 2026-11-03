@@ -238,6 +238,8 @@ class EventScreen extends Screen {
     // The DB copy (pill titles, the contact sheet's wording) — cached
     // across screens; repaint once it lands.
     if (window.MessageCopy) MessageCopy.load(this.auth).then(() => this._render()).catch(() => {});
+    // The section's registration / docs forms for the 📇 Contact popup.
+    if (window.SectionContact) SectionContact.load(this.auth).then(() => this._render()).catch(() => {});
     const loadAll = () => {
       if (!this.ev) return;
       this._loadAttendance();
@@ -514,6 +516,46 @@ class EventScreen extends Screen {
   // whether each way works), and one status line — what was sent and how
   // it went.  noResp: they have not answered an event still open, so the
   // sheet leads with the RSVP reminder.
+  // The one 📇 Contact popup (owner 2026-11-03: "contact popup is all
+  // inclusive"): this event's RSVP reminder first when they owe an answer,
+  // then the section's list (components/section-contact.js) — the same
+  // list #teams offers for Men's / Women's / Boys / Girls.  Recipients are
+  // the card's own contact rows (every parent of a kid, mig 682).
+  _contactButtonHtml(r, st, noResp) {
+    if (!window.ContactPopup || !window.SectionContact || !st) return '';
+    const pid = r.person_id;
+    const rows = Array.isArray(st.recipients) && st.recipients.length ? st.recipients : [st];
+    const recipients = rows
+      .map(x => ({ personId: x.recipient_person_id || pid, name: x.recipient_name || r.name || '',
+                   phone: x.phone || null, email: x.email || null, forPersonId: pid }))
+      .filter(x => x.phone || x.email);
+    if (!recipients.length) return '';
+    const first = r.first_name || String(r.name || '').split(' ')[0] || '';
+    const parentRow = recipients.find(x => x.personId !== pid);
+    const remind = noResp ? [{
+      key: 'remind', label: this._cm('what_remind') || '📣 RSVP reminder', noClub: true,
+      resolve: async (rc, channel) => {
+        const data = await this._postReminder('/api/rsvp-board/remind', {
+          person_id: pid, channel, fh_event_id: this.eventId() || 0, recipient_person_ids: [rc.personId] });
+        const x = (data.sends && data.sends[0]) || data;
+        const href = channel === 'email' ? x.gmail_href : x.sms_href;
+        if (!href) throw new Error('No message came back');
+        return { ...x, href };
+      },
+      onSent: () => this._loadReminders().then(() => this._render()),
+    }] : [];
+    return ContactPopup.button({
+      key: `ec:${this.eventId()}:${pid}`, screen: this, recipients,
+      messages: SectionContact.messages(this.ev && this.ev.category, {
+        screen: this, playerId: pid, first,
+        parentFirst: parentRow ? String(parentRow.name || '').split(' ')[0] : '',
+        context: remind,
+      }),
+      flagged: noResp,
+      title: `Contact ${r.name || first}`,
+    });
+  }
+
   _contactLineHtml(r, noResp) {
     const pid = r.person_id;
     const st = (this.textMarks && this.textMarks.people && this.textMarks.people[String(pid)]) || null;
@@ -539,8 +581,7 @@ class EventScreen extends Screen {
       <div data-gc-contact style="margin-top:6px;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
           <span style="font-size:0.68rem; font-weight:800;">${this.escapeHtml(badge)}</span>
-          <button type="button" data-ec-contact-open="${pid}"
-            style="padding:4px 12px; border-radius:6px; border:none; cursor:pointer; font-weight:800; font-size:0.72rem; color:#fff; background:#0284c7;">${this.escapeHtml(this._cm('button') || '✉ CONTACT')}</button>
+          ${this._contactButtonHtml(r, st, noResp)}
         </div>
         <div data-gc-squad-note style="font-size:0.66rem; opacity:0.85; min-height:1.3em; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${status || '&nbsp;'}</div>
       </div>`;

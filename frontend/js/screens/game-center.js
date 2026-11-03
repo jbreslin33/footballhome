@@ -1261,6 +1261,7 @@ class GameCenterScreen extends EventScreen {
     this._loadGames();
     // Copy rows (dues flag, migration 416) — cached across screens.
     if (window.MessageCopy) MessageCopy.load(this.auth).catch(() => {});
+    if (window.SectionContact) SectionContact.load(this.auth).catch(() => {});
 
     try {
       const [lineupRes, positionsRes, matchRes, postTypesRes] = await Promise.all([
@@ -3115,12 +3116,19 @@ class GameCenterScreen extends EventScreen {
     const personId = this._personIdFor(playerId);
     const r = personId && (this.gameRecipients || []).find(x => Number(x.personId) === personId);
     if (!r || (!r.phone && !r.email)) return '';
-    // Blank by default (owner 2026-10-16: "also one that is blank so i can
-    // send quick message"); the popup carries every send type.
+    // The section's one list (components/section-contact.js, owner
+    // 2026-11-03: "all contact pop ups … consistent within men or boys or
+    // girls") — the same popup #teams and Event Center draw.
+    const pl = (this.players || []).find(x => Number(x.personId) === personId) || {};
     const contact = ContactPopup.button({
       key: `gc-player:${personId}`, screen: this,
-      recipients: [{ personId, name: r.name || '', phone: r.phone || '', email: r.email || '' }],
-      messages: [ContactPopup.blankMessage(), ContactPopup.signInMessage()],
+      recipients: [{ personId, name: r.name || '', phone: r.phone || '', email: r.email || '', forPersonId: personId }],
+      messages: window.SectionContact
+        ? SectionContact.messages(this.ev && this.ev.category, {
+            screen: this, playerId: personId, first: pl.firstName || '',
+            parentFirst: r.viaParent ? String(r.name || '').split(' ')[0] : '',
+          })
+        : [ContactPopup.blankMessage(), ContactPopup.signInMessage()],
     });
     return `<div style="font-size:0.66rem; opacity:0.9; margin-top:4px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
       ${contact}

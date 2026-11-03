@@ -398,11 +398,7 @@ class WomensRosterScreen extends RosterScreenBase {
       statusSelectHtml: statusSelect,
       viewButtonHtml: profileBtn + this.renderContactButton(p, {
         recipients: [{ personId: p.personId, name: p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim(), ...this.contactFor(p) }],
-        messages: [
-          ...(helloCopy ? [{ key: 'hello', label: MessageCopy.block('contact_popup', 'msg_hello') || '💬 Message', subject: helloCopy.subject, body: helloCopy.body,
-                             smsBody: MessageCopy.block('contact_sms', 'adult', { first: p.firstName || '' }) }] : []),
-          ...(registerCopy ? [{ key: 'register', label: MessageCopy.block('contact_popup', 'msg_register') || '📝 Register', subject: registerCopy.subject, body: registerCopy.body }] : []),
-        ],
+        section: 'womens',
         title: `Contact ${p.firstName || 'player'}`,
       }),
       borderColor: cardBorder,

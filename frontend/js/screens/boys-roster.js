@@ -829,18 +829,16 @@ class BoysRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn + this.renderContactButton(
-        Object.assign(p, { welcomeNeedsDocs: BoysRosterScreen.playerNeedsDocs(p, col) }), {
+      viewButtonHtml: profileBtn + this.renderContactButton(p, {
           // Each parent separately (mig 682); the first is the one the
           // card's contact details already belong to.
           recipients: [
             { personId: p.parentPersonId || p.personId, name: contactName, phone: contactPhone, email: contactEmail, forPersonId: p.personId },
             ...otherParents.map(g => ({ personId: g.personId, name: g.firstName || '', phone: g.phone, email: g.email, forPersonId: p.personId })),
           ],
-          messages: [
-            { key: 'hello', label: MessageCopy.block('contact_popup', 'msg_hello') || '💬 Message', subject: emailSubject, body: emailBody, smsBody },
-            ...((this.docsPreset && BoysRosterScreen.playerNeedsDocs(p, col)) ? [this.presetMessage(this.docsPreset)] : []),
-          ],
+          section: 'boys',
+          parentFirst: contactFirst,
+          needsDocs: BoysRosterScreen.playerNeedsDocs(p, col),
           vcard: vcardHref ? { href: vcardHref, filename: vcardFilename } : null,
           title: `Contact ${contactFirst || 'parent'}${p.firstName ? ` (${p.firstName}'s parent)` : ''}`,
         }),

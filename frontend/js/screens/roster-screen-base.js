@@ -2116,14 +2116,23 @@ class RosterScreenBase extends Screen {
   // Boards hand it recipients and their board's own messages.  Fuchsia
   // while a welcome is owed, and the welcome is then the preselected
   // message.  Only for people with a phone or email.
-  renderContactButton(p, { recipients, messages, vcard = null, title = '' }) {
-    if (!window.ContactPopup) return '';
+  renderContactButton(p, { recipients, section, parentFirst = '', needsDocs = false, context = [], vcard = null, title = '' }) {
+    if (!window.ContactPopup || !window.SectionContact) return '';
     const people = (recipients || []).filter(r => r.personId && (r.phone || r.email));
     if (!people.length) return '';
     const due = !!(p.welcome && p.welcome.due);
-    const list = [...messages, ContactPopup.signInMessage(), this.welcomeMessage(p)];
+    const key = `teams:${this.constructor.name}:${p.personId}`;
+    // The section's one list (components/section-contact.js, owner
+    // 2026-11-03) — the same popup Event Center and Game Center draw.
+    const list = SectionContact.messages(section, {
+      screen: this, playerId: p.personId, first: p.firstName || '', parentFirst, needsDocs, context,
+      onWelcomeSent: (data) => {
+        if (data && data.welcome) p.welcome = data.welcome;
+        document.querySelectorAll(`[data-contact-popup="${key}"]`).forEach(b => { b.style.background = '#334155'; });
+      },
+    });
     return ContactPopup.button({
-      key: `teams:${this.constructor.name}:${p.personId}`,
+      key,
       screen: this,
       recipients: people,
       messages: list,
