@@ -158,6 +158,9 @@ json stagesOf(long long eventId, long long personId) {
                             WHERE k.fh_event_id = $2::bigint AND k.item_id = i.id AND k.person_id = $3::int) AS ticked
               FROM match_day_checklist_items i
              WHERE i.stage_id = $1::int AND i.is_active
+               -- League-scoped items (mig 1002): the ID card is cup games only.
+               AND (i.league_label IS NULL
+                    OR i.league_label = (SELECT fe.league FROM fh_events fe WHERE fe.id = $2::bigint))
              ORDER BY i.sort_order, i.id)SQL", {p["id"].c_str(), eid, pid}))
             stage["checklist"].push_back({{"id", c["id"].as<int>()}, {"title", str(c, "title")}, {"ticked", c["ticked"].as<bool>()}});
         stages.push_back(stage);
