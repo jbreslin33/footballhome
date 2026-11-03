@@ -4678,3 +4678,65 @@ line — §8.107's open question, now the one blocking the cross. Who should be 
 (real: which positions, DFL by role) and why ours aren't (their jobs at that moment,
 the pace caps, offside). Then need_mate, the cross count, and defenders marking the
 cross's target.
+
+### 8.109 G5.12 — the box is empty because the ball never gets to the byline (mig 1022; scratch DB only)
+
+**Harness fault first: the scratch DB had no position numbers.** `fh_game_scratch`
+(pg_dump of the club DB minus big-table data) had `formation_slot_roles` and
+`positions` empty, so `Brain::numberOf()` was 0 for every slot in every scratch run
+from G5.1 on: no back line (`backLine()`), no wingers or midfield pairs, no
+position-by-position marking (§8.98), no role demands. Copied both tables from the
+club DB into scratch. And the 4-4-2 had no rows even in the club DB: mig 1022 adds
+them (RB 2, CBs 5/4, LB 3, RM 11, CMs 6/8, LM 7, strikers 9 and 10, numbering as mig
+694) — Leicester City and Watford play it. Re-run of G5.10 (x4, 32 matches) with
+positions: goals 4.5 → 4.6, shots 13.0 → 12.1, crosses and first touches within
+noise, defenders in the box 2.2-2.6 → 3.0-3.6 (real 4.04). The G5.x conclusions stand.
+
+**Second harness fault:** BOX PRESENCE (§8.107) and the new per-role lines sit inside
+the possession-spell branch of match_main, which runs only while a man is ON the ball
+(~29% of in-play time); real frames count the ball in flight too. Shares are still
+comparable, seconds are not. The new zone line counts the last team on the ball in
+play, as DFL flags it.
+
+**Who should be in the box** (`boxrole.py`, scratch, to fold into
+`benchmarks_tracking_box.py`; DFL, 5857 frames at 5 Hz, ball 0-18 m off the line the
+side on the ball attacks, |y| 14+), share of each role's frames in the box:
+
+| Role | Attacking: real | game | Defending: real | game |
+|---|---|---|---|---|
+| Striker | 62% | 15-31% | 12% | 4-6% |
+| AM / 10 | 29% | 15-24% | 14% | 4-12% |
+| Wide, far side | 36% | 8-21% | 31% | 8-22% |
+| Wide, ball side | 21% | 11-19% | 16% | 2-5% |
+| DM / CM | 12% | 5-12% | 40% | 40-50% |
+| CB | 11% | 1-4% | 78% | 52-58% |
+| Full-back, far / ball side | 5 / 6% | 0-3 / 4-8% | 68 / 39% | 61-66 / 15-21% |
+| In the box, a frame | 2.18 | 0.86-1.24 | 4.04 | 2.95-3.25 |
+
+The men are sent to the right places and are late. Out of the box, an attacking
+striker's target is in it 80-91% of the time, 24 m from him; a defending CB's 71-78%,
+18 m from him (`BOX BY ROLE`, target-in-box line).
+
+**Because the ball doesn't stay there.** Possession by zone, last touch in play
+(`zones.py` scratch, DFL; match_main `POSSESSION BY ZONE, last touch in play`; shares
+of possession, game 2210 s a team-match in play v real 1580):
+
+| m off their line | Real centre / wide | Game centre / wide |
+|---|---|---|
+| 0-18 | 3.0% / 5.3% | 1.3% / 0.7% |
+| 18-35 | 3.7% / 9.5% | 4.7% / 4.2% |
+| 35-70 | 15.6% / 28.1% | 33.4% / 31.4% |
+| 70+ | 19.7% / 15.2% | 14.4% / 10.0% |
+
+Final-third entries are at pro (40 v 44), so per entry: the last 18 m holds the ball
+1.1 s (real 3.0 s), the wide final 35 m 2.6 s (real 5.3 s), and the game plays the
+18-35 m centre instead (104 s v 58 s a team) — and shoots from it. The ball gets into
+the crossing zone 3.5 times a team (real 21.7: carried 8.8, passed 12.9, 8.5 of them
+from wide). Real attacks go wide and to the byline and stay there while the box fills.
+
+Also seen: in play 73.7 min a match (real ~53): restarts are taken too fast.
+
+**Next (the mole):** the attack doesn't go wide and deep. Passes into the channel
+behind the full-back and wide carries to the byline, real (StatsBomb: pass end in
+the crossing zone, from where, to a man running or standing; carries) v game: what
+the man on the ball in the wide 18-35 m zone does next and who is there to receive.

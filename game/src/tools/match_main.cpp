@@ -61,7 +61,10 @@ long g_aw_n[128]; double g_aw_y[128], g_aw_t[128];   // attackers on the far sid
 long g_lw_n[128]; double g_lw_y[128], g_lw_t[128];   // G5.7 diag: ball |y| 24+, by why
 long g_blocks[2];
 // G5.11: a cross's first touch — [high?][0 ours foot, 1 ours head, 2 theirs foot, 3 theirs head, 4 keeper, 5 out]
-double g_cx_tx, g_cx_ty, g_cx_kx, g_cx_ky; long g_cx_until = -1, g_cx_n, g_cx_bin[2][4]; std::vector<double> g_cx_d[2];   // G5.11: the same, first drop after a high open-play cross (4 s)
+double g_cx_tx, g_cx_ty, g_cx_kx, g_cx_ky; // G5.12: ball wide 0-18, by role [att/def][role 0 CB 1 FB-ball 2 FB-far 3 DM 4 AM 5 WIDE-ball 6 WIDE-far 7 ST]: frames, in box; out-of-box jobs
+long g_zn[4][2], g_zl[4][2];   // G5.12: possession by zone, 5 Hz [0-18, 18-35, 35-70, 70+][centre, wide]
+long g_br_n[2][8], g_br_box[2][8], g_br_why[2][8][128], g_br_tin[2][8]; double g_br_late[2][8];
+long g_cx_until = -1, g_cx_n, g_cx_bin[2][4]; std::vector<double> g_cx_d[2];   // G5.11: the same, first drop after a high open-play cross (4 s)
 long g_dr_n, g_dr_bin[2][4], g_dr_why[128], g_dr_go[5]; double g_dr_go_d = 0; long g_dr_tg[4], g_dr_sp[3]; double g_dr_pz = 0; std::vector<double> g_dr_d[2];   // G5.11: a ball dropping through 2.4 m in a box — nearest defender [0] / attacker [1]
 long g_cf_md[2][6][6]; double g_cf_min = 1e9, g_cf_minv = 0;   // G5.11 diag: nearest opponent to a cross's flight (below 1.5 m), by outcome
 long g_cf[2][6], g_cf_n[2]; int g_cf_on = 0, g_cf_team = -1, g_cf_kicker = -1, g_cf_high = 0; double g_cf_z = 0;
@@ -974,6 +977,13 @@ int main(int argc, char** argv) {
                 ++ln_ticks[dt];
                 if (deep < 20.0) ++ln_deep[dt];
             }
+            if (k % 6 == 0 && s.world().outStage() == 0 && s.world().restartTeam() == 0xFF && s.world().lastTouchTeam() < 2) {
+                // G5.12: possession as DFL flags it — the last team on the ball, in play.
+                const int a = s.world().lastTouchTeam();
+                const double sg = a == 0 ? 1.0 : -1.0, hx = s.world().pitchHalfX().toDouble();
+                const double tl = hx - b.pos.x.toDouble() * sg, ay = std::fabs(b.pos.y.toDouble());
+                ++g_zl[tl < 18 ? 0 : tl < 35 ? 1 : tl < 70 ? 2 : 3][ay >= 14 ? 1 : 0];
+            }
             if (b.owner && s.world().restartTeam() == 0xFF) {
                 const int ot = s.world().player(*b.owner).team;
                 if (ot != spell_team) {
@@ -1124,6 +1134,7 @@ int main(int argc, char** argv) {
                     const int a = spell_team;
                     const double sg = a == 0 ? 1.0 : -1.0, hx = s.world().pitchHalfX().toDouble();
                     const double tl = hx - b.pos.x.toDouble() * sg, ay = std::fabs(b.pos.y.toDouble());
+                    ++g_zn[tl < 18 ? 0 : tl < 35 ? 1 : tl < 70 ? 2 : 3][ay >= 14 ? 1 : 0];
                     if (ay >= 14 && tl < 30) {
                         const int kk = tl < 18 ? 0 : 1;
                         int box = 0, tgt = 0, dbox = 0;
@@ -1189,6 +1200,30 @@ int main(int argc, char** argv) {
                                             (int)s.world().player(adv[0].second).team, s.world().player(adv[0].second).pos.x.toDouble(), s.world().player(adv[0].second).pos.y.toDouble());
                             }
                         }
+                        if (kk == 0)
+                            for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                                if (s.world().isKeeper(j)) continue;
+                                const auto& q = s.world().player(j);
+                                const int num = s.brain().numberOf(j);
+                                const double qy = q.pos.y.toDouble();
+                                const bool ballside = (qy > 0) == (b.pos.y.toDouble() > 0);
+                                const int role = (num == 4 || num == 5) ? 0 : (num == 2 || num == 3) ? (ballside ? 1 : 2) : (num == 6 || num == 8) ? 3
+                                               : num == 10 ? 4 : (num == 7 || num == 11) ? (ballside ? 5 : 6) : num == 9 ? 7 : -1;
+                                if (role < 0) continue;
+                                const int sd = q.team == a ? 0 : 1;
+                                const double ptl = hx - q.pos.x.toDouble() * sg;
+                                const bool inbox = ptl < 16.5 && std::fabs(qy) < 20.16;
+                                ++g_br_n[sd][role]; g_br_box[sd][role] += inbox;
+                                if (!inbox) {
+                                    ++g_br_why[sd][role][std::min(127, (int)s.lastOrders()[j].why)];
+                                    const auto& tg = s.lastOrders()[j].target;
+                                    const double ttl = hx - tg.x.toDouble() * sg;
+                                    if (ttl < 16.5 && std::fabs(tg.y.toDouble()) < 20.16) {
+                                        ++g_br_tin[sd][role];
+                                        g_br_late[sd][role] += std::hypot(tg.x.toDouble() - q.pos.x.toDouble(), tg.y.toDouble() - qy);
+                                    }
+                                }
+                            }
                         g_bp_l1[kk] += l1; g_bp_l2[kk] += l2;
                         ++g_bp_n[kk]; g_bp_box[kk] += box; g_bp_tgt[kk] += tgt; g_bp_dbox[kk] += dbox; g_bp_tgt0[kk] += tgt == 0;
                     }
@@ -2529,6 +2564,35 @@ int main(int argc, char** argv) {
                     auto v = g_dr_d[r]; std::sort(v.begin(), v.end());
                     std::printf(" %s median %.1f m <1 %.0f%% 1-2 %.0f%% 2-4 %.0f%% 4+ %.0f%%%s", r ? "attacker" : "defender", v[v.size() / 2],
                                 100.0 * g_dr_bin[r][0] / g_dr_n, 100.0 * g_dr_bin[r][1] / g_dr_n, 100.0 * g_dr_bin[r][2] / g_dr_n, 100.0 * g_dr_bin[r][3] / g_dr_n, r ? "\n" : ";");
+                }
+            }
+            if (q == 0) {
+                long tot = 0;
+                for (int z = 0; z < 4; ++z) tot += g_zn[z][0] + g_zn[z][1];
+                std::printf("POSSESSION BY ZONE (%.0f s a team-match, 5 Hz spells):", tot / 5.0 / (2.0 * nm));
+                static const char* zn[4] = {"0-18", "18-35", "35-70", "70+"};
+                for (int z = 0; z < 4; ++z) std::printf(" %s centre %.0f s wide %.0f s;", zn[z], g_zn[z][0] / 5.0 / (2.0 * nm), g_zn[z][1] / 5.0 / (2.0 * nm));
+                std::printf("\n");
+                tot = 0;
+                for (int z = 0; z < 4; ++z) tot += g_zl[z][0] + g_zl[z][1];
+                std::printf("POSSESSION BY ZONE, last touch in play (%.0f s a team-match):", tot / 5.0 / (2.0 * nm));
+                for (int z = 0; z < 4; ++z) std::printf(" %s centre %.0f s wide %.0f s;", zn[z], g_zl[z][0] / 5.0 / (2.0 * nm), g_zl[z][1] / 5.0 / (2.0 * nm));
+                std::printf("\n");
+            }
+            if (q == 0 && g_bp_n[0]) {
+                static const char* rn[8] = {"CB", "FB-ball", "FB-far", "DM/CM", "AM", "WIDE-ball", "WIDE-far", "ST"};
+                for (int sd = 0; sd < 2; ++sd) {
+                    double tot = 0;
+                    for (int r = 0; r < 8; ++r) tot += g_br_box[sd][r];
+                    std::printf("BOX BY ROLE %s (ball wide 0-18, %.0f s a team-match, %.2f in the box):\n", sd ? "defending" : "attacking", g_bp_n[0] / 5.0 / (2.0 * nm), tot / g_bp_n[0]);
+                    for (int r = 0; r < 8; ++r) {
+                        if (!g_br_n[sd][r]) continue;
+                        std::printf("   %-9s in the box %3.0f%%, %.2f a frame; out of it:", rn[r], 100.0 * g_br_box[sd][r] / g_br_n[sd][r], double(g_br_box[sd][r]) / g_bp_n[0]);
+                        const long out = g_br_n[sd][r] - g_br_box[sd][r];
+                        if (out) std::printf(" target in the box %.0f%% (%.1f m off it);", 100.0 * g_br_tin[sd][r] / out, g_br_tin[sd][r] ? g_br_late[sd][r] / g_br_tin[sd][r] : 0.0);
+                        for (int w = 0; w < 128; ++w) if (out && g_br_why[sd][r][w] * 10 >= out) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_br_why[sd][r][w] / out);
+                        std::printf("\n");
+                    }
                 }
             }
             if (q == 0) std::printf("INTO THE CROSSING ZONE a team: carried %.2f, passed %.2f (from wide %.2f)\n", g_xin_carry / (2.0 * nm), g_xin_pass / (2.0 * nm), g_xin_pass_wide / (2.0 * nm));
