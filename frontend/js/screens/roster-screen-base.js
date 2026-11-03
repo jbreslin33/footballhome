@@ -844,10 +844,20 @@ class RosterScreenBase extends Screen {
       const listName = (c) => RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim());
       const wantsChip = (c) => `<span style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
           background:rgba(245,158,11,0.16); border:1px solid #f59e0b; color:#fcd34d;">${esc(copy('board_wants_in_chip', { list: listName(c) }) || `⚠ not on ${listName(c)} list`)}</span>`;
+      // Team pill = who plays, not paperwork (owner 11/3: "active players
+      // whether main or reserves should be treated same"): a column's
+      // lists are its own plus every folded team's (APSL Active + Reserve),
+      // and either one counts as on the list.  Which list is the Roster pill's job.
+      const familyIds = (c) => {
+        const top = c.teamPillFoldInto ? Number(c.teamPillFoldInto) : Number(c.teamId);
+        return [top, ...(data.columns || []).filter(x => Number(x.teamPillFoldInto) === top).map(x => Number(x.teamId))];
+      };
+      const onFamilyList = (c, pid) => familyIds(c).some(tid => this.onLeagueList(tid, pid));
       const splitByList = (list, c, cardFn) => {
-        if (!this.leagueListFor(c.teamId)) return list.map(cardFn).join('');
-        const on = list.filter(p => this.onLeagueList(c.teamId, p.personId));
-        const off = list.filter(p => !this.onLeagueList(c.teamId, p.personId));
+        if (!familyIds(c).some(tid => this.leagueListFor(tid))) return list.map(cardFn).join('');
+        const on = list.filter(p => onFamilyList(c, p.personId));
+        const off = list.filter(p => !onFamilyList(c, p.personId));
+        c = (data.columns || []).find(x => Number(x.teamId) === familyIds(c)[0]) || c;   // name the family (APSL)
         return (on.length ? subHead(copy('board_listed_sub', { list: listName(c) }) || `📋 On the ${listName(c)} list`, on.length) + on.map(cardFn).join('') : '')
           + (off.length ? subHead(copy('board_wants_in_sub', { list: listName(c) }) || `⚠ Wants in · not on the ${listName(c)} list`, off.length)
               + off.map(p => cardFn(p, wantsChip(c))).join('') : '');
