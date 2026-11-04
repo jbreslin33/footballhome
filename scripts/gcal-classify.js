@@ -422,7 +422,8 @@ async function lookupFingerprint(pg) {
              coalesce((SELECT string_agg(club_alias || '|' || team_alias || '|' || team_id || '|' || coalesce(t.gender_category,''), ',' ORDER BY club_alias, team_alias)
                          FROM gcal_team_aliases gta JOIN teams t ON t.id = gta.team_id), '')
           || '#' || coalesce((SELECT string_agg(alias || '|' || organization_id, ',' ORDER BY alias) FROM gcal_league_aliases), '')
-          || '#' || coalesce((SELECT string_agg(organization_id || '|' || coalesce(arrival_minutes_before::text,'') || '|' || coalesce(warmup_minutes_before::text,''), ',' ORDER BY organization_id)
+          || '#' || coalesce((SELECT string_agg(organization_id || '|' || coalesce(arrival_minutes_before::text,'') || '|' || coalesce(warmup_minutes_before::text,'')
+                                          || '|' || coalesce(weekday_arrival_minutes_before::text,'') || '|' || coalesce(weekday_warmup_minutes_before::text,''), ',' ORDER BY organization_id)
                          FROM league_matchday_offsets), '')
           || '#' || coalesce((SELECT string_agg(alias || '|' || team_id, ',' ORDER BY alias) FROM gcal_opponent_aliases), '')
          ) AS fp
@@ -571,12 +572,18 @@ async function classifyDsl(pg) {
           -- League defaults (migration 395): minutes before kickoff, used
           -- only where the Arrival:/Warmup: tag is absent.  Two leagues on
           -- one event → the earlier time.  No league row → NULL, as before.
+          -- Mon–Fri kickoff: the league's weekday minutes when it has them
+          -- (mig 1064 — Liga 1 arrives 30 min before on a weeknight; APSL
+          -- keeps its standard).
           LEFT JOIN LATERAL (
-                 SELECT max(o.arrival_minutes_before) AS arrival_min,
-                        max(o.warmup_minutes_before)  AS warmup_min
+                 SELECT max(CASE WHEN wk.weekday AND o.weekday_arrival_minutes_before IS NOT NULL
+                                 THEN o.weekday_arrival_minutes_before ELSE o.arrival_minutes_before END) AS arrival_min,
+                        max(CASE WHEN wk.weekday AND o.weekday_warmup_minutes_before IS NOT NULL
+                                 THEN o.weekday_warmup_minutes_before ELSE o.warmup_minutes_before END)  AS warmup_min
                    FROM regexp_split_to_table(COALESCE($13::text,''), '[[:space:]]*,[[:space:]]*') AS tok
                    JOIN gcal_league_aliases gla ON LOWER(BTRIM(gla.alias)) = LOWER(BTRIM(tok))
                    JOIN league_matchday_offsets o ON o.organization_id = gla.organization_id
+                  CROSS JOIN (SELECT extract(isodow FROM (${KICKOFF_SQL}) AT TIME ZONE 'America/New_York') BETWEEN 1 AND 5 AS weekday) wk
                   WHERE $2::text IN ('match', 'intrasquad')
           ) lmo ON true
           WHERE  ge.id = $1
