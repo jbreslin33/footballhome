@@ -203,6 +203,14 @@ const FIELD_SIZES = {
       '2-2-2': { rows: [[1], [5, 4], [8, 6], [10, 9]] },
     },
   },
+  // PPR Indoor (owner 2026-11-04: "games are 5v5 (4v4 + keeper)") — the
+  // indoor diamond: keeper, a 4 behind, 11 and 7 wide, 9 up top.
+  5: {
+    defaultFormation: '1-2-1',
+    formations: {
+      '1-2-1': { rows: [[1], [4], [11, 7], [9]] },
+    },
+  },
 };
 for (const spec of Object.values(FIELD_SIZES)) {
   spec.slotIds = new Set(spec.formations[spec.defaultFormation].rows.flat());
