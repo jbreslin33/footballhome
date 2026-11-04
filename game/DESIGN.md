@@ -4993,3 +4993,42 @@ club's own tactic to explain it away.
 **Live.** Applied to fh_game_scratch only, with the other game migrations (919+) that live hasn't
 had. On live it is safe (no PL teams there: the daemon falls back to its built-in squads) and
 belongs in the same ship as the PL teams' load.
+
+### 8.114 G5.17 — what the "Premier League 2015/16" model's demands actually move (no migration)
+
+§8.113's next: derive the model's concept demands from PL data. A player plays min(demand,
+ability) and `applies()` fires a concept that share of seconds, so a demand is right when the
+game does the concept's act as often as the league. Two things first: which acts StatsBomb tags,
+and which demands the engine reads.
+
+**Real rates (benchmarks_statsbomb_concepts.py, StatsBomb PL 15/16, 380 matches, a
+team-match):** pressures 151.8, counter-press 21.0% of them (StatsBomb's flag: within 5 s of the
+loss); open-play passes 433.8: switches (≥ half the width, 34 m) 10.69, crosses 11.47, cut-backs
+1.03, through balls 2.11; dribbles 18.05 tried, 10.59 completed; return passes (B's next pass
+within 5 s goes back to A) 42.11 = 15.7% of passes made straight after a receipt; carries
+gaining 10 m+ 34.64.
+
+**Game (CONCEPT ACTS harness line, ownership-driven, the same cuts; K1+E4+F1, 8 matches):**
+pressures 532 (closing at 1 m/s+ within 4.5 m, once a man a spell), counter-press 42%; passes
+619; switches 28.1; crosses 2.9; cut-backs 0.75; return passes 5.5%; carries 10 m+ 6.8;
+take-ons 113 tried (an opponent within 1.5 m goal-side in the carrier's cone). The raw pressure
+and take-on counts are NOT comparable — the geometric cut is looser than StatsBomb's tagger —
+so only shares and act-for-act counts are read: counter-press share 2x real, switches 2.6x,
+crosses a quarter, return passes a third, 10 m carries a fifth.
+
+**Which demands move anything.** Of the model's 186 demand rows the engine reads 78 (58 asked,
+20 at 0 — man-mark, libero, cover-shadow, the LH tactics …); 108 are read by no code, 76 of
+them with a demand that changes nothing (switch-play, drive-into-space, wall-pass, third-man,
+compact-block, press-as-unit, beat-man-1v1, cut-back …). GAME_DEMAND (match_main,
+"name=value,…", every model) A/Bs a demand without the DB:
+- switch-play 75 → 25: byte-identical match (not wired).
+- counter-press 85 → 40: share 42 → 41%; → 0: 38%. give-and-go 100 → 0: return passes
+  5.5 → 5.1%.
+
+So the acts come from other mechanics (whoever is nearest presses after the loss; pass choice
+runs on the fitted rates of §8.102), and fitting demands alone can't close the gaps. Demands are
+left as they are until a wired concept's act is shown to follow its demand.
+
+**Next mole.** The carry: 10 m+ carries 6.8 a team-match v 34.6 (the man on the ball wide
+carries 3.0 m a spell, §8.110; time on the ball 1.0 s v 1.47). Then crosses (2.9 v 11.5) and the
+counter-press share after a loss.

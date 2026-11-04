@@ -63,7 +63,9 @@ long g_blocks[2];
 // G5.11: a cross's first touch — [high?][0 ours foot, 1 ours head, 2 theirs foot, 3 theirs head, 4 keeper, 5 out]
 double g_cx_tx, g_cx_ty, g_cx_kx, g_cx_ky; // G5.12: ball wide 0-18, by role [att/def][role 0 CB 1 FB-ball 2 FB-far 3 DM 4 AM 5 WIDE-ball 6 WIDE-far 7 ST]: frames, in box; out-of-box jobs
 long g_ch_n, g_ch_chan[2], g_ch_box[2], g_ch_ahead[7], g_ch_run[7], g_ch_why[128];   // G5.13: ball wide 18-35, last touch
-long g_wt_n[2][7][2], g_wt_why[2][7][2][128], g_nd_lim[5]; double g_wt_a[2][7][2], g_wt_y[2][7][2], g_nd_sum, g_wt_anc[7][2], g_wt_ancy[7][2], g_line_sum; long g_dsh_n[10][7], g_dsh_f[10], g_dsh_why[7][128], g_dsh_wn[7]; double g_dsh_s[10][7], g_dsh_m[10], g_dsh_an[10][7], g_dsh_ot[10][7], g_dsh_da[10][7], g_dsh_ht[10][7], g_dsh_hp[10][7], g_dsh_hv[10][7]; long g_dsh_hn[10][7];   // G5.15 defending shape by ball band
+long g_wt_n[2][7][2], g_wt_why[2][7][2][128], g_nd_lim[5]; double g_wt_a[2][7][2], g_wt_y[2][7][2], g_nd_sum, g_wt_anc[7][2], g_wt_ancy[7][2], g_line_sum; // G5.17 (§8.114): concept acts a team-match, counted as StatsBomb tags them — benchmarks: concepts (StatsBomb PL 15/16)
+long g_ca_press, g_ca_cpress, g_ca_pass, g_ca_switch, g_ca_cross, g_ca_cutback, g_ca_drib, g_ca_dribok, g_ca_ret, g_ca_rtp, g_ca_carry10;
+long g_dsh_n[10][7], g_dsh_f[10], g_dsh_why[7][128], g_dsh_wn[7]; double g_dsh_s[10][7], g_dsh_m[10], g_dsh_an[10][7], g_dsh_ot[10][7], g_dsh_da[10][7], g_dsh_ht[10][7], g_dsh_hp[10][7], g_dsh_hv[10][7]; long g_dsh_hn[10][7];   // G5.15 defending shape by ball band
 long g_fa_n[7], g_fa_hn[7]; double g_fa_a[7], g_fa_v[7], g_fa_5[7], g_fa_5f[7], g_fa_h[7], g_fa_hv[7];   // G5.15 front men by possession age
 long g_h3_n[7][2], g_h3_bn; double g_h3_ball, g_h3_adv[7][2], g_h3_was[7][2], g_h3_b15; long g_h3_age[4];   // G5.15 three seconds before, ball wide 18-35
 long g_ag_n[7]; double g_ag_b[7], g_ag_m[7], g_ag_v[7], g_ag_5[7], g_ag_5f[7]; long g_hl_n[4], g_hf_n[7]; double g_hf_fx[7], g_hf_ay[7], g_hf_d[7]; double g_hl_d[4], g_hl_v[4], g_hl_vt[4], g_hl_want[4];   // G5.14 holders' lag
@@ -591,6 +593,24 @@ int main(int argc, char** argv) {
             at = end + 1;
         }
     }
+    // G5.17: GAME_DEMAND="counter-press=40,switch-play=30" — A/B a concept's
+    // demand (every model, both teams) without touching the DB.
+    if (const char* gd = std::getenv("GAME_DEMAND")) {
+        std::string s = gd;
+        std::size_t at = 0;
+        while (at < s.size()) {
+            std::size_t end = s.find(',', at);
+            if (end == std::string::npos) end = s.size();
+            const std::string item = s.substr(at, end - at);
+            const std::size_t eq = item.find('=');
+            const int id = eq == std::string::npos ? -1 : core::concepts().find(item.substr(0, eq));
+            if (id >= 0) {
+                for (auto& gm : base.models) gm.overlay[id] = static_cast<std::int16_t>(std::atoi(item.c_str() + eq + 1));
+                std::printf("demand: %s (concept %d)\n", item.c_str(), id);
+            } else std::printf("demand: %s UNKNOWN concept\n", item.c_str());
+            at = end + 1;
+        }
+    }
     // Try a team on another of its tactics (a model name) without changing
     // what the team plays.
     if (const char* gm = std::getenv("GAME_MODEL_HOME")) base.roster_home.game_model = gm;
@@ -985,6 +1005,75 @@ int main(int argc, char** argv) {
                 ball_sum[dt] += from_goal(b.pos.x.toDouble()) - deep;
                 ++ln_ticks[dt];
                 if (deep < 20.0) ++ln_deep[dt];
+            }
+            {   // G5.17 (§8.114): concept acts by ownership — release, next owner — with StatsBomb's cuts
+                struct Rel { int p = -1, team = -1, other = -1; double x = 0, y = 0; long tick = 0; bool set = false, cross = false, shot = false; };
+                static int ca_owner = -1, ca_team = -1, ca_m = -1; static long ca_got = 0, ca_loss[2] = {-1000, -1000}; static double ca_sx = 0, ca_sy = 0, ca_px = 0, ca_py = 0;
+                static Rel ca_rel; static int ca_from[32]; static long ca_from_t[32]; static long ca_in[32]; static int ca_face[32]; static int ca_why = 0, ca_oth = -1; static bool ca_set = false;
+                if (m != ca_m || k == 0) { ca_m = m; ca_owner = -1; ca_team = -1; ca_rel = Rel{}; for (int j = 0; j < 32; ++j) { ca_from[j] = -1; ca_in[j] = -1; ca_face[j] = 0; } ca_loss[0] = ca_loss[1] = -1000; }
+                const int own = b.owner ? static_cast<int>(*b.owner) : -1;
+                const double hx = s.world().pitchHalfX().toDouble();
+                auto endPass = [&](double ex, double ey) {   // the pending release lands (next owner, or out)
+                    if (ca_rel.p < 0 || ca_rel.set || ca_rel.shot) { ca_rel = Rel{}; return; }
+                    const double sg = ca_rel.team == 0 ? 1.0 : -1.0;
+                    ++g_ca_pass;
+                    if (std::fabs(ey - ca_rel.y) >= 34) ++g_ca_switch;
+                    if (ca_rel.cross) ++g_ca_cross;
+                    const double stl = hx - ca_rel.x * sg, etl = hx - ex * sg;
+                    if (stl < 9 && etl > stl + 1 && etl < 16.5 && std::fabs(ey) < 20.16) ++g_ca_cutback;
+                    ca_rel = Rel{};
+                };
+                if (own != ca_owner) {
+                    if (ca_owner >= 0) {   // ca_owner let it go (or lost it)
+                        const double sg = ca_team == 0 ? 1.0 : -1.0;
+                        if ((ca_px - ca_sx) * sg >= 10) ++g_ca_carry10;
+                        if (ca_face[ca_owner] > 0) { ++g_ca_drib; ca_face[ca_owner] = 0; }   // taking him on when it went
+                        if (own < 0) {     // a release
+                            ca_rel = Rel{}; ca_rel.p = ca_owner; ca_rel.team = ca_team; ca_rel.x = ca_px; ca_rel.y = ca_py; ca_rel.tick = k;
+                            ca_rel.set = ca_set; ca_rel.cross = ca_why == static_cast<int>(ai::Why::Cross); ca_rel.shot = ca_why == static_cast<int>(ai::Why::Shoot);
+                            ca_rel.other = ca_oth;
+                            if (!ca_set && !ca_rel.shot && ca_from[ca_owner] >= 0 && ca_got - ca_from_t[ca_owner] <= 1 && k - ca_got <= 150) {
+                                ++g_ca_rtp; if (ca_oth == ca_from[ca_owner]) ++g_ca_ret;
+                            }
+                        }
+                    }
+                    if (own >= 0) {        // a new owner
+                        const auto& q = s.world().player(static_cast<std::uint8_t>(own));
+                        if (ca_rel.p >= 0) {
+                            const bool mate = ca_rel.team == q.team && ca_rel.p != own;
+                            const int pp = ca_rel.p, pt = ca_rel.team; const bool st = ca_rel.set;
+                            endPass(q.pos.x.toDouble(), q.pos.y.toDouble());
+                            ca_from[own] = (mate && !st) ? pp : -1; ca_from_t[own] = k;
+                            (void)pt;
+                        } else ca_from[own] = -1;
+                        if (ca_team >= 0 && q.team != ca_team) ca_loss[ca_team] = k;   // they lost it
+                        ca_owner = own; ca_team = q.team; ca_got = k; ca_sx = q.pos.x.toDouble(); ca_sy = q.pos.y.toDouble();
+                        for (int j = 0; j < 32; ++j) { ca_in[j] = -1; ca_face[j] = 0; }
+                    } else ca_owner = -1;
+                }
+                if (ca_rel.p >= 0 && s.world().outStage() != 0) endPass(b.pos.x.toDouble(), b.pos.y.toDouble());
+                if (own >= 0) {
+                    const auto& c = s.world().player(static_cast<std::uint8_t>(own));
+                    const double sg = c.team == 0 ? 1.0 : -1.0;
+                    ca_px = c.pos.x.toDouble(); ca_py = c.pos.y.toDouble();
+                    ca_why = static_cast<int>(s.lastOrders()[own].why); ca_oth = s.lastOrders()[own].other; ca_set = s.world().restartTeam() != 0xFF;
+                    if (!ca_set) for (std::uint8_t j = 0; j < s.world().playerCount() && j < 32; ++j) {
+                        const auto& d = s.world().player(j);
+                        if (d.team == c.team) continue;
+                        const double dx = c.pos.x.toDouble() - d.pos.x.toDouble(), dy = c.pos.y.toDouble() - d.pos.y.toDouble(), dd = std::hypot(dx, dy);
+                        // pressure: within 4.5 m and closing at 1 m/s+, once per man per spell (StatsBomb: one per pressing act)
+                        if (dd < 4.5 && dd > 0.01 && (d.vel.x.toDouble() * dx + d.vel.y.toDouble() * dy) / dd >= 1.0 && ca_in[j] < 0) {
+                            ca_in[j] = k; ++g_ca_press; if (k - ca_loss[d.team] <= 150) ++g_ca_cpress;
+                        }
+                        // take-on: a man goal-side within 1.5 m in his 45-degree cone; done when he's 1 m past him with it
+                        const double ahead = -dx * sg;   // d's x beyond the carrier, toward goal
+                        if (!ca_face[own] && dd < 1.5 && ahead > 0 && std::fabs(dy) <= ahead) ca_face[own] = j + 1;
+                    }
+                    if (ca_face[own] > 0) {
+                        const auto& d = s.world().player(static_cast<std::uint8_t>(ca_face[own] - 1));
+                        if ((c.pos.x.toDouble() - d.pos.x.toDouble()) * sg >= 1) { ++g_ca_drib; ++g_ca_dribok; ca_face[own] = 0; }
+                    }
+                }
             }
             if (std::getenv("GAME_DEAD_TRACE") && k % 300 == 0)   // G5.15: where a stalled match is stuck
                 std::fprintf(stderr, "dead-trace m%d k%ld out %d restart %d kind %d owner %d lt %d ball %.1f,%.1f\n", m, k, s.world().outStage(), s.world().restartTeam(),
@@ -2817,6 +2906,11 @@ int main(int argc, char** argv) {
             }
             if (q == 0 && g_ps_N > 0) {
                 static const char* rp[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                {   const double tm = 2.0 * nm;
+                    std::printf("CONCEPT ACTS a team-match (StatsBomb cuts; real PL 15/16 in brackets): pressures %.1f (151.8), counter-press %.1f = %.1f%% (21.0%%); passes %.1f (433.8): switches %.2f (10.69), crosses %.2f (11.47), cut-backs %.2f (1.03); take-ons %.2f tried (18.05), %.2f completed (10.59); return passes %.2f (42.11) = %.1f%% of passes after a receipt (15.7%%); carries 10 m+ %.2f (34.64)\n",
+                                g_ca_press / tm, g_ca_cpress / tm, 100.0 * g_ca_cpress / std::max(1L, g_ca_press), g_ca_pass / tm, g_ca_switch / tm, g_ca_cross / tm, g_ca_cutback / tm,
+                                g_ca_drib / tm, g_ca_dribok / tm, g_ca_ret / tm, 100.0 * g_ca_ret / std::max(1L, g_ca_rtp), g_ca_carry10 / tm);
+                }
                 std::printf("DEFENDING SHAPE (the side without it; metres from its own line, ball band = ball m from that line):\n   band    frames  middle      CB      FB   DM/CM      AM    WIDE      ST\n");
                 for (int k = 0; k < 10; ++k) if (const long f = g_dsh_f[k]) {
                     std::printf("   %2d-%-3d %7ld  %5.1f  ", 10 * k, 10 * k + 10, f, g_dsh_m[k] / f);
