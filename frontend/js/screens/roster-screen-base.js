@@ -821,11 +821,24 @@ class RosterScreenBase extends Screen {
     // coming UP; from higher up, coming DOWN.
     const riderList = (data.autoInvites && data.autoInvites[String(col.teamId)]) || [];
     const sortOf = (tid) => { const c = (data.columns || []).find(x => Number(x.teamId) === Number(tid)); return c ? Number(c.sortOrder) : null; };
-    const ridersUp = riderList.length > 0 && riderList.every(r => sortOf(r.fromTeamId) != null && sortOf(r.fromTeamId) > Number(col.sortOrder));
+    // Empty (owner 11/4: "i would rather show them empty"): the column
+    // with teams below it on the board is called UP into, the bottom one DOWN.
+    const ridersUp = riderList.length > 0
+      ? riderList.every(r => sortOf(r.fromTeamId) != null && sortOf(r.fromTeamId) > Number(col.sortOrder))
+      : (data.columns || []).some(c => !c.isUnassigned && !c.teamPillFoldInto && Number(c.sortOrder) > Number(col.sortOrder));
     const riders = ridersCount ? head(ridersUp ? (copy('board_callups_h') || '⭐ CALL-UPS · every game') : (copy('board_calldowns_h') || '⭐ CALL-DOWNS'),
       ridersCount, ...BLUE) + ridersHtml : '';
 
     if (this.boardView === 'team') {
+      // Every group shows, empty or not (owner 11/4: "can we not make
+      // groups disappear. i would rather show them empty") — unless the
+      // column's category pill or 👀 Sees games filter hides it.
+      const shows = (cat) => this.columnCategoryShown(col, cat, data);
+      const group = (label, list, cat, color, bg) => section(label, list, color, bg, shows(cat));
+      const ridersGroup = riders || (shows('active')
+        ? head(ridersUp ? (copy('board_callups_h') || '⭐ CALL-UPS · every game') : (copy('board_calldowns_h') || '⭐ CALL-DOWNS'), 0, ...BLUE)
+          + '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>'
+        : '');
       const cats = { onboard: [], active: [], callin: [], paper: [], injured: [], practice_squad: [], inactive: [] };
       // NEEDS ONBOARD (owner 2026-11-03): never answered an RSVP himself
       // (standing defaults and admin answers don't count) and not 💤
@@ -866,12 +879,13 @@ class RosterScreenBase extends Screen {
       const playing = cats.active.filter(p => !addSteps.includes(sectionOf(p)));
       const activeHtml = head(copy('board_plays_h') || 'ACTIVE', playing.length, ...GREEN)
         + (playing.length ? ordered(playing).map(p => card(p, offList(p) ? offChip : undefined)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
-        + (adding.length
+        + ((adding.length || shows('active'))
           ? head(copy('board_team_needs_add_h') || copy('board_needs_add_h') || '🟢 NEEDS ADD', adding.length, ...BLUE)
             + RosterScreenBase.ROSTER_STATUSES.filter(st => addSteps.includes(st.boardSection)).map(st => {
               const sub = adding.filter(p => p.rosterStatus === st.code);
               return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(p => card(p)).join('') : '';
             }).join('')
+            + (adding.length ? '' : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
           : '');
       // ⭐ CALL-UP POOL is gone until the owner names who is in it (11/3:
       // "take all out of call up pool until i tell you who to put in
@@ -898,14 +912,14 @@ class RosterScreenBase extends Screen {
       })() : '';
       return this.renderFromLaPicker(col)
         + seesHtml
-        + section(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard, '#e879f9', 'rgba(232,121,249,0.14)')
+        + group(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard, 'active', '#e879f9', 'rgba(232,121,249,0.14)')
         + activeHtml
-        + riders
-        + section(copy('board_callins_h') || '↔ CALL INS', cats.callin, ...BLUE)
-        + section(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, ...BLUE)
-        + section(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, ...AMBER)
-        + section(copy('board_injured_h') || '🩹 INJURED', cats.injured, ...ROSE)
-        + section(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, ...GREY);
+        + ridersGroup
+        + group(copy('board_callins_h') || '↔ CALL INS', cats.callin, 'callin', ...BLUE)
+        + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
+        + group(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, 'paper', ...AMBER)
+        + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
+        + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
     }
 
     const nameRow = (i, name, note, red = false) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
@@ -2840,6 +2854,15 @@ class RosterScreenBase extends Screen {
   // { pillsHtml, shown, ridersHtml }: boards drop pillsHtml above the
   // player list, render `shown` instead of the raw column players, and
   // append ridersHtml after the list.
+  // Is a category's group on screen for this column?  The 👀 Sees games
+  // filter shows only who a game invite reaches (active + injured, none on
+  // a call-up-gated team); otherwise a category pill switched off hides it.
+  columnCategoryShown(col, cat, data) {
+    const gated = Array.isArray(data && data.callupOnlyTeams) && data.callupOnlyTeams.includes(col.teamId);
+    if (this.seesOpen && this.seesOpen[col.teamId]) return !gated && (cat === 'active' || cat === 'injured');
+    return !(this.catOff && this.catOff[`${col.teamId}:${cat}`]);
+  }
+
   renderColumnPills(col, players, data) {
     if (col.isUnassigned) return { pillsHtml: '', shown: players, ridersHtml: '' };
 
@@ -2926,7 +2949,7 @@ class RosterScreenBase extends Screen {
     const seesCount = (gated ? 0 : cats.active.length + cats.injured.length) + riders.length;
     const seesOn = !!(this.seesOpen && this.seesOpen[col.teamId]);
     const seesCat = (cat) => gated ? false : (cat === 'active' || cat === 'injured');
-    const catPill = (cat, icon, label, n, color) => (n || cat === 'active') ? `
+    const catPill = (cat, icon, label, n, color) => (n || cat === 'active' || off(cat)) ? `
         <button type="button" class="mr-cat-pill" data-cat-team="${col.teamId}" data-cat="${cat}"
           title="${off(cat) ? `Show ${label.toLowerCase()} (${n})` : `Hide ${label.toLowerCase()}`}"
           style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
