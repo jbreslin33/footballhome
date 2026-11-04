@@ -7,6 +7,8 @@
 # G5.14 (§8.111): WHERE THEY STAND — every outfield man by role, ball side / far side (his y v the
 # ball's), attacking / defending: metres ahead of the ball toward the line (+ = nearer their line)
 # and metres across toward the ball's touchline (+ = ball side); plus the nearest defender to the ball.
+# G5.15 (§8.112): THREE SECONDS BEFORE — how far the ball came toward the line, who had it, and how far each
+# attacker came / where he stood v the ball then.
 import collections, glob, os, re, sys, multiprocessing
 sys.path.insert(0, "/srv/footballhome/game/scripts")
 import benchmarks_tracking as bt
@@ -70,6 +72,16 @@ def one(pos_path):
                 if pid in prev:
                     vt = (x - prev[pid][0]) * g / 0.2   # toward the line it attacks
                     if vt >= 4: c[("run", r)] += 1
+        then = ball.get((sc, n - 75))           # G5.15 (§8.112): three seconds before, in play
+        if then:
+            bad = (bx - then[0]) * g
+            c["h3n"] += 1; c["h3b"] += bad; c["h3b15"] += bad >= 15
+            c[("h3age", 0 if then[2] != att else 1 if bad < 5 else 2 if bad < 15 else 3)] += 1
+            pthen = pl.get((sc, n - 75), {})
+            for pid, (x, y) in pl.get((sc, n), {}).items():
+                if pid in keepers or who[pid] != att or pid not in pthen: continue
+                k = (ROLE.get(pos_of.get(pid, ""), "?"), "ball" if (y > 0) == (by > 0) else "far")
+                c[("h3",) + k] += 1; c[("h3adv",) + k] += (x - pthen[pid][0]) * g; c[("h3was",) + k] += (pthen[pid][0] - then[0]) * g
         for lim in (1, 2, 3, 5, 8):
             if nd < lim: c[("nd", lim)] += 1
         c["ndsum"] += min(nd, 30)
@@ -94,3 +106,12 @@ for side in ("att", "def"):
     print(f"    {'attacking' if side == 'att' else 'defending'}: " + "; ".join(out))
 print("  nearest defender to the ball: mean " + f"{c['ndsum']/n:.1f} m; " + "; ".join(f"<{l} m {100*c[('nd',l)]/n:.0f}%" for l in (1, 2, 3, 5, 8)))
 print(f"  offside line {c['line']/max(1,c['linen']):.1f} m ahead of the ball")
+h = c["h3n"]
+if h:
+    print(f"  THREE SECONDS BEFORE: the ball came {c['h3b']/h:.1f} m toward their line (15 m+ {100*c['h3b15']/h:.0f}%); other side had it {100*c[('h3age',0)]/h:.0f}%, came <5 m {100*c[('h3age',1)]/h:.0f}%, 5-15 {100*c[('h3age',2)]/h:.0f}%, 15+ {100*c[('h3age',3)]/h:.0f}%")
+    out = []
+    for r in ("CB", "FB", "DM/CM", "AM", "WIDE", "ST"):
+        for f in ("ball", "far"):
+            m = c[("h3", r, f)]
+            if m: out.append(f"{r}-{f} {c[('h3adv',r,f)]/m:+.1f} / {c[('h3was',r,f)]/m:+.1f}")
+    print("    attacking, came / stood ahead of the ball then: " + "; ".join(out))

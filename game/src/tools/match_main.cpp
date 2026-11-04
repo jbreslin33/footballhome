@@ -63,7 +63,10 @@ long g_blocks[2];
 // G5.11: a cross's first touch — [high?][0 ours foot, 1 ours head, 2 theirs foot, 3 theirs head, 4 keeper, 5 out]
 double g_cx_tx, g_cx_ty, g_cx_kx, g_cx_ky; // G5.12: ball wide 0-18, by role [att/def][role 0 CB 1 FB-ball 2 FB-far 3 DM 4 AM 5 WIDE-ball 6 WIDE-far 7 ST]: frames, in box; out-of-box jobs
 long g_ch_n, g_ch_chan[2], g_ch_box[2], g_ch_ahead[7], g_ch_run[7], g_ch_why[128];   // G5.13: ball wide 18-35, last touch
-long g_wt_n[2][7][2], g_wt_why[2][7][2][128], g_nd_lim[5]; double g_wt_a[2][7][2], g_wt_y[2][7][2], g_nd_sum, g_wt_anc[7][2], g_wt_ancy[7][2], g_line_sum; long g_ag_n[7]; double g_ag_b[7], g_ag_m[7], g_ag_v[7], g_ag_5[7], g_ag_5f[7]; long g_hl_n[4], g_hf_n[7]; double g_hf_fx[7], g_hf_ay[7], g_hf_d[7]; double g_hl_d[4], g_hl_v[4], g_hl_vt[4], g_hl_want[4];   // G5.14 holders' lag
+long g_wt_n[2][7][2], g_wt_why[2][7][2][128], g_nd_lim[5]; double g_wt_a[2][7][2], g_wt_y[2][7][2], g_nd_sum, g_wt_anc[7][2], g_wt_ancy[7][2], g_line_sum; long g_dsh_n[10][7], g_dsh_f[10], g_dsh_why[7][128], g_dsh_wn[7]; double g_dsh_s[10][7], g_dsh_m[10], g_dsh_an[10][7], g_dsh_ot[10][7], g_dsh_da[10][7], g_dsh_ht[10][7], g_dsh_hp[10][7], g_dsh_hv[10][7]; long g_dsh_hn[10][7];   // G5.15 defending shape by ball band
+long g_fa_n[7], g_fa_hn[7]; double g_fa_a[7], g_fa_v[7], g_fa_5[7], g_fa_5f[7], g_fa_h[7], g_fa_hv[7];   // G5.15 front men by possession age
+long g_h3_n[7][2], g_h3_bn; double g_h3_ball, g_h3_adv[7][2], g_h3_was[7][2], g_h3_b15; long g_h3_age[4];   // G5.15 three seconds before, ball wide 18-35
+long g_ag_n[7]; double g_ag_b[7], g_ag_m[7], g_ag_v[7], g_ag_5[7], g_ag_5f[7]; long g_hl_n[4], g_hf_n[7]; double g_hf_fx[7], g_hf_ay[7], g_hf_d[7]; double g_hl_d[4], g_hl_v[4], g_hl_vt[4], g_hl_want[4];   // G5.14 holders' lag
 long g_ps_n[10][7], g_ps_f[10], g_ps_gn[7]; double g_ps_s[10][7], g_ps_back[10], g_ps_mid[10], g_ps_front[10], g_ps_g[7], g_ps_N, g_ps_B, g_ps_M, g_ps_BB, g_ps_BM;   // G5.14 possession shape
 long g_wt_ancn[7][2], g_wt_tn[7][2], g_wt_hn[7][2]; double g_wt_t[7][2], g_wt_h[7][2], g_wt_hp[7][2];   // G5.14: where they stand
 long g_ws_n, g_ws_end[6], g_ws_from[6], g_ws_to[6], g_ws_why[128], g_ws_pwhy[128], g_ws_ticks;   // G5.13: spells starting wide 18-35
@@ -983,12 +986,29 @@ int main(int argc, char** argv) {
                 ++ln_ticks[dt];
                 if (deep < 20.0) ++ln_deep[dt];
             }
+            if (std::getenv("GAME_DEAD_TRACE") && k % 300 == 0)   // G5.15: where a stalled match is stuck
+                std::fprintf(stderr, "dead-trace m%d k%ld out %d restart %d kind %d owner %d lt %d ball %.1f,%.1f\n", m, k, s.world().outStage(), s.world().restartTeam(),
+                             static_cast<int>(s.world().restartKind()), b.owner ? *b.owner : -1, s.world().lastTouchTeam(), b.pos.x.toDouble(), b.pos.y.toDouble());
+            if (std::getenv("GAME_DEAD_TRACE") && k % 3000 == 0 && s.world().restartTeam() != 0xFF)
+                for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                    const auto& q = s.world().player(j); const auto& od = s.lastOrders()[j];
+                    std::fprintf(stderr, "   p%d t%d #%d at %.1f,%.1f why %s tgt %.1f,%.1f move %.2f,%.2f\n", j, q.team, s.brain().numberOf(j), q.pos.x.toDouble(), q.pos.y.toDouble(),
+                                 ai::kWhyNames[static_cast<int>(od.why) & 127], od.target.x.toDouble(), od.target.y.toDouble(), od.move.move.x.toDouble(), od.move.move.y.toDouble());
+                }
             if (k % 6 == 0 && s.world().outStage() == 0 && s.world().restartTeam() == 0xFF && s.world().lastTouchTeam() < 2) {
                 // G5.12: possession as DFL flags it — the last team on the ball, in play.
                 const int a = s.world().lastTouchTeam();
                 const double sg = a == 0 ? 1.0 : -1.0, hx = s.world().pitchHalfX().toDouble();
                 const double tl = hx - b.pos.x.toDouble() * sg, ay = std::fabs(b.pos.y.toDouble());
                 ++g_zl[tl < 18 ? 0 : tl < 35 ? 1 : tl < 70 ? 2 : 3][ay >= 14 ? 1 : 0];
+                // G5.15 (§8.112): a 5 Hz ring of in-play frames (ball x, every man's x, the side on it) for three seconds back
+                static long h3_k[16], h3_m[16]; static int h3_a[16]; static double h3_bx[16], h3_px[16][24];
+                const int h3_i = static_cast<int>((k / 6) % 16), h3_j = static_cast<int>(((k / 6) + 16 - 15) % 16);
+                const bool h3_ok = h3_k[h3_j] == k - 90 && h3_m[h3_j] == m;
+                const double h3_bx_then = h3_bx[h3_j]; double h3_px_then[24]; for (int j = 0; j < 24; ++j) h3_px_then[j] = h3_px[h3_j][j];
+                const bool h3_same = h3_ok && h3_a[h3_j] == a;
+                h3_k[h3_i] = k; h3_m[h3_i] = m; h3_a[h3_i] = a; h3_bx[h3_i] = b.pos.x.toDouble();
+                for (std::uint8_t j = 0; j < s.world().playerCount() && j < 24; ++j) h3_px[h3_i][j] = s.world().player(j).pos.x.toDouble();
                 {   // G5.14: possession age (s since this side's last-touch spell began) — benchmarks: possession (DFL)
                     static int ag_team = -1; static long ag_t0 = 0; static long ag_last = -100;
                     if (a != ag_team || k - ag_last > 6 || k < ag_last) { ag_team = a; ag_t0 = k; }
@@ -1003,9 +1023,42 @@ int main(int argc, char** argv) {
                         vf += vx; if (sp >= 5) f5 += 1; if (vx >= 5) f5f += 1;
                     }
                     if (nm2 >= 9) { ++g_ag_n[ab]; g_ag_b[ab] += 2 * hx - tl; g_ag_m[ab] += ms / nm2; g_ag_v[ab] += vf / nm2; g_ag_5[ab] += f5 / nm2; g_ag_5f[ab] += f5f / nm2; }
+                    if (nm2 >= 9) {   // G5.15 (§8.112): the front men (AM/WIDE/ST) by age; holders' spot ahead of them and their forward speed
+                        const double mid = ms / nm2;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            if (s.world().isKeeper(j) || s.world().player(j).team != a) continue;
+                            const int num = s.brain().numberOf(j);
+                            if (!(num == 7 || num == 9 || num == 10 || num == 11)) continue;
+                            const auto& q = s.world().player(j);
+                            const double vx = q.vel.x.toDouble() * sg, sp = std::hypot(q.vel.x.toDouble(), q.vel.y.toDouble());
+                            ++g_fa_n[ab]; g_fa_a[ab] += mid - (hx - q.pos.x.toDouble() * sg); g_fa_v[ab] += vx; g_fa_5[ab] += sp >= 5; g_fa_5f[ab] += vx >= 5;
+                            const auto& od = s.lastOrders()[j];
+                            if (od.why == ai::Why::Hold && (od.target.x.raw || od.target.y.raw)) { ++g_fa_hn[ab]; g_fa_h[ab] += (od.target.x.toDouble() - q.pos.x.toDouble()) * sg; g_fa_hv[ab] += vx; }
+                        }
+                    }
                 }
                 {   // G5.14 (§8.111): the side in possession, where its men stand by the ball's band — benchmarks: possession (DFL)
                     const int k = std::min(9, std::max(0, static_cast<int>(tl / 10)));
+                    {   // G5.15 (§8.112): the side without it, same band, metres from its own line — benchmarks: possession (DFL)
+                        double dm = 0; int dn = 0;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            if (s.world().isKeeper(j) || s.world().player(j).team == a) continue;
+                            const double ptl = hx - s.world().player(j).pos.x.toDouble() * sg;
+                            const int num = s.brain().numberOf(j);
+                            const int r = (num == 4 || num == 5) ? 0 : (num == 2 || num == 3) ? 1 : (num == 6 || num == 8) ? 2 : num == 10 ? 3 : (num == 7 || num == 11) ? 4 : num == 9 ? 5 : 6;
+                            ++g_dsh_n[k][r]; g_dsh_s[k][r] += ptl; dm += ptl; ++dn;
+                            g_dsh_an[k][r] += hx - s.brain().shapeAnchor(j, s.world()).x.toDouble() * sg;
+                            g_dsh_da[k][r] += hx - s.brain().debugAnchor(j).x.toDouble() * sg;
+                            const auto& od = s.lastOrders()[j];
+                            g_dsh_ot[k][r] += (od.target.x.raw || od.target.y.raw) ? hx - od.target.x.toDouble() * sg : ptl;
+                            if (k >= 4 && k < 7) { ++g_dsh_wn[r]; ++g_dsh_why[r][static_cast<int>(od.why) & 127]; }
+                            if (od.why == ai::Why::Hold && (od.target.x.raw || od.target.y.raw)) {
+                                ++g_dsh_hn[k][r]; g_dsh_ht[k][r] += hx - od.target.x.toDouble() * sg; g_dsh_hp[k][r] += ptl;
+                                g_dsh_hv[k][r] += -s.world().player(j).vel.x.toDouble() * sg;   // toward its own line
+                            }
+                        }
+                        if (dn >= 9) { ++g_dsh_f[k]; g_dsh_m[k] += dm / dn; }
+                    }
                     double tls[11]; int nt = 0;
                     for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
                         if (s.world().isKeeper(j) || s.world().player(j).team != a) continue;
@@ -1047,6 +1100,20 @@ int main(int argc, char** argv) {
                 }
                 if (tl >= 18 && tl < 35 && ay >= 14) {   // G5.13 (§8.110): who is ahead of it on its side — benchmarks: chan (DFL)
                     ++g_ch_n;
+                    if (h3_ok) {   // G5.15: three seconds before — how far the ball came, how far each man came, where he stood then
+                        const double bad = (b.pos.x.toDouble() - h3_bx_then) * sg;
+                        ++g_h3_bn; g_h3_ball += bad; if (bad >= 15) g_h3_b15 += 1;
+                        ++g_h3_age[!h3_same ? 0 : bad < 5 ? 1 : bad < 15 ? 2 : 3];
+                        for (std::uint8_t j = 0; j < s.world().playerCount() && j < 24; ++j) {
+                            const auto& q = s.world().player(j);
+                            if (s.world().isKeeper(j) || q.team != a) continue;
+                            const int num = s.brain().numberOf(j);
+                            const int r = (num == 4 || num == 5) ? 0 : (num == 2 || num == 3) ? 1 : (num == 6 || num == 8) ? 2 : num == 10 ? 3 : (num == 7 || num == 11) ? 4 : num == 9 ? 5 : 6;
+                            const int f = ((q.pos.y.toDouble() > 0) == (b.pos.y.toDouble() > 0)) ? 0 : 1;
+                            ++g_h3_n[r][f]; g_h3_adv[r][f] += (q.pos.x.toDouble() - h3_px_then[j]) * sg;
+                            g_h3_was[r][f] += (h3_px_then[j] - h3_bx_then) * sg;   // ahead of the ball, then
+                        }
+                    }
                     const double by = b.pos.y.toDouble();
                     double nd = 1e9;
                     {   // the offside line: their second-last man (keeper counts), metres ahead of the ball
@@ -2750,6 +2817,27 @@ int main(int argc, char** argv) {
             }
             if (q == 0 && g_ps_N > 0) {
                 static const char* rp[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                std::printf("DEFENDING SHAPE (the side without it; metres from its own line, ball band = ball m from that line):\n   band    frames  middle      CB      FB   DM/CM      AM    WIDE      ST\n");
+                for (int k = 0; k < 10; ++k) if (const long f = g_dsh_f[k]) {
+                    std::printf("   %2d-%-3d %7ld  %5.1f  ", 10 * k, 10 * k + 10, f, g_dsh_m[k] / f);
+                    for (int r = 0; r < 6; ++r) std::printf("  %6.1f", g_dsh_s[k][r] / std::max(1L, g_dsh_n[k][r]));
+                    std::printf("   shape anchor");
+                    for (int r = 0; r < 6; ++r) std::printf(" %5.1f", g_dsh_an[k][r] / std::max(1L, g_dsh_n[k][r]));
+                    std::printf("   after the block rules");
+                    for (int r = 0; r < 6; ++r) std::printf(" %5.1f", g_dsh_da[k][r] / std::max(1L, g_dsh_n[k][r]));
+                    std::printf("   holding: target/stands/back m/s");
+                    for (int r = 0; r < 6; ++r) { const long hn = std::max(1L, g_dsh_hn[k][r]); std::printf(" %.1f/%.1f/%+.1f", g_dsh_ht[k][r] / hn, g_dsh_hp[k][r] / hn, g_dsh_hv[k][r] / hn); }
+                    std::printf("   order target");
+                    for (int r = 0; r < 6; ++r) std::printf(" %5.1f", g_dsh_ot[k][r] / std::max(1L, g_dsh_n[k][r]));
+                    std::printf("\n");
+                }
+                {   static const char* rq[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                    std::printf("   their jobs, ball 40-70:");
+                    for (int r = 0; r < 6; ++r) { if (!g_dsh_wn[r]) continue; std::printf(" %s:", rq[r]);
+                        for (int w = 0; w < ai::kWhyCount; ++w) if (g_dsh_why[r][w] * 10 >= g_dsh_wn[r]) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * g_dsh_why[r][w] / g_dsh_wn[r]);
+                        std::printf(";"); }
+                    std::printf("\n");
+                }
                 std::printf("POSSESSION SHAPE (last touch, in play; metres from THEIR line by the ball's band):\n   band    frames  back/middle/front  ");
                 for (int r = 0; r < 6; ++r) std::printf("  %6s", rp[r]);
                 std::printf("\n");
@@ -2766,6 +2854,8 @@ int main(int argc, char** argv) {
                     const double m = g_ag_n[i];
                     std::printf("     %d%s s %7ld  ball %5.1f  middle %5.1f  fwd %+.2f m/s  5+ %4.1f%%  5+ fwd %4.1f%%\n", i, i == 6 ? "+" : (std::string("-") + std::to_string(i + 1)).c_str(), g_ag_n[i],
                                 g_ag_b[i] / m, g_ag_m[i] / m, g_ag_v[i] / m, 100 * g_ag_5[i] / m, 100 * g_ag_5f[i] / m);
+                    if (const long f = g_fa_n[i]) std::printf("            front men (AM/WIDE/ST): ahead of the middle %+5.1f m  fwd %+.2f m/s  5+ %4.1f%%  5+ fwd %4.1f%%; holding %.0f%%, spot %+.1f m ahead, fwd %+.2f m/s\n",
+                                g_fa_a[i] / f, g_fa_v[i] / f, 100 * g_fa_5[i] / f, 100 * g_fa_5f[i] / f, 100.0 * g_fa_hn[i] / f, g_fa_h[i] / std::max(1L, g_fa_hn[i]), g_fa_hv[i] / std::max(1L, g_fa_hn[i]));
                 }
                 {
                     long hn = 0; for (long v : g_hl_n) hn += v;
@@ -2808,6 +2898,13 @@ int main(int argc, char** argv) {
                     std::printf("     attacking %s-%s shape target (owned) %+.1f/%+.1f; order target %+.1f; holding shape: target %+.1f, stands %+.1f; jobs:", rn7[r], f ? "far" : "ball", g_wt_anc[r][f] / std::max(1L, g_wt_ancn[r][f]), g_wt_ancy[r][f] / std::max(1L, g_wt_ancn[r][f]),
                                 g_wt_t[r][f] / std::max(1L, g_wt_tn[r][f]), g_wt_h[r][f] / std::max(1L, g_wt_hn[r][f]), g_wt_hp[r][f] / std::max(1L, g_wt_hn[r][f]));
                     for (int w = 0; w < ai::kWhyCount; ++w) if (g_wt_why[0][r][f][w] * 10 >= m) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_wt_why[0][r][f][w] / m);
+                    std::printf("\n");
+                }
+                if (g_h3_bn) {
+                    const double hn = g_h3_bn;
+                    std::printf("   THREE SECONDS BEFORE: the ball came %.1f m toward their line (15 m+ %.0f%%); other side had it %.0f%%, came <5 m %.0f%%, 5-15 %.0f%%, 15+ %.0f%%\n     attacking, came / stood ahead of the ball then:",
+                                g_h3_ball / hn, 100.0 * g_h3_b15 / hn, 100.0 * g_h3_age[0] / hn, 100.0 * g_h3_age[1] / hn, 100.0 * g_h3_age[2] / hn, 100.0 * g_h3_age[3] / hn);
+                    for (int r = 0; r < 7; ++r) for (int f = 0; f < 2; ++f) if (g_h3_n[r][f]) std::printf(" %s-%s %+.1f / %+.1f;", rn7[r], f ? "far" : "ball", g_h3_adv[r][f] / g_h3_n[r][f], g_h3_was[r][f] / g_h3_n[r][f]);
                     std::printf("\n");
                 }
                 std::printf("   offside line %.1f m ahead of the ball\n", g_line_sum / n);

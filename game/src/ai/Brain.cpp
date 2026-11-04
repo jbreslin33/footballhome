@@ -1446,6 +1446,69 @@ math::Vec2 Brain::shapeBall(std::uint8_t team, const World& world) const {
     return e;
 }
 
+// G5.15 (§8.112): the ball the side WITHOUT it stands its block on — the
+// ball's x smoothed over theirs_ball_tau_s (DFL: the defending middle on the
+// ball smoothed ~2 s fits R² 0.80, the ball itself 0.71), stepped once a tick
+// like shapeBall. Off (tau 0) = the ball.
+Fixed64 Brain::defendBallX(std::uint8_t team, const World& world) const {
+    const Fixed64 bx = world.ball().pos.x;
+    const std::uint64_t now = world.tickCount();
+    Fixed64& e = def_ball_x_[team & 1];
+    std::uint64_t& last = def_ball_tick_[team & 1];
+    if (last == now) return e;
+    if (theirs_ball_tau_.raw <= 0 || last == ~0ull || now < last || now - last > 3) e = bx;
+    else {
+        Fixed64 al = Fixed64::fromInt(static_cast<std::int64_t>(now - last)) * core::kTickDt / theirs_ball_tau_;
+        if (al > Fixed64::one()) al = Fixed64::one();
+        e = e + (bx - e) * al;
+    }
+    last = now;
+    return e;
+}
+
+// G5.15 (§8.112): where a man stands without the ball. The kick-off base
+// slid 25% of the ball's x, capped 14 m (anchorFor), left the 9 15 m inside
+// our half with the ball on halfway, and the back-line rule (every base at
+// -55% or deeper) held the 6 and 8 — in a 4-4-2 the 7 and 11 too — at the
+// line's height: the block stood 10 m deep, CB to 9, where real sides stand
+// 25 m (DFL, ball 50-60 m out: CB 36, 6/8 47, 9 62 m off their own line), and
+// on winning the ball our front men were 5 m too close to the middle and
+// sprinted 20 m to their spots (31% of them over 5 m/s v real 11%). Now the
+// block's middle stands at theirs_slope × the smoothed ball + offset (attack
+// direction; DFL fit 0.65, -9.3 m), each line its gap off the middle (DFL:
+// CB -10.7, FB -7.0, 6/8 -0.9, 10 +8.6, 7/11 +4.9, 9 +14.5) [Frencken et al.
+// 2011; FH]. Coaching: "the 9 stays on their centre-backs, the block moves
+// as one, 25-30 m deep" [FH].
+Fixed64 Brain::defendingX(SlotIndex slot, Fixed64 ball_x) const {
+    const Fixed64 sg = attackSign(slot) >= 0 ? Fixed64::one() : -Fixed64::one();
+    const int num = numberOf(slot);
+    const int r = (num == 4 || num == 5) ? 0 : (num == 2 || num == 3) ? 1 : (num == 6 || num == 8) ? 2 : num == 10 ? 3 : (num == 7 || num == 11) ? 4 : num == 9 ? 5 : -1;
+    Fixed64 x = ball_x * sg * theirs_slope_ + theirs_offset_;
+    if (r >= 0) x += theirs_gap_[r];
+    else {   // no number: the formation's own spacing round its middle
+        const auto& ps = spec_[setup_.team_of_slot[slot]].positions;
+        Fixed64 sum = Fixed64::zero(); int n = 0;
+        for (const auto& q : ps) if (!q.keeper) { sum += q.base.x; ++n; }
+        const Fixed64 middle = n ? sum / Fixed64::fromInt(n) : Fixed64::zero();
+        x += (ps[index_in_team_[slot]].base.x - middle) * half_x_;
+    }
+    const Fixed64 lim = half_x_ - Fixed64::fromInt(4);
+    if (x > lim) x = lim;
+    if (x < -lim) x = -lim;
+    return x * sg;
+}
+
+// The back line the line rules hold: bases at -55% or deeper; with
+// back_line_by_number (G5.15) the numbered back four, 2-5, as backLine() [FH].
+bool Brain::holdsLine(SlotIndex slot) const {
+    const FormationSpec::Pos& mine = spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]];
+    if (back_line_by_number_) {
+        const int num = numberOf(slot);
+        if (num != 0) return num >= 2 && num <= 5;
+    }
+    return mine.base.x <= Fixed64::fromFraction(-55, 100);
+}
+
 math::Vec2 Brain::shapeAnchor(SlotIndex slot, const World& world) const {
     const FormationSpec::Pos& mine =
         spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]];
@@ -1456,8 +1519,10 @@ math::Vec2 Brain::shapeAnchor(SlotIndex slot, const World& world) const {
                             ? shapeBall(setup_.team_of_slot[slot], world) : Vec2{b.pos.x, b.pos.y};
         a.x = possessionX(slot, sb.x);
         a.y = possessionY(mine.base, sb.y, a.y);
-    } else if (!mine.keeper && b.owner)
+    } else if (!mine.keeper && b.owner) {
         a.y = defendingY(mine.base, b.pos.y, a.y);
+        if (theirs_slope_.raw > 0 && world.restartTeam() == 0xFF) a.x = defendingX(slot, defendBallX(setup_.team_of_slot[slot], world));   // G5.15, open play
+    }
     return a;
 }
 
@@ -1502,6 +1567,7 @@ Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
     const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     // G5.14: the shape's smoothed ball runs every tick, in possession or not.
     if (ours_ball_tau_x_.raw > 0 || ours_ball_tau_y_.raw > 0) (void)shapeBall(setup_.team_of_slot[slot], world);
+    if (theirs_ball_tau_.raw > 0) (void)defendBallX(setup_.team_of_slot[slot], world);   // G5.15
     // G5.2: the man taking a throw, goal kick or corner.
     {
         Orders t;
@@ -3590,7 +3656,12 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         if (ours_ball_tau_x_.raw > 0 || ours_ball_tau_y_.raw > 0) sb = shapeBall(my_team, world);   // G5.14
         anchor.x = possessionX(slot, sb.x);
         anchor.y = possessionY(mine.base, sb.y, anchor.y);
-    } else if (!mine.keeper) anchor.y = defendingY(mine.base, seen_ball.y, anchor.y);
+    } else if (!mine.keeper) {
+        anchor.y = defendingY(mine.base, seen_ball.y, anchor.y);
+        // G5.15 (§8.112): open play only — a dead ball keeps its own shapes
+        // (on it, the kick-off: both 9s stood over halfway, nobody took it).
+        if (theirs_slope_.raw > 0 && world.restartTeam() == 0xFF) anchor.x = defendingX(slot, defendBallX(my_team, world));
+    }
 
     // Our ball in flight: a runner ahead of it keeps running — stopping to
     // watch it was the run that never got the ball in behind. Not a man
@@ -3625,13 +3696,13 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         const Fixed64 sgn = sign >= 0 ? Fixed64::one() : -Fixed64::one();
         // My goal is at -sgn * half_x. "Deep" = small x*sgn.
         // 1. Compactness cap: anchor_x*sgn <= ball_x*sgn + 10.
-        const Fixed64 press_line = seen_ball.x * sgn + Fixed64::fromInt(10);
+        const Fixed64 press_line = seen_ball.x * sgn + (theirs_ahead_cap_.raw > 0 ? theirs_ahead_cap_ : Fixed64::fromInt(10));
         if (anchor.x * sgn > press_line) {
             anchor.x = press_line * sgn;
         }
         // 2. Depth cover for the back line (bases at or behind -55%):
         //    stay goal-side of the deepest opponent by 2 m.
-        if (mine.base.x <= Fixed64::fromFraction(-55, 100)) {
+        if (holdsLine(slot)) {
             Fixed64 deepest = Fixed64::fromInt(1000);  // in x*sgn terms
             for (SlotIndex j = 0; j < world.playerCount(); ++j) {
                 if (setup_.team_of_slot[j] == setup_.team_of_slot[slot])
@@ -3657,6 +3728,12 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
                 withFlight(cx);
                 if (!book_.line_step.covered(cx)) dist += L.uncoveredDrop();
                 cover = seen_ball.x * sgn - dist;
+                // G5.15 (§8.112): with the fitted block the line holds the
+                // deeper of its height off the ball and its spot in the block
+                // — real back lines drop further off the ball the further out
+                // it is (DFL CB: 1 m behind it 15 m out, 19 m 55 m out, 40 m
+                // 95 m out); a fixed hold put ours 7-9 m high in midfield.
+                if (theirs_slope_.raw > 0 && anchor.x * sgn < cover) cover = anchor.x * sgn;
                 holding_line = true;
             } else if (ratings_[slot][lh] > 0) {
                 // The lapse keeps G4.8's floor: never more than hold_m behind
@@ -3710,6 +3787,7 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
         }
     }
 
+    dbg_anchor_[slot] = anchor;   // harness probe (match_main DEFENDING SHAPE)
     // ── swarm (G4.4, James's law #2): low-discipline levels collapse
     // toward the ball in BOTH phases — crowding their own attack and
     // accidentally barricading their goal. Keepers exempt.

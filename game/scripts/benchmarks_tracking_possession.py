@@ -69,6 +69,12 @@ def one(pos_path):
     for (sc, n), (bx, by, att) in ball.items():
         g0 = -own[(sc, att)]
         cur0 = [p for pid, p in pl.get((sc, n), {}).items() if pid not in keepers and who[pid] == att]
+        dcur = [p for pid, p in pl.get((sc, n), {}).items() if pid not in keepers and who[pid] != att]
+        if len(dcur) >= 9:   # G5.15 (§8.112): the side without it — its middle on the smoothed ball (attack-direction x)
+            dmx = sum(p[0] for p in dcur) / len(dcur) * g0
+            for T in TAUS:
+                ex = ema[(sc, n)][T][0] * g0
+                c[("dN", T)] += 1; c[("dX", T)] += ex; c[("dY", T)] += dmx; c[("dXX", T)] += ex * ex; c[("dXY", T)] += ex * dmx; c[("dYY", T)] += dmx * dmx
         if len(cur0) >= 9:
             mx = sum(p[0] for p in cur0) / len(cur0) * g0; my = sum(p[1] for p in cur0) / len(cur0)
             for T in TAUS:
@@ -78,13 +84,18 @@ def one(pos_path):
 
         a = age[(sc, n)]; ab = min(6, int(a))
         cur = pl.get((sc, n), {}); nxt = pl.get((sc, n + 5), {})
-        ms = []; spd = []
+        ms = []; spd = []; fr = []
         for pid, (x, y) in cur.items():
             if pid in keepers or who[pid] != att: continue
             ms.append(half - x * g0)
             if pid in nxt:
                 vx = (nxt[pid][0] - x) / 0.2; vy = (nxt[pid][1] - y) / 0.2
                 spd.append(((vx * vx + vy * vy) ** 0.5, vx * g0))
+                if ROLE.get(pos_of.get(pid, ""), "?") in ("AM", "WIDE", "ST"): fr.append((half - x * g0, vx * g0, (vx * vx + vy * vy) ** 0.5))
+        if len(ms) >= 9 and len(spd) >= 9 and fr:   # G5.15 (§8.112): the front men (AM/WIDE/ST) by age
+            mid = sum(ms) / len(ms)
+            for ftl, fv, fs in fr:
+                c[("fn", ab)] += 1; c[("fa", ab)] += mid - ftl; c[("fv", ab)] += fv; c[("f5", ab)] += fs >= 5; c[("f5f", ab)] += fv >= 5
         if len(ms) >= 9 and len(spd) >= 9:
             c[("an", ab)] += 1; c[("am", ab)] += sum(ms) / len(ms)
             c[("av", ab)] += sum(s[1] for s in spd) / len(spd)
@@ -101,6 +112,18 @@ def one(pos_path):
             tl = half - x * g; tls.append(tl)
             r = ROLE.get(pos_of.get(pid, ""), "?")
             c[("n", k, r)] += 1; c[("s", k, r)] += tl
+        dtl = []   # G5.15 (§8.112): the side WITHOUT it, same band, metres from its own line (the line the ball attacks)
+        for pid, (x, y) in pl.get((sc, n), {}).items():
+            if pid in keepers or who[pid] == att: continue
+            tl = half - x * g; dtl.append(tl)
+            r = ROLE.get(pos_of.get(pid, ""), "?")
+            c[("dn", k, r)] += 1; c[("ds", k, r)] += tl
+        if len(dtl) >= 9: c[("df", k)] += 1; c[("dmid", k)] += sum(dtl) / len(dtl)
+        if len(dtl) >= 9 and 25 <= btl < 75:
+            dm = sum(dtl) / len(dtl)
+            for pid, (x, y) in pl.get((sc, n), {}).items():
+                if pid in keepers or who[pid] == att: continue
+                r = ROLE.get(pos_of.get(pid, ""), "?"); c[("dgn", r)] += 1; c[("dg", r)] += (half - x * g) - dm
         if len(tls) < 9: continue
         mid = sum(tls) / len(tls)
         c[("f", k)] += 1; c[("back", k)] += max(tls); c[("mid", k)] += mid; c[("front", k)] += min(tls)
@@ -132,6 +155,8 @@ if __name__ == "__main__":
     for k in range(7):
         m = c[("an", k)]
         if m: print(f"    {k}{'+' if k == 6 else '-' + str(k + 1)} s {m:7d}  ball {c[('abt',k)]/m:5.1f}  middle {c[('am',k)]/m:5.1f}  fwd {c[('av',k)]/m:+.2f} m/s  5+ {100*c[('a5',k)]/m:4.1f}%  5+ fwd {100*c[('a5f',k)]/m:4.1f}%")
+        f = c[("fn", k)]
+        if f: print(f"           front men (AM/WIDE/ST): ahead of the middle {c[('fa',k)]/f:+5.1f} m  fwd {c[('fv',k)]/f:+.2f} m/s  5+ {100*c[('f5',k)]/f:4.1f}%  5+ fwd {100*c[('f5f',k)]/f:4.1f}%")
     print("  middle (attack-direction x / y) on an EMA of the ball over T s, possession frames: T: slope x, offset, R2 | slope y, R2")
     for T in (0, 1, 2, 3, 4, 6, 8):
         out = []
@@ -140,3 +165,18 @@ if __name__ == "__main__":
             vx = c[(a+"XX",T)] - sx*sx/N; vy = c[(a+"YY",T)] - sy*sy/N; cxy = c[(a+"XY",T)] - sx*sy/N
             out.append((cxy/vx, sy/N - cxy/vx*sx/N, cxy*cxy/(vx*vy)))
         print(f"    T {T}: x {out[0][0]:.2f}, {out[0][1]:+.1f}, R2 {out[0][2]:.3f} | y {out[1][0]:.2f}, R2 {out[1][2]:.3f}")
+    print("  DEFENDING SHAPE (the side without it; metres from its own line, ball band = ball m from that line):")
+    print("  band    frames  middle   " + "  ".join(f"{r:>6}" for r in roles))
+    for k in range(10):
+        f = c[("df", k)]
+        if not f: continue
+        print(f"  {10*k:3d}-{10*k+10:<3d} {f:7d}  {c[('dmid',k)]/f:5.1f}    " + "  ".join(f"{c[('ds',k,r)]/max(1,c[('dn',k,r)]):6.1f}" for r in roles))
+    print("  each role ahead of the middle (toward the ball's end), ball 25-75 m off the line: " + "; ".join(f"{r} {c[('dg',r)]/max(1,c[('dgn',r)]):+.1f}" for r in roles))
+    print("  middle (attack-direction x, of the side WITHOUT it) on an EMA of the ball over T s: T: slope, offset, R2")
+    for T in (0, 1, 2, 3, 4, 6, 8):
+        N = c[("dN", T)]
+        if not N: continue
+        X, Y, XX, XY, YY = (c[(k, T)] for k in ("dX", "dY", "dXX", "dXY", "dYY"))
+        sl = (N * XY - X * Y) / (N * XX - X * X); of = (Y - sl * X) / N
+        r2 = (N * XY - X * Y) ** 2 / ((N * XX - X * X) * (N * YY - Y * Y))
+        print(f"    T {T}: x {sl:.2f}, {of:+.1f}, R2 {r2:.3f}")

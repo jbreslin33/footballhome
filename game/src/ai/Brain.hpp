@@ -161,6 +161,15 @@ public:
             static const char* kr[6] = {"cb", "fb", "dm", "am", "wide", "st"};
             for (int r = 0; r < 6; ++r) ours_push_[r] = p.fixed((std::string("physics.shape.ours_push_") + kr[r] + "_m").c_str(), 0);
         }   // G5.14 (§8.111)
+        {   // G5.15 (§8.112): the side without the ball — a fitted block (off without rows)
+            theirs_slope_ = p.fixed("physics.shape.theirs_slope", 0);
+            theirs_offset_ = p.fixed("physics.shape.theirs_offset_m", 0);
+            theirs_ball_tau_ = p.fixed("physics.shape.theirs_ball_tau_s", 0);
+            theirs_ahead_cap_ = p.fixed("physics.shape.theirs_ahead_cap_m", 0);
+            back_line_by_number_ = p.integer("physics.shape.back_line_by_number", 0);
+            static const char* kr[6] = {"cb", "fb", "dm", "am", "wide", "st"};
+            for (int r = 0; r < 6; ++r) theirs_gap_[r] = p.fixed((std::string("physics.shape.theirs_gap_") + kr[r] + "_m").c_str(), 0);
+        }
         shape_max_ = p.fixed("physics.body.shape_max_mps", 0);
         defend_max_ = p.fixed("physics.body.defend_max_mps", 0);
         shape_danger_ = p.fixed("physics.body.shape_danger_m", 0);
@@ -286,6 +295,9 @@ public:
     // G5.9 (§8.107): their ball wide near our goal, the back line gets into the box.
     void defendTheCross(core::SlotIndex slot, const core::World& world, Orders& o) const;
     math::Vec2 shapeAnchor(core::SlotIndex slot, const core::World& world) const;
+    // Harness probe: the anchor after decide's block rules, before the swarm.
+    math::Vec2 debugAnchor(core::SlotIndex slot) const { return dbg_anchor_[slot]; }
+    mutable math::Vec2 dbg_anchor_[32]{};
 
     // The flight read (G4.49): for a free live ball, where and when each
     // player can first take it — the ball's own path walked tick by tick
@@ -495,6 +507,18 @@ private:
     // WIDE +7.9, ST +13.5 m: the full-backs push on to the middle's level,
     // the centre-backs stay. 0 = off.
     math::Fixed64 ours_push_[6]{};
+    // G5.15 (§8.112): without the ball the block stands at theirs_slope × the
+    // ball's x (smoothed over theirs_ball_tau_s) + theirs_offset_m, each line
+    // theirs_gap_<line>_m off that middle; the back line is numbers 2-5 when
+    // back_line_by_number; nobody further upfield of the ball than
+    // theirs_ahead_cap_m (0 = the old 10 m).
+    math::Fixed64 theirs_slope_{}, theirs_offset_{}, theirs_ball_tau_{}, theirs_ahead_cap_{}, theirs_gap_[6]{};
+    int back_line_by_number_ = 0;
+    mutable math::Fixed64 def_ball_x_[2]{};
+    mutable std::uint64_t def_ball_tick_[2] = {~0ull, ~0ull};
+    math::Fixed64 defendBallX(std::uint8_t team, const core::World& world) const;
+    math::Fixed64 defendingX(core::SlotIndex slot, math::Fixed64 ball_x) const;
+    bool holdsLine(core::SlotIndex slot) const;
     mutable math::Vec2 shape_ball_[2]{};
     mutable std::uint64_t shape_ball_tick_[2] = {~0ull, ~0ull};
     math::Vec2 shapeBall(std::uint8_t team, const core::World& world) const;

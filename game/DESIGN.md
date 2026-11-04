@@ -4889,3 +4889,74 @@ and wingers stand 9-16 m behind spots at or just inside the offside line, holdin
 support / meet the pass pulling them back), then whether the front line's hold has to be the
 line itself (real ST 5-6 m off it), not the shape plus a cap. Then the centre-backs' height in
 the final third with the smoothed ball (real 48.8 m off their line at ball 20-30, game 56.2).
+
+### 8.112 G5.15 — without the ball the block stands 25 m deep, the 9 on their centre-backs (no migration; off without rows)
+
+**The mole (§8.111's next).** With the ball wide 18-35 m off their line our front three stood
+9-16 m behind their spots. A 3 s look-back (THREE SECONDS BEFORE, both sides) showed it isn't the
+last seconds: the ball came as far as real (11 v 10.3 m), our men came *further* (+5-7 v +4-5),
+but three seconds earlier they already stood 5-7 m too deep v the ball (ST +2 v +9.5). By
+possession age (front men AM/WIDE/ST): at the moment the ball is won real front men stand +9.2 m
+ahead of their middle, ours +3.6, their spot 20 m ahead of them — then they sprint (31% of them
+over 5 m/s at 3-4 s, real 11%). The cause is the shape **without** the ball.
+
+**DEFENDING SHAPE (new, both sides; metres from its own line by the ball's band).** Real (DFL,
+ball 50-60 m out): CB 36.3, FB 40.3, 6/8 46.5, 10 55.4, 7/11 52.0, 9 61.6 — 25 m deep. Ours: CB
+42.9, FB 46.4, 6/8 48.3, 10 49.3, 7/11 50.0, 9 53.2 — 10 m deep. A probe of the anchor after
+decide's block rules showed why: CB, FB and 6/8 at the same height (37.7/37.9/37.1). The
+back-line rule (every base at -55% or deeper is line-held) caught the 6 and 8 (bases -58 to -65)
+and in a 4-4-2 the 7 and 11 (-55); everyone else stood on the kick-off base slid 25% of the ball
+(anchorFor, cap 14 m) — the 9 15 m inside our half with the ball on halfway.
+
+**Real model (benchmarks_tracking_possession.py, DFL, Bassek et al. 2025, CC BY).** The side
+without the ball: its middle on the ball smoothed ~2 s — attack-direction slope 0.65, offset
+-9.3 m (goal-side), R² 0.80 (raw ball 0.71); each line off that middle, ball 25-75: CB -10.7, FB
+-7.0, 6/8 -0.9, 10 +8.6, 7/11 +4.9, 9 +14.5. [Frencken, Lemmink, Delleman & Visscher 2011; FH
+coaching: "the block moves as one; the 9 stays on their centre-backs".]
+
+**Built (Brain; all off without rows):**
+- `defendingX` / `defendBallX`: without the ball, in open play only, a man's x = slope × the
+  ball smoothed over `physics.shape.theirs_ball_tau_s` + `theirs_offset_m` + his line's
+  `theirs_gap_{cb,fb,dm,am,wide,st}_m` (no number: the formation's own spacing); gated on
+  `physics.shape.theirs_slope` > 0. Dead balls keep their shapes — on a kick-off the model put
+  both 9s over halfway and nobody took it (a stalled match: 174 s in play; GAME_DEAD_TRACE dumps
+  restart state and every man's job).
+- `holdsLine`: with `physics.shape.back_line_by_number` the line rules hold the numbered back
+  four (2-5, as backLine()) instead of every base at -55% or deeper.
+- With the model on, a held line takes the deeper of its height off the ball and its spot in the
+  block (real back lines drop further off the ball the further out it is: CB 1 m behind it 15 m
+  out, 19 m at 55, 40 m at 95).
+- `physics.shape.theirs_ahead_cap_m`: the compactness cap (nobody further upfield of the ball
+  than 10 m) as a row — real 9s stand 28 m upfield of a ball in their own box.
+
+Config F1 (on top of E4): theirs_slope 0.65, theirs_offset_m -9.3, theirs_ball_tau_s 2,
+back_line_by_number 1, theirs_ahead_cap_m 30, gaps -10.7/-7.0/-0.9/+8.6/+4.9/+14.5.
+
+**16 matches a config (4 PL fixtures × 4), E4 → E4+F1:**
+
+| | E4 | E4+F1 | Real |
+|---|---|---|---|
+| front men ahead of the middle when the ball is won (0-1 / 3-4 s) | +3.5 / +6.7 | +8.7 / +10.5 | +9.2 / +9.9 |
+| front men over 5 m/s, 2-3 / 3-4 s into the spell | 24% / 31% | 23% / 26% | 9% / 11% |
+| defending, ball 50-60: CB / 6-8 / 10 / 9 off real | +6.7 / +1.8 / -6.1 / -8.4 | +5.0 / +2.7 / +1.3 / -0.7 | 0 |
+| defending, ball 0-50: middle off real | +2 to +3 | +5 to +6 | 0 |
+| possession, ball 90-100: every line off real | +0.5 to +6.4 | -0.6 to +1.1 | 0 |
+| possession, ball 0-30: middle off real | +6.7 / +7.2 | +7.1 / +7.9 | 0 |
+| offsides a team | 2.4 | 4.0 | 2.0 |
+
+Goals 4.5 → 4.4, shots 15.2 → 15.4, passes 613 → 623, entries 36.3 → 39.2. Shipped as correct
+behaviour: the block has its real depth and the front men start every attack where real ones do;
+offsides went the wrong way (our front men now start higher, our defending lines are still high).
+
+**Harness lines (match_main):** THREE SECONDS BEFORE (ball wide 18-35); front men by possession
+age (ahead of the middle, forward speed, 5+ m/s, holders' spot ahead of them); DEFENDING SHAPE
+by band with the shape anchor, the anchor after the block rules, holders' target / where they
+stand / speed toward their own line, the order target, and their jobs with the ball 40-70.
+DFL side: benchmarks_tracking_channel.py (THREE SECONDS BEFORE), benchmarks_tracking_possession.py
+(front men by age, DEFENDING SHAPE, lines off the defending middle, its fit on the smoothed ball).
+
+**Next mole.** The block in our half stands 5-7 m high (CB +5 to +7). Holders there trail their
+targets 5-14 m, backing off at only 3-4 m/s: the hold move is `seek(…, 1/2)`, half speed whatever
+brakeToArrive allows, and markers (mark tight 24%, protect the middle 18% of CB time) lift the
+centre-backs 5 m over their block spot. Then offsides (4.0 a team v 2.0), and the final third in
+possession (middle still 7-8 m deep).
