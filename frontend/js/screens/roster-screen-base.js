@@ -1745,6 +1745,26 @@ class RosterScreenBase extends Screen {
                .replace(/^(?:Men'?s|Women'?s|Boys|Girls)\s+Club\s+(?=\S)/i, '') || full;
   }
 
+  // 👀⚽ on the card (owner 2026-11-04: "just an eye ball and soccer ball
+  // … the game they see is then obvious because of column they are in"):
+  // this column's games reach him with no per-game invite — a roster row
+  // that grants games (full spot, team not call-up-only, mig 605) or a
+  // ⭐ standing invite.  Replaces the column's 👀 Sees games filter pill.
+  renderSeesGamesChip(player, col) {
+    let sees = player.seesGamesHere === true;
+    if (!sees) {
+      if (!col || !col.teamId) return '';
+      const d = this._data || {};
+      const gated = Array.isArray(d.callupOnlyTeams) && d.callupOnlyTeams.includes(col.teamId);
+      const standing = ((d.autoInvites || {})[String(col.teamId)] || []).some(r => Number(r.personId) === Number(player.personId));
+      sees = (player.inviteOnly !== true && !gated) || standing;
+    }
+    if (!sees) return '';
+    const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || '';
+    const tip = copy('card_sees_games_tip', { team: (col && col.label) || '' }) || `Asked about every ${(col && col.label) || ''} game automatically`;
+    return `<span title="${this.escape(tip)}" style="font-size:0.66rem; line-height:1.3; white-space:nowrap;">${this.escape(copy('card_sees_games') || '👀⚽')}</span>`;
+  }
+
   // Multi-team badge — flags a player who holds more than one active
   // roster spot (e.g. a boy called up to a mens team, or someone on two
   // mens squads) so it's visually obvious without cross-referencing
@@ -1969,7 +1989,7 @@ class RosterScreenBase extends Screen {
     // DOB is not drawn (owner 2026-09-17: "drop dob from the card, age chip is
     // enough"); callers may still pass dobShort — it is ignored here.
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
-    const activeTeamsBadge = this.renderActiveTeamsBadge(player, col);
+    const activeTeamsBadge = this.renderSeesGamesChip(player, col) + this.renderActiveTeamsBadge(player, col);
     const pickupBadge = this.renderPickupBadge(player);
     // Both modes show the whole name; they differ in where it gets the
     // room to do it.
@@ -2645,14 +2665,6 @@ class RosterScreenBase extends Screen {
     if (catPill) { this.onCatPillClick(catPill); return true; }
     const officialPill = e.target.closest('.mr-official-pill');
     if (officialPill) { this.onOfficialPillClick(officialPill); return true; }
-    const seesPill = e.target.closest('.mr-sees-pill');
-    if (seesPill) {
-      const id = parseInt(seesPill.dataset.teamId, 10);
-      this.seesOpen = this.seesOpen || {};
-      this.seesOpen[id] = !this.seesOpen[id];
-      if (this._data) this.renderRoster(this._data);
-      return true;
-    }
     const officialRefresh = e.target.closest('.mr-official-refresh');
     if (officialRefresh) { this.onOfficialRefreshClick(officialRefresh); return true; }
     return false;
@@ -2771,12 +2783,10 @@ class RosterScreenBase extends Screen {
   // { pillsHtml, shown, ridersHtml }: boards drop pillsHtml above the
   // player list, render `shown` instead of the raw column players, and
   // append ridersHtml after the list.
-  // Is a category's group on screen for this column?  The 👀 Sees games
-  // filter shows only who a game invite reaches (active + injured, none on
-  // a call-up-gated team); otherwise a category pill switched off hides it.
+  // Is a category's group on screen for this column?  Hidden only when
+  // its category pill is switched off (the 👀 Sees games filter went
+  // 11/4 — the card's 👀⚽ chip says it per player).
   columnCategoryShown(col, cat, data) {
-    const gated = Array.isArray(data && data.callupOnlyTeams) && data.callupOnlyTeams.includes(col.teamId);
-    if (this.seesOpen && this.seesOpen[col.teamId]) return !gated && (cat === 'active' || cat === 'injured');
     return !(this.catOff && this.catOff[`${col.teamId}:${cat}`]);
   }
 
@@ -2857,15 +2867,6 @@ class RosterScreenBase extends Screen {
           </div>` : ''}
         </div>`;
     }
-    // 👀 Sees games (owner 2026-10-21): a FILTER toggle, not a separate
-    // list.  ON = the column shows only who a game invite reaches
-    // automatically — active roster + injured (excused, still see games)
-    // + the ⭐ strip; 📄 paper spots hidden, and on a call-up-gated team
-    // (mig 605) roster rows grant nothing, so only the ⭐ strip remains.
-    const gated = Array.isArray(data.callupOnlyTeams) && data.callupOnlyTeams.includes(col.teamId);
-    const seesCount = (gated ? 0 : cats.active.length + cats.injured.length) + riders.length;
-    const seesOn = !!(this.seesOpen && this.seesOpen[col.teamId]);
-    const seesCat = (cat) => gated ? false : (cat === 'active' || cat === 'injured');
     // Every category pill shows, (0) included (owner 11/4).
     const catPill = (cat, icon, label, n, color) => `
         <button type="button" class="mr-cat-pill" data-cat-team="${col.teamId}" data-cat="${cat}"
@@ -2902,16 +2903,10 @@ class RosterScreenBase extends Screen {
                    border:1px solid ${color}; background:${officialOpen ? color + '26' : 'transparent'};
                    color:${officialOpen || st ? color : '#64748b'};">🌐 Roster (${(official.names || []).length})${this.escape(suffix)}</button>`;
         })() : ''}
-        <button type="button" class="mr-sees-pill" data-team-id="${col.teamId}"
-          title="${seesOn ? 'Back to the full column' : `Show only who gets ${this.escape(col.label)} games automatically to RSVP — roster that grants games plus ⭐ standing invites`}"
-          style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
-                 border:1px solid #2dd4bf; background:${seesOn ? '#2dd4bf26' : 'transparent'};
-                 color:${seesOn ? '#2dd4bf' : '#64748b'};">👀 Sees games (${seesCount})</button>
       </div>
       ${officialPanel}`;
 
-    const shown = seesOn ? players.filter(p => seesCat(catOf(p)))
-      : players.filter(p => !off(catOf(p)));
+    const shown = players.filter(p => !off(catOf(p)));
     // ⭐ Standing call-ups (team_auto_invites) are listed with the
     // column's ✅ Active players (owner 2026-10-22: "rhoden and pena
     // should show like others but with standing call up chip on name") —
@@ -2934,7 +2929,7 @@ class RosterScreenBase extends Screen {
     const nameChipHtml = (r) => `<span title="${this.escape(chipTip(r))}"
       style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
              background:rgba(96,165,250,0.18); border:1px solid #60a5fa; color:#bfdbfe;">${this.escape(chipLabel(r))}${r.fromTeam ? ` · ${this.escape(r.fromTeam)}` : ''}</span>`;
-    const ridersHtml = (riders.length && (seesOn || !off('active'))) ? riders.map(r => {
+    const ridersHtml = (riders.length && !off('active')) ? riders.map(r => {
       let homeCol = null, hp = null;
       for (const c of (data.columns || [])) {
         if (c.teamId === col.teamId) continue;
@@ -2945,7 +2940,7 @@ class RosterScreenBase extends Screen {
         <div style="padding:4px 8px; border:${RosterScreenBase.NEUTRAL_CARD_BORDER}; border-radius:8px; font-size:0.78rem;">
           <b>${this.escape(r.name)}</b> ${nameChipHtml(r)}
         </div>`;
-      return this.renderPlayer({ ...hp, nameChipHtml: nameChipHtml(r) }, data.columns, homeCol, 0, 0)
+      return this.renderPlayer({ ...hp, nameChipHtml: nameChipHtml(r), seesGamesHere: true }, data.columns, homeCol, 0, 0)
         .replace('draggable="true"', 'draggable="false"')
         .replace(/ id="[a-z]+-card-[^"]*"/, '');
     }).join('') : '';
