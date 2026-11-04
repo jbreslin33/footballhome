@@ -64,6 +64,8 @@ long g_blocks[2];
 double g_cx_tx, g_cx_ty, g_cx_kx, g_cx_ky; // G5.12: ball wide 0-18, by role [att/def][role 0 CB 1 FB-ball 2 FB-far 3 DM 4 AM 5 WIDE-ball 6 WIDE-far 7 ST]: frames, in box; out-of-box jobs
 long g_ch_n, g_ch_chan[2], g_ch_box[2], g_ch_ahead[7], g_ch_run[7], g_ch_why[128];   // G5.13: ball wide 18-35, last touch
 long g_wt_n[2][7][2], g_wt_why[2][7][2][128], g_nd_lim[5]; double g_wt_a[2][7][2], g_wt_y[2][7][2], g_nd_sum, g_wt_anc[7][2], g_wt_ancy[7][2], g_line_sum; // G5.17 (§8.114): concept acts a team-match, counted as StatsBomb tags them — benchmarks: concepts (StatsBomb PL 15/16)
+long g_ce[6]; double g_ce_drawn, g_ce_held; long g_ce_n;   // G5.18 how spells end
+long g_cy_n, g_cy_b[6], g_cy_10; double g_cy_len, g_cy_gain, g_cy_dur, g_cy_bl[6], g_cy_bd[6], g_cy_mvl, g_cy_mvd;   // G5.18 carries
 long g_ca_press, g_ca_cpress, g_ca_pass, g_ca_switch, g_ca_cross, g_ca_cutback, g_ca_drib, g_ca_dribok, g_ca_ret, g_ca_rtp, g_ca_carry10;
 long g_dsh_n[10][7], g_dsh_f[10], g_dsh_why[7][128], g_dsh_wn[7]; double g_dsh_s[10][7], g_dsh_m[10], g_dsh_an[10][7], g_dsh_ot[10][7], g_dsh_da[10][7], g_dsh_ht[10][7], g_dsh_hp[10][7], g_dsh_hv[10][7]; long g_dsh_hn[10][7];   // G5.15 defending shape by ball band
 long g_fa_n[7], g_fa_hn[7]; double g_fa_a[7], g_fa_v[7], g_fa_5[7], g_fa_5f[7], g_fa_h[7], g_fa_hv[7];   // G5.15 front men by possession age
@@ -1009,7 +1011,7 @@ int main(int argc, char** argv) {
             {   // G5.17 (§8.114): concept acts by ownership — release, next owner — with StatsBomb's cuts
                 struct Rel { int p = -1, team = -1, other = -1; double x = 0, y = 0; long tick = 0; bool set = false, cross = false, shot = false; };
                 static int ca_owner = -1, ca_team = -1, ca_m = -1; static long ca_got = 0, ca_loss[2] = {-1000, -1000}; static double ca_sx = 0, ca_sy = 0, ca_px = 0, ca_py = 0;
-                static Rel ca_rel; static int ca_from[32]; static long ca_from_t[32]; static long ca_in[32]; static int ca_face[32]; static int ca_why = 0, ca_oth = -1; static bool ca_set = false;
+                static Rel ca_rel; static int ca_from[32]; static long ca_from_t[32]; static long ca_in[32]; static int ca_face[32]; static int ca_why = 0, ca_oth = -1; static bool ca_set = false; static std::uint64_t ca_hold = 0;
                 if (m != ca_m || k == 0) { ca_m = m; ca_owner = -1; ca_team = -1; ca_rel = Rel{}; for (int j = 0; j < 32; ++j) { ca_from[j] = -1; ca_in[j] = -1; ca_face[j] = 0; } ca_loss[0] = ca_loss[1] = -1000; }
                 const int own = b.owner ? static_cast<int>(*b.owner) : -1;
                 const double hx = s.world().pitchHalfX().toDouble();
@@ -1027,6 +1029,21 @@ int main(int argc, char** argv) {
                     if (ca_owner >= 0) {   // ca_owner let it go (or lost it)
                         const double sg = ca_team == 0 ? 1.0 : -1.0;
                         if ((ca_px - ca_sx) * sg >= 10) ++g_ca_carry10;
+                        if (!ca_set) {   // G5.18: how it ended v the hold he drew — first time / before the hold (pressed) / at or after it / lost to a man
+                            static const bool dummy = false; (void)dummy;
+                            const long drawn = static_cast<long>(ca_hold) - ca_got, held = k - ca_got;
+                            ++g_ce_n; g_ce_drawn += drawn / 30.0; g_ce_held += held / 30.0;
+                            const bool lost = own >= 0 && s.world().player(static_cast<std::uint8_t>(own)).team != ca_team;
+                            ++g_ce[lost ? 3 : held <= 3 ? 0 : held + 1 < drawn ? 1 : held <= drawn + 15 ? 2 : 4];
+                        }
+                        if (!ca_set) {   // G5.18 (§8.115): the spell as a StatsBomb carry — benchmarks: carry (StatsBomb)
+                            const double ln = std::hypot(ca_px - ca_sx, ca_py - ca_sy), du = (k - ca_got) / 30.0;
+                            ++g_cy_n; g_cy_len += ln; g_cy_gain += (ca_px - ca_sx) * sg; g_cy_dur += du;
+                            if ((ca_px - ca_sx) * sg >= 10) ++g_cy_10;
+                            const int bi = ln < 1 ? 0 : ln < 3 ? 1 : ln < 6 ? 2 : ln < 10 ? 3 : ln < 20 ? 4 : 5;
+                            ++g_cy_b[bi]; g_cy_bl[bi] += ln; g_cy_bd[bi] += du;
+                            if (ln >= 1) { g_cy_mvl += ln; g_cy_mvd += du; }
+                        }
                         if (ca_face[ca_owner] > 0) { ++g_ca_drib; ca_face[ca_owner] = 0; }   // taking him on when it went
                         if (own < 0) {     // a release
                             ca_rel = Rel{}; ca_rel.p = ca_owner; ca_rel.team = ca_team; ca_rel.x = ca_px; ca_rel.y = ca_py; ca_rel.tick = k;
@@ -1057,6 +1074,7 @@ int main(int argc, char** argv) {
                     const double sg = c.team == 0 ? 1.0 : -1.0;
                     ca_px = c.pos.x.toDouble(); ca_py = c.pos.y.toDouble();
                     ca_why = static_cast<int>(s.lastOrders()[own].why); ca_oth = s.lastOrders()[own].other; ca_set = s.world().restartTeam() != 0xFF;
+                    ca_hold = s.world().holdUntilTick();
                     if (!ca_set) for (std::uint8_t j = 0; j < s.world().playerCount() && j < 32; ++j) {
                         const auto& d = s.world().player(j);
                         if (d.team == c.team) continue;
@@ -2910,6 +2928,19 @@ int main(int argc, char** argv) {
                     std::printf("CONCEPT ACTS a team-match (StatsBomb cuts; real PL 15/16 in brackets): pressures %.1f (151.8), counter-press %.1f = %.1f%% (21.0%%); passes %.1f (433.8): switches %.2f (10.69), crosses %.2f (11.47), cut-backs %.2f (1.03); take-ons %.2f tried (18.05), %.2f completed (10.59); return passes %.2f (42.11) = %.1f%% of passes after a receipt (15.7%%); carries 10 m+ %.2f (34.64)\n",
                                 g_ca_press / tm, g_ca_cpress / tm, 100.0 * g_ca_cpress / std::max(1L, g_ca_press), g_ca_pass / tm, g_ca_switch / tm, g_ca_cross / tm, g_ca_cutback / tm,
                                 g_ca_drib / tm, g_ca_dribok / tm, g_ca_ret / tm, 100.0 * g_ca_ret / std::max(1L, g_ca_rtp), g_ca_carry10 / tm);
+                }
+                if (g_cy_n) {
+                    const double tm = 2.0 * nm, n = g_cy_n;
+                    std::printf("CARRIES (a spell on the ball, open play; real PL 15/16 in brackets): %.1f a team-match (353.1), %.1f m (5.3) / %+.1f m (+2.4) / %.2f s (1.80) / %.2f m/s moving (3.26), 10 m+ gain %.1f%% (9.6%%) = %.1f (34.0)\n",
+                                g_cy_n / tm, g_cy_len / n, g_cy_gain / n, g_cy_dur / n, g_cy_mvl / std::max(1e-9, g_cy_mvd), 100.0 * g_cy_10 / n, g_cy_10 / tm);
+                    std::printf("   how spells end (drawn hold %.2f s, held %.2f s): inside 0.1 s %.0f%%; before the hold ran out %.0f%%; at it (+0.5 s) %.0f%%; later %.0f%%; lost to a man %.0f%%\n",
+                                g_ce_drawn / std::max(1L, g_ce_n), g_ce_held / std::max(1L, g_ce_n), 100.0 * g_ce[0] / std::max(1L, g_ce_n), 100.0 * g_ce[1] / std::max(1L, g_ce_n),
+                                100.0 * g_ce[2] / std::max(1L, g_ce_n), 100.0 * g_ce[4] / std::max(1L, g_ce_n), 100.0 * g_ce[3] / std::max(1L, g_ce_n));
+                    static const char* lb[6] = {"0-1", "1-3", "3-6", "6-10", "10-20", "20+"};
+                    std::printf("   length:");
+                    static const double rs[6] = {25.7, 23.4, 20.7, 14.2, 12.2, 4.0}, rv[6] = {0.39, 1.64, 2.57, 3.23, 3.94, 5.22};
+                    for (int i = 0; i < 6; ++i) std::printf(" %s m %.1f%% (%.1f) %.2f m/s (%.2f);", lb[i], 100.0 * g_cy_b[i] / n, rs[i], g_cy_bl[i] / std::max(1e-9, g_cy_bd[i]), rv[i]);
+                    std::printf("\n");
                 }
                 std::printf("DEFENDING SHAPE (the side without it; metres from its own line, ball band = ball m from that line):\n   band    frames  middle      CB      FB   DM/CM      AM    WIDE      ST\n");
                 for (int k = 0; k < 10; ++k) if (const long f = g_dsh_f[k]) {

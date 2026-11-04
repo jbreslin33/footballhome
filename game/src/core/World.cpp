@@ -320,8 +320,11 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         // G5.4: a man with time keeps it for the hold he drew on receipt. A
         // shot, a first-time hit, a keeper or a presser nearby ends that.
         bool hold_it = hold_on_ && clock_.tick() < hold_until_tick_ && act != Action::Shot &&
-                       first_time_[kicker] == 0 && !isKeeper(kicker);
-        for (SlotIndex i = 0; i < players_.size() && hold_it; ++i) {
+                       (first_time_[kicker] == 0 || hold_strict_) && !isKeeper(kicker);
+        // G5.18 (§8.115): strict, the draw already holds the first-time and
+        // pressed releases (real time on the ball is every receipt) — ending
+        // it again on a presser or a first-time wish halved it (0.95 s v 1.47).
+        for (SlotIndex i = 0; i < players_.size() && hold_it && !hold_strict_; ++i) {
             if (players_[i].team == players_[kicker].team) continue;
             const Vec2 d{players_[i].pos.x - o.pos.x, players_[i].pos.y - o.pos.y};
             // Near his own goal any presser ends it: holding there just gets him robbed.
@@ -969,6 +972,13 @@ void World::configureTempo(const ModelParams& p) {
     stretch_m_ = p.fixed("physics.tempo.stretch_m", 0);
     carry_share_ = p.fixed("physics.tempo.carry_share", 0);
     hold_on_ = hold_under1_.raw > 0 && hold_under2_ > hold_under1_ && hold_under4_ > hold_under2_;
+    hold_one_ = p.fixed("physics.tempo.hold_one_touch", 0);        // G5.18 (§8.115)
+    hold_p_one_ = p.fixed("physics.tempo.hold_pressed_one_touch", 0);
+    hold_p_under1_ = p.fixed("physics.tempo.hold_pressed_under1", 0);
+    hold_p_under2_ = p.fixed("physics.tempo.hold_pressed_under2", 0);
+    hold_p_under4_ = p.fixed("physics.tempo.hold_pressed_under4", 0);
+    hold_pressed_m_ = p.fixed("physics.tempo.hold_pressed_m", 0);
+    hold_strict_ = p.integer("physics.tempo.hold_strict", 0);
 }
 
 // G5.3: the nearest man of each team under a ball at head height. Both there:
@@ -1073,11 +1083,25 @@ void World::settleControl(SlotIndex slot, Fixed64 speed) {
         // 1-2, 2-4, then 4-8 s, flat inside each (StatsBomb PL 2015/16,
         // Ball Receipt to Pass; the flat slices are [FH]).
         const Fixed64 u = (detNoise(match_seed_, clock_.tick(), slot, 23) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        // G5.18 (§8.115): pressed at the receipt (a man within hold_pressed_m),
+        // the pressed curve (StatsBomb PL 15/16 under_pressure receipts: 43.6%
+        // one-touch, mean 1.11 s v 1.53 free); a one-touch slice is no hold.
+        Fixed64 one = hold_one_, u1 = hold_under1_, u2 = hold_under2_, u4 = hold_under4_;
+        if (hold_pressed_m_.raw > 0 && hold_p_under1_.raw > 0) {
+            bool pressed = false;
+            const auto& me = players_[slot];
+            for (SlotIndex i = 0; i < players_.size() && !pressed; ++i)
+                if (players_[i].team != me.team &&
+                    math::lengthSquared(Vec2{players_[i].pos.x - me.pos.x, players_[i].pos.y - me.pos.y}) < hold_pressed_m_ * hold_pressed_m_)
+                    pressed = true;
+            if (pressed) { one = hold_p_one_; u1 = hold_p_under1_; u2 = hold_p_under2_; u4 = hold_p_under4_; }
+        }
         Fixed64 s;
-        if (u < hold_under1_) s = u / hold_under1_;
-        else if (u < hold_under2_) s = Fixed64::one() + (u - hold_under1_) / (hold_under2_ - hold_under1_);
-        else if (u < hold_under4_) s = Fixed64::fromInt(2) + Fixed64::fromInt(2) * (u - hold_under2_) / (hold_under4_ - hold_under2_);
-        else s = Fixed64::fromInt(4) + Fixed64::fromInt(4) * (u - hold_under4_) / (Fixed64::one() - hold_under4_);
+        if (one.raw > 0 && u < one) s = Fixed64::zero();
+        else if (u < u1) s = one.raw > 0 ? Fixed64::fromFraction(3, 10) + Fixed64::fromFraction(7, 10) * (u - one) / (u1 - one) : u / u1;
+        else if (u < u2) s = Fixed64::one() + (u - u1) / (u2 - u1);
+        else if (u < u4) s = Fixed64::fromInt(2) + Fixed64::fromInt(2) * (u - u2) / (u4 - u2);
+        else s = Fixed64::fromInt(4) + Fixed64::fromInt(4) * (u - u4) / (Fixed64::one() - u4);
         hold_until_tick_ = clock_.tick() + static_cast<std::uint64_t>((s * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS);
     }
     const LevelParams& cl = levelOf(slot);

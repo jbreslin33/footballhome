@@ -336,6 +336,11 @@ private:
     bool hold_on_ = false;
     math::Fixed64 hold_under1_, hold_under2_, hold_under4_, hold_press_m_, cut_share_, carry_share_, stretch_m_;
     math::Fixed64 cut_share_box_{}, box_reach_m_{};   // G5.11: their pass in our box, the share we take
+    // G5.18 (§8.115): the drawn hold IS his time on the ball — a one-touch
+    // slice, a pressed curve at a receipt with a man within hold_pressed_m,
+    // and with hold_strict only a shot (or losing it) ends it early.
+    math::Fixed64 hold_one_{}, hold_p_one_{}, hold_p_under1_{}, hold_p_under2_{}, hold_p_under4_{}, hold_pressed_m_{};
+    int hold_strict_ = 0;
     void settleControl(SlotIndex slot, math::Fixed64 speed);   // G4.92: no kick before (his control touch)
     math::Fixed64 turnover_ball_x_{};
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped

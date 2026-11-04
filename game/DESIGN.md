@@ -5032,3 +5032,54 @@ left as they are until a wired concept's act is shown to follow its demand.
 **Next mole.** The carry: 10 m+ carries 6.8 a team-match v 34.6 (the man on the ball wide
 carries 3.0 m a spell, §8.110; time on the ball 1.0 s v 1.47). Then crosses (2.9 v 11.5) and the
 counter-press share after a loss.
+
+### 8.115 G5.18 — a man on the ball keeps it as long as real players do, and runs with it (no migration; off without rows)
+
+§8.114's next: 10 m+ carries 6.8 a team-match v 34.6.
+
+**Real (benchmarks_statsbomb_carry.py, StatsBomb PL 15/16):** 353 carries a team-match, 5.3 m
+long, +2.4 m toward goal, 1.80 s, 3.26 m/s moving; speed rises with length (1-3 m 1.64 m/s,
+6-10 m 3.23, 10-20 m 3.94, 20 m+ 5.22); pressed carriers carry *further* (6.6 v 4.8 m in
+midfield). Time on the ball, receipt to his next release: free 1.53 s (27.7% one-touch, 45.3%
+inside 1 s, 73.0% inside 2, 92.1% inside 4); pressed at the receipt (9% of them) 1.11 s (43.6%
+one-touch, 65.7 / 82.9 / 94.9%).
+
+**Game (CARRIES harness line, a spell on the ball = a carry):** speed at each length was already
+real (10-20 m 4.0-4.4 m/s); the spells were short — 0.95 s, 54% moving under 1 m (real 26%),
+10 m gains 1.1% (real 9.6%). How spells ended v the hold drawn at the receipt (mean 1.64 s):
+16% inside 0.1 s (a first-time hit), 28% before the hold ran out (a presser within 1 m), 40% at
+it. The draw IS the real time on the ball — every receipt, first-time and pressed ones included —
+so ending it again on a presser or a first-time wish counted the short end twice. And inside the
+hold he moved at carry_share 0.15 of his wish (§8.102's fit on the mean carry): he stood on it.
+
+**Built (World; all off without rows):**
+- `physics.tempo.hold_one_touch`: the draw's one-touch slice (no hold); the rest of < 1 s is
+  0.3-1 s.
+- `physics.tempo.hold_pressed_{one_touch,under1,under2,under4}` + `hold_pressed_m`: a receipt with
+  a man within hold_pressed_m draws from the pressed curve.
+- `physics.tempo.hold_strict`: only a shot (or losing it) ends the hold early.
+- `physics.tempo.carry_share` (existing) refitted to the carry, not its mean: 0.6.
+
+Config H1C = hold_one_touch 0.277, hold_under1/2/4 0.453/0.730/0.921, pressed 0.436 /
+0.657/0.829/0.949, hold_pressed_m 2.5, hold_strict 1, carry_share 0.6 (on K1+E4+F1).
+
+**16 matches a config:**
+
+| | before | H1C | PL 15/16 |
+|---|---|---|---|
+| 10 m+ carries a team-match | 7.1 | 35.4 | 34.0 |
+| carry length / forward gain | 1.6 / +0.6 m | 3.4 / +2.1 m | 5.3 / +2.4 m |
+| time on the ball | 0.97 s | 1.40 s | 1.47 |
+| open-play passes | 623 | 540 | 378-434 |
+| goal kicks / throw-ins a team | 5.2 / 34.6 | 8.2 / 27.3 | 8.5 / 23.1 |
+| final-third entries | 39.2 | 48.7 | 44.4 |
+| shots / goals | 15.4 / 4.4 | 24.8 / 7.2 | 12.9 / 2.5 |
+
+Shipped as correct behaviour: the man on the ball now keeps it and carries it like a pro. What it
+exposed is the defending — carriers reach shooting spots (shots 24.8) and get past men (take-ons
+completed 28 a team-match v 10.6 real; the take-on cut is loose, §8.114), 11% of spells lost to
+a man.
+
+**Next mole.** Defending the carrier: who engages a man driving at the block, how close, and how
+often a real carrier in that spot is stopped (StatsBomb Dribbled Past / Duel / Dispossessed v the
+game's), then shots back toward 12.9.
