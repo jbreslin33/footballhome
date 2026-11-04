@@ -1045,7 +1045,9 @@ class RosterScreenBase extends Screen {
       const stepOf = (p) => steps.includes(sectionOf(p)) ? p.rosterStatus
         : (p.squadStatus === 'practice_squad' ? 'awaiting_roster_spot' : null);
       const list = rest.filter(p => stepOf(p) && !RosterScreenBase.HEALTH.people[p.personId]);
-      if (!list.length) return '';
+      // Shown empty too (owner 11/4: "we need the categories in cols for
+      // rosters and teams even if empty").
+      if (!list.length) return head(copy('board_needs_add_h') || 'NEEDS ADD', 0, ...BLUE) + '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>';
       return head(copy('board_needs_add_h') || 'NEEDS ADD', list.length, ...BLUE)
         + RosterScreenBase.ROSTER_STATUSES.filter(st => steps.includes(st.boardSection)).map(st => {
           const sub = list.filter(p => stepOf(p) === st.code);
@@ -1058,9 +1060,8 @@ class RosterScreenBase extends Screen {
     const needsDropSection = () => {
       const asked = copy('board_pending_drop_chip') || '⏳ PENDING DROP';
       const list = [...lanes.drop, ...lanes.pending_drop.map(d => ({ ...d, note: asked }))];
-      return list.length
-        ? head(copy('board_dropping_h') || 'NEEDS DROP', list.length, ...ORANGE) + list.map(({ name, n, note }) => nameRow(n - 1, name, note)).join('')
-        : '';
+      return head(copy('board_dropping_h') || 'NEEDS DROP', list.length, ...ORANGE)
+        + (list.length ? list.map(({ name, n, note }) => nameRow(n - 1, name, note)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
     };
     // PROJECTED ROSTER — the list once the moves land: OFFICIAL minus the
     // drop lanes (their # shown, so the league list is easy to cross off),
@@ -1135,7 +1136,9 @@ class RosterScreenBase extends Screen {
       // his team's NEEDS ADD; onboarding is the Team pill's; everyone else
       // left is simply NOT ON ROSTER.
       const hurt = !!RosterScreenBase.HEALTH.people[e.p.personId];   // 🩹 no add while injured
-      const held = e.rows.some(r => (['proposed', 'pending_add', 'no_room'].includes(section(r.p)) && !this.rosterFrozen(r.col.teamId) && !hurt)
+      // 🏋 Practice Squad (mig 1031) is his team's NEEDS ADD › No Room.
+      const held = e.rows.some(r => ((['proposed', 'pending_add', 'no_room'].includes(section(r.p)) || r.p.squadStatus === 'practice_squad')
+            && !this.rosterFrozen(r.col.teamId) && !hurt)
         || (!this.leagueListFor(r.col.teamId) && RosterScreenBase.countsAsOnRoster(r.p.rosterStatus)));
       if (listed || held) continue;
       stacks.notOnRoster.push(e);
@@ -1169,17 +1172,15 @@ class RosterScreenBase extends Screen {
       }).join('');
       return html + more;
     };
-    const stack = (title, list, color, bg) => list.length
-      ? `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:0.8rem; font-weight:900;
+    const stack = (title, list, color, bg) => `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:0.8rem; font-weight:900;
            letter-spacing:0.06em; color:${color}; background:${bg}; border:1px solid ${color}; border-left:5px solid ${color};
            border-radius:4px; padding:5px 8px; margin:8px 0 4px;">
            <span>${esc(title)}</span>
            <span style="background:${color}; color:#0f172a; border-radius:10px; padding:0 8px; font-size:0.78rem;">${list.length}</span></div>`
-        + list.map((e, i) => card(e, i, list.length)).join('')
-      : '';
-    const body = stack(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', stacks.onboard, '#e879f9', 'rgba(232,121,249,0.14)')
-      + stack(copy('board_not_on_roster_h') || 'NOT ON ROSTER', stacks.notOnRoster, '#f59e0b', 'rgba(245,158,11,0.14)')
-      + stack(copy('board_no_room_h') || 'NO ROOM', stacks.noRoom, '#60a5fa', 'rgba(96,165,250,0.14)');
+        + (list.length ? list.map((e, i) => card(e, i, list.length)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+    // One stack, shown empty too (owner 11/4).  Onboarding is the Team
+    // pill's and No Room is each team's NEEDS ADD step (owner 11/3).
+    const body = stack(copy('board_not_on_roster_h') || 'NOT ON ROSTER', stacks.notOnRoster, '#f59e0b', 'rgba(245,158,11,0.14)');
     return `<div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:6px; border-top:3px solid #475569; min-width:${this.colBoxMinWidth()};">
         <div style="display:flex; flex-direction:column; gap:6px; min-height:8px;">${body || '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'}</div>
       </div>`;
@@ -2954,12 +2955,13 @@ class RosterScreenBase extends Screen {
     const seesCount = (gated ? 0 : cats.active.length + cats.injured.length) + riders.length;
     const seesOn = !!(this.seesOpen && this.seesOpen[col.teamId]);
     const seesCat = (cat) => gated ? false : (cat === 'active' || cat === 'injured');
-    const catPill = (cat, icon, label, n, color) => (n || cat === 'active' || off(cat)) ? `
+    // Every category pill shows, (0) included (owner 11/4).
+    const catPill = (cat, icon, label, n, color) => `
         <button type="button" class="mr-cat-pill" data-cat-team="${col.teamId}" data-cat="${cat}"
           title="${off(cat) ? `Show ${label.toLowerCase()} (${n})` : `Hide ${label.toLowerCase()}`}"
           style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
                  border:1px solid ${color}; background:${off(cat) ? 'transparent' : color + '26'};
-                 color:${off(cat) ? '#64748b' : color};">${icon} ${label} (${n})</button>` : '';
+                 color:${off(cat) ? '#64748b' : color};">${icon} ${label} (${n})</button>`;
     const pillsHtml = `
       <div style="display:flex; gap:4px; flex-wrap:wrap; margin:2px 0 6px;">
         ${catPill('active', '✅', 'Active', cats.active.length + riders.length, '#4ade80')}
