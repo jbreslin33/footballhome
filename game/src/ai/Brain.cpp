@@ -1686,6 +1686,13 @@ bool Brain::keepIt(SlotIndex slot, const World& world, int sign, Orders& out, bo
     const Vec2 to_goal{goal.x - me.pos.x, goal.y - me.pos.y};
     if (math::lengthSquared(to_goal) < kShootRange * kShootRange) return false;
     if (!applies(slot, bit, world.tickCount() / 30)) return false;
+    // G5.13 (§8.110) [FH]: near their line, a touch-tight man mostly takes
+    // his man on (real wide 18-35 m pressed: back 13%, lost 40%) — one
+    // roll per spell on the ball.
+    if (K.finalThirdM().raw > 0 && half_x_ - me.pos.x * sgn < K.finalThirdM()) {
+        const Fixed64 u = (core::detNoise(match_seed_, world.ownedAtTick(), slot, 209) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        if (u >= K.finalThirdBackShare()) return false;
+    }
     // Play it back: goal-side of him, in reach, lane open — most room.
     int best = -1;
     Fixed64 best_room{}, best_dsq{};

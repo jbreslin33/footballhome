@@ -62,6 +62,9 @@ long g_lw_n[128]; double g_lw_y[128], g_lw_t[128];   // G5.7 diag: ball |y| 24+,
 long g_blocks[2];
 // G5.11: a cross's first touch — [high?][0 ours foot, 1 ours head, 2 theirs foot, 3 theirs head, 4 keeper, 5 out]
 double g_cx_tx, g_cx_ty, g_cx_kx, g_cx_ky; // G5.12: ball wide 0-18, by role [att/def][role 0 CB 1 FB-ball 2 FB-far 3 DM 4 AM 5 WIDE-ball 6 WIDE-far 7 ST]: frames, in box; out-of-box jobs
+long g_ch_n, g_ch_chan[2], g_ch_box[2], g_ch_ahead[7], g_ch_run[7], g_ch_why[128];   // G5.13: ball wide 18-35, last touch
+long g_ws_n, g_ws_end[6], g_ws_from[6], g_ws_to[6], g_ws_why[128], g_ws_pwhy[128], g_ws_ticks;   // G5.13: spells starting wide 18-35
+double g_ws_carry_m;
 long g_zn[4][2], g_zl[4][2];   // G5.12: possession by zone, 5 Hz [0-18, 18-35, 35-70, 70+][centre, wide]
 long g_br_n[2][8], g_br_box[2][8], g_br_why[2][8][128], g_br_tin[2][8]; double g_br_late[2][8];
 long g_cx_until = -1, g_cx_n, g_cx_bin[2][4]; std::vector<double> g_cx_d[2];   // G5.11: the same, first drop after a high open-play cross (4 s)
@@ -983,6 +986,69 @@ int main(int argc, char** argv) {
                 const double sg = a == 0 ? 1.0 : -1.0, hx = s.world().pitchHalfX().toDouble();
                 const double tl = hx - b.pos.x.toDouble() * sg, ay = std::fabs(b.pos.y.toDouble());
                 ++g_zl[tl < 18 ? 0 : tl < 35 ? 1 : tl < 70 ? 2 : 3][ay >= 14 ? 1 : 0];
+                if (tl >= 18 && tl < 35 && ay >= 14) {   // G5.13 (§8.110): who is ahead of it on its side — benchmarks: chan (DFL)
+                    ++g_ch_n;
+                    const double by = b.pos.y.toDouble();
+                    for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                        if (s.world().isKeeper(j)) continue;
+                        const auto& q = s.world().player(j);
+                        const double ptl = hx - q.pos.x.toDouble() * sg, qy = q.pos.y.toDouble();
+                        const bool same = (qy > 0) == (by > 0), att = q.team == a;
+                        if (ptl < 18 && std::fabs(qy) >= 14 && same) ++g_ch_chan[att ? 0 : 1];
+                        if (ptl < 16.5 && std::fabs(qy) < 20.16) ++g_ch_box[att ? 0 : 1];
+                        if (att && ptl < tl && same && std::fabs(qy) >= 10 && !(b.owner && *b.owner == j)) {
+                            const int num = s.brain().numberOf(j);
+                            const int r = (num == 4 || num == 5) ? 0 : (num == 2 || num == 3) ? 1 : (num == 6 || num == 8) ? 2 : num == 10 ? 3 : (num == 7 || num == 11) ? 4 : num == 9 ? 5 : 6;
+                            ++g_ch_ahead[r];
+                            if (q.vel.x.toDouble() * sg >= 4) ++g_ch_run[r];
+                            ++g_ch_why[static_cast<int>(s.lastOrders()[j].why) & 127];
+                        }
+                    }
+                }
+            }
+            {   // G5.13 (§8.110): the man on the ball wide 18-35 m off their line — benchmarks: wide (StatsBomb)
+                static int ws_who = -1; static long ws_t0 = 0; static double ws_px = 0, ws_py = 0;
+                const auto& W = s.world();
+                const double hx = W.pitchHalfX().toDouble();
+                auto zof = [&](int team, double x, double y) {   // 0-18 / 18-35 / 35+ off their line, x2 + wide
+                    const double tl = hx - x * (team == 0 ? 1.0 : -1.0);
+                    return (tl < 18 ? 0 : tl < 35 ? 1 : 2) * 2 + (std::fabs(y) >= 14 ? 1 : 0);
+                };
+                const bool live = W.restartTeam() == 0xFF && W.outStage() == 0;
+                if (ws_who >= 0) {
+                    const auto& q = W.player(static_cast<std::uint8_t>(ws_who));
+                    int end = -1;   // 0 shot, 1 cross, 2 clearance, 3 pass, 4 lost, 5 stopped
+                    if (before && *before == ws_who && !b.owner && b.last_kicker == ws_who) {
+                        const ai::Orders& o = s.lastOrders()[ws_who];
+                        end = o.why == ai::Why::Shoot ? 0 : o.why == ai::Why::Cross ? 1 : o.why == ai::Why::Clear ? 2 : 3;
+                        ++g_ws_from[zof(q.team, q.pos.x.toDouble(), q.pos.y.toDouble())];
+                        if (end == 3) {
+                            ++g_ws_to[zof(q.team, o.target.x.toDouble(), o.target.y.toDouble())];
+                            ++g_ws_pwhy[static_cast<int>(o.why) & 127];
+                        }
+                    } else if (!live) {
+                        end = 5;
+                    } else if (!b.owner || *b.owner != ws_who) {
+                        end = 4;
+                        ++g_ws_from[zof(q.team, q.pos.x.toDouble(), q.pos.y.toDouble())];
+                    } else {
+                        g_ws_carry_m += std::hypot(q.pos.x.toDouble() - ws_px, q.pos.y.toDouble() - ws_py);
+                        ws_px = q.pos.x.toDouble(); ws_py = q.pos.y.toDouble();
+                        ++g_ws_why[static_cast<int>(s.lastOrders()[ws_who].why) & 127];
+                    }
+                    if (end >= 0) {
+                        ++g_ws_end[end];
+                        g_ws_ticks += k - ws_t0;
+                        ws_who = -1;
+                    }
+                }
+                if (ws_who < 0 && b.owner && live && (!before || *before != *b.owner) && !W.isKeeper(*b.owner)) {
+                    const auto& q = W.player(*b.owner);
+                    if (zof(q.team, q.pos.x.toDouble(), q.pos.y.toDouble()) == 3) {
+                        ws_who = *b.owner; ws_t0 = k; ws_px = q.pos.x.toDouble(); ws_py = q.pos.y.toDouble();
+                        ++g_ws_n;
+                    }
+                }
             }
             if (b.owner && s.world().restartTeam() == 0xFF) {
                 const int ot = s.world().player(*b.owner).team;
@@ -2594,6 +2660,35 @@ int main(int argc, char** argv) {
                         std::printf("\n");
                     }
                 }
+            }
+            if (q == 0 && g_ch_n) {
+                const double n = g_ch_n;
+                static const char* rn7[7] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST", "?"};
+                std::printf("BALL WIDE 18-35 (%.0f s a team-match): in the channel (0-18, |y| 14+, ball side) attackers %.2f, defenders %.2f; in the box attackers %.2f, defenders %.2f\n",
+                            n / 5.0 / (2.0 * nm), g_ch_chan[0] / n, g_ch_chan[1] / n, g_ch_box[0] / n, g_ch_box[1] / n);
+                double ta = 0, tr = 0;
+                std::printf("   attackers ahead of it on its side (|y| 10+), a frame / running 4 m/s+ at the line:");
+                for (int r = 0; r < 7; ++r) { ta += g_ch_ahead[r]; tr += g_ch_run[r]; if (g_ch_ahead[r]) std::printf(" %s %.2f/%.2f;", rn7[r], g_ch_ahead[r] / n, g_ch_run[r] / n); }
+                std::printf(" all %.2f/%.2f\n   their jobs:", ta / n, tr / n);
+                long wn = 0; for (long v : g_ch_why) wn += v;
+                for (int w = 0; w < ai::kWhyCount; ++w) if (g_ch_why[w] * 25 >= wn && wn) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_ch_why[w] / wn);
+                std::printf("\n");
+            }
+            if (q == 0 && g_ws_n) {
+                const double n = g_ws_n, tm = 2.0 * nm;
+                static const char* zn6[6] = {"0-18 centre", "0-18 wide", "18-35 centre", "18-35 wide", "35+ centre", "35+ wide"};
+                std::printf("WIDE 18-35 ON THE BALL: %.1f spells a team-match, %.2f s and %.1f m a spell; let go from:", n / tm, g_ws_ticks / 30.0 / n, g_ws_carry_m / n);
+                for (int z = 0; z < 6; ++z) if (g_ws_from[z]) std::printf(" %s %.0f%%;", zn6[z], 100.0 * g_ws_from[z] / n);
+                std::printf("\n   let go as: shot %.1f%%, cross %.1f%%, clearance %.1f%%, lost %.1f%%, stopped %.1f%%;", 100.0 * g_ws_end[0] / n, 100.0 * g_ws_end[1] / n,
+                            100.0 * g_ws_end[2] / n, 100.0 * g_ws_end[4] / n, 100.0 * g_ws_end[5] / n);
+                for (int z = 0; z < 6; ++z) if (g_ws_to[z]) std::printf(" pass to %s %.1f%% (%.2f a team);", zn6[z], 100.0 * g_ws_to[z] / n, g_ws_to[z] / tm);
+                long wn = 0; for (long v : g_ws_why) wn += v;
+                std::printf("\n   on it, his job:");
+                for (int w = 0; w < ai::kWhyCount; ++w) if (g_ws_why[w] * 50 >= wn && wn) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_ws_why[w] / wn);
+                long pn = 0; for (long v : g_ws_pwhy) pn += v;
+                std::printf("\n   passes, why:");
+                for (int w = 0; w < ai::kWhyCount; ++w) if (g_ws_pwhy[w] * 50 >= pn && pn) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_ws_pwhy[w] / pn);
+                std::printf("\n");
             }
             if (q == 0) std::printf("INTO THE CROSSING ZONE a team: carried %.2f, passed %.2f (from wide %.2f)\n", g_xin_carry / (2.0 * nm), g_xin_pass / (2.0 * nm), g_xin_pass_wide / (2.0 * nm));
             std::printf("OUT BY %s:", rk[q]);

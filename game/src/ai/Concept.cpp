@@ -409,6 +409,8 @@ void KeepItUnderPressure::configure(const core::ModelParams& p) {
     back_max_ = p.fixed(key("back_pass_max_m"), 30000);
     step_ = p.fixed(key("shield_step_m"), 3000);
     speed_ = p.fixed(key("shield_speed_share"), 500);
+    final_m_ = p.fixed(key("final_third_m"), 0);
+    final_back_ = p.fixed(key("final_third_back_share"), 1000);
 }
 
 // ── the one-spot defender (G4.63) ───────────────────────────────────────

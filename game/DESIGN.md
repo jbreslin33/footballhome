@@ -4740,3 +4740,64 @@ Also seen: in play 73.7 min a match (real ~53): restarts are taken too fast.
 behind the full-back and wide carries to the byline, real (StatsBomb: pass end in
 the crossing zone, from where, to a man running or standing; carries) v game: what
 the man on the ball in the wide 18-35 m zone does next and who is there to receive.
+
+### 8.110 G5.13 — the wide man plays it back: keep-it near their line (no migration; off without rows)
+
+**What the man on the ball wide 18-35 m off their line does** (`benchmarks_statsbomb_wide.py`,
+PL 2015/16, 380 matches; match_main `WIDE 18-35 ON THE BALL`; a spell = one man's time on
+the ball that starts there in open play; §8.109 config `x6` + positions, 32 matches):
+
+| | Real | Game (W0) | + keep-it final third (K1) |
+|---|---|---|---|
+| Spells a team-match | 57.8 | 23-27 | 20-25 |
+| On it: s / m carried | 1.54 / 4.4 | 0.85 / 1.9 | 1.17 / 3.1 |
+| Carried on into 0-18 wide first | 11% | 3-6% | 8-11% |
+| Pass into the channel (0-18 wide) | 14.5% | 1.3-1.9% | 1.8-3.0% |
+| Pass along (18-35 wide) | 30% | 9-10% | 8-11% |
+| Pass inside (18-35 centre) | 10% | 11-14% | 11-15% |
+| Pass into 0-18 centre | 6% | 3-5% | 4-6% |
+| Back (to 35+) | 17% | 50-57% | 29-34% |
+| Cross / shot | 7.0 / 2.2% | 4-7 / 0.5-1.9% | 6-8 / 1-3% |
+| Lost | 13% | 10-13% | 22-29% |
+
+Real by pressure (StatsBomb `under_pressure` on the release): unpressed (75%) channel 16,
+along 33, inside 18, back 18, cross 8, shot 3, lost 4%; pressed (25%) channel 9, along 23,
+inside 10, back 13, cross 3, shot 1, lost 40%. A real wide man never plays it back more than
+18% of the time. In the game 85% of his passes were `play it back` (50%) or `recycle` (35%).
+`play it back` is keep-it-under-pressure (G4.60): touch-tight, no pass on, go back or shield
+back toward his goal. That's right in midfield. Wide near their line, a real pressed man takes
+his man on and loses it 40% of the time.
+
+**[FH] two params on `concept.keep-it-under-pressure`, off without rows:**
+`final_third_m` (within that many metres of their line...) and `final_third_back_share`
+(...only that share of the touch-tight-with-nothing-on calls still play back or shield; the
+rest fall through to dribble / drive the line at his man; one roll per spell on the ball,
+salt 209). Coaching: in the final third, attack your man 1v1. K1 = 35 m, 0.25.
+Golden unchanged (no rows), 23/23 ctests.
+
+K1 overall: goals 3.3 → 4.5, shots 11.7 → 13.9 (pro 12.9), entries 39.5 → 34.6, arrivals in
+the crossing zone 3.4 → 5.3 a team (carried 1.9 → 3.3; real 21.7), last 18 m 44 → 54 s a team
+(real ~132). The behaviour is right and ships with its rows when the cross does (§8.108).
+Lost doubled, past real: the game's men are touch-tight far more often than real ones are pressed.
+
+**Who is there to receive** (`benchmarks_tracking_channel.py`, DFL, 7 matches, 5 Hz, ball wide
+18-35 m off the line its side attacks, last touch in play; match_main `BALL WIDE 18-35`):
+
+| A frame | Real | Game (W1) |
+|---|---|---|
+| Attackers in the channel (0-18, |y| 14+, ball side) | 0.26 | 0.10-0.16 |
+| Defenders there | 0.44 | 0.43-0.65 |
+| Attackers / defenders in the box | 0.65 / 1.25 | 0.21-0.23 / 0.79-1.03 |
+| Attackers ahead of the ball on its side (|y| 10+) | 1.41 | 0.86-0.99 |
+| ...of them ST / WIDE / FB / DM-CM / AM | 0.32 / 0.49 / 0.18 / 0.24 / 0.14 | 0.15-0.19 / 0.31-0.37 / 0.07-0.13 / 0.12-0.15 / 0.11-0.17 |
+| ...running 4 m/s+ at the line | 0.17 | 0.13-0.16 |
+
+The sprinting runners are about at real. The men standing ahead of the ball aren't: a third
+fewer, half the strikers, a third of the box. Their jobs: hold shape 40-47%, meet the pass 27-32%.
+
+**Next (the mole):** the pass along and into the channel (real 45% of his releases, game ~12%).
+The picker passes only to a man's feet (`want` 0 forward needs gain ≥ 3 m to a mate's spot,
+recycle ideal 16 m), and with half the strikers and a third of the box ahead of the ball, there
+are few feet to find. Next: where the striker and the far men stand when the ball is wide
+18-35 (hold shape's targets v DFL), then the pass into space ahead of a man on the ball side.
+Also the touch-tight rate itself (game v DFL nearest-defender distance on the ball wide).

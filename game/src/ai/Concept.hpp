@@ -675,7 +675,8 @@ private:
 // else shields: body between man and ball, carrying shield_step_m away
 // from the presser and back toward his goal at shield_speed_share pace.
 // Only inside own_third_m of his own goal line may he kick it away.
-// Lapse: the hoof upfield from anywhere.
+// Lapse: the hoof upfield from anywhere. G5.13 [FH]: near their line he
+// mostly goes at his man instead (final_third_m, final_third_back_share).
 class KeepItUnderPressure : public Concept {
 public:
     KeepItUnderPressure() : Concept("keep-it-under-pressure", 161) {}
@@ -684,9 +685,14 @@ public:
     math::Fixed64 backPassMax() const { return back_max_; }
     math::Fixed64 shieldStep() const { return step_; }
     math::Fixed64 shieldSpeed() const { return speed_; }
+    // G5.13 (§8.110) [FH]: within final_third_m of their line only
+    // final_third_back_share of these calls still go back; the rest take
+    // their man on. 0 (no row) = off.
+    math::Fixed64 finalThirdM() const { return final_m_; }
+    math::Fixed64 finalThirdBackShare() const { return final_back_; }
 
 private:
-    math::Fixed64 own_third_, back_max_, step_, speed_;
+    math::Fixed64 own_third_, back_max_, step_, speed_, final_m_, final_back_;
 };
 
 // The one-spot defender (G4.63, James 10/26: "a player could be close
