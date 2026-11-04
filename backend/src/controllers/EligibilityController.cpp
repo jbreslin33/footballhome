@@ -324,6 +324,9 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                        -- NULL for someone rostered only after the deadline.
                        (SELECT CASE
                                  WHEN dl.deadline IS NULL THEN NULL
+                                 -- Excused for this game (mig 1067).
+                                 WHEN EXISTS (SELECT 1 FROM rsvp_deadline_person_waivers pw0
+                                               WHERE pw0.fh_event_id = dl.fh_event_id AND pw0.person_id = pe.id) THEN 'on_time'
                                  WHEN EXISTS (SELECT 1 FROM fh_event_rsvp_first_answers fa
                                                WHERE fa.fh_event_id = dl.fh_event_id AND fa.person_id = pe.id
                                                  AND fa.first_responded_at < dl.deadline) THEN 'on_time'
