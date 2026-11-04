@@ -109,7 +109,7 @@ class RostersScreen extends Screen {
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🎽 Teams</h1>
-        <p class="subtitle" id="rs-subtitle">Every member on a team — new members land on their home team (mig 1038)</p>
+        <p class="subtitle" id="rs-subtitle">Every member on a team — new members land on their home team automatically</p>
       </div>
       <div style="padding: var(--space-3) var(--space-2); display:flex; gap: var(--space-4); align-items:flex-start; flex-wrap:wrap;">
         <section class="rs-panel" style="flex: 1 1 480px; min-width: 0;">

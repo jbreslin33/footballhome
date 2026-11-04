@@ -119,7 +119,8 @@ class FilterBar {
     if (this.boxed) {
       return `<div class="fb-row" data-fb-row="${this._esc(row.name)}"
                    style="display:inline-flex; flex-wrap:wrap; gap:4px; padding:4px;
-                          border:1px solid var(--color-border); border-radius:12px;">${chips}</div>`;
+                          border:1px solid rgba(148,163,184,0.45); border-radius:12px;
+                          background:rgba(15,23,42,0.35);">${chips}</div>`;
     }
     return `<div class="fb-row" data-fb-row="${this._esc(row.name)}"
                  style="display:flex; flex-wrap:wrap; gap:6px;
