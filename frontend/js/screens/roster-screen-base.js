@@ -782,26 +782,8 @@ class RosterScreenBase extends Screen {
       // there … its obvious who is in pool if they are on APSL official
       // or reserve official (shown with label on their card)").  A folded
       // team's men show in whatever other column has them, with 📋 chips.
-      // 👀 Sees every game (owner 11/3: "we always bring 20 so this list
-      // needs to be at least 20") — who is asked to RSVP with no one
-      // lifting a finger: full spots not injured (ACTIVE + NEEDS ONBOARD)
-      // plus standing call-ups/downs, against the match-day squad
-      // (teams.matchday_squad_size, NULL = field + 9).  Red when short.
-      const H = RosterScreenBase.HEALTH;
-      const autoIds = new Set(bucket.filter(p => this.columnCategoryOf(p) === 'active').map(p => Number(p.personId)));
-      riderList.forEach(r => { if (!H.people[r.personId]) autoIds.add(Number(r.personId)); });
-      const target = Number(col.matchdaySquad) || 0;
-      const seesN = autoIds.size;
-      const seesHtml = target ? (() => {
-        const short = Math.max(0, target - seesN);
-        const [c, bg] = short ? ['#ef4444', 'rgba(239,68,68,0.16)'] : ['#22c55e', 'rgba(34,197,94,0.10)'];
-        const text = short
-          ? (copy('board_sees_short', { n: seesN, target, short }) || `👀 Sees every game: ${seesN} / ${target} · ⚠ ${short} short — call up or add to the team`)
-          : (copy('board_sees_ok', { n: seesN, target }) || `👀 Sees every game: ${seesN} / ${target}`);
-        return `<div style="font-size:0.78rem; font-weight:800; color:${c}; background:${bg}; border:1px solid ${c}; border-radius:4px; padding:4px 8px; margin:2px 0 4px;">${esc(text)}</div>`;
-      })() : '';
-      // ACTIVE first (owner 11/4: "ACTIVE SHOULD BE top"); the 👀 line sits
-      // at the foot, above the coaches strip.  (＋ from LA removed 11/4 —
+      // ACTIVE first (owner 11/4: "ACTIVE SHOULD BE top").  The 👀 Sees
+      // every game count went 11/4 — each card's 👀⚽ chip says it.  (＋ from LA removed 11/4 —
       // every member is placed on a team; the card's team menu adds more.)
       return activeHtml
         + group(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard, 'active', '#e879f9', 'rgba(232,121,249,0.14)')
@@ -810,8 +792,7 @@ class RosterScreenBase extends Screen {
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
         + group(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, 'paper', ...AMBER)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
-        + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY)
-        + seesHtml;
+        + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
     }
 
     const nameRow = (i, name, note, red = false) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
