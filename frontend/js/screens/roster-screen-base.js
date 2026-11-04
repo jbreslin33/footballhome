@@ -3009,12 +3009,20 @@ class RosterScreenBase extends Screen {
     // and the duplicate DOM id stripped), with the chip on the name.  The
     // ⋯ menu still acts on their home-team row, which is the right
     // semantics.  The Active pill shows and hides them with the rest.
-    const chipLabel = MessageCopy.block('invite_chip', 'standing') || '⭐ Standing Call-up';
-    const chipTip = MessageCopy.block('invite_chip', 'standing_tip', { team: col.label || '' })
+    // Direction (mig 1036): from a team lower on the board = call-up,
+    // higher = call-down — the same split as the column headings (mig 1013).
+    const sortOf = (tid) => { const c = (data.columns || []).find(x => Number(x.teamId) === Number(tid)); return c ? Number(c.sortOrder) : null; };
+    const isUp = (r) => sortOf(r.fromTeamId) != null && sortOf(r.fromTeamId) > Number(col.sortOrder);
+    const chipLabel = (r) => isUp(r)
+      ? (MessageCopy.block('invite_chip', 'standing_up') || '⭐ Standing Call-up')
+      : (MessageCopy.block('invite_chip', 'standing') || '⭐ Standing Call-down');
+    const chipTip = (r) => (isUp(r)
+      ? MessageCopy.block('invite_chip', 'standing_up_tip', { team: col.label || '' })
+      : MessageCopy.block('invite_chip', 'standing_tip', { team: col.label || '' }))
       || `Standing invite — rides every ${col.label || ''} game automatically`;
-    const nameChipHtml = (r) => `<span title="${this.escape(chipTip)}"
+    const nameChipHtml = (r) => `<span title="${this.escape(chipTip(r))}"
       style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
-             background:rgba(96,165,250,0.18); border:1px solid #60a5fa; color:#bfdbfe;">${this.escape(chipLabel)}${r.fromTeam ? ` · ${this.escape(r.fromTeam)}` : ''}</span>`;
+             background:rgba(96,165,250,0.18); border:1px solid #60a5fa; color:#bfdbfe;">${this.escape(chipLabel(r))}${r.fromTeam ? ` · ${this.escape(r.fromTeam)}` : ''}</span>`;
     const ridersHtml = (riders.length && (seesOn || !off('active'))) ? riders.map(r => {
       let homeCol = null, hp = null;
       for (const c of (data.columns || [])) {
