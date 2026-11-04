@@ -1768,7 +1768,16 @@ class RosterScreenBase extends Screen {
   renderActiveTeamsBadge(player, col) {
     const teams = player.activeTeams || player.active_teams || [];
     const currentTeamId = col && col.teamId ? col.teamId : null;
-    const others = teams.filter((t) => t && t.teamId !== currentTeamId);
+    // Only teams playing in the lit season (owner 11/4: a U8 kid's winter
+    // "U9" team read like a second age chip under Fall).  A team with no
+    // season rows (Men's, Cup) always shows.
+    const term = this._term;
+    const inLitSeason = (tid) => {
+      if (!term || !term.term) return true;
+      const terms = term.teams && term.teams[String(tid)];
+      return !terms || terms.includes(term.term);
+    };
+    const others = teams.filter((t) => t && t.teamId !== currentTeamId && inLitSeason(t.teamId));
     if (!others.length) return '';
     const icon = { boys: '🧒', girls: '👧', mens: '🧔', womens: '👩' };
     return others.map((t) => {
