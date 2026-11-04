@@ -4,6 +4,9 @@
 -- the CASA list, so he stays ↔ Call-in until CASA takes him off; the next
 -- 🌐 pull then clears the drop lane (mig 777) and ends his Call-in row
 -- (mig 1026).  APSL unchanged.
+--
+-- Applied as a no-op (0 rows): CASA had already dropped him — the 10:19
+-- 11/4 Liga 1 pull ended his Call-in row (league_list_drop, mig 1026).
 
 UPDATE team_persons SET roster_status_id = (SELECT id FROM roster_statuses WHERE code = 'possible_drop')
  WHERE team_id = 120 AND person_id = 3498 AND removed_at IS NULL
