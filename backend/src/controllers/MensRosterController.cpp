@@ -618,9 +618,13 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
     }
     try {
         auto db = Database::getInstance();
-        if (!squadStatus.empty()
-            && db->query("SELECT 1 FROM squad_statuses WHERE code = $1 AND is_active", {squadStatus}).empty()) {
-            return badRequest("Unknown squadStatus");
+        // per_team (mig 1031): Practice Squad = no spot on THIS team, so it
+        // lives on this row only; the rest (Inactive) are one per section.
+        bool perTeam = false;
+        if (!squadStatus.empty()) {
+            auto st = db->query("SELECT per_team FROM squad_statuses WHERE code = $1 AND is_active", {squadStatus});
+            if (st.empty()) return badRequest("Unknown squadStatus");
+            perTeam = st[0]["per_team"].as<bool>();
         }
         auto rows = db->query(
             // la_user_id is TEXT on persons AND person_la_user_ids —
@@ -642,13 +646,14 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
             {userId > 0 ? std::to_string(userId) : "", std::to_string(teamId), inviteOnly ? "true" : "false",
              std::to_string(personId), callIn, squadStatus});
         if (rows.empty()) return notFound("No assignment exists for that player on that team");
-        // Practice Squad / Inactive is one per man per section (mig 1009):
-        // the person row is the truth and its trigger carries it to all his
-        // teams in this team's section.  Any other pick on any team ends it.
-        // Runs after the row UPDATE so a 📄/↔ pick here keeps its
-        // invite_only (the delete trigger only touches rows still squadded).
+        // Inactive is one per man per section (mig 1009): the person row is
+        // the truth and its trigger carries it to all his teams in this
+        // team's section.  Any other pick on any team ends it — Practice
+        // Squad included, which stays on this row (mig 1031).  Runs after
+        // the row UPDATE so this pick keeps its invite_only (the delete
+        // trigger only resets rows still carrying the section status).
         const std::string pid = rows[0]["person_id"].c_str();
-        if (!squadStatus.empty()) {
+        if (!squadStatus.empty() && !perTeam) {
             db->query(
                 "INSERT INTO person_section_squad_statuses (person_id, club_section_id, squad_status_id) "
                 "SELECT $1::int, t.club_section_id, ss.id FROM teams t, squad_statuses ss "

@@ -1039,11 +1039,16 @@ class RosterScreenBase extends Screen {
       const steps = ['proposed', 'pending_add', 'no_room'];
       // 🩹 Injured: no add while hurt (owner 11/3, Mars Milligan) — he
       // waits in NOT ON ROSTER and comes back here when the injury ends.
-      const list = rest.filter(p => steps.includes(sectionOf(p)) && !RosterScreenBase.HEALTH.people[p.personId]);
+      // 🏋 Practice Squad on the Team pill (mig 1031: no spot on this
+      // team) is the No Room step here — a mirror, set on the Team pill;
+      // a man already on another add step stays on that step.
+      const stepOf = (p) => steps.includes(sectionOf(p)) ? p.rosterStatus
+        : (p.squadStatus === 'practice_squad' ? 'awaiting_roster_spot' : null);
+      const list = rest.filter(p => stepOf(p) && !RosterScreenBase.HEALTH.people[p.personId]);
       if (!list.length) return '';
       return head(copy('board_needs_add_h') || 'NEEDS ADD', list.length, ...BLUE)
         + RosterScreenBase.ROSTER_STATUSES.filter(st => steps.includes(st.boardSection)).map(st => {
-          const sub = list.filter(p => p.rosterStatus === st.code);
+          const sub = list.filter(p => stepOf(p) === st.code);
           return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(ruleCard).join('') : '';
         }).join('');
     };
