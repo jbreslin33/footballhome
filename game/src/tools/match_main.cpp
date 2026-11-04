@@ -69,6 +69,7 @@ long g_cy_n, g_cy_b[6], g_cy_10; double g_cy_len, g_cy_gain, g_cy_dur, g_cy_bl[6
 long g_ca_press, g_ca_cpress, g_ca_pass, g_ca_switch, g_ca_cross, g_ca_cutback, g_ca_drib, g_ca_dribok, g_ca_ret, g_ca_rtp, g_ca_carry10;
 long g_dsh_gs[10], g_dsh_gs4[10], g_dgr[4][7], g_dgr_n[4][7], g_dgr_why[7][128], g_dgr_wn[7];   // G5.19 goal-side of the ball
 long g_dsh_n[10][7], g_dsh_f[10], g_dsh_why[7][128], g_dsh_wn[7]; double g_dsh_s[10][7], g_dsh_m[10], g_dsh_an[10][7], g_dsh_ot[10][7], g_dsh_da[10][7], g_dsh_ht[10][7], g_dsh_hp[10][7], g_dsh_hv[10][7]; long g_dsh_hn[10][7]; double g_dsh_hw[10][7], g_dsh_hs[10][7], g_dsh_hd[10][7];   // G5.15 defending shape by ball band
+long g_en, g_ens[3], g_en3, g_en3_bs[3]; double g_en_gs, g_en_deep, g_en3_gs, g_en3_deep, g_en3_b, g_en3_line, g_en3_gsb[3];   // G5.19 entries inside 30 m
 long g_fa_n[7], g_fa_hn[7]; double g_fa_a[7], g_fa_v[7], g_fa_5[7], g_fa_5f[7], g_fa_h[7], g_fa_hv[7];   // G5.15 front men by possession age
 long g_h3_n[7][2], g_h3_bn; double g_h3_ball, g_h3_adv[7][2], g_h3_was[7][2], g_h3_b15; long g_h3_age[4];   // G5.15 three seconds before, ball wide 18-35
 long g_ag_n[7]; double g_ag_b[7], g_ag_m[7], g_ag_v[7], g_ag_5[7], g_ag_5f[7]; long g_hl_n[4], g_hf_n[7]; double g_hf_fx[7], g_hf_ay[7], g_hf_d[7]; double g_hl_d[4], g_hl_v[4], g_hl_vt[4], g_hl_want[4];   // G5.14 holders' lag
@@ -1115,6 +1116,34 @@ int main(int argc, char** argv) {
                 const bool h3_ok = h3_k[h3_j] == k - 90 && h3_m[h3_j] == m;
                 const double h3_bx_then = h3_bx[h3_j]; double h3_px_then[24]; for (int j = 0; j < 24; ++j) h3_px_then[j] = h3_px[h3_j][j];
                 const bool h3_same = h3_ok && h3_a[h3_j] == a;
+                {   // G5.19 (§8.117): ENTRIES — the ball first inside 30 m of goal (re-armed past 40) — benchmarks: chan (DFL)
+                    static bool en_arm[2] = {false, false}; static double en_prev[2] = {0, 0}; static long en_pk[2] = {-100, -100}; static int en_m = -1;
+                    if (en_m != m || k < en_pk[0] - 6 || k < en_pk[1] - 6) { en_m = m; en_arm[0] = en_arm[1] = false; en_pk[0] = en_pk[1] = -100; }
+                    if (tl >= 40) en_arm[a] = true;
+                    const bool cross = en_arm[a] && en_pk[a] == k - 6 && en_prev[a] >= 30 && tl < 30;
+                    en_prev[a] = tl; en_pk[a] = k;
+                    if (cross) {
+                        en_arm[a] = false;
+                        const double spd = std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble());
+                        const int sb = spd < 7 ? 0 : spd < 12 ? 1 : 2;
+                        int gs = 0, nd = 0; double deep = 1e9;
+                        for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
+                            if (s.world().isKeeper(j) || s.world().player(j).team == a) continue;
+                            const double ptl = hx - s.world().player(j).pos.x.toDouble() * sg;
+                            ++nd; if (ptl < tl) ++gs; deep = std::min(deep, ptl);
+                        }
+                        ++g_en; ++g_ens[sb]; g_en_gs += gs; g_en_deep += deep;
+                        if (h3_ok) {
+                            const double btl0 = hx - h3_bx_then * sg;
+                            std::vector<double> th;
+                            for (std::uint8_t j = 0; j < s.world().playerCount() && j < 24; ++j)
+                                if (!s.world().isKeeper(j) && s.world().player(j).team != a) th.push_back(hx - h3_px_then[j] * sg);
+                            std::sort(th.begin(), th.end());
+                            int g0 = 0; for (double v : th) if (v < btl0) ++g0;
+                            if (th.size() >= 2) { ++g_en3; g_en3_gs += g0; g_en3_deep += th[0]; g_en3_line += th[1]; g_en3_b += btl0; ++g_en3_bs[sb]; g_en3_gsb[sb] += g0; }
+                        }
+                    }
+                }
                 h3_k[h3_i] = k; h3_m[h3_i] = m; h3_a[h3_i] = a; h3_bx[h3_i] = b.pos.x.toDouble();
                 for (std::uint8_t j = 0; j < s.world().playerCount() && j < 24; ++j) h3_px[h3_i][j] = s.world().player(j).pos.x.toDouble();
                 {   // G5.14: possession age (s since this side's last-touch spell began) — benchmarks: possession (DFL)
@@ -3050,6 +3079,13 @@ int main(int argc, char** argv) {
                                 g_wt_t[r][f] / std::max(1L, g_wt_tn[r][f]), g_wt_h[r][f] / std::max(1L, g_wt_hn[r][f]), g_wt_hp[r][f] / std::max(1L, g_wt_hn[r][f]));
                     for (int w = 0; w < ai::kWhyCount; ++w) if (g_wt_why[0][r][f][w] * 10 >= m) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_wt_why[0][r][f][w] / m);
                     std::printf("\n");
+                }
+                if (g_en) {
+                    const double e = g_en, e3 = std::max(1L, g_en3);
+                    std::printf("   ENTRIES inside 30 m (real DFL in brackets): %.1f a team-match; ball speed at the entry under 7 m/s %.0f%%, 7-12 %.0f%%, 12+ %.0f%%\n     at the entry: goal-side %.2f, their deepest outfielder %.1f m off his line\n     3 s before: ball %.1f m out, goal-side %.2f, deepest %.1f m, second-deepest (the line) %.1f m; goal-side 3 s before by entry speed: <7 %.2f, 7-12 %.2f, 12+ %.2f\n",
+                                e / (2.0 * nm), 100.0 * g_ens[0] / e, 100.0 * g_ens[1] / e, 100.0 * g_ens[2] / e, g_en_gs / e, g_en_deep / e,
+                                g_en3_b / e3, g_en3_gs / e3, g_en3_deep / e3, g_en3_line / e3,
+                                g_en3_gsb[0] / std::max(1L, g_en3_bs[0]), g_en3_gsb[1] / std::max(1L, g_en3_bs[1]), g_en3_gsb[2] / std::max(1L, g_en3_bs[2]));
                 }
                 if (g_h3_bn) {
                     const double hn = g_h3_bn;

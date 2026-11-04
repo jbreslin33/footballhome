@@ -5115,3 +5115,30 @@ isn't kept (no ghost knobs).
 how it got there (a pass in behind, a carry past the line, a cross), how many of ours were
 goal-side 3 s before, and where the back line stood then (DFL v game, the THREE SECONDS BEFORE
 pattern of §8.112).
+
+### 8.117 G5.19b — where the gap opens: carriers walk into the zone (measure only; no engine change)
+
+§8.116's next. ENTRIES (new, both sides: the attacking side's ball, in play, first inside 30 m
+of goal, re-armed once back past 40 m; ball speed at the entry under 7 m/s = carried, 12+ =
+passed — DFL tracking has no event tag, so both sides use the speed):
+
+| | game (K1+E4+F1+H1C, 8 matches) | DFL real |
+|---|---|---|
+| entries a team-match | 47.9 | 47.9 |
+| ball speed at the entry < 7 / 7-12 / 12+ m/s | 59 / 30 / 11% | 28 / 34 / 38% |
+| goal-side outfielders at the entry | 1.41 | 3.51 |
+| their deepest outfielder at the entry | 28.0 m (level with the ball) | 23.2 m |
+| 3 s before: ball / goal-side / deepest / the line | 45.7 m / 4.87 / 33.0 / 36.0 m | 50.1 m / 6.69 / 31.0 / 32.6 m |
+
+The same number of attacks get inside 30 m, but ours are carried in, onto a back line that is
+level with the ball when it arrives; real ones are passed in, with 3.5 men still goal-side.
+
+Levers tried (8 matches each), none moved goal-side 3 s before (4.87): near-tight-far-zone 0
+(4.46), push-up + line-step 0 (4.94), shape_tau_s 1 (4.81), shape_tau_s 1 + shape_max 7 (4.93);
+with §8.116's danger_hold_wish that is five. Rule (memory): a symptom that resists two fixes gets
+its actors measured before more rules.
+
+**Next mole.** The carrier through the block: for carries that start 35 m+ out and end inside 30
+— who engages him (nearest defender's distance and job along the carry), how many defenders
+goal-side at its start are behind him at its end, and the real figure for the same carries from
+DFL (carrier = the attacker on a slow ball).

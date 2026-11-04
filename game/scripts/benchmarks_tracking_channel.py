@@ -47,6 +47,35 @@ def one(pos_path):
             for pid, p in ps.items():
                 if pid in keepers: xs[who[pid]].append(p[0])
         for tm in (0, 1): own[(sc, tm)] = -1 if (sum(xs[tm]) / max(1, len(xs[tm]))) < 0 else 1
+    # G5.19 (§8.117): ENTRIES — the ball, the attacking side's in play, first inside 30 m of goal
+    # (re-armed once it's back past 40 m); how fast it came (ball speed at the entry: under 7 m/s
+    # carried, 7-12, 12+ passed); goal-side defenders and their deepest outfielder at the entry and
+    # 3 s before; where the ball was then.
+    armed = {}; prev = {}
+    for (sc, n) in sorted(ball):
+        bx, by, att = ball[(sc, n)]
+        g = -own[(sc, att)]; btl = half - bx * g
+        key = (sc, att)
+        if btl >= 40: armed[key] = True
+        p0 = prev.get(key); prev[key] = (n, btl)
+        if not (armed.get(key) and p0 and p0[0] == n - 5 and p0[1] >= 30 > btl): continue
+        armed[key] = False
+        b1 = ball.get((sc, n - 5))
+        spd = ((bx - b1[0]) ** 2 + (by - b1[1]) ** 2) ** 0.5 / 0.2 if b1 else 0
+        sb = 0 if spd < 7 else 1 if spd < 12 else 2
+        def defs(m):
+            fr = pl.get((sc, m), {})
+            tls = [half - x * g for pid, (x, y) in fr.items() if pid not in keepers and who[pid] != att]
+            return tls
+        now = defs(n); then = defs(n - 15 * 5); bthen = ball.get((sc, n - 75))
+        if len(now) < 9: continue
+        c["en"] += 1; c[("ens", sb)] += 1
+        c["en_gs"] += sum(1 for v in now if v < btl); c["en_deep"] += min(now)
+        if len(then) >= 9 and bthen:
+            btl0 = half - bthen[0] * g
+            c["en3"] += 1; c["en3_gs"] += sum(1 for v in then if v < btl0); c["en3_deep"] += min(then); c["en3_b"] += btl0
+            c["en3_line"] += sorted(then)[1]   # second-deepest: the offside line
+            c[("en3_bs", sb)] += 1; c[("en3_gsb", sb)] += sum(1 for v in then if v < btl0)
     for (sc, n), (bx, by, att) in ball.items():
         g = -own[(sc, att)]                      # the goal it attacks is at g*half
         btl = half - bx * g
@@ -115,3 +144,9 @@ if h:
             m = c[("h3", r, f)]
             if m: out.append(f"{r}-{f} {c[('h3adv',r,f)]/m:+.1f} / {c[('h3was',r,f)]/m:+.1f}")
     print("    attacking, came / stood ahead of the ball then: " + "; ".join(out))
+e = c["en"]
+if e:
+    print(f"  ENTRIES inside 30 m: {e/len(files)/2:.1f} a team-match; ball speed at the entry under 7 m/s {100*c[('ens',0)]/e:.0f}%, 7-12 {100*c[('ens',1)]/e:.0f}%, 12+ {100*c[('ens',2)]/e:.0f}%")
+    print(f"    at the entry: goal-side {c['en_gs']/e:.2f}, their deepest outfielder {c['en_deep']/e:.1f} m off his line")
+    e3 = c["en3"]
+    print(f"    3 s before: ball {c['en3_b']/e3:.1f} m out, goal-side {c['en3_gs']/e3:.2f}, deepest {c['en3_deep']/e3:.1f} m, second-deepest (the line) {c['en3_line']/e3:.1f} m; goal-side 3 s before by entry speed: " + ", ".join(f"{('<7','7-12','12+')[s]} {c[('en3_gsb',s)]/max(1,c[('en3_bs',s)]):.2f}" for s in range(3)))
