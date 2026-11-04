@@ -4,6 +4,9 @@
 # who is ahead of it on its side: attackers / defenders in the channel (0-18 m off the line, |y| 14+,
 # ball side), attackers ahead of the ball on its side (|y| 10+) and how many of them run at 4 m/s+
 # toward the line, by role. DFL tracking (Bassek et al. 2025, CC BY).
+# G5.14 (§8.111): WHERE THEY STAND — every outfield man by role, ball side / far side (his y v the
+# ball's), attacking / defending: metres ahead of the ball toward the line (+ = nearer their line)
+# and metres across toward the ball's touchline (+ = ball side); plus the nearest defender to the ball.
 import collections, glob, os, re, sys, multiprocessing
 sys.path.insert(0, "/srv/footballhome/game/scripts")
 import benchmarks_tracking as bt
@@ -48,12 +51,18 @@ def one(pos_path):
         if not (18 <= btl < 35 and abs(by) >= 14): continue
         c["n"] += 1
         prev = pl.get((sc, n - 5), {})
+        sb = 1 if by > 0 else -1; nd = 1e9
+        dl = sorted((half - x * g for pid, (x, y) in pl.get((sc, n), {}).items() if who[pid] != att))[:2]
+        if len(dl) == 2: c["line"] += btl - max(0.0, min(btl, dl[1])); c["linen"] += 1
         for pid, (x, y) in pl.get((sc, n), {}).items():
             if pid in keepers: continue
             r = ROLE.get(pos_of.get(pid, ""), "?")
             tl = half - x * g
             side = "att" if who[pid] == att else "def"
             same = (y > 0) == (by > 0)
+            k = (side, r, "ball" if same else "far")
+            c[("wn",) + k] += 1; c[("wa",) + k] += btl - tl; c[("wy",) + k] += y * sb
+            if side == "def": nd = min(nd, ((x - bx) ** 2 + (y - by) ** 2) ** 0.5)
             if tl < 18 and abs(y) >= 14 and same: c[(side, "chan")] += 1
             if tl < 16.5 and abs(y) < 20.16: c[(side, "box")] += 1
             if side == "att" and tl < btl and same and abs(y) >= 10:
@@ -61,6 +70,9 @@ def one(pos_path):
                 if pid in prev:
                     vt = (x - prev[pid][0]) * g / 0.2   # toward the line it attacks
                     if vt >= 4: c[("run", r)] += 1
+        for lim in (1, 2, 3, 5, 8):
+            if nd < lim: c[("nd", lim)] += 1
+        c["ndsum"] += min(nd, 30)
     return c
 files = sorted(glob.glob(os.path.join(sys.argv[1], "DFL_04_03_positions_raw_observed_*.xml")))
 c = collections.Counter()
@@ -72,3 +84,13 @@ print(f"  in the channel (0-18, |y| 14+, ball side): attackers {c[('att','chan')
 roles = sorted({k[1] for k in c if isinstance(k, tuple) and k[0] == "ahead"})
 print("  attackers ahead of the ball on its side (|y| 10+), a frame / running 4 m/s+ at the line:", "; ".join(f"{r} {c[('ahead',r)]/n:.2f}/{c[('run',r)]/n:.2f}" for r in roles),
       f"; all {sum(c[('ahead',r)] for r in roles)/n:.2f}/{sum(c[('run',r)] for r in roles)/n:.2f}")
+print("  WHERE THEY STAND (a frame; metres ahead of the ball toward their line, metres across toward its touchline):")
+for side in ("att", "def"):
+    out = []
+    for r in ("CB", "FB", "DM/CM", "AM", "WIDE", "ST"):
+        for f in ("ball", "far"):
+            k = (side, r, f); m = c[("wn",) + k]
+            if m: out.append(f"{r}-{f} {m/n:.2f} @ {c[('wa',)+k]/m:+.1f}/{c[('wy',)+k]/m:+.1f}")
+    print(f"    {'attacking' if side == 'att' else 'defending'}: " + "; ".join(out))
+print("  nearest defender to the ball: mean " + f"{c['ndsum']/n:.1f} m; " + "; ".join(f"<{l} m {100*c[('nd',l)]/n:.0f}%" for l in (1, 2, 3, 5, 8)))
+print(f"  offside line {c['line']/max(1,c['linen']):.1f} m ahead of the ball")

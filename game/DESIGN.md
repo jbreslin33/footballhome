@@ -4801,3 +4801,91 @@ recycle ideal 16 m), and with half the strikers and a third of the box ahead of 
 are few feet to find. Next: where the striker and the far men stand when the ball is wide
 18-35 (hold shape's targets v DFL), then the pass into space ahead of a man on the ball side.
 Also the touch-tight rate itself (game v DFL nearest-defender distance on the ball wide).
+
+### 8.111 G5.14 — the side in possession moves with the play, not with every pass (no migration; off without rows)
+
+§8.110's mole was where the men ahead of the ball stand with it wide 18-35 m off their line.
+New measures, both sides like for like (DFL 7 matches v the game, §8.110 config x6 + K1, 32
+matches): `benchmarks_tracking_channel.py` / match_main `WHERE THEY STAND` (every man by role,
+ball side / far side, metres ahead of the ball and across) and `offside line`;
+`benchmarks_tracking_possession.py` / `POSSESSION SHAPE` (the side in possession by the ball's
+10 m band, each line's gap from its middle, the middle by possession age, which smoothing of the
+ball the middle follows); match_main `holding shape in possession` (how far a holder is off his
+spot, how fast he closes it, by role).
+
+**Ball wide 18-35, attackers (metres ahead of the ball):** ST +3.0 real, −5.6 game; AM −2.3 v
+−9.2; far winger −1.2 v −10.0; full-backs −10 / −15 v −17 / −23; centre-backs −23.5 v −23.0. The
+offside line was right (8.7 v 8.9 m ahead of the ball), so offside wasn't holding them back.
+Their own spots were: ST +8.6 (capped at the line), AM +9, CB −15.7, and they stood 8-20 m behind
+them. CBs looked right only because their lag cancelled a spot 8 m too high.
+
+**Why they lag.** In possession 63% of holders were 10 m+ off their spot (18 m on average),
+closing it at 2.8 m/s; at 5-10 m off they walked at 1.2. Their spot was 13-15 m off every role,
+but its net offset was only 0-8 m ahead and 6-7 m across: **it jumped with every pass.**
+`possessionX` put the shape on the ball itself at `ours_slope` 0.9 (raised from 0.45 in §8.102
+to make up for exactly this lag, "a fit, not a measurement") and `possessionY` at 0.6 of its y,
+so a 20 m pass moved every spot 11-18 m, and a man eased over `shape_tau_s` 4 under the 4.5 m/s
+cap could never stand on it. The game's men ran more than real (2.9 v 2.49 m/s, 5+ m/s 12.3 v
+6.3%) and stood in the wrong place. Real sides don't sprint up after a regain either (middle +1
+m/s, 3-5% of men 5+ m/s forward; game the same), and the block without the ball stands where the
+real one does at every band (middle 45.6 v 45.6 at ball 45-60). So the possession spot was the
+mole, not pace and not the defending block.
+
+**What the real middle follows** (possession frames, fit of the middle on an exponential
+smoothing of the ball over T s):
+
+| T | x slope | R² x | y slope | R² y |
+|---|---|---|---|---|
+| 0 (the ball) | 0.56 | 0.699 | 0.35 | 0.616 |
+| 2 | 0.64 | 0.784 | 0.43 | 0.790 |
+| 3 | 0.66 | 0.785 | 0.46 | 0.836 |
+| 4 | 0.67 | 0.770 | 0.47 | 0.855 |
+| 8 | 0.65 | 0.662 | 0.49 | 0.804 |
+
+Each line v the middle, ball 25-75 m off their line: CB −13.9, FB −3.6, DM/CM −1.7, AM +7.5, WIDE
++7.9, ST +13.5 m. The full-backs push on to the middle's level; the centre-backs stay.
+
+**[FH] three params, off without rows** (coaching: the team moves together with the play, not
+with every pass; centroids move in phase with the ball [Frencken, Lemmink, Delleman & Visscher
+2011]; the smoothing is fitted here):
+- `physics.shape.ours_ball_tau_s` / `ours_ball_tau_y_s`: in possession the shape anchors on the
+  ball smoothed over this long (x / y). One per team (`Brain::shapeBall`), stepped once a tick at
+  the top of `ordersFaced`, in or out of possession, restarted on the ball after a gap; Fixed64.
+- `physics.body.shape_tau_ours_s`: with our ball a holder closes the gap to his spot in this long,
+  not `shape_tau_s` (which stays for the block without the ball, §8.103). The 4.5 m/s cap stays.
+- `physics.shape.ours_push_{cb,fb,dm,am,wide,st}_m`: in possession each line (by position number)
+  stands this much further up, on top of the formation's spacing × `ours_depth_k`.
+
+Config E4 (on top of x6 + K1): `ours_ball_tau_s` 3, `ours_ball_tau_y_s` 4, `ours_slope` 0.75,
+`ours_offset_m` 3.9, `ours_shift_y` 0.47, `shape_tau_ours_s` 1.0, push fb +4.2, cb −3.8, dm −2.4,
+st +2.1 (the measured gap misses). The slope is above the fitted 0.66 because the realised slope
+comes out lower (0.49): the final third still lags (below). Golden unchanged (no rows), 23/23 ctests.
+
+32 matches (4 PL fixtures × 8), K1 → E4:
+
+| | Real | K1 | E4 |
+|---|---|---|---|
+| Holders within 5 m of their spot | | 11% | 48% |
+| Holders 10 m+ off | | 63% | 29% |
+| Line gaps v middle CB / FB / ST | −13.9 / −3.6 / +13.5 | −9.0 / −7.1 / +12.1 | −12.7 / −4.3 / +11.9 |
+| Middle, ball 60-70 / 90-100 off their line (m deeper than real) | | +4.1 / +8.2 | +1.6 / +3.0 |
+| Full-backs, same bands | | +8.5 / +9.3 | +3.1 / +0.9 |
+| Middle, ball 0-10 / 20-30 | | +4.9 / +6.8 | +6.3 / +7.2 |
+| Centre-backs, ball 20-30 | | +2.3 | +7.4 |
+| Ball wide 18-35: ST / AM / far winger ahead of the ball | +3.0 / −2.3 / −1.2 | −5.6 / −9.3 / −10.0 | −4.3 / −7.4 / −8.4 |
+| Off the ball 5+ m/s / mean | 6.3% / 2.49 | 12.3% / 2.90 | 12.6% / 3.00 |
+| Goals / shots a team / entries | 2.5 / 12.9 / 44 | 4.5 / 13.9 / 34.6 | 4.5 / 15.1 / 36.7 |
+| Offsides a team | 2.0 | 2.0 | 2.7 |
+
+The behaviour is right in our half: men stand on a spot that moves like the real side, the lines
+are spaced like real ones, the full-backs push on. In the final third it isn't yet: the whole
+side is still 6-7 m deep and the centre-backs got 5 m deeper (the smoothed ball trails a fast
+attack; their lag used to cancel a spot that was too high). Ships with its rows alongside K1's
+(§8.110) and the cross (§8.108).
+
+**Next (the mole):** the front three in the final third. With the ball wide 18-35 the AM, striker
+and wingers stand 9-16 m behind spots at or just inside the offside line, holding shape at the
+4.5 m/s cap (speed 3.3, wish 0.49). Find what they did in the seconds before (come short /
+support / meet the pass pulling them back), then whether the front line's hold has to be the
+line itself (real ST 5-6 m off it), not the shape plus a cap. Then the centre-backs' height in
+the final third with the smoothed ball (real 48.8 m off their line at ball 20-30, game 56.2).

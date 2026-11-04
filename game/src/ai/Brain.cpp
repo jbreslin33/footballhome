@@ -1218,7 +1218,24 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
         danger = theirs && b.pos.x * sg + half_x_ < shape_danger_;
     }
     if (o.why == Why::Hold && shape_tau_.raw > 0 && !danger) {
-        const Fixed64 ease = dist / shape_tau_;
+        // G5.14 (§8.111): with our ball the shape moves with it — he closes
+        // the gap in shape_tau_ours_s. Eased over shape_tau_s (fitted to the
+        // block without the ball, §8.103) every man trailed his spot by the
+        // spot's own speed × tau, ~11 m: the side in possession stood 5-9 m
+        // deeper than real at every ball band (DFL), front men and full-backs
+        // 10 m, and ours_slope had been raised 0.45 → 0.9 to make up for it
+        // (§8.102) — targets nobody reached. Real team centroids move in phase
+        // with the ball [Frencken, Lemmink, Delleman & Visscher 2011].
+        // Coaching: "move together with the ball" [FH].
+        Fixed64 tau = shape_tau_;
+        if (shape_tau_ours_.raw > 0) {
+            const auto& b = world.ball();
+            const std::uint8_t team = setup_.team_of_slot[slot];
+            const bool ours = b.owner ? setup_.team_of_slot[*b.owner] == team
+                                      : (world.restartTeam() == 0xFF && world.lastTouchTeam() == team);
+            if (ours) tau = shape_tau_ours_;
+        }
+        const Fixed64 ease = dist / tau;
         if (ease < v_ok) v_ok = ease;
     }
     // A team shifts as a block at a jog and accepts the lag: most of what was
@@ -1401,14 +1418,44 @@ void Brain::stayOnside(SlotIndex slot, const World& world, Orders& o) const {
     if (me_past) o.why = Why::StayOnside;   // coming back: the job is the line now
 }
 
+// G5.14 (§8.111): the ball a side in possession shifts its shape on — an
+// exponential smoothing of the ball over ours_ball_tau (x, y), stepped once
+// a tick, restarted on the ball after any gap (a new match, a tick skipped).
+// Coaching: the team moves with the play, not with every pass [FH]; the
+// smoothing is fitted on DFL tracking (§8.111). Off (tau 0) = the ball.
+math::Vec2 Brain::shapeBall(std::uint8_t team, const World& world) const {
+    const auto& b = world.ball().pos;
+    const std::uint64_t now = world.tickCount();
+    Vec2& e = shape_ball_[team & 1];
+    std::uint64_t& last = shape_ball_tick_[team & 1];
+    if (last == now) return e;
+    if (last == ~0ull || now < last || now - last > 3) {
+        e = Vec2{b.x, b.y};
+    } else {
+        const Fixed64 dt = Fixed64::fromInt(static_cast<std::int64_t>(now - last)) * core::kTickDt;
+        auto step = [&](Fixed64 v, Fixed64 to, Fixed64 tau) {
+            if (tau.raw <= 0) return to;
+            Fixed64 al = dt / tau;
+            if (al > Fixed64::one()) al = Fixed64::one();
+            return v + (to - v) * al;
+        };
+        e.x = step(e.x, b.x, ours_ball_tau_x_);
+        e.y = step(e.y, b.y, ours_ball_tau_y_);
+    }
+    last = now;
+    return e;
+}
+
 math::Vec2 Brain::shapeAnchor(SlotIndex slot, const World& world) const {
     const FormationSpec::Pos& mine =
         spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]];
     Vec2 a = anchorFor(mine.base, attackSign(slot), world.ball().pos, half_x_, half_y_, mine.keeper);
     const auto& b = world.ball();
     if (!mine.keeper && b.owner && setup_.team_of_slot[*b.owner] == setup_.team_of_slot[slot]) {
-        a.x = possessionX(slot, b.pos.x);
-        a.y = possessionY(mine.base, b.pos.y, a.y);
+        const Vec2 sb = (ours_ball_tau_x_.raw > 0 || ours_ball_tau_y_.raw > 0)
+                            ? shapeBall(setup_.team_of_slot[slot], world) : Vec2{b.pos.x, b.pos.y};
+        a.x = possessionX(slot, sb.x);
+        a.y = possessionY(mine.base, sb.y, a.y);
     } else if (!mine.keeper && b.owner)
         a.y = defendingY(mine.base, b.pos.y, a.y);
     return a;
@@ -1440,6 +1487,11 @@ Fixed64 Brain::possessionX(SlotIndex slot, Fixed64 ball_x) const {
     const Fixed64 sg = attackSign(slot) >= 0 ? Fixed64::one() : -Fixed64::one();
     const Fixed64 base = ps[index_in_team_[slot]].base.x;
     Fixed64 x = ball_x * sg * shape_slope_ + shape_offset_ + (base - middle) * half_x_ * shape_depth_;
+    {   // G5.14: the line's own push in possession
+        const int num = numberOf(slot);
+        const int r = (num == 4 || num == 5) ? 0 : (num == 2 || num == 3) ? 1 : (num == 6 || num == 8) ? 2 : num == 10 ? 3 : (num == 7 || num == 11) ? 4 : num == 9 ? 5 : -1;
+        if (r >= 0) x += ours_push_[r];
+    }
     const Fixed64 lim = half_x_ - Fixed64::fromInt(3);
     if (x > lim) x = lim;
     if (x < -lim) x = -lim;
@@ -1448,6 +1500,8 @@ Fixed64 Brain::possessionX(SlotIndex slot, Fixed64 ball_x) const {
 
 Orders Brain::ordersFaced(SlotIndex slot, const World& world) const {
     const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
+    // G5.14: the shape's smoothed ball runs every tick, in possession or not.
+    if (ours_ball_tau_x_.raw > 0 || ours_ball_tau_y_.raw > 0) (void)shapeBall(setup_.team_of_slot[slot], world);
     // G5.2: the man taking a throw, goal kick or corner.
     {
         Orders t;
@@ -3532,8 +3586,10 @@ Orders Brain::decide(SlotIndex slot, const World& world) const {
     const bool shape_ours = ours ||
         (!ball.owner && world.restartTeam() == 0xFF && world.lastTouchTeam() == my_team);
     if (shape_ours && !mine.keeper) {
-        anchor.x = possessionX(slot, seen_ball.x);
-        anchor.y = possessionY(mine.base, seen_ball.y, anchor.y);
+        Vec2 sb{seen_ball.x, seen_ball.y};
+        if (ours_ball_tau_x_.raw > 0 || ours_ball_tau_y_.raw > 0) sb = shapeBall(my_team, world);   // G5.14
+        anchor.x = possessionX(slot, sb.x);
+        anchor.y = possessionY(mine.base, sb.y, anchor.y);
     } else if (!mine.keeper) anchor.y = defendingY(mine.base, seen_ball.y, anchor.y);
 
     // Our ball in flight: a runner ahead of it keeps running — stopping to

@@ -154,6 +154,13 @@ public:
         initiative_ = p.fixed("skill.tendency.initiative", 1000);
         arrive_decel_ = p.fixed("physics.body.arrive_decel_mps2", 4500);
         shape_tau_ = p.fixed("physics.body.shape_tau_s", 0);
+        shape_tau_ours_ = p.fixed("physics.body.shape_tau_ours_s", 0);
+        ours_ball_tau_x_ = p.fixed("physics.shape.ours_ball_tau_s", 0);     // G5.14 (§8.111)
+        ours_ball_tau_y_ = p.fixed("physics.shape.ours_ball_tau_y_s", 0);
+        {   // G5.14 (§8.111): in possession each line stands this far further up (+) or back
+            static const char* kr[6] = {"cb", "fb", "dm", "am", "wide", "st"};
+            for (int r = 0; r < 6; ++r) ours_push_[r] = p.fixed((std::string("physics.shape.ours_push_") + kr[r] + "_m").c_str(), 0);
+        }   // G5.14 (§8.111)
         shape_max_ = p.fixed("physics.body.shape_max_mps", 0);
         defend_max_ = p.fixed("physics.body.defend_max_mps", 0);
         shape_danger_ = p.fixed("physics.body.shape_danger_m", 0);
@@ -472,6 +479,25 @@ private:
     // speed he still has on reaching a ball he's running onto (m/s).
     math::Fixed64 arrive_decel_ = math::Fixed64::fromFraction(9, 2);
     math::Fixed64 shape_tau_, shape_max_, defend_max_;
+    // G5.14 (§8.111): our ball — he closes the gap to his spot in this long,
+    // not shape_tau_ (the shape moves with the ball). 0 = off.
+    math::Fixed64 shape_tau_ours_{};
+    // G5.14 (§8.111): in possession the shape anchors on the ball smoothed
+    // over these (x, y) seconds, not the ball itself — the real side's
+    // middle follows a 2-4 s smoothing of the ball (R² 0.70 → 0.79 in x,
+    // 0.62 → 0.86 in y, DFL; benchmarks_tracking_possession.py). One per
+    // team, stepped once a tick (shapeBall). 0 = off (the ball as seen).
+    math::Fixed64 ours_ball_tau_x_{}, ours_ball_tau_y_{};
+    // G5.14 (§8.111): in possession, metres further up (+) for each line by
+    // position number — cb 4/5, fb 2/3, dm 6/8, am 10, wide 7/11, st 9 —
+    // on top of the formation's spacing × depth_k. Real side in possession
+    // (DFL), each line v its middle: CB -13.9, FB -3.6, DM/CM -1.7, AM +7.5,
+    // WIDE +7.9, ST +13.5 m: the full-backs push on to the middle's level,
+    // the centre-backs stay. 0 = off.
+    math::Fixed64 ours_push_[6]{};
+    mutable math::Vec2 shape_ball_[2]{};
+    mutable std::uint64_t shape_ball_tick_[2] = {~0ull, ~0ull};
+    math::Vec2 shapeBall(std::uint8_t team, const core::World& world) const;
     math::Fixed64 recover_sprint_within_;   // 0 = always a sprint
     int recover_to_shape_ = 0;   // G5.6 (§8.104): beaten men recover to their spot
     math::Fixed64 arrive_through_ = math::Fixed64::fromInt(3);
