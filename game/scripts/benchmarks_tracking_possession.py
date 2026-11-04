@@ -118,7 +118,11 @@ def one(pos_path):
             tl = half - x * g; dtl.append(tl)
             r = ROLE.get(pos_of.get(pid, ""), "?")
             c[("dn", k, r)] += 1; c[("ds", k, r)] += tl
+            if tl < btl: c[("dgr", k, r)] += 1   # G5.19: goal-side, by role
         if len(dtl) >= 9: c[("df", k)] += 1; c[("dmid", k)] += sum(dtl) / len(dtl)
+        if len(dtl) >= 9:   # G5.19 (§8.116): outfield men goal-side of the ball (nearer their own line than it)
+            c[("dgs", k)] += sum(1 for v in dtl if v < btl)
+            c[("dgs4", k)] += sum(1 for v in dtl if v < btl) >= 4
         if len(dtl) >= 9 and 25 <= btl < 75:
             dm = sum(dtl) / len(dtl)
             for pid, (x, y) in pl.get((sc, n), {}).items():
@@ -170,7 +174,7 @@ if __name__ == "__main__":
     for k in range(10):
         f = c[("df", k)]
         if not f: continue
-        print(f"  {10*k:3d}-{10*k+10:<3d} {f:7d}  {c[('dmid',k)]/f:5.1f}    " + "  ".join(f"{c[('ds',k,r)]/max(1,c[('dn',k,r)]):6.1f}" for r in roles))
+        print(f"  {10*k:3d}-{10*k+10:<3d} {f:7d}  {c[('dmid',k)]/f:5.1f}    " + "  ".join(f"{c[('ds',k,r)]/max(1,c[('dn',k,r)]):6.1f}" for r in roles) + f"   goal-side of the ball {c[('dgs',k)]/f:.2f} (4+ {100*c[('dgs4',k)]/f:.0f}%)")
     print("  each role ahead of the middle (toward the ball's end), ball 25-75 m off the line: " + "; ".join(f"{r} {c[('dg',r)]/max(1,c[('dgn',r)]):+.1f}" for r in roles))
     print("  middle (attack-direction x, of the side WITHOUT it) on an EMA of the ball over T s: T: slope, offset, R2")
     for T in (0, 1, 2, 3, 4, 6, 8):
@@ -180,3 +184,6 @@ if __name__ == "__main__":
         sl = (N * XY - X * Y) / (N * XX - X * X); of = (Y - sl * X) / N
         r2 = (N * XY - X * Y) ** 2 / ((N * XX - X * X) * (N * YY - Y * Y))
         print(f"    T {T}: x {sl:.2f}, {of:+.1f}, R2 {r2:.3f}")
+    print("  GOAL-SIDE OF THE BALL by role (share of each role's frames), the side without it:")
+    for k in (1, 2, 3):
+        print(f"    ball {10*k}-{10*k+10}: " + "; ".join(f"{r} {100*c[('dgr',k,r)]/max(1,c[('dn',k,r)]):.0f}%" for r in roles))

@@ -67,7 +67,8 @@ long g_wt_n[2][7][2], g_wt_why[2][7][2][128], g_nd_lim[5]; double g_wt_a[2][7][2
 long g_ce[6]; double g_ce_drawn, g_ce_held; long g_ce_n;   // G5.18 how spells end
 long g_cy_n, g_cy_b[6], g_cy_10; double g_cy_len, g_cy_gain, g_cy_dur, g_cy_bl[6], g_cy_bd[6], g_cy_mvl, g_cy_mvd;   // G5.18 carries
 long g_ca_press, g_ca_cpress, g_ca_pass, g_ca_switch, g_ca_cross, g_ca_cutback, g_ca_drib, g_ca_dribok, g_ca_ret, g_ca_rtp, g_ca_carry10;
-long g_dsh_n[10][7], g_dsh_f[10], g_dsh_why[7][128], g_dsh_wn[7]; double g_dsh_s[10][7], g_dsh_m[10], g_dsh_an[10][7], g_dsh_ot[10][7], g_dsh_da[10][7], g_dsh_ht[10][7], g_dsh_hp[10][7], g_dsh_hv[10][7]; long g_dsh_hn[10][7];   // G5.15 defending shape by ball band
+long g_dsh_gs[10], g_dsh_gs4[10], g_dgr[4][7], g_dgr_n[4][7], g_dgr_why[7][128], g_dgr_wn[7];   // G5.19 goal-side of the ball
+long g_dsh_n[10][7], g_dsh_f[10], g_dsh_why[7][128], g_dsh_wn[7]; double g_dsh_s[10][7], g_dsh_m[10], g_dsh_an[10][7], g_dsh_ot[10][7], g_dsh_da[10][7], g_dsh_ht[10][7], g_dsh_hp[10][7], g_dsh_hv[10][7]; long g_dsh_hn[10][7]; double g_dsh_hw[10][7], g_dsh_hs[10][7], g_dsh_hd[10][7];   // G5.15 defending shape by ball band
 long g_fa_n[7], g_fa_hn[7]; double g_fa_a[7], g_fa_v[7], g_fa_5[7], g_fa_5f[7], g_fa_h[7], g_fa_hv[7];   // G5.15 front men by possession age
 long g_h3_n[7][2], g_h3_bn; double g_h3_ball, g_h3_adv[7][2], g_h3_was[7][2], g_h3_b15; long g_h3_age[4];   // G5.15 three seconds before, ball wide 18-35
 long g_ag_n[7]; double g_ag_b[7], g_ag_m[7], g_ag_v[7], g_ag_5[7], g_ag_5f[7]; long g_hl_n[4], g_hf_n[7]; double g_hf_fx[7], g_hf_ay[7], g_hf_d[7]; double g_hl_d[4], g_hl_v[4], g_hl_vt[4], g_hl_want[4];   // G5.14 holders' lag
@@ -1154,6 +1155,10 @@ int main(int argc, char** argv) {
                             const int num = s.brain().numberOf(j);
                             const int r = (num == 4 || num == 5) ? 0 : (num == 2 || num == 3) ? 1 : (num == 6 || num == 8) ? 2 : num == 10 ? 3 : (num == 7 || num == 11) ? 4 : num == 9 ? 5 : 6;
                             ++g_dsh_n[k][r]; g_dsh_s[k][r] += ptl; dm += ptl; ++dn;
+                            if (k >= 1 && k <= 3) {   // G5.19: goal-side by role; the jobs of those caught upfield
+                                ++g_dgr_n[k][r]; if (ptl < tl) ++g_dgr[k][r];
+                                else if (k <= 2) { ++g_dgr_wn[r]; ++g_dgr_why[r][static_cast<int>(s.lastOrders()[j].why) & 127]; }
+                            }
                             g_dsh_an[k][r] += hx - s.brain().shapeAnchor(j, s.world()).x.toDouble() * sg;
                             g_dsh_da[k][r] += hx - s.brain().debugAnchor(j).x.toDouble() * sg;
                             const auto& od = s.lastOrders()[j];
@@ -1162,9 +1167,18 @@ int main(int argc, char** argv) {
                             if (od.why == ai::Why::Hold && (od.target.x.raw || od.target.y.raw)) {
                                 ++g_dsh_hn[k][r]; g_dsh_ht[k][r] += hx - od.target.x.toDouble() * sg; g_dsh_hp[k][r] += ptl;
                                 g_dsh_hv[k][r] += -s.world().player(j).vel.x.toDouble() * sg;   // toward its own line
+                                g_dsh_hw[k][r] += std::hypot(od.move.move.x.toDouble(), od.move.move.y.toDouble());
+                                g_dsh_hs[k][r] += std::hypot(s.world().player(j).vel.x.toDouble(), s.world().player(j).vel.y.toDouble());
+                                g_dsh_hd[k][r] += std::hypot(od.target.x.toDouble() - s.world().player(j).pos.x.toDouble(), od.target.y.toDouble() - s.world().player(j).pos.y.toDouble());
                             }
                         }
-                        if (dn >= 9) { ++g_dsh_f[k]; g_dsh_m[k] += dm / dn; }
+                        if (dn >= 9) {
+                            ++g_dsh_f[k]; g_dsh_m[k] += dm / dn;
+                            int gs = 0;   // G5.19 (§8.116): outfield men nearer their own line than the ball
+                            for (std::uint8_t j = 0; j < s.world().playerCount(); ++j)
+                                if (!s.world().isKeeper(j) && s.world().player(j).team != a && hx - s.world().player(j).pos.x.toDouble() * sg < tl) ++gs;
+                            g_dsh_gs[k] += gs; g_dsh_gs4[k] += gs >= 4;
+                        }
                     }
                     double tls[11]; int nt = 0;
                     for (std::uint8_t j = 0; j < s.world().playerCount(); ++j) {
@@ -2946,14 +2960,26 @@ int main(int argc, char** argv) {
                 for (int k = 0; k < 10; ++k) if (const long f = g_dsh_f[k]) {
                     std::printf("   %2d-%-3d %7ld  %5.1f  ", 10 * k, 10 * k + 10, f, g_dsh_m[k] / f);
                     for (int r = 0; r < 6; ++r) std::printf("  %6.1f", g_dsh_s[k][r] / std::max(1L, g_dsh_n[k][r]));
+                    std::printf("   goal-side %.2f (4+ %.0f%%)", static_cast<double>(g_dsh_gs[k]) / f, 100.0 * g_dsh_gs4[k] / f);
                     std::printf("   shape anchor");
                     for (int r = 0; r < 6; ++r) std::printf(" %5.1f", g_dsh_an[k][r] / std::max(1L, g_dsh_n[k][r]));
                     std::printf("   after the block rules");
                     for (int r = 0; r < 6; ++r) std::printf(" %5.1f", g_dsh_da[k][r] / std::max(1L, g_dsh_n[k][r]));
                     std::printf("   holding: target/stands/back m/s");
                     for (int r = 0; r < 6; ++r) { const long hn = std::max(1L, g_dsh_hn[k][r]); std::printf(" %.1f/%.1f/%+.1f", g_dsh_ht[k][r] / hn, g_dsh_hp[k][r] / hn, g_dsh_hv[k][r] / hn); }
+                    std::printf("   holders off spot/wish/speed");
+                    for (int r = 0; r < 6; ++r) { const long hn = std::max(1L, g_dsh_hn[k][r]); std::printf(" %.1f/%.2f/%.1f", g_dsh_hd[k][r] / hn, g_dsh_hw[k][r] / hn, g_dsh_hs[k][r] / hn); }
                     std::printf("   order target");
                     for (int r = 0; r < 6; ++r) std::printf(" %5.1f", g_dsh_ot[k][r] / std::max(1L, g_dsh_n[k][r]));
+                    std::printf("\n");
+                }
+                {   static const char* rq[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                    std::printf("   GOAL-SIDE OF THE BALL by role (real DFL: run benchmarks_tracking_possession.py):");
+                    for (int k = 1; k <= 3; ++k) { std::printf("\n     ball %d-%d:", 10 * k, 10 * k + 10); for (int r = 0; r < 6; ++r) std::printf(" %s %.0f%%;", rq[r], 100.0 * g_dgr[k][r] / std::max(1L, g_dgr_n[k][r])); }
+                    std::printf("\n     caught upfield of it, ball 10-30, their jobs:");
+                    for (int r = 0; r < 6; ++r) { if (!g_dgr_wn[r]) continue; std::printf(" %s:", rq[r]);
+                        for (int w = 0; w < ai::kWhyCount; ++w) if (g_dgr_why[r][w] * 10 >= g_dgr_wn[r]) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * g_dgr_why[r][w] / g_dgr_wn[r]);
+                        std::printf(";"); }
                     std::printf("\n");
                 }
                 {   static const char* rq[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};

@@ -5083,3 +5083,35 @@ a man.
 **Next mole.** Defending the carrier: who engages a man driving at the block, how close, and how
 often a real carrier in that spot is stopped (StatsBomb Dribbled Past / Duel / Dispossessed v the
 game's), then shots back toward 12.9.
+
+### 8.116 G5.19 — the defence isn't behind the ball near its own goal (measure only; no engine change)
+
+§8.115 left shots at 24.8 (real 12.9). First, what is comparable: harness spells are not
+StatsBomb possessions (≈350 a match v 121 — StatsBomb merges brief touches), so the
+spell-based lines (shot within 5 s of the spell 36% v 2.1%, own-third losses 27.6 v 2.1, spell
+began within 35 m 40% v 5%) do NOT compare and are not used. The shot freeze-frame lines do:
+0-2 defenders goal-side of the shooter 81% of game shots v 27.7% real; nearest opponent under
+1.5 m 21% v 33.5%.
+
+**Goal-side of the ball (new, both sides; DEFENDING SHAPE, outfielders nearer their own line
+than the ball; DFL v K1+E4+F1+H1C):**
+
+| ball m out | real | game |
+|---|---|---|
+| 10-20 | 3.60 (4+ 52%) | 1.57 (16%) |
+| 20-30 | 4.83 (68%) | 2.53 (31%) |
+| 30-40 | 5.59 (79%) | 3.43 (45%) |
+
+By role (share goal-side), ball 10-20 / 20-30: CB 70/85% real v 38/51%, FB 53/70 v 32/45, 6/8
+30/47 v 6/20, 7/11 20/32 v 3/8. The game's centre-backs caught upfield are mostly recovering
+goal-side (40%), the full-backs 59%: the attack is already past them. Their holders stand 10-16
+m off their spots there (wish 0.85, 4.5-5 m/s), CB targets were deep enough (13 m at ball 20-30).
+
+Tried and removed: `danger_hold_wish` (a full-speed wish for holders with their ball inside
+shape_danger_m) — goal-side 1.57 → 1.75 at 10-20, 2.53 → 2.40 at 20-30: not the limit, so it
+isn't kept (no ghost knobs).
+
+**Next mole.** Where the gap opens: the moment the ball first gets inside 30 m of our goal —
+how it got there (a pass in behind, a carry past the line, a cross), how many of ours were
+goal-side 3 s before, and where the back line stood then (DFL v game, the THREE SECONDS BEFORE
+pattern of §8.112).
