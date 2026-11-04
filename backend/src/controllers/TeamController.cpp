@@ -152,7 +152,7 @@ Response TeamController::handleGetRosterStatuses(const Request& request) {
     }
 }
 
-// GET /api/teams/terms → { terms: [{code,label}], current, teams: {teamId: [code…]},
+// GET /api/teams/terms → { terms: [{code,label}], current, starts: {code: date}, teams: {teamId: [code…]},
 //                          frozen: {teamId: [code…]} (mig 1006) }
 // A team missing from `teams` has no team_terms rows and shows under
 // every pill (mig 795).
@@ -163,6 +163,19 @@ Response TeamController::handleGetTerms(const Request& request) {
             "SELECT json_build_object("
             "  'terms',   (SELECT COALESCE(json_agg(json_build_object('code', code, 'label', label) ORDER BY sort_order), '[]') FROM year_terms),"
             "  'current', fh_current_term(),"
+            // Start date per season (owner 11/4, Ryan back by winter): the
+            // current season's latest start, every other season's next one.
+            // The Team pill drops an injury that ends by the lit season's start.
+            "  'starts',  (SELECT COALESCE(json_object_agg(code, to_char(CASE"
+            "                WHEN code = fh_current_term() THEN"
+            "                  CASE WHEN make_date(extract(year FROM current_date)::int, starts_month, starts_day) <= current_date"
+            "                       THEN make_date(extract(year FROM current_date)::int, starts_month, starts_day)"
+            "                       ELSE make_date(extract(year FROM current_date)::int - 1, starts_month, starts_day) END"
+            "                ELSE"
+            "                  CASE WHEN make_date(extract(year FROM current_date)::int, starts_month, starts_day) > current_date"
+            "                       THEN make_date(extract(year FROM current_date)::int, starts_month, starts_day)"
+            "                       ELSE make_date(extract(year FROM current_date)::int + 1, starts_month, starts_day) END"
+            "              END, 'YYYY-MM-DD')), '{}') FROM year_terms),"
             "  'teams',   (SELECT COALESCE(json_object_agg(team_id, terms), '{}') FROM ("
             "                SELECT team_id, json_agg(term ORDER BY term) AS terms FROM team_terms GROUP BY team_id) x),"
             // Seasons a team's league roster is frozen in (mig 1006): no

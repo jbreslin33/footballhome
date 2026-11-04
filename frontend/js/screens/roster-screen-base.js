@@ -616,9 +616,22 @@ class RosterScreenBase extends Screen {
   // the column pills' categories, also the Team view's sections.  An injured
   // player stays in INJURED whatever his squad group.
   columnCategoryOf(p) {
-    if (p.squadStatus) return RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : p.squadStatus;
+    if (p.squadStatus) return this.injuredInLitSeason(p.personId) ? 'injured' : p.squadStatus;
     return p.inviteOnly === true ? (p.callIn === true ? 'callin' : 'paper')
-      : (RosterScreenBase.HEALTH.people[p.personId] ? 'injured' : 'active');
+      : (this.injuredInLitSeason(p.personId) ? 'injured' : 'active');
+  }
+
+  // Injured for the lit season?  An injury whose back-on day falls on or
+  // before that season's start doesn't count there (owner 11/4: "add ryan
+  // to ACTIVE because he will be healthy by then") — Winter shows him
+  // ACTIVE while Fall still shows 🩹.  No back-on day = injured anywhere.
+  injuredInLitSeason(personId) {
+    const inj = RosterScreenBase.HEALTH.people[personId];
+    if (!inj) return false;
+    const t = this._term;
+    const start = t && t.term && t.starts && t.starts[t.term];
+    if (start && inj.until && String(inj.until).slice(0, 10) <= start) return false;
+    return true;
   }
 
   renderColumnSections(col, shown, renderList, data, ridersHtml = '') {
