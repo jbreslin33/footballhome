@@ -328,7 +328,7 @@ def main():
     ap.add_argument("--profile", help="TSV position_group, attribute, offset")
     ap.add_argument("--formations", required=True, help="JSON {code: {slot: label}}")
     ap.add_argument("--spread")
-    ap.add_argument("--game-model", default="Curriculum")
+    ap.add_argument("--game-model", default="Premier League 2015/16")   # mig 1042
     ap.add_argument("--report")
     a = ap.parse_args()
     profile = {}

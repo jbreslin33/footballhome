@@ -1,7 +1,7 @@
 // fh-game-roll — roll every player's character sheet for game teams
 // (G4.83, mig 793; game/DESIGN.md §8.81).
 //
-//   POSTGRES_PASSWORD=... fh-game-roll [--write] "Lighthouse APSL" "Ukrainian Nationals"
+//   POSTGRES_PASSWORD=... fh-game-roll [--write] "Leicester City" "Arsenal"
 //
 // Without --write it prints the sheets and changes nothing. With it, each
 // team's sheets go to the DB in one transaction (attributes marked 'edited'

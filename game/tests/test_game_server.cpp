@@ -360,7 +360,7 @@ FH_TEST(a_team_model_inherits_its_school) {
     school.overlay.fill(-1);
     school.overlay[18] = 95;
     school.overlay[19] = 90;
-    team.name = "Lighthouse APSL";
+    team.name = "Leicester City";
     team.parent = "Bielsa";
     team.overlay.fill(-1);
     team.overlay[19] = 70;   // our change

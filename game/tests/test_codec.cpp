@@ -212,11 +212,11 @@ FH_TEST(claim_round_trip) {
 
 FH_TEST(presets_round_trip) {
     PresetsFrame f;
-    f.names = {"Lighthouse", "Bielsa", "Positional Play"};
+    f.names = {"Premier League 2015/16", "Bielsa", "Positional Play"};
     auto d = decodePresets(encodePresets(f));
     FH_EXPECT(d.has_value());
     FH_EXPECT_EQ(d->names.size(), 3u);
-    FH_EXPECT(d->names[0] == "Lighthouse");
+    FH_EXPECT(d->names[0] == "Premier League 2015/16");
     FH_EXPECT(d->names[2] == "Positional Play");
 }
 
@@ -325,16 +325,16 @@ FH_TEST(player_attributes_round_trip) {
 }
 
 FH_TEST(teams_round_trip) {
-    TeamsFrame f{"Lighthouse APSL", "Ukrainian Nationals"};
+    TeamsFrame f{"Leicester City", "Arsenal"};
     auto d = decodeTeams(encodeTeams(f));
     FH_EXPECT(d.has_value());
-    FH_EXPECT(d->home == "Lighthouse APSL");
-    FH_EXPECT(d->away == "Ukrainian Nationals");
+    FH_EXPECT(d->home == "Leicester City");
+    FH_EXPECT(d->away == "Arsenal");
     FH_EXPECT(d->kit[0][0] == -1 && d->kit[1][3] == -1);   // no kits sent
 }
 
 FH_TEST(teams_kits_round_trip) {
-    TeamsFrame f{"Lighthouse APSL", "Ukrainian Nationals"};
+    TeamsFrame f{"Leicester City", "Arsenal"};
     f.kit[0][0] = 0x14326e; f.kit[0][2] = 0xf4f6fb;
     f.kit[1][1] = 0xf4f6fb; f.kit[1][2] = 0x111111;
     auto d = decodeTeams(encodeTeams(f));

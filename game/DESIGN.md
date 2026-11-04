@@ -4960,3 +4960,36 @@ targets 5-14 m, backing off at only 3-4 m/s: the hold move is `seek(…, 1/2)`, 
 brakeToArrive allows, and markers (mark tight 24%, protect the middle 18% of CB time) lift the
 centre-backs 5 m over their block spot. Then offsides (4.0 a team v 2.0), and the final third in
 possession (middle still 7-8 m deep).
+
+### 8.113 G5.16 — a clean start: pro only, the 2015/16 Premier League (mig 1042; scratch)
+
+James 11/4: "since we are now modeling that premier league season we should … not have lh but
+actual teams from that year as the test cases … blow it all up. i believe in fresh clean starts
+… all teams should be pro right now … we can keep the concepts though right? and skills etc".
+
+**Gone (mig 1042):** every game team that isn't one of the 20 PL 2015/16 sides — Lighthouse
+APSL, Ukrainian Nationals, Lighthouse XI, the curriculum sides (Sunday Albion, Harbor Athletic,
+Minnows U10, Tide U14) — with their 132 players and all their rows; the team-kind models
+(Lighthouse, Lighthouse APSL and its "shadow the line" / "preventive marking" variants,
+Ukrainian Nationals); the APSL / CASA team records and division quality (game_team_strength,
+a view over them, is empty with them); scripts/load_squads.py (it built only the LH and Ukies
+squads). The default fixture is Leicester City v Arsenal; tests use PL names.
+
+**Renamed:** "Semi Pro Standard" → **"Premier League 2015/16"**, the model all 20 sides play. Its
+concept demands are still the semi-pro standard 4-2-3-1's: they are the next thing to derive from
+PL data only, concept by concept (which of them the 2015/16 sides actually show, and how often).
+
+**Kept:** the taxonomy (concepts, techniques, attributes, skills, principles, phases, roles,
+officials, laws, sources, benchmarks), the global game-model params, formations, the concept code
+— LH's own tactics included (pack the middle, lock the door, shadow the line, the 9's chill,
+book-ends) as concepts nobody plays until a model's rows ask for them — the level code (for
+scaling down later), and the school / federation / formation models as a library no team plays.
+Earlier migrations (628-886) and git hold everything removed.
+
+**Why it helps the model.** One league, one season, real pro sides only: every gap between the
+game and the 2015/16 benchmarks points at the model — no semi-pro offset, no level ladder, no
+club's own tactic to explain it away.
+
+**Live.** Applied to fh_game_scratch only, with the other game migrations (919+) that live hasn't
+had. On live it is safe (no PL teams there: the daemon falls back to its built-in squads) and
+belongs in the same ship as the PL teams' load.

@@ -16,8 +16,8 @@
 namespace fh::game::server {
 
 struct MatchNames {
-    std::string team_home = "Lighthouse APSL";
-    std::string team_away = "Ukrainian Nationals";
+    std::string team_home = "Leicester City";   // mig 1042: pro only, the 2015/16 Premier League
+    std::string team_away = "Arsenal";
     std::string formation_home = "4-4-2";   // used only when a team names none
     std::string formation_away = "4-3-3";
 };

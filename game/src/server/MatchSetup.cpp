@@ -79,8 +79,8 @@ void loadMatchFromDb(GameServer::Config& cfg, const persistence::DbConfig& db,
                                                        : ", plays ",
                     cfg.roster_away.game_model.c_str());
     }
-    // Mig 636: a roster that names its formation plays it (Ukies 4-2-3-1,
-    // Lighthouse APSL 4-3-3), over GAME_FORMATION_*.
+    // Mig 636: a roster that names its formation plays it (the PL 15/16 sides
+    // their usual shape, load_pl1516.py), over GAME_FORMATION_*.
     for (auto [roster, spec, side] :
          {std::tuple{&cfg.roster_home, &cfg.formation_home, "home"},
           std::tuple{&cfg.roster_away, &cfg.formation_away, "away"}}) {
