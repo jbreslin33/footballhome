@@ -399,15 +399,16 @@ class RostersScreen extends Screen {
   }
 
   // "⚠ N registered, not on a team" — the members the placement rules
-  // could not place (youth with no birth date in LeagueApps); add them
-  // with ＋ from LA on a team.  `count == null` clears it.
+  // could not place (youth with no birth date in LeagueApps).  Fix the
+  // birth date in LeagueApps; the next sync places him (fh_youth_place).
+  // `count == null` clears it.
   _setTeamsUnassignedNote(count, names = []) {
     const el = this.find('#rs-teams-unassigned-note');
     if (!el) return;
     if (count == null || count <= 0) { el.innerHTML = ''; return; }
     const who = names.length ? ` — ${names.join(', ')}` : '';
     el.innerHTML = `<span style="font-size:0.78rem; color:#facc15; border:1px dashed #facc1588; border-radius:6px; padding:2px 8px; display:inline-block;">
-      ${this.escapeHtml(`⚠ ${count} registered, not on a team${who} · add with ＋ from LA`)}</span>`;
+      ${this.escapeHtml(`⚠ ${count} registered, not on a team${who} · add the birth date in LeagueApps and the next sync places him`)}</span>`;
   }
 
   // Render a child screen into `wrap`, strip its outer .screen chrome

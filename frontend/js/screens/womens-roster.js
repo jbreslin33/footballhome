@@ -563,7 +563,6 @@ class WomensRosterScreen extends RosterScreenBase {
     }
   }
 
-  assignEndpoint() { return '/api/womens-roster/assign'; }   // ＋ from LA on the Team pill
 
   // Move-to-roster <details> popover option handler — identical logic to
   // boys-roster.js/mens-roster.js's onMoveOptionClick (multi-assign:
