@@ -912,11 +912,10 @@ class RosterScreenBase extends Screen {
       const steps = ['proposed', 'pending_add', 'no_room'];
       // 🩹 Injured: no add while hurt (owner 11/3, Mars Milligan) — he
       // waits in NOT ON ROSTER and comes back here when the injury ends.
-      // 🏋 Practice Squad on the Team pill (mig 1031: no spot on this
-      // team) is the No Room step here — a mirror, set on the Team pill;
-      // a man already on another add step stays on that step.
-      const stepOf = (p) => steps.includes(sectionOf(p)) ? p.rosterStatus
-        : (p.squadStatus === 'practice_squad' ? 'awaiting_roster_spot' : null);
+      // Only real add steps (owner 11/4: winter youth, all 🏋 Practice
+      // Squad with no list, belong in NOT ON ROSTER — the Practice Squad →
+      // No Room mirror of mig 1031 is gone).
+      const stepOf = (p) => steps.includes(sectionOf(p)) ? p.rosterStatus : null;
       const list = rest.filter(p => stepOf(p) && !RosterScreenBase.HEALTH.people[p.personId]);
       // Shown empty too (owner 11/4: "we need the categories in cols for
       // rosters and teams even if empty").
@@ -970,7 +969,7 @@ class RosterScreenBase extends Screen {
       }
       const frozen = this.rosterFrozen(col.teamId);
       const shownAsAdd = (p) => !frozen && !RosterScreenBase.HEALTH.people[p.personId]
-        && (['proposed', 'pending_add', 'no_room'].includes(sectionOf(p)) || p.squadStatus === 'practice_squad');
+        && ['proposed', 'pending_add', 'no_room'].includes(sectionOf(p));
       const list = bucket.filter(p => p && !this.onLeagueList(col.teamId, p.personId)
         && !RosterScreenBase.countsAsOnRoster(p.rosterStatus) && !shownAsAdd(p));
       return hdr(list.length) + (list.length ? ordered(list).map(p => card(p)).join('') : NONE);
@@ -1030,8 +1029,7 @@ class RosterScreenBase extends Screen {
       // his team's NEEDS ADD; onboarding is the Team pill's; everyone else
       // left is simply NOT ON ROSTER.
       const hurt = !!RosterScreenBase.HEALTH.people[e.p.personId];   // 🩹 no add while injured
-      // 🏋 Practice Squad (mig 1031) is his team's NEEDS ADD › No Room.
-      const held = e.rows.some(r => ((['proposed', 'pending_add', 'no_room'].includes(section(r.p)) || r.p.squadStatus === 'practice_squad')
+      const held = e.rows.some(r => (['proposed', 'pending_add', 'no_room'].includes(section(r.p))
             && !this.rosterFrozen(r.col.teamId) && !hurt)
         || (!this.leagueListFor(r.col.teamId) && RosterScreenBase.countsAsOnRoster(r.p.rosterStatus)));
       if (listed || held) continue;
