@@ -494,13 +494,30 @@ BoysRoster::Result BoysRoster::run(bool includeAll,
     // sub-program (5039252 boys / 5039357 girls) — which is exactly
     // what `boysRecs` / `girlsRecs` (freshly synced above) reflect.
 
+    // Adults LA lists in a youth program (person_adult_overrides, mig
+    // 1047 — e.g. an APSL man registered under Boys Club) are not youth
+    // members: off this board and its counts.  Matched on any of their
+    // LA user ids (persons.la_user_id + person_la_user_ids aliases).
+    std::unordered_set<std::string> adultUids;
+    try {
+        auto* db = Database::getInstance();
+        pqxx::result rows = db->query(
+            "SELECT p.la_user_id AS uid FROM person_adult_overrides o JOIN persons p ON p.id = o.person_id "
+            " WHERE p.la_user_id IS NOT NULL "
+            "UNION SELECT a.la_user_id FROM person_adult_overrides o JOIN person_la_user_ids a ON a.person_id = o.person_id");
+        for (const auto& r : rows) if (!r["uid"].is_null()) adultUids.insert(r["uid"].c_str());
+    } catch (const std::exception& e) {
+        std::cerr << "[BoysRoster] adult overrides load failed: " << e.what() << std::endl;
+    }
+    auto isAdult = [&](const json& r) { return adultUids.count(userIdString(optUserId(r))) > 0; };
+
     std::vector<json> all;
     all.reserve(boysRecs.size() + girlsRecs.size());
     for (const auto& r : boysRecs)
-        if (isActive(r, includeAll))
+        if (isActive(r, includeAll) && !isAdult(r))
             all.push_back(shapePlayer(r, "boys",  seasonEndYear));
     for (const auto& r : girlsRecs)
-        if (isActive(r, includeAll))
+        if (isActive(r, includeAll) && !isAdult(r))
             all.push_back(shapePlayer(r, "girls", seasonEndYear));
 
     // ── Bucket per column (keyed by teamId-as-string) ────────────────
