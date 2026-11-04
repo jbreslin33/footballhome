@@ -112,7 +112,12 @@
     const flag = hit.data.inactive ? (showInactive ? small(inactivePill()) : '')
                : ghost ? pill(t('ghost', {}, '👻 GHOST'), t('ghost_tip', { days }, `No present/late mark and no yes RSVP in the last ${days} days`), '#3a1f1f', '#fca5a5', '#b91c1c')
                : noShow ? pill(t('no_show', {}, '🙈 NO-SHOW'), t('no_show_tip', { days }, `Says yes but only absent marks in the last ${days} days`), '#3a2e05', '#fbbf24', '#d97706') : '';
-    return `${small(flag)}<span title="${esc(lastTip)}" style="font-size:0.6rem; opacity:0.8; white-space:nowrap;">${esc(lastTxt)}</span>`;
+    // R:27 — every RSVP on record (owner 11/4), the number the boards rank by.
+    const total = Number(hit.data.rsvpTotal) || 0;
+    const rTxt = t('chip_rsvp_total', { n: total }, `R:${total}`);
+    const rTip = t('chip_rsvp_total_tip', { n: total }, `${total} RSVPs on record — games and practices`);
+    return `${small(flag)}<span title="${esc(rTip)}" style="font-size:0.6rem; font-weight:800; white-space:nowrap;">${esc(rTxt)}</span>`
+      + `<span title="${esc(lastTip)}" style="font-size:0.6rem; opacity:0.8; white-space:nowrap;">${esc(lastTxt)}</span>`;
   }
 
   // Has he (or his parent) ever answered an RSVP himself?  true / false,

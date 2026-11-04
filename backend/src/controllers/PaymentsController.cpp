@@ -781,7 +781,10 @@ Response PaymentsController::handleStanding(const Request& request) {
                    -- (or his parent) ever answered an RSVP himself?  Standing
                    -- defaults and admin overrides don't count.
                    EXISTS (SELECT 1 FROM fh_event_rsvps r
-                            WHERE r.person_id = p.id AND r.created_via = 'manual') AS answered
+                            WHERE r.person_id = p.id AND r.created_via = 'manual') AS answered,
+                   -- R:27 on the card (owner 2026-11-04): every RSVP on
+                   -- record for him, games and practices.
+                   (SELECT count(*) FROM fh_event_rsvps r WHERE r.person_id = p.id) AS rsvp_total
               FROM persons p
              WHERE p.id = ANY($1::int[]))SQL", {arr, std::to_string(WelcomeLog::kLighthouseClubId)})) {
             const double bal = r["balance"].is_null() ? 0.0 : r["balance"].as<double>();
@@ -793,6 +796,7 @@ Response PaymentsController::handleStanding(const Request& request) {
                           {"months_behind", (monthly > 0 && bal > 0) ? (int)std::ceil(bal / monthly - 1e-9) : 0}}},
                 {"inactive", r["inactive"].as<bool>()},
                 {"answered", r["answered"].as<bool>()},
+                {"rsvpTotal", r["rsvp_total"].as<long long>()},
                 {"activity", nullptr}};
         }
 
