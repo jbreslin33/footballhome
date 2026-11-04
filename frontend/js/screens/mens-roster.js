@@ -491,11 +491,11 @@ class MensRosterScreen extends RosterScreenBase {
         </div>
         ${catPills}
         ${this.renderRosterStatusTallies(col, players)}
-        ${this.renderCoachesStrip(col)}
         <div class="mr-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:6px; min-height:8px; min-width:${this.colBoxMinWidth()};">
           ${body}
         </div>
+        ${this.renderCoachesStrip(col)}
       </div>
     `;
   }

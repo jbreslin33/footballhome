@@ -910,16 +910,18 @@ class RosterScreenBase extends Screen {
           : (copy('board_sees_ok', { n: seesN, target }) || `👀 Sees every game: ${seesN} / ${target}`);
         return `<div style="font-size:0.78rem; font-weight:800; color:${c}; background:${bg}; border:1px solid ${c}; border-radius:4px; padding:4px 8px; margin:2px 0 4px;">${esc(text)}</div>`;
       })() : '';
-      return this.renderFromLaPicker(col)
-        + seesHtml
+      // ACTIVE first (owner 11/4: "ACTIVE SHOULD BE top"); the 👀 line and
+      // ＋ from LA sit at the foot, above the coaches strip.
+      return activeHtml
         + group(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard, 'active', '#e879f9', 'rgba(232,121,249,0.14)')
-        + activeHtml
         + ridersGroup
         + group(copy('board_callins_h') || '↔ CALL INS', cats.callin, 'callin', ...BLUE)
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
         + group(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, 'paper', ...AMBER)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
-        + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
+        + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY)
+        + seesHtml
+        + this.renderFromLaPicker(col);
     }
 
     const nameRow = (i, name, note, red = false) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
