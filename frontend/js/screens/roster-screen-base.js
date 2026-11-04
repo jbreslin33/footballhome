@@ -1083,8 +1083,15 @@ class RosterScreenBase extends Screen {
     // functions"); who plays or trains is the Team pill's job.  A roster
     // frozen this season (team_terms.roster_frozen, mig 1006 — youth in
     // fall) has no moves to make: ON ROSTER only.
-    if (this.rosterFrozen(col.teamId)) return officialHtml;
-    return officialHtml + needsAddSection() + needsDropSection() + projectedSection();
+    // NOT ON ROSTER (mig 1037): the board's members on no league roster
+    // whose home is this column — shown empty too, frozen or not.
+    const notOnRosterSection = () => {
+      const list = this.membersOffRosters(data).notOnRoster.filter(e => e.homeCol && Number(e.homeCol.teamId) === Number(col.teamId));
+      return head(copy('board_not_on_roster_h') || 'NOT ON ROSTER', list.length, '#f59e0b', 'rgba(245,158,11,0.14)')
+        + (list.length ? list.map((e, i) => this.renderMemberStackCard(e, i, list.length, col, data)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+    };
+    if (this.rosterFrozen(col.teamId)) return officialHtml + notOnRosterSection();
+    return officialHtml + needsAddSection() + needsDropSection() + notOnRosterSection() + projectedSection();
   }
 
   // This team's league roster is frozen under the lit season pill
@@ -1143,11 +1150,37 @@ class RosterScreenBase extends Screen {
             && !this.rosterFrozen(r.col.teamId) && !hurt)
         || (!this.leagueListFor(r.col.teamId) && RosterScreenBase.countsAsOnRoster(r.p.rosterStatus)));
       if (listed || held) continue;
+      // Listed under a team (mig 1037): the board's not_on_roster_home
+      // column (Men: Liga 1), else his own team (youth: his age group).
+      // No team at all = the left column.
+      const home = cols.find(c => c.notOnRosterHome);
+      e.homeCol = home || (e.rows[0] && e.rows[0].col) || null;
       stacks.notOnRoster.push(e);
     }
     const name = (e) => e.p.fullName || `${e.p.firstName || ''} ${e.p.lastName || ''}`.trim();
     Object.values(stacks).forEach(list => list.sort((a, b) => name(a).localeCompare(name(b))));
     return stacks;
+  }
+
+  // One member card for a NOT ON ROSTER list: works on his first team;
+  // further teams get their own status dropdown under it.
+  renderMemberStackCard(e, i, n, col, data) {
+    const esc = RosterScreenBase.escapeHtml;
+    const label = (c) => RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim());
+    const tags = e.rows.map(r => {
+      const st = RosterScreenBase.rosterStatusByCode(r.p.rosterStatus);
+      const text = label(r.col) + (st && st.boardSection === 'no_room' ? `: ${st.displayName}` : '');
+      return `<span style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
+        background:rgba(96,165,250,0.16); border:1px solid #60a5fa; color:#bfdbfe;">${esc(text)}</span>`;
+    }).join('');
+    const home = e.rows[0];
+    const p = home ? home.p : e.p;
+    const html = this.renderPlayer({ ...p, nameChipHtml: (p.nameChipHtml || '') + tags }, data.columns, home ? home.col : col, i + 1, n);
+    const more = e.rows.slice(1).map(r => {
+      const select = this.renderStatusSelect(r.p, r.col, this._canEditCoachesFor(r.col), { withHealth: false });
+      return select ? `<div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#cbd5e1; padding:0 6px;">${esc(label(r.col))} ${select}</div>` : '';
+    }).join('');
+    return html + more;
   }
 
   // The left column on the Roster pill (owner 2026-11-02): one team-free
@@ -1157,23 +1190,7 @@ class RosterScreenBase extends Screen {
     const esc = RosterScreenBase.escapeHtml;
     const copy = (tier) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || '';
     const stacks = this.membersOffRosters(data);
-    const label = (c) => RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim());
-    const card = (e, i, n) => {
-      const tags = e.rows.map(r => {
-        const st = RosterScreenBase.rosterStatusByCode(r.p.rosterStatus);
-        const text = label(r.col) + (st && st.boardSection === 'no_room' ? `: ${st.displayName}` : '');
-        return `<span style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
-          background:rgba(96,165,250,0.16); border:1px solid #60a5fa; color:#bfdbfe;">${esc(text)}</span>`;
-      }).join('');
-      const home = e.rows[0];
-      const p = home ? home.p : e.p;
-      const html = this.renderPlayer({ ...p, nameChipHtml: (p.nameChipHtml || '') + tags }, data.columns, home ? home.col : col, i + 1, n);
-      const more = e.rows.slice(1).map(r => {
-        const select = this.renderStatusSelect(r.p, r.col, this._canEditCoachesFor(r.col), { withHealth: false });
-        return select ? `<div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#cbd5e1; padding:0 6px;">${esc(label(r.col))} ${select}</div>` : '';
-      }).join('');
-      return html + more;
-    };
+    const card = (e, i, n) => this.renderMemberStackCard(e, i, n, col, data);
     const stack = (title, list, color, bg) => `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:0.8rem; font-weight:900;
            letter-spacing:0.06em; color:${color}; background:${bg}; border:1px solid ${color}; border-left:5px solid ${color};
            border-radius:4px; padding:5px 8px; margin:8px 0 4px;">
@@ -1182,7 +1199,9 @@ class RosterScreenBase extends Screen {
         + (list.length ? list.map((e, i) => card(e, i, list.length)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
     // One stack, shown empty too (owner 11/4).  Onboarding is the Team
     // pill's and No Room is each team's NEEDS ADD step (owner 11/3).
-    const body = stack(copy('board_not_on_roster_h') || 'NOT ON ROSTER', stacks.notOnRoster, '#f59e0b', 'rgba(245,158,11,0.14)');
+    // Only members with no team are left here; the rest sit under their
+    // team column's NOT ON ROSTER (mig 1037).
+    const body = stack(copy('board_not_on_roster_h') || 'NOT ON ROSTER', stacks.notOnRoster.filter(e => !e.homeCol), '#f59e0b', 'rgba(245,158,11,0.14)');
     return `<div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:6px; border-top:3px solid #475569; min-width:${this.colBoxMinWidth()};">
         <div style="display:flex; flex-direction:column; gap:6px; min-height:8px;">${body || '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'}</div>
       </div>`;
