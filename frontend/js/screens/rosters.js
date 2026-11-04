@@ -199,6 +199,12 @@ class RostersScreen extends Screen {
     }
   }
 
+  // Boys / Girls open in Rank order — the coach's ranking, set by RSVPs for
+  // the winter teams (owner 11/4: "not alpha order"); Men / Women A–Z.
+  _defaultSort() {
+    return (this.teamsPill === 'boys' || this.teamsPill === 'girls') ? 'rank' : 'alpha';
+  }
+
   _termForChildren() {
     return this.termInfo && this.teamsTerm ? { term: this.teamsTerm, teams: this.termInfo.teams || {}, frozen: this.termInfo.frozen || {}, starts: this.termInfo.starts || {} } : null;
   }
@@ -305,7 +311,7 @@ class RostersScreen extends Screen {
           { id: 'alpha', label: 'A–Z last name' },
           { id: 'rank',  label: 'Rank' },
         ],
-        selected: this.teamsSort || 'alpha',
+        selected: this.teamsSort || this._defaultSort(),
         onSelect: (id) => {
           if (id == null) return;
           this.teamsSort = id;
@@ -384,7 +390,7 @@ class RostersScreen extends Screen {
     if (typeof child.setIncludeInactive === 'function') {
       child.includeInactive = this.teamsIncludeInactive;
     }
-    child._sortOrder = this.teamsSort || 'alpha';   // the A–Z / Rank pill
+    child._sortOrder = this.teamsSort || this._defaultSort();   // the A–Z / Rank pill
     child._term = this._termForChildren();          // the season pill (mig 795)
     // Mens/Boys/Girls/Womens each compute an LA-driven Unassigned count
     // server-side (data.unassignedCount) — mirror it here so the Teams
