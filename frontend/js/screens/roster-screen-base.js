@@ -1047,8 +1047,7 @@ class RosterScreenBase extends Screen {
     return stacks;
   }
 
-  // One member card for a NOT ON ROSTER list: works on his first team;
-  // further teams get their own status dropdown under it.
+  // One member card for a NOT ON ROSTER list: works on his first team.
   renderMemberStackCard(e, i, n, col, data) {
     const esc = RosterScreenBase.escapeHtml;
     const label = (c) => RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim());
@@ -1060,12 +1059,9 @@ class RosterScreenBase extends Screen {
     }).join('');
     const home = e.rows[0];
     const p = home ? home.p : e.p;
-    const html = this.renderPlayer({ ...p, nameChipHtml: (p.nameChipHtml || '') + tags }, data.columns, home ? home.col : col, i + 1, n);
-    const more = e.rows.slice(1).map(r => {
-      const select = this.renderStatusSelect(r.p, r.col, this._canEditCoachesFor(r.col), { withHealth: false });
-      return select ? `<div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#cbd5e1; padding:0 6px;">${esc(label(r.col))} ${select}</div>` : '';
-    }).join('');
-    return html + more;
+    // The per-extra-team status dropdowns under the card went 11/4 (owner:
+    // "what is purpose? get rid of it") — the card's own dropdown is enough.
+    return this.renderPlayer({ ...p, nameChipHtml: (p.nameChipHtml || '') + tags }, data.columns, home ? home.col : col, i + 1, n);
   }
 
   // The left column on the Roster pill (owner 2026-11-02): one team-free
