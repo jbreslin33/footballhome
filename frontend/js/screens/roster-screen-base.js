@@ -637,10 +637,10 @@ class RosterScreenBase extends Screen {
     // Team pill (owner 2026-10-27: "team pill should show on their card what
     // official rosters they are on with labels") — one 📋 chip per column
     // whose league list has him.
-    const listChips = (p) => (data.columns || []).filter(c => c.teamId && this.onLeagueList(c.teamId, p.personId))
+    const listChips = (p) => (data.columns || []).filter(c => c.teamId && this.inTerm(c) && this.onLeagueList(c.teamId, p.personId))
       .map(c => `<span title="On the league's official roster for ${esc(c.label || '')}"
           style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
-                 background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">📋 ${esc(RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()))}</span>`).join(' ');
+                 background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">📋 ${esc(RosterScreenBase.teamChipName(RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()), 'list'))}</span>`).join(' ');
     // Roster pill: he's on this list but also on a team here whose list
     // doesn't have him, a gap the left column can't show because he is on
     // a roster.  Skipped when he's already headed there, it's only a
@@ -1741,6 +1741,17 @@ class RosterScreenBase extends Screen {
   // this column's games reach him with no per-game invite — a roster row
   // that grants games (full spot, team not call-up-only, mig 605) or a
   // ⭐ standing invite.  Replaces the column's 👀 Sees games filter pill.
+  // A youth team is named by its age ("U8"), so a chip naming it reads
+  // like a second age chip (owner 11/4: "ONLY 1 age chip … on all players
+  // everywhere").  Age-named teams get a word after the name; the card's
+  // plain U-chip stays the one age chip.
+  static teamChipName(name, kind) {
+    const n = String(name || '').trim();
+    if (!/^U\s*\d+$/i.test(n)) return n;
+    const copy = window.MessageCopy && MessageCopy.block('roster_sheet', kind === 'list' ? 'chip_age_team_list' : 'chip_age_team', { team: n });
+    return copy || (kind === 'list' ? `${n} list` : `${n} team`);
+  }
+
   renderSeesGamesChip(player, col) {
     let sees = player.seesGamesHere === true;
     if (!sees) {
@@ -1790,7 +1801,7 @@ class RosterScreenBase extends Screen {
       // to its name without the club.  The full name stays in the tooltip
       // — and everywhere that isn't a card.
       const boardLabel = String(t.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
-      const shortName = boardLabel || RosterScreenBase.dropClubName(name);
+      const shortName = RosterScreenBase.teamChipName(boardLabel || RosterScreenBase.dropClubName(name), 'team');
       return `<span title="Also on ${this.escape(name)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.18); color:#cbd5e1; white-space:nowrap;">${icon[category] || '⚽'} ${this.escape(shortName)}</span>`;
     }).join('');
   }
