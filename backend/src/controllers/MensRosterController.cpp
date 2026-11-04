@@ -569,6 +569,9 @@ Response MensRosterController::handleOfficialRosterRefresh(const Request& reques
                          SELECT n.person_id FROM official_roster_names n
                           WHERE n.source_id = $2 AND n.person_id IS NOT NULL))SQL",
                 teamId, sourceIdNum);
+            // ↔ The league dropped him (mig 1026): a man the last pull
+            // matched and this one doesn't loses his Call-in row here.
+            tx->exec_params("SELECT fh_official_roster_reconcile($1)", sourceIdNum);
         }
         db->commit(tx);
         if (!pulled.ok) return errorResponse(HttpStatus::OK, pulled.error);   // reason over gateway status

@@ -60,4 +60,5 @@ for row in query("SELECT id, external_team_id FROM official_roster_sources WHERE
     print(f'DELETE FROM official_roster_names WHERE source_id = {int(source_id)};')
     for i, name in enumerate(names):
         print(f'INSERT INTO official_roster_names (source_id, full_name, sort_order) VALUES ({int(source_id)}, {quoted(name)}, {i});')
+    print(f'SELECT fh_official_roster_reconcile({int(source_id)});')  # mig 1026: list drops end Call-ins
 print('COMMIT;')

@@ -167,6 +167,8 @@ Response OfficialRosterController::handleRefresh(const Request& request) {
             for (size_t i = 0; i < pulled.names.size(); i++)
                 db->query("INSERT INTO official_roster_names (source_id, full_name, sort_order) VALUES ($1::int, $2, $3::int)",
                           {sourceId, pulled.names[i], std::to_string(i)});
+            // ↔ The league dropped him (mig 1026): Call-in rows end.
+            db->query("SELECT fh_official_roster_reconcile($1::int)", {sourceId});
         }
 
         db->query(R"SQL(
