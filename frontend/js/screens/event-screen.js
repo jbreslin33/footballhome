@@ -1282,11 +1282,21 @@ class EventScreen extends Screen {
       const e = this.att && this.att.roster.get(r.person_id);
       return e && (e.status === 'present' || e.status === 'late');
     }).length;
-    const chipHtml = (r) => r.is_callup
-      ? `<span title="Invited${r.callup_from ? ' from ' + this.escapeHtml(r.callup_from) : ''}"
+    // An invited player stays in No response with the team (owner
+    // 2026-11-04: "if he is not with the others i will forget about him");
+    // the chip says which way he came, as the #teams Team pill does (mig
+    // 1024): ⭐ CALL-UP · Liga 1 / ⭐ CALL-DOWN · APSL / 🎟 INVITED.
+    const chipHtml = (r) => {
+      if (!r.is_callup) return r.is_coach ? `<span style="margin-left:6px; font-size:0.68rem; opacity:0.6;">coach</span>` : '';
+      const b = r.callup_badge || {};
+      const tier = b.dir === 'up' ? 'chip_callup_up' : b.dir === 'down' ? 'chip_callup_down' : 'chip_invited';
+      const from = b.from || r.callup_from || '';
+      const text = (window.MessageCopy && MessageCopy.block('event_center', tier, { from }))
+        || `🎟 INVITED${from ? ' · ' + from : ''}`;
+      return `<span title="Invited${r.callup_from ? ' from ' + this.escapeHtml(r.callup_from) : ''}"
                style="margin-left:6px; padding:0 6px; border-radius:999px; background:rgba(245,158,11,0.18);
-                      border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.62rem; font-weight:800;">🎟 INVITED</span>`
-      : (r.is_coach ? `<span style="margin-left:6px; font-size:0.68rem; opacity:0.6;">coach</span>` : '');
+                      border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.62rem; font-weight:800; white-space:nowrap;">${this.escapeHtml(text)}</span>`;
+    };
     if (!rsvps.length && !inactive.length) {
       return `<div class="ec-box" style="opacity:0.7;">Nobody is on this event's list — tag a team on the calendar event.</div>`;
     }

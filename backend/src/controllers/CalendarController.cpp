@@ -1296,6 +1296,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         'is_coach',       roster.is_coach,
                                                         'is_callup',      roster.is_callup,
                                                         'callup_from',    roster.callup_from,
+                                                        -- ⭐ CALL-UP / CALL-DOWN chip (mig 1024)
+                                                        'callup_badge',   CASE WHEN roster.is_callup
+                                                                               THEN fh_event_invite_badge(fe.id, roster.person_id) END,
                                                         'phone',          roster.phone,
                                                         'email',          roster.email,
                                                         -- Youth: the guardian who signs in and RSVPs
@@ -1564,7 +1567,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                           (combined.is_coach = EXISTS (SELECT 1 FROM fh_event_rsvps rc
                                                               WHERE rc.fh_event_id = fe.id AND rc.person_id = combined.person_id
                                                                 AND rc.role_choice = 'coach')) DESC,
-                                                          combined.is_coach ASC
+                                                          combined.is_coach ASC,
+                                                          -- A man with his own spot on the event's team AND an
+                                                          -- open invite is the team's, never a ⭐ call-up
+                                                          -- (owner 2026-11-04; was an arbitrary pick).
+                                                          combined.is_callup ASC
                                         ) roster
                                         WHERE roster.is_pickup_only = false
                                              OR roster.response = 'yes'
