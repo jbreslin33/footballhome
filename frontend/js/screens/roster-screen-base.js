@@ -956,10 +956,24 @@ class RosterScreenBase extends Screen {
     // fall) has no moves to make: ON ROSTER only.
     // NOT ON ROSTER (mig 1037): the board's members on no league roster
     // whose home is this column — shown empty too, frozen or not.
+    // Men (a board with a not_on_roster_home column): one list per person
+    // under that column.  Youth (no home column): per column — this team's
+    // own kids not on its list and not on an add step shown in this same
+    // column (a frozen column shows no add steps, so its Practice Squad
+    // kids are listed here; owner 11/4: "we need all la members showing").
     const notOnRosterSection = () => {
-      const list = this.membersOffRosters(data).notOnRoster.filter(e => e.homeCol && Number(e.homeCol.teamId) === Number(col.teamId));
-      return head(copy('board_not_on_roster_h') || 'NOT ON ROSTER', list.length, '#f59e0b', 'rgba(245,158,11,0.14)')
-        + (list.length ? list.map((e, i) => this.renderMemberStackCard(e, i, list.length, col, data)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+      const NONE = '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>';
+      const hdr = (n) => head(copy('board_not_on_roster_h') || 'NOT ON ROSTER', n, '#f59e0b', 'rgba(245,158,11,0.14)');
+      if ((data.columns || []).some(c => c.notOnRosterHome)) {
+        const list = this.membersOffRosters(data).notOnRoster.filter(e => e.homeCol && Number(e.homeCol.teamId) === Number(col.teamId));
+        return hdr(list.length) + (list.length ? list.map((e, i) => this.renderMemberStackCard(e, i, list.length, col, data)).join('') : NONE);
+      }
+      const frozen = this.rosterFrozen(col.teamId);
+      const shownAsAdd = (p) => !frozen && !RosterScreenBase.HEALTH.people[p.personId]
+        && (['proposed', 'pending_add', 'no_room'].includes(sectionOf(p)) || p.squadStatus === 'practice_squad');
+      const list = bucket.filter(p => p && !this.onLeagueList(col.teamId, p.personId)
+        && !RosterScreenBase.countsAsOnRoster(p.rosterStatus) && !shownAsAdd(p));
+      return hdr(list.length) + (list.length ? ordered(list).map(p => card(p)).join('') : NONE);
     };
     if (this.rosterFrozen(col.teamId)) return officialHtml + notOnRosterSection();
     return officialHtml + needsAddSection() + needsDropSection() + notOnRosterSection() + projectedSection();
