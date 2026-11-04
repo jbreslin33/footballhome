@@ -758,18 +758,25 @@ class RosterScreenBase extends Screen {
       const offChip = `<span style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
           background:rgba(245,158,11,0.16); border:1px solid #f59e0b; color:#fcd34d;">${esc(copy('board_wants_in_chip', { list: listName(familyCol) }) || `⚠ not on ${listName(familyCol)} list`)}</span>`;
       const addSteps = ['proposed', 'pending_add', 'no_room'];
+      // ⬇ NEEDS DROP mirrors the Roster pill's drop lanes (owner 11/4,
+      // "for informational purpose"): still on the league's list, so he
+      // still plays and counts toward 👀 Sees every game.
+      const dropSteps = ['drop', 'pending_drop'];
       const adding = cats.active.filter(p => addSteps.includes(sectionOf(p)));
-      const playing = cats.active.filter(p => !addSteps.includes(sectionOf(p)));
+      const dropping = cats.active.filter(p => dropSteps.includes(sectionOf(p)));
+      const playing = cats.active.filter(p => !addSteps.includes(sectionOf(p)) && !dropSteps.includes(sectionOf(p)));
+      const mirrorGroup = (list, steps, label, colors) => (list.length || shows('active'))
+        ? head(label, list.length, ...colors)
+          + RosterScreenBase.ROSTER_STATUSES.filter(st => steps.includes(st.boardSection)).map(st => {
+            const sub = list.filter(p => p.rosterStatus === st.code);
+            return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(p => card(p)).join('') : '';
+          }).join('')
+          + (list.length ? '' : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
+        : '';
       const activeHtml = head(copy('board_plays_h') || 'ACTIVE', playing.length, ...GREEN)
         + (playing.length ? ordered(playing).map(p => card(p, offList(p) ? offChip : undefined)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
-        + ((adding.length || shows('active'))
-          ? head(copy('board_team_needs_add_h') || copy('board_needs_add_h') || '🟢 NEEDS ADD', adding.length, ...BLUE)
-            + RosterScreenBase.ROSTER_STATUSES.filter(st => addSteps.includes(st.boardSection)).map(st => {
-              const sub = adding.filter(p => p.rosterStatus === st.code);
-              return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(p => card(p)).join('') : '';
-            }).join('')
-            + (adding.length ? '' : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
-          : '');
+        + mirrorGroup(adding, addSteps, copy('board_team_needs_add_h') || copy('board_needs_add_h') || '🟢 NEEDS ADD', BLUE)
+        + mirrorGroup(dropping, dropSteps, copy('board_team_needs_drop_h') || copy('board_dropping_h') || '⬇ NEEDS DROP', ORANGE);
       // ⭐ CALL-UP POOL is gone until the owner names who is in it (11/3:
       // "take all out of call up pool until i tell you who to put in
       // there … its obvious who is in pool if they are on APSL official
