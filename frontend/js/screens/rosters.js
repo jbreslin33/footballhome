@@ -109,17 +109,9 @@ class RostersScreen extends Screen {
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🎽 Teams</h1>
-        <p class="subtitle" id="rs-subtitle">Unassigned on the left, team rosters on the right — filter each side independently</p>
+        <p class="subtitle" id="rs-subtitle">Every member on a team — new members land on their home team (mig 1038)</p>
       </div>
       <div style="padding: var(--space-3) var(--space-2); display:flex; gap: var(--space-4); align-items:flex-start; flex-wrap:wrap;">
-        <section class="rs-panel" style="flex: 0 0 340px; max-width: 100%;">
-          <h2 class="rs-panel-title" id="rs-left-title">📦 Unassigned</h2>
-          <div id="rs-unassigned-pills" style="margin-bottom: var(--space-2);"></div>
-          <div id="rs-unassigned-caption" style="font-size:0.75rem; opacity:0.6; margin-bottom:var(--space-2);"></div>
-          <div id="rs-unassigned-body" style="min-height: 120px;">
-            <div style="padding: var(--space-3); opacity: 0.6; font-size: 0.9rem;">Loading…</div>
-          </div>
-        </section>
         <section class="rs-panel" style="flex: 1 1 480px; min-width: 0;">
           <h2 class="rs-panel-title" id="rs-teams-title">${(window.MessageCopy && MessageCopy.block('roster_sheet', 'board_panel_players')) || '👥 Players'}</h2>
           <div id="rs-teams-pills" style="margin-bottom: var(--space-2);"></div>
@@ -162,9 +154,10 @@ class RostersScreen extends Screen {
 
     this.teamsIncludeInactive = false;
     await Promise.all([this._ensureCoachedTeamIds(), this._loadTerms()]);
-    this._buildUnassignedPills();
+    // The left Unassigned / Members column is gone (owner 11/4): every
+    // member is placed on a team (fh_youth_place, fh_adult_place — mig
+    // 1038); anyone the rules cannot place shows in the ⚠ note.
     this._buildTeamsPills();
-    this._mountUnassignedPanel();
     this._mountTeamsPanel();
   }
 
@@ -230,41 +223,10 @@ class RostersScreen extends Screen {
     ];
   }
 
-  _setLeftPanelTitle() {
-    const title = this.find('#rs-left-title');
-    if (!title) return;
-    let view = 'roster';
-    try { view = localStorage.getItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY) === 'team' ? 'team' : 'roster'; } catch (e) { /* private mode */ }
-    title.textContent = view === 'roster'
-      ? ((window.MessageCopy && MessageCopy.block('roster_sheet', 'board_members_title')) || '👤 Members, not on a roster')
-      : '📦 Unassigned';
-    const sub = this.find('#rs-subtitle');
-    if (sub) sub.textContent = view === 'roster'
-      ? ((window.MessageCopy && MessageCopy.block('roster_sheet', 'board_members_subtitle')) || 'Members on no roster on the left, league rosters on the right — filter each side independently')
-      : 'Unassigned on the left, team rosters on the right — filter each side independently';
-  }
-
-  _buildUnassignedPills() {
-    const host = this.find('#rs-unassigned-pills');
-    if (!host) return;
-    if (!this._unassignedFilterBar) this._unassignedFilterBar = new FilterBar({ host });
-    this._unassignedFilterBar.setRows([{
-      name:     'unassigned-category',
-      chips:    this._categoryChips(),
-      selected: this.unassignedPill,
-      onSelect: (id) => {
-        if (id == null || id === this.unassignedPill) return;
-        this.unassignedPill = id;
-        this._buildUnassignedPills();
-        this._mountUnassignedPanel();
-      },
-    }]);
-  }
-
   _buildTeamsPills() {
     const host = this.find('#rs-teams-pills');
     if (!host) return;
-    if (!this._teamsFilterBar) this._teamsFilterBar = new FilterBar({ host });
+    if (!this._teamsFilterBar) this._teamsFilterBar = new FilterBar({ host, compact: 'compact', boxed: true });
     // Roster | Team (owner 2026-10-27: "a pill for roster and one for
     // teams") — the league side or the functional side of every column
     // (RosterScreenBase.renderColumnSections). Remembered per browser;
@@ -283,12 +245,9 @@ class RostersScreen extends Screen {
         onSelect: (id) => {
           if (id == null) return;
           try { localStorage.setItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY, id); } catch (e) { /* private mode */ }
-          // Both panels: the left one is the member stacks on Roster,
-          // Unassigned on Team.
           for (const child of this._mountedChildren) {
             if (child && typeof child.setBoardView === 'function') child.setBoardView(id);
           }
-          this._setLeftPanelTitle();
         },
       },
       {
@@ -407,22 +366,6 @@ class RostersScreen extends Screen {
     }[pill] || '';
   }
 
-  _mountUnassignedPanel() {
-    const host = this.find('#rs-unassigned-body');
-    if (!host) return;
-    this._setLeftPanelTitle();
-    const caption = this.find('#rs-unassigned-caption');
-    if (caption) caption.textContent = this._captionForPill(this.unassignedPill);
-
-    const child = this._instanceForPanel(this._unassignedInstances, this.unassignedPill);
-    if (!child) {
-      host.innerHTML = `<div style="padding: var(--space-3); color: var(--color-error);">Unknown category: ${this.unassignedPill}</div>`;
-      return;
-    }
-    child.columnScope = 'unassigned';
-    this._mountChildInto(host, child, `unassigned (${this.unassignedPill})`);
-  }
-
   _mountTeamsPanel() {
     const host = this.find('#rs-teams-body');
     if (!host) return;
@@ -449,38 +392,22 @@ class RostersScreen extends Screen {
     // child's own Unassigned column state.
     child.onDataLoaded = (data) => {
       if (seq !== this._teamsNoteSeq) return; // pill flipped since mount
-      this._setTeamsUnassignedNote(data?.unassignedCount, this.teamsPill);
+      const names = (data?.unassigned || []).map(p => p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim()).filter(Boolean);
+      this._setTeamsUnassignedNote(data?.unassignedCount, names);
     };
     this._mountChildInto(host, child, `teams (${this.teamsPill})`);
   }
 
-  // "N registered, not yet on a team" note under the Teams panel caption.
-  // `count == null` clears it (used while a fetch is in flight or on
-  // error). `pill` is optional — when given, the note becomes a button
-  // that jumps the Unassigned panel to the same category so admin can
-  // act on it immediately.
-  _setTeamsUnassignedNote(count, pill) {
+  // "⚠ N registered, not on a team" — the members the placement rules
+  // could not place (youth with no birth date in LeagueApps); add them
+  // with ＋ from LA on a team.  `count == null` clears it.
+  _setTeamsUnassignedNote(count, names = []) {
     const el = this.find('#rs-teams-unassigned-note');
     if (!el) return;
-    if (count == null || count <= 0) {
-      el.innerHTML = '';
-      return;
-    }
-    const label = `⚠ ${count} registered, not yet on a team`;
-    if (!pill) {
-      el.innerHTML = `<span style="font-size:0.78rem; color:#facc15;">${this.escapeHtml(label)}</span>`;
-      return;
-    }
-    el.innerHTML = `<button type="button" data-jump-unassigned="${pill}"
-      style="font-size:0.78rem; color:#facc15; background:none; border:1px dashed #facc1588; border-radius:6px; padding:2px 8px; cursor:pointer;">
-      ${this.escapeHtml(label)} — see Unassigned →
-    </button>`;
-    el.querySelector('[data-jump-unassigned]')?.addEventListener('click', () => {
-      if (this.unassignedPill === pill) return;
-      this.unassignedPill = pill;
-      this._buildUnassignedPills();
-      this._mountUnassignedPanel();
-    });
+    if (count == null || count <= 0) { el.innerHTML = ''; return; }
+    const who = names.length ? ` — ${names.join(', ')}` : '';
+    el.innerHTML = `<span style="font-size:0.78rem; color:#facc15; border:1px dashed #facc1588; border-radius:6px; padding:2px 8px; display:inline-block;">
+      ${this.escapeHtml(`⚠ ${count} registered, not on a team${who} · add with ＋ from LA`)}</span>`;
   }
 
   // Render a child screen into `wrap`, strip its outer .screen chrome
@@ -542,7 +469,7 @@ class PlayerRosterScreen extends RostersScreen {
   }
 
   _renderWelcomeCard() {
-    const host = this.find('#rs-unassigned-pills');
+    const host = this.find('#rs-teams-pills');
     if (!host) return;
 
     if (this._welcomeDismissed) {

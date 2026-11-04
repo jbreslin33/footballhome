@@ -45,6 +45,11 @@ class FilterBar {
    * @param {string} [opts.compact]   'compact' → smaller pills for
    *                                  dense screens (payments).  Default
    *                                  '' = standard size.
+   * @param {boolean} [opts.boxed]     true → each row is its own small
+   *                                  bordered box and the boxes sit side
+   *                                  by side, wrapping (owner 2026-11-04:
+   *                                  "put them in boxes by category so
+   *                                  it takes up less space").
    */
   constructor(opts) {
     if (!opts || !opts.host) {
@@ -52,6 +57,7 @@ class FilterBar {
     }
     this.host    = opts.host;
     this.compact = opts.compact === 'compact';
+    this.boxed   = opts.boxed === true;
     this.rows    = [];
     // Single delegated click handler on the host — chips are re-rendered
     // often and we don't want to leak listeners.
@@ -91,7 +97,9 @@ class FilterBar {
   /** Re-render the chip rows into the host, replacing prior markup. */
   render() {
     const rowsHtml = this.rows.map((row) => this._renderRow(row)).join('');
-    this.host.innerHTML = rowsHtml;
+    this.host.innerHTML = this.boxed
+      ? `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">${rowsHtml}</div>`
+      : rowsHtml;
   }
 
   /** Detach the delegated click handler.  Screens rarely need this. */
@@ -108,6 +116,11 @@ class FilterBar {
       const active = row.selected === chip.id;
       return this._renderChip(row.name, chip, active);
     }).join(' ');
+    if (this.boxed) {
+      return `<div class="fb-row" data-fb-row="${this._esc(row.name)}"
+                   style="display:inline-flex; flex-wrap:wrap; gap:4px; padding:4px;
+                          border:1px solid var(--color-border); border-radius:12px;">${chips}</div>`;
+    }
     return `<div class="fb-row" data-fb-row="${this._esc(row.name)}"
                  style="display:flex; flex-wrap:wrap; gap:6px;
                         margin-bottom:6px;">${chips}</div>`;
