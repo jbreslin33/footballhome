@@ -62,10 +62,12 @@ int YouthAgeGroups::defaultSeasonEndYear() {
 std::string YouthAgeGroups::ageGroupFromDob(const std::string& birthDateIso, int seasonEndYear) {
     if (birthDateIso.size() < 10) return {};
     try {
+        // US Soccer age = birth year only (owner 2026-11-04: "ONLY show
+        // their actual us soccer age on chips"): season end year − birth
+        // year, so 2018 = U9 in 2026-27.  The card chip only — team
+        // placement keeps the league's Aug 1 cutoff (fh_youth_place).
         const int yy = std::stoi(birthDateIso.substr(0, 4));
-        const int mm = std::stoi(birthDateIso.substr(5, 2));
-        const int cohort = (mm >= 8) ? yy + 1 : yy;
-        return std::string("U") + std::to_string(seasonEndYear - cohort);
+        return std::string("U") + std::to_string(seasonEndYear - yy);
     } catch (const std::exception&) {
         return {};
     }
