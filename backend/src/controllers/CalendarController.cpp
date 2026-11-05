@@ -690,16 +690,11 @@ Response CalendarController::handlePostAutoInvite(const Request& request) {
                 "VALUES ($1::int, $2::int, NULLIF($3, '0')::int, true) "
                 "ON CONFLICT (team_id, person_id) DO UPDATE SET active = true, "
                 "   from_team_id = COALESCE(EXCLUDED.from_team_id, team_auto_invites.from_team_id)", {t, p, f});
-            db->query(R"SQL(
-                INSERT INTO fh_event_invites (fh_event_id, person_id, from_team_id, recipient_person_id, channel)
-                SELECT fet.fh_event_id, $2::int, NULLIF($3, '0')::int, $2::int, 'auto'
-                  FROM fh_event_teams fet
-                  JOIN fh_events fe ON fe.id = fet.fh_event_id AND fe.kind = 'match'
-                  JOIN gcal_events ge ON ge.id = fe.gcal_event_id AND ge.deleted_at IS NULL AND ge.starts_at > now()
-                 WHERE fet.team_id = $1::int
-                   AND NOT EXISTS (SELECT 1 FROM fh_event_invites i
-                                    WHERE i.fh_event_id = fet.fh_event_id AND i.person_id = $2::int
-                                      AND i.revoked_at IS NULL))SQL", {t, p, f});
+            // Upcoming games AND practices of the team (mig 1073, owner
+            // 2026-11-05: "a standing call up should see the practice for
+            // the team they are standing call to") — a practice they see
+            // from their own roster row is skipped (fh_auto_invite_wanted).
+            db->query("SELECT fh_team_auto_invites_backfill($1::int, $2::int, NULLIF($3, '0')::int)", {t, p, f});
         } else {
             db->query("UPDATE team_auto_invites SET active = false WHERE team_id = $1::int AND person_id = $2::int", {t, p});
             const std::string uid = resolveUserId(db, gate.personId);

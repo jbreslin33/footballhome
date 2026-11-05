@@ -592,7 +592,7 @@ class RosterScreenBase extends Screen {
   // TEAM — the functional (RSVP) side, by columnCategoryOf; each card
   //   wears a 📋 chip per official roster he is on: PLAYS, ⭐ CALL-DOWNS
   //   (standing invites riding in from other columns), ↔ CALL INS,
-  //   PRACTICE SQUAD, 📄 NOT FUNCTIONAL (paper spots), 🩹 INJURED,
+  //   PRACTICE SQUAD, 📄 PAPER SPOT, 🩹 INJURED,
   //   💤 INACTIVE.
   // Every card keeps its true coach rank (#N) from the full column.
   // Section copy is message_templates kind roster_sheet (migs 770–775).
@@ -803,7 +803,7 @@ class RosterScreenBase extends Screen {
         + ridersGroup
         + group(copy('board_callins_h') || '↔ CALL INS', cats.callin, 'callin', ...BLUE)
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
-        + group(copy('board_not_functional_h') || '📄 NOT FUNCTIONAL', cats.paper, 'paper', ...AMBER)
+        + group(copy('board_not_functional_h') || '📄 PAPER SPOT', cats.paper, 'paper', ...AMBER)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
         + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
     }
