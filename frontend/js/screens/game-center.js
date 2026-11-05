@@ -5715,10 +5715,11 @@ class GameCenterScreen extends EventScreen {
     const tone = v === 'eligible' ? 'green' : v === 'projected' ? 'yellow' : 'red';
     // Eligible = Lighthouse colours (owner 11/5: "make the colors of names
     // lighthouse colors white and blue" → "flip it to blue writing with
-    // white border"): crest-blue letters outlined in white, on the pitch
-    // and off it (royal blue, owner 11/5).  Yellow / red still warn.
+    // white border" → royal blue → "make border yellow"): royal-blue
+    // letters outlined in the card's Lighthouse gold, on the pitch and
+    // off it.  Yellow / red names still warn.
     if (tone === 'green') {
-      const w = '#ffffff';
+      const w = '#f5d442';
       return `color:#4169e1;text-shadow:-1px -1px 0 ${w},1px -1px 0 ${w},-1px 1px 0 ${w},1px 1px 0 ${w},0 -1px 0 ${w},0 1px 0 ${w},-1px 0 0 ${w},1px 0 0 ${w};`;
     }
     if (onPitch) {
