@@ -69,6 +69,7 @@ long g_cy_n, g_cy_b[6], g_cy_10; double g_cy_len, g_cy_gain, g_cy_dur, g_cy_bl[6
 long g_ca_press, g_ca_cpress, g_ca_pass, g_ca_switch, g_ca_cross, g_ca_cutback, g_ca_drib, g_ca_dribok, g_ca_ret, g_ca_rtp, g_ca_carry10;
 long g_dsh_gs[10], g_dsh_gs4[10], g_dgr[4][7], g_dgr_n[4][7], g_dgr_why[7][128], g_dgr_wn[7];   // G5.19 goal-side of the ball
 long g_dsh_n[10][7], g_dsh_f[10], g_dsh_why[7][128], g_dsh_wn[7]; double g_dsh_s[10][7], g_dsh_m[10], g_dsh_an[10][7], g_dsh_ot[10][7], g_dsh_da[10][7], g_dsh_ht[10][7], g_dsh_hp[10][7], g_dsh_hv[10][7]; long g_dsh_hn[10][7]; double g_dsh_hw[10][7], g_dsh_hs[10][7], g_dsh_hd[10][7];   // G5.15 defending shape by ball band
+long g_ph[6], g_ph_n;   // G5.21 phases of play
 long g_cyb_an[3], g_cyb_ar[3][7]; double g_cyb_ad[3][7], g_cyb_ag[3][7]; long g_cyb, g_cyb_fe[8][2], g_cyb_why[128], g_cyb_rn[7], g_cyb_rgs[7], g_cyb_cbwhy[128], g_cyb_cbn; double g_cyb_rd[7]; double g_cyb_du, g_cyb_m, g_cyb_gs0, g_cyb_pass, g_cyb_gs1, g_cyb_near0, g_cyb_close, g_cyb_eng, g_cyb_w5;   // G5.20 the carry through the block
 long g_en, g_ens[3], g_en3, g_en3_bs[3]; double g_en_gs, g_en_deep, g_en3_gs, g_en3_deep, g_en3_b, g_en3_line, g_en3_gsb[3];   // G5.19 entries inside 30 m
 long g_fa_n[7], g_fa_hn[7]; double g_fa_a[7], g_fa_v[7], g_fa_5[7], g_fa_5f[7], g_fa_h[7], g_fa_hv[7];   // G5.15 front men by possession age
@@ -1105,6 +1106,7 @@ int main(int argc, char** argv) {
                     std::fprintf(stderr, "   p%d t%d #%d at %.1f,%.1f why %s tgt %.1f,%.1f move %.2f,%.2f\n", j, q.team, s.brain().numberOf(j), q.pos.x.toDouble(), q.pos.y.toDouble(),
                                  ai::kWhyNames[static_cast<int>(od.why) & 127], od.target.x.toDouble(), od.target.y.toDouble(), od.move.move.x.toDouble(), od.move.move.y.toDouble());
                 }
+            if (k % 6 == 0) { for (std::uint8_t tm = 0; tm < 2; ++tm) ++g_ph[static_cast<int>(s.brain().phaseOf(tm))]; ++g_ph_n; }   // G5.21
             if (k % 6 == 0 && s.world().outStage() == 0 && s.world().restartTeam() == 0xFF && s.world().lastTouchTeam() < 2) {
                 // G5.12: possession as DFL flags it — the last team on the ball, in play.
                 const int a = s.world().lastTouchTeam();
@@ -3168,6 +3170,11 @@ int main(int argc, char** argv) {
                                 e / (2.0 * nm), 100.0 * g_ens[0] / e, 100.0 * g_ens[1] / e, 100.0 * g_ens[2] / e, g_en_gs / e, g_en_deep / e,
                                 g_en3_b / e3, g_en3_gs / e3, g_en3_deep / e3, g_en3_line / e3,
                                 g_en3_gsb[0] / std::max(1L, g_en3_bs[0]), g_en3_gsb[1] / std::max(1L, g_en3_bs[1]), g_en3_gsb[2] / std::max(1L, g_en3_bs[2]));
+                }
+                if (g_ph_n) {
+                    std::printf("   PHASES (share of time, both teams):");
+                    for (int q = 0; q < ai::kPhaseCount; ++q) std::printf(" %s %.1f%%;", ai::kPhaseNames[q], 50.0 * g_ph[q] / g_ph_n);
+                    std::printf("\n");
                 }
                 if (g_cyb) {
                     const double c = g_cyb;

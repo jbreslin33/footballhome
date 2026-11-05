@@ -18,6 +18,7 @@
 
 #include "ai/Concept.hpp"
 #include "ai/Formation.hpp"
+#include "ai/TeamPhase.hpp"
 #include "core/World.hpp"
 
 #include <array>
@@ -203,6 +204,9 @@ public:
             return static_cast<std::int32_t>((p.fixed(key, milli) * math::Fixed64::fromInt(core::kTickRate)).raw >>
                                              math::Fixed64::FRAC_BITS);
         };
+        // G5.21 (§8.119): the phases of play.
+        phase_params_.transition_ticks = static_cast<std::uint32_t>(ticks("physics.phase.transition_s", 6000));
+        phase_params_.min_dwell_ticks = static_cast<std::uint32_t>(ticks("physics.phase.min_dwell_s", 300));
         restart_play_.throw_look_ticks = ticks("physics.restart.throw_look_s", 1000);
         restart_play_.throw_wait_ticks = ticks("physics.restart.throw_wait_s", 4000);
         restart_play_.corner_look_ticks = ticks("physics.restart.corner_look_s", 1500);
@@ -282,7 +286,14 @@ public:
         return ratings_[slot];
     }
 
-    // Orders for ONE slot given the current world. Pure + deterministic.
+    // G5.21 (§8.119): the state machines step once a tick — the team phases
+    // (then, phase by phase, every player's). Run lazily by the first
+    // ordersFor() of a tick, so every driver gets it and probes later in the
+    // same tick only read; a tick that goes backwards (a new match) restarts them.
+    void think(const core::World& world) const;
+    Phase phaseOf(std::uint8_t team) const { return teams_[team & 1].phase(); }
+    // Orders for ONE slot given the current world. Deterministic (the state
+    // machines advance once a tick, see think()).
     Orders ordersFor(core::SlotIndex slot, const core::World& world) const;
     // His formation spot shifted with the ball (harness, G4.80): where his
     // position alone would put him — no duty, no concept.
@@ -298,6 +309,10 @@ public:
     // Harness probe: the anchor after decide's block rules, before the swarm.
     math::Vec2 debugAnchor(core::SlotIndex slot) const { return dbg_anchor_[slot]; }
     mutable math::Vec2 dbg_anchor_[32]{};
+    // G5.21: the state machines (think()).
+    mutable TeamAgent teams_[2];
+    mutable std::uint64_t think_tick_ = ~0ull;
+    PhaseParams phase_params_{};
 
     // The flight read (G4.49): for a free live ball, where and when each
     // player can first take it — the ball's own path walked tick by tick

@@ -766,7 +766,25 @@ const std::vector<Brain::CallOut>& Brain::calls(std::uint8_t team, const World& 
     return out;
 }
 
+void Brain::think(const World& world) const {
+    const std::uint64_t now = world.tickCount();
+    if (think_tick_ != ~0ull && now == think_tick_) return;
+    if (think_tick_ == ~0ull || now < think_tick_) {
+        for (std::uint8_t t = 0; t < 2; ++t) {
+            teams_[t] = TeamAgent{};
+            teams_[t].team = t;
+            teams_[t].machine.init(teamStartState(), teamGlobalState(), now);
+        }
+    }
+    think_tick_ = now;
+    for (auto& a : teams_) {
+        const TeamCtx c{world, setup_.team_of_slot, phase_params_, now};
+        a.machine.update(a, c);
+    }
+}
+
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
+    think(world);
     const ConceptBook& book_ = bookOf(slot);   // G4.76: his team's model
     flightRead(world);
     directOpponents(world, world.tickCount() / 30);
