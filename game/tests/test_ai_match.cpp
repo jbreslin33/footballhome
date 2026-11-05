@@ -9,7 +9,6 @@
 #include "ai/Brain.hpp"
 #include "ai/Formation.hpp"
 #include "core/CanonicalHash.hpp"
-#include "core/Levels.hpp"
 #include "core/World.hpp"
 
 #include <cstdio>
@@ -56,8 +55,10 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // possession = the phase + player state machines, the block at real spots.
 // Re-locked G5.22 (2026-11-05): the whole old brain purged; in possession and
 // the keeper rebuilt as player states (support at real spots, on-ball by data).
-constexpr std::uint64_t kGolden3v3   = 0x136660c8f1901613ULL;
-constexpr std::uint64_t kGolden11v11 = 0x387709ecb6591802ULL;
+// Re-locked G5.23 (2026-11-05): levels, skill bands, sheets deleted; the hash
+// mixes every player's skill.
+constexpr std::uint64_t kGolden3v3   = 0xac561633003ddf73ULL;
+constexpr std::uint64_t kGolden11v11 = 0xf8583b0f18de6122ULL;
 
 struct Rig {
     World world;

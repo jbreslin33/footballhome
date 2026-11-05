@@ -34,8 +34,6 @@ add_library(game_core STATIC
   src/core/World.cpp
   src/core/Officials.cpp
   src/core/CanonicalHash.cpp
-  src/core/ConceptRegistry.cpp
-  src/core/PlayerSheet.cpp
 )
 target_link_libraries(game_core PUBLIC game_math)
 
@@ -69,9 +67,6 @@ add_library(game_ai STATIC
 )
 target_link_libraries(game_ai PUBLIC game_core)
 
-# Calibration harness v0 [FH] — headless AI-vs-AI matches + stats (G2.5).
-add_executable(fh-game-calibrate src/tools/calibrate_main.cpp)
-target_link_libraries(fh-game-calibrate PRIVATE game_ai)
 
 # Lighthouse Field pitch-placement sweep [FH] — offline planning tool fed by
 # game/scripts/export_lighthouse_planner_input.py (no game libraries).
@@ -84,7 +79,6 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(PQXX REQUIRED IMPORTED_TARGET libpqxx)
 add_library(game_persistence STATIC
   src/persistence/FormationStore.cpp
-  src/persistence/SheetStore.cpp
 )
 target_compile_definitions(game_persistence PUBLIC pqxx_have_source_location=0)
 target_link_libraries(game_persistence PUBLIC game_ai PkgConfig::PQXX)
@@ -108,9 +102,6 @@ target_link_libraries(fh-game PRIVATE game_match)
 add_executable(fh-game-match src/tools/match_main.cpp)
 target_link_libraries(fh-game-match PRIVATE game_match)
 
-# G4.83: roll every player's character sheet (mig 793).
-add_executable(fh-game-roll src/tools/roll_main.cpp)
-target_link_libraries(fh-game-roll PRIVATE game_persistence)
 
 # ── tests ──────────────────────────────────────────────────────────────
 enable_testing()
@@ -139,8 +130,6 @@ game_test(test_websocket_handshake)
 game_test(test_websocket_transport)
 game_test(test_jwt_verifier)
 game_test(test_game_server)
-game_test(test_player_attributes)
-game_test(test_player_sheet)
 game_test(test_officials)
 game_test(test_restarts)
 game_test(test_aerial)

@@ -1,6 +1,6 @@
 // game/src/server/GameServer.hpp
 //
-// The match daemon's brain: owns the authoritative World, speaks fh-game.v1
+// The match daemon's brain: owns the authoritative World, speaks fh-game.v2
 // through an INetworkTransport, and enforces the slot-claim rules. One
 // GameServer == one match (per-match daemon orchestration arrives later,
 // [v1] pattern).
@@ -20,7 +20,6 @@
 
 #include "ai/Brain.hpp"
 #include "core/ModelParams.hpp"
-#include "core/Skill.hpp"
 #include "persistence/FormationStore.hpp"
 #include "common/IdTypes.hpp"
 #include "core/World.hpp"
@@ -51,37 +50,20 @@ public:
         // built-ins. Config, not state: loaded once at boot.
         ai::FormationSpec formation_home;
         ai::FormationSpec formation_away;
-        // Skill levels (G4.3) + the match's noise seed.
-        core::LevelParams level_home;
-        core::LevelParams level_away;
-        std::uint8_t level_home_id = 0;  // kLevelNames index (for the wire)
-        std::uint8_t level_away_id = 0;
+        // The match's noise seed.
         std::uint64_t match_seed = 0;
         // users.id values holding the admin capability (club authz chain
         // users→admins; loaded at boot by main.cpp).
         std::vector<std::int64_t> admin_user_ids;
-        // Fictional demo rosters (mig 628): names + per-slot speed +
-        // concept overrides. Empty = generic slots at the band defaults.
+        // The teams (names, positions, kits, top speeds). Empty = generic slots.
         persistence::DemoTeam roster_home;
         persistence::DemoTeam roster_away;
-        // Game models (mig 652; were the style presets): resolved demand
-        // overlays. Wire id = index (PRESETS frame). Empty = the DB was
-        // down; no PRESETS frame.
-        std::vector<persistence::GameModel> models;
         // G4.32: the club DB, for an admin RELOAD_ROSTERS (lineups,
         // attributes, roles, kits edited from the page). Unset = no reload
         // (tests, DB-down boots).
         std::optional<persistence::DbConfig> db;
-        // G4.33: game-model numbers (game_model_params) for the Skill and
-        // Concept classes; empty = their seeded defaults.
+        // The physics and player-state numbers (game_model_params); empty = code defaults.
         core::ModelParams model_params;
-        // G4.76: the concept numbers a model can set (HUD list, keys + units).
-        std::vector<persistence::ParamInfo> param_info;
-        // G4.57: direct-opponent pairs by position number (DB).
-        std::vector<std::pair<int, int>> direct_pairs;
-        // G4.58: phases of play (DB) for the admin RUN_PHASE frame.
-        std::vector<persistence::Phase> phases;
-        std::vector<persistence::PhasePosition> phase_positions;
         // G4.88 (mig 822): the match officials — empty = a 50-rated crew.
         std::vector<persistence::CrewMember> crew;
     };
@@ -90,12 +72,6 @@ public:
 
     // Advance one tick and broadcast one snapshot. The caller owns pacing.
     void tickOnce();
-    // G4.58: set up phase `id` (cfg.phases) for `team` in possession —
-    // all 22 placed in their organized shapes for that ball, then the
-    // restart (keeper's ball / corner / kick-off) or the ball at the feet
-    // of the team's nearest outfielder (open play). Coaching's phase of play.
-    void runPhase(std::uint8_t team, std::size_t id);
-
     // G4.61: sim speed, % of real time (0 = paused). The daemon's loop
     // paces ticks by it; the physics per tick never changes. Admins set
     // it live (SPEED 0x31); everyone watching is told.
@@ -130,39 +106,9 @@ private:
 
     // slot → owning client. Absent key = AI-controlled (idle in G0).
     std::unordered_map<std::uint8_t, ClientId> slot_owner_;
-    // Current level ids (mutable via admin MATCH_SETTINGS).
-    std::uint8_t level_id_[2] = {0, 0};
     std::uint16_t speed_pct_ = 100;
-    // Per-slot names + live concept RATINGS (served via ROSTER frames):
-    // what each player PLAYS = min(his team model's demand, his ability).
-    std::vector<std::string> slot_names_;
-    std::vector<core::ConceptRatings> concept_ratings_;
-    std::vector<core::ConceptRatings> ability_;   // what each player KNOWS
-    int team_model_[2] = {-1, -1};                // index into cfg_.models
-    // G4.74: live demand changes from the HUD on top of the model (-1 =
-    // the model / default); cleared when the team gets another model.
-    core::PresetOverlay live_demand_[2] = {filledOverlay(), filledOverlay()};
-    // G4.76: live (unsaved) numbers per team, milli by key — "concept.<code>.
-    // <param>" or "ladder.<zone>.<rung>" (percent).
-    std::map<std::string, std::int64_t> live_params_[2];
-    static core::PresetOverlay filledOverlay() { core::PresetOverlay o; o.fill(-1); return o; }
+    std::vector<std::string> slot_names_;   // served via ROSTER frames
     void applyRosters();
-    // Ability for one slot under a band: the band's defaults, then the
-    // legacy mask, then the player's own rows.
-    core::ConceptRatings buildAbility(std::uint8_t slot, const core::LevelParams& band) const;
-    // Re-derive one team's played ratings from ability + its model.
-    void recomputeKnowledge(bool home);
-    // G4.74: one team's demands (and where each comes from) to one admin,
-    // or (all) to every admin.
-    void sendDemands(std::uint8_t team, ClientId to, bool all = false);
-    // G4.76 (1.15): the team's concept numbers + 3-rule weights, to one
-    // admin or all of them.
-    void sendParams(std::uint8_t team, ClientId to, bool all = false);
-    // G4.30: each rostered player's level = his team band bent by his
-    // attributes (core::levelForPlayer), into World + Brain. Re-run after
-    // every band change (MATCH_SETTINGS) — attributes are the roster's.
-    void applySlotLevels();
-    core::SkillSet skills_;   // G4.33: one class per attribute
     // G4.32: send the TEAMS frame (names + kits) to one client / everyone.
     void sendTeams(ClientId id);
     void broadcastTeams();
@@ -183,9 +129,6 @@ private:
     int signal_official_ = -1;
     std::uint8_t signal_code_ = 0;
     std::uint64_t signal_until_tick_ = 0;
-    // A phase's mark for one slot (game_phase_positions), if it has a row.
-    bool phaseMark(const std::string& code, std::uint8_t team, std::uint8_t slot, math::Vec2& at) const;
-    void holdCornerShape(std::uint8_t team);
     std::unordered_map<ClientId, bool> brain_watchers_;
     void sendBrain();
     // Connected clients, for snapshot fan-out. Keyed map (not vector) so

@@ -1,7 +1,7 @@
 // footballhome game - JWT (HS256) verifier
 //
 // Wire contract: every /sim WebSocket connection presents a JWT via
-//     Sec-WebSocket-Protocol: fh-game.v1.bearer.<token>
+//     Sec-WebSocket-Protocol: fh-game.v2.bearer.<token>
 // (see DESIGN.md §7, §13). The token is minted by footballhome_backend
 // using the same JWT_SECRET shared with this process. This class checks
 // the signature, decodes the payload, and returns the sim-relevant claims.

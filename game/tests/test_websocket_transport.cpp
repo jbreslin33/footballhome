@@ -227,7 +227,7 @@ std::string handshakeRequest(std::string_view jwt) {
     r.append("Connection: Upgrade\r\n");
     r.append("Sec-WebSocket-Version: 13\r\n");
     r.append("Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n");
-    r.append("Sec-WebSocket-Protocol: fh-game.v1.bearer.");
+    r.append("Sec-WebSocket-Protocol: fh-game.v2.bearer.");
     r.append(jwt);
     r.append("\r\n\r\n");
     return r;
@@ -317,7 +317,7 @@ FH_TEST(accepts_valid_jwt_and_fires_onconnect) {
     const auto resp = pumpUntil(tx, cfd, 64, 500);
     FH_EXPECT(contains(resp, "101 Switching Protocols"));
     FH_EXPECT(contains(resp, "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
-    FH_EXPECT(contains(resp, "Sec-WebSocket-Protocol: fh-game.v1.bearer"));
+    FH_EXPECT(contains(resp, "Sec-WebSocket-Protocol: fh-game.v2.bearer"));
     FH_EXPECT(got_id != 0);
     FH_EXPECT_EQ(got_person, 42);
     FH_EXPECT_EQ(tx.clientCount(), 1u);

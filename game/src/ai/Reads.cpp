@@ -3,7 +3,7 @@
 #include "ai/Reads.hpp"
 
 #include "core/Ball.hpp"
-#include "core/Levels.hpp"
+#include "core/PlayerSkill.hpp"
 #include "math/FixedMath.hpp"
 
 #include <algorithm>
@@ -81,7 +81,7 @@ std::uint8_t aimedCarry(const Vec3& from, const Vec2& to, Fixed64 max_m) {
     return static_cast<std::uint8_t>(m < 1 ? 1 : (m > 255 ? 255 : m));
 }
 
-Fixed64 rangeFor(const core::LevelParams& lv, Fixed64 max_m) {
+Fixed64 rangeFor(const core::PlayerSkill& lv, Fixed64 max_m) {
     const Fixed64 r = Fixed64::fromInt(lv.kick_range_m);
     return lv.kick_range_m > 0 && r < max_m ? r : max_m;
 }
@@ -143,7 +143,7 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
     Fixed64 react[64];
     for (SlotIndex i = 0; i < n && i < 64; ++i) {
         const Fixed64 full = world.body(i).reaction() +
-                             Fixed64::fromInt(world.levelOf(i).perception_delay_ticks) * core::kTickDt;
+                             Fixed64::fromInt(world.skillOf(i).perception_delay_ticks) * core::kTickDt;
         react[i] = full > since ? full - since : Fixed64::zero();
     }
     const Fixed64 box_x = half_x_ - Fixed64::fromFraction(33, 2);   // 16.5 m
@@ -205,7 +205,7 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
             // at 15 m/s+ on passes meant for him once the read stopped
             // re-charging the reaction).
             if (!header && !gk && p.team == rb.ours) {
-                const std::int32_t c = world.levelOf(i).control_speed_mps;
+                const std::int32_t c = world.skillOf(i).control_speed_mps;
                 const Fixed64 cs = core::controlSpeedAt(Fixed64::fromInt(c), pos.z);   // G4.94
                 if (c > 0 && sp2 > cs * cs) continue;
             }
@@ -241,9 +241,9 @@ bool Reads::getInLine(SlotIndex slot, const World& world, Vec2& at) const {
     const auto& p = world.player(slot);
     const Fixed64 since = Fixed64::fromInt(static_cast<std::int64_t>(world.tickCount() - world.flightTick())) * core::kTickDt;
     const Fixed64 full = world.body(slot).reaction() +
-                         Fixed64::fromInt(world.levelOf(slot).perception_delay_ticks) * core::kTickDt;
+                         Fixed64::fromInt(world.skillOf(slot).perception_delay_ticks) * core::kTickDt;
     const Fixed64 react = full > since ? full - since : Fixed64::zero();
-    const std::int32_t c = world.levelOf(slot).control_speed_mps;
+    const std::int32_t c = world.skillOf(slot).control_speed_mps;
     const Fixed64 cs = Fixed64::fromInt(c);
     Vec2 pos{b.pos.x, b.pos.y}, vel{b.vel.x, b.vel.y};
     // On the line first, then along it: until his body is on its line he takes

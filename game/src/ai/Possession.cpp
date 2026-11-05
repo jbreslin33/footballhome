@@ -85,7 +85,7 @@ public:
                     }
                     if (best < 0 || free > bf) { best = j; bf = free; }
                 }
-                const Fixed64 reach = rangeFor(w.levelOf(v.slot), Fixed64::fromInt(45));
+                const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(45));
                 if (best >= 0) {
                     const Loft lf = loftTo(w.ballFlight(), w.player(static_cast<std::uint8_t>(best)), me.pos, reach);
                     o.target = lf.at; o.carry_m = lf.carry_m;
@@ -104,7 +104,7 @@ public:
         // 3. The best safe pass: ground first, a loft to a man far off; the
         // race read decides "safe" (one of ours first) [Buckland].
         int best = -1; Fixed64 bs{}; bool loft = false; Loft blf{};
-        const Fixed64 reach = rangeFor(w.levelOf(v.slot), Fixed64::fromInt(50));
+        const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(50));
         for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
             if (j == v.slot || c.team_of_slot[j] != v.team) continue;
             const auto& m = w.player(j);
@@ -142,7 +142,7 @@ public:
         if (v.keeper || own_end < P.clear_from_m) {
             const Fixed64 len = v.keeper ? P.keeper_long_m : Fixed64::fromInt(45);
             o.target = Vec2{sp.x + v.sg * len, sp.y};
-            o.carry_m = aimedCarry(me.pos, o.target, rangeFor(w.levelOf(v.slot), len));
+            o.carry_m = aimedCarry(me.pos, o.target, rangeFor(w.skillOf(v.slot), len));
             o.move.move = math::normalized(Vec2{o.target.x - sp.x, o.target.y - sp.y});
             o.action = Action::LoftedKick;
             o.why = v.keeper ? Why::KeeperPunt : Why::Clear;

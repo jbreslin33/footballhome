@@ -4,7 +4,7 @@
 
 #include "ai/Steering.hpp"
 #include "core/Ball.hpp"
-#include "core/Levels.hpp"
+#include "core/PlayerSkill.hpp"
 #include "math/FixedMath.hpp"
 
 #include <algorithm>
@@ -244,7 +244,7 @@ bool Brain::takeRestart(SlotIndex slot, const World& world, Orders& out) const {
             const Vec2 target{me.pos.x + sg * restart_play_.keeper_long_m, me.pos.y};
             out.move.move = seek(me.pos, target, Fixed64::fromFraction(1, 10));
             out.action = Action::LoftedKick;
-            out.carry_m = aimedCarry(me.pos, target, rangeFor(world.levelOf(slot), restart_play_.keeper_long_m));
+            out.carry_m = aimedCarry(me.pos, target, rangeFor(world.skillOf(slot), restart_play_.keeper_long_m));
             out.why = Why::KeeperPunt;
             out.target = target;
         }
@@ -345,7 +345,7 @@ bool Brain::playCorner(SlotIndex slot, const World& world, Orders& out) const {
     }
     out.move.move = math::normalized(Vec2{at.x - sp.x, at.y - sp.y});
     out.action = Action::LoftedKick;
-    out.carry_m = aimedCarry(me.pos, at, rangeFor(world.levelOf(slot), Fixed64::fromInt(60)));
+    out.carry_m = aimedCarry(me.pos, at, rangeFor(world.skillOf(slot), Fixed64::fromInt(60)));
     if (best >= 0) out.pass_to = static_cast<std::uint8_t>(best);
     out.other = static_cast<std::int16_t>(best);
     out.target = at;
@@ -472,8 +472,7 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
 // v ≤ √(v_end² + 2·b·d); the shape caps (G5.5 / G5.10 / G5.14, DFL-fitted).
 void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
     switch (o.why) {
-        case Why::RunInBehind: case Why::BlindSideRun: case Why::KeepRunning:
-        case Why::GiveAndGo: case Why::Human: case Why::Tackle: case Why::KeeperDive:
+        case Why::Human: case Why::KeeperDive:
             return;
         default: break;
     }
@@ -491,9 +490,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
     if (math::dot(o.move.move, d) < mlen * dist * Fixed64::fromFraction(9, 10)) return;
     Fixed64 v_end = Fixed64::zero();
     switch (o.why) {
-        case Why::Chase: case Why::MeetPass: case Why::CounterPress: case Why::Press:
-        case Why::Intercept: case Why::JumpPass: case Why::PressBadTouch: case Why::HurryKeeper:
-        case Why::AttackDrop: case Why::RunBackDrop: case Why::KeeperSweep:
+        case Why::Chase: case Why::MeetPass: case Why::Press:
             v_end = arrive_through_;
             break;
         default: break;
@@ -540,14 +537,6 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
     // left over 5 m/s was a man 15 m+ off his target (§8.103).
     if (shape_max_.raw > 0 && o.why == Why::Hold && !danger && shape_max_ < v_ok) v_ok = shape_max_;
     if (danger && shape_danger_sprint_ == 0 && defend_max_.raw > 0 && defend_max_ < v_ok) v_ok = defend_max_;
-    if (defend_max_.raw > 0 && defend_max_ < v_ok) {
-        switch (o.why) {
-            case Why::Recover: case Why::Mark: case Why::MarkTight: case Why::ProtectMiddle:
-                v_ok = defend_max_;
-                break;
-            default: break;
-        }
-    }
     // A race to a MOVING ball (G4.84): arrive ON TIME, not just under
     // control. His target is where the flight read says he and the ball
     // meet, fr.tick ticks from now — so he runs at least dist / that time
@@ -557,7 +546,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
     // front — 53% of the passes cut out were OURS by the read at the kick.
     // Not braking at all ran him past the spot before the ball came.
     switch (o.why) {
-        case Why::MeetPass: case Why::Intercept: case Why::JumpPass: case Why::Chase: {
+        case Why::MeetPass: case Why::Chase: {
             if (world.ball().owner || world.restartTeam() != 0xFF) break;
             const FlightRead& fr = reads_.flightRead(world);
             if (!fr.live || slot >= fr.tick.size() || fr.tick[slot] <= 0) break;

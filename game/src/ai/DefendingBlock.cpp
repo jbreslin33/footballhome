@@ -3,7 +3,7 @@
 
 #include "ai/Steering.hpp"
 #include "core/Ball.hpp"
-#include "core/Levels.hpp"
+#include "core/PlayerSkill.hpp"
 #include "math/FixedMath.hpp"
 
 #include <string>

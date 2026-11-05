@@ -106,24 +106,6 @@ FH_TEST(server_sends_hello_on_connect) {
     FH_EXPECT_EQ(h->capabilities, kCapPlayer | kCapSpectator);
 }
 
-FH_TEST(server_sends_the_curriculum_and_sized_rosters_on_connect) {
-    // G4.37: a DB curriculum with a lesson far past the old 32 cap.
-    core::ConceptRegistry db = core::ConceptRegistry::builtin();
-    db.add(200, "command-box", 0);
-    core::setConcepts(db);
-    Rig r;
-    r.t.scriptConnect(100);
-    const auto cs = framesOf(r.t.sent[100], FrameType::Concepts);
-    FH_EXPECT_EQ(cs.size(), 1u);
-    auto names = decodePresets(cs[0]);   // same name-list layout as PRESETS
-    FH_EXPECT(names.has_value() && names->names.size() == 201u);
-    FH_EXPECT(names->names[29] == "pass-ladder" && names->names[200] == "command-box");
-    FH_EXPECT(names->names[40].empty());   // an id hole
-    auto roster = decodeRoster(framesOf(r.t.sent[100], FrameType::Roster).back());
-    FH_EXPECT(roster.has_value() && roster->slots[0].ratings.size() == 201u);
-    core::setConcepts(core::ConceptRegistry::builtin());
-}
-
 FH_TEST(server_first_claim_wins) {
     Rig r;
     r.t.scriptConnect(100);
@@ -255,198 +237,6 @@ FH_TEST(server_two_frames_in_one_message) {
     FH_EXPECT(r.s.world().player(0).pos.x.raw > x0);
 }
 
-FH_TEST(server_admin_can_retune_levels_others_cannot) {
-    Rig r;
-    r.t.scriptConnect(100, "club");   // admin-ish club role
-    r.t.scriptConnect(200);            // plain player
-
-    // Admin's HELLO carries the admin capability; the player's doesn't.
-    std::size_t consumed = 0;
-    auto ha = decodeFrame(r.t.sent[100][0].data(), r.t.sent[100][0].size(),
-                          consumed);
-    auto hb = decodeFrame(r.t.sent[200][0].data(), r.t.sent[200][0].size(),
-                          consumed);
-    FH_EXPECT(decodeHello(ha->payload)->capabilities & kCapAdmin);
-    FH_EXPECT(!(decodeHello(hb->payload)->capabilities & kCapAdmin));
-
-    // Player tries u10/u10: ignored. Admin sets pro/u10: applied, and the
-    // next snapshot's 1.3 tail reports it.
-    MatchSettingsFrame ms;
-    ms.level_home = 1;  // u10
-    ms.level_away = 1;
-    r.t.scriptMessage(200, encodeFrame(FrameType::MatchSettings,
-                                       encodeMatchSettings(ms)));
-    r.s.tickOnce();
-    auto snap1 = [&] {
-        const auto& fr = r.t.sent[100].back();
-        std::size_t c = 0;
-        auto f = decodeFrame(fr.data(), fr.size(), c);
-        return *decodeSnapshot(f->payload);
-    }();
-    FH_EXPECT_EQ(snap1.level_home, 0);  // unchanged (test cfg default)
-
-    ms.level_home = 5;  // pro
-    ms.level_away = 1;  // u10
-    r.t.scriptMessage(100, encodeFrame(FrameType::MatchSettings,
-                                       encodeMatchSettings(ms)));
-    r.s.tickOnce();
-    auto snap2 = [&] {
-        const auto& fr = r.t.sent[100].back();
-        std::size_t c = 0;
-        auto f = decodeFrame(fr.data(), fr.size(), c);
-        return *decodeSnapshot(f->payload);
-    }();
-    FH_EXPECT_EQ(snap2.level_home, 5);
-    FH_EXPECT_EQ(snap2.level_away, 1);
-}
-
-FH_TEST(preset_overlay_touches_only_named_dials) {
-    core::ConceptRatings r{};
-    r.fill(50);
-    core::PresetOverlay o;
-    o.fill(-1);
-    o[18] = 95;   // man-mark
-    o[1] = 0;     // marking — an explicit zero is meaningful (Sacchi)
-    o[19] = 200;  // junk over 100 clamps
-    core::applyPresetOverlay(r, o);
-    FH_EXPECT_EQ(r[18], 95);
-    FH_EXPECT_EQ(r[1], 0);
-    FH_EXPECT_EQ(r[19], 100);
-    FH_EXPECT_EQ(r[0], 50);  // unnamed dial untouched
-}
-
-FH_TEST(team_plays_min_of_its_model_demand_and_its_ability) {
-    persistence::GameModel bielsa;
-    bielsa.name = "Bielsa";
-    bielsa.overlay.fill(-1);
-    bielsa.overlay[18] = 95;  // man-mark (style)
-    bielsa.overlay[26] = 95;  // libero (a role skill: nobody knows it by default)
-
-    persistence::DemoTeam team;
-    team.level_band = "world";
-    team.game_model = "Bielsa";
-    persistence::DemoPlayer gk, cb;
-    gk.name = "Keeper";
-    cb.name = "Free CB";
-    cb.concepts = {{26, 95}};   // HIS ability row: he knows the libero's job
-    team.players = {gk, cb};
-
-    FakeTransport t;
-    server::GameServer s{{.match_id = 7, .slot_count = 4,
-                          .level_home = core::levelParams("world"),
-                          .roster_home = team, .models = {bielsa}}, t};
-    t.scriptConnect(100, "club");
-    auto r0 = *decodeRoster(framesOf(t.sent[100], FrameType::Roster).back());
-    FH_EXPECT_EQ(r0.slots[0].ratings[18], 92);  // asked 95, a world side knows it at 92
-    FH_EXPECT_EQ(r0.slots[1].ratings[26], 95);  // the free CB plays the libero
-    FH_EXPECT_EQ(r0.slots[0].ratings[26], 0);   // asked, but the keeper doesn't know it
-    FH_EXPECT_EQ(r0.slots[2].ratings[18], 0);   // away plays no model: style unasked
-
-    // A band change moves ABILITY; the model and the player's row stay.
-    MatchSettingsFrame ms;
-    ms.level_home = 4;  // semipro
-    ms.level_away = 4;
-    t.scriptMessage(100, encodeFrame(FrameType::MatchSettings,
-                                     encodeMatchSettings(ms)));
-    auto r1 = *decodeRoster(framesOf(t.sent[100], FrameType::Roster).back());
-    FH_EXPECT_EQ(r1.slots[0].ratings[18], 68);  // a semi-pro side plays Bielsa at 68
-    FH_EXPECT_EQ(r1.slots[1].ratings[26], 95);
-    FH_EXPECT_EQ(r1.slots[2].ratings[18], 0);
-}
-
-FH_TEST(a_team_model_inherits_its_school) {
-    persistence::GameModel school, team, orphan;
-    school.name = "Bielsa";
-    school.overlay.fill(-1);
-    school.overlay[18] = 95;
-    school.overlay[19] = 90;
-    team.name = "Leicester City";
-    team.parent = "Bielsa";
-    team.overlay.fill(-1);
-    team.overlay[19] = 70;   // our change
-    team.overlay[28] = 68;   // our addition
-    orphan.name = "Loop";
-    orphan.parent = "Loop";  // a cycle just stops
-    orphan.overlay.fill(-1);
-    std::vector<persistence::GameModel> ms{school, team, orphan};
-    persistence::resolveGameModels(ms);
-    FH_EXPECT_EQ(ms[1].overlay[18], 95);   // inherited
-    FH_EXPECT_EQ(ms[1].overlay[19], 70);   // own demand wins
-    FH_EXPECT_EQ(ms[1].overlay[28], 68);
-    FH_EXPECT_EQ(ms[0].overlay[28], -1);   // the school is unchanged
-    FH_EXPECT_EQ(ms[2].overlay[18], -1);
-    FH_EXPECT_EQ(ms[1].origin[18], 0);     // from the school
-    FH_EXPECT_EQ(ms[1].origin[19], 1);     // its own
-    // G4.76: a save to the school moves the team; clearing the team's own
-    // row hands the concept back to the school.
-    ms[0].own[18] = 40;
-    ms[1].own[19] = -1;
-    persistence::resolveGameModels(ms);
-    FH_EXPECT_EQ(ms[1].overlay[18], 40);
-    FH_EXPECT_EQ(ms[1].overlay[19], 90);
-    FH_EXPECT_EQ(ms[1].origin[19], 0);
-    // …and numbers ride the same chain.
-    ms[0].own_params["concept.a.b"] = 3000;
-    ms[1].own_params["concept.a.c"] = 7000;
-    persistence::resolveGameModels(ms);
-    FH_EXPECT_EQ(ms[1].params.at("concept.a.b"), 3000);
-    FH_EXPECT_EQ(ms[1].param_origin.at("concept.a.b"), 0);
-    FH_EXPECT_EQ(ms[1].param_origin.at("concept.a.c"), 1);
-    FH_EXPECT_EQ(ms[0].params.count("concept.a.c"), 0u);
-}
-
-FH_TEST(server_admin_applies_preset_to_one_team_only) {
-    persistence::GameModel bielsa;
-    bielsa.name = "Bielsa";
-    bielsa.overlay.fill(-1);
-    bielsa.overlay[18] = 95;  // man-mark
-    bielsa.overlay[19] = 90;  // verticality
-
-    FakeTransport t;
-    server::GameServer s{{.match_id = 7, .slot_count = 4,
-                          .models = {bielsa}}, t};
-    t.scriptConnect(100, "club");  // admin
-    t.scriptConnect(200);          // plain player
-
-    // Catalog goes out on connect.
-    const auto cat = framesOf(t.sent[100], FrameType::Presets);
-    FH_EXPECT_EQ(cat.size(), 1u);
-    auto pf = decodePresets(cat[0]);
-    FH_EXPECT(pf.has_value());
-    FH_EXPECT(pf->names.size() == 1 && pf->names[0] == "Bielsa");
-
-    auto lastRoster = [&] {
-        const auto rs = framesOf(t.sent[100], FrameType::Roster);
-        return *decodeRoster(rs.back());
-    };
-    const auto before = lastRoster();
-
-    // Plain player's apply is ignored.
-    ApplyPresetFrame ap;
-    ap.team = 1;  // away = slots 2,3 in the 4-slot rig
-    ap.preset_id = 0;
-    t.scriptMessage(200, encodeFrame(FrameType::ApplyPreset,
-                                     encodeApplyPreset(ap)));
-    FH_EXPECT_EQ(framesOf(t.sent[100], FrameType::Roster).size(), 2u);
-
-    // Admin's apply: the away team plays Bielsa (perfect band: ability
-    // 100, so they play the demand); nothing else changes.
-    t.scriptMessage(100, encodeFrame(FrameType::ApplyPreset,
-                                     encodeApplyPreset(ap)));
-    const auto after = lastRoster();
-    FH_EXPECT_EQ(after.slots[2].ratings[18], 95);
-    FH_EXPECT_EQ(after.slots[3].ratings[19], 90);
-    // Home team untouched; away's unnamed dials keep their values.
-    FH_EXPECT_EQ(after.slots[0].ratings[18], before.slots[0].ratings[18]);
-    FH_EXPECT_EQ(after.slots[2].ratings[0], before.slots[2].ratings[0]);
-
-    // Out-of-range preset id is ignored, not UB.
-    ap.preset_id = 9;
-    t.scriptMessage(100, encodeFrame(FrameType::ApplyPreset,
-                                     encodeApplyPreset(ap)));
-    FH_EXPECT_EQ(framesOf(t.sent[100], FrameType::Roster).size(), 3u);
-}
-
 FH_TEST(brain_overlay_goes_only_to_watchers) {
     Rig r;
     r.t.scriptConnect(100);
@@ -454,9 +244,9 @@ FH_TEST(brain_overlay_goes_only_to_watchers) {
     // The decision names arrive on connect.
     const auto legend = framesOf(r.t.sent[100], FrameType::BrainLegend);
     FH_EXPECT_EQ(legend.size(), 1u);
-    auto names = decodePresets(legend[0]);
+    auto names = decodeNames(legend[0]);
     FH_EXPECT(names.has_value() && static_cast<int>(names->names.size()) == ai::kWhyCount);
-    FH_EXPECT(names->names[static_cast<int>(ai::Why::PassLadder)] == "pass ladder");
+    FH_EXPECT(names->names[static_cast<int>(ai::Why::Press)] == "press");
     // 100 switches the overlay on; 200 doesn't.
     BrainWatchFrame on;
     on.on = 1;
@@ -475,47 +265,6 @@ FH_TEST(brain_overlay_goes_only_to_watchers) {
     const auto before = framesOf(r.t.sent[100], FrameType::Brain).size();
     for (int i = 0; i < 12; ++i) r.s.tickOnce();
     FH_EXPECT_EQ(framesOf(r.t.sent[100], FrameType::Brain).size(), before);
-}
-
-FH_TEST(brain_frame_round_trips) {
-    BrainFrame f;
-    BrainEntry e;
-    e.why = 3; e.target_dm_x = -251; e.target_dm_y = 340; e.other = 7; e.rung = 1;
-    f.slots = {e, BrainEntry{}};
-    auto d = decodeBrain(encodeBrain(f));
-    FH_EXPECT(d.has_value() && d->slots.size() == 2u);
-    FH_EXPECT(d->slots[0].why == 3 && d->slots[0].target_dm_x == -251 && d->slots[0].target_dm_y == 340);
-    FH_EXPECT(d->slots[0].other == 7 && d->slots[0].rung == 1 && d->slots[1].other == 255);
-}
-
-FH_TEST(a_phase_of_play_sets_up_the_picture) {
-    // G4.58: from the keeper = a dead ball at the team's own 6 m, theirs to
-    // take; an open-play phase puts the ball at one of their feet.
-    server::GameServer::Config cfg{.match_id = 7, .slot_count = 22};
-    cfg.phases = {{"keeper", "From the keeper", "keeper", 6, 0, 20},
-                  {"mid-block", "Into their mid-block", "open", 45, 0},
-                  {"corner-left", "Corner, left", "corner", 99, 97}};
-    FakeTransport t;
-    server::GameServer s{cfg, t};
-    s.runPhase(1, 0);   // away keeper's ball: away defends +x
-    FH_EXPECT_EQ(s.world().restartTeam(), 1);
-    FH_EXPECT(s.world().ball().pos.x > Fixed64::fromInt(40));
-    FH_EXPECT(!s.world().ball().owner.has_value());
-    // press_line 20: home defends this phase and sets up with its most
-    // advanced outfielder ~21 m from the away goal line (x ≈ +31.5).
-    Fixed64 front = Fixed64::fromInt(-1000);
-    for (std::uint8_t i = 0; i < 11; ++i)
-        if (!s.world().isKeeper(i) && s.world().player(i).pos.x > front) front = s.world().player(i).pos.x;
-    FH_EXPECT(front > Fixed64::fromInt(30) && front < Fixed64::fromInt(33));
-    s.runPhase(0, 1);   // home on the ball near halfway
-    FH_EXPECT(s.world().ball().owner.has_value());
-    FH_EXPECT(*s.world().ball().owner < 11);
-    FH_EXPECT_EQ(s.world().restartTeam(), 0xFF);
-    s.runPhase(0, 2);   // home corner at the +x end, left (+y)
-    FH_EXPECT_EQ(s.world().restartTeam(), 0);
-    FH_EXPECT(s.world().ball().pos.x > Fixed64::fromInt(50) && s.world().ball().pos.y > Fixed64::fromInt(30));
-    s.runPhase(0, 9);   // unknown phase: ignored
-    FH_EXPECT_EQ(s.world().restartTeam(), 0);
 }
 
 FH_TEST(admin_sets_the_sim_speed_everyone_hears_it) {
@@ -545,24 +294,6 @@ FH_TEST(admin_sets_the_sim_speed_everyone_hears_it) {
     r.s.heartbeat();
     FH_EXPECT_EQ(r.s.world().tickCount(), tick);
     FH_EXPECT_EQ(framesOf(r.t.sent[200], FrameType::Snapshot).size(), snaps + 1);
-}
-
-FH_TEST(every_dead_ball_phase_gets_taken) {
-    // G4.59: each dead-ball phase puts a taker on the ball, so the held
-    // shapes release — before, a kick-off or corner froze all 22.
-    server::GameServer::Config cfg{.match_id = 7, .slot_count = 22};
-    cfg.phases = {{"keeper", "From the keeper", "keeper", 6, 0, 20},
-                  {"kickoff", "Kick-off", "kickoff", 50, 0},
-                  {"corner-left", "Corner, left", "corner", 99, 97}};
-    for (std::uint8_t team = 0; team < 2; ++team)
-        for (std::size_t p = 0; p < cfg.phases.size(); ++p) {
-            FakeTransport t;
-            server::GameServer s{cfg, t};
-            s.runPhase(team, p);
-            FH_EXPECT_EQ(s.world().restartTeam(), team);
-            for (int k = 0; k < 10 * 30 && s.world().restartTeam() != 0xFF; ++k) s.tickOnce();
-            FH_EXPECT_EQ(s.world().restartTeam(), 0xFF);
-        }
 }
 
 FH_TEST_MAIN()

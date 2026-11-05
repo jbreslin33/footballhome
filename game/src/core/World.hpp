@@ -12,7 +12,7 @@
 #include "core/BallFlight.hpp"
 #include "core/Locomotion.hpp"
 #include "core/Officials.hpp"
-#include "core/Levels.hpp"
+#include "core/PlayerSkill.hpp"
 #include "core/Clock.hpp"
 #include "core/Intent.hpp"
 #include "math/Fixed64.hpp"
@@ -141,25 +141,11 @@ public:
         if (slot < players_.size()) players_[slot].max_speed = v;
     }
     bool isKeeper(SlotIndex slot) const { return keeper_[slot]; }
-    // Skill-noise config (G4.3). Zero params (the default) = perfect
-    // execution; every pre-G4.3 golden locks that baseline.
-    void setLevel(std::uint8_t team, const LevelParams& params);
+    // G5.23 (§8.121): each player's skill (the physics of how well he does it).
+    void setSkill(SlotIndex slot, const PlayerSkill& s) { if (slot < skill_.size()) skill_[slot] = s; }
+    void setSkillAll(const PlayerSkill& s) { skill_.assign(skill_.size(), s); }
+    const PlayerSkill& skillOf(SlotIndex slot) const { return skill_[slot]; }
     void setMatchSeed(std::uint64_t seed) { match_seed_ = seed; }
-    const LevelParams& level(std::uint8_t team) const {
-        return level_[team & 1];
-    }
-    // Per-player level (G4.30): the team band bent by that player's
-    // attributes (levelForPlayer). Unset slots use their team's band, so
-    // nothing changes until a roster carries attributes.
-    void setSlotLevel(SlotIndex slot, const LevelParams& params);
-    void clearSlotLevels() { slot_level_set_.assign(slot_level_set_.size(), 0); }
-    bool hasSlotLevel(SlotIndex slot) const {
-        return slot < slot_level_set_.size() && slot_level_set_[slot];
-    }
-    const LevelParams& levelOf(SlotIndex slot) const {
-        return hasSlotLevel(slot) ? slot_level_[slot]
-                                  : level_[players_[slot].team & 1];
-    }
     std::uint64_t matchSeed() const noexcept { return match_seed_; }
 
     // Advance one tick. Returns match events (usually empty).
@@ -344,9 +330,7 @@ private:
     void settleControl(SlotIndex slot, math::Fixed64 speed);   // G4.92: no kick before (his control touch)
     math::Fixed64 turnover_ball_x_{};
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped
-    LevelParams   level_[2];
-    std::vector<LevelParams>  slot_level_;
-    std::vector<std::uint8_t> slot_level_set_;
+    std::vector<PlayerSkill>  skill_;
     std::uint64_t match_seed_ = 0;
 };
 

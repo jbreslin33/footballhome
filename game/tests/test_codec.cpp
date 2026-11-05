@@ -1,7 +1,7 @@
 // game/tests/test_codec.cpp
 //
 // Round-trip, truncation-safety, and forward-compatibility tests for the
-// fh-game.v1 codec (PROTOCOL.md §§1–6, §9).
+// fh-game.v2 codec (PROTOCOL.md §§1–6, §9).
 
 #include "test_harness.hpp"
 #include "net/Codec.hpp"
@@ -210,120 +210,19 @@ FH_TEST(claim_round_trip) {
     FH_EXPECT_EQ(d->claim, 0);
 }
 
-FH_TEST(presets_round_trip) {
-    PresetsFrame f;
-    f.names = {"Premier League 2015/16", "Bielsa", "Positional Play"};
-    auto d = decodePresets(encodePresets(f));
+FH_TEST(names_round_trip) {
+    NamesFrame f;
+    f.names = {"hold shape", "press", "chase ball"};
+    auto d = decodeNames(encodeNames(f));
     FH_EXPECT(d.has_value());
     FH_EXPECT_EQ(d->names.size(), 3u);
-    FH_EXPECT(d->names[0] == "Premier League 2015/16");
-    FH_EXPECT(d->names[2] == "Positional Play");
-}
-
-FH_TEST(apply_preset_round_trip) {
-    ApplyPresetFrame f;
-    f.team = 1;
-    f.preset_id = 7;
-    auto d = decodeApplyPreset(encodeApplyPreset(f));
-    FH_EXPECT(d.has_value());
-    FH_EXPECT_EQ(d->team, 1);
-    FH_EXPECT_EQ(d->preset_id, 7);
+    FH_EXPECT(d->names[0] == "hold shape");
+    FH_EXPECT(d->names[2] == "chase ball");
 }
 
 // G4.74 (1.14): the HUD's game-model panel.
-FH_TEST(model_demands_round_trip) {
-    ModelDemandsFrame f;
-    f.team = 1;
-    f.model = 14;
-    f.demand = {100, 0, 90};
-    f.source = {0, 1, 2};
-    auto d = decodeModelDemands(encodeModelDemands(f));
-    FH_EXPECT(d.has_value());
-    FH_EXPECT_EQ(d->team, 1);
-    FH_EXPECT_EQ(d->model, 14);
-    FH_EXPECT_EQ(d->demand.size(), 3u);
-    FH_EXPECT_EQ(d->demand[2], 90);
-    FH_EXPECT_EQ(d->source[1], 1);
-    FH_EXPECT_EQ(d->parent, 255);       // 1.15 trailer, absent → none
-    FH_EXPECT_EQ(d->origin[0], 255);
-}
-
 // G4.76 (1.15): which model each value came from, and the model's parent.
-FH_TEST(model_demands_trailer_round_trip) {
-    ModelDemandsFrame f;
-    f.team = 0;
-    f.model = 16;
-    f.parent = 15;
-    f.demand = {75, 68};
-    f.source = {3, 1};
-    f.origin = {15, 16};
-    f.parent_demand = {75, 85};
-    auto d = decodeModelDemands(encodeModelDemands(f));
-    FH_EXPECT(d.has_value());
-    FH_EXPECT_EQ(d->parent, 15);
-    FH_EXPECT_EQ(d->origin.size(), 2u);
-    FH_EXPECT_EQ(d->origin[0], 15);
-    FH_EXPECT_EQ(d->source[0], 3);
-    FH_EXPECT_EQ(d->parent_demand[1], 85);
-}
-
 // G4.76 (1.15): concept numbers + 3-rule weights, and the edit frame.
-FH_TEST(model_params_round_trip) {
-    ModelParamsFrame f;
-    f.team = 1;
-    f.entries.push_back({"ladder.own.intercept", "%", 50000, 1, 14});
-    f.entries.push_back({"concept.hurry-the-keeper.hurry_m", "m", 3000, 0, 255});
-    f.entries.push_back({"concept.x.neg", "m", -2500, 2, 255});
-    auto d = decodeModelParams(encodeModelParams(f));
-    FH_EXPECT(d.has_value());
-    FH_EXPECT_EQ(d->team, 1);
-    FH_EXPECT_EQ(d->entries.size(), 3u);
-    FH_EXPECT_EQ(d->entries[1].key, std::string("concept.hurry-the-keeper.hurry_m"));
-    FH_EXPECT_EQ(d->entries[0].milli, 50000);
-    FH_EXPECT_EQ(d->entries[2].milli, -2500);
-    FH_EXPECT_EQ(d->entries[0].origin, 14);
-    FH_EXPECT_EQ(d->entries[1].unit, std::string("m"));
-    FH_EXPECT_EQ(d->parent_milli.size(), 3u);   // none set → kNoParent
-    FH_EXPECT_EQ(d->parent_milli[0], ModelParamsFrame::kNoParent);
-}
-
-FH_TEST(set_param_round_trip) {
-    SetParamFrame f;
-    f.team = 0;
-    f.op = 2;
-    f.milli = 2200;
-    f.key = "concept.defend-your-man.contain_gap_m";
-    auto d = decodeSetParam(encodeSetParam(f));
-    FH_EXPECT(d.has_value());
-    FH_EXPECT_EQ(d->op, 2);
-    FH_EXPECT_EQ(d->milli, 2200);
-    FH_EXPECT_EQ(d->key, f.key);
-}
-
-FH_TEST(set_demand_round_trip) {
-    SetDemandFrame f;
-    f.team = 0;
-    f.concept_id = 178;
-    f.demand = 255;
-    auto d = decodeSetDemand(encodeSetDemand(f));
-    FH_EXPECT(d.has_value());
-    FH_EXPECT_EQ(d->concept_id, 178);
-    FH_EXPECT_EQ(d->demand, 255);
-}
-
-FH_TEST(player_attributes_round_trip) {
-    PlayerAttributesFrame f;
-    f.slot = 13;
-    f.ratings = {70, 55, 255, 40, 100, 0, 61, 22};   // 255 = unrated
-    auto d = decodePlayerAttributes(encodePlayerAttributes(f));
-    FH_EXPECT(d.has_value());
-    FH_EXPECT_EQ(d->slot, 13);
-    FH_EXPECT_EQ(d->ratings.size(), 8u);
-    FH_EXPECT_EQ(d->ratings[2], 255);
-    FH_EXPECT_EQ(d->ratings[4], 100);
-    FH_EXPECT(!decodePlayerAttributes(Bytes{3, 8, 1}).has_value());  // truncated
-}
-
 FH_TEST(teams_round_trip) {
     TeamsFrame f{"Leicester City", "Arsenal"};
     auto d = decodeTeams(encodeTeams(f));
@@ -353,38 +252,30 @@ FH_TEST(teams_kits_round_trip) {
 
 // G4.41 + G4.66 (1.11): the brain overlay round-trips, vision block too;
 // a 1.7 frame (no vision block) still decodes.
-FH_TEST(brain_frame_round_trips_with_the_vision_block) {
-    BrainFrame f;
-    BrainEntry a; a.why = 3; a.target_dm_x = -120; a.target_dm_y = 45; a.other = 7; a.rung = 2;
-    a.look_ds = 14; a.unseen = 3;
-    BrainEntry b; b.why = 0;
-    f.slots = {a, b};
-    const Bytes wire = encodeBrain(f);
-    const auto back = decodeBrain(wire);
-    FH_EXPECT(back.has_value() && back->slots.size() == 2);
-    FH_EXPECT(back->slots[0].target_dm_x == -120 && back->slots[0].other == 7 && back->slots[0].rung == 2);
-    FH_EXPECT(back->slots[0].look_ds == 14 && back->slots[0].unseen == 3);
-    FH_EXPECT(back->slots[1].look_ds == 255 && back->slots[1].unseen == 0);
-    const Bytes old(wire.begin(), wire.begin() + 1 + 2 * 7);
-    const auto legacy = decodeBrain(old);
-    FH_EXPECT(legacy.has_value() && legacy->slots.size() == 2 && legacy->slots[0].look_ds == 255);
-}
-
 // 1.17: ROSTER carries each slot's position number; a 1.16 frame (no
 // trailer) still decodes, with none.
-FH_TEST(roster_position_numbers_round_trip) {
-    RosterFrame f;
-    RosterEntry a; a.name = "Luke"; a.ratings = {50, 60};
-    RosterEntry b; b.name = "Gio"; b.ratings = {70, 80};
+// 2.0: a brain entry is why / target / other.
+FH_TEST(brain_frame_round_trips) {
+    BrainFrame f;
+    BrainEntry a; a.why = 3; a.target_dm_x = -120; a.target_dm_y = 45; a.other = 7;
+    BrainEntry b; b.why = 0;
     f.slots = {a, b};
-    f.numbers = {10, 6};
-    const Bytes wire = encodeRoster(f);
-    const auto back = decodeRoster(wire);
+    const auto back = decodeBrain(encodeBrain(f));
+    FH_EXPECT(back.has_value() && back->slots.size() == 2);
+    FH_EXPECT(back->slots[0].target_dm_x == -120 && back->slots[0].target_dm_y == 45 && back->slots[0].other == 7);
+    FH_EXPECT(back->slots[1].why == 0 && back->slots[1].other == 255);
+}
+
+// 2.0: ROSTER = each slot's name, then each slot's position number.
+FH_TEST(roster_round_trip) {
+    RosterFrame f;
+    RosterEntry a; a.name = "Vardy";
+    RosterEntry b; b.name = "Kante";
+    f.slots = {a, b};
+    f.numbers = {9, 6};
+    const auto back = decodeRoster(encodeRoster(f));
     FH_EXPECT(back.has_value() && back->slots.size() == 2 && back->numbers.size() == 2);
-    FH_EXPECT(back->numbers[0] == 10 && back->numbers[1] == 6 && back->slots[1].name == "Gio");
-    const Bytes old(wire.begin(), wire.end() - 3);
-    const auto legacy = decodeRoster(old);
-    FH_EXPECT(legacy.has_value() && legacy->slots.size() == 2 && legacy->numbers.empty());
+    FH_EXPECT(back->numbers[0] == 9 && back->numbers[1] == 6 && back->slots[1].name == "Kante");
 }
 
 FH_TEST_MAIN()

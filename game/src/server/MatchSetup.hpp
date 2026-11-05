@@ -1,8 +1,8 @@
 // game/src/server/MatchSetup.hpp
 //
-// One place that turns the club DB into a match (G4.43): curriculum,
-// formations, settings, both rosters (with their game models, qualities,
-// attributes and ability rows) and the game models. The live daemon
+// One place that turns the club DB into a match (G4.43; G5.23 slimmed):
+// formations, the physics params, both teams (names, positions, kits,
+// top speeds) and the officials. The live daemon
 // (main.cpp) and the match harness (tools/match_main.cpp) both call it, so
 // what the harness measures is exactly what the game plays.
 

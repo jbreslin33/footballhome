@@ -226,15 +226,15 @@ ParseResult parseHandshakeRequest(std::string_view buffer)
     //
     // The Sec-WebSocket-Protocol header value can be a comma-separated
     // list of offered subprotocols. We pick the first one that starts
-    // with the fh-game.v1.bearer prefix.
+    // with the fh-game.v2.bearer prefix.
     //
-    //   Sec-WebSocket-Protocol: fh-game.v1.bearer.<JWT>[, other-proto]
+    //   Sec-WebSocket-Protocol: fh-game.v2.bearer.<JWT>[, other-proto]
     //
     // Per RFC 6455 §4.2.2 the server MUST select one of the client's
     // OFFERED subprotocol tokens verbatim; browsers (Chrome/Firefox)
     // abort the connection with close 1006 if the echoed token does
     // not appear in the offered list. We therefore keep the whole
-    // "fh-game.v1.bearer.<JWT>" as the chosen subprotocol string, and
+    // "fh-game.v2.bearer.<JWT>" as the chosen subprotocol string, and
     // extract the token separately for the auth layer.
     {
         std::string_view offered = ws_protocol_hdr;
@@ -265,7 +265,7 @@ ParseResult parseHandshakeRequest(std::string_view buffer)
 
     if (r.request.bearer_token.empty()) {
         r.status = ParseResult::Status::Rejected;
-        r.reject_reason = "no fh-game.v1.bearer.<token> subprotocol offered";
+        r.reject_reason = "no fh-game.v2.bearer.<token> subprotocol offered";
         return r;
     }
 

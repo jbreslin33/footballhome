@@ -90,43 +90,16 @@ std::uint64_t canonicalHash(const World& world) {
     mix(h, world.offsideTeam());
     mix(h, world.lastLosingTeam());
     mix(h, world.turnoverTick());
-    // Skill-noise config (G4.3): drives evolution, so it is part of the
-    // identity of a run. Zero everywhere for pre-G4.3 goldens.
+    // The match seed and every player's skill (G5.23) drive evolution.
     mix(h, world.matchSeed());
-    for (int t = 0; t < 2; ++t) {
-        const LevelParams& lv = world.level(t);
-        mix(h, static_cast<std::uint64_t>(lv.perception_delay_ticks));
-        mix(h, static_cast<std::uint64_t>(lv.kick_angle_err_deg));
-        mix(h, static_cast<std::uint64_t>(lv.kick_power_err_pct));
-        mix(h, static_cast<std::uint64_t>(lv.decision_jitter_pct));
-        mix(h, static_cast<std::uint64_t>(lv.control_speed_mps));
-        mix(h, static_cast<std::uint64_t>(lv.swarm_pct));
-        mix(h, static_cast<std::uint64_t>(lv.tackle_success_pct));
-        // G4.23 field: mixed only when set, so every zero-param
-        // determinism golden stays byte-identical.
-        if (lv.keeper_fumble_pct != 0)
-            mix(h, static_cast<std::uint64_t>(lv.keeper_fumble_pct));
-        if (lv.intercept_control_pct != 0)   // G4.82, same rule
-            mix(h, static_cast<std::uint64_t>(lv.intercept_control_pct));
-        if (lv.control_settle_ms != 0) {     // G4.92, same rule
-            mix(h, static_cast<std::uint64_t>(lv.control_settle_ms));
-            mix(h, static_cast<std::uint64_t>(lv.control_per_mps_ms));
-        }
-    }
     if (world.controlUntilTick() != 0) mix(h, world.controlUntilTick());   // G4.92
-    // G4.30 per-player levels: mixed only for slots that have one, so
-    // every band-only golden stays byte-identical.
     for (SlotIndex s = 0; s < world.playerCount(); ++s) {
-        if (!world.hasSlotLevel(s)) continue;
-        const LevelParams& lv = world.levelOf(s);
-        mix(h, static_cast<std::uint64_t>(s));
-        mix(h, static_cast<std::uint64_t>(lv.kick_angle_err_deg));
-        mix(h, static_cast<std::uint64_t>(lv.kick_power_err_pct));
-        mix(h, static_cast<std::uint64_t>(lv.shot_angle_err_deg));
-        mix(h, static_cast<std::uint64_t>(lv.shot_power_err_pct));
-        mix(h, static_cast<std::uint64_t>(lv.control_speed_mps));
-        mix(h, static_cast<std::uint64_t>(lv.tackle_success_pct));
-        mix(h, static_cast<std::uint64_t>(lv.keeper_fumble_pct));
+        const PlayerSkill& k = world.skillOf(s);
+        for (const std::int32_t v : {k.perception_delay_ticks, k.kick_angle_err_deg, k.kick_power_err_pct,
+                                     k.shot_angle_err_deg, k.shot_power_err_pct, k.control_speed_mps,
+                                     k.tackle_success_pct, k.keeper_fumble_pct, k.kick_range_m,
+                                     k.intercept_control_pct, k.control_settle_ms, k.control_per_mps_ms})
+            mix(h, static_cast<std::uint64_t>(static_cast<std::int64_t>(v)));
     }
     return h;
 }

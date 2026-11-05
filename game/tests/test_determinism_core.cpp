@@ -42,7 +42,8 @@ namespace {
 //   G4.88 2026-10-29 officials in the state (on G4.87) 0xb5e960d175a84ed0
 //   G4.90 2026-10-29 assistant shadows level 0x6428149331d5d8b1
 //   G5.2 2026-10-31 ball out called, held restarts 0x43320399541f4254
-constexpr std::uint64_t kGolden400TicksSeed42 = 0x43320399541f4254ULL;
+//   G5.23 2026-11-05 levels deleted: every player's PlayerSkill in the hash 0x9bb0ae52bba1b314
+constexpr std::uint64_t kGolden400TicksSeed42 = 0x9bb0ae52bba1b314ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

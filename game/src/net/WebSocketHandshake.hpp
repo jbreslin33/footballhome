@@ -15,13 +15,13 @@
 //     - Connection: contains "Upgrade" (case-insensitive)
 //     - Sec-WebSocket-Version: 13
 //     - Sec-WebSocket-Key: <16 base64 bytes>
-//     - Sec-WebSocket-Protocol: fh-game.v1.bearer.<JWT>
+//     - Sec-WebSocket-Protocol: fh-game.v2.bearer.<JWT>
 //
 //   Response is HTTP/1.1 101 with:
 //     - Upgrade: websocket
 //     - Connection: Upgrade
 //     - Sec-WebSocket-Accept: base64(SHA1(key + magic))
-//     - Sec-WebSocket-Protocol: fh-game.v1.bearer.<JWT>  (echo the full offered token verbatim; RFC 6455 §4.2.2, required by browsers)
+//     - Sec-WebSocket-Protocol: fh-game.v2.bearer.<JWT>  (echo the full offered token verbatim; RFC 6455 §4.2.2, required by browsers)
 
 #pragma once
 
@@ -41,8 +41,8 @@ namespace fh::game::net::ws {
 struct HandshakeRequest {
     std::string request_path;         // e.g. "/sim"
     std::string sec_websocket_key;    // raw base64 value from header
-    std::string bearer_token;         // extracted after "fh-game.v1.bearer."
-    std::string chosen_subprotocol;   // full "fh-game.v1.bearer.<JWT>" (echoed verbatim per RFC 6455 §4.2.2)
+    std::string bearer_token;         // extracted after "fh-game.v2.bearer."
+    std::string chosen_subprotocol;   // full "fh-game.v2.bearer.<JWT>" (echoed verbatim per RFC 6455 §4.2.2)
 };
 
 struct ParseResult {
@@ -65,7 +65,7 @@ inline constexpr std::size_t kMaxRequestBytes = 8u * 1024u;
 
 // Application subprotocol prefix. Wire ID matches BinaryV1Serializer::wireId(),
 // with ".bearer." separating protocol from token.
-inline constexpr std::string_view kSubprotocolPrefix = "fh-game.v1.bearer";
+inline constexpr std::string_view kSubprotocolPrefix = "fh-game.v2.bearer";
 
 // -----------------------------------------------------------------------
 // Parse an HTTP Upgrade request from a byte buffer. Returns NeedMore

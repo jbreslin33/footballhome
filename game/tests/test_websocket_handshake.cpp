@@ -20,7 +20,7 @@ namespace {
 // browser handshake; tests override one field at a time to exercise
 // specific rejection paths.
 std::string buildRequest(std::string_view key   = "dGhlIHNhbXBsZSBub25jZQ==",
-                         std::string_view proto = "fh-game.v1.bearer.abc.def.ghi",
+                         std::string_view proto = "fh-game.v2.bearer.abc.def.ghi",
                          std::string_view path  = "/sim",
                          std::string_view host  = "sim.footballhome.com",
                          std::string_view version = "13",
@@ -58,7 +58,7 @@ FH_TEST(parses_valid_handshake) {
     FH_EXPECT(std::string_view{r.request.bearer_token} == "abc.def.ghi");
     // RFC 6455 §4.2.2: server echoes the offered subprotocol token
     // verbatim (including the JWT). Chrome/Firefox close 1006 otherwise.
-    FH_EXPECT(std::string_view{r.request.chosen_subprotocol} == "fh-game.v1.bearer.abc.def.ghi");
+    FH_EXPECT(std::string_view{r.request.chosen_subprotocol} == "fh-game.v2.bearer.abc.def.ghi");
     FH_EXPECT_EQ(r.bytes_consumed, req.size());
 }
 
@@ -78,7 +78,7 @@ FH_TEST(compute_accept_matches_rfc_example) {
 FH_TEST(response_contains_all_required_headers) {
     HandshakeRequest req;
     req.sec_websocket_key   = "dGhlIHNhbXBsZSBub25jZQ==";
-    req.chosen_subprotocol  = "fh-game.v1.bearer.abc.def.ghi";
+    req.chosen_subprotocol  = "fh-game.v2.bearer.abc.def.ghi";
     const std::string resp = formatHandshakeResponse(req);
 
     FH_EXPECT(resp.find("HTTP/1.1 101 Switching Protocols\r\n") == 0);
@@ -86,7 +86,7 @@ FH_TEST(response_contains_all_required_headers) {
     FH_EXPECT(resp.find("Connection: Upgrade\r\n")      != std::string::npos);
     FH_EXPECT(resp.find("Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n")
                                                         != std::string::npos);
-    FH_EXPECT(resp.find("Sec-WebSocket-Protocol: fh-game.v1.bearer.abc.def.ghi\r\n")
+    FH_EXPECT(resp.find("Sec-WebSocket-Protocol: fh-game.v2.bearer.abc.def.ghi\r\n")
                                                         != std::string::npos);
     // Ends with the empty terminator line.
     FH_EXPECT(resp.size() >= 4);
@@ -95,7 +95,7 @@ FH_TEST(response_contains_all_required_headers) {
 
 FH_TEST(response_empty_when_key_missing) {
     HandshakeRequest req;
-    req.chosen_subprotocol = "fh-game.v1.bearer.abc.def.ghi";
+    req.chosen_subprotocol = "fh-game.v2.bearer.abc.def.ghi";
     FH_EXPECT_EQ(formatHandshakeResponse(req).size(), 0u);
 }
 
@@ -136,7 +136,7 @@ FH_TEST(rejects_non_get_method) {
 
 FH_TEST(rejects_wrong_http_version) {
     const std::string r = buildRequest("dGhlIHNhbXBsZSBub25jZQ==",
-                                        "fh-game.v1.bearer.abc.def.ghi",
+                                        "fh-game.v2.bearer.abc.def.ghi",
                                         "/sim",
                                         "host",
                                         "13",
@@ -152,7 +152,7 @@ FH_TEST(rejects_wrong_http_version) {
 
 FH_TEST(rejects_wrong_ws_version) {
     const std::string r = buildRequest("dGhlIHNhbXBsZSBub25jZQ==",
-                                        "fh-game.v1.bearer.tok",
+                                        "fh-game.v2.bearer.tok",
                                         "/sim",
                                         "host",
                                         "8",
@@ -163,7 +163,7 @@ FH_TEST(rejects_wrong_ws_version) {
 
 FH_TEST(rejects_connection_without_upgrade) {
     const std::string r = buildRequest("dGhlIHNhbXBsZSBub25jZQ==",
-                                        "fh-game.v1.bearer.tok",
+                                        "fh-game.v2.bearer.tok",
                                         "/sim",
                                         "host",
                                         "13",
@@ -175,7 +175,7 @@ FH_TEST(rejects_connection_without_upgrade) {
 FH_TEST(accepts_connection_with_upgrade_and_other_tokens) {
     // Real proxies often send: `Connection: keep-alive, Upgrade`.
     const std::string r = buildRequest("dGhlIHNhbXBsZSBub25jZQ==",
-                                        "fh-game.v1.bearer.tok",
+                                        "fh-game.v2.bearer.tok",
                                         "/sim",
                                         "host",
                                         "13",
@@ -194,7 +194,7 @@ FH_TEST(rejects_missing_bearer_subprotocol) {
 
 FH_TEST(rejects_empty_bearer_token) {
     const std::string r = buildRequest("dGhlIHNhbXBsZSBub25jZQ==",
-                                        "fh-game.v1.bearer.",
+                                        "fh-game.v2.bearer.",
                                         "/sim");
     const auto p = parseHandshakeRequest(r);
     FH_EXPECT(p.status == ParseResult::Status::Rejected);
@@ -204,7 +204,7 @@ FH_TEST(picks_bearer_when_multiple_subprotocols_offered) {
     // Client offers three protocols, only one is ours. Server must pick
     // the fh-game one regardless of position.
     const std::string r = buildRequest("dGhlIHNhbXBsZSBub25jZQ==",
-                                        "chat, fh-game.v1.bearer.MYTOKEN, superchat",
+                                        "chat, fh-game.v2.bearer.MYTOKEN, superchat",
                                         "/sim");
     const auto p = parseHandshakeRequest(r);
     FH_EXPECT(p.status == ParseResult::Status::Ok);
@@ -221,7 +221,7 @@ FH_TEST(header_names_are_case_insensitive) {
         "CONNECTION: Upgrade\r\n"
         "sec-websocket-version: 13\r\n"
         "SEC-websocket-KEY: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-        "Sec-WebSocket-Protocol: fh-game.v1.bearer.T\r\n"
+        "Sec-WebSocket-Protocol: fh-game.v2.bearer.T\r\n"
         "\r\n";
     const auto p = parseHandshakeRequest(r);
     FH_EXPECT(p.status == ParseResult::Status::Ok);
@@ -235,7 +235,7 @@ FH_TEST(rejects_missing_host) {
         "Connection: Upgrade\r\n"
         "Sec-WebSocket-Version: 13\r\n"
         "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-        "Sec-WebSocket-Protocol: fh-game.v1.bearer.T\r\n"
+        "Sec-WebSocket-Protocol: fh-game.v2.bearer.T\r\n"
         "\r\n";
     const auto p = parseHandshakeRequest(r);
     FH_EXPECT(p.status == ParseResult::Status::Rejected);
@@ -250,7 +250,7 @@ FH_TEST(rejects_malformed_header_line) {
         "Connection: Upgrade\r\n"
         "Sec-WebSocket-Version: 13\r\n"
         "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-        "Sec-WebSocket-Protocol: fh-game.v1.bearer.T\r\n"
+        "Sec-WebSocket-Protocol: fh-game.v2.bearer.T\r\n"
         "\r\n";
     const auto p = parseHandshakeRequest(r);
     FH_EXPECT(p.status == ParseResult::Status::Malformed);

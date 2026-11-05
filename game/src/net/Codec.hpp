@@ -1,6 +1,6 @@
 // game/src/net/Codec.hpp
 //
-// Binary encode/decode for fh-game.v1 frames (PROTOCOL.md §§1–6).
+// Binary encode/decode for fh-game.v2 frames (PROTOCOL.md §§1–6).
 // Little-endian throughout. Decoders are total functions: any malformed or
 // truncated input returns std::nullopt — never UB, never a throw. Decoders
 // ignore unknown trailing payload bytes (PROTOCOL.md §9: that's what makes
@@ -83,9 +83,6 @@ struct SnapshotFrame {
     std::uint8_t  period = 1;
     std::uint32_t clock_ticks = 0;     // resets each full time
     std::uint8_t  restart_team = 0xFF; // 0xFF = live ball
-    // Appended in 1.3: current level-band ids (core::kLevelNames).
-    std::uint8_t  level_home = 0;
-    std::uint8_t  level_away = 0;
     // Appended in 1.16 (after the 1.8 facing): the officials.
     std::vector<OfficialSnap> officials;
 };
@@ -145,67 +142,27 @@ std::optional<ClaimFrame> decodeClaim(const Bytes& payload);
 Bytes encodeEvent(const EventFrame& f);
 std::optional<EventFrame> decodeEvent(const Bytes& payload);
 
-struct MatchSettingsFrame {
-    // Level band ids (core::kLevelNames indices).
-    std::uint8_t level_home = 0;
-    std::uint8_t level_away = 0;
-};
-Bytes encodeMatchSettings(const MatchSettingsFrame& f);
-std::optional<MatchSettingsFrame> decodeMatchSettings(const Bytes& payload);
 
-struct PlayerSettingsFrame {
-    std::uint8_t slot = 0;
-    // 0-100 per concept, CONCEPTS.md order (1.4: graded knowledge).
-    std::vector<std::uint8_t> ratings;
-};
-Bytes encodePlayerSettings(const PlayerSettingsFrame& f);
-std::optional<PlayerSettingsFrame> decodePlayerSettings(const Bytes& payload);
 
 struct RosterEntry {
-    std::vector<std::uint8_t> ratings;  // 0-100 per concept
     std::string name;
 };
 struct RosterFrame {
     std::vector<RosterEntry> slots;
-    // 1.17 trailer: each slot's position number (2 RB … 9 striker, 10 the
-    // 10; 0 = unknown), from the formation the engine plays — so the HUD
-    // shows the 10 vs the 6 without the club API (which needs a sign-in).
+    // Each slot's position number (2 RB … 9 striker; 0 = unknown), from the
+    // formation the engine plays.
     std::vector<std::uint8_t> numbers;
 };
 Bytes encodeRoster(const RosterFrame& f);
 std::optional<RosterFrame> decodeRoster(const Bytes& payload);
 
-// Style-preset catalog (1.4): names only — the vectors stay server-side;
-// a preset's wire id is its INDEX in this list (mig 630 sort order).
-struct PresetsFrame {
+// A list of names (2.0: the brain overlay's decision names, BRAIN_LEGEND).
+struct NamesFrame {
     std::vector<std::string> names;
 };
-Bytes encodePresets(const PresetsFrame& f);
-std::optional<PresetsFrame> decodePresets(const Bytes& payload);
+Bytes encodeNames(const NamesFrame& f);
+std::optional<NamesFrame> decodeNames(const Bytes& payload);
 
-// G4.74 (1.14): what one team's game model asks of each concept, live.
-// source: 0 = the default (core 100, style 0), 1 = the model's row, 2 = a
-// live change from the HUD (not saved).
-struct ModelDemandsFrame {
-    std::uint8_t team = 0;
-    std::uint8_t model = 255;              // PRESETS index; 255 = none
-    std::vector<std::uint8_t> demand;      // by concept id
-    std::vector<std::uint8_t> source;
-    // 1.15 (G4.76) trailer: the model's parent (PRESETS index; 255 = a
-    // top-level model, which states every concept) and, per concept, the
-    // model its value came from (255 = none). Absent from a 1.14 server.
-    std::uint8_t parent = 255;
-    std::vector<std::uint8_t> origin;
-    // Then (G4.77) per concept what the PARENT plays (255 = no parent), so
-    // the HUD can show a child's own value against it.
-    std::vector<std::uint8_t> parent_demand;
-};
-Bytes encodeModelDemands(const ModelDemandsFrame& f);
-std::optional<ModelDemandsFrame> decodeModelDemands(const Bytes& payload);
-struct SetDemandFrame {
-    std::uint8_t team = 0, concept_id = 0, demand = 255;   // 255 = clear the live change
-};
-Bytes encodeSetDemand(const SetDemandFrame& f);
 // G4.76 (1.15): a team's numbers — each concept number ("concept.<code>.
 // <param>") and the 3 rules by third ("ladder.<zone>.<rung>", percent) —
 // milli-units, with where each comes from (0 the global row, 1 the model's
@@ -215,42 +172,8 @@ struct ModelParamEntry {
     std::int32_t milli = 0;
     std::uint8_t source = 0, origin = 255;
 };
-struct ModelParamsFrame {
-    std::uint8_t team = 0;
-    std::vector<ModelParamEntry> entries;
-    // G4.77 trailer: per entry what the parent plays (kNoParent = none).
-    static constexpr std::int32_t kNoParent = INT32_MIN;
-    std::vector<std::int32_t> parent_milli;
-};
-Bytes encodeModelParams(const ModelParamsFrame& f);
-std::optional<ModelParamsFrame> decodeModelParams(const Bytes& payload);
-// op: 0 live change, 1 undo the live change, 2 save into the team's model,
-// 3 delete the model's own row (inherit).
-struct SetParamFrame {
-    std::uint8_t team = 0, op = 0;
-    std::int32_t milli = 0;
-    std::string key;
-};
-Bytes encodeSetParam(const SetParamFrame& f);
-std::optional<SetParamFrame> decodeSetParam(const Bytes& payload);
-std::optional<SetDemandFrame> decodeSetDemand(const Bytes& payload);
 
-struct ApplyPresetFrame {
-    std::uint8_t team = 0;       // 0 home, 1 away
-    std::uint8_t preset_id = 0;  // PRESETS index
-};
-Bytes encodeApplyPreset(const ApplyPresetFrame& f);
-std::optional<ApplyPresetFrame> decodeApplyPreset(const Bytes& payload);
 
-// G4.30 (1.5): one slot's attributes, game_attributes sort order (pace,
-// passing, shooting, first_touch, tackling, anticipation, decisions,
-// goalkeeping); 255 = unrated (the band). Same layout as PLAYER_SETTINGS.
-struct PlayerAttributesFrame {
-    std::uint8_t slot = 0;
-    std::vector<std::uint8_t> ratings;
-};
-Bytes encodePlayerAttributes(const PlayerAttributesFrame& f);
-std::optional<PlayerAttributesFrame> decodePlayerAttributes(const Bytes& payload);
 
 // G4.30 (1.5): the two teams playing (game_demo_teams names) — the
 // client's key into /api/game/roster for the attribute editor.
@@ -269,15 +192,6 @@ struct BrainEntry {
     std::uint8_t why = 0;        // index into the BRAIN_LEGEND names
     std::int16_t target_dm_x = 0, target_dm_y = 0;  // decimetres
     std::uint8_t other = 255;    // slot he's acting on (receiver / mark / carrier); 255 = none
-    std::uint8_t rung = 0;       // pass-ladder rung (1-6), 0 = n/a
-    // 1.11 (G4.66), the trailing vision block: age of his picture behind
-    // him in tenths of a second (255 = sees everything) + men he can't see.
-    std::uint8_t look_ds = 255;
-    std::uint8_t unseen = 0;
-    // 1.12 (G4.70), the trailing call block: the call he's making (a
-    // BRAIN_LEGEND index, 255 none) and to whom (255 none).
-    std::uint8_t call = 255;
-    std::uint8_t call_to = 255;
 };
 struct BrainFrame {
     std::vector<BrainEntry> slots;

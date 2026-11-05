@@ -23,7 +23,7 @@ namespace {
 //   * payload
 // -----------------------------------------------------------------------
 
-// Big-endian reads (WebSocket is BE, unlike our fh-game.v1 wire which is LE).
+// Big-endian reads (WebSocket is BE, unlike our fh-game.v2 wire which is LE).
 std::uint16_t read_u16_be(const std::uint8_t* p) noexcept {
     return static_cast<std::uint16_t>(
         (static_cast<std::uint16_t>(p[0]) << 8) | static_cast<std::uint16_t>(p[1]));

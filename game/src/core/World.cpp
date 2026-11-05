@@ -33,6 +33,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
       half_y_{pitch_half_y},
       half_length_ticks_{half_length_ticks} {
     for (auto& p : players_) p.max_speed = max_speed;
+    skill_.assign(player_count, PlayerSkill::perfect());   // the server sets the real numbers
     for (int i = 0; i < kOfficialCount; ++i)
         officials_.setOfficial(static_cast<OfficialRole>(i), OfficialRatings{}, Body{}, max_speed);
     officials_.place(pitch_half_x, pitch_half_y);
@@ -69,20 +70,6 @@ void World::placePlayer(SlotIndex slot, const Vec3& pos, const Vec2& face) {
 void World::setTeam(SlotIndex slot, std::uint8_t team) {
     if (slot >= players_.size()) return;
     players_[slot].team = team;
-}
-
-void World::setLevel(std::uint8_t team, const LevelParams& params) {
-    level_[team & 1] = params;
-}
-
-void World::setSlotLevel(SlotIndex slot, const LevelParams& params) {
-    if (slot >= players_.size()) return;
-    if (slot_level_.size() < players_.size()) {
-        slot_level_.resize(players_.size());
-        slot_level_set_.resize(players_.size(), 0);
-    }
-    slot_level_[slot] = params;
-    slot_level_set_[slot] = 1;
 }
 
 void World::setKeeper(SlotIndex slot, bool keeper) {
@@ -249,7 +236,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
         }
 
         // Outcome by the tackler's level skill, deterministic noise.
-        const LevelParams& lv = levelOf(i);
+        const PlayerSkill& lv = skillOf(i);
         const int skill =
             lv.tackle_success_pct > 0 ? lv.tackle_success_pct : 70;
         const Fixed64 roll = detNoise(match_seed_, clock_.tick(), i, 6);
@@ -345,7 +332,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             // deterministic error and scale its power. A pro's error is a
             // couple of degrees; a U-10 sprays it. Zero params = exact,
             // which is the baseline every pre-G4.3 golden locks.
-            const LevelParams& lv = levelOf(kicker);
+            const PlayerSkill& lv = skillOf(kicker);
             Fixed64 power_scale = Fixed64::one();
             if (lv.kick_angle_err_deg != 0 || lv.kick_power_err_pct != 0 ||
                 act == Action::Shot) {
@@ -721,7 +708,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     // Touch quality: a ball faster than the toucher's control level
     // bobbles — deflects onward at reduced speed in a noise-rotated
     // direction — instead of sticking. Keepers add their hands bonus.
-    const LevelParams& lv = levelOf(best);
+    const PlayerSkill& lv = skillOf(best);
     // Keeper handling (G4.23): a shot-speed ball (> 6 m/s) a keeper
     // reaches can still be FUMBLED, by level. Without it a level's
     // hardest shot (control + 6) equals its own keeper's catch cap, so a
@@ -1104,7 +1091,7 @@ void World::settleControl(SlotIndex slot, Fixed64 speed) {
         else s = Fixed64::fromInt(4) + Fixed64::fromInt(4) * (u - u4) / (Fixed64::one() - u4);
         hold_until_tick_ = clock_.tick() + static_cast<std::uint64_t>((s * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS);
     }
-    const LevelParams& cl = levelOf(slot);
+    const PlayerSkill& cl = skillOf(slot);
     if (cl.control_settle_ms <= 0) { control_until_tick_ = 0; return; }
     const std::int64_t sp_mps = speed.raw >> Fixed64::FRAC_BITS;
     const std::int64_t ms = cl.control_settle_ms + cl.control_per_mps_ms * sp_mps;

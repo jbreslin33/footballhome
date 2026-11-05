@@ -1,4 +1,13 @@
-# fh-game wire protocol — v1.4
+# fh-game wire protocol — v2.0
+
+> **2.0 (G5.23, 2026-11-05):** the old brain's frames and fields are gone — levels
+> (MATCH_SETTINGS, the snapshot's level ids), per-player concept ratings
+> (PLAYER_SETTINGS, ROSTER's ratings, CONCEPTS) and attributes (PLAYER_ATTRIBUTES),
+> game models and their numbers (PRESETS, APPLY_PRESET, MODEL_DEMANDS, SET_DEMAND,
+> SAVE_DEMAND, MODEL_PARAMS, SET_PARAM), phases of play (PHASES, RUN_PHASE), and the
+> brain entry's ladder rung, vision and call blocks. Their ids are retired, never
+> reused. The subprotocol is `fh-game.v2.bearer.<JWT>`: a 1.x client is refused at
+> the handshake, never desynced. Layouts below are 2.0.
 
 > The protocol is the product boundary (DESIGN.md pillar 4). Every client —
 > browser, native, desktop, headless — implements this document and nothing
@@ -16,7 +25,7 @@
   Path: `/game/<match_routing_key>` (variable-resolved upstream, request-time
   DNS — the v1 pattern; never a startup-resolved literal host).
 - Auth: JWT travels in the `Sec-WebSocket-Protocol` header:
-  `fh-game.v1.bearer.<JWT>` — same shared-secret JWTs the club app already
+  `fh-game.v2.bearer.<JWT>` — same shared-secret JWTs the club app already
   issues, so a browser client reuses the session token it has.
 - First server frame: `HELLO`. A client that can't speak the major version
   disconnects with a reason frame: stale clients are told, never desynced.
@@ -49,25 +58,13 @@ Frame types (u8):
 | 0x21 | EVENT | s→c | §7 |
 | 0x30 | CLAIM / RELEASE slot | c→s | take or drop control of a slot |
 | 0x31 | SPEED | both | (1.10, G4.61) `u16 pct` — sim speed in percent of real time: 100 live, 5-400 slow motion to fast forward, 0 paused (1-4 clamp to 5, above 400 to 400). c→s admin only (one match, one clock); s→c on connect and to every client on each change. Only the wall-clock gap between ticks changes — the same ticks, the same physics. Paused, the server sends the frozen SNAPSHOT every 200 ms (same tick) so watchdogs stay quiet; clients render the tick timeline at 1000/(30·pct/100) ms per tick |
-| 0x33 | PLAYER_SETTINGS | c→s | admin: one slot's GRADED knowledge (1.4 superseded the 1.3 bitmask): `u8 slot \| u8 count \| u8 rating…` (0-100 per concept, by curriculum id — CONCEPTS frame 0x3A; extra trailing ratings ignored) |
-| 0x34 | ROSTER | s→c | per-slot knowledge + names (1.4 graded form), on connect and after changes: `u8 count`, then per slot `u8 rating_count \| u8 rating… \| u8 name_len \| name bytes`; then (1.17) `u8 count \| u8 position number…` per slot — the formation's traditional number the engine plays (2 RB … 6, 8, 10 … 9 striker; 0 unknown), so the HUD numbers players without the club API |
-| 0x32 | MATCH_SETTINGS | c→s | admin: set both teams' skill bands live (1.3): `u8 level_home \| u8 level_away` (band ids 0-6 = perfect/u10/u14/amateur/semipro/pro/world); non-admin senders are ignored |
-| 0x35 | PRESETS | s→c | style-preset catalog (1.4), on connect: `u8 count`, then per preset `u8 name_len \| name bytes`; a preset's wire id IS its index in this list. Rows come from `game_models` (mig 652; were `game_style_presets`, mig 630); vectors stay server-side |
-| 0x36 | APPLY_PRESET | c→s | admin: paint one team's identity in one tap (1.4): `u8 team (0 home / 1 away) \| u8 preset_id (PRESETS index)`. Since 1.6 the team PLAYS that game model: its demand against each player's ability (min of the two); server answers with a fresh ROSTER |
-| 0x37 | PLAYER_ATTRIBUTES | c→s | admin (1.5, G4.30): one slot's attributes, live: `u8 slot \| u8 count \| u8 rating…` in this append-only order: pace, passing, shooting, first_touch, tackling, anticipation, decisions, goalkeeping, then (G4.52, 1.8) acceleration, deceleration, agility, dribbling, then (G4.70, 1.12) communication, then (G4.71, 1.13) concentration, then (G4.85) reaction, then (G5.3) jumping_reach, strength — a shorter frame leaves the rest unchanged; 255 = unrated (the band / a 50-rated body). The editor saves the same values to the club DB (`/api/game/player`), which the daemon reads at boot |
+| 0x34 | ROSTER | s→c | per-slot names, on connect and after changes: `u8 count`, then per slot `u8 name_len \| name bytes`; then `u8 count \| u8 position number…` per slot — the formation's traditional number the engine plays (2 RB … 6, 8, 10 … 9 striker; 0 unknown) |
 | 0x38 | TEAMS | s→c | the two teams playing (1.5, G4.30), on connect: `u8 len \| home name (UTF-8) \| u8 len \| away name` — game_demo_teams names, the editor's key into `/api/game/roster` |
-| 0x39 | RELOAD_ROSTERS | c→s | admin (1.5, G4.32): empty payload — re-read both teams (lineup, attributes, roles, kits) from the club DB after the page saved them; answers with fresh TEAMS + ROSTER. Formations are not reloaded |
-| 0x3A | CONCEPTS | s→c | the curriculum (1.6, G4.37), on connect: same layout as PRESETS — `u8 count`, then per concept id `u8 name_len \| name bytes` (a hole = empty name). Rows come from `game_concepts` (mig 650); it replaces the client's built-in list, and ROSTER / PLAYER_SETTINGS rating vectors are indexed by these ids (`rating_count` = this count) |
-| 0x3B | BRAIN | s→c | the brain overlay (1.7, G4.41), ~5 Hz, only to clients that sent BRAIN_WATCH on: `u8 count`, then per slot `u8 why (BRAIN_LEGEND index) \| i16 target x dm \| i16 target y dm \| u8 other slot (255 none) \| u8 ladder rung (0 n/a)`. Then (1.11, G4.66) the vision block: `u8 count`, per slot `u8 look (tenths of a second since his last look behind him; 255 = sees everything, the perfect band) \| u8 unseen (men outside his field of view, known only from that look)`. Then (1.12, G4.70) the call block: `u8 count`, per slot `u8 call (BRAIN_LEGEND index of the call he's making; 255 none) \| u8 to (the slot it's for; 254 = the back line, 1.13; 255 none)` |
+| 0x39 | RELOAD_ROSTERS | c→s | admin: empty payload — re-read both teams (lineup, kits) from the club DB after the page saved them; answers with fresh TEAMS + ROSTER. Formations are not reloaded |
+| 0x3B | BRAIN | s→c | the brain overlay (G4.41), ~5 Hz, only to clients that sent BRAIN_WATCH on: `u8 count`, then per slot `u8 why (BRAIN_LEGEND index) \| i16 target x dm \| i16 target y dm \| u8 other slot (255 none)` |
 | 0x3C | BRAIN_WATCH | c→s | anyone (1.7): `u8 on` — start / stop the BRAIN feed for this client |
-| 0x3D | BRAIN_LEGEND | s→c | on connect (1.7): the decision names, PRESETS layout; a BRAIN entry's `why` indexes it |
-| 0x3E | PHASES | s→c | the phase-of-play catalog (1.9, G4.58), on connect: PRESETS layout, titles from `game_phases` (mig 695); index = phase id |
-| 0x3F | RUN_PHASE | c→s | admin (1.9): `u8 team \| u8 phase` (APPLY_PRESET layout) — all 22 placed in their organized shapes for the phase's ball, then the dead-ball restart (keeper / corner / kick-off) or the ball at the team's nearest outfielder (open play); unknown ids ignored |
-| 0x40 | MODEL_DEMANDS | s→c | admin (1.14, G4.74): one team's game-model demand per concept, on connect and after every change: `u8 team \| u8 model (PRESETS index; 255 none) \| u8 count`, then per concept id `u8 demand (0-100) \| u8 source (0 = no model row: the DB-less default; 1 = the model's own row; 2 = a live change; 3 = inherited from a parent, 1.15)`, then (1.15) `u8 parent (PRESETS index; 255 = top-level) \| u8 origin` per concept (the model the value came from; 255 none), then (G4.77) `u8 parent demand` per concept (what the parent model plays; 255 = no parent) |
-| 0x41 | SET_DEMAND | c→s | admin (1.14, G4.74): one concept's demand for one team, live on top of its model and not saved: `u8 team \| u8 concept id \| u8 demand (0-100; 255 = back to the model / default)`. APPLY_PRESET clears a team's live changes |
-| 0x42 | SAVE_DEMAND | c→s | admin (1.15, G4.76): same layout as SET_DEMAND, but SAVED into the team's game model in the club DB (`game_model_concepts`); 255 = delete the model's own row so its parent's value applies (ignored for a top-level model, which states every concept). Every model that inherits it updates at once; MODEL_DEMANDS follows for both teams |
-| 0x43 | MODEL_PARAMS | s→c | admin (1.15, G4.76): one team's numbers, on connect and after every change: `u8 team \| u16 count`, then per entry `str key \| i32 milli \| u8 source (0 the global game_model_params row, 1 the model's own, 2 live, 3 inherited) \| u8 origin (PRESETS index of the model it came from; 255 none) \| str unit` (str = `u8 len` + UTF-8). Keys: `ladder.<own\|middle\|their>.<intercept\|no_turn\|contain>` (percent) first, then `concept.<code>.<param>`; then (G4.77) `i32 parent milli` per entry (what the parent model plays; INT32_MIN = no parent) |
-| 0x44 | SET_PARAM | c→s | admin (1.15, G4.76): `u8 team \| u8 op \| i32 milli \| str key` — op 0 live change, 1 undo it, 2 save into the team's game model (`game_model_concept_params` / `game_model_ladder`), 3 delete the model's own row (inherit; refused for a top-level model's ladder cell). Unknown keys ignored |
+| 0x3D | BRAIN_LEGEND | s→c | on connect: the decision names, `u8 count`, then per name `u8 len \| bytes`; a BRAIN entry's `why` indexes it |
+| — | retired in 2.0 | | 0x32, 0x33, 0x35, 0x36, 0x37, 0x3A, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43, 0x44 — never reused |
 | TBD | … | | reserved; new types are additive within a major version |
 
 Snapshot payloads at 22 slots + 3D ball must be measured against the u16
@@ -140,8 +137,6 @@ ball (appended in 1.1):
 match structure (appended in 1.2):
   u8 score_home | u8 score_away | u8 period |
   u16 clock_seconds (resets at full time) | u8 restart_team (0xFF = live)
-levels (appended in 1.3):
-  u8 level_home_id | u8 level_away_id
 facing (appended in 1.8, G4.53):
   per player: i8 face_x | i8 face_y   (unit vector × 127)
 officials (appended in 1.16, G4.93):

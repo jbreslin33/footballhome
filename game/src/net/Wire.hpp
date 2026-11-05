@@ -1,6 +1,6 @@
 // game/src/net/Wire.hpp
 //
-// Frame-type registry and protocol constants for fh-game.v1.
+// Frame-type registry and protocol constants for fh-game.v2.
 // game/PROTOCOL.md is the contract; this header mirrors it. A frame id is
 // never reused (PROTOCOL.md §9).
 //
@@ -16,8 +16,8 @@
 namespace fh::game::net {
 
 // Protocol version — major bumps reject at HELLO, minor is additive.
-inline constexpr std::uint8_t kProtoMajor = 1;
-inline constexpr std::uint8_t kProtoMinor = 4;  // 1.4: graded knowledge + presets
+inline constexpr std::uint8_t kProtoMajor = 2;
+inline constexpr std::uint8_t kProtoMinor = 0;  // 2.0 (G5.23): the old brain's frames and fields gone
 inline constexpr std::uint8_t kProtoPatch = 0;
 
 // Envelope: u16 payload_length | u8 frame_type | u8 flags | payload.
@@ -28,30 +28,21 @@ enum class FrameType : std::uint8_t {
     Hello        = 0x01,
     Goodbye      = 0x02,
     PlayerIntent = 0x10,
-    // 0x11 TACTICAL_INTENT reserved — ships with G5 (PROTOCOL.md §5).
+    // 0x11 TACTICAL_INTENT reserved (PROTOCOL.md §5).
     Snapshot     = 0x20,
-    Event        = 0x21,  // versioned match events; Goal is event 1 (G1)
+    Event        = 0x21,  // versioned match events; Goal is event 1
     Claim        = 0x30,
-    Speed        = 0x31,  // c→s admin: set sim speed; s→c the current speed, on connect + change (1.10)
-    MatchSettings = 0x32,  // admin: set team skill levels live (1.3)
-    PlayerSettings = 0x33, // admin: set one slot's graded knowledge (1.4)
-    Roster         = 0x34, // s→c: per-slot names + concept ratings (1.4)
-    Presets        = 0x35, // s→c: style-preset catalog, names only (1.4)
-    ApplyPreset    = 0x36, // admin: overlay a preset onto one team (1.4)
-    PlayerAttributes = 0x37, // admin: one slot's attributes, live (1.5, G4.30)
-    Teams          = 0x38, // s→c: the two teams' names, on connect (1.5)
-    ReloadRosters  = 0x39, // admin: re-read both teams from the club DB (1.5)
-    Concepts       = 0x3A, // s→c: the curriculum's concept names by id, on connect (1.6)
-    Brain          = 0x3B, // s→c: each player's decision (why / target / other), ~5 Hz to watchers (1.7)
-    BrainWatch     = 0x3C, // c→s: switch the brain overlay feed on / off (1.7)
-    BrainLegend    = 0x3D, // s→c: the decision names, on connect (1.7)
-    Phases         = 0x3E, // s→c: the phase-of-play catalog (game_phases titles), on connect (1.9)
-    RunPhase       = 0x3F, // c→s admin: set up a phase of play for one team: u8 team | u8 phase (1.9)
-    ModelDemands   = 0x40, // s→c admin: one team's game-model demand per concept + its source (1.14, G4.74)
-    SetDemand      = 0x41, // c→s admin: one concept's demand for one team, live: u8 team | u8 concept | u8 demand (255 = back to the model) (1.14)
-    SaveDemand     = 0x42, // c→s admin: SAVE one concept's demand into the team's game model (DB): same layout; 255 = delete its own row, inherit (1.15, G4.76)
-    ModelParams    = 0x43, // s→c admin: one team's concept numbers + 3-rule weights, value + source (1.15, G4.76)
-    SetParam       = 0x44, // c→s admin: one of those numbers: u8 team | u8 op | i32 milli | str key (1.15, G4.76)
+    Speed        = 0x31,  // c→s admin: set sim speed; s→c the current speed, on connect + change
+    Roster         = 0x34, // s→c: per-slot names + position numbers
+    Teams          = 0x38, // s→c: the two teams' names + kits, on connect
+    ReloadRosters  = 0x39, // c→s admin: re-read both teams from the club DB
+    Brain          = 0x3B, // s→c: each player's decision (why / target / other), ~5 Hz to watchers
+    BrainWatch     = 0x3C, // c→s: switch the brain overlay feed on / off
+    BrainLegend    = 0x3D, // s→c: the decision names, on connect
+    // Retired in 2.0 (G5.23) with the old brain — never reuse: 0x32 MATCH_SETTINGS,
+    // 0x33 PLAYER_SETTINGS, 0x35 PRESETS, 0x36 APPLY_PRESET, 0x37 PLAYER_ATTRIBUTES,
+    // 0x3A CONCEPTS, 0x3E PHASES, 0x3F RUN_PHASE, 0x40 MODEL_DEMANDS, 0x41 SET_DEMAND,
+    // 0x42 SAVE_DEMAND, 0x43 MODEL_PARAMS, 0x44 SET_PARAM.
 };
 
 // Capability bits granted in HELLO (PROTOCOL.md §3).

@@ -38,7 +38,7 @@ Loft loftTo(const core::BallFlight& flight, const core::PlayerState& mate, const
 // The carry that drops a loft on a fixed spot.
 std::uint8_t aimedCarry(const math::Vec3& from, const math::Vec2& to, math::Fixed64 max_m);
 // His loft range: max_m capped by his level's kick range.
-math::Fixed64 rangeFor(const core::LevelParams& lv, math::Fixed64 max_m);
+math::Fixed64 rangeFor(const core::PlayerSkill& lv, math::Fixed64 max_m);
 
 class Reads {
 public:

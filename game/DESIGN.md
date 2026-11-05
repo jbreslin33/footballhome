@@ -5342,3 +5342,45 @@ choice by distance and angle v StatsBomb PL 15/16 shot locations and xG. (2) Cro
 carriers never reach the wide zone (where real crosses start, StatsBomb). (3) Pressures 4×: the
 presser stands 3 m off every carrier — stand-off and who engages, DFL. (4) Passes 1.5×: pass choice
 v StatsBomb length / direction. (5) Skills: each PL player's attributes from his 2015/16 events.
+
+### 8.121 G5.23 — the rest of the old game deleted: levels, sheets, models, phases, the old harness; protocol 2.0 (mig 1092, scratch)
+
+James 11/5: "again all old parts need to go. we keep going over this lol". Rule from here: keep
+only the engine and the laws, real data and the benchmark scripts, the concept catalogue rows, and
+code written since the clean slate (G5.21+); everything else is deleted, not inventoried.
+
+**Deleted.** `core/Levels.hpp` (the u10 → world ladder, swarm, decision jitter, talk / listen dials,
+concept abilities, preset overlays), `core/Skill.hpp` (attribute → physics bending),
+`core/PlayerSheet.*` + `persistence/SheetStore.*` + `fh-game-roll` (character sheets),
+`core/ConceptRegistry.*` (the curriculum in code), `fh-game-calibrate`, `scripts/draw_bodies.py`,
+tests test_player_sheet / test_player_attributes / 8 server tests for removed features. The
+server's levels, per-player ratings and attributes and their live edits, game models / demands /
+params, phases of play and corner shapes (GameServer 1,017 → 444 lines). Persistence loads only
+formations, teams (names, positions, kits, top speed), officials, admin ids, physics params and
+benchmarks. The harness `fh-game-match` was rewritten lean (3,519 → ~520 lines): only lines with a
+real figure — result, SHOTS (new: by distance, how each ended), CONCEPT ACTS, PHASES, ENTRIES, CARRY
+THROUGH THE BLOCK, DEFENDING / POSSESSION SHAPE (+ the middle's fit). The overlay vocabulary
+`Why` 84 → 17 names (what the clean states decide); `Orders` lost rung / read / vision / calls.
+
+**Skill = physics, one block per player** (`core/PlayerSkill`): perception delay, kick and shot
+error, control speed, tackle success, keeper fumble, kick range, cut-out control, the control
+touch. A bare World is `PlayerSkill::perfect()` (engine tests stay independent); the server sets
+everyone from physics.skill.* rows, defaults = the old "pro" band's [FH] numbers until fitted to
+StatsBomb. Hashed per player. Correction (§8.120 called them "made up"): the 2,670 `derived`
+attribute values were each PL player's own 2015/16 StatsBomb event rates ranked in his position
+group (load_pl1516.py) — only their 0-100 spread was [FH]. Nothing is lost (scratch only; the
+script regenerates them); the skills step maps those per-player rates straight onto PlayerSkill.
+
+**Protocol 2.0** (`PROTOCOL.md`): frames 0x32 0x33 0x35-0x37 0x3A 0x3E-0x44 retired; SNAPSHOT
+drops the level ids, ROSTER the ratings, BRAIN the rung / vision / call blocks; subprotocol
+`fh-game.v2.bearer.<JWT>` so a 1.x client is refused, never desynced. The 2.0 browser client is
+staged in `game/ship/frontend/` — the live `frontend/` is served straight from the repo and the
+live daemon still speaks 1.x (editing the live client broke /game.html for ~10 minutes; reverted).
+`game/ship/README.md` is the one-step ship: live DB migs, daemon, client, the club backend's
+attribute endpoint.
+
+**Deleted (data, mig 1092, fh_game_scratch):** game_phases + game_phase_positions (152 hand-placed
+marks), game_direct_opponents, the sheet tables (game_sheet_tables, _position_profile, player
+rolls / history / techniques), and 82 skill.* / sheet.* / technique.* params.
+
+Tests 22/22; goldens re-locked (the hash mixes every player's skill).

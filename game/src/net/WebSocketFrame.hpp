@@ -68,7 +68,7 @@ std::vector<std::uint8_t> encodeServerFrame(Opcode opcode,
                                             std::span<const std::uint8_t> payload);
 
 // Convenience for the common case: send a Binary frame carrying an app
-// payload (SNAPSHOT / EVENT / HELLO_ACK etc. — already fh-game.v1 framed).
+// payload (SNAPSHOT / EVENT / HELLO_ACK etc. — already fh-game.v2 framed).
 inline std::vector<std::uint8_t> encodeServerBinary(std::span<const std::uint8_t> payload) {
     return encodeServerFrame(Opcode::Binary, payload);
 }
