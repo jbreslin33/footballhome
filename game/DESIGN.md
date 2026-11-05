@@ -5415,3 +5415,38 @@ until the skills step.)
 2.2 (7.7), but 25-35 m 146 (44) — the attack circulates outside the box, crosses 0.6 (11.5).
 (2) Shots don't score: the keeper keeps 57% (23%) and almost nothing is blocked (7% v 29%) —
 shot and keeper skill, the bodies between. (3) Pressures 4×, passes 1.5×.
+
+### 8.123 G5.25 — the pass policy and the press distance from real data (no migration)
+
+**Pass policy** (benchmarks_statsbomb_passes.py, StatsBomb PL 2015/16 open play, 377.7 attempted a
+team-match, 79.1% completed, 23.2 into the box from outside it): the pitch in 10 zones (their line
+0-18 / 18-35 / 35-52 / 52-70 / 70+ m × centre |y| < 20.16 or wide); from each origin zone the share of
+passes ending in each zone, and the share lofted and crossed. OnBall's guessed pass score (gain −
+0.15 × length) and its hand cross rule are replaced: each mate is weighted by the real share from
+this zone to his, split among the mates standing there; a pass the race read says we win (ground,
+else lofted) keeps its weight, one it says they win keeps physics.pass.risk_weight of it ([FH] 0.25,
+to fit to 79.1% completion); one roll a spell picks; a ball into the box from wide goes in the air at
+the zone's crosses ÷ its passes into the box, any other at the zone's loft share. Params
+physics.pass.to_<o>_<d>, loft_<o>, cross_<o>, risk_weight.
+
+**Press distance** (benchmarks_tracking_press.py, DFL: the nearest defender to the man on the
+ball, by the ball's metres from their line): median 2.1 / 3.0 / 3.9 / 5.5 / 8.0 m (0-18 … 70+); the
+presser's stand-off (was 3 m everywhere) is a roll a spell between that band's p25 and p75.
+Game after: 2.1 / 2.9 / 3.4 / 4.4 / 7.9.
+
+**Fixed:** a keeper never took the ball played back to him (Pick put the keeper state before the
+loose-ball man) — 11 of 16 goals in a 3-match run were own goals from passes rolling past him.
+DefendingBlock / Possession load their real tables at construction (a Brain without
+setModelParams, the tests, had zero tables and sent everyone to a goal line).
+
+**Harness:** goals by the last kick before them (own goals), passes completed, PASS POLICY as
+played (the StatsBomb grid), NEAREST DEFENDER by band.
+
+**Where it stands** (3 matches, Leicester v Arsenal): passes 728 a team-match (377.7), completed 90%
+(79.1); 0-1 goals a match. The mole the grid shows: from 18-35 m central real passes go into the box
+32% of the time (21.3 central + 10.5 wide), the game's 0.8% — nobody is in it. The support spots are
+real MEAN positions (a 9 averages ~22 m out with the ball 25 m out), and a mean has no runs.
+
+**Next mole.** Runs into the box: how many attackers are in the box (and the box channels) by where
+the ball is, from DFL, and who makes the run — a Run state that takes the man there.
+Tests 22/22 (the 3-minute flow check widened to the last 3 s); goldens re-locked.

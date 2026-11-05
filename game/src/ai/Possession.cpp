@@ -33,6 +33,14 @@ const Fixed64 kSoftPass = Fixed64::fromInt(14);                // ShortPass insi
 
 Vec2 v2(const Vec3& p) { return Vec2{p.x, p.y}; }
 
+// The pass policy's zones: metres from THEIR line in 0-18 / 18-35 / 35-52 /
+// 52-70 / 70+ × centre (|y| < 20.16, the box's width) or wide.
+int zoneOf(Fixed64 hx, const Vec2& p, Fixed64 sg) {
+    const Fixed64 d = hx - p.x * sg;
+    const int b = d < Fixed64::fromInt(18) ? 0 : d < Fixed64::fromInt(35) ? 1 : d < Fixed64::fromInt(52) ? 2 : d < Fixed64::fromInt(70) ? 3 : 4;
+    return b * 2 + (math::fx_abs(p.y) < Fixed64::fromFraction(2016, 100) ? 0 : 1);
+}
+
 int theirKeeper(const PlayerCtx& c, std::uint8_t team) {
     for (std::uint8_t j = 0; j < c.world.playerCount(); ++j)
         if (c.team_of_slot[j] != team && c.world.isKeeper(j)) return j;
@@ -80,74 +88,82 @@ public:
                     return true;
                 }
             }
-            // 2. A cross: wide, near their line — the freest man attacking the
-            // box, else the penalty spot.
-            if (depth <= P.cross_depth_m && math::fx_abs(sp.y) >= P.cross_wide_m) {
-                int best = -1; Fixed64 bf{};
-                for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
-                    if (j == v.slot || c.team_of_slot[j] != v.team || w.isKeeper(j)) continue;
-                    const auto& m = w.player(j);
-                    const Fixed64 md = hx - m.pos.x * v.sg;
-                    if (md < Fixed64::fromInt(3) || md > Fixed64::fromInt(14) || math::fx_abs(m.pos.y) > Fixed64::fromInt(12)) continue;
-                    Fixed64 free = Fixed64::fromInt(100);
-                    for (std::uint8_t q2 = 0; q2 < w.playerCount(); ++q2) {
-                        if (c.team_of_slot[q2] == v.team) continue;
-                        const Fixed64 f = math::length(Vec2{w.player(q2).pos.x - m.pos.x, w.player(q2).pos.y - m.pos.y});
-                        if (f < free) free = f;
-                    }
-                    if (best < 0 || free > bf) { best = j; bf = free; }
-                }
-                const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(45));
-                if (best >= 0) {
-                    const Loft lf = loftTo(w.ballFlight(), w.player(static_cast<std::uint8_t>(best)), me.pos, reach);
-                    o.target = lf.at; o.carry_m = lf.carry_m;
-                    o.other = static_cast<std::int16_t>(best);
-                    o.pass_to = static_cast<std::uint8_t>(best);
-                } else {
-                    o.target = Vec2{v.sg * (hx - Fixed64::fromInt(11)), Fixed64::zero()};
-                    o.carry_m = aimedCarry(me.pos, o.target, reach);
-                }
-                o.move.move = math::normalized(Vec2{o.target.x - sp.x, o.target.y - sp.y});
-                o.action = Action::LoftedKick;
-                o.why = Why::Cross;
-                return true;
-            }
         }
-        // 3. The best safe pass: ground first, a loft to a man far off; the
-        // race read decides "safe" (one of ours first) [Buckland].
-        int best = -1; Fixed64 bs{}; bool loft = false; Loft blf{};
+        // 2. A pass — the real policy (StatsBomb PL 2015/16 open play). Each
+        // mate's weight is the share of real passes from this zone to his zone,
+        // split among the mates standing there; only passes the race read says
+        // we win (ground, else lofted) stay in; one roll for the spell picks.
+        const int oz = zoneOf(hx, sp, v.sg);
+        int in_zone[10] = {};
+        for (std::uint8_t j = 0; j < w.playerCount(); ++j)
+            if (j != v.slot && c.team_of_slot[j] == v.team) ++in_zone[zoneOf(hx, v2(w.player(j).pos), v.sg)];
+        struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; };
+        Cand cand[32]; int nc = 0; Fixed64 sum{};
         const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(50));
-        for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+        for (std::uint8_t j = 0; j < w.playerCount() && nc < 32; ++j) {
             if (j == v.slot || c.team_of_slot[j] != v.team) continue;
             const auto& m = w.player(j);
             const Vec2 to = v2(m.pos);
             const Fixed64 d = math::length(Vec2{to.x - sp.x, to.y - sp.y});
             if (d < P.pass_min_m) continue;
-            const Fixed64 gain = (to.x - sp.x) * v.sg;
+            const int ez = zoneOf(hx, to, v.sg);
+            const Fixed64 wgt = P.pass_to[oz][ez] / Fixed64::fromInt(in_zone[ez]);
+            if (wgt.raw <= 0) continue;
             if (c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one())) {
-                const Fixed64 s = gain - d * P.pass_len_cost;
-                if (best < 0 || s > bs) { best = j; bs = s; loft = false; }
-            } else if (d >= P.loft_min_m && d <= reach) {
+                cand[nc++] = Cand{j, wgt, false, Loft{}};
+                sum += wgt;
+            } else {
                 const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach);
-                if (c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one())) {
-                    const Fixed64 s = gain - d * P.pass_len_cost - Fixed64::fromInt(5);
-                    if (best < 0 || s > bs) { best = j; bs = s; loft = true; blf = lf; }
+                if (d <= reach && c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one())) {
+                    cand[nc++] = Cand{j, wgt, true, lf};
+                    sum += wgt;
+                } else if (P.risk_weight.raw > 0) {
+                    // Real passes fail 21% of the time: a pass the read says they
+                    // win is still tried, at risk_weight of its share (fitted to
+                    // the real 79.1% completion, StatsBomb PL 2015/16).
+                    cand[nc++] = Cand{j, wgt * P.risk_weight, false, Loft{}};
+                    sum += wgt * P.risk_weight;
                 }
             }
         }
-        if (best >= 0) {
-            const auto& m = w.player(static_cast<std::uint8_t>(best));
-            o.other = static_cast<std::int16_t>(best);
-            if (loft) {
-                o.target = blf.at; o.carry_m = blf.carry_m; o.action = Action::LoftedKick;
-                o.pass_to = static_cast<std::uint8_t>(best);
+        if (nc > 0) {
+            const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 41) + Fixed64::one()) *
+                              Fixed64::fromFraction(1, 2) * sum;
+            int k = 0; Fixed64 acc = cand[0].wgt;
+            while (k + 1 < nc && acc < u) { ++k; acc += cand[k].wgt; }
+            const Cand& ch = cand[k];
+            const auto& m = w.player(static_cast<std::uint8_t>(ch.j));
+            const int ez = zoneOf(hx, v2(m.pos), v.sg);
+            // A ball into the box from wide goes in the air at the real cross share;
+            // any other pass lofted at the zone's real loft share, if the loft is safe.
+            const Fixed64 u2 = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 42) + Fixed64::one()) *
+                               Fixed64::fromFraction(1, 2);
+            const bool into_box = ez == 0 && oz != 0;
+            bool air = ch.loft;
+            bool crossed = false;
+            Loft lf = ch.lf;
+            // P(in the air | into the box) = the zone's crosses / its passes into the box.
+            Fixed64 p_air = P.pass_loft[oz];
+            if (into_box && P.pass_to[oz][0].raw > 0) {
+                p_air = P.pass_cross[oz] / P.pass_to[oz][0];
+                if (p_air > Fixed64::one()) p_air = Fixed64::one();
+            }
+            if (!air && u2 < p_air) {
+                const Loft l2 = loftTo(w.ballFlight(), m, me.pos, reach);
+                if (c.reads.loftSafe(w, v.slot, sp, l2.at, l2.carry_m, Fixed64::one())) { air = true; lf = l2; crossed = into_box; }
+            }
+            o.other = static_cast<std::int16_t>(ch.j);
+            if (air) {
+                o.target = lf.at; o.carry_m = lf.carry_m; o.action = Action::LoftedKick;
+                o.pass_to = static_cast<std::uint8_t>(ch.j);
+                o.why = (crossed || (into_box && math::fx_abs(sp.y) >= Fixed64::fromFraction(2016, 100))) ? Why::Cross : Why::Pass;
             } else {
                 o.target = v2(m.pos);
                 const Fixed64 d = math::length(Vec2{o.target.x - sp.x, o.target.y - sp.y});
                 o.action = d < kSoftPass ? Action::ShortPass : Action::GroundKick;
+                o.why = Why::Pass;
             }
             o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));
-            o.why = Why::Pass;
             return true;
         }
         // 4. Nothing safe: a keeper kicks it long; in our end, clear it.
@@ -292,13 +308,25 @@ void PossessionParams::configure(const core::ModelParams& p) {
             shot_p[d][a] = p.fixed(("physics.shot.p_" + std::to_string(d) + "_" + std::to_string(a)).c_str(), kShotP[d][a]);
     // On-ball starting numbers [FH] — to be fitted to StatsBomb PL 2015/16
     // (crosses, pass length and direction a team-match).
-    cross_depth_m = p.fixed("physics.onball.cross_depth_m", 20000);
-    cross_wide_m = p.fixed("physics.onball.cross_wide_m", 18000);
+    // The pass policy, StatsBomb PL 2015/16 open play (per mille of the origin zone's passes).
+    static const int kTo[10][10] = {
+        {770, 94, 121, 14, 0, 0, 0, 0, 0, 0},       {419, 339, 77, 159, 2, 4, 0, 0, 0, 0},
+        {213, 105, 403, 147, 105, 25, 2, 0, 0, 0},  {141, 137, 183, 334, 70, 125, 4, 4, 0, 0},
+        {35, 25, 155, 124, 353, 163, 115, 24, 4, 1}, {29, 30, 76, 174, 193, 305, 86, 97, 6, 3},
+        {13, 11, 32, 31, 154, 120, 358, 158, 106, 16}, {17, 16, 36, 46, 77, 179, 211, 241, 108, 68},
+        {7, 5, 42, 18, 91, 48, 167, 117, 383, 123},  {6, 6, 21, 22, 48, 71, 96, 191, 263, 277}};
+    static const int kLoft[10] = {214, 265, 122, 134, 122, 118, 128, 172, 298, 289};
+    static const int kCross[10] = {256, 296, 7, 78, 0, 0, 0, 0, 0, 0};
+    for (int o = 0; o < 10; ++o) {
+        for (int d = 0; d < 10; ++d)
+            pass_to[o][d] = p.fixed(("physics.pass.to_" + std::to_string(o) + "_" + std::to_string(d)).c_str(), kTo[o][d]);
+        pass_loft[o] = p.fixed(("physics.pass.loft_" + std::to_string(o)).c_str(), kLoft[o]);
+        pass_cross[o] = p.fixed(("physics.pass.cross_" + std::to_string(o)).c_str(), kCross[o]);
+    }
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);
     pass_min_m = p.fixed("physics.onball.pass_min_m", 5000);
-    pass_len_cost = p.fixed("physics.onball.pass_len_cost", 150);
-    loft_min_m = p.fixed("physics.onball.loft_min_m", 25000);
     onside_margin_m = p.fixed("physics.support.onside_margin_m", 500);
+    risk_weight = p.fixed("physics.pass.risk_weight", 250);   // [FH] start; fit to completion 79.1%
     keeper_depth_m = p.fixed("physics.keeper.depth_m", 1000);
     keeper_depth_k = p.fixed("physics.keeper.depth_k", 80);
     keeper_depth_max_m = p.fixed("physics.keeper.depth_max_m", 12000);

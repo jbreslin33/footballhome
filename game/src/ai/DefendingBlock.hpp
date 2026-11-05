@@ -23,7 +23,10 @@ namespace fh::game::ai {
 
 struct BlockParams {
     math::Fixed64 spot[kRoleCount][kBandCount]{};   // metres off our own line
-    math::Fixed64 stand_off{};                      // presser: metres goal-side of their carrier
+    // Presser's distance from their carrier (G5.25): by the ball's metres from
+    // our line (0-18 / 18-35 / 35-52 / 52-70 / 70+), the real nearest defender's
+    // p25 / median / p75 — DFL (benchmarks_tracking_press.py); one roll a spell.
+    math::Fixed64 stand_off[5][3]{};
     math::Fixed64 switch_m{};                       // a new presser / chaser must be this much nearer
     math::Fixed64 tackle_per_s{};                   // in reach and goal-side: chance a second he dives
     void configure(const core::ModelParams& p);
@@ -31,6 +34,7 @@ struct BlockParams {
 
 class DefendingBlock {
 public:
+    DefendingBlock() { params_.configure(core::ModelParams{}); }   // the real tables, no DB needed
     void configure(const core::ModelParams& p) { params_.configure(p); }
     const BlockParams& params() const { return params_; }
 

@@ -58,7 +58,14 @@ public:
         const Vec2 own_goal{-v.sg * c.world.pitchHalfX(), Fixed64::zero()};
         const Vec2 to_goal{own_goal.x - cr.pos.x, own_goal.y - cr.pos.y};
         const Fixed64 len = math::length(to_goal);
-        const Fixed64 off = c.block.params().stand_off;
+        const Fixed64 off_line = c.world.pitchHalfX() + ball.pos.x * v.sg;   // ball metres off our line
+        const int band = off_line < Fixed64::fromInt(18) ? 0 : off_line < Fixed64::fromInt(35) ? 1
+                       : off_line < Fixed64::fromInt(52) ? 2 : off_line < Fixed64::fromInt(70) ? 3 : 4;
+        const auto& q = c.block.params().stand_off[band];
+        const Fixed64 u = (core::detNoise(v.match_seed, c.world.ownedAtTick(), v.slot, 30) + Fixed64::one()) *
+                          Fixed64::fromFraction(1, 2);   // [0, 1): p25 … p75
+        const Fixed64 off = u < Fixed64::fromFraction(1, 2) ? q[0] + (q[1] - q[0]) * u * 2
+                                                            : q[1] + (q[2] - q[1]) * (u * 2 - Fixed64::one());
         o.target = len.raw > 0 ? Vec2{cr.pos.x + to_goal.x * off / len, cr.pos.y + to_goal.y * off / len}
                                : Vec2{cr.pos.x, cr.pos.y};
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));
@@ -104,7 +111,13 @@ void BlockParams::configure(const core::ModelParams& p) {
             const std::string key = std::string("physics.block.") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5);
             spot[r][b] = p.fixed(key, std::int64_t{kRealSpotDm[r][b]} * 100);
         }
-    stand_off = p.fixed("physics.press.stand_off_m", 3000);
+    // Real (DFL, the nearest defender to the man on the ball): p25 / median / p75 m.
+    static const int kOff[5][3] = {{1200, 2100, 3600}, {1700, 3000, 4800}, {2000, 3900, 6600},
+                                   {2800, 5500, 9200}, {3700, 8000, 13300}};
+    static const char* kQ[3] = {"p25", "p50", "p75"};
+    for (int b = 0; b < 5; ++b)
+        for (int k = 0; k < 3; ++k)
+            stand_off[b][k] = p.fixed((std::string("physics.press.stand_off_") + std::to_string(b) + "_" + kQ[k]).c_str(), kOff[b][k]);
     switch_m = p.fixed("physics.press.switch_m", 2000);
     tackle_per_s = p.fixed("physics.press.tackle_per_s", 500);
 }

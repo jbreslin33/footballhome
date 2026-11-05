@@ -12,9 +12,11 @@
 //            action every tick and carries meanwhile; the World releases it.
 //            Best action, in order: a shot (the real policy: one roll a spell
 //            against the share of releases at his spot that are shots, by distance
-//            × goal angle, StatsBomb), a cross (wide inside cross_depth_m of their line),
-//            the best safe pass (progress, less length, the race read says
-//            ours), a clearance (our end, nothing safe), else keep carrying.
+//            × goal angle, StatsBomb); a pass by the real pass policy (each mate
+//            weighted by the share of real passes from this zone to his zone,
+//            shared among the mates there; only ones the race read says we win;
+//            one roll a spell; lofted / crossed at the real shares); a clearance
+//            (our end, nothing safe); else keep carrying.
 //   Support  his role's real spot for this ball (below), kept onside.
 //   Receive  the pass is his: get in line with it (G5.5), else the race spot.
 //   Keeper   set on the ball-goal line, depth with the ball's distance;
@@ -39,9 +41,14 @@ struct PossessionParams {
     // 0.25-0.5, 0.5+ rad). StatsBomb PL 2015/16 open play
     // (benchmarks_statsbomb_shots.py SHOT POLICY); none past 35 m.
     math::Fixed64 shot_p[4][3]{};
-    math::Fixed64 cross_depth_m{}, cross_wide_m{};
+    // The pass policy (G5.25): from each origin zone (their line 0-18 / 18-35 /
+    // 35-52 / 52-70 / 70+ m × centre |y| < 20.16 or wide), the share of real
+    // passes ending in each zone, and the share lofted / crossed — StatsBomb PL
+    // 2015/16 open play (benchmarks_statsbomb_passes.py PASS POLICY).
+    math::Fixed64 pass_to[10][10]{}, pass_loft[10]{}, pass_cross[10]{};
+    math::Fixed64 risk_weight{};   // an unsafe pass's weight, × its zone share
     math::Fixed64 clear_from_m{};                   // our end: within this of our line
-    math::Fixed64 pass_min_m{}, pass_len_cost{}, loft_min_m{};
+    math::Fixed64 pass_min_m{};
     math::Fixed64 onside_margin_m{};
     math::Fixed64 keeper_depth_m{}, keeper_depth_k{}, keeper_depth_max_m{}, keeper_long_m{};
     void configure(const core::ModelParams& p);
@@ -49,6 +56,7 @@ struct PossessionParams {
 
 class Possession {
 public:
+    Possession() { params_.configure(core::ModelParams{}); }   // the real tables, no DB needed
     void configure(const core::ModelParams& p) { params_.configure(p); }
     const PossessionParams& params() const { return params_; }
     math::Vec2 spot(const PlayerView& v, const core::World& world) const;

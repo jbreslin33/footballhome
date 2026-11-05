@@ -58,8 +58,12 @@ struct Stats {
     long goals[2] = {}, w = 0, d = 0, l = 0;
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
-    long rel_n[5] = {}, rel_shot[5] = {};   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
+    long rel_n[5] = {}, rel_shot[5] = {};
+    long goal_by[ai::kWhyCount + 1] = {}, goal_own = 0;
+    std::vector<double> near_band[5];
+    long pz_n[10] = {}, pz_to[10][10] = {};   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
+    long pass_ok = 0;
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
          ret = 0, ret_base = 0, carry10 = 0;
     // Phases (G5.21).
@@ -127,6 +131,7 @@ int main(int argc, char** argv) {
         auto role = [&](std::uint8_t j) { return static_cast<int>(ai::roleOfNumber(s.brain().numberOf(j))); };
         // Per-match state.
         struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; } shot;
+        int last_kick_why = ai::kWhyCount, last_kick_team = -1;
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0;
         bool own_set = false;
         struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false; } rel;
@@ -146,12 +151,18 @@ int main(int argc, char** argv) {
             for (const auto& e : s.lastEvents())
                 if (e.type == core::MatchEventType::Goal) {
                     ++S.goals[e.team];
+                    if (last_kick_team >= 0 && last_kick_team != e.team) ++S.goal_own;
+                    ++S.goal_by[last_kick_why];
                     if (shot.on && shot.team == e.team) { ++S.shot_out[0]; ++S.band_goal[shot.band]; shot.on = false; }
                 }
             if (dead_trace && k % 300 == 0 && W.restartTeam() != 0xFF)
                 std::fprintf(stderr, "dead-trace m%d k%ld restart %d kind %d owner %d ball %.1f,%.1f\n", m, k, W.restartTeam(),
                              static_cast<int>(W.restartKind()), b.owner ? *b.owner : -1, b.pos.x.toDouble(), b.pos.y.toDouble());
 
+            if (before && !b.owner && b.last_kicker == *before) {   // a kick
+                last_kick_why = static_cast<int>(s.lastOrders()[*before].why);
+                last_kick_team = W.player(*before).team;
+            }
             // ── a shot struck this tick, and how it ends ──────────────────
             if (before && !b.owner && b.last_kicker == *before && s.lastOrders()[*before].why == ai::Why::Shoot) {
                 const auto& p = W.player(*before);
@@ -182,6 +193,8 @@ int main(int argc, char** argv) {
                 if (std::fabs(ey - rel.y) >= 34) ++S.switches;
                 if (rel.cross) ++S.crosses;
                 const double stl = hx - rel.x * sg, etl = hx - ex * sg;
+                auto zn = [](double d, double y) { int b = d < 18 ? 0 : d < 35 ? 1 : d < 52 ? 2 : d < 70 ? 3 : 4; return b * 2 + (std::fabs(y) < 20.16 ? 0 : 1); };
+                { const int oz = zn(stl, rel.y), ez = zn(etl, ey); ++S.pz_n[oz]; ++S.pz_to[oz][ez]; }
                 if (stl < 9 && etl > stl + 1 && etl < 16.5 && std::fabs(ey) < 20.16) ++S.cutbacks;
                 rel = Rel{};
             };
@@ -208,6 +221,7 @@ int main(int argc, char** argv) {
                     const auto& q = W.player(static_cast<std::uint8_t>(own));
                     if (rel.p >= 0) {
                         const bool mate = rel.team == q.team && rel.p != own;
+                        if (mate && !rel.set && !rel.shot) ++S.pass_ok;
                         from[own] = (mate && !rel.set) ? rel.p : -1; from_t[own] = k;
                         endPass(q.pos.x.toDouble(), q.pos.y.toDouble());
                     } else from[own] = -1;
@@ -322,6 +336,15 @@ int main(int argc, char** argv) {
                     else { ++cy.miss; cy.last = k; }
                     skip = true;
                 }
+                if (cr >= 0) {   // the nearest defender to the man on the ball (DFL: benchmarks_tracking_press.py)
+                    double nd2 = 1e9;
+                    for (std::uint8_t j = 0; j < N; ++j)
+                        if (!W.isKeeper(j) && W.player(j).team != a)
+                            nd2 = std::min(nd2, std::hypot(W.player(j).pos.x.toDouble() - W.player(static_cast<std::uint8_t>(cr)).pos.x.toDouble(),
+                                                           W.player(j).pos.y.toDouble() - W.player(static_cast<std::uint8_t>(cr)).pos.y.toDouble()));
+                    const int nb = tl < 18 ? 0 : tl < 35 ? 1 : tl < 52 ? 2 : tl < 70 ? 3 : 4;
+                    if (nd2 < 1e8) S.near_band[nb].push_back(nd2);
+                }
                 if (!skip && cr >= 0) {
                     double dist[32]; int nd = 0, w5 = 0, bj = -1; double best = 1e9;
                     for (std::uint8_t j = 0; j < N && j < 32; ++j) {
@@ -382,6 +405,9 @@ int main(int argc, char** argv) {
         for (int i = 0; i < 4; ++i) std::printf(" %s %.0f%% (scored %.1f%%);", kDistName[i], 100.0 * S.shot_band[i] / sh, 100.0 * S.band_goal[i] / std::max(1L, S.shot_band[i]));
         std::printf("\n   how they ended:");
         for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%%;", kOutName[i], 100.0 * S.shot_out[i] / sh);
+        std::printf("\n   goals by the last kick before them:");
+        for (int i = 0; i <= ai::kWhyCount; ++i) if (S.goal_by[i]) std::printf(" %s %ld;", i < ai::kWhyCount ? ai::kWhyNames[i] : "none", S.goal_by[i]);
+        std::printf(" (own goals %ld)", S.goal_own);
         static const char* rbn[5] = {"<12 m", "12-18", "18-25", "25-35", "35+"};
         std::printf("\n   of the balls let go in open play, the share that were shots:");
         for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%% (of %.1f a team-match);", rbn[i], 100.0 * S.rel_shot[i] / std::max(1L, S.rel_n[i]), S.rel_n[i] / tm);
@@ -390,6 +416,29 @@ int main(int argc, char** argv) {
     std::printf("CONCEPT ACTS a team-match (StatsBomb cuts; real PL 15/16 in brackets): pressures %.1f (151.8), counter-press %.1f = %.1f%% (21.0%%); passes %.1f (433.8): switches %.2f (10.69), crosses %.2f (11.47), cut-backs %.2f (1.03); take-ons %.2f tried (18.05), %.2f completed (10.59); return passes %.2f (42.11) = %.1f%% of passes after a receipt (15.7%%); carries 10 m+ %.2f (34.64)\n",
                 S.press / tm, S.cpress / tm, 100.0 * S.cpress / std::max(1L, S.press), S.passes / tm, S.switches / tm, S.crosses / tm, S.cutbacks / tm,
                 S.takeon / tm, S.takeon_ok / tm, S.ret / tm, 100.0 * S.ret / std::max(1L, S.ret_base), S.carry10 / tm);
+    std::printf("   passes completed %.1f%% (79.1%%)\n", 100.0 * S.pass_ok / std::max(1L, S.passes));
+    {
+        static const char* zz[10] = {"0-18 centre", "0-18 wide", "18-35 centre", "18-35 wide", "35-52 centre", "35-52 wide", "52-70 centre", "52-70 wide", "70+ centre", "70+ wide"};
+        std::printf("   PASS POLICY as played (origin: passes a team-match | share to each end zone [0]..[9] as benchmarks_statsbomb_passes.py):\n");
+        for (int o = 0; o < 10; ++o) {
+            if (!S.pz_n[o]) continue;
+            std::printf("     %-12s %6.1f |", zz[o], S.pz_n[o] / tm);
+            for (int d = 0; d < 10; ++d) std::printf(" %4.1f", 100.0 * S.pz_to[o][d] / S.pz_n[o]);
+            std::printf("\n");
+        }
+    }
+    {
+        static const char* nbn[5] = {"0-18", "18-35", "35-52", "52-70", "70+"};
+        static const double real_med[5] = {2.1, 3.0, 3.9, 5.5, 8.0};
+        std::printf("   NEAREST DEFENDER to the man on the ball, median by the ball's metres from their line (real DFL):");
+        for (int i = 0; i < 5; ++i) {
+            auto& v = S.near_band[i];
+            if (v.empty()) continue;
+            std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end());
+            std::printf(" %s %.1f (%.1f);", nbn[i], v[v.size() / 2], real_med[i]);
+        }
+        std::printf("\n");
+    }
     std::printf("   PHASES (share of time, both teams):");
     for (int q = 0; q < ai::kPhaseCount; ++q) std::printf(" %s %.1f%%;", ai::kPhaseNames[q], 50.0 * S.ph[q] / std::max(1L, S.ph_n));
     std::printf("\n");

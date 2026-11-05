@@ -57,8 +57,10 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // the keeper rebuilt as player states (support at real spots, on-ball by data).
 // Re-locked G5.23 (2026-11-05): levels, skill bands, sheets deleted; the hash
 // mixes every player's skill.
-constexpr std::uint64_t kGolden3v3   = 0xac561633003ddf73ULL;
-constexpr std::uint64_t kGolden11v11 = 0xf8583b0f18de6122ULL;
+// Re-locked G5.25 (2026-11-05): the pass policy and the press stand-off from
+// real data; a keeper takes the ball played back to him.
+constexpr std::uint64_t kGolden3v3   = 0x6758751c19863317ULL;
+constexpr std::uint64_t kGolden11v11 = 0x8342ee1086fb1c49ULL;
 
 struct Rig {
     World world;
@@ -148,12 +150,12 @@ FH_TEST(players_clamped_to_pitch_apron) {
 
 FH_TEST(ai_match_flows_possession_and_stays_on_pitch) {
     Rig r{22};
-    r.run(30 * 60 * 3 - 30);  // 3 sim-minutes, the last second checked tick by tick
+    r.run(30 * 60 * 3 - 90);  // 3 sim-minutes, the last 3 seconds checked tick by tick
     // Somebody must be with the ball — within 10 m at some tick of the last
-    // second (one instant can catch a pass rolling between two men: G4.65's
-    // marking left the nearest man 10.0 m from a 9.6 m/s ball).
+    // 3 seconds (one instant can catch a pass rolling between two men, or a
+    // long ball landing in space with the keeper still 10 m off it, G5.25).
     bool someone_near_ball = false;
-    for (int t = 0; t < 30; ++t) {
+    for (int t = 0; t < 90; ++t) {
         r.run(1);
         for (std::uint8_t i = 0; i < 22; ++i) {
             const auto& p = r.world.player(i);

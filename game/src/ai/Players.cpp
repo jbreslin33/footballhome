@@ -42,9 +42,11 @@ public:
         const std::uint8_t team = c.team.team;
         const PlayerState* next;
         if (ball.owner && *ball.owner == a.slot) next = Possession::onBall();
-        else if (c.world.isKeeper(a.slot)) next = Possession::keeper();
+        // His team's man for the loose ball — a keeper too: the pass back to him,
+        // the ball he's first to (else a pass to the keeper rolled into the net).
         else if (c.block.chaser(team) == a.slot)
             next = (ball.pass_to == a.slot && c.world.lastTouchTeam() == team) ? Possession::receive() : DefendingBlock::chaseBall();
+        else if (c.world.isKeeper(a.slot)) next = Possession::keeper();
         else if (defendingPhase(c.team.phase()))
             next = c.block.presser(team) == a.slot ? DefendingBlock::pressBall() : DefendingBlock::holdBlockSpot();
         else next = Possession::support();
