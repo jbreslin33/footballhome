@@ -613,18 +613,20 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
     const std::string squadStatus = body.contains("squadStatus") && body["squadStatus"].is_string()
         ? body["squadStatus"].get<std::string>() : "";
     if (!squadStatus.empty() && !inviteOnly) return badRequest("squadStatus needs inviteOnly");
+    // 💤 "Inactive — all teams" (mig 1074): the same status on every team
+    // he is on in this club, one tap for a man who has stopped coming.
+    const bool allTeams = readBool(body, "allTeams", false);
+    if (allTeams && squadStatus != "inactive") return badRequest("allTeams is for inactive only");
     if (!canManageTeam(request, teamId)) {
         return errorResponse(HttpStatus::FORBIDDEN, "Not authorized to manage this team");
     }
     try {
         auto db = Database::getInstance();
-        // per_team (mig 1031): Practice Squad = no spot on THIS team, so it
-        // lives on this row only; the rest (Inactive) are one per section.
-        bool perTeam = false;
+        // Every status is per team (Practice Squad mig 1031, Inactive mig
+        // 1074): it lives on this team's row only.
         if (!squadStatus.empty()) {
-            auto st = db->query("SELECT per_team FROM squad_statuses WHERE code = $1 AND is_active", {squadStatus});
+            auto st = db->query("SELECT 1 FROM squad_statuses WHERE code = $1 AND is_active", {squadStatus});
             if (st.empty()) return badRequest("Unknown squadStatus");
-            perTeam = st[0]["per_team"].as<bool>();
         }
         auto rows = db->query(
             // la_user_id is TEXT on persons AND person_la_user_ids —
@@ -646,26 +648,15 @@ Response MensRosterController::handleInviteOnly(const Request& request) {
             {userId > 0 ? std::to_string(userId) : "", std::to_string(teamId), inviteOnly ? "true" : "false",
              std::to_string(personId), callIn, squadStatus});
         if (rows.empty()) return notFound("No assignment exists for that player on that team");
-        // Inactive is one per man per section (mig 1009): the person row is
-        // the truth and its trigger carries it to all his teams in this
-        // team's section.  Any other pick on any team ends it — Practice
-        // Squad included, which stays on this row (mig 1031).  Runs after
-        // the row UPDATE so this pick keeps its invite_only (the delete
-        // trigger only resets rows still carrying the section status).
-        const std::string pid = rows[0]["person_id"].c_str();
-        if (!squadStatus.empty() && !perTeam) {
+        if (allTeams) {
             db->query(
-                "INSERT INTO person_section_squad_statuses (person_id, club_section_id, squad_status_id) "
-                "SELECT $1::int, t.club_section_id, ss.id FROM teams t, squad_statuses ss "
-                " WHERE t.id = $2::int AND t.club_section_id IS NOT NULL AND ss.code = $3 "
-                "ON CONFLICT (person_id, club_section_id) "
-                "DO UPDATE SET squad_status_id = EXCLUDED.squad_status_id, set_at = now()",
-                {pid, std::to_string(teamId), squadStatus});
-        } else {
-            db->query(
-                "DELETE FROM person_section_squad_statuses s USING teams t "
-                " WHERE t.id = $2::int AND s.club_section_id = t.club_section_id AND s.person_id = $1::int",
-                {pid, std::to_string(teamId)});
+                "UPDATE team_persons tp SET invite_only = true, call_in = false, "
+                "       squad_status_id = (SELECT id FROM squad_statuses WHERE code = 'inactive') "
+                "  FROM teams t, teams here "
+                " WHERE tp.person_id = $1::int AND tp.removed_at IS NULL AND t.id = tp.team_id "
+                "   AND here.id = $2::int AND t.club_id = here.club_id "
+                "   AND t.club_section_id IS NOT NULL",   // not the pickup pool
+                {std::string(rows[0]["person_id"].c_str()), std::to_string(teamId)});
         }
         std::ostringstream out;
         out << "{\"leagueAppsUserId\":" << userId

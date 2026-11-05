@@ -592,7 +592,7 @@ class RosterScreenBase extends Screen {
   // TEAM — the functional (RSVP) side, by columnCategoryOf; each card
   //   wears a 📋 chip per official roster he is on: PLAYS, ⭐ CALL-DOWNS
   //   (standing invites riding in from other columns), ↔ CALL INS,
-  //   PRACTICE SQUAD, 📄 PAPER SPOT, 🩹 INJURED,
+  //   PRACTICE SQUAD, 🩹 INJURED,
   //   💤 INACTIVE.
   // Every card keeps its true coach rank (#N) from the full column.
   // Section copy is message_templates kind roster_sheet (migs 770–775).
@@ -617,7 +617,9 @@ class RosterScreenBase extends Screen {
   // player stays in INJURED whatever his squad group.
   columnCategoryOf(p) {
     if (p.squadStatus) return this.injuredInLitSeason(p.personId) ? 'injured' : p.squadStatus;
-    return p.inviteOnly === true ? (p.callIn === true ? 'callin' : 'paper')
+    // A bare invite-only row was a 📄 paper spot; since mig 1074 that is
+    // 💤 Inactive on this team (rows carry the status, this is a guard).
+    return p.inviteOnly === true ? (p.callIn === true ? 'callin' : 'inactive')
       : (this.injuredInLitSeason(p.personId) ? 'injured' : 'active');
   }
 
@@ -735,7 +737,7 @@ class RosterScreenBase extends Screen {
         ? head(ridersUp ? (copy('board_callups_h') || '⭐ CALL-UPS · every game') : (copy('board_calldowns_h') || '⭐ CALL-DOWNS'), 0, ...BLUE)
           + '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>'
         : '');
-      const cats = { onboard: [], active: [], callin: [], paper: [], injured: [], practice_squad: [], inactive: [] };
+      const cats = { onboard: [], active: [], callin: [], injured: [], practice_squad: [], inactive: [] };
       // NEEDS ONBOARD (owner 2026-11-03): never answered an RSVP himself
       // (standing defaults and admin answers don't count) and not 💤
       // Inactive or 🩹 Injured — he leaves the moment he answers once.
@@ -803,7 +805,6 @@ class RosterScreenBase extends Screen {
         + ridersGroup
         + group(copy('board_callins_h') || '↔ CALL INS', cats.callin, 'callin', ...BLUE)
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
-        + group(copy('board_not_functional_h') || '📄 PAPER SPOT', cats.paper, 'paper', ...AMBER)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
         + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
     }
@@ -1364,11 +1365,10 @@ class RosterScreenBase extends Screen {
     const copy = (tier) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || '';
     const H    = RosterScreenBase.HEALTH;
     const injury = H.people[player.personId] || null;
-    const teamCode = player.squadStatus || (player.inviteOnly === true ? (player.callIn === true ? 'callin' : 'paper') : 'plays');
+    const teamCode = player.squadStatus || (player.inviteOnly === true ? (player.callIn === true ? 'callin' : 'inactive') : 'plays');
     const current  = injury ? injury.code : teamCode;
     const COLORS = {
       plays:  ['#22c55e', 'rgba(34,197,94,0.18)', '#bbf7d0'],
-      paper:  ['#f59e0b', 'rgba(245,158,11,0.22)', '#fcd34d'],
       callin: ['#a78bfa', 'rgba(167,139,250,0.22)', '#ddd6fe'],
       practice_squad: ['#60a5fa', 'rgba(96,165,250,0.22)', '#bfdbfe'],
       inactive:       ['#94a3b8', 'rgba(148,163,184,0.22)', '#e2e8f0'],
@@ -1376,9 +1376,11 @@ class RosterScreenBase extends Screen {
     const opts = [
       { code: 'plays',  label: copy('team_status_plays')  || '✅ Plays' },
       { code: 'practice_squad', label: copy('team_status_practice_squad') || 'Practice Squad' },
-      { code: 'paper',  label: copy('team_status_paper')  || '📄 Paper spot' },
       { code: 'callin', label: copy('team_status_callin') || '↔ Call-in' },
+      // 💤 Inactive is per team (mig 1074, 📄 Paper spot folded in); the
+      // "all teams" pick parks him on every team he is on in one tap.
       { code: 'inactive', label: copy('team_status_inactive') || '💤 Inactive' },
+      { code: 'inactive_all', label: copy('team_status_inactive_all') || '💤 Inactive — all his teams' },
       ...H.statuses.filter(st => st.isInjured).map(st => ({ code: st.code, label: (st.icon ? st.icon + ' ' : '') + st.displayName })),
     ];
     const style = injury ? this.healthStyle(current)
@@ -1469,7 +1471,8 @@ class RosterScreenBase extends Screen {
         if (value !== wrap.dataset.teamCode) {
           await put('/api/mens-roster/invite-only', 'POST',
             { personId, teamId, inviteOnly: value !== 'plays', callIn: value === 'callin',
-              squadStatus: ['practice_squad', 'inactive'].includes(value) ? value : '' });
+              squadStatus: value === 'inactive_all' ? 'inactive' : ['practice_squad', 'inactive'].includes(value) ? value : '',
+              allTeams: value === 'inactive_all' });
         }
         if (H.people[personId]) {
           const healthy = H.statuses.find(st => !st.isInjured);
@@ -2819,7 +2822,7 @@ class RosterScreenBase extends Screen {
     // ↔ Call In (mig 637) is an invite-only row too, but its own
     // category — a same-level player, not a 📄 roster-filler.
     const catOf = (p) => this.columnCategoryOf(p);
-    const cats = { active: [], paper: [], callin: [], injured: [], practice_squad: [], inactive: [] };
+    const cats = { active: [], callin: [], injured: [], practice_squad: [], inactive: [] };
     for (const p of players) cats[catOf(p)].push(p);
     this.catOff = this.catOff || (() => { try { return JSON.parse(localStorage.getItem(RosterScreenBase.CAT_OFF_STORAGE_KEY) || '{}'); } catch (e) { return {}; } })();
     const off = (cat) => !!this.catOff[`${col.teamId}:${cat}`];
@@ -2899,7 +2902,6 @@ class RosterScreenBase extends Screen {
     const pillsHtml = `
       <div style="display:flex; gap:4px; flex-wrap:wrap; margin:2px 0 6px;">
         ${catPill('active', '✅', 'Active', cats.active.length + riders.length, '#4ade80')}
-        ${catPill('paper', '📄', 'Paper', cats.paper.length, '#f59e0b')}
         ${catPill('callin', '', MessageCopy.block('invite_chip', 'cat_call_in') || '↔ Call In', cats.callin.length, '#a78bfa')}
         ${catPill('practice_squad', '', MessageCopy.block('roster_sheet', 'team_status_practice_squad') || 'Practice Squad', cats.practice_squad.length, '#60a5fa')}
         ${catPill('injured', '🩹', 'Injured', cats.injured.length, '#f87171')}
