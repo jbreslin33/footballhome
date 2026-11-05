@@ -1426,11 +1426,16 @@ class GameCenterScreen extends EventScreen {
         this.trainingEvents = detailSets[0].trainingEvents || [];
       }
       const byId = new Map();
+      // Call-up-only teams on this game (APSL Reserves, mig 605): a player
+      // whose ONLY row here is one of them is pool, not squad (owner 11/5).
+      this.callupOnlyTeamIds = new Set((lineupData.data.callupOnlyTeamIds || []).map(Number));
+      const squadRow = new Set();
       for (const { id: fromTeamId, d: rosterData } of rosterResults) {
         const arr = Array.isArray(rosterData?.data) ? rosterData.data : [];
         for (const p of arr) {
           if (p.roleType !== 'PLAYER') continue;
           const pid = Number(p.id);
+          if (!this.callupOnlyTeamIds.has(Number(fromTeamId))) squadRow.add(pid);
           if (byId.has(pid)) continue; // already merged from an earlier team
           byId.set(pid, { id: pid, name: p.name || '(unnamed)', lastName: p.lastName || '', lineupRole: p.lineupRole || null, teamId: fromTeamId, jerseyNumber: p.jerseyNumber || null,
                           duesEligible: p.duesEligible !== false,   // migration 416: under the dues line
@@ -1438,6 +1443,7 @@ class GameCenterScreen extends EventScreen {
         }
       }
       this.roster = [...byId.values()];
+      for (const r of this.roster) r.poolOnly = !squadRow.has(r.id);
 
       this._foldInCallups();
 
@@ -2579,6 +2585,20 @@ class GameCenterScreen extends EventScreen {
         list.splice(0, list.length, ...list.filter(p => !isPracticeSquad(p)));
     }
     const practiceSquadLabel = (window.MessageCopy && MessageCopy.block('roster_sheet', 'board_practice_squad_h')) || 'PRACTICE SQUAD';
+    // 🎟 Call-up pool (owner 11/5, APSL at Vidas: "why on apsl is a bunch of
+    // guys no response … those guys are supposed to be inactive right? then
+    // i could call them up"): on this game only through a call-up-only team
+    // (APSL Reserves) and not called up — out of No Response / Remind all,
+    // into a closed fold with 🎟 CALL IN.  Once invited, _foldInCallups
+    // brings them into the lists with the call-up chip.
+    const isPool = (p) => !p.callUp && p.poolOnly && !isPracticeSquad(p) && !isInactive(p);
+    const unassignedPool = [...unassignedNoResponse, ...unassignedNotGoing, ...unassignedGoing, ...unassignedIneligible]
+      .filter(isPool).sort(this._byLastName);
+    if (unassignedPool.length) {
+      for (const list of [unassignedNoResponse, unassignedNotGoing, unassignedGoing, unassignedIneligible])
+        list.splice(0, list.length, ...list.filter(p => !isPool(p)));
+    }
+    const poolLabel = (window.MessageCopy && MessageCopy.block('event_center', 'sec_callup_pool')) || '🎟 Call-up pool';
     // ⛔ Suspended (mig 1077): out of every answer group into its own fold.
     const unassignedSuspended = [...unassignedGoing, ...unassignedIneligible, ...unassignedNoResponse, ...unassignedNotGoing]
       .filter(p => this._isSuspended(p.id)).sort(this._byLastName);
@@ -3052,6 +3072,7 @@ class GameCenterScreen extends EventScreen {
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
         collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }),
         collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }),
+        unassignedPool.length ? collapsedSection(this.escapeHtml(poolLabel), unassignedPool, { key: 'callup_pool', extra: callInBtn }) : '',
         collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }),
         collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }),
         this._renderCallupSection(),
@@ -3072,6 +3093,7 @@ class GameCenterScreen extends EventScreen {
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }) : '',
+      this.isCoach && unassignedPool.length ? collapsedSection(this.escapeHtml(poolLabel), unassignedPool, { key: 'callup_pool', extra: callInBtn }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }) : '',
       this.isCoach ? this._renderCallupSection() : '',

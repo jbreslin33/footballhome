@@ -503,6 +503,20 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
                 rosterTeamIdsJson = "[]";
             }
             json << "\"rosterTeamIds\":" << rosterTeamIdsJson << ",";
+            // Call-up-only teams among them (team_callup_policies, mig 605 —
+            // APSL Reserves): their roster rows grant no game, so Game Center
+            // folds those players into a call-up pool, not No Response
+            // (owner 2026-11-05).
+            std::string callupOnlyJson = "[";
+            if (!rosterTeamIdsArray.empty() && rosterTeamIdsArray != "{}") {
+                bool first = true;
+                for (const auto& r : db_->query("SELECT id FROM teams WHERE id = ANY($1::int[]) AND fh_team_callup_only(id) ORDER BY id",
+                                                {rosterTeamIdsArray})) {
+                    callupOnlyJson += (first ? "" : ",") + std::string(r["id"].c_str());
+                    first = false;
+                }
+            }
+            json << "\"callupOnlyTeamIds\":" << callupOnlyJson << "],";
         }
         json << "\"isCoach\":" << (isCoach ? "true" : "false") << ",";
         // Last lineup change, from the DB (owner 2026-10-21: "a timestamp
