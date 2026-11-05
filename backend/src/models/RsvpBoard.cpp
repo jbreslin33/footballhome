@@ -87,7 +87,8 @@ const char* kBaseCtes = R"SQL(
          -- for itself: Practice Squad owes practices, Inactive owes nothing.
          AND CASE WHEN ss.id IS NOT NULL THEN ss.owes_practice_rsvps
                   ELSE NOT tp.invite_only OR tm.games_need_roster END
-         AND COALESCE(rs.show_in_rsvp, true)
+         -- League-Suspended rows stay (mig 1077): owe practices; the per-event
+         -- fh_event_suspended check below skips the games.
          AND ($4::int = 0 OR tp.person_id = $4::int)
          -- Girls play on boys teams (club_sections.schedule_section_id), so
          -- Boys is the whole team and Girls is a girls-only lens on it —
@@ -141,11 +142,8 @@ const char* kBaseCtes = R"SQL(
          -- A coach owes only the practices on their schedule (mig 955).
          AND NOT (r.role_rank = 1 AND fe.kind = 'practice'
                   AND fh_coach_off_schedule(r.person_id, r.team_id, fe.id))
-         AND NOT EXISTS (SELECT 1 FROM rsvp_suspensions s
-                          WHERE s.person_id = r.person_id
-                            AND (s.team_id IS NULL OR s.team_id = r.team_id)
-                            AND s.starts_at <= ge.starts_at
-                            AND (s.ends_at IS NULL OR s.ends_at > ge.starts_at))
+         -- ⛔ Suspended for this GAME owes nothing (mig 1077); practices normal.
+         AND NOT fh_event_suspended(fe.id, r.person_id)
          -- An injured player (person_injuries, mig 510) owes no answer
          -- while it lasts — nothing unanswered, so no reminder — but an
          -- answer they do give still counts.  The player hat only.
@@ -179,10 +177,7 @@ const char* kBaseCtes = R"SQL(
               OR (fe.kind = 'match' AND tm.notice_days IS NOT NULL
                   AND extract(isodow FROM ge.starts_at AT TIME ZONE tm.tzname) BETWEEN 1 AND 5
                   AND now() >= ge.starts_at - make_interval(days => tm.notice_days::int)))
-         AND NOT EXISTS (SELECT 1 FROM rsvp_suspensions s
-                          WHERE s.person_id = i.person_id
-                            AND s.starts_at <= ge.starts_at
-                            AND (s.ends_at IS NULL OR s.ends_at > ge.starts_at))
+         AND NOT fh_event_suspended(fe.id, i.person_id)   -- ⛔ mig 1077
     ), expected_roles AS (
       -- The role on each event, and whether this person wears more than
       -- one hat across the window (then every line names the hat, in the
