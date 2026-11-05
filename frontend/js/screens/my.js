@@ -1087,9 +1087,8 @@ class MyScreen extends Screen {
   // A week that has not opened yet: what, when, where — no RSVP buttons.
   _renderFutureRow(ev) {
     const descTags = this._parseDescTags(ev.description);
-    const times = [['Arrival', ev.arrival_label || descTags.arrival], ['Warmup', ev.warmup_label || descTags.warmup],
-                   ['Kickoff', ev.kickoff_label || descTags.kickoff]]
-      .filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(' · ');
+    // Arrival · Warmup · Kickoff, every event (owner 11/5) — EventLabels.
+    const times = EventLabels.timesLine(ev);
     const opens = ev.rsvps_open_at ? new Date(ev.rsvps_open_at) : null;
     const opensText = opens && !isNaN(opens)
       ? MessageCopy.block('my_schedule', 'rsvp_opens', { when: opens.toLocaleString(undefined,
@@ -2027,9 +2026,9 @@ class MyScreen extends Screen {
     // Coaches of this practice are due before it starts (mig 529) — shown
     // to the coach, never on a child's view.
     const coachArrival = !whoChild && ev.coach_arrival_label ? MessageCopy.block('my_schedule', 'coach_arrival', { time: ev.coach_arrival_label }) : '';
-    const arrivalKickoffLine = (arrival || warmup || kickoff || coachArrival)
-      ? [coachArrival, arrival ? `Arrival ${arrival}` : '', warmup ? `Warmup ${warmup}` : '', kickoff ? `Kickoff ${kickoff}` : ''].filter(Boolean).join(' · ')
-      : '';
+    // The Arrival · Warmup · Kickoff line rides on the card front now
+    // (owner 11/5), so the details keep only the coach's own arrival.
+    const arrivalKickoffLine = coachArrival || '';
     const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · ')].filter(Boolean);
     // Role pill (migration 438): which hat the viewer wears on this event.
     // 🎟 Invited myself (mig 1069): the chip names the way in — CALL-UP ·
@@ -2111,6 +2110,7 @@ class MyScreen extends Screen {
             <div style="font-size:0.7rem; line-height:1.3; white-space:normal; overflow-wrap:break-word;">
               ${rolePillHtml}${teamPillsInline}<b>${this.escapeHtml(arrival ? `Arrive ${arrival}` : timeStr)}</b> · ${this.escapeHtml(title)}
             </div>
+            ${EventLabels.timesLine(ev) ? `<div style="font-size:0.62rem; line-height:1.25; font-weight:700; color:#93c5fd; white-space:normal;">${this.escapeHtml(EventLabels.timesLine(ev))}</div>` : ''}
             ${venue ? `<div style="font-size:0.6rem; line-height:1.25; overflow-wrap:anywhere;">${this._venueLink(venue)}</div>` : ''}
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${!venue && meetLink ? `<a href="${this.escapeHtml(meetLink)}" target="_blank" rel="noopener" style="color:#6ee7b7; font-weight:700; text-decoration:none;">📹 Google Meet</a> · ` : ''}${compactMeta}</div>
           </div>

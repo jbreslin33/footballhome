@@ -81,6 +81,32 @@ class EventLabels {
     return [EventLabels.dateStr(ev.starts_at), EventLabels.timeStr(ev.starts_at)].filter(Boolean).join(' · ');
   }
 
+  // Arrival · Warmup · Kickoff for EVERY event (owner 2026-11-05: "we
+  // need arrival time, warmup time and kickoff time on my and event center
+  // for all events! if its practice just time of event as arrival is
+  // fine").  Games (match / intrasquad): the event's times — the gcal tag,
+  // else the league's default offsets (mig 395) — and kickoff falls back
+  // to the start.  Anything else: Arrival = its start.  Words: kind
+  // event_times (mig 1091).  [[label, time], …]
+  static times(ev) {
+    if (!ev) return [];
+    const tags = EventLabels.parseDescTags(ev.description);
+    const start = EventLabels.timeStr(ev.starts_at);
+    const kind = String(ev.kind || '').toLowerCase();
+    const w = (tier, fb, time) => (window.MessageCopy && MessageCopy.block && MessageCopy.block('event_times', tier, { time })) || `${fb} ${time}`;
+    if (kind === 'match' || kind === 'intrasquad') {
+      const arrival = ev.arrival_label || tags.arrival || '';
+      const warmup  = ev.warmup_label  || tags.warmup  || '';
+      const kickoff = ev.kickoff_label || tags.kickoff || start;
+      return [['arrival', 'Arrival', arrival], ['warmup', 'Warmup', warmup], ['kickoff', 'Kickoff', kickoff]]
+        .filter(([, , t]) => t).map(([tier, fb, t]) => w(tier, fb, t));
+    }
+    const arrival = ev.arrival_label || tags.arrival || start;
+    return arrival ? [w('arrival', 'Arrival', arrival)] : [];
+  }
+
+  static timesLine(ev) { return EventLabels.times(ev).join(' · '); }
+
   static dateStr(iso) {
     if (!iso) return '';
     const d = new Date(iso);

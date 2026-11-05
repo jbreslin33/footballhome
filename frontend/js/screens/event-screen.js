@@ -1178,7 +1178,8 @@ class EventScreen extends Screen {
     if (this.error) { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     if (!this.ev) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     title.textContent = `📋 ${EventLabels.title(this.ev)}`;
-    sub.textContent = [this._when(this.ev), EventLabels.homeSetup(this.ev) || this.ev.location].filter(Boolean).join(' · ');
+    // Arrival · Warmup · Kickoff after the date (owner 11/5: every event).
+    sub.textContent = [this._when(this.ev), EventLabels.timesLine(this.ev), EventLabels.homeSetup(this.ev) || this.ev.location].filter(Boolean).join(' · ');
     body.innerHTML = this._eventHtml();
   }
 
