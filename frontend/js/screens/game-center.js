@@ -5713,14 +5713,10 @@ class GameCenterScreen extends EventScreen {
     const v = this._eligVerdict(playerId);
     if (!v) return '';
     const tone = v === 'eligible' ? 'green' : v === 'projected' ? 'yellow' : 'red';
-    // Eligible = Lighthouse-gold letters with a thin royal-blue edge
-    // (owner 11/5, after white / blue / gold tries: "make names yellow and
-    // border blue").  Half-pixel offsets = hairline.  Projected names are
-    // a plain yellow with no edge; red still warns.
-    if (tone === 'green') {
-      const b = '#4169e1';
-      return `color:#f5d442;text-shadow:-0.5px -0.5px 0 ${b},0.5px -0.5px 0 ${b},-0.5px 0.5px 0 ${b},0.5px 0.5px 0 ${b},0 -0.5px 0 ${b},0 0.5px 0 ${b},-0.5px 0 0 ${b},0.5px 0 0 ${b};`;
-    }
+    // Eligible = bright yellow, no edge (owner 11/5, after white / blue /
+    // gold tries: "make names brighter yellow and no border").  Projected
+    // names are the duller #facc15; red still warns.
+    if (tone === 'green') return 'color:#ffea00;';
     if (onPitch) {
       // text-shadow all round rather than -webkit-text-stroke, which eats
       // into letters this small.
