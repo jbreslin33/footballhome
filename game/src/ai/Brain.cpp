@@ -368,7 +368,8 @@ void Brain::keepLawDistance(SlotIndex slot, const World& world, Orders& o) const
     Fixed64 r{};
     const core::MatchEventType k = world.restartKind();
     if (k == core::MatchEventType::ThrowIn) r = restart_play_.throw_law_m;
-    else if (k == core::MatchEventType::Corner || k == core::MatchEventType::Offside) r = restart_play_.kick_law_m;
+    else if (k == core::MatchEventType::Corner || k == core::MatchEventType::Offside ||
+             k == core::MatchEventType::FreeKick) r = restart_play_.kick_law_m;
     else return;
     const auto& me = world.player(slot);
     const Vec3& sp = world.restartSpot();

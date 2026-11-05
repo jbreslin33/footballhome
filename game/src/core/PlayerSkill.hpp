@@ -12,7 +12,11 @@
 // 2015/16 events.
 //
 // Determinism: detNoise is a pure hash of (match_seed, tick, slot, channel) —
-// FNV-1a 64 (public domain); no RNG state, replays stay byte-identical.
+// FNV-1a 64 (public domain) then the splitmix64 finalizer [Steele, Lea & Flood
+// 2014, public domain]; no RNG state, replays stay byte-identical. G5.28: without
+// the finalizer the channel (mixed last) barely reached the top bits — rolls on
+// one tick for one man were correlated (tackle won ch 6 v clean win ch 14 r =
+// 0.81; shot ch 40 v pass pick ch 41 r = 0.36).
 
 #pragma once
 
@@ -76,6 +80,9 @@ inline math::Fixed64 detNoise(std::uint64_t match_seed, std::uint64_t tick, std:
     mix(tick);
     mix(slot);
     mix(channel);
+    h ^= h >> 30; h *= 0xBF58476D1CE4E5B9ULL;   // splitmix64 finalizer: full avalanche
+    h ^= h >> 27; h *= 0x94D049BB133111EBULL;
+    h ^= h >> 31;
     const std::int64_t frac = static_cast<std::int64_t>(h >> 31) & ((std::int64_t{1} << 33) - 1);
     return math::Fixed64::fromRaw(frac - (std::int64_t{1} << 32));
 }

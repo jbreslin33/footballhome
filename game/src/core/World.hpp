@@ -74,6 +74,8 @@ enum class MatchEventType : std::uint8_t {
     TackleWon  = 8,  // team = tackler's
     TackleLost = 9,  // team = tackler's (beaten, in recovery)
     Offside    = 10, // team = the AWARDED (defending) team
+    Foul       = 11, // team = the fouler's (G5.28, Law 12), advantage or not
+    FreeKick   = 12, // team = awarded (the fouled side)
 };
 
 struct MatchEvent {
@@ -132,6 +134,13 @@ public:
     void configureAerial(const ModelParams& p);
     // G5.4 (§8.102): real time on the ball. Off unless the rows exist.
     void configureTempo(const ModelParams& p);
+    // G5.28 (Law 12): a challenge on the man on the ball is a foul at the real
+    // share for the third it is in (StatsBomb PL 2015/16: fouls ÷ (tackle duels +
+    // fouls)); the referee plays advantage at the real share; else a free kick to
+    // the fouled side where it happened, dead for a real roll (DFL), as is the
+    // kick-off after a goal. Defaults are the real numbers; rows override.
+    void configureFouls(const ModelParams& p);
+    std::uint32_t fouls(std::uint8_t team) const noexcept { return fouls_[team & 1]; }
     int aerialDuels() const { return aerial_duels_; }
     int aerialLone() const { return aerial_lone_; }
     int headersAtGoal(int team) const { return headers_at_goal_[team]; }
@@ -321,6 +330,9 @@ private:
     std::uint64_t hold_until_tick_ = 0;       // G5.4: unpressed, he keeps it until here
     bool hold_on_ = false;
     math::Fixed64 hold_under1_, hold_under2_, hold_under4_, hold_press_m_, cut_share_, carry_share_, stretch_m_;
+    math::Fixed64 foul_p_[3]{}, foul_adv_{}, fk_dead_lo_{}, fk_dead_hi_{}, ko_dead_lo_{}, ko_dead_hi_{};
+    std::uint32_t fouls_[2] = {0, 0};
+    std::uint32_t deadRoll(math::Fixed64 lo, math::Fixed64 hi, std::uint8_t salt) const;
     math::Fixed64 cut_share_box_{}, box_reach_m_{};   // G5.11: their pass in our box, the share we take
     // G5.18 (§8.115): the drawn hold IS his time on the ball — a one-touch
     // slice, a pressed curve at a receipt with a man within hold_pressed_m,

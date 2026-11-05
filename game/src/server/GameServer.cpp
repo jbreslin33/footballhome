@@ -43,6 +43,7 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     world_.officials().configure(cfg.model_params);
     world_.configureAerial(cfg.model_params);   // G5.3
     world_.configureTempo(cfg.model_params);    // G5.4
+    world_.configureFouls(cfg.model_params);    // G5.28
     for (const auto& m : cfg.crew) {
         auto rating = [&](const char* code) -> std::int16_t {
             const auto it = m.ratings.find(code);

@@ -235,6 +235,30 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
             continue;
         }
 
+        // Law 12 (G5.28): the challenge is a foul at the real share for its third
+        // (from the tackler's own goal). Inside his own penalty area it would be a
+        // penalty, not modelled yet — no foul there. Advantage: play on (the
+        // carrier keeps it); else a free kick where it happened, dead a real roll.
+        {
+            const Fixed64 own = (ball_.pos.x * (tackler.team == 0 ? Fixed64::one() : -Fixed64::one())) + half_x_;
+            const int third = own < Fixed64::fromInt(35) ? 0 : own < Fixed64::fromInt(70) ? 1 : 2;
+            const bool own_box = own < Fixed64::fromFraction(165, 10) && math::fx_abs(ball_.pos.y) < Fixed64::fromFraction(2016, 100);
+            const Fixed64 f = (detNoise(match_seed_, clock_.tick(), i, 15) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+            if (!own_box && foul_p_[third].raw > 0 && f < foul_p_[third]) {
+                ++fouls_[tackler.team & 1];
+                events.push_back({MatchEventType::Foul, tackler.team});
+                tackler.recovery_ticks = kTackleMissRecovery;
+                tackler.recovery_kind = 1;
+                const Fixed64 a = (detNoise(match_seed_, clock_.tick(), i, 16) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                if (a >= foul_adv_) {
+                    const std::uint8_t fouled = players_[*ball_.owner].team;
+                    awardRestart(MatchEventType::FreeKick, fouled, Vec3{ball_.pos.x, ball_.pos.y, Fixed64::zero()}, events);
+                    restart_ready_tick_ = clock_.tick() + deadRoll(fk_dead_lo_, fk_dead_hi_, i);
+                    return;
+                }
+                continue;
+            }
+        }
         // Outcome by the tackler's level skill, deterministic noise.
         const PlayerSkill& lv = skillOf(i);
         const int skill =
@@ -857,6 +881,8 @@ bool World::crossedLine(std::vector<MatchEvent>& events) {
             ++score_[scorer];
             events.push_back({MatchEventType::Goal, scorer});
             awardKickoff(scorer ^ 1, events);  // conceders restart
+            // G5.28: the celebration and the walk back — a real roll (DFL).
+            if (ko_dead_hi_.raw > 0) restart_ready_tick_ = clock_.tick() + deadRoll(ko_dead_lo_, ko_dead_hi_, scorer);
             return true;
         }
         ballOut(true);
@@ -966,6 +992,26 @@ void World::configureTempo(const ModelParams& p) {
     hold_p_under4_ = p.fixed("physics.tempo.hold_pressed_under4", 0);
     hold_pressed_m_ = p.fixed("physics.tempo.hold_pressed_m", 0);
     hold_strict_ = p.integer("physics.tempo.hold_strict", 0);
+}
+
+void World::configureFouls(const ModelParams& p) {
+    // StatsBomb PL 2015/16 (sb_fouls, §8.126): of a team's challenges on the man on
+    // the ball in its own third / the middle / their third, the share that are fouls.
+    foul_p_[0] = p.fixed("physics.foul.p_own_third", 213);
+    foul_p_[1] = p.fixed("physics.foul.p_middle_third", 462);
+    foul_p_[2] = p.fixed("physics.foul.p_their_third", 579);
+    foul_adv_ = p.fixed("physics.foul.advantage", 138);    // 1.73 of 12.52 fouls played on
+    // DFL (benchmarks_tracking_dead.py): seconds dead, p25 - p75.
+    fk_dead_lo_ = p.fixed("physics.restart.free_kick_dead_p25_s", 20500);
+    fk_dead_hi_ = p.fixed("physics.restart.free_kick_dead_p75_s", 43000);
+    ko_dead_lo_ = p.fixed("physics.restart.goal_kickoff_dead_p25_s", 35700);
+    ko_dead_hi_ = p.fixed("physics.restart.goal_kickoff_dead_p75_s", 76100);
+}
+
+std::uint32_t World::deadRoll(Fixed64 lo, Fixed64 hi, std::uint8_t salt) const {
+    const Fixed64 u = (detNoise(match_seed_, clock_.tick(), salt, 61) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    const Fixed64 s = lo + (hi - lo) * u;
+    return static_cast<std::uint32_t>((s * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS);
 }
 
 // G5.3: the nearest man of each team under a ball at head height. Both there:

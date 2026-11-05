@@ -31,7 +31,7 @@
   // Names for EVENT frames (PROTOCOL.md §7 / MatchEventType).
   const EVENT_NAMES = { 1: 'GOAL!', 2: 'Throw-in', 3: 'Goal kick',
                         4: 'Corner', 5: 'Kickoff', 6: 'Half time',
-                        7: 'FULL TIME', 10: 'Offside' };
+                        7: 'FULL TIME', 10: 'Offside', 12: 'Foul' };   // 11 = the foul itself (advantage too): no toast
 
   // The referee's whistle (G5.2), synthesised: a pip for a restart, a longer
   // blast for a goal or the end of a half. Browsers only open audio after a
@@ -635,7 +635,7 @@
         renderer.celebrate(ev.team);
         toast(`⚽ ${name}`, 3000);
       } else {
-        const side = ev.eventType === 10
+        const side = ev.eventType === 10 || ev.eventType === 12
           ? (ev.team === 0 ? ' — free kick home' : ' — free kick away')
           : ev.eventType <= 5 ? (ev.team === 0 ? ' — home' : ' — away') : '';
         toast(`${name}${side}`, 2000);

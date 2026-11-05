@@ -5535,3 +5535,63 @@ Tests 22/22; goldens re-locked.
 **Next moles.** Pressures 500 a team-match (151.8, 3.3×), take-ons tried 118 (18.1, 6.6×),
 passes 694 (433.8, 1.6×), completion 87% (79.1): bodies on the man on the ball far too often. Shots
 don't score: keeper 62% (23.1), scored 4.3% (9.3).
+
+### 8.126 G5.28 — the ball is dead as long as a real match's: fouls and free kicks (Law 12); detNoise was correlated (no migration)
+
+**Why.** §8.125's "pressures 3.3×" came from comparing the harness's own cut (a defender within 4.5
+m closing at 1 m/s+, once a spell) with StatsBomb's hand-tagged pressures. Measured the same cut on
+DFL (benchmarks_tracking_pressure.py): 375 pressures a team-match = **0.59 a spell on the ball — the
+game's 0.54**. Take-ons by the same cut: 44 (game 141). What was 1.6× was the number of spells
+(1,021 v 640), as were passes (694 v 434): **the ball was in play 87% of the match, real 55.2%**
+(benchmarks_tracking_dead.py, DFL, 52.7 of 95.5 min).
+
+**Real dead time** (DFL, each dead spell named by the restart that ends it; a team-match, median
+s): throw-ins 19.9 / 13.8; goal kicks 7.1 / 23.2; corners 3.2 / 32.8; **free kicks 10.5 / 32.5
+(28% of all dead time)**; kick-offs 1.0 / 64.2 (after goals: the celebration); penalties 0.2 / 119;
+other (drop balls, injuries, VAR) 8.0 / 18.4. The game had no fouls at all. **Fouls** (StatsBomb PL
+15/16, sb_fouls): 12.52 a team-match (advantage played on 1.73), by the fouler's own third / middle
+/ their third 2.78 / 6.71 / 3.02; tackle duels 10.30 / 7.82 / 2.20; penalties 0.12; yellow cards
+1.34.
+
+**Change (World, Law 12).** A challenge (a tackle on the man on the ball, in reach) is a foul at the
+real share of a team's challenges that are fouls in that third — fouls ÷ (tackle duels + fouls):
+21.3% / 46.2% / 57.9% (physics.foul.p_own_third / p_middle_third / p_their_third). The referee plays
+advantage at 13.8% (physics.foul.advantage: the carrier keeps it); else a free kick to the fouled
+side where it happened (MatchEventType FreeKick 12; Foul 11 either way), dead for a real roll
+between DFL's p25 and p75 (20.5-43 s, physics.restart.free_kick_dead_p25_s / _p75_s), then taken as
+an offside free kick is (the law's 9.15 m). The kick-off after a goal waits a real roll too (35.7-76.1
+s, goal_kickoff_dead_*). Not yet: a foul in the fouler's own penalty area would be a penalty — none
+are given there until penalties exist; cards.
+
+**Fixed — detNoise rolls were correlated.** The FNV-1a hash mixes the channel last, and its top bits
+(the ones used) barely moved with it: on one tick for one man the tackle-won roll (ch 6) and the
+clean-win roll (ch 14) correlated r = 0.81, the shot roll (40) and the pass pick (41) 0.36. Seen as
+tackles won collapsing 13.1 → 1.6 in midfield once the foul roll (ch 15, r = 0.38 with 6) took them.
+Now the splitmix64 finalizer [Steele, Lea & Flood 2014] avalanches the hash: every pair |r| < 0.02.
+Deterministic as before; every roll in the game changes.
+
+**Harness:** BALL IN PLAY and dead time by restart (real DFL alongside), TACKLES by third won / lost
+and fouls, THE DFL CUT (spells by proximity at 5 Hz, pressures and take-ons by the real cut, by the
+carrier's metres off their line), pressures by the presser's state.
+
+**Result** (8 matches, fh_game_scratch, both with the noise fix; fouls off → on):
+
+| | off | on | real |
+|---|---|---|---|
+| ball in play | 87.3% | 76.9% | 55.2% (DFL) |
+| fouls / free kicks a team-match | 0 / 0 | 12.1 / 10.5 | 12.5 / 10.5 |
+| free kick dead, median | — | 31.7 s | 32.5 s |
+| passes a team-match | 693 | 619 | 434 |
+| spells (the DFL cut) | 1,017 | 888 | 640 |
+| pressures a spell | 0.54 | 0.54 | 0.59 |
+| shots / scored | 7.4 / 6.8% | 5.4 / 9.2% | 12.9 / 9.3% |
+| in behind a team-match | 25.1 | 21.3 | 37.7 |
+
+Tests 22/22; goldens re-locked. Client: Foul 12 toasts "Foul — free kick home/away" (staged ship
+client; PROTOCOL §7 event types 8-12 listed).
+
+**Next moles.** (1) The rest of the dead time: goal kicks 1.1 a team-match (7.1) and corners 0.1
+(3.2) — the ball almost never reaches their byline; the "other" stoppages (8 × 18 s). (2) Where
+the ball is: pressures with the carrier 35-52 m out 198 a team-match (89), inside 18 m 3 (41) —
+the attack lives in midfield. (3) Take-ons by the real cut 121 (44): a defender goal-side within 1.5
+m twice as often a spell as real.

@@ -66,7 +66,10 @@ struct Stats {
     // Concept acts, StatsBomb's cuts (G5.17).
     long pass_ok = 0;
     // In behind (G5.27, benchmarks_tracking_behind.py): passes met past their line as it stood at the kick.
-    long gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
+    long tkl[2][3] = {};
+    long tick_n = 0, tick_live = 0, dead_n[13] = {}; std::vector<double> dead_s[13]; long fouls = 0;
+    long tk_spells = 0, tk_frames = 0, tk_press = 0, tk_takeon = 0, tk_press_z[5] = {};
+    long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
          ret = 0, ret_base = 0, carry10 = 0;
@@ -149,6 +152,8 @@ int main(int argc, char** argv) {
         // 5 Hz ring for "3 s before" (ball x, every man's x).
         long rk[16]; double rbx[16], rpx[16][32]; for (long& v : rk) v = -1;
         bool en_arm[2] = {false, false}; double en_prev[2] = {0, 0}; long en_pk[2] = {-100, -100};
+        long dead_k0 = -1; int dead_kind = 0;
+        struct Tk { int car = -1; long last = -100000; bool faced = false; std::uint32_t pressed = 0; double prev[32]; bool has[32]; } tk{};
         struct Carry { bool on = false, done = false; int pid = -1, att = -1, miss = 0, fr = 0, eng = 0, first = -1; long k0 = 0, last = 0;
                        double btl0 = 0, near0 = 0, close = 0, w5 = 0; bool gs[32] = {}; int r[32] = {}; double rd[32] = {}; } cy;
 
@@ -156,6 +161,13 @@ int main(int argc, char** argv) {
             const auto before = W.ball().owner;
             s.tickOnce();
             const auto& b = W.ball();
+            for (const auto& e : s.lastEvents()) {
+                if (e.type == core::MatchEventType::Foul) ++S.fouls;
+                if (e.type == core::MatchEventType::TackleWon || e.type == core::MatchEventType::TackleLost) {
+                    const double tx = b.pos.x.toDouble() * (e.team == 0 ? 1.0 : -1.0) + hx;   // metres from the tackler's own goal
+                    ++S.tkl[e.type == core::MatchEventType::TackleWon ? 0 : 1][tx < 35 ? 0 : tx < 70 ? 1 : 2];
+                }
+            }
             for (const auto& e : s.lastEvents())
                 if (e.type == core::MatchEventType::Goal) {
                     ++S.goals[e.team];
@@ -166,6 +178,15 @@ int main(int argc, char** argv) {
             if (std::getenv("GAME_PLAY_TRACE") && k % 300 == 0)
                 std::fprintf(stderr, "play m%d %lds ball %.1f,%.1f,%.1f v %.1f,%.1f owner %d last %d restart %d out %d lastTouch %d pass_to %d\n", m, k / 30, b.pos.x.toDouble(), b.pos.y.toDouble(), b.pos.z.toDouble(),
                              b.vel.x.toDouble(), b.vel.y.toDouble(), b.owner ? *b.owner : -1, b.last_kicker, W.restartTeam(), W.outStage(), W.lastTouchTeam(), b.pass_to);
+            {   // in play, and each dead spell by the restart that ends it (benchmarks_tracking_dead.py)
+                const bool dead = W.restartTeam() != 0xFF || W.outStage() != 0;
+                ++S.tick_n; if (!dead) ++S.tick_live;
+                if (dead) { if (dead_k0 < 0) dead_k0 = k; if (W.restartTeam() != 0xFF) dead_kind = static_cast<int>(W.restartKind()); }
+                else if (dead_k0 >= 0) {
+                    const int kd = std::min(12, std::max(0, dead_kind));
+                    ++S.dead_n[kd]; S.dead_s[kd].push_back((k - dead_k0) / 30.0); dead_k0 = -1; dead_kind = 0;
+                }
+            }
             if (dead_trace && k % 300 == 0 && W.restartTeam() != 0xFF)
                 std::fprintf(stderr, "dead-trace m%d k%ld restart %d kind %d owner %d ball %.1f,%.1f\n", m, k, W.restartTeam(),
                              static_cast<int>(W.restartKind()), b.owner ? *b.owner : -1, b.pos.x.toDouble(), b.pos.y.toDouble());
@@ -319,7 +340,8 @@ int main(int argc, char** argv) {
                     const double dx = c.pos.x.toDouble() - d.pos.x.toDouble(), dy = c.pos.y.toDouble() - d.pos.y.toDouble(), dd = std::hypot(dx, dy);
                     // pressure: within 4.5 m and closing at 1 m/s+, once per man per spell
                     if (dd < 4.5 && dd > 0.01 && (d.vel.x.toDouble() * dx + d.vel.y.toDouble() * dy) / dd >= 1.0 && pressed_in[j] < 0) {
-                        pressed_in[j] = static_cast<long>(k); ++S.press; if (k - loss_tick[d.team] <= 150) ++S.cpress;
+                        pressed_in[j] = static_cast<long>(k); ++S.press; ++S.press_why[static_cast<int>(s.lastOrders()[j].why)];
+                        { const double ctl = hx - c.pos.x.toDouble() * sg; ++S.press_d[ctl < 18 ? 0 : ctl < 35 ? 1 : ctl < 52 ? 2 : ctl < 70 ? 3 : 4]; } if (k - loss_tick[d.team] <= 150) ++S.cpress;
                     }
                     // take-on: a man goal-side within 1.5 m in his 45° cone; done 1 m past him with it
                     const double ahead = -dx * sg;
@@ -420,6 +442,27 @@ int main(int argc, char** argv) {
                     const double dd = std::hypot(W.player(j).pos.x.toDouble() - bx, W.player(j).pos.y.toDouble() - by);
                     if (dd < crd) { crd = dd; cr = j; }
                 }
+                {   // the DFL cut (benchmarks_tracking_pressure.py): spells by proximity, 5 Hz
+                    if (cr < 0) { if (tk.car >= 0 && k - tk.last > 30) { if (tk.faced) ++S.tk_takeon; tk.car = -1; } }
+                    else {
+                        if (tk.car != cr || k - tk.last > 60) {
+                            if (tk.car >= 0 && tk.faced) ++S.tk_takeon;
+                            tk.car = cr; tk.faced = false; tk.pressed = 0; for (bool& h : tk.has) h = false; ++S.tk_spells;
+                        }
+                        tk.last = k; ++S.tk_frames;
+                        const auto& q = W.player(static_cast<std::uint8_t>(cr));
+                        const int z = tl < 18 ? 0 : tl < 35 ? 1 : tl < 52 ? 2 : tl < 70 ? 3 : 4;
+                        for (std::uint8_t j = 0; j < N && j < 32; ++j) {
+                            if (W.player(j).team == a || W.isKeeper(j)) continue;
+                            const double dx = W.player(j).pos.x.toDouble() - q.pos.x.toDouble(), dy = W.player(j).pos.y.toDouble() - q.pos.y.toDouble();
+                            const double dd = std::hypot(dx, dy);
+                            if (tk.has[j] && dd < 4.5 && (tk.prev[j] - dd) / 0.2 >= 1.0 && !((tk.pressed >> j) & 1u)) { tk.pressed |= 1u << j; ++S.tk_press; ++S.tk_press_z[z]; }
+                            tk.prev[j] = dd; tk.has[j] = true;
+                            const double ahead = dx * sg;
+                            if (!tk.faced && dd < 1.5 && ahead > 0 && std::fabs(dy) <= ahead) tk.faced = true;
+                        }
+                    }
+                }
                 if (cy.on && (cy.att != a || k - cy.last > 18 || (cr >= 0 && cr != cy.pid))) cy.on = false;
                 bool skip = false;
                 if (cy.on && cr < 0) {
@@ -509,6 +552,29 @@ int main(int argc, char** argv) {
                 S.press / tm, S.cpress / tm, 100.0 * S.cpress / std::max(1L, S.press), S.passes / tm, S.switches / tm, S.crosses / tm, S.cutbacks / tm,
                 S.takeon / tm, S.takeon_ok / tm, S.ret / tm, 100.0 * S.ret / std::max(1L, S.ret_base), S.carry10 / tm);
     std::printf("   passes completed %.1f%% (79.1%%)\n", 100.0 * S.pass_ok / std::max(1L, S.passes));
+    {
+        std::printf("BALL IN PLAY %.1f%% of the match (real DFL 55.2%%); dead before each restart, a team-match / median s (real):", 100.0 * S.tick_live / std::max(1L, S.tick_n));
+        static const char* kn[13] = {"?", "goal", "throw-in", "goal kick", "corner", "kick-off", "", "", "", "", "offside FK", "", "free kick"};
+        static const char* rl[13] = {"", "", "19.9 / 13.8", "7.1 / 23.2", "3.2 / 32.8", "1.0 / 64.2", "", "", "", "", "offsides ~1.1", "", "10.5 / 32.5"};
+        for (int i = 0; i < 13; ++i) {
+            if (!S.dead_n[i]) continue;
+            auto v = S.dead_s[i]; std::sort(v.begin(), v.end());
+            std::printf(" %s %.1f / %.1f (%s);", kn[i], S.dead_n[i] / tm, v[v.size() / 2], rl[i]);
+        }
+        std::printf("\n");
+    }
+    std::printf("   TACKLES a team-match won / lost, by the tackler's own third / middle / their third (StatsBomb tackle duels 10.30 7.82 2.20, fouls 2.78 6.71 3.02):");
+    for (int z = 0; z < 3; ++z) std::printf(" %.1f/%.1f", S.tkl[0][z] / tm, S.tkl[1][z] / tm);
+    std::printf("; fouls %.1f (12.52, advantage 1.73)\n", S.fouls / tm);
+    std::printf("   THE DFL CUT (5 Hz, man on the ball = nearest within 2 m; real DFL benchmarks_tracking_pressure.py): spells %.1f (640.4), %.2f s each (1.21); pressures %.1f (375.2) = %.2f a spell (0.59), by the carrier's metres off their line",
+                S.tk_spells / tm, 0.2 * S.tk_frames / std::max(1L, S.tk_spells), S.tk_press / tm, static_cast<double>(S.tk_press) / std::max(1L, S.tk_spells));
+    { static const double rz[5] = {40.8, 80.1, 89.0, 91.1, 74.2}; for (int i = 0; i < 5; ++i) std::printf(" %.1f (%.1f)", S.tk_press_z[i] / tm, rz[i]); }
+    std::printf("; take-ons %.1f (44.2)\n", S.tk_takeon / tm);
+    std::printf("   pressures by the presser's why:");
+    for (int i = 0; i < ai::kWhyCount; ++i) if (S.press_why[i]) std::printf(" %s %.1f;", ai::kWhyNames[i], S.press_why[i] / tm);
+    std::printf("\n   pressures by the ball's metres from the pressers' own line... (carrier off THEIR line 0-18/18-35/35-52/52-70/70+):");
+    for (int i = 0; i < 5; ++i) std::printf(" %.1f", S.press_d[i] / tm);
+    std::printf("\n");
     {
         static const char* zz[10] = {"0-18 centre", "0-18 wide", "18-35 centre", "18-35 wide", "35-52 centre", "35-52 wide", "52-70 centre", "52-70 wide", "70+ centre", "70+ wide"};
         std::printf("   PASS POLICY as played (origin: passes a team-match | share to each end zone [0]..[9] as benchmarks_statsbomb_passes.py):\n");
