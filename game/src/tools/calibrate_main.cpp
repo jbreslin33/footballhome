@@ -75,33 +75,8 @@ int main(int argc, char** argv) {
         world.setLevel(0, lp_home);
         world.setLevel(1, lp_away);
         world.setMatchSeed(static_cast<std::uint64_t>(m));  // vary per match
-        brain.setLevels(lp_home, lp_away, static_cast<std::uint64_t>(m));
-        if (std::strcmp(home_concepts, "-") != 0) {
-            core::PresetOverlay ov;
-            ov.fill(-1);
-            std::string spec = home_concepts;
-            std::size_t at = 0;
-            while (at < spec.size()) {
-                std::size_t end = spec.find(',', at);
-                if (end == std::string::npos) end = spec.size();
-                const std::string item = spec.substr(at, end - at);
-                const std::size_t colon = item.find(':');
-                if (colon != std::string::npos) {
-                    const std::string name = item.substr(0, colon);
-                    const int c = core::concepts().find(name);
-                    if (c >= 0)
-                        ov[c] = static_cast<std::int16_t>(
-                            std::atoi(item.c_str() + colon + 1));
-                }
-                at = end + 1;
-            }
-            const std::uint8_t half = static_cast<std::uint8_t>(players / 2);
-            for (std::uint8_t s = 0; s < half; ++s) {
-                core::ConceptRatings r = brain.ratings(s);
-                core::applyPresetOverlay(r, ov);
-                brain.setRatings(s, r);
-            }
-        }
+        brain.setMatchSeed(static_cast<std::uint64_t>(m));
+        (void)home_concepts;   // G5.22: concepts carry no code; the brain reads no ratings
         const auto setup = ai::TeamSetup::splitHalves(
             static_cast<std::uint8_t>(players));
 

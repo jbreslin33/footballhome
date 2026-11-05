@@ -5276,3 +5276,69 @@ m) trail an advancing ball — measure holders' lag v DFL defenders' speed towar
 (2) The presser stands too tight and is a CB 40% of the time (real: nobody within 2 m in 69% of
 carries): fit who steps and from how far on DFL (nearest defender to the carrier by band and role).
 (3) Phase 2: in possession, same treatment.
+
+### 8.120 G5.22 — the whole old brain purged; in possession and the keeper rebuilt as player states (mig 1080, scratch)
+
+James 11/5: "we need to again purge old stuff and start anew! this will cause less problems". His
+calls: skills → real, from each PL player's own 2015/16 StatsBomb events; concepts → keep the
+catalogue, delete the code; coach-style models → purge, PL 2015/16 only; approach → big bang now.
+
+**Deleted (code).** Everything left of the old `Brain` that decided: the on-ball chain (pass ladder,
+keep-it, shield, over-the-top, recycle, dribble rules, shot selection, cross / cut-back / clear rules),
+meet-the-pass branches, the keeper's G4 craft, off-ball possession (support spots, give-and-go,
+blind-side runs, overlaps, come-short, check-in, false-nine drop, width), the post-passes (rest
+defence, unmark, stay-onside, defend-the-cross), the call system (talk/hear), the look-age vision
+model, lapses / tendencies / habits / per-concept ratings and rolls / levels' brain noise, the
+direct-opponent pairing, and all 49 concept classes (`Concept.cpp/.hpp`, 2,189 lines) with
+`test_concepts`. `Brain.cpp` 3,356 → ~560 lines; the brain reads no concept, rating or level.
+
+**Kept.** The engine (World, ball flight, bodies, officials, the laws), the state machines and
+team phases (§8.119), the defending block (§8.119), and — moved whole to `ai/Reads` because they
+are prediction, not choices — the race, pass and loft safety, get-in-line, chance quality and kick
+aiming. Restart taking (G5.2: StatsBomb-sized throws and corners), the law's distance, the goal-kick
+box, naming and weighting a pass to its man (G4.81-G4.95), brake to arrive and the DFL-fitted shape
+caps stay in the façade. The World still holds a player's level as physics (kick error, control
+speed, reaction): everyone pro until the StatsBomb skills land.
+
+**New player states** (`ai/Players` = the shared agent, one Pick for every man; `ai/Possession`):
+
+| state | when | what |
+|---|---|---|
+| OnBall | he has it | the World times the release (StatsBomb hold curves, physics.tempo.*); each tick his best action: shot (inside shot_max_m 25, chance quality ≥ shot_q_min 0.2 rad, or inside 9 m with any angle) at the post away from their keeper; cross (inside 20 m of their line, \|y\| ≥ 18) to the freest man attacking the box, else the spot; the best safe pass (progress − 0.15 × length; ground, a loft past 25 m; the race read says ours); a clearance in our 25 m (keeper: 55 m long); else carry at goal, off the nearest man |
+| Support | ours, off the ball | his role's real spot by the ball's band — DFL POSSESSION SHAPE (metres off THEIR line), across slideY, no further on than their second-last man − 0.5 m |
+| Receive | the pass is his and he gets there first | get in line (G5.5), else the race spot |
+| Keeper | keeper, ball not his | on the ball–goal line, 1 m + 0.08 × the ball's distance (max 12); dives at a shot on target he can't run to |
+
+Params: physics.support.<role>_<band>, physics.onball.*, physics.keeper.*, physics.receive.* (code
+defaults = the numbers above; the on-ball ones are [FH] starting points to fit).
+
+**Deleted (data, mig 1080, fh_game_scratch; the live game DB takes it with the PL load):** every
+model demand (game_model_concepts 2,790, game_model_concept_params, game_model_role_concepts,
+game_role_concepts 170, game_model_ladder 135), the concept classes' numbers (245 concept.* rows),
+the 14 coach-style models (only Premier League 2015/16 stays), mig 762's "every model states every
+concept" triggers, and the 2,670 `derived` (made-up) player attribute values. The three receive
+numbers moved to physics.receive.*. Kept: the 186-concept catalogue (descriptions, sources,
+measures, links), techniques, principles, phases, moments, the 34-attribute list, skill.* mapping.
+
+**Server:** the brain no longer takes ratings, habits, ladders, tendencies, levels or direct pairs;
+`setMatchSeed` replaces `setLevels`; the HUD's concept ratings stay the server's own read. The
+dead-ball "markers start on their marks" placement (G4.63) is gone with the marking.
+
+**Result** (K1 + E4 + H1C, 4 fixtures × 8, the DB before mig 1080; N2 = §8.119):
+
+| | N2 | G5.22 | real |
+|---|---|---|---|
+| goals / shots a match (both teams) | 6.6 / 41.1 | 0.91 / 47.8 | ~2.7 / ~25 (PL 15/16) |
+| passes / pressures / crosses / 10 m+ carries a team-match | 640 / 690 / ~0 / 13 | 647 / 636 / 0.2 / 13.9 | 434 / 152 / 11.5 / 34.6 (StatsBomb) |
+| entries inside 30 m a team-match | 52.6 | 72.9 | 47.9 (DFL) |
+| goal-side at the carry's start | 3.10 | 3.40 | 5.44 (DFL) |
+| possession middle on the ball: slope / offset | 0.53 / 22.4 | 0.60 / 18.2 | 0.56 / 24.8 (DFL) |
+
+It plays: 90 minutes, restarts taken, the block and the support shape at real spots. It doesn't yet
+play like the Premier League — that is now a list of measured gaps on clean code. Goldens re-locked.
+
+**Next moles** (biggest first). (1) Shots: twice the real count and a third of the goals — shot
+choice by distance and angle v StatsBomb PL 15/16 shot locations and xG. (2) Crosses 0.2 v 11.5:
+carriers never reach the wide zone (where real crosses start, StatsBomb). (3) Pressures 4×: the
+presser stands 3 m off every carrier — stand-off and who engages, DFL. (4) Passes 1.5×: pass choice
+v StatsBomb length / direction. (5) Skills: each PL player's attributes from his 2015/16 events.

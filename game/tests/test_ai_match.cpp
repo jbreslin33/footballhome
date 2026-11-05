@@ -54,8 +54,10 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // G4.89: Law 11 on every pass (no ball to a man read offside).
 // Re-locked G5.21 (2026-11-05): the G4 defending chain deleted; out of
 // possession = the phase + player state machines, the block at real spots.
-constexpr std::uint64_t kGolden3v3   = 0xae9327c7c87cb0ecULL;
-constexpr std::uint64_t kGolden11v11 = 0x045cf8e8735b9eadULL;
+// Re-locked G5.22 (2026-11-05): the whole old brain purged; in possession and
+// the keeper rebuilt as player states (support at real spots, on-ball by data).
+constexpr std::uint64_t kGolden3v3   = 0x136660c8f1901613ULL;
+constexpr std::uint64_t kGolden11v11 = 0x387709ecb6591802ULL;
 
 struct Rig {
     World world;

@@ -1272,7 +1272,7 @@ int main(int argc, char** argv) {
                                 ++g_dgr_n[k][r]; if (ptl < tl) ++g_dgr[k][r];
                                 else if (k <= 2) { ++g_dgr_wn[r]; ++g_dgr_why[r][static_cast<int>(s.lastOrders()[j].why) & 127]; }
                             }
-                            g_dsh_an[k][r] += hx - s.brain().shapeAnchor(j, s.world()).x.toDouble() * sg;
+                            g_dsh_an[k][r] += hx - s.brain().debugAnchor(j).x.toDouble() * sg;
                             g_dsh_da[k][r] += hx - s.brain().debugAnchor(j).x.toDouble() * sg;
                             const auto& od = s.lastOrders()[j];
                             g_dsh_ot[k][r] += (od.target.x.raw || od.target.y.raw) ? hx - od.target.x.toDouble() * sg : ptl;
@@ -1378,7 +1378,7 @@ int main(int argc, char** argv) {
                                     if (od.why == ai::Why::Hold) { ++g_wt_hn[r][f]; g_wt_h[r][f] += ta; g_wt_hp[r][f] += tl - ptl; }
                                 }
                             }
-                            if (att && b.owner && s.world().player(*b.owner).team == a) { ++g_wt_ancn[r][f]; const auto an = s.brain().shapeAnchor(j, s.world()); g_wt_anc[r][f] += tl - (hx - an.x.toDouble() * sg); g_wt_ancy[r][f] += by > 0 ? an.y.toDouble() : -an.y.toDouble(); }
+                            if (att && b.owner && s.world().player(*b.owner).team == a) { ++g_wt_ancn[r][f]; const auto an = s.brain().debugAnchor(j); g_wt_anc[r][f] += tl - (hx - an.x.toDouble() * sg); g_wt_ancy[r][f] += by > 0 ? an.y.toDouble() : -an.y.toDouble(); }
                             if (!att) nd = std::min(nd, std::hypot(q.pos.x.toDouble() - b.pos.x.toDouble(), qy - by));
                         }
                         if (ptl < 18 && std::fabs(qy) >= 14 && same) ++g_ch_chan[att ? 0 : 1];
@@ -1814,7 +1814,7 @@ int main(int argc, char** argv) {
                         // holds (width and balance included); the rest
                         // against the ball-shifted formation spot.
                         const ai::Orders& oj = s.lastOrders()[j];
-                        const math::Vec2 an = oj.why == ai::Why::Hold ? oj.target : s.brain().shapeAnchor(j, s.world());
+                        const math::Vec2 an = oj.why == ai::Why::Hold ? oj.target : s.brain().debugAnchor(j);
                         const double ax = an.x.toDouble() - d.pos.x.toDouble(), ay = an.y.toDouble() - d.pos.y.toDouble();
                         const double dd = std::sqrt(ax * ax + ay * ay);
                         off_sum[team][w] += dd; ++off_n[team][w];
@@ -1839,7 +1839,7 @@ int main(int argc, char** argv) {
                         }
                         if (w == 0) { ++ip_why[team][static_cast<int>(oj.why)]; ++ip_n[team]; }
                         const int jn = s.brain().numberOf(j);
-                        const std::uint8_t man = s.brain().directOpponentOf(j, s.world());
+                        const std::uint8_t man = 255;   // G5.22: no direct-opponent model
                         if (w == 0 && man != 255 && (jn == 2 || jn == 3 || jn == 4 || jn == 5 || jn == 6)) {
                             const auto& mp = s.world().player(man).pos;
                             const double sg = team == 0 ? 1.0 : -1.0;
@@ -2280,9 +2280,8 @@ int main(int argc, char** argv) {
                         if (kick_pred == 1) ++ib_loft_theirs[loft];
                     }
                     if (kick_pred == 1 && kick_read && them >= 0 && kick_passer >= 0) {
-                        ++ib_seen[s.brain().inView(static_cast<core::SlotIndex>(kick_passer), s.world(), static_cast<core::SlotIndex>(them)) ? 1 : 0];
-                        const int a = s.brain().lookAge(static_cast<core::SlotIndex>(kick_passer), s.world());
-                        ++ib_age[a <= 0 ? 0 : a < 15 ? 1 : a < 45 ? 2 : 3];
+                        ++ib_seen[1];   // G5.22: no vision model — he sees everything
+                        ++ib_age[0];
                     }
                 }
                 if (pend_why == ai::kWhyCount && kick_pred == 1 && fr.live) {

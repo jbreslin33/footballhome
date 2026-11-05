@@ -40,11 +40,10 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     world_.setLocomotion(core::Locomotion(cfg.model_params));   // G4.51
     world_.setBallFlight(core::BallFlight(cfg.model_params));   // G4.87
     brain_.setModelParams(cfg.model_params);
-    brain_.setDirectPairs(cfg.direct_pairs);
     world_.setLevel(0, cfg.level_home);
     world_.setLevel(1, cfg.level_away);
     world_.setMatchSeed(cfg.match_seed);
-    brain_.setLevels(cfg.level_home, cfg.level_away, cfg.match_seed);
+    brain_.setMatchSeed(cfg.match_seed);
     level_id_[0] = cfg.level_home_id;
     level_id_[1] = cfg.level_away_id;
     applyRosters();
@@ -118,7 +117,6 @@ void GameServer::applySlotLevels() {
         const core::LevelParams lv = skills_.apply(
             world_.level(home ? 0 : 1), team.players[k].attrs);
         world_.setSlotLevel(i, lv);
-        brain_.setSlotLevel(i, lv);
     }
 }
 
@@ -152,7 +150,7 @@ void GameServer::applyRosters() {
         if (k < team.players.size())
             for (const auto& [idx, v] : team.players[k].tendencies)
                 if (idx >= 0 && idx < core::concepts().size()) likes[idx] = v;
-        brain_.setTendencies(i, likes);
+        (void)likes;
     }
     // Teams PLAY their game model (mig 652; were worn presets, mig 631).
     for (int side = 0; side < 2; ++side) {
@@ -211,22 +209,6 @@ void GameServer::recomputeKnowledge(bool home) {
     for (int i = 0; i < core::kMaxConcepts; ++i)   // G4.74 live changes win
         if (live_demand_[home ? 0 : 1][i] >= 0) demand[i] = live_demand_[home ? 0 : 1][i];
     const std::uint8_t team = home ? 0 : 1;
-    ai::Brain::Ladder ladder{};
-    for (int z = 0; z < 3; ++z)
-        for (int r = 0; r < 3; ++r) {
-            int w = m >= 0 ? cfg_.models[m].ladder[z][r] : -1;
-            const auto lv = live_params_[team].find(ladderKey(z, r));
-            if (lv != live_params_[team].end()) w = static_cast<int>(lv->second / 1000);
-            ladder[z][r] = static_cast<std::uint8_t>(w < 0 ? 100 : (w > 100 ? 100 : w));
-        }
-    brain_.setLadder(team, ladder);
-    // G4.76: its concept numbers — the global rows, its model's, live.
-    core::ModelParams p = cfg_.model_params;
-    if (m >= 0)
-        for (const auto& [key, v] : cfg_.models[m].params) p.setMilli(key, v);
-    for (const auto& [key, v] : live_params_[team])
-        if (key.rfind("concept.", 0) == 0) p.setMilli(key, v);
-    brain_.setTeamModelParams(team, p);
     const std::uint8_t half = cfg_.slot_count / 2;
     const std::uint8_t from = home ? 0 : half;
     const std::uint8_t to = home ? half : cfg_.slot_count;
@@ -241,9 +223,7 @@ void GameServer::recomputeKnowledge(bool home) {
                 for (const auto& [id, d] : role->second)
                     if (live_demand_[team][id] < 0) his[id] = static_cast<std::int16_t>(d);
         }
-        concept_ratings_[sl] = core::effectiveRatings(ability_[sl], his);
-        brain_.setRatings(sl, concept_ratings_[sl]);
-        brain_.setHabits(sl, ability_[sl]);
+        concept_ratings_[sl] = core::effectiveRatings(ability_[sl], his);   // the HUD's read (G5.22: the brain reads none)
     }
 }
 
@@ -512,7 +492,6 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             const auto away = core::levelParams(core::levelName(ms->level_away));
             world_.setLevel(0, home);
             world_.setLevel(1, away);
-            brain_.setLevels(home, away, world_.matchSeed());
             applySlotLevels();   // attributes bend the NEW band
             // Band change: every player's ABILITY follows the new band (his
             // own rows stay on top); the team keeps its game model.
@@ -536,7 +515,6 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
                 r[c] = ps->ratings[c] > 100 ? 100 : ps->ratings[c];
             }
             concept_ratings_[ps->slot] = r;
-            brain_.setRatings(ps->slot, r);
             broadcastRoster();
             return;
         }
@@ -566,7 +544,6 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             const core::LevelParams lv =
                 skills_.apply(world_.level(home ? 0 : 1), a);
             world_.setSlotLevel(pa->slot, lv);
-            brain_.setSlotLevel(pa->slot, lv);
             return;
         }
         case FrameType::BrainWatch: {
@@ -860,26 +837,6 @@ void GameServer::runPhase(std::uint8_t team, std::size_t id) {
             world_.giveBall(static_cast<std::uint8_t>(best));
         }
     }
-    // A dead ball takes seconds (G4.63): the defending side's men who
-    // pick up theirs on it (man-markers: their mark, then the one spot;
-    // G4.64 the packed middle) start there — twice, so the lane each takes sees his teammates'.
-    // Seconds to set up (a phase's defence is set too): everyone who knows
-    // his job is on it (no roll).
-    brain_.setDeadBallSetup(true);
-    // Open play too: the phase starts with the defence already set (G4.64).
-    for (int pass = 0; pass < 2; ++pass)
-            for (std::uint8_t i = 0; i < n; ++i) {
-                if ((i < per_team ? 0 : 1) == team || world_.isKeeper(i) || placed[i]) continue;
-                const ai::Orders o = brain_.ordersFor(i, world_);
-                if (o.why != ai::Why::Mark && o.why != ai::Why::MarkTight && o.why != ai::Why::ProtectMiddle &&
-                    o.why != ai::Why::ShadowHelp && o.why != ai::Why::PackMiddle &&
-                    o.why != ai::Why::LockDoor && o.why != ai::Why::PlayOff)
-                    continue;
-                math::Vec2 face{ball.x - o.target.x, ball.y - o.target.y};
-                if (face.x.raw == 0 && face.y.raw == 0) face = math::Vec2{-sgn, Fixed64::zero()};
-                world_.placePlayer(i, math::Vec3{o.target.x, o.target.y, Fixed64::zero()}, math::normalized(face));
-            }
-    brain_.setDeadBallSetup(false);
     // Their goal kick (Law 16): nobody of the defending side starts in the
     // kicker's penalty area — a shape or mark row inside it stands on the 18.
     if (ph.kind == "keeper") {

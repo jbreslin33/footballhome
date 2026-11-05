@@ -35,7 +35,7 @@ FH_TEST(block_spot_is_the_real_table) {
     ai::DefendingBlock b;
     b.configure(core::ModelParams{});
     ai::PlayerView v;
-    v.slot = 3; v.team = 0; v.sg = Fixed64::one(); v.role = ai::Role::CB; v.across = Fixed64::fromInt(6);
+    v.slot = 3; v.team = 0; v.sg = Fixed64::one(); v.role = ai::Role::CB; v.across_def = Fixed64::fromInt(6);
     const Fixed64 off = kHX + w.ball().pos.x;               // ball metres off our line (≈45)
     const Vec2 s = b.spot(v, w);
     // CB real: 25.4 m at band 35, 30.9 at band 45 (DFL) — interpolated.
@@ -59,17 +59,17 @@ FH_TEST(one_presser_nearest_and_sticky) {
     w.placePlayer(6, Vec3{Fixed64::fromInt(-8), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
     ai::DefendingBlock b;
     b.configure(core::ModelParams{});
-    b.assign(0, w, team_of, -1, -1);
+    b.assign(0, w, team_of, ai::Reads::FlightRead{}, -1);
     FH_EXPECT_EQ(w.restartTeam(), 0xFF);   // giveBall puts the ball in play
     FH_EXPECT_EQ(b.presser(0), 5);
     {
         // 6 now 1 m nearer than 5: under switch_m (2 m), 5 keeps it.
         w.placePlayer(6, Vec3{Fixed64::fromInt(-4), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
-        b.assign(0, w, team_of, -1, -1);
+        b.assign(0, w, team_of, ai::Reads::FlightRead{}, -1);
         FH_EXPECT_EQ(b.presser(0), 5);
         // 6 now 3 m nearer: he takes it.
         w.placePlayer(6, Vec3{Fixed64::fromInt(-2), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
-        b.assign(0, w, team_of, -1, -1);
+        b.assign(0, w, team_of, ai::Reads::FlightRead{}, -1);
         FH_EXPECT_EQ(b.presser(0), 6);
         FH_EXPECT_EQ(b.presser(1), -1);   // their own ball: they don't press it
     }
