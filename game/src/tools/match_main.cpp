@@ -69,6 +69,7 @@ long g_cy_n, g_cy_b[6], g_cy_10; double g_cy_len, g_cy_gain, g_cy_dur, g_cy_bl[6
 long g_ca_press, g_ca_cpress, g_ca_pass, g_ca_switch, g_ca_cross, g_ca_cutback, g_ca_drib, g_ca_dribok, g_ca_ret, g_ca_rtp, g_ca_carry10;
 long g_dsh_gs[10], g_dsh_gs4[10], g_dgr[4][7], g_dgr_n[4][7], g_dgr_why[7][128], g_dgr_wn[7];   // G5.19 goal-side of the ball
 long g_dsh_n[10][7], g_dsh_f[10], g_dsh_why[7][128], g_dsh_wn[7]; double g_dsh_s[10][7], g_dsh_m[10], g_dsh_an[10][7], g_dsh_ot[10][7], g_dsh_da[10][7], g_dsh_ht[10][7], g_dsh_hp[10][7], g_dsh_hv[10][7]; long g_dsh_hn[10][7]; double g_dsh_hw[10][7], g_dsh_hs[10][7], g_dsh_hd[10][7];   // G5.15 defending shape by ball band
+long g_cyb_an[3], g_cyb_ar[3][7]; double g_cyb_ad[3][7], g_cyb_ag[3][7]; long g_cyb, g_cyb_fe[8][2], g_cyb_why[128], g_cyb_rn[7], g_cyb_rgs[7], g_cyb_cbwhy[128], g_cyb_cbn; double g_cyb_rd[7]; double g_cyb_du, g_cyb_m, g_cyb_gs0, g_cyb_pass, g_cyb_gs1, g_cyb_near0, g_cyb_close, g_cyb_eng, g_cyb_w5;   // G5.20 the carry through the block
 long g_en, g_ens[3], g_en3, g_en3_bs[3]; double g_en_gs, g_en_deep, g_en3_gs, g_en3_deep, g_en3_b, g_en3_line, g_en3_gsb[3];   // G5.19 entries inside 30 m
 long g_fa_n[7], g_fa_hn[7]; double g_fa_a[7], g_fa_v[7], g_fa_5[7], g_fa_5f[7], g_fa_h[7], g_fa_hv[7];   // G5.15 front men by possession age
 long g_h3_n[7][2], g_h3_bn; double g_h3_ball, g_h3_adv[7][2], g_h3_was[7][2], g_h3_b15; long g_h3_age[4];   // G5.15 three seconds before, ball wide 18-35
@@ -1141,6 +1142,87 @@ int main(int argc, char** argv) {
                             std::sort(th.begin(), th.end());
                             int g0 = 0; for (double v : th) if (v < btl0) ++g0;
                             if (th.size() >= 2) { ++g_en3; g_en3_gs += g0; g_en3_deep += th[0]; g_en3_line += th[1]; g_en3_b += btl0; ++g_en3_bs[sb]; g_en3_gsb[sb] += g0; }
+                        }
+                    }
+                }
+                {   // G5.20 (§8.118): THE CARRY THROUGH THE BLOCK, by positions as DFL has them — benchmarks: chan (DFL)
+                    // carrier = the attacker nearest the ball within 2 m (the same man; up to 2 frames out of 2 m while within 4);
+                    // a carry 35 m+ out that gets inside 30: time, metres, goal-side defenders at its start and how many he left
+                    // behind, nearest defender (start / closest), frames with a defender within 2 m, the first man within 2 m.
+                    struct Cyb { bool on = false, done = false; int pid = -1, att = -1, m = -1, miss = 0, fr = 0, eng = 0, fe = -1, fe_why = 0; long k0 = 0, last = 0; double btl0 = 0, near0 = 0, close = 0, w5 = 0; bool gs[32] = {}; int ab = 0; int r[32] = {}; double rd[32] = {}; int cbw[32] = {}; };
+                    static Cyb cy;
+                    static long cy_pm = -1; static int cy_pa = -1;   // possession: when this side's began (5 Hz in-play frames)
+                    static long cy_since = 0;
+                    if (cy_pm != m || a != cy_pa) { cy_since = k; cy_pa = a; cy_pm = m; }
+                    const auto& W = s.world();
+                    const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
+                    int cr = -1; double crd = 2.0;
+                    for (std::uint8_t j = 0; j < W.playerCount() && j < 32; ++j) {
+                        const auto& q = W.player(j); if (q.team != a) continue;
+                        const double dd = std::hypot(q.pos.x.toDouble() - bx, q.pos.y.toDouble() - by);
+                        if (dd < crd) { crd = dd; cr = j; }
+                    }
+                    if (cy.on && (cy.m != m || cy.att != a || k - cy.last > 18 || k < cy.last || (cr >= 0 && cr != cy.pid))) cy.on = false;
+                    bool skip = false;
+                    if (cy.on && cr < 0) {
+                        const auto& q = W.player(static_cast<std::uint8_t>(cy.pid));
+                        if (std::hypot(q.pos.x.toDouble() - bx, q.pos.y.toDouble() - by) > 4 || cy.miss >= 2) cy.on = false;
+                        else { ++cy.miss; cy.last = k; }
+                        skip = true;
+                    }
+                    if (!skip && cr >= 0) {
+                        double dist[32]; int nd = 0; double best = 1e9; int bj = -1; int w5 = 0;
+                        for (std::uint8_t j = 0; j < W.playerCount() && j < 32; ++j) {
+                            if (W.isKeeper(j) || W.player(j).team == a) { dist[j] = 1e9; continue; }
+                            dist[j] = std::hypot(W.player(j).pos.x.toDouble() - bx, W.player(j).pos.y.toDouble() - by); ++nd;
+                            if (dist[j] < best) { best = dist[j]; bj = j; }
+                            if (dist[j] < 5) ++w5;
+                        }
+                        if (!cy.on) {
+                            if (tl >= 35 && nd >= 9) {
+                                const long cy_age = k - cy_since;
+                                cy = Cyb{}; cy.on = true; cy.pid = cr; cy.att = a; cy.m = m; cy.k0 = k; cy.last = k; cy.btl0 = tl; cy.near0 = best; cy.close = best;
+                                cy.ab = cy_age < 90 ? 0 : cy_age < 300 ? 1 : 2;
+                                for (std::uint8_t j = 0; j < W.playerCount() && j < 32; ++j) {
+                                    cy.gs[j] = dist[j] < 1e8 && hx - W.player(j).pos.x.toDouble() * sg < tl;
+                                    if (dist[j] > 1e8) continue;
+                                    const int num = s.brain().numberOf(j);
+                                    const int r = (num == 4 || num == 5) ? 0 : (num == 2 || num == 3) ? 1 : (num == 6 || num == 8) ? 2 : num == 10 ? 3 : (num == 7 || num == 11) ? 4 : num == 9 ? 5 : 6;
+                                    cy.r[j] = r; cy.rd[j] = tl - (hx - W.player(j).pos.x.toDouble() * sg);
+                                    if (r == 0) cy.cbw[j] = static_cast<int>(s.lastOrders()[j].why) & 127;
+                                }
+                            }
+                        } else {
+                            cy.miss = 0; cy.last = k;
+                            if (!cy.done) {
+                                ++cy.fr; cy.close = std::min(cy.close, best); cy.w5 += w5;
+                                if (best < 2) { ++cy.eng; if (cy.fe < 0) { cy.fe = bj; cy.fe_why = static_cast<int>(s.lastOrders()[bj].why) & 127; } }
+                                if (tl < 30) {
+                                    cy.done = true;
+                                    int gs0 = 0, pass = 0, gs1 = 0;
+                                    for (std::uint8_t j = 0; j < W.playerCount() && j < 32; ++j) {
+                                        if (dist[j] > 1e8) continue;
+                                        const bool now = hx - W.player(j).pos.x.toDouble() * sg < tl;
+                                        gs0 += cy.gs[j]; gs1 += now; pass += cy.gs[j] && !now;
+                                    }
+                                    for (std::uint8_t j = 0; j < W.playerCount() && j < 32; ++j) {
+                                        if (dist[j] > 1e8) continue;
+                                        ++g_cyb_ar[cy.ab][cy.r[j]]; g_cyb_ad[cy.ab][cy.r[j]] += cy.rd[j]; g_cyb_ag[cy.ab][cy.r[j]] += cy.gs[j];
+                                        ++g_cyb_rn[cy.r[j]]; g_cyb_rgs[cy.r[j]] += cy.gs[j]; g_cyb_rd[cy.r[j]] += cy.rd[j];
+                                        if (cy.r[j] == 0) { ++g_cyb_cbn; ++g_cyb_cbwhy[cy.cbw[j]]; }
+                                    }
+                                    ++g_cyb_an[cy.ab];
+                                    ++g_cyb; g_cyb_du += (k - cy.k0) / 30.0; g_cyb_m += cy.btl0 - tl;
+                                    g_cyb_gs0 += gs0; g_cyb_pass += pass; g_cyb_gs1 += gs1; g_cyb_near0 += cy.near0; g_cyb_close += cy.close;
+                                    g_cyb_eng += static_cast<double>(cy.eng) / std::max(1, cy.fr); g_cyb_w5 += cy.w5 / std::max(1, cy.fr);
+                                    if (cy.fe < 0) ++g_cyb_fe[7][0];
+                                    else {
+                                        const int num = s.brain().numberOf(static_cast<std::uint8_t>(cy.fe));
+                                        const int r = (num == 4 || num == 5) ? 0 : (num == 2 || num == 3) ? 1 : (num == 6 || num == 8) ? 2 : num == 10 ? 3 : (num == 7 || num == 11) ? 4 : num == 9 ? 5 : 6;
+                                        ++g_cyb_fe[r][cy.gs[cy.fe] ? 0 : 1]; ++g_cyb_why[cy.fe_why];
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -3086,6 +3168,26 @@ int main(int argc, char** argv) {
                                 e / (2.0 * nm), 100.0 * g_ens[0] / e, 100.0 * g_ens[1] / e, 100.0 * g_ens[2] / e, g_en_gs / e, g_en_deep / e,
                                 g_en3_b / e3, g_en3_gs / e3, g_en3_deep / e3, g_en3_line / e3,
                                 g_en3_gsb[0] / std::max(1L, g_en3_bs[0]), g_en3_gsb[1] / std::max(1L, g_en3_bs[1]), g_en3_gsb[2] / std::max(1L, g_en3_bs[2]));
+                }
+                if (g_cyb) {
+                    const double c = g_cyb;
+                    std::printf("   CARRY THROUGH THE BLOCK (35 m+ out to inside 30, one carrier): %.1f a team-match (%.0f%% of entries); %.1f s, %.1f m toward goal (%.1f m/s)\n     goal-side at its start %.2f, left behind by the entry %.2f, goal-side at the entry %.2f; nearest defender at the start %.1f m, closest along it %.1f m\n     a defender within 2 m %.0f%% of its frames; defenders within 5 m %.2f; first man within 2 m:",
+                                c / (2.0 * nm), 100.0 * c / std::max(1L, g_en), g_cyb_du / c, g_cyb_m / c, g_cyb_m / std::max(1e-9, g_cyb_du),
+                                g_cyb_gs0 / c, g_cyb_pass / c, g_cyb_gs1 / c, g_cyb_near0 / c, g_cyb_close / c, 100.0 * g_cyb_eng / c, g_cyb_w5 / c);
+                    static const char* rf[8] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST", "?", "none"};
+                    for (int r = 0; r < 8; ++r) for (int q = 0; q < 2; ++q) if (g_cyb_fe[r][q]) std::printf(" %s%s %.0f%%", rf[r], r == 7 ? "" : q ? "/not" : "/gs", 100.0 * g_cyb_fe[r][q] / c);
+                    std::printf("\n     at its start by role, goal-side share / metres goal-side of the ball:");
+                    static const char* rr[7] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST", "?"};
+                    for (int r = 0; r < 7; ++r) if (g_cyb_rn[r]) std::printf(" %s %.0f%% %+.1f;", rr[r], 100.0 * g_cyb_rgs[r] / g_cyb_rn[r], g_cyb_rd[r] / g_cyb_rn[r]);
+                    for (int ab = 0; ab < 3; ++ab) {
+                        std::printf("\n     side on the ball %s: %.0f%% of carries;", ab == 0 ? "<3 s" : ab == 1 ? "3-10 s" : "10+ s", 100.0 * g_cyb_an[ab] / c);
+                        for (int r = 0; r < 6; ++r) if (g_cyb_ar[ab][r]) std::printf(" %s %.0f%% %+.1f;", rr[r], 100.0 * g_cyb_ag[ab][r] / g_cyb_ar[ab][r], g_cyb_ad[ab][r] / g_cyb_ar[ab][r]);
+                    }
+                    std::printf("\n     CB jobs at its start:");
+                    for (int w = 0; w < 128 && w < ai::kWhyCount; ++w) if (g_cyb_cbwhy[w] * 20 >= g_cyb_cbn) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_cyb_cbwhy[w] / g_cyb_cbn);
+                    std::printf("\n     first man's job then:");
+                    for (int w = 0; w < 128 && w < ai::kWhyCount; ++w) if (g_cyb_why[w] * 20 >= c) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * g_cyb_why[w] / c);
+                    std::printf("\n");
                 }
                 if (g_h3_bn) {
                     const double hn = g_h3_bn;

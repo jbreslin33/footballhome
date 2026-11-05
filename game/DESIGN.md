@@ -5142,3 +5142,66 @@ its actors measured before more rules.
 — who engages him (nearest defender's distance and job along the carry), how many defenders
 goal-side at its start are behind him at its end, and the real figure for the same carries from
 DFL (carrier = the attacker on a slow ball).
+
+### 8.118 G5.20 — the carry through the block: the marking layer, not the block, sets the centre-backs' height (measure only; no engine change)
+
+§8.117's next. CARRY THROUGH THE BLOCK (new, both sides, positions only so they compare: carrier =
+the attacker nearest the ball within 2 m at 5 Hz, the same man, up to 2 frames out of 2 m while it
+stays within 4 m; a carry that starts 35 m+ out and gets inside 30 m):
+
+| | game (K1+E4+F1+H1C, 32 matches) | DFL real |
+|---|---|---|
+| carries a team-match (share of entries) | 15.2 (32%) | 8.4 (17%) |
+| time / metres toward goal / speed | 3.0 s / 12.6 / 4.2 m/s | 2.8 s / 13.5 / 4.8 m/s |
+| defenders goal-side at its start / left behind / goal-side at the entry | 2.43 / 1.59 / 1.11 | 5.44 / 0.98 / 4.68 |
+| nearest defender at its start / closest along it | 4.7 / 1.8 m | 7.1 / 3.2 m |
+| a defender within 2 m (share of frames) / first man within 2 m: nobody, a CB | 26% / 30%, 35% | 10% / 69%, 4% |
+| at its start, CB goal-side / metres goal-side of the ball | 52% / +1.3 | 94% / +11.7 |
+| FB; DM/CM | 37% / −1.8; 19% / −6.9 | 81% / +7.2; 58% / +1.9 |
+
+By possession age (side on the ball <3 s / 3-10 / 10+), real CBs stand +12.7 / +9.5 / +12.5 m
+goal-side; ours +6.2 / −1.0 / 0.0. The gap is the SETTLED block, not the transition.
+
+Why: the CB holders' target is right (after the block rules 30.5 m off the line with the ball 40-50
+out, real CB 30.9) but they stand 38.5; with the ball 40-70 out 42% of CB time is marking (mark
+tight 28%, protect the middle 14%). Their man, the attacking striker, stands 6.7 m deeper than
+real (POSSESSION SHAPE, ball 40-50 from their line: 40.2 v 33.5) and is pinned there by the very
+line that marks him — the pair sit 7 m up the pitch together.
+
+Levers (8 matches × 4 fixtures each), goal-side at the carry's start (real 5.44):
+
+| lever | goal-side | CB at ball 40-50 (v real) |
+|---|---|---|
+| none | 2.43 | +7.6 |
+| theirs_ball_tau_s 0.5 / 1 | 2.70 / 2.52 | — |
+| shape_danger_m 70 | 2.81 | +6.0 |
+| shape_tau_s 1 + shape_max_mps 7 | 2.48 | +6.5 |
+| ours_offset_m 7 / 9.5 (possession shape up) | 2.49 / 2.42 | +8.6 / +9.1 (their back line fixed, the striker stays pinned) |
+| a marker capped at his block spot + 2 / + 5 m (tried, removed) | 3.14 / 2.99 | +4.2 / +5.1 |
+
+`seek(…, 1/2)` (§8.112's "half speed") is a 0.5 m arrive radius, not a speed: misread.
+
+**Decision (James 11/5): clean slate.** "we should not let old code get in the way … i would just
+delete old code so it don't corrupt. concepts i think are more universal" and "it all needs to be
+using state machines, oop … c++". The G4-era decision code in `Brain::decide` (a 2,146-line
+priority chain; the defending branch alone ~760 lines: compactness cap, pre-offside depth cover,
+swarm, press/chase, counter-press, recover, cover man, man-orientation marking) is deleted, not
+gated or capped. Concept rows, coaching descriptions, citations and skill ratings stay as the
+vocabulary; a concept's code is re-attached only when a measured gap asks for it, with numbers
+fitted to 2015/16 (StatsBomb events) or pro tracking (DFL — Bundesliga; no public PL 15/16
+tracking exists, so spatial behaviour is "pro tracking", never quoted as a PL figure). Kept: the
+G5.9+ fitted work (F1 block shape, E4 possession shape, crosses, hold curves, carry_share).
+
+Shape of the rebuild ([Buckland] state machines; §5.1 promised the team layer, never built):
+team state machine = the phases of play (InPossession, DefensiveTransition, DefendingBlock,
+AttackingTransition, SetPiece), minimum dwell; a state machine per player (State: enter / execute
+/ exit, current + global); team → player assignment messages (who steps, who covers, who tracks
+whom) [HELIOS marking]; concepts plug into states; machine state is part of the hashed world state
+(determinism). Phase order: defending block → off-ball in possession → on the ball. Each phase:
+delete the old branch, the new states with DB params, harness v real, commit.
+
+**Harness lines:** CARRY THROUGH THE BLOCK (match_main, benchmarks_tracking_channel.py): count and
+share of entries, time/metres/speed, goal-side at its start / left behind / at the entry, nearest
+defender, frames with a defender within 2 m, first man within 2 m (role, goal-side or not) and his
+job; at its start by role (goal-side share, metres goal-side), the same by possession age; CB jobs
+at its start.
