@@ -83,6 +83,22 @@ std::string MessageCopy::withSmsLinkHint(const std::string& smsBody) {
     return hint.ok() ? smsBody + "\n\n" + hint.body : smsBody;
 }
 
+std::string MessageCopy::clubSms(const std::string& body) {
+    const auto pre  = render("club_sms", "prefix", {});
+    const auto foot = render("club_sms", "footer", {});
+    auto edge = [](std::string x) {
+        const auto b = x.find_first_not_of(" \t");
+        if (b == std::string::npos) return std::string{};
+        const auto e = x.find_last_not_of(" \t");
+        return x.substr(b, e - b + 1);
+    };
+    std::string out = edge(pre.body);
+    const std::string mid = edge(body), end = edge(foot.body);
+    if (!mid.empty()) out += (out.empty() ? "" : " ") + mid;
+    if (!end.empty()) out += (out.empty() ? "" : " ") + end;
+    return out;
+}
+
 std::string MessageCopy::outreachEmail() {
     auto rows = db_->query("SELECT COALESCE(outreach_email,'') AS em FROM clubs WHERE id = $1::int",
                            {std::to_string(clubId_)});

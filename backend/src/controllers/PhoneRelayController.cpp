@@ -259,10 +259,8 @@ Response PhoneRelayController::handleClubText(const Request& request) {
         if (isStopped(digits)) return jsonError(HttpStatus::CONFLICT, "They replied STOP — call them instead.", "stopped");
         if (!isOptedIn(personId)) return jsonError(HttpStatus::CONFLICT, "They haven't opted in to club texts.", "not_opted_in");
         MessageCopy copy;
-        const auto pre  = copy.render("club_sms", "prefix", {});
-        const auto foot = copy.render("club_sms", "footer", {});
         const auto sent = TwilioService::getInstance().sendSms(
-            TwilioService::normalizeUs(digits), pre.body + text + foot.body,
+            TwilioService::normalizeUs(digits), copy.clubSms(text),
             purpose.empty() ? "contact" : purpose, forPersonId > 0 ? forPersonId : personId, 0);
         if (!sent.ok) return jsonError(HttpStatus::BAD_GATEWAY, "The club text did not go out: " + sent.error);
         return jsonOut(HttpStatus::CREATED, {{"sent", true}, {"sid", sent.sid}});

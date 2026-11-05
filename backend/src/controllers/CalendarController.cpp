@@ -3320,10 +3320,8 @@ Response CalendarController::handlePostRegistrationGapText(const Request& reques
         const std::string phone = textOrNull(g[0], "phone").is_null() ? "" : g[0]["phone"].c_str();
         if (phone.empty()) return jsonError(HttpStatus::CONFLICT, "No mobile number on file.");
         MessageCopy copy;
-        const auto pre  = copy.render("club_sms", "prefix", {});
-        const auto foot = copy.render("club_sms", "footer", {});
         const auto sent = TwilioService::getInstance().sendSms(
-            TwilioService::normalizeUs(phone), pre.body + g[0]["body"].c_str() + foot.body,
+            TwilioService::normalizeUs(phone), copy.clubSms(g[0]["body"].c_str()),
             "reg_link:" + std::to_string(fhEventId), *target, 0);
         if (!sent.ok) return jsonError(HttpStatus::BAD_GATEWAY, "The club text did not go out: " + sent.error);
         return jsonOk({{"sent", true}, {"sid", sent.sid}});

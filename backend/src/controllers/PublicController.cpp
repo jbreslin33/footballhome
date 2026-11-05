@@ -881,14 +881,12 @@ Response PublicController::handleTwilioSmsInbound(const Request& request) {
         if (!msgId.empty() && optOut.empty() && m[0]["inserted"].as<bool>()) {
             try {
                 MessageCopy copy;
-                const auto pre  = copy.render("club_sms", "prefix", {});
-                const auto foot = copy.render("club_sms", "footer", {});
                 for (const auto& f : db_->query("SELECT to_phone, from_label, body FROM fh_sms_reply_forwards($1::bigint)", {msgId})) {
                     const auto msg = copy.render("club_sms", "reply_forward",
                         {{"from", f["from_label"].c_str()}, {"body", f["body"].c_str()}});
                     if (!msg.ok()) break;
                     TwilioService::getInstance().sendSms(TwilioService::normalizeUs(f["to_phone"].c_str()),
-                                                         pre.body + msg.body + foot.body, "reply_forward");
+                                                         copy.clubSms(msg.body), "reply_forward");
                 }
             } catch (const std::exception& e) {
                 std::cerr << "❌ twilio/sms-inbound forward: " << e.what() << std::endl;

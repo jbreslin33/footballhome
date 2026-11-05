@@ -41,6 +41,10 @@ public:
 
     // body + the kind='sms_link_hint' sentence (for any SMS with a link).
     std::string withSmsLinkHint(const std::string& smsBody);
+    // A club-number text: club_sms prefix + body + footer, one space at
+    // each join (render() tidies the rows' edge spaces away — 11/5
+    // "1893 SC):Hi Deyquel").
+    std::string clubSms(const std::string& body);
 
     // The mailbox compose links open as (clubs.outreach_email).
     std::string outreachEmail();

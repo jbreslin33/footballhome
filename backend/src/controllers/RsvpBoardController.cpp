@@ -875,10 +875,8 @@ Response RsvpBoardController::handleSquadNotice(const Request& request) {
                             {"recipient_name", who->recipientFirstName}, {"contact", contact}};
                 if (club) {
                     // Brand first, opt-out last — the A2P campaign promises both.
-                    const auto pre  = copy.render("club_sms", "prefix", {});
-                    const auto foot = copy.render("club_sms", "footer", {});
                     const auto sent = TwilioService::getInstance().sendSms(
-                        TwilioService::normalizeUs(contact), pre.body + msg.body + foot.body,
+                        TwilioService::normalizeUs(contact), copy.clubSms(msg.body),
                         "game_link:" + std::to_string(matchId), who->personId, minted.tokenId);
                     if (!sent.ok) { skip(HttpStatus::BAD_GATEWAY, "The club text did not go out: " + sent.error); continue; }
                     model_->logSquadNotice(matchId, *who, "sms", contact, scope.userId);
