@@ -2842,6 +2842,22 @@ class GameCenterScreen extends EventScreen {
     // key: which fold this is, so it stays open across the re-render a
     // REMIND tap triggers (owner 2026-10-22: "its still closing the no
     // response people and i need to open again").
+    // 🎟 CALL IN on a 💤 Inactive card (mig 1076, owner 2026-11-05: "merge
+    // them and have a call in button on the inactive for that event"): the
+    // 📇 popup with the call-up preselected; sending it invites him and he
+    // drops into No Response with the squad.  Coaches, official view only.
+    const callInBtn = (p) => {
+      if (!this.isCoach || this.lineupView !== 'official' || !window.SectionContact) return '';
+      const pl = (this.players || []).find(x => Number(x.playerId) === Number(p.id));
+      const personId = pl ? Number(pl.personId) : 0;
+      const cand = personId && this.invites ? (this.invites.candidates || []).find(c => Number(c.person_id) === personId) : null;
+      if (!cand) return '';
+      return SectionContact.callupButton(this, this._fhEventId(), cand, {
+        section: this.ev && this.ev.category,
+        label: (window.MessageCopy && MessageCopy.block('contact_popup', 'callin_button')) || '🎟 CALL IN',
+        onSent: () => this._loadInvites().then(() => this._render()),
+      });
+    };
     const collapsedSection = (label, players, { top = '', extra = null, key = '' } = {}) =>
       this.cardFoldHtml('data-gc-fold', key, !!(key && this._openFolds.has(key)), label, players.length, cardGrid(players, extra), { top });
 
@@ -2985,7 +3001,7 @@ class GameCenterScreen extends EventScreen {
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
         collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }),
-        collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive' }),
+        collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }),
         this._renderCallupSection(),
       ].join(''));
       return;
@@ -3003,7 +3019,7 @@ class GameCenterScreen extends EventScreen {
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }) : '',
-      this.isCoach ? collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive' }) : '',
+      this.isCoach ? collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }) : '',
       this.isCoach ? this._renderCallupSection() : '',
     ].join(''));
   }

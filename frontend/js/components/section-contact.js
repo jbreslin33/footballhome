@@ -152,7 +152,8 @@
   // The 📇 button for one call-up row (an open invite or someone who could
   // be invited, GET …/invites): the call-up preselected, then the
   // section's list.  row.recipients = every parent of a kid (mig 682).
-  function callupButton(screen, fhEventId, row, { section, resend = false, onSent = null } = {}) {
+  // label: the button's words — '🎟 CALL IN' on an 💤 Inactive card (mig 1076).
+  function callupButton(screen, fhEventId, row, { section, resend = false, onSent = null, label = '' } = {}) {
     if (!window.ContactPopup || !fhEventId || !row) return '';
     const pid = Number(row.person_id);
     const name = `${row.first_name || ''} ${row.last_name || ''}`.trim();
@@ -170,6 +171,7 @@
       }),
       defaultKey: 'callup',
       title: `Contact ${name}`,
+      ...(label ? { label } : {}),
     });
   }
 

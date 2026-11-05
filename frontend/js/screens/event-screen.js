@@ -1283,7 +1283,19 @@ class EventScreen extends Screen {
       };
       return `<span style="display:inline-flex; gap:4px;">${b('yes', '✓', '#22c55e')}${b('no', '✗', '#ef4444')}</span>`;
     };
-    const card = (r, { remind = false, sides = false } = {}) => {
+    // 🎟 CALL IN on a 💤 Inactive card of a game (mig 1076): the 📇 popup
+    // with the call-up preselected; sending it invites him into No Response.
+    const callInBtn = (r) => {
+      if (!canContact || !open || this.ev.kind !== 'match' || !window.SectionContact || !this.invites || !this.invites.candidates) return '';
+      const cand = this.invites.candidates.find(c => Number(c.person_id) === Number(r.person_id));
+      if (!cand) return '';
+      return `<div style="margin-top:6px;">${SectionContact.callupButton(this, this.ev.fh_event_id, cand, {
+        section: this.ev && this.ev.category,
+        label: (window.MessageCopy && MessageCopy.block('contact_popup', 'callin_button')) || '🎟 CALL IN',
+        onSent: () => Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]),
+      })}</div>`;
+    };
+    const card = (r, { remind = false, sides = false, callIn = false } = {}) => {
       const err = this.rsvpNote[r.person_id];
       return this.cardHtml({
         attrs: `data-person-row="${r.person_id}"`,
@@ -1295,7 +1307,8 @@ class EventScreen extends Screen {
           </div>
           ${err ? `<div style="font-size:0.72rem; color:#f87171; margin-top:4px;">${this.escapeHtml(err)}</div>` : ''}
           ${window.PersonStanding ? PersonStanding.html(r.person_id) : ''}
-          ${canContact ? this._contactLineHtml(r, remind && canRemind) : ''}`,
+          ${canContact ? this._contactLineHtml(r, remind && canRemind) : ''}
+          ${callIn ? callInBtn(r) : ''}`,
       });
     };
     const grid = (list, opts) => this.cardGridHtml(list.map(r => card(r, opts)));
@@ -1364,7 +1377,7 @@ class EventScreen extends Screen {
       ${fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: true })}
       ${fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no'))}
       ${fold('injured', L('sec_injured', '🩹 Injured'), injured)}
-      ${fold('inactive', L('sec_inactive', '💤 Inactive'), inactive)}
+      ${fold('inactive', L('sec_inactive', '💤 Inactive'), inactive, { callIn: true })}
       ${coachSection()}`;
   }
 
