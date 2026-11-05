@@ -738,6 +738,24 @@ class RosterScreenBase extends Screen {
           + '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>'
         : '');
       const cats = { onboard: [], active: [], injured: [], practice_squad: [], inactive: [] };
+      // NEEDS ONBOARD cards lead with when he registered and what we sent
+      // (owner 2026-11-05: "show date they registered for needs onboard
+      // players atleast so i know if i sent them anything or if they just
+      // need to be dropped because they are ghost").  laRegisteredAt is on
+      // every board row; p.welcome.lastSentAt is the 👋 welcome log.
+      const onboardLine = (p) => {
+        const fmt = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+        const ago = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${Math.max(0, Math.floor((Date.now() - d) / 86400000))}d ago`; };
+        const reg = p.laRegisteredAt
+          ? (copy('board_onboard_registered', { date: fmt(p.laRegisteredAt), ago: ago(p.laRegisteredAt) }) || `📝 Registered ${fmt(p.laRegisteredAt)} · ${ago(p.laRegisteredAt)}`)
+          : (copy('board_onboard_reg_unknown') || '📝 Registration date unknown');
+        const sent = p.welcome && p.welcome.lastSentAt
+          ? (copy('board_onboard_welcomed', { date: fmt(p.welcome.lastSentAt), channel: p.welcome.lastChannel || '' })
+             || `👋 Welcome sent ${fmt(p.welcome.lastSentAt)}`)
+          : (copy('board_onboard_not_welcomed') || '👋 No welcome sent');
+        return `<div style="font-size:0.68rem; font-weight:700; color:#f0abfc; padding:4px 6px 0;">${esc(reg)} · ${esc(sent)}</div>`;
+      };
+      const onboardCard = (p) => onboardLine(p) + card(p);
       // NEEDS ONBOARD (owner 2026-11-03): never answered an RSVP himself
       // (standing defaults and admin answers don't count) and not 💤
       // Inactive or 🩹 Injured — he leaves the moment he answers once.
@@ -800,8 +818,13 @@ class RosterScreenBase extends Screen {
       // ACTIVE first (owner 11/4: "ACTIVE SHOULD BE top").  The 👀 Sees
       // every game count went 11/4 — each card's 👀⚽ chip says it.  (＋ from LA removed 11/4 —
       // every member is placed on a team; the card's team menu adds more.)
+      // NEEDS ONBOARD: each card under its registered / welcomed line.
+      const onboardGroup = shows('active')
+        ? head(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard.length, '#e879f9', 'rgba(232,121,249,0.14)')
+          + (cats.onboard.length ? ordered(cats.onboard).map(onboardCard).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
+        : '';
       return activeHtml
-        + group(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard, 'active', '#e879f9', 'rgba(232,121,249,0.14)')
+        + onboardGroup
         + ridersGroup
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
