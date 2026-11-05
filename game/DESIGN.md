@@ -5508,23 +5508,30 @@ past_p25_m / past_p75_m, air, lead_s ([FH] 1 s of his across drift).
 
 **Fixed — a frozen match.** A loose ball come to rest where nobody of either side can get to it
 inside the race read's 3 s horizon had no chaser: it sat by the corner flag from minute 6 to full
-time (seed 1000; HEAD too). Now our nearest man goes (DefendingBlock::assign). Every earlier
-harness average that took in such a match was pulled down: unstuck, the game plays ~1,050 passes a
-team-match (real 433.8), not ~450.
+time (club-DB params, seed 1000; HEAD too). Now our nearest man goes (DefendingBlock::assign).
 
 **Harness:** IN BEHIND (count, share, completed, in the air, the medians above, by origin zone, the
 man's gap distribution against DFL's, runners at the line), the led balls; GAME_BEHIND_TRACE (each
-led ball tick by tick), GAME_PLAY_TRACE (the ball every 10 s).
+led ball tick by tick), GAME_PLAY_TRACE (the ball every 10 s). **Run it on the scratch DB**
+(`POSTGRES_DB=fh_game_scratch game/scripts/match.sh …`): the club DB has 17 physics rows, not the
+89 fitted ones (no hold curves, no carry share) — a first pass of this slice was measured there by
+mistake and read passes 2.4× real.
 
-**Result** (8 matches, Leicester v Arsenal, stall fixed; in-behind off → on): balls in behind 24.9 →
-35.6 a team-match (37.7), 33.9 of them led; completed 41% (47.5); shots 1.8 → 2.8 (12.9). Still
-wrong: he meets it 2.8 m past the line (5.2) after a 3.6 m run (10.2), 42.6 m off their line (23.2) —
-these balls are played at midfield; at the kick our men stand still (0.3 m/s toward goal, real 2.7);
-the gap distribution has too few men 2-8 m short of the line (5.7% v 15.4%) and a pile at 16-18 m
-(12.8% v 3.9%). A smaller onside margin (1.5 m v 5) froze play and was dropped.
+**Result** (8 matches, Leicester v Arsenal, fh_game_scratch; in-behind off → on):
+
+| | off | on | real |
+|---|---|---|---|
+| balls in behind a team-match | 7.9 | 24.9 (32.6 led) | 37.7 (DFL) |
+| completed / in the air | 44% / 10% | 49% / 37% | 47.5% / 58% |
+| his gap at the kick / speed / toward goal | 3.0 m / 3.7 / 2.5 | 3.2 m / 3.1 / 1.4 | 2.0 m / 3.8 / 2.7 |
+| he runs to it / met past the line | 5.9 / 1.6 m | 8.7 / 3.3 m | 10.2 / 5.2 m |
+| met, metres off their line | 36.3 | 34.0 | 23.2 |
+| entries inside 30 m | 23.2 | 30.9 | — |
+| shots a team-match / scored | 4.9 / 2.5% | 5.9 / 4.3% | 12.9 / 9.3% |
+
+The men's gap to the line is now real-shaped (it was the club-DB run that piled them at 16-18 m).
 Tests 22/22; goldens re-locked.
 
-**Next mole.** Passes 2.4× real (1,040 v 434) and pressures 2.6× (389 v 152) now the stall no longer
-hides it: the ball is moved on far too quickly and nothing advances (releases 35 m+ out 1,013 of
-1,043 a team-match). Measure the time on the ball against StatsBomb's hold curves as the game plays
-them, then the men off the ball moving at the kick (DFL 3.8 m/s for the man a ball in behind is for).
+**Next moles.** Pressures 500 a team-match (151.8, 3.3×), take-ons tried 118 (18.1, 6.6×),
+passes 694 (433.8, 1.6×), completion 87% (79.1): bodies on the man on the ball far too often. Shots
+don't score: keeper 62% (23.1), scored 4.3% (9.3).
