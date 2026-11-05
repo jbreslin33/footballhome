@@ -1617,7 +1617,10 @@ class RosterScreenBase extends Screen {
     }
     const balanceValue = Number(player.outstandingBalance || 0);
     const duesColor = balanceValue === 0 ? '#22c55e' : '#ef4444';
-    return `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; line-height:1.2; padding:0 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
+    const pillHtml = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; line-height:1.2; padding:0 6px; border-radius:999px; color:${duesColor}; font-weight:700;">Dues</span>`;
+    // Tap opens his LeagueApps page to run a card (owner 11/5) — the same
+    // link every player card's dues pill carries (PersonStanding.laLink).
+    return window.PersonStanding ? PersonStanding.laLink(pillHtml, player.leagueAppsUserId) : pillHtml;
   }
 
   // Card border is neutral on every board (owner 2026-09-05) — dues risk

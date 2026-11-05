@@ -45,6 +45,28 @@
     }
   }
 
+  // His LeagueApps Manager member page — where staff run a card / see
+  // tuition (owner 11/5: "run card from la … from anyone … universal on
+  // all player cards").  The one place this URL is built; every dues pill
+  // links through it.
+  const LA_SITE_ID = 41983;
+  function laMemberUrl(laUserId) {
+    const uid = String(laUserId || '').replace(/\D/g, '');
+    return uid ? `https://manager.leagueapps.com/console/sites/${LA_SITE_ID}/memberDetails?memberId=${uid}` : '';
+  }
+  // Wrap a pill so a tap opens his LA page in a new tab (no-op without an LA id).
+  function laLink(pillHtml, laUserId) {
+    const url = laMemberUrl(laUserId);
+    if (!url) return pillHtml;
+    return `<a href="${esc(url)}" target="_blank" rel="noopener" draggable="false" data-la-dues-link
+       title="${esc(t('dues_la_tip', {}, 'Open in LeagueApps — run card, see tuition'))}"
+       onclick="event.stopPropagation()" style="text-decoration:none; cursor:pointer;">${pillHtml}</a>`;
+  }
+  const laUserId = (personId) => {
+    const hit = cache.get(Number(personId));
+    return hit && hit.data ? hit.data.laUserId || null : null;
+  };
+
   const pill = (text, title, bg, fg, border) =>
     `<span title="${esc(title)}" style="padding:0 6px; border-radius:999px; background:${bg}; color:${fg}; border:1px solid ${border}; font-weight:800; white-space:nowrap;">${esc(text)}</span>`;
 
@@ -79,6 +101,7 @@
     }
 
     if (d) {
+      const duesAt = bits.length;
       if (d.free_reason === 'volunteer') bits.push(pill(t('dues_volunteer', {}, '🙋 Volunteer'), '', '#1e293b', '#cbd5e1', '#475569'));
       else if (d.free_reason === 'injured') bits.push(pill(t('dues_injured', {}, '🩹 No dues'), '', '#1e293b', '#cbd5e1', '#475569'));
       else if (!d.member) bits.push(pill(t('dues_no_membership', {}, '💰 No membership'), t('dues_no_membership_tip', {}, 'No live LeagueApps registration'), '#1f2937', '#9ca3af', '#4b5563'));
@@ -86,6 +109,7 @@
         const amount = `$${Math.round(d.balance)}`;
         bits.push(pill(t('dues_owes', { amount, months: d.months_behind }, `💰 Owes ${amount} · ${d.months_behind} mo`), '', d.months_behind >= 2 ? '#3a1f1f' : '#3a2e05', d.months_behind >= 2 ? '#fca5a5' : '#fbbf24', d.months_behind >= 2 ? '#b91c1c' : '#d97706'));
       } else bits.push(pill(t('dues_paid', {}, '💰 Paid up'), '', '#052e16', '#86efac', '#16a34a'));
+      if (bits.length > duesAt) bits[duesAt] = laLink(bits[duesAt], hit.data.laUserId);
     }
 
     if (!bits.length) return '';
@@ -139,5 +163,5 @@
     els.forEach(e => { e.innerHTML = chip(e.dataset.standingChip, { inactive: e.dataset.standingInactive !== '0' }); });
   }
 
-  window.PersonStanding = { load, html, chip, fillChips, answered };
+  window.PersonStanding = { load, html, chip, fillChips, answered, laMemberUrl, laLink, laUserId };
 })();

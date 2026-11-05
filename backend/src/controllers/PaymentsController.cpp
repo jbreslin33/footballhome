@@ -760,7 +760,7 @@ Response PaymentsController::handleStanding(const Request& request) {
         json people = json::object();
         auto* db = Database::getInstance();
         for (const auto& r : db->query(R"SQL(
-            SELECT p.id,
+            SELECT p.id, p.la_user_id,
                    fh_dues_balance_usd(p.id)::float8 AS balance,
                    COALESCE(fh_dues_free_reason(p.id), '') AS free_reason,
                    EXISTS (SELECT 1 FROM person_la_memberships m
@@ -797,6 +797,9 @@ Response PaymentsController::handleStanding(const Request& request) {
                 {"inactive", r["inactive"].as<bool>()},
                 {"answered", r["answered"].as<bool>()},
                 {"rsvpTotal", r["rsvp_total"].as<long long>()},
+                // The dues pill opens his LeagueApps member page (owner
+                // 11/5: run his card from any player card).
+                {"laUserId", r["la_user_id"].is_null() ? json(nullptr) : json(r["la_user_id"].c_str())},
                 {"activity", nullptr}};
         }
 
