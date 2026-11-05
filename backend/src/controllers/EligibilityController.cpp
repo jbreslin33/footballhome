@@ -101,8 +101,11 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
         // Liga1-only player still shows up for an APSL/Liga1 combined game.
         // Falls back to home/away team_id if the event isn't bridged yet.
         pqxx::result eventTeamsRow = db_->query(
-            "SELECT array_agg(DISTINCT fet.team_id) AS team_ids "
-            "FROM fh_events fe JOIN fh_event_teams fet ON fet.fh_event_id = fe.id "
+            // The game's teams plus the call-up pools serving them (mig
+            // 1097: APSL Reserves is never tagged on a game, but its pool
+            // still loads into Game Center's 🎟 Call-up pool fold).
+            "SELECT array_agg(DISTINCT lt) AS team_ids "
+            "FROM fh_events fe, LATERAL fh_event_list_team_ids(fe.id) lt "
             "WHERE fe.match_id = $1",
             {matchId}
         );
@@ -1025,8 +1028,9 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
 // the matches hop it has to take first.
 static std::string eventRosterTeamIds(Database* db, const std::string& fhEventId) {
     pqxx::result rows = db->query(
-        "SELECT array_agg(DISTINCT team_id) AS team_ids "
-        "FROM fh_event_teams WHERE fh_event_id = $1",
+        // + call-up pools serving them (mig 1097), as the match lineup does.
+        "SELECT array_agg(DISTINCT lt) AS team_ids "
+        "FROM fh_event_list_team_ids($1::bigint) lt",
         {fhEventId});
     if (!rows.empty() && !rows[0]["team_ids"].is_null()) return rows[0]["team_ids"].c_str();
     return "{}";
