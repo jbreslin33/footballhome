@@ -5431,7 +5431,7 @@ class GameCenterScreen extends EventScreen {
           firstName: firstName || p.name,
           lastName,
           jerseyNumber: p.jerseyNumber || '',
-          nameStyle: live ? this._eligNameStyle(p.id) : '',
+          nameStyle: live ? this._cardNameStyle(p.id) : '',
           isKeeper: !this.everyonePlays && gkPositionIds.has(this.positions.get(p.id)),
         });
       }
@@ -5479,7 +5479,7 @@ class GameCenterScreen extends EventScreen {
           const subs = this._sharersOf(pos.id).map(id => rosterById.get(id)).filter(Boolean);
           if (subs.length) token.subs = subs.map(r => ({ name: r.name, moveId: editing ? r.id : null, style: live ? this._eligNameStyle(r.id) : '' }));
           if (wideIds.has(pos.id)) token.wide = true;
-          if (live && occupant) token.nameStyle = this._eligNameStyle(occupant.id, { onPitch: true });
+          if (live && occupant) token.nameStyle = this._cardNameStyle(occupant.id, { onPitch: true });
           if (editing && occupant) {
             token.removeId = occupant.id;
             if (this.showLineupStats) token.badgeHtml = this._rsvpStatusPill(occupant.id);
@@ -5714,6 +5714,30 @@ class GameCenterScreen extends EventScreen {
     const s = this.stats.get(Number(playerId));
     if (!s) return null;
     return this._overallEligibility(this._criteriaState(s), this._rsvpTimingState(s)).state;
+  }
+
+  // The live graphic's names shimmer (owner 11/5: "make the names shimmer
+  // on graphic for starters and bench"): a light band sweeps across each
+  // name in its eligibility colour (white when there is no verdict).  Only
+  // the on-screen card — the html2canvas export draws plain names (live =
+  // false), since background-clip:text doesn't survive the capture.
+  _cardNameStyle(playerId, { onPitch = false } = {}) {
+    GameCenterScreen._shimmerCss();
+    const v = this._eligVerdict(playerId);
+    const base = !v ? '#ffffff' : v === 'eligible' ? '#ffea00' : v === 'projected' ? '#facc15' : '#ef4444';
+    const glow = onPitch ? 'filter:drop-shadow(0 0 1px rgba(0,0,0,0.85));' : '';
+    return `background-image:linear-gradient(100deg, ${base} 0%, ${base} 40%, #ffffff 50%, ${base} 60%, ${base} 100%);`
+      + 'background-size:250% 100%;-webkit-background-clip:text;background-clip:text;'
+      + `-webkit-text-fill-color:transparent;color:${base};animation:fhNameShimmer 2.8s linear infinite;${glow}`;
+  }
+
+  static _shimmerCss() {
+    if (document.getElementById('fh-name-shimmer-css')) return;
+    const st = document.createElement('style');
+    st.id = 'fh-name-shimmer-css';
+    st.textContent = '@keyframes fhNameShimmer{0%{background-position:100% 0}100%{background-position:0% 0}}'
+      + '@media (prefers-reduced-motion: reduce){[style*="fhNameShimmer"]{animation:none!important}}';
+    document.head.appendChild(st);
   }
 
   _eligNameStyle(playerId, { onPitch = false } = {}) {
