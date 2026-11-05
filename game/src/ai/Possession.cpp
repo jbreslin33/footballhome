@@ -97,34 +97,97 @@ public:
         int in_zone[10] = {};
         for (std::uint8_t j = 0; j < w.playerCount(); ++j)
             if (j != v.slot && c.team_of_slot[j] == v.team) ++in_zone[zoneOf(hx, v2(w.player(j).pos), v.sg)];
-        struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; };
-        Cand cand[32]; int nc = 0; Fixed64 sum{};
+        struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; };
+        Cand cand[64]; int nc = 0; Fixed64 sum{};
         const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(50));
-        for (std::uint8_t j = 0; j < w.playerCount() && nc < 32; ++j) {
+        // Their offside line (Law 11): the second-last of theirs, or halfway, or the ball.
+        Fixed64 line{};
+        {
+            Fixed64 a{}, b{}; bool ha = false, hb = false;
+            for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+                if (c.team_of_slot[j] == v.team) continue;
+                const Fixed64 x = w.player(j).pos.x * v.sg;
+                if (!ha || x > a) { b = a; hb = ha; a = x; ha = true; }
+                else if (!hb || x > b) { b = x; hb = true; }
+            }
+            line = hb ? b : hx;
+            if (line < Fixed64::zero()) line = Fixed64::zero();
+            if (sp.x * v.sg > line) line = sp.x * v.sg;
+        }
+        // In behind (G5.27, DFL): where a ball in behind is met past the line (a
+        // roll for the spell), and whether it goes in the air (the real share).
+        const Fixed64 u3 = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 43) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        const Fixed64 past = P.behind_past_lo + (P.behind_past_hi - P.behind_past_lo) * u3;
+        const Fixed64 u4 = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 44) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        auto add = [&](const Cand& cd) { if (nc < 64 && cd.wgt.raw > 0) { cand[nc++] = cd; sum += cd.wgt; } };
+        for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
             if (j == v.slot || c.team_of_slot[j] != v.team) continue;
             const auto& m = w.player(j);
             const Vec2 to = v2(m.pos);
             const Fixed64 d = math::length(Vec2{to.x - sp.x, to.y - sp.y});
             if (d < P.pass_min_m) continue;
             const int ez = zoneOf(hx, to, v.sg);
-            const Fixed64 wgt = P.pass_to[oz][ez] / Fixed64::fromInt(in_zone[ez]);
-            if (wgt.raw <= 0) continue;
-            if (c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one())) {
-                cand[nc++] = Cand{j, wgt, false, Loft{}};
-                sum += wgt;
-            } else {
-                const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach);
-                if (d <= reach && c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one())) {
-                    cand[nc++] = Cand{j, wgt, true, lf};
-                    sum += wgt;
-                } else if (P.risk_weight.raw > 0) {
-                    // Real passes fail 21% of the time: a pass the read says they
-                    // win is still tried, at risk_weight of its share (fitted to
-                    // the real 79.1% completion, StatsBomb PL 2015/16).
-                    cand[nc++] = Cand{j, wgt * P.risk_weight, false, Loft{}};
-                    sum += wgt * P.risk_weight;
+            const Fixed64 w0 = P.pass_to[oz][ez] / Fixed64::fromInt(in_zone[ez]);
+            if (w0.raw <= 0) continue;
+            // Of the passes for a man this far short of their line, the real share
+            // that are played in behind him (DFL, by 2 m of gap); the rest to feet.
+            Fixed64 pb{};
+            const Fixed64 gap = line - m.pos.x * v.sg;
+            if (!w.isKeeper(j) && gap.raw >= 0 && gap < Fixed64::fromInt(18))
+                pb = P.behind_gap[static_cast<int>(gap.raw >> Fixed64::FRAC_BITS) / 2];
+            const Fixed64 wgt = w0 * (Fixed64::one() - pb);
+            if (wgt.raw > 0) {
+                if (c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one())) {
+                    add(Cand{j, wgt, false, Loft{}, false, to, 0});
+                } else {
+                    const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach);
+                    if (d <= reach && c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one()))
+                        add(Cand{j, wgt, true, lf, false, to, 0});
+                    else
+                        // Real passes fail 21% of the time: a pass the read says they
+                        // win is still tried, at risk_weight of its share (fitted to
+                        // the real 79.1% completion, StatsBomb PL 2015/16).
+                        add(Cand{j, wgt * P.risk_weight, false, Loft{}, false, to, 0});
                 }
             }
+            if (pb.raw <= 0) continue;
+            // The ball in behind: into the space a real roll past the line on his
+            // line of run; on the ground weighted to arrive as he does (his run's
+            // time to the spot), else in the air — the real share first, or
+            // whichever way the race read says we win.
+            Fixed64 tx = line + past;
+            if (tx > hx - Fixed64::fromInt(3)) tx = hx - Fixed64::fromInt(3);
+            Fixed64 ty = m.pos.y + m.vel.y * P.behind_lead_s;
+            const Fixed64 ycap = w.pitchHalfY() - Fixed64::fromInt(2);
+            if (ty > ycap) ty = ycap;
+            if (ty < -ycap) ty = -ycap;
+            const Vec2 at{tx * v.sg, ty};
+            if ((at.x - sp.x) * v.sg <= Fixed64::zero()) continue;
+            const Fixed64 bd = math::length(Vec2{at.x - sp.x, at.y - sp.y});
+            if (bd < P.pass_min_m) continue;
+            const Fixed64 run = math::length(Vec2{at.x - m.pos.x, at.y - m.pos.y});
+            int n = 9;   // his run's ticks to the spot, in 0.3 s steps to 4.5 s
+            while (n < 135 && runToward(w, j, at, Fixed64::fromInt(n) * core::kTickDt) < run) n += 9;
+            // A rolling ball covers d = v0·dt·(1 − rⁿ)/(1 − r) in n ticks.
+            Fixed64 rn = Fixed64::one();
+            for (int i = 0; i < n; ++i) rn = rn * core::kBallRollDecayPerTick;
+            const Fixed64 one_r = Fixed64::one() - core::kBallRollDecayPerTick;
+            Fixed64 v0 = bd * one_r / (core::kTickDt * (Fixed64::one() - rn));
+            if (v0 > Fixed64::fromInt(20)) v0 = Fixed64::fromInt(20);
+            const Fixed64 per_m = one_r * Fixed64::fromInt(30);
+            std::int64_t cm = ((v0 - core::kPassArriveSpeed) / per_m).raw >> Fixed64::FRAC_BITS;
+            if (cm < 1) cm = 1;
+            if (cm > 255) cm = 255;
+            const std::uint8_t carry = static_cast<std::uint8_t>(cm);
+            const Fixed64 vg = core::weightedPassSpeed(Fixed64::fromInt(cm));
+            const Loft lf{at, aimedCarry(me.pos, at, reach)};
+            const Fixed64 bw = w0 * pb;
+            const bool air_first = u4 < P.behind_air && bd <= reach;
+            const bool gsafe = c.reads.passSafe(w, v.slot, sp, at, vg, Fixed64::one());
+            const bool lsafe = bd <= reach && c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
+            if (air_first ? lsafe : gsafe) add(Cand{j, bw, air_first, lf, true, at, carry});
+            else if (air_first ? gsafe : lsafe) add(Cand{j, bw, !air_first, lf, true, at, carry});
+            else add(Cand{j, bw * P.risk_weight, air_first, lf, true, at, carry});
         }
         if (nc > 0) {
             const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 41) + Fixed64::one()) *
@@ -133,6 +196,14 @@ public:
             while (k + 1 < nc && acc < u) { ++k; acc += cand[k].wgt; }
             const Cand& ch = cand[k];
             const auto& m = w.player(static_cast<std::uint8_t>(ch.j));
+            o.other = static_cast<std::int16_t>(ch.j);
+            if (ch.behind) {
+                if (ch.loft) { o.target = ch.lf.at; o.carry_m = ch.lf.carry_m; o.action = Action::LoftedKick; o.pass_to = static_cast<std::uint8_t>(ch.j); }
+                else { o.action = Action::GroundKick; o.target = ch.at; o.carry_m = ch.carry; }
+                o.why = Why::InBehind;
+                o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));
+                return true;
+            }
             const int ez = zoneOf(hx, v2(m.pos), v.sg);
             // A ball into the box from wide goes in the air at the real cross share;
             // any other pass lofted at the zone's real loft share, if the loft is safe.
@@ -152,7 +223,6 @@ public:
                 const Loft l2 = loftTo(w.ballFlight(), m, me.pos, reach);
                 if (c.reads.loftSafe(w, v.slot, sp, l2.at, l2.carry_m, Fixed64::one())) { air = true; lf = l2; crossed = into_box; }
             }
-            o.other = static_cast<std::int16_t>(ch.j);
             if (air) {
                 o.target = lf.at; o.carry_m = lf.carry_m; o.action = Action::LoftedKick;
                 o.pass_to = static_cast<std::uint8_t>(ch.j);
@@ -236,6 +306,22 @@ public:
         if (!c.reads.getInLine(v.slot, c.world, at)) at = v.chase_to;
         const auto& me = c.world.player(v.slot);
         const auto& b = c.world.ball().pos;
+        // A ball in behind for him (G5.27): while it is still behind him he runs on
+        // to the spot it was played to, not back to the earliest point of its line.
+        const auto& led = c.poss.led(c.world.ball().last_kicker);
+        const auto& bv = c.world.ball().vel;
+        // where a rolling ball comes to rest: v·dt/(1 − r) on (in the air: it gets there)
+        const bool rolling = b.z.raw == 0 && bv.z.raw == 0;
+        const Fixed64 roll = core::kTickDt / (Fixed64::one() - core::kBallRollDecayPerTick);
+        const bool reaches = !rolling || (b.x + bv.x * roll) * v.sg > me.pos.x * v.sg;
+        if (!c.world.ball().owner && led.to == v.slot && led.tick + 2 >= c.world.flightTick() && led.tick <= c.world.flightTick() &&
+            reaches && b.x * v.sg + Fixed64::one() < me.pos.x * v.sg && distSq(me.pos, Vec3{led.at.x, led.at.y, Fixed64::zero()}) > Fixed64::one()) {
+            o.target = led.at;
+            o.move.move = seek(me.pos, led.at, Fixed64::fromFraction(1, 10));
+            o.move.face = Vec2{b.x - me.pos.x, b.y - me.pos.y};
+            o.why = Why::MeetPass;
+            return true;
+        }
         o.target = at;
         o.move.move = seek(me.pos, at, Fixed64::fromFraction(1, 10));
         o.move.face = Vec2{b.x - me.pos.x, b.y - me.pos.y};
@@ -431,6 +517,13 @@ void PossessionParams::configure(const core::ModelParams& p) {
         {90, 20, 60, 60, 170, 400}, {20, 0, 10, 10, 30, 60}, {10, 0, 0, 10, 20, 50}};
     static const int kDepth[6] = {11300, 12300, 14300, 14500, 15600, 15000};
     static const int kAy[6] = {7200, 6300, 7000, 6600, 6700, 7700};
+    // Balls in behind: DFL (benchmarks_tracking_behind.py), per mille.
+    static const int kGap[9] = {500, 320, 220, 180, 120, 70, 50, 30, 20};   // his gap 0-2 … 16-18 m
+    for (int g = 0; g < 9; ++g) behind_gap[g] = p.fixed(("physics.behind.gap_" + std::to_string(2 * g)).c_str(), kGap[g]);
+    behind_past_lo = p.fixed("physics.behind.past_p25_m", 2630);
+    behind_past_hi = p.fixed("physics.behind.past_p75_m", 9730);
+    behind_air = p.fixed("physics.behind.air", 580);
+    behind_lead_s = p.fixed("physics.behind.lead_s", 1000);   // [FH] his across drift on the ball's way
     for (int z = 0; z < 6; ++z) {
         for (int k = 0; k < 4; ++k) box_k[z][k] = p.fixed(("physics.box.k_" + std::to_string(z) + "_" + std::to_string(k)).c_str(), kK[z][k]);
         for (int r = 0; r < kRoleCount; ++r) box_role[z][r] = p.fixed(("physics.box.role_" + std::to_string(z) + "_" + std::string(kRoleKey[r])).c_str(), kRole[z][r]);

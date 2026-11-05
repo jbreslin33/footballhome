@@ -17,12 +17,12 @@ namespace fh::game::ai {
 // clean player states and restarts decide.
 enum class Why : std::uint8_t {
     Hold, Shoot, Pass, Cross, Dribble, Clear, KeeperPunt, KeeperPosition, KeeperDive,
-    Press, Chase, MeetPass, Human, TakeRestart, ThrowIn, CornerKick, LawDistance, AttackBox,
+    Press, Chase, MeetPass, Human, TakeRestart, ThrowIn, CornerKick, LawDistance, AttackBox, InBehind,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "cross", "dribble", "clear", "keeper punt", "keeper position", "keeper dive",
     "press", "chase ball", "meet the pass", "human", "take the restart", "throw-in", "corner", "the law's distance",
-    "attack the box",
+    "attack the box", "ball in behind",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 

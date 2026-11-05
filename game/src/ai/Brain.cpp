@@ -195,6 +195,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     }
     keepLawDistance(slot, world, o);
     outOfTheirBox(slot, world, o);
+    if (o.why == Why::InBehind && o.other >= 0) poss_.noteLed(slot, static_cast<std::uint8_t>(o.other), o.target, world.tickCount());
     namePass(slot, world, o);
     brakeToArrive(slot, world, o);
     // Settled at his spot he faces the ball.

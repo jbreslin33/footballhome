@@ -15,8 +15,14 @@
 //            × goal angle, StatsBomb); a pass by the real pass policy (each mate
 //            weighted by the share of real passes from this zone to his zone,
 //            shared among the mates there; only ones the race read says we win;
-//            one roll a spell; lofted / crossed at the real shares); a clearance
-//            (our end, nothing safe); else keep carrying.
+//            one roll a spell; lofted / crossed at the real shares) — each
+//            pass for a man short of their line split into to-feet and IN
+//            BEHIND by the real share for his gap (DFL, G5.27): the ball into
+//            the space a real roll past the line, on the ground weighted to
+//            arrive as his run does, else in the air; a clearance (our end,
+//            nothing safe); else keep carrying.
+//   Receive  ... a ball in behind for him: he runs on to its spot while it is
+//            behind him and will get there, and keeps his run while it is loose.
 //   Support  his role's real spot for this ball (below), kept onside.
 //   Receive  the pass is his: get in line with it (G5.5), else the race spot.
 //   Keeper   set on the ball-goal line, depth with the ball's distance;
@@ -56,6 +62,11 @@ struct PossessionParams {
     // the box zone (0-18 m, |y| < 20.16), the mean count by role, where they stand
     // (metres off the line, |y|) — DFL tracking (benchmarks_tracking_box.py).
     math::Fixed64 box_k[6][4]{}, box_role[6][kRoleCount]{}, box_depth[6]{}, box_ay[6]{};
+    // Balls in behind (G5.27): by the man's gap short of their line (2 m bins,
+    // 0-18 m), the real share of passes for him that are played in behind him (met
+    // past the line as it stood at the kick); where it is met past the line (p25-p75
+    // roll); the share in the air — DFL tracking (benchmarks_tracking_behind.py).
+    math::Fixed64 behind_gap[9]{}, behind_past_lo{}, behind_past_hi{}, behind_air{}, behind_lead_s{};
     void configure(const core::ModelParams& p);
 };
 
@@ -80,13 +91,23 @@ public:
     bool runner(std::uint8_t slot) const { return slot < 32 && ((runners_ >> slot) & 1u); }
     int runnerIndex(std::uint8_t slot) const;   // 0, 1, 2 … among his team's runners (their box spots)
     int ballZone(std::uint8_t team) const { return zone_[team & 1]; }
-    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; }
+    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; for (auto& l : led_) l = Led{}; }
+
+    // A ball in behind as the passer meant it (G5.27): for whom, the spot it is
+    // played to, the tick he asked for it. The man it is for runs to the spot
+    // (Receive), not to the earliest point of its line.
+    struct Led { std::uint8_t to = 0xFF; math::Vec2 at{}; std::uint64_t tick = 0; };
+    void noteLed(std::uint8_t passer, std::uint8_t to, const math::Vec2& at, std::uint64_t tick) {
+        if (passer < 32) led_[passer] = Led{to, at, tick};
+    }
+    const Led& led(std::uint8_t passer) const { static const Led none{}; return passer < 32 ? led_[passer] : none; }
 
 private:
     PossessionParams params_{};
     std::uint32_t runners_ = 0;
     int zone_[2] = {-1, -1};
     std::uint64_t drawn_[2] = {0, 0};
+    Led led_[32]{};
 };
 
 }  // namespace fh::game::ai

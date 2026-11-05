@@ -5480,3 +5480,51 @@ played. Real attacks get into the box with passes into space ahead of a runner t
 line (through balls, runs in behind, crosses to arriving runners): measure on DFL the runners'
 speed and line-gap at the moment of a forward pass, and on StatsBomb the through balls; then a run
 state that times the line and a led pass.
+
+### 8.125 G5.27 — the ball in behind (DFL); a ball nobody could reach sat there for good (no migration)
+
+**Real** (benchmarks_tracking_behind.py, DFL, 7 matches; every open-play pass naming the man it was
+FOR — completed or not, 5,095): a ball is IN BEHIND when he meets it (the ball's nearest point to
+him in the next 4 s) past their offside line as it stood at the kick (Law 11: second-last of theirs,
+keeper in; or halfway; or the ball). 37.7 a team-match = 10.4% of passes, completed 47.5%, 58% in
+the air. At the kick he stands 2.0 m short of the line (p25 0.1, p75 5.1), moving 3.8 m/s, 2.7
+toward goal; he runs 10.2 m to it (7.9 forward); the ball takes 2.8 s, 24.6 m; met 5.2 m past the
+line (p25 2.6, p75 9.7), 23.2 m off their line. By his gap short of the line, the share of passes for
+him that go in behind: 0-2 m 50%, 2-4 32, 4-6 22, 6-8 18, 8-10 12, 10-12 7, 12-14 5, 14-16 3, 16-18 2.
+By origin zone 22% (0-35 m central) down to 6% (own half). Runners sprinting at the line as the ball
+is played are rare (0.06 a forward pass): the ball is played into space for a man near the line.
+PL cross-check (StatsBomb 15/16, its narrower "through ball" flag): 2.1 a team-match, 34% completed,
+24.9 m, ending 14 m off their line.
+
+**Change.** OnBall: every pass for a mate short of their line splits by the real share for his gap
+into the ball to feet (the pass policy, as before) and the ball IN BEHIND (new Why "ball in behind"):
+into the space a real roll (p25-p75) past the line on his line of run; on the ground weighted to
+arrive as his run does (his body's run time to the spot → the rolling ball's v0 → carry), in the air
+at the real 58% (or whichever the race read says we win; else at risk_weight). Receive: a ball in
+behind for him — he runs on to its spot while it is behind him and its roll gets there (it used to
+take the earliest point of its line: he stepped back to it short of the line), and Pick keeps him on
+it while it is loose even when their man is first on the race read. Params physics.behind.gap_<m>,
+past_p25_m / past_p75_m, air, lead_s ([FH] 1 s of his across drift).
+
+**Fixed — a frozen match.** A loose ball come to rest where nobody of either side can get to it
+inside the race read's 3 s horizon had no chaser: it sat by the corner flag from minute 6 to full
+time (seed 1000; HEAD too). Now our nearest man goes (DefendingBlock::assign). Every earlier
+harness average that took in such a match was pulled down: unstuck, the game plays ~1,050 passes a
+team-match (real 433.8), not ~450.
+
+**Harness:** IN BEHIND (count, share, completed, in the air, the medians above, by origin zone, the
+man's gap distribution against DFL's, runners at the line), the led balls; GAME_BEHIND_TRACE (each
+led ball tick by tick), GAME_PLAY_TRACE (the ball every 10 s).
+
+**Result** (8 matches, Leicester v Arsenal, stall fixed; in-behind off → on): balls in behind 24.9 →
+35.6 a team-match (37.7), 33.9 of them led; completed 41% (47.5); shots 1.8 → 2.8 (12.9). Still
+wrong: he meets it 2.8 m past the line (5.2) after a 3.6 m run (10.2), 42.6 m off their line (23.2) —
+these balls are played at midfield; at the kick our men stand still (0.3 m/s toward goal, real 2.7);
+the gap distribution has too few men 2-8 m short of the line (5.7% v 15.4%) and a pile at 16-18 m
+(12.8% v 3.9%). A smaller onside margin (1.5 m v 5) froze play and was dropped.
+Tests 22/22; goldens re-locked.
+
+**Next mole.** Passes 2.4× real (1,040 v 434) and pressures 2.6× (389 v 152) now the stall no longer
+hides it: the ball is moved on far too quickly and nothing advances (releases 35 m+ out 1,013 of
+1,043 a team-match). Measure the time on the ball against StatsBomb's hold curves as the game plays
+them, then the men off the ball moving at the kick (DFL 3.8 m/s for the man a ball in behind is for).

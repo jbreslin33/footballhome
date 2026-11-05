@@ -148,7 +148,12 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
                                world.lastTouchTeam() == team ? static_cast<int>(ball.pass_to) : -1;
         const int theirs = fr.first[team ^ 1];
         if (to >= 0 && fr.tick[to] >= 0 && (theirs < 0 || fr.tick[to] <= fr.tick[theirs])) ch = to;
-        else ch = fr.first[team];
+        else if (fr.first[team] >= 0) ch = fr.first[team];
+        // Nobody of ours can get there inside the race read's horizon (a ball come
+        // to rest far from everyone): our nearest goes — else it sat there for good.
+        else ch = nearest(ch);
+    } else if (live && !ball.owner) {
+        ch = nearest(ch);
     } else if (world.restartTeam() == team && world.outStage() == 0 && !ball.owner) {
         // Our dead ball: a held one (throw, goal kick, corner) is its taker's
         // (restartTaker, at its spot); a kick-off or free kick, the nearest man.
