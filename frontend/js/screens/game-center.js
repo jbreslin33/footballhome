@@ -1262,7 +1262,7 @@ class GameCenterScreen extends EventScreen {
       await this._loadGames();
       return;
     }
-    if (sub) sub.textContent = [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
+    if (sub) sub.textContent = this._headSub();
     this._loadGames();
     // Copy rows (dues flag, migration 416) — cached across screens.
     if (window.MessageCopy) MessageCopy.load(this.auth).catch(() => {});
@@ -2401,6 +2401,7 @@ class GameCenterScreen extends EventScreen {
     this.games = this._feedGames;
     if (this.matchId != null) {
       this.ev = this.games.find(g => g.match_id === this.matchId) || this.ev;
+      { const sub = this.find('#gl-subtitle'); if (sub && this.matchId) sub.textContent = this._headSub(); }
       // A matchId-only door (old #game-center/<id> links): the event is
       // known now, so the URL becomes #event/<fh_event_id>/<pill>.
       this._syncHash();
@@ -2437,6 +2438,12 @@ class GameCenterScreen extends EventScreen {
     if (social) social.innerHTML = '';
     this.onEnter({ event: ev, matchId, title: this._gameLabel(ev), when: this._gameWhen(ev),
                    view: this.view || undefined, postType: this.pill });
+  }
+
+  // The header under the title: game · date · Arrival · Warmup · Kickoff
+  // (owner 11/5: times on every event in Event Center — a game opens here).
+  _headSub() {
+    return [this.title, this.when, this.ev ? EventLabels.timesLine(this.ev) : ''].filter(Boolean).join(' · ') || 'Loading…';
   }
 
   _gameLabel(ev) {
