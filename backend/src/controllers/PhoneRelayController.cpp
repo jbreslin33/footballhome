@@ -100,6 +100,9 @@ void PhoneRelayController::registerRoutes(Router& router, const std::string& pre
     router.get (prefix + "/contact-state", [this](const Request& r) { return handleContactState(r); });
     router.post(prefix + "/club-text",     [this](const Request& r) { return handleClubText(r); });
     router.get (prefix + "/texts/:id",     [this](const Request& r) { return handleTextStatus(r); });
+    router.get (prefix + "/send-status",   [this](const Request& r) { return handleSendStatus(r); });
+    router.post(prefix + "/device-send",   [this](const Request& r) { return handleDeviceSend(r); });
+    router.get (prefix + "/history",       [this](const Request& r) { return handleHistory(r); });
     router.post(prefix + "/device/pair",   [this](const Request& r) { return handleDevicePair(r); });
     router.post(prefix + "/device/next",   [this](const Request& r) { return handleDeviceNext(r); });
     router.post(prefix + "/device/report", [this](const Request& r) { return handleDeviceReport(r); });
@@ -374,6 +377,151 @@ Response PhoneRelayController::handleTextStatus(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "PhoneRelayController::handleTextStatus: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the text");
+    }
+}
+
+// GET /send-status?relay_id=&sid=&token_id= — what happened to one send from
+// the 📇 Contact popup (owner 2026-11-05: "i need status after send"): the
+// FH Texter row (queued → sent → delivered / failed), the club text's Twilio
+// status (queued → sent → delivered / undelivered / failed + error code),
+// and whether the sign-in link in it was opened (magic_link_tokens.consumed_at).
+// Any part not asked for comes back null.  Club admins (requireSender).
+Response PhoneRelayController::handleSendStatus(const Request& request) {
+    long long personId = 0;
+    Response err(HttpStatus::OK, "");
+    if (!requireSender(request, &personId, &err)) return err;
+    const auto num = [&](const char* k) -> std::string {
+        const std::string v = request.getQueryParam(k);
+        return (!v.empty() && v.find_first_not_of("0123456789") == std::string::npos) ? v : std::string{};
+    };
+    const std::string relayId = num("relay_id"), tokenId = num("token_id");
+    std::string sid = request.getQueryParam("sid");
+    if (sid.size() > 64 || sid.find_first_not_of("ABCDEFabcdef0123456789SMMM") != std::string::npos) sid.clear();
+    try {
+        auto* db = Database::getInstance();
+        json out = {{"relay", nullptr}, {"club", nullptr}, {"link", nullptr}};
+        if (!relayId.empty()) {
+            auto r = db->query("SELECT " + kTextCols + " FROM phone_relay_texts WHERE id = $1::bigint AND sender_person_id = $2::int",
+                               {relayId, std::to_string(personId)});
+            if (!r.empty()) out["relay"] = textRow(r[0]);
+        }
+        if (!sid.empty()) {
+            auto r = db->query(
+                "SELECT status, error_code, " + isoCol("updated_at") + " FROM sms_messages "
+                " WHERE message_sid = $1 AND direction = 'out' ORDER BY id DESC LIMIT 1", {sid});
+            if (!r.empty())
+                out["club"] = {{"status", r[0]["status"].is_null() ? json(nullptr) : json(r[0]["status"].c_str())},
+                               {"error_code", r[0]["error_code"].is_null() ? json(nullptr) : json(r[0]["error_code"].c_str())},
+                               {"updated_at", r[0]["updated_at"].is_null() ? json(nullptr) : json(r[0]["updated_at"].c_str())}};
+        }
+        if (!tokenId.empty()) {
+            auto r = db->query("SELECT " + isoCol("consumed_at") + " FROM magic_link_tokens WHERE id = $1::int", {tokenId});
+            if (!r.empty())
+                out["link"] = {{"opened_at", r[0]["consumed_at"].is_null() ? json(nullptr) : json(r[0]["consumed_at"].c_str())}};
+        }
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) {
+        std::cerr << "PhoneRelayController::handleSendStatus: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the send status");
+    }
+}
+
+// Admins and coaches — everyone the 📇 popup is drawn for (mig 1085).
+bool PhoneRelayController::requireStaff(const Request& request, long long* personId, Response* error) {
+    if (!requireBearer(request)) { *error = jsonError(HttpStatus::UNAUTHORIZED, "Sign in first."); return false; }
+    auto r = Database::getInstance()->query(
+        "SELECT u.person_id FROM users u WHERE u.id = $1::int AND u.person_id IS NOT NULL "
+        "   AND (EXISTS (SELECT 1 FROM admins a WHERE a.user_id = u.id) "
+        "        OR EXISTS (SELECT 1 FROM coaches c JOIN team_coaches tc ON tc.coach_id = c.id AND tc.ended_at IS NULL "
+        "                    WHERE c.person_id = u.person_id)) LIMIT 1",
+        {std::to_string(bearerUserId(request))});
+    if (r.empty()) { *error = jsonError(HttpStatus::FORBIDDEN, "Coaches and admins only."); return false; }
+    *personId = r[0]["person_id"].as<long long>();
+    return true;
+}
+
+// POST /device-send {person_id?, for_person_id?, via: email|text, contact,
+// label, subject, body, token_id?} — a ✉ / 💬 send opened in the sender's own
+// app; nothing else records it, so the popup's log would miss it.
+Response PhoneRelayController::handleDeviceSend(const Request& request) {
+    long long senderId = 0;
+    Response err(HttpStatus::OK, "");
+    if (!requireStaff(request, &senderId, &err)) return err;
+    json body;
+    if (!parseBody(request, &body, &err)) return err;
+    const std::string via = str(body, "via");
+    if (via != "email" && via != "text") return jsonError(HttpStatus::BAD_REQUEST, "via must be email or text");
+    const auto idOf = [&](const char* k) -> std::string {
+        if (!body.contains(k) || !body[k].is_number_integer() || body[k].get<long long>() <= 0) return "";
+        return std::to_string(body[k].get<long long>());
+    };
+    auto cut = [](std::string v, size_t n) { if (v.size() > n) v.resize(n); return v; };
+    try {
+        auto r = Database::getInstance()->query(
+            "INSERT INTO contact_sends (person_id, for_person_id, sender_person_id, via, contact, label, subject, body, magic_link_token_id) "
+            "VALUES (NULLIF($1, '')::int, NULLIF($2, '')::int, $3::int, $4, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''), "
+            "        (SELECT k.id FROM magic_link_tokens k WHERE k.id = NULLIF($9, '')::int)) RETURNING id",
+            {idOf("person_id"), idOf("for_person_id"), std::to_string(senderId), via,
+             cut(str(body, "contact"), 200), cut(str(body, "label"), 200), cut(str(body, "subject"), 300),
+             cut(str(body, "body"), 4000), idOf("token_id")});
+        return jsonOut(HttpStatus::CREATED, {{"id", r[0]["id"].as<long long>()}});
+    } catch (const std::exception& e) {
+        std::cerr << "PhoneRelayController::handleDeviceSend: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not log the send");
+    }
+}
+
+// GET /history?person_id=&phone=&email= — the contact's last 20 messages,
+// newest first: club texts (sms_messages), FH Texter (phone_relay_texts) and
+// ✉ / 💬 sends (contact_sends), each with method, words, status and whether
+// its sign-in link was opened.
+Response PhoneRelayController::handleHistory(const Request& request) {
+    long long staffId = 0;
+    Response err(HttpStatus::OK, "");
+    if (!requireStaff(request, &staffId, &err)) return err;
+    std::string pid = request.getQueryParam("person_id");
+    if (pid.empty() || pid.find_first_not_of("0123456789") != std::string::npos) pid = "0";
+    const std::string digits = tenDigits(request.getQueryParam("phone"));
+    std::string email = request.getQueryParam("email");
+    if (email.size() > 200) email.clear();
+    try {
+        auto rows = Database::getInstance()->query(R"SQL(
+            SELECT via, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS at,
+                   label, subject, body, status, error, contact,
+                   to_char(opened_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS opened_at
+              FROM (
+                SELECT 'club' AS via, s.created_at, s.purpose AS label, NULL::text AS subject, s.body,
+                       s.status, s.error_code AS error, s.to_number AS contact,
+                       (SELECT k.consumed_at FROM magic_link_tokens k WHERE k.id = s.magic_link_token_id) AS opened_at
+                  FROM sms_messages s
+                 WHERE s.direction = 'out'
+                   AND (s.person_id = $1::int OR ($2 <> '' AND s.to_number = '+1' || $2))
+                UNION ALL
+                SELECT 'relay', t.created_at, t.purpose, NULL, t.body, t.status, t.error, t.to_phone,
+                       (SELECT k.consumed_at FROM magic_link_tokens k WHERE k.id = t.magic_link_token_id)
+                  FROM phone_relay_texts t
+                 WHERE ($2 <> '' AND t.to_phone = '+1' || $2) OR (($2 = '') AND t.for_person_id = $1::int)
+                UNION ALL
+                SELECT c.via, c.created_at, c.label, c.subject, c.body, NULL, NULL, c.contact,
+                       (SELECT k.consumed_at FROM magic_link_tokens k WHERE k.id = c.magic_link_token_id)
+                  FROM contact_sends c
+                 WHERE c.person_id = $1::int
+                    OR ($3 <> '' AND lower(c.contact) = lower($3))
+                    OR ($2 <> '' AND regexp_replace(c.contact, '\D', '', 'g') IN ($2, '1' || $2))
+              ) x
+             ORDER BY created_at DESC
+             LIMIT 20)SQL", {pid, digits, email});
+        json out = json::array();
+        for (const auto& r : rows) {
+            json m = json::object();
+            for (const char* k : {"via", "at", "label", "subject", "body", "status", "error", "contact", "opened_at"})
+                m[k] = r[k].is_null() ? json(nullptr) : json(r[k].c_str());
+            out.push_back(m);
+        }
+        return jsonOut(HttpStatus::OK, {{"messages", out}});
+    } catch (const std::exception& e) {
+        std::cerr << "PhoneRelayController::handleHistory: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the history");
     }
 }
 

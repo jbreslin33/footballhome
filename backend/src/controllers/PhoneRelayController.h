@@ -34,6 +34,10 @@ private:
     Response handleContactState(const Request& request);
     Response handleClubText(const Request& request);
     Response handleTextStatus(const Request& request);
+    Response handleSendStatus(const Request& request);   // 📇 popup live status (mig 1085)
+    Response handleDeviceSend(const Request& request);   // 📇 log a ✉ / 💬 send (mig 1085)
+    Response handleHistory(const Request& request);      // 📇 a contact's recent messages (mig 1085)
+    bool requireStaff(const Request& request, long long* personId, Response* error);
     Response handleDevicePair(const Request& request);
     Response handleDeviceNext(const Request& request);
     Response handleDeviceReport(const Request& request);

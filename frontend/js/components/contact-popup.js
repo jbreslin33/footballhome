@@ -110,7 +110,9 @@
 
   function open(cfg) {
     const st = { cfg, who: 0, msg: cfg.defaultKey || (cfg.messages[0] && cfg.messages[0].key), via: null,
-                 edits: {}, consent: {}, note: '', noteBad: false, busy: false };
+                 edits: {}, consent: {}, note: '', noteBad: false, busy: false,
+                 status: [],                                   // live lines after Send (mig 1085)
+                 log: { open: false, rows: null, key: '' } };  // ▸ Recent messages
     document.getElementById('fh-contact-popup')?.remove();
     const el = document.createElement('div');
     el.id = 'fh-contact-popup';
@@ -143,6 +145,128 @@
     }
     await loadRoutes(st, recipient(st));
     draw(st, el);
+    loadLog(st, el);
+  }
+
+  // ── ▸ Recent messages (mig 1085, owner 2026-11-05: "a log of last
+  // messages sent to that contact … method and message") ──────────────
+  async function loadLog(st, el) {
+    const r = recipient(st);
+    const key = `${r.personId || ''}|${r.phone || ''}|${r.email || ''}`;
+    st.log.key = key;
+    try {
+      const q = new URLSearchParams({ person_id: r.personId || '', phone: r.phone || '', email: r.email || '' });
+      const res = await authFetch(`/api/phone-relay/history?${q}`);
+      if (st.log.key !== key) return;
+      st.log.rows = res.ok ? ((await res.json()).messages || []) : null;
+    } catch (_e) { st.log.rows = null; }
+    if (document.body.contains(el)) draw(st, el);
+  }
+
+  const when = (iso) => {
+    const d = new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  };
+  const clock = (iso) => {
+    const d = new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+  // A send's purpose tag → the message's name ("game_link:9295" → Game link).
+  function purposeLabel(label) {
+    const v = String(label || '');
+    const m = v.match(/^contact:([^:]+)(?::(.*))?$/);
+    if (m) {
+      if (m[1] === 'reg' && m[2]) return m[2];
+      return t(`msg_${m[1]}`, {}, m[2] || m[1]);
+    }
+    const k = v.split(':')[0];
+    const named = { game_link: 'what_game', remind: 'what_remind', reg_link: 'what_reg', dues: 'what_dues', callup: 'msg_callup' }[k];
+    if (named) return (window.MessageCopy && (MessageCopy.block('contact_popup', named) || MessageCopy.block('contact_box', named) || MessageCopy.block('game_center', named))) || k.replace('_', ' ');
+    return v;
+  }
+  function logHtml(st) {
+    const rows = st.log.rows;
+    if (!rows) return '';
+    const viaName = { club: t('log_via_club', {}, '🏢 Club text'), relay: t('log_via_relay', {}, '📱 FH Texter'),
+                      email: t('log_via_email', {}, '✉ Email'), text: t('log_via_text', {}, '💬 Regular text') };
+    const statusChip = (m) => {
+      const s = String(m.status || '');
+      if (m.via === 'email' || m.via === 'text') return '';
+      const bad = s === 'failed' || s === 'undelivered';
+      const color = s === 'delivered' ? '#22c55e' : bad ? '#f87171' : '#fbbf24';
+      return `<span style="color:${color}; font-weight:800;">${esc(s || '—')}${bad && m.error ? ' · ' + esc(m.error) : ''}</span>`;
+    };
+    const items = rows.map(m => `
+      <details style="border-top:1px solid #1e293b; padding:4px 0;">
+        <summary style="cursor:pointer; font-size:0.78rem; line-height:1.35;">
+          <b>${esc(when(m.at))}</b> · ${esc(viaName[m.via] || m.via)} · ${esc(purposeLabel(m.label))}
+          ${statusChip(m)}${m.opened_at ? ` · <span style="color:#38bdf8; font-weight:800;">👀 ${esc(when(m.opened_at))}</span>` : ''}
+        </summary>
+        <div style="font-size:0.78rem; white-space:pre-wrap; overflow-wrap:anywhere; opacity:0.9; padding:4px 0 2px;">${m.subject ? '<b>' + esc(m.subject) + '</b>\n' : ''}${esc(m.body || '')}</div>
+        ${m.contact ? `<div style="font-size:0.7rem; opacity:0.6;">→ ${esc(m.contact)}</div>` : ''}
+      </details>`).join('');
+    return `
+      <div style="margin-top:12px; border-top:1px solid #334155; padding-top:8px;">
+        <button type="button" data-cp-log style="border:none; background:none; color:#cbd5e1; font-weight:800; cursor:pointer; padding:0; font-size:0.85rem;">
+          ${st.log.open ? '▾' : '▸'} ${esc(t('log_toggle', { n: rows.length }, `Recent messages (${rows.length})`))}</button>
+        ${st.log.open ? (rows.length ? items : `<div style="font-size:0.8rem; opacity:0.6; padding:4px 0;">${esc(t('log_empty', {}, 'Nothing sent to this contact yet.'))}</div>`) : ''}
+      </div>`;
+  }
+
+  // ── Live status after Send (mig 1085, owner 2026-11-05: "i need status
+  // after send") ─────────────────────────────────────────────────────
+  function statusLines(st, data) {
+    const tr = st.track;
+    const lines = [];
+    let final = true;
+    if (tr.via === 'club') {
+      const c = data && data.club;
+      const s = c && c.status;
+      if (s === 'delivered') lines.push([t('st_delivered', { time: clock(c.updated_at) }, `✓ Delivered ${clock(c.updated_at)}`), '#22c55e']);
+      else if (s === 'failed' || s === 'undelivered') lines.push([t('st_failed', { why: c.error_code || s }, `⚠ Not delivered — ${c.error_code || s}`), '#f87171']);
+      else { final = false; lines.push([s === 'sent' ? t('st_club_sent', {}, '🏢 Sent — waiting for the phone to confirm…') : t('st_club_queued', {}, '🏢 Club text queued…'), '#fbbf24']); }
+    } else if (tr.via === 'relay') {
+      const r = data && data.relay;
+      const s = r && r.status;
+      if (s === 'delivered') lines.push([t('st_delivered', { time: clock(r.delivered_at) }, `✓ Delivered ${clock(r.delivered_at)}`), '#22c55e']);
+      else if (s === 'failed') lines.push([t('st_failed', { why: r.error || s }, `⚠ Not delivered — ${r.error || s}`), '#f87171']);
+      else if (s === 'sent') { final = false; lines.push([t('st_relay_sent', { time: clock(r.sent_at) }, `📱 Sent from your phone ${clock(r.sent_at)}, waiting for delivery…`), '#fbbf24']); }
+      else { final = false; lines.push([t('st_relay_queued', {}, '📱 Waiting for your phone to send it…'), '#fbbf24']); }
+    } else if (tr.via === 'email') {
+      lines.push([t('st_email_device', {}, "✉ Opened in Gmail — FH can't see whether you pressed Send there."), '#cbd5e1']);
+    } else if (tr.via === 'text') {
+      lines.push([t('st_text_device', {}, "💬 Opened in your texting app — FH can't see whether you pressed Send there."), '#cbd5e1']);
+    } else if (tr.via === 'copy') {
+      return { lines, final: true };
+    }
+    if (tr.tokenId) {
+      const o = data && data.link && data.link.opened_at;
+      if (o) lines.push([t('st_link_opened', { time: clock(o) }, `👀 Link opened ${clock(o)}`), '#38bdf8']);
+      else { final = false; lines.push([t('st_link_waiting', {}, 'Link not opened yet'), '#94a3b8']); }
+    }
+    return { lines, final };
+  }
+
+  async function poll(st, el, n = 0) {
+    if (!st.track || !document.body.contains(el)) return;
+    const tr = st.track;
+    let data = null;
+    if (tr.relayId || tr.sid || tr.tokenId) {
+      try {
+        const q = new URLSearchParams({ relay_id: tr.relayId || '', sid: tr.sid || '', token_id: tr.tokenId || '' });
+        const res = await authFetch(`/api/phone-relay/send-status?${q}`);
+        data = res.ok ? await res.json() : null;
+      } catch (_e) { data = null; }
+    }
+    if (st.track !== tr) return;   // a newer send took over
+    const { lines, final } = statusLines(st, data);
+    st.status = lines;
+    if (document.body.contains(el)) draw(st, el);
+    // Every 3 s for 2 minutes, then every 15 s for the next 10 — a link can
+    // be opened long after delivery.
+    if (!final && n < 50) setTimeout(() => poll(st, el, n + 1), n < 40 ? 3000 : 15000);
+    // The log picks the send up (its own row, or the final status).
+    if (n === 0 || final) setTimeout(() => loadLog(st, el), 800);
   }
 
   function draw(st, el) {
@@ -181,15 +305,18 @@
         ${head(t('how', {}, 'SEND BY'))}
         ${list.map(v => radio('via', v.key, v.label, v.key === st.via, v.why)).join('')}
         <div data-cp-note style="min-height:1em; font-size:0.8rem; margin:6px 0; color:${st.noteBad ? '#fbbf24' : '#a7f3d0'};">${esc(st.note)}</div>
+        ${st.status.length ? `<div data-cp-status style="display:flex; flex-direction:column; gap:2px; font-size:0.8rem; font-weight:700; margin:0 0 8px;">${
+          st.status.map(([text, color]) => `<span style="color:${color};">${esc(text)}</span>`).join('')}</div>` : ''}
         <button type="button" data-cp-send ${st.via && !st.busy ? '' : 'disabled'}
                 style="border:none; border-radius:10px; padding:13px; font-weight:900; font-size:1rem; cursor:pointer; color:#fff; width:100%; background:#059669; opacity:${st.via && !st.busy ? 1 : 0.5};">${esc(t('send', {}, 'Send'))}</button>
         ${tel || save ? `<div style="display:flex; gap:8px; justify-content:center; margin-top:10px;">${tel}${save}</div>` : ''}
+        ${logHtml(st)}
       </div>`;
   }
 
   function onChange(e, st, el) {
     const d = e.target.dataset;
-    if (d.cpWho !== undefined) { st.who = Number(d.cpWho); st.via = null; st.note = ''; refresh(st, el); return; }
+    if (d.cpWho !== undefined) { st.who = Number(d.cpWho); st.via = null; st.note = ''; st.status = []; st.track = null; st.log.rows = null; refresh(st, el); return; }
     if (d.cpMsg !== undefined) { st.msg = d.cpMsg; st.note = ''; draw(st, el); return; }
     if (d.cpVia !== undefined) { st.via = d.cpVia; st.note = ''; draw(st, el); }
   }
@@ -197,6 +324,7 @@
   function onClick(e, st, el) {
     if (e.target === el || e.target.closest('[data-cp-close]')) { el.remove(); return; }
     if (e.target.closest('[data-cp-send]') && !st.busy) send(st, el);
+    if (e.target.closest('[data-cp-log]')) { st.log.open = !st.log.open; draw(st, el); }
     if (e.target.closest('[data-cp-call]') && st.cfg.onCall) st.cfg.onCall(recipient(st));
     if (e.target.closest('[data-cp-save]') && st.cfg.onSave) st.cfg.onSave(recipient(st));
   }
@@ -232,31 +360,53 @@
         href = screen.buildSmsComposeHref({ to: r.phone, body: Screen.withSmsLinkHint(wordsFor(st)) });
       }
       const words = wordsFor(st);
+      const tokenId = resolved && (resolved.token_id || resolved.tokenId) || null;
+      // What gets tracked after Send (mig 1085): the club text's Twilio SID,
+      // the FH Texter row, or — for ✉ / 💬, which open the sender's own app —
+      // just the sign-in link, plus a contact_sends row for the log.
+      const track = { via, tokenId, sid: null, relayId: null };
+      const logDevice = (kind) => {
+        let subject = m.subject || '', body = words;
+        try {
+          if (kind === 'email' && href) { const u = new URL(href); body = u.searchParams.get('body') || body; subject = u.searchParams.get('su') || subject; }
+          if (kind === 'text' && href && window.DesktopSms) body = DesktopSms.parse(href).body || body;
+        } catch (_e) { /* keep the typed words */ }
+        authFetch('/api/phone-relay/device-send', { method: 'POST', body: JSON.stringify({
+          person_id: r.personId || null, for_person_id: r.forPersonId || null, via: kind,
+          contact: kind === 'email' ? r.email : r.phone, label: m.label || m.key, subject, body,
+          token_id: tokenId }) }).catch(() => {});
+      };
       if (via === 'email') {
         if (m.beforeEmail) m.beforeEmail(words);
         screen.openGmailCompose(href);
         say(t('opened_email', {}, '✓ Email opened'));
+        logDevice('email');
       } else if (via === 'text') {
         if (window.DesktopSms) DesktopSms.open(href); else window.location.href = href;
         say(t('opened_text', {}, '✓ Text opened'));
+        logDevice('text');
       } else {
         const purpose = m.purpose || `contact:${m.key}`;
         if (via === 'club' && m.sendClub) {
-          await m.sendClub(r);          // the screen's own tracked club send (a game link)
+          const sent = await m.sendClub(r);          // the screen's own tracked club send (a game link)
+          track.sid = (sent && (sent.sid || (sent.sends && sent.sends[0] && sent.sends[0].sid))) || null;
         } else {
           const body = DesktopSms.parse(href).body;
           const url = via === 'club' ? '/api/phone-relay/club-text' : '/api/phone-relay/texts';
-          const tokenId = resolved && (resolved.token_id || resolved.tokenId);
           const payload = via === 'club'
             ? { person_id: r.personId, to: r.phone, body, for_person_id: r.forPersonId || r.personId, purpose }
             : { to: r.phone, body, for_person_id: r.forPersonId || r.personId, purpose, ...(tokenId ? { magic_link_token_id: tokenId } : {}) };
           const res = await authFetch(url, { method: 'POST', body: JSON.stringify(payload) });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          if (via === 'club') track.sid = data.sid || null; else track.relayId = data.id || null;
         }
         say(via === 'club' ? t('sent_club', {}, '✓ Sent from the club number') : t('sent_relay', {}, '✓ Sent to your phone to send'));
       }
       if (m.onSent) m.onSent(resolved, via, words);
+      st.track = track;
+      st.status = [];
+      setTimeout(() => poll(st, el), via === 'email' || via === 'text' ? 0 : 1500);
     } catch (err) {
       say(`⚠ ${err.message}`, true);
     }
