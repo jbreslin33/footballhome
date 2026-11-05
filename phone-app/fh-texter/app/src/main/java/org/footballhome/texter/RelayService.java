@@ -7,7 +7,12 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -39,9 +44,44 @@ public class RelayService extends Service {
     private PowerManager.WakeLock wake;
     private Boolean connected;   // last state shown, so the notification changes only when it does
 
+    // v1.2: the app screen's Reconnect button.  11/5 the phone sat on
+    // mobile data 7:40–9:21 AM unable to reach Football Home with no way
+    // to kick it short of a reboot.
+    static final String ACTION_RECONNECT = "org.footballhome.texter.RECONNECT";
+    private ConnectivityManager.NetworkCallback netWatch;
+    // One poll task, so a kick never starts a second check-in loop.
+    private final Runnable pollTask = this::poll;
+
     static void start(Context c) {
         Intent i = new Intent(c, RelayService.class);
         if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i); else c.startService(i);
+    }
+
+    // Check in right now (and restart the service if Android killed it).
+    static void reconnect(Context c) {
+        Api.prefs(c).edit().remove("trouble").apply();
+        Intent i = new Intent(c, RelayService.class).setAction(ACTION_RECONNECT);
+        if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i); else c.startService(i);
+    }
+
+    // Which network the phone is on, and whether Android is keeping this
+    // app off it — so "not reaching" says why instead of just "internet?".
+    static String network(Context c) {
+        ConnectivityManager cm = c.getSystemService(ConnectivityManager.class);
+        if (cm == null) return "";
+        Network n = cm.getActiveNetwork();
+        NetworkCapabilities caps = n == null ? null : cm.getNetworkCapabilities(n);
+        if (caps == null) return "No internet on the phone — turn on Wi-Fi or mobile data.";
+        boolean wifi = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
+        String on = wifi ? "Wi-Fi" : caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ? "mobile data" : "the internet";
+        @SuppressWarnings("deprecation")
+        NetworkInfo info = cm.getActiveNetworkInfo();
+        @SuppressWarnings("deprecation")
+        boolean blocked = info != null && info.getDetailedState() == NetworkInfo.DetailedState.BLOCKED;
+        if (blocked || (!wifi && cm.getRestrictBackgroundStatus() == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED))
+            return "On " + on + ", but Android is blocking FH Texter's data. Tap \"Data settings\" → Mobile data → "
+                    + "allow background data and allow while Data saver is on.";
+        return "On " + on + ".";
     }
 
     static void stop(Context c) { c.stopService(new Intent(c, RelayService.class)); }
@@ -52,6 +92,10 @@ public class RelayService extends Service {
         Notification n = notification("Starting — connecting to Football Home…");
         if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFY_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
         else startForeground(NOTIFY_ID, n);
+        if (running && intent != null && ACTION_RECONNECT.equals(intent.getAction())) {
+            connected = null;   // say the fresh result either way
+            kick();
+        }
         if (!running) {
             running = true;
             PowerManager pm = getSystemService(PowerManager.class);
@@ -63,13 +107,35 @@ public class RelayService extends Service {
             thread = new HandlerThread("fh-texter");
             thread.start();
             handler = new Handler(thread.getLooper());
-            handler.post(this::poll);
+            handler.post(pollTask);
+            watchNetwork();
         }
         return START_STICKY;
     }
 
+    // Poll now instead of waiting out the 6s/15s gap.
+    private void kick() {
+        if (handler == null) return;
+        handler.removeCallbacks(pollTask);
+        handler.post(pollTask);
+    }
+
+    // Wi-Fi ↔ mobile data, or the internet coming back: check in at once.
+    private void watchNetwork() {
+        ConnectivityManager cm = getSystemService(ConnectivityManager.class);
+        if (cm == null || netWatch != null) return;
+        netWatch = new ConnectivityManager.NetworkCallback() {
+            @Override public void onAvailable(Network n) { kick(); }
+            @Override public void onLost(Network n) { kick(); }
+        };
+        try { cm.registerDefaultNetworkCallback(netWatch); } catch (Exception e) { netWatch = null; }
+    }
+
     @Override public void onDestroy() {
         running = false;
+        ConnectivityManager cm = getSystemService(ConnectivityManager.class);
+        if (cm != null && netWatch != null) try { cm.unregisterNetworkCallback(netWatch); } catch (Exception ignored) {}
+        netWatch = null;
         if (thread != null) thread.quitSafely();
         if (wake != null && wake.isHeld()) wake.release();
         wake = null;
@@ -97,7 +163,10 @@ public class RelayService extends Service {
         }
         PowerManager pm = getSystemService(PowerManager.class);
         boolean awake = pm == null || pm.isInteractive();
-        if (running) handler.postDelayed(this::poll, awake ? POLL_MS : POLL_ASLEEP_MS);
+        if (running) {
+            handler.removeCallbacks(pollTask);
+            handler.postDelayed(pollTask, awake ? POLL_MS : POLL_ASLEEP_MS);
+        }
     }
 
     // The app screen reads these to say "on and working" or since when not.
@@ -114,7 +183,8 @@ public class RelayService extends Service {
         if (!Boolean.FALSE.equals(connected)) {
             connected = false;
             long ok = Api.prefs(this).getLong("last_ok_at", 0);
-            update("⚠ Can't reach Football Home" + (ok > 0 ? " since " + clock(ok) : "") + " — retrying (internet?)");
+            update("⚠ Can't reach Football Home" + (ok > 0 ? " since " + clock(ok) : "") + " — " + network(this)
+                    + " Open FH Texter → Reconnect.");
         }
     }
 
@@ -125,6 +195,13 @@ public class RelayService extends Service {
     // Long texts go as one multipart SMS; the last part's sent / delivered
     // result stands for the whole text.
     private void send(long id, String to, String body) {
+        if (checkSelfPermission(android.Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            // v1.2: say so instead of a bare "could not send" (Android
+            // re-locks SMS for sideloaded apps after a reinstall).
+            SmsResultReceiver.report(this, id, "failed", "SMS permission is off for FH Texter on the phone — open the app to fix");
+            update("⚠ Can't send — open FH Texter and allow SMS");
+            return;
+        }
         try {
             SmsManager sms = Build.VERSION.SDK_INT >= 31 ? getSystemService(SmsManager.class) : SmsManager.getDefault();
             ArrayList<String> parts = sms.divideMessage(body);

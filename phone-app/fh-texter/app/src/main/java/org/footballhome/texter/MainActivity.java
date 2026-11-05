@@ -32,7 +32,7 @@ import java.util.List;
 public class MainActivity extends Activity {
     private TextView status;
     private EditText code;
-    private Button pair, battery, unpair;
+    private Button pair, battery, reconnect, settings, unpair;
     // While this screen is open the status line re-reads the service's
     // last check-in every 2 seconds, so "on and working" is live.
     private final Handler tick = new Handler(Looper.getMainLooper());
@@ -81,6 +81,21 @@ public class MainActivity extends Activity {
         battery.setOnClickListener(v -> askBattery());
         col.addView(battery);
 
+        // v1.2 (11/5): opening the app showed only Unpair while it sat
+        // offline for 1h40m — now there's a way to kick it and to reach
+        // the data / SMS settings that usually cause it.
+        reconnect = button("Reconnect now", "#15803D");
+        reconnect.setOnClickListener(v -> {
+            status.setText("Reconnecting…");
+            status.setTextColor(Color.parseColor("#334155"));
+            RelayService.reconnect(this);
+        });
+        col.addView(reconnect);
+
+        settings = button("Data settings", "#334155");
+        settings.setOnClickListener(v -> openAppSettings());
+        col.addView(settings);
+
         unpair = button("Unpair this phone", "#7F1D1D");
         unpair.setOnClickListener(v -> {
             RelayService.stop(this);
@@ -110,7 +125,8 @@ public class MainActivity extends Activity {
     private void refresh() {
         boolean paired = Api.paired(this);
         if (!hasSms()) {
-            status.setText("⚠ Allow \"Send SMS\" so it can send your texts.");
+            status.setText("⚠ Allow \"Send SMS\" so it can send your texts.\nTap \"SMS settings\" → Permissions → SMS → Allow."
+                    + "\n(Greyed out? ⋮ at the top right → Allow restricted settings first.)");
             status.setTextColor(Color.parseColor("#B45309"));
         } else if (paired) {
             String who = Api.prefs(this).getString("first_name", "");
@@ -123,7 +139,8 @@ public class MainActivity extends Activity {
                 status.setTextColor(Color.parseColor("#15803D"));
             } else {
                 status.setText("⚠ Not reaching Football Home" + (ok > 0 ? " since " + RelayService.clock(ok) : " yet")
-                        + (trouble.isEmpty() ? "" : "\n(" + trouble + ")") + "\nCheck the internet — it keeps retrying.");
+                        + "\n" + RelayService.network(this)
+                        + (trouble.isEmpty() ? "" : "\n(" + trouble + ")") + "\nIt keeps retrying — or tap Reconnect now.");
                 status.setTextColor(Color.parseColor("#B45309"));
             }
         } else {
@@ -133,6 +150,8 @@ public class MainActivity extends Activity {
         code.setVisibility(paired ? android.view.View.GONE : android.view.View.VISIBLE);
         pair.setVisibility(paired ? android.view.View.GONE : android.view.View.VISIBLE);
         unpair.setVisibility(paired ? android.view.View.VISIBLE : android.view.View.GONE);
+        reconnect.setVisibility(paired && hasSms() ? android.view.View.VISIBLE : android.view.View.GONE);
+        settings.setText(hasSms() ? "Data settings" : "SMS settings");
         PowerManager pm = getSystemService(PowerManager.class);
         boolean free = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
         battery.setVisibility(free ? android.view.View.GONE : android.view.View.VISIBLE);
@@ -185,6 +204,14 @@ public class MainActivity extends Activity {
     private void askBattery() {
         Intent i = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName()));
         try { startActivity(i); } catch (Exception e) { startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)); }
+    }
+
+    // This app's own Android settings page: Mobile data (background data,
+    // Data saver) and Permissions → SMS both live there.
+    private void openAppSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+        } catch (Exception e) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
     }
 
     private boolean hasSms() {
