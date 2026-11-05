@@ -107,7 +107,7 @@
     const ghost = heard && !(a.attended30 > 0) && !(a.rsvpYes30 > 0);
     const noShow = heard && !ghost && !(a.attended30 > 0) && (a.absent30 > 0);
     const last = a.lastRsvp ? md(a.lastRsvp.eventStartAt || a.lastRsvp.at) : '';
-    const lastTxt = last ? t('chip_last', { date: last }, `🗓${last}`) : t('chip_never', {}, '🗓—');
+    const lastTxt = last ? t('chip_last', { date: last }, `last ${last}`) : t('chip_never', {}, 'no RSVP');
     const lastTip = a.lastRsvp ? t('last_rsvp_tip', { date: md(a.lastRsvp.at) }, `Last RSVP ${a.lastRsvp.status} · answered ${md(a.lastRsvp.at)}`) : t('no_rsvp', {}, '🗓 No RSVP ever');
     const flag = hit.data.inactive ? (showInactive ? small(inactivePill()) : '')
                : ghost ? pill(t('ghost', {}, '👻 GHOST'), t('ghost_tip', { days }, `No present/late mark and no yes RSVP in the last ${days} days`), '#3a1f1f', '#fca5a5', '#b91c1c')
@@ -116,8 +116,10 @@
     const total = Number(hit.data.rsvpTotal) || 0;
     const rTxt = t('chip_rsvp_total', { n: total }, `R:${total}`);
     const rTip = t('chip_rsvp_total_tip', { n: total }, `${total} RSVPs on record — games and practices`);
-    return `${small(flag)}<span title="${esc(rTip)}" style="font-size:0.6rem; font-weight:800; white-space:nowrap;">${esc(rTxt)}</span>`
-      + `<span title="${esc(lastTip)}" style="font-size:0.6rem; opacity:0.8; white-space:nowrap;">${esc(lastTxt)}</span>`;
+    // 11/5: date at the chip text size, full opacity, no 🗓 (the emoji drew
+    // over the first digit at this size — "no label partially hidden").
+    return `${small(flag)}<span title="${esc(rTip)}" style="font-size:0.65rem; line-height:1.3; font-weight:800; white-space:nowrap;">${esc(rTxt)}</span>`
+      + `<span title="${esc(lastTip)}" style="font-size:0.65rem; line-height:1.3; font-weight:700; white-space:nowrap;">${esc(lastTxt)}</span>`;
   }
 
   // Has he (or his parent) ever answered an RSVP himself?  true / false,
