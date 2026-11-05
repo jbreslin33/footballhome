@@ -5713,16 +5713,9 @@ class GameCenterScreen extends EventScreen {
     const v = this._eligVerdict(playerId);
     if (!v) return '';
     const tone = v === 'eligible' ? 'green' : v === 'projected' ? 'yellow' : 'red';
-    // Eligible = Lighthouse colours (owner 11/5: "make the colors of names
-    // lighthouse colors white and blue" → "flip it to blue writing with
-    // white border" → royal blue → "make border yellow"): royal-blue
-    // letters outlined in the card's Lighthouse gold, on the pitch and
-    // off it.  Yellow / red names still warn.
-    if (tone === 'green') {
-      const w = '#f5d442';
-      // Half-pixel offsets: a hairline edge (owner: "make outline thinner").
-      return `color:#4169e1;text-shadow:-0.5px -0.5px 0 ${w},0.5px -0.5px 0 ${w},-0.5px 0.5px 0 ${w},0.5px 0.5px 0 ${w},0 -0.5px 0 ${w},0 0.5px 0 ${w},-0.5px 0 0 ${w},0.5px 0 0 ${w};`;
-    }
+    // Eligible = plain white (owner 11/5, after trying Lighthouse blue /
+    // gold outlines: "yikes. make names white").  Yellow / red still warn.
+    if (tone === 'green') return 'color:#ffffff;';
     if (onPitch) {
       // text-shadow all round rather than -webkit-text-stroke, which eats
       // into letters this small.
