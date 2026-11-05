@@ -497,13 +497,6 @@ std::optional<Response> resolveRsvpTarget(Database* db,
         // Call-up-gated team (mig 605): rostered-but-uninvited may not
         // RSVP; the fh_event_invited branch below is their door.
         "            AND fh_roster_row_grants(tp.team_id, tp.invite_only, $1::bigint) "
-        "            AND NOT EXISTS ("
-        "                SELECT 1 FROM rsvp_suspensions s "
-        "                WHERE s.person_id = tp.person_id "
-        "                  AND (s.team_id IS NULL OR s.team_id = tp.team_id) "
-        "                  AND s.starts_at <= now() "
-        "                  AND (s.ends_at IS NULL OR s.ends_at > now())"
-        "            )"
         "        )"
         "        OR EXISTS ("
         "          SELECT 1 FROM team_coaches tc "
@@ -517,7 +510,10 @@ std::optional<Response> resolveRsvpTarget(Database* db,
         // play-down the coach explicitly invited may RSVP like a
         // rostered player. Age-eligibility alone (fh_event_callups)
         // no longer opens the door — owner, 2026-09-12/13.
-        "  OR fh_event_invited($1::bigint, $3::int)) AS target_on_roster",
+        "  OR fh_event_invited($1::bigint, $3::int)) AS target_on_roster, "
+        // ⛔ Suspended for this game (mig 1077): sees it, cannot answer it —
+        // nobody answers for him, admins included.
+        "  fh_event_suspension($1::bigint, $3::int) AS suspension",
         {std::to_string(fhEventId), std::to_string(callerPersonId), std::to_string(targetPersonId)});
 
     if (rows.empty()) {
@@ -543,6 +539,11 @@ std::optional<Response> resolveRsvpTarget(Database* db,
                          requestedPersonId.has_value()
                              ? "That player is not on the roster for this event."
                              : "You are not on the roster for this event.");
+    }
+    if (!row["suspension"].is_null()) {
+        MessageCopy copy;
+        const auto msg = copy.render("suspended", "refused", {});
+        return jsonError(HttpStatus::FORBIDDEN, msg.ok() ? msg.body : std::string("Suspended for this game."));
     }
     *outTargetPersonId = targetPersonId;
     return std::nullopt;
@@ -815,7 +816,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
         // the caller is eligible when they hold an active membership
         // on ANY team attached to the event (group model — see
         // docs/adr/2026-07-30-roster-membership-rsvp-normalization.md),
-        // minus any active rsvp_suspensions row.  NULL when anonymous.
+        // (a ⛔ suspended man still sees his games, mig 1077).  NULL when anonymous.
         //
         // hangout_link is the Meet URL extracted from the raw gcal
         // event payload — Google puts it on `hangoutLink` for events
@@ -1019,13 +1020,6 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                     -- membership grants players nothing; an
                                     -- invite (below) is the only way in.
                                     AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
-                                    AND NOT EXISTS (
-                                        SELECT 1 FROM rsvp_suspensions s
-                                        WHERE s.person_id = tp.person_id
-                                          AND (s.team_id IS NULL OR s.team_id = tp.team_id)
-                                          AND s.starts_at <= now()
-                                          AND (s.ends_at IS NULL OR s.ends_at > now())
-                                    )
                               )
                               OR EXISTS (
                                   SELECT 1
@@ -1067,13 +1061,6 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                     -- Call-up-gated team (mig 605): see
                                     -- `eligible` above — invite-only.
                                     AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
-                                    AND NOT EXISTS (
-                                        SELECT 1 FROM rsvp_suspensions s
-                                        WHERE s.person_id = tp.person_id
-                                          AND (s.team_id IS NULL OR s.team_id = tp.team_id)
-                                          AND s.starts_at <= now()
-                                          AND (s.ends_at IS NULL OR s.ends_at > now())
-                                    )
                               )
                               OR EXISTS (
                                   SELECT 1
@@ -1121,6 +1108,10 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 -- CALL-UP · APSL and why the game is on their week.
                 CASE WHEN fh_event_invited(fe.id, $1::int)
                      THEN fh_event_invite_badge(fe.id, $1::int)::text END AS my_callup,
+                -- ⛔ Suspended for this game (mig 1077): the card shows it
+                -- with no Go / No.  'league' | 'club' | NULL.
+                fh_event_suspension(fe.id, $1::int) AS my_suspension,
+                fh_event_suspension_until(fe.id, $1::int) AS my_suspension_until,
                 -- Coach who also plays on this event's team (mig 688): the
                 -- card offers Both / Playing / Coaching only when Going.
                 fh_event_dual_role(fe.id, $1::int) AS dual_role,
@@ -1188,7 +1179,10 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         SELECT DISTINCT jsonb_build_object(
                                    'person_id', child.id,
                                    'name', child.first_name || ' ' || child.last_name,
-                                   'callup', false
+                                   'callup', false,
+                                   -- ⛔ mig 1077: sees the game, no Go/No
+                                   'suspension', fh_event_suspension(fe.id, child.id),
+                                   'suspension_until', fh_event_suspension_until(fe.id, child.id)
                                ) AS x
                         FROM fh_event_teams fet
                         JOIN team_persons tp ON tp.team_id = fet.team_id
@@ -1197,13 +1191,6 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         JOIN persons child ON child.id = tp.person_id
                         WHERE fet.fh_event_id = fe.id
                           AND fh_is_guardian($1::int, child.id)
-                          AND NOT EXISTS (
-                              SELECT 1 FROM rsvp_suspensions s
-                              WHERE s.person_id = tp.person_id
-                                AND (s.team_id IS NULL OR s.team_id = tp.team_id)
-                                AND s.starts_at <= now()
-                                AND (s.ends_at IS NULL OR s.ends_at > now())
-                          )
                         UNION
                         -- Invited kids (migration 355). Flagged so the card
                         -- says "invited to play up" instead of treating it
@@ -1327,7 +1314,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         -- unless they change it it auto marks them injured") —
                                                         -- an injured player with NO explicit answer reads as
                                                         -- Injured, not No response; an answer always wins.
-                                                        'injury', fh_person_injury_label(roster.person_id)
+                                                        'injury', fh_person_injury_label(roster.person_id),
+                                                        -- ⛔ mig 1077: own section, out of No response
+                                                        'suspension', fh_event_suspension(fe.id, roster.person_id)
                         )
                                                 ORDER BY CASE roster.response
                                    WHEN 'yes' THEN 1
@@ -1642,13 +1631,6 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                         AND tp.person_id = $1::int
                                         AND tp.removed_at IS NULL
                                         AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
-                                        AND NOT EXISTS (
-                                            SELECT 1 FROM rsvp_suspensions s
-                                            WHERE s.person_id = tp.person_id
-                                              AND (s.team_id IS NULL OR s.team_id = tp.team_id)
-                                              AND s.starts_at <= now()
-                                              AND (s.ends_at IS NULL OR s.ends_at > now())
-                                        )
                                   )
                                   OR EXISTS (
                                       SELECT 1
@@ -1852,6 +1834,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             }
             ev["is_mine"]           = row["is_mine"].as<bool>();
             ev["my_role"]           = textOrNull(row, "my_role");
+            ev["my_suspension"]       = textOrNull(row, "my_suspension");
+            ev["my_suspension_until"] = textOrNull(row, "my_suspension_until");
             if (row["my_callup"].is_null()) ev["my_callup"] = nullptr;
             else { try { ev["my_callup"] = json::parse(row["my_callup"].c_str()); } catch (...) { ev["my_callup"] = nullptr; } }
             ev["dual_role"]         = row["dual_role"].as<bool>();
@@ -3529,8 +3513,18 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                             {"used",         row["used"].as<long long>()}});
         }
 
+        // ⛔ Suspended for this game (mig 1077): Game Center's own section,
+        // out of No Response and the lineup.
+        json suspended = json::array();
+        for (const auto& row : db->query(
+                "SELECT DISTINCT tp.person_id FROM fh_event_teams fet "
+                "  JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL "
+                " WHERE fet.fh_event_id = $1::bigint AND fh_event_suspended($1::bigint, tp.person_id)",
+                {std::to_string(fhEventId)}))
+            suspended.push_back(row["person_id"].as<long long>());
         return jsonOk({{"fh_event_id", fhEventId}, {"can_invite", true},
-                       {"invites", invites}, {"candidates", candidates}, {"caps", caps}});
+                       {"invites", invites}, {"candidates", candidates}, {"caps", caps},
+                       {"suspended", suspended}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handleGetEventInvites: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());

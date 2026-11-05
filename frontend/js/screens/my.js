@@ -934,7 +934,7 @@ class MyScreen extends Screen {
   _whoMissing(key, subKey) {
     const week = this._weekList();
     const open = (ev) => ev.rsvps_open_now !== false;
-    const own = (ev) => ev.my_role && open(ev) && ev.my_rsvp_eligible !== false && !ev.my_rsvp ? 1 : 0;
+    const own = (ev) => ev.my_role && open(ev) && ev.my_rsvp_eligible !== false && !ev.my_rsvp && !ev.my_suspension ? 1 : 0;   // ⛔ mig 1077: nothing to answer
     const kid = (ev, id) => {
       const target = (ev.guardian_targets || []).some(c => c && c.person_id === id);
       const answered = (Array.isArray(ev.rsvps) ? ev.rsvps : []).some(r => r && r.person_id === id && r.response);
@@ -1853,7 +1853,13 @@ class MyScreen extends Screen {
                      border:1px solid rgba(255,255,255,0.5); vertical-align:middle;"></span>
         ${this.escapeHtml(who)} on the ${this.escapeHtml(side.label)} ${sideWord}</div>`;
     };
+    // ⛔ Suspended for this game (mig 1077): the card shows the game and why
+    // he is out — a small pill where Go / No would be, the line below.
+    const suspendedPill = () => `<span style="font-size:0.6rem; font-weight:800; padding:2px 6px; border-radius:999px;
+        background:rgba(239,68,68,0.18); color:#fca5a5; border:1px solid rgba(239,68,68,0.55); white-space:nowrap;">${this.escapeHtml(
+        (window.MessageCopy && MessageCopy.block('suspended', 'chip')) || '⛔ SUSPENDED')}</span>`;
     const childButtonsHtml = (child) => {
+      if (child.suspension) return suspendedPill();
       const childResponse = (rsvpRows.find(r => r && r.person_id === child.person_id) || {}).response || null;
       const childDisabledMsg = isPast ? 'Event has passed' : openMsg;
       const childClearing = this.eventSaving.has(`${ev.fh_event_id}:${child.person_id}:clear`);
@@ -1872,13 +1878,15 @@ class MyScreen extends Screen {
       // event's roster — the coach invited them to play up. Say so, and
       // word the ask as "are they available", not "are they going".
       const first = String(child.name || 'Your player').split(' ')[0];
+      const suspendedHtml = child.suspension
+        ? this._suspensionLineHtml(child.suspension, { child: String(child.name || '').split(' ')[0], until: child.suspension_until }) : '';
       const callupHtml = child.callup
         ? ` ${this._callupChipHtml(child.callup_badge, child.callup_from)}${this._callupNoteHtml(child.callup_badge, { child: first, fromFallback: child.callup_from })}`
         : '';
       return `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.08);">
           <div style="font-size:0.66rem; font-weight:700; line-height:1.2; opacity:0.95; white-space:normal; overflow-wrap:break-word;">
-            👤 ${this.escapeHtml(child.name || 'Your player')}${callupHtml}
+            👤 ${this.escapeHtml(child.name || 'Your player')}${callupHtml}${suspendedHtml}
             ${sideHtml(child.person_id, `${first} is`)}
           </div>
           <div style="display:flex; gap:3px; flex-shrink:0;">${childButtonsHtml(child)}</div>
@@ -1911,7 +1919,7 @@ class MyScreen extends Screen {
     const evYesSaving = this.eventSaving.has(evYesKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
     const evNoSaving  = this.eventSaving.has(evNoKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
     const ownDuesPill = !isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(null));
-    const ownButtonsHtml = ownDuesPill || `
+    const ownButtonsHtml = ev.my_suspension ? suspendedPill() : ownDuesPill || `
       ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
                  `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
       ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
@@ -2114,6 +2122,8 @@ class MyScreen extends Screen {
         ${soloChild && soloChild.callup ? this._callupChipHtml(soloChild.callup_badge, soloChild.callup_from)
             + this._callupNoteHtml(soloChild.callup_badge, { child: String(soloChild.name || '').split(' ')[0], fromFallback: soloChild.callup_from }) : ''}
         ${!soloChild && callupSelf ? this._callupNoteHtml(ev.my_callup) : ''}
+        ${!soloChild && ev.my_suspension ? this._suspensionLineHtml(ev.my_suspension, { until: ev.my_suspension_until }) : ''}
+        ${soloChild && soloChild.suspension ? this._suspensionLineHtml(soloChild.suspension, { child: String(soloChild.name || '').split(' ')[0], until: soloChild.suspension_until }) : ''}
         ${(() => {
           // 💰 Dues alternate (migs 613–615) on the game card itself (owner:
           // "it needs to show up on the game card itself in my page").  Only
@@ -2257,6 +2267,15 @@ class MyScreen extends Screen {
   // INVITED, and one line saying why the game is on their week — Going
   // means available, the coach picks the squad.  Words: message_templates
   // kind my_callup (chip_* / adult_* / parent_*).
+  // ⛔ Suspended for this game (mig 1077): league ban or club suspension,
+  // adult or parent words (message_templates kind suspended).
+  _suspensionLineHtml(kind, { child = '', until = '' } = {}) {
+    const tier = `${child ? 'parent' : 'my'}_${kind === 'league' ? 'league' : 'club'}`;
+    const text = (window.MessageCopy && MessageCopy.block('suspended', tier, { child, until: until || '' }))
+      || (child ? `⛔ ${child} is suspended — can't play this game.` : "⛔ You're suspended — you can't play this game.");
+    return `<div style="font-size:0.6rem; line-height:1.25; color:#fca5a5; font-weight:700; margin-top:2px;">${this.escapeHtml(text)}</div>`;
+  }
+
   _callupKind(badge) {
     const dir = badge && badge.dir;
     return dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'invited';

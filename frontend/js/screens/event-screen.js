@@ -1300,7 +1300,7 @@ class EventScreen extends Screen {
       return this.cardHtml({
         attrs: `data-person-row="${r.person_id}"`,
         name: `<span style="min-width:0; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(nameOf(r))}</span>${chipHtml(r)}`,
-        right: rsvpBtns(r),
+        right: r.suspension ? '' : rsvpBtns(r),   // ⛔ mig 1077: no answer to set
         body: `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap;">
             ${sides ? this._cardSideHtml(r) : '<span></span>'}
             ${this._attendanceCell(r.person_id)}
@@ -1326,7 +1326,10 @@ class EventScreen extends Screen {
     // A yes from someone over the dues line (dues_eligible=false,
     // migration 416) is kept but counted apart from Going.
     const coaches  = rsvps.filter(r => r && r.is_coach);
-    const players  = rsvps.filter(r => r && !r.is_coach);
+    // ⛔ Suspended for this game (mig 1077): own section, out of Going /
+    // No response / Remind all.
+    const suspended = rsvps.filter(r => r && !r.is_coach && r.suspension);
+    const players  = rsvps.filter(r => r && !r.is_coach && !r.suspension);
     const goingAll = players.filter(r => r.response === 'yes');
     const going    = goingAll.filter(r => r.dues_eligible !== false);
     // 🩹 An open injury answers for them (mig 510, as on #my): no answer of
@@ -1378,6 +1381,7 @@ class EventScreen extends Screen {
       ${fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no'))}
       ${fold('injured', L('sec_injured', '🩹 Injured'), injured)}
       ${fold('inactive', L('sec_inactive', '💤 Inactive'), inactive, { callIn: true })}
+      ${fold('suspended', this.escapeHtml((window.MessageCopy && MessageCopy.block('suspended', 'section')) || '⛔ Suspended'), suspended)}
       ${coachSection()}`;
   }
 

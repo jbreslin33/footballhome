@@ -911,7 +911,7 @@ class GameCenterScreen extends EventScreen {
       this.stats.set(Number(row.playerId), row);
     }
     if (invData) {
-      this.invites = { invites: invData.invites || [], candidates: invData.candidates || [], caps: invData.caps || [] };
+      this.invites = { invites: invData.invites || [], candidates: invData.candidates || [], caps: invData.caps || [], suspended: invData.suspended || [] };
       this._foldInCallups();
     }
     this._render();
@@ -1537,11 +1537,25 @@ class GameCenterScreen extends EventScreen {
   // a starter, no separate "Start" button). Either way, a player only
   // ever holds a position while zone === 'starter', so leaving that zone
   // always clears it.
+  // ⛔ Suspended for this game (mig 1077; invites GET carries the person
+  // ids): own section, never placed in the lineup.
+  _isSuspended(playerId) {
+    const ids = (this.invites && this.invites.suspended) || [];
+    if (!ids.length) return false;
+    const pl = (this.players || []).find(x => Number(x.playerId) === Number(playerId));
+    return !!(pl && ids.map(Number).includes(Number(pl.personId)));
+  }
+
+  _suspendedToast() {
+    this._toast((window.MessageCopy && MessageCopy.block('suspended', 'refused')) || 'Suspended for this game.');
+  }
+
   _toggleZone(playerId, zone) {
     const current = this.zones.get(playerId);
     if (current === zone) {
       this.zones.delete(playerId); // tap active zone again → unassign
     } else {
+      if (this._isSuspended(playerId)) { this._suspendedToast(); return; }
       if (zone === 'bench') {
         const hit = this._callDownCapHit(playerId);
         if (hit) { this._toast(`League rule: only ${hit.max} call-downs from ${hit.from_team} in the squad — use Alt for the extra.`); return; }
@@ -1604,6 +1618,7 @@ class GameCenterScreen extends EventScreen {
   // replacing frees a slot in the same stroke as filling it, and there
   // are only fieldSize pills.
   _setPosition(playerId, positionId) {
+    if (positionId != null && this._isSuspended(playerId)) { this._suspendedToast(); return; }
     if (positionId == null) {
       this.zones.delete(playerId);
       this.positions.delete(playerId);
@@ -2537,6 +2552,14 @@ class GameCenterScreen extends EventScreen {
     // them) into their own closed fold.  A yes brings him back (trigger),
     // so a Going card never reads inactive.
     const isInactive = (p) => !p.callUp && p.squadStatus === 'inactive';
+    // ⛔ Suspended (mig 1077): out of every answer group into its own fold.
+    const unassignedSuspended = [...unassignedGoing, ...unassignedIneligible, ...unassignedNoResponse, ...unassignedNotGoing]
+      .filter(p => this._isSuspended(p.id)).sort(this._byLastName);
+    if (unassignedSuspended.length) {
+      for (const list of [unassignedGoing, unassignedIneligible, unassignedNoResponse, unassignedNotGoing])
+        list.splice(0, list.length, ...list.filter(p => !this._isSuspended(p.id)));
+    }
+    const suspendedLabel = (window.MessageCopy && MessageCopy.block('suspended', 'section')) || '⛔ Suspended';
     const unassignedInactive = [...unassignedNoResponse, ...unassignedNotGoing].filter(isInactive).sort(this._byLastName);
     if (unassignedInactive.length) {
       for (const list of [unassignedNoResponse, unassignedNotGoing])
@@ -3002,6 +3025,7 @@ class GameCenterScreen extends EventScreen {
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
         collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }),
         collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }),
+        collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }),
         this._renderCallupSection(),
       ].join(''));
       return;
@@ -3020,6 +3044,7 @@ class GameCenterScreen extends EventScreen {
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }) : '',
+      this.isCoach ? collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }) : '',
       this.isCoach ? this._renderCallupSection() : '',
     ].join(''));
   }
@@ -3585,7 +3610,7 @@ class GameCenterScreen extends EventScreen {
     try {
       const res = await this.auth.fetch(`/api/calendar/events/${id}/invites`);
       const body = await res.json().catch(() => null);
-      this.invites = res.ok && body ? { invites: body.invites || [], candidates: body.candidates || [], caps: body.caps || [] } : null;
+      this.invites = res.ok && body ? { invites: body.invites || [], candidates: body.candidates || [], caps: body.caps || [], suspended: body.suspended || [] } : null;
       // A send or a withdraw reloads this — the card joins or leaves the
       // squad's lists straight away (mig 1069), not on the next poll.
       if (this.invites && this.loaded) this._foldInCallups();
