@@ -1484,6 +1484,13 @@ class GameCenterScreen extends EventScreen {
       const pid = Number(inv.player_id);
       const name = `${inv.first_name || ''} ${inv.last_name || ''}`.trim() || 'Invited player';
       const have = this.roster.find(r => Number(r.id) === pid);
+      // 💤 Inactive on this team but invited (⭐ standing, or 🎟 CALL IN):
+      // the invite wins — his card joins the answer groups with the chip
+      // instead of sitting in the Inactive fold (David Masi, APSL, 11/5).
+      if (have && !have.callUp && have.squadStatus === 'inactive') {
+        Object.assign(have, { callUp: true, fromTeam: inv.from_team || '', fromTeamId: inv.from_team_id || null,
+                              standing: !!inv.auto, callIn: !!inv.call_in });
+      }
       if (have) { if (have.callUp) { have.inviteRsvp = inv.response || null; have.badge = inv.badge || null; } }
       else {
         this.roster.push({ id: pid, name, lastName: inv.last_name || '', lineupRole: null,
