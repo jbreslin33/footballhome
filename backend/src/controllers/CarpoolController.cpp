@@ -710,8 +710,8 @@ const char* kDepartAtSql =
     "     ELSE (((SELECT g.starts_at FROM fh_events f JOIN gcal_events g ON g.id = f.gcal_event_id WHERE f.id = $1::bigint) "
     "             AT TIME ZONE 'America/New_York')::date + $3::time) AT TIME ZONE 'America/New_York' END";
 int seatsOf(const json& b) {
-    if (b.contains("seats") && b["seats"].is_number_integer()) { const int n = b["seats"].get<int>(); if (n >= 1 && n <= 12) return n; }
-    if (b.contains("seats") && b["seats"].is_string()) { try { const int n = std::stoi(b["seats"].get<std::string>()); if (n >= 1 && n <= 12) return n; } catch (...) {} }
+    if (b.contains("seats") && b["seats"].is_number_integer()) { const int n = b["seats"].get<int>(); if (n >= 2 && n <= 12) return n; }
+    if (b.contains("seats") && b["seats"].is_string()) { try { const int n = std::stoi(b["seats"].get<std::string>()); if (n >= 2 && n <= 12) return n; } catch (...) {} }
     return 0;
 }
 }  // namespace
@@ -729,7 +729,7 @@ Response CarpoolController::handleDepartureAdd(const Request& request) {
     const int seats = seatsOf(b);
     if (place.find_first_not_of(" \t") == std::string::npos) return jsonError(HttpStatus::BAD_REQUEST, "Say where passengers meet you.");
     if (hhmm.empty() && iso.empty()) return jsonError(HttpStatus::BAD_REQUEST, "Pick the time you leave.");
-    if (!seats) return jsonError(HttpStatus::BAD_REQUEST, "How many passenger seats? (1–12)");
+    if (!seats) return jsonError(HttpStatus::BAD_REQUEST, "How many seats in the car, counting the driver? (2–12)");
     try {
         auto* db = Database::getInstance();
         Viewer me;
@@ -824,7 +824,9 @@ Response CarpoolController::handleDepartureAction(const Request& request, const 
         tx->exec_params("SELECT 1 FROM fh_event_departures WHERE id = $1::bigint FOR UPDATE", did);
         auto taken = tx->exec_params("SELECT count(*) AS n FROM fh_event_departure_signups "
                                      " WHERE departure_id = $1::bigint AND left_at IS NULL AND role = 'rider' AND person_id <> $2::int", did, pid);
-        if (!dep[0]["seats"].is_null() && taken[0]["n"].as<long long>() >= dep[0]["seats"].as<long long>())
+        // seats = the whole car, driver included (owner 11/5: "1 seat is taken by
+        // driver but include it") → passengers fit in seats − 1.
+        if (!dep[0]["seats"].is_null() && taken[0]["n"].as<long long>() >= dep[0]["seats"].as<long long>() - 1)
             return jsonError(HttpStatus::CONFLICT, "That carpool is full.");
         tx->exec_params("UPDATE fh_event_departure_signups SET left_at = now() "
                         " WHERE fh_event_id = $1::bigint AND person_id = $2::int AND left_at IS NULL", eid, pid);

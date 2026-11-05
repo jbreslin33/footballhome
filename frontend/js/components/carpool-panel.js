@@ -126,18 +126,22 @@ class CarpoolPanel {
     const inp = (f, val, ph, type = 'text') => `<input data-f="${f}" type="${type}" value="${esc(val || '')}" placeholder="${esc(ph || '')}"
         style="font-size:0.74rem; padding:6px 7px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">`;
     const seatsSel = (v) => `<select data-f="seats" style="font-size:0.74rem; padding:6px 7px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
-        ${[1,2,3,4,5,6,7,8].map(n => `<option value="${n}" ${Number(v || 3) === n ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+        ${[2,3,4,5,6,7,8,9,10,11,12].map(n => `<option value="${n}" ${Number(v || 5) === n ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
     const lbl = (text, field) => `<label style="display:flex; flex-direction:column; gap:2px; font-size:0.66rem; opacity:0.9;">${esc(text)}${field}</label>`;
 
     const cards = cars.map(c => {
       const driverFirst = c.driver.firstName || c.driver.name || '';
       const pax = c.passengers || [];
-      const full = c.seats != null && pax.length >= c.seats;
+      // seats = the whole car, driver included (owner 11/5).
+      const full = c.seats != null && pax.length >= c.seats - 1;
+      const open = c.seats != null ? Math.max(0, c.seats - 1 - pax.length) : null;
       const names = pax.map(p => p.name).join(', ');
+      const seatsLine = c.seats != null
+        ? (this._copy('car_seats', { seats: c.seats, taken: pax.length + 1, open }) || `${c.seats} seats · ${pax.length + 1} taken (driver + ${pax.length}) · ${open} open`)
+        : '';
       const paxLine = pax.length
-        ? (c.seats != null ? (this._copy('car_passengers', { n: pax.length, seats: c.seats, names }) || `Passengers (${pax.length} of ${c.seats} seats): ${names}`)
-                           : (this._copy('car_passengers_open', { n: pax.length, names }) || `Passengers (${pax.length}): ${names}`))
-        : (this._copy('car_empty', { seats: c.seats ?? '?' }) || `No passengers yet · ${c.seats ?? '?'} seats`);
+        ? (this._copy('car_passengers_open', { n: pax.length, names }) || `Passengers (${pax.length}): ${names}`)
+        : (this._copy('car_empty_v2') || 'No passengers yet');
       const iDrive = Number(c.driver.personId) === me;
       // My one button per person (me + my kids).
       const mine = iDrive ? `<div style="font-size:0.74rem; font-weight:800; color:#22c55e;">${esc(this._copy('car_you_drive') || 'You are driving this carpool')}</div>`
@@ -168,7 +172,7 @@ class CarpoolPanel {
             ${lbl(this._copy('car_place_ph') || 'Meet at', inp('place', c.place, ''))}
             ${lbl(this._copy('car_address_ph') || 'Address (optional)', inp('address', c.address, ''))}
             ${lbl(this._copy('car_time_label') || 'Leaves at', inp('time', c.departHhmm, '', 'time'))}
-            ${lbl(this._copy('car_seats_label') || 'Passenger seats', seatsSel(c.seats))}
+            ${lbl(this._copy('car_seats_label') || 'Seats in the car (count the driver)', seatsSel(c.seats))}
             ${btn(`data-gc-cp="dep-update" data-dep="${c.id}"`, esc(this._copy('car_update') || 'Save changes'), 'btn-primary')}
           </div>` : ''}`;
       }
@@ -177,7 +181,8 @@ class CarpoolPanel {
           <div style="font-size:0.86rem; font-weight:800;">🚗 ${esc(this._copy('car_driver', { driver: c.driver.name }) || `${c.driver.name} is driving`)}</div>
           <div style="font-size:0.8rem; font-weight:700; color:#93c5fd; margin-top:2px;">📍 ${esc(this._copy('car_meet', { place: c.place, time: c.departLabel }) || `Meet at ${c.place} · leaves ${c.departLabel}`)}</div>
           ${c.address ? `<div style="font-size:0.7rem; opacity:0.85;"><a href="${esc(EventLabels.mapsUrl(c.address))}" target="_blank" rel="noopener" style="color:inherit;">${esc(c.address)} ↗</a></div>` : ''}
-          <div style="font-size:0.74rem; margin-top:4px;">👥 ${esc(paxLine)}</div>
+          ${seatsLine ? `<div style="font-size:0.74rem; margin-top:4px; font-weight:700;">💺 ${esc(seatsLine)}</div>` : ''}
+          <div style="font-size:0.74rem; margin-top:2px;">👥 ${esc(paxLine)}</div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:6px;">${mine}</div>
           ${tools}
         </div>`;
@@ -188,7 +193,7 @@ class CarpoolPanel {
         ${lbl(this._copy('car_place_ph') || 'Meet at', inp('place', '', 'Lighthouse Sports Complex'))}
         ${lbl(this._copy('car_address_ph') || 'Address (optional)', inp('address', '', ''))}
         ${lbl(this._copy('car_time_label') || 'Leaves at', inp('time', '', '', 'time'))}
-        ${lbl(this._copy('car_seats_label') || 'Passenger seats', seatsSel(3))}
+        ${lbl(this._copy('car_seats_label') || 'Seats in the car (count the driver)', seatsSel(5))}
         ${btn('data-gc-cp="dep-save"', esc(this._copy('car_save') || 'Create carpool'), 'btn-primary')}
       </div>` : '') : '';
     return `
