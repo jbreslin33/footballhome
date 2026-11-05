@@ -107,6 +107,29 @@ class EventLabels {
 
   static timesLine(ev) { return EventLabels.times(ev).join(' · '); }
 
+  // 🚗 Carpool heads-up for a card (mig 1105; owner 11/5: "so we get a
+  // quick heads up? with carpool and names?") — one line per car:
+  // "🚗 James drives: 804 East Girard Avenue 7:00 PM (Som S.) → Lighthouse
+  // Sports Complex 7:15 PM · 6 open", plus where you / your kid ride.
+  static carpoolLines(ev) {
+    const cars = (ev && Array.isArray(ev.carpools)) ? ev.carpools : [];
+    const w = (tier, fb, tokens) => (window.MessageCopy && MessageCopy.block && MessageCopy.block('carpool', tier, tokens)) || fb;
+    return cars.map(c => {
+      const stops = (c.stops || []).map(st => `${st.place} ${st.time}${(st.names || []).length ? ` (${st.names.join(', ')})` : ''}`).join(' → ');
+      const open = c.seats != null ? Math.max(0, Number(c.seats) - 1 - Number(c.passengers || 0)) : null;
+      const driver = c.driver_first || c.driver || '';
+      let line = open === 0
+        ? w('card_line_full', `🚗 ${driver} drives: ${stops} · full`, { driver, stops })
+        : w('card_line', `🚗 ${driver} drives: ${stops}${open != null ? ` · ${open} open` : ''}`, { driver, stops, open: open ?? '' });
+      if (c.i_drive) line += ` ${w('card_you_drive', '(you drive)', {})}`;
+      for (const st of c.stops || []) {
+        const who = (st.mine || []);
+        if (who.length) line += ` · ${w('card_you_ride', `✓ ${who.join(', ')}: ${st.place} ${st.time}`, { who: who.join(', '), place: st.place, time: st.time })}`;
+      }
+      return line;
+    });
+  }
+
   static dateStr(iso) {
     if (!iso) return '';
     const d = new Date(iso);

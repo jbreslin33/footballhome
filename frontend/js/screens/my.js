@@ -2113,6 +2113,7 @@ class MyScreen extends Screen {
               ${rolePillHtml}${teamPillsInline}<b>${this.escapeHtml(arrival ? `Arrive ${arrival}` : timeStr)}</b> · ${this.escapeHtml(title)}
             </div>
             ${EventLabels.timesLine(ev) ? `<div style="font-size:0.62rem; line-height:1.25; font-weight:700; color:#93c5fd; white-space:normal;">${this.escapeHtml(EventLabels.timesLine(ev))}</div>` : ''}
+            ${EventLabels.carpoolLines(ev).map(l => `<div style="font-size:0.62rem; line-height:1.25; font-weight:700; color:#fbbf24; white-space:normal; overflow-wrap:anywhere;">${this.escapeHtml(l)}</div>`).join('')}
             ${venue ? `<div style="font-size:0.6rem; line-height:1.25; overflow-wrap:anywhere;">${this._venueLink(venue)}</div>` : ''}
             <div style="font-size:0.6rem; opacity:0.74; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${!venue && meetLink ? `<a href="${this.escapeHtml(meetLink)}" target="_blank" rel="noopener" style="color:#6ee7b7; font-weight:700; text-decoration:none;">📹 Google Meet</a> · ` : ''}${compactMeta}</div>
           </div>

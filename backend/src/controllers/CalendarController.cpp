@@ -12,6 +12,7 @@
 #include "../services/TwilioService.h"
 #include "../third_party/json.hpp"
 
+#include <map>
 #include <algorithm>
 #include <ctime>
 #include <chrono>
@@ -1911,6 +1912,39 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 try { ev["inactive"] = json::parse(row["inactive_json"].c_str()); } catch (...) {}
             }
             events.push_back(std::move(ev));
+        }
+
+        // 🚗 Carpool heads-up on each card (mig 1105): one batched read for
+        // the events that have a carpool; every other event gets [].
+        {
+            std::string ids = "{";
+            bool first = true;
+            for (auto& e : events) {
+                e["carpools"] = json::array();
+                if (e.contains("fh_event_id") && e["fh_event_id"].is_number_integer()) {
+                    ids += (first ? "" : ",") + std::to_string(e["fh_event_id"].get<long long>());
+                    first = false;
+                }
+            }
+            ids += "}";
+            if (!first) {
+                try {
+                    std::map<long long, json> byEvent;
+                    for (const auto& r : db->query(
+                             "SELECT x.fh_event_id, fh_event_carpool_summary(x.fh_event_id, $2::int)::text AS j "
+                             "  FROM (SELECT DISTINCT fh_event_id FROM fh_event_departures "
+                             "         WHERE cancelled_at IS NULL AND fh_event_id = ANY($1::bigint[])) x",
+                             {ids, std::to_string(personId)}))
+                        byEvent[r["fh_event_id"].as<long long>()] = json::parse(r["j"].c_str());
+                    for (auto& e : events)
+                        if (e["fh_event_id"].is_number_integer()) {
+                            auto it = byEvent.find(e["fh_event_id"].get<long long>());
+                            if (it != byEvent.end()) e["carpools"] = it->second;
+                        }
+                } catch (const std::exception& ex) {
+                    std::cerr << "[calendar feed] carpool summary: " << ex.what() << std::endl;
+                }
+            }
         }
 
         // FH-only season fixtures (team_schedule_fixtures, mig 362) for the

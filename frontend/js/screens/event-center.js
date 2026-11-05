@@ -259,6 +259,7 @@ class EventCenterScreen extends Screen {
         <span style="font-size:0.8rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
         <span style="font-weight:700;">${this.escapeHtml(line(ev))}</span>
         ${EventLabels.timesLine(ev) ? `<span style="font-size:0.72rem; font-weight:700; color:#93c5fd;">${this.escapeHtml(EventLabels.timesLine(ev))}</span>` : ''}
+        ${EventLabels.carpoolLines(ev).map(l => `<span style="font-size:0.7rem; font-weight:700; color:#fbbf24; white-space:normal; overflow-wrap:anywhere; text-align:left;">${this.escapeHtml(l)}</span>`).join('')}
         ${EventLabels.homeSetup(ev) ? `<span>${EventLabels.homeSetupBadge(ev, (t) => this.escapeHtml(t))}</span>`
           : ev.location ? `<span style="font-size:0.72rem; opacity:0.85;">📍 ${this.escapeHtml(ev.location)}</span>` : ''}
         <span style="display:flex; flex-wrap:wrap; gap:2px 8px; font-size:0.75rem;">
