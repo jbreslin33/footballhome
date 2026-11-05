@@ -117,5 +117,61 @@
     return list.filter(m => m && !seen.has(m.key) && seen.add(m.key));
   }
 
-  window.SectionContact = { load, messages, sectionOf, isYouth, welcomeMessage };
+  // 🎟 Call-up (mig 1068, owner 2026-11-05: "why is the call up not just
+  // the contact card with call up message selected"): sending it POSTs the
+  // invite — the fh_event_invites row is what lets the call-up see the
+  // game — and the server writes the words with the recipient's own
+  // sign-in link.  Each parent separately (recipient_person_ids).  'copy'
+  // invites and hands back the text for someone with no phone or email.
+  function callupMessage(screen, fhEventId, playerId, { resend = false, onSent = null } = {}) {
+    return {
+      key: 'callup',
+      label: resend ? cp('msg_callup_resend', '🎟 Call-up (re-send)') : cp('msg_callup', '🎟 Call up to this game'),
+      purpose: `callup:${fhEventId}`,
+      copyOk: true,
+      resolve: async (r, channel) => {
+        const res = await screen.auth.fetch(`/api/calendar/events/${fhEventId}/invites`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            person_id: playerId, channel,
+            contact: channel === 'email' ? (r.email || '') : channel === 'sms' ? (r.phone || '') : '',
+            ...(r.rid ? { recipient_person_ids: [r.rid] } : {}),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+        const x = (data.sends && data.sends[0]) || data;
+        const href = channel === 'email' ? (x.gmail_href || x.mailto_href) : channel === 'sms' ? x.sms_href : '';
+        if (channel !== 'copy' && !href) throw new Error('No message came back');
+        return { ...x, href };
+      },
+      onSent,
+    };
+  }
+
+  // The 📇 button for one call-up row (an open invite or someone who could
+  // be invited, GET …/invites): the call-up preselected, then the
+  // section's list.  row.recipients = every parent of a kid (mig 682).
+  function callupButton(screen, fhEventId, row, { section, resend = false, onSent = null } = {}) {
+    if (!window.ContactPopup || !fhEventId || !row) return '';
+    const pid = Number(row.person_id);
+    const name = `${row.first_name || ''} ${row.last_name || ''}`.trim();
+    let recipients = (row.recipients || []).map(x => ({
+      personId: x.recipient_person_id, rid: x.recipient_person_id, name: x.name || name,
+      phone: x.phone || null, email: x.email || null, forPersonId: pid }));
+    if (!recipients.length) recipients = [{ personId: pid, rid: null, name, phone: row.phone || null, email: row.email || null, forPersonId: pid }];
+    const parentRow = recipients.find(x => x.personId !== pid);
+    return ContactPopup.button({
+      key: `callup:${fhEventId}:${pid}`, screen, recipients,
+      messages: messages(section, {
+        screen, playerId: pid, first: row.first_name || '',
+        parentFirst: parentRow ? String(parentRow.name || '').split(' ')[0] : '',
+        context: [callupMessage(screen, fhEventId, pid, { resend, onSent })],
+      }),
+      defaultKey: 'callup',
+      title: `Contact ${name}`,
+    });
+  }
+
+  window.SectionContact = { load, messages, sectionOf, isYouth, welcomeMessage, callupMessage, callupButton };
 })();

@@ -383,7 +383,6 @@ class GameCenterScreen extends EventScreen {
     this.textMarks = null;    // {marks: {person_id: {game_link, reg_link}}, optedIn: Set} — club-number texts (mig 647)
     this.relay = null;        // FH Texter status for 📲 Text's fallback (mig 673)
     this._invBusy = new Set();   // person_ids with an invite POST/DELETE in flight
-    this._invCopied = new Set(); // person_ids whose invite link was put on the clipboard
     this.officialRoster = null;  // {available, league, saved} — the league's own roster sheet for this game (mig 501)
     this.gameRecipients = null;  // [{personId, name, kind, rsvp, email, phone, viaParent}] — roster + call-ups + candidates (migs 506/600)
     // 🚗 Carpool (migs 601/608/609) — the shared CarpoolPanel component
@@ -1007,8 +1006,6 @@ class GameCenterScreen extends EventScreen {
       if (squadBtn && this.isCoach && !squadBtn.disabled) { this._sendSquadNotice(squadBtn); return; }
       const remindAll = e.target.closest('[data-gc-remind-all]');
       if (remindAll && this.isCoach && !remindAll.disabled) { this._remindNoResponse(remindAll); return; }
-      const invSend = e.target.closest('[data-gc-invite]');
-      if (invSend && this.realIsCoach && !invSend.disabled) { this._sendInvite(invSend); return; }
       const invRevoke = e.target.closest('[data-gc-inv-revoke]');
       if (invRevoke && this.realIsCoach && !invRevoke.disabled) { this._revokeInvite(invRevoke); return; }
       const autoInv = e.target.closest('[data-gc-auto-inv]');
@@ -1469,24 +1466,30 @@ class GameCenterScreen extends EventScreen {
   // them ineligible; their card carries a call-up chip instead.
   // Idempotent (every push is guarded), so the live poll can re-run it
   // whenever a fresh invites payload lands.
-  // A Going invitee joins the lineup pool; a STANDING call-down (⭐,
-  // team_auto_invites) always does, whatever they answered, so they sit
-  // in Going / Not Going / No Response with the squad and get the same
-  // reminders (owner 2026-10-23: "they need to be by default with the
-  // normal list of players just have a label on them. if not i will miss
-  // them to remind them").  Per-game call-ups and ↔ Call Ins stay in the
-  // 🎟 panel until they say Going.
+  // EVERY invitee — call-up, call-down, ↔ call-in, ⭐ standing — joins
+  // the squad's lists the moment the invite exists: No Response until they
+  // answer, then Going / Not Going, with a chip saying which kind (owner
+  // 2026-11-05: "the initial invite to call up dumps them into no response
+  // immediately so we can treat them like everyone else for that event" …
+  // "do same for call down etc" … "for all teams").  Before mig 1069 only
+  // standing call-downs did (owner 2026-10-23); one-game call-ups waited
+  // in the 🎟 panel until they said Going.  An invite withdrawn since the
+  // last fold takes its card out again.
   _foldInCallups() {
-    for (const inv of ((this.invites && this.invites.invites) || [])) {
-      if (!inv.player_id || (inv.response !== 'yes' && !inv.auto)) continue;
+    const invites = (this.invites && this.invites.invites) || [];
+    const live = new Set(invites.filter(i => i.player_id).map(i => Number(i.player_id)));
+    this.roster = this.roster.filter(r => !r.folded || live.has(Number(r.id)));
+    for (const inv of invites) {
+      if (!inv.player_id) continue;
       const pid = Number(inv.player_id);
       const name = `${inv.first_name || ''} ${inv.last_name || ''}`.trim() || 'Invited player';
       const have = this.roster.find(r => Number(r.id) === pid);
-      if (have) { if (have.callUp) have.inviteRsvp = inv.response || null; }
+      if (have) { if (have.callUp) { have.inviteRsvp = inv.response || null; have.badge = inv.badge || null; } }
       else {
         this.roster.push({ id: pid, name, lastName: inv.last_name || '', lineupRole: null,
                            teamId: this.teamId, jerseyNumber: null, duesEligible: true,
-                           callUp: true, fromTeam: inv.from_team || '', fromTeamId: inv.from_team_id || null,
+                           callUp: true, folded: true, badge: inv.badge || null,
+                           fromTeam: inv.from_team || '', fromTeamId: inv.from_team_id || null,
                            standing: !!inv.auto, callIn: !!inv.call_in, inviteRsvp: inv.response || null });
       }
       if (!this.players.some(d => Number(d.playerId) === pid))
@@ -2789,14 +2792,18 @@ class GameCenterScreen extends EventScreen {
               // capped squad above (APSL → CASA, migs 616/617, e.g. Luke);
               // 🎟 Call-up otherwise.  The cap still binds a standing
               // call-up — _isCallDown decides that, not the label.
-              const down = this._isCallDown(p.id);
-              const kind = p.standing ? 'standing' : p.callIn ? 'call_in' : down ? 'call_down' : 'call_up';
-              const fallback = { standing: '⭐ Standing Call-up', call_in: '↔ Call In', call_down: '🎟 Call Down', call_up: '🎟 Call-up' }[kind];
+              // Direction (mig 1069): the cap row still decides a capped
+              // call-down; otherwise the invite badge (board order of the
+              // from-team vs this game's team) says up / down / neither.
+              const dir = p.badge && p.badge.dir;
+              const down = this._isCallDown(p.id) || dir === 'down';
+              const kind = p.standing ? 'standing' : p.callIn ? 'call_in' : down ? 'call_down' : dir === 'up' ? 'call_up' : 'invited';
+              const fallback = { standing: '⭐ Standing Call-up', call_in: '↔ Call In', call_down: '🎟 Call Down', call_up: '🎟 Call-up', invited: '🎟 Invited' }[kind];
               const label = (window.MessageCopy && MessageCopy.block('invite_chip', kind)) || fallback;
-              const [bg, fg] = { standing: ['#1e3a8a', '#bfdbfe'], call_in: ['#4c1d95', '#ddd6fe'], call_down: ['#7c2d12', '#fed7aa'], call_up: ['#166534', '#dcfce7'] }[kind];
-              const tip = down ? 'From the squad above — counts toward the league cap in starters/bench'
+              const [bg, fg] = { standing: ['#1e3a8a', '#bfdbfe'], call_in: ['#4c1d95', '#ddd6fe'], call_down: ['#7c2d12', '#fed7aa'], call_up: ['#166534', '#dcfce7'], invited: ['#78350f', '#fde68a'] }[kind];
+              const tip = this._isCallDown(p.id) ? 'From the squad above — counts toward the league cap in starters/bench'
                 : p.callIn ? 'Call In — rostered here, plays when invited; eligible'
-                : "Invited call-up — Going; the practice criteria don't apply, they're eligible";
+                : "Invited for this game — the practice criteria don't apply, they're eligible";
               return `<span title="${tip}"
               style="padding:1px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; white-space:nowrap;
                      background:${bg}; color:${fg};">${this.escapeHtml(label)}${p.fromTeam && !p.callIn ? ` · ${this.escapeHtml(p.fromTeam)}` : ''}</span>`;
@@ -3563,6 +3570,9 @@ class GameCenterScreen extends EventScreen {
       const res = await this.auth.fetch(`/api/calendar/events/${id}/invites`);
       const body = await res.json().catch(() => null);
       this.invites = res.ok && body ? { invites: body.invites || [], candidates: body.candidates || [], caps: body.caps || [] } : null;
+      // A send or a withdraw reloads this — the card joins or leaves the
+      // squad's lists straight away (mig 1069), not on the next poll.
+      if (this.invites && this.loaded) this._foldInCallups();
     } catch (err) {
       this.invites = null;
     }
@@ -3969,42 +3979,6 @@ class GameCenterScreen extends EventScreen {
     </div>`;
   }
 
-  // POST the invite, then hand the coach the compose (sms: / Gmail) or
-  // put the message on the clipboard.  The wording is the server's.
-  async _sendInvite(btn) {
-    const personId = Number(btn.dataset.personId);
-    const channel = btn.dataset.gcInvite;
-    if (this._invBusy.has(personId)) return;
-    this._invBusy.add(personId);
-    this._render();
-    try {
-      const res = await this.auth.fetch(`/api/calendar/events/${this._fhEventId()}/invites`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person_id: personId, channel, contact: (btn.dataset.contact || '').trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
-      if ((channel === 'email' && data.gmail_href) || (channel === 'sms' && data.sms_href)) {
-        this.openSends(data, channel);   // one per parent (mig 682)
-      } else if (data.url) {
-        try {
-          await navigator.clipboard.writeText(data.sms_body || data.url);
-          this._invCopied.add(personId);
-        } catch {
-          window.prompt('Copy this invite message:', data.sms_body || data.url);
-        }
-      }
-    } catch (err) {
-      console.error('[game-center] invite failed:', err);
-      alert(`Invite failed: ${err.message}`);
-    } finally {
-      this._invBusy.delete(personId);
-    }
-    await this._loadInvites();
-    this._render();
-  }
-
   // ⭐ Auto toggle (team_auto_invites, mig 617): a standing call-down is
   // invited to every new game of this team automatically; off revokes its
   // open auto invites on future games (hand-sent invites stay).
@@ -4068,21 +4042,15 @@ class GameCenterScreen extends EventScreen {
       const [label, color] = answers[resp] || ['No response', 'inherit'];
       return `<span style="font-size:0.72rem; font-weight:700; color:${color}; ${answers[resp] ? '' : 'opacity:0.5;'}">${label}</span>`;
     };
-    const sendBtns = (r, resend) => {
-      const busy = this._invBusy.has(Number(r.person_id));
-      const verb = resend ? 'Re-send' : 'Invite by';
-      const btn = (channel, contact, icon, bg, title) =>
-        `<button type="button" data-gc-invite="${channel}" data-person-id="${r.person_id}"
-                 data-contact="${esc(contact || '')}" ${busy ? 'disabled' : ''} title="${esc(title)}"
-                 style="padding:2px 8px; border-radius:6px; border:none; cursor:pointer; font-size:0.78rem; background:${bg};">${icon}</button>`;
-      const dim = (icon, why) => `<span style="opacity:0.35;" title="${why}">${icon}</span>`;
-      return `<span style="display:inline-flex; align-items:center; gap:5px;">
-        ${r.phone ? btn('sms', r.phone, '💬', '#38bdf8', `${verb} text (${r.phone}) — the parent's phone, for youth`) : (resend ? '' : dim('💬', 'No SMS on file'))}
-        ${r.email ? btn('email', r.email, '📧', '#a78bfa', `${verb} email (${r.email})`) : (resend ? '' : dim('📧', 'No email on file'))}
-        ${btn('copy', '', '🔗', '#fcd34d', resend ? 'Copy a fresh sign-in link' : 'Invite and copy the sign-in link')}
-        ${this._invCopied.has(Number(r.person_id)) ? `<span style="font-size:0.7rem; color:#fcd34d;">✓ copied</span>` : ''}
-      </span>`;
-    };
+    // One 📇 Contact per row (mig 1068): the call-up preselected; sending
+    // it creates the invite.  No other send buttons here.
+    // Invited rows have no button here: their card sits in No Response /
+    // Going / Not Going with the squad (mig 1069) and its 📇 leads with the
+    // RSVP reminder.  This list keeps ⭐ Auto and ✕ withdraw.
+    const contactBtn = (r, resend) => SectionContact.callupButton(this, this._fhEventId(), r, {
+      section: this.ev && this.ev.category, resend,
+      onSent: () => this._loadInvites().then(() => this._render()),
+    });
     const row = (inner) => `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
         padding:6px var(--space-3); border:1px solid var(--border-color); border-radius:6px;">${inner}</div>`;
     // ⭐ Standing call-down toggle (mig 617) — only on rows whose squad has
@@ -4113,7 +4081,6 @@ class GameCenterScreen extends EventScreen {
         <span style="display:inline-flex; align-items:center; gap:8px;">
           ${answerChip(r.response)}
           ${autoBtn(r.person_id, r.from_team_id, r.auto)}
-          ${sendBtns(r, true)}
           <button type="button" data-gc-inv-revoke="${r.person_id}" ${this._invBusy.has(Number(r.person_id)) ? 'disabled' : ''}
                   title="Withdraw this invite — the game disappears for them again"
                   style="font-size:0.72rem; font-weight:700; color:#fca5a5; background:transparent;
@@ -4135,7 +4102,7 @@ class GameCenterScreen extends EventScreen {
           </span>
           <span style="display:inline-flex; align-items:center; gap:8px;">
             ${autoBtn(c.person_id, c.from_team_id, c.auto)}
-            ${sendBtns(c, false)}
+            ${contactBtn(c, false)}
           </span>`)).join('')}
       </div>`).join('');
     return `

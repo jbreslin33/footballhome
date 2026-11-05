@@ -11,7 +11,7 @@
 //   key:        stable string, redraws overwrite,
 //   screen:     the Screen, for its compose-link builders (optional),
 //   recipients: [{ personId, name, phone, email, forPersonId, noText, noCall }],
-//   messages:   [{ key, label, subject, body, smsBody, resolve, onSent, noClub, beforeEmail }],
+//   messages:   [{ key, label, subject, body, smsBody, resolve, onSent, noClub, beforeEmail, copyOk }],
 //   defaultKey, flagged (draw the button fuchsia), big (full-size button),
 //   label (button words, when a row has several people), title,
 //   vcard:      { href, filename }, or onSave(recipient) when the screen builds it,
@@ -23,7 +23,10 @@
 // keeps a message off the club number (dues notices).  purpose names a
 // FH Texter / club send for the screen's delivery marks (game_link:<id>);
 // sendClub(recipient) replaces the generic club text with the screen's
-// own tracked one (a game link from the club number).  beforeEmail(words)
+// own tracked one (a game link from the club number).  📋 Copy puts the
+// words on the clipboard — any typed message, and a resolve message only
+// when it says copyOk (its resolve then takes channel 'copy' and answers
+// sms_body; a 🎟 call-up for someone with no phone or email).  beforeEmail(words)
 // runs in the click's own tick, just before Gmail opens, for work the
 // browser only allows there (the clipboard).  A recipient with no
 // personId (a lead) still gets email and texts; the club number stays off
@@ -94,13 +97,15 @@
         why: noPhone || (stopped ? t('why_stopped', {}, 'They replied STOP')
            : consent !== 'in' ? t('why_not_opted_in', {}, 'Not opted in to club texts') : '') });
     }
+    if (m && (!m.resolve || m.copyOk)) list.push({ key: 'copy', label: t('via_copy', {}, '📋 Copy'), why: '' });
     return list;
   }
 
   // Default: the club number for someone opted in, then FH Texter, then
-  // the texting app, then email (owner 2026-10-24).
+  // the texting app, then email (owner 2026-10-24); copy only when nothing
+  // else works.
   function defaultVia(list) {
-    return ['club', 'relay', 'text', 'email'].find(k => (list.find(v => v.key === k) || { why: 'x' }).why === '') || null;
+    return ['club', 'relay', 'text', 'email', 'copy'].find(k => (list.find(v => v.key === k) || { why: 'x' }).why === '') || null;
   }
 
   function open(cfg) {
@@ -206,6 +211,16 @@
     try {
       const screen = st.cfg.screen || Screen.prototype;
       let href, resolved = null;
+      if (via === 'copy') {
+        if (m.resolve) resolved = await m.resolve(r, 'copy');
+        const text = resolved ? (resolved.sms_body || resolved.url || '') : wordsFor(st);
+        try { await navigator.clipboard.writeText(text); } catch (_e) { window.prompt(t('copied', {}, 'Copy this:'), text); }
+        say(t('copied', {}, '✓ Copied'));
+        if (m.onSent) m.onSent(resolved, via, text);
+        st.busy = false;
+        draw(st, el);
+        return;
+      }
       if (via === 'club' && m.sendClub) {
         href = '';
       } else if (m.resolve) {

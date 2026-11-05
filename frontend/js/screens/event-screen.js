@@ -46,7 +46,6 @@ class EventScreen extends Screen {
     this.att      = null;      // {canMark, roster: Map(person_id -> {status})}
     this.invites  = null;      // {invites, candidates} | {error}
     this.saving   = new Set(); // "att:<pid>" / "inv:<pid>" in flight
-    this.copied   = new Set(); // person_ids whose invite link was copied
     this.error    = null;
     // 🚗 Carpool — the same shared CarpoolPanel component Game Center
     // mounts for games (migs 601/608/609).
@@ -233,7 +232,6 @@ class EventScreen extends Screen {
     this.rsvpNote = {};
     this.remindOk = {};
     this.saving.clear();
-    this.copied.clear();
     this.resetKind();
     this._render();
     // The DB copy (pill titles, the contact sheet's wording) — cached
@@ -664,37 +662,6 @@ class EventScreen extends Screen {
     }
   }
 
-  // POST the invite, then hand the coach the compose (sms: / Gmail) or put
-  // the message on the clipboard.  The wording is the server's.
-  async _sendInvite(personId, channel, contact) {
-    const key = `inv:${personId}`;
-    if (this.saving.has(key)) return;
-    this.saving.add(key);
-    this._render();
-    try {
-      const data = await this._json(`/api/calendar/events/${this.ev.fh_event_id}/invites`, {
-        method: 'POST',
-        body: JSON.stringify({ person_id: personId, channel, contact }),
-      });
-      if ((channel === 'email' && data.gmail_href) || (channel === 'sms' && data.sms_href)) {
-        this.openSends(data, channel);   // one per parent (mig 682)
-      } else if (data.url) {
-        try {
-          await navigator.clipboard.writeText(data.sms_body || data.url);
-          this.copied.add(personId);
-        } catch {
-          window.prompt('Copy this invite message:', data.sms_body || data.url);
-        }
-      }
-    } catch (err) {
-      console.error('[event] invite failed:', err);
-      alert(`Invite failed: ${err.message}`);
-    } finally {
-      this.saving.delete(key);
-    }
-    await Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]);
-  }
-
   async _revokeInvite(personId) {
     const key = `inv:${personId}`;
     if (this.saving.has(key)) return;
@@ -1123,10 +1090,6 @@ class EventScreen extends Screen {
       if ((el = t('[data-ec-contact-open]'))) { this._openContactSheet(Number(el.dataset.ecContactOpen)); return; }
       if ((el = t('[data-ec-rsvp]')))       { this._setRsvp(Number(el.dataset.personId), el.dataset.ecRsvp, el.dataset.active === '1'); return; }
       if ((el = t('[data-ec-remind-all]'))) { this._remindAll(el); return; }
-      if ((el = t('[data-ec-invite]'))) {
-        this._sendInvite(Number(el.dataset.personId), el.dataset.ecInvite, (el.dataset.contact || '').trim());
-        return;
-      }
       if ((el = t('[data-ec-revoke]'))) { this._revokeInvite(Number(el.dataset.ecRevoke)); return; }
       if ((el = t('[data-gc-cp]'))) { this.carpoolPanel.click(el, this.element); return; }
       this.onClick(t, e);
@@ -1418,27 +1381,18 @@ class EventScreen extends Screen {
       const [label, color] = answers[resp] || ['No response', 'inherit'];
       return `<span style="font-size:0.72rem; font-weight:700; color:${color}; ${answers[resp] ? '' : 'opacity:0.5;'}">${label}</span>`;
     };
-    const sendBtns = (r, resend) => {
-      const busy = this.saving.has(`inv:${r.person_id}`);
-      const verb = resend ? 'Re-send' : 'Invite by';
-      const btn = (channel, contact, icon, bg, title) =>
-        `<button type="button" class="ec-send" data-ec-invite="${channel}" data-person-id="${r.person_id}"
-                 data-contact="${this.escapeHtml(contact || '')}" ${busy ? 'disabled' : ''}
-                 title="${this.escapeHtml(title)}" style="background:${bg};">${icon}</button>`;
-      const dim = (icon, why) => `<span style="opacity:0.35;" title="${why}">${icon}</span>`;
-      return `<span style="display:inline-flex; align-items:center; gap:5px;">
-        ${r.phone ? btn('sms', r.phone, '💬', '#38bdf8', `${verb} text (${r.phone})`) : dim('💬', 'No SMS on file')}
-        ${r.email ? btn('email', r.email, '📧', '#a78bfa', `${verb} email (${r.email})`) : dim('📧', 'No email on file')}
-        ${btn('copy', '', '🔗', '#fcd34d', resend ? 'Copy a fresh sign-in link' : 'Invite and copy the sign-in link')}
-        ${this.copied.has(r.person_id) ? `<span style="font-size:0.7rem; color:#fcd34d;">✓ copied</span>` : ''}
-      </span>`;
-    };
+    // One 📇 Contact per row (mig 1068): the call-up preselected; sending
+    // it creates the invite.  No other send buttons here.
+    const contactBtn = (r, resend) => SectionContact.callupButton(this, this.ev.fh_event_id, r, {
+      section: this.ev && this.ev.category, resend,
+      onSent: () => Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]),
+    });
 
     const invited = data.invites.map(r => `<div class="ec-row">
         <span>${this.escapeHtml(nm(r))}${r.from_team ? `<span style="font-size:0.72rem; opacity:0.6;"> · ${this.escapeHtml(r.from_team)}</span>` : ''}</span>
         <span style="display:inline-flex; align-items:center; gap:8px;">
           ${answerChip(r.response)}
-          ${sendBtns(r, true)}
+          ${contactBtn(r, true)}
           <button type="button" data-ec-revoke="${r.person_id}" ${this.saving.has(`inv:${r.person_id}`) ? 'disabled' : ''}
                   title="Withdraw this invite — the event disappears for them again"
                   style="font-size:0.72rem; font-weight:700; color:#fca5a5; background:transparent;
@@ -1456,7 +1410,7 @@ class EventScreen extends Screen {
       <div class="ec-h" style="margin-top:var(--space-2); opacity:0.55;">${this.escapeHtml(team)} (${list.length})</div>
       ${list.map(c => `<div class="ec-row">
           <span>${this.escapeHtml(nm(c))}${c.single_age ? `<span style="font-size:0.72rem; opacity:0.6;"> · U${this.escapeHtml(String(c.single_age))}</span>` : ''}</span>
-          ${sendBtns(c, false)}
+          ${contactBtn(c, false)}
         </div>`).join('')}`).join('');
 
     return `

@@ -629,24 +629,29 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId, long l
 
     const std::string sql = std::string("WITH ") + kBaseCtes + R"SQL(
         SELECT 'team' AS what, r.team_id::bigint AS id, NULL::text AS line, NULL::timestamptz AS starts_at,
-               NULL::text AS day, false AS travel_game, NULL::text AS kind, NULL::text AS deadline
+               NULL::text AS day, false AS travel_game, NULL::text AS kind, NULL::text AS deadline,
+               NULL::text AS callup
           FROM roster r
         UNION ALL
         SELECT 'event', o.fh_event_id,
                -- A game's line carries its RSVP deadline (mig 507) — for the
-               -- player hat only; coaches and staff do not start.
-               o.line || COALESCE(E'\n  ' || CASE WHEN o.role = 'player' THEN fh_rsvp_deadline_note(o.fh_event_id) END, '')
+               -- player hat only; coaches and staff do not start.  Nor does
+               -- a call-up (mig 1069): the starter rule is the squad's.
+               o.line || COALESCE(E'\n  ' || CASE WHEN o.role = 'player' AND NOT o.invited THEN fh_rsvp_deadline_note(o.fh_event_id) END, '')
                       || COALESCE(E'\n  ' || o.message_notes, ''), o.starts_at,
                to_char(o.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD'),
                -- A travel team's game earns the reminder its travel line
                -- (mig 509) — the player hat only, like the deadline.
-               (o.role = 'player' AND fh_is_travel_game(o.fh_event_id)),
+               (o.role = 'player' AND NOT o.invited AND fh_is_travel_game(o.fh_event_id)),
                -- The kind and the deadline on their own (mig 538): the
                -- reminder now says how many game / practice RSVPs are
                -- missing instead of listing them.
                o.kind,
-               CASE WHEN o.role = 'player' THEN fh_rsvp_deadline_note(o.fh_event_id) END
-          FROM open_events o
+               CASE WHEN o.role = 'player' AND NOT o.invited THEN fh_rsvp_deadline_note(o.fh_event_id) END,
+               -- 🎟 Call-up / call-down / call-in (mig 1069): the reminder
+               -- for this game speaks to someone asked in from another squad.
+               CASE WHEN o.invited THEN fh_event_invite_badge(o.fh_event_id, o.person_id::int)::text END
+          FROM (SELECT oe.*, fh_event_invited(oe.fh_event_id, oe.person_id::int) AS invited FROM open_events oe) o
          ORDER BY what, starts_at)SQL";
     auto collect = [&](long long pid, const std::string& firstName, bool teamsToo) {
         auto rows = db->query(sql, {"", "", "{}", std::to_string(pid), "all"});
@@ -658,7 +663,8 @@ RsvpBoard::ReminderContext RsvpBoard::reminderContext(long long personId, long l
                              row["day"].is_null() ? std::string{} : row["day"].c_str(),
                              row["kind"].is_null() ? std::string{} : row["kind"].c_str(),
                              row["deadline"].is_null() ? std::string{} : row["deadline"].c_str(),
-                             pid, firstName};
+                             pid, firstName,
+                             row["callup"].is_null() ? std::string{} : row["callup"].c_str()};
                 ctx.openEvents.push_back(std::move(ev));
                 if (row["travel_game"].as<bool>()) ctx.travelGame = true;
             }

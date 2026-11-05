@@ -53,6 +53,16 @@ json textOrNull(const pqxx::row& row, const char* col) {
     return f.c_str();
 }
 
+// A ::text jsonb array column → json array ([] when NULL or unparseable).
+json parseJsonArray(const pqxx::row& row, const char* col) {
+    const auto& f = row[col];
+    if (f.is_null()) return json::array();
+    try {
+        auto j = json::parse(f.c_str());
+        return j.is_array() ? j : json::array();
+    } catch (...) { return json::array(); }
+}
+
 json boolOrNull(const pqxx::row& row, const char* col) {
     const auto& f = row[col];
     if (f.is_null()) return nullptr;
@@ -1111,6 +1121,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     WHEN fh_event_invited(fe.id, $1::int) THEN 'invited'
                     WHEN fh_event_staff(fe.id, $1::int) THEN 'staff'
                 END AS my_role,
+                -- 🎟 Asked in from another squad (mig 1069): which way and
+                -- from where ({dir: up|down|null, from}), so #my can say
+                -- CALL-UP · APSL and why the game is on their week.
+                CASE WHEN fh_event_invited(fe.id, $1::int)
+                     THEN fh_event_invite_badge(fe.id, $1::int)::text END AS my_callup,
                 -- Coach who also plays on this event's team (mig 688): the
                 -- card offers Both / Playing / Coaching only when Going.
                 fh_event_dual_role(fe.id, $1::int) AS dual_role,
@@ -1202,7 +1217,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                    'person_id',   child.id,
                                    'name',        child.first_name || ' ' || child.last_name,
                                    'callup',      true,
-                                   'callup_from', ft.name
+                                   'callup_from', ft.name,
+                                   'callup_badge', fh_event_invite_badge(fe.id, child.id)   -- mig 1069
                                )
                         FROM fh_event_invites i
                         JOIN persons child ON child.id = i.person_id
@@ -1841,6 +1857,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             }
             ev["is_mine"]           = row["is_mine"].as<bool>();
             ev["my_role"]           = textOrNull(row, "my_role");
+            if (row["my_callup"].is_null()) ev["my_callup"] = nullptr;
+            else { try { ev["my_callup"] = json::parse(row["my_callup"].c_str()); } catch (...) { ev["my_callup"] = nullptr; } }
             ev["dual_role"]         = row["dual_role"].as<bool>();
             ev["my_role_choice"]    = textOrNull(row, "my_role_choice");
             ev["is_guardian"]       = row["is_guardian"].as<bool>();
@@ -3388,6 +3406,15 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 "                AND tp3.removed_at IS NULL AND tp3.invite_only AND tp3.call_in "
                 "                WHERE fet3.fh_event_id = i.fh_event_id) AS call_in, "
                 "       i.channel, i.contact, er.response, p.parent_person_id, "
+                "       fh_event_invite_badge(i.fh_event_id, i.person_id)::text AS badge, "   // mig 1069
+                // Every recipient separately (mig 682): the player, or each
+                // parent of a kid — the 📇 Contact popup's WHO list.
+                "       (SELECT jsonb_agg(jsonb_build_object( "
+                "                 'recipient_person_id', m.recipient_person_id, "
+                "                 'name',  NULLIF(trim(COALESCE(rp.first_name, '') || ' ' || COALESCE(rp.last_name, '')), ''), "
+                "                 'phone', fh_recipient_phone(m.recipient_person_id, p.id), "
+                "                 'email', fh_recipient_email(m.recipient_person_id, p.id)) ORDER BY m.ord) "
+                "          FROM fh_message_recipients(p.id) m JOIN persons rp ON rp.id = m.recipient_person_id)::text AS recipients, "
                 "       to_char(i.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at, "
                 // player_id folds a Going call-up into the Game Center
                 // lineup pool (owner 2026-10-16: "the call ups if they say
@@ -3425,6 +3452,8 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 {"player_id",        row["player_id"].is_null() ? json(nullptr) : json(row["player_id"].as<long long>())},
                 {"phone",            textOrNull(row, "phone")},
                 {"email",            textOrNull(row, "email")},
+                {"recipients",       parseJsonArray(row, "recipients")},
+                {"badge",            row["badge"].is_null() ? json(nullptr) : json::parse(row["badge"].c_str(), nullptr, false)},
             });
         }
 
@@ -3432,6 +3461,14 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
         for (const auto& row : db->query(
                 "SELECT c.person_id, p.first_name, p.last_name, c.from_team_id, c.from_team_name, "
                 "       c.single_age, c.basis, p.parent_person_id, "
+                // Every recipient separately (mig 682): the player, or each
+                // parent of a kid — the 📇 Contact popup's WHO list.
+                "       (SELECT jsonb_agg(jsonb_build_object( "
+                "                 'recipient_person_id', m.recipient_person_id, "
+                "                 'name',  NULLIF(trim(COALESCE(rp.first_name, '') || ' ' || COALESCE(rp.last_name, '')), ''), "
+                "                 'phone', fh_recipient_phone(m.recipient_person_id, p.id), "
+                "                 'email', fh_recipient_email(m.recipient_person_id, p.id)) ORDER BY m.ord) "
+                "          FROM fh_message_recipients(p.id) m JOIN persons rp ON rp.id = m.recipient_person_id)::text AS recipients, "
                 "       EXISTS (SELECT 1 FROM team_auto_invites a JOIN fh_event_teams fet2 "
                 "                 ON fet2.team_id = a.team_id AND fet2.fh_event_id = $1::bigint "
                 "                WHERE a.person_id = c.person_id AND a.active) AS auto_invite, "
@@ -3461,6 +3498,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 {"parent_person_id", row["parent_person_id"].is_null() ? json(nullptr) : json(row["parent_person_id"].as<long long>())},
                 {"phone",            textOrNull(row, "phone")},
                 {"email",            textOrNull(row, "email")},
+                {"recipients",       parseJsonArray(row, "recipients")},
             });
         }
 
@@ -3659,6 +3697,7 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
                 {"invite",     invite},
                 {"sms_body",   copy.withSmsLinkHint(sms.body)},
                 {"recipient_person_id", rcp.personId},
+                {"token_id",            minted.tokenId},   // FH Texter "opened" marks
                 {"recipient_name",      youth ? rcp.first : firstName},
                 {"contact",             theirContact},
             };

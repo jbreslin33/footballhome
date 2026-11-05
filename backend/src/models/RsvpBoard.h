@@ -53,7 +53,10 @@ public:
     // playerId / playerFirstName: whose event — a parent's reminder covers
     // every child (mig 542), so the list mixes children.
     struct OpenEvent { long long fhEventId; std::string line; std::string day; std::string kind; std::string deadline;
-                       long long playerId = 0; std::string playerFirstName; };
+                       long long playerId = 0; std::string playerFirstName;
+                       // 🎟 Invited to this one (mig 1069): fh_event_invite_badge
+                       // JSON {dir: up|down|null, from} — "" for their own team's.
+                       std::string callup; };
     struct ReminderContext {
         bool        found = false;
         std::string playerFirstName;

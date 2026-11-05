@@ -312,8 +312,10 @@ Response RsvpBoardController::handleRemind(const Request& request) {
             }
             focusHere = 0;
         }
+        std::string focusCallup;   // the focus event's invite badge (mig 1069), "" = their own team's
         if (focusHere > 0) {
             focusLine = it->line.substr(0, it->line.find('\n'));   // a practice's notes ride below; not here
+            focusCallup = it->callup;
             std::stable_partition(ctx.openEvents.begin(), ctx.openEvents.end(),
                                   [&](const RsvpBoard::OpenEvent& ev) { return ev.fhEventId == focusId; });
             if (only)
@@ -436,12 +438,40 @@ Response RsvpBoardController::handleRemind(const Request& request) {
         const std::string focus = focusLine.empty() ? std::string{}
             : copy.render("rsvp_reminder", only || ctx.openEvents.size() == 1 ? "focus_only" : "focus_more",
                           {{"event", focusLine}, {"more", std::to_string(ctx.openEvents.size() - 1)}}).body;
-        const auto msg = copy.render("rsvp_reminder", multi ? "multi" : ctx.youth ? "parent" : "adult", {
+        // 🎟 A reminder about a game they were asked in to (mig 1069, owner
+        // 2026-11-05: "their message should be call up tailored right but
+        // brief"): called up / called down / invited from their squad, are
+        // you available — no starter deadline, no fines (invites are never
+        // fined), no "your teammates" (not their team).  Tiers callup_adult
+        // / callup_parent; a household reminder covering several people
+        // keeps the normal words.
+        std::string callupWords;
+        if (!focusCallup.empty() && !multi) {
+            std::string dir, from;
+            try {
+                const auto b = json::parse(focusCallup);
+                if (b.contains("dir") && b["dir"].is_string()) dir = b["dir"].get<std::string>();
+                if (b.contains("from") && b["from"].is_string()) from = b["from"].get<std::string>();
+            } catch (...) {}
+            callupWords = copy.render("rsvp_reminder",
+                dir == "up" ? "callup_up" : dir == "down" ? "callup_down" : "callup_invited", {{"from", from}}).body;
+        }
+        const size_t others = ctx.openEvents.empty() ? 0 : ctx.openEvents.size() - 1;
+        const std::string callupMore = others
+            ? copy.render("rsvp_reminder", "callup_more", {{"more", std::to_string(others)}}).body : std::string{};
+        auto msg = copy.render("rsvp_reminder", multi ? "multi" : ctx.youth ? "parent" : "adult", {
             {"first", ctx.recipientFirstName}, {"child", ctx.playerFirstName},
             {"children", children}, {"per_child", perChildLines},
             {"events", events}, {"missing", missing}, {"deadline", deadline},
             {"link", minted.url}, {"sender", senderName},
             {"fine_note", fineNote}, {"travel", travel}, {"focus", focus}});
+        if (!callupWords.empty()) {
+            auto cm = copy.render("rsvp_reminder", ctx.youth ? "callup_parent" : "callup_adult", {
+                {"first", ctx.recipientFirstName}, {"child", ctx.playerFirstName},
+                {"event", focusLine}, {"callup", callupWords}, {"more", callupMore},
+                {"link", minted.url}, {"sender", senderName}});
+            if (cm.ok()) msg = cm;
+        }
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "rsvp_reminder template missing (migration 363/542)");
 

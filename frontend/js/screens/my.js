@@ -1872,15 +1872,9 @@ class MyScreen extends Screen {
       // event's roster — the coach invited them to play up. Say so, and
       // word the ask as "are they available", not "are they going".
       const first = String(child.name || 'Your player').split(' ')[0];
-      const callupHtml = child.callup ? `
-            <span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:999px;
-                         background:rgba(245,158,11,0.18); border:1px solid rgba(245,158,11,0.55);
-                         color:#fcd34d; font-size:0.56rem; font-weight:800; letter-spacing:0.03em;
-                         vertical-align:middle;">🎟 INVITED</span>
-            <div style="font-size:0.58rem; line-height:1.25; opacity:0.8; margin-top:2px;">
-              The coach invited ${this.escapeHtml(first)} to play up in this game${child.callup_from ? ` (from ${this.escapeHtml(child.callup_from)})` : ''}.
-              Please answer so the coach knows if ${this.escapeHtml(first)} is available.
-            </div>` : '';
+      const callupHtml = child.callup
+        ? ` ${this._callupChipHtml(child.callup_badge, child.callup_from)}${this._callupNoteHtml(child.callup_badge, { child: first, fromFallback: child.callup_from })}`
+        : '';
       return `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.08);">
           <div style="font-size:0.66rem; font-weight:700; line-height:1.2; opacity:0.95; white-space:normal; overflow-wrap:break-word;">
@@ -2030,7 +2024,10 @@ class MyScreen extends Screen {
       : '';
     const detailLines = [title, [dateStr, timeStr].filter(Boolean).join(' · ')].filter(Boolean);
     // Role pill (migration 438): which hat the viewer wears on this event.
-    const rolePillHtml = whoChild ? '' : this._rolePillHtml(ev.dual_role ? 'both' : ev.my_role);   // mig 688: COACH + PLAYER   // a child's view is about the child, not my role
+    // 🎟 Invited myself (mig 1069): the chip names the way in — CALL-UP ·
+    // Reserves — in place of a bare INVITED pill.
+    const callupSelf = !whoChild && ev.my_role === 'invited' && ev.my_callup;
+    const rolePillHtml = whoChild ? '' : callupSelf ? this._callupChipHtml(ev.my_callup) : this._rolePillHtml(ev.dual_role ? 'both' : ev.my_role);   // mig 688: COACH + PLAYER   // a child's view is about the child, not my role
 
     // 🧹 Event job(s) (mig 625/629): the viewer's own assignment and
     // their kids', straight off the feed's my_jobs.  Scoped like the
@@ -2114,7 +2111,9 @@ class MyScreen extends Screen {
           </div>
         </div>
         ${!soloChild && !stacked && showOwnRsvpRow ? ownRoleChoiceHtml : ''}
-        ${soloChild && soloChild.callup ? `<div style="font-size:0.58rem; line-height:1.25; opacity:0.8; margin-top:2px;">🎟 INVITED — the coach invited ${this.escapeHtml(String(soloChild.name || '').split(' ')[0])} to play up in this game${soloChild.callup_from ? ` (from ${this.escapeHtml(soloChild.callup_from)})` : ''}. Please answer so the coach knows if they are available.</div>` : ''}
+        ${soloChild && soloChild.callup ? this._callupChipHtml(soloChild.callup_badge, soloChild.callup_from)
+            + this._callupNoteHtml(soloChild.callup_badge, { child: String(soloChild.name || '').split(' ')[0], fromFallback: soloChild.callup_from }) : ''}
+        ${!soloChild && callupSelf ? this._callupNoteHtml(ev.my_callup) : ''}
         ${(() => {
           // 💰 Dues alternate (migs 613–615) on the game card itself (owner:
           // "it needs to show up on the game card itself in my page").  Only
@@ -2249,6 +2248,38 @@ class MyScreen extends Screen {
       alert(`Could not save: ${err.message}`);
     }
     this._renderEvents();
+  }
+
+  // 🎟 Asked in from another squad (mig 1069, owner 2026-11-05: "show the
+  // game in their my as call up and brief explanation" … "do same for call
+  // down etc" … "for all teams").  badge = fh_event_invite_badge: {dir:
+  // up|down|null, from}.  Chip CALL-UP · Reserves / CALL-DOWN · APSL /
+  // INVITED, and one line saying why the game is on their week — Going
+  // means available, the coach picks the squad.  Words: message_templates
+  // kind my_callup (chip_* / adult_* / parent_*).
+  _callupKind(badge) {
+    const dir = badge && badge.dir;
+    return dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'invited';
+  }
+
+  _callupChipHtml(badge, fromFallback = '') {
+    const from = (badge && badge.from) || fromFallback || '';
+    const kind = this._callupKind(badge);
+    const word = (window.MessageCopy && MessageCopy.block('my_callup', `chip_${kind}`, { from }))
+      || `🎟 ${{ up: 'CALL-UP', down: 'CALL-DOWN', invited: 'INVITED' }[kind]}${from ? ' · ' + from : ''}`;
+    return `<span style="display:inline-block; margin-right:6px; padding:1px 6px; border-radius:999px; vertical-align:middle;
+                   background:rgba(245,158,11,0.18); color:#fcd34d; border:1px solid rgba(245,158,11,0.55);
+                   font-size:0.56rem; font-weight:800; letter-spacing:0.03em;">${this.escapeHtml(word)}</span>`;
+  }
+
+  _callupNoteHtml(badge, { child = '', fromFallback = '' } = {}) {
+    const from = (badge && badge.from) || fromFallback || '';
+    const kind = this._callupKind(badge);
+    const tier = `${child ? 'parent' : 'adult'}_${kind}`;
+    const text = (window.MessageCopy && MessageCopy.block('my_callup', tier, { from, child }))
+      || (child ? `${child} is invited to this game. Please answer so the coach knows if ${child} is available.`
+                : 'You are invited to this game. Please answer so the coach knows if you are available.');
+    return `<div style="font-size:0.58rem; line-height:1.25; opacity:0.85; margin-top:2px;">${this.escapeHtml(text)}</div>`;
   }
 
   _rolePillHtml(role) {
