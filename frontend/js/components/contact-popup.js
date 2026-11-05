@@ -71,7 +71,9 @@
     if (r.phone && !(key in st.consent)) {
       try {
         const res = await authFetch(`/api/phone-relay/contact-state?person_id=${encodeURIComponent(r.personId || 0)}&to=${encodeURIComponent(r.phone)}`);
-        st.consent[key] = res.ok ? (await res.json()).consent : null;
+        const j = res.ok ? await res.json() : null;
+        st.consent[key] = j ? j.consent : null;
+        st.blocked[key] = (j && j.blocked) || {};
       } catch (_e) { st.consent[key] = null; }
     }
   }
@@ -98,6 +100,10 @@
            : consent !== 'in' ? t('why_not_opted_in', {}, 'Not opted in to club texts') : '') });
     }
     if (m && (!m.resolve || m.copyOk)) list.push({ key: 'copy', label: t('via_copy', {}, '📋 Copy'), why: '' });
+    // A route this person can't receive (mig 1089) — e.g. their phone
+    // blocks your number: greyed with the note from their contact.
+    const blocked = st.blocked[consentKey(r)] || {};
+    list.forEach(v => { if (!v.why && blocked[v.key]) v.why = blocked[v.key]; });
     return list;
   }
 
@@ -110,7 +116,7 @@
 
   function open(cfg) {
     const st = { cfg, who: 0, msg: cfg.defaultKey || (cfg.messages[0] && cfg.messages[0].key), via: null,
-                 edits: {}, consent: {}, note: '', noteBad: false, busy: false,
+                 edits: {}, consent: {}, blocked: {}, note: '', noteBad: false, busy: false,
                  status: [],                                   // live lines after Send (mig 1085)
                  log: { open: false, rows: null, key: '' } };  // ▸ Recent messages
     document.getElementById('fh-contact-popup')?.remove();

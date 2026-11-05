@@ -225,7 +225,14 @@ Response PhoneRelayController::handleContactState(const Request& request) {
     try {
         const std::string consent = (!digits.empty() && isStopped(digits)) ? "stopped"
                                   : (personId > 0 && isOptedIn(personId)) ? "in" : "none";
-        return jsonOut(HttpStatus::OK, {{"consent", consent}});
+        // Routes this person can't receive (mig 1089): route → the note.
+        json blocked = json::object();
+        for (const auto& r : Database::getInstance()->query(
+                 "SELECT v.route, fh_contact_route_block($1::int, $2, v.route) AS note "
+                 "  FROM (VALUES ('relay'), ('text'), ('club'), ('email')) AS v(route)",
+                 {std::to_string(personId), digits}))
+            if (!r["note"].is_null()) blocked[r["route"].c_str()] = r["note"].c_str();
+        return jsonOut(HttpStatus::OK, {{"consent", consent}, {"blocked", blocked}});
     } catch (const std::exception& e) {
         std::cerr << "PhoneRelayController::handleContactState: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not read their text settings");
@@ -315,6 +322,11 @@ Response PhoneRelayController::handleQueue(const Request& request) {
             "   AND NOT EXISTS (SELECT 1 FROM sms_opt_ins i WHERE i.phone_digits = $1 AND i.consented_at > o.received_at) LIMIT 1",
             {digits});
         if (!stop.empty()) return jsonError(HttpStatus::CONFLICT, "They replied STOP — call them instead.", "stopped");
+        // Their phone blocks the sender's number (mig 1089 note).
+        auto blk = db->query("SELECT fh_contact_route_block($1::int, $2, 'relay') AS note",
+                             {std::to_string(forPersonId), digits});
+        if (!blk.empty() && !blk[0]["note"].is_null())
+            return jsonError(HttpStatus::CONFLICT, blk[0]["note"].c_str(), "blocked");
 
         auto dev = db->query(
             "SELECT d.id FROM phone_relay_devices d, phone_relay_policy p "
