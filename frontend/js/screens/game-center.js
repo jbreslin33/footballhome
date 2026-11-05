@@ -5713,6 +5713,13 @@ class GameCenterScreen extends EventScreen {
     const v = this._eligVerdict(playerId);
     if (!v) return '';
     const tone = v === 'eligible' ? 'green' : v === 'projected' ? 'yellow' : 'red';
+    // Eligible = Lighthouse colours (owner 11/5: "make the colors of names
+    // lighthouse colors white and blue"): white letters outlined in the
+    // crest blue, on the pitch and off it.  Yellow / red still warn.
+    if (tone === 'green') {
+      const b = '#0033a0';
+      return `color:#ffffff;text-shadow:-1px -1px 0 ${b},1px -1px 0 ${b},-1px 1px 0 ${b},1px 1px 0 ${b},0 -1px 0 ${b},0 1px 0 ${b},-1px 0 0 ${b},1px 0 0 ${b};`;
+    }
     if (onPitch) {
       // text-shadow all round rather than -webkit-text-stroke, which eats
       // into letters this small.
