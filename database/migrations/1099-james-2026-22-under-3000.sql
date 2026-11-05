@@ -1,4 +1,4 @@
--- 1096: owner 2026-11-05: "bring this week under 3000 unload to next one".
+-- 1099: owner 2026-11-05: "bring this week under 3000 unload to next one".
 -- 2026.22 stood at $3,097.20; Field Paint ($122.21, invoice_lines id 87) moves
 -- to 2026.23 — the same row re-pointed, as mig 1095 — leaving $2,974.99.
 UPDATE invoice_lines l
